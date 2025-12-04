@@ -454,7 +454,7 @@ class Game(BaseGame):
         self.region_of_interest = None
 
         threading.Thread(
-            target=lambda: self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=False),
+            target=lambda: self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=True),
             daemon=True,
         ).start()  # return faster, but bypass Kivy Clock
 

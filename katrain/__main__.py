@@ -183,11 +183,87 @@ class KaTrainGui(Screen, KaTrainBase):
         self.show_move_num = not self.show_move_num
         self.update_state()
 
+    def set_analysis_focus_toggle(self, focus: str) -> None:
+        """黒／白優先トグル: 同じボタンを2回押すとフォーカス解除に戻す."""
+        engine = self.engine
+        if not engine or not hasattr(engine, "config"):
+            return
+
+        current = engine.config.get("analysis_focus", None)
+        # 同じ色をもう一度押したら解除、それ以外ならその色に固定
+        new_focus = None if current == focus else focus
+
+        engine.config["analysis_focus"] = new_focus
+        self.log(f"analysis_focus set to: {new_focus}", OUTPUT_DEBUG)
+
+        try:
+            self.update_focus_button_states()
+            # 現在のノード以降のすべての解析をリセットして再実行
+            self._re_analyze_from_current_node()
+        except Exception as e:
+            self.log(f"set_analysis_focus_toggle() failed: {e}", OUTPUT_DEBUG)
+
+    def _re_analyze_from_current_node(self) -> None:
+        """現在のノード以降のすべての解析をリセットして再実行する."""
+        if not self.game or not self.game.root:
+            return
+        
+        # 全ノードをリセット（過去のノードを含む）
+        for node in self.game.root.nodes_in_tree:
+            node.clear_analysis()
+        
+        # 再解析を要求（even_if_present=True により強制的に再解析）
+        self.game.analyze_all_nodes(analyze_fast=False, even_if_present=True)
+        self.log("Re-analysis started with new analysis_focus setting", OUTPUT_DEBUG)
+
+    def restore_last_mode(self) -> None:
+        """前回終了時のモードを復元する。"""
+        try:
+            last_mode = self.config("ui_state/last_mode", MODE_PLAY)
+            if last_mode == MODE_ANALYZE and self.play_mode.mode == MODE_PLAY:
+                # Analyzeモードを復元
+                self.play_mode.analyze.trigger_action(duration=0)
+            elif last_mode == MODE_PLAY and self.play_mode.mode == MODE_ANALYZE:
+                # Playモードを復元
+                self.play_mode.play.trigger_action(duration=0)
+        except Exception as e:
+            self.log(f"restore_last_mode() failed: {e}", OUTPUT_DEBUG)
+
+    def update_focus_button_states(self) -> None:
+        """黒優先・白優先ボタンのラベルを analysis_focus に合わせて更新する."""
+        engine = self.engine
+        if not engine or not hasattr(engine, "config"):
+            return
+
+        focus = engine.config.get("analysis_focus", None)
+
+        board_controls = getattr(self, "board_controls", None)
+        if not board_controls:
+            return
+
+        ids_map = getattr(board_controls, "ids", {}) or {}
+        black_btn = ids_map.get("black_focus_btn")
+        white_btn = ids_map.get("white_focus_btn")
+
+        # ★付き表記で現在の優先側を示す
+        if black_btn is not None:
+            black_btn.text = "★黒優先" if focus == "black" else "黒優先"
+        if white_btn is not None:
+            white_btn.text = "★白優先" if focus == "white" else "白優先"
+
     def start(self):
         if self.engine:
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.engine = KataGoEngine(self, self.config("engine"))
+        
+        # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
+        try:
+            if hasattr(self.engine, "config") and isinstance(self.engine.config, dict):
+                self.engine.config["analysis_focus"] = None
+        except Exception:
+            pass
+        
         threading.Thread(target=self._message_loop_thread, daemon=True).start()
         sgf_args = [
             f
@@ -197,7 +273,12 @@ class KaTrainGui(Screen, KaTrainBase):
         if sgf_args:
             self.load_sgf_file(sgf_args[0], fast=True, rewind=True)
         else:
-            self._do_new_game()
+            # _do_new_game 内の自動 Play/Analyze 切り替えを一時的に無効化
+            self._suppress_play_mode_switch = True
+            try:
+                self._do_new_game()
+            finally:
+                self._suppress_play_mode_switch = False
 
         Clock.schedule_interval(self.handle_animations, 0.1)
         Window.request_keyboard(None, self, "").bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
@@ -206,6 +287,12 @@ class KaTrainGui(Screen, KaTrainBase):
             self.last_focus_event = time.time()
 
         MDApp.get_running_app().root_window.bind(focus=set_focus_event)
+
+        # 前回終了時のモードを復元
+        Clock.schedule_once(lambda dt: self.restore_last_mode(), 0.3)
+        
+        # Initialize focus button states on startup
+        Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
 
     def update_gui(self, cn, redraw_board=False):
         # Handle prisoners and next player display
@@ -352,7 +439,10 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_new_game(self, move_tree=None, analyze_fast=False, sgf_filename=None):
         self.pondering = False
         mode = self.play_analyze_mode
-        if (move_tree is not None and mode == MODE_PLAY) or (move_tree is None and mode == MODE_ANALYZE):
+        if not getattr(self, "_suppress_play_mode_switch", False) and (
+            (move_tree is not None and mode == MODE_PLAY)
+            or (move_tree is None and mode == MODE_ANALYZE)
+        ):
             self.play_mode.switch_ui_mode()  # for new game, go to play, for loaded, analyze
         self.board_gui.animating_pv = None
         self.board_gui.reset_rotation()

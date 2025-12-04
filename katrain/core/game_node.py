@@ -340,6 +340,8 @@ class GameNode(SGFNode):
             if sgf:
                 text += i18n._("Info:score").format(score=self.format_score(score)) + "\n"
                 text += i18n._("Info:winrate").format(winrate=self.format_winrate()) + "\n"
+            if details:
+                text += f"Visits: {self.root_visits}\n"
             if self.parent and self.parent.analysis_exists:
                 previous_top_move = self.parent.candidate_moves[0]
                 if sgf or details:

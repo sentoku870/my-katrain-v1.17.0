@@ -225,6 +225,18 @@
         size_hint: None, 0.5
         pos_hint: {'center_x': 0.15,'center_y':0.5}
         on_left_release: root.katrain("play",None)
+    AutoSizedRoundedRectangleButton:
+        id: black_focus_btn
+        text: "黒優先"
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.22,'center_y':0.5}
+        on_release: app.gui.set_analysis_focus_toggle("black")
+    AutoSizedRoundedRectangleButton:
+        id: white_focus_btn
+        text: "白優先"
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.29,'center_y':0.5}
+        on_release: app.gui.set_analysis_focus_toggle("white")
     BoxLayout:
         size_hint: None, 1
         width: 8 * self.height

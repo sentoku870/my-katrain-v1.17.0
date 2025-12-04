@@ -42,6 +42,8 @@ class PlayAnalyzeSelect(MDFloatLayout):
                 if isinstance(panel, CollapsablePanel)
             },
         }
+        # 前回終了時のモードを保存
+        self.katrain._config["ui_state"]["last_mode"] = self.mode
         self.katrain.save_config("ui_state")
 
     def load_ui_state(self, _dt=None):

@@ -410,7 +410,17 @@ class KataGoEngine(BaseEngine):
 
         if visits is None:
             visits = self.config["max_visits"]
-            if analyze_fast and self.config.get("fast_visits"):
+            
+            # analysis_focus に基づいて visits を調整
+            focus = self.config.get("analysis_focus")
+            if focus:
+                # 優先しない色のターンの場合、fast_visits を使用
+                if (focus == "black" and analysis_node.next_player == "W") or \
+                   (focus == "white" and analysis_node.next_player == "B"):
+                    if self.config.get("fast_visits"):
+                        visits = self.config["fast_visits"]
+            elif analyze_fast and self.config.get("fast_visits"):
+                # analysis_focus がない場合のデフォルト処理（analyze_fast時）
                 visits = self.config["fast_visits"]
 
         size_x, size_y = analysis_node.board_size
