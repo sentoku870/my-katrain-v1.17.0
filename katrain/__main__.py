@@ -62,7 +62,7 @@ from kivy.uix.widget import Widget
 from kivy.resources import resource_find
 from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from katrain.core.ai import generate_ai_move
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
@@ -726,6 +726,10 @@ class KaTrainGui(Screen, KaTrainBase):
     def _show_recent_sgf_dropdown(self, sgf_files, labels, fast, rewind, *_args):
         dropdown = DropDown(auto_width=False)
         max_width = 0
+        menu_items = []
+        base_width = dp(240)
+        item_height = dp(34)
+        font_size = sp(13)
 
         def truncate(text, max_len=35):
             return text if len(text) <= max_len else text[: max_len - 3] + "..."
@@ -739,13 +743,26 @@ class KaTrainGui(Screen, KaTrainBase):
         for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
             label = f"[NEW] {filename}" if idx < 3 else filename
             label = truncate(label)
-            menu_item = MenuItem(text=label, content_width=max(dp(180), len(label) * dp(7)))
+            menu_item = MenuItem(text=label, content_width=max(base_width, len(label) * dp(7)))
+            menu_item.height = item_height
+            menu_item.font_size = font_size
+            menu_item.background_color = Theme.LIGHTER_BACKGROUND_COLOR
+            label_widget = menu_item.ids.get("label")
+            if label_widget:
+                label_widget.color = Theme.TEXT_COLOR
+                label_widget.shorten = True
+                label_widget.shorten_from = "right"
             menu_item.bind(on_action=lambda _item, p=path: load_and_analyze(p))
             dropdown.add_widget(menu_item)
+            menu_items.append(menu_item)
             max_width = max(max_width, menu_item.content_width)
 
         if max_width:
-            dropdown.width = max_width
+            dropdown.width = max(max_width, base_width)
+            for item in menu_items:
+                label_widget = item.ids.get("label")
+                if label_widget:
+                    label_widget.text_size = (dropdown.width - dp(70), None)
 
         sgf_button = getattr(self.board_controls, "sgf_button", None)
         try:
