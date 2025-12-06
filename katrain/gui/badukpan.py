@@ -1264,3 +1264,4 @@ class BadukPanControls(MDFloatLayout):
     engine_status_col = ListProperty(Theme.ENGINE_DOWN_COLOR)
     engine_status_pondering = NumericProperty(-1)
     queries_remaining = NumericProperty(0)
+    sgf_button = ObjectProperty(None)

@@ -218,7 +218,14 @@
     circles: [black_circle,white_circle]
     mid_circles_container: mid_circles_container
     pass_btn: pass_btn
+    sgf_button: sgf_button
     adaptive_height: True
+    AutoSizedRoundedRectangleButton:
+        id: sgf_button
+        text: 'SGF'
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.08,'center_y':0.5}
+        on_release: root.katrain("open-recent-sgf")
     AutoSizedRoundedRectangleButton:
         id: pass_btn
         text: i18n._('pass-button-text')

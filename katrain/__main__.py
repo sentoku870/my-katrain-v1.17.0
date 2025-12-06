@@ -55,13 +55,14 @@ from kivy.core.clipboard import Clipboard
 from kivy.lang import Builder
 from kivy.resources import resource_add_path
 from kivy.uix.popup import Popup
+from kivy.uix.dropdown import DropDown
 from kivy.uix.screenmanager import Screen
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.resources import resource_find
 from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from katrain.core.ai import generate_ai_move
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
@@ -680,6 +681,98 @@ class KaTrainGui(Screen, KaTrainBase):
             popup_contents.filesel.on_submit = readfile
         self.fileselect_popup.open()
         self.fileselect_popup.content.filesel.ids.list_view._trigger_update()
+
+    def _do_open_recent_sgf(self):
+        try:
+            sgf_dir = os.path.abspath(os.path.expanduser(self.config("general/sgf_load", ".")))
+        except Exception as e:
+            self.log(f"Failed to determine sgf load directory: {e}", OUTPUT_DEBUG)
+            return self("analyze-sgf-popup")
+
+        if not sgf_dir or not os.path.isdir(sgf_dir):
+            return self("analyze-sgf-popup")
+
+        try:
+            sgf_files = [
+                os.path.join(sgf_dir, f)
+                for f in os.listdir(sgf_dir)
+                if f.lower().endswith(".sgf") and os.path.isfile(os.path.join(sgf_dir, f))
+            ]
+            sgf_files.sort(key=os.path.getmtime, reverse=True)
+        except Exception as e:
+            self.log(f"Failed to list SGF files in {sgf_dir}: {e}", OUTPUT_DEBUG)
+            return self("analyze-sgf-popup")
+
+        if not sgf_files:
+            return self("analyze-sgf-popup")
+
+        sgf_files = sgf_files[:20]
+        fast = bool(self.config("general/load_fast_analysis", False))
+        rewind = bool(self.config("general/load_sgf_rewind", True))
+        if len(sgf_files) == 1:
+            self.load_sgf_file(sgf_files[0], fast=fast, rewind=rewind)
+            if not self.pondering:
+                self.toggle_continuous_analysis(quiet=True)
+            return
+
+        # Build and open dropdown on the main thread to avoid Kivy thread errors.
+        file_entries = [os.path.basename(path) for path in sgf_files]
+        Clock.schedule_once(
+            lambda *_dt, files=sgf_files, labels=file_entries, fast=fast, rewind=rewind: self._show_recent_sgf_dropdown(
+                files, labels, fast, rewind
+            )
+        )
+
+    def _show_recent_sgf_dropdown(self, sgf_files, labels, fast, rewind, *_args):
+        dropdown = DropDown(auto_width=False)
+        max_width = 0
+        menu_items = []
+        base_width = dp(240)
+        item_height = dp(34)
+        font_size = sp(13)
+
+        def truncate(text, max_len=35):
+            return text if len(text) <= max_len else text[: max_len - 3] + "..."
+
+        def load_and_analyze(path, *_load_args):
+            dropdown.dismiss()
+            self.load_sgf_file(path, fast=fast, rewind=rewind)
+            if not self.pondering:
+                self.toggle_continuous_analysis(quiet=True)
+
+        for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
+            label = f"[NEW] {filename}" if idx < 3 else filename
+            label = truncate(label)
+            menu_item = MenuItem(text=label, content_width=max(base_width, len(label) * dp(7)))
+            menu_item.height = item_height
+            menu_item.font_size = font_size
+            menu_item.background_color = Theme.LIGHTER_BACKGROUND_COLOR
+            label_widget = menu_item.ids.get("label")
+            if label_widget:
+                label_widget.color = Theme.TEXT_COLOR
+                label_widget.shorten = True
+                label_widget.shorten_from = "right"
+            menu_item.bind(on_action=lambda _item, p=path: load_and_analyze(p))
+            dropdown.add_widget(menu_item)
+            menu_items.append(menu_item)
+            max_width = max(max_width, menu_item.content_width)
+
+        if max_width:
+            dropdown.width = max(max_width, base_width)
+            for item in menu_items:
+                label_widget = item.ids.get("label")
+                if label_widget:
+                    label_widget.text_size = (dropdown.width - dp(70), None)
+
+        sgf_button = getattr(self.board_controls, "sgf_button", None)
+        try:
+            if sgf_button:
+                dropdown.open(sgf_button)
+            else:
+                raise AttributeError("SGF button not available")
+        except Exception as e:
+            self.log(f"Failed to open recent SGF dropdown: {e}", OUTPUT_DEBUG)
+            self("analyze-sgf-popup")
 
     def _do_save_game(self, filename=None):
         filename = filename or self.game.sgf_filename
