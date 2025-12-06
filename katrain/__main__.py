@@ -715,20 +715,28 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.toggle_continuous_analysis(quiet=True)
             return
 
+        # Build and open dropdown on the main thread to avoid Kivy thread errors.
+        file_entries = [os.path.basename(path) for path in sgf_files]
+        Clock.schedule_once(
+            lambda *_dt, files=sgf_files, labels=file_entries, fast=fast, rewind=rewind: self._show_recent_sgf_dropdown(
+                files, labels, fast, rewind
+            )
+        )
+
+    def _show_recent_sgf_dropdown(self, sgf_files, labels, fast, rewind, *_args):
         dropdown = DropDown(auto_width=False)
         max_width = 0
 
         def truncate(text, max_len=35):
             return text if len(text) <= max_len else text[: max_len - 3] + "..."
 
-        def load_and_analyze(path, *_args):
+        def load_and_analyze(path, *_load_args):
             dropdown.dismiss()
             self.load_sgf_file(path, fast=fast, rewind=rewind)
             if not self.pondering:
                 self.toggle_continuous_analysis(quiet=True)
 
-        for idx, path in enumerate(sgf_files):
-            filename = os.path.basename(path)
+        for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
             label = f"[NEW] {filename}" if idx < 3 else filename
             label = truncate(label)
             menu_item = MenuItem(text=label, content_width=max(dp(180), len(label) * dp(7)))
