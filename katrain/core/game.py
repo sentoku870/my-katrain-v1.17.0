@@ -3,6 +3,7 @@ import math
 import os
 import re
 import threading
+from . import eval_metrics
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
@@ -458,12 +459,92 @@ class Game(BaseGame):
             daemon=True,
         ).start()  # return faster, but bypass Kivy Clock
 
-    def analyze_all_nodes(self, priority=PRIORITY_GAME_ANALYSIS, analyze_fast=False, even_if_present=True):
+    def analyze_all_nodes(
+        self,
+        priority=PRIORITY_GAME_ANALYSIS,
+        analyze_fast: bool = False,
+        even_if_present: bool = True,
+    ) -> None:
         for node in self.root.nodes_in_tree:
             # forced, or not present, or something went wrong in loading
             if even_if_present or not node.analysis_from_sgf or not node.load_analysis():
                 node.clear_analysis()
-                node.analyze(self.engines[node.next_player], priority=priority, analyze_fast=analyze_fast)
+                node.analyze(
+                    self.engines[node.next_player],
+                    priority=priority,
+                    analyze_fast=analyze_fast,
+                )
+
+
+    def build_eval_snapshot(self) -> "eval_metrics.EvalSnapshot":
+        """
+        現在の Game（メイン分岐）から EvalSnapshot を生成するヘルパー。
+
+        Phase 2 以降で UI や教育機能から共通で呼び出す入口として使う。
+        """
+        return eval_metrics.snapshot_from_game(self)
+
+    def log_important_moves_for_debug(
+        self,
+        *,
+        min_importance: float = 4.0,
+        max_moves: int = 20,
+    ) -> None:
+        """
+        現在の対局（メイン分岐）について、
+        「重要度スコアが大きい手」をログに出力するデバッグ用ヘルパー。
+
+        - UI からはまだ呼ばない想定。
+        - Phase 2 以降の機能実装時に挙動確認用として利用する。
+        """
+        # EvalSnapshot を構築
+        snapshot = self.build_eval_snapshot()
+
+        # ★追加：手が 1 手もない（起動直後の空局面など）は何もせず終了
+        if not snapshot.moves:
+            return
+
+        # 重要度スコアの大きい手を抽出
+        important_moves = eval_metrics.pick_important_moves(
+            snapshot,
+            min_importance=min_importance,
+            max_moves=max_moves,
+            recompute=True,
+        )
+
+        if not important_moves:
+            self.katrain.log(
+                f"[Eval] No moves with importance >= {min_importance}",
+                OUTPUT_INFO,
+            )
+            return
+
+        # ヘッダ行
+        self.katrain.log(
+            f"[Eval] Important moves (min_importance={min_importance}, max_moves={max_moves})",
+            OUTPUT_INFO,
+        )
+
+        # 各手を 1 行ずつログ出力
+        for m in important_moves:
+            self.katrain.log(
+                (
+                    "[Eval] move #{num} {player} {gtp} "
+                    "score_before={sb} score_after={sa} "
+                    "delta_score={ds} points_lost={pl} "
+                    "importance={imp}"
+                ).format(
+                    num=m.move_number,
+                    player=m.player or "-",
+                    gtp=m.gtp or "-",
+                    sb=None if m.score_before is None else f"{m.score_before:.2f}",
+                    sa=None if m.score_after is None else f"{m.score_after:.2f}",
+                    ds=None if m.delta_score is None else f"{m.delta_score:.2f}",
+                    pl=None if m.points_lost is None else f"{m.points_lost:.2f}",
+                    imp=None if m.importance_score is None else f"{m.importance_score:.2f}",
+                ),
+                OUTPUT_INFO,
+            )
 
     def set_current_node(self, node):
         if self.insert_mode:
