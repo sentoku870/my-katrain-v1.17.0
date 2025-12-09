@@ -454,6 +454,11 @@ class Game(BaseGame):
         self.insert_after = None
         self.region_of_interest = None
 
+        # Stop any existing pondering before starting full-game analysis
+        katrain.pondering = False
+        for e in set(self.engines.values()):
+            e.stop_pondering()
+
         threading.Thread(
             target=lambda: self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=True),
             daemon=True,
@@ -484,11 +489,94 @@ class Game(BaseGame):
         """
         return eval_metrics.snapshot_from_game(self)
 
+    # ------------------------------------------------------------------
+    # 重要局面レポート / YoseAnalyzer 連携用のヘルパー
+    # ------------------------------------------------------------------
+
+    def get_important_move_evals(
+        self,
+        *,
+        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+    ) -> "list[eval_metrics.MoveEval]":
+        """
+        現在の対局（メイン分岐）について、
+        重要度スコアの大きい手 (= 重要局面候補) を MoveEval のリストとして返す。
+
+        - EvalSnapshot + pick_important_moves をまとめた入口。
+        - 今後 YoseAnalyzer からもここを呼ぶ想定。
+        """
+        snapshot = self.build_eval_snapshot()
+
+        # 手が 1 手もない（起動直後の空局面など）は空リスト
+        if not snapshot.moves:
+            return []
+
+        important_moves = eval_metrics.pick_important_moves(
+            snapshot,
+            level=level,
+            recompute=True,
+        )
+        return important_moves
+
+    def build_important_moves_report(
+        self,
+        *,
+        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        max_lines: Optional[int] = None,
+    ) -> str:
+        """
+        重要局面候補を人向けのテキストレポートとしてまとめて返す。
+
+        - 今後 UI のパネルや YoseAnalyzer の結果表示に再利用する想定。
+        """
+        important_moves = self.get_important_move_evals(level=level)
+
+        if not important_moves:
+            return "重要局面として抽出できる手がありません。"
+
+        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            level,
+            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+        )
+
+        if max_lines is not None:
+            important_moves = important_moves[:max_lines]
+
+        lines: list[str] = []
+        # ヘッダ
+        lines.append(
+            f"重要局面候補 (レベル={level}, 閾値>{settings.importance_threshold:.2f}, 最大{settings.max_moves}手)"
+        )
+        lines.append("手数  手番  着手   損失(目)  形勢差Δ  勝率Δ")
+
+        for m in important_moves:
+            def fmt_score(x: Optional[float]) -> str:
+                return "-" if x is None else f"{x:+.1f}"
+
+            def fmt_winrate(x: Optional[float]) -> str:
+                if x is None:
+                    return "-"
+                # winrate は 0〜1 を想定。差分も同様。
+                return f"{x * 100:+.1f}%"
+
+            move_no = m.move_number
+            player = m.player or "-"
+            gtp = m.gtp or "-"
+
+            pl = fmt_score(m.points_lost)
+            ds = fmt_score(m.delta_score)
+            dw = fmt_winrate(m.delta_winrate)
+
+            lines.append(
+                f"{move_no:>3}   {player:>1}   {gtp:>4}   {pl:>7}  {ds:>7}  {dw:>7}"
+            )
+
+        return "\n".join(lines)
+
     def log_important_moves_for_debug(
         self,
         *,
-        min_importance: float = 4.0,
-        max_moves: int = 20,
+        level: str = "normal",
     ) -> None:
         """
         現在の対局（メイン分岐）について、
@@ -496,32 +584,31 @@ class Game(BaseGame):
 
         - UI からはまだ呼ばない想定。
         - Phase 2 以降の機能実装時に挙動確認用として利用する。
+
+        Args:
+            level: 重要局面検出のレベル ("easy" / "normal" / "strict")
         """
-        # EvalSnapshot を構築
-        snapshot = self.build_eval_snapshot()
-
-        # ★追加：手が 1 手もない（起動直後の空局面など）は何もせず終了
-        if not snapshot.moves:
-            return
-
-        # 重要度スコアの大きい手を抽出
-        important_moves = eval_metrics.pick_important_moves(
-            snapshot,
-            min_importance=min_importance,
-            max_moves=max_moves,
-            recompute=True,
-        )
+        important_moves = self.get_important_move_evals(level=level)
 
         if not important_moves:
+            settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+                level,
+                eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+            )
             self.katrain.log(
-                f"[Eval] No moves with importance >= {min_importance}",
+                f"[Eval] No moves with importance > {settings.importance_threshold}",
                 OUTPUT_INFO,
             )
             return
 
         # ヘッダ行
+        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            level,
+            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+        )
         self.katrain.log(
-            f"[Eval] Important moves (min_importance={min_importance}, max_moves={max_moves})",
+            f"[Eval] Important moves (level={level}, "
+            f"threshold={settings.importance_threshold}, max_moves={settings.max_moves})",
             OUTPUT_INFO,
         )
 
@@ -545,6 +632,142 @@ class Game(BaseGame):
                 ),
                 OUTPUT_INFO,
             )
+
+    # ------------------------------------------------------------------
+    # 重要局面ナビ用のヘルパー
+    # ------------------------------------------------------------------
+
+    def _iter_main_branch_nodes(self):
+        """
+        ルートからメイン分岐（ordered_children[0] を辿った一本の線）
+        上のノードだけを順に返す。
+        """
+        node = self.root
+        while node.children:
+            node = node.ordered_children[0]
+            yield node
+
+    def _compute_important_moves(self, max_moves: int = 20):
+        """
+        メイン分岐上のノードから「重要そうな手」を抽出して返す。
+
+        戻り値: [(手数, 重要度スコア, GameNode), ...]  を
+                手数昇順に並べたリスト。
+        """
+        candidates = []
+
+        prev_score = None
+        for node in self._iter_main_branch_nodes():
+            move_no = len(node.nodes_from_root) - 1
+
+            # 解析が終わっていない手はスキップ
+            if not node.analysis_complete or node.score is None:
+                continue
+
+            points_lost = node.points_lost or 0.0
+            delta_score = 0.0 if prev_score is None else abs(node.score - prev_score)
+
+            # 「ミス or 大きな形勢変化」を重要度とする
+            importance = max(points_lost, delta_score)
+
+            # あまりに小さい変化はノイズとして捨てる
+            if importance > 0.5:
+                candidates.append((move_no, importance, node))
+
+            prev_score = node.score
+
+        # 1 手も取れなかった場合はフォールバック
+        if not candidates:
+            fallback = []
+            prev_score = None
+            for node in self._iter_main_branch_nodes():
+                move_no = len(node.nodes_from_root) - 1
+                if not node.analysis_complete or node.score is None:
+                    continue
+
+                points_lost = node.points_lost or 0.0
+                delta_score = 0.0 if prev_score is None else abs(node.score - prev_score)
+                fallback_importance = max(points_lost, delta_score)
+
+                fallback.append((move_no, fallback_importance, node))
+                prev_score = node.score
+
+            # 重要度の大きい順に上位 max_moves 件
+            fallback.sort(key=lambda t: t[1], reverse=True)
+            candidates = fallback[:max_moves]
+        else:
+            # 通常ケース: 重要度の大きい順に上位 max_moves 件だけ残す
+            candidates.sort(key=lambda t: t[1], reverse=True)
+            candidates = candidates[:max_moves]
+
+        # ナビゲーションで扱いやすいように、手数順に並べ直して返す
+        candidates.sort(key=lambda t: t[0])
+        return candidates
+
+    def get_important_move_numbers(self, max_moves: int = 20):
+        """
+        「重要局面」と判定された手数のリストだけを返す。
+        ScoreGraph などから呼ぶことを想定。
+        """
+        important = self._compute_important_moves(max_moves=max_moves)
+        return [move_no for move_no, _importance, _node in important]
+
+    def get_next_important_node(self, max_moves: int = 20):
+        """
+        現在の手より「後ろにある」重要局面ノードを返す。
+        なければ None。
+        """
+        important = self._compute_important_moves(max_moves=max_moves)
+        if not important:
+            return None
+
+        current_move_no = len(self.current_node.nodes_from_root) - 1
+
+        for move_no, _importance, node in important:
+            if move_no > current_move_no:
+                return node
+
+        # すべて現在手より前なら、今回はジャンプしない仕様にしておく
+        return None
+
+    def get_prev_important_node(self, max_moves: int = 20):
+        """
+        現在の手より「前にある」重要局面ノードを返す。
+        なければ None。
+        """
+        important = self._compute_important_moves(max_moves=max_moves)
+        if not important:
+            return None
+
+        current_move_no = len(self.current_node.nodes_from_root) - 1
+
+        prev_node = None
+        for move_no, _importance, node in important:
+            if move_no >= current_move_no:
+                break
+            prev_node = node
+
+        return prev_node
+
+    def jump_to_next_important_move(self, max_moves: int = 20):
+        """
+        次の重要局面にジャンプする。
+        実際に current_node を変更したノードを返す。なければ None。
+        """
+        node = self.get_next_important_node(max_moves=max_moves)
+        if node is not None:
+            self.set_current_node(node)
+        return node
+
+    def jump_to_prev_important_move(self, max_moves: int = 20):
+        """
+        前の重要局面にジャンプする。
+        実際に current_node を変更したノードを返す。なければ None。
+        """
+        node = self.get_prev_important_node(max_moves=max_moves)
+        if node is not None:
+            self.set_current_node(node)
+        return node
 
     def set_current_node(self, node):
         if self.insert_mode:

@@ -62,6 +62,7 @@ class Graph(Widget):
 class ScoreGraph(Graph):
     show_score = BooleanProperty(True)
     show_winrate = BooleanProperty(True)
+    show_important_line = BooleanProperty(True)
 
     score_points = ListProperty([])
     winrate_points = ListProperty([])
@@ -74,6 +75,7 @@ class ScoreGraph(Graph):
     winrate_scale = NumericProperty(5)
 
     navigate_move = ListProperty([None, 0, 0, 0])
+    important_points = ListProperty([])
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos) and "scroll" not in getattr(touch, "button", ""):
@@ -104,57 +106,118 @@ class ScoreGraph(Graph):
 
     def update_graph(self, *args):
         nodes = self.nodes
-        if nodes:
-            score_values = [n.score if n and n.score else math.nan for n in nodes]
-            score_nn_values = [n.score for n in nodes if n and n.score]
-            score_values_range = min(score_nn_values or [0]), max(score_nn_values or [0])
+        # 重要手ラインは毎回作り直す
+        self.important_points = []
 
-            winrate_values = [(n.winrate - 0.5) * 100 if n and n.winrate else math.nan for n in nodes]
-            winrate_nn_values = [(n.winrate - 0.5) * 100 for n in nodes if n and n.winrate]
-            winrate_values_range = min(winrate_nn_values or [0]), max(winrate_nn_values or [0])
+        if not nodes:
+            return
 
-            score_granularity = 5
-            winrate_granularity = 10
-            self.score_scale = (
-                max(math.ceil(max(-score_values_range[0], score_values_range[1]) / score_granularity), 1)
-                * score_granularity
+        score_values = [n.score if n and n.score else math.nan for n in nodes]
+        score_nn_values = [n.score for n in nodes if n and n.score]
+        score_values_range = min(score_nn_values or [0]), max(score_nn_values or [0])
+
+        winrate_values = [
+            (n.winrate - 0.5) * 100 if n and n.winrate else math.nan
+            for n in nodes
+        ]
+        winrate_nn_values = [
+            (n.winrate - 0.5) * 100 for n in nodes if n and n.winrate
+        ]
+        winrate_values_range = min(winrate_nn_values or [0]), max(winrate_nn_values or [0])
+
+        score_granularity = 5
+        winrate_granularity = 10
+
+        self.score_scale = (
+            max(
+                math.ceil(
+                    max(-score_values_range[0], score_values_range[1]) / score_granularity
+                ),
+                1,
             )
-            self.winrate_scale = (
-                max(math.ceil(max(-winrate_values_range[0], winrate_values_range[1]) / winrate_granularity), 1)
-                * winrate_granularity
+            * score_granularity
+        )
+        self.winrate_scale = (
+            max(
+                math.ceil(
+                    max(-winrate_values_range[0], winrate_values_range[1]) / winrate_granularity
+                ),
+                1,
             )
+            * winrate_granularity
+        )
 
-            xscale = self.width / max(len(score_values) - 1, 15)
-            available_height = self.height
-            score_line_points = [
-                [self.x + i * xscale, self.y + self.height / 2 + available_height / 2 * (val / self.score_scale)]
-                for i, val in enumerate(score_values)
-            ]
-            winrate_line_points = [
-                [self.x + i * xscale, self.y + self.height / 2 + available_height / 2 * (val / self.winrate_scale)]
-                for i, val in enumerate(winrate_values)
-            ]
-            self.score_points = sum(score_line_points, [])
-            self.winrate_points = sum(winrate_line_points, [])
+        xscale = self.width / max(len(score_values) - 1, 15)
+        available_height = self.height
 
-            if self.highlighted_index is not None:
-                self.highlighted_index = min(self.highlighted_index, len(score_values) - 1)
-                score_dot_point = score_line_points[self.highlighted_index]
-                winrate_dot_point = winrate_line_points[self.highlighted_index]
-                if math.isnan(score_dot_point[1]):
-                    score_dot_point[1] = (
-                        self.y
-                        + self.height / 2
-                        + available_height / 2 * ((score_nn_values or [0])[-1] / self.score_scale)
-                    )
-                self.score_dot_pos = score_dot_point
-                if math.isnan(winrate_dot_point[1]):
-                    winrate_dot_point[1] = (
-                        self.y
-                        + self.height / 2
-                        + available_height / 2 * ((winrate_nn_values or [0])[-1] / self.winrate_scale)
-                    )
-                self.winrate_dot_pos = winrate_dot_point
+        score_line_points = [
+            [
+                self.x + i * xscale,
+                self.y + self.height / 2 + available_height / 2 * (val / self.score_scale),
+            ]
+            for i, val in enumerate(score_values)
+        ]
+        winrate_line_points = [
+            [
+                self.x + i * xscale,
+                self.y + self.height / 2 + available_height / 2 * (val / self.winrate_scale),
+            ]
+            for i, val in enumerate(winrate_values)
+        ]
+
+        self.score_points = sum(score_line_points, [])
+        self.winrate_points = sum(winrate_line_points, [])
+
+        if self.highlighted_index is not None:
+            self.highlighted_index = min(self.highlighted_index, len(score_values) - 1)
+            score_dot_point = score_line_points[self.highlighted_index]
+            winrate_dot_point = winrate_line_points[self.highlighted_index]
+
+            if math.isnan(score_dot_point[1]):
+                score_dot_point[1] = (
+                    self.y
+                    + self.height / 2
+                    + available_height / 2 * ((score_nn_values or [0])[-1] / self.score_scale)
+                )
+            self.score_dot_pos = score_dot_point
+
+            if math.isnan(winrate_dot_point[1]):
+                winrate_dot_point[1] = (
+                    self.y
+                    + self.height / 2
+                    + available_height / 2 * ((winrate_nn_values or [0])[-1] / self.winrate_scale)
+                )
+            self.winrate_dot_pos = winrate_dot_point
+
+        # ------------------------------------------------------------------
+        # 重要な手の縦線を計算
+        #   ※ Game.get_important_move_numbers() は
+        #      「メイン分岐上のインデックス（0=root,1=1手目,2=2手目…）」を返す想定
+        # ------------------------------------------------------------------
+        katrain_app = MDApp.get_running_app()
+        gui = getattr(katrain_app, "gui", None) if katrain_app is not None else None
+
+        important_points: list[float] = []
+        if gui is not None and getattr(gui, "game", None) is not None:
+            game = gui.game
+            get_important = getattr(game, "get_important_move_numbers", None)
+            if callable(get_important):
+                # 重要局面の「インデックス集合」
+                important_indices = {
+                    int(i) for i in get_important() if i is not None
+                }
+                max_idx = len(score_line_points) - 1
+
+                # nodes[i] に対応する x 座標を直接使う
+                for idx in sorted(important_indices):
+                    if 0 <= idx <= max_idx:
+                        x = score_line_points[idx][0]
+                        # グラフ全体の高さにわたる縦線
+                        important_points.extend(
+                            [x, self.y, x, self.y + self.height]
+                        )
+
+        self.important_points = important_points
 
 
 Builder.load_string(
@@ -194,6 +257,14 @@ Builder.load_string(
         Line:
             points: root.navigate_move[1], root.y, root.navigate_move[1], root.y+root.height
             width: 1
+
+        # 重要な手の縦線（トグルで ON/OFF）
+        Color:
+            rgba: Theme.GRAPH_DOT_COLOR if root.show_important_line and root.important_points else [0,0,0,0]
+        Line:
+            points: root.important_points if root.show_important_line else []
+            width: 1
+
         Color:
             rgba: Theme.GRAPH_DOT_COLOR
         Ellipse:

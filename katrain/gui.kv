@@ -626,7 +626,7 @@
             opacity: 0 if self.parent.mode == MODE_PLAY else 1
     CollapsablePanel:
         id: graph_panel
-        content_height: graph.height
+        content_height: graph.height + dp(32)
         options_height: root.tab_option_height
         closed_label: 'closedlabel:scoregraph'
         options: ['score','winrate']
@@ -640,6 +640,31 @@
             opacity: 0 if self.hidden else 1
             size_hint_y: None
             height: root.graph_height
+        BoxLayout:
+            size_hint_y: None
+            height: dp(32)
+            spacing: dp(4)
+
+            Button:
+                text: '前の重要局面'
+                size_hint_x: 0.4
+                font_size: sp(12)
+                on_release: root.katrain("prev_important")
+
+            Button:
+                text: '次の重要局面'
+                size_hint_x: 0.4
+                font_size: sp(12)
+                on_release: root.katrain("next_important")
+
+            ToggleButton:
+                id: important_line_toggle
+                text: '重要局面'
+                size_hint_x: 0.2
+                state: "down"
+                font_size: sp(12)
+                on_state:
+                    graph.show_important_line = (self.state == "down")
     CollapsablePanel:
         id: stats_panel
         num_active: 3
@@ -1147,11 +1172,11 @@
         PlayAnalyzeButton:
             text: i18n._('btn:Play')
             id: play
-            state: 'down'
             on_state: if self.state=='down': root.select_mode(MODE_PLAY)
         PlayAnalyzeButton:
             text: i18n._('btn:Analysis')
             id: analyze
+            state: 'down'
             on_state: if self.state=='down': root.select_mode(MODE_ANALYZE)
 
 

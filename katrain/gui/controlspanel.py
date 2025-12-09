@@ -22,11 +22,18 @@ from katrain.gui.sound import play_sound, stop_sound
 
 class PlayAnalyzeSelect(MDFloatLayout):
     katrain = ObjectProperty(None)
-    mode = OptionProperty(MODE_PLAY, options=[MODE_PLAY, MODE_ANALYZE])
+    mode = OptionProperty(MODE_ANALYZE, options=[MODE_PLAY, MODE_ANALYZE])
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        # 初期化時に timer_or_movetree.mode を現在のモードに設定
+        Clock.schedule_once(self._init_timer_mode, 0)
         Clock.schedule_once(self.load_ui_state, 1)
+
+    def _init_timer_mode(self, _dt=None):
+        """初期化時に timer_or_movetree のモードを設定"""
+        if self.katrain and self.katrain.controls:
+            self.katrain.controls.timer_or_movetree.mode = self.mode
 
     def save_ui_state(self):
         self.katrain._config["ui_state"] = self.katrain._config.get("ui_state", {})

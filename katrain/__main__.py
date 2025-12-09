@@ -518,6 +518,17 @@ class KaTrainGui(Screen, KaTrainBase):
         self.board_gui.animating_pv = None
         getattr(self.game, fn)(9999, stop_on_mistake=self.config("trainer/eval_thresholds")[-4])
 
+    # ------------------------------------------------------------------
+    # 重要局面ナビゲーション
+    # ------------------------------------------------------------------
+    def _do_prev_important(self):
+        if self.game:
+            self.game.jump_to_prev_important_move()
+
+    def _do_next_important(self):
+        if self.game:
+            self.game.jump_to_next_important_move()
+
     def _do_switch_branch(self, *args):
         self.board_gui.animating_pv = None
         self.controls.move_tree.switch_branch(*args)
@@ -711,8 +722,6 @@ class KaTrainGui(Screen, KaTrainBase):
         rewind = bool(self.config("general/load_sgf_rewind", True))
         if len(sgf_files) == 1:
             self.load_sgf_file(sgf_files[0], fast=fast, rewind=rewind)
-            if not self.pondering:
-                self.toggle_continuous_analysis(quiet=True)
             return
 
         # Build and open dropdown on the main thread to avoid Kivy thread errors.
@@ -737,8 +746,6 @@ class KaTrainGui(Screen, KaTrainBase):
         def load_and_analyze(path, *_load_args):
             dropdown.dismiss()
             self.load_sgf_file(path, fast=fast, rewind=rewind)
-            if not self.pondering:
-                self.toggle_continuous_analysis(quiet=True)
 
         for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
             label = f"[NEW] {filename}" if idx < 3 else filename

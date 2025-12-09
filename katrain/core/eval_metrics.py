@@ -8,6 +8,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
 )
 
 # KaTrain 側の型に依存するのは最小限にする
@@ -56,6 +57,41 @@ class MoveEval:
     tag: Optional[str] = None           # "opening"/"middle"/"yose" など自由タグ
     importance_score: Optional[float] = None  # 後で計算する「重要度スコア」
 
+
+# ---------------------------------------------------------------------------
+# 重要局面検出用の設定
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ImportantMoveSettings:
+    """重要局面の抽出条件をまとめた設定."""
+    importance_threshold: float  # importance がこの値を超えたものだけ採用
+    max_moves: int               # 最大件数（大きい順に上位だけ残す）
+
+
+# 棋力イメージ別プリセット（あとで UI から切り替えやすくするための土台）
+IMPORTANT_MOVE_SETTINGS_BY_LEVEL = {
+    # 級位者向け: 本当に大きな損だけを拾う
+    "easy": ImportantMoveSettings(
+        importance_threshold=1.0,
+        max_moves=10,
+    ),
+    # 標準: 現在の挙動に近い設定
+    "normal": ImportantMoveSettings(
+        importance_threshold=0.5,
+        max_moves=20,
+    ),
+    # 段位者向け: 細かいヨセも含めて多めに拾う
+    "strict": ImportantMoveSettings(
+        importance_threshold=0.3,
+        max_moves=40,
+    ),
+}
+
+DEFAULT_IMPORTANT_MOVE_LEVEL = "normal"
+
+
+# ---------------------------------------------------------------------------
 
 @dataclass
 class EvalSnapshot:
@@ -267,37 +303,81 @@ def compute_importance_for_moves(
 
 def pick_important_moves(
     snapshot: EvalSnapshot,
-    *,
-    min_importance: float = 4.0,
-    max_moves: Optional[int] = 50,
+    level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
+    settings: Optional[ImportantMoveSettings] = None,
     recompute: bool = True,
     weight_delta_score: float = 1.0,
     weight_delta_winrate: float = 50.0,
     weight_points_lost: float = 1.0,
 ) -> List[MoveEval]:
     """
-    EvalSnapshot から「重要度スコアが大きい手」を抜き出すユーティリティ。
+    snapshot から重要局面の手数だけを抽出して返す。
 
-    - recompute=True のときは、毎回 importance_score を再計算する。
-    - 戻り値は importance_score の降順、そのあと move_number 昇順でソート。
+    Args:
+        snapshot: 解析済みの EvalSnapshot
+        level:
+            "easy" / "normal" / "strict" のような棋力イメージを表すキー。
+            settings が None の場合に使用される（デフォルト "normal"）。
+        settings:
+            直接設定を渡したい場合用。通常は None のままでよい。
+        recompute: importance_score を再計算するかどうか
+        weight_delta_score: delta_score の重み
+        weight_delta_winrate: delta_winrate の重み
+        weight_points_lost: points_lost の重み
+
+    Returns:
+        MoveEval オブジェクトのリスト（手数順）。
     """
+    # 設定の決定
+    if settings is None:
+        settings = IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            level, IMPORTANT_MOVE_SETTINGS_BY_LEVEL[DEFAULT_IMPORTANT_MOVE_LEVEL]
+        )
+
+    threshold = settings.importance_threshold
+    max_moves = settings.max_moves
+
+    moves = snapshot.moves
+    if not moves:
+        # そもそも解析済みの手がない場合は何も返さない
+        return []
+
+    # 必要なら importance_score を再計算
     if recompute:
         compute_importance_for_moves(
-            snapshot.moves,
+            moves,
             weight_delta_score=weight_delta_score,
             weight_delta_winrate=weight_delta_winrate,
             weight_points_lost=weight_points_lost,
         )
 
-    important = [
-        m for m in snapshot.moves
-        if (m.importance_score or 0.0) >= min_importance
-    ]
+    # 1) 通常ルート: importance_score ベース
+    candidates: List[Tuple[float, MoveEval]] = []
+    for move in moves:
+        importance = move.importance_score or 0.0
+        if importance > threshold:
+            candidates.append((importance, move))
 
-    important.sort(
-        key=lambda m: (-(m.importance_score or 0.0), m.move_number)
-    )
+    # 2) フォールバック:
+    #    1) で 1 手も選ばれなかったときだけ、
+    #    「評価変化＋points_lost」が大きい順で上位を取る。
+    if not candidates:
+        def raw_score(m: MoveEval) -> float:
+            score_term = abs(m.delta_score or 0.0)
+            winrate_term = 50.0 * abs(m.delta_winrate or 0.0)
+            pl_term = max(m.points_lost or 0.0, 0.0)
+            return score_term + winrate_term + pl_term
 
-    if max_moves is not None and len(important) > max_moves:
-        return important[:max_moves]
-    return important
+        for move in moves:
+            raw_sc = raw_score(move)
+            if raw_sc > 0.0:
+                candidates.append((raw_sc, move))
+
+    # importance の大きい順に並べ替えて上位だけ残す
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    top = candidates[:max_moves]
+    
+    # その後手数順にソート
+    important_moves = sorted([m for _, m in top], key=lambda m: m.move_number)
+    return important_moves
+
