@@ -1,3 +1,10 @@
+ベースとなる KaTrain 本体および画像・テーマ等は、オリジナルプロジェクトの MIT License に従います。
+
+このフォークで追加したコード・ドキュメントも、特に断りがない限り MIT License で配布します。
+
+Original KaTrain © Sander Land and contributors.
+Extensions in this repository © sentoku870.
+
 This repository includes:
 
 1. Binaries for 'KataGo', which is Copyright David J Wu et al.
