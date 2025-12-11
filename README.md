@@ -1,3 +1,80 @@
+# my-katrain v1.17.0 (KaTrain fork)
+
+**my-katrain** は、オープンソースの囲碁解析ソフト **KaTrain** をベースにした  
+個人開発の拡張版です。KataGo の解析結果を活かして、学習・指導機能を強化することを目的としています。
+
+> This is an unofficial personal fork of KaTrain, focused on educational features.
+> It is **not** an official release of the original KaTrain project.
+
+---
+
+## Based on KaTrain
+
+このプロジェクトは、Sander Land 氏による KaTrain をベースにしています。:contentReference[oaicite:0]{index=0}  
+
+- Original repository: https://github.com/sanderland/katrain  
+- License: MIT License（本リポジトリの `LICENSE` を参照）
+
+KaTrain は KataGo を用いた囲碁解析・対局ソフトで、主に次のような機能を提供します（概要のみ）:
+
+- 対局棋譜を解析し、各手の損失（ポイントロス）を可視化
+- AI との対局および、悪手を自動やり直しする「指導対局」モード
+- 強さやスタイルの異なる複数の AI 設定
+- ミスの多い部分に焦点を当てた SGF レポート生成 など
+
+詳細なマニュアルやインストール手順は、本家リポジトリの README / INSTALL を参照してください。
+
+- Manual / Usage: https://github.com/sanderland/katrain#manual  
+- Installation: https://github.com/sanderland/katrain#install  
+
+---
+
+## このフォークで追加・変更している主な点
+
+※ 開発途中を含む概要です。詳細は `docs/` フォルダの各メモを参照してください。
+
+### 1. 評価情報レイヤーの拡張
+
+- 各手について、KataGo 解析結果をまとめたデータ構造（例: `MoveEval`, `EvalSnapshot`）を追加
+- 「ポイント損失」「局面の難しさ」「方針のブレ」などを一段階抽象化して扱う仕組み
+
+### 2. 重要局面の抽出・可視化（Phase 2）
+
+- 一局の中から「形勢が大きく動いた手」「難易度の高い手」を自動抽出するロジック
+- 重要局面をタイムラインやグラフ上に重ねて表示するためのフックを追加
+
+### 3. ミス分類・クイズ出題モード（Phase 3–4）
+
+- 自分のミスを種類別に集計し、「どの局面で何を間違えやすいか」を統計として扱う仕組み
+- そのミスからクイズ（選択式問題）を自動生成し、復習できるモードの土台
+
+### 4. 棋譜並べ・ヨセ学習との連携構想
+
+- 19路は「対局」よりも「棋譜並べ」中心で使うことを想定
+- 重要局面・ヨセのローカル目数・難易度情報と組み合わせて、
+  - 重要局面だけを厚く並べるモード
+  - ヨセだけを切り出した「目数差クイズ」モード
+  などを実装するための基盤コードを追加（実装中）
+
+### 5. ChatGPT など外部 LLM 連携用の設計
+
+- 解析結果・弱点統計・棋譜並べ成績を、LLM 向けにまとめて渡す「カルテ」形式を設計中
+- 1クリックで「現在の弱点に合わせた学習プラン提案」を依頼できるようにすることを目標
+
+---
+
+## 現在のステータス
+
+- ベースバージョン: KaTrain v1.17.0
+- フォーク用途:
+  - 個人利用
+  - 教育機能の試作・検証
+- 公開配布の予定:
+  - 小規模な利用を想定した実験的リポジトリです。
+  - 公式 KaTrain とは別物であり、サポート等は期待しないでください。
+
+---
+
 # <a name="manual"></a> KaTrain
 
 [![Latest Release](http://img.shields.io/github/release/sanderland/katrain?label=download)](http://github.com/sanderland/katrain/releases)
