@@ -55,7 +55,11 @@ from kivy.core.clipboard import Clipboard
 from kivy.lang import Builder
 from kivy.resources import resource_add_path
 from kivy.uix.popup import Popup
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.dropdown import DropDown
+from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.screenmanager import Screen
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
@@ -84,6 +88,7 @@ from katrain.core.constants import (
     DATA_FOLDER,
     AI_DEFAULT,
 )
+from katrain.core import eval_metrics
 from katrain.gui.popups import (
     ConfigTeacherPopup,
     ConfigTimerPopup,
@@ -815,6 +820,88 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_contents.filesel.on_success = readfile
         popup_contents.filesel.on_submit = readfile
         save_game_popup.open()
+
+    def _do_quiz_popup(self):
+        if not self.game:
+            return
+
+        loss_threshold = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD
+        limit = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT
+        quiz_items = self.game.get_quiz_items(
+            loss_threshold=loss_threshold, limit=limit
+        )
+
+        popup_content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
+
+        header_text = (
+            f"Main line moves with loss > {loss_threshold:.1f} points "
+            f"(top {limit}). Click to jump to the position before the move."
+        )
+        if not quiz_items:
+            header_text = (
+                f"No moves above {loss_threshold:.1f} points loss were found on the main line."
+            )
+
+        header_label = Label(
+            text=header_text,
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(50),
+            color=Theme.TEXT_COLOR,
+        )
+        header_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
+        popup_content.add_widget(header_label)
+
+        scroll = ScrollView(size_hint=(1, 1))
+        items_layout = BoxLayout(
+            orientation="vertical",
+            spacing=dp(6),
+            size_hint_y=None,
+        )
+        items_layout.bind(minimum_height=items_layout.setter("height"))
+
+        def jump_to_move(move_number: int) -> None:
+            node = self.game.get_main_branch_node_before_move(move_number)
+            if node is None:
+                self.controls.set_status(
+                    f"Could not navigate to move {move_number}.", STATUS_INFO
+                )
+                return
+            self.game.set_current_node(node)
+            self.update_state(redraw_board=True)
+
+        for item in quiz_items:
+            color_label = "Black" if item.player == "B" else "White" if item.player == "W" else "?"
+            btn = Button(
+                text=f"Move {item.move_number} ({color_label}), loss: {item.loss:.1f} points",
+                size_hint_y=None,
+                height=dp(44),
+                background_color=Theme.BOX_BACKGROUND_COLOR,
+                color=Theme.TEXT_COLOR,
+            )
+            btn.bind(on_release=lambda _btn, mv=item.move_number: jump_to_move(mv))
+            items_layout.add_widget(btn)
+
+        scroll.add_widget(items_layout)
+        popup_content.add_widget(scroll)
+
+        close_button = Button(
+            text="Close",
+            size_hint_y=None,
+            height=dp(48),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        popup_content.add_widget(close_button)
+
+        popup = I18NPopup(
+            title="Generate quiz (beta)",
+            size=[dp(520), dp(620)],
+            content=popup_content,
+        ).__self__
+        close_button.bind(on_release=lambda *_args: popup.dismiss())
+        popup.open()
 
     def load_sgf_from_clipboard(self):
         clipboard = Clipboard.paste()

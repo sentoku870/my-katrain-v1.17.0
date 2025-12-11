@@ -9,7 +9,14 @@ from typing import Dict, List, Optional, Union
 from kivy.clock import Clock
 
 from . import eval_metrics
-from .eval_metrics import EvalSnapshot, MistakeCategory, MoveEval, snapshot_from_game
+from .eval_metrics import (
+    EvalSnapshot,
+    MistakeCategory,
+    MoveEval,
+    QuizItem,
+    quiz_items_from_snapshot,
+    snapshot_from_game,
+)
 from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
@@ -490,6 +497,26 @@ class Game(BaseGame):
         """
         return snapshot_from_game(self)
 
+    def get_quiz_items(
+        self,
+        *,
+        loss_threshold: float = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD,
+        limit: int = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT,
+    ) -> List[QuizItem]:
+        """
+        現在の対局（メイン分岐）からクイズ用の大きなミス一覧を返す。
+
+        - 既存の EvalSnapshot と quiz_items_from_snapshot をまとめた入口。
+        - 解析済みの情報だけを使用し、新たな分析は開始しない。
+        """
+        snapshot = self.build_eval_snapshot()
+        if not snapshot.moves:
+            return []
+
+        return quiz_items_from_snapshot(
+            snapshot, loss_threshold=loss_threshold, limit=limit
+        )
+
     def log_mistake_summary_for_debug(self) -> None:
         """
         対局全体のミス分類サマリをコンソールに出力するデバッグ用ユーティリティ。
@@ -739,6 +766,23 @@ class Game(BaseGame):
         while node.children:
             node = node.ordered_children[0]
             yield node
+
+    def get_main_branch_node_before_move(self, move_number: int) -> Optional[GameNode]:
+        """
+        メイン分岐上で指定手数の直前局面を返す（なければ None）。
+        move_number が 1 以下なら root を返す。
+        """
+        if move_number <= 1:
+            return self.root
+
+        target = move_number - 1
+        for node in eval_metrics.iter_main_branch_nodes(self):
+            current_move_no = len(node.nodes_from_root) - 1
+            if current_move_no == target:
+                return node
+            if current_move_no > target:
+                break
+        return None
 
     def _compute_important_moves(self, max_moves: int = 20):
         """
