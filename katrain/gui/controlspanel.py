@@ -18,6 +18,7 @@ from katrain.core.lang import rank_label
 from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel
 from katrain.gui.theme import Theme
 from katrain.gui.sound import play_sound, stop_sound
+from katrain.core.eval_metrics import classify_mistake
 
 
 class PlayAnalyzeSelect(MDFloatLayout):
@@ -173,16 +174,101 @@ class ControlsPanel(BoxLayout):
             )
 
         if self.active_comment_node.analysis_exists:
+            # 解析結果あり → stats を埋める
             self.stats.score = self.active_comment_node.format_score() or ""
             self.stats.winrate = self.active_comment_node.format_winrate() or ""
             self.stats.points_lost = self.active_comment_node.points_lost
             self.stats.player = self.active_comment_node.player
         else:
+            # 解析結果なし → stats は空
             self.stats.score = ""
             self.stats.winrate = ""
             self.stats.points_lost = None
             self.stats.player = ""
 
+        # ------------------------------------------------------------
+        # ミス分類 + 局面難易度の簡易サマリを Details パネル（info）に追加
+        # ------------------------------------------------------------
+        detail_lines = []
+
+        # 1) ミス分類（points_lost ベース）
+        pts = getattr(self.active_comment_node, "points_lost", None)
+        if pts is not None:
+            score_loss = max(float(pts), 0.0)
+            mc = classify_mistake(score_loss=score_loss, winrate_loss=None)
+
+            label_map = {
+                "GOOD": "良",
+                "INACCURACY": "軽",
+                "MISTAKE": "悪",
+                "BLUNDER": "大悪",
+            }
+            mc_name = getattr(mc, "name", "")
+            mc_label = label_map.get(mc_name, "-")
+
+            if mc_label != "-" or score_loss > 0:
+                if score_loss > 0:
+                    detail_lines.append(f"ミス: {mc_label}（{score_loss:.1f}目損）")
+                else:
+                    detail_lines.append(f"ミス: {mc_label}")
+
+        # 2) 局面難易度（親ノードの candidate_moves からざっくり評価）
+        parent = getattr(self.active_comment_node, "parent", None)
+        candidate_moves = getattr(parent, "candidate_moves", None) if parent is not None else None
+        if candidate_moves:
+            good_rel_threshold = 1.0
+            near_rel_threshold = 2.0
+
+            good_moves = []
+            near_moves = []
+
+            for mv in candidate_moves:
+                rel = mv.get("relativePointsLost")
+                if rel is None:
+                    rel = mv.get("pointsLost")
+                if rel is None:
+                    continue
+
+                rel_f = float(rel)
+                if rel_f <= good_rel_threshold:
+                    good_moves.append(rel_f)
+                if rel_f <= near_rel_threshold:
+                    near_moves.append(rel_f)
+
+            difficulty_label = None
+            difficulty_score = None
+
+            if good_moves or near_moves:
+                n_good = len(good_moves)
+                n_near = len(near_moves)
+
+                if n_good <= 1 and n_near <= 2:
+                    difficulty_label = "一択"
+                    difficulty_score = 1.0
+                elif n_good <= 2:
+                    difficulty_label = "狭い"
+                    difficulty_score = 0.8
+                elif n_good >= 4 or n_near >= 6:
+                    difficulty_label = "広い"
+                    difficulty_score = 0.2
+                else:
+                    difficulty_label = "普通"
+                    difficulty_score = 0.5
+
+            if difficulty_label:
+                heading = "手の自由度"
+                if difficulty_score is not None:
+                    detail_lines.append(f"{heading}: {difficulty_label}（{difficulty_score:.2f}）")
+                else:
+                    detail_lines.append(f"{heading}: {difficulty_label}")
+
+        # 3) info テキストの末尾に追記
+        if detail_lines:
+            if info:
+                info += "\n"
+            info += "\n".join(detail_lines)
+
+        # 既存の更新処理（必ず実行される位置に戻す）
         self.graph.update_value(current_node)
         self.note.text = current_node.note
         self.info.text = info

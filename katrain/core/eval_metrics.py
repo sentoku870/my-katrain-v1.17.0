@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -18,6 +19,19 @@ if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
 else:
     GameNode = Any
+
+
+class MistakeCategory(Enum):
+    """ミスの大きさを4段階で分類するカテゴリ。"""
+
+    GOOD = "good"              # 実質問題なし
+    INACCURACY = "inaccuracy"  # 軽い損
+    MISTAKE = "mistake"        # はっきり損
+    BLUNDER = "blunder"        # 大きな損
+
+    def is_error(self) -> bool:
+        """GOOD 以外ならミス扱い、といった判定用の補助メソッド。"""
+        return self is not MistakeCategory.GOOD
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +70,31 @@ class MoveEval:
     # 将来の拡張用メタ情報
     tag: Optional[str] = None           # "opening"/"middle"/"yose" など自由タグ
     importance_score: Optional[float] = None  # 後で計算する「重要度スコア」
+
+    score_loss: Optional[float] = None
+    """その手による地合損失（悪くなった分だけ、目単位）。"""
+
+    winrate_loss: Optional[float] = None
+    """その手による勝率損失（悪くなった分だけ、0〜1）。"""
+
+    mistake_category: MistakeCategory = MistakeCategory.GOOD
+    """ミス分類（GOOD / INACCURACY / MISTAKE / BLUNDER）。"""
+
+    position_difficulty: Optional["PositionDifficulty"] = None
+    """局面難易度（EASY / NORMAL / HARD / ONLY_MOVE / UNKNOWN など）。"""
+
+    position_difficulty_score: Optional[float] = None
+    """局面難易度を 0.0〜1.0 の連続値で表した補助スコア（大きいほど難しい想定）。"""
+
+
+class PositionDifficulty(Enum):
+    """局面難易度を表すラベル。"""
+
+    EASY = "easy"        # 良い手が多く、多少ズレても致命傷になりにくい
+    NORMAL = "normal"    # 標準的な難易度
+    HARD = "hard"        # 良い手が少なく、正解の幅が狭い
+    ONLY_MOVE = "only"   # ほぼ「この一手」に近い局面
+    UNKNOWN = "unknown"  # 候補手情報が無いなどで評価不能
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +211,70 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     )
 
 
+def assess_position_difficulty_from_parent(
+    node: GameNode,
+    *,
+    good_rel_threshold: float = 1.0,
+    near_rel_threshold: float = 2.0,
+) -> Tuple[Optional[PositionDifficulty], Optional[float]]:
+    """
+    親ノードの candidate_moves から局面難易度をざっくり評価する。
+
+    - parent.candidate_moves は「手番側の候補手リスト」で、
+      pointsLost / relativePointsLost を含むことを想定している。
+    - relativePointsLost が小さい手が多いほど「易しい局面」、
+      少ないほど「難しい局面」とみなす簡易ヒューリスティック。
+    """
+    parent = getattr(node, "parent", None)
+    if parent is None:
+        return None, None
+
+    candidate_moves = getattr(parent, "candidate_moves", None)
+    if not candidate_moves:
+        return None, None
+
+    good_moves: List[float] = []
+    near_moves: List[float] = []
+
+    for mv in candidate_moves:
+        rel = mv.get("relativePointsLost")
+        if rel is None:
+            rel = mv.get("pointsLost")
+        if rel is None:
+            continue
+        rel_f = float(rel)
+
+        if rel_f <= good_rel_threshold:
+            good_moves.append(rel_f)
+        if rel_f <= near_rel_threshold:
+            near_moves.append(rel_f)
+
+    if not good_moves and not near_moves:
+        return PositionDifficulty.UNKNOWN, None
+
+    n_good = len(good_moves)
+    n_near = len(near_moves)
+
+    # ----- 簡易ルール -----
+    # - ほぼ 1 手しか「損をしない手」がない → ONLY_MOVE
+    # - 良い手が 2 手程度 → HARD
+    # - 良い／そこそこ良い手がたくさん → EASY
+    # - その中間 → NORMAL
+    if n_good <= 1 and n_near <= 2:
+        label = PositionDifficulty.ONLY_MOVE
+        score = 1.0
+    elif n_good <= 2:
+        label = PositionDifficulty.HARD
+        score = 0.8
+    elif n_good >= 4 or n_near >= 6:
+        label = PositionDifficulty.EASY
+        score = 0.2
+    else:
+        label = PositionDifficulty.NORMAL
+        score = 0.5
+
+    return label, score
+
 
 def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     """
@@ -180,19 +283,21 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     - nodes には「実際に打たれた手を持つノード」（move が None でない）を渡す想定。
     - score / winrate の before/after/delta は、この関数内で連鎖的に計算する。
     """
-    move_evals: List[MoveEval] = []
+    # GameNode と MoveEval のペアを保持しておく
+    node_evals: List[Tuple[GameNode, MoveEval]] = []
 
     for node in nodes:
         if getattr(node, "move", None) is None:
             continue
-        move_evals.append(move_eval_from_node(node))
+        mv = move_eval_from_node(node)
+        node_evals.append((node, mv))
 
     # 手数順に並べる
-    move_evals.sort(key=lambda m: m.move_number)
+    node_evals.sort(key=lambda pair: pair[1].move_number)
 
     # 連続する手から before / delta を埋める
     prev: Optional[MoveEval] = None
-    for m in move_evals:
+    for node, m in node_evals:
         if prev is not None:
             m.score_before = prev.score_after
             m.winrate_before = prev.winrate_after
@@ -207,9 +312,27 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
             else:
                 m.delta_winrate = None
 
+        score_loss, winrate_loss = compute_loss_from_delta(
+            delta_score=m.delta_score,
+            delta_winrate=m.delta_winrate,
+        )
+        m.score_loss = score_loss
+        m.winrate_loss = winrate_loss
+        m.mistake_category = classify_mistake(
+            score_loss=score_loss,
+            winrate_loss=winrate_loss,
+        )
+
+        # 親ノードの candidate_moves から局面難易度をざっくり評価
+        difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
+        if difficulty is not None:
+            m.position_difficulty = difficulty
+        m.position_difficulty_score = difficulty_score
+
         prev = m
 
-    return EvalSnapshot(moves=move_evals)
+    # EvalSnapshot には MoveEval のみを渡す
+    return EvalSnapshot(moves=[m for _, m in node_evals])
 
 
 # ここから下を eval_metrics.py の末尾に追加
@@ -264,6 +387,70 @@ def snapshot_from_game(game: Any) -> EvalSnapshot:
     """
     nodes_iter = iter_main_branch_nodes(game)
     return snapshot_from_nodes(nodes_iter)
+
+
+# ミス分類に使う閾値（Phase3 デフォルト）
+SCORE_THRESHOLDS: Tuple[float, float, float] = (1.0, 2.5, 5.0)
+WINRATE_THRESHOLDS: Tuple[float, float, float] = (0.05, 0.10, 0.20)
+
+
+def compute_loss_from_delta(
+    delta_score: Optional[float],
+    delta_winrate: Optional[float],
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    手番視点の delta_score / delta_winrate から損失量 (>=0) を計算する。
+
+    - 良くなった手：loss = 0.0
+    - 悪くなった手：loss = -delta
+    """
+    score_loss: Optional[float] = None
+    winrate_loss: Optional[float] = None
+
+    if delta_score is not None:
+        score_loss = max(0.0, -delta_score)
+
+    if delta_winrate is not None:
+        winrate_loss = max(0.0, -delta_winrate)
+
+    return score_loss, winrate_loss
+
+
+def classify_mistake(
+    score_loss: Optional[float],
+    winrate_loss: Optional[float],
+) -> MistakeCategory:
+    """
+    損失量から MistakeCategory を決定する。
+
+    優先順位:
+      1) score_loss があればそれを使う
+      2) なければ winrate_loss を使う
+      3) 両方なければ GOOD
+    """
+    if score_loss is not None:
+        loss = max(score_loss, 0.0)
+        t1, t2, t3 = SCORE_THRESHOLDS
+        if loss < t1:
+            return MistakeCategory.GOOD
+        if loss < t2:
+            return MistakeCategory.INACCURACY
+        if loss < t3:
+            return MistakeCategory.MISTAKE
+        return MistakeCategory.BLUNDER
+
+    if winrate_loss is not None:
+        loss = max(winrate_loss, 0.0)
+        t1, t2, t3 = WINRATE_THRESHOLDS
+        if loss < t1:
+            return MistakeCategory.GOOD
+        if loss < t2:
+            return MistakeCategory.INACCURACY
+        if loss < t3:
+            return MistakeCategory.MISTAKE
+        return MistakeCategory.BLUNDER
+
+    return MistakeCategory.GOOD
 
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
