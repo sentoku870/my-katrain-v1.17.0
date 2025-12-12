@@ -1058,3 +1058,36 @@ msgstr ""
 
 msgid "No moves with loss greater than {loss:.1f} points were found on the main line."
 msgstr "本筋には損失が {loss:.1f} 点を超える手はありませんでした。"
+
+msgid "Start quiz"
+msgstr "クイズを開始"
+
+msgid "Quiz mode (beta)"
+msgstr "クイズモード（ベータ）"
+
+msgid "No quiz items to show."
+msgstr "表示できるクイズ項目がありません。"
+
+msgid "Question {idx}/{total}: Move {move} ({player})"
+msgstr "問題 {idx}/{total}: {player} の {move} 手"
+
+msgid "No analysis data for this position."
+msgstr "この局面には解析データがありません。"
+
+msgid "Prev"
+msgstr "前へ"
+
+msgid "Next"
+msgstr "次へ"
+
+msgid "Points lost unknown"
+msgstr "損失値は不明です"
+
+msgid "{loss:.1f} points lost"
+msgstr "{loss:.1f} 点の損失"
+
+msgid "Correct! {move} is best ({loss_text})."
+msgstr "正解！ {move} が最善手です（{loss_text}）。"
+
+msgid "{move} is not best ({loss_text})."
+msgstr "{move} は最善ではありません（{loss_text}）。"

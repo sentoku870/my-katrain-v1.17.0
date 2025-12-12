@@ -14,7 +14,10 @@ from .eval_metrics import (
     MistakeCategory,
     MoveEval,
     QuizItem,
+    QuizChoice,
+    QuizQuestion,
     quiz_items_from_snapshot,
+    quiz_points_lost_from_candidate,
     snapshot_from_game,
 )
 from katrain.core.constants import (
@@ -516,6 +519,51 @@ class Game(BaseGame):
         return quiz_items_from_snapshot(
             snapshot, loss_threshold=loss_threshold, limit=limit
         )
+
+    def build_quiz_questions(
+        self,
+        quiz_items: List[QuizItem],
+        *,
+        max_choices: int = 3,
+    ) -> List[QuizQuestion]:
+        """
+        Convert quiz items into quiz questions using existing analysis only.
+
+        - Uses candidate_moves from the position before each mistake.
+        - Does not trigger any new engine analysis.
+        """
+        questions: List[QuizQuestion] = []
+        for item in quiz_items:
+            node_before = self.get_main_branch_node_before_move(item.move_number)
+            choices: List[QuizChoice] = []
+            best_move: Optional[str] = None
+            if node_before is not None and getattr(node_before, "analysis_exists", False):
+                candidate_moves = node_before.candidate_moves
+                if candidate_moves:
+                    best_move = candidate_moves[0].get("move")
+                    analysis = getattr(node_before, "analysis", None) or {}
+                    root_score = None
+                    if isinstance(analysis, dict):
+                        root_score = (analysis.get("root") or {}).get("scoreLead")
+                    for mv in candidate_moves[:max_choices]:
+                        move_id = mv.get("move", "") or ""
+                        loss_val = quiz_points_lost_from_candidate(
+                            mv,
+                            root_score=root_score,
+                            next_player=getattr(node_before, "next_player", None),
+                        )
+                        choices.append(
+                            QuizChoice(move=move_id, points_lost=loss_val)
+                        )
+            questions.append(
+                QuizQuestion(
+                    item=item,
+                    choices=choices,
+                    best_move=best_move,
+                    node_before_move=node_before,
+                )
+            )
+        return questions
 
     def log_mistake_summary_for_debug(self) -> None:
         """

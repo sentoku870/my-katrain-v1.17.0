@@ -10,6 +10,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Dict,
 )
 
 # KaTrain 側の型に依存するのは最小限にする
@@ -197,6 +198,28 @@ class QuizConfig:
 # Default configuration for the current quiz popup.
 # Later we can add presets, e.g. QUIZ_CONFIG_KYU / QUIZ_CONFIG_DAN.
 QUIZ_CONFIG_DEFAULT = QuizConfig(loss_threshold=2.0, limit=10)
+
+
+@dataclass
+class QuizChoice:
+    """Choice shown in quiz mode for a single position."""
+
+    move: str
+    points_lost: Optional[float]
+
+
+@dataclass
+class QuizQuestion:
+    """Quiz entry paired with candidate moves for the position before the mistake."""
+
+    item: QuizItem
+    choices: List[QuizChoice]
+    best_move: Optional[str] = None
+    node_before_move: Optional[GameNode] = None
+
+    @property
+    def has_analysis(self) -> bool:
+        return self.node_before_move is not None and bool(self.choices)
 
 # Backwards-compatible aliases used by existing helpers/UI.
 DEFAULT_QUIZ_LOSS_THRESHOLD = QUIZ_CONFIG_DEFAULT.loss_threshold
@@ -452,6 +475,37 @@ def quiz_items_from_snapshot(
 
     items.sort(key=lambda qi: qi.loss, reverse=True)
     return items[:limit]
+
+
+def quiz_points_lost_from_candidate(
+    candidate_move: Dict[str, Any],
+    *,
+    root_score: Optional[float],
+    next_player: Optional[str],
+) -> Optional[float]:
+    """
+    Extract a points-lost style metric from an existing candidate move entry.
+
+    Preference order:
+      1) explicit pointsLost
+      2) relativePointsLost
+      3) scoreLead difference from the root (if available)
+    """
+    if candidate_move.get("pointsLost") is not None:
+        return float(candidate_move["pointsLost"])
+
+    if candidate_move.get("relativePointsLost") is not None:
+        return float(candidate_move["relativePointsLost"])
+
+    if (
+        root_score is not None
+        and next_player is not None
+        and candidate_move.get("scoreLead") is not None
+    ):
+        sign = GameNode.player_sign(next_player) if hasattr(GameNode, "player_sign") else (1 if next_player == "B" else -1)
+        return sign * (root_score - float(candidate_move["scoreLead"]))
+
+    return None
 
 
 # ミス分類に使う閾値（Phase3 デフォルト）
