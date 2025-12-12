@@ -14,6 +14,10 @@ class MockEngine:
     def request_analysis(self, *args, **kwargs):
         pass
 
+    def stop_pondering(self):
+        # Game.__init__ expects engines to provide this (KataGoEngine does).
+        return
+
 
 @pytest.fixture
 def new_game():
