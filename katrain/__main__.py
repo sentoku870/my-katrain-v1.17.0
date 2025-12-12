@@ -842,16 +842,15 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
 
         if quiz_items:
-            header_text = (
+            header_text = i18n._(
                 "Review the worst moves on the main line.\n"
-                f"Showing up to {limit} moves with loss > {loss_threshold:.1f} points.\n"
+                "Showing up to {limit} moves with loss > {loss:.1f} points.\n"
                 "Click a row to jump to the position before the move."
-            )
+            ).format(limit=limit, loss=loss_threshold)
         else:
-            header_text = (
-                f"No moves with loss greater than {loss_threshold:.1f} points "
-                "were found on the main line."
-            )
+            header_text = i18n._(
+                "No moves with loss greater than {loss:.1f} points were found on the main line."
+            ).format(loss=loss_threshold)
 
         header_label = Label(
             text=header_text,
@@ -898,7 +897,7 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_content.add_widget(scroll)
 
         close_button = Button(
-            text="Close",
+            text=i18n._("Close"),
             size_hint_y=None,
             height=dp(48),
             background_color=Theme.LIGHTER_BACKGROUND_COLOR,
@@ -907,7 +906,7 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_content.add_widget(close_button)
 
         popup = I18NPopup(
-            title="Generate quiz (beta)",
+            title_key="Generate quiz (beta)",
             size=[dp(520), dp(620)],
             content=popup_content,
         ).__self__
