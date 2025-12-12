@@ -186,8 +186,21 @@ class QuizItem:
     loss: float
 
 
-DEFAULT_QUIZ_LOSS_THRESHOLD = 2.0
-DEFAULT_QUIZ_ITEM_LIMIT = 10
+@dataclass(frozen=True)
+class QuizConfig:
+    """Configuration for extracting quiz items from an EvalSnapshot."""
+
+    loss_threshold: float  # minimum loss (points) to consider a move
+    limit: int             # maximum number of quiz items to return
+
+
+# Default configuration for the current quiz popup.
+# Later we can add presets, e.g. QUIZ_CONFIG_KYU / QUIZ_CONFIG_DAN.
+QUIZ_CONFIG_DEFAULT = QuizConfig(loss_threshold=2.0, limit=10)
+
+# Backwards-compatible aliases used by existing helpers/UI.
+DEFAULT_QUIZ_LOSS_THRESHOLD = QUIZ_CONFIG_DEFAULT.loss_threshold
+DEFAULT_QUIZ_ITEM_LIMIT = QUIZ_CONFIG_DEFAULT.limit
 
 # ---------------------------------------------------------------------------
 # KaTrain GameNode とのブリッジ

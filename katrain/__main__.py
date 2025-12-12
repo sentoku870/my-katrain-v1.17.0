@@ -825,29 +825,40 @@ class KaTrainGui(Screen, KaTrainBase):
         if not self.game:
             return
 
-        loss_threshold = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD
-        limit = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT
+        # Use QuizConfig so we can add presets later.
+        cfg = getattr(eval_metrics, "QUIZ_CONFIG_DEFAULT", None)
+        if cfg is None:
+            # Fallback for safety.
+            loss_threshold = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD
+            limit = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT
+        else:
+            loss_threshold = cfg.loss_threshold
+            limit = cfg.limit
+
         quiz_items = self.game.get_quiz_items(
             loss_threshold=loss_threshold, limit=limit
         )
 
         popup_content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
 
-        header_text = (
-            f"Main line moves with loss > {loss_threshold:.1f} points "
-            f"(top {limit}). Click to jump to the position before the move."
-        )
-        if not quiz_items:
+        if quiz_items:
             header_text = (
-                f"No moves above {loss_threshold:.1f} points loss were found on the main line."
+                "Review the worst moves on the main line.\n"
+                f"Showing up to {limit} moves with loss > {loss_threshold:.1f} points.\n"
+                "Click a row to jump to the position before the move."
+            )
+        else:
+            header_text = (
+                f"No moves with loss greater than {loss_threshold:.1f} points "
+                "were found on the main line."
             )
 
         header_label = Label(
             text=header_text,
             halign="left",
-            valign="middle",
+            valign="top",
             size_hint_y=None,
-            height=dp(50),
+            height=dp(70),
             color=Theme.TEXT_COLOR,
         )
         header_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
