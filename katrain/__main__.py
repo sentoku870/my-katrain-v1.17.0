@@ -48,6 +48,7 @@ import webbrowser
 import time
 import random
 import glob
+from typing import List, Optional
 
 from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.app import App
@@ -896,14 +897,27 @@ class KaTrainGui(Screen, KaTrainBase):
         scroll.add_widget(items_layout)
         popup_content.add_widget(scroll)
 
+        buttons_layout = BoxLayout(
+            orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
+        )
+        start_button = Button(
+            text=i18n._("Start quiz"),
+            size_hint=(0.5, None),
+            height=dp(48),
+            disabled=not quiz_items,
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
         close_button = Button(
             text=i18n._("Close"),
-            size_hint_y=None,
+            size_hint=(0.5, None),
             height=dp(48),
             background_color=Theme.LIGHTER_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
         )
-        popup_content.add_widget(close_button)
+        buttons_layout.add_widget(start_button)
+        buttons_layout.add_widget(close_button)
+        popup_content.add_widget(buttons_layout)
 
         popup = I18NPopup(
             title_key="Generate quiz (beta)",
@@ -911,6 +925,172 @@ class KaTrainGui(Screen, KaTrainBase):
             content=popup_content,
         ).__self__
         close_button.bind(on_release=lambda *_args: popup.dismiss())
+
+        def start_quiz(*_args):
+            popup.dismiss()
+            self._start_quiz_session(quiz_items)
+
+        start_button.bind(on_release=start_quiz)
+        popup.open()
+
+    def _format_points_loss(self, loss: Optional[float]) -> str:
+        if loss is None:
+            return i18n._("Points lost unknown")
+        return i18n._("{loss:.1f} points lost").format(loss=loss)
+
+    def _start_quiz_session(self, quiz_items: List[eval_metrics.QuizItem]) -> None:
+        if not self.game:
+            return
+        if not quiz_items:
+            self.controls.set_status(i18n._("No quiz items to show."), STATUS_INFO)
+            return
+
+        questions = self.game.build_quiz_questions(quiz_items)
+
+        content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+
+        question_label = Label(
+            text="",
+            halign="left",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(60),
+            color=Theme.TEXT_COLOR,
+        )
+        question_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
+        content.add_widget(question_label)
+
+        choices_layout = BoxLayout(
+            orientation="vertical",
+            spacing=dp(6),
+            size_hint_y=None,
+        )
+        choices_layout.bind(minimum_height=choices_layout.setter("height"))
+        scroll = ScrollView(size_hint=(1, 1))
+        scroll.add_widget(choices_layout)
+        content.add_widget(scroll)
+
+        result_label = Label(
+            text="",
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            height=dp(70),
+            color=Theme.TEXT_COLOR,
+        )
+        result_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
+        content.add_widget(result_label)
+
+        nav_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
+        prev_button = Button(
+            text=i18n._("Prev"),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        next_button = Button(
+            text=i18n._("Next"),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        close_button = Button(
+            text=i18n._("Close"),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        nav_layout.add_widget(prev_button)
+        nav_layout.add_widget(next_button)
+        nav_layout.add_widget(close_button)
+        content.add_widget(nav_layout)
+
+        popup = I18NPopup(
+            title_key="Quiz mode (beta)",
+            size=[dp(540), dp(640)],
+            content=content,
+        ).__self__
+
+        answers: dict[int, str] = {}
+        current_index = 0
+        total_questions = len(questions)
+
+        def on_select(choice: eval_metrics.QuizChoice) -> None:
+            nonlocal answers, current_index
+            question = questions[current_index]
+            loss_text = self._format_points_loss(choice.points_lost)
+            is_best = question.best_move is not None and choice.move == question.best_move
+            if is_best:
+                text = i18n._("Correct! {move} is best ({loss_text}).").format(
+                    move=choice.move, loss_text=loss_text
+                )
+            else:
+                text = i18n._("{move} is not best ({loss_text}).").format(
+                    move=choice.move, loss_text=loss_text
+                )
+            answers[current_index] = text
+            result_label.text = text
+
+        def show_question() -> None:
+            nonlocal current_index
+            if not questions:
+                self.controls.set_status(i18n._("No analysis data for this position."), STATUS_INFO)
+                popup.dismiss()
+                return
+
+            question = questions[current_index]
+            color_label = "B" if question.item.player == "B" else "W" if question.item.player == "W" else "?"
+            question_label.text = i18n._("Question {idx}/{total}: Move {move} ({player})").format(
+                idx=current_index + 1,
+                total=total_questions,
+                move=question.item.move_number,
+                player=color_label,
+            )
+
+            choices_layout.clear_widgets()
+            result_label.text = answers.get(current_index, "")
+
+            node_before = question.node_before_move
+            if node_before is not None:
+                self.game.set_current_node(node_before)
+                self.update_state(redraw_board=True)
+
+            if not question.has_analysis:
+                no_data_label = Label(
+                    text=i18n._("No analysis data for this position."),
+                    halign="center",
+                    valign="middle",
+                    size_hint_y=None,
+                    height=dp(80),
+                    color=Theme.TEXT_COLOR,
+                )
+                no_data_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
+                choices_layout.add_widget(no_data_label)
+            else:
+                for choice in question.choices:
+                    btn = Button(
+                        text=choice.move or i18n._("Pass"),
+                        size_hint_y=None,
+                        height=dp(44),
+                        background_color=Theme.BOX_BACKGROUND_COLOR,
+                        color=Theme.TEXT_COLOR,
+                    )
+                    btn.bind(on_release=lambda _btn, c=choice: on_select(c))
+                    choices_layout.add_widget(btn)
+
+            prev_button.disabled = current_index <= 0
+            next_button.disabled = current_index >= total_questions - 1
+
+        def go_next(delta: int) -> None:
+            nonlocal current_index
+            new_index = current_index + delta
+            new_index = max(0, min(total_questions - 1, new_index))
+            if new_index != current_index:
+                current_index = new_index
+                show_question()
+
+        prev_button.bind(on_release=lambda *_args: go_next(-1))
+        next_button.bind(on_release=lambda *_args: go_next(1))
+        close_button.bind(on_release=lambda *_args: popup.dismiss())
+
+        show_question()
         popup.open()
 
     def load_sgf_from_clipboard(self):
