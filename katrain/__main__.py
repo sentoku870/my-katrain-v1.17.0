@@ -924,6 +924,9 @@ class KaTrainGui(Screen, KaTrainBase):
             size=[dp(520), dp(620)],
             content=popup_content,
         ).__self__
+        # 右下の分析パネルを残すため、右上に寄せて高さを抑える
+        popup.size_hint = (0.38, 0.55)
+        popup.pos_hint = {"right": 0.99, "top": 0.99}
         close_button.bind(on_release=lambda *_args: popup.dismiss())
 
         def start_quiz(*_args):
@@ -1007,6 +1010,9 @@ class KaTrainGui(Screen, KaTrainBase):
             size=[dp(540), dp(640)],
             content=content,
         ).__self__
+        # 右下の分析パネルを残すため、右上に寄せて高さを抑える
+        popup.size_hint = (0.38, 0.55)
+        popup.pos_hint = {"right": 0.99, "top": 0.99}
 
         answers: dict[int, str] = {}
         current_index = 0
@@ -1015,16 +1021,46 @@ class KaTrainGui(Screen, KaTrainBase):
         def on_select(choice: eval_metrics.QuizChoice) -> None:
             nonlocal answers, current_index
             question = questions[current_index]
+
+            def display_move(move_id: Optional[str]) -> str:
+                if move_id is None:
+                    return i18n._("Unknown move")
+                return move_id or i18n._("Pass")
+
+            played_loss = (
+                question.played_loss
+                if question.played_loss is not None
+                else question.item.loss
+            )
             loss_text = self._format_points_loss(choice.points_lost)
+            played_loss_text = self._format_points_loss(played_loss)
             is_best = question.best_move is not None and choice.move == question.best_move
-            if is_best:
-                text = i18n._("Correct! {move} is best ({loss_text}).").format(
-                    move=choice.move, loss_text=loss_text
+
+            lines = [
+                i18n._("Correct!") if is_best else i18n._("Incorrect"),
+                i18n._("Best move: {move}").format(
+                    move=display_move(question.best_move)
+                ),
+                i18n._("Selected move loss: {loss_text}").format(
+                    loss_text=loss_text
+                ),
+                i18n._("Played move {move} loss: {loss_text}").format(
+                    move=display_move(
+                        question.played_move
+                        if question.played_move is not None
+                        else question.item.played_move
+                    ),
+                    loss_text=played_loss_text,
+                ),
+            ]
+
+            if choice.points_lost is not None and played_loss is not None:
+                delta = choice.points_lost - played_loss
+                lines.append(
+                    i18n._("Delta vs played: {delta:+.1f} points").format(delta=delta)
                 )
-            else:
-                text = i18n._("{move} is not best ({loss_text}).").format(
-                    move=choice.move, loss_text=loss_text
-                )
+
+            text = "\n".join(lines)
             answers[current_index] = text
             result_label.text = text
 
