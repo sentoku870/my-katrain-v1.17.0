@@ -1039,3 +1039,22 @@ msgstr ""
 #. TODO
 msgid "engine:humanlike_model"
 msgstr "Path to human-like model"
+
+# Quiz popup
+msgid "Generate quiz (beta)"
+msgstr "クイズを生成（ベータ）"
+
+msgid "Close"
+msgstr "閉じる"
+
+msgid ""
+"Review the worst moves on the main line.\n"
+"Showing up to {limit} moves with loss > {loss:.1f} points.\n"
+"Click a row to jump to the position before the move."
+msgstr ""
+"本筋の悪手を確認します。\n"
+"損失が {loss:.1f} 点を超える手を最大 {limit} 手まで表示します。\n"
+"行をクリックするとその手の直前に移動します。"
+
+msgid "No moves with loss greater than {loss:.1f} points were found on the main line."
+msgstr "本筋には損失が {loss:.1f} 点を超える手はありませんでした。"
