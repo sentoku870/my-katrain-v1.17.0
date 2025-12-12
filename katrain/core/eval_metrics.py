@@ -173,6 +173,23 @@ class EvalSnapshot:
         return EvalSnapshot(moves=self.moves[-n:])
 
 # ---------------------------------------------------------------------------
+# Quiz helper structures
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class QuizItem:
+    """Large-mistake quiz entry derived from existing evaluations."""
+
+    move_number: int
+    player: Optional[str]
+    loss: float
+
+
+DEFAULT_QUIZ_LOSS_THRESHOLD = 2.0
+DEFAULT_QUIZ_ITEM_LIMIT = 10
+
+# ---------------------------------------------------------------------------
 # KaTrain GameNode とのブリッジ
 # ---------------------------------------------------------------------------
 
@@ -337,6 +354,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
 
 # ここから下を eval_metrics.py の末尾に追加
 
+
 def iter_main_branch_nodes(game: Any) -> Iterable[GameNode]:
     """
     KaTrain の Game インスタンスから、
@@ -387,6 +405,40 @@ def snapshot_from_game(game: Any) -> EvalSnapshot:
     """
     nodes_iter = iter_main_branch_nodes(game)
     return snapshot_from_nodes(nodes_iter)
+
+
+def quiz_items_from_snapshot(
+    snapshot: EvalSnapshot,
+    *,
+    loss_threshold: float = DEFAULT_QUIZ_LOSS_THRESHOLD,
+    limit: int = DEFAULT_QUIZ_ITEM_LIMIT,
+) -> List[QuizItem]:
+    """
+    EvalSnapshot から「大きなミス」をクイズ形式で取り出す簡易ヘルパー。
+
+    - points_lost を優先し、なければ score_loss を用いる。
+    - loss_threshold より大きいものだけを抽出し、損失の大きい順に返す。
+    """
+    if not snapshot.moves or limit <= 0:
+        return []
+
+    items: List[QuizItem] = []
+    for move in snapshot.moves:
+        loss_val = move.points_lost if move.points_lost is not None else move.score_loss
+        if loss_val is None:
+            continue
+        if loss_val < loss_threshold:
+            continue
+        items.append(
+            QuizItem(
+                move_number=move.move_number,
+                player=move.player,
+                loss=float(loss_val),
+            )
+        )
+
+    items.sort(key=lambda qi: qi.loss, reverse=True)
+    return items[:limit]
 
 
 # ミス分類に使う閾値（Phase3 デフォルト）
@@ -567,4 +619,3 @@ def pick_important_moves(
     # その後手数順にソート
     important_moves = sorted([m for _, m in top], key=lambda m: m.move_number)
     return important_moves
-
