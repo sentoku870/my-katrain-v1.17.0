@@ -1022,34 +1022,35 @@ class KaTrainGui(Screen, KaTrainBase):
             nonlocal answers, current_index
             question = questions[current_index]
 
+            # Backward-compatible: older QuizQuestion may not have played_loss/played_move
+            item = getattr(question, "item", None)
+            best_move = getattr(question, "best_move", None)
+            played_loss_q = getattr(question, "played_loss", None)
+            played_loss_item = getattr(item, "loss", None)
+            played_loss = played_loss_q if played_loss_q is not None else played_loss_item
+
+            played_move_q = getattr(question, "played_move", None)
+            played_move_item = getattr(item, "played_move", None)
+            played_move = played_move_q if played_move_q is not None else played_move_item
+
             def display_move(move_id: Optional[str]) -> str:
                 if move_id is None:
                     return i18n._("Unknown move")
                 return move_id or i18n._("Pass")
-
-            played_loss = (
-                question.played_loss
-                if question.played_loss is not None
-                else question.item.loss
-            )
             loss_text = self._format_points_loss(choice.points_lost)
             played_loss_text = self._format_points_loss(played_loss)
-            is_best = question.best_move is not None and choice.move == question.best_move
+            is_best = best_move is not None and choice.move == best_move
 
             lines = [
                 i18n._("Correct!") if is_best else i18n._("Incorrect"),
                 i18n._("Best move: {move}").format(
-                    move=display_move(question.best_move)
+                    move=display_move(best_move)
                 ),
                 i18n._("Selected move loss: {loss_text}").format(
                     loss_text=loss_text
                 ),
                 i18n._("Played move {move} loss: {loss_text}").format(
-                    move=display_move(
-                        question.played_move
-                        if question.played_move is not None
-                        else question.item.played_move
-                    ),
+                    move=display_move(played_move),
                     loss_text=played_loss_text,
                 ),
             ]
