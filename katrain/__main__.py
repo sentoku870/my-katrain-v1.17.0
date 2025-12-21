@@ -48,7 +48,10 @@ import webbrowser
 import time
 import random
 import glob
+from datetime import datetime
 from typing import List, Optional
+from kivy.clock import Clock
+
 
 from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.app import App
@@ -821,6 +824,64 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_contents.filesel.on_success = readfile
         popup_contents.filesel.on_submit = readfile
         save_game_popup.open()
+
+    def _do_export_karte(self, *args, **kwargs):
+        # export_karte is executed from _message_loop_thread (NOT the main Kivy thread).
+        # Any Kivy UI creation must happen on the main thread.
+        Clock.schedule_once(lambda dt: self._do_export_karte_ui(*args, **kwargs), 0)
+
+    def _do_export_karte_ui(self, *args, **kwargs):
+        if not self.game:
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+        root_name = self.game.root.get_property("GN", None)
+        base_name = (
+            os.path.splitext(os.path.basename(self.game.sgf_filename or ""))[0]
+            or (root_name if root_name not in [None, ""] else None)
+            or self.game.game_id
+        )
+        suggested_filename = f"karte_{base_name}_{timestamp}.md"
+
+        default_path = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
+        os.makedirs(default_path, exist_ok=True)
+
+        popup_contents = SaveSGFPopup(suggested_filename=suggested_filename)
+        popup_contents.filesel.filters = ["*.md", "*.*"]
+        popup_contents.filesel.path = os.path.abspath(default_path)
+        popup_contents.filesel.ids.file_text.text = os.path.join(default_path, suggested_filename)
+        save_popup = Popup(title="Export Karte (v0)", size=[dp(1200), dp(800)], content=popup_contents).__self__
+
+        def save_report(*_args):
+            filename = popup_contents.filesel.filename
+            if not filename.lower().endswith(".md"):
+                filename += ".md"
+            save_popup.dismiss()
+            path, file = os.path.split(filename.strip())
+            if not path:
+                path = popup_contents.filesel.path or default_path
+            full_path = os.path.join(path, file)
+            try:
+                text = self.game.build_karte_report()
+                os.makedirs(path, exist_ok=True)
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                try:
+                    Clipboard.copy(text)
+                except Exception as exc:
+                    self.log(f"Clipboard copy failed: {exc}", OUTPUT_DEBUG)
+                self.controls.set_status(f"Karte exported to {full_path}", STATUS_INFO, check_level=False)
+                Popup(
+                    title="Karte exported",
+                    content=Label(text=f"Saved to:\n{full_path}", halign="center", valign="middle"),
+                    size_hint=(0.5, 0.3),
+                ).open()
+            except Exception as exc:
+                self.log(f"Failed to export Karte to {full_path}: {exc}", OUTPUT_ERROR)
+
+        popup_contents.filesel.on_success = save_report
+        popup_contents.filesel.on_submit = save_report
+        save_popup.open()
 
     def _do_quiz_popup(self):
         if not self.game:

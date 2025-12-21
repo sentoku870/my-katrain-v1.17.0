@@ -741,6 +741,114 @@ class Game(BaseGame):
 
         return "\n".join(lines)
 
+    def build_karte_report(self, level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL) -> str:
+        """Build a compact, markdown-friendly report for the current game."""
+        snapshot = self.build_eval_snapshot()
+        thresholds = self.katrain.config("trainer/eval_thresholds") if self.katrain else []
+        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            level, eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL]
+        )
+
+        def fmt_val(val, default="unknown"):
+            return default if val in [None, ""] else str(val)
+
+        def fmt_float(val):
+            return "unknown" if val is None else f"{val:.1f}"
+
+        # Meta
+        board_x, board_y = self.board_size
+        filename = os.path.splitext(os.path.basename(self.sgf_filename or ""))[0] or fmt_val(
+            self.root.get_property("GN", None), default=self.game_id
+        )
+        meta_lines = [
+            f"- Board: {board_x}x{board_y}",
+            f"- Komi: {fmt_val(self.komi)}",
+            f"- Rules: {fmt_val(self.rules)}",
+            f"- Handicap: {fmt_val(getattr(self.root, 'handicap', None), default='none')}",
+            f"- Game: {filename}",
+            f"- Date: {fmt_val(self.root.get_property('DT', None), default=self.game_id)}",
+        ]
+
+        # Summary
+        moves_analyzed = len(snapshot.moves)
+        totals = {"B": 0.0, "W": 0.0}
+        for mv in snapshot.moves:
+            if mv.points_lost is None:
+                continue
+            totals[mv.player] = totals.get(mv.player, 0.0) + max(0.0, mv.points_lost)
+        worst = snapshot.worst_move
+        summary_lines = [
+            f"- Moves analyzed: {moves_analyzed or 'unknown'}",
+            f"- Total points lost (B/W): {fmt_float(totals.get('B'))} / {fmt_float(totals.get('W'))}",
+            "- Worst move: "
+            + (
+                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
+                f"loss {fmt_float(worst.points_lost)} ({getattr(worst.mistake_category, 'value', 'unknown')})"
+                if worst
+                else "unknown"
+            ),
+        ]
+
+        # Distributions using existing report helper if thresholds are available
+        distribution_lines = []
+        if thresholds:
+            try:
+                from katrain.core import ai as ai_module
+
+                _sum_stats, histogram, _ptloss = ai_module.game_report(self, thresholds=thresholds, depth_filter=None)
+
+                def bucket_label(bucket_idx: int) -> str:
+                    cls_idx = len(thresholds) - 1 - bucket_idx
+                    if cls_idx == 0:
+                        return f">= {thresholds[0]}"
+                    if cls_idx == len(thresholds) - 1:
+                        return f"< {thresholds[-2]}"
+                    upper = thresholds[cls_idx - 1]
+                    lower = thresholds[cls_idx]
+                    return f"{lower} - {upper}"
+
+                distribution_lines.append("- Mistake buckets (points lost):")
+                for idx, bucket in enumerate(histogram):
+                    label = bucket_label(idx)
+                    distribution_lines.append(f"  - {label}: B {bucket['B']} / W {bucket['W']}")
+            except Exception as exc:  # pragma: no cover - defensive fallback
+                self.katrain.log(f"Failed to build histogram for Karte export: {exc}", OUTPUT_DEBUG)
+                distribution_lines.append("- Mistake buckets: unknown")
+        else:
+            distribution_lines.append("- Mistake buckets: unknown")
+        distribution_lines.append("- Freedom buckets: unknown")
+
+        # Important moves table (top N derived from existing settings)
+        important_moves = self.get_important_move_evals(level=level)[: settings.max_moves]
+        important_lines = [f"## Important Moves (Top {len(important_moves) or settings.max_moves})"]
+        if important_moves:
+            important_lines.append("| # | P | Coord | Loss | Mistake | Freedom |")
+            important_lines.append("|---|---|-------|------|---------|---------|")
+            for mv in important_moves:
+                loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
+                mistake = getattr(mv.mistake_category, "value", "unknown")
+                important_lines.append(
+                    f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
+                    f"{fmt_float(loss)} | {mistake} | unknown |"
+                )
+        else:
+            important_lines.append("- No important moves found.")
+
+        # Assemble sections
+        sections = [
+            "## Meta",
+            *meta_lines,
+            "",
+            "## Summary",
+            *summary_lines,
+            "",
+            "## Distributions",
+            *distribution_lines,
+            "",
+            *important_lines,
+        ]
+        return "\n".join(sections)
+
     def log_important_moves_for_debug(
         self,
         *,
