@@ -738,7 +738,6 @@ msgstr "Punktänderung"
 msgid "show stats if"
 msgstr "Zeige Bewertung wenn mehr als ... Visits"
 
-#. TODO - point loss precision options
 msgid "show two digits for point loss near zero"
 msgstr "Show two digits for point loss near zero"
 
@@ -995,75 +994,89 @@ msgstr "Bester KI Zug Übereinstimmung %"
 msgid "Entire Game"
 msgstr "Gesamtes Spiel"
 
-#. TODO
 msgid "ai:antimirror"
 msgstr "KataAntiMirror"
 
-#. TODO - on move tree editing, deletes all other branches splitting off from
 #. the
 #. path UP TO this node
 msgid "Prune Branch"
 msgstr "Prune Branch"
 
-#. TODO
 msgid "aihelp:antimirror"
 msgstr "Anti Mirror-go Mode of KataGo."
 
-#. TODO - distance of wall to existing stones
 msgid "tsumego:walldistance"
 msgstr "Distance of wall"
 
-#. TODO - tsumego: ko is good enough?
 msgid "tsumego:ko"
 msgstr "Ko allowed?"
 
-#. TODO - Menu option for tsumego frame around position
 msgid "analysis:tsumegoframe"
 msgstr "Tsumego Frame"
 
-#. TODO
 msgid "from move"
 msgstr "from move"
 
-#. TODO - status message
 msgid "move range analysis"
 msgstr ""
 "Re-analyzing moves from {start_move} to {end_move} using {visits} visits"
 
-#. TODO
 msgid "to move"
 msgstr "to move"
 
-#. TODO - Restrict analysis to move range
 msgid "limit to moves"
 msgstr "Limit to moves"
 
-#. TODO
 msgid "contribute:passwordwarning"
 msgstr "(Stored as plain text, do not re-use this anywhere)"
 
-#. TODO
 msgid "ai:human"
 msgstr "Human-like"
 
-#. TODO
 msgid "ai:pro"
 msgstr "Historical Pro"
 
-#. TODO
 msgid "aihelp:pro"
 msgstr ""
 "Picks moves according to a human-like KataGo model. Specifically, Imitate "
 "pro and strong insei moves based on historical game records from the "
 "specified year and surrounding years."
 
-#. TODO
 msgid "aihelp:human"
 msgstr ""
 "Picks moves according to a human-like KataGo model. If 'modern_style' is "
 "ticked, the model will play according to a post-2016 AlphaZero opening "
 "style."
 
-#. TODO
 msgid "engine:humanlike_model"
 msgstr "Path to human-like model"
+
+msgid "Unknown move"
+msgstr "Unknown move"
+
+msgid "Pass"
+msgstr "Pass"
+
+msgid "Correct!"
+msgstr "Correct!"
+
+msgid "Incorrect"
+msgstr "Incorrect"
+
+msgid "Best move: {move}"
+msgstr "Best move: {move}"
+
+msgid "Selected move loss: {loss_text}"
+msgstr "Selected move loss: {loss_text}"
+
+msgid "Played move {move} loss: {loss_text}"
+msgstr "Played move {move} loss: {loss_text}"
+
+msgid "Delta vs played: {delta:+.1f} points"
+msgstr "Delta vs played: {delta:+.1f} points"
+
+msgid "Question {idx}/{total}: Move {move} ({player})"
+msgstr "Question {idx}/{total}: Move {move} ({player})"
+
+msgid "Generate quiz (beta)"
+msgstr "Generate quiz (beta)"

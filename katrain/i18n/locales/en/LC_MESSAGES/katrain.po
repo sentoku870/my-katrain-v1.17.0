@@ -1073,3 +1073,33 @@ msgstr "Distance of wall"
 #. tsumego: ko is good enough?
 msgid "tsumego:ko"
 msgstr "Ko allowed?"
+
+msgid "Unknown move"
+msgstr "Unknown move"
+
+msgid "Pass"
+msgstr "Pass"
+
+msgid "Correct!"
+msgstr "Correct!"
+
+msgid "Incorrect"
+msgstr "Incorrect"
+
+msgid "Best move: {move}"
+msgstr "Best move: {move}"
+
+msgid "Selected move loss: {loss_text}"
+msgstr "Selected move loss: {loss_text}"
+
+msgid "Played move {move} loss: {loss_text}"
+msgstr "Played move {move} loss: {loss_text}"
+
+msgid "Delta vs played: {delta:+.1f} points"
+msgstr "Delta vs played: {delta:+.1f} points"
+
+msgid "Question {idx}/{total}: Move {move} ({player})"
+msgstr "Question {idx}/{total}: Move {move} ({player})"
+
+msgid "Generate quiz (beta)"
+msgstr "Generate quiz (beta)"
