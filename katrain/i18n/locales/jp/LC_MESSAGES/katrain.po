@@ -993,50 +993,40 @@ msgstr "劫でもOK"
 msgid "analysis:tsumegoframe"
 msgstr "詰碁用の外枠"
 
-#. TODO
 msgid "from move"
 msgstr "from move"
 
-#. TODO - status message
 msgid "move range analysis"
 msgstr ""
 "Re-analyzing moves from {start_move} to {end_move} using {visits} visits"
 
-#. TODO
 msgid "to move"
 msgstr "to move"
 
-#. TODO - Restrict analysis to move range
 msgid "limit to moves"
 msgstr "Limit to moves"
 
-#. TODO
 msgid "contribute:passwordwarning"
 msgstr "(Stored as plain text, do not re-use this anywhere)"
 
-#. TODO
 msgid "ai:human"
 msgstr "Human-like"
 
-#. TODO
 msgid "ai:pro"
 msgstr "Historical Pro"
 
-#. TODO
 msgid "aihelp:pro"
 msgstr ""
 "Picks moves according to a human-like KataGo model. Specifically, Imitate "
 "pro and strong insei moves based on historical game records from the "
 "specified year and surrounding years."
 
-#. TODO
 msgid "aihelp:human"
 msgstr ""
 "Picks moves according to a human-like KataGo model. If 'modern_style' is "
 "ticked, the model will play according to a post-2016 AlphaZero opening "
 "style."
 
-#. TODO
 msgid "engine:humanlike_model"
 msgstr "Path to human-like model"
 
@@ -1056,7 +1046,9 @@ msgstr ""
 "損失が {loss:.1f} 点を超える手を最大 {limit} 手まで表示します。\n"
 "行をクリックするとその手の直前に移動します。"
 
-msgid "No moves with loss greater than {loss:.1f} points were found on the main line."
+msgid ""
+"No moves with loss greater than {loss:.1f} points were found on the main "
+"line."
 msgstr "本筋には損失が {loss:.1f} 点を超える手はありませんでした。"
 
 msgid "Start quiz"
@@ -1091,3 +1083,27 @@ msgstr "正解！ {move} が最善手です（{loss_text}）。"
 
 msgid "{move} is not best ({loss_text})."
 msgstr "{move} は最善ではありません（{loss_text}）。"
+
+msgid "Unknown move"
+msgstr "不明な手"
+
+msgid "Pass"
+msgstr "パス"
+
+msgid "Correct!"
+msgstr "正解！"
+
+msgid "Incorrect"
+msgstr "不正解"
+
+msgid "Best move: {move}"
+msgstr "最善手: {move}"
+
+msgid "Selected move loss: {loss_text}"
+msgstr "選択した手の損失: {loss_text}"
+
+msgid "Played move {move} loss: {loss_text}"
+msgstr "打った手 {move} の損失: {loss_text}"
+
+msgid "Delta vs played: {delta:+.1f} points"
+msgstr "打った手との差: {delta:+.1f} ポイント"

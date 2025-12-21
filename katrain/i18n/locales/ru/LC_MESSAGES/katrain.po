@@ -973,32 +973,56 @@ msgstr "Только для ходов"
 msgid "move range analysis"
 msgstr "Анализ ходов от {start_move} до {end_move} с {visits} посещениями"
 
-#. TODO
 msgid "contribute:passwordwarning"
 msgstr "(Stored as plain text, do not re-use this anywhere)"
 
-#. TODO
 msgid "ai:human"
 msgstr "Human-like"
 
-#. TODO
 msgid "ai:pro"
 msgstr "Historical Pro"
 
-#. TODO
 msgid "aihelp:pro"
 msgstr ""
 "Picks moves according to a human-like KataGo model. Specifically, Imitate "
 "pro and strong insei moves based on historical game records from the "
 "specified year and surrounding years."
 
-#. TODO
 msgid "aihelp:human"
 msgstr ""
 "Picks moves according to a human-like KataGo model. If 'modern_style' is "
 "ticked, the model will play according to a post-2016 AlphaZero opening "
 "style."
 
-#. TODO
 msgid "engine:humanlike_model"
 msgstr "Path to human-like model"
+
+msgid "Unknown move"
+msgstr "Unknown move"
+
+msgid "Pass"
+msgstr "Pass"
+
+msgid "Correct!"
+msgstr "Correct!"
+
+msgid "Incorrect"
+msgstr "Incorrect"
+
+msgid "Best move: {move}"
+msgstr "Best move: {move}"
+
+msgid "Selected move loss: {loss_text}"
+msgstr "Selected move loss: {loss_text}"
+
+msgid "Played move {move} loss: {loss_text}"
+msgstr "Played move {move} loss: {loss_text}"
+
+msgid "Delta vs played: {delta:+.1f} points"
+msgstr "Delta vs played: {delta:+.1f} points"
+
+msgid "Question {idx}/{total}: Move {move} ({player})"
+msgstr "Question {idx}/{total}: Move {move} ({player})"
+
+msgid "Generate quiz (beta)"
+msgstr "Generate quiz (beta)"
