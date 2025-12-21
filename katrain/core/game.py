@@ -755,6 +755,20 @@ class Game(BaseGame):
         def fmt_float(val):
             return "unknown" if val is None else f"{val:.1f}"
 
+        def normalize_name(name: Optional[str]) -> str:
+            if not name:
+                return ""
+            return re.sub(r"[^0-9a-z]+", "", str(name).casefold())
+
+        def read_aliases(value) -> List[str]:
+            if not value:
+                return []
+            if isinstance(value, list):
+                return [str(v) for v in value if v]
+            if isinstance(value, str):
+                return [v.strip() for v in re.split(r"[;,]", value) if v.strip()]
+            return []
+
         # Meta
         board_x, board_y = self.board_size
         filename = os.path.splitext(os.path.basename(self.sgf_filename or ""))[0] or fmt_val(
@@ -769,28 +783,62 @@ class Game(BaseGame):
             f"- Date: {fmt_val(self.root.get_property('DT', None), default=self.game_id)}",
         ]
 
-        # Summary
-        moves_analyzed = len(snapshot.moves)
-        totals = {"B": 0.0, "W": 0.0}
-        for mv in snapshot.moves:
-            if mv.points_lost is None:
-                continue
-            totals[mv.player] = totals.get(mv.player, 0.0) + max(0.0, mv.points_lost)
-        worst = snapshot.worst_move
-        summary_lines = [
-            f"- Moves analyzed: {moves_analyzed or 'unknown'}",
-            f"- Total points lost (B/W): {fmt_float(totals.get('B'))} / {fmt_float(totals.get('W'))}",
-            "- Worst move: "
-            + (
-                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
-                f"loss {fmt_float(worst.points_lost)} ({getattr(worst.mistake_category, 'value', 'unknown')})"
-                if worst
-                else "unknown"
-            ),
+        pb = fmt_val(self.root.get_property("PB", None))
+        pw = fmt_val(self.root.get_property("PW", None))
+        br = self.root.get_property("BR", None)
+        wr = self.root.get_property("WR", None)
+        players_lines = [
+            f"- Black: {pb}" + (f" ({br})" if br else ""),
+            f"- White: {pw}" + (f" ({wr})" if wr else ""),
         ]
 
+        focus_color = None
+        if self.katrain:
+            focus_name = self.katrain.config("general/my_player_name")
+            focus_aliases = read_aliases(self.katrain.config("general/my_player_aliases"))
+            focus_names = [n for n in [focus_name, *focus_aliases] if n]
+            if focus_names:
+                focus_tokens = {normalize_name(n) for n in focus_names if normalize_name(n)}
+                pb_norm = normalize_name(pb)
+                pw_norm = normalize_name(pw)
+                match_black = pb_norm and any(n in pb_norm for n in focus_tokens)
+                match_white = pw_norm and any(n in pw_norm for n in focus_tokens)
+                if match_black != match_white:
+                    focus_color = "B" if match_black else "W"
+
+        def worst_move_for(player: str) -> Optional[MoveEval]:
+            moves = [mv for mv in snapshot.moves if mv.player == player and mv.points_lost is not None]
+            return max(moves, key=lambda mv: mv.points_lost) if moves else None
+
+        def mistake_label_from_loss(loss_val: Optional[float]) -> str:
+            if loss_val is None:
+                return "unknown"
+            if loss_val < 1.0:
+                return MistakeCategory.GOOD.value
+            if loss_val < 3.0:
+                return MistakeCategory.INACCURACY.value
+            if loss_val < 7.0:
+                return MistakeCategory.MISTAKE.value
+            return MistakeCategory.BLUNDER.value
+
+        def summary_lines_for(player: str) -> List[str]:
+            player_moves = [mv for mv in snapshot.moves if mv.player == player]
+            total_lost = sum(max(0.0, mv.points_lost) for mv in player_moves if mv.points_lost is not None)
+            worst = worst_move_for(player)
+            return [
+                f"- Moves analyzed: {len(player_moves)}",
+                f"- Total points lost: {fmt_float(total_lost)}",
+                "- Worst move: "
+                + (
+                    f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
+                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost)})"
+                    if worst
+                    else "unknown"
+                ),
+            ]
+
         # Distributions using existing report helper if thresholds are available
-        distribution_lines = []
+        histogram = None
         if thresholds:
             try:
                 from katrain.core import ai as ai_module
@@ -806,47 +854,62 @@ class Game(BaseGame):
                     upper = thresholds[cls_idx - 1]
                     lower = thresholds[cls_idx]
                     return f"{lower} - {upper}"
-
-                distribution_lines.append("- Mistake buckets (points lost):")
-                for idx, bucket in enumerate(histogram):
-                    label = bucket_label(idx)
-                    distribution_lines.append(f"  - {label}: B {bucket['B']} / W {bucket['W']}")
             except Exception as exc:  # pragma: no cover - defensive fallback
                 self.katrain.log(f"Failed to build histogram for Karte export: {exc}", OUTPUT_DEBUG)
-                distribution_lines.append("- Mistake buckets: unknown")
-        else:
-            distribution_lines.append("- Mistake buckets: unknown")
-        distribution_lines.append("- Freedom buckets: unknown")
+                histogram = None
+
+        def distribution_lines_for(player: str) -> List[str]:
+            if histogram is None:
+                return ["- Mistake buckets: unknown", "- Freedom buckets: unknown"]
+            lines = ["- Mistake buckets (points lost):"]
+            for idx, bucket in enumerate(histogram):
+                label = bucket_label(idx)
+                lines.append(f"  - {label}: {bucket[player]}")
+            lines.append("- Freedom buckets: unknown")
+            return lines
 
         # Important moves table (top N derived from existing settings)
-        important_moves = self.get_important_move_evals(level=level)[: settings.max_moves]
-        important_lines = [f"## Important Moves (Top {len(important_moves) or settings.max_moves})"]
-        if important_moves:
-            important_lines.append("| # | P | Coord | Loss | Mistake | Freedom |")
-            important_lines.append("|---|---|-------|------|---------|---------|")
-            for mv in important_moves:
-                loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
-                mistake = getattr(mv.mistake_category, "value", "unknown")
-                important_lines.append(
-                    f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                    f"{fmt_float(loss)} | {mistake} | unknown |"
-                )
-        else:
-            important_lines.append("- No important moves found.")
+        important_moves = self.get_important_move_evals(level=level)
+
+        def important_lines_for(player: str, label: str) -> List[str]:
+            player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
+            lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
+            if player_moves:
+                lines.append("| # | P | Coord | Loss | Mistake | Freedom |")
+                lines.append("|---|---|-------|------|---------|---------|")
+                for mv in player_moves:
+                    loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
+                    mistake = mistake_label_from_loss(loss)
+                    lines.append(
+                        f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
+                        f"{fmt_float(loss)} | {mistake} | unknown |"
+                    )
+            else:
+                lines.append("- No important moves found.")
+            return lines
+
+        focus_label = "Focus"
 
         # Assemble sections
-        sections = [
-            "## Meta",
-            *meta_lines,
-            "",
-            "## Summary",
-            *summary_lines,
-            "",
-            "## Distributions",
-            *distribution_lines,
-            "",
-            *important_lines,
-        ]
+        sections = ["## Meta", *meta_lines, ""]
+        sections += ["## Players", *players_lines, ""]
+        sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
+        if focus_color:
+            focus_name = "Black" if focus_color == "B" else "White"
+            sections += [f"## Summary (Focus: {focus_name})", *summary_lines_for(focus_color), ""]
+        sections += ["## Summary (Black)", *summary_lines_for("B"), ""]
+        sections += ["## Summary (White)", *summary_lines_for("W"), ""]
+        if focus_color:
+            focus_name = "Black" if focus_color == "B" else "White"
+            sections += [f"## Distributions (Focus: {focus_name})", *distribution_lines_for(focus_color), ""]
+        sections += ["## Distributions (Black)", *distribution_lines_for("B"), ""]
+        sections += ["## Distributions (White)", *distribution_lines_for("W"), ""]
+        if focus_color:
+            sections += important_lines_for(focus_color, focus_label)
+            sections.append("")
+        sections += important_lines_for("B", "Black")
+        sections.append("")
+        sections += important_lines_for("W", "White")
         return "\n".join(sections)
 
     def log_important_moves_for_debug(
