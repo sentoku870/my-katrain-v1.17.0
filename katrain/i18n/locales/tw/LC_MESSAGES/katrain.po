@@ -1040,3 +1040,65 @@ msgstr "Question {idx}/{total}: Move {move} ({player})"
 
 msgid "Generate quiz (beta)"
 msgstr "Generate quiz (beta)"
+
+#. TODO
+msgid "Prev"
+msgstr "Prev"
+
+#. TODO
+msgid "No analysis data for this position."
+msgstr "No analysis data for this position."
+
+#. TODO
+msgid "Quiz mode (beta)"
+msgstr "Quiz mode (beta)"
+
+#. TODO
+msgid "Next"
+msgstr "Next"
+
+#. TODO
+msgid ""
+"Review the worst moves on the main line.\n"
+"Showing up to {limit} moves with loss > {loss:.1f} points.\n"
+"Click a row to jump to the position before the move."
+msgstr ""
+"Review the worst moves on the main line.\n"
+"Showing up to {limit} moves with loss > {loss:.1f} points.\n"
+"Click a row to jump to the position before the move."
+
+#. TODO
+msgid "Correct! {move} is best ({loss_text})."
+msgstr "Correct! {move} is best ({loss_text})."
+
+#. TODO
+msgid "Points lost unknown"
+msgstr "Points lost unknown"
+
+#. TODO
+msgid "No quiz items to show."
+msgstr "No quiz items to show."
+
+#. TODO
+msgid "{loss:.1f} points lost"
+msgstr "{loss:.1f} points lost"
+
+#. TODO
+msgid "{move} is not best ({loss_text})."
+msgstr "{move} is not best ({loss_text})."
+
+#. TODO
+msgid "Start quiz"
+msgstr "Start quiz"
+
+#. TODO
+msgid ""
+"No moves with loss greater than {loss:.1f} points were found on the main "
+"line."
+msgstr ""
+"No moves with loss greater than {loss:.1f} points were found on the main "
+"line."
+
+#. TODO
+msgid "Close"
+msgstr "Close"
