@@ -1032,7 +1032,7 @@ msgstr "Path to human-like model"
 
 # Quiz popup
 msgid "Generate quiz (beta)"
-msgstr "クイズを生成（ベータ）"
+msgstr "クイズ生成（ベータ）"
 
 msgid "Close"
 msgstr "閉じる"
@@ -1061,7 +1061,7 @@ msgid "No quiz items to show."
 msgstr "表示できるクイズ項目がありません。"
 
 msgid "Question {idx}/{total}: Move {move} ({player})"
-msgstr "問題 {idx}/{total}: {player} の {move} 手"
+msgstr "問題 {idx}/{total}: 手 {move}（{player}）"
 
 msgid "No analysis data for this position."
 msgstr "この局面には解析データがありません。"
