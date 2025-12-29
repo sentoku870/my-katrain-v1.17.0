@@ -67,6 +67,7 @@ class MoveEval:
     points_lost: Optional[float]        # その手で失った期待値（points_lost）
     realized_points_lost: Optional[float]  # 実際の進行で確定した損失
     root_visits: int                    # その局面の root 訪問回数（見ている深さの目安）
+    is_reliable: bool = False           # visits を根拠にした信頼度フラグ（保守的に False）
 
     # 将来の拡張用メタ情報
     tag: Optional[str] = None           # "opening"/"middle"/"yose" など自由タグ
@@ -195,9 +196,46 @@ class QuizConfig:
     limit: int             # maximum number of quiz items to return
 
 
-# Default configuration for the current quiz popup.
-# Later we can add presets, e.g. QUIZ_CONFIG_KYU / QUIZ_CONFIG_DAN.
-QUIZ_CONFIG_DEFAULT = QuizConfig(loss_threshold=2.0, limit=10)
+@dataclass(frozen=True)
+class SkillPreset:
+    """Skill presets for quiz extraction and mistake thresholds."""
+
+    quiz: QuizConfig
+    score_thresholds: Tuple[float, float, float]
+    winrate_thresholds: Tuple[float, float, float]
+
+
+SKILL_PRESETS: Dict[str, SkillPreset] = {
+    # Beginner: focus on large swings only (conservative thresholds).
+    "beginner": SkillPreset(
+        quiz=QuizConfig(loss_threshold=3.0, limit=10),
+        score_thresholds=(2.0, 4.0, 8.0),
+        winrate_thresholds=(0.08, 0.15, 0.30),
+    ),
+    # Standard: matches existing behavior (backward-compatible).
+    "standard": SkillPreset(
+        quiz=QuizConfig(loss_threshold=2.0, limit=10),
+        score_thresholds=(1.0, 2.5, 5.0),
+        winrate_thresholds=(0.05, 0.10, 0.20),
+    ),
+    # Advanced: more sensitive to small errors.
+    "advanced": SkillPreset(
+        quiz=QuizConfig(loss_threshold=1.0, limit=10),
+        score_thresholds=(0.5, 1.5, 3.0),
+        winrate_thresholds=(0.03, 0.07, 0.15),
+    ),
+}
+
+DEFAULT_SKILL_PRESET = "standard"
+
+
+def get_skill_preset(name: str) -> SkillPreset:
+    """Return a skill preset, falling back to standard when unknown."""
+    return SKILL_PRESETS.get(name, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
+
+
+# Default configuration for the current quiz popup (backward-compatible).
+QUIZ_CONFIG_DEFAULT = SKILL_PRESETS[DEFAULT_SKILL_PRESET].quiz
 
 
 @dataclass
@@ -262,6 +300,23 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
         realized_points_lost=realized_points_lost,
         root_visits=int(root_visits),
     )
+
+
+# visits-based reliability (conservative defaults; tweakable later)
+RELIABILITY_VISITS_THRESHOLD = 200
+UNRELIABLE_IMPORTANCE_SCALE = 0.25
+SWING_SCORE_SIGN_BONUS = 1.0
+SWING_WINRATE_CROSS_BONUS = 1.0
+
+
+def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VISITS_THRESHOLD) -> bool:
+    """
+    visits のみを根拠にした簡易信頼度判定。
+
+    - threshold 未満は False（保守的）。
+    - Phase4.5 では stdev 等は見ない。
+    """
+    return int(root_visits or 0) >= threshold
 
 
 def assess_position_difficulty_from_parent(
@@ -375,6 +430,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
             score_loss=score_loss,
             winrate_loss=winrate_loss,
         )
+        m.is_reliable = is_reliable_from_visits(m.root_visits)
 
         # 親ノードの candidate_moves から局面難易度をざっくり評価
         difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
@@ -448,15 +504,22 @@ def quiz_items_from_snapshot(
     *,
     loss_threshold: float = DEFAULT_QUIZ_LOSS_THRESHOLD,
     limit: int = DEFAULT_QUIZ_ITEM_LIMIT,
+    preset: Optional[str] = None,
 ) -> List[QuizItem]:
     """
     EvalSnapshot から「大きなミス」をクイズ形式で取り出す簡易ヘルパー。
 
     - points_lost を優先し、なければ score_loss を用いる。
     - loss_threshold より大きいものだけを抽出し、損失の大きい順に返す。
+    - preset を指定した場合は、その設定を優先する。
     """
     if not snapshot.moves or limit <= 0:
         return []
+
+    if preset is not None:
+        preset_cfg = get_skill_preset(preset).quiz
+        loss_threshold = preset_cfg.loss_threshold
+        limit = preset_cfg.limit
 
     items: List[QuizItem] = []
     for move in snapshot.moves:
@@ -508,9 +571,9 @@ def quiz_points_lost_from_candidate(
     return None
 
 
-# ミス分類に使う閾値（Phase3 デフォルト）
-SCORE_THRESHOLDS: Tuple[float, float, float] = (1.0, 2.5, 5.0)
-WINRATE_THRESHOLDS: Tuple[float, float, float] = (0.05, 0.10, 0.20)
+# ミス分類に使う閾値（Phase3 デフォルト＝standard）
+SCORE_THRESHOLDS: Tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].score_thresholds
+WINRATE_THRESHOLDS: Tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].winrate_thresholds
 
 
 def compute_loss_from_delta(
@@ -538,6 +601,9 @@ def compute_loss_from_delta(
 def classify_mistake(
     score_loss: Optional[float],
     winrate_loss: Optional[float],
+    *,
+    score_thresholds: Tuple[float, float, float] = SCORE_THRESHOLDS,
+    winrate_thresholds: Tuple[float, float, float] = WINRATE_THRESHOLDS,
 ) -> MistakeCategory:
     """
     損失量から MistakeCategory を決定する。
@@ -549,7 +615,7 @@ def classify_mistake(
     """
     if score_loss is not None:
         loss = max(score_loss, 0.0)
-        t1, t2, t3 = SCORE_THRESHOLDS
+        t1, t2, t3 = score_thresholds
         if loss < t1:
             return MistakeCategory.GOOD
         if loss < t2:
@@ -560,7 +626,7 @@ def classify_mistake(
 
     if winrate_loss is not None:
         loss = max(winrate_loss, 0.0)
-        t1, t2, t3 = WINRATE_THRESHOLDS
+        t1, t2, t3 = winrate_thresholds
         if loss < t1:
             return MistakeCategory.GOOD
         if loss < t2:
@@ -604,7 +670,25 @@ def compute_importance_for_moves(
             else 0.0
         )
 
-        m.importance_score = score_term + winrate_term + pl_term
+        swing_bonus = 0.0
+        if (
+            m.score_before is not None
+            and m.score_after is not None
+            and (m.score_before == 0.0 or m.score_after == 0.0 or (m.score_before > 0) != (m.score_after > 0))
+        ):
+            swing_bonus += SWING_SCORE_SIGN_BONUS
+        if (
+            m.winrate_before is not None
+            and m.winrate_after is not None
+            and (m.winrate_before < 0.5) != (m.winrate_after < 0.5)
+        ):
+            swing_bonus += SWING_WINRATE_CROSS_BONUS
+
+        importance = score_term + winrate_term + pl_term + swing_bonus
+        if not m.is_reliable:
+            importance *= UNRELIABLE_IMPORTANCE_SCALE
+
+        m.importance_score = importance
 
 
 def pick_important_moves(
@@ -672,7 +756,10 @@ def pick_important_moves(
             score_term = abs(m.delta_score or 0.0)
             winrate_term = 50.0 * abs(m.delta_winrate or 0.0)
             pl_term = max(m.points_lost or 0.0, 0.0)
-            return score_term + winrate_term + pl_term
+            base = score_term + winrate_term + pl_term
+            if not m.is_reliable:
+                base *= UNRELIABLE_IMPORTANCE_SCALE
+            return base
 
         for move in moves:
             raw_sc = raw_score(move)
