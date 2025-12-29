@@ -129,8 +129,11 @@ jobs:
         git clone --depth 1 --branch stable https://github.com/lightvector/KataGo.git ../KataGo
         pushd ../KataGo/cpp
         cmake . -DUSE_BACKEND=OPENCL -DBUILD_DISTRIBUTED=1
-        make -j$(sysctl -n hw.ncpu)
-        cp katago ../../katrain/katrain/KataGo/katago-osx
+        mkdir -p "$GITHUB_WORKSPACE/katrain/KataGo"
+        cp katago "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
+        chmod +x "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
+        ls -la "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
+
         popd
 
     - name: Build app with PyInstaller
