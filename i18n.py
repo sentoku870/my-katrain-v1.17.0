@@ -115,7 +115,8 @@ for ext in ["py", "kv"]:
             for i, line in enumerate(f.readlines()):
                 if line.strip():
                     lc += 1
-                matches = [m.strip() for m in re.findall(r"i18n._\((.*?)\)", line)]
+                # Match i18n._("...") or i18n._('...') by closing quote, not by ')'
+                matches = [m.group(2).strip() for m in re.finditer(r"i18n\._\(\s*([\"'])(.*?)\1\s*\)", line)]
                 for msgid in matches:
                     stripped_msgid = msgid.strip("\"'")
                     if stripped_msgid and msgid[0] in ['"', "'"] and stripped_msgid not in strings_to_langs:  # not code

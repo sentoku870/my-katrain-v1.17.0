@@ -1080,3 +1080,53 @@ msgstr "Question {idx}/{total}: Move {move} ({player})"
 
 msgid "Generate quiz (beta)"
 msgstr "Generate quiz (beta)"
+
+# Quiz popup
+msgid "Close"
+msgstr "Close"
+
+msgid ""
+"Review the worst moves on the main line.\n"
+"Showing up to {limit} moves with loss > {loss:.1f} points.\n"
+"Click a row to jump to the position before the move."
+msgstr ""
+"Review the worst moves on the main line.\n"
+"Showing up to {limit} moves with loss > {loss:.1f} points.\n"
+"Click a row to jump to the position before the move."
+
+msgid ""
+"No moves with loss greater than {loss:.1f} points were found on the main "
+"line."
+msgstr ""
+"No moves with loss greater than {loss:.1f} points were found on the main "
+"line."
+
+msgid "Start quiz"
+msgstr "Start quiz"
+
+msgid "Quiz mode (beta)"
+msgstr "Quiz mode (beta)"
+
+msgid "No quiz items to show."
+msgstr "No quiz items to show."
+
+msgid "No analysis data for this position."
+msgstr "No analysis data for this position."
+
+msgid "Prev"
+msgstr "Prev"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "Points lost unknown"
+msgstr "Points lost unknown"
+
+msgid "{loss:.1f} points lost"
+msgstr "{loss:.1f} points lost"
+
+msgid "Correct! {move} is best ({loss_text})."
+msgstr "Correct! {move} is best ({loss_text})."
+
+msgid "{move} is not best ({loss_text})."
+msgstr "{move} is not best ({loss_text})."
