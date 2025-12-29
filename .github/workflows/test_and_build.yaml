@@ -130,9 +130,7 @@ jobs:
         pushd ../KataGo/cpp
         cmake . -DUSE_BACKEND=OPENCL -DBUILD_DISTRIBUTED=1
         make -j$(sysctl -n hw.ncpu)
-        mkdir -p ../../katrain/KataGo
-        cp katago ../../katrain/KataGo/katago-osx
-
+        cp katago ../../katrain/katrain/KataGo/katago-osx
         popd
 
     - name: Build app with PyInstaller
