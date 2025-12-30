@@ -880,9 +880,10 @@ class Game(BaseGame):
                 for mv in player_moves:
                     loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
                     mistake = mistake_label_from_loss(loss)
+                    freedom = mv.position_difficulty.value if mv.position_difficulty else "unknown"
                     lines.append(
                         f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                        f"{fmt_float(loss)} | {mistake} | unknown |"
+                        f"{fmt_float(loss)} | {mistake} | {freedom} |"
                     )
             else:
                 lines.append("- No important moves found.")
