@@ -314,9 +314,18 @@ def get_reason_tags_for_move(
         default=0
     )
 
-    # タグ 1: atari
-    if any(g.is_in_atari for g in my_groups):
-        tags.append("atari")
+    # タグ 1: atari（打った手の周辺2マス以内のアタリのみ検出）
+    move_coord = node.move.coords if node.move else None
+    if move_coord:
+        nearby_atari_groups = [
+            g for g in my_groups
+            if g.is_in_atari and any(
+                abs(stone[0] - move_coord[0]) <= 2 and abs(stone[1] - move_coord[1]) <= 2
+                for stone in g.stones
+            )
+        ]
+        if nearby_atari_groups:
+            tags.append("atari")
 
     # タグ 2: low_liberties（atariでない場合）
     elif any(g.is_low_liberty for g in my_groups):
@@ -326,10 +335,10 @@ def get_reason_tags_for_move(
     if len(board_state.cut_points) >= 1 and max_my_danger >= 40:
         tags.append("cut_risk")
 
-    # タグ 4: need_connect
+    # タグ 4: need_connect（閾値を30に引き上げ）
     if board_state.connect_points:
         best_improvement = board_state.connect_points[0][2]
-        if best_improvement >= 20:
+        if best_improvement >= 30:
             tags.append("need_connect")
 
     # タグ 5: thin
@@ -341,9 +350,11 @@ def get_reason_tags_for_move(
     if max_enemy_danger >= 60 and max_my_danger < 35:
         tags.append("chase_mode")
 
-    # タグ 7: too_many_choices（簡易ヒューリスティック）
-    if len(candidates) >= 5:
-        tags.append("too_many_choices")
+    # タグ 7: too_many_choices（無効化 - 候補手数は探索パラメータに依存し不安定）
+    # 理由: wideRootNoise等の影響で同じ局面でも変動する
+    # LLMはpoints_lostやimportanceから「正解が難しい状況」を推測可能
+    # if len(candidates) >= 10:
+    #     tags.append("too_many_choices")
 
     # タグ 8: endgame_hint
     if hasattr(move_eval, 'tag') and move_eval.tag == "yose":
