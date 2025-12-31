@@ -806,6 +806,28 @@ def classify_mistake(
 
     return MistakeCategory.GOOD
 
+
+def classify_game_phase(move_number: int) -> str:
+    """
+    手数から対局のフェーズを判定する（Phase 7で追加）
+
+    Args:
+        move_number: 手数（0-indexed または 1-indexed どちらでも可）
+
+    Returns:
+        "opening" (< 50手) / "middle" (< 200手) / "yose" (>= 200手)
+
+    Note:
+        この分類は簡易版です。より正確には盤上の石の数や地合いで判定すべきですが、
+        手数ベースで十分実用的です。
+    """
+    if move_number < 50:
+        return "opening"
+    elif move_number < 200:
+        return "middle"
+    else:
+        return "yose"
+
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
     *,

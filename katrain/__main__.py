@@ -1008,6 +1008,8 @@ class KaTrainGui(Screen, KaTrainBase):
                 "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
                 "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
                 "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
+                "phase_mistake_counts": {},  # {(phase, category): count}
+                "phase_mistake_loss": {},  # {(phase, category): loss}
                 "worst_moves": [],  # (move_number, player, gtp, points_lost, category)
             }
 
@@ -1064,16 +1066,17 @@ class KaTrainGui(Screen, KaTrainBase):
 
                     # Phase（簡易版：手数ベース）
                     move_number = i
-                    if move_number < 50:
-                        phase = "opening"
-                    elif move_number < 200:
-                        phase = "middle"
-                    else:
-                        phase = "yose"
+                    phase = eval_metrics.classify_game_phase(move_number)
 
                     stats["phase_moves"][phase] += 1
                     if points_lost > 0:
                         stats["phase_loss"][phase] += points_lost
+
+                    # Phase × Mistake クロス集計（Phase 6.5で追加）
+                    key = (phase, category)
+                    stats["phase_mistake_counts"][key] = stats["phase_mistake_counts"].get(key, 0) + 1
+                    if points_lost > 0:
+                        stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + points_lost
 
                     # Importance を簡易計算（points_lost をベースに）
                     # 本来は delta_score, delta_winrate, swing_bonus を考慮するが、
@@ -1398,6 +1401,15 @@ class KaTrainGui(Screen, KaTrainBase):
                 phase_moves_total[phase] += stats["phase_moves"][phase]
                 phase_loss_total[phase] += stats["phase_loss"][phase]
 
+        # Phase × Mistake クロス集計（Phase 6.5で追加）
+        phase_mistake_counts_total = {}
+        phase_mistake_loss_total = {}
+        for stats in stats_list:
+            for key, count in stats.get("phase_mistake_counts", {}).items():
+                phase_mistake_counts_total[key] = phase_mistake_counts_total.get(key, 0) + count
+            for key, loss in stats.get("phase_mistake_loss", {}).items():
+                phase_mistake_loss_total[key] = phase_mistake_loss_total.get(key, 0.0) + loss
+
         # Worst moves の集計
         all_worst_moves = []
         for stats in stats_list:
@@ -1458,6 +1470,26 @@ class KaTrainGui(Screen, KaTrainBase):
             lines.append(f"| {phase_names[phase]} | {moves} | {loss:.1f} | {avg:.2f} |")
         lines.append("")
 
+        # Phase × Mistake クロス集計テーブル（Phase 6.5で追加）
+        lines.append("## Phase × Mistake Breakdown" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |")
+        lines.append("|-------|------|------------|---------|---------|------------|")
+        for phase in ["opening", "middle", "yose"]:
+            row = [phase_names[phase]]
+            total_phase_loss = 0.0
+            for cat in eval_metrics.MistakeCategory:
+                key = (phase, cat)
+                count = phase_mistake_counts_total.get(key, 0)
+                loss = phase_mistake_loss_total.get(key, 0.0)
+                if count > 0 and cat != eval_metrics.MistakeCategory.GOOD:
+                    total_phase_loss += loss
+                    row.append(f"{count} ({loss:.1f})")
+                else:
+                    row.append(f"{count}")
+            row.append(f"{total_phase_loss:.1f}")
+            lines.append(f"| {' | '.join(row)} |")
+        lines.append("")
+
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
         if all_worst_moves:
             lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
@@ -1468,13 +1500,84 @@ class KaTrainGui(Screen, KaTrainBase):
             lines.append("- No significant mistakes found.")
         lines.append("")
 
+        # 弱点仮説セクション（Phase 7で追加）
+        lines.append("## Weakness Hypothesis" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("\nBased on cross-tabulation analysis:\n")
+
+        hypotheses = []
+        cat_names_ja = {
+            eval_metrics.MistakeCategory.BLUNDER: "大悪手",
+            eval_metrics.MistakeCategory.MISTAKE: "悪手",
+            eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
+        }
+
+        # クロス集計から上位3つの弱点を抽出
+        if phase_mistake_loss_total:
+            # 損失が大きい順にソート（GOOD は除外）
+            sorted_combos = sorted(
+                [(k, v) for k, v in phase_mistake_loss_total.items() if k[1] in cat_names_ja and v > 0],
+                key=lambda x: x[1],
+                reverse=True
+            )
+
+            for i, (key, loss) in enumerate(sorted_combos[:3]):
+                phase, category = key
+                count = phase_mistake_counts_total.get(key, 0)
+                hypotheses.append(
+                    f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** "
+                    f"({count}回、損失{loss:.1f}目)"
+                )
+
+        if hypotheses:
+            lines.extend(hypotheses)
+            lines.append("")
+            lines.append("**分析**:")
+            # 最悪の組み合わせについて簡単な分析を追加
+            if sorted_combos:
+                worst_phase, worst_cat = sorted_combos[0][0]
+                worst_loss = sorted_combos[0][1]
+                worst_count = phase_mistake_counts_total.get((worst_phase, worst_cat), 0)
+
+                # 損失の割合を計算
+                phase_total_loss = phase_loss_total.get(worst_phase, 0)
+                if phase_total_loss > 0:
+                    pct = (worst_loss / phase_total_loss) * 100
+                    lines.append(
+                        f"- {phase_names.get(worst_phase, worst_phase)}の損失の{pct:.1f}%が"
+                        f"{cat_names_ja[worst_cat]}によるもの"
+                    )
+
+                # 頻度の分析
+                phase_total_moves = phase_moves_total.get(worst_phase, 0)
+                if phase_total_moves > 0:
+                    freq_pct = (worst_count / phase_total_moves) * 100
+                    lines.append(
+                        f"- {phase_names.get(worst_phase, worst_phase)}の{freq_pct:.1f}%の手が"
+                        f"{cat_names_ja[worst_cat]}と判定されている"
+                    )
+        else:
+            lines.append("- 明確な弱点パターンは検出されませんでした。")
+
+        lines.append("")
+
         lines.append("## Practice Priorities" + (f" ({focus_player})" if focus_player else ""))
         lines.append("\nBased on the data above, consider focusing on:\n")
-        # 簡易版: 最も損失が大きいphaseを提案
-        if total_moves > 0:
+
+        # Practice Priorities は弱点仮説の上位1-2個を簡潔に提示
+        priorities = []
+        if hypotheses:
+            # 上位2つを抽出
+            for hyp in hypotheses[:2]:
+                priorities.append(f"- {hyp}")
+
+        # フォールバック: 上記で見つからなければ、最も損失が大きいphaseを提案
+        if not priorities and total_moves > 0:
             worst_phase = max(phase_loss_total.items(), key=lambda x: x[1])
             if worst_phase[1] > 0:
-                lines.append(f"- Improve {phase_names[worst_phase[0]]} play ({worst_phase[1]:.1f} points lost)")
+                priorities.append(f"- Improve {phase_names[worst_phase[0]]} play ({worst_phase[1]:.1f} points lost)")
+
+        if priorities:
+            lines.extend(priorities)
         else:
             lines.append("- No specific priorities identified. Keep up the good work!")
 

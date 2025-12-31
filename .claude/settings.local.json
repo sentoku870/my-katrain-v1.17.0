@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python -m katrain:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(timeout 5 python:*)",
+      "Bash(git switch:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)"
     ]
   }
 }
