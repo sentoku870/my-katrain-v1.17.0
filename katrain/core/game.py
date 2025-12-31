@@ -595,10 +595,26 @@ class Game(BaseGame):
     # 重要局面レポート / YoseAnalyzer 連携用のヘルパー
     # ------------------------------------------------------------------
 
+    def _find_node_by_move_number(self, move_number: int) -> Optional[GameNode]:
+        """メインブランチの手数でノードを検索
+
+        Args:
+            move_number: 手数（1-indexed）
+
+        Returns:
+            Optional[GameNode]: 見つかったノード、または None
+        """
+        for node in eval_metrics.iter_main_branch_nodes(self):
+            node_move_no = len(node.nodes_from_root) - 1
+            if node_move_no == move_number:
+                return node
+        return None
+
     def get_important_move_evals(
         self,
         *,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        compute_reason_tags: bool = True,
     ) -> List[MoveEval]:
         """
         現在の対局（メイン分岐）について、
@@ -618,6 +634,36 @@ class Game(BaseGame):
             level=level,
             recompute=True,
         )
+
+        # Phase 5: 重要局面のみ理由タグを計算
+        if compute_reason_tags:
+            from katrain.core import board_analysis
+
+            for move_eval in important_moves:
+                try:
+                    # 対応するノードを検索
+                    node = self._find_node_by_move_number(move_eval.move_number)
+                    if node is None:
+                        continue
+
+                    # このノードで盤面を分析
+                    board_state = board_analysis.analyze_board_at_node(self, node)
+
+                    # 候補手を取得
+                    candidates = node.candidate_moves if hasattr(node, 'candidate_moves') else []
+
+                    # タグを計算
+                    move_eval.reason_tags = board_analysis.get_reason_tags_for_move(
+                        board_state, move_eval, node, candidates
+                    )
+                except Exception as e:
+                    # 失敗時は優雅に処理: 分析失敗時はタグなし
+                    self.katrain.log(
+                        f"Failed to compute reason tags for move #{move_eval.move_number}: {e}",
+                        OUTPUT_DEBUG
+                    )
+                    move_eval.reason_tags = []
+
         return important_moves
 
     def build_important_moves_report(
@@ -878,15 +924,19 @@ class Game(BaseGame):
             player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
             lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
             if player_moves:
-                lines.append("| # | P | Coord | Loss | Mistake |")
-                lines.append("|---|---|-------|------|---------|")
+                # Phase 5: "Reason" 列を追加
+                lines.append("| # | P | Coord | Loss | Mistake | Reason |")
+                lines.append("|---|---|-------|------|---------|--------|")
                 for mv in player_moves:
                     loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
                     mistake = mistake_label_from_loss(loss)
-                    # Removed: Freedom column (Phase 8: always "unknown", no value for LLM)
+
+                    # Phase 5: 理由タグをフォーマット
+                    reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
+
                     lines.append(
                         f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                        f"{fmt_float(loss)} | {mistake} |"
+                        f"{fmt_float(loss)} | {mistake} | {reason_str} |"
                     )
             else:
                 lines.append("- No important moves found.")

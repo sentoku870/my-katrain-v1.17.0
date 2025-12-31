@@ -6,7 +6,15 @@
       "Bash(timeout 5 python:*)",
       "Bash(git switch:*)",
       "Bash(git pull:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git stash:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Phase 7 - improve karte quality with cross-tabulation and urgent miss detection\n\nThis commit implements Phase 7 improvements to enhance the quality of karte\n\\(diagnostic reports\\) for better LLM-based coaching:\n\n## 1. Phase × Mistake Cross-tabulation\n- Add _format_phase_mistake_breakdown\\(\\) to game.py\n- Display mistake distribution across game phases \\(Opening/Middle/Endgame\\)\n- Show both count and total loss for each phase-mistake combination\n- Helps identify phase-specific weaknesses\n\n## 2. Urgent Miss Pattern Detection\n- Add _detect_urgent_miss_sequences\\(\\) to detect consecutive large losses\n- Identifies situations where both players missed critical points \\(20+ points, 3+ consecutive\\)\n- Separates urgent miss patterns from normal worst moves in reports\n- Add coaching recommendations for urgent miss patterns \\(tsumego, awareness habits\\)\n\n## 3. SGF to GTP Coordinate Conversion\n- Add _convert_sgf_to_gtp_coord\\(\\) for human-readable coordinates\n- Convert internal SGF format \\(ll, rf\\) to GTP format \\(L12, R6\\)\n- Improves readability in reports\n\n## 4. Skill-based Threshold Configuration\n- Add UrgentMissConfig and URGENT_MISS_CONFIGS to eval_metrics.py\n- Support three skill presets:\n  * beginner: 30+ points, 4+ consecutive \\(detects only major oversights\\)\n  * standard: 20+ points, 3+ consecutive \\(default for dan players\\)\n  * advanced: 15+ points, 3+ consecutive \\(sensitive to smaller urgent situations\\)\n- Apply skill-based thresholds in __main__.py summary generation\n- Update game.py _format_weakness_hypothesis to use configurable thresholds\n\n## 5. Multi-game Summary Integration\n- Integrate all features into _build_summary_from_stats\\(\\) in __main__.py\n- Add weakness hypothesis section to build_summary_report\\(\\) in game.py\n- Maintain backwards compatibility with existing reports\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 10 python:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

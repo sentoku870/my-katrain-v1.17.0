@@ -88,6 +88,13 @@ class MoveEval:
     position_difficulty_score: Optional[float] = None
     """局面難易度を 0.0〜1.0 の連続値で表した補助スコア（大きいほど難しい想定）。"""
 
+    reason_tags: List[str] = field(default_factory=list)
+    """戦術的コンテキストの理由タグ（Phase 5: 構造の言語化）。
+
+    例: ["atari", "low_liberties", "need_connect", "chase_mode", ...]
+    盤面の戦術的状況に基づいて board_analysis モジュールで計算される。
+    """
+
 
 class PositionDifficulty(Enum):
     """局面難易度を表すラベル。"""
