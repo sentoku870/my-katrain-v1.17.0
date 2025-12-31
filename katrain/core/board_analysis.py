@@ -314,13 +314,13 @@ def get_reason_tags_for_move(
         default=0
     )
 
-    # タグ 1: atari（打った手の周辺2マス以内のアタリのみ検出）
+    # タグ 1: atari（打った手の周辺3マス以内のアタリのみ検出）
     move_coord = node.move.coords if node.move else None
     if move_coord:
         nearby_atari_groups = [
             g for g in my_groups
             if g.is_in_atari and any(
-                abs(stone[0] - move_coord[0]) <= 2 and abs(stone[1] - move_coord[1]) <= 2
+                abs(stone[0] - move_coord[0]) <= 3 and abs(stone[1] - move_coord[1]) <= 3
                 for stone in g.stones
             )
         ]
@@ -335,10 +335,10 @@ def get_reason_tags_for_move(
     if len(board_state.cut_points) >= 1 and max_my_danger >= 40:
         tags.append("cut_risk")
 
-    # タグ 4: need_connect（閾値を30に引き上げ）
+    # タグ 4: need_connect（閾値を20に引き下げ）
     if board_state.connect_points:
         best_improvement = board_state.connect_points[0][2]
-        if best_improvement >= 30:
+        if best_improvement >= 20:
             tags.append("need_connect")
 
     # タグ 5: thin

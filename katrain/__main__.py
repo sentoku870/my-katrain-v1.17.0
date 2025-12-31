@@ -997,11 +997,17 @@ class KaTrainGui(Screen, KaTrainBase):
             except:
                 board_size = (19, 19)
 
+            # 段級位情報を抽出（Phase 10-C）
+            rank_black = move_tree.get_property("BR", None)
+            rank_white = move_tree.get_property("WR", None)
+
             # 統計用カウンター
             stats = {
                 "game_name": os.path.basename(path),
                 "player_black": player_black,
                 "player_white": player_white,
+                "rank_black": rank_black,  # Phase 10-C
+                "rank_white": rank_white,  # Phase 10-C
                 "handicap": handicap,
                 "date": date,
                 "board_size": board_size,
@@ -1409,6 +1415,35 @@ class KaTrainGui(Screen, KaTrainBase):
 
         return categories
 
+    def _collect_rank_info(self, stats_list: list, focus_player: str) -> str:
+        """focus_player の段級位情報を収集（Phase 10-C）
+
+        Args:
+            stats_list: 統計dictのリスト
+            focus_player: 対象プレイヤー名
+
+        Returns:
+            str: 段級位文字列（例: "5段", "8級"）、見つからない場合は None
+        """
+        if not focus_player:
+            return None
+
+        # 全ゲームから focus_player の段級位を探す
+        ranks = []
+        for stats in stats_list:
+            if stats["player_black"] == focus_player and stats.get("rank_black"):
+                ranks.append(stats["rank_black"])
+            elif stats["player_white"] == focus_player and stats.get("rank_white"):
+                ranks.append(stats["rank_white"])
+
+        # 最も頻出する段級位を返す（複数ある場合は最初のもの）
+        if ranks:
+            from collections import Counter
+            most_common = Counter(ranks).most_common(1)[0][0]
+            return most_common
+
+        return None
+
     def _build_summary_from_stats(self, stats_list: list, focus_player: str = None) -> str:
         """統計dictリストからsummaryテキストを生成"""
         if not stats_list:
@@ -1468,12 +1503,17 @@ class KaTrainGui(Screen, KaTrainBase):
         dates = [s["date"] for s in stats_list if s["date"]]
         date_range = f"{min(dates)} to {max(dates)}" if dates else "Unknown"
 
+        # 段級位情報を収集（Phase 10-C）
+        rank_info = self._collect_rank_info(stats_list, focus_player)
+
         # Markdown生成
         lines = ["# Multi-Game Summary\n"]
         lines.append("## Meta")
         lines.append(f"- Games analyzed: {total_games}")
         if focus_player:
             lines.append(f"- Focus player: {focus_player}")
+            if rank_info:
+                lines.append(f"- Rank: {rank_info}")
         lines.append(f"- Date range: {date_range}")
         # Removed: Generated timestamp (not needed for LLM)
         lines.append("")
