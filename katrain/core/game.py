@@ -908,6 +908,75 @@ class Game(BaseGame):
             sections += [f"## Distributions (Focus: {focus_name})", *distribution_lines_for(focus_color), ""]
         sections += ["## Distributions (Black)", *distribution_lines_for("B"), ""]
         sections += ["## Distributions (White)", *distribution_lines_for("W"), ""]
+
+        # 弱点仮説セクション（Phase 7で追加）
+        def weakness_hypothesis_for(player: str, label: str) -> List[str]:
+            """単局の弱点仮説を生成"""
+            player_moves = [mv for mv in snapshot.moves if mv.player == player]
+            if not player_moves:
+                return [f"## Weakness Hypothesis ({label})", "- No data available.", ""]
+
+            # Phase × Mistake クロス集計
+            phase_mistake_loss = {}
+            phase_mistake_count = {}
+
+            for mv in player_moves:
+                if mv.points_lost is None:
+                    continue
+
+                # Phase 判定（手数ベース）
+                phase = eval_metrics.classify_game_phase(mv.move_number)
+
+                # Mistake 分類
+                loss = max(0.0, mv.points_lost)
+                if loss < 1.0:
+                    category = "GOOD"
+                elif loss < 3.0:
+                    category = "INACCURACY"
+                elif loss < 7.0:
+                    category = "MISTAKE"
+                else:
+                    category = "BLUNDER"
+
+                key = (phase, category)
+                phase_mistake_count[key] = phase_mistake_count.get(key, 0) + 1
+                if loss > 0:
+                    phase_mistake_loss[key] = phase_mistake_loss.get(key, 0.0) + loss
+
+            # 損失が大きい順にソート（GOOD は除外）
+            sorted_combos = sorted(
+                [(k, v) for k, v in phase_mistake_loss.items() if k[1] != "GOOD" and v > 0],
+                key=lambda x: x[1],
+                reverse=True
+            )
+
+            phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame"}
+            cat_names_ja = {
+                "BLUNDER": "大悪手",
+                "MISTAKE": "悪手",
+                "INACCURACY": "軽微なミス",
+            }
+
+            lines = [f"## Weakness Hypothesis ({label})", ""]
+            if sorted_combos:
+                # 上位2つの弱点を抽出
+                for i, (key, loss) in enumerate(sorted_combos[:2]):
+                    phase, category = key
+                    count = phase_mistake_count.get(key, 0)
+                    lines.append(
+                        f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** "
+                        f"({count}回、損失{loss:.1f}目)"
+                    )
+            else:
+                lines.append("- 明確な弱点パターンは検出されませんでした。")
+
+            lines.append("")
+            return lines
+
+        if focus_color:
+            focus_name = "Black" if focus_color == "B" else "White"
+            sections += weakness_hypothesis_for(focus_color, focus_name)
+
         if focus_color:
             sections += important_lines_for(focus_color, focus_label)
             sections.append("")
