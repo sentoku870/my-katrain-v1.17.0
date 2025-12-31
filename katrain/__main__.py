@@ -1430,7 +1430,8 @@ class KaTrainGui(Screen, KaTrainBase):
         if focus_player:
             lines.append(f"- Focus player: {focus_player}")
         lines.append(f"- Date range: {date_range}")
-        lines.append(f"- Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+        # Removed: Generated timestamp (not needed for LLM)
+        lines.append("")
 
         lines.append("## Overall Statistics" + (f" ({focus_player})" if focus_player else ""))
         lines.append(f"- Total games: {total_games}")
@@ -1449,28 +1450,35 @@ class KaTrainGui(Screen, KaTrainBase):
             lines.append(f"| {cat_names.get(cat.name, cat.name)} | {count} | {pct:.1f}% | {avg:.2f} |")
         lines.append("")
 
-        lines.append("## Freedom Distribution" + (f" ({focus_player})" if focus_player else ""))
-        lines.append("| Difficulty | Count | Percentage |")
-        lines.append("|------------|-------|------------|")
-        diff_names = {"EASY": "Easy (wide)", "NORMAL": "Normal", "HARD": "Hard (narrow)", "ONLY_MOVE": "Only move", "UNKNOWN": "Unknown"}
-        for diff in eval_metrics.PositionDifficulty:
-            count = freedom_totals[diff]
-            pct = (count / total_moves * 100) if total_moves > 0 else 0
-            lines.append(f"| {diff_names.get(diff.name, diff.name)} | {count} | {pct:.1f}% |")
-        lines.append("")
+        # Freedom Distribution: Only include if non-UNKNOWN values exist
+        # (Phase 8: LLM optimization - skip if 100% UNKNOWN)
+        has_real_freedom_data = any(
+            count > 0 for diff, count in freedom_totals.items()
+            if diff != eval_metrics.PositionDifficulty.UNKNOWN
+        )
 
-        lines.append("## Phase Breakdown" + (f" ({focus_player})" if focus_player else ""))
-        lines.append("| Phase | Moves | Points Lost | Avg Loss |")
-        lines.append("|-------|-------|-------------|----------|")
-        phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
-        for phase in ["opening", "middle", "yose", "unknown"]:
-            moves = phase_moves_total[phase]
-            loss = phase_loss_total[phase]
-            avg = (loss / moves) if moves > 0 else 0
-            lines.append(f"| {phase_names[phase]} | {moves} | {loss:.1f} | {avg:.2f} |")
-        lines.append("")
+        if has_real_freedom_data:
+            lines.append("## Freedom Distribution" + (f" ({focus_player})" if focus_player else ""))
+            lines.append("| Difficulty | Count | Percentage |")
+            lines.append("|------------|-------|------------|")
+            diff_names = {"EASY": "Easy (wide)", "NORMAL": "Normal", "HARD": "Hard (narrow)", "ONLY_MOVE": "Only move"}
+            for diff in eval_metrics.PositionDifficulty:
+                if diff == eval_metrics.PositionDifficulty.UNKNOWN:
+                    continue  # Skip UNKNOWN rows
+                count = freedom_totals[diff]
+                pct = (count / total_moves * 100) if total_moves > 0 else 0
+                lines.append(f"| {diff_names.get(diff.name, diff.name)} | {count} | {pct:.1f}% |")
+            lines.append("")
+        # If no real data, section is omitted entirely (saves ~150 tokens)
+
+        # Phase Breakdown: REMOVED (Phase 8: LLM optimization)
+        # Rationale: This section is fully superseded by "Phase × Mistake Breakdown" below,
+        # which contains all the same information (moves, loss per phase) plus mistake
+        # category breakdowns. Keeping both is 100% redundant for LLM consumption.
+        # The cross-tabulation provides strictly more information value.
 
         # Phase × Mistake クロス集計テーブル（Phase 6.5で追加）
+        phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
         lines.append("## Phase × Mistake Breakdown" + (f" ({focus_player})" if focus_player else ""))
         lines.append("| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |")
         lines.append("|-------|------|------------|---------|---------|------------|")

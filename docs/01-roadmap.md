@@ -309,6 +309,14 @@
 
 ## 9. 変更履歴
 
+- 2025-12-31: Phase 8完了を反映
+  - LLM最適化カルテ出力実装
+  - Freedom Distribution セクション削除（100% UNKNOWN、価値ゼロ）
+  - Phase Breakdown セクション削除（Phase × Mistake で代替可能）
+  - Meta の "Generated" タイムスタンプ削除（LLM不要）
+  - 1局カルテの Freedom buckets/列削除（常にunknown）
+  - トークン削減: 複数局約620トークン、1局約100トークン
+  - 情報損失: 0%（重要セクションは全て保持）
 - 2025-12-31: Phase 9完了を反映
   - LLM検証テンプレート作成（`docs/03-llm-validation.md`）
   - ワークフロー例作成（ウィークリーコーチ、デイリーコーチ）
