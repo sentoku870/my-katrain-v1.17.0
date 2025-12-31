@@ -1594,7 +1594,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 "thin": "薄い形 (thin)",
                 "chase_mode": "追込モード (chase mode)",
                 "too_many_choices": "候補多数 (many choices)",
-                "endgame_hint": "ヨセ局面 (endgame)"
+                "endgame_hint": "ヨセ局面 (endgame)",
+                "heavy_loss": "大損失 (heavy loss)",
+                "reading_failure": "読み抜け (reading failure)"
             }
 
             focus_suffix = f" ({focus_player})" if focus_player else ""
