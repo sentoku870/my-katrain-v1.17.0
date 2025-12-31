@@ -316,6 +316,7 @@ def get_reason_tags_for_move(
 
     # タグ 1: atari（打った手の周辺3マス以内のアタリのみ検出）
     move_coord = node.move.coords if node.move else None
+    has_atari = False
     if move_coord:
         nearby_atari_groups = [
             g for g in my_groups
@@ -326,9 +327,10 @@ def get_reason_tags_for_move(
         ]
         if nearby_atari_groups:
             tags.append("atari")
+            has_atari = True
 
-    # タグ 2: low_liberties（atariでない場合）
-    elif any(g.is_low_liberty for g in my_groups):
+    # タグ 2: low_liberties（atari と併存可能に変更）
+    if not has_atari and any(g.is_low_liberty for g in my_groups):
         tags.append("low_liberties")
 
     # タグ 3: cut_risk
@@ -356,8 +358,29 @@ def get_reason_tags_for_move(
     # if len(candidates) >= 10:
     #     tags.append("too_many_choices")
 
-    # タグ 8: endgame_hint
+    # タグ 8: endgame_hint（条件緩和: yoseタグまたは後半70%以降）
+    is_endgame = False
     if hasattr(move_eval, 'tag') and move_eval.tag == "yose":
+        is_endgame = True
+    elif hasattr(move_eval, 'move_number'):
+        # 手数が不明な場合は総手数を推定（重要局面の最大手数から推定）
+        # ここでは簡易的に move_number > 150 をヨセとみなす
+        if move_eval.move_number > 150:
+            is_endgame = True
+
+    if is_endgame:
         tags.append("endgame_hint")
+
+    # タグ 9: heavy_loss（大損失: 15目以上）
+    if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
+        if move_eval.points_lost >= 15:
+            tags.append("heavy_loss")
+
+    # タグ 10: reading_failure（読み抜け: 急場見逃しパターンの一部）
+    # 注: 急場見逃しパターン全体の検出は __main__.py で実施済み
+    # ここでは簡易版として、大損失 + 危険度高い場合を検出
+    if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
+        if move_eval.points_lost >= 20 and max_my_danger >= 40:
+            tags.append("reading_failure")
 
     return tags
