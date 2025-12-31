@@ -863,12 +863,12 @@ class Game(BaseGame):
 
         def distribution_lines_for(player: str) -> List[str]:
             if histogram is None:
-                return ["- Mistake buckets: unknown", "- Freedom buckets: unknown"]
+                return ["- Mistake buckets: unknown"]
             lines = ["- Mistake buckets (points lost):"]
             for idx, bucket in enumerate(histogram):
                 label = bucket_label(idx)
                 lines.append(f"  - {label}: {bucket[player]}")
-            lines.append("- Freedom buckets: unknown")
+            # Removed: "Freedom buckets: unknown" (Phase 8: always unknown, no value for LLM)
             return lines
 
         # Important moves table (top N derived from existing settings)
@@ -878,15 +878,15 @@ class Game(BaseGame):
             player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
             lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
             if player_moves:
-                lines.append("| # | P | Coord | Loss | Mistake | Freedom |")
-                lines.append("|---|---|-------|------|---------|---------|")
+                lines.append("| # | P | Coord | Loss | Mistake |")
+                lines.append("|---|---|-------|------|---------|")
                 for mv in player_moves:
                     loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
                     mistake = mistake_label_from_loss(loss)
-                    freedom = mv.position_difficulty.value if mv.position_difficulty else "unknown"
+                    # Removed: Freedom column (Phase 8: always "unknown", no value for LLM)
                     lines.append(
                         f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                        f"{fmt_float(loss)} | {mistake} | {freedom} |"
+                        f"{fmt_float(loss)} | {mistake} |"
                     )
             else:
                 lines.append("- No important moves found.")
