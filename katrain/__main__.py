@@ -883,6 +883,704 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_contents.filesel.on_submit = save_report
         save_popup.open()
 
+    def _do_export_summary(self, *args, **kwargs):
+        # export_summary is executed from _message_loop_thread (NOT the main Kivy thread).
+        # Any Kivy UI creation must happen on the main thread.
+        Clock.schedule_once(lambda dt: self._do_export_summary_ui(*args, **kwargs), 0)
+
+    def _do_export_summary_ui(self, *args, **kwargs):
+        """ディレクトリ選択とまとめ生成（自動分類）"""
+        # ディレクトリ選択ダイアログ
+        popup_contents = LoadSGFPopup(self)
+        popup_contents.filesel.dirselect = True  # ディレクトリ選択モード
+
+        load_popup = Popup(
+            title="Select directory containing SGF files",
+            size=[dp(1200), dp(800)],
+            content=popup_contents
+        ).__self__
+
+        def process_directory(*_args):
+            selected_path = popup_contents.filesel.path
+
+            if not selected_path or not os.path.isdir(selected_path):
+                load_popup.dismiss()
+                Popup(
+                    title="Error",
+                    content=Label(
+                        text="Please select a valid directory.",
+                        halign="center",
+                        valign="middle"
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open()
+                return
+
+            # ディレクトリ内の全SGFファイルを取得
+            sgf_files = []
+            for file in os.listdir(selected_path):
+                if file.lower().endswith('.sgf'):
+                    sgf_files.append(os.path.join(selected_path, file))
+
+            if len(sgf_files) < 2:
+                load_popup.dismiss()
+                Popup(
+                    title="Error",
+                    content=Label(
+                        text=f"Found only {len(sgf_files)} SGF file(s).\nNeed at least 2 games for summary.",
+                        halign="center",
+                        valign="middle"
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open()
+                return
+
+            load_popup.dismiss()
+
+            # プレイヤー名をスキャン（バックグラウンド）
+            import threading
+            threading.Thread(
+                target=self._scan_and_show_player_selection,
+                args=(sgf_files,),
+                daemon=True
+            ).start()
+
+        popup_contents.filesel.on_success = process_directory
+        load_popup.open()
+
+    def _extract_analysis_from_sgf_node(self, node) -> dict:
+        """SGFノードのKTプロパティから解析データを抽出"""
+        import base64
+        import gzip
+        import json
+
+        # CRITICAL: GameNode.add_list_property() は KT プロパティを
+        # node.properties ではなく node.analysis_from_sgf に保存する
+        kt_data = getattr(node, 'analysis_from_sgf', None)
+
+        if not kt_data:
+            return None
+
+        try:
+            # KTプロパティは複数の圧縮データのリスト
+            if not isinstance(kt_data, list):
+                return None
+
+            if len(kt_data) < 3:
+                return None
+
+            # 3番目が main_data（スコア等のJSON）
+            main_data = gzip.decompress(base64.standard_b64decode(kt_data[2]))
+            analysis = json.loads(main_data)
+            return analysis
+
+        except Exception as e:
+            return None
+
+    def _extract_sgf_statistics(self, path: str) -> dict:
+        """SGFファイルから統計データを直接抽出（KTプロパティ解析）"""
+        try:
+            move_tree = KaTrainSGF.parse_file(path)
+            nodes = list(move_tree.nodes_in_tree)
+
+            # メタデータ
+            player_black = move_tree.get_property("PB", "Black")
+            player_white = move_tree.get_property("PW", "White")
+            handicap = int(move_tree.get_property("HA", "0"))
+            date = move_tree.get_property("DT", None)
+            board_size_prop = move_tree.get_property("SZ", "19")
+            try:
+                board_size = (int(board_size_prop), int(board_size_prop))
+            except:
+                board_size = (19, 19)
+
+            # 統計用カウンター
+            stats = {
+                "game_name": os.path.basename(path),
+                "player_black": player_black,
+                "player_white": player_white,
+                "handicap": handicap,
+                "date": date,
+                "board_size": board_size,
+                "total_moves": 0,
+                "total_points_lost": 0.0,
+                "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
+                "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+                "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
+                "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
+                "worst_moves": [],  # (move_number, player, gtp, points_lost, category)
+            }
+
+            prev_score = None
+            moves_with_kt = 0
+            moves_with_analysis = 0
+            move_count = 0
+            for i, node in enumerate(nodes):
+                # 手があるノードのみ処理
+                move_prop = node.get_property("B") or node.get_property("W")
+                if not move_prop:
+                    continue
+
+                move_count += 1
+                player = "B" if node.get_property("B") else "W"
+                gtp = move_prop
+
+                # KTプロパティから解析データを取得
+                analysis = self._extract_analysis_from_sgf_node(node)
+                if analysis:
+                    moves_with_kt += 1
+                if not analysis or "root" not in analysis or not analysis["root"]:
+                    continue
+                moves_with_analysis += 1
+
+                score = analysis["root"].get("scoreLead")
+                if score is None:
+                    prev_score = None
+                    continue
+
+                # points_lost を計算（親ノードとのスコア差）
+                points_lost = None
+                if prev_score is not None:
+                    player_sign = 1 if player == "B" else -1
+                    points_lost = player_sign * (prev_score - score)
+
+                prev_score = score
+
+                # 解析データがある手は全てカウント
+                if points_lost is not None:
+                    stats["total_moves"] += 1
+
+                    # 損失は正の値のみ加算
+                    if points_lost > 0:
+                        stats["total_points_lost"] += points_lost
+
+                    # ミス分類（負の損失は"良い手"としてカウント）
+                    category = eval_metrics.classify_mistake(max(0, points_lost), None)
+                    stats["mistake_counts"][category] += 1
+
+                    # Freedom（未実装の場合はUNKNOWN）
+                    freedom = eval_metrics.PositionDifficulty.UNKNOWN
+                    stats["freedom_counts"][freedom] += 1
+
+                    # Phase（簡易版：手数ベース）
+                    move_number = i
+                    if move_number < 50:
+                        phase = "opening"
+                    elif move_number < 200:
+                        phase = "middle"
+                    else:
+                        phase = "yose"
+
+                    stats["phase_moves"][phase] += 1
+                    if points_lost > 0:
+                        stats["phase_loss"][phase] += points_lost
+
+                    # Importance を簡易計算（points_lost をベースに）
+                    # 本来は delta_score, delta_winrate, swing_bonus を考慮するが、
+                    # SGF直接パースではそれらが取れないため、points_lost をそのまま使用
+                    importance = max(0, points_lost)
+
+                    # Worst moves記録（損失がある手のみ）
+                    if points_lost > 0.5:  # 閾値: 0.5目以上の損失
+                        stats["worst_moves"].append((move_number, player, gtp, points_lost, importance, category))
+
+            # Worst movesをソート（損失の大きい順）
+            stats["worst_moves"].sort(key=lambda x: x[3], reverse=True)
+            stats["worst_moves"] = stats["worst_moves"][:10]  # Top 10
+
+            return stats
+
+        except Exception as e:
+            self.log(f"Failed to extract statistics from {path}: {e}", OUTPUT_ERROR)
+            import traceback
+            self.log(traceback.format_exc(), OUTPUT_ERROR)
+            return None
+
+    def _scan_player_names(self, sgf_files: list) -> dict:
+        """SGFファイルから全プレイヤー名をスキャン（出現回数付き）"""
+        player_counts = {}  # {player_name: count}
+
+        for path in sgf_files:
+            try:
+                move_tree = KaTrainSGF.parse_file(path)
+                player_black = move_tree.get_property("PB", "").strip()
+                player_white = move_tree.get_property("PW", "").strip()
+
+                # 空でないプレイヤー名をカウント
+                if player_black:
+                    player_counts[player_black] = player_counts.get(player_black, 0) + 1
+                if player_white:
+                    player_counts[player_white] = player_counts.get(player_white, 0) + 1
+
+            except Exception as e:
+                self.log(f"Failed to scan {path}: {e}", OUTPUT_ERROR)
+
+        return player_counts
+
+    def _scan_and_show_player_selection(self, sgf_files: list):
+        """プレイヤー名をスキャンして選択ダイアログを表示"""
+        player_counts = self._scan_player_names(sgf_files)
+
+        if not player_counts:
+            Clock.schedule_once(
+                lambda dt: Popup(
+                    title="Error",
+                    content=Label(
+                        text="No player names found in SGF files.",
+                        halign="center",
+                        valign="middle"
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open(),
+                0
+            )
+            return
+
+        # 出現回数でソート（多い順）
+        sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
+
+        # 選択ダイアログを表示（UIスレッドで）
+        Clock.schedule_once(
+            lambda dt: self._show_player_selection_dialog(sorted_players, sgf_files),
+            0
+        )
+
+    def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
+        """プレイヤー選択ダイアログを表示"""
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.checkbox import CheckBox
+        from kivy.uix.button import Button
+        from kivy.uix.scrollview import ScrollView
+
+        # チェックボックスリスト
+        checkbox_dict = {}  # {player_name: CheckBox}
+
+        content_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
+
+        # 説明ラベル
+        instruction_label = Label(
+            text="Select players to include in summary:",
+            size_hint_y=None,
+            height=dp(30),
+            halign="left",
+            valign="middle"
+        )
+        instruction_label.bind(size=instruction_label.setter('text_size'))
+        content_layout.add_widget(instruction_label)
+
+        # スクロール可能なチェックボックスリスト
+        scroll_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
+        scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
+
+        for player_name, count in sorted_players:
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
+
+            checkbox = CheckBox(size_hint_x=None, width=dp(40))
+            # デフォルトで最も多いプレイヤーを選択
+            if player_name == sorted_players[0][0]:
+                checkbox.active = True
+
+            checkbox_dict[player_name] = checkbox
+
+            label = Label(
+                text=f"{player_name} ({count} games)",
+                size_hint_x=1.0,
+                halign="left",
+                valign="middle"
+            )
+            label.bind(size=label.setter('text_size'))
+
+            row.add_widget(checkbox)
+            row.add_widget(label)
+            scroll_layout.add_widget(row)
+
+        scroll_view = ScrollView(size_hint=(1, 1))
+        scroll_view.add_widget(scroll_layout)
+        content_layout.add_widget(scroll_view)
+
+        # OKボタン
+        button_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+
+        def on_ok(*args):
+            selected_players = [name for name, cb in checkbox_dict.items() if cb.active]
+
+            if not selected_players:
+                # 警告
+                Popup(
+                    title="Warning",
+                    content=Label(
+                        text="Please select at least one player.",
+                        halign="center",
+                        valign="middle"
+                    ),
+                    size_hint=(0.4, 0.2),
+                ).open()
+                return
+
+            selection_popup.dismiss()
+
+            # 進行状況ポップアップ
+            progress_label = Label(
+                text=f"Processing {len(sgf_files)} games...",
+                halign="center",
+                valign="middle"
+            )
+            progress_popup = Popup(
+                title="Generating Summary",
+                content=progress_label,
+                size_hint=(0.5, 0.3),
+                auto_dismiss=False
+            )
+            progress_popup.open()
+
+            # バックグラウンドで処理
+            import threading
+            threading.Thread(
+                target=self._process_and_export_summary,
+                args=(sgf_files, progress_popup, selected_players),
+                daemon=True
+            ).start()
+
+        ok_button = Button(text="OK")
+        ok_button.bind(on_release=on_ok)
+        button_layout.add_widget(ok_button)
+
+        content_layout.add_widget(button_layout)
+
+        selection_popup = Popup(
+            title="Select Players",
+            content=content_layout,
+            size_hint=(0.6, 0.7),
+        )
+        selection_popup.open()
+
+    def _process_and_export_summary(self, sgf_paths: list, progress_popup, selected_players: list = None):
+        """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）"""
+        game_stats_list = []
+
+        for i, path in enumerate(sgf_paths):
+            try:
+                # 進行状況更新（UI）
+                Clock.schedule_once(
+                    lambda dt, i=i, path=path: setattr(
+                        progress_popup.content,
+                        "text",
+                        f"Processing {i+1}/{len(sgf_paths)}...\n{os.path.basename(path)}"
+                    ),
+                    0
+                )
+
+                # SGFから統計を直接抽出
+                stats = self._extract_sgf_statistics(path)
+                if not stats:
+                    self.log(f"Skipping {path}: Failed to extract statistics", OUTPUT_INFO)
+                    continue
+
+                # 解析データがほとんどない場合はスキップ
+                if stats["total_moves"] < 10:
+                    self.log(f"Skipping {path}: Too few analyzed moves ({stats['total_moves']})", OUTPUT_INFO)
+                    continue
+
+                # プレイヤーフィルタリング（selected_playersが指定されている場合）
+                if selected_players:
+                    player_black = stats["player_black"]
+                    player_white = stats["player_white"]
+                    if player_black not in selected_players and player_white not in selected_players:
+                        # どちらのプレイヤーも選択されていない場合はスキップ
+                        self.log(f"Skipping {path}: Players not in selection", OUTPUT_INFO)
+                        continue
+
+                game_stats_list.append(stats)
+
+            except Exception as e:
+                self.log(f"Failed to process {path}: {e}", OUTPUT_ERROR)
+
+        if not game_stats_list:
+            # 処理できた対局がない
+            Clock.schedule_once(lambda dt: progress_popup.dismiss(), 0)
+            Clock.schedule_once(
+                lambda dt: Popup(
+                    title="Error",
+                    content=Label(
+                        text="No games could be processed.\nCheck that games have analysis data.",
+                        halign="center",
+                        valign="middle"
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open(),
+                0
+            )
+            return
+
+        # ゲームを自動分類（互先/置碁）
+        # selected_playersが1人の場合はfocus_playerとして使用、複数/なしの場合はNone
+        focus_player = selected_players[0] if selected_players and len(selected_players) == 1 else None
+        categorized_games = self._categorize_games_by_stats(game_stats_list, focus_player)
+
+        # 各カテゴリごとにまとめレポート生成
+        Clock.schedule_once(
+            lambda dt: self._save_categorized_summaries_from_stats(categorized_games, focus_player, progress_popup),
+            0
+        )
+
+    def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
+        """統計データから対局を分類（互先/置碁）"""
+        categories = {
+            "even": [],          # 互先
+            "handi_weak": [],    # 置碁（下手・黒）
+            "handi_strong": [],  # 置碁（上手・白）
+        }
+
+        for stats in game_stats_list:
+            handicap = stats["handicap"]
+
+            # focus_playerが設定されている場合のみフィルタリング
+            if focus_player:
+                is_black = (stats["player_black"] == focus_player)
+                is_white = (stats["player_white"] == focus_player)
+
+                # focus_playerが対局者でない場合はスキップ
+                if not is_black and not is_white:
+                    continue
+
+                # 分類
+                if handicap == 0:
+                    # 互先（黒白統合）
+                    categories["even"].append(stats)
+                elif handicap >= 2:
+                    # 置碁
+                    if is_black:
+                        categories["handi_weak"].append(stats)  # 下手（黒）
+                    else:
+                        categories["handi_strong"].append(stats)  # 上手（白）
+            else:
+                # focus_playerが未設定の場合は全ゲームを分類
+                if handicap == 0:
+                    categories["even"].append(stats)
+                elif handicap >= 2:
+                    # ハンデ戦は黒が下手、白が上手
+                    # 両方のプレイヤーのゲームを適切なカテゴリに入れる
+                    # （後でfocus_playerなしでレポート生成するため）
+                    categories["handi_weak"].append(stats)
+                    # 注: focus_playerなしの場合、上手/下手を分けるのは困難なため、
+                    # 下手（黒）のみを集計する
+
+        return categories
+
+    def _build_summary_from_stats(self, stats_list: list, focus_player: str = None) -> str:
+        """統計dictリストからsummaryテキストを生成"""
+        if not stats_list:
+            return "# Multi-Game Summary\n\nNo games provided."
+
+        # 集計
+        total_games = len(stats_list)
+        total_moves = sum(s["total_moves"] for s in stats_list)
+        total_loss = sum(s["total_points_lost"] for s in stats_list)
+        avg_loss = total_loss / total_moves if total_moves > 0 else 0.0
+
+        # ミス分類の集計
+        mistake_totals = {cat: 0 for cat in eval_metrics.MistakeCategory}
+        for stats in stats_list:
+            for cat, count in stats["mistake_counts"].items():
+                mistake_totals[cat] += count
+
+        # Freedom の集計
+        freedom_totals = {diff: 0 for diff in eval_metrics.PositionDifficulty}
+        for stats in stats_list:
+            for diff, count in stats["freedom_counts"].items():
+                freedom_totals[diff] += count
+
+        # Phase の集計
+        phase_moves_total = {"opening": 0, "middle": 0, "yose": 0, "unknown": 0}
+        phase_loss_total = {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0}
+        for stats in stats_list:
+            for phase in phase_moves_total:
+                phase_moves_total[phase] += stats["phase_moves"][phase]
+                phase_loss_total[phase] += stats["phase_loss"][phase]
+
+        # Worst moves の集計
+        all_worst_moves = []
+        for stats in stats_list:
+            game_name = stats["game_name"]
+            for move_num, player, gtp, loss, importance, cat in stats["worst_moves"]:
+                all_worst_moves.append((game_name, move_num, player, gtp, loss, importance, cat))
+        all_worst_moves.sort(key=lambda x: x[5], reverse=True)  # importance でソート
+        all_worst_moves = all_worst_moves[:10]
+
+        # 日付範囲
+        dates = [s["date"] for s in stats_list if s["date"]]
+        date_range = f"{min(dates)} to {max(dates)}" if dates else "Unknown"
+
+        # Markdown生成
+        lines = ["# Multi-Game Summary\n"]
+        lines.append("## Meta")
+        lines.append(f"- Games analyzed: {total_games}")
+        if focus_player:
+            lines.append(f"- Focus player: {focus_player}")
+        lines.append(f"- Date range: {date_range}")
+        lines.append(f"- Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+
+        lines.append("## Overall Statistics" + (f" ({focus_player})" if focus_player else ""))
+        lines.append(f"- Total games: {total_games}")
+        lines.append(f"- Total moves analyzed: {total_moves}")
+        lines.append(f"- Total points lost: {total_loss:.1f}")
+        lines.append(f"- Average points lost per move: {avg_loss:.2f}\n")
+
+        lines.append("## Mistake Distribution" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("| Category | Count | Percentage | Avg Loss |")
+        lines.append("|----------|-------|------------|----------|")
+        cat_names = {"GOOD": "Good", "INACCURACY": "Inaccuracy", "MISTAKE": "Mistake", "BLUNDER": "Blunder"}
+        for cat in eval_metrics.MistakeCategory:
+            count = mistake_totals[cat]
+            pct = (count / total_moves * 100) if total_moves > 0 else 0
+            avg = (sum(s["total_points_lost"] for s in stats_list if s["mistake_counts"][cat] > 0) / count) if count > 0 else 0
+            lines.append(f"| {cat_names.get(cat.name, cat.name)} | {count} | {pct:.1f}% | {avg:.2f} |")
+        lines.append("")
+
+        lines.append("## Freedom Distribution" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("| Difficulty | Count | Percentage |")
+        lines.append("|------------|-------|------------|")
+        diff_names = {"EASY": "Easy (wide)", "NORMAL": "Normal", "HARD": "Hard (narrow)", "ONLY_MOVE": "Only move", "UNKNOWN": "Unknown"}
+        for diff in eval_metrics.PositionDifficulty:
+            count = freedom_totals[diff]
+            pct = (count / total_moves * 100) if total_moves > 0 else 0
+            lines.append(f"| {diff_names.get(diff.name, diff.name)} | {count} | {pct:.1f}% |")
+        lines.append("")
+
+        lines.append("## Phase Breakdown" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("| Phase | Moves | Points Lost | Avg Loss |")
+        lines.append("|-------|-------|-------------|----------|")
+        phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
+        for phase in ["opening", "middle", "yose", "unknown"]:
+            moves = phase_moves_total[phase]
+            loss = phase_loss_total[phase]
+            avg = (loss / moves) if moves > 0 else 0
+            lines.append(f"| {phase_names[phase]} | {moves} | {loss:.1f} | {avg:.2f} |")
+        lines.append("")
+
+        lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
+        if all_worst_moves:
+            lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
+            lines.append("|------|---|---|-------|------|------------|----------|")
+            for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves:
+                lines.append(f"| {game_name[:20]} | {move_num} | {player} | {gtp} | {loss:.1f} | {importance:.1f} | {cat.name} |")
+        else:
+            lines.append("- No significant mistakes found.")
+        lines.append("")
+
+        lines.append("## Practice Priorities" + (f" ({focus_player})" if focus_player else ""))
+        lines.append("\nBased on the data above, consider focusing on:\n")
+        # 簡易版: 最も損失が大きいphaseを提案
+        if total_moves > 0:
+            worst_phase = max(phase_loss_total.items(), key=lambda x: x[1])
+            if worst_phase[1] > 0:
+                lines.append(f"- Improve {phase_names[worst_phase[0]]} play ({worst_phase[1]:.1f} points lost)")
+        else:
+            lines.append("- No specific priorities identified. Keep up the good work!")
+
+        return "\n".join(lines)
+
+    def _save_categorized_summaries_from_stats(self, categorized_games: dict, player_name: str, progress_popup):
+        """カテゴリごとにsummary.mdを保存"""
+        progress_popup.dismiss()
+
+        category_labels = {
+            "even": "互先",
+            "handi_weak": "置碁下手",
+            "handi_strong": "置碁上手",
+        }
+
+        saved_files = []
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+
+        # reports/ ディレクトリ
+        default_path = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
+        os.makedirs(default_path, exist_ok=True)
+
+        for category, games in categorized_games.items():
+            if len(games) < 2:
+                # 2局未満はスキップ
+                continue
+
+            try:
+                # 統計dictから直接まとめレポート生成
+                summary_text = self._build_summary_from_stats(games, player_name)
+
+                # ファイル名
+                label = category_labels[category]
+                filename = f"summary_{label}_{timestamp}.md"
+                full_path = os.path.join(default_path, filename)
+
+                # 保存
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(summary_text)
+
+                saved_files.append(full_path)
+                self.log(f"Summary saved: {full_path}", OUTPUT_INFO)
+
+            except Exception as exc:
+                self.log(f"Failed to save summary for {category}: {exc}", OUTPUT_ERROR)
+
+        # 結果ポップアップ
+        if saved_files:
+            files_text = "\n".join([os.path.basename(f) for f in saved_files])
+            Popup(
+                title="Summaries exported",
+                content=Label(
+                    text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}",
+                    halign="center",
+                    valign="middle"
+                ),
+                size_hint=(0.6, 0.5),
+            ).open()
+            self.controls.set_status(f"{len(saved_files)} summaries exported", STATUS_INFO, check_level=False)
+        else:
+            Popup(
+                title="No summaries generated",
+                content=Label(
+                    text="No categories had enough games (need 2+).\nCheck that focus_player matches SGF player names.",
+                    halign="center",
+                    valign="middle"
+                ),
+                size_hint=(0.5, 0.3),
+            ).open()
+
+    def _save_summary_file(self, summary_text: str, player_name: str, progress_popup):
+        """まとめファイルを保存"""
+        progress_popup.dismiss()
+
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+        filename = f"summary_{player_name or 'all'}_{timestamp}.md"
+
+        # reports/ ディレクトリに保存
+        default_path = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
+        os.makedirs(default_path, exist_ok=True)
+        full_path = os.path.join(default_path, filename)
+
+        try:
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(summary_text)
+
+            # クリップボードにコピー
+            try:
+                Clipboard.copy(summary_text)
+            except Exception as exc:
+                self.log(f"Clipboard copy failed: {exc}", OUTPUT_DEBUG)
+
+            self.controls.set_status(f"Summary exported to {full_path}", STATUS_INFO, check_level=False)
+            Popup(
+                title="Summary exported",
+                content=Label(text=f"Saved to:\n{full_path}", halign="center", valign="middle"),
+                size_hint=(0.5, 0.3),
+            ).open()
+        except Exception as exc:
+            self.log(f"Failed to export Summary to {full_path}: {exc}", OUTPUT_ERROR)
+            Popup(
+                title="Error",
+                content=Label(text=f"Failed to save:\n{exc}", halign="center", valign="middle"),
+                size_hint=(0.5, 0.3),
+            ).open()
+
     def _do_quiz_popup(self):
         if not self.game:
             return

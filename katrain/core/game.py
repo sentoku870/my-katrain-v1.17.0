@@ -11,11 +11,14 @@ from kivy.clock import Clock
 from . import eval_metrics
 from .eval_metrics import (
     EvalSnapshot,
+    GameSummaryData,
     MistakeCategory,
     MoveEval,
-    QuizItem,
+    PositionDifficulty,
     QuizChoice,
+    QuizItem,
     QuizQuestion,
+    SummaryStats,
     quiz_items_from_snapshot,
     quiz_points_lost_from_candidate,
     snapshot_from_game,
@@ -912,6 +915,290 @@ class Game(BaseGame):
         sections.append("")
         sections += important_lines_for("W", "White")
         return "\n".join(sections)
+
+    @staticmethod
+    def build_summary_report(
+        game_data_list: List[GameSummaryData],
+        focus_player: Optional[str] = None
+    ) -> str:
+        """
+        複数局から統計まとめを生成（Phase 6）
+
+        Args:
+            game_data_list: 各対局のデータリスト
+            focus_player: 集計対象プレイヤー名（Noneなら全プレイヤー）
+
+        Returns:
+            Markdown形式のまとめレポート
+        """
+        if not game_data_list:
+            return "# Multi-Game Summary\n\nNo games provided."
+
+        # プレイヤー別に統計を集計
+        player_stats = Game._aggregate_player_stats(game_data_list, focus_player)
+
+        # Markdownセクションをフォーマット
+        sections = ["# Multi-Game Summary\n"]
+        sections.append(Game._format_meta_section(game_data_list, focus_player))
+
+        for player, stats in player_stats.items():
+            sections.append("")
+            sections.append(Game._format_overall_stats(player, stats))
+            sections.append("")
+            sections.append(Game._format_mistake_distribution(player, stats))
+            sections.append("")
+            sections.append(Game._format_freedom_distribution(player, stats))
+            sections.append("")
+            sections.append(Game._format_phase_breakdown(player, stats))
+            sections.append("")
+            sections.append(Game._format_top_worst_moves(player, stats))
+            sections.append("")
+            sections.append(Game._format_practice_priorities(player, stats))
+
+        return "\n".join(sections)
+
+    @staticmethod
+    def _aggregate_player_stats(
+        game_data_list: List[GameSummaryData],
+        focus_player: Optional[str] = None
+    ) -> Dict[str, SummaryStats]:
+        """プレイヤー別に統計を集計"""
+        player_stats: Dict[str, SummaryStats] = {}
+
+        for game_data in game_data_list:
+            for player_color in ["B", "W"]:
+                player_name = (
+                    game_data.player_black if player_color == "B"
+                    else game_data.player_white
+                )
+
+                # focus_player指定がある場合、それ以外はスキップ
+                if focus_player and player_name != focus_player:
+                    continue
+
+                # プレイヤー統計を初期化
+                if player_name not in player_stats:
+                    player_stats[player_name] = SummaryStats(
+                        player_name=player_name,
+                        mistake_counts={cat: 0 for cat in MistakeCategory},
+                        mistake_total_loss={cat: 0.0 for cat in MistakeCategory},
+                        freedom_counts={diff: 0 for diff in PositionDifficulty},
+                        phase_moves={"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
+                        phase_loss={"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
+                    )
+
+                stats = player_stats[player_name]
+                stats.total_games += 1
+
+                # このプレイヤーの手のみを集計
+                player_moves = [m for m in game_data.snapshot.moves if m.player == player_color]
+                stats.total_moves += len(player_moves)
+
+                for move in player_moves:
+                    # 損失を集計
+                    loss = move.points_lost if move.points_lost is not None else move.score_loss
+                    if loss:
+                        stats.total_points_lost += loss
+
+                    # ミス分類を集計
+                    if move.mistake_category:
+                        stats.mistake_counts[move.mistake_category] += 1
+                        if loss:
+                            stats.mistake_total_loss[move.mistake_category] += loss
+
+                    # Freedom（手の自由度）を集計
+                    if move.position_difficulty:
+                        stats.freedom_counts[move.position_difficulty] += 1
+
+                    # 局面タイプを集計
+                    phase = move.tag or "unknown"
+                    stats.phase_moves[phase] = stats.phase_moves.get(phase, 0) + 1
+                    if loss:
+                        stats.phase_loss[phase] = stats.phase_loss.get(phase, 0.0) + loss
+
+                    # 最悪手を記録（Top 10を保持）
+                    if loss and loss > 0.5:  # 0.5目以上の損失のみ
+                        stats.worst_moves.append((game_data.game_name, move))
+
+        # 各プレイヤーの統計を完成させる
+        for stats in player_stats.values():
+            if stats.total_moves > 0:
+                stats.avg_points_lost_per_move = stats.total_points_lost / stats.total_moves
+
+            # 最悪手をソートしてTop 10に絞る
+            stats.worst_moves.sort(key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True)
+            stats.worst_moves = stats.worst_moves[:10]
+
+        return player_stats
+
+    @staticmethod
+    def _format_meta_section(game_data_list: List[GameSummaryData], focus_player: Optional[str]) -> str:
+        """メタ情報セクションを生成"""
+        lines = ["## Meta"]
+        lines.append(f"- Games analyzed: {len(game_data_list)}")
+
+        # プレイヤー情報
+        all_players = set()
+        for gd in game_data_list:
+            all_players.add(gd.player_black)
+            all_players.add(gd.player_white)
+
+        if focus_player:
+            lines.append(f"- Focus player: {focus_player}")
+        else:
+            lines.append(f"- Players: {', '.join(sorted(all_players))}")
+
+        # 日付範囲
+        dates = [gd.date for gd in game_data_list if gd.date]
+        if dates:
+            lines.append(f"- Date range: {min(dates)} to {max(dates)}")
+
+        # 生成日時
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        lines.append(f"- Generated: {now}")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_overall_stats(player_name: str, stats: SummaryStats) -> str:
+        """総合統計セクションを生成"""
+        lines = [f"## Overall Statistics ({player_name})"]
+        lines.append(f"- Total games: {stats.total_games}")
+        lines.append(f"- Total moves analyzed: {stats.total_moves}")
+        lines.append(f"- Total points lost: {stats.total_points_lost:.1f}")
+        lines.append(f"- Average points lost per move: {stats.avg_points_lost_per_move:.2f}")
+
+        if stats.worst_moves:
+            worst_game, worst_move = stats.worst_moves[0]
+            loss = worst_move.points_lost if worst_move.points_lost else worst_move.score_loss
+            lines.append(
+                f"- Worst single move: {worst_game} #{worst_move.move_number} "
+                f"{worst_move.gtp or '-'} ({loss:.1f} points)"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_mistake_distribution(player_name: str, stats: SummaryStats) -> str:
+        """ミス分類分布セクションを生成"""
+        lines = [f"## Mistake Distribution ({player_name})"]
+        lines.append("| Category | Count | Percentage | Avg Loss |")
+        lines.append("|----------|-------|------------|----------|")
+
+        category_labels = {
+            MistakeCategory.GOOD: "Good",
+            MistakeCategory.INACCURACY: "Inaccuracy",
+            MistakeCategory.MISTAKE: "Mistake",
+            MistakeCategory.BLUNDER: "Blunder",
+        }
+
+        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
+                    MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+            count = stats.mistake_counts.get(cat, 0)
+            pct = stats.get_mistake_percentage(cat)
+            avg_loss = stats.get_mistake_avg_loss(cat)
+            lines.append(
+                f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_freedom_distribution(player_name: str, stats: SummaryStats) -> str:
+        """Freedom（手の自由度）分布セクションを生成"""
+        lines = [f"## Freedom Distribution ({player_name})"]
+        lines.append("| Difficulty | Count | Percentage |")
+        lines.append("|------------|-------|------------|")
+
+        difficulty_labels = {
+            PositionDifficulty.EASY: "Easy (wide)",
+            PositionDifficulty.NORMAL: "Normal",
+            PositionDifficulty.HARD: "Hard (narrow)",
+            PositionDifficulty.ONLY_MOVE: "Only move",
+        }
+
+        for diff in [PositionDifficulty.EASY, PositionDifficulty.NORMAL,
+                     PositionDifficulty.HARD, PositionDifficulty.ONLY_MOVE]:
+            count = stats.freedom_counts.get(diff, 0)
+            pct = stats.get_freedom_percentage(diff)
+            lines.append(
+                f"| {difficulty_labels[diff]} | {count} | {pct:.1f}% |"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_phase_breakdown(player_name: str, stats: SummaryStats) -> str:
+        """局面タイプ別内訳セクションを生成"""
+        lines = [f"## Phase Breakdown ({player_name})"]
+        lines.append("| Phase | Moves | Points Lost | Avg Loss |")
+        lines.append("|-------|-------|-------------|----------|")
+
+        phase_labels = {
+            "opening": "Opening",
+            "middle": "Middle game",
+            "yose": "Endgame",
+            "unknown": "Unknown",
+        }
+
+        for phase in ["opening", "middle", "yose", "unknown"]:
+            count = stats.phase_moves.get(phase, 0)
+            loss = stats.phase_loss.get(phase, 0.0)
+            avg_loss = stats.get_phase_avg_loss(phase)
+            lines.append(
+                f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_top_worst_moves(player_name: str, stats: SummaryStats) -> str:
+        """最悪手Top 10セクションを生成"""
+        lines = [f"## Top Worst Moves ({player_name})"]
+
+        if not stats.worst_moves:
+            lines.append("- No significant mistakes found.")
+            return "\n".join(lines)
+
+        lines.append("| Game | # | P | Coord | Loss | Mistake |")
+        lines.append("|------|---|---|-------|------|---------|")
+
+        mistake_labels = {
+            MistakeCategory.GOOD: "good",
+            MistakeCategory.INACCURACY: "inaccuracy",
+            MistakeCategory.MISTAKE: "mistake",
+            MistakeCategory.BLUNDER: "blunder",
+        }
+
+        for game_name, move in stats.worst_moves:
+            loss = move.points_lost if move.points_lost else move.score_loss
+            mistake = mistake_labels.get(move.mistake_category, "unknown")
+            # ゲーム名が長い場合は短縮
+            short_game = game_name[:20] + "..." if len(game_name) > 23 else game_name
+            lines.append(
+                f"| {short_game} | {move.move_number} | {move.player or '-'} | "
+                f"{move.gtp or '-'} | {loss:.1f} | {mistake} |"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_practice_priorities(player_name: str, stats: SummaryStats) -> str:
+        """練習優先事項セクションを生成"""
+        lines = [f"## Practice Priorities ({player_name})"]
+        lines.append("")
+        lines.append("Based on the data above, consider focusing on:")
+        lines.append("")
+
+        priorities = stats.get_practice_priorities()
+
+        if not priorities:
+            lines.append("- No specific priorities identified. Keep up the good work!")
+        else:
+            for i, priority in enumerate(priorities, 1):
+                lines.append(f"{i}. {priority}")
+
+        return "\n".join(lines)
 
     def log_important_moves_for_debug(
         self,

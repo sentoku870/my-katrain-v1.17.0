@@ -174,6 +174,146 @@ class EvalSnapshot:
             return EvalSnapshot()
         return EvalSnapshot(moves=self.moves[-n:])
 
+
+# ---------------------------------------------------------------------------
+# Multi-game summary structures (Phase 6)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GameSummaryData:
+    """1局分のデータ（複数局まとめ用）"""
+    game_name: str
+    player_black: str
+    player_white: str
+    snapshot: EvalSnapshot
+    board_size: Tuple[int, int]
+    date: Optional[str] = None
+
+
+@dataclass
+class SummaryStats:
+    """複数局の集計統計"""
+    player_name: str
+    total_games: int = 0
+    total_moves: int = 0
+    total_points_lost: float = 0.0
+    avg_points_lost_per_move: float = 0.0
+
+    mistake_counts: Dict[MistakeCategory, int] = field(default_factory=dict)
+    mistake_total_loss: Dict[MistakeCategory, float] = field(default_factory=dict)
+
+    freedom_counts: Dict["PositionDifficulty", int] = field(default_factory=dict)
+
+    phase_moves: Dict[str, int] = field(default_factory=dict)  # "opening"/"middle"/"yose"
+    phase_loss: Dict[str, float] = field(default_factory=dict)
+
+    # Phase × MistakeCategory クロス集計 (Phase 6.5で追加)
+    phase_mistake_counts: Dict[Tuple[str, MistakeCategory], int] = field(default_factory=dict)
+    phase_mistake_loss: Dict[Tuple[str, MistakeCategory], float] = field(default_factory=dict)
+
+    worst_moves: List[Tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
+
+    def get_mistake_percentage(self, category: MistakeCategory) -> float:
+        """ミス分類の割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.mistake_counts.get(category, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_mistake_avg_loss(self, category: MistakeCategory) -> float:
+        """ミス分類ごとの平均損失を計算"""
+        count = self.mistake_counts.get(category, 0)
+        if count == 0:
+            return 0.0
+        total_loss = self.mistake_total_loss.get(category, 0.0)
+        return total_loss / count
+
+    def get_freedom_percentage(self, difficulty: "PositionDifficulty") -> float:
+        """Freedom（手の自由度）の割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.freedom_counts.get(difficulty, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_phase_percentage(self, phase: str) -> float:
+        """局面タイプの割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.phase_moves.get(phase, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_phase_avg_loss(self, phase: str) -> float:
+        """局面タイプごとの平均損失を計算"""
+        count = self.phase_moves.get(phase, 0)
+        if count == 0:
+            return 0.0
+        total_loss = self.phase_loss.get(phase, 0.0)
+        return total_loss / count
+
+    def get_practice_priorities(self) -> List[str]:
+        """統計から1-3個の練習優先項目を導出（Phase 6.5 改善版）"""
+        priorities = []
+        phase_name_ja = {"opening": "序盤", "middle": "中盤", "yose": "ヨセ"}
+
+        # 1. Phase × Mistake クロス集計で最悪の組み合わせを特定
+        if self.phase_mistake_loss:
+            # (phase, category) ごとの損失を集計
+            worst_combo = max(
+                self.phase_mistake_loss.items(),
+                key=lambda x: x[1],  # 損失の大きさでソート
+                default=None
+            )
+            if worst_combo and worst_combo[1] > 0:
+                phase, category = worst_combo[0]
+                loss = worst_combo[1]
+                count = self.phase_mistake_counts.get((phase, category), 0)
+                cat_name_ja = {
+                    MistakeCategory.BLUNDER: "大悪手",
+                    MistakeCategory.MISTAKE: "悪手",
+                    MistakeCategory.INACCURACY: "軽微なミス",
+                }
+                priorities.append(
+                    f"**{phase_name_ja.get(phase, phase)}の{cat_name_ja.get(category, category.name)}を減らす**"
+                    f"（{count}回、損失{loss:.1f}目）"
+                )
+        # フォールバック: クロス集計データがない場合は従来ロジック
+        elif self.phase_loss:
+            worst_phase = max(self.phase_loss.items(), key=lambda x: x[1], default=None)
+            if worst_phase and worst_phase[1] > 0:
+                priorities.append(
+                    f"**{phase_name_ja.get(worst_phase[0], worst_phase[0])}の大きなミスを減らす**"
+                    f"（損失: {worst_phase[1]:.1f}目）"
+                )
+
+        # 2. Freedom が高い（難しい）局面でのパフォーマンス
+        hard_count = self.freedom_counts.get(PositionDifficulty.HARD, 0)
+        only_count = self.freedom_counts.get(PositionDifficulty.ONLY_MOVE, 0)
+        difficult_total = hard_count + only_count
+        if difficult_total > 0 and self.total_moves > 0:
+            difficult_pct = 100.0 * difficult_total / self.total_moves
+            if difficult_pct > 15.0:  # 15%以上が難しい局面
+                priorities.append(
+                    f"**難しい局面での読みを改善**"
+                    f"（{difficult_pct:.1f}%の手が狭い/一択）"
+                )
+
+        # 3. 全体的なミス率が高い
+        mistake_count = self.mistake_counts.get(MistakeCategory.MISTAKE, 0)
+        blunder_count = self.mistake_counts.get(MistakeCategory.BLUNDER, 0)
+        serious_mistakes = mistake_count + blunder_count
+        if serious_mistakes > 0 and self.total_moves > 0:
+            serious_pct = 100.0 * serious_mistakes / self.total_moves
+            if serious_pct > 5.0 and len(priorities) < 3:  # 5%以上がミス/大悪手
+                priorities.append(
+                    f"**全体的に悪手・大悪手を減らす**"
+                    f"（{serious_mistakes}回、{serious_pct:.1f}%）"
+                )
+
+        # 最大3個に制限
+        return priorities[:3]
+
+
 # ---------------------------------------------------------------------------
 # Quiz helper structures
 # ---------------------------------------------------------------------------
@@ -286,6 +426,9 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     realized_points_lost = getattr(node, "parent_realized_points_lost", None)
     root_visits = getattr(node, "root_visits", 0) or 0
 
+    # Position difficulty 計算（親ノードの候補手から判定）
+    difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
+
     return MoveEval(
         move_number=getattr(node, "move_number", 0) or getattr(node, "depth", 0),
         player=player,
@@ -299,6 +442,8 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
         points_lost=points_lost,
         realized_points_lost=realized_points_lost,
         root_visits=int(root_visits),
+        position_difficulty=difficulty,
+        position_difficulty_score=difficulty_score,
     )
 
 
@@ -332,6 +477,16 @@ def assess_position_difficulty_from_parent(
       pointsLost / relativePointsLost を含むことを想定している。
     - relativePointsLost が小さい手が多いほど「易しい局面」、
       少ないほど「難しい局面」とみなす簡易ヒューリスティック。
+
+    返り値:
+        (PositionDifficulty, difficulty_score)
+        - PositionDifficulty: EASY / NORMAL / HARD / ONLY_MOVE / UNKNOWN
+        - difficulty_score: 0.0〜1.0 の連続値（大きいほど難しい）
+
+    使用例:
+        >>> difficulty, score = assess_position_difficulty_from_parent(node)
+        >>> if difficulty == PositionDifficulty.ONLY_MOVE:
+        ...     print("ほぼ一手しかない難しい局面")
     """
     parent = getattr(node, "parent", None)
     if parent is None:
@@ -390,6 +545,16 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
 
     - nodes には「実際に打たれた手を持つノード」（move が None でない）を渡す想定。
     - score / winrate の before/after/delta は、この関数内で連鎖的に計算する。
+    - position_difficulty, score_loss, mistake_category, importance を自動計算。
+
+    使用例:
+        >>> from katrain.core.game import Game
+        >>> game = Game()
+        >>> # ... 対局を進める ...
+        >>> nodes = list(game.root.nodes_in_tree)
+        >>> snapshot = snapshot_from_nodes(nodes)
+        >>> print(f"Total moves: {len(snapshot.moves)}")
+        >>> print(f"Total points lost: {snapshot.total_points_lost:.1f}")
     """
     # GameNode と MoveEval のペアを保持しておく
     node_evals: List[Tuple[GameNode, MoveEval]] = []
@@ -420,28 +585,32 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
             else:
                 m.delta_winrate = None
 
+        # score_loss / winrate_loss を計算（delta から損失量を導出）
         score_loss, winrate_loss = compute_loss_from_delta(
             delta_score=m.delta_score,
             delta_winrate=m.delta_winrate,
         )
         m.score_loss = score_loss
         m.winrate_loss = winrate_loss
+
+        # ミス分類（GOOD / INACCURACY / MISTAKE / BLUNDER）
         m.mistake_category = classify_mistake(
             score_loss=score_loss,
             winrate_loss=winrate_loss,
         )
         m.is_reliable = is_reliable_from_visits(m.root_visits)
 
-        # 親ノードの candidate_moves から局面難易度をざっくり評価
-        difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
-        if difficulty is not None:
-            m.position_difficulty = difficulty
-        m.position_difficulty_score = difficulty_score
+        # position_difficulty は move_eval_from_node() で既に計算済み
+        # （重複削除）
 
         prev = m
 
+    # importance を自動計算（全手に対して）
+    all_moves = [m for _, m in node_evals]
+    compute_importance_for_moves(all_moves)
+
     # EvalSnapshot には MoveEval のみを渡す
-    return EvalSnapshot(moves=[m for _, m in node_evals])
+    return EvalSnapshot(moves=all_moves)
 
 
 # ここから下を eval_metrics.py の末尾に追加
@@ -652,6 +821,21 @@ def compute_importance_for_moves(
         - weight_delta_score : 形勢の点数変化（目）をどれだけ重く見るか
         - weight_delta_winrate : 勝率 1.0 の変化を「何目分」とみなすか
         - weight_points_lost : points_lost をどれだけ重く見るか
+
+    ボーナス:
+        - 形勢逆転（スコア符号変化）: +1.0
+        - 勝率が50%をまたぐ: +1.0
+        - is_reliable=False の場合: importance を 0.25 倍に減衰
+
+    使用例:
+        >>> moves = snapshot.moves
+        >>> compute_importance_for_moves(moves)
+        >>> important = [m for m in moves if m.importance_score and m.importance_score > 3.0]
+        >>> print(f"Important moves: {len(important)}")
+
+    注意:
+        - この関数は moves を破壊的に変更します（各 m.importance_score を書き換え）
+        - snapshot_from_nodes() で自動的に呼ばれるため、通常は手動で呼ぶ必要はありません
     """
     for m in moves:
         score_term = (
