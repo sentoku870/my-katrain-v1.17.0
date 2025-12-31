@@ -1491,11 +1491,92 @@ class KaTrainGui(Screen, KaTrainBase):
         lines.append("")
 
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
+
         if all_worst_moves:
-            lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
-            lines.append("|------|---|---|-------|------|------------|----------|")
-            for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves:
-                lines.append(f"| {game_name[:20]} | {move_num} | {player} | {gtp} | {loss:.1f} | {importance:.1f} | {cat.name} |")
+            # 急場見逃しパターンを検出（全worst_movesから、Top10だけでなく）
+            # all_worst_movesを[(game, move_num, player, gtp, loss, importance, cat), ...]から
+            # Game._detect_urgent_miss_sequencesが期待する[(game_name, move_like_obj), ...]形式に変換
+
+            # 仮のmoveオブジェクトを作成（必要な属性のみ）
+            class TempMove:
+                def __init__(self, move_num, player, gtp, loss, importance):
+                    self.move_number = move_num
+                    self.player = player
+                    self.gtp = gtp
+                    self.points_lost = loss
+                    self.score_loss = loss
+                    self.importance = importance
+
+            moves_for_detection = [(game_name, TempMove(move_num, player, gtp, loss, importance))
+                                   for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves]
+
+            # 急場見逃しパターンを検出
+            from katrain.core.game import Game
+
+            # 棋力設定から閾値を取得
+            skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+            urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+
+            sequences, filtered_moves = Game._detect_urgent_miss_sequences(
+                moves_for_detection,
+                threshold_loss=urgent_config.threshold_loss,
+                min_consecutive=urgent_config.min_consecutive
+            )
+
+            # 急場見逃しパターンがあれば表示
+            if sequences:
+                lines.append("")
+                lines.append("**注意**: 以下の区間は双方が急場を見逃した可能性があります（損失20目超が3手以上連続）")
+                lines.append("| Game | 手数範囲 | 連続 | 総損失 | 平均損失/手 |")
+                lines.append("|------|---------|------|--------|------------|")
+
+                for seq in sequences:
+                    short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+                    avg_loss = seq['total_loss'] / seq['count']
+                    lines.append(
+                        f"| {short_game} | #{seq['start']}-{seq['end']} | "
+                        f"{seq['count']}手 | {seq['total_loss']:.1f}目 | {avg_loss:.1f}目 |"
+                    )
+                lines.append("")
+
+            # 通常のワースト手を表示
+            if filtered_moves:
+                # filtered_movesをソートしてTop 10を取得
+                filtered_moves.sort(key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True)
+                display_moves = filtered_moves[:10]
+
+                if sequences:
+                    lines.append("通常のワースト手（損失20目以下 or 単発）:")
+                lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
+                lines.append("|------|---|---|-------|------|------------|----------|")
+
+                for game_name, temp_move in display_moves:
+                    # 座標変換（SGF座標→GTP座標）
+                    coord = temp_move.gtp or '-'
+                    # move.gtp が2文字の小文字アルファベット（SGF座標）の場合、変換
+                    if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
+                        coord = Game._convert_sgf_to_gtp_coord(coord, 19)
+
+                    # 元のall_worst_movesからcategoryを取得
+                    cat_name = "UNKNOWN"
+                    for gn, mn, pl, gt, ls, imp, ct in all_worst_moves:
+                        if gn == game_name and mn == temp_move.move_number:
+                            cat_name = ct.name
+                            break
+
+                    lines.append(f"| {game_name[:20]} | {temp_move.move_number} | {temp_move.player} | {coord} | {temp_move.points_lost:.1f} | {temp_move.importance:.1f} | {cat_name} |")
+            elif sequences:
+                lines.append("通常のワースト手: なし（すべて急場見逃しパターン）")
+            else:
+                # sequencesもfiltered_movesもない場合は元のall_worst_movesを表示
+                lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
+                lines.append("|------|---|---|-------|------|------------|----------|")
+                for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves:
+                    # 座標変換
+                    coord = gtp or '-'
+                    if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
+                        coord = Game._convert_sgf_to_gtp_coord(coord, 19)
+                    lines.append(f"| {game_name[:20]} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |")
         else:
             lines.append("- No significant mistakes found.")
         lines.append("")
@@ -1557,6 +1638,49 @@ class KaTrainGui(Screen, KaTrainBase):
                     )
         else:
             lines.append("- 明確な弱点パターンは検出されませんでした。")
+
+        # 急場見逃しパターンがあれば追加
+        if all_worst_moves:
+            # sequencesは既に計算済み（Top Worst Movesセクションで）
+            from katrain.core.game import Game
+            class TempMove:
+                def __init__(self, move_num, player, gtp, loss, importance):
+                    self.move_number = move_num
+                    self.player = player
+                    self.gtp = gtp
+                    self.points_lost = loss
+                    self.score_loss = loss
+                    self.importance = importance
+
+            moves_for_detection = [(game_name, TempMove(move_num, player, gtp, loss, importance))
+                                   for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves]
+
+            # 棋力設定から閾値を取得（Top Worst Movesと同じ設定を使用）
+            skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+            urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+
+            sequences, _ = Game._detect_urgent_miss_sequences(
+                moves_for_detection,
+                threshold_loss=urgent_config.threshold_loss,
+                min_consecutive=urgent_config.min_consecutive
+            )
+
+            if sequences:
+                lines.append("")
+                lines.append("**急場見逃しパターン**:")
+                for seq in sequences:
+                    short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+                    avg_loss = seq['total_loss'] / seq['count']
+                    lines.append(
+                        f"- {short_game} #{seq['start']}-{seq['end']}: "
+                        f"{seq['count']}手連続、総損失{seq['total_loss']:.1f}目（平均{avg_loss:.1f}目/手）"
+                    )
+
+                lines.append("")
+                lines.append("**推奨アプローチ**:")
+                lines.append("- 詰碁（死活）訓練で読みの精度向上")
+                lines.append("- 対局中、戦いの前に「自分の石は安全か？」「相手の弱点はどこか？」を確認")
+                lines.append("- 急場見逃し区間のSGFを重点的に復習")
 
         lines.append("")
 

@@ -378,6 +378,42 @@ def get_skill_preset(name: str) -> SkillPreset:
 QUIZ_CONFIG_DEFAULT = SKILL_PRESETS[DEFAULT_SKILL_PRESET].quiz
 
 
+# ---------------------------------------------------------------------------
+# 急場見逃し検出の棋力別閾値（Phase 5拡張）
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class UrgentMissConfig:
+    """急場見逃しパターン検出の設定."""
+    threshold_loss: float  # 損失閾値（この値を超える手を対象）
+    min_consecutive: int   # 最小連続手数
+
+
+# 棋力別の急場見逃し検出設定
+URGENT_MISS_CONFIGS: Dict[str, UrgentMissConfig] = {
+    # 級位者: 大石の生き死にでも見逃しやすい。30目以上の超大損失のみ検出
+    "beginner": UrgentMissConfig(
+        threshold_loss=30.0,
+        min_consecutive=4
+    ),
+    # 標準: 20目超の損失で検出（有段者の急場見逃し）
+    "standard": UrgentMissConfig(
+        threshold_loss=20.0,
+        min_consecutive=3
+    ),
+    # 高段者: より小さな急場（コウ、ヨセの急場）も検出
+    "advanced": UrgentMissConfig(
+        threshold_loss=15.0,
+        min_consecutive=3
+    ),
+}
+
+
+def get_urgent_miss_config(skill_preset: str) -> UrgentMissConfig:
+    """Return urgent miss detection config for the given skill preset."""
+    return URGENT_MISS_CONFIGS.get(skill_preset, URGENT_MISS_CONFIGS[DEFAULT_SKILL_PRESET])
+
+
 @dataclass
 class QuizChoice:
     """Choice shown in quiz mode for a single position."""
