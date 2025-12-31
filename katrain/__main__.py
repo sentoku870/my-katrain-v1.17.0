@@ -1616,6 +1616,38 @@ class KaTrainGui(Screen, KaTrainBase):
 
             lines.append("")
 
+            # Phase 13: 棋力推定
+            total_important = sum(len(stats.get("important_moves_list", [])) for stats in stats_list)
+            if total_important >= 5:
+                estimation = eval_metrics.estimate_skill_level_from_tags(
+                    reason_tags_totals,
+                    total_important
+                )
+
+                level_labels = {
+                    "beginner": "初級〜中級（G0-G1相当）",
+                    "standard": "有段者（G2-G3相当）",
+                    "advanced": "高段者（G4相当）",
+                    "unknown": "不明"
+                }
+
+                lines.append(f"## 推定棋力{focus_suffix}")
+                lines.append("")
+                lines.append(f"- **レベル**: {level_labels.get(estimation.estimated_level, estimation.estimated_level)}")
+                lines.append(f"- **確度**: {estimation.confidence:.0%}")
+                lines.append(f"- **理由**: {estimation.reason}")
+
+                # プリセット推奨（Phase 14）
+                preset_recommendations = {
+                    "beginner": "beginner（緩め：5目以上を大悪手判定）",
+                    "standard": "standard（標準：2目以上を悪手判定）",
+                    "advanced": "advanced（厳しめ：1目以上を悪手判定）"
+                }
+                if estimation.estimated_level in preset_recommendations:
+                    lines.append(f"- **推奨プリセット**: {preset_recommendations[estimation.estimated_level]}")
+
+                lines.append("")
+
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
 
         if all_worst_moves:

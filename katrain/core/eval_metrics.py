@@ -1018,7 +1018,100 @@ def pick_important_moves(
     # importance の大きい順に並べ替えて上位だけ残す
     candidates.sort(key=lambda x: x[0], reverse=True)
     top = candidates[:max_moves]
-    
+
     # その後手数順にソート
     important_moves = sorted([m for _, m in top], key=lambda m: m.move_number)
     return important_moves
+
+
+# ---------------------------------------------------------------------------
+# Phase 13: 段級位自動推定（Skill Level Estimation）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SkillEstimation:
+    """棋力推定結果"""
+    estimated_level: str  # "beginner" / "standard" / "advanced" / "unknown"
+    confidence: float     # 0.0-1.0（推定の確度）
+    reason: str          # 推定理由（日本語）
+    metrics: Dict[str, float]  # 判定に使用したメトリクス
+
+
+def estimate_skill_level_from_tags(
+    reason_tags_counts: Dict[str, int],
+    total_important_moves: int
+) -> SkillEstimation:
+    """
+    理由タグ分布から棋力を推定（Phase 13）
+
+    Args:
+        reason_tags_counts: タグごとのカウント（例: {"heavy_loss": 20, "reading_failure": 17}）
+        total_important_moves: 重要局面の総数
+
+    Returns:
+        SkillEstimation: 推定結果
+
+    判定ロジック:
+        - heavy_loss の出現率が高い → beginner
+        - reading_failure の出現率が高い → standard
+        - 両方とも低い → advanced
+        - データ不足 → unknown
+    """
+    if total_important_moves < 5:
+        return SkillEstimation(
+            estimated_level="unknown",
+            confidence=0.0,
+            reason="重要局面数が不足（< 5手）",
+            metrics={}
+        )
+
+    heavy_loss_count = reason_tags_counts.get("heavy_loss", 0)
+    reading_failure_count = reason_tags_counts.get("reading_failure", 0)
+
+    # 出現率を計算
+    heavy_loss_rate = heavy_loss_count / total_important_moves
+    reading_failure_rate = reading_failure_count / total_important_moves
+
+    metrics = {
+        "heavy_loss_rate": heavy_loss_rate,
+        "reading_failure_rate": reading_failure_rate,
+        "total_important_moves": float(total_important_moves)
+    }
+
+    # 判定ロジック
+    # beginner: 大損失が多い（判断ミス）
+    if heavy_loss_rate >= 0.4:  # 40%以上が大損失
+        return SkillEstimation(
+            estimated_level="beginner",
+            confidence=min(0.9, heavy_loss_rate * 1.5),
+            reason=f"大損失の出現率が高い（{heavy_loss_rate:.1%}）→ 大局観・判断力を強化する段階",
+            metrics=metrics
+        )
+
+    # advanced: 大損失も読み抜けも少ない
+    if heavy_loss_rate < 0.15 and reading_failure_rate < 0.1:
+        confidence = 1.0 - (heavy_loss_rate + reading_failure_rate) * 2
+        return SkillEstimation(
+            estimated_level="advanced",
+            confidence=min(0.9, max(0.5, confidence)),
+            reason=f"大損失・読み抜けともに少ない（大損失{heavy_loss_rate:.1%}、読み抜け{reading_failure_rate:.1%}）→ 高段者レベル",
+            metrics=metrics
+        )
+
+    # standard: 読み抜けが目立つ（戦術的な読みに課題）
+    if reading_failure_rate >= 0.15:  # 15%以上が読み抜け
+        return SkillEstimation(
+            estimated_level="standard",
+            confidence=min(0.9, reading_failure_rate * 2),
+            reason=f"読み抜けの出現率が高い（{reading_failure_rate:.1%}）→ 戦術的な読み・形判断を強化する段階",
+            metrics=metrics
+        )
+
+    # デフォルト: standard（中間レベル）
+    confidence = 0.5  # やや不確実
+    return SkillEstimation(
+        estimated_level="standard",
+        confidence=confidence,
+        reason=f"大損失{heavy_loss_rate:.1%}、読み抜け{reading_failure_rate:.1%} → 標準的な有段者レベル",
+        metrics=metrics
+    )
