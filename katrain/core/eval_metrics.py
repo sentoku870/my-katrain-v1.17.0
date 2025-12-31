@@ -174,6 +174,128 @@ class EvalSnapshot:
             return EvalSnapshot()
         return EvalSnapshot(moves=self.moves[-n:])
 
+
+# ---------------------------------------------------------------------------
+# Multi-game summary structures (Phase 6)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GameSummaryData:
+    """1局分のデータ（複数局まとめ用）"""
+    game_name: str
+    player_black: str
+    player_white: str
+    snapshot: EvalSnapshot
+    board_size: Tuple[int, int]
+    date: Optional[str] = None
+
+
+@dataclass
+class SummaryStats:
+    """複数局の集計統計"""
+    player_name: str
+    total_games: int = 0
+    total_moves: int = 0
+    total_points_lost: float = 0.0
+    avg_points_lost_per_move: float = 0.0
+
+    mistake_counts: Dict[MistakeCategory, int] = field(default_factory=dict)
+    mistake_total_loss: Dict[MistakeCategory, float] = field(default_factory=dict)
+
+    freedom_counts: Dict["PositionDifficulty", int] = field(default_factory=dict)
+
+    phase_moves: Dict[str, int] = field(default_factory=dict)  # "opening"/"middle"/"yose"
+    phase_loss: Dict[str, float] = field(default_factory=dict)
+
+    worst_moves: List[Tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
+
+    def get_mistake_percentage(self, category: MistakeCategory) -> float:
+        """ミス分類の割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.mistake_counts.get(category, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_mistake_avg_loss(self, category: MistakeCategory) -> float:
+        """ミス分類ごとの平均損失を計算"""
+        count = self.mistake_counts.get(category, 0)
+        if count == 0:
+            return 0.0
+        total_loss = self.mistake_total_loss.get(category, 0.0)
+        return total_loss / count
+
+    def get_freedom_percentage(self, difficulty: "PositionDifficulty") -> float:
+        """Freedom（手の自由度）の割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.freedom_counts.get(difficulty, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_phase_percentage(self, phase: str) -> float:
+        """局面タイプの割合を計算"""
+        if self.total_moves == 0:
+            return 0.0
+        count = self.phase_moves.get(phase, 0)
+        return 100.0 * count / self.total_moves
+
+    def get_phase_avg_loss(self, phase: str) -> float:
+        """局面タイプごとの平均損失を計算"""
+        count = self.phase_moves.get(phase, 0)
+        if count == 0:
+            return 0.0
+        total_loss = self.phase_loss.get(phase, 0.0)
+        return total_loss / count
+
+    def get_practice_priorities(self) -> List[str]:
+        """統計から1-3個の練習優先項目を導出"""
+        priorities = []
+
+        # 1. 大悪手（blunder）が多い局面タイプを特定
+        blunder_by_phase: Dict[str, float] = {}
+        for phase in ["opening", "middle", "yose"]:
+            # この局面での大悪手の損失合計を計算
+            # （現時点では局面別のミス分類は集計していないため簡易実装）
+            phase_loss = self.phase_loss.get(phase, 0.0)
+            if phase_loss > 0:
+                blunder_by_phase[phase] = phase_loss
+
+        if blunder_by_phase:
+            worst_phase = max(blunder_by_phase.items(), key=lambda x: x[1])
+            phase_name_ja = {"opening": "序盤", "middle": "中盤", "yose": "ヨセ"}
+            priorities.append(
+                f"**{phase_name_ja.get(worst_phase[0], worst_phase[0])}の大きなミスを減らす**"
+                f"（損失: {worst_phase[1]:.1f}目）"
+            )
+
+        # 2. Freedomが高い（難しい）局面でのパフォーマンス
+        hard_count = self.freedom_counts.get(PositionDifficulty.HARD, 0)
+        only_count = self.freedom_counts.get(PositionDifficulty.ONLY_MOVE, 0)
+        difficult_total = hard_count + only_count
+        if difficult_total > 0 and self.total_moves > 0:
+            difficult_pct = 100.0 * difficult_total / self.total_moves
+            if difficult_pct > 15.0:  # 15%以上が難しい局面
+                priorities.append(
+                    f"**難しい局面での読みを改善**"
+                    f"（{difficult_pct:.1f}%の手が狭い/一択）"
+                )
+
+        # 3. ミス率が高い
+        mistake_count = self.mistake_counts.get(MistakeCategory.MISTAKE, 0)
+        blunder_count = self.mistake_counts.get(MistakeCategory.BLUNDER, 0)
+        serious_mistakes = mistake_count + blunder_count
+        if serious_mistakes > 0 and self.total_moves > 0:
+            serious_pct = 100.0 * serious_mistakes / self.total_moves
+            if serious_pct > 5.0 and len(priorities) < 3:  # 5%以上がミス/大悪手
+                priorities.append(
+                    f"**悪手・大悪手を減らす**"
+                    f"（{serious_mistakes}回、{serious_pct:.1f}%）"
+                )
+
+        # 最大3個に制限
+        return priorities[:3]
+
+
 # ---------------------------------------------------------------------------
 # Quiz helper structures
 # ---------------------------------------------------------------------------
