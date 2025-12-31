@@ -812,7 +812,23 @@
             points: self.x,self.y, self.x,self.y+self.height
         Color:
             rgba: Theme.MENU_ITEM_SHORTCUT_COLOR
-        Line
+        Line:
+            points: self.x,self.y,self.x+self.width,self.y
+            width: 1
+
+
+<MyKatrainMenuItem@MenuItem>:
+    on_close: app.gui.analysis_controls.close_mykatrain_dropdown()
+    background_color: Theme.LIGHTER_BACKGROUND_COLOR
+    height: dp(45)
+    canvas.before:
+        Color:
+            rgba: Theme.MENU_ITEM_FONT_COLOR
+        Line:
+            points: self.x,self.y, self.x,self.y+self.height
+        Color:
+            rgba: Theme.MENU_ITEM_SHORTCUT_COLOR
+        Line:
             points: self.x,self.y,self.x+self.width,self.y
             width: 1
 
@@ -887,6 +903,26 @@
         on_action: root.katrain("ai-move")
 
 
+<MyKatrainDropDown>:
+    width: 250
+    katrain: app.gui
+    MyKatrainMenuItem:
+        text: i18n._('Generate quiz (beta)')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("quiz-popup")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:export-karte')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("export-karte")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:export-summary')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("export-summary")
+
+
 <AnalysisControls>:
     katrain: app.gui
     orientation: 'horizontal'
@@ -897,6 +933,7 @@
     hints: hints
     ownership: ownership
     analysis_button: analysis_button
+    mykatrain_button: mykatrain_button
     hamburger: hamburger
     HamburgerButton:
         id: hamburger
@@ -935,6 +972,23 @@
                     id: analysis_button
                     on_release: root.toggle_dropdown()
                     text: '   ' + i18n._("btn:Analyze")
+                Image:
+                    pos_hint: {'center_y': 0.5}
+                    x: self.parent.x + 2
+                    size_hint: None, 0.4
+                    width: self.height/2
+                    source: 'menu.png'
+                    mipmap: True
+            MDFloatLayout:
+                width: mykatrain_button.width
+                size_hint: None, 1
+                AutoSizedRectangleButton:
+                    background_color: Theme.BOX_BACKGROUND_COLOR
+                    size_hint_y: 0.55
+                    pos_hint: {'center_y': 0.5, 'x': 0}
+                    id: mykatrain_button
+                    on_release: root.toggle_mykatrain_dropdown()
+                    text: '   myKatrain'
                 Image:
                     pos_hint: {'center_y': 0.5}
                     x: self.parent.x + 2
@@ -1072,21 +1126,6 @@
             icon: 'Load-Game.png'
             shortcut: 'Ctrl-L'
             on_action: root.katrain("analyze-sgf-popup")
-        MainMenuItem:
-            text: i18n._('Generate quiz (beta)')
-            icon: 'analysis.png'
-            shortcut: ''
-            on_action: root.katrain("quiz-popup")
-        MainMenuItem:
-            text: 'Export Karte (v0)'
-            icon: 'analysis.png'
-            shortcut: ''
-            on_action: root.katrain("export-karte")
-        MainMenuItem:
-            text: 'Export Summary (multi-game)'
-            icon: 'analysis.png'
-            shortcut: ''
-            on_action: root.katrain("export-summary")
         MainMenuItem:
             text: i18n._('menu:clocksettings')
             icon: 'Time-Settings.png'

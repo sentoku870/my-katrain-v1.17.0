@@ -1236,6 +1236,7 @@ class AnalysisDropDown(DropDown):
 class AnalysisControls(MDBoxLayout):
     dropdown = ObjectProperty(None)
     is_open = BooleanProperty(False)
+    mykatrain_is_open = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1249,15 +1250,42 @@ class AnalysisControls(MDBoxLayout):
         elif self.dropdown.attach_to:
             self.dropdown.dismiss()
 
+    def on_mykatrain_is_open(self, instance, value):
+        if value:
+            if not hasattr(self, 'mykatrain_dropdown') or not hasattr(self, 'mykatrain_button'):
+                self.mykatrain_is_open = False
+                return
+            if self.mykatrain_dropdown.container.children:
+                max_content_width = max(option.content_width for option in self.mykatrain_dropdown.container.children)
+                self.mykatrain_dropdown.width = max(max_content_width, 250)
+            else:
+                self.mykatrain_dropdown.width = 250
+            self.mykatrain_dropdown.open(self.mykatrain_button)
+        elif hasattr(self, 'mykatrain_dropdown') and self.mykatrain_dropdown.attach_to:
+            self.mykatrain_dropdown.dismiss()
+
     def close_dropdown(self, *largs):
         self.is_open = False
+
+    def close_mykatrain_dropdown(self, *largs):
+        self.mykatrain_is_open = False
 
     def toggle_dropdown(self, *largs):
         self.is_open = not self.is_open
 
+    def toggle_mykatrain_dropdown(self, *largs):
+        self.mykatrain_is_open = not self.mykatrain_is_open
+
     def build_dropdown(self):
         self.dropdown = AnalysisDropDown(auto_width=False)
         self.dropdown.bind(on_dismiss=self.close_dropdown)
+        self.mykatrain_dropdown = MyKatrainDropDown(auto_width=False)
+        self.mykatrain_dropdown.bind(on_dismiss=self.close_mykatrain_dropdown)
+
+
+class MyKatrainDropDown(DropDown):
+    """Dropdown menu for myKatrain extension features"""
+    pass
 
 
 class BadukPanControls(MDFloatLayout):

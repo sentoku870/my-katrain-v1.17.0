@@ -1034,6 +1034,12 @@ msgstr "Path to human-like model"
 msgid "Generate quiz (beta)"
 msgstr "クイズを生成（ベータ）"
 
+msgid "mykatrain:export-karte"
+msgstr "カルテ出力"
+
+msgid "mykatrain:export-summary"
+msgstr "複数局まとめ"
+
 msgid "Close"
 msgstr "閉じる"
 
