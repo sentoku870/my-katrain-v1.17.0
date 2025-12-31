@@ -969,9 +969,12 @@ class KaTrainGui(Screen, KaTrainBase):
             if len(kt_data) < 3:
                 return None
 
-            # 3番目が main_data（スコア等のJSON）
+            # KaTrain SGF format: [ownership_data, policy_data, main_data]
+            # Only main_data is JSON, ownership and policy are binary floats
             main_data = gzip.decompress(base64.standard_b64decode(kt_data[2]))
             analysis = json.loads(main_data)
+
+            # analysis already contains {"root": {...}, "moves": {...}}
             return analysis
 
         except Exception as e:
@@ -1090,6 +1093,42 @@ class KaTrainGui(Screen, KaTrainBase):
             # Worst movesをソート（損失の大きい順）
             stats["worst_moves"].sort(key=lambda x: x[3], reverse=True)
             stats["worst_moves"] = stats["worst_moves"][:10]  # Top 10
+
+            # Extract reason_tags counts from important moves (Phase 10-B)
+            reason_tags_counts = {}
+            try:
+                # Create a temporary Game object to compute reason_tags
+                from katrain.core.game import Game
+                temp_game = Game(self, self.engine, move_tree=move_tree)
+
+                # Load analysis data from SGF into Game nodes
+                sgf_nodes = list(move_tree.nodes_in_tree)
+                game_nodes = list(temp_game.root.nodes_in_tree)
+
+                for sgf_node, game_node in zip(sgf_nodes, game_nodes):
+                    # Extract analysis from SGF node
+                    analysis = self._extract_analysis_from_sgf_node(sgf_node)
+                    if analysis:
+                        # Directly set analysis dict (already in correct format)
+                        game_node.analysis = analysis
+
+                # Get important moves with reason_tags
+                important_moves = temp_game.get_important_move_evals(compute_reason_tags=True)
+
+                # Count reason_tags
+                for move_eval in important_moves:
+                    for tag in move_eval.reason_tags:
+                        reason_tags_counts[tag] = reason_tags_counts.get(tag, 0) + 1
+
+            except Exception as e:
+                # If reason_tags computation fails, log but continue
+                self.log(f"Failed to compute reason_tags for {path}: {e}", OUTPUT_ERROR)
+                import traceback
+                self.log(traceback.format_exc(), OUTPUT_ERROR)
+                reason_tags_counts = {}
+
+            # Add to stats dict
+            stats["reason_tags_counts"] = reason_tags_counts  # {tag: count}
 
             return stats
 
@@ -1410,6 +1449,12 @@ class KaTrainGui(Screen, KaTrainBase):
             for key, loss in stats.get("phase_mistake_loss", {}).items():
                 phase_mistake_loss_total[key] = phase_mistake_loss_total.get(key, 0.0) + loss
 
+        # Aggregate reason_tags counts (Phase 10-B)
+        reason_tags_totals = {}
+        for stats in stats_list:
+            for tag, count in stats.get("reason_tags_counts", {}).items():
+                reason_tags_totals[tag] = reason_tags_totals.get(tag, 0) + count
+
         # Worst moves の集計
         all_worst_moves = []
         for stats in stats_list:
@@ -1497,6 +1542,37 @@ class KaTrainGui(Screen, KaTrainBase):
             row.append(f"{total_phase_loss:.1f}")
             lines.append(f"| {' | '.join(row)} |")
         lines.append("")
+
+        # Reason Tags Distribution (Phase 10-B)
+        if reason_tags_totals:  # Only show if tags exist
+            # Reason tag labels
+            REASON_TAG_LABELS = {
+                "atari": "アタリ (atari)",
+                "low_liberties": "呼吸点少 (low liberties)",
+                "cut_risk": "切断リスク (cut risk)",
+                "need_connect": "連絡必要 (need connect)",
+                "thin": "薄い形 (thin)",
+                "chase_mode": "追込モード (chase mode)",
+                "too_many_choices": "候補多数 (many choices)",
+                "endgame_hint": "ヨセ局面 (endgame)"
+            }
+
+            focus_suffix = f" ({focus_player})" if focus_player else ""
+            lines.append(f"## ミス理由タグ分布{focus_suffix}")
+            lines.append("")
+
+            # Sort by count descending
+            sorted_tags = sorted(
+                reason_tags_totals.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )
+
+            for tag, count in sorted_tags:
+                label = REASON_TAG_LABELS.get(tag, tag)
+                lines.append(f"- {label}: {count} 回")
+
+            lines.append("")
 
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
 

@@ -14,7 +14,8 @@
       "Bash(gh pr merge:*)",
       "Bash(findstr:*)",
       "Bash(timeout 10 python:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(Select-String -Pattern \"error|Error|Exception|Traceback\" -Context 2)"
     ]
   }
 }
