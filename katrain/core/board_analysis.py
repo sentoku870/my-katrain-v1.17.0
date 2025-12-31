@@ -1,0 +1,352 @@
+"""
+board_analysis.py - 盤面戦術分析モジュール (Phase 5)
+
+このモジュールは盤面の戦術的状況を抽出し、理由タグ(reason tags)を生成します。
+- グループ(連結成分)の抽出
+- 呼吸点カウント
+- 連絡点/切断点の検出
+- 危険度スコア計算
+- 戦術的理由タグの判定
+
+対象ユーザー: 有段者(G3-G4) - カルテ品質向上(LLMコーチング強化)
+"""
+
+from dataclasses import dataclass, field
+from typing import List, Tuple, Dict, Optional, Set
+
+
+@dataclass
+class Group:
+    """連結された石グループ
+
+    Attributes:
+        group_id: グループID (game.chains のインデックスに対応)
+        color: 石の色 ('B' or 'W')
+        stones: グループ内の石の座標リスト [(x, y), ...]
+        liberties_count: 呼吸点の数
+        liberties: 呼吸点の座標セット {(x, y), ...}
+        is_in_atari: アタリかどうか (liberties_count == 1)
+        is_low_liberty: 呼吸点が少ないか (liberties_count <= 2)
+        adjacent_enemy_groups: 隣接する敵グループのIDリスト
+    """
+    group_id: int
+    color: str  # 'B' or 'W'
+    stones: List[Tuple[int, int]]  # [(x, y), ...]
+    liberties_count: int
+    liberties: Set[Tuple[int, int]]
+    is_in_atari: bool  # liberties == 1
+    is_low_liberty: bool  # liberties <= 2
+    adjacent_enemy_groups: List[int]
+
+
+@dataclass
+class BoardState:
+    """局面の戦術的スナップショット
+
+    Attributes:
+        groups: 盤面上のすべてのグループ
+        connect_points: 連絡点のリスト [(座標, [連絡するgroup_ids], 危険度改善値), ...]
+        cut_points: 切断点のリスト [(座標, [リスクのあるgroup_ids], 危険度増加値), ...]
+        danger_scores: グループごとの危険度スコア {group_id: danger_score}
+                      スコアは 0-100 の範囲 (高いほど危険)
+    """
+    groups: List[Group]
+    connect_points: List[Tuple[Tuple[int, int], List[int], float]]
+    # [(座標, [連絡するgroup_ids], 危険度改善値), ...]
+    cut_points: List[Tuple[Tuple[int, int], List[int], float]]
+    # [(座標, [リスクのあるgroup_ids], 危険度増加値), ...]
+    danger_scores: Dict[int, float]  # {group_id: danger_score}
+
+
+# ==================== Checkpoint 2: グループ抽出 ====================
+
+def extract_groups_from_game(game) -> List[Group]:
+    """game.chainsから戦術的グループデータを抽出
+
+    Args:
+        game: Game インスタンス
+
+    Returns:
+        List[Group]: 盤面上のすべてのグループ（空でないもののみ）
+    """
+    groups = []
+    board = game.board
+    chains = game.chains
+    board_size_x, board_size_y = game.board_size
+
+    for group_id, chain in enumerate(chains):
+        if not chain:  # 空のチェーン（取られた石）
+            continue
+
+        color = chain[0].player
+        stones = [m.coords for m in chain]
+
+        # 呼吸点をカウント
+        liberties = set()
+        for stone in stones:
+            x, y = stone
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
+                    if board[ny][nx] == -1:  # 空点
+                        liberties.add((nx, ny))
+
+        liberties_count = len(liberties)
+        is_in_atari = (liberties_count == 1)
+        is_low_liberty = (liberties_count <= 2)
+
+        # 隣接する敵グループを検出
+        adjacent_enemy_groups = set()
+        for stone in stones:
+            x, y = stone
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
+                    neighbor_id = board[ny][nx]
+                    if neighbor_id >= 0 and neighbor_id < len(chains) and chains[neighbor_id]:
+                        if chains[neighbor_id][0].player != color:
+                            adjacent_enemy_groups.add(neighbor_id)
+
+        groups.append(Group(
+            group_id=group_id,
+            color=color,
+            stones=stones,
+            liberties_count=liberties_count,
+            liberties=liberties,
+            is_in_atari=is_in_atari,
+            is_low_liberty=is_low_liberty,
+            adjacent_enemy_groups=list(adjacent_enemy_groups)
+        ))
+
+    return groups
+
+
+# ==================== Checkpoint 3: 危険度スコア計算 ====================
+
+def compute_danger_scores(groups: List[Group], cut_points: List) -> Dict[int, float]:
+    """各グループの危険度スコアを計算
+
+    Args:
+        groups: グループのリスト
+        cut_points: 切断点のリスト（危険度計算に使用）
+
+    Returns:
+        Dict[int, float]: {group_id: danger_score} (0-100の範囲)
+    """
+    danger_scores = {}
+
+    for group in groups:
+        danger = 0.0
+
+        # 呼吸点による基本危険度
+        if group.liberties_count == 1:
+            danger += 60
+        elif group.liberties_count == 2:
+            danger += 35
+        elif group.liberties_count == 3:
+            danger += 15
+
+        # 切断リスクボーナス（近くの切断点をカウント）
+        nearby_cuts = sum(
+            1 for coords, group_ids, _ in cut_points
+            if group.group_id in group_ids
+        )
+        danger += min(20, nearby_cuts * 5)
+
+        # サイズボーナス
+        if len(group.stones) >= 10:
+            danger += 10
+        elif len(group.stones) >= 6:
+            danger += 5
+
+        danger_scores[group.group_id] = danger
+
+    return danger_scores
+
+
+# ==================== Checkpoint 4: 連絡点/切断点検出 ====================
+
+def find_connect_points(
+    game,
+    groups: List[Group],
+    danger_scores: Dict[int, float]
+) -> List[Tuple[Tuple[int, int], List[int], float]]:
+    """2つ以上の味方グループを連絡する点を検出
+
+    Args:
+        game: Game インスタンス
+        groups: グループのリスト
+        danger_scores: 危険度スコア辞書
+
+    Returns:
+        List[Tuple[Tuple[int, int], List[int], float]]:
+        [(座標, [連絡するgroup_ids], 危険度改善値), ...] を改善度上位10件
+    """
+    board = game.board
+    board_size_x, board_size_y = game.board_size
+    connect_points = []
+
+    for y in range(board_size_y):
+        for x in range(board_size_x):
+            if board[y][x] != -1:  # 空でない
+                continue
+
+            # 隣接グループを検出
+            adjacent_groups = {}  # {color: [group_ids]}
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
+                    neighbor_id = board[ny][nx]
+                    if neighbor_id >= 0:
+                        group = next((g for g in groups if g.group_id == neighbor_id), None)
+                        if group:
+                            adjacent_groups.setdefault(group.color, []).append(neighbor_id)
+
+            # この点が同色の2つ以上のグループを連絡するか
+            for color, group_ids in adjacent_groups.items():
+                unique_groups = list(set(group_ids))
+                if len(unique_groups) >= 2:
+                    # 危険度改善を計算
+                    before_danger = sum(danger_scores.get(gid, 0) for gid in unique_groups)
+                    # 簡易版: 連絡で危険度が30%減ると仮定
+                    improvement = before_danger * 0.3
+                    connect_points.append(((x, y), unique_groups, improvement))
+
+    # 改善度上位10件を返す
+    connect_points.sort(key=lambda cp: cp[2], reverse=True)
+    return connect_points[:10]
+
+
+def find_cut_points(
+    game,
+    groups: List[Group],
+    danger_scores: Dict[int, float]
+) -> List[Tuple[Tuple[int, int], List[int], float]]:
+    """切断点を検出（v0簡易版: 空リストを返す）
+
+    Args:
+        game: Game インスタンス
+        groups: グループのリスト
+        danger_scores: 危険度スコア辞書
+
+    Returns:
+        List[Tuple[Tuple[int, int], List[int], float]]: 空リスト（将来実装）
+    """
+    # TODO: 将来実装
+    return []
+
+
+# ==================== Checkpoint 5: メインエントリポイント ====================
+
+def analyze_board_at_node(game, node) -> BoardState:
+    """特定ノードでの盤面戦術状態を分析
+
+    Args:
+        game: Game インスタンス
+        node: GameNode（分析対象の局面）
+
+    Returns:
+        BoardState: 戦術的スナップショット
+    """
+    # ゲームポジションをこのノードに設定
+    # （注: コストが高い、将来キャッシュを検討）
+    game.set_current_node(node)
+
+    # 現在の盤面状態からグループを抽出
+    groups = extract_groups_from_game(game)
+
+    # 連絡点/切断点を検出（切断点は空リスト）
+    connect_points = find_connect_points(game, groups, {})
+    cut_points = find_cut_points(game, groups, {})
+
+    # 危険度スコアを計算（cut_pointsが必要）
+    danger_scores = compute_danger_scores(groups, cut_points)
+
+    # 適切な危険度スコアで連絡点を再計算
+    connect_points = find_connect_points(game, groups, danger_scores)
+
+    return BoardState(
+        groups=groups,
+        connect_points=connect_points,
+        cut_points=cut_points,
+        danger_scores=danger_scores
+    )
+
+
+# ==================== Checkpoint 6: 理由タグ判定関数 ====================
+
+def get_reason_tags_for_move(
+    board_state: BoardState,
+    move_eval,  # MoveEval インスタンス
+    node,  # GameNode
+    candidates: List[Dict]
+) -> List[str]:
+    """盤面状態に基づいて理由タグを計算
+
+    Args:
+        board_state: BoardState（盤面の戦術的スナップショット）
+        move_eval: MoveEval インスタンス
+        node: GameNode
+        candidates: 候補手のリスト
+
+    Returns:
+        List[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
+    """
+    tags = []
+
+    player = move_eval.player
+    if not player:
+        return tags
+
+    my_groups = [g for g in board_state.groups if g.color == player]
+    enemy_groups = [g for g in board_state.groups if g.color != player]
+
+    if not my_groups:
+        return tags
+
+    # 最大危険度
+    max_my_danger = max(
+        (board_state.danger_scores.get(g.group_id, 0) for g in my_groups),
+        default=0
+    )
+    max_enemy_danger = max(
+        (board_state.danger_scores.get(g.group_id, 0) for g in enemy_groups),
+        default=0
+    )
+
+    # タグ 1: atari
+    if any(g.is_in_atari for g in my_groups):
+        tags.append("atari")
+
+    # タグ 2: low_liberties（atariでない場合）
+    elif any(g.is_low_liberty for g in my_groups):
+        tags.append("low_liberties")
+
+    # タグ 3: cut_risk
+    if len(board_state.cut_points) >= 1 and max_my_danger >= 40:
+        tags.append("cut_risk")
+
+    # タグ 4: need_connect
+    if board_state.connect_points:
+        best_improvement = board_state.connect_points[0][2]
+        if best_improvement >= 20:
+            tags.append("need_connect")
+
+    # タグ 5: thin
+    max_liberties = max((g.liberties_count for g in my_groups), default=0)
+    if max_liberties >= 3 and len(board_state.cut_points) >= 3:
+        tags.append("thin")
+
+    # タグ 6: chase_mode
+    if max_enemy_danger >= 60 and max_my_danger < 35:
+        tags.append("chase_mode")
+
+    # タグ 7: too_many_choices（簡易ヒューリスティック）
+    if len(candidates) >= 5:
+        tags.append("too_many_choices")
+
+    # タグ 8: endgame_hint
+    if hasattr(move_eval, 'tag') and move_eval.tag == "yose":
+        tags.append("endgame_hint")
+
+    return tags
