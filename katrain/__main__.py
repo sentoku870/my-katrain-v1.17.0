@@ -146,6 +146,23 @@ class KaTrainGui(Screen, KaTrainBase):
         self.last_key_down = None
         self.last_focus_event = 0
 
+    def _load_export_settings(self) -> dict:
+        """前回のエクスポート設定を読み込む"""
+        return self.config("export_settings") or {}
+
+    def _save_export_settings(self, sgf_directory: str = None, selected_players: list = None):
+        """エクスポート設定を保存する"""
+        current_settings = self._load_export_settings()
+
+        if sgf_directory is not None:
+            current_settings["last_sgf_directory"] = sgf_directory
+        if selected_players is not None:
+            current_settings["last_selected_players"] = selected_players
+
+        # config システムに保存
+        self._config["export_settings"] = current_settings
+        self.save_config("export_settings")
+
     def log(self, message, level=OUTPUT_INFO):
         super().log(message, level)
         if level == OUTPUT_KATAGO_STDERR and "ERROR" not in self.controls.status.text:
@@ -894,6 +911,12 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_contents = LoadSGFPopup(self)
         popup_contents.filesel.dirselect = True  # ディレクトリ選択モード
 
+        # 前回のパスを初期表示
+        export_settings = self._load_export_settings()
+        last_directory = export_settings.get("last_sgf_directory")
+        if last_directory and os.path.isdir(last_directory):
+            popup_contents.filesel.path = last_directory
+
         load_popup = Popup(
             title="Select directory containing SGF files",
             size=[dp(1200), dp(800)],
@@ -936,6 +959,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 return
 
             load_popup.dismiss()
+
+            # 選択したディレクトリを保存
+            self._save_export_settings(sgf_directory=selected_path)
 
             # プレイヤー名をスキャン（バックグラウンド）
             import threading
@@ -1203,6 +1229,10 @@ class KaTrainGui(Screen, KaTrainBase):
         from kivy.uix.button import Button
         from kivy.uix.scrollview import ScrollView
 
+        # 前回の選択を読み込む
+        export_settings = self._load_export_settings()
+        last_selected_players = export_settings.get("last_selected_players", [])
+
         # チェックボックスリスト
         checkbox_dict = {}  # {player_name: CheckBox}
 
@@ -1227,9 +1257,11 @@ class KaTrainGui(Screen, KaTrainBase):
             row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
 
             checkbox = CheckBox(size_hint_x=None, width=dp(40))
-            # デフォルトで最も多いプレイヤーを選択
-            if player_name == sorted_players[0][0]:
-                checkbox.active = True
+            # 前回の選択がある場合はそれを使用、なければ最も多いプレイヤーを選択
+            if last_selected_players:
+                checkbox.active = player_name in last_selected_players
+            else:
+                checkbox.active = player_name == sorted_players[0][0]
 
             checkbox_dict[player_name] = checkbox
 
@@ -1269,6 +1301,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 return
 
             selection_popup.dismiss()
+
+            # 選択したプレイヤーを保存
+            self._save_export_settings(selected_players=selected_players)
 
             # 進行状況ポップアップ
             progress_label = Label(
