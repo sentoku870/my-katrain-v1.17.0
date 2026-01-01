@@ -2087,6 +2087,115 @@ class KaTrainGui(Screen, KaTrainBase):
         start_button.bind(on_release=start_quiz)
         popup.open()
 
+    def _do_skill_preset_popup(self):
+        """Show skill preset selection dialog (Phase 15)"""
+        from katrain.core import eval_metrics
+
+        current_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+
+        popup_content = BoxLayout(orientation="vertical", spacing=dp(15), padding=dp(20))
+
+        # Header
+        header_text = i18n._(
+            "Select analysis skill preset:\n\n"
+            "• Beginner: Relaxed thresholds (blunder: 8+ points)\n"
+            "• Standard: Balanced thresholds (blunder: 5+ points)\n"
+            "• Advanced: Strict thresholds (blunder: 3+ points)"
+        )
+        header_label = Label(
+            text=header_text,
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            height=dp(100),
+            color=Theme.TEXT_COLOR,
+        )
+        header_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
+        popup_content.add_widget(header_label)
+
+        # Radio buttons for presets
+        preset_layout = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None, height=dp(120))
+
+        preset_options = [
+            ("beginner", i18n._("Beginner (relaxed)")),
+            ("standard", i18n._("Standard (balanced)")),
+            ("advanced", i18n._("Advanced (strict)")),
+        ]
+
+        selected_preset = [current_preset]  # Use list to allow modification in nested function
+
+        def on_preset_select(preset_name):
+            selected_preset[0] = preset_name
+
+        from kivy.uix.checkbox import CheckBox
+
+        for preset_name, preset_label in preset_options:
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
+            checkbox = CheckBox(
+                group="skill_preset",
+                active=(preset_name == current_preset),
+                size_hint_x=None,
+                width=dp(40),
+            )
+            checkbox.bind(active=lambda chk, active, name=preset_name: on_preset_select(name) if active else None)
+
+            label = Label(
+                text=preset_label,
+                halign="left",
+                valign="middle",
+                color=Theme.TEXT_COLOR,
+            )
+            label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+            row.add_widget(checkbox)
+            row.add_widget(label)
+            preset_layout.add_widget(row)
+
+        popup_content.add_widget(preset_layout)
+
+        # Buttons
+        buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
+
+        save_button = Button(
+            text=i18n._("Save"),
+            size_hint_x=0.5,
+            height=dp(48),
+            background_color=Theme.BOX_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+
+        cancel_button = Button(
+            text=i18n._("Cancel"),
+            size_hint_x=0.5,
+            height=dp(48),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+
+        buttons_layout.add_widget(save_button)
+        buttons_layout.add_widget(cancel_button)
+        popup_content.add_widget(buttons_layout)
+
+        popup = I18NPopup(
+            title_key="mykatrain:skill-preset",
+            size=[dp(500), dp(350)],
+            content=popup_content,
+        ).__self__
+        popup.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+
+        def save_preset(*_args):
+            self._config["general"]["skill_preset"] = selected_preset[0]
+            self.save_config(f"general/skill_preset")
+            self.controls.set_status(
+                i18n._("Skill preset changed to: {preset}").format(preset=selected_preset[0]),
+                STATUS_INFO
+            )
+            popup.dismiss()
+
+        save_button.bind(on_release=save_preset)
+        cancel_button.bind(on_release=lambda *_args: popup.dismiss())
+        popup.open()
+
     def _format_points_loss(self, loss: Optional[float]) -> str:
         if loss is None:
             return i18n._("Points lost unknown")
