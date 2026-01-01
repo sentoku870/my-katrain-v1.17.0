@@ -15,7 +15,11 @@
       "Bash(findstr:*)",
       "Bash(timeout 10 python:*)",
       "Bash(git commit:*)",
-      "Bash(Select-String -Pattern \"error|Error|Exception|Traceback\" -Context 2)"
+      "Bash(Select-String -Pattern \"error|Error|Exception|Traceback\" -Context 2)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 15 python:*)",
+      "Bash(Select-String -Pattern \"error|Error|Exception|Traceback|setting.png\" -Context 2)"
     ]
   }
 }
