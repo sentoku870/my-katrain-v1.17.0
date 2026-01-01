@@ -954,20 +954,7 @@ class Game(BaseGame):
 
             lines = [f"## Reason Tags Distribution ({label})"]
             if reason_tags_counts:
-                # 日本語ラベル定義（__main__.py と同じ）
-                REASON_TAG_LABELS = {
-                    "atari": "アタリ (atari)",
-                    "low_liberties": "呼吸点少 (low liberties)",
-                    "cut_risk": "切断リスク (cut risk)",
-                    "need_connect": "連絡必要 (need connect)",
-                    "thin": "薄い形 (thin)",
-                    "chase_mode": "追込モード (chase mode)",
-                    "too_many_choices": "候補多数 (many choices)",
-                    "endgame_hint": "ヨセ局面 (endgame)",
-                    "heavy_loss": "大損失 (heavy loss)",
-                    "reading_failure": "読み抜け (reading failure)"
-                }
-
+                # Use centralized labels from eval_metrics
                 # カウント降順でソート
                 sorted_tags = sorted(
                     reason_tags_counts.items(),
@@ -977,7 +964,7 @@ class Game(BaseGame):
 
                 lines.append("")
                 for tag, count in sorted_tags:
-                    label_text = REASON_TAG_LABELS.get(tag, tag)
+                    label_text = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
                     lines.append(f"- {label_text}: {count}")
             else:
                 lines.append("")

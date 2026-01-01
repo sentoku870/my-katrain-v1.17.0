@@ -1585,20 +1585,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Reason Tags Distribution (Phase 10-B)
         if reason_tags_totals:  # Only show if tags exist
-            # Reason tag labels
-            REASON_TAG_LABELS = {
-                "atari": "アタリ (atari)",
-                "low_liberties": "呼吸点少 (low liberties)",
-                "cut_risk": "切断リスク (cut risk)",
-                "need_connect": "連絡必要 (need connect)",
-                "thin": "薄い形 (thin)",
-                "chase_mode": "追込モード (chase mode)",
-                "too_many_choices": "候補多数 (many choices)",
-                "endgame_hint": "ヨセ局面 (endgame)",
-                "heavy_loss": "大損失 (heavy loss)",
-                "reading_failure": "読み抜け (reading failure)"
-            }
-
+            # Use centralized labels from eval_metrics
             focus_suffix = f" ({focus_player})" if focus_player else ""
             lines.append(f"## ミス理由タグ分布{focus_suffix}")
             lines.append("")
@@ -1611,7 +1598,7 @@ class KaTrainGui(Screen, KaTrainBase):
             )
 
             for tag, count in sorted_tags:
-                label = REASON_TAG_LABELS.get(tag, tag)
+                label = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
                 lines.append(f"- {label}: {count} 回")
 
             lines.append("")
@@ -1650,6 +1637,22 @@ class KaTrainGui(Screen, KaTrainBase):
                 if estimation.estimated_level in preset_recommendations:
                     lines.append(f"- **推奨プリセット**: {preset_recommendations[estimation.estimated_level]}")
 
+                lines.append("")
+
+                # Phase 15: プリセット適用ガイド
+                lines.append("### プリセット適用方法")
+                lines.append("")
+                lines.append("推定結果に基づいて、以下の手順でプリセットを適用できます：")
+                lines.append("")
+                lines.append("1. KaTrain を起動")
+                lines.append("2. Settings (歯車アイコン) → Analysis タブ")
+                lines.append(f"3. \"Important Move Preset\" で **{estimation.estimated_level}** を選択")
+                lines.append("4. 設定を保存して解析を実行")
+                lines.append("")
+                lines.append("プリセットの詳細：")
+                lines.append("- **beginner**: 大きなミス(5目以上)を重点的に検出。初級〜中級向け")
+                lines.append("- **standard**: 中程度のミス(2目以上)も検出。有段者向け")
+                lines.append("- **advanced**: 小さなミス(1目以上)も検出。高段者向け")
                 lines.append("")
 
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
