@@ -920,23 +920,90 @@ class Game(BaseGame):
         # Important moves table (top N derived from existing settings)
         important_moves = self.get_important_move_evals(level=level)
 
+        # Phase 2: コンテキスト情報（候補手数・最善手差・危険度）を取得
+        def get_context_info_for_move(move_eval) -> dict:
+            """MoveEval から候補手数・最善手差・危険度を取得
+
+            Returns:
+                {
+                    "candidates": int or None,
+                    "best_gap": float or None (0.0-1.0),
+                    "danger": str or None ("High"/"Mid"/"Low")
+                }
+            """
+            context = {
+                "candidates": None,
+                "best_gap": None,
+                "danger": None
+            }
+
+            try:
+                # 候補手数
+                node = self._find_node_by_move_number(move_eval.move_number)
+                if node and hasattr(node, 'candidate_moves'):
+                    context["candidates"] = len(node.candidate_moves)
+
+                    # 最善手との差（winrateLost）
+                    # 実際に打った手の候補を探す
+                    actual_move_gtp = move_eval.gtp
+                    if actual_move_gtp:
+                        for candidate in node.candidate_moves:
+                            if candidate.get("move") == actual_move_gtp:
+                                winrate_lost = candidate.get("winrateLost")
+                                if winrate_lost is not None:
+                                    context["best_gap"] = winrate_lost
+                                break
+
+                # 危険度（board_analysis から）
+                if node:
+                    from katrain.core import board_analysis
+                    board_state = board_analysis.analyze_board_at_node(self, node)
+
+                    # プレイヤーのグループの最大危険度
+                    player = move_eval.player
+                    if player:
+                        my_groups = [g for g in board_state.groups if g.color == player]
+                        if my_groups:
+                            max_danger = max(
+                                (board_state.danger_scores.get(g.group_id, 0) for g in my_groups),
+                                default=0
+                            )
+
+                            if max_danger >= 50:
+                                context["danger"] = "High"
+                            elif max_danger >= 25:
+                                context["danger"] = "Mid"
+                            else:
+                                context["danger"] = "Low"
+
+            except Exception as e:
+                # エラー時は None のまま
+                self.katrain.log(f"Failed to get context info for move #{move_eval.move_number}: {e}", OUTPUT_DEBUG)
+
+            return context
+
         def important_lines_for(player: str, label: str) -> List[str]:
             player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
             lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
             if player_moves:
-                # Phase 5: "Reason" 列を追加
-                lines.append("| # | P | Coord | Loss | Mistake | Reason |")
-                lines.append("|---|---|-------|------|---------|--------|")
+                # Phase 2: 新しい列を追加（Candidates, Best Gap, Danger）
+                lines.append("| # | P | Coord | Loss | Candidates | Best Gap | Danger | Mistake | Reason |")
+                lines.append("|---|---|-------|------|------------|----------|--------|---------|--------|")
                 for mv in player_moves:
                     loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
                     mistake = mistake_label_from_loss(loss)
-
-                    # Phase 5: 理由タグをフォーマット
                     reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
+
+                    # Phase 2: コンテキスト情報を取得
+                    context = get_context_info_for_move(mv)
+                    candidates_str = str(context["candidates"]) if context["candidates"] is not None else "-"
+                    best_gap_str = f"{context['best_gap']*100:.0f}%" if context["best_gap"] is not None else "-"
+                    danger_str = context["danger"] or "-"
 
                     lines.append(
                         f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                        f"{fmt_float(loss)} | {mistake} | {reason_str} |"
+                        f"{fmt_float(loss)} | {candidates_str} | {best_gap_str} | {danger_str} | "
+                        f"{mistake} | {reason_str} |"
                     )
             else:
                 lines.append("- No important moves found.")
