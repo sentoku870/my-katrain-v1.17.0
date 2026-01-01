@@ -344,12 +344,21 @@ class QuizConfig:
 
 
 @dataclass(frozen=True)
+class ReasonTagThresholds:
+    """Thresholds for reason tag detection (Phase 17)."""
+
+    heavy_loss: float      # minimum loss for heavy_loss tag
+    reading_failure: float  # minimum loss for reading_failure tag
+
+
+@dataclass(frozen=True)
 class SkillPreset:
     """Skill presets for quiz extraction and mistake thresholds."""
 
     quiz: QuizConfig
     score_thresholds: Tuple[float, float, float]
     winrate_thresholds: Tuple[float, float, float]
+    reason_tag_thresholds: ReasonTagThresholds  # Phase 17
 
 
 SKILL_PRESETS: Dict[str, SkillPreset] = {
@@ -358,18 +367,21 @@ SKILL_PRESETS: Dict[str, SkillPreset] = {
         quiz=QuizConfig(loss_threshold=3.0, limit=10),
         score_thresholds=(2.0, 4.0, 8.0),
         winrate_thresholds=(0.08, 0.15, 0.30),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=20.0, reading_failure=25.0),
     ),
     # Standard: matches existing behavior (backward-compatible).
     "standard": SkillPreset(
         quiz=QuizConfig(loss_threshold=2.0, limit=10),
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=15.0, reading_failure=20.0),
     ),
     # Advanced: more sensitive to small errors.
     "advanced": SkillPreset(
         quiz=QuizConfig(loss_threshold=1.0, limit=10),
         score_thresholds=(0.5, 1.5, 3.0),
         winrate_thresholds=(0.03, 0.07, 0.15),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=10.0, reading_failure=15.0),
     ),
 }
 

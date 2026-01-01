@@ -1118,8 +1118,11 @@ class KaTrainGui(Screen, KaTrainBase):
                         # Directly set analysis dict (already in correct format)
                         game_node.analysis = analysis
 
+                # Get skill preset for tag threshold calculation (Option 0-B: Problem 3 fix)
+                skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+
                 # Get important moves with reason_tags
-                important_moves = temp_game.get_important_move_evals(compute_reason_tags=True)
+                important_moves = temp_game.get_important_move_evals(level=skill_preset, compute_reason_tags=True)
 
                 # Count reason_tags
                 for move_eval in important_moves:
