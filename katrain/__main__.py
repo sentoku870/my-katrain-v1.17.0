@@ -1617,7 +1617,11 @@ class KaTrainGui(Screen, KaTrainBase):
             lines.append("")
 
             # Phase 13: 棋力推定
-            total_important = sum(len(stats.get("important_moves_list", [])) for stats in stats_list)
+            # 重要局面総数を計算（reason_tagsを持つ手の数）
+            total_important = sum(
+                sum(stats.get("reason_tags_counts", {}).values())
+                for stats in stats_list
+            )
             if total_important >= 5:
                 estimation = eval_metrics.estimate_skill_level_from_tags(
                     reason_tags_totals,
