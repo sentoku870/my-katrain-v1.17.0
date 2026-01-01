@@ -272,8 +272,8 @@ def find_cut_points(
 
                     danger_increase = current_danger * coefficient
 
-                    # 最低閾値: 危険度増加が10以上の場合のみ切断点として認識
-                    if danger_increase >= 10:
+                    # 最低閾値: 危険度増加が5以上の場合のみ切断点として認識
+                    if danger_increase >= 5:
                         cut_points.append(((x, y), unique_groups, danger_increase))
 
     # 危険度上位10件を返す
