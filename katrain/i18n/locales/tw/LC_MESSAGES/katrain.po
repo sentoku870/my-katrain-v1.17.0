@@ -1089,3 +1089,11 @@ msgstr "Question {idx}/{total}: Move {move} ({player})"
 
 msgid "Generate quiz (beta)"
 msgstr "Generate quiz (beta)"
+
+#. TODO
+msgid "mykatrain:export-summary"
+msgstr "Export Multi-Game Summary"
+
+#. TODO
+msgid "mykatrain:export-karte"
+msgstr "Export Karte"

@@ -393,6 +393,25 @@ def get_skill_preset(name: str) -> SkillPreset:
     return SKILL_PRESETS.get(name, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
 
 
+# ---------------------------------------------------------------------------
+# Reason tag labels (Phase 17, Option 0-B: centralized definition)
+# ---------------------------------------------------------------------------
+
+# 理由タグの日本語ラベル（カルテ・サマリーで使用）
+REASON_TAG_LABELS: Dict[str, str] = {
+    "atari": "アタリ (atari)",
+    "low_liberties": "呼吸点少 (low liberties)",
+    "cut_risk": "切断リスク (cut risk)",
+    "need_connect": "連絡必要 (need connect)",
+    "thin": "薄い形 (thin)",
+    "chase_mode": "追込モード (chase mode)",
+    "too_many_choices": "候補多数 (many choices)",
+    "endgame_hint": "ヨセ局面 (endgame)",
+    "heavy_loss": "大損失 (heavy loss)",
+    "reading_failure": "読み抜け (reading failure)",
+}
+
+
 # Default configuration for the current quiz popup (backward-compatible).
 QUIZ_CONFIG_DEFAULT = SKILL_PRESETS[DEFAULT_SKILL_PRESET].quiz
 

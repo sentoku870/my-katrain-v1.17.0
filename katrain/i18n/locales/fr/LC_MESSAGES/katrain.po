@@ -1106,3 +1106,11 @@ msgstr ""
 "Picks 'pick_n + pick_frac * <number of legal moves>' weighted towards the "
 "last move and plays the best one. Plays top move if policy value is above "
 "'pick_override' to avoid obvious mistakes."
+
+#. TODO
+msgid "mykatrain:export-summary"
+msgstr "Export Multi-Game Summary"
+
+#. TODO
+msgid "mykatrain:export-karte"
+msgstr "Export Karte"
