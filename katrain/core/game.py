@@ -942,6 +942,50 @@ class Game(BaseGame):
                 lines.append("- No important moves found.")
             return lines
 
+        def reason_tags_distribution_for(player: str, label: str) -> List[str]:
+            """Phase 12: 理由タグ分布を生成（1局カルテ用）"""
+            player_moves = [mv for mv in important_moves if mv.player == player]
+
+            # タグをカウント
+            reason_tags_counts = {}
+            for mv in player_moves:
+                for tag in mv.reason_tags:
+                    reason_tags_counts[tag] = reason_tags_counts.get(tag, 0) + 1
+
+            lines = [f"## Reason Tags Distribution ({label})"]
+            if reason_tags_counts:
+                # 日本語ラベル定義（__main__.py と同じ）
+                REASON_TAG_LABELS = {
+                    "atari": "アタリ (atari)",
+                    "low_liberties": "呼吸点少 (low liberties)",
+                    "cut_risk": "切断リスク (cut risk)",
+                    "need_connect": "連絡必要 (need connect)",
+                    "thin": "薄い形 (thin)",
+                    "chase_mode": "追込モード (chase mode)",
+                    "too_many_choices": "候補多数 (many choices)",
+                    "endgame_hint": "ヨセ局面 (endgame)",
+                    "heavy_loss": "大損失 (heavy loss)",
+                    "reading_failure": "読み抜け (reading failure)"
+                }
+
+                # カウント降順でソート
+                sorted_tags = sorted(
+                    reason_tags_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )
+
+                lines.append("")
+                for tag, count in sorted_tags:
+                    label_text = REASON_TAG_LABELS.get(tag, tag)
+                    lines.append(f"- {label_text}: {count}")
+            else:
+                lines.append("")
+                lines.append("- No reason tags detected.")
+
+            lines.append("")
+            return lines
+
         focus_label = "Focus"
 
         # Assemble sections
@@ -1030,9 +1074,16 @@ class Game(BaseGame):
         if focus_color:
             sections += important_lines_for(focus_color, focus_label)
             sections.append("")
+            # Phase 12: タグ分布を Focus player に追加
+            sections += reason_tags_distribution_for(focus_color, focus_label)
         sections += important_lines_for("B", "Black")
         sections.append("")
+        # Phase 12: タグ分布を Black に追加
+        sections += reason_tags_distribution_for("B", "Black")
         sections += important_lines_for("W", "White")
+        sections.append("")
+        # Phase 12: タグ分布を White に追加
+        sections += reason_tags_distribution_for("W", "White")
         return "\n".join(sections)
 
     @staticmethod
