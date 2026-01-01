@@ -324,7 +324,8 @@ def get_reason_tags_for_move(
     board_state: BoardState,
     move_eval,  # MoveEval インスタンス
     node,  # GameNode
-    candidates: List[Dict]
+    candidates: List[Dict],
+    skill_preset: str = "standard"  # Phase 17: プリセット別閾値
 ) -> List[str]:
     """盤面状態に基づいて理由タグを計算
 
@@ -333,6 +334,7 @@ def get_reason_tags_for_move(
         move_eval: MoveEval インスタンス
         node: GameNode
         candidates: 候補手のリスト
+        skill_preset: スキルプリセット（"beginner" / "standard" / "advanced"）
 
     Returns:
         List[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
@@ -416,16 +418,22 @@ def get_reason_tags_for_move(
     if is_endgame:
         tags.append("endgame_hint")
 
-    # タグ 9: heavy_loss（大損失: 15目以上）
+    # タグ 9: heavy_loss（大損失: プリセット別閾値 - Phase 17, Option 0-B 一元化）
+    # 閾値は eval_metrics.SKILL_PRESETS から取得
     if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
-        if move_eval.points_lost >= 15:
+        from katrain.core import eval_metrics
+        preset = eval_metrics.get_skill_preset(skill_preset)
+        if move_eval.points_lost >= preset.reason_tag_thresholds.heavy_loss:
             tags.append("heavy_loss")
 
-    # タグ 10: reading_failure（読み抜け: 急場見逃しパターンの一部）
+    # タグ 10: reading_failure（読み抜け: プリセット別閾値 - Phase 17, Option 0-B 一元化）
+    # 閾値は eval_metrics.SKILL_PRESETS から取得
     # 注: 急場見逃しパターン全体の検出は __main__.py で実施済み
     # ここでは簡易版として、大損失 + 危険度高い場合を検出
     if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
-        if move_eval.points_lost >= 20 and max_my_danger >= 40:
+        from katrain.core import eval_metrics
+        preset = eval_metrics.get_skill_preset(skill_preset)
+        if move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure and max_my_danger >= 40:
             tags.append("reading_failure")
 
     return tags
