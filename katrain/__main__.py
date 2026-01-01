@@ -2185,7 +2185,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         def save_preset(*_args):
             self._config["general"]["skill_preset"] = selected_preset[0]
-            self.save_config(f"general/skill_preset")
+            self.save_config("general")
             self.controls.set_status(
                 i18n._("Skill preset changed to: {preset}").format(preset=selected_preset[0]),
                 STATUS_INFO
