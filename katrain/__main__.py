@@ -1585,20 +1585,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Reason Tags Distribution (Phase 10-B)
         if reason_tags_totals:  # Only show if tags exist
-            # Reason tag labels
-            REASON_TAG_LABELS = {
-                "atari": "アタリ (atari)",
-                "low_liberties": "呼吸点少 (low liberties)",
-                "cut_risk": "切断リスク (cut risk)",
-                "need_connect": "連絡必要 (need connect)",
-                "thin": "薄い形 (thin)",
-                "chase_mode": "追込モード (chase mode)",
-                "too_many_choices": "候補多数 (many choices)",
-                "endgame_hint": "ヨセ局面 (endgame)",
-                "heavy_loss": "大損失 (heavy loss)",
-                "reading_failure": "読み抜け (reading failure)"
-            }
-
+            # Use centralized labels from eval_metrics
             focus_suffix = f" ({focus_player})" if focus_player else ""
             lines.append(f"## ミス理由タグ分布{focus_suffix}")
             lines.append("")
@@ -1611,7 +1598,7 @@ class KaTrainGui(Screen, KaTrainBase):
             )
 
             for tag, count in sorted_tags:
-                label = REASON_TAG_LABELS.get(tag, tag)
+                label = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
                 lines.append(f"- {label}: {count} 回")
 
             lines.append("")
