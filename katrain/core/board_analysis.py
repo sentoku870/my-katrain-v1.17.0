@@ -324,7 +324,8 @@ def get_reason_tags_for_move(
     board_state: BoardState,
     move_eval,  # MoveEval インスタンス
     node,  # GameNode
-    candidates: List[Dict]
+    candidates: List[Dict],
+    skill_preset: str = "standard"  # Phase 17: プリセット別閾値
 ) -> List[str]:
     """盤面状態に基づいて理由タグを計算
 
@@ -333,6 +334,7 @@ def get_reason_tags_for_move(
         move_eval: MoveEval インスタンス
         node: GameNode
         candidates: 候補手のリスト
+        skill_preset: スキルプリセット（"beginner" / "standard" / "advanced"）
 
     Returns:
         List[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
@@ -416,16 +418,20 @@ def get_reason_tags_for_move(
     if is_endgame:
         tags.append("endgame_hint")
 
-    # タグ 9: heavy_loss（大損失: 15目以上）
+    # タグ 9: heavy_loss（大損失: プリセット別閾値 - Phase 17）
+    # beginner: 20目以上, standard: 15目以上, advanced: 10目以上
     if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
-        if move_eval.points_lost >= 15:
+        heavy_loss_threshold = {"beginner": 20, "standard": 15, "advanced": 10}.get(skill_preset, 15)
+        if move_eval.points_lost >= heavy_loss_threshold:
             tags.append("heavy_loss")
 
-    # タグ 10: reading_failure（読み抜け: 急場見逃しパターンの一部）
+    # タグ 10: reading_failure（読み抜け: プリセット別閾値 - Phase 17）
+    # beginner: 25目以上, standard: 20目以上, advanced: 15目以上
     # 注: 急場見逃しパターン全体の検出は __main__.py で実施済み
     # ここでは簡易版として、大損失 + 危険度高い場合を検出
     if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
-        if move_eval.points_lost >= 20 and max_my_danger >= 40:
+        reading_failure_threshold = {"beginner": 25, "standard": 20, "advanced": 15}.get(skill_preset, 20)
+        if move_eval.points_lost >= reading_failure_threshold and max_my_danger >= 40:
             tags.append("reading_failure")
 
     return tags

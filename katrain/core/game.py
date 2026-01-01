@@ -652,9 +652,9 @@ class Game(BaseGame):
                     # 候補手を取得
                     candidates = node.candidate_moves if hasattr(node, 'candidate_moves') else []
 
-                    # タグを計算
+                    # タグを計算（Phase 17: skill_preset を渡す）
                     move_eval.reason_tags = board_analysis.get_reason_tags_for_move(
-                        board_state, move_eval, node, candidates
+                        board_state, move_eval, node, candidates, skill_preset=level
                     )
                 except Exception as e:
                     # 失敗時は優雅に処理: 分析失敗時はタグなし
