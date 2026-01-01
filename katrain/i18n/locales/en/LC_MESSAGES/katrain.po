@@ -49,6 +49,12 @@ msgstr "Contribute"
 msgid "menu:manual"
 msgstr "Manual"
 
+msgid "mykatrain:export-karte"
+msgstr "Export Karte"
+
+msgid "mykatrain:export-summary"
+msgstr "Export Multi-Game Summary"
+
 #. player options in the setup and on the right
 msgid "player:type"
 msgstr "Player"

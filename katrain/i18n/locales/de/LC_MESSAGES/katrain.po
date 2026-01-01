@@ -1130,3 +1130,11 @@ msgstr "Correct! {move} is best ({loss_text})."
 
 msgid "{move} is not best ({loss_text})."
 msgstr "{move} is not best ({loss_text})."
+
+#. TODO
+msgid "mykatrain:export-summary"
+msgstr "Export Multi-Game Summary"
+
+#. TODO
+msgid "mykatrain:export-karte"
+msgstr "Export Karte"
