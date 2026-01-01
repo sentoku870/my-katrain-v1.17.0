@@ -222,7 +222,7 @@ def find_cut_points(
     groups: List[Group],
     danger_scores: Dict[int, float]
 ) -> List[Tuple[Tuple[int, int], List[int], float]]:
-    """切断点を検出（v0簡易版: 空リストを返す）
+    """切断点を検出（v0簡易版: ヒューリスティック）
 
     Args:
         game: Game インスタンス
@@ -230,10 +230,55 @@ def find_cut_points(
         danger_scores: 危険度スコア辞書
 
     Returns:
-        List[Tuple[Tuple[int, int], List[int], float]]: 空リスト（将来実装）
+        List[Tuple[Tuple[int, int], List[int], float]]:
+        [(座標, [リスクのあるgroup_ids], 危険度増加値), ...] を危険度上位10件
     """
-    # TODO: 将来実装
-    return []
+    board = game.board
+    board_size_x, board_size_y = game.board_size
+    cut_points = []
+
+    for y in range(board_size_y):
+        for x in range(board_size_x):
+            if board[y][x] != -1:  # 空でない
+                continue
+
+            # 隣接グループを色ごとに検出
+            adjacent_groups = {}  # {color: [group_ids]}
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
+                    neighbor_id = board[ny][nx]
+                    if neighbor_id >= 0:
+                        group = next((g for g in groups if g.group_id == neighbor_id), None)
+                        if group:
+                            adjacent_groups.setdefault(group.color, []).append(neighbor_id)
+
+            # 各色について、2つ以上のグループが隣接していれば切断候補
+            for color, group_ids in adjacent_groups.items():
+                unique_groups = list(set(group_ids))
+                if len(unique_groups) >= 2:
+                    # 危険度増加を計算
+                    # ヒューリスティック: 既に危険なグループほど切断リスクが高い
+                    current_danger = sum(danger_scores.get(gid, 0) for gid in unique_groups)
+
+                    # 係数: 既に危険度が高いほど切断の影響大
+                    # 60以上（アタリ級）: 0.8倍、35以上（呼吸2級）: 0.5倍、それ以下: 0.3倍
+                    if current_danger >= 60:
+                        coefficient = 0.8
+                    elif current_danger >= 35:
+                        coefficient = 0.5
+                    else:
+                        coefficient = 0.3
+
+                    danger_increase = current_danger * coefficient
+
+                    # 最低閾値: 危険度増加が10以上の場合のみ切断点として認識
+                    if danger_increase >= 10:
+                        cut_points.append(((x, y), unique_groups, danger_increase))
+
+    # 危険度上位10件を返す
+    cut_points.sort(key=lambda cp: cp[2], reverse=True)
+    return cut_points[:10]
 
 
 # ==================== Checkpoint 5: メインエントリポイント ====================

@@ -1652,6 +1652,22 @@ class KaTrainGui(Screen, KaTrainBase):
 
                 lines.append("")
 
+                # Phase 15: プリセット適用ガイド
+                lines.append("### プリセット適用方法")
+                lines.append("")
+                lines.append("推定結果に基づいて、以下の手順でプリセットを適用できます：")
+                lines.append("")
+                lines.append("1. KaTrain を起動")
+                lines.append("2. Settings (歯車アイコン) → Analysis タブ")
+                lines.append(f"3. \"Important Move Preset\" で **{estimation.estimated_level}** を選択")
+                lines.append("4. 設定を保存して解析を実行")
+                lines.append("")
+                lines.append("プリセットの詳細：")
+                lines.append("- **beginner**: 大きなミス(5目以上)を重点的に検出。初級〜中級向け")
+                lines.append("- **standard**: 中程度のミス(2目以上)も検出。有段者向け")
+                lines.append("- **advanced**: 小さなミス(1目以上)も検出。高段者向け")
+                lines.append("")
+
         lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
 
         if all_worst_moves:
