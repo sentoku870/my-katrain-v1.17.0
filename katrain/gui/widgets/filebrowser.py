@@ -161,8 +161,10 @@ Builder.load_string(
 #:import metrics kivy.metrics
 #:import abspath os.path.abspath
 #:import i18n katrain.core.lang.i18n
+#:import Theme katrain.gui.theme.Theme
 
 <TreeLabel>:
+    font_name: Theme.DEFAULT_FONT
     on_touch_down:
         self.parent.browser.path = self.path if self.collide_point(*args[1].pos) and self.path else self.parent.browser.path
     on_is_open: self.is_open and self.parent.trigger_populate(self)
@@ -202,6 +204,7 @@ Builder.load_string(
                 text_size: self.size
                 padding_x: '10dp'
                 text: abspath(root.path)
+                font_name: Theme.DEFAULT_FONT
                 track_lang: i18n._('')
                 valign: 'middle'
             I18NFileChooserListView:
@@ -225,6 +228,7 @@ Builder.load_string(
         TextInput:
             id: file_text
             hint_text: i18n._('Filename')
+            font_name: Theme.DEFAULT_FONT
             multiline: False
             height: '40dp'
         AutoSizedRoundedRectangleButton:
@@ -468,7 +472,19 @@ class I18NFileBrowser(BoxLayout):
         setattr(self, attr, getattr(obj, attr))
 
     def button_clicked(self):
+        # In directory selection mode, use current path if file_text is empty or matches current path
+        if self.dirselect:
+            # Use file_text if it's a valid directory, otherwise use current path
+            target_path = self.file_text.text if self.file_text.text and isdir(self.file_text.text) else self.path
+            if isdir(target_path):
+                # Update file_text to show the selected directory
+                self.file_text.text = target_path
+                self.dispatch("on_success")
+            return
+
+        # File selection mode
         if isdir(self.file_text.text):
+            # Navigate into this directory
             self.path = self.file_text.text
         elif not self.file_must_exist or isfile(self.file_text.text):
             self.dispatch("on_success")

@@ -790,8 +790,18 @@ class Game(BaseGame):
 
         return "\n".join(lines)
 
-    def build_karte_report(self, level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL) -> str:
-        """Build a compact, markdown-friendly report for the current game."""
+    def build_karte_report(
+        self,
+        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        player_filter: Optional[str] = None
+    ) -> str:
+        """Build a compact, markdown-friendly report for the current game.
+
+        Args:
+            level: Important move level setting
+            player_filter: Filter by player ("B", "W", or None for both)
+                          Can also be a username string to match against player names
+        """
         snapshot = self.build_eval_snapshot()
         thresholds = self.katrain.config("trainer/eval_thresholds") if self.katrain else []
         settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
@@ -855,6 +865,25 @@ class Game(BaseGame):
                 if match_black != match_white:
                     focus_color = "B" if match_black else "W"
 
+        # Phase 3: Process player_filter parameter
+        # If player_filter is a username string, convert to "B" or "W"
+        filtered_player = None
+        if player_filter:
+            if player_filter in ("B", "W"):
+                filtered_player = player_filter
+            else:
+                # Try to match against player names
+                user_norm = normalize_name(player_filter)
+                pb_norm = normalize_name(pb)
+                pw_norm = normalize_name(pw)
+                match_black = pb_norm and user_norm in pb_norm
+                match_white = pw_norm and user_norm in pw_norm
+                if match_black and not match_white:
+                    filtered_player = "B"
+                elif match_white and not match_black:
+                    filtered_player = "W"
+                # If both or neither match, filtered_player stays None (show both)
+
         def worst_move_for(player: str) -> Optional[MoveEval]:
             moves = [mv for mv in snapshot.moves if mv.player == player and mv.points_lost is not None]
             return max(moves, key=lambda mv: mv.points_lost) if moves else None
@@ -885,6 +914,62 @@ class Game(BaseGame):
                     else "unknown"
                 ),
             ]
+
+        def opponent_summary_for(focus_player: str) -> List[str]:
+            """相手プレイヤーのサマリーを生成（Phase 4: 相手情報追加）"""
+            opponent = "W" if focus_player == "B" else "B"
+            opponent_moves = [mv for mv in snapshot.moves if mv.player == opponent]
+            if not opponent_moves:
+                return []
+            total_lost = sum(max(0.0, mv.points_lost) for mv in opponent_moves if mv.points_lost is not None)
+            worst = worst_move_for(opponent)
+            opponent_name = pw if opponent == "W" else pb
+            return [
+                f"## Opponent Summary ({opponent_name})",
+                f"- Moves analyzed: {len(opponent_moves)}",
+                f"- Total points lost: {fmt_float(total_lost)}",
+                "- Worst move: " + (
+                    f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
+                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost)})"
+                    if worst else "unknown"
+                ),
+                ""
+            ]
+
+        def common_difficult_positions() -> List[str]:
+            """両者とも損失が大きい局面を検出（Phase 4: 共通困難局面）"""
+            # 連続する手（手番交代）で両者とも損失が大きい箇所を検出
+            difficult = []
+            moves_list = list(snapshot.moves)
+            for i in range(len(moves_list) - 1):
+                mv = moves_list[i]
+                next_mv = moves_list[i + 1]
+                # 両者の損失がそれぞれ2目以上
+                if (mv.points_lost is not None and mv.points_lost >= 2.0 and
+                    next_mv.points_lost is not None and next_mv.points_lost >= 2.0):
+                    # 手番が交代していることを確認
+                    if mv.player != next_mv.player:
+                        total = mv.points_lost + next_mv.points_lost
+                        # 黒/白の損失を正しく割り当て
+                        if mv.player == "B":
+                            b_loss, w_loss = mv.points_lost, next_mv.points_lost
+                        else:
+                            b_loss, w_loss = next_mv.points_lost, mv.points_lost
+                        difficult.append((mv.move_number, b_loss, w_loss, total))
+
+            if not difficult:
+                return []
+
+            difficult.sort(key=lambda x: x[3], reverse=True)
+            lines = ["## Common Difficult Positions", ""]
+            lines.append("Both players made significant errors (2+ points) in consecutive moves:")
+            lines.append("")
+            lines.append("| Move # | Black Loss | White Loss | Total Loss |")
+            lines.append("|--------|------------|------------|------------|")
+            for move_num, b_loss, w_loss, total in difficult[:5]:
+                lines.append(f"| {move_num}-{move_num+1} | {b_loss:.1f} | {w_loss:.1f} | {total:.1f} |")
+            lines.append("")
+            return lines
 
         # Distributions using existing report helper if thresholds are available
         histogram = None
@@ -1045,16 +1130,39 @@ class Game(BaseGame):
         sections = ["## Meta", *meta_lines, ""]
         sections += ["## Players", *players_lines, ""]
         sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            sections += [f"## Summary (Focus: {focus_name})", *summary_lines_for(focus_color), ""]
-        sections += ["## Summary (Black)", *summary_lines_for("B"), ""]
-        sections += ["## Summary (White)", *summary_lines_for("W"), ""]
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            sections += [f"## Distributions (Focus: {focus_name})", *distribution_lines_for(focus_color), ""]
-        sections += ["## Distributions (Black)", *distribution_lines_for("B"), ""]
-        sections += ["## Distributions (White)", *distribution_lines_for("W"), ""]
+
+        # Phase 3: Apply player filter to sections
+        if filtered_player is None:
+            # Show both players (current behavior)
+            if focus_color:
+                focus_name = "Black" if focus_color == "B" else "White"
+                sections += [f"## Summary (Focus: {focus_name})", *summary_lines_for(focus_color), ""]
+                # Phase 4: focus_color がある場合、相手サマリーを追加
+                sections += opponent_summary_for(focus_color)
+            sections += ["## Summary (Black)", *summary_lines_for("B"), ""]
+            sections += ["## Summary (White)", *summary_lines_for("W"), ""]
+            if focus_color:
+                focus_name = "Black" if focus_color == "B" else "White"
+                sections += [f"## Distributions (Focus: {focus_name})", *distribution_lines_for(focus_color), ""]
+            sections += ["## Distributions (Black)", *distribution_lines_for("B"), ""]
+            sections += ["## Distributions (White)", *distribution_lines_for("W"), ""]
+            # Phase 4: focus_color がある場合、共通困難局面を追加
+            if focus_color:
+                sections += common_difficult_positions()
+        else:
+            # Show only filtered player
+            filtered_name = "Black" if filtered_player == "B" else "White"
+            # Show focus section only if it matches the filter
+            if focus_color and focus_color == filtered_player:
+                sections += [f"## Summary (Focus: {filtered_name})", *summary_lines_for(focus_color), ""]
+            sections += [f"## Summary ({filtered_name})", *summary_lines_for(filtered_player), ""]
+            # Phase 4: 相手サマリーを追加
+            sections += opponent_summary_for(filtered_player)
+            if focus_color and focus_color == filtered_player:
+                sections += [f"## Distributions (Focus: {filtered_name})", *distribution_lines_for(focus_color), ""]
+            sections += [f"## Distributions ({filtered_name})", *distribution_lines_for(filtered_player), ""]
+            # Phase 4: 共通困難局面を追加
+            sections += common_difficult_positions()
 
         # 弱点仮説セクション（Phase 7で追加）
         def weakness_hypothesis_for(player: str, label: str) -> List[str]:
@@ -1120,23 +1228,40 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            sections += weakness_hypothesis_for(focus_color, focus_name)
+        # Phase 3: Apply player filter to weakness hypothesis and important moves
+        if filtered_player is None:
+            # Show both players
+            if focus_color:
+                focus_name = "Black" if focus_color == "B" else "White"
+                sections += weakness_hypothesis_for(focus_color, focus_name)
 
-        if focus_color:
-            sections += important_lines_for(focus_color, focus_label)
+            if focus_color:
+                sections += important_lines_for(focus_color, focus_label)
+                sections.append("")
+                # Phase 12: タグ分布を Focus player に追加
+                sections += reason_tags_distribution_for(focus_color, focus_label)
+            sections += important_lines_for("B", "Black")
             sections.append("")
-            # Phase 12: タグ分布を Focus player に追加
-            sections += reason_tags_distribution_for(focus_color, focus_label)
-        sections += important_lines_for("B", "Black")
-        sections.append("")
-        # Phase 12: タグ分布を Black に追加
-        sections += reason_tags_distribution_for("B", "Black")
-        sections += important_lines_for("W", "White")
-        sections.append("")
-        # Phase 12: タグ分布を White に追加
-        sections += reason_tags_distribution_for("W", "White")
+            # Phase 12: タグ分布を Black に追加
+            sections += reason_tags_distribution_for("B", "Black")
+            sections += important_lines_for("W", "White")
+            sections.append("")
+            # Phase 12: タグ分布を White に追加
+            sections += reason_tags_distribution_for("W", "White")
+        else:
+            # Show only filtered player
+            filtered_name = "Black" if filtered_player == "B" else "White"
+            if focus_color and focus_color == filtered_player:
+                sections += weakness_hypothesis_for(focus_color, filtered_name)
+
+            if focus_color and focus_color == filtered_player:
+                sections += important_lines_for(focus_color, focus_label)
+                sections.append("")
+                sections += reason_tags_distribution_for(focus_color, focus_label)
+            sections += important_lines_for(filtered_player, filtered_name)
+            sections.append("")
+            sections += reason_tags_distribution_for(filtered_player, filtered_name)
+
         return "\n".join(sections)
 
     @staticmethod

@@ -1159,3 +1159,99 @@ msgstr "Correct! {move} is best ({loss_text})."
 
 msgid "{move} is not best ({loss_text})."
 msgstr "{move} is not best ({loss_text})."
+
+msgid "mykatrain:settings"
+msgstr "myKatrain Settings"
+
+msgid "Configure myKatrain default settings:"
+msgstr "Configure myKatrain default settings:"
+
+msgid "mykatrain:settings:skill_preset"
+msgstr "Skill Preset:"
+
+msgid "mykatrain:settings:skill_beginner"
+msgstr "Beginner"
+
+msgid "mykatrain:settings:skill_standard"
+msgstr "Standard"
+
+msgid "mykatrain:settings:skill_advanced"
+msgstr "Advanced"
+
+msgid "mykatrain:settings:default_user_name"
+msgstr "Default User Name:"
+
+msgid "mykatrain:settings:karte_output_directory"
+msgstr "Karte Output Directory:"
+
+msgid "mykatrain:settings:batch_export_input_directory"
+msgstr "Batch Export Input Directory:"
+
+msgid "mykatrain:settings:karte_format"
+msgstr "Karte Format:"
+
+msgid "mykatrain:settings:format_both"
+msgstr "Both Players (1 file)"
+
+msgid "mykatrain:settings:format_black_only"
+msgstr "Black Only"
+
+msgid "mykatrain:settings:format_white_only"
+msgstr "White Only"
+
+msgid "mykatrain:settings:format_default_user_only"
+msgstr "Default User Only"
+
+msgid "mykatrain:settings:opponent_info_mode"
+msgstr "Opponent Info Mode:"
+
+msgid "mykatrain:settings:opponent_info_auto"
+msgstr "Auto"
+
+msgid "mykatrain:settings:opponent_info_detailed"
+msgstr "Always Detailed"
+
+msgid "mykatrain:settings:opponent_info_aggregate"
+msgstr "Always Aggregate"
+
+msgid "Select karte output directory"
+msgstr "Select karte output directory"
+
+msgid "Select batch export input directory"
+msgstr "Select batch export input directory"
+
+msgid "Settings saved"
+msgstr "Settings saved"
+
+msgid "mykatrain:error:output_dir_not_configured"
+msgstr "Karte output directory not configured.\nPlease set it in myKatrain Settings."
+
+msgid "mykatrain:error:no_analysis_data"
+msgstr "No analysis data available.\nPlease run KataGo analysis first."
+
+msgid "Karte output directory not configured.\nPlease set it in myKatrain Settings."
+msgstr "Karte output directory not configured.\nPlease set it in myKatrain Settings."
+
+msgid "Could not determine color for '{default_user}'.\nExporting both players."
+msgstr "Could not determine color for '{default_user}'.\nExporting both players."
+
+msgid "Default user '{default_user}' not found in SGF files.\nPlease select players manually."
+msgstr "Default user '{default_user}' not found in SGF files.\nPlease select players manually."
+
+msgid "Generating Summary"
+msgstr "Generating Summary"
+
+msgid "Select directory containing SGF files"
+msgstr "Select directory containing SGF files"
+
+msgid "Select players to include in summary:"
+msgstr "Select players to include in summary:"
+
+msgid "Summaries exported"
+msgstr "Summaries exported"
+
+msgid "No summaries generated"
+msgstr "No summaries generated"
+
+msgid "No categories had enough games (need 2+).\nCheck that focus_player matches SGF player names."
+msgstr "No categories had enough games (need 2+).\nCheck that focus_player matches SGF player names."
