@@ -18,7 +18,7 @@ BLUE = [0.3, 0.7, 0.9, 1]
 
 class Theme:
     # font
-    DEFAULT_FONT = "NotoSansCJKsc-Regular.otf"
+    DEFAULT_FONT = "NotoSansJP-Regular.otf"
     INPUT_FONT_SIZE = 20  # sp
     DESC_FONT_SIZE = 18  # sp
     NOTES_FONT_SIZE = 16  # sp

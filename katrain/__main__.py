@@ -848,9 +848,33 @@ class KaTrainGui(Screen, KaTrainBase):
         Clock.schedule_once(lambda dt: self._do_export_karte_ui(*args, **kwargs), 0)
 
     def _do_export_karte_ui(self, *args, **kwargs):
+        """Export karte using myKatrain settings (Phase 3)"""
         if not self.game:
             return
 
+        # Load settings
+        settings = self.config("mykatrain_settings") or {}
+        output_dir = settings.get("karte_output_directory", "")
+        karte_format = settings.get("karte_format", "both")
+        default_user = settings.get("default_user_name", "")
+
+        # Validate output directory
+        if not output_dir or not os.path.isdir(output_dir):
+            Popup(
+                title=i18n._("Error"),
+                content=Label(
+                    text=i18n._("mykatrain:error:output_dir_not_configured"),
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT,
+                ),
+                size_hint=(0.5, 0.3),
+            ).open()
+            # Open settings dialog
+            self._do_mykatrain_settings_popup()
+            return
+
+        # Generate filename base
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
         root_name = self.game.root.get_property("GN", None)
         base_name = (
@@ -858,47 +882,120 @@ class KaTrainGui(Screen, KaTrainBase):
             or (root_name if root_name not in [None, ""] else None)
             or self.game.game_id
         )
-        suggested_filename = f"karte_{base_name}_{timestamp}.md"
+        base_name = base_name[:50]  # Truncate to avoid overly long filenames
+        # Sanitize filename: replace problematic characters
+        base_name = re.sub(r'[<>:"/\\|?*]', '_', base_name)
 
-        default_path = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
-        os.makedirs(default_path, exist_ok=True)
+        # Check if analysis data exists
+        snapshot = self.game.build_eval_snapshot()
+        if not snapshot.moves:
+            Popup(
+                title=i18n._("Error"),
+                content=Label(
+                    text=i18n._("mykatrain:error:no_analysis_data"),
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT,
+                ),
+                size_hint=(0.5, 0.3),
+            ).open()
+            return
 
-        popup_contents = SaveSGFPopup(suggested_filename=suggested_filename)
-        popup_contents.filesel.filters = ["*.md", "*.*"]
-        popup_contents.filesel.path = os.path.abspath(default_path)
-        popup_contents.filesel.ids.file_text.text = os.path.join(default_path, suggested_filename)
-        save_popup = Popup(title="Export Karte (v0)", size=[dp(1200), dp(800)], content=popup_contents).__self__
+        # Determine player filter(s) and filename(s)
+        exports = []  # [(player_filter, filename), ...]
 
-        def save_report(*_args):
-            filename = popup_contents.filesel.filename
-            if not filename.lower().endswith(".md"):
-                filename += ".md"
-            save_popup.dismiss()
-            path, file = os.path.split(filename.strip())
-            if not path:
-                path = popup_contents.filesel.path or default_path
-            full_path = os.path.join(path, file)
-            try:
-                text = self.game.build_karte_report()
-                os.makedirs(path, exist_ok=True)
-                with open(full_path, "w", encoding="utf-8") as f:
-                    f.write(text)
-                try:
-                    Clipboard.copy(text)
-                except Exception as exc:
-                    self.log(f"Clipboard copy failed: {exc}", OUTPUT_DEBUG)
-                self.controls.set_status(f"Karte exported to {full_path}", STATUS_INFO, check_level=False)
+        if karte_format == "both":
+            # Both players in one file (player_filter=None)
+            exports = [(None, f"karte_{base_name}_{timestamp}.md")]
+        elif karte_format == "black_only":
+            exports = [("B", f"karte_{base_name}_black_{timestamp}.md")]
+        elif karte_format == "white_only":
+            exports = [("W", f"karte_{base_name}_white_{timestamp}.md")]
+        elif karte_format == "default_user_only":
+            # Determine user's color
+            player_color = self._determine_user_color(default_user)
+            if player_color:
+                color_label = "black" if player_color == "B" else "white"
+                exports = [(player_color, f"karte_{base_name}_{color_label}_{timestamp}.md")]
+            else:
+                # Fallback to both in one file
                 Popup(
-                    title="Karte exported",
-                    content=Label(text=f"Saved to:\n{full_path}", halign="center", valign="middle"),
+                    title="Warning",
+                    content=Label(
+                        text=i18n._(
+                            f"Could not determine color for '{default_user}'.\nExporting both players."
+                        ),
+                        halign="center",
+                        valign="middle",
+                        font_name=Theme.DEFAULT_FONT,
+                    ),
                     size_hint=(0.5, 0.3),
                 ).open()
-            except Exception as exc:
-                self.log(f"Failed to export Karte to {full_path}: {exc}", OUTPUT_ERROR)
+                exports = [(None, f"karte_{base_name}_{timestamp}.md")]
 
-        popup_contents.filesel.on_success = save_report
-        popup_contents.filesel.on_submit = save_report
-        save_popup.open()
+        # Generate and save karte(s)
+        saved_files = []
+        for player_filter, filename in exports:
+            full_path = os.path.join(output_dir, filename)
+            try:
+                text = self.game.build_karte_report(player_filter=player_filter)
+                os.makedirs(output_dir, exist_ok=True)
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                saved_files.append(full_path)
+            except Exception as exc:
+                self.log(f"Failed to save karte: {exc}", OUTPUT_ERROR)
+                Popup(
+                    title="Error",
+                    content=Label(text=f"Failed to save karte:\n{exc}", halign="center", valign="middle"),
+                    size_hint=(0.5, 0.3),
+                ).open()
+                return
+
+        # Show confirmation
+        files_text = "\n".join(saved_files)
+        self.controls.set_status(f"Karte(s) exported", STATUS_INFO, check_level=False)
+        Popup(
+            title="Karte exported",
+            content=Label(text=f"Saved to:\n{files_text}", halign="center", valign="middle"),
+            size_hint=(0.6, 0.4),
+        ).open()
+
+    def _determine_user_color(self, username: str) -> Optional[str]:
+        """Determine user's color based on player names in SGF (Phase 3)
+
+        Args:
+            username: Username to match against player names
+
+        Returns:
+            "B" for black, "W" for white, None if no match or ambiguous
+        """
+        if not username or not self.game:
+            return None
+
+        # Use existing normalization logic from game.py
+        def normalize_name(name: Optional[str]) -> str:
+            if not name:
+                return ""
+            return re.sub(r"[^0-9a-z]+", "", str(name).casefold())
+
+        pb = self.game.root.get_property("PB", None)
+        pw = self.game.root.get_property("PW", None)
+
+        user_norm = normalize_name(username)
+        pb_norm = normalize_name(pb)
+        pw_norm = normalize_name(pw)
+
+        match_black = pb_norm and user_norm in pb_norm
+        match_white = pw_norm and user_norm in pw_norm
+
+        if match_black and not match_white:
+            return "B"
+        elif match_white and not match_black:
+            return "W"
+        else:
+            # Ambiguous or no match
+            return None
 
     def _do_export_summary(self, *args, **kwargs):
         # export_summary is executed from _message_loop_thread (NOT the main Kivy thread).
@@ -907,19 +1004,60 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def _do_export_summary_ui(self, *args, **kwargs):
         """ディレクトリ選択とまとめ生成（自動分類）"""
-        # ディレクトリ選択ダイアログ
+        # mykatrain_settings を取得
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        karte_format = mykatrain_settings.get("karte_format", "both")
+        default_user = mykatrain_settings.get("default_user_name", "")
+        default_input_dir = mykatrain_settings.get("batch_export_input_directory", "")
+
+        # 入力ディレクトリが設定されている場合はフォルダ選択をスキップ
+        if default_input_dir and os.path.isdir(default_input_dir):
+            # SGFファイルを取得
+            sgf_files = []
+            for file in os.listdir(default_input_dir):
+                if file.lower().endswith('.sgf'):
+                    sgf_files.append(os.path.join(default_input_dir, file))
+
+            if len(sgf_files) < 2:
+                Popup(
+                    title="Error",
+                    content=Label(
+                        text=f"Found only {len(sgf_files)} SGF file(s) in batch directory.\nNeed at least 2 games for summary.",
+                        halign="center",
+                        valign="middle",
+                        font_name=Theme.DEFAULT_FONT,
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open()
+                return
+
+            # プレイヤー名をスキャンして処理（バックグラウンド）
+            # default_user_only の場合はプレイヤー選択もスキップ
+            import threading
+            threading.Thread(
+                target=self._scan_and_show_player_selection,
+                args=(sgf_files,),
+                daemon=True
+            ).start()
+            return
+
+        # 入力ディレクトリ未設定の場合: ディレクトリ選択ダイアログ
         popup_contents = LoadSGFPopup(self)
         popup_contents.filesel.dirselect = True  # ディレクトリ選択モード
 
-        # 前回のパスを初期表示
-        export_settings = self._load_export_settings()
-        last_directory = export_settings.get("last_sgf_directory")
-        if last_directory and os.path.isdir(last_directory):
-            popup_contents.filesel.path = last_directory
+        # mykatrain_settings の batch_export_input_directory を優先、なければ前回のパス
+        if default_input_dir and os.path.isdir(default_input_dir):
+            popup_contents.filesel.path = default_input_dir
+        else:
+            # フォールバック: 前回のパス
+            export_settings = self._load_export_settings()
+            last_directory = export_settings.get("last_sgf_directory")
+            if last_directory and os.path.isdir(last_directory):
+                popup_contents.filesel.path = last_directory
 
         load_popup = Popup(
-            title="Select directory containing SGF files",
-            size=[dp(1200), dp(800)],
+            title=i18n._("Select directory containing SGF files"),
+            size_hint=(0.8, 0.8),
             content=popup_contents
         ).__self__
 
@@ -1039,6 +1177,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 "board_size": board_size,
                 "total_moves": 0,
                 "total_points_lost": 0.0,
+                # Phase 4: プレイヤー別の統計
+                "moves_by_player": {"B": 0, "W": 0},
+                "loss_by_player": {"B": 0.0, "W": 0.0},
                 "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
                 "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
                 "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
@@ -1086,10 +1227,14 @@ class KaTrainGui(Screen, KaTrainBase):
                 # 解析データがある手は全てカウント
                 if points_lost is not None:
                     stats["total_moves"] += 1
+                    # Phase 4: プレイヤー別にカウント
+                    stats["moves_by_player"][player] += 1
 
                     # 損失は正の値のみ加算
                     if points_lost > 0:
                         stats["total_points_lost"] += points_lost
+                        # Phase 4: プレイヤー別に損失を記録
+                        stats["loss_by_player"][player] += points_lost
 
                     # ミス分類（負の損失は"良い手"としてカウント）
                     category = eval_metrics.classify_mistake(max(0, points_lost), None)
@@ -1196,6 +1341,11 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def _scan_and_show_player_selection(self, sgf_files: list):
         """プレイヤー名をスキャンして選択ダイアログを表示"""
+        # mykatrain_settings を取得
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        karte_format = mykatrain_settings.get("karte_format", "both")
+        default_user = mykatrain_settings.get("default_user_name", "")
+
         player_counts = self._scan_player_names(sgf_files)
 
         if not player_counts:
@@ -1213,6 +1363,32 @@ class KaTrainGui(Screen, KaTrainBase):
             )
             return
 
+        # karte_format に基づいてプレイヤー選択を自動化
+        if karte_format == "default_user_only" and default_user:
+            # デフォルトユーザーがSGF内に存在するか確認
+            if default_user in player_counts:
+                # プレイヤー選択をスキップ、デフォルトユーザーを自動選択
+                Clock.schedule_once(
+                    lambda dt: self._process_summary_with_selected_players(sgf_files, [default_user]),
+                    0
+                )
+                return
+            else:
+                # デフォルトユーザーが見つからない場合は警告して選択ダイアログへ
+                Clock.schedule_once(
+                    lambda dt: Popup(
+                        title="Warning",
+                        content=Label(
+                            text=f"Default user '{default_user}' not found in SGF files.\nPlease select players manually.",
+                            halign="center",
+                            valign="middle",
+                            font_name=Theme.DEFAULT_FONT,
+                        ),
+                        size_hint=(0.5, 0.3),
+                    ).open(),
+                    0
+                )
+
         # 出現回数でソート（多い順）
         sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
 
@@ -1221,6 +1397,30 @@ class KaTrainGui(Screen, KaTrainBase):
             lambda dt: self._show_player_selection_dialog(sorted_players, sgf_files),
             0
         )
+
+    def _process_summary_with_selected_players(self, sgf_files: list, selected_players: list):
+        """選択されたプレイヤーでサマリー処理を開始"""
+        # 進行状況ポップアップ
+        progress_label = Label(
+            text=f"Processing {len(sgf_files)} games...",
+            halign="center",
+            valign="middle"
+        )
+        progress_popup = Popup(
+            title="Generating Summary",
+            content=progress_label,
+            size_hint=(0.5, 0.3),
+            auto_dismiss=False
+        )
+        progress_popup.open()
+
+        # バックグラウンドで処理
+        import threading
+        threading.Thread(
+            target=self._process_and_export_summary,
+            args=(sgf_files, progress_popup, selected_players),
+            daemon=True
+        ).start()
 
     def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
         """プレイヤー選択ダイアログを表示"""
@@ -1244,7 +1444,8 @@ class KaTrainGui(Screen, KaTrainBase):
             size_hint_y=None,
             height=dp(30),
             halign="left",
-            valign="middle"
+            valign="middle",
+            font_name=Theme.DEFAULT_FONT,
         )
         instruction_label.bind(size=instruction_label.setter('text_size'))
         content_layout.add_widget(instruction_label)
@@ -1269,7 +1470,8 @@ class KaTrainGui(Screen, KaTrainBase):
                 text=f"{player_name} ({count} games)",
                 size_hint_x=1.0,
                 halign="left",
-                valign="middle"
+                valign="middle",
+                font_name=Theme.DEFAULT_FONT,
             )
             label.bind(size=label.setter('text_size'))
 
@@ -1398,16 +1600,23 @@ class KaTrainGui(Screen, KaTrainBase):
             )
             return
 
-        # ゲームを自動分類（互先/置碁）
-        # selected_playersが1人の場合はfocus_playerとして使用、複数/なしの場合はNone
-        focus_player = selected_players[0] if selected_players and len(selected_players) == 1 else None
-        categorized_games = self._categorize_games_by_stats(game_stats_list, focus_player)
+        # 複数プレイヤーが選択された場合は、各プレイヤーごとに別ファイルを出力
+        if selected_players and len(selected_players) > 1:
+            # 各プレイヤーごとに処理
+            Clock.schedule_once(
+                lambda dt: self._save_summaries_per_player(game_stats_list, selected_players, progress_popup),
+                0
+            )
+        else:
+            # 1プレイヤーまたは未選択の場合は従来通り
+            focus_player = selected_players[0] if selected_players and len(selected_players) == 1 else None
+            categorized_games = self._categorize_games_by_stats(game_stats_list, focus_player)
 
-        # 各カテゴリごとにまとめレポート生成
-        Clock.schedule_once(
-            lambda dt: self._save_categorized_summaries_from_stats(categorized_games, focus_player, progress_popup),
-            0
-        )
+            # 各カテゴリごとにまとめレポート生成
+            Clock.schedule_once(
+                lambda dt: self._save_categorized_summaries_from_stats(categorized_games, focus_player, progress_popup),
+                0
+            )
 
     def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
         """統計データから対局を分類（互先/置碁）"""
@@ -1555,6 +1764,66 @@ class KaTrainGui(Screen, KaTrainBase):
         lines.append(f"- Date range: {date_range}")
         # Removed: Generated timestamp (not needed for LLM)
         lines.append("")
+
+        # Phase 4: 相手情報セクション（動的詳細度調整）
+        if focus_player:
+            opponent_info_mode = (self.config("mykatrain_settings") or {}).get("opponent_info_mode", "auto")
+            # 自動モードの場合、対局数で詳細度を決定
+            if opponent_info_mode == "auto":
+                show_individual = total_games <= 5
+            elif opponent_info_mode == "always_detailed":
+                show_individual = True
+            else:  # always_aggregate
+                show_individual = False
+
+            if show_individual and total_games >= 1:
+                # 個別対局テーブル（5局以下）
+                lines.append("## Individual Game Overview")
+                lines.append("")
+                lines.append("| Game | Opponent | Result | My Loss | Opp Loss | Ratio |")
+                lines.append("|------|----------|--------|---------|----------|-------|")
+                for s in stats_list:
+                    game_short = s["game_name"][:20] + "..." if len(s["game_name"]) > 23 else s["game_name"]
+                    # focus_player が黒か白かを判定
+                    if s["player_black"] == focus_player:
+                        my_color = "B"
+                        opp_name = s["player_white"]
+                        my_loss = s.get("loss_by_player", {}).get("B", 0.0)
+                        opp_loss = s.get("loss_by_player", {}).get("W", 0.0)
+                    else:
+                        my_color = "W"
+                        opp_name = s["player_black"]
+                        my_loss = s.get("loss_by_player", {}).get("W", 0.0)
+                        opp_loss = s.get("loss_by_player", {}).get("B", 0.0)
+                    # 結果判定（損失が少ない方が勝ち傾向）
+                    ratio = my_loss / opp_loss if opp_loss > 0 else 0.0
+                    result = "Win?" if ratio < 0.8 else ("Loss?" if ratio > 1.2 else "Close")
+                    lines.append(f"| {game_short} | {opp_name[:15]} | {result} | {my_loss:.1f} | {opp_loss:.1f} | {ratio:.2f} |")
+                lines.append("")
+            elif total_games > 1:
+                # 集計情報のみ（6局以上）
+                lines.append("## Opponent Statistics (Aggregate)")
+                # 対戦相手をカウント
+                opponents = set()
+                total_opp_loss = 0.0
+                total_my_loss = 0.0
+                for s in stats_list:
+                    if s["player_black"] == focus_player:
+                        opponents.add(s["player_white"])
+                        total_my_loss += s.get("loss_by_player", {}).get("B", 0.0)
+                        total_opp_loss += s.get("loss_by_player", {}).get("W", 0.0)
+                    else:
+                        opponents.add(s["player_black"])
+                        total_my_loss += s.get("loss_by_player", {}).get("W", 0.0)
+                        total_opp_loss += s.get("loss_by_player", {}).get("B", 0.0)
+                avg_opp_loss = total_opp_loss / total_games if total_games > 0 else 0.0
+                avg_my_loss = total_my_loss / total_games if total_games > 0 else 0.0
+                loss_ratio = avg_my_loss / avg_opp_loss if avg_opp_loss > 0 else 0.0
+                lines.append(f"- Opponents faced: {len(opponents)}")
+                lines.append(f"- Average opponent loss per game: {avg_opp_loss:.1f}")
+                lines.append(f"- Average my loss per game: {avg_my_loss:.1f}")
+                lines.append(f"- Loss ratio (me/opponent): {loss_ratio:.2f}")
+                lines.append("")
 
         lines.append("## Overall Statistics" + (f" ({focus_player})" if focus_player else ""))
         lines.append(f"- Total games: {total_games}")
@@ -1893,6 +2162,90 @@ class KaTrainGui(Screen, KaTrainBase):
 
         return "\n".join(lines)
 
+    def _save_summaries_per_player(self, game_stats_list: list, selected_players: list, progress_popup):
+        """各プレイヤーごとに別ファイルでサマリーを保存"""
+        progress_popup.dismiss()
+
+        saved_files = []
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+
+        # mykatrain_settings の karte_output_directory を優先、なければ従来のパス
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        output_dir = mykatrain_settings.get("karte_output_directory", "")
+        if not output_dir or not os.path.isdir(output_dir):
+            output_dir = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
+        os.makedirs(output_dir, exist_ok=True)
+
+        for player_name in selected_players:
+            try:
+                # このプレイヤーが参加しているゲームのみフィルタ
+                player_games = [
+                    stats for stats in game_stats_list
+                    if stats["player_black"] == player_name or stats["player_white"] == player_name
+                ]
+
+                if len(player_games) < 2:
+                    self.log(f"Skipping {player_name}: Not enough games ({len(player_games)})", OUTPUT_INFO)
+                    continue
+
+                # ゲームを分類（互先/置碁）
+                categorized_games = self._categorize_games_by_stats(player_games, player_name)
+
+                # 各カテゴリごとにファイル出力
+                category_labels = {
+                    "even": "互先",
+                    "handi_weak": "置碁下手",
+                    "handi_strong": "置碁上手",
+                }
+
+                for category, games in categorized_games.items():
+                    if len(games) < 2:
+                        continue
+
+                    summary_text = self._build_summary_from_stats(games, player_name)
+
+                    # ファイル名にプレイヤー名を含める
+                    label = category_labels[category]
+                    # プレイヤー名のサニタイズ
+                    safe_player_name = re.sub(r'[<>:"/\\|?*]', '_', player_name)[:30]
+                    filename = f"summary_{safe_player_name}_{label}_{timestamp}.md"
+                    full_path = os.path.join(output_dir, filename)
+
+                    with open(full_path, "w", encoding="utf-8") as f:
+                        f.write(summary_text)
+
+                    saved_files.append(full_path)
+                    self.log(f"Summary saved: {full_path}", OUTPUT_INFO)
+
+            except Exception as exc:
+                self.log(f"Failed to save summary for {player_name}: {exc}", OUTPUT_ERROR)
+
+        # 結果ポップアップ
+        if saved_files:
+            files_text = "\n".join([os.path.basename(f) for f in saved_files])
+            Popup(
+                title=i18n._("Summaries exported"),
+                content=Label(
+                    text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}",
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT,
+                ),
+                size_hint=(0.6, 0.5),
+            ).open()
+            self.controls.set_status(f"{len(saved_files)} summaries exported", STATUS_INFO, check_level=False)
+        else:
+            Popup(
+                title=i18n._("No summaries generated"),
+                content=Label(
+                    text="No players had enough games (need 2+ per category).",
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT,
+                ),
+                size_hint=(0.5, 0.3),
+            ).open()
+
     def _save_categorized_summaries_from_stats(self, categorized_games: dict, player_name: str, progress_popup):
         """カテゴリごとにsummary.mdを保存"""
         progress_popup.dismiss()
@@ -1906,9 +2259,13 @@ class KaTrainGui(Screen, KaTrainBase):
         saved_files = []
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
 
-        # reports/ ディレクトリ
-        default_path = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
-        os.makedirs(default_path, exist_ok=True)
+        # mykatrain_settings の karte_output_directory を優先、なければ従来のパス
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        output_dir = mykatrain_settings.get("karte_output_directory", "")
+        if not output_dir or not os.path.isdir(output_dir):
+            # フォールバック: general/sgf_save/reports/
+            output_dir = os.path.join(os.path.expanduser(self.config("general/sgf_save") or "."), "reports")
+        os.makedirs(output_dir, exist_ok=True)
 
         for category, games in categorized_games.items():
             if len(games) < 2:
@@ -1922,7 +2279,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 # ファイル名
                 label = category_labels[category]
                 filename = f"summary_{label}_{timestamp}.md"
-                full_path = os.path.join(default_path, filename)
+                full_path = os.path.join(output_dir, filename)
 
                 # 保存
                 with open(full_path, "w", encoding="utf-8") as f:
@@ -2108,75 +2465,245 @@ class KaTrainGui(Screen, KaTrainBase):
         start_button.bind(on_release=start_quiz)
         popup.open()
 
-    def _do_skill_preset_popup(self):
-        """Show skill preset selection dialog (Phase 15)"""
+    def _do_mykatrain_settings_popup(self):
+        """Show myKatrain settings dialog (Phase 3)"""
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.checkbox import CheckBox
         from katrain.core import eval_metrics
 
-        current_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+        current_settings = self.config("mykatrain_settings") or {}
 
-        popup_content = BoxLayout(orientation="vertical", spacing=dp(15), padding=dp(20))
+        from kivy.uix.scrollview import ScrollView
 
-        # Header
-        header_text = i18n._(
-            "Select analysis skill preset:\n\n"
-            "• Beginner: Relaxed thresholds (blunder: 8+ points)\n"
-            "• Standard: Balanced thresholds (blunder: 5+ points)\n"
-            "• Advanced: Strict thresholds (blunder: 3+ points)"
-        )
-        header_label = Label(
-            text=header_text,
-            halign="left",
-            valign="top",
+        # ScrollView でコンテンツをスクロール可能に
+        scroll_view = ScrollView(size_hint=(1, 1))
+        popup_content = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
+        popup_content.bind(minimum_height=popup_content.setter('height'))
+
+        # Skill Preset (Radio buttons)
+        skill_label = Label(
+            text=i18n._("mykatrain:settings:skill_preset"),
             size_hint_y=None,
-            height=dp(100),
+            height=dp(25),
+            halign="left",
+            valign="middle",
             color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
         )
-        header_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
-        popup_content.add_widget(header_label)
+        skill_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        popup_content.add_widget(skill_label)
 
-        # Radio buttons for presets
-        preset_layout = BoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None, height=dp(120))
+        current_skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+        selected_skill_preset = [current_skill_preset]
 
-        preset_options = [
-            ("beginner", i18n._("Beginner (relaxed)")),
-            ("standard", i18n._("Standard (balanced)")),
-            ("advanced", i18n._("Advanced (strict)")),
+        skill_options = [
+            ("beginner", i18n._("mykatrain:settings:skill_beginner")),
+            ("standard", i18n._("mykatrain:settings:skill_standard")),
+            ("advanced", i18n._("mykatrain:settings:skill_advanced")),
         ]
 
-        selected_preset = [current_preset]  # Use list to allow modification in nested function
-
-        def on_preset_select(preset_name):
-            selected_preset[0] = preset_name
-
-        from kivy.uix.checkbox import CheckBox
-
-        for preset_name, preset_label in preset_options:
-            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
+        skill_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+        for skill_value, skill_label_text in skill_options:
             checkbox = CheckBox(
-                group="skill_preset",
-                active=(preset_name == current_preset),
+                group="skill_preset_setting",
+                active=(skill_value == current_skill_preset),
                 size_hint_x=None,
-                width=dp(40),
+                width=dp(30),
             )
-            checkbox.bind(active=lambda chk, active, name=preset_name: on_preset_select(name) if active else None)
-
+            checkbox.bind(
+                active=lambda chk, active, val=skill_value: selected_skill_preset.__setitem__(0, val) if active else None
+            )
             label = Label(
-                text=preset_label,
+                text=skill_label_text,
+                size_hint_x=None,
+                width=dp(100),
                 halign="left",
                 valign="middle",
                 color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
             )
             label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+            skill_layout.add_widget(checkbox)
+            skill_layout.add_widget(label)
+        popup_content.add_widget(skill_layout)
 
+        # Default User Name
+        user_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+        user_label = Label(
+            text=i18n._("mykatrain:settings:default_user_name"),
+            size_hint_x=0.35,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        user_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        user_input = TextInput(
+            text=current_settings.get("default_user_name", ""),
+            multiline=False,
+            size_hint_x=0.65,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        user_row.add_widget(user_label)
+        user_row.add_widget(user_input)
+        popup_content.add_widget(user_row)
+
+        # Karte Output Directory
+        output_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+        output_label = Label(
+            text=i18n._("mykatrain:settings:karte_output_directory"),
+            size_hint_x=0.35,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        output_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        output_input = TextInput(
+            text=current_settings.get("karte_output_directory", ""),
+            multiline=False,
+            size_hint_x=0.5,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        output_browse = Button(
+            text=i18n._("Browse..."),
+            size_hint_x=0.15,
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        output_row.add_widget(output_label)
+        output_row.add_widget(output_input)
+        output_row.add_widget(output_browse)
+        popup_content.add_widget(output_row)
+
+        # Batch Export Input Directory
+        input_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+        input_label = Label(
+            text=i18n._("mykatrain:settings:batch_export_input_directory"),
+            size_hint_x=0.35,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        input_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        input_input = TextInput(
+            text=current_settings.get("batch_export_input_directory", ""),
+            multiline=False,
+            size_hint_x=0.5,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        input_browse = Button(
+            text=i18n._("Browse..."),
+            size_hint_x=0.15,
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        input_row.add_widget(input_label)
+        input_row.add_widget(input_input)
+        input_row.add_widget(input_browse)
+        popup_content.add_widget(input_row)
+
+        # Karte Format (Radio buttons - 2x2 grid)
+        format_label = Label(
+            text=i18n._("mykatrain:settings:karte_format"),
+            size_hint_y=None,
+            height=dp(25),
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        format_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        popup_content.add_widget(format_label)
+
+        from kivy.uix.gridlayout import GridLayout
+
+        format_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
+        format_options = [
+            ("both", i18n._("mykatrain:settings:format_both")),
+            ("black_only", i18n._("mykatrain:settings:format_black_only")),
+            ("white_only", i18n._("mykatrain:settings:format_white_only")),
+            ("default_user_only", i18n._("mykatrain:settings:format_default_user_only")),
+        ]
+
+        current_format = current_settings.get("karte_format", "both")
+        selected_format = [current_format]
+
+        for format_value, format_label_text in format_options:
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
+            checkbox = CheckBox(
+                group="karte_format",
+                active=(format_value == current_format),
+                size_hint_x=None,
+                width=dp(30),
+            )
+            checkbox.bind(
+                active=lambda chk, active, val=format_value: selected_format.__setitem__(0, val) if active else None
+            )
+            label = Label(
+                text=format_label_text,
+                halign="left",
+                valign="middle",
+                color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
+            )
+            label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
             row.add_widget(checkbox)
             row.add_widget(label)
-            preset_layout.add_widget(row)
+            format_layout.add_widget(row)
 
-        popup_content.add_widget(preset_layout)
+        popup_content.add_widget(format_layout)
+
+        # Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4
+        opp_info_label = Label(
+            text=i18n._("mykatrain:settings:opponent_info_mode"),
+            size_hint_y=None,
+            height=dp(25),
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        opp_info_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        popup_content.add_widget(opp_info_label)
+
+        opp_info_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
+        opp_info_options = [
+            ("auto", i18n._("mykatrain:settings:opponent_info_auto")),
+            ("always_detailed", i18n._("mykatrain:settings:opponent_info_detailed")),
+            ("always_aggregate", i18n._("mykatrain:settings:opponent_info_aggregate")),
+        ]
+
+        current_opp_info = current_settings.get("opponent_info_mode", "auto")
+        selected_opp_info = [current_opp_info]
+
+        for opp_value, opp_label_text in opp_info_options:
+            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
+            checkbox = CheckBox(
+                group="opponent_info_mode",
+                active=(opp_value == current_opp_info),
+                size_hint_x=None,
+                width=dp(30),
+            )
+            checkbox.bind(
+                active=lambda chk, active, val=opp_value: selected_opp_info.__setitem__(0, val) if active else None
+            )
+            label = Label(
+                text=opp_label_text,
+                halign="left",
+                valign="middle",
+                color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
+            )
+            label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+            row.add_widget(checkbox)
+            row.add_widget(label)
+            opp_info_layout.add_widget(row)
+        popup_content.add_widget(opp_info_layout)
 
         # Buttons
         buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
-
         save_button = Button(
             text=i18n._("Save"),
             size_hint_x=0.5,
@@ -2184,7 +2711,6 @@ class KaTrainGui(Screen, KaTrainBase):
             background_color=Theme.BOX_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
         )
-
         cancel_button = Button(
             text=i18n._("Cancel"),
             size_hint_x=0.5,
@@ -2192,29 +2718,89 @@ class KaTrainGui(Screen, KaTrainBase):
             background_color=Theme.LIGHTER_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
         )
-
         buttons_layout.add_widget(save_button)
         buttons_layout.add_widget(cancel_button)
         popup_content.add_widget(buttons_layout)
 
-        popup = I18NPopup(
-            title_key="mykatrain:skill-preset",
-            size=[dp(500), dp(350)],
-            content=popup_content,
-        ).__self__
-        popup.pos_hint = {"center_x": 0.5, "center_y": 0.5}
+        scroll_view.add_widget(popup_content)
 
-        def save_preset(*_args):
-            self._config["general"]["skill_preset"] = selected_preset[0]
+        popup = I18NPopup(
+            title_key="mykatrain:settings",
+            size=[dp(900), dp(700)],
+            content=scroll_view,
+        ).__self__
+
+        # Save callback
+        def save_settings(*_args):
+            # Save skill preset to general config
+            self._config["general"]["skill_preset"] = selected_skill_preset[0]
             self.save_config("general")
-            self.controls.set_status(
-                i18n._("Skill preset changed to: {preset}").format(preset=selected_preset[0]),
-                STATUS_INFO
-            )
+            # Save mykatrain settings
+            self._config["mykatrain_settings"] = {
+                "default_user_name": user_input.text,
+                "karte_output_directory": output_input.text,
+                "batch_export_input_directory": input_input.text,
+                "karte_format": selected_format[0],
+                "opponent_info_mode": selected_opp_info[0],  # Phase 4
+            }
+            self.save_config("mykatrain_settings")
+            self.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
             popup.dismiss()
 
-        save_button.bind(on_release=save_preset)
+        # Directory browse callbacks
+        def browse_output(*_args):
+            from katrain.gui.popups import LoadSGFPopup
+
+            browse_popup_content = LoadSGFPopup(self)
+            browse_popup_content.filesel.dirselect = True
+            # Change button text to clarify it selects current folder
+            browse_popup_content.filesel.select_string = "Select This Folder"
+            if output_input.text and os.path.isdir(output_input.text):
+                browse_popup_content.filesel.path = os.path.abspath(output_input.text)
+
+            browse_popup = Popup(
+                title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+                size_hint=(0.8, 0.8),
+                content=browse_popup_content,
+            ).__self__
+
+            def on_select(*_args):
+                # Use file_text.text which is updated by button_clicked
+                output_input.text = browse_popup_content.filesel.file_text.text
+                browse_popup.dismiss()
+
+            browse_popup_content.filesel.bind(on_success=on_select)
+            browse_popup.open()
+
+        def browse_input(*_args):
+            from katrain.gui.popups import LoadSGFPopup
+
+            browse_popup_content = LoadSGFPopup(self)
+            browse_popup_content.filesel.dirselect = True
+            # Change button text to clarify it selects current folder
+            browse_popup_content.filesel.select_string = "Select This Folder"
+            if input_input.text and os.path.isdir(input_input.text):
+                browse_popup_content.filesel.path = os.path.abspath(input_input.text)
+
+            browse_popup = Popup(
+                title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+                size_hint=(0.8, 0.8),
+                content=browse_popup_content,
+            ).__self__
+
+            def on_select(*_args):
+                # Use file_text.text which is updated by button_clicked
+                input_input.text = browse_popup_content.filesel.file_text.text
+                browse_popup.dismiss()
+
+            browse_popup_content.filesel.bind(on_success=on_select)
+            browse_popup.open()
+
+        save_button.bind(on_release=save_settings)
         cancel_button.bind(on_release=lambda *_args: popup.dismiss())
+        output_browse.bind(on_release=browse_output)
+        input_browse.bind(on_release=browse_input)
+
         popup.open()
 
     def _format_points_loss(self, loss: Optional[float]) -> str:

@@ -167,6 +167,13 @@
             "pro_year": 1914
         }
     },
+    "mykatrain_settings": {
+        "default_user_name": "",
+        "karte_output_directory": "",
+        "batch_export_input_directory": "",
+        "karte_format": "both"
+    },
+    "export_settings": {},
     "ui_state": {
         "restoresize": true,
         "size": [],
