@@ -616,11 +616,14 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     # Position difficulty 計算（親ノードの候補手から判定）
     difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
 
-    # move_number の取得: 明示的に None をチェックしてフォールバック
-    # (move_number=0 は有効な値なので、or で判定してはいけない)
-    _move_number = getattr(node, "move_number", None)
+    # move_number の取得:
+    # GameNode.move_number は初期値 0 のまま更新されないことがあるため、
+    # depth プロパティ（SGFNode由来）を優先して使用する。
+    # depth は SGF ツリー上の深さを正確に反映している。
+    _move_number = getattr(node, "depth", None)
     if _move_number is None:
-        _move_number = getattr(node, "depth", 0)
+        # depth がない場合のフォールバック（通常は発生しない）
+        _move_number = getattr(node, "move_number", 0) or 0
 
     return MoveEval(
         move_number=_move_number,
