@@ -1,3 +1,29 @@
+"""
+eval_metrics.py - KARTE 解析の基盤モジュール
+
+Perspective Convention (視点規約)
+=================================
+
+このモジュールでは以下の視点規約を使用:
+
+1. **BLACK-PERSPECTIVE (黒視点)**:
+   - score_before, score_after: 正=黒有利、負=白有利
+   - delta_score, delta_winrate: 黒視点での変化量
+   - KataGo / GameNode からの値をそのまま使用
+
+2. **SIDE-TO-MOVE (手番視点)**:
+   - points_lost: その手を打ったプレイヤーにとっての損失
+   - GameNode.points_lost は内部で player_sign を適用済み
+
+3. **CANONICAL LOSS (正準損失)**:
+   - 常に >= 0 の損失値
+   - compute_canonical_loss() で計算
+   - points_lost を優先、delta からのフォールバックあり
+
+重要: delta_score/delta_winrate は BLACK-PERSPECTIVE のまま保持。
+      損失計算には compute_canonical_loss() を使用すること。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -45,26 +71,31 @@ class MoveEval:
     """
     1 手分の評価情報を表す最小単位。
 
-    Phase 1 時点では、score / winrate の視点（黒番視点か手番視点か）は
-    KaTrain 側の GameNode に格納されている値に合わせている。
-    あとから変換レイヤーを挟めるよう、before/after/delta を分けて持つ。
+    Perspective (視点):
+    - score_*, winrate_*, delta_*: BLACK-PERSPECTIVE (黒視点)
+      - 正の値 = 黒有利 / 黒の方向に変化
+    - points_lost: SIDE-TO-MOVE (手番視点)
+      - 正の値 = その手を打ったプレイヤーにとっての損失
+
+    損失計算には compute_canonical_loss() を使用すること。
+    delta_score/delta_winrate を直接損失として使わないこと。
     """
 
     move_number: int                    # 手数（1, 2, 3, ...）
     player: Optional[str]               # 'B' / 'W' / None（ルートなど）
     gtp: Optional[str]                  # "D4" のような座標 or "pass" / None
 
-    # 評価値（視点は GameNode.score / winrate に合わせる）
+    # 評価値（BLACK-PERSPECTIVE: 正=黒有利）
     score_before: Optional[float]       # この手を打つ前の評価
     score_after: Optional[float]        # この手を打った直後の評価
-    delta_score: Optional[float]        # score_after - score_before
+    delta_score: Optional[float]        # score_after - score_before (黒視点)
 
     winrate_before: Optional[float]     # この手を打つ前の勝率
     winrate_after: Optional[float]      # この手を打った直後の勝率
-    delta_winrate: Optional[float]      # winrate_after - winrate_before
+    delta_winrate: Optional[float]      # winrate_after - winrate_before (黒視点)
 
-    # KaTrain 標準の指標
-    points_lost: Optional[float]        # その手で失った期待値（points_lost）
+    # KaTrain 標準の指標（SIDE-TO-MOVE: 手番視点）
+    points_lost: Optional[float]        # その手で失った期待値（手番視点、正=損失）
     realized_points_lost: Optional[float]  # 実際の進行で確定した損失
     root_visits: int                    # その局面の root 訪問回数（見ている深さの目安）
     is_reliable: bool = False           # visits を根拠にした信頼度フラグ（保守的に False）
@@ -140,32 +171,114 @@ DEFAULT_IMPORTANT_MOVE_LEVEL = "normal"
 
 
 # ---------------------------------------------------------------------------
+# Canonical loss helper (used by EvalSnapshot, quiz, importance)
+# ---------------------------------------------------------------------------
+
+
+def get_canonical_loss_from_move(m: MoveEval) -> float:
+    """
+    MoveEval から正準損失 (canonical loss) を取得する。
+
+    優先順位:
+      1) score_loss が設定されていればそれを使用
+      2) points_lost があれば max(points_lost, 0) を使用
+      3) どちらもなければ 0.0
+
+    Returns:
+        float: 常に >= 0 の損失値
+    """
+    if m.score_loss is not None:
+        return m.score_loss
+    if m.points_lost is not None:
+        return max(0.0, m.points_lost)
+    return 0.0
+
+
+# ---------------------------------------------------------------------------
 
 @dataclass
 class EvalSnapshot:
     """
     ある時点での「ゲーム全体の評価一覧」をまとめたスナップショット。
+
+    プロパティについて:
+    - total_points_lost: 生の points_lost 合計（負の値を含む、後方互換）
+    - total_canonical_points_lost: score_loss 合計（>=0 のみ、推奨）
+    - max_points_lost: 生の points_lost 最大値（後方互換）
+    - max_canonical_points_lost: score_loss 最大値（推奨）
+    - worst_move: points_lost 最大の手（後方互換）
+    - worst_canonical_move: score_loss 最大の手（推奨）
     """
 
     moves: List[MoveEval] = field(default_factory=list)
 
+    # -------------------------------------------------------------------------
+    # Legacy properties (backward compatibility, may include negative values)
+    # -------------------------------------------------------------------------
+
     @property
     def total_points_lost(self) -> float:
+        """生の points_lost 合計（負の値を含む可能性あり）。後方互換用。"""
         return float(
             sum(m.points_lost for m in self.moves if m.points_lost is not None)
         )
 
     @property
     def max_points_lost(self) -> float:
+        """生の points_lost 最大値。後方互換用。"""
         vals = [m.points_lost for m in self.moves if m.points_lost is not None]
         return float(max(vals)) if vals else 0.0
 
     @property
     def worst_move(self) -> Optional[MoveEval]:
+        """points_lost 最大の手を返す。後方互換用。"""
         candidates = [m for m in self.moves if m.points_lost is not None]
         if not candidates:
             return None
         return max(candidates, key=lambda m: m.points_lost or 0.0)
+
+    # -------------------------------------------------------------------------
+    # Canonical properties (always >= 0, recommended for loss calculations)
+    # -------------------------------------------------------------------------
+
+    @property
+    def total_canonical_points_lost(self) -> float:
+        """
+        score_loss (正準損失) の合計。常に >= 0。
+
+        score_loss が設定されていない場合は max(points_lost, 0) を使用。
+        """
+        total = 0.0
+        for m in self.moves:
+            if m.score_loss is not None:
+                total += m.score_loss
+            elif m.points_lost is not None:
+                total += max(0.0, m.points_lost)
+        return total
+
+    @property
+    def max_canonical_points_lost(self) -> float:
+        """score_loss (正準損失) の最大値。"""
+        vals = []
+        for m in self.moves:
+            if m.score_loss is not None:
+                vals.append(m.score_loss)
+            elif m.points_lost is not None:
+                vals.append(max(0.0, m.points_lost))
+        return float(max(vals)) if vals else 0.0
+
+    @property
+    def worst_canonical_move(self) -> Optional[MoveEval]:
+        """score_loss 最大の手を返す。"""
+        candidates = [m for m in self.moves if get_canonical_loss_from_move(m) > 0.0]
+        if not candidates:
+            # 全て良い手の場合は最初の手を返す（または None）
+            return self.moves[0] if self.moves else None
+        return max(candidates, key=get_canonical_loss_from_move)
+
+    # -------------------------------------------------------------------------
+    # Filtering methods
+    # -------------------------------------------------------------------------
 
     def filtered(self, predicate: Callable[[MoveEval], bool]) -> "EvalSnapshot":
         return EvalSnapshot(moves=[m for m in self.moves if predicate(m)])
@@ -503,8 +616,14 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     # Position difficulty 計算（親ノードの候補手から判定）
     difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
 
+    # move_number の取得: 明示的に None をチェックしてフォールバック
+    # (move_number=0 は有効な値なので、or で判定してはいけない)
+    _move_number = getattr(node, "move_number", None)
+    if _move_number is None:
+        _move_number = getattr(node, "depth", 0)
+
     return MoveEval(
-        move_number=getattr(node, "move_number", 0) or getattr(node, "depth", 0),
+        move_number=_move_number,
         player=player,
         gtp=gtp,
         score_before=None,
@@ -659,10 +778,13 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
             else:
                 m.delta_winrate = None
 
-        # score_loss / winrate_loss を計算（delta から損失量を導出）
-        score_loss, winrate_loss = compute_loss_from_delta(
+        # score_loss / winrate_loss を計算
+        # compute_canonical_loss を使用: points_lost を優先し、delta はフォールバック
+        score_loss, winrate_loss = compute_canonical_loss(
+            points_lost=m.points_lost,
             delta_score=m.delta_score,
             delta_winrate=m.delta_winrate,
+            player=m.player,
         )
         m.score_loss = score_loss
         m.winrate_loss = winrate_loss
@@ -752,7 +874,7 @@ def quiz_items_from_snapshot(
     """
     EvalSnapshot から「大きなミス」をクイズ形式で取り出す簡易ヘルパー。
 
-    - points_lost を優先し、なければ score_loss を用いる。
+    - score_loss (canonical loss, 常に >= 0) を優先し、なければ max(points_lost, 0) を用いる。
     - loss_threshold より大きいものだけを抽出し、損失の大きい順に返す。
     - preset を指定した場合は、その設定を優先する。
     """
@@ -766,9 +888,10 @@ def quiz_items_from_snapshot(
 
     items: List[QuizItem] = []
     for move in snapshot.moves:
-        loss_val = move.points_lost if move.points_lost is not None else move.score_loss
-        if loss_val is None:
+        # score_loss も points_lost もない手はスキップ
+        if move.score_loss is None and move.points_lost is None:
             continue
+        loss_val = get_canonical_loss_from_move(move)
         if loss_val < loss_threshold:
             continue
         items.append(
@@ -828,6 +951,9 @@ def compute_loss_from_delta(
 
     - 良くなった手：loss = 0.0
     - 悪くなった手：loss = -delta
+
+    注意: この関数は delta が既に手番視点であることを前提とする。
+    黒視点の raw delta を渡す場合は、事前に player_sign を適用すること。
     """
     score_loss: Optional[float] = None
     winrate_loss: Optional[float] = None
@@ -837,6 +963,63 @@ def compute_loss_from_delta(
 
     if delta_winrate is not None:
         winrate_loss = max(0.0, -delta_winrate)
+
+    return score_loss, winrate_loss
+
+
+def compute_canonical_loss(
+    points_lost: Optional[float],
+    delta_score: Optional[float] = None,
+    delta_winrate: Optional[float] = None,
+    player: Optional[str] = None,
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    正準的な損失量 (>=0) を計算する。
+
+    優先順位:
+      1) points_lost が利用可能なら max(points_lost, 0) を使用
+         （points_lost は GameNode で既に player_sign が適用済み）
+      2) delta_score/delta_winrate が利用可能ならフォールバック
+         （注意: delta は黒視点の可能性があるため、player で補正）
+
+    Args:
+        points_lost: GameNode.points_lost（手番視点、正=損失）
+        delta_score: score_after - score_before（黒視点の可能性あり）
+        delta_winrate: winrate_after - winrate_before（黒視点の可能性あり）
+        player: "B" or "W"（delta の視点補正に使用）
+
+    Returns:
+        (score_loss, winrate_loss): 両方とも >= 0 または None
+
+    Perspective Convention:
+        - GameNode.score/winrate: BLACK-PERSPECTIVE (from KataGo)
+        - GameNode.points_lost: SIDE-TO-MOVE (uses player_sign internally)
+        - delta_score/delta_winrate in MoveEval: Currently BLACK-PERSPECTIVE
+          (score_after - score_before without player_sign)
+        - This function returns: ALWAYS >= 0 (clamped loss magnitude)
+    """
+    score_loss: Optional[float] = None
+    winrate_loss: Optional[float] = None
+
+    # Primary: use points_lost if available (already has player_sign applied)
+    if points_lost is not None:
+        score_loss = max(0.0, points_lost)
+
+    # Fallback: use delta with perspective correction
+    if score_loss is None and delta_score is not None:
+        # delta_score is black-perspective, need to convert to side-to-move
+        player_sign = {"B": 1, "W": -1, None: 1}.get(player, 1)
+        # For side-to-move: negative delta = loss
+        # delta_black * player_sign = delta_side_to_move
+        # loss = max(0, -delta_side_to_move)
+        side_to_move_delta = player_sign * delta_score
+        score_loss = max(0.0, -side_to_move_delta)
+
+    # Winrate loss (same logic)
+    if delta_winrate is not None:
+        player_sign = {"B": 1, "W": -1, None: 1}.get(player, 1)
+        side_to_move_delta = player_sign * delta_winrate
+        winrate_loss = max(0.0, -side_to_move_delta)
 
     return score_loss, winrate_loss
 
@@ -950,13 +1133,23 @@ def compute_importance_for_moves(
             else 0.0
         )
 
+        # swing_bonus: 形勢逆転を検出して重要度にボーナスを加算
+        # - score: 符号が反転（正→負 or 負→正）、または互角(0.0)を通過した場合
+        # - winrate: 50%ラインを跨いだ場合
+        # 注: score == 0.0 は「完全互角」を意味し、互角からの変化も重要な局面として扱う
         swing_bonus = 0.0
-        if (
-            m.score_before is not None
-            and m.score_after is not None
-            and (m.score_before == 0.0 or m.score_after == 0.0 or (m.score_before > 0) != (m.score_after > 0))
-        ):
-            swing_bonus += SWING_SCORE_SIGN_BONUS
+        if m.score_before is not None and m.score_after is not None:
+            # 符号変化の判定:
+            # - 正→負 または 負→正 への変化
+            # - 互角(0.0)から有利/不利への変化
+            # - 有利/不利から互角(0.0)への変化
+            score_sign_changed = (
+                (m.score_before > 0) != (m.score_after > 0)  # 符号反転
+                or m.score_before == 0.0  # 互角からの変化
+                or m.score_after == 0.0   # 互角への変化
+            )
+            if score_sign_changed:
+                swing_bonus += SWING_SCORE_SIGN_BONUS
         if (
             m.winrate_before is not None
             and m.winrate_after is not None
@@ -1030,12 +1223,12 @@ def pick_important_moves(
 
     # 2) フォールバック:
     #    1) で 1 手も選ばれなかったときだけ、
-    #    「評価変化＋points_lost」が大きい順で上位を取る。
+    #    「評価変化＋canonical loss」が大きい順で上位を取る。
     if not candidates:
         def raw_score(m: MoveEval) -> float:
             score_term = abs(m.delta_score or 0.0)
             winrate_term = 50.0 * abs(m.delta_winrate or 0.0)
-            pl_term = max(m.points_lost or 0.0, 0.0)
+            pl_term = get_canonical_loss_from_move(m)
             base = score_term + winrate_term + pl_term
             if not m.is_reliable:
                 base *= UNRELIABLE_IMPORTANCE_SCALE
