@@ -1181,6 +1181,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 "moves_by_player": {"B": 0, "W": 0},
                 "loss_by_player": {"B": 0.0, "W": 0.0},
                 "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
+                "mistake_total_loss": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
                 "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
                 "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
                 "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
@@ -1237,8 +1238,11 @@ class KaTrainGui(Screen, KaTrainBase):
                         stats["loss_by_player"][player] += points_lost
 
                     # ミス分類（負の損失は"良い手"としてカウント）
-                    category = eval_metrics.classify_mistake(max(0, points_lost), None)
+                    # canonical loss: 常に >= 0
+                    canonical_loss = max(0.0, points_lost)
+                    category = eval_metrics.classify_mistake(canonical_loss, None)
                     stats["mistake_counts"][category] += 1
+                    stats["mistake_total_loss"][category] += canonical_loss
 
                     # Freedom（未実装の場合はUNKNOWN）
                     freedom = eval_metrics.PositionDifficulty.UNKNOWN
@@ -1249,14 +1253,14 @@ class KaTrainGui(Screen, KaTrainBase):
                     phase = eval_metrics.classify_game_phase(move_number)
 
                     stats["phase_moves"][phase] += 1
-                    if points_lost > 0:
-                        stats["phase_loss"][phase] += points_lost
+                    if canonical_loss > 0:
+                        stats["phase_loss"][phase] += canonical_loss
 
                     # Phase × Mistake クロス集計（Phase 6.5で追加）
                     key = (phase, category)
                     stats["phase_mistake_counts"][key] = stats["phase_mistake_counts"].get(key, 0) + 1
-                    if points_lost > 0:
-                        stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + points_lost
+                    if canonical_loss > 0:
+                        stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + canonical_loss
 
                     # Importance を簡易計算（points_lost をベースに）
                     # 本来は delta_score, delta_winrate, swing_bonus を考慮するが、
@@ -1704,9 +1708,12 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # ミス分類の集計
         mistake_totals = {cat: 0 for cat in eval_metrics.MistakeCategory}
+        mistake_loss_totals = {cat: 0.0 for cat in eval_metrics.MistakeCategory}
         for stats in stats_list:
             for cat, count in stats["mistake_counts"].items():
                 mistake_totals[cat] += count
+            for cat, loss in stats.get("mistake_total_loss", {}).items():
+                mistake_loss_totals[cat] += loss
 
         # Freedom の集計
         freedom_totals = {diff: 0 for diff in eval_metrics.PositionDifficulty}
@@ -1838,7 +1845,9 @@ class KaTrainGui(Screen, KaTrainBase):
         for cat in eval_metrics.MistakeCategory:
             count = mistake_totals[cat]
             pct = (count / total_moves * 100) if total_moves > 0 else 0
-            avg = (sum(s["total_points_lost"] for s in stats_list if s["mistake_counts"][cat] > 0) / count) if count > 0 else 0
+            # Avg Loss = そのカテゴリの損失合計 ÷ そのカテゴリの手数
+            cat_loss = mistake_loss_totals.get(cat, 0.0)
+            avg = cat_loss / count if count > 0 else 0.0
             lines.append(f"| {cat_names.get(cat.name, cat.name)} | {count} | {pct:.1f}% | {avg:.2f} |")
         lines.append("")
 
@@ -2800,6 +2809,346 @@ class KaTrainGui(Screen, KaTrainBase):
         cancel_button.bind(on_release=lambda *_args: popup.dismiss())
         output_browse.bind(on_release=browse_output)
         input_browse.bind(on_release=browse_input)
+
+        popup.open()
+
+    def _do_batch_analyze_popup(self):
+        """Show batch analyze folder dialog."""
+        import threading
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.checkbox import CheckBox
+        from kivy.uix.scrollview import ScrollView
+
+        from katrain.tools.batch_analyze_sgf import run_batch, BatchResult
+
+        # Get default values from mykatrain_settings
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        default_input_dir = mykatrain_settings.get("batch_export_input_directory", "")
+
+        # Main layout
+        main_layout = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
+
+        # Input directory row
+        input_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+        input_label = Label(
+            text=i18n._("mykatrain:batch:input_dir"),
+            size_hint_x=0.25,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        input_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        input_input = TextInput(
+            text=default_input_dir,
+            multiline=False,
+            size_hint_x=0.6,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        input_browse = Button(
+            text=i18n._("Browse..."),
+            size_hint_x=0.15,
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        input_row.add_widget(input_label)
+        input_row.add_widget(input_input)
+        input_row.add_widget(input_browse)
+        main_layout.add_widget(input_row)
+
+        # Output directory row
+        output_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+        output_label = Label(
+            text=i18n._("mykatrain:batch:output_dir"),
+            size_hint_x=0.25,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        output_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        output_input = TextInput(
+            text="",
+            hint_text=i18n._("mykatrain:batch:output_hint"),
+            multiline=False,
+            size_hint_x=0.6,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        output_browse = Button(
+            text=i18n._("Browse..."),
+            size_hint_x=0.15,
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        output_row.add_widget(output_label)
+        output_row.add_widget(output_input)
+        output_row.add_widget(output_browse)
+        main_layout.add_widget(output_row)
+
+        # Options row 1: visits and timeout
+        options_row1 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+
+        visits_label = Label(
+            text=i18n._("mykatrain:batch:visits"),
+            size_hint_x=0.15,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        visits_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        visits_input = TextInput(
+            text="",
+            hint_text=i18n._("mykatrain:batch:visits_hint"),
+            multiline=False,
+            input_filter="int",
+            size_hint_x=0.2,
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        timeout_label = Label(
+            text=i18n._("mykatrain:batch:timeout"),
+            size_hint_x=0.2,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        timeout_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        timeout_input = TextInput(
+            text="600",
+            multiline=False,
+            input_filter="int",
+            size_hint_x=0.15,
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        options_row1.add_widget(visits_label)
+        options_row1.add_widget(visits_input)
+        options_row1.add_widget(Label(size_hint_x=0.1))  # spacer
+        options_row1.add_widget(timeout_label)
+        options_row1.add_widget(timeout_input)
+        options_row1.add_widget(Label(size_hint_x=0.2))  # spacer
+        main_layout.add_widget(options_row1)
+
+        # Options row 2: checkboxes
+        options_row2 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
+
+        skip_checkbox = CheckBox(active=True, size_hint_x=None, width=dp(30))
+        skip_label = Label(
+            text=i18n._("mykatrain:batch:skip_analyzed"),
+            size_hint_x=0.4,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        skip_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        options_row2.add_widget(skip_checkbox)
+        options_row2.add_widget(skip_label)
+        options_row2.add_widget(Label(size_hint_x=0.5))  # spacer
+        main_layout.add_widget(options_row2)
+
+        # Progress row
+        progress_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(10))
+        progress_label = Label(
+            text=i18n._("mykatrain:batch:ready"),
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        progress_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        progress_row.add_widget(progress_label)
+        main_layout.add_widget(progress_row)
+
+        # Log area (scrollable)
+        log_scroll = ScrollView(size_hint=(1, 1))
+        log_text = TextInput(
+            text="",
+            multiline=True,
+            readonly=True,
+            size_hint_y=None,
+            font_name=Theme.DEFAULT_FONT,
+            background_color=(0.1, 0.1, 0.1, 1),
+            foreground_color=(0.9, 0.9, 0.9, 1),
+        )
+        log_text.bind(minimum_height=log_text.setter('height'))
+        log_scroll.add_widget(log_text)
+        main_layout.add_widget(log_scroll)
+
+        # Buttons row
+        buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
+        start_button = Button(
+            text=i18n._("mykatrain:batch:start"),
+            size_hint_x=0.5,
+            height=dp(48),
+            background_color=Theme.BOX_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        close_button = Button(
+            text=i18n._("Close"),
+            size_hint_x=0.5,
+            height=dp(48),
+            background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+            color=Theme.TEXT_COLOR,
+        )
+        buttons_layout.add_widget(start_button)
+        buttons_layout.add_widget(close_button)
+        main_layout.add_widget(buttons_layout)
+
+        popup = I18NPopup(
+            title_key="mykatrain:batch:title",
+            size=[dp(800), dp(600)],
+            content=main_layout,
+        ).__self__
+
+        # State for cancellation
+        cancel_flag = [False]
+        is_running = [False]
+
+        # Log callback (thread-safe via Clock)
+        def log_cb(msg: str):
+            def update_log(dt):
+                log_text.text += msg + "\n"
+                # Auto-scroll to bottom
+                log_scroll.scroll_y = 0
+            Clock.schedule_once(update_log, 0)
+
+        # Progress callback (thread-safe via Clock)
+        def progress_cb(current: int, total: int, filename: str):
+            def update_progress(dt):
+                progress_label.text = f"[{current}/{total}] {filename}"
+            Clock.schedule_once(update_progress, 0)
+
+        # Run batch in background thread
+        def run_batch_thread():
+            input_dir = input_input.text.strip()
+            output_dir = output_input.text.strip() or None
+            visits = int(visits_input.text) if visits_input.text.strip() else None
+            timeout = float(timeout_input.text) if timeout_input.text.strip() else 600.0
+            skip_analyzed = skip_checkbox.active
+
+            result = run_batch(
+                katrain=self,
+                engine=self.engine,
+                input_dir=input_dir,
+                output_dir=output_dir,
+                visits=visits,
+                timeout=timeout,
+                skip_analyzed=skip_analyzed,
+                progress_cb=progress_cb,
+                log_cb=log_cb,
+                cancel_flag=cancel_flag,
+            )
+
+            # Show summary on main thread
+            def show_summary(dt):
+                is_running[0] = False
+                start_button.text = i18n._("mykatrain:batch:start")
+                close_button.disabled = False
+
+                if result.cancelled:
+                    summary = i18n._("mykatrain:batch:cancelled")
+                else:
+                    summary = i18n._("mykatrain:batch:complete").format(
+                        success=result.success_count,
+                        failed=result.fail_count,
+                        skipped=result.skip_count,
+                        output_dir=result.output_dir,
+                    )
+                progress_label.text = summary
+                log_cb(summary)
+
+            Clock.schedule_once(show_summary, 0)
+
+        # Start button callback
+        def on_start(*_args):
+            if is_running[0]:
+                # Cancel
+                cancel_flag[0] = True
+                start_button.text = i18n._("mykatrain:batch:cancelling")
+                start_button.disabled = True
+                return
+
+            # Validate input
+            input_dir = input_input.text.strip()
+            if not input_dir or not os.path.isdir(input_dir):
+                self.controls.set_status(i18n._("mykatrain:batch:error_input_dir"), STATUS_ERROR)
+                return
+
+            # Check engine
+            if not self.engine:
+                self.controls.set_status(i18n._("mykatrain:batch:error_no_engine"), STATUS_ERROR)
+                return
+
+            # Start
+            is_running[0] = True
+            cancel_flag[0] = False
+            start_button.text = i18n._("mykatrain:batch:cancel")
+            start_button.disabled = False
+            close_button.disabled = True
+            log_text.text = ""
+            progress_label.text = i18n._("mykatrain:batch:starting")
+
+            threading.Thread(target=run_batch_thread, daemon=True).start()
+
+        # Close button callback
+        def on_close(*_args):
+            if is_running[0]:
+                return  # Don't close while running
+            popup.dismiss()
+
+        # Browse callbacks
+        def browse_input_dir(*_args):
+            from katrain.gui.popups import LoadSGFPopup
+
+            browse_popup_content = LoadSGFPopup(self)
+            browse_popup_content.filesel.dirselect = True
+            browse_popup_content.filesel.select_string = "Select This Folder"
+            if input_input.text and os.path.isdir(input_input.text):
+                browse_popup_content.filesel.path = os.path.abspath(input_input.text)
+
+            browse_popup = Popup(
+                title="Select input folder",
+                size_hint=(0.8, 0.8),
+                content=browse_popup_content,
+            ).__self__
+
+            def on_select(*_args):
+                input_input.text = browse_popup_content.filesel.file_text.text
+                browse_popup.dismiss()
+
+            browse_popup_content.filesel.bind(on_success=on_select)
+            browse_popup.open()
+
+        def browse_output_dir(*_args):
+            from katrain.gui.popups import LoadSGFPopup
+
+            browse_popup_content = LoadSGFPopup(self)
+            browse_popup_content.filesel.dirselect = True
+            browse_popup_content.filesel.select_string = "Select This Folder"
+            if output_input.text and os.path.isdir(output_input.text):
+                browse_popup_content.filesel.path = os.path.abspath(output_input.text)
+
+            browse_popup = Popup(
+                title="Select output folder",
+                size_hint=(0.8, 0.8),
+                content=browse_popup_content,
+            ).__self__
+
+            def on_select(*_args):
+                output_input.text = browse_popup_content.filesel.file_text.text
+                browse_popup.dismiss()
+
+            browse_popup_content.filesel.bind(on_success=on_select)
+            browse_popup.open()
+
+        start_button.bind(on_release=on_start)
+        close_button.bind(on_release=on_close)
+        input_browse.bind(on_release=browse_input_dir)
+        output_browse.bind(on_release=browse_output_dir)
 
         popup.open()
 

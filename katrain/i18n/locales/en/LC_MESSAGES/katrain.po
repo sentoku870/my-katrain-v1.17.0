@@ -55,6 +55,60 @@ msgstr "Export Karte"
 msgid "mykatrain:export-summary"
 msgstr "Export Multi-Game Summary"
 
+msgid "mykatrain:batch-analyze"
+msgstr "Batch Analyze Folder..."
+
+msgid "mykatrain:batch:title"
+msgstr "Batch Analyze Folder"
+
+msgid "mykatrain:batch:input_dir"
+msgstr "Input Directory"
+
+msgid "mykatrain:batch:output_dir"
+msgstr "Output Directory"
+
+msgid "mykatrain:batch:output_hint"
+msgstr "(same as input if empty)"
+
+msgid "mykatrain:batch:visits"
+msgstr "Visits"
+
+msgid "mykatrain:batch:visits_hint"
+msgstr "(default)"
+
+msgid "mykatrain:batch:timeout"
+msgstr "Timeout (sec)"
+
+msgid "mykatrain:batch:skip_analyzed"
+msgstr "Skip already analyzed files"
+
+msgid "mykatrain:batch:ready"
+msgstr "Ready to start"
+
+msgid "mykatrain:batch:start"
+msgstr "Start"
+
+msgid "mykatrain:batch:cancel"
+msgstr "Cancel"
+
+msgid "mykatrain:batch:cancelling"
+msgstr "Cancelling..."
+
+msgid "mykatrain:batch:starting"
+msgstr "Starting..."
+
+msgid "mykatrain:batch:cancelled"
+msgstr "Cancelled by user"
+
+msgid "mykatrain:batch:complete"
+msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}. Output: {output_dir}"
+
+msgid "mykatrain:batch:error_input_dir"
+msgstr "Please select a valid input directory"
+
+msgid "mykatrain:batch:error_no_engine"
+msgstr "KataGo engine is not running"
+
 #. player options in the setup and on the right
 msgid "player:type"
 msgstr "Player"
