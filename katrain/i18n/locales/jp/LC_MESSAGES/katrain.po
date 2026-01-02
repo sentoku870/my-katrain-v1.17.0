@@ -1040,6 +1040,60 @@ msgstr "カルテ出力"
 msgid "mykatrain:export-summary"
 msgstr "複数局まとめ"
 
+msgid "mykatrain:batch-analyze"
+msgstr "フォルダ一括解析..."
+
+msgid "mykatrain:batch:title"
+msgstr "フォルダ一括解析"
+
+msgid "mykatrain:batch:input_dir"
+msgstr "入力フォルダ"
+
+msgid "mykatrain:batch:output_dir"
+msgstr "出力フォルダ"
+
+msgid "mykatrain:batch:output_hint"
+msgstr "(空欄=入力と同じ)"
+
+msgid "mykatrain:batch:visits"
+msgstr "訪問数"
+
+msgid "mykatrain:batch:visits_hint"
+msgstr "(デフォルト)"
+
+msgid "mykatrain:batch:timeout"
+msgstr "タイムアウト(秒)"
+
+msgid "mykatrain:batch:skip_analyzed"
+msgstr "解析済みファイルをスキップ"
+
+msgid "mykatrain:batch:ready"
+msgstr "開始準備完了"
+
+msgid "mykatrain:batch:start"
+msgstr "開始"
+
+msgid "mykatrain:batch:cancel"
+msgstr "キャンセル"
+
+msgid "mykatrain:batch:cancelling"
+msgstr "キャンセル中..."
+
+msgid "mykatrain:batch:starting"
+msgstr "開始中..."
+
+msgid "mykatrain:batch:cancelled"
+msgstr "ユーザーによりキャンセル"
+
+msgid "mykatrain:batch:complete"
+msgstr "完了! 成功: {success}, 失敗: {failed}, スキップ: {skipped}. 出力先: {output_dir}"
+
+msgid "mykatrain:batch:error_input_dir"
+msgstr "有効な入力フォルダを選択してください"
+
+msgid "mykatrain:batch:error_no_engine"
+msgstr "KataGoエンジンが起動していません"
+
 msgid "Close"
 msgstr "閉じる"
 
