@@ -19,6 +19,7 @@ from .eval_metrics import (
     QuizItem,
     QuizQuestion,
     SummaryStats,
+    get_canonical_loss_from_move,
     quiz_items_from_snapshot,
     quiz_points_lost_from_candidate,
     snapshot_from_game,
@@ -1075,7 +1076,8 @@ class Game(BaseGame):
                 lines.append("| # | P | Coord | Loss | Candidates | Best Gap | Danger | Mistake | Reason |")
                 lines.append("|---|---|-------|------|------------|----------|--------|---------|--------|")
                 for mv in player_moves:
-                    loss = mv.points_lost if mv.points_lost is not None else mv.score_loss
+                    # canonical loss を使用（常に >= 0）
+                    loss = get_canonical_loss_from_move(mv)
                     mistake = mistake_label_from_loss(loss)
                     reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
 
@@ -1348,15 +1350,15 @@ class Game(BaseGame):
                 stats.total_moves += len(player_moves)
 
                 for move in player_moves:
-                    # 損失を集計
-                    loss = move.points_lost if move.points_lost is not None else move.score_loss
-                    if loss:
+                    # 損失を集計（canonical loss: 常に >= 0）
+                    loss = get_canonical_loss_from_move(move)
+                    if loss > 0:
                         stats.total_points_lost += loss
 
                     # ミス分類を集計
                     if move.mistake_category:
                         stats.mistake_counts[move.mistake_category] += 1
-                        if loss:
+                        if loss > 0:
                             stats.mistake_total_loss[move.mistake_category] += loss
 
                     # Freedom（手の自由度）を集計
@@ -1366,11 +1368,18 @@ class Game(BaseGame):
                     # 局面タイプを集計
                     phase = move.tag or "unknown"
                     stats.phase_moves[phase] = stats.phase_moves.get(phase, 0) + 1
-                    if loss:
+                    if loss > 0:
                         stats.phase_loss[phase] = stats.phase_loss.get(phase, 0.0) + loss
 
+                    # Phase × MistakeCategory クロス集計
+                    if move.mistake_category:
+                        key = (phase, move.mistake_category)
+                        stats.phase_mistake_counts[key] = stats.phase_mistake_counts.get(key, 0) + 1
+                        if loss > 0:
+                            stats.phase_mistake_loss[key] = stats.phase_mistake_loss.get(key, 0.0) + loss
+
                     # 最悪手を記録（Top 10を保持）
-                    if loss and loss > 0.5:  # 0.5目以上の損失のみ
+                    if loss > 0.5:  # 0.5目以上の損失のみ
                         stats.worst_moves.append((game_data.game_name, move))
 
         # 各プレイヤーの統計を完成させる

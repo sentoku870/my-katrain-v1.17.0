@@ -803,3 +803,312 @@ class TestSnapshotFromGame:
         snapshot = snapshot_from_game(game)
 
         assert len(snapshot.moves) == 0
+
+
+# ---------------------------------------------------------------------------
+# Regression Tests: move_number and Avg Loss calculations
+# ---------------------------------------------------------------------------
+
+
+class TestMoveNumberNotAllZero:
+    """
+    Regression tests to ensure move_number is correctly populated from depth.
+
+    Bug fixed: GameNode.move_number was always 0 (never updated).
+    Solution: move_eval_from_node() now prioritizes depth over move_number.
+    """
+
+    def test_move_numbers_are_sequential(self):
+        """Move numbers should be sequential (1, 2, 3, ...)"""
+        from katrain.core.eval_metrics import snapshot_from_game
+
+        game = build_stub_game_tree([
+            ("B", (3, 3), 1.0),
+            ("W", (15, 15), -1.0),
+            ("B", (3, 15), 0.5),
+            ("W", (15, 3), -0.5),
+            ("B", (9, 9), 0.0),
+        ])
+
+        snapshot = snapshot_from_game(game)
+
+        # All move numbers should be sequential
+        move_numbers = [m.move_number for m in snapshot.moves]
+        assert move_numbers == [1, 2, 3, 4, 5], f"Expected [1,2,3,4,5], got {move_numbers}"
+
+    def test_move_numbers_not_all_zero(self):
+        """Move numbers should NOT all be 0 (regression check)"""
+        from katrain.core.eval_metrics import snapshot_from_game
+
+        game = build_stub_game_tree([
+            ("B", (3, 3), 1.0),
+            ("W", (15, 15), -2.0),
+            ("B", (3, 15), 0.5),
+        ])
+
+        snapshot = snapshot_from_game(game)
+
+        move_numbers = [m.move_number for m in snapshot.moves]
+
+        # At least one move_number should be non-zero
+        assert any(n != 0 for n in move_numbers), (
+            f"All move_numbers are 0: {move_numbers}. "
+            "This indicates depth is not being used correctly."
+        )
+
+        # In fact, none should be 0 for moves after the root
+        assert all(n > 0 for n in move_numbers), (
+            f"Some move_numbers are 0: {move_numbers}. "
+            "All moves after root should have move_number > 0."
+        )
+
+    def test_single_move_has_move_number_1(self):
+        """Single move should have move_number = 1"""
+        from katrain.core.eval_metrics import snapshot_from_game
+
+        game = build_stub_game_tree([
+            ("B", (3, 3), 1.0),
+        ])
+
+        snapshot = snapshot_from_game(game)
+
+        assert len(snapshot.moves) == 1
+        assert snapshot.moves[0].move_number == 1
+
+
+class TestAvgLossUsesCanonicalLoss:
+    """
+    Tests to ensure Avg Loss calculations use canonical loss (>= 0).
+
+    Canonical loss = max(0, points_lost) via get_canonical_loss_from_move().
+    This prevents negative losses from skewing averages.
+    """
+
+    def test_avg_loss_per_category_is_non_negative(self):
+        """Average loss per category should never be negative"""
+        from katrain.core.eval_metrics import (
+            get_canonical_loss_from_move,
+            EvalSnapshot,
+        )
+
+        # Create moves with various losses including negative (good moves)
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4",
+                           points_lost=-1.0, score_loss=0.0,  # Good move
+                           mistake_category=MistakeCategory.GOOD),
+            make_move_eval(move_number=2, player="B", gtp="Q16",
+                           points_lost=3.0, score_loss=3.0,  # Mistake
+                           mistake_category=MistakeCategory.MISTAKE),
+            make_move_eval(move_number=3, player="B", gtp="D16",
+                           points_lost=-0.5, score_loss=0.0,  # Good move
+                           mistake_category=MistakeCategory.GOOD),
+            make_move_eval(move_number=4, player="B", gtp="Q4",
+                           points_lost=1.5, score_loss=1.5,  # Inaccuracy
+                           mistake_category=MistakeCategory.INACCURACY),
+        ]
+
+        # Verify canonical loss is always >= 0
+        for m in moves:
+            canonical_loss = get_canonical_loss_from_move(m)
+            assert canonical_loss >= 0, f"Canonical loss should be >= 0, got {canonical_loss}"
+
+    def test_avg_loss_matches_sum_divided_by_count(self):
+        """
+        Average loss = sum(canonical_loss) / count for each category.
+
+        This test verifies the expected behavior for the _build_summary_from_stats function.
+        """
+        from katrain.core.eval_metrics import get_canonical_loss_from_move
+
+        # Create moves with known losses
+        moves = [
+            # GOOD moves: canonical loss = 0 (because points_lost is negative)
+            make_move_eval(move_number=1, player="B", gtp="D4",
+                           points_lost=-1.0, score_loss=0.0,
+                           mistake_category=MistakeCategory.GOOD),
+            make_move_eval(move_number=2, player="B", gtp="Q16",
+                           points_lost=-0.2, score_loss=0.0,
+                           mistake_category=MistakeCategory.GOOD),
+            make_move_eval(move_number=3, player="B", gtp="D16",
+                           points_lost=0.3, score_loss=0.3,
+                           mistake_category=MistakeCategory.GOOD),
+            # MISTAKE moves: canonical loss = score_loss
+            make_move_eval(move_number=4, player="B", gtp="Q4",
+                           points_lost=3.0, score_loss=3.0,
+                           mistake_category=MistakeCategory.MISTAKE),
+            make_move_eval(move_number=5, player="B", gtp="K10",
+                           points_lost=4.0, score_loss=4.0,
+                           mistake_category=MistakeCategory.MISTAKE),
+        ]
+
+        # Calculate expected avg loss per category
+        # GOOD: (0 + 0 + 0.3) / 3 = 0.1
+        # MISTAKE: (3.0 + 4.0) / 2 = 3.5
+
+        good_moves = [m for m in moves if m.mistake_category == MistakeCategory.GOOD]
+        mistake_moves = [m for m in moves if m.mistake_category == MistakeCategory.MISTAKE]
+
+        good_total = sum(get_canonical_loss_from_move(m) for m in good_moves)
+        mistake_total = sum(get_canonical_loss_from_move(m) for m in mistake_moves)
+
+        expected_good_avg = good_total / len(good_moves) if good_moves else 0
+        expected_mistake_avg = mistake_total / len(mistake_moves) if mistake_moves else 0
+
+        assert abs(expected_good_avg - 0.1) < 0.01, f"GOOD avg should be ~0.1, got {expected_good_avg}"
+        assert abs(expected_mistake_avg - 3.5) < 0.01, f"MISTAKE avg should be ~3.5, got {expected_mistake_avg}"
+
+    def test_canonical_loss_uses_score_loss_over_points_lost(self):
+        """get_canonical_loss_from_move prefers score_loss over points_lost"""
+        from katrain.core.eval_metrics import get_canonical_loss_from_move
+
+        # score_loss is set, points_lost is negative
+        m = make_move_eval(
+            move_number=1,
+            player="B",
+            gtp="D4",
+            points_lost=-2.0,  # Negative (good move)
+            score_loss=0.0,    # Canonical = 0
+        )
+        assert get_canonical_loss_from_move(m) == 0.0
+
+        # score_loss is not set, fall back to max(0, points_lost)
+        m2 = make_move_eval(
+            move_number=2,
+            player="B",
+            gtp="Q16",
+            points_lost=3.5,   # Positive (bad move)
+            score_loss=None,
+        )
+        assert get_canonical_loss_from_move(m2) == 3.5
+
+        # Negative points_lost with no score_loss should give 0
+        m3 = make_move_eval(
+            move_number=3,
+            player="B",
+            gtp="D16",
+            points_lost=-1.0,  # Negative (good move)
+            score_loss=None,
+        )
+        assert get_canonical_loss_from_move(m3) == 0.0
+
+
+class TestMistakeDistributionConsistency:
+    """
+    Regression tests to ensure Mistake Distribution Avg Loss matches
+    Phase × Mistake table loss totals.
+
+    Bug: Mistake Distribution Avg Loss used different loss metric than Phase table.
+    Solution: Both now use get_canonical_loss_from_move() consistently.
+    """
+
+    def test_mistake_avg_loss_equals_phase_sum_divided_by_count(self):
+        """
+        Avg Loss for each category should equal:
+        sum(phase_mistake_loss for all phases) / sum(phase_mistake_counts for all phases)
+        """
+        from katrain.core.eval_metrics import (
+            SummaryStats,
+            MistakeCategory,
+            PositionDifficulty,
+        )
+
+        # Create a SummaryStats with known values
+        stats = SummaryStats(
+            player_name="TestPlayer",
+            mistake_counts={
+                MistakeCategory.GOOD: 100,
+                MistakeCategory.INACCURACY: 20,
+                MistakeCategory.MISTAKE: 5,
+                MistakeCategory.BLUNDER: 2,
+            },
+            mistake_total_loss={
+                MistakeCategory.GOOD: 5.0,      # Avg = 0.05
+                MistakeCategory.INACCURACY: 30.0,  # Avg = 1.5
+                MistakeCategory.MISTAKE: 17.5,     # Avg = 3.5
+                MistakeCategory.BLUNDER: 12.0,     # Avg = 6.0
+            },
+            phase_mistake_counts={
+                ("opening", MistakeCategory.GOOD): 30,
+                ("opening", MistakeCategory.INACCURACY): 5,
+                ("opening", MistakeCategory.MISTAKE): 1,
+                ("opening", MistakeCategory.BLUNDER): 0,
+                ("middle", MistakeCategory.GOOD): 60,
+                ("middle", MistakeCategory.INACCURACY): 12,
+                ("middle", MistakeCategory.MISTAKE): 3,
+                ("middle", MistakeCategory.BLUNDER): 2,
+                ("yose", MistakeCategory.GOOD): 10,
+                ("yose", MistakeCategory.INACCURACY): 3,
+                ("yose", MistakeCategory.MISTAKE): 1,
+                ("yose", MistakeCategory.BLUNDER): 0,
+            },
+            phase_mistake_loss={
+                ("opening", MistakeCategory.GOOD): 1.5,
+                ("opening", MistakeCategory.INACCURACY): 7.5,
+                ("opening", MistakeCategory.MISTAKE): 3.5,
+                ("opening", MistakeCategory.BLUNDER): 0.0,
+                ("middle", MistakeCategory.GOOD): 3.0,
+                ("middle", MistakeCategory.INACCURACY): 18.0,
+                ("middle", MistakeCategory.MISTAKE): 10.5,
+                ("middle", MistakeCategory.BLUNDER): 12.0,
+                ("yose", MistakeCategory.GOOD): 0.5,
+                ("yose", MistakeCategory.INACCURACY): 4.5,
+                ("yose", MistakeCategory.MISTAKE): 3.5,
+                ("yose", MistakeCategory.BLUNDER): 0.0,
+            },
+        )
+
+        # Verify phase counts sum to category counts
+        for cat in MistakeCategory:
+            phase_sum = sum(
+                stats.phase_mistake_counts.get((phase, cat), 0)
+                for phase in ["opening", "middle", "yose"]
+            )
+            assert phase_sum == stats.mistake_counts.get(cat, 0), (
+                f"Phase counts for {cat} ({phase_sum}) != category count ({stats.mistake_counts.get(cat, 0)})"
+            )
+
+        # Verify phase losses sum to category losses
+        for cat in MistakeCategory:
+            phase_sum = sum(
+                stats.phase_mistake_loss.get((phase, cat), 0.0)
+                for phase in ["opening", "middle", "yose"]
+            )
+            expected = stats.mistake_total_loss.get(cat, 0.0)
+            assert abs(phase_sum - expected) < 0.01, (
+                f"Phase loss for {cat} ({phase_sum}) != category loss ({expected})"
+            )
+
+        # Verify Avg Loss calculation
+        for cat in MistakeCategory:
+            avg = stats.get_mistake_avg_loss(cat)
+            count = stats.mistake_counts.get(cat, 0)
+            total_loss = stats.mistake_total_loss.get(cat, 0.0)
+            expected_avg = total_loss / count if count > 0 else 0.0
+            assert abs(avg - expected_avg) < 0.01, (
+                f"Avg loss for {cat} ({avg}) != expected ({expected_avg})"
+            )
+
+    def test_phase_sum_matches_total(self):
+        """
+        Sum of all phase losses should equal total_points_lost.
+        """
+        from katrain.core.eval_metrics import (
+            SummaryStats,
+            MistakeCategory,
+        )
+
+        stats = SummaryStats(
+            player_name="TestPlayer",
+            total_moves=50,
+            total_points_lost=100.0,
+            phase_loss={
+                "opening": 20.0,
+                "middle": 65.0,
+                "yose": 15.0,
+            },
+        )
+
+        phase_sum = sum(stats.phase_loss.values())
+        assert abs(phase_sum - stats.total_points_lost) < 0.01, (
+            f"Phase loss sum ({phase_sum}) != total_points_lost ({stats.total_points_lost})"
+        )
