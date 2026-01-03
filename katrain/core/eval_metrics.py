@@ -435,6 +435,141 @@ class SummaryStats:
 
 
 # ---------------------------------------------------------------------------
+# Phase × Mistake 集計（共有アグリゲータ）
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PhaseMistakeStats:
+    """単局または複数局の Phase × Mistake 集計結果"""
+    phase_mistake_counts: Dict[Tuple[str, str], int] = field(default_factory=dict)
+    phase_mistake_loss: Dict[Tuple[str, str], float] = field(default_factory=dict)
+    phase_moves: Dict[str, int] = field(default_factory=dict)
+    phase_loss: Dict[str, float] = field(default_factory=dict)
+    total_moves: int = 0
+    total_loss: float = 0.0
+
+
+def aggregate_phase_mistake_stats(
+    moves: Iterable[MoveEval],
+    *,
+    score_thresholds: Optional[Tuple[float, float, float]] = None,
+) -> PhaseMistakeStats:
+    """
+    手のリストから Phase × Mistake クロス集計を行う共有アグリゲータ。
+
+    single-game karte と multi-game summary の両方で使用できる。
+
+    Args:
+        moves: MoveEval のイテラブル（通常は snapshot.moves のフィルタ結果）
+        score_thresholds: ミス分類の閾値 (inaccuracy, mistake, blunder)
+                          None の場合はデフォルト (1.0, 3.0, 7.0) を使用
+
+    Returns:
+        PhaseMistakeStats: 集計結果
+
+    Example:
+        >>> player_moves = [m for m in snapshot.moves if m.player == "B"]
+        >>> stats = aggregate_phase_mistake_stats(player_moves)
+        >>> print(stats.phase_mistake_loss)
+        {('middle', 'BLUNDER'): 15.2, ('opening', 'INACCURACY'): 3.5}
+    """
+    if score_thresholds is None:
+        score_thresholds = (1.0, 3.0, 7.0)  # inaccuracy, mistake, blunder
+
+    inaccuracy_th, mistake_th, blunder_th = score_thresholds
+
+    result = PhaseMistakeStats()
+
+    for mv in moves:
+        if mv.points_lost is None:
+            continue
+
+        # Phase 判定（手数ベース）
+        phase = classify_game_phase(mv.move_number)
+
+        # Mistake 分類
+        loss = max(0.0, mv.points_lost)
+        if loss < inaccuracy_th:
+            category = "GOOD"
+        elif loss < mistake_th:
+            category = "INACCURACY"
+        elif loss < blunder_th:
+            category = "MISTAKE"
+        else:
+            category = "BLUNDER"
+
+        # 集計
+        key = (phase, category)
+        result.phase_mistake_counts[key] = result.phase_mistake_counts.get(key, 0) + 1
+        if loss > 0:
+            result.phase_mistake_loss[key] = result.phase_mistake_loss.get(key, 0.0) + loss
+
+        result.phase_moves[phase] = result.phase_moves.get(phase, 0) + 1
+        if loss > 0:
+            result.phase_loss[phase] = result.phase_loss.get(phase, 0.0) + loss
+
+        result.total_moves += 1
+        result.total_loss += loss
+
+    return result
+
+
+def get_practice_priorities_from_stats(
+    stats: PhaseMistakeStats,
+    *,
+    max_priorities: int = 3,
+) -> List[str]:
+    """
+    PhaseMistakeStats から練習優先項目を導出する。
+
+    SummaryStats.get_practice_priorities() と同等のロジックだが、
+    単局用にも使用できるよう分離した関数。
+
+    Args:
+        stats: 集計結果
+        max_priorities: 最大優先項目数
+
+    Returns:
+        優先項目のリスト（日本語）
+    """
+    priorities = []
+    phase_name_ja = {"opening": "序盤", "middle": "中盤", "yose": "ヨセ"}
+    cat_names_ja = {
+        "BLUNDER": "大悪手",
+        "MISTAKE": "悪手",
+        "INACCURACY": "軽微なミス",
+    }
+
+    # 1. Phase × Mistake で最悪の組み合わせを特定（GOODは除外）
+    non_good_losses = [
+        (k, v) for k, v in stats.phase_mistake_loss.items()
+        if k[1] != "GOOD" and v > 0
+    ]
+    if non_good_losses:
+        sorted_combos = sorted(non_good_losses, key=lambda x: x[1], reverse=True)
+        # 上位2つを抽出
+        for i, (key, loss) in enumerate(sorted_combos[:2]):
+            phase, category = key
+            count = stats.phase_mistake_counts.get(key, 0)
+            priorities.append(
+                f"**{phase_name_ja.get(phase, phase)}の{cat_names_ja.get(category, category)}を減らす**"
+                f"（{count}回、損失{loss:.1f}目）"
+            )
+
+    # フォールバック: Phase別損失から最悪のフェーズを提案
+    if not priorities and stats.phase_loss:
+        worst_phase = max(stats.phase_loss.items(), key=lambda x: x[1], default=None)
+        if worst_phase and worst_phase[1] > 0:
+            priorities.append(
+                f"**{phase_name_ja.get(worst_phase[0], worst_phase[0])}の大きなミスを減らす**"
+                f"（損失: {worst_phase[1]:.1f}目）"
+            )
+
+    return priorities[:max_priorities]
+
+
+# ---------------------------------------------------------------------------
 # Quiz helper structures
 # ---------------------------------------------------------------------------
 
