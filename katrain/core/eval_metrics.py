@@ -277,6 +277,38 @@ class EvalSnapshot:
         return max(candidates, key=get_canonical_loss_from_move)
 
     # -------------------------------------------------------------------------
+    # Freedom / Position Difficulty statistics
+    # -------------------------------------------------------------------------
+
+    @property
+    def difficulty_unknown_count(self) -> int:
+        """position_difficulty が UNKNOWN の手の数。"""
+        return sum(
+            1
+            for m in self.moves
+            if m.position_difficulty is None
+            or m.position_difficulty == PositionDifficulty.UNKNOWN
+        )
+
+    @property
+    def difficulty_unknown_rate(self) -> float:
+        """position_difficulty が UNKNOWN の手の割合 (0.0-1.0)。"""
+        if not self.moves:
+            return 0.0
+        return self.difficulty_unknown_count / len(self.moves)
+
+    @property
+    def difficulty_distribution(self) -> Dict[PositionDifficulty, int]:
+        """局面難易度の分布を返す。"""
+        dist: Dict[PositionDifficulty, int] = {d: 0 for d in PositionDifficulty}
+        for m in self.moves:
+            if m.position_difficulty is not None:
+                dist[m.position_difficulty] += 1
+            else:
+                dist[PositionDifficulty.UNKNOWN] += 1
+        return dist
+
+    # -------------------------------------------------------------------------
     # Filtering methods
     # -------------------------------------------------------------------------
 
@@ -797,11 +829,68 @@ def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VI
     return int(root_visits or 0) >= threshold
 
 
+def _assess_difficulty_from_policy(
+    policy: List[float],
+    *,
+    entropy_easy_threshold: float = 2.5,
+    entropy_hard_threshold: float = 1.0,
+    top5_easy_threshold: float = 0.5,
+    top5_hard_threshold: float = 0.9,
+) -> Tuple[PositionDifficulty, float]:
+    """
+    Policy entropy から局面難易度を推定する（fallback用）。
+
+    - entropy が高い = 良い手が分散している = 易しい局面
+    - entropy が低い = 一手に集中している = 難しい局面（or 一択）
+
+    - top5_mass が低い = 良い手が分散 = 易しい
+    - top5_mass が高い = 少数手に集中 = 難しい
+
+    両方の指標を組み合わせて判定する。
+
+    Note (Limitation):
+        現在の閾値は19x19を想定して設定されている。
+        9x9/13x13では policy の長さが異なるため、entropy の最大値も異なる。
+        厳密な盤面サイズ対応が必要な場合は、閾値の正規化を検討すること。
+        （例: entropy / log(board_size**2) で正規化）
+    """
+    import math
+
+    if not policy:
+        return PositionDifficulty.UNKNOWN, 0.5
+
+    # Policy entropy 計算
+    entropy = 0.0
+    for p in policy:
+        if p > 0:
+            entropy -= p * math.log(p)
+
+    # Top-5 cumulative mass
+    sorted_probs = sorted(policy, reverse=True)
+    top5_mass = sum(sorted_probs[:5])
+
+    # 難易度判定
+    # entropy が高く、top5_mass が低い = 易しい
+    # entropy が低く、top5_mass が高い = 難しい
+    if entropy >= entropy_easy_threshold and top5_mass <= top5_easy_threshold:
+        return PositionDifficulty.EASY, 0.2
+    elif entropy <= entropy_hard_threshold or top5_mass >= top5_hard_threshold:
+        # さらに top1 が支配的なら ONLY_MOVE
+        if sorted_probs[0] >= 0.8:
+            return PositionDifficulty.ONLY_MOVE, 1.0
+        return PositionDifficulty.HARD, 0.8
+    elif entropy >= (entropy_easy_threshold + entropy_hard_threshold) / 2:
+        return PositionDifficulty.EASY, 0.3
+    else:
+        return PositionDifficulty.NORMAL, 0.5
+
+
 def assess_position_difficulty_from_parent(
     node: GameNode,
     *,
     good_rel_threshold: float = 1.0,
     near_rel_threshold: float = 2.0,
+    use_policy_fallback: bool = True,
 ) -> Tuple[Optional[PositionDifficulty], Optional[float]]:
     """
     親ノードの candidate_moves から局面難易度をざっくり評価する。
@@ -810,6 +899,10 @@ def assess_position_difficulty_from_parent(
       pointsLost / relativePointsLost を含むことを想定している。
     - relativePointsLost が小さい手が多いほど「易しい局面」、
       少ないほど「難しい局面」とみなす簡易ヒューリスティック。
+
+    Fallback:
+        candidate_moves が利用できない場合、use_policy_fallback=True なら
+        親ノードの policy entropy から難易度を推定する。
 
     返り値:
         (PositionDifficulty, difficulty_score)
@@ -825,51 +918,61 @@ def assess_position_difficulty_from_parent(
     if parent is None:
         return None, None
 
+    # 1. candidate_moves からの判定（最優先）
+    # Note: candidate_moves is a property that returns List[Dict], but we use
+    # explicit None check and len() to be safe with any iterable type.
     candidate_moves = getattr(parent, "candidate_moves", None)
-    if not candidate_moves:
-        return None, None
+    if candidate_moves is not None and len(candidate_moves) > 0:
+        good_moves: List[float] = []
+        near_moves: List[float] = []
 
-    good_moves: List[float] = []
-    near_moves: List[float] = []
+        for mv in candidate_moves:
+            rel = mv.get("relativePointsLost")
+            if rel is None:
+                rel = mv.get("pointsLost")
+            if rel is None:
+                continue
+            rel_f = float(rel)
 
-    for mv in candidate_moves:
-        rel = mv.get("relativePointsLost")
-        if rel is None:
-            rel = mv.get("pointsLost")
-        if rel is None:
-            continue
-        rel_f = float(rel)
+            if rel_f <= good_rel_threshold:
+                good_moves.append(rel_f)
+            if rel_f <= near_rel_threshold:
+                near_moves.append(rel_f)
 
-        if rel_f <= good_rel_threshold:
-            good_moves.append(rel_f)
-        if rel_f <= near_rel_threshold:
-            near_moves.append(rel_f)
+        if good_moves or near_moves:
+            n_good = len(good_moves)
+            n_near = len(near_moves)
 
-    if not good_moves and not near_moves:
-        return PositionDifficulty.UNKNOWN, None
+            # ----- 簡易ルール -----
+            # - ほぼ 1 手しか「損をしない手」がない → ONLY_MOVE
+            # - 良い手が 2 手程度 → HARD
+            # - 良い／そこそこ良い手がたくさん → EASY
+            # - その中間 → NORMAL
+            if n_good <= 1 and n_near <= 2:
+                label = PositionDifficulty.ONLY_MOVE
+                score = 1.0
+            elif n_good <= 2:
+                label = PositionDifficulty.HARD
+                score = 0.8
+            elif n_good >= 4 or n_near >= 6:
+                label = PositionDifficulty.EASY
+                score = 0.2
+            else:
+                label = PositionDifficulty.NORMAL
+                score = 0.5
 
-    n_good = len(good_moves)
-    n_near = len(near_moves)
+            return label, score
 
-    # ----- 簡易ルール -----
-    # - ほぼ 1 手しか「損をしない手」がない → ONLY_MOVE
-    # - 良い手が 2 手程度 → HARD
-    # - 良い／そこそこ良い手がたくさん → EASY
-    # - その中間 → NORMAL
-    if n_good <= 1 and n_near <= 2:
-        label = PositionDifficulty.ONLY_MOVE
-        score = 1.0
-    elif n_good <= 2:
-        label = PositionDifficulty.HARD
-        score = 0.8
-    elif n_good >= 4 or n_near >= 6:
-        label = PositionDifficulty.EASY
-        score = 0.2
-    else:
-        label = PositionDifficulty.NORMAL
-        score = 0.5
+    # 2. Policy fallback（candidate_moves が無い場合）
+    if use_policy_fallback:
+        analysis = getattr(parent, "analysis", None)
+        if analysis is not None:
+            policy = analysis.get("policy")
+            # Avoid truthiness check on numpy arrays: use explicit None check and len()
+            if policy is not None and len(policy) > 0:
+                return _assess_difficulty_from_policy(list(policy))
 
-    return label, score
+    return PositionDifficulty.UNKNOWN, None
 
 
 def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
@@ -879,6 +982,10 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     - nodes には「実際に打たれた手を持つノード」（move が None でない）を渡す想定。
     - score / winrate の before/after/delta は、この関数内で連鎖的に計算する。
     - position_difficulty, score_loss, mistake_category, importance を自動計算。
+
+    Note: 解析済みSGFから読み込んだノードの場合、load_analysis() を呼び出して
+          KTプロパティから解析データを復元する。これにより candidate_moves や
+          policy データが利用可能になる。
 
     使用例:
         >>> from katrain.core.game import Game
@@ -892,7 +999,31 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     # GameNode と MoveEval のペアを保持しておく
     node_evals: List[Tuple[GameNode, MoveEval]] = []
 
-    for node in nodes:
+    # ノードリストを先に作成（イテレータを複数回使うため）
+    node_list = list(nodes)
+
+    # 解析済みSGFの場合、load_analysis() を呼び出してKTプロパティからデータを復元
+    # これにより candidate_moves や policy が利用可能になる
+    # Note: 各ノードに対して1回だけ load_analysis() を呼び出すようにする（冪等性・性能）
+    loaded_nodes: set = set()
+    for node in node_list:
+        node_id = id(node)
+        if node_id not in loaded_nodes:
+            if hasattr(node, "analysis_from_sgf") and node.analysis_from_sgf:
+                if hasattr(node, "load_analysis"):
+                    node.load_analysis()
+            loaded_nodes.add(node_id)
+        # 親ノードも同様に処理（candidate_moves は親から取得するため）
+        parent = getattr(node, "parent", None)
+        if parent is not None:
+            parent_id = id(parent)
+            if parent_id not in loaded_nodes:
+                if hasattr(parent, "analysis_from_sgf") and parent.analysis_from_sgf:
+                    if hasattr(parent, "load_analysis"):
+                        parent.load_analysis()
+                loaded_nodes.add(parent_id)
+
+    for node in node_list:
         if getattr(node, "move", None) is None:
             continue
         mv = move_eval_from_node(node)

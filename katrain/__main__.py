@@ -163,6 +163,15 @@ class KaTrainGui(Screen, KaTrainBase):
         self._config["export_settings"] = current_settings
         self.save_config("export_settings")
 
+    def _save_batch_options(self, options: dict):
+        """Save batch analyze options for persistence across sessions."""
+        mykatrain_settings = self.config("mykatrain_settings") or {}
+        batch_options = mykatrain_settings.get("batch_options", {})
+        batch_options.update(options)
+        mykatrain_settings["batch_options"] = batch_options
+        self._config["mykatrain_settings"] = mykatrain_settings
+        self.save_config("mykatrain_settings")
+
     def log(self, message, level=OUTPUT_INFO):
         super().log(message, level)
         if level == OUTPUT_KATAGO_STDERR and "ERROR" not in self.controls.status.text:
@@ -2931,7 +2940,7 @@ class KaTrainGui(Screen, KaTrainBase):
         options_row1.add_widget(Label(size_hint_x=0.2))  # spacer
         main_layout.add_widget(options_row1)
 
-        # Options row 2: checkboxes
+        # Options row 2: skip analyzed checkbox
         options_row2 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
 
         skip_checkbox = CheckBox(active=True, size_hint_x=None, width=dp(30))
@@ -2949,6 +2958,62 @@ class KaTrainGui(Screen, KaTrainBase):
         options_row2.add_widget(skip_label)
         options_row2.add_widget(Label(size_hint_x=0.5))  # spacer
         main_layout.add_widget(options_row2)
+
+        # Load saved batch options
+        batch_options = mykatrain_settings.get("batch_options", {})
+
+        # Options row 3: output options (save SGF, karte, summary)
+        options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+
+        save_sgf_checkbox = CheckBox(
+            active=batch_options.get("save_analyzed_sgf", False),
+            size_hint_x=None, width=dp(30)
+        )
+        save_sgf_label = Label(
+            text=i18n._("mykatrain:batch:save_analyzed_sgf"),
+            size_hint_x=0.25,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        save_sgf_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        karte_checkbox = CheckBox(
+            active=batch_options.get("generate_karte", True),
+            size_hint_x=None, width=dp(30)
+        )
+        karte_label = Label(
+            text=i18n._("mykatrain:batch:generate_karte"),
+            size_hint_x=0.25,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        karte_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        summary_checkbox = CheckBox(
+            active=batch_options.get("generate_summary", True),
+            size_hint_x=None, width=dp(30)
+        )
+        summary_label = Label(
+            text=i18n._("mykatrain:batch:generate_summary"),
+            size_hint_x=0.25,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        summary_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        options_row3.add_widget(save_sgf_checkbox)
+        options_row3.add_widget(save_sgf_label)
+        options_row3.add_widget(karte_checkbox)
+        options_row3.add_widget(karte_label)
+        options_row3.add_widget(summary_checkbox)
+        options_row3.add_widget(summary_label)
+        main_layout.add_widget(options_row3)
 
         # Progress row
         progress_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(10))
@@ -3030,6 +3095,18 @@ class KaTrainGui(Screen, KaTrainBase):
             timeout = float(timeout_input.text) if timeout_input.text.strip() else 600.0
             skip_analyzed = skip_checkbox.active
 
+            # New options
+            save_analyzed_sgf = save_sgf_checkbox.active
+            generate_karte = karte_checkbox.active
+            generate_summary = summary_checkbox.active
+
+            # Save options for next time
+            self._save_batch_options({
+                "save_analyzed_sgf": save_analyzed_sgf,
+                "generate_karte": generate_karte,
+                "generate_summary": generate_summary,
+            })
+
             result = run_batch(
                 katrain=self,
                 engine=self.engine,
@@ -3041,6 +3118,10 @@ class KaTrainGui(Screen, KaTrainBase):
                 progress_cb=progress_cb,
                 log_cb=log_cb,
                 cancel_flag=cancel_flag,
+                # New options
+                save_analyzed_sgf=save_analyzed_sgf,
+                generate_karte=generate_karte,
+                generate_summary=generate_summary,
             )
 
             # Show summary on main thread
@@ -3052,10 +3133,14 @@ class KaTrainGui(Screen, KaTrainBase):
                 if result.cancelled:
                     summary = i18n._("mykatrain:batch:cancelled")
                 else:
-                    summary = i18n._("mykatrain:batch:complete").format(
+                    # Extended summary with karte/summary counts
+                    summary = i18n._("mykatrain:batch:complete_extended").format(
                         success=result.success_count,
                         failed=result.fail_count,
                         skipped=result.skip_count,
+                        karte=result.karte_written,
+                        summary="Yes" if result.summary_written else "No",
+                        sgf=result.analyzed_sgf_written,
                         output_dir=result.output_dir,
                     )
                 progress_label.text = summary
