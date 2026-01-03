@@ -103,6 +103,18 @@ msgstr "Cancelled by user"
 msgid "mykatrain:batch:complete"
 msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}. Output: {output_dir}"
 
+msgid "mykatrain:batch:complete_extended"
+msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}\nKarte: {karte}, Summary: {summary}, SGF: {sgf}\nOutput: {output_dir}"
+
+msgid "mykatrain:batch:save_analyzed_sgf"
+msgstr "Save analyzed SGFs"
+
+msgid "mykatrain:batch:generate_karte"
+msgstr "Generate Karte"
+
+msgid "mykatrain:batch:generate_summary"
+msgstr "Generate Summary"
+
 msgid "mykatrain:batch:error_input_dir"
 msgstr "Please select a valid input directory"
 
