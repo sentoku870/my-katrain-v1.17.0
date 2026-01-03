@@ -13,6 +13,7 @@ from .eval_metrics import (
     EvalSnapshot,
     GameSummaryData,
     MistakeCategory,
+    MistakeStreak,
     MoveEval,
     PhaseMistakeStats,
     PositionDifficulty,
@@ -21,6 +22,7 @@ from .eval_metrics import (
     QuizQuestion,
     SummaryStats,
     aggregate_phase_mistake_stats,
+    detect_mistake_streaks,
     get_canonical_loss_from_move,
     get_practice_priorities_from_stats,
     quiz_items_from_snapshot,
@@ -1192,6 +1194,9 @@ class Game(BaseGame):
             if not player_moves:
                 return [f"## Weakness Hypothesis ({label})", "- No data available.", ""]
 
+            # 盤サイズを取得（board_size は (x, y) タプル）
+            board_x, _ = self.board_size
+
             # Phase × Mistake クロス集計
             phase_mistake_loss = {}
             phase_mistake_count = {}
@@ -1200,8 +1205,8 @@ class Game(BaseGame):
                 if mv.points_lost is None:
                     continue
 
-                # Phase 判定（手数ベース）
-                phase = eval_metrics.classify_game_phase(mv.move_number)
+                # Phase 判定（手数ベース、盤サイズ対応）
+                phase = eval_metrics.classify_game_phase(mv.move_number, board_size=board_x)
 
                 # Mistake 分類
                 loss = max(0.0, mv.points_lost)
@@ -1256,8 +1261,10 @@ class Game(BaseGame):
             if not player_moves:
                 return [f"## Practice Priorities ({label})", "- No data available.", ""]
 
-            # 共有アグリゲータで Phase × Mistake 統計を計算
-            stats = aggregate_phase_mistake_stats(player_moves)
+            # 盤サイズを取得（board_size は (x, y) タプル）
+            board_x, _ = self.board_size
+            # 共有アグリゲータで Phase × Mistake 統計を計算（盤サイズ対応）
+            stats = aggregate_phase_mistake_stats(player_moves, board_size=board_x)
 
             # 優先項目を取得
             priorities = get_practice_priorities_from_stats(stats, max_priorities=2)
@@ -1273,6 +1280,34 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
+        # Mistake Streaks を検出して表示
+        def mistake_streaks_for(player: str, label: str) -> List[str]:
+            """同一プレイヤーの連続ミスを検出して表示"""
+            player_moves = [mv for mv in snapshot.moves if mv.player == player]
+            if not player_moves:
+                return []
+
+            # 連続ミスを検出（2回以上連続、損失2目以上）
+            streaks = detect_mistake_streaks(
+                player_moves,
+                loss_threshold=2.0,
+                min_consecutive=2,
+            )
+
+            if not streaks:
+                return []
+
+            lines = [f"## Mistake Streaks ({label})", ""]
+            lines.append("Consecutive mistakes by the same player:")
+            lines.append("")
+            for i, s in enumerate(streaks, 1):
+                lines.append(
+                    f"- **Streak {i}**: moves {s.start_move}-{s.end_move} "
+                    f"({s.move_count} mistakes, {s.total_loss:.1f} pts lost, avg {s.avg_loss:.1f} pts)"
+                )
+            lines.append("")
+            return lines
+
         # Phase 3: Apply player filter to weakness hypothesis and important moves
         if filtered_player is None:
             # Show both players
@@ -1280,6 +1315,7 @@ class Game(BaseGame):
                 focus_name = "Black" if focus_color == "B" else "White"
                 sections += weakness_hypothesis_for(focus_color, focus_name)
                 sections += practice_priorities_for(focus_color, focus_name)
+                sections += mistake_streaks_for(focus_color, focus_name)
 
             if focus_color:
                 sections += important_lines_for(focus_color, focus_label)
@@ -1300,6 +1336,7 @@ class Game(BaseGame):
             if focus_color and focus_color == filtered_player:
                 sections += weakness_hypothesis_for(focus_color, filtered_name)
                 sections += practice_priorities_for(focus_color, filtered_name)
+                sections += mistake_streaks_for(focus_color, filtered_name)
 
             if focus_color and focus_color == filtered_player:
                 sections += important_lines_for(focus_color, focus_label)

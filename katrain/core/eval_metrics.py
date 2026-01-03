@@ -454,6 +454,7 @@ def aggregate_phase_mistake_stats(
     moves: Iterable[MoveEval],
     *,
     score_thresholds: Optional[Tuple[float, float, float]] = None,
+    board_size: int = 19,
 ) -> PhaseMistakeStats:
     """
     手のリストから Phase × Mistake クロス集計を行う共有アグリゲータ。
@@ -464,13 +465,14 @@ def aggregate_phase_mistake_stats(
         moves: MoveEval のイテラブル（通常は snapshot.moves のフィルタ結果）
         score_thresholds: ミス分類の閾値 (inaccuracy, mistake, blunder)
                           None の場合はデフォルト (1.0, 3.0, 7.0) を使用
+        board_size: 盤サイズ（9, 13, 19 など）。Phase分類に使用。
 
     Returns:
         PhaseMistakeStats: 集計結果
 
     Example:
         >>> player_moves = [m for m in snapshot.moves if m.player == "B"]
-        >>> stats = aggregate_phase_mistake_stats(player_moves)
+        >>> stats = aggregate_phase_mistake_stats(player_moves, board_size=13)
         >>> print(stats.phase_mistake_loss)
         {('middle', 'BLUNDER'): 15.2, ('opening', 'INACCURACY'): 3.5}
     """
@@ -485,8 +487,8 @@ def aggregate_phase_mistake_stats(
         if mv.points_lost is None:
             continue
 
-        # Phase 判定（手数ベース）
-        phase = classify_game_phase(mv.move_number)
+        # Phase 判定（手数ベース、盤サイズ対応）
+        phase = classify_game_phase(mv.move_number, board_size=board_size)
 
         # Mistake 分類
         loss = max(0.0, mv.points_lost)
@@ -1202,26 +1204,140 @@ def classify_mistake(
     return MistakeCategory.GOOD
 
 
-def classify_game_phase(move_number: int) -> str:
+def classify_game_phase(move_number: int, board_size: int = 19) -> str:
     """
-    手数から対局のフェーズを判定する（Phase 7で追加）
+    手数と盤サイズから対局のフェーズを判定する（Phase 7で追加、PR3で盤サイズ対応）
 
     Args:
         move_number: 手数（0-indexed または 1-indexed どちらでも可）
+        board_size: 盤サイズ（9, 13, 19 など）。デフォルト19。
 
     Returns:
-        "opening" (< 50手) / "middle" (< 200手) / "yose" (>= 200手)
+        "opening" / "middle" / "yose"
+
+    盤サイズ別の閾値:
+        - 19路盤: opening < 50, middle < 200, yose >= 200
+        - 13路盤: opening < 30, middle < 100, yose >= 100
+        - 9路盤:  opening < 15, middle < 50,  yose >= 50
 
     Note:
         この分類は簡易版です。より正確には盤上の石の数や地合いで判定すべきですが、
         手数ベースで十分実用的です。
     """
-    if move_number < 50:
+    # 盤サイズ別の閾値（opening終了, middle終了）
+    thresholds = {
+        9: (15, 50),
+        13: (30, 100),
+        19: (50, 200),
+    }
+    # デフォルトは19路盤の閾値
+    opening_end, middle_end = thresholds.get(board_size, (50, 200))
+
+    if move_number < opening_end:
         return "opening"
-    elif move_number < 200:
+    elif move_number < middle_end:
         return "middle"
     else:
         return "yose"
+
+
+@dataclass
+class MistakeStreak:
+    """同一プレイヤーの連続ミス情報"""
+    player: str  # "B" or "W"
+    start_move: int  # 開始手数
+    end_move: int  # 終了手数
+    move_count: int  # ミスの回数（同一プレイヤーの手数）
+    total_loss: float  # 合計損失
+    moves: List[MoveEval] = field(default_factory=list)  # ミスした手のリスト
+
+    @property
+    def avg_loss(self) -> float:
+        """平均損失"""
+        return self.total_loss / self.move_count if self.move_count > 0 else 0.0
+
+
+def detect_mistake_streaks(
+    moves: List[MoveEval],
+    *,
+    loss_threshold: float = 2.0,
+    min_consecutive: int = 2,
+) -> List[MistakeStreak]:
+    """
+    同一プレイヤーの連続ミスを検出する（Go-aware streak detection）
+
+    Args:
+        moves: MoveEval のリスト（手数順にソート済み）
+        loss_threshold: ミスとみなす最小損失（目）
+        min_consecutive: 連続とみなす最小回数（同一プレイヤーの手数）
+
+    Returns:
+        MistakeStreak のリスト
+
+    Note:
+        囲碁では黒白交互に打つため、「連続ミス」は同一プレイヤーの
+        連続する手（例: 黒10手目、黒12手目、黒14手目）を対象とする。
+        単純な手数の連続（10, 11, 12）ではない。
+
+    Example:
+        >>> moves = [...]  # 手数順の MoveEval リスト
+        >>> streaks = detect_mistake_streaks(moves, loss_threshold=3.0, min_consecutive=2)
+        >>> for s in streaks:
+        ...     print(f"{s.player}: moves {s.start_move}-{s.end_move}, {s.total_loss:.1f} pts lost")
+    """
+    if not moves:
+        return []
+
+    # プレイヤー別に手を分類
+    player_moves: Dict[str, List[MoveEval]] = {"B": [], "W": []}
+    for m in moves:
+        if m.player in player_moves:
+            player_moves[m.player].append(m)
+
+    streaks = []
+
+    for player, pmoves in player_moves.items():
+        if not pmoves:
+            continue
+
+        # 手数順にソート
+        sorted_moves = sorted(pmoves, key=lambda m: m.move_number)
+
+        current_streak: List[MoveEval] = []
+
+        for m in sorted_moves:
+            loss = max(0.0, m.points_lost or 0.0)
+            if loss >= loss_threshold:
+                current_streak.append(m)
+            else:
+                # streak が途切れた
+                if len(current_streak) >= min_consecutive:
+                    total_loss = sum(max(0.0, mv.points_lost or 0.0) for mv in current_streak)
+                    streaks.append(MistakeStreak(
+                        player=player,
+                        start_move=current_streak[0].move_number,
+                        end_move=current_streak[-1].move_number,
+                        move_count=len(current_streak),
+                        total_loss=total_loss,
+                        moves=list(current_streak),
+                    ))
+                current_streak = []
+
+        # 最後の streak をチェック
+        if len(current_streak) >= min_consecutive:
+            total_loss = sum(max(0.0, mv.points_lost or 0.0) for mv in current_streak)
+            streaks.append(MistakeStreak(
+                player=player,
+                start_move=current_streak[0].move_number,
+                end_move=current_streak[-1].move_number,
+                move_count=len(current_streak),
+                total_loss=total_loss,
+                moves=list(current_streak),
+            ))
+
+    # 開始手数順にソート
+    streaks.sort(key=lambda s: s.start_move)
+    return streaks
 
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
