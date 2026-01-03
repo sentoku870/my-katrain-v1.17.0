@@ -401,7 +401,9 @@ class BatchResult:
     cancelled: bool = False
     # Extended output counts
     karte_written: int = 0
+    karte_failed: int = 0
     summary_written: bool = False
+    summary_error: Optional[str] = None
     analyzed_sgf_written: int = 0
 
 
@@ -436,8 +438,10 @@ def run_batch(
         visits: Number of visits per move (None = use default)
         timeout: Timeout per file in seconds
         skip_analyzed: Skip files that already have analysis
-        progress_cb: Callback(current, total, filename) for progress updates
-        log_cb: Callback(message) for log messages
+        progress_cb: Callback(current, total, filename) for progress updates.
+            NOTE: Called from background thread. GUI code must use Clock.schedule_once.
+        log_cb: Callback(message) for log messages.
+            NOTE: Called from background thread. GUI code must use Clock.schedule_once.
         cancel_flag: List[bool] - set cancel_flag[0] = True to cancel
         save_analyzed_sgf: If True, save analyzed SGF files (default: True for backward compat)
         generate_karte: If True, generate karte markdown for each game
@@ -445,7 +449,7 @@ def run_batch(
         karte_player_filter: Filter for karte ("B", "W", or None for both)
 
     Returns:
-        BatchResult with success/fail/skip counts and output directory
+        BatchResult with success/fail/skip counts, output counts, and error information
     """
     import re
 
@@ -516,8 +520,8 @@ def run_batch(
     # For summary generation, collect game stats
     game_stats_list = [] if generate_summary else None
 
-    # Timestamp for filenames
-    batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+    # Timestamp for filenames (includes seconds to reduce collision risk)
+    batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # Process each file
     for i, (abs_path, rel_path) in enumerate(sgf_files):
@@ -591,7 +595,10 @@ def run_batch(
                     result.karte_written += 1
                     log(f"  Saved Karte: {karte_filename}")
                 except Exception as e:
-                    log(f"  ERROR generating karte: {e}")
+                    import traceback
+                    result.karte_failed += 1
+                    error_details = traceback.format_exc()
+                    log(f"  ERROR generating karte: {e}\n{error_details}")
 
             # Collect stats for summary
             if generate_summary and game is not None:
@@ -621,7 +628,14 @@ def run_batch(
             result.summary_written = True
             log(f"Saved Summary: {summary_filename}")
         except Exception as e:
-            log(f"ERROR generating summary: {e}")
+            import traceback
+            error_details = traceback.format_exc()
+            result.summary_error = str(e)
+            log(f"ERROR generating summary: {e}\n{error_details}")
+    elif generate_summary and not game_stats_list and not result.cancelled:
+        # No games were successfully analyzed for summary
+        result.summary_error = "No valid game statistics available"
+        log("WARNING: Summary generation requested but no valid game statistics available")
 
     return result
 

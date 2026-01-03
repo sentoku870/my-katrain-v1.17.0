@@ -104,7 +104,7 @@ msgid "mykatrain:batch:complete"
 msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}. Output: {output_dir}"
 
 msgid "mykatrain:batch:complete_extended"
-msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}\nKarte: {karte}, Summary: {summary}, SGF: {sgf}\nOutput: {output_dir}"
+msgstr "Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}\nKarte: {karte_ok}/{karte_total} ({karte_fail} errors), Summary: {summary}, SGF: {sgf}\nOutput: {output_dir}"
 
 msgid "mykatrain:batch:save_analyzed_sgf"
 msgstr "Save analyzed SGFs"

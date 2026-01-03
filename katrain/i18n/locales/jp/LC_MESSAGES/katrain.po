@@ -1095,7 +1095,7 @@ msgid "mykatrain:batch:error_no_engine"
 msgstr "KataGoエンジンが起動していません"
 
 msgid "mykatrain:batch:complete_extended"
-msgstr "完了! 成功: {success}, 失敗: {failed}, スキップ: {skipped}\nカルテ: {karte}, サマリー: {summary}, SGF: {sgf}\n出力先: {output_dir}"
+msgstr "完了! 成功: {success}, 失敗: {failed}, スキップ: {skipped}\nカルテ: {karte_ok}/{karte_total} ({karte_fail}件エラー), サマリー: {summary}, SGF: {sgf}\n出力先: {output_dir}"
 
 msgid "mykatrain:batch:save_analyzed_sgf"
 msgstr "解析済みSGFを保存"

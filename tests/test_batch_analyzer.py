@@ -299,19 +299,33 @@ class TestBatchAnalyzerCLI:
         result = BatchResult()
         # New fields for karte/summary generation
         assert result.karte_written == 0
+        assert result.karte_failed == 0
         assert result.summary_written is False
+        assert result.summary_error is None
         assert result.analyzed_sgf_written == 0
 
         # Test with values
         result2 = BatchResult(
             success_count=5,
             karte_written=3,
+            karte_failed=1,
             summary_written=True,
+            summary_error=None,
             analyzed_sgf_written=5
         )
         assert result2.karte_written == 3
+        assert result2.karte_failed == 1
         assert result2.summary_written is True
+        assert result2.summary_error is None
         assert result2.analyzed_sgf_written == 5
+
+        # Test with summary error
+        result3 = BatchResult(
+            summary_written=False,
+            summary_error="No valid game statistics available"
+        )
+        assert result3.summary_written is False
+        assert result3.summary_error == "No valid game statistics available"
 
 
 class TestAnalyzeSingleFileLogging:
@@ -511,12 +525,21 @@ class TestBatchOutputBehavior:
         assert hash_1 != hash_2
 
         # Format: karte_{base_name}_{path_hash}_{timestamp}.md
+        # Timestamp format: YYYYMMDD-HHMMSS (includes seconds)
         base_name = "game"
-        timestamp = "20250103-1200"
+        timestamp = "20250103-120000"  # Updated to include seconds
         filename_1 = f"karte_{base_name}_{hash_1}_{timestamp}.md"
         filename_2 = f"karte_{base_name}_{hash_2}_{timestamp}.md"
 
         assert filename_1 != filename_2
+
+    def test_timestamp_format_includes_seconds(self):
+        """Batch timestamp should include seconds to reduce collision risk."""
+        from datetime import datetime
+        # Verify the expected format: YYYYMMDD-HHMMSS
+        test_timestamp = datetime(2025, 1, 3, 12, 0, 30).strftime("%Y%m%d-%H%M%S")
+        assert test_timestamp == "20250103-120030"
+        assert len(test_timestamp) == 15  # YYYYMMDD-HHMMSS = 15 chars
 
     def test_output_directory_structure_creation(self, tmp_path):
         """Output directories should be created only when needed."""
@@ -626,3 +649,76 @@ class TestBatchOutputBehavior:
         analyzed_dir = output_dir / "analyzed"
         if analyzed_dir.exists():
             assert list(analyzed_dir.glob("*.sgf")) == []
+
+
+class TestBatchErrorHandling:
+    """Tests for P1 hardening: error counting and reporting."""
+
+    def test_karte_error_counting(self):
+        """Karte generation errors should be counted separately."""
+        from katrain.tools.batch_analyze_sgf import BatchResult
+
+        result = BatchResult()
+        result.karte_written = 3
+        result.karte_failed = 2
+
+        # Total karte attempts = success + failure
+        total_attempts = result.karte_written + result.karte_failed
+        assert total_attempts == 5
+        assert result.karte_written == 3
+        assert result.karte_failed == 2
+
+    def test_summary_error_states(self):
+        """Summary should have distinct states: success, skipped, error."""
+        from katrain.tools.batch_analyze_sgf import BatchResult
+
+        # State 1: Success
+        result_success = BatchResult(summary_written=True, summary_error=None)
+        assert result_success.summary_written is True
+        assert result_success.summary_error is None
+
+        # State 2: Skipped (generate_summary=False)
+        result_skipped = BatchResult(summary_written=False, summary_error=None)
+        assert result_skipped.summary_written is False
+        assert result_skipped.summary_error is None
+
+        # State 3: Error
+        result_error = BatchResult(
+            summary_written=False,
+            summary_error="No valid game statistics available"
+        )
+        assert result_error.summary_written is False
+        assert result_error.summary_error is not None
+        assert "No valid" in result_error.summary_error
+
+    def test_gui_completion_message_format(self):
+        """GUI completion message should include error counts."""
+        from katrain.tools.batch_analyze_sgf import BatchResult
+
+        result = BatchResult(
+            success_count=10,
+            fail_count=1,
+            skip_count=2,
+            karte_written=7,
+            karte_failed=2,
+            summary_written=True,
+            summary_error=None,
+            analyzed_sgf_written=10,
+            output_dir="/tmp/test"
+        )
+
+        # Verify all fields are accessible for GUI formatting
+        karte_total = result.karte_written + result.karte_failed
+        assert karte_total == 9
+        assert result.karte_written == 7
+        assert result.karte_failed == 2
+
+        # Summary status logic
+        if result.summary_written:
+            summary_status = "Yes"
+        elif result.summary_error:
+            summary_status = f"ERROR: {result.summary_error}"
+        else:
+            summary_status = "No (skipped)"
+
+        assert summary_status == "Yes"
