@@ -3133,13 +3133,25 @@ class KaTrainGui(Screen, KaTrainBase):
                 if result.cancelled:
                     summary = i18n._("mykatrain:batch:cancelled")
                 else:
-                    # Extended summary with karte/summary counts
+                    # Extended summary with karte/summary counts and error reporting
+                    karte_total = result.karte_written + result.karte_failed
+
+                    # Summary status: "Yes" / "No (skipped)" / "ERROR: <message>"
+                    if result.summary_written:
+                        summary_status = "Yes"
+                    elif result.summary_error:
+                        summary_status = f"ERROR: {result.summary_error}"
+                    else:
+                        summary_status = "No (skipped)"
+
                     summary = i18n._("mykatrain:batch:complete_extended").format(
                         success=result.success_count,
                         failed=result.fail_count,
                         skipped=result.skip_count,
-                        karte=result.karte_written,
-                        summary="Yes" if result.summary_written else "No",
+                        karte_ok=result.karte_written,
+                        karte_total=karte_total,
+                        karte_fail=result.karte_failed,
+                        summary=summary_status,
                         sgf=result.analyzed_sgf_written,
                         output_dir=result.output_dir,
                     )

@@ -1048,3 +1048,244 @@ msgstr "Export Multi-Game Summary"
 #. TODO
 msgid "mykatrain:export-karte"
 msgstr "Export Karte"
+
+#. TODO
+msgid "mykatrain:settings:karte_output_directory"
+msgstr "Karte Output Directory:"
+
+#. TODO
+msgid "mykatrain:batch:visits_hint"
+msgstr "(default)"
+
+#. TODO
+msgid "mykatrain:batch:output_dir"
+msgstr "Output Directory"
+
+#. TODO
+msgid "mykatrain:batch:error_input_dir"
+msgstr "Please select a valid input directory"
+
+#. TODO
+msgid "mykatrain:settings:skill_beginner"
+msgstr "Beginner"
+
+#. TODO
+msgid "mykatrain:batch:cancel"
+msgstr "Cancel"
+
+#. TODO
+msgid "Generating Summary"
+msgstr "Generating Summary"
+
+#. TODO
+msgid "mykatrain:batch:ready"
+msgstr "Ready to start"
+
+#. TODO
+msgid "mykatrain:error:no_analysis_data"
+msgstr ""
+"No analysis data available.\n"
+"Please run KataGo analysis first."
+
+#. TODO
+msgid "mykatrain:batch-analyze"
+msgstr "Batch Analyze Folder..."
+
+#. TODO
+msgid "mykatrain:settings:default_user_name"
+msgstr "Default User Name:"
+
+#. TODO
+msgid "mykatrain:batch:complete_extended"
+msgstr ""
+"Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}\n"
+"Karte: {karte_ok}/{karte_total} ({karte_fail} errors), Summary: {summary}, SGF: {sgf}\n"
+"Output: {output_dir}"
+
+#. TODO
+msgid "mykatrain:batch:generate_summary"
+msgstr "Generate Summary"
+
+#. TODO
+msgid "Select karte output directory"
+msgstr "Select karte output directory"
+
+#. TODO
+msgid "Configure myKatrain default settings:"
+msgstr "Configure myKatrain default settings:"
+
+#. TODO
+msgid "mykatrain:settings:opponent_info_auto"
+msgstr "Auto"
+
+#. TODO
+msgid "mykatrain:batch:visits"
+msgstr "Visits"
+
+#. TODO
+msgid "Select directory containing SGF files"
+msgstr "Select directory containing SGF files"
+
+#. TODO
+msgid "mykatrain:batch:save_analyzed_sgf"
+msgstr "Save analyzed SGFs"
+
+#. TODO
+msgid "mykatrain:batch:complete"
+msgstr ""
+"Complete! Success: {success}, Failed: {failed}, Skipped: {skipped}. Output: "
+"{output_dir}"
+
+#. TODO
+msgid ""
+"Could not determine color for '{default_user}'.\n"
+"Exporting both players."
+msgstr ""
+"Could not determine color for '{default_user}'.\n"
+"Exporting both players."
+
+#. TODO
+msgid "mykatrain:settings:format_black_only"
+msgstr "Black Only"
+
+#. TODO
+msgid "mykatrain:settings:skill_advanced"
+msgstr "Advanced"
+
+#. TODO
+msgid "mykatrain:settings:opponent_info_mode"
+msgstr "Opponent Info Mode:"
+
+#. TODO
+msgid "mykatrain:error:output_dir_not_configured"
+msgstr ""
+"Karte output directory not configured.\n"
+"Please set it in myKatrain Settings."
+
+#. TODO
+msgid "mykatrain:batch:timeout"
+msgstr "Timeout (sec)"
+
+#. TODO
+msgid "mykatrain:settings:format_default_user_only"
+msgstr "Default User Only"
+
+#. TODO
+msgid "Select players to include in summary:"
+msgstr "Select players to include in summary:"
+
+#. TODO
+msgid "mykatrain:batch:generate_karte"
+msgstr "Generate Karte"
+
+#. TODO
+msgid "Summaries exported"
+msgstr "Summaries exported"
+
+#. TODO
+msgid ""
+"Default user '{default_user}' not found in SGF files.\n"
+"Please select players manually."
+msgstr ""
+"Default user '{default_user}' not found in SGF files.\n"
+"Please select players manually."
+
+#. TODO
+msgid "mykatrain:settings"
+msgstr "myKatrain Settings"
+
+#. TODO
+msgid "mykatrain:batch:output_hint"
+msgstr "(same as input if empty)"
+
+#. TODO
+msgid "mykatrain:batch:starting"
+msgstr "Starting..."
+
+#. TODO
+msgid "Settings saved"
+msgstr "Settings saved"
+
+#. TODO
+msgid "mykatrain:batch:error_no_engine"
+msgstr "KataGo engine is not running"
+
+#. TODO
+msgid "mykatrain:settings:skill_preset"
+msgstr "Skill Preset:"
+
+#. TODO
+msgid ""
+"Karte output directory not configured.\n"
+"Please set it in myKatrain Settings."
+msgstr ""
+"Karte output directory not configured.\n"
+"Please set it in myKatrain Settings."
+
+#. TODO
+msgid "mykatrain:batch:start"
+msgstr "Start"
+
+#. TODO
+msgid "No summaries generated"
+msgstr "No summaries generated"
+
+#. TODO
+msgid "mykatrain:batch:input_dir"
+msgstr "Input Directory"
+
+#. TODO
+msgid "mykatrain:settings:format_both"
+msgstr "Both Players (1 file)"
+
+#. TODO
+msgid "mykatrain:settings:batch_export_input_directory"
+msgstr "Batch Export Input Directory:"
+
+#. TODO
+msgid "mykatrain:settings:opponent_info_detailed"
+msgstr "Always Detailed"
+
+#. TODO
+msgid "Select batch export input directory"
+msgstr "Select batch export input directory"
+
+#. TODO
+msgid "mykatrain:settings:karte_format"
+msgstr "Karte Format:"
+
+#. TODO
+msgid "mykatrain:settings:opponent_info_aggregate"
+msgstr "Always Aggregate"
+
+#. TODO
+msgid "mykatrain:batch:skip_analyzed"
+msgstr "Skip already analyzed files"
+
+#. TODO
+msgid "mykatrain:settings:skill_standard"
+msgstr "Standard"
+
+#. TODO
+msgid "mykatrain:settings:format_white_only"
+msgstr "White Only"
+
+#. TODO
+msgid ""
+"No categories had enough games (need 2+).\n"
+"Check that focus_player matches SGF player names."
+msgstr ""
+"No categories had enough games (need 2+).\n"
+"Check that focus_player matches SGF player names."
+
+#. TODO
+msgid "mykatrain:batch:cancelled"
+msgstr "Cancelled by user"
+
+#. TODO
+msgid "mykatrain:batch:cancelling"
+msgstr "Cancelling..."
+
+#. TODO
+msgid "mykatrain:batch:title"
+msgstr "Batch Analyze Folder"
