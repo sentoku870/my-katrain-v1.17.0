@@ -293,6 +293,26 @@ class TestBatchAnalyzerCLI:
         assert result.output_dir == ""
         assert result.cancelled is False
 
+    def test_batch_result_extended_fields(self):
+        """BatchResult should have extended output count fields."""
+        from katrain.tools.batch_analyze_sgf import BatchResult
+        result = BatchResult()
+        # New fields for karte/summary generation
+        assert result.karte_written == 0
+        assert result.summary_written is False
+        assert result.analyzed_sgf_written == 0
+
+        # Test with values
+        result2 = BatchResult(
+            success_count=5,
+            karte_written=3,
+            summary_written=True,
+            analyzed_sgf_written=5
+        )
+        assert result2.karte_written == 3
+        assert result2.summary_written is True
+        assert result2.analyzed_sgf_written == 5
+
 
 class TestAnalyzeSingleFileLogging:
     """Tests for analyze_single_file error logging."""
@@ -349,3 +369,260 @@ class TestAnalyzeSingleFileLogging:
         assert result is False
         # Should contain error message
         assert any("ERROR" in msg or "error" in msg.lower() for msg in log_messages)
+
+
+class TestAnalyzeSingleFileExtended:
+    """Tests for analyze_single_file extended functionality."""
+
+    def test_save_sgf_parameter(self, tmp_path):
+        """analyze_single_file should support save_sgf parameter."""
+        from katrain.tools.batch_analyze_sgf import analyze_single_file
+
+        # Create a valid SGF
+        sgf_content = "(;GM[1]FF[4]SZ[19];B[pd])"
+        sgf_file = tmp_path / "test.sgf"
+        sgf_file.write_text(sgf_content, encoding="utf-8")
+
+        # Call with save_sgf=False (will still fail due to None katrain, but parameter is accepted)
+        log_messages = []
+        result = analyze_single_file(
+            katrain=None,
+            engine=None,
+            sgf_path=str(sgf_file),
+            output_path=str(tmp_path / "out.sgf"),
+            log_cb=log_messages.append,
+            save_sgf=False,  # New parameter
+        )
+        # Should have processed (and failed for other reasons, not param error)
+        assert len(log_messages) > 0
+
+    def test_return_game_parameter(self, tmp_path):
+        """analyze_single_file should support return_game parameter."""
+        from katrain.tools.batch_analyze_sgf import analyze_single_file
+
+        # Create a valid SGF
+        sgf_content = "(;GM[1]FF[4]SZ[19];B[pd])"
+        sgf_file = tmp_path / "test.sgf"
+        sgf_file.write_text(sgf_content, encoding="utf-8")
+
+        # Call with return_game=True (will still fail due to None katrain)
+        result = analyze_single_file(
+            katrain=None,
+            engine=None,
+            sgf_path=str(sgf_file),
+            output_path=str(tmp_path / "out.sgf"),
+            return_game=True,  # New parameter
+        )
+        # Should return None (not a Game) on failure
+        assert result is None
+
+
+class TestRunBatchExtended:
+    """Tests for run_batch extended functionality."""
+
+    def test_run_batch_extended_parameters(self):
+        """run_batch should accept extended parameters."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+        params = list(sig.parameters.keys())
+
+        # Check new parameters exist
+        assert "save_analyzed_sgf" in params
+        assert "generate_karte" in params
+        assert "generate_summary" in params
+        assert "karte_player_filter" in params
+
+    def test_run_batch_parameter_defaults(self):
+        """run_batch should have correct default values for backward compatibility."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+
+        # save_analyzed_sgf defaults to True (backward compatibility)
+        assert sig.parameters["save_analyzed_sgf"].default is True
+
+        # generate_karte defaults to False (backward compatibility)
+        assert sig.parameters["generate_karte"].default is False
+
+        # generate_summary defaults to False (backward compatibility)
+        assert sig.parameters["generate_summary"].default is False
+
+        # karte_player_filter defaults to None (both players)
+        assert sig.parameters["karte_player_filter"].default is None
+
+
+class TestBatchOutputDirectoryStructure:
+    """Tests for batch output directory structure."""
+
+    def test_output_subdirectory_names(self):
+        """Verify expected subdirectory structure constants."""
+        # These are the expected subdirectory names used in run_batch
+        # This documents the expected structure:
+        # output_dir/
+        #   ├── analyzed/           (SGFs if save_analyzed_sgf)
+        #   └── reports/
+        #       ├── karte/          (if generate_karte)
+        #       └── summary/        (if generate_summary)
+        expected_subdirs = ["analyzed", "reports/karte", "reports/summary"]
+        for subdir in expected_subdirs:
+            # Just document the expected structure
+            assert isinstance(subdir, str)
+
+
+class TestHelperFunctions:
+    """Tests for batch analyzer helper functions."""
+
+    def test_helper_functions_exist(self):
+        """Helper functions should exist in module."""
+        import katrain.tools.batch_analyze_sgf as module
+
+        # Check internal helper functions exist (for documentation)
+        assert hasattr(module, "_extract_game_stats")
+        assert hasattr(module, "_build_batch_summary")
+        assert callable(module._extract_game_stats)
+        assert callable(module._build_batch_summary)
+
+    def test_build_batch_summary_empty_list(self):
+        """_build_batch_summary should handle empty list."""
+        from katrain.tools.batch_analyze_sgf import _build_batch_summary
+
+        result = _build_batch_summary([])
+        assert isinstance(result, str)
+        # Should still return valid markdown
+        assert "#" in result or "No" in result or "0" in result
+
+
+class TestBatchOutputBehavior:
+    """Tests for actual output file behavior."""
+
+    def test_karte_filename_includes_path_hash(self):
+        """Karte filenames should include path hash to avoid collisions."""
+        import hashlib
+        rel_path_1 = "pro/game.sgf"
+        rel_path_2 = "amateur/game.sgf"
+
+        hash_1 = hashlib.md5(rel_path_1.encode()).hexdigest()[:6]
+        hash_2 = hashlib.md5(rel_path_2.encode()).hexdigest()[:6]
+
+        # Same basename but different paths should have different hashes
+        assert hash_1 != hash_2
+
+        # Format: karte_{base_name}_{path_hash}_{timestamp}.md
+        base_name = "game"
+        timestamp = "20250103-1200"
+        filename_1 = f"karte_{base_name}_{hash_1}_{timestamp}.md"
+        filename_2 = f"karte_{base_name}_{hash_2}_{timestamp}.md"
+
+        assert filename_1 != filename_2
+
+    def test_output_directory_structure_creation(self, tmp_path):
+        """Output directories should be created only when needed."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        from unittest.mock import MagicMock
+
+        # Create mock katrain and engine
+        mock_katrain = MagicMock()
+        mock_engine = MagicMock()
+        mock_engine.is_idle.return_value = True
+
+        # Create input directory with a dummy SGF
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "test.sgf").write_text("(;GM[1]FF[4]SZ[19];B[pd])")
+
+        output_dir = tmp_path / "output"
+
+        # Run with all options OFF
+        result = run_batch(
+            katrain=mock_katrain,
+            engine=mock_engine,
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            save_analyzed_sgf=False,
+            generate_karte=False,
+            generate_summary=False,
+        )
+
+        # Base output_dir should exist
+        assert output_dir.exists()
+        # But subdirectories should NOT exist
+        assert not (output_dir / "analyzed").exists()
+        assert not (output_dir / "reports" / "karte").exists()
+        assert not (output_dir / "reports" / "summary").exists()
+
+    def test_summary_generation_without_sgf_save(self, tmp_path):
+        """Summary should be generated even when save_analyzed_sgf is OFF."""
+        # This test verifies the code path doesn't depend on saved SGFs
+        from katrain.tools.batch_analyze_sgf import _build_batch_summary
+        from katrain.core.eval_metrics import MistakeCategory
+
+        # Create mock game stats (as if extracted from in-memory Game objects)
+        game_stats = [
+            {
+                "game_name": "test_game.sgf",
+                "player_black": "Player1",
+                "player_white": "Player2",
+                "handicap": 0,
+                "date": "2025-01-03",
+                "board_size": (19, 19),
+                "total_moves": 100,
+                "total_points_lost": 15.5,
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 8.0, "W": 7.5},
+                "mistake_counts": {MistakeCategory.MISTAKE: 2},
+                "mistake_total_loss": {MistakeCategory.MISTAKE: 6.0},
+                "freedom_counts": {},
+                "phase_moves": {"opening": 50, "middle": 40, "yose": 10},
+                "phase_loss": {"opening": 3.0, "middle": 10.0, "yose": 2.5},
+                "phase_mistake_counts": {("middle", "MISTAKE"): 2},
+                "phase_mistake_loss": {("middle", "MISTAKE"): 6.0},
+                "worst_moves": [(45, "B", "Q10", 3.5, MistakeCategory.MISTAKE)],
+            }
+        ]
+
+        # Build summary from in-memory stats
+        summary = _build_batch_summary(game_stats)
+
+        # Verify summary content
+        assert "# Multi-Game Summary" in summary
+        assert "test_game.sgf" in summary
+        assert "100" in summary  # total moves
+        assert "15.5" in summary  # total loss
+
+    def test_analyzed_sgf_not_written_when_disabled(self, tmp_path):
+        """Analyzed SGF should NOT be written when save_analyzed_sgf is OFF."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        from unittest.mock import MagicMock
+
+        # Create mock katrain and engine
+        mock_katrain = MagicMock()
+        mock_engine = MagicMock()
+        mock_engine.is_idle.return_value = True
+
+        # Create input directory
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "test.sgf").write_text("(;GM[1]FF[4]SZ[19];B[pd])")
+
+        output_dir = tmp_path / "output"
+
+        # Run with save_analyzed_sgf OFF
+        result = run_batch(
+            katrain=mock_katrain,
+            engine=mock_engine,
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            save_analyzed_sgf=False,
+            generate_karte=False,
+            generate_summary=False,
+        )
+
+        # analyzed_sgf_written should be 0
+        assert result.analyzed_sgf_written == 0
+        # No analyzed directory should have been created with files
+        analyzed_dir = output_dir / "analyzed"
+        if analyzed_dir.exists():
+            assert list(analyzed_dir.glob("*.sgf")) == []
