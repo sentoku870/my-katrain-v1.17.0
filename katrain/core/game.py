@@ -14,12 +14,15 @@ from .eval_metrics import (
     GameSummaryData,
     MistakeCategory,
     MoveEval,
+    PhaseMistakeStats,
     PositionDifficulty,
     QuizChoice,
     QuizItem,
     QuizQuestion,
     SummaryStats,
+    aggregate_phase_mistake_stats,
     get_canonical_loss_from_move,
+    get_practice_priorities_from_stats,
     quiz_items_from_snapshot,
     quiz_points_lost_from_candidate,
     snapshot_from_game,
@@ -640,11 +643,14 @@ class Game(BaseGame):
         if compute_reason_tags:
             from katrain.core import board_analysis
 
+            unknown_count = 0
             for move_eval in important_moves:
                 try:
                     # 対応するノードを検索
                     node = self._find_node_by_move_number(move_eval.move_number)
                     if node is None:
+                        move_eval.reason_tags = ["unknown"]
+                        unknown_count += 1
                         continue
 
                     # このノードで盤面を分析
@@ -657,13 +663,26 @@ class Game(BaseGame):
                     move_eval.reason_tags = board_analysis.get_reason_tags_for_move(
                         board_state, move_eval, node, candidates, skill_preset=level
                     )
+
+                    # タグが空の場合は "unknown" を設定
+                    if not move_eval.reason_tags:
+                        move_eval.reason_tags = ["unknown"]
+                        unknown_count += 1
                 except Exception as e:
-                    # 失敗時は優雅に処理: 分析失敗時はタグなし
+                    # 失敗時は優雅に処理: 分析失敗時は "unknown" を設定
                     self.katrain.log(
                         f"Failed to compute reason tags for move #{move_eval.move_number}: {e}",
                         OUTPUT_DEBUG
                     )
-                    move_eval.reason_tags = []
+                    move_eval.reason_tags = ["unknown"]
+                    unknown_count += 1
+
+            # unknown_count をログに出力（カバレッジ確認用）
+            if unknown_count > 0 and important_moves:
+                self.katrain.log(
+                    f"[ReasonTags] {unknown_count}/{len(important_moves)} moves have unknown reason tags",
+                    OUTPUT_DEBUG
+                )
 
         return important_moves
 
@@ -1230,12 +1249,37 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
+        # Practice Priorities を生成（共有アグリゲータを使用）
+        def practice_priorities_for(player: str, label: str) -> List[str]:
+            """単局の練習優先事項を生成"""
+            player_moves = [mv for mv in snapshot.moves if mv.player == player]
+            if not player_moves:
+                return [f"## Practice Priorities ({label})", "- No data available.", ""]
+
+            # 共有アグリゲータで Phase × Mistake 統計を計算
+            stats = aggregate_phase_mistake_stats(player_moves)
+
+            # 優先項目を取得
+            priorities = get_practice_priorities_from_stats(stats, max_priorities=2)
+
+            lines = [f"## Practice Priorities ({label})", ""]
+            lines.append("Based on the data above, consider focusing on:")
+            lines.append("")
+            if priorities:
+                for i, priority in enumerate(priorities, 1):
+                    lines.append(f"- {i}. {priority}")
+            else:
+                lines.append("- No specific priorities identified. Keep up the good work!")
+            lines.append("")
+            return lines
+
         # Phase 3: Apply player filter to weakness hypothesis and important moves
         if filtered_player is None:
             # Show both players
             if focus_color:
                 focus_name = "Black" if focus_color == "B" else "White"
                 sections += weakness_hypothesis_for(focus_color, focus_name)
+                sections += practice_priorities_for(focus_color, focus_name)
 
             if focus_color:
                 sections += important_lines_for(focus_color, focus_label)
@@ -1255,6 +1299,7 @@ class Game(BaseGame):
             filtered_name = "Black" if filtered_player == "B" else "White"
             if focus_color and focus_color == filtered_player:
                 sections += weakness_hypothesis_for(focus_color, filtered_name)
+                sections += practice_priorities_for(focus_color, filtered_name)
 
             if focus_color and focus_color == filtered_player:
                 sections += important_lines_for(focus_color, focus_label)
