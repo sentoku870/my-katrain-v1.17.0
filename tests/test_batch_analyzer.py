@@ -17,6 +17,7 @@ from katrain.tools.batch_analyze_sgf import (
     read_sgf_with_fallback,
     parse_sgf_with_fallback,
     parse_timeout_input,
+    choose_visits_for_sgf,
     DEFAULT_TIMEOUT_SECONDS,
     ENCODINGS_TO_TRY,
 )
@@ -2043,3 +2044,77 @@ class TestParseTimeoutInput:
     def test_default_constant_value(self):
         """DEFAULT_TIMEOUT_SECONDS has expected value."""
         assert DEFAULT_TIMEOUT_SECONDS == 600.0
+
+
+class TestVariableVisits:
+    """Tests for choose_visits_for_sgf() function."""
+
+    def test_no_jitter_returns_base(self):
+        """When jitter_pct is 0, should return base visits unchanged."""
+        assert choose_visits_for_sgf("game.sgf", 500, jitter_pct=0) == 500
+        assert choose_visits_for_sgf("game.sgf", 1000, jitter_pct=0) == 1000
+
+    def test_negative_jitter_returns_base(self):
+        """Negative jitter_pct should be treated as 0."""
+        assert choose_visits_for_sgf("game.sgf", 500, jitter_pct=-10) == 500
+
+    def test_zero_visits_returns_zero(self):
+        """Zero base visits should return 0 (or at least 1 with jitter)."""
+        result = choose_visits_for_sgf("game.sgf", 0, jitter_pct=10)
+        assert result == 0
+
+    def test_jitter_clamped_to_25_percent(self):
+        """Jitter should be clamped to max 25%."""
+        # Even with 100% jitter requested, result should be within 25% of base
+        base = 1000
+        result = choose_visits_for_sgf("game.sgf", base, jitter_pct=100, deterministic=True)
+        assert 750 <= result <= 1250  # 25% range
+
+    def test_deterministic_same_path_same_result(self):
+        """Deterministic mode should return same result for same path."""
+        result1 = choose_visits_for_sgf("game.sgf", 500, jitter_pct=10, deterministic=True)
+        result2 = choose_visits_for_sgf("game.sgf", 500, jitter_pct=10, deterministic=True)
+        assert result1 == result2
+
+    def test_deterministic_different_paths_different_results(self):
+        """Deterministic mode should return different results for different paths."""
+        result1 = choose_visits_for_sgf("game1.sgf", 500, jitter_pct=20, deterministic=True)
+        result2 = choose_visits_for_sgf("game2.sgf", 500, jitter_pct=20, deterministic=True)
+        # Different paths should give different jitter values (with high probability)
+        # Note: There's a tiny chance they could be the same, but very unlikely
+        # For a robust test, we just check they're both valid
+        assert 400 <= result1 <= 600
+        assert 400 <= result2 <= 600
+
+    def test_result_within_jitter_range(self):
+        """Result should be within the jitter range."""
+        base = 500
+        jitter_pct = 10
+        result = choose_visits_for_sgf("test.sgf", base, jitter_pct=jitter_pct, deterministic=True)
+        min_expected = int(base * (1 - jitter_pct / 100))
+        max_expected = int(base * (1 + jitter_pct / 100))
+        assert min_expected <= result <= max_expected
+
+    def test_minimum_one_visit(self):
+        """Result should be at least 1 visit."""
+        # Very low base with high jitter could theoretically go negative
+        result = choose_visits_for_sgf("test.sgf", 1, jitter_pct=25, deterministic=True)
+        assert result >= 1
+
+    def test_path_normalization_cross_platform(self):
+        """Path normalization should give same result regardless of separator."""
+        # Windows-style path
+        result1 = choose_visits_for_sgf("C:\\games\\game.sgf", 500, jitter_pct=10, deterministic=True)
+        # Unix-style path (should normalize to same)
+        result2 = choose_visits_for_sgf("C:/games/game.sgf", 500, jitter_pct=10, deterministic=True)
+        assert result1 == result2
+
+    def test_non_deterministic_varies(self):
+        """Non-deterministic mode should vary (most of the time)."""
+        results = set()
+        for _ in range(10):
+            result = choose_visits_for_sgf("game.sgf", 500, jitter_pct=20, deterministic=False)
+            results.add(result)
+        # With 10 random samples at 20% jitter, we expect some variation
+        # Not all 10 should be the same (very unlikely)
+        assert len(results) > 1

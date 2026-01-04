@@ -1127,6 +1127,18 @@ msgstr "最低対局数:"
 msgid "mykatrain:batch:summary_player"
 msgstr "サマリー: {player} ({count}局)"
 
+msgid "mykatrain:batch:variable_visits"
+msgstr "可変探索"
+
+msgid "mykatrain:batch:jitter_pct"
+msgstr "揺らぎ%:"
+
+msgid "mykatrain:batch:deterministic"
+msgstr "再現性あり"
+
+msgid "mykatrain:batch:sound_on_finish"
+msgstr "完了時に音を鳴らす"
+
 msgid "Close"
 msgstr "閉じる"
 

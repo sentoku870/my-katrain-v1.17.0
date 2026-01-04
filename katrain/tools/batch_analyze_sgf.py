@@ -50,6 +50,62 @@ from katrain.core.eval_metrics import (
 
 
 # ---------------------------------------------------------------------------
+# Variable Visits helpers
+# ---------------------------------------------------------------------------
+
+def choose_visits_for_sgf(
+    sgf_path: str,
+    base_visits: int,
+    jitter_pct: float = 0.0,
+    deterministic: bool = True,
+) -> int:
+    """
+    Choose visits for an SGF file with optional jitter.
+
+    Args:
+        sgf_path: Path to the SGF file (used for deterministic hashing)
+        base_visits: Base visits count
+        jitter_pct: Jitter percentage (0-25%), clamped for safety
+        deterministic: If True, use path-based hash for reproducibility
+
+    Returns:
+        Visits count with jitter applied
+
+    Examples:
+        >>> choose_visits_for_sgf("game1.sgf", 500, jitter_pct=10, deterministic=True)
+        475  # or similar, deterministic based on path
+        >>> choose_visits_for_sgf("game1.sgf", 500, jitter_pct=0)
+        500  # No jitter
+    """
+    if jitter_pct <= 0 or base_visits <= 0:
+        return base_visits
+
+    # Clamp jitter to max 25% for safety
+    jitter_pct = min(jitter_pct, 25.0)
+
+    # Calculate jitter range
+    max_jitter = base_visits * (jitter_pct / 100.0)
+
+    if deterministic:
+        # Use md5 hash of normalized path for reproducibility
+        # Normalize path: resolve, convert to forward slashes, lowercase
+        normalized = os.path.normpath(os.path.abspath(sgf_path))
+        normalized = normalized.replace("\\", "/").lower()
+        hash_bytes = hashlib.md5(normalized.encode("utf-8")).digest()
+        # Use first 4 bytes as unsigned int
+        hash_val = int.from_bytes(hash_bytes[:4], byteorder="big")
+        # Map to [-max_jitter, +max_jitter]
+        jitter = (hash_val / 0xFFFFFFFF) * 2 * max_jitter - max_jitter
+    else:
+        import random
+        jitter = random.uniform(-max_jitter, max_jitter)
+
+    result = int(base_visits + jitter)
+    # Ensure at least 1 visit
+    return max(1, result)
+
+
+# ---------------------------------------------------------------------------
 # Points lost helpers (single source of truth for loss aggregation)
 # ---------------------------------------------------------------------------
 
@@ -588,6 +644,10 @@ def run_batch(
     karte_player_filter: Optional[str] = None,
     min_games_per_player: int = 3,
     skill_preset: str = DEFAULT_SKILL_PRESET,
+    # Variable visits options
+    variable_visits: bool = False,
+    jitter_pct: float = 10.0,
+    deterministic: bool = True,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -719,12 +779,25 @@ def run_batch(
         # Analyze the file
         # We need the Game object if generating karte or summary
         need_game = generate_karte or generate_summary
+
+        # Calculate effective visits (with optional jitter)
+        effective_visits = visits
+        if variable_visits and visits is not None:
+            effective_visits = choose_visits_for_sgf(
+                abs_path,
+                visits,
+                jitter_pct=jitter_pct,
+                deterministic=deterministic,
+            )
+            if effective_visits != visits:
+                log(f"  Variable visits: {visits} -> {effective_visits}")
+
         game_result = analyze_single_file(
             katrain=katrain,
             engine=engine,
             sgf_path=abs_path,
             output_path=sgf_output_path,
-            visits=visits,
+            visits=effective_visits,
             timeout=timeout,
             cancel_flag=cancel_flag,
             log_cb=log_cb,

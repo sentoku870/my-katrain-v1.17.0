@@ -3104,6 +3104,82 @@ class KaTrainGui(Screen, KaTrainBase):
         options_row4.add_widget(Label(size_hint_x=0.18))  # spacer
         main_layout.add_widget(options_row4)
 
+        # Options row 5: Variable Visits and Sound on finish
+        options_row5 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+
+        # Variable Visits checkbox
+        variable_visits_checkbox = CheckBox(
+            active=batch_options.get("variable_visits", False),
+            size_hint_x=None, width=dp(30)
+        )
+        variable_visits_label = Label(
+            text=i18n._("mykatrain:batch:variable_visits"),
+            size_hint_x=0.18,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        variable_visits_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        # Jitter % input
+        jitter_label = Label(
+            text=i18n._("mykatrain:batch:jitter_pct"),
+            size_hint_x=0.1,
+            halign="right",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        jitter_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+        jitter_input = TextInput(
+            text=str(batch_options.get("jitter_pct", 10)),
+            multiline=False,
+            input_filter="int",
+            size_hint_x=0.08,
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        # Deterministic checkbox
+        deterministic_checkbox = CheckBox(
+            active=batch_options.get("deterministic", True),
+            size_hint_x=None, width=dp(30)
+        )
+        deterministic_label = Label(
+            text=i18n._("mykatrain:batch:deterministic"),
+            size_hint_x=0.15,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        deterministic_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        # Sound on finish checkbox
+        sound_checkbox = CheckBox(
+            active=batch_options.get("sound_on_finish", False),
+            size_hint_x=None, width=dp(30)
+        )
+        sound_label = Label(
+            text=i18n._("mykatrain:batch:sound_on_finish"),
+            size_hint_x=0.18,
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        sound_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        options_row5.add_widget(variable_visits_checkbox)
+        options_row5.add_widget(variable_visits_label)
+        options_row5.add_widget(jitter_label)
+        options_row5.add_widget(jitter_input)
+        options_row5.add_widget(deterministic_checkbox)
+        options_row5.add_widget(deterministic_label)
+        options_row5.add_widget(sound_checkbox)
+        options_row5.add_widget(sound_label)
+        main_layout.add_widget(options_row5)
+
         # Helper function to get selected player filter
         def get_player_filter() -> Optional[str]:
             if filter_black.state == "down":
@@ -3200,6 +3276,12 @@ class KaTrainGui(Screen, KaTrainBase):
             karte_player_filter = get_player_filter()
             min_games_per_player = int(min_games_input.text) if min_games_input.text.strip() else 3
 
+            # Variable visits options
+            variable_visits = variable_visits_checkbox.active
+            jitter_pct = int(jitter_input.text) if jitter_input.text.strip() else 10
+            deterministic = deterministic_checkbox.active
+            sound_on_finish = sound_checkbox.active
+
             # Save all options for next time (persistence across sessions)
             # Persist timeout as-is (None means no timeout, numeric means timeout in seconds)
             self._save_batch_options({
@@ -3213,6 +3295,10 @@ class KaTrainGui(Screen, KaTrainBase):
                 "generate_summary": generate_summary,
                 "karte_player_filter": karte_player_filter,
                 "min_games_per_player": min_games_per_player,
+                "variable_visits": variable_visits,
+                "jitter_pct": jitter_pct,
+                "deterministic": deterministic,
+                "sound_on_finish": sound_on_finish,
             })
 
             # Get skill preset for karte/summary generation
@@ -3236,7 +3322,19 @@ class KaTrainGui(Screen, KaTrainBase):
                 karte_player_filter=karte_player_filter,
                 min_games_per_player=min_games_per_player,
                 skill_preset=skill_preset,
+                # Variable visits options
+                variable_visits=variable_visits,
+                jitter_pct=jitter_pct,
+                deterministic=deterministic,
             )
+
+            # Play completion sound if enabled
+            if sound_on_finish and not result.cancelled:
+                try:
+                    from katrain.gui.sound import play_sound
+                    play_sound("stone")  # Use existing stone sound as completion notification
+                except Exception:
+                    pass  # Silently ignore sound errors
 
             # Show summary on main thread
             def show_summary(dt):
