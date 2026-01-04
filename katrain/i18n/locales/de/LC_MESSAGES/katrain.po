@@ -1248,6 +1248,9 @@ msgstr "Entspannt"
 msgid "mykatrain:settings:skill_pro"
 msgstr "Profi"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "Auto"
+
 #. TODO
 msgid "mykatrain:settings:opponent_info_mode"
 msgstr "Opponent Info Mode:"

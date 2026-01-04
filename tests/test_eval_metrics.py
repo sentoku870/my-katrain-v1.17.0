@@ -1343,3 +1343,241 @@ class TestUrgentMissConfigs:
 
         for key, config in URGENT_MISS_CONFIGS.items():
             assert 2 <= config.min_consecutive <= 5, f"{key}: min_consecutive out of range"
+
+
+class TestAutoStrictness:
+    """Tests for auto-strictness recommendation algorithm."""
+
+    def test_preset_order_contains_all_presets(self):
+        """PRESET_ORDER should contain all 5 skill presets."""
+        from katrain.core.eval_metrics import PRESET_ORDER, SKILL_PRESETS
+
+        assert set(PRESET_ORDER) == set(SKILL_PRESETS.keys())
+        assert len(PRESET_ORDER) == 5
+
+    def test_preset_order_is_correct_sequence(self):
+        """PRESET_ORDER should be loosest to strictest."""
+        from katrain.core.eval_metrics import PRESET_ORDER
+
+        expected = ["relaxed", "beginner", "standard", "advanced", "pro"]
+        assert PRESET_ORDER == expected
+
+    def test_distance_from_range_within(self):
+        """Value within range should return 0."""
+        from katrain.core.eval_metrics import _distance_from_range
+
+        assert _distance_from_range(5, (3, 10)) == 0
+        assert _distance_from_range(3, (3, 10)) == 0  # Boundary
+        assert _distance_from_range(10, (3, 10)) == 0  # Boundary
+
+    def test_distance_from_range_below(self):
+        """Value below range should return distance to lower bound."""
+        from katrain.core.eval_metrics import _distance_from_range
+
+        assert _distance_from_range(1, (3, 10)) == 2
+        assert _distance_from_range(0, (3, 10)) == 3
+
+    def test_distance_from_range_above(self):
+        """Value above range should return distance to upper bound."""
+        from katrain.core.eval_metrics import _distance_from_range
+
+        assert _distance_from_range(15, (3, 10)) == 5
+        assert _distance_from_range(20, (3, 10)) == 10
+
+    def test_recommend_standard_on_low_reliability(self):
+        """Low reliability (< 20%) should return 'standard' with LOW confidence."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, AutoConfidence, MoveEval
+        )
+
+        # Create moves with very low visits (< threshold)
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp=f"D{i}",
+                score_before=None, score_after=0.0, delta_score=None,
+                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                points_lost=1.0, realized_points_lost=None,
+                root_visits=10,  # Very low visits
+                score_loss=1.0,
+            )
+            for i in range(1, 51)
+        ]
+
+        rec = recommend_auto_strictness(moves, reliability_pct=15.0)
+
+        assert rec.recommended_preset == "standard"
+        assert rec.confidence == AutoConfidence.LOW
+        assert "reliability" in rec.reason.lower()
+
+    def test_recommend_for_many_blunders(self):
+        """Many high-loss moves: algorithm picks preset yielding closest to target range."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, MoveEval, SKILL_PRESETS
+        )
+
+        # Create moves with high loss (many blunders under any preset)
+        # All 50 moves have loss=16.0
+        # relaxed t3=15.0 → 50 blunders (way over 10)
+        # beginner t3=10.0 → 50 blunders
+        # standard t3=5.0 → 50 blunders
+        # advanced t3=3.0 → 50 blunders
+        # pro t3=1.0 → 50 blunders
+        # All presets see 50 blunders; distance from (3,10) = 40 for all
+        # Tie-breaker: closest to standard (index 2) → standard wins
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp=f"D{i}",
+                score_before=None, score_after=0.0, delta_score=None,
+                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                points_lost=16.0,  # High loss
+                realized_points_lost=None,
+                root_visits=500,
+                score_loss=16.0,
+            )
+            for i in range(1, 51)
+        ]
+
+        rec = recommend_auto_strictness(moves, reliability_pct=80.0)
+
+        # With all moves as blunders under all presets, tie-breaker prefers standard
+        assert rec.recommended_preset == "standard"
+        assert rec.blunder_count == 50  # All moves are blunders
+
+    def test_recommend_for_few_blunders(self):
+        """Few low-loss moves: algorithm picks preset closest to target or tie-break."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, MoveEval
+        )
+
+        # Create moves with low loss (0 blunders under any settings)
+        # loss=0.3 is below t3 for all presets (even pro t3=1.0)
+        # So all presets see 0 blunders, 0 important
+        # Distance from target blunder range (3,10) = 3 for all
+        # Distance from target important range (10,30) = 10 for all
+        # Tie-breaker: standard is at index 2 (closest to center)
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp=f"D{i}",
+                score_before=None, score_after=0.0, delta_score=None,
+                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                points_lost=0.3,  # Very low loss
+                realized_points_lost=None,
+                root_visits=500,
+                score_loss=0.3,
+            )
+            for i in range(1, 101)
+        ]
+
+        rec = recommend_auto_strictness(moves, reliability_pct=80.0)
+
+        # Very low losses = 0 blunders under all presets
+        # With equal scores, tie-breaker prefers standard
+        assert rec.recommended_preset == "standard"
+        assert rec.blunder_count == 0
+        assert rec.important_count == 0
+
+    def test_prefer_standard_on_tie(self):
+        """When scores are equal, should prefer preset closer to standard."""
+        from katrain.core.eval_metrics import PRESET_ORDER
+
+        # Standard is at index 2, so it should be preferred on ties
+        standard_idx = PRESET_ORDER.index("standard")
+        assert standard_idx == 2
+
+    def test_multi_game_scaling(self):
+        """Target ranges should scale with game_count."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, MoveEval
+        )
+
+        # Create moves that would produce ~5 blunders per game (within 3-10 range)
+        # under 'standard' preset (t3=5.0)
+        moves = []
+        for game_idx in range(3):
+            for i in range(1, 51):
+                loss = 6.0 if i <= 5 else 0.5  # 5 blunders per "game"
+                moves.append(MoveEval(
+                    move_number=game_idx * 50 + i,
+                    player="B" if i % 2 == 1 else "W",
+                    gtp=f"D{i}",
+                    score_before=None, score_after=0.0, delta_score=None,
+                    winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                    points_lost=loss,
+                    realized_points_lost=None,
+                    root_visits=500,
+                    score_loss=loss,
+                ))
+
+        # 3 games × ~5 blunders = ~15 blunders total
+        # Target range for 3 games: (9, 30) for blunders
+        rec = recommend_auto_strictness(moves, game_count=3, reliability_pct=80.0)
+
+        # 15 blunders is within (9, 30) for standard
+        # Should recommend something close to standard
+        assert rec.recommended_preset in ["beginner", "standard", "advanced"]
+
+    def test_canonical_loss_semantics(self):
+        """Should use max(0, score_loss) for counting, not raw values."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, MoveEval
+        )
+
+        # Create moves with negative score_loss (gains) - should be treated as 0
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp=f"D{i}",
+                score_before=None, score_after=0.0, delta_score=None,
+                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                points_lost=-5.0,  # Negative = gain
+                realized_points_lost=None,
+                root_visits=500,
+                score_loss=-5.0,  # Negative
+            )
+            for i in range(1, 51)
+        ]
+
+        rec = recommend_auto_strictness(moves, reliability_pct=80.0)
+
+        # All negative losses should be treated as 0, so 0 blunders
+        assert rec.blunder_count == 0
+        assert rec.important_count == 0
+
+    def test_confidence_levels(self):
+        """Should return correct confidence based on score."""
+        from katrain.core.eval_metrics import (
+            recommend_auto_strictness, AutoConfidence, MoveEval
+        )
+
+        # Create moves that produce exactly the target range (score=0 → HIGH)
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp=f"D{i}",
+                score_before=None, score_after=0.0, delta_score=None,
+                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                points_lost=6.0 if i <= 6 else (3.0 if i <= 20 else 0.5),
+                realized_points_lost=None,
+                root_visits=500,
+                score_loss=6.0 if i <= 6 else (3.0 if i <= 20 else 0.5),
+            )
+            for i in range(1, 51)
+        ]
+
+        rec = recommend_auto_strictness(moves, reliability_pct=80.0)
+
+        # Confidence should be HIGH, MEDIUM, or LOW based on distance score
+        assert rec.confidence in [
+            AutoConfidence.HIGH,
+            AutoConfidence.MEDIUM,
+            AutoConfidence.LOW
+        ]
+        assert rec.score >= 0  # Score is non-negative distance

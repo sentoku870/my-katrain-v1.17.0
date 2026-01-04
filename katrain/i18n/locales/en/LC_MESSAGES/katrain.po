@@ -1273,6 +1273,9 @@ msgstr "Advanced"
 msgid "mykatrain:settings:skill_pro"
 msgstr "Pro"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "Auto"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 

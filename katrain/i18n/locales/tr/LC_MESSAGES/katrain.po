@@ -1288,6 +1288,9 @@ msgstr "Rahat"
 msgid "mykatrain:settings:skill_pro"
 msgstr "Pro"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "Otomatik"
+
 #. TODO
 msgid "mykatrain:settings:opponent_info_mode"
 msgstr "Opponent Info Mode:"
