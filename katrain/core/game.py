@@ -855,6 +855,7 @@ class Game(BaseGame):
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
         player_filter: Optional[str] = None,
         raise_on_error: bool = False,
+        skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
 
@@ -864,6 +865,7 @@ class Game(BaseGame):
                           Can also be a username string to match against player names
             raise_on_error: If True, raise KarteGenerationError on failure.
                            If False (default), return error markdown instead.
+            skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
 
         Returns:
             Markdown-formatted karte report.
@@ -875,7 +877,7 @@ class Game(BaseGame):
         game_id = self.game_id or self.sgf_filename or "unknown"
 
         try:
-            return self._build_karte_report_impl(level, player_filter)
+            return self._build_karte_report_impl(level, player_filter, skill_preset)
         except Exception as e:
             error_msg = f"Failed to generate karte: {type(e).__name__}: {e}"
             if self.katrain:
@@ -927,6 +929,7 @@ class Game(BaseGame):
         self,
         level: str,
         player_filter: Optional[str],
+        skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     ) -> str:
         """Internal implementation of build_karte_report."""
         snapshot = self.build_eval_snapshot()
@@ -1283,17 +1286,41 @@ class Game(BaseGame):
 
         focus_label = "Focus"
 
-        # Build Definitions section (uses SKILL_PRESETS thresholds, not hardcoded)
+        # Compute auto recommendation if skill_preset is "auto"
+        auto_recommendation: Optional[eval_metrics.AutoRecommendation] = None
+        effective_preset = skill_preset
+        if skill_preset == "auto":
+            # Use focus_color if available, otherwise use all moves
+            if focus_color:
+                focus_moves = [m for m in snapshot.moves if m.player == focus_color]
+            else:
+                focus_moves = list(snapshot.moves)
+            auto_recommendation = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
+            effective_preset = auto_recommendation.recommended_preset
+
+        # Build Definitions section (uses SKILL_PRESETS thresholds based on effective preset)
         def definitions_section() -> List[str]:
             """Build the Definitions section with thresholds from SKILL_PRESETS."""
-            preset = eval_metrics.SKILL_PRESETS.get("standard", eval_metrics.SKILL_PRESETS[eval_metrics.DEFAULT_SKILL_PRESET])
-            t1, t2, t3 = preset.score_thresholds  # (1.0, 2.5, 5.0) for standard
+            preset = eval_metrics.SKILL_PRESETS.get(effective_preset, eval_metrics.SKILL_PRESETS[eval_metrics.DEFAULT_SKILL_PRESET])
+            t1, t2, t3 = preset.score_thresholds
 
             # Get phase thresholds for this board size
             opening_end, middle_end = eval_metrics.get_phase_thresholds(board_x)
 
+            # Build strictness info line
+            if skill_preset == "auto" and auto_recommendation:
+                strictness_info = (
+                    f"Auto → {auto_recommendation.recommended_preset} "
+                    f"(confidence: {auto_recommendation.confidence.value}, "
+                    f"blunder={auto_recommendation.blunder_count}, important={auto_recommendation.important_count})"
+                )
+            else:
+                strictness_info = f"{effective_preset} (manual)"
+
             lines = [
                 "## Definitions",
+                "",
+                f"- Strictness: {strictness_info}",
                 "",
                 "| Metric | Definition |",
                 "|--------|------------|",

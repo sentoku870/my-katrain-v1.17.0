@@ -1225,6 +1225,9 @@ msgstr "激甘"
 msgid "mykatrain:settings:skill_pro"
 msgstr "激辛"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "自動"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

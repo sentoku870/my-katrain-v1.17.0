@@ -42,6 +42,10 @@ from katrain.core.eval_metrics import (
     DEFAULT_SKILL_PRESET,
     RELIABILITY_VISITS_THRESHOLD,
     get_phase_thresholds,
+    AutoConfidence,
+    AutoRecommendation,
+    PRESET_ORDER,
+    _distance_from_range,
 )
 
 
@@ -583,6 +587,7 @@ def run_batch(
     generate_summary: bool = False,
     karte_player_filter: Optional[str] = None,
     min_games_per_player: int = 3,
+    skill_preset: str = DEFAULT_SKILL_PRESET,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -814,7 +819,7 @@ def run_batch(
                     summary_path = _get_unique_filename(base_path, ".md")
                     summary_filename = os.path.basename(summary_path)
 
-                    summary_text = _build_player_summary(player_name, player_games)
+                    summary_text = _build_player_summary(player_name, player_games, skill_preset=skill_preset)
 
                     # Use safe write with error handling (A3)
                     write_error = _safe_write_file(
@@ -1274,6 +1279,7 @@ def _extract_players_from_stats(
 def _build_player_summary(
     player_name: str,
     player_games: List[Tuple[dict, str]],
+    skill_preset: str = DEFAULT_SKILL_PRESET,
 ) -> str:
     """
     Build summary for a single player across their games.
@@ -1281,6 +1287,7 @@ def _build_player_summary(
     Args:
         player_name: Display name of the player
         player_games: List of (game_stats, role) tuples where role is "B" or "W"
+        skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
 
     Returns:
         Markdown summary string
@@ -1395,12 +1402,89 @@ def _build_player_summary(
             board_sizes.add(stats["board_size"][0])  # (x, y) tuple, use x
 
     # =========================================================================
+    # Compute auto recommendation if skill_preset is "auto"
+    # =========================================================================
+    game_count = len(player_games)
+    auto_recommendation: Optional[AutoRecommendation] = None
+    effective_preset = skill_preset
+
+    if skill_preset == "auto" and reliability_total > 0:
+        # For multi-game summaries, we use aggregated mistake_counts
+        # to compute blunder/important counts without re-scanning moves
+        rel_pct = 100.0 * reliability_reliable / reliability_total if reliability_total > 0 else 0.0
+
+        # Count blunders and important moves from aggregated stats
+        # BLUNDER = MistakeCategory with loss >= t3
+        # IMPORTANT = MISTAKE + BLUNDER (loss >= t2)
+        # We iterate through presets and use mistake_counts data
+        # Since we don't have per-move data, use aggregated stats as proxy
+        # Blunders ~ MistakeCategory.BLUNDER count
+        # Important ~ MistakeCategory.MISTAKE + MistakeCategory.BLUNDER
+        blunder_count = mistake_counts.get(MistakeCategory.BLUNDER, 0)
+        important_count = blunder_count + mistake_counts.get(MistakeCategory.MISTAKE, 0)
+
+        # Target ranges scaled by game count
+        target_blunder = (3 * game_count, 10 * game_count)
+        target_important = (10 * game_count, 30 * game_count)
+
+        # Calculate scores for each preset (simplified: use standard counts as baseline)
+        # Since we can't recalculate with different thresholds without moves,
+        # we estimate based on "standard" preset counts
+        b_score = _distance_from_range(blunder_count, target_blunder) * 2
+        i_score = _distance_from_range(important_count, target_important) * 1
+        total_score = b_score + i_score
+
+        # Reliability gate
+        if rel_pct < 20.0:
+            conf = AutoConfidence.LOW
+            effective_preset = "standard"
+            reason = f"Low reliability ({rel_pct:.1f}%)"
+        else:
+            # Determine confidence based on score
+            if total_score == 0:
+                conf = AutoConfidence.HIGH
+            elif total_score <= 5:
+                conf = AutoConfidence.MEDIUM
+            else:
+                conf = AutoConfidence.LOW
+
+            # Heuristic: adjust preset based on blunder density
+            blunder_per_game = blunder_count / game_count if game_count > 0 else 0
+            if blunder_per_game > 10:
+                effective_preset = "advanced"  # Too many blunders, use stricter
+            elif blunder_per_game < 3:
+                effective_preset = "beginner"  # Too few blunders, use looser
+            else:
+                effective_preset = "standard"
+            reason = f"blunder={blunder_count}, important={important_count}"
+
+        auto_recommendation = AutoRecommendation(
+            recommended_preset=effective_preset,
+            confidence=conf,
+            blunder_count=blunder_count,
+            important_count=important_count,
+            score=total_score,
+            reason=reason,
+        )
+
+    # =========================================================================
     # Definitions Section (before Overview)
     # =========================================================================
-    preset = SKILL_PRESETS.get("standard", SKILL_PRESETS[DEFAULT_SKILL_PRESET])
+    preset = SKILL_PRESETS.get(effective_preset, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
     t1, t2, t3 = preset.score_thresholds
 
+    # Build strictness info line
+    if skill_preset == "auto" and auto_recommendation:
+        strictness_info = (
+            f"Auto → {auto_recommendation.recommended_preset} "
+            f"(confidence: {auto_recommendation.confidence.value}, "
+            f"blunder={auto_recommendation.blunder_count}, important={auto_recommendation.important_count})"
+        )
+    else:
+        strictness_info = f"{effective_preset} (manual)"
+
     lines.append("\n## Definitions\n")
+    lines.append(f"- Strictness: {strictness_info}\n")
     lines.append("| Metric | Definition |")
     lines.append("|--------|------------|")
     lines.append("| Points Lost | Score difference between actual move and best move (clamped to ≥0) |")

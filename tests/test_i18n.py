@@ -120,3 +120,19 @@ class TestBatchAnalyzeI18n:
                 assert translated != key, (
                     f"Key '{key}' is not translated in '{lang}' locale"
                 )
+
+    def test_skill_auto_key_translated(self, locale_dir):
+        """The skill_auto key should be translated in all locales."""
+        # All 10 locales
+        locales_list = ["en", "jp", "cn", "tw", "ko", "de", "fr", "ru", "tr", "ua"]
+        key = "mykatrain:settings:skill_auto"
+
+        for lang in locales_list:
+            try:
+                locale = gettext.translation("katrain", str(locale_dir), languages=[lang])
+                translated = locale.gettext(key)
+                assert translated != key, (
+                    f"Key '{key}' is not translated in '{lang}' locale"
+                )
+            except FileNotFoundError:
+                pytest.skip(f"Locale '{lang}' not found")

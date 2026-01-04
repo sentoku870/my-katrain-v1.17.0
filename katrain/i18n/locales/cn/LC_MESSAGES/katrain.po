@@ -1178,6 +1178,9 @@ msgstr "宽松"
 msgid "mykatrain:settings:skill_pro"
 msgstr "专业"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "自动"
+
 #. TODO
 msgid "mykatrain:settings:opponent_info_mode"
 msgstr "Opponent Info Mode:"

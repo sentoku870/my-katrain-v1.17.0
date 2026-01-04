@@ -1193,6 +1193,9 @@ msgstr "Мягкий"
 msgid "mykatrain:settings:skill_pro"
 msgstr "Про"
 
+msgid "mykatrain:settings:skill_auto"
+msgstr "Авто"
+
 #. TODO
 msgid "mykatrain:settings:opponent_info_mode"
 msgstr "Opponent Info Mode:"

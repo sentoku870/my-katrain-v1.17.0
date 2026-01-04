@@ -691,10 +691,146 @@ SKILL_PRESETS: Dict[str, SkillPreset] = {
 
 DEFAULT_SKILL_PRESET = "standard"
 
+# Preset order from loosest to strictest (for tie-breaking toward standard)
+# Index 2 = "standard" is the center for tie-breaking
+PRESET_ORDER: List[str] = ["relaxed", "beginner", "standard", "advanced", "pro"]
+
 
 def get_skill_preset(name: str) -> SkillPreset:
     """Return a skill preset, falling back to standard when unknown."""
     return SKILL_PRESETS.get(name, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
+
+
+# ---------------------------------------------------------------------------
+# Auto-strictness recommendation (Phase 4.5 extension)
+# ---------------------------------------------------------------------------
+
+class AutoConfidence(Enum):
+    """Confidence level for auto-strictness recommendation."""
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+@dataclass
+class AutoRecommendation:
+    """Result of auto-strictness recommendation algorithm."""
+    recommended_preset: str      # "relaxed", "beginner", "standard", "advanced", "pro"
+    confidence: AutoConfidence
+    blunder_count: int           # Blunder count using recommended preset's t3
+    important_count: int         # Mistake+blunder count using recommended preset's t2
+    score: int                   # Distance score (lower is better)
+    reason: str                  # Human-readable explanation
+
+
+def _distance_from_range(value: int, target_range: Tuple[int, int]) -> int:
+    """Calculate distance from target range (0 if within range)."""
+    low, high = target_range
+    if value < low:
+        return low - value
+    elif value > high:
+        return value - high
+    return 0
+
+
+def recommend_auto_strictness(
+    moves: List["MoveEval"],
+    *,
+    game_count: int = 1,
+    reliability_pct: Optional[float] = None,
+    target_blunder_per_game: Tuple[int, int] = (3, 10),
+    target_important_per_game: Tuple[int, int] = (10, 30),
+    reliability_threshold: float = 20.0,
+) -> AutoRecommendation:
+    """
+    Recommend optimal strictness preset based on move statistics.
+
+    This is NOT rank estimation - it finds the preset that yields a
+    reasonable density of mistakes for review.
+
+    Args:
+        moves: List of MoveEval for the focus player
+        game_count: Number of games included (1 for Karte, N for Player Summary)
+        reliability_pct: Reliability percentage (if None, computed from moves)
+        target_blunder_per_game: Target blunder count range per game
+        target_important_per_game: Target important (mistake+blunder) count range per game
+        reliability_threshold: Minimum reliability % to provide confident recommendation
+
+    Returns:
+        AutoRecommendation with preset name, confidence, counts, and score
+    """
+    # Compute reliability if not provided
+    if reliability_pct is None:
+        from katrain.core.eval_metrics import compute_reliability_stats
+        stats = compute_reliability_stats(moves)
+        reliability_pct = stats.reliability_pct
+
+    # Scale target ranges by game count
+    blunder_range = (
+        target_blunder_per_game[0] * game_count,
+        target_blunder_per_game[1] * game_count
+    )
+    important_range = (
+        target_important_per_game[0] * game_count,
+        target_important_per_game[1] * game_count
+    )
+
+    # Evaluate each preset
+    results: List[Tuple[str, int, int, int]] = []  # (preset_name, score, blunders, important)
+    for preset_name in PRESET_ORDER:
+        preset = SKILL_PRESETS[preset_name]
+        t1, t2, t3 = preset.score_thresholds
+
+        # Use canonical loss: max(0, score_loss)
+        blunders = sum(1 for m in moves if max(0.0, m.score_loss or 0.0) >= t3)
+        important = sum(1 for m in moves if max(0.0, m.score_loss or 0.0) >= t2)
+
+        # Calculate distance score (weight blunders more than important)
+        b_score = _distance_from_range(blunders, blunder_range) * 2
+        i_score = _distance_from_range(important, important_range) * 1
+        total_score = b_score + i_score
+
+        results.append((preset_name, total_score, blunders, important))
+
+    # Sort by score, then by distance from "standard" (index 2) for tie-breaking
+    # standard=0, advanced/beginner=1, pro/relaxed=2
+    standard_idx = PRESET_ORDER.index("standard")
+    results.sort(key=lambda x: (x[1], abs(PRESET_ORDER.index(x[0]) - standard_idx)))
+    best_preset, best_score, best_blunders, best_important = results[0]
+
+    # Reliability gate: if low reliability, force standard with LOW confidence
+    if reliability_pct < reliability_threshold:
+        # Still report counts using standard preset
+        std_preset = SKILL_PRESETS["standard"]
+        t2, t3 = std_preset.score_thresholds[1], std_preset.score_thresholds[2]
+        std_blunders = sum(1 for m in moves if max(0.0, m.score_loss or 0.0) >= t3)
+        std_important = sum(1 for m in moves if max(0.0, m.score_loss or 0.0) >= t2)
+
+        return AutoRecommendation(
+            recommended_preset="standard",
+            confidence=AutoConfidence.LOW,
+            blunder_count=std_blunders,
+            important_count=std_important,
+            score=best_score,
+            reason=f"Low reliability ({reliability_pct:.1f}%)"
+        )
+
+    # Determine confidence based on score
+    if best_score == 0:
+        conf = AutoConfidence.HIGH
+    elif best_score <= 5:
+        conf = AutoConfidence.MEDIUM
+    else:
+        conf = AutoConfidence.LOW
+
+    return AutoRecommendation(
+        recommended_preset=best_preset,
+        confidence=conf,
+        blunder_count=best_blunders,
+        important_count=best_important,
+        score=best_score,
+        reason=f"blunder={best_blunders}, important={best_important}"
+    )
 
 
 # ---------------------------------------------------------------------------

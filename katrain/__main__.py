@@ -948,11 +948,12 @@ class KaTrainGui(Screen, KaTrainBase):
                 exports = [(None, f"karte_{base_name}_{timestamp}.md")]
 
         # Generate and save karte(s)
+        skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
         saved_files = []
         for player_filter, filename in exports:
             full_path = os.path.join(output_dir, filename)
             try:
-                text = self.game.build_karte_report(player_filter=player_filter)
+                text = self.game.build_karte_report(player_filter=player_filter, skill_preset=skill_preset)
                 os.makedirs(output_dir, exist_ok=True)
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(text)
@@ -2520,6 +2521,7 @@ class KaTrainGui(Screen, KaTrainBase):
         selected_skill_preset = [current_skill_preset]
 
         skill_options = [
+            ("auto", i18n._("mykatrain:settings:skill_auto")),
             ("relaxed", i18n._("mykatrain:settings:skill_relaxed")),
             ("beginner", i18n._("mykatrain:settings:skill_beginner")),
             ("standard", i18n._("mykatrain:settings:skill_standard")),
@@ -2541,7 +2543,7 @@ class KaTrainGui(Screen, KaTrainBase):
             label = Label(
                 text=skill_label_text,
                 size_hint_x=None,
-                width=dp(75),  # Reduced from 100 to fit 5 options
+                width=dp(60),  # Reduced to fit 6 options (auto added)
                 halign="left",
                 valign="middle",
                 color=Theme.TEXT_COLOR,
@@ -3213,6 +3215,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 "min_games_per_player": min_games_per_player,
             })
 
+            # Get skill preset for karte/summary generation
+            skill_preset = self.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+
             result = run_batch(
                 katrain=self,
                 engine=self.engine,
@@ -3230,6 +3235,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 generate_summary=generate_summary,
                 karte_player_filter=karte_player_filter,
                 min_games_per_player=min_games_per_player,
+                skill_preset=skill_preset,
             )
 
             # Show summary on main thread
