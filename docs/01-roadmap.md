@@ -43,7 +43,7 @@
 - 重要手Top3の安定化
 - i18n/CIの修正
 
-**2026-01 拡張（PR #40-45）:**
+**2026-01 拡張（PR #40-47）:**
 - Variable Visits + Deterministic オプション
 - 完了音通知（Sound on finish）
 - タイムアウト解析の堅牢化（None/空文字対応）
@@ -343,6 +343,16 @@
 
 ## 11. 変更履歴
 
+- 2026-01-05: Variable Visits と完了音（PR #47）
+  - choose_visits_for_sgf() によるファイル別visits変動
+  - Deterministic モード（MD5ハッシュで再現性確保）
+  - Jitter上限25%
+  - 完了音通知（Sound on finish）
+  - 10件の新規テスト追加
+- 2026-01-05: Auto strictness オプション（PR #46）
+  - 「自動」オプション追加（6つ目のラジオボタン）
+  - recommend_auto_strictness() によるプリセット推奨
+  - 信頼性ゲート（reliability < 20% → standard）
 - 2026-01-05: ロードマップ整理
   - フェーズ一覧テーブルにPhase 4/4.5を追加
   - セクション番号の重複修正（8→8,9,10,11）
