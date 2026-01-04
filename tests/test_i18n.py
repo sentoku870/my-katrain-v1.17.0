@@ -103,6 +103,13 @@ class TestBatchAnalyzeI18n:
             "mykatrain:batch:complete_extended",
             "mykatrain:batch:error_input_dir",
             "mykatrain:batch:error_no_engine",
+            # Phase A new keys
+            "mykatrain:batch:player_filter",
+            "mykatrain:batch:filter_both",
+            "mykatrain:batch:filter_black",
+            "mykatrain:batch:filter_white",
+            "mykatrain:batch:min_games",
+            "mykatrain:batch:summary_player",
         ]
 
         for lang in ["en", "jp"]:

@@ -32,11 +32,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Optional,
     Tuple,
-    Dict,
+    Union,
 )
 
 # KaTrain 側の型に依存するのは最小限にする
@@ -832,6 +833,7 @@ def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VI
 def _assess_difficulty_from_policy(
     policy: List[float],
     *,
+    board_size: Union[int, Tuple[int, int]] = 19,
     entropy_easy_threshold: float = 2.5,
     entropy_hard_threshold: float = 1.0,
     top5_easy_threshold: float = 0.5,
@@ -848,16 +850,47 @@ def _assess_difficulty_from_policy(
 
     両方の指標を組み合わせて判定する。
 
-    Note (Limitation):
-        現在の閾値は19x19を想定して設定されている。
-        9x9/13x13では policy の長さが異なるため、entropy の最大値も異なる。
-        厳密な盤面サイズ対応が必要な場合は、閾値の正規化を検討すること。
-        （例: entropy / log(board_size**2) で正規化）
+    Args:
+        policy: KataGoのpolicy配列（各交点の確率）
+        board_size: 盤面サイズ。intまたは(x, y)タプル。
+                   entropy閾値の正規化に使用。
+        entropy_easy_threshold: 易しい局面のentropy閾値（19x19基準）
+        entropy_hard_threshold: 難しい局面のentropy閾値（19x19基準）
+        top5_easy_threshold: 易しい局面のtop5_mass閾値
+        top5_hard_threshold: 難しい局面のtop5_mass閾値
+
+    Note:
+        閾値は19x19を基準として設定されている。
+        盤面サイズに応じて log(board_points) / log(361) で正規化される。
     """
     import math
 
     if not policy:
         return PositionDifficulty.UNKNOWN, 0.5
+
+    # Handle both int and tuple board_size
+    if isinstance(board_size, tuple):
+        board_points = board_size[0] * board_size[1]
+    else:
+        board_points = board_size * board_size
+
+    # Safety check: avoid invalid board sizes
+    if board_points < 9:  # Smaller than 3x3 is invalid
+        board_points = 361  # Fallback to 19x19
+
+    # Reference: 19x19 board
+    REF_BOARD_POINTS = 361
+    ref_max_entropy = math.log(REF_BOARD_POINTS)  # ~5.89
+
+    # Current board max entropy (using log(n+1) to avoid log(0) edge case)
+    current_max_entropy = math.log(board_points + 1)
+
+    # Scale factor for entropy thresholds
+    scale_factor = current_max_entropy / ref_max_entropy
+
+    # Adjusted thresholds for this board size
+    adjusted_easy = entropy_easy_threshold * scale_factor
+    adjusted_hard = entropy_hard_threshold * scale_factor
 
     # Policy entropy 計算
     entropy = 0.0
@@ -869,17 +902,17 @@ def _assess_difficulty_from_policy(
     sorted_probs = sorted(policy, reverse=True)
     top5_mass = sum(sorted_probs[:5])
 
-    # 難易度判定
+    # 難易度判定（正規化された閾値を使用）
     # entropy が高く、top5_mass が低い = 易しい
     # entropy が低く、top5_mass が高い = 難しい
-    if entropy >= entropy_easy_threshold and top5_mass <= top5_easy_threshold:
+    if entropy >= adjusted_easy and top5_mass <= top5_easy_threshold:
         return PositionDifficulty.EASY, 0.2
-    elif entropy <= entropy_hard_threshold or top5_mass >= top5_hard_threshold:
+    elif entropy <= adjusted_hard or top5_mass >= top5_hard_threshold:
         # さらに top1 が支配的なら ONLY_MOVE
         if sorted_probs[0] >= 0.8:
             return PositionDifficulty.ONLY_MOVE, 1.0
         return PositionDifficulty.HARD, 0.8
-    elif entropy >= (entropy_easy_threshold + entropy_hard_threshold) / 2:
+    elif entropy >= (adjusted_easy + adjusted_hard) / 2:
         return PositionDifficulty.EASY, 0.3
     else:
         return PositionDifficulty.NORMAL, 0.5
@@ -970,7 +1003,10 @@ def assess_position_difficulty_from_parent(
             policy = analysis.get("policy")
             # Avoid truthiness check on numpy arrays: use explicit None check and len()
             if policy is not None and len(policy) > 0:
-                return _assess_difficulty_from_policy(list(policy))
+                # Get board_size from the node's root for entropy normalization
+                root = getattr(node, "root", None)
+                board_size = getattr(root, "board_size", (19, 19)) if root else (19, 19)
+                return _assess_difficulty_from_policy(list(policy), board_size=board_size)
 
     return PositionDifficulty.UNKNOWN, None
 

@@ -1109,6 +1109,24 @@ msgstr "カルテを生成"
 msgid "mykatrain:batch:generate_summary"
 msgstr "サマリーを生成"
 
+msgid "mykatrain:batch:player_filter"
+msgstr "プレイヤー絞り込み:"
+
+msgid "mykatrain:batch:filter_both"
+msgstr "両方"
+
+msgid "mykatrain:batch:filter_black"
+msgstr "黒番"
+
+msgid "mykatrain:batch:filter_white"
+msgstr "白番"
+
+msgid "mykatrain:batch:min_games"
+msgstr "最低対局数:"
+
+msgid "mykatrain:batch:summary_player"
+msgstr "サマリー: {player} ({count}局)"
+
 msgid "Close"
 msgstr "閉じる"
 

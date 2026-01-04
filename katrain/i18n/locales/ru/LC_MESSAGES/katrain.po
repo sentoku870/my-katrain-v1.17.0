@@ -1324,3 +1324,27 @@ msgstr "Cancelling..."
 #. TODO
 msgid "mykatrain:batch:title"
 msgstr "Batch Analyze Folder"
+
+#. TODO
+msgid "mykatrain:batch:min_games"
+msgstr "Min games/player:"
+
+#. TODO
+msgid "mykatrain:batch:player_filter"
+msgstr "Player Filter:"
+
+#. TODO
+msgid "mykatrain:batch:filter_both"
+msgstr "Both"
+
+#. TODO
+msgid "mykatrain:batch:filter_white"
+msgstr "White"
+
+#. TODO
+msgid "mykatrain:batch:filter_black"
+msgstr "Black"
+
+#. TODO
+msgid "mykatrain:batch:summary_player"
+msgstr "Summary: {player} ({count} games)"

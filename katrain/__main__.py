@@ -65,6 +65,7 @@ from kivy.uix.dropdown import DropDown
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.screenmanager import Screen
+from kivy.uix.togglebutton import ToggleButton
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.resources import resource_find
@@ -2894,9 +2895,14 @@ class KaTrainGui(Screen, KaTrainBase):
         output_row.add_widget(output_browse)
         main_layout.add_widget(output_row)
 
+        # Load saved batch options early so we can use them for visits/timeout
+        batch_options = mykatrain_settings.get("batch_options", {})
+
         # Options row 1: visits and timeout
         options_row1 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
 
+        # Get saved visits value
+        saved_visits = batch_options.get("visits")
         visits_label = Label(
             text=i18n._("mykatrain:batch:visits"),
             size_hint_x=0.15,
@@ -2907,7 +2913,7 @@ class KaTrainGui(Screen, KaTrainBase):
         )
         visits_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         visits_input = TextInput(
-            text="",
+            text=str(saved_visits) if saved_visits else "",
             hint_text=i18n._("mykatrain:batch:visits_hint"),
             multiline=False,
             input_filter="int",
@@ -2915,6 +2921,8 @@ class KaTrainGui(Screen, KaTrainBase):
             font_name=Theme.DEFAULT_FONT,
         )
 
+        # Get saved timeout value
+        saved_timeout = batch_options.get("timeout", 600)
         timeout_label = Label(
             text=i18n._("mykatrain:batch:timeout"),
             size_hint_x=0.2,
@@ -2925,7 +2933,7 @@ class KaTrainGui(Screen, KaTrainBase):
         )
         timeout_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         timeout_input = TextInput(
-            text="600",
+            text=str(saved_timeout),
             multiline=False,
             input_filter="int",
             size_hint_x=0.15,
@@ -2958,9 +2966,6 @@ class KaTrainGui(Screen, KaTrainBase):
         options_row2.add_widget(skip_label)
         options_row2.add_widget(Label(size_hint_x=0.5))  # spacer
         main_layout.add_widget(options_row2)
-
-        # Load saved batch options
-        batch_options = mykatrain_settings.get("batch_options", {})
 
         # Options row 3: output options (save SGF, karte, summary)
         options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
@@ -3014,6 +3019,81 @@ class KaTrainGui(Screen, KaTrainBase):
         options_row3.add_widget(summary_checkbox)
         options_row3.add_widget(summary_label)
         main_layout.add_widget(options_row3)
+
+        # Options row 4: Player filter (for Karte) and min games (for Summary)
+        options_row4 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+
+        # Player filter label
+        player_filter_label = Label(
+            text=i18n._("mykatrain:batch:player_filter"),
+            size_hint_x=0.18,
+            halign="right",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        player_filter_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        # Load saved player filter state
+        saved_filter = batch_options.get("karte_player_filter")  # None, "B", or "W"
+
+        filter_both = ToggleButton(
+            text=i18n._("mykatrain:batch:filter_both"),
+            group="player_filter",
+            state="down" if saved_filter is None else "normal",
+            size_hint_x=0.12,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        filter_black = ToggleButton(
+            text=i18n._("mykatrain:batch:filter_black"),
+            group="player_filter",
+            state="down" if saved_filter == "B" else "normal",
+            size_hint_x=0.12,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        filter_white = ToggleButton(
+            text=i18n._("mykatrain:batch:filter_white"),
+            group="player_filter",
+            state="down" if saved_filter == "W" else "normal",
+            size_hint_x=0.12,
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        # Min games label and input
+        min_games_label = Label(
+            text=i18n._("mykatrain:batch:min_games"),
+            size_hint_x=0.18,
+            halign="right",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        min_games_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+        min_games_input = TextInput(
+            text=str(batch_options.get("min_games_per_player", 3)),
+            multiline=False,
+            input_filter="int",
+            size_hint_x=0.1,
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        options_row4.add_widget(player_filter_label)
+        options_row4.add_widget(filter_both)
+        options_row4.add_widget(filter_black)
+        options_row4.add_widget(filter_white)
+        options_row4.add_widget(min_games_label)
+        options_row4.add_widget(min_games_input)
+        options_row4.add_widget(Label(size_hint_x=0.18))  # spacer
+        main_layout.add_widget(options_row4)
+
+        # Helper function to get selected player filter
+        def get_player_filter() -> Optional[str]:
+            if filter_black.state == "down":
+                return "B"
+            elif filter_white.state == "down":
+                return "W"
+            return None  # Both = no filter
 
         # Progress row
         progress_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(10))
@@ -3099,12 +3179,18 @@ class KaTrainGui(Screen, KaTrainBase):
             save_analyzed_sgf = save_sgf_checkbox.active
             generate_karte = karte_checkbox.active
             generate_summary = summary_checkbox.active
+            karte_player_filter = get_player_filter()
+            min_games_per_player = int(min_games_input.text) if min_games_input.text.strip() else 3
 
             # Save options for next time
             self._save_batch_options({
                 "save_analyzed_sgf": save_analyzed_sgf,
                 "generate_karte": generate_karte,
                 "generate_summary": generate_summary,
+                "karte_player_filter": karte_player_filter,
+                "visits": visits,
+                "timeout": timeout if timeout != 600.0 else None,
+                "min_games_per_player": min_games_per_player,
             })
 
             result = run_batch(
@@ -3122,6 +3208,8 @@ class KaTrainGui(Screen, KaTrainBase):
                 save_analyzed_sgf=save_analyzed_sgf,
                 generate_karte=generate_karte,
                 generate_summary=generate_summary,
+                karte_player_filter=karte_player_filter,
+                min_games_per_player=min_games_per_player,
             )
 
             # Show summary on main thread

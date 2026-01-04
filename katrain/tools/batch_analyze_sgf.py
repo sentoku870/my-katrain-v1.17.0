@@ -26,13 +26,29 @@ import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 # KaTrain imports (these may import Kivy indirectly)
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, KaTrainSGF
 from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
+
+
+# ---------------------------------------------------------------------------
+# Points lost helpers (single source of truth for loss aggregation)
+# ---------------------------------------------------------------------------
+
+def _get_canonical_loss(points_lost: Optional[float]) -> float:
+    """
+    Return canonical loss value: max(0, points_lost) or 0 if None.
+
+    Negative points_lost (gains from opponent mistakes) are clamped to 0.
+    This matches Karte output semantics for consistency.
+    """
+    if points_lost is None:
+        return 0.0
+    return max(0.0, points_lost)
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +439,7 @@ def run_batch(
     generate_karte: bool = False,
     generate_summary: bool = False,
     karte_player_filter: Optional[str] = None,
+    min_games_per_player: int = 3,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -616,17 +633,37 @@ def run_batch(
                 break
             result.fail_count += 1
 
-    # Generate summary if requested and not cancelled
+    # Generate per-player summaries if requested and not cancelled
     if generate_summary and game_stats_list and not result.cancelled:
         try:
-            log("Generating multi-game summary...")
-            summary_text = _build_batch_summary(game_stats_list, karte_player_filter)
-            summary_filename = f"summary_{batch_timestamp}.md"
-            summary_path = os.path.join(output_dir, "reports", "summary", summary_filename)
-            with open(summary_path, "w", encoding="utf-8") as f:
-                f.write(summary_text)
-            result.summary_written = True
-            log(f"Saved Summary: {summary_filename}")
+            log("Generating per-player summaries...")
+
+            # Extract and group by player
+            player_groups = _extract_players_from_stats(game_stats_list, min_games=min_games_per_player)
+
+            if player_groups:
+                summary_count = 0
+                for player_name, player_games in player_groups.items():
+                    # Sanitize filename
+                    safe_name = _sanitize_filename(player_name)
+                    base_path = os.path.join(output_dir, "reports", "summary", f"summary_{safe_name}_{batch_timestamp}")
+                    summary_path = _get_unique_filename(base_path, ".md")
+                    summary_filename = os.path.basename(summary_path)
+
+                    summary_text = _build_player_summary(player_name, player_games)
+
+                    with open(summary_path, "w", encoding="utf-8") as f:
+                        f.write(summary_text)
+
+                    log(f"  [{player_name}] {len(player_games)} games -> {summary_filename}")
+                    summary_count += 1
+
+                result.summary_written = True
+                log(f"Generated {summary_count} player summaries")
+            else:
+                log(f"No players with >= {min_games_per_player} games found")
+                result.summary_error = f"No players with >= {min_games_per_player} games"
+
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
@@ -685,23 +722,24 @@ def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
 
         for move in snapshot.moves:
             player = move.player
+            canonical_loss = _get_canonical_loss(move.points_lost)
             stats["moves_by_player"][player] = stats["moves_by_player"].get(player, 0) + 1
-            stats["loss_by_player"][player] = stats["loss_by_player"].get(player, 0.0) + (move.points_lost or 0.0)
+            stats["loss_by_player"][player] = stats["loss_by_player"].get(player, 0.0) + canonical_loss
 
             # Phase classification
             phase = eval_metrics.classify_game_phase(move.move_number, board_size=board_size)
             stats["phase_moves"][phase] = stats["phase_moves"].get(phase, 0) + 1
-            stats["phase_loss"][phase] = stats["phase_loss"].get(phase, 0.0) + (move.points_lost or 0.0)
+            stats["phase_loss"][phase] = stats["phase_loss"].get(phase, 0.0) + canonical_loss
 
             # Mistake category
             if move.mistake_category:
                 stats["mistake_counts"][move.mistake_category] = stats["mistake_counts"].get(move.mistake_category, 0) + 1
-                stats["mistake_total_loss"][move.mistake_category] = stats["mistake_total_loss"].get(move.mistake_category, 0.0) + (move.points_lost or 0.0)
+                stats["mistake_total_loss"][move.mistake_category] = stats["mistake_total_loss"].get(move.mistake_category, 0.0) + canonical_loss
 
                 # Phase x Mistake
                 key = (phase, move.mistake_category.name)
                 stats["phase_mistake_counts"][key] = stats["phase_mistake_counts"].get(key, 0) + 1
-                stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + (move.points_lost or 0.0)
+                stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + canonical_loss
 
             # Freedom/difficulty
             if move.position_difficulty:
@@ -786,6 +824,235 @@ def _build_batch_summary(game_stats_list: List[dict], focus_player: Optional[str
         loss = stats["total_points_lost"]
         moves = stats["total_moves"]
         lines.append(f"{i}. {game_name} — {moves} moves, {loss:.1f} pts lost")
+
+    return "\n".join(lines)
+
+
+# Windows reserved filenames
+_WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+}
+
+
+def _sanitize_filename(name: str, max_length: int = 50) -> str:
+    """
+    Sanitize player name for use in filename.
+
+    Handles:
+        - Invalid characters (<>:"/\\|?*)
+        - Whitespace normalization
+        - Windows reserved names (CON, PRN, NUL, etc.)
+        - Empty result fallback
+        - Length truncation
+
+    Args:
+        name: Original player name
+        max_length: Maximum filename length (default 50)
+
+    Returns:
+        Safe filename string
+    """
+    import re
+
+    if not name:
+        return "unknown"
+
+    # Remove/replace invalid characters
+    safe = re.sub(r'[<>:"/\\|?*]', '_', name)
+    # Normalize whitespace (including full-width spaces)
+    safe = re.sub(r'\s+', '_', safe)
+    # Remove leading/trailing dots and underscores
+    safe = safe.strip('._')
+
+    # Check for Windows reserved names (case-insensitive)
+    if safe.upper() in _WINDOWS_RESERVED:
+        safe = f"_{safe}_"
+
+    # Truncate to max length
+    if len(safe) > max_length:
+        safe = safe[:max_length].rstrip('_')
+
+    # Final fallback if empty
+    if not safe:
+        return "unknown"
+
+    return safe
+
+
+def _get_unique_filename(base_path: str, extension: str = ".md") -> str:
+    """
+    Generate unique filename by adding suffix if collision exists.
+
+    Args:
+        base_path: Full path without extension
+        extension: File extension including dot
+
+    Returns:
+        Unique file path
+    """
+    path = base_path + extension
+    if not os.path.exists(path):
+        return path
+
+    counter = 1
+    while True:
+        path = f"{base_path}_{counter}{extension}"
+        if not os.path.exists(path):
+            return path
+        counter += 1
+        if counter > 100:  # Safety limit
+            import hashlib
+            hash_suffix = hashlib.md5(base_path.encode()).hexdigest()[:6]
+            return f"{base_path}_{hash_suffix}{extension}"
+
+
+# Generic player names to skip
+_SKIP_NAMES = {"Black", "White", "黒", "白", "", "?", "Unknown", "不明"}
+
+
+def _normalize_player_name(name: str) -> str:
+    """
+    Normalize player name for grouping.
+
+    Uses NFKC normalization and collapses whitespace.
+    This is the single source of truth for name normalization.
+    """
+    import unicodedata
+
+    name = name.strip()
+    name = unicodedata.normalize("NFKC", name)
+    # Collapse multiple spaces
+    name = " ".join(name.split())
+    return name
+
+
+def _extract_players_from_stats(
+    game_stats_list: List[dict],
+    min_games: int = 3
+) -> Dict[str, List[Tuple[dict, str]]]:
+    """
+    Extract player names and group their games.
+
+    Args:
+        game_stats_list: List of game stats dicts
+        min_games: Minimum games required per player
+
+    Returns:
+        Dict mapping player_display_name -> [(game_stats, role), ...]
+        where role is "B" or "W"
+
+    Design Notes:
+        - Names are normalized via _normalize_player_name()
+        - Original display name (first occurrence) preserved for output
+        - Generic names ("Black", "White", "黒", "白", etc.) are skipped
+        - Players with < min_games are excluded
+    """
+    from collections import defaultdict
+
+    # Track: normalized_name -> [(stats, role, original_name), ...]
+    player_games: Dict[str, List[Tuple[dict, str, str]]] = defaultdict(list)
+
+    for stats in game_stats_list:
+        pb_orig = stats.get("player_black", "").strip()
+        pw_orig = stats.get("player_white", "").strip()
+
+        if pb_orig and pb_orig not in _SKIP_NAMES:
+            pb_norm = _normalize_player_name(pb_orig)
+            player_games[pb_norm].append((stats, "B", pb_orig))
+
+        if pw_orig and pw_orig not in _SKIP_NAMES:
+            pw_norm = _normalize_player_name(pw_orig)
+            player_games[pw_norm].append((stats, "W", pw_orig))
+
+    # Filter by min_games and convert to output format
+    result: Dict[str, List[Tuple[dict, str]]] = {}
+    for norm_name, games in player_games.items():
+        if len(games) >= min_games:
+            # Use first original name as display name
+            display_name = games[0][2]
+            result[display_name] = [(g[0], g[1]) for g in games]
+
+    return result
+
+
+def _build_player_summary(
+    player_name: str,
+    player_games: List[Tuple[dict, str]],
+) -> str:
+    """
+    Build summary for a single player across their games.
+
+    Args:
+        player_name: Display name of the player
+        player_games: List of (game_stats, role) tuples where role is "B" or "W"
+
+    Returns:
+        Markdown summary string
+    """
+    from datetime import datetime
+
+    lines = [f"# Player Summary: {player_name}\n"]
+    lines.append(f"**Games analyzed**: {len(player_games)}\n")
+    lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+    # Aggregate only this player's moves
+    total_moves = 0
+    total_loss = 0.0
+    phase_mistake_counts: Dict[Tuple[str, str], int] = {}
+    phase_mistake_loss: Dict[Tuple[str, str], float] = {}
+    all_worst = []
+    games_as_black = 0
+    games_as_white = 0
+
+    for stats, role in player_games:
+        if role == "B":
+            games_as_black += 1
+        else:
+            games_as_white += 1
+
+        # Only count this player's moves/loss
+        total_moves += stats["moves_by_player"].get(role, 0)
+        total_loss += stats["loss_by_player"].get(role, 0.0)
+
+        # Phase x Mistake aggregation
+        # We need to filter by role, but phase_mistake data is per-game, not per-player
+        # For now, use proportional split or just include if player made the mistake
+        # Looking at worst_moves which has player info
+        for move_num, player, gtp, loss, cat in stats.get("worst_moves", []):
+            if player == role:
+                all_worst.append((stats["game_name"], move_num, gtp, loss, cat))
+
+    # Overview
+    lines.append(f"\n## Overview\n")
+    lines.append(f"- Games as Black: {games_as_black}")
+    lines.append(f"- Games as White: {games_as_white}")
+    lines.append(f"- Total moves: {total_moves}")
+    lines.append(f"- Total points lost: {total_loss:.1f}")
+    if total_moves > 0:
+        lines.append(f"- Average loss per move: {total_loss / total_moves:.2f}")
+
+    # Worst moves for this player
+    lines.append(f"\n## Top 10 Worst Moves\n")
+    all_worst.sort(key=lambda x: x[3], reverse=True)
+    all_worst = all_worst[:10]
+
+    if all_worst:
+        lines.append("| Game | Move | Position | Loss | Category |")
+        lines.append("|------|-----:|----------|-----:|----------|")
+        for game_name, move_num, gtp, loss, cat in all_worst:
+            cat_name = cat.name if cat else "—"
+            lines.append(f"| {game_name[:30]} | {move_num} | {gtp} | {loss:.1f} | {cat_name} |")
+
+    # Games list
+    lines.append(f"\n## Games Included\n")
+    for i, (stats, role) in enumerate(player_games, 1):
+        game_name = stats["game_name"]
+        player_loss = stats["loss_by_player"].get(role, 0.0)
+        player_moves = stats["moves_by_player"].get(role, 0)
+        color = "Black" if role == "B" else "White"
+        lines.append(f"{i}. {game_name} ({color}) — {player_moves} moves, {player_loss:.1f} pts lost")
 
     return "\n".join(lines)
 

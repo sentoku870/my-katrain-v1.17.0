@@ -722,3 +722,223 @@ class TestBatchErrorHandling:
             summary_status = "No (skipped)"
 
         assert summary_status == "Yes"
+
+
+class TestPlayerExtraction:
+    """Tests for player name extraction and grouping."""
+
+    def test_extract_players_basic(self):
+        """Basic player extraction."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "Alice", "player_white": "Charlie", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 6.0, "W": 3.0}, "worst_moves": []},
+            {"player_black": "Bob", "player_white": "Alice", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 4.0, "W": 5.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=2)
+        assert "Alice" in groups
+        assert len(groups["Alice"]) == 3  # Alice played in all 3 games
+        assert "Bob" in groups
+        assert len(groups["Bob"]) == 2
+        assert "Charlie" not in groups  # Only 1 game
+
+    def test_skip_generic_names(self):
+        """Generic names should be skipped."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Black", "player_white": "White", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "黒", "player_white": "白", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=1)
+        assert len(groups) == 0
+
+    def test_name_normalization(self):
+        """Names with different whitespace should group together."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Alice  ", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": " Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=1)
+        # All 3 "Alice" variations should be grouped together
+        assert len(groups) == 2  # Alice and Bob
+        # Find Alice's group (display name may vary based on first occurrence)
+        alice_games = None
+        for name, games in groups.items():
+            if "Alice" in name or "alice" in name.lower():
+                alice_games = games
+                break
+        assert alice_games is not None
+        assert len(alice_games) == 3
+
+
+class TestFilenameSanitization:
+    """Tests for filename sanitization."""
+
+    def test_basic_names(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("Alice") == "Alice"
+        assert _sanitize_filename("Bob Smith") == "Bob_Smith"
+
+    def test_cjk_names(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("田中太郎") == "田中太郎"
+        # Slash is invalid character, should be replaced
+        result = _sanitize_filename("山田/ヨセ")
+        assert "/" not in result
+        assert "山田" in result
+
+    def test_invalid_chars(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        result = _sanitize_filename("Alice<>Bob")
+        assert "<" not in result
+        assert ">" not in result
+
+        result = _sanitize_filename("User:Name")
+        assert ":" not in result
+
+    def test_windows_reserved(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("CON") == "_CON_"
+        assert _sanitize_filename("NUL") == "_NUL_"
+        assert _sanitize_filename("com1") == "_com1_"
+
+    def test_whitespace(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        # Full-width spaces should be normalized
+        result = _sanitize_filename("　全角スペース　")
+        assert result == "全角スペース"
+
+        result = _sanitize_filename("  multiple   spaces  ")
+        assert result == "multiple_spaces"
+
+    def test_empty_fallback(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("") == "unknown"
+        assert _sanitize_filename("   ") == "unknown"
+        assert _sanitize_filename("...") == "unknown"
+
+    def test_length_truncation(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        long_name = "a" * 100
+        result = _sanitize_filename(long_name)
+        assert len(result) <= 50
+
+
+class TestEntropyNormalization:
+    """Tests for board-size aware entropy normalization."""
+
+    def test_uniform_distribution_all_sizes(self):
+        """Uniform distribution should be EASY on all board sizes."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        for size in [9, 13, 19]:
+            n = size * size
+            uniform = [1.0 / n] * n
+            diff, _ = _assess_difficulty_from_policy(uniform, board_size=size)
+            assert diff == PositionDifficulty.EASY, f"Uniform distribution on {size}x{size} should be EASY"
+
+    def test_concentrated_distribution_all_sizes(self):
+        """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        for size in [9, 13, 19]:
+            n = size * size
+            concentrated = [0.0] * n
+            concentrated[0] = 0.95
+            concentrated[1] = 0.05
+            diff, _ = _assess_difficulty_from_policy(concentrated, board_size=size)
+            assert diff in (PositionDifficulty.ONLY_MOVE, PositionDifficulty.HARD), \
+                f"Concentrated distribution on {size}x{size} should be ONLY_MOVE or HARD"
+
+    def test_board_size_as_tuple(self):
+        """Should handle board_size as tuple (x, y)."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        uniform = [1.0 / 361] * 361
+        diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
+        assert diff == PositionDifficulty.EASY
+
+    def test_invalid_board_size_fallback(self):
+        """Invalid board size should fallback to 19x19."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy
+
+        uniform = [1.0 / 361] * 361
+        # Should not crash, uses 19x19 fallback
+        diff1, _ = _assess_difficulty_from_policy(uniform, board_size=0)
+        diff2, _ = _assess_difficulty_from_policy(uniform, board_size=-5)
+        assert diff1 is not None
+        assert diff2 is not None
+
+    def test_empty_policy(self):
+        """Empty policy should return UNKNOWN."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        diff, score = _assess_difficulty_from_policy([])
+        assert diff == PositionDifficulty.UNKNOWN
+        assert score == 0.5
+
+
+class TestRunBatchMinGamesParameter:
+    """Tests for run_batch min_games_per_player parameter."""
+
+    def test_run_batch_has_min_games_parameter(self):
+        """run_batch should accept min_games_per_player parameter."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+        params = list(sig.parameters.keys())
+
+        assert "min_games_per_player" in params
+
+    def test_run_batch_min_games_default(self):
+        """min_games_per_player should default to 3."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+        assert sig.parameters["min_games_per_player"].default == 3
+
+
+class TestCanonicalLossHelper:
+    """Tests for _get_canonical_loss helper (single source of truth)."""
+
+    def test_positive_loss_unchanged(self):
+        """Positive loss should be returned as-is."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(5.0) == 5.0
+        assert _get_canonical_loss(0.5) == 0.5
+        assert _get_canonical_loss(100.0) == 100.0
+
+    def test_negative_loss_clamped_to_zero(self):
+        """Negative loss (gain from opponent mistake) should be clamped to 0."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(-3.0) == 0.0
+        assert _get_canonical_loss(-0.1) == 0.0
+        assert _get_canonical_loss(-100.0) == 0.0
+
+    def test_zero_loss_unchanged(self):
+        """Zero loss should remain zero."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(0.0) == 0.0
+
+    def test_none_returns_zero(self):
+        """None should return 0."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(None) == 0.0
