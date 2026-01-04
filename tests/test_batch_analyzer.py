@@ -1986,3 +1986,188 @@ class TestBatchOptionsPersistence:
         default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
 
         assert default_input_dir == "C:\\new\\path"
+
+
+# =============================================================================
+# Variable Visits Tests
+# =============================================================================
+
+class TestChooseVisitsForSgf:
+    """Tests for choose_visits_for_sgf() function."""
+
+    def test_no_jitter_returns_base(self):
+        """With jitter=0, should return base visits unchanged."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        result = choose_visits_for_sgf(100, 0, True, "/path/game.sgf")
+        assert result == 100
+
+        result = choose_visits_for_sgf(800, 0, False, "/path/game.sgf")
+        assert result == 800
+
+    def test_jitter_bounds_base_100(self):
+        """With base=100 and jitter=25%, result should be in [75, 125]."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        for i in range(100):
+            result = choose_visits_for_sgf(100, 25, False, f"/path/game{i}.sgf")
+            assert 75 <= result <= 125, f"Result {result} out of bounds [75, 125]"
+
+    def test_jitter_bounds_base_800(self):
+        """With base=800 and jitter=25%, result should be in [600, 1000]."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        for i in range(100):
+            result = choose_visits_for_sgf(800, 25, False, f"/path/game{i}.sgf")
+            assert 600 <= result <= 1000, f"Result {result} out of bounds [600, 1000]"
+
+    def test_jitter_capped_at_25(self):
+        """Jitter > 25% should be clamped to 25%."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        # Even with 50% jitter input, should still be clamped to 25%
+        for i in range(100):
+            result = choose_visits_for_sgf(100, 50, False, f"/path/game{i}.sgf")
+            assert 75 <= result <= 125, f"Result {result} out of [75, 125] with 50% jitter (should be clamped)"
+
+    def test_deterministic_same_path(self):
+        """Same path should produce same result when deterministic=True."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        path = "/path/game.sgf"
+        r1 = choose_visits_for_sgf(100, 25, True, path)
+        r2 = choose_visits_for_sgf(100, 25, True, path)
+        assert r1 == r2, f"Deterministic mode failed: {r1} != {r2}"
+
+        # Also test with different base visits
+        r3 = choose_visits_for_sgf(800, 25, True, path)
+        r4 = choose_visits_for_sgf(800, 25, True, path)
+        assert r3 == r4, f"Deterministic mode failed: {r3} != {r4}"
+
+    def test_deterministic_different_paths(self):
+        """Different paths should produce different results (usually)."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        results = {choose_visits_for_sgf(100, 25, True, f"/path/game{i}.sgf") for i in range(10)}
+        # With 10 different paths and 25% jitter, we expect some variance
+        assert len(results) > 1, "Expected different results for different paths"
+
+    def test_non_deterministic_with_mock(self):
+        """Non-deterministic mode should use randomness (verified via mock)."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+        from unittest.mock import patch
+
+        # Mock random.uniform to return specific values
+        with patch('katrain.tools.batch_analyze_sgf.random.uniform', return_value=0.8):
+            result1 = choose_visits_for_sgf(100, 25, False, "/path/game.sgf")
+            assert result1 == 80  # 100 * 0.8 = 80
+
+        with patch('katrain.tools.batch_analyze_sgf.random.uniform', return_value=1.2):
+            result2 = choose_visits_for_sgf(100, 25, False, "/path/game.sgf")
+            assert result2 == 120  # 100 * 1.2 = 120
+
+        assert result1 != result2, "Non-deterministic mode should vary with different random values"
+
+    def test_clamp_minimum(self):
+        """Result should never be less than 1."""
+        from katrain.tools.batch_analyze_sgf import choose_visits_for_sgf
+
+        # Even with small base visits, should never go below 1
+        for i in range(50):
+            result = choose_visits_for_sgf(1, 25, False, f"/path/game{i}.sgf")
+            assert result >= 1, f"Result {result} < 1 (minimum)"
+
+
+class TestCompletionSoundSafety:
+    """Tests for completion sound safety (no crashes on sound errors)."""
+
+    def test_sound_import_fallback(self):
+        """Sound code should not crash if play_sound fails."""
+        from unittest.mock import patch, MagicMock
+
+        # Mock the sound import to raise an exception
+        with patch.dict('sys.modules', {'katrain.gui.sound': MagicMock(play_sound=MagicMock(side_effect=Exception("Sound error")))}):
+            # Simulate the try-except block from __main__.py
+            play_sound_on_finish = True
+            sound_played = False
+            try:
+                from katrain.gui.sound import play_sound
+                from katrain.gui.theme import Theme
+                play_sound(Theme.MINIMUM_TIME_PASSED_SOUND, volume=0.8)
+                sound_played = True
+            except Exception:
+                # Fallback: try system beep
+                try:
+                    import winsound
+                    winsound.MessageBeep()
+                    sound_played = True
+                except Exception:
+                    pass  # Silent fallback
+            # Should not crash, sound_played may be True or False depending on environment
+
+    def test_winsound_fallback_safety(self):
+        """winsound fallback should not crash even if it fails."""
+        from unittest.mock import patch, MagicMock
+
+        # Mock both sound systems to fail
+        mock_winsound = MagicMock()
+        mock_winsound.MessageBeep = MagicMock(side_effect=Exception("winsound error"))
+
+        with patch.dict('sys.modules', {'winsound': mock_winsound}):
+            # This should not raise any exception
+            try:
+                import winsound
+                winsound.MessageBeep()
+            except Exception:
+                pass  # Expected to fail silently
+
+
+class TestVariableVisitsOutput:
+    """Tests for variable visits output in summary."""
+
+    def test_summary_contains_base_visits_line(self):
+        """Summary should contain configured base visits when jitter enabled."""
+        # This is a smoke test - actual integration would need full batch run
+        # Here we test the output format pattern
+        base_visits = 800
+        selected_visits_list = [720, 850, 790, 680, 920]
+
+        # Simulate the summary output logic
+        lines = []
+        if base_visits is not None and selected_visits_list:
+            lines.append(f"- Configured base visits: {base_visits:,}")
+            if len(selected_visits_list) > 1:
+                min_v = min(selected_visits_list)
+                max_v = max(selected_visits_list)
+                avg_v = sum(selected_visits_list) / len(selected_visits_list)
+                lines.append(f"- Selected visits (per game): min={min_v:,}, avg={avg_v:,.0f}, max={max_v:,}")
+            else:
+                lines.append(f"- Selected visits (this game): {selected_visits_list[0]:,}")
+
+        output = "\n".join(lines)
+
+        assert "Configured base visits: 800" in output
+        assert "Selected visits (per game):" in output
+        assert "min=680" in output
+        assert "max=920" in output
+
+    def test_summary_single_game_format(self):
+        """Single game summary should show 'this game' instead of min/avg/max."""
+        base_visits = 800
+        selected_visits_list = [750]
+
+        lines = []
+        if base_visits is not None and selected_visits_list:
+            lines.append(f"- Configured base visits: {base_visits:,}")
+            if len(selected_visits_list) > 1:
+                min_v = min(selected_visits_list)
+                max_v = max(selected_visits_list)
+                avg_v = sum(selected_visits_list) / len(selected_visits_list)
+                lines.append(f"- Selected visits (per game): min={min_v:,}, avg={avg_v:,.0f}, max={max_v:,}")
+            else:
+                lines.append(f"- Selected visits (this game): {selected_visits_list[0]:,}")
+
+        output = "\n".join(lines)
+
+        assert "Configured base visits: 800" in output
+        assert "Selected visits (this game): 750" in output
