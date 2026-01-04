@@ -708,7 +708,11 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_analyze_sgf_popup(self):
         if not self.fileselect_popup:
             popup_contents = LoadSGFPopup(self)
-            popup_contents.filesel.path = os.path.abspath(os.path.expanduser(self.config("general/sgf_load", ".")))
+            # Set initial path with fallback if configured path doesn't exist
+            sgf_load_path = os.path.abspath(os.path.expanduser(self.config("general/sgf_load", ".")))
+            if os.path.isdir(sgf_load_path):
+                popup_contents.filesel.path = sgf_load_path
+            # else: leave default path (user home or current dir)
             self.fileselect_popup = I18NPopup(
                 title_key="load sgf title", size=[dp(1200), dp(800)], content=popup_contents
             ).__self__
@@ -2829,7 +2833,7 @@ class KaTrainGui(Screen, KaTrainBase):
         from kivy.uix.checkbox import CheckBox
         from kivy.uix.scrollview import ScrollView
 
-        from katrain.tools.batch_analyze_sgf import run_batch, BatchResult
+        from katrain.tools.batch_analyze_sgf import run_batch, BatchResult, parse_timeout_input, DEFAULT_TIMEOUT_SECONDS
 
         # Get default values from mykatrain_settings
         mykatrain_settings = self.config("mykatrain_settings") or {}
@@ -2924,8 +2928,10 @@ class KaTrainGui(Screen, KaTrainBase):
             font_name=Theme.DEFAULT_FONT,
         )
 
-        # Get saved timeout value
-        saved_timeout = batch_options.get("timeout", 600)
+        # Get saved timeout value (None means no timeout)
+        saved_timeout = batch_options.get("timeout", DEFAULT_TIMEOUT_SECONDS)
+        # Display "None" for no timeout, otherwise the numeric value
+        timeout_display = "None" if saved_timeout is None else str(int(saved_timeout))
         timeout_label = Label(
             text=i18n._("mykatrain:batch:timeout"),
             size_hint_x=0.2,
@@ -2936,9 +2942,9 @@ class KaTrainGui(Screen, KaTrainBase):
         )
         timeout_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         timeout_input = TextInput(
-            text=str(saved_timeout),
+            text=timeout_display,
             multiline=False,
-            input_filter="int",
+            # No input_filter: allow "None" for no timeout, or numeric values
             size_hint_x=0.15,
             font_name=Theme.DEFAULT_FONT,
         )
@@ -3179,7 +3185,8 @@ class KaTrainGui(Screen, KaTrainBase):
             input_dir = input_input.text.strip()
             output_dir = output_input.text.strip() or None
             visits = int(visits_input.text) if visits_input.text.strip() else None
-            timeout = float(timeout_input.text) if timeout_input.text.strip() else 600.0
+            # Parse timeout with support for "None" (no timeout), invalid values fall back to default
+            timeout = parse_timeout_input(timeout_input.text, default=DEFAULT_TIMEOUT_SECONDS, log_cb=log_cb)
             skip_analyzed = skip_checkbox.active
 
             # New options
@@ -3190,11 +3197,12 @@ class KaTrainGui(Screen, KaTrainBase):
             min_games_per_player = int(min_games_input.text) if min_games_input.text.strip() else 3
 
             # Save all options for next time (persistence across sessions)
+            # Persist timeout as-is (None means no timeout, numeric means timeout in seconds)
             self._save_batch_options({
                 "input_dir": input_dir,
                 "output_dir": output_dir or "",
                 "visits": visits,
-                "timeout": timeout if timeout != 600.0 else None,
+                "timeout": timeout,
                 "skip_analyzed": skip_analyzed,
                 "save_analyzed_sgf": save_analyzed_sgf,
                 "generate_karte": generate_karte,

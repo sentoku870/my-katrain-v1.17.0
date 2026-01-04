@@ -62,6 +62,64 @@ def _get_canonical_loss(points_lost: Optional[float]) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Timeout input parsing helper
+# ---------------------------------------------------------------------------
+
+# Default timeout in seconds when no timeout is specified
+DEFAULT_TIMEOUT_SECONDS: float = 600.0
+
+
+def parse_timeout_input(
+    text: str,
+    default: float = DEFAULT_TIMEOUT_SECONDS,
+    log_cb: Optional[Callable[[str], None]] = None,
+) -> Optional[float]:
+    """
+    Parse timeout input text from UI into a float or None.
+
+    Args:
+        text: Raw text from the timeout input field
+        default: Default value when input is empty (default: 600.0)
+        log_cb: Optional callback for logging warnings
+
+    Returns:
+        - None if text is "none" (case-insensitive, stripped)
+        - default if text is empty
+        - Parsed float value if valid number
+        - default if parsing fails (with warning logged)
+
+    Examples:
+        >>> parse_timeout_input("")
+        600.0
+        >>> parse_timeout_input("None")
+        None
+        >>> parse_timeout_input("  NONE  ")
+        None
+        >>> parse_timeout_input("300")
+        300.0
+        >>> parse_timeout_input("abc")  # Returns default with warning
+        600.0
+    """
+    stripped = text.strip()
+
+    # Empty string -> default
+    if not stripped:
+        return default
+
+    # "None" (case-insensitive) -> no timeout
+    if stripped.lower() == "none":
+        return None
+
+    # Try to parse as float
+    try:
+        return float(stripped)
+    except ValueError:
+        if log_cb:
+            log_cb(f"[WARNING] Invalid timeout value '{text}', using default {default}s")
+        return default
+
+
+# ---------------------------------------------------------------------------
 # Safe file write helpers (A3: I/O error handling)
 # ---------------------------------------------------------------------------
 

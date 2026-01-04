@@ -16,6 +16,8 @@ from katrain.tools.batch_analyze_sgf import (
     collect_sgf_files_recursive,
     read_sgf_with_fallback,
     parse_sgf_with_fallback,
+    parse_timeout_input,
+    DEFAULT_TIMEOUT_SECONDS,
     ENCODINGS_TO_TRY,
 )
 from katrain.core.game import KaTrainSGF
@@ -1986,3 +1988,58 @@ class TestBatchOptionsPersistence:
         default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
 
         assert default_input_dir == "C:\\new\\path"
+
+
+class TestParseTimeoutInput:
+    """Tests for parse_timeout_input() helper function."""
+
+    def test_empty_string_returns_default(self):
+        """Empty string returns default timeout."""
+        assert parse_timeout_input("") == DEFAULT_TIMEOUT_SECONDS
+        assert parse_timeout_input("   ") == DEFAULT_TIMEOUT_SECONDS
+
+    def test_none_string_returns_none(self):
+        """'None' (case-insensitive) returns None (no timeout)."""
+        assert parse_timeout_input("None") is None
+        assert parse_timeout_input("none") is None
+        assert parse_timeout_input("NONE") is None
+        assert parse_timeout_input("  None  ") is None
+        assert parse_timeout_input("  NONE  ") is None
+
+    def test_numeric_string_returns_float(self):
+        """Numeric strings are parsed as floats."""
+        assert parse_timeout_input("600") == 600.0
+        assert parse_timeout_input("300") == 300.0
+        assert parse_timeout_input("  600  ") == 600.0
+        assert parse_timeout_input("0") == 0.0
+        assert parse_timeout_input("1.5") == 1.5
+
+    def test_invalid_string_returns_default(self):
+        """Invalid strings return default without crashing."""
+        assert parse_timeout_input("abc") == DEFAULT_TIMEOUT_SECONDS
+        assert parse_timeout_input("foo bar") == DEFAULT_TIMEOUT_SECONDS
+        assert parse_timeout_input("12abc") == DEFAULT_TIMEOUT_SECONDS
+
+    def test_invalid_string_logs_warning(self):
+        """Invalid strings trigger log callback with warning."""
+        logged_messages = []
+
+        def log_cb(msg):
+            logged_messages.append(msg)
+
+        result = parse_timeout_input("abc", log_cb=log_cb)
+        assert result == DEFAULT_TIMEOUT_SECONDS
+        assert len(logged_messages) == 1
+        assert "WARNING" in logged_messages[0]
+        assert "abc" in logged_messages[0]
+
+    def test_custom_default(self):
+        """Custom default value is used for empty/invalid input."""
+        assert parse_timeout_input("", default=1000.0) == 1000.0
+        assert parse_timeout_input("invalid", default=1000.0) == 1000.0
+        # But "None" still returns None regardless of default
+        assert parse_timeout_input("None", default=1000.0) is None
+
+    def test_default_constant_value(self):
+        """DEFAULT_TIMEOUT_SECONDS has expected value."""
+        assert DEFAULT_TIMEOUT_SECONDS == 600.0
