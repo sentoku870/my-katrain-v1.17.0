@@ -1294,6 +1294,18 @@ msgstr "Batch Analyze Folder"
 msgid "mykatrain:batch:min_games"
 msgstr "Min games/player:"
 
+msgid "mykatrain:batch:variable_visits"
+msgstr "Variable visits"
+
+msgid "mykatrain:batch:jitter_pct"
+msgstr "Jitter %:"
+
+msgid "mykatrain:batch:deterministic"
+msgstr "Deterministic"
+
+msgid "mykatrain:batch:sound_on_finish"
+msgstr "Sound on finish"
+
 #. TODO
 msgid "mykatrain:batch:player_filter"
 msgstr "Player Filter:"

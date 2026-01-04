@@ -855,6 +855,8 @@ class Game(BaseGame):
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
         player_filter: Optional[str] = None,
         raise_on_error: bool = False,
+        base_visits: Optional[int] = None,
+        selected_visits: Optional[int] = None,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
 
@@ -864,6 +866,8 @@ class Game(BaseGame):
                           Can also be a username string to match against player names
             raise_on_error: If True, raise KarteGenerationError on failure.
                            If False (default), return error markdown instead.
+            base_visits: Configured base visits for batch analysis (optional)
+            selected_visits: Actual selected visits for this game (optional, for variable visits)
 
         Returns:
             Markdown-formatted karte report.
@@ -875,7 +879,7 @@ class Game(BaseGame):
         game_id = self.game_id or self.sgf_filename or "unknown"
 
         try:
-            return self._build_karte_report_impl(level, player_filter)
+            return self._build_karte_report_impl(level, player_filter, base_visits, selected_visits)
         except Exception as e:
             error_msg = f"Failed to generate karte: {type(e).__name__}: {e}"
             if self.katrain:
@@ -927,6 +931,8 @@ class Game(BaseGame):
         self,
         level: str,
         player_filter: Optional[str],
+        base_visits: Optional[int] = None,
+        selected_visits: Optional[int] = None,
     ) -> str:
         """Internal implementation of build_karte_report."""
         snapshot = self.build_eval_snapshot()
@@ -1332,6 +1338,13 @@ class Game(BaseGame):
             if rel_stats.is_low_reliability:
                 lines.append("")
                 lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")
+
+            # Variable visits info (if provided)
+            if base_visits is not None:
+                lines.append("")
+                lines.append(f"- Configured base visits: {base_visits:,}")
+                if selected_visits is not None:
+                    lines.append(f"- Selected visits (this game): {selected_visits:,}")
 
             # PR1-2: Add note about measured vs configured values
             lines.append("")

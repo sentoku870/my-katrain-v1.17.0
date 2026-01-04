@@ -1124,6 +1124,18 @@ msgstr "白番"
 msgid "mykatrain:batch:min_games"
 msgstr "最低対局数:"
 
+msgid "mykatrain:batch:variable_visits"
+msgstr "visitsを可変にする"
+
+msgid "mykatrain:batch:jitter_pct"
+msgstr "変動幅(%):"
+
+msgid "mykatrain:batch:deterministic"
+msgstr "再現性あり"
+
+msgid "mykatrain:batch:sound_on_finish"
+msgstr "完了時に音を鳴らす"
+
 msgid "mykatrain:batch:summary_player"
 msgstr "サマリー: {player} ({count}局)"
 

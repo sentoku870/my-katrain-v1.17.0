@@ -20,6 +20,7 @@ os.environ["KIVY_NO_ARGS"] = "1"
 
 import argparse
 import hashlib
+import random
 import sys
 import time
 import traceback
@@ -59,6 +60,57 @@ def _get_canonical_loss(points_lost: Optional[float]) -> float:
     if points_lost is None:
         return 0.0
     return max(0.0, points_lost)
+
+
+# ---------------------------------------------------------------------------
+# Variable visits helper (per-SGF jitter)
+# ---------------------------------------------------------------------------
+
+def choose_visits_for_sgf(
+    base_visits: int,
+    jitter_pct: int,
+    deterministic: bool,
+    sgf_path: str,
+) -> int:
+    """
+    Choose visits for a specific SGF file with optional jitter.
+
+    Args:
+        base_visits: Base number of visits configured by user
+        jitter_pct: Jitter percentage (0-25). Clamped to max 25%.
+        deterministic: If True, use stable hash for reproducibility
+        sgf_path: Path to SGF file (used as seed for deterministic mode)
+
+    Returns:
+        Selected visits, clamped to >= 1
+
+    Example:
+        base_visits=800, jitter_pct=25:
+        - multiplier range: [0.75, 1.25]
+        - output range: [600, 1000]
+    """
+    # Clamp jitter to 0-25%
+    jitter_pct = max(0, min(jitter_pct, 25))
+    if jitter_pct == 0:
+        return base_visits
+
+    jitter = jitter_pct / 100.0
+    min_mult = 1.0 - jitter
+    max_mult = 1.0 + jitter
+
+    if deterministic:
+        # Normalize path for cross-platform reproducibility
+        normalized_path = os.path.normcase(os.path.normpath(sgf_path))
+        seed_str = f"{normalized_path}|{base_visits}|{jitter_pct}"
+        hash_bytes = hashlib.md5(seed_str.encode()).digest()
+        seed_int = int.from_bytes(hash_bytes[:4], 'little')
+        rng = random.Random(seed_int)
+        multiplier = rng.uniform(min_mult, max_mult)
+    else:
+        multiplier = random.uniform(min_mult, max_mult)
+
+    selected = round(base_visits * multiplier)
+    return max(1, selected)
 
 
 # ---------------------------------------------------------------------------
@@ -525,6 +577,10 @@ def run_batch(
     generate_summary: bool = False,
     karte_player_filter: Optional[str] = None,
     min_games_per_player: int = 3,
+    # Variable visits options
+    visits_jitter_enabled: bool = False,
+    visits_jitter_pct: int = 25,
+    visits_jitter_deterministic: bool = True,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -637,7 +693,18 @@ def run_batch(
         if progress_cb:
             progress_cb(i + 1, total, rel_path)
 
-        log(f"[{i + 1}/{total}] Analyzing: {rel_path}")
+        # Determine visits for this file (with optional jitter)
+        if visits is not None and visits_jitter_enabled and visits_jitter_pct > 0:
+            selected_visits = choose_visits_for_sgf(
+                base_visits=visits,
+                jitter_pct=visits_jitter_pct,
+                deterministic=visits_jitter_deterministic,
+                sgf_path=abs_path,
+            )
+            log(f"[{i + 1}/{total}] Analyzing: {rel_path} (visits={selected_visits})")
+        else:
+            selected_visits = visits
+            log(f"[{i + 1}/{total}] Analyzing: {rel_path}")
 
         # Determine base name for output files
         base_name = os.path.splitext(os.path.basename(rel_path))[0]
@@ -661,7 +728,7 @@ def run_batch(
             engine=engine,
             sgf_path=abs_path,
             output_path=sgf_output_path,
-            visits=visits,
+            visits=selected_visits,
             timeout=timeout,
             cancel_flag=cancel_flag,
             log_cb=log_cb,
@@ -687,7 +754,11 @@ def run_batch(
             # Generate karte if requested
             if generate_karte and game is not None:
                 try:
-                    karte_text = game.build_karte_report(player_filter=karte_player_filter)
+                    karte_text = game.build_karte_report(
+                        player_filter=karte_player_filter,
+                        base_visits=visits,
+                        selected_visits=selected_visits,
+                    )
                     # Include path hash to avoid filename collisions for files with same basename
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
                     karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.md"
@@ -725,7 +796,11 @@ def run_batch(
             # Collect stats for summary
             if generate_summary and game is not None:
                 try:
-                    stats = _extract_game_stats(game, rel_path)
+                    stats = _extract_game_stats(
+                        game, rel_path,
+                        base_visits=visits,
+                        selected_visits=selected_visits,
+                    )
                     if stats:
                         game_stats_list.append(stats)
                 except Exception as e:
@@ -795,7 +870,12 @@ def run_batch(
     return result
 
 
-def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
+def _extract_game_stats(
+    game: Game,
+    rel_path: str,
+    base_visits: Optional[int] = None,
+    selected_visits: Optional[int] = None,
+) -> Optional[dict]:
     """Extract statistics from a Game object for summary generation."""
     try:
         from katrain.core import eval_metrics
@@ -872,6 +952,9 @@ def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
                 "B": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
                 "W": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
             },
+            # Variable visits tracking
+            "base_visits": base_visits,
+            "selected_visits": selected_visits,
         }
 
         for move in snapshot.moves:
@@ -1262,6 +1345,9 @@ def _build_player_summary(
     reliability_with_visits = 0
     reliability_max_visits = 0  # PR1-2: Track max visits across all games
     board_sizes: set = set()  # Track unique board sizes for Definitions
+    # Variable visits tracking
+    base_visits_value: Optional[int] = None
+    selected_visits_list: List[int] = []
 
     for stats, role in player_games:
         if role == "B":
@@ -1336,6 +1422,12 @@ def _build_player_summary(
         if "board_size" in stats:
             board_sizes.add(stats["board_size"][0])  # (x, y) tuple, use x
 
+        # Track variable visits (only need one base_visits, collect all selected_visits)
+        if base_visits_value is None and stats.get("base_visits") is not None:
+            base_visits_value = stats["base_visits"]
+        if stats.get("selected_visits") is not None:
+            selected_visits_list.append(stats["selected_visits"])
+
     # =========================================================================
     # Definitions Section (before Overview)
     # =========================================================================
@@ -1378,6 +1470,17 @@ def _build_player_summary(
         if rel_pct < 20.0:
             lines.append("")
             lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")
+    # Variable visits info (if used)
+    if base_visits_value is not None and selected_visits_list:
+        lines.append("")
+        lines.append(f"- Configured base visits: {base_visits_value:,}")
+        if len(selected_visits_list) > 1:
+            min_v = min(selected_visits_list)
+            max_v = max(selected_visits_list)
+            avg_v = sum(selected_visits_list) / len(selected_visits_list)
+            lines.append(f"- Selected visits (per game): min={min_v:,}, avg={avg_v:,.0f}, max={max_v:,}")
+        else:
+            lines.append(f"- Selected visits (this game): {selected_visits_list[0]:,}")
     # PR1-2: Add note about measured values
     lines.append("")
     lines.append("*Visits are measured from KataGo analysis (root_visits).*")

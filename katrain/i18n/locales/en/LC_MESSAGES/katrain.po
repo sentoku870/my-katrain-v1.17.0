@@ -141,6 +141,18 @@ msgstr "White"
 msgid "mykatrain:batch:min_games"
 msgstr "Min games/player:"
 
+msgid "mykatrain:batch:variable_visits"
+msgstr "Variable visits"
+
+msgid "mykatrain:batch:jitter_pct"
+msgstr "Jitter %:"
+
+msgid "mykatrain:batch:deterministic"
+msgstr "Deterministic"
+
+msgid "mykatrain:batch:sound_on_finish"
+msgstr "Sound on finish"
+
 msgid "mykatrain:batch:summary_player"
 msgstr "Summary: {player} ({count} games)"
 
