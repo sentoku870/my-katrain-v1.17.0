@@ -23,7 +23,7 @@ import hashlib
 import sys
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -33,6 +33,16 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, KaTrainSGF
 from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
+from katrain.core.eval_metrics import (
+    MistakeCategory,
+    PositionDifficulty,
+    REASON_TAG_LABELS,
+    get_reason_tag_label,
+    SKILL_PRESETS,
+    DEFAULT_SKILL_PRESET,
+    RELIABILITY_VISITS_THRESHOLD,
+    get_phase_thresholds,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +59,69 @@ def _get_canonical_loss(points_lost: Optional[float]) -> float:
     if points_lost is None:
         return 0.0
     return max(0.0, points_lost)
+
+
+# ---------------------------------------------------------------------------
+# Safe file write helpers (A3: I/O error handling)
+# ---------------------------------------------------------------------------
+
+def _safe_write_file(
+    path: str,
+    content: str,
+    file_kind: str,
+    sgf_id: str,
+    log_cb: Optional[Callable[[str], None]] = None,
+) -> Optional["WriteError"]:
+    """
+    Safely write content to file with directory creation and error handling.
+
+    Args:
+        path: Target file path
+        content: Content to write
+        file_kind: Type of file ("karte", "summary", "analyzed_sgf")
+        sgf_id: Identifier for error reporting (SGF filename or player name)
+        log_cb: Optional logging callback
+
+    Returns:
+        None on success, WriteError on failure
+    """
+    def log(msg: str) -> None:
+        if log_cb:
+            log_cb(msg)
+
+    try:
+        # Ensure parent directory exists (pathlib handles Windows paths correctly)
+        parent = Path(path).parent
+        parent.mkdir(parents=True, exist_ok=True)
+
+        # Write file
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return None  # Success
+
+    except (OSError, PermissionError, UnicodeEncodeError) as e:
+        error = WriteError(
+            file_kind=file_kind,
+            sgf_id=sgf_id,
+            target_path=path,
+            exception_type=type(e).__name__,
+            message=str(e),
+        )
+        log(f"  ERROR writing {file_kind}: {e}")
+        return error
+
+    except Exception as e:
+        # Catch-all for unexpected errors
+        error = WriteError(
+            file_kind=file_kind,
+            sgf_id=sgf_id,
+            target_path=path,
+            exception_type=type(e).__name__,
+            message=str(e),
+        )
+        log(f"  ERROR writing {file_kind} (unexpected): {e}")
+        return error
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +481,16 @@ def analyze_single_file(
 # ---------------------------------------------------------------------------
 
 @dataclass
+class WriteError:
+    """Structured error entry for file write failures."""
+    file_kind: str  # "karte", "summary", "analyzed_sgf"
+    sgf_id: str  # SGF file name or player name
+    target_path: str  # Attempted output path
+    exception_type: str  # e.g., "PermissionError"
+    message: str  # Error message
+
+
+@dataclass
 class BatchResult:
     """Result of batch analysis operation."""
     success_count: int = 0
@@ -421,6 +504,8 @@ class BatchResult:
     summary_written: bool = False
     summary_error: Optional[str] = None
     analyzed_sgf_written: int = 0
+    # Structured write errors (A3)
+    write_errors: List[WriteError] = field(default_factory=list)
 
 
 def run_batch(
@@ -607,15 +692,35 @@ def run_batch(
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
                     karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.md"
                     karte_path = os.path.join(output_dir, "reports", "karte", karte_filename)
-                    with open(karte_path, "w", encoding="utf-8") as f:
-                        f.write(karte_text)
-                    result.karte_written += 1
-                    log(f"  Saved Karte: {karte_filename}")
+
+                    # Use safe write with error handling (A3)
+                    write_error = _safe_write_file(
+                        path=karte_path,
+                        content=karte_text,
+                        file_kind="karte",
+                        sgf_id=rel_path,
+                        log_cb=log_cb,
+                    )
+                    if write_error:
+                        result.karte_failed += 1
+                        result.write_errors.append(write_error)
+                    else:
+                        result.karte_written += 1
+                        log(f"  Saved Karte: {karte_filename}")
+
                 except Exception as e:
                     import traceback
                     result.karte_failed += 1
                     error_details = traceback.format_exc()
                     log(f"  ERROR generating karte: {e}\n{error_details}")
+                    # Record as a structured error too
+                    result.write_errors.append(WriteError(
+                        file_kind="karte",
+                        sgf_id=rel_path,
+                        target_path="(generation failed)",
+                        exception_type=type(e).__name__,
+                        message=str(e),
+                    ))
 
             # Collect stats for summary
             if generate_summary and game is not None:
@@ -643,6 +748,7 @@ def run_batch(
 
             if player_groups:
                 summary_count = 0
+                summary_failed = 0
                 for player_name, player_games in player_groups.items():
                     # Sanitize filename
                     safe_name = _sanitize_filename(player_name)
@@ -652,14 +758,26 @@ def run_batch(
 
                     summary_text = _build_player_summary(player_name, player_games)
 
-                    with open(summary_path, "w", encoding="utf-8") as f:
-                        f.write(summary_text)
+                    # Use safe write with error handling (A3)
+                    write_error = _safe_write_file(
+                        path=summary_path,
+                        content=summary_text,
+                        file_kind="summary",
+                        sgf_id=player_name,
+                        log_cb=log_cb,
+                    )
+                    if write_error:
+                        summary_failed += 1
+                        result.write_errors.append(write_error)
+                    else:
+                        log(f"  [{player_name}] {len(player_games)} games -> {summary_filename}")
+                        summary_count += 1
 
-                    log(f"  [{player_name}] {len(player_games)} games -> {summary_filename}")
-                    summary_count += 1
-
-                result.summary_written = True
-                log(f"Generated {summary_count} player summaries")
+                if summary_count > 0:
+                    result.summary_written = True
+                    log(f"Generated {summary_count} player summaries")
+                if summary_failed > 0:
+                    log(f"WARNING: {summary_failed} summary file(s) failed to write")
             else:
                 log(f"No players with >= {min_games_per_player} games found")
                 result.summary_error = f"No players with >= {min_games_per_player} games"
@@ -718,6 +836,42 @@ def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
             "phase_mistake_counts": {},
             "phase_mistake_loss": {},
             "worst_moves": [],
+            # Per-player stats for player summary
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in eval_metrics.MistakeCategory},
+                "W": {cat: 0 for cat in eval_metrics.MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
+                "W": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+                "W": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
+                "W": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
+                "W": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            # Reason tags for player summary (Issue 2)
+            # Tags are computed for important moves only (get_important_move_evals)
+            "reason_tags_by_player": {"B": {}, "W": {}},
+            # Important moves stats for Reason Tags clarity (PR1-1)
+            "important_moves_stats_by_player": {
+                "B": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
+                "W": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
+            },
+            # Reliability stats for Data Quality section
+            "reliability_by_player": {
+                "B": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
+                "W": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
+            },
         }
 
         for move in snapshot.moves:
@@ -731,19 +885,75 @@ def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
             stats["phase_moves"][phase] = stats["phase_moves"].get(phase, 0) + 1
             stats["phase_loss"][phase] = stats["phase_loss"].get(phase, 0.0) + canonical_loss
 
+            # Per-player phase stats
+            if player in ("B", "W"):
+                stats["phase_moves_by_player"][player][phase] = (
+                    stats["phase_moves_by_player"][player].get(phase, 0) + 1
+                )
+                stats["phase_loss_by_player"][player][phase] = (
+                    stats["phase_loss_by_player"][player].get(phase, 0.0) + canonical_loss
+                )
+
             # Mistake category
             if move.mistake_category:
                 stats["mistake_counts"][move.mistake_category] = stats["mistake_counts"].get(move.mistake_category, 0) + 1
                 stats["mistake_total_loss"][move.mistake_category] = stats["mistake_total_loss"].get(move.mistake_category, 0.0) + canonical_loss
+
+                # Per-player mistake stats
+                if player in ("B", "W"):
+                    stats["mistake_counts_by_player"][player][move.mistake_category] = (
+                        stats["mistake_counts_by_player"][player].get(move.mistake_category, 0) + 1
+                    )
+                    stats["mistake_total_loss_by_player"][player][move.mistake_category] = (
+                        stats["mistake_total_loss_by_player"][player].get(move.mistake_category, 0.0) + canonical_loss
+                    )
 
                 # Phase x Mistake
                 key = (phase, move.mistake_category.name)
                 stats["phase_mistake_counts"][key] = stats["phase_mistake_counts"].get(key, 0) + 1
                 stats["phase_mistake_loss"][key] = stats["phase_mistake_loss"].get(key, 0.0) + canonical_loss
 
+                # Per-player Phase x Mistake
+                if player in ("B", "W"):
+                    stats["phase_mistake_counts_by_player"][player][key] = (
+                        stats["phase_mistake_counts_by_player"][player].get(key, 0) + 1
+                    )
+                    stats["phase_mistake_loss_by_player"][player][key] = (
+                        stats["phase_mistake_loss_by_player"][player].get(key, 0.0) + canonical_loss
+                    )
+
             # Freedom/difficulty
             if move.position_difficulty:
                 stats["freedom_counts"][move.position_difficulty] = stats["freedom_counts"].get(move.position_difficulty, 0) + 1
+
+                # Per-player freedom stats
+                if player in ("B", "W"):
+                    stats["freedom_counts_by_player"][player][move.position_difficulty] = (
+                        stats["freedom_counts_by_player"][player].get(move.position_difficulty, 0) + 1
+                    )
+
+            # NOTE: reason_tags collection moved to after the loop (Issue A fix)
+            # Reason tags are computed in get_important_move_evals(), not in build_eval_snapshot()
+            # The old code here collected from snapshot.moves which has empty reason_tags
+
+            # Track reliability stats for Data Quality section
+            if player in ("B", "W"):
+                rel = stats["reliability_by_player"][player]
+                rel["total"] += 1
+                visits = move.root_visits or 0
+                if visits == 0:
+                    rel["low_confidence"] += 1
+                elif visits >= eval_metrics.RELIABILITY_VISITS_THRESHOLD:
+                    rel["reliable"] += 1
+                    rel["total_visits"] += visits
+                    rel["with_visits"] += 1
+                else:
+                    rel["low_confidence"] += 1
+                    rel["total_visits"] += visits
+                    rel["with_visits"] += 1
+                # PR1-2: Track max visits
+                if visits > rel["max_visits"]:
+                    rel["max_visits"] = visits
 
             # Track worst moves
             if move.points_lost and move.points_lost >= 2.0:
@@ -752,6 +962,29 @@ def _extract_game_stats(game: Game, rel_path: str) -> Optional[dict]:
         # Sort worst moves by loss
         stats["worst_moves"].sort(key=lambda x: x[3], reverse=True)
         stats["worst_moves"] = stats["worst_moves"][:10]  # Keep top 10
+
+        # Issue A fix: Get reason_tags from important moves (not from all moves)
+        # Reason tags are computed in get_important_move_evals(), not in build_eval_snapshot()
+        # PR1-1: Also track important_moves_count and tagged_moves_count for clarity
+        try:
+            important_moves = game.get_important_move_evals(compute_reason_tags=True)
+            for move in important_moves:
+                player = move.player
+                if player in ("B", "W"):
+                    im_stats = stats["important_moves_stats_by_player"][player]
+                    im_stats["important_count"] += 1
+                    if move.reason_tags:
+                        im_stats["tagged_count"] += 1
+                        for tag in move.reason_tags:
+                            # Validate tag before counting (A1 requirement)
+                            if eval_metrics.validate_reason_tag(tag):
+                                stats["reason_tags_by_player"][player][tag] = (
+                                    stats["reason_tags_by_player"][player].get(tag, 0) + 1
+                                )
+                                im_stats["tag_occurrences"] += 1
+        except Exception:
+            # If important moves extraction fails, reason_tags will be empty but stats still valid
+            pass
 
         return stats
     except Exception:
@@ -873,6 +1106,9 @@ def _sanitize_filename(name: str, max_length: int = 50) -> str:
     # Truncate to max length
     if len(safe) > max_length:
         safe = safe[:max_length].rstrip('_')
+
+    # Strip trailing dots and spaces again after truncation (Windows requirement)
+    safe = safe.rstrip('. ')
 
     # Final fallback if empty
     if not safe:
@@ -997,14 +1233,35 @@ def _build_player_summary(
     lines.append(f"**Games analyzed**: {len(player_games)}\n")
     lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-    # Aggregate only this player's moves
+    # Aggregate only this player's moves across all games
     total_moves = 0
     total_loss = 0.0
-    phase_mistake_counts: Dict[Tuple[str, str], int] = {}
-    phase_mistake_loss: Dict[Tuple[str, str], float] = {}
     all_worst = []
     games_as_black = 0
     games_as_white = 0
+
+    # Aggregated per-player stats
+    mistake_counts: Dict[MistakeCategory, int] = {cat: 0 for cat in MistakeCategory}
+    mistake_total_loss: Dict[MistakeCategory, float] = {cat: 0.0 for cat in MistakeCategory}
+    freedom_counts: Dict[PositionDifficulty, int] = {diff: 0 for diff in PositionDifficulty}
+    phase_moves: Dict[str, int] = {"opening": 0, "middle": 0, "yose": 0, "unknown": 0}
+    phase_loss: Dict[str, float] = {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0}
+    phase_mistake_counts: Dict[Tuple[str, str], int] = {}
+    phase_mistake_loss: Dict[Tuple[str, str], float] = {}
+    reason_tags_counts: Dict[str, int] = {}  # Issue 2: aggregate reason tags
+    # PR1-1: Important moves stats for Reason Tags clarity
+    important_moves_total = 0
+    tagged_moves_total = 0
+    tag_occurrences_total = 0
+
+    # Reliability stats for Data Quality section
+    reliability_total = 0
+    reliability_reliable = 0
+    reliability_low_conf = 0
+    reliability_total_visits = 0
+    reliability_with_visits = 0
+    reliability_max_visits = 0  # PR1-2: Track max visits across all games
+    board_sizes: set = set()  # Track unique board sizes for Definitions
 
     for stats, role in player_games:
         if role == "B":
@@ -1016,15 +1273,118 @@ def _build_player_summary(
         total_moves += stats["moves_by_player"].get(role, 0)
         total_loss += stats["loss_by_player"].get(role, 0.0)
 
-        # Phase x Mistake aggregation
-        # We need to filter by role, but phase_mistake data is per-game, not per-player
-        # For now, use proportional split or just include if player made the mistake
-        # Looking at worst_moves which has player info
+        # Aggregate per-player mistake counts
+        if "mistake_counts_by_player" in stats and role in stats["mistake_counts_by_player"]:
+            for cat, count in stats["mistake_counts_by_player"][role].items():
+                mistake_counts[cat] = mistake_counts.get(cat, 0) + count
+        if "mistake_total_loss_by_player" in stats and role in stats["mistake_total_loss_by_player"]:
+            for cat, loss in stats["mistake_total_loss_by_player"][role].items():
+                mistake_total_loss[cat] = mistake_total_loss.get(cat, 0.0) + loss
+
+        # Aggregate per-player freedom counts
+        if "freedom_counts_by_player" in stats and role in stats["freedom_counts_by_player"]:
+            for diff, count in stats["freedom_counts_by_player"][role].items():
+                freedom_counts[diff] = freedom_counts.get(diff, 0) + count
+
+        # Aggregate per-player phase stats
+        if "phase_moves_by_player" in stats and role in stats["phase_moves_by_player"]:
+            for phase, count in stats["phase_moves_by_player"][role].items():
+                phase_moves[phase] = phase_moves.get(phase, 0) + count
+        if "phase_loss_by_player" in stats and role in stats["phase_loss_by_player"]:
+            for phase, loss in stats["phase_loss_by_player"][role].items():
+                phase_loss[phase] = phase_loss.get(phase, 0.0) + loss
+
+        # Aggregate per-player phase x mistake counts
+        if "phase_mistake_counts_by_player" in stats and role in stats["phase_mistake_counts_by_player"]:
+            for key, count in stats["phase_mistake_counts_by_player"][role].items():
+                phase_mistake_counts[key] = phase_mistake_counts.get(key, 0) + count
+        if "phase_mistake_loss_by_player" in stats and role in stats["phase_mistake_loss_by_player"]:
+            for key, loss in stats["phase_mistake_loss_by_player"][role].items():
+                phase_mistake_loss[key] = phase_mistake_loss.get(key, 0.0) + loss
+
+        # Collect worst moves for this player
         for move_num, player, gtp, loss, cat in stats.get("worst_moves", []):
             if player == role:
                 all_worst.append((stats["game_name"], move_num, gtp, loss, cat))
 
-    # Overview
+        # Aggregate reason tags (Issue 2)
+        if "reason_tags_by_player" in stats and role in stats["reason_tags_by_player"]:
+            for tag, count in stats["reason_tags_by_player"][role].items():
+                reason_tags_counts[tag] = reason_tags_counts.get(tag, 0) + count
+
+        # PR1-1: Aggregate important moves stats for Reason Tags clarity
+        if "important_moves_stats_by_player" in stats and role in stats["important_moves_stats_by_player"]:
+            im_stats = stats["important_moves_stats_by_player"][role]
+            important_moves_total += im_stats.get("important_count", 0)
+            tagged_moves_total += im_stats.get("tagged_count", 0)
+            tag_occurrences_total += im_stats.get("tag_occurrences", 0)
+
+        # Aggregate reliability stats for Data Quality
+        if "reliability_by_player" in stats and role in stats["reliability_by_player"]:
+            rel = stats["reliability_by_player"][role]
+            reliability_total += rel.get("total", 0)
+            reliability_reliable += rel.get("reliable", 0)
+            reliability_low_conf += rel.get("low_confidence", 0)
+            reliability_total_visits += rel.get("total_visits", 0)
+            reliability_with_visits += rel.get("with_visits", 0)
+            # PR1-2: Track max visits across all games
+            game_max = rel.get("max_visits", 0)
+            if game_max > reliability_max_visits:
+                reliability_max_visits = game_max
+
+        # Track board sizes for Definitions section
+        if "board_size" in stats:
+            board_sizes.add(stats["board_size"][0])  # (x, y) tuple, use x
+
+    # =========================================================================
+    # Definitions Section (before Overview)
+    # =========================================================================
+    preset = SKILL_PRESETS.get("standard", SKILL_PRESETS[DEFAULT_SKILL_PRESET])
+    t1, t2, t3 = preset.score_thresholds
+
+    lines.append("\n## Definitions\n")
+    lines.append("| Metric | Definition |")
+    lines.append("|--------|------------|")
+    lines.append("| Points Lost | Score difference between actual move and best move (clamped to ≥0) |")
+    lines.append(f"| Good | Loss < {t1:.1f} pts |")
+    lines.append(f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |")
+    lines.append(f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |")
+    lines.append(f"| Blunder | Loss ≥ {t3:.1f} pts |")
+
+    # Phase thresholds - handle mixed board sizes
+    if len(board_sizes) == 1:
+        board_size = list(board_sizes)[0]
+        opening_end, middle_end = get_phase_thresholds(board_size)
+        lines.append(f"| Phase ({board_size}x{board_size}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |")
+    else:
+        lines.append("| Phase | Mixed board sizes - thresholds vary |")
+
+    # =========================================================================
+    # Data Quality Section (PR1-2: Add max visits and measured note)
+    # =========================================================================
+    lines.append("\n## Data Quality\n")
+    lines.append(f"- Moves analyzed: {reliability_total}")
+    if reliability_total > 0:
+        rel_pct = 100.0 * reliability_reliable / reliability_total
+        low_pct = 100.0 * reliability_low_conf / reliability_total
+        lines.append(f"- Reliable (visits ≥ {RELIABILITY_VISITS_THRESHOLD}): {reliability_reliable} ({rel_pct:.1f}%)")
+        lines.append(f"- Low-confidence: {reliability_low_conf} ({low_pct:.1f}%)")
+        if reliability_with_visits > 0:
+            avg_visits = reliability_total_visits / reliability_with_visits
+            lines.append(f"- Avg visits: {avg_visits:,.0f}")
+            # PR1-2: Add max visits to help users understand the data
+            if reliability_max_visits > 0:
+                lines.append(f"- Max visits: {reliability_max_visits:,}")
+        if rel_pct < 20.0:
+            lines.append("")
+            lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")
+    # PR1-2: Add note about measured values
+    lines.append("")
+    lines.append("*Visits are measured from KataGo analysis (root_visits).*")
+
+    # =========================================================================
+    # Section 1: Overview
+    # =========================================================================
     lines.append(f"\n## Overview\n")
     lines.append(f"- Games as Black: {games_as_black}")
     lines.append(f"- Games as White: {games_as_white}")
@@ -1033,7 +1393,78 @@ def _build_player_summary(
     if total_moves > 0:
         lines.append(f"- Average loss per move: {total_loss / total_moves:.2f}")
 
-    # Worst moves for this player
+    # =========================================================================
+    # Section 2: Mistake Distribution
+    # =========================================================================
+    lines.append(f"\n## Mistake Distribution\n")
+    lines.append("| Category | Count | Percentage | Avg Loss |")
+    lines.append("|----------|------:|------------|----------|")
+
+    category_labels = {
+        MistakeCategory.GOOD: "Good",
+        MistakeCategory.INACCURACY: "Inaccuracy",
+        MistakeCategory.MISTAKE: "Mistake",
+        MistakeCategory.BLUNDER: "Blunder",
+    }
+
+    total_categorized = sum(mistake_counts.values())
+    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
+                MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+        count = mistake_counts.get(cat, 0)
+        pct = (count / total_categorized * 100) if total_categorized > 0 else 0.0
+        avg_loss = (mistake_total_loss.get(cat, 0.0) / count) if count > 0 else 0.0
+        lines.append(f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |")
+
+    # =========================================================================
+    # Section 3: Phase Breakdown
+    # =========================================================================
+    lines.append(f"\n## Phase Breakdown\n")
+    lines.append("| Phase | Moves | Points Lost | Avg Loss |")
+    lines.append("|-------|------:|------------:|----------|")
+
+    phase_labels = {
+        "opening": "Opening",
+        "middle": "Middle game",
+        "yose": "Endgame",
+        "unknown": "Unknown",
+    }
+
+    for phase in ["opening", "middle", "yose", "unknown"]:
+        count = phase_moves.get(phase, 0)
+        loss = phase_loss.get(phase, 0.0)
+        avg_loss = (loss / count) if count > 0 else 0.0
+        lines.append(f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |")
+
+    # =========================================================================
+    # Section 4: Phase × Mistake Breakdown
+    # =========================================================================
+    lines.append(f"\n## Phase × Mistake Breakdown\n")
+    lines.append("| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |")
+    lines.append("|-------|------|------------|---------|---------|------------|")
+
+    for phase in ["opening", "middle", "yose"]:
+        cells = [phase_labels.get(phase, phase)]
+
+        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
+                    MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+            key = (phase, cat.name)
+            count = phase_mistake_counts.get(key, 0)
+            loss = phase_mistake_loss.get(key, 0.0)
+
+            if count > 0 and cat != MistakeCategory.GOOD:
+                cells.append(f"{count} ({loss:.1f})")
+            else:
+                cells.append(str(count))
+
+        # Total loss for this phase
+        phase_total_loss = phase_loss.get(phase, 0.0)
+        cells.append(f"{phase_total_loss:.1f}")
+
+        lines.append("| " + " | ".join(cells) + " |")
+
+    # =========================================================================
+    # Section 5: Top 10 Worst Moves
+    # =========================================================================
     lines.append(f"\n## Top 10 Worst Moves\n")
     all_worst.sort(key=lambda x: x[3], reverse=True)
     all_worst = all_worst[:10]
@@ -1043,9 +1474,130 @@ def _build_player_summary(
         lines.append("|------|-----:|----------|-----:|----------|")
         for game_name, move_num, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
-            lines.append(f"| {game_name[:30]} | {move_num} | {gtp} | {loss:.1f} | {cat_name} |")
+            short_game = game_name[:30] + "..." if len(game_name) > 33 else game_name
+            lines.append(f"| {short_game} | {move_num} | {gtp} | {loss:.1f} | {cat_name} |")
+    else:
+        lines.append("- No significant mistakes found.")
 
-    # Games list
+    # =========================================================================
+    # Section 6: Reason Tags Distribution (Issue 2 + PR1-1 clarity)
+    # =========================================================================
+    lines.append(f"\n## Reason Tags (Top 10)\n")
+
+    # PR1-1: Add explanatory note about what is counted
+    if important_moves_total > 0:
+        lines.append(f"*Tags computed for {important_moves_total} important moves "
+                     f"(mistakes/blunders with loss ≥ threshold). "
+                     f"{tagged_moves_total} moves had ≥1 tag.*\n")
+
+    if reason_tags_counts:
+        # Sort by count desc, then by tag name asc for deterministic ordering
+        sorted_tags = sorted(
+            reason_tags_counts.items(),
+            key=lambda x: (-x[1], x[0])
+        )[:10]  # Top 10
+
+        # PR1-1: Use tag_occurrences_total as denominator (sum of all tag counts)
+        # Percentage = this tag's occurrences / total tag occurrences
+        for tag, count in sorted_tags:
+            pct = (count / tag_occurrences_total * 100) if tag_occurrences_total > 0 else 0.0
+            label = get_reason_tag_label(tag, fallback_to_raw=True)
+            lines.append(f"- {label}: {count} ({pct:.1f}%)")
+    else:
+        lines.append("- No reason tags recorded.")
+
+    # =========================================================================
+    # Section 7: Weakness Hypothesis
+    # =========================================================================
+    lines.append(f"\n## Weakness Hypothesis\n")
+
+    # Determine weaknesses based on cross-tabulation
+    weaknesses = []
+
+    # Check phase with highest average loss
+    phase_avg = {}
+    for phase in ["opening", "middle", "yose"]:
+        count = phase_moves.get(phase, 0)
+        loss = phase_loss.get(phase, 0.0)
+        if count > 0:
+            phase_avg[phase] = loss / count
+
+    if phase_avg:
+        worst_phase = max(phase_avg.items(), key=lambda x: x[1])
+        if worst_phase[1] > 0.5:  # Only if avg loss > 0.5
+            weaknesses.append(
+                f"**{phase_labels.get(worst_phase[0], worst_phase[0])}** shows highest "
+                f"average loss ({worst_phase[1]:.2f} pts/move)"
+            )
+
+    # Check for high blunder rate
+    total_bad = mistake_counts.get(MistakeCategory.MISTAKE, 0) + mistake_counts.get(MistakeCategory.BLUNDER, 0)
+    if total_categorized > 0:
+        bad_rate = total_bad / total_categorized * 100
+        if bad_rate > 10:
+            weaknesses.append(
+                f"High mistake/blunder rate: {bad_rate:.1f}% of moves are mistakes or blunders"
+            )
+
+    # Check for phase-specific problems
+    for phase in ["opening", "middle", "yose"]:
+        blunder_key = (phase, MistakeCategory.BLUNDER.name)
+        blunder_count = phase_mistake_counts.get(blunder_key, 0)
+        blunder_loss = phase_mistake_loss.get(blunder_key, 0.0)
+        if blunder_count >= 3 and blunder_loss >= 10:
+            weaknesses.append(
+                f"{phase_labels.get(phase, phase)}: {blunder_count} blunders "
+                f"totaling {blunder_loss:.1f} points lost"
+            )
+
+    if weaknesses:
+        for w in weaknesses:
+            lines.append(f"- {w}")
+    else:
+        lines.append("- No clear weakness pattern detected. Keep up the good work!")
+
+    # =========================================================================
+    # Section 8: Practice Priorities
+    # =========================================================================
+    lines.append(f"\n## Practice Priorities\n")
+    lines.append("Based on the data above, consider focusing on:\n")
+
+    priorities = []
+
+    # Priority 1: Worst phase
+    if phase_avg:
+        worst_phase = max(phase_avg.items(), key=lambda x: x[1])
+        if worst_phase[1] > 0.5:
+            phase_name = phase_labels.get(worst_phase[0], worst_phase[0])
+            if worst_phase[0] == "opening":
+                priorities.append(f"Study **opening principles and joseki** (highest avg loss)")
+            elif worst_phase[0] == "middle":
+                priorities.append(f"Practice **fighting and reading** (highest avg loss in middle game)")
+            else:
+                priorities.append(f"Study **endgame techniques** (highest avg loss)")
+
+    # Priority 2: High blunder areas
+    for phase in ["opening", "middle", "yose"]:
+        blunder_key = (phase, MistakeCategory.BLUNDER.name)
+        blunder_count = phase_mistake_counts.get(blunder_key, 0)
+        if blunder_count >= 3:
+            phase_name = phase_labels.get(phase, phase)
+            priorities.append(f"Review {phase_name.lower()} blunders ({blunder_count} occurrences)")
+
+    # Priority 3: Life and death if many blunders
+    total_blunders = mistake_counts.get(MistakeCategory.BLUNDER, 0)
+    if total_blunders >= 5:
+        priorities.append("Practice **life and death problems** to reduce blunders")
+
+    if priorities:
+        for i, p in enumerate(priorities[:5], 1):  # Max 5 priorities
+            lines.append(f"{i}. {p}")
+    else:
+        lines.append("- No specific priorities identified. Continue balanced practice!")
+
+    # =========================================================================
+    # Section 9: Games Included
+    # =========================================================================
     lines.append(f"\n## Games Included\n")
     for i, (stats, role) in enumerate(player_games, 1):
         game_name = stats["game_name"]

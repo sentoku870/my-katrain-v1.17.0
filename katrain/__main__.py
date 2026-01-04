@@ -2833,7 +2833,11 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Get default values from mykatrain_settings
         mykatrain_settings = self.config("mykatrain_settings") or {}
-        default_input_dir = mykatrain_settings.get("batch_export_input_directory", "")
+        # Load all batch options for persistence (PR: batch options persistence)
+        batch_options = mykatrain_settings.get("batch_options", {})
+        # Fallback to legacy key for input_dir
+        default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
+        default_output_dir = batch_options.get("output_dir", "")
 
         # Main layout
         main_layout = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
@@ -2878,7 +2882,7 @@ class KaTrainGui(Screen, KaTrainBase):
         )
         output_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         output_input = TextInput(
-            text="",
+            text=default_output_dir,
             hint_text=i18n._("mykatrain:batch:output_hint"),
             multiline=False,
             size_hint_x=0.6,
@@ -2895,8 +2899,7 @@ class KaTrainGui(Screen, KaTrainBase):
         output_row.add_widget(output_browse)
         main_layout.add_widget(output_row)
 
-        # Load saved batch options early so we can use them for visits/timeout
-        batch_options = mykatrain_settings.get("batch_options", {})
+        # batch_options already loaded at the top of this method
 
         # Options row 1: visits and timeout
         options_row1 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
@@ -2951,7 +2954,11 @@ class KaTrainGui(Screen, KaTrainBase):
         # Options row 2: skip analyzed checkbox
         options_row2 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
 
-        skip_checkbox = CheckBox(active=True, size_hint_x=None, width=dp(30))
+        # Load saved skip_analyzed (default True)
+        skip_checkbox = CheckBox(
+            active=batch_options.get("skip_analyzed", True),
+            size_hint_x=None, width=dp(30)
+        )
         skip_label = Label(
             text=i18n._("mykatrain:batch:skip_analyzed"),
             size_hint_x=0.4,
@@ -3182,14 +3189,17 @@ class KaTrainGui(Screen, KaTrainBase):
             karte_player_filter = get_player_filter()
             min_games_per_player = int(min_games_input.text) if min_games_input.text.strip() else 3
 
-            # Save options for next time
+            # Save all options for next time (persistence across sessions)
             self._save_batch_options({
+                "input_dir": input_dir,
+                "output_dir": output_dir or "",
+                "visits": visits,
+                "timeout": timeout if timeout != 600.0 else None,
+                "skip_analyzed": skip_analyzed,
                 "save_analyzed_sgf": save_analyzed_sgf,
                 "generate_karte": generate_karte,
                 "generate_summary": generate_summary,
                 "karte_player_filter": karte_player_filter,
-                "visits": visits,
-                "timeout": timeout if timeout != 600.0 else None,
                 "min_games_per_player": min_games_per_player,
             })
 

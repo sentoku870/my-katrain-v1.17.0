@@ -754,3 +754,107 @@ class TestSnapshotFromNodesLoadAnalysis:
 
         # Should not raise an error
         snapshot_from_nodes([node])
+
+
+class TestKarteGenerationError:
+    """Tests for KarteGenerationError exception (A2)."""
+
+    def test_exception_attributes(self):
+        """KarteGenerationError should have all expected attributes."""
+        from katrain.core.game import KarteGenerationError
+
+        error = KarteGenerationError(
+            message="Test error",
+            game_id="game123",
+            focus_player="B",
+            context="test_context",
+            original_error=ValueError("original"),
+        )
+        assert error.game_id == "game123"
+        assert error.focus_player == "B"
+        assert error.context == "test_context"
+        assert isinstance(error.original_error, ValueError)
+
+    def test_exception_str_format(self):
+        """Exception string should include context info."""
+        from katrain.core.game import KarteGenerationError
+
+        error = KarteGenerationError(
+            message="Test error",
+            game_id="game123",
+            focus_player="W",
+            context="build_karte",
+        )
+        error_str = str(error)
+        assert "Test error" in error_str
+        assert "game123" in error_str
+        assert "focus_player=W" in error_str
+
+    def test_exception_minimal(self):
+        """Exception with minimal info should work."""
+        from katrain.core.game import KarteGenerationError
+
+        error = KarteGenerationError(message="Simple error")
+        assert str(error) == "Simple error"
+
+
+class TestBuildKarteReportErrorHandling:
+    """Tests for build_karte_report error handling (A2)."""
+
+    def test_returns_error_markdown_on_failure(self):
+        """Should return error markdown when generation fails."""
+        from katrain.core.game import Game
+
+        # Create a mock game that will fail during karte generation
+        game = Mock(spec=Game)
+        game.game_id = "test_game"
+        game.sgf_filename = "test.sgf"
+        game.katrain = None
+
+        # Make the impl method raise an exception
+        game._build_karte_report_impl = Mock(side_effect=ValueError("Test failure"))
+        game._build_error_karte = Game._build_error_karte.__get__(game, Game)
+        game.build_karte_report = Game.build_karte_report.__get__(game, Game)
+
+        result = game.build_karte_report()
+
+        assert "ERROR" in result
+        assert "Test failure" in result
+        assert "test_game" in result
+
+    def test_raises_exception_when_requested(self):
+        """Should raise KarteGenerationError when raise_on_error=True."""
+        from katrain.core.game import Game, KarteGenerationError
+
+        game = Mock(spec=Game)
+        game.game_id = "test_game"
+        game.sgf_filename = None
+        game.katrain = None
+
+        game._build_karte_report_impl = Mock(side_effect=RuntimeError("Boom"))
+        game.build_karte_report = Game.build_karte_report.__get__(game, Game)
+
+        with pytest.raises(KarteGenerationError) as exc_info:
+            game.build_karte_report(raise_on_error=True)
+
+        assert "Boom" in str(exc_info.value)
+        assert exc_info.value.game_id == "test_game"
+
+    def test_error_karte_structure(self):
+        """Error karte should have expected structure."""
+        from katrain.core.game import Game
+
+        game = Mock(spec=Game)
+        game._build_error_karte = Game._build_error_karte.__get__(game, Game)
+
+        result = game._build_error_karte(
+            game_id="game123",
+            player_filter="B",
+            error_msg="Something went wrong",
+        )
+
+        assert "# Karte (ERROR)" in result
+        assert "## Meta" in result
+        assert "game123" in result
+        assert "## ERROR" in result
+        assert "Something went wrong" in result

@@ -36,6 +36,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -681,6 +682,8 @@ def get_skill_preset(name: str) -> SkillPreset:
 # ---------------------------------------------------------------------------
 
 # 理由タグの日本語ラベル（カルテ・サマリーで使用）
+# Note: All tags that can be emitted by get_reason_tags_for_move() or used elsewhere
+# MUST be defined here. Use validate_reason_tag() to ensure completeness.
 REASON_TAG_LABELS: Dict[str, str] = {
     "atari": "アタリ (atari)",
     "low_liberties": "呼吸点少 (low liberties)",
@@ -688,11 +691,45 @@ REASON_TAG_LABELS: Dict[str, str] = {
     "need_connect": "連絡必要 (need connect)",
     "thin": "薄い形 (thin)",
     "chase_mode": "追込モード (chase mode)",
-    "too_many_choices": "候補多数 (many choices)",
+    "too_many_choices": "候補多数 (many choices)",  # Currently disabled in get_reason_tags_for_move
     "endgame_hint": "ヨセ局面 (endgame)",
     "heavy_loss": "大損失 (heavy loss)",
     "reading_failure": "読み抜け (reading failure)",
+    "unknown": "不明 (unknown)",  # Fallback when analysis fails
 }
+
+# All valid reason tags that can be emitted
+VALID_REASON_TAGS: Set[str] = set(REASON_TAG_LABELS.keys())
+
+
+def validate_reason_tag(tag: str) -> bool:
+    """Check if a reason tag is defined in REASON_TAG_LABELS.
+
+    Args:
+        tag: The reason tag to validate
+
+    Returns:
+        True if the tag is defined, False otherwise
+    """
+    return tag in VALID_REASON_TAGS
+
+
+def get_reason_tag_label(tag: str, fallback_to_raw: bool = True) -> str:
+    """Get the display label for a reason tag.
+
+    Args:
+        tag: The reason tag key
+        fallback_to_raw: If True, return the raw tag if not found.
+                        If False, return "??? (tag)" for undefined tags.
+
+    Returns:
+        The display label for the tag
+    """
+    if tag in REASON_TAG_LABELS:
+        return REASON_TAG_LABELS[tag]
+    if fallback_to_raw:
+        return tag
+    return f"??? ({tag})"
 
 
 # Default configuration for the current quiz popup (backward-compatible).
@@ -828,6 +865,105 @@ def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VI
     - Phase4.5 では stdev 等は見ない。
     """
     return int(root_visits or 0) >= threshold
+
+
+@dataclass
+class ReliabilityStats:
+    """Data Quality / Reliability statistics for a set of moves."""
+    total_moves: int = 0
+    reliable_count: int = 0
+    low_confidence_count: int = 0
+    zero_visits_count: int = 0  # Moves with visits=0 or None
+    total_visits: int = 0
+    moves_with_visits: int = 0  # Moves with valid visits > 0
+    max_visits: int = 0  # PR1-2: Maximum visits observed (helps users trust low reliability)
+
+    @property
+    def reliability_pct(self) -> float:
+        """Percentage of moves that are reliable (visits >= threshold)."""
+        if self.total_moves == 0:
+            return 0.0
+        return 100.0 * self.reliable_count / self.total_moves
+
+    @property
+    def low_confidence_pct(self) -> float:
+        """Percentage of moves that are low confidence."""
+        if self.total_moves == 0:
+            return 0.0
+        return 100.0 * self.low_confidence_count / self.total_moves
+
+    @property
+    def avg_visits(self) -> float:
+        """Average visits for moves that have valid visits (>0)."""
+        if self.moves_with_visits == 0:
+            return 0.0
+        return self.total_visits / self.moves_with_visits
+
+    @property
+    def is_low_reliability(self) -> bool:
+        """True if reliability percentage is below 20%."""
+        return self.reliability_pct < 20.0
+
+
+def compute_reliability_stats(
+    moves: Iterable[MoveEval],
+    *,
+    threshold: int = RELIABILITY_VISITS_THRESHOLD,
+) -> ReliabilityStats:
+    """
+    Compute reliability statistics for a collection of moves.
+
+    Args:
+        moves: Iterable of MoveEval objects
+        threshold: Visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD=200)
+
+    Returns:
+        ReliabilityStats with counts and percentages
+    """
+    stats = ReliabilityStats()
+
+    for m in moves:
+        stats.total_moves += 1
+        visits = m.root_visits or 0
+
+        if visits == 0:
+            stats.zero_visits_count += 1
+            stats.low_confidence_count += 1
+        elif visits >= threshold:
+            stats.reliable_count += 1
+            stats.total_visits += visits
+            stats.moves_with_visits += 1
+        else:
+            stats.low_confidence_count += 1
+            stats.total_visits += visits
+            stats.moves_with_visits += 1
+
+        # PR1-2: Track max visits
+        if visits > stats.max_visits:
+            stats.max_visits = visits
+
+    return stats
+
+
+def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:
+    """
+    Get phase classification thresholds for a given board size.
+
+    Args:
+        board_size: Board size (9, 13, 19, etc.)
+
+    Returns:
+        Tuple of (opening_end, middle_end) move numbers.
+        - Moves < opening_end are "opening"
+        - Moves >= opening_end and < middle_end are "middle"
+        - Moves >= middle_end are "yose" (endgame)
+    """
+    thresholds = {
+        9: (15, 50),
+        13: (30, 100),
+        19: (50, 200),
+    }
+    return thresholds.get(board_size, (50, 200))
 
 
 def _assess_difficulty_from_policy(
