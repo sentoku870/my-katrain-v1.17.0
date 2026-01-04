@@ -712,6 +712,24 @@ class AutoConfidence(Enum):
     LOW = "low"
 
 
+# Japanese labels for skill presets (used in Karte/Summary reports)
+SKILL_PRESET_LABELS = {
+    "relaxed": "激甘",
+    "beginner": "甘口",
+    "standard": "標準",
+    "advanced": "辛口",
+    "pro": "激辛",
+    "auto": "自動",
+}
+
+# Japanese labels for confidence levels
+CONFIDENCE_LABELS = {
+    "high": "高",
+    "medium": "中",
+    "low": "低",
+}
+
+
 @dataclass
 class AutoRecommendation:
     """Result of auto-strictness recommendation algorithm."""
