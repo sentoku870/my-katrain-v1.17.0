@@ -646,26 +646,46 @@ class SkillPreset:
 
 
 SKILL_PRESETS: Dict[str, SkillPreset] = {
-    # Beginner: focus on large swings only (conservative thresholds).
-    "beginner": SkillPreset(
-        quiz=QuizConfig(loss_threshold=3.0, limit=10),
-        score_thresholds=(2.0, 4.0, 8.0),
-        winrate_thresholds=(0.08, 0.15, 0.30),
-        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=20.0, reading_failure=25.0),
+    # Relaxed (Lv1): very forgiving, for absolute beginners or casual review.
+    # t3=15.0, t2=0.5*t3=7.5, t1=0.2*t3=3.0
+    "relaxed": SkillPreset(
+        quiz=QuizConfig(loss_threshold=6.0, limit=10),
+        score_thresholds=(3.0, 7.5, 15.0),
+        winrate_thresholds=(0.15, 0.30, 0.60),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=45.0, reading_failure=60.0),
     ),
-    # Standard: matches existing behavior (backward-compatible).
+    # Beginner (Lv2): focus on large swings only (conservative thresholds).
+    # t3=10.0, t2=0.5*t3=5.0, t1=0.2*t3=2.0
+    # NOTE: Values updated from (2.0, 4.0, 8.0) to follow t1=0.2*t3, t2=0.5*t3 formula.
+    "beginner": SkillPreset(
+        quiz=QuizConfig(loss_threshold=4.0, limit=10),
+        score_thresholds=(2.0, 5.0, 10.0),
+        winrate_thresholds=(0.10, 0.20, 0.40),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=30.0, reading_failure=40.0),
+    ),
+    # Standard (Lv3): matches existing behavior (backward-compatible).
+    # t3=5.0, t2=2.5, t1=1.0 (unchanged)
     "standard": SkillPreset(
         quiz=QuizConfig(loss_threshold=2.0, limit=10),
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=15.0, reading_failure=20.0),
     ),
-    # Advanced: more sensitive to small errors.
+    # Advanced (Lv4): more sensitive to small errors (unchanged).
+    # t3=3.0, t2=1.5, t1=0.5 (preserved for backward compatibility)
     "advanced": SkillPreset(
         quiz=QuizConfig(loss_threshold=1.0, limit=10),
         score_thresholds=(0.5, 1.5, 3.0),
         winrate_thresholds=(0.03, 0.07, 0.15),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=10.0, reading_failure=15.0),
+    ),
+    # Pro (Lv5): strictest thresholds for dan-level analysis.
+    # t3=1.0, t2=0.5*t3=0.5, t1=0.2*t3=0.2
+    "pro": SkillPreset(
+        quiz=QuizConfig(loss_threshold=0.4, limit=10),
+        score_thresholds=(0.2, 0.5, 1.0),
+        winrate_thresholds=(0.01, 0.02, 0.04),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=3.0, reading_failure=4.0),
     ),
 }
 
@@ -749,6 +769,11 @@ class UrgentMissConfig:
 
 # 棋力別の急場見逃し検出設定
 URGENT_MISS_CONFIGS: Dict[str, UrgentMissConfig] = {
+    # Relaxed: only detect catastrophic oversight (50+ points)
+    "relaxed": UrgentMissConfig(
+        threshold_loss=50.0,
+        min_consecutive=5
+    ),
     # 級位者: 大石の生き死にでも見逃しやすい。30目以上の超大損失のみ検出
     "beginner": UrgentMissConfig(
         threshold_loss=30.0,
@@ -763,6 +788,11 @@ URGENT_MISS_CONFIGS: Dict[str, UrgentMissConfig] = {
     "advanced": UrgentMissConfig(
         threshold_loss=15.0,
         min_consecutive=3
+    ),
+    # Pro: detect even small urgent oversights (10+ points)
+    "pro": UrgentMissConfig(
+        threshold_loss=10.0,
+        min_consecutive=2
     ),
 }
 

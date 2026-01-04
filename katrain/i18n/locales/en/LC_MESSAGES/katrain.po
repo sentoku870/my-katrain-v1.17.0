@@ -1258,6 +1258,9 @@ msgstr "Configure myKatrain default settings:"
 msgid "mykatrain:settings:skill_preset"
 msgstr "Skill Preset:"
 
+msgid "mykatrain:settings:skill_relaxed"
+msgstr "Relaxed"
+
 msgid "mykatrain:settings:skill_beginner"
 msgstr "Beginner"
 
@@ -1266,6 +1269,9 @@ msgstr "Standard"
 
 msgid "mykatrain:settings:skill_advanced"
 msgstr "Advanced"
+
+msgid "mykatrain:settings:skill_pro"
+msgstr "Pro"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"

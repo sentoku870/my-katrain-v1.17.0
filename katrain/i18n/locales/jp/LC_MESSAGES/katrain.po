@@ -1211,13 +1211,19 @@ msgid "mykatrain:settings:skill_preset"
 msgstr "棋力プリセット:"
 
 msgid "mykatrain:settings:skill_beginner"
-msgstr "初心者"
+msgstr "甘口"
 
 msgid "mykatrain:settings:skill_standard"
 msgstr "標準"
 
 msgid "mykatrain:settings:skill_advanced"
-msgstr "上級者"
+msgstr "辛口"
+
+msgid "mykatrain:settings:skill_relaxed"
+msgstr "激甘"
+
+msgid "mykatrain:settings:skill_pro"
+msgstr "激辛"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
