@@ -1230,3 +1230,116 @@ class TestReasonTagsCompleteness:
         unique_labels = set(labels)
 
         assert len(labels) == len(unique_labels), "Duplicate labels found in REASON_TAG_LABELS"
+
+
+# ---------------------------------------------------------------------------
+# Test: 5-level Skill Presets
+# ---------------------------------------------------------------------------
+
+class TestSkillPresets:
+    """Tests for SKILL_PRESETS configuration (5-level system)."""
+
+    def test_all_five_presets_exist(self):
+        """All 5 skill presets should be defined."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        expected_keys = {"relaxed", "beginner", "standard", "advanced", "pro"}
+        assert set(SKILL_PRESETS.keys()) == expected_keys
+
+    def test_standard_unchanged(self):
+        """Standard preset should maintain backward-compatible values."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        standard = SKILL_PRESETS["standard"]
+        # Original standard thresholds must remain unchanged
+        assert standard.score_thresholds == (1.0, 2.5, 5.0)
+        assert standard.quiz.loss_threshold == 2.0
+
+    def test_advanced_unchanged(self):
+        """Advanced preset should maintain backward-compatible values."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        advanced = SKILL_PRESETS["advanced"]
+        # Advanced thresholds preserved from original implementation
+        assert advanced.score_thresholds == (0.5, 1.5, 3.0)
+        assert advanced.quiz.loss_threshold == 1.0
+
+    def test_score_thresholds_follow_formula(self):
+        """New presets (relaxed, beginner, pro) should follow t1=0.2*t3, t2=0.5*t3 formula."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        # Only check formula for new presets (relaxed, beginner, pro)
+        formula_presets = ["relaxed", "beginner", "pro"]
+        for key in formula_presets:
+            preset = SKILL_PRESETS[key]
+            t1, t2, t3 = preset.score_thresholds
+            assert abs(t1 - 0.2 * t3) < 0.01, f"{key}: t1 should be 0.2 * t3"
+            assert abs(t2 - 0.5 * t3) < 0.01, f"{key}: t2 should be 0.5 * t3"
+
+    def test_thresholds_increasing_strictness(self):
+        """Presets should have decreasing t3 values from relaxed to pro (increasing strictness)."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        order = ["relaxed", "beginner", "standard", "advanced", "pro"]
+        prev_t3 = float("inf")
+        for key in order:
+            t3 = SKILL_PRESETS[key].score_thresholds[2]
+            assert t3 < prev_t3, f"{key}: t3={t3} should be less than previous {prev_t3}"
+            prev_t3 = t3
+
+    def test_get_skill_preset_fallback(self):
+        """Unknown preset names should fall back to 'standard'."""
+        from katrain.core.eval_metrics import get_skill_preset, SKILL_PRESETS
+
+        result = get_skill_preset("nonexistent")
+        assert result == SKILL_PRESETS["standard"]
+
+    def test_default_skill_preset_is_standard(self):
+        """DEFAULT_SKILL_PRESET should be 'standard' for backward compatibility."""
+        from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
+
+        assert DEFAULT_SKILL_PRESET == "standard"
+
+    def test_preset_t3_values(self):
+        """Verify expected t3 (blunder) values for each preset."""
+        from katrain.core.eval_metrics import SKILL_PRESETS
+
+        expected_t3 = {
+            "relaxed": 15.0,
+            "beginner": 10.0,
+            "standard": 5.0,
+            "advanced": 3.0,
+            "pro": 1.0,
+        }
+        for key, expected in expected_t3.items():
+            actual = SKILL_PRESETS[key].score_thresholds[2]
+            assert actual == expected, f"{key}: expected t3={expected}, got {actual}"
+
+
+class TestUrgentMissConfigs:
+    """Tests for URGENT_MISS_CONFIGS (5-level system)."""
+
+    def test_all_five_configs_exist(self):
+        """All 5 urgent miss configs should be defined."""
+        from katrain.core.eval_metrics import URGENT_MISS_CONFIGS
+
+        expected_keys = {"relaxed", "beginner", "standard", "advanced", "pro"}
+        assert set(URGENT_MISS_CONFIGS.keys()) == expected_keys
+
+    def test_threshold_loss_decreasing(self):
+        """threshold_loss should decrease from relaxed to pro (stricter detection)."""
+        from katrain.core.eval_metrics import URGENT_MISS_CONFIGS
+
+        order = ["relaxed", "beginner", "standard", "advanced", "pro"]
+        prev_threshold = float("inf")
+        for key in order:
+            threshold = URGENT_MISS_CONFIGS[key].threshold_loss
+            assert threshold < prev_threshold, f"{key}: threshold should decrease"
+            prev_threshold = threshold
+
+    def test_min_consecutive_reasonable(self):
+        """min_consecutive should be reasonable (2-5 range)."""
+        from katrain.core.eval_metrics import URGENT_MISS_CONFIGS
+
+        for key, config in URGENT_MISS_CONFIGS.items():
+            assert 2 <= config.min_consecutive <= 5, f"{key}: min_consecutive out of range"

@@ -1187,6 +1187,12 @@ msgstr "Black Only"
 msgid "mykatrain:settings:skill_advanced"
 msgstr "Advanced"
 
+msgid "mykatrain:settings:skill_relaxed"
+msgstr "Мягкий"
+
+msgid "mykatrain:settings:skill_pro"
+msgstr "Про"
+
 #. TODO
 msgid "mykatrain:settings:opponent_info_mode"
 msgstr "Opponent Info Mode:"

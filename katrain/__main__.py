@@ -2520,12 +2520,14 @@ class KaTrainGui(Screen, KaTrainBase):
         selected_skill_preset = [current_skill_preset]
 
         skill_options = [
+            ("relaxed", i18n._("mykatrain:settings:skill_relaxed")),
             ("beginner", i18n._("mykatrain:settings:skill_beginner")),
             ("standard", i18n._("mykatrain:settings:skill_standard")),
             ("advanced", i18n._("mykatrain:settings:skill_advanced")),
+            ("pro", i18n._("mykatrain:settings:skill_pro")),
         ]
 
-        skill_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+        skill_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
         for skill_value, skill_label_text in skill_options:
             checkbox = CheckBox(
                 group="skill_preset_setting",
@@ -2539,7 +2541,7 @@ class KaTrainGui(Screen, KaTrainBase):
             label = Label(
                 text=skill_label_text,
                 size_hint_x=None,
-                width=dp(100),
+                width=dp(75),  # Reduced from 100 to fit 5 options
                 halign="left",
                 valign="middle",
                 color=Theme.TEXT_COLOR,
