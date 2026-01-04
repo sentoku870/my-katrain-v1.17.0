@@ -1412,3 +1412,15 @@ msgstr "Black"
 #. TODO
 msgid "mykatrain:batch:summary_player"
 msgstr "Summary: {player} ({count} games)"
+
+msgid "mykatrain:batch:variable_visits"
+msgstr "Variable visits"
+
+msgid "mykatrain:batch:jitter_pct"
+msgstr "Jitter %:"
+
+msgid "mykatrain:batch:deterministic"
+msgstr "Deterministic"
+
+msgid "mykatrain:batch:sound_on_finish"
+msgstr "Sound on finish"
