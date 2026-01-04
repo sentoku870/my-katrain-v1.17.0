@@ -126,6 +126,24 @@ msgstr "Please select a valid input directory"
 msgid "mykatrain:batch:error_no_engine"
 msgstr "KataGo engine is not running"
 
+msgid "mykatrain:batch:player_filter"
+msgstr "Player Filter:"
+
+msgid "mykatrain:batch:filter_both"
+msgstr "Both"
+
+msgid "mykatrain:batch:filter_black"
+msgstr "Black"
+
+msgid "mykatrain:batch:filter_white"
+msgstr "White"
+
+msgid "mykatrain:batch:min_games"
+msgstr "Min games/player:"
+
+msgid "mykatrain:batch:summary_player"
+msgstr "Summary: {player} ({count} games)"
+
 #. player options in the setup and on the right
 msgid "player:type"
 msgstr "Player"

@@ -32,11 +32,13 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Optional,
+    Set,
     Tuple,
-    Dict,
+    Union,
 )
 
 # KaTrain 側の型に依存するのは最小限にする
@@ -680,6 +682,8 @@ def get_skill_preset(name: str) -> SkillPreset:
 # ---------------------------------------------------------------------------
 
 # 理由タグの日本語ラベル（カルテ・サマリーで使用）
+# Note: All tags that can be emitted by get_reason_tags_for_move() or used elsewhere
+# MUST be defined here. Use validate_reason_tag() to ensure completeness.
 REASON_TAG_LABELS: Dict[str, str] = {
     "atari": "アタリ (atari)",
     "low_liberties": "呼吸点少 (low liberties)",
@@ -687,11 +691,45 @@ REASON_TAG_LABELS: Dict[str, str] = {
     "need_connect": "連絡必要 (need connect)",
     "thin": "薄い形 (thin)",
     "chase_mode": "追込モード (chase mode)",
-    "too_many_choices": "候補多数 (many choices)",
+    "too_many_choices": "候補多数 (many choices)",  # Currently disabled in get_reason_tags_for_move
     "endgame_hint": "ヨセ局面 (endgame)",
     "heavy_loss": "大損失 (heavy loss)",
     "reading_failure": "読み抜け (reading failure)",
+    "unknown": "不明 (unknown)",  # Fallback when analysis fails
 }
+
+# All valid reason tags that can be emitted
+VALID_REASON_TAGS: Set[str] = set(REASON_TAG_LABELS.keys())
+
+
+def validate_reason_tag(tag: str) -> bool:
+    """Check if a reason tag is defined in REASON_TAG_LABELS.
+
+    Args:
+        tag: The reason tag to validate
+
+    Returns:
+        True if the tag is defined, False otherwise
+    """
+    return tag in VALID_REASON_TAGS
+
+
+def get_reason_tag_label(tag: str, fallback_to_raw: bool = True) -> str:
+    """Get the display label for a reason tag.
+
+    Args:
+        tag: The reason tag key
+        fallback_to_raw: If True, return the raw tag if not found.
+                        If False, return "??? (tag)" for undefined tags.
+
+    Returns:
+        The display label for the tag
+    """
+    if tag in REASON_TAG_LABELS:
+        return REASON_TAG_LABELS[tag]
+    if fallback_to_raw:
+        return tag
+    return f"??? ({tag})"
 
 
 # Default configuration for the current quiz popup (backward-compatible).
@@ -829,9 +867,109 @@ def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VI
     return int(root_visits or 0) >= threshold
 
 
+@dataclass
+class ReliabilityStats:
+    """Data Quality / Reliability statistics for a set of moves."""
+    total_moves: int = 0
+    reliable_count: int = 0
+    low_confidence_count: int = 0
+    zero_visits_count: int = 0  # Moves with visits=0 or None
+    total_visits: int = 0
+    moves_with_visits: int = 0  # Moves with valid visits > 0
+    max_visits: int = 0  # PR1-2: Maximum visits observed (helps users trust low reliability)
+
+    @property
+    def reliability_pct(self) -> float:
+        """Percentage of moves that are reliable (visits >= threshold)."""
+        if self.total_moves == 0:
+            return 0.0
+        return 100.0 * self.reliable_count / self.total_moves
+
+    @property
+    def low_confidence_pct(self) -> float:
+        """Percentage of moves that are low confidence."""
+        if self.total_moves == 0:
+            return 0.0
+        return 100.0 * self.low_confidence_count / self.total_moves
+
+    @property
+    def avg_visits(self) -> float:
+        """Average visits for moves that have valid visits (>0)."""
+        if self.moves_with_visits == 0:
+            return 0.0
+        return self.total_visits / self.moves_with_visits
+
+    @property
+    def is_low_reliability(self) -> bool:
+        """True if reliability percentage is below 20%."""
+        return self.reliability_pct < 20.0
+
+
+def compute_reliability_stats(
+    moves: Iterable[MoveEval],
+    *,
+    threshold: int = RELIABILITY_VISITS_THRESHOLD,
+) -> ReliabilityStats:
+    """
+    Compute reliability statistics for a collection of moves.
+
+    Args:
+        moves: Iterable of MoveEval objects
+        threshold: Visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD=200)
+
+    Returns:
+        ReliabilityStats with counts and percentages
+    """
+    stats = ReliabilityStats()
+
+    for m in moves:
+        stats.total_moves += 1
+        visits = m.root_visits or 0
+
+        if visits == 0:
+            stats.zero_visits_count += 1
+            stats.low_confidence_count += 1
+        elif visits >= threshold:
+            stats.reliable_count += 1
+            stats.total_visits += visits
+            stats.moves_with_visits += 1
+        else:
+            stats.low_confidence_count += 1
+            stats.total_visits += visits
+            stats.moves_with_visits += 1
+
+        # PR1-2: Track max visits
+        if visits > stats.max_visits:
+            stats.max_visits = visits
+
+    return stats
+
+
+def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:
+    """
+    Get phase classification thresholds for a given board size.
+
+    Args:
+        board_size: Board size (9, 13, 19, etc.)
+
+    Returns:
+        Tuple of (opening_end, middle_end) move numbers.
+        - Moves < opening_end are "opening"
+        - Moves >= opening_end and < middle_end are "middle"
+        - Moves >= middle_end are "yose" (endgame)
+    """
+    thresholds = {
+        9: (15, 50),
+        13: (30, 100),
+        19: (50, 200),
+    }
+    return thresholds.get(board_size, (50, 200))
+
+
 def _assess_difficulty_from_policy(
     policy: List[float],
     *,
+    board_size: Union[int, Tuple[int, int]] = 19,
     entropy_easy_threshold: float = 2.5,
     entropy_hard_threshold: float = 1.0,
     top5_easy_threshold: float = 0.5,
@@ -848,16 +986,47 @@ def _assess_difficulty_from_policy(
 
     両方の指標を組み合わせて判定する。
 
-    Note (Limitation):
-        現在の閾値は19x19を想定して設定されている。
-        9x9/13x13では policy の長さが異なるため、entropy の最大値も異なる。
-        厳密な盤面サイズ対応が必要な場合は、閾値の正規化を検討すること。
-        （例: entropy / log(board_size**2) で正規化）
+    Args:
+        policy: KataGoのpolicy配列（各交点の確率）
+        board_size: 盤面サイズ。intまたは(x, y)タプル。
+                   entropy閾値の正規化に使用。
+        entropy_easy_threshold: 易しい局面のentropy閾値（19x19基準）
+        entropy_hard_threshold: 難しい局面のentropy閾値（19x19基準）
+        top5_easy_threshold: 易しい局面のtop5_mass閾値
+        top5_hard_threshold: 難しい局面のtop5_mass閾値
+
+    Note:
+        閾値は19x19を基準として設定されている。
+        盤面サイズに応じて log(board_points) / log(361) で正規化される。
     """
     import math
 
     if not policy:
         return PositionDifficulty.UNKNOWN, 0.5
+
+    # Handle both int and tuple board_size
+    if isinstance(board_size, tuple):
+        board_points = board_size[0] * board_size[1]
+    else:
+        board_points = board_size * board_size
+
+    # Safety check: avoid invalid board sizes
+    if board_points < 9:  # Smaller than 3x3 is invalid
+        board_points = 361  # Fallback to 19x19
+
+    # Reference: 19x19 board
+    REF_BOARD_POINTS = 361
+    ref_max_entropy = math.log(REF_BOARD_POINTS)  # ~5.89
+
+    # Current board max entropy (using log(n+1) to avoid log(0) edge case)
+    current_max_entropy = math.log(board_points + 1)
+
+    # Scale factor for entropy thresholds
+    scale_factor = current_max_entropy / ref_max_entropy
+
+    # Adjusted thresholds for this board size
+    adjusted_easy = entropy_easy_threshold * scale_factor
+    adjusted_hard = entropy_hard_threshold * scale_factor
 
     # Policy entropy 計算
     entropy = 0.0
@@ -869,17 +1038,17 @@ def _assess_difficulty_from_policy(
     sorted_probs = sorted(policy, reverse=True)
     top5_mass = sum(sorted_probs[:5])
 
-    # 難易度判定
+    # 難易度判定（正規化された閾値を使用）
     # entropy が高く、top5_mass が低い = 易しい
     # entropy が低く、top5_mass が高い = 難しい
-    if entropy >= entropy_easy_threshold and top5_mass <= top5_easy_threshold:
+    if entropy >= adjusted_easy and top5_mass <= top5_easy_threshold:
         return PositionDifficulty.EASY, 0.2
-    elif entropy <= entropy_hard_threshold or top5_mass >= top5_hard_threshold:
+    elif entropy <= adjusted_hard or top5_mass >= top5_hard_threshold:
         # さらに top1 が支配的なら ONLY_MOVE
         if sorted_probs[0] >= 0.8:
             return PositionDifficulty.ONLY_MOVE, 1.0
         return PositionDifficulty.HARD, 0.8
-    elif entropy >= (entropy_easy_threshold + entropy_hard_threshold) / 2:
+    elif entropy >= (adjusted_easy + adjusted_hard) / 2:
         return PositionDifficulty.EASY, 0.3
     else:
         return PositionDifficulty.NORMAL, 0.5
@@ -970,7 +1139,10 @@ def assess_position_difficulty_from_parent(
             policy = analysis.get("policy")
             # Avoid truthiness check on numpy arrays: use explicit None check and len()
             if policy is not None and len(policy) > 0:
-                return _assess_difficulty_from_policy(list(policy))
+                # Get board_size from the node's root for entropy normalization
+                root = getattr(node, "root", None)
+                board_size = getattr(root, "board_size", (19, 19)) if root else (19, 19)
+                return _assess_difficulty_from_policy(list(policy), board_size=board_size)
 
     return PositionDifficulty.UNKNOWN, None
 

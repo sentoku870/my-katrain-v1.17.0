@@ -22,6 +22,7 @@ from .eval_metrics import (
     QuizQuestion,
     SummaryStats,
     aggregate_phase_mistake_stats,
+    classify_mistake,
     detect_mistake_streaks,
     get_canonical_loss_from_move,
     get_practice_priorities_from_stats,
@@ -48,6 +49,43 @@ from katrain.core.constants import (
     PRIORITY_EQUALIZE,
     PRIORITY_DEFAULT,
 )
+
+
+class KarteGenerationError(Exception):
+    """Exception raised when karte generation fails.
+
+    Attributes:
+        game_id: Identifier of the game being processed
+        focus_player: Player filter if any ("B", "W", or None)
+        context: Additional context about where the error occurred
+        original_error: The underlying exception that caused this error
+    """
+
+    def __init__(
+        self,
+        message: str,
+        game_id: str = "",
+        focus_player: Optional[str] = None,
+        context: str = "",
+        original_error: Optional[Exception] = None,
+    ):
+        super().__init__(message)
+        self.game_id = game_id
+        self.focus_player = focus_player
+        self.context = context
+        self.original_error = original_error
+
+    def __str__(self) -> str:
+        parts = [super().__str__()]
+        if self.game_id:
+            parts.append(f"game_id={self.game_id}")
+        if self.focus_player:
+            parts.append(f"focus_player={self.focus_player}")
+        if self.context:
+            parts.append(f"context={self.context}")
+        return " | ".join(parts)
+
+
 from katrain.core.engine import KataGoEngine
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n, rank_label
@@ -815,7 +853,8 @@ class Game(BaseGame):
     def build_karte_report(
         self,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-        player_filter: Optional[str] = None
+        player_filter: Optional[str] = None,
+        raise_on_error: bool = False,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
 
@@ -823,7 +862,73 @@ class Game(BaseGame):
             level: Important move level setting
             player_filter: Filter by player ("B", "W", or None for both)
                           Can also be a username string to match against player names
+            raise_on_error: If True, raise KarteGenerationError on failure.
+                           If False (default), return error markdown instead.
+
+        Returns:
+            Markdown-formatted karte report.
+            On error with raise_on_error=False, returns a report with ERROR section.
+
+        Raises:
+            KarteGenerationError: If raise_on_error=True and generation fails.
         """
+        game_id = self.game_id or self.sgf_filename or "unknown"
+
+        try:
+            return self._build_karte_report_impl(level, player_filter)
+        except Exception as e:
+            error_msg = f"Failed to generate karte: {type(e).__name__}: {e}"
+            if self.katrain:
+                self.katrain.log(error_msg, OUTPUT_DEBUG)
+
+            if raise_on_error:
+                raise KarteGenerationError(
+                    message=error_msg,
+                    game_id=game_id,
+                    focus_player=player_filter,
+                    context="build_karte_report",
+                    original_error=e,
+                ) from e
+
+            # Return error markdown instead of crashing
+            return self._build_error_karte(game_id, player_filter, error_msg)
+
+    def _build_error_karte(
+        self,
+        game_id: str,
+        player_filter: Optional[str],
+        error_msg: str,
+    ) -> str:
+        """Build a minimal karte with ERROR section when generation fails."""
+        sections = [
+            "# Karte (ERROR)",
+            "",
+            "## Meta",
+            f"- Game: {game_id}",
+            f"- Player Filter: {player_filter or 'both'}",
+            "",
+            "## ERROR",
+            "",
+            "Karte generation failed with the following error:",
+            "",
+            f"```",
+            error_msg,
+            f"```",
+            "",
+            "Please check:",
+            "- The game has been analyzed (KT property present)",
+            "- The SGF file is not corrupted",
+            "- KataGo engine is running correctly",
+            "",
+        ]
+        return "\n".join(sections)
+
+    def _build_karte_report_impl(
+        self,
+        level: str,
+        player_filter: Optional[str],
+    ) -> str:
+        """Internal implementation of build_karte_report."""
         snapshot = self.build_eval_snapshot()
         thresholds = self.katrain.config("trainer/eval_thresholds") if self.katrain else []
         settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
@@ -911,15 +1016,12 @@ class Game(BaseGame):
             return max(moves, key=lambda mv: mv.points_lost) if moves else None
 
         def mistake_label_from_loss(loss_val: Optional[float]) -> str:
+            """Classify a loss value using the centralized classify_mistake function."""
             if loss_val is None:
                 return "unknown"
-            if loss_val < 1.0:
-                return MistakeCategory.GOOD.value
-            if loss_val < 3.0:
-                return MistakeCategory.INACCURACY.value
-            if loss_val < 7.0:
-                return MistakeCategory.MISTAKE.value
-            return MistakeCategory.BLUNDER.value
+            # Use classify_mistake for consistent thresholds across Karte and Summary
+            category = classify_mistake(score_loss=loss_val, winrate_loss=None)
+            return category.value
 
         def summary_lines_for(player: str) -> List[str]:
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
@@ -1027,65 +1129,86 @@ class Game(BaseGame):
         # Important moves table (top N derived from existing settings)
         important_moves = self.get_important_move_evals(level=level)
 
-        # Phase 2: コンテキスト情報（候補手数・最善手差・危険度）を取得
+        # Phase 2: コンテキスト情報（候補手数・最善手差・危険度・最善手）を取得
         def get_context_info_for_move(move_eval) -> dict:
-            """MoveEval から候補手数・最善手差・危険度を取得
+            """MoveEval から候補手数・最善手差・危険度・最善手を取得
+
+            CRITICAL FIX: Best move and candidates are now extracted from the PRE-MOVE node
+            (node.parent), not the post-move node. This ensures we see the candidate moves
+            that were available BEFORE the move was played.
 
             Returns:
                 {
                     "candidates": int or None,
                     "best_gap": float or None (0.0-1.0),
-                    "danger": str or None ("High"/"Mid"/"Low")
+                    "danger": str or None ("High"/"Mid"/"Low"),
+                    "best_move": str or None (GTP format, e.g., "Q16")
                 }
             """
             context = {
                 "candidates": None,
                 "best_gap": None,
-                "danger": None
+                "danger": None,
+                "best_move": None,
             }
 
             try:
-                # 候補手数
                 node = self._find_node_by_move_number(move_eval.move_number)
-                if node and hasattr(node, 'candidate_moves'):
-                    context["candidates"] = len(node.candidate_moves)
+                if not node:
+                    return context
 
-                    # 最善手との差（winrateLost）
-                    # 実際に打った手の候補を探す
-                    actual_move_gtp = move_eval.gtp
-                    if actual_move_gtp:
-                        for candidate in node.candidate_moves:
-                            if candidate.get("move") == actual_move_gtp:
-                                winrate_lost = candidate.get("winrateLost")
-                                if winrate_lost is not None:
-                                    context["best_gap"] = winrate_lost
-                                break
+                # CRITICAL: Use parent node for candidate moves (PRE-MOVE position)
+                # This is the position BEFORE the move was played, which contains
+                # the candidate moves that were available to the player.
+                parent_node = getattr(node, "parent", None)
 
-                # 危険度（board_analysis から）
-                if node:
-                    from katrain.core import board_analysis
-                    board_state = board_analysis.analyze_board_at_node(self, node)
+                if parent_node and hasattr(parent_node, 'candidate_moves'):
+                    candidate_moves = parent_node.candidate_moves
+                    if candidate_moves:
+                        context["candidates"] = len(candidate_moves)
 
-                    # プレイヤーのグループの最大危険度
-                    player = move_eval.player
-                    if player:
-                        my_groups = [g for g in board_state.groups if g.color == player]
-                        if my_groups:
-                            max_danger = max(
-                                (board_state.danger_scores.get(g.group_id, 0) for g in my_groups),
-                                default=0
-                            )
+                        # Best move is the first candidate (order=0)
+                        if candidate_moves:
+                            best_candidate = candidate_moves[0]
+                            context["best_move"] = best_candidate.get("move")
 
-                            if max_danger >= 50:
-                                context["danger"] = "High"
-                            elif max_danger >= 25:
-                                context["danger"] = "Mid"
-                            else:
-                                context["danger"] = "Low"
+                        # Best gap: find the played move in parent's candidates
+                        actual_move_gtp = move_eval.gtp
+                        if actual_move_gtp:
+                            for candidate in candidate_moves:
+                                if candidate.get("move") == actual_move_gtp:
+                                    # Use scoreLost or winrateLost if available
+                                    score_lost = candidate.get("scoreLost")
+                                    winrate_lost = candidate.get("winrateLost")
+                                    if winrate_lost is not None:
+                                        context["best_gap"] = winrate_lost
+                                    break
+
+                # 危険度（board_analysis から）- uses current node for danger assessment
+                from katrain.core import board_analysis
+                board_state = board_analysis.analyze_board_at_node(self, node)
+
+                # プレイヤーのグループの最大危険度
+                player = move_eval.player
+                if player:
+                    my_groups = [g for g in board_state.groups if g.color == player]
+                    if my_groups:
+                        max_danger = max(
+                            (board_state.danger_scores.get(g.group_id, 0) for g in my_groups),
+                            default=0
+                        )
+
+                        if max_danger >= 50:
+                            context["danger"] = "High"
+                        elif max_danger >= 25:
+                            context["danger"] = "Mid"
+                        else:
+                            context["danger"] = "Low"
 
             except Exception as e:
                 # エラー時は None のまま
-                self.katrain.log(f"Failed to get context info for move #{move_eval.move_number}: {e}", OUTPUT_DEBUG)
+                if self.katrain:
+                    self.katrain.log(f"Failed to get context info for move #{move_eval.move_number}: {e}", OUTPUT_DEBUG)
 
             return context
 
@@ -1093,24 +1216,35 @@ class Game(BaseGame):
             player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
             lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
             if player_moves:
-                # Phase 2: 新しい列を追加（Candidates, Best Gap, Danger）
-                lines.append("| # | P | Coord | Loss | Candidates | Best Gap | Danger | Mistake | Reason |")
-                lines.append("|---|---|-------|------|------------|----------|--------|---------|--------|")
+                # Added "Best" column for best move from PRE-MOVE node
+                lines.append("| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | Reason |")
+                lines.append("|---|---|-------|------|------|------------|----------|--------|---------|--------|")
                 for mv in player_moves:
                     # canonical loss を使用（常に >= 0）
                     loss = get_canonical_loss_from_move(mv)
                     mistake = mistake_label_from_loss(loss)
                     reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
 
-                    # Phase 2: コンテキスト情報を取得
+                    # コンテキスト情報を取得 (now includes best_move from PRE-MOVE node)
                     context = get_context_info_for_move(mv)
+                    best_move_str = context["best_move"] or "-"
                     candidates_str = str(context["candidates"]) if context["candidates"] is not None else "-"
-                    best_gap_str = f"{context['best_gap']*100:.0f}%" if context["best_gap"] is not None else "-"
+                    # PR1-3: Robust best_gap formatting using rounding
+                    # If int(round(val)) == 0, print "0%" to avoid "-0%" display
+                    if context["best_gap"] is not None:
+                        best_gap_val = context["best_gap"] * 100
+                        rounded_val = int(round(best_gap_val))
+                        if rounded_val == 0:
+                            best_gap_str = "0%"
+                        else:
+                            best_gap_str = f"{rounded_val}%"
+                    else:
+                        best_gap_str = "-"
                     danger_str = context["danger"] or "-"
 
                     lines.append(
                         f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                        f"{fmt_float(loss)} | {candidates_str} | {best_gap_str} | {danger_str} | "
+                        f"{fmt_float(loss)} | {best_move_str} | {candidates_str} | {best_gap_str} | {danger_str} | "
                         f"{mistake} | {reason_str} |"
                     )
             else:
@@ -1149,10 +1283,69 @@ class Game(BaseGame):
 
         focus_label = "Focus"
 
+        # Build Definitions section (uses SKILL_PRESETS thresholds, not hardcoded)
+        def definitions_section() -> List[str]:
+            """Build the Definitions section with thresholds from SKILL_PRESETS."""
+            preset = eval_metrics.SKILL_PRESETS.get("standard", eval_metrics.SKILL_PRESETS[eval_metrics.DEFAULT_SKILL_PRESET])
+            t1, t2, t3 = preset.score_thresholds  # (1.0, 2.5, 5.0) for standard
+
+            # Get phase thresholds for this board size
+            opening_end, middle_end = eval_metrics.get_phase_thresholds(board_x)
+
+            lines = [
+                "## Definitions",
+                "",
+                "| Metric | Definition |",
+                "|--------|------------|",
+                "| Points Lost | Score difference between actual move and best move (clamped to ≥0) |",
+                f"| Good | Loss < {t1:.1f} pts |",
+                f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |",
+                f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |",
+                f"| Blunder | Loss ≥ {t3:.1f} pts |",
+                f"| Phase ({board_x}x{board_y}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |",
+                "",
+            ]
+            return lines
+
+        # Build Data Quality section
+        def data_quality_section() -> List[str]:
+            """Build the Data Quality section with reliability statistics."""
+            rel_stats = eval_metrics.compute_reliability_stats(snapshot.moves)
+
+            lines = [
+                "## Data Quality",
+                "",
+                f"- Moves analyzed: {rel_stats.total_moves}",
+                f"- Reliable (visits ≥ {eval_metrics.RELIABILITY_VISITS_THRESHOLD}): "
+                f"{rel_stats.reliable_count} ({rel_stats.reliability_pct:.1f}%)",
+                f"- Low-confidence: {rel_stats.low_confidence_count} ({rel_stats.low_confidence_pct:.1f}%)",
+            ]
+
+            if rel_stats.moves_with_visits > 0:
+                lines.append(f"- Avg visits: {rel_stats.avg_visits:,.0f}")
+                # PR1-2: Add max visits to help users understand the data
+                if rel_stats.max_visits > 0:
+                    lines.append(f"- Max visits: {rel_stats.max_visits:,}")
+            if rel_stats.zero_visits_count > 0:
+                lines.append(f"- No visits data: {rel_stats.zero_visits_count}")
+
+            if rel_stats.is_low_reliability:
+                lines.append("")
+                lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")
+
+            # PR1-2: Add note about measured vs configured values
+            lines.append("")
+            lines.append("*Visits are measured from KataGo analysis (root_visits).*")
+
+            lines.append("")
+            return lines
+
         # Assemble sections
         sections = ["## Meta", *meta_lines, ""]
         sections += ["## Players", *players_lines, ""]
         sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
+        sections += definitions_section()
+        sections += data_quality_section()
 
         # Phase 3: Apply player filter to sections
         if filtered_player is None:

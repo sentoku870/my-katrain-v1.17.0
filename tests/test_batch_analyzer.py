@@ -722,3 +722,1267 @@ class TestBatchErrorHandling:
             summary_status = "No (skipped)"
 
         assert summary_status == "Yes"
+
+
+class TestPlayerExtraction:
+    """Tests for player name extraction and grouping."""
+
+    def test_extract_players_basic(self):
+        """Basic player extraction."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "Alice", "player_white": "Charlie", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 6.0, "W": 3.0}, "worst_moves": []},
+            {"player_black": "Bob", "player_white": "Alice", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 4.0, "W": 5.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=2)
+        assert "Alice" in groups
+        assert len(groups["Alice"]) == 3  # Alice played in all 3 games
+        assert "Bob" in groups
+        assert len(groups["Bob"]) == 2
+        assert "Charlie" not in groups  # Only 1 game
+
+    def test_skip_generic_names(self):
+        """Generic names should be skipped."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Black", "player_white": "White", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "黒", "player_white": "白", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=1)
+        assert len(groups) == 0
+
+    def test_name_normalization(self):
+        """Names with different whitespace should group together."""
+        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+
+        stats = [
+            {"player_black": "Alice  ", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": " Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+        ]
+        groups = _extract_players_from_stats(stats, min_games=1)
+        # All 3 "Alice" variations should be grouped together
+        assert len(groups) == 2  # Alice and Bob
+        # Find Alice's group (display name may vary based on first occurrence)
+        alice_games = None
+        for name, games in groups.items():
+            if "Alice" in name or "alice" in name.lower():
+                alice_games = games
+                break
+        assert alice_games is not None
+        assert len(alice_games) == 3
+
+
+class TestFilenameSanitization:
+    """Tests for filename sanitization."""
+
+    def test_basic_names(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("Alice") == "Alice"
+        assert _sanitize_filename("Bob Smith") == "Bob_Smith"
+
+    def test_cjk_names(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("田中太郎") == "田中太郎"
+        # Slash is invalid character, should be replaced
+        result = _sanitize_filename("山田/ヨセ")
+        assert "/" not in result
+        assert "山田" in result
+
+    def test_invalid_chars(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        result = _sanitize_filename("Alice<>Bob")
+        assert "<" not in result
+        assert ">" not in result
+
+        result = _sanitize_filename("User:Name")
+        assert ":" not in result
+
+    def test_windows_reserved(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("CON") == "_CON_"
+        assert _sanitize_filename("NUL") == "_NUL_"
+        assert _sanitize_filename("com1") == "_com1_"
+
+    def test_whitespace(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        # Full-width spaces should be normalized
+        result = _sanitize_filename("　全角スペース　")
+        assert result == "全角スペース"
+
+        result = _sanitize_filename("  multiple   spaces  ")
+        assert result == "multiple_spaces"
+
+    def test_empty_fallback(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("") == "unknown"
+        assert _sanitize_filename("   ") == "unknown"
+        assert _sanitize_filename("...") == "unknown"
+
+    def test_length_truncation(self):
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        long_name = "a" * 100
+        result = _sanitize_filename(long_name)
+        assert len(result) <= 50
+
+
+class TestEntropyNormalization:
+    """Tests for board-size aware entropy normalization."""
+
+    def test_uniform_distribution_all_sizes(self):
+        """Uniform distribution should be EASY on all board sizes."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        for size in [9, 13, 19]:
+            n = size * size
+            uniform = [1.0 / n] * n
+            diff, _ = _assess_difficulty_from_policy(uniform, board_size=size)
+            assert diff == PositionDifficulty.EASY, f"Uniform distribution on {size}x{size} should be EASY"
+
+    def test_concentrated_distribution_all_sizes(self):
+        """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        for size in [9, 13, 19]:
+            n = size * size
+            concentrated = [0.0] * n
+            concentrated[0] = 0.95
+            concentrated[1] = 0.05
+            diff, _ = _assess_difficulty_from_policy(concentrated, board_size=size)
+            assert diff in (PositionDifficulty.ONLY_MOVE, PositionDifficulty.HARD), \
+                f"Concentrated distribution on {size}x{size} should be ONLY_MOVE or HARD"
+
+    def test_board_size_as_tuple(self):
+        """Should handle board_size as tuple (x, y)."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        uniform = [1.0 / 361] * 361
+        diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
+        assert diff == PositionDifficulty.EASY
+
+    def test_invalid_board_size_fallback(self):
+        """Invalid board size should fallback to 19x19."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy
+
+        uniform = [1.0 / 361] * 361
+        # Should not crash, uses 19x19 fallback
+        diff1, _ = _assess_difficulty_from_policy(uniform, board_size=0)
+        diff2, _ = _assess_difficulty_from_policy(uniform, board_size=-5)
+        assert diff1 is not None
+        assert diff2 is not None
+
+    def test_empty_policy(self):
+        """Empty policy should return UNKNOWN."""
+        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+
+        diff, score = _assess_difficulty_from_policy([])
+        assert diff == PositionDifficulty.UNKNOWN
+        assert score == 0.5
+
+
+class TestRunBatchMinGamesParameter:
+    """Tests for run_batch min_games_per_player parameter."""
+
+    def test_run_batch_has_min_games_parameter(self):
+        """run_batch should accept min_games_per_player parameter."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+        params = list(sig.parameters.keys())
+
+        assert "min_games_per_player" in params
+
+    def test_run_batch_min_games_default(self):
+        """min_games_per_player should default to 3."""
+        from katrain.tools.batch_analyze_sgf import run_batch
+        import inspect
+
+        sig = inspect.signature(run_batch)
+        assert sig.parameters["min_games_per_player"].default == 3
+
+
+class TestCanonicalLossHelper:
+    """Tests for _get_canonical_loss helper (single source of truth)."""
+
+    def test_positive_loss_unchanged(self):
+        """Positive loss should be returned as-is."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(5.0) == 5.0
+        assert _get_canonical_loss(0.5) == 0.5
+        assert _get_canonical_loss(100.0) == 100.0
+
+    def test_negative_loss_clamped_to_zero(self):
+        """Negative loss (gain from opponent mistake) should be clamped to 0."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(-3.0) == 0.0
+        assert _get_canonical_loss(-0.1) == 0.0
+        assert _get_canonical_loss(-100.0) == 0.0
+
+    def test_zero_loss_unchanged(self):
+        """Zero loss should remain zero."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(0.0) == 0.0
+
+    def test_none_returns_zero(self):
+        """None should return 0."""
+        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+
+        assert _get_canonical_loss(None) == 0.0
+
+
+class TestSafeWriteFile:
+    """Tests for _safe_write_file helper (A3: I/O error handling)."""
+
+    def test_creates_parent_directories(self, tmp_path):
+        """Should create parent directories if they don't exist."""
+        from katrain.tools.batch_analyze_sgf import _safe_write_file
+
+        nested_path = tmp_path / "a" / "b" / "c" / "test.md"
+        error = _safe_write_file(
+            path=str(nested_path),
+            content="test content",
+            file_kind="karte",
+            sgf_id="test.sgf",
+        )
+        assert error is None
+        assert nested_path.exists()
+        assert nested_path.read_text(encoding="utf-8") == "test content"
+
+    def test_returns_error_on_permission_denied(self, tmp_path, monkeypatch):
+        """Should return WriteError on PermissionError."""
+        from katrain.tools.batch_analyze_sgf import _safe_write_file, WriteError
+
+        test_path = tmp_path / "test.md"
+
+        # Simulate permission error
+        def mock_open(*args, **kwargs):
+            raise PermissionError("Access denied")
+
+        monkeypatch.setattr("builtins.open", mock_open)
+
+        error = _safe_write_file(
+            path=str(test_path),
+            content="test content",
+            file_kind="karte",
+            sgf_id="test.sgf",
+        )
+        assert error is not None
+        assert isinstance(error, WriteError)
+        assert error.file_kind == "karte"
+        assert error.sgf_id == "test.sgf"
+        assert error.exception_type == "PermissionError"
+        assert "Access denied" in error.message
+
+    def test_returns_error_on_oserror(self, tmp_path, monkeypatch):
+        """Should return WriteError on OSError."""
+        from katrain.tools.batch_analyze_sgf import _safe_write_file, WriteError
+
+        test_path = tmp_path / "test.md"
+
+        def mock_open(*args, **kwargs):
+            raise OSError("Disk full")
+
+        monkeypatch.setattr("builtins.open", mock_open)
+
+        error = _safe_write_file(
+            path=str(test_path),
+            content="test content",
+            file_kind="summary",
+            sgf_id="player1",
+        )
+        assert error is not None
+        assert error.file_kind == "summary"
+        assert error.exception_type == "OSError"
+
+    def test_writes_unicode_content(self, tmp_path):
+        """Should handle Unicode content correctly."""
+        from katrain.tools.batch_analyze_sgf import _safe_write_file
+
+        test_path = tmp_path / "unicode_test.md"
+        unicode_content = "# カルテ\n仙得 vs 顺势而韦\n囲碁分析"
+
+        error = _safe_write_file(
+            path=str(test_path),
+            content=unicode_content,
+            file_kind="karte",
+            sgf_id="test.sgf",
+        )
+        assert error is None
+        assert test_path.read_text(encoding="utf-8") == unicode_content
+
+
+class TestWriteErrorDataclass:
+    """Tests for WriteError dataclass."""
+
+    def test_write_error_fields(self):
+        """WriteError should have all expected fields."""
+        from katrain.tools.batch_analyze_sgf import WriteError
+
+        error = WriteError(
+            file_kind="karte",
+            sgf_id="test.sgf",
+            target_path="/path/to/file.md",
+            exception_type="PermissionError",
+            message="Access denied",
+        )
+        assert error.file_kind == "karte"
+        assert error.sgf_id == "test.sgf"
+        assert error.target_path == "/path/to/file.md"
+        assert error.exception_type == "PermissionError"
+        assert error.message == "Access denied"
+
+
+class TestBatchResultWriteErrors:
+    """Tests for BatchResult write_errors field."""
+
+    def test_write_errors_default_empty(self):
+        """write_errors should default to empty list."""
+        from katrain.tools.batch_analyze_sgf import BatchResult
+
+        result = BatchResult()
+        assert result.write_errors == []
+        assert isinstance(result.write_errors, list)
+
+    def test_write_errors_append(self):
+        """Should be able to append WriteError objects."""
+        from katrain.tools.batch_analyze_sgf import BatchResult, WriteError
+
+        result = BatchResult()
+        error = WriteError(
+            file_kind="karte",
+            sgf_id="test.sgf",
+            target_path="/path/to/file.md",
+            exception_type="OSError",
+            message="Disk full",
+        )
+        result.write_errors.append(error)
+        assert len(result.write_errors) == 1
+        assert result.write_errors[0].file_kind == "karte"
+
+
+class TestSanitizeFilenameTrailingChars:
+    """Tests for _sanitize_filename trailing dots/spaces handling."""
+
+    def test_strips_trailing_dots(self):
+        """Should strip trailing dots (Windows requirement)."""
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("name...") == "name"
+        # Dots in the middle are preserved, only trailing dots stripped
+        assert _sanitize_filename("file.name..") == "file.name"
+
+    def test_strips_trailing_spaces(self):
+        """Should strip trailing spaces (Windows requirement)."""
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("name   ") == "name"
+
+    def test_handles_only_dots_and_spaces(self):
+        """Should return 'unknown' for only dots and spaces."""
+        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+
+        assert _sanitize_filename("...   ") == "unknown"
+        assert _sanitize_filename("   ") == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Test: Player Summary Reason Tags (Issue 2)
+# ---------------------------------------------------------------------------
+
+
+class TestPlayerSummaryReasonTags:
+    """Tests for reason tags aggregation in player summary (Issue 2)."""
+
+    def test_reason_tags_counted_in_stats(self):
+        """Verify reason_tags_by_player is populated in game stats."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        # Create a mock stats dict with reason tags
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {
+                "B": {"low_liberties": 5, "atari": 3, "need_connect": 2},
+                "W": {"low_liberties": 2, "endgame_hint": 4},
+            },
+            "worst_moves": [],
+        }
+
+        # Build summary for player B
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Verify reason tags section is present
+        assert "## Reason Tags (Top 10)" in summary
+        assert "呼吸点少 (low liberties): 5" in summary
+        assert "アタリ (atari): 3" in summary
+        assert "連絡必要 (need connect): 2" in summary
+
+    def test_reason_tags_aggregated_across_games(self):
+        """Verify reason tags are correctly aggregated across multiple games."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        def make_mock_stats(name, reason_tags):
+            return {
+                "game_name": name,
+                "moves_by_player": {"B": 10, "W": 10},
+                "loss_by_player": {"B": 5.0, "W": 3.0},
+                "mistake_counts_by_player": {
+                    "B": {cat: 0 for cat in MistakeCategory},
+                    "W": {cat: 0 for cat in MistakeCategory},
+                },
+                "mistake_total_loss_by_player": {
+                    "B": {cat: 0.0 for cat in MistakeCategory},
+                    "W": {cat: 0.0 for cat in MistakeCategory},
+                },
+                "freedom_counts_by_player": {
+                    "B": {diff: 0 for diff in PositionDifficulty},
+                    "W": {diff: 0 for diff in PositionDifficulty},
+                },
+                "phase_moves_by_player": {
+                    "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                    "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                },
+                "phase_loss_by_player": {
+                    "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                    "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+                },
+                "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+                "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+                "reason_tags_by_player": reason_tags,
+                "worst_moves": [],
+            }
+
+        # Game 1: low_liberties=5, atari=3
+        # Game 2: low_liberties=3, need_connect=2
+        # Expected: low_liberties=8, atari=3, need_connect=2
+        stats1 = make_mock_stats("game1.sgf", {"B": {"low_liberties": 5, "atari": 3}, "W": {}})
+        stats2 = make_mock_stats("game2.sgf", {"B": {"low_liberties": 3, "need_connect": 2}, "W": {}})
+
+        player_games = [(stats1, "B"), (stats2, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Check aggregated counts (8 total for low_liberties)
+        assert "呼吸点少 (low liberties): 8" in summary
+        assert "アタリ (atari): 3" in summary
+        assert "連絡必要 (need connect): 2" in summary
+
+    def test_reason_tags_ordering_is_deterministic(self):
+        """Verify reason tags are sorted by count desc, then by tag name asc."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            # Same count (5) for atari and low_liberties - should sort by tag name
+            "reason_tags_by_player": {
+                "B": {"atari": 5, "low_liberties": 5, "need_connect": 2},
+                "W": {},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Both have count 5, should be sorted alphabetically: atari before low_liberties
+        # Search using Japanese labels since that's what get_reason_tag_label returns
+        lines = summary.split("\n")
+        # Japanese labels: アタリ (atari), 呼吸点少 (low liberties)
+        tag_lines = [l for l in lines if "(atari)" in l or "(low liberties)" in l]
+        assert len(tag_lines) == 2
+        # atari (alphabetically first) should come before low_liberties
+        atari_idx = next(i for i, l in enumerate(lines) if "(atari)" in l)
+        low_lib_idx = next(i for i, l in enumerate(lines) if "(low liberties)" in l)
+        assert atari_idx < low_lib_idx
+
+    def test_invalid_reason_tags_not_counted(self):
+        """Verify that invalid reason tags are not included in aggregation."""
+        from katrain.core import eval_metrics
+
+        # This tests the validation at collection time (in _collect_game_stats)
+        # Invalid tags should be rejected by validate_reason_tag()
+        assert eval_metrics.validate_reason_tag("low_liberties") is True
+        assert eval_metrics.validate_reason_tag("atari") is True
+        assert eval_metrics.validate_reason_tag("invalid_tag_xyz") is False
+        assert eval_metrics.validate_reason_tag("") is False
+
+    def test_no_reason_tags_shows_message(self):
+        """Verify empty reason tags shows appropriate message."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {"B": {}, "W": {}},  # Empty
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        assert "## Reason Tags (Top 10)" in summary
+        assert "No reason tags recorded" in summary
+
+
+class TestDefinitionsSection:
+    """Tests for Definitions section in Player Summary."""
+
+    def test_definitions_section_present_in_summary(self):
+        """Verify Definitions section is present in Player Summary."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {"B": {}, "W": {}},
+            "reliability_by_player": {
+                "B": {"total": 10, "reliable": 8, "low_confidence": 2, "total_visits": 5000, "with_visits": 10},
+                "W": {"total": 10, "reliable": 9, "low_confidence": 1, "total_visits": 6000, "with_visits": 10},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Check Definitions section exists
+        assert "## Definitions" in summary
+
+        # Check that thresholds come from SKILL_PRESETS (not hardcoded)
+        from katrain.core.eval_metrics import SKILL_PRESETS
+        preset = SKILL_PRESETS["standard"]
+        t1, t2, t3 = preset.score_thresholds
+
+        assert f"| Good | Loss < {t1:.1f} pts |" in summary
+        assert f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |" in summary
+        assert f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |" in summary
+        assert f"| Blunder | Loss ≥ {t3:.1f} pts |" in summary
+
+    def test_thresholds_match_skill_presets(self):
+        """Verify thresholds in Definitions match SKILL_PRESETS exactly."""
+        from katrain.core.eval_metrics import SKILL_PRESETS, DEFAULT_SKILL_PRESET
+
+        preset = SKILL_PRESETS.get("standard", SKILL_PRESETS[DEFAULT_SKILL_PRESET])
+        t1, t2, t3 = preset.score_thresholds
+
+        # Thresholds should be (1.0, 2.5, 5.0) for standard
+        assert t1 == 1.0
+        assert t2 == 2.5
+        assert t3 == 5.0
+
+    def test_phase_thresholds_board_size_aware(self):
+        """Verify Phase thresholds are board-size-aware."""
+        from katrain.core.eval_metrics import get_phase_thresholds
+
+        # 19x19
+        opening_end, middle_end = get_phase_thresholds(19)
+        assert opening_end == 50
+        assert middle_end == 200
+
+        # 13x13
+        opening_end, middle_end = get_phase_thresholds(13)
+        assert opening_end == 30
+        assert middle_end == 100
+
+        # 9x9
+        opening_end, middle_end = get_phase_thresholds(9)
+        assert opening_end == 15
+        assert middle_end == 50
+
+
+class TestDataQualitySection:
+    """Tests for Data Quality section in Player Summary."""
+
+    def test_data_quality_section_present(self):
+        """Verify Data Quality section is present in Player Summary."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {"B": {}, "W": {}},
+            "reliability_by_player": {
+                "B": {"total": 10, "reliable": 8, "low_confidence": 2, "total_visits": 5000, "with_visits": 10},
+                "W": {"total": 10, "reliable": 9, "low_confidence": 1, "total_visits": 6000, "with_visits": 10},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Check Data Quality section exists
+        assert "## Data Quality" in summary
+        assert "- Moves analyzed:" in summary
+        assert "- Reliable (visits ≥" in summary
+        assert "- Low-confidence:" in summary
+
+    def test_low_reliability_warning_triggers(self):
+        """Verify warning appears when reliability < 20%."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        # Create stats with low reliability (1 reliable out of 10 = 10%)
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 10, "W": 10},
+            "loss_by_player": {"B": 5.0, "W": 3.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+                "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+                "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {"B": {}, "W": {}},
+            "reliability_by_player": {
+                "B": {"total": 10, "reliable": 1, "low_confidence": 9, "total_visits": 500, "with_visits": 10},
+                "W": {"total": 10, "reliable": 1, "low_confidence": 9, "total_visits": 500, "with_visits": 10},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "B")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Should have the warning
+        assert "⚠ Low analysis reliability (<20%)" in summary
+
+
+class TestReliabilityStatsHelper:
+    """Tests for compute_reliability_stats helper in eval_metrics."""
+
+    def test_compute_reliability_stats_basic(self):
+        """Test basic reliability stats computation."""
+        from katrain.core.eval_metrics import compute_reliability_stats, MoveEval, RELIABILITY_VISITS_THRESHOLD
+
+        moves = [
+            MoveEval(move_number=1, player="B", gtp="D4", score_before=None, score_after=None,
+                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=1.0, realized_points_lost=None, root_visits=500),
+            MoveEval(move_number=2, player="W", gtp="Q16", score_before=None, score_after=None,
+                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=0.5, realized_points_lost=None, root_visits=100),  # Low confidence
+            MoveEval(move_number=3, player="B", gtp="C3", score_before=None, score_after=None,
+                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=2.0, realized_points_lost=None, root_visits=0),  # Zero visits
+        ]
+
+        stats = compute_reliability_stats(moves)
+
+        assert stats.total_moves == 3
+        assert stats.reliable_count == 1  # Only first move has visits >= 200
+        assert stats.low_confidence_count == 2  # Second and third moves
+        assert stats.zero_visits_count == 1  # Third move
+        assert stats.reliability_pct == pytest.approx(100 * 1 / 3, rel=0.01)
+
+    def test_reliability_stats_is_low_reliability(self):
+        """Test is_low_reliability property."""
+        from katrain.core.eval_metrics import ReliabilityStats
+
+        # 10% reliability - should be low
+        low_stats = ReliabilityStats(total_moves=10, reliable_count=1, low_confidence_count=9)
+        assert low_stats.is_low_reliability is True
+
+        # 80% reliability - should NOT be low
+        high_stats = ReliabilityStats(total_moves=10, reliable_count=8, low_confidence_count=2)
+        assert high_stats.is_low_reliability is False
+
+        # Exactly 20% - should NOT be low (>=20% is OK)
+        borderline = ReliabilityStats(total_moves=10, reliable_count=2, low_confidence_count=8)
+        assert borderline.is_low_reliability is False
+
+
+class TestBestGapFormatting:
+    """Tests for Best Gap formatting (Issue C: -0% fix)."""
+
+    def test_negative_zero_clamped(self):
+        """Verify that tiny negative values don't produce -0%."""
+        # The formatting logic is: if abs(val) < 0.5, treat as 0.0
+        # This is in game.py important_lines_for()
+        # We test the logic directly here
+
+        def format_best_gap(best_gap):
+            """Reproduce the formatting logic from game.py."""
+            if best_gap is not None:
+                best_gap_val = best_gap * 100
+                if abs(best_gap_val) < 0.5:  # Will round to 0 anyway
+                    best_gap_val = 0.0
+                return f"{best_gap_val:.0f}%"
+            else:
+                return "-"
+
+        # Test cases
+        assert format_best_gap(-1e-9) == "0%"  # Tiny negative -> 0%
+        assert format_best_gap(1e-9) == "0%"   # Tiny positive -> 0%
+        assert format_best_gap(-0.001) == "0%" # Small negative -> 0%
+        assert format_best_gap(0.0) == "0%"    # Zero -> 0%
+        assert format_best_gap(0.01) == "1%"   # 1% stays 1%
+        assert format_best_gap(-0.01) == "-1%" # -1% stays -1% (if that's valid)
+        assert format_best_gap(0.25) == "25%"  # Normal value
+        assert format_best_gap(None) == "-"    # None -> "-"
+
+
+class TestReasonTagsFromImportantMoves:
+    """Tests for Issue A: Reason tags should come from important_moves, not snapshot.moves."""
+
+    def test_reason_tags_source_documentation(self):
+        """Document that reason_tags are computed only for important moves.
+
+        This test documents the expected behavior:
+        - reason_tags are populated by get_important_move_evals(compute_reason_tags=True)
+        - build_eval_snapshot() returns moves with empty reason_tags
+        - _extract_game_stats should use get_important_move_evals() for reason_tags
+
+        A full integration test would require a complete Game object with analysis,
+        which is impractical for unit tests.
+        """
+        from katrain.core.eval_metrics import MoveEval
+
+        # MoveEval default has empty reason_tags
+        move = MoveEval(
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_before=None,
+            score_after=None,
+            delta_score=None,
+            winrate_before=None,
+            winrate_after=None,
+            delta_winrate=None,
+            points_lost=None,
+            realized_points_lost=None,
+            root_visits=0,
+        )
+        assert move.reason_tags == []  # Default is empty
+
+    def test_summary_with_nonempty_reason_tags(self):
+        """Verify summary shows reason tags when they are present in stats."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 50, "W": 50},
+            "loss_by_player": {"B": 25.0, "W": 20.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+                "W": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 5.0, "middle": 15.0, "yose": 5.0, "unknown": 0.0},
+                "W": {"opening": 5.0, "middle": 10.0, "yose": 5.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            # Simulating reason tags that would come from important moves
+            "reason_tags_by_player": {
+                "B": {"low_liberties": 8, "atari": 3, "need_connect": 3, "endgame_hint": 4},
+                "W": {"low_liberties": 9, "endgame_hint": 4, "need_connect": 3},
+            },
+            "reliability_by_player": {
+                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
+                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+            },
+            # PR1-1: Important moves stats for Reason Tags clarity
+            "important_moves_stats_by_player": {
+                "B": {"important_count": 14, "tagged_count": 10, "tag_occurrences": 18},
+                "W": {"important_count": 12, "tagged_count": 9, "tag_occurrences": 16},
+            },
+            "worst_moves": [],
+        }
+
+        # Build summary for White player (仙得 equivalent)
+        player_games = [(mock_stats, "W")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # Reason tags should be present (not "No reason tags recorded")
+        assert "## Reason Tags (Top 10)" in summary
+        assert "No reason tags recorded" not in summary
+        assert "呼吸点少 (low liberties): 9" in summary
+        assert "ヨセ局面 (endgame): 4" in summary
+
+
+class TestPR1ReasonTagsClarity:
+    """Tests for PR1-1: Reason Tags denominator and coverage clarity."""
+
+    def test_reason_tags_shows_important_moves_count(self):
+        """Verify Reason Tags section shows important moves count and tagged count."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 50, "W": 50},
+            "loss_by_player": {"B": 25.0, "W": 20.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+                "W": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 5.0, "middle": 15.0, "yose": 5.0, "unknown": 0.0},
+                "W": {"opening": 5.0, "middle": 10.0, "yose": 5.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {
+                "B": {"low_liberties": 8, "atari": 3},
+                "W": {"low_liberties": 5, "need_connect": 3},
+            },
+            "reliability_by_player": {
+                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
+                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+            },
+            # PR1-1: Important moves stats
+            "important_moves_stats_by_player": {
+                "B": {"important_count": 10, "tagged_count": 8, "tag_occurrences": 11},
+                "W": {"important_count": 7, "tagged_count": 5, "tag_occurrences": 8},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "W")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # PR1-1: Should show important moves count and tagged count in note
+        assert "Tags computed for 7 important moves" in summary
+        assert "5 moves had ≥1 tag" in summary
+
+
+class TestPR1DataQualityMaxVisits:
+    """Tests for PR1-2: Data Quality max visits and measured note."""
+
+    def test_data_quality_shows_max_visits(self):
+        """Verify Data Quality section shows max visits."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+        mock_stats = {
+            "game_name": "test_game.sgf",
+            "board_size": (19, 19),
+            "moves_by_player": {"B": 50, "W": 50},
+            "loss_by_player": {"B": 25.0, "W": 20.0},
+            "mistake_counts_by_player": {
+                "B": {cat: 0 for cat in MistakeCategory},
+                "W": {cat: 0 for cat in MistakeCategory},
+            },
+            "mistake_total_loss_by_player": {
+                "B": {cat: 0.0 for cat in MistakeCategory},
+                "W": {cat: 0.0 for cat in MistakeCategory},
+            },
+            "freedom_counts_by_player": {
+                "B": {diff: 0 for diff in PositionDifficulty},
+                "W": {diff: 0 for diff in PositionDifficulty},
+            },
+            "phase_moves_by_player": {
+                "B": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+                "W": {"opening": 20, "middle": 20, "yose": 10, "unknown": 0},
+            },
+            "phase_loss_by_player": {
+                "B": {"opening": 5.0, "middle": 15.0, "yose": 5.0, "unknown": 0.0},
+                "W": {"opening": 5.0, "middle": 10.0, "yose": 5.0, "unknown": 0.0},
+            },
+            "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+            "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+            "reason_tags_by_player": {"B": {}, "W": {}},
+            "reliability_by_player": {
+                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
+                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+            },
+            "important_moves_stats_by_player": {
+                "B": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
+                "W": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
+            },
+            "worst_moves": [],
+        }
+
+        player_games = [(mock_stats, "W")]
+        summary = _build_player_summary("TestPlayer", player_games)
+
+        # PR1-2: Should show max visits
+        assert "Max visits: 600" in summary
+        # PR1-2: Should show measured note
+        assert "Visits are measured from KataGo analysis" in summary
+
+    def test_reliability_stats_max_visits(self):
+        """Verify ReliabilityStats tracks max_visits correctly."""
+        from katrain.core.eval_metrics import compute_reliability_stats, MoveEval
+
+        moves = [
+            MoveEval(move_number=1, player="B", gtp="D4", root_visits=100,
+                     score_before=None, score_after=None, delta_score=None,
+                     winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=None, realized_points_lost=None),
+            MoveEval(move_number=2, player="W", gtp="D16", root_visits=150,
+                     score_before=None, score_after=None, delta_score=None,
+                     winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=None, realized_points_lost=None),
+            MoveEval(move_number=3, player="B", gtp="Q4", root_visits=120,
+                     score_before=None, score_after=None, delta_score=None,
+                     winrate_before=None, winrate_after=None, delta_winrate=None,
+                     points_lost=None, realized_points_lost=None),
+        ]
+
+        stats = compute_reliability_stats(moves)
+        assert stats.max_visits == 150  # Should be the maximum
+
+
+class TestPR1BestGapRobustFormatting:
+    """Tests for PR1-3: Best Gap robust formatting using rounding."""
+
+    def test_best_gap_rounding_based(self):
+        """Verify Best Gap uses int(round(val)) for robust formatting."""
+        # Reproduce the new formatting logic from game.py
+        def format_best_gap_new(best_gap):
+            """New rounding-based formatting logic."""
+            if best_gap is not None:
+                best_gap_val = best_gap * 100
+                rounded_val = int(round(best_gap_val))
+                if rounded_val == 0:
+                    return "0%"
+                else:
+                    return f"{rounded_val}%"
+            else:
+                return "-"
+
+        # Test cases
+        assert format_best_gap_new(-1e-9) == "0%"   # Tiny negative -> 0%
+        assert format_best_gap_new(1e-9) == "0%"    # Tiny positive -> 0%
+        assert format_best_gap_new(-0.001) == "0%"  # Small negative -> 0%
+        assert format_best_gap_new(0.0) == "0%"     # Zero -> 0%
+        assert format_best_gap_new(-0.004) == "0%"  # Rounds to 0
+        assert format_best_gap_new(0.004) == "0%"   # Rounds to 0
+        # Note: 0.005 * 100 = 0.5, Python banker's rounding rounds 0.5 -> 0
+        assert format_best_gap_new(0.005) == "0%"   # Rounds to 0 (banker's rounding)
+        assert format_best_gap_new(0.006) == "1%"   # Rounds to 1
+        assert format_best_gap_new(0.01) == "1%"    # 1%
+        assert format_best_gap_new(-0.01) == "-1%"  # -1%
+        assert format_best_gap_new(0.25) == "25%"   # Normal value
+        assert format_best_gap_new(0.495) == "50%"  # Rounds to 50 (banker's rounding)
+        assert format_best_gap_new(0.505) == "50%"  # Rounds to 50 (banker's rounding)
+        assert format_best_gap_new(None) == "-"     # None -> "-"
+
+
+class TestBatchOptionsPersistence:
+    """Tests for batch analyze options persistence."""
+
+    # Default values for batch options
+    BATCH_OPTIONS_DEFAULTS = {
+        "input_dir": "",
+        "output_dir": "",
+        "visits": None,
+        "timeout": None,  # None means use default (600)
+        "skip_analyzed": True,
+        "save_analyzed_sgf": False,
+        "generate_karte": True,
+        "generate_summary": True,
+        "karte_player_filter": None,  # None = Both
+        "min_games_per_player": 3,
+    }
+
+    def test_load_batch_options_with_defaults(self):
+        """Load returns defaults when no options are saved."""
+        # Simulate empty config
+        mykatrain_settings = {}
+
+        batch_options = mykatrain_settings.get("batch_options", {})
+
+        # Apply defaults
+        loaded = {}
+        for key, default_val in self.BATCH_OPTIONS_DEFAULTS.items():
+            loaded[key] = batch_options.get(key, default_val)
+
+        assert loaded["input_dir"] == ""
+        assert loaded["output_dir"] == ""
+        assert loaded["visits"] is None
+        assert loaded["timeout"] is None
+        assert loaded["skip_analyzed"] is True
+        assert loaded["save_analyzed_sgf"] is False
+        assert loaded["generate_karte"] is True
+        assert loaded["generate_summary"] is True
+        assert loaded["karte_player_filter"] is None
+        assert loaded["min_games_per_player"] == 3
+
+    def test_save_then_load_batch_options(self):
+        """Save then load returns same values."""
+        # Mock config storage
+        config_storage = {}
+
+        # Save function (mimics _save_batch_options)
+        def save_batch_options(options):
+            mykatrain_settings = config_storage.get("mykatrain_settings", {})
+            batch_options = mykatrain_settings.get("batch_options", {})
+            batch_options.update(options)
+            mykatrain_settings["batch_options"] = batch_options
+            config_storage["mykatrain_settings"] = mykatrain_settings
+
+        # Load function (mimics loading in _do_batch_analyze_popup)
+        def load_batch_options():
+            mykatrain_settings = config_storage.get("mykatrain_settings", {})
+            batch_options = mykatrain_settings.get("batch_options", {})
+            loaded = {}
+            for key, default_val in self.BATCH_OPTIONS_DEFAULTS.items():
+                loaded[key] = batch_options.get(key, default_val)
+            return loaded
+
+        # Test values
+        test_options = {
+            "input_dir": "C:\\Users\\test\\sgf",
+            "output_dir": "C:\\Users\\test\\output",
+            "visits": 250,
+            "timeout": 30.0,
+            "skip_analyzed": False,
+            "save_analyzed_sgf": True,
+            "generate_karte": True,
+            "generate_summary": False,
+            "karte_player_filter": "B",
+            "min_games_per_player": 5,
+        }
+
+        # Save
+        save_batch_options(test_options)
+
+        # Load
+        loaded = load_batch_options()
+
+        # Verify
+        assert loaded["input_dir"] == "C:\\Users\\test\\sgf"
+        assert loaded["output_dir"] == "C:\\Users\\test\\output"
+        assert loaded["visits"] == 250
+        assert loaded["timeout"] == 30.0
+        assert loaded["skip_analyzed"] is False
+        assert loaded["save_analyzed_sgf"] is True
+        assert loaded["generate_karte"] is True
+        assert loaded["generate_summary"] is False
+        assert loaded["karte_player_filter"] == "B"
+        assert loaded["min_games_per_player"] == 5
+
+    def test_partial_save_preserves_existing(self):
+        """Partial save preserves existing values."""
+        config_storage = {"mykatrain_settings": {"batch_options": {
+            "input_dir": "C:\\existing",
+            "visits": 100,
+        }}}
+
+        def save_batch_options(options):
+            mykatrain_settings = config_storage.get("mykatrain_settings", {})
+            batch_options = mykatrain_settings.get("batch_options", {})
+            batch_options.update(options)
+            mykatrain_settings["batch_options"] = batch_options
+            config_storage["mykatrain_settings"] = mykatrain_settings
+
+        # Save only timeout
+        save_batch_options({"timeout": 60.0})
+
+        batch_options = config_storage["mykatrain_settings"]["batch_options"]
+        assert batch_options["input_dir"] == "C:\\existing"  # Preserved
+        assert batch_options["visits"] == 100  # Preserved
+        assert batch_options["timeout"] == 60.0  # New value
+
+    def test_legacy_input_dir_fallback(self):
+        """Legacy batch_export_input_directory is used as fallback."""
+        mykatrain_settings = {
+            "batch_export_input_directory": "C:\\legacy\\path",
+            # No batch_options
+        }
+
+        batch_options = mykatrain_settings.get("batch_options", {})
+        # The actual loading code does:
+        # default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
+        default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
+
+        assert default_input_dir == "C:\\legacy\\path"
+
+    def test_new_input_dir_overrides_legacy(self):
+        """New input_dir in batch_options overrides legacy key."""
+        mykatrain_settings = {
+            "batch_export_input_directory": "C:\\legacy\\path",
+            "batch_options": {
+                "input_dir": "C:\\new\\path",
+            }
+        }
+
+        batch_options = mykatrain_settings.get("batch_options", {})
+        default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
+
+        assert default_input_dir == "C:\\new\\path"

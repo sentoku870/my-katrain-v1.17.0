@@ -136,6 +136,44 @@ class TestClassifyMistake:
         assert cat == MistakeCategory.MISTAKE
 
 
+class TestCategoryConsistencyBetweenKarteAndSummary:
+    """
+    Verify that mistake classification is consistent across all code paths.
+
+    Issue: Previously, build_karte_report() used hardcoded thresholds (1, 3, 7)
+    while classify_mistake() used skill preset thresholds (1, 2.5, 5 for standard).
+    This caused the same move to show different categories in Karte vs Summary.
+
+    Fix: mistake_label_from_loss() now delegates to classify_mistake().
+    """
+
+    @pytest.mark.parametrize("loss,expected", [
+        (0.5, MistakeCategory.GOOD),
+        (1.0, MistakeCategory.INACCURACY),
+        (2.0, MistakeCategory.INACCURACY),
+        (2.5, MistakeCategory.MISTAKE),
+        (4.9, MistakeCategory.MISTAKE),
+        (5.0, MistakeCategory.BLUNDER),
+        (6.1, MistakeCategory.BLUNDER),  # This was the problematic case
+        (10.0, MistakeCategory.BLUNDER),
+    ])
+    def test_classify_mistake_standard_thresholds(self, loss, expected):
+        """classify_mistake uses standard thresholds: 1.0, 2.5, 5.0"""
+        assert classify_mistake(score_loss=loss, winrate_loss=None) == expected
+
+    def test_6_1_loss_is_blunder(self):
+        """
+        Specific regression test: 6.1 points lost should be BLUNDER.
+
+        Previously Karte showed 6.1 as 'mistake' (using < 7.0 threshold)
+        while Summary showed it as 'BLUNDER' (using < 5.0 threshold).
+        Now both should show BLUNDER.
+        """
+        cat = classify_mistake(score_loss=6.1, winrate_loss=None)
+        assert cat == MistakeCategory.BLUNDER
+        assert cat.value == "blunder"
+
+
 # ---------------------------------------------------------------------------
 # Test: Perspective consistency with StubGameNode
 # ---------------------------------------------------------------------------
@@ -1112,3 +1150,83 @@ class TestMistakeDistributionConsistency:
         assert abs(phase_sum - stats.total_points_lost) < 0.01, (
             f"Phase loss sum ({phase_sum}) != total_points_lost ({stats.total_points_lost})"
         )
+
+
+# ---------------------------------------------------------------------------
+# Test: Reason Tags Completeness (A1)
+# ---------------------------------------------------------------------------
+
+class TestReasonTagsCompleteness:
+    """Tests to ensure all reason tags are properly defined (A1)."""
+
+    def test_all_emittable_tags_have_labels(self):
+        """Every tag that can be emitted must have a label."""
+        from katrain.core.eval_metrics import (
+            REASON_TAG_LABELS,
+            VALID_REASON_TAGS,
+            validate_reason_tag,
+        )
+
+        # Tags that get_reason_tags_for_move can emit (from board_analysis.py)
+        emittable_tags = [
+            "atari",
+            "low_liberties",
+            "cut_risk",
+            "need_connect",
+            "thin",
+            "chase_mode",
+            # "too_many_choices",  # Disabled but defined
+            "endgame_hint",
+            "heavy_loss",
+            "reading_failure",
+        ]
+
+        # Tags used as fallback in game.py
+        fallback_tags = ["unknown"]
+
+        all_used_tags = emittable_tags + fallback_tags
+
+        for tag in all_used_tags:
+            assert tag in REASON_TAG_LABELS, f"Tag '{tag}' is used but not in REASON_TAG_LABELS"
+            assert validate_reason_tag(tag), f"validate_reason_tag('{tag}') should return True"
+
+    def test_validate_reason_tag_function(self):
+        """validate_reason_tag should correctly identify valid/invalid tags."""
+        from katrain.core.eval_metrics import validate_reason_tag
+
+        # Valid tags
+        assert validate_reason_tag("atari") is True
+        assert validate_reason_tag("unknown") is True
+        assert validate_reason_tag("heavy_loss") is True
+
+        # Invalid tags
+        assert validate_reason_tag("undefined_tag") is False
+        assert validate_reason_tag("") is False
+        assert validate_reason_tag("ATARI") is False  # Case-sensitive
+
+    def test_get_reason_tag_label_function(self):
+        """get_reason_tag_label should return correct labels."""
+        from katrain.core.eval_metrics import get_reason_tag_label
+
+        # Known tags
+        assert get_reason_tag_label("atari") == "アタリ (atari)"
+        assert get_reason_tag_label("unknown") == "不明 (unknown)"
+
+        # Unknown tag with fallback
+        assert get_reason_tag_label("undefined") == "undefined"
+        assert get_reason_tag_label("undefined", fallback_to_raw=False) == "??? (undefined)"
+
+    def test_valid_reason_tags_matches_labels(self):
+        """VALID_REASON_TAGS should exactly match REASON_TAG_LABELS keys."""
+        from katrain.core.eval_metrics import REASON_TAG_LABELS, VALID_REASON_TAGS
+
+        assert VALID_REASON_TAGS == set(REASON_TAG_LABELS.keys())
+
+    def test_no_duplicate_labels(self):
+        """Each tag should have a unique label."""
+        from katrain.core.eval_metrics import REASON_TAG_LABELS
+
+        labels = list(REASON_TAG_LABELS.values())
+        unique_labels = set(labels)
+
+        assert len(labels) == len(unique_labels), "Duplicate labels found in REASON_TAG_LABELS"
