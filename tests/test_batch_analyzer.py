@@ -2118,3 +2118,208 @@ class TestVariableVisits:
         # With 10 random samples at 20% jitter, we expect some variation
         # Not all 10 should be the same (very unlikely)
         assert len(results) > 1
+
+
+def _make_mock_stats(moves_b=10, moves_w=10, loss_b=5.0, loss_w=3.0, blunders_b=0, mistakes_b=0):
+    """Create a properly structured mock stats dict for testing."""
+    from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+
+    mistake_counts_b = {cat: 0 for cat in MistakeCategory}
+    mistake_counts_b[MistakeCategory.BLUNDER] = blunders_b
+    mistake_counts_b[MistakeCategory.MISTAKE] = mistakes_b
+
+    return {
+        "game_name": "test_game.sgf",
+        "moves_by_player": {"B": moves_b, "W": moves_w},
+        "loss_by_player": {"B": loss_b, "W": loss_w},
+        "mistake_counts_by_player": {
+            "B": mistake_counts_b,
+            "W": {cat: 0 for cat in MistakeCategory},
+        },
+        "mistake_total_loss_by_player": {
+            "B": {cat: 0.0 for cat in MistakeCategory},
+            "W": {cat: 0.0 for cat in MistakeCategory},
+        },
+        "freedom_counts_by_player": {
+            "B": {diff: 0 for diff in PositionDifficulty},
+            "W": {diff: 0 for diff in PositionDifficulty},
+        },
+        "phase_moves_by_player": {
+            "B": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+            "W": {"opening": 5, "middle": 3, "yose": 2, "unknown": 0},
+        },
+        "phase_loss_by_player": {
+            "B": {"opening": 1.0, "middle": 2.0, "yose": 2.0, "unknown": 0.0},
+            "W": {"opening": 1.0, "middle": 1.0, "yose": 1.0, "unknown": 0.0},
+        },
+        "phase_mistake_counts_by_player": {"B": {}, "W": {}},
+        "phase_mistake_loss_by_player": {"B": {}, "W": {}},
+        "reason_tags_by_player": {"B": {}, "W": {}},
+        "worst_moves": [],
+    }
+
+
+class TestPerGameMetrics:
+    """Tests for per-game metrics in player summary."""
+
+    def test_per_game_metrics_calculated(self):
+        """Per-game metrics should be calculated from totals."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        # Create mock player games (2 games with proper stats structure)
+        stats1 = _make_mock_stats(moves_b=100, loss_b=10.0, blunders_b=2, mistakes_b=3)
+        stats2 = _make_mock_stats(moves_b=80, loss_b=8.0, blunders_b=1, mistakes_b=2)
+
+        player_games = [
+            (stats1, "B"),
+            (stats2, "B"),
+        ]
+
+        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+
+        # Verify per-game averages section exists
+        assert "Per-game averages" in summary
+        assert "Points lost/game" in summary
+        assert "Blunders/game" in summary
+        assert "Mistakes+Blunders/game" in summary
+
+    def test_per_game_metrics_zero_games(self):
+        """Per-game metrics should show '-' for zero games."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        player_games = []
+        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+
+        # With no games, should show "-" placeholder
+        assert "Per-game averages" in summary or "Games analyzed**: 0" in summary
+
+
+class TestAnalysisSettingsSection:
+    """Tests for Analysis Settings section in player summary."""
+
+    def test_analysis_settings_present(self):
+        """Analysis Settings section should be present when analysis_settings provided."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        stats = _make_mock_stats()
+        player_games = [(stats, "B")]
+
+        analysis_settings = {
+            "config_visits": 500,
+            "variable_visits": False,
+            "timeout": 600,
+        }
+
+        summary = _build_player_summary(
+            "TestPlayer",
+            player_games,
+            skill_preset="standard",
+            analysis_settings=analysis_settings,
+        )
+
+        assert "## Analysis Settings" in summary
+        assert "Config visits: 500" in summary
+        assert "Variable visits: off" in summary
+        assert "Timeout: 600s" in summary
+        assert "Reliable threshold: 200 visits" in summary
+
+    def test_analysis_settings_variable_visits_on(self):
+        """Analysis Settings should show variable visits details when enabled."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        stats = _make_mock_stats()
+        player_games = [(stats, "B")]
+
+        analysis_settings = {
+            "config_visits": 500,
+            "variable_visits": True,
+            "jitter_pct": 15,
+            "deterministic": True,
+            "timeout": 600,
+        }
+
+        summary = _build_player_summary(
+            "TestPlayer",
+            player_games,
+            skill_preset="standard",
+            analysis_settings=analysis_settings,
+        )
+
+        assert "Variable visits: on" in summary
+        assert "Visits jitter: 15%" in summary
+        assert "Deterministic: on" in summary
+
+    def test_analysis_settings_not_present_when_none(self):
+        """Analysis Settings section should not appear when analysis_settings is None."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        stats = _make_mock_stats()
+        player_games = [(stats, "B")]
+
+        summary = _build_player_summary(
+            "TestPlayer",
+            player_games,
+            skill_preset="standard",
+            # No analysis_settings provided
+        )
+
+        assert "## Analysis Settings" not in summary
+
+
+class TestJPLabels:
+    """Tests for Japanese labels in Karte/Summary."""
+
+    def test_skill_preset_labels_import(self):
+        """SKILL_PRESET_LABELS should be importable from eval_metrics."""
+        from katrain.core.eval_metrics import SKILL_PRESET_LABELS, CONFIDENCE_LABELS
+
+        # Verify all expected keys exist
+        assert "relaxed" in SKILL_PRESET_LABELS
+        assert "beginner" in SKILL_PRESET_LABELS
+        assert "standard" in SKILL_PRESET_LABELS
+        assert "advanced" in SKILL_PRESET_LABELS
+        assert "pro" in SKILL_PRESET_LABELS
+        assert "auto" in SKILL_PRESET_LABELS
+
+        # Verify JP labels
+        assert SKILL_PRESET_LABELS["relaxed"] == "激甘"
+        assert SKILL_PRESET_LABELS["beginner"] == "甘口"
+        assert SKILL_PRESET_LABELS["standard"] == "標準"
+        assert SKILL_PRESET_LABELS["advanced"] == "辛口"
+        assert SKILL_PRESET_LABELS["pro"] == "激辛"
+        assert SKILL_PRESET_LABELS["auto"] == "自動"
+
+        # Verify confidence labels
+        assert CONFIDENCE_LABELS["high"] == "高"
+        assert CONFIDENCE_LABELS["medium"] == "中"
+        assert CONFIDENCE_LABELS["low"] == "低"
+
+    def test_summary_uses_jp_labels(self):
+        """Player summary should use JP labels for strictness."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        stats = _make_mock_stats()
+        player_games = [(stats, "B")]
+
+        # Test manual mode
+        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+        assert "標準" in summary  # JP label for "standard"
+        assert "(手動)" in summary  # JP label for "(manual)"
+
+        # Test auto mode
+        summary_auto = _build_player_summary("TestPlayer", player_games, skill_preset="auto")
+        assert "自動" in summary_auto  # JP label for "auto"
+
+    def test_auto_hint_in_manual_mode(self):
+        """Auto hint should appear when manual mode is used."""
+        from katrain.tools.batch_analyze_sgf import _build_player_summary
+
+        stats = _make_mock_stats(blunders_b=5, mistakes_b=10)
+        player_games = [(stats, "B")]
+
+        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+
+        # Should contain auto recommendation hint
+        assert "Auto recommended:" in summary
+        # Should contain confidence in JP
+        assert "信頼度:" in summary

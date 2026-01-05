@@ -46,6 +46,9 @@ from katrain.core.eval_metrics import (
     AutoRecommendation,
     PRESET_ORDER,
     _distance_from_range,
+    recommend_auto_strictness,
+    SKILL_PRESET_LABELS,
+    CONFIDENCE_LABELS,
 )
 
 
@@ -745,6 +748,9 @@ def run_batch(
     # For summary generation, collect game stats
     game_stats_list = [] if generate_summary else None
 
+    # Track actual effective visits used per successful analysis (for variable visits stats)
+    selected_visits_list: List[int] = []
+
     # Timestamp for filenames (includes seconds to reduce collision risk)
     batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -815,6 +821,10 @@ def run_batch(
 
         if success:
             result.success_count += 1
+
+            # Record effective visits used (only numeric, for variable visits stats)
+            if effective_visits is not None:
+                selected_visits_list.append(effective_visits)
 
             if save_analyzed_sgf and sgf_output_path:
                 result.analyzed_sgf_written += 1
@@ -892,7 +902,30 @@ def run_batch(
                     summary_path = _get_unique_filename(base_path, ".md")
                     summary_filename = os.path.basename(summary_path)
 
-                    summary_text = _build_player_summary(player_name, player_games, skill_preset=skill_preset)
+                    # Build analysis_settings for the summary
+                    # Compute selected visits stats if variable visits enabled and have data
+                    selected_visits_stats = None
+                    if variable_visits and selected_visits_list:
+                        selected_visits_stats = {
+                            "min": min(selected_visits_list),
+                            "avg": sum(selected_visits_list) / len(selected_visits_list),
+                            "max": max(selected_visits_list),
+                        }
+
+                    analysis_settings = {
+                        "config_visits": visits,
+                        "variable_visits": variable_visits,
+                        "jitter_pct": jitter_pct if variable_visits else None,
+                        "deterministic": deterministic if variable_visits else None,
+                        "timeout": timeout,
+                        "selected_visits_stats": selected_visits_stats,
+                    }
+                    summary_text = _build_player_summary(
+                        player_name,
+                        player_games,
+                        skill_preset=skill_preset,
+                        analysis_settings=analysis_settings,
+                    )
 
                     # Use safe write with error handling (A3)
                     write_error = _safe_write_file(
@@ -1353,6 +1386,8 @@ def _build_player_summary(
     player_name: str,
     player_games: List[Tuple[dict, str]],
     skill_preset: str = DEFAULT_SKILL_PRESET,
+    *,
+    analysis_settings: Optional[Dict[str, any]] = None,
 ) -> str:
     """
     Build summary for a single player across their games.
@@ -1361,6 +1396,12 @@ def _build_player_summary(
         player_name: Display name of the player
         player_games: List of (game_stats, role) tuples where role is "B" or "W"
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
+        analysis_settings: Optional dict with configured analysis settings:
+            - config_visits: base visits value
+            - variable_visits: bool, whether variable visits is enabled
+            - jitter_pct: float, jitter percentage (if variable_visits)
+            - deterministic: bool, whether deterministic mode (if variable_visits)
+            - timeout: float or None, timeout in seconds
 
     Returns:
         Markdown summary string
@@ -1546,18 +1587,59 @@ def _build_player_summary(
     preset = SKILL_PRESETS.get(effective_preset, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
     t1, t2, t3 = preset.score_thresholds
 
-    # Build strictness info line
+    # Build strictness info line using JP labels
+    effective_label = SKILL_PRESET_LABELS.get(effective_preset, effective_preset)
     if skill_preset == "auto" and auto_recommendation:
+        conf_label = CONFIDENCE_LABELS.get(auto_recommendation.confidence.value, auto_recommendation.confidence.value)
         strictness_info = (
-            f"Auto → {auto_recommendation.recommended_preset} "
-            f"(confidence: {auto_recommendation.confidence.value}, "
-            f"blunder={auto_recommendation.blunder_count}, important={auto_recommendation.important_count})"
+            f"自動 → {effective_label} "
+            f"(信頼度: {conf_label}, "
+            f"大悪手={auto_recommendation.blunder_count}, 重要={auto_recommendation.important_count})"
         )
     else:
-        strictness_info = f"{effective_preset} (manual)"
+        strictness_info = f"{effective_label} (手動)"
 
     lines.append("\n## Definitions\n")
-    lines.append(f"- Strictness: {strictness_info}\n")
+    lines.append(f"- Strictness: {strictness_info}")
+
+    # Feature 3: Show auto recommendation hint even in manual mode
+    if skill_preset != "auto" and game_count > 0:
+        # Compute auto recommendation for hint
+        blunder_count = mistake_counts.get(MistakeCategory.BLUNDER, 0)
+        important_count = blunder_count + mistake_counts.get(MistakeCategory.MISTAKE, 0)
+        rel_pct = 100.0 * reliability_reliable / reliability_total if reliability_total > 0 else 0.0
+
+        # Simplified auto recommendation for multi-game context
+        target_blunder = (3 * game_count, 10 * game_count)
+        target_important = (10 * game_count, 30 * game_count)
+        b_score = _distance_from_range(blunder_count, target_blunder) * 2
+        i_score = _distance_from_range(important_count, target_important) * 1
+        total_score = b_score + i_score
+
+        if rel_pct < 20.0:
+            hint_conf = AutoConfidence.LOW
+            hint_preset = "standard"
+        else:
+            if total_score == 0:
+                hint_conf = AutoConfidence.HIGH
+            elif total_score <= 5:
+                hint_conf = AutoConfidence.MEDIUM
+            else:
+                hint_conf = AutoConfidence.LOW
+
+            blunder_per_game = blunder_count / game_count if game_count > 0 else 0
+            if blunder_per_game > 10:
+                hint_preset = "advanced"
+            elif blunder_per_game < 3:
+                hint_preset = "beginner"
+            else:
+                hint_preset = "standard"
+
+        hint_label = SKILL_PRESET_LABELS.get(hint_preset, hint_preset)
+        hint_conf_label = CONFIDENCE_LABELS.get(hint_conf.value, hint_conf.value)
+        lines.append(f"- Auto recommended: {hint_label} (信頼度: {hint_conf_label})")
+
+    lines.append("")
     lines.append("| Metric | Definition |")
     lines.append("|--------|------------|")
     lines.append("| Points Lost | Score difference between actual move and best move (clamped to ≥0) |")
@@ -1573,6 +1655,47 @@ def _build_player_summary(
         lines.append(f"| Phase ({board_size}x{board_size}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |")
     else:
         lines.append("| Phase | Mixed board sizes - thresholds vary |")
+
+    # =========================================================================
+    # Analysis Settings Section (configured values)
+    # =========================================================================
+    if analysis_settings:
+        lines.append("\n## Analysis Settings\n")
+        # Config visits
+        config_visits = analysis_settings.get("config_visits")
+        if config_visits is not None:
+            lines.append(f"- Config visits: {config_visits:,}")
+
+        # Variable visits settings
+        variable_visits = analysis_settings.get("variable_visits", False)
+        if variable_visits:
+            lines.append("- Variable visits: on")
+            jitter_pct = analysis_settings.get("jitter_pct")
+            if jitter_pct is not None:
+                lines.append(f"- Visits jitter: {jitter_pct}%")
+            deterministic = analysis_settings.get("deterministic", False)
+            lines.append(f"- Deterministic: {'on' if deterministic else 'off'}")
+            # Show actual selected visits distribution (if recorded)
+            selected_stats = analysis_settings.get("selected_visits_stats")
+            if selected_stats:
+                lines.append(
+                    f"- Selected visits (per game): "
+                    f"min={selected_stats['min']}, "
+                    f"avg={selected_stats['avg']:.1f}, "
+                    f"max={selected_stats['max']}"
+                )
+        else:
+            lines.append("- Variable visits: off")
+
+        # Timeout
+        timeout = analysis_settings.get("timeout")
+        if timeout is not None:
+            lines.append(f"- Timeout: {timeout}s")
+        else:
+            lines.append("- Timeout: None")
+
+        # Reliable threshold (constant)
+        lines.append(f"- Reliable threshold: {RELIABILITY_VISITS_THRESHOLD} visits")
 
     # =========================================================================
     # Data Quality Section (PR1-2: Add max visits and measured note)
@@ -1607,6 +1730,24 @@ def _build_player_summary(
     lines.append(f"- Total points lost: {total_loss:.1f}")
     if total_moves > 0:
         lines.append(f"- Average loss per move: {total_loss / total_moves:.2f}")
+
+    # Per-game metrics
+    games_analyzed = len(player_games)
+    if games_analyzed > 0:
+        points_per_game = total_loss / games_analyzed
+        blunders_total = mistake_counts.get(MistakeCategory.BLUNDER, 0)
+        mistakes_total = mistake_counts.get(MistakeCategory.MISTAKE, 0)
+        important_total = blunders_total + mistakes_total
+        blunders_per_game = blunders_total / games_analyzed
+        important_per_game = important_total / games_analyzed
+        lines.append("")
+        lines.append("**Per-game averages:**")
+        lines.append(f"- Points lost/game: {points_per_game:.1f}")
+        lines.append(f"- Blunders/game: {blunders_per_game:.1f}")
+        lines.append(f"- Mistakes+Blunders/game: {important_per_game:.1f}")
+    else:
+        lines.append("")
+        lines.append("**Per-game averages:** -")
 
     # =========================================================================
     # Section 2: Mistake Distribution

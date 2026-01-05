@@ -1307,20 +1307,42 @@ class Game(BaseGame):
             # Get phase thresholds for this board size
             opening_end, middle_end = eval_metrics.get_phase_thresholds(board_x)
 
-            # Build strictness info line
+            # Get JP labels
+            preset_labels = eval_metrics.SKILL_PRESET_LABELS
+            conf_labels = eval_metrics.CONFIDENCE_LABELS
+
+            # Build strictness info line with JP labels
             if skill_preset == "auto" and auto_recommendation:
+                preset_jp = preset_labels.get(auto_recommendation.recommended_preset, auto_recommendation.recommended_preset)
+                conf_jp = conf_labels.get(auto_recommendation.confidence.value, auto_recommendation.confidence.value)
                 strictness_info = (
-                    f"Auto → {auto_recommendation.recommended_preset} "
-                    f"(confidence: {auto_recommendation.confidence.value}, "
-                    f"blunder={auto_recommendation.blunder_count}, important={auto_recommendation.important_count})"
+                    f"自動 → {preset_jp} "
+                    f"(信頼度: {conf_jp}, "
+                    f"ブランダー={auto_recommendation.blunder_count}, 重要={auto_recommendation.important_count})"
                 )
             else:
-                strictness_info = f"{effective_preset} (manual)"
+                preset_jp = preset_labels.get(effective_preset, effective_preset)
+                strictness_info = f"{preset_jp} (手動)"
 
             lines = [
                 "## Definitions",
                 "",
                 f"- Strictness: {strictness_info}",
+            ]
+
+            # Add auto hint for manual mode
+            if skill_preset != "auto":
+                # Compute auto recommendation for hint
+                if focus_color:
+                    hint_moves = [m for m in snapshot.moves if m.player == focus_color]
+                else:
+                    hint_moves = list(snapshot.moves)
+                hint_rec = eval_metrics.recommend_auto_strictness(hint_moves, game_count=1)
+                hint_preset_jp = preset_labels.get(hint_rec.recommended_preset, hint_rec.recommended_preset)
+                hint_conf_jp = conf_labels.get(hint_rec.confidence.value, hint_rec.confidence.value)
+                lines.append(f"- Auto recommended: {hint_preset_jp} (信頼度: {hint_conf_jp})")
+
+            lines.extend([
                 "",
                 "| Metric | Definition |",
                 "|--------|------------|",
@@ -1331,7 +1353,7 @@ class Game(BaseGame):
                 f"| Blunder | Loss ≥ {t3:.1f} pts |",
                 f"| Phase ({board_x}x{board_y}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |",
                 "",
-            ]
+            ])
             return lines
 
         # Build Data Quality section
