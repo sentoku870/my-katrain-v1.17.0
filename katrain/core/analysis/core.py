@@ -368,6 +368,9 @@ class SummaryStats:
 
     worst_moves: List[Tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
 
+    # PR#1: Store all moves for confidence level computation
+    all_moves: List[MoveEval] = field(default_factory=list)
+
     def get_mistake_percentage(self, category: MistakeCategory) -> float:
         """ミス分類の割合を計算"""
         if self.total_moves == 0:
@@ -1040,6 +1043,65 @@ UNRELIABLE_IMPORTANCE_SCALE = 0.25
 SWING_SCORE_SIGN_BONUS = 1.0
 SWING_WINRATE_CROSS_BONUS = 1.0
 
+# ---------------------------------------------------------------------------
+# Importance Scoring Constants (PR#4: Ranking Redesign)
+# ---------------------------------------------------------------------------
+
+# Difficulty modifiers for importance scoring
+# HARD局面でのミスは学習価値が高い、ONLY_MOVEは選択肢がないので学習価値が低い
+DIFFICULTY_MODIFIER_HARD = 1.0
+DIFFICULTY_MODIFIER_ONLY_MOVE = -2.0
+DIFFICULTY_MODIFIER_EASY = 0.0
+DIFFICULTY_MODIFIER_NORMAL = 0.0
+
+# Streak start bonus: 連続ミス開始点を強調
+STREAK_START_BONUS = 2.0
+
+# Swing magnitude weight (ターニングポイント検出用)
+SWING_MAGNITUDE_WEIGHT = 0.5
+
+# Reliability scale thresholds (段階的スケーリング)
+RELIABILITY_SCALE_THRESHOLDS = [
+    (500, 1.0),   # visits >= 500: full weight
+    (200, 0.8),   # visits >= 200: 80%
+    (100, 0.5),   # visits >= 100: 50%
+    (0, 0.3),     # visits < 100: 30%
+]
+
+
+def get_difficulty_modifier(difficulty: Optional["PositionDifficulty"]) -> float:
+    """
+    Get the importance modifier based on position difficulty.
+
+    - HARD: +1.0 (difficult positions have higher learning value)
+    - ONLY_MOVE: -2.0 (no choices = low learning value)
+    - EASY/NORMAL/UNKNOWN/None: 0.0 (no modifier)
+    """
+    if difficulty is None:
+        return 0.0
+    if difficulty == PositionDifficulty.HARD:
+        return DIFFICULTY_MODIFIER_HARD
+    if difficulty == PositionDifficulty.ONLY_MOVE:
+        return DIFFICULTY_MODIFIER_ONLY_MOVE
+    return 0.0
+
+
+def get_reliability_scale(root_visits: int) -> float:
+    """
+    Get the reliability scale factor based on visit count.
+
+    Returns a value between 0.3 and 1.0:
+    - visits >= 500: 1.0 (full confidence)
+    - visits >= 200: 0.8
+    - visits >= 100: 0.5
+    - visits < 100: 0.3 (low confidence)
+    """
+    visits = root_visits or 0
+    for threshold, scale in RELIABILITY_SCALE_THRESHOLDS:
+        if visits >= threshold:
+            return scale
+    return 0.3  # Default minimum
+
 
 def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VISITS_THRESHOLD) -> bool:
     """
@@ -1064,10 +1126,22 @@ class ReliabilityStats:
 
     @property
     def reliability_pct(self) -> float:
-        """Percentage of moves that are reliable (visits >= threshold)."""
+        """Percentage of analyzed moves that are reliable (visits >= threshold).
+
+        IMPORTANT: The denominator is moves_with_visits (not total_moves).
+        This ensures that un-analyzed moves don't unfairly lower reliability.
+        Use coverage_pct to track how many moves were analyzed.
+        """
+        if self.moves_with_visits == 0:
+            return 0.0
+        return 100.0 * self.reliable_count / self.moves_with_visits
+
+    @property
+    def coverage_pct(self) -> float:
+        """Percentage of total moves that have valid analysis (visits > 0)."""
         if self.total_moves == 0:
             return 0.0
-        return 100.0 * self.reliable_count / self.total_moves
+        return 100.0 * self.moves_with_visits / self.total_moves
 
     @property
     def low_confidence_pct(self) -> float:
@@ -1127,6 +1201,207 @@ def compute_reliability_stats(
             stats.max_visits = visits
 
     return stats
+
+
+# =============================================================================
+# Confidence Level (PR#1: Confidence Gating)
+# =============================================================================
+
+class ConfidenceLevel(Enum):
+    """Confidence level for analysis results.
+
+    Used to control section visibility and wording in Karte/Summary output.
+    """
+
+    HIGH = auto()  # Full output, assertive wording
+    MEDIUM = auto()  # Reduced output, hedged wording
+    LOW = auto()  # Minimal output, reference-only, re-analysis recommended
+
+
+# Constants for confidence level computation
+MIN_COVERAGE_MOVES = 5  # Minimum moves_with_visits required (guard against sparse data)
+
+# Thresholds for confidence levels (OR conditions within each level)
+_CONFIDENCE_THRESHOLDS = {
+    "high_reliability_pct": 50.0,
+    "high_avg_visits": 400,
+    "medium_reliability_pct": 30.0,
+    "medium_avg_visits": 150,
+}
+
+
+def compute_confidence_level(
+    moves: Iterable[MoveEval],
+    *,
+    min_coverage: int = MIN_COVERAGE_MOVES,
+    threshold: int = RELIABILITY_VISITS_THRESHOLD,
+) -> ConfidenceLevel:
+    """Compute confidence level for a set of moves.
+
+    The confidence level determines how much trust we can place in the analysis
+    results. It affects section visibility and wording in output.
+
+    Args:
+        moves: Iterable of MoveEval objects
+        min_coverage: Minimum moves_with_visits required (default: 5)
+        threshold: Visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD)
+
+    Returns:
+        ConfidenceLevel (HIGH, MEDIUM, or LOW)
+
+    Algorithm:
+        1. If moves_with_visits < min_coverage: return LOW (coverage guard)
+        2. HIGH if: (reliability_pct >= 50% OR avg_visits >= 400)
+        3. MEDIUM if: (reliability_pct >= 30% OR avg_visits >= 150)
+        4. Otherwise: LOW
+    """
+    stats = compute_reliability_stats(moves, threshold=threshold)
+
+    # Coverage guard: too few analyzed moves = LOW
+    if stats.moves_with_visits < min_coverage:
+        return ConfidenceLevel.LOW
+
+    reliability = stats.reliability_pct
+    avg_visits = stats.avg_visits
+
+    # HIGH: reliability >= 50% OR avg_visits >= 400
+    if (
+        reliability >= _CONFIDENCE_THRESHOLDS["high_reliability_pct"]
+        or avg_visits >= _CONFIDENCE_THRESHOLDS["high_avg_visits"]
+    ):
+        return ConfidenceLevel.HIGH
+
+    # MEDIUM: reliability >= 30% OR avg_visits >= 150
+    if (
+        reliability >= _CONFIDENCE_THRESHOLDS["medium_reliability_pct"]
+        or avg_visits >= _CONFIDENCE_THRESHOLDS["medium_avg_visits"]
+    ):
+        return ConfidenceLevel.MEDIUM
+
+    return ConfidenceLevel.LOW
+
+
+def get_confidence_label(level: ConfidenceLevel, lang: str = "ja") -> str:
+    """Get human-readable label for confidence level.
+
+    Args:
+        level: ConfidenceLevel enum value
+        lang: Language code ("ja" or "en")
+
+    Returns:
+        Localized label string
+    """
+    labels = {
+        "ja": {
+            ConfidenceLevel.HIGH: "信頼度: 高",
+            ConfidenceLevel.MEDIUM: "信頼度: 中",
+            ConfidenceLevel.LOW: "信頼度: 低",
+        },
+        "en": {
+            ConfidenceLevel.HIGH: "Confidence: High",
+            ConfidenceLevel.MEDIUM: "Confidence: Medium",
+            ConfidenceLevel.LOW: "Confidence: Low",
+        },
+    }
+    return labels.get(lang, labels["en"]).get(level, str(level))
+
+
+def get_important_moves_limit(level: ConfidenceLevel) -> int:
+    """Get the maximum number of important moves to show based on confidence.
+
+    Args:
+        level: ConfidenceLevel enum value
+
+    Returns:
+        Maximum number of important moves to display
+    """
+    limits = {
+        ConfidenceLevel.HIGH: 20,
+        ConfidenceLevel.MEDIUM: 10,
+        ConfidenceLevel.LOW: 5,
+    }
+    return limits.get(level, 5)
+
+
+def get_evidence_count(level: ConfidenceLevel) -> int:
+    """Get the number of evidence examples to show based on confidence level.
+
+    Args:
+        level: ConfidenceLevel enum value
+
+    Returns:
+        Number of examples per category (HIGH: 3, MEDIUM: 2, LOW: 1)
+    """
+    counts = {
+        ConfidenceLevel.HIGH: 3,
+        ConfidenceLevel.MEDIUM: 2,
+        ConfidenceLevel.LOW: 1,
+    }
+    return counts.get(level, 1)
+
+
+def select_representative_moves(
+    moves: List[MoveEval],
+    *,
+    max_count: int = 3,
+    category_filter: Optional[Callable[[MoveEval], bool]] = None,
+) -> List[MoveEval]:
+    """Select representative moves for evidence attachment.
+
+    Uses score_loss as the canonical loss metric. Moves with score_loss=None
+    are skipped (never converted to 0.0).
+
+    Args:
+        moves: List of MoveEval objects
+        max_count: Maximum number of moves to return
+        category_filter: Optional filter function (e.g., lambda mv: mv.tag == "opening")
+
+    Returns:
+        List of representative MoveEval objects, sorted by score_loss descending,
+        with move_number ascending as tie-breaker for deterministic ordering.
+    """
+    # Filter moves if filter function provided
+    filtered = moves if category_filter is None else [m for m in moves if category_filter(m)]
+
+    # Skip moves with score_loss=None (NEVER convert to 0.0)
+    with_loss = [m for m in filtered if m.score_loss is not None]
+
+    # Sort by score_loss descending, then move_number ascending for determinism
+    sorted_moves = sorted(
+        with_loss,
+        key=lambda m: (-m.score_loss, m.move_number),
+    )
+
+    return sorted_moves[:max_count]
+
+
+def format_evidence_examples(
+    moves: List[MoveEval],
+    *,
+    lang: str = "ja",
+) -> str:
+    """Format evidence moves as a compact inline string.
+
+    Args:
+        moves: List of MoveEval objects (already selected as representatives)
+        lang: Language code ("ja" or "en")
+
+    Returns:
+        Formatted string like "例: #12 Q16 (-8.5目), #45 R4 (-4.2目)"
+        or "e.g.: #12 Q16 (-8.5 pts), #45 R4 (-4.2 pts)"
+    """
+    if not moves:
+        return ""
+
+    prefix = "例: " if lang == "ja" else "e.g.: "
+    unit = "目" if lang == "ja" else " pts"
+
+    parts = []
+    for mv in moves:
+        loss = mv.score_loss if mv.score_loss is not None else 0.0
+        parts.append(f"#{mv.move_number} {mv.gtp or '-'} (-{loss:.1f}{unit})")
+
+    return prefix + ", ".join(parts)
 
 
 def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:
@@ -1845,80 +2120,97 @@ def detect_mistake_streaks(
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
     *,
-    weight_delta_score: float = 1.0,
-    weight_delta_winrate: float = 50.0,
-    weight_points_lost: float = 1.0,
+    streak_start_moves: Optional[Set[int]] = None,
+    confidence_level: Optional["ConfidenceLevel"] = None,
 ) -> None:
     """
-    各 MoveEval について、delta_score / delta_winrate / points_lost から
-    簡易な「重要度スコア」を計算し、importance_score に格納する。
+    各 MoveEval について重要度スコアを計算し、importance_score に格納する。
 
-    重みの意味（ざっくり）:
-        - weight_delta_score : 形勢の点数変化（目）をどれだけ重く見るか
-        - weight_delta_winrate : 勝率 1.0 の変化を「何目分」とみなすか
-        - weight_points_lost : points_lost をどれだけ重く見るか
+    PR#4 で再設計された新公式:
+        base_importance = (
+            1.0 * canonical_loss +           # 主成分：損失目数
+            0.5 * swing_magnitude +          # ターニングポイント
+            difficulty_modifier +            # 難易度補正
+            streak_start_bonus               # ストリーク開始ボーナス
+        )
+        final_importance = base_importance * reliability_scale
 
-    ボーナス:
-        - 形勢逆転（スコア符号変化）: +1.0
-        - 勝率が50%をまたぐ: +1.0
-        - is_reliable=False の場合: importance を 0.25 倍に減衰
+    成分詳細:
+        - canonical_loss: score_loss (>= 0)、主成分
+        - swing_magnitude: 形勢変動の大きさ（符号変化時）
+        - difficulty_modifier: HARD +1.0, ONLY_MOVE -2.0, else 0
+        - streak_start_bonus: 連続ミス開始点 +2.0
+        - reliability_scale: visits に基づく段階的スケーリング (0.3-1.0)
 
-    使用例:
-        >>> moves = snapshot.moves
-        >>> compute_importance_for_moves(moves)
-        >>> important = [m for m in moves if m.importance_score and m.importance_score > 3.0]
-        >>> print(f"Important moves: {len(important)}")
+    Confidence による成分制御:
+        - HIGH: 全成分を使用
+        - MEDIUM: canonical_loss + swing_magnitude のみ
+        - LOW: canonical_loss のみ（最も安定）
+
+    Args:
+        moves: 処理対象の MoveEval リスト
+        streak_start_moves: ストリーク開始手の move_number セット（Optional）
+        confidence_level: 解析の信頼度レベル（Optional、None は HIGH として扱う）
 
     注意:
         - この関数は moves を破壊的に変更します（各 m.importance_score を書き換え）
         - snapshot_from_nodes() で自動的に呼ばれるため、通常は手動で呼ぶ必要はありません
     """
-    for m in moves:
-        score_term = (
-            weight_delta_score * abs(m.delta_score)
-            if m.delta_score is not None
-            else 0.0
-        )
-        winrate_term = (
-            weight_delta_winrate * abs(m.delta_winrate)
-            if m.delta_winrate is not None
-            else 0.0
-        )
-        pl_term = (
-            weight_points_lost * max(m.points_lost or 0.0, 0.0)
-            if m.points_lost is not None
-            else 0.0
-        )
+    # Import here to avoid circular dependency
+    from katrain.core.eval_metrics import ConfidenceLevel
 
-        # swing_bonus: 形勢逆転を検出して重要度にボーナスを加算
-        # - score: 符号が反転（正→負 or 負→正）、または互角(0.0)を通過した場合
-        # - winrate: 50%ラインを跨いだ場合
-        # 注: score == 0.0 は「完全互角」を意味し、互角からの変化も重要な局面として扱う
-        swing_bonus = 0.0
-        if m.score_before is not None and m.score_after is not None:
-            # 符号変化の判定:
-            # - 正→負 または 負→正 への変化
-            # - 互角(0.0)から有利/不利への変化
-            # - 有利/不利から互角(0.0)への変化
+    # Default to HIGH if not specified
+    if confidence_level is None:
+        confidence_level = ConfidenceLevel.HIGH
+
+    # Determine which components to use based on confidence
+    use_all_components = confidence_level == ConfidenceLevel.HIGH
+    use_swing = confidence_level in (ConfidenceLevel.HIGH, ConfidenceLevel.MEDIUM)
+
+    if streak_start_moves is None:
+        streak_start_moves = set()
+
+    for m in moves:
+        # 1. Canonical loss (主成分) - always used
+        canonical_loss = m.score_loss if m.score_loss is not None else 0.0
+        canonical_loss = max(0.0, canonical_loss)  # Ensure >= 0
+
+        # 2. Swing magnitude (ターニングポイント) - used for HIGH/MEDIUM
+        swing_magnitude = 0.0
+        if use_swing and m.score_before is not None and m.score_after is not None:
+            # Check for sign change (turning point)
             score_sign_changed = (
-                (m.score_before > 0) != (m.score_after > 0)  # 符号反転
-                or m.score_before == 0.0  # 互角からの変化
-                or m.score_after == 0.0   # 互角への変化
+                (m.score_before > 0) != (m.score_after > 0)
+                or m.score_before == 0.0
+                or m.score_after == 0.0
             )
             if score_sign_changed:
-                swing_bonus += SWING_SCORE_SIGN_BONUS
-        if (
-            m.winrate_before is not None
-            and m.winrate_after is not None
-            and (m.winrate_before < 0.5) != (m.winrate_after < 0.5)
-        ):
-            swing_bonus += SWING_WINRATE_CROSS_BONUS
+                swing_magnitude = abs(m.score_before - m.score_after)
 
-        importance = score_term + winrate_term + pl_term + swing_bonus
-        if not m.is_reliable:
-            importance *= UNRELIABLE_IMPORTANCE_SCALE
+        # 3. Difficulty modifier - only for HIGH confidence
+        difficulty_modifier = 0.0
+        if use_all_components:
+            difficulty_modifier = get_difficulty_modifier(m.position_difficulty)
 
-        m.importance_score = importance
+        # 4. Streak start bonus - only for HIGH confidence
+        streak_bonus = 0.0
+        if use_all_components and m.move_number in streak_start_moves:
+            streak_bonus = STREAK_START_BONUS
+
+        # Compute base importance
+        base_importance = (
+            1.0 * canonical_loss +
+            SWING_MAGNITUDE_WEIGHT * swing_magnitude +
+            difficulty_modifier +
+            streak_bonus
+        )
+
+        # Apply reliability scale based on visits
+        reliability_scale = get_reliability_scale(m.root_visits)
+        final_importance = base_importance * reliability_scale
+
+        # Ensure non-negative
+        m.importance_score = max(0.0, final_importance)
 
 
 def pick_important_moves(
@@ -1926,9 +2218,8 @@ def pick_important_moves(
     level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
     settings: Optional[ImportantMoveSettings] = None,
     recompute: bool = True,
-    weight_delta_score: float = 1.0,
-    weight_delta_winrate: float = 50.0,
-    weight_points_lost: float = 1.0,
+    streak_start_moves: Optional[Set[int]] = None,
+    confidence_level: Optional["ConfidenceLevel"] = None,
 ) -> List[MoveEval]:
     """
     snapshot から重要局面の手数だけを抽出して返す。
@@ -1941,12 +2232,16 @@ def pick_important_moves(
         settings:
             直接設定を渡したい場合用。通常は None のままでよい。
         recompute: importance_score を再計算するかどうか
-        weight_delta_score: delta_score の重み
-        weight_delta_winrate: delta_winrate の重み
-        weight_points_lost: points_lost の重み
+        streak_start_moves: ストリーク開始手の move_number セット（PR#4）
+        confidence_level: 解析の信頼度レベル（PR#4）
 
     Returns:
         MoveEval オブジェクトのリスト（手数順）。
+
+    Note:
+        ソート順序は決定論的:
+        1. importance_score 降順
+        2. タイブレーク: move_number 昇順
     """
     # 設定の決定
     if settings is None:
@@ -1966,17 +2261,17 @@ def pick_important_moves(
     if recompute:
         compute_importance_for_moves(
             moves,
-            weight_delta_score=weight_delta_score,
-            weight_delta_winrate=weight_delta_winrate,
-            weight_points_lost=weight_points_lost,
+            streak_start_moves=streak_start_moves,
+            confidence_level=confidence_level,
         )
 
     # 1) 通常ルート: importance_score ベース
-    candidates: List[Tuple[float, MoveEval]] = []
+    candidates: List[Tuple[float, int, MoveEval]] = []
     for move in moves:
         importance = move.importance_score or 0.0
         if importance > threshold:
-            candidates.append((importance, move))
+            # タプル: (importance, move_number, move) for deterministic sort
+            candidates.append((importance, move.move_number, move))
 
     # 2) フォールバック:
     #    1) で 1 手も選ばれなかったときだけ、
@@ -1987,21 +2282,22 @@ def pick_important_moves(
             winrate_term = 50.0 * abs(m.delta_winrate or 0.0)
             pl_term = get_canonical_loss_from_move(m)
             base = score_term + winrate_term + pl_term
-            if not m.is_reliable:
-                base *= UNRELIABLE_IMPORTANCE_SCALE
+            # Apply reliability scale
+            base *= get_reliability_scale(m.root_visits)
             return base
 
         for move in moves:
             raw_sc = raw_score(move)
             if raw_sc > 0.0:
-                candidates.append((raw_sc, move))
+                candidates.append((raw_sc, move.move_number, move))
 
-    # importance の大きい順に並べ替えて上位だけ残す
-    candidates.sort(key=lambda x: x[0], reverse=True)
+    # importance の大きい順に並べ替え（タイブレーク: move_number 昇順）
+    # Sort key: (-importance, move_number) for descending importance, ascending move_number
+    candidates.sort(key=lambda x: (-x[0], x[1]))
     top = candidates[:max_moves]
 
     # その後手数順にソート
-    important_moves = sorted([m for _, m in top], key=lambda m: m.move_number)
+    important_moves = sorted([m for _, _, m in top], key=lambda m: m.move_number)
     return important_moves
 
 
@@ -2101,96 +2397,106 @@ def estimate_skill_level_from_tags(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
 __all__ = [
     # Enums
     "MistakeCategory",
     "PositionDifficulty",
     "AutoConfidence",
+    "ConfidenceLevel",
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",
-    "ImportantMoveSettings",
     "GameSummaryData",
     "SummaryStats",
     "PhaseMistakeStats",
+    "ImportantMoveSettings",
+    "ReasonTagThresholds",
     "QuizItem",
     "QuizConfig",
     "QuizChoice",
     "QuizQuestion",
-    "ReasonTagThresholds",
     "SkillPreset",
     "AutoRecommendation",
     "UrgentMissConfig",
     "ReliabilityStats",
     "MistakeStreak",
     "SkillEstimation",
-    # Constants - Presets
+    # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
     "PRESET_ORDER",
+    "URGENT_MISS_CONFIGS",
+    # Settings dictionaries
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
-    # Constants - Labels
-    "SKILL_PRESET_LABELS",
-    "CONFIDENCE_LABELS",
-    "REASON_TAG_LABELS",
-    "VALID_REASON_TAGS",
-    # Constants - Quiz
+    # Quiz constants
     "QUIZ_CONFIG_DEFAULT",
     "DEFAULT_QUIZ_LOSS_THRESHOLD",
     "DEFAULT_QUIZ_ITEM_LIMIT",
-    # Constants - Urgent miss
-    "URGENT_MISS_CONFIGS",
-    # Constants - Reliability
+    # Reliability/importance constants
     "RELIABILITY_VISITS_THRESHOLD",
     "UNRELIABLE_IMPORTANCE_SCALE",
     "SWING_SCORE_SIGN_BONUS",
     "SWING_WINRATE_CROSS_BONUS",
-    # Constants - Thresholds
+    "SWING_MAGNITUDE_WEIGHT",
+    "DIFFICULTY_MODIFIER_HARD",
+    "DIFFICULTY_MODIFIER_ONLY_MOVE",
+    "DIFFICULTY_MODIFIER_EASY",
+    "DIFFICULTY_MODIFIER_NORMAL",
+    "STREAK_START_BONUS",
+    "RELIABILITY_SCALE_THRESHOLDS",
+    # Thresholds
     "SCORE_THRESHOLDS",
     "WINRATE_THRESHOLDS",
-    # Functions - Loss
+    "MIN_COVERAGE_MOVES",
+    "_CONFIDENCE_THRESHOLDS",
+    # Labels
+    "REASON_TAG_LABELS",
+    "VALID_REASON_TAGS",
+    "SKILL_PRESET_LABELS",
+    "CONFIDENCE_LABELS",
+    # Loss calculation functions
     "get_canonical_loss_from_move",
     "compute_loss_from_delta",
     "compute_canonical_loss",
     "classify_mistake",
-    # Functions - Reliability
-    "is_reliable_from_visits",
-    "compute_reliability_stats",
-    # Functions - Difficulty
-    "_assess_difficulty_from_policy",
-    "assess_position_difficulty_from_parent",
-    # Functions - Phase
-    "get_phase_thresholds",
-    "classify_game_phase",
-    # Functions - Streak
-    "detect_mistake_streaks",
-    # Functions - Importance
-    "compute_importance_for_moves",
-    "pick_important_moves",
-    # Functions - Snapshot
+    # Snapshot functions
     "move_eval_from_node",
     "snapshot_from_nodes",
-    "iter_main_branch_nodes",
     "snapshot_from_game",
-    # Functions - Quiz
-    "quiz_items_from_snapshot",
-    "quiz_points_lost_from_candidate",
-    # Functions - Aggregation
-    "aggregate_phase_mistake_stats",
-    # Functions - Auto recommendation
-    "_distance_from_range",
-    "recommend_auto_strictness",
-    # Functions - Skill estimation
-    "estimate_skill_level_from_tags",
-    # Functions - Preset getters
+    "iter_main_branch_nodes",
+    # Importance functions
+    "compute_importance_for_moves",
+    "pick_important_moves",
+    "get_difficulty_modifier",
+    "get_reliability_scale",
+    "is_reliable_from_visits",
+    # Reliability/confidence functions
+    "compute_reliability_stats",
+    "compute_confidence_level",
+    "get_confidence_label",
+    "get_important_moves_limit",
+    "get_evidence_count",
+    # Phase/difficulty functions
+    "classify_game_phase",
+    "get_phase_thresholds",
+    "assess_position_difficulty_from_parent",
+    "_assess_difficulty_from_policy",
+    # Preset functions
     "get_skill_preset",
     "get_urgent_miss_config",
-    # Functions - Validation
+    "recommend_auto_strictness",
+    "_distance_from_range",
+    # Stats/analysis functions
+    "aggregate_phase_mistake_stats",
+    "detect_mistake_streaks",
+    "quiz_items_from_snapshot",
+    "quiz_points_lost_from_candidate",
     "validate_reason_tag",
-    # Functions - Labels
     "get_reason_tag_label",
-    # Functions - Practice priorities
+    "estimate_skill_level_from_tags",
     "get_practice_priorities_from_stats",
+    # Evidence functions
+    "select_representative_moves",
+    "format_evidence_examples",
 ]

@@ -934,6 +934,9 @@ class Game(BaseGame):
         """Internal implementation of build_karte_report."""
         snapshot = self.build_eval_snapshot()
         thresholds = self.katrain.config("trainer/eval_thresholds") if self.katrain else []
+
+        # PR#1: Compute confidence level for section gating
+        confidence_level = eval_metrics.compute_confidence_level(snapshot.moves)
         settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
             level, eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL]
         )
@@ -1216,8 +1219,14 @@ class Game(BaseGame):
             return context
 
         def important_lines_for(player: str, label: str) -> List[str]:
-            player_moves = [mv for mv in important_moves if mv.player == player][: settings.max_moves]
-            lines = [f"## Important Moves ({label}) Top {len(player_moves) or settings.max_moves}"]
+            # PR#1: Confidence gating for important moves count
+            confidence_limit = eval_metrics.get_important_moves_limit(confidence_level)
+            max_count = min(settings.max_moves, confidence_limit)
+            player_moves = [mv for mv in important_moves if mv.player == player][:max_count]
+
+            # PR#1: Add "(候補)" suffix for LOW confidence
+            title_suffix = " (候補)" if confidence_level == eval_metrics.ConfidenceLevel.LOW else ""
+            lines = [f"## Important Moves ({label}){title_suffix} Top {len(player_moves) or max_count}"]
             if player_moves:
                 # Added "Best" column for best move from PRE-MOVE node
                 lines.append("| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | Reason |")
@@ -1359,15 +1368,20 @@ class Game(BaseGame):
             ])
             return lines
 
-        # Build Data Quality section
+        # Build Data Quality section (PR#1: confidence level display)
         def data_quality_section() -> List[str]:
             """Build the Data Quality section with reliability statistics."""
             rel_stats = eval_metrics.compute_reliability_stats(snapshot.moves)
 
+            # PR#1: Add confidence level label
+            confidence_label = eval_metrics.get_confidence_label(confidence_level, lang="ja")
+
             lines = [
                 "## Data Quality",
                 "",
+                f"- **{confidence_label}**",  # PR#1: Show confidence level prominently
                 f"- Moves analyzed: {rel_stats.total_moves}",
+                f"- Coverage: {rel_stats.moves_with_visits} / {rel_stats.total_moves} ({rel_stats.coverage_pct:.1f}%)",  # PR#1: coverage_pct
                 f"- Reliable (visits ≥ {eval_metrics.RELIABILITY_VISITS_THRESHOLD}): "
                 f"{rel_stats.reliable_count} ({rel_stats.reliability_pct:.1f}%)",
                 f"- Low-confidence: {rel_stats.low_confidence_count} ({rel_stats.low_confidence_pct:.1f}%)",
@@ -1381,7 +1395,11 @@ class Game(BaseGame):
             if rel_stats.zero_visits_count > 0:
                 lines.append(f"- No visits data: {rel_stats.zero_visits_count}")
 
-            if rel_stats.is_low_reliability:
+            # PR#1: LOW confidence warning (replaces old is_low_reliability check)
+            if confidence_level == eval_metrics.ConfidenceLevel.LOW:
+                lines.append("")
+                lines.append("⚠️ 解析訪問数が少ないため、結果が不安定な可能性があります。再解析を推奨します。")
+            elif rel_stats.is_low_reliability:
                 lines.append("")
                 lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")
 
@@ -1432,7 +1450,7 @@ class Game(BaseGame):
             # Phase 4: 共通困難局面を追加
             sections += common_difficult_positions()
 
-        # 弱点仮説セクション（Phase 7で追加、Phase 8で skill_preset 対応）
+        # 弱点仮説セクション（Phase 7で追加、Phase 8で skill_preset 対応、PR#1で confidence gating）
         def weakness_hypothesis_for(player: str, label: str) -> List[str]:
             """単局の弱点仮説を生成（skill_preset の閾値を使用）"""
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
@@ -1467,25 +1485,82 @@ class Game(BaseGame):
                 "INACCURACY": "軽微なミス",
             }
 
-            lines = [f"## Weakness Hypothesis ({label})", ""]
+            # PR#1: Confidence-based wording
+            is_low_conf = confidence_level == eval_metrics.ConfidenceLevel.LOW
+            is_medium_conf = confidence_level == eval_metrics.ConfidenceLevel.MEDIUM
+
+            # PR#1: Add "(※参考情報)" suffix for LOW confidence
+            header_suffix = " (※参考情報)" if is_low_conf else ""
+            lines = [f"## Weakness Hypothesis ({label}){header_suffix}", ""]
+
+            # PR#2: Get evidence count based on confidence level
+            evidence_count = eval_metrics.get_evidence_count(confidence_level)
+
             if sorted_combos:
                 # 上位2つの弱点を抽出
                 for i, (key, loss) in enumerate(sorted_combos[:2]):
                     phase, category = key
                     count = stats.phase_mistake_counts.get(key, 0)
-                    lines.append(
-                        f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** "
-                        f"({count}回、損失{loss:.1f}目)"
+
+                    # PR#2: Select representative moves for this phase/category
+                    def phase_cat_filter(mv):
+                        mv_phase = mv.tag or "unknown"
+                        mv_cat = mv.mistake_category.name if mv.mistake_category else "GOOD"
+                        return mv_phase == phase and mv_cat == category
+
+                    evidence_moves = eval_metrics.select_representative_moves(
+                        player_moves,
+                        max_count=evidence_count,
+                        category_filter=phase_cat_filter,
                     )
+                    evidence_str = eval_metrics.format_evidence_examples(evidence_moves, lang="ja")
+
+                    # PR#1: Use hedged wording for MEDIUM/LOW confidence
+                    if is_low_conf:
+                        # LOW: "〜の傾向が見られる"
+                        lines.append(
+                            f"{i+1}. {phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}の傾向が見られる "
+                            f"({count}回、損失{loss:.1f}目)"
+                        )
+                    elif is_medium_conf:
+                        # MEDIUM: "〜の傾向あり"
+                        lines.append(
+                            f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** 傾向あり "
+                            f"({count}回、損失{loss:.1f}目)"
+                        )
+                    else:
+                        # HIGH: Assertive wording (original)
+                        lines.append(
+                            f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** "
+                            f"({count}回、損失{loss:.1f}目)"
+                        )
+
+                    # PR#2: Add evidence examples on next line (indented)
+                    if evidence_str:
+                        lines.append(f"   {evidence_str}")
             else:
                 lines.append("- 明確な弱点パターンは検出されませんでした。")
+
+            # PR#1: Add re-analysis recommendation for LOW confidence
+            if is_low_conf:
+                lines.append("")
+                lines.append("⚠️ 解析訪問数が少ないため、visits増で再解析を推奨します。")
 
             lines.append("")
             return lines
 
-        # Practice Priorities を生成（共有アグリゲータを使用、skill_preset 対応）
+        # Practice Priorities を生成（共有アグリゲータを使用、skill_preset 対応、PR#1で confidence gating）
         def practice_priorities_for(player: str, label: str) -> List[str]:
             """単局の練習優先事項を生成（skill_preset の閾値を使用）"""
+            # PR#1: LOW confidence → placeholder only
+            if confidence_level == eval_metrics.ConfidenceLevel.LOW:
+                return [
+                    f"## Practice Priorities ({label})",
+                    "",
+                    "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
+                    "",
+                ]
+
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
             if not player_moves:
                 return [f"## Practice Priorities ({label})", "- No data available.", ""]
@@ -1505,14 +1580,36 @@ class Game(BaseGame):
             )
 
             # 優先項目を取得
-            priorities = get_practice_priorities_from_stats(stats, max_priorities=2)
+            # PR#1: MEDIUM confidence → shortened version (max 1)
+            max_priorities = 1 if confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
+            priorities = get_practice_priorities_from_stats(stats, max_priorities=max_priorities)
 
             lines = [f"## Practice Priorities ({label})", ""]
             lines.append("Based on the data above, consider focusing on:")
             lines.append("")
             if priorities:
+                # PR#2: For each priority, find the worst move as anchor
+                # Priority format is like "Endgameのblunderを減らす" or similar
+                # We need to extract phase from the priority text and find worst move
                 for i, priority in enumerate(priorities, 1):
                     lines.append(f"- {i}. {priority}")
+
+                    # PR#2: Try to find anchor move for this priority
+                    # Extract phase from priority text (Opening/Middle/Endgame/etc.)
+                    anchor_move = None
+                    for phase_key, phase_name in [("opening", "Opening"), ("middle", "Middle"), ("yose", "Endgame")]:
+                        if phase_name.lower() in priority.lower() or phase_key in priority.lower():
+                            # Find worst move in this phase
+                            phase_moves = [
+                                mv for mv in player_moves
+                                if (mv.tag or "unknown") == phase_key and mv.score_loss is not None
+                            ]
+                            if phase_moves:
+                                anchor_move = max(phase_moves, key=lambda m: (m.score_loss or 0, -m.move_number))
+                            break
+
+                    if anchor_move and anchor_move.score_loss:
+                        lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で -{anchor_move.score_loss:.1f}目の損失)")
             else:
                 lines.append("- No specific priorities identified. Keep up the good work!")
             lines.append("")
@@ -1549,7 +1646,7 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
-        # 急場見逃し検出セクション（Urgent Miss Detection）
+        # 急場見逃し検出セクション（Urgent Miss Detection、PR#1で confidence gating）
         def urgent_miss_section_for(player: str, label: str) -> List[str]:
             """急場見逃しの可能性がある連続ミスを検出（URGENT_MISS_CONFIGS を使用）"""
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
@@ -1569,15 +1666,21 @@ class Game(BaseGame):
             if not streaks:
                 return []
 
-            lines = [f"## Urgent Miss Detection ({label})", ""]
+            # PR#1: Add "※要再解析" annotation for LOW confidence
+            is_low_conf = confidence_level == eval_metrics.ConfidenceLevel.LOW
+            header_suffix = " (※要再解析)" if is_low_conf else ""
+            lines = [f"## Urgent Miss Detection ({label}){header_suffix}", ""]
             lines.append("**Warning**: 以下の連続手は急場見逃しの可能性があります:")
             lines.append("")
-            lines.append("| Move Range | Consecutive | Total Loss | Avg Loss |")
-            lines.append("|------------|-------------|------------|----------|")
+            # PR#2: Add Coords column for coordinate sequence
+            lines.append("| Move Range | Consecutive | Total Loss | Avg Loss | Coords |")
+            lines.append("|------------|-------------|------------|----------|--------|")
             for s in streaks:
+                # PR#2: Build coordinate sequence from streak moves
+                coords = "→".join(mv.gtp or "-" for mv in s.moves) if s.moves else "-"
                 lines.append(
                     f"| #{s.start_move}-{s.end_move} | {s.move_count} moves | "
-                    f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts |"
+                    f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts | {coords} |"
                 )
             lines.append("")
             return lines
@@ -1652,8 +1755,11 @@ class Game(BaseGame):
         sections.append(Game._format_meta_section(game_data_list, focus_player))
 
         for player, stats in player_stats.items():
+            # PR#1: Compute confidence level per player
+            confidence_level = eval_metrics.compute_confidence_level(stats.all_moves)
+
             sections.append("")
-            sections.append(Game._format_overall_stats(player, stats))
+            sections.append(Game._format_overall_stats(player, stats, confidence_level))
             sections.append("")
             sections.append(Game._format_mistake_distribution(player, stats))
             sections.append("")
@@ -1664,11 +1770,11 @@ class Game(BaseGame):
             # Phase × Mistake クロス集計テーブル追加
             sections.append(Game._format_phase_mistake_breakdown(player, stats))
             sections.append("")
-            sections.append(Game._format_top_worst_moves(player, stats))
+            sections.append(Game._format_top_worst_moves(player, stats, confidence_level))
             sections.append("")
-            sections.append(Game._format_weakness_hypothesis(player, stats))
+            sections.append(Game._format_weakness_hypothesis(player, stats, confidence_level))
             sections.append("")
-            sections.append(Game._format_practice_priorities(player, stats))
+            sections.append(Game._format_practice_priorities(player, stats, confidence_level))
 
         return "\n".join(sections)
 
@@ -1708,6 +1814,9 @@ class Game(BaseGame):
                 # このプレイヤーの手のみを集計
                 player_moves = [m for m in game_data.snapshot.moves if m.player == player_color]
                 stats.total_moves += len(player_moves)
+
+                # PR#1: Store moves for confidence level computation
+                stats.all_moves.extend(player_moves)
 
                 for move in player_moves:
                     # 損失を集計（canonical loss: 常に >= 0）
@@ -1781,9 +1890,21 @@ class Game(BaseGame):
         return "\n".join(lines)
 
     @staticmethod
-    def _format_overall_stats(player_name: str, stats: SummaryStats) -> str:
+    def _format_overall_stats(
+        player_name: str,
+        stats: SummaryStats,
+        confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    ) -> str:
         """総合統計セクションを生成"""
+        # PR#1: Import ConfidenceLevel for default handling
+        if confidence_level is None:
+            confidence_level = eval_metrics.ConfidenceLevel.HIGH
+
+        # PR#1: Show confidence level prominently
+        confidence_label = eval_metrics.get_confidence_label(confidence_level, lang="ja")
+
         lines = [f"## Overall Statistics ({player_name})"]
+        lines.append(f"- **{confidence_label}**")  # PR#1: Confidence level
         lines.append(f"- Total games: {stats.total_games}")
         lines.append(f"- Total moves analyzed: {stats.total_moves}")
         lines.append(f"- Total points lost: {stats.total_points_lost:.1f}")
@@ -1796,6 +1917,11 @@ class Game(BaseGame):
                 f"- Worst single move: {worst_game} #{worst_move.move_number} "
                 f"{worst_move.gtp or '-'} ({loss:.1f} points)"
             )
+
+        # PR#1: Add LOW confidence warning
+        if confidence_level == eval_metrics.ConfidenceLevel.LOW:
+            lines.append("")
+            lines.append("⚠️ 解析訪問数が少ないため、結果が不安定な可能性があります。再解析を推奨します。")
 
         return "\n".join(lines)
 
@@ -2011,9 +2137,20 @@ class Game(BaseGame):
         return sequences, filtered_moves
 
     @staticmethod
-    def _format_top_worst_moves(player_name: str, stats: SummaryStats) -> str:
+    def _format_top_worst_moves(
+        player_name: str,
+        stats: SummaryStats,
+        confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    ) -> str:
         """最悪手Top 10セクションを生成（急場見逃しパターンを分離）"""
-        lines = [f"## Top Worst Moves ({player_name})"]
+        # PR#1: Default to HIGH if not provided
+        if confidence_level is None:
+            confidence_level = eval_metrics.ConfidenceLevel.HIGH
+
+        # PR#1: Limit worst moves count based on confidence
+        max_count = eval_metrics.get_important_moves_limit(confidence_level)
+        title_suffix = " (候補)" if confidence_level == eval_metrics.ConfidenceLevel.LOW else ""
+        lines = [f"## Top Worst Moves ({player_name}){title_suffix}"]
 
         if not stats.worst_moves:
             lines.append("- No significant mistakes found.")
@@ -2044,9 +2181,11 @@ class Game(BaseGame):
 
         # 通常のワースト手を表示
         if filtered_moves:
-            # 損失でソートしてTop 10を取得
+            # 損失でソートして confidence level に応じた件数を取得
             filtered_moves.sort(key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True)
-            display_moves = filtered_moves[:10]
+            # PR#1: Use max_count from confidence level (default was 10)
+            display_limit = min(10, max_count)
+            display_moves = filtered_moves[:display_limit]
 
             if sequences:
                 lines.append("通常のワースト手（損失20目以下 or 単発）:")
@@ -2084,14 +2223,27 @@ class Game(BaseGame):
         return "\n".join(lines)
 
     @staticmethod
-    def _format_weakness_hypothesis(player_name: str, stats: SummaryStats) -> str:
+    def _format_weakness_hypothesis(
+        player_name: str,
+        stats: SummaryStats,
+        confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    ) -> str:
         """弱点仮説セクションを生成（複数局サマリー用）"""
-        lines = [f"## Weakness Hypothesis ({player_name})", ""]
+        # PR#1: Default to HIGH if not provided
+        if confidence_level is None:
+            confidence_level = eval_metrics.ConfidenceLevel.HIGH
+
+        # PR#1: Confidence-based wording
+        is_low_conf = confidence_level == eval_metrics.ConfidenceLevel.LOW
+        is_medium_conf = confidence_level == eval_metrics.ConfidenceLevel.MEDIUM
+
+        # PR#1: Add "(※参考情報)" suffix for LOW confidence
+        header_suffix = " (※参考情報)" if is_low_conf else ""
+        lines = [f"## Weakness Hypothesis ({player_name}){header_suffix}", ""]
 
         # 急場見逃しパターンを検出（棋力別閾値を使用）
         # Note: このメソッドは static なので config にアクセスできない
         # 現在 UI では使われていないため、標準設定をデフォルトとする
-        from katrain.core import eval_metrics
         urgent_config = eval_metrics.get_urgent_miss_config("standard")
 
         sequences, _ = Game._detect_urgent_miss_sequences(
@@ -2104,7 +2256,13 @@ class Game(BaseGame):
         priorities = stats.get_practice_priorities()
 
         if priorities:
-            lines.append("Based on cross-tabulation analysis:")
+            # PR#1: Use hedged wording for MEDIUM/LOW confidence
+            if is_low_conf:
+                lines.append("傾向が見られる項目（※参考情報）:")
+            elif is_medium_conf:
+                lines.append("傾向が見られる項目（Based on cross-tabulation analysis）:")
+            else:
+                lines.append("Based on cross-tabulation analysis:")
             lines.append("")
             for priority in priorities:
                 lines.append(f"- {priority}")
@@ -2129,17 +2287,42 @@ class Game(BaseGame):
             lines.append("- 対局中、戦いの前に「自分の石は安全か？」「相手の弱点はどこか？」を確認")
             lines.append("- 急場見逃し区間のSGFを重点的に復習")
 
+        # PR#1: Add re-analysis recommendation for LOW confidence
+        if is_low_conf:
+            lines.append("")
+            lines.append("⚠️ 解析訪問数が少ないため、visits増で再解析を推奨します。")
+
         return "\n".join(lines)
 
     @staticmethod
-    def _format_practice_priorities(player_name: str, stats: SummaryStats) -> str:
+    def _format_practice_priorities(
+        player_name: str,
+        stats: SummaryStats,
+        confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    ) -> str:
         """練習優先事項セクションを生成"""
+        # PR#1: Default to HIGH if not provided
+        if confidence_level is None:
+            confidence_level = eval_metrics.ConfidenceLevel.HIGH
+
+        # PR#1: LOW confidence → placeholder only
+        if confidence_level == eval_metrics.ConfidenceLevel.LOW:
+            return "\n".join([
+                f"## Practice Priorities ({player_name})",
+                "",
+                "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
+            ])
+
         lines = [f"## Practice Priorities ({player_name})"]
         lines.append("")
         lines.append("Based on the data above, consider focusing on:")
         lines.append("")
 
         priorities = stats.get_practice_priorities()
+
+        # PR#1: MEDIUM confidence → limit to 1 priority
+        if confidence_level == eval_metrics.ConfidenceLevel.MEDIUM and len(priorities) > 1:
+            priorities = priorities[:1]
 
         if not priorities:
             lines.append("- No specific priorities identified. Keep up the good work!")
