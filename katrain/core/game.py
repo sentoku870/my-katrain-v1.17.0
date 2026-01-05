@@ -4,7 +4,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from kivy.clock import Clock
 
@@ -1018,12 +1018,12 @@ class Game(BaseGame):
             moves = [mv for mv in snapshot.moves if mv.player == player and mv.points_lost is not None]
             return max(moves, key=lambda mv: mv.points_lost) if moves else None
 
-        def mistake_label_from_loss(loss_val: Optional[float]) -> str:
-            """Classify a loss value using the centralized classify_mistake function."""
+        def mistake_label_from_loss(loss_val: Optional[float], thresholds: Tuple[float, float, float]) -> str:
+            """Classify a loss value using the centralized classify_mistake function with given thresholds."""
             if loss_val is None:
                 return "unknown"
-            # Use classify_mistake for consistent thresholds across Karte and Summary
-            category = classify_mistake(score_loss=loss_val, winrate_loss=None)
+            # Use classify_mistake with explicit thresholds for consistency with Definitions section
+            category = classify_mistake(score_loss=loss_val, winrate_loss=None, score_thresholds=thresholds)
             return category.value
 
         def summary_lines_for(player: str) -> List[str]:
@@ -1036,7 +1036,7 @@ class Game(BaseGame):
                 "- Worst move: "
                 + (
                     f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
-                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost)})"
+                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost, effective_thresholds)})"
                     if worst
                     else "unknown"
                 ),
@@ -1057,7 +1057,7 @@ class Game(BaseGame):
                 f"- Total points lost: {fmt_float(total_lost)}",
                 "- Worst move: " + (
                     f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
-                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost)})"
+                    f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost, effective_thresholds)})"
                     if worst else "unknown"
                 ),
                 ""
@@ -1225,7 +1225,7 @@ class Game(BaseGame):
                 for mv in player_moves:
                     # canonical loss を使用（常に >= 0）
                     loss = get_canonical_loss_from_move(mv)
-                    mistake = mistake_label_from_loss(loss)
+                    mistake = mistake_label_from_loss(loss, effective_thresholds)
                     reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
 
                     # コンテキスト情報を取得 (now includes best_move from PRE-MOVE node)
@@ -1297,6 +1297,9 @@ class Game(BaseGame):
                 focus_moves = list(snapshot.moves)
             auto_recommendation = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
             effective_preset = auto_recommendation.recommended_preset
+
+        # Get effective thresholds for classification (used by mistake_label_from_loss and other helpers)
+        effective_thresholds = eval_metrics.get_skill_preset(effective_preset).score_thresholds
 
         # Build Definitions section (uses SKILL_PRESETS thresholds based on effective preset)
         def definitions_section() -> List[str]:
