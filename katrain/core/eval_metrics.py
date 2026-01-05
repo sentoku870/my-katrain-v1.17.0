@@ -1793,13 +1793,29 @@ def detect_mistake_streaks(
         current_streak: List[MoveEval] = []
 
         for m in sorted_moves:
-            loss = max(0.0, m.points_lost or 0.0)
+            # Safety: explicit None check to avoid truthiness bug (0.0 is valid)
+            if m.points_lost is None:
+                # Unknown loss breaks the streak (conservative approach)
+                if len(current_streak) >= min_consecutive:
+                    total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
+                    streaks.append(MistakeStreak(
+                        player=player,
+                        start_move=current_streak[0].move_number,
+                        end_move=current_streak[-1].move_number,
+                        move_count=len(current_streak),
+                        total_loss=total_loss,
+                        moves=list(current_streak),
+                    ))
+                current_streak = []
+                continue
+
+            loss = max(0.0, m.points_lost)
             if loss >= loss_threshold:
                 current_streak.append(m)
             else:
                 # streak が途切れた
                 if len(current_streak) >= min_consecutive:
-                    total_loss = sum(max(0.0, mv.points_lost or 0.0) for mv in current_streak)
+                    total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
                     streaks.append(MistakeStreak(
                         player=player,
                         start_move=current_streak[0].move_number,
@@ -1812,7 +1828,7 @@ def detect_mistake_streaks(
 
         # 最後の streak をチェック
         if len(current_streak) >= min_consecutive:
-            total_loss = sum(max(0.0, mv.points_lost or 0.0) for mv in current_streak)
+            total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
             streaks.append(MistakeStreak(
                 player=player,
                 start_move=current_streak[0].move_number,
