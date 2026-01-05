@@ -1340,7 +1340,7 @@ class Game(BaseGame):
                 hint_rec = eval_metrics.recommend_auto_strictness(hint_moves, game_count=1)
                 hint_preset_jp = preset_labels.get(hint_rec.recommended_preset, hint_rec.recommended_preset)
                 hint_conf_jp = conf_labels.get(hint_rec.confidence.value, hint_rec.confidence.value)
-                lines.append(f"- Auto hint: {hint_preset_jp} (信頼度: {hint_conf_jp})")
+                lines.append(f"- Auto recommended: {hint_preset_jp} (信頼度: {hint_conf_jp})")
 
             lines.extend([
                 "",

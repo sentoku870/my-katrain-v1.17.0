@@ -2181,7 +2181,7 @@ class TestPerGameMetrics:
         assert "Per-game averages" in summary
         assert "Points lost/game" in summary
         assert "Blunders/game" in summary
-        assert "Important mistakes/game" in summary
+        assert "Mistakes+Blunders/game" in summary
 
     def test_per_game_metrics_zero_games(self):
         """Per-game metrics should show '-' for zero games."""

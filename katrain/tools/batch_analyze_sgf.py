@@ -748,6 +748,9 @@ def run_batch(
     # For summary generation, collect game stats
     game_stats_list = [] if generate_summary else None
 
+    # Track actual effective visits used per successful analysis (for variable visits stats)
+    selected_visits_list: List[int] = []
+
     # Timestamp for filenames (includes seconds to reduce collision risk)
     batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -818,6 +821,10 @@ def run_batch(
 
         if success:
             result.success_count += 1
+
+            # Record effective visits used (only numeric, for variable visits stats)
+            if effective_visits is not None:
+                selected_visits_list.append(effective_visits)
 
             if save_analyzed_sgf and sgf_output_path:
                 result.analyzed_sgf_written += 1
@@ -896,12 +903,22 @@ def run_batch(
                     summary_filename = os.path.basename(summary_path)
 
                     # Build analysis_settings for the summary
+                    # Compute selected visits stats if variable visits enabled and have data
+                    selected_visits_stats = None
+                    if variable_visits and selected_visits_list:
+                        selected_visits_stats = {
+                            "min": min(selected_visits_list),
+                            "avg": sum(selected_visits_list) / len(selected_visits_list),
+                            "max": max(selected_visits_list),
+                        }
+
                     analysis_settings = {
                         "config_visits": visits,
                         "variable_visits": variable_visits,
                         "jitter_pct": jitter_pct if variable_visits else None,
                         "deterministic": deterministic if variable_visits else None,
                         "timeout": timeout,
+                        "selected_visits_stats": selected_visits_stats,
                     }
                     summary_text = _build_player_summary(
                         player_name,
@@ -1658,6 +1675,15 @@ def _build_player_summary(
                 lines.append(f"- Visits jitter: {jitter_pct}%")
             deterministic = analysis_settings.get("deterministic", False)
             lines.append(f"- Deterministic: {'on' if deterministic else 'off'}")
+            # Show actual selected visits distribution (if recorded)
+            selected_stats = analysis_settings.get("selected_visits_stats")
+            if selected_stats:
+                lines.append(
+                    f"- Selected visits (per game): "
+                    f"min={selected_stats['min']}, "
+                    f"avg={selected_stats['avg']:.1f}, "
+                    f"max={selected_stats['max']}"
+                )
         else:
             lines.append("- Variable visits: off")
 
@@ -1718,7 +1744,7 @@ def _build_player_summary(
         lines.append("**Per-game averages:**")
         lines.append(f"- Points lost/game: {points_per_game:.1f}")
         lines.append(f"- Blunders/game: {blunders_per_game:.1f}")
-        lines.append(f"- Important mistakes/game: {important_per_game:.1f}")
+        lines.append(f"- Mistakes+Blunders/game: {important_per_game:.1f}")
     else:
         lines.append("")
         lines.append("**Per-game averages:** -")
