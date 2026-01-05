@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2025-12-30
+> 最終更新: 2026-01-05
 > 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
 
 ---
@@ -15,9 +15,15 @@ katrain/
 │   ├── game.py            # Game（対局状態管理）
 │   ├── game_node.py       # GameNode（手/解析結果）
 │   ├── engine.py          # KataGoEngine（解析プロセス）
-│   ├── eval_metrics.py    # 重要局面/ミス分類（myKatrain追加）
+│   ├── eval_metrics.py    # ファサード（後方互換、21行）
 │   ├── yose_analyzer.py   # ヨセ解析（myKatrain追加）
-│   └── sgf_parser.py      # SGF読み込み
+│   ├── sgf_parser.py      # SGF読み込み
+│   │
+│   └── analysis/          # 解析基盤パッケージ（Phase B完了）
+│       ├── __init__.py      # 明示的再エクスポート（~270行）
+│       ├── models.py        # Enum, Dataclass, 定数（~900行）
+│       ├── logic.py         # 計算関数（~1300行）
+│       └── presentation.py  # 表示/フォーマット関数（~330行）
 │
 ├── gui/                  # GUI（Kivy）
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
@@ -90,23 +96,39 @@ KaTrainGui → Game → GameNode
 
 ## 4. myKatrain で追加したファイル
 
-### 4.1 eval_metrics.py（Phase 1-4）
+### 4.1 analysis パッケージ（Phase B完了）
 
-**クラス:**
+`katrain/core/eval_metrics.py` は後方互換用ファサード。
+実体は `katrain/core/analysis/` パッケージに分離。
+
+#### models.py（データモデル）
+**Enum:**
+- `MistakeCategory`: GOOD/INACCURACY/MISTAKE/BLUNDER
+- `PositionDifficulty`: EASY/NORMAL/HARD/ONLY_MOVE
+- `ConfidenceLevel`: HIGH/MEDIUM/LOW
+
+**Dataclass:**
 - `MoveEval`: 1手の評価データ
 - `EvalSnapshot`: 対局全体の評価スナップショット
-- `QuizItem`: クイズ用の問題データ
-- `QuizConfig`: クイズ設定
+- `SkillPreset`: 棋力別プリセット設定
 - `ImportantMoveSettings`: 重要手判定の設定
+- `QuizItem`, `QuizConfig`: クイズ用データ
 
-**主要関数:**
+**定数:**
+- `SKILL_PRESETS`: relaxed/beginner/standard/advanced/pro
+- `SCORE_THRESHOLDS`, `WINRATE_THRESHOLDS`: ミス分類閾値
+
+#### logic.py（計算関数）
 - `snapshot_from_game(game)`: GameからEvalSnapshot生成
 - `pick_important_moves(snapshot, settings)`: 重要手抽出
-- `quiz_items_from_snapshot(snapshot, config)`: クイズ候補抽出
+- `classify_mistake(loss, thresholds)`: ミス分類
+- `compute_confidence_level(snapshot)`: 信頼度計算
+- `recommend_auto_strictness(snapshot)`: 自動プリセット推奨
 
-**プリセット:**
-- `IMPORTANT_MOVE_SETTINGS_BY_LEVEL`: easy/normal/strict
-- `QUIZ_PRESETS`: beginner/standard/advanced
+#### presentation.py（表示関数）
+- `get_confidence_label(level, lang)`: 信頼度ラベル
+- `format_evidence_examples(moves, lang)`: 証拠フォーマット
+- `SKILL_PRESET_LABELS`: 日本語ラベル（激甘/甘口/標準/辛口/激辛）
 
 ### 4.2 yose_analyzer.py（Phase 2）
 
@@ -137,8 +159,13 @@ report = analyzer.build_important_moves_report()
 - Kivy の id/property バインディングに注意
 
 ### 5.2 解析ロジックを触る場合
-- `eval_metrics.py` が主な変更対象
+- `katrain/core/analysis/` パッケージが主な変更対象
+  - データモデル → `models.py`
+  - 計算ロジック → `logic.py`
+  - 表示処理 → `presentation.py`
 - `game.py` のヘルパーメソッドから呼び出す
+- インポートは `from katrain.core.eval_metrics import ...` でも
+  `from katrain.core.analysis import ...` でも可
 
 ### 5.3 翻訳を追加する場合
 - 文字列を `i18n._("...")` で包む
@@ -166,4 +193,5 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-05: analysis パッケージ構造を反映（Phase B完了）
 - 2025-12-30: v1.0 作成（Claude Code移行対応、軽量版）

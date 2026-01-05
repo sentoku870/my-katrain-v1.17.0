@@ -343,6 +343,21 @@
 
 ## 11. 変更履歴
 
+- 2026-01-05: eval_metrics.py リファクタリング Phase B 完了（PR #54-57）
+  - **PR #54 (Phase A)**: eval_metrics.py → analysis/core.py + facade
+    - 約2500行を analysis パッケージに移動
+    - eval_metrics.py は再エクスポート用ファサード（21行）に
+  - **PR #55 (Phase B-3)**: core.py → models/logic/presentation 分離
+    - models.py: Enum, Dataclass, 定数（~900行）
+    - logic.py: 計算関数（~1300行）
+    - presentation.py: 表示/フォーマット関数（~330行）
+  - **PR #56 (Phase B-1)**: ラベル定数を presentation.py に移動
+    - SKILL_PRESET_LABELS, CONFIDENCE_LABELS, REASON_TAG_LABELS
+    - models.py に `__getattr__` で後方互換維持
+  - **PR #57 (Phase B-2)**: star-import → 明示的インポート
+    - __init__.py で全~80シンボルを明示的にインポート
+    - IDE自動補完・静的解析対応改善
+  - **成果**: 関心の分離達成、ゼロリグレッション（全384テストパス）
 - 2026-01-05: Karte/Summary品質向上4連PR（PR #50-53）
   - **PR #50 Confidence Gating**: 解析信頼度に基づくセクション制御
     - `ConfidenceLevel` enum (HIGH/MEDIUM/LOW)
