@@ -1909,3 +1909,197 @@ class TestEvidenceAttachments:
         ]
         result = select_representative_moves(moves, max_count=3)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Test: Important Move Ranking Redesign (PR#4)
+# ---------------------------------------------------------------------------
+
+from katrain.core.eval_metrics import (
+    get_difficulty_modifier,
+    get_reliability_scale,
+    DIFFICULTY_MODIFIER_HARD,
+    DIFFICULTY_MODIFIER_ONLY_MOVE,
+    STREAK_START_BONUS,
+)
+
+
+class TestImportanceRankingRedesign:
+    """Tests for Important Move Ranking Redesign (PR#4)"""
+
+    def test_difficulty_modifier_hard_bonus(self):
+        """HARD difficulty should add +1.0 bonus"""
+        modifier = get_difficulty_modifier(PositionDifficulty.HARD)
+        assert modifier == DIFFICULTY_MODIFIER_HARD
+        assert modifier == 1.0
+
+    def test_difficulty_modifier_only_move_penalty(self):
+        """ONLY_MOVE difficulty should subtract -2.0"""
+        modifier = get_difficulty_modifier(PositionDifficulty.ONLY_MOVE)
+        assert modifier == DIFFICULTY_MODIFIER_ONLY_MOVE
+        assert modifier == -2.0
+
+    def test_difficulty_modifier_normal_zero(self):
+        """NORMAL difficulty should have 0 modifier"""
+        modifier = get_difficulty_modifier(PositionDifficulty.NORMAL)
+        assert modifier == 0.0
+
+    def test_difficulty_modifier_easy_zero(self):
+        """EASY difficulty should have 0 modifier"""
+        modifier = get_difficulty_modifier(PositionDifficulty.EASY)
+        assert modifier == 0.0
+
+    def test_difficulty_modifier_none_zero(self):
+        """None difficulty should have 0 modifier"""
+        modifier = get_difficulty_modifier(None)
+        assert modifier == 0.0
+
+    def test_reliability_scale_high_visits(self):
+        """Visits >= 500 should have scale 1.0"""
+        assert get_reliability_scale(500) == 1.0
+        assert get_reliability_scale(1000) == 1.0
+
+    def test_reliability_scale_medium_visits(self):
+        """Visits >= 200 should have scale 0.8"""
+        assert get_reliability_scale(200) == 0.8
+        assert get_reliability_scale(400) == 0.8
+
+    def test_reliability_scale_low_visits(self):
+        """Visits >= 100 should have scale 0.5"""
+        assert get_reliability_scale(100) == 0.5
+        assert get_reliability_scale(150) == 0.5
+
+    def test_reliability_scale_very_low_visits(self):
+        """Visits < 100 should have scale 0.3"""
+        assert get_reliability_scale(50) == 0.3
+        assert get_reliability_scale(0) == 0.3
+
+    def test_importance_uses_canonical_loss_as_primary(self):
+        """Importance should use score_loss as primary component"""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4",
+                           score_loss=5.0, root_visits=500),
+            make_move_eval(move_number=2, player="B", gtp="Q16",
+                           score_loss=2.0, root_visits=500),
+        ]
+        compute_importance_for_moves(moves)
+
+        # Higher score_loss should have higher importance
+        assert moves[0].importance_score > moves[1].importance_score
+
+    def test_importance_with_hard_difficulty_bonus(self):
+        """HARD difficulty should increase importance"""
+        move_normal = make_move_eval(
+            move_number=1, player="B", gtp="D4",
+            score_loss=5.0, root_visits=500,
+            position_difficulty=PositionDifficulty.NORMAL
+        )
+        move_hard = make_move_eval(
+            move_number=2, player="B", gtp="Q16",
+            score_loss=5.0, root_visits=500,
+            position_difficulty=PositionDifficulty.HARD
+        )
+        compute_importance_for_moves([move_normal, move_hard])
+
+        # HARD should have higher importance due to +1.0 bonus
+        assert move_hard.importance_score > move_normal.importance_score
+        assert move_hard.importance_score - move_normal.importance_score == pytest.approx(1.0)
+
+    def test_importance_with_only_move_penalty(self):
+        """ONLY_MOVE difficulty should decrease importance"""
+        move_normal = make_move_eval(
+            move_number=1, player="B", gtp="D4",
+            score_loss=5.0, root_visits=500,
+            position_difficulty=PositionDifficulty.NORMAL
+        )
+        move_only = make_move_eval(
+            move_number=2, player="B", gtp="Q16",
+            score_loss=5.0, root_visits=500,
+            position_difficulty=PositionDifficulty.ONLY_MOVE
+        )
+        compute_importance_for_moves([move_normal, move_only])
+
+        # ONLY_MOVE should have lower importance due to -2.0 penalty
+        assert move_only.importance_score < move_normal.importance_score
+
+    def test_importance_with_streak_start_bonus(self):
+        """Streak start moves should get +2.0 bonus"""
+        move1 = make_move_eval(move_number=10, player="B", gtp="D10",
+                               score_loss=3.0, root_visits=500)
+        move2 = make_move_eval(move_number=20, player="B", gtp="Q10",
+                               score_loss=3.0, root_visits=500)
+
+        # Only move 10 is a streak start
+        streak_starts = {10}
+        compute_importance_for_moves([move1, move2], streak_start_moves=streak_starts)
+
+        # Move 10 should have higher importance due to streak start bonus
+        assert move1.importance_score > move2.importance_score
+        assert move1.importance_score - move2.importance_score == pytest.approx(STREAK_START_BONUS)
+
+    def test_importance_deterministic_with_same_score(self):
+        """Moves with same importance should be ordered by move_number"""
+        moves = [
+            make_move_eval(move_number=30, player="B", gtp="D30", score_loss=5.0, root_visits=500),
+            make_move_eval(move_number=10, player="B", gtp="D10", score_loss=5.0, root_visits=500),
+            make_move_eval(move_number=20, player="B", gtp="D20", score_loss=5.0, root_visits=500),
+        ]
+        compute_importance_for_moves(moves)
+
+        # Sort by importance desc, move_number asc
+        sorted_moves = sorted(moves, key=lambda m: (-m.importance_score, m.move_number))
+
+        # All have same importance, so order by move_number
+        assert sorted_moves[0].move_number == 10
+        assert sorted_moves[1].move_number == 20
+        assert sorted_moves[2].move_number == 30
+
+    def test_importance_reliability_scale_applied(self):
+        """Lower visits should reduce importance via reliability scale"""
+        move_high = make_move_eval(move_number=1, player="B", gtp="D4",
+                                   score_loss=5.0, root_visits=500)
+        move_low = make_move_eval(move_number=2, player="B", gtp="Q16",
+                                  score_loss=5.0, root_visits=50)
+        compute_importance_for_moves([move_high, move_low])
+
+        # High visits (scale=1.0) should have higher importance than low visits (scale=0.3)
+        assert move_high.importance_score > move_low.importance_score
+        # Ratio should be approximately 1.0 / 0.3
+        ratio = move_high.importance_score / move_low.importance_score
+        assert ratio == pytest.approx(1.0 / 0.3, rel=0.1)
+
+    def test_importance_non_negative(self):
+        """Importance should never be negative even with ONLY_MOVE penalty"""
+        move = make_move_eval(
+            move_number=1, player="B", gtp="D4",
+            score_loss=1.0,  # Small loss
+            root_visits=500,
+            position_difficulty=PositionDifficulty.ONLY_MOVE  # -2.0 penalty
+        )
+        compute_importance_for_moves([move])
+
+        # Should be clamped to 0, not negative
+        assert move.importance_score >= 0.0
+
+    def test_confidence_level_affects_components(self):
+        """LOW confidence should use only canonical_loss component"""
+        move = make_move_eval(
+            move_number=10, player="B", gtp="D10",
+            score_loss=5.0, root_visits=500,
+            position_difficulty=PositionDifficulty.HARD,
+            score_before=5.0, score_after=-5.0,  # Swing
+        )
+        streak_starts = {10}
+
+        # HIGH confidence: all components
+        compute_importance_for_moves([move], streak_start_moves=streak_starts,
+                                     confidence_level=ConfidenceLevel.HIGH)
+        high_importance = move.importance_score
+
+        # LOW confidence: only canonical_loss
+        compute_importance_for_moves([move], streak_start_moves=streak_starts,
+                                     confidence_level=ConfidenceLevel.LOW)
+        low_importance = move.importance_score
+
+        # HIGH should include difficulty bonus and streak bonus
+        assert high_importance > low_importance
