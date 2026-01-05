@@ -11,17 +11,58 @@ from __future__ import annotations
 
 from typing import (
     Callable,
+    Dict,
     List,
     Optional,
+    Set,
 )
 
 from katrain.core.analysis.models import (
-    CONFIDENCE_LABELS,
     ConfidenceLevel,
     MoveEval,
     PhaseMistakeStats,
-    REASON_TAG_LABELS,
 )
+
+
+# =============================================================================
+# Label Constants (moved from models.py in PR#56)
+# =============================================================================
+
+
+# Japanese labels for skill presets
+SKILL_PRESET_LABELS: Dict[str, str] = {
+    "relaxed": "激甘",
+    "beginner": "甘口",
+    "standard": "標準",
+    "advanced": "辛口",
+    "pro": "激辛",
+    "auto": "自動",
+}
+
+# Japanese labels for confidence levels
+CONFIDENCE_LABELS: Dict[str, str] = {
+    "high": "高",
+    "medium": "中",
+    "low": "低",
+}
+
+# 理由タグの日本語ラベル（カルテ・サマリーで使用）
+REASON_TAG_LABELS: Dict[str, str] = {
+    "atari": "アタリ (atari)",
+    "low_liberties": "呼吸点少 (low liberties)",
+    "cut_risk": "切断リスク (cut risk)",
+    "need_connect": "連絡必要 (need connect)",
+    "thin": "薄い形 (thin)",
+    "chase_mode": "追込モード (chase mode)",
+    "too_many_choices": "候補多数 (many choices)",
+    "endgame_hint": "ヨセ局面 (endgame)",
+    "heavy_loss": "大損失 (heavy loss)",
+    "reading_failure": "読み抜け (reading failure)",
+    "unknown": "不明 (unknown)",
+}
+
+# All valid reason tags that can be emitted
+VALID_REASON_TAGS: Set[str] = set(REASON_TAG_LABELS.keys())
 
 
 # =============================================================================
@@ -271,6 +312,12 @@ def get_practice_priorities_from_stats(
 
 
 __all__ = [
+    # Label constants
+    "SKILL_PRESET_LABELS",
+    "CONFIDENCE_LABELS",
+    "REASON_TAG_LABELS",
+    "VALID_REASON_TAGS",
+    # Functions
     "get_confidence_label",
     "get_auto_confidence_label",
     "get_important_moves_limit",

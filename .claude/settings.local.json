@@ -21,7 +21,8 @@
       "Bash(timeout 15 python:*)",
       "Bash(Select-String -Pattern \"error|Error|Exception|Traceback|setting.png\" -Context 2)",
       "Bash(git branch:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }
