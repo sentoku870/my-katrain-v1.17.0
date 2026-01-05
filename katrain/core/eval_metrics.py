@@ -4,10 +4,7 @@ eval_metrics.py - 後方互換ファサード
 全てのシンボルは katrain.core.analysis パッケージから再エクスポート。
 既存のインポートパスを維持するため、このファイルは削除しない。
 
-構成:
-- katrain.core.analysis.core: 全機能（Phase A）
-
-将来の構成（Phase B以降）:
+構成（Phase B完了）:
 - katrain.core.analysis.models: Enum, Dataclass, 設定定数
 - katrain.core.analysis.logic: 純粋計算関数
 - katrain.core.analysis.presentation: 表示/フォーマット関数
