@@ -1043,6 +1043,65 @@ UNRELIABLE_IMPORTANCE_SCALE = 0.25
 SWING_SCORE_SIGN_BONUS = 1.0
 SWING_WINRATE_CROSS_BONUS = 1.0
 
+# ---------------------------------------------------------------------------
+# Importance Scoring Constants (PR#4: Ranking Redesign)
+# ---------------------------------------------------------------------------
+
+# Difficulty modifiers for importance scoring
+# HARD局面でのミスは学習価値が高い、ONLY_MOVEは選択肢がないので学習価値が低い
+DIFFICULTY_MODIFIER_HARD = 1.0
+DIFFICULTY_MODIFIER_ONLY_MOVE = -2.0
+DIFFICULTY_MODIFIER_EASY = 0.0
+DIFFICULTY_MODIFIER_NORMAL = 0.0
+
+# Streak start bonus: 連続ミス開始点を強調
+STREAK_START_BONUS = 2.0
+
+# Swing magnitude weight (ターニングポイント検出用)
+SWING_MAGNITUDE_WEIGHT = 0.5
+
+# Reliability scale thresholds (段階的スケーリング)
+RELIABILITY_SCALE_THRESHOLDS = [
+    (500, 1.0),   # visits >= 500: full weight
+    (200, 0.8),   # visits >= 200: 80%
+    (100, 0.5),   # visits >= 100: 50%
+    (0, 0.3),     # visits < 100: 30%
+]
+
+
+def get_difficulty_modifier(difficulty: Optional["PositionDifficulty"]) -> float:
+    """
+    Get the importance modifier based on position difficulty.
+
+    - HARD: +1.0 (difficult positions have higher learning value)
+    - ONLY_MOVE: -2.0 (no choices = low learning value)
+    - EASY/NORMAL/UNKNOWN/None: 0.0 (no modifier)
+    """
+    if difficulty is None:
+        return 0.0
+    if difficulty == PositionDifficulty.HARD:
+        return DIFFICULTY_MODIFIER_HARD
+    if difficulty == PositionDifficulty.ONLY_MOVE:
+        return DIFFICULTY_MODIFIER_ONLY_MOVE
+    return 0.0
+
+
+def get_reliability_scale(root_visits: int) -> float:
+    """
+    Get the reliability scale factor based on visit count.
+
+    Returns a value between 0.3 and 1.0:
+    - visits >= 500: 1.0 (full confidence)
+    - visits >= 200: 0.8
+    - visits >= 100: 0.5
+    - visits < 100: 0.3 (low confidence)
+    """
+    visits = root_visits or 0
+    for threshold, scale in RELIABILITY_SCALE_THRESHOLDS:
+        if visits >= threshold:
+            return scale
+    return 0.3  # Default minimum
+
 
 def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VISITS_THRESHOLD) -> bool:
     """
@@ -2061,80 +2120,97 @@ def detect_mistake_streaks(
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
     *,
-    weight_delta_score: float = 1.0,
-    weight_delta_winrate: float = 50.0,
-    weight_points_lost: float = 1.0,
+    streak_start_moves: Optional[Set[int]] = None,
+    confidence_level: Optional["ConfidenceLevel"] = None,
 ) -> None:
     """
-    各 MoveEval について、delta_score / delta_winrate / points_lost から
-    簡易な「重要度スコア」を計算し、importance_score に格納する。
+    各 MoveEval について重要度スコアを計算し、importance_score に格納する。
 
-    重みの意味（ざっくり）:
-        - weight_delta_score : 形勢の点数変化（目）をどれだけ重く見るか
-        - weight_delta_winrate : 勝率 1.0 の変化を「何目分」とみなすか
-        - weight_points_lost : points_lost をどれだけ重く見るか
+    PR#4 で再設計された新公式:
+        base_importance = (
+            1.0 * canonical_loss +           # 主成分：損失目数
+            0.5 * swing_magnitude +          # ターニングポイント
+            difficulty_modifier +            # 難易度補正
+            streak_start_bonus               # ストリーク開始ボーナス
+        )
+        final_importance = base_importance * reliability_scale
 
-    ボーナス:
-        - 形勢逆転（スコア符号変化）: +1.0
-        - 勝率が50%をまたぐ: +1.0
-        - is_reliable=False の場合: importance を 0.25 倍に減衰
+    成分詳細:
+        - canonical_loss: score_loss (>= 0)、主成分
+        - swing_magnitude: 形勢変動の大きさ（符号変化時）
+        - difficulty_modifier: HARD +1.0, ONLY_MOVE -2.0, else 0
+        - streak_start_bonus: 連続ミス開始点 +2.0
+        - reliability_scale: visits に基づく段階的スケーリング (0.3-1.0)
 
-    使用例:
-        >>> moves = snapshot.moves
-        >>> compute_importance_for_moves(moves)
-        >>> important = [m for m in moves if m.importance_score and m.importance_score > 3.0]
-        >>> print(f"Important moves: {len(important)}")
+    Confidence による成分制御:
+        - HIGH: 全成分を使用
+        - MEDIUM: canonical_loss + swing_magnitude のみ
+        - LOW: canonical_loss のみ（最も安定）
+
+    Args:
+        moves: 処理対象の MoveEval リスト
+        streak_start_moves: ストリーク開始手の move_number セット（Optional）
+        confidence_level: 解析の信頼度レベル（Optional、None は HIGH として扱う）
 
     注意:
         - この関数は moves を破壊的に変更します（各 m.importance_score を書き換え）
         - snapshot_from_nodes() で自動的に呼ばれるため、通常は手動で呼ぶ必要はありません
     """
-    for m in moves:
-        score_term = (
-            weight_delta_score * abs(m.delta_score)
-            if m.delta_score is not None
-            else 0.0
-        )
-        winrate_term = (
-            weight_delta_winrate * abs(m.delta_winrate)
-            if m.delta_winrate is not None
-            else 0.0
-        )
-        pl_term = (
-            weight_points_lost * max(m.points_lost or 0.0, 0.0)
-            if m.points_lost is not None
-            else 0.0
-        )
+    # Import here to avoid circular dependency
+    from katrain.core.eval_metrics import ConfidenceLevel
 
-        # swing_bonus: 形勢逆転を検出して重要度にボーナスを加算
-        # - score: 符号が反転（正→負 or 負→正）、または互角(0.0)を通過した場合
-        # - winrate: 50%ラインを跨いだ場合
-        # 注: score == 0.0 は「完全互角」を意味し、互角からの変化も重要な局面として扱う
-        swing_bonus = 0.0
-        if m.score_before is not None and m.score_after is not None:
-            # 符号変化の判定:
-            # - 正→負 または 負→正 への変化
-            # - 互角(0.0)から有利/不利への変化
-            # - 有利/不利から互角(0.0)への変化
+    # Default to HIGH if not specified
+    if confidence_level is None:
+        confidence_level = ConfidenceLevel.HIGH
+
+    # Determine which components to use based on confidence
+    use_all_components = confidence_level == ConfidenceLevel.HIGH
+    use_swing = confidence_level in (ConfidenceLevel.HIGH, ConfidenceLevel.MEDIUM)
+
+    if streak_start_moves is None:
+        streak_start_moves = set()
+
+    for m in moves:
+        # 1. Canonical loss (主成分) - always used
+        canonical_loss = m.score_loss if m.score_loss is not None else 0.0
+        canonical_loss = max(0.0, canonical_loss)  # Ensure >= 0
+
+        # 2. Swing magnitude (ターニングポイント) - used for HIGH/MEDIUM
+        swing_magnitude = 0.0
+        if use_swing and m.score_before is not None and m.score_after is not None:
+            # Check for sign change (turning point)
             score_sign_changed = (
-                (m.score_before > 0) != (m.score_after > 0)  # 符号反転
-                or m.score_before == 0.0  # 互角からの変化
-                or m.score_after == 0.0   # 互角への変化
+                (m.score_before > 0) != (m.score_after > 0)
+                or m.score_before == 0.0
+                or m.score_after == 0.0
             )
             if score_sign_changed:
-                swing_bonus += SWING_SCORE_SIGN_BONUS
-        if (
-            m.winrate_before is not None
-            and m.winrate_after is not None
-            and (m.winrate_before < 0.5) != (m.winrate_after < 0.5)
-        ):
-            swing_bonus += SWING_WINRATE_CROSS_BONUS
+                swing_magnitude = abs(m.score_before - m.score_after)
 
-        importance = score_term + winrate_term + pl_term + swing_bonus
-        if not m.is_reliable:
-            importance *= UNRELIABLE_IMPORTANCE_SCALE
+        # 3. Difficulty modifier - only for HIGH confidence
+        difficulty_modifier = 0.0
+        if use_all_components:
+            difficulty_modifier = get_difficulty_modifier(m.position_difficulty)
 
-        m.importance_score = importance
+        # 4. Streak start bonus - only for HIGH confidence
+        streak_bonus = 0.0
+        if use_all_components and m.move_number in streak_start_moves:
+            streak_bonus = STREAK_START_BONUS
+
+        # Compute base importance
+        base_importance = (
+            1.0 * canonical_loss +
+            SWING_MAGNITUDE_WEIGHT * swing_magnitude +
+            difficulty_modifier +
+            streak_bonus
+        )
+
+        # Apply reliability scale based on visits
+        reliability_scale = get_reliability_scale(m.root_visits)
+        final_importance = base_importance * reliability_scale
+
+        # Ensure non-negative
+        m.importance_score = max(0.0, final_importance)
 
 
 def pick_important_moves(
@@ -2142,9 +2218,8 @@ def pick_important_moves(
     level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
     settings: Optional[ImportantMoveSettings] = None,
     recompute: bool = True,
-    weight_delta_score: float = 1.0,
-    weight_delta_winrate: float = 50.0,
-    weight_points_lost: float = 1.0,
+    streak_start_moves: Optional[Set[int]] = None,
+    confidence_level: Optional["ConfidenceLevel"] = None,
 ) -> List[MoveEval]:
     """
     snapshot から重要局面の手数だけを抽出して返す。
@@ -2157,12 +2232,16 @@ def pick_important_moves(
         settings:
             直接設定を渡したい場合用。通常は None のままでよい。
         recompute: importance_score を再計算するかどうか
-        weight_delta_score: delta_score の重み
-        weight_delta_winrate: delta_winrate の重み
-        weight_points_lost: points_lost の重み
+        streak_start_moves: ストリーク開始手の move_number セット（PR#4）
+        confidence_level: 解析の信頼度レベル（PR#4）
 
     Returns:
         MoveEval オブジェクトのリスト（手数順）。
+
+    Note:
+        ソート順序は決定論的:
+        1. importance_score 降順
+        2. タイブレーク: move_number 昇順
     """
     # 設定の決定
     if settings is None:
@@ -2182,17 +2261,17 @@ def pick_important_moves(
     if recompute:
         compute_importance_for_moves(
             moves,
-            weight_delta_score=weight_delta_score,
-            weight_delta_winrate=weight_delta_winrate,
-            weight_points_lost=weight_points_lost,
+            streak_start_moves=streak_start_moves,
+            confidence_level=confidence_level,
         )
 
     # 1) 通常ルート: importance_score ベース
-    candidates: List[Tuple[float, MoveEval]] = []
+    candidates: List[Tuple[float, int, MoveEval]] = []
     for move in moves:
         importance = move.importance_score or 0.0
         if importance > threshold:
-            candidates.append((importance, move))
+            # タプル: (importance, move_number, move) for deterministic sort
+            candidates.append((importance, move.move_number, move))
 
     # 2) フォールバック:
     #    1) で 1 手も選ばれなかったときだけ、
@@ -2203,21 +2282,22 @@ def pick_important_moves(
             winrate_term = 50.0 * abs(m.delta_winrate or 0.0)
             pl_term = get_canonical_loss_from_move(m)
             base = score_term + winrate_term + pl_term
-            if not m.is_reliable:
-                base *= UNRELIABLE_IMPORTANCE_SCALE
+            # Apply reliability scale
+            base *= get_reliability_scale(m.root_visits)
             return base
 
         for move in moves:
             raw_sc = raw_score(move)
             if raw_sc > 0.0:
-                candidates.append((raw_sc, move))
+                candidates.append((raw_sc, move.move_number, move))
 
-    # importance の大きい順に並べ替えて上位だけ残す
-    candidates.sort(key=lambda x: x[0], reverse=True)
+    # importance の大きい順に並べ替え（タイブレーク: move_number 昇順）
+    # Sort key: (-importance, move_number) for descending importance, ascending move_number
+    candidates.sort(key=lambda x: (-x[0], x[1]))
     top = candidates[:max_moves]
 
     # その後手数順にソート
-    important_moves = sorted([m for _, m in top], key=lambda m: m.move_number)
+    important_moves = sorted([m for _, _, m in top], key=lambda m: m.move_number)
     return important_moves
 
 
