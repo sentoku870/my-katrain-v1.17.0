@@ -1531,22 +1531,34 @@ class TestReliabilityStatsHelper:
         assert stats.reliable_count == 1  # Only first move has visits >= 200
         assert stats.low_confidence_count == 2  # Second and third moves
         assert stats.zero_visits_count == 1  # Third move
-        assert stats.reliability_pct == pytest.approx(100 * 1 / 3, rel=0.01)
+        assert stats.moves_with_visits == 2  # First and second moves have visits > 0
+        # PR#1: reliability_pct denominator changed from total_moves to moves_with_visits
+        # reliability_pct = 1 / 2 * 100 = 50% (not 1/3)
+        assert stats.reliability_pct == pytest.approx(100 * 1 / 2, rel=0.01)
 
     def test_reliability_stats_is_low_reliability(self):
         """Test is_low_reliability property."""
         from katrain.core.eval_metrics import ReliabilityStats
 
-        # 10% reliability - should be low
-        low_stats = ReliabilityStats(total_moves=10, reliable_count=1, low_confidence_count=9)
+        # PR#1: reliability_pct now uses moves_with_visits as denominator
+        # so we need to set moves_with_visits for accurate testing
+
+        # 10% reliability (1/10 of moves_with_visits reliable) - should be low
+        low_stats = ReliabilityStats(
+            total_moves=10, reliable_count=1, low_confidence_count=9, moves_with_visits=10
+        )
         assert low_stats.is_low_reliability is True
 
-        # 80% reliability - should NOT be low
-        high_stats = ReliabilityStats(total_moves=10, reliable_count=8, low_confidence_count=2)
+        # 80% reliability (8/10 of moves_with_visits reliable) - should NOT be low
+        high_stats = ReliabilityStats(
+            total_moves=10, reliable_count=8, low_confidence_count=2, moves_with_visits=10
+        )
         assert high_stats.is_low_reliability is False
 
-        # Exactly 20% - should NOT be low (>=20% is OK)
-        borderline = ReliabilityStats(total_moves=10, reliable_count=2, low_confidence_count=8)
+        # Exactly 20% (2/10 of moves_with_visits reliable) - should NOT be low (>=20% is OK)
+        borderline = ReliabilityStats(
+            total_moves=10, reliable_count=2, low_confidence_count=8, moves_with_visits=10
+        )
         assert borderline.is_low_reliability is False
 
 
