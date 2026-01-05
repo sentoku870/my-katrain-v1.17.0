@@ -368,6 +368,9 @@ class SummaryStats:
 
     worst_moves: List[Tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
 
+    # PR#1: Store all moves for confidence level computation
+    all_moves: List[MoveEval] = field(default_factory=list)
+
     def get_mistake_percentage(self, category: MistakeCategory) -> float:
         """ミス分類の割合を計算"""
         if self.total_moves == 0:
@@ -1064,10 +1067,22 @@ class ReliabilityStats:
 
     @property
     def reliability_pct(self) -> float:
-        """Percentage of moves that are reliable (visits >= threshold)."""
+        """Percentage of analyzed moves that are reliable (visits >= threshold).
+
+        IMPORTANT: The denominator is moves_with_visits (not total_moves).
+        This ensures that un-analyzed moves don't unfairly lower reliability.
+        Use coverage_pct to track how many moves were analyzed.
+        """
+        if self.moves_with_visits == 0:
+            return 0.0
+        return 100.0 * self.reliable_count / self.moves_with_visits
+
+    @property
+    def coverage_pct(self) -> float:
+        """Percentage of total moves that have valid analysis (visits > 0)."""
         if self.total_moves == 0:
             return 0.0
-        return 100.0 * self.reliable_count / self.total_moves
+        return 100.0 * self.moves_with_visits / self.total_moves
 
     @property
     def low_confidence_pct(self) -> float:
@@ -1127,6 +1142,126 @@ def compute_reliability_stats(
             stats.max_visits = visits
 
     return stats
+
+
+# =============================================================================
+# Confidence Level (PR#1: Confidence Gating)
+# =============================================================================
+
+class ConfidenceLevel(Enum):
+    """Confidence level for analysis results.
+
+    Used to control section visibility and wording in Karte/Summary output.
+    """
+
+    HIGH = auto()  # Full output, assertive wording
+    MEDIUM = auto()  # Reduced output, hedged wording
+    LOW = auto()  # Minimal output, reference-only, re-analysis recommended
+
+
+# Constants for confidence level computation
+MIN_COVERAGE_MOVES = 5  # Minimum moves_with_visits required (guard against sparse data)
+
+# Thresholds for confidence levels (OR conditions within each level)
+_CONFIDENCE_THRESHOLDS = {
+    "high_reliability_pct": 50.0,
+    "high_avg_visits": 400,
+    "medium_reliability_pct": 30.0,
+    "medium_avg_visits": 150,
+}
+
+
+def compute_confidence_level(
+    moves: Iterable[MoveEval],
+    *,
+    min_coverage: int = MIN_COVERAGE_MOVES,
+    threshold: int = RELIABILITY_VISITS_THRESHOLD,
+) -> ConfidenceLevel:
+    """Compute confidence level for a set of moves.
+
+    The confidence level determines how much trust we can place in the analysis
+    results. It affects section visibility and wording in output.
+
+    Args:
+        moves: Iterable of MoveEval objects
+        min_coverage: Minimum moves_with_visits required (default: 5)
+        threshold: Visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD)
+
+    Returns:
+        ConfidenceLevel (HIGH, MEDIUM, or LOW)
+
+    Algorithm:
+        1. If moves_with_visits < min_coverage: return LOW (coverage guard)
+        2. HIGH if: (reliability_pct >= 50% OR avg_visits >= 400)
+        3. MEDIUM if: (reliability_pct >= 30% OR avg_visits >= 150)
+        4. Otherwise: LOW
+    """
+    stats = compute_reliability_stats(moves, threshold=threshold)
+
+    # Coverage guard: too few analyzed moves = LOW
+    if stats.moves_with_visits < min_coverage:
+        return ConfidenceLevel.LOW
+
+    reliability = stats.reliability_pct
+    avg_visits = stats.avg_visits
+
+    # HIGH: reliability >= 50% OR avg_visits >= 400
+    if (
+        reliability >= _CONFIDENCE_THRESHOLDS["high_reliability_pct"]
+        or avg_visits >= _CONFIDENCE_THRESHOLDS["high_avg_visits"]
+    ):
+        return ConfidenceLevel.HIGH
+
+    # MEDIUM: reliability >= 30% OR avg_visits >= 150
+    if (
+        reliability >= _CONFIDENCE_THRESHOLDS["medium_reliability_pct"]
+        or avg_visits >= _CONFIDENCE_THRESHOLDS["medium_avg_visits"]
+    ):
+        return ConfidenceLevel.MEDIUM
+
+    return ConfidenceLevel.LOW
+
+
+def get_confidence_label(level: ConfidenceLevel, lang: str = "ja") -> str:
+    """Get human-readable label for confidence level.
+
+    Args:
+        level: ConfidenceLevel enum value
+        lang: Language code ("ja" or "en")
+
+    Returns:
+        Localized label string
+    """
+    labels = {
+        "ja": {
+            ConfidenceLevel.HIGH: "信頼度: 高",
+            ConfidenceLevel.MEDIUM: "信頼度: 中",
+            ConfidenceLevel.LOW: "信頼度: 低",
+        },
+        "en": {
+            ConfidenceLevel.HIGH: "Confidence: High",
+            ConfidenceLevel.MEDIUM: "Confidence: Medium",
+            ConfidenceLevel.LOW: "Confidence: Low",
+        },
+    }
+    return labels.get(lang, labels["en"]).get(level, str(level))
+
+
+def get_important_moves_limit(level: ConfidenceLevel) -> int:
+    """Get the maximum number of important moves to show based on confidence.
+
+    Args:
+        level: ConfidenceLevel enum value
+
+    Returns:
+        Maximum number of important moves to display
+    """
+    limits = {
+        ConfidenceLevel.HIGH: 20,
+        ConfidenceLevel.MEDIUM: 10,
+        ConfidenceLevel.LOW: 5,
+    }
+    return limits.get(level, 5)
 
 
 def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:

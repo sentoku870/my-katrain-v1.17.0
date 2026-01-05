@@ -1581,3 +1581,202 @@ class TestAutoStrictness:
             AutoConfidence.LOW
         ]
         assert rec.score >= 0  # Score is non-negative distance
+
+
+# ---------------------------------------------------------------------------
+# Test: ConfidenceLevel and compute_confidence_level (PR#1)
+# ---------------------------------------------------------------------------
+
+from katrain.core.eval_metrics import (
+    ConfidenceLevel,
+    compute_confidence_level,
+    compute_reliability_stats,
+    get_confidence_label,
+    get_important_moves_limit,
+    MIN_COVERAGE_MOVES,
+)
+
+
+class TestConfidenceLevel:
+    """Tests for ConfidenceLevel enum and compute_confidence_level function (PR#1)"""
+
+    def test_high_confidence_with_high_reliability(self):
+        """HIGH confidence when reliability >= 50%"""
+        # 10 moves, all reliable (visits=500)
+        moves = [
+            MoveEval(
+                move_number=i,
+                player="B",
+                gtp=f"D{i}",
+                score_before=0.0, score_after=0.0, delta_score=0.0,
+                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                points_lost=1.0,
+                realized_points_lost=None,
+                root_visits=500,  # >= 200 threshold = reliable
+                score_loss=1.0,
+            )
+            for i in range(1, 11)
+        ]
+        level = compute_confidence_level(moves)
+        assert level == ConfidenceLevel.HIGH
+
+    def test_high_confidence_with_high_avg_visits(self):
+        """HIGH confidence when avg_visits >= 400 (even if reliability < 50%)"""
+        # 10 moves, 3 reliable, 7 not reliable but all have visits >= 100
+        moves = []
+        for i in range(1, 11):
+            # Average visits = 450, but only 30% reliable (< 50%)
+            visits = 500 if i <= 3 else 430  # avg = (500*3 + 430*7) / 10 = 451
+            moves.append(
+                MoveEval(
+                    move_number=i,
+                    player="B",
+                    gtp=f"D{i}",
+                    score_before=0.0, score_after=0.0, delta_score=0.0,
+                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    points_lost=1.0,
+                    realized_points_lost=None,
+                    root_visits=visits,
+                    score_loss=1.0,
+                )
+            )
+        level = compute_confidence_level(moves)
+        # avg_visits = 451 >= 400 → HIGH (even though reliability = 30%)
+        assert level == ConfidenceLevel.HIGH
+
+    def test_medium_confidence(self):
+        """MEDIUM confidence when reliability >= 30% or avg_visits >= 150"""
+        # 10 moves, 4 reliable (40%), avg_visits = 180
+        moves = []
+        for i in range(1, 11):
+            visits = 200 if i <= 4 else 100  # 4 reliable, 6 not
+            # avg = (200*4 + 100*6) / 10 = 140 < 150
+            # reliability = 4/10 = 40% >= 30% → MEDIUM
+            moves.append(
+                MoveEval(
+                    move_number=i,
+                    player="B",
+                    gtp=f"D{i}",
+                    score_before=0.0, score_after=0.0, delta_score=0.0,
+                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    points_lost=1.0,
+                    realized_points_lost=None,
+                    root_visits=visits,
+                    score_loss=1.0,
+                )
+            )
+        level = compute_confidence_level(moves)
+        assert level == ConfidenceLevel.MEDIUM
+
+    def test_low_confidence_insufficient_reliability_and_visits(self):
+        """LOW confidence when reliability < 30% and avg_visits < 150"""
+        # 10 moves, 2 reliable (20%), avg_visits = 100
+        moves = []
+        for i in range(1, 11):
+            visits = 200 if i <= 2 else 75  # 2 reliable, 8 not
+            # avg = (200*2 + 75*8) / 10 = 100 < 150
+            # reliability = 2/10 = 20% < 30% → LOW
+            moves.append(
+                MoveEval(
+                    move_number=i,
+                    player="B",
+                    gtp=f"D{i}",
+                    score_before=0.0, score_after=0.0, delta_score=0.0,
+                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    points_lost=1.0,
+                    realized_points_lost=None,
+                    root_visits=visits,
+                    score_loss=1.0,
+                )
+            )
+        level = compute_confidence_level(moves)
+        assert level == ConfidenceLevel.LOW
+
+    def test_min_coverage_guard_forces_low(self):
+        """LOW confidence when moves_with_visits < MIN_COVERAGE_MOVES (5)"""
+        # 10 moves total, but only 3 have visits > 0
+        moves = []
+        for i in range(1, 11):
+            visits = 500 if i <= 3 else 0  # Only 3 moves have visits
+            moves.append(
+                MoveEval(
+                    move_number=i,
+                    player="B",
+                    gtp=f"D{i}",
+                    score_before=0.0, score_after=0.0, delta_score=0.0,
+                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    points_lost=1.0,
+                    realized_points_lost=None,
+                    root_visits=visits,
+                    score_loss=1.0,
+                )
+            )
+        level = compute_confidence_level(moves)
+        # moves_with_visits = 3 < 5 → LOW (forced by coverage guard)
+        assert level == ConfidenceLevel.LOW
+
+    def test_reliability_pct_denominator_is_moves_with_visits(self):
+        """reliability_pct should use moves_with_visits as denominator, not total_moves"""
+        # 20 moves total, 10 have visits=0, 10 have visits > 0
+        # Of the 10 with visits, 6 are reliable (60%)
+        moves = []
+        for i in range(1, 21):
+            if i <= 10:
+                visits = 0  # No visits
+            elif i <= 16:
+                visits = 200  # Reliable
+            else:
+                visits = 50  # Not reliable
+            moves.append(
+                MoveEval(
+                    move_number=i,
+                    player="B",
+                    gtp=f"D{i}",
+                    score_before=0.0, score_after=0.0, delta_score=0.0,
+                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    points_lost=1.0,
+                    realized_points_lost=None,
+                    root_visits=visits,
+                    score_loss=1.0,
+                )
+            )
+
+        stats = compute_reliability_stats(moves)
+
+        # total_moves = 20, moves_with_visits = 10, reliable_count = 6
+        assert stats.total_moves == 20
+        assert stats.moves_with_visits == 10
+        assert stats.reliable_count == 6
+
+        # reliability_pct = 6/10 * 100 = 60% (NOT 6/20 = 30%)
+        assert stats.reliability_pct == 60.0
+
+        # coverage_pct = 10/20 * 100 = 50%
+        assert stats.coverage_pct == 50.0
+
+        # confidence level should be HIGH (reliability >= 50%)
+        level = compute_confidence_level(moves)
+        assert level == ConfidenceLevel.HIGH
+
+    def test_confidence_label_ja(self):
+        """Japanese labels for confidence levels"""
+        assert get_confidence_label(ConfidenceLevel.HIGH, lang="ja") == "信頼度: 高"
+        assert get_confidence_label(ConfidenceLevel.MEDIUM, lang="ja") == "信頼度: 中"
+        assert get_confidence_label(ConfidenceLevel.LOW, lang="ja") == "信頼度: 低"
+
+    def test_confidence_label_en(self):
+        """English labels for confidence levels"""
+        assert get_confidence_label(ConfidenceLevel.HIGH, lang="en") == "Confidence: High"
+        assert get_confidence_label(ConfidenceLevel.MEDIUM, lang="en") == "Confidence: Medium"
+        assert get_confidence_label(ConfidenceLevel.LOW, lang="en") == "Confidence: Low"
+
+    def test_important_moves_limit_by_confidence(self):
+        """Important moves limit varies by confidence level"""
+        assert get_important_moves_limit(ConfidenceLevel.HIGH) == 20
+        assert get_important_moves_limit(ConfidenceLevel.MEDIUM) == 10
+        assert get_important_moves_limit(ConfidenceLevel.LOW) == 5
+
+    def test_empty_moves_returns_low(self):
+        """Empty moves list returns LOW confidence"""
+        level = compute_confidence_level([])
+        assert level == ConfidenceLevel.LOW
