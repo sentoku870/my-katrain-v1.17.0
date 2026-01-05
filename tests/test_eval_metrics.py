@@ -1780,3 +1780,132 @@ class TestConfidenceLevel:
         """Empty moves list returns LOW confidence"""
         level = compute_confidence_level([])
         assert level == ConfidenceLevel.LOW
+
+
+# ---------------------------------------------------------------------------
+# Test: Evidence Attachments (PR#2)
+# ---------------------------------------------------------------------------
+
+from katrain.core.eval_metrics import (
+    select_representative_moves,
+    format_evidence_examples,
+    get_evidence_count,
+)
+
+
+class TestEvidenceAttachments:
+    """Tests for Evidence Attachments functionality (PR#2)"""
+
+    def test_select_representative_moves_uses_score_loss(self):
+        """select_representative_moves should use score_loss for sorting"""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=2.0),
+            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=5.0),
+            make_move_eval(move_number=3, player="B", gtp="D16", score_loss=3.0),
+        ]
+        result = select_representative_moves(moves, max_count=2)
+
+        # Should be sorted by score_loss descending: Q16 (5.0), D16 (3.0)
+        assert len(result) == 2
+        assert result[0].gtp == "Q16"
+        assert result[0].score_loss == 5.0
+        assert result[1].gtp == "D16"
+        assert result[1].score_loss == 3.0
+
+    def test_select_representative_moves_skips_none_score_loss(self):
+        """Moves with score_loss=None should be skipped"""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=None),
+            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=5.0),
+            make_move_eval(move_number=3, player="B", gtp="D16", score_loss=None),
+            make_move_eval(move_number=4, player="B", gtp="Q4", score_loss=3.0),
+        ]
+        result = select_representative_moves(moves, max_count=3)
+
+        # Should skip None and return Q16, Q4
+        assert len(result) == 2
+        assert result[0].gtp == "Q16"
+        assert result[1].gtp == "Q4"
+
+    def test_select_representative_moves_deterministic_ordering(self):
+        """Same score_loss should use move_number for tiebreak (ascending)"""
+        moves = [
+            make_move_eval(move_number=10, player="B", gtp="D4", score_loss=5.0),
+            make_move_eval(move_number=5, player="B", gtp="Q16", score_loss=5.0),
+            make_move_eval(move_number=15, player="B", gtp="D16", score_loss=5.0),
+        ]
+        result = select_representative_moves(moves, max_count=3)
+
+        # All have score_loss=5.0, tiebreak by move_number ascending: 5, 10, 15
+        assert len(result) == 3
+        assert result[0].move_number == 5
+        assert result[1].move_number == 10
+        assert result[2].move_number == 15
+
+    def test_select_representative_moves_with_filter(self):
+        """Category filter should be applied before selection"""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=5.0,
+                           mistake_category=MistakeCategory.BLUNDER),
+            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=3.0,
+                           mistake_category=MistakeCategory.MISTAKE),
+            make_move_eval(move_number=3, player="B", gtp="D16", score_loss=6.0,
+                           mistake_category=MistakeCategory.BLUNDER),
+        ]
+        # Filter for BLUNDER only
+        result = select_representative_moves(
+            moves,
+            max_count=5,
+            category_filter=lambda m: m.mistake_category == MistakeCategory.BLUNDER
+        )
+
+        assert len(result) == 2
+        assert all(m.mistake_category == MistakeCategory.BLUNDER for m in result)
+        # Sorted by score_loss descending: D16 (6.0), D4 (5.0)
+        assert result[0].gtp == "D16"
+        assert result[1].gtp == "D4"
+
+    def test_format_evidence_examples_ja(self):
+        """Japanese format for evidence examples"""
+        moves = [
+            make_move_eval(move_number=12, player="B", gtp="Q16", score_loss=8.5),
+            make_move_eval(move_number=45, player="B", gtp="R4", score_loss=4.2),
+        ]
+        result = format_evidence_examples(moves, lang="ja")
+
+        assert result == "例: #12 Q16 (-8.5目), #45 R4 (-4.2目)"
+
+    def test_format_evidence_examples_en(self):
+        """English format for evidence examples"""
+        moves = [
+            make_move_eval(move_number=12, player="B", gtp="Q16", score_loss=8.5),
+            make_move_eval(move_number=45, player="B", gtp="R4", score_loss=4.2),
+        ]
+        result = format_evidence_examples(moves, lang="en")
+
+        assert result == "e.g.: #12 Q16 (-8.5 pts), #45 R4 (-4.2 pts)"
+
+    def test_format_evidence_examples_empty(self):
+        """Empty moves list returns empty string"""
+        result = format_evidence_examples([], lang="ja")
+        assert result == ""
+
+    def test_get_evidence_count_by_confidence(self):
+        """Evidence count varies by confidence level"""
+        assert get_evidence_count(ConfidenceLevel.HIGH) == 3
+        assert get_evidence_count(ConfidenceLevel.MEDIUM) == 2
+        assert get_evidence_count(ConfidenceLevel.LOW) == 1
+
+    def test_select_representative_moves_empty_list(self):
+        """Empty moves list returns empty result"""
+        result = select_representative_moves([], max_count=3)
+        assert result == []
+
+    def test_select_representative_moves_all_none_score_loss(self):
+        """All moves with None score_loss returns empty result"""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=None),
+            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=None),
+        ]
+        result = select_representative_moves(moves, max_count=3)
+        assert result == []

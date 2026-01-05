@@ -1493,11 +1493,28 @@ class Game(BaseGame):
             header_suffix = " (※参考情報)" if is_low_conf else ""
             lines = [f"## Weakness Hypothesis ({label}){header_suffix}", ""]
 
+            # PR#2: Get evidence count based on confidence level
+            evidence_count = eval_metrics.get_evidence_count(confidence_level)
+
             if sorted_combos:
                 # 上位2つの弱点を抽出
                 for i, (key, loss) in enumerate(sorted_combos[:2]):
                     phase, category = key
                     count = stats.phase_mistake_counts.get(key, 0)
+
+                    # PR#2: Select representative moves for this phase/category
+                    def phase_cat_filter(mv):
+                        mv_phase = mv.tag or "unknown"
+                        mv_cat = mv.mistake_category.name if mv.mistake_category else "GOOD"
+                        return mv_phase == phase and mv_cat == category
+
+                    evidence_moves = eval_metrics.select_representative_moves(
+                        player_moves,
+                        max_count=evidence_count,
+                        category_filter=phase_cat_filter,
+                    )
+                    evidence_str = eval_metrics.format_evidence_examples(evidence_moves, lang="ja")
+
                     # PR#1: Use hedged wording for MEDIUM/LOW confidence
                     if is_low_conf:
                         # LOW: "〜の傾向が見られる"
@@ -1517,6 +1534,10 @@ class Game(BaseGame):
                             f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** "
                             f"({count}回、損失{loss:.1f}目)"
                         )
+
+                    # PR#2: Add evidence examples on next line (indented)
+                    if evidence_str:
+                        lines.append(f"   {evidence_str}")
             else:
                 lines.append("- 明確な弱点パターンは検出されませんでした。")
 
@@ -1567,8 +1588,28 @@ class Game(BaseGame):
             lines.append("Based on the data above, consider focusing on:")
             lines.append("")
             if priorities:
+                # PR#2: For each priority, find the worst move as anchor
+                # Priority format is like "Endgameのblunderを減らす" or similar
+                # We need to extract phase from the priority text and find worst move
                 for i, priority in enumerate(priorities, 1):
                     lines.append(f"- {i}. {priority}")
+
+                    # PR#2: Try to find anchor move for this priority
+                    # Extract phase from priority text (Opening/Middle/Endgame/etc.)
+                    anchor_move = None
+                    for phase_key, phase_name in [("opening", "Opening"), ("middle", "Middle"), ("yose", "Endgame")]:
+                        if phase_name.lower() in priority.lower() or phase_key in priority.lower():
+                            # Find worst move in this phase
+                            phase_moves = [
+                                mv for mv in player_moves
+                                if (mv.tag or "unknown") == phase_key and mv.score_loss is not None
+                            ]
+                            if phase_moves:
+                                anchor_move = max(phase_moves, key=lambda m: (m.score_loss or 0, -m.move_number))
+                            break
+
+                    if anchor_move and anchor_move.score_loss:
+                        lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で -{anchor_move.score_loss:.1f}目の損失)")
             else:
                 lines.append("- No specific priorities identified. Keep up the good work!")
             lines.append("")
@@ -1631,12 +1672,15 @@ class Game(BaseGame):
             lines = [f"## Urgent Miss Detection ({label}){header_suffix}", ""]
             lines.append("**Warning**: 以下の連続手は急場見逃しの可能性があります:")
             lines.append("")
-            lines.append("| Move Range | Consecutive | Total Loss | Avg Loss |")
-            lines.append("|------------|-------------|------------|----------|")
+            # PR#2: Add Coords column for coordinate sequence
+            lines.append("| Move Range | Consecutive | Total Loss | Avg Loss | Coords |")
+            lines.append("|------------|-------------|------------|----------|--------|")
             for s in streaks:
+                # PR#2: Build coordinate sequence from streak moves
+                coords = "→".join(mv.gtp or "-" for mv in s.moves) if s.moves else "-"
                 lines.append(
                     f"| #{s.start_move}-{s.end_move} | {s.move_count} moves | "
-                    f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts |"
+                    f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts | {coords} |"
                 )
             lines.append("")
             return lines

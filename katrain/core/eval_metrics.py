@@ -1264,6 +1264,87 @@ def get_important_moves_limit(level: ConfidenceLevel) -> int:
     return limits.get(level, 5)
 
 
+def get_evidence_count(level: ConfidenceLevel) -> int:
+    """Get the number of evidence examples to show based on confidence level.
+
+    Args:
+        level: ConfidenceLevel enum value
+
+    Returns:
+        Number of examples per category (HIGH: 3, MEDIUM: 2, LOW: 1)
+    """
+    counts = {
+        ConfidenceLevel.HIGH: 3,
+        ConfidenceLevel.MEDIUM: 2,
+        ConfidenceLevel.LOW: 1,
+    }
+    return counts.get(level, 1)
+
+
+def select_representative_moves(
+    moves: List[MoveEval],
+    *,
+    max_count: int = 3,
+    category_filter: Optional[Callable[[MoveEval], bool]] = None,
+) -> List[MoveEval]:
+    """Select representative moves for evidence attachment.
+
+    Uses score_loss as the canonical loss metric. Moves with score_loss=None
+    are skipped (never converted to 0.0).
+
+    Args:
+        moves: List of MoveEval objects
+        max_count: Maximum number of moves to return
+        category_filter: Optional filter function (e.g., lambda mv: mv.tag == "opening")
+
+    Returns:
+        List of representative MoveEval objects, sorted by score_loss descending,
+        with move_number ascending as tie-breaker for deterministic ordering.
+    """
+    # Filter moves if filter function provided
+    filtered = moves if category_filter is None else [m for m in moves if category_filter(m)]
+
+    # Skip moves with score_loss=None (NEVER convert to 0.0)
+    with_loss = [m for m in filtered if m.score_loss is not None]
+
+    # Sort by score_loss descending, then move_number ascending for determinism
+    sorted_moves = sorted(
+        with_loss,
+        key=lambda m: (-m.score_loss, m.move_number),
+    )
+
+    return sorted_moves[:max_count]
+
+
+def format_evidence_examples(
+    moves: List[MoveEval],
+    *,
+    lang: str = "ja",
+) -> str:
+    """Format evidence moves as a compact inline string.
+
+    Args:
+        moves: List of MoveEval objects (already selected as representatives)
+        lang: Language code ("ja" or "en")
+
+    Returns:
+        Formatted string like "例: #12 Q16 (-8.5目), #45 R4 (-4.2目)"
+        or "e.g.: #12 Q16 (-8.5 pts), #45 R4 (-4.2 pts)"
+    """
+    if not moves:
+        return ""
+
+    prefix = "例: " if lang == "ja" else "e.g.: "
+    unit = "目" if lang == "ja" else " pts"
+
+    parts = []
+    for mv in moves:
+        loss = mv.score_loss if mv.score_loss is not None else 0.0
+        parts.append(f"#{mv.move_number} {mv.gtp or '-'} (-{loss:.1f}{unit})")
+
+    return prefix + ", ".join(parts)
+
+
 def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:
     """
     Get phase classification thresholds for a given board size.
