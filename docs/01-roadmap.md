@@ -343,6 +343,30 @@
 
 ## 11. 変更履歴
 
+- 2026-01-05: Karte/Summary品質向上4連PR（PR #50-53）
+  - **PR #50 Confidence Gating**: 解析信頼度に基づくセクション制御
+    - `ConfidenceLevel` enum (HIGH/MEDIUM/LOW)
+    - `compute_confidence_level()` 関数
+    - `reliability_pct` 分母を `moves_with_visits` に変更
+    - MIN_COVERAGE_MOVES (5) ガード
+    - LOW confidence で警告表示・ヘッジ表現
+  - **PR #51 Evidence Attachments**: 結論に具体例を添付
+    - `select_representative_moves()` - score_loss 使用、None スキップ
+    - `format_evidence_examples()` - i18n対応 (ja/en)
+    - Weakness Hypothesis / Practice Priorities / Urgent Miss に例追加
+    - 10件の新規テスト追加
+  - **PR #52 Golden Tests**: スナップショットテスト基盤
+    - `tests/conftest.py` - 共通ヘルパー、`normalize_output()`
+    - `--update-goldens` pytest オプション
+    - Confidence境界値テスト、決定論的ソートテスト
+    - 18件の新規テスト追加
+  - **PR #53 Important Move Ranking Redesign**: 学習価値ベースのランキング
+    - 新公式: `canonical_loss + swing + difficulty_modifier + streak_start_bonus`
+    - `get_difficulty_modifier()` - HARD +1.0, ONLY_MOVE -2.0
+    - `get_reliability_scale()` - 段階的スケーリング (0.3-1.0)
+    - 決定論的タイブレーク (move_number 昇順)
+    - 17件の新規テスト追加
+  - 合計: 55件の新規テスト、全384件パス
 - 2026-01-05: Variable Visits と完了音（PR #47）
   - choose_visits_for_sgf() によるファイル別visits変動
   - Deterministic モード（MD5ハッシュで再現性確保）
