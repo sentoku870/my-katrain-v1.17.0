@@ -858,3 +858,174 @@ class TestBuildKarteReportErrorHandling:
         assert "game123" in result
         assert "## ERROR" in result
         assert "Something went wrong" in result
+
+
+# ==============================================================================
+# PR#1 Tests: Threshold Consistency + Urgent Miss Detection
+# ==============================================================================
+
+
+class TestDetectMistakeStreaksNoneHandling:
+    """Tests for detect_mistake_streaks handling of None points_lost."""
+
+    def test_none_points_lost_breaks_streak(self):
+        """moves with points_lost=None should conservatively break streaks."""
+        moves = [
+            MoveEval(
+                move_number=2, player="B", gtp="D4",
+                score_before=0.0, score_after=-3.0, delta_score=-3.0,
+                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                points_lost=3.0,  # Start of potential streak
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=4, player="B", gtp="Q10",
+                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
+                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                points_lost=None,  # Unknown loss - should break streak
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=6, player="B", gtp="R15",
+                score_before=-7.0, score_after=-12.0, delta_score=-5.0,
+                winrate_before=0.35, winrate_after=0.25, delta_winrate=-0.1,
+                points_lost=5.0,  # After the break
+                realized_points_lost=None, root_visits=100,
+            ),
+        ]
+        # Should not form a streak because None in the middle breaks it
+        streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
+        assert streaks == []
+
+    def test_zero_points_lost_not_treated_as_none(self):
+        """points_lost=0.0 should NOT be treated as None (truthiness bug check)."""
+        moves = [
+            MoveEval(
+                move_number=2, player="B", gtp="D4",
+                score_before=0.0, score_after=-3.0, delta_score=-3.0,
+                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                points_lost=3.0,  # Above threshold
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=4, player="B", gtp="Q10",
+                score_before=-3.0, score_after=-3.0, delta_score=0.0,
+                winrate_before=0.45, winrate_after=0.45, delta_winrate=0.0,
+                points_lost=0.0,  # Zero - should NOT be treated as None
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=6, player="B", gtp="R15",
+                score_before=-3.0, score_after=-8.0, delta_score=-5.0,
+                winrate_before=0.45, winrate_after=0.30, delta_winrate=-0.15,
+                points_lost=5.0,  # Above threshold
+                realized_points_lost=None, root_visits=100,
+            ),
+        ]
+        # 0.0 is below threshold, so it breaks the streak normally (not as None)
+        # The first move alone doesn't form a streak (min_consecutive=2)
+        # The last move alone doesn't form a streak
+        streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
+        assert streaks == []
+
+    def test_none_at_end_flushes_streak(self):
+        """Streak before None should be flushed correctly."""
+        moves = [
+            MoveEval(
+                move_number=2, player="B", gtp="D4",
+                score_before=0.0, score_after=-3.0, delta_score=-3.0,
+                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                points_lost=3.0,
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=4, player="B", gtp="Q10",
+                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
+                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                points_lost=4.0,
+                realized_points_lost=None, root_visits=100,
+            ),
+            MoveEval(
+                move_number=6, player="B", gtp="R15",
+                score_before=-7.0, score_after=-7.0, delta_score=0.0,
+                winrate_before=0.35, winrate_after=0.35, delta_winrate=0.0,
+                points_lost=None,  # None at end - should flush the streak
+                realized_points_lost=None, root_visits=100,
+            ),
+        ]
+        streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
+        assert len(streaks) == 1
+        assert streaks[0].move_count == 2
+        assert streaks[0].total_loss == 7.0
+
+
+class TestUrgentMissConfigsIntegration:
+    """Tests for URGENT_MISS_CONFIGS usage."""
+
+    def test_get_urgent_miss_config_all_presets(self):
+        """All skill presets should have urgent miss configs."""
+        from katrain.core.eval_metrics import get_urgent_miss_config, PRESET_ORDER
+
+        for preset in PRESET_ORDER:
+            config = get_urgent_miss_config(preset)
+            assert config is not None
+            assert config.threshold_loss > 0
+            assert config.min_consecutive >= 2
+
+    def test_urgent_miss_threshold_varies_by_preset(self):
+        """Stricter presets should have lower thresholds."""
+        from katrain.core.eval_metrics import get_urgent_miss_config
+
+        relaxed = get_urgent_miss_config("relaxed")
+        standard = get_urgent_miss_config("standard")
+        pro = get_urgent_miss_config("pro")
+
+        # Stricter presets have lower threshold (detect smaller losses)
+        assert relaxed.threshold_loss > standard.threshold_loss
+        assert standard.threshold_loss > pro.threshold_loss
+
+
+class TestWeaknessHypothesisSkillPreset:
+    """Tests for weakness_hypothesis_for using skill_preset thresholds."""
+
+    def test_aggregate_uses_score_thresholds(self):
+        """aggregate_phase_mistake_stats should respect custom thresholds."""
+        from katrain.core.eval_metrics import get_skill_preset
+
+        # Create a move with 3.0 loss
+        move = MoveEval(
+            move_number=100, player="B", gtp="D4",
+            score_before=0.0, score_after=-3.0, delta_score=-3.0,
+            winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+            points_lost=3.0,
+            realized_points_lost=None, root_visits=100,
+        )
+
+        # Standard: thresholds [1.0, 2.5, 5.0] -> 3.0 is MISTAKE
+        standard = get_skill_preset("standard")
+        stats_standard = aggregate_phase_mistake_stats(
+            [move], score_thresholds=standard.score_thresholds
+        )
+
+        # Beginner: thresholds [2.0, 5.0, 10.0] -> 3.0 is INACCURACY
+        beginner = get_skill_preset("beginner")
+        stats_beginner = aggregate_phase_mistake_stats(
+            [move], score_thresholds=beginner.score_thresholds
+        )
+
+        # Verify classification differs based on thresholds
+        assert ("middle", "MISTAKE") in stats_standard.phase_mistake_counts
+        assert ("middle", "INACCURACY") in stats_beginner.phase_mistake_counts
+
+    def test_preset_thresholds_consistency(self):
+        """Verify preset threshold values are as documented."""
+        from katrain.core.eval_metrics import get_skill_preset
+
+        standard = get_skill_preset("standard")
+        assert standard.score_thresholds == (1.0, 2.5, 5.0)
+
+        beginner = get_skill_preset("beginner")
+        assert beginner.score_thresholds == (2.0, 5.0, 10.0)
+
+        pro = get_skill_preset("pro")
+        assert pro.score_thresholds == (0.2, 0.5, 1.0)

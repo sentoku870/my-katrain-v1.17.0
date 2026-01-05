@@ -1429,9 +1429,9 @@ class Game(BaseGame):
             # Phase 4: 共通困難局面を追加
             sections += common_difficult_positions()
 
-        # 弱点仮説セクション（Phase 7で追加）
+        # 弱点仮説セクション（Phase 7で追加、Phase 8で skill_preset 対応）
         def weakness_hypothesis_for(player: str, label: str) -> List[str]:
-            """単局の弱点仮説を生成"""
+            """単局の弱点仮説を生成（skill_preset の閾値を使用）"""
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
             if not player_moves:
                 return [f"## Weakness Hypothesis ({label})", "- No data available.", ""]
@@ -1439,36 +1439,20 @@ class Game(BaseGame):
             # 盤サイズを取得（board_size は (x, y) タプル）
             board_x, _ = self.board_size
 
-            # Phase × Mistake クロス集計
-            phase_mistake_loss = {}
-            phase_mistake_count = {}
+            # skill_preset から閾値を取得（ハードコード排除）
+            preset = eval_metrics.get_skill_preset(skill_preset)
+            score_thresholds = preset.score_thresholds
 
-            for mv in player_moves:
-                if mv.points_lost is None:
-                    continue
-
-                # Phase 判定（手数ベース、盤サイズ対応）
-                phase = eval_metrics.classify_game_phase(mv.move_number, board_size=board_x)
-
-                # Mistake 分類
-                loss = max(0.0, mv.points_lost)
-                if loss < 1.0:
-                    category = "GOOD"
-                elif loss < 3.0:
-                    category = "INACCURACY"
-                elif loss < 7.0:
-                    category = "MISTAKE"
-                else:
-                    category = "BLUNDER"
-
-                key = (phase, category)
-                phase_mistake_count[key] = phase_mistake_count.get(key, 0) + 1
-                if loss > 0:
-                    phase_mistake_loss[key] = phase_mistake_loss.get(key, 0.0) + loss
+            # 共有アグリゲータを使用して Phase × Mistake 集計
+            stats = aggregate_phase_mistake_stats(
+                player_moves,
+                score_thresholds=score_thresholds,
+                board_size=board_x,
+            )
 
             # 損失が大きい順にソート（GOOD は除外）
             sorted_combos = sorted(
-                [(k, v) for k, v in phase_mistake_loss.items() if k[1] != "GOOD" and v > 0],
+                [(k, v) for k, v in stats.phase_mistake_loss.items() if k[1] != "GOOD" and v > 0],
                 key=lambda x: x[1],
                 reverse=True
             )
@@ -1485,7 +1469,7 @@ class Game(BaseGame):
                 # 上位2つの弱点を抽出
                 for i, (key, loss) in enumerate(sorted_combos[:2]):
                     phase, category = key
-                    count = phase_mistake_count.get(key, 0)
+                    count = stats.phase_mistake_counts.get(key, 0)
                     lines.append(
                         f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja.get(category, category)}** "
                         f"({count}回、損失{loss:.1f}目)"
@@ -1496,17 +1480,26 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
-        # Practice Priorities を生成（共有アグリゲータを使用）
+        # Practice Priorities を生成（共有アグリゲータを使用、skill_preset 対応）
         def practice_priorities_for(player: str, label: str) -> List[str]:
-            """単局の練習優先事項を生成"""
+            """単局の練習優先事項を生成（skill_preset の閾値を使用）"""
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
             if not player_moves:
                 return [f"## Practice Priorities ({label})", "- No data available.", ""]
 
             # 盤サイズを取得（board_size は (x, y) タプル）
             board_x, _ = self.board_size
-            # 共有アグリゲータで Phase × Mistake 統計を計算（盤サイズ対応）
-            stats = aggregate_phase_mistake_stats(player_moves, board_size=board_x)
+
+            # skill_preset から閾値を取得（Weakness Hypothesis と一致させる）
+            preset = eval_metrics.get_skill_preset(skill_preset)
+            score_thresholds = preset.score_thresholds
+
+            # 共有アグリゲータで Phase × Mistake 統計を計算（盤サイズ + 閾値対応）
+            stats = aggregate_phase_mistake_stats(
+                player_moves,
+                score_thresholds=score_thresholds,
+                board_size=board_x,
+            )
 
             # 優先項目を取得
             priorities = get_practice_priorities_from_stats(stats, max_priorities=2)
@@ -1522,18 +1515,21 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
-        # Mistake Streaks を検出して表示
+        # Mistake Streaks を検出して表示（skill_preset 対応）
         def mistake_streaks_for(player: str, label: str) -> List[str]:
-            """同一プレイヤーの連続ミスを検出して表示"""
+            """同一プレイヤーの連続ミスを検出して表示（skill_preset の閾値を使用）"""
             player_moves = [mv for mv in snapshot.moves if mv.player == player]
             if not player_moves:
                 return []
 
-            # 連続ミスを検出（2回以上連続、損失2目以上）
+            # skill_preset から閾値を取得（URGENT_MISS_CONFIGS を使用）
+            urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+
+            # 連続ミスを検出（急場見逃し設定を使用）
             streaks = detect_mistake_streaks(
                 player_moves,
-                loss_threshold=2.0,
-                min_consecutive=2,
+                loss_threshold=urgent_config.threshold_loss,
+                min_consecutive=urgent_config.min_consecutive,
             )
 
             if not streaks:
@@ -1550,11 +1546,46 @@ class Game(BaseGame):
             lines.append("")
             return lines
 
+        # 急場見逃し検出セクション（Urgent Miss Detection）
+        def urgent_miss_section_for(player: str, label: str) -> List[str]:
+            """急場見逃しの可能性がある連続ミスを検出（URGENT_MISS_CONFIGS を使用）"""
+            player_moves = [mv for mv in snapshot.moves if mv.player == player]
+            if not player_moves:
+                return []
+
+            # skill_preset から閾値を取得
+            urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+
+            # 連続ミスを検出
+            streaks = detect_mistake_streaks(
+                player_moves,
+                loss_threshold=urgent_config.threshold_loss,
+                min_consecutive=urgent_config.min_consecutive,
+            )
+
+            if not streaks:
+                return []
+
+            lines = [f"## Urgent Miss Detection ({label})", ""]
+            lines.append("**Warning**: 以下の連続手は急場見逃しの可能性があります:")
+            lines.append("")
+            lines.append("| Move Range | Consecutive | Total Loss | Avg Loss |")
+            lines.append("|------------|-------------|------------|----------|")
+            for s in streaks:
+                lines.append(
+                    f"| #{s.start_move}-{s.end_move} | {s.move_count} moves | "
+                    f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts |"
+                )
+            lines.append("")
+            return lines
+
         # Phase 3: Apply player filter to weakness hypothesis and important moves
         if filtered_player is None:
             # Show both players
             if focus_color:
                 focus_name = "Black" if focus_color == "B" else "White"
+                # Urgent Miss Detection（急場見逃し検出）を先に表示
+                sections += urgent_miss_section_for(focus_color, focus_name)
                 sections += weakness_hypothesis_for(focus_color, focus_name)
                 sections += practice_priorities_for(focus_color, focus_name)
                 sections += mistake_streaks_for(focus_color, focus_name)
@@ -1576,6 +1607,8 @@ class Game(BaseGame):
             # Show only filtered player
             filtered_name = "Black" if filtered_player == "B" else "White"
             if focus_color and focus_color == filtered_player:
+                # Urgent Miss Detection（急場見逃し検出）を先に表示
+                sections += urgent_miss_section_for(focus_color, filtered_name)
                 sections += weakness_hypothesis_for(focus_color, filtered_name)
                 sections += practice_priorities_for(focus_color, filtered_name)
                 sections += mistake_streaks_for(focus_color, filtered_name)
