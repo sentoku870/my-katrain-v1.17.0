@@ -9,12 +9,15 @@
 import base64
 import gzip
 import json
+import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.game import KaTrainSGF
 from katrain.gui.features.types import LogFunction
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -54,6 +57,7 @@ def extract_analysis_from_sgf_node(node) -> Optional[dict]:
         return analysis
 
     except Exception:
+        logger.debug("Failed to extract analysis from SGF node", exc_info=True)
         return None
 
 
