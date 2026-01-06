@@ -193,10 +193,11 @@ class KataGoEngine(BaseEngine):
                 self.terminate_query(query_id)
 
     def stop_pondering(self):
-        pq = self.ponder_query
+        with self.thread_lock:
+            pq = self.ponder_query
+            self.ponder_query = None
         if pq:
             self.terminate_query(pq["id"], ignore_further_results=False)
-        self.ponder_query = None
 
     def terminate_query(self, query_id, ignore_further_results=True):
         self.katrain.log(f"Terminating query {query_id}", OUTPUT_DEBUG)
@@ -243,13 +244,23 @@ class KataGoEngine(BaseEngine):
         if finish is not None:  # don't care if exiting app
             for t in [self.write_stdin_thread, self.analysis_thread, self.stderr_thread]:
                 if t:
-                    t.join()
+                    t.join(timeout=5.0)
+                    if t.is_alive():
+                        # Timeout: thread still running. Python cannot force-kill threads.
+                        # Since daemon=True, thread will stop when process exits.
+                        self.katrain.log(
+                            f"Thread {t.name} did not stop within 5s timeout", OUTPUT_DEBUG
+                        )
 
     def is_idle(self):
-        return not self.queries and self.write_queue.empty()
+        # Note: queue.empty() is best-effort and not strictly reliable.
+        # This function is advisory; don't use for precise control flow.
+        with self.thread_lock:
+            return not self.queries and self.write_queue.empty()
 
     def queries_remaining(self):
-        return len(self.queries) + int(not self.write_queue.empty())
+        with self.thread_lock:
+            return len(self.queries) + int(not self.write_queue.empty())
 
     def _read_stderr_thread(self):
         while self.katago_process is not None:
@@ -293,15 +304,40 @@ class KataGoEngine(BaseEngine):
                     self.katrain.log(f"Error without ID {analysis} received from KataGo", OUTPUT_ERROR)
                     continue
                 query_id = analysis["id"]
-                if query_id not in self.queries:
-                    if analysis.get("action") != "terminate":
-                        self.katrain.log(
-                            f"Query result {query_id} discarded -- recent new game or node reset?", OUTPUT_DEBUG
-                        )
-                    continue
-                callback, error_callback, start_time, next_move, _ = self.queries[query_id]
+
+                # Retrieve query data under lock to prevent race conditions
+                # Callbacks are executed outside the lock to avoid deadlocks
+                callback = None
+                error_callback = None
+                start_time = None
+                next_move = None
+                should_delete = False
+                query_found = False
+
+                with self.thread_lock:
+                    if query_id not in self.queries:
+                        # Query was already removed by terminate_queries() or on_new_game()
+                        # This is a normal case when switching games or canceling analysis
+                        if analysis.get("action") != "terminate":
+                            self.katrain.log(
+                                f"Query result {query_id} discarded -- recent new game or node reset?", OUTPUT_DEBUG
+                            )
+                        continue
+                    query_found = True
+                    callback, error_callback, start_time, next_move, _ = self.queries[query_id]
+                    if "error" in analysis:
+                        del self.queries[query_id]
+                        should_delete = True
+                    elif "warning" in analysis or "terminateId" in analysis:
+                        pass  # No deletion needed for warnings/terminate confirmations
+                    else:
+                        partial_result = analysis.get("isDuringSearch", False)
+                        if not partial_result:
+                            del self.queries[query_id]
+                            should_delete = True
+
+                # Process results outside the lock
                 if "error" in analysis:
-                    del self.queries[query_id]
                     if error_callback:
                         error_callback(analysis)
                     elif not (next_move and "Illegal move" in analysis["error"]):  # sweep
@@ -312,8 +348,6 @@ class KataGoEngine(BaseEngine):
                     self.katrain.log(f"{analysis} received from KataGo", OUTPUT_DEBUG)
                 else:
                     partial_result = analysis.get("isDuringSearch", False)
-                    if not partial_result:
-                        del self.queries[query_id]
                     time_taken = time.time() - start_time
                     results_exist = not analysis.get("noResults", False)
                     self.katrain.log(
