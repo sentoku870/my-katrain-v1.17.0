@@ -105,7 +105,7 @@ python -m katrain 2>&1
 | 盤面表示 | `katrain/gui/badukpan.py` |
 | 右パネル | `katrain/gui/controlspanel.py` |
 | グラフ | `katrain/gui/widgets/graph.py` |
-| 重要局面/ミス | `katrain/core/eval_metrics.py` |
+| 重要局面/ミス | `katrain/core/analysis/` (models.py, logic.py) |
 | 解析 | `katrain/core/engine.py`, `game_node.py` |
 | レイアウト | `katrain/gui.kv` |
 | 翻訳 | `katrain/i18n/locales/*/katrain.po` |

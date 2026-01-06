@@ -94,7 +94,8 @@
 | `.po` の翻訳更新のみ | docs-only | 翻訳ファイルはドキュメント扱い |
 | 定数・閾値の微調整（`.py`） | code-change | Pythonコード = code-change |
 | `docs/` 内のMarkdown修正 | docs-only | ドキュメントのみ |
-| `eval_metrics.py` のロジック変更 | code-change (Lv2+) | コアロジック |
+| `analysis/` パッケージのロジック変更 | code-change (Lv2+) | コアロジック（models/logic/presentation） |
+| `eval_metrics.py` の変更 | code-change (Lv1) | ファサードのみ（実体は analysis/） |
 
 ---
 

@@ -188,7 +188,11 @@ katrain/
 │   ├── game.py       ← Game クラス（対局状態）
 │   ├── game_node.py  ← GameNode（手/解析結果）
 │   ├── engine.py     ← KataGoEngine（解析プロセス）
-│   └── eval_metrics.py ← 重要局面/ミス分類（Phase1-4で追加）
+│   ├── eval_metrics.py ← ファサード（後方互換用、実体は analysis/）
+│   └── analysis/     ← 解析基盤パッケージ
+│       ├── models.py    ← Enum, Dataclass, 定数
+│       ├── logic.py     ← 計算関数
+│       └── presentation.py ← 表示/フォーマット
 ├── gui/
 │   ├── controlspanel.py ← 右パネル
 │   ├── badukpan.py      ← 盤面表示
