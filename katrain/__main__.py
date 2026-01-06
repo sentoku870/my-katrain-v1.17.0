@@ -134,6 +134,13 @@ from katrain.gui.features.quiz_popup import (
     format_points_loss,
 )
 from katrain.gui.features.quiz_session import start_quiz_session
+from katrain.gui.features.batch_core import (
+    collect_batch_options,
+    create_log_callback,
+    create_progress_callback,
+    create_summary_callback,
+    run_batch_in_thread,
+)
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
