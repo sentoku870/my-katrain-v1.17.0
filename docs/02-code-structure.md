@@ -34,7 +34,8 @@ katrain/
 │   ├── popups.py          # ポップアップダイアログ
 │   ├── widgets/
 │   │   ├── graph.py       # ScoreGraph（勝率グラフ）
-│   │   └── movetree.py    # MoveTree（手順ツリー）
+│   │   ├── movetree.py    # MoveTree（手順ツリー）
+│   │   └── helpers.py     # UIヘルパー関数（PR #89で追加）
 │   │
 │   └── features/          # 機能モジュール（Phase 3で追加）
 │       ├── context.py         # FeatureContext Protocol
@@ -254,10 +255,11 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
-- 2026-01-06: Phase 4 安定化（PR #81-88）
+- 2026-01-06: Phase 4 安定化（PR #81-89）
   - gui/features テスト追加（77件）
   - 設定管理Protocol統一（_config直接アクセス排除）
   - 型ヒント改善（types.py）
+  - UIヘルパー追加（helpers.py）
 - 2026-01-06: gui/features パッケージ追加（Phase 3完了）
   - __main__.py を機能別モジュールに分割
   - FeatureContext Protocol による依存性注入

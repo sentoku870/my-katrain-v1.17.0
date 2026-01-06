@@ -346,7 +346,7 @@
 
 ## 11. 変更履歴
 
-- 2026-01-06: Phase 4 安定化（PR #81-88）
+- 2026-01-06: Phase 4 安定化（PR #81-89）
   - **目的**: gui/features パッケージのテスト追加と品質向上
   - **テスト追加（PR #81-85）**: summary_stats, summary_aggregator, karte_export
     - 77件の新規テスト追加
@@ -356,6 +356,9 @@
     - controlspanel.py: save_ui_state()
     - popups.py: dist_models
     - __main__.py: sgf_load/save, language, window state
+  - **UIヘルパー追加（PR #89）**: `katrain/gui/widgets/helpers.py` 新規作成
+    - `bind_label_text_size()`, `create_styled_label()`, `create_text_input_row()`
+    - settings_popup.py の重複コード削減（23行→5行）
   - **成果**: 全510テストパス、Protocol準拠の設定管理に完全統一
 - 2026-01-06: __main__.py モジュール分割 Phase 3 完了（PR #62-80）
   - **目的**: 4,000行超の __main__.py を機能別モジュールに分割
