@@ -183,7 +183,8 @@ Read(file_path="katrain/__main__.py", offset=160, limit=10)  # エラー行±5�
 
 ```
 katrain/
-├── __main__.py      ← アプリ起動、KaTrainGui クラス
+├── __main__.py      ← アプリ起動、KaTrainGui クラス（~1200行）
+├── common/          ← 共有定数（循環依存解消用）
 ├── core/
 │   ├── game.py       ← Game クラス（対局状態）
 │   ├── game_node.py  ← GameNode（手/解析結果）
@@ -196,8 +197,15 @@ katrain/
 ├── gui/
 │   ├── controlspanel.py ← 右パネル
 │   ├── badukpan.py      ← 盤面表示
-│   └── widgets/
-│       └── graph.py     ← ScoreGraph
+│   ├── widgets/
+│   │   └── graph.py     ← ScoreGraph
+│   └── features/        ← 機能モジュール（__main__.pyから抽出）
+│       ├── context.py       ← FeatureContext Protocol
+│       ├── karte_export.py  ← カルテエクスポート
+│       ├── summary_*.py     ← サマリ関連（stats/aggregator/formatter/ui/io）
+│       ├── quiz_*.py        ← クイズ（popup/session）
+│       ├── batch_*.py       ← バッチ解析（core/ui）
+│       └── settings_popup.py ← 設定ポップアップ
 ├── gui.kv            ← Kivy レイアウト定義
 └── i18n/             ← 翻訳ファイル
 ```

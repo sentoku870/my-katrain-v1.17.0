@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-05
+> 最終更新: 2026-01-06
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 作業履歴は `99-worklog.md` を参照。
 
@@ -346,6 +346,18 @@
 
 ## 11. 変更履歴
 
+- 2026-01-06: __main__.py モジュール分割 Phase 3 完了（PR #62-80）
+  - **目的**: 4,000行超の __main__.py を機能別モジュールに分割
+  - **新規パッケージ**: `katrain/gui/features/`（13モジュール）
+    - `context.py`: FeatureContext Protocol
+    - `karte_export.py`: カルテエクスポート機能
+    - `summary_*.py`: サマリ関連（stats/aggregator/formatter/ui/io）
+    - `quiz_*.py`: クイズ機能（popup/session）
+    - `batch_*.py`: バッチ解析（core/ui）
+    - `settings_popup.py`: 設定ポップアップ
+  - **共通基盤**: `katrain/common/theme_constants.py`（循環依存解消）
+  - **成果**: ~3,290行を抽出、__main__.py は~1,200行に削減
+  - **リグレッション**: ゼロ（全433テストパス）
 - 2026-01-05: eval_metrics.py リファクタリング Phase B 完了（PR #54-57）
   - **PR #54 (Phase A)**: eval_metrics.py → analysis/core.py + facade
     - 約2500行を analysis パッケージに移動

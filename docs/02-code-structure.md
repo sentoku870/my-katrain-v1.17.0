@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-05
+> 最終更新: 2026-01-06
 > 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
 
 ---
@@ -9,7 +9,10 @@
 
 ```
 katrain/
-├── __main__.py           # アプリ起動、KaTrainGuiクラス
+├── __main__.py           # アプリ起動、KaTrainGuiクラス（~1200行）
+│
+├── common/               # 共有定数（循環依存解消用）
+│   └── theme_constants.py # INFO_PV_COLOR など
 │
 ├── core/                 # コアロジック
 │   ├── game.py            # Game（対局状態管理）
@@ -29,9 +32,23 @@ katrain/
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
 │   ├── badukpan.py        # 盤面表示（BadukPanWidget）
 │   ├── popups.py          # ポップアップダイアログ
-│   └── widgets/
-│       ├── graph.py       # ScoreGraph（勝率グラフ）
-│       └── movetree.py    # MoveTree（手順ツリー）
+│   ├── widgets/
+│   │   ├── graph.py       # ScoreGraph（勝率グラフ）
+│   │   └── movetree.py    # MoveTree（手順ツリー）
+│   │
+│   └── features/          # 機能モジュール（Phase 3で追加）
+│       ├── context.py         # FeatureContext Protocol
+│       ├── karte_export.py    # カルテエクスポート
+│       ├── summary_stats.py   # サマリ統計計算
+│       ├── summary_aggregator.py # サマリ集計
+│       ├── summary_formatter.py  # サマリMarkdown生成
+│       ├── summary_ui.py      # サマリUI/ダイアログ
+│       ├── summary_io.py      # サマリファイル保存
+│       ├── quiz_popup.py      # クイズポップアップ
+│       ├── quiz_session.py    # クイズセッション
+│       ├── batch_core.py      # バッチ解析コア
+│       ├── batch_ui.py        # バッチ解析UI
+│       └── settings_popup.py  # 設定ポップアップ
 │
 ├── gui.kv                # Kivyレイアウト定義
 ├── katrain.kv            # 追加レイアウト
@@ -142,7 +159,37 @@ analyzer = YoseAnalyzer.from_game(game)
 report = analyzer.build_important_moves_report()
 ```
 
-### 4.3 Gameクラスへの追加（game.py）
+### 4.3 gui/features パッケージ（Phase 3完了）
+
+`katrain/__main__.py` から抽出された機能モジュール群。
+FeatureContext Protocol による依存性注入パターンを使用。
+
+#### context.py（基盤）
+```python
+class FeatureContext(Protocol):
+    game: Optional["Game"]
+    controls: "ControlsPanel"
+    def config(self, setting: str, default: Any = None) -> Any: ...
+    def save_config(self, key: Optional[str] = None) -> None: ...
+    def log(self, message: str, level: int = 0) -> None: ...
+```
+
+#### 機能モジュール一覧
+| ファイル | 機能 | 行数 |
+|---------|------|------|
+| `karte_export.py` | カルテエクスポート | ~200 |
+| `summary_stats.py` | サマリ統計計算 | ~250 |
+| `summary_aggregator.py` | サマリ集計 | ~180 |
+| `summary_formatter.py` | サマリMarkdown生成 | ~380 |
+| `summary_ui.py` | サマリUI/ダイアログ | ~400 |
+| `summary_io.py` | サマリファイル保存 | ~210 |
+| `quiz_popup.py` | クイズポップアップ | ~150 |
+| `quiz_session.py` | クイズセッション | ~220 |
+| `batch_core.py` | バッチ解析コア | ~270 |
+| `batch_ui.py` | バッチ解析UI | ~580 |
+| `settings_popup.py` | 設定ポップアップ | ~400 |
+
+### 4.4 Gameクラスへの追加（game.py）
 
 **追加メソッド:**
 - `build_eval_snapshot()`: EvalSnapshot生成
@@ -193,5 +240,9 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-06: gui/features パッケージ追加（Phase 3完了）
+  - __main__.py を機能別モジュールに分割
+  - FeatureContext Protocol による依存性注入
+  - 13モジュール、~3,290行を抽出
 - 2026-01-05: analysis パッケージ構造を反映（Phase B完了）
 - 2025-12-30: v1.0 作成（Claude Code移行対応、軽量版）
