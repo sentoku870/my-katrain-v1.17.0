@@ -222,3 +222,38 @@ def sparse_moves(make_moves):
     for i in range(3, 20):
         moves[i].root_visits = 0
     return moves
+
+
+# ---------------------------------------------------------------------------
+# Edge case fixtures for confidence gating tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def all_zero_visits_moves(make_moves):
+    """Fixture: all moves have zero visits."""
+    return make_moves(count=10, visits=0)
+
+
+@pytest.fixture
+def extreme_high_visits_moves(make_moves):
+    """Fixture: all moves have very high visits (2000)."""
+    return make_moves(count=10, visits=2000)
+
+
+@pytest.fixture
+def partial_analysis_suffix_missing(make_moves):
+    """Fixture: first half analyzed, second half missing."""
+    moves = make_moves(count=20, visits=500)
+    for i in range(10, 20):
+        moves[i].root_visits = 0
+    return moves
+
+
+@pytest.fixture
+def partial_analysis_scattered(make_moves):
+    """Fixture: only even-indexed moves have analysis."""
+    moves = make_moves(count=20, visits=300)
+    for i in range(20):
+        if i % 2 == 1:
+            moves[i].root_visits = 0
+    return moves
