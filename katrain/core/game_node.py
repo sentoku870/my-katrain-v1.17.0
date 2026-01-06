@@ -15,10 +15,10 @@ from katrain.core.constants import (
     PRIORITY_DEFAULT,
     ADDITIONAL_MOVE_ORDER,
 )
+from katrain.common import INFO_PV_COLOR
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move, SGFNode
 from katrain.core.utils import evaluation_class, pack_floats, unpack_floats, var_to_grid
-from katrain.gui.theme import Theme
 
 
 def analysis_dumps(analysis):
@@ -321,7 +321,7 @@ class GameNode(SGFNode):
     def make_pv(self, player, pv, interactive):
         pvtext = f"{player}{' '.join(pv)}"
         if interactive:
-            pvtext = f"[u][ref={pvtext}][color={Theme.INFO_PV_COLOR}]{pvtext}[/color][/ref][/u]"
+            pvtext = f"[u][ref={pvtext}][color={INFO_PV_COLOR}]{pvtext}[/color][/ref][/u]"
         return pvtext
 
     def comment(self, sgf=False, teach=False, details=False, interactive=True):
