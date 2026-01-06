@@ -63,8 +63,7 @@ def save_export_settings(
         current_settings["last_selected_players"] = selected_players
 
     # config システムに保存
-    # Note: ctx._config へのアクセスが必要なため、KaTrainGui に委譲
-    ctx._config["export_settings"] = current_settings
+    ctx.set_config_section("export_settings", current_settings)
     ctx.save_config("export_settings")
 
 
@@ -79,7 +78,7 @@ def save_batch_options(ctx: "FeatureContext", options: Dict[str, Any]) -> None:
     batch_options = mykatrain_settings.get("batch_options", {})
     batch_options.update(options)
     mykatrain_settings["batch_options"] = batch_options
-    ctx._config["mykatrain_settings"] = mykatrain_settings
+    ctx.set_config_section("mykatrain_settings", mykatrain_settings)
     ctx.save_config("mykatrain_settings")
 
 
@@ -388,16 +387,19 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     # Save callback
     def save_settings(*_args):
         # Save skill preset to general config
-        ctx._config["general"]["skill_preset"] = selected_skill_preset[0]
+        general = ctx.config("general") or {}
+        general["skill_preset"] = selected_skill_preset[0]
+        ctx.set_config_section("general", general)
         ctx.save_config("general")
         # Save mykatrain settings
-        ctx._config["mykatrain_settings"] = {
+        mykatrain_settings = {
             "default_user_name": user_input.text,
             "karte_output_directory": output_input.text,
             "batch_export_input_directory": input_input.text,
             "karte_format": selected_format[0],
             "opponent_info_mode": selected_opp_info[0],
         }
+        ctx.set_config_section("mykatrain_settings", mykatrain_settings)
         ctx.save_config("mykatrain_settings")
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()

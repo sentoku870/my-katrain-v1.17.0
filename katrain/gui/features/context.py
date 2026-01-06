@@ -10,7 +10,7 @@
 #   - 循環インポートの防止
 #   - 依存関係の明示化
 
-from typing import TYPE_CHECKING, Any, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -30,6 +30,7 @@ class FeatureContext(Protocol):
 
     Methods:
         config: 設定値を取得
+        set_config_section: 設定セクションを書き込む
         save_config: 設定をファイルに保存
         log: ログメッセージを出力
     """
@@ -46,6 +47,18 @@ class FeatureContext(Protocol):
 
         Returns:
             設定値。存在しない場合は default。
+        """
+        ...
+
+    def set_config_section(self, section: str, value: Dict[str, Any]) -> None:
+        """設定セクションを書き込む。
+
+        Args:
+            section: セクション名（例: "export_settings", "mykatrain_settings", "general"）
+            value: セクション全体の値（辞書）
+
+        Note:
+            保存は別途 save_config(section) を呼ぶ必要がある。
         """
         ...
 
