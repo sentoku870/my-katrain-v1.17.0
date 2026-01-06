@@ -10,7 +10,7 @@
 
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -24,6 +24,7 @@ from kivy.uix.togglebutton import ToggleButton
 
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
+from katrain.gui.features.types import BatchOptions, BatchWidgets
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 from katrain.tools.batch_analyze_sgf import DEFAULT_TIMEOUT_SECONDS
@@ -76,7 +77,7 @@ def create_browse_callback(
 
 def create_on_start_callback(
     ctx: "FeatureContext",
-    widgets: Dict[str, Any],
+    widgets: BatchWidgets,
     is_running: List[bool],
     cancel_flag: List[bool],
     get_player_filter_fn: Callable[[], Optional[str]],
@@ -151,7 +152,7 @@ def create_on_close_callback(
 
 
 def create_get_player_filter_fn(
-    filter_buttons: Dict[str, Any],
+    filter_buttons: BatchWidgets,
 ) -> Callable[[], Optional[str]]:
     """プレイヤーフィルター取得関数を作成
 
@@ -172,10 +173,10 @@ def create_get_player_filter_fn(
 
 
 def build_batch_popup_widgets(
-    batch_options: Dict[str, Any],
+    batch_options: BatchOptions,
     default_input_dir: str,
     default_output_dir: str,
-) -> Tuple[BoxLayout, Dict[str, Any]]:
+) -> Tuple[BoxLayout, BatchWidgets]:
     """バッチポップアップのウィジェットを構築
 
     Args:
@@ -196,7 +197,7 @@ def build_batch_popup_widgets(
         - progress_label, log_text, log_scroll: 進行状況表示
         - start_button, close_button: ボタン
     """
-    widgets: Dict[str, Any] = {}
+    widgets: BatchWidgets = {}
 
     # Main layout
     main_layout = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12))
