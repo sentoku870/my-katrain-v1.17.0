@@ -1,0 +1,81 @@
+# Multi-Game Summary
+
+## Meta
+- Games analyzed: 3
+- Focus player: TestPlayer
+- Rank: 5d
+- Date range: [DATE] to [DATE]
+
+## Individual Game Overview
+
+| Game | Opponent | Result | My Loss | Opp Loss | Ratio |
+|------|----------|--------|---------|----------|-------|
+| game_1.sgf | Opponent | Loss? | 5.5 | 4.5 | 1.2 |
+| game_2.sgf | Opponent | Close | 6.8 | 8.2 | 0.8 |
+| game_3.sgf | Opponent | Loss? | 11.0 | 9.0 | 1.2 |
+
+## Overall Statistics (TestPlayer)
+- Total games: 3
+- Total moves analyzed: 150
+- Total points lost: 45.0
+- Average points lost per move: 0.3
+
+## Mistake Distribution (TestPlayer)
+| Category | Count | Percentage | Avg Loss |
+|----------|-------|------------|----------|
+| Good | 90 | 60.0% | 0.0 |
+| Inaccuracy | 30 | 20.0% | 0.2 |
+| Mistake | 22 | 14.7% | 0.7 |
+| Blunder | 7 | 4.7% | 3.2 |
+
+## Phase × Mistake Breakdown (TestPlayer)
+| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |
+|-------|------|------------|---------|---------|------------|
+| Opening | 24 | 7 (3.0) | 7 (3.0) | 0 | 6.0 |
+| Middle game | 24 | 7 (7.5) | 7 (7.5) | 3 (15.0) | 30.0 |
+| Endgame | 26 | 8 (4.5) | 8 (4.5) | 0 | 9.0 |
+
+## ミス理由タグ分布 (TestPlayer)
+
+- reading_error: 9 回
+- direction_error: 6 回
+- timing_error: 3 回
+
+## 推定棋力 (TestPlayer)
+
+- **レベル**: 高段者（G4相当）
+- **確度**: 90%
+- **理由**: 大損失・読み抜けともに少ない（大損失0.0%、読み抜け0.0%）→ 高段者レベル
+- **推奨プリセット**: advanced（厳しめ：1目以上を悪手判定）
+
+## Top Worst Moves (TestPlayer)
+| Game | # | P | Coord | Loss | Importance | Category |
+|------|---|---|-------|------|------------|----------|
+| game_1.sgf | 15 | B | D4 | 5.0 | 6.0 | BLUNDER |
+| game_2.sgf | 15 | B | D4 | 5.0 | 6.0 | BLUNDER |
+| game_3.sgf | 15 | B | D4 | 5.0 | 6.0 | BLUNDER |
+| game_1.sgf | 28 | W | Q10 | 3.5 | 4.0 | MISTAKE |
+| game_2.sgf | 28 | W | Q10 | 3.5 | 4.0 | MISTAKE |
+| game_3.sgf | 28 | W | Q10 | 3.5 | 4.0 | MISTAKE |
+| game_1.sgf | 42 | B | R5 | 2.5 | 3.0 | MISTAKE |
+| game_2.sgf | 42 | B | R5 | 2.5 | 3.0 | MISTAKE |
+| game_3.sgf | 42 | B | R5 | 2.5 | 3.0 | MISTAKE |
+
+## Weakness Hypothesis (TestPlayer)
+
+Based on cross-tabulation analysis:
+
+1. **Middle gameの大悪手** (3回、損失15.0目)
+2. **Middle gameの軽微なミス** (7回、損失7.5目)
+3. **Middle gameの悪手** (7回、損失7.5目)
+
+**分析**:
+- Middle gameの損失の66.7%が大悪手によるもの
+- Middle gameの6.1%の手が大悪手と判定されている
+
+## Practice Priorities (TestPlayer)
+
+Based on the data above, consider focusing on:
+
+- 1. **Middle gameの大悪手** (3回、損失15.0目)
+- 2. **Middle gameの軽微なミス** (7回、損失7.5目)
