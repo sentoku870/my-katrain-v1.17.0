@@ -108,6 +108,7 @@ from katrain.core.engine import KataGoEngine
 from katrain.core.contribute_engine import KataGoContributeEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.sgf_parser import Move, ParseError
+from katrain.gui.features.karte_export import determine_user_color
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
@@ -977,40 +978,11 @@ class KaTrainGui(Screen, KaTrainBase):
         ).open()
 
     def _determine_user_color(self, username: str) -> Optional[str]:
-        """Determine user's color based on player names in SGF (Phase 3)
+        """Determine user's color based on player names in SGF.
 
-        Args:
-            username: Username to match against player names
-
-        Returns:
-            "B" for black, "W" for white, None if no match or ambiguous
+        Delegates to katrain.gui.features.karte_export.determine_user_color().
         """
-        if not username or not self.game:
-            return None
-
-        # Use existing normalization logic from game.py
-        def normalize_name(name: Optional[str]) -> str:
-            if not name:
-                return ""
-            return re.sub(r"[^0-9a-z]+", "", str(name).casefold())
-
-        pb = self.game.root.get_property("PB", None)
-        pw = self.game.root.get_property("PW", None)
-
-        user_norm = normalize_name(username)
-        pb_norm = normalize_name(pb)
-        pw_norm = normalize_name(pw)
-
-        match_black = pb_norm and user_norm in pb_norm
-        match_white = pw_norm and user_norm in pw_norm
-
-        if match_black and not match_white:
-            return "B"
-        elif match_white and not match_black:
-            return "W"
-        else:
-            # Ambiguous or no match
-            return None
+        return determine_user_color(self.game, username)
 
     def _do_export_summary(self, *args, **kwargs):
         # export_summary is executed from _message_loop_thread (NOT the main Kivy thread).
