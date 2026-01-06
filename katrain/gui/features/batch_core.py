@@ -15,6 +15,7 @@ from kivy.clock import Clock
 
 from katrain.core import eval_metrics
 from katrain.core.lang import i18n
+from katrain.gui.features.types import BatchOptions, BatchWidgets
 from katrain.tools.batch_analyze_sgf import (
     BatchResult,
     DEFAULT_TIMEOUT_SECONDS,
@@ -27,9 +28,9 @@ if TYPE_CHECKING:
 
 
 def collect_batch_options(
-    widgets: Dict[str, Any],
+    widgets: BatchWidgets,
     get_player_filter_fn: Callable[[], Optional[str]],
-) -> Dict[str, Any]:
+) -> BatchOptions:
     """UIウィジェットからバッチオプションを収集
 
     Args:
@@ -189,12 +190,12 @@ def create_summary_callback(
 
 def run_batch_in_thread(
     ctx: "FeatureContext",
-    options: Dict[str, Any],
+    options: BatchOptions,
     cancel_flag: List[bool],
     progress_cb: Callable[[int, int, str], None],
     log_cb: Callable[[str], None],
     on_complete: Callable[[BatchResult], None],
-    save_batch_options_fn: Callable[[Dict[str, Any]], None],
+    save_batch_options_fn: Callable[[BatchOptions], None],
 ) -> None:
     """バックグラウンドスレッドでバッチ解析を実行
 

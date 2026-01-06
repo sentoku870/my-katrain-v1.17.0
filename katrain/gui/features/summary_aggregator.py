@@ -8,9 +8,10 @@
 # - collect_rank_info: focus_playerの段級位情報を収集
 
 from collections import Counter
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from katrain.core.game import KaTrainSGF
+from katrain.gui.features.types import LogFunction
 
 if TYPE_CHECKING:
     pass
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 def scan_player_names(
     sgf_files: List[str],
-    log_fn: Callable[[str, int], None],
+    log_fn: LogFunction,
 ) -> Dict[str, int]:
     """SGFファイルから全プレイヤー名をスキャン（出現回数付き）
 

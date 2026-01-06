@@ -10,10 +10,11 @@ import base64
 import gzip
 import json
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.game import KaTrainSGF
+from katrain.gui.features.types import LogFunction
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -60,7 +61,7 @@ def extract_sgf_statistics(
     path: str,
     ctx: "FeatureContext",
     engine: "KataGoEngine",
-    log_fn: Callable[[str, int], None],
+    log_fn: LogFunction,
 ) -> Optional[dict]:
     """SGFファイルから統計データを直接抽出（KTプロパティ解析）。
 
