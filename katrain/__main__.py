@@ -206,6 +206,18 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to settings_popup.save_batch_options()."""
         save_batch_options(self, options)
 
+    def set_config_section(self, section: str, value: dict) -> None:
+        """設定セクションを書き込む。
+
+        Args:
+            section: セクション名（例: "export_settings", "mykatrain_settings", "general"）
+            value: セクション全体の値（辞書）
+
+        Note:
+            保存は別途 save_config(section) を呼ぶ必要がある。
+        """
+        self._config[section] = value
+
     def log(self, message, level=OUTPUT_INFO):
         super().log(message, level)
         if level == OUTPUT_KATAGO_STDERR and "ERROR" not in self.controls.status.text:
