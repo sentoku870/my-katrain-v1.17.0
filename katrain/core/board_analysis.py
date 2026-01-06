@@ -186,6 +186,9 @@ def find_connect_points(
     board_size_x, board_size_y = game.board_size
     connect_points = []
 
+    # O(1) lookup index for groups by group_id
+    group_index = {g.group_id: g for g in groups}
+
     for y in range(board_size_y):
         for x in range(board_size_x):
             if board[y][x] != -1:  # 空でない
@@ -198,7 +201,7 @@ def find_connect_points(
                 if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
                     neighbor_id = board[ny][nx]
                     if neighbor_id >= 0:
-                        group = next((g for g in groups if g.group_id == neighbor_id), None)
+                        group = group_index.get(neighbor_id)
                         if group:
                             adjacent_groups.setdefault(group.color, []).append(neighbor_id)
 
@@ -237,6 +240,9 @@ def find_cut_points(
     board_size_x, board_size_y = game.board_size
     cut_points = []
 
+    # O(1) lookup index for groups by group_id
+    group_index = {g.group_id: g for g in groups}
+
     for y in range(board_size_y):
         for x in range(board_size_x):
             if board[y][x] != -1:  # 空でない
@@ -249,7 +255,7 @@ def find_cut_points(
                 if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
                     neighbor_id = board[ny][nx]
                     if neighbor_id >= 0:
-                        group = next((g for g in groups if g.group_id == neighbor_id), None)
+                        group = group_index.get(neighbor_id)
                         if group:
                             adjacent_groups.setdefault(group.color, []).append(neighbor_id)
 
