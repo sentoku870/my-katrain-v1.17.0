@@ -31,7 +31,11 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\ntest: add confidence gating edge case tests for partial analysis patterns\n\nAdd 7 new tests to cover edge cases in confidence gating logic:\n- test_all_zero_visits_no_crash_and_low: Zero visits edge case\n- test_extreme_high_visits: High visits \\(2000\\) edge case\n- test_very_short_game_exactly_min_coverage: MIN_COVERAGE=5 boundary\n- test_very_short_game_below_min_coverage: Below MIN_COVERAGE \\(4\\)\n- test_partial_analysis_suffix_missing: First half analyzed only\n- test_partial_analysis_scattered: Every other move analyzed\n- test_handicap_metadata_no_crash: Handicap games don''t crash\n\nAdd 4 new fixtures in conftest.py:\n- all_zero_visits_moves\n- extreme_high_visits_moves\n- partial_analysis_suffix_missing\n- partial_analysis_scattered\n\nAll expectations derived from current logic \\(no hardcoded assumptions\\).\nNo production code changes.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(grep:*)",
       "Bash(cd:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(dir:*)",
+      "Bash(for f in katrain/gui/features/*.py)",
+      "Bash(done)",
+      "Bash(echo:*)"
     ]
   }
 }

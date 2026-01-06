@@ -26,6 +26,7 @@ from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.helpers import create_text_input_row
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -158,28 +159,10 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     popup_content.add_widget(skill_layout)
 
     # Default User Name
-    user_row = BoxLayout(
-        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    user_row, user_input, _ = create_text_input_row(
+        label_text=i18n._("mykatrain:settings:default_user_name"),
+        initial_value=current_settings.get("default_user_name", ""),
     )
-    user_label = Label(
-        text=i18n._("mykatrain:settings:default_user_name"),
-        size_hint_x=0.35,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    user_label.bind(
-        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
-    )
-    user_input = TextInput(
-        text=current_settings.get("default_user_name", ""),
-        multiline=False,
-        size_hint_x=0.65,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    user_row.add_widget(user_label)
-    user_row.add_widget(user_input)
     popup_content.add_widget(user_row)
 
     # Karte Output Directory
