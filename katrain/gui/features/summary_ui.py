@@ -198,3 +198,315 @@ def process_summary_with_selected_players(
         args=(sgf_files, progress_popup, selected_players),
         daemon=True
     ).start()
+
+
+def scan_and_show_player_selection(
+    sgf_files: List[str],
+    ctx: "FeatureContext",
+    scan_player_names_fn: Callable[[List[str]], dict],
+    process_summary_fn: Callable[[List[str], List[str]], None],
+    show_player_selection_fn: Callable[[List[tuple], List[str]], None],
+) -> None:
+    """プレイヤー名をスキャンして選択ダイアログを表示
+
+    Args:
+        sgf_files: SGFファイルパスのリスト
+        ctx: FeatureContext providing config
+        scan_player_names_fn: プレイヤー名スキャン関数
+        process_summary_fn: サマリ処理開始関数
+        show_player_selection_fn: プレイヤー選択ダイアログ表示関数
+    """
+    # mykatrain_settings を取得
+    mykatrain_settings = ctx.config("mykatrain_settings") or {}
+    karte_format = mykatrain_settings.get("karte_format", "both")
+    default_user = mykatrain_settings.get("default_user_name", "")
+
+    player_counts = scan_player_names_fn(sgf_files)
+
+    if not player_counts:
+        Clock.schedule_once(
+            lambda dt: Popup(
+                title="Error",
+                content=Label(
+                    text="No player names found in SGF files.",
+                    halign="center",
+                    valign="middle"
+                ),
+                size_hint=(0.5, 0.3),
+            ).open(),
+            0
+        )
+        return
+
+    # karte_format に基づいてプレイヤー選択を自動化
+    if karte_format == "default_user_only" and default_user:
+        # デフォルトユーザーがSGF内に存在するか確認
+        if default_user in player_counts:
+            # プレイヤー選択をスキップ、デフォルトユーザーを自動選択
+            Clock.schedule_once(
+                lambda dt: process_summary_fn(sgf_files, [default_user]),
+                0
+            )
+            return
+        else:
+            # デフォルトユーザーが見つからない場合は警告して選択ダイアログへ
+            Clock.schedule_once(
+                lambda dt: Popup(
+                    title="Warning",
+                    content=Label(
+                        text=f"Default user '{default_user}' not found in SGF files.\nPlease select players manually.",
+                        halign="center",
+                        valign="middle",
+                        font_name=Theme.DEFAULT_FONT,
+                    ),
+                    size_hint=(0.5, 0.3),
+                ).open(),
+                0
+            )
+
+    # 出現回数でソート（多い順）
+    sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
+
+    # 選択ダイアログを表示（UIスレッドで）
+    Clock.schedule_once(
+        lambda dt: show_player_selection_fn(sorted_players, sgf_files),
+        0
+    )
+
+
+def show_player_selection_dialog(
+    sorted_players: List[tuple],
+    sgf_files: List[str],
+    load_export_settings_fn: Callable[[], dict],
+    save_export_settings_fn: Callable[..., None],
+    process_and_export_fn: Callable[[List[str], "Popup", List[str]], None],
+) -> None:
+    """プレイヤー選択ダイアログを表示
+
+    Args:
+        sorted_players: ソート済み(プレイヤー名, 出現数)タプルのリスト
+        sgf_files: SGFファイルパスのリスト
+        load_export_settings_fn: エクスポート設定読み込み関数
+        save_export_settings_fn: エクスポート設定保存関数
+        process_and_export_fn: 処理・エクスポート関数
+    """
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.checkbox import CheckBox
+    from kivy.uix.button import Button
+    from kivy.uix.scrollview import ScrollView
+
+    # 前回の選択を読み込む
+    export_settings = load_export_settings_fn()
+    last_selected_players = export_settings.get("last_selected_players", [])
+
+    # チェックボックスリスト
+    checkbox_dict = {}  # {player_name: CheckBox}
+
+    content_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
+
+    # 説明ラベル
+    instruction_label = Label(
+        text="Select players to include in summary:",
+        size_hint_y=None,
+        height=dp(30),
+        halign="left",
+        valign="middle",
+        font_name=Theme.DEFAULT_FONT,
+    )
+    instruction_label.bind(size=instruction_label.setter('text_size'))
+    content_layout.add_widget(instruction_label)
+
+    # スクロール可能なチェックボックスリスト
+    scroll_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
+    scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
+
+    for player_name, count in sorted_players:
+        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
+
+        checkbox = CheckBox(size_hint_x=None, width=dp(40))
+        # 前回の選択がある場合はそれを使用、なければ最も多いプレイヤーを選択
+        if last_selected_players:
+            checkbox.active = player_name in last_selected_players
+        else:
+            checkbox.active = player_name == sorted_players[0][0]
+
+        checkbox_dict[player_name] = checkbox
+
+        label = Label(
+            text=f"{player_name} ({count} games)",
+            size_hint_x=1.0,
+            halign="left",
+            valign="middle",
+            font_name=Theme.DEFAULT_FONT,
+        )
+        label.bind(size=label.setter('text_size'))
+
+        row.add_widget(checkbox)
+        row.add_widget(label)
+        scroll_layout.add_widget(row)
+
+    scroll_view = ScrollView(size_hint=(1, 1))
+    scroll_view.add_widget(scroll_layout)
+    content_layout.add_widget(scroll_view)
+
+    # OKボタン
+    button_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+
+    # selection_popup を先に定義（on_ok 内で参照するため）
+    selection_popup = None
+
+    def on_ok(*args):
+        nonlocal selection_popup
+        selected_players = [name for name, cb in checkbox_dict.items() if cb.active]
+
+        if not selected_players:
+            # 警告
+            Popup(
+                title="Warning",
+                content=Label(
+                    text="Please select at least one player.",
+                    halign="center",
+                    valign="middle"
+                ),
+                size_hint=(0.4, 0.2),
+            ).open()
+            return
+
+        selection_popup.dismiss()
+
+        # 選択したプレイヤーを保存
+        save_export_settings_fn(selected_players=selected_players)
+
+        # 進行状況ポップアップ
+        progress_label = Label(
+            text=f"Processing {len(sgf_files)} games...",
+            halign="center",
+            valign="middle"
+        )
+        progress_popup = Popup(
+            title="Generating Summary",
+            content=progress_label,
+            size_hint=(0.5, 0.3),
+            auto_dismiss=False
+        )
+        progress_popup.open()
+
+        # バックグラウンドで処理
+        threading.Thread(
+            target=process_and_export_fn,
+            args=(sgf_files, progress_popup, selected_players),
+            daemon=True
+        ).start()
+
+    ok_button = Button(text="OK")
+    ok_button.bind(on_release=on_ok)
+    button_layout.add_widget(ok_button)
+
+    content_layout.add_widget(button_layout)
+
+    selection_popup = Popup(
+        title="Select Players",
+        content=content_layout,
+        size_hint=(0.6, 0.7),
+    )
+    selection_popup.open()
+
+
+def process_and_export_summary(
+    sgf_paths: List[str],
+    progress_popup: "Popup",
+    selected_players: List[str],
+    ctx: "FeatureContext",
+    extract_sgf_statistics_fn: Callable[[str], dict],
+    categorize_games_fn: Callable[[List[dict], str], dict],
+    save_summaries_per_player_fn: Callable[[List[dict], List[str], "Popup"], None],
+    save_categorized_summaries_fn: Callable[[dict, str, "Popup"], None],
+) -> None:
+    """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）
+
+    Args:
+        sgf_paths: SGFファイルパスのリスト
+        progress_popup: 進行状況ポップアップ
+        selected_players: 選択されたプレイヤー名のリスト
+        ctx: FeatureContext providing log
+        extract_sgf_statistics_fn: SGF統計抽出関数
+        categorize_games_fn: ゲーム分類関数
+        save_summaries_per_player_fn: プレイヤーごとサマリ保存関数
+        save_categorized_summaries_fn: 分類別サマリ保存関数
+    """
+    import os
+    from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
+
+    game_stats_list = []
+
+    for i, path in enumerate(sgf_paths):
+        try:
+            # 進行状況更新（UI）
+            Clock.schedule_once(
+                lambda dt, i=i, path=path: setattr(
+                    progress_popup.content,
+                    "text",
+                    f"Processing {i+1}/{len(sgf_paths)}...\n{os.path.basename(path)}"
+                ),
+                0
+            )
+
+            # SGFから統計を直接抽出
+            stats = extract_sgf_statistics_fn(path)
+            if not stats:
+                ctx.log(f"Skipping {path}: Failed to extract statistics", OUTPUT_INFO)
+                continue
+
+            # 解析データがほとんどない場合はスキップ
+            if stats["total_moves"] < 10:
+                ctx.log(f"Skipping {path}: Too few analyzed moves ({stats['total_moves']})", OUTPUT_INFO)
+                continue
+
+            # プレイヤーフィルタリング（selected_playersが指定されている場合）
+            if selected_players:
+                player_black = stats["player_black"]
+                player_white = stats["player_white"]
+                if player_black not in selected_players and player_white not in selected_players:
+                    # どちらのプレイヤーも選択されていない場合はスキップ
+                    ctx.log(f"Skipping {path}: Players not in selection", OUTPUT_INFO)
+                    continue
+
+            game_stats_list.append(stats)
+
+        except Exception as e:
+            ctx.log(f"Failed to process {path}: {e}", OUTPUT_ERROR)
+
+    if not game_stats_list:
+        # 処理できた対局がない
+        Clock.schedule_once(lambda dt: progress_popup.dismiss(), 0)
+        Clock.schedule_once(
+            lambda dt: Popup(
+                title="Error",
+                content=Label(
+                    text="No games could be processed.\nCheck that games have analysis data.",
+                    halign="center",
+                    valign="middle"
+                ),
+                size_hint=(0.5, 0.3),
+            ).open(),
+            0
+        )
+        return
+
+    # 複数プレイヤーが選択された場合は、各プレイヤーごとに別ファイルを出力
+    if selected_players and len(selected_players) > 1:
+        # 各プレイヤーごとに処理
+        Clock.schedule_once(
+            lambda dt: save_summaries_per_player_fn(game_stats_list, selected_players, progress_popup),
+            0
+        )
+    else:
+        # 1プレイヤーまたは未選択の場合は従来通り
+        focus_player = selected_players[0] if selected_players and len(selected_players) == 1 else None
+        categorized_games = categorize_games_fn(game_stats_list, focus_player)
+
+        # 各カテゴリごとにまとめレポート生成
+        Clock.schedule_once(
+            lambda dt: save_categorized_summaries_fn(categorized_games, focus_player, progress_popup),
+            0
+        )
