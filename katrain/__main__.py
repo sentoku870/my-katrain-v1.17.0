@@ -120,6 +120,9 @@ from katrain.gui.features.summary_ui import (
     do_export_summary,
     do_export_summary_ui,
     process_summary_with_selected_players,
+    scan_and_show_player_selection,
+    show_player_selection_dialog,
+    process_and_export_summary,
 )
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
@@ -917,62 +920,13 @@ class KaTrainGui(Screen, KaTrainBase):
         return scan_player_names(sgf_files, self.log)
 
     def _scan_and_show_player_selection(self, sgf_files: list):
-        """プレイヤー名をスキャンして選択ダイアログを表示"""
-        # mykatrain_settings を取得
-        mykatrain_settings = self.config("mykatrain_settings") or {}
-        karte_format = mykatrain_settings.get("karte_format", "both")
-        default_user = mykatrain_settings.get("default_user_name", "")
-
-        player_counts = self._scan_player_names(sgf_files)
-
-        if not player_counts:
-            Clock.schedule_once(
-                lambda dt: Popup(
-                    title="Error",
-                    content=Label(
-                        text="No player names found in SGF files.",
-                        halign="center",
-                        valign="middle"
-                    ),
-                    size_hint=(0.5, 0.3),
-                ).open(),
-                0
-            )
-            return
-
-        # karte_format に基づいてプレイヤー選択を自動化
-        if karte_format == "default_user_only" and default_user:
-            # デフォルトユーザーがSGF内に存在するか確認
-            if default_user in player_counts:
-                # プレイヤー選択をスキップ、デフォルトユーザーを自動選択
-                Clock.schedule_once(
-                    lambda dt: self._process_summary_with_selected_players(sgf_files, [default_user]),
-                    0
-                )
-                return
-            else:
-                # デフォルトユーザーが見つからない場合は警告して選択ダイアログへ
-                Clock.schedule_once(
-                    lambda dt: Popup(
-                        title="Warning",
-                        content=Label(
-                            text=f"Default user '{default_user}' not found in SGF files.\nPlease select players manually.",
-                            halign="center",
-                            valign="middle",
-                            font_name=Theme.DEFAULT_FONT,
-                        ),
-                        size_hint=(0.5, 0.3),
-                    ).open(),
-                    0
-                )
-
-        # 出現回数でソート（多い順）
-        sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
-
-        # 選択ダイアログを表示（UIスレッドで）
-        Clock.schedule_once(
-            lambda dt: self._show_player_selection_dialog(sorted_players, sgf_files),
-            0
+        """Delegates to summary_ui.scan_and_show_player_selection()."""
+        scan_and_show_player_selection(
+            sgf_files,
+            self,
+            self._scan_player_names,
+            self._process_summary_with_selected_players,
+            self._show_player_selection_dialog,
         )
 
     def _process_summary_with_selected_players(self, sgf_files: list, selected_players: list):
@@ -984,200 +938,27 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
     def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
-        """プレイヤー選択ダイアログを表示"""
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.checkbox import CheckBox
-        from kivy.uix.button import Button
-        from kivy.uix.scrollview import ScrollView
-
-        # 前回の選択を読み込む
-        export_settings = self._load_export_settings()
-        last_selected_players = export_settings.get("last_selected_players", [])
-
-        # チェックボックスリスト
-        checkbox_dict = {}  # {player_name: CheckBox}
-
-        content_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
-
-        # 説明ラベル
-        instruction_label = Label(
-            text="Select players to include in summary:",
-            size_hint_y=None,
-            height=dp(30),
-            halign="left",
-            valign="middle",
-            font_name=Theme.DEFAULT_FONT,
+        """Delegates to summary_ui.show_player_selection_dialog()."""
+        show_player_selection_dialog(
+            sorted_players,
+            sgf_files,
+            self._load_export_settings,
+            self._save_export_settings,
+            self._process_and_export_summary,
         )
-        instruction_label.bind(size=instruction_label.setter('text_size'))
-        content_layout.add_widget(instruction_label)
-
-        # スクロール可能なチェックボックスリスト
-        scroll_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
-        scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
-
-        for player_name, count in sorted_players:
-            row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
-
-            checkbox = CheckBox(size_hint_x=None, width=dp(40))
-            # 前回の選択がある場合はそれを使用、なければ最も多いプレイヤーを選択
-            if last_selected_players:
-                checkbox.active = player_name in last_selected_players
-            else:
-                checkbox.active = player_name == sorted_players[0][0]
-
-            checkbox_dict[player_name] = checkbox
-
-            label = Label(
-                text=f"{player_name} ({count} games)",
-                size_hint_x=1.0,
-                halign="left",
-                valign="middle",
-                font_name=Theme.DEFAULT_FONT,
-            )
-            label.bind(size=label.setter('text_size'))
-
-            row.add_widget(checkbox)
-            row.add_widget(label)
-            scroll_layout.add_widget(row)
-
-        scroll_view = ScrollView(size_hint=(1, 1))
-        scroll_view.add_widget(scroll_layout)
-        content_layout.add_widget(scroll_view)
-
-        # OKボタン
-        button_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-
-        def on_ok(*args):
-            selected_players = [name for name, cb in checkbox_dict.items() if cb.active]
-
-            if not selected_players:
-                # 警告
-                Popup(
-                    title="Warning",
-                    content=Label(
-                        text="Please select at least one player.",
-                        halign="center",
-                        valign="middle"
-                    ),
-                    size_hint=(0.4, 0.2),
-                ).open()
-                return
-
-            selection_popup.dismiss()
-
-            # 選択したプレイヤーを保存
-            self._save_export_settings(selected_players=selected_players)
-
-            # 進行状況ポップアップ
-            progress_label = Label(
-                text=f"Processing {len(sgf_files)} games...",
-                halign="center",
-                valign="middle"
-            )
-            progress_popup = Popup(
-                title="Generating Summary",
-                content=progress_label,
-                size_hint=(0.5, 0.3),
-                auto_dismiss=False
-            )
-            progress_popup.open()
-
-            # バックグラウンドで処理
-            import threading
-            threading.Thread(
-                target=self._process_and_export_summary,
-                args=(sgf_files, progress_popup, selected_players),
-                daemon=True
-            ).start()
-
-        ok_button = Button(text="OK")
-        ok_button.bind(on_release=on_ok)
-        button_layout.add_widget(ok_button)
-
-        content_layout.add_widget(button_layout)
-
-        selection_popup = Popup(
-            title="Select Players",
-            content=content_layout,
-            size_hint=(0.6, 0.7),
-        )
-        selection_popup.open()
 
     def _process_and_export_summary(self, sgf_paths: list, progress_popup, selected_players: list = None):
-        """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）"""
-        game_stats_list = []
-
-        for i, path in enumerate(sgf_paths):
-            try:
-                # 進行状況更新（UI）
-                Clock.schedule_once(
-                    lambda dt, i=i, path=path: setattr(
-                        progress_popup.content,
-                        "text",
-                        f"Processing {i+1}/{len(sgf_paths)}...\n{os.path.basename(path)}"
-                    ),
-                    0
-                )
-
-                # SGFから統計を直接抽出
-                stats = self._extract_sgf_statistics(path)
-                if not stats:
-                    self.log(f"Skipping {path}: Failed to extract statistics", OUTPUT_INFO)
-                    continue
-
-                # 解析データがほとんどない場合はスキップ
-                if stats["total_moves"] < 10:
-                    self.log(f"Skipping {path}: Too few analyzed moves ({stats['total_moves']})", OUTPUT_INFO)
-                    continue
-
-                # プレイヤーフィルタリング（selected_playersが指定されている場合）
-                if selected_players:
-                    player_black = stats["player_black"]
-                    player_white = stats["player_white"]
-                    if player_black not in selected_players and player_white not in selected_players:
-                        # どちらのプレイヤーも選択されていない場合はスキップ
-                        self.log(f"Skipping {path}: Players not in selection", OUTPUT_INFO)
-                        continue
-
-                game_stats_list.append(stats)
-
-            except Exception as e:
-                self.log(f"Failed to process {path}: {e}", OUTPUT_ERROR)
-
-        if not game_stats_list:
-            # 処理できた対局がない
-            Clock.schedule_once(lambda dt: progress_popup.dismiss(), 0)
-            Clock.schedule_once(
-                lambda dt: Popup(
-                    title="Error",
-                    content=Label(
-                        text="No games could be processed.\nCheck that games have analysis data.",
-                        halign="center",
-                        valign="middle"
-                    ),
-                    size_hint=(0.5, 0.3),
-                ).open(),
-                0
-            )
-            return
-
-        # 複数プレイヤーが選択された場合は、各プレイヤーごとに別ファイルを出力
-        if selected_players and len(selected_players) > 1:
-            # 各プレイヤーごとに処理
-            Clock.schedule_once(
-                lambda dt: self._save_summaries_per_player(game_stats_list, selected_players, progress_popup),
-                0
-            )
-        else:
-            # 1プレイヤーまたは未選択の場合は従来通り
-            focus_player = selected_players[0] if selected_players and len(selected_players) == 1 else None
-            categorized_games = self._categorize_games_by_stats(game_stats_list, focus_player)
-
-            # 各カテゴリごとにまとめレポート生成
-            Clock.schedule_once(
-                lambda dt: self._save_categorized_summaries_from_stats(categorized_games, focus_player, progress_popup),
-                0
-            )
+        """Delegates to summary_ui.process_and_export_summary()."""
+        process_and_export_summary(
+            sgf_paths,
+            progress_popup,
+            selected_players,
+            self,
+            self._extract_sgf_statistics,
+            self._categorize_games_by_stats,
+            self._save_summaries_per_player,
+            self._save_categorized_summaries_from_stats,
+        )
 
     def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
         """Delegates to summary_aggregator.categorize_games_by_stats()."""
