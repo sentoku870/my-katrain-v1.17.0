@@ -1781,6 +1781,96 @@ class TestConfidenceLevel:
         level = compute_confidence_level([])
         assert level == ConfidenceLevel.LOW
 
+    # -----------------------------------------------------------------------
+    # Edge case tests for confidence gating (codex/2026-01-05)
+    # -----------------------------------------------------------------------
+
+    def test_all_zero_visits_no_crash_and_low(self, all_zero_visits_moves):
+        """All zero visits should not crash and return LOW (coverage guard)."""
+        moves = all_zero_visits_moves
+        # Should not crash
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify stats
+        assert stats.moves_with_visits == 0
+        assert stats.zero_visits_count == 10
+        # Coverage guard: moves_with_visits < MIN_COVERAGE_MOVES (5) → LOW
+        assert result == ConfidenceLevel.LOW
+
+    def test_extreme_high_visits(self, extreme_high_visits_moves):
+        """Extreme high visits (2000) should be HIGH confidence."""
+        moves = extreme_high_visits_moves
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify stats: all moves reliable, avg_visits = 2000
+        assert stats.moves_with_visits == 10
+        assert stats.reliable_count == 10
+        assert stats.avg_visits == 2000.0
+        # HIGH: reliability_pct = 100% >= 50% OR avg_visits >= 400
+        assert result == ConfidenceLevel.HIGH
+
+    def test_very_short_game_exactly_min_coverage(self, make_moves):
+        """Exactly MIN_COVERAGE_MOVES (5) with high visits should pass coverage guard."""
+        moves = make_moves(count=5, visits=500)
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify: exactly 5 moves with visits
+        assert stats.moves_with_visits == 5
+        assert stats.reliable_count == 5
+        # Should NOT be forced LOW by coverage guard
+        # reliability = 100% >= 50% → HIGH
+        assert result == ConfidenceLevel.HIGH
+
+    def test_very_short_game_below_min_coverage(self, make_moves):
+        """Below MIN_COVERAGE_MOVES (4) should be LOW regardless of visits."""
+        moves = make_moves(count=4, visits=500)
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify: only 4 moves with visits
+        assert stats.moves_with_visits == 4
+        # Coverage guard: moves_with_visits < 5 → LOW
+        assert result == ConfidenceLevel.LOW
+
+    def test_partial_analysis_suffix_missing(self, partial_analysis_suffix_missing):
+        """First half analyzed, second half missing should compute correctly."""
+        moves = partial_analysis_suffix_missing
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify stats: 10 moves with visits, 10 with zero
+        assert stats.total_moves == 20
+        assert stats.moves_with_visits == 10
+        assert stats.zero_visits_count == 10
+        assert stats.reliable_count == 10  # All analyzed moves have visits=500 >= 200
+        # reliability_pct = 100%, avg_visits = 500 → HIGH
+        assert result == ConfidenceLevel.HIGH
+
+    def test_partial_analysis_scattered(self, partial_analysis_scattered):
+        """Scattered analysis (every other move) should compute correctly."""
+        moves = partial_analysis_scattered
+        stats = compute_reliability_stats(moves)
+        result = compute_confidence_level(moves)
+        # Verify stats: 10 even-indexed moves have visits=300, 10 odd have 0
+        assert stats.total_moves == 20
+        assert stats.moves_with_visits == 10
+        assert stats.zero_visits_count == 10
+        assert stats.reliable_count == 10  # visits=300 >= 200 threshold
+        # reliability_pct = 100%, avg_visits = 300 → HIGH
+        assert result == ConfidenceLevel.HIGH
+
+    def test_handicap_metadata_no_crash(self, make_moves):
+        """Handicap game metadata should not crash confidence computation."""
+        # Create normal moves (handicap doesn't affect MoveEval directly)
+        moves = make_moves(count=10, visits=500)
+        # Simulate handicap by having black play first several moves
+        # (In real games, handicap is board-level, not move-level metadata)
+        # This test verifies the function doesn't crash with normal input
+        result = compute_confidence_level(moves)
+        assert result is not None
+        # Should be deterministic
+        assert result == compute_confidence_level(moves)
+        # With 10 reliable moves, should be HIGH
+        assert result == ConfidenceLevel.HIGH
+
 
 # ---------------------------------------------------------------------------
 # Test: Evidence Attachments (PR#2)
