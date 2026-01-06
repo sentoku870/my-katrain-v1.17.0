@@ -768,7 +768,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 path, file = os.path.split(filename)
                 if path != self.config("general/sgf_load"):
                     self.log(f"Updating sgf load path default to {path}", OUTPUT_DEBUG)
-                    self._config["general"]["sgf_load"] = path
+                    general = dict(self.config("general") or {})
+                    general["sgf_load"] = path
+                    self.set_config_section("general", general)
                 popup_contents.update_config(False)
                 self.save_config("general")
                 self.load_sgf_file(filename, popup_contents.fast.active, popup_contents.rewind.active)
@@ -893,7 +895,9 @@ class KaTrainGui(Screen, KaTrainBase):
                 path = popup_contents.filesel.path  # whatever dir is shown
             if path != self.config("general/sgf_save"):
                 self.log(f"Updating sgf save path default to {path}", OUTPUT_DEBUG)
-                self._config["general"]["sgf_save"] = path
+                general = dict(self.config("general") or {})
+                general["sgf_save"] = path
+                self.set_config_section("general", general)
                 self.save_config("general")
             self._do_save_game(os.path.join(path, file))
 
@@ -1420,7 +1424,9 @@ class KaTrainApp(MDApp):
     def on_language(self, _instance, language):
         self.gui.log(f"Switching language to {language}", OUTPUT_INFO)
         i18n.switch_lang(language)
-        self.gui._config["general"]["lang"] = language
+        general = dict(self.gui.config("general") or {})
+        general["lang"] = language
+        self.gui.set_config_section("general", general)
         self.gui.save_config()
         if self.gui.game:
             self.gui.update_state()
@@ -1445,9 +1451,11 @@ class KaTrainApp(MDApp):
             return True  # do not close on esc
         if getattr(self, "gui", None):
             self.gui.play_mode.save_ui_state()
-            self.gui._config["ui_state"]["size"] = list(Window._size)
-            self.gui._config["ui_state"]["top"] = Window.top
-            self.gui._config["ui_state"]["left"] = Window.left
+            ui_state = dict(self.gui.config("ui_state") or {})
+            ui_state["size"] = list(Window._size)
+            ui_state["top"] = Window.top
+            ui_state["left"] = Window.left
+            self.gui.set_config_section("ui_state", ui_state)
             self.gui.save_config("ui_state")
             if self.gui.engine:
                 self.gui.engine.shutdown(finish=None)

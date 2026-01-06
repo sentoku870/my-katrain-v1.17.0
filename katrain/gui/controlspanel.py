@@ -37,8 +37,8 @@ class PlayAnalyzeSelect(MDFloatLayout):
             self.katrain.controls.timer_or_movetree.mode = self.mode
 
     def save_ui_state(self):
-        self.katrain._config["ui_state"] = self.katrain._config.get("ui_state", {})
-        self.katrain._config["ui_state"][self.mode] = {
+        ui_state = dict(self.katrain.config("ui_state") or {})
+        ui_state[self.mode] = {
             "analysis_controls": {
                 id: toggle.active
                 for id, toggle in self.katrain.analysis_controls.ids.items()
@@ -51,7 +51,8 @@ class PlayAnalyzeSelect(MDFloatLayout):
             },
         }
         # 前回終了時のモードを保存
-        self.katrain._config["ui_state"]["last_mode"] = self.mode
+        ui_state["last_mode"] = self.mode
+        self.katrain.set_config_section("ui_state", ui_state)
         self.katrain.save_config("ui_state")
 
     def load_ui_state(self, _dt=None):
