@@ -141,6 +141,12 @@ from katrain.gui.features.batch_core import (
     create_summary_callback,
     run_batch_in_thread,
 )
+from katrain.gui.features.batch_ui import (
+    create_browse_callback,
+    create_on_start_callback,
+    create_on_close_callback,
+    create_get_player_filter_fn,
+)
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
