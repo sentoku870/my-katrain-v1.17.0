@@ -1173,7 +1173,8 @@ class KaTrainGui(Screen, KaTrainBase):
             board_size_prop = move_tree.get_property("SZ", "19")
             try:
                 board_size = (int(board_size_prop), int(board_size_prop))
-            except:
+            except (ValueError, TypeError):
+                # int() conversion can raise ValueError (non-numeric) or TypeError (None)
                 board_size = (19, 19)
 
             # 段級位情報を抽出（Phase 10-C）
