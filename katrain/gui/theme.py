@@ -148,7 +148,8 @@ class Theme:
     ENGINE_PONDERING_COLOR = YELLOW
 
     # info PV link
-    INFO_PV_COLOR = to_hexcol(YELLOW)
+    # 後方互換のため残存。実体は katrain.common.theme_constants.INFO_PV_COLOR
+    from katrain.common import INFO_PV_COLOR
 
     # graph
     GRAPH_DOT_COLOR = [0.85, 0.3, 0.3, 1]
