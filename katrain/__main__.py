@@ -146,6 +146,8 @@ from katrain.gui.features.batch_ui import (
     create_on_start_callback,
     create_on_close_callback,
     create_get_player_filter_fn,
+    build_batch_popup_widgets,
+    create_batch_popup,
 )
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
