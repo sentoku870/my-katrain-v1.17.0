@@ -176,7 +176,6 @@ class Theme:
     KEY_TEACHER_POPUP = "f6"
     KEY_AI_POPUP = "f7"
     KEY_CONFIG_POPUP = "f8"
-    KEY_CONTRIBUTE_POPUP = "f9"
     KEY_TSUMEGO_FRAME = "f10"
 
     KEY_NEW_GAME = "n"
@@ -221,6 +220,3 @@ class Theme:
     KEY_PAUSE_TIMER = ["pause", "break", "f15"]
     KEY_TOGGLE_COORDINATES = "k"
     KEY_ZEN = ["`", "~", "f12"]
-
-    KEY_PAUSE_CONTRIBUTE = KEY_PAUSE_TIMER
-    KEY_STOP_CONTRIBUTING = KEY_STOP_ANALYSIS

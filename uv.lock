@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9, <3.14"
 resolution-markers = [
     "python_full_version >= '3.10'",
@@ -267,7 +267,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -293,7 +293,6 @@ dependencies = [
     { name = "ffpyplayer" },
     { name = "kivy" },
     { name = "kivymd" },
-    { name = "pygame", marker = "sys_platform == 'darwin'" },
     { name = "screeninfo", marker = "sys_platform != 'darwin'" },
     { name = "urllib3" },
 ]
@@ -314,7 +313,6 @@ requires-dist = [
     { name = "ffpyplayer", specifier = ">=4.5.1" },
     { name = "kivy", specifier = ">=2.3.1" },
     { name = "kivymd", specifier = "==0.104.1" },
-    { name = "pygame", marker = "sys_platform == 'darwin'", specifier = "~=2.0" },
     { name = "screeninfo", marker = "sys_platform != 'darwin'", specifier = ">=0.8.1,<0.9" },
     { name = "urllib3", specifier = ">=2.2.2" },
 ]
@@ -597,25 +595,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/10/9a/79b1067d27e38ddf84fe7da6ec516f1743f31f752c6122193e7bce38bdbf/polib-1.2.0.tar.gz", hash = "sha256:f3ef94aefed6e183e342a8a269ae1fc4742ba193186ad76f175938621dbfc26b", size = 161658, upload-time = "2023-02-23T17:53:56.873Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6b/99/45bb1f9926efe370c6dbe324741c749658e44cb060124f28dad201202274/polib-1.2.0-py2.py3-none-any.whl", hash = "sha256:1c77ee1b81feb31df9bca258cbc58db1bbb32d10214b173882452c73af06d62d", size = 20634, upload-time = "2023-02-23T17:53:59.919Z" },
-]
-
-[[package]]
-name = "pygame"
-version = "2.6.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/49/cc/08bba60f00541f62aaa252ce0cfbd60aebd04616c0b9574f755b583e45ae/pygame-2.6.1.tar.gz", hash = "sha256:56fb02ead529cee00d415c3e007f75e0780c655909aaa8e8bf616ee09c9feb1f", size = 14808125, upload-time = "2024-09-29T13:41:34.698Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/0b/334c7c50a2979e15f2a027a41d1ca78ee730d5b1c7f7f4b26d7cb899839d/pygame-2.6.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9beeb647e555afb5657111fa83acb74b99ad88761108eaea66472e8b8547b55b", size = 13109297, upload-time = "2024-09-29T14:25:34.709Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/48/f8b1069788d1bd42e63a960d74d3355242480b750173a42b2749687578ca/pygame-2.6.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:10e3d2a55f001f6c0a6eb44aa79ea7607091c9352b946692acedb2ac1482f1c9", size = 12375837, upload-time = "2024-09-29T14:25:50.538Z" },
-    { url = "https://files.pythonhosted.org/packages/c4/ca/8f367cb9fe734c4f6f6400e045593beea2635cd736158f9fabf58ee14e3c/pygame-2.6.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:20349195326a5e82a16e351ed93465a7845a7e2a9af55b7bc1b2110ea3e344e1", size = 13113753, upload-time = "2024-09-29T14:26:13.751Z" },
-    { url = "https://files.pythonhosted.org/packages/83/47/6edf2f890139616b3219be9cfcc8f0cb8f42eb15efd59597927e390538cb/pygame-2.6.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:f3935459109da4bb0b3901da9904f0a3e52028a3332a355d298b1673a334cf21", size = 12378146, upload-time = "2024-09-29T14:26:22.456Z" },
-    { url = "https://files.pythonhosted.org/packages/92/16/2c602c332f45ff9526d61f6bd764db5096ff9035433e2172e2d2cadae8db/pygame-2.6.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:4ee7f2771f588c966fa2fa8b829be26698c9b4836f82ede5e4edc1a68594942e", size = 13118279, upload-time = "2024-09-29T14:26:30.427Z" },
-    { url = "https://files.pythonhosted.org/packages/cd/53/77ccbc384b251c6e34bfd2e734c638233922449a7844e3c7a11ef91cee39/pygame-2.6.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c8040ea2ab18c6b255af706ec01355c8a6b08dc48d77fd4ee783f8fc46a843bf", size = 12384524, upload-time = "2024-09-29T14:26:49.996Z" },
-    { url = "https://files.pythonhosted.org/packages/e1/91/718acf3e2a9d08a6ddcc96bd02a6f63c99ee7ba14afeaff2a51c987df0b9/pygame-2.6.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:ae6039f3a55d800db80e8010f387557b528d34d534435e0871326804df2a62f2", size = 13090765, upload-time = "2024-09-29T14:27:02.377Z" },
-    { url = "https://files.pythonhosted.org/packages/0e/c6/9cb315de851a7682d9c7568a41ea042ee98d668cb8deadc1dafcab6116f0/pygame-2.6.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:2a3a1288e2e9b1e5834e425bedd5ba01a3cd4902b5c2bff8ed4a740ccfe98171", size = 12381704, upload-time = "2024-09-29T14:27:10.228Z" },
-    { url = "https://files.pythonhosted.org/packages/a7/ed/9f49258c5012a4642fe931e3d3fdb87a210a76c4680ce47ec049bb93afae/pygame-2.6.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:15efaa11a80a65dd589a95bebe812fa5bfc7e14946b638a424c5bd9ac6cca1a4", size = 12967001, upload-time = "2024-09-29T14:28:00.081Z" },
-    { url = "https://files.pythonhosted.org/packages/53/e1/620110f7aebf9ae28073f9576b9ef1bf90dceabc0a88007d0241d842a501/pygame-2.6.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:481cfe1bdbb7fe00acc5950c494c26f00240888619bdc396fc8c39a734797432", size = 12378764, upload-time = "2024-09-29T14:28:10.715Z" },
-    { url = "https://files.pythonhosted.org/packages/9a/2f/8458240c8908a550254c80b64f8c03d6d46156664df3515a1331ae730b4e/pygame-2.6.1-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:bbb7167c92103a2091366e9af26d4914ba3776666e8677d3c93551353fffa626", size = 12782440, upload-time = "2024-09-29T14:28:25.73Z" },
 ]
 
 [[package]]

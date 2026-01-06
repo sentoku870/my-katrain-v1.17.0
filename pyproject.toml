@@ -14,7 +14,6 @@ classifiers = [
     "Topic :: Games/Entertainment :: Board Games",
 ]
 dependencies = [
-    "pygame~=2.0 ; platform_system == 'Darwin'",
     "screeninfo>=0.8.1,<0.9 ; platform_system != 'Darwin'",
     "chardet>=5.2.0,<6",
     "docutils>=0.21.2",

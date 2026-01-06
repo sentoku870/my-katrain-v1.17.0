@@ -795,24 +795,6 @@ class ConfigPopup(BaseConfigPopup):
             Clock.schedule_once(restart_engine, 0)
 
 
-class ContributePopup(BaseConfigPopup):
-    def __init__(self, katrain):
-        super().__init__(katrain)
-        MDApp.get_running_app().bind(language=self.check_katas)
-        Clock.schedule_once(self.check_katas)
-
-    def start_contributing(self):
-        self.update_config(True, close_popup=False)
-        self.error.text = ""
-        log_settings = {**self.katrain.config("contribute"), "password": "***"}
-        self.katrain.log(f"Updating contribution settings {log_settings}", OUTPUT_DEBUG)
-        if not self.katrain.config("contribute/username") or not self.katrain.config("contribute/password"):
-            self.error.text = "Please enter your username and password for katagotraining.org"
-        else:
-            self.popup.dismiss()
-            self.katrain("katago-contribute")
-
-
 class LoadSGFPopup(BaseConfigPopup):
     def __init__(self, katrain):
         super().__init__(katrain)
