@@ -101,6 +101,10 @@
 | 9 | 検証テンプレで改善ループ | `03-llm-validation.md` | ✅ **完了** |
 | 8 | 初心者向けヒント（任意） | 構造解析 + テンプレ | TBD |
 | 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
+| 11 | 難解PVフィルタ | Top Moves表示改善 | 📋 **仕様確定** |
+| 12 | MuZero 3分解難易度 | 難所抽出・解説出し分け | 📋 **仕様確定** |
+| 13 | Smart Kifu Learning | 棋譜学習・プロファイル | 📋 **仕様確定** |
+| 14 | Leelaモード推定損失 | Leela候補手の損失表示 | 📋 **仕様確定** |
 
 ---
 
@@ -309,6 +313,32 @@
 - [ ] ヨセ/定石/攻め合い等の特化モジュール
 - [ ] 囲碁用語辞書との自動連携
 - [ ] 棋力判定システム（Tier1-5）
+
+---
+
+## 8.5 将来フェーズ（仕様確定済み）
+
+詳細な設計書は `docs/specs/` を参照。
+
+### Phase 11: 難解PVフィルタ（Human Move Filter）
+- **目的**: Top Moves候補手のうち、難解なPVを含む手を除外して見やすくする
+- **設定**: OFF / WEAK / MEDIUM / STRONG / AUTO
+- **仕様書**: `docs/specs/human-move-filter.md`
+
+### Phase 12: MuZero 3分解難易度
+- **目的**: 局面の「難しさ」をPolicy/Transition/Stateに分解し、難所抽出・解説出し分けに使用
+- **用途**: 難所抽出（上位K局面）、Viewer Presetによる解説の出し分け
+- **仕様書**: `docs/specs/muzero-difficulty.md`
+
+### Phase 13: Smart Kifu Learning
+- **目的**: 棋譜学習・プレイヤープロファイル・Viewer Level管理
+- **主要機能**: Training Set、Context分離（human/vs_katago/generated）、学習条件提案
+- **仕様書**: `docs/specs/smart-kifu-learning.md`
+
+### Phase 14: Leelaモード推定損失
+- **目的**: Leela解析に「推定損失」（KataGo風の損失目数）を表示
+- **特徴**: KataGoモードとは完全分離、投了目安機能付き
+- **仕様書**: `docs/specs/leela-estimated-loss.md`
 
 ---
 
