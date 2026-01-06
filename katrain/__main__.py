@@ -110,6 +110,11 @@ from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.sgf_parser import Move, ParseError
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node, extract_sgf_statistics
+from katrain.gui.features.summary_aggregator import (
+    scan_player_names,
+    categorize_games_by_stats,
+    collect_rank_info,
+)
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
@@ -999,25 +1004,8 @@ class KaTrainGui(Screen, KaTrainBase):
         return extract_sgf_statistics(path, self, self.engine, self.log)
 
     def _scan_player_names(self, sgf_files: list) -> dict:
-        """SGFファイルから全プレイヤー名をスキャン（出現回数付き）"""
-        player_counts = {}  # {player_name: count}
-
-        for path in sgf_files:
-            try:
-                move_tree = KaTrainSGF.parse_file(path)
-                player_black = move_tree.get_property("PB", "").strip()
-                player_white = move_tree.get_property("PW", "").strip()
-
-                # 空でないプレイヤー名をカウント
-                if player_black:
-                    player_counts[player_black] = player_counts.get(player_black, 0) + 1
-                if player_white:
-                    player_counts[player_white] = player_counts.get(player_white, 0) + 1
-
-            except Exception as e:
-                self.log(f"Failed to scan {path}: {e}", OUTPUT_ERROR)
-
-        return player_counts
+        """Delegates to summary_aggregator.scan_player_names()."""
+        return scan_player_names(sgf_files, self.log)
 
     def _scan_and_show_player_selection(self, sgf_files: list):
         """プレイヤー名をスキャンして選択ダイアログを表示"""
@@ -1299,77 +1287,12 @@ class KaTrainGui(Screen, KaTrainBase):
             )
 
     def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
-        """統計データから対局を分類（互先/置碁）"""
-        categories = {
-            "even": [],          # 互先
-            "handi_weak": [],    # 置碁（下手・黒）
-            "handi_strong": [],  # 置碁（上手・白）
-        }
-
-        for stats in game_stats_list:
-            handicap = stats["handicap"]
-
-            # focus_playerが設定されている場合のみフィルタリング
-            if focus_player:
-                is_black = (stats["player_black"] == focus_player)
-                is_white = (stats["player_white"] == focus_player)
-
-                # focus_playerが対局者でない場合はスキップ
-                if not is_black and not is_white:
-                    continue
-
-                # 分類
-                if handicap == 0:
-                    # 互先（黒白統合）
-                    categories["even"].append(stats)
-                elif handicap >= 2:
-                    # 置碁
-                    if is_black:
-                        categories["handi_weak"].append(stats)  # 下手（黒）
-                    else:
-                        categories["handi_strong"].append(stats)  # 上手（白）
-            else:
-                # focus_playerが未設定の場合は全ゲームを分類
-                if handicap == 0:
-                    categories["even"].append(stats)
-                elif handicap >= 2:
-                    # ハンデ戦は黒が下手、白が上手
-                    # 両方のプレイヤーのゲームを適切なカテゴリに入れる
-                    # （後でfocus_playerなしでレポート生成するため）
-                    categories["handi_weak"].append(stats)
-                    # 注: focus_playerなしの場合、上手/下手を分けるのは困難なため、
-                    # 下手（黒）のみを集計する
-
-        return categories
+        """Delegates to summary_aggregator.categorize_games_by_stats()."""
+        return categorize_games_by_stats(game_stats_list, focus_player)
 
     def _collect_rank_info(self, stats_list: list, focus_player: str) -> str:
-        """focus_player の段級位情報を収集（Phase 10-C）
-
-        Args:
-            stats_list: 統計dictのリスト
-            focus_player: 対象プレイヤー名
-
-        Returns:
-            str: 段級位文字列（例: "5段", "8級"）、見つからない場合は None
-        """
-        if not focus_player:
-            return None
-
-        # 全ゲームから focus_player の段級位を探す
-        ranks = []
-        for stats in stats_list:
-            if stats["player_black"] == focus_player and stats.get("rank_black"):
-                ranks.append(stats["rank_black"])
-            elif stats["player_white"] == focus_player and stats.get("rank_white"):
-                ranks.append(stats["rank_white"])
-
-        # 最も頻出する段級位を返す（複数ある場合は最初のもの）
-        if ranks:
-            from collections import Counter
-            most_common = Counter(ranks).most_common(1)[0][0]
-            return most_common
-
-        return None
+        """Delegates to summary_aggregator.collect_rank_info()."""
+        return collect_rank_info(stats_list, focus_player)
 
     def _build_summary_from_stats(self, stats_list: list, focus_player: str = None) -> str:
         """統計dictリストからsummaryテキストを生成"""
