@@ -15,6 +15,49 @@ from dataclasses import dataclass, field
 from typing import List, Tuple, Dict, Optional, Set
 
 
+# ==================== 危険度スコア計算パラメータ ====================
+# 呼吸点による基本危険度 (0-100スケール)
+DANGER_ATARI = 60           # 1呼吸点（アタリ）
+DANGER_LOW_LIBERTY = 35     # 2呼吸点
+DANGER_MEDIUM_LIBERTY = 15  # 3呼吸点
+
+# 切断リスクボーナス
+DANGER_CUT_BONUS_PER_POINT = 5   # 切断点1つあたりの危険度増加
+DANGER_CUT_BONUS_CAP = 20        # 切断ボーナスの上限
+
+# グループサイズボーナス
+LARGE_GROUP_THRESHOLD = 10       # 大石と判定する石数
+LARGE_GROUP_BONUS = 10           # 大石の危険度ボーナス
+MEDIUM_GROUP_THRESHOLD = 6       # 中石と判定する石数
+MEDIUM_GROUP_BONUS = 5           # 中石の危険度ボーナス
+
+# ==================== 切断点検出パラメータ ====================
+# 危険度係数（切断の影響度計算用）
+CUT_COEFFICIENT_HIGH = 0.8       # 高危険度（60以上）のグループ
+CUT_COEFFICIENT_MEDIUM = 0.5     # 中危険度（35以上）のグループ
+CUT_COEFFICIENT_LOW = 0.3        # 低危険度のグループ
+CUT_DANGER_THRESHOLD_HIGH = 60   # 高危険度判定閾値
+CUT_DANGER_THRESHOLD_MEDIUM = 35 # 中危険度判定閾値
+CUT_MINIMUM_DANGER_INCREASE = 10 # 切断点として認識する最低危険度増加
+
+# ==================== 連絡点検出パラメータ ====================
+CONNECT_IMPROVEMENT_RATIO = 0.3  # 連絡による危険度改善率
+
+# ==================== 理由タグ判定パラメータ ====================
+TAG_CUT_RISK_DANGER_THRESHOLD = 40       # cut_risk タグの危険度閾値
+TAG_NEED_CONNECT_IMPROVEMENT = 20        # need_connect タグの改善値閾値
+TAG_THIN_MIN_LIBERTIES = 3               # thin タグの最低呼吸点数
+TAG_THIN_MIN_CUT_POINTS = 3              # thin タグの最低切断点数
+TAG_CHASE_MODE_ENEMY_DANGER = 60         # chase_mode の敵危険度閾値
+TAG_CHASE_MODE_MY_DANGER_MAX = 35        # chase_mode の自分危険度上限
+TAG_READING_FAILURE_DANGER = 40          # reading_failure の危険度閾値
+ENDGAME_MOVE_THRESHOLD = 150             # この手数以降をヨセと判定
+
+# ==================== 結果件数パラメータ ====================
+MAX_CONNECT_POINTS = 10  # 返す連絡点の最大数
+MAX_CUT_POINTS = 10      # 返す切断点の最大数
+
+
 @dataclass
 class Group:
     """連結された石グループ
@@ -140,24 +183,24 @@ def compute_danger_scores(groups: List[Group], cut_points: List) -> Dict[int, fl
 
         # 呼吸点による基本危険度
         if group.liberties_count == 1:
-            danger += 60
+            danger += DANGER_ATARI
         elif group.liberties_count == 2:
-            danger += 35
+            danger += DANGER_LOW_LIBERTY
         elif group.liberties_count == 3:
-            danger += 15
+            danger += DANGER_MEDIUM_LIBERTY
 
         # 切断リスクボーナス（近くの切断点をカウント）
         nearby_cuts = sum(
             1 for coords, group_ids, _ in cut_points
             if group.group_id in group_ids
         )
-        danger += min(20, nearby_cuts * 5)
+        danger += min(DANGER_CUT_BONUS_CAP, nearby_cuts * DANGER_CUT_BONUS_PER_POINT)
 
         # サイズボーナス
-        if len(group.stones) >= 10:
-            danger += 10
-        elif len(group.stones) >= 6:
-            danger += 5
+        if len(group.stones) >= LARGE_GROUP_THRESHOLD:
+            danger += LARGE_GROUP_BONUS
+        elif len(group.stones) >= MEDIUM_GROUP_THRESHOLD:
+            danger += MEDIUM_GROUP_BONUS
 
         danger_scores[group.group_id] = danger
 
@@ -211,13 +254,12 @@ def find_connect_points(
                 if len(unique_groups) >= 2:
                     # 危険度改善を計算
                     before_danger = sum(danger_scores.get(gid, 0) for gid in unique_groups)
-                    # 簡易版: 連絡で危険度が30%減ると仮定
-                    improvement = before_danger * 0.3
+                    improvement = before_danger * CONNECT_IMPROVEMENT_RATIO
                     connect_points.append(((x, y), unique_groups, improvement))
 
-    # 改善度上位10件を返す
+    # 改善度上位を返す
     connect_points.sort(key=lambda cp: cp[2], reverse=True)
-    return connect_points[:10]
+    return connect_points[:MAX_CONNECT_POINTS]
 
 
 def find_cut_points(
@@ -268,23 +310,22 @@ def find_cut_points(
                     current_danger = sum(danger_scores.get(gid, 0) for gid in unique_groups)
 
                     # 係数: 既に危険度が高いほど切断の影響大
-                    # 60以上（アタリ級）: 0.8倍、35以上（呼吸2級）: 0.5倍、それ以下: 0.3倍
-                    if current_danger >= 60:
-                        coefficient = 0.8
-                    elif current_danger >= 35:
-                        coefficient = 0.5
+                    if current_danger >= CUT_DANGER_THRESHOLD_HIGH:
+                        coefficient = CUT_COEFFICIENT_HIGH
+                    elif current_danger >= CUT_DANGER_THRESHOLD_MEDIUM:
+                        coefficient = CUT_COEFFICIENT_MEDIUM
                     else:
-                        coefficient = 0.3
+                        coefficient = CUT_COEFFICIENT_LOW
 
                     danger_increase = current_danger * coefficient
 
-                    # 最低閾値: 危険度増加が10以上の場合のみ切断点として認識
-                    if danger_increase >= 10:
+                    # 最低閾値: 危険度増加が一定以上の場合のみ切断点として認識
+                    if danger_increase >= CUT_MINIMUM_DANGER_INCREASE:
                         cut_points.append(((x, y), unique_groups, danger_increase))
 
-    # 危険度上位10件を返す
+    # 危険度上位を返す
     cut_points.sort(key=lambda cp: cp[2], reverse=True)
-    return cut_points[:10]
+    return cut_points[:MAX_CUT_POINTS]
 
 
 # ==================== Checkpoint 5: メインエントリポイント ====================
@@ -387,22 +428,22 @@ def get_reason_tags_for_move(
         tags.append("low_liberties")
 
     # タグ 3: cut_risk
-    if len(board_state.cut_points) >= 1 and max_my_danger >= 40:
+    if len(board_state.cut_points) >= 1 and max_my_danger >= TAG_CUT_RISK_DANGER_THRESHOLD:
         tags.append("cut_risk")
 
-    # タグ 4: need_connect（閾値を20に引き下げ）
+    # タグ 4: need_connect
     if board_state.connect_points:
         best_improvement = board_state.connect_points[0][2]
-        if best_improvement >= 20:
+        if best_improvement >= TAG_NEED_CONNECT_IMPROVEMENT:
             tags.append("need_connect")
 
     # タグ 5: thin
     max_liberties = max((g.liberties_count for g in my_groups), default=0)
-    if max_liberties >= 3 and len(board_state.cut_points) >= 3:
+    if max_liberties >= TAG_THIN_MIN_LIBERTIES and len(board_state.cut_points) >= TAG_THIN_MIN_CUT_POINTS:
         tags.append("thin")
 
     # タグ 6: chase_mode
-    if max_enemy_danger >= 60 and max_my_danger < 35:
+    if max_enemy_danger >= TAG_CHASE_MODE_ENEMY_DANGER and max_my_danger < TAG_CHASE_MODE_MY_DANGER_MAX:
         tags.append("chase_mode")
 
     # タグ 7: too_many_choices（無効化 - 候補手数は探索パラメータに依存し不安定）
@@ -416,9 +457,7 @@ def get_reason_tags_for_move(
     if hasattr(move_eval, 'tag') and move_eval.tag == "yose":
         is_endgame = True
     elif hasattr(move_eval, 'move_number'):
-        # 手数が不明な場合は総手数を推定（重要局面の最大手数から推定）
-        # ここでは簡易的に move_number > 150 をヨセとみなす
-        if move_eval.move_number > 150:
+        if move_eval.move_number > ENDGAME_MOVE_THRESHOLD:
             is_endgame = True
 
     if is_endgame:
@@ -439,7 +478,7 @@ def get_reason_tags_for_move(
     if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
         from katrain.core import eval_metrics
         preset = eval_metrics.get_skill_preset(skill_preset)
-        if move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure and max_my_danger >= 40:
+        if move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure and max_my_danger >= TAG_READING_FAILURE_DANGER:
             tags.append("reading_failure")
 
     return tags
