@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-06
+> 最終更新: 2026-01-07
 > 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
 
 ---
@@ -54,9 +54,9 @@ katrain/
 ├── gui.kv                # Kivyレイアウト定義
 ├── katrain.kv            # 追加レイアウト
 │
-└── i18n/                 # 国際化
+└── i18n/                 # 国際化（JP+ENのみ、PR #91で簡素化）
     ├── i18n.py            # 翻訳処理
-    └── locales/*/         # 各言語のpoファイル
+    └── locales/{en,jp}/   # 英語・日本語のみ
 ```
 
 ---
@@ -255,6 +255,11 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-07: コードベース簡素化（PR #90-91）
+  - Contribute Engine削除（contribute_engine.py）
+  - 多言語i18n削除（JP+EN以外の9言語）
+  - pygame依存削除（macOS専用）
+  - 合計~12,800行削減
 - 2026-01-06: Phase 4 安定化（PR #81-89）
   - gui/features テスト追加（77件）
   - 設定管理Protocol統一（_config直接アクセス排除）

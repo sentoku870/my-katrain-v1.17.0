@@ -376,6 +376,17 @@
 
 ## 11. 変更履歴
 
+- 2026-01-07: コードベース簡素化（PR #90-91）
+  - **目的**: Windows専用教育フォーク向けに不要機能を削除
+  - **Phase 1（PR #90）**: Contribute Engine削除 + pygame依存削除
+    - `contribute_engine.py` 削除（~300行）
+    - `ContributePopup` UI削除（~180行）
+    - pygame依存削除（macOS専用）
+  - **Phase 2（PR #91）**: 多言語i18n削除（JP+EN以外）
+    - 9言語のlocaleディレクトリ削除（cn,de,es,fr,ko,ru,tr,tw,ua）
+    - ~12,200行削減
+  - **Phase 3**: AI戦略UIプリセット化（将来実装として延期）
+  - **成果**: 合計~12,800行削減、全510テストパス
 - 2026-01-06: Phase 4 安定化（PR #81-89）
   - **目的**: gui/features パッケージのテスト追加と品質向上
   - **テスト追加（PR #81-85）**: summary_stats, summary_aggregator, karte_export
