@@ -9,6 +9,7 @@
 # - create_summary_callback: 完了時のサマリ表示コールバック作成
 # - run_batch_in_thread: バックグラウンドスレッドでバッチ実行
 
+import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from kivy.clock import Clock
@@ -22,6 +23,8 @@ from katrain.tools.batch_analyze_sgf import (
     parse_timeout_input,
     run_batch,
 )
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -268,7 +271,7 @@ def run_batch_in_thread(
             from katrain.gui.sound import play_sound
             play_sound("stone")  # Use existing stone sound as completion notification
         except Exception:
-            pass  # Silently ignore sound errors
+            logger.debug("Failed to play completion sound", exc_info=True)
 
     # Call completion callback
     on_complete(result)
