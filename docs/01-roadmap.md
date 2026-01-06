@@ -346,6 +346,17 @@
 
 ## 11. 変更履歴
 
+- 2026-01-06: Phase 4 安定化（PR #81-88）
+  - **目的**: gui/features パッケージのテスト追加と品質向上
+  - **テスト追加（PR #81-85）**: summary_stats, summary_aggregator, karte_export
+    - 77件の新規テスト追加
+  - **型ヒント改善（PR #86）**: TypedDict風Dict型エイリアス（BatchWidgets, GameStats等）
+  - **エラーロギング改善（PR #87）**: silent exception → logger.debug
+  - **設定管理Protocol統一（PR #88）**: _config直接アクセスを6箇所排除
+    - controlspanel.py: save_ui_state()
+    - popups.py: dist_models
+    - __main__.py: sgf_load/save, language, window state
+  - **成果**: 全510テストパス、Protocol準拠の設定管理に完全統一
 - 2026-01-06: __main__.py モジュール分割 Phase 3 完了（PR #62-80）
   - **目的**: 4,000行超の __main__.py を機能別モジュールに分割
   - **新規パッケージ**: `katrain/gui/features/`（13モジュール）

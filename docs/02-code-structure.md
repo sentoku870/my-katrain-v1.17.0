@@ -170,8 +170,22 @@ class FeatureContext(Protocol):
     game: Optional["Game"]
     controls: "ControlsPanel"
     def config(self, setting: str, default: Any = None) -> Any: ...
+    def set_config_section(self, section: str, value: Dict[str, Any]) -> None: ...
     def save_config(self, key: Optional[str] = None) -> None: ...
     def log(self, message: str, level: int = 0) -> None: ...
+```
+
+**設定アクセスパターン（推奨）:**
+```python
+# 読み取り
+value = self.config("section/key", default)
+section_dict = self.config("section") or {}
+
+# 書き込み（Protocol準拠）
+section_dict = dict(self.config("section") or {})  # コピーして変更
+section_dict["key"] = new_value
+self.set_config_section("section", section_dict)
+self.save_config("section")
 ```
 
 #### 機能モジュール一覧
@@ -240,6 +254,10 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-06: Phase 4 安定化（PR #81-88）
+  - gui/features テスト追加（77件）
+  - 設定管理Protocol統一（_config直接アクセス排除）
+  - 型ヒント改善（types.py）
 - 2026-01-06: gui/features パッケージ追加（Phase 3完了）
   - __main__.py を機能別モジュールに分割
   - FeatureContext Protocol による依存性注入
