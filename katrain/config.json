@@ -11,17 +11,6 @@
         "wide_root_noise": 0.04,
         "_enable_ownership": true
     },
-    "contribute": {
-        "katago": "",
-        "config": "katrain/KataGo/contribute_config.cfg",
-        "ownership": false,
-        "maxgames": 6,
-        "movespeed": 2,
-        "username": "",
-        "password": "",
-        "savepath": "./dist_sgf/",
-        "savesgf": false
-    },
     "general": {
         "sgf_load": "~/Downloads",
         "sgf_save": "./sgfout",

@@ -27,7 +27,7 @@ from katrain.core.sgf_parser import Move
 from katrain.core.utils import find_package_resource, json_truncate_arrays
 
 
-class BaseEngine:  # some common elements between analysis and contribute engine
+class BaseEngine:
 
     RULESETS_ABBR = [
         ("jp", "japanese"),
