@@ -233,7 +233,8 @@ class QuickConfigGui(MDBoxLayout):
                 selected = 0
                 try:
                     selected = widget.value_refs.index(value)
-                except:  # noqa: E722
+                except Exception:
+                    # Control-flow: value not found in list, fall back to index 0
                     pass
                 widget.text = widget.values[selected]
             else:
@@ -706,7 +707,8 @@ class BaseConfigPopup(QuickConfigGui):
                                 try:
                                     with open(os.path.join(os.path.split(path)[0], f), "wb") as fout:
                                         fout.write(zipObj.read(f))
-                                except:  # already there? no problem
+                                except Exception:
+                                    # Control-flow: file already exists or write failed, skip
                                     pass
                     os.remove(tmp_path)
                 else:

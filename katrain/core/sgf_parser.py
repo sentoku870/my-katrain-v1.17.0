@@ -617,7 +617,9 @@ class SGF:
             try:
                 grlt = int(re.search(grlt_regex, line).group(1))
                 zipsu = int(re.search(zipsu_regex, line).group(1))
-            except:  # noqa E722
+            except (AttributeError, ValueError, TypeError):
+                # regex match can return None (AttributeError on .group())
+                # int() can raise ValueError (non-numeric) or TypeError (None)
                 return ""
             return gib_make_result(grlt, zipsu)
 
@@ -651,7 +653,8 @@ class SGF:
                         komi = int(re.search(r"GONGJE:(\d+),", line).group(1)) / 10
                         if komi:
                             root.set_property("KM", komi)
-                    except:  # noqa E722
+                    except Exception:
+                        # Control-flow: komi extraction failed, skip
                         pass
 
             if line.startswith("\\[GAMETAG="):
@@ -660,7 +663,8 @@ class SGF:
                         match = re.search(r"C(\d\d\d\d):(\d\d):(\d\d)", line)
                         date = "{}-{}-{}".format(match.group(1), match.group(2), match.group(3))
                         root.set_property("DT", date)
-                    except:  # noqa E722
+                    except Exception:
+                        # Control-flow: date extraction failed, skip
                         pass
 
                 if "RE" not in root.properties:
@@ -673,7 +677,8 @@ class SGF:
                         komi = int(re.search(r",G(\d+),", line).group(1)) / 10
                         if komi:
                             root.set_property("KM", komi)
-                    except:  # noqa E722
+                    except Exception:
+                        # Control-flow: komi extraction failed, skip
                         pass
 
             if line[0:3] == "INI":
