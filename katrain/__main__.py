@@ -116,6 +116,11 @@ from katrain.gui.features.summary_aggregator import (
     collect_rank_info,
 )
 from katrain.gui.features.summary_formatter import build_summary_from_stats
+from katrain.gui.features.summary_ui import (
+    do_export_summary,
+    do_export_summary_ui,
+    process_summary_with_selected_players,
+)
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
@@ -876,119 +881,22 @@ class KaTrainGui(Screen, KaTrainBase):
         return determine_user_color(self.game, username)
 
     def _do_export_summary(self, *args, **kwargs):
-        # export_summary is executed from _message_loop_thread (NOT the main Kivy thread).
-        # Any Kivy UI creation must happen on the main thread.
-        Clock.schedule_once(lambda dt: self._do_export_summary_ui(*args, **kwargs), 0)
+        """Delegates to summary_ui.do_export_summary()."""
+        do_export_summary(
+            self,
+            self._scan_and_show_player_selection,
+            self._load_export_settings,
+            self._save_export_settings,
+        )
 
     def _do_export_summary_ui(self, *args, **kwargs):
-        """ディレクトリ選択とまとめ生成（自動分類）"""
-        # mykatrain_settings を取得
-        mykatrain_settings = self.config("mykatrain_settings") or {}
-        karte_format = mykatrain_settings.get("karte_format", "both")
-        default_user = mykatrain_settings.get("default_user_name", "")
-        default_input_dir = mykatrain_settings.get("batch_export_input_directory", "")
-
-        # 入力ディレクトリが設定されている場合はフォルダ選択をスキップ
-        if default_input_dir and os.path.isdir(default_input_dir):
-            # SGFファイルを取得
-            sgf_files = []
-            for file in os.listdir(default_input_dir):
-                if file.lower().endswith('.sgf'):
-                    sgf_files.append(os.path.join(default_input_dir, file))
-
-            if len(sgf_files) < 2:
-                Popup(
-                    title="Error",
-                    content=Label(
-                        text=f"Found only {len(sgf_files)} SGF file(s) in batch directory.\nNeed at least 2 games for summary.",
-                        halign="center",
-                        valign="middle",
-                        font_name=Theme.DEFAULT_FONT,
-                    ),
-                    size_hint=(0.5, 0.3),
-                ).open()
-                return
-
-            # プレイヤー名をスキャンして処理（バックグラウンド）
-            # default_user_only の場合はプレイヤー選択もスキップ
-            import threading
-            threading.Thread(
-                target=self._scan_and_show_player_selection,
-                args=(sgf_files,),
-                daemon=True
-            ).start()
-            return
-
-        # 入力ディレクトリ未設定の場合: ディレクトリ選択ダイアログ
-        popup_contents = LoadSGFPopup(self)
-        popup_contents.filesel.dirselect = True  # ディレクトリ選択モード
-
-        # mykatrain_settings の batch_export_input_directory を優先、なければ前回のパス
-        if default_input_dir and os.path.isdir(default_input_dir):
-            popup_contents.filesel.path = default_input_dir
-        else:
-            # フォールバック: 前回のパス
-            export_settings = self._load_export_settings()
-            last_directory = export_settings.get("last_sgf_directory")
-            if last_directory and os.path.isdir(last_directory):
-                popup_contents.filesel.path = last_directory
-
-        load_popup = Popup(
-            title=i18n._("Select directory containing SGF files"),
-            size_hint=(0.8, 0.8),
-            content=popup_contents
-        ).__self__
-
-        def process_directory(*_args):
-            selected_path = popup_contents.filesel.path
-
-            if not selected_path or not os.path.isdir(selected_path):
-                load_popup.dismiss()
-                Popup(
-                    title="Error",
-                    content=Label(
-                        text="Please select a valid directory.",
-                        halign="center",
-                        valign="middle"
-                    ),
-                    size_hint=(0.5, 0.3),
-                ).open()
-                return
-
-            # ディレクトリ内の全SGFファイルを取得
-            sgf_files = []
-            for file in os.listdir(selected_path):
-                if file.lower().endswith('.sgf'):
-                    sgf_files.append(os.path.join(selected_path, file))
-
-            if len(sgf_files) < 2:
-                load_popup.dismiss()
-                Popup(
-                    title="Error",
-                    content=Label(
-                        text=f"Found only {len(sgf_files)} SGF file(s).\nNeed at least 2 games for summary.",
-                        halign="center",
-                        valign="middle"
-                    ),
-                    size_hint=(0.5, 0.3),
-                ).open()
-                return
-
-            load_popup.dismiss()
-
-            # 選択したディレクトリを保存
-            self._save_export_settings(sgf_directory=selected_path)
-
-            # プレイヤー名をスキャン（バックグラウンド）
-            import threading
-            threading.Thread(
-                target=self._scan_and_show_player_selection,
-                args=(sgf_files,),
-                daemon=True
-            ).start()
-
-        popup_contents.filesel.on_success = process_directory
-        load_popup.open()
+        """Delegates to summary_ui.do_export_summary_ui()."""
+        do_export_summary_ui(
+            self,
+            self._scan_and_show_player_selection,
+            self._load_export_settings,
+            self._save_export_settings,
+        )
 
     def _extract_analysis_from_sgf_node(self, node) -> dict:
         """SGFノードのKTプロパティから解析データを抽出。
@@ -1068,28 +976,12 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
     def _process_summary_with_selected_players(self, sgf_files: list, selected_players: list):
-        """選択されたプレイヤーでサマリー処理を開始"""
-        # 進行状況ポップアップ
-        progress_label = Label(
-            text=f"Processing {len(sgf_files)} games...",
-            halign="center",
-            valign="middle"
+        """Delegates to summary_ui.process_summary_with_selected_players()."""
+        process_summary_with_selected_players(
+            sgf_files,
+            selected_players,
+            self._process_and_export_summary,
         )
-        progress_popup = Popup(
-            title="Generating Summary",
-            content=progress_label,
-            size_hint=(0.5, 0.3),
-            auto_dismiss=False
-        )
-        progress_popup.open()
-
-        # バックグラウンドで処理
-        import threading
-        threading.Thread(
-            target=self._process_and_export_summary,
-            args=(sgf_files, progress_popup, selected_players),
-            daemon=True
-        ).start()
 
     def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
         """プレイヤー選択ダイアログを表示"""
