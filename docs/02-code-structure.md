@@ -255,10 +255,11 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
-- 2026-01-07: コードベース簡素化（PR #90-91）
+- 2026-01-07: コードベース簡素化（PR #90-92）
   - Contribute Engine削除（contribute_engine.py）
   - 多言語i18n削除（JP+EN以外の9言語）
   - pygame依存削除（macOS専用）
+  - 残存参照クリーンアップ（KEY_CONTRIBUTE_POPUP, FONTS, 99-worklog.md）
   - 合計~12,800行削減
 - 2026-01-06: Phase 4 安定化（PR #81-89）
   - gui/features テスト追加（77件）
