@@ -292,8 +292,7 @@ KataGo(JSON) → KataGoEngine → GameNode.set_analysis()
 docs/
 ├── 00-purpose-and-scope.md  ← 目的とスコープ（固定）
 ├── 01-roadmap.md            ← ロードマップ（更新可）
-├── 02-code-structure.md     ← コード構造（参照）
-└── 99-worklog.md            ← 作業履歴
+└── 02-code-structure.md     ← コード構造（参照）
 
 .claude/rules/
 ├── 01-correction-levels.md  ← 修正レベル詳細

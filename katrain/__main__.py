@@ -1181,7 +1181,6 @@ class KaTrainGui(Screen, KaTrainBase):
                 Theme.KEY_AI_POPUP,
                 Theme.KEY_CONFIG_POPUP,
                 Theme.KEY_TSUMEGO_FRAME,
-                Theme.KEY_CONTRIBUTE_POPUP,
             ]:  # switch between popups
                 popup.dismiss()
 
