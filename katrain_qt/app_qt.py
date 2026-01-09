@@ -292,22 +292,25 @@ class MainWindow(QMainWindow):
 
         # Update board widget colors if theme supports it
         colors = theme_mgr.colors
-        self.board_widget.set_board_color(colors.board)
-        self.board_widget.set_line_color(colors.board_line)
+        if hasattr(self, 'board_widget'):
+            self.board_widget.set_board_color(colors.board)
+            self.board_widget.set_line_color(colors.board_line)
 
-        # Update stats panel colors
-        self.stats_panel.set_theme_colors(
-            colors.winrate_good,
-            colors.winrate_bad,
-            colors.winrate_neutral,
-        )
+        # Update stats panel colors (if exists)
+        if hasattr(self, 'stats_panel'):
+            self.stats_panel.set_theme_colors(
+                colors.winrate_good,
+                colors.winrate_bad,
+                colors.winrate_neutral,
+            )
 
-        # Update score graph colors
-        self.score_graph.set_theme_colors(
-            colors.graph_background,
-            colors.graph_line,
-            colors.graph_zero_line,
-        )
+        # Update score graph colors (if exists)
+        if hasattr(self, 'score_graph'):
+            self.score_graph.set_theme_colors(
+                colors.graph_background,
+                colors.graph_line,
+                colors.graph_zero_line,
+            )
 
     # -------------------------------------------------------------------------
     # Window Title and Dirty State
