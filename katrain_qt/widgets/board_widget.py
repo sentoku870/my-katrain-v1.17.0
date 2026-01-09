@@ -30,6 +30,28 @@ if TYPE_CHECKING:
 # Note: We also keep a local GTP_COLUMNS for coordinate label drawing
 from katrain_qt.analysis.models import coord_to_display  # noqa: F401 (re-exported)
 
+# Import shared evaluation constants (SINGLE SOURCE OF TRUTH)
+from katrain_qt.common.eval_constants import (
+    EVAL_THRESHOLDS_DESC,
+    EVAL_COLORS,
+    LOW_VISITS_THRESHOLD,
+    OWNERSHIP_THRESHOLD,
+    TOP_MOVE_BORDER_COLOR,
+    APPROX_BOARD_COLOR,
+    OWNERSHIP_BLACK_COLOR,
+    OWNERSHIP_WHITE_COLOR,
+    OWNERSHIP_BLACK_ALPHA,
+    OWNERSHIP_WHITE_ALPHA,
+    MISTAKE_RING_COLORS,
+    MISTAKE_RING_WIDTH,
+    HINT_SCALE,
+    UNCERTAIN_HINT_SCALE,
+    HINTS_ALPHA,
+    HINTS_LO_ALPHA,
+    MARK_SIZE,
+    get_eval_color_for_loss,
+)
+
 
 # =============================================================================
 # Constants
@@ -69,46 +91,9 @@ WHITE_STONE = QColor("#FFFFFF")
 MARKER_BLACK = QColor("#FFFFFF")     # White marker on black stone
 MARKER_WHITE = QColor("#000000")     # Black marker on white stone
 
-# Candidate overlay colors (by loss amount - Kivy 6-stage style)
-# Thresholds: 0.2 (best), 0.5, 2.0, 5.0, 8.0+ (worst)
-EVAL_COLORS_6STAGE = [
-    QColor(30, 150, 0),          # Green: Best (loss <= 0.2)
-    QColor(171, 230, 46),        # Yellow-green: Small (0.2 < loss <= 0.5)
-    QColor(242, 242, 0),         # Yellow: Inaccuracy (0.5 < loss <= 2.0)
-    QColor(230, 102, 25),        # Orange: Mistake (2.0 < loss <= 5.0)
-    QColor(204, 0, 0),           # Red: Blunder (5.0 < loss <= 8.0)
-    QColor(114, 33, 107),        # Purple: Worst (loss > 8.0)
-]
-EVAL_THRESHOLDS_6STAGE = [0.2, 0.5, 2.0, 5.0, 8.0]  # 6-stage thresholds
-
-# Low visits handling (Kivy style)
-LOW_VISITS_THRESHOLD = 25       # Visits below this are "uncertain"
-HINT_SCALE = 0.98               # Normal candidate size ratio
-UNCERTAIN_HINT_SCALE = 0.7      # Low visits candidate size ratio
-HINTS_ALPHA = 0.8               # Normal candidate alpha (0-1)
-HINTS_LO_ALPHA = 0.6            # Low visits candidate alpha (0-1)
-
-# Best move border
-BEST_MOVE_BORDER_COLOR = QColor(0, 100, 255)  # Blue border for rank=1
-
-# Mistake classification ring colors (for last move stone)
-# These match the 6-stage eval colors for consistency
-MISTAKE_RING_COLORS = {
-    "good": None,                         # No ring for good moves
-    "inaccuracy": QColor(242, 242, 0),    # Yellow
-    "mistake": QColor(230, 102, 25),      # Orange
-    "blunder": QColor(204, 0, 0),         # Red
-    "terrible": QColor(114, 33, 107),     # Purple (worst)
-}
-MISTAKE_RING_WIDTH = 3.0  # Ring line width
-CANDIDATE_LABEL_COLOR = QColor("#FFFFFF")
-CANDIDATE_LABEL_SHADOW = QColor(0, 0, 0, 180)  # Shadow for better readability
-
-# Ownership overlay colors
-OWNERSHIP_BLACK_COLOR = QColor(0, 0, 0)     # Black territory
-OWNERSHIP_WHITE_COLOR = QColor(255, 255, 255)  # White territory
-OWNERSHIP_ALPHA_MAX = 160  # Maximum alpha for strong ownership
-OWNERSHIP_THRESHOLD = 0.05  # Minimum abs(ownership) to display
+# NOTE: Evaluation constants (thresholds, colors, alphas) are now imported from
+# katrain_qt.common.eval_constants - the SINGLE SOURCE OF TRUTH.
+# See that module for provenance documentation.
 
 # GTP column letters (skips 'I') - used for coordinate label drawing
 GTP_COLUMNS = "ABCDEFGHJKLMNOPQRST"
@@ -488,11 +473,13 @@ class GoBoardWidget(QWidget):
         spacing: float,
     ):
         """
-        Draw ownership overlay as semi-transparent squares.
+        Draw ownership overlay - 本家 badukpan.py draw_territory_marks() の移植
 
-        Black ownership (positive) = black squares
-        White ownership (negative) = white squares
-        Alpha varies with ownership strength.
+        本家ロジック:
+        - 黒領地: RGB(0, 0, 26), alpha=191 * ownership強度
+        - 白領地: RGB(235, 235, 255), alpha=204 * ownership強度
+        - マークサイズ: spacing * MARK_SIZE (0.42)
+        - 弱い領地 (< 0.1) は表示しない
         """
         size = self.board_size
         ownership = self._ownership
@@ -500,8 +487,8 @@ class GoBoardWidget(QWidget):
         if not ownership or len(ownership) != size:
             return
 
-        # Square size (slightly smaller than grid cell)
-        square_size = spacing * 0.7
+        # 本家: mark_size = MARK_SIZE * grid_size
+        mark_size = spacing * MARK_SIZE
 
         painter.setPen(Qt.NoPen)
 
@@ -514,29 +501,27 @@ class GoBoardWidget(QWidget):
                     continue
 
                 value = ownership[row][col]
-                abs_value = abs(value)
 
-                # Skip weak ownership
-                if abs_value < OWNERSHIP_THRESHOLD:
+                # 本家: 閾値判定（弱い領地は表示しない）
+                if abs(value) < OWNERSHIP_THRESHOLD:
                     continue
 
-                # Determine color and alpha
+                # 本家: alpha は ownership 強度に比例
                 if value > 0:
-                    # Black territory
+                    # 黒領地
                     color = QColor(OWNERSHIP_BLACK_COLOR)
+                    alpha = int(OWNERSHIP_BLACK_ALPHA * abs(value))
                 else:
-                    # White territory
+                    # 白領地
                     color = QColor(OWNERSHIP_WHITE_COLOR)
+                    alpha = int(OWNERSHIP_WHITE_ALPHA * abs(value))
 
-                # Alpha proportional to ownership strength
-                alpha = int(abs_value * OWNERSHIP_ALPHA_MAX)
-                alpha = min(alpha, OWNERSHIP_ALPHA_MAX)
-                color.setAlpha(alpha)
+                color.setAlpha(min(255, alpha))
 
-                # Draw filled square centered on intersection
+                # 本家: 四角マークをグリッド中央に配置
                 center = self._grid_to_pixel(col, row)
-                half = square_size / 2
-                rect = QRectF(center.x() - half, center.y() - half, square_size, square_size)
+                half = mark_size / 2
+                rect = QRectF(center.x() - half, center.y() - half, mark_size, mark_size)
                 painter.fillRect(rect, color)
 
     def _draw_candidates(
@@ -547,120 +532,157 @@ class GoBoardWidget(QWidget):
         spacing: float,
     ):
         """
-        Draw candidate move overlay with Kivy-style 6-stage colors.
+        Draw candidate move overlay - 本家 badukpan.py draw_hover_contents() の完全移植
 
-        Features:
-        - 6-stage color gradation (green → yellow-green → yellow → orange → red → purple)
-        - Low visits handling (smaller size, lower alpha, no text)
-        - Best move (rank=1) blue border
-        - 2-line text display (score + visits) for normal candidates
+        本家ロジック:
+        - 低訪問数判定 (visits < 25) → 縮小 + 透明化 + テキスト非表示
+        - 6段階評価色 (紫→赤→橙→黄→黄緑→緑)
+        - 閾値は降順 [12, 6, 3, 1.5, 0.5, 0]
+        - text_on時: 背景円 + 評価円 + 2行テキスト
+        - 最善手: シアンのボーダー
         """
-        # Find best score for loss calculation
+        if not self._candidates:
+            return
+
+        # 本家: best_score取得 (rank=1 の score_lead)
         best_score = None
-        if self._candidates:
-            for c in self._candidates:
-                if c.rank == 1:
-                    best_score = c.score_lead
-                    break
-            if best_score is None:
-                best_score = max(c.score_lead for c in self._candidates)
+        for c in self._candidates:
+            if c.rank == 1:
+                best_score = c.score_lead
+                break
+        if best_score is None:
+            best_score = max(c.score_lead for c in self._candidates)
+
+        # 本家: total_visits for percentage
+        total_visits = sum(c.visits for c in self._candidates)
 
         for cand in self._candidates:
-            # Skip if there's already a stone at this position
+            # 石がある場所はスキップ
             if (cand.col, cand.row) in stones:
                 continue
 
             center = self._grid_to_pixel(cand.col, cand.row)
+            engine_best_move = (cand.rank == 1)
 
-            # Calculate loss
-            loss = 0.0 if best_score is None else best_score - cand.score_lead
-            loss = max(0.0, loss)  # Ensure non-negative
-
-            # Determine if low visits (uncertain)
-            is_low_visits = cand.visits < LOW_VISITS_THRESHOLD
-
-            # Determine size and alpha based on visits
-            if is_low_visits:
-                scale = UNCERTAIN_HINT_SCALE
-                alpha = HINTS_LO_ALPHA
+            # ============================================================
+            # 本家ロジック: スケールとアルファ決定
+            # if move_dict["visits"] < low_visits_threshold and not engine_best_move:
+            #     scale = UNCERTAIN_HINT_SCALE  # 0.7
+            #     text_on = False
+            #     alpha = HINTS_LO_ALPHA        # 0.6
+            # else:
+            #     scale = HINT_SCALE            # 0.98
+            #     text_on = True
+            #     alpha = HINTS_ALPHA           # 0.8
+            # ============================================================
+            if cand.visits < LOW_VISITS_THRESHOLD and not engine_best_move:
+                scale = UNCERTAIN_HINT_SCALE  # 0.7
+                text_on = False
+                alpha = HINTS_LO_ALPHA        # 0.6
             else:
-                scale = HINT_SCALE
-                alpha = HINTS_ALPHA
+                scale = HINT_SCALE            # 0.98
+                text_on = True
+                alpha = HINTS_ALPHA           # 0.8
 
-            # Determine color index based on 6-stage thresholds
-            color_idx = 0
-            for i, threshold in enumerate(EVAL_THRESHOLDS_6STAGE):
-                if loss > threshold:
-                    color_idx = i + 1
-            color_idx = min(color_idx, len(EVAL_COLORS_6STAGE) - 1)
-
-            # Get base color and apply alpha
-            base_color = EVAL_COLORS_6STAGE[color_idx]
-            fill_color = QColor(base_color)
-            fill_color.setAlphaF(alpha)
-
-            # Calculate candidate circle radius
-            cand_radius = stone_radius * 0.85 * scale
-
-            # Draw filled circle
-            painter.setBrush(QBrush(fill_color))
-            painter.setPen(QPen(QColor(0, 0, 0, int(150 * alpha)), 1))
-            painter.drawEllipse(center, cand_radius, cand_radius)
-
-            # Best move (rank=1): draw blue border
-            if cand.rank == 1:
-                border_pen = QPen(BEST_MOVE_BORDER_COLOR, 2.5)
-                painter.setPen(border_pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(center, cand_radius + 1, cand_radius + 1)
-
-            # Skip text for low visits candidates
-            if is_low_visits:
+            if scale <= 0:
                 continue
 
-            # 2-line text: score (top) and visits (bottom)
-            # Line 1: Score lead (with sign)
-            score_text = f"{cand.score_lead:+.1f}"
-            # Line 2: Visits (abbreviated if large)
-            if cand.visits >= 1000:
-                visits_text = f"{cand.visits // 1000}k"
-            else:
-                visits_text = str(cand.visits)
+            # ============================================================
+            # 本家ロジック: evalsize計算
+            # evalsize = self.stone_size * scale
+            # ============================================================
+            evalsize = stone_radius * scale
 
-            # Font setup - smaller for 2-line display
-            font = painter.font()
-            line_height = spacing * 0.22
-            font.setPointSizeF(max(6, line_height))
-            font.setBold(True)
-            painter.setFont(font)
+            # ============================================================
+            # 本家ロジック: 色決定 (evaluation_class)
+            # eval_thresholds = [12, 6, 3, 1.5, 0.5, 0] を使用（降順！）
+            # points_lost >= 12 → index 0 (紫)
+            # 6 <= points_lost < 12 → index 1 (赤)
+            # ...
+            # points_lost < 0.5 → index 5 (緑)
+            # ============================================================
+            points_lost = max(0.0, best_score - cand.score_lead)
 
-            # Draw score (top line)
-            score_rect = QRectF(
-                center.x() - cand_radius,
-                center.y() - cand_radius * 0.7,
-                cand_radius * 2,
-                cand_radius * 0.7,
-            )
-            # Shadow
-            painter.setPen(QPen(CANDIDATE_LABEL_SHADOW))
-            painter.drawText(score_rect.translated(1, 1), Qt.AlignCenter, score_text)
-            # Main text
-            painter.setPen(QPen(CANDIDATE_LABEL_COLOR))
-            painter.drawText(score_rect, Qt.AlignCenter, score_text)
+            # 本家の evaluation_class() を再現
+            # while i < len(thresholds) - 1 and points_lost < thresholds[i]:
+            #     i += 1
+            i = 0
+            while i < len(EVAL_THRESHOLDS_DESC) - 1 and points_lost < EVAL_THRESHOLDS_DESC[i]:
+                i += 1
+            evalcol = QColor(EVAL_COLORS[i])
+            evalcol.setAlphaF(alpha)
 
-            # Draw visits (bottom line)
-            visits_rect = QRectF(
-                center.x() - cand_radius,
-                center.y(),
-                cand_radius * 2,
-                cand_radius * 0.7,
-            )
-            # Shadow
-            painter.setPen(QPen(CANDIDATE_LABEL_SHADOW))
-            painter.drawText(visits_rect.translated(1, 1), Qt.AlignCenter, visits_text)
-            # Main text
-            painter.setPen(QPen(CANDIDATE_LABEL_COLOR))
-            painter.drawText(visits_rect, Qt.AlignCenter, visits_text)
+            # ============================================================
+            # 本家ロジック: 背景円描画（text_on時のみ）
+            # if text_on and top_moves_show:
+            #     draw_circle(pos, stone_size * scale * 0.98, APPROX_BOARD_COLOR)
+            # ============================================================
+            if text_on:
+                bg_radius = stone_radius * scale * 0.98
+                painter.setBrush(QBrush(APPROX_BOARD_COLOR))
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(center, bg_radius, bg_radius)
+
+            # ============================================================
+            # 本家ロジック: 評価円描画
+            # Color(*evalcol[:3], alpha)
+            # Rectangle(pos, size=(2*evalsize, 2*evalsize), texture=TOP_MOVE_TEXTURE)
+            # ============================================================
+            painter.setBrush(QBrush(evalcol))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(center, evalsize, evalsize)
+
+            # ============================================================
+            # 本家ロジック: テキスト描画（2行）
+            # size = grid_size / 3
+            # smallsize = grid_size / 3.33
+            # ============================================================
+            if text_on:
+                # 本家: HINT_TEXT_COLOR (黒)
+                painter.setPen(QPen(QColor(0, 0, 0)))
+
+                font = painter.font()
+                # Line 1: スコア (size = spacing / 3)
+                font_size_1 = max(7, spacing / 3)
+                font.setPointSizeF(font_size_1)
+                font.setBold(True)
+                painter.setFont(font)
+
+                score_text = f"{cand.score_lead:+.1f}"
+                rect_top = QRectF(
+                    center.x() - evalsize,
+                    center.y() - evalsize,
+                    evalsize * 2,
+                    evalsize
+                )
+                painter.drawText(rect_top, Qt.AlignCenter | Qt.AlignBottom, score_text)
+
+                # Line 2: 訪問数% (smallsize = spacing / 3.33)
+                font_size_2 = max(6, spacing / 3.33)
+                font.setPointSizeF(font_size_2)
+                painter.setFont(font)
+
+                visits_pct = (cand.visits / total_visits * 100) if total_visits > 0 else 0
+                visits_text = f"{visits_pct:.0f}%"
+                rect_bottom = QRectF(
+                    center.x() - evalsize,
+                    center.y(),
+                    evalsize * 2,
+                    evalsize
+                )
+                painter.drawText(rect_bottom, Qt.AlignCenter | Qt.AlignTop, visits_text)
+
+            # ============================================================
+            # 本家ロジック: 最善手ボーダー
+            # if engine_best_move:
+            #     Color(*TOP_MOVE_BORDER_COLOR)
+            #     Line(circle=(x, y, stone_size - dp(1.2)), width=dp(1.2))
+            # ============================================================
+            if engine_best_move:
+                painter.setPen(QPen(TOP_MOVE_BORDER_COLOR, 2.0))
+                painter.setBrush(Qt.NoBrush)
+                border_radius = stone_radius - 1.2
+                painter.drawEllipse(center, border_radius, border_radius)
 
     def _draw_pv_preview(
         self,

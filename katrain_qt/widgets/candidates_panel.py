@@ -23,23 +23,15 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 
-# Row background colors based on loss (6-stage, matching board_widget)
-# Lighter versions for table row backgrounds
-ROW_BG_COLORS = [
-    QColor(200, 255, 200),    # Light green: Best (loss <= 0.2)
-    QColor(230, 255, 200),    # Light yellow-green (0.2 < loss <= 0.5)
-    QColor(255, 255, 200),    # Light yellow (0.5 < loss <= 2.0)
-    QColor(255, 230, 200),    # Light orange (2.0 < loss <= 5.0)
-    QColor(255, 200, 200),    # Light red (5.0 < loss <= 8.0)
-    QColor(255, 200, 230),    # Light purple (loss > 8.0)
-]
-ROW_BG_THRESHOLDS = [0.2, 0.5, 2.0, 5.0, 8.0]
-
-# Low visits row styling
-LOW_VISITS_THRESHOLD = 25
-LOW_VISITS_BG = QColor(230, 230, 230)  # Gray for low visits
-
 from katrain_qt.analysis.models import CandidateMove, coord_to_display
+
+# Import shared evaluation constants (SINGLE SOURCE OF TRUTH)
+from katrain_qt.common.eval_constants import (
+    EVAL_ROW_COLORS as ROW_BG_COLORS,
+    EVAL_THRESHOLDS_ASC as ROW_BG_THRESHOLDS,
+    LOW_VISITS_THRESHOLD,
+    LOW_VISITS_ROW_BG as LOW_VISITS_BG,
+)
 from katrain_qt.settings import get_settings
 
 

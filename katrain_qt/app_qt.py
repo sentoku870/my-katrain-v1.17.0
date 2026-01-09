@@ -215,8 +215,9 @@ class MainWindow(QMainWindow):
         # Stack candidates and analysis panels vertically
         self.splitDockWidget(candidates_dock, analysis_dock, Qt.Vertical)
 
-        # Connect analysis panel candidate selection
+        # Connect analysis panel candidate selection and hover
         self.analysis_panel.candidate_selected.connect(self._on_analysis_candidate_selected)
+        self.analysis_panel.candidate_hovered.connect(self._on_candidate_hovered)
 
         # Connect candidates panel hover for PV preview
         self.candidates_panel.candidate_hovered.connect(self._on_candidate_hovered)
@@ -838,6 +839,7 @@ class MainWindow(QMainWindow):
 
         # Update position info
         self.analysis_panel.set_board_size(self.adapter.board_size)
+        self.analysis_panel.set_next_player(self.adapter.next_player)
         self.analysis_panel.set_position_info(
             move_number=self.adapter.current_move_number,
             next_player=self.adapter.next_player,
