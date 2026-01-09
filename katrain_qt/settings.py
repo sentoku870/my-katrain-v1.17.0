@@ -72,6 +72,13 @@ class AppSettings:
     # Language (en = English, ja = Japanese)
     language: str = "en"
 
+    # Sound settings
+    sound_enabled: bool = True
+    sound_volume: float = 0.5  # 0.0 - 1.0
+
+    # Theme (light, dark)
+    theme: str = "light"
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
@@ -246,6 +253,42 @@ class Settings:
     @language.setter
     def language(self, value: str):
         self._settings.language = value
+
+    # -------------------------------------------------------------------------
+    # Sound Settings
+    # -------------------------------------------------------------------------
+
+    @property
+    def sound_enabled(self) -> bool:
+        """Whether sound effects are enabled."""
+        return self._settings.sound_enabled
+
+    @sound_enabled.setter
+    def sound_enabled(self, value: bool):
+        self._settings.sound_enabled = value
+
+    @property
+    def sound_volume(self) -> float:
+        """Sound volume (0.0 - 1.0)."""
+        return self._settings.sound_volume
+
+    @sound_volume.setter
+    def sound_volume(self, value: float):
+        self._settings.sound_volume = max(0.0, min(1.0, value))
+
+    # -------------------------------------------------------------------------
+    # Theme Settings
+    # -------------------------------------------------------------------------
+
+    @property
+    def theme(self) -> str:
+        """UI theme (light, dark)."""
+        return self._settings.theme
+
+    @theme.setter
+    def theme(self, value: str):
+        if value in ("light", "dark"):
+            self._settings.theme = value
 
     # -------------------------------------------------------------------------
     # Effective Values (with env override indicators)

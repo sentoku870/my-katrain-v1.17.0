@@ -104,6 +104,8 @@ from katrain_qt.analysis.models import CandidateMove, AnalysisResult, coord_to_d
 from katrain_qt.settings import get_settings, Settings
 from katrain_qt.dialogs.settings_dialog import SettingsDialog
 from katrain_qt.i18n import set_language, tr
+from katrain_qt.sound import init_sound_manager, get_sound_manager
+from katrain_qt.theme import init_theme_manager, get_theme_manager
 
 
 # =============================================================================
@@ -132,6 +134,15 @@ class MainWindow(QMainWindow):
 
         # Initialize language from settings
         set_language(self._settings.language)
+
+        # Initialize sound manager from settings
+        init_sound_manager(
+            enabled=self._settings.sound_enabled,
+            volume=self._settings.sound_volume,
+        )
+
+        # Initialize theme manager from settings
+        init_theme_manager(self._settings.theme)
 
         # Game adapter (KaTrain core wrapper)
         self.adapter = GameAdapter(self)
@@ -265,6 +276,38 @@ class MainWindow(QMainWindow):
         # Initial state
         self._update_window_title()
         self.status_bar.showMessage("Ready - Open an SGF file or start a new game")
+
+        # Apply theme
+        self._apply_theme()
+
+    # -------------------------------------------------------------------------
+    # Theme
+    # -------------------------------------------------------------------------
+
+    def _apply_theme(self):
+        """Apply the current theme to the application."""
+        theme_mgr = get_theme_manager()
+        stylesheet = theme_mgr.get_stylesheet()
+        self.setStyleSheet(stylesheet)
+
+        # Update board widget colors if theme supports it
+        colors = theme_mgr.colors
+        self.board_widget.set_board_color(colors.board)
+        self.board_widget.set_line_color(colors.board_line)
+
+        # Update stats panel colors
+        self.stats_panel.set_theme_colors(
+            colors.winrate_good,
+            colors.winrate_bad,
+            colors.winrate_neutral,
+        )
+
+        # Update score graph colors
+        self.score_graph.set_theme_colors(
+            colors.graph_background,
+            colors.graph_line,
+            colors.graph_zero_line,
+        )
 
     # -------------------------------------------------------------------------
     # Window Title and Dirty State
@@ -657,9 +700,13 @@ class MainWindow(QMainWindow):
         if success:
             self._set_dirty(True)  # Mark dirty on successful move
             self.status_bar.showMessage(message, 3000)
+            # Play stone sound
+            get_sound_manager().play_stone()
         else:
             # Show illegal move reason
             self.status_bar.showMessage(message, 5000)
+            # Play error sound for illegal move
+            get_sound_manager().play_boing()
 
     def _update_move_label(self):
         """Update the move counter label."""
@@ -1002,6 +1049,14 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Settings saved", 3000)
         # Update language
         set_language(self._settings.language)
+        # Update sound settings
+        sound_mgr = get_sound_manager()
+        sound_mgr.enabled = self._settings.sound_enabled
+        sound_mgr.volume = self._settings.sound_volume
+        # Update theme
+        theme_mgr = get_theme_manager()
+        theme_mgr.set_theme(self._settings.theme)
+        self._apply_theme()
         # Refresh candidates panel columns (for dev features like Loss column)
         self.candidates_panel.refresh_columns()
         # If analysis is running, restart engine with new settings

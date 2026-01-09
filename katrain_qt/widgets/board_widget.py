@@ -261,6 +261,18 @@ class GoBoardWidget(QWidget):
         self._last_move_mistake = classification
         self.update()
 
+    def set_board_color(self, color: str):
+        """Set board background color (for theme support)."""
+        global BOARD_COLOR
+        BOARD_COLOR = QColor(color)
+        self.update()
+
+    def set_line_color(self, color: str):
+        """Set board line color (for theme support)."""
+        global LINE_COLOR
+        LINE_COLOR = QColor(color)
+        self.update()
+
     @property
     def board_size(self) -> int:
         """Current board size."""

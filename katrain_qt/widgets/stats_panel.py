@@ -170,3 +170,12 @@ class StatsPanel(QWidget):
         self._score_label.setText("Score: --")
         self._score_label.setStyleSheet(f"color: {SCORE_COLOR}; font-weight: bold;")
         self._loss_label.setText("Loss: -- / --")
+
+    def set_theme_colors(self, good: str, bad: str, neutral: str):
+        """Set theme colors for stats display."""
+        global WINRATE_COLOR, SCORE_COLOR
+        # Store theme colors for dynamic updates
+        self._theme_good = good
+        self._theme_bad = bad
+        self._theme_neutral = neutral
+        # These will be used in set_stats for color calculations

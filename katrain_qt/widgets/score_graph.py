@@ -151,6 +151,14 @@ class ScoreGraphWidget(QWidget):
         self._y_max = 10.0
         self.update()
 
+    def set_theme_colors(self, background: str, line: str, zero_line: str):
+        """Set theme colors for the graph."""
+        global BACKGROUND_COLOR, LINE_COLOR, ZERO_LINE_COLOR
+        BACKGROUND_COLOR = QColor(background)
+        LINE_COLOR = QColor(line)
+        ZERO_LINE_COLOR = QColor(zero_line)
+        self.update()
+
     def _compute_y_range(self):
         """Compute Y-axis range from data."""
         values = [v for v in self._series if v is not None]
