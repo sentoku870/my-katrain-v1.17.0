@@ -139,6 +139,7 @@ class GoBoardWidget(QWidget):
 
     hover_changed = Signal(int, int, bool)
     intersection_clicked = Signal(int, int)  # (col, row) in Qt coords
+    context_menu_requested = Signal(int, int, object)  # (col, row, QPoint global_pos)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -753,12 +754,16 @@ class GoBoardWidget(QWidget):
         if not self._interactive:
             return
 
+        pos = event.position()
+        col, row, valid = self._mouse_to_grid(pos)
+
         if event.button() == Qt.LeftButton:
-            pos = event.position()
-            col, row, valid = self._mouse_to_grid(pos)
             if valid:
                 # Emit click signal with Qt coordinates
                 self.intersection_clicked.emit(col, row)
+        elif event.button() == Qt.RightButton:
+            # Emit context menu signal with position
+            self.context_menu_requested.emit(col, row, event.globalPosition().toPoint())
 
     def leaveEvent(self, event):
         self._hover_pos = None
