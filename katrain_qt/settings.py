@@ -65,6 +65,13 @@ class AppSettings:
     # File dialogs
     last_sgf_dir: str = ""
 
+    # Dev/Experimental features (default: OFF)
+    dev_show_loss: bool = False
+    dev_hover_pv: bool = False
+
+    # Language (en = English, ja = Japanese)
+    language: str = "en"
+
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
@@ -208,6 +215,37 @@ class Settings:
     @last_sgf_dir.setter
     def last_sgf_dir(self, value: str):
         self._settings.last_sgf_dir = value
+
+    # -------------------------------------------------------------------------
+    # Dev/Experimental Features
+    # -------------------------------------------------------------------------
+
+    @property
+    def dev_show_loss(self) -> bool:
+        """Show Loss column in Candidates panel (experimental)."""
+        return self._settings.dev_show_loss
+
+    @dev_show_loss.setter
+    def dev_show_loss(self, value: bool):
+        self._settings.dev_show_loss = value
+
+    @property
+    def dev_hover_pv(self) -> bool:
+        """Show PV preview on candidate hover (experimental)."""
+        return self._settings.dev_hover_pv
+
+    @dev_hover_pv.setter
+    def dev_hover_pv(self, value: bool):
+        self._settings.dev_hover_pv = value
+
+    @property
+    def language(self) -> str:
+        """UI language code (en, ja)."""
+        return self._settings.language
+
+    @language.setter
+    def language(self, value: str):
+        self._settings.language = value
 
     # -------------------------------------------------------------------------
     # Effective Values (with env override indicators)

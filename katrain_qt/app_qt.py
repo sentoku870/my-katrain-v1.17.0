@@ -103,6 +103,7 @@ from katrain_qt.analysis.katago_engine import KataGoEngine
 from katrain_qt.analysis.models import CandidateMove, AnalysisResult, coord_to_display
 from katrain_qt.settings import get_settings, Settings
 from katrain_qt.dialogs.settings_dialog import SettingsDialog
+from katrain_qt.i18n import set_language, tr
 
 
 # =============================================================================
@@ -128,6 +129,9 @@ class MainWindow(QMainWindow):
 
         # Settings manager
         self._settings = get_settings()
+
+        # Initialize language from settings
+        set_language(self._settings.language)
 
         # Game adapter (KaTrain core wrapper)
         self.adapter = GameAdapter(self)
@@ -202,6 +206,9 @@ class MainWindow(QMainWindow):
 
         # Connect analysis panel candidate selection
         self.analysis_panel.candidate_selected.connect(self._on_analysis_candidate_selected)
+
+        # Connect candidates panel hover for PV preview
+        self.candidates_panel.candidate_hovered.connect(self._on_candidate_hovered)
 
         # Comment panel (right dock, below analysis) - M5.1b
         self.comment_edit = QTextEdit()
@@ -689,6 +696,19 @@ class MainWindow(QMainWindow):
         self.score_graph.set_series(series)
         self.score_graph.set_current_move(self.adapter.current_move_number)
 
+        # Find blunders (large score swings >= 5.0 points)
+        blunder_threshold = 5.0
+        blunder_moves: List[int] = []
+        for i in range(1, len(series)):
+            prev_score = series[i - 1]
+            curr_score = series[i]
+            if prev_score is not None and curr_score is not None:
+                # Score difference (absolute value of swing)
+                diff = abs(curr_score - prev_score)
+                if diff >= blunder_threshold:
+                    blunder_moves.append(i)
+        self.score_graph.set_blunder_moves(blunder_moves)
+
     def _clear_score_data(self):
         """Clear score series data, analysis cache, and update graph."""
         self._score_by_move.clear()
@@ -738,6 +758,16 @@ class MainWindow(QMainWindow):
         # Optionally update board overlay to highlight selected candidate
         # (not implemented in this milestone)
 
+    @Slot(int, list, str)
+    def _on_candidate_hovered(self, row_index: int, pv: list, starting_color: str):
+        """Handle candidate hover - show PV preview on board."""
+        if row_index < 0 or not pv:
+            # Clear PV preview
+            self.board_widget.clear_pv_preview()
+        else:
+            # Show PV preview
+            self.board_widget.set_pv_preview(pv, starting_color)
+
     # -------------------------------------------------------------------------
     # Engine Slots
     # -------------------------------------------------------------------------
@@ -763,6 +793,7 @@ class MainWindow(QMainWindow):
 
         # Update candidates panel
         self.candidates_panel.set_board_size(self.adapter.board_size)
+        self.candidates_panel.set_next_player(result.next_player)
         self.candidates_panel.set_candidates(result.candidates)
 
         # Update board overlay
@@ -969,6 +1000,10 @@ class MainWindow(QMainWindow):
     def _on_settings_changed(self):
         """Handle settings changes."""
         self.status_bar.showMessage("Settings saved", 3000)
+        # Update language
+        set_language(self._settings.language)
+        # Refresh candidates panel columns (for dev features like Loss column)
+        self.candidates_panel.refresh_columns()
         # If analysis is running, restart engine with new settings
         if self._analysis_active:
             self.status_bar.showMessage("Settings saved - restart analysis to apply changes", 5000)

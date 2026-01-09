@@ -5,6 +5,7 @@ Provides a tabbed dialog for configuring:
 - KataGo paths (executable, config, model)
 - Analysis parameters (max visits, max candidates)
 - Game defaults (komi, rules)
+- Dev/Experimental features (toggles for work-in-progress features)
 
 Environment variable overrides are displayed but not editable.
 """
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
     QMessageBox,
+    QCheckBox,
 )
 
 from katrain_qt.settings import Settings, get_settings
@@ -71,6 +73,7 @@ class SettingsDialog(QDialog):
         self._create_katago_tab()
         self._create_analysis_tab()
         self._create_game_tab()
+        self._create_dev_tab()
 
         # Button box
         button_box = QDialogButtonBox()
@@ -229,6 +232,67 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         self._tabs.addTab(tab, "Game")
 
+    def _create_dev_tab(self):
+        """Create Dev/Experimental features tab."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        # Warning label
+        warning = QLabel(
+            "These features are experimental and may not work correctly.\n"
+            "Enable at your own risk."
+        )
+        warning.setStyleSheet("color: #cc6600; font-style: italic;")
+        warning.setWordWrap(True)
+        layout.addWidget(warning)
+
+        # Experimental Features group
+        features_group = QGroupBox("Experimental Features")
+        features_layout = QVBoxLayout(features_group)
+
+        # Show Loss Column
+        self._dev_show_loss = QCheckBox("Show Loss column in Candidates panel")
+        self._dev_show_loss.setToolTip(
+            "Display the score loss compared to the best move in the candidates table."
+        )
+        features_layout.addWidget(self._dev_show_loss)
+
+        # Hover PV Preview
+        self._dev_hover_pv = QCheckBox("Show PV preview on candidate hover")
+        self._dev_hover_pv.setToolTip(
+            "Display the principal variation (PV) as stone previews on the board when hovering over a candidate."
+        )
+        features_layout.addWidget(self._dev_hover_pv)
+
+        layout.addWidget(features_group)
+
+        # Language group
+        lang_group = QGroupBox("Language")
+        lang_layout = QFormLayout(lang_group)
+
+        self._lang_combo = QComboBox()
+        self._lang_combo.addItem("English", "en")
+        self._lang_combo.addItem("日本語 (Japanese)", "jp")  # "jp" matches locale folder name
+        lang_layout.addRow("UI Language:", self._lang_combo)
+
+        lang_note = QLabel("Note: Language change requires application restart.")
+        lang_note.setStyleSheet("color: gray; font-size: 10px;")
+        lang_layout.addRow("", lang_note)
+
+        layout.addWidget(lang_group)
+
+        # Info label
+        info = QLabel(
+            "Note: These settings take effect immediately after saving.\n"
+            "Some features may require restarting the application."
+        )
+        info.setStyleSheet("color: gray; font-size: 10px;")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        layout.addStretch()
+        self._tabs.addTab(tab, "Dev")
+
     def _browse_file(self, edit: QLineEdit, title: str, filter: str):
         """Open file browser and set result to edit field."""
         current = edit.text()
@@ -263,6 +327,15 @@ class SettingsDialog(QDialog):
         rules_idx = self._rules_combo.findText(self._settings.rules)
         if rules_idx >= 0:
             self._rules_combo.setCurrentIndex(rules_idx)
+
+        # Dev/Experimental features (default: OFF)
+        self._dev_show_loss.setChecked(self._settings.dev_show_loss)
+        self._dev_hover_pv.setChecked(self._settings.dev_hover_pv)
+
+        # Language
+        lang_idx = self._lang_combo.findData(self._settings.language)
+        if lang_idx >= 0:
+            self._lang_combo.setCurrentIndex(lang_idx)
 
     def _update_env_indicators(self):
         """Update environment variable override indicators."""
@@ -310,6 +383,13 @@ class SettingsDialog(QDialog):
         # Game
         self._settings.komi = self._komi_spin.value()
         self._settings.rules = self._rules_combo.currentText()
+
+        # Dev/Experimental features
+        self._settings.dev_show_loss = self._dev_show_loss.isChecked()
+        self._settings.dev_hover_pv = self._dev_hover_pv.isChecked()
+
+        # Language
+        self._settings.language = self._lang_combo.currentData()
 
         # Persist
         self._settings.save()

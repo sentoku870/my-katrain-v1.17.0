@@ -28,6 +28,16 @@ LINE_COLOR = QColor("#2196F3")  # Blue
 MARKER_COLOR = QColor("#FF5722")  # Orange-red for current move
 POSITIVE_FILL = QColor(33, 150, 243, 50)  # Light blue, semi-transparent
 NEGATIVE_FILL = QColor(244, 67, 54, 50)  # Light red, semi-transparent
+# Important position marker colors (6-stage, matching board_widget)
+MARKER_COLORS_BY_LOSS = {
+    "good": None,                           # No marker
+    "inaccuracy": QColor(242, 242, 0, 180), # Yellow
+    "mistake": QColor(230, 102, 25, 180),   # Orange
+    "blunder": QColor(204, 0, 0, 180),      # Red
+    "terrible": QColor(114, 33, 107, 180),  # Purple
+}
+# Legacy constant for backward compatibility
+BLUNDER_LINE_COLOR = QColor(255, 140, 0, 180)  # Orange for blunder markers
 
 # Layout
 PADDING_LEFT = 40  # Space for Y-axis labels
@@ -64,6 +74,13 @@ class ScoreGraphWidget(QWidget):
         self._series: List[Optional[float]] = []
         self._current_move: int = 0
 
+        # Blunder markers (move numbers where large mistakes occurred)
+        self._blunder_moves: List[int] = []
+
+        # Important position markers with classification
+        # Dict: move_no -> classification ("inaccuracy", "mistake", "blunder", "terrible")
+        self._important_positions: dict = {}
+
         # Y-axis range (auto-computed or fixed)
         self._y_min: float = -10.0
         self._y_max: float = 10.0
@@ -89,6 +106,27 @@ class ScoreGraphWidget(QWidget):
         self._current_move = move_no
         self.update()
 
+    def set_blunder_moves(self, moves: List[int]):
+        """
+        Set the list of move numbers that are blunders (large mistakes).
+
+        Args:
+            moves: List of move numbers where blunders occurred
+        """
+        self._blunder_moves = moves
+        self.update()
+
+    def set_important_positions(self, positions: dict):
+        """
+        Set important positions with their classifications.
+
+        Args:
+            positions: Dict mapping move_no -> classification
+                       Classification is one of: "inaccuracy", "mistake", "blunder", "terrible"
+        """
+        self._important_positions = positions
+        self.update()
+
     def set_y_range(self, y_min: float, y_max: float):
         """Set fixed Y-axis range."""
         self._y_min = y_min
@@ -107,6 +145,8 @@ class ScoreGraphWidget(QWidget):
         """Clear all data."""
         self._series = []
         self._current_move = 0
+        self._blunder_moves = []
+        self._important_positions = {}
         self._y_min = -10.0
         self._y_max = 10.0
         self.update()
@@ -186,19 +226,22 @@ class ScoreGraphWidget(QWidget):
         # 3. Zero line
         self._draw_zero_line(painter, rect)
 
-        # 4. Score line and fill
+        # 4. Blunder markers (before score line so they're behind)
+        self._draw_blunder_markers(painter, rect)
+
+        # 5. Score line and fill
         if len(self._series) > 0:
             self._draw_score_line(painter, rect)
 
-        # 5. Current move indicator
+        # 6. Current move indicator
         if 0 <= self._current_move < len(self._series):
             self._draw_current_move(painter, rect)
 
-        # 6. Hover indicator
+        # 7. Hover indicator
         if self._hover_move is not None and 0 <= self._hover_move < len(self._series):
             self._draw_hover(painter, rect)
 
-        # 7. Axis labels
+        # 8. Axis labels
         self._draw_labels(painter, rect)
 
         painter.end()
@@ -221,6 +264,31 @@ class ScoreGraphWidget(QWidget):
             pen = QPen(ZERO_LINE_COLOR, 1, Qt.SolidLine)
             painter.setPen(pen)
             painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
+
+    def _draw_blunder_markers(self, painter: QPainter, rect: QRectF):
+        """Draw vertical lines at important positions with classification-based colors."""
+        if len(self._series) < 2:
+            return
+
+        # First, draw from important_positions (new API with classification)
+        for move_no, classification in self._important_positions.items():
+            if 0 <= move_no < len(self._series):
+                color = MARKER_COLORS_BY_LOSS.get(classification)
+                if color is not None:
+                    pen = QPen(color, 2, Qt.SolidLine)
+                    painter.setPen(pen)
+                    x = self._move_to_x(move_no)
+                    painter.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
+
+        # Legacy: draw from blunder_moves (backward compatibility)
+        # Only draw if not already in important_positions
+        if self._blunder_moves:
+            pen = QPen(BLUNDER_LINE_COLOR, 2, Qt.SolidLine)
+            painter.setPen(pen)
+            for move_no in self._blunder_moves:
+                if 0 <= move_no < len(self._series) and move_no not in self._important_positions:
+                    x = self._move_to_x(move_no)
+                    painter.drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()))
 
     def _draw_score_line(self, painter: QPainter, rect: QRectF):
         """Draw the score line with fill."""
