@@ -199,3 +199,48 @@ def get_row_color_for_loss(points_lost: float, is_low_visits: bool = False) -> Q
             color_idx = j + 1
     color_idx = min(color_idx, len(EVAL_ROW_COLORS) - 1)
     return QColor(EVAL_ROW_COLORS[color_idx])
+
+
+# =============================================================================
+# Formatting Functions
+# =============================================================================
+
+def format_visits(visits: int) -> str:
+    """
+    Format visit count with K suffix for readability.
+
+    Examples:
+        123 -> "123"
+        1234 -> "1.2k"
+        12345 -> "12.3k"
+        123456 -> "123k"
+
+    Args:
+        visits: Raw visit count
+
+    Returns:
+        Formatted string with K suffix if >= 1000
+    """
+    if visits >= 1000:
+        return f"{visits / 1000:.1f}k"
+    return str(visits)
+
+
+def format_score(score: float) -> str:
+    """
+    Format score with explicit sign prefix.
+
+    Examples:
+        2.3 -> "+2.3"
+        -0.5 -> "-0.5"
+        0.0 -> "0.0"
+
+    Args:
+        score: Score value (positive = good for current player)
+
+    Returns:
+        Formatted string with sign prefix
+    """
+    if score == 0:
+        return "0.0"
+    return f"{score:+.1f}"

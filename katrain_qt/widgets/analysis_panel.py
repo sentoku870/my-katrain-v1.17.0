@@ -45,6 +45,8 @@ from katrain_qt.analysis.models import AnalysisResult, CandidateMove, coord_to_d
 from katrain_qt.common.eval_constants import (
     EVAL_ROW_COLORS,
     EVAL_THRESHOLDS_ASC as EVAL_THRESHOLDS,
+    format_visits,
+    format_score,
 )
 
 
@@ -322,13 +324,9 @@ class AnalysisPanel(QWidget):
             self._score_label.setText("--")
             self._score_label.setStyleSheet("")
 
-        # Visits
+        # Visits (with K suffix for readability)
         total_visits = sum(c.visits for c in result.candidates) if result.candidates else 0
-        if total_visits >= 1000:
-            visits_text = f"{total_visits / 1000:.1f}k"
-        else:
-            visits_text = str(total_visits)
-        self._visits_label.setText(visits_text)
+        self._visits_label.setText(format_visits(total_visits))
 
     def _update_candidates_table(self, candidates: List[CandidateMove]):
         """Update candidates table with row coloring (本家 style)."""
@@ -368,19 +366,14 @@ class AnalysisPanel(QWidget):
             move_item.setBackground(QBrush(row_color))
             self._table.setItem(i, 1, move_item)
 
-            # Score
-            score_text = f"{cand.score_lead:+.1f}"
-            score_item = QTableWidgetItem(score_text)
+            # Score (with sign prefix)
+            score_item = QTableWidgetItem(format_score(cand.score_lead))
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             score_item.setBackground(QBrush(row_color))
             self._table.setItem(i, 2, score_item)
 
-            # Visits
-            if cand.visits >= 1000:
-                visits_text = f"{cand.visits / 1000:.1f}k"
-            else:
-                visits_text = str(cand.visits)
-            visits_item = QTableWidgetItem(visits_text)
+            # Visits (with K suffix)
+            visits_item = QTableWidgetItem(format_visits(cand.visits))
             visits_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             visits_item.setBackground(QBrush(row_color))
             self._table.setItem(i, 3, visits_item)

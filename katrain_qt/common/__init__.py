@@ -27,6 +27,9 @@ from katrain_qt.common.eval_constants import (
     # Helper functions
     get_eval_color_for_loss,
     get_row_color_for_loss,
+    # Formatting functions
+    format_visits,
+    format_score,
 )
 
 __all__ = [
@@ -55,4 +58,7 @@ __all__ = [
     # Helper functions
     "get_eval_color_for_loss",
     "get_row_color_for_loss",
+    # Formatting functions
+    "format_visits",
+    "format_score",
 ]

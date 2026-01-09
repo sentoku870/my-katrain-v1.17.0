@@ -31,6 +31,8 @@ from katrain_qt.common.eval_constants import (
     EVAL_THRESHOLDS_ASC as ROW_BG_THRESHOLDS,
     LOW_VISITS_THRESHOLD,
     LOW_VISITS_ROW_BG as LOW_VISITS_BG,
+    format_visits,
+    format_score,
 )
 from katrain_qt.settings import get_settings
 
@@ -182,9 +184,8 @@ class CandidatesPanel(QWidget):
             self._table.setItem(i, col_idx, move_item)
             col_idx += 1
 
-            # Score lead
-            score_str = f"{cand.score_lead:+.1f}" if cand.score_lead != 0 else "0.0"
-            score_item = QTableWidgetItem(score_str)
+            # Score lead (with sign prefix)
+            score_item = QTableWidgetItem(format_score(cand.score_lead))
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             score_item.setBackground(row_bg)
             self._table.setItem(i, col_idx, score_item)
@@ -207,8 +208,8 @@ class CandidatesPanel(QWidget):
                 self._table.setItem(i, col_idx, loss_item)
                 col_idx += 1
 
-            # Visits
-            visits_item = QTableWidgetItem(f"{cand.visits:,}")
+            # Visits (with K suffix for readability)
+            visits_item = QTableWidgetItem(format_visits(cand.visits))
             visits_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             visits_item.setBackground(row_bg)
             self._table.setItem(i, col_idx, visits_item)
@@ -216,7 +217,7 @@ class CandidatesPanel(QWidget):
         # Update status
         if candidates:
             total_visits = sum(c.visits for c in candidates)
-            self._status_label.setText(f"{len(candidates)} candidates, {total_visits:,} total visits")
+            self._status_label.setText(f"{len(candidates)} candidates, {format_visits(total_visits)} total visits")
         else:
             self._status_label.setText("No analysis")
 
