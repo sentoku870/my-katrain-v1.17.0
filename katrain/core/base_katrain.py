@@ -1,68 +1,11 @@
-import json
 import os
 import shutil
 import sys
 
+from kivy import Config
+from kivy.storage.jsonstore import JsonStore
+
 from katrain.core.ai import ai_rank_estimation
-
-
-# Simple Config replacement - no-op for Kivy config settings
-class _ConfigMock:
-    """Mock for Kivy Config. Since Kivy is removed, these are no-ops."""
-    @staticmethod
-    def set(section, key, value):
-        pass  # No Kivy logging to configure
-
-Config = _ConfigMock()
-
-
-class JsonStore:
-    """
-    Simple JSON store replacement for Kivy's JsonStore.
-    Provides dict-like access to JSON file data.
-    """
-    def __init__(self, filename, indent=4):
-        self.filename = filename
-        self.indent = indent
-        self._data = {}
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    self._data = json.load(f)
-            except Exception:
-                self._data = {}
-
-    def get(self, key):
-        return self._data.get(key, {})
-
-    def put(self, key, **kwargs):
-        self._data[key] = kwargs
-        self._save()
-
-    def __getitem__(self, key):
-        return self._data[key]
-
-    def __setitem__(self, key, value):
-        self._data[key] = value
-        self._save()
-
-    def __contains__(self, key):
-        return key in self._data
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def keys(self):
-        return self._data.keys()
-
-    def items(self):
-        return self._data.items()
-
-    def _save(self):
-        with open(self.filename, 'w', encoding='utf-8') as f:
-            json.dump(self._data, f, indent=self.indent, ensure_ascii=False)
-
-
 from katrain.core.constants import (
     PLAYER_HUMAN,
     PLAYER_AI,

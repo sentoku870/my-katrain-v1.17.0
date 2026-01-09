@@ -6,6 +6,8 @@ import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
 
+from kivy.clock import Clock
+
 from . import eval_metrics
 from .eval_metrics import (
     EvalSnapshot,
