@@ -20,6 +20,7 @@ from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel
 from katrain.gui.theme import Theme
 from katrain.gui.sound import play_sound, stop_sound
 from katrain.core.eval_metrics import classify_mistake
+from katrain.core.errors import UIStateError
 
 
 class PlayAnalyzeSelect(MDFloatLayout):
@@ -57,21 +58,34 @@ class PlayAnalyzeSelect(MDFloatLayout):
         self.katrain.save_config("ui_state")
 
     def load_ui_state(self, _dt=None):
-        state = self.katrain.config(f"ui_state/{self.mode}", {})
-        analysis_ids = self.katrain.analysis_controls.ids
-        for id, active in state.get("analysis_controls", {}).items():
-            if id in analysis_ids:
-                cb = analysis_ids[id].checkbox
-                cb.active = bool(active)
-            else:
-                self.katrain.log(f"load_ui_state: unknown id '{id}' in analysis_controls", OUTPUT_DEBUG)
-        controls_ids = self.katrain.controls.ids
-        for id, (panel_state, button_state) in state.get("panels", {}).items():
-            if id in controls_ids:
-                controls_ids[id].set_option_state(button_state)
-                controls_ids[id].state = panel_state
-            else:
-                self.katrain.log(f"load_ui_state: unknown id '{id}' in panels", OUTPUT_DEBUG)
+        try:
+            state = self.katrain.config(f"ui_state/{self.mode}", {})
+            analysis_ids = self.katrain.analysis_controls.ids
+            for id, active in state.get("analysis_controls", {}).items():
+                if id in analysis_ids:
+                    cb = analysis_ids[id].checkbox
+                    cb.active = bool(active)
+                else:
+                    self.katrain.log(f"load_ui_state: unknown id '{id}' in analysis_controls", OUTPUT_DEBUG)
+            controls_ids = self.katrain.controls.ids
+            for id, (panel_state, button_state) in state.get("panels", {}).items():
+                if id in controls_ids:
+                    controls_ids[id].set_option_state(button_state)
+                    controls_ids[id].state = panel_state
+                else:
+                    self.katrain.log(f"load_ui_state: unknown id '{id}' in panels", OUTPUT_DEBUG)
+        except Exception as e:
+            # Startup time - no user notification, DEBUG log only
+            if hasattr(self.katrain, "error_handler"):
+                self.katrain.error_handler.handle(
+                    UIStateError(
+                        str(e),
+                        user_message="UI state restore failed",
+                        context={"mode": self.mode},
+                    ),
+                    notify_user=False,
+                    log_level=OUTPUT_DEBUG,
+                )
 
     def select_mode(self, new_mode):  # actual switch state handler
         if self.mode == new_mode:
