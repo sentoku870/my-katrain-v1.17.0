@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-07
+> 最終更新: 2026-01-10
 > 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
 
 ---
@@ -18,6 +18,7 @@ katrain/
 │   ├── game.py            # Game（対局状態管理）
 │   ├── game_node.py       # GameNode（手/解析結果）
 │   ├── engine.py          # KataGoEngine（解析プロセス）
+│   ├── errors.py          # KaTrainError例外階層（Phase 2で追加）
 │   ├── eval_metrics.py    # ファサード（後方互換、21行）
 │   ├── yose_analyzer.py   # ヨセ解析（myKatrain追加）
 │   ├── sgf_parser.py      # SGF読み込み
@@ -31,6 +32,7 @@ katrain/
 ├── gui/                  # GUI（Kivy）
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
 │   ├── badukpan.py        # 盤面表示（BadukPanWidget）
+│   ├── error_handler.py   # ErrorHandler（Phase 2で追加）
 │   ├── popups.py          # ポップアップダイアログ
 │   ├── widgets/
 │   │   ├── graph.py       # ScoreGraph（勝率グラフ）
@@ -255,6 +257,10 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-10: Phase 2 安定性向上（PR #97）
+  - エラー階層追加（katrain/core/errors.py）
+  - ErrorHandler追加（katrain/gui/error_handler.py）
+  - 高リスク3箇所に統合（メッセージループ、engine.on_error、load_ui_state）
 - 2026-01-07: コードベース簡素化（PR #90-92）
   - Contribute Engine削除（contribute_engine.py）
   - 多言語i18n削除（JP+EN以外の9言語）

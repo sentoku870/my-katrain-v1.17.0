@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-07
+> 最終更新: 2026-01-10
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -374,6 +374,20 @@
 
 ## 11. 変更履歴
 
+- 2026-01-10: Phase 2 安定性向上（PR #97）
+  - **目的**: 散在するエラー処理を集約し、Kivyイベントループの安定化
+  - **エラー階層**: `katrain/core/errors.py` 新規作成
+    - KaTrainError基底クラス（user_message + context）
+    - サブクラス: EngineError, ConfigError, UIStateError, SGFError
+  - **ErrorHandler**: `katrain/gui/error_handler.py` 新規作成
+    - thread-safe（Clock.schedule_once使用）
+    - never-throw保証（handle()自体が例外を投げない）
+    - traceback logging（DEBUG level）
+  - **統合箇所**: 3箇所のみ（最小スコープ）
+    - _message_loop_thread: アクション実行エラー捕捉
+    - engine.on_error: EngineErrorラップ + リッチコンテキスト
+    - load_ui_state: 起動時エラー安全スキップ
+  - **成果**: 全510テストパス、成功パスの動作変更なし
 - 2026-01-07: コードベース簡素化（PR #90-92）
   - **目的**: Windows専用教育フォーク向けに不要機能を削除
   - **Phase 1（PR #90）**: Contribute Engine削除 + pygame依存削除
