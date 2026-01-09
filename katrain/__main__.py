@@ -106,6 +106,8 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.sgf_parser import Move, ParseError
+from katrain.core.errors import EngineError
+from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node, extract_sgf_statistics
 from katrain.gui.features.summary_aggregator import (
@@ -172,6 +174,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.error_handler = ErrorHandler(self)
         self.engine = None
 
         self.new_game_popup = None
@@ -326,7 +329,33 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.engine = KataGoEngine(self, self.config("engine"))
-        
+
+        # Set up engine error handler with rich context
+        def _handle_engine_error(err):
+            """Handle engine errors with rich context."""
+            context = {
+                "original_error": repr(err),
+                "original_type": type(err).__name__,
+            }
+            # If err is an Exception with traceback, include formatted traceback in context
+            if isinstance(err, Exception) and getattr(err, "__traceback__", None):
+                try:
+                    tb_lines = traceback.format_exception(type(err), err, err.__traceback__)
+                    context["traceback"] = "".join(tb_lines[:30])  # Truncate to 30 lines
+                except Exception:
+                    pass
+
+            self.error_handler.handle(
+                EngineError(
+                    str(err),
+                    user_message="Engine error occurred",
+                    context=context,
+                ),
+                notify_user=True,
+            )
+
+        self.engine.on_error = _handle_engine_error
+
         # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
         try:
             if hasattr(self.engine, "config") and isinstance(self.engine.config, dict):
@@ -479,8 +508,10 @@ class KaTrainGui(Screen, KaTrainBase):
     # The message loop is here to make sure moves happen in the right order, and slow operations don't hang the GUI
     def _message_loop_thread(self):
         while True:
+            msg_name = "<unknown>"  # Safe fallback for error message
             game, msg, args, kwargs = self.message_queue.get()
             try:
+                msg_name = msg  # Capture for error handling
                 self.log(f"Message Loop Received {msg}: {args} for Game {game}", OUTPUT_EXTRA_DEBUG)
                 if game != self.game.game_id:
                     self.log(
@@ -493,8 +524,11 @@ class KaTrainGui(Screen, KaTrainBase):
                 if msg != "update_state":
                     self._do_update_state()
             except Exception as exc:
-                self.log(f"Exception in processing message {msg} {args}: {exc}", OUTPUT_ERROR)
-                traceback.print_exc()
+                self.error_handler.handle(
+                    exc,
+                    notify_user=True,
+                    fallback_message=f"Action '{msg_name}' failed",
+                )
 
     def __call__(self, message, *args, **kwargs):
         if self.game:
