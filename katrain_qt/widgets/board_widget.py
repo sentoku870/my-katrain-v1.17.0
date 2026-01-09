@@ -139,6 +139,7 @@ class GoBoardWidget(QWidget):
 
     hover_changed = Signal(int, int, bool)
     intersection_clicked = Signal(int, int)  # (col, row) in Qt coords
+    context_menu_requested = Signal(int, int, object)  # (col, row, QPoint global_pos)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -712,6 +713,25 @@ class GoBoardWidget(QWidget):
             painter.setPen(QPen(QColor(100, 100, 100, PV_ALPHA), 1))
             painter.drawEllipse(center, stone_radius, stone_radius)
 
+            # Draw move number on the stone
+            move_number = i + 1
+            text_color = MARKER_BLACK if current_color == "B" else MARKER_WHITE
+            painter.setPen(QPen(text_color))
+            font = painter.font()
+            font.setPointSize(max(8, int(stone_radius * 0.7)))
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(
+                QRectF(
+                    center.x() - stone_radius,
+                    center.y() - stone_radius,
+                    stone_radius * 2,
+                    stone_radius * 2,
+                ),
+                Qt.AlignCenter,
+                str(move_number),
+            )
+
             # Alternate color for next move
             current_color = "W" if current_color == "B" else "B"
 
@@ -734,12 +754,16 @@ class GoBoardWidget(QWidget):
         if not self._interactive:
             return
 
+        pos = event.position()
+        col, row, valid = self._mouse_to_grid(pos)
+
         if event.button() == Qt.LeftButton:
-            pos = event.position()
-            col, row, valid = self._mouse_to_grid(pos)
             if valid:
                 # Emit click signal with Qt coordinates
                 self.intersection_clicked.emit(col, row)
+        elif event.button() == Qt.RightButton:
+            # Emit context menu signal with position
+            self.context_menu_requested.emit(col, row, event.globalPosition().toPoint())
 
     def leaveEvent(self, event):
         self._hover_pos = None

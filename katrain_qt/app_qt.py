@@ -266,6 +266,7 @@ class MainWindow(QMainWindow):
         self.adapter.status_changed.connect(self._on_status_changed)
         self.adapter.error_occurred.connect(self._on_error)
         self.board_widget.hover_changed.connect(self._on_hover_changed)
+        self.board_widget.context_menu_requested.connect(self._on_board_context_menu)
 
         # Connect engine signals
         self.engine.ready.connect(self._on_engine_ready)
@@ -644,6 +645,13 @@ class MainWindow(QMainWindow):
         # Variation navigation (M5.1a)
         QShortcut(QKeySequence(Qt.CTRL | Qt.Key_Up), self, self._nav_prev_variation)
         QShortcut(QKeySequence(Qt.CTRL | Qt.Key_Down), self, self._nav_next_variation)
+        # Number keys 1-9 to select candidate moves (Kivy parity)
+        for i in range(1, 10):
+            QShortcut(
+                getattr(Qt, f"Key_{i}"),
+                self,
+                lambda idx=i: self._select_candidate_by_rank(idx),
+            )
 
     # -------------------------------------------------------------------------
     # Adapter Slots
@@ -710,6 +718,57 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(message, 5000)
             # Play error sound for illegal move
             get_sound_manager().play_boing()
+
+    @Slot(int, int, object)
+    def _on_board_context_menu(self, col: int, row: int, global_pos):
+        """Show context menu on right-click."""
+        from PySide6.QtWidgets import QMenu
+
+        menu = QMenu(self)
+
+        # Analysis actions
+        if self._analysis_active:
+            stop_action = menu.addAction("Stop Analysis")
+            stop_action.triggered.connect(self._stop_analysis)
+        else:
+            start_action = menu.addAction("Start Analysis")
+            start_action.triggered.connect(self._start_analysis)
+
+        menu.addSeparator()
+
+        # Navigation actions
+        nav_menu = menu.addMenu("Navigate")
+        nav_menu.addAction("First Move", self._nav_first)
+        nav_menu.addAction("Previous Move", self._nav_prev)
+        nav_menu.addAction("Next Move", self._nav_next)
+        nav_menu.addAction("Last Move", self._nav_last)
+
+        menu.addSeparator()
+
+        # Game actions
+        pass_action = menu.addAction("Pass")
+        pass_action.triggered.connect(self._play_pass)
+
+        menu.addSeparator()
+
+        # View toggles
+        view_menu = menu.addMenu("View")
+        show_coords = view_menu.addAction("Show Coordinates")
+        show_coords.setCheckable(True)
+        show_coords.setChecked(self.show_coords_action.isChecked())
+        show_coords.triggered.connect(self._toggle_coordinates)
+
+        show_cands = view_menu.addAction("Show Candidates")
+        show_cands.setCheckable(True)
+        show_cands.setChecked(self.show_candidates_action.isChecked())
+        show_cands.triggered.connect(self._toggle_candidates)
+
+        show_ownership = view_menu.addAction("Show Ownership")
+        show_ownership.setCheckable(True)
+        show_ownership.setChecked(self.show_ownership_action.isChecked())
+        show_ownership.triggered.connect(self._toggle_ownership)
+
+        menu.exec(global_pos)
 
     def _update_move_label(self):
         """Update the move counter label."""
@@ -1211,6 +1270,34 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(message, 3000)
         else:
             self.status_bar.showMessage(message, 5000)
+
+    def _select_candidate_by_rank(self, rank: int):
+        """Select and play a candidate move by its rank (1-9)."""
+        if not self.adapter.is_loaded():
+            return
+
+        # Get candidates from the panel
+        candidates = self.candidates_panel._candidates
+        if not candidates:
+            self.status_bar.showMessage("No candidates available", 3000)
+            return
+
+        # Find candidate with matching rank
+        for cand in candidates:
+            if cand.rank == rank:
+                # Play the move
+                success, message = self.adapter.play_move_qt(cand.col, cand.row)
+                if success:
+                    self._set_dirty(True)
+                    self.status_bar.showMessage(f"Played candidate #{rank}", 3000)
+                    # Play stone sound
+                    if hasattr(self, '_sound_manager'):
+                        self._sound_manager.play_stone()
+                else:
+                    self.status_bar.showMessage(message, 5000)
+                return
+
+        self.status_bar.showMessage(f"No candidate with rank {rank}", 3000)
 
     def _new_game(self):
         """Start a new empty game."""
