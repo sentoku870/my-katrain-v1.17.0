@@ -712,6 +712,25 @@ class GoBoardWidget(QWidget):
             painter.setPen(QPen(QColor(100, 100, 100, PV_ALPHA), 1))
             painter.drawEllipse(center, stone_radius, stone_radius)
 
+            # Draw move number on the stone
+            move_number = i + 1
+            text_color = MARKER_BLACK if current_color == "B" else MARKER_WHITE
+            painter.setPen(QPen(text_color))
+            font = painter.font()
+            font.setPointSize(max(8, int(stone_radius * 0.7)))
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(
+                QRectF(
+                    center.x() - stone_radius,
+                    center.y() - stone_radius,
+                    stone_radius * 2,
+                    stone_radius * 2,
+                ),
+                Qt.AlignCenter,
+                str(move_number),
+            )
+
             # Alternate color for next move
             current_color = "W" if current_color == "B" else "B"
 
