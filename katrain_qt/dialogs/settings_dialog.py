@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QCheckBox,
+    QSlider,
 )
 
 from katrain_qt.settings import Settings, get_settings
@@ -281,6 +282,44 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(lang_group)
 
+        # Sound group
+        sound_group = QGroupBox("Sound")
+        sound_layout = QFormLayout(sound_group)
+
+        self._sound_enabled = QCheckBox("Enable sound effects")
+        self._sound_enabled.setToolTip("Play sounds when placing stones and capturing.")
+        sound_layout.addRow("", self._sound_enabled)
+
+        # Volume slider with label
+        volume_layout = QHBoxLayout()
+        self._volume_slider = QSlider(Qt.Horizontal)
+        self._volume_slider.setRange(0, 100)
+        self._volume_slider.setTickPosition(QSlider.TicksBelow)
+        self._volume_slider.setTickInterval(25)
+        self._volume_label = QLabel("50%")
+        self._volume_label.setMinimumWidth(40)
+        self._volume_slider.valueChanged.connect(self._on_volume_changed)
+        volume_layout.addWidget(self._volume_slider)
+        volume_layout.addWidget(self._volume_label)
+        sound_layout.addRow("Volume:", volume_layout)
+
+        layout.addWidget(sound_group)
+
+        # Theme group
+        theme_group = QGroupBox("Theme")
+        theme_layout = QFormLayout(theme_group)
+
+        self._theme_combo = QComboBox()
+        self._theme_combo.addItem("Light", "light")
+        self._theme_combo.addItem("Dark", "dark")
+        theme_layout.addRow("UI Theme:", self._theme_combo)
+
+        theme_note = QLabel("Note: Theme change takes effect immediately after saving.")
+        theme_note.setStyleSheet("color: gray; font-size: 10px;")
+        theme_layout.addRow("", theme_note)
+
+        layout.addWidget(theme_group)
+
         # Info label
         info = QLabel(
             "Note: These settings take effect immediately after saving.\n"
@@ -337,6 +376,21 @@ class SettingsDialog(QDialog):
         if lang_idx >= 0:
             self._lang_combo.setCurrentIndex(lang_idx)
 
+        # Sound
+        self._sound_enabled.setChecked(self._settings.sound_enabled)
+        volume_pct = int(self._settings.sound_volume * 100)
+        self._volume_slider.setValue(volume_pct)
+        self._volume_label.setText(f"{volume_pct}%")
+
+        # Theme
+        theme_idx = self._theme_combo.findData(self._settings.theme)
+        if theme_idx >= 0:
+            self._theme_combo.setCurrentIndex(theme_idx)
+
+    def _on_volume_changed(self, value: int):
+        """Update volume label when slider changes."""
+        self._volume_label.setText(f"{value}%")
+
     def _update_env_indicators(self):
         """Update environment variable override indicators."""
         if self._settings.is_katago_exe_from_env():
@@ -390,6 +444,13 @@ class SettingsDialog(QDialog):
 
         # Language
         self._settings.language = self._lang_combo.currentData()
+
+        # Sound
+        self._settings.sound_enabled = self._sound_enabled.isChecked()
+        self._settings.sound_volume = self._volume_slider.value() / 100.0
+
+        # Theme
+        self._settings.theme = self._theme_combo.currentData()
 
         # Persist
         self._settings.save()
