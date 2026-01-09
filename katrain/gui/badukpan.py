@@ -705,8 +705,11 @@ class BadukPanWidget(Widget):
                     current_node.parent.policy
                 )  # in the case of AI self-play we allow the policy to be one step out of date
 
-            pass_btn = katrain.board_controls.pass_btn
-            pass_btn.canvas.after.clear()
+            # Guard pass_btn access - may be missing during initialization
+            board_controls = getattr(katrain, "board_controls", None)
+            pass_btn = getattr(board_controls, "pass_btn", None) if board_controls else None
+            if pass_btn:
+                pass_btn.canvas.after.clear()
             if katrain.analysis_controls.policy.active and policy:
                 policy_grid = var_to_grid(policy, (board_size_x, board_size_y))
                 best_move_policy = max(*policy)
@@ -752,15 +755,16 @@ class BadukPanWidget(Widget):
                                 width=dp(2),
                             )
 
-                with pass_btn.canvas.after:
-                    move_policy = policy[-1]
-                    pol_order = 5 - int(-math.log10(max(1e-9, move_policy - 1e-9)))
-                    if pol_order >= 0:
-                        draw_circle(
-                            (pass_btn.pos[0] + pass_btn.width / 2, pass_btn.pos[1] + pass_btn.height / 2),
-                            pass_btn.height / 2,
-                            (*colors[pol_order][:3], Theme.GHOST_ALPHA),
-                        )
+                if pass_btn:
+                    with pass_btn.canvas.after:
+                        move_policy = policy[-1]
+                        pol_order = 5 - int(-math.log10(max(1e-9, move_policy - 1e-9)))
+                        if pol_order >= 0:
+                            draw_circle(
+                                (pass_btn.pos[0] + pass_btn.width / 2, pass_btn.pos[1] + pass_btn.height / 2),
+                                pass_btn.height / 2,
+                                (*colors[pol_order][:3], Theme.GHOST_ALPHA),
+                            )
 
         self.redraw_hover_contents_trigger()
 
@@ -1116,13 +1120,16 @@ class BadukPanWidget(Widget):
             move_player = next_last_player[i % 2]
             coords = Move.from_gtp(gtpmove).coords
             if coords is None:  # tee-hee
-                sizefac = katrain.board_controls.pass_btn.size[1] / 2 / self.stone_size
-                board_coords = [
-                    katrain.board_controls.pass_btn.pos[0]
-                    + katrain.board_controls.pass_btn.size[0]
-                    + self.stone_size * sizefac,
-                    katrain.board_controls.pass_btn.pos[1] + katrain.board_controls.pass_btn.size[1] / 2,
-                ]
+                board_controls = getattr(katrain, "board_controls", None)
+                pass_btn = getattr(board_controls, "pass_btn", None) if board_controls else None
+                if pass_btn:
+                    sizefac = pass_btn.size[1] / 2 / self.stone_size
+                    board_coords = [
+                        pass_btn.pos[0] + pass_btn.size[0] + self.stone_size * sizefac,
+                        pass_btn.pos[1] + pass_btn.size[1] / 2,
+                    ]
+                else:
+                    continue  # skip this move if pass_btn unavailable
             else:
                 board_coords = (self.gridpos[coords[1]][coords[0]][0], self.gridpos[coords[1]][coords[0]][1])
                 sizefac = 1

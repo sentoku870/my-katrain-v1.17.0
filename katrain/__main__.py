@@ -367,17 +367,34 @@ class KaTrainGui(Screen, KaTrainBase):
     def update_gui(self, cn, redraw_board=False):
         # Handle prisoners and next player display
         prisoners = self.game.prisoner_count
-        top, bot = [w.__self__ for w in self.board_controls.circles]  # no weakref
-        if self.next_player_info.player == "W":
-            top, bot = bot, top
-            self.controls.players["W"].active = True
-            self.controls.players["B"].active = False
+
+        # Safe circles parsing with guards for missing/invalid data
+        circles = getattr(self.board_controls, "circles", None)
+        if circles and len(circles) == 2:
+            try:
+                top, bot = [w.__self__ for w in circles]
+                if self.next_player_info.player == "W":
+                    top, bot = bot, top
+                    self.controls.players["W"].active = True
+                    self.controls.players["B"].active = False
+                else:
+                    self.controls.players["W"].active = False
+                    self.controls.players["B"].active = True
+                mid_container = getattr(self.board_controls, "mid_circles_container", None)
+                if mid_container:
+                    mid_container.clear_widgets()
+                    mid_container.add_widget(bot)
+                    mid_container.add_widget(top)
+            except (ValueError, AttributeError, TypeError) as e:
+                self.log(f"circles parsing failed: {e}", OUTPUT_DEBUG)
         else:
-            self.controls.players["W"].active = False
-            self.controls.players["B"].active = True
-        self.board_controls.mid_circles_container.clear_widgets()
-        self.board_controls.mid_circles_container.add_widget(bot)
-        self.board_controls.mid_circles_container.add_widget(top)
+            # circles missing or invalid - just update player active states
+            if self.next_player_info.player == "W":
+                self.controls.players["W"].active = True
+                self.controls.players["B"].active = False
+            else:
+                self.controls.players["W"].active = False
+                self.controls.players["B"].active = True
 
         self.controls.players["W"].captures = prisoners["W"]
         self.controls.players["B"].captures = prisoners["B"]
