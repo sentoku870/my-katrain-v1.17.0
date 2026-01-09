@@ -136,16 +136,17 @@ class GameNode(SGFNode):
         ):
             if save_marks:
                 candidate_moves = self.parent.candidate_moves
-                top_x = Move.from_gtp(candidate_moves[0]["move"]).sgf(self.board_size)
-                best_sq = [
-                    Move.from_gtp(d["move"]).sgf(self.board_size)
-                    for d in candidate_moves
-                    if d["pointsLost"] <= 0.5 and d["move"] != "pass" and d["order"] != 0
-                ]
-                if best_sq and "SQ" not in properties:
-                    properties["SQ"] = best_sq
-                if top_x and "MA" not in properties:
-                    properties["MA"] = [top_x]
+                if candidate_moves:
+                    top_x = Move.from_gtp(candidate_moves[0]["move"]).sgf(self.board_size)
+                    best_sq = [
+                        Move.from_gtp(d["move"]).sgf(self.board_size)
+                        for d in candidate_moves
+                        if d["pointsLost"] <= 0.5 and d["move"] != "pass" and d["order"] != 0
+                    ]
+                    if best_sq and "SQ" not in properties:
+                        properties["SQ"] = best_sq
+                    if top_x and "MA" not in properties:
+                        properties["MA"] = [top_x]
             comments.append("\n" + self.comment(sgf=True, interactive=False) + SGF_INTERNAL_COMMENTS_MARKER)
         if self.is_root:
             if save_marks:
@@ -343,8 +344,9 @@ class GameNode(SGFNode):
             if details:
                 text += f"Visits: {self.root_visits}\n"
             if self.parent and self.parent.analysis_exists:
-                previous_top_move = self.parent.candidate_moves[0]
-                if sgf or details:
+                parent_candidates = self.parent.candidate_moves
+                previous_top_move = parent_candidates[0] if parent_candidates else None
+                if previous_top_move and (sgf or details):
                     if previous_top_move["move"] != single_move.gtp():
                         points_lost = self.points_lost
                         if sgf and points_lost > 0.5:
@@ -374,7 +376,8 @@ class GameNode(SGFNode):
                         text += policy_best_msg.format(move=pol_move, probability=pol_prob) + "\n"
             if self.auto_undo and sgf:
                 text += i18n._("Info:teaching undo") + "\n"
-                top_pv = self.analysis_exists and self.candidate_moves[0].get("pv")
+                candidates = self.candidate_moves
+                top_pv = self.analysis_exists and candidates and candidates[0].get("pv")
                 if top_pv:
                     text += i18n._("Info:undo predicted PV").format(pv=f"{self.next_player}{' '.join(top_pv)}") + "\n"
         else:

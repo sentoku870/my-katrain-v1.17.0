@@ -17,15 +17,17 @@ dependencies = [
     "screeninfo>=0.8.1,<0.9 ; platform_system != 'Darwin'",
     "chardet>=5.2.0,<6",
     "docutils>=0.21.2",
+    "ffpyplayer>=4.5.1",
     "urllib3>=2.2.2",
-    "PySide6>=6.6.0",
+    "kivy>=2.3.1",
+    "kivymd==0.104.1",
 ]
 
 [project.urls]
 Homepage = "https://github.com/sanderland/katrain"
 
-# Note: Use 'python -m katrain_qt' to run the Qt version
-# The old Kivy entry point has been removed
+[project.scripts]
+katrain = "katrain.__main__:run_app"
 
 [dependency-groups]
 dev = [

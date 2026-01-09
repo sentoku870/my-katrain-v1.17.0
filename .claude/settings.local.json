@@ -36,28 +36,7 @@
       "Bash(for f in katrain/gui/features/*.py)",
       "Bash(done)",
       "Bash(echo:*)",
-      "Bash(git tag:*)",
-      "Bash(xargs:*)",
-      "Bash(head:*)",
-      "Bash(.venv/Scripts/python.exe:*)",
-      "Bash(timeout 15 .venv/Scripts/python.exe:*)",
-      "Bash(timeout 10 /d/github/katrain-1.17.0/.venv/Scripts/python.exe -c \"\nimport sys\nsys.path.insert\\(0, ''.''\\)\nfrom models import BoardModel, AnalysisModel, coord_to_display\nprint\\(''Direct import from models: OK''\\)\n\n# Now test the full import\nexec\\(open\\(''board_poc_plus.py''\\).read\\(\\).split\\(''def main\\(\\):''\\)[0]\\)\nprint\\(''board_poc_plus.py partial load: OK''\\)\n\")",
-      "Bash(timeout:*)",
-      "Bash($env:PYTHONUTF8=\"1\")",
-      "Bash(PYTHONPATH=. python:*)",
-      "Bash(PYTHONPATH=. timeout 10 python:*)",
-      "Bash(PYTHONPATH=. timeout 15 python:*)",
-      "Bash($env:PYTHONPATH=\".\")",
-      "Bash(pytest:*)",
-      "Bash(PYTHONUTF8=1 uv run pytest:*)",
-      "Bash(powershell -ExecutionPolicy Bypass -File ./tools/build_windows.ps1)",
-      "Bash(uv pip install:*)",
-      "Bash(uv run python:*)",
-      "Bash(uv run pyinstaller:*)",
-      "Bash(set PYTHONUTF8=1:*)",
-      "Bash(Remove-Item -Recurse -Force \"d:\\\\github\\\\katrain-1.17.0\\\\katrain\\\\gui\")",
-      "Bash($env:PYTHONUTF8 = \"1\")",
-      "Bash(__pycache__ \")"
+      "Bash(git rm:*)"
     ]
   }
 }

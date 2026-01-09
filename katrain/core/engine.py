@@ -10,14 +10,7 @@ import time
 import traceback
 from typing import Callable, Dict, List, Optional
 
-import sys
-
-# Platform detection (replaces kivy.utils.platform)
-kivy_platform = sys.platform  # 'win32', 'linux', 'darwin'
-if kivy_platform == "win32":
-    kivy_platform = "win"
-elif kivy_platform == "darwin":
-    kivy_platform = "macosx"
+from kivy.utils import platform as kivy_platform
 
 from katrain.core.constants import (
     OUTPUT_DEBUG,
@@ -32,6 +25,15 @@ from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move
 from katrain.core.utils import find_package_resource, json_truncate_arrays
+
+
+def _ensure_str(line) -> str:
+    """Normalize line to str, handling bytes/str/None."""
+    if line is None:
+        return ""
+    if isinstance(line, bytes):
+        return line.decode("utf-8", errors="replace")
+    return line
 
 
 class BaseEngine:
@@ -272,14 +274,15 @@ class KataGoEngine(BaseEngine):
     def _read_stderr_thread(self):
         while self.katago_process is not None:
             try:
-                line = self.katago_process.stderr.readline()
+                raw_line = self.katago_process.stderr.readline()
+                line = _ensure_str(raw_line)
                 if line:
-                    if b"Uncaught exception" in line or b"what()" in line:  # linux=what
-                        msg = f"KataGo Engine Failed: {line.decode(errors='ignore')[9:].strip()}"
+                    if "Uncaught exception" in line or "what()" in line:  # linux=what
+                        msg = f"KataGo Engine Failed: {line[9:].strip()}"
                         self.on_error(msg, KATAGO_EXCEPTION)
                         return
                     try:
-                        self.katrain.log(line.decode(errors="ignore").strip(), OUTPUT_KATAGO_STDERR)
+                        self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
                     except Exception as e:
                         print("ERROR in processing KataGo stderr:", line, "Exception", e)
                 elif not self.check_alive(exception_if_dead=True):
@@ -291,7 +294,8 @@ class KataGoEngine(BaseEngine):
     def _analysis_read_thread(self):
         while self.katago_process is not None:
             try:
-                line = self.katago_process.stdout.readline().strip()
+                raw_line = self.katago_process.stdout.readline()
+                line = _ensure_str(raw_line).strip()
                 if self.katago_process and not line:
                     if not self.check_alive(exception_if_dead=True, maybe_open_recovery=True):
                         return
@@ -299,8 +303,8 @@ class KataGoEngine(BaseEngine):
                 self.check_alive(os_error=str(e), exception_if_dead=True, maybe_open_recovery=True)
                 return
 
-            if b"Uncaught exception" in line:
-                msg = f"KataGo Engine Failed: {line.decode(errors='ignore')}"
+            if "Uncaught exception" in line:
+                msg = f"KataGo Engine Failed: {line}"
                 self.on_error(msg, KATAGO_EXCEPTION)
                 return
             if not line:
