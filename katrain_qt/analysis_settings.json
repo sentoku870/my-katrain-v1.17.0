@@ -1,0 +1,6 @@
+{
+  "katago_exe": "C:/Users/mono_/.katrain/katago-v1.16.0-opencl-windows-x64.exe",
+  "config_path": "C:/Users/mono_/.katrain/analysis_config.cfg",
+  "model_path": "C:/Users/mono_/.katrain/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
+  "max_visits": 100
+}

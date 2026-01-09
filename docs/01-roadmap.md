@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-07
+> 最終更新: 2026-01-09
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -98,6 +98,7 @@
 | 6.5 | eval_metrics.py 品質向上 | production-ready 基盤 | ✅ **完了** |
 | 7 | 単局カルテUI + カルテ品質向上 | デイリーコーチ完成 | ✅ **完了** |
 | 9 | 検証テンプレで改善ループ | `03-llm-validation.md` | ✅ **完了** |
+| **Qt移行** | Kivy→Qt GUIフレームワーク移行 | `katrain_qt/` | ✅ **完了** |
 | 8 | 初心者向けヒント（任意） | 構造解析 + テンプレ | TBD |
 | 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
 | 11 | 難解PVフィルタ | Top Moves表示改善 | 📋 **仕様確定** |
@@ -374,6 +375,22 @@
 
 ## 11. 変更履歴
 
+- 2026-01-09: Kivy→Qt GUI移行完了
+  - **目的**: Kivyフレームワークを廃止し、PySide6（Qt）ベースの新GUIに移行
+  - **新規パッケージ**: `katrain_qt/`（約4,500行）
+    - `app_qt.py`: メインウィンドウ（QMainWindow）
+    - `core_adapter.py`: GameAdapter（KaTrain coreとの橋渡し）
+    - `analysis/`: KataGoエンジン管理、解析モデル
+    - `widgets/`: 盤面、候補手パネル、スコアグラフ、解析パネル
+    - `dialogs/`: 設定ダイアログ
+  - **削除ファイル**:
+    - `katrain/gui/`（28ファイル、Kivy GUI全体）
+    - `katrain/gui.kv`（Kivyレイアウト）
+    - `spec/`（旧PyInstallerスペック）
+  - **座標系変換**: KaTrain core（row=0が下）→ Qt（row=0が上）を `core_adapter.py` で吸収
+  - **テスト**: 239件のQtテスト追加（`tests/katrain_qt/`）
+  - **ビルド**: `tools/build_windows.ps1` + `KaTrainQt.spec`
+  - **詳細**: `docs/kivy-to-qt-migration-summary.md` 参照
 - 2026-01-07: コードベース簡素化（PR #90-92）
   - **目的**: Windows専用教育フォーク向けに不要機能を削除
   - **Phase 1（PR #90）**: Contribute Engine削除 + pygame依存削除

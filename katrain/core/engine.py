@@ -10,7 +10,14 @@ import time
 import traceback
 from typing import Callable, Dict, List, Optional
 
-from kivy.utils import platform as kivy_platform
+import sys
+
+# Platform detection (replaces kivy.utils.platform)
+kivy_platform = sys.platform  # 'win32', 'linux', 'darwin'
+if kivy_platform == "win32":
+    kivy_platform = "win"
+elif kivy_platform == "darwin":
+    kivy_platform = "macosx"
 
 from katrain.core.constants import (
     OUTPUT_DEBUG,

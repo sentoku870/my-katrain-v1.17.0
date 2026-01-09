@@ -1,0 +1,89 @@
+{
+  "id": "test-query-001",
+  "turnNumber": 0,
+  "moveInfos": [
+    {
+      "move": "D4",
+      "visits": 500,
+      "winrate": 0.52,
+      "scoreMean": 1.5,
+      "scoreLead": 1.5,
+      "scoreStdev": 10.2,
+      "prior": 0.15,
+      "order": 0,
+      "pv": ["D4", "Q16", "D16", "Q4", "C6"]
+    },
+    {
+      "move": "Q16",
+      "visits": 350,
+      "winrate": 0.51,
+      "scoreMean": 1.2,
+      "scoreLead": 1.2,
+      "scoreStdev": 10.1,
+      "prior": 0.12,
+      "order": 1,
+      "pv": ["Q16", "D4", "D16"]
+    },
+    {
+      "move": "pass",
+      "visits": 50,
+      "winrate": 0.45,
+      "scoreMean": -2.0,
+      "scoreLead": -2.0,
+      "scoreStdev": 8.5,
+      "prior": 0.02,
+      "order": 2,
+      "pv": ["pass"]
+    },
+    {
+      "move": "D16",
+      "visits": 300,
+      "winrate": 0.51,
+      "scoreMean": 1.1,
+      "scoreLead": 1.1,
+      "scoreStdev": 10.0,
+      "prior": 0.10,
+      "order": 3,
+      "pv": ["D16", "Q4"]
+    },
+    {
+      "move": "Q4",
+      "visits": 250,
+      "winrate": 0.50,
+      "scoreMean": 0.9,
+      "scoreLead": 0.9,
+      "scoreStdev": 9.8,
+      "prior": 0.08,
+      "order": 4,
+      "pv": ["Q4", "D4"]
+    },
+    {
+      "move": "K10",
+      "visits": 150,
+      "winrate": 0.49,
+      "scoreMean": 0.5,
+      "scoreLead": 0.5,
+      "scoreStdev": 9.5,
+      "prior": 0.05,
+      "order": 5,
+      "pv": []
+    },
+    {
+      "move": "C3",
+      "visits": 100,
+      "winrate": 0.48,
+      "scoreMean": 0.2,
+      "scoreLead": 0.2,
+      "scoreStdev": 9.3,
+      "prior": 0.03,
+      "order": 6
+    }
+  ],
+  "rootInfo": {
+    "winrate": 0.52,
+    "scoreLead": 1.5,
+    "scoreMean": 1.5,
+    "scoreStdev": 10.2,
+    "visits": 1000
+  }
+}

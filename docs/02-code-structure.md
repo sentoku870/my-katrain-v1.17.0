@@ -1,7 +1,8 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-07
+> 最終更新: 2026-01-09
 > 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
+> Qt移行の詳細は `kivy-to-qt-migration-summary.md` を参照。
 
 ---
 
@@ -9,12 +10,12 @@
 
 ```
 katrain/
-├── __main__.py           # アプリ起動、KaTrainGuiクラス（~1200行）
+├── __main__.py           # Qt起動へのリダイレクト
 │
 ├── common/               # 共有定数（循環依存解消用）
 │   └── theme_constants.py # INFO_PV_COLOR など
 │
-├── core/                 # コアロジック
+├── core/                 # コアロジック（GUI非依存）
 │   ├── game.py            # Game（対局状態管理）
 │   ├── game_node.py       # GameNode（手/解析結果）
 │   ├── engine.py          # KataGoEngine（解析プロセス）
@@ -28,86 +29,97 @@ katrain/
 │       ├── logic.py         # 計算関数（~1300行）
 │       └── presentation.py  # 表示/フォーマット関数（~330行）
 │
-├── gui/                  # GUI（Kivy）
-│   ├── controlspanel.py   # 右パネル（ControlsPanel）
-│   ├── badukpan.py        # 盤面表示（BadukPanWidget）
-│   ├── popups.py          # ポップアップダイアログ
-│   ├── widgets/
-│   │   ├── graph.py       # ScoreGraph（勝率グラフ）
-│   │   ├── movetree.py    # MoveTree（手順ツリー）
-│   │   └── helpers.py     # UIヘルパー関数（PR #89で追加）
-│   │
-│   └── features/          # 機能モジュール（Phase 3で追加）
-│       ├── context.py         # FeatureContext Protocol
-│       ├── karte_export.py    # カルテエクスポート
-│       ├── summary_stats.py   # サマリ統計計算
-│       ├── summary_aggregator.py # サマリ集計
-│       ├── summary_formatter.py  # サマリMarkdown生成
-│       ├── summary_ui.py      # サマリUI/ダイアログ
-│       ├── summary_io.py      # サマリファイル保存
-│       ├── quiz_popup.py      # クイズポップアップ
-│       ├── quiz_session.py    # クイズセッション
-│       ├── batch_core.py      # バッチ解析コア
-│       ├── batch_ui.py        # バッチ解析UI
-│       └── settings_popup.py  # 設定ポップアップ
-│
-├── gui.kv                # Kivyレイアウト定義
-├── katrain.kv            # 追加レイアウト
-│
 └── i18n/                 # 国際化（JP+ENのみ、PR #91で簡素化）
     ├── i18n.py            # 翻訳処理
     └── locales/{en,jp}/   # 英語・日本語のみ
+
+katrain_qt/               # Qt GUI（2026-01 移行）
+├── __init__.py           # install_shims()
+├── __main__.py           # python -m katrain_qt エントリポイント
+├── app_qt.py             # MainWindow（QMainWindow、~1300行）
+├── core_adapter.py       # GameAdapter（core との橋渡し）
+├── settings.py           # 設定管理（JSON + QSettings）
+│
+├── compat/               # Kivy互換シム（移行期間用）
+│   └── kivy_shim.py       # Kivy import のモック
+│
+├── analysis/             # KataGo解析
+│   ├── models.py          # PositionSnapshot, CandidateMove, AnalysisResult
+│   └── katago_engine.py   # QProcess ベースのエンジン管理
+│
+├── widgets/              # Qt ウィジェット
+│   ├── board_widget.py    # GoBoardWidget（盤面描画）
+│   ├── candidates_panel.py # CandidatesPanel（候補手一覧）
+│   ├── score_graph.py     # ScoreGraph（スコアグラフ）
+│   └── analysis_panel.py  # AnalysisPanel（解析詳細）
+│
+└── dialogs/              # ダイアログ
+    └── settings_dialog.py # 設定ダイアログ
 ```
+
+**注意**: `katrain/gui/` ディレクトリは削除されました（Qt移行完了）。
 
 ---
 
-## 2. 主要クラスの関係
+## 2. 主要クラスの関係（Qt）
 
 ```
-KaTrainGui (App)
-├── self.game      → Game（対局状態）
-├── self.engine    → KataGoEngine（解析エンジン）
-├── self.controls  → ControlsPanel（右パネル）
-├── self.board_gui → BadukPanWidget（盤面）
-└── self.analysis_controls → AnalysisControls（解析トグル）
+MainWindow (QMainWindow)
+├── self.adapter       → GameAdapter（core との橋渡し）
+│   └── self._game     → Game（対局状態）
+├── self.engine        → KataGoAnalysisEngine（QProcess）
+├── self.board_widget  → GoBoardWidget（盤面）
+├── self.candidates_panel → CandidatesPanel（候補手）
+├── self.score_graph   → ScoreGraph（スコアグラフ）
+├── self.analysis_panel → AnalysisPanel（解析詳細）
+└── self._settings     → SettingsManager（設定管理）
 ```
 
 ### 依存方向
 ```
-KaTrainGui → Game → GameNode
-          → KataGoEngine
-          → ControlsPanel → ScoreGraph
-                         → various widgets
+MainWindow → GameAdapter → Game → GameNode
+          → KataGoAnalysisEngine (QProcess)
+          → GoBoardWidget
+          → CandidatesPanel
+          → ScoreGraph
+          → AnalysisPanel
+```
+
+### 座標系変換
+```
+KaTrain core (row=0 が下) ←→ Qt (row=0 が上)
+                     ↑
+              core_adapter.py で変換
 ```
 
 ---
 
-## 3. データフロー
+## 3. データフロー（Qt）
 
 ### 3.1 解析データの流れ
 ```
-1. GameNode.analyze()
-     ↓ KataGoEngineに解析リクエスト
-2. KataGoEngine → KataGo (subprocess)
+1. MainWindow._start_analysis()
+     ↓ エンジンにリクエスト
+2. KataGoAnalysisEngine → KataGo (QProcess)
      ↓ JSON結果
-3. GameNode.set_analysis(result)
-     ↓ analysis dict に格納
-4. KaTrainGui.update_state()
+3. analysis_completed シグナル発行
      ↓
-5. ControlsPanel.update_evaluation()
-     ↓
-6. UI更新（グラフ、盤面、情報パネル）
+4. MainWindow._on_analysis_completed()
+     ↓ キャッシュに格納
+5. UI更新（盤面、候補手、グラフ、解析パネル）
 ```
 
 ### 3.2 UIイベントの流れ
 ```
-1. ユーザー操作（ボタン/盤面タップ）
+1. ユーザー操作（クリック/キーボード）
      ↓
-2. Kivy → root.katrain("action", args)
+2. Qt シグナル発行
      ↓
-3. KaTrainGui.__call__(message)
-     ↓ メッセージキュー
-4. KaTrainGui._do_<action>()
+3. MainWindow のスロット（_on_xxx()）
+     ↓
+4. GameAdapter 経由で core 操作
+     ↓
+5. position_changed シグナル → UI更新
 ```
 
 ---
@@ -160,49 +172,38 @@ analyzer = YoseAnalyzer.from_game(game)
 report = analyzer.build_important_moves_report()
 ```
 
-### 4.3 gui/features パッケージ（Phase 3完了）
+### 4.3 katrain_qt パッケージ（Qt移行、2026-01完了）
 
-`katrain/__main__.py` から抽出された機能モジュール群。
-FeatureContext Protocol による依存性注入パターンを使用。
+Qt（PySide6）ベースの新GUI。Kivyから完全に独立。
 
-#### context.py（基盤）
+#### 主要コンポーネント
+| ファイル | クラス | 機能 |
+|---------|--------|------|
+| `app_qt.py` | `MainWindow` | メインウィンドウ（~1300行） |
+| `core_adapter.py` | `GameAdapter` | core との橋渡し、座標変換 |
+| `settings.py` | `SettingsManager` | JSON + QSettings |
+| `analysis/katago_engine.py` | `KataGoAnalysisEngine` | QProcess ベース |
+| `analysis/models.py` | `PositionSnapshot`, `CandidateMove` | 解析データモデル |
+| `widgets/board_widget.py` | `GoBoardWidget` | 盤面描画（QPainter） |
+| `widgets/candidates_panel.py` | `CandidatesPanel` | 候補手一覧（QTableWidget） |
+| `widgets/score_graph.py` | `ScoreGraph` | スコアグラフ（QPainter） |
+| `widgets/analysis_panel.py` | `AnalysisPanel` | 解析詳細（QTextEdit） |
+| `dialogs/settings_dialog.py` | `SettingsDialog` | 設定UI（QDialog） |
+
+#### Qt シグナル/スロット パターン
 ```python
-class FeatureContext(Protocol):
-    game: Optional["Game"]
-    controls: "ControlsPanel"
-    def config(self, setting: str, default: Any = None) -> Any: ...
-    def set_config_section(self, section: str, value: Dict[str, Any]) -> None: ...
-    def save_config(self, key: Optional[str] = None) -> None: ...
-    def log(self, message: str, level: int = 0) -> None: ...
+# シグナル定義
+class GameAdapter(QObject):
+    position_changed = Signal()  # 局面変更時に発行
+
+# 接続
+self.adapter.position_changed.connect(self._on_position_changed)
+
+# スロット
+def _on_position_changed(self):
+    self._update_board()
+    self._update_analysis_panel()
 ```
-
-**設定アクセスパターン（推奨）:**
-```python
-# 読み取り
-value = self.config("section/key", default)
-section_dict = self.config("section") or {}
-
-# 書き込み（Protocol準拠）
-section_dict = dict(self.config("section") or {})  # コピーして変更
-section_dict["key"] = new_value
-self.set_config_section("section", section_dict)
-self.save_config("section")
-```
-
-#### 機能モジュール一覧
-| ファイル | 機能 | 行数 |
-|---------|------|------|
-| `karte_export.py` | カルテエクスポート | ~200 |
-| `summary_stats.py` | サマリ統計計算 | ~250 |
-| `summary_aggregator.py` | サマリ集計 | ~180 |
-| `summary_formatter.py` | サマリMarkdown生成 | ~380 |
-| `summary_ui.py` | サマリUI/ダイアログ | ~400 |
-| `summary_io.py` | サマリファイル保存 | ~210 |
-| `quiz_popup.py` | クイズポップアップ | ~150 |
-| `quiz_session.py` | クイズセッション | ~220 |
-| `batch_core.py` | バッチ解析コア | ~270 |
-| `batch_ui.py` | バッチ解析UI | ~580 |
-| `settings_popup.py` | 設定ポップアップ | ~400 |
 
 ### 4.4 Gameクラスへの追加（game.py）
 
@@ -216,9 +217,10 @@ self.save_config("section")
 
 ## 5. 変更時の注意点
 
-### 5.1 UIを触る場合
-- `.kv` ファイルと `.py` の両方を確認
-- Kivy の id/property バインディングに注意
+### 5.1 Qt UIを触る場合
+- `katrain_qt/` パッケージ内で作業
+- Qt シグナル/スロット パターンに従う
+- 座標変換は `core_adapter.py` で行う（ウィジェットで直接変換しない）
 
 ### 5.2 解析ロジックを触る場合
 - `katrain/core/analysis/` パッケージが主な変更対象
@@ -229,7 +231,16 @@ self.save_config("section")
 - インポートは `from katrain.core.eval_metrics import ...` でも
   `from katrain.core.analysis import ...` でも可
 
-### 5.3 翻訳を追加する場合
+### 5.3 座標系に注意
+| システム | row=0 の位置 | 使用場所 |
+|----------|-------------|---------|
+| KaTrain core | 下 | game.py, game_node.py |
+| Qt | 上 | board_widget.py, candidates_panel.py |
+| GTP文字列 | 1始まり、下から | KataGo JSON |
+
+変換は `core_adapter.py` の `play_move_qt()` や `get_stones()` で行う。
+
+### 5.4 翻訳を追加する場合
 - 文字列を `i18n._("...")` で包む
 - `uv run python i18n.py -todo` で不足をチェック
 - 各言語の `.po` ファイルに追加
@@ -240,21 +251,32 @@ self.save_config("section")
 ## 6. テスト実行
 
 ```powershell
-# テスト実行
-uv run pytest tests
+# Qt テスト実行
+uv run pytest tests/katrain_qt/ -v
 
-# 起動確認
-python -m katrain
+# 全テスト実行
+uv run pytest tests -v
+
+# Qt アプリ起動
+python -m katrain_qt
 
 # i18nチェック
 $env:PYTHONUTF8 = "1"
 uv run python i18n.py -todo
+
+# Windows ビルド
+.\tools\build_windows.ps1
 ```
 
 ---
 
 ## 7. 変更履歴
 
+- 2026-01-09: Kivy→Qt GUI移行完了
+  - `katrain/gui/` 削除（28ファイル）
+  - `katrain_qt/` パッケージ追加（約4,500行）
+  - ディレクトリ構造、クラス関係、データフローを Qt ベースに更新
+  - 詳細: `docs/kivy-to-qt-migration-summary.md`
 - 2026-01-07: コードベース簡素化（PR #90-92）
   - Contribute Engine削除（contribute_engine.py）
   - 多言語i18n削除（JP+EN以外の9言語）
