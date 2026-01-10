@@ -1,5 +1,7 @@
 # Phase 7 動作確認ガイド
 
+> ⚠️ **Archived**: Phase 7 完了時点の記録。最新手順は `03-llm-validation.md` を参照。
+
 > このガイドは Phase 7 で実装した機能が正しく動作するかを確認するための手順書です。
 
 ---
@@ -105,7 +107,7 @@ Based on the data above, consider focusing on:
 
 ### 期待される出力
 
-`reports/karte_YYYYMMDD-HHMM.md` が生成され、以下のセクションが含まれる：
+`reports/karte/karte_YYYYMMDD-HHMM.md` が生成され、以下のセクションが含まれる：
 
 #### Weakness Hypothesis (Focus Player)
 

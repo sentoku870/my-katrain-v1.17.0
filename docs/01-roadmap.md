@@ -93,7 +93,7 @@
 |------:|--------|----------|------|
 | 4 | クイズモードUI | 学習機能 | 🔄 **進行中** |
 | 4.5 | 評価指標安定化 + バッチ改善 | 5段階プリセット、Variable Visits | ✅ **完了** |
-| 5 | 1局カルテを安定出力 | `karte.md` + アンカー規則 | ✅ **完了** |
+| 5 | 1局カルテを安定出力 | `reports/karte/karte_*.md` + アンカー規則 | ✅ **完了** |
 | 6 | 複数局まとめで"悪癖"抽出 | `summary.md`（傾向） | ✅ **完了** |
 | 6.5 | eval_metrics.py 品質向上 | production-ready 基盤 | ✅ **完了** |
 | 7 | 単局カルテUI + カルテ品質向上 | デイリーコーチ完成 | ✅ **完了** |
@@ -194,7 +194,7 @@
 
 ### 5.3 成果物
 - [x] 単局カルテUI（Export Karte ボタン、Phase 5で実装済み）
-- [x] `reports/karte_YYYYMMDD-HHMM.md`（単局版、Phase 5で実装済み）
+- [x] `reports/karte/karte_YYYYMMDD-HHMM.md`（単局版、Phase 5で実装済み）
 - [x] Phase × Mistake クロス集計テーブル（複数局サマリー）
 - [x] 弱点仮説セクション（単局カルテ + 複数局サマリー）
 
@@ -360,7 +360,7 @@
 ### カルテ出力
 
 - [ ] **単局カルテ**: Export Karte → `reports/karte/` にファイル生成
-- [ ] **複数局サマリー**: Batch Analyze → `reports/summary/` にファイル生成
+- [ ] **複数局サマリー**: Batch Analyze → `reports/summary_互先_*.md` にファイル生成
 
 ---
 

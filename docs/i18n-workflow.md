@@ -14,7 +14,8 @@
 
 2. **Locale code: `jp` for Japanese** (not `ja`)
    - Confirmed in `katrain/i18n/locales/jp/`
-   - Other locales: `en`, `cn`, `de`, `fr`, `ko`, `ru`, `tr`, `tw`, `ua`
+   - Supported locales: `en`, `jp` only (other locales have been removed)
+   - Note: `jp` is the directory name used in this repo (not ISO `ja`)
 
 3. **Always compile `.mo` after editing `.po`**
    - `.po` files are source (human-editable)
@@ -100,7 +101,7 @@ python i18n.py
 ```
 
 This will:
-- Auto-add missing msgids to all other locales (cn, de, fr, etc.)
+- Auto-add missing msgids to all supported locales
 - Compile all `.mo` files automatically
 
 #### 5. Verify in app

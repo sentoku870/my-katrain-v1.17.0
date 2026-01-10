@@ -1,5 +1,7 @@
 # Phase 9 完了サマリー
 
+> ⚠️ **Archived**: Phase 9 完了時点（2025-12-31）の記録。最新手順は `03-llm-validation.md` を参照。
+
 > 作成日: 2025-12-31
 > Phase: Phase 9（検証テンプレで改善ループ）
 
@@ -96,7 +98,7 @@
 
 | ステップ | 成果物 | フォーマット |
 |---------|--------|-------------|
-| 1 | カルテ（`karte_*.md` or `summary_*.md`） | Markdown |
+| 1 | カルテ（`reports/karte/karte_*.md` or `reports/summary_互先_*.md`） | Markdown |
 | 2 | LLM診断結果 | テキスト（保存任意） |
 | 3 | 行動ルール（`action_rules_vXX.md`） | Markdown |
 | 4 | 対局記録（`practice_log_vXX.md`） | Markdown（任意） |
@@ -257,7 +259,7 @@ A: いいえ。重要な対局、行動ルール確認、特に学びがあっ�
 
 2. **デイリーコーチ**:
    - 重要な対局を打つ
-   - Export Karte で `karte_*.md` 生成
+   - Export Karte で `reports/karte/karte_*.md` 生成
    - LLMに貼り付けて振り返り（5分）
    - 行動ルール遵守を確認
 

@@ -1,7 +1,6 @@
 # myKatrain コード構造
 
 > 最終更新: 2026-01-10
-> 詳細な実装ガイドは別途 `KaTrain_Code_Structure_and_YoseAnalyzer_Integration.md`（参考資料）を参照。
 
 ---
 
