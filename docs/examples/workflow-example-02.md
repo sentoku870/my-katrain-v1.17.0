@@ -24,7 +24,7 @@
 **操作**:
 1. KaTrain で対局を開く
 2. 「Export Karte」ボタンをクリック
-3. `reports/karte_20260101-1400.md` を確認
+3. `reports/karte/karte_20260101-1400.md` を確認
 
 ### Step 2: カルテの確認（2分）
 

@@ -1,5 +1,7 @@
 # Implementation Plan: Phase A + B (Revised)
 
+> ⚠️ **Archived**: Phase A+B 計画時点（2026-01-03）の記録。一部未実装。
+
 > **Status**: Draft for User Approval (Revision 2)
 > **Created**: 2026-01-03
 > **Scope**: Batch Analyze UX Improvements + Policy Entropy Normalization

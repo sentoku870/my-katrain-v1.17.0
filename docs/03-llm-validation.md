@@ -11,7 +11,7 @@
 ### カルテの種類
 
 - **デイリーコーチ（単局カルテ）**: 1局の振り返り用
-  - 出力: `reports/karte_YYYYMMDD-HHMM.md`
+  - 出力: `reports/karte/karte_YYYYMMDD-HHMM.md`
   - 操作: KaTrain の「Export Karte」ボタン
   - 特徴: Freedom（手の自由度）が計算される
 
@@ -86,7 +86,7 @@ Phase 9 の核心は、以下の5ステップを **測定可能な形で回す**
 **手順**:
 1. KaTrain で対局を開く（または検討中の対局）
 2. 「Export Karte」ボタンをクリック
-3. `reports/karte_YYYYMMDD-HHMM.md` を確認
+3. `reports/karte/karte_YYYYMMDD-HHMM.md` を確認
 
 **確認ポイント**:
 - [ ] Weakness Hypothesis (Focus Player) が表示される
