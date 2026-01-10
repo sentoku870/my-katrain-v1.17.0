@@ -257,6 +257,9 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-10: Phase 3 SGFエラー統合（PR #98）
+  - InputValidationError追加（errors.py）
+  - SGFエラーハンドリング統一（_handle_sgf_error, load_sgf_file, load_sgf_from_clipboard）
 - 2026-01-10: Phase 2 安定性向上（PR #97）
   - エラー階層追加（katrain/core/errors.py）
   - ErrorHandler追加（katrain/gui/error_handler.py）

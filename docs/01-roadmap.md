@@ -374,6 +374,15 @@
 
 ## 11. 変更履歴
 
+- 2026-01-10: Phase 3 SGFエラー統合（PR #98）
+  - **目的**: SGF読み込みエラー処理をErrorHandler経由に統一
+  - **errors.py**: InputValidationError追加
+  - **__main__.py**:
+    - `_handle_sgf_error` ヘルパー追加
+    - `load_sgf_file()` 改修
+    - `load_sgf_from_clipboard()` 改修（URL取得エラー対応含む）
+  - **セキュリティ**: クリップボード内容をログ/contextに含めない
+  - **成果**: 全510テストパス
 - 2026-01-10: Phase 2 安定性向上（PR #97）
   - **目的**: 散在するエラー処理を集約し、Kivyイベントループの安定化
   - **エラー階層**: `katrain/core/errors.py` 新規作成
