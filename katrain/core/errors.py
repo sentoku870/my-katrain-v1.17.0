@@ -50,3 +50,9 @@ class SGFError(KaTrainError):
     """SGF load/parse errors."""
 
     pass
+
+
+class InputValidationError(KaTrainError):
+    """User input validation errors (popup forms, etc.)."""
+
+    pass

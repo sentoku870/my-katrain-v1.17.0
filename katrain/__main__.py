@@ -106,7 +106,7 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.sgf_parser import Move, ParseError
-from katrain.core.errors import EngineError
+from katrain.core.errors import EngineError, SGFError
 from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node, extract_sgf_statistics
@@ -735,12 +735,22 @@ class KaTrainGui(Screen, KaTrainBase):
             node.played_mistake_sound = True
             play_sound(random.choice(Theme.MISTAKE_SOUNDS))
 
+    def _handle_sgf_error(self, exc: Exception, user_message: str, context: dict) -> None:
+        """Handle SGF-related errors consistently.
+
+        SECURITY: Never include clipboard content in message or context.
+        """
+        self.error_handler.handle(
+            SGFError(str(exc), user_message=user_message, context=context),
+            notify_user=True,
+        )
+
     def load_sgf_file(self, file, fast=False, rewind=True):
         try:
             file = os.path.abspath(file)
             move_tree = KaTrainSGF.parse_file(file)
         except (ParseError, FileNotFoundError) as e:
-            self.log(i18n._("Failed to load SGF").format(error=e), OUTPUT_ERROR)
+            self._handle_sgf_error(e, i18n._("Failed to load SGF"), {"file": file})
             return
         self._do_new_game(move_tree=move_tree, analyze_fast=fast, sgf_filename=file)
         if not rewind:
@@ -1141,15 +1151,23 @@ class KaTrainGui(Screen, KaTrainBase):
         url_match = re.match(r"(?P<url>https?://[^\s]+)", clipboard)
         if url_match:
             self.log("Recognized url: " + url_match.group(), OUTPUT_INFO)
-            http = urllib3.PoolManager()
-            response = http.request("GET", url_match.group())
-            clipboard = response.data.decode("utf-8")
+            try:
+                http = urllib3.PoolManager()
+                response = http.request("GET", url_match.group())
+                clipboard = response.data.decode("utf-8")
+            except Exception as e:
+                # SECURITY: Do not log URL content in context
+                self._handle_sgf_error(
+                    e, i18n._("Failed to fetch SGF from URL"), {"source": "url"}
+                )
+                return
 
         try:
             move_tree = KaTrainSGF.parse_sgf(clipboard)
         except Exception as exc:
-            self.controls.set_status(
-                i18n._("Failed to import from clipboard").format(error=exc, contents=clipboard[:50]), STATUS_INFO
+            # SECURITY: Never include clipboard content in logs
+            self._handle_sgf_error(
+                exc, i18n._("Failed to import from clipboard"), {"source": "clipboard"}
             )
             return
         move_tree.nodes_in_tree[-1].analyze(
