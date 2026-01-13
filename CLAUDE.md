@@ -218,6 +218,21 @@ KataGo(JSON) → KataGoEngine → GameNode.set_analysis()
 
 詳細は `docs/02-code-structure.md` を参照。
 
+### ロック設計ガイドライン（engine.py）
+
+KataGoEngine はマルチスレッドで動作するため、デッドロック防止のルールを定義。
+
+| ルール | 説明 |
+|--------|------|
+| `*_unlocked()` サフィックス | 呼び出し元がロックを保持している前提 |
+| ロック内でコールバック/停止操作を呼ばない | 例: `stop_pondering()` はロック外で呼ぶ |
+| 長時間操作はロック外 | I/O, sleep, 外部呼び出しをロック内で行わない |
+
+**例**: `_stop_pondering_unlocked()` (PR #101 で追加)
+- 検索: `Select-String -Path katrain\core\engine.py -Pattern "_stop_pondering_unlocked"`
+
+**関連**: `daemon=True` スレッドはメインプロセス終了時に自動終了するため、アプリ終了時のスレッド join はスキップ可能。
+
 ---
 
 ## 5. 囲碁ドメイン（参照）
