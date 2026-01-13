@@ -331,27 +331,26 @@ class KaTrainGui(Screen, KaTrainBase):
         self.engine = KataGoEngine(self, self.config("engine"))
 
         # Set up engine error handler with rich context
-        def _handle_engine_error(err):
-            """Handle engine errors with rich context."""
+        def _handle_engine_error(message, code=None, allow_popup=True):
+            """Handle engine errors with rich context.
+
+            Args:
+                message: Error message string
+                code: Optional error code
+                allow_popup: Whether to show recovery popup (used by engine.py)
+            """
             context = {
-                "original_error": repr(err),
-                "original_type": type(err).__name__,
+                "original_error": repr(message),
+                "error_code": code,
             }
-            # If err is an Exception with traceback, include formatted traceback in context
-            if isinstance(err, Exception) and getattr(err, "__traceback__", None):
-                try:
-                    tb_lines = traceback.format_exception(type(err), err, err.__traceback__)
-                    context["traceback"] = "".join(tb_lines[:30])  # Truncate to 30 lines
-                except Exception:
-                    pass
 
             self.error_handler.handle(
                 EngineError(
-                    str(err),
+                    str(message),
                     user_message="Engine error occurred",
                     context=context,
                 ),
-                notify_user=True,
+                notify_user=allow_popup,
             )
 
         self.engine.on_error = _handle_engine_error

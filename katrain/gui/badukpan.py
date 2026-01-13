@@ -32,6 +32,7 @@ from katrain.core.constants import (
 from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.utils import evaluation_class, format_visits, var_to_grid, json_truncate_arrays
+from katrain.core.analysis import get_pv_filter_config, filter_candidates_by_pv_complexity, DEFAULT_PV_FILTER_LEVEL
 from katrain.gui.kivyutils import draw_circle, draw_text, cached_texture
 from katrain.gui.popups import I18NPopup, ReAnalyzeGamePopup, GameReportPopup, TsumegoFramePopup
 from katrain.gui.theme import Theme
@@ -924,6 +925,14 @@ class BadukPanWidget(Widget):
                     for c in current_node.children
                     if c.move and c.auto_undo and c.move.gtp() == m["move"]
                 ]
+
+            # Apply PV filter to hint_moves (Phase 11)
+            if hint_moves:
+                pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
+                skill_preset = katrain.config("general/skill_preset")
+                pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
+                if pv_filter_config is not None:
+                    hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
 
             top_move_coords = None
             child_moves = {c.move.gtp() for c in current_node.children if c.move}

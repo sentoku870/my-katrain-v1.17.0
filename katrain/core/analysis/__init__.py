@@ -28,6 +28,7 @@ from katrain.core.analysis.models import (
     PositionDifficulty,
     AutoConfidence,
     ConfidenceLevel,
+    PVFilterLevel,
     # Dataclasses
     MoveEval,
     EvalSnapshot,
@@ -46,11 +47,15 @@ from katrain.core.analysis.models import (
     ReliabilityStats,
     MistakeStreak,
     SkillEstimation,
+    PVFilterConfig,
     # Preset dictionaries and lists
     SKILL_PRESETS,
     DEFAULT_SKILL_PRESET,
     PRESET_ORDER,
     URGENT_MISS_CONFIGS,
+    PV_FILTER_CONFIGS,
+    SKILL_TO_PV_FILTER,
+    DEFAULT_PV_FILTER_LEVEL,
     # Settings dictionaries
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     DEFAULT_IMPORTANT_MOVE_LEVEL,
@@ -127,6 +132,9 @@ from katrain.core.analysis.logic import (
     pick_important_moves,
     # Skill estimation
     estimate_skill_level_from_tags,
+    # PV Filter (Phase 11)
+    get_pv_filter_config,
+    filter_candidates_by_pv_complexity,
 )
 
 # =============================================================================
@@ -161,6 +169,7 @@ __all__ = [
     "PositionDifficulty",
     "AutoConfidence",
     "ConfidenceLevel",
+    "PVFilterLevel",
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",
@@ -179,11 +188,15 @@ __all__ = [
     "ReliabilityStats",
     "MistakeStreak",
     "SkillEstimation",
+    "PVFilterConfig",
     # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
     "PRESET_ORDER",
     "URGENT_MISS_CONFIGS",
+    "PV_FILTER_CONFIGS",
+    "SKILL_TO_PV_FILTER",
+    "DEFAULT_PV_FILTER_LEVEL",
     # Settings dictionaries
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
@@ -254,6 +267,9 @@ __all__ = [
     "pick_important_moves",
     # Skill estimation
     "estimate_skill_level_from_tags",
+    # PV Filter (Phase 11)
+    "get_pv_filter_config",
+    "filter_candidates_by_pv_complexity",
     # === presentation.py ===
     # Label constants
     "SKILL_PRESET_LABELS",
