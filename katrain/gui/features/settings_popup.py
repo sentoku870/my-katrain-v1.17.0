@@ -158,6 +158,65 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         skill_layout.add_widget(label)
     popup_content.add_widget(skill_layout)
 
+    # PV Filter Level (Radio buttons)
+    pv_filter_label = Label(
+        text=i18n._("mykatrain:settings:pv_filter_level"),
+        size_hint_y=None,
+        height=dp(25),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    pv_filter_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    popup_content.add_widget(pv_filter_label)
+
+    current_pv_filter = (
+        ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL
+    )
+    selected_pv_filter = [current_pv_filter]
+
+    pv_filter_options = [
+        ("auto", i18n._("mykatrain:settings:pv_filter_auto")),
+        ("off", i18n._("mykatrain:settings:pv_filter_off")),
+        ("weak", i18n._("mykatrain:settings:pv_filter_weak")),
+        ("medium", i18n._("mykatrain:settings:pv_filter_medium")),
+        ("strong", i18n._("mykatrain:settings:pv_filter_strong")),
+    ]
+
+    pv_filter_layout = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3)
+    )
+    for pv_value, pv_label_text in pv_filter_options:
+        checkbox = CheckBox(
+            group="pv_filter_setting",
+            active=(pv_value == current_pv_filter),
+            size_hint_x=None,
+            width=dp(30),
+        )
+        checkbox.bind(
+            active=lambda chk, active, val=pv_value: (
+                selected_pv_filter.__setitem__(0, val) if active else None
+            )
+        )
+        label = Label(
+            text=pv_label_text,
+            size_hint_x=None,
+            width=dp(70),
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        label.bind(
+            size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+        )
+        pv_filter_layout.add_widget(checkbox)
+        pv_filter_layout.add_widget(label)
+    popup_content.add_widget(pv_filter_layout)
+
     # Default User Name
     user_row, user_input, _ = create_text_input_row(
         label_text=i18n._("mykatrain:settings:default_user_name"),
@@ -369,9 +428,10 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
 
     # Save callback
     def save_settings(*_args):
-        # Save skill preset to general config
+        # Save skill preset and pv_filter_level to general config
         general = ctx.config("general") or {}
         general["skill_preset"] = selected_skill_preset[0]
+        general["pv_filter_level"] = selected_pv_filter[0]
         ctx.set_config_section("general", general)
         ctx.save_config("general")
         # Save mykatrain settings

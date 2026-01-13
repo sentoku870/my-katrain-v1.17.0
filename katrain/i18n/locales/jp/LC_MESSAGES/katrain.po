@@ -1240,6 +1240,24 @@ msgstr "激辛"
 msgid "mykatrain:settings:skill_auto"
 msgstr "自動"
 
+msgid "mykatrain:settings:pv_filter_level"
+msgstr "候補手フィルタ（最善手除く）:"
+
+msgid "mykatrain:settings:pv_filter_off"
+msgstr "OFF"
+
+msgid "mykatrain:settings:pv_filter_weak"
+msgstr "緩め"
+
+msgid "mykatrain:settings:pv_filter_medium"
+msgstr "標準"
+
+msgid "mykatrain:settings:pv_filter_strong"
+msgstr "厳選"
+
+msgid "mykatrain:settings:pv_filter_auto"
+msgstr "自動"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

@@ -1288,6 +1288,24 @@ msgstr "Pro"
 msgid "mykatrain:settings:skill_auto"
 msgstr "Auto"
 
+msgid "mykatrain:settings:pv_filter_level"
+msgstr "Candidate Filter (excl. best):"
+
+msgid "mykatrain:settings:pv_filter_off"
+msgstr "Off"
+
+msgid "mykatrain:settings:pv_filter_weak"
+msgstr "Weak"
+
+msgid "mykatrain:settings:pv_filter_medium"
+msgstr "Medium"
+
+msgid "mykatrain:settings:pv_filter_strong"
+msgstr "Strong"
+
+msgid "mykatrain:settings:pv_filter_auto"
+msgstr "Auto"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 

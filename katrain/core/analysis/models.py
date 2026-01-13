@@ -49,6 +49,21 @@ class MistakeCategory(Enum):
         return self is not MistakeCategory.GOOD
 
 
+class PVFilterLevel(Enum):
+    """候補手フィルタのレベル（Phase 11）。
+
+    盤面に表示するTop Movesをフィルタリングするための設定レベル。
+    難解なPV（長い読み筋）や大きな損失の手を除外して、
+    ユーザーにとって理解しやすい候補手のみを表示する。
+    """
+
+    OFF = "off"          # フィルタなし（全候補手を表示）
+    WEAK = "weak"        # 緩め（候補手多め、激甘〜甘口向け）
+    MEDIUM = "medium"    # 標準
+    STRONG = "strong"    # 厳しめ（候補手少なめ、辛口〜激辛向け）
+    AUTO = "auto"        # Skill Presetに連動
+
+
 class PositionDifficulty(Enum):
     """局面難易度を表すラベル。"""
 
@@ -828,6 +843,59 @@ WINRATE_THRESHOLDS: Tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRE
 
 
 # =============================================================================
+# PV Filter (Phase 11)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class PVFilterConfig:
+    """候補手フィルタの設定（Phase 11）。
+
+    Attributes:
+        max_candidates: フィルタ後の最大候補手数（best_moveは別枠で上限外）
+        max_points_lost: この値以下の損失の手のみ表示（<=比較）
+        max_pv_length: この値以下のPV長の手のみ表示（<=比較）
+    """
+
+    max_candidates: int
+    max_points_lost: float
+    max_pv_length: int
+
+
+# PVFilterLevelごとのプリセット設定
+PV_FILTER_CONFIGS: Dict[str, PVFilterConfig] = {
+    "weak": PVFilterConfig(
+        max_candidates=15,
+        max_points_lost=4.0,
+        max_pv_length=15,
+    ),
+    "medium": PVFilterConfig(
+        max_candidates=8,
+        max_points_lost=2.0,
+        max_pv_length=10,
+    ),
+    "strong": PVFilterConfig(
+        max_candidates=4,
+        max_points_lost=1.0,
+        max_pv_length=6,
+    ),
+}
+
+# skill_preset から pv_filter_level へのマッピング（AUTO用）
+# skill_presetは「ミス判定の厳しさ」: 激甘=大きな損失のみ指摘、激辛=小さな損失も指摘
+# PVフィルタは逆方向: 激甘→候補手多め(WEAK)、激辛→候補手少なめ(STRONG)
+SKILL_TO_PV_FILTER: Dict[str, str] = {
+    "relaxed": "weak",     # 激甘 → 候補手多め
+    "beginner": "weak",    # 甘口 → 候補手多め
+    "standard": "medium",  # 標準 → 標準
+    "advanced": "strong",  # 辛口 → 候補手少なめ
+    "pro": "strong",       # 激辛 → 候補手少なめ
+}
+
+DEFAULT_PV_FILTER_LEVEL = "auto"
+
+
+# =============================================================================
 # __all__
 # =============================================================================
 
@@ -838,6 +906,7 @@ __all__ = [
     "PositionDifficulty",
     "AutoConfidence",
     "ConfidenceLevel",
+    "PVFilterLevel",
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",
@@ -856,11 +925,15 @@ __all__ = [
     "ReliabilityStats",
     "MistakeStreak",
     "SkillEstimation",
+    "PVFilterConfig",
     # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
     "PRESET_ORDER",
     "URGENT_MISS_CONFIGS",
+    "PV_FILTER_CONFIGS",
+    "SKILL_TO_PV_FILTER",
+    "DEFAULT_PV_FILTER_LEVEL",
     # Settings dictionaries
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
