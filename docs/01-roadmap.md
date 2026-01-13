@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-10
+> 最終更新: 2026-01-13
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -100,7 +100,7 @@
 | 9 | 検証テンプレで改善ループ | `03-llm-validation.md` | ✅ **完了** |
 | 8 | 初心者向けヒント（任意） | 構造解析 + テンプレ | TBD |
 | 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
-| 11 | 難解PVフィルタ | Top Moves表示改善 | 📋 **仕様確定** |
+| 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ **完了** |
 | 12 | MuZero 3分解難易度 | 難所抽出・解説出し分け | 📋 **仕様確定** |
 | 13 | Smart Kifu Learning | 棋譜学習・プロファイル | 📋 **仕様確定** |
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | 📋 **仕様確定** |
@@ -319,10 +319,15 @@
 
 詳細な設計書は `docs/specs/` を参照。
 
-### Phase 11: 難解PVフィルタ（Human Move Filter）
+### Phase 11: 難解PVフィルタ（Human Move Filter） ✅ **完了**
 - **目的**: Top Moves候補手のうち、難解なPVを含む手を除外して見やすくする
 - **設定**: OFF / WEAK / MEDIUM / STRONG / AUTO
 - **仕様書**: `docs/specs/human-move-filter.md`
+- **実装**: PR #100（2026-01-11）
+  - `PVFilterConfig` dataclass、`PVFilterLevel` enum
+  - `get_pv_filter_config()`, `filter_candidates_by_pv_complexity()` 関数
+  - Skill Preset連動（AUTO設定時）
+  - 30件のテスト追加（`tests/test_pv_filter.py`）
 
 ### Phase 12: MuZero 3分解難易度
 - **目的**: 局面の「難しさ」をPolicy/Transition/Stateに分解し、難所抽出・解説出し分けに使用
@@ -374,6 +379,21 @@
 
 ## 11. 変更履歴
 
+- 2026-01-13: Phase 11 難解PVフィルタ完了 + デッドロック予防（PR #100-102）
+  - **PR #100 (Phase 11)**: 難解PVフィルタ実装
+    - `PVFilterConfig` dataclass、`PVFilterLevel` enum
+    - `get_pv_filter_config()`, `filter_candidates_by_pv_complexity()` 関数
+    - 5段階設定: OFF / WEAK / MEDIUM / STRONG / AUTO
+    - Skill Preset連動（AUTO: relaxed/beginner→WEAK、standard→MEDIUM、advanced/pro→STRONG）
+    - 30件のテスト追加（`tests/test_pv_filter.py`）
+  - **PR #101**: ポンダリング停止時のデッドロック修正
+    - `_write_stdin_thread()` 内の `stop_pondering()` 呼び出しをロック外に移動
+    - `_stop_pondering_unlocked()` パターン導入
+  - **PR #102**: デッドロック予防強化
+    - `wait_to_finish()` に30秒タイムアウト追加（無限ループ防止）
+    - `shutdown()` にデバッグログ追加（問題発生時の診断支援）
+    - CLAUDE.md にロック設計ガイドライン追記
+  - **成果**: 全535テストパス
 - 2026-01-10: Phase 2 安定性向上（PR #97）
   - **目的**: 散在するエラー処理を集約し、Kivyイベントループの安定化
   - **エラー階層**: `katrain/core/errors.py` 新規作成
