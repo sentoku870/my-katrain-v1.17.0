@@ -243,14 +243,40 @@ class KataGoEngine(BaseEngine):
                 self.katrain.log(i18n._("Engine died unexpectedly").format(error=os_error), OUTPUT_DEBUG)
         return ok
 
-    def wait_to_finish(self):
+    def wait_to_finish(self, timeout=30.0):
+        """Wait for queries to complete with timeout.
+
+        Args:
+            timeout: Maximum wait time in seconds (default: 30.0)
+
+        Returns:
+            True if all queries completed, False if timeout reached.
+
+        Timeout behavior:
+            - Logs a debug message with remaining query count
+            - Returns False (does NOT force-kill anything)
+            - Caller (shutdown) proceeds to terminate the process anyway
+        """
+        start = time.time()
         while self.queries and self.katago_process and self.katago_process.poll() is None:
+            if time.time() - start > timeout:
+                self.katrain.log(
+                    f"wait_to_finish: timeout after {timeout}s, {len(self.queries)} queries remaining",
+                    OUTPUT_DEBUG,
+                )
+                return False
             time.sleep(0.1)
+        return True
 
     def shutdown(self, finish=False):
+        self.katrain.log(f"Engine shutdown starting (finish={finish})", OUTPUT_DEBUG)
         process = self.katago_process
         if finish and process:
-            self.wait_to_finish()
+            completed = self.wait_to_finish()
+            if not completed:
+                self.katrain.log(
+                    "Engine shutdown: wait_to_finish timed out, proceeding to terminate", OUTPUT_DEBUG
+                )
         if process:
             self.katago_process = None
             self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
@@ -266,6 +292,7 @@ class KataGoEngine(BaseEngine):
                         self.katrain.log(
                             f"Thread {t.name} did not stop within 5s timeout", OUTPUT_DEBUG
                         )
+        self.katrain.log("Engine shutdown complete", OUTPUT_DEBUG)
 
     def is_idle(self):
         # Note: queue.empty() is best-effort and not strictly reliable.
