@@ -202,11 +202,17 @@ class KataGoEngine(BaseEngine):
                 self.terminate_query(query_id)
 
     def stop_pondering(self):
+        """Stop pondering (public API, acquires lock)."""
         with self.thread_lock:
-            pq = self.ponder_query
-            self.ponder_query = None
+            pq = self._stop_pondering_unlocked()
         if pq:
             self.terminate_query(pq["id"], ignore_further_results=False)
+
+    def _stop_pondering_unlocked(self):
+        """Stop pondering without acquiring lock (caller must hold thread_lock)."""
+        pq = self.ponder_query
+        self.ponder_query = None
+        return pq
 
     def terminate_query(self, query_id, ignore_further_results=True):
         self.katrain.log(f"Terminating query {query_id}", OUTPUT_DEBUG)
@@ -384,6 +390,7 @@ class KataGoEngine(BaseEngine):
                 query, callback, error_callback, next_move, node = self.write_queue.get(block=True, timeout=0.1)
             except queue.Empty:
                 continue
+            old_ponder_query = None  # To call terminate_query outside of lock
             with self.thread_lock:
                 if "id" not in query:
                     self.query_counter += 1
@@ -400,7 +407,7 @@ class KataGoEngine(BaseEngine):
                         if pq.get(k) != query.get(k)
                     }
                     if differences:
-                        self.stop_pondering()
+                        old_ponder_query = self._stop_pondering_unlocked()
                         query["maxVisits"] = 10_000_000
                         query["reportDuringSearchEvery"] = PONDERING_REPORT_DT
                         self.ponder_query = query
@@ -418,6 +425,9 @@ class KataGoEngine(BaseEngine):
                 except OSError as e:
                     self.katrain.log(f"Exception in writing to katago: {e}", OUTPUT_DEBUG)
                     return  # some other thread will take care of this
+            # Terminate old ponder query outside of lock to avoid deadlock
+            if old_ponder_query:
+                self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
 
     def send_query(self, query, callback, error_callback, next_move=None, node=None):
         self.write_queue.put((query, callback, error_callback, next_move, node))
