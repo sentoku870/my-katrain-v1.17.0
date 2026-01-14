@@ -1046,6 +1046,12 @@ msgstr "フォルダ一括解析..."
 msgid "mykatrain:training-set"
 msgstr "Training Set 管理..."
 
+msgid "mykatrain:player-profile"
+msgstr "Player Profile..."
+
+msgid "mykatrain:practice-report"
+msgstr "練習レポート..."
+
 msgid "mykatrain:batch:title"
 msgstr "フォルダ一括解析"
 

@@ -61,6 +61,12 @@ msgstr "Batch Analyze Folder..."
 msgid "mykatrain:training-set"
 msgstr "Training Set Manager..."
 
+msgid "mykatrain:player-profile"
+msgstr "Player Profile..."
+
+msgid "mykatrain:practice-report"
+msgstr "Practice Report..."
+
 msgid "mykatrain:batch:title"
 msgstr "Batch Analyze Folder"
 

@@ -158,6 +158,12 @@ from katrain.gui.features.settings_popup import (
 from katrain.gui.features.smart_kifu_training_set import (
     show_training_set_manager,
 )
+from katrain.gui.features.smart_kifu_profile import (
+    show_player_profile_popup,
+)
+from katrain.gui.features.smart_kifu_practice import (
+    show_practice_report_popup,
+)
 from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
 from katrain.gui.theme import Theme
 from kivymd.app import MDApp
@@ -1043,6 +1049,14 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_training_set_popup(self):
         """Show Training Set Manager popup. Delegates to smart_kifu_training_set."""
         show_training_set_manager(self, self)
+
+    def _do_player_profile_popup(self):
+        """Show Player Profile popup. Delegates to smart_kifu_profile."""
+        show_player_profile_popup(self, self)
+
+    def _do_practice_report_popup(self):
+        """Show Practice Report popup. Delegates to smart_kifu_practice."""
+        show_practice_report_popup(self, self)
 
     def _do_batch_analyze_popup(self):
         """Show batch analyze folder dialog. Delegates to batch_ui/batch_core functions."""
