@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-14
+> 最終更新: 2026-01-15
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -102,7 +102,7 @@
 | 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
 | 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ **完了** |
 | 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ **完了** |
-| 13 | Smart Kifu Learning | 棋譜学習・プロファイル | 📋 **仕様確定** |
+| 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ **完了** |
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | 📋 **仕様確定** |
 
 ---
@@ -341,10 +341,25 @@
   - 詳細パネルに「局面難易度: 易/中/難」を表示
   - 61件のテスト追加（`tests/test_difficulty_metrics.py`）
 
-### Phase 13: Smart Kifu Learning
+### Phase 13: Smart Kifu Learning ✅ **完了**
 - **目的**: 棋譜学習・プレイヤープロファイル・Viewer Level管理
 - **主要機能**: Training Set、Context分離（human/vs_katago/generated）、学習条件提案
 - **仕様書**: `docs/specs/smart-kifu-learning.md`
+- **実装**: PR #105（2026-01-15）
+  - **Phase 13.1**: データ基盤（`katrain/core/smart_kifu/` パッケージ）
+    - `models.py`: Context, ViewerPreset, Confidence enum、GameEntry, TrainingSetManifest, PlayerProfile dataclass
+    - `logic.py`: compute_bucket_key(), compute_engine_profile_id(), compute_game_id(), suggest_handicap_adjustment()
+    - `io.py`: manifest/profile JSON I/O, import_sgf_folder()
+  - **Phase 13.2**: Training Set Manager UI（`gui/features/smart_kifu_training_set.py`）
+    - Training Set一覧、新規作成、SGFフォルダ一括インポート
+    - 重複判定（game_id）、インポート結果サマリー表示
+  - **Phase 13.3**: Player Profile UI（`gui/features/smart_kifu_profile.py`）
+    - Context切替、Bucket別カード表示、更新ワークフロー
+    - Confidence表示、Viewer Level推定
+  - **Phase 13.4**: 練習レポート（`gui/features/smart_kifu_practice.py`）
+    - vs KataGo直近N局の勝率計算
+    - 置石調整提案（勝率>70%→-1、<30%→+1、40-60%→維持）
+  - 52件のテスト追加（`tests/test_smart_kifu.py`）
 
 ### Phase 14: Leelaモード推定損失
 - **目的**: Leela解析に「推定損失」（KataGo風の損失目数）を表示
@@ -386,6 +401,20 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 13 Smart Kifu Learning完了（PR #105）
+  - **Phase 13.1**: データ基盤（`katrain/core/smart_kifu/` パッケージ）
+    - `models.py`: Enum（Context, ViewerPreset, Confidence）、Dataclass（GameEntry, TrainingSetManifest, PlayerProfile等）
+    - `logic.py`: bucket_key計算、engine_profile_id計算、game_id（正規化ハッシュ）、置石調整提案
+    - `io.py`: manifest/profile JSON I/O、SGFインポート（重複チェック含む）
+  - **Phase 13.2**: Training Set Manager UI
+    - Training Set一覧、新規作成ダイアログ、SGFフォルダ一括インポート
+    - インポート結果サマリー（成功/重複/失敗）
+  - **Phase 13.3**: Player Profile UI
+    - Context切替タブ、Bucket別カード表示、更新ワークフロー（N局選択→プレビュー→採用）
+  - **Phase 13.4**: 練習レポート
+    - vs KataGo直近10局の勝率計算、置石調整提案
+  - **メニュー統合**: myKatrainメニューに3項目追加
+  - **成果**: 52件のテスト追加、全648テストパス
 - 2026-01-14: Phase 12 MuZero 3分解難易度完了（PR #103-104）
   - **PR #103**: 難易度計算ロジック
     - `DifficultyMetrics` dataclass（policy/transition/state/overall）
