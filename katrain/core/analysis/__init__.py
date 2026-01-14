@@ -48,6 +48,15 @@ from katrain.core.analysis.models import (
     MistakeStreak,
     SkillEstimation,
     PVFilterConfig,
+    # Phase 12: Difficulty Metrics
+    DifficultyMetrics,
+    DIFFICULTY_UNKNOWN,
+    DIFFICULTY_MIN_VISITS,
+    DIFFICULTY_MIN_CANDIDATES,
+    POLICY_GAP_MAX,
+    TRANSITION_DROP_MAX,
+    DEFAULT_DIFFICULT_POSITIONS_LIMIT,
+    DEFAULT_MIN_MOVE_NUMBER,
     # Preset dictionaries and lists
     SKILL_PRESETS,
     DEFAULT_SKILL_PRESET,
@@ -135,6 +144,16 @@ from katrain.core.analysis.logic import (
     # PV Filter (Phase 11)
     get_pv_filter_config,
     filter_candidates_by_pv_complexity,
+    # Difficulty Metrics (Phase 12)
+    _normalize_candidates,
+    _get_root_visits,
+    _determine_reliability,
+    _compute_policy_difficulty,
+    _compute_transition_difficulty,
+    _compute_state_difficulty,
+    compute_difficulty_metrics,
+    _get_candidates_from_node,
+    extract_difficult_positions,
 )
 
 # =============================================================================
@@ -189,6 +208,15 @@ __all__ = [
     "MistakeStreak",
     "SkillEstimation",
     "PVFilterConfig",
+    # Phase 12: Difficulty Metrics
+    "DifficultyMetrics",
+    "DIFFICULTY_UNKNOWN",
+    "DIFFICULTY_MIN_VISITS",
+    "DIFFICULTY_MIN_CANDIDATES",
+    "POLICY_GAP_MAX",
+    "TRANSITION_DROP_MAX",
+    "DEFAULT_DIFFICULT_POSITIONS_LIMIT",
+    "DEFAULT_MIN_MOVE_NUMBER",
     # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
@@ -270,6 +298,16 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
+    # Difficulty Metrics (Phase 12)
+    "_normalize_candidates",
+    "_get_root_visits",
+    "_determine_reliability",
+    "_compute_policy_difficulty",
+    "_compute_transition_difficulty",
+    "_compute_state_difficulty",
+    "compute_difficulty_metrics",
+    "_get_candidates_from_node",
+    "extract_difficult_positions",
     # === presentation.py ===
     # Label constants
     "SKILL_PRESET_LABELS",

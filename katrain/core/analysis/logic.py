@@ -11,6 +11,7 @@ katrain.core.analysis.logic - 計算ロジック
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import (
     TYPE_CHECKING,
@@ -28,13 +29,19 @@ from katrain.core.analysis.models import (
     AutoConfidence,
     AutoRecommendation,
     ConfidenceLevel,
+    DEFAULT_DIFFICULT_POSITIONS_LIMIT,
     DEFAULT_IMPORTANT_MOVE_LEVEL,
+    DEFAULT_MIN_MOVE_NUMBER,
     DEFAULT_PV_FILTER_LEVEL,
     DEFAULT_QUIZ_ITEM_LIMIT,
     DEFAULT_QUIZ_LOSS_THRESHOLD,
     DEFAULT_SKILL_PRESET,
+    DIFFICULTY_MIN_CANDIDATES,
+    DIFFICULTY_MIN_VISITS,
     DIFFICULTY_MODIFIER_HARD,
     DIFFICULTY_MODIFIER_ONLY_MOVE,
+    DIFFICULTY_UNKNOWN,
+    DifficultyMetrics,
     EvalSnapshot,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     ImportantMoveSettings,
@@ -42,6 +49,7 @@ from katrain.core.analysis.models import (
     MistakeStreak,
     MoveEval,
     PhaseMistakeStats,
+    POLICY_GAP_MAX,
     PositionDifficulty,
     PRESET_ORDER,
     PV_FILTER_CONFIGS,
@@ -58,6 +66,7 @@ from katrain.core.analysis.models import (
     SkillPreset,
     STREAK_START_BONUS,
     SWING_MAGNITUDE_WEIGHT,
+    TRANSITION_DROP_MAX,
     UrgentMissConfig,
     URGENT_MISS_CONFIGS,
     VALID_REASON_TAGS,
@@ -1281,6 +1290,404 @@ def filter_candidates_by_pv_complexity(
 
 
 # =============================================================================
+# Phase 12: 難易度分解（Difficulty Metrics）
+# =============================================================================
+
+_difficulty_logger = logging.getLogger(__name__)
+
+
+def _normalize_candidates(candidates: List[Dict]) -> Optional[List[Dict]]:
+    """候補手リストを正規化（ソート + バリデーション）。
+
+    order 欠損時は UNKNOWN（手番依存のソートを回避）。
+
+    Args:
+        candidates: KataGo moveInfos（未ソートの可能性あり）
+
+    Returns:
+        order フィールドでソート済みのリスト。
+        - order がある → order でソート
+        - order がない → None（UNKNOWN扱い）
+
+    Note:
+        scoreLead は BLACK 視点なので、WHITE 手番では降順が「最悪手順」になる。
+        手番情報なしでは正しくソートできないため、order 欠損時は UNKNOWN 扱い。
+    """
+    if not candidates:
+        return []
+
+    # order フィールドの存在チェック
+    has_order = all("order" in c for c in candidates)
+
+    if has_order:
+        # order でソート（0=最善）
+        return sorted(candidates, key=lambda c: c.get("order", 999))
+
+    # order がない場合は UNKNOWN（手番依存のソートを回避）
+    return None
+
+
+def _get_root_visits(analysis: Optional[Dict]) -> Optional[int]:
+    """analysis から root_visits を取得（複数キーに対応）。
+
+    KaTrain/KataGo の複数フォーマットに対応。
+
+    Args:
+        analysis: GameNode.analysis（辞書または None）
+
+    Returns:
+        root_visits 値。取得できない場合は None。
+
+    Note:
+        優先順位:
+        1. rootInfo.visits（KataGo 標準）
+        2. root.visits（KaTrain 内部フォーマット）
+        3. visits（直接参照、一部のカスタムフォーマット）
+    """
+    if not analysis:
+        return None
+
+    # KataGo 標準: rootInfo.visits
+    root_info = analysis.get("rootInfo", {})
+    if "visits" in root_info:
+        return root_info.get("visits")
+
+    # KaTrain 内部フォーマット: root.visits
+    root = analysis.get("root", {})
+    if "visits" in root:
+        return root.get("visits")
+
+    # 直接参照（一部のカスタムフォーマット対応）
+    if "visits" in analysis:
+        return analysis.get("visits")
+
+    return None
+
+
+def _determine_reliability(
+    root_visits: Optional[int],
+    candidate_count: int,
+) -> Tuple[bool, str]:
+    """信頼性を判定。
+
+    フォールバック係数なし、シンプルなルール。
+
+    Args:
+        root_visits: root_visits 値（None の場合は unreliable）
+        candidate_count: 候補手の数
+
+    Returns:
+        (is_reliable, reason) タプル。
+    """
+    # root_visits が None の場合は unreliable
+    if root_visits is None:
+        return False, "root_visits_missing"
+
+    # visits 不足
+    if root_visits < DIFFICULTY_MIN_VISITS:
+        return False, f"visits_insufficient ({root_visits} < {DIFFICULTY_MIN_VISITS})"
+
+    # 候補不足
+    if candidate_count < DIFFICULTY_MIN_CANDIDATES:
+        return False, f"candidates_insufficient ({candidate_count} < {DIFFICULTY_MIN_CANDIDATES})"
+
+    return True, "reliable"
+
+
+def _compute_policy_difficulty(
+    candidates: List[Dict],
+    include_debug: bool = False,
+) -> Tuple[Optional[float], Optional[Dict]]:
+    """候補手の拮抗度から Policy 難易度を計算。
+
+    scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
+
+    Top1 と Top2 の scoreLead 差が小さいほど「迷いやすい」。
+    差の絶対値を使用（scoreLead の符号は BLACK 視点だが、
+    差を取れば手番に関係なく評価できる）。
+
+    Args:
+        candidates: 正規化済み候補手リスト（order順）
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (difficulty, debug_info) タプル。
+        difficulty: 0-1 の難易度値。候補が拮抗しているほど高い。
+                    scoreLead 欠損時は None。
+    """
+    if len(candidates) < 2:
+        debug = {"reason": "insufficient_candidates", "count": len(candidates)} if include_debug else None
+        return 0.0, debug
+
+    # scoreLead を取得（存在しない場合は None）
+    top1_score = candidates[0].get("scoreLead")
+    top2_score = candidates[1].get("scoreLead")
+
+    # None チェック → UNKNOWN 扱い
+    if top1_score is None or top2_score is None:
+        debug = {"reason": "missing_scoreLead"} if include_debug else None
+        return None, debug
+
+    # 差の絶対値を使用（符号に依存しない）
+    gap = abs(top1_score - top2_score)
+
+    # gap が 0 なら difficulty=1、POLICY_GAP_MAX 以上なら difficulty=0
+    difficulty = max(0.0, min(1.0, 1.0 - gap / POLICY_GAP_MAX))
+
+    debug = {
+        "top1_score": top1_score,
+        "top2_score": top2_score,
+        "gap": gap,
+        "normalized": difficulty,
+    } if include_debug else None
+
+    return difficulty, debug
+
+
+def _compute_transition_difficulty(
+    candidates: List[Dict],
+    include_debug: bool = False,
+) -> Tuple[Optional[float], Optional[Dict]]:
+    """評価の急落度から Transition 難易度を計算。
+
+    scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
+
+    Top1 と Top2 の scoreLead 差が大きいほど「崩れやすい」。
+
+    意味:
+    - 最善手を逃すとどれだけ損するか
+    - 差が大きい = 一手の選択が重要 = 崩れやすい
+
+    Args:
+        candidates: 正規化済み候補手リスト（order順）
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (difficulty, debug_info) タプル。
+        difficulty: 0-1 の難易度値。少し外すと急に悪化するほど高い。
+                    scoreLead 欠損時は None。
+    """
+    if len(candidates) < 2:
+        debug = {"reason": "insufficient_candidates", "count": len(candidates)} if include_debug else None
+        return 0.0, debug
+
+    top1_score = candidates[0].get("scoreLead")
+    top2_score = candidates[1].get("scoreLead")
+
+    # None チェック → UNKNOWN 扱い
+    if top1_score is None or top2_score is None:
+        debug = {"reason": "missing_scoreLead"} if include_debug else None
+        return None, debug
+
+    # Top1 と Top2 の差（絶対値）
+    drop = abs(top1_score - top2_score)
+
+    # drop が TRANSITION_DROP_MAX 以上なら difficulty=1
+    difficulty = max(0.0, min(1.0, drop / TRANSITION_DROP_MAX))
+
+    debug = {
+        "top1_score": top1_score,
+        "top2_score": top2_score,
+        "drop": drop,
+        "normalized": difficulty,
+    } if include_debug else None
+
+    return difficulty, debug
+
+
+def _compute_state_difficulty(
+    candidates: List[Dict],
+    include_debug: bool = False,
+) -> Tuple[float, Optional[Dict]]:
+    """盤面の複雑さから State 難易度を計算。
+
+    v1: 仕様書の「控えめに扱う」に従い、常に 0.0 を返す。
+    将来の拡張で候補数・分岐多様性を考慮予定。
+
+    Args:
+        candidates: 正規化済み候補手リスト
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (difficulty, debug_info) タプル。v1 では常に (0.0, debug)。
+    """
+    debug = {
+        "v1_note": "state_difficulty disabled in v1",
+        "candidate_count": len(candidates),
+    } if include_debug else None
+
+    return 0.0, debug
+
+
+def compute_difficulty_metrics(
+    candidates: List[Dict],
+    root_visits: Optional[int] = None,
+    include_debug: bool = False,
+) -> DifficultyMetrics:
+    """局面の難易度メトリクスを計算。
+
+    scoreLead 欠損時も UNKNOWN 扱い。
+
+    Args:
+        candidates: KataGo moveInfos（未ソート可）
+        root_visits: ルートの探索数（信頼性判定用）。
+                     None の場合は unreliable 扱い。
+        include_debug: デバッグ情報を含めるか（デフォルト False）
+
+    Returns:
+        DifficultyMetrics インスタンス。
+        candidates が空/None、正規化不可、またはscoreLead欠損の場合は
+        DIFFICULTY_UNKNOWN を返す。
+    """
+    # 欠損データチェック
+    if not candidates:
+        return DIFFICULTY_UNKNOWN
+
+    # 入力の正規化（order 欠損時は UNKNOWN）
+    normalized = _normalize_candidates(candidates)
+    if normalized is None:
+        return DIFFICULTY_UNKNOWN
+
+    # 信頼性チェック（フォールバック係数なし）
+    is_reliable, reliability_reason = _determine_reliability(
+        root_visits, len(normalized)
+    )
+
+    # 各成分の計算
+    policy, policy_debug = _compute_policy_difficulty(normalized, include_debug)
+    transition, transition_debug = _compute_transition_difficulty(normalized, include_debug)
+    state, state_debug = _compute_state_difficulty(normalized, include_debug)
+
+    # scoreLead 欠損時は UNKNOWN（policy/transition が None の場合）
+    if policy is None or transition is None:
+        return DIFFICULTY_UNKNOWN
+
+    # overall 合成（max を使用）
+    overall = max(policy, transition)
+
+    # unreliable の場合は overall を減衰
+    reliability_scale = 1.0 if is_reliable else 0.7
+    overall *= reliability_scale
+
+    # デバッグ情報の集約
+    debug_factors = None
+    if include_debug:
+        debug_factors = {
+            "policy": policy_debug,
+            "transition": transition_debug,
+            "state": state_debug,
+            "reliability": {
+                "root_visits": root_visits,
+                "candidate_count": len(normalized),
+                "is_reliable": is_reliable,
+                "reason": reliability_reason,
+                "scale": reliability_scale,
+            },
+            "overall_method": "max(policy, transition)",
+        }
+
+    return DifficultyMetrics(
+        policy_difficulty=policy,
+        transition_difficulty=transition,
+        state_difficulty=state,
+        overall_difficulty=overall,
+        is_reliable=is_reliable,
+        is_unknown=False,
+        debug_factors=debug_factors,
+    )
+
+
+def _get_candidates_from_node(node: "GameNode") -> Tuple[List[Dict], Optional[int]]:
+    """GameNode から候補手リストと root_visits を取得。
+
+    _get_root_visits() を使用して複数キーに対応。
+
+    Args:
+        node: 解析済み GameNode
+
+    Returns:
+        (candidates, root_visits) タプル。
+        解析データがない場合は ([], None)。
+
+    Note:
+        candidate_moves プロパティは既にソート済み・拡張済みを返すが、
+        compute_difficulty_metrics 内で再度 _normalize_candidates を呼ぶため
+        二重ソートになる。ただし order フィールドがあれば同じ結果になるので問題なし。
+    """
+    if not node.analysis_exists:
+        return [], None
+
+    # candidate_moves プロパティはソート済み・拡張済みを返す
+    candidates = node.candidate_moves
+
+    # _get_root_visits() で複数キーに対応
+    root_visits = _get_root_visits(node.analysis)
+
+    return candidates, root_visits
+
+
+def extract_difficult_positions(
+    nodes: List["GameNode"],
+    limit: int = DEFAULT_DIFFICULT_POSITIONS_LIMIT,
+    min_move_number: int = DEFAULT_MIN_MOVE_NUMBER,
+    exclude_unreliable: bool = False,
+    include_debug: bool = False,
+) -> List[Tuple[int, "GameNode", DifficultyMetrics]]:
+    """複数局面から難所候補を抽出。
+
+    exclude_unreliable=False がデフォルト（unreliable も含めて結果を返す）。
+
+    Args:
+        nodes: 解析済み GameNode リスト
+        limit: 抽出する最大局面数
+        min_move_number: この手数以降のみ対象（序盤を除外）
+        exclude_unreliable: 信頼性の低い局面を除外するか（デフォルト False）
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (move_number, GameNode, DifficultyMetrics) のリスト（overall降順）。
+        同じ overall の場合は move_number 昇順（早い手を優先）。
+    """
+    results = []
+    unknown_count = 0
+    unreliable_count = 0
+
+    for node in nodes:
+        move_number = node.move_number if hasattr(node, 'move_number') else 0
+
+        if move_number < min_move_number:
+            continue
+
+        candidates, root_visits = _get_candidates_from_node(node)
+        metrics = compute_difficulty_metrics(candidates, root_visits, include_debug)
+
+        # is_unknown フラグで判定（`is` 比較より堅牢）
+        if metrics.is_unknown:
+            unknown_count += 1
+            continue
+
+        if not metrics.is_reliable:
+            unreliable_count += 1
+            if exclude_unreliable:
+                continue
+
+        results.append((move_number, node, metrics))
+
+    # テレメトリ出力（デバッグ支援）
+    total_processed = len(nodes)
+    _difficulty_logger.debug(
+        f"extract_difficult_positions: total={total_processed}, "
+        f"unknown={unknown_count}, unreliable={unreliable_count}, "
+        f"valid={len(results)}, limit={limit}"
+    )
+
+    # overall 降順 → move_number 昇順（タイブレーク）
+    results.sort(key=lambda x: (-x[2].overall_difficulty, x[0]))
+
+    return results[:limit]
+
+
+# =============================================================================
 # __all__
 # =============================================================================
 
@@ -1332,4 +1739,14 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
+    # Difficulty Metrics (Phase 12)
+    "_normalize_candidates",
+    "_get_root_visits",
+    "_determine_reliability",
+    "_compute_policy_difficulty",
+    "_compute_transition_difficulty",
+    "_compute_state_difficulty",
+    "compute_difficulty_metrics",
+    "_get_candidates_from_node",
+    "extract_difficult_positions",
 ]
