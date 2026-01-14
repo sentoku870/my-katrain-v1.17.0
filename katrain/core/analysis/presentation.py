@@ -307,6 +307,54 @@ def get_practice_priorities_from_stats(
 
 
 # =============================================================================
+# Difficulty Metrics Formatting (Phase 12.5)
+# =============================================================================
+
+
+def get_difficulty_label(overall: float) -> str:
+    """overall値から難易度ラベルを返す。
+
+    Args:
+        overall: 0-1の難易度値
+
+    Returns:
+        "易" / "中" / "難"
+    """
+    if overall < 0.3:
+        return "易"
+    elif overall < 0.6:
+        return "中"
+    else:
+        return "難"
+
+
+def format_difficulty_metrics(metrics: "DifficultyMetrics") -> List[str]:
+    """DifficultyMetricsを表示用文字列リストに変換。
+
+    Args:
+        metrics: 難易度メトリクス
+
+    Returns:
+        表示用の文字列リスト。is_unknownの場合は空リスト。
+    """
+    if metrics.is_unknown:
+        return []  # unknown時は表示しない
+
+    label = get_difficulty_label(metrics.overall_difficulty)
+    reliability_marker = "" if metrics.is_reliable else "⚠"
+
+    lines = [
+        f"局面難易度: {label}（{metrics.overall_difficulty:.2f}）{reliability_marker}",
+        f"  迷い={metrics.policy_difficulty:.2f} 崩れ={metrics.transition_difficulty:.2f}",
+    ]
+
+    if not metrics.is_reliable:
+        lines[-1] += " [信頼度低]"
+
+    return lines
+
+
+# =============================================================================
 # __all__
 # =============================================================================
 
@@ -326,4 +374,7 @@ __all__ = [
     "select_representative_moves",
     "format_evidence_examples",
     "get_practice_priorities_from_stats",
+    # Difficulty Metrics (Phase 12.5)
+    "get_difficulty_label",
+    "format_difficulty_metrics",
 ]

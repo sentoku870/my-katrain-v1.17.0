@@ -270,7 +270,18 @@ class ControlsPanel(BoxLayout):
                 else:
                     detail_lines.append(f"{heading}: {difficulty_label}")
 
-        # 3) info テキストの末尾に追記
+        # 3) 局面難易度（Phase 12.5）
+        # active_comment_node 自体の難易度を表示（既存ミス分類と同じノード）
+        if self.active_comment_node and self.active_comment_node.analysis_exists:
+            from katrain.core.analysis import (
+                difficulty_metrics_from_node,
+                format_difficulty_metrics,
+            )
+            metrics = difficulty_metrics_from_node(self.active_comment_node)
+            difficulty_lines = format_difficulty_metrics(metrics)
+            detail_lines.extend(difficulty_lines)
+
+        # 4) info テキストの末尾に追記
         if detail_lines:
             if info:
                 info += "\n"
