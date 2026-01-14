@@ -1043,6 +1043,9 @@ msgstr "複数局まとめ"
 msgid "mykatrain:batch-analyze"
 msgstr "フォルダ一括解析..."
 
+msgid "mykatrain:training-set"
+msgstr "Training Set 管理..."
+
 msgid "mykatrain:batch:title"
 msgstr "フォルダ一括解析"
 
