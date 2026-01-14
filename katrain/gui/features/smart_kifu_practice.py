@@ -350,7 +350,7 @@ def show_practice_report_popup(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(500), dp(600)),
+        size=[dp(500), dp(600)],
         content=main_layout,
         auto_dismiss=True,
     )

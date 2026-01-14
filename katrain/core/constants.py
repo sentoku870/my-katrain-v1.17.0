@@ -278,3 +278,26 @@ PONDERING_REPORT_DT = 0.25
 
 SGF_INTERNAL_COMMENTS_MARKER = "\u3164\u200b"
 SGF_SEPARATOR_MARKER = "\u3164\u3164"
+
+# Leela estimated loss constants (Phase 14)
+# K value (loss scale factor) limits
+LEELA_K_MIN = 0.1
+LEELA_K_MAX = 2.0
+LEELA_K_DEFAULT = 0.5
+LEELA_K_RECOMMENDED_MIN = 0.2
+LEELA_K_RECOMMENDED_MAX = 1.0
+
+# Loss estimation limits
+LEELA_LOSS_EST_MAX = 50.0
+
+# Color thresholds for loss visualization (loss_est values)
+LEELA_LOSS_THRESHOLD_SMALL = 2.0   # 0.1 - 2.0: small loss
+LEELA_LOSS_THRESHOLD_MEDIUM = 5.0  # 2.1 - 5.0: medium loss
+# > 5.0: large loss
+
+# Colors for Leela candidate markers (RGBA, 0.0-1.0)
+# Match Kivy Color specification
+LEELA_COLOR_BEST = (0.298, 0.686, 0.314, 1.0)    # Green #4CAF50
+LEELA_COLOR_SMALL = (1.0, 0.922, 0.231, 1.0)     # Yellow #FFEB3B
+LEELA_COLOR_MEDIUM = (1.0, 0.596, 0.0, 1.0)      # Orange #FF9800
+LEELA_COLOR_LARGE = (0.957, 0.263, 0.212, 1.0)   # Red #F44336

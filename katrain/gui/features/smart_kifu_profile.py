@@ -344,7 +344,7 @@ def show_update_preview_dialog(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(400), dp(350)),
+        size=[dp(400), dp(350)],
         content=content,
         auto_dismiss=True,
     )
@@ -473,7 +473,7 @@ def show_update_bucket_dialog(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(400), dp(300)),
+        size=[dp(400), dp(300)],
         content=content,
         auto_dismiss=True,
     )
@@ -693,7 +693,7 @@ def show_player_profile_popup(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(550), dp(550)),
+        size=[dp(550), dp(550)],
         content=main_layout,
         auto_dismiss=True,
     )

@@ -1,0 +1,6 @@
+# Leela 0.110 lz-analyze output sample
+# Condition: Even game, midgame (8 moves played)
+# Moves: Q16 D4 C16 Q4 R6 R10 D10 O17
+# Command: lz-analyze 500
+
+info move R14 visits 59871 winrate 4997 order 0 pv R14 R5 Q6 O4 P9 R12 R9 S9 R8 S8 info move R13 visits 18346 winrate 4948 order 1 pv R13 R5 Q6 O4 P10 Q8 P8 P7 Q7 O7 info move M17 visits 5254 winrate 4913 order 2 pv M17 F17 D17 J17 R14 R5 Q6 info move L16 visits 3284 winrate 4760 order 3 pv L16 R14 O16 N16 O15 P17 Q17 N15 Q14 Q13 info move O16 visits 806 winrate 4888 order 4 pv O16 N16 N15 info move L17 visits 392 winrate 4574 order 5 pv L17 Q14 O16 info move P17 visits 316 winrate 4747 order 6 pv P17 O16 O18 info move O18 visits 185 winrate 4720 order 7 pv O18 P18 info move N16 visits 134 winrate 4836 order 8 pv N16 O16 info move O15 visits 98 winrate 4609 order 9 pv O15 N16 info move M16 visits 69 winrate 4738 order 10 pv M16 M17 info move N17 visits 65 winrate 4474 order 11 pv N17 N16

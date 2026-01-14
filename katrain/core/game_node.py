@@ -107,6 +107,32 @@ class GameNode(SGFNode):
     def clear_analysis(self):
         self.analysis_visits_requested = 0
         self.analysis = {"moves": {}, "root": None, "ownership": None, "policy": None, "completed": False}
+        # Leela analysis (separate from KataGo)
+        self._leela_analysis = None
+
+    # Leela analysis support (Phase 14)
+    @property
+    def leela_analysis(self):
+        """Leela analysis result (separate from KataGo's analysis).
+
+        Returns:
+            LeelaPositionEval or None if not analyzed.
+        """
+        return getattr(self, "_leela_analysis", None)
+
+    def set_leela_analysis(self, eval_result) -> None:
+        """Set Leela analysis result.
+
+        Args:
+            eval_result: LeelaPositionEval from Leela engine.
+
+        Note: Call from UI thread.
+        """
+        self._leela_analysis = eval_result
+
+    def clear_leela_analysis(self) -> None:
+        """Clear Leela analysis result."""
+        self._leela_analysis = None
 
     def sgf_properties(
         self,

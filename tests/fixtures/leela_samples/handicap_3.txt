@@ -1,0 +1,6 @@
+# Leela 0.110 lz-analyze output sample
+# Condition: 3-stone handicap, white to play
+# Handicap stones: Q16 D4 Q4, komi 0.5
+# Command: lz-analyze 500
+
+info move D16 visits 36661 winrate 3908 order 0 pv D16 C14 F17 B16 O17 C17 D17 info move D17 visits 29801 winrate 3793 order 1 pv D17 D15 D12 G16 E15 E14 F15 D16 E17 C17 C18 E16 F16 F17 D14 D13 info move C17 visits 14775 winrate 3630 order 2 pv C17 D16 D17 E16 C16 D14 C15 F13 C13 C14 B14 info move E17 visits 4239 winrate 3547 order 3 pv E17 C16 D15 C15 D14 C13 O17 O16 info move R4 visits 817 winrate 3851 order 4 pv R4 R5 R3 Q3 info move Q6 visits 529 winrate 3056 order 5 pv Q6 O6 P5 info move C16 visits 500 winrate 2913 order 6 pv C16 D17 C17 C18 info move Q3 visits 218 winrate 2351 order 7 pv Q3 P3 info move R6 visits 197 winrate 2511 order 8 pv R6 Q6 info move P4 visits 175 winrate 2235 order 9 pv P4 P3 info move O4 visits 122 winrate 4310 order 10 pv O4 P3 info move P3 visits 99 winrate 2791 order 11 pv P3 Q3 info move R5 visits 71 winrate 3739 order 12 pv R5 R4 info move R3 visits 65 winrate 3876 order 13 pv R3 R4

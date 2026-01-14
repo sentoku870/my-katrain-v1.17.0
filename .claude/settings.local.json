@@ -36,7 +36,8 @@
       "Bash(for f in katrain/gui/features/*.py)",
       "Bash(done)",
       "Bash(echo:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(./Leela0110-cpu.exe)"
     ]
   }
 }

@@ -103,7 +103,7 @@
 | 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ **完了** |
 | 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ **完了** |
 | 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ **完了** |
-| 14 | Leelaモード推定損失 | Leela候補手の損失表示 | 📋 **仕様確定** |
+| 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ **完了** |
 
 ---
 
@@ -361,10 +361,28 @@
     - 置石調整提案（勝率>70%→-1、<30%→+1、40-60%→維持）
   - 52件のテスト追加（`tests/test_smart_kifu.py`）
 
-### Phase 14: Leelaモード推定損失
+### Phase 14: Leelaモード推定損失 ✅ **完了**
 - **目的**: Leela解析に「推定損失」（KataGo風の損失目数）を表示
-- **特徴**: KataGoモードとは完全分離、投了目安機能付き
+- **特徴**: KataGoモードとは完全分離、winrate差からの推定損失計算
 - **仕様書**: `docs/specs/leela-estimated-loss.md`
+- **実装**: 2026-01-15
+  - **Phase 14.0**: lz-analyze出力サンプル収集（`tests/fixtures/leela_samples/`）
+  - **Phase 14.1**: データ基盤（`katrain/core/leela/models.py`, `parser.py`）
+    - `LeelaCandidate`, `LeelaPositionEval` dataclass
+    - `parse_lz_analyze()`, `normalize_winrate_from_raw()` 関数
+  - **Phase 14.2**: 計算ロジック（`katrain/core/leela/logic.py`）
+    - `compute_estimated_loss()`: winrate差からloss_est計算（K値スケーリング）
+    - loss_est上限50.0、K値クランプ（0.1-2.0）
+  - **Phase 14.3**: LeelaEngine（`katrain/core/leela/engine.py`）
+    - GTPベースのエンジンラッパー（start/shutdown/request_analysis/cancel_analysis）
+    - スレッド安全、リクエストID管理
+  - **Phase 14.4**: GameNode拡張（`_leela_analysis`フィールド追加）
+    - `leela_analysis` property、`set_leela_analysis()`、`clear_leela_analysis()`
+  - **Phase 14.5**: 設定項目（`config.json` leela section、`constants.py` Leela定数）
+  - **Phase 14.6**: UI表示（`badukpan.py` Leela候補手マーカー描画）
+    - `loss_to_color()`: 損失に応じた色（緑→黄→橙→赤）
+    - `draw_leela_candidates()`: Leela候補手専用描画関数
+  - 114件のテスト追加（`tests/test_leela_*.py`, `tests/test_game_node_leela.py`）
 
 ---
 
@@ -401,6 +419,21 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 14 Leelaモード推定損失完了
+  - **Phase 14.0**: lz-analyze出力サンプル収集（Leela 0.110のwinrate形式は0-10000と判明）
+  - **Phase 14.1**: データ基盤（`katrain/core/leela/models.py`, `parser.py`）
+    - `LeelaCandidate`, `LeelaPositionEval` dataclass
+    - `parse_lz_analyze()`, `normalize_winrate_from_raw()` 関数（自動単位判定）
+  - **Phase 14.2**: 計算ロジック（`katrain/core/leela/logic.py`）
+    - `compute_estimated_loss()`: immutableパターン（新オブジェクト返却）
+    - K値スケーリング、loss_est上限50.0、K値クランプ（0.1-2.0）
+  - **Phase 14.3**: LeelaEngine（`katrain/core/leela/engine.py`）
+    - GTPベースエンジンラッパー（スレッド安全、リクエストID管理）
+  - **Phase 14.4**: GameNode拡張（KataGoとは完全分離の`_leela_analysis`フィールド）
+  - **Phase 14.5**: 設定項目（`config.json` leela section、色定数追加）
+  - **Phase 14.6**: UI表示（`badukpan.py` に`draw_leela_candidates()`追加）
+  - **Phase 14.7**: 統合テスト + ドキュメント更新
+  - **成果**: 114件のテスト追加、KataGo回帰なし
 - 2026-01-15: Phase 13 Smart Kifu Learning完了（PR #105）
   - **Phase 13.1**: データ基盤（`katrain/core/smart_kifu/` パッケージ）
     - `models.py`: Enum（Context, ViewerPreset, Confidence）、Dataclass（GameEntry, TrainingSetManifest, PlayerProfile等）

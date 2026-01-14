@@ -1,0 +1,26 @@
+# Leela 0.110 error case samples
+# These are synthetic test cases for parser error handling
+
+# Case 1: Empty response (no candidates)
+# (empty string)
+
+# Case 2: Malformed line (missing fields)
+info move C4 visits 100 order 0 pv C4 D4
+
+# Case 3: Invalid winrate format
+info move C4 visits 100 winrate abc order 0 pv C4
+
+# Case 4: Negative visits
+info move C4 visits -100 winrate 5000 order 0 pv C4
+
+# Case 5: GTP error response
+? unknown command
+
+# Case 6: Single candidate (valid)
+info move D4 visits 1000 winrate 5200 order 0 pv D4 D16 Q16
+
+# Case 7: Very high winrate (>10000, should be clamped)
+info move D4 visits 1000 winrate 15000 order 0 pv D4
+
+# Case 8: Very low winrate (<0, should be clamped)
+info move D4 visits 1000 winrate -100 order 0 pv D4

@@ -28,6 +28,13 @@ from katrain.core.constants import (
     TOP_MOVE_SCORE,
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
+    LEELA_COLOR_BEST,
+)
+from katrain.core.leela.presentation import (
+    loss_to_color,
+    format_winrate_pct,
+    format_visits as format_leela_visits,
+    format_loss_est,
 )
 from katrain.core.game import Move
 from katrain.core.lang import i18n
@@ -895,6 +902,111 @@ class BadukPanWidget(Widget):
                 return "-" + f"{x:.2f}"[2:]
         return f"{x:+.1f}"
 
+    def draw_leela_candidates(self, leela_analysis, low_visits_threshold: int = 25) -> Optional[tuple]:
+        """Draw Leela candidate move markers with loss-based coloring.
+
+        Args:
+            leela_analysis: LeelaPositionEval from current_node.leela_analysis
+            low_visits_threshold: Minimum visits for full-size marker
+
+        Returns:
+            Coordinates of the best move (top_move_coords), or None
+        """
+        if not leela_analysis or not leela_analysis.is_valid:
+            return None
+
+        top_move_coords = None
+        candidates = leela_analysis.candidates
+
+        # Find max visits for scaling
+        max_visits = max((c.visits for c in candidates), default=1)
+
+        for i, candidate in enumerate(candidates):
+            move = Move.from_gtp(candidate.move)
+            if move.coords is None:
+                continue
+
+            is_best = (i == 0) or (candidate.loss_est is not None and candidate.loss_est == 0.0)
+            scale = Theme.HINT_SCALE
+            text_on = True
+            alpha = Theme.HINTS_ALPHA
+
+            # Scale down low-visit candidates
+            if candidate.visits < low_visits_threshold and not is_best:
+                scale = Theme.UNCERTAIN_HINT_SCALE
+                text_on = False
+                alpha = Theme.HINTS_LO_ALPHA
+
+            if scale <= 0:
+                continue
+
+            # Calculate marker size
+            evalsize = self.stone_size * scale
+
+            # Get color based on loss_est
+            if candidate.loss_est is not None:
+                evalcol = loss_to_color(candidate.loss_est)
+            else:
+                evalcol = LEELA_COLOR_BEST
+
+            # Draw board-colored circle to cover grid lines
+            if text_on:
+                draw_circle(
+                    (
+                        self.gridpos[move.coords[1]][move.coords[0]][0],
+                        self.gridpos[move.coords[1]][move.coords[0]][1],
+                    ),
+                    self.stone_size * scale * 0.98,
+                    Theme.APPROX_BOARD_COLOR,
+                )
+
+            # Draw colored marker
+            Color(*evalcol[:3], alpha)
+            Rectangle(
+                pos=(
+                    self.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
+                    self.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
+                ),
+                size=(2 * evalsize, 2 * evalsize),
+                texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
+            )
+
+            # Draw text label
+            if text_on:
+                keys = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
+                # Format: Loss (est.) on top, Winrate below
+                loss_str = format_loss_est(candidate.loss_est)
+                winrate_str = format_winrate_pct(candidate.winrate)
+                fmt = "[size={size:.0f}]{loss}[/size]\n[size={smallsize:.0f}]{winrate}[/size]"
+
+                Color(*Theme.HINT_TEXT_COLOR)
+                draw_text(
+                    pos=(
+                        self.gridpos[move.coords[1]][move.coords[0]][0],
+                        self.gridpos[move.coords[1]][move.coords[0]][1],
+                    ),
+                    text=fmt.format(loss=loss_str, winrate=winrate_str, **keys),
+                    font_name="Roboto",
+                    markup=True,
+                    line_height=0.85,
+                    halign="center",
+                )
+
+            # Mark best move with border
+            if is_best:
+                top_move_coords = move.coords
+                Color(*Theme.TOP_MOVE_BORDER_COLOR)
+                Line(
+                    circle=(
+                        self.gridpos[move.coords[1]][move.coords[0]][0],
+                        self.gridpos[move.coords[1]][move.coords[0]][1],
+                        self.stone_size - dp(1.2),
+                    ),
+                    width=dp(1.2),
+                )
+
+        return top_move_coords
+
     def draw_hover_contents(self, *_args):
         ghost_alpha = Theme.GHOST_ALPHA
         katrain = self.katrain
@@ -936,7 +1048,16 @@ class BadukPanWidget(Widget):
 
             top_move_coords = None
             child_moves = {c.move.gtp() for c in current_node.children if c.move}
-            if hint_moves:
+
+            # Check if Leela mode is active and has analysis
+            leela_enabled = katrain.config("leela/enabled", False)
+            leela_analysis = current_node.leela_analysis if leela_enabled else None
+
+            if leela_analysis and leela_analysis.is_valid:
+                # Draw Leela candidate markers
+                low_visits_threshold = katrain.config("trainer/low_visits", 25)
+                top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
+            elif hint_moves:
                 low_visits_threshold = katrain.config("trainer/low_visits", 25)
                 top_moves_show = [
                     opt

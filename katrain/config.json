@@ -11,6 +11,12 @@
         "wide_root_noise": 0.04,
         "_enable_ownership": true
     },
+    "leela": {
+        "enabled": false,
+        "exe_path": "",
+        "max_visits": 1000,
+        "loss_scale_k": 0.5
+    },
     "general": {
         "sgf_load": "~/Downloads",
         "sgf_save": "./sgfout",

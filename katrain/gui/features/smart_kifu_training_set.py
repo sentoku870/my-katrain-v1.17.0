@@ -241,7 +241,7 @@ def show_create_training_set_dialog(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(400), dp(200)),
+        size=[dp(400), dp(200)],
         content=content,
         auto_dismiss=True,
     )
@@ -435,7 +435,7 @@ def show_import_sgf_dialog(
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(500), dp(300)),
+        size=[dp(500), dp(300)],
         content=content,
         auto_dismiss=False,
     )
@@ -608,7 +608,7 @@ def show_import_result(ctx: "FeatureContext", result: ImportResult) -> None:
 
     popup = I18NPopup(
         title_key="",
-        size=(dp(400), dp(350) if result.failed_files else dp(200)),
+        size=[dp(400), dp(350) if result.failed_files else dp(200)],
         content=content,
         auto_dismiss=True,
     )
@@ -748,7 +748,7 @@ def show_training_set_manager(
     # ポップアップ作成
     popup = I18NPopup(
         title_key="",
-        size=(dp(500), dp(450)),
+        size=[dp(500), dp(450)],
         content=main_layout,
         auto_dismiss=True,
     )
