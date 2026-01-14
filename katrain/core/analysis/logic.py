@@ -1687,6 +1687,23 @@ def extract_difficult_positions(
     return results[:limit]
 
 
+def difficulty_metrics_from_node(node: "GameNode") -> DifficultyMetrics:
+    """GameNode から難易度メトリクスを計算。
+
+    Public API: GUIから呼び出す用。内部で_get_candidates_from_nodeを使用。
+
+    Args:
+        node: 解析済み GameNode
+
+    Returns:
+        DifficultyMetrics。解析なしの場合は DIFFICULTY_UNKNOWN。
+    """
+    candidates, root_visits = _get_candidates_from_node(node)
+    if not candidates:
+        return DIFFICULTY_UNKNOWN
+    return compute_difficulty_metrics(candidates, root_visits)
+
+
 # =============================================================================
 # __all__
 # =============================================================================
@@ -1749,4 +1766,5 @@ __all__ = [
     "compute_difficulty_metrics",
     "_get_candidates_from_node",
     "extract_difficult_positions",
+    "difficulty_metrics_from_node",
 ]

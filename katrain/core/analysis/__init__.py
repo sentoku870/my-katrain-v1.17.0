@@ -154,6 +154,8 @@ from katrain.core.analysis.logic import (
     compute_difficulty_metrics,
     _get_candidates_from_node,
     extract_difficult_positions,
+    # Difficulty Metrics Public API (Phase 12.5)
+    difficulty_metrics_from_node,
 )
 
 # =============================================================================
@@ -175,6 +177,9 @@ from katrain.core.analysis.presentation import (
     select_representative_moves,
     format_evidence_examples,
     get_practice_priorities_from_stats,
+    # Difficulty Metrics Formatting (Phase 12.5)
+    get_difficulty_label,
+    format_difficulty_metrics,
 )
 
 # =============================================================================
@@ -308,6 +313,8 @@ __all__ = [
     "compute_difficulty_metrics",
     "_get_candidates_from_node",
     "extract_difficult_positions",
+    # Difficulty Metrics Public API (Phase 12.5)
+    "difficulty_metrics_from_node",
     # === presentation.py ===
     # Label constants
     "SKILL_PRESET_LABELS",
@@ -323,4 +330,7 @@ __all__ = [
     "select_representative_moves",
     "format_evidence_examples",
     "get_practice_priorities_from_stats",
+    # Difficulty Metrics Formatting (Phase 12.5)
+    "get_difficulty_label",
+    "format_difficulty_metrics",
 ]

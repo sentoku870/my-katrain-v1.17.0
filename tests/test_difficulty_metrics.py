@@ -584,3 +584,82 @@ class TestPolicyVsTransition:
         # 最善が突出 → 迷わないが崩れやすい
         assert policy == 0.0  # 低い
         assert transition == 1.0  # 高い
+
+
+# =============================================================================
+# Phase 12.5: Formatting Tests
+# =============================================================================
+
+
+class TestDifficultyFormatting:
+    """Phase 12.5: フォーマット関数のテスト"""
+
+    def test_get_difficulty_label_easy(self):
+        """overall < 0.3 は '易'"""
+        from katrain.core.analysis import get_difficulty_label
+        assert get_difficulty_label(0.0) == "易"
+        assert get_difficulty_label(0.29) == "易"
+
+    def test_get_difficulty_label_medium_boundary(self):
+        """overall = 0.3 は '中'（境界）"""
+        from katrain.core.analysis import get_difficulty_label
+        assert get_difficulty_label(0.30) == "中"
+
+    def test_get_difficulty_label_medium(self):
+        """0.3 <= overall < 0.6 は '中'"""
+        from katrain.core.analysis import get_difficulty_label
+        assert get_difficulty_label(0.5) == "中"
+        assert get_difficulty_label(0.59) == "中"
+
+    def test_get_difficulty_label_hard_boundary(self):
+        """overall = 0.6 は '難'（境界）"""
+        from katrain.core.analysis import get_difficulty_label
+        assert get_difficulty_label(0.60) == "難"
+
+    def test_get_difficulty_label_hard(self):
+        """overall >= 0.6 は '難'"""
+        from katrain.core.analysis import get_difficulty_label
+        assert get_difficulty_label(0.8) == "難"
+        assert get_difficulty_label(1.0) == "難"
+
+    def test_format_unknown_returns_empty(self):
+        """is_unknown=True の場合は空リスト"""
+        from katrain.core.analysis import format_difficulty_metrics, DIFFICULTY_UNKNOWN
+        lines = format_difficulty_metrics(DIFFICULTY_UNKNOWN)
+        assert lines == []
+
+    def test_format_reliable(self):
+        """信頼性が高い場合のフォーマット"""
+        from katrain.core.analysis import format_difficulty_metrics, DifficultyMetrics
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.65,
+            transition_difficulty=0.72,
+            state_difficulty=0.0,
+            overall_difficulty=0.72,
+            is_reliable=True,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        assert len(lines) == 2
+        assert "難" in lines[0]
+        assert "0.72" in lines[0]
+        assert "⚠" not in lines[0]
+        assert "迷い=0.65" in lines[1]
+        assert "崩れ=0.72" in lines[1]
+        assert "[信頼度低]" not in lines[1]
+
+    def test_format_unreliable(self):
+        """信頼性が低い場合のフォーマット"""
+        from katrain.core.analysis import format_difficulty_metrics, DifficultyMetrics
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.45,
+            transition_difficulty=0.32,
+            state_difficulty=0.0,
+            overall_difficulty=0.45,
+            is_reliable=False,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        assert len(lines) == 2
+        assert "⚠" in lines[0]
+        assert "[信頼度低]" in lines[1]
