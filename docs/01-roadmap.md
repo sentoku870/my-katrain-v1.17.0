@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-13
+> 最終更新: 2026-01-14
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -101,7 +101,7 @@
 | 8 | 初心者向けヒント（任意） | 構造解析 + テンプレ | TBD |
 | 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
 | 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ **完了** |
-| 12 | MuZero 3分解難易度 | 難所抽出・解説出し分け | 📋 **仕様確定** |
+| 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ **完了** |
 | 13 | Smart Kifu Learning | 棋譜学習・プロファイル | 📋 **仕様確定** |
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | 📋 **仕様確定** |
 
@@ -329,10 +329,17 @@
   - Skill Preset連動（AUTO設定時）
   - 30件のテスト追加（`tests/test_pv_filter.py`）
 
-### Phase 12: MuZero 3分解難易度
+### Phase 12: MuZero 3分解難易度 ✅ **完了**
 - **目的**: 局面の「難しさ」をPolicy/Transition/Stateに分解し、難所抽出・解説出し分けに使用
-- **用途**: 難所抽出（上位K局面）、Viewer Presetによる解説の出し分け
+- **用途**: 難所抽出（上位K局面）、UI表示
 - **仕様書**: `docs/specs/muzero-difficulty.md`
+- **実装**: PR #103（計算ロジック）、PR #104（UI表示）
+  - `DifficultyMetrics` dataclass（policy/transition/state/overall）
+  - `compute_difficulty_metrics()`, `extract_difficult_positions()` 関数
+  - `difficulty_metrics_from_node()` public API
+  - `format_difficulty_metrics()` フォーマット関数
+  - 詳細パネルに「局面難易度: 易/中/難」を表示
+  - 61件のテスト追加（`tests/test_difficulty_metrics.py`）
 
 ### Phase 13: Smart Kifu Learning
 - **目的**: 棋譜学習・プレイヤープロファイル・Viewer Level管理
@@ -379,6 +386,19 @@
 
 ## 11. 変更履歴
 
+- 2026-01-14: Phase 12 MuZero 3分解難易度完了（PR #103-104）
+  - **PR #103**: 難易度計算ロジック
+    - `DifficultyMetrics` dataclass（policy/transition/state/overall）
+    - `compute_difficulty_metrics()`, `extract_difficult_positions()` 関数
+    - 信頼性ガード（visits/候補数）
+    - 53件のテスト追加
+  - **PR #104**: 難易度UI表示（Phase 12.5）
+    - `difficulty_metrics_from_node()` public API
+    - `get_difficulty_label()`, `format_difficulty_metrics()` フォーマット関数
+    - 詳細パネルに「局面難易度: 易/中/難（0.XX）」表示
+    - 信頼度低表示: ⚠ + [信頼度低]
+    - 8件のフォーマットテスト追加
+  - **成果**: 全596テストパス
 - 2026-01-13: Phase 11 難解PVフィルタ完了 + デッドロック予防（PR #100-102）
   - **PR #100 (Phase 11)**: 難解PVフィルタ実装
     - `PVFilterConfig` dataclass、`PVFilterLevel` enum
