@@ -896,6 +896,70 @@ DEFAULT_PV_FILTER_LEVEL = "auto"
 
 
 # =============================================================================
+# Phase 12: 難易度分解（Difficulty Metrics）
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class DifficultyMetrics:
+    """局面難易度の3分解メトリクス（Phase 12）。
+
+    MuZero風の難易度分解を提供。v1は難所抽出用のセンサーとして使用。
+    「採点」ではなく、同一棋譜内の相対比較に使用。
+
+    Attributes:
+        policy_difficulty: 迷いやすさ（候補が拮抗）。0-1、高いほど難。
+        transition_difficulty: 崩れやすさ（一手のミスが致命傷）。0-1、高いほど難。
+        state_difficulty: 盤面の複雑さ。v1は常に0（将来用）。
+        overall_difficulty: 合成値（抽出・表示の優先度用）。0-1。
+        is_reliable: 信頼性フラグ（visits/候補数が十分か）。
+        is_unknown: UNKNOWN状態フラグ。欠損/計算不可を示す。
+        debug_factors: 計算の内訳（デバッグ用、オプション）。
+
+    Note:
+        欠損時は DIFFICULTY_UNKNOWN（モジュールレベル定数）を使用。
+        is_unknown フラグで判定（`is` 比較より堅牢）。
+    """
+
+    policy_difficulty: float
+    transition_difficulty: float
+    state_difficulty: float  # v1: always 0.0
+    overall_difficulty: float
+    is_reliable: bool
+    is_unknown: bool = False
+    debug_factors: Optional[Dict[str, Any]] = None
+
+
+# モジュールレベル定数（frozen dataclass + ClassVar 問題を回避）
+DIFFICULTY_UNKNOWN = DifficultyMetrics(
+    policy_difficulty=0.0,
+    transition_difficulty=0.0,
+    state_difficulty=0.0,
+    overall_difficulty=0.0,
+    is_reliable=False,
+    is_unknown=True,
+    debug_factors={"reason": "unknown"},
+)
+
+
+# === Phase 12: 難易度計算の定数 ===
+
+# 信頼性ガードの閾値
+DIFFICULTY_MIN_VISITS: int = 500  # 最低探索数（root_visits が必要）
+DIFFICULTY_MIN_CANDIDATES: int = 2  # 最低候補手数（計算可能な最小値）
+
+# Policy難易度の正規化パラメータ
+POLICY_GAP_MAX: float = 5.0  # この差（目数）以上は「迷いなし」(difficulty=0)
+
+# Transition難易度の正規化パラメータ
+TRANSITION_DROP_MAX: float = 8.0  # Top1→Top2の落差がこれ以上で最大難易度
+
+# 難所抽出のデフォルト設定
+DEFAULT_DIFFICULT_POSITIONS_LIMIT: int = 10
+DEFAULT_MIN_MOVE_NUMBER: int = 10  # 序盤を除外
+
+
+# =============================================================================
 # __all__
 # =============================================================================
 
@@ -926,6 +990,7 @@ __all__ = [
     "MistakeStreak",
     "SkillEstimation",
     "PVFilterConfig",
+    "DifficultyMetrics",
     # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
@@ -965,4 +1030,12 @@ __all__ = [
     "CONFIDENCE_LABELS",
     # Helper function
     "get_canonical_loss_from_move",
+    # Phase 12: Difficulty Metrics
+    "DIFFICULTY_UNKNOWN",
+    "DIFFICULTY_MIN_VISITS",
+    "DIFFICULTY_MIN_CANDIDATES",
+    "POLICY_GAP_MAX",
+    "TRANSITION_DROP_MAX",
+    "DEFAULT_DIFFICULT_POSITIONS_LIMIT",
+    "DEFAULT_MIN_MOVE_NUMBER",
 ]
