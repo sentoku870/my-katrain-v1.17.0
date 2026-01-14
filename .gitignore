@@ -14,6 +14,7 @@ sgfout
 sgf_selfplay
 sgf_ogs
 log*
+!**/logic.py
 tmp.pickle
 my
 logs
