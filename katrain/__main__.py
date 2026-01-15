@@ -107,6 +107,7 @@ from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
+from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.core.sgf_parser import Move, ParseError
 from katrain.core.errors import EngineError
@@ -197,8 +198,22 @@ class KaTrainGui(Screen, KaTrainBase):
             schedule_resign_popup=lambda result: schedule_resign_hint_popup(self, result),
         )
 
+        # SGF file management (refactored in PR #122)
+        self._sgf_manager = SGFManager(
+            config_getter=self.config,
+            config_setter=lambda section, values: self.set_config_section(section, values),
+            save_config=self.save_config,
+            logger=self.log,
+            status_setter=lambda msg, level: self.controls.set_status(msg, level, check_level=False) if self.controls else None,
+            new_game_callback=lambda tree, fast, filename: self._do_new_game(move_tree=tree, analyze_fast=fast, sgf_filename=filename),
+            redo_callback=lambda moves: self("redo", moves),
+            get_game=lambda: self.game,
+            get_engine=lambda: self.engine,
+            get_board_controls=lambda: getattr(self, "board_controls", None),
+            action_dispatcher=lambda action: self(action),
+        )
+
         self.new_game_popup = None
-        self.fileselect_popup = None
         self.config_popup = None
         self.ai_settings_popup = None
         self.teacher_settings_popup = None
@@ -786,171 +801,28 @@ class KaTrainGui(Screen, KaTrainBase):
             node.played_mistake_sound = True
             play_sound(random.choice(Theme.MISTAKE_SOUNDS))
 
+    # === SGF File Management (refactored in PR #122) ===
+    # Delegation to SGFManager for backward compatibility
+
     def load_sgf_file(self, file, fast=False, rewind=True):
-        try:
-            file = os.path.abspath(file)
-            move_tree = KaTrainSGF.parse_file(file)
-        except (ParseError, FileNotFoundError) as e:
-            self.log(i18n._("Failed to load SGF").format(error=e), OUTPUT_ERROR)
-            return
-        self._do_new_game(move_tree=move_tree, analyze_fast=fast, sgf_filename=file)
-        if not rewind:
-            self.game.redo(999)
+        """Load SGF file. Delegates to SGFManager."""
+        self._sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
 
     def _do_analyze_sgf_popup(self):
-        if not self.fileselect_popup:
-            popup_contents = LoadSGFPopup(self)
-            # Set initial path with fallback if configured path doesn't exist
-            sgf_load_path = os.path.abspath(os.path.expanduser(self.config("general/sgf_load", ".")))
-            if os.path.isdir(sgf_load_path):
-                popup_contents.filesel.path = sgf_load_path
-            # else: leave default path (user home or current dir)
-            self.fileselect_popup = I18NPopup(
-                title_key="load sgf title", size=[dp(1200), dp(800)], content=popup_contents
-            ).__self__
-
-            def readfile(*_args):
-                filename = popup_contents.filesel.filename
-                self.fileselect_popup.dismiss()
-                path, file = os.path.split(filename)
-                if path != self.config("general/sgf_load"):
-                    self.log(f"Updating sgf load path default to {path}", OUTPUT_DEBUG)
-                    general = dict(self.config("general") or {})
-                    general["sgf_load"] = path
-                    self.set_config_section("general", general)
-                popup_contents.update_config(False)
-                self.save_config("general")
-                self.load_sgf_file(filename, popup_contents.fast.active, popup_contents.rewind.active)
-
-            popup_contents.filesel.on_success = readfile
-            popup_contents.filesel.on_submit = readfile
-        self.fileselect_popup.open()
-        self.fileselect_popup.content.filesel.ids.list_view._trigger_update()
+        """Open SGF analysis popup. Delegates to SGFManager."""
+        self._sgf_manager.do_analyze_sgf_popup(self)
 
     def _do_open_recent_sgf(self):
-        try:
-            sgf_dir = os.path.abspath(os.path.expanduser(self.config("general/sgf_load", ".")))
-        except Exception as e:
-            self.log(f"Failed to determine sgf load directory: {e}", OUTPUT_DEBUG)
-            return self("analyze-sgf-popup")
-
-        if not sgf_dir or not os.path.isdir(sgf_dir):
-            return self("analyze-sgf-popup")
-
-        try:
-            sgf_files = [
-                os.path.join(sgf_dir, f)
-                for f in os.listdir(sgf_dir)
-                if f.lower().endswith(".sgf") and os.path.isfile(os.path.join(sgf_dir, f))
-            ]
-            sgf_files.sort(key=os.path.getmtime, reverse=True)
-        except Exception as e:
-            self.log(f"Failed to list SGF files in {sgf_dir}: {e}", OUTPUT_DEBUG)
-            return self("analyze-sgf-popup")
-
-        if not sgf_files:
-            return self("analyze-sgf-popup")
-
-        sgf_files = sgf_files[:20]
-        fast = bool(self.config("general/load_fast_analysis", False))
-        rewind = bool(self.config("general/load_sgf_rewind", True))
-        if len(sgf_files) == 1:
-            self.load_sgf_file(sgf_files[0], fast=fast, rewind=rewind)
-            return
-
-        # Build and open dropdown on the main thread to avoid Kivy thread errors.
-        file_entries = [os.path.basename(path) for path in sgf_files]
-        Clock.schedule_once(
-            lambda *_dt, files=sgf_files, labels=file_entries, fast=fast, rewind=rewind: self._show_recent_sgf_dropdown(
-                files, labels, fast, rewind
-            )
-        )
-
-    def _show_recent_sgf_dropdown(self, sgf_files, labels, fast, rewind, *_args):
-        dropdown = DropDown(auto_width=False)
-        max_width = 0
-        menu_items = []
-        base_width = dp(240)
-        item_height = dp(34)
-        font_size = sp(13)
-
-        def truncate(text, max_len=35):
-            return text if len(text) <= max_len else text[: max_len - 3] + "..."
-
-        def load_and_analyze(path, *_load_args):
-            dropdown.dismiss()
-            self.load_sgf_file(path, fast=fast, rewind=rewind)
-
-        for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
-            label = f"[NEW] {filename}" if idx < 3 else filename
-            label = truncate(label)
-            menu_item = MenuItem(text=label, content_width=max(base_width, len(label) * dp(7)))
-            menu_item.height = item_height
-            menu_item.font_size = font_size
-            menu_item.background_color = Theme.LIGHTER_BACKGROUND_COLOR
-            label_widget = menu_item.ids.get("label")
-            if label_widget:
-                label_widget.color = Theme.TEXT_COLOR
-                label_widget.shorten = True
-                label_widget.shorten_from = "right"
-            menu_item.bind(on_action=lambda _item, p=path: load_and_analyze(p))
-            dropdown.add_widget(menu_item)
-            menu_items.append(menu_item)
-            max_width = max(max_width, menu_item.content_width)
-
-        if max_width:
-            dropdown.width = max(max_width, base_width)
-            for item in menu_items:
-                label_widget = item.ids.get("label")
-                if label_widget:
-                    label_widget.text_size = (dropdown.width - dp(70), None)
-
-        sgf_button = getattr(self.board_controls, "sgf_button", None)
-        try:
-            if sgf_button:
-                dropdown.open(sgf_button)
-            else:
-                raise AttributeError("SGF button not available")
-        except Exception as e:
-            self.log(f"Failed to open recent SGF dropdown: {e}", OUTPUT_DEBUG)
-            self("analyze-sgf-popup")
+        """Open recent SGF dropdown. Delegates to SGFManager."""
+        self._sgf_manager.open_recent_sgf()
 
     def _do_save_game(self, filename=None):
-        filename = filename or self.game.sgf_filename
-        if not filename:
-            return self("save-game-as-popup")
-        try:
-            msg = self.game.write_sgf(filename)
-            self.log(msg, OUTPUT_INFO)
-            self.controls.set_status(msg, STATUS_INFO, check_level=False)
-        except Exception as e:
-            self.log(f"Failed to save SGF to {filename}: {e}", OUTPUT_ERROR)
+        """Save game. Delegates to SGFManager."""
+        self._sgf_manager.save_game(filename)
 
     def _do_save_game_as_popup(self):
-        popup_contents = SaveSGFPopup(suggested_filename=self.game.generate_filename())
-        save_game_popup = I18NPopup(
-            title_key="save sgf title", size=[dp(1200), dp(800)], content=popup_contents
-        ).__self__
-
-        def readfile(*_args):
-            filename = popup_contents.filesel.filename
-            if not filename.lower().endswith(".sgf"):
-                filename += ".sgf"
-            save_game_popup.dismiss()
-            path, file = os.path.split(filename.strip())
-            if not path:
-                path = popup_contents.filesel.path  # whatever dir is shown
-            if path != self.config("general/sgf_save"):
-                self.log(f"Updating sgf save path default to {path}", OUTPUT_DEBUG)
-                general = dict(self.config("general") or {})
-                general["sgf_save"] = path
-                self.set_config_section("general", general)
-                self.save_config("general")
-            self._do_save_game(os.path.join(path, file))
-
-        popup_contents.filesel.on_success = readfile
-        popup_contents.filesel.on_submit = readfile
-        save_game_popup.open()
+        """Open save-as popup. Delegates to SGFManager."""
+        self._sgf_manager.do_save_game_as_popup(self)
 
     def _do_export_karte(self, *args, **kwargs):
         """Export karte. Delegates to karte_export.do_export_karte()."""
@@ -1196,31 +1068,8 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
     def load_sgf_from_clipboard(self):
-        clipboard = Clipboard.paste()
-        if not clipboard:
-            self.controls.set_status("Ctrl-V pressed but clipboard is empty.", STATUS_INFO)
-            return
-
-        url_match = re.match(r"(?P<url>https?://[^\s]+)", clipboard)
-        if url_match:
-            self.log("Recognized url: " + url_match.group(), OUTPUT_INFO)
-            http = urllib3.PoolManager()
-            response = http.request("GET", url_match.group())
-            clipboard = response.data.decode("utf-8")
-
-        try:
-            move_tree = KaTrainSGF.parse_sgf(clipboard)
-        except Exception as exc:
-            self.controls.set_status(
-                i18n._("Failed to import from clipboard").format(error=exc, contents=clipboard[:50]), STATUS_INFO
-            )
-            return
-        move_tree.nodes_in_tree[-1].analyze(
-            self.engine, analyze_fast=False
-        )  # speed up result for looking at end of game
-        self._do_new_game(move_tree=move_tree, analyze_fast=True)
-        self("redo", 9999)
-        self.log("Imported game from clipboard.", OUTPUT_INFO)
+        """Load SGF from clipboard. Delegates to SGFManager."""
+        self._sgf_manager.load_sgf_from_clipboard()
 
     def on_touch_up(self, touch):
         if touch.is_mouse_scrolling:
