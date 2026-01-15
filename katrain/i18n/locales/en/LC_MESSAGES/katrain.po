@@ -1412,3 +1412,25 @@ msgid ""
 msgstr ""
 "No categories had enough games (need 2+).\n"
 "Check that focus_player matches SGF player names."
+
+# Leela Zero Settings (Phase 15)
+msgid "mykatrain:settings:leela_section"
+msgstr "Leela Zero Settings"
+
+msgid "mykatrain:settings:leela_enabled"
+msgstr "Enable Leela Zero"
+
+msgid "mykatrain:settings:leela_exe_path"
+msgstr "Executable Path"
+
+msgid "mykatrain:settings:leela_k_value"
+msgstr "Loss Scale (K)"
+
+msgid "mykatrain:settings:leela_max_visits"
+msgstr "Max Visits"
+
+msgid "leela:error:exe_not_found"
+msgstr "Leela executable not found: {}"
+
+msgid "leela:status:started"
+msgstr "Leela engine started"

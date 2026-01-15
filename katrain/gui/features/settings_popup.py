@@ -19,10 +19,17 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.slider import Slider
 from kivy.uix.textinput import TextInput
 
 from katrain.core import eval_metrics
-from katrain.core.constants import STATUS_INFO
+from katrain.core.constants import (
+    LEELA_K_DEFAULT,
+    LEELA_K_MAX,
+    LEELA_K_MIN,
+    STATUS_INFO,
+)
+from katrain.core.leela.logic import clamp_k
 from katrain.core.lang import i18n
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
@@ -396,6 +403,142 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         opp_info_layout.add_widget(row)
     popup_content.add_widget(opp_info_layout)
 
+    # === Leela Zero Settings Section ===
+    leela_section_label = Label(
+        text=i18n._("mykatrain:settings:leela_section"),
+        size_hint_y=None,
+        height=dp(35),
+        halign="left",
+        valign="middle",
+        color=(0.3, 0.6, 1, 1),
+        bold=True,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_section_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    popup_content.add_widget(leela_section_label)
+
+    # Leela Enabled Checkbox
+    leela_config = ctx.config("leela") or {}
+    leela_enabled_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5)
+    )
+    leela_enabled_checkbox = CheckBox(
+        active=leela_config.get("enabled", False),
+        size_hint_x=None,
+        width=dp(36),
+    )
+    leela_enabled_label = Label(
+        text=i18n._("mykatrain:settings:leela_enabled"),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_enabled_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_enabled_row.add_widget(leela_enabled_checkbox)
+    leela_enabled_row.add_widget(leela_enabled_label)
+    popup_content.add_widget(leela_enabled_row)
+
+    # Leela Executable Path
+    leela_path_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_path_label = Label(
+        text=i18n._("mykatrain:settings:leela_exe_path"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_path_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_path_input = TextInput(
+        text=leela_config.get("exe_path", ""),
+        multiline=False,
+        size_hint_x=0.55,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_path_browse = Button(
+        text="...",
+        size_hint_x=0.15,
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    leela_path_row.add_widget(leela_path_label)
+    leela_path_row.add_widget(leela_path_input)
+    leela_path_row.add_widget(leela_path_browse)
+    popup_content.add_widget(leela_path_row)
+
+    # Leela K Value Slider
+    leela_k_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_k_label = Label(
+        text=i18n._("mykatrain:settings:leela_k_value"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_k_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_k_slider = Slider(
+        min=LEELA_K_MIN,
+        max=LEELA_K_MAX,
+        value=leela_config.get("loss_scale_k", LEELA_K_DEFAULT),
+        step=0.1,
+        size_hint_x=0.50,
+    )
+    leela_k_value_label = Label(
+        text=f"{leela_k_slider.value:.1f}",
+        size_hint_x=0.20,
+        halign="center",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_k_slider.bind(
+        value=lambda inst, val: setattr(leela_k_value_label, "text", f"{val:.1f}")
+    )
+    leela_k_row.add_widget(leela_k_label)
+    leela_k_row.add_widget(leela_k_slider)
+    leela_k_row.add_widget(leela_k_value_label)
+    popup_content.add_widget(leela_k_row)
+
+    # Leela Max Visits
+    leela_visits_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_visits_label = Label(
+        text=i18n._("mykatrain:settings:leela_max_visits"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_visits_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_visits_input = TextInput(
+        text=str(leela_config.get("max_visits", 1000)),
+        multiline=False,
+        input_filter="int",
+        size_hint_x=0.70,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_visits_row.add_widget(leela_visits_label)
+    leela_visits_row.add_widget(leela_visits_input)
+    popup_content.add_widget(leela_visits_row)
+
     # Buttons
     buttons_layout = BoxLayout(
         orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
@@ -444,6 +587,19 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         }
         ctx.set_config_section("mykatrain_settings", mykatrain_settings)
         ctx.save_config("mykatrain_settings")
+        # Save Leela settings (engine management is handled by KaTrainGui._do_update_state)
+        new_leela_config = {
+            "enabled": leela_enabled_checkbox.active,
+            "exe_path": leela_path_input.text.strip(),
+            "loss_scale_k": clamp_k(leela_k_slider.value),
+            "max_visits": 1000,  # default
+        }
+        try:
+            new_leela_config["max_visits"] = max(100, min(100000, int(leela_visits_input.text)))
+        except ValueError:
+            pass  # use default
+        ctx.set_config_section("leela", new_leela_config)
+        ctx.save_config("leela")
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
 
@@ -492,9 +648,37 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         browse_popup_content.filesel.bind(on_success=on_select)
         browse_popup.open()
 
+    def browse_leela_exe(*_args):
+        from katrain.gui.popups import LoadSGFPopup
+
+        browse_popup_content = LoadSGFPopup(ctx)
+        browse_popup_content.filesel.dirselect = False  # File selection
+        browse_popup_content.filesel.filters = ["*.exe"]  # Windows exe
+        browse_popup_content.filesel.select_string = "Select"
+        if leela_path_input.text and os.path.isfile(leela_path_input.text):
+            browse_popup_content.filesel.path = os.path.dirname(
+                os.path.abspath(leela_path_input.text)
+            )
+
+        browse_popup = Popup(
+            title="Select Leela Zero executable",
+            size_hint=(0.8, 0.8),
+            content=browse_popup_content,
+        ).__self__
+
+        def on_select(*_args):
+            selected = browse_popup_content.filesel.file_text.text
+            if selected and os.path.isfile(selected):
+                leela_path_input.text = selected
+            browse_popup.dismiss()
+
+        browse_popup_content.filesel.bind(on_success=on_select)
+        browse_popup.open()
+
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
     output_browse.bind(on_release=browse_output)
     input_browse.bind(on_release=browse_input)
+    leela_path_browse.bind(on_release=browse_leela_exe)
 
     popup.open()
