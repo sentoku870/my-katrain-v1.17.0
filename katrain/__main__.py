@@ -105,6 +105,9 @@ from katrain.gui.sound import play_sound
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
+from katrain.core.leela.engine import LeelaEngine
+from katrain.core.leela.logic import compute_estimated_loss, LEELA_K_DEFAULT
+from katrain.core.leela.models import LeelaPositionEval
 from katrain.core.sgf_parser import Move, ParseError
 from katrain.core.errors import EngineError
 from katrain.gui.error_handler import ErrorHandler
@@ -185,6 +188,12 @@ class KaTrainGui(Screen, KaTrainBase):
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
         self.engine = None
+
+        # Leela engine management (Phase 15)
+        self.leela_engine: Optional[LeelaEngine] = None
+        self._leela_pending_node = None
+        self._leela_request_id: int = 0
+        self._leela_last_request_time: float = 0.0
 
         self.new_game_popup = None
         self.fileselect_popup = None
@@ -454,6 +463,99 @@ class KaTrainGui(Screen, KaTrainBase):
         # update move tree
         self.controls.move_tree.current_node = self.game.current_node
 
+    # === Leela Engine Management (Phase 15) ===
+    def start_leela_engine(self) -> bool:
+        """Start Leela engine (no-op if already running)."""
+        if self.leela_engine and self.leela_engine.is_alive():
+            return True
+        if not self.config("leela/enabled"):
+            return False
+        exe_path = self.config("leela/exe_path")
+        if not exe_path or not os.path.isfile(exe_path):
+            self.log(i18n._("leela:error:exe_not_found").format(exe_path or "(empty)"), OUTPUT_ERROR)
+            return False
+        self.shutdown_leela_engine()
+        try:
+            leela_config = self.config("leela") or {}
+            self.leela_engine = LeelaEngine(self, leela_config)
+            if self.leela_engine.start():
+                self.log(i18n._("leela:status:started"), OUTPUT_INFO)
+                return True
+            self.leela_engine = None
+            return False
+        except Exception as e:
+            self.log(f"Leela error: {e}", OUTPUT_ERROR)
+            self.leela_engine = None
+            return False
+
+    def shutdown_leela_engine(self) -> None:
+        """Shutdown Leela engine."""
+        if self.leela_engine:
+            try:
+                self.leela_engine.shutdown()
+            except Exception:
+                pass
+            self.leela_engine = None
+        self._leela_pending_node = None
+
+    def request_leela_analysis(self) -> None:
+        """Request Leela analysis for current node (with debounce and duplicate prevention)."""
+        import time as _time
+
+        if not self.game or not self.config("leela/enabled"):
+            return
+
+        # Debounce: prevent rapid consecutive calls
+        now = _time.time()
+        if now - self._leela_last_request_time < 0.3:  # 300ms debounce
+            return
+        self._leela_last_request_time = now
+
+        # Start engine if needed
+        if not self.leela_engine or not self.leela_engine.is_alive():
+            if not self.start_leela_engine():
+                return
+
+        current_node = self.game.current_node
+
+        # Skip if already analyzed or pending
+        if current_node.leela_analysis and current_node.leela_analysis.is_valid:
+            return
+        if current_node == self._leela_pending_node:
+            return
+
+        # Cancel old request
+        self.leela_engine.cancel_analysis()
+
+        # New request
+        self._leela_pending_node = current_node
+        self._leela_request_id += 1
+        my_request_id = self._leela_request_id
+        moves = self.game.get_moves_for_engine()
+
+        def on_leela_result(result: LeelaPositionEval):
+            # Discard stale results
+            if my_request_id != self._leela_request_id:
+                return
+            k = self.config("leela/loss_scale_k", LEELA_K_DEFAULT)
+            with_loss = compute_estimated_loss(result, k=k)
+            Clock.schedule_once(lambda dt: self._set_leela_analysis(current_node, with_loss))
+
+        self.leela_engine.request_analysis(
+            moves=moves,
+            callback=on_leela_result,
+            visits=self.config("leela/max_visits", 1000),
+        )
+
+    def _set_leela_analysis(self, node, analysis: LeelaPositionEval) -> None:
+        """Set Leela analysis result on UI thread."""
+        if node == self._leela_pending_node:
+            self._leela_pending_node = None
+        if node and self.game:
+            node.set_leela_analysis(analysis)
+            if node == self.game.current_node:
+                self.update_state()
+
     def update_state(self, redraw_board=False):  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
 
@@ -497,6 +599,14 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.game.analyze_extra("ponder")
             else:
                 self.engine.stop_pondering()
+        # Leela engine lifecycle management (Phase 15)
+        if not self.config("leela/enabled"):
+            # Shutdown if disabled
+            if self.leela_engine:
+                self.shutdown_leela_engine()
+        elif self.analysis_controls.hints.active:
+            # Request analysis if enabled and hints are on
+            self.request_leela_analysis()
         Clock.schedule_once(lambda _dt: self.update_gui(cn, redraw_board=redraw_board), -1)  # trigger?
 
     def update_player(self, bw, **kwargs):
@@ -1464,6 +1574,8 @@ class KaTrainApp(MDApp):
             self.gui.save_config("ui_state")
             if self.gui.engine:
                 self.gui.engine.shutdown(finish=None)
+            # Shutdown Leela engine (Phase 15)
+            self.gui.shutdown_leela_engine()
 
     def signal_handler(self, _signal, _frame):
         if self.gui.debug_level >= OUTPUT_DEBUG:
