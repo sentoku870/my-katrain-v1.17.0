@@ -356,7 +356,10 @@ def _append_worst_moves(
     focus_player: Optional[str],
 ) -> None:
     """Top Worst Movesセクション"""
-    from katrain.core.game import Game
+    from katrain.core.reports.summary_report import (
+        _detect_urgent_miss_sequences,
+        _convert_sgf_to_gtp_coord,
+    )
 
     lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
 
@@ -383,7 +386,7 @@ def _append_worst_moves(
     skill_preset = config_fn("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
     urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
 
-    sequences, filtered_moves = Game._detect_urgent_miss_sequences(
+    sequences, filtered_moves = _detect_urgent_miss_sequences(
         moves_for_detection,
         threshold_loss=urgent_config.threshold_loss,
         min_consecutive=urgent_config.min_consecutive
@@ -418,7 +421,7 @@ def _append_worst_moves(
         for game_name, temp_move in display_moves:
             coord = temp_move.gtp or '-'
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
-                coord = Game._convert_sgf_to_gtp_coord(coord, 19)
+                coord = _convert_sgf_to_gtp_coord(coord, 19)
 
             cat_name = "UNKNOWN"
             for gn, mn, pl, gt, ls, imp, ct in all_worst_moves:
@@ -435,7 +438,7 @@ def _append_worst_moves(
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves:
             coord = gtp or '-'
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
-                coord = Game._convert_sgf_to_gtp_coord(coord, 19)
+                coord = _convert_sgf_to_gtp_coord(coord, 19)
             lines.append(f"| {game_name[:20]} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |")
 
     lines.append("")
@@ -518,7 +521,7 @@ def _append_urgent_miss_in_weakness(
     if not all_worst_moves:
         return
 
-    from katrain.core.game import Game
+    from katrain.core.reports.summary_report import _detect_urgent_miss_sequences
 
     class TempMove:
         def __init__(self, move_num, player, gtp, loss, importance):
@@ -537,7 +540,7 @@ def _append_urgent_miss_in_weakness(
     skill_preset = config_fn("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
     urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
 
-    sequences, _ = Game._detect_urgent_miss_sequences(
+    sequences, _ = _detect_urgent_miss_sequences(
         moves_for_detection,
         threshold_loss=urgent_config.threshold_loss,
         min_consecutive=urgent_config.min_consecutive
