@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-15
+> 最終更新: 2026-01-16
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -108,6 +108,7 @@
 | 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
 | 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
 | 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ **完了** |
+| 19 | 大規模リファクタリング | reports/パッケージ、analysis分割、GUI Manager抽出 | ✅ **完了** |
 
 ---
 
@@ -485,6 +486,47 @@
     - **テスト追加（3件）**
   - **成果**: 全843テストパス（+39件）
 
+### Phase 19: 大規模リファクタリング ✅ **完了**
+- **目的**: コードベースの保守性向上、責務分離、循環依存解消
+- **特徴**: 中程度リファクタリング（Option B）を選択、段階的に実施
+- **実装**: PR #113-135（2026-01-16）
+  - **Phase B1: 循環依存解消**
+    - `common/theme_constants.py` に `DEFAULT_FONT` 移動
+    - `lang.py` から `katrain.gui.theme` への依存を解消
+    - アーキテクチャ検証テスト追加
+  - **Phase B2: game.py → reports/パッケージ抽出**
+    - `katrain/core/reports/` パッケージ新設（5モジュール）
+    - `summary_report.py`: サマリー生成ロジック
+    - `quiz_report.py`: クイズ生成ロジック
+    - `karte_report.py`: カルテ生成ロジック
+    - `important_moves_report.py`: 重要局面レポート
+    - `formatters.py`: 共通フォーマッタ
+  - **Phase B3: KaTrainGui分割（部分完了）**
+    - `gui/leela_manager.py`: Leela解析管理を依存注入パターンで抽出
+    - `gui/sgf_manager.py`: SGF読み書き管理を抽出
+    - ※ dialog_coordinator, keyboard_controller はリスク高でスキップ
+  - **Phase B4: analysis/logic.py分割**
+    - `logic_loss.py`: 損失計算関数を抽出
+    - `logic_importance.py`: 重要度計算関数を抽出
+    - `logic_quiz.py`: クイズヘルパー関数を抽出
+  - **Phase B5: ai.py分割（部分完了）**
+    - `ai_strategies_base.py`: 基底クラス・ユーティリティを抽出（~300行）
+    - ※ ai_strategies_advanced.py は効果薄でスキップ（既に十分分割済み）
+  - **Phase B6: テスト・ドキュメント**
+    - `test_architecture.py`: モジュール構造・依存方向テスト追加
+    - `scripts/generate_metrics.py`: メトリクス自動生成スクリプト追加
+    - `docs/02-code-structure.md`: コード構造ドキュメント更新
+- **スキップ項目**（理由）:
+  - `dialog_coordinator.py`: 規模大・リスク高・手動テスト必須
+  - `keyboard_controller.py`: リスク高・全ショートカット手動テスト必須
+  - `ai_strategies_advanced.py`: 効果薄（既にai_strategies_base.pyで十分分割済み）
+- **成果**:
+  - テスト数: 879パス（+36件）
+  - ai.py: 1,459行 → 1,061行（-27%）
+  - analysis/: logic.pyをサブモジュール化（再利用性向上）
+  - reports/: game.pyからレポート生成ロジックを分離
+  - gui/: leela_manager, sgf_managerを依存注入パターンで抽出
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -520,6 +562,15 @@
 
 ## 11. 変更履歴
 
+- 2026-01-16: Phase 19 大規模リファクタリング完了（PR #113-135）
+  - **Phase B1**: 循環依存解消（common/theme_constants.py）
+  - **Phase B2**: game.py → reports/パッケージ抽出（5モジュール）
+  - **Phase B3**: KaTrainGui分割（leela_manager, sgf_manager）※部分完了
+  - **Phase B4**: analysis/logic.py分割（loss, importance, quiz）
+  - **Phase B5**: ai.py分割（ai_strategies_base.py）※部分完了
+  - **Phase B6**: アーキテクチャテスト・ドキュメント
+  - **スキップ**: dialog_coordinator, keyboard_controller, ai_strategies_advanced（リスク高/効果薄）
+  - **成果**: 全879テストパス（+36件）、ai.py -27%削減
 - 2026-01-15: Phase 18 安定性向上完了（PR #110-112）
   - **PR #110: Critical Fixes (P1 + P2)**
     - P1: テクスチャキャッシュLRU制限（`@lru_cache`, `_make_hashable()`, fallback texture）
