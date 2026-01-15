@@ -799,24 +799,25 @@ class TestKarteGenerationError:
 
 
 class TestBuildKarteReportErrorHandling:
-    """Tests for build_karte_report error handling (A2)."""
+    """Tests for build_karte_report error handling (A2).
+
+    Note: PR #119 moved karte implementation to katrain.core.reports.karte_report.
+    These tests now directly test the karte_report module functions.
+    """
 
     def test_returns_error_markdown_on_failure(self):
         """Should return error markdown when generation fails."""
-        from katrain.core.game import Game
+        from katrain.core.reports.karte_report import build_karte_report
 
         # Create a mock game that will fail during karte generation
-        game = Mock(spec=Game)
+        game = Mock()
         game.game_id = "test_game"
         game.sgf_filename = "test.sgf"
         game.katrain = None
+        # Make build_eval_snapshot raise an exception to trigger error handling
+        game.build_eval_snapshot = Mock(side_effect=ValueError("Test failure"))
 
-        # Make the impl method raise an exception
-        game._build_karte_report_impl = Mock(side_effect=ValueError("Test failure"))
-        game._build_error_karte = Game._build_error_karte.__get__(game, Game)
-        game.build_karte_report = Game.build_karte_report.__get__(game, Game)
-
-        result = game.build_karte_report()
+        result = build_karte_report(game)
 
         assert "ERROR" in result
         assert "Test failure" in result
@@ -824,30 +825,28 @@ class TestBuildKarteReportErrorHandling:
 
     def test_raises_exception_when_requested(self):
         """Should raise KarteGenerationError when raise_on_error=True."""
-        from katrain.core.game import Game, KarteGenerationError
+        from katrain.core.reports.karte_report import (
+            KarteGenerationError,
+            build_karte_report,
+        )
 
-        game = Mock(spec=Game)
+        game = Mock()
         game.game_id = "test_game"
         game.sgf_filename = None
         game.katrain = None
-
-        game._build_karte_report_impl = Mock(side_effect=RuntimeError("Boom"))
-        game.build_karte_report = Game.build_karte_report.__get__(game, Game)
+        game.build_eval_snapshot = Mock(side_effect=RuntimeError("Boom"))
 
         with pytest.raises(KarteGenerationError) as exc_info:
-            game.build_karte_report(raise_on_error=True)
+            build_karte_report(game, raise_on_error=True)
 
         assert "Boom" in str(exc_info.value)
         assert exc_info.value.game_id == "test_game"
 
     def test_error_karte_structure(self):
         """Error karte should have expected structure."""
-        from katrain.core.game import Game
+        from katrain.core.reports.karte_report import _build_error_karte
 
-        game = Mock(spec=Game)
-        game._build_error_karte = Game._build_error_karte.__get__(game, Game)
-
-        result = game._build_error_karte(
+        result = _build_error_karte(
             game_id="game123",
             player_filter="B",
             error_msg="Something went wrong",
