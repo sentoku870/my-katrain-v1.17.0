@@ -58,17 +58,67 @@ from katrain.gui.theme import Theme
 from katrain.gui.widgets.progress_loader import ProgressLoader
 
 
+def _get_app_gui():
+    """アプリのguiインスタンスを安全に取得
+
+    Returns:
+        gui instance or None
+
+    Note: KivyMD (MDApp) と Kivy (App) の両方に対応
+          将来的な移行を容易にするためヘルパー関数化
+    """
+    try:
+        from kivymd.app import MDApp
+
+        app = MDApp.get_running_app()
+    except ImportError:
+        from kivy.app import App
+
+        app = App.get_running_app()
+
+    if app is None:
+        return None
+    return getattr(app, "gui", None)
+
+
 class I18NPopup(Popup):
     title_key = StringProperty("")
     font_name = StringProperty(Theme.DEFAULT_FONT)
 
     def __init__(self, size=None, **kwargs):
         if size:  # do not exceed window size
-            app = MDApp.get_running_app()
-            size[0] = min(app.gui.width, size[0])
-            size[1] = min(app.gui.height, size[1])
+            # v3: sizeをミューテートせず新しいリストを作成
+            # Kivyは内部でlistに変換するため、listで渡すのがベストプラクティス
+            gui = _get_app_gui()
+            if gui:
+                size = [min(gui.width, size[0]), min(gui.height, size[1])]
+            else:
+                # appがNoneの場合は元のsizeをlistに変換（tuple対応）
+                size = list(size) if not isinstance(size, list) else size
         super().__init__(size=size, **kwargs)
-        self.bind(on_dismiss=Clock.schedule_once(lambda _dt: MDApp.get_running_app().gui.update_state(), 1))
+        self.bind(on_dismiss=self._schedule_update_state)
+
+    def _schedule_update_state(self, popup_instance):
+        """on_dismiss時にupdate_stateをスケジュール
+
+        Args:
+            popup_instance: Kivyのbindコールバックから渡されるPopupインスタンス
+
+        Note: v5改善 - 引数を明示的に受け取る（*argsより安全）
+        """
+        Clock.schedule_once(self._do_update_state, 1)
+
+    def _do_update_state(self, dt):
+        """実際のupdate_state呼び出し（nullチェック付き）
+
+        Args:
+            dt: Clock.schedule_onceから渡される経過時間（秒）
+
+        Note: アプリ終了中やgui未初期化時は何もしない
+        """
+        gui = _get_app_gui()
+        if gui:
+            gui.update_state()
 
 
 class LabelledTextInput(MDTextField):

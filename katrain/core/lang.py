@@ -54,6 +54,14 @@ class Lang(Observable):
         # get the right locales directory, and instantiate a gettext
         self.lang = lang
         self.font_name = self.FONTS.get(lang) or Theme.DEFAULT_FONT
+
+        # v4: テクスチャキャッシュをクリア（古いフォントのキャッシュを解放）
+        try:
+            from katrain.gui.kivyutils import clear_texture_caches
+
+            clear_texture_caches()
+        except ImportError:
+            pass  # GUI not available (e.g., headless mode)
         i18n_dir, _ = os.path.split(find_package_resource("katrain/i18n/__init__.py"))
         locale_dir = os.path.join(i18n_dir, "locales")
         locales = gettext.translation("katrain", locale_dir, languages=[lang, DEFAULT_LANGUAGE])
