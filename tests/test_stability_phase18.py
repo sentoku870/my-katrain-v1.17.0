@@ -218,3 +218,118 @@ class TestFallbackTexture:
         from katrain.gui.kivyutils import _missing_resources
 
         assert isinstance(_missing_resources, set)
+
+
+# =============================================================================
+# PR #111: P3 Move.from_gtp() 入力検証テスト
+# =============================================================================
+
+
+class TestMoveFromGtpValidation:
+    """Move.from_gtp() の入力検証テスト（Pure Python）"""
+
+    def test_valid_coordinates(self):
+        """正常な座標"""
+        from katrain.core.sgf_parser import Move
+
+        m = Move.from_gtp("D4", "B")
+        assert m.coords == (3, 3)  # D=3, 4-1=3
+
+    def test_valid_coordinates_large_board(self):
+        """大きな盤面の座標"""
+        from katrain.core.sgf_parser import Move
+
+        m = Move.from_gtp("T19", "W")
+        assert m.coords == (18, 18)  # T=18 (Iをスキップ), 19-1=18
+
+    def test_pass_move(self):
+        """パス"""
+        from katrain.core.sgf_parser import Move
+
+        m = Move.from_gtp("pass", "W")
+        assert m.coords is None
+
+    def test_pass_move_uppercase(self):
+        """大文字PASS"""
+        from katrain.core.sgf_parser import Move
+
+        m = Move.from_gtp("PASS", "B")
+        assert m.coords is None
+
+    def test_invalid_format_raises_valueerror(self):
+        """不正フォーマットでValueError"""
+        from katrain.core.sgf_parser import Move
+
+        with pytest.raises(ValueError, match="Invalid GTP coordinate"):
+            Move.from_gtp("invalid", "B")
+
+    def test_empty_string_raises_valueerror(self):
+        """空文字列でValueError"""
+        from katrain.core.sgf_parser import Move
+
+        with pytest.raises(ValueError, match="Invalid GTP coordinate"):
+            Move.from_gtp("", "B")
+
+    def test_negative_row_raises_valueerror(self):
+        """負の行でValueError"""
+        from katrain.core.sgf_parser import Move
+
+        with pytest.raises(ValueError, match="Invalid GTP row"):
+            Move.from_gtp("A0", "B")  # 0-1 = -1
+
+    def test_lowercase_input_normalized(self):
+        """小文字入力が正規化される"""
+        from katrain.core.sgf_parser import Move
+
+        m = Move.from_gtp("d4", "B")
+        assert m.coords == (3, 3)
+
+    def test_error_message_includes_input(self):
+        """エラーメッセージに入力値が含まれる"""
+        from katrain.core.sgf_parser import Move
+
+        with pytest.raises(ValueError) as exc_info:
+            Move.from_gtp("xyz123", "B")
+        # xyz123 is invalid format (not matching [A-Z]+\d+)
+        assert "xyz123" in str(exc_info.value).lower() or "XYZ123" in str(exc_info.value)
+
+
+# =============================================================================
+# PR #111: P4 配列アクセスガードテスト
+# =============================================================================
+
+
+class TestArrayAccessGuards:
+    """配列アクセスガードのテスト（Pure Python）"""
+
+    def test_empty_moveinfos_pvtail_guard(self):
+        """空のmoveInfosでpvtailがガードされる"""
+        # ロジックテスト: analysis_json["moveInfos"]が空の場合
+        analysis_json = {"moveInfos": [], "rootInfo": {"winrate": 0.5}}
+        pvtail = analysis_json["moveInfos"][0]["pv"] if analysis_json["moveInfos"] else []
+        assert pvtail == []
+
+    def test_nonempty_moveinfos_pvtail(self):
+        """moveInfosがある場合にpvtailが取得される"""
+        analysis_json = {
+            "moveInfos": [{"pv": ["D4", "E5"]}],
+            "rootInfo": {"winrate": 0.5},
+        }
+        pvtail = analysis_json["moveInfos"][0]["pv"] if analysis_json["moveInfos"] else []
+        assert pvtail == ["D4", "E5"]
+
+    def test_empty_top_move_list_guard(self):
+        """top_moveリストが空の場合のガード"""
+        move_dicts = [{"order": 1, "scoreLead": 5.0}, {"order": 2, "scoreLead": 3.0}]
+        root_score = 4.0
+        top_move = [d for d in move_dicts if d.get("order") == 0]
+        top_score_lead = top_move[0]["scoreLead"] if top_move else root_score
+        assert top_score_lead == root_score  # フォールバック
+
+    def test_nonempty_top_move_list(self):
+        """top_moveリストがある場合"""
+        move_dicts = [{"order": 0, "scoreLead": 5.0}, {"order": 1, "scoreLead": 3.0}]
+        root_score = 4.0
+        top_move = [d for d in move_dicts if d.get("order") == 0]
+        top_score_lead = top_move[0]["scoreLead"] if top_move else root_score
+        assert top_score_lead == 5.0

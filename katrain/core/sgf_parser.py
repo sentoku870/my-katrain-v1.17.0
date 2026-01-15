@@ -21,11 +21,36 @@ class Move:
 
     @classmethod
     def from_gtp(cls, gtp_coords, player="B"):
-        """Initialize a move from GTP coordinates and player"""
+        """Initialize a move from GTP coordinates and player.
+
+        Args:
+            gtp_coords: GTP format coordinate (e.g., "D4", "pass")
+            player: Player color ("B" or "W")
+
+        Returns:
+            Move instance
+
+        Raises:
+            ValueError: If coordinate format is invalid
+        """
         if "pass" in gtp_coords.lower():
             return cls(coords=None, player=player)
-        match = re.match(r"([A-Z]+)(\d+)", gtp_coords)
-        return cls(coords=(Move.GTP_COORD.index(match[1]), int(match[2]) - 1), player=player)
+
+        match = re.match(r"([A-Z]+)(\d+)", gtp_coords.upper())
+        if not match:
+            raise ValueError(f"Invalid GTP coordinate format: {gtp_coords!r}")
+
+        col_str, row_str = match.groups()
+        try:
+            col_idx = Move.GTP_COORD.index(col_str)
+        except ValueError:
+            raise ValueError(f"Invalid GTP column '{col_str}' in: {gtp_coords!r}")
+
+        row_num = int(row_str) - 1
+        if row_num < 0:
+            raise ValueError(f"Invalid GTP row '{row_str}' in: {gtp_coords!r}")
+
+        return cls(coords=(col_idx, row_num), player=player)
 
     @classmethod
     def from_sgf(cls, sgf_coords, board_size, player="B"):
