@@ -1,3 +1,27 @@
+"""AI strategy implementations for KaTrain.
+
+This module contains all AI strategy classes for generating moves.
+
+Module structure (Phase B5 refactoring):
+- ai_strategies_base.py: Base class (AIStrategy) and utilities
+- ai.py (this file): All strategy implementations
+
+Strategy categories:
+- Basic: DefaultStrategy, HandicapStrategy, AntimirrorStrategy, JigoStrategy
+- Score-based: ScoreLossStrategy
+- Ownership-based: OwnershipBaseStrategy, SimpleOwnershipStrategy, SettleStonesStrategy
+- Policy-based: PolicyStrategy, WeightedStrategy
+- Pick-based: PickBasedStrategy, PickStrategy, RankStrategy, InfluenceStrategy,
+              TerritoryStrategy, LocalStrategy, TenukiStrategy
+- Human-style: HumanStyleStrategy
+
+Usage:
+    from katrain.core.ai import STRATEGY_REGISTRY, generate_ai_move
+    strategy_class = STRATEGY_REGISTRY[strategy_name]
+    strategy = strategy_class(game, ai_settings)
+    move, thoughts = strategy.generate_move()
+"""
+
 import heapq
 import math
 import random
