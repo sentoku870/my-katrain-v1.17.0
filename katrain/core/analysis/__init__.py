@@ -6,12 +6,16 @@ Phase B で models.py, logic.py, presentation.py に分離されました。
 
 構成:
 - models.py: Enum, Dataclass, 設定定数
-- logic.py: 純粋計算関数
+- logic.py: 純粋計算関数（オーケストレーター）
+  - logic_loss.py: 損失計算関数（PR #126）
+  - logic_importance.py: 重要度計算関数（PR #127）
+  - logic_quiz.py: クイズヘルパー関数（PR #128）
 - presentation.py: 表示/フォーマット関数
 
 後方互換性:
 - 全てのシンボルはこの __init__.py から再エクスポートされます
 - `from katrain.core.analysis import *` で全機能にアクセス可能
+- logic.py は logic_*.py から再エクスポートするため、既存のインポートは変更不要
 
 Note: シンボルの __module__ パスが変更されます。
       pickle/キャッシュでクラス参照を保存している場合、デシリアライズ失敗の可能性あり。
