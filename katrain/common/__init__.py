@@ -3,9 +3,8 @@
 # このパッケージには core/ と gui/ の両方から参照される
 # 安定した定数を配置します。
 #
-# 注意: 実行時に変更される値（例: Theme.DEFAULT_FONT）は
-# ここに配置しないでください。
+# 注意: 実行時に変更される値はここに配置しないでください。
 
-from katrain.common.theme_constants import INFO_PV_COLOR
+from katrain.common.theme_constants import DEFAULT_FONT, INFO_PV_COLOR
 
-__all__ = ["INFO_PV_COLOR"]
+__all__ = ["DEFAULT_FONT", "INFO_PV_COLOR"]

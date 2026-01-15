@@ -1,3 +1,6 @@
+from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
+
+
 def to_hexcol(kivycol):
     return "#" + "".join(f"{round(c * 255):02x}" for c in kivycol[:3])
 
@@ -17,8 +20,8 @@ BLUE = [0.3, 0.7, 0.9, 1]
 
 
 class Theme:
-    # font
-    DEFAULT_FONT = "NotoSansJP-Regular.otf"
+    # font (PR #113: canonical source is katrain.common.DEFAULT_FONT)
+    DEFAULT_FONT = _DEFAULT_FONT
     INPUT_FONT_SIZE = 20  # sp
     DESC_FONT_SIZE = 18  # sp
     NOTES_FONT_SIZE = 16  # sp

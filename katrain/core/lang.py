@@ -4,8 +4,8 @@ import sys
 
 from kivy._event import Observable
 
+from katrain.common import DEFAULT_FONT
 from katrain.core.utils import find_package_resource
-from katrain.gui.theme import Theme
 
 
 class Lang(Observable):
@@ -53,7 +53,7 @@ class Lang(Observable):
             return
         # get the right locales directory, and instantiate a gettext
         self.lang = lang
-        self.font_name = self.FONTS.get(lang) or Theme.DEFAULT_FONT
+        self.font_name = self.FONTS.get(lang) or DEFAULT_FONT
 
         # v4: テクスチャキャッシュをクリア（古いフォントのキャッシュを解放）
         try:
