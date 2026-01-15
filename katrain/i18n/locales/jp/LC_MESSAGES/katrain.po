@@ -1386,3 +1386,12 @@ msgstr "Leela実行ファイルが見つかりません: {}"
 
 msgid "leela:status:started"
 msgstr "Leelaエンジンを起動しました"
+
+msgid "leela:resign_hint:title"
+msgstr "投了目安"
+
+msgid "leela:resign_hint:message"
+msgstr "勝率が{winrate_pct}%以下の状態が{moves}手続いています。投了を検討してください。"
+
+msgid "leela:resign_hint:ok"
+msgstr "OK"

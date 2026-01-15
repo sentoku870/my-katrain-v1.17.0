@@ -917,6 +917,7 @@ class BadukPanWidget(Widget):
 
         top_move_coords = None
         candidates = leela_analysis.candidates
+        current_node = self.katrain.game.current_node  # Phase 16: for PV registration
 
         # Find max visits for scaling
         max_visits = max((c.visits for c in candidates), default=1)
@@ -925,6 +926,11 @@ class BadukPanWidget(Widget):
             move = Move.from_gtp(candidate.move)
             if move.coords is None:
                 continue
+
+            # Phase 16: Register PV for hover display (same pattern as KataGo)
+            # candidate.pv is List[str], same type as KataGo's move_dict["pv"]
+            if candidate.pv:
+                self.active_pv_moves.append((move.coords, candidate.pv, current_node))
 
             is_best = (i == 0) or (candidate.loss_est is not None and candidate.loss_est == 0.0)
             scale = Theme.HINT_SCALE

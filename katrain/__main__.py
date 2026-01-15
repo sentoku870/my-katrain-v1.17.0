@@ -49,7 +49,7 @@ import time
 import random
 import glob
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Set
 from kivy.clock import Clock
 
 
@@ -106,7 +106,12 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.leela.engine import LeelaEngine
-from katrain.core.leela.logic import compute_estimated_loss, LEELA_K_DEFAULT
+from katrain.core.leela.logic import (
+    compute_estimated_loss,
+    LEELA_K_DEFAULT,
+    check_resign_condition,
+)
+from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.core.leela.models import LeelaPositionEval
 from katrain.core.sgf_parser import Move, ParseError
 from katrain.core.errors import EngineError
@@ -194,6 +199,9 @@ class KaTrainGui(Screen, KaTrainBase):
         self._leela_pending_node = None
         self._leela_request_id: int = 0
         self._leela_last_request_time: float = 0.0
+
+        # Phase 16: Resign hint tracking (use node_key: str to avoid GC issues)
+        self._resign_hint_shown_keys: Set[str] = set()
 
         self.new_game_popup = None
         self.fileselect_popup = None
@@ -565,6 +573,66 @@ class KaTrainGui(Screen, KaTrainBase):
             if node == self.game.current_node:
                 self.update_state()
 
+        # Phase 16: Check resign hint condition
+        self._check_and_show_resign_hint(node)
+
+    @staticmethod
+    def _make_node_key(node) -> str:
+        """Generate a unique key for a node (GC-safe).
+
+        Uses node.depth + id(node) to distinguish nodes at the same depth
+        in variations.
+
+        Args:
+            node: GameNode instance
+
+        Returns:
+            String key like "45:123456789"
+        """
+        return f"{node.depth}:{id(node)}"
+
+    def _check_and_show_resign_hint(self, node) -> None:
+        """Check resign condition and show popup if met.
+
+        Args:
+            node: GameNode that just received analysis
+        """
+        # 1. Settings check
+        if not self.config("leela/resign_hint_enabled", False):
+            return
+
+        # 2. Current node guard (don't show for old nodes)
+        if not self.game or node != self.game.current_node:
+            return
+
+        # 3. Prevent re-display (use node_key)
+        node_key = self._make_node_key(node)
+        if node_key in self._resign_hint_shown_keys:
+            return
+
+        # 4. Collect recent Leela analysis history
+        history = []
+        current = node
+        consecutive_moves = self.config("leela/resign_consecutive_moves", 3)
+        for _ in range(consecutive_moves):
+            if not current or not current.leela_analysis:
+                break
+            history.append(current.leela_analysis)
+            current = current.parent
+
+        # 5. Check condition (v4: use max_visits for dynamic threshold)
+        result = check_resign_condition(
+            history,
+            winrate_threshold=self.config("leela/resign_winrate_threshold", 5) / 100,
+            consecutive_moves=consecutive_moves,
+            max_visits=self.config("leela/max_visits", 1000),
+        )
+
+        # 6. Show popup (defensive: always via schedule for UI thread safety)
+        if result.should_show_hint and result.is_reliable:
+            self._resign_hint_shown_keys.add(node_key)
+            schedule_resign_hint_popup(self, result)
+
     def update_state(self, redraw_board=False):  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
 
@@ -667,6 +735,8 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def _do_new_game(self, move_tree=None, analyze_fast=False, sgf_filename=None):
         self.pondering = False
+        # Phase 16: Clear resign hint tracking on new game
+        self._resign_hint_shown_keys.clear()
         mode = self.play_analyze_mode
         if not getattr(self, "_suppress_play_mode_switch", False) and (
             (move_tree is not None and mode == MODE_PLAY)
