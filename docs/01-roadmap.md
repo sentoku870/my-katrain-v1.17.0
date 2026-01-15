@@ -107,6 +107,7 @@
 | 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
 | 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
 | 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
+| 18 | 安定性向上 | キャッシュLRU + バグ修正 | 🔄 **進行中** |
 
 ---
 
@@ -451,6 +452,26 @@
   - **Step 17.6**: テスト追加（10件）
   - **成果**: 全804テストパス（+10件）
 
+### Phase 18: 安定性向上 🔄 **進行中**
+- **目的**: メモリリーク防止、UIバグ修正による安定性向上
+- **特徴**: Critical修正を優先、3PR分割でリスク分離
+- **実装**: PR #110（2026-01-15）
+  - **P1: テクスチャキャッシュLRU制限**
+    - `@lru_cache` デコレータ（maxsize=500/100）で無制限成長を防止
+    - `_make_hashable()`: kwargs値をhashableに変換（dict/list/set/tuple対応）
+    - `_get_fallback_texture()`: 1x1透明フォールバックテクスチャ（シングルトン）
+    - `_missing_resources`: ログスパム防止（同じパスは1回のみ警告）
+    - `clear_texture_caches()`: 言語変更時にキャッシュクリア
+  - **P2: Popup Clockバインディング修正**
+    - バグ: `bind(on_dismiss=Clock.schedule_once(...))` が戻り値をbind
+    - 修正: `bind(on_dismiss=self._schedule_update_state)` でメソッド参照をbind
+    - `_get_app_gui()`: MDApp/App両対応のnull-safeヘルパー
+    - sizeのtuple→list変換対応
+  - **テスト追加（23件）**: test_stability_phase18.py
+    - Pure Python: _make_hashable、Popup size logic、font resolution
+    - Kivy-Import: cache config、popup methods、fallback texture
+  - **成果**: 全827テストパス（+23件）
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -486,6 +507,17 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 18 安定性向上開始（PR #110）
+  - **P1: テクスチャキャッシュLRU制限**
+    - `@lru_cache` デコレータ（maxsize=500/100）で無制限成長を防止
+    - `_make_hashable()` for kwargs hashable変換（dict/list/set/tuple対応）
+    - フォールバックテクスチャシングルトン + ログスパム防止
+    - `clear_texture_caches()` 言語変更フック
+  - **P2: Popup Clockバインディング修正**
+    - `Clock.schedule_once()` 戻り値bind → メソッド参照bindに修正
+    - `_get_app_gui()` null-safeヘルパー追加
+  - **テスト追加**: 23件（test_stability_phase18.py）
+  - **成果**: 全827テストパス（+23件）
 - 2026-01-15: Phase 17 Leela Stats on Top Moves選択機能完了（PR #109）
   - **Step 17.1**: 定数追加（`LEELA_TOP_MOVE_*`）
   - **Step 17.2**: 設定項目追加（`top_moves_show`, `top_moves_show_secondary`）
