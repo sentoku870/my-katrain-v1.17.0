@@ -107,7 +107,7 @@
 | 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
 | 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
 | 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
-| 18 | 安定性向上 | キャッシュLRU + バグ修正 | 🔄 **進行中** |
+| 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ **完了** |
 
 ---
 
@@ -452,25 +452,38 @@
   - **Step 17.6**: テスト追加（10件）
   - **成果**: 全804テストパス（+10件）
 
-### Phase 18: 安定性向上 🔄 **進行中**
+### Phase 18: 安定性向上 ✅ **完了**
 - **目的**: メモリリーク防止、UIバグ修正による安定性向上
 - **特徴**: Critical修正を優先、3PR分割でリスク分離
-- **実装**: PR #110（2026-01-15）
-  - **P1: テクスチャキャッシュLRU制限**
-    - `@lru_cache` デコレータ（maxsize=500/100）で無制限成長を防止
-    - `_make_hashable()`: kwargs値をhashableに変換（dict/list/set/tuple対応）
-    - `_get_fallback_texture()`: 1x1透明フォールバックテクスチャ（シングルトン）
-    - `_missing_resources`: ログスパム防止（同じパスは1回のみ警告）
-    - `clear_texture_caches()`: 言語変更時にキャッシュクリア
-  - **P2: Popup Clockバインディング修正**
-    - バグ: `bind(on_dismiss=Clock.schedule_once(...))` が戻り値をbind
-    - 修正: `bind(on_dismiss=self._schedule_update_state)` でメソッド参照をbind
-    - `_get_app_gui()`: MDApp/App両対応のnull-safeヘルパー
-    - sizeのtuple→list変換対応
-  - **テスト追加（23件）**: test_stability_phase18.py
-    - Pure Python: _make_hashable、Popup size logic、font resolution
-    - Kivy-Import: cache config、popup methods、fallback texture
-  - **成果**: 全827テストパス（+23件）
+- **実装**: PR #110-112（2026-01-15）
+  - **PR #110: Critical Fixes (P1 + P2)**
+    - **P1: テクスチャキャッシュLRU制限**
+      - `@lru_cache` デコレータ（maxsize=500/100）で無制限成長を防止
+      - `_make_hashable()`: kwargs値をhashableに変換（dict/list/set/tuple対応）
+      - `_get_fallback_texture()`: 1x1透明フォールバックテクスチャ（シングルトン）
+      - `_missing_resources`: ログスパム防止（同じパスは1回のみ警告）
+      - `clear_texture_caches()`: 言語変更時にキャッシュクリア
+    - **P2: Popup Clockバインディング修正**
+      - バグ: `bind(on_dismiss=Clock.schedule_once(...))` が戻り値をbind
+      - 修正: `bind(on_dismiss=self._schedule_update_state)` でメソッド参照をbind
+      - `_get_app_gui()`: MDApp/App両対応のnull-safeヘルパー
+      - sizeのtuple→list変換対応
+    - **テスト追加（23件）**
+  - **PR #111: Defensive Programming (P3 + P4)**
+    - **P3: Move.from_gtp() 入力検証**
+      - 不正フォーマット、不正列、負の行でValueError送出
+      - 小文字入力を自動正規化（.upper()）
+      - エラーメッセージに入力値を含める
+    - **P4: 配列アクセスガード（既存確認）**
+      - 空のmoveInfos/polmoves/top_moveのフォールバック確認
+    - **テスト追加（13件）**
+  - **PR #112: Optimization (P5)**
+    - **P5: animate_pv インターバル遅延初期化**
+      - 常時実行の100msタイマーを削除
+      - `_start_pv_animation()`, `_stop_pv_animation()`: オンデマンド開始/停止
+      - `_update_pv_animation_state()`: active_pv_movesに基づく自動管理
+    - **テスト追加（3件）**
+  - **成果**: 全843テストパス（+39件）
 
 ---
 
@@ -507,17 +520,19 @@
 
 ## 11. 変更履歴
 
-- 2026-01-15: Phase 18 安定性向上開始（PR #110）
-  - **P1: テクスチャキャッシュLRU制限**
-    - `@lru_cache` デコレータ（maxsize=500/100）で無制限成長を防止
-    - `_make_hashable()` for kwargs hashable変換（dict/list/set/tuple対応）
-    - フォールバックテクスチャシングルトン + ログスパム防止
-    - `clear_texture_caches()` 言語変更フック
-  - **P2: Popup Clockバインディング修正**
-    - `Clock.schedule_once()` 戻り値bind → メソッド参照bindに修正
-    - `_get_app_gui()` null-safeヘルパー追加
-  - **テスト追加**: 23件（test_stability_phase18.py）
-  - **成果**: 全827テストパス（+23件）
+- 2026-01-15: Phase 18 安定性向上完了（PR #110-112）
+  - **PR #110: Critical Fixes (P1 + P2)**
+    - P1: テクスチャキャッシュLRU制限（`@lru_cache`, `_make_hashable()`, fallback texture）
+    - P2: Popup Clockバインディング修正（`_get_app_gui()`, メソッド参照bind）
+    - テスト追加: 23件
+  - **PR #111: Defensive Programming (P3 + P4)**
+    - P3: Move.from_gtp() 入力検証（ValueError送出、小文字正規化）
+    - P4: 配列アクセスガード確認
+    - テスト追加: 13件
+  - **PR #112: Optimization (P5)**
+    - P5: animate_pv インターバル遅延初期化（オンデマンド開始/停止）
+    - テスト追加: 3件
+  - **成果**: 全843テストパス（+39件）
 - 2026-01-15: Phase 17 Leela Stats on Top Moves選択機能完了（PR #109）
   - **Step 17.1**: 定数追加（`LEELA_TOP_MOVE_*`）
   - **Step 17.2**: 設定項目追加（`top_moves_show`, `top_moves_show_secondary`）
