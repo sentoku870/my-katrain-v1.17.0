@@ -5,7 +5,9 @@
 #
 # PR #115: パッケージ骨格作成
 # PR #116: summary_report.py追加
+# PR #117: quiz_report.py追加
 
+from katrain.core.reports.quiz_report import build_quiz_questions, get_quiz_items
 from katrain.core.reports.summary_report import build_summary_report
 from katrain.core.reports.types import (
     CONFIG_READER_REQUIRED_ATTRS,
@@ -27,4 +29,6 @@ __all__ = [
     "CONFIG_READER_REQUIRED_ATTRS",
     # Report functions
     "build_summary_report",
+    "get_quiz_items",
+    "build_quiz_questions",
 ]

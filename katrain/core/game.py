@@ -17,7 +17,6 @@ from .eval_metrics import (
     MoveEval,
     PhaseMistakeStats,
     PositionDifficulty,
-    QuizChoice,
     QuizItem,
     QuizQuestion,
     SummaryStats,
@@ -26,8 +25,6 @@ from .eval_metrics import (
     detect_mistake_streaks,
     get_canonical_loss_from_move,
     get_practice_priorities_from_stats,
-    quiz_items_from_snapshot,
-    quiz_points_lost_from_candidate,
     snapshot_from_game,
 )
 from katrain.core.constants import (
@@ -558,12 +555,13 @@ class Game(BaseGame):
 
         - 既存の EvalSnapshot と quiz_items_from_snapshot をまとめた入口。
         - 解析済みの情報だけを使用し、新たな分析は開始しない。
-        """
-        snapshot = self.build_eval_snapshot()
-        if not snapshot.moves:
-            return []
 
-        return quiz_items_from_snapshot(
+        Deprecated: use reports.quiz_report.get_quiz_items()
+        """
+        from katrain.core.reports import quiz_report
+
+        snapshot = self.build_eval_snapshot()
+        return quiz_report.get_quiz_items(
             snapshot, loss_threshold=loss_threshold, limit=limit
         )
 
@@ -578,39 +576,16 @@ class Game(BaseGame):
 
         - Uses candidate_moves from the position before each mistake.
         - Does not trigger any new engine analysis.
+
+        Deprecated: use reports.quiz_report.build_quiz_questions()
         """
-        questions: List[QuizQuestion] = []
-        for item in quiz_items:
-            node_before = self.get_main_branch_node_before_move(item.move_number)
-            choices: List[QuizChoice] = []
-            best_move: Optional[str] = None
-            if node_before is not None and getattr(node_before, "analysis_exists", False):
-                candidate_moves = node_before.candidate_moves
-                if candidate_moves:
-                    best_move = candidate_moves[0].get("move")
-                    analysis = getattr(node_before, "analysis", None) or {}
-                    root_score = None
-                    if isinstance(analysis, dict):
-                        root_score = (analysis.get("root") or {}).get("scoreLead")
-                    for mv in candidate_moves[:max_choices]:
-                        move_id = mv.get("move", "") or ""
-                        loss_val = quiz_points_lost_from_candidate(
-                            mv,
-                            root_score=root_score,
-                            next_player=getattr(node_before, "next_player", None),
-                        )
-                        choices.append(
-                            QuizChoice(move=move_id, points_lost=loss_val)
-                        )
-            questions.append(
-                QuizQuestion(
-                    item=item,
-                    choices=choices,
-                    best_move=best_move,
-                    node_before_move=node_before,
-                )
-            )
-        return questions
+        from katrain.core.reports import quiz_report
+
+        return quiz_report.build_quiz_questions(
+            quiz_items,
+            self.get_main_branch_node_before_move,
+            max_choices=max_choices,
+        )
 
     def log_mistake_summary_for_debug(self) -> None:
         """
