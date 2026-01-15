@@ -531,7 +531,16 @@ class KaTrainGui(Screen, KaTrainBase):
         self._leela_pending_node = current_node
         self._leela_request_id += 1
         my_request_id = self._leela_request_id
-        moves = self.game.get_moves_for_engine()
+
+        # Build moves list from current node path (same as KataGoEngine)
+        nodes = current_node.nodes_from_root
+        moves = []
+        for node in nodes:
+            for m in node.moves:
+                # m is a Move object with .player ("B"/"W") and .gtp() method
+                player = m.player
+                coord = m.gtp()
+                moves.append((player, coord))
 
         def on_leela_result(result: LeelaPositionEval):
             # Discard stale results

@@ -93,8 +93,12 @@ class LeelaEngine:
 
                 self._shutdown_event.clear()
 
-                # Wait for initialization (read startup messages)
-                self._wait_for_ready()
+                # Initialize in background thread to avoid blocking UI
+                init_thread = threading.Thread(
+                    target=self._wait_for_ready,
+                    daemon=True,
+                )
+                init_thread.start()
 
                 return True
 
