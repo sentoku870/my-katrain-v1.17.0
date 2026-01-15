@@ -1395,3 +1395,23 @@ msgstr "勝率が{winrate_pct}%以下の状態が{moves}手続いています。
 
 msgid "leela:resign_hint:ok"
 msgstr "OK"
+
+#. Leela top move stats label
+msgid "mykatrain:settings:leela_top_moves_show"
+msgstr "候補手の表示内容"
+
+#. Leela dropdown option
+msgid "leela_top_move_loss"
+msgstr "推定損失"
+
+#. Leela dropdown option
+msgid "leela_top_move_winrate"
+msgstr "勝率"
+
+#. Leela dropdown option
+msgid "leela_top_move_visits"
+msgstr "訪問数"
+
+#. Leela dropdown option
+msgid "leela_top_move_nothing"
+msgstr "（なし）"
