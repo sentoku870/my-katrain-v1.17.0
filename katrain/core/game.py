@@ -691,108 +691,18 @@ class Game(BaseGame):
                 - "strict" : より厳しめに大きな局面だけ
             max_lines:
                 レポートの最大行数（None の場合は全件）
+
+        Note:
+            PR #120: Moved implementation to katrain.core.reports.important_moves_report
         """
+        from katrain.core.reports import important_moves_report
+
         important_moves = self.get_important_move_evals(level=level)
-
-        if not important_moves:
-            settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
-                level,
-                eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
-            )
-            return (
-                f"重要局面候補 (level={level}, "
-                f"threshold={settings.importance_threshold}, "
-                f"max_moves={settings.max_moves}) は見つかりませんでした。"
-            )
-
-        # 必要に応じて行数を制限
-        if max_lines is not None and max_lines > 0:
-            important_moves = important_moves[:max_lines]
-
-        def fmt_score(v: Optional[float]) -> str:
-            if v is None:
-                return "-"
-            return f"{v:+.1f}"
-
-        def fmt_winrate(v: Optional[float]) -> str:
-            if v is None:
-                return "-"
-            return f"{v:+.1f}%"
-
-        def fmt_mistake(mc: Optional[MistakeCategory]) -> str:
-            if mc is None:
-                return "-"
-            mapping = {
-                MistakeCategory.GOOD: "良",
-                MistakeCategory.INACCURACY: "軽",
-                MistakeCategory.MISTAKE: "悪",
-                MistakeCategory.BLUNDER: "大悪",
-            }
-            return mapping.get(mc, "-")
-
-        def fmt_difficulty(difficulty) -> str:
-            """
-            PositionDifficulty を短い日本語ラベルに変換する。
-
-            EASY      -> "易"
-            NORMAL    -> "普"
-            HARD      -> "難"
-            ONLY_MOVE -> "一手"
-            UNKNOWN   -> "-"
-            """
-            if difficulty is None:
-                return "-"
-            # Enum を想定し、.value から判定する
-            value = getattr(difficulty, "value", None)
-            mapping = {
-                "easy": "易",
-                "normal": "普",
-                "hard": "難",
-                "only": "一手",
-                "unknown": "-",
-            }
-            if value is None:
-                return "-"
-            return mapping.get(value, "-")
-
-        # 見出し行
-        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
-            level,
-            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+        return important_moves_report.build_important_moves_report(
+            important_moves,
+            level=level,
+            max_lines=max_lines,
         )
-        lines: List[str] = []
-        lines.append(
-            f"重要局面候補 (level={level}, "
-            f"threshold={settings.importance_threshold}, "
-            f"max_moves={settings.max_moves})"
-        )
-        lines.append("")  # 空行
-
-        # ヘッダ
-        # 手数 / 手番 / 着手 / 損失(目) / ミス分類 / 難易度 / 形勢差Δ / 勝率Δ
-        lines.append("手数  手番  着手   損失(目)  ミス   難度   形勢差Δ  勝率Δ")
-        lines.append("-" * 52)
-
-        # 各手を 1 行に整形
-        for m in important_moves:
-            if not isinstance(m, MoveEval):
-                continue
-
-            move_no = m.move_number
-            player = m.player or "-"
-            gtp = m.gtp or "-"
-
-            pl = fmt_score(m.points_lost)
-            ds = fmt_score(m.delta_score)
-            dw = fmt_winrate(m.delta_winrate)
-            mc = fmt_mistake(m.mistake_category)
-            df = fmt_difficulty(getattr(m, "position_difficulty", None))
-
-            lines.append(
-                f"{move_no:>3}   {player:>1}   {gtp:>4}   {pl:>7}  {mc:>4}  {df:>4}  {ds:>7}  {dw:>7}"
-            )
-
-        return "\n".join(lines)
 
     def build_karte_report(
         self,

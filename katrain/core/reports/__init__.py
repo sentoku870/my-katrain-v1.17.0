@@ -7,7 +7,9 @@
 # PR #116: summary_report.py追加
 # PR #117: quiz_report.py追加
 # PR #119: karte_report.py追加
+# PR #120: important_moves_report.py追加
 
+from katrain.core.reports.important_moves_report import build_important_moves_report
 from katrain.core.reports.karte_report import (
     KarteGenerationError,
     build_karte_report,
@@ -38,4 +40,5 @@ __all__ = [
     "build_quiz_questions",
     "build_karte_report",
     "KarteGenerationError",
+    "build_important_moves_report",
 ]
