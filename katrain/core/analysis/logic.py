@@ -596,97 +596,14 @@ def assess_position_difficulty_from_parent(
 
 
 # =============================================================================
-# Loss calculation
+# Loss calculation (extracted to logic_loss.py, re-exported for compatibility)
 # =============================================================================
 
-
-def compute_loss_from_delta(
-    delta_score: Optional[float],
-    delta_winrate: Optional[float],
-) -> Tuple[Optional[float], Optional[float]]:
-    """
-    手番視点の delta_score / delta_winrate から損失量 (>=0) を計算する。
-    """
-    score_loss: Optional[float] = None
-    winrate_loss: Optional[float] = None
-
-    if delta_score is not None:
-        score_loss = max(0.0, -delta_score)
-
-    if delta_winrate is not None:
-        winrate_loss = max(0.0, -delta_winrate)
-
-    return score_loss, winrate_loss
-
-
-def compute_canonical_loss(
-    points_lost: Optional[float],
-    delta_score: Optional[float] = None,
-    delta_winrate: Optional[float] = None,
-    player: Optional[str] = None,
-) -> Tuple[Optional[float], Optional[float]]:
-    """
-    正準的な損失量 (>=0) を計算する。
-
-    優先順位:
-      1) points_lost が利用可能なら max(points_lost, 0) を使用
-      2) delta_score/delta_winrate が利用可能ならフォールバック
-    """
-    score_loss: Optional[float] = None
-    winrate_loss: Optional[float] = None
-
-    # Primary: use points_lost if available
-    if points_lost is not None:
-        score_loss = max(0.0, points_lost)
-
-    # Fallback: use delta with perspective correction
-    if score_loss is None and delta_score is not None:
-        player_sign = {"B": 1, "W": -1, None: 1}.get(player, 1)
-        side_to_move_delta = player_sign * delta_score
-        score_loss = max(0.0, -side_to_move_delta)
-
-    # Winrate loss
-    if delta_winrate is not None:
-        player_sign = {"B": 1, "W": -1, None: 1}.get(player, 1)
-        side_to_move_delta = player_sign * delta_winrate
-        winrate_loss = max(0.0, -side_to_move_delta)
-
-    return score_loss, winrate_loss
-
-
-def classify_mistake(
-    score_loss: Optional[float],
-    winrate_loss: Optional[float],
-    *,
-    score_thresholds: Tuple[float, float, float] = SCORE_THRESHOLDS,
-    winrate_thresholds: Tuple[float, float, float] = WINRATE_THRESHOLDS,
-) -> MistakeCategory:
-    """
-    損失量から MistakeCategory を決定する。
-    """
-    if score_loss is not None:
-        loss = max(score_loss, 0.0)
-        t1, t2, t3 = score_thresholds
-        if loss < t1:
-            return MistakeCategory.GOOD
-        if loss < t2:
-            return MistakeCategory.INACCURACY
-        if loss < t3:
-            return MistakeCategory.MISTAKE
-        return MistakeCategory.BLUNDER
-
-    if winrate_loss is not None:
-        loss = max(winrate_loss, 0.0)
-        t1, t2, t3 = winrate_thresholds
-        if loss < t1:
-            return MistakeCategory.GOOD
-        if loss < t2:
-            return MistakeCategory.INACCURACY
-        if loss < t3:
-            return MistakeCategory.MISTAKE
-        return MistakeCategory.BLUNDER
-
-    return MistakeCategory.GOOD
+from katrain.core.analysis.logic_loss import (
+    classify_mistake,
+    compute_canonical_loss,
+    compute_loss_from_delta,
+)
 
 
 # =============================================================================
