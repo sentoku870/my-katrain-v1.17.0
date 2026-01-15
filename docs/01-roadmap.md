@@ -106,6 +106,7 @@
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ **完了** |
 | 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
 | 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
+| 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
 
 ---
 
@@ -431,6 +432,25 @@
   - **Step 16.6**: テスト追加（20件）
   - **成果**: 全794テストパス
 
+### Phase 17: Leela Stats on Top Moves選択機能 ✅ **完了**
+- **目的**: Leela候補手マーカーに表示する統計情報を選択可能にする
+- **特徴**: KataGoと同様の選択UI、マージ方式で既存設定保持
+- **実装**: PR #109（2026-01-15）
+  - **Step 17.1**: 定数追加（`constants.py`）
+    - `LEELA_TOP_MOVE_LOSS/WINRATE/VISITS/NOTHING`
+    - `LEELA_TOP_MOVE_OPTIONS`, `LEELA_TOP_MOVE_OPTIONS_SECONDARY`
+  - **Step 17.2**: 設定項目追加（`config.json`）
+    - `top_moves_show`, `top_moves_show_secondary`
+  - **Step 17.3**: 設定UI追加（`settings_popup.py`）
+    - 2つのI18NSpinnerドロップダウン（1行目/2行目）
+    - マージ方式で既存設定（resign_hint_*）を保持
+  - **Step 17.4**: 描画ロジック追加（`badukpan.py`）
+    - `_format_leela_stat()`: 動的なstat表示
+    - ループ外でconfigキャッシュ（パフォーマンス最適化）
+  - **Step 17.5**: 翻訳キー追加（5件: ja/en）
+  - **Step 17.6**: テスト追加（10件）
+  - **成果**: 全804テストパス（+10件）
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -466,6 +486,14 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 17 Leela Stats on Top Moves選択機能完了（PR #109）
+  - **Step 17.1**: 定数追加（`LEELA_TOP_MOVE_*`）
+  - **Step 17.2**: 設定項目追加（`top_moves_show`, `top_moves_show_secondary`）
+  - **Step 17.3**: 設定UI追加（I18NSpinner×2 + マージ方式保存）
+  - **Step 17.4**: 描画ロジック追加（`_format_leela_stat()` + configキャッシュ）
+  - **Step 17.5**: 翻訳キー追加（5件: ja/en）
+  - **Step 17.6**: テスト追加（10件）
+  - **成果**: 全804テストパス（+10件）
 - 2026-01-15: Phase 16 Leela機能拡張完了（PR #108）
   - **Step 16.0**: PV再生機能（`badukpan.py`）
     - Leela候補手マーカーにホバーで読み筋表示
