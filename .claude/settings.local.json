@@ -37,7 +37,10 @@
       "Bash(done)",
       "Bash(echo:*)",
       "Bash(git rm:*)",
-      "Bash(./Leela0110-cpu.exe)"
+      "Bash(./Leela0110-cpu.exe)",
+      "Bash(uv run python:*)",
+      "Bash(pip install:*)",
+      "Bash(git restore:*)"
     ]
   }
 }
