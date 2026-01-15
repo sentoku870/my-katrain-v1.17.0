@@ -66,13 +66,42 @@ class BadukPanWidget(Widget):
         self.active_pv_moves = []
         self.animating_pv = None
         self.animating_pv_index = None
+        self._animate_interval = None  # ClockEvent reference for PV animation (lazy init)
         self.last_mouse_pos = (0, 0)
         Window.bind(mouse_pos=self.on_mouse_pos)
         self.redraw_board_contents_trigger = Clock.create_trigger(self.draw_board_contents, 0.05)
         self.redraw_trigger = Clock.create_trigger(self.redraw, 0.05)
         self.redraw_hover_contents_trigger = Clock.create_trigger(self.draw_hover_contents, 0.01)
         self.bind(size=self.redraw_trigger, pos=self.redraw_trigger)
-        Clock.schedule_interval(self.animate_pv, 0.1)
+        # Removed: Clock.schedule_interval(self.animate_pv, 0.1)
+        # PV animation is now started/stopped on demand via _update_pv_animation_state()
+
+    def _start_pv_animation(self):
+        """Start PV animation interval (idempotent).
+
+        Note: Does nothing if already started (prevents double scheduling).
+        """
+        if self._animate_interval is None:
+            self._animate_interval = Clock.schedule_interval(self.animate_pv, 0.1)
+
+    def _stop_pv_animation(self):
+        """Stop PV animation interval (idempotent).
+
+        Note: After cancel(), reset to None to allow restart.
+        """
+        if self._animate_interval is not None:
+            self._animate_interval.cancel()
+            self._animate_interval = None
+
+    def _update_pv_animation_state(self):
+        """Update animation state based on active_pv_moves.
+
+        Call this after updating active_pv_moves to start/stop animation.
+        """
+        if self.active_pv_moves:
+            self._start_pv_animation()
+        else:
+            self._stop_pv_animation()
 
     def reset_rotation(self):
         while self.rotation_degree:
@@ -1267,6 +1296,9 @@ class BadukPanWidget(Widget):
                 Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
                 Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
                 draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
+
+        # Update PV animation state after canvas block
+        self._update_pv_animation_state()
 
     def animate_pv(self, _dt):
         if self.animating_pv:

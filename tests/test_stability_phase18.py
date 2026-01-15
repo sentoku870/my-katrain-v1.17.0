@@ -333,3 +333,34 @@ class TestArrayAccessGuards:
         top_move = [d for d in move_dicts if d.get("order") == 0]
         top_score_lead = top_move[0]["scoreLead"] if top_move else root_score
         assert top_score_lead == 5.0
+
+
+# =============================================================================
+# PR #112: P5 animate_pv インターバル遅延初期化テスト
+# =============================================================================
+
+
+@pytest.mark.skipif(not _kivy_available(), reason="Kivy not installed")
+class TestAnimatePvInterval:
+    """animate_pv インターバルのテスト（Kivyインポート必要）"""
+
+    def test_start_pv_animation_method_exists(self):
+        """_start_pv_animation メソッドの存在確認"""
+        from katrain.gui.badukpan import BadukPanWidget
+
+        assert hasattr(BadukPanWidget, "_start_pv_animation")
+        assert callable(getattr(BadukPanWidget, "_start_pv_animation", None))
+
+    def test_stop_pv_animation_method_exists(self):
+        """_stop_pv_animation メソッドの存在確認"""
+        from katrain.gui.badukpan import BadukPanWidget
+
+        assert hasattr(BadukPanWidget, "_stop_pv_animation")
+        assert callable(getattr(BadukPanWidget, "_stop_pv_animation", None))
+
+    def test_update_pv_animation_state_method_exists(self):
+        """_update_pv_animation_state メソッドの存在確認"""
+        from katrain.gui.badukpan import BadukPanWidget
+
+        assert hasattr(BadukPanWidget, "_update_pv_animation_state")
+        assert callable(getattr(BadukPanWidget, "_update_pv_animation_state", None))
