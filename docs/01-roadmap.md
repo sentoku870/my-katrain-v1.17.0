@@ -104,6 +104,7 @@
 | 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ **完了** |
 | 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ **完了** |
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ **完了** |
+| 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
 
 ---
 
@@ -384,6 +385,27 @@
     - `draw_leela_candidates()`: Leela候補手専用描画関数
   - 114件のテスト追加（`tests/test_leela_*.py`, `tests/test_game_node_leela.py`）
 
+### Phase 15: Leela UI統合 ✅ **完了**
+- **目的**: Leela機能をUIから設定・操作可能にする
+- **特徴**: 設定UI + エンジンライフサイクル管理 + 解析トリガー
+- **実装**: PR #106-107（2026-01-15）
+  - **Step 15.1**: 翻訳キー追加（7件）
+  - **Step 15.2**: 設定UI追加（`settings_popup.py`）
+    - Leela Zero有効化チェックボックス
+    - 実行ファイルパス入力 + 参照ボタン
+    - K値スライダー（0.1-2.0）
+    - 最大訪問数入力
+  - **Step 15.3**: LeelaEngine管理（`__main__.py`）
+    - `start_leela_engine()`, `shutdown_leela_engine()` メソッド
+    - 終了時クリーンアップ（`_cleanup_and_close()`）
+  - **Step 15.4**: 解析トリガー接続
+    - `request_leela_analysis()`: debounce + 多重防止
+    - `_do_update_state()`: ヒントON時に自動解析
+  - **Step 15.5**: 統合テスト（15件追加）
+  - **バグ修正（PR #107）**:
+    - UI freeze修正: `_wait_for_ready()`をバックグラウンドスレッドで実行
+    - AttributeError修正: `nodes_from_root`パターンでmovesリスト構築
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -419,6 +441,20 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 15 Leela UI統合完了（PR #106-107）
+  - **Step 15.1**: 翻訳キー追加（7件: ja/en）
+  - **Step 15.2**: 設定UI追加（`settings_popup.py`）
+    - Leela有効化、パス選択、K値スライダー、最大訪問数
+  - **Step 15.3**: LeelaEngine管理（`__main__.py`）
+    - `start_leela_engine()`, `shutdown_leela_engine()`
+    - 終了時クリーンアップ
+  - **Step 15.4**: 解析トリガー接続
+    - debounce + 多重防止、ヒントON時自動解析
+  - **Step 15.5**: 統合テスト15件追加
+  - **バグ修正（PR #107）**:
+    - UI freeze: `_wait_for_ready()`をバックグラウンドスレッド化
+    - AttributeError: `nodes_from_root`パターン使用
+  - **成果**: 全774テストパス
 - 2026-01-15: Phase 14 Leelaモード推定損失完了
   - **Phase 14.0**: lz-analyze出力サンプル収集（Leela 0.110のwinrate形式は0-10000と判明）
   - **Phase 14.1**: データ基盤（`katrain/core/leela/models.py`, `parser.py`）
