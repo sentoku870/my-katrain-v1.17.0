@@ -432,3 +432,134 @@ import os
         imports = _collect_runtime_imports(source)
         assert "katrain.core.utils" in imports
         assert "os" in imports
+
+
+class TestModuleStructure:
+    """Phase B4/B5 で追加されたモジュール構造の検証"""
+
+    def test_analysis_submodules_exist(self):
+        """analysis/ サブモジュールが存在する"""
+        analysis_dir = _PROJECT_ROOT / "katrain" / "core" / "analysis"
+
+        expected_files = [
+            "logic.py",
+            "logic_loss.py",
+            "logic_importance.py",
+            "logic_quiz.py",
+            "models.py",
+            "presentation.py",
+        ]
+
+        for filename in expected_files:
+            filepath = analysis_dir / filename
+            assert filepath.exists(), f"Expected {filename} in analysis/"
+
+    def test_ai_strategies_base_exists(self):
+        """ai_strategies_base.py が存在する"""
+        filepath = _PROJECT_ROOT / "katrain" / "core" / "ai_strategies_base.py"
+        assert filepath.exists(), "ai_strategies_base.py should exist"
+
+    def test_reports_submodules_exist(self):
+        """reports/ サブモジュールが存在する"""
+        reports_dir = _PROJECT_ROOT / "katrain" / "core" / "reports"
+
+        expected_files = [
+            "__init__.py",
+            "types.py",
+            "summary_report.py",
+            "quiz_report.py",
+            "karte_report.py",
+            "important_moves_report.py",
+        ]
+
+        for filename in expected_files:
+            filepath = reports_dir / filename
+            assert filepath.exists(), f"Expected {filename} in reports/"
+
+    def test_gui_managers_exist(self):
+        """gui/ マネージャーが存在する"""
+        gui_dir = _PROJECT_ROOT / "katrain" / "gui"
+
+        expected_files = [
+            "leela_manager.py",
+            "sgf_manager.py",
+        ]
+
+        for filename in expected_files:
+            filepath = gui_dir / filename
+            assert filepath.exists(), f"Expected {filename} in gui/"
+
+
+class TestDependencyDirection:
+    """依存方向の検証（Phase B6追加）
+
+    許可される依存方向:
+    - gui → core: OK
+    - core → gui: NG（TYPE_CHECKING除く）
+    - reports → game: OK（reports はcore層）
+    - analysis サブモジュール → models: OK
+    """
+
+    def test_reports_does_not_import_gui(self):
+        """reports/ が gui/ をインポートしていないことを検証"""
+        violations = []
+        reports_dir = _PROJECT_ROOT / "katrain" / "core" / "reports"
+
+        if not reports_dir.exists():
+            pytest.skip("reports/ directory not found")
+
+        for py_file in reports_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+
+            rel_path = py_file.relative_to(_PROJECT_ROOT / "katrain")
+            module_pkg = _get_module_package(py_file, _PROJECT_ROOT)
+            source = py_file.read_text(encoding="utf-8")
+            runtime_imports = _collect_runtime_imports(source, module_pkg)
+
+            for module in runtime_imports:
+                if module.startswith("katrain.gui"):
+                    violations.append(f"{rel_path}: imports {module}")
+
+        assert not violations, (
+            f"reports/ should not import gui/:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_analysis_submodules_do_not_import_gui(self):
+        """analysis/ サブモジュールが gui/ をインポートしていないことを検証"""
+        violations = []
+        analysis_dir = _PROJECT_ROOT / "katrain" / "core" / "analysis"
+
+        for py_file in analysis_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+
+            rel_path = py_file.relative_to(_PROJECT_ROOT / "katrain")
+            module_pkg = _get_module_package(py_file, _PROJECT_ROOT)
+            source = py_file.read_text(encoding="utf-8")
+            runtime_imports = _collect_runtime_imports(source, module_pkg)
+
+            for module in runtime_imports:
+                if module.startswith("katrain.gui"):
+                    violations.append(f"{rel_path}: imports {module}")
+
+        assert not violations, (
+            f"analysis/ should not import gui/:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_ai_strategies_base_does_not_import_gui(self):
+        """ai_strategies_base.py が gui/ をインポートしていないことを検証"""
+        filepath = _PROJECT_ROOT / "katrain" / "core" / "ai_strategies_base.py"
+
+        if not filepath.exists():
+            pytest.skip("ai_strategies_base.py not found")
+
+        source = filepath.read_text(encoding="utf-8")
+        runtime_imports = _collect_runtime_imports(source, "katrain.core")
+
+        gui_imports = [m for m in runtime_imports if m.startswith("katrain.gui")]
+        assert not gui_imports, (
+            f"ai_strategies_base.py should not import gui/: {gui_imports}"
+        )
