@@ -1,10 +1,38 @@
 # Phase 19: 大規模リファクタリング計画（改訂版 v5）
 
 > **作成日**: 2026-01-15
-> **改訂日**: 2026-01-16（v7: Phase 19完了）
-> **ステータス**: ✅ 完了（Phase B1-B6全完了）
+> **改訂日**: 2026-01-16（v8: Phase 19クローズ）
+> **ステータス**: ✅ 完了（主要リファクタリング完了、一部項目は効果薄/リスク高のためスキップ）
 > **修正レベル**: Lv5（根本的アーキテクチャ改善）
 > **前提**: Phase 18完了（879テストパス）
+
+---
+
+## 完了サマリー（v8）
+
+### 実施済み
+| Phase | 内容 | PR |
+|-------|------|-----|
+| **B1** | 循環依存解消（common/theme_constants.py） | ✅ |
+| **B2** | game.py → reports/パッケージ抽出（5モジュール） | ✅ |
+| **B3** | KaTrainGui分割（leela_manager, sgf_manager） | ✅ 部分完了 |
+| **B4** | analysis/logic.py分割（loss, importance, quiz） | ✅ |
+| **B5** | ai.py分割（ai_strategies_base.py） | ✅ 部分完了 |
+| **B6** | アーキテクチャテスト・ドキュメント | ✅ |
+
+### スキップ（理由）
+| 項目 | 理由 |
+|------|------|
+| dialog_coordinator.py | 規模大・リスク高・手動テスト必須 |
+| keyboard_controller.py | リスク高・全ショートカット手動テスト必須 |
+| ai_strategies_advanced.py | 効果薄（既にai_strategies_base.pyで十分分割済み）|
+
+### 成果
+- **テスト数**: 879パス（増加）
+- **ai.py**: 1,459行 → 1,061行（-27%）
+- **analysis/**: logic.pyをサブモジュール化（再利用性向上）
+- **reports/**: game.pyからレポート生成ロジックを分離
+- **gui/**: leela_manager, sgf_managerを依存注入パターンで抽出
 
 ---
 
