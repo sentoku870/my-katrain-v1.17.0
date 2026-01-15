@@ -106,13 +106,8 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.leela.engine import LeelaEngine
-from katrain.core.leela.logic import (
-    compute_estimated_loss,
-    LEELA_K_DEFAULT,
-    check_resign_condition,
-)
+from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
-from katrain.core.leela.models import LeelaPositionEval
 from katrain.core.sgf_parser import Move, ParseError
 from katrain.core.errors import EngineError
 from katrain.gui.error_handler import ErrorHandler
@@ -194,14 +189,13 @@ class KaTrainGui(Screen, KaTrainBase):
         self.error_handler = ErrorHandler(self)
         self.engine = None
 
-        # Leela engine management (Phase 15)
-        self.leela_engine: Optional[LeelaEngine] = None
-        self._leela_pending_node = None
-        self._leela_request_id: int = 0
-        self._leela_last_request_time: float = 0.0
-
-        # Phase 16: Resign hint tracking (use node_key: str to avoid GC issues)
-        self._resign_hint_shown_keys: Set[str] = set()
+        # Leela engine management (Phase 15, refactored in PR #121)
+        self._leela_manager = LeelaManager(
+            config_getter=self.config,
+            logger=self.log,
+            update_state_callback=lambda: self.update_state() if self.game else None,
+            schedule_resign_popup=lambda result: schedule_resign_hint_popup(self, result),
+        )
 
         self.new_game_popup = None
         self.fileselect_popup = None
@@ -471,167 +465,27 @@ class KaTrainGui(Screen, KaTrainBase):
         # update move tree
         self.controls.move_tree.current_node = self.game.current_node
 
-    # === Leela Engine Management (Phase 15) ===
+    # === Leela Engine Management (Phase 15, refactored in PR #121) ===
+    # Delegation to LeelaManager for backward compatibility
+
+    @property
+    def leela_engine(self) -> Optional[LeelaEngine]:
+        """Access to leela_engine for backward compatibility."""
+        return self._leela_manager.leela_engine
+
     def start_leela_engine(self) -> bool:
         """Start Leela engine (no-op if already running)."""
-        if self.leela_engine and self.leela_engine.is_alive():
-            return True
-        if not self.config("leela/enabled"):
-            return False
-        exe_path = self.config("leela/exe_path")
-        if not exe_path or not os.path.isfile(exe_path):
-            self.log(i18n._("leela:error:exe_not_found").format(exe_path or "(empty)"), OUTPUT_ERROR)
-            return False
-        self.shutdown_leela_engine()
-        try:
-            leela_config = self.config("leela") or {}
-            self.leela_engine = LeelaEngine(self, leela_config)
-            if self.leela_engine.start():
-                self.log(i18n._("leela:status:started"), OUTPUT_INFO)
-                return True
-            self.leela_engine = None
-            return False
-        except Exception as e:
-            self.log(f"Leela error: {e}", OUTPUT_ERROR)
-            self.leela_engine = None
-            return False
+        return self._leela_manager.start_engine(self)
 
     def shutdown_leela_engine(self) -> None:
         """Shutdown Leela engine."""
-        if self.leela_engine:
-            try:
-                self.leela_engine.shutdown()
-            except Exception:
-                pass
-            self.leela_engine = None
-        self._leela_pending_node = None
+        self._leela_manager.shutdown_engine()
 
     def request_leela_analysis(self) -> None:
         """Request Leela analysis for current node (with debounce and duplicate prevention)."""
-        import time as _time
-
-        if not self.game or not self.config("leela/enabled"):
+        if not self.game:
             return
-
-        # Debounce: prevent rapid consecutive calls
-        now = _time.time()
-        if now - self._leela_last_request_time < 0.3:  # 300ms debounce
-            return
-        self._leela_last_request_time = now
-
-        # Start engine if needed
-        if not self.leela_engine or not self.leela_engine.is_alive():
-            if not self.start_leela_engine():
-                return
-
-        current_node = self.game.current_node
-
-        # Skip if already analyzed or pending
-        if current_node.leela_analysis and current_node.leela_analysis.is_valid:
-            return
-        if current_node == self._leela_pending_node:
-            return
-
-        # Cancel old request
-        self.leela_engine.cancel_analysis()
-
-        # New request
-        self._leela_pending_node = current_node
-        self._leela_request_id += 1
-        my_request_id = self._leela_request_id
-
-        # Build moves list from current node path (same as KataGoEngine)
-        nodes = current_node.nodes_from_root
-        moves = []
-        for node in nodes:
-            for m in node.moves:
-                # m is a Move object with .player ("B"/"W") and .gtp() method
-                player = m.player
-                coord = m.gtp()
-                moves.append((player, coord))
-
-        def on_leela_result(result: LeelaPositionEval):
-            # Discard stale results
-            if my_request_id != self._leela_request_id:
-                return
-            k = self.config("leela/loss_scale_k", LEELA_K_DEFAULT)
-            with_loss = compute_estimated_loss(result, k=k)
-            Clock.schedule_once(lambda dt: self._set_leela_analysis(current_node, with_loss))
-
-        self.leela_engine.request_analysis(
-            moves=moves,
-            callback=on_leela_result,
-            visits=self.config("leela/max_visits", 1000),
-        )
-
-    def _set_leela_analysis(self, node, analysis: LeelaPositionEval) -> None:
-        """Set Leela analysis result on UI thread."""
-        if node == self._leela_pending_node:
-            self._leela_pending_node = None
-        if node and self.game:
-            node.set_leela_analysis(analysis)
-            if node == self.game.current_node:
-                self.update_state()
-
-        # Phase 16: Check resign hint condition
-        self._check_and_show_resign_hint(node)
-
-    @staticmethod
-    def _make_node_key(node) -> str:
-        """Generate a unique key for a node (GC-safe).
-
-        Uses node.depth + id(node) to distinguish nodes at the same depth
-        in variations.
-
-        Args:
-            node: GameNode instance
-
-        Returns:
-            String key like "45:123456789"
-        """
-        return f"{node.depth}:{id(node)}"
-
-    def _check_and_show_resign_hint(self, node) -> None:
-        """Check resign condition and show popup if met.
-
-        Args:
-            node: GameNode that just received analysis
-        """
-        # 1. Settings check
-        if not self.config("leela/resign_hint_enabled", False):
-            return
-
-        # 2. Current node guard (don't show for old nodes)
-        if not self.game or node != self.game.current_node:
-            return
-
-        # 3. Prevent re-display (use node_key)
-        node_key = self._make_node_key(node)
-        if node_key in self._resign_hint_shown_keys:
-            return
-
-        # 4. Collect recent Leela analysis history
-        history = []
-        current = node
-        consecutive_moves = self.config("leela/resign_consecutive_moves", 3)
-        for _ in range(consecutive_moves):
-            if not current or not current.leela_analysis:
-                break
-            history.append(current.leela_analysis)
-            current = current.parent
-
-        # 5. Check condition (v4: use max_visits for dynamic threshold)
-        result = check_resign_condition(
-            history,
-            winrate_threshold=self.config("leela/resign_winrate_threshold", 5) / 100,
-            consecutive_moves=consecutive_moves,
-            max_visits=self.config("leela/max_visits", 1000),
-        )
-
-        # 6. Show popup (defensive: always via schedule for UI thread safety)
-        if result.should_show_hint and result.is_reliable:
-            self._resign_hint_shown_keys.add(node_key)
-            schedule_resign_hint_popup(self, result)
+        self._leela_manager.request_analysis(self.game.current_node, self)
 
     def update_state(self, redraw_board=False):  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
@@ -736,7 +590,7 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_new_game(self, move_tree=None, analyze_fast=False, sgf_filename=None):
         self.pondering = False
         # Phase 16: Clear resign hint tracking on new game
-        self._resign_hint_shown_keys.clear()
+        self._leela_manager.clear_resign_hint_tracking()
         mode = self.play_analyze_mode
         if not getattr(self, "_suppress_play_mode_switch", False) and (
             (move_tree is not None and mode == MODE_PLAY)
