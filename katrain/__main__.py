@@ -43,7 +43,6 @@ import json
 import threading
 import traceback
 from queue import Queue
-import urllib3
 import webbrowser
 import time
 import random
@@ -61,7 +60,6 @@ from kivy.resources import resource_add_path
 from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.dropdown import DropDown
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.screenmanager import Screen
@@ -71,7 +69,7 @@ from kivy.uix.widget import Widget
 from kivy.resources import resource_find
 from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
-from kivy.metrics import dp, sp
+from kivy.metrics import dp
 from katrain.core.ai import generate_ai_move
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
@@ -109,7 +107,7 @@ from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
-from katrain.core.sgf_parser import Move, ParseError
+from katrain.core.sgf_parser import Move
 from katrain.core.errors import EngineError
 from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
