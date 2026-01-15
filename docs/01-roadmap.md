@@ -105,6 +105,7 @@
 | 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ **完了** |
 | 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ **完了** |
 | 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
+| 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
 
 ---
 
@@ -406,6 +407,30 @@
     - UI freeze修正: `_wait_for_ready()`をバックグラウンドスレッドで実行
     - AttributeError修正: `nodes_from_root`パターンでmovesリスト構築
 
+### Phase 16: Leela機能拡張（PV再生 + 投了目安） ✅ **完了**
+- **目的**: Leela候補手のPV表示 + 投了タイミングの目安表示
+- **特徴**: KataGoと同じPVパターン、動的閾値計算
+- **実装**: PR #108（2026-01-15）
+  - **Step 16.0**: PV再生機能（`badukpan.py`）
+    - Leela候補手マーカーにホバーで読み筋（PV）表示
+    - `active_pv_moves` に登録（KataGoと同じパターン）
+  - **Step 16.1**: 投了目安ロジック（`logic.py`）
+    - `ResignConditionResult` dataclass（`winrate_pct` property含む）
+    - `check_resign_condition()`: 動的閾値計算（`max_visits * 0.8`）
+    - v4修正: 固定閾値15000→動的閾値で「発火しない」バグ解消
+  - **Step 16.2**: 設定項目追加（`config.json`）
+    - `resign_hint_enabled`, `resign_winrate_threshold`, `resign_consecutive_moves`
+  - **Step 16.3**: 投了目安ポップアップUI（`resign_hint_popup.py`新規）
+    - `show_resign_hint_popup()`: UIスレッドでポップアップ表示
+    - `schedule_resign_hint_popup()`: 非UIスレッドから安全に呼び出し
+  - **Step 16.4**: 統合（`__main__.py`）
+    - `_make_node_key()`: GC安全なキー生成（`depth:id(node)`）
+    - `_check_and_show_resign_hint()`: 条件判定 + ポップアップ表示
+    - `_resign_hint_shown_keys`: 同一ノードで1回のみ表示
+  - **Step 16.5**: 翻訳キー追加（3件: ja/en）
+  - **Step 16.6**: テスト追加（20件）
+  - **成果**: 全794テストパス
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -441,6 +466,21 @@
 
 ## 11. 変更履歴
 
+- 2026-01-15: Phase 16 Leela機能拡張完了（PR #108）
+  - **Step 16.0**: PV再生機能（`badukpan.py`）
+    - Leela候補手マーカーにホバーで読み筋表示
+    - KataGoと同じ `active_pv_moves` パターン使用
+  - **Step 16.1**: 投了目安ロジック（`logic.py`）
+    - `ResignConditionResult` dataclass
+    - `check_resign_condition()`: 動的閾値計算（`max_visits * 0.8`）
+  - **Step 16.2**: 設定項目追加（3項目: resign_hint_enabled等）
+  - **Step 16.3**: 投了目安ポップアップUI（`resign_hint_popup.py`新規）
+  - **Step 16.4**: 統合（`__main__.py`）
+    - `_make_node_key()`: GC安全なキー生成
+    - `_check_and_show_resign_hint()`: 条件判定 + 表示
+  - **Step 16.5**: 翻訳キー追加（3件: ja/en）
+  - **Step 16.6**: テスト追加（20件）
+  - **成果**: 全794テストパス
 - 2026-01-15: Phase 15 Leela UI統合完了（PR #106-107）
   - **Step 15.1**: 翻訳キー追加（7件: ja/en）
   - **Step 15.2**: 設定UI追加（`settings_popup.py`）

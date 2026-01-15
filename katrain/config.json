@@ -15,7 +15,10 @@
         "enabled": false,
         "exe_path": "",
         "max_visits": 1000,
-        "loss_scale_k": 0.5
+        "loss_scale_k": 0.5,
+        "resign_hint_enabled": false,
+        "resign_winrate_threshold": 5,
+        "resign_consecutive_moves": 3
     },
     "general": {
         "sgf_load": "~/Downloads",
