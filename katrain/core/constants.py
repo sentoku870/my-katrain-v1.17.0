@@ -273,6 +273,26 @@ TOP_MOVE_OPTIONS = [
     # TOP_MOVE_UTILITY,
     # TOP_MOVE_UTILITYLCB
 ]
+
+# Leela Top Move Options (separate from KataGo to avoid confusion)
+LEELA_TOP_MOVE_LOSS = "leela_top_move_loss"
+LEELA_TOP_MOVE_WINRATE = "leela_top_move_winrate"
+LEELA_TOP_MOVE_VISITS = "leela_top_move_visits"
+LEELA_TOP_MOVE_NOTHING = "leela_top_move_nothing"
+
+LEELA_TOP_MOVE_OPTIONS = [
+    LEELA_TOP_MOVE_LOSS,
+    LEELA_TOP_MOVE_WINRATE,
+    LEELA_TOP_MOVE_VISITS,
+]
+
+LEELA_TOP_MOVE_OPTIONS_SECONDARY = [
+    LEELA_TOP_MOVE_LOSS,
+    LEELA_TOP_MOVE_WINRATE,
+    LEELA_TOP_MOVE_VISITS,
+    LEELA_TOP_MOVE_NOTHING,  # 2行目のみ「なし」選択可
+]
+
 REPORT_DT = 1
 PONDERING_REPORT_DT = 0.25
 

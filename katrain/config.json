@@ -18,7 +18,9 @@
         "loss_scale_k": 0.5,
         "resign_hint_enabled": false,
         "resign_winrate_threshold": 5,
-        "resign_consecutive_moves": 3
+        "resign_consecutive_moves": 3,
+        "top_moves_show": "leela_top_move_loss",
+        "top_moves_show_secondary": "leela_top_move_winrate"
     },
     "general": {
         "sgf_load": "~/Downloads",

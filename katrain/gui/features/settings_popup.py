@@ -27,10 +27,13 @@ from katrain.core.constants import (
     LEELA_K_DEFAULT,
     LEELA_K_MAX,
     LEELA_K_MIN,
+    LEELA_TOP_MOVE_OPTIONS,
+    LEELA_TOP_MOVE_OPTIONS_SECONDARY,
     STATUS_INFO,
 )
 from katrain.core.leela.logic import clamp_k
 from katrain.core.lang import i18n
+from katrain.gui.kivyutils import I18NSpinner
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.helpers import create_text_input_row
@@ -539,6 +542,41 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_visits_row.add_widget(leela_visits_input)
     popup_content.add_widget(leela_visits_row)
 
+    # Leela Top Moves Display
+    leela_top_moves_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_top_moves_label = Label(
+        text=i18n._("mykatrain:settings:leela_top_moves_show"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_top_moves_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+
+    leela_top_moves_spinner = I18NSpinner(size_hint_x=0.35)
+    leela_top_moves_spinner.value_refs = LEELA_TOP_MOVE_OPTIONS
+    leela_top_moves_spinner.build_values()
+    leela_top_moves_spinner.select_key(
+        leela_config.get("top_moves_show", "leela_top_move_loss")
+    )
+
+    leela_top_moves_spinner_2 = I18NSpinner(size_hint_x=0.35)
+    leela_top_moves_spinner_2.value_refs = LEELA_TOP_MOVE_OPTIONS_SECONDARY
+    leela_top_moves_spinner_2.build_values()
+    leela_top_moves_spinner_2.select_key(
+        leela_config.get("top_moves_show_secondary", "leela_top_move_winrate")
+    )
+
+    leela_top_moves_row.add_widget(leela_top_moves_label)
+    leela_top_moves_row.add_widget(leela_top_moves_spinner)
+    leela_top_moves_row.add_widget(leela_top_moves_spinner_2)
+    popup_content.add_widget(leela_top_moves_row)
+
     # Buttons
     buttons_layout = BoxLayout(
         orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
@@ -587,12 +625,16 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         }
         ctx.set_config_section("mykatrain_settings", mykatrain_settings)
         ctx.save_config("mykatrain_settings")
-        # Save Leela settings (engine management is handled by KaTrainGui._do_update_state)
+        # Save Leela settings (MERGE with existing to preserve resign_hint settings)
+        existing_leela = ctx.config("leela") or {}
         new_leela_config = {
+            **existing_leela,  # 既存設定を保持（resign_hint_*等）
             "enabled": leela_enabled_checkbox.active,
             "exe_path": leela_path_input.text.strip(),
             "loss_scale_k": clamp_k(leela_k_slider.value),
-            "max_visits": 1000,  # default
+            "max_visits": 1000,  # default, overwritten below
+            "top_moves_show": leela_top_moves_spinner.selected[1],
+            "top_moves_show_secondary": leela_top_moves_spinner_2.selected[1],
         }
         try:
             new_leela_config["max_visits"] = max(100, min(100000, int(leela_visits_input.text)))

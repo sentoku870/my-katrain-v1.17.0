@@ -1443,3 +1443,23 @@ msgstr "Winrate has been below {winrate_pct}% for {moves} consecutive moves. Con
 
 msgid "leela:resign_hint:ok"
 msgstr "OK"
+
+#. Leela top move stats label
+msgid "mykatrain:settings:leela_top_moves_show"
+msgstr "Stats on Top Moves"
+
+#. Leela dropdown option
+msgid "leela_top_move_loss"
+msgstr "Loss (est.)"
+
+#. Leela dropdown option
+msgid "leela_top_move_winrate"
+msgstr "Win rate"
+
+#. Leela dropdown option
+msgid "leela_top_move_visits"
+msgstr "Visits"
+
+#. Leela dropdown option
+msgid "leela_top_move_nothing"
+msgstr "(nothing)"

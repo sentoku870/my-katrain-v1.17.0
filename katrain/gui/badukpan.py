@@ -29,6 +29,9 @@ from katrain.core.constants import (
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
     LEELA_COLOR_BEST,
+    LEELA_TOP_MOVE_LOSS,
+    LEELA_TOP_MOVE_WINRATE,
+    LEELA_TOP_MOVE_VISITS,
 )
 from katrain.core.leela.presentation import (
     loss_to_color,
@@ -902,6 +905,28 @@ class BadukPanWidget(Widget):
                 return "-" + f"{x:.2f}"[2:]
         return f"{x:+.1f}"
 
+    def _format_leela_stat(self, candidate, stat_type: str) -> str:
+        """Format a single Leela stat for display.
+
+        Args:
+            candidate: LeelaCandidate instance
+            stat_type: One of LEELA_TOP_MOVE_* constants
+
+        Returns:
+            Formatted string, or "" for NOTHING
+        """
+        if stat_type == LEELA_TOP_MOVE_LOSS:
+            return format_loss_est(candidate.loss_est)
+        elif stat_type == LEELA_TOP_MOVE_WINRATE:
+            if candidate.winrate is None:
+                return "--"
+            return format_winrate_pct(candidate.winrate)
+        elif stat_type == LEELA_TOP_MOVE_VISITS:
+            if candidate.visits is None:
+                return "--"
+            return format_leela_visits(candidate.visits)
+        return ""  # NOTHING or unknown
+
     def draw_leela_candidates(self, leela_analysis, low_visits_threshold: int = 25) -> Optional[tuple]:
         """Draw Leela candidate move markers with loss-based coloring.
 
@@ -918,6 +943,11 @@ class BadukPanWidget(Widget):
         top_move_coords = None
         candidates = leela_analysis.candidates
         current_node = self.katrain.game.current_node  # Phase 16: for PV registration
+
+        # Cache config outside loop for performance (Phase 17)
+        katrain = self.katrain
+        top_show = katrain.config("leela/top_moves_show", LEELA_TOP_MOVE_LOSS)
+        top_show_2 = katrain.config("leela/top_moves_show_secondary", LEELA_TOP_MOVE_WINRATE)
 
         # Find max visits for scaling
         max_visits = max((c.visits for c in candidates), default=1)
@@ -980,10 +1010,16 @@ class BadukPanWidget(Widget):
             # Draw text label
             if text_on:
                 keys = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
-                # Format: Loss (est.) on top, Winrate below
-                loss_str = format_loss_est(candidate.loss_est)
-                winrate_str = format_winrate_pct(candidate.winrate)
-                fmt = "[size={size:.0f}]{loss}[/size]\n[size={smallsize:.0f}]{winrate}[/size]"
+
+                # Phase 17: Dynamic stat selection
+                line1 = self._format_leela_stat(candidate, top_show)
+                line2 = self._format_leela_stat(candidate, top_show_2)
+
+                # 2行目が空なら改行なし
+                if line2:
+                    fmt = "[size={size:.0f}]{line1}[/size]\n[size={smallsize:.0f}]{line2}[/size]"
+                else:
+                    fmt = "[size={size:.0f}]{line1}[/size]"
 
                 Color(*Theme.HINT_TEXT_COLOR)
                 draw_text(
@@ -991,7 +1027,7 @@ class BadukPanWidget(Widget):
                         self.gridpos[move.coords[1]][move.coords[0]][0],
                         self.gridpos[move.coords[1]][move.coords[0]][1],
                     ),
-                    text=fmt.format(loss=loss_str, winrate=winrate_str, **keys),
+                    text=fmt.format(line1=line1, line2=line2, **keys),
                     font_name="Roboto",
                     markup=True,
                     line_height=0.85,
