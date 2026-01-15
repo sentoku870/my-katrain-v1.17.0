@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-10
+> 最終更新: 2026-01-16
 
 ---
 
@@ -22,11 +22,17 @@ katrain/
 │   ├── yose_analyzer.py   # ヨセ解析（myKatrain追加）
 │   ├── sgf_parser.py      # SGF読み込み
 │   │
-│   └── analysis/          # 解析基盤パッケージ（Phase B完了）
-│       ├── __init__.py      # 明示的再エクスポート（~270行）
-│       ├── models.py        # Enum, Dataclass, 定数（~900行）
-│       ├── logic.py         # 計算関数（~1300行）
-│       └── presentation.py  # 表示/フォーマット関数（~330行）
+│   ├── ai.py              # AI戦略実装（~1060行）
+│   ├── ai_strategies_base.py  # AI戦略基底クラス・ユーティリティ（~300行、Phase B5）
+│   │
+│   └── analysis/          # 解析基盤パッケージ（Phase B4完了）
+│       ├── __init__.py      # 明示的再エクスポート（~340行）
+│       ├── models.py        # Enum, Dataclass, 定数（~835行）
+│       ├── logic.py         # 計算関数オーケストレーター（~1180行）
+│       ├── logic_loss.py    # 損失計算関数（~105行、Phase B4）
+│       ├── logic_importance.py # 重要度計算関数（~175行、Phase B4）
+│       ├── logic_quiz.py    # クイズヘルパー関数（~90行、Phase B4）
+│       └── presentation.py  # 表示/フォーマット関数（~300行）
 │
 ├── gui/                  # GUI（Kivy）
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
@@ -115,7 +121,7 @@ KaTrainGui → Game → GameNode
 
 ## 4. myKatrain で追加したファイル
 
-### 4.1 analysis パッケージ（Phase B完了）
+### 4.1 analysis パッケージ（Phase B4完了）
 
 `katrain/core/eval_metrics.py` は後方互換用ファサード。
 実体は `katrain/core/analysis/` パッケージに分離。
@@ -125,6 +131,7 @@ KaTrainGui → Game → GameNode
 - `MistakeCategory`: GOOD/INACCURACY/MISTAKE/BLUNDER
 - `PositionDifficulty`: EASY/NORMAL/HARD/ONLY_MOVE
 - `ConfidenceLevel`: HIGH/MEDIUM/LOW
+- `PVFilterLevel`: MINIMAL/NORMAL/DETAILED/FULL（Phase 11追加）
 
 **Dataclass:**
 - `MoveEval`: 1手の評価データ
@@ -132,24 +139,70 @@ KaTrainGui → Game → GameNode
 - `SkillPreset`: 棋力別プリセット設定
 - `ImportantMoveSettings`: 重要手判定の設定
 - `QuizItem`, `QuizConfig`: クイズ用データ
+- `DifficultyMetrics`: 難易度メトリクス（Phase 12追加）
 
 **定数:**
 - `SKILL_PRESETS`: relaxed/beginner/standard/advanced/pro
 - `SCORE_THRESHOLDS`, `WINRATE_THRESHOLDS`: ミス分類閾値
 
-#### logic.py（計算関数）
+#### logic.py（オーケストレーター）
+Phase B4で以下のサブモジュールに分割。logic.pyは再エクスポートを担当。
+
+**logic_loss.py（損失計算）:**
+- `compute_loss_from_delta()`: delta_score/delta_winrateから損失計算
+- `compute_canonical_loss()`: 正準的な損失量を計算
+- `classify_mistake()`: 損失からMistakeCategoryを決定
+
+**logic_importance.py（重要度計算）:**
+- `get_difficulty_modifier()`: 難易度に応じた重要度修正値
+- `get_reliability_scale()`: 訪問数に基づく信頼度スケール
+- `compute_importance_for_moves()`: 各手の重要度スコアを計算
+- `pick_important_moves()`: 重要局面を抽出
+
+**logic_quiz.py（クイズヘルパー）:**
+- `quiz_items_from_snapshot()`: スナップショットからクイズアイテムを生成
+- `quiz_points_lost_from_candidate()`: 候補手から損失値を抽出
+
+**logic.py（直接定義の関数）:**
 - `snapshot_from_game(game)`: GameからEvalSnapshot生成
-- `pick_important_moves(snapshot, settings)`: 重要手抽出
-- `classify_mistake(loss, thresholds)`: ミス分類
 - `compute_confidence_level(snapshot)`: 信頼度計算
 - `recommend_auto_strictness(snapshot)`: 自動プリセット推奨
+- `compute_difficulty_metrics()`: 難易度メトリクス計算（Phase 12）
 
 #### presentation.py（表示関数）
 - `get_confidence_label(level, lang)`: 信頼度ラベル
 - `format_evidence_examples(moves, lang)`: 証拠フォーマット
 - `SKILL_PRESET_LABELS`: 日本語ラベル（激甘/甘口/標準/辛口/激辛）
+- `format_difficulty_metrics()`: 難易度メトリクスのフォーマット（Phase 12）
 
-### 4.2 yose_analyzer.py（Phase 2）
+### 4.2 ai_strategies_base.py（Phase B5追加）
+
+AI戦略の基底クラスとユーティリティを提供。
+
+**クラス:**
+- `AIStrategy`: AI戦略の基底クラス（`generate_move()`を定義）
+
+**デコレータ:**
+- `@register_strategy(name)`: 戦略をSTRATEGY_REGISTRYに登録
+
+**ユーティリティ関数:**
+- `interp_ix()`, `interp1d()`, `interp2d()`: 補間関数
+- `policy_weighted_move()`: ポリシー重み付け手選択
+- `generate_influence_territory_weights()`: 影響力・地重み生成
+- `generate_local_tenuki_weights()`: ローカル/手抜き重み生成
+
+**使い方:**
+```python
+from katrain.core.ai_strategies_base import AIStrategy, register_strategy
+
+@register_strategy("custom")
+class CustomStrategy(AIStrategy):
+    def generate_move_with_board_and_stone(self, cn, board_size_x, board_size_y, player):
+        # カスタム戦略の実装
+        ...
+```
+
+### 4.3 yose_analyzer.py（Phase 2）
 
 **クラス:**
 - `YoseAnalyzer`: ヨセ解析のラッパー
@@ -161,7 +214,7 @@ analyzer = YoseAnalyzer.from_game(game)
 report = analyzer.build_important_moves_report()
 ```
 
-### 4.3 gui/features パッケージ（Phase 3完了）
+### 4.4 gui/features パッケージ（Phase 3完了）
 
 `katrain/__main__.py` から抽出された機能モジュール群。
 FeatureContext Protocol による依存性注入パターンを使用。
@@ -205,7 +258,7 @@ self.save_config("section")
 | `batch_ui.py` | バッチ解析UI | ~580 |
 | `settings_popup.py` | 設定ポップアップ | ~400 |
 
-### 4.4 Gameクラスへの追加（game.py）
+### 4.5 Gameクラスへの追加（game.py）
 
 **追加メソッド:**
 - `build_eval_snapshot()`: EvalSnapshot生成
@@ -256,6 +309,19 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-16: Phase B4/B5/B6 完了（PR #126-135）
+  - **Phase B4**: analysis/logic.py分割
+    - logic_loss.py: 損失計算関数を抽出
+    - logic_importance.py: 重要度計算関数を抽出
+    - logic_quiz.py: クイズヘルパー関数を抽出
+    - analysis/__init__.py: 再エクスポート更新
+  - **Phase B5**: ai.py分割
+    - ai_strategies_base.py: 基底クラス・ユーティリティを抽出（~300行）
+    - ai.py: 戦略実装のみに集中（1459→1061行）
+  - **Phase B6**: テスト・ドキュメント
+    - test_architecture.py: モジュール構造・依存方向テスト追加
+    - scripts/generate_metrics.py: メトリクス自動生成スクリプト追加
+    - docs/02-code-structure.md: 本ドキュメント更新
 - 2026-01-10: Phase 2 安定性向上（PR #97）
   - エラー階層追加（katrain/core/errors.py）
   - ErrorHandler追加（katrain/gui/error_handler.py）
