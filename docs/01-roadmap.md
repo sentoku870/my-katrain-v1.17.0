@@ -109,6 +109,7 @@
 | 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
 | 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ **完了** |
 | 19 | 大規模リファクタリング | reports/パッケージ、analysis分割、GUI Manager抽出 | ✅ **完了** |
+| 20 | Guardrails + UI Polish | Kivy依存削除、アーキテクチャテスト、config抽象化 | ✅ **完了** |
 
 ---
 
@@ -527,6 +528,56 @@
   - reports/: game.pyからレポート生成ロジックを分離
   - gui/: leela_manager, sgf_managerを依存注入パターンで抽出
 
+### Phase 20: Guardrails + UI Polish & Cleanup ✅ **完了**
+- **目的**: Phase 19リファクタリングの成果を保護し、core層のKivy依存を削除
+- **特徴**: アーキテクチャ強制テスト + Kivy/GUI依存の完全分離
+- **実装**: PR #131-135（2026-01-16）
+  - **PR #131: A-1 インポート禁止テスト**
+    - `AllImportCollector`: AST解析で全インポートを収集（関数内遅延インポート含む）
+    - TYPE_CHECKINGブロックの正確なスキップ
+    - 禁止プレフィックス: `kivy`, `kivymd`, `kivy_garden`, `katrain.gui`
+    - DELETE-ONLYポリシー: ハードコードセットで新規エントリ追加を阻止
+    - staleエントリ検出: 削除済みインポートの許可リスト残骸を検出
+    - 単体テスト: `_resolve_relative_import()`、`is_forbidden()`
+  - **PR #132: A-2a platform互換関数**
+    - `katrain/common/platform.py` 新規作成
+    - `get_platform()`: `sys.platform`ベースのOS判定
+    - `engine.py`から`kivy.utils.platform`依存を削除
+  - **PR #133: A-2b 未使用Clock削除**
+    - `game.py`から未使用の`kivy.clock.Clock`インポートを削除
+  - **PR #134: A-2c JsonFileConfigStore**
+    - `katrain/common/config_store.py` 新規作成
+    - `collections.abc.Mapping`プロトコル完全実装
+    - `dict(store)`変換が正常動作
+    - `base_katrain.py`から`kivy.storage.jsonstore`依存を削除
+    - 16件のテスト追加
+  - **PR #135: A-2d lang/i18nブリッジ**
+    - `core/lang.py`: Observable継承削除、コールバックベースに変更
+    - `gui/lang_bridge.py` 新規作成: KivyLangBridge（fbind/funbind互換）
+    - `gui.kv`、`popups.kv`: i18nインポート先を変更
+    - 既存KVファイルの変更不要（レガシーAPI互換維持）
+- **許可リスト削減**:
+  - 6エントリ → 1エントリ（`core/base_katrain.py|kivy` のみ残存）
+  - 残りは`PR #139`で削除予定（Kivy Config for logging）
+- **成果**:
+  - 全879テストパス
+  - core層のKivy依存を大幅削減
+  - 将来のヘッドレステスト・CLIツール対応の基盤確立
+
+### Phase 21: Settings Popup タブ化 ✅ **完了**
+- **目的**: 13設定項目を3タブに再編成し、視認性・操作性を向上
+- **実装**: PR #136（2026-01-16）
+  - **TabbedPanel導入**:
+    - Tab 1: 解析設定（Skill Preset, PV Filter Level）
+    - Tab 2: 出力設定（Default User Name, Karte Output Directory, Batch Export Input Directory, Karte Format, Opponent Info Mode）
+    - Tab 3: Leela Zero（Enabled, Executable Path, K Value, Max Visits, Top Moves Display）
+  - **ScrollView構造変更**: 外側ScrollView削除、各タブ内にScrollView（ネスト回避）
+  - **i18n更新**: タブタイトル3件追加（EN/JP）
+  - **WeakProxy修正**: `lang_bridge.py`の弱参照互換性問題を修正
+- **成果**:
+  - 全904テストパス
+  - 設定ポップアップのUX改善
+
 ---
 
 ## 9. スモークテスト チェックリスト
@@ -562,6 +613,21 @@
 
 ## 11. 変更履歴
 
+- 2026-01-16: Phase 21 Settings Popup タブ化完了（PR #136）
+  - TabbedPanel導入、13設定を3タブに再編成
+  - lang_bridge.py WeakProxy互換性修正
+  - 全904テストパス
+- 2026-01-16: Phase 20 Guardrails + UI Polish完了（PR #131-135）
+  - **PR #131**: AllImportCollector + アーキテクチャ強制テスト
+    - AST解析で全インポート収集（関数内遅延インポート含む）
+    - TYPE_CHECKINGブロックの正確なスキップ
+    - DELETE-ONLYポリシー: ハードコードセットで新規エントリ追加を阻止
+    - 単体テスト: `_resolve_relative_import()`, `is_forbidden()`
+  - **PR #132**: `common/platform.py` 新規作成、engine.pyからKivy依存削除
+  - **PR #133**: `game.py`から未使用Clock削除
+  - **PR #134**: `common/config_store.py` 新規作成、Mapping完全実装（16テスト）
+  - **PR #135**: lang/i18nブリッジ、core/lang.pyからKivy依存削除
+  - **成果**: 許可リスト6→1エントリに削減、全879テストパス
 - 2026-01-16: Phase 19 大規模リファクタリング完了（PR #113-135）
   - **Phase B1**: 循環依存解消（common/theme_constants.py）
   - **Phase B2**: game.py → reports/パッケージ抽出（5モジュール）
