@@ -1,0 +1,87 @@
+## Meta
+- Board: 19x19
+- Komi: 6.5
+- Rules: japanese
+- Handicap: 0
+- Game: [DATE] [TIME]
+- Date: [DATE]
+
+## Players
+- Black: whatiskale (15级)
+- White: 注号用名 (15级)
+
+## Notes
+- loss is measured for the player who played the move.
+
+## Definitions
+
+- Strictness: 標準 (手動)
+- Auto recommended: 激辛 (信頼度: 低)
+
+| Metric | Definition |
+|--------|------------|
+| Points Lost | Score difference between actual move and best move (clamped to ≥0) |
+| Good | Loss < 1.0 pts |
+| Inaccuracy | Loss 1.0 - 2.5 pts |
+| Mistake | Loss 2.5 - 5.0 pts |
+| Blunder | Loss ≥ 5.0 pts |
+| Phase (19x19) | Opening: <50, Middle: 50-199, Endgame: ≥200 |
+
+## Data Quality
+
+- **信頼度: 高**
+- Moves analyzed: 92
+- Coverage: 92 / 92 (100.0%)
+- Reliable (visits ≥ 200): 92 (100.0%)
+- Low-confidence: 0 (0.0%)
+- Avg visits: 500
+- Max visits: 500
+
+*Visits are measured from KataGo analysis (root_visits).*
+
+## Summary (Black)
+- Moves analyzed: 46
+- Total points lost: 21.7
+- Worst move: #17 B R8 loss 6.0 (blunder)
+
+## Summary (White)
+- Moves analyzed: 46
+- Total points lost: 25.5
+- Worst move: #34 W B6 loss 12.0 (blunder)
+
+## Distributions (Black)
+- Mistake buckets (points lost):
+  - < 0.5: 44
+  - 0.5 - 1.5: 0
+  - 1.5 - 3: 1
+  - 3 - 6: 1
+  - 6 - 12: 0
+  - >= 12: 0
+
+## Distributions (White)
+- Mistake buckets (points lost):
+  - < 0.5: 45
+  - 0.5 - 1.5: 0
+  - 1.5 - 3: 0
+  - 3 - 6: 0
+  - 6 - 12: 0
+  - >= 12: 1
+
+## Important Moves (Black) Top 2
+| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | Reason |
+|---|---|-------|------|------|------------|----------|--------|---------|--------|
+| 5 | B | F17 | 2.5 | D16 | 1 | - | Low | mistake | unknown |
+| 17 | B | R8 | 6.0 | T6 | 1 | - | Low | blunder | unknown |
+
+## Reason Tags Distribution (Black)
+
+- 不明 (unknown): 2
+
+## Important Moves (White) Top 1
+| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | Reason |
+|---|---|-------|------|------|------------|----------|--------|---------|--------|
+| 34 | W | B6 | 12.0 | B3 | 1 | - | Low | blunder | unknown |
+
+## Reason Tags Distribution (White)
+
+- 不明 (unknown): 1

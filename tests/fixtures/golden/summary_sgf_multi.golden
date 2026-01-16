@@ -1,0 +1,66 @@
+# Multi-Game Summary
+
+## Meta
+- Games analyzed: 3
+- Focus player: B
+- Date range: [DATE] to [DATE]
+
+## Individual Game Overview
+
+| Game | Opponent | Result | My Loss | Opp Loss | Ratio |
+|------|----------|--------|---------|----------|-------|
+| unknown | whatiskale | Close | 25.5 | 21.7 | 1.2 |
+| unknown | AlphaGo | Close | 38.7 | 34.9 | 1.1 |
+| unknown | player2 | Close | 38.5 | 42.3 | 0.9 |
+
+## Overall Statistics (B)
+- Total games: 3
+- Total moves analyzed: 476
+- Total points lost: 201.6
+- Average points lost per move: 0.4
+
+## Mistake Distribution (B)
+| Category | Count | Percentage | Avg Loss |
+|----------|-------|------------|----------|
+| Good | 467 | 98.1% | 0.3 |
+| Inaccuracy | 0 | 0.0% | 0.0 |
+| Mistake | 3 | 0.6% | 2.5 |
+| Blunder | 6 | 1.3% | 9.0 |
+
+## Phase × Mistake Breakdown (B)
+| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |
+|-------|------|------------|---------|---------|------------|
+| Opening | 138 | 0 | 3 (7.5) | 6 (54.0) | 61.5 |
+| Middle game | 324 | 0 | 0 | 0 | 0.0 |
+| Endgame | 5 | 0 | 0 | 0 | 0.0 |
+
+## Top Worst Moves (B)
+| Game | # | P | Coord | Loss | Importance | Category |
+|------|---|---|-------|------|------------|----------|
+| unknown | 34 | W | B6 | 12.0 | 12.0 | BLUNDER |
+| unknown | 34 | W | B10 | 12.0 | 12.0 | BLUNDER |
+| unknown | 34 | B | P3 | 12.0 | 12.0 | BLUNDER |
+| unknown | 17 | B | R8 | 6.0 | 6.0 | BLUNDER |
+| unknown | 17 | B | E16 | 6.0 | 6.0 | BLUNDER |
+| unknown | 17 | W | F4 | 6.0 | 6.0 | BLUNDER |
+| unknown | 5 | B | F17 | 2.5 | 2.5 | MISTAKE |
+| unknown | 5 | B | P4 | 2.5 | 2.5 | MISTAKE |
+| unknown | 5 | W | D15 | 2.5 | 2.5 | MISTAKE |
+
+## Weakness Hypothesis (B)
+
+Based on cross-tabulation analysis:
+
+1. **Openingの大悪手** (6回、損失54.0目)
+2. **Openingの悪手** (3回、損失7.5目)
+
+**分析**:
+- Openingの損失の52.5%が大悪手によるもの
+- Openingの4.1%の手が大悪手と判定されている
+
+## Practice Priorities (B)
+
+Based on the data above, consider focusing on:
+
+- 1. **Openingの大悪手** (6回、損失54.0目)
+- 2. **Openingの悪手** (3回、損失7.5目)

@@ -31,6 +31,44 @@ GOLDEN_DIR = FIXTURES_DIR / "golden"
 
 
 # ---------------------------------------------------------------------------
+# CI Environment Detection
+# ---------------------------------------------------------------------------
+
+def is_ci_environment() -> bool:
+    """
+    Detect whether running in a CI environment.
+
+    Checks multiple CI provider environment variables with proper value validation.
+    Avoids false positives from CI=false or empty values.
+
+    Returns:
+        True if running in CI, False otherwise.
+    """
+    truthy_values = ("true", "1", "yes")
+
+    # CI providers that set boolean-like values
+    ci_env_vars = [
+        "CI",             # Generic (GitHub Actions, GitLab CI, etc.)
+        "GITHUB_ACTIONS", # GitHub Actions
+        "GITLAB_CI",      # GitLab CI
+        "CIRCLECI",       # CircleCI
+        "TRAVIS",         # Travis CI
+        "BUILDKITE",      # Buildkite
+    ]
+
+    for var in ci_env_vars:
+        value = os.environ.get(var, "").lower()
+        if value in truthy_values:
+            return True
+
+    # JENKINS_URL is set to the URL, so existence check is sufficient
+    if os.environ.get("JENKINS_URL"):
+        return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Normalization for Golden Tests
 # ---------------------------------------------------------------------------
 
@@ -39,18 +77,22 @@ def normalize_output(text: str) -> str:
     Normalize Karte/Summary output for golden test comparison.
 
     Normalizes:
-    1. Timestamps → [TIMESTAMP]
-    2. Absolute paths → [PATH]
-    3. Floating point numbers → 1 decimal place
+    1. Line endings → LF only (handles CRLF and CR)
+    2. Timestamps → [TIMESTAMP]
+    3. Absolute paths → [PATH]
+    4. Floating point numbers → 1 decimal place
+    5. Trailing newlines → single trailing newline
 
     Does NOT normalize:
     - Order of sections (fixed by code)
     - Order of moves (deterministic tiebreaks in code)
     - Evidence order (deterministic tiebreaks in code)
     """
-    result = text
+    # 1. Normalize line endings first (before other processing)
+    # Order matters: \r\n first, then remaining \r
+    result = text.replace("\r\n", "\n").replace("\r", "\n")
 
-    # 1. Normalize timestamps (various formats)
+    # 2. Normalize timestamps (various formats)
     # ISO format: 2025-01-05T12:34:56
     result = re.sub(
         r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',
@@ -63,14 +105,20 @@ def normalize_output(text: str) -> str:
         '[DATE]',
         result
     )
-    # Time format: 12:34:56
+    # Time format: 12:34:56 (colon-separated)
     result = re.sub(
         r'\d{2}:\d{2}:\d{2}',
         '[TIME]',
         result
     )
+    # Time format: 12 34 56 (space-separated, as in game_id from filename)
+    result = re.sub(
+        r'\d{2} \d{2} \d{2}',
+        '[TIME]',
+        result
+    )
 
-    # 2. Normalize absolute paths (Windows and Unix)
+    # 3. Normalize absolute paths (Windows and Unix)
     # Windows: D:\github\... or C:\Users\...
     result = re.sub(
         r'[A-Z]:\\[^\s\]]+',
@@ -84,7 +132,7 @@ def normalize_output(text: str) -> str:
         result
     )
 
-    # 3. Normalize floating point numbers to 1 decimal place
+    # 4. Normalize floating point numbers to 1 decimal place
     # Match numbers like 3.14159 or -12.345 (but not integers)
     def round_float(match):
         num = float(match.group(0))
@@ -97,6 +145,9 @@ def normalize_output(text: str) -> str:
         round_float,
         result
     )
+
+    # 5. Normalize trailing newlines (single trailing newline)
+    result = result.rstrip("\n") + "\n"
 
     return result
 
