@@ -1,25 +1,33 @@
 # katrain/gui/features/summary_formatter.py
-#
-# サマリMarkdown生成モジュール
-#
-# __main__.py から抽出した _build_summary_from_stats のMarkdown生成ロジック。
-# Pure関数として実装（self を受け取らない）。
+"""サマリMarkdown生成モジュール.
+
+__main__.py から抽出した _build_summary_from_stats のMarkdown生成ロジック。
+Pure関数として実装（self を受け取らない）。
+
+Phase 23 PR #3: 型ヒント追加
+"""
 
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
+from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
 
 if TYPE_CHECKING:
     pass
 
+# Type aliases for clarity
+StatsDict = Dict[str, Any]
+ConfigFn = Callable[[str], Any]
+PhaseMistakeKey = Tuple[str, MistakeCategory]
+
 
 def build_summary_from_stats(
-    stats_list: List[dict],
+    stats_list: List[StatsDict],
     focus_player: Optional[str],
-    config_fn: Callable[[str], Any],
+    config_fn: ConfigFn,
 ) -> str:
-    """統計dictリストからsummaryテキストを生成
+    """統計dictリストからsummaryテキストを生成.
 
     Args:
         stats_list: 統計データ辞書のリスト
@@ -159,10 +167,10 @@ def build_summary_from_stats(
 
 def _append_individual_game_overview(
     lines: List[str],
-    stats_list: List[dict],
+    stats_list: List[StatsDict],
     focus_player: str,
 ) -> None:
-    """個別対局テーブルを追加"""
+    """個別対局テーブルを追加."""
     lines.append("## Individual Game Overview")
     lines.append("")
     lines.append("| Game | Opponent | Result | My Loss | Opp Loss | Ratio |")
@@ -185,11 +193,11 @@ def _append_individual_game_overview(
 
 def _append_opponent_aggregate(
     lines: List[str],
-    stats_list: List[dict],
+    stats_list: List[StatsDict],
     focus_player: str,
     total_games: int,
 ) -> None:
-    """集計情報のみ（6局以上）"""
+    """集計情報のみ（6局以上）."""
     lines.append("## Opponent Statistics (Aggregate)")
     opponents = set()
     total_opp_loss = 0.0
@@ -215,12 +223,12 @@ def _append_opponent_aggregate(
 
 def _append_mistake_distribution(
     lines: List[str],
-    mistake_totals: Dict,
-    mistake_loss_totals: Dict,
+    mistake_totals: Dict[MistakeCategory, int],
+    mistake_loss_totals: Dict[MistakeCategory, float],
     total_moves: int,
     focus_player: Optional[str],
 ) -> None:
-    """Mistake Distributionテーブル"""
+    """Mistake Distributionテーブル."""
     lines.append("## Mistake Distribution" + (f" ({focus_player})" if focus_player else ""))
     lines.append("| Category | Count | Percentage | Avg Loss |")
     lines.append("|----------|-------|------------|----------|")
@@ -236,11 +244,11 @@ def _append_mistake_distribution(
 
 def _append_freedom_distribution(
     lines: List[str],
-    freedom_totals: Dict,
+    freedom_totals: Dict[PositionDifficulty, int],
     total_moves: int,
     focus_player: Optional[str],
 ) -> None:
-    """Freedom Distribution（非UNKNOWNがある場合のみ）"""
+    """Freedom Distribution（非UNKNOWNがある場合のみ）."""
     has_real_freedom_data = any(
         count > 0 for diff, count in freedom_totals.items()
         if diff != eval_metrics.PositionDifficulty.UNKNOWN
@@ -262,11 +270,11 @@ def _append_freedom_distribution(
 
 def _append_phase_mistake_breakdown(
     lines: List[str],
-    phase_mistake_counts_total: Dict,
-    phase_mistake_loss_total: Dict,
+    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
+    phase_mistake_loss_total: Dict[PhaseMistakeKey, float],
     focus_player: Optional[str],
 ) -> None:
-    """Phase × Mistake クロス集計テーブル"""
+    """Phase × Mistake クロス集計テーブル."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
     lines.append("## Phase × Mistake Breakdown" + (f" ({focus_player})" if focus_player else ""))
     lines.append("| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |")
@@ -291,10 +299,10 @@ def _append_phase_mistake_breakdown(
 def _append_reason_tags(
     lines: List[str],
     reason_tags_totals: Dict[str, int],
-    stats_list: List[dict],
+    stats_list: List[StatsDict],
     focus_player: Optional[str],
 ) -> None:
-    """Reason Tags Distribution"""
+    """Reason Tags Distribution."""
     if not reason_tags_totals:
         return
 
@@ -351,11 +359,11 @@ def _append_reason_tags(
 
 def _append_worst_moves(
     lines: List[str],
-    all_worst_moves: List[Tuple],
-    config_fn: Callable[[str], Any],
+    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]],
+    config_fn: ConfigFn,
     focus_player: Optional[str],
 ) -> None:
-    """Top Worst Movesセクション"""
+    """Top Worst Movesセクション."""
     from katrain.core.reports.summary_report import (
         _detect_urgent_miss_sequences,
         _convert_sgf_to_gtp_coord,
@@ -446,13 +454,13 @@ def _append_worst_moves(
 
 def _append_weakness_hypothesis(
     lines: List[str],
-    phase_mistake_loss_total: Dict,
-    phase_mistake_counts_total: Dict,
+    phase_mistake_loss_total: Dict[PhaseMistakeKey, float],
+    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
     phase_loss_total: Dict[str, float],
     phase_moves_total: Dict[str, int],
     focus_player: Optional[str],
-) -> List[Tuple]:
-    """弱点仮説セクション"""
+) -> List[Tuple[PhaseMistakeKey, float]]:
+    """弱点仮説セクション."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
 
     lines.append("## Weakness Hypothesis" + (f" ({focus_player})" if focus_player else ""))
@@ -514,10 +522,10 @@ def _append_weakness_hypothesis(
 
 def _append_urgent_miss_in_weakness(
     lines: List[str],
-    all_worst_moves: List[Tuple],
-    config_fn: Callable[[str], Any],
+    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]],
+    config_fn: ConfigFn,
 ) -> None:
-    """弱点仮説セクションに急場見逃しパターンを追加"""
+    """弱点仮説セクションに急場見逃しパターンを追加."""
     if not all_worst_moves:
         return
 
@@ -566,13 +574,13 @@ def _append_urgent_miss_in_weakness(
 
 def _append_practice_priorities(
     lines: List[str],
-    sorted_combos: List[Tuple],
-    phase_mistake_counts_total: Dict,
+    sorted_combos: List[Tuple[PhaseMistakeKey, float]],
+    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
     phase_loss_total: Dict[str, float],
     total_moves: int,
     focus_player: Optional[str],
 ) -> None:
-    """Practice Prioritiesセクション"""
+    """Practice Prioritiesセクション."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
     cat_names_ja = {
         eval_metrics.MistakeCategory.BLUNDER: "大悪手",
