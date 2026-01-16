@@ -489,3 +489,108 @@ class TestDeterministicSorting:
         assert result[0].move_number == 5
         assert result[1].move_number == 10
         assert result[2].move_number == 15
+
+
+# ---------------------------------------------------------------------------
+# E2E Tests: SGF → Karte (Phase 24)
+# ---------------------------------------------------------------------------
+
+class TestKarteFromSGF:
+    """
+    End-to-end tests for Karte generation from real SGF files.
+
+    Uses mock analysis injection to ensure deterministic output without
+    requiring KataGo execution. Tests 3 SGF files per Roadmap acceptance criteria.
+    """
+
+    SGF_DIR = Path(__file__).parent / "data"
+    SGF_FILES = {
+        "fox": SGF_DIR / "fox sgf works.sgf",
+        "alphago": SGF_DIR / "LS vs AG - G4 - English.sgf",
+        "panda": SGF_DIR / "panda1.sgf",
+    }
+
+    @pytest.fixture
+    def mock_katrain(self):
+        """Create a mock KaTrain instance."""
+        from katrain.core.base_katrain import KaTrainBase
+        return KaTrainBase(force_package_config=True, debug_level=0)
+
+    @pytest.fixture
+    def mock_engine(self):
+        """Create a mock engine."""
+        class MockEngine:
+            def request_analysis(self, *args, **kwargs):
+                pass
+            def stop_pondering(self):
+                pass
+        return MockEngine()
+
+    def load_game_with_mock_analysis(self, sgf_key: str, mock_katrain, mock_engine):
+        """Load SGF and inject mock analysis."""
+        from katrain.core.game import Game, KaTrainSGF
+        from tests.helpers import inject_mock_analysis
+
+        sgf_path = self.SGF_FILES[sgf_key]
+        move_tree = KaTrainSGF.parse_file(str(sgf_path))
+        game = Game(mock_katrain, mock_engine, move_tree)
+
+        # Inject deterministic mock analysis
+        inject_mock_analysis(game)
+
+        return game
+
+    @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
+    def test_karte_from_sgf_matches_golden(
+        self, sgf_key: str, mock_katrain, mock_engine, request
+    ):
+        """
+        Test that Karte output matches golden file.
+
+        Uses mock analysis injection to ensure deterministic output.
+        """
+        from katrain.core.reports.karte_report import build_karte_report
+        from tests.conftest import update_golden_if_requested
+
+        game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+
+        # Generate karte
+        karte_output = build_karte_report(game)
+
+        # Normalize for comparison
+        normalized = normalize_output(karte_output)
+
+        golden_name = f"karte_sgf_{sgf_key}.golden"
+
+        # Update golden if requested
+        update_golden_if_requested(golden_name, normalized, request)
+
+        # Load and compare
+        expected = load_golden(golden_name)
+        assert normalized == expected, (
+            f"Karte output for {sgf_key} does not match golden file.\n"
+            f"Run with --update-goldens to update the expected output."
+        )
+
+    @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
+    def test_karte_output_is_deterministic(
+        self, sgf_key: str, mock_katrain, mock_engine
+    ):
+        """
+        Verify that karte generation is deterministic.
+
+        Running the same input twice should produce identical output.
+        """
+        from katrain.core.reports.karte_report import build_karte_report
+
+        # Generate twice
+        game1 = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+        output1 = normalize_output(build_karte_report(game1))
+
+        game2 = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+        output2 = normalize_output(build_karte_report(game2))
+
+        assert output1 == output2, (
+            f"Karte output for {sgf_key} is not deterministic.\n"
+            f"First run differs from second run."
+        )

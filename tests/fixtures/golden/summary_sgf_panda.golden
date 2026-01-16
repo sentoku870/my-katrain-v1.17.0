@@ -1,0 +1,51 @@
+# Multi-Game Summary
+
+## Meta
+- Games analyzed: 1
+- Date range: [DATE] to [DATE]
+
+## Overall Statistics
+- Total games: 1
+- Total moves analyzed: 204
+- Total points lost: 80.8
+- Average points lost per move: 0.4
+
+## Mistake Distribution
+| Category | Count | Percentage | Avg Loss |
+|----------|-------|------------|----------|
+| Good | 201 | 98.5% | 0.3 |
+| Inaccuracy | 0 | 0.0% | 0.0 |
+| Mistake | 1 | 0.5% | 2.5 |
+| Blunder | 2 | 1.0% | 9.0 |
+
+## Phase × Mistake Breakdown
+| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |
+|-------|------|------------|---------|---------|------------|
+| Opening | 46 | 0 | 1 (2.5) | 2 (18.0) | 20.5 |
+| Middle game | 150 | 0 | 0 | 0 | 0.0 |
+| Endgame | 5 | 0 | 0 | 0 | 0.0 |
+
+## Top Worst Moves
+| Game | # | P | Coord | Loss | Importance | Category |
+|------|---|---|-------|------|------------|----------|
+| unknown | 34 | B | P3 | 12.0 | 12.0 | BLUNDER |
+| unknown | 17 | W | F4 | 6.0 | 6.0 | BLUNDER |
+| unknown | 5 | W | D15 | 2.5 | 2.5 | MISTAKE |
+
+## Weakness Hypothesis
+
+Based on cross-tabulation analysis:
+
+1. **Openingの大悪手** (2回、損失18.0目)
+2. **Openingの悪手** (1回、損失2.5目)
+
+**分析**:
+- Openingの損失の52.5%が大悪手によるもの
+- Openingの4.1%の手が大悪手と判定されている
+
+## Practice Priorities
+
+Based on the data above, consider focusing on:
+
+- 1. **Openingの大悪手** (2回、損失18.0目)
+- 2. **Openingの悪手** (1回、損失2.5目)

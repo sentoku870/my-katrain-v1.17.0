@@ -382,3 +382,194 @@ class TestSummaryReasonTags:
 
         # Section should not appear
         assert "ミス理由タグ分布" not in output
+
+
+# ---------------------------------------------------------------------------
+# E2E Tests: SGF → Summary (Phase 24)
+# ---------------------------------------------------------------------------
+
+from pathlib import Path
+
+
+class TestSummaryFromSGF:
+    """
+    End-to-end tests for Summary generation from real SGF files.
+
+    Uses mock analysis injection to ensure deterministic output without
+    requiring KataGo execution. Tests 3 SGF files per Roadmap acceptance criteria.
+    """
+
+    SGF_DIR = Path(__file__).parent / "data"
+    SGF_FILES = {
+        "fox": SGF_DIR / "fox sgf works.sgf",
+        "alphago": SGF_DIR / "LS vs AG - G4 - English.sgf",
+        "panda": SGF_DIR / "panda1.sgf",
+    }
+
+    @pytest.fixture
+    def mock_katrain(self):
+        """Create a mock KaTrain instance."""
+        from katrain.core.base_katrain import KaTrainBase
+        return KaTrainBase(force_package_config=True, debug_level=0)
+
+    @pytest.fixture
+    def mock_engine(self):
+        """Create a mock engine."""
+        class MockEngine:
+            def request_analysis(self, *args, **kwargs):
+                pass
+            def stop_pondering(self):
+                pass
+        return MockEngine()
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create a mock config function."""
+        def config_fn(key, default=None):
+            configs = {
+                "general/skill_preset": "standard",
+                "mykatrain_settings": {
+                    "opponent_info_mode": "auto",
+                },
+            }
+            if "/" in key:
+                parts = key.split("/")
+                if len(parts) == 2:
+                    section, k = parts
+                    if section in configs and isinstance(configs[section], dict):
+                        return configs[section].get(k, default)
+                return configs.get(key, default)
+            return configs.get(key, default)
+        return config_fn
+
+    def load_game_with_mock_analysis(self, sgf_key: str, mock_katrain, mock_engine):
+        """Load SGF and inject mock analysis."""
+        from katrain.core.game import Game, KaTrainSGF
+        from tests.helpers import inject_mock_analysis
+
+        sgf_path = self.SGF_FILES[sgf_key]
+        move_tree = KaTrainSGF.parse_file(str(sgf_path))
+        game = Game(mock_katrain, mock_engine, move_tree)
+
+        # Inject deterministic mock analysis
+        inject_mock_analysis(game)
+
+        return game
+
+    def extract_stats_from_game(self, game) -> dict:
+        """Extract stats from mock-analyzed game using helper."""
+        from tests.helpers import extract_stats_from_nodes
+        return extract_stats_from_nodes(game)
+
+    def test_summary_from_sgf_matches_golden(self, mock_katrain, mock_engine, mock_config, request):
+        """
+        Test that Summary output from 3 SGFs matches golden file.
+
+        Uses mock analysis injection to ensure deterministic output.
+        """
+        from katrain.gui.features.summary_formatter import build_summary_from_stats
+        from tests.conftest import update_golden_if_requested
+
+        # Load all 3 games and extract stats
+        stats_list = []
+        for sgf_key in ["fox", "alphago", "panda"]:
+            game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+            stats = self.extract_stats_from_game(game)
+            stats_list.append(stats)
+
+        # Generate summary (focus on Black player)
+        summary_output = build_summary_from_stats(
+            stats_list, focus_player="B", config_fn=mock_config
+        )
+
+        # Normalize for comparison
+        normalized = normalize_output(summary_output)
+
+        golden_name = "summary_sgf_multi.golden"
+
+        # Update golden if requested
+        update_golden_if_requested(golden_name, normalized, request)
+
+        # Load and compare
+        try:
+            expected = load_golden(golden_name)
+        except FileNotFoundError:
+            save_golden(golden_name, normalized)
+            pytest.skip(f"Golden file created: {golden_name}")
+
+        assert normalized == expected, (
+            f"Summary output does not match golden file.\n"
+            f"Run with --update-goldens to update the expected output."
+        )
+
+    @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
+    def test_single_sgf_summary_matches_golden(
+        self, sgf_key: str, mock_katrain, mock_engine, mock_config, request
+    ):
+        """
+        Test that Summary output from a single SGF matches golden file.
+        """
+        from katrain.gui.features.summary_formatter import build_summary_from_stats
+        from tests.conftest import update_golden_if_requested
+
+        game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+        stats = self.extract_stats_from_game(game)
+
+        # Generate summary
+        summary_output = build_summary_from_stats(
+            [stats], focus_player=None, config_fn=mock_config
+        )
+
+        # Normalize for comparison
+        normalized = normalize_output(summary_output)
+
+        golden_name = f"summary_sgf_{sgf_key}.golden"
+
+        # Update golden if requested
+        update_golden_if_requested(golden_name, normalized, request)
+
+        # Load and compare
+        try:
+            expected = load_golden(golden_name)
+        except FileNotFoundError:
+            save_golden(golden_name, normalized)
+            pytest.skip(f"Golden file created: {golden_name}")
+
+        assert normalized == expected, (
+            f"Summary output for {sgf_key} does not match golden file.\n"
+            f"Run with --update-goldens to update the expected output."
+        )
+
+    def test_summary_output_is_deterministic(self, mock_katrain, mock_engine, mock_config):
+        """
+        Verify that summary generation is deterministic.
+
+        Running the same input twice should produce identical output.
+        """
+        from katrain.gui.features.summary_formatter import build_summary_from_stats
+
+        # Generate stats list twice
+        stats_list1 = []
+        for sgf_key in ["fox", "alphago", "panda"]:
+            game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+            stats = self.extract_stats_from_game(game)
+            stats_list1.append(stats)
+
+        output1 = normalize_output(
+            build_summary_from_stats(stats_list1, focus_player="B", config_fn=mock_config)
+        )
+
+        stats_list2 = []
+        for sgf_key in ["fox", "alphago", "panda"]:
+            game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
+            stats = self.extract_stats_from_game(game)
+            stats_list2.append(stats)
+
+        output2 = normalize_output(
+            build_summary_from_stats(stats_list2, focus_player="B", config_fn=mock_config)
+        )
+
+        assert output1 == output2, (
+            "Summary output is not deterministic.\n"
+            "First run differs from second run."
+        )
