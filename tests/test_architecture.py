@@ -750,8 +750,6 @@ from kivy.utils import platform  # should be detected
 
 # 許可リストの既知エントリ（削除のみ許可、追加禁止）
 KNOWN_ALLOWLIST_ENTRIES = frozenset({
-    "core/lang.py|kivy._event",
-    "core/lang.py|katrain.gui",  # lazy import
     "core/base_katrain.py|kivy",
 })
 
