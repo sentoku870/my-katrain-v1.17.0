@@ -1037,6 +1037,9 @@ msgstr "クイズを生成（ベータ）"
 msgid "mykatrain:export-karte"
 msgstr "カルテ出力"
 
+msgid "mykatrain:export-package"
+msgstr "LLMパッケージ出力"
+
 msgid "mykatrain:export-summary"
 msgstr "複数局まとめ"
 
@@ -1425,3 +1428,19 @@ msgstr "訪問数"
 #. Leela dropdown option
 msgid "leela_top_move_nothing"
 msgstr "（なし）"
+
+#. LLM Package Export
+msgid "No game loaded"
+msgstr "対局が読み込まれていません"
+
+msgid "Package Exported"
+msgstr "パッケージ出力完了"
+
+msgid "Package saved to:\n%s"
+msgstr "保存先:\n%s"
+
+msgid "Package exported: %s"
+msgstr "パッケージを出力しました: %s"
+
+msgid "Failed to export package:\n%s"
+msgstr "パッケージの出力に失敗しました:\n%s"
