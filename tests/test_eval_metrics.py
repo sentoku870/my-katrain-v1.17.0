@@ -2024,10 +2024,10 @@ class TestImportanceRankingRedesign:
         assert modifier == 1.0
 
     def test_difficulty_modifier_only_move_penalty(self):
-        """ONLY_MOVE difficulty should subtract -2.0"""
+        """ONLY_MOVE difficulty should subtract -1.0 (Phase 23: relaxed from -2.0)"""
         modifier = get_difficulty_modifier(PositionDifficulty.ONLY_MOVE)
         assert modifier == DIFFICULTY_MODIFIER_ONLY_MOVE
-        assert modifier == -2.0
+        assert modifier == -1.0  # Phase 23: -2.0 → -1.0
 
     def test_difficulty_modifier_normal_zero(self):
         """NORMAL difficulty should have 0 modifier"""

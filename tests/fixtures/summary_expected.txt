@@ -1,0 +1,51 @@
+# Multi-Game Summary
+
+## Meta
+- Games analyzed: 1
+- Date range: 2024-01-01 to 2024-01-01
+
+## Overall Statistics
+- Total games: 1
+- Total moves analyzed: 30
+- Total points lost: 10.0
+- Average points lost per move: 0.33
+
+## Mistake Distribution
+| Category | Count | Percentage | Avg Loss |
+|----------|-------|------------|----------|
+| Good | 20 | 66.7% | 0.00 |
+| Inaccuracy | 5 | 16.7% | 0.40 |
+| Mistake | 3 | 10.0% | 1.00 |
+| Blunder | 2 | 6.7% | 2.50 |
+
+## Phase × Mistake Breakdown
+| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |
+|-------|------|------------|---------|---------|------------|
+| Opening | 8 | 1 (0.5) | 1 (1.5) | 0 | 2.0 |
+| Middle game | 10 | 3 (1.0) | 1 (1.0) | 1 (4.0) | 6.0 |
+| Endgame | 2 | 1 (0.5) | 1 (0.5) | 1 (1.0) | 2.0 |
+
+## Top Worst Moves
+| Game | # | P | Coord | Loss | Importance | Category |
+|------|---|---|-------|------|------------|----------|
+| test_snapshot_game.s | 10 | B | Q10 | 4.0 | 5.0 | BLUNDER |
+| test_snapshot_game.s | 25 | W | D16 | 3.0 | 3.5 | MISTAKE |
+
+## Weakness Hypothesis
+
+Based on cross-tabulation analysis:
+
+1. **Middle gameの大悪手** (1回、損失4.0目)
+2. **Openingの悪手** (1回、損失1.5目)
+3. **Middle gameの軽微なミス** (3回、損失1.0目)
+
+**分析**:
+- Middle gameの損失の66.7%が大悪手によるもの
+- Middle gameの6.7%の手が大悪手と判定されている
+
+## Practice Priorities
+
+Based on the data above, consider focusing on:
+
+- 1. **Middle gameの大悪手** (1回、損失4.0目)
+- 2. **Openingの悪手** (1回、損失1.5目)
