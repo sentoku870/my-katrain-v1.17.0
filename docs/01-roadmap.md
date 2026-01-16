@@ -696,23 +696,32 @@ karte + SGF + coach.md を zip パッケージでエクスポートし、LLM へ
 
 ---
 
-### Phase 26: レポート閲覧/導線の小改善（TBD）
+### Phase 26: レポート閲覧/導線の小改善 ✅
 
 #### 26.1 目的
 生成レポートへのアクセスを改善し、ユーザビリティを向上。
 
 #### 26.2 スコープ
 **In:**
-- 「最新レポートを開く」ボタン
-- 「出力フォルダを開く」ボタン（OS ファイルマネージャ起動）
-- Context / Bucket / engine_profile_id の表示（Smart Kifu 連携）
+- 「最新レポートを開く」メニュー項目 ✅
+- 「出力フォルダを開く」メニュー項目（OS ファイルマネージャ起動）✅
 
-**Out:**
+**Out (Phase 27以降へ延期):**
+- Context / Bucket / engine_profile_id の表示（Smart Kifu 連携）
 - レポート履歴管理（DB 化）
 
 #### 26.3 成果物
+- `katrain/common/file_opener.py` - OS 別ファイル/フォルダオープナー（Kivy非依存）
 - `katrain/gui/features/report_navigator.py` - 導線 UI
-- `katrain/common/file_opener.py` - OS 別ファイル/フォルダオープナー
+- `tests/test_file_opener.py` - 19テスト
+- `tests/test_report_navigator.py` - 15テスト
+
+#### 26.4 クロスプラットフォーム対応
+| Platform | Open Folder | Open File | Open File in Folder |
+|----------|-------------|-----------|---------------------|
+| Windows | os.startfile() | os.startfile() | explorer /select, |
+| macOS | open | open | open -R |
+| Linux | xdg-open | xdg-open | xdg-open (parent) |
 
 ---
 
@@ -836,6 +845,12 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
 
 ## 11. 変更履歴
 
+- 2026-01-17: Phase 26 レポート導線改善完了（PR #144）
+  - **common/file_opener.py**: クロスプラットフォームファイル/フォルダオープナー
+  - **gui/features/report_navigator.py**: レポート導線UI
+  - **機能**: 「最新レポートを開く」「出力フォルダを開く」メニュー項目
+  - **対応OS**: Windows (os.startfile/explorer)、macOS (open)、Linux (xdg-open)
+  - **テスト**: 34新規テスト、全1031テストパス
 - 2026-01-17: Phase 24 Regression Tests (SGF E2E) 完了（PR #142）
   - **tests/helpers/**: モック解析注入パッケージ新設
     - `mock_analysis.py`: `LOSS_AT_MOVE` パターン、`inject_mock_analysis()`
