@@ -84,6 +84,8 @@ def _get_app_gui():
 class I18NPopup(Popup):
     title_key = StringProperty("")
     font_name = StringProperty(Theme.DEFAULT_FONT)
+    # クラス変数: 前回のupdate_stateイベント（連続dismiss対策）
+    _pending_update_event = None
 
     def __init__(self, size=None, **kwargs):
         if size:  # do not exceed window size
@@ -99,14 +101,20 @@ class I18NPopup(Popup):
         self.bind(on_dismiss=self._schedule_update_state)
 
     def _schedule_update_state(self, popup_instance):
-        """on_dismiss時にupdate_stateをスケジュール
+        """on_dismiss時にupdate_stateをスケジュール（重複防止付き）
 
         Args:
             popup_instance: Kivyのbindコールバックから渡されるPopupインスタンス
 
-        Note: v5改善 - 引数を明示的に受け取る（*argsより安全）
+        Note:
+            - v5改善: 引数を明示的に受け取る（*argsより安全）
+            - Phase 22: 遅延を1秒→0.1秒に短縮、前回イベントをキャンセル
         """
-        Clock.schedule_once(self._do_update_state, 1)
+        # 前回のイベントをキャンセル（連続dismiss対策）
+        if I18NPopup._pending_update_event is not None:
+            I18NPopup._pending_update_event.cancel()
+        # 0.1秒後に実行（Kivyのレイアウト計算に十分な余裕）
+        I18NPopup._pending_update_event = Clock.schedule_once(self._do_update_state, 0.1)
 
     def _do_update_state(self, dt):
         """実際のupdate_state呼び出し（nullチェック付き）

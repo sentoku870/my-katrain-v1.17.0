@@ -117,7 +117,17 @@ class ControlsPanel(BoxLayout):
         self.beep_start = 5.2
         self.timer_interval = 0.07
 
-        Clock.schedule_interval(self.update_timer, self.timer_interval)
+        # Phase 22: タイマーイベントを追跡（cleanup用）
+        self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
+
+    def cleanup(self) -> None:
+        """アプリ終了時のクリーンアップ（Phase 22）
+
+        KaTrainGui.cleanup() から呼び出される。
+        """
+        if self._timer_event:
+            self._timer_event.cancel()
+            self._timer_event = None
 
     def update_players(self, *_args):
         for bw, player_info in self.katrain.players_info.items():
