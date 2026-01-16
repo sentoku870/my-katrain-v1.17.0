@@ -110,6 +110,9 @@
 | 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ **完了** |
 | 19 | 大規模リファクタリング | reports/パッケージ、analysis分割、GUI Manager抽出 | ✅ **完了** |
 | 20 | Guardrails + UI Polish | Kivy依存削除、アーキテクチャテスト、config抽象化 | ✅ **完了** |
+| 21 | Settings Popup タブ化 | 13設定を3タブに再編成 | ✅ **完了** |
+| 22 | 安定性向上 | クラッシュ、フリーズ、リソースリーク防止 | ✅ **完了** |
+| 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
 
 ---
 
@@ -638,6 +641,25 @@
 
 ## 11. 変更履歴
 
+- 2026-01-16: Phase 23 カルテ・サマリー品質向上完了（PR #141）
+  - **PR #1**: ONLY_MOVE難易度修正緩和（-2.0 → -1.0、大損失時+0.5緩和）
+    - `get_difficulty_modifier()` に `canonical_loss` パラメータ追加
+    - 一択局面でも大損失は学習価値があるため重要度を保持
+  - **PR #2**: LLM用JSON出力オプション追加
+    - `build_karte_json()` 関数（schema v1.0）
+    - meta, summary, important_moves セクション
+    - `get_canonical_loss_from_move()` 使用で一貫性確保
+  - **PR #3**: サマリー型ヒント追加
+    - `summary_formatter.py` に型エイリアス・型ヒント追加
+    - Snapshot Test による回帰防止
+  - **テスト追加（32件）**:
+    - `test_difficulty_modifier.py` (12件)
+    - `test_karte_json.py` (16件)
+    - `test_summary_snapshot.py` (4件)
+  - **成果**: 全946テストパス
+- 2026-01-16: Phase 22 安定性向上完了（PR #137-140）
+  - デッドロック予防強化（PR #100-102でのフォローアップ）
+  - エンジンシャットダウンにタイムアウトとログ追加
 - 2026-01-16: Phase 21 Settings Popup タブ化完了（PR #136）
   - TabbedPanel導入、13設定を3タブに再編成
   - lang_bridge.py WeakProxy互換性修正
