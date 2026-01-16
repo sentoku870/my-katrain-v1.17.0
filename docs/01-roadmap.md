@@ -114,7 +114,7 @@
 | 22 | 安定性向上 | クラッシュ、フリーズ、リソースリーク防止 | ✅ **完了** |
 | 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
 | 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | ✅ **完了** |
-| 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | TBD |
+| 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | ✅ **完了** |
 | 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | TBD |
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | TBD |
 | 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | TBD |
@@ -661,30 +661,38 @@ SGF→karte/summary の E2E テストを既存 golden test に統合し、出力
 
 ---
 
-### Phase 25: LLM Package Bulk Export（TBD）
+### Phase 25: LLM Package Export ✅ **完了**
 
 #### 25.1 目的
 karte + SGF + coach.md を zip パッケージでエクスポートし、LLM への添付を容易にする。
 
 #### 25.2 スコープ
 **In:**
-- zip ファイル生成（karte.md + SGF + coach.md）
-- manifest.json（ファイル一覧、生成日時、バージョン）
-- PB/PW 匿名化オプション
-- **プライバシー保護**: manifest に絶対パス・ユーザー名を含めない
+- ✅ zip ファイル生成（karte.md + SGF + coach.md + manifest.json）
+- ✅ manifest.json（ファイル一覧、生成日時、バージョン）
+- ✅ PB/PW 匿名化オプション（文字列ベース、SGFツリー非変更）
+- ✅ **プライバシー保護**: manifest に絶対パス・ユーザー名を含めない
 
 **Out:**
 - LLM への自動送信（non-goal）
 - SGF の加工（分岐削除等）
 
 #### 25.3 成果物
-- `katrain/core/reports/package_export.py` - zip 生成ロジック
-- `katrain/gui/features/package_export_ui.py` - Export Package UI
+- [x] `katrain/core/reports/package_export.py` - ZIP生成ロジック（Kivy非依存）
+- [x] `katrain/gui/features/package_export_ui.py` - Export Package UI
+- [x] `tests/test_package_export.py` - 40ユニットテスト
 
 #### 25.4 受け入れ条件
-- [ ] Export Package ボタンで zip がダウンロードフォルダに保存
-- [ ] manifest.json にファイル一覧と生成条件が記録（相対パスのみ）
-- [ ] 匿名化 ON で PB/PW が "Player1"/"Player2" に置換
+- [x] Export Package ボタンで zip がダウンロードフォルダに保存
+- [x] manifest.json にファイル一覧と生成条件が記録（相対パスのみ）
+- [x] 匿名化 ON で PB/PW が "Black"/"White" に置換（文字列ベース）
+
+#### 25.5 実装（PR #143）
+- **Core層（package_export.py）**: ZIP生成、manifest構築、匿名化ヘルパー、出力先解決
+- **GUI層（package_export_ui.py）**: UI実装、匿名化処理の前処理
+- **責務分離**: GUI層で匿名化完了後、Core層は純粋にZIP生成のみ
+- **テスト**: 40ユニットテスト（Kivy不要、CI対応）
+- **i18n**: 英語・日本語翻訳キー追加
 
 ---
 
@@ -838,6 +846,13 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
   - **TestKarteFromSGF**: 3 SGF（fox, alphago, panda）のE2Eテスト
   - **TestSummaryFromSGF**: 3 SGF + 複数SGF統合テスト
   - **成果**: 7つの新規Goldenファイル、全957テストパス
+- 2026-01-17: Phase 25 LLM Package Export完了（PR #143）
+  - **Core層（package_export.py）**: ZIP生成、manifest構築、匿名化ヘルパー
+  - **GUI層（package_export_ui.py）**: UI実装、Kivy Clock統合
+  - **責務分離**: GUI層で匿名化完了後、Core層は純粋にZIP生成のみ
+  - **テスト**: 40ユニットテスト（Kivy不要、CI対応）
+  - **i18n**: 英語・日本語翻訳キー追加
+  - **成果**: 全997テストパス
 - 2026-01-16: Phase 24〜30 ロードマップ追加
   - **Phase 24**: Regression Tests (SGF E2E) - 既存golden testに実SGFケース追加
   - **Phase 25**: LLM Package Export - zip + manifest + PB/PW匿名化
