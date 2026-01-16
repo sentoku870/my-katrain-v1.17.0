@@ -98,7 +98,7 @@ def _do_export_package_impl(ctx: "FeatureContext", anonymize: bool) -> None:
     # ゲーム情報取得
     game_info = {
         "board_size": game.board_size,
-        "handicap": game.handicap,
+        "handicap": game.root.handicap,
         "komi": game.komi,
         "result": game.root.get_property("RE", ""),
         "date": game.root.get_property("DT", ""),
