@@ -18,10 +18,6 @@
     "core/base_katrain.py|kivy.storage.jsonstore": {
       "reason": "Config storage",
       "removal_pr": "PR #139"
-    },
-    "core/game.py|kivy.clock": {
-      "reason": "Scheduling notifications",
-      "removal_pr": "PR #138"
     }
   }
 }
