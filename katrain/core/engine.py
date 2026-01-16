@@ -215,12 +215,19 @@ class KataGoEngine(BaseEngine):
         return pq
 
     def terminate_query(self, query_id, ignore_further_results=True):
+        """Terminate a query (thread-safe).
+
+        Args:
+            query_id: The query ID to terminate
+            ignore_further_results: If True, remove from queries dict (ignore any future results)
+        """
         self.katrain.log(f"Terminating query {query_id}", OUTPUT_DEBUG)
 
         if query_id is not None:
             self.send_query({"action": "terminate", "terminateId": query_id}, None, None)
             if ignore_further_results:
-                self.queries.pop(query_id, None)
+                with self.thread_lock:
+                    self.queries.pop(query_id, None)
 
     def restart(self):
         self.queries = {}
@@ -244,7 +251,7 @@ class KataGoEngine(BaseEngine):
         return ok
 
     def wait_to_finish(self, timeout=30.0):
-        """Wait for queries to complete with timeout.
+        """Wait for queries to complete with timeout (thread-safe).
 
         Args:
             timeout: Maximum wait time in seconds (default: 30.0)
@@ -258,15 +265,24 @@ class KataGoEngine(BaseEngine):
             - Caller (shutdown) proceeds to terminate the process anyway
         """
         start = time.time()
-        while self.queries and self.katago_process and self.katago_process.poll() is None:
+        while True:
+            # Check queries with lock
+            with self.thread_lock:
+                remaining = len(self.queries)
+            if remaining == 0:
+                return True
+            # Check process status (local capture for TOCTOU safety)
+            process = self.katago_process
+            if process is None or process.poll() is not None:
+                return True
+            # Check timeout
             if time.time() - start > timeout:
                 self.katrain.log(
-                    f"wait_to_finish: timeout after {timeout}s, {len(self.queries)} queries remaining",
+                    f"wait_to_finish: timeout after {timeout}s, {remaining} queries remaining",
                     OUTPUT_DEBUG,
                 )
                 return False
             time.sleep(0.1)
-        return True
 
     def shutdown(self, finish=False):
         self.katrain.log(f"Engine shutdown starting (finish={finish})", OUTPUT_DEBUG)
@@ -305,9 +321,14 @@ class KataGoEngine(BaseEngine):
             return len(self.queries) + int(not self.write_queue.empty())
 
     def _read_stderr_thread(self):
-        while self.katago_process is not None:
+        """Read stderr from KataGo process (TOCTOU-safe)."""
+        while True:
+            # Local capture pattern for TOCTOU safety
+            process = self.katago_process
+            if process is None:
+                return
             try:
-                raw_line = self.katago_process.stderr.readline()
+                raw_line = process.stderr.readline()
                 line = _ensure_str(raw_line)
                 if line:
                     if "Uncaught exception" in line or "what()" in line:  # linux=what
@@ -320,19 +341,24 @@ class KataGoEngine(BaseEngine):
                         print("ERROR in processing KataGo stderr:", line, "Exception", e)
                 elif not self.check_alive(exception_if_dead=True):
                     return
-            except Exception as e:
+            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
                 self.katrain.log(f"Exception in reading stderr: {e}", OUTPUT_DEBUG)
                 return
 
     def _analysis_read_thread(self):
-        while self.katago_process is not None:
+        """Read analysis results from KataGo stdout (TOCTOU-safe)."""
+        while True:
+            # Local capture pattern for TOCTOU safety
+            process = self.katago_process
+            if process is None:
+                return
             try:
-                raw_line = self.katago_process.stdout.readline()
+                raw_line = process.stdout.readline()
                 line = _ensure_str(raw_line).strip()
-                if self.katago_process and not line:
+                if not line:
                     if not self.check_alive(exception_if_dead=True, maybe_open_recovery=True):
                         return
-            except OSError as e:
+            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
                 self.check_alive(os_error=str(e), exception_if_dead=True, maybe_open_recovery=True)
                 return
 
@@ -411,8 +437,16 @@ class KataGoEngine(BaseEngine):
                 self.katrain.log(f"Unexpected exception {e} while processing KataGo output {line}", OUTPUT_ERROR)
                 traceback.print_exc()
 
-    def _write_stdin_thread(self):  # flush only in a thread since it returns only when the other program reads
-        while self.katago_process is not None:
+    def _write_stdin_thread(self):
+        """Write queries to KataGo stdin (TOCTOU-safe).
+
+        Flush only in a thread since it returns only when the other program reads.
+        """
+        while True:
+            # Local capture pattern for TOCTOU safety
+            process = self.katago_process
+            if process is None:
+                return
             try:
                 query, callback, error_callback, next_move, node = self.write_queue.get(block=True, timeout=0.1)
             except queue.Empty:
@@ -446,12 +480,18 @@ class KataGoEngine(BaseEngine):
                     self.queries[query["id"]] = (callback, error_callback, time.time(), next_move, node)
                 tag = "ponder " if ponder else ("terminate " if terminate else "")
                 self.katrain.log(f"Sending {tag}query {query['id']}: {json.dumps(query)}", OUTPUT_DEBUG)
-                try:
-                    self.katago_process.stdin.write((json.dumps(query) + "\n").encode())
-                    self.katago_process.stdin.flush()
-                except OSError as e:
-                    self.katrain.log(f"Exception in writing to katago: {e}", OUTPUT_DEBUG)
-                    return  # some other thread will take care of this
+
+            # Write to stdin outside lock (I/O should not be under lock)
+            # Re-capture process reference after lock release
+            process = self.katago_process
+            if process is None:
+                return
+            try:
+                process.stdin.write((json.dumps(query) + "\n").encode())
+                process.stdin.flush()
+            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
+                self.katrain.log(f"Exception in writing to katago: {e}", OUTPUT_DEBUG)
+                return  # some other thread will take care of this
             # Terminate old ponder query outside of lock to avoid deadlock
             if old_ponder_query:
                 self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
