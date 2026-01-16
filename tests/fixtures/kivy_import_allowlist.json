@@ -3,14 +3,6 @@
   "_created": "2026-01-16",
   "_policy": "This allowlist is DELETE-ONLY. New entries cannot be added. Remove the import instead.",
   "entries": {
-    "core/lang.py|kivy._event": {
-      "reason": "Observable for KV binding support",
-      "removal_pr": "PR #140-B"
-    },
-    "core/lang.py|katrain.gui": {
-      "reason": "Texture cache clear on language change (lazy import)",
-      "removal_pr": "PR #140-A"
-    },
     "core/base_katrain.py|kivy": {
       "reason": "Config for Kivy logging",
       "removal_pr": "PR #139"
