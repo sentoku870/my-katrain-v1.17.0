@@ -1413,6 +1413,16 @@ msgstr ""
 "No categories had enough games (need 2+).\n"
 "Check that focus_player matches SGF player names."
 
+# Settings Popup Tabs (Phase 21)
+msgid "mykatrain:settings:tab_analysis"
+msgstr "Analysis"
+
+msgid "mykatrain:settings:tab_export"
+msgstr "Export"
+
+msgid "mykatrain:settings:tab_leela"
+msgstr "Leela Zero"
+
 # Leela Zero Settings (Phase 15)
 msgid "mykatrain:settings:leela_section"
 msgstr "Leela Zero Settings"
@@ -1439,7 +1449,9 @@ msgid "leela:resign_hint:title"
 msgstr "Resign Hint"
 
 msgid "leela:resign_hint:message"
-msgstr "Winrate has been below {winrate_pct}% for {moves} consecutive moves. Consider resigning."
+msgstr ""
+"Winrate has been below {winrate_pct}% for {moves} consecutive moves. "
+"Consider resigning."
 
 msgid "leela:resign_hint:ok"
 msgstr "OK"

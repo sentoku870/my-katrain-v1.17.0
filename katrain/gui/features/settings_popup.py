@@ -20,6 +20,7 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.slider import Slider
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
 from katrain.core import eval_metrics
@@ -101,12 +102,40 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     """
     current_settings = ctx.config("mykatrain_settings") or {}
 
-    # ScrollView でコンテンツをスクロール可能に
-    scroll_view = ScrollView(size_hint=(1, 1))
-    popup_content = BoxLayout(
+    # Main layout: TabbedPanel + Buttons
+    main_layout = BoxLayout(orientation="vertical", spacing=dp(8))
+
+    # TabbedPanel with 3 tabs
+    tabbed_panel = TabbedPanel(
+        do_default_tab=False,
+        tab_width=dp(120),
+        tab_height=dp(40),
+        size_hint_y=0.9,
+    )
+
+    # === Tab 1: 解析設定 (Analysis) ===
+    tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
+    tab1_scroll = ScrollView(do_scroll_x=False)
+    tab1_inner = BoxLayout(
         orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None
     )
-    popup_content.bind(minimum_height=popup_content.setter("height"))
+    tab1_inner.bind(minimum_height=tab1_inner.setter("height"))
+
+    # === Tab 2: 出力設定 (Export) ===
+    tab2 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_export"))
+    tab2_scroll = ScrollView(do_scroll_x=False)
+    tab2_inner = BoxLayout(
+        orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None
+    )
+    tab2_inner.bind(minimum_height=tab2_inner.setter("height"))
+
+    # === Tab 3: Leela Zero ===
+    tab3 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_leela"))
+    tab3_scroll = ScrollView(do_scroll_x=False)
+    tab3_inner = BoxLayout(
+        orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None
+    )
+    tab3_inner.bind(minimum_height=tab3_inner.setter("height"))
 
     # Skill Preset (Radio buttons)
     skill_label = Label(
@@ -121,7 +150,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     skill_label.bind(
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
     )
-    popup_content.add_widget(skill_label)
+    tab1_inner.add_widget(skill_label)
 
     current_skill_preset = (
         ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
@@ -166,7 +195,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         )
         skill_layout.add_widget(checkbox)
         skill_layout.add_widget(label)
-    popup_content.add_widget(skill_layout)
+    tab1_inner.add_widget(skill_layout)
 
     # PV Filter Level (Radio buttons)
     pv_filter_label = Label(
@@ -181,7 +210,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     pv_filter_label.bind(
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
     )
-    popup_content.add_widget(pv_filter_label)
+    tab1_inner.add_widget(pv_filter_label)
 
     current_pv_filter = (
         ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL
@@ -225,14 +254,14 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         )
         pv_filter_layout.add_widget(checkbox)
         pv_filter_layout.add_widget(label)
-    popup_content.add_widget(pv_filter_layout)
+    tab1_inner.add_widget(pv_filter_layout)
 
     # Default User Name
     user_row, user_input, _ = create_text_input_row(
         label_text=i18n._("mykatrain:settings:default_user_name"),
         initial_value=current_settings.get("default_user_name", ""),
     )
-    popup_content.add_widget(user_row)
+    tab2_inner.add_widget(user_row)
 
     # Karte Output Directory
     output_row = BoxLayout(
@@ -264,7 +293,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     output_row.add_widget(output_label)
     output_row.add_widget(output_input)
     output_row.add_widget(output_browse)
-    popup_content.add_widget(output_row)
+    tab2_inner.add_widget(output_row)
 
     # Batch Export Input Directory
     input_row = BoxLayout(
@@ -296,7 +325,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     input_row.add_widget(input_label)
     input_row.add_widget(input_input)
     input_row.add_widget(input_browse)
-    popup_content.add_widget(input_row)
+    tab2_inner.add_widget(input_row)
 
     # Karte Format (Radio buttons - 2x2 grid)
     format_label = Label(
@@ -311,7 +340,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     format_label.bind(
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
     )
-    popup_content.add_widget(format_label)
+    tab2_inner.add_widget(format_label)
 
     format_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
     format_options = [
@@ -351,7 +380,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         row.add_widget(label)
         format_layout.add_widget(row)
 
-    popup_content.add_widget(format_layout)
+    tab2_inner.add_widget(format_layout)
 
     # Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4
     opp_info_label = Label(
@@ -366,7 +395,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     opp_info_label.bind(
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
     )
-    popup_content.add_widget(opp_info_label)
+    tab2_inner.add_widget(opp_info_label)
 
     opp_info_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
     opp_info_options = [
@@ -404,23 +433,10 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         row.add_widget(checkbox)
         row.add_widget(label)
         opp_info_layout.add_widget(row)
-    popup_content.add_widget(opp_info_layout)
+    tab2_inner.add_widget(opp_info_layout)
 
     # === Leela Zero Settings Section ===
-    leela_section_label = Label(
-        text=i18n._("mykatrain:settings:leela_section"),
-        size_hint_y=None,
-        height=dp(35),
-        halign="left",
-        valign="middle",
-        color=(0.3, 0.6, 1, 1),
-        bold=True,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    leela_section_label.bind(
-        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
-    )
-    popup_content.add_widget(leela_section_label)
+    # Note: Section label is no longer needed as it's now a separate tab
 
     # Leela Enabled Checkbox
     leela_config = ctx.config("leela") or {}
@@ -444,7 +460,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     )
     leela_enabled_row.add_widget(leela_enabled_checkbox)
     leela_enabled_row.add_widget(leela_enabled_label)
-    popup_content.add_widget(leela_enabled_row)
+    tab3_inner.add_widget(leela_enabled_row)
 
     # Leela Executable Path
     leela_path_row = BoxLayout(
@@ -476,7 +492,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_path_row.add_widget(leela_path_label)
     leela_path_row.add_widget(leela_path_input)
     leela_path_row.add_widget(leela_path_browse)
-    popup_content.add_widget(leela_path_row)
+    tab3_inner.add_widget(leela_path_row)
 
     # Leela K Value Slider
     leela_k_row = BoxLayout(
@@ -514,7 +530,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_k_row.add_widget(leela_k_label)
     leela_k_row.add_widget(leela_k_slider)
     leela_k_row.add_widget(leela_k_value_label)
-    popup_content.add_widget(leela_k_row)
+    tab3_inner.add_widget(leela_k_row)
 
     # Leela Max Visits
     leela_visits_row = BoxLayout(
@@ -540,7 +556,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     )
     leela_visits_row.add_widget(leela_visits_label)
     leela_visits_row.add_widget(leela_visits_input)
-    popup_content.add_widget(leela_visits_row)
+    tab3_inner.add_widget(leela_visits_row)
 
     # Leela Top Moves Display
     leela_top_moves_row = BoxLayout(
@@ -575,9 +591,9 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_top_moves_row.add_widget(leela_top_moves_label)
     leela_top_moves_row.add_widget(leela_top_moves_spinner)
     leela_top_moves_row.add_widget(leela_top_moves_spinner_2)
-    popup_content.add_widget(leela_top_moves_row)
+    tab3_inner.add_widget(leela_top_moves_row)
 
-    # Buttons
+    # Buttons (outside TabbedPanel)
     buttons_layout = BoxLayout(
         orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
     )
@@ -597,14 +613,31 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     )
     buttons_layout.add_widget(save_button)
     buttons_layout.add_widget(cancel_button)
-    popup_content.add_widget(buttons_layout)
 
-    scroll_view.add_widget(popup_content)
+    # Assemble tabs
+    tab1_scroll.add_widget(tab1_inner)
+    tab1.add_widget(tab1_scroll)
+    tabbed_panel.add_widget(tab1)
+
+    tab2_scroll.add_widget(tab2_inner)
+    tab2.add_widget(tab2_scroll)
+    tabbed_panel.add_widget(tab2)
+
+    tab3_scroll.add_widget(tab3_inner)
+    tab3.add_widget(tab3_scroll)
+    tabbed_panel.add_widget(tab3)
+
+    # Set default tab to tab1 (Analysis)
+    tabbed_panel.default_tab = tab1
+
+    # Assemble main layout
+    main_layout.add_widget(tabbed_panel)
+    main_layout.add_widget(buttons_layout)
 
     popup = I18NPopup(
         title_key="mykatrain:settings",
         size=[dp(900), dp(700)],
-        content=scroll_view,
+        content=main_layout,
     ).__self__
 
     # Save callback
