@@ -225,6 +225,9 @@ class KaTrainGui(Screen, KaTrainBase):
         self.last_key_down = None
         self.last_focus_event = 0
 
+        # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
+        self._clock_events = []
+
     def _load_export_settings(self) -> dict:
         """Delegates to settings_popup.load_export_settings()."""
         return load_export_settings(self)
@@ -411,7 +414,10 @@ class KaTrainGui(Screen, KaTrainBase):
             finally:
                 self._suppress_play_mode_switch = False
 
-        Clock.schedule_interval(self.handle_animations, 0.1)
+        # Phase 22: Clockイベントを追跡（cleanup用）
+        animation_event = Clock.schedule_interval(self.handle_animations, 0.1)
+        self._clock_events.append(animation_event)
+
         Window.request_keyboard(None, self, "").bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
 
         def set_focus_event(*args):
@@ -421,7 +427,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # 前回終了時のモードを復元
         Clock.schedule_once(lambda dt: self.restore_last_mode(), 0.3)
-        
+
         # Initialize focus button states on startup
         Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
 
@@ -493,6 +499,24 @@ class KaTrainGui(Screen, KaTrainBase):
     def shutdown_leela_engine(self) -> None:
         """Shutdown Leela engine."""
         self._leela_manager.shutdown_engine()
+
+    def cleanup(self) -> None:
+        """アプリ終了時のクリーンアップ（Phase 22）
+
+        on_request_close から呼び出される。
+        - Clockイベントをキャンセル
+        - 子コンポーネントのcleanupを呼び出し
+        """
+        # Clockイベントのキャンセル
+        for event in self._clock_events:
+            event.cancel()
+        self._clock_events.clear()
+
+        # 子コンポーネントのcleanup
+        if hasattr(self, "controls") and self.controls and hasattr(self.controls, "cleanup"):
+            self.controls.cleanup()
+
+        self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
 
     def request_leela_analysis(self) -> None:
         """Request Leela analysis for current node (with debounce and duplicate prevention)."""
@@ -1356,6 +1380,8 @@ class KaTrainApp(MDApp):
                 self.gui.engine.shutdown(finish=None)
             # Shutdown Leela engine (Phase 15)
             self.gui.shutdown_leela_engine()
+            # Phase 22: Clockイベントのクリーンアップ
+            self.gui.cleanup()
 
     def signal_handler(self, _signal, _frame):
         if self.gui.debug_level >= OUTPUT_DEBUG:
