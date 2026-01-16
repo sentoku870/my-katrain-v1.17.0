@@ -112,6 +112,7 @@ from katrain.core.errors import EngineError
 from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.package_export_ui import do_export_package
+from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
 from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node, extract_sgf_statistics
 from katrain.gui.features.summary_aggregator import (
     scan_player_names,
@@ -854,6 +855,14 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_export_package(self, anonymize: bool = False, *args, **kwargs):
         """Export LLM package. Delegates to package_export_ui.do_export_package()."""
         do_export_package(self, anonymize=anonymize)
+
+    def _do_open_latest_report(self, *args, **kwargs):
+        """Open the most recent report file."""
+        open_latest_report(self)
+
+    def _do_open_output_folder(self, *args, **kwargs):
+        """Open the output folder in the system file manager."""
+        open_output_folder(self)
 
     def _determine_user_color(self, username: str) -> Optional[str]:
         """Determine user's color based on player names in SGF.
