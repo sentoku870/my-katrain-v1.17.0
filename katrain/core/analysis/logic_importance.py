@@ -18,6 +18,8 @@ from katrain.core.analysis.models import (
     DEFAULT_IMPORTANT_MOVE_LEVEL,
     DIFFICULTY_MODIFIER_HARD,
     DIFFICULTY_MODIFIER_ONLY_MOVE,
+    DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_BONUS,
+    DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_THRESHOLD,
     EvalSnapshot,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     ImportantMoveSettings,
@@ -38,20 +40,36 @@ if TYPE_CHECKING:
 # =============================================================================
 
 
-def get_difficulty_modifier(difficulty: Optional[PositionDifficulty]) -> float:
+def get_difficulty_modifier(
+    difficulty: Optional[PositionDifficulty],
+    canonical_loss: float = 0.0,
+) -> float:
     """
     Get the importance modifier based on position difficulty.
 
+    Phase 23: ONLY_MOVE の緩和
     - HARD: +1.0 (difficult positions have higher learning value)
-    - ONLY_MOVE: -2.0 (no choices = low learning value)
+    - ONLY_MOVE: -1.0 (was -2.0, relaxed for learning value)
+      - 大損失 (>= 2.0目) の場合: さらに +0.5 緩和 → 実質 -0.5
     - EASY/NORMAL/UNKNOWN/None: 0.0 (no modifier)
+
+    Args:
+        difficulty: 局面の難易度
+        canonical_loss: 正規化された損失（目数、0以上）
+
+    Returns:
+        重要度への修正値
     """
     if difficulty is None:
         return 0.0
     if difficulty == PositionDifficulty.HARD:
         return DIFFICULTY_MODIFIER_HARD
     if difficulty == PositionDifficulty.ONLY_MOVE:
-        return DIFFICULTY_MODIFIER_ONLY_MOVE
+        modifier = DIFFICULTY_MODIFIER_ONLY_MOVE
+        # 大損失なら緩和（一択でも大きなミスは学習価値あり）
+        if canonical_loss >= DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_THRESHOLD:
+            modifier += DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_BONUS
+        return modifier
     return 0.0
 
 
@@ -121,7 +139,7 @@ def compute_importance_for_moves(
         # 3. Difficulty modifier - only for HIGH confidence
         difficulty_modifier = 0.0
         if use_all_components:
-            difficulty_modifier = get_difficulty_modifier(m.position_difficulty)
+            difficulty_modifier = get_difficulty_modifier(m.position_difficulty, canonical_loss)
 
         # 4. Streak start bonus - only for HIGH confidence
         streak_bonus = 0.0
