@@ -7,12 +7,30 @@ v5設計:
 - 既存KVファイルの変更不要
 """
 import weakref
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, Union
 
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
+from kivy.weakproxy import WeakProxy
 
 from katrain.core.lang import i18n as core_i18n, DEFAULT_LANGUAGE
+
+
+def _deref_widget(widget_ref: Union[weakref.ref, WeakProxy]):
+    """Dereference a widget from either weakref.ref or WeakProxy.
+
+    Returns None if the widget has been garbage collected.
+    """
+    if isinstance(widget_ref, WeakProxy):
+        try:
+            # Access any attribute to check if still alive
+            _ = widget_ref.__class__
+            return widget_ref
+        except ReferenceError:
+            return None
+    else:
+        # weakref.ref - call to get the object
+        return widget_ref()
 
 
 class KivyLangBridge(EventDispatcher):
@@ -27,7 +45,8 @@ class KivyLangBridge(EventDispatcher):
     def __init__(self, lang_instance, **kwargs):
         super().__init__(**kwargs)
         self._lang = lang_instance
-        self._observers: List[Tuple[weakref.ref, Callable, Tuple[Any, ...]]] = []
+        # WeakProxy or weakref.ref - both support () call to get the widget
+        self._observers: List[Tuple[Union[weakref.ref, WeakProxy], Callable, Tuple[Any, ...]]] = []
 
         self.font_name = lang_instance.font_name
         self.current_lang = lang_instance.lang or DEFAULT_LANGUAGE
@@ -66,7 +85,11 @@ class KivyLangBridge(EventDispatcher):
         """KVバインディング用（レガシー互換）"""
         if name == "_":
             widget, property_name, *_ = args[0]
-            widget_ref = weakref.ref(widget)
+            # WeakProxy is already a weak reference, don't wrap it again
+            if isinstance(widget, WeakProxy):
+                widget_ref = widget
+            else:
+                widget_ref = weakref.ref(widget)
             self._observers.append((widget_ref, func, args))
             try:
                 self.set_widget_font(widget)
@@ -81,7 +104,7 @@ class KivyLangBridge(EventDispatcher):
             widget, *_ = args[0]
             self._observers = [
                 (ref, f, a) for ref, f, a in self._observers
-                if ref() is not None and ref() is not widget
+                if _deref_widget(ref) is not None and _deref_widget(ref) is not widget
             ]
         else:
             return super().funbind(name, func, *args)
@@ -90,7 +113,7 @@ class KivyLangBridge(EventDispatcher):
         """レガシーobserversに通知"""
         alive_observers = []
         for widget_ref, func, args in self._observers:
-            widget = widget_ref()
+            widget = _deref_widget(widget_ref)
             if widget is None:
                 continue
 

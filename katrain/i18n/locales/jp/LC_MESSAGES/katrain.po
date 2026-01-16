@@ -1365,6 +1365,16 @@ msgstr ""
 "十分なゲーム数のカテゴリがありませんでした（2局以上必要）。\n"
 "フォーカスプレイヤーがSGFのプレイヤー名と一致しているか確認してください。"
 
+# Settings Popup Tabs (Phase 21)
+msgid "mykatrain:settings:tab_analysis"
+msgstr "解析設定"
+
+msgid "mykatrain:settings:tab_export"
+msgstr "出力設定"
+
+msgid "mykatrain:settings:tab_leela"
+msgstr "Leela Zero"
+
 # Leela Zero Settings (Phase 15)
 msgid "mykatrain:settings:leela_section"
 msgstr "Leela Zero設定"
