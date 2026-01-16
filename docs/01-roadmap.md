@@ -113,6 +113,13 @@
 | 21 | Settings Popup タブ化 | 13設定を3タブに再編成 | ✅ **完了** |
 | 22 | 安定性向上 | クラッシュ、フリーズ、リソースリーク防止 | ✅ **完了** |
 | 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
+| 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | TBD |
+| 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | TBD |
+| 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | TBD |
+| 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | TBD |
+| 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | TBD |
+| 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | TBD |
+| 30 | 検証テンプレ導線 | ショートカット、テンプレコピー | TBD |
 
 ---
 
@@ -608,6 +615,166 @@
 
 ---
 
+### Phase 24: Regression Tests / Golden Fixtures（SGF E2E）（TBD）
+
+#### 24.1 目的
+SGF→karte/summary の E2E テストを既存 golden test に統合し、出力の回帰を防止する。
+
+#### 24.2 スコープ
+**In:**
+- 実SGF入力のE2Eテストを `test_golden_karte.py`/`test_golden_summary.py` に追加
+- `--update-goldens` フラグでの期待値更新
+- 既存 `conftest.py` の `update_golden_if_requested()` を活用
+
+**Out:**
+- KataGo 解析の再実行（解析済みSGFを使用）
+- UI 操作のテスト
+
+#### 24.3 成果物
+- `tests/test_golden_karte.py` への実SGFケース追加
+- `tests/test_golden_summary.py` への実SGFケース追加
+- `tests/fixtures/golden/` - テスト用SGFと期待出力
+
+#### 24.4 受け入れ条件
+- [ ] 解析済みSGF 3件以上で karte 生成が安定
+- [ ] `uv run pytest tests/test_golden_karte.py tests/test_golden_summary.py -v` パス
+
+---
+
+### Phase 25: LLM Package Bulk Export（TBD）
+
+#### 25.1 目的
+karte + SGF + coach.md を zip パッケージでエクスポートし、LLM への添付を容易にする。
+
+#### 25.2 スコープ
+**In:**
+- zip ファイル生成（karte.md + SGF + coach.md）
+- manifest.json（ファイル一覧、生成日時、バージョン）
+- PB/PW 匿名化オプション
+- **プライバシー保護**: manifest に絶対パス・ユーザー名を含めない
+
+**Out:**
+- LLM への自動送信（non-goal）
+- SGF の加工（分岐削除等）
+
+#### 25.3 成果物
+- `katrain/core/reports/package_export.py` - zip 生成ロジック
+- `katrain/gui/features/package_export_ui.py` - Export Package UI
+
+#### 25.4 受け入れ条件
+- [ ] Export Package ボタンで zip がダウンロードフォルダに保存
+- [ ] manifest.json にファイル一覧と生成条件が記録（相対パスのみ）
+- [ ] 匿名化 ON で PB/PW が "Player1"/"Player2" に置換
+
+---
+
+### Phase 26: レポート閲覧/導線の小改善（TBD）
+
+#### 26.1 目的
+生成レポートへのアクセスを改善し、ユーザビリティを向上。
+
+#### 26.2 スコープ
+**In:**
+- 「最新レポートを開く」ボタン
+- 「出力フォルダを開く」ボタン（OS ファイルマネージャ起動）
+- Context / Bucket / engine_profile_id の表示（Smart Kifu 連携）
+
+**Out:**
+- レポート履歴管理（DB 化）
+
+#### 26.3 成果物
+- `katrain/gui/features/report_navigator.py` - 導線 UI
+- `katrain/common/file_opener.py` - OS 別ファイル/フォルダオープナー
+
+---
+
+### Phase 27: Settings UIスケーラブル化（TBD）
+
+#### 27.1 目的
+設定検索・Export/Import・タブ別リセット機能を追加。
+
+#### 27.2 スコープ
+**In:**
+- 設定検索（キーワードで項目をフィルタ/ハイライト）
+- 設定 Export / Import（JSON 形式）
+- タブ別リセット機能
+
+**Out:**
+- Advanced / Experimental タブ隔離（現状のタブ構成を維持）
+- クラウド同期
+
+#### 27.3 成果物
+- `katrain/gui/features/settings_search.py` - 検索 UI コンポーネント
+- `katrain/common/settings_export.py` - Export/Import ロジック
+
+---
+
+### Phase 28: Smart Kifu運用強化（TBD）
+
+#### 28.1 目的
+Smart Kifu とバッチ解析の連携強化、解析率の可視化。
+
+#### 28.2 スコープ
+**In:**
+- バッチ解析からの Training Set 自動登録導線
+- 解析率表示（解析済み/未解析の割合）
+- Training Set の解析ステータスサマリー
+
+**Out:**
+- 自動解析スケジューリング
+- クラウドストレージ連携
+
+#### 28.3 成果物
+- `katrain/gui/features/smart_kifu_batch_bridge.py` - バッチ連携 UI
+- Training Set Manager への「解析率」列追加
+
+---
+
+### Phase 29: Diagnostics + Bug Report Bundle（TBD）
+
+#### 29.1 目的
+バグ報告用の診断情報収集を容易にする。
+
+#### 29.2 スコープ
+**In:**
+- 診断画面（システム情報、KataGo バージョン、設定サマリー）
+- zip 出力（ログ、設定スナップショット、システム情報）
+- 「バグ報告用データを生成」ボタン
+- **プライバシー保護（サニタイズ）**:
+  - 絶対パスをマスキング（`C:\Users\xxx\...` → `<USER_HOME>/...`）
+  - ユーザー名・マシン名を除去
+  - ログ内の個人情報（SGFパス等）を正規化
+
+**Out:**
+- SGF / 棋譜の自動添付
+- 自動送信
+
+#### 29.3 成果物
+- `katrain/gui/features/diagnostics_popup.py` - 診断画面 UI
+- `katrain/core/diagnostics.py` - 情報収集ロジック
+
+---
+
+### Phase 30: 検証テンプレ運用の導線（TBD）
+
+#### 30.1 目的
+`03-llm-validation.md` の検証サイクルを UI から簡単に開始できるようにする。
+
+#### 30.2 スコープ
+**In:**
+- 「検証サイクルを開始」ショートカット（テンプレをクリップボードにコピー）
+- プロンプトテンプレートの選択 UI
+- 行動ルール記録用テンプレート生成
+
+**Out:**
+- LLM への自動送信
+- 行動ルールの DB 管理
+
+#### 30.3 成果物
+- `katrain/gui/features/validation_helper.py` - 検証支援 UI
+
+---
+
 ## 9. スモークテスト チェックリスト
 
 リリース前に2分以内で確認できる主要UXパスのチェックリスト。
@@ -641,6 +808,15 @@
 
 ## 11. 変更履歴
 
+- 2026-01-16: Phase 24〜30 ロードマップ追加
+  - **Phase 24**: Regression Tests (SGF E2E) - 既存golden testに実SGFケース追加
+  - **Phase 25**: LLM Package Export - zip + manifest + PB/PW匿名化
+  - **Phase 26**: レポート導線改善 - 最新レポートを開く、フォルダを開く
+  - **Phase 27**: Settings UI拡張 - 検索、Export/Import、タブ別リセット
+  - **Phase 28**: Smart Kifu運用強化 - バッチ連携、解析率表示
+  - **Phase 29**: Diagnostics - 診断画面、Bug Report zip（サニタイズ付き）
+  - **Phase 30**: 検証テンプレ導線 - ショートカット、テンプレコピー
+  - **優先度**: S = 24,25,27,29 / A = 26,28,30
 - 2026-01-16: Phase 23 カルテ・サマリー品質向上完了（PR #141）
   - **PR #1**: ONLY_MOVE難易度修正緩和（-2.0 → -1.0、大損失時+0.5緩和）
     - `get_difficulty_modifier()` に `canonical_loss` パラメータ追加
