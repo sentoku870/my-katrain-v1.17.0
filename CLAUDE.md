@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-20（解析基盤、カルテ、リファクタリング、Guardrails）
-- **次**: Phase 21 以降は未定（機能追加/安定化）
+- **完了**: Phase 1-24（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト）
+- **次**: Phase 25 LLM Package Export
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,10 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-17: Phase 24 完了（SGF E2E Regression Tests）
+  - 新規: `tests/helpers/` パッケージ（mock_analysis.py, stats_extraction.py）
+  - 拡張: `tests/conftest.py`（CI検出、改行正規化）
+  - 追加: TestKarteFromSGF, TestSummaryFromSGF（3 SGFファイル対応）
 - 2026-01-16: Phase 20 完了、コード構造更新
   - core層のKivy依存を大幅削減（許可リスト6→1エントリ）
   - 新規: `common/platform.py`, `common/config_store.py`, `gui/lang_bridge.py`

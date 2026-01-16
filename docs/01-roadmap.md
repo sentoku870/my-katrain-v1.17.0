@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-16
+> 最終更新: 2026-01-17
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -113,7 +113,7 @@
 | 21 | Settings Popup タブ化 | 13設定を3タブに再編成 | ✅ **完了** |
 | 22 | 安定性向上 | クラッシュ、フリーズ、リソースリーク防止 | ✅ **完了** |
 | 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
-| 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | TBD |
+| 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | ✅ **完了** |
 | 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | TBD |
 | 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | TBD |
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | TBD |
@@ -615,29 +615,49 @@
 
 ---
 
-### Phase 24: Regression Tests / Golden Fixtures（SGF E2E）（TBD）
+### Phase 24: Regression Tests / Golden Fixtures（SGF E2E）✅ **完了**
 
 #### 24.1 目的
 SGF→karte/summary の E2E テストを既存 golden test に統合し、出力の回帰を防止する。
 
 #### 24.2 スコープ
 **In:**
-- 実SGF入力のE2Eテストを `test_golden_karte.py`/`test_golden_summary.py` に追加
-- `--update-goldens` フラグでの期待値更新
-- 既存 `conftest.py` の `update_golden_if_requested()` を活用
+- ✅ 実SGF入力のE2Eテストを `test_golden_karte.py`/`test_golden_summary.py` に追加
+- ✅ `--update-goldens` フラグでの期待値更新
+- ✅ 既存 `conftest.py` の `update_golden_if_requested()` を活用
 
 **Out:**
-- KataGo 解析の再実行（解析済みSGFを使用）
+- KataGo 解析の再実行（モック解析注入で代替）
 - UI 操作のテスト
 
 #### 24.3 成果物
-- `tests/test_golden_karte.py` への実SGFケース追加
-- `tests/test_golden_summary.py` への実SGFケース追加
-- `tests/fixtures/golden/` - テスト用SGFと期待出力
+- [x] `tests/helpers/` パッケージ新設
+  - `mock_analysis.py`: `LOSS_AT_MOVE` パターン、`inject_mock_analysis()`
+  - `stats_extraction.py`: `extract_stats_from_nodes()` for summary tests
+- [x] `tests/conftest.py` 拡張
+  - `is_ci_environment()`: CI環境検出
+  - `normalize_output()`: 改行正規化（CRLF→LF）、スペース区切り時刻形式対応
+- [x] `tests/test_golden_karte.py` への `TestKarteFromSGF` 追加
+- [x] `tests/test_golden_summary.py` への `TestSummaryFromSGF` 追加
+- [x] 7つの新規 Golden ファイル
+  - `karte_sgf_fox.golden`, `karte_sgf_alphago.golden`, `karte_sgf_panda.golden`
+  - `summary_sgf_fox.golden`, `summary_sgf_alphago.golden`, `summary_sgf_panda.golden`, `summary_sgf_multi.golden`
 
 #### 24.4 受け入れ条件
-- [ ] 解析済みSGF 3件以上で karte 生成が安定
-- [ ] `uv run pytest tests/test_golden_karte.py tests/test_golden_summary.py -v` パス
+- [x] 3 SGFファイル（fox, alphago, panda）で karte/summary 生成が安定
+- [x] 決定性テストで出力の一貫性を確認
+- [x] `uv run pytest tests/test_golden_karte.py tests/test_golden_summary.py -v` パス（全957テスト）
+
+#### 24.5 実装（PR #142）
+- **tests/helpers/**: モック解析注入ユーティリティ
+  - `LOSS_AT_MOVE`: 決定的な損失パターン（手5=2.5目, 17=6.0目, 34=12.0目）
+  - `inject_mock_analysis()`: Game オブジェクトにモック解析を直接注入
+  - `extract_stats_from_nodes()`: モック解析から統計dict抽出
+- **tests/conftest.py**: 正規化強化
+  - CI環境検出（GitHub Actions, GitLab CI等対応）
+  - 改行コード正規化（CRLF→LF）
+  - スペース区切り時刻形式の正規化（`HH MM SS` → `[TIME]`）
+- **テストカバレッジ**: 3 SGF × (karte + summary) + 決定性テスト
 
 ---
 
@@ -808,6 +828,16 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
 
 ## 11. 変更履歴
 
+- 2026-01-17: Phase 24 Regression Tests (SGF E2E) 完了（PR #142）
+  - **tests/helpers/**: モック解析注入パッケージ新設
+    - `mock_analysis.py`: `LOSS_AT_MOVE` パターン、`inject_mock_analysis()`
+    - `stats_extraction.py`: `extract_stats_from_nodes()`
+  - **tests/conftest.py**: 正規化強化
+    - `is_ci_environment()`: CI環境検出
+    - 改行正規化（CRLF→LF）、スペース区切り時刻形式対応
+  - **TestKarteFromSGF**: 3 SGF（fox, alphago, panda）のE2Eテスト
+  - **TestSummaryFromSGF**: 3 SGF + 複数SGF統合テスト
+  - **成果**: 7つの新規Goldenファイル、全957テストパス
 - 2026-01-16: Phase 24〜30 ロードマップ追加
   - **Phase 24**: Regression Tests (SGF E2E) - 既存golden testに実SGFケース追加
   - **Phase 25**: LLM Package Export - zip + manifest + PB/PW匿名化
