@@ -754,7 +754,6 @@ KNOWN_ALLOWLIST_ENTRIES = frozenset({
     "core/lang.py|katrain.gui",  # lazy import
     "core/base_katrain.py|kivy",
     "core/base_katrain.py|kivy.storage.jsonstore",
-    "core/engine.py|kivy.utils",
     "core/game.py|kivy.clock",
 })
 
