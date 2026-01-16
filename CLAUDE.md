@@ -323,6 +323,10 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-17: Phase 26 完了（レポート導線改善）
+  - 新規: `common/file_opener.py`（クロスプラットフォームファイル/フォルダオープナー）
+  - 新規: `gui/features/report_navigator.py`（レポート導線UI）
+  - 機能: 「最新レポートを開く」「出力フォルダを開く」メニュー項目
 - 2026-01-17: Phase 24 完了（SGF E2E Regression Tests）
   - 新規: `tests/helpers/` パッケージ（mock_analysis.py, stats_extraction.py）
   - 拡張: `tests/conftest.py`（CI検出、改行正規化）
