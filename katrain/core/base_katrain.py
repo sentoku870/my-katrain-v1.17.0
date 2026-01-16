@@ -3,8 +3,8 @@ import shutil
 import sys
 
 from kivy import Config
-from kivy.storage.jsonstore import JsonStore
 
+from katrain.common.config_store import JsonFileConfigStore
 from katrain.core.ai import ai_rank_estimation
 from katrain.core.constants import (
     PLAYER_HUMAN,
@@ -113,7 +113,7 @@ class KaTrainBase:
                         self.log(f"Copied package config to local file {config_file}", OUTPUT_INFO)
                     else:  # user file exists
                         try:
-                            version_str = JsonStore(user_config_file).get("general")["version"]
+                            version_str = JsonFileConfigStore(user_config_file).get("general")["version"]
                             version = parse_version(version_str)
                             self.log(f"Parsed version: {version}", OUTPUT_DEBUG)
                         except Exception as e:  # noqa E722 broken file etc
@@ -138,7 +138,7 @@ class KaTrainBase:
                         OUTPUT_INFO,
                     )
         try:
-            self._config_store = JsonStore(config_file, indent=4)
+            self._config_store = JsonFileConfigStore(config_file, indent=4)
         except Exception as e:
             self.log(f"Failed to load config {config_file}: {e}", OUTPUT_ERROR)
             sys.exit(1)

@@ -7,5 +7,6 @@
 
 from katrain.common.theme_constants import DEFAULT_FONT, INFO_PV_COLOR
 from katrain.common.platform import get_platform
+from katrain.common.config_store import JsonFileConfigStore
 
-__all__ = ["DEFAULT_FONT", "INFO_PV_COLOR", "get_platform"]
+__all__ = ["DEFAULT_FONT", "INFO_PV_COLOR", "get_platform", "JsonFileConfigStore"]
