@@ -14,10 +14,6 @@
     "core/base_katrain.py|kivy": {
       "reason": "Config for Kivy logging",
       "removal_pr": "PR #139"
-    },
-    "core/base_katrain.py|kivy.storage.jsonstore": {
-      "reason": "Config storage",
-      "removal_pr": "PR #139"
     }
   }
 }
