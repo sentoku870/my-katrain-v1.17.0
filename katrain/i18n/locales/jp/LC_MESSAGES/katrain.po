@@ -1040,6 +1040,21 @@ msgstr "カルテ出力"
 msgid "mykatrain:export-package"
 msgstr "LLMパッケージ出力"
 
+msgid "mykatrain:open-latest-report"
+msgstr "最新レポートを開く"
+
+msgid "mykatrain:open-output-folder"
+msgstr "出力フォルダを開く"
+
+msgid "mykatrain:no-reports-found"
+msgstr "レポートがありません。先にカルテを出力してください。"
+
+msgid "mykatrain:folder-not-exist"
+msgstr "フォルダが見つかりません: {path}"
+
+msgid "mykatrain:open-failed"
+msgstr "開けませんでした: {error}"
+
 msgid "mykatrain:export-summary"
 msgstr "複数局まとめ"
 
@@ -1436,11 +1451,19 @@ msgstr "対局が読み込まれていません"
 msgid "Package Exported"
 msgstr "パッケージ出力完了"
 
-msgid "Package saved to:\n%s"
-msgstr "保存先:\n%s"
+msgid ""
+"Package saved to:\n"
+"%s"
+msgstr ""
+"保存先:\n"
+"%s"
 
 msgid "Package exported: %s"
 msgstr "パッケージを出力しました: %s"
 
-msgid "Failed to export package:\n%s"
-msgstr "パッケージの出力に失敗しました:\n%s"
+msgid ""
+"Failed to export package:\n"
+"%s"
+msgstr ""
+"パッケージの出力に失敗しました:\n"
+"%s"

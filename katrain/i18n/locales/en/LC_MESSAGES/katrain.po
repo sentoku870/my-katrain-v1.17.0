@@ -55,6 +55,21 @@ msgstr "Export Karte"
 msgid "mykatrain:export-package"
 msgstr "Export LLM Package"
 
+msgid "mykatrain:open-latest-report"
+msgstr "Open Latest Report"
+
+msgid "mykatrain:open-output-folder"
+msgstr "Open Output Folder"
+
+msgid "mykatrain:no-reports-found"
+msgstr "No reports found. Export a karte first."
+
+msgid "mykatrain:folder-not-exist"
+msgstr "Folder not found: {path}"
+
+msgid "mykatrain:open-failed"
+msgstr "Could not open: {error}"
+
 msgid "mykatrain:export-summary"
 msgstr "Export Multi-Game Summary"
 
@@ -1486,11 +1501,19 @@ msgstr "No game loaded"
 msgid "Package Exported"
 msgstr "Package Exported"
 
-msgid "Package saved to:\n%s"
-msgstr "Package saved to:\n%s"
+msgid ""
+"Package saved to:\n"
+"%s"
+msgstr ""
+"Package saved to:\n"
+"%s"
 
 msgid "Package exported: %s"
 msgstr "Package exported: %s"
 
-msgid "Failed to export package:\n%s"
-msgstr "Failed to export package:\n%s"
+msgid ""
+"Failed to export package:\n"
+"%s"
+msgstr ""
+"Failed to export package:\n"
+"%s"
