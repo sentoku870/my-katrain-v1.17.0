@@ -104,6 +104,8 @@ class KataGoEngine(BaseEngine):
     """Starts and communicates with the KataGO analysis engine"""
 
     PONDER_KEY = "_kt_continuous"
+    # Timeout for Queue.get() in consumer threads (seconds)
+    IO_TIMEOUT = 5.0
 
     def __init__(self, katrain, config):
         super().__init__(katrain, config)
@@ -118,8 +120,16 @@ class KataGoEngine(BaseEngine):
         self.analysis_thread = None
         self.stderr_thread = None
         self.write_stdin_thread = None
+        # Pipe reader threads (Phase 22: I/O timeout)
+        self.stdout_reader_thread = None
+        self.stderr_reader_thread = None
         self.shell = False
         self.write_queue = queue.Queue()
+        # Output queues for non-blocking I/O (Phase 22)
+        self._stdout_queue = queue.Queue()
+        self._stderr_queue = queue.Queue()
+        # Shutdown event (recreated on each start, not cleared)
+        self._shutdown_event = threading.Event()
         self.thread_lock = threading.Lock()
         if config.get("altcommand", ""):
             self.command = config["altcommand"]
@@ -159,7 +169,12 @@ class KataGoEngine(BaseEngine):
 
     def start(self):
         with self.thread_lock:
+            # Recreate queues and shutdown event for clean restart
             self.write_queue = queue.Queue()
+            self._stdout_queue = queue.Queue()
+            self._stderr_queue = queue.Queue()
+            # Important: recreate event (not clear()) to prevent old threads from resuming
+            self._shutdown_event = threading.Event()
             try:
                 self.katrain.log(f"Starting KataGo with {self.command}", OUTPUT_DEBUG)
                 startupinfo = None
@@ -177,9 +192,32 @@ class KataGoEngine(BaseEngine):
             except (FileNotFoundError, PermissionError, OSError) as e:
                 self.on_error(i18n._("Starting Kata failed").format(command=self.command, error=e), code="c")
                 return  # don't start
-            self.analysis_thread = threading.Thread(target=self._analysis_read_thread, daemon=True)
-            self.stderr_thread = threading.Thread(target=self._read_stderr_thread, daemon=True)
-            self.write_stdin_thread = threading.Thread(target=self._write_stdin_thread, daemon=True)
+            # Pipe reader threads (blocking I/O isolated here)
+            self.stdout_reader_thread = threading.Thread(
+                target=self._pipe_reader_thread,
+                args=(self.katago_process.stdout, self._stdout_queue, "stdout"),
+                daemon=True,
+                name="katago-stdout-reader",
+            )
+            self.stderr_reader_thread = threading.Thread(
+                target=self._pipe_reader_thread,
+                args=(self.katago_process.stderr, self._stderr_queue, "stderr"),
+                daemon=True,
+                name="katago-stderr-reader",
+            )
+            # Consumer threads (non-blocking queue reads)
+            self.analysis_thread = threading.Thread(
+                target=self._analysis_read_thread, daemon=True, name="katago-analysis"
+            )
+            self.stderr_thread = threading.Thread(
+                target=self._read_stderr_thread, daemon=True, name="katago-stderr"
+            )
+            self.write_stdin_thread = threading.Thread(
+                target=self._write_stdin_thread, daemon=True, name="katago-stdin"
+            )
+            # Start all threads
+            self.stdout_reader_thread.start()
+            self.stderr_reader_thread.start()
             self.analysis_thread.start()
             self.stderr_thread.start()
             self.write_stdin_thread.start()
@@ -285,6 +323,17 @@ class KataGoEngine(BaseEngine):
             time.sleep(0.1)
 
     def shutdown(self, finish=False):
+        """Shutdown engine safely.
+
+        Shutdown sequence (order matters):
+        1. Set _shutdown_event -> notify consumer threads to stop
+        2. Put None to write_queue -> notify writer thread to stop
+        3. process.terminate() -> start process termination
+        4. Close pipes explicitly -> guarantee EOF for reader threads
+        5. Join threads with timeout -> wait for graceful shutdown
+        6. process.kill() if still alive -> force kill (suspended process workaround)
+        7. Set katago_process = None (last step)
+        """
         self.katrain.log(f"Engine shutdown starting (finish={finish})", OUTPUT_DEBUG)
         process = self.katago_process
         if finish and process:
@@ -293,21 +342,62 @@ class KataGoEngine(BaseEngine):
                 self.katrain.log(
                     "Engine shutdown: wait_to_finish timed out, proceeding to terminate", OUTPUT_DEBUG
                 )
+
+        # Step 1: Signal shutdown to consumer threads
+        self._shutdown_event.set()
+
+        # Step 2: Signal writer thread to stop
+        try:
+            self.write_queue.put(None)
+        except Exception:
+            pass
+
         if process:
-            self.katago_process = None
+            # Step 3: Terminate process (start graceful shutdown)
             self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
-            process.terminate()
+            try:
+                process.terminate()
+            except Exception:
+                pass
+
+            # Step 4: Close pipes explicitly (guarantee EOF for readline())
+            for pipe in [process.stdin, process.stdout, process.stderr]:
+                try:
+                    if pipe:
+                        pipe.close()
+                except Exception:
+                    pass
+
+            # Step 5: Wait for threads to finish (short timeout)
+            if finish is not None:  # don't care if exiting app
+                all_threads = [
+                    self.stdout_reader_thread,
+                    self.stderr_reader_thread,
+                    self.analysis_thread,
+                    self.stderr_thread,
+                    self.write_stdin_thread,
+                ]
+                for t in all_threads:
+                    if t and t.is_alive():
+                        t.join(timeout=2.0)
+                        if t.is_alive():
+                            self.katrain.log(
+                                f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG
+                            )
+
+            # Step 6: Force kill if still alive (suspended process workaround)
+            try:
+                if process.poll() is None:
+                    self.katrain.log("Process still alive, sending SIGKILL", OUTPUT_DEBUG)
+                    process.kill()
+                    process.wait(timeout=1.0)
+            except Exception as e:
+                self.katrain.log(f"Force kill failed: {e}", OUTPUT_DEBUG)
+
+            # Step 7: Clear process reference (last step)
+            self.katago_process = None
             self.katrain.log("Terminated KataGo process", OUTPUT_DEBUG)
-        if finish is not None:  # don't care if exiting app
-            for t in [self.write_stdin_thread, self.analysis_thread, self.stderr_thread]:
-                if t:
-                    t.join(timeout=5.0)
-                    if t.is_alive():
-                        # Timeout: thread still running. Python cannot force-kill threads.
-                        # Since daemon=True, thread will stop when process exits.
-                        self.katrain.log(
-                            f"Thread {t.name} did not stop within 5s timeout", OUTPUT_DEBUG
-                        )
+
         self.katrain.log("Engine shutdown complete", OUTPUT_DEBUG)
 
     def is_idle(self):
@@ -320,15 +410,36 @@ class KataGoEngine(BaseEngine):
         with self.thread_lock:
             return len(self.queries) + int(not self.write_queue.empty())
 
-    def _read_stderr_thread(self):
-        """Read stderr from KataGo process (TOCTOU-safe)."""
-        while True:
-            # Local capture pattern for TOCTOU safety
-            process = self.katago_process
-            if process is None:
-                return
+    def _pipe_reader_thread(self, pipe, output_queue, name):
+        """Read from pipe and put lines into queue (blocking I/O isolated here).
+
+        This thread performs blocking readline() calls. When the process terminates
+        or pipes are closed, readline() returns empty bytes (EOF).
+
+        Args:
+            pipe: File-like object (process.stdout or process.stderr)
+            output_queue: Queue to put read lines into
+            name: Thread name for logging
+        """
+        while not self._shutdown_event.is_set():
             try:
-                raw_line = process.stderr.readline()
+                line = pipe.readline()
+                if not line:
+                    break  # EOF or process terminated
+                output_queue.put(line)
+            except (OSError, ValueError):
+                break  # Pipe closed or error
+        # Signal consumer thread that this reader is done
+        output_queue.put(None)
+        self.katrain.log(f"Pipe reader {name} finished", OUTPUT_DEBUG)
+
+    def _read_stderr_thread(self):
+        """Process stderr lines from queue (non-blocking with timeout)."""
+        while not self._shutdown_event.is_set():
+            try:
+                raw_line = self._stderr_queue.get(timeout=self.IO_TIMEOUT)
+                if raw_line is None:
+                    return  # Termination signal from reader thread
                 line = _ensure_str(raw_line)
                 if line:
                     if "Uncaught exception" in line or "what()" in line:  # linux=what
@@ -339,28 +450,43 @@ class KataGoEngine(BaseEngine):
                         self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
                     except Exception as e:
                         print("ERROR in processing KataGo stderr:", line, "Exception", e)
-                elif not self.check_alive(exception_if_dead=True):
+            except queue.Empty:
+                # Timeout - check if we should continue
+                if self._shutdown_event.is_set():
                     return
-            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
-                self.katrain.log(f"Exception in reading stderr: {e}", OUTPUT_DEBUG)
+                # No stderr activity is normal during idle periods
+                continue
+            except Exception as e:
+                self.katrain.log(f"Exception in stderr thread: {e}", OUTPUT_DEBUG)
                 return
 
     def _analysis_read_thread(self):
-        """Read analysis results from KataGo stdout (TOCTOU-safe)."""
-        while True:
-            # Local capture pattern for TOCTOU safety
-            process = self.katago_process
-            if process is None:
-                return
+        """Process analysis results from queue (non-blocking with timeout)."""
+        while not self._shutdown_event.is_set():
             try:
-                raw_line = process.stdout.readline()
+                raw_line = self._stdout_queue.get(timeout=self.IO_TIMEOUT)
+                if raw_line is None:
+                    return  # Termination signal from reader thread
                 line = _ensure_str(raw_line).strip()
-                if not line:
-                    if not self.check_alive(exception_if_dead=True, maybe_open_recovery=True):
-                        return
-            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
+            except queue.Empty:
+                # Timeout - check if we should continue or handle timeout
+                if self._shutdown_event.is_set():
+                    return
+                # Check if there are pending queries and process is dead
+                with self.thread_lock:
+                    has_pending_queries = bool(self.queries)
+                if has_pending_queries and not self.check_alive():
+                    self._handle_engine_timeout()
+                    return
+                # No pending queries or process alive - continue waiting
+                continue
+            except Exception as e:
+                self.katrain.log(f"Exception in analysis thread: {e}", OUTPUT_DEBUG)
                 self.check_alive(os_error=str(e), exception_if_dead=True, maybe_open_recovery=True)
                 return
+
+            if not line:
+                continue
 
             if "Uncaught exception" in line:
                 msg = f"KataGo Engine Failed: {line}"
@@ -437,20 +563,42 @@ class KataGoEngine(BaseEngine):
                 self.katrain.log(f"Unexpected exception {e} while processing KataGo output {line}", OUTPUT_ERROR)
                 traceback.print_exc()
 
+    def _handle_engine_timeout(self):
+        """Handle engine timeout (called from background thread).
+
+        Called when analysis thread detects that:
+        1. Queue.get() timed out
+        2. There are pending queries
+        3. Process is no longer alive
+
+        This triggers shutdown and optionally shows recovery popup.
+        Note: Recovery popup is shown via katrain callback which handles UI threading.
+        """
+        self.katrain.log("Engine response timeout detected", OUTPUT_ERROR)
+        # Shutdown without waiting (already dead)
+        self.shutdown(finish=False)
+        # Show recovery popup via katrain callback (handles UI threading internally)
+        if self.allow_recovery:
+            self.on_error("Engine timeout", code="timeout", allow_popup=True)
+
     def _write_stdin_thread(self):
         """Write queries to KataGo stdin (TOCTOU-safe).
 
         Flush only in a thread since it returns only when the other program reads.
         """
-        while True:
+        while not self._shutdown_event.is_set():
             # Local capture pattern for TOCTOU safety
             process = self.katago_process
             if process is None:
                 return
             try:
-                query, callback, error_callback, next_move, node = self.write_queue.get(block=True, timeout=0.1)
+                item = self.write_queue.get(block=True, timeout=0.1)
             except queue.Empty:
                 continue
+            # Check for termination signal (None)
+            if item is None:
+                return
+            query, callback, error_callback, next_move, node = item
             old_ponder_query = None  # To call terminate_query outside of lock
             with self.thread_lock:
                 if "id" not in query:
