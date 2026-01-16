@@ -19,10 +19,6 @@
       "reason": "Config storage",
       "removal_pr": "PR #139"
     },
-    "core/engine.py|kivy.utils": {
-      "reason": "Platform detection",
-      "removal_pr": "PR #137"
-    },
     "core/game.py|kivy.clock": {
       "reason": "Scheduling notifications",
       "removal_pr": "PR #138"

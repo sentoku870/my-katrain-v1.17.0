@@ -10,7 +10,7 @@ import time
 import traceback
 from typing import Callable, Dict, List, Optional
 
-from kivy.utils import platform as kivy_platform
+from katrain.common.platform import get_platform
 
 from katrain.core.constants import (
     OUTPUT_DEBUG,
@@ -72,9 +72,9 @@ class BaseEngine:
 
     def get_engine_path(self, exe):
         if not exe:
-            if kivy_platform == "win":
+            if get_platform() == "win":
                 exe = "katrain/KataGo/katago.exe"
-            elif kivy_platform == "linux":
+            elif get_platform() == "linux":
                 exe = "katrain/KataGo/katago"
             else:
                 exe = find_package_resource("katrain/KataGo/katago-osx")  # github actions built
