@@ -578,6 +578,31 @@
   - 全904テストパス
   - 設定ポップアップのUX改善
 
+### Phase 22: 安定性向上 ✅ **完了**
+- **目的**: アプリケーションの安定性向上（クラッシュ、フリーズ、リソースリークの防止）
+- **実装**: PR #137-140（2026-01-16）
+  - **PR #137: Quick Wins（Issue #3, #5）**
+    - `popups.py`: dismiss遅延を1秒→0.1秒に短縮、前イベントキャンセル
+    - `__main__.py`: Clock event追跡、cleanup()メソッド追加
+    - `controlspanel.py`: timer event追跡、cleanup()メソッド追加
+  - **PR #138: Thread Safety（Issue #2, #4）**
+    - `terminate_query`: ロック追加
+    - `wait_to_finish`: ロック追加、ローカルキャプチャパターン
+    - 全スレッド関数: TOCTOUパターン統一、例外ハンドリング拡張
+  - **PR #139: I/O Timeout（Issue #1）**
+    - Queue方式I/O: `_stdout_queue`, `_stderr_queue`
+    - `_pipe_reader_thread`: ブロッキングI/Oを分離
+    - `_shutdown_event`: 再起動時に再作成（clear()ではない）
+    - シャットダウンシーケンス改善（7ステップ）
+    - `_handle_engine_timeout`: 回復ポップアップ対応
+  - **PR #140: Stability Tests**
+    - 10件の自動テスト追加（スレッド安全性、タイムアウト、TOCTOU）
+- **成果**:
+  - 全914テストパス（+10件）
+  - KataGoハング時のフリーズ防止
+  - アプリ終了時のリソースリーク防止
+  - スレッド競合によるクラッシュ防止
+
 ---
 
 ## 9. スモークテスト チェックリスト

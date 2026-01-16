@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-16（Phase 19完了）
+> 最終更新: 2026-01-16（Phase 20完了）
 
 ---
 
@@ -11,7 +11,10 @@ katrain/
 ├── __main__.py           # アプリ起動、KaTrainGuiクラス（~1200行）
 │
 ├── common/               # 共有定数（循環依存解消用）
-│   └── theme_constants.py # INFO_PV_COLOR など
+│   ├── __init__.py       # DEFAULT_FONT など
+│   ├── theme_constants.py # INFO_PV_COLOR など
+│   ├── platform.py       # get_platform()（Phase 20、Kivy非依存OS判定）
+│   └── config_store.py   # JsonFileConfigStore（Phase 20、Mapping実装）
 │
 ├── core/                 # コアロジック
 │   ├── game.py            # Game（対局状態管理）
@@ -38,6 +41,7 @@ katrain/
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
 │   ├── badukpan.py        # 盤面表示（BadukPanWidget）
 │   ├── error_handler.py   # ErrorHandler（Phase 2で追加）
+│   ├── lang_bridge.py     # KivyLangBridge（Phase 20、i18n Kivyブリッジ）
 │   ├── popups.py          # ポップアップダイアログ
 │   ├── widgets/
 │   │   ├── graph.py       # ScoreGraph（勝率グラフ）
@@ -309,6 +313,12 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+- 2026-01-16: Phase 20 完了（PR #131-135）
+  - **common/platform.py**: Kivy非依存のOS判定関数を追加
+  - **common/config_store.py**: JsonFileConfigStore（Mapping実装）を追加
+  - **gui/lang_bridge.py**: KivyLangBridge（i18n Kivyブリッジ）を追加
+  - **core/lang.py**: Observable継承削除、コールバックベースに変更
+  - **許可リスト削減**: 6エントリ → 1エントリ
 - 2026-01-16: Phase B4/B5/B6 完了（PR #126-135）
   - **Phase B4**: analysis/logic.py分割
     - logic_loss.py: 損失計算関数を抽出
