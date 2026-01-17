@@ -118,7 +118,7 @@
 | 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | ✅ **完了** |
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
 | 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ **完了** |
-| 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | TBD |
+| 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | ✅ **完了** |
 | 30 | 検証テンプレ導線 | ショートカット、テンプレコピー | TBD |
 
 ---
@@ -820,7 +820,7 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
 
 ---
 
-### Phase 29: Diagnostics + Bug Report Bundle（TBD）
+### Phase 29: Diagnostics + Bug Report Bundle ✅ **完了**
 
 #### 29.1 目的
 バグ報告用の診断情報収集を容易にする。
@@ -840,8 +840,53 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
 - 自動送信
 
 #### 29.3 成果物
-- `katrain/gui/features/diagnostics_popup.py` - 診断画面 UI
-- `katrain/core/diagnostics.py` - 情報収集ロジック
+| ファイル | 行数 | 説明 |
+|----------|------|------|
+| `katrain/common/sanitize.py` | ~120 | パス/テキストサニタイズ（Kivy非依存） |
+| `katrain/core/log_buffer.py` | ~80 | スレッドセーフな循環ログバッファ |
+| `katrain/core/diagnostics.py` | ~280 | 情報収集、ZIP生成 |
+| `katrain/gui/features/diagnostics_popup.py` | ~370 | 診断ポップアップUI |
+| `tests/test_sanitize.py` | ~300 | サニタイズテスト（30件） |
+| `tests/test_log_buffer.py` | ~150 | LogBufferテスト（13件） |
+| `tests/test_diagnostics.py` | ~320 | 診断テスト（28件） |
+
+#### 29.4 変更ファイル
+| ファイル | 変更内容 |
+|----------|----------|
+| `katrain/core/base_katrain.py` | LogBuffer統合、`get_recent_logs()` |
+| `katrain/__main__.py` | Diagnosticsメニュー項目追加 |
+| `katrain/gui.kv` | メニューボタン追加 |
+| `katrain/i18n/locales/*/katrain.po` | 翻訳キー追加 |
+| `.gitignore` | `log_buffer.py` 例外追加 |
+
+#### 29.5 アーキテクチャ
+```
+Common層: sanitize.py（純粋関数、Kivy非依存）
+    ↑
+Core層:  log_buffer.py（循環バッファ）
+         diagnostics.py（情報収集、ZIP生成）
+    ↑
+GUI層:   diagnostics_popup.py（UI、スレッド管理）
+```
+
+#### 29.6 ZIP構造
+```
+diagnostics_YYYYMMDD-HHMMSS_XXXX.zip
+├── manifest.json        # メタデータ（schema_version, privacy flags）
+├── system_info.json     # OS、Python、メモリ（サニタイズ済み）
+├── katago_info.json     # パス、状態（サニタイズ済み）
+├── app_info.json        # バージョン、設定パス（サニタイズ済み）
+├── settings.json        # 設定スナップショット（engineセクション除外）
+└── logs.txt             # サニタイズ済みログ（最新500行）
+```
+
+#### 29.7 受入基準
+- [x] MyKatrain メニュー → Diagnostics で画面表示
+- [x] システム情報、KataGo情報、アプリ情報が正しく表示
+- [x] 「Generate Bug Report」でZIP生成（UIフリーズなし）
+- [x] ZIP内に個人情報がないこと（パス→`<USER_HOME>`等）
+- [x] 「Open Folder」ボタンでフォルダを開ける
+- [x] テスト71件全パス（sanitize:30, log_buffer:13, diagnostics:28）
 
 ---
 
@@ -927,7 +972,7 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
   - **Phase 26**: レポート導線改善 - 最新レポートを開く、フォルダを開く
   - **Phase 27**: Settings UI拡張 - 検索、Export/Import、タブ別リセット
   - **Phase 28**: Smart Kifu運用強化 - バッチ連携、解析率表示
-  - **Phase 29**: Diagnostics - 診断画面、Bug Report zip（サニタイズ付き）
+  - **Phase 29**: Diagnostics - 診断画面、Bug Report zip（サニタイズ付き） ✅ **完了**
   - **Phase 30**: 検証テンプレ導線 - ショートカット、テンプレコピー
   - **優先度**: S = 24,25,27,29 / A = 26,28,30
 - 2026-01-16: Phase 23 カルテ・サマリー品質向上完了（PR #141）

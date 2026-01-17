@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-28（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化）
-- **次**: Phase 29 Diagnostics
+- **完了**: Phase 1-29（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics）
+- **次**: Phase 30 検証テンプレ導線
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,14 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-17: Phase 29 完了（Diagnostics + Bug Report Bundle）
+  - 新規: `common/sanitize.py`（パス/テキストサニタイズ、Kivy非依存）
+  - 新規: `core/log_buffer.py`（スレッドセーフな循環ログバッファ）
+  - 新規: `core/diagnostics.py`（システム情報収集、ZIP生成）
+  - 新規: `gui/features/diagnostics_popup.py`（診断ポップアップUI）
+  - 機能: MyKatrain メニュー → Diagnostics で診断画面表示
+  - 機能: Bug Report ZIP生成（プライバシー保護付き）
+  - テスト: 71件（test_sanitize.py, test_log_buffer.py, test_diagnostics.py）
 - 2026-01-17: Phase 28 完了（Smart Kifu運用強化）
   - 新規: `ImportErrorCode` enum（文字列マッチング脆弱性を解消）
   - 新規: `TrainingSetSummary` dataclass（サマリー計算）
