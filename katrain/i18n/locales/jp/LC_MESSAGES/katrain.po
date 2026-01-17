@@ -1483,3 +1483,18 @@ msgstr ""
 
 msgid "mykatrain:settings:reset_success"
 msgstr "「{tab}」の設定をデフォルトに戻しました"
+
+msgid "mykatrain:settings:export"
+msgstr "エクスポート..."
+
+msgid "mykatrain:settings:import"
+msgstr "インポート..."
+
+msgid "mykatrain:settings:import_title"
+msgstr "設定のインポート"
+
+msgid "mykatrain:settings:export_success"
+msgstr "設定を {path} にエクスポートしました"
+
+msgid "mykatrain:settings:import_success"
+msgstr "設定をインポートしました。バックアップ: {backup}"
