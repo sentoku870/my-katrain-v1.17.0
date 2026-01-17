@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-29（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics）
-- **次**: Phase 30-39 Leela Zero解析パイプライン拡張
+- **完了**: Phase 1-30（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化）
+- **次**: Phase 31 Leela→MoveEval変換
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,14 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 30 完了（解析強度抽象化）
+  - 新規: `AnalysisStrength` enum（QUICK/DEEP、エンジン共通抽象）
+  - 新規: `ENGINE_VISITS_DEFAULTS` 定数（KataGo/Leela別デフォルト値）
+  - 新規: `resolve_visits()` 関数（防御的パース、フォールバック付き）
+  - 新規: `LEELA_FAST_VISITS_MIN` 定数（UI最小値 50）
+  - 設定: `leela.fast_visits` 追加（デフォルト 200）
+  - UI: Settings > Leela > Fast Visits 入力欄追加（clampバリデーション付き）
+  - テスト: 28件（test_analysis_strength.py）
 - 2026-01-17: Phase 29 完了（Diagnostics + Bug Report Bundle）
   - 新規: `common/sanitize.py`（パス/テキストサニタイズ、Kivy非依存）
   - 新規: `core/log_buffer.py`（スレッドセーフな循環ログバッファ）

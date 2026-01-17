@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-17
+> 最終更新: 2026-01-18
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -912,18 +912,18 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 5. **損失セマンティクス明確化**: `score_loss`（目単位）vs `leela_loss_est`（推定損失）
 
 #### フェーズ概要
-| Phase | 名称 | 主な成果物 |
-|------:|------|-----------|
-| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits |
-| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est |
-| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル |
-| 33 | エンジン選択設定 | engine.analysis_engine キー |
-| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 |
-| 35 | Leelaカルテ統合 | Export Karte Leela対応 |
-| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） |
-| 37 | テスト強化 | Python-level E2E, golden |
-| 38 | ドキュメント整備 | ユーザーガイド |
-| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド |
+| Phase | 名称 | 主な成果物 | 状態 |
+|------:|------|-----------|------|
+| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits | ✅ **完了** |
+| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est | 🔄 **次** |
+| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル | |
+| 33 | エンジン選択設定 | engine.analysis_engine キー | |
+| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 | |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | |
+| 37 | テスト強化 | Python-level E2E, golden | |
+| 38 | ドキュメント整備 | ユーザーガイド | |
+| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | |
 
 #### 依存関係
 ```
