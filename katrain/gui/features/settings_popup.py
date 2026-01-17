@@ -911,6 +911,35 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     tab3_inner.add_widget(leela_visits_row)
     register_searchable(i18n._("mykatrain:settings:leela_max_visits"), leela_visits_row)
 
+    # Leela Fast Visits (Phase 30)
+    leela_fast_visits_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_fast_visits_label = Label(
+        text=i18n._("mykatrain:settings:leela_fast_visits"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_fast_visits_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_fast_visits_input = TextInput(
+        text=str(leela_config.get("fast_visits", 200)),
+        multiline=False,
+        input_filter="int",
+        size_hint_x=0.70,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_fast_visits_row.add_widget(leela_fast_visits_label)
+    leela_fast_visits_row.add_widget(leela_fast_visits_input)
+    tab3_inner.add_widget(leela_fast_visits_row)
+    register_searchable(
+        i18n._("mykatrain:settings:leela_fast_visits"), leela_fast_visits_row
+    )
+
     # Leela Top Moves Display
     leela_top_moves_row = BoxLayout(
         orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
@@ -1054,6 +1083,22 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
             new_leela_config["max_visits"] = max(100, min(100000, int(leela_visits_input.text)))
         except ValueError:
             pass  # use default
+
+        # leela.fast_visits (Phase 30)
+        from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
+
+        try:
+            fast_visits = int(leela_fast_visits_input.text.strip())
+            max_visits = new_leela_config["max_visits"]
+            # UI Validation:
+            # - 下限: LEELA_FAST_VISITS_MIN (50) または max_visits のうち小さい方
+            # - 上限: max_visits
+            # エッジケース: max_visits < 50 の場合、fast_visits も max_visits に制限
+            lower_bound = min(LEELA_FAST_VISITS_MIN, max_visits)
+            new_leela_config["fast_visits"] = max(lower_bound, min(max_visits, fast_visits))
+        except ValueError:
+            new_leela_config["fast_visits"] = 200  # default
+
         ctx.set_config_section("leela", new_leela_config)
         ctx.save_config("leela")
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
