@@ -119,7 +119,16 @@
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
 | 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ **完了** |
 | 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | ✅ **完了** |
-| 30 | 検証テンプレ導線 | ショートカット、テンプレコピー | TBD |
+| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits追加 | TBD |
+| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est フィールド | TBD |
+| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル表示 | TBD |
+| 33 | エンジン選択設定 | engine.analysis_engine キー追加 | TBD |
+| 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | TBD |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 | TBD |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | TBD |
+| 37 | テスト強化 | Python-level E2E, --update-goldens活用 | TBD |
+| 38 | ドキュメント整備 | ユーザーガイド | TBD |
+| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | TBD |
 
 ---
 
@@ -890,23 +899,40 @@ diagnostics_YYYYMMDD-HHMMSS_XXXX.zip
 
 ---
 
-### Phase 30: 検証テンプレ運用の導線（TBD）
+### Phase 30-39: Leela Zero解析パイプライン拡張（TBD）
 
-#### 30.1 目的
-`03-llm-validation.md` の検証サイクルを UI から簡単に開始できるようにする。
+Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成パイプラインに統合するためのロードマップです。
+詳細な計画は計画ファイルを参照してください。
 
-#### 30.2 スコープ
-**In:**
-- 「検証サイクルを開始」ショートカット（テンプレをクリップボードにコピー）
-- プロンプトテンプレートの選択 UI
-- 行動ルール記録用テンプレート生成
+#### 設計原則
+1. **単一エンジンレポート**: KataGo/Leela混合禁止（初回実装）
+2. **既存パイプライン再利用**: EvalSnapshot/MoveEvalを活用
+3. **テストはCI対応**: 実エンジン不使用（mock/stub + golden）
+4. **ハードコード禁止**: `leela.fast_visits`で設定可能
+5. **損失セマンティクス明確化**: `score_loss`（目単位）vs `leela_loss_est`（推定損失）
 
-**Out:**
-- LLM への自動送信
-- 行動ルールの DB 管理
+#### フェーズ概要
+| Phase | 名称 | 主な成果物 |
+|------:|------|-----------|
+| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits |
+| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est |
+| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル |
+| 33 | エンジン選択設定 | engine.analysis_engine キー |
+| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） |
+| 37 | テスト強化 | Python-level E2E, golden |
+| 38 | ドキュメント整備 | ユーザーガイド |
+| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド |
 
-#### 30.3 成果物
-- `katrain/gui/features/validation_helper.py` - 検証支援 UI
+#### 依存関係
+```
+Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
+                                   │
+                                   └→ 36 [OPTIONAL]
+```
+- Phase 36（バッチ）はオプション。Phase 35完了後いつでも実装可能
+- Phase 40+（エンジン比較、PLAYモード）は次のマイルストーン
 
 ---
 
@@ -943,6 +969,24 @@ diagnostics_YYYYMMDD-HHMMSS_XXXX.zip
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 30-39 ロードマップ追加（Leela Zero解析パイプライン拡張 v2）
+  - **Phase 30**: 解析強度抽象化（Quick/Deep）+ `leela.fast_visits`設定追加
+  - **Phase 31**: Leela→MoveEval変換（`leela_loss_est`フィールド新設）
+  - **Phase 32**: 既存レポートのLeela対応（推定損失ラベル区別）
+  - **Phase 33**: エンジン選択設定（`engine.analysis_engine`）
+  - **Phase 34**: UIエンジン切替 + フォールバック診断メッセージ
+  - **Phase 35**: Leelaカルテ統合
+  - **Phase 36**: Leelaバッチ解析（オプション、Phase 35後いつでも可）
+  - **Phase 37**: テスト強化（既存`--update-goldens`活用）
+  - **Phase 38**: ドキュメント整備
+  - **Phase 39**: 仕上げ・安定化
+  - **設計原則（v2強化）**:
+    - 単一エンジンレポート（KataGo/Leela混合禁止）
+    - 既存EvalSnapshot/MoveEvalパイプライン再利用
+    - テストは実エンジン不使用（mock/stub + golden）
+    - ハードコードvisits値禁止（`leela.fast_visits`設定可能）
+    - 損失セマンティクス明確化（`score_loss` vs `leela_loss_est`）
+  - **Phase 40+へ延期**: エンジン比較ビュー、PLAYモード、初心者UX
 - 2026-01-17: Phase 26 レポート導線改善完了（PR #144）
   - **common/file_opener.py**: クロスプラットフォームファイル/フォルダオープナー
   - **gui/features/report_navigator.py**: レポート導線UI
@@ -973,8 +1017,8 @@ diagnostics_YYYYMMDD-HHMMSS_XXXX.zip
   - **Phase 27**: Settings UI拡張 - 検索、Export/Import、タブ別リセット
   - **Phase 28**: Smart Kifu運用強化 - バッチ連携、解析率表示
   - **Phase 29**: Diagnostics - 診断画面、Bug Report zip（サニタイズ付き） ✅ **完了**
-  - **Phase 30**: 検証テンプレ導線 - ショートカット、テンプレコピー
-  - **優先度**: S = 24,25,27,29 / A = 26,28,30
+  - **Phase 30**: 検証テンプレ導線 → Phase 30-39 Leela解析パイプラインに変更
+  - **優先度**: S = 24,25,27,29 / A = 26,28
 - 2026-01-16: Phase 23 カルテ・サマリー品質向上完了（PR #141）
   - **PR #1**: ONLY_MOVE難易度修正緩和（-2.0 → -1.0、大損失時+0.5緩和）
     - `get_difficulty_modifier()` に `canonical_loss` パラメータ追加
