@@ -1517,3 +1517,19 @@ msgid ""
 msgstr ""
 "Failed to export package:\n"
 "%s"
+
+#. Phase 27: Settings Reset
+msgid "mykatrain:settings:reset"
+msgstr "Reset to Defaults"
+
+msgid "mykatrain:settings:reset_confirm_title"
+msgstr "Reset Settings"
+
+msgid "mykatrain:settings:reset_confirm_message"
+msgstr ""
+"Reset {tab} settings to defaults?\n"
+"Targets: {targets}\n"
+"This cannot be undone."
+
+msgid "mykatrain:settings:reset_success"
+msgstr "Settings for {tab} reset to defaults"

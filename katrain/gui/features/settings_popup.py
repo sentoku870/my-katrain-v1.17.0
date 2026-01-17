@@ -7,9 +7,10 @@
 # - save_export_settings: エクスポート設定の保存
 # - save_batch_options: バッチオプションの保存
 # - do_mykatrain_settings_popup: myKatrain設定ポップアップの表示
+# - _reset_tab_settings: タブ別設定リセット (Phase 27)
 
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -23,6 +24,7 @@ from kivy.uix.slider import Slider
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
+from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
 from katrain.core import eval_metrics
 from katrain.core.constants import (
     LEELA_K_DEFAULT,
@@ -41,6 +43,101 @@ from katrain.gui.widgets.helpers import create_text_input_row
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
+
+
+def _reset_tab_settings(
+    ctx: "FeatureContext",
+    tab_id: str,
+    popup: Popup,
+    on_reset_complete: Callable[[], None],
+) -> None:
+    """タブの設定をデフォルトに戻す (Phase 27)
+
+    Args:
+        ctx: FeatureContext providing config, save_config, controls
+        tab_id: タブID ("analysis", "export", "leela")
+        popup: 親ポップアップ（リセット後に閉じてリロード用）
+        on_reset_complete: リセット完了後に呼ばれるコールバック
+    """
+    from katrain.gui.popups import I18NPopup
+
+    keys = TAB_RESET_KEYS.get(tab_id, [])
+    if not keys:
+        return
+
+    # リセット対象のキー名を表示用に整形
+    target_names = [key for _, key in keys]
+    tab_display_name = i18n._(f"mykatrain:settings:tab_{tab_id}")
+
+    # 確認ダイアログ
+    confirm_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
+    message_label = Label(
+        text=i18n._("mykatrain:settings:reset_confirm_message").format(
+            tab=tab_display_name, targets=", ".join(target_names)
+        ),
+        halign="center",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    message_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width * 0.9, None))
+    )
+    confirm_layout.add_widget(message_label)
+
+    buttons_layout = BoxLayout(
+        orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(40)
+    )
+    confirm_btn = Button(
+        text=i18n._("OK"),
+        background_color=Theme.BOX_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    cancel_btn = Button(
+        text=i18n._("Cancel"),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    buttons_layout.add_widget(confirm_btn)
+    buttons_layout.add_widget(cancel_btn)
+    confirm_layout.add_widget(buttons_layout)
+
+    confirm_popup = I18NPopup(
+        title_key="mykatrain:settings:reset_confirm_title",
+        size=[dp(450), dp(200)],
+        content=confirm_layout,
+    ).__self__
+
+    def do_reset(*_args):
+        """実際のリセット処理"""
+        affected_sections: Set[str] = set()
+
+        for section, key in keys:
+            default_val = get_default_value(section, key)
+            if default_val is not None:
+                # config section を取得または作成
+                section_config = ctx.config(section) or {}
+                section_config[key] = default_val
+                ctx.set_config_section(section, section_config)
+                affected_sections.add(section)
+
+        # 影響セクションのみ保存
+        for section in affected_sections:
+            ctx.save_config(section)
+
+        ctx.controls.set_status(
+            i18n._("mykatrain:settings:reset_success").format(tab=tab_display_name),
+            STATUS_INFO,
+        )
+        confirm_popup.dismiss()
+
+        # 設定ポップアップをリロード
+        popup.dismiss()
+        on_reset_complete()
+
+    confirm_btn.bind(on_release=do_reset)
+    cancel_btn.bind(on_release=lambda *_args: confirm_popup.dismiss())
+    confirm_popup.open()
 
 
 def load_export_settings(ctx: "FeatureContext") -> Dict[str, Any]:
@@ -112,6 +209,15 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         tab_height=dp(40),
         size_hint_y=0.9,
     )
+
+    # popup 変数を先に宣言（リセット用のコールバックで使用）
+    popup = None
+
+    def reopen_popup():
+        """ポップアップをリロードして再表示"""
+        from kivy.clock import Clock
+
+        Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(ctx), 0.1)
 
     # === Tab 1: 解析設定 (Analysis) ===
     tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
@@ -255,6 +361,16 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         pv_filter_layout.add_widget(checkbox)
         pv_filter_layout.add_widget(label)
     tab1_inner.add_widget(pv_filter_layout)
+
+    # Reset button for Analysis tab (Phase 27)
+    tab1_reset_btn = Button(
+        text=i18n._("mykatrain:settings:reset"),
+        size_hint_y=None,
+        height=dp(36),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    tab1_inner.add_widget(tab1_reset_btn)
 
     # Default User Name
     user_row, user_input, _ = create_text_input_row(
@@ -435,6 +551,16 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         opp_info_layout.add_widget(row)
     tab2_inner.add_widget(opp_info_layout)
 
+    # Reset button for Export tab (Phase 27)
+    tab2_reset_btn = Button(
+        text=i18n._("mykatrain:settings:reset"),
+        size_hint_y=None,
+        height=dp(36),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    tab2_inner.add_widget(tab2_reset_btn)
+
     # === Leela Zero Settings Section ===
     # Note: Section label is no longer needed as it's now a separate tab
 
@@ -592,6 +718,16 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_top_moves_row.add_widget(leela_top_moves_spinner)
     leela_top_moves_row.add_widget(leela_top_moves_spinner_2)
     tab3_inner.add_widget(leela_top_moves_row)
+
+    # Reset button for Leela tab (Phase 27)
+    tab3_reset_btn = Button(
+        text=i18n._("mykatrain:settings:reset"),
+        size_hint_y=None,
+        height=dp(36),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    tab3_inner.add_widget(tab3_reset_btn)
 
     # Buttons (outside TabbedPanel)
     buttons_layout = BoxLayout(
@@ -755,5 +891,16 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     output_browse.bind(on_release=browse_output)
     input_browse.bind(on_release=browse_input)
     leela_path_browse.bind(on_release=browse_leela_exe)
+
+    # Reset button bindings (Phase 27)
+    tab1_reset_btn.bind(
+        on_release=lambda *_args: _reset_tab_settings(ctx, "analysis", popup, reopen_popup)
+    )
+    tab2_reset_btn.bind(
+        on_release=lambda *_args: _reset_tab_settings(ctx, "export", popup, reopen_popup)
+    )
+    tab3_reset_btn.bind(
+        on_release=lambda *_args: _reset_tab_settings(ctx, "leela", popup, reopen_popup)
+    )
 
     popup.open()
