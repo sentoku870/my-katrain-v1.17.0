@@ -6,6 +6,7 @@ from kivy import Config
 
 from katrain.common.config_store import JsonFileConfigStore
 from katrain.core.ai import ai_rank_estimation
+from katrain.core.log_buffer import LogBuffer
 from katrain.core.constants import (
     PLAYER_HUMAN,
     PLAYER_AI,
@@ -70,6 +71,7 @@ class KaTrainBase:
     def __init__(self, force_package_config=False, debug_level=None, **kwargs):
         self.debug_level = debug_level or 0
         self.game = None
+        self._log_buffer = LogBuffer()
 
         self.logger = lambda message, level=OUTPUT_INFO: self.log(message, level)
         self.config_file = self._load_config(force_package_config=force_package_config)
@@ -85,10 +87,19 @@ class KaTrainBase:
         self.reset_players()
 
     def log(self, message, level=OUTPUT_INFO):
+        self._log_buffer.append(message, level)
         if level == OUTPUT_ERROR:
             print(f"ERROR: {message}")
         elif self.debug_level >= level:
             print(message)
+
+    def get_recent_logs(self) -> list[str]:
+        """Get recent log entries for diagnostics export.
+
+        Returns:
+            List of formatted log entries (oldest first).
+        """
+        return self._log_buffer.get_lines()
 
     def _load_config(self, force_package_config):
         if len(sys.argv) > 1 and sys.argv[1].endswith("config.json"):
