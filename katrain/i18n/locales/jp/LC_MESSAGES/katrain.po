@@ -1498,3 +1498,9 @@ msgstr "設定を {path} にエクスポートしました"
 
 msgid "mykatrain:settings:import_success"
 msgstr "設定をインポートしました。バックアップ: {backup}"
+
+msgid "mykatrain:settings:search_placeholder"
+msgstr "設定を検索..."
+
+msgid "mykatrain:settings:search_clear"
+msgstr "クリア"
