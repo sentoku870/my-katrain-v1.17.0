@@ -364,8 +364,58 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     """
     current_settings = ctx.config("mykatrain_settings") or {}
 
-    # Main layout: TabbedPanel + Buttons
+    # Main layout: Search + TabbedPanel + Buttons
     main_layout = BoxLayout(orientation="vertical", spacing=dp(8))
+
+    # Search bar
+    search_layout = BoxLayout(
+        orientation="horizontal", spacing=dp(8), size_hint_y=None, height=dp(40)
+    )
+    search_input = TextInput(
+        hint_text=i18n._("mykatrain:settings:search_placeholder"),
+        multiline=False,
+        size_hint_x=0.85,
+        height=dp(40),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        foreground_color=Theme.TEXT_COLOR,
+    )
+    search_clear_btn = Button(
+        text=i18n._("mykatrain:settings:search_clear"),
+        size_hint_x=0.15,
+        height=dp(40),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    search_layout.add_widget(search_input)
+    search_layout.add_widget(search_clear_btn)
+
+    # Searchable widgets list (populated after widget creation)
+    searchable_widgets: List[Dict[str, Any]] = []
+
+    def register_searchable(label_text: str, *widgets):
+        """検索対象としてウィジェットを登録"""
+        for widget in widgets:
+            searchable_widgets.append({"label_text": label_text, "widget": widget})
+
+    def on_search_text_change(instance, value):
+        """検索テキスト変更時のフィルタ処理"""
+        query = value.strip().lower()
+        for item in searchable_widgets:
+            label_text = item.get("label_text", "").lower()
+            widget = item.get("widget")
+            if widget is None:
+                continue
+            if query and query not in label_text:
+                widget.opacity = 0.3
+            else:
+                widget.opacity = 1.0
+
+    def on_search_clear(*_args):
+        """検索をクリア"""
+        search_input.text = ""
+
+    search_input.bind(text=on_search_text_change)
+    search_clear_btn.bind(on_release=on_search_clear)
 
     # TabbedPanel with 3 tabs
     tabbed_panel = TabbedPanel(
@@ -422,6 +472,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
     )
     tab1_inner.add_widget(skill_label)
+    # Register for search (will register skill_layout after creation)
 
     current_skill_preset = (
         ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
@@ -467,6 +518,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         skill_layout.add_widget(checkbox)
         skill_layout.add_widget(label)
     tab1_inner.add_widget(skill_layout)
+    register_searchable(i18n._("mykatrain:settings:skill_preset"), skill_label, skill_layout)
 
     # PV Filter Level (Radio buttons)
     pv_filter_label = Label(
@@ -526,6 +578,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         pv_filter_layout.add_widget(checkbox)
         pv_filter_layout.add_widget(label)
     tab1_inner.add_widget(pv_filter_layout)
+    register_searchable(i18n._("mykatrain:settings:pv_filter_level"), pv_filter_label, pv_filter_layout)
 
     # Reset button for Analysis tab (Phase 27)
     tab1_reset_btn = Button(
@@ -543,6 +596,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         initial_value=current_settings.get("default_user_name", ""),
     )
     tab2_inner.add_widget(user_row)
+    register_searchable(i18n._("mykatrain:settings:default_user_name"), user_row)
 
     # Karte Output Directory
     output_row = BoxLayout(
@@ -575,6 +629,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     output_row.add_widget(output_input)
     output_row.add_widget(output_browse)
     tab2_inner.add_widget(output_row)
+    register_searchable(i18n._("mykatrain:settings:karte_output_directory"), output_row)
 
     # Batch Export Input Directory
     input_row = BoxLayout(
@@ -607,6 +662,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     input_row.add_widget(input_input)
     input_row.add_widget(input_browse)
     tab2_inner.add_widget(input_row)
+    register_searchable(i18n._("mykatrain:settings:batch_export_input"), input_row)
 
     # Karte Format (Radio buttons - 2x2 grid)
     format_label = Label(
@@ -662,6 +718,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         format_layout.add_widget(row)
 
     tab2_inner.add_widget(format_layout)
+    register_searchable(i18n._("mykatrain:settings:karte_format"), format_label, format_layout)
 
     # Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4
     opp_info_label = Label(
@@ -715,6 +772,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         row.add_widget(label)
         opp_info_layout.add_widget(row)
     tab2_inner.add_widget(opp_info_layout)
+    register_searchable(i18n._("mykatrain:settings:opponent_info_mode"), opp_info_label, opp_info_layout)
 
     # Reset button for Export tab (Phase 27)
     tab2_reset_btn = Button(
@@ -752,6 +810,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_enabled_row.add_widget(leela_enabled_checkbox)
     leela_enabled_row.add_widget(leela_enabled_label)
     tab3_inner.add_widget(leela_enabled_row)
+    register_searchable(i18n._("mykatrain:settings:leela_enabled"), leela_enabled_row)
 
     # Leela Executable Path
     leela_path_row = BoxLayout(
@@ -784,6 +843,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_path_row.add_widget(leela_path_input)
     leela_path_row.add_widget(leela_path_browse)
     tab3_inner.add_widget(leela_path_row)
+    register_searchable(i18n._("mykatrain:settings:leela_exe_path"), leela_path_row)
 
     # Leela K Value Slider
     leela_k_row = BoxLayout(
@@ -822,6 +882,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_k_row.add_widget(leela_k_slider)
     leela_k_row.add_widget(leela_k_value_label)
     tab3_inner.add_widget(leela_k_row)
+    register_searchable(i18n._("mykatrain:settings:leela_k_value"), leela_k_row)
 
     # Leela Max Visits
     leela_visits_row = BoxLayout(
@@ -848,6 +909,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_visits_row.add_widget(leela_visits_label)
     leela_visits_row.add_widget(leela_visits_input)
     tab3_inner.add_widget(leela_visits_row)
+    register_searchable(i18n._("mykatrain:settings:leela_max_visits"), leela_visits_row)
 
     # Leela Top Moves Display
     leela_top_moves_row = BoxLayout(
@@ -883,6 +945,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     leela_top_moves_row.add_widget(leela_top_moves_spinner)
     leela_top_moves_row.add_widget(leela_top_moves_spinner_2)
     tab3_inner.add_widget(leela_top_moves_row)
+    register_searchable(i18n._("mykatrain:settings:leela_top_moves_show"), leela_top_moves_row)
 
     # Reset button for Leela tab (Phase 27)
     tab3_reset_btn = Button(
@@ -948,6 +1011,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     tabbed_panel.default_tab = tab1
 
     # Assemble main layout
+    main_layout.add_widget(search_layout)
     main_layout.add_widget(tabbed_panel)
     main_layout.add_widget(buttons_layout)
 
