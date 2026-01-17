@@ -18,7 +18,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ### 1.3 現在のフェーズ
 - **完了**: Phase 1-29（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics）
-- **次**: Phase 30 検証テンプレ導線
+- **次**: Phase 30-39 Leela Zero解析パイプライン拡張
 
 詳細は `docs/01-roadmap.md` を参照。
 
