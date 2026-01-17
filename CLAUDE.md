@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-24（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト）
-- **次**: Phase 25 LLM Package Export
+- **完了**: Phase 1-27（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張）
+- **次**: Phase 28 Smart Kifu運用強化
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,11 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-17: Phase 27 完了（Settings UIスケーラブル化）
+  - 新規: `common/settings_export.py`（Export/Import/Resetロジック、Kivy非依存）
+  - 拡張: `gui/features/settings_popup.py`（検索バー、Export/Import/Resetボタン）
+  - 機能: 設定検索、設定Export/Import（JSON）、タブ別リセット
+  - テスト: 22件（test_settings_export.py）
 - 2026-01-17: Phase 26 完了（レポート導線改善）
   - 新規: `common/file_opener.py`（クロスプラットフォームファイル/フォルダオープナー）
   - 新規: `gui/features/report_navigator.py`（レポート導線UI）

@@ -115,8 +115,8 @@
 | 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
 | 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | ✅ **完了** |
 | 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | ✅ **完了** |
-| 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | TBD |
-| 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | TBD |
+| 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | ✅ **完了** |
+| 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
 | 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | TBD |
 | 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | TBD |
 | 30 | 検証テンプレ導線 | ショートカット、テンプレコピー | TBD |
@@ -725,24 +725,37 @@ karte + SGF + coach.md を zip パッケージでエクスポートし、LLM へ
 
 ---
 
-### Phase 27: Settings UIスケーラブル化（TBD）
+### Phase 27: Settings UIスケーラブル化 ✅ **完了**
 
 #### 27.1 目的
 設定検索・Export/Import・タブ別リセット機能を追加。
 
 #### 27.2 スコープ
 **In:**
-- 設定検索（キーワードで項目をフィルタ/ハイライト）
-- 設定 Export / Import（JSON 形式）
-- タブ別リセット機能
+- 設定検索（キーワードで項目をフィルタ/ハイライト）✅
+- 設定 Export / Import（JSON 形式）✅
+- タブ別リセット機能 ✅
 
 **Out:**
 - Advanced / Experimental タブ隔離（現状のタブ構成を維持）
 - クラウド同期
 
 #### 27.3 成果物
-- `katrain/gui/features/settings_search.py` - 検索 UI コンポーネント
-- `katrain/common/settings_export.py` - Export/Import ロジック
+- `katrain/common/settings_export.py` - Export/Import/Reset ロジック（Kivy非依存）
+- `tests/test_settings_export.py` - 22テスト
+- `katrain/gui/features/settings_popup.py` - 検索バー、Export/Import/Resetボタン統合
+
+#### 27.4 実装（4 PR）
+- **PR #145**: Core層 settings_export.py + 22テスト
+- **PR #146**: タブ別リセット機能 + i18n（3キー）
+- **PR #147**: Export/Import UI + tkinter ファイルダイアログ + i18n（5キー）
+- **PR #148**: 設定検索（opacity-based filtering）+ i18n（2キー）
+
+#### 27.5 技術詳細
+- **Atomic Save**: temp file + `os.replace()` パターンでImport時のファイル破損を防止
+- **Store同期**: reload-then-sync パターン（`_load()` → `dict()` 変換）
+- **検索フィルタ**: opacity 0.3/1.0 による視覚的フィルタリング
+- **ファイルダイアログ**: tkinter の `filedialog` を使用（クロスプラットフォーム対応）
 
 ---
 
@@ -1148,6 +1161,14 @@ Smart Kifu とバッチ解析の連携強化、解析率の可視化。
   - バッチオプション永続化
 - 2026-01-03: バッチ解析エラーハードニング（PR #41）
   - エラーカウントと表示改善
+- 2026-01-17: Phase 27完了（Settings UIスケーラブル化）
+  - PR #145: settings_export.py（Core層、22テスト）
+  - PR #146: タブ別リセット機能
+  - PR #147: Export/Import UI（tkinter filedialog）
+  - PR #148: 設定検索（opacity-based filtering）
+  - 新規: `katrain/common/settings_export.py`
+  - 拡張: `katrain/gui/features/settings_popup.py`
+- 2026-01-17: Phase 26完了（レポート導線改善、PR #144）
 - 2026-01-03: 拡張バッチ解析機能（PR #40）
   - カルテ/サマリー自動生成
 - 2025-12-31: カルテ出力最適化
