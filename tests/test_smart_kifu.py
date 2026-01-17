@@ -700,6 +700,7 @@ class TestSGFImport:
         """Duplicate SGF is skipped."""
         from katrain.core.smart_kifu import (
             Context,
+            ImportErrorCode,
             create_training_set,
             import_sgf_to_training_set,
         )
@@ -718,7 +719,7 @@ class TestSGFImport:
         # Second import is skipped (duplicate)
         entry2, error2 = import_sgf_to_training_set(manifest.set_id, sgf_path, Context.HUMAN)
         assert entry2 is None
-        assert "Duplicate" in error2
+        assert error2 == ImportErrorCode.DUPLICATE
 
     def test_import_sgf_folder_success(self, temp_data_dir, sample_sgf_content, sample_sgf_with_handicap):
         """Folder import works with multiple files."""

@@ -264,6 +264,24 @@ class PlayerProfile:
 
 
 # =============================================================================
+# Enums - Import Error Code
+# =============================================================================
+
+
+class ImportErrorCode(Enum):
+    """インポートエラーコード（文字列マッチング回避）。
+
+    Phase 28: import_sgf_to_training_set() の戻り値で使用。
+    """
+
+    DUPLICATE = "duplicate"
+    PARSE_FAILED = "parse_failed"
+    FILE_NOT_FOUND = "file_not_found"
+    COPY_FAILED = "copy_failed"
+    UNKNOWN = "unknown"
+
+
+# =============================================================================
 # Dataclasses - Import Result
 # =============================================================================
 
@@ -278,6 +296,7 @@ class ImportResult:
         skipped_count: 重複スキップ件数
         failed_files: 失敗ファイルリスト（filename, error_message）
         skipped_files: スキップファイル名リスト
+        average_analyzed_ratio: 成功インポートの平均解析率（Phase 28）
     """
 
     success_count: int = 0
@@ -285,6 +304,7 @@ class ImportResult:
     skipped_count: int = 0
     failed_files: List[tuple] = field(default_factory=list)  # (filename, error_message)
     skipped_files: List[str] = field(default_factory=list)
+    average_analyzed_ratio: Optional[float] = None
 
     @property
     def has_failures(self) -> bool:
@@ -295,6 +315,32 @@ class ImportResult:
     def total_processed(self) -> int:
         """処理した総件数。"""
         return self.success_count + self.failed_count + self.skipped_count
+
+
+# =============================================================================
+# Dataclasses - Training Set Summary
+# =============================================================================
+
+
+@dataclass
+class TrainingSetSummary:
+    """Training Set の集計サマリー（オンデマンド計算）。
+
+    Phase 28: compute_training_set_summary() で生成。
+
+    Attributes:
+        total_games: 総局数
+        analyzed_games: 解析データありの局数（analyzed_ratio is not None）
+        fully_analyzed_games: 完全解析済み局数（analyzed_ratio >= 1.0）
+        average_analyzed_ratio: 平均解析率（None除外）、全てNoneならNone
+        unanalyzed_games: 未解析局数（analyzed_ratio is None）
+    """
+
+    total_games: int = 0
+    analyzed_games: int = 0
+    fully_analyzed_games: int = 0
+    average_analyzed_ratio: Optional[float] = None
+    unanalyzed_games: int = 0
 
 
 # =============================================================================
@@ -319,6 +365,7 @@ __all__ = [
     "Context",
     "ViewerPreset",
     "Confidence",
+    "ImportErrorCode",
     # Dataclasses
     "GameSource",
     "GameEntry",
@@ -328,6 +375,7 @@ __all__ = [
     "ContextProfile",
     "PlayerProfile",
     "ImportResult",
+    "TrainingSetSummary",
     # Constants
     "CONFIDENCE_HIGH_MIN_SAMPLES",
     "CONFIDENCE_HIGH_MIN_ANALYZED_RATIO",
