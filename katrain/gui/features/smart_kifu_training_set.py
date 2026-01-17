@@ -24,6 +24,7 @@ from katrain.core.smart_kifu import (
     Context,
     ImportResult,
     TrainingSetManifest,
+    compute_training_set_summary,
     create_training_set,
     import_sgf_folder,
     list_training_sets,
@@ -31,6 +32,42 @@ from katrain.core.smart_kifu import (
 )
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
+
+
+# =============================================================================
+# Analyzed Ratio Formatting (Phase 28)
+# =============================================================================
+
+# Color constants for analysis ratio display
+COLOR_RATIO_GREEN = [0.3, 0.8, 0.3, 1.0]
+COLOR_RATIO_YELLOW = [0.9, 0.8, 0.2, 1.0]
+COLOR_RATIO_RED = [0.9, 0.3, 0.3, 1.0]
+COLOR_RATIO_GRAY = [0.5, 0.5, 0.5, 1.0]
+
+
+def _format_analyzed_ratio(ratio: Optional[float]) -> tuple:
+    """解析率を表示文字列と色に変換。
+
+    Args:
+        ratio: 解析率 (0.0-1.0) または None
+
+    Returns:
+        (表示文字列, RGBA色)
+
+    Note:
+        ratio is None → "--" (グレー)
+        ratio == 0.0 → "0%" (赤)  # 0.0 は falsy だが正しく処理
+    """
+    if ratio is None:  # IMPORTANT: `if not ratio` ではダメ！
+        return ("--", COLOR_RATIO_GRAY)
+
+    pct = int(ratio * 100)
+    if ratio >= 0.7:
+        return (f"{pct}%", COLOR_RATIO_GREEN)
+    elif ratio >= 0.4:
+        return (f"{pct}%", COLOR_RATIO_YELLOW)
+    else:
+        return (f"{pct}%", COLOR_RATIO_RED)
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -145,6 +182,10 @@ def build_training_set_list_widget(
         if manifest is None:
             continue
 
+        # Phase 28: 解析サマリを計算
+        summary = compute_training_set_summary(manifest)
+        ratio_text, ratio_color = _format_analyzed_ratio(summary.average_analyzed_ratio)
+
         row = BoxLayout(
             orientation="horizontal",
             size_hint_y=None,
@@ -152,8 +193,8 @@ def build_training_set_list_widget(
             spacing=dp(8),
         )
 
-        # セット名と情報
-        info_text = f"{manifest.name}\n{len(manifest.games)} 局"
+        # セット名と情報（解析率を追加）
+        info_text = f"{manifest.name}\n{summary.total_games} 局 | {ratio_text} 解析済"
         btn = ToggleButton(
             text=info_text,
             group="training_set_selection",
