@@ -2,9 +2,9 @@
 katrain.core.analysis.models - データモデル定義
 
 このモジュールには以下が含まれます:
-- Enum クラス（MistakeCategory, PositionDifficulty, AutoConfidence, ConfidenceLevel）
+- Enum クラス（MistakeCategory, PositionDifficulty, AutoConfidence, ConfidenceLevel, AnalysisStrength）
 - Dataclass（MoveEval, EvalSnapshot, など）
-- 設定定数（SKILL_PRESETS, PRESET_ORDER, など）
+- 設定定数（SKILL_PRESETS, PRESET_ORDER, ENGINE_VISITS_DEFAULTS, など）
 
 Note: EvalSnapshot.worst_canonical_move などは logic.py の関数を使用するため、
       一部のメソッドはプロパティ内でインポートを遅延実行しています。
@@ -12,6 +12,7 @@ Note: EvalSnapshot.worst_canonical_move などは logic.py の関数を使用す
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import (
@@ -24,6 +25,8 @@ from typing import (
     Set,
     Tuple,
 )
+
+_log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -90,6 +93,93 @@ class ConfidenceLevel(Enum):
     HIGH = auto()  # Full output, assertive wording
     MEDIUM = auto()  # Reduced output, hedged wording
     LOW = auto()  # Minimal output, reference-only, re-analysis recommended
+
+
+# =============================================================================
+# Analysis Strength (Phase 30)
+# =============================================================================
+
+
+class AnalysisStrength(Enum):
+    """解析強度レベル（エンジン共通抽象）。
+
+    - QUICK: 高速解析（fast_visits使用、概要把握向け）
+    - DEEP: 詳細解析（max_visits使用、精密評価向け）
+
+    Note:
+        Phase 30で追加。Phase 31以降でエンジン統合に使用予定。
+        This is NOT related to player skill presets (G0-G4).
+    """
+
+    QUICK = "quick"
+    DEEP = "deep"
+
+    @property
+    def is_fast(self) -> bool:
+        """高速解析モードかどうか"""
+        return self == AnalysisStrength.QUICK
+
+
+# Engine-specific default visits values.
+# These are HARD SAFETY DEFAULTS used when config.json is missing keys.
+# User-facing defaults should be set in config.json itself.
+ENGINE_VISITS_DEFAULTS: Dict[str, Dict[str, int]] = {
+    "katago": {"max_visits": 500, "fast_visits": 25},
+    "leela": {"max_visits": 1000, "fast_visits": 200},
+}
+
+# UI minimum for leela fast_visits (practical lower bound for meaningful analysis)
+LEELA_FAST_VISITS_MIN = 50
+
+
+def resolve_visits(
+    strength: AnalysisStrength,
+    engine_config: Dict[str, Any],
+    engine_type: str = "katago",
+) -> int:
+    """解析強度からvisits数を解決する。
+
+    Args:
+        strength: 解析強度（QUICK/DEEP）
+        engine_config: エンジン設定dict（max_visits, fast_visitsを含む可能性）
+        engine_type: エンジン種別 ("katago" or "leela")
+
+    Returns:
+        int: visits数（1以上保証）
+
+    Behavior:
+        - engine_configにキーが存在しない場合はデフォルト値を使用
+        - 不明なengine_typeの場合はkatagoのデフォルトにフォールバック（warning log出力）
+        - 不正な値（文字列、None等）の場合もデフォルトにフォールバック（防御的）
+        - 文字列の場合はstrip()後にint変換を試行
+
+    Note:
+        この関数はconfig.jsonからの値読み取り用。単一の強度に対する値解決のみ行う。
+        fast_visits <= max_visits の整合性チェックは呼び出し側の責務。
+        UIでのユーザー入力バリデーション（例: Leelaは50以上）も呼び出し側の責務。
+    """
+    if engine_type not in ENGINE_VISITS_DEFAULTS:
+        _log.warning(
+            "Unknown engine_type '%s', falling back to katago defaults", engine_type
+        )
+    defaults = ENGINE_VISITS_DEFAULTS.get(engine_type, ENGINE_VISITS_DEFAULTS["katago"])
+    key = "fast_visits" if strength == AnalysisStrength.QUICK else "max_visits"
+
+    raw_value = engine_config.get(key)
+    if raw_value is None:
+        return defaults[key]
+
+    try:
+        # 文字列の場合はstrip()してから変換
+        if isinstance(raw_value, str):
+            raw_value = raw_value.strip()
+            if not raw_value:  # 空文字列
+                return defaults[key]
+        visits = int(raw_value)
+        return max(1, visits)
+    except (ValueError, TypeError):
+        # 不正な値の場合はデフォルトにフォールバック
+        return defaults[key]
 
 
 # =============================================================================

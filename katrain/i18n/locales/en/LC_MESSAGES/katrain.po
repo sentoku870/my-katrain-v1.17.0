@@ -1457,6 +1457,9 @@ msgstr "Loss Scale (K)"
 msgid "mykatrain:settings:leela_max_visits"
 msgstr "Max Visits"
 
+msgid "mykatrain:settings:leela_fast_visits"
+msgstr "Fast Visits (Quick Analysis)"
+
 msgid "leela:error:exe_not_found"
 msgstr "Leela executable not found: {}"
 
