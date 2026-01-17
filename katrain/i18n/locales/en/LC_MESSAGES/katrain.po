@@ -1533,3 +1533,18 @@ msgstr ""
 
 msgid "mykatrain:settings:reset_success"
 msgstr "Settings for {tab} reset to defaults"
+
+msgid "mykatrain:settings:export"
+msgstr "Export..."
+
+msgid "mykatrain:settings:import"
+msgstr "Import..."
+
+msgid "mykatrain:settings:import_title"
+msgstr "Import Settings"
+
+msgid "mykatrain:settings:export_success"
+msgstr "Settings exported to {path}"
+
+msgid "mykatrain:settings:import_success"
+msgstr "Settings imported. Backup: {backup}"

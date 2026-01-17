@@ -10,6 +10,7 @@
 # - _reset_tab_settings: タブ別設定リセット (Phase 27)
 
 import os
+import shutil
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
 from kivy.metrics import dp
@@ -24,7 +25,15 @@ from kivy.uix.slider import Slider
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
-from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
+from katrain.common.settings_export import (
+    EXCLUDED_SECTIONS,
+    TAB_RESET_KEYS,
+    atomic_save_config,
+    create_backup_path,
+    export_settings,
+    get_default_value,
+    parse_exported_settings,
+)
 from katrain.core import eval_metrics
 from katrain.core.constants import (
     LEELA_K_DEFAULT,
@@ -32,6 +41,7 @@ from katrain.core.constants import (
     LEELA_K_MIN,
     LEELA_TOP_MOVE_OPTIONS,
     LEELA_TOP_MOVE_OPTIONS_SECONDARY,
+    STATUS_ERROR,
     STATUS_INFO,
 )
 from katrain.core.leela.logic import clamp_k
@@ -138,6 +148,161 @@ def _reset_tab_settings(
     confirm_btn.bind(on_release=do_reset)
     cancel_btn.bind(on_release=lambda *_args: confirm_popup.dismiss())
     confirm_popup.open()
+
+
+def _do_export_settings(
+    ctx: "FeatureContext",
+    popup: Popup,
+) -> None:
+    """設定をJSONファイルにエクスポート (Phase 27)
+
+    Opens a file save dialog and exports current settings to a JSON file.
+    Uses the export_settings function from settings_export module.
+
+    Args:
+        ctx: FeatureContext providing config, controls
+        popup: 親ポップアップ（エクスポート後も開いたまま）
+    """
+    from tkinter import Tk, filedialog
+
+    # Create hidden Tk root for file dialog
+    root = Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+
+    try:
+        file_path = filedialog.asksaveasfilename(
+            title=i18n._("mykatrain:settings:export"),
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            initialfile="katrain_settings.json",
+        )
+    finally:
+        root.destroy()
+
+    if not file_path:
+        return  # User cancelled
+
+    try:
+        # Get current config and app version
+        config_dict = dict(ctx._config)
+        app_version = ctx.config("general", {}).get("version", "unknown")
+
+        # Export to JSON string
+        json_str = export_settings(config_dict, app_version)
+
+        # Write to file
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(json_str)
+
+        ctx.controls.set_status(
+            i18n._("mykatrain:settings:export_success").format(path=file_path),
+            STATUS_INFO,
+        )
+    except Exception as e:
+        ctx.controls.set_status(
+            f"Export failed: {e}",
+            STATUS_ERROR,
+        )
+
+
+def _do_import_settings(
+    ctx: "FeatureContext",
+    popup: Popup,
+    on_import_complete: Callable[[], None],
+) -> None:
+    """設定をJSONファイルからインポート (Phase 27)
+
+    Opens a file selection dialog and imports settings from a JSON file.
+    Creates a backup before modifying config and uses atomic save.
+
+    Args:
+        ctx: FeatureContext providing config, config_file, controls, _config_store
+        popup: 親ポップアップ（インポート後に閉じてリロード用）
+        on_import_complete: インポート完了後に呼ばれるコールバック
+    """
+    from tkinter import Tk, filedialog
+
+    # Create hidden Tk root for file dialog
+    root = Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+
+    try:
+        file_path = filedialog.askopenfilename(
+            title=i18n._("mykatrain:settings:import_title"),
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+    finally:
+        root.destroy()
+
+    if not file_path:
+        return  # User cancelled
+
+    try:
+        # Read JSON file
+        with open(file_path, "r", encoding="utf-8") as f:
+            json_str = f.read()
+
+        # Parse and validate
+        imported = parse_exported_settings(json_str)
+
+    except ValueError as e:
+        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
+        return
+    except Exception as e:
+        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
+        return
+
+    # Create backup
+    backup_path = create_backup_path(ctx.config_file)
+    try:
+        shutil.copy2(ctx.config_file, backup_path)
+    except IOError as e:
+        ctx.controls.set_status(f"Backup failed: {e}", STATUS_ERROR)
+        return
+
+    # Save original config for rollback
+    original_config = {
+        k: dict(v) if isinstance(v, dict) else v for k, v in ctx._config.items()
+    }
+
+    try:
+        # Update config in memory
+        for section, values in imported.sections.items():
+            if section in EXCLUDED_SECTIONS:
+                continue
+            if section not in ctx._config:
+                ctx._config[section] = {}
+            ctx._config[section].update(values)
+
+        # Atomic save
+        atomic_save_config(ctx._config, ctx.config_file)
+
+        # Reload store (reload-then-sync pattern)
+        ctx._config_store._load()
+        ctx._config = dict(ctx._config_store)
+
+    except Exception as e:
+        # Rollback on failure
+        ctx._config = original_config
+        try:
+            shutil.copy2(backup_path, ctx.config_file)
+            ctx._config_store._load()
+            ctx._config = dict(ctx._config_store)
+        except Exception:
+            pass  # Ignore rollback failure
+        ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
+        return
+
+    ctx.controls.set_status(
+        i18n._("mykatrain:settings:import_success").format(backup=backup_path),
+        STATUS_INFO,
+    )
+
+    # Reload settings popup
+    popup.dismiss()
+    on_import_complete()
 
 
 def load_export_settings(ctx: "FeatureContext") -> Dict[str, Any]:
@@ -733,20 +898,36 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     buttons_layout = BoxLayout(
         orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
     )
+    export_button = Button(
+        text=i18n._("mykatrain:settings:export"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    import_button = Button(
+        text=i18n._("mykatrain:settings:import"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
     save_button = Button(
         text=i18n._("Save"),
-        size_hint_x=0.5,
+        size_hint_x=0.25,
         height=dp(48),
         background_color=Theme.BOX_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
     cancel_button = Button(
         text=i18n._("Cancel"),
-        size_hint_x=0.5,
+        size_hint_x=0.25,
         height=dp(48),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
+    buttons_layout.add_widget(export_button)
+    buttons_layout.add_widget(import_button)
     buttons_layout.add_widget(save_button)
     buttons_layout.add_widget(cancel_button)
 
@@ -891,6 +1072,14 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     output_browse.bind(on_release=browse_output)
     input_browse.bind(on_release=browse_input)
     leela_path_browse.bind(on_release=browse_leela_exe)
+
+    # Export/Import button bindings (Phase 27)
+    export_button.bind(
+        on_release=lambda *_args: _do_export_settings(ctx, popup)
+    )
+    import_button.bind(
+        on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup)
+    )
 
     # Reset button bindings (Phase 27)
     tab1_reset_btn.bind(
