@@ -110,7 +110,7 @@ def _collect_diagnostics(ctx: "FeatureContext") -> DiagnosticsBundle:
     system_info = collect_system_info()
 
     # KataGo info - extract from engine if available
-    engine = ctx.engine
+    engine = getattr(ctx, "engine", None)
     if engine is not None:
         katago_info = collect_katago_info(
             exe_path=getattr(engine, "katago", ""),
@@ -131,22 +131,23 @@ def _collect_diagnostics(ctx: "FeatureContext") -> DiagnosticsBundle:
     # App info
     from katrain.core.constants import DATA_FOLDER
 
+    # Note: ctx IS the KaTrainGui instance (FeatureContext protocol)
     app_info = collect_app_info(
-        version=getattr(ctx.katrain, "version", "unknown") if ctx.katrain else "unknown",
-        config_path=getattr(ctx.katrain, "config_file", "") if ctx.katrain else "",
+        version=getattr(ctx, "version", "unknown"),
+        config_path=getattr(ctx, "config_file", ""),
         data_folder=DATA_FOLDER,
     )
 
     # Settings snapshot
     config_data = {}
-    if ctx.katrain and hasattr(ctx.katrain, "_config"):
-        config_data = dict(ctx.katrain._config)
+    if hasattr(ctx, "_config"):
+        config_data = dict(ctx._config)
     settings = collect_settings_snapshot(config_data)
 
     # Logs
     logs = []
-    if ctx.katrain and hasattr(ctx.katrain, "get_recent_logs"):
-        logs = ctx.katrain.get_recent_logs()
+    if hasattr(ctx, "get_recent_logs"):
+        logs = ctx.get_recent_logs()
 
     return DiagnosticsBundle(
         system_info=system_info,
