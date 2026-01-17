@@ -1554,3 +1554,48 @@ msgstr "Search settings..."
 
 msgid "mykatrain:settings:search_clear"
 msgstr "Clear"
+
+msgid "mykatrain:diagnostics"
+msgstr "Diagnostics"
+
+msgid "Diagnostics"
+msgstr "Diagnostics"
+
+msgid "Generate Bug Report"
+msgstr "Generate Bug Report"
+
+msgid "Generating..."
+msgstr "Generating..."
+
+msgid "Bug Report Generated"
+msgstr "Bug Report Generated"
+
+msgid "Bug report generated: %s"
+msgstr "Bug report generated: %s"
+
+msgid "Bug report saved to:\n%s"
+msgstr "Bug report saved to:\n%s"
+
+msgid "Failed to generate bug report:\n%s"
+msgstr "Failed to generate bug report:\n%s"
+
+msgid "Open Folder"
+msgstr "Open Folder"
+
+msgid "System"
+msgstr "System"
+
+msgid "KataGo"
+msgstr "KataGo"
+
+msgid "Application"
+msgstr "Application"
+
+msgid "Running"
+msgstr "Running"
+
+msgid "Stopped"
+msgstr "Stopped"
+
+msgid "Not configured"
+msgstr "Not configured"

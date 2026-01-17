@@ -1103,6 +1103,12 @@ class KaTrainGui(Screen, KaTrainBase):
             lambda: self.update_state(redraw_board=True),
         )
 
+    def _do_diagnostics_popup(self):
+        """Show diagnostics popup for bug report generation."""
+        from katrain.gui.features.diagnostics_popup import show_diagnostics_popup
+
+        show_diagnostics_popup(self)
+
     def load_sgf_from_clipboard(self):
         """Load SGF from clipboard. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_from_clipboard()

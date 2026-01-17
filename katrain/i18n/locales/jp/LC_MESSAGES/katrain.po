@@ -1504,3 +1504,48 @@ msgstr "設定を検索..."
 
 msgid "mykatrain:settings:search_clear"
 msgstr "クリア"
+
+msgid "mykatrain:diagnostics"
+msgstr "診断情報"
+
+msgid "Diagnostics"
+msgstr "診断情報"
+
+msgid "Generate Bug Report"
+msgstr "バグレポートを生成"
+
+msgid "Generating..."
+msgstr "生成中..."
+
+msgid "Bug Report Generated"
+msgstr "バグレポート生成完了"
+
+msgid "Bug report generated: %s"
+msgstr "バグレポートを生成しました: %s"
+
+msgid "Bug report saved to:\n%s"
+msgstr "バグレポートを保存しました:\n%s"
+
+msgid "Failed to generate bug report:\n%s"
+msgstr "バグレポートの生成に失敗しました:\n%s"
+
+msgid "Open Folder"
+msgstr "フォルダを開く"
+
+msgid "System"
+msgstr "システム"
+
+msgid "KataGo"
+msgstr "KataGo"
+
+msgid "Application"
+msgstr "アプリケーション"
+
+msgid "Running"
+msgstr "実行中"
+
+msgid "Stopped"
+msgstr "停止中"
+
+msgid "Not configured"
+msgstr "未設定"
