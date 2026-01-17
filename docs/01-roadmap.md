@@ -117,7 +117,7 @@
 | 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | ✅ **完了** |
 | 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | ✅ **完了** |
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
-| 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | TBD |
+| 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ **完了** |
 | 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | TBD |
 | 30 | 検証テンプレ導線 | ショートカット、テンプレコピー | TBD |
 
@@ -759,24 +759,64 @@ karte + SGF + coach.md を zip パッケージでエクスポートし、LLM へ
 
 ---
 
-### Phase 28: Smart Kifu運用強化（TBD）
+### Phase 28: Smart Kifu運用強化 ✅ **完了**
 
 #### 28.1 目的
 Smart Kifu とバッチ解析の連携強化、解析率の可視化。
 
 #### 28.2 スコープ
 **In:**
-- バッチ解析からの Training Set 自動登録導線
-- 解析率表示（解析済み/未解析の割合）
-- Training Set の解析ステータスサマリー
+- ✅ バッチ解析からの Training Set 自動登録導線
+- ✅ 解析率表示（解析済み/未解析の割合）
+- ✅ Training Set の解析ステータスサマリー
 
 **Out:**
 - 自動解析スケジューリング
 - クラウドストレージ連携
 
 #### 28.3 成果物
-- `katrain/gui/features/smart_kifu_batch_bridge.py` - バッチ連携 UI
-- Training Set Manager への「解析率」列追加
+- ✅ `ImportErrorCode` enum（文字列マッチング脆弱性を解消）
+- ✅ `TrainingSetSummary` dataclass（オンデマンドサマリー計算）
+- ✅ `import_analyzed_sgf_folder()` - バッチ出力フォルダのインポート
+- ✅ `show_import_batch_output_dialog()` - バッチインポートダイアログ UI
+- ✅ Training Set Manager への解析率表示（色分け付き）
+
+#### 28.4 実装詳細（2026-01-17）
+
+**PR #149: Core層 - 解析率計算**
+- `ImportErrorCode` enum 追加（DUPLICATE, PARSE_FAILED, FILE_NOT_FOUND, COPY_FAILED, UNKNOWN）
+- `TrainingSetSummary` dataclass 追加
+- `has_analysis_data()` - 軽量な解析データ存在チェック
+- `compute_analyzed_ratio_from_sgf_file()` - SGF解析率計算
+- `compute_training_set_summary()` - Training Set サマリー計算
+- `import_sgf_to_training_set()` に `compute_ratio` オプション追加
+- `import_analyzed_sgf_folder()` - バッチ出力フォルダのインポート
+
+**PR #152: UI - Training Set Manager解析率表示**
+- `_format_analyzed_ratio()` - 解析率の色分け表示
+- None vs 0.0 の正しい区別（`if ratio is None` を使用）
+- 色分け: 緑(≥70%), 黄(40-69%), 赤(<40%), グレー(None)
+
+**PR #151: UI - バッチインポートブリッジ**
+- `show_import_batch_output_dialog()` - バッチインポートダイアログ
+- フォルダ選択、Context選択（Human/vs_katago/AI生成）
+- バックグラウンドスレッドでインポート実行
+- 結果サマリー表示（success/skipped/failed + 平均解析率）
+
+**テスト: 36件**
+- `tests/test_smart_kifu_analyzed_ratio.py` - 25件
+- `tests/test_smart_kifu_import.py` - 11件
+- `tests/data/analyzed/` - 6つのテストフィクスチャSGF
+
+#### 28.5 受け入れ条件
+- [x] `has_analysis_data()` が `bool(getattr(..., None))` を使用
+- [x] `compute_analyzed_ratio_from_sgf_file()` が None vs 0.0 を正しく区別
+- [x] `ImportErrorCode` enum を追加
+- [x] `import_sgf_to_training_set()` が `ImportErrorCode` を返す
+- [x] `import_analyzed_sgf_folder()` がエラーコードで分類
+- [x] 平均計算が None を除外
+- [x] UI が `if ratio is None` を使用（`if not ratio` ではない）
+- [x] None → "--"、0.0 → "0%" が正しく区別される
 
 ---
 
