@@ -42,6 +42,7 @@ from katrain.core.smart_kifu.models import (
     Context,
     ViewerPreset,
     Confidence,
+    ImportErrorCode,
     # Dataclasses
     GameSource,
     GameEntry,
@@ -51,6 +52,7 @@ from katrain.core.smart_kifu.models import (
     ContextProfile,
     PlayerProfile,
     ImportResult,
+    TrainingSetSummary,
     # Constants
     CONFIDENCE_HIGH_MIN_SAMPLES,
     CONFIDENCE_HIGH_MIN_ANALYZED_RATIO,
@@ -72,6 +74,10 @@ from katrain.core.smart_kifu.logic import (
     # Analyzed Ratio
     iter_main_branch_nodes,
     compute_analyzed_ratio_from_game,
+    has_analysis_data,
+    compute_analyzed_ratio_from_sgf_file,
+    # Training Set Summary
+    compute_training_set_summary,
     # Confidence
     compute_confidence,
     # Viewer Level
@@ -102,6 +108,7 @@ from katrain.core.smart_kifu.io import (
     # SGF Import
     import_sgf_to_training_set,
     import_sgf_folder,
+    import_analyzed_sgf_folder,
 )
 
 # =============================================================================
@@ -114,6 +121,7 @@ __all__ = [
     "Context",
     "ViewerPreset",
     "Confidence",
+    "ImportErrorCode",
     # Dataclasses
     "GameSource",
     "GameEntry",
@@ -123,6 +131,7 @@ __all__ = [
     "ContextProfile",
     "PlayerProfile",
     "ImportResult",
+    "TrainingSetSummary",
     # Constants
     "CONFIDENCE_HIGH_MIN_SAMPLES",
     "CONFIDENCE_HIGH_MIN_ANALYZED_RATIO",
@@ -138,6 +147,10 @@ __all__ = [
     # Analyzed Ratio
     "iter_main_branch_nodes",
     "compute_analyzed_ratio_from_game",
+    "has_analysis_data",
+    "compute_analyzed_ratio_from_sgf_file",
+    # Training Set Summary
+    "compute_training_set_summary",
     # Confidence
     "compute_confidence",
     # Viewer Level
@@ -162,4 +175,5 @@ __all__ = [
     # SGF Import
     "import_sgf_to_training_set",
     "import_sgf_folder",
+    "import_analyzed_sgf_folder",
 ]

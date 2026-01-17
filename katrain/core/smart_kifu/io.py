@@ -23,12 +23,16 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 import uuid
 
 from katrain.core.constants import DATA_FOLDER
-from katrain.core.smart_kifu.logic import compute_game_id
+from katrain.core.smart_kifu.logic import (
+    compute_analyzed_ratio_from_sgf_file,
+    compute_game_id,
+)
 from katrain.core.smart_kifu.models import (
     Context,
     ContextProfile,
     GameEntry,
     GameSource,
+    ImportErrorCode,
     ImportResult,
     PlayerProfile,
     TrainingSetManifest,
@@ -404,7 +408,8 @@ def import_sgf_to_training_set(
     context: Context,
     origin: str = "",
     tags: Optional[List[str]] = None,
-) -> Tuple[Optional[GameEntry], Optional[str]]:
+    compute_ratio: bool = False,
+) -> Tuple[Optional[GameEntry], Optional[ImportErrorCode]]:
     """SGFファイルをTraining Setにインポート。
 
     Args:
@@ -413,10 +418,11 @@ def import_sgf_to_training_set(
         context: 対戦コンテキスト
         origin: ソースの元情報
         tags: タグリスト
+        compute_ratio: 解析率を計算するか（Phase 28）
 
     Returns:
         (GameEntry, None): 成功時
-        (None, error_message): 失敗時
+        (None, ImportErrorCode): 失敗時（エラーコードで分類）
     """
     if tags is None:
         tags = []
@@ -424,14 +430,14 @@ def import_sgf_to_training_set(
     # manifest読み込み
     manifest = load_manifest(set_id)
     if manifest is None:
-        return None, f"Training Set '{set_id}' not found"
+        return None, ImportErrorCode.FILE_NOT_FOUND
 
     # SGF読み込み
     try:
         with open(sgf_path, "r", encoding="utf-8") as f:
             sgf_content = f.read()
-    except OSError as e:
-        return None, f"Failed to read SGF: {e}"
+    except OSError:
+        return None, ImportErrorCode.FILE_NOT_FOUND
 
     # game_id計算
     game_id = compute_game_id(sgf_content)
@@ -439,7 +445,7 @@ def import_sgf_to_training_set(
     # 重複チェック
     existing_ids = manifest.get_game_ids()
     if game_id in existing_ids:
-        return None, f"Duplicate SGF (game_id already exists)"
+        return None, ImportErrorCode.DUPLICATE
 
     # メタデータ抽出
     metadata = _extract_sgf_metadata(sgf_content)
@@ -460,8 +466,13 @@ def import_sgf_to_training_set(
 
     try:
         shutil.copy2(sgf_path, dest_path)
-    except OSError as e:
-        return None, f"Failed to copy SGF: {e}"
+    except OSError:
+        return None, ImportErrorCode.COPY_FAILED
+
+    # analyzed_ratio計算（オプション）
+    ratio = None
+    if compute_ratio:
+        ratio = compute_analyzed_ratio_from_sgf_file(str(dest_path))
 
     # GameEntry作成
     now = datetime.now().isoformat()
@@ -480,7 +491,7 @@ def import_sgf_to_training_set(
         handicap=metadata["handicap"],
         move_count=metadata["move_count"],
         result=metadata["result"],
-        analyzed_ratio=None,  # v0.2ではインポート時は None
+        analyzed_ratio=ratio,
         engine_profile_id=None,
     )
 
@@ -521,7 +532,7 @@ def import_sgf_folder(
         return result  # 空のまま返す
 
     for sgf_path in sgf_files:
-        entry, error = import_sgf_to_training_set(
+        entry, error_code = import_sgf_to_training_set(
             set_id=set_id,
             sgf_path=sgf_path,
             context=context,
@@ -531,14 +542,80 @@ def import_sgf_folder(
         if entry is not None:
             result.success_count += 1
             logger.info(f"Imported: {sgf_path.name}")
-        elif error and "Duplicate" in error:
+        elif error_code == ImportErrorCode.DUPLICATE:
             result.skipped_count += 1
             result.skipped_files.append(sgf_path.name)
             logger.info(f"Skipped (duplicate): {sgf_path.name}")
         else:
             result.failed_count += 1
-            result.failed_files.append((sgf_path.name, error or "Unknown error"))
-            logger.warning(f"Failed: {sgf_path.name} - {error}")
+            error_msg = error_code.value if error_code else "Unknown error"
+            result.failed_files.append((sgf_path.name, error_msg))
+            logger.warning(f"Failed: {sgf_path.name} - {error_msg}")
+
+    return result
+
+
+def import_analyzed_sgf_folder(
+    set_id: str,
+    folder_path: Path,
+    context: Context,
+    origin: str = "",
+) -> ImportResult:
+    """バッチ解析出力フォルダからインポート（解析率計算付き）。
+
+    Phase 28: バッチ解析の出力フォルダをTraining Setにインポート。
+    各SGFの解析率を計算してGameEntry.analyzed_ratioに設定。
+
+    Args:
+        set_id: Training SetのID
+        folder_path: 解析済みSGFフォルダのパス
+        context: 対戦コンテキスト
+        origin: ソースの元情報
+
+    Returns:
+        ImportResult（成功/失敗/スキップの件数、平均解析率）
+    """
+    result = ImportResult()
+    computed_ratios: List[Optional[float]] = []
+
+    if not folder_path.is_dir():
+        result.failed_count = 1
+        result.failed_files.append((str(folder_path), "Not a directory"))
+        return result
+
+    # *.sgf ファイルを列挙
+    sgf_files = list(folder_path.glob("*.sgf"))
+    if not sgf_files:
+        return result  # 空のまま返す
+
+    for sgf_path in sgf_files:
+        entry, error_code = import_sgf_to_training_set(
+            set_id=set_id,
+            sgf_path=sgf_path,
+            context=context,
+            origin=origin,
+            compute_ratio=True,
+        )
+
+        if entry is not None:
+            result.success_count += 1
+            computed_ratios.append(entry.analyzed_ratio)
+            logger.info(f"Imported: {sgf_path.name} (ratio={entry.analyzed_ratio})")
+        elif error_code == ImportErrorCode.DUPLICATE:
+            result.skipped_count += 1
+            result.skipped_files.append(sgf_path.name)
+            logger.info(f"Skipped (duplicate): {sgf_path.name}")
+        else:
+            result.failed_count += 1
+            error_msg = error_code.value if error_code else "Unknown error"
+            result.failed_files.append((sgf_path.name, error_msg))
+            logger.warning(f"Failed: {sgf_path.name} - {error_msg}")
+
+    # 平均解析率を計算（None除外）
+    valid_ratios = [r for r in computed_ratios if r is not None]
+    result.average_analyzed_ratio = (
+        sum(valid_ratios) / len(valid_ratios) if valid_ratios else None
+    )
 
     return result
 
@@ -564,4 +641,5 @@ __all__ = [
     # SGF Import
     "import_sgf_to_training_set",
     "import_sgf_folder",
+    "import_analyzed_sgf_folder",
 ]

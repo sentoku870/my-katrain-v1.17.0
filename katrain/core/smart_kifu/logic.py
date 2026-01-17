@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from typing import TYPE_CHECKING, Iterator, Optional, Tuple
 
 from katrain.core.smart_kifu.models import (
@@ -25,12 +26,16 @@ from katrain.core.smart_kifu.models import (
     CONFIDENCE_MEDIUM_MIN_SAMPLES,
     Confidence,
     EngineProfileSnapshot,
+    TrainingSetManifest,
+    TrainingSetSummary,
     ViewerPreset,
 )
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.game_node import GameNode
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -165,6 +170,92 @@ def compute_analyzed_ratio_from_game(game: "Game") -> Optional[float]:
         return None  # 着手がない場合
     analyzed = sum(1 for n in nodes if n.analysis is not None)
     return analyzed / len(nodes)
+
+
+def has_analysis_data(node: "GameNode") -> bool:
+    """ノードに解析データが存在するかチェック（軽量）。
+
+    KTプロパティ（analysis_from_sgf）の存在と非空をチェック。
+    load_analysis() を呼ばないため高速。
+
+    Args:
+        node: GameNode
+
+    Returns:
+        True if KT property exists and is non-empty list
+
+    Note:
+        - None → False
+        - [] → False（不完全データとして扱う）
+        - [data...] → True
+    """
+    return bool(getattr(node, "analysis_from_sgf", None))
+
+
+def compute_analyzed_ratio_from_sgf_file(sgf_path: str) -> Optional[float]:
+    """SGFファイルから解析率を計算（軽量版）。
+
+    Args:
+        sgf_path: SGFファイルパス
+
+    Returns:
+        0.0-1.0: 解析率（着手あり）
+        None: ファイル無効/着手なし
+
+    Spec:
+        - パース失敗 → None
+        - rootのみ → None
+        - 解析ノード0個 → 0.0
+        - メインラインのみ、root除外、pass含む、分岐無視
+    """
+    # 遅延インポート（循環依存回避）
+    from katrain.core.game import KaTrainSGF
+
+    try:
+        root = KaTrainSGF.parse_file(sgf_path)
+    except Exception as e:
+        logger.debug(f"Failed to parse SGF {sgf_path}: {e}")
+        return None
+
+    nodes = list(iter_main_branch_nodes(root))
+
+    if not nodes:
+        return None  # 着手なし
+
+    analyzed = sum(1 for n in nodes if has_analysis_data(n))
+    return analyzed / len(nodes)
+
+
+def compute_training_set_summary(manifest: TrainingSetManifest) -> TrainingSetSummary:
+    """Training Set のサマリーを計算（オンデマンド）。
+
+    Args:
+        manifest: TrainingSetManifest
+
+    Returns:
+        TrainingSetSummary
+
+    Note:
+        - analyzed_ratio が None のゲームは「未解析」としてカウント
+        - average は None を除外して計算
+        - 全て None → average = None（not 0.0）
+    """
+    total = len(manifest.games)
+    if total == 0:
+        return TrainingSetSummary(total_games=0)
+
+    ratios = [g.analyzed_ratio for g in manifest.games if g.analyzed_ratio is not None]
+    analyzed = len(ratios)
+    fully = sum(1 for r in ratios if r >= 1.0)
+    avg = sum(ratios) / len(ratios) if ratios else None
+
+    return TrainingSetSummary(
+        total_games=total,
+        analyzed_games=analyzed,
+        fully_analyzed_games=fully,
+        average_analyzed_ratio=avg,
+        unanalyzed_games=total - analyzed,
+    )
 
 
 # =============================================================================
@@ -342,6 +433,10 @@ __all__ = [
     # Analyzed Ratio
     "iter_main_branch_nodes",
     "compute_analyzed_ratio_from_game",
+    "has_analysis_data",
+    "compute_analyzed_ratio_from_sgf_file",
+    # Training Set Summary
+    "compute_training_set_summary",
     # Confidence
     "compute_confidence",
     # Viewer Level
