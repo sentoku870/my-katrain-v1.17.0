@@ -26,6 +26,7 @@ from katrain.core.smart_kifu import (
     TrainingSetManifest,
     compute_training_set_summary,
     create_training_set,
+    import_analyzed_sgf_folder,
     import_sgf_folder,
     list_training_sets,
     load_manifest,
@@ -801,6 +802,222 @@ def show_training_set_manager(
 
 
 # =============================================================================
+# Batch Import Bridge (Phase 28)
+# =============================================================================
+
+
+def show_import_batch_output_dialog(
+    ctx: "FeatureContext",
+    set_id: str,
+    on_import_complete: Callable[[], None],
+) -> None:
+    """バッチ解析出力フォルダのインポートダイアログを表示
+
+    Phase 28: バッチ解析の出力（analyzed/*.sgf）をTraining Setにインポート
+
+    Args:
+        ctx: FeatureContext
+        set_id: インポート先のTraining Set ID
+        on_import_complete: インポート完了時のコールバック
+    """
+    from pathlib import Path
+
+    content = BoxLayout(
+        orientation="vertical",
+        spacing=dp(10),
+        padding=dp(15),
+    )
+
+    # フォルダ選択行
+    folder_row = BoxLayout(
+        orientation="horizontal",
+        size_hint_y=None,
+        height=dp(40),
+        spacing=dp(10),
+    )
+    folder_label = Label(
+        text="フォルダ:",
+        size_hint_x=0.2,
+        halign="right",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    folder_label.bind(size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    folder_input = TextInput(
+        text="",
+        hint_text="解析済みSGFフォルダを選択",
+        multiline=False,
+        size_hint_x=0.6,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    browse_btn = Button(
+        text="参照...",
+        size_hint_x=0.2,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    browse_btn.bind(on_release=create_browse_callback(
+        folder_input, "解析済みSGFフォルダを選択", ctx.katrain_gui
+    ))
+    folder_row.add_widget(folder_label)
+    folder_row.add_widget(folder_input)
+    folder_row.add_widget(browse_btn)
+    content.add_widget(folder_row)
+
+    # Context選択行
+    context_row = BoxLayout(
+        orientation="horizontal",
+        size_hint_y=None,
+        height=dp(40),
+        spacing=dp(10),
+    )
+    context_label = Label(
+        text="コンテキスト:",
+        size_hint_x=0.2,
+        halign="right",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    context_label.bind(size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+    # Context選択ボタン群
+    context_buttons = BoxLayout(
+        orientation="horizontal",
+        size_hint_x=0.8,
+        spacing=dp(5),
+    )
+    selected_context = [Context.HUMAN]  # 参照渡し用
+
+    for ctx_enum, label in CONTEXT_LABELS.items():
+        btn = ToggleButton(
+            text=label,
+            group="batch_import_context",
+            state="down" if ctx_enum == Context.HUMAN else "normal",
+            font_name=Theme.DEFAULT_FONT,
+        )
+
+        def make_context_fn(c):
+            def set_ctx(instance, state):
+                if state == "down":
+                    selected_context[0] = c
+            return set_ctx
+
+        btn.bind(state=make_context_fn(ctx_enum))
+        context_buttons.add_widget(btn)
+
+    context_row.add_widget(context_label)
+    context_row.add_widget(context_buttons)
+    content.add_widget(context_row)
+
+    # 結果表示ラベル
+    result_label = Label(
+        text="",
+        size_hint_y=None,
+        height=dp(60),
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        halign="center",
+        valign="middle",
+    )
+    result_label.bind(size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    content.add_widget(result_label)
+
+    # スペーサー
+    content.add_widget(BoxLayout(size_hint_y=1))
+
+    # ボタン行
+    button_row = BoxLayout(
+        orientation="horizontal",
+        size_hint_y=None,
+        height=dp(48),
+        spacing=dp(10),
+    )
+
+    popup = I18NPopup(
+        title_key="",
+        size=[dp(500), dp(280)],
+        content=content,
+        auto_dismiss=True,
+    )
+    popup.title = "バッチ出力をインポート"
+
+    def on_import(*_args):
+        folder_path_str = folder_input.text.strip()
+        if not folder_path_str:
+            result_label.text = "フォルダを選択してください"
+            result_label.color = Theme.TEXT_COLOR
+            return
+
+        folder_path = Path(folder_path_str)
+        if not folder_path.is_dir():
+            result_label.text = "有効なフォルダを選択してください"
+            result_label.color = [0.9, 0.3, 0.3, 1.0]
+            return
+
+        result_label.text = "インポート中..."
+        result_label.color = Theme.TEXT_COLOR
+
+        def do_import():
+            result = import_analyzed_sgf_folder(
+                set_id=set_id,
+                folder_path=folder_path,
+                context=selected_context[0],
+                origin=f"batch:{folder_path_str}",
+            )
+            return result
+
+        def show_result(result: ImportResult):
+            # IMPORTANT: ratio is not None で判定（0.0 を "--" にしない）
+            if result.average_analyzed_ratio is not None:
+                ratio_text = f"{int(result.average_analyzed_ratio * 100)}%"
+            else:
+                ratio_text = "--"
+
+            result_label.text = (
+                f"成功: {result.success_count}, "
+                f"スキップ: {result.skipped_count}, "
+                f"失敗: {result.failed_count}\n"
+                f"平均解析率: {ratio_text}"
+            )
+
+            if result.has_failures:
+                result_label.color = [0.9, 0.8, 0.2, 1.0]  # Yellow for partial
+            elif result.success_count > 0:
+                result_label.color = [0.3, 0.8, 0.3, 1.0]  # Green for success
+            else:
+                result_label.color = Theme.TEXT_COLOR
+
+            on_import_complete()
+
+        def import_thread():
+            result = do_import()
+            Clock.schedule_once(lambda dt: show_result(result), 0)
+
+        threading.Thread(target=import_thread, daemon=True).start()
+
+    import_btn = Button(
+        text="インポート",
+        size_hint_x=0.5,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    import_btn.bind(on_release=on_import)
+
+    close_btn = Button(
+        text="閉じる",
+        size_hint_x=0.5,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    close_btn.bind(on_release=lambda *_: popup.dismiss())
+
+    button_row.add_widget(import_btn)
+    button_row.add_widget(close_btn)
+    content.add_widget(button_row)
+
+    popup.open()
+
+
+# =============================================================================
 # __all__
 # =============================================================================
 
@@ -809,4 +1026,5 @@ __all__ = [
     "show_create_training_set_dialog",
     "show_import_sgf_dialog",
     "show_import_result",
+    "show_import_batch_output_dialog",
 ]
