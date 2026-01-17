@@ -1467,3 +1467,19 @@ msgid ""
 msgstr ""
 "パッケージの出力に失敗しました:\n"
 "%s"
+
+#. Phase 27: Settings Reset
+msgid "mykatrain:settings:reset"
+msgstr "デフォルトに戻す"
+
+msgid "mykatrain:settings:reset_confirm_title"
+msgstr "設定のリセット"
+
+msgid "mykatrain:settings:reset_confirm_message"
+msgstr ""
+"「{tab}」の設定をデフォルトに戻しますか？\n"
+"対象: {targets}\n"
+"この操作は元に戻せません。"
+
+msgid "mykatrain:settings:reset_success"
+msgstr "「{tab}」の設定をデフォルトに戻しました"
