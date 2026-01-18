@@ -26,6 +26,28 @@ from katrain.tools.batch_analyze_sgf import (
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_int(text: str, default: Optional[int] = None) -> Optional[int]:
+    """Parse integer safely, returning default on invalid input.
+
+    Note: Does not log warnings to avoid noise from frequent UI validation.
+
+    Args:
+        text: Text to parse
+        default: Value to return if parsing fails
+
+    Returns:
+        Parsed integer or default value
+    """
+    text = text.strip() if text else ""
+    if not text:
+        return default
+    try:
+        return int(text)
+    except ValueError:
+        return default
+
+
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
@@ -46,7 +68,7 @@ def collect_batch_options(
     input_dir = widgets["input_input"].text.strip()
     output_dir = widgets["output_input"].text.strip() or None
     visits_text = widgets["visits_input"].text.strip()
-    visits = int(visits_text) if visits_text else None
+    visits = _safe_int(visits_text, default=None)
 
     # Parse timeout with support for "None" (no timeout)
     timeout_text = widgets["timeout_input"].text
@@ -64,12 +86,12 @@ def collect_batch_options(
 
     # Min games
     min_games_text = widgets["min_games_input"].text.strip()
-    min_games_per_player = int(min_games_text) if min_games_text else 3
+    min_games_per_player = _safe_int(min_games_text, default=3)
 
     # Variable visits options
     variable_visits = widgets["variable_visits_checkbox"].active
     jitter_text = widgets["jitter_input"].text.strip()
-    jitter_pct = int(jitter_text) if jitter_text else 10
+    jitter_pct = _safe_int(jitter_text, default=10)
     deterministic = widgets["deterministic_checkbox"].active
     sound_on_finish = widgets["sound_checkbox"].active
 

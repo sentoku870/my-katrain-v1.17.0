@@ -18,7 +18,8 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ### 1.3 現在のフェーズ
 - **完了**: Phase 1-37（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化）
-- **次**: Phase 38 ドキュメント整備
+- **進行中**: Phase 38 安定化（エラーハンドリング強化 + テスト追加）
+- **次**: Phase 39 エンジン比較ビュー
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -362,6 +363,15 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 38 PR-1 完了（エラーハンドリング強化）
+  - 新規: `_safe_int()` ヘルパー関数（batch_core.py、ログなしサイレント処理）
+  - 修正: `save_manifest()`, `save_player_profile()` にtry-except追加（io.py）
+  - 修正: `BaseEngine.on_error` のprint()削除、サブクラスでオーバーライド
+  - 修正: `_stderr_thread` のprint()をkatrain.log()に変更（engine.py）
+  - 修正: shutdown例外にOUTPUT_EXTRA_DEBUGログ追加（engine.py）
+  - 修正: `extract_analysis_from_sgf_node()` 例外具体化 + binasciiインポート（summary_stats.py）
+  - 新規: テスト8件（test_batch_validation.py）
+  - テスト総数: 1416件
 - 2026-01-18: Phase 37 完了（テスト強化）
   - PR-2: `MixedEngineSnapshotError` 専用例外導入（karte_report.py）
   - PR-2: `KARTE_ERROR_CODE_*` エラーコード定数導入

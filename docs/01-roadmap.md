@@ -1028,15 +1028,17 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
   - **Phase 35**: Leelaカルテ統合
   - **Phase 36**: Leelaバッチ解析（オプション、Phase 35後いつでも可）
   - **Phase 37**: テスト強化（既存`--update-goldens`活用）
-  - **Phase 38**: ドキュメント整備
-  - **Phase 39**: 仕上げ・安定化
+  - **Phase 38**: 安定化（エラーハンドリング強化 + コアモジュールテスト追加）
+  - **Phase 39**: エンジン比較ビュー
+  - **Phase 40**: PLAYモード
   - **設計原則（v2強化）**:
     - 単一エンジンレポート（KataGo/Leela混合禁止）
     - 既存EvalSnapshot/MoveEvalパイプライン再利用
     - テストは実エンジン不使用（mock/stub + golden）
     - ハードコードvisits値禁止（`leela.fast_visits`設定可能）
     - 損失セマンティクス明確化（`score_loss` vs `leela_loss_est`）
-  - **Phase 40+へ延期**: エンジン比較ビュー、PLAYモード、初心者UX
+  - **Phase 41+へ延期**: 初心者UX、ドキュメント整備
+  - ※ 2026-01-18: 旧Phase 38-39（ドキュメント整備/仕上げ）を再編。安定化を優先。
 - 2026-01-17: Phase 26 レポート導線改善完了（PR #144）
   - **common/file_opener.py**: クロスプラットフォームファイル/フォルダオープナー
   - **gui/features/report_navigator.py**: レポート導線UI

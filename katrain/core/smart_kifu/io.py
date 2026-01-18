@@ -189,8 +189,8 @@ def save_manifest(manifest: TrainingSetManifest) -> None:
     Args:
         manifest: 保存するマニフェスト
 
-    Raises:
-        OSError: 書き込みに失敗した場合
+    Note:
+        書き込みエラー時はlogger.error()でログ出力し、例外は再raiseしない。
     """
     ensure_smart_kifu_dirs()
     set_dir = get_training_sets_dir() / manifest.set_id
@@ -207,8 +207,17 @@ def save_manifest(manifest: TrainingSetManifest) -> None:
         "games": [_game_entry_to_dict(g) for g in manifest.games],
     }
 
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    try:
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        logger.error(
+            "Failed to save manifest: set_id=%s, path=%s, error=%s: %s",
+            manifest.set_id,
+            manifest_path,
+            type(e).__name__,
+            e,
+        )
 
 
 def create_training_set(name: str) -> TrainingSetManifest:
@@ -328,8 +337,8 @@ def save_player_profile(profile: PlayerProfile) -> None:
     Args:
         profile: 保存するプロファイル
 
-    Raises:
-        OSError: 書き込みに失敗した場合
+    Note:
+        書き込みエラー時はlogger.error()でログ出力し、例外は再raiseしない。
     """
     ensure_smart_kifu_dirs()
     profile_path = get_profiles_dir() / "player_profile.json"
@@ -351,8 +360,16 @@ def save_player_profile(profile: PlayerProfile) -> None:
         "per_context": per_context_data,
     }
 
-    with open(profile_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    try:
+        with open(profile_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except OSError as e:
+        logger.error(
+            "Failed to save player profile: path=%s, error=%s: %s",
+            profile_path,
+            type(e).__name__,
+            e,
+        )
 
 
 # =============================================================================
