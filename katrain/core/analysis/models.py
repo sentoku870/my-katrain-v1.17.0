@@ -180,6 +180,22 @@ def get_analysis_engine(engine_config: Dict[str, Any]) -> str:
     return value
 
 
+def needs_leela_warning(selected_engine: str, leela_enabled: bool) -> bool:
+    """Leela選択時にLeela未有効の警告が必要かどうかを判定する。
+
+    Args:
+        selected_engine: 選択されたエンジン ("katago" or "leela")
+        leela_enabled: Leelaが有効かどうか
+
+    Returns:
+        True if warning should be shown (Leela selected but not enabled)
+
+    Note:
+        Phase 34で追加。UIとテストで共有するための純粋関数。
+    """
+    return selected_engine == EngineType.LEELA.value and not leela_enabled
+
+
 # Engine-specific default visits values.
 # These are HARD SAFETY DEFAULTS used when config.json is missing keys.
 # User-facing defaults should be set in config.json itself.

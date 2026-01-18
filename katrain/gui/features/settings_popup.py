@@ -458,6 +458,68 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     )
     tab3_inner.bind(minimum_height=tab3_inner.setter("height"))
 
+    # === Analysis Engine Selection (Phase 34) ===
+    from katrain.core.analysis import EngineType, get_analysis_engine
+
+    engine_label = Label(
+        text=i18n._("mykatrain:settings:analysis_engine"),
+        size_hint_y=None,
+        height=dp(25),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    engine_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    tab1_inner.add_widget(engine_label)
+
+    # Get current value via Phase 33 function (with fallback)
+    engine_config = ctx.config("engine") or {}
+    current_engine = get_analysis_engine(engine_config)
+    selected_engine = [current_engine]
+
+    # Radio button options (use EngineType constants for name consistency)
+    engine_options = [
+        (EngineType.KATAGO.value, i18n._("mykatrain:settings:engine_katago")),
+        (EngineType.LEELA.value, i18n._("mykatrain:settings:engine_leela")),
+    ]
+
+    engine_layout = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3)
+    )
+    for engine_value, engine_label_text in engine_options:
+        checkbox = CheckBox(
+            group="analysis_engine_setting",
+            active=(engine_value == current_engine),
+            size_hint_x=None,
+            width=dp(30),
+        )
+        checkbox.bind(
+            active=lambda chk, active, val=engine_value: (
+                selected_engine.__setitem__(0, val) if active else None
+            )
+        )
+        label = Label(
+            text=engine_label_text,
+            size_hint_x=0.4,  # Flexible width for i18n (Issue 16)
+            halign="left",
+            valign="middle",
+            color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
+        )
+        label.bind(
+            size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+        )
+        engine_layout.add_widget(checkbox)
+        engine_layout.add_widget(label)
+
+    tab1_inner.add_widget(engine_layout)
+    register_searchable(
+        i18n._("mykatrain:settings:analysis_engine"), engine_label, engine_layout
+    )
+
     # Skill Preset (Radio buttons)
     skill_label = Label(
         text=i18n._("mykatrain:settings:skill_preset"),
@@ -1058,6 +1120,40 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         general["pv_filter_level"] = selected_pv_filter[0]
         ctx.set_config_section("general", general)
         ctx.save_config("general")
+
+        # [Phase 34] Capture UI state early for consistency (with defensive fallback)
+        leela_will_be_enabled = getattr(leela_enabled_checkbox, "active", None)
+        if leela_will_be_enabled is None:
+            # Fallback to config if checkbox not available (future-proofing)
+            leela_will_be_enabled = (ctx.config("leela") or {}).get("enabled", False)
+
+        # [Phase 34] Save analysis engine to engine config (MERGE pattern)
+        from katrain.core.analysis import needs_leela_warning
+        import logging
+
+        existing_engine = ctx.config("engine") or {}
+        new_engine_value = selected_engine[0]
+
+        # Consistency check: warn if Leela selected but not enabled
+        if needs_leela_warning(new_engine_value, leela_will_be_enabled):
+            ctx.controls.set_status(
+                i18n._("mykatrain:settings:engine_leela_not_enabled_warning"),
+                STATUS_INFO,  # Note: STATUS_WARNING does not exist in constants.py
+            )
+
+        # MERGE: preserve other engine keys (katago, model, etc.)
+        try:
+            updated_engine = {**existing_engine, "analysis_engine": new_engine_value}
+            ctx.set_config_section("engine", updated_engine)
+            ctx.save_config("engine")
+        except Exception as e:
+            logging.exception("Failed to save engine config")
+            ctx.controls.set_status(
+                i18n._("mykatrain:settings:engine_save_error"),
+                STATUS_ERROR,
+            )
+            # Continue with other saves (partial save is better than nothing)
+
         # Save mykatrain settings
         mykatrain_settings = {
             "default_user_name": user_input.text,
@@ -1072,7 +1168,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         existing_leela = ctx.config("leela") or {}
         new_leela_config = {
             **existing_leela,  # 既存設定を保持（resign_hint_*等）
-            "enabled": leela_enabled_checkbox.active,
+            "enabled": leela_will_be_enabled,  # Phase 34: use captured value for consistency
             "exe_path": leela_path_input.text.strip(),
             "loss_scale_k": clamp_k(leela_k_slider.value),
             "max_visits": 1000,  # default, overwritten below

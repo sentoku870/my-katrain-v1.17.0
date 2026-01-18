@@ -1294,6 +1294,22 @@ msgstr "myKatrain Settings"
 msgid "Configure myKatrain default settings:"
 msgstr "Configure myKatrain default settings:"
 
+# Analysis Engine Selection (Phase 34)
+msgid "mykatrain:settings:analysis_engine"
+msgstr "Analysis Engine:"
+
+msgid "mykatrain:settings:engine_katago"
+msgstr "KataGo"
+
+msgid "mykatrain:settings:engine_leela"
+msgstr "Leela Zero"
+
+msgid "mykatrain:settings:engine_leela_not_enabled_warning"
+msgstr "Leela Zero selected but not enabled. Enable it in the Leela tab."
+
+msgid "mykatrain:settings:engine_save_error"
+msgstr "Failed to save analysis engine setting."
+
 msgid "mykatrain:settings:skill_preset"
 msgstr "Skill Preset:"
 
