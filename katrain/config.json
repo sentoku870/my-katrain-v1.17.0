@@ -1,5 +1,6 @@
 {
     "engine": {
+        "analysis_engine": "katago",
         "katago": "",
         "altcommand": "",
         "model": "katrain/models/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",

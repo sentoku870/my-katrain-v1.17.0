@@ -20,6 +20,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    FrozenSet,
     List,
     Optional,
     Set,
@@ -135,6 +136,48 @@ class EngineType(Enum):
     KATAGO = "katago"
     LEELA = "leela"
     UNKNOWN = "unknown"
+
+
+# =============================================================================
+# Analysis Engine Selection (Phase 33)
+# =============================================================================
+
+# Derive from EngineType to prevent drift (EngineType.UNKNOWN excluded)
+VALID_ANALYSIS_ENGINES: FrozenSet[str] = frozenset({
+    EngineType.KATAGO.value,
+    EngineType.LEELA.value,
+})
+DEFAULT_ANALYSIS_ENGINE: str = EngineType.KATAGO.value
+
+
+def get_analysis_engine(engine_config: Dict[str, Any]) -> str:
+    """設定から解析エンジンを取得する。
+
+    Args:
+        engine_config: engine セクションの設定dict
+
+    Returns:
+        str: "katago" or "leela"（無効値/未設定は "katago" にフォールバック）
+
+    Behavior:
+        - キーなし: DEFAULT_ANALYSIS_ENGINE を返す
+        - 無効値（大文字、typo、None、非文字列等）: warning log + フォールバック
+        - 大文字小文字は厳格（"LEELA" は無効）
+
+    Note:
+        Phase 33で追加。Phase 34でUI連携・エンジン起動ロジックに使用予定。
+        leela/enabled との整合性チェックは Phase 34 の責務。
+    """
+    value = engine_config.get("analysis_engine", DEFAULT_ANALYSIS_ENGINE)
+    # Type guard: unhashable types (list, dict) would crash `in frozenset`
+    if not isinstance(value, str) or value not in VALID_ANALYSIS_ENGINES:
+        _log.warning(
+            "Invalid analysis_engine %r, falling back to %r",
+            value,
+            DEFAULT_ANALYSIS_ENGINE,
+        )
+        return DEFAULT_ANALYSIS_ENGINE
+    return value
 
 
 # Engine-specific default visits values.
