@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-38（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化）
-- **次**: Phase 39 エンジン比較ビュー
+- **完了**: Phase 1-39（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー）
+- **次**: Phase 40 PLAYモード
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -362,6 +362,19 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-19: Phase 39 完了（エンジン比較ビュー）
+  - PR-1: `katrain/core/analysis/engine_compare.py`（~400行）
+    - `ComparisonWarning` enum、`MoveComparison`/`EngineStats`/`EngineComparisonResult` dataclass
+    - `build_comparison_from_game()` 関数
+    - `compute_spearman_manual()` 手動Spearman相関（scipy不使用）
+  - PR-1: テスト38件（test_engine_compare.py）
+  - PR-2: `katrain/gui/features/engine_compare_popup.py`（~660行）
+    - タブ切替UI（手別比較 / 統計サマリー）
+    - ScrollView固定 + 乖離フィルタ（デフォルトON）
+    - 行クリックで該当手にジャンプ
+  - PR-2: MyKatrainメニューに「エンジン比較」項目追加
+  - PR-2: i18n 35+キー追加（en/jp）
+  - テスト総数: 1463件
 - 2026-01-18: Phase 38 完了（安定化）
   - PR-1: `_safe_int()` ヘルパー関数（batch_core.py、サイレントデフォルト処理）
   - PR-1: `save_manifest()`, `save_player_profile()` にtry-except追加（io.py）
