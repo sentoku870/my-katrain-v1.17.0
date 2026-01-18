@@ -915,8 +915,8 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | Phase | 名称 | 主な成果物 | 状態 |
 |------:|------|-----------|------|
 | 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits | ✅ **完了** |
-| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est | 🔄 **次** |
-| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル | |
+| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est | ✅ **完了** |
+| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル | 🔄 **次** |
 | 33 | エンジン選択設定 | engine.analysis_engine キー | |
 | 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | |
@@ -969,6 +969,12 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 31 完了（Leela→MoveEval変換）
+  - **katrain/core/leela/conversion.py**: 変換モジュール新規作成（~280行）
+  - **MoveEval.leela_loss_est**: Leela Zero推定損失フィールド追加
+  - **leela_position_to_move_eval()**: 単一手の変換関数
+  - **leela_sequence_to_eval_snapshot()**: シーケンス変換（検証付き）
+  - **テスト**: 36件（test_leela_conversion.py）
 - 2026-01-18: Phase 30-39 ロードマップ追加（Leela Zero解析パイプライン拡張 v2）
   - **Phase 30**: 解析強度抽象化（Quick/Deep）+ `leela.fast_visits`設定追加
   - **Phase 31**: Leela→MoveEval変換（`leela_loss_est`フィールド新設）

@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-30（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化）
-- **次**: Phase 31 Leela→MoveEval変換
+- **完了**: Phase 1-31（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換）
+- **次**: Phase 32 レポートLeela対応
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 31 完了（Leela→MoveEval変換）
+  - 新規: `katrain/core/leela/conversion.py`（変換モジュール、~280行）
+  - 新規: `MoveEval.leela_loss_est` フィールド（Leela Zero推定損失）
+  - 機能: `leela_position_to_move_eval()` 単一手変換
+  - 機能: `leela_sequence_to_eval_snapshot()` シーケンス変換（検証付き）
+  - 機能: Winrate視点変換（side-to-move → black perspective）
+  - テスト: 36件（test_leela_conversion.py）
 - 2026-01-18: Phase 30 完了（解析強度抽象化）
   - 新規: `AnalysisStrength` enum（QUICK/DEEP、エンジン共通抽象）
   - 新規: `ENGINE_VISITS_DEFAULTS` 定数（KataGo/Leela別デフォルト値）
