@@ -1583,3 +1583,115 @@ msgstr "停止中"
 
 msgid "Not configured"
 msgstr "未設定"
+
+# Phase 39: Engine Compare
+msgid "mykatrain:engine-compare"
+msgstr "エンジン比較"
+
+msgid "engine-compare:title"
+msgstr "エンジン比較"
+
+msgid "engine-compare:tab-moves"
+msgstr "手別比較"
+
+msgid "engine-compare:tab-stats"
+msgstr "統計サマリー"
+
+msgid "engine-compare:no-game"
+msgstr "対局が読み込まれていません"
+
+msgid "engine-compare:build-error"
+msgstr "比較データの構築に失敗しました"
+
+msgid "engine-compare:no-analysis"
+msgstr "解析データがありません"
+
+msgid "engine-compare:katago-only"
+msgstr "KataGo解析のみ（Leela未実行）"
+
+msgid "engine-compare:leela-only"
+msgstr "Leela解析のみ（KataGo未実行）"
+
+msgid "engine-compare:partial-overlap"
+msgstr "一部の手のみ両エンジン解析あり（{pct}%）"
+
+msgid "engine-compare:semantics-differ"
+msgstr "※損失の単位・計算方法が異なるため、比較は参考値です"
+
+msgid "engine-compare:filter-label"
+msgstr "フィルタ:"
+
+msgid "engine-compare:filter-divergent"
+msgstr "乖離のみ"
+
+msgid "engine-compare:filter-all"
+msgstr "全手表示"
+
+msgid "engine-compare:no-divergent"
+msgstr "大きな乖離のある手がありません"
+
+msgid "engine-compare:col-move"
+msgstr "#"
+
+msgid "engine-compare:col-player"
+msgstr "手番"
+
+msgid "engine-compare:col-coord"
+msgstr "座標"
+
+msgid "engine-compare:col-katago"
+msgstr "KataGo"
+
+msgid "engine-compare:col-leela"
+msgstr "Leela"
+
+msgid "engine-compare:col-diff"
+msgstr "差分"
+
+msgid "engine-compare:analyzed-moves"
+msgstr "解析手数"
+
+msgid "engine-compare:total-loss"
+msgstr "総損失"
+
+msgid "engine-compare:avg-loss"
+msgstr "平均損失"
+
+msgid "engine-compare:blunder-count"
+msgstr "大悪手"
+
+msgid "engine-compare:mistake-count"
+msgstr "悪手"
+
+msgid "engine-compare:inaccuracy-count"
+msgstr "軽微ミス"
+
+msgid "engine-compare:divergence-analysis"
+msgstr "乖離分析"
+
+msgid "engine-compare:correlation"
+msgstr "相関係数"
+
+msgid "engine-compare:trend"
+msgstr "傾向"
+
+msgid "engine-compare:insufficient-data"
+msgstr "データ不足"
+
+msgid "engine-compare:trend-katago-strict"
+msgstr "KataGoの方が厳しい評価"
+
+msgid "engine-compare:trend-leela-strict"
+msgstr "Leelaの方が厳しい評価"
+
+msgid "engine-compare:trend-similar"
+msgstr "両エンジン同程度"
+
+msgid "engine-compare:divergent-top"
+msgstr "乖離Top{n}"
+
+msgid "engine-compare:close"
+msgstr "閉じる"
+
+msgid "engine-compare:jumped-to"
+msgstr "手数{move}に移動しました"

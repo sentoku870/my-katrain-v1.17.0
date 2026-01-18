@@ -1109,6 +1109,12 @@ class KaTrainGui(Screen, KaTrainBase):
 
         show_diagnostics_popup(self)
 
+    def _do_engine_compare_popup(self):
+        """Show engine comparison popup for KataGo/Leela analysis."""
+        from katrain.gui.features.engine_compare_popup import show_engine_compare_popup
+
+        show_engine_compare_popup(self)
+
     def load_sgf_from_clipboard(self):
         """Load SGF from clipboard. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_from_clipboard()
