@@ -918,8 +918,8 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est | ✅ **完了** |
 | 32 | レポートLeela対応 | EngineType, format_loss_label | ✅ **完了** |
 | 33 | エンジン選択設定 | engine.analysis_engine キー | ✅ **完了** |
-| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | 🔄 **次** |
-| 35 | Leelaカルテ統合 | Export Karte Leela対応 | |
+| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | ✅ **完了** |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
 | 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | |
 | 37 | テスト強化 | Python-level E2E, golden | |
 | 38 | ドキュメント整備 | ユーザーガイド | |
@@ -969,6 +969,22 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 35 完了（Leelaカルテ統合）
+  - **has_loss_data()**: MoveEvalに損失データが存在するか判定するヘルパー関数
+  - **format_loss_with_engine_suffix()**: 損失値フォーマット（Leelaは「(推定)」サフィックス付き）
+  - **worst_move_for()**: has_loss_data()ベースでLeela対応（0.0損失も候補に含む）
+  - **summary_lines_for()**: worst move表示にエンジンサフィックス追加
+  - **opponent_summary_for()**: worst move表示にエンジンサフィックス追加
+  - **Important Moves table**: Loss列にエンジンサフィックス追加
+  - **テスト**: 21件（test_karte_leela_integration.py）
+- 2026-01-18: Phase 34 完了（UIエンジン切替）
+  - **needs_leela_warning()**: Leela選択時の整合性チェックヘルパー関数
+  - **Settings UI**: Analysis タブにエンジン選択ラジオボタン追加
+  - **保存ロジック**: MERGEパターン（他のengineキーを保持）+ 例外処理
+  - **警告表示**: Leela選択 + Leela無効時に STATUS_INFO で通知
+  - **TAB_RESET_KEYS**: Analysis タブリセットで KataGo に戻る
+  - **i18n**: EN/JP 翻訳追加（5キー）
+  - **テスト**: 20件（test_engine_ui_selection.py）
 - 2026-01-18: Phase 33 完了（エンジン選択設定）
   - **VALID_ANALYSIS_ENGINES**: `FrozenSet[str]`（EngineTypeから派生、UNKNOWN除外）
   - **DEFAULT_ANALYSIS_ENGINE**: "katago"（定数）
