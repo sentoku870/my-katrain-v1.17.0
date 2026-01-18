@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-31（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換）
-- **次**: Phase 32 レポートLeela対応
+- **完了**: Phase 1-32（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応）
+- **次**: Phase 33 エンジン選択設定
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 32 完了（レポートLeela対応）
+  - 新規: `EngineType` enum（KATAGO/LEELA/UNKNOWN）
+  - 新規: `detect_engine_type()` 関数（MoveEvalからエンジン種別推定）
+  - 拡張: `get_canonical_loss_from_move()` にleela_loss_est対応+全クランプ
+  - 新規: `format_loss_label()` 関数（エンジン種別ラベルフォーマット）
+  - 更新: `format_evidence_examples()`, `karte_report.py` Leela対応
+  - テスト: 35件（test_engine_type_labels.py）
 - 2026-01-18: Phase 31 完了（Leela→MoveEval変換）
   - 新規: `katrain/core/leela/conversion.py`（変換モジュール、~280行）
   - 新規: `MoveEval.leela_loss_est` フィールド（Leela Zero推定損失）
