@@ -18,7 +18,8 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ### 1.3 現在のフェーズ
 - **完了**: Phase 1-35（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合）
-- **次**: Phase 36 Leelaバッチ解析（オプション）
+- **進行中**: Phase 36 Leelaバッチ解析（PR-1完了: is_idle, UI選択）
+- **次**: Phase 36 PR-2（analyze_single_file_leela実装）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +324,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 36 PR-1 完了（Leelaバッチ解析基盤）
+  - 新規: `LeelaEngine.is_idle()` メソッド（スレッドセーフなアイドル状態チェック）
+  - 拡張: `cancel_analysis()` にロック保護追加（`_current_request_id`）
+  - UI: Batch ダイアログにエンジン選択行追加（KataGo/Leela Zero切替）
+  - 拡張: `collect_batch_options()` に `analysis_engine` フィールド追加
+  - i18n: 5キー追加（mykatrain:batch:analysis_engine等）
+  - テスト: 22件（test_leela_engine_idle.py: 12件、test_batch_engine_option.py: 10件）
 - 2026-01-18: Phase 35 完了（Leelaカルテ統合）
   - 新規: `has_loss_data()` 関数（MoveEvalに損失データが存在するか判定）
   - 新規: `format_loss_with_engine_suffix()` 関数（Leelaは「(推定)」サフィックス付き）

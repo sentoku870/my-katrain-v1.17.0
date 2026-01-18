@@ -119,13 +119,13 @@
 | 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
 | 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ **完了** |
 | 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | ✅ **完了** |
-| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits追加 | TBD |
-| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est フィールド | TBD |
-| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル表示 | TBD |
-| 33 | エンジン選択設定 | engine.analysis_engine キー追加 | TBD |
-| 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | TBD |
-| 35 | Leelaカルテ統合 | Export Karte Leela対応 | TBD |
-| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | TBD |
+| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits追加 | ✅ **完了** |
+| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est フィールド | ✅ **完了** |
+| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル表示 | ✅ **完了** |
+| 33 | エンジン選択設定 | engine.analysis_engine キー追加 | ✅ **完了** |
+| 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | ✅ **完了** |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | 🔄 **進行中** |
 | 37 | テスト強化 | Python-level E2E, --update-goldens活用 | TBD |
 | 38 | ドキュメント整備 | ユーザーガイド | TBD |
 | 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | TBD |
@@ -969,6 +969,13 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 36 PR-1 完了（Leelaバッチ解析基盤）
+  - **LeelaEngine.is_idle()**: スレッドセーフなアイドル状態チェック（ロック保護）
+  - **cancel_analysis()**: ロック保護追加（_current_request_id）
+  - **Batch UI engine selection**: KataGo/Leela Zero切替トグルボタン
+  - **collect_batch_options()**: analysis_engineフィールド追加
+  - **i18n**: EN/JP翻訳追加（5キー）
+  - **テスト**: 22件（test_leela_engine_idle.py: 12件、test_batch_engine_option.py: 10件）
 - 2026-01-18: Phase 35 完了（Leelaカルテ統合）
   - **has_loss_data()**: MoveEvalに損失データが存在するか判定するヘルパー関数
   - **format_loss_with_engine_suffix()**: 損失値フォーマット（Leelaは「(推定)」サフィックス付き）
