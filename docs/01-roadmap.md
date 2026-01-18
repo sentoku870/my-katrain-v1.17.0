@@ -922,17 +922,18 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
 | 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
 | 37 | テスト強化 | Python-level E2E, golden | ✅ **完了** |
-| 38 | ドキュメント整備 | ユーザーガイド | |
-| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | |
+| 38 | 安定化 | エラーハンドリング強化 + テスト追加 | ✅ **完了** |
+| 39 | エンジン比較ビュー | KataGo/Leela比較表示 | 📋 次 |
+| 40 | PLAYモード | 対局機能 | 📋 次 |
 
 #### 依存関係
 ```
-Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
+Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
                                    │
                                    └→ 36 [OPTIONAL]
 ```
 - Phase 36（バッチ）はオプション。Phase 35完了後いつでも実装可能
-- Phase 40+（エンジン比較、PLAYモード）は次のマイルストーン
+- Phase 38（安定化）完了。Phase 39（エンジン比較ビュー）、Phase 40（PLAYモード）が次のマイルストーン
 
 ---
 
@@ -969,6 +970,20 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 38 完了（安定化）
+  - **PR-1**: エラーハンドリング強化
+    - `_safe_int()` ヘルパー関数（batch_core.py、サイレントデフォルト処理）
+    - `save_manifest()`, `save_player_profile()` にtry-except追加（io.py）
+    - `print()` を `katrain.log()` に変更（engine.py）
+    - shutdown例外に`OUTPUT_EXTRA_DEBUG`ログ追加（engine.py）
+    - 例外具体化 + binasciiインポート（summary_stats.py）
+    - テスト8件（test_batch_validation.py）
+  - **PR-2**: Gameコアモジュールテスト
+    - Game初期化テスト（19x19, 9x9）
+    - Game.play()テスト（single stone, pass, multiple stones）
+    - test_board.py MockKaTrain/MockEngineパターン踏襲
+    - テスト9件（test_game_core.py）
+  - **テスト総数**: 1425件（+17件）
 - 2026-01-18: Phase 36 PR-2 完了（Leelaバッチ解析実装）
   - **analyze_single_file_leela()**: per-move Leela解析関数（~180行）
   - **run_batch()拡張**: analysis_engine, leela_engine, per_move_timeout パラメータ追加

@@ -362,15 +362,16 @@ docs/
 
 ## 10. 変更履歴
 
-- 2026-01-18: Phase 38 PR-1 完了（エラーハンドリング強化）
-  - 新規: `_safe_int()` ヘルパー関数（batch_core.py、ログなしサイレント処理）
-  - 修正: `save_manifest()`, `save_player_profile()` にtry-except追加（io.py）
-  - 修正: `BaseEngine.on_error` のprint()削除、サブクラスでオーバーライド
-  - 修正: `_stderr_thread` のprint()をkatrain.log()に変更（engine.py）
-  - 修正: shutdown例外にOUTPUT_EXTRA_DEBUGログ追加（engine.py）
-  - 修正: `extract_analysis_from_sgf_node()` 例外具体化 + binasciiインポート（summary_stats.py）
-  - 新規: テスト8件（test_batch_validation.py）
-  - テスト総数: 1416件
+- 2026-01-18: Phase 38 完了（安定化）
+  - PR-1: `_safe_int()` ヘルパー関数（batch_core.py、サイレントデフォルト処理）
+  - PR-1: `save_manifest()`, `save_player_profile()` にtry-except追加（io.py）
+  - PR-1: `BaseEngine.on_error` のprint()削除、サブクラスでオーバーライド
+  - PR-1: `_stderr_thread` のprint()をkatrain.log()に変更（engine.py）
+  - PR-1: shutdown例外にOUTPUT_EXTRA_DEBUGログ追加（engine.py）
+  - PR-1: `extract_analysis_from_sgf_node()` 例外具体化 + binasciiインポート（summary_stats.py）
+  - PR-1: テスト8件（test_batch_validation.py）
+  - PR-2: Game初期化/playテスト9件（test_game_core.py、test_board.pyパターン踏襲）
+  - テスト総数: 1425件
 - 2026-01-18: Phase 37 完了（テスト強化）
   - PR-2: `MixedEngineSnapshotError` 専用例外導入（karte_report.py）
   - PR-2: `KARTE_ERROR_CODE_*` エラーコード定数導入
