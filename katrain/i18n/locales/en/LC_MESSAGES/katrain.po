@@ -1633,3 +1633,115 @@ msgstr "Stopped"
 
 msgid "Not configured"
 msgstr "Not configured"
+
+# Phase 39: Engine Compare
+msgid "mykatrain:engine-compare"
+msgstr "Engine Compare"
+
+msgid "engine-compare:title"
+msgstr "Engine Comparison"
+
+msgid "engine-compare:tab-moves"
+msgstr "Move Comparison"
+
+msgid "engine-compare:tab-stats"
+msgstr "Statistics"
+
+msgid "engine-compare:no-game"
+msgstr "No game loaded"
+
+msgid "engine-compare:build-error"
+msgstr "Failed to build comparison"
+
+msgid "engine-compare:no-analysis"
+msgstr "No analysis data available"
+
+msgid "engine-compare:katago-only"
+msgstr "KataGo analysis only (Leela not run)"
+
+msgid "engine-compare:leela-only"
+msgstr "Leela analysis only (KataGo not run)"
+
+msgid "engine-compare:partial-overlap"
+msgstr "Partial overlap ({pct}%)"
+
+msgid "engine-compare:semantics-differ"
+msgstr "Note: Loss values are calculated differently and comparison is for reference only"
+
+msgid "engine-compare:filter-label"
+msgstr "Filter:"
+
+msgid "engine-compare:filter-divergent"
+msgstr "Divergent Only"
+
+msgid "engine-compare:filter-all"
+msgstr "All Moves"
+
+msgid "engine-compare:no-divergent"
+msgstr "No moves with significant divergence"
+
+msgid "engine-compare:col-move"
+msgstr "#"
+
+msgid "engine-compare:col-player"
+msgstr "Player"
+
+msgid "engine-compare:col-coord"
+msgstr "Coord"
+
+msgid "engine-compare:col-katago"
+msgstr "KataGo"
+
+msgid "engine-compare:col-leela"
+msgstr "Leela"
+
+msgid "engine-compare:col-diff"
+msgstr "Diff"
+
+msgid "engine-compare:analyzed-moves"
+msgstr "Analyzed Moves"
+
+msgid "engine-compare:total-loss"
+msgstr "Total Loss"
+
+msgid "engine-compare:avg-loss"
+msgstr "Avg Loss"
+
+msgid "engine-compare:blunder-count"
+msgstr "Blunders"
+
+msgid "engine-compare:mistake-count"
+msgstr "Mistakes"
+
+msgid "engine-compare:inaccuracy-count"
+msgstr "Inaccuracies"
+
+msgid "engine-compare:divergence-analysis"
+msgstr "Divergence Analysis"
+
+msgid "engine-compare:correlation"
+msgstr "Correlation"
+
+msgid "engine-compare:trend"
+msgstr "Trend"
+
+msgid "engine-compare:insufficient-data"
+msgstr "Insufficient data"
+
+msgid "engine-compare:trend-katago-strict"
+msgstr "KataGo evaluates more strictly"
+
+msgid "engine-compare:trend-leela-strict"
+msgstr "Leela evaluates more strictly"
+
+msgid "engine-compare:trend-similar"
+msgstr "Both engines evaluate similarly"
+
+msgid "engine-compare:divergent-top"
+msgstr "Top {n} Divergent Moves"
+
+msgid "engine-compare:close"
+msgstr "Close"
+
+msgid "engine-compare:jumped-to"
+msgstr "Jumped to move {move}"
