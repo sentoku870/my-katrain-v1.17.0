@@ -19,9 +19,12 @@ from typing import (
 
 from katrain.core.analysis.models import (
     ConfidenceLevel,
+    EngineType,
     MoveEval,
     PhaseMistakeStats,
+    get_canonical_loss_from_move,
 )
+from katrain.core.analysis.logic_loss import detect_engine_type
 
 
 # =============================================================================
@@ -218,6 +221,53 @@ def select_representative_moves(
     return sorted_moves[:max_count]
 
 
+# =============================================================================
+# Loss label formatting (Phase 32)
+# =============================================================================
+
+
+def format_loss_label(
+    loss: float,
+    engine_type: EngineType,
+    lang: str = "ja",
+) -> str:
+    """損失値のラベルをエンジン種別に応じてフォーマット。
+
+    Args:
+        loss: 損失値（>= 0 を想定、負の場合は 0 扱い）
+        engine_type: エンジン種別
+        lang: 言語コード ("ja" or "en")
+
+    Returns:
+        フォーマット済みラベル
+
+    Examples:
+        KataGo JA: "-3.5目", "0.0目"
+        KataGo EN: "-3.5 pts", "0.0 pts"
+        Leela JA:  "-3.5目(推定)", "0.0目(推定)"
+        Leela EN:  "-3.5 pts(est.)", "0.0 pts(est.)"
+
+    Note:
+        - loss <= 0.0 の場合はマイナス符号なし（"0.0目"）
+        - 正の損失のみマイナス符号付き（"-3.5目"）
+        - UNKNOWN は KataGo と同じフォーマット
+    """
+    # 単位とサフィックスを言語別に定義
+    if lang == "ja":
+        unit = "目"
+        suffix = "(推定)" if engine_type == EngineType.LEELA else ""
+    else:
+        unit = " pts"
+        suffix = "(est.)" if engine_type == EngineType.LEELA else ""
+
+    # ゼロ以下は符号なし
+    if loss <= 0.0:
+        return f"0.0{unit}{suffix}"
+
+    # 正の損失は符号付き
+    return f"-{loss:.1f}{unit}{suffix}"
+
+
 def format_evidence_examples(
     moves: List[MoveEval],
     *,
@@ -232,17 +282,22 @@ def format_evidence_examples(
     Returns:
         Formatted string like "例: #12 Q16 (-8.5目), #45 R4 (-4.2目)"
         or "e.g.: #12 Q16 (-8.5 pts), #45 R4 (-4.2 pts)"
+        For Leela: "例: #12 Q16 (-8.5目(推定)), #45 R4 (-4.2目(推定))"
+
+    Note:
+        Phase 32: Updated to use format_loss_label() for engine-aware formatting.
     """
     if not moves:
         return ""
 
     prefix = "例: " if lang == "ja" else "e.g.: "
-    unit = "目" if lang == "ja" else " pts"
 
     parts = []
     for mv in moves:
-        loss = mv.score_loss if mv.score_loss is not None else 0.0
-        parts.append(f"#{mv.move_number} {mv.gtp or '-'} (-{loss:.1f}{unit})")
+        engine_type = detect_engine_type(mv)
+        loss = get_canonical_loss_from_move(mv)
+        loss_label = format_loss_label(loss, engine_type, lang=lang)
+        parts.append(f"#{mv.move_number} {mv.gtp or '-'} ({loss_label})")
 
     return prefix + ", ".join(parts)
 

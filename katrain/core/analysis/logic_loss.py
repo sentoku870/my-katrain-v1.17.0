@@ -6,15 +6,20 @@ logic.pyから抽出された損失計算関連の関数。
 - compute_loss_from_delta: delta_score/delta_winrateから損失を計算
 - compute_canonical_loss: 正準的な損失量を計算
 - classify_mistake: 損失からMistakeCategoryを決定
+- detect_engine_type: MoveEvalからエンジン種別を推定（Phase 32）
 """
 
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from katrain.core.analysis.models import (
+    EngineType,
     MistakeCategory,
     SCORE_THRESHOLDS,
     WINRATE_THRESHOLDS,
 )
+
+if TYPE_CHECKING:
+    from katrain.core.analysis.models import MoveEval
 
 
 def compute_loss_from_delta(
@@ -129,3 +134,29 @@ def classify_mistake(
         return MistakeCategory.BLUNDER
 
     return MistakeCategory.GOOD
+
+
+def detect_engine_type(m: "MoveEval") -> EngineType:
+    """MoveEvalからエンジン種別を推定する。
+
+    優先順位:
+      1) score_loss is not None → KATAGO（正確な目数損失）
+      2) leela_loss_est is not None → LEELA（推定損失）
+      3) 両方 None → UNKNOWN
+
+    Args:
+        m: MoveEval インスタンス
+
+    Returns:
+        EngineType: KATAGO, LEELA, UNKNOWN のいずれか
+
+    Note:
+        - score_loss と leela_loss_est が両方設定されている場合は KATAGO を返す
+          （単一エンジンレポート原則により、通常は混在しない）
+        - score_loss=0.0 や leela_loss_est=0.0 は有効値として扱う
+    """
+    if m.score_loss is not None:
+        return EngineType.KATAGO
+    if m.leela_loss_est is not None:
+        return EngineType.LEELA
+    return EngineType.UNKNOWN

@@ -33,6 +33,7 @@ from katrain.core.analysis.models import (
     AutoConfidence,
     ConfidenceLevel,
     PVFilterLevel,
+    EngineType,
     # Dataclasses
     MoveEval,
     EvalSnapshot,
@@ -129,6 +130,7 @@ from katrain.core.analysis.logic import (
     compute_loss_from_delta,
     compute_canonical_loss,
     classify_mistake,
+    detect_engine_type,
     # Snapshot
     snapshot_from_nodes,
     iter_main_branch_nodes,
@@ -184,6 +186,8 @@ from katrain.core.analysis.presentation import (
     # Difficulty Metrics Formatting (Phase 12.5)
     get_difficulty_label,
     format_difficulty_metrics,
+    # Loss label formatting (Phase 32)
+    format_loss_label,
 )
 
 # =============================================================================
@@ -198,6 +202,7 @@ __all__ = [
     "AutoConfidence",
     "ConfidenceLevel",
     "PVFilterLevel",
+    "EngineType",
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",
@@ -288,6 +293,7 @@ __all__ = [
     "compute_loss_from_delta",
     "compute_canonical_loss",
     "classify_mistake",
+    "detect_engine_type",
     # Snapshot
     "snapshot_from_nodes",
     "iter_main_branch_nodes",
@@ -337,4 +343,6 @@ __all__ = [
     # Difficulty Metrics Formatting (Phase 12.5)
     "get_difficulty_label",
     "format_difficulty_metrics",
+    # Loss label formatting (Phase 32)
+    "format_loss_label",
 ]
