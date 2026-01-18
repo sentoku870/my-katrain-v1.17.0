@@ -374,11 +374,38 @@ class LeelaEngine:
                 callback(LeelaPositionEval(parse_error=str(e)))
 
     def cancel_analysis(self) -> None:
-        """Cancel current analysis request."""
-        self._current_request_id = None
-        # Send a command to interrupt lz-analyze
+        """Cancel current analysis request.
+
+        Thread Safety:
+            Uses _lock to protect _current_request_id modification.
+            The GTP interrupt command is sent outside the lock to avoid
+            potential deadlocks with I/O operations.
+        """
+        with self._lock:
+            self._current_request_id = None
+        # Send a command to interrupt lz-analyze (outside lock)
         if self.is_alive():
             self._send_command("name")
+
+    def is_idle(self) -> bool:
+        """Check if the engine is ready to accept a new analysis request.
+
+        Returns:
+            True if no active analysis request (ready for new request).
+            False if currently processing an analysis.
+
+        Thread Safety:
+            Uses _lock to protect _current_request_id read.
+            This method is intended for polling in batch analysis loops.
+
+        Note:
+            Thread state is not considered. After cancel_analysis(),
+            this returns True even if the analysis thread is still
+            shutting down. request_analysis() cancels any previous
+            request before starting a new one, so this is safe.
+        """
+        with self._lock:
+            return self._current_request_id is None
 
     def get_winrate(self) -> Optional[float]:
         """Get current position winrate (synchronous).

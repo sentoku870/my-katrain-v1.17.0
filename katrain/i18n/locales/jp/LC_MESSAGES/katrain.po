@@ -1166,6 +1166,21 @@ msgstr "再現性あり"
 msgid "mykatrain:batch:sound_on_finish"
 msgstr "完了時に音を鳴らす"
 
+msgid "mykatrain:batch:analysis_engine"
+msgstr "解析エンジン:"
+
+msgid "mykatrain:batch:engine_katago"
+msgstr "KataGo"
+
+msgid "mykatrain:batch:engine_leela"
+msgstr "Leela Zero"
+
+msgid "mykatrain:batch:leela_not_enabled_warning"
+msgstr "⚠ Leelaが未有効"
+
+msgid "mykatrain:batch:error_leela_not_enabled"
+msgstr "Leela Zeroが有効になっていません。設定で有効にしてください。"
+
 msgid "Close"
 msgstr "閉じる"
 

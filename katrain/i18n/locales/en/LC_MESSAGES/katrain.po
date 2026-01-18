@@ -183,6 +183,21 @@ msgstr "Deterministic"
 msgid "mykatrain:batch:sound_on_finish"
 msgstr "Sound on finish"
 
+msgid "mykatrain:batch:analysis_engine"
+msgstr "Analysis Engine:"
+
+msgid "mykatrain:batch:engine_katago"
+msgstr "KataGo"
+
+msgid "mykatrain:batch:engine_leela"
+msgstr "Leela Zero"
+
+msgid "mykatrain:batch:leela_not_enabled_warning"
+msgstr "⚠ Leela not enabled"
+
+msgid "mykatrain:batch:error_leela_not_enabled"
+msgstr "Leela Zero is not enabled. Please enable it in Settings first."
+
 #. player options in the setup and on the right
 msgid "player:type"
 msgstr "Player"
