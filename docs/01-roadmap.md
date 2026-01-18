@@ -899,7 +899,7 @@ diagnostics_YYYYMMDD-HHMMSS_XXXX.zip
 
 ---
 
-### Phase 30-39: Leela Zero解析パイプライン拡張（TBD）
+### Phase 30-39: Leela Zero解析パイプライン拡張（Phase 30-36 完了）
 
 Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成パイプラインに統合するためのロードマップです。
 詳細な計画は計画ファイルを参照してください。
@@ -920,7 +920,7 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 33 | エンジン選択設定 | engine.analysis_engine キー | ✅ **完了** |
 | 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | ✅ **完了** |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
-| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
 | 37 | テスト強化 | Python-level E2E, golden | |
 | 38 | ドキュメント整備 | ユーザーガイド | |
 | 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | |

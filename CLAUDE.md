@@ -236,6 +236,45 @@ KataGoEngine はマルチスレッドで動作するため、デッドロック�
 
 **関連**: `daemon=True` スレッドはメインプロセス終了時に自動終了するため、アプリ終了時のスレッド join はスキップ可能。
 
+### フォールバックポリシー（Phase 36）
+
+| 文脈 | Leela選択時の動作 | 根拠 |
+|------|------------------|------|
+| **Settings UI保存** | 警告表示（STATUS_INFO）＋保存続行 | 後で有効化する可能性 |
+| **Batch開始** | 即座にエラー＋中断（`is_alive()=False`時） | 長時間処理の無駄を防ぐ |
+| **Export Karte** | 呼び出し元でチェック | エクスポート時は既にエンジン選択済み |
+| **Config読み込み** | KataGoにフォールバック＋警告ログ | 起動時クラッシュ防止 |
+
+### バッチLeela visits仕様（Phase 36 MVP）
+
+1. `analysis_engine="leela"` 選択時:
+   - `visits = resolve_visits(AnalysisStrength.QUICK, katrain.config("leela"), "leela")`
+   - UIの `visits_input` フィールドは無視される
+
+2. UIの振る舞い:
+   - Leela選択時: `visits_input` を disabled 表示または "[設定値を使用]" と表示
+   - 警告ラベル: "Leelaはleela.fast_visitsを使用します"
+
+### 混合エンジン検出仕様（Phase 37）
+
+判定ロジック:
+```python
+has_katago = any(m.score_loss is not None for m in moves)
+has_leela = any(m.leela_loss_est is not None for m in moves)
+is_mixed = has_katago and has_leela
+```
+
+許容パターン:
+- 全手KataGo（`score_loss`設定）→ OK
+- 全手Leela（`leela_loss_est`設定）→ OK
+- 全手データなし（両方None）→ OK（未解析）
+- 一部解析済み＋一部未解析 → OK（部分解析）
+- 1手でもKataGo + 1手でもLeela → NG（`MixedEngineSnapshotError`）
+
+エンフォースメントポイント:
+- `build_karte_report()` 冒頭でのみチェック
+- `EvalSnapshot`作成時はチェックしない（パフォーマンス考慮）
+
 ---
 
 ## 5. 囲碁ドメイン（参照）

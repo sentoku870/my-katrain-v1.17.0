@@ -1063,6 +1063,13 @@ def run_batch(
         # Select analysis function based on engine type
         leela_snapshot = None
         if analysis_engine == "leela" and leela_engine is not None:
+            # Phase 36 MVP: Leela batch always uses QUICK (fast_visits)
+            # UI visits_input is ignored for Leela (spec: Batch Leela visits)
+            from katrain.core.analysis.models import AnalysisStrength, resolve_visits
+            leela_config = katrain.config("leela") or {}
+            effective_visits = resolve_visits(AnalysisStrength.QUICK, leela_config, "leela")
+            log(f"  Leela visits: {effective_visits} (from leela.fast_visits)")
+
             # Leela Zero analysis
             game_result = analyze_single_file_leela(
                 katrain=katrain,
