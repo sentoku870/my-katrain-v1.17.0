@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-32（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応）
-- **次**: Phase 33 エンジン選択設定
+- **完了**: Phase 1-33（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定）
+- **次**: Phase 34 UIエンジン切替
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,12 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 33 完了（エンジン選択設定）
+  - 新規: `VALID_ANALYSIS_ENGINES: FrozenSet[str]`（EngineTypeから派生、UNKNOWN除外）
+  - 新規: `DEFAULT_ANALYSIS_ENGINE` 定数（"katago"）
+  - 新規: `get_analysis_engine()` 関数（unhashable型ガード付き）
+  - 設定: `engine.analysis_engine` キー追加
+  - テスト: 30件（test_analysis_engine_config.py）
 - 2026-01-18: Phase 32 完了（レポートLeela対応）
   - 新規: `EngineType` enum（KATAGO/LEELA/UNKNOWN）
   - 新規: `detect_engine_type()` 関数（MoveEvalからエンジン種別推定）

@@ -917,8 +917,8 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits | ✅ **完了** |
 | 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est | ✅ **完了** |
 | 32 | レポートLeela対応 | EngineType, format_loss_label | ✅ **完了** |
-| 33 | エンジン選択設定 | engine.analysis_engine キー | 🔄 **次** |
-| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | |
+| 33 | エンジン選択設定 | engine.analysis_engine キー | ✅ **完了** |
+| 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | 🔄 **次** |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | |
 | 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | |
 | 37 | テスト強化 | Python-level E2E, golden | |
@@ -969,6 +969,12 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 33 完了（エンジン選択設定）
+  - **VALID_ANALYSIS_ENGINES**: `FrozenSet[str]`（EngineTypeから派生、UNKNOWN除外）
+  - **DEFAULT_ANALYSIS_ENGINE**: "katago"（定数）
+  - **get_analysis_engine()**: 設定から解析エンジンを取得（unhashable型ガード付き）
+  - **config.json**: `engine.analysis_engine` キー追加
+  - **テスト**: 30件（test_analysis_engine_config.py）
 - 2026-01-18: Phase 32 完了（レポートLeela対応）
   - **EngineType enum**: KATAGO/LEELA/UNKNOWNの3種別
   - **detect_engine_type()**: MoveEvalからエンジン種別を推定
