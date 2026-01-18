@@ -567,6 +567,17 @@ def build_batch_popup_widgets(
     options_row6.add_widget(Label(size_hint_x=0.12))  # spacer
     main_layout.add_widget(options_row6)
 
+    # Leela選択時はvisits_inputを無効化（Phase 37: UI仕様）
+    # Leelaはleela.fast_visitsを使用するため、手動入力は不要
+    def update_visits_input_state(*_args):
+        is_leela = widgets["engine_leela"].state == "down"
+        widgets["visits_input"].disabled = is_leela
+
+    widgets["engine_katago"].bind(state=update_visits_input_state)
+    widgets["engine_leela"].bind(state=update_visits_input_state)
+    # 初期状態を設定
+    update_visits_input_state()
+
     # Progress row
     progress_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(10))
     widgets["progress_label"] = Label(
