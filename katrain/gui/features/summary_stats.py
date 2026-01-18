@@ -7,6 +7,7 @@
 # - extract_sgf_statistics: SGFファイルから統計データを抽出
 
 import base64
+import binascii
 import gzip
 import json
 import logging
@@ -56,8 +57,12 @@ def extract_analysis_from_sgf_node(node) -> Optional[dict]:
         # analysis already contains {"root": {...}, "moves": {...}}
         return analysis
 
+    except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, IndexError) as e:
+        logger.debug("Failed to extract analysis from SGF node: %s", type(e).__name__)
+        return None
     except Exception:
-        logger.debug("Failed to extract analysis from SGF node", exc_info=True)
+        # Unexpected error - log with full traceback for investigation
+        logger.warning("Unexpected error extracting analysis from SGF node", exc_info=True)
         return None
 
 

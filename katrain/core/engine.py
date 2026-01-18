@@ -97,7 +97,8 @@ class BaseEngine:
         return exe
 
     def on_error(self, message, code, allow_popup):
-        print("ERROR", message, code)
+        # Subclasses should override to implement proper logging
+        pass
 
 
 class KataGoEngine(BaseEngine):
@@ -349,24 +350,36 @@ class KataGoEngine(BaseEngine):
         # Step 2: Signal writer thread to stop
         try:
             self.write_queue.put(None)
-        except Exception:
-            pass
+        except Exception as e:
+            # Intentional: shutdown cleanup must not raise
+            try:
+                self.katrain.log(f"Shutdown: write_queue.put failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
+            except Exception:
+                pass
 
         if process:
             # Step 3: Terminate process (start graceful shutdown)
             self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
             try:
                 process.terminate()
-            except Exception:
-                pass
+            except Exception as e:
+                # Intentional: shutdown cleanup must not raise
+                try:
+                    self.katrain.log(f"Shutdown: terminate failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
+                except Exception:
+                    pass
 
             # Step 4: Close pipes explicitly (guarantee EOF for readline())
             for pipe in [process.stdin, process.stdout, process.stderr]:
                 try:
                     if pipe:
                         pipe.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Intentional: shutdown cleanup must not raise
+                    try:
+                        self.katrain.log(f"Shutdown: pipe.close failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
+                    except Exception:
+                        pass
 
             # Step 5: Wait for threads to finish (short timeout)
             if finish is not None:  # don't care if exiting app
@@ -449,7 +462,7 @@ class KataGoEngine(BaseEngine):
                     try:
                         self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
                     except Exception as e:
-                        print("ERROR in processing KataGo stderr:", line, "Exception", e)
+                        self.katrain.log(f"Error processing stderr: {line!r}: {e}", OUTPUT_ERROR)
             except queue.Empty:
                 # Timeout - check if we should continue
                 if self._shutdown_event.is_set():
