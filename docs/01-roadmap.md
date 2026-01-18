@@ -126,7 +126,7 @@
 | 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | ✅ **完了** |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
 | 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
-| 37 | テスト強化 | Python-level E2E, --update-goldens活用 | TBD |
+| 37 | テスト強化 | Python-level E2E, --update-goldens活用 | ✅ **完了** |
 | 38 | ドキュメント整備 | ユーザーガイド | TBD |
 | 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | TBD |
 
@@ -921,7 +921,7 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 34 | UIエンジン切替 | Settings Popup, フォールバック診断 | ✅ **完了** |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
 | 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
-| 37 | テスト強化 | Python-level E2E, golden | |
+| 37 | テスト強化 | Python-level E2E, golden | ✅ **完了** |
 | 38 | ドキュメント整備 | ユーザーガイド | |
 | 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | |
 

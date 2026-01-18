@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-36（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析）
-- **次**: Phase 37 テスト強化 または Phase 36 PR-3（UI連携）
+- **完了**: Phase 1-37（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化）
+- **次**: Phase 38 ドキュメント整備
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -362,6 +362,19 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 37 完了（テスト強化）
+  - PR-2: `MixedEngineSnapshotError` 専用例外導入（karte_report.py）
+  - PR-2: `KARTE_ERROR_CODE_*` エラーコード定数導入
+  - PR-2: `is_single_engine_snapshot()` 混合エンジン検出関数
+  - PR-2: `needs_leela_karte_warning()` 純粋関数（batch_core.py）
+  - PR-2: T1混合エンジン防止テスト（test_mixed_engine_guard.py、17件）
+  - PR-2: T2 Leela+karte警告テスト（test_batch_engine_option.py拡張）
+  - PR-2: T3 resolve_visits契約テスト（定数参照、test_analysis_strength.py）
+  - PR-2: T4 config fallback契約テスト（test_analysis_engine_config.py）
+  - PR-3: T6 Leelaゴールデンテスト（test_golden_karte.py、3件）
+  - PR-3: ゴールデンファイル（karte_leela_standard.golden）
+  - PR-3: UI visits_input disabled（Leela選択時、batch_ui.py）
+  - テスト総数: 1408件
 - 2026-01-18: Phase 36 完了（Leelaバッチ解析）
   - PR-2: `analyze_single_file_leela()` per-move解析関数（~180行）
   - PR-2: `run_batch()` 拡張（analysis_engine, leela_engine, per_move_timeout）
