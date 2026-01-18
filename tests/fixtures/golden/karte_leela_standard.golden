@@ -1,0 +1,70 @@
+## Meta
+- Board: 19x19
+- Komi: 6.5
+- Rules: chinese
+- Handicap: 0
+- Game: leela_test
+- Date: leela_golden_test
+
+## Players
+- Black: unknown
+- White: unknown
+
+## Notes
+- loss is measured for the player who played the move.
+
+## Definitions
+
+- Strictness: 標準 (手動)
+- Auto recommended: 標準 (信頼度: 低)
+
+| Metric | Definition |
+|--------|------------|
+| Points Lost | Score difference between actual move and best move (clamped to ≥0) |
+| Good | Loss < 1.0 pts |
+| Inaccuracy | Loss 1.0 - 2.5 pts |
+| Mistake | Loss 2.5 - 5.0 pts |
+| Blunder | Loss ≥ 5.0 pts |
+| Phase (19x19) | Opening: <50, Middle: 50-199, Endgame: ≥200 |
+
+## Data Quality
+
+- **信頼度: 高**
+- Moves analyzed: 10
+- Coverage: 10 / 10 (100.0%)
+- Reliable (visits ≥ 200): 10 (100.0%)
+- Low-confidence: 0 (0.0%)
+- Avg visits: 500
+- Max visits: 500
+
+*Visits are measured from KataGo analysis (root_visits).*
+
+## Summary (Black)
+- Moves analyzed: 5
+- Total points lost: 0.0
+- Worst move: #5 B D5 loss 6.0(推定) (blunder)
+
+## Summary (White)
+- Moves analyzed: 5
+- Total points lost: 0.0
+- Worst move: #2 W D2 loss 0.5(推定) (good)
+
+## Distributions (Black)
+- Mistake buckets: unknown
+
+## Distributions (White)
+- Mistake buckets: unknown
+
+## Important Moves (Black) Top 20
+- No important moves found.
+
+## Reason Tags Distribution (Black)
+
+- No reason tags detected.
+
+## Important Moves (White) Top 20
+- No important moves found.
+
+## Reason Tags Distribution (White)
+
+- No reason tags detected.

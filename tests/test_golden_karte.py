@@ -594,3 +594,126 @@ class TestKarteFromSGF:
             f"Karte output for {sgf_key} is not deterministic.\n"
             f"First run differs from second run."
         )
+
+
+# ---------------------------------------------------------------------------
+# Leela Golden Tests (Phase 37 T6)
+# ---------------------------------------------------------------------------
+
+
+def create_leela_test_snapshot() -> EvalSnapshot:
+    """Create a Leela-analyzed EvalSnapshot for golden testing.
+
+    Creates 10 moves with leela_loss_est values (not score_loss).
+    This simulates Leela Zero analysis data.
+    """
+    moves = []
+
+    for i in range(1, 11):
+        # Vary the loss to create interesting data
+        loss = 0.5  # Default good move
+        if i == 3:
+            loss = 4.0  # Mistake
+        elif i == 7:
+            loss = 2.5  # Inaccuracy
+        elif i == 5:
+            loss = 6.0  # Blunder
+
+        move = MoveEval(
+            move_number=i,
+            player="B" if i % 2 == 1 else "W",
+            gtp=f"D{i}",
+            score_before=None,  # Leela doesn't have score
+            score_after=None,
+            delta_score=None,
+            winrate_before=0.5,
+            winrate_after=0.5 - loss * 0.01,
+            delta_winrate=-loss * 0.01,
+            points_lost=None,  # Leela doesn't have points_lost
+            realized_points_lost=None,
+            root_visits=500,
+        )
+        # Leela-specific: only leela_loss_est is set, not score_loss
+        move.score_loss = None
+        move.leela_loss_est = loss
+        move.winrate_loss = loss * 0.01
+        move.mistake_category = classify_mistake(loss, None)
+        move.position_difficulty = PositionDifficulty.NORMAL
+        moves.append(move)
+
+    compute_importance_for_moves(moves)
+    return EvalSnapshot(moves=moves)
+
+
+class TestKarteFromLeelaSnapshot:
+    """Leela golden tests for karte generation (Phase 37 T6).
+
+    Verifies that Leela-analyzed data produces correct karte output
+    with (推定) suffix on loss values.
+    """
+
+    @pytest.fixture
+    def leela_game_fixture(self):
+        """Create a Game mock that returns Leela snapshot."""
+        snapshot = create_leela_test_snapshot()
+
+        game = MagicMock()
+        game.build_eval_snapshot.return_value = snapshot
+        game.game_id = "leela_golden_test"
+        game.sgf_filename = "leela_test.sgf"
+        game.katrain = None
+        game.board_size = (19, 19)
+        game.komi = 6.5
+        game.rules = "chinese"
+        # Mock root for metadata
+        game.root = MagicMock()
+        game.root.handicap = 0
+        game.root.get_property.return_value = None
+        return game
+
+    def test_leela_karte_contains_estimated_suffix(self, leela_game_fixture):
+        """Leela karte output should contain (推定) suffix."""
+        from katrain.core.reports.karte_report import build_karte_report
+
+        output = build_karte_report(leela_game_fixture)
+
+        # Verify (推定) suffix is present
+        assert "(推定)" in output, "Leela karte should contain (推定) suffix"
+
+    def test_leela_karte_has_important_moves_section(self, leela_game_fixture):
+        """Leela karte should have Important Moves section."""
+        from katrain.core.reports.karte_report import build_karte_report
+
+        output = build_karte_report(leela_game_fixture)
+
+        # Important Moves セクションが存在する
+        assert "## Important Moves" in output
+        # Leelaデータでは loss に基づいた worst move が Summary に表示される
+        assert "Worst move:" in output
+
+    def test_leela_karte_matches_golden(self, leela_game_fixture, request):
+        """Leela karte output should match golden file."""
+        from katrain.core.reports.karte_report import build_karte_report
+
+        output = build_karte_report(leela_game_fixture)
+        normalized = normalize_output(output)
+
+        golden_name = "karte_leela_standard.golden"
+        golden_path = GOLDEN_DIR / golden_name
+
+        # Update golden if requested
+        if request.config.getoption("--update-goldens", default=False):
+            save_golden(golden_name, normalized)
+            pytest.skip(f"Updated golden file: {golden_name}")
+
+        # Load and compare
+        if not golden_path.exists():
+            # First run: create golden
+            save_golden(golden_name, normalized)
+            pytest.skip(f"Created golden file: {golden_name}")
+
+        expected = load_golden(golden_name)
+        assert normalized == expected, (
+            f"Leela karte output does not match golden file.\n"
+            f"Run with --update-goldens to update the expected output."
+        )
