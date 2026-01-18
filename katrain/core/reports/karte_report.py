@@ -37,6 +37,59 @@ from katrain.core.eval_metrics import (
 )
 
 
+# ---------------------------------------------------------------------------
+# Helper functions for Leela/KataGo engine-aware loss display (Phase 35)
+# ---------------------------------------------------------------------------
+
+
+def has_loss_data(mv: MoveEval) -> bool:
+    """MoveEval に損失データが存在するか判定。
+
+    Returns:
+        True: score_loss, leela_loss_est, points_lost のいずれかが設定されている
+        False: すべて None（解析データなし）
+
+    Note:
+        0.0 は有効な損失値（完璧な手）として True を返す。
+        これにより「データなし」と「真の 0.0 損失」を区別できる。
+    """
+    return (
+        mv.score_loss is not None
+        or mv.leela_loss_est is not None
+        or mv.points_lost is not None
+    )
+
+
+def format_loss_with_engine_suffix(
+    loss_val: Optional[float],
+    engine_type: EngineType,
+) -> str:
+    """損失値をフォーマット。Leelaは(推定)サフィックス付き。
+
+    既存 fmt_float 完全互換: 符号なし、単位なし
+    - None: "unknown"
+    - KataGo/UNKNOWN: "6.0"
+    - Leela: "6.0(推定)"
+
+    Args:
+        loss_val: 損失値（None は未解析）
+        engine_type: エンジン種別
+
+    Returns:
+        フォーマット済み文字列
+
+    Note:
+        0.0 は有効な損失値（完璧な手）として "0.0" を返す。
+        データなし（None）のみ "unknown" を返す。
+    """
+    if loss_val is None:
+        return "unknown"
+    base = f"{loss_val:.1f}"  # fmt_float と同一フォーマット
+    if engine_type == EngineType.LEELA:
+        return f"{base}(推定)"
+    return base
+
+
 class KarteGenerationError(Exception):
     """Exception raised when karte generation fails.
 
@@ -242,8 +295,13 @@ def _build_karte_report_impl(
             # If both or neither match, filtered_player stays None (show both)
 
     def worst_move_for(player: str) -> Optional[MoveEval]:
-        moves = [mv for mv in snapshot.moves if mv.player == player and mv.points_lost is not None]
-        return max(moves, key=lambda mv: mv.points_lost) if moves else None
+        """worst move を canonical loss で選択（KataGo/Leela 両対応）。"""
+        player_moves = [mv for mv in snapshot.moves if mv.player == player]
+        # 損失データが存在する手のみ対象（0.0 も含む、データなしは除外）
+        moves_with_data = [mv for mv in player_moves if has_loss_data(mv)]
+        if not moves_with_data:
+            return None
+        return max(moves_with_data, key=get_canonical_loss_from_move)
 
     def mistake_label_from_loss(loss_val: Optional[float], thresholds: Tuple[float, float, float]) -> str:
         """Classify a loss value using the centralized classify_mistake function with given thresholds."""
@@ -257,16 +315,20 @@ def _build_karte_report_impl(
         player_moves = [mv for mv in snapshot.moves if mv.player == player]
         total_lost = sum(max(0.0, mv.points_lost) for mv in player_moves if mv.points_lost is not None)
         worst = worst_move_for(player)
+        if worst:
+            worst_loss = get_canonical_loss_from_move(worst)
+            worst_engine = detect_engine_type(worst)
+            worst_display = (
+                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
+                f"loss {format_loss_with_engine_suffix(worst_loss, worst_engine)} "
+                f"({mistake_label_from_loss(worst_loss, effective_thresholds)})"
+            )
+        else:
+            worst_display = "unknown"
         return [
             f"- Moves analyzed: {len(player_moves)}",
             f"- Total points lost: {fmt_float(total_lost)}",
-            "- Worst move: "
-            + (
-                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
-                f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost, effective_thresholds)})"
-                if worst
-                else "unknown"
-            ),
+            f"- Worst move: {worst_display}",
         ]
 
     def opponent_summary_for(focus_player: str) -> List[str]:
@@ -278,15 +340,21 @@ def _build_karte_report_impl(
         total_lost = sum(max(0.0, mv.points_lost) for mv in opponent_moves if mv.points_lost is not None)
         worst = worst_move_for(opponent)
         opponent_name = pw if opponent == "W" else pb
+        if worst:
+            worst_loss = get_canonical_loss_from_move(worst)
+            worst_engine = detect_engine_type(worst)
+            worst_display = (
+                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
+                f"loss {format_loss_with_engine_suffix(worst_loss, worst_engine)} "
+                f"({mistake_label_from_loss(worst_loss, effective_thresholds)})"
+            )
+        else:
+            worst_display = "unknown"
         return [
             f"## Opponent Summary ({opponent_name})",
             f"- Moves analyzed: {len(opponent_moves)}",
             f"- Total points lost: {fmt_float(total_lost)}",
-            "- Worst move: " + (
-                f"#{worst.move_number} {worst.player or '-'} {worst.gtp or '-'} "
-                f"loss {fmt_float(worst.points_lost)} ({mistake_label_from_loss(worst.points_lost, effective_thresholds)})"
-                if worst else "unknown"
-            ),
+            f"- Worst move: {worst_display}",
             ""
         ]
 
@@ -478,9 +546,11 @@ def _build_karte_report_impl(
                     best_gap_str = "-"
                 danger_str = context["danger"] or "-"
 
+                # Leela データには (推定) サフィックスを付加
+                loss_display = format_loss_with_engine_suffix(loss, detect_engine_type(mv))
                 lines.append(
                     f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                    f"{fmt_float(loss)} | {best_move_str} | {candidates_str} | {best_gap_str} | {danger_str} | "
+                    f"{loss_display} | {best_move_str} | {candidates_str} | {best_gap_str} | {danger_str} | "
                     f"{mistake} | {reason_str} |"
                 )
         else:

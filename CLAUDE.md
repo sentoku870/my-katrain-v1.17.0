@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-33（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定）
-- **次**: Phase 34 UIエンジン切替
+- **完了**: Phase 1-35（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合）
+- **次**: Phase 36 Leelaバッチ解析（オプション）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -323,6 +323,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 35 完了（Leelaカルテ統合）
+  - 新規: `has_loss_data()` 関数（MoveEvalに損失データが存在するか判定）
+  - 新規: `format_loss_with_engine_suffix()` 関数（Leelaは「(推定)」サフィックス付き）
+  - 拡張: `worst_move_for()` がLeela対応（has_loss_data()ベースで0.0も候補に含む）
+  - 拡張: `summary_lines_for()`, `opponent_summary_for()` のworst move表示
+  - 拡張: Important Moves table の Loss 列にエンジンサフィックス
+  - テスト: 21件（test_karte_leela_integration.py）
 - 2026-01-18: Phase 33 完了（エンジン選択設定）
   - 新規: `VALID_ANALYSIS_ENGINES: FrozenSet[str]`（EngineTypeから派生、UNKNOWN除外）
   - 新規: `DEFAULT_ANALYSIS_ENGINE` 定数（"katago"）
