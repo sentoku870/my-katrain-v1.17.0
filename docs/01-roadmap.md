@@ -125,7 +125,7 @@
 | 33 | エンジン選択設定 | engine.analysis_engine キー追加 | ✅ **完了** |
 | 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | ✅ **完了** |
 | 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
-| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | 🔄 **進行中** |
+| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
 | 37 | テスト強化 | Python-level E2E, --update-goldens活用 | TBD |
 | 38 | ドキュメント整備 | ユーザーガイド | TBD |
 | 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | TBD |
@@ -969,6 +969,13 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39
 
 ## 11. 変更履歴
 
+- 2026-01-18: Phase 36 PR-2 完了（Leelaバッチ解析実装）
+  - **analyze_single_file_leela()**: per-move Leela解析関数（~180行）
+  - **run_batch()拡張**: analysis_engine, leela_engine, per_move_timeout パラメータ追加
+  - **エンジン検証**: バッチ開始時のLeela alive チェック
+  - **インポート追加**: LeelaEngine, LeelaPositionEval, leela_position_to_move_eval, EvalSnapshot, MoveEval
+  - **制限事項**: Leelaカルテ生成は未対応（Phase 36 MVP）
+  - **テスト**: 13件（test_batch_leela_analysis.py）
 - 2026-01-18: Phase 36 PR-1 完了（Leelaバッチ解析基盤）
   - **LeelaEngine.is_idle()**: スレッドセーフなアイドル状態チェック（ロック保護）
   - **cancel_analysis()**: ロック保護追加（_current_request_id）
