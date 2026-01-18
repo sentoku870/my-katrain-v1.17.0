@@ -114,3 +114,68 @@ class TestGetAnalysisEngineWarnings:
             "Invalid analysis_engine" in r.getMessage()
             for r in relevant_records
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 37 T4: Contract-based tests for get_analysis_engine()
+# ---------------------------------------------------------------------------
+
+
+class TestGetAnalysisEngineContract:
+    """Contract-based tests for get_analysis_engine() (Phase 37 T4).
+
+    These tests verify the function's contract using property-based assertions
+    rather than testing individual values, making them resilient to changes.
+    """
+
+    def test_valid_engines_accepted(self):
+        """Contract: all valid engine names are accepted as-is."""
+        for engine in VALID_ANALYSIS_ENGINES:
+            result = get_analysis_engine({"analysis_engine": engine})
+            assert result == engine
+
+    def test_invalid_values_return_valid_engine(self):
+        """Contract: invalid values return a valid engine (never crash)."""
+        invalid_inputs = [
+            None,
+            "",
+            123,
+            [],
+            {},
+            " katago ",
+            "LEELA",
+            "Leela",
+            "KataGo",
+            object(),
+            3.14,
+            True,
+            False,
+        ]
+        for invalid in invalid_inputs:
+            result = get_analysis_engine({"analysis_engine": invalid})
+            assert result in VALID_ANALYSIS_ENGINES, f"Invalid input {invalid!r} returned invalid result"
+
+    def test_missing_key_returns_valid_engine(self):
+        """Contract: missing key returns a valid engine (default)."""
+        result = get_analysis_engine({})
+        assert result in VALID_ANALYSIS_ENGINES
+
+    def test_return_type_is_always_string(self):
+        """Contract: return type is always a string."""
+        test_cases = [
+            {"analysis_engine": "katago"},
+            {"analysis_engine": "leela"},
+            {"analysis_engine": None},
+            {},
+        ]
+        for config in test_cases:
+            result = get_analysis_engine(config)
+            assert isinstance(result, str)
+
+    def test_valid_engines_set_is_non_empty(self):
+        """Contract: VALID_ANALYSIS_ENGINES is non-empty."""
+        assert len(VALID_ANALYSIS_ENGINES) >= 2  # At least katago and leela
+
+    def test_default_is_in_valid_engines(self):
+        """Contract: DEFAULT_ANALYSIS_ENGINE is in VALID_ANALYSIS_ENGINES."""
+        assert DEFAULT_ANALYSIS_ENGINE in VALID_ANALYSIS_ENGINES

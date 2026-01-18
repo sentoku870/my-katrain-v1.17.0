@@ -205,3 +205,72 @@ class TestLeelaFastVisitsMin:
     def test_leela_fast_visits_min_is_reasonable(self):
         """Contract: LEELA_FAST_VISITS_MIN is within reasonable range"""
         assert 10 <= LEELA_FAST_VISITS_MIN <= 200
+
+
+# ---------------------------------------------------------------------------
+# Phase 37 T3: Contract-based tests for resolve_visits()
+# ---------------------------------------------------------------------------
+
+
+class TestResolveVisitsContract:
+    """Contract-based tests for resolve_visits() (Phase 37 T3).
+
+    These tests verify the function's contract without hardcoding specific
+    default values, making them resilient to future default value changes.
+
+    Note: Key names are shared between KataGo/Leela (fast_visits/max_visits).
+    Only default values differ per engine (see ENGINE_VISITS_DEFAULTS).
+    """
+
+    def test_returns_positive_integer(self):
+        """Contract: return value is always a positive integer."""
+        result = resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 100}, "katago")
+        assert isinstance(result, int)
+        assert result >= 1
+
+    def test_respects_config_value_when_valid(self):
+        """Contract: valid config values are respected (both engines share key names)."""
+        # KataGo
+        assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 500}, "katago") == 500
+        # Leela - same key name
+        assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 500}, "leela") == 500
+
+    def test_missing_key_uses_engine_specific_default(self):
+        """Contract: missing key uses engine-specific default (no hardcoding)."""
+        # Get expected values from the constant (avoid hardcoding 25/200)
+        katago_default = ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+        leela_default = ENGINE_VISITS_DEFAULTS["leela"]["fast_visits"]
+
+        assert resolve_visits(AnalysisStrength.QUICK, {}, "katago") == katago_default
+        assert resolve_visits(AnalysisStrength.QUICK, {}, "leela") == leela_default
+
+    def test_negative_or_zero_becomes_positive(self):
+        """Contract: non-positive values become positive (clamped to >= 1)."""
+        assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": -10}, "katago") >= 1
+        assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 0}, "katago") >= 1
+
+    def test_float_input_returns_int(self):
+        """Contract: float input still returns int (truncated/rounded)."""
+        result = resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 99.9}, "katago")
+        assert isinstance(result, int)
+
+    def test_deep_uses_max_visits_key(self):
+        """Contract: DEEP strength uses max_visits key (no hardcoding)."""
+        katago_max = ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
+        leela_max = ENGINE_VISITS_DEFAULTS["leela"]["max_visits"]
+
+        assert resolve_visits(AnalysisStrength.DEEP, {}, "katago") == katago_max
+        assert resolve_visits(AnalysisStrength.DEEP, {}, "leela") == leela_max
+
+    def test_quick_and_deep_return_different_values_for_same_engine(self):
+        """Contract: QUICK and DEEP return different values (fast vs max)."""
+        quick_visits = resolve_visits(AnalysisStrength.QUICK, {}, "katago")
+        deep_visits = resolve_visits(AnalysisStrength.DEEP, {}, "katago")
+        # fast_visits should be less than max_visits by design
+        assert quick_visits < deep_visits
+
+    def test_unknown_engine_uses_katago_defaults(self):
+        """Contract: unknown engine falls back to katago defaults."""
+        katago_default = ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+        result = resolve_visits(AnalysisStrength.QUICK, {}, "unknown_engine")
+        assert result == katago_default

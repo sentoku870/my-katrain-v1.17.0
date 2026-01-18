@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from katrain.core import eval_metrics
 from katrain.core.analysis.models import (
     EngineType,
+    EvalSnapshot,
     MistakeCategory,
     MoveEval,
 )
@@ -125,6 +126,45 @@ class KarteGenerationError(Exception):
         return " | ".join(parts)
 
 
+class MixedEngineSnapshotError(ValueError):
+    """Mixed-engine snapshot detection exception.
+
+    Raised by build_karte_report() when raise_on_error=True and the snapshot
+    contains analysis data from both KataGo and Leela engines.
+
+    This is a dedicated exception to avoid catching unrelated ValueErrors.
+    """
+
+    pass
+
+
+# Error code constants for stable test assertions
+KARTE_ERROR_CODE_MIXED_ENGINE = "KARTE_ERROR_CODE: MIXED_ENGINE"
+KARTE_ERROR_CODE_GENERATION_FAILED = "KARTE_ERROR_CODE: GENERATION_FAILED"
+
+
+def is_single_engine_snapshot(snapshot: EvalSnapshot) -> bool:
+    """Check if snapshot contains data from only one engine type.
+
+    Args:
+        snapshot: EvalSnapshot to validate
+
+    Returns:
+        True if all moves are from a single engine (or no analysis data).
+        False if both KataGo and Leela data exist in the same snapshot.
+
+    Allowed patterns:
+        - All moves have score_loss (KataGo) -> OK
+        - All moves have leela_loss_est (Leela) -> OK
+        - All moves have no loss data (unanalyzed) -> OK
+        - Some moves analyzed, some not (partial) -> OK
+        - At least one KataGo + at least one Leela -> NG (returns False)
+    """
+    has_katago = any(m.score_loss is not None for m in snapshot.moves)
+    has_leela = any(m.leela_loss_est is not None for m in snapshot.moves)
+    return not (has_katago and has_leela)
+
+
 def build_karte_report(
     game: Any,  # Game object (Protocol in future)
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
@@ -139,7 +179,7 @@ def build_karte_report(
         level: Important move level setting
         player_filter: Filter by player ("B", "W", or None for both)
                       Can also be a username string to match against player names
-        raise_on_error: If True, raise KarteGenerationError on failure.
+        raise_on_error: If True, raise exceptions on failure.
                        If False (default), return error markdown instead.
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
 
@@ -148,14 +188,42 @@ def build_karte_report(
         On error with raise_on_error=False, returns a report with ERROR section.
 
     Raises:
-        KarteGenerationError: If raise_on_error=True and generation fails.
+        MixedEngineSnapshotError: If raise_on_error=True and snapshot contains
+            both KataGo and Leela analysis data.
+        KarteGenerationError: If raise_on_error=True and generation fails
+            for other reasons.
     """
     game_id = game.game_id or game.sgf_filename or "unknown"
 
     try:
-        return _build_karte_report_impl(game, level, player_filter, skill_preset)
+        # 1. Compute snapshot once (avoid double computation)
+        snapshot = game.build_eval_snapshot()
+
+        # 2. Mixed-engine check (Phase 37: enforcement point)
+        if not is_single_engine_snapshot(snapshot):
+            error_msg = (
+                f"{KARTE_ERROR_CODE_MIXED_ENGINE}\n"
+                "Mixed-engine analysis detected. "
+                "KataGo and Leela data cannot be combined in a single karte."
+            )
+            if raise_on_error:
+                raise MixedEngineSnapshotError(error_msg)
+            return _build_error_karte(game_id, player_filter, error_msg)
+
+        # 3. Pass snapshot as argument (avoid recomputation in impl)
+        return _build_karte_report_impl(
+            game, snapshot, level, player_filter, skill_preset
+        )
+
+    except MixedEngineSnapshotError:
+        # Re-raise dedicated exception (explicitly requested)
+        raise
+
     except Exception as e:
-        error_msg = f"Failed to generate karte: {type(e).__name__}: {e}"
+        error_msg = (
+            f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
+            f"Failed to generate karte: {type(e).__name__}: {e}"
+        )
         if game.katrain:
             game.katrain.log(error_msg, OUTPUT_DEBUG)
 
@@ -204,12 +272,25 @@ def _build_error_karte(
 
 def _build_karte_report_impl(
     game: Any,  # Game object
+    snapshot: EvalSnapshot,  # Pre-computed snapshot (avoid double computation)
     level: str,
     player_filter: Optional[str],
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
 ) -> str:
-    """Internal implementation of build_karte_report."""
-    snapshot = game.build_eval_snapshot()
+    """Internal implementation of build_karte_report.
+
+    Args:
+        game: Game object providing game state
+        snapshot: Pre-computed EvalSnapshot (passed from build_karte_report)
+        level: Important move level setting
+        player_filter: Filter by player ("B", "W", or None for both)
+        skill_preset: Skill preset for strictness
+
+    Note:
+        snapshot is now passed as an argument rather than computed here.
+        This avoids double computation since build_karte_report() already
+        computes the snapshot for mixed-engine validation.
+    """
     thresholds = game.katrain.config("trainer/eval_thresholds") if game.katrain else []
 
     # PR#1: Compute confidence level for section gating
