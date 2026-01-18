@@ -247,6 +247,16 @@ class MoveEval:
     盤面の戦術的状況に基づいて board_analysis モジュールで計算される。
     """
 
+    leela_loss_est: Optional[float] = None
+    """Leela Zero による推定損失（0以上、Noneは非Leela解析）。
+
+    Note:
+    - score_loss（目単位）とは異なるセマンティクス
+    - K係数でスケール変換済み（デフォルト K=0.5）
+    - 0.0 = 最善手、正の値 = 損失
+    - 最大値: LEELA_LOSS_EST_MAX（50.0）
+    """
+
 
 @dataclass(frozen=True)
 class ImportantMoveSettings:
