@@ -27,6 +27,10 @@ from katrain.core.leela.presentation import (
     format_winrate_pct,
     format_visits,
 )
+from katrain.core.leela.conversion import (
+    leela_position_to_move_eval,
+    leela_sequence_to_eval_snapshot,
+)
 
 __all__ = [
     # Models
@@ -50,4 +54,7 @@ __all__ = [
     "loss_to_color",
     "format_winrate_pct",
     "format_visits",
+    # Conversion
+    "leela_position_to_move_eval",
+    "leela_sequence_to_eval_snapshot",
 ]
