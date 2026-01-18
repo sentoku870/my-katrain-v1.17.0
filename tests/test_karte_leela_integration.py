@@ -15,6 +15,7 @@ from katrain.core.reports.karte_report import (
     build_karte_report,
     format_loss_with_engine_suffix,
     has_loss_data,
+    KARTE_ERROR_CODE_MIXED_ENGINE,
 )
 from tests.helpers_eval_metrics import make_move_eval
 
@@ -265,10 +266,14 @@ class TestKarteKataGoUnchanged:
 
 
 # ---------------------------------------------------------------------------
-# Test 6: Mixed engine data (defensive handling)
+# Test 6: Mixed engine data (error handling - Phase 37 update)
 # ---------------------------------------------------------------------------
 class TestKarteMixedEngine:
-    """Test mixed KataGo + Leela data (defensive handling)."""
+    """Test mixed KataGo + Leela data returns error (Phase 37).
+
+    As of Phase 37, mixed-engine snapshots are rejected with an error markdown
+    to prevent combining incompatible analysis data in a single karte report.
+    """
 
     @pytest.fixture
     def mixed_game(self):
@@ -295,20 +300,12 @@ class TestKarteMixedEngine:
         ]
         return create_mock_game(moves)
 
-    def test_only_leela_moves_get_suffix(self, mixed_game):
-        """Only Leela moves show (推定) suffix."""
+    def test_mixed_engine_returns_error_markdown(self, mixed_game):
+        """Mixed-engine snapshot returns error markdown (Phase 37 behavior)."""
         output = build_karte_report(mixed_game)
 
-        # (推定) が存在する（Leela 手のため）
-        assert "(推定)" in output
+        # エラーコードが含まれること（安定したアサーション）
+        assert KARTE_ERROR_CODE_MIXED_ENGINE in output
 
-        # KataGo 手の損失 "2.0" の近くに (推定) がない
-        # より厳密: テーブル行を解析
-        lines = output.split("\n")
-        for line in lines:
-            if "| B |" in line and "2.0" in line:
-                # Move 1 (KataGo) の行
-                assert "(推定)" not in line, f"KataGo move has suffix: {line}"
-            if "| W |" in line and "4.0" in line:
-                # Move 2 (Leela) の行
-                assert "(推定)" in line, f"Leela move missing suffix: {line}"
+        # エラー karte であること
+        assert "# Karte (ERROR)" in output

@@ -209,3 +209,46 @@ class TestBatchWidgetsType:
         from katrain.gui.features import types
         assert hasattr(types, "BatchWidgets")
         assert hasattr(types, "BatchOptions")
+
+
+# ---------------------------------------------------------------------------
+# Test: needs_leela_karte_warning() pure function (Phase 37 T2)
+# ---------------------------------------------------------------------------
+
+
+class TestNeedsLeelaKarteWarning:
+    """Tests for needs_leela_karte_warning() pure function.
+
+    This function determines if a warning should be shown when the user
+    selects Leela with karte generation enabled (Phase 36 MVP limitation).
+    """
+
+    def test_leela_with_karte_returns_true(self):
+        """Leela + karte enabled -> warning needed."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("leela", generate_karte=True) is True
+
+    def test_leela_without_karte_returns_false(self):
+        """Leela + karte disabled -> no warning."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("leela", generate_karte=False) is False
+
+    def test_katago_with_karte_returns_false(self):
+        """KataGo + karte enabled -> no warning (fully supported)."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("katago", generate_karte=True) is False
+
+    def test_katago_without_karte_returns_false(self):
+        """KataGo + karte disabled -> no warning."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("katago", generate_karte=False) is False
+
+    def test_unknown_engine_with_karte_returns_false(self):
+        """Unknown engine + karte -> no warning (conservative)."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("unknown", generate_karte=True) is False
+
+    def test_empty_engine_with_karte_returns_false(self):
+        """Empty engine string + karte -> no warning."""
+        from katrain.gui.features.batch_core import needs_leela_karte_warning
+        assert needs_leela_karte_warning("", generate_karte=True) is False
