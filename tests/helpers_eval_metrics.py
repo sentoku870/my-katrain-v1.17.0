@@ -35,6 +35,7 @@ def make_move_eval(
     mistake_category: MistakeCategory = MistakeCategory.GOOD,
     position_difficulty: Optional[PositionDifficulty] = None,
     importance_score: Optional[float] = None,
+    leela_loss_est: Optional[float] = None,  # Phase 32: Leela support
 ) -> MoveEval:
     """Helper to create MoveEval with sensible defaults"""
     m = MoveEval(
@@ -56,6 +57,7 @@ def make_move_eval(
     m.mistake_category = mistake_category
     m.position_difficulty = position_difficulty
     m.importance_score = importance_score
+    m.leela_loss_est = leela_loss_est  # Phase 32: Leela support
     return m
 
 

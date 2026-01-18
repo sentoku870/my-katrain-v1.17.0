@@ -20,9 +20,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.models import (
+    EngineType,
     MistakeCategory,
     MoveEval,
 )
+from katrain.core.analysis.logic_loss import detect_engine_type
+from katrain.core.analysis.presentation import format_loss_label
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.eval_metrics import (
     aggregate_phase_mistake_stats,
@@ -829,8 +832,12 @@ def _build_karte_report_impl(
                             anchor_move = max(phase_moves, key=lambda m: (m.score_loss or 0, -m.move_number))
                         break
 
-                if anchor_move and anchor_move.score_loss:
-                    lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で -{anchor_move.score_loss:.1f}目の損失)")
+                if anchor_move:
+                    loss = get_canonical_loss_from_move(anchor_move)
+                    if loss > 0.0:
+                        engine_type = detect_engine_type(anchor_move)
+                        loss_label = format_loss_label(loss, engine_type, lang="ja")
+                        lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で {loss_label}の損失)")
         else:
             lines.append("- No specific priorities identified. Keep up the good work!")
         lines.append("")

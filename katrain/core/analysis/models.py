@@ -120,6 +120,23 @@ class AnalysisStrength(Enum):
         return self == AnalysisStrength.QUICK
 
 
+class EngineType(Enum):
+    """解析エンジン種別。
+
+    MoveEvalから推定するために使用。
+    - KATAGO: KataGo解析（score_loss設定あり）
+    - LEELA: Leela Zero解析（leela_loss_est設定あり）
+    - UNKNOWN: エンジン不明（両方None）
+
+    Note:
+        Phase 32で追加。損失ラベルの区別表示に使用。
+    """
+
+    KATAGO = "katago"
+    LEELA = "leela"
+    UNKNOWN = "unknown"
+
+
 # Engine-specific default visits values.
 # These are HARD SAFETY DEFAULTS used when config.json is missing keys.
 # User-facing defaults should be set in config.json itself.
@@ -297,15 +314,23 @@ def get_canonical_loss_from_move(m: MoveEval) -> float:
     MoveEval から正準損失 (canonical loss) を取得する。
 
     優先順位:
-      1) score_loss が設定されていればそれを使用
-      2) points_lost があれば max(points_lost, 0) を使用
-      3) どちらもなければ 0.0
+      1) score_loss が設定されていればそれを使用（KataGo）
+      2) leela_loss_est が設定されていればそれを使用（Leela）
+      3) points_lost があれば使用
+      4) どちらもなければ 0.0
 
     Returns:
-        float: 常に >= 0 の損失値
+        float: 常に >= 0 の損失値（負の値は 0 にクランプ）
+
+    Note:
+        - Phase 32 で leela_loss_est を追加
+        - データ層で一貫してクランプすることで、
+          将来の他UI/エクスポートでも安全に利用可能。
     """
     if m.score_loss is not None:
-        return m.score_loss
+        return max(0.0, m.score_loss)
+    if m.leela_loss_est is not None:
+        return max(0.0, m.leela_loss_est)
     if m.points_lost is not None:
         return max(0.0, m.points_lost)
     return 0.0

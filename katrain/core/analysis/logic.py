@@ -574,6 +574,7 @@ from katrain.core.analysis.logic_loss import (
     classify_mistake,
     compute_canonical_loss,
     compute_loss_from_delta,
+    detect_engine_type,
 )
 
 
