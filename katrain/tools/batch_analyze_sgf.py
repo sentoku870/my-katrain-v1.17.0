@@ -32,6 +32,10 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.game import Game, KaTrainSGF
+from katrain.core.leela.engine import LeelaEngine
+from katrain.core.leela.conversion import leela_position_to_move_eval
+from katrain.core.leela.models import LeelaPositionEval
+from katrain.core.analysis.models import EvalSnapshot, MoveEval
 from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
 from katrain.core.eval_metrics import (
     MistakeCategory,
@@ -598,6 +602,242 @@ def analyze_single_file(
 
 
 # ---------------------------------------------------------------------------
+# Single file analysis with Leela Zero (Phase 36)
+# ---------------------------------------------------------------------------
+
+def analyze_single_file_leela(
+    katrain: KaTrainBase,
+    leela_engine: LeelaEngine,
+    sgf_path: str,
+    output_path: Optional[str] = None,
+    visits: Optional[int] = None,
+    file_timeout: float = 600.0,
+    per_move_timeout: float = 30.0,
+    cancel_flag: Optional[List[bool]] = None,
+    log_cb: Optional[Callable[[str], None]] = None,
+    save_sgf: bool = True,
+    return_game: bool = False,
+) -> "Union[bool, Tuple[Optional[Game], EvalSnapshot]]":
+    """
+    Analyze a single SGF file using Leela Zero engine.
+
+    Unlike KataGo which analyzes all moves in one request, Leela Zero
+    analyzes positions one at a time. This function iterates through
+    each move in the SGF and collects analysis.
+
+    Args:
+        katrain: KaTrainBase instance
+        leela_engine: LeelaEngine instance
+        sgf_path: Path to input SGF file
+        output_path: Path to save analyzed SGF (required if save_sgf=True)
+        visits: Number of visits per move (None = use engine default)
+        file_timeout: Maximum total time for the entire file
+        per_move_timeout: Maximum time per move analysis
+        cancel_flag: Optional list [bool] - if cancel_flag[0] is True, abort
+        log_cb: Optional callback for logging messages
+        save_sgf: If True, save the analyzed SGF to output_path
+        return_game: If True, return (Game, EvalSnapshot) instead of bool
+
+    Returns:
+        If return_game=False: True if successful, False otherwise
+        If return_game=True: (Game, EvalSnapshot) on success, (None, empty) on failure
+
+    Note:
+        Leela Zero doesn't provide scoreLead, so MoveEval.score_loss will be None.
+        Use MoveEval.leela_loss_est for loss-based analysis.
+    """
+    import threading
+
+    def log(msg: str):
+        if log_cb:
+            log_cb(msg)
+
+    def fail_result():
+        if return_game:
+            return None, EvalSnapshot(moves=[])
+        return False
+
+    def success_result(game_obj: Game, snapshot: EvalSnapshot):
+        if return_game:
+            return game_obj, snapshot
+        return True
+
+    try:
+        # Check for cancellation
+        if cancel_flag and cancel_flag[0]:
+            log("    Cancelled before start")
+            return fail_result()
+
+        file_start_time = time.time()
+
+        # Step 1: Parse SGF
+        log(f"    [1/4] Parsing SGF...")
+        move_tree = parse_sgf_with_fallback(sgf_path, log_cb)
+        if move_tree is None:
+            log(f"    ERROR: Failed to parse SGF file")
+            return fail_result()
+
+        # Check for cancellation
+        if cancel_flag and cancel_flag[0]:
+            log("    Cancelled after parse")
+            return fail_result()
+
+        # Step 2: Create Game instance (without triggering KataGo analysis)
+        log(f"    [2/4] Creating game...")
+        game = Game(
+            katrain=katrain,
+            engine=None,  # No KataGo engine
+            move_tree=move_tree,
+            analyze_fast=False,
+            sgf_filename=sgf_path,
+        )
+        katrain.game = game
+
+        # Get game info for analysis
+        board_size = game.board_size[0]  # Assumes square board
+        komi = game.komi
+
+        # Step 3: Analyze each move with Leela
+        log(f"    [3/4] Analyzing moves with Leela Zero...")
+
+        # Collect all moves from main branch
+        main_branch_nodes = []
+        current = game.root
+        while current:
+            main_branch_nodes.append(current)
+            children = current.children
+            current = children[0] if children else None
+
+        # Skip root node, process only move nodes
+        move_nodes = [n for n in main_branch_nodes if n.move is not None]
+        total_moves = len(move_nodes)
+
+        if total_moves == 0:
+            log("    No moves to analyze")
+            return success_result(game, EvalSnapshot(moves=[]))
+
+        log(f"    Found {total_moves} moves to analyze")
+
+        # Collect evaluations for each position
+        move_evals: List[MoveEval] = []
+        position_evals: List[LeelaPositionEval] = []
+
+        # Build position sequence (moves leading to each position)
+        moves_sequence: List[List[Tuple[str, str]]] = []  # List of move lists
+        current_moves: List[Tuple[str, str]] = []
+
+        for node in move_nodes:
+            player = node.player
+            gtp_coord = node.move.gtp()
+            current_moves = current_moves + [(player, gtp_coord)]
+            moves_sequence.append(current_moves.copy())
+
+        # Analyze each position
+        for i, (node, moves_to_position) in enumerate(zip(move_nodes, moves_sequence)):
+            # Check file timeout
+            if time.time() - file_start_time > file_timeout:
+                log(f"    ERROR: File timeout after {file_timeout}s at move {i + 1}")
+                return fail_result()
+
+            # Check for cancellation
+            if cancel_flag and cancel_flag[0]:
+                log(f"    Cancelled at move {i + 1}")
+                return fail_result()
+
+            # Request analysis
+            result_holder: List[Optional[LeelaPositionEval]] = [None]
+            result_event = threading.Event()
+
+            def on_result(eval_result: LeelaPositionEval):
+                result_holder[0] = eval_result
+                result_event.set()
+
+            # Analyze position AFTER the move was played
+            leela_engine.request_analysis(
+                moves=moves_to_position,
+                callback=on_result,
+                visits=visits,
+                board_size=board_size,
+                komi=komi,
+            )
+
+            # Wait for result with timeout
+            if not result_event.wait(timeout=per_move_timeout):
+                log(f"    WARNING: Move {i + 1} timed out, skipping")
+                leela_engine.cancel_analysis()
+                # Add empty eval
+                position_evals.append(LeelaPositionEval(parse_error="timeout"))
+                continue
+
+            position_eval = result_holder[0]
+            if position_eval is None:
+                position_evals.append(LeelaPositionEval(parse_error="no result"))
+            else:
+                position_evals.append(position_eval)
+
+            # Progress logging every 10 moves
+            if (i + 1) % 10 == 0 or i + 1 == total_moves:
+                log(f"    Analyzed {i + 1}/{total_moves} moves...")
+
+        # Step 4: Convert to MoveEval
+        log(f"    [4/4] Converting to evaluation data...")
+
+        for i, (node, current_eval) in enumerate(zip(move_nodes, position_evals)):
+            # Get parent eval (position before this move)
+            parent_eval = position_evals[i - 1] if i > 0 else None
+
+            # Skip if current eval has error
+            if current_eval.parse_error:
+                continue
+
+            move_number = i + 1
+            player = node.player
+            gtp_coord = node.move.gtp()
+
+            move_eval = leela_position_to_move_eval(
+                parent_eval=parent_eval if parent_eval and not parent_eval.parse_error else None,
+                current_eval=current_eval,
+                move_number=move_number,
+                player=player,
+                played_move=gtp_coord,
+            )
+            move_evals.append(move_eval)
+
+        # Create EvalSnapshot
+        snapshot = EvalSnapshot(moves=move_evals)
+
+        # Save SGF if requested (note: Leela analysis is in snapshot, not in game nodes)
+        if save_sgf:
+            if not output_path:
+                log("    ERROR: output_path required when save_sgf=True")
+                return fail_result()
+
+            log(f"    Saving analyzed SGF...")
+
+            # Ensure output directory exists
+            out_dir = os.path.dirname(output_path)
+            if out_dir:
+                os.makedirs(out_dir, exist_ok=True)
+
+            # Get trainer config for saving
+            trainer_config = katrain.config("trainer", {})
+            trainer_config["save_analysis"] = True
+            trainer_config["save_marks"] = True
+            if "save_feedback" not in trainer_config or not isinstance(trainer_config["save_feedback"], list):
+                trainer_config["save_feedback"] = [True, True, True, True, True, True]
+
+            game.write_sgf(output_path, trainer_config=trainer_config)
+
+        return success_result(game, snapshot)
+
+    except Exception as e:
+        error_tb = traceback.format_exc()
+        log(f"    ERROR: {e}")
+        log(f"    Traceback:\n{error_tb}")
+        return fail_result()
+
+
+# ---------------------------------------------------------------------------
 # GUI API: run_batch - Callable from KaTrain GUI
 # ---------------------------------------------------------------------------
 
@@ -651,6 +891,10 @@ def run_batch(
     variable_visits: bool = False,
     jitter_pct: float = 10.0,
     deterministic: bool = True,
+    # Engine selection (Phase 36)
+    analysis_engine: str = "katago",
+    leela_engine: Optional[LeelaEngine] = None,
+    per_move_timeout: float = 30.0,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -675,6 +919,9 @@ def run_batch(
         generate_karte: If True, generate karte markdown for each game
         generate_summary: If True, generate a multi-game summary at the end
         karte_player_filter: Filter for karte ("B", "W", or None for both)
+        analysis_engine: Engine to use ("katago" or "leela", default: "katago")
+        leela_engine: LeelaEngine instance (required if analysis_engine="leela")
+        per_move_timeout: Timeout per move for Leela analysis (default: 30.0)
 
     Returns:
         BatchResult with success/fail/skip counts, output counts, and error information
@@ -691,6 +938,21 @@ def run_batch(
     if not os.path.isdir(input_dir):
         log(f"Error: Input directory does not exist: {input_dir}")
         return result
+
+    # Validate engine selection (Phase 36)
+    if analysis_engine == "leela":
+        if leela_engine is None:
+            log("Error: Leela Zero selected but no leela_engine provided")
+            return result
+        if not leela_engine.is_alive():
+            log("Error: Leela Zero engine is not running")
+            return result
+        log("Using Leela Zero for analysis")
+        # Note: Karte generation is limited for Leela in Phase 36 MVP
+        if generate_karte:
+            log("Note: Karte generation is not yet supported for Leela analysis")
+    else:
+        log("Using KataGo for analysis")
 
     # Set output directory
     output_dir = output_dir if output_dir else input_dir
@@ -798,26 +1060,53 @@ def run_batch(
             if effective_visits != visits:
                 log(f"  Variable visits: {visits} -> {effective_visits}")
 
-        game_result = analyze_single_file(
-            katrain=katrain,
-            engine=engine,
-            sgf_path=abs_path,
-            output_path=sgf_output_path,
-            visits=effective_visits,
-            timeout=timeout,
-            cancel_flag=cancel_flag,
-            log_cb=log_cb,
-            save_sgf=save_analyzed_sgf,
-            return_game=need_game,
-        )
-
-        # Handle result based on return type
-        if need_game:
-            game = game_result
-            success = game is not None
+        # Select analysis function based on engine type
+        leela_snapshot = None
+        if analysis_engine == "leela" and leela_engine is not None:
+            # Leela Zero analysis
+            game_result = analyze_single_file_leela(
+                katrain=katrain,
+                leela_engine=leela_engine,
+                sgf_path=abs_path,
+                output_path=sgf_output_path,
+                visits=effective_visits,
+                file_timeout=timeout,
+                per_move_timeout=per_move_timeout,
+                cancel_flag=cancel_flag,
+                log_cb=log_cb,
+                save_sgf=save_analyzed_sgf,
+                return_game=True,  # Always return game for Leela (need snapshot)
+            )
+            # Leela returns (Game, EvalSnapshot) tuple
+            if isinstance(game_result, tuple):
+                game, leela_snapshot = game_result
+                success = game is not None
+            else:
+                game = None
+                leela_snapshot = None
+                success = False
         else:
-            success = game_result
-            game = None
+            # KataGo analysis (default)
+            game_result = analyze_single_file(
+                katrain=katrain,
+                engine=engine,
+                sgf_path=abs_path,
+                output_path=sgf_output_path,
+                visits=effective_visits,
+                timeout=timeout,
+                cancel_flag=cancel_flag,
+                log_cb=log_cb,
+                save_sgf=save_analyzed_sgf,
+                return_game=need_game,
+            )
+
+            # Handle result based on return type
+            if need_game:
+                game = game_result
+                success = game is not None
+            else:
+                success = game_result
+                game = None
 
         if success:
             result.success_count += 1
@@ -831,7 +1120,8 @@ def run_batch(
                 log(f"  Saved SGF: {sgf_output_path}")
 
             # Generate karte if requested
-            if generate_karte and game is not None:
+            # Note: Leela karte generation is limited in Phase 36 MVP (no leela_loss_est in Game nodes)
+            if generate_karte and game is not None and analysis_engine != "leela":
                 try:
                     karte_text = game.build_karte_report(player_filter=karte_player_filter)
                     # Include path hash to avoid filename collisions for files with same basename
