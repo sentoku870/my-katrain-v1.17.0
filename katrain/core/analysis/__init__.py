@@ -34,10 +34,11 @@ from katrain.core.analysis.models import (
     ConfidenceLevel,
     PVFilterLevel,
     EngineType,
-    # Analysis Engine Selection (Phase 33)
+    # Analysis Engine Selection (Phase 33-34)
     VALID_ANALYSIS_ENGINES,
     DEFAULT_ANALYSIS_ENGINE,
     get_analysis_engine,
+    needs_leela_warning,  # Phase 34
     # Dataclasses
     MoveEval,
     EvalSnapshot,
@@ -207,10 +208,11 @@ __all__ = [
     "ConfidenceLevel",
     "PVFilterLevel",
     "EngineType",
-    # Analysis Engine Selection (Phase 33)
+    # Analysis Engine Selection (Phase 33-34)
     "VALID_ANALYSIS_ENGINES",
     "DEFAULT_ANALYSIS_ENGINE",
     "get_analysis_engine",
+    "needs_leela_warning",  # Phase 34
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",

@@ -1246,6 +1246,22 @@ msgstr "myKatrain設定"
 msgid "Configure myKatrain default settings:"
 msgstr "myKatrainのデフォルト設定:"
 
+# Analysis Engine Selection (Phase 34)
+msgid "mykatrain:settings:analysis_engine"
+msgstr "解析エンジン:"
+
+msgid "mykatrain:settings:engine_katago"
+msgstr "KataGo"
+
+msgid "mykatrain:settings:engine_leela"
+msgstr "Leela Zero"
+
+msgid "mykatrain:settings:engine_leela_not_enabled_warning"
+msgstr "Leela Zeroが選択されていますが有効化されていません。Leelaタブで有効化してください。"
+
+msgid "mykatrain:settings:engine_save_error"
+msgstr "解析エンジン設定の保存に失敗しました。"
+
 msgid "mykatrain:settings:skill_preset"
 msgstr "棋力プリセット:"
 

@@ -49,6 +49,7 @@ EXCLUDED_KEYS: Dict[str, Set[str]] = {
 TAB_RESET_KEYS: Dict[str, List[Tuple[str, str]]] = {
     # Analysis tab: analysis-related presets
     "analysis": [
+        ("engine", "analysis_engine"),  # Phase 34
         ("general", "skill_preset"),
         ("general", "pv_filter_level"),
     ],
