@@ -518,6 +518,55 @@ def build_batch_popup_widgets(
     options_row5.add_widget(sound_label)
     main_layout.add_widget(options_row5)
 
+    # Options row 6: Analysis Engine selection
+    options_row6 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+
+    engine_label = Label(
+        text=i18n._("mykatrain:batch:analysis_engine"),
+        size_hint_x=0.18,
+        halign="right",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+    saved_engine = batch_options.get("analysis_engine", "katago")
+    widgets["engine_katago"] = ToggleButton(
+        text=i18n._("mykatrain:batch:engine_katago"),
+        group="analysis_engine",
+        state="down" if saved_engine == "katago" else "normal",
+        size_hint_x=0.15,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    widgets["engine_leela"] = ToggleButton(
+        text=i18n._("mykatrain:batch:engine_leela"),
+        group="analysis_engine",
+        state="down" if saved_engine == "leela" else "normal",
+        size_hint_x=0.15,
+        font_name=Theme.DEFAULT_FONT,
+    )
+
+    # Warning label for Leela not enabled (initially hidden)
+    widgets["leela_warning_label"] = Label(
+        text=i18n._("mykatrain:batch:leela_not_enabled_warning"),
+        size_hint_x=0.4,
+        halign="left",
+        valign="middle",
+        color=(1.0, 0.6, 0.2, 1),  # Orange warning color
+        font_name=Theme.DEFAULT_FONT,
+    )
+    widgets["leela_warning_label"].bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+
+    options_row6.add_widget(engine_label)
+    options_row6.add_widget(widgets["engine_katago"])
+    options_row6.add_widget(widgets["engine_leela"])
+    options_row6.add_widget(widgets["leela_warning_label"])
+    options_row6.add_widget(Label(size_hint_x=0.12))  # spacer
+    main_layout.add_widget(options_row6)
+
     # Progress row
     progress_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30), spacing=dp(10))
     widgets["progress_label"] = Label(

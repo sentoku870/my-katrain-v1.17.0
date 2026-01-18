@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-35（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合）
-- **次**: Phase 36 Leelaバッチ解析（オプション）
+- **完了**: Phase 1-36（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析）
+- **次**: Phase 37 テスト強化 または Phase 36 PR-3（UI連携）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -236,6 +236,45 @@ KataGoEngine はマルチスレッドで動作するため、デッドロック�
 
 **関連**: `daemon=True` スレッドはメインプロセス終了時に自動終了するため、アプリ終了時のスレッド join はスキップ可能。
 
+### フォールバックポリシー（Phase 36）
+
+| 文脈 | Leela選択時の動作 | 根拠 |
+|------|------------------|------|
+| **Settings UI保存** | 警告表示（STATUS_INFO）＋保存続行 | 後で有効化する可能性 |
+| **Batch開始** | 即座にエラー＋中断（`is_alive()=False`時） | 長時間処理の無駄を防ぐ |
+| **Export Karte** | 呼び出し元でチェック | エクスポート時は既にエンジン選択済み |
+| **Config読み込み** | KataGoにフォールバック＋警告ログ | 起動時クラッシュ防止 |
+
+### バッチLeela visits仕様（Phase 36 MVP）
+
+1. `analysis_engine="leela"` 選択時:
+   - `visits = resolve_visits(AnalysisStrength.QUICK, katrain.config("leela"), "leela")`
+   - UIの `visits_input` フィールドは無視される
+
+2. UIの振る舞い:
+   - Leela選択時: `visits_input` を disabled 表示または "[設定値を使用]" と表示
+   - 警告ラベル: "Leelaはleela.fast_visitsを使用します"
+
+### 混合エンジン検出仕様（Phase 37）
+
+判定ロジック:
+```python
+has_katago = any(m.score_loss is not None for m in moves)
+has_leela = any(m.leela_loss_est is not None for m in moves)
+is_mixed = has_katago and has_leela
+```
+
+許容パターン:
+- 全手KataGo（`score_loss`設定）→ OK
+- 全手Leela（`leela_loss_est`設定）→ OK
+- 全手データなし（両方None）→ OK（未解析）
+- 一部解析済み＋一部未解析 → OK（部分解析）
+- 1手でもKataGo + 1手でもLeela → NG（`MixedEngineSnapshotError`）
+
+エンフォースメントポイント:
+- `build_karte_report()` 冒頭でのみチェック
+- `EvalSnapshot`作成時はチェックしない（パフォーマンス考慮）
+
 ---
 
 ## 5. 囲碁ドメイン（参照）
@@ -323,6 +362,18 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-18: Phase 36 完了（Leelaバッチ解析）
+  - PR-2: `analyze_single_file_leela()` per-move解析関数（~180行）
+  - PR-2: `run_batch()` 拡張（analysis_engine, leela_engine, per_move_timeout）
+  - PR-2: エンジン検証（バッチ開始時Leela aliveチェック）
+  - PR-2: テスト13件（test_batch_leela_analysis.py）
+  - PR-1: `LeelaEngine.is_idle()` メソッド（スレッドセーフ）
+  - PR-1: `cancel_analysis()` ロック保護
+  - PR-1: Batch UIエンジン選択行（KataGo/Leela切替）
+  - PR-1: `collect_batch_options()` に `analysis_engine` 追加
+  - PR-1: i18n 5キー追加
+  - PR-1: テスト22件（test_leela_engine_idle.py, test_batch_engine_option.py）
+  - 制限: Leelaカルテ生成は未対応（Phase 36 MVP）
 - 2026-01-18: Phase 35 完了（Leelaカルテ統合）
   - 新規: `has_loss_data()` 関数（MoveEvalに損失データが存在するか判定）
   - 新規: `format_loss_with_engine_suffix()` 関数（Leelaは「(推定)」サフィックス付き）

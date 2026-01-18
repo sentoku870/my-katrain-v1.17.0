@@ -73,6 +73,11 @@ def collect_batch_options(
     deterministic = widgets["deterministic_checkbox"].active
     sound_on_finish = widgets["sound_checkbox"].active
 
+    # Analysis engine selection (Phase 36)
+    analysis_engine = "katago"  # default
+    if "engine_leela" in widgets and widgets["engine_leela"].state == "down":
+        analysis_engine = "leela"
+
     return {
         "input_dir": input_dir,
         "output_dir": output_dir,
@@ -88,6 +93,7 @@ def collect_batch_options(
         "jitter_pct": jitter_pct,
         "deterministic": deterministic,
         "sound_on_finish": sound_on_finish,
+        "analysis_engine": analysis_engine,
     }
 
 
