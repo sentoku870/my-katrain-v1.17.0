@@ -1002,6 +1002,35 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         i18n._("mykatrain:settings:leela_fast_visits"), leela_fast_visits_row
     )
 
+    # Leela Play Visits (Phase 40)
+    leela_play_visits_row = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
+    )
+    leela_play_visits_label = Label(
+        text=i18n._("mykatrain:settings:leela_play_visits"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_play_visits_label.bind(
+        size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    leela_play_visits_input = TextInput(
+        text=str(leela_config.get("play_visits", 500)),
+        multiline=False,
+        input_filter="int",
+        size_hint_x=0.70,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_play_visits_row.add_widget(leela_play_visits_label)
+    leela_play_visits_row.add_widget(leela_play_visits_input)
+    tab3_inner.add_widget(leela_play_visits_row)
+    register_searchable(
+        i18n._("mykatrain:settings:leela_play_visits"), leela_play_visits_row
+    )
+
     # Leela Top Moves Display
     leela_top_moves_row = BoxLayout(
         orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10)
@@ -1194,6 +1223,14 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
             new_leela_config["fast_visits"] = max(lower_bound, min(max_visits, fast_visits))
         except ValueError:
             new_leela_config["fast_visits"] = 200  # default
+
+        # leela.play_visits (Phase 40)
+        try:
+            play_visits = int(leela_play_visits_input.text.strip())
+            max_visits = new_leela_config.get("max_visits", 1000)
+            new_leela_config["play_visits"] = max(50, min(max_visits, play_visits))
+        except ValueError:
+            new_leela_config["play_visits"] = 500  # default
 
         ctx.set_config_section("leela", new_leela_config)
         ctx.save_config("leela")

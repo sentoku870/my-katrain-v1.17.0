@@ -35,8 +35,10 @@ from katrain.core.constants import (
     AI_SIMPLE_OWNERSHIP, AI_STRENGTH,
     AI_TENUKI, AI_TENUKI_ELO_GRID, AI_TERRITORY, AI_TERRITORY_ELO_GRID,
     AI_WEIGHTED, AI_WEIGHTED_ELO, CALIBRATED_RANK_ELO, OUTPUT_DEBUG,
-    OUTPUT_ERROR, OUTPUT_INFO, PRIORITY_EXTRA_AI_QUERY, ADDITIONAL_MOVE_ORDER, AI_HUMAN, AI_PRO
+    OUTPUT_ERROR, OUTPUT_INFO, PRIORITY_EXTRA_AI_QUERY, ADDITIONAL_MOVE_ORDER, AI_HUMAN, AI_PRO,
+    AI_LEELA,
 )
+from katrain.core.lang import i18n
 from katrain.core.game import Game, GameNode, Move
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement, evaluation_class
 
@@ -1340,3 +1342,118 @@ def generate_ai_move(game: Game, ai_mode: str, ai_settings: Dict) -> Tuple[Move,
     
     game.katrain.log(f"Move generation complete: {move.gtp()}", OUTPUT_DEBUG)
     return move, played_node
+
+
+# =============================================================================
+# Leela Zero Strategy (Phase 40)
+# =============================================================================
+
+class LeelaNotAvailableError(Exception):
+    """Raised when Leela engine is not available for play."""
+    pass
+
+
+@register_strategy(AI_LEELA)
+class LeelaStrategy(AIStrategy):
+    """Strategy that uses Leela Zero engine for move generation.
+
+    KataGo analysis continues running in parallel for graph display.
+    """
+
+    def generate_move(self) -> Tuple[Move, str]:
+        import threading
+
+        self.game.katrain.log("[LeelaStrategy] Starting move generation", OUTPUT_DEBUG)
+
+        # 1. Get Leela engine and validate
+        katrain = self.game.katrain
+        leela = katrain.leela_engine
+
+        if not leela:
+            if not katrain.start_leela_engine():
+                raise LeelaNotAvailableError(
+                    i18n._("leela:error:start_failed")
+                )
+            leela = katrain.leela_engine
+
+        if not leela or not leela.is_alive():
+            raise LeelaNotAvailableError(
+                i18n._("leela:error:not_running")
+            )
+
+        # 2. Get play_visits from config (single source of truth)
+        visits = katrain.config("leela/play_visits", 500)
+
+        # 3. Build moves list (same pattern as leela_manager.py:160-167)
+        current_node = self.game.current_node
+        nodes = current_node.nodes_from_root
+        moves: List[Tuple[str, str]] = []
+        for node in nodes:
+            for m in node.moves:
+                moves.append((m.player, m.gtp()))
+
+        # 4. Request analysis with synchronous wait
+        event = threading.Event()
+        result_holder: List[Optional[object]] = [None]
+
+        def on_result(eval_result):
+            result_holder[0] = eval_result
+            event.set()
+
+        self.game.katrain.log(
+            f"[LeelaStrategy] Requesting Leela analysis ({visits} visits)",
+            OUTPUT_DEBUG,
+        )
+
+        # Get dynamic board_size and komi from game
+        board_size = self.game.board_size[0]  # Assumes square board
+        komi = self.game.komi
+
+        if not leela.request_analysis(
+            moves=moves,
+            callback=on_result,
+            visits=visits,
+            board_size=board_size,
+            komi=komi,
+        ):
+            raise LeelaNotAvailableError(i18n._("leela:error:request_failed"))
+
+        # 5. Wait with timeout (10 seconds, polling every 10ms - same as KataGo strategies)
+        timeout_seconds = 10.0
+        poll_interval = 0.01
+        elapsed = 0.0
+
+        while not event.is_set() and elapsed < timeout_seconds:
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+            if not leela.is_alive():
+                raise LeelaNotAvailableError(
+                    i18n._("leela:error:engine_died")
+                )
+
+        if not event.is_set():
+            leela.cancel_analysis()
+            raise LeelaNotAvailableError(
+                i18n._("leela:error:timeout")
+            )
+
+        # 6. Validate result
+        result = result_holder[0]
+        if not result or not result.is_valid:
+            error_msg = result.parse_error if result else "unknown"
+            katrain.log(f"[LeelaStrategy] Analysis failed: {error_msg}", OUTPUT_ERROR)
+            raise LeelaNotAvailableError(i18n._("leela:error:analysis_failed"))
+
+        # 7. Get best move
+        best = result.best_candidate
+        if not best:
+            raise LeelaNotAvailableError(i18n._("leela:error:no_candidates"))
+
+        move = Move.from_gtp(best.move, player=current_node.next_player)
+        ai_thoughts = (
+            f"Leela Zero played {best.move} "
+            f"(winrate {best.eval_pct:.1f}%, {best.visits} visits)"
+        )
+
+        self.game.katrain.log(f"[LeelaStrategy] Selected: {move.gtp()}", OUTPUT_DEBUG)
+        return move, ai_thoughts

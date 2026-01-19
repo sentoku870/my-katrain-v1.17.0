@@ -1491,6 +1491,9 @@ msgstr "Max Visits"
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (Quick Analysis)"
 
+msgid "mykatrain:settings:leela_play_visits"
+msgstr "Play Visits (for AI games)"
+
 msgid "leela:error:exe_not_found"
 msgstr "Leela executable not found: {}"
 
@@ -1745,3 +1748,31 @@ msgstr "Close"
 
 msgid "engine-compare:jumped-to"
 msgstr "Jumped to move {move}"
+
+#. Phase 40: Leela Play Mode
+msgid "ai:leela"
+msgstr "Leela Zero"
+
+msgid "aihelp:ai:leela"
+msgstr "Use Leela Zero engine for move generation"
+
+msgid "leela:error:start_failed"
+msgstr "Leela Zero could not be started. Check Settings > Leela Zero."
+
+msgid "leela:error:not_running"
+msgstr "Leela Zero is not running. Check Settings > Leela Zero."
+
+msgid "leela:error:request_failed"
+msgstr "Failed to start Leela analysis."
+
+msgid "leela:error:engine_died"
+msgstr "Leela engine stopped unexpectedly."
+
+msgid "leela:error:timeout"
+msgstr "Leela analysis timed out."
+
+msgid "leela:error:analysis_failed"
+msgstr "Leela analysis failed. See logs for details."
+
+msgid "leela:error:no_candidates"
+msgstr "Leela returned no candidate moves."
