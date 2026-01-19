@@ -1443,6 +1443,9 @@ msgstr "最大訪問数"
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (高速解析)"
 
+msgid "mykatrain:settings:leela_play_visits"
+msgstr "対局時Visits"
+
 msgid "leela:error:exe_not_found"
 msgstr "Leela実行ファイルが見つかりません: {}"
 
@@ -1695,3 +1698,31 @@ msgstr "閉じる"
 
 msgid "engine-compare:jumped-to"
 msgstr "手数{move}に移動しました"
+
+#. Phase 40: Leela Play Mode
+msgid "ai:leela"
+msgstr "Leela Zero"
+
+msgid "aihelp:ai:leela"
+msgstr "Leela Zeroエンジンで着手を生成"
+
+msgid "leela:error:start_failed"
+msgstr "Leela Zeroを起動できません。設定 > Leela Zeroを確認してください。"
+
+msgid "leela:error:not_running"
+msgstr "Leela Zeroが動作していません。設定 > Leela Zeroを確認してください。"
+
+msgid "leela:error:request_failed"
+msgstr "Leela解析を開始できませんでした。"
+
+msgid "leela:error:engine_died"
+msgstr "Leelaエンジンが予期せず停止しました。"
+
+msgid "leela:error:timeout"
+msgstr "Leela解析がタイムアウトしました。"
+
+msgid "leela:error:analysis_failed"
+msgstr "Leela解析に失敗しました。詳細はログを確認してください。"
+
+msgid "leela:error:no_candidates"
+msgstr "Leelaが候補手を返しませんでした。"

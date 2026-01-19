@@ -70,7 +70,7 @@ from kivy.resources import resource_find
 from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
 from kivy.metrics import dp
-from katrain.core.ai import generate_ai_move
+from katrain.core.ai import generate_ai_move, LeelaNotAvailableError
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.constants import (
@@ -666,7 +666,11 @@ class KaTrainGui(Screen, KaTrainBase):
             mode = self.next_player_info.strategy
             settings = self.config(f"ai/{mode}")
             if settings is not None:
-                generate_ai_move(self.game, mode, settings)
+                try:
+                    generate_ai_move(self.game, mode, settings)
+                except LeelaNotAvailableError as e:
+                    self.log(str(e), OUTPUT_ERROR)
+                    self.controls.set_status(str(e), STATUS_ERROR)
             else:
                 self.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
 

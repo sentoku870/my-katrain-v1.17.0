@@ -17,6 +17,7 @@
         "exe_path": "",
         "max_visits": 1000,
         "fast_visits": 200,
+        "play_visits": 500,
         "loss_scale_k": 0.5,
         "resign_hint_enabled": false,
         "resign_winrate_threshold": 5,
@@ -167,7 +168,8 @@
         },
         "ai:pro": {
             "pro_year": 1914
-        }
+        },
+        "ai:leela": {}
     },
     "mykatrain_settings": {
         "default_user_name": "",
