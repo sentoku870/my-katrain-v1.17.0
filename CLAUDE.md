@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-39（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー）
-- **次**: Phase 40 PLAYモード
+- **完了**: Phase 1-40（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード）
+- **次**: Phase 41+（未定）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -362,6 +362,15 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
+  - AI_LEELA定数追加（constants.py）、AI_STRATEGIES/RECOMMENDED_ORDER/STRENGTH統合
+  - LeelaStrategy + LeelaNotAvailableError実装（ai.py、~90行）
+  - config.json: `ai:leela: {}`と`leela.play_visits: 500`追加
+  - __main__.py: LeelaNotAvailableErrorキャッチ＋ステータスバー表示
+  - settings_popup.py: Play Visits UI追加
+  - i18n: EN/JP翻訳追加（10キー）
+  - テスト14件（test_leela_strategy.py）
+  - テスト総数: 1477件
 - 2026-01-19: Phase 39 完了（エンジン比較ビュー）
   - PR-1: `katrain/core/analysis/engine_compare.py`（~400行）
     - `ComparisonWarning` enum、`MoveComparison`/`EngineStats`/`EngineComparisonResult` dataclass

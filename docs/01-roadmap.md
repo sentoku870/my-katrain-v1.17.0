@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-18
+> 最終更新: 2026-01-19
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -924,7 +924,7 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 37 | テスト強化 | Python-level E2E, golden | ✅ **完了** |
 | 38 | 安定化 | エラーハンドリング強化 + テスト追加 | ✅ **完了** |
 | 39 | エンジン比較ビュー | KataGo/Leela比較表示 | ✅ **完了** |
-| 40 | PLAYモード | 対局機能 | 📋 次 |
+| 40 | PLAYモード | Leela Zero対戦機能 | ✅ **完了** |
 
 #### 依存関係
 ```
@@ -933,7 +933,7 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
                                    └→ 36 [OPTIONAL]
 ```
 - Phase 36（バッチ）はオプション。Phase 35完了後いつでも実装可能
-- Phase 39（エンジン比較ビュー）完了。Phase 40（PLAYモード）が次のマイルストーン
+- Phase 40（PLAYモード）完了。Leela Zero解析パイプライン拡張ロードマップ完了
 
 ---
 
@@ -970,6 +970,32 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
 
 ## 11. 変更履歴
 
+- 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
+  - **AI_LEELA定数**: `constants.py`にAI_LEELA追加、AI_STRATEGIES/RECOMMENDED_ORDER/STRENGTH統合
+  - **LeelaStrategy**: `ai.py`に実装（~90行）
+    - `LeelaNotAvailableError`例外クラス
+    - `generate_move()`: Leela Zeroから着手を取得
+    - 動的board_size/komi対応（9x9等の異サイズ盤対応）
+    - 10秒タイムアウト、poll_interval=10ms（既存KataGoパターン踏襲）
+  - **config.json**: `ai:leela: {}`と`leela.play_visits: 500`追加
+  - **__main__.py**: `LeelaNotAvailableError`キャッチ＋ステータスバー表示
+  - **settings_popup.py**: Play Visits UI追加（50〜max_visits範囲バリデーション）
+  - **i18n**: EN/JP翻訳追加（10キー、エラーメッセージ含む）
+  - **テスト**: 14件（test_leela_strategy.py）、test_ai.pyにAI_LEELAスキップ追加
+  - **テスト総数**: 1477件
+- 2026-01-19: Phase 39 完了（エンジン比較ビュー）
+  - **PR-1**: 比較ロジック（`analysis/engine_compare.py`、~400行）
+    - `ComparisonWarning` enum、`MoveComparison`/`EngineStats`/`EngineComparisonResult` dataclass
+    - `build_comparison_from_game()` 関数
+    - `compute_spearman_manual()` 手動Spearman相関（scipy不使用）
+    - テスト38件（test_engine_compare.py）
+  - **PR-2**: 比較UI（`gui/features/engine_compare_popup.py`、~660行）
+    - タブ切替UI（手別比較 / 統計サマリー）
+    - ScrollView固定 + 乖離フィルタ（デフォルトON）
+    - 行クリックで該当手にジャンプ
+    - MyKatrainメニューに「エンジン比較」項目追加
+    - i18n 35+キー追加（en/jp）
+  - **テスト総数**: 1463件
 - 2026-01-18: Phase 38 完了（安定化）
   - **PR-1**: エラーハンドリング強化
     - `_safe_int()` ヘルパー関数（batch_core.py、サイレントデフォルト処理）
