@@ -925,6 +925,8 @@ Phase 30-39はLeela Zero解析をKataGoと同等のカルテ/サマリー生成�
 | 38 | 安定化 | エラーハンドリング強化 + テスト追加 | ✅ **完了** |
 | 39 | エンジン比較ビュー | KataGo/Leela比較表示 | ✅ **完了** |
 | 40 | PLAYモード | Leela Zero対戦機能 | ✅ **完了** |
+| 41 | コード品質 | Enum化、コマンド抽出、例外改善、定数化 | ✅ **完了** |
+| 42-A | Batch Core | core/batch/パッケージ作成（models+helpers） | ✅ **完了** |
 
 #### 依存関係
 ```
@@ -970,6 +972,20 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
 
 ## 11. 変更履歴
 
+- 2026-01-20: Phase 42-A 完了（Batch Core移行）
+  - **新規パッケージ**: `katrain/core/batch/`（Kivy非依存）
+    - `models.py`: `WriteError`, `BatchResult` dataclass
+    - `helpers.py`: 純粋関数15種（choose_visits_for_sgf, get_canonical_loss,
+      parse_timeout_input, safe_write_file, read_sgf_with_fallback,
+      parse_sgf_with_fallback, has_analysis, collect_sgf_files_recursive,
+      collect_sgf_files, wait_for_analysis, sanitize_filename,
+      get_unique_filename, normalize_player_name, safe_int,
+      needs_leela_karte_warning）
+    - `__init__.py`: パッケージエクスポート
+  - **後方互換**: `tools/batch_analyze_sgf.py`から再エクスポート
+  - **GUI更新**: `batch_core.py`のインポートを`core.batch`に変更
+  - **アーキテクチャテスト**: `test_batch_does_not_import_kivy()`追加
+  - **テスト総数**: 1492件
 - 2026-01-20: Phase 41 完了（コード品質リファクタリング）
   - **Phase 41-A**: `AnalysisMode(str, Enum)`導入、`parse_analysis_mode()`関数
     - `game.py`/`__main__.py`のmode文字列をEnum化

@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-41（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング）
-- **次**: Phase 42+（未定）
+- **完了**: Phase 1-42A（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core移行）
+- **次**: Phase 42-B（Batch Orchestration移行）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -192,10 +192,13 @@ katrain/
 │   ├── engine.py     ← KataGoEngine（解析プロセス）
 │   ├── lang.py       ← Lang クラス（Kivy非依存、コールバックベース）
 │   ├── eval_metrics.py ← ファサード（後方互換用、実体は analysis/）
-│   └── analysis/     ← 解析基盤パッケージ
-│       ├── models.py    ← Enum, Dataclass, 定数
-│       ├── logic.py     ← 計算関数
-│       └── presentation.py ← 表示/フォーマット
+│   ├── analysis/     ← 解析基盤パッケージ
+│   │   ├── models.py    ← Enum, Dataclass, 定数
+│   │   ├── logic.py     ← 計算関数
+│   │   └── presentation.py ← 表示/フォーマット
+│   └── batch/        ← バッチ処理パッケージ（Phase 42）
+│       ├── models.py    ← WriteError, BatchResult
+│       └── helpers.py   ← 純粋関数（Kivy非依存）
 ├── gui/
 │   ├── controlspanel.py ← 右パネル
 │   ├── badukpan.py      ← 盤面表示
@@ -362,6 +365,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-20: Phase 42-A 完了（Batch Core移行）
+  - 新規: `katrain/core/batch/`パッケージ（Kivy非依存）
+  - models.py: WriteError, BatchResult dataclass
+  - helpers.py: 純粋関数15種（choose_visits_for_sgf, safe_int, needs_leela_karte_warning等）
+  - 後方互換: tools/batch_analyze_sgf.pyから再エクスポート
+  - アーキテクチャテスト: test_batch_does_not_import_kivy()追加
+  - テスト総数: 1492件
 - 2026-01-20: Phase 41 完了（コード品質リファクタリング）
   - Phase 41-A: `AnalysisMode(str, Enum)` + `parse_analysis_mode()`関数（constants.py）
   - Phase 41-B: コマンドハンドラ抽出（gui/features/commands/パッケージ新設）
