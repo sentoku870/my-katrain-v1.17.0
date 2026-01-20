@@ -21,10 +21,10 @@ from katrain.core.batch import (
     parse_timeout_input,
     safe_int as _safe_int,  # Alias to keep existing local references
     needs_leela_karte_warning,
+    run_batch,  # Phase 42-B: Now from core.batch
 )
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
-from katrain.tools.batch_analyze_sgf import run_batch
 
 logger = logging.getLogger(__name__)
 

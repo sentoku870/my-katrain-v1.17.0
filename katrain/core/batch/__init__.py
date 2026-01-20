@@ -2,15 +2,16 @@
 
 This package provides batch SGF analysis functionality, fully Kivy-independent.
 
-Phase 42-A: Models and helpers only.
-For run_batch(), use katrain.tools.batch_analyze_sgf until 42-B.
-
 Usage:
     from katrain.core.batch import BatchResult, WriteError, has_analysis
+    from katrain.core.batch import run_batch  # Lazy import via __getattr__
 
 Structure:
     - models.py: WriteError, BatchResult dataclasses
     - helpers.py: Constants + pure helper functions
+    - analysis.py: analyze_single_file, analyze_single_file_leela
+    - orchestration.py: run_batch main entry point
+    - stats.py: Game stats extraction and summary generation
 """
 
 # =============================================================================
@@ -90,4 +91,71 @@ __all__ = [
     # UI validation
     "safe_int",
     "needs_leela_karte_warning",
+    # === Lazy exports (via __getattr__) ===
+    # analysis.py
+    "analyze_single_file",
+    "analyze_single_file_leela",
+    # orchestration.py
+    "run_batch",
+    # stats.py
+    "extract_game_stats",
+    "build_batch_summary",
+    "extract_players_from_stats",
+    "build_player_summary",
 ]
+
+
+# =============================================================================
+# Lazy imports for heavy modules (Phase 42-B)
+# =============================================================================
+
+def __getattr__(name: str):
+    """Lazy import for heavy modules to avoid circular imports.
+
+    Available:
+    - run_batch (from orchestration)
+    - analyze_single_file, analyze_single_file_leela (from analysis)
+    - extract_game_stats, build_batch_summary, extract_players_from_stats,
+      build_player_summary (from stats)
+
+    Note: Caches imported objects in globals() to avoid repeated imports.
+    """
+    # Analysis functions
+    if name == "analyze_single_file":
+        from katrain.core.batch.analysis import analyze_single_file
+        globals()["analyze_single_file"] = analyze_single_file
+        return analyze_single_file
+
+    if name == "analyze_single_file_leela":
+        from katrain.core.batch.analysis import analyze_single_file_leela
+        globals()["analyze_single_file_leela"] = analyze_single_file_leela
+        return analyze_single_file_leela
+
+    # Orchestration
+    if name == "run_batch":
+        from katrain.core.batch.orchestration import run_batch
+        globals()["run_batch"] = run_batch
+        return run_batch
+
+    # Stats functions
+    if name == "extract_game_stats":
+        from katrain.core.batch.stats import extract_game_stats
+        globals()["extract_game_stats"] = extract_game_stats
+        return extract_game_stats
+
+    if name == "build_batch_summary":
+        from katrain.core.batch.stats import build_batch_summary
+        globals()["build_batch_summary"] = build_batch_summary
+        return build_batch_summary
+
+    if name == "extract_players_from_stats":
+        from katrain.core.batch.stats import extract_players_from_stats
+        globals()["extract_players_from_stats"] = extract_players_from_stats
+        return extract_players_from_stats
+
+    if name == "build_player_summary":
+        from katrain.core.batch.stats import build_player_summary
+        globals()["build_player_summary"] = build_player_summary
+        return build_player_summary
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
