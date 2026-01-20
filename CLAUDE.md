@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-42B（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成）
-- **次**: Phase 42-C（Batch Import Tests + Cleanup）
+- **完了**: Phase 1-42（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成）
+- **次**: Phase 43+（未定）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -368,6 +368,12 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-20: Phase 42-C 完了（Batch Import Tests）
+  - 新規: `tests/test_batch_core_imports.py`（19件）
+  - 後方互換テスト: tools.batch_analyze_sgfからのインポート検証
+  - 新APIテスト: core.batchからのインポート検証
+  - 動作テスト: parse_timeout, get_canonical_loss, safe_int等
+  - テスト総数: 1511件
 - 2026-01-20: Phase 42-B 完了（Batch Orchestration移行）
   - 新規: `katrain/core/batch/analysis.py`（~394行、analyze_single_file, analyze_single_file_leela）
   - 新規: `katrain/core/batch/orchestration.py`（~439行、run_batch）

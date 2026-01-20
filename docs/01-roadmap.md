@@ -972,6 +972,13 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
 
 ## 11. 変更履歴
 
+- 2026-01-20: Phase 42-C 完了（Batch Import Tests）
+  - **新規テスト**: `tests/test_batch_core_imports.py`（19件）
+    - 後方互換インポート検証（`tools.batch_analyze_sgf`）
+    - 新API検証（`core.batch`）
+    - 関数動作検証（parse_timeout, get_canonical_loss等）
+    - `__all__`エクスポート検証
+  - **テスト総数**: 1511件
 - 2026-01-20: Phase 42-B 完了（Batch Analysis移行）
   - **新規モジュール**: `katrain/core/batch/`に分析・オーケストレーション・統計機能を移行
     - `analysis.py` (~400行): `analyze_single_file()`, `analyze_single_file_leela()`

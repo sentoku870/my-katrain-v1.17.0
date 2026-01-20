@@ -40,7 +40,8 @@
       "Bash(./Leela0110-cpu.exe)",
       "Bash(uv run python:*)",
       "Bash(pip install:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(tree:*)"
     ]
   }
 }
