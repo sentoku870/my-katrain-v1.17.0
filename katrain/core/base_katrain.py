@@ -127,7 +127,7 @@ class KaTrainBase:
                             version_str = JsonFileConfigStore(user_config_file).get("general")["version"]
                             version = parse_version(version_str)
                             self.log(f"Parsed version: {version}", OUTPUT_DEBUG)
-                        except Exception as e:  # noqa E722 broken file etc
+                        except Exception as e:  # noqa: BLE001 - config version parse may fail in many ways
                             self.log(f"Failed to read version from user config: {e}", OUTPUT_DEBUG)
                             version_str = "0.0.0"
                             version = [0, 0, 0]
@@ -142,7 +142,7 @@ class KaTrainBase:
                             )
                         config_file = user_config_file
                         self.log(f"Using user config file {config_file}", OUTPUT_INFO)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - config setup may fail in many ways, fallback to package
                     config_file = package_config_file
                     self.log(
                         f"Using package config file {config_file} (exception {e} occurred when finding or creating user config)",
@@ -150,7 +150,7 @@ class KaTrainBase:
                     )
         try:
             self._config_store = JsonFileConfigStore(config_file, indent=4)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - config load failure is fatal, log and exit
             self.log(f"Failed to load config {config_file}: {e}", OUTPUT_ERROR)
             sys.exit(1)
         self._config = dict(self._config_store)

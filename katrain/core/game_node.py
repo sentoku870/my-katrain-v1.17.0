@@ -1,4 +1,5 @@
 import base64
+import binascii
 import copy
 import gzip
 import json
@@ -86,7 +87,8 @@ class GameNode(SGFNode):
                 "ownership": unpack_floats(ownership_data, board_squares),
             }
             return True
-        except Exception as e:
+        except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, ValueError) as e:
+            # Specific exceptions for SGF analysis deserialization failures
             print(f"Error in loading analysis: {e}")
             return False
 
@@ -147,7 +149,8 @@ class GameNode(SGFNode):
         if save_analysis and self.analysis_complete:
             try:
                 properties["KT"] = analysis_dumps(self.analysis)
-            except Exception as e:
+            except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, ValueError) as e:
+                # Specific exceptions for SGF analysis serialization failures
                 print(f"Error in saving analysis: {e}")
         if self.points_lost and save_comments_class is not None and eval_thresholds is not None:
             show_class = save_comments_class[evaluation_class(self.points_lost, eval_thresholds)]
