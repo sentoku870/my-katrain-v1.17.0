@@ -55,6 +55,47 @@ class Player:
         return f"{self.player_type} ({self.player_subtype})"
 
 
+from typing import Callable, List, Optional
+
+
+def _save_config_with_errors(
+    config: dict,
+    config_store,
+    log_func: Callable[[str, int], None],
+    key: Optional[str] = None,
+) -> List[str]:
+    """Save config sections, collecting failures.
+
+    This is a module-level function for testability (avoids BaseKaTrain init).
+
+    Args:
+        config: Config dictionary
+        config_store: Store with put() method
+        log_func: Logging function (msg, level)
+        key: Single key to save, or None for all
+
+    Returns:
+        List of failed key names (empty if all succeeded)
+    """
+    keys_to_save = [key] if key else list(config.keys())
+    failed_keys = []
+
+    for k in keys_to_save:
+        try:
+            config_store.put(k, **config[k])
+        except Exception as e:  # noqa: BLE001 - must continue saving other sections
+            failed_keys.append(k)
+            log_func(f"Failed to save config section '{k}': {e}", OUTPUT_ERROR)
+
+    if failed_keys:
+        log_func(
+            f"Config save incomplete: {len(failed_keys)}/{len(keys_to_save)} section(s) failed",
+            OUTPUT_ERROR,
+        )
+
+    return failed_keys
+
+
 def parse_version(s):
     parts = [int(p) for p in s.split(".")]
     while len(parts) < 3:
@@ -157,11 +198,8 @@ class KaTrainBase:
         return config_file
 
     def save_config(self, key=None):
-        if key is None:
-            for k, v in self._config.items():
-                self._config_store.put(k, **v)
-        else:
-            self._config_store.put(key, **self._config[key])
+        """Save config to file. Logs errors but does not raise."""
+        _save_config_with_errors(self._config, self._config_store, self.log, key)
 
     def config(self, setting, default=None):
         try:

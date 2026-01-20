@@ -1297,16 +1297,11 @@ class KaTrainApp(MDApp):
         resource_add_path(PATHS["PACKAGE"] + "/img")
         resource_add_path(os.path.abspath(os.path.expanduser(DATA_FOLDER)))  # prefer resources in .katrain
 
+        from katrain.gui.theme_loader import load_theme_overrides
+
         theme_files = glob.glob(os.path.join(os.path.expanduser(DATA_FOLDER), "theme*.json"))
         for theme_file in sorted(theme_files):
-            try:
-                with open(theme_file) as f:
-                    theme_overrides = json.load(f)
-                for k, v in theme_overrides.items():
-                    setattr(Theme, k, v)
-                    print(f"[{theme_file}] Found theme override {k} = {v}")
-            except Exception as e:  # noqa E722
-                print(f"Failed to load theme file {theme_file}: {e}")
+            load_theme_overrides(theme_file, Theme)
 
         Theme.DEFAULT_FONT = resource_find(Theme.DEFAULT_FONT)
         Builder.load_file(kv_file)

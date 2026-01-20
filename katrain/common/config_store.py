@@ -13,6 +13,7 @@ Usage:
 """
 import json
 import os
+import tempfile
 from collections.abc import Mapping
 from threading import Lock
 from typing import Any, Dict, Iterator, Optional
@@ -48,14 +49,41 @@ class JsonFileConfigStore(Mapping):
             self._data = {}
 
     def _save(self) -> None:
-        """Save data to JSON file."""
-        # Ensure directory exists
-        dirname = os.path.dirname(self._filename)
-        if dirname:
-            os.makedirs(dirname, exist_ok=True)
+        """Save data to JSON file atomically.
 
-        with open(self._filename, "w", encoding="utf-8") as f:
-            json.dump(self._data, f, indent=self._indent, ensure_ascii=False)
+        Uses temp file + os.replace for atomic write.
+        This prevents data loss if the process crashes during save.
+
+        Raises:
+            OSError: If file operations fail (caller handles).
+            TypeError: If JSON serialization fails.
+        """
+        dirname = os.path.dirname(self._filename)
+        # Use current directory if filename has no directory component
+        save_dir = dirname if dirname else "."
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Atomic write: temp file in same directory + os.replace
+        fd = None
+        temp_path = None
+        try:
+            fd, temp_path = tempfile.mkstemp(suffix=".tmp", dir=save_dir)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                fd = None  # os.fdopen took ownership
+                json.dump(self._data, f, indent=self._indent, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, self._filename)
+            temp_path = None  # Success, don't delete
+        finally:
+            # Clean up on any failure
+            if fd is not None:
+                os.close(fd)
+            if temp_path is not None:
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
 
     def get(self, key: str) -> Optional[Dict[str, Any]]:
         """Get a section by key.
