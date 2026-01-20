@@ -27,7 +27,7 @@ from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
-from katrain.tools.batch_analyze_sgf import DEFAULT_TIMEOUT_SECONDS
+from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
