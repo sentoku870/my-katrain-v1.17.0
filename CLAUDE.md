@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-40（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード）
-- **次**: Phase 41+（未定）
+- **完了**: Phase 1-41（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング）
+- **次**: Phase 42+（未定）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -362,6 +362,13 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-20: Phase 41 完了（コード品質リファクタリング）
+  - Phase 41-A: `AnalysisMode(str, Enum)` + `parse_analysis_mode()`関数（constants.py）
+  - Phase 41-B: コマンドハンドラ抽出（gui/features/commands/パッケージ新設）
+  - Phase 41-C: 例外ハンドリング改善（`# noqa: BLE001`、OUTPUT_ERROR統一）
+  - Phase 41-D: Magic Number定数化（AI_ACCURACY_DECAY_BASE等3定数）
+  - テスト14件追加（test_analysis_mode.py）
+  - テスト総数: 1491件
 - 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
   - AI_LEELA定数追加（constants.py）、AI_STRATEGIES/RECOMMENDED_ORDER/STRENGTH統合
   - LeelaStrategy + LeelaNotAvailableError実装（ai.py、~90行）

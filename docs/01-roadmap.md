@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-19
+> 最終更新: 2026-01-20
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -970,6 +970,21 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
 
 ## 11. 変更履歴
 
+- 2026-01-20: Phase 41 完了（コード品質リファクタリング）
+  - **Phase 41-A**: `AnalysisMode(str, Enum)`導入、`parse_analysis_mode()`関数
+    - `game.py`/`__main__.py`のmode文字列をEnum化
+    - 不明なmode値はSTOPにフォールバック（logging.warning出力）
+  - **Phase 41-B**: コマンドハンドラ抽出
+    - `gui/features/commands/`パッケージ新設（4モジュール）
+    - `__main__.py`の`_do_*`メソッドを委譲パターンに変更
+  - **Phase 41-C**: 例外ハンドリング改善
+    - `# noqa: BLE001`コメント（理由付き）追加
+    - スレッド例外: OUTPUT_ERROR + スタックトレース
+    - シャットダウン例外: OUTPUT_DEBUG（継続処理）
+  - **Phase 41-D**: Magic Number定数化
+    - `AI_ACCURACY_DECAY_BASE`、`AI_PASS_LOSS_THRESHOLD`、`AI_ENDGAME_FILL_RATIO_DEFAULT`
+  - **テスト**: 14件追加（test_analysis_mode.py）
+  - **テスト総数**: 1491件
 - 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
   - **AI_LEELA定数**: `constants.py`にAI_LEELA追加、AI_STRATEGIES/RECOMMENDED_ORDER/STRENGTH統合
   - **LeelaStrategy**: `ai.py`に実装（~90行）
