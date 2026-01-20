@@ -87,48 +87,64 @@
 
 ---
 
-## 2. フェーズ一覧（現在/次）
+## 2. フェーズ一覧
+
+### 完了済み（Phase 1〜43）
 
 | Phase | ゴール | 主成果物 | 状態 |
-|------:|--------|----------|------|
-| 4 | クイズモードUI | 学習機能 | 🔄 **進行中** |
-| 4.5 | 評価指標安定化 + バッチ改善 | 5段階プリセット、Variable Visits | ✅ **完了** |
-| 5 | 1局カルテを安定出力 | `reports/karte/karte_*.md` + アンカー規則 | ✅ **完了** |
-| 6 | 複数局まとめで"悪癖"抽出 | `summary.md`（傾向） | ✅ **完了** |
-| 6.5 | eval_metrics.py 品質向上 | production-ready 基盤 | ✅ **完了** |
-| 7 | 単局カルテUI + カルテ品質向上 | デイリーコーチ完成 | ✅ **完了** |
-| 9 | 検証テンプレで改善ループ | `03-llm-validation.md` | ✅ **完了** |
-| 8 | 初心者向けヒント（任意） | 構造解析 + テンプレ | TBD |
-| 10+ | クイズ/コーチUIの拡張 | [TBD] | TBD |
-| 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ **完了** |
-| 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ **完了** |
-| 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ **完了** |
-| 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ **完了** |
-| 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ **完了** |
-| 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ **完了** |
-| 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ **完了** |
-| 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ **完了** |
-| 19 | 大規模リファクタリング | reports/パッケージ、analysis分割、GUI Manager抽出 | ✅ **完了** |
-| 20 | Guardrails + UI Polish | Kivy依存削除、アーキテクチャテスト、config抽象化 | ✅ **完了** |
-| 21 | Settings Popup タブ化 | 13設定を3タブに再編成 | ✅ **完了** |
-| 22 | 安定性向上 | クラッシュ、フリーズ、リソースリーク防止 | ✅ **完了** |
-| 23 | カルテ・サマリー品質向上 | ONLY_MOVE緩和、JSON出力、型ヒント | ✅ **完了** |
-| 24 | Regression Tests (SGF E2E) | 既存golden testに実SGFケース追加 | ✅ **完了** |
-| 25 | LLM Package Export | zip + manifest + PB/PW匿名化 | ✅ **完了** |
-| 26 | レポート導線改善 | 最新レポートを開く、フォルダを開く | ✅ **完了** |
-| 27 | Settings UI拡張 | 検索、Export/Import、タブ別リセット | ✅ **完了** |
-| 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ **完了** |
-| 29 | Diagnostics | 診断画面、Bug Report zip（サニタイズ付き） | ✅ **完了** |
-| 30 | 解析強度抽象化 | AnalysisStrength enum, leela.fast_visits追加 | ✅ **完了** |
-| 31 | Leela→MoveEval変換 | conversion.py, leela_loss_est フィールド | ✅ **完了** |
-| 32 | レポートLeela対応 | EngineInfo, 推定損失ラベル表示 | ✅ **完了** |
-| 33 | エンジン選択設定 | engine.analysis_engine キー追加 | ✅ **完了** |
-| 34 | UIエンジン切替 | Settings Popup拡張, フォールバック診断 | ✅ **完了** |
-| 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ **完了** |
-| 36 | Leelaバッチ解析 | 既存batch拡張（オプション） | ✅ **完了** |
-| 37 | テスト強化 | Python-level E2E, --update-goldens活用 | ✅ **完了** |
-| 38 | ドキュメント整備 | ユーザーガイド | TBD |
-| 39 | 仕上げ・安定化 | バグ修正、開発者ガイド | TBD |
+|------:|--------|----------|:----:|
+| 1 | 解析基盤の整備 | eval_metrics.py | ✅ |
+| 2 | 解析ビュー第1段階 | 重要局面ハイライト、ナビゲーション | ✅ |
+| 3 | ミス分類＋局面難易度 | 良/軽/悪/大悪、手の自由度 | ✅ |
+| 4 | クイズモード基盤 | クイズ候補抽出（Phase 4-1） | ✅ |
+| 4.5 | 評価指標安定化 | 5段階プリセット、Variable Visits | ✅ |
+| 5 | 1局カルテ出力 | `reports/karte/karte_*.md` | ✅ |
+| 6 | 複数局まとめカルテ | `summary.md`（傾向抽出） | ✅ |
+| 6.5 | eval_metrics.py 品質向上 | production-ready 基盤 | ✅ |
+| 7 | カルテ品質向上 | Phase×Mistake クロス集計 | ✅ |
+| 9 | 検証テンプレ | `03-llm-validation.md` | ✅ |
+| 11 | 難解PVフィルタ | Top Moves表示改善 | ✅ |
+| 12 | MuZero 3分解難易度 | 難所抽出・UI表示 | ✅ |
+| 13 | Smart Kifu Learning | 棋譜学習・プロファイル | ✅ |
+| 14 | Leelaモード推定損失 | Leela候補手の損失表示 | ✅ |
+| 15 | Leela UI統合 | 設定UI + エンジン管理 | ✅ |
+| 16 | Leela機能拡張 | PV再生 + 投了目安 | ✅ |
+| 17 | Leela Stats on Top Moves | 候補手表示の選択機能 | ✅ |
+| 18 | 安定性向上 | キャッシュLRU + バグ修正 | ✅ |
+| 19 | 大規模リファクタリング | reports/、analysis/分割 | ✅ |
+| 20 | Guardrails | Kivy依存削減、アーキテクチャテスト | ✅ |
+| 21 | Settings Popup タブ化 | 3タブ再編成 | ✅ |
+| 22 | 安定性向上 | クラッシュ・フリーズ防止 | ✅ |
+| 23 | カルテ品質向上 | ONLY_MOVE緩和、JSON出力 | ✅ |
+| 24 | Regression Tests | SGF E2E ゴールデンテスト | ✅ |
+| 25 | LLM Package Export | zip + manifest + 匿名化 | ✅ |
+| 26 | レポート導線改善 | 最新レポートを開く | ✅ |
+| 27 | Settings UI拡張 | 検索、Export/Import、リセット | ✅ |
+| 28 | Smart Kifu運用強化 | バッチ連携、解析率表示 | ✅ |
+| 29 | Diagnostics | 診断画面、Bug Report zip | ✅ |
+| 30 | 解析強度抽象化 | AnalysisStrength enum | ✅ |
+| 31 | Leela→MoveEval変換 | conversion.py | ✅ |
+| 32 | レポートLeela対応 | 推定損失ラベル表示 | ✅ |
+| 33 | エンジン選択設定 | engine.analysis_engine | ✅ |
+| 34 | UIエンジン切替 | Settings Popup拡張 | ✅ |
+| 35 | Leelaカルテ統合 | Export Karte Leela対応 | ✅ |
+| 36 | Leelaバッチ解析 | batch拡張（オプション） | ✅ |
+| 37 | テスト強化 | E2E, --update-goldens | ✅ |
+| 38 | 安定化 | エラーハンドリング強化 | ✅ |
+| 39 | エンジン比較ビュー | KataGo/Leela比較表示 | ✅ |
+| 40 | PLAYモード | Leela Zero対戦機能 | ✅ |
+| 41 | コード品質 | Enum化、コマンド抽出、定数化 | ✅ |
+| 42 | Batch Core移行 | core/batch/（Kivy非依存） | ✅ |
+| 43 | Stability Audit | Atomic save、Shutdown改善 | ✅ |
+
+### 未定（TBD）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 8 | 初心者向けヒント | 構造解析 + テンプレ | 📋 TBD |
+| 10+ | クイズUI拡張 | クイズモードUI完成 | 📋 TBD |
+| 44+ | ドキュメント整備 | ユーザーガイド | 📋 TBD |
+| - | 仕上げ・安定化 | バグ修正、開発者ガイド | 📋 TBD |
 
 ---
 
@@ -993,6 +1009,22 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 ## 11. 変更履歴
 
+- 2026-01-20: Phase 43 完了（Stability Audit）
+  - **Issue 1 (P0)**: Config save atomic化
+    - `config_store.py`: tempfile + os.replace + os.fsync
+    - クラッシュ時のデータ損失防止
+  - **Issue 2 (P0)**: save_config() エラーハンドリング
+    - `base_katrain.py`: `_save_config_with_errors()`関数抽出
+    - 部分失敗時も残りのセクションを保存継続
+  - **Issue 3 (P1)**: Leela shutdown TimeoutExpired対応
+    - `leela/engine.py`: kill()後のwait()でも例外をキャッチ
+  - **Issue 4 (P1)**: LeelaEngine analysis thread join
+    - プロセス終了後にスレッドjoin（blocking readline対策）
+  - **Issue 5 (P2)**: Theme loader改善
+    - `gui/theme_loader.py`: 新規モジュール（side-effect free）
+    - UTF-8エンコーディング、hasattrチェック、logging使用
+  - **テスト**: 18件追加（4ファイル）
+  - **テスト総数**: 1529件
 - 2026-01-20: Phase 42-C 完了（Batch Import Tests）
   - **新規テスト**: `tests/test_batch_core_imports.py`（19件）
     - 後方互換インポート検証（`tools.batch_analyze_sgf`）

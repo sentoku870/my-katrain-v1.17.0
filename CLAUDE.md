@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-42（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成）
-- **次**: Phase 43+（未定）
+- **完了**: Phase 1-43（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit）
+- **次**: Phase 44+（未定）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -368,6 +368,15 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-20: Phase 43 完了（Stability Audit）
+  - Issue 1 (P0): Config save atomic化（tempfile + os.replace + os.fsync）
+  - Issue 2 (P0): save_config() エラーハンドリング（`_save_config_with_errors()`抽出）
+  - Issue 3 (P1): Leela shutdown TimeoutExpired二重発生対応
+  - Issue 4 (P1): LeelaEngine analysis thread join（kill後に実行）
+  - Issue 5 (P2): Theme loader新規モジュール（encoding + hasattr）
+  - 新規: `katrain/gui/theme_loader.py`（~35行）
+  - テスト18件追加（4ファイル）
+  - テスト総数: 1529件
 - 2026-01-20: Phase 42-C 完了（Batch Import Tests）
   - 新規: `tests/test_batch_core_imports.py`（19件）
   - 後方互換テスト: tools.batch_analyze_sgfからのインポート検証
