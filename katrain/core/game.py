@@ -26,6 +26,7 @@ from .eval_metrics import (
     snapshot_from_game,
 )
 from katrain.core.constants import (
+    AnalysisMode,
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
     OUTPUT_INFO,
@@ -43,6 +44,7 @@ from katrain.core.constants import (
     PRIORITY_ALTERNATIVES,
     PRIORITY_EQUALIZE,
     PRIORITY_DEFAULT,
+    parse_analysis_mode,
 )
 
 
@@ -1073,10 +1075,13 @@ class Game(BaseGame):
         self.katrain.controls.set_status("", OUTPUT_INFO)
 
     def analyze_extra(self, mode, **kwargs):
+        # Normalize mode to AnalysisMode at entry point
+        mode = parse_analysis_mode(mode)
+
         stones = {s.coords for s in self.stones}
         cn = self.current_node
 
-        if mode == "stop":
+        if mode == AnalysisMode.STOP:
             self.katrain.pondering = False
             for e in set(self.engines.values()):
                 e.stop_pondering()
@@ -1085,7 +1090,7 @@ class Game(BaseGame):
 
         engine = self.engines[cn.next_player]
 
-        if mode == "ponder":
+        if mode == AnalysisMode.PONDER:
             cn.analyze(
                 engine,
                 ponder=True,
@@ -1095,7 +1100,7 @@ class Game(BaseGame):
             )
             return
 
-        if mode == "extra":
+        if mode == AnalysisMode.EXTRA:
             visits = cn.analysis_visits_requested + engine.config["max_visits"]
             self.katrain.controls.set_status(i18n._("extra analysis").format(visits=visits), STATUS_ANALYSIS)
             cn.analyze(
@@ -1107,7 +1112,7 @@ class Game(BaseGame):
             )
             return
 
-        if mode == "game":
+        if mode == AnalysisMode.GAME:
             nodes = self.root.nodes_in_tree
             only_mistakes = kwargs.get("mistakes_only", False)
             move_range = kwargs.get("move_range", None)
@@ -1138,7 +1143,7 @@ class Game(BaseGame):
                 )
             return
 
-        elif mode == "sweep":
+        elif mode == AnalysisMode.SWEEP:
             board_size_x, board_size_y = self.board_size
 
             if cn.analysis_exists:
@@ -1166,11 +1171,11 @@ class Game(BaseGame):
             visits = engine.config["fast_visits"]
             self.katrain.controls.set_status(i18n._("sweep analysis").format(visits=visits), STATUS_ANALYSIS)
             priority = PRIORITY_SWEEP
-        elif mode in ["equalize", "alternative", "local"]:
-            if not cn.analysis_complete and mode != "local":
+        elif mode in (AnalysisMode.EQUALIZE, AnalysisMode.ALTERNATIVE, AnalysisMode.LOCAL):
+            if not cn.analysis_complete and mode != AnalysisMode.LOCAL:
                 self.katrain.controls.set_status(i18n._("wait-before-extra-analysis"), STATUS_INFO, self.current_node)
                 return
-            if mode == "alternative":  # also do a quick update on current candidates so it doesn't look too weird
+            if mode == AnalysisMode.ALTERNATIVE:  # also do a quick update on current candidates so it doesn't look too weird
                 self.katrain.controls.set_status(i18n._("alternative analysis"), STATUS_ANALYSIS)
                 cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives="alternative")
                 visits = engine.config["fast_visits"]
@@ -1180,7 +1185,7 @@ class Game(BaseGame):
             priority = PRIORITY_EQUALIZE
             analyze_moves = [Move.from_gtp(gtp, player=cn.next_player) for gtp, _ in cn.analysis["moves"].items()]
         else:
-            raise ValueError("Invalid analysis mode")
+            raise ValueError(f"Invalid analysis mode: {mode}")
 
         for move in analyze_moves:
             if cn.analysis["moves"].get(move.gtp(), {"visits": 0})["visits"] < visits:

@@ -74,6 +74,7 @@ from katrain.core.ai import generate_ai_move, LeelaNotAvailableError
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.constants import (
+    AnalysisMode,
     OUTPUT_ERROR,
     OUTPUT_KATAGO_STDERR,
     OUTPUT_INFO,
@@ -90,6 +91,7 @@ from katrain.core.constants import (
     MODE_PLAY,
     DATA_FOLDER,
     AI_DEFAULT,
+    parse_analysis_mode,
 )
 from katrain.core import eval_metrics
 from katrain.gui.popups import (
@@ -731,6 +733,8 @@ class KaTrainGui(Screen, KaTrainBase):
             self.controls.set_status(f"Illegal Move: {str(e)}", STATUS_ERROR)
 
     def _do_analyze_extra(self, mode, **kwargs):
+        # Normalize mode at entry point (game.analyze_extra also normalizes, but explicit here for clarity)
+        mode = parse_analysis_mode(mode)
         self.game.analyze_extra(mode, **kwargs)
 
     def _do_selfplay_setup(self, until_move, target_b_advantage=None):
