@@ -74,7 +74,6 @@ from katrain.core.ai import generate_ai_move, LeelaNotAvailableError
 
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.constants import (
-    AnalysisMode,
     OUTPUT_ERROR,
     OUTPUT_KATAGO_STDERR,
     OUTPUT_INFO,
@@ -91,7 +90,6 @@ from katrain.core.constants import (
     MODE_PLAY,
     DATA_FOLDER,
     AI_DEFAULT,
-    parse_analysis_mode,
 )
 from katrain.core import eval_metrics
 from katrain.gui.popups import (
@@ -109,6 +107,12 @@ from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
+from katrain.gui.features.commands import (
+    analyze_commands,
+    export_commands,
+    game_commands,
+    popup_commands,
+)
 from katrain.core.sgf_parser import Move
 from katrain.core.errors import EngineError
 from katrain.gui.error_handler import ErrorHandler
@@ -629,34 +633,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.message_queue.put([self.game.game_id, message, args, kwargs])
 
     def _do_new_game(self, move_tree=None, analyze_fast=False, sgf_filename=None):
-        self.pondering = False
-        # Phase 16: Clear resign hint tracking on new game
-        self._leela_manager.clear_resign_hint_tracking()
-        mode = self.play_analyze_mode
-        if not getattr(self, "_suppress_play_mode_switch", False) and (
-            (move_tree is not None and mode == MODE_PLAY)
-            or (move_tree is None and mode == MODE_ANALYZE)
-        ):
-            self.play_mode.switch_ui_mode()  # for new game, go to play, for loaded, analyze
-        self.board_gui.animating_pv = None
-        self.board_gui.reset_rotation()
-        self.engine.on_new_game()  # clear queries
-        self.game = Game(
-            self,
-            self.engine,
-            move_tree=move_tree,
-            analyze_fast=analyze_fast or not move_tree,
-            sgf_filename=sgf_filename,
-        )
-        for bw, player_info in self.players_info.items():
-            player_info.sgf_rank = self.game.root.get_property(bw + "R")
-            player_info.calculated_rank = None
-            if sgf_filename is not None:  # load game->no ai player
-                player_info.player_type = PLAYER_HUMAN
-                player_info.player_subtype = PLAYING_NORMAL
-            self.update_player(bw, player_type=player_info.player_type, player_subtype=player_info.player_subtype)
-        self.controls.graph.initialize_from_game(self.game.root)
-        self.update_state(redraw_board=True)
+        game_commands.do_new_game(self, move_tree, analyze_fast, sgf_filename)
 
     def _do_insert_mode(self, mode="toggle"):
         self.game.set_insert_mode(mode)
@@ -677,12 +654,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
 
     def _do_undo(self, n_times=1):
-        if n_times == "smart":
-            n_times = 1
-            if self.play_analyze_mode == MODE_PLAY and self.last_player_info.ai and self.next_player_info.human:
-                n_times = 2
-        self.board_gui.animating_pv = None
-        self.game.undo(n_times)
+        game_commands.do_undo(self, n_times)
 
     def _do_reset_analysis(self):
         self.game.reset_current_analysis()
@@ -691,8 +663,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self.game.current_node.end_state = f"{self.game.current_node.player}+R"
 
     def _do_redo(self, n_times=1):
-        self.board_gui.animating_pv = None
-        self.game.redo(n_times)
+        game_commands.do_redo(self, n_times)
 
     def _do_rotate(self):
         self.board_gui.rotate_gridpos()
@@ -733,9 +704,7 @@ class KaTrainGui(Screen, KaTrainBase):
             self.controls.set_status(f"Illegal Move: {str(e)}", STATUS_ERROR)
 
     def _do_analyze_extra(self, mode, **kwargs):
-        # Normalize mode at entry point (game.analyze_extra also normalizes, but explicit here for clarity)
-        mode = parse_analysis_mode(mode)
-        self.game.analyze_extra(mode, **kwargs)
+        analyze_commands.do_analyze_extra(self, mode, **kwargs)
 
     def _do_selfplay_setup(self, until_move, target_b_advantage=None):
         self.game.selfplay(int(until_move) if isinstance(until_move, float) else until_move, target_b_advantage)
@@ -773,14 +742,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self.teacher_settings_popup.open()
 
     def _do_config_popup(self):
-        self.controls.timer.paused = True
-        if not self.config_popup:
-            self.config_popup = I18NPopup(
-                title_key="general settings title", size=[dp(1200), dp(950)], content=ConfigPopup(self)
-            ).__self__
-            self.config_popup.content.popup = self.config_popup
-            self.config_popup.title += ": " + self.config_file
-        self.config_popup.open()
+        popup_commands.do_config_popup(self)
 
     def _do_ai_popup(self):
         self.controls.timer.paused = True
@@ -849,16 +811,16 @@ class KaTrainGui(Screen, KaTrainBase):
         self._sgf_manager.open_recent_sgf()
 
     def _do_save_game(self, filename=None):
-        """Save game. Delegates to SGFManager."""
-        self._sgf_manager.save_game(filename)
+        """Save game. Delegates to export_commands."""
+        export_commands.do_save_game(self, filename)
 
     def _do_save_game_as_popup(self):
         """Open save-as popup. Delegates to SGFManager."""
         self._sgf_manager.do_save_game_as_popup(self)
 
     def _do_export_karte(self, *args, **kwargs):
-        """Export karte. Delegates to karte_export.do_export_karte()."""
-        do_export_karte(self, self._do_mykatrain_settings_popup)
+        """Export karte. Delegates to export_commands."""
+        export_commands.do_export_karte(self, self._do_mykatrain_settings_popup)
 
     def _do_export_package(self, anonymize: bool = False, *args, **kwargs):
         """Export LLM package. Delegates to package_export_ui.do_export_package()."""
