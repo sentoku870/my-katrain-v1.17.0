@@ -102,6 +102,18 @@ AI_STRENGTH = {  # dan ranks, backup if model is missing. TODO: remove some?
     AI_LEELA: 9,
 }
 
+# --- AI Statistics Constants ---
+
+# Accuracy decay base: accuracy = 100 * base ** weighted_loss
+# Loss 1 point → 75%, 2 points → 56%, 3 points → 42%
+AI_ACCURACY_DECAY_BASE: float = 0.75
+
+# Pass loss threshold: skip pass moves with loss greater than this (in points)
+AI_PASS_LOSS_THRESHOLD: float = 0.75
+
+# Endgame fill ratio: board fill ratio to consider endgame (settings default)
+AI_ENDGAME_FILL_RATIO_DEFAULT: float = 0.75
+
 AI_OPTION_VALUES = {
     "kyu_rank": [(k, f"{k}[strength:kyu]") for k in range(15, 0, -1)]
     + [(k, f"{1-k}[strength:dan]") for k in range(0, -3, -1)],
