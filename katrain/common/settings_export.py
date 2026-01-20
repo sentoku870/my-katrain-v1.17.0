@@ -23,7 +23,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -135,7 +135,7 @@ def export_settings(config: Dict[str, Any], app_version: str) -> str:
     export_data = {
         "schema_version": SCHEMA_VERSION,
         "app_version": app_version,
-        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "exported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "sections": filtered,
     }
     return json.dumps(export_data, indent=2, ensure_ascii=False)
