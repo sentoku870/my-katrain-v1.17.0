@@ -972,6 +972,15 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40
 
 ## 11. 変更履歴
 
+- 2026-01-20: Phase 42-B 完了（Batch Analysis移行）
+  - **新規モジュール**: `katrain/core/batch/`に分析・オーケストレーション・統計機能を移行
+    - `analysis.py` (~400行): `analyze_single_file()`, `analyze_single_file_leela()`
+    - `orchestration.py` (~440行): `run_batch()` メインエントリポイント
+    - `stats.py` (~960行): ゲーム統計抽出、サマリー生成
+  - **遅延インポート**: `__getattr__`による重いモジュールの遅延ロード
+  - **後方互換**: `tools/batch_analyze_sgf.py`はCLI + 再エクスポートレイヤーに簡素化（~240行）
+  - **GUI更新**: `batch_core.py`/`batch_ui.py`のインポートを`core.batch`に変更
+  - **テスト総数**: 1492件
 - 2026-01-20: Phase 42-A 完了（Batch Core移行）
   - **新規パッケージ**: `katrain/core/batch/`（Kivy非依存）
     - `models.py`: `WriteError`, `BatchResult` dataclass
