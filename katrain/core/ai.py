@@ -29,8 +29,9 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from katrain.core.constants import (
-    AI_DEFAULT, AI_HANDICAP, AI_INFLUENCE, AI_INFLUENCE_ELO_GRID, AI_JIGO,
-    AI_ANTIMIRROR, AI_LOCAL, AI_LOCAL_ELO_GRID, AI_PICK, AI_PICK_ELO_GRID,
+    AI_ACCURACY_DECAY_BASE,
+    AI_DEFAULT, AI_ENDGAME_FILL_RATIO_DEFAULT, AI_HANDICAP, AI_INFLUENCE, AI_INFLUENCE_ELO_GRID, AI_JIGO,
+    AI_ANTIMIRROR, AI_LOCAL, AI_LOCAL_ELO_GRID, AI_PASS_LOSS_THRESHOLD, AI_PICK, AI_PICK_ELO_GRID,
     AI_POLICY, AI_RANK, AI_SCORELOSS, AI_SCORELOSS_ELO, AI_SETTLE_STONES,
     AI_SIMPLE_OWNERSHIP, AI_STRENGTH,
     AI_TENUKI, AI_TENUKI_ELO_GRID, AI_TERRITORY, AI_TERRITORY_ELO_GRID,
@@ -142,7 +143,7 @@ def game_report(game, thresholds, depth_filter=None):
     sum_stats = {
         bw: (
             {
-                "accuracy": 100 * 0.75 ** wt_loss[bw],
+                "accuracy": 100 * AI_ACCURACY_DECAY_BASE ** wt_loss[bw],
                 "complexity": sum(w for w, aw in weights[bw]) / len(player_ptloss[bw]),
                 "mean_ptloss": sum(player_ptloss[bw]) / len(player_ptloss[bw]),
                 "weighted_ptloss": wt_loss[bw],
@@ -473,7 +474,7 @@ class OwnershipBaseStrategy(AIStrategy):
                 continue
             
             move = Move.from_gtp(d["move"], player=self.cn.next_player)
-            if move.is_pass and d["pointsLost"] > 0.75:
+            if move.is_pass and d["pointsLost"] > AI_PASS_LOSS_THRESHOLD:
                 self.game.katrain.log(f"[{self.strategy_name}] Move {move.gtp()} is pass with high point loss ({d['pointsLost']}), skipping", OUTPUT_DEBUG)
                 continue
             
@@ -816,7 +817,7 @@ class PickBasedStrategy(AIStrategy):
     def handle_endgame(self, legal_policy_moves, policy_grid, size):
         """Handle special endgame case"""
         board_squares = size[0] * size[1]
-        endgame_threshold = self.settings.get("endgame", 0.75) * board_squares
+        endgame_threshold = self.settings.get("endgame", AI_ENDGAME_FILL_RATIO_DEFAULT) * board_squares
         
         self.game.katrain.log(f"[{self.strategy_name}] Checking endgame condition: move depth {self.cn.depth} vs threshold {endgame_threshold}", OUTPUT_DEBUG)
         
