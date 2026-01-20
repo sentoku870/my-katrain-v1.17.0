@@ -146,6 +146,8 @@ class LeelaEngine:
             self.process = None
 
         if not proc:
+            # No process, but still clean up thread reference
+            self._analysis_thread = None
             return True
 
         # Try graceful quit
@@ -156,15 +158,27 @@ class LeelaEngine:
             pass
 
         # Wait for process to exit
+        graceful = True
         try:
             proc.wait(timeout=timeout)
             logger.info("Leela shutdown completed gracefully")
-            return True
         except subprocess.TimeoutExpired:
             logger.warning(f"Leela shutdown timeout after {timeout}s, killing")
             proc.kill()
-            proc.wait(timeout=2.0)
-            return False
+            try:
+                proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                logger.error("Leela process did not terminate after kill")
+            graceful = False
+
+        # Join thread AFTER process termination (stdout now closed, readline returns)
+        if self._analysis_thread and self._analysis_thread.is_alive():
+            self._analysis_thread.join(timeout=2.0)
+            if self._analysis_thread.is_alive():
+                logger.warning("Leela analysis thread did not stop within timeout")
+        self._analysis_thread = None
+
+        return graceful
 
     def is_alive(self) -> bool:
         """Check if engine process is running."""
