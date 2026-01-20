@@ -350,11 +350,10 @@ class KataGoEngine(BaseEngine):
         # Step 2: Signal writer thread to stop
         try:
             self.write_queue.put(None)
-        except Exception as e:
-            # Intentional: shutdown cleanup must not raise
+        except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
             try:
                 self.katrain.log(f"Shutdown: write_queue.put failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-            except Exception:
+            except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
                 pass
 
         if process:
@@ -362,11 +361,10 @@ class KataGoEngine(BaseEngine):
             self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
             try:
                 process.terminate()
-            except Exception as e:
-                # Intentional: shutdown cleanup must not raise
+            except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
                 try:
                     self.katrain.log(f"Shutdown: terminate failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-                except Exception:
+                except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
                     pass
 
             # Step 4: Close pipes explicitly (guarantee EOF for readline())
@@ -374,11 +372,10 @@ class KataGoEngine(BaseEngine):
                 try:
                     if pipe:
                         pipe.close()
-                except Exception as e:
-                    # Intentional: shutdown cleanup must not raise
+                except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
                     try:
                         self.katrain.log(f"Shutdown: pipe.close failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-                    except Exception:
+                    except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
                         pass
 
             # Step 5: Wait for threads to finish (short timeout)
@@ -404,7 +401,7 @@ class KataGoEngine(BaseEngine):
                     self.katrain.log("Process still alive, sending SIGKILL", OUTPUT_DEBUG)
                     process.kill()
                     process.wait(timeout=1.0)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
                 self.katrain.log(f"Force kill failed: {e}", OUTPUT_DEBUG)
 
             # Step 7: Clear process reference (last step)
@@ -461,16 +458,22 @@ class KataGoEngine(BaseEngine):
                         return
                     try:
                         self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
-                    except Exception as e:
-                        self.katrain.log(f"Error processing stderr: {line!r}: {e}", OUTPUT_ERROR)
+                    except Exception as e:  # noqa: BLE001 - thread exception, must log and continue
+                        self.katrain.log(
+                            f"Error processing stderr: {line!r}: {e}\n{traceback.format_exc()}",
+                            OUTPUT_ERROR,
+                        )
             except queue.Empty:
                 # Timeout - check if we should continue
                 if self._shutdown_event.is_set():
                     return
                 # No stderr activity is normal during idle periods
                 continue
-            except Exception as e:
-                self.katrain.log(f"Exception in stderr thread: {e}", OUTPUT_DEBUG)
+            except Exception as e:  # noqa: BLE001 - thread exception, must log and exit gracefully
+                self.katrain.log(
+                    f"Exception in stderr thread: {e}\n{traceback.format_exc()}",
+                    OUTPUT_ERROR,
+                )
                 return
 
     def _analysis_read_thread(self):
@@ -493,8 +496,11 @@ class KataGoEngine(BaseEngine):
                     return
                 # No pending queries or process alive - continue waiting
                 continue
-            except Exception as e:
-                self.katrain.log(f"Exception in analysis thread: {e}", OUTPUT_DEBUG)
+            except Exception as e:  # noqa: BLE001 - thread exception, must log and exit gracefully
+                self.katrain.log(
+                    f"Exception in analysis thread: {e}\n{traceback.format_exc()}",
+                    OUTPUT_ERROR,
+                )
                 self.check_alive(os_error=str(e), exception_if_dead=True, maybe_open_recovery=True)
                 return
 
@@ -567,14 +573,18 @@ class KataGoEngine(BaseEngine):
                     try:
                         if callback and results_exist:
                             callback(analysis, partial_result)
-                    except Exception as e:
-                        self.katrain.log(f"Error in engine callback for query {query_id}: {e}", OUTPUT_ERROR)
-                        traceback.print_exc()
+                    except Exception as e:  # noqa: BLE001 - callback exception, must log and continue
+                        self.katrain.log(
+                            f"Error in engine callback for query {query_id}: {e}\n{traceback.format_exc()}",
+                            OUTPUT_ERROR,
+                        )
                 if getattr(self.katrain, "update_state", None):  # easier mocking etc
                     self.katrain.update_state()
-            except Exception as e:
-                self.katrain.log(f"Unexpected exception {e} while processing KataGo output {line}", OUTPUT_ERROR)
-                traceback.print_exc()
+            except Exception as e:  # noqa: BLE001 - thread exception, must log and continue processing
+                self.katrain.log(
+                    f"Unexpected exception {e} while processing KataGo output {line}\n{traceback.format_exc()}",
+                    OUTPUT_ERROR,
+                )
 
     def _handle_engine_timeout(self):
         """Handle engine timeout (called from background thread).
