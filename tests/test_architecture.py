@@ -565,6 +565,48 @@ class TestDependencyDirection:
             f"ai_strategies_base.py should not import gui/: {gui_imports}"
         )
 
+    def test_batch_does_not_import_kivy(self):
+        """core/batch/ must not import kivy* or katrain.gui* (Phase 42-A).
+
+        Forbidden imports (from AllImportCollector.FORBIDDEN_PREFIXES):
+        - kivy, kivy.*, kivymd, kivy_garden.*
+        - katrain.gui, katrain.gui.*
+
+        Note: TYPE_CHECKING imports are allowed (AllImportCollector skips them).
+        This is verified by test_skips_type_checking_block().
+        """
+        violations = []
+        batch_dir = _PROJECT_ROOT / "katrain" / "core" / "batch"
+
+        if not batch_dir.exists():
+            pytest.skip("batch/ directory not found")
+
+        for py_file in batch_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+
+            rel_path = py_file.relative_to(_PROJECT_ROOT / "katrain")
+            module_pkg = _get_module_package(py_file, _PROJECT_ROOT)
+            source = py_file.read_text(encoding="utf-8")
+
+            try:
+                tree = ast.parse(source)
+            except SyntaxError:
+                continue
+
+            collector = AllImportCollector(module_pkg)
+            collector.visit(tree)
+
+            forbidden = collector.get_forbidden_imports()
+            for lineno, module in forbidden:
+                violations.append(f"{rel_path}:{lineno}: imports {module}")
+
+        assert not violations, (
+            f"core/batch/ must not import kivy/gui:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+            + "\n\nNote: TYPE_CHECKING imports are allowed and not flagged."
+        )
+
 
 # ===========================================================================
 # Phase 20 (PR #136): Kivy/GUI isolation tests
