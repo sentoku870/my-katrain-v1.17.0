@@ -15,37 +15,22 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 from kivy.clock import Clock
 
 from katrain.core import eval_metrics
-from katrain.core.lang import i18n
-from katrain.gui.features.types import BatchOptions, BatchWidgets
-from katrain.tools.batch_analyze_sgf import (
+from katrain.core.batch import (
     BatchResult,
     DEFAULT_TIMEOUT_SECONDS,
     parse_timeout_input,
-    run_batch,
+    safe_int as _safe_int,  # Alias to keep existing local references
+    needs_leela_karte_warning,
 )
+from katrain.core.lang import i18n
+from katrain.gui.features.types import BatchOptions, BatchWidgets
+from katrain.tools.batch_analyze_sgf import run_batch
 
 logger = logging.getLogger(__name__)
 
 
-def _safe_int(text: str, default: Optional[int] = None) -> Optional[int]:
-    """Parse integer safely, returning default on invalid input.
-
-    Note: Does not log warnings to avoid noise from frequent UI validation.
-
-    Args:
-        text: Text to parse
-        default: Value to return if parsing fails
-
-    Returns:
-        Parsed integer or default value
-    """
-    text = text.strip() if text else ""
-    if not text:
-        return default
-    try:
-        return int(text)
-    except ValueError:
-        return default
+# NOTE: _safe_int is now imported from katrain.core.batch.helpers (Phase 42-A)
+# Aliased as _safe_int to maintain existing local references
 
 
 if TYPE_CHECKING:
@@ -309,28 +294,4 @@ def run_batch_in_thread(
 # Pure helper functions (testable without UI)
 # ---------------------------------------------------------------------------
 
-
-def needs_leela_karte_warning(analysis_engine: str, generate_karte: bool) -> bool:
-    """Check if Leela+karte warning should be displayed.
-
-    Phase 36 MVP restriction: Leela batch analysis does not fully support
-    karte generation. This function determines if a warning should be shown
-    to the user when they select Leela with karte generation enabled.
-
-    Args:
-        analysis_engine: Selected analysis engine ("katago" or "leela")
-        generate_karte: Whether karte generation is enabled
-
-    Returns:
-        True if warning should be displayed (Leela + karte enabled)
-        False otherwise
-
-    Example:
-        >>> needs_leela_karte_warning("leela", generate_karte=True)
-        True
-        >>> needs_leela_karte_warning("leela", generate_karte=False)
-        False
-        >>> needs_leela_karte_warning("katago", generate_karte=True)
-        False
-    """
-    return analysis_engine == "leela" and generate_karte
+# NOTE: needs_leela_karte_warning is now imported from katrain.core.batch (Phase 42-A)
