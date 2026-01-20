@@ -324,3 +324,59 @@ LEELA_COLOR_BEST = (0.298, 0.686, 0.314, 1.0)    # Green #4CAF50
 LEELA_COLOR_SMALL = (1.0, 0.922, 0.231, 1.0)     # Yellow #FFEB3B
 LEELA_COLOR_MEDIUM = (1.0, 0.596, 0.0, 1.0)      # Orange #FF9800
 LEELA_COLOR_LARGE = (0.957, 0.263, 0.212, 1.0)   # Red #F44336
+
+
+# --- Analysis Modes ---
+import logging
+from enum import Enum
+from typing import Union
+
+_logger = logging.getLogger(__name__)
+
+
+class AnalysisMode(str, Enum):
+    """Analysis mode for analyze_extra().
+
+    Note: "toggle" is NOT included here - it is an action token
+    used only by set_insert_mode(), not by analyze_extra().
+    """
+
+    STOP = "stop"
+    PONDER = "ponder"
+    EXTRA = "extra"
+    GAME = "game"
+    SWEEP = "sweep"
+    EQUALIZE = "equalize"
+    ALTERNATIVE = "alternative"
+    LOCAL = "local"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def parse_analysis_mode(
+    value: Union[str, AnalysisMode],
+    fallback: AnalysisMode = AnalysisMode.STOP,
+) -> AnalysisMode:
+    """Normalize a string or Enum to AnalysisMode.
+
+    Args:
+        value: Mode value ("stop", " PONDER ", AnalysisMode.STOP, etc.)
+        fallback: Fallback value when parsing fails
+
+    Returns:
+        AnalysisMode (returns fallback and logs WARNING for unknown values)
+
+    Usage:
+        - game.py: Entry point of analyze_extra()
+        - __main__.py: Entry point of _do_analyze_extra()
+    """
+    if isinstance(value, AnalysisMode):
+        return value
+    try:
+        # Normalize: strip whitespace, lowercase
+        normalized = value.strip().lower()
+        return AnalysisMode(normalized)
+    except (ValueError, AttributeError):
+        _logger.warning(f"Unknown analysis mode: {value!r}, falling back to {fallback}")
+        return fallback
