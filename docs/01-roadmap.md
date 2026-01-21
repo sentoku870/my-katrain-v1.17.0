@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-20
+> 最終更新: 2026-01-21
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -136,6 +136,7 @@
 | 41 | コード品質 | Enum化、コマンド抽出、定数化 | ✅ |
 | 42 | Batch Core移行 | core/batch/（Kivy非依存） | ✅ |
 | 43 | Stability Audit | Atomic save、Shutdown改善 | ✅ |
+| 44 | Batch Analysis Fixes | 信頼性閾値一貫性、完了チャイム | ✅ |
 
 ### 未定（TBD）
 
@@ -143,7 +144,7 @@
 |------:|--------|----------|:----:|
 | 8 | 初心者向けヒント | 構造解析 + テンプレ | 📋 TBD |
 | 10+ | クイズUI拡張 | クイズモードUI完成 | 📋 TBD |
-| 44+ | ドキュメント整備 | ユーザーガイド | 📋 TBD |
+| 45+ | ドキュメント整備 | ユーザーガイド | 📋 TBD |
 | - | 仕上げ・安定化 | バグ修正、開発者ガイド | 📋 TBD |
 
 ---
@@ -1490,6 +1491,15 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
   - PR #148: 設定検索（opacity-based filtering）
   - 新規: `katrain/common/settings_export.py`
   - 拡張: `katrain/gui/features/settings_popup.py`
+- 2026-01-21: Phase 44完了（Batch Analysis Fixes、PR #177）
+  - Issue 1: 信頼性閾値の一貫性修正
+    - `target_visits`パラメータを`extract_game_stats()`, `build_karte_report()`に追加
+    - カウントと表示で同じ有効閾値（例: visits=100→threshold=90）を使用
+  - Issue 2: バッチ完了チャイム
+    - `tools/generate_chime.py`（Python標準ライブラリのみでWAV生成）
+    - `katrain/sounds/complete_chime.wav`（A major chord、0.4秒）
+    - `Theme.COMPLETION_CHIME_SOUND`定数追加
+  - テスト7件追加、総数1554件
 - 2026-01-17: Phase 26完了（レポート導線改善、PR #144）
 - 2026-01-03: 拡張バッチ解析機能（PR #40）
   - カルテ/サマリー自動生成

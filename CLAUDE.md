@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-43（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit）
-- **次**: Phase 44+（未定）
+- **完了**: Phase 1-44（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes）
+- **次**: Phase 45+（未定）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -368,6 +368,18 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-21: Phase 44 完了（Batch Analysis Fixes）
+  - Issue 1: 信頼性閾値の一貫性修正
+    - `target_visits`パラメータを`extract_game_stats()`, `build_karte_report()`に追加
+    - カウントと表示で同じ有効閾値を使用（例: visits=100→threshold=90）
+    - 修正: batch/stats.py, batch/orchestration.py, karte_report.py, game.py
+  - Issue 2: バッチ完了チャイム
+    - 新規: `tools/generate_chime.py`（Python標準ライブラリのみでWAV生成）
+    - 新規: `katrain/sounds/complete_chime.wav`（A major chord、0.4秒）
+    - 定数: `Theme.COMPLETION_CHIME_SOUND`追加
+    - 更新: batch_core.pyで石音の代わりにチャイムを使用
+  - テスト7件追加
+  - テスト総数: 1554件
 - 2026-01-20: Phase 43 完了（Stability Audit）
   - Issue 1 (P0): Config save atomic化（tempfile + os.replace + os.fsync）
   - Issue 2 (P0): save_config() エラーハンドリング（`_save_config_with_errors()`抽出）
