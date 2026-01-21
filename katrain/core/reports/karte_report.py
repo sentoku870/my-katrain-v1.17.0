@@ -171,6 +171,7 @@ def build_karte_report(
     player_filter: Optional[str] = None,
     raise_on_error: bool = False,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    target_visits: Optional[int] = None,
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
 
@@ -182,6 +183,8 @@ def build_karte_report(
         raise_on_error: If True, raise exceptions on failure.
                        If False (default), return error markdown instead.
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
+        target_visits: Target visits for effective reliability threshold calculation.
+            If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
     Returns:
         Markdown-formatted karte report.
@@ -211,8 +214,9 @@ def build_karte_report(
             return _build_error_karte(game_id, player_filter, error_msg)
 
         # 3. Pass snapshot as argument (avoid recomputation in impl)
+        # Phase 44: Pass target_visits for consistent reliability threshold
         return _build_karte_report_impl(
-            game, snapshot, level, player_filter, skill_preset
+            game, snapshot, level, player_filter, skill_preset, target_visits=target_visits
         )
 
     except MixedEngineSnapshotError:
@@ -276,6 +280,7 @@ def _build_karte_report_impl(
     level: str,
     player_filter: Optional[str],
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    target_visits: Optional[int] = None,
 ) -> str:
     """Internal implementation of build_karte_report.
 
@@ -285,6 +290,8 @@ def _build_karte_report_impl(
         level: Important move level setting
         player_filter: Filter by player ("B", "W", or None for both)
         skill_preset: Skill preset for strictness
+        target_visits: Target visits for effective reliability threshold calculation.
+            If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
     Note:
         snapshot is now passed as an argument rather than computed here.
@@ -746,7 +753,8 @@ def _build_karte_report_impl(
     # Build Data Quality section (PR#1: confidence level display)
     def data_quality_section() -> List[str]:
         """Build the Data Quality section with reliability statistics."""
-        rel_stats = eval_metrics.compute_reliability_stats(snapshot.moves)
+        # Phase 44: Pass target_visits for consistent reliability threshold
+        rel_stats = eval_metrics.compute_reliability_stats(snapshot.moves, target_visits=target_visits)
 
         # PR#1: Add confidence level label
         confidence_label = eval_metrics.get_confidence_label(confidence_level, lang="ja")
@@ -757,7 +765,7 @@ def _build_karte_report_impl(
             f"- **{confidence_label}**",  # PR#1: Show confidence level prominently
             f"- Moves analyzed: {rel_stats.total_moves}",
             f"- Coverage: {rel_stats.moves_with_visits} / {rel_stats.total_moves} ({rel_stats.coverage_pct:.1f}%)",  # PR#1: coverage_pct
-            f"- Reliable (visits ≥ {eval_metrics.RELIABILITY_VISITS_THRESHOLD}): "
+            f"- Reliable (visits ≥ {rel_stats.effective_threshold}): "
             f"{rel_stats.reliable_count} ({rel_stats.reliability_pct:.1f}%)",
             f"- Low-confidence: {rel_stats.low_confidence_count} ({rel_stats.low_confidence_pct:.1f}%)",
         ]

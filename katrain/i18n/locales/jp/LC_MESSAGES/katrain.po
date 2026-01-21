@@ -1094,6 +1094,9 @@ msgstr "タイムアウト(秒)"
 msgid "mykatrain:batch:skip_analyzed"
 msgstr "解析済みファイルをスキップ"
 
+msgid "mykatrain:batch:skip_analyzed_hint"
+msgstr "(KTプロパティのみ確認、visits/エンジン設定は無視)"
+
 msgid "mykatrain:batch:ready"
 msgstr "開始準備完了"
 

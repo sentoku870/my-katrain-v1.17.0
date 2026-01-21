@@ -36,6 +36,7 @@ from katrain.core.eval_metrics import (
     recommend_auto_strictness,
     SKILL_PRESET_LABELS,
     CONFIDENCE_LABELS,
+    compute_effective_threshold,  # Phase 44: relative reliability threshold
 )
 
 
@@ -47,6 +48,7 @@ def extract_game_stats(
     game: "Game",
     rel_path: str,
     log_cb: Optional[Callable[[str], None]] = None,
+    target_visits: Optional[int] = None,
 ) -> Optional[dict]:
     """Extract statistics from a Game object for summary generation.
 
@@ -54,6 +56,8 @@ def extract_game_stats(
         game: The Game object to extract stats from
         rel_path: Relative path of the SGF file (for game_name)
         log_cb: Optional callback for logging errors
+        target_visits: Target visits for effective reliability threshold calculation.
+            If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
     Returns:
         Dictionary with game statistics, or None if extraction failed
@@ -135,6 +139,9 @@ def extract_game_stats(
             },
         }
 
+        # Phase 44: Compute effective threshold once before the loop
+        effective_threshold = compute_effective_threshold(target_visits)
+
         for move in snapshot.moves:
             player = move.player
             canonical_loss = get_canonical_loss(move.points_lost)
@@ -194,13 +201,14 @@ def extract_game_stats(
                     )
 
             # Track reliability stats for Data Quality section
+            # Phase 44: Use effective threshold (computed once before the loop)
             if player in ("B", "W"):
                 rel = stats["reliability_by_player"][player]
                 rel["total"] += 1
                 visits = move.root_visits or 0
                 if visits == 0:
                     rel["low_confidence"] += 1
-                elif visits >= RELIABILITY_VISITS_THRESHOLD:
+                elif visits >= effective_threshold:
                     rel["reliable"] += 1
                     rel["total_visits"] += visits
                     rel["with_visits"] += 1
@@ -684,18 +692,25 @@ def build_player_summary(
         else:
             lines.append("- Timeout: None")
 
-        # Reliable threshold (constant)
-        lines.append(f"- Reliable threshold: {RELIABILITY_VISITS_THRESHOLD} visits")
+        # Reliable threshold (Phase 44: relative to config_visits, capped at 200)
+        config_visits = analysis_settings.get("config_visits")
+        effective_threshold = compute_effective_threshold(config_visits)
+        lines.append(f"- Reliable threshold: {effective_threshold} visits")
 
     # =========================================================================
     # Data Quality Section (PR1-2: Add max visits and measured note)
+    # Phase 44: Use effective threshold (relative to config_visits, capped at 200)
     # =========================================================================
+    # Compute effective threshold for Data Quality display
+    dq_config_visits = analysis_settings.get("config_visits") if analysis_settings else None
+    dq_effective_threshold = compute_effective_threshold(dq_config_visits)
+
     lines.append("\n## Data Quality\n")
     lines.append(f"- Moves analyzed: {reliability_total}")
     if reliability_total > 0:
         rel_pct = 100.0 * reliability_reliable / reliability_total
         low_pct = 100.0 * reliability_low_conf / reliability_total
-        lines.append(f"- Reliable (visits ≥ {RELIABILITY_VISITS_THRESHOLD}): {reliability_reliable} ({rel_pct:.1f}%)")
+        lines.append(f"- Reliable (visits ≥ {dq_effective_threshold}): {reliability_reliable} ({rel_pct:.1f}%)")
         lines.append(f"- Low-confidence: {reliability_low_conf} ({low_pct:.1f}%)")
         if reliability_with_visits > 0:
             avg_visits = reliability_total_visits / reliability_with_visits

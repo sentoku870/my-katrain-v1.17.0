@@ -183,6 +183,7 @@ def run_batch(
     log(f"Found {len(sgf_files)} SGF file(s) to analyze")
     if skip_count > 0:
         log(f"Skipped {skip_count} already-analyzed file(s)")
+        log("  (Note: Skip checks KT property only, not visits/engine settings)")
     total = len(sgf_files)
 
     # For summary generation, collect game stats
@@ -306,9 +307,10 @@ def run_batch(
 
             # Generate karte if requested
             # Note: Leela karte generation is limited in Phase 36 MVP (no leela_loss_est in Game nodes)
+            # Phase 44: Pass target_visits for consistent reliability threshold in karte
             if generate_karte and game is not None and analysis_engine != "leela":
                 try:
-                    karte_text = game.build_karte_report(player_filter=karte_player_filter)
+                    karte_text = game.build_karte_report(player_filter=karte_player_filter, target_visits=visits)
                     # Include path hash to avoid filename collisions for files with same basename
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
                     karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.md"
@@ -344,9 +346,10 @@ def run_batch(
                     ))
 
             # Collect stats for summary
+            # Phase 44: Pass target_visits for consistent reliability threshold
             if generate_summary and game is not None:
                 try:
-                    stats = extract_game_stats(game, rel_path)
+                    stats = extract_game_stats(game, rel_path, target_visits=visits)
                     if stats:
                         game_stats_list.append(stats)
                 except Exception as e:

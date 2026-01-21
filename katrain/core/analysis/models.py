@@ -909,6 +909,7 @@ DEFAULT_QUIZ_ITEM_LIMIT = QUIZ_CONFIG_DEFAULT.limit
 
 
 RELIABILITY_VISITS_THRESHOLD = 200
+RELIABILITY_RATIO = 0.9  # 90% of target visits considered reliable (Phase 44)
 UNRELIABLE_IMPORTANCE_SCALE = 0.25
 SWING_SCORE_SIGN_BONUS = 1.0
 SWING_WINRATE_CROSS_BONUS = 1.0
@@ -943,6 +944,7 @@ class ReliabilityStats:
     total_visits: int = 0
     moves_with_visits: int = 0
     max_visits: int = 0
+    effective_threshold: int = RELIABILITY_VISITS_THRESHOLD  # Phase 44: for display
 
     @property
     def reliability_pct(self) -> float:

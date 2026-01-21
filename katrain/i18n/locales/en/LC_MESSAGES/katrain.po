@@ -109,6 +109,9 @@ msgstr "Timeout (sec)"
 msgid "mykatrain:batch:skip_analyzed"
 msgstr "Skip already analyzed files"
 
+msgid "mykatrain:batch:skip_analyzed_hint"
+msgstr "(checks KT property only, ignores visits/engine)"
+
 msgid "mykatrain:batch:ready"
 msgstr "Ready to start"
 
