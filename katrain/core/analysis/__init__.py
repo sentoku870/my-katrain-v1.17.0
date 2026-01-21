@@ -84,6 +84,7 @@ from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
     # Reliability/importance constants
     RELIABILITY_VISITS_THRESHOLD,
+    RELIABILITY_RATIO,  # Phase 44: 90% ratio for relative threshold
     UNRELIABLE_IMPORTANCE_SCALE,
     SWING_SCORE_SIGN_BONUS,
     SWING_WINRATE_CROSS_BONUS,
@@ -123,6 +124,7 @@ from katrain.core.analysis.logic import (
     get_reliability_scale,
     is_reliable_from_visits,
     compute_reliability_stats,
+    compute_effective_threshold,  # Phase 44: relative threshold calculation
     # Confidence level
     compute_confidence_level,
     # Phase functions
@@ -258,6 +260,7 @@ __all__ = [
     "DEFAULT_QUIZ_ITEM_LIMIT",
     # Reliability/importance constants
     "RELIABILITY_VISITS_THRESHOLD",
+    "RELIABILITY_RATIO",  # Phase 44
     "UNRELIABLE_IMPORTANCE_SCALE",
     "SWING_SCORE_SIGN_BONUS",
     "SWING_WINRATE_CROSS_BONUS",
@@ -291,6 +294,7 @@ __all__ = [
     "get_reliability_scale",
     "is_reliable_from_visits",
     "compute_reliability_stats",
+    "compute_effective_threshold",  # Phase 44
     # Confidence level
     "compute_confidence_level",
     # Phase functions

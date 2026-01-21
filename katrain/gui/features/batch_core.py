@@ -282,7 +282,10 @@ def run_batch_in_thread(
     if options["sound_on_finish"] and not result.cancelled:
         try:
             from katrain.gui.sound import play_sound
-            play_sound("stone")  # Use existing stone sound as completion notification
+            from katrain.gui.theme import Theme
+
+            # Phase 44: Use distinct completion chime instead of stone sounds
+            play_sound(Theme.COMPLETION_CHIME_SOUND)
         except Exception:
             logger.debug("Failed to play completion sound", exc_info=True)
 

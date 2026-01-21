@@ -5,8 +5,15 @@ from katrain.core.analysis.models import (
     AnalysisStrength,
     ENGINE_VISITS_DEFAULTS,
     LEELA_FAST_VISITS_MIN,
+    RELIABILITY_RATIO,
+    RELIABILITY_VISITS_THRESHOLD,
     resolve_visits,
 )
+from katrain.core.analysis.logic import (
+    compute_effective_threshold,
+    compute_reliability_stats,
+)
+from tests.helpers_eval_metrics import make_move_eval
 
 
 class TestAnalysisStrength:
@@ -207,6 +214,129 @@ class TestLeelaFastVisitsMin:
         assert 10 <= LEELA_FAST_VISITS_MIN <= 200
 
 
+# =============================================================================
+# Phase 44: Tests for compute_effective_threshold
+# =============================================================================
+
+
+class TestComputeEffectiveThreshold:
+    """Tests for compute_effective_threshold function (Phase 44)."""
+
+    def test_low_target_100(self):
+        """target=100 -> threshold=90 (100 * 0.9)"""
+        assert compute_effective_threshold(100) == 90
+
+    def test_medium_target_200(self):
+        """target=200 -> threshold=180 (200 * 0.9)"""
+        assert compute_effective_threshold(200) == 180
+
+    def test_high_target_capped_at_200(self):
+        """target=300 -> threshold=200 (capped at max_threshold)"""
+        assert compute_effective_threshold(300) == 200
+
+    def test_very_high_target_capped(self):
+        """target=1000 -> threshold=200 (capped at max_threshold)"""
+        assert compute_effective_threshold(1000) == 200
+
+    def test_no_target_default(self):
+        """target=None -> default max_threshold (200)"""
+        assert compute_effective_threshold(None) == RELIABILITY_VISITS_THRESHOLD
+
+    def test_zero_target_default(self):
+        """target=0 -> default max_threshold (200)"""
+        assert compute_effective_threshold(0) == RELIABILITY_VISITS_THRESHOLD
+
+    def test_negative_target_default(self):
+        """target=-100 -> default max_threshold (200)"""
+        assert compute_effective_threshold(-100) == RELIABILITY_VISITS_THRESHOLD
+
+    def test_very_low_target_minimum_1(self):
+        """target=1 -> threshold=1 (never goes below 1)"""
+        assert compute_effective_threshold(1) == 1
+
+    def test_target_2_gives_2(self):
+        """target=2 -> threshold=2 (round(2*0.9)=2)"""
+        assert compute_effective_threshold(2) == 2
+
+    def test_target_50_gives_45(self):
+        """target=50 -> threshold=45 (50 * 0.9)"""
+        assert compute_effective_threshold(50) == 45
+
+    def test_custom_max_threshold(self):
+        """Custom max_threshold is respected"""
+        assert compute_effective_threshold(500, max_threshold=100) == 100
+
+    def test_custom_ratio(self):
+        """Custom ratio is respected"""
+        # target=100, ratio=0.5 -> 50
+        assert compute_effective_threshold(100, ratio=0.5) == 50
+
+    def test_default_ratio_is_reliability_ratio(self):
+        """Default ratio should be RELIABILITY_RATIO (0.9)"""
+        # target=100 with default ratio of 0.9 should give 90
+        expected = max(1, round(100 * RELIABILITY_RATIO))
+        assert compute_effective_threshold(100) == expected
+
+
+class TestReliabilityStatsWithTargetVisits:
+    """Tests for compute_reliability_stats with target_visits (Phase 44)."""
+
+    def test_stats_stores_effective_threshold(self):
+        """Ensure stats object has correct effective_threshold."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95)]
+        stats = compute_reliability_stats(moves, target_visits=100)
+        assert stats.effective_threshold == 90
+
+    def test_reliable_with_target_100(self):
+        """95 visits is reliable when target=100 (threshold=90)."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95)]
+        stats = compute_reliability_stats(moves, target_visits=100)
+        assert stats.reliable_count == 1
+        assert stats.low_confidence_count == 0
+
+    def test_unreliable_with_default_threshold(self):
+        """95 visits is NOT reliable with default threshold (200)."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95)]
+        stats = compute_reliability_stats(moves)  # No target_visits
+        assert stats.reliable_count == 0
+        assert stats.low_confidence_count == 1
+
+    def test_boundary_exactly_at_threshold(self):
+        """Visits exactly at threshold counts as reliable."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=90)]
+        stats = compute_reliability_stats(moves, target_visits=100)
+        assert stats.reliable_count == 1
+        assert stats.low_confidence_count == 0
+
+    def test_boundary_just_below_threshold(self):
+        """Visits just below threshold is low-confidence."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=89)]
+        stats = compute_reliability_stats(moves, target_visits=100)
+        assert stats.reliable_count == 0
+        assert stats.low_confidence_count == 1
+
+    def test_mixed_visits_with_target(self):
+        """Mixed visits are classified correctly with target_visits."""
+        moves = [
+            make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95),  # reliable (>=90)
+            make_move_eval(move_number=2, player="W", gtp="Q16", root_visits=85),  # low-conf (<90)
+            make_move_eval(move_number=3, player="B", gtp="C3", root_visits=100),  # reliable (>=90)
+        ]
+        stats = compute_reliability_stats(moves, target_visits=100)
+        assert stats.reliable_count == 2
+        assert stats.low_confidence_count == 1
+        assert stats.total_moves == 3
+
+    def test_target_visits_with_capped_threshold(self):
+        """High target_visits uses capped threshold (200)."""
+        moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=199)]
+        stats = compute_reliability_stats(moves, target_visits=500)
+        # threshold = min(200, round(500*0.9)) = 200
+        assert stats.effective_threshold == 200
+        assert stats.reliable_count == 0  # 199 < 200
+        assert stats.low_confidence_count == 1
+
+
 # ---------------------------------------------------------------------------
 # Phase 37 T3: Contract-based tests for resolve_visits()
 # ---------------------------------------------------------------------------
@@ -274,3 +404,61 @@ class TestResolveVisitsContract:
         katago_default = ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         result = resolve_visits(AnalysisStrength.QUICK, {}, "unknown_engine")
         assert result == katago_default
+
+
+# =============================================================================
+# Phase 44: Integration tests for extract_game_stats with target_visits
+# =============================================================================
+
+
+class TestExtractGameStatsTargetVisits:
+    """Tests for extract_game_stats() target_visits parameter (Phase 44)."""
+
+    def test_extract_game_stats_accepts_target_visits_parameter(self):
+        """Contract: extract_game_stats accepts target_visits parameter."""
+        from katrain.core.batch.stats import extract_game_stats
+        import inspect
+
+        sig = inspect.signature(extract_game_stats)
+        params = list(sig.parameters.keys())
+        assert "target_visits" in params, "target_visits parameter not found"
+
+    def test_extract_game_stats_target_visits_defaults_to_none(self):
+        """Contract: target_visits defaults to None."""
+        from katrain.core.batch.stats import extract_game_stats
+        import inspect
+
+        sig = inspect.signature(extract_game_stats)
+        param = sig.parameters["target_visits"]
+        assert param.default is None, "target_visits default should be None"
+
+
+class TestBuildKarteReportTargetVisits:
+    """Tests for build_karte_report() target_visits parameter (Phase 44)."""
+
+    def test_build_karte_report_accepts_target_visits_parameter(self):
+        """Contract: build_karte_report accepts target_visits parameter."""
+        from katrain.core.reports.karte_report import build_karte_report
+        import inspect
+
+        sig = inspect.signature(build_karte_report)
+        params = list(sig.parameters.keys())
+        assert "target_visits" in params, "target_visits parameter not found"
+
+    def test_build_karte_report_target_visits_defaults_to_none(self):
+        """Contract: target_visits defaults to None."""
+        from katrain.core.reports.karte_report import build_karte_report
+        import inspect
+
+        sig = inspect.signature(build_karte_report)
+        param = sig.parameters["target_visits"]
+        assert param.default is None, "target_visits default should be None"
+
+    def test_game_build_karte_report_accepts_target_visits(self):
+        """Contract: Game.build_karte_report accepts target_visits parameter."""
+        from katrain.core.game import Game
+        import inspect
+
+        sig = inspect.signature(Game.build_karte_report)
+        params = list(sig.parameters.keys())
+        assert "target_visits" in params, "target_visits parameter not found in Game.build_karte_report"

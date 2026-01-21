@@ -56,6 +56,7 @@ from katrain.core.analysis.models import (
     PVFilterConfig,
     PVFilterLevel,
     QuizItem,
+    RELIABILITY_RATIO,
     RELIABILITY_SCALE_THRESHOLDS,
     RELIABILITY_VISITS_THRESHOLD,
     ReliabilityStats,
@@ -287,31 +288,69 @@ from katrain.core.analysis.logic_importance import (
 )
 
 
-def is_reliable_from_visits(root_visits: int, *, threshold: int = RELIABILITY_VISITS_THRESHOLD) -> bool:
+def compute_effective_threshold(
+    target_visits: Optional[int] = None,
+    max_threshold: int = RELIABILITY_VISITS_THRESHOLD,
+    ratio: float = RELIABILITY_RATIO,
+) -> int:
+    """Compute effective reliability threshold based on target visits.
+
+    Formula: max(1, min(max_threshold, round(target_visits * ratio)))
+
+    When target_visits=100 and ratio=0.9: threshold=90
+    When target_visits=300 and ratio=0.9: threshold=200 (capped)
+    When target_visits=None or <=0: threshold=max_threshold (default 200)
+
+    Args:
+        target_visits: Configured/selected visits value (or None)
+        max_threshold: Maximum threshold cap (default: 200)
+        ratio: Fraction of target_visits to use (default: 0.9)
+
+    Returns:
+        Effective threshold for reliability determination.
+    """
+    if target_visits is not None and target_visits > 0:
+        relative = max(1, round(target_visits * ratio))
+        return min(max_threshold, relative)
+    return max_threshold
+
+
+def is_reliable_from_visits(
+    root_visits: int,
+    *,
+    threshold: int = RELIABILITY_VISITS_THRESHOLD,
+    target_visits: Optional[int] = None,
+) -> bool:
     """
     visits のみを根拠にした簡易信頼度判定。
 
     - threshold 未満は False（保守的）。
+    - target_visits が指定された場合、effective threshold を使用。
     """
-    return int(root_visits or 0) >= threshold
+    effective = compute_effective_threshold(target_visits, threshold)
+    return int(root_visits or 0) >= effective
 
 
 def compute_reliability_stats(
     moves: Iterable[MoveEval],
     *,
     threshold: int = RELIABILITY_VISITS_THRESHOLD,
+    target_visits: Optional[int] = None,
 ) -> ReliabilityStats:
     """
     Compute reliability statistics for a collection of moves.
 
     Args:
         moves: Iterable of MoveEval objects
-        threshold: Visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD=200)
+        threshold: Max visits threshold for reliability (default: RELIABILITY_VISITS_THRESHOLD=200)
+        target_visits: Target/configured visits (for relative threshold calculation)
 
     Returns:
-        ReliabilityStats with counts and percentages
+        ReliabilityStats with counts, percentages, and effective_threshold
     """
+    effective = compute_effective_threshold(target_visits, threshold)
     stats = ReliabilityStats()
+    stats.effective_threshold = effective
 
     for m in moves:
         stats.total_moves += 1
@@ -320,7 +359,7 @@ def compute_reliability_stats(
         if visits == 0:
             stats.zero_visits_count += 1
             stats.low_confidence_count += 1
-        elif visits >= threshold:
+        elif visits >= effective:
             stats.reliable_count += 1
             stats.total_visits += visits
             stats.moves_with_visits += 1

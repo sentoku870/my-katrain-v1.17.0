@@ -710,6 +710,7 @@ class Game(BaseGame):
         player_filter: Optional[str] = None,
         raise_on_error: bool = False,
         skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+        target_visits: Optional[int] = None,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
 
@@ -720,6 +721,8 @@ class Game(BaseGame):
             raise_on_error: If True, raise KarteGenerationError on failure.
                            If False (default), return error markdown instead.
             skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
+            target_visits: Target visits for effective reliability threshold calculation.
+                If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
         Returns:
             Markdown-formatted karte report.
@@ -739,6 +742,7 @@ class Game(BaseGame):
             player_filter=player_filter,
             raise_on_error=raise_on_error,
             skill_preset=skill_preset,
+            target_visits=target_visits,
         )
 
 

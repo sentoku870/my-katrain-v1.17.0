@@ -75,6 +75,8 @@ class Theme:
     COUNTDOWN_SOUND = "countdownbeep.wav"
     MINIMUM_TIME_PASSED_SOUND = "boing.wav"
     MISTAKE_SOUNDS = []
+    # Phase 44: Distinct completion chime for batch analysis
+    COMPLETION_CHIME_SOUND = "complete_chime.wav"
 
     # eval dots
     EVAL_COLORS = {

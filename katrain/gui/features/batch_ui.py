@@ -12,7 +12,7 @@ import os
 import threading
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.checkbox import CheckBox
@@ -328,6 +328,22 @@ def build_batch_popup_widgets(
     options_row2.add_widget(skip_label)
     options_row2.add_widget(Label(size_hint_x=0.5))  # spacer
     main_layout.add_widget(options_row2)
+
+    # Phase 44: Skip analyzed hint row
+    skip_hint_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(18), spacing=dp(10))
+    skip_hint_row.add_widget(Label(size_hint_x=None, width=dp(30)))  # spacer to align with checkbox
+    skip_hint_label = Label(
+        text=i18n._("mykatrain:batch:skip_analyzed_hint"),
+        size_hint_x=0.9,
+        halign="left",
+        valign="middle",
+        color=[0.5, 0.5, 0.5, 1],  # gray text
+        font_size=sp(10),
+        font_name=Theme.DEFAULT_FONT,
+    )
+    skip_hint_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    skip_hint_row.add_widget(skip_hint_label)
+    main_layout.add_widget(skip_hint_row)
 
     # Options row 3: output options (save SGF, karte, summary)
     options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
