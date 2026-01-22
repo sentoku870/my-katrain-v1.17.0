@@ -1,0 +1,47 @@
+meta:
+  schema: go_lexicon_test_v1
+entries:
+  - id: atari
+    level: 1
+    category: rules
+    ja_term: アタリ
+    en_terms: [atari]
+    ja_one_liner: 次に取れる状態
+    en_one_liner: A stone in immediate danger of capture.
+    ja_short: 相手の石を次の一手で取れる状態。
+    en_short: When a stone has only one liberty left.
+    sources: [https://example.com/atari]
+    related_ids: [liberty]
+
+  - id: liberty
+    level: 2
+    category: rules
+    ja_term: 呼吸点
+    en_terms: [liberty, liberties]
+    ja_one_liner: 石に隣接する空点
+    en_one_liner: An empty point adjacent to a stone.
+    ja_short: 石が生きるために必要な空点。
+    en_short: Empty points that keep a stone alive.
+    sources: [https://example.com/liberty]
+    related_ids: [atari]
+
+  - id: tenuki-timing
+    level: 3
+    category: urgency
+    ja_term: 手抜き
+    ja_title: 手抜きのタイミング
+    en_terms: [tenuki]
+    en_title: When to Tenuki
+    ja_one_liner: 相手の手を無視する判断
+    en_one_liner: Deciding when to ignore opponent's move.
+    ja_short: 局面の緊急度を判断する技術。
+    en_short: The skill of judging position urgency.
+    ja_expanded: 詳細な説明文がここに入ります。
+    en_expanded: Detailed explanation goes here.
+    decision_checklist: [Check local stability]
+    signals: [Opponent's move is slow]
+    common_failure_modes: [Ignoring urgent moves]
+    drills: [Practice with pro games]
+    prerequisites: [liberty]
+    sources: [https://example.com/tenuki]
+    related_ids: [liberty]

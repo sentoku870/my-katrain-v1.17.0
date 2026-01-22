@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-44（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes）
-- **予定**: Phase 45-52（Lexicon、MeaningTags、5軸Radar+Tier、Critical 3、Stabilization）
-- **次**: Phase 45（Lexicon Core Infrastructure）
+- **完了**: Phase 1-45（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure）
+- **予定**: Phase 46-52（MeaningTags、5軸Radar+Tier、Critical 3、Stabilization）
+- **次**: Phase 46（Meaning Tags System Core）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -186,7 +186,11 @@ katrain/
 ├── __main__.py      ← アプリ起動、KaTrainGui クラス（~1200行）
 ├── common/          ← 共有定数（循環依存解消用）
 │   ├── platform.py     ← get_platform()（Kivy非依存OS判定）
-│   └── config_store.py ← JsonFileConfigStore（Mapping実装）
+│   ├── config_store.py ← JsonFileConfigStore（Mapping実装）
+│   └── lexicon/        ← 囲碁用語辞書パッケージ（Phase 45）
+│       ├── models.py       ← LexiconEntry等のfrozen dataclass
+│       ├── validation.py   ← バリデーション + 2段階パイプライン
+│       └── store.py        ← LexiconStore（スレッドセーフ）
 ├── core/
 │   ├── game.py       ← Game クラス（対局状態）
 │   ├── game_node.py  ← GameNode（手/解析結果）
@@ -369,6 +373,19 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 45 完了（Lexicon Core Infrastructure）
+  - 新規: `katrain/common/lexicon/`パッケージ（Kivy非依存）
+    - `models.py`: frozen dataclass（LexiconEntry, DiagramInfo, AIPerspective）
+    - `validation.py`: 2段階パイプライン + 例外クラス
+    - `store.py`: LexiconStoreクラス（スレッドセーフ、アトミックスナップショット）
+    - `__init__.py`: 公開API + get_default_lexicon_path()
+  - 設計: 完全イミュータブル（frozen=True + Tuple[str, ...]）
+  - 機能: get(), get_by_title(), get_by_category(), get_by_level()
+  - バリデーション: 必須フィールド、Level 3専用、参照ID、タイトル衝突
+  - 環境変数: LEXICON_PATH でパスオーバーライド可能
+  - 依存: PyYAML追加（pyproject.toml）
+  - テスト111件追加
+  - テスト総数: 1665件
 - 2026-01-21: Phase 44 完了（Batch Analysis Fixes）
   - Issue 1: 信頼性閾値の一貫性修正
     - `target_visits`パラメータを`extract_game_stats()`, `build_karte_report()`に追加
