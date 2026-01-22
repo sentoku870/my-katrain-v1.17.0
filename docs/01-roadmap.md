@@ -138,14 +138,30 @@
 | 43 | Stability Audit | Atomic save、Shutdown改善 | ✅ |
 | 44 | Batch Analysis Fixes | 信頼性閾値一貫性、完了チャイム | ✅ |
 
-### 未定（TBD）
+### Phase 45–52: Lexicon・MeaningTags・Radar・Critical 3
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 45 | Lexicon Core | `common/lexicon/`（YAML読み込み） | 📋 予定 |
+| 46 | MeaningTags Core | `analysis/meaning_tags.py`（分類ヒューリスティクス） | 📋 予定 |
+| 47 | MeaningTags統合 | Summary/Karte出力対応 | 📋 予定 |
+| 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | 📋 予定 |
+| 49 | Radar Summary統合 | Summary出力、Tier表示 | 📋 予定 |
+| 50 | Critical 3 | 重要3手抽出、LLMプロンプトテンプレート | 📋 予定 |
+| 51 | Radar UI Widget | Kivy radar chart widget | 📋 予定 |
+| 52 | Stabilization | 回帰テスト、ドキュメント | 📋 予定 |
+
+**詳細**: [Phase 45–52 詳細](#phase-4552-詳細lexiconmeaningtagsradarcritical-3)
+
+### 未定（TBD / Post-52）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 8 | 初心者向けヒント | 構造解析 + テンプレ | 📋 TBD |
 | 10+ | クイズUI拡張 | クイズモードUI完成 | 📋 TBD |
-| 45+ | ドキュメント整備 | ユーザーガイド | 📋 TBD |
-| - | 仕上げ・安定化 | バグ修正、開発者ガイド | 📋 TBD |
+| - | Ownership Volatility (Idea #3) | 盤面リスクオーバーレイ | 📋 Future |
+| - | Style Matching Quiz (Idea #5) | スタイル判定クイズ | 📋 Future |
+| - | Lexicon UI Browser | 用語ポップアップ | 📋 Future |
 
 ---
 
@@ -974,6 +990,222 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
                                    └→ 36 [OPTIONAL]
 ```
 - Phase 42完了。Leela Zero解析パイプライン拡張ロードマップ完了
+
+---
+
+## Phase 45–52 詳細（Lexicon・MeaningTags・Radar・Critical 3）
+
+### 固定決定事項（Decisions Fixed）
+
+| 決定事項 | 解決 |
+|----------|------|
+| **Lexiconデータソース** | `go_lexicon_master_last.yaml` が正本。別JSONデータセットは作成しない |
+| **Lexicon言語** | EN/JP のみ（既存YAMLフィールド）。他言語はPost-52 |
+| **Radar軸** | `opening`, `fighting`, `endgame`, `stability`, `awareness` (Idea #2仕様) |
+| **Radarスコア** | 内部: 0.0–1.0、表示: 1.0–5.0（線形変換: `display = 1 + internal * 4`） |
+| **Tier名** | Tier 1 (入門), Tier 2 (初級), Tier 3 (中級), Tier 4 (上級), Tier 5 (高段) |
+| **Radar調整** | ガベージタイム除外（30点以上ビハインドの最後20手）、一択除外（ONLY_MOVE） |
+| **MeaningTag↔Lexicon** | `lexicon_anchor_id: Optional[str]` でYAMLエントリを参照。アンカーなしも許容 |
+| **Critical 3コンテキスト** | 構造化フィールドのみ。盤面シリアライズなし |
+
+### Phase 45: Lexicon Core Infrastructure
+
+**Goal**: Kivy非依存の`LexiconStore`を実装し、既存`go_lexicon_master_last.yaml`を読み込み・検証・検索可能にする
+
+**Deliverables**:
+- `katrain/common/lexicon/` パッケージ
+- `LexiconEntry` dataclass（YAML構造をミラー）
+- `LexiconStore` クラス: `load()`, `get()`, `get_by_title()`, `get_by_category()`, `get_by_level()`
+- バリデーション: 必須フィールド、related_ids解決、重複ID検出
+- ユニットテスト
+
+**Non-goals**: GUI統合、動的編集UI、EN/JP以外、Karte/Summary出力連携
+
+**Acceptance Criteria**:
+- `LexiconStore.get("atari")` がja/en両フィールド付きエントリを返す
+- `get_by_title("アタリ", "ja")` と `get_by_title("atari", "en")` が同じエントリを返す
+- `get_by_level(1)` が初心者レベルサブセットを返す（フィルタビュー）
+- 不正YAMLで明確なエラーメッセージ
+- `common/lexicon/` にKivyインポートなし
+
+**PR size**: 1–2 PRs
+
+### Phase 46: Meaning Tags System (Core)
+
+**Goal**: MoveEvalに「意味タグ」を付与するヒューリスティック分類を実装、Lexiconアンカー参照オプション付き
+
+**Deliverables**:
+- `MeaningTag` dataclass: `id`, `lexicon_anchor_id: Optional[str]`
+- `MEANING_TAG_REGISTRY`: 12–15タグ
+- `MeaningTagClassifier`: 決定論的ルール
+- 初期タグ: `missed_tesuji`, `overplay`, `slow_move`, `direction_error`, `shape_mistake`, `reading_failure`, `endgame_slip`, `connection_miss`, `capture_race_loss`, `life_death_error`, `territorial_loss`, `uncertain`
+
+**Non-goals**: GUI表示、機械学習、Karte/Summary出力変更
+
+**Acceptance Criteria**:
+- `classify_meaning_tag(move_eval)` が決定論的結果を返す
+- 10タグ以上に分類ルール実装
+- `lexicon_anchor_id` 付きタグは有効な`LexiconEntry`に解決
+- アンカーなしタグは `lexicon_anchor_id=None` で明示
+- エッジケーステスト（解析なし、低visits、パス手）
+
+**PR size**: 2–3 PRs
+
+### Phase 47: Meaning Tags Integration (Summary & Karte)
+
+**Goal**: MeaningTagをSummary集計とKarte出力に統合、RAG的定義表示
+
+**Deliverables**:
+- `MoveEval.meaning_tag: Optional[MeaningTag]`
+- `SummaryStats.meaning_tag_counts: Dict[str, int]`
+- Summary出力: 「頻出ミスタイプ」セクション
+- Karte: 重要手に`meaning_tag` + oneliner定義
+- i18nキー（EN/JP）
+- `format_meaning_tag_with_definition()` ヘルパー
+
+**Non-goals**: Radar表示、Tier絞り込み、Lexicon UIブラウザ、expanded説明文
+
+**Acceptance Criteria**:
+- Summary出力に上位3タグ＋カウント
+- Karte重要手: `meaning_tag: overplay (無理手: 相手の強い場所への深入り)`
+- ゴールデンファイルテスト更新
+- 全タグ表示名にJP翻訳
+
+**PR size**: 2–3 PRs
+
+### Phase 48: 5-Axis Radar Data Model
+
+**Goal**: Idea #2仕様に基づく5軸スキル評価モデルとTier分類を実装
+
+**Deliverables**:
+- `RadarAxis` enum: `OPENING`, `FIGHTING`, `ENDGAME`, `STABILITY`, `AWARENESS`
+- `RadarMetrics` dataclass: 内部0.0–1.0、`to_display_scale()` で1.0–5.0
+- `SkillTier` enum: `TIER_1`–`TIER_5` + `TIER_UNKNOWN`
+- `compute_radar_from_snapshot()`: 軸スコアリング、ガベージタイム除外、一択除外
+- `estimate_tier()`: 仕様テーブルに基づくTier推定
+
+**Non-goals**: GUI表示、複数局集約、ユーザー設定可能な重み、履歴追跡
+
+**Acceptance Criteria**:
+- 軸が仕様と一致: opening, fighting, endgame, stability, awareness
+- 内部スコア0.0–1.0、表示スコア1.0–5.0
+- ガベージタイム・一択除外が適用
+- 各軸に3つ以上の寄与要因を文書化
+- 空スナップショットで中立radar（内部0.5/表示3.0）+ `TIER_UNKNOWN`
+
+**PR size**: 1–2 PRs
+
+### Phase 49: Radar Aggregation & Summary Integration
+
+**Goal**: 複数局のRadar集約とSummary出力統合
+
+**Deliverables**:
+- `aggregate_radar()`: 均等重み or 新着重み
+- `SummaryStats.radar`, `SummaryStats.tier`
+- Summary「スキルプロファイル」セクション: 5軸スコア + Tier
+- 弱軸（<2.5表示）を練習優先に
+- エクスポート: Markdownテーブル + JSON
+
+**Non-goals**: Kivy radar chart、履歴追跡、対戦相手radar、フェーズ別radar
+
+**Acceptance Criteria**:
+- 複数局集約が安定（外れ値耐性）
+- Summary「スキルプロファイル」に5軸1.0–5.0スコア
+- 弱軸（<2.5）が練習優先リストに
+- Tierヘッダ表示: 例 `Tier 3 (中級)`
+- JSONエクスポートに内部・表示スコア + tier
+
+**PR size**: 2 PRs
+
+### Phase 50: Critical 3 Focused Review Mode
+
+**Goal**: 重要度上位3手を抽出し、構造化コンテキスト付きでKarte出力・LLMプロンプト生成
+
+**Deliverables**:
+- `select_critical_moves()`: `List[CriticalMove]`
+- `CriticalMove` dataclass: 構造化フィールド（move_number, gtp_coord, score_loss, winrate_delta, meaning_tag, position_difficulty, reason_tags, score_stdev, game_phase）
+- スコアリング: `importance × meaning_tag_weight × diversity_bonus`
+- Karte「Critical 3」セクション
+- `CRITICAL_3_PROMPT_TEMPLATE`
+
+**Non-goals**: インタラクティブUI、盤面シリアライズ、変化図、バッチ出力対応
+
+**Acceptance Criteria**:
+- 選択が決定論的（同じゲーム→同じ3手）
+- diversity_bonusで同一タグ重複回避
+- 全`CriticalMove`フィールドが値設定（盤面図なし）
+- Karteに「Important Moves」+「Critical 3」両方
+- LLMプロンプトテンプレートがself-contained markdown
+
+**PR size**: 2 PRs
+
+### Phase 51: Radar UI Widget
+
+**Goal**: 5軸スキルプロファイルのKivy radarチャートウィジェット実装
+
+**Deliverables**:
+- `katrain/gui/widgets/radar_chart.py`
+- 5軸スパイダー/ペンタゴン描画
+- 表示スケール1.0–5.0、グリッドライン
+- Summary popupへの統合
+- 軸ラベルi18n（EN/JP）
+- Tierバッジ、色分け（強軸≥3.5緑、弱軸<2.5赤、中間黄）
+
+**Non-goals**: アニメーション、軸ドリルダウン、複数radar重ね、画像エクスポート
+
+**Acceptance Criteria**:
+- 全5 Tierで正しく描画
+- 1280×720以上で軸ラベル可読
+- 弱軸が視覚的に識別可能
+- radar dataがNoneでもプレースホルダ表示
+- Tierバッジに数字＋日本語ラベル
+
+**PR size**: 2–3 PRs
+
+### Phase 52: Stabilization & Documentation
+
+**Goal**: Phase 45–51の包括的テスト、回帰防止、ドキュメント整備
+
+**Deliverables**:
+- ゴールデンファイル回帰テスト
+- 統合テスト: SGF→解析→Karte全フィールド、バッチ→Summary radar集約
+- ドキュメント更新: `docs/02-code-structure.md`, ユーザーガイド, `CLAUDE.md`
+- パフォーマンスベンチマーク: 50局バッチで<5秒
+
+**Non-goals**: 新機能、アーキテクチャ変更、EN/JP以外のi18n、Lexiconデータ追加
+
+**Acceptance Criteria**:
+- 既存テスト全パス（1554+ベースライン）
+- Phase 45–51で40テスト以上追加
+- バッチ処理がPhase 44比10%以内
+- ドキュメントが全新機能・設定をカバー
+- `CLAUDE.md` にPhase 52完了エントリ
+
+**PR size**: 1–2 PRs
+
+### 依存関係
+
+```
+Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (MeaningTags Integration)
+                                      │                              │
+                                      ↓                              ↓
+                              Phase 48 (Radar Model) ──→ Phase 49 (Radar Summary)
+                                                                     │
+                              Phase 47 ──────────────→ Phase 50 (Critical 3)
+                                                                     │
+                              Phase 49 ──────────────→ Phase 51 (Radar UI)
+                                                                     │
+                              Phases 45–51 ──────────→ Phase 52 (Stabilization)
+```
+
+### リスク
+
+1. **MeaningTag曖昧性**: 保守的ルール + `uncertain`フォールバック + アンカーなしオプション
+2. **Radar軸測定困難**: 寄与要因を文書化、v1制限を許容
+3. **閾値チューニング**: 設定可能に、Phase 52でチューニング
+4. **既存出力への回帰**: 新セクションは追加的、ゴールデンファイルテスト
+5. **非UIフェーズへのUI混入**: Non-goals厳守、UIはPhase 51に集約
+6. **Lexicon YAML安定性**: YAMLは安定入力扱い、変更時はテスト更新必須
 
 ---
 
