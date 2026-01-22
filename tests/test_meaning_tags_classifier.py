@@ -873,3 +873,99 @@ class TestClassifyMeaningTagLexiconAnchor:
         tag = classify_meaning_tag(move, lexicon_store=store)
         assert tag.id == MeaningTagId.UNCERTAIN
         assert tag.lexicon_anchor_id is None
+
+
+# =============================================================================
+# Lexicon Integration Tests (PR-3)
+# =============================================================================
+
+
+@pytest.mark.slow
+class TestLexiconIntegration:
+    """Integration tests with real LexiconStore.
+
+    These tests verify that the 5 tags with Lexicon anchors actually have
+    valid entries in the Lexicon YAML file. Marked as 'slow' since they
+    load the full Lexicon data.
+
+    Note: direction_of_play is in the 'concepts' section of the YAML (Level 3),
+    not the 'entries' section, so it's not available in LexiconStore.
+    """
+
+    @pytest.fixture
+    def real_lexicon_store(self):
+        """Load the real LexiconStore from YAML."""
+        from katrain.common.lexicon import LexiconStore, get_default_lexicon_path
+
+        path = get_default_lexicon_path()
+        if not path.exists():
+            pytest.skip("Lexicon YAML not available")
+        store = LexiconStore(path)
+        store.load()
+        return store
+
+    def test_tesuji_anchor_exists(self, real_lexicon_store) -> None:
+        """MISSED_TESUJI anchor 'tesuji' exists in Lexicon."""
+        entry = real_lexicon_store.get("tesuji")
+        assert entry is not None
+        assert entry.id == "tesuji"
+
+    def test_yose_anchor_exists(self, real_lexicon_store) -> None:
+        """ENDGAME_SLIP anchor 'yose' exists in Lexicon."""
+        entry = real_lexicon_store.get("yose")
+        assert entry is not None
+        assert entry.id == "yose"
+
+    def test_connection_anchor_exists(self, real_lexicon_store) -> None:
+        """CONNECTION_MISS anchor 'connection' exists in Lexicon."""
+        entry = real_lexicon_store.get("connection")
+        assert entry is not None
+        assert entry.id == "connection"
+
+    def test_semeai_anchor_exists(self, real_lexicon_store) -> None:
+        """CAPTURE_RACE_LOSS anchor 'semeai' exists in Lexicon."""
+        entry = real_lexicon_store.get("semeai")
+        assert entry is not None
+        assert entry.id == "semeai"
+
+    def test_territory_anchor_exists(self, real_lexicon_store) -> None:
+        """TERRITORIAL_LOSS anchor 'territory' exists in Lexicon."""
+        entry = real_lexicon_store.get("territory")
+        assert entry is not None
+        assert entry.id == "territory"
+
+    def test_all_anchors_can_be_resolved(self, real_lexicon_store) -> None:
+        """All 5 tags with anchors can resolve their anchors."""
+        from katrain.core.analysis.meaning_tags import (
+            MEANING_TAG_REGISTRY,
+            MeaningTagId,
+            resolve_lexicon_anchor,
+        )
+
+        # 5 tags have valid anchors (direction_of_play not in entries)
+        tags_with_anchors = [
+            MeaningTagId.MISSED_TESUJI,
+            MeaningTagId.ENDGAME_SLIP,
+            MeaningTagId.CONNECTION_MISS,
+            MeaningTagId.CAPTURE_RACE_LOSS,
+            MeaningTagId.TERRITORIAL_LOSS,
+        ]
+
+        for tag_id in tags_with_anchors:
+            anchor = resolve_lexicon_anchor(
+                tag_id, real_lexicon_store, validate_anchor=True
+            )
+            expected = MEANING_TAG_REGISTRY[tag_id].default_lexicon_anchor
+            assert anchor == expected, f"{tag_id} should resolve to {expected}"
+
+    def test_classify_with_real_store(self, real_lexicon_store) -> None:
+        """classify_meaning_tag works with real LexiconStore."""
+        # Create a move that will be classified as MISSED_TESUJI
+        move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
+        ctx = ClassificationContext(
+            best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
+            actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
+        )
+        tag = classify_meaning_tag(move, context=ctx, lexicon_store=real_lexicon_store)
+        assert tag.id == MeaningTagId.MISSED_TESUJI
+        assert tag.lexicon_anchor_id == "tesuji"

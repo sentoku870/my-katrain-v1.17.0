@@ -93,7 +93,7 @@ MEANING_TAG_REGISTRY: Dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Direction Error",
         ja_description="序盤で大局観を外しました。最善手と実戦手が盤上で大きく離れています。",
         en_description="Your global sense was off in the opening. The best move and your actual move were far apart on the board.",
-        default_lexicon_anchor="direction_of_play",
+        default_lexicon_anchor=None,  # direction_of_play is in concepts section, not entries
         related_reason_tags=(),
     ),
     MeaningTagId.SHAPE_MISTAKE: MeaningTagDefinition(
