@@ -1,0 +1,4 @@
+meta:
+  schema: go_lexicon_test_v1
+data:
+  - some_data: true

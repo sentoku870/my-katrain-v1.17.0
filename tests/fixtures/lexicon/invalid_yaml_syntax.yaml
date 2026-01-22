@@ -1,0 +1,7 @@
+entries:
+  - id: test
+    level: 1
+    category: test
+    ja_term: テスト
+    en_terms: [test
+    ja_one_liner: テスト

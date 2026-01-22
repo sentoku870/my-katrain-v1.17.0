@@ -1723,6 +1723,18 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
   - PR #148: 設定検索（opacity-based filtering）
   - 新規: `katrain/common/settings_export.py`
   - 拡張: `katrain/gui/features/settings_popup.py`
+- 2026-01-23: Phase 45完了（Lexicon Core Infrastructure）
+  - 新規: `katrain/common/lexicon/`パッケージ（Kivy非依存）
+    - `models.py`: frozen dataclass（LexiconEntry, DiagramInfo, AIPerspective）
+    - `validation.py`: 2段階パイプライン（validate_entry_dict → build_entry_from_dict）
+    - `store.py`: LexiconStoreクラス（スレッドセーフ、アトミックスナップショット）
+    - `__init__.py`: 公開API + get_default_lexicon_path()
+  - 完全イミュータブル設計: frozen=True + Tuple[str, ...]
+  - 検索API: get(), get_by_title(), get_by_category(), get_by_level()
+  - バリデーション: 必須フィールド、Level 3専用、参照ID、タイトル衝突
+  - 環境変数: LEXICON_PATH でパスオーバーライド可能
+  - 依存関係: PyYAML追加（pyproject.toml）
+  - テスト111件追加、総数1665件
 - 2026-01-21: Phase 44完了（Batch Analysis Fixes、PR #177）
   - Issue 1: 信頼性閾値の一貫性修正
     - `target_visits`パラメータを`extract_game_stats()`, `build_karte_report()`に追加
