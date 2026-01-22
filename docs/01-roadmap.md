@@ -142,7 +142,7 @@
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 45 | Lexicon Core | `common/lexicon/`（YAML読み込み） | 📋 予定 |
+| 45 | Lexicon Core | `common/lexicon/`（YAML読み込み） | ✅ |
 | 46 | MeaningTags Core | `analysis/meaning_tags.py`（分類ヒューリスティクス） | 📋 予定 |
 | 47 | MeaningTags統合 | Summary/Karte出力対応 | 📋 予定 |
 | 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | 📋 予定 |
