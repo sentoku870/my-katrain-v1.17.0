@@ -57,28 +57,30 @@ class TestMeaningTagRegistry:
 class TestLexiconAnchors:
     """Tests for Lexicon anchor configuration."""
 
-    # Tags with valid Lexicon anchors (6 tags)
+    # Tags with valid Lexicon anchors (5 tags)
+    # Note: direction_of_play is in concepts section of YAML, not entries,
+    # so it's not available in LexiconStore
     TAGS_WITH_ANCHORS = {
         MeaningTagId.MISSED_TESUJI: "tesuji",
-        MeaningTagId.DIRECTION_ERROR: "direction_of_play",
         MeaningTagId.ENDGAME_SLIP: "yose",
         MeaningTagId.CONNECTION_MISS: "connection",
         MeaningTagId.CAPTURE_RACE_LOSS: "semeai",
         MeaningTagId.TERRITORIAL_LOSS: "territory",
     }
 
-    # Tags without Lexicon anchors (6 tags)
+    # Tags without Lexicon anchors (7 tags)
     TAGS_WITHOUT_ANCHORS = {
         MeaningTagId.OVERPLAY,
         MeaningTagId.SLOW_MOVE,
+        MeaningTagId.DIRECTION_ERROR,  # direction_of_play not in entries
         MeaningTagId.SHAPE_MISTAKE,
         MeaningTagId.READING_FAILURE,
         MeaningTagId.LIFE_DEATH_ERROR,
         MeaningTagId.UNCERTAIN,
     }
 
-    def test_six_tags_have_anchors(self) -> None:
-        """Exactly 6 tags should have Lexicon anchors."""
+    def test_five_tags_have_anchors(self) -> None:
+        """Exactly 5 tags should have Lexicon anchors."""
         tags_with_anchors = {
             tag_id
             for tag_id, defn in MEANING_TAG_REGISTRY.items()
@@ -86,8 +88,8 @@ class TestLexiconAnchors:
         }
         assert tags_with_anchors == set(self.TAGS_WITH_ANCHORS.keys())
 
-    def test_six_tags_have_no_anchors(self) -> None:
-        """Exactly 6 tags should have no Lexicon anchors."""
+    def test_seven_tags_have_no_anchors(self) -> None:
+        """Exactly 7 tags should have no Lexicon anchors."""
         tags_without_anchors = {
             tag_id
             for tag_id, defn in MEANING_TAG_REGISTRY.items()
@@ -99,7 +101,6 @@ class TestLexiconAnchors:
         "tag_id,expected_anchor",
         [
             (MeaningTagId.MISSED_TESUJI, "tesuji"),
-            (MeaningTagId.DIRECTION_ERROR, "direction_of_play"),
             (MeaningTagId.ENDGAME_SLIP, "yose"),
             (MeaningTagId.CONNECTION_MISS, "connection"),
             (MeaningTagId.CAPTURE_RACE_LOSS, "semeai"),
@@ -118,6 +119,7 @@ class TestLexiconAnchors:
         [
             MeaningTagId.OVERPLAY,
             MeaningTagId.SLOW_MOVE,
+            MeaningTagId.DIRECTION_ERROR,  # direction_of_play not in entries
             MeaningTagId.SHAPE_MISTAKE,
             MeaningTagId.READING_FAILURE,
             MeaningTagId.LIFE_DEATH_ERROR,
