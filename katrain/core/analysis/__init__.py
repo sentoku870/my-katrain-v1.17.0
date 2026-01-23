@@ -247,6 +247,30 @@ from katrain.core.analysis.skill_radar import (
 )
 
 # =============================================================================
+# Explicit imports from critical_moves.py (Phase 50)
+# =============================================================================
+
+from katrain.core.analysis.critical_moves import (
+    # Dataclass
+    CriticalMove,
+    # Main function
+    select_critical_moves,
+    # Constants (for testing)
+    MEANING_TAG_WEIGHTS,
+    DEFAULT_MEANING_TAG_WEIGHT,
+    DIVERSITY_PENALTY_FACTOR,
+    CRITICAL_SCORE_PRECISION,
+    # Internal functions (exported for testing)
+    _get_meaning_tag_weight,
+    _compute_diversity_penalty,
+    _compute_critical_score,
+    _build_node_map,
+    _get_score_stdev_from_node,
+    _get_score_stdev_for_move,
+    _classify_meaning_tags,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -451,4 +475,22 @@ __all__ = [
     "round_score",
     "radar_from_dict",
     "aggregate_radar",
+    # === critical_moves.py (Phase 50) ===
+    # Dataclass
+    "CriticalMove",
+    # Main function
+    "select_critical_moves",
+    # Constants (for testing)
+    "MEANING_TAG_WEIGHTS",
+    "DEFAULT_MEANING_TAG_WEIGHT",
+    "DIVERSITY_PENALTY_FACTOR",
+    "CRITICAL_SCORE_PRECISION",
+    # Internal functions (exported for testing)
+    "_get_meaning_tag_weight",
+    "_compute_diversity_penalty",
+    "_compute_critical_score",
+    "_build_node_map",
+    "_get_score_stdev_from_node",
+    "_get_score_stdev_for_move",
+    "_classify_meaning_tags",
 ]
