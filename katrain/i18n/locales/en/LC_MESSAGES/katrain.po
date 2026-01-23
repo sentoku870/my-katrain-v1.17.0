@@ -1779,3 +1779,42 @@ msgstr "Leela analysis failed. See logs for details."
 
 msgid "leela:error:no_candidates"
 msgstr "Leela returned no candidate moves."
+
+#. Phase 49: Radar skill tiers
+msgid "radar:tier-1"
+msgstr "Tier 1 (Novice)"
+
+msgid "radar:tier-2"
+msgstr "Tier 2 (Apprentice)"
+
+msgid "radar:tier-3"
+msgstr "Tier 3 (Proficient)"
+
+msgid "radar:tier-4"
+msgstr "Tier 4 (Advanced)"
+
+msgid "radar:tier-5"
+msgstr "Tier 5 (Elite)"
+
+#. Phase 49: Radar axes
+msgid "radar:axis-opening"
+msgstr "Opening"
+
+msgid "radar:axis-fighting"
+msgstr "Fighting"
+
+msgid "radar:axis-endgame"
+msgstr "Endgame"
+
+msgid "radar:axis-stability"
+msgstr "Stability"
+
+msgid "radar:axis-awareness"
+msgstr "Awareness"
+
+#. Phase 49: Radar other
+msgid "radar:weak-areas"
+msgstr "Weak areas"
+
+msgid "radar:no-data"
+msgstr "No radar data available (requires 19x19 games with analysis)"

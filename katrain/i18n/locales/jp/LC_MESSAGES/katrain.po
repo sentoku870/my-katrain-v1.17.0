@@ -1729,3 +1729,42 @@ msgstr "Leela解析に失敗しました。詳細はログを確認してくだ�
 
 msgid "leela:error:no_candidates"
 msgstr "Leelaが候補手を返しませんでした。"
+
+#. Phase 49: Radar skill tiers
+msgid "radar:tier-1"
+msgstr "Tier 1 (初学)"
+
+msgid "radar:tier-2"
+msgstr "Tier 2 (習得)"
+
+msgid "radar:tier-3"
+msgstr "Tier 3 (熟練)"
+
+msgid "radar:tier-4"
+msgstr "Tier 4 (上級)"
+
+msgid "radar:tier-5"
+msgstr "Tier 5 (精鋭)"
+
+#. Phase 49: Radar axes
+msgid "radar:axis-opening"
+msgstr "序盤力"
+
+msgid "radar:axis-fighting"
+msgstr "戦闘力"
+
+msgid "radar:axis-endgame"
+msgstr "終盤力"
+
+msgid "radar:axis-stability"
+msgstr "安定性"
+
+msgid "radar:axis-awareness"
+msgstr "感性"
+
+#. Phase 49: Radar other
+msgid "radar:weak-areas"
+msgstr "弱点分野"
+
+msgid "radar:no-data"
+msgstr "レーダーデータがありません（19x19の解析済み棋譜が必要）"

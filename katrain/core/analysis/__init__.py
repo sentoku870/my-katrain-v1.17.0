@@ -207,6 +207,7 @@ from katrain.core.analysis.skill_radar import (
     SkillTier,
     # Dataclass
     RadarMetrics,
+    AggregatedRadarResult,  # Phase 49
     # Constants
     TIER_TO_INT,
     INT_TO_TIER,
@@ -219,6 +220,11 @@ from katrain.core.analysis.skill_radar import (
     ENDGAME_START_MOVE,
     NEUTRAL_DISPLAY_SCORE,
     NEUTRAL_TIER,
+    # Phase 49 constants
+    MIN_VALID_AXES_FOR_OVERALL,
+    MIN_MOVES_FOR_RADAR,
+    REQUIRED_RADAR_DICT_KEYS,
+    OPTIONAL_RADAR_DICT_KEYS,
     # Conversion functions
     apl_to_tier_and_score,
     blunder_rate_to_tier_and_score,
@@ -234,6 +240,10 @@ from katrain.core.analysis.skill_radar import (
     compute_awareness_axis,
     # Main entry point
     compute_radar_from_moves,
+    # Phase 49: Aggregation functions
+    round_score,
+    radar_from_dict,
+    aggregate_radar,
 )
 
 # =============================================================================
@@ -404,6 +414,7 @@ __all__ = [
     "SkillTier",
     # Dataclass
     "RadarMetrics",
+    "AggregatedRadarResult",  # Phase 49
     # Constants
     "TIER_TO_INT",
     "INT_TO_TIER",
@@ -416,6 +427,11 @@ __all__ = [
     "ENDGAME_START_MOVE",
     "NEUTRAL_DISPLAY_SCORE",
     "NEUTRAL_TIER",
+    # Phase 49 constants
+    "MIN_VALID_AXES_FOR_OVERALL",
+    "MIN_MOVES_FOR_RADAR",
+    "REQUIRED_RADAR_DICT_KEYS",
+    "OPTIONAL_RADAR_DICT_KEYS",
     # Conversion functions
     "apl_to_tier_and_score",
     "blunder_rate_to_tier_and_score",
@@ -431,4 +447,8 @@ __all__ = [
     "compute_awareness_axis",
     # Main entry point
     "compute_radar_from_moves",
+    # Phase 49: Aggregation functions
+    "round_score",
+    "radar_from_dict",
+    "aggregate_radar",
 ]

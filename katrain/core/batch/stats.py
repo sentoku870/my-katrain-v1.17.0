@@ -8,11 +8,14 @@ All functions are Kivy-independent and can be used in headless contexts.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core.batch.helpers import get_canonical_loss
+
+_logger = logging.getLogger("katrain.core.batch.stats")
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -44,6 +47,19 @@ from katrain.core.eval_metrics import (
     SKILL_PRESET_LABELS,
     CONFIDENCE_LABELS,
     compute_effective_threshold,  # Phase 44: relative reliability threshold
+)
+
+# Phase 49: Radar imports
+from katrain.core.analysis.skill_radar import (
+    RadarAxis,
+    RadarMetrics,
+    SkillTier,
+    AggregatedRadarResult,
+    MIN_MOVES_FOR_RADAR,
+    compute_radar_from_moves,
+    radar_from_dict,
+    aggregate_radar,
+    round_score,
 )
 
 
@@ -278,6 +294,27 @@ def extract_game_stats(
             # If important moves extraction fails, reason_tags will be empty but stats still valid
             pass
 
+        # Phase 49: Compute radar per player (19x19 only)
+        radar_by_player: Dict[str, Optional[Dict[str, Any]]] = {"B": None, "W": None}
+
+        if board_size == 19 and snapshot and snapshot.moves:
+            for player in ("B", "W"):
+                player_moves = [m for m in snapshot.moves if m.player == player]
+                if len(player_moves) >= MIN_MOVES_FOR_RADAR:
+                    try:
+                        radar = compute_radar_from_moves(player_moves, player=player)
+                        # Store even if some axes are UNKNOWN (per-axis aggregation later)
+                        radar_by_player[player] = radar.to_dict()
+                    except Exception as e:
+                        # Log failure but don't break batch processing
+                        _logger.debug(
+                            "Radar computation failed for player=%s in %s: %s",
+                            player, rel_path, e
+                        )
+                        # radar_by_player[player] remains None
+
+        stats["radar_by_player"] = radar_by_player
+
         return stats
 
     except Exception:
@@ -417,6 +454,144 @@ def extract_players_from_stats(
     return result
 
 
+# =============================================================================
+# Phase 49: Skill Profile Helper Functions
+# =============================================================================
+
+# Tier label mapping (i18n keys with English fallback)
+TIER_LABELS = {
+    SkillTier.TIER_1: "Tier 1 (Novice)",
+    SkillTier.TIER_2: "Tier 2 (Apprentice)",
+    SkillTier.TIER_3: "Tier 3 (Proficient)",
+    SkillTier.TIER_4: "Tier 4 (Advanced)",
+    SkillTier.TIER_5: "Tier 5 (Elite)",
+    SkillTier.TIER_UNKNOWN: "N/A",
+}
+
+# Axis label mapping (i18n keys with English fallback)
+AXIS_LABELS = {
+    RadarAxis.OPENING: "Opening",
+    RadarAxis.FIGHTING: "Fighting",
+    RadarAxis.ENDGAME: "Endgame",
+    RadarAxis.STABILITY: "Stability",
+    RadarAxis.AWARENESS: "Awareness",
+}
+
+# Practice hints for weak axes
+AXIS_PRACTICE_HINTS = {
+    RadarAxis.OPENING: "Study fuseki patterns and joseki choices",
+    RadarAxis.FIGHTING: "Practice life & death problems and fighting tesuji",
+    RadarAxis.ENDGAME: "Study yose counting and endgame sequences",
+    RadarAxis.STABILITY: "Focus on solid shape; avoid overplays in won positions",
+    RadarAxis.AWARENESS: "Review AI's top choices to calibrate intuition",
+}
+
+
+def _get_tier_label(tier: SkillTier) -> str:
+    """Get display label for a tier."""
+    return TIER_LABELS.get(tier, "N/A")
+
+
+def _get_axis_label(axis: RadarAxis) -> str:
+    """Get display label for an axis."""
+    return AXIS_LABELS.get(axis, axis.value)
+
+
+def _build_skill_profile_section(
+    radar: Optional[AggregatedRadarResult],
+) -> List[str]:
+    """Build Skill Profile section for player summary.
+
+    Args:
+        radar: Aggregated radar result, or None if no data
+
+    Returns:
+        List of markdown lines to append to summary
+    """
+    lines = ["\n## Skill Profile\n"]
+
+    if not radar:
+        lines.append("*No radar data available (requires 19x19 games with analysis)*\n")
+        return lines
+
+    # Overall tier header
+    overall_label = _get_tier_label(radar.overall_tier)
+    lines.append(f"**Overall: {overall_label}** ({radar.games_aggregated} games aggregated)\n")
+
+    # 5-axis table
+    lines.append("| Axis | Score | Tier | Moves |")
+    lines.append("|------|------:|------|------:|")
+
+    for axis in RadarAxis:
+        axis_label = _get_axis_label(axis)
+        score = getattr(radar, axis.value)
+        tier = getattr(radar, f"{axis.value}_tier")
+        count = radar.valid_move_counts.get(axis, 0)
+
+        # Format score (use round_score for display)
+        score_str = "N/A" if score is None else f"{round_score(score)}"
+        tier_str = _get_tier_label(tier)
+
+        lines.append(f"| {axis_label} | {score_str} | {tier_str} | {count} |")
+
+    # Weak areas (score < 2.5)
+    weak_axes = [
+        (axis, getattr(radar, axis.value))
+        for axis in RadarAxis
+        if radar.is_weak_axis(axis)
+    ]
+
+    if weak_axes:
+        # Sort by score (lowest first)
+        weak_axes.sort(key=lambda x: x[1])
+        weak_list = [
+            f"{_get_axis_label(axis)} ({round_score(score)})"
+            for axis, score in weak_axes
+        ]
+        lines.append("")
+        lines.append(f"**Weak areas (< 2.5)**: {', '.join(weak_list)}")
+
+        # Practice priorities (max 2)
+        lines.append("")
+        lines.append("**Practice priorities:**")
+        for axis, _ in weak_axes[:2]:
+            hint = AXIS_PRACTICE_HINTS.get(axis, "")
+            if hint:
+                lines.append(f"- {_get_axis_label(axis)}: {hint}")
+
+    # JSON output block
+    lines.extend(_build_radar_json_section(radar))
+
+    return lines
+
+
+def _build_radar_json_section(
+    radar: Optional[AggregatedRadarResult],
+) -> List[str]:
+    """Build JSON output block for radar data.
+
+    Args:
+        radar: Aggregated radar result, or None
+
+    Returns:
+        List of markdown lines with JSON block
+    """
+    if not radar:
+        return []
+
+    import json
+
+    # Use canonical to_dict() - single source of truth
+    data = radar.to_dict()
+
+    return [
+        "\n### Radar Data (JSON)\n",
+        "```json",
+        json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True),
+        "```",
+    ]
+
+
 def build_player_summary(
     player_name: str,
     player_games: List[Tuple[dict, str]],
@@ -475,6 +650,9 @@ def build_player_summary(
     reliability_with_visits = 0
     reliability_max_visits = 0  # PR1-2: Track max visits across all games
     board_sizes: set = set()  # Track unique board sizes for Definitions
+
+    # Phase 49: Radar metrics collection for aggregation
+    radar_list: List[RadarMetrics] = []
 
     for stats, role in player_games:
         if role == "B":
@@ -553,6 +731,17 @@ def build_player_summary(
         # Track board sizes for Definitions section
         if "board_size" in stats:
             board_sizes.add(stats["board_size"][0])  # (x, y) tuple, use x
+
+        # Phase 49: Collect radar metrics for aggregation
+        if "radar_by_player" in stats:
+            radar_dict = stats["radar_by_player"].get(role)
+            if radar_dict:
+                radar = radar_from_dict(radar_dict)
+                if radar:
+                    radar_list.append(radar)
+
+    # Phase 49: Aggregate radar metrics
+    aggregated_radar = aggregate_radar(radar_list)  # Uniform weighting only
 
     # =========================================================================
     # Compute auto recommendation if skill_preset is "auto"
@@ -757,6 +946,11 @@ def build_player_summary(
     # PR1-2: Add note about measured values
     lines.append("")
     lines.append("*Visits are measured from KataGo analysis (root_visits).*")
+
+    # =========================================================================
+    # Phase 49: Skill Profile Section
+    # =========================================================================
+    lines.extend(_build_skill_profile_section(aggregated_radar))
 
     # =========================================================================
     # Section 1: Overview

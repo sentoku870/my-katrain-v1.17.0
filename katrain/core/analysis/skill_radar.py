@@ -18,11 +18,15 @@ Phase 48 constraints:
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from types import MappingProxyType
 from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+_logger = logging.getLogger("katrain.core.analysis.skill_radar")
 
 from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
 
@@ -122,6 +126,49 @@ NEUTRAL_TIER = SkillTier.TIER_UNKNOWN
 
 
 # =============================================================================
+# Phase 49: Aggregation Constants
+# =============================================================================
+
+# Minimum valid axes required to compute overall tier
+MIN_VALID_AXES_FOR_OVERALL = 3
+
+# Minimum moves per player for meaningful radar (statistical significance)
+MIN_MOVES_FOR_RADAR = 10
+
+# Required keys for radar_from_dict() validation (strict)
+REQUIRED_RADAR_DICT_KEYS = frozenset({"scores", "tiers", "overall_tier"})
+
+# Optional keys (use defaults if missing, for backward compatibility)
+OPTIONAL_RADAR_DICT_KEYS = frozenset({"valid_move_counts"})
+
+
+# =============================================================================
+# Rounding Helper (Phase 49)
+# =============================================================================
+
+
+def round_score(v: Optional[float]) -> Optional[float]:
+    """Round score to 1 decimal place for display.
+
+    This is the SINGLE SOURCE OF TRUTH for score display rounding.
+    Used by BOTH to_dict() and summary table formatting for consistency.
+
+    Args:
+        v: Score value (1.0-5.0) or None
+
+    Returns:
+        Rounded score (1 decimal) or None if input is None
+
+    Note:
+        Uses Decimal for deterministic rounding (avoids banker's rounding edge cases).
+        ROUND_HALF_UP: 2.25 -> 2.3, 2.35 -> 2.4 (always rounds .5 up)
+    """
+    if v is None:
+        return None
+    return float(Decimal(str(v)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+# =============================================================================
 # RadarMetrics Dataclass
 # =============================================================================
 
@@ -195,6 +242,120 @@ class RadarMetrics:
                 axis.value: count for axis, count in self.valid_move_counts.items()
             },
         }
+
+
+# =============================================================================
+# AggregatedRadarResult Dataclass (Phase 49)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class AggregatedRadarResult:
+    """Aggregated radar metrics across multiple games.
+
+    Unlike RadarMetrics, scores can be None (insufficient data for axis).
+
+    Attributes:
+        opening: Aggregated score for Opening axis (1.0-5.0 or None)
+        fighting: Aggregated score for Fighting axis
+        endgame: Aggregated score for Endgame axis
+        stability: Aggregated score for Stability axis
+        awareness: Aggregated score for Awareness axis
+        opening_tier: Tier for Opening axis (TIER_UNKNOWN if score is None)
+        fighting_tier: Tier for Fighting axis
+        endgame_tier: Tier for Endgame axis
+        stability_tier: Tier for Stability axis
+        awareness_tier: Tier for Awareness axis
+        overall_tier: Overall tier (median of valid axes, TIER_UNKNOWN if <3 valid)
+        valid_move_counts: Total valid moves per axis across all aggregated games
+        games_aggregated: Number of games included in aggregation
+
+    Note:
+        - Use RAW scores for all logic (thresholds, tier derivation)
+        - Round only in to_dict() for display via round_score()
+    """
+
+    # Raw scores: 1.0-5.0 or None if no valid data
+    opening: Optional[float]
+    fighting: Optional[float]
+    endgame: Optional[float]
+    stability: Optional[float]
+    awareness: Optional[float]
+
+    # Per-axis tier (TIER_UNKNOWN if score is None)
+    opening_tier: SkillTier
+    fighting_tier: SkillTier
+    endgame_tier: SkillTier
+    stability_tier: SkillTier
+    awareness_tier: SkillTier
+
+    # Overall tier (median of valid axes, TIER_UNKNOWN if <3 valid)
+    overall_tier: SkillTier
+
+    # Total valid moves across all aggregated games
+    valid_move_counts: Mapping[RadarAxis, int]
+
+    # Aggregation metadata
+    games_aggregated: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        """JSON-serializable dict with null for None values.
+
+        Output schema is canonical and stable for golden tests.
+        Scores are rounded via shared helper for consistency.
+
+        Returns:
+            Dictionary with axes (sorted alphabetically), games_aggregated,
+            overall_tier, and valid_move_counts.
+        """
+        return {
+            "axes": {
+                "awareness": {
+                    "score": round_score(self.awareness),
+                    "tier": self.awareness_tier.value,
+                },
+                "endgame": {
+                    "score": round_score(self.endgame),
+                    "tier": self.endgame_tier.value,
+                },
+                "fighting": {
+                    "score": round_score(self.fighting),
+                    "tier": self.fighting_tier.value,
+                },
+                "opening": {
+                    "score": round_score(self.opening),
+                    "tier": self.opening_tier.value,
+                },
+                "stability": {
+                    "score": round_score(self.stability),
+                    "tier": self.stability_tier.value,
+                },
+            },
+            "games_aggregated": self.games_aggregated,
+            "overall_tier": self.overall_tier.value,
+            "valid_move_counts": {
+                axis.value: count
+                for axis, count in sorted(
+                    self.valid_move_counts.items(), key=lambda x: x[0].value
+                )
+            },
+        }
+
+    def is_weak_axis(self, axis: RadarAxis) -> bool:
+        """Check if axis is weak (score < 2.5).
+
+        Args:
+            axis: The radar axis to check
+
+        Returns:
+            True if score is not None AND score < 2.5 (uses RAW score, not rounded)
+
+        Note:
+            Uses raw score for logic. A score of 2.45 would be flagged as weak
+            even though it rounds to 2.5 for display.
+        """
+        score = getattr(self, axis.value)
+        return score is not None and score < 2.5
 
 
 # =============================================================================
@@ -332,6 +493,202 @@ def compute_overall_tier(tiers: List[SkillTier]) -> SkillTier:
         median_int = math.ceil(avg)
 
     return INT_TO_TIER[median_int]
+
+
+# =============================================================================
+# Phase 49: Aggregation Functions
+# =============================================================================
+
+
+def radar_from_dict(d: Optional[Dict[str, Any]]) -> Optional[RadarMetrics]:
+    """Reconstruct RadarMetrics from to_dict() output.
+
+    Args:
+        d: Dictionary from RadarMetrics.to_dict(), or None
+
+    Returns:
+        RadarMetrics if valid, None otherwise
+
+    Validation rules:
+        - Returns None if d is None or empty
+        - Returns None if any REQUIRED key is missing (logs at debug)
+        - Uses defaults for OPTIONAL keys (backward compat)
+        - Ignores unknown keys (forward compat)
+
+    Example:
+        >>> radar = compute_radar_from_moves(moves)
+        >>> d = radar.to_dict()
+        >>> reconstructed = radar_from_dict(d)
+        # Roundtrip: tiers match exactly, scores match within floating point tolerance
+    """
+    if not d:
+        return None
+
+    # Check required top-level keys
+    missing = REQUIRED_RADAR_DICT_KEYS - d.keys()
+    if missing:
+        _logger.debug("radar_from_dict: missing required keys %s", missing)
+        return None
+
+    try:
+        scores = d["scores"]
+        tiers = d["tiers"]
+        overall_tier_str = d["overall_tier"]
+
+        # Optional with default (backward compat)
+        valid_move_counts_raw = d.get("valid_move_counts", {})
+
+        # Parse scores
+        opening_score = float(scores["opening"])
+        fighting_score = float(scores["fighting"])
+        endgame_score = float(scores["endgame"])
+        stability_score = float(scores["stability"])
+        awareness_score = float(scores["awareness"])
+
+        # Parse tiers
+        opening_tier = SkillTier(tiers["opening"])
+        fighting_tier = SkillTier(tiers["fighting"])
+        endgame_tier = SkillTier(tiers["endgame"])
+        stability_tier = SkillTier(tiers["stability"])
+        awareness_tier = SkillTier(tiers["awareness"])
+
+        # Parse overall tier
+        overall_tier = SkillTier(overall_tier_str)
+
+        # Parse valid_move_counts (optional, default to 0 for missing axes)
+        valid_move_counts: Dict[RadarAxis, int] = {}
+        for axis in RadarAxis:
+            count = valid_move_counts_raw.get(axis.value, 0)
+            valid_move_counts[axis] = int(count)
+
+        return RadarMetrics(
+            opening=opening_score,
+            fighting=fighting_score,
+            endgame=endgame_score,
+            stability=stability_score,
+            awareness=awareness_score,
+            opening_tier=opening_tier,
+            fighting_tier=fighting_tier,
+            endgame_tier=endgame_tier,
+            stability_tier=stability_tier,
+            awareness_tier=awareness_tier,
+            overall_tier=overall_tier,
+            valid_move_counts=MappingProxyType(valid_move_counts),
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        _logger.debug("radar_from_dict: parse error: %s", e)
+        return None
+
+
+def aggregate_radar(
+    radar_list: List[RadarMetrics],
+) -> Optional[AggregatedRadarResult]:
+    """Aggregate multiple RadarMetrics into one AggregatedRadarResult.
+
+    Args:
+        radar_list: List of RadarMetrics (from individual games)
+
+    Returns:
+        AggregatedRadarResult, or None if radar_list is empty
+
+    Algorithm:
+        1. For each axis independently:
+           - Collect scores where that axis tier != TIER_UNKNOWN
+           - Compute simple average; if no valid scores, result is None
+        2. Derive tier from aggregated score (or TIER_UNKNOWN if None)
+        3. Overall tier = median of valid axis tiers (need ≥3 valid axes)
+           - Uses compute_overall_tier() to match Phase 48 behavior
+        4. Sum valid_move_counts across all input RadarMetrics (filtered)
+
+    Note:
+        - Recency weighting deferred to future phase; this uses uniform (simple average)
+        - valid_move_counts are filtered to match aggregation: only include counts
+          from games where that axis tier != UNKNOWN
+    """
+    if not radar_list:
+        return None
+
+    # Helper to get tier for an axis from a RadarMetrics
+    def get_axis_tier(rm: RadarMetrics, axis: RadarAxis) -> SkillTier:
+        return getattr(rm, f"{axis.value}_tier")
+
+    # Helper to get score for an axis from a RadarMetrics
+    def get_axis_score(rm: RadarMetrics, axis: RadarAxis) -> float:
+        return getattr(rm, axis.value)
+
+    # Helper to derive tier from aggregated score using APL thresholds
+    # (since all axes use 1.0-5.0 score range mapped from tier)
+    def score_to_tier(score: Optional[float]) -> SkillTier:
+        if score is None:
+            return SkillTier.TIER_UNKNOWN
+        # Reverse mapping: score 1.0-5.0 -> tier
+        if score >= 4.5:
+            return SkillTier.TIER_5
+        elif score >= 3.5:
+            return SkillTier.TIER_4
+        elif score >= 2.5:
+            return SkillTier.TIER_3
+        elif score >= 1.5:
+            return SkillTier.TIER_2
+        else:
+            return SkillTier.TIER_1
+
+    # Compute per-axis aggregated scores and counts
+    aggregated_scores: Dict[RadarAxis, Optional[float]] = {}
+    aggregated_tiers: Dict[RadarAxis, SkillTier] = {}
+    aggregated_counts: Dict[RadarAxis, int] = {}
+
+    for axis in RadarAxis:
+        # Collect scores from games where this axis is valid (tier != UNKNOWN)
+        valid_scores = [
+            get_axis_score(rm, axis)
+            for rm in radar_list
+            if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
+        ]
+
+        # Collect counts from games where this axis is valid (filtered)
+        valid_counts = [
+            rm.valid_move_counts.get(axis, 0)
+            for rm in radar_list
+            if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
+        ]
+
+        if valid_scores:
+            # Simple average (uniform weighting)
+            aggregated_scores[axis] = sum(valid_scores) / len(valid_scores)
+            aggregated_counts[axis] = sum(valid_counts)
+        else:
+            aggregated_scores[axis] = None
+            aggregated_counts[axis] = 0
+
+        aggregated_tiers[axis] = score_to_tier(aggregated_scores[axis])
+
+    # Compute overall tier using existing function (reuse Phase 48 logic)
+    axis_tiers_list = [aggregated_tiers[axis] for axis in RadarAxis]
+    overall_tier = compute_overall_tier(axis_tiers_list)
+
+    # Check minimum valid axes for overall tier
+    valid_axis_count = sum(
+        1 for t in axis_tiers_list if t != SkillTier.TIER_UNKNOWN
+    )
+    if valid_axis_count < MIN_VALID_AXES_FOR_OVERALL:
+        overall_tier = SkillTier.TIER_UNKNOWN
+
+    return AggregatedRadarResult(
+        opening=aggregated_scores[RadarAxis.OPENING],
+        fighting=aggregated_scores[RadarAxis.FIGHTING],
+        endgame=aggregated_scores[RadarAxis.ENDGAME],
+        stability=aggregated_scores[RadarAxis.STABILITY],
+        awareness=aggregated_scores[RadarAxis.AWARENESS],
+        opening_tier=aggregated_tiers[RadarAxis.OPENING],
+        fighting_tier=aggregated_tiers[RadarAxis.FIGHTING],
+        endgame_tier=aggregated_tiers[RadarAxis.ENDGAME],
+        stability_tier=aggregated_tiers[RadarAxis.STABILITY],
+        awareness_tier=aggregated_tiers[RadarAxis.AWARENESS],
+        overall_tier=overall_tier,
+        valid_move_counts=MappingProxyType(aggregated_counts),
+        games_aggregated=len(radar_list),
+    )
 
 
 # =============================================================================
