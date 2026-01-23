@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-47（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration）
-- **予定**: Phase 48-52（5軸Radar+Tier、Critical 3、Stabilization）
-- **次**: Phase 48（5-Axis Radar Data Model）
+- **完了**: Phase 1-48（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model）
+- **予定**: Phase 49-52（Radar Aggregation、Critical 3、Radar UI、Stabilization）
+- **次**: Phase 49（Radar Aggregation & Summary Integration）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +377,19 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 48 完了（5-Axis Radar Data Model）
+  - 新規: `katrain/core/analysis/skill_radar.py`（~570行）
+    - `RadarAxis` enum: 5軸（Opening, Fighting, Endgame, Stability, Awareness）
+    - `SkillTier` enum: TIER_1-5 + TIER_UNKNOWN（str継承、int mapping付き）
+    - `RadarMetrics` frozen dataclass: MappingProxyTypeでimmutability保証
+    - Tier変換関数: APL/BlunderRate/MatchRate → Tier（半開区間閾値）
+    - `is_garbage_time()`: BLACK視点winrate >= 0.99 or <= 0.01
+    - `compute_overall_tier()`: 5軸median、math.ceil for even counts
+    - `compute_radar_from_moves()`: MoveEvalリストから5軸計算
+  - 更新: `__init__.py`（再エクスポート追加）
+  - 制約: 19x19のみ（OPENING_END_MOVE=50, ENDGAME_START_MOVE=150）
+  - テスト95件追加
+  - テスト総数: 2006件
 - 2026-01-23: Phase 47 完了（Meaning Tags Integration）
   - 新規: `katrain/core/analysis/meaning_tags/integration.py`
     - `normalize_lang()`: 言語コード正規化（"jp" → "ja"）

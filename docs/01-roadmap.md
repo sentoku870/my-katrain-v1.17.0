@@ -1073,27 +1073,28 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 **PR size**: 2–3 PRs
 
-### Phase 48: 5-Axis Radar Data Model
+### Phase 48: 5-Axis Radar Data Model（2026-01-23 完了）
 
 **Goal**: Idea #2仕様に基づく5軸スキル評価モデルとTier分類を実装
 
 **Deliverables**:
-- `RadarAxis` enum: `OPENING`, `FIGHTING`, `ENDGAME`, `STABILITY`, `AWARENESS`
-- `RadarMetrics` dataclass: 内部0.0–1.0、`to_display_scale()` で1.0–5.0
-- `SkillTier` enum: `TIER_1`–`TIER_5` + `TIER_UNKNOWN`
-- `compute_radar_from_snapshot()`: 軸スコアリング、ガベージタイム除外、一択除外
-- `estimate_tier()`: 仕様テーブルに基づくTier推定
+- `RadarAxis` enum: `OPENING`, `FIGHTING`, `ENDGAME`, `STABILITY`, `AWARENESS`（str継承）
+- `RadarMetrics` frozen dataclass: 表示スコア1.0–5.0、`MappingProxyType`でimmutability保証
+- `SkillTier` enum: `TIER_1`–`TIER_5` + `TIER_UNKNOWN`（str継承、int mapping付き）
+- `compute_radar_from_moves()`: MoveEvalリストから5軸計算、playerフィルタ対応
+- Tier変換関数: APL/BlunderRate/MatchRate → Tier（半開区間閾値）
+- `is_garbage_time()`: BLACK視点winrate >= 0.99 or <= 0.01
+- `compute_overall_tier()`: 5軸median、math.ceil for even counts
+
+**実装詳細**:
+- 新規: `katrain/core/analysis/skill_radar.py`（~570行）
+- 更新: `katrain/core/analysis/__init__.py`（再エクスポート追加）
+- テスト: 95件追加（test_skill_radar.py）
+- 制約: 19x19のみ（OPENING_END_MOVE=50, ENDGAME_START_MOVE=150）
 
 **Non-goals**: GUI表示、複数局集約、ユーザー設定可能な重み、履歴追跡
 
-**Acceptance Criteria**:
-- 軸が仕様と一致: opening, fighting, endgame, stability, awareness
-- 内部スコア0.0–1.0、表示スコア1.0–5.0
-- ガベージタイム・一択除外が適用
-- 各軸に3つ以上の寄与要因を文書化
-- 空スナップショットで中立radar（内部0.5/表示3.0）+ `TIER_UNKNOWN`
-
-**PR size**: 1–2 PRs
+**PR size**: 1 PR（#183）
 
 ### Phase 49: Radar Aggregation & Summary Integration
 
