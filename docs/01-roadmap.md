@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-21
+> 最終更新: 2026-01-23
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -1030,7 +1030,7 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 **PR size**: 1–2 PRs
 
-### Phase 46: Meaning Tags System (Core)
+### Phase 46: Meaning Tags System Core（2026-01-23 完了）
 
 **Goal**: MoveEvalに「意味タグ」を付与するヒューリスティック分類を実装、Lexiconアンカー参照オプション付き
 
@@ -1051,7 +1051,7 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 **PR size**: 2–3 PRs
 
-### Phase 47: Meaning Tags Integration (Summary & Karte)
+### Phase 47: Meaning Tags Integration（2026-01-23 完了）
 
 **Goal**: MeaningTagをSummary集計とKarte出力に統合、RAG的定義表示
 
@@ -1739,6 +1739,22 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
   - Lexiconアンカー解決: resolve_lexicon_anchor()（モックフレンドリー設計）
   - pytest "slow" マーカー登録（pyproject.toml）
   - テスト197件追加（93 classifier + 7 integration）
+- 2026-01-23: Phase 47完了（Meaning Tags Integration）
+  - 新規: `katrain/core/analysis/meaning_tags/integration.py`
+    - `normalize_lang()`: 言語コード正規化（"jp" → "ja"）
+    - `get_meaning_tag_label_safe()`: 安全なラベル取得（None対応）
+    - `format_meaning_tag_with_definition()`: 30文字truncation付き表示
+  - MoveEval拡張: `meaning_tag_id: Optional[str]`フィールド追加
+  - batch/stats.py拡張:
+    - `meaning_tags_by_player`統計追加
+    - `build_player_summary()`に"Top 3 Mistake Types"セクション
+  - karte_report.py拡張:
+    - `lang`パラメータ追加（日本語/英語切替対応）
+    - Important Moves tableに"MTag"列追加
+    - JSON出力に`meaning_tag`オブジェクト追加
+  - Python 3.9互換性修正（`float | None` → `Optional[float]`）
+  - ゴールデンファイル更新（karte_sgf_*.golden）
+  - テスト49件追加、総数1946件
 - 2026-01-23: Phase 45完了（Lexicon Core Infrastructure）
   - 新規: `katrain/common/lexicon/`パッケージ（Kivy非依存）
     - `models.py`: frozen dataclass（LexiconEntry, DiagramInfo, AIPerspective）

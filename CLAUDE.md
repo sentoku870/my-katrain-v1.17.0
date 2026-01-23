@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-46（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core）
-- **予定**: Phase 47-52（MeaningTags統合、5軸Radar+Tier、Critical 3、Stabilization）
-- **次**: Phase 47（Meaning Tags Integration）
+- **完了**: Phase 1-47（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration）
+- **予定**: Phase 48-52（5軸Radar+Tier、Critical 3、Stabilization）
+- **次**: Phase 48（5-Axis Radar Data Model）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +377,17 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 47 完了（Meaning Tags Integration）
+  - 新規: `katrain/core/analysis/meaning_tags/integration.py`
+    - `normalize_lang()`: 言語コード正規化（"jp" → "ja"）
+    - `get_meaning_tag_label_safe()`: 安全なラベル取得（None対応）
+    - `format_meaning_tag_with_definition()`: 30文字truncation付き表示
+  - MoveEval拡張: `meaning_tag_id: Optional[str]`フィールド追加
+  - batch/stats.py: `meaning_tags_by_player`統計、Top 3 Mistake Typesセクション
+  - karte_report.py: `lang`パラメータ、MTag列、JSON meaning_tagオブジェクト
+  - Python 3.9互換性修正（`float | None` → `Optional[float]`）
+  - テスト49件追加
+  - テスト総数: 1946件
 - 2026-01-23: Phase 46 完了（Meaning Tags System Core）
   - 新規: `katrain/core/analysis/meaning_tags/`パッケージ
     - `models.py`: MeaningTagId enum（str継承）、MeaningTag dataclass（frozen）
