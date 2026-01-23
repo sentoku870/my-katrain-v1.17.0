@@ -41,6 +41,7 @@ from katrain.core.eval_metrics import (
     get_canonical_loss_from_move,
     get_practice_priorities_from_stats,
 )
+from katrain.core.analysis.critical_moves import CriticalMove, select_critical_moves
 
 
 # ---------------------------------------------------------------------------
@@ -696,6 +697,61 @@ def _build_karte_report_impl(
         lines.append("")
         return lines
 
+    def _critical_3_section_for(player: str, label: str) -> List[str]:
+        """Generate Critical 3 section for focused review (Phase 50).
+
+        Selects top 3 critical mistakes using weighted scoring with
+        MeaningTag weights and diversity penalty.
+
+        Args:
+            player: "B" or "W"
+            label: Display label (e.g., "Black", "White", "Focus")
+
+        Returns:
+            List of lines for the Critical 3 section (empty if no critical moves)
+        """
+        try:
+            critical_moves = select_critical_moves(
+                game,
+                max_moves=3,
+                lang=lang,
+                level=level,
+            )
+        except Exception as exc:
+            if game.katrain:
+                game.katrain.log(f"Failed to compute Critical 3: {exc}", OUTPUT_DEBUG)
+            return []
+
+        # Filter by player
+        player_critical = [cm for cm in critical_moves if cm.player == player]
+        if not player_critical:
+            return []
+
+        unit = "目" if lang == "ja" else " pts"
+        intro = (
+            "最も重要なミス（重点復習用）:"
+            if lang == "ja"
+            else "Most impactful mistakes for focused review:"
+        )
+
+        lines = [f"## Critical 3 ({label})", ""]
+        lines.append(intro)
+        lines.append("")
+
+        for i, cm in enumerate(player_critical, 1):
+            lines.append(f"### {i}. Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}")
+            lines.append(f"- **Loss**: {cm.score_loss:.1f}{unit}")
+            lines.append(f"- **Type**: {cm.meaning_tag_label}")
+            lines.append(f"- **Phase**: {cm.game_phase}")
+            lines.append(f"- **Difficulty**: {cm.position_difficulty.upper()}")
+            if cm.reason_tags:
+                lines.append(f"- **Context**: {', '.join(cm.reason_tags)}")
+            else:
+                lines.append("- **Context**: (none)")
+            lines.append("")
+
+        return lines
+
     focus_label = "Focus"
 
     # Compute auto recommendation if skill_preset is "auto"
@@ -1107,14 +1163,20 @@ def _build_karte_report_impl(
         if focus_color:
             sections += important_lines_for(focus_color, focus_label)
             sections.append("")
+            # Phase 50: Critical 3 (Focus player) - after Important Moves
+            sections += _critical_3_section_for(focus_color, focus_label)
             # Phase 12: タグ分布を Focus player に追加
             sections += reason_tags_distribution_for(focus_color, focus_label)
         sections += important_lines_for("B", "Black")
         sections.append("")
+        # Phase 50: Critical 3 (Black) - after Important Moves
+        sections += _critical_3_section_for("B", "Black")
         # Phase 12: タグ分布を Black に追加
         sections += reason_tags_distribution_for("B", "Black")
         sections += important_lines_for("W", "White")
         sections.append("")
+        # Phase 50: Critical 3 (White) - after Important Moves
+        sections += _critical_3_section_for("W", "White")
         # Phase 12: タグ分布を White に追加
         sections += reason_tags_distribution_for("W", "White")
     else:
@@ -1130,9 +1192,13 @@ def _build_karte_report_impl(
         if focus_color and focus_color == filtered_player:
             sections += important_lines_for(focus_color, focus_label)
             sections.append("")
+            # Phase 50: Critical 3 (Focus player) - after Important Moves
+            sections += _critical_3_section_for(focus_color, focus_label)
             sections += reason_tags_distribution_for(focus_color, focus_label)
         sections += important_lines_for(filtered_player, filtered_name)
         sections.append("")
+        # Phase 50: Critical 3 (filtered player) - after Important Moves
+        sections += _critical_3_section_for(filtered_player, filtered_name)
         sections += reason_tags_distribution_for(filtered_player, filtered_name)
 
     return "\n".join(sections)
@@ -1334,3 +1400,69 @@ def build_karte_json(
         "summary": summary,
         "important_moves": important_moves_list,
     }
+
+
+# =============================================================================
+# Critical 3 LLM Prompt (Phase 50)
+# =============================================================================
+
+CRITICAL_3_PROMPT_TEMPLATE = """# Go Game Review Request
+
+## Player Context
+- Level: {player_level}
+- Focus: Learning from critical mistakes
+
+## Critical Mistakes
+
+{critical_moves_section}
+
+## Analysis Request
+Please analyze each mistake and provide:
+1. What fundamental concept or pattern was missed?
+2. A simple rule or mental check for similar positions
+3. One recommended practice pattern or exercise
+
+Keep explanations concise and actionable.
+"""
+
+
+def build_critical_3_prompt(
+    critical_moves: List[CriticalMove],
+    player_level: str = "intermediate",
+) -> str:
+    """Build an LLM prompt from Critical 3 moves.
+
+    Args:
+        critical_moves: List of CriticalMove objects (max 3)
+        player_level: Player skill description (e.g., "intermediate", "dan-level")
+
+    Returns:
+        Self-contained markdown prompt for LLM analysis.
+
+    Example:
+        >>> critical = select_critical_moves(game, max_moves=3)
+        >>> prompt = build_critical_3_prompt(critical, "4-5 dan amateur")
+        >>> # Send prompt to LLM
+    """
+    if not critical_moves:
+        return ""
+
+    move_sections = []
+    for i, cm in enumerate(critical_moves, 1):
+        section = f"""### Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}
+- Loss: {cm.score_loss:.1f} pts (side-to-move perspective)
+- Type: {cm.meaning_tag_label}
+- Phase: {cm.game_phase}
+- Difficulty: {cm.position_difficulty.upper()}"""
+
+        if cm.reason_tags:
+            section += f"\n- Context: {', '.join(cm.reason_tags)}"
+
+        move_sections.append(section)
+
+    critical_moves_section = "\n\n".join(move_sections)
+
+    return CRITICAL_3_PROMPT_TEMPLATE.format(
+        player_level=player_level,
+        critical_moves_section=critical_moves_section,
+    )
