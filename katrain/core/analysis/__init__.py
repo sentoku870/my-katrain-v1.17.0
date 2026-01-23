@@ -198,6 +198,45 @@ from katrain.core.analysis.presentation import (
 )
 
 # =============================================================================
+# Explicit imports from skill_radar.py (Phase 48)
+# =============================================================================
+
+from katrain.core.analysis.skill_radar import (
+    # Enums
+    RadarAxis,
+    SkillTier,
+    # Dataclass
+    RadarMetrics,
+    # Constants
+    TIER_TO_INT,
+    INT_TO_TIER,
+    APL_TIER_THRESHOLDS,
+    BLUNDER_RATE_TIER_THRESHOLDS,
+    MATCH_RATE_TIER_THRESHOLDS,
+    GARBAGE_TIME_WINRATE_HIGH,
+    GARBAGE_TIME_WINRATE_LOW,
+    OPENING_END_MOVE,
+    ENDGAME_START_MOVE,
+    NEUTRAL_DISPLAY_SCORE,
+    NEUTRAL_TIER,
+    # Conversion functions
+    apl_to_tier_and_score,
+    blunder_rate_to_tier_and_score,
+    match_rate_to_tier_and_score,
+    # Detection functions
+    is_garbage_time,
+    compute_overall_tier,
+    # Axis computation functions
+    compute_opening_axis,
+    compute_fighting_axis,
+    compute_endgame_axis,
+    compute_stability_axis,
+    compute_awareness_axis,
+    # Main entry point
+    compute_radar_from_moves,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -359,4 +398,37 @@ __all__ = [
     "format_difficulty_metrics",
     # Loss label formatting (Phase 32)
     "format_loss_label",
+    # === skill_radar.py (Phase 48) ===
+    # Enums
+    "RadarAxis",
+    "SkillTier",
+    # Dataclass
+    "RadarMetrics",
+    # Constants
+    "TIER_TO_INT",
+    "INT_TO_TIER",
+    "APL_TIER_THRESHOLDS",
+    "BLUNDER_RATE_TIER_THRESHOLDS",
+    "MATCH_RATE_TIER_THRESHOLDS",
+    "GARBAGE_TIME_WINRATE_HIGH",
+    "GARBAGE_TIME_WINRATE_LOW",
+    "OPENING_END_MOVE",
+    "ENDGAME_START_MOVE",
+    "NEUTRAL_DISPLAY_SCORE",
+    "NEUTRAL_TIER",
+    # Conversion functions
+    "apl_to_tier_and_score",
+    "blunder_rate_to_tier_and_score",
+    "match_rate_to_tier_and_score",
+    # Detection functions
+    "is_garbage_time",
+    "compute_overall_tier",
+    # Axis computation functions
+    "compute_opening_axis",
+    "compute_fighting_axis",
+    "compute_endgame_axis",
+    "compute_stability_axis",
+    "compute_awareness_axis",
+    # Main entry point
+    "compute_radar_from_moves",
 ]
