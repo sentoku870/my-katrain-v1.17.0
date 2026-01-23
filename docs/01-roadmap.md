@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-23
+> 最終更新: 2026-01-23（Phase 50完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -144,10 +144,10 @@
 |------:|--------|----------|:----:|
 | 45 | Lexicon Core | `common/lexicon/`（YAML読み込み） | ✅ |
 | 46 | MeaningTags Core | `analysis/meaning_tags/`（分類ヒューリスティクス） | ✅ |
-| 47 | MeaningTags統合 | Summary/Karte出力対応 | 📋 予定 |
-| 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | 📋 予定 |
-| 49 | Radar Summary統合 | Summary出力、Tier表示 | 📋 予定 |
-| 50 | Critical 3 | 重要3手抽出、LLMプロンプトテンプレート | 📋 予定 |
+| 47 | MeaningTags統合 | Summary/Karte出力対応 | ✅ |
+| 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | ✅ |
+| 49 | Radar Summary統合 | Summary出力、Tier表示 | ✅ |
+| 50 | Critical 3 | 重要3手抽出、LLMプロンプトテンプレート | ✅ |
 | 51 | Radar UI Widget | Kivy radar chart widget | 📋 予定 |
 | 52 | Stabilization | 回帰テスト、ドキュメント | 📋 予定 |
 
@@ -1124,7 +1124,7 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 **PR size**: 1 PR（単一コミット）
 
-### Phase 50: Critical 3 Focused Review Mode
+### Phase 50: Critical 3 Focused Review Mode（2026-01-23 完了）
 
 **Goal**: 重要度上位3手を抽出し、構造化コンテキスト付きでKarte出力・LLMプロンプト生成
 

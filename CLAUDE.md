@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-49（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration）
-- **予定**: Phase 50-52（Critical 3、Radar UI、Stabilization）
-- **次**: Phase 50（Critical 3 Focused Review Mode）
+- **完了**: Phase 1-50（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode）
+- **予定**: Phase 51-52（Radar UI、Stabilization）
+- **次**: Phase 51（Radar UI）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +377,24 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 50 完了（Critical 3 Focused Review Mode）
+  - 新規: `katrain/core/analysis/critical_moves.py`（~455行）
+    - `CriticalMove` frozen dataclass: LLMプロンプト生成用14フィールド
+    - `select_critical_moves()`: 重要度ベース選択（多様性ペナルティ付き）
+    - `MEANING_TAG_WEIGHTS`: 12タグの学習価値重み（life_death_error=1.5等）
+    - `DIVERSITY_PENALTY_FACTOR = 0.5`: タグ重複時のペナルティ係数
+    - Decimal ROUND_HALF_UP: 決定論的丸め（同じゲーム→同じ結果）
+  - 更新: `katrain/core/reports/karte_report.py`
+    - `_critical_3_section_for()`: Critical 3セクション生成（Markdown/JSON）
+    - `CRITICAL_3_PROMPT_TEMPLATE`: LLMプロンプトテンプレート
+    - `build_critical_3_prompt()`: プロンプトビルダー関数
+  - 更新: `katrain/core/analysis/__init__.py`（再エクスポート追加）
+  - 新規: `tests/helpers_critical_moves.py`（~302行）
+    - `StubGameNodeWithAnalysis`: analysis data付きスタブ
+    - `build_stub_game_with_analysis()`: テスト用ゲームビルダー
+    - `create_test_snapshot()`, `create_test_snapshot_with_tags()`
+  - テスト50件追加（36 unit + 14 integration）
+  - テスト総数: 2116件
 - 2026-01-23: Phase 49 完了（Radar Aggregation & Summary Integration）
   - 更新: `katrain/core/analysis/skill_radar.py`（+357行）
     - `AggregatedRadarResult` frozen dataclass: 複数局集約結果
