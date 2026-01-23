@@ -477,7 +477,7 @@ class TestSelectCriticalMoves:
     actual source module, not where they're imported to.
     """
 
-    @pytest.mark.skip(reason="Requires real Game object or complex mocking setup")
+    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_empty_game_returns_empty(self):
         """Game with no moves returns empty list."""
         game = build_stub_game_with_analysis([])
@@ -496,7 +496,7 @@ class TestSelectCriticalMoves:
 
         assert result == []
 
-    @pytest.mark.skip(reason="Requires real Game object or complex mocking setup")
+    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_respects_max_moves(self):
         """Returns at most max_moves items."""
         game = create_standard_test_game(num_moves=20)
@@ -524,7 +524,7 @@ class TestSelectCriticalMoves:
 
         assert len(result) <= 2
 
-    @pytest.mark.skip(reason="Requires real Game object or complex mocking setup")
+    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_critical_move_fields_populated(self):
         """All CriticalMove fields are populated (score_stdev may be None)."""
         game = build_stub_game_with_analysis([
@@ -579,7 +579,7 @@ class TestSelectCriticalMoves:
         assert cm.critical_score is not None
         # score_stdev may be None (for Leela or unanalyzed)
 
-    @pytest.mark.skip(reason="Requires real Game object or complex mocking setup")
+    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_deterministic_same_game(self):
         """Same game produces same results across multiple calls."""
         game = create_standard_test_game(num_moves=10)

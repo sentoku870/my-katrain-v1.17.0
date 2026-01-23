@@ -1,0 +1,25 @@
+{
+  "games_aggregated": 3,
+  "overall_tier": "tier_4",
+  "scores": {
+    "awareness": 4.0,
+    "endgame": 2.5,
+    "fighting": 4.0,
+    "opening": 3.5,
+    "stability": 3.0
+  },
+  "tiers": {
+    "awareness": "tier_4",
+    "endgame": "tier_3",
+    "fighting": "tier_4",
+    "opening": "tier_4",
+    "stability": "tier_3"
+  },
+  "valid_move_counts": {
+    "awareness": 465,
+    "endgame": 90,
+    "fighting": 240,
+    "opening": 135,
+    "stability": 465
+  }
+}
