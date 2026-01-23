@@ -333,6 +333,18 @@ class MoveEval:
     - 最大値: LEELA_LOSS_EST_MAX（50.0）
     """
 
+    meaning_tag_id: Optional[str] = None
+    """意味タグID（Phase 47: Meaning Tags Integration）。
+
+    classify_meaning_tag() で分類された結果のID文字列。
+    例: "overplay", "missed_tesuji", "life_death_error", "uncertain"
+
+    Note:
+    - str型（循環インポート回避のため MeaningTagId enum は使わない）
+    - None = 未分類（classify未呼び出し or 分類不能）
+    - MeaningTagId enum の .value と一致する
+    """
+
 
 @dataclass(frozen=True)
 class ImportantMoveSettings:

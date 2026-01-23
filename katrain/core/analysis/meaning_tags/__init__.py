@@ -6,6 +6,7 @@ KataGo analysis data. It converts numerical metrics (loss, policy, etc.)
 into human-understandable categories like "Life/Death Error" or "Direction Error".
 
 Part of Phase 46: Meaning Tags System Core.
+Extended in Phase 47: Meaning Tags Integration.
 
 Public API (PR-1 - Models & Registry):
     - MeaningTagId: Enum of all 12 tag identifiers
@@ -22,6 +23,12 @@ Public API (PR-2 - Classifier Core):
     - resolve_lexicon_anchor(): Lexicon anchor resolution
     - Helper functions: get_loss_value, classify_gtp_move, is_classifiable_move,
                        compute_move_distance, is_endgame
+
+Public API (Phase 47 - Integration Helpers):
+    - normalize_lang(): Normalize language code ("jp" → "ja")
+    - get_meaning_tag_label_safe(): Safe label lookup with None handling
+    - format_meaning_tag_with_definition(): Display helper with truncation
+    - format_meaning_tag_with_definition_safe(): Safe version of above
 
 Example usage:
     >>> from katrain.core.analysis.meaning_tags import (
@@ -78,6 +85,13 @@ from .registry import (
     get_tag_description,
     get_tag_label,
 )
+from .integration import (
+    MAX_DESCRIPTION_LENGTH,
+    format_meaning_tag_with_definition,
+    format_meaning_tag_with_definition_safe,
+    get_meaning_tag_label_safe,
+    normalize_lang,
+)
 
 __all__ = [
     # Models (PR-1)
@@ -119,4 +133,10 @@ __all__ = [
     "THRESHOLD_MOVE_EARLY_GAME",
     "THRESHOLD_MOVE_ENDGAME_ABSOLUTE",
     "THRESHOLD_ENDGAME_RATIO",
+    # Integration helpers (Phase 47)
+    "normalize_lang",
+    "get_meaning_tag_label_safe",
+    "format_meaning_tag_with_definition",
+    "format_meaning_tag_with_definition_safe",
+    "MAX_DESCRIPTION_LENGTH",
 ]

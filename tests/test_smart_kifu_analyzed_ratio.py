@@ -10,6 +10,7 @@ Tests for:
 
 import tempfile
 from pathlib import Path
+from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -161,7 +162,7 @@ class TestComputeAnalyzedRatioFromSgfFile:
 class TestComputeTrainingSetSummary:
     """Tests for compute_training_set_summary() function."""
 
-    def _make_entry(self, ratio: float | None) -> GameEntry:
+    def _make_entry(self, ratio: Optional[float]) -> GameEntry:
         """Create a minimal GameEntry with the given analyzed_ratio."""
         return GameEntry(
             game_id=f"sha1:{hash(ratio)}",
