@@ -1096,27 +1096,33 @@ Phase 30 → 31 → 32 → 33 → 34 → 35 ──→ 37 → 38 → 39 → 40 �
 
 **PR size**: 1 PR（#183）
 
-### Phase 49: Radar Aggregation & Summary Integration
+### Phase 49: Radar Aggregation & Summary Integration（2026-01-23 完了）
 
 **Goal**: 複数局のRadar集約とSummary出力統合
 
 **Deliverables**:
-- `aggregate_radar()`: 均等重み or 新着重み
-- `SummaryStats.radar`, `SummaryStats.tier`
-- Summary「スキルプロファイル」セクション: 5軸スコア + Tier
-- 弱軸（<2.5表示）を練習優先に
-- エクスポート: Markdownテーブル + JSON
+- `AggregatedRadarResult` frozen dataclass: 複数局集約結果、`Optional[float]`スコア
+- `aggregate_radar()`: 均等重み、per-axis UNKNOWNフィルタリング
+- `radar_from_dict()`: roundtripシリアライゼーションヘルパー
+- `round_score()`: Decimal ROUND_HALF_UPで決定論的丸め
+- Summary「Skill Profile」セクション: 5軸スコア + Tier + 有効手数
+- 弱軸（<2.5）を練習優先に（最大2件）
+- エクスポート: Markdownテーブル + JSON（`to_dict()`経由）
+- i18n: EN/JP radar tier/axis翻訳キー追加
 
-**Non-goals**: Kivy radar chart、履歴追跡、対戦相手radar、フェーズ別radar
+**実装詳細**:
+- 更新: `katrain/core/analysis/skill_radar.py`（+357行）
+- 更新: `katrain/core/analysis/__init__.py`（再エクスポート追加）
+- 更新: `katrain/core/batch/stats.py`（+196行）
+- 更新: `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`（+13キー）
+- 更新: `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`（+13キー）
+- テスト: 60件追加（38 aggregation + 22 integration）
+- 定数: `MIN_VALID_AXES_FOR_OVERALL=3`, `MIN_MOVES_FOR_RADAR=10`
+- 制約: 19x19のみ（Phase 48から継承）、recency weightingは将来フェーズへ延期
 
-**Acceptance Criteria**:
-- 複数局集約が安定（外れ値耐性）
-- Summary「スキルプロファイル」に5軸1.0–5.0スコア
-- 弱軸（<2.5）が練習優先リストに
-- Tierヘッダ表示: 例 `Tier 3 (中級)`
-- JSONエクスポートに内部・表示スコア + tier
+**Non-goals**: Kivy radar chart、履歴追跡、対戦相手radar、フェーズ別radar、recency weighting
 
-**PR size**: 2 PRs
+**PR size**: 1 PR（単一コミット）
 
 ### Phase 50: Critical 3 Focused Review Mode
 
