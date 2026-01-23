@@ -1818,3 +1818,31 @@ msgstr "Weak areas"
 
 msgid "radar:no-data"
 msgstr "No radar data available (requires 19x19 games with analysis)"
+
+#. Phase 51: Radar UI popup keys
+msgid "radar:menu-title"
+msgstr "Skill Radar"
+
+msgid "radar:title"
+msgstr "Skill Profile Radar"
+
+msgid "radar:overall"
+msgstr "Overall"
+
+msgid "radar:no-game"
+msgstr "No game loaded"
+
+msgid "radar:not-19x19"
+msgstr "Skill Radar requires 19x19 board"
+
+msgid "radar:build-error"
+msgstr "Failed to build analysis"
+
+msgid "radar:calc-error"
+msgstr "Radar calculation failed"
+
+msgid "radar:insufficient-moves"
+msgstr "Insufficient moves (need 10+)"
+
+msgid "radar:tier-unknown"
+msgstr "Tier ?"
