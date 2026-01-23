@@ -1087,6 +1087,12 @@ class KaTrainGui(Screen, KaTrainBase):
 
         show_engine_compare_popup(self)
 
+    def _do_skill_radar_popup(self):
+        """Show skill radar popup for 5-axis skill profile."""
+        from katrain.gui.features.skill_radar_popup import show_skill_radar_popup
+
+        show_skill_radar_popup(self)
+
     def load_sgf_from_clipboard(self):
         """Load SGF from clipboard. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_from_clipboard()

@@ -1768,3 +1768,31 @@ msgstr "弱点分野"
 
 msgid "radar:no-data"
 msgstr "レーダーデータがありません（19x19の解析済み棋譜が必要）"
+
+#. Phase 51: Radar UI popup keys
+msgid "radar:menu-title"
+msgstr "スキルレーダー"
+
+msgid "radar:title"
+msgstr "スキルプロファイル"
+
+msgid "radar:overall"
+msgstr "総合"
+
+msgid "radar:no-game"
+msgstr "対局が読み込まれていません"
+
+msgid "radar:not-19x19"
+msgstr "スキルレーダーは19路盤専用です"
+
+msgid "radar:build-error"
+msgstr "解析データの構築に失敗"
+
+msgid "radar:calc-error"
+msgstr "レーダー計算に失敗"
+
+msgid "radar:insufficient-moves"
+msgstr "手数不足（10手以上必要）"
+
+msgid "radar:tier-unknown"
+msgstr "Tier ? (不明)"
