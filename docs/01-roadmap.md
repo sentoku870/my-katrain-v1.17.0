@@ -143,7 +143,7 @@
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 45 | Lexicon Core | `common/lexicon/`（YAML読み込み） | ✅ |
-| 46 | MeaningTags Core | `analysis/meaning_tags.py`（分類ヒューリスティクス） | 📋 予定 |
+| 46 | MeaningTags Core | `analysis/meaning_tags/`（分類ヒューリスティクス） | ✅ |
 | 47 | MeaningTags統合 | Summary/Karte出力対応 | 📋 予定 |
 | 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | 📋 予定 |
 | 49 | Radar Summary統合 | Summary出力、Tier表示 | 📋 予定 |
@@ -1723,6 +1723,22 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
   - PR #148: 設定検索（opacity-based filtering）
   - 新規: `katrain/common/settings_export.py`
   - 拡張: `katrain/gui/features/settings_popup.py`
+- 2026-01-23: Phase 46完了（Meaning Tags System Core）
+  - 新規: `katrain/core/analysis/meaning_tags/`パッケージ
+    - `models.py`: MeaningTagId enum（str継承、12タグ）、MeaningTag dataclass（frozen）
+    - `registry.py`: MEANING_TAG_REGISTRY（全12タグ定義、5つにLexiconアンカー）
+    - `classifier.py`: 分類ヒューリスティクス（~500行）
+    - `__init__.py`: 公開API + 閾値定数エクスポート
+  - 分類ロジック:
+    - 12タグ: missed_tesuji, overplay, slow_move, direction_error, shape_mistake,
+      reading_failure, endgame_slip, connection_miss, capture_race_loss,
+      life_death_error, territorial_loss, uncertain
+    - 優先度ベース判定（CAPTURE_RACE_LOSS > LIFE_DEATH_ERROR > ...）
+    - 早期リターン: pass/resign/unreliable/no_loss
+  - ヘルパー関数: get_loss_value(), classify_gtp_move(), compute_move_distance(), is_endgame()
+  - Lexiconアンカー解決: resolve_lexicon_anchor()（モックフレンドリー設計）
+  - pytest "slow" マーカー登録（pyproject.toml）
+  - テスト197件追加（93 classifier + 7 integration）
 - 2026-01-23: Phase 45完了（Lexicon Core Infrastructure）
   - 新規: `katrain/common/lexicon/`パッケージ（Kivy非依存）
     - `models.py`: frozen dataclass（LexiconEntry, DiagramInfo, AIPerspective）

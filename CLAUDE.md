@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-45（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure）
-- **予定**: Phase 46-52（MeaningTags、5軸Radar+Tier、Critical 3、Stabilization）
-- **次**: Phase 46（Meaning Tags System Core）
+- **完了**: Phase 1-46（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core）
+- **予定**: Phase 47-52（MeaningTags統合、5軸Radar+Tier、Critical 3、Stabilization）
+- **次**: Phase 47（Meaning Tags Integration）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -200,7 +200,11 @@ katrain/
 │   ├── analysis/     ← 解析基盤パッケージ
 │   │   ├── models.py    ← Enum, Dataclass, 定数
 │   │   ├── logic.py     ← 計算関数
-│   │   └── presentation.py ← 表示/フォーマット
+│   │   ├── presentation.py ← 表示/フォーマット
+│   │   └── meaning_tags/ ← 意味タグ分類（Phase 46）
+│   │       ├── models.py    ← MeaningTagId, MeaningTag
+│   │       ├── registry.py  ← MEANING_TAG_REGISTRY
+│   │       └── classifier.py ← classify_meaning_tag()
 │   └── batch/        ← バッチ処理パッケージ（Phase 42）
 │       ├── models.py       ← WriteError, BatchResult
 │       ├── helpers.py      ← 純粋関数（Kivy非依存）
@@ -373,6 +377,19 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 46 完了（Meaning Tags System Core）
+  - 新規: `katrain/core/analysis/meaning_tags/`パッケージ
+    - `models.py`: MeaningTagId enum（str継承）、MeaningTag dataclass（frozen）
+    - `registry.py`: MEANING_TAG_REGISTRY（12タグ定義、5つにLexiconアンカー）
+    - `classifier.py`: 分類ヒューリスティクス（~500行）
+    - `__init__.py`: 公開API + 閾値定数エクスポート
+  - 12タグ分類: missed_tesuji, overplay, slow_move, direction_error, shape_mistake,
+    reading_failure, endgame_slip, connection_miss, capture_race_loss,
+    life_death_error, territorial_loss, uncertain
+  - ヘルパー: get_loss_value(), classify_gtp_move(), compute_move_distance(), is_endgame()
+  - Lexicon統合: resolve_lexicon_anchor()（モックフレンドリー設計）
+  - テスト197件追加（classifier 93 + models 24 + registry 73 + integration 7）
+  - テスト総数: 1867件
 - 2026-01-23: Phase 45 完了（Lexicon Core Infrastructure）
   - 新規: `katrain/common/lexicon/`パッケージ（Kivy非依存）
     - `models.py`: frozen dataclass（LexiconEntry, DiagramInfo, AIPerspective）
