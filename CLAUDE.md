@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-50（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode）
-- **予定**: Phase 51-52（Radar UI、Stabilization）
-- **次**: Phase 51（Radar UI）
+- **完了**: Phase 1-51（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget）
+- **予定**: Phase 52（Stabilization）
+- **次**: Phase 52（Stabilization）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +377,27 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 51 完了（Radar UI Widget）
+  - 新規: `katrain/gui/widgets/radar_geometry.py`（~150行）
+    - 純粋幾何関数（Kivy非依存、CI安全）
+    - `calculate_vertex()`: 軸インデックス＋スコアから座標計算
+    - `get_label_position()`: 軸ラベル位置（calculate_vertexと同じ角度公式）
+    - `tier_to_color()`: Tier文字列→RGBA色変換
+    - 座標系: 軸0（Opening）が12時、時計回り（角度減少）
+  - 新規: `katrain/gui/widgets/radar_chart.py`（~160行）
+    - `RadarChartWidget`: RelativeLayout継承、DictProperty安全パターン
+    - グリッドリング固定比率（20%, 40%, 60%, 80%, 100%）
+    - `Clock.create_trigger()`でデバウンス再描画
+    - 頂点ドット色分け（Tier 4-5緑、3黄、1-2赤、unknown灰）
+  - 新規: `katrain/gui/features/skill_radar_popup.py`（~200行）
+    - Black/Whiteタブ切替（既存i18nキー再利用）
+    - 弱軸（Tier 1-2）ハイライト表示
+    - 19x19制限、MIN_MOVES_FOR_RADAR検証
+  - 更新: `katrain/__main__.py`（`_do_skill_radar_popup()`追加）
+  - 更新: `katrain/gui.kv`（MyKatrainメニュー項目追加）
+  - 更新: `katrain/i18n/locales/*/katrain.po`（9キー追加）
+  - テスト45件追加（31 geometry + 14 popup）
+  - テスト総数: 2161件
 - 2026-01-23: Phase 50 完了（Critical 3 Focused Review Mode）
   - 新規: `katrain/core/analysis/critical_moves.py`（~455行）
     - `CriticalMove` frozen dataclass: LLMプロンプト生成用14フィールド
