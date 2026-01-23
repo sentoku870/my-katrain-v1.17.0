@@ -17,9 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-51、Phase 52-A（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency）
-- **進行中**: Phase 52（Stabilization）残タスク
-- **次**: Phase 52完了 → リリース準備
+- **完了**: Phase 1-52（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Stabilization）
+- **次**: リリース準備
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +376,25 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-24: Phase 52 完了（Stabilization & Documentation）
+  - PR-1（B1）: `docs/02-code-structure.md` を Phase 21-52 に対応
+    - 10モジュールのセクション追加（skill_radar, critical_moves, meaning_tags, lexicon等）
+  - PR-2（B2）: Radar ゴールデンテスト実装
+    - 新規: `tests/test_golden_radar.py`（17件: 15 P0 + 2 P1）
+    - 追加: `tests/conftest.py` に `round_half_up()`, `_stabilize_float()`, `normalize_radar_output()`
+    - 新規: `tests/fixtures/golden/radar_*.golden.json`（2ファイル）
+    - 3段階ワークフロー: 生成→3回安定性検証→変更なし確認
+  - PR-2（B3）: スキップテスト理由更新
+    - `test_critical_moves.py` の4件を Phase 53 延期
+    - バグ発見: `select_critical_moves` が未定義 `build_eval_snapshot` をインポート
+  - PR-3（B4）: ベンチマークスクリプト作成
+    - 新規: `scripts/benchmark_batch.py`（~180行）
+    - `extract_game_stats()` のパフォーマンス計測
+    - `--threshold`, `--strict` オプション対応
+  - PR-3（B5）: ドキュメント最終化
+    - 更新: `CLAUDE.md`（Phase 52 完了エントリ）
+    - 更新: `docs/01-roadmap.md`（Phase 52: 完了ステータス）
+  - テスト総数: 2187件
 - 2026-01-23: Phase 52-A 完了（Tofu Fix + Language Code Consistency）
   - 新規: `katrain/common/locale_utils.py`（~100行）
     - `normalize_lang_code()`: 内部正規コード（"en"/"jp"）への変換
