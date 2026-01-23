@@ -17,6 +17,13 @@ from katrain.core.batch.helpers import get_canonical_loss
 if TYPE_CHECKING:
     from katrain.core.game import Game
 
+# Phase 47: Import meaning tags classifier
+from katrain.core.analysis.meaning_tags import (
+    ClassificationContext,
+    MeaningTagId,
+    classify_meaning_tag,
+)
+
 # Import from eval_metrics (these are all dataclasses/enums, not Kivy-dependent)
 from katrain.core.eval_metrics import (
     MistakeCategory,
@@ -132,6 +139,8 @@ def extract_game_stats(
                 "B": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
                 "W": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
             },
+            # Phase 47: Meaning tags for player summary (Top 3 Mistake Types)
+            "meaning_tags_by_player": {"B": {}, "W": {}},
             # Reliability stats for Data Quality section
             "reliability_by_player": {
                 "B": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
@@ -231,8 +240,15 @@ def extract_game_stats(
         # Issue A fix: Get reason_tags from important moves (not from all moves)
         # Reason tags are computed in get_important_move_evals(), not in build_eval_snapshot()
         # PR1-1: Also track important_moves_count and tagged_moves_count for clarity
+        # Phase 47: Also classify meaning tags for Top 3 Mistake Types
         try:
             important_moves = game.get_important_move_evals(compute_reason_tags=True)
+
+            # Phase 47: Create context once with total_moves
+            # Other context fields (policy, distance, etc.) are not available here
+            total_moves = stats["total_moves"]
+            classification_context = ClassificationContext(total_moves=total_moves)
+
             for move in important_moves:
                 player = move.player
                 if player in ("B", "W"):
@@ -247,6 +263,17 @@ def extract_game_stats(
                                     stats["reason_tags_by_player"][player].get(tag, 0) + 1
                                 )
                                 im_stats["tag_occurrences"] += 1
+
+                    # Phase 47: Classify meaning tag if not already done
+                    if move.meaning_tag_id is None:
+                        meaning_tag = classify_meaning_tag(move, context=classification_context)
+                        move.meaning_tag_id = meaning_tag.id.value
+
+                    # Count meaning tags by player (skip UNCERTAIN for Top 3)
+                    if move.meaning_tag_id and move.meaning_tag_id != MeaningTagId.UNCERTAIN.value:
+                        stats["meaning_tags_by_player"][player][move.meaning_tag_id] = (
+                            stats["meaning_tags_by_player"][player].get(move.meaning_tag_id, 0) + 1
+                        )
         except Exception:
             # If important moves extraction fails, reason_tags will be empty but stats still valid
             pass
@@ -434,6 +461,7 @@ def build_player_summary(
     phase_mistake_counts: Dict[Tuple[str, str], int] = {}
     phase_mistake_loss: Dict[Tuple[str, str], float] = {}
     reason_tags_counts: Dict[str, int] = {}  # Issue 2: aggregate reason tags
+    meaning_tags_counts: Dict[str, int] = {}  # Phase 47: aggregate meaning tags
     # PR1-1: Important moves stats for Reason Tags clarity
     important_moves_total = 0
     tagged_moves_total = 0
@@ -496,6 +524,11 @@ def build_player_summary(
         if "reason_tags_by_player" in stats and role in stats["reason_tags_by_player"]:
             for tag, count in stats["reason_tags_by_player"][role].items():
                 reason_tags_counts[tag] = reason_tags_counts.get(tag, 0) + count
+
+        # Phase 47: Aggregate meaning tags for Top 3 Mistake Types
+        if "meaning_tags_by_player" in stats and role in stats["meaning_tags_by_player"]:
+            for tag, count in stats["meaning_tags_by_player"][role].items():
+                meaning_tags_counts[tag] = meaning_tags_counts.get(tag, 0) + count
 
         # PR1-1: Aggregate important moves stats for Reason Tags clarity
         if "important_moves_stats_by_player" in stats and role in stats["important_moves_stats_by_player"]:
@@ -866,6 +899,28 @@ def build_player_summary(
             lines.append(f"- {label}: {count} ({pct:.1f}%)")
     else:
         lines.append("- No reason tags recorded.")
+
+    # =========================================================================
+    # Section 6b: Top 3 Mistake Types (Phase 47: Meaning Tags)
+    # =========================================================================
+    lines.append("\n## Top 3 Mistake Types\n")
+
+    if meaning_tags_counts:
+        # Sort by count desc, then by tag name asc for deterministic ordering
+        sorted_tags = sorted(
+            meaning_tags_counts.items(),
+            key=lambda x: (-x[1], x[0])
+        )[:3]  # Top 3
+
+        total_meaning_tags = sum(meaning_tags_counts.values())
+        for tag_id, count in sorted_tags:
+            pct = (count / total_meaning_tags * 100) if total_meaning_tags > 0 else 0.0
+            # Use safe label getter (returns None for invalid IDs)
+            from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
+            label = get_meaning_tag_label_safe(tag_id, "ja") or tag_id
+            lines.append(f"- {label}: {count} ({pct:.1f}%)")
+    else:
+        lines.append("- No meaning tags classified.")
 
     # =========================================================================
     # Section 7: Weakness Hypothesis

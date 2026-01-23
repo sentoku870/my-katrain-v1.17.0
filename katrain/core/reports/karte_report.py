@@ -26,6 +26,11 @@ from katrain.core.analysis.models import (
     MoveEval,
 )
 from katrain.core.analysis.logic_loss import detect_engine_type
+from katrain.core.analysis.meaning_tags import (
+    ClassificationContext,
+    classify_meaning_tag,
+    get_meaning_tag_label_safe,
+)
 from katrain.core.analysis.presentation import format_loss_label
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.eval_metrics import (
@@ -281,6 +286,7 @@ def _build_karte_report_impl(
     player_filter: Optional[str],
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     target_visits: Optional[int] = None,
+    lang: str = "ja",
 ) -> str:
     """Internal implementation of build_karte_report.
 
@@ -292,6 +298,7 @@ def _build_karte_report_impl(
         skill_preset: Skill preset for strictness
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
+        lang: Language code for localized labels ("ja" or "en"), defaults to "ja".
 
     Note:
         snapshot is now passed as an argument rather than computed here.
@@ -515,6 +522,16 @@ def _build_karte_report_impl(
     # Important moves table (top N derived from existing settings)
     important_moves = game.get_important_move_evals(level=level)
 
+    # Phase 47: Classify meaning tags for each important move
+    # MoveEval objects are recreated on each get_important_move_evals() call,
+    # so we must classify here (not rely on stats.py assignment)
+    total_moves = len(snapshot.moves)
+    classification_context = ClassificationContext(total_moves=total_moves)
+    for mv in important_moves:
+        if mv.meaning_tag_id is None:
+            meaning_tag = classify_meaning_tag(mv, context=classification_context)
+            mv.meaning_tag_id = meaning_tag.id.value
+
     # Phase 2: コンテキスト情報（候補手数・最善手差・危険度・最善手）を取得
     def get_context_info_for_move(move_eval) -> dict:
         """MoveEval から候補手数・最善手差・危険度・最善手を取得
@@ -609,13 +626,17 @@ def _build_karte_report_impl(
         lines = [f"## Important Moves ({label}){title_suffix} Top {len(player_moves) or max_count}"]
         if player_moves:
             # Added "Best" column for best move from PRE-MOVE node
-            lines.append("| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | Reason |")
-            lines.append("|---|---|-------|------|------|------------|----------|--------|---------|--------|")
+            # Phase 47: Added "MTag" column for meaning tag
+            lines.append("| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | MTag | Reason |")
+            lines.append("|---|---|-------|------|------|------------|----------|--------|---------|------|--------|")
             for mv in player_moves:
                 # canonical loss を使用（常に >= 0）
                 loss = get_canonical_loss_from_move(mv)
                 mistake = mistake_label_from_loss(loss, effective_thresholds)
                 reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
+
+                # Phase 47: Get meaning tag label
+                meaning_tag_label = get_meaning_tag_label_safe(mv.meaning_tag_id, lang) or "-"
 
                 # コンテキスト情報を取得 (now includes best_move from PRE-MOVE node)
                 context = get_context_info_for_move(mv)
@@ -639,7 +660,7 @@ def _build_karte_report_impl(
                 lines.append(
                     f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
                     f"{loss_display} | {best_move_str} | {candidates_str} | {best_gap_str} | {danger_str} | "
-                    f"{mistake} | {reason_str} |"
+                    f"{mistake} | {meaning_tag_label} | {reason_str} |"
                 )
         else:
             lines.append("- No important moves found.")
@@ -757,7 +778,7 @@ def _build_karte_report_impl(
         rel_stats = eval_metrics.compute_reliability_stats(snapshot.moves, target_visits=target_visits)
 
         # PR#1: Add confidence level label
-        confidence_label = eval_metrics.get_confidence_label(confidence_level, lang="ja")
+        confidence_label = eval_metrics.get_confidence_label(confidence_level, lang=lang)
 
         lines = [
             "## Data Quality",
@@ -896,7 +917,7 @@ def _build_karte_report_impl(
                     max_count=evidence_count,
                     category_filter=phase_cat_filter,
                 )
-                evidence_str = eval_metrics.format_evidence_examples(evidence_moves, lang="ja")
+                evidence_str = eval_metrics.format_evidence_examples(evidence_moves, lang=lang)
 
                 # PR#1: Use hedged wording for MEDIUM/LOW confidence
                 if is_low_conf:
@@ -995,7 +1016,7 @@ def _build_karte_report_impl(
                     loss = get_canonical_loss_from_move(anchor_move)
                     if loss > 0.0:
                         engine_type = detect_engine_type(anchor_move)
-                        loss_label = format_loss_label(loss, engine_type, lang="ja")
+                        loss_label = format_loss_label(loss, engine_type, lang=lang)
                         lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で {loss_label}の損失)")
         else:
             lines.append("- No specific priorities identified. Keep up the good work!")
@@ -1127,16 +1148,19 @@ def build_karte_json(
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
     player_filter: Optional[str] = None,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    lang: str = "ja",
 ) -> Dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
     Phase 23 PR #2: LLM用JSON出力オプション
+    Phase 47: Added meaning_tag to important_moves
 
     Args:
         game: Game object providing game state and analysis data
         level: Important move level setting
         player_filter: Filter by player ("B", "W", or None for both)
         skill_preset: Skill preset for strictness
+        lang: Language code for localized labels ("ja" or "en"), defaults to "ja".
 
     Returns:
         Dict with schema_version, meta, summary, and important_moves.
@@ -1247,6 +1271,16 @@ def build_karte_json(
     # Important moves section
     important_move_evals = game.get_important_move_evals(level=level)
 
+    # Phase 47: Classify meaning tags for each important move
+    # MoveEval objects are recreated on each get_important_move_evals() call,
+    # so we must classify here (not rely on stats.py assignment)
+    total_moves_for_ctx = len(moves)
+    classification_context = ClassificationContext(total_moves=total_moves_for_ctx)
+    for mv in important_move_evals:
+        if mv.meaning_tag_id is None:
+            meaning_tag = classify_meaning_tag(mv, context=classification_context)
+            mv.meaning_tag_id = meaning_tag.id.value
+
     # Apply player filter if specified
     if player_filter in ("B", "W"):
         important_move_evals = [m for m in important_move_evals if m.player == player_filter]
@@ -1276,6 +1310,10 @@ def build_karte_json(
         except Exception:
             phase = "unknown"
 
+        # Phase 47: Get meaning tag info
+        meaning_tag_id = mv.meaning_tag_id
+        meaning_tag_label = get_meaning_tag_label_safe(meaning_tag_id, lang)
+
         important_moves_list.append({
             "move_number": mv.move_number,
             "player": "black" if mv.player == "B" else "white" if mv.player == "W" else None,
@@ -1284,6 +1322,10 @@ def build_karte_json(
             "importance": round(importance, 2),
             "reason_tags": reason_tags,
             "phase": phase,
+            "meaning_tag": {
+                "id": meaning_tag_id,
+                "label": meaning_tag_label,
+            } if meaning_tag_id else None,
         })
 
     return {
