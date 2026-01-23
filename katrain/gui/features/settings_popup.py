@@ -378,6 +378,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         height=dp(40),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         foreground_color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     search_clear_btn = Button(
         text=i18n._("mykatrain:settings:search_clear"),
@@ -385,6 +386,7 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         height=dp(40),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     search_layout.add_widget(search_input)
     search_layout.add_widget(search_clear_btn)
@@ -1129,6 +1131,22 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
 
     # Set default tab to tab1 (Analysis)
     tabbed_panel.default_tab = tab1
+
+    # Apply Japanese-capable font to tab headers (fix tofu rendering)
+    # TabbedPanelHeader may not have font_name directly accessible;
+    # schedule after construction to ensure widgets are ready.
+    from kivy.clock import Clock
+
+    def _set_tab_fonts(dt):
+        for tab in tabbed_panel.tab_list:
+            # Try public font_name first (TabbedPanelHeader)
+            if hasattr(tab, "font_name"):
+                tab.font_name = Theme.DEFAULT_FONT
+            # Guarded fallback for internal _label if present
+            if hasattr(tab, "_label") and tab._label:
+                tab._label.font_name = Theme.DEFAULT_FONT
+
+    Clock.schedule_once(_set_tab_fonts, 0)
 
     # Assemble main layout
     main_layout.add_widget(search_layout)

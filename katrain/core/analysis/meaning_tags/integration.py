@@ -5,53 +5,33 @@ This module provides helper functions for integrating meaning tags with
 other parts of the system (stats, karte, summary).
 
 Part of Phase 47: Meaning Tags Integration.
+Updated in Phase 52: Use common locale_utils for consistency.
 
 Public API:
-    - normalize_lang(): Normalize language code ("jp" → "ja")
+    - normalize_lang(): Normalize language code ("jp" → "ja") for registry lookups
     - get_meaning_tag_label_safe(): Safe label lookup with None handling
     - format_meaning_tag_with_definition(): Display helper with truncation
 """
 
 from typing import Optional
 
+from katrain.common.locale_utils import to_iso_lang_code
 from .models import MeaningTagId
 from .registry import MEANING_TAG_REGISTRY, get_tag_label
 
 
 # =============================================================================
-# Language Normalization
+# Language Normalization (for meaning tags registry - needs ISO codes)
 # =============================================================================
 
-
-def normalize_lang(lang: str) -> str:
-    """Normalize language code for meaning tag lookups.
-
-    Config uses "en"/"jp" but registry uses "en"/"ja".
-
-    Args:
-        lang: Language code from config (e.g., "en", "jp", "ja")
-
-    Returns:
-        Normalized language code ("en" or "ja")
-
-    Examples:
-        >>> normalize_lang("jp")
-        'ja'
-        >>> normalize_lang("ja")
-        'ja'
-        >>> normalize_lang("en")
-        'en'
-        >>> normalize_lang("fr")  # Unknown falls back to "en"
-        'en'
-    """
-    if lang == "jp":
-        return "ja"
-    if lang == "ja":
-        return "ja"
-    if lang == "en":
-        return "en"
-    # Unknown language code → fallback to English
-    return "en"
+# Backward compatibility alias:
+# This module requires ISO codes ("en", "ja") for registry lookups.
+# The common to_iso_lang_code function provides exactly this:
+#   - "jp" -> "ja"
+#   - "ja" -> "ja"
+#   - "en" -> "en"
+#   - region variants like "ja_JP" -> "ja"
+normalize_lang = to_iso_lang_code
 
 
 # =============================================================================

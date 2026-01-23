@@ -87,6 +87,7 @@ def do_quiz_popup(
         size_hint_y=None,
         height=dp(70),
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     header_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
     popup_content.add_widget(header_label)
@@ -117,6 +118,7 @@ def do_quiz_popup(
             height=dp(44),
             background_color=Theme.BOX_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
         )
         btn.bind(on_release=lambda _btn, mv=item.move_number: jump_to_move(mv))
         items_layout.add_widget(btn)
@@ -134,6 +136,7 @@ def do_quiz_popup(
         disabled=not quiz_items,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     close_button = Button(
         text=i18n._("Close"),
@@ -141,6 +144,7 @@ def do_quiz_popup(
         height=dp(48),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     buttons_layout.add_widget(start_button)
     buttons_layout.add_widget(close_button)
