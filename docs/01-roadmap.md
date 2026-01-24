@@ -153,6 +153,25 @@
 
 **詳細**: [Phase 45–52 詳細](#phase-4552-詳細lexiconmeaningtagsradarcritical-3)
 
+### Phase 53–64: Post-52 拡張（Style / Pacing / Risk / Curator）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 53 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | 📋 TBD |
+| 54 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | 📋 TBD |
+| 55 | Style統合 | Summary/Karteにスタイルセクション追加 | 📋 TBD |
+| 56 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | 📋 TBD |
+| 57 | Pacing & Tilt Core | `analysis/time/pacing.py`（相対メトリクス） | 📋 TBD |
+| 58 | Pacing/Tilt統合 | Summary/Karteに時間分析セクション追加 | 📋 TBD |
+| 59 | Risk Context Core | `analysis/risk/`（形勢判断＋フォールバック） | 📋 TBD |
+| 60 | Risk統合 | Karteに「勝負術」セクション追加 | 📋 TBD |
+| 61 | Curator Scoring | `curator/scoring.py`（適合度スコア） | 📋 TBD |
+| 62 | Curator出力 | `curator_ranking.json`, `replay_guide.json` | 📋 TBD |
+| 63 | Post-52 Integration | 統合テスト、回帰テスト | 📋 TBD |
+| 64 | Post-52 品質強化 | ドキュメント整理、i18n完了 | 📋 TBD |
+
+**詳細**: [Phase 53–64 詳細](#phase-5364-詳細post-52-拡張)
+
 ### 未定（TBD / Post-52）
 
 | Phase | ゴール | 主成果物 | 状態 |
@@ -1239,6 +1258,362 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 4. **既存出力への回帰**: 新セクションは追加的、ゴールデンファイルテスト
 5. **非UIフェーズへのUI混入**: Non-goals厳守、UIはPhase 51に集約
 6. **Lexicon YAML安定性**: YAMLは安定入力扱い、変更時はテスト更新必須
+
+---
+
+## Phase 53–64 詳細（Post-52 拡張）
+
+### Phase 53: レポート基盤 + ユーザー集計
+
+**目的**: 新セクション追加を標準化する共通基盤と、ユーザー直近N局の集計機構を定義。
+
+**In-scope:**
+- `ReportSection` Protocol（section_id, title, render_markdown()）
+- セクション登録レジストリ + 挿入位置指定（after_section_id）
+- `UserRadarAggregate`: 直近N局（default 10）のRadarMetrics集計
+- 集計データの一時保存（メモリ内、バッチ実行時に計算）
+
+**Out-of-scope:**
+- 永続的ユーザープロファイルDB
+- 既存セクションのリファクタリング
+
+**成果物:**
+- `katrain/core/reports/section_registry.py`（~100行）
+- `katrain/core/reports/insertion.py`（~50行）
+- `katrain/core/analysis/user_aggregate.py`（~80行）
+- `tests/test_section_registry.py`
+- `tests/test_user_aggregate.py`
+
+**受け入れ条件:**
+- [ ] ReportSection登録・取得・挿入位置指定が動作
+- [ ] 既存summary/karte生成が壊れていない（回帰テストパス）
+- [ ] UserRadarAggregateが直近N局のRadar平均を返す
+
+**依存**: なし（新規基盤）
+
+---
+
+### Phase 54: Style Archetype Core
+
+**目的**: RadarMetrics + MeaningTagsから棋風アーキタイプを判定。
+
+**In-scope:**
+- `StyleArchetype` frozen dataclass（id, name_ja, name_en, positive_summary）
+- 6アーキタイプ定義: 剛腕/構想家/精密/シノビ/AI寄り/バランス
+- `determine_style(radar, tag_counts)` ルールベース判定
+- 相対評価: 5軸内の偏差で判定（固定閾値なし）
+
+**Out-of-scope:**
+- ML分類器
+- プロ棋士マッチング
+
+**成果物:**
+- `katrain/core/analysis/style/__init__.py`
+- `katrain/core/analysis/style/models.py`（6アーキタイプ定義）
+- `katrain/core/analysis/style/analyzer.py`（~100行）
+- `tests/test_style_analyzer.py`
+
+**受け入れ条件:**
+- [ ] RadarMetrics入力で6種のいずれかを返す
+- [ ] Fighting軸最高 + overplayタグ多 → kiai_fighter
+- [ ] 全軸バランス → balance_master
+
+**依存**: Phase 48（Radar）, Phase 46（MeaningTags）
+
+---
+
+### Phase 55: Style統合
+
+**目的**: 判定したスタイルをSummary/Karteに出力。
+
+**In-scope:**
+- Summaryに「My Style Identity」セクション追加（Phase 53レジストリ使用）
+- Karteにスタイルメタデータ埋め込み
+- i18n対応（6アーキタイプ × 2言語 = 12キー）
+
+**Out-of-scope:**
+- coach.mdプロンプト変更（Deferred）
+- スタイル履歴トラッキング
+
+**成果物:**
+- `katrain/core/reports/sections/style_section.py`（~60行）
+- `katrain/i18n/locales/*/katrain.po`更新（12キー）
+
+**受け入れ条件:**
+- [ ] Summary.mdに「My Style Identity: 【剛腕ファイター】」形式で表示
+- [ ] 英語/日本語で正しく表示
+- [ ] Phase 53のレジストリ経由で挿入
+
+**依存**: Phase 53, Phase 54
+
+---
+
+### Phase 56: 時間データパーサー
+
+**目的**: SGFの時間タグ（BL/WL等）を正規化して抽出。
+
+**In-scope:**
+- BL/WL（残り時間）タグの差分計算
+- 野狐/KGS形式のパース
+- `TimeMetrics` dataclass（move_number, time_spent_sec）
+- Graceful degradation（時間データなし → None）
+
+**Out-of-scope:**
+- SGFへの時間書き戻し
+- リアルタイム時計UI
+
+**成果物:**
+- `katrain/core/analysis/time/__init__.py`
+- `katrain/core/analysis/time/models.py`
+- `katrain/core/analysis/time/parser.py`（~150行）
+- `tests/test_time_parser.py`
+
+**受け入れ条件:**
+- [ ] 野狐SGFからBL/WL差分で消費時間を正しく抽出
+- [ ] 時間タグなしSGFでNone返却（エラーなし）
+- [ ] 野狐・KGS両形式でテストパス
+
+**依存**: なし
+
+---
+
+### Phase 57: Pacing & Tilt Core
+
+**目的**: 消費時間とKataGo損失の相関から早打ち悪手・ティルトエピソードを検出。
+
+**In-scope:**
+- 相対メトリクス（デフォルト）:
+  - is_blitz = time_spent < game_median × 0.3
+  - is_long_think = time_spent > game_median × 3.0
+  - tilt_trigger = score_loss > game_p90_loss
+- `PacingMetrics` dataclass（is_impulsive, is_overthinking）
+- `TiltEpisode` dataclass（start_move, end_move, cumulative_loss, severity）
+- 絶対閾値はconfig optional
+
+**Out-of-scope:**
+- ティルト確定診断（疑いフラグのみ）
+- policy entropy計算
+
+**成果物:**
+- `katrain/core/analysis/time/pacing.py`（~200行）
+- `tests/test_pacing.py`
+
+**受け入れ条件:**
+- [ ] ゲーム内相対基準で早打ち/長考を判定
+- [ ] 連鎖ミス（トリガー後5手以内）をTiltEpisodeとしてグループ化
+- [ ] 時間データなし局では空リスト返却
+
+**依存**: Phase 56
+
+---
+
+### Phase 58: Pacing/Tilt統合
+
+**目的**: 時間分析結果をSummary/Karteに出力。
+
+**In-scope:**
+- Summaryに「Time Management」セクション追加（Phase 53レジストリ使用）
+- Karteの重要局面に時間アイコン（🐇/🐢/🔥）
+- 時間データなしSGFではセクションをスキップ
+
+**Out-of-scope:**
+- 行動ルール自動生成（LLM任せ）
+- GUI上の時間表示
+
+**成果物:**
+- `katrain/core/reports/sections/time_section.py`（~80行）
+- `katrain/i18n/locales/*/katrain.po`更新（8キー）
+
+**受け入れ条件:**
+- [ ] Summaryに早打ち悪手率（相対）、ティルト疑い回数を表示
+- [ ] Karteの該当局面に🐇/🐢/🔥アイコン付与
+- [ ] 時間タグなしSGFでセクション非表示
+
+**依存**: Phase 53, Phase 57
+
+---
+
+### Phase 59: Risk Context Core
+
+**目的**: 形勢に応じたリスクテイク行動を分析。ScoreStdev不在時のフォールバック付き。
+
+**In-scope:**
+- `RiskContext` dataclass（judgment_type, risk_behavior, is_strategy_mismatch）
+- 状況判定: WINNING/LOSING/CLOSE（相対閾値）
+- ScoreStdev利用時: delta_stdev計算
+- フォールバック（ScoreStdev不在時）:
+  - winrate_volatility（直近N手のWR標準偏差）
+  - scorelead_volatility（直近N手のScoreLead標準偏差）
+- Graceful degradation
+
+**Out-of-scope:**
+- UIオーバーレイ
+- KataGo設定自動変更
+
+**成果物:**
+- `katrain/core/analysis/risk/__init__.py`
+- `katrain/core/analysis/risk/models.py`
+- `katrain/core/analysis/risk/analyzer.py`（~200行）
+- `tests/test_risk_analyzer.py`
+
+**受け入れ条件:**
+- [ ] ScoreStdev存在時: delta_stdevで複雑化度を計算
+- [ ] ScoreStdev不在時: volatilityにフォールバック
+- [ ] RiskContext dataclassで結果返却
+
+**依存**: なし
+
+---
+
+### Phase 60: Risk統合
+
+**目的**: リスク分析結果をKarteの「勝負術」セクションとして出力。
+
+**In-scope:**
+- Karteに「⚖️ Game Management」セクション追加（Phase 53レジストリ使用）
+- 優勢時の振る舞い評価（Risk Taker / Solid）
+- 劣勢時の振る舞い評価（Fighter / Resigned）
+- フォールバック使用時は「(estimated)」ラベル
+
+**Out-of-scope:**
+- coach.mdプロンプト変更（Deferred）
+- 形勢グラフオーバーレイ
+
+**成果物:**
+- `katrain/core/reports/sections/risk_section.py`（~80行）
+- `katrain/i18n/locales/*/katrain.po`更新（10キー）
+
+**受け入れ条件:**
+- [ ] Karteに「優勢時/劣勢時の振る舞い」評価を表示
+- [ ] 英語/日本語で正しく表示
+- [ ] フォールバック時は(estimated)表示
+
+**依存**: Phase 53, Phase 59
+
+---
+
+### Phase 61: Curator Scoring
+
+**目的**: プロ棋譜の「今の自分に合う度合い」をスコア化。
+
+**In-scope:**
+- `SuitabilityScore` dataclass（needs_match, complexity, total）
+- needs_match: Phase 53の`UserRadarAggregate`弱点軸と棋譜MeaningTags一致度
+- complexity: ScoreLead/WR変動の安定度（Phase 59フォールバックと同様）
+- 相対スコア（バッチ内パーセンタイル）
+
+**Out-of-scope:**
+- Human-SLモデル統合
+- 厳密な「ベスト1証明」ランキング
+
+**成果物:**
+- `katrain/core/curator/__init__.py`
+- `katrain/core/curator/models.py`
+- `katrain/core/curator/scoring.py`（~150行）
+- `tests/test_curator_scoring.py`
+
+**受け入れ条件:**
+- [ ] UserRadarAggregate + 棋譜MeaningTagsからスコア計算
+- [ ] スコアがバッチ内パーセンタイルで表現
+- [ ] ScoreStdev不在時もcomplexity計算可能
+
+**依存**: Phase 53（UserRadarAggregate）, Phase 48, Phase 46
+
+---
+
+### Phase 62: Curator出力
+
+**目的**: 複数SGFのランキングと学習ガイド用データをJSON出力。
+
+**In-scope:**
+- `curator_ranking.json` 出力（title, score_percentile, recommended_tags）
+- `replay_guide.json` 出力（game_title, highlight_moments[3-5]）
+- highlight_moments = Critical 3ロジック応用
+- バッチ完了時に自動生成（既存フローに追加）
+
+**Out-of-scope:**
+- 専用Curator UI画面
+- バッチUI変更（v1はJSONのみ、UIトグルは将来検討）
+- LLM自動呼び出し
+
+**成果物:**
+- `katrain/core/curator/batch.py`（~120行）
+- `katrain/core/curator/guide_extractor.py`（~100行）
+- `tests/test_curator_batch.py`
+- `docs/resources/curator_output_schema.json`
+
+**受け入れ条件:**
+- [ ] バッチ完了時に`curator_ranking.json`生成
+- [ ] 選択SGFから`replay_guide.json`（3-5 moments）生成
+- [ ] 各momentにMeaningTagベースのconcept付与
+
+**依存**: Phase 61, Phase 50（Critical 3）, Phase 42（Batch Core）
+
+---
+
+### Phase 63: Post-52 Integration
+
+**目的**: Phase 53-62の統合テストと既存機能への影響確認。
+
+**In-scope:**
+- 統合テスト（Style + Pacing + Risk + Curator組み合わせ）
+- 既存機能回帰テスト（Phase 24ゴールデンテスト）
+- パフォーマンス確認（バッチ処理速度）
+
+**Out-of-scope:**
+- 新機能追加
+
+**成果物:**
+- `tests/test_post52_integration.py`
+- `tests/test_regression_post52.py`
+
+**受け入れ条件:**
+- [ ] 全新規テストパス
+- [ ] Phase 24ゴールデンテストパス
+- [ ] バッチ100局処理が既存比120%以内
+
+**依存**: Phase 53-62
+
+---
+
+### Phase 64: Post-52 品質強化
+
+**目的**: ドキュメント整理、i18n完了、運用準備。
+
+**In-scope:**
+- ドキュメント更新（usage-guide.md, 01-roadmap.md）
+- i18n完了確認（全新規キー翻訳済み）
+- 手動E2Eテスト（起動→バッチ→レポート確認）
+
+**Out-of-scope:**
+- 新機能追加
+- 公開リリース作業
+
+**成果物:**
+- `docs/usage-guide.md`更新
+- `docs/01-roadmap.md`更新
+
+**受け入れ条件:**
+- [ ] 手動E2E（起動→SGF読込→バッチ→レポート）パス
+- [ ] 英語/日本語UIで新セクション正しく表示
+- [ ] 全i18nキー翻訳済み（約30キー）
+
+**依存**: Phase 63
+
+---
+
+### Phase 53–64 Deferred / Cut（20%）
+
+| 項目 | 理由 |
+|------|------|
+| Weakness Repeater全体（案4） | SRS UI/ドリルモードが重い |
+| coach.mdプロンプト自動変更 | LLM解釈に委ねる方針 |
+| Human-SLモデル統合 | 追加モデル管理が複雑 |
+| 厳密なBest-1ランキング証明 | チューニング負担大 |
+| ティルト確定診断 | 疑いフラグのみ |
+| Curator UI（バッチ画面トグル） | v1はJSONのみ |
+| Replay Guide Side-by-Side UI | JSON出力優先 |
+| 絶対閾値デフォルト | 相対メトリクス優先 |
 
 ---
 
