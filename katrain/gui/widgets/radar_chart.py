@@ -106,7 +106,9 @@ class RadarChartWidget(RelativeLayout):
     def _do_redraw(self, *_):
         self.canvas.before.clear()
 
-        # Guard: Skip if widget not properly sized yet
+        # Guard: Skip if widget not in window or not properly sized
+        if not self.get_root_window():
+            return
         if self.width <= 0 or self.height <= 0:
             return
 
@@ -129,14 +131,21 @@ class RadarChartWidget(RelativeLayout):
                     vx, vy = calculate_vertex(i, 5.0, center, max_r)
                     Line(points=[cx, cy, vx, vy], width=1)
 
-                # 3. Data polygon (skip Mesh if scores empty or invalid)
+                # 3. Data polygon - use triangle_fan for simpler/safer rendering
                 if self.scores:
                     poly = get_data_polygon(self.scores, center, max_r)
-                    verts, inds = build_mesh_data(poly, center)
-                    # Guard: Only draw mesh if valid data (non-empty vertices/indices)
-                    if verts and inds:
+                    # Build vertices for triangle_fan (center + perimeter)
+                    fan_verts = [cx, cy, 0.0, 0.0]  # Center vertex
+                    n_points = (len(poly) - 2) // 2  # Exclude closing point
+                    for i in range(n_points):
+                        fan_verts.extend([poly[i * 2], poly[i * 2 + 1], 0.0, 0.0])
+                    # Close the fan
+                    fan_verts.extend([poly[0], poly[1], 0.0, 0.0])
+
+                    # Only draw if we have valid vertices (center + at least 3 perimeter)
+                    if len(fan_verts) >= 20:  # 5 vertices * 4 elements
                         Color(*self.fill_color)
-                        Mesh(vertices=verts, indices=inds, mode="triangles")
+                        Mesh(vertices=fan_verts, indices=list(range(len(fan_verts) // 4)), mode="triangle_fan")
                         Color(*self.outline_color)
                         Line(points=poly, width=dp(1.5))
 
