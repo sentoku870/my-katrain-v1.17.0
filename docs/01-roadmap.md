@@ -148,8 +148,8 @@
 | 48 | Radar Data Model | `RadarMetrics`, `SkillTier`（5軸評価） | ✅ |
 | 49 | Radar Summary統合 | Summary出力、Tier表示 | ✅ |
 | 50 | Critical 3 | 重要3手抽出、LLMプロンプトテンプレート | ✅ |
-| 51 | Radar UI Widget | Kivy radar chart widget | 📋 予定 |
-| 52 | Stabilization | 回帰テスト、ドキュメント | 📋 予定 |
+| 51 | Radar UI Widget | Kivy radar chart widget | ✅ |
+| 52 | Stabilization | 回帰テスト、ドキュメント | ✅ |
 
 **詳細**: [Phase 45–52 詳細](#phase-4552-詳細lexiconmeaningtagsradarcritical-3)
 
