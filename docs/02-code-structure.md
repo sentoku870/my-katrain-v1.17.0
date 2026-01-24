@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-16（Phase 20完了）
+> 最終更新: 2026-01-24（Phase 52完了）
 
 ---
 
@@ -14,7 +14,12 @@ katrain/
 │   ├── __init__.py       # DEFAULT_FONT など
 │   ├── theme_constants.py # INFO_PV_COLOR など
 │   ├── platform.py       # get_platform()（Phase 20、Kivy非依存OS判定）
-│   └── config_store.py   # JsonFileConfigStore（Phase 20、Mapping実装）
+│   ├── config_store.py   # JsonFileConfigStore（Phase 20、Mapping実装）
+│   ├── locale_utils.py   # normalize_lang_code(), to_iso_lang_code()（Phase 52-A）
+│   └── lexicon/          # 囲碁用語辞書パッケージ（Phase 45）
+│       ├── models.py       # LexiconEntry, DiagramInfo, AIPerspective（frozen dataclass）
+│       ├── validation.py   # 2段階バリデーションパイプライン
+│       └── store.py        # LexiconStore（スレッドセーフ、アトミックスナップショット）
 │
 ├── core/                 # コアロジック
 │   ├── game.py            # Game（対局状態管理）
@@ -28,14 +33,35 @@ katrain/
 │   ├── ai.py              # AI戦略実装（~1060行）
 │   ├── ai_strategies_base.py  # AI戦略基底クラス・ユーティリティ（~300行、Phase B5）
 │   │
-│   └── analysis/          # 解析基盤パッケージ（Phase B4完了）
-│       ├── __init__.py      # 明示的再エクスポート（~340行）
-│       ├── models.py        # Enum, Dataclass, 定数（~835行）
-│       ├── logic.py         # 計算関数オーケストレーター（~1180行）
-│       ├── logic_loss.py    # 損失計算関数（~105行、Phase B4）
-│       ├── logic_importance.py # 重要度計算関数（~175行、Phase B4）
-│       ├── logic_quiz.py    # クイズヘルパー関数（~90行、Phase B4）
-│       └── presentation.py  # 表示/フォーマット関数（~300行）
+│   ├── analysis/          # 解析基盤パッケージ（Phase B4完了）
+│   │   ├── __init__.py      # 明示的再エクスポート（~500行）
+│   │   ├── models.py        # Enum, Dataclass, 定数（~835行）
+│   │   ├── logic.py         # 計算関数オーケストレーター（~1180行）
+│   │   ├── logic_loss.py    # 損失計算関数（~105行、Phase B4）
+│   │   ├── logic_importance.py # 重要度計算関数（~175行、Phase B4）
+│   │   ├── logic_quiz.py    # クイズヘルパー関数（~90行、Phase B4）
+│   │   ├── presentation.py  # 表示/フォーマット関数（~300行）
+│   │   ├── skill_radar.py   # 5軸レーダーモデル（~570行、Phase 48-49）
+│   │   ├── critical_moves.py # Critical 3選択（~455行、Phase 50）
+│   │   └── meaning_tags/    # 意味タグ分類（Phase 46-47）
+│   │       ├── models.py      # MeaningTagId, MeaningTag
+│   │       ├── registry.py    # MEANING_TAG_REGISTRY（12タグ定義）
+│   │       ├── classifier.py  # classify_meaning_tag()
+│   │       └── integration.py # normalize_lang(), get_meaning_tag_label_safe()
+│   │
+│   ├── batch/             # バッチ処理パッケージ（Phase 42、Kivy非依存）
+│   │   ├── models.py        # WriteError, BatchResult dataclass
+│   │   ├── helpers.py       # 純粋関数（choose_visits_for_sgf, safe_int等）
+│   │   ├── analysis.py      # analyze_single_file, analyze_single_file_leela
+│   │   ├── orchestration.py # run_batch() メインエントリ
+│   │   └── stats.py         # extract_game_stats, build_player_summary
+│   │
+│   ├── leela/             # Leela Zero対応（Phase 31-36）
+│   │   └── conversion.py    # leela_position_to_move_eval(), leela_sequence_to_eval_snapshot()
+│   │
+│   └── reports/           # レポート生成（Phase 32-37）
+│       ├── types.py         # 型定義、Protocol
+│       └── karte_report.py  # build_karte_report(), build_critical_3_prompt()
 │
 ├── gui/                  # GUI（Kivy）
 │   ├── controlspanel.py   # 右パネル（ControlsPanel）
@@ -44,23 +70,26 @@ katrain/
 │   ├── lang_bridge.py     # KivyLangBridge（Phase 20、i18n Kivyブリッジ）
 │   ├── popups.py          # ポップアップダイアログ
 │   ├── widgets/
-│   │   ├── graph.py       # ScoreGraph（勝率グラフ）
-│   │   ├── movetree.py    # MoveTree（手順ツリー）
-│   │   └── helpers.py     # UIヘルパー関数（PR #89で追加）
+│   │   ├── graph.py         # ScoreGraph（勝率グラフ）
+│   │   ├── movetree.py      # MoveTree（手順ツリー）
+│   │   ├── helpers.py       # UIヘルパー関数（PR #89で追加）
+│   │   ├── radar_geometry.py # レーダー幾何計算（Phase 51、Kivy非依存）
+│   │   └── radar_chart.py   # RadarChartWidget（Phase 51）
 │   │
 │   └── features/          # 機能モジュール（Phase 3で追加）
-│       ├── context.py         # FeatureContext Protocol
-│       ├── karte_export.py    # カルテエクスポート
-│       ├── summary_stats.py   # サマリ統計計算
+│       ├── context.py           # FeatureContext Protocol
+│       ├── karte_export.py      # カルテエクスポート
+│       ├── summary_stats.py     # サマリ統計計算
 │       ├── summary_aggregator.py # サマリ集計
-│       ├── summary_formatter.py  # サマリMarkdown生成
-│       ├── summary_ui.py      # サマリUI/ダイアログ
-│       ├── summary_io.py      # サマリファイル保存
-│       ├── quiz_popup.py      # クイズポップアップ
-│       ├── quiz_session.py    # クイズセッション
-│       ├── batch_core.py      # バッチ解析コア
-│       ├── batch_ui.py        # バッチ解析UI
-│       └── settings_popup.py  # 設定ポップアップ
+│       ├── summary_formatter.py # サマリMarkdown生成
+│       ├── summary_ui.py        # サマリUI/ダイアログ
+│       ├── summary_io.py        # サマリファイル保存
+│       ├── quiz_popup.py        # クイズポップアップ
+│       ├── quiz_session.py      # クイズセッション
+│       ├── batch_core.py        # バッチ解析コア
+│       ├── batch_ui.py          # バッチ解析UI
+│       ├── settings_popup.py    # 設定ポップアップ
+│       └── skill_radar_popup.py # スキルレーダーポップアップ（Phase 51）
 │
 ├── gui.kv                # Kivyレイアウト定義
 ├── katrain.kv            # 追加レイアウト
@@ -313,6 +342,71 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
+> 詳細な変更履歴は `CLAUDE.md` セクション10を参照。
+
+- 2026-01-24: Phase 52 完了（Stabilization & Documentation）
+  - ドキュメント更新（本ファイル、CLAUDE.md、roadmap）
+  - Radar ゴールデンテスト追加（17件）
+  - ベンチマークスクリプト追加（scripts/benchmark_batch.py）
+- 2026-01-23: Phase 52-A 完了（Tofu Fix + Language Code Consistency）
+  - **common/locale_utils.py**: 言語コード正規化関数追加
+  - 豆腐表示修正（フォント指定追加）
+- 2026-01-23: Phase 51 完了（Radar UI Widget）
+  - **gui/widgets/radar_geometry.py**: レーダー幾何計算（Kivy非依存）
+  - **gui/widgets/radar_chart.py**: RadarChartWidget
+  - **gui/features/skill_radar_popup.py**: スキルレーダーポップアップ
+- 2026-01-23: Phase 50 完了（Critical 3 Focused Review Mode）
+  - **core/analysis/critical_moves.py**: CriticalMove dataclass、select_critical_moves()
+- 2026-01-23: Phase 49 完了（Radar Aggregation & Summary Integration）
+  - **core/analysis/skill_radar.py**: AggregatedRadarResult、aggregate_radar()
+  - **core/batch/stats.py**: Skill Profileセクション追加
+- 2026-01-23: Phase 48 完了（5-Axis Radar Data Model）
+  - **core/analysis/skill_radar.py**: RadarAxis、SkillTier、RadarMetrics
+- 2026-01-23: Phase 47 完了（Meaning Tags Integration）
+  - **core/analysis/meaning_tags/integration.py**: normalize_lang()、format_meaning_tag_with_definition()
+  - MoveEval拡張: meaning_tag_idフィールド追加
+- 2026-01-23: Phase 46 完了（Meaning Tags System Core）
+  - **core/analysis/meaning_tags/**: 意味タグ分類パッケージ（12タグ定義）
+- 2026-01-23: Phase 45 完了（Lexicon Core Infrastructure）
+  - **common/lexicon/**: 囲碁用語辞書パッケージ（Kivy非依存）
+- 2026-01-21: Phase 44 完了（Batch Analysis Fixes）
+  - 信頼性閾値の一貫性修正、完了チャイム追加
+- 2026-01-20: Phase 43 完了（Stability Audit）
+  - Config save atomic化、Leela shutdown対応、theme_loader.py新設
+- 2026-01-20: Phase 42 完了（Batch Core Package）
+  - **core/batch/**: バッチ処理パッケージ（Kivy非依存）
+- 2026-01-20: Phase 41 完了（コード品質リファクタリング）
+  - AnalysisMode enum追加、コマンドハンドラ抽出
+- 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
+  - LeelaStrategy、AI_LEELA定数追加
+- 2026-01-19: Phase 39 完了（エンジン比較ビュー）
+  - **core/analysis/engine_compare.py**: 手動Spearman相関、EngineComparisonResult
+- 2026-01-18: Phase 38 完了（安定化）
+  - safe_int()、save_manifest()エラーハンドリング
+- 2026-01-18: Phase 37 完了（テスト強化）
+  - MixedEngineSnapshotError導入、Leelaゴールデンテスト
+- 2026-01-18: Phase 36 完了（Leelaバッチ解析）
+  - analyze_single_file_leela()、バッチUIエンジン選択
+- 2026-01-18: Phase 35 完了（Leelaカルテ統合）
+  - has_loss_data()、format_loss_with_engine_suffix()
+- 2026-01-18: Phase 33 完了（エンジン選択設定）
+  - VALID_ANALYSIS_ENGINES、get_analysis_engine()
+- 2026-01-18: Phase 32 完了（レポートLeela対応）
+  - EngineType enum、detect_engine_type()
+- 2026-01-18: Phase 31 完了（Leela→MoveEval変換）
+  - **core/leela/conversion.py**: leela_position_to_move_eval()
+- 2026-01-18: Phase 30 完了（解析強度抽象化）
+  - AnalysisStrength enum、resolve_visits()
+- 2026-01-17: Phase 29 完了（Diagnostics + Bug Report Bundle）
+  - **common/sanitize.py**, **core/log_buffer.py**, **core/diagnostics.py**
+- 2026-01-17: Phase 28 完了（Smart Kifu運用強化）
+  - ImportErrorCode enum、TrainingSetSummary
+- 2026-01-17: Phase 27 完了（Settings UIスケーラブル化）
+  - **common/settings_export.py**: 設定Export/Import/Reset
+- 2026-01-17: Phase 26 完了（レポート導線改善）
+  - **common/file_opener.py**, **gui/features/report_navigator.py**
+- 2026-01-17: Phase 24 完了（SGF E2E Regression Tests）
+  - **tests/helpers/**: mock_analysis.py, stats_extraction.py
 - 2026-01-16: Phase 20 完了（PR #131-135）
   - **common/platform.py**: Kivy非依存のOS判定関数を追加
   - **common/config_store.py**: JsonFileConfigStore（Mapping実装）を追加
