@@ -106,6 +106,10 @@ class RadarChartWidget(RelativeLayout):
     def _do_redraw(self, *_):
         self.canvas.before.clear()
 
+        # Guard: Skip if widget not properly sized yet
+        if self.width <= 0 or self.height <= 0:
+            return
+
         cx, cy = self.width / 2, self.height / 2
         center = (cx, cy)
         max_r = min(self.width, self.height) / 2 - self.padding
@@ -128,10 +132,12 @@ class RadarChartWidget(RelativeLayout):
             if self.scores:
                 poly = get_data_polygon(self.scores, center, max_r)
                 verts, inds = build_mesh_data(poly, center)
-                Color(*self.fill_color)
-                Mesh(vertices=verts, indices=inds, mode="triangles")
-                Color(*self.outline_color)
-                Line(points=poly, width=dp(1.5))
+                # Guard: Only draw mesh if valid data (non-empty vertices/indices)
+                if verts and inds:
+                    Color(*self.fill_color)
+                    Mesh(vertices=verts, indices=inds, mode="triangles")
+                    Color(*self.outline_color)
+                    Line(points=poly, width=dp(1.5))
 
                 # 4. Vertex dots
                 for i, axis in enumerate(AXIS_ORDER):

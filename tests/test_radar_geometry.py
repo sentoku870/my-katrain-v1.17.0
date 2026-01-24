@@ -170,6 +170,36 @@ class TestMeshData:
         _, inds = build_mesh_data(poly, (0, 0))
         assert len(inds) == 15
 
+    def test_empty_polygon_returns_empty(self):
+        """Empty polygon should return empty vertices and indices."""
+        verts, inds = build_mesh_data([], (0, 0))
+        assert verts == []
+        assert inds == []
+
+    def test_too_small_polygon_returns_empty(self):
+        """Polygon with less than 8 elements should return empty."""
+        # 4 elements = 2 points, not enough for a triangle
+        verts, inds = build_mesh_data([0, 0, 10, 10], (0, 0))
+        assert verts == []
+        assert inds == []
+
+        # 6 elements = 3 points but no closing, treated as 2 vertices
+        verts, inds = build_mesh_data([0, 0, 10, 0, 5, 10], (0, 0))
+        assert verts == []
+        assert inds == []
+
+    def test_minimum_valid_polygon(self):
+        """8 elements (3 points + closing) should work - forms 2 triangles."""
+        # Triangle: (0,0), (10,0), (5,10), closed by (0,0)
+        poly = [0, 0, 10, 0, 5, 10, 0, 0]
+        verts, inds = build_mesh_data(poly, (5, 5))
+        # Should have center + 3 vertices = 4 vertices * 4 elements = 16
+        assert len(verts) == 16
+        # Should have 2 triangles + 1 closing = 9 indices
+        assert len(inds) == 9
+        assert verts != []
+        assert inds != []
+
 
 class TestTierToColor:
     """Tests for tier_to_color function."""

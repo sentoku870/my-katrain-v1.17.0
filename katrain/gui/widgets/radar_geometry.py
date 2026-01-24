@@ -124,9 +124,21 @@ def build_mesh_data(
         (vertices, indices)
         vertices: [x, y, u, v, ...]
         indices: [0, 1, 2, 0, 2, 3, ...]
+
+    Note:
+        Returns empty lists if polygon is too small to form valid triangles.
     """
+    # Guard: Need at least 3 points (6 coords) + closing (2 coords) = 8 minimum
+    if len(polygon) < 8:
+        return ([], [])
+
     vertices: List[float] = [center[0], center[1], 0.0, 0.0]
     n = (len(polygon) - 2) // 2
+
+    # Guard: Need at least 3 vertices for a triangle
+    if n < 3:
+        return ([], [])
+
     for i in range(n):
         vertices.extend([polygon[i * 2], polygon[i * 2 + 1], 0.0, 0.0])
 
