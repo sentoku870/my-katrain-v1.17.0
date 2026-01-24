@@ -1,15 +1,19 @@
 """Skill radar popup for 5-axis visualization."""
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Dict, Optional
 
 from kivy.clock import Clock
+
+_logger = logging.getLogger("katrain.gui.features.skill_radar_popup")
 from kivy.metrics import dp
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
+from kivy.uix.togglebutton import ToggleButton
 
 from katrain.core.analysis.skill_radar import (
     MIN_MOVES_FOR_RADAR,
@@ -65,14 +69,45 @@ def _show_impl(ctx: "FeatureContext") -> None:
     radar: Dict[str, Optional[RadarMetrics]] = {}
     for p in ("B", "W"):
         player_moves = [m for m in snapshot.moves if m.player == p]
+        print(f"[RADAR DEBUG] Player={p}, num_moves={len(player_moves)}, move_numbers={[m.move_number for m in player_moves[:5]]}")
+        _logger.debug(
+            "[RADAR DEBUG] Player=%s, num_moves=%d, move_numbers=%s",
+            p,
+            len(player_moves),
+            [m.move_number for m in player_moves[:5]],  # first 5 for brevity
+        )
         if len(player_moves) >= MIN_MOVES_FOR_RADAR:
             try:
                 radar[p] = compute_radar_from_moves(snapshot.moves, player=p)
+                print(f"[RADAR DEBUG] Player={p}, id={id(radar[p])}, opening={radar[p].opening:.2f}, fighting={radar[p].fighting:.2f}, stability={radar[p].stability:.2f}")
+                _logger.debug(
+                    "[RADAR DEBUG] Player=%s, RadarMetrics id=%d, opening=%.2f, fighting=%.2f, stability=%.2f",
+                    p,
+                    id(radar[p]),
+                    radar[p].opening,
+                    radar[p].fighting,
+                    radar[p].stability,
+                )
             except Exception as e:
                 ctx.log(f"{i18n._('radar:calc-error')} ({p}): {e}", OUTPUT_ERROR)
                 radar[p] = None
         else:
             radar[p] = None
+
+    # Debug: Check if B and W have different objects
+    b_r = radar.get("B")
+    w_r = radar.get("W")
+    same_obj = b_r is w_r if (b_r and w_r) else "N/A"
+    print(f"[RADAR DEBUG] Final: B_id={id(b_r) if b_r else 'None'}, W_id={id(w_r) if w_r else 'None'}, same_object={same_obj}")
+    if b_r and w_r:
+        print(f"[RADAR DEBUG] B scores: o={b_r.opening}, f={b_r.fighting}, e={b_r.endgame}, s={b_r.stability}, a={b_r.awareness}")
+        print(f"[RADAR DEBUG] W scores: o={w_r.opening}, f={w_r.fighting}, e={w_r.endgame}, s={w_r.stability}, a={w_r.awareness}")
+    _logger.debug(
+        "[RADAR DEBUG] Final radar dict: B_id=%s, W_id=%s, same_object=%s",
+        id(radar.get("B")) if radar.get("B") else "None",
+        id(radar.get("W")) if radar.get("W") else "None",
+        radar.get("B") is radar.get("W") if radar.get("B") and radar.get("W") else "N/A",
+    )
 
     if not any(radar.values()):
         ctx.log(i18n._("radar:insufficient-moves"), OUTPUT_ERROR)
@@ -81,59 +116,137 @@ def _show_impl(ctx: "FeatureContext") -> None:
     _build_popup(radar)
 
 
+class SkillRadarPopup(Popup):
+    """Popup with ToggleButton-based player selector."""
+
+    def __init__(self, radar: Dict[str, Optional[RadarMetrics]], **kwargs):
+        self.radar = radar
+        self.current_side = "B"  # Default to Black
+
+        super().__init__(**kwargs)
+
+        self.title = i18n._("radar:title")
+        self.title_font = Theme.DEFAULT_FONT
+        self.size_hint = (0.75, 0.85)
+
+        # Main content
+        main = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+
+        # Player selector (ToggleButtons)
+        selector = BoxLayout(
+            orientation="horizontal",
+            size_hint=(1, None),
+            height=dp(44),
+            spacing=dp(8),
+        )
+
+        self.btn_black = ToggleButton(
+            text=i18n._("mykatrain:batch:filter_black"),
+            font_name=Theme.DEFAULT_FONT,
+            group="player_select",
+            state="down",  # Default selected
+            allow_no_selection=False,
+        )
+        self.btn_white = ToggleButton(
+            text=i18n._("mykatrain:batch:filter_white"),
+            font_name=Theme.DEFAULT_FONT,
+            group="player_select",
+            state="normal",
+            allow_no_selection=False,
+        )
+
+        self.btn_black.bind(on_press=lambda _: self._select_side("B"))
+        self.btn_white.bind(on_press=lambda _: self._select_side("W"))
+
+        selector.add_widget(self.btn_black)
+        selector.add_widget(self.btn_white)
+        main.add_widget(selector)
+
+        # Content container (will be updated when side changes)
+        self.content_container = BoxLayout(orientation="vertical", size_hint=(1, 1))
+        main.add_widget(self.content_container)
+
+        # Close button
+        close_btn = Button(
+            text=i18n._("Close"),
+            font_name=Theme.DEFAULT_FONT,
+            size_hint=(1, None),
+            height=dp(44),
+        )
+        close_btn.bind(on_release=self.dismiss)
+        main.add_widget(close_btn)
+
+        self.content = main
+
+        # Initial content
+        self._refresh_content()
+
+    def _select_side(self, side: str) -> None:
+        """Handle side selection change."""
+        print(f"[RADAR DEBUG] _select_side: new_side={side}, current_side={self.current_side}")
+        _logger.debug(
+            "[RADAR DEBUG] _select_side called: new_side=%s, current_side=%s",
+            side,
+            self.current_side,
+        )
+        if side != self.current_side:
+            self.current_side = side
+            self._refresh_content()
+
+    def _refresh_content(self) -> None:
+        """Refresh the content area based on current side."""
+        self.content_container.clear_widgets()
+
+        r = self.radar.get(self.current_side)
+        print(f"[RADAR DEBUG] _refresh_content: side={self.current_side}, radar_id={id(r) if r else 'None'}")
+        if r:
+            print(f"[RADAR DEBUG] Displaying: o={r.opening}, f={r.fighting}, e={r.endgame}, s={r.stability}, a={r.awareness}")
+        _logger.debug(
+            "[RADAR DEBUG] _refresh_content: side=%s, radar_id=%s, opening=%.2f, fighting=%.2f",
+            self.current_side,
+            id(r) if r else "None",
+            r.opening if r else 0,
+            r.fighting if r else 0,
+        )
+        if r:
+            self.content_container.add_widget(_player_content(r, self.current_side))
+        else:
+            self.content_container.add_widget(_no_data_content())
+
+
 def _build_popup(radar: Dict[str, Optional[RadarMetrics]]) -> None:
     """Build and display the popup."""
-    content = BoxLayout(orientation="vertical", spacing=dp(5), padding=dp(8))
-
-    tabbed = TabbedPanel(do_default_tab=False, tab_pos="top_mid")
-    for p, name in [
-        ("B", i18n._("mykatrain:batch:filter_black")),
-        ("W", i18n._("mykatrain:batch:filter_white")),
-    ]:
-        tab = TabbedPanelItem(text=name)
-        r = radar.get(p)
-        tab.add_widget(_player_content(r) if r else _no_data_content())
-        tabbed.add_widget(tab)
-
-    if tabbed.tab_list:
-        tabbed.default_tab = tabbed.tab_list[0]  # Black first
-
-    content.add_widget(tabbed)
-
-    close = Button(
-        text=i18n._("Close"),
-        font_name=Theme.DEFAULT_FONT,
-        size_hint=(1, None),
-        height=dp(40),
-    )
-    content.add_widget(close)
-
-    popup = Popup(
-        title=i18n._("radar:title"),
-        content=content,
-        size_hint=(0.75, 0.8),
-    )
-    close.bind(on_release=popup.dismiss)
+    popup = SkillRadarPopup(radar)
     popup.open()
 
 
-def _player_content(r: RadarMetrics) -> BoxLayout:
+def _player_content(r: RadarMetrics, side: str) -> BoxLayout:
     """Create player radar content (text-only mode for stability)."""
-    layout = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
+    layout = BoxLayout(orientation="vertical", spacing=dp(6), padding=dp(8))
 
-    # Text-only display instead of canvas-based chart
-    scores_layout = BoxLayout(orientation="vertical", size_hint=(1, 0.75), spacing=dp(4))
-
-    # Header
+    # Header with player indication
+    side_name = i18n._("mykatrain:batch:filter_black") if side == "B" else i18n._("mykatrain:batch:filter_white")
     header = Label(
-        text=f"[b]{i18n._('radar:title')}[/b]",
+        text=f"[b]{i18n._('radar:title')} ({side_name})[/b]",
         markup=True,
         font_name=Theme.DEFAULT_FONT,
-        font_size=dp(16),
+        font_size=dp(18),
         size_hint_y=None,
-        height=dp(30),
+        height=dp(36),
+        halign="center",
     )
-    scores_layout.add_widget(header)
+    header.bind(size=header.setter("text_size"))
+    layout.add_widget(header)
+
+    # Centered score list container
+    center_anchor = AnchorLayout(anchor_x="center", anchor_y="top", size_hint=(1, 0.6))
+    scores_box = BoxLayout(
+        orientation="vertical",
+        size_hint=(None, 1),
+        width=dp(280),
+        spacing=dp(6),
+        padding=(dp(16), dp(8)),
+    )
 
     # Each axis score
     for axis in AXIS_ORDER:
@@ -141,31 +254,37 @@ def _player_content(r: RadarMetrics) -> BoxLayout:
         tier = getattr(r, f"{axis}_tier")
         tier_color = tier_to_color(tier.value)
 
-        # Format: "Opening: 3.5 ★★★☆☆"
-        stars = "★" * min(5, max(1, int(score))) + "☆" * (5 - min(5, max(1, int(score))))
+        # Stars: filled based on score (1-5)
+        filled = min(5, max(1, int(round(score))))
+        stars = "★" * filled + "☆" * (5 - filled)
         axis_name = i18n._(f"radar:axis-{axis}")
 
         row = Label(
             text=f"[b]{axis_name}[/b]: {score:.1f}  {stars}",
             markup=True,
             font_name=Theme.DEFAULT_FONT,
-            font_size=dp(14),
+            font_size=dp(15),
             color=tier_color,
             size_hint_y=None,
-            height=dp(28),
+            height=dp(30),
             halign="left",
+            valign="middle",
         )
         row.bind(size=row.setter("text_size"))
-        scores_layout.add_widget(row)
+        scores_box.add_widget(row)
 
-    layout.add_widget(scores_layout)
+    center_anchor.add_widget(scores_box)
+    layout.add_widget(center_anchor)
+
+    # Summary section
     layout.add_widget(_summary(r))
+
     return layout
 
 
 def _summary(r: RadarMetrics) -> BoxLayout:
     """Create summary section with overall tier and weak areas."""
-    layout = BoxLayout(orientation="vertical", size_hint=(1, 0.25), padding=dp(5))
+    layout = BoxLayout(orientation="vertical", size_hint=(1, 0.25), padding=dp(8))
 
     tier_text = i18n._(TIER_I18N.get(r.overall_tier, "radar:tier-unknown"))
     tier_color = tier_to_color(r.overall_tier.value)
@@ -174,11 +293,13 @@ def _summary(r: RadarMetrics) -> BoxLayout:
         text=f"[b]{i18n._('radar:overall')}:[/b] {tier_text}",
         markup=True,
         font_name=Theme.DEFAULT_FONT,
-        font_size=dp(15),
+        font_size=dp(16),
         color=tier_color,
         size_hint_y=None,
-        height=dp(28),
+        height=dp(32),
+        halign="center",
     )
+    overall.bind(size=overall.setter("text_size"))
     layout.add_widget(overall)
 
     # Weak areas (Tier 1-2)
@@ -194,11 +315,13 @@ def _summary(r: RadarMetrics) -> BoxLayout:
             text=f"[b]{i18n._('radar:weak-areas')}:[/b] {', '.join(weak)}",
             markup=True,
             font_name=Theme.DEFAULT_FONT,
-            font_size=dp(13),
+            font_size=dp(14),
             color=tier_to_color("tier_2"),
             size_hint_y=None,
-            height=dp(24),
+            height=dp(28),
+            halign="center",
         )
+        weak_lbl.bind(size=weak_lbl.setter("text_size"))
         layout.add_widget(weak_lbl)
 
     return layout
@@ -206,13 +329,14 @@ def _summary(r: RadarMetrics) -> BoxLayout:
 
 def _no_data_content() -> BoxLayout:
     """Create content for when there's no radar data."""
-    layout = BoxLayout()
-    layout.add_widget(
-        Label(
-            text=i18n._("radar:insufficient-moves"),
-            font_name=Theme.DEFAULT_FONT,
-            font_size=dp(14),
-            halign="center",
-        )
+    layout = BoxLayout(padding=dp(20))
+    lbl = Label(
+        text=i18n._("radar:insufficient-moves"),
+        font_name=Theme.DEFAULT_FONT,
+        font_size=dp(16),
+        halign="center",
+        valign="middle",
     )
+    lbl.bind(size=lbl.setter("text_size"))
+    layout.add_widget(lbl)
     return layout
