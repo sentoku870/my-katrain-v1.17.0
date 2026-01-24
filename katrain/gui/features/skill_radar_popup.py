@@ -20,7 +20,6 @@ from katrain.core.analysis.skill_radar import (
 from katrain.core.constants import OUTPUT_ERROR
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
-from katrain.gui.widgets.radar_chart import RadarChartWidget
 from katrain.gui.widgets.radar_geometry import AXIS_ORDER, tier_to_color
 
 if TYPE_CHECKING:
@@ -119,27 +118,47 @@ def _build_popup(radar: Dict[str, Optional[RadarMetrics]]) -> None:
 
 
 def _player_content(r: RadarMetrics) -> BoxLayout:
-    """Create player radar content."""
-    layout = BoxLayout(orientation="vertical", spacing=dp(8))
+    """Create player radar content (text-only mode for stability)."""
+    layout = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(10))
 
-    chart = RadarChartWidget(size_hint=(1, 0.75))
-    chart.scores = {
-        "opening": r.opening,
-        "fighting": r.fighting,
-        "endgame": r.endgame,
-        "stability": r.stability,
-        "awareness": r.awareness,
-    }
-    chart.tiers = {
-        "opening": r.opening_tier.value,
-        "fighting": r.fighting_tier.value,
-        "endgame": r.endgame_tier.value,
-        "stability": r.stability_tier.value,
-        "awareness": r.awareness_tier.value,
-    }
-    chart.overall_tier = r.overall_tier.value
-    layout.add_widget(chart)
+    # Text-only display instead of canvas-based chart
+    scores_layout = BoxLayout(orientation="vertical", size_hint=(1, 0.75), spacing=dp(4))
 
+    # Header
+    header = Label(
+        text=f"[b]{i18n._('radar:title')}[/b]",
+        markup=True,
+        font_name=Theme.DEFAULT_FONT,
+        font_size=dp(16),
+        size_hint_y=None,
+        height=dp(30),
+    )
+    scores_layout.add_widget(header)
+
+    # Each axis score
+    for axis in AXIS_ORDER:
+        score = getattr(r, axis)
+        tier = getattr(r, f"{axis}_tier")
+        tier_color = tier_to_color(tier.value)
+
+        # Format: "Opening: 3.5 ★★★☆☆"
+        stars = "★" * min(5, max(1, int(score))) + "☆" * (5 - min(5, max(1, int(score))))
+        axis_name = i18n._(f"radar:axis-{axis}")
+
+        row = Label(
+            text=f"[b]{axis_name}[/b]: {score:.1f}  {stars}",
+            markup=True,
+            font_name=Theme.DEFAULT_FONT,
+            font_size=dp(14),
+            color=tier_color,
+            size_hint_y=None,
+            height=dp(28),
+            halign="left",
+        )
+        row.bind(size=row.setter("text_size"))
+        scores_layout.add_widget(row)
+
+    layout.add_widget(scores_layout)
     layout.add_widget(_summary(r))
     return layout
 

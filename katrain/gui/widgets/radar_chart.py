@@ -5,7 +5,7 @@ import math
 from typing import Dict, List, Optional
 
 from kivy.clock import Clock
-from kivy.graphics import Color, Ellipse, Line, Mesh
+from kivy.graphics import Color, Ellipse, Line
 from kivy.metrics import dp
 from kivy.properties import DictProperty, ListProperty, NumericProperty, StringProperty
 from kivy.uix.label import Label
@@ -17,7 +17,6 @@ from katrain.gui.widgets.radar_geometry import (
     AXIS_ORDER,
     NEUTRAL_SCORE,
     NUM_AXES,
-    build_mesh_data,
     calculate_vertex,
     get_data_polygon,
     get_label_position,
@@ -131,23 +130,12 @@ class RadarChartWidget(RelativeLayout):
                     vx, vy = calculate_vertex(i, 5.0, center, max_r)
                     Line(points=[cx, cy, vx, vy], width=1)
 
-                # 3. Data polygon - use triangle_fan for simpler/safer rendering
+                # 3. Data polygon - outline only (Mesh disabled for stability)
                 if self.scores:
                     poly = get_data_polygon(self.scores, center, max_r)
-                    # Build vertices for triangle_fan (center + perimeter)
-                    fan_verts = [cx, cy, 0.0, 0.0]  # Center vertex
-                    n_points = (len(poly) - 2) // 2  # Exclude closing point
-                    for i in range(n_points):
-                        fan_verts.extend([poly[i * 2], poly[i * 2 + 1], 0.0, 0.0])
-                    # Close the fan
-                    fan_verts.extend([poly[0], poly[1], 0.0, 0.0])
-
-                    # Only draw if we have valid vertices (center + at least 3 perimeter)
-                    if len(fan_verts) >= 20:  # 5 vertices * 4 elements
-                        Color(*self.fill_color)
-                        Mesh(vertices=fan_verts, indices=list(range(len(fan_verts) // 4)), mode="triangle_fan")
-                        Color(*self.outline_color)
-                        Line(points=poly, width=dp(1.5))
+                    # Skip Mesh fill - just draw outline for now
+                    Color(*self.outline_color)
+                    Line(points=poly, width=dp(2))
 
                     # 4. Vertex dots
                     for i, axis in enumerate(AXIS_ORDER):
