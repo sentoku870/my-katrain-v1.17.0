@@ -46,10 +46,14 @@ class TestNormalizeLang:
         """Empty string should fall back to 'en'."""
         assert normalize_lang("") == "en"
 
-    def test_case_sensitivity(self) -> None:
-        """Language codes are case-sensitive (uppercase falls back)."""
-        assert normalize_lang("JP") == "en"  # Not recognized
-        assert normalize_lang("EN") == "en"  # Not recognized
+    def test_case_insensitivity(self) -> None:
+        """Language codes are case-insensitive (for robustness).
+
+        Updated in Phase 52: normalize_lang now uses to_iso_lang_code
+        which handles case-insensitively via normalize_lang_code.
+        """
+        assert normalize_lang("JP") == "ja"  # Now recognized as "jp" -> "ja"
+        assert normalize_lang("EN") == "en"  # Now recognized as "en" -> "en"
 
 
 # =============================================================================

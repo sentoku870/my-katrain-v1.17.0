@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-51（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget）
-- **予定**: Phase 52（Stabilization）
-- **次**: Phase 52（Stabilization）
+- **完了**: Phase 1-51、Phase 52-A（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency）
+- **進行中**: Phase 52（Stabilization）残タスク
+- **次**: Phase 52完了 → リリース準備
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -377,6 +377,21 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-01-23: Phase 52-A 完了（Tofu Fix + Language Code Consistency）
+  - 新規: `katrain/common/locale_utils.py`（~100行）
+    - `normalize_lang_code()`: 内部正規コード（"en"/"jp"）への変換
+    - `to_iso_lang_code()`: ISO 639-1コード（"en"/"ja"）への変換
+    - 地域バリアント対応: "ja_JP", "ja-JP" → "jp"
+    - 大文字小文字非依存: "JP", " jp " → "jp"
+  - 更新: `katrain/common/__init__.py`（エクスポート追加）
+  - 更新: `katrain/core/analysis/meaning_tags/integration.py`
+    - `normalize_lang = to_iso_lang_code` エイリアス（後方互換）
+  - 豆腐修正: 以下のウィジェットに`font_name=Theme.DEFAULT_FONT`追加
+    - `quiz_popup.py`: header_label, btn, start_button, close_button
+    - `settings_popup.py`: search_input, search_clear_btn, タブヘッダー
+    - `popups.kv`: LabelledTextInput, LabelledPathInput
+  - テスト25件追加（test_locale_utils.py）
+  - テスト総数: 2186件
 - 2026-01-23: Phase 51 完了（Radar UI Widget）
   - 新規: `katrain/gui/widgets/radar_geometry.py`（~150行）
     - 純粋幾何関数（Kivy非依存、CI安全）
