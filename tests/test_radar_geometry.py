@@ -200,6 +200,27 @@ class TestMeshData:
         assert verts != []
         assert inds != []
 
+    def test_nan_in_polygon_returns_empty(self):
+        """Polygon with NaN values should return empty."""
+        poly = [0, float("nan"), 10, 0, 5, 10, 0, 0]
+        verts, inds = build_mesh_data(poly, (5, 5))
+        assert verts == []
+        assert inds == []
+
+    def test_inf_in_polygon_returns_empty(self):
+        """Polygon with Inf values should return empty."""
+        poly = [0, float("inf"), 10, 0, 5, 10, 0, 0]
+        verts, inds = build_mesh_data(poly, (5, 5))
+        assert verts == []
+        assert inds == []
+
+    def test_nan_in_center_returns_empty(self):
+        """Center with NaN should return empty."""
+        poly = [0, 0, 10, 0, 5, 10, 0, 0]
+        verts, inds = build_mesh_data(poly, (float("nan"), 5))
+        assert verts == []
+        assert inds == []
+
 
 class TestTierToColor:
     """Tests for tier_to_color function."""

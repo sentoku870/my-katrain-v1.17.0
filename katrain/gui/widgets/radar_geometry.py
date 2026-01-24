@@ -114,6 +114,11 @@ def get_label_position(
     )
 
 
+def _is_valid_coord(value: float) -> bool:
+    """Check if a coordinate value is valid (finite and reasonable)."""
+    return math.isfinite(value) and abs(value) < 1e6
+
+
 def build_mesh_data(
     polygon: List[float],
     center: Tuple[float, float],
@@ -126,10 +131,18 @@ def build_mesh_data(
         indices: [0, 1, 2, 0, 2, 3, ...]
 
     Note:
-        Returns empty lists if polygon is too small to form valid triangles.
+        Returns empty lists if polygon is too small or contains invalid data.
     """
     # Guard: Need at least 3 points (6 coords) + closing (2 coords) = 8 minimum
     if len(polygon) < 8:
+        return ([], [])
+
+    # Guard: Validate center coordinates
+    if not (_is_valid_coord(center[0]) and _is_valid_coord(center[1])):
+        return ([], [])
+
+    # Guard: Validate all polygon coordinates
+    if not all(_is_valid_coord(v) for v in polygon):
         return ([], [])
 
     vertices: List[float] = [center[0], center[1], 0.0, 0.0]
