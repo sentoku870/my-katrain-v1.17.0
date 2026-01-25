@@ -271,6 +271,20 @@ from katrain.core.analysis.critical_moves import (
 )
 
 # =============================================================================
+# Explicit imports from user_aggregate.py (Phase 55)
+# =============================================================================
+
+from katrain.core.analysis.user_aggregate import (
+    # Constants
+    DEFAULT_HISTORY_SIZE,
+    # Dataclasses
+    GameRadarEntry,
+    UserRadarAggregate,
+    # Store class
+    UserAggregateStore,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -493,4 +507,12 @@ __all__ = [
     "_get_score_stdev_from_node",
     "_get_score_stdev_for_move",
     "_classify_meaning_tags",
+    # === user_aggregate.py (Phase 55) ===
+    # Constants
+    "DEFAULT_HISTORY_SIZE",
+    # Dataclasses
+    "GameRadarEntry",
+    "UserRadarAggregate",
+    # Store class
+    "UserAggregateStore",
 ]
