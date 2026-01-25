@@ -510,15 +510,21 @@ class TestKarteFromSGF:
         "panda": SGF_DIR / "panda1.sgf",
     }
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def mock_katrain(self):
-        """Create a mock KaTrain instance."""
+        """Create a mock KaTrain instance.
+
+        Scope=class to reuse across tests, reducing Kivy reinitialization overhead.
+        """
         from katrain.core.base_katrain import KaTrainBase
         return KaTrainBase(force_package_config=True, debug_level=0)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def mock_engine(self):
-        """Create a mock engine."""
+        """Create a mock engine.
+
+        Scope=class to reuse across tests.
+        """
         class MockEngine:
             def request_analysis(self, *args, **kwargs):
                 pass
@@ -652,9 +658,12 @@ class TestKarteFromLeelaSnapshot:
     with (推定) suffix on loss values.
     """
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def leela_game_fixture(self):
-        """Create a Game mock that returns Leela snapshot."""
+        """Create a Game mock that returns Leela snapshot.
+
+        Scope=class to reuse across tests.
+        """
         snapshot = create_leela_test_snapshot()
 
         game = MagicMock()
@@ -669,6 +678,8 @@ class TestKarteFromLeelaSnapshot:
         game.root = MagicMock()
         game.root.handicap = 0
         game.root.get_property.return_value = None
+        # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+        game.root.children = []
         return game
 
     def test_leela_karte_contains_estimated_suffix(self, leela_game_fixture):

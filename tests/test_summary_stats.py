@@ -301,6 +301,8 @@ class TestExtractSgfStatistics:
         move_tree = MagicMock()
         move_tree.get_property = lambda prop, default=None: properties.get(prop, default)
         move_tree.nodes_in_tree = nodes
+        # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+        move_tree.children = []
         return move_tree
 
     # --- Normal cases ---

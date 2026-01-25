@@ -190,6 +190,8 @@ class TestBuildKarteReportMixedEngineGuard:
         game.board_size = (19, 19)
         game.komi = 6.5
         game.rules = "chinese"
+        # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+        game.root.children = []
         return game
 
     @pytest.fixture
@@ -203,6 +205,8 @@ class TestBuildKarteReportMixedEngineGuard:
         game.board_size = (19, 19)
         game.komi = 6.5
         game.rules = "chinese"
+        # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+        game.root.children = []
         return game
 
     def test_mixed_snapshot_returns_error_markdown(self, mixed_game_fixture):
