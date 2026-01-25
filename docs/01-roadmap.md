@@ -1423,27 +1423,49 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **目的**: SGFの時間タグ（BL/WL等）を正規化して抽出。
 
 **In-scope:**
-- BL/WL（残り時間）タグの差分計算
-- 野狐/KGS形式のパース
-- `TimeMetrics` dataclass（move_number, time_spent_sec）
-- Graceful degradation（時間データなし → None）
+- BL/WL（残り時間）タグの差分計算（Black→BL, White→WL）
+- BL/WL は「着手後の残り時間」として解釈（SGF標準仕様）
+- 整数・小数形式のパース（IGS/KGS等）
+- `TimeMetrics` dataclass（move_number, player, time_left_sec, time_spent_sec）
+- `GameTimeData` dataclass（常に返却、has_time_data フラグで判定）
+- 浮動小数点許容誤差（EPS=0.001、微小負値は0.0として処理）
+- Graceful degradation:
+  - 時間データなし → has_time_data=False, metrics=()
+  - 時間データあり → has_time_data=True, 全メインライン手を含む（move_number維持）
+  - 一部タグ欠損 → 該当手は time_left_sec=None、次の手も time_spent_sec=None
+  - 負の差分（秒読みリセット等、delta < -EPS）→ time_spent_sec=None + 警告ログ
+  - 不正な値・空リスト → time_left_sec=None + 警告ログ
+- メインライン走査のみ（変化図は対象外）
+- ルートノードの子から走査開始（ルートはゲームプロパティのみ）
+- move_number は実際の着手のみカウント（非着手ノードはスキップ）
 
 **Out-of-scope:**
 - SGFへの時間書き戻し
 - リアルタイム時計UI
+- 変化図の時間解析
 
 **成果物:**
 - `katrain/core/analysis/time/__init__.py`
 - `katrain/core/analysis/time/models.py`
-- `katrain/core/analysis/time/parser.py`（~150行）
+- `katrain/core/analysis/time/parser.py`（~110行）
 - `tests/test_time_parser.py`
 
 **受け入れ条件:**
-- [ ] 野狐SGFからBL/WL差分で消費時間を正しく抽出
-- [ ] 時間タグなしSGFでNone返却（エラーなし）
-- [ ] 野狐・KGS両形式でテストパス
+- [x] 手ごとの時間タグ（BL/WL）が存在するSGFからtime_spentを正しく抽出
+- [x] 時間タグなしSGFで GameTimeData(has_time_data=False, metrics=()) を返却
+- [x] 整数形式（IGS）・小数形式（KGS）両方でテストパス
+- [x] 時間データありの場合、全メインライン手を含む（move_number アライメント維持）
+- [x] 部分的にタグ欠損があるSGFで、該当手は time_left_sec=None
+- [x] タグ欠損後の有効タグで time_spent_sec=None（ギャップ越しの差分計算防止）
+- [x] 微小負値（delta >= -EPS）は 0.0 として処理（浮動小数点許容誤差）
+- [x] 負の差分（delta < -EPS、秒読みリセット等）で time_spent_sec=None + 警告ログ
+- [x] 空リスト等のmalformed SGFで IndexError を発生させない
+- [x] Black は BL、White は WL を読むことをテストで検証
+- [x] BL/WL は「着手後の残り時間」であることをテストで検証（off-by-one防止）
 
 **依存**: なし
+
+**完了**: 2026-01-25（PR #194）
 
 ---
 
@@ -1452,28 +1474,42 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **目的**: 消費時間とKataGo損失の相関から早打ち悪手・ティルトエピソードを検出。
 
 **In-scope:**
-- 相対メトリクス（デフォルト）:
-  - is_blitz = time_spent < game_median × 0.3
-  - is_long_think = time_spent > game_median × 3.0
-  - tilt_trigger = score_loss > game_p90_loss
-- `PacingMetrics` dataclass（is_impulsive, is_overthinking）
-- `TiltEpisode` dataclass（start_move, end_move, cumulative_loss, severity）
-- 絶対閾値はconfig optional
+- 相対メトリクス（プレイヤー別メディアン基準）:
+  - is_blitz = time_spent < player_median × 0.3
+  - is_long_think = time_spent > player_median × 3.0
+  - tilt_trigger = canonical_loss > game_p90_loss（strict >）
+- `PacingConfig`: 設定パラメータ（thresholds, window size等）
+- `PacingMetrics`: 手ごとの分類（is_blitz, is_long_think, is_impulsive, is_overthinking）
+- `TiltEpisode`: 連鎖ミスエピソード（trigger, start, end, cumulative_loss, severity）
+- `TiltSeverity`: MILD/MODERATE/SEVERE（決定論的優先順位）
+- `GamePacingStats`: ゲーム統計（medians, thresholds, coverage diagnostics）
+- `LossSource`: 損失値のソース追跡（SCORE/LEELA/POINTS/NONE）
+- Best-effort coverage: MoveEval欠損時は警告+スキップ+継続
+- 混合エンジン検出: has_mixed_sources フラグ
 
 **Out-of-scope:**
 - ティルト確定診断（疑いフラグのみ）
 - policy entropy計算
+- GUI表示（Phase 60）
 
 **成果物:**
-- `katrain/core/analysis/time/pacing.py`（~200行）
-- `tests/test_pacing.py`
+- `katrain/core/analysis/time/pacing.py`（~360行）
+- `katrain/core/analysis/time/__init__.py`更新
+- `tests/test_pacing.py`（42件）
 
 **受け入れ条件:**
-- [ ] ゲーム内相対基準で早打ち/長考を判定
-- [ ] 連鎖ミス（トリガー後5手以内）をTiltEpisodeとしてグループ化
-- [ ] 時間データなし局では空リスト返却
+- [x] プレイヤー別メディアン基準で早打ち/長考を判定
+- [x] 連鎖ミス（トリガー後5手以内）をTiltEpisodeとしてグループ化
+- [x] 時間データなし局では空リスト返却
+- [x] p90 == 0.0 時はティルト検出無効化
+- [x] Strict '>' トリガー条件（p90と同値はトリガーしない）
+- [x] First-come-first-served でエピソード重複防止
+- [x] Coverage gap検出とhas_coverage_gapsフラグ
+- [x] 混合エンジン検出とhas_mixed_sourcesフラグ
 
 **依存**: Phase 58
+
+**完了**: 2026-01-25（PR #194）
 
 ---
 

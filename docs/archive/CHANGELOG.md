@@ -1,10 +1,48 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-57 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-59 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 59 完了（Pacing & Tilt Core）
+  - 更新: `katrain/core/analysis/time/pacing.py`（新規、~360行）
+    - `analyze_pacing()`: メインエントリポイント
+    - `PacingConfig`: 設定パラメータ dataclass
+    - `PacingMetrics`: 手ごと分類 dataclass
+    - `TiltEpisode`: 連鎖ミスエピソード dataclass
+    - `TiltSeverity`: 重大度 Enum（MILD/MODERATE/SEVERE）
+    - `GamePacingStats`: ゲーム統計 dataclass
+    - `LossSource`: 損失ソース Enum（SCORE/LEELA/POINTS/NONE）
+  - 機能:
+    - プレイヤー別メディアン基準で早打ち/長考判定
+    - Strict '>' トリガー条件でティルトエピソード検出
+    - p90損失を超える連鎖ミスをグループ化
+    - Best-effort coverage gap handling
+    - 混合エンジン検出（KataGo + Leela）
+    - 決定論的Severity分類（SEVERE > MODERATE > MILD）
+  - 更新: `katrain/core/analysis/time/__init__.py`
+    - Phase 59 exports追加
+  - 新規: `tests/test_pacing.py`（42件）
+  - テスト総数: 2392件
+- 2026-01-25: Phase 58 完了（Time Data Parser）
+  - 新規: `katrain/core/analysis/time/` パッケージ
+    - `models.py`: TimeMetrics, GameTimeData dataclass
+    - `parser.py`: parse_time_data(), _extract_time_left()
+    - `__init__.py`: 公開API exports
+  - 機能:
+    - SGF時間タグ（BL/WL）の解析・正規化
+    - 手ごとの消費時間計算（差分計算）
+    - 整数・小数形式対応（IGS/KGS等）
+    - 浮動小数点許容誤差（EPS=0.001）
+    - Graceful degradation:
+      - 時間データなし → has_time_data=False
+      - タグ欠損 → time_left_sec=None
+      - 秒読みリセット → time_spent_sec=None + 警告ログ
+  - 更新: `docs/01-roadmap.md`
+    - Phase 58 受け入れ条件を詳細化
+  - 新規: `tests/test_time_parser.py`（22件）
+  - テスト総数: 2341件
 - 2026-01-25: Phase 57 完了（Style Karte Integration）
   - 更新: `katrain/core/reports/karte_report.py`
     - `_build_tag_counts_from_moves()`: MeaningTagIdカウント集計
