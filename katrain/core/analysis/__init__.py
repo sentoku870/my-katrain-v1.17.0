@@ -285,6 +285,31 @@ from katrain.core.analysis.user_aggregate import (
 )
 
 # =============================================================================
+# Explicit imports from style/ (Phase 56)
+# =============================================================================
+
+from katrain.core.analysis.style import (
+    # Enums
+    StyleArchetypeId,
+    # Dataclasses
+    StyleArchetype,
+    StyleResult,
+    # Registry
+    STYLE_ARCHETYPES,
+    # Main function
+    determine_style,
+    # Helper functions
+    compute_confidence,
+    scores_are_tied,
+    # Constants
+    DEVIATION_HIGH_THRESHOLD,
+    DEVIATION_LOW_THRESHOLD,
+    TAG_SIGNIFICANT_COUNT,
+    SCORE_TOLERANCE,
+    CONFIDENCE_NORMALIZATION,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -515,4 +540,23 @@ __all__ = [
     "UserRadarAggregate",
     # Store class
     "UserAggregateStore",
+    # === style/ (Phase 56) ===
+    # Enums
+    "StyleArchetypeId",
+    # Dataclasses
+    "StyleArchetype",
+    "StyleResult",
+    # Registry
+    "STYLE_ARCHETYPES",
+    # Main function
+    "determine_style",
+    # Helper functions
+    "compute_confidence",
+    "scores_are_tied",
+    # Constants
+    "DEVIATION_HIGH_THRESHOLD",
+    "DEVIATION_LOW_THRESHOLD",
+    "TAG_SIGNIFICANT_COUNT",
+    "SCORE_TOLERANCE",
+    "CONFIDENCE_NORMALIZATION",
 ]
