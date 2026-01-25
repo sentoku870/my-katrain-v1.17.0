@@ -1,10 +1,29 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-52 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-53 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 53 完了（Batch Report Quality）
+  - 新規: `katrain/core/batch/helpers.py` にヘルパー関数追加
+    - `truncate_game_name()`: ゲーム名短縮（head+tail保持）
+    - `format_wr_gap()`: WR Gap表示フォーマット（クランプ＋精度）
+    - `make_markdown_link_target()`: マークダウンリンク生成（URL-encode対応）
+  - 更新: `katrain/core/batch/stats.py`
+    - Top 10 Worst Movesテーブルに「カルテ」列追加
+    - `build_player_summary()` 署名更新（karte_path_map, summary_dir）
+  - 更新: `katrain/core/batch/orchestration.py`
+    - `karte_path_map` 構築＋サマリビルダーへ渡す
+  - 更新: `katrain/core/reports/karte_report.py`
+    - "Best Gap" → "WR Gap" リネーム
+    - WR Gap表示精度改善
+  - 更新: `katrain/core/analysis/presentation.py`
+    - `get_auto_confidence_label()` 追加（推定確度 vs 信頼度 分離）
+  - ローカライズ: "Practice Priorities" → "練習の優先順位"
+  - 新規: `tests/test_batch_helpers.py`（12件）
+  - ゴールデンファイル更新（カルテ＋サマリ）
+  - テスト総数: 2199件
 - 2026-01-24: Phase 52 完了（Stabilization & Documentation）
   - PR-1（B1）: `docs/02-code-structure.md` を Phase 21-52 に対応
     - 10モジュールのセクション追加（skill_radar, critical_moves, meaning_tags, lexicon等）

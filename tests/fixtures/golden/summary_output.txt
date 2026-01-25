@@ -73,7 +73,7 @@ Based on cross-tabulation analysis:
 - Middle gameの損失の66.7%が大悪手によるもの
 - Middle gameの6.1%の手が大悪手と判定されている
 
-## Practice Priorities (TestPlayer)
+## 練習の優先順位 (TestPlayer)
 
 Based on the data above, consider focusing on:
 
