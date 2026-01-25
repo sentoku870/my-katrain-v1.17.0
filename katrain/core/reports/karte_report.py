@@ -49,6 +49,12 @@ from katrain.core.analysis.critical_moves import CriticalMove, select_critical_m
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.skill_radar import compute_radar_from_moves
 from katrain.core.analysis.style import StyleResult, determine_style
+from katrain.core.analysis.time import (
+    parse_time_data,
+    analyze_pacing,
+    get_pacing_icon,
+    PacingMetrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -358,6 +364,17 @@ def _build_karte_report_impl(
     settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
         level, eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL]
     )
+
+    # Phase 60: Build pacing map for Time column
+    pacing_map: Optional[Dict[int, PacingMetrics]] = None
+    try:
+        time_data = parse_time_data(game.root)
+        if time_data.has_time_data:
+            pacing_result = analyze_pacing(time_data, list(snapshot.moves))
+            pacing_map = {m.move_number: m for m in pacing_result.pacing_metrics}
+    except Exception as e:
+        logger.debug(f"Time analysis failed: {e}")
+        # pacing_map remains None → all Time columns show "-"
 
     def fmt_val(val, default="unknown"):
         return default if val in [None, ""] else str(val)
@@ -681,8 +698,9 @@ def _build_karte_report_impl(
             # Added "Best" column for best move from PRE-MOVE node
             # Phase 47: Added "MTag" column for meaning tag
             # Phase 53: Renamed "Best Gap" to "WR Gap" with improved formatting
-            lines.append("| # | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |")
-            lines.append("|---|---|-------|------|------|------------|----------|--------|---------|------|--------|")
+            # Phase 60: Added "Time" column for pacing icons
+            lines.append("| # | Time | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |")
+            lines.append("|---|------|---|-------|------|------|------------|----------|--------|---------|------|--------|")
             for mv in player_moves:
                 # canonical loss を使用（常に >= 0）
                 loss = get_canonical_loss_from_move(mv)
@@ -700,10 +718,14 @@ def _build_karte_report_impl(
                 wr_gap_str = format_wr_gap(context["best_gap"])
                 danger_str = context["danger"] or "-"
 
+                # Phase 60: Get pacing icon
+                pacing_metrics = pacing_map.get(mv.move_number) if pacing_map else None
+                time_icon = get_pacing_icon(pacing_metrics)
+
                 # Leela データには (推定) サフィックスを付加
                 loss_display = format_loss_with_engine_suffix(loss, detect_engine_type(mv))
                 lines.append(
-                    f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
+                    f"| {mv.move_number} | {time_icon} | {mv.player or '-'} | {mv.gtp or '-'} | "
                     f"{loss_display} | {best_move_str} | {candidates_str} | {wr_gap_str} | {danger_str} | "
                     f"{mistake} | {meaning_tag_label} | {reason_str} |"
                 )

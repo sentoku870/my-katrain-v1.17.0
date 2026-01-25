@@ -636,3 +636,80 @@ def analyze_pacing(
         has_time_data=game_stats.moves_with_time_data > 0,
         game_stats=game_stats,
     )
+
+
+# =============================================================================
+# Helper Functions for Report Integration (Phase 60)
+# =============================================================================
+
+
+def get_pacing_icon(metrics: Optional[PacingMetrics]) -> str:
+    """Convert PacingMetrics to a display icon.
+
+    Priority order: 🔥 > 💭 > 🐇 > 🐢
+
+    Args:
+        metrics: PacingMetrics for a move, or None
+
+    Returns:
+        Icon string: "🔥" (impulsive), "💭" (overthinking),
+                     "🐇" (blitz), "🐢" (long_think), or "-" (normal/none)
+    """
+    if metrics is None:
+        return "-"
+    if metrics.is_impulsive:
+        return "🔥"
+    if metrics.is_overthinking:
+        return "💭"
+    if metrics.is_blitz:
+        return "🐇"
+    if metrics.is_long_think:
+        return "🐢"
+    return "-"
+
+
+def extract_pacing_stats_for_summary(result: PacingAnalysisResult) -> dict:
+    """Convert PacingAnalysisResult to a dict for stats_dict storage.
+
+    Phase 59 guarantees:
+        is_impulsive=True  => is_blitz=True
+        is_overthinking=True => is_long_think=True
+    Therefore:
+        blitz_mistake_count <= blitz_count
+        long_think_mistake_count <= long_think_count
+
+    Args:
+        result: PacingAnalysisResult from analyze_pacing()
+
+    Returns:
+        Serializable dict for summary stats aggregation
+    """
+    if not result.has_time_data:
+        return {"has_time_data": False}
+
+    player_stats = {}
+    for player in ["B", "W"]:
+        player_metrics = [m for m in result.pacing_metrics if m.player == player]
+        player_stats[player] = {
+            "blitz_count": sum(1 for m in player_metrics if m.is_blitz),
+            "blitz_mistake_count": sum(1 for m in player_metrics if m.is_impulsive),
+            "long_think_count": sum(1 for m in player_metrics if m.is_long_think),
+            "long_think_mistake_count": sum(1 for m in player_metrics if m.is_overthinking),
+        }
+
+    tilt_episodes = [
+        {
+            "player": ep.player,
+            "start_move": ep.start_move,
+            "end_move": ep.end_move,
+            "severity": ep.severity.value,
+            "cumulative_loss": ep.cumulative_loss,
+        }
+        for ep in result.tilt_episodes
+    ]
+
+    return {
+        "has_time_data": True,
+        "player_stats": player_stats,
+        "tilt_episodes": tilt_episodes,
+    }

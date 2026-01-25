@@ -56,6 +56,8 @@ def create_mock_game(moves: List[MoveEval]) -> Mock:
     game.root = Mock()
     game.root.get_property = Mock(return_value=None)
     game.root.handicap = 0
+    # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+    game.root.children = []
 
     # get_important_move_evals() はリストを返す必要がある
     # importance_score が設定されている手を返す

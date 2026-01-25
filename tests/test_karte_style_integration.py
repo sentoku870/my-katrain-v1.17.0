@@ -136,6 +136,8 @@ class TestKarteStyleIntegration:
         game.katrain = None  # Skip katrain-dependent code paths
         game.root.get_property.return_value = ""
         game.root.handicap = 0
+        # CRITICAL: Set children to empty list to prevent infinite loop in parse_time_data
+        game.root.children = []
         game.get_important_move_evals.return_value = []
         return game
 
