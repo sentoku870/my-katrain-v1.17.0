@@ -1,11 +1,27 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-53 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-54 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
-- 2026-01-25: Phase 53 完了（Batch Report Quality）
+- 2026-01-25: Phase 54 完了（Report Quality Improvements）
+  - 新規: `escape_markdown_table_cell()` 追加（helpers.py）
+    - テーブルセルの安全なエスケープ（`[`, `]`, `|`, 改行対応）
+  - 更新: `katrain/core/batch/stats.py`
+    - `lang` パラメータ追加（`run_batch()`, `build_player_summary()`）
+    - 12+ローカライズヘルパー関数追加（JP/EN両言語対応）
+    - タグベース練習ヒント追加（MeaningTag / ReasonTag）
+    - パーセンテージ注記追加
+    - 色偏り注記追加（全黒番/白番の注意書き）
+  - 更新: `katrain/core/batch/orchestration.py`
+    - `lang` パラメータ追加
+  - 更新: `katrain/core/reports/karte_report.py`
+    - WR Gap説明改善（JP/EN両言語対応）
+  - 新規テスト: `TestEscapeMarkdownTableCell`（9件）
+  - ゴールデンファイル更新（カルテ＋サマリ）
+  - テスト総数: 2237件
+- 2026-01-24: Phase 53 完了（Batch Report基盤）
   - 新規: `katrain/core/batch/helpers.py` にヘルパー関数追加
     - `truncate_game_name()`: ゲーム名短縮（head+tail保持）
     - `format_wr_gap()`: WR Gap表示フォーマット（クランプ＋精度）

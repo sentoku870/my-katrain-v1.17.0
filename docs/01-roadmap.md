@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-24（Phase 52完了）
+> 最終更新: 2026-01-25（Phase 54完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -153,24 +153,33 @@
 
 **詳細**: [Phase 45–52 詳細](#phase-4552-詳細lexiconmeaningtagsradarcritical-3)
 
-### Phase 53–64: Post-52 拡張（Style / Pacing / Risk / Curator）
+### Phase 53–54: Batch Report Quality（2026-01-25 完了）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 53 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | 📋 TBD |
-| 54 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | 📋 TBD |
-| 55 | Style統合 | Summary/Karteにスタイルセクション追加 | 📋 TBD |
-| 56 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | 📋 TBD |
-| 57 | Pacing & Tilt Core | `analysis/time/pacing.py`（相対メトリクス） | 📋 TBD |
-| 58 | Pacing/Tilt統合 | Summary/Karteに時間分析セクション追加 | 📋 TBD |
-| 59 | Risk Context Core | `analysis/risk/`（形勢判断＋フォールバック） | 📋 TBD |
-| 60 | Risk統合 | Karteに「勝負術」セクション追加 | 📋 TBD |
-| 61 | Curator Scoring | `curator/scoring.py`（適合度スコア） | 📋 TBD |
-| 62 | Curator出力 | `curator_ranking.json`, `replay_guide.json` | 📋 TBD |
-| 63 | Post-52 Integration | 統合テスト、回帰テスト | 📋 TBD |
-| 64 | Post-52 品質強化 | ドキュメント整理、i18n完了 | 📋 TBD |
+| 53 | Batch Report基盤 | helpers.py（truncate, format_wr_gap, markdown link） | ✅ |
+| 54 | Report Quality Improvements | ローカライズ、タグベースヒント、escape_markdown | ✅ |
 
-**詳細**: [Phase 53–64 詳細](#phase-5364-詳細post-52-拡張)
+**詳細**: [Phase 53–54 詳細](#phase-5354-詳細batch-report-quality)
+
+### Phase 55–66: Post-54 拡張（Style / Pacing / Risk / Curator）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 55 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | 📋 TBD |
+| 56 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | 📋 TBD |
+| 57 | Style統合 | Summary/Karteにスタイルセクション追加 | 📋 TBD |
+| 58 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | 📋 TBD |
+| 59 | Pacing & Tilt Core | `analysis/time/pacing.py`（相対メトリクス） | 📋 TBD |
+| 60 | Pacing/Tilt統合 | Summary/Karteに時間分析セクション追加 | 📋 TBD |
+| 61 | Risk Context Core | `analysis/risk/`（形勢判断＋フォールバック） | 📋 TBD |
+| 62 | Risk統合 | Karteに「勝負術」セクション追加 | 📋 TBD |
+| 63 | Curator Scoring | `curator/scoring.py`（適合度スコア） | 📋 TBD |
+| 64 | Curator出力 | `curator_ranking.json`, `replay_guide.json` | 📋 TBD |
+| 65 | Post-54 Integration | 統合テスト、回帰テスト | 📋 TBD |
+| 66 | Post-54 品質強化 | ドキュメント整理、i18n完了 | 📋 TBD |
+
+**詳細**: [Phase 55–66 詳細](#phase-5566-詳細post-54-拡張)
 
 ### 未定（TBD / Post-52）
 
@@ -1261,9 +1270,62 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-## Phase 53–64 詳細（Post-52 拡張）
+## Phase 53–54 詳細（Batch Report Quality）
 
-### Phase 53: レポート基盤 + ユーザー集計
+### Phase 53: Batch Report基盤（2026-01-24 完了）
+
+**目的**: バッチレポートの品質向上のためのヘルパー関数と表示改善。
+
+**In-scope:**
+- `truncate_game_name()`: 長いゲーム名を適切に省略（tail保持）
+- `format_wr_gap()`: WR Gap表示のクランプと精度向上
+- `make_markdown_link_target()`: カルテリンク生成（相対パス、URL encode）
+- カルテ列追加（Top 10 Worst Moves）
+- "Best Gap" → "WR Gap" リネーム
+- "Practice Priorities" → "練習の優先順位"
+
+**成果物:**
+- `katrain/core/batch/helpers.py`（truncate, format_wr_gap, make_markdown_link_target）
+- `katrain/core/batch/orchestration.py`（karte_path_map追加）
+- `katrain/core/batch/stats.py`（カルテ列、WR Gap表示）
+
+**受け入れ条件:**
+- [x] ゲーム名が35文字以内に省略される
+- [x] WR Gapが0-100%にクランプ、1桁精度表示
+- [x] Top 10 Worst Movesに「カルテ」列表示
+- [x] リンククリックでカルテファイルを開ける
+
+---
+
+### Phase 54: Report Quality Improvements（2026-01-25 完了）
+
+**目的**: レポートのローカライズとタグベースの具体的な練習ヒント追加。
+
+**In-scope:**
+- `escape_markdown_table_cell()`: テーブルセルの安全なエスケープ
+- `lang`パラメータ追加（`run_batch()`, `build_player_summary()`）
+- 12+ローカライズヘルパー関数（JP/EN両言語対応）
+- タグベース練習ヒント（MeaningTag / ReasonTagに基づく）
+- パーセンテージ注記（タグ出現割合の説明）
+- 色偏り注記（全黒番/白番の注意書き）
+- WR Gap説明改善（JP/EN両言語で明確な説明）
+
+**成果物:**
+- `katrain/core/batch/helpers.py`（escape_markdown_table_cell）
+- `katrain/core/batch/stats.py`（ローカライズヘルパー、タグヒント）
+- `katrain/core/reports/karte_report.py`（WR Gap説明改善）
+
+**受け入れ条件:**
+- [x] `lang="jp"`で日本語、`lang="en"`で英語出力
+- [x] EN出力にJPマーカー（回、→、（）など）が含まれない
+- [x] タグベースの具体的な練習ヒントが表示される
+- [x] パーセンテージ注記と色偏り注記が表示される
+
+---
+
+## Phase 55–66 詳細（Post-54 拡張）
+
+### Phase 55: レポート基盤 + ユーザー集計
 
 **目的**: 新セクション追加を標準化する共通基盤と、ユーザー直近N局の集計機構を定義。
 
@@ -1293,7 +1355,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 54: Style Archetype Core
+### Phase 56: Style Archetype Core
 
 **目的**: RadarMetrics + MeaningTagsから棋風アーキタイプを判定。
 
@@ -1322,7 +1384,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 55: Style統合
+### Phase 57: Style統合
 
 **目的**: 判定したスタイルをSummary/Karteに出力。
 
@@ -1342,13 +1404,13 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **受け入れ条件:**
 - [ ] Summary.mdに「My Style Identity: 【剛腕ファイター】」形式で表示
 - [ ] 英語/日本語で正しく表示
-- [ ] Phase 53のレジストリ経由で挿入
+- [ ] Phase 55のレジストリ経由で挿入
 
-**依存**: Phase 53, Phase 54
+**依存**: Phase 55, Phase 56
 
 ---
 
-### Phase 56: 時間データパーサー
+### Phase 58: 時間データパーサー
 
 **目的**: SGFの時間タグ（BL/WL等）を正規化して抽出。
 
@@ -1377,7 +1439,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 57: Pacing & Tilt Core
+### Phase 59: Pacing & Tilt Core
 
 **目的**: 消費時間とKataGo損失の相関から早打ち悪手・ティルトエピソードを検出。
 
@@ -1403,16 +1465,16 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] 連鎖ミス（トリガー後5手以内）をTiltEpisodeとしてグループ化
 - [ ] 時間データなし局では空リスト返却
 
-**依存**: Phase 56
+**依存**: Phase 58
 
 ---
 
-### Phase 58: Pacing/Tilt統合
+### Phase 60: Pacing/Tilt統合
 
 **目的**: 時間分析結果をSummary/Karteに出力。
 
 **In-scope:**
-- Summaryに「Time Management」セクション追加（Phase 53レジストリ使用）
+- Summaryに「Time Management」セクション追加（Phase 55レジストリ使用）
 - Karteの重要局面に時間アイコン（🐇/🐢/🔥）
 - 時間データなしSGFではセクションをスキップ
 
@@ -1429,11 +1491,11 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] Karteの該当局面に🐇/🐢/🔥アイコン付与
 - [ ] 時間タグなしSGFでセクション非表示
 
-**依存**: Phase 53, Phase 57
+**依存**: Phase 55, Phase 59
 
 ---
 
-### Phase 59: Risk Context Core
+### Phase 61: Risk Context Core
 
 **目的**: 形勢に応じたリスクテイク行動を分析。ScoreStdev不在時のフォールバック付き。
 
@@ -1465,12 +1527,12 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 60: Risk統合
+### Phase 62: Risk統合
 
 **目的**: リスク分析結果をKarteの「勝負術」セクションとして出力。
 
 **In-scope:**
-- Karteに「⚖️ Game Management」セクション追加（Phase 53レジストリ使用）
+- Karteに「⚖️ Game Management」セクション追加（Phase 55レジストリ使用）
 - 優勢時の振る舞い評価（Risk Taker / Solid）
 - 劣勢時の振る舞い評価（Fighter / Resigned）
 - フォールバック使用時は「(estimated)」ラベル
@@ -1488,18 +1550,18 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] 英語/日本語で正しく表示
 - [ ] フォールバック時は(estimated)表示
 
-**依存**: Phase 53, Phase 59
+**依存**: Phase 55, Phase 61
 
 ---
 
-### Phase 61: Curator Scoring
+### Phase 63: Curator Scoring
 
 **目的**: プロ棋譜の「今の自分に合う度合い」をスコア化。
 
 **In-scope:**
 - `SuitabilityScore` dataclass（needs_match, complexity, total）
-- needs_match: Phase 53の`UserRadarAggregate`弱点軸と棋譜MeaningTags一致度
-- complexity: ScoreLead/WR変動の安定度（Phase 59フォールバックと同様）
+- needs_match: Phase 55の`UserRadarAggregate`弱点軸と棋譜MeaningTags一致度
+- complexity: ScoreLead/WR変動の安定度（Phase 61フォールバックと同様）
 - 相対スコア（バッチ内パーセンタイル）
 
 **Out-of-scope:**
@@ -1517,11 +1579,11 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] スコアがバッチ内パーセンタイルで表現
 - [ ] ScoreStdev不在時もcomplexity計算可能
 
-**依存**: Phase 53（UserRadarAggregate）, Phase 48, Phase 46
+**依存**: Phase 55（UserRadarAggregate）, Phase 48, Phase 46
 
 ---
 
-### Phase 62: Curator出力
+### Phase 64: Curator出力
 
 **目的**: 複数SGFのランキングと学習ガイド用データをJSON出力。
 
@@ -1547,13 +1609,13 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] 選択SGFから`replay_guide.json`（3-5 moments）生成
 - [ ] 各momentにMeaningTagベースのconcept付与
 
-**依存**: Phase 61, Phase 50（Critical 3）, Phase 42（Batch Core）
+**依存**: Phase 63, Phase 50（Critical 3）, Phase 42（Batch Core）
 
 ---
 
-### Phase 63: Post-52 Integration
+### Phase 65: Post-54 Integration
 
-**目的**: Phase 53-62の統合テストと既存機能への影響確認。
+**目的**: Phase 55-64の統合テストと既存機能への影響確認。
 
 **In-scope:**
 - 統合テスト（Style + Pacing + Risk + Curator組み合わせ）
@@ -1564,19 +1626,19 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - 新機能追加
 
 **成果物:**
-- `tests/test_post52_integration.py`
-- `tests/test_regression_post52.py`
+- `tests/test_post54_integration.py`
+- `tests/test_regression_post54.py`
 
 **受け入れ条件:**
 - [ ] 全新規テストパス
 - [ ] Phase 24ゴールデンテストパス
 - [ ] バッチ100局処理が既存比120%以内
 
-**依存**: Phase 53-62
+**依存**: Phase 55-64
 
 ---
 
-### Phase 64: Post-52 品質強化
+### Phase 66: Post-54 品質強化
 
 **目的**: ドキュメント整理、i18n完了、運用準備。
 
@@ -1598,11 +1660,11 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - [ ] 英語/日本語UIで新セクション正しく表示
 - [ ] 全i18nキー翻訳済み（約30キー）
 
-**依存**: Phase 63
+**依存**: Phase 65
 
 ---
 
-### Phase 53–64 Deferred / Cut（20%）
+### Phase 55–66 Deferred / Cut（20%）
 
 | 項目 | 理由 |
 |------|------|
