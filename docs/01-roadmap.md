@@ -1638,7 +1638,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 64: Curator出力
+### Phase 64: Curator出力 ✅
 
 **目的**: 複数SGFのランキングと学習ガイド用データをJSON出力。
 
@@ -1654,17 +1654,24 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - LLM自動呼び出し
 
 **成果物:**
-- `katrain/core/curator/batch.py`（~120行）
-- `katrain/core/curator/guide_extractor.py`（~100行）
-- `tests/test_curator_batch.py`
-- `docs/resources/curator_output_schema.json`
+- `katrain/core/curator/batch.py`（310行）
+- `katrain/core/curator/guide_extractor.py`（142行）
+- `tests/test_curator_batch.py`（31テスト）
+- BatchResult拡張（curator_ranking_written等のフィールド追加）
+- orchestration.py統合（generate_curatorパラメータ追加）
 
 **受け入れ条件:**
-- [ ] バッチ完了時に`curator_ranking.json`生成
-- [ ] 選択SGFから`replay_guide.json`（3-5 moments）生成
-- [ ] 各momentにMeaningTagベースのconcept付与
+- [x] バッチ完了時に`curator_ranking_{timestamp}.json`生成
+- [x] 選択SGFから`replay_guide_{timestamp}.json`（highlight_moments）生成
+- [x] 各momentにMeaningTagベースのmeaning_tag_id/label付与
+- [x] percentile=None は 0 に正規化
+- [x] float フィールドは 3 桁に丸め
+- [x] UNCERTAIN タグは recommended_tags から除外
+- [x] 空バッチでも有効な空JSONファイル生成
 
 **依存**: Phase 63, Phase 50（Critical 3）, Phase 42（Batch Core）
+
+**完了日**: 2026-01-26
 
 ---
 
