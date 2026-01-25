@@ -1594,11 +1594,16 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - `katrain/i18n/locales/*/katrain.po`更新（10キー）
 
 **受け入れ条件:**
-- [ ] Karteに「優勢時/劣勢時の振る舞い」評価を表示
-- [ ] 英語/日本語で正しく表示
-- [ ] フォールバック時は(estimated)表示
+- [x] Karteに「優勢時/劣勢時の振る舞い」評価を表示
+- [x] 英語/日本語で正しく表示
+- [x] フォールバック時は(estimated)表示
+- [x] 3段階ラベル（Solid/Mixed/Risk Taker, Fighter/Mixed/Resigned）
+- [x] Duck-typed stubによるPhase 61からのテスト分離
+- [x] 全27テスト通過
 
 **依存**: Phase 55, Phase 61
+
+**完了**: 2026-01-26（PR #197）
 
 ---
 
