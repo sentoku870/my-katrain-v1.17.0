@@ -99,19 +99,25 @@ def get_confidence_label(level: ConfidenceLevel, lang: str = "ja") -> str:
 
 
 def get_auto_confidence_label(confidence_value: str, lang: str = "ja") -> str:
-    """Get human-readable label for auto-confidence level.
+    """Get human-readable label for auto-strictness recommendation confidence.
+
+    This label (推定確度/Certainty) differs from data reliability (信頼度/Confidence):
+    - 推定確度: How confident the auto-strictness recommendation is
+    - 信頼度: How reliable the data is based on visits/analysis depth
 
     Args:
         confidence_value: "high", "medium", or "low"
         lang: Language code ("ja" or "en")
 
     Returns:
-        Localized label string
+        Localized label string with full prefix (e.g., "推定確度: 高")
     """
-    if lang == "ja":
-        return CONFIDENCE_LABELS.get(confidence_value, confidence_value)
-    else:
-        return confidence_value.capitalize()
+    # Phase 53: Use 推定確度 (certainty) not 信頼度 (reliability) for auto-strictness
+    labels = {
+        "ja": {"high": "推定確度: 高", "medium": "推定確度: 中", "low": "推定確度: 低"},
+        "en": {"high": "Certainty: High", "medium": "Certainty: Medium", "low": "Certainty: Low"},
+    }
+    return labels.get(lang, labels["ja"]).get(confidence_value, confidence_value)
 
 
 # =============================================================================

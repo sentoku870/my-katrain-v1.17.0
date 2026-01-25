@@ -31,7 +31,8 @@ from katrain.core.analysis.meaning_tags import (
     classify_meaning_tag,
     get_meaning_tag_label_safe,
 )
-from katrain.core.analysis.presentation import format_loss_label
+from katrain.core.analysis.presentation import format_loss_label, get_auto_confidence_label
+from katrain.core.batch.helpers import format_wr_gap
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.eval_metrics import (
     aggregate_phase_mistake_stats,
@@ -628,7 +629,8 @@ def _build_karte_report_impl(
         if player_moves:
             # Added "Best" column for best move from PRE-MOVE node
             # Phase 47: Added "MTag" column for meaning tag
-            lines.append("| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | MTag | Reason |")
+            # Phase 53: Renamed "Best Gap" to "WR Gap" with improved formatting
+            lines.append("| # | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |")
             lines.append("|---|---|-------|------|------|------------|----------|--------|---------|------|--------|")
             for mv in player_moves:
                 # canonical loss を使用（常に >= 0）
@@ -643,24 +645,15 @@ def _build_karte_report_impl(
                 context = get_context_info_for_move(mv)
                 best_move_str = context["best_move"] or "-"
                 candidates_str = str(context["candidates"]) if context["candidates"] is not None else "-"
-                # PR1-3: Robust best_gap formatting using rounding
-                # If int(round(val)) == 0, print "0%" to avoid "-0%" display
-                if context["best_gap"] is not None:
-                    best_gap_val = context["best_gap"] * 100
-                    rounded_val = int(round(best_gap_val))
-                    if rounded_val == 0:
-                        best_gap_str = "0%"
-                    else:
-                        best_gap_str = f"{rounded_val}%"
-                else:
-                    best_gap_str = "-"
+                # Phase 53: Use format_wr_gap for consistent formatting with clamping
+                wr_gap_str = format_wr_gap(context["best_gap"])
                 danger_str = context["danger"] or "-"
 
                 # Leela データには (推定) サフィックスを付加
                 loss_display = format_loss_with_engine_suffix(loss, detect_engine_type(mv))
                 lines.append(
                     f"| {mv.move_number} | {mv.player or '-'} | {mv.gtp or '-'} | "
-                    f"{loss_display} | {best_move_str} | {candidates_str} | {best_gap_str} | {danger_str} | "
+                    f"{loss_display} | {best_move_str} | {candidates_str} | {wr_gap_str} | {danger_str} | "
                     f"{mistake} | {meaning_tag_label} | {reason_str} |"
                 )
         else:
@@ -783,12 +776,13 @@ def _build_karte_report_impl(
         conf_labels = eval_metrics.CONFIDENCE_LABELS
 
         # Build strictness info line with JP labels
+        # Phase 53: Use get_auto_confidence_label for auto-strictness (推定確度, not 信頼度)
         if skill_preset == "auto" and auto_recommendation:
             preset_jp = preset_labels.get(auto_recommendation.recommended_preset, auto_recommendation.recommended_preset)
-            conf_jp = conf_labels.get(auto_recommendation.confidence.value, auto_recommendation.confidence.value)
+            conf_label = get_auto_confidence_label(auto_recommendation.confidence.value)
             strictness_info = (
                 f"自動 → {preset_jp} "
-                f"(信頼度: {conf_jp}, "
+                f"({conf_label}, "
                 f"ブランダー={auto_recommendation.blunder_count}, 重要={auto_recommendation.important_count})"
             )
         else:
@@ -810,14 +804,15 @@ def _build_karte_report_impl(
                 hint_moves = list(snapshot.moves)
             hint_rec = eval_metrics.recommend_auto_strictness(hint_moves, game_count=1)
             hint_preset_jp = preset_labels.get(hint_rec.recommended_preset, hint_rec.recommended_preset)
-            hint_conf_jp = conf_labels.get(hint_rec.confidence.value, hint_rec.confidence.value)
-            lines.append(f"- Auto recommended: {hint_preset_jp} (信頼度: {hint_conf_jp})")
+            hint_conf_label = get_auto_confidence_label(hint_rec.confidence.value)
+            lines.append(f"- Auto recommended: {hint_preset_jp} ({hint_conf_label})")
 
         lines.extend([
             "",
             "| Metric | Definition |",
             "|--------|------------|",
             "| Points Lost | Score difference between actual move and best move (clamped to ≥0) |",
+            "| WR Gap | Winrate lost vs root position (0-100%). Search variance → 0.0% |",
             f"| Good | Loss < {t1:.1f} pts |",
             f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |",
             f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |",
@@ -1015,7 +1010,7 @@ def _build_karte_report_impl(
         # PR#1: LOW confidence → placeholder only
         if confidence_level == eval_metrics.ConfidenceLevel.LOW:
             return [
-                f"## Practice Priorities ({label})",
+                f"## 練習の優先順位 ({label})",
                 "",
                 "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
                 "",
@@ -1023,7 +1018,7 @@ def _build_karte_report_impl(
 
         player_moves = [mv for mv in snapshot.moves if mv.player == player]
         if not player_moves:
-            return [f"## Practice Priorities ({label})", "- No data available.", ""]
+            return [f"## 練習の優先順位 ({label})", "- No data available.", ""]
 
         # 盤サイズを取得（board_size は (x, y) タプル）
         board_x, _ = game.board_size
@@ -1044,7 +1039,7 @@ def _build_karte_report_impl(
         max_priorities = 1 if confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
         priorities = get_practice_priorities_from_stats(stats, max_priorities=max_priorities)
 
-        lines = [f"## Practice Priorities ({label})", ""]
+        lines = [f"## 練習の優先順位 ({label})", ""]
         lines.append("Based on the data above, consider focusing on:")
         lines.append("")
         if priorities:
