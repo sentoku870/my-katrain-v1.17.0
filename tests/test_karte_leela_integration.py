@@ -258,9 +258,11 @@ class TestKarteKataGoUnchanged:
     def test_katago_loss_format_unchanged(self, katago_game):
         """KataGo loss uses legacy format (符号なし、単位なし)."""
         output = build_karte_report(katago_game)
-        # "-6.0" や "6.0目" は含まれない
+        # "-6.0" や "6.0目" は含まれない (in loss column, not in definitions)
         assert "-6.0" not in output
-        assert "目" not in output
+        # Phase 54: "目" now appears in localized definitions section.
+        # Check that loss values like "6.0目" don't appear (should be just "6.0")
+        assert "6.0目" not in output
         # "6.0" は含まれる（worst move または table）
         assert "6.0" in output
 

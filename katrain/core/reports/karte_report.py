@@ -807,19 +807,35 @@ def _build_karte_report_impl(
             hint_conf_label = get_auto_confidence_label(hint_rec.confidence.value)
             lines.append(f"- Auto recommended: {hint_preset_jp} ({hint_conf_label})")
 
-        lines.extend([
-            "",
-            "| Metric | Definition |",
-            "|--------|------------|",
-            "| Points Lost | Score difference between actual move and best move (clamped to ≥0) |",
-            "| WR Gap | Winrate lost vs root position (0-100%). Search variance → 0.0% |",
-            f"| Good | Loss < {t1:.1f} pts |",
-            f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |",
-            f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |",
-            f"| Blunder | Loss ≥ {t3:.1f} pts |",
-            f"| Phase ({board_x}x{board_y}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |",
-            "",
-        ])
+        # Phase 54: Localized definitions
+        if lang == "ja":
+            lines.extend([
+                "",
+                "| 指標 | 定義 |",
+                "|------|------|",
+                "| 目数損失 | 実際の手と最善手との目数差（0以上にクランプ） |",
+                "| WR Gap | 勝率変化（着手前→着手後）。大きな目数損でも勝率変化が小さい場合あり |",
+                f"| Good | 損失 < {t1:.1f}目 |",
+                f"| Inaccuracy | 損失 {t1:.1f} - {t2:.1f}目 |",
+                f"| Mistake | 損失 {t2:.1f} - {t3:.1f}目 |",
+                f"| Blunder | 損失 ≥ {t3:.1f}目 |",
+                f"| Phase ({board_x}x{board_y}) | 序盤: <{opening_end}手, 中盤: {opening_end}-{middle_end-1}手, 終盤: ≥{middle_end}手 |",
+                "",
+            ])
+        else:
+            lines.extend([
+                "",
+                "| Metric | Definition |",
+                "|--------|------------|",
+                "| Points Lost | Score difference between actual move and best move (clamped to ≥0) |",
+                "| WR Gap | Winrate change (before → after move). Large point loss may have small WR change |",
+                f"| Good | Loss < {t1:.1f} pts |",
+                f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |",
+                f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |",
+                f"| Blunder | Loss ≥ {t3:.1f} pts |",
+                f"| Phase ({board_x}x{board_y}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |",
+                "",
+            ])
         return lines
 
     # Build Data Quality section (PR#1: confidence level display)

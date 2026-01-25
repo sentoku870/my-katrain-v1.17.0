@@ -18,14 +18,15 @@
 - Strictness: 標準 (手動)
 - Auto recommended: 激辛 (推定確度: 低)
 
-| Metric | Definition |
-|--------|------------|
-| Points Lost | Score difference between actual move and best move (clamped to ≥0) |
-| Good | Loss < 1.0 pts |
-| Inaccuracy | Loss 1.0 - 2.5 pts |
-| Mistake | Loss 2.5 - 5.0 pts |
-| Blunder | Loss ≥ 5.0 pts |
-| Phase (19x19) | Opening: <50, Middle: 50-199, Endgame: ≥200 |
+| 指標 | 定義 |
+|------|------|
+| 目数損失 | 実際の手と最善手との目数差（0以上にクランプ） |
+| WR Gap | 勝率変化（着手前→着手後）。大きな目数損でも勝率変化が小さい場合あり |
+| Good | 損失 < 1.0目 |
+| Inaccuracy | 損失 1.0 - 2.5目 |
+| Mistake | 損失 2.5 - 5.0目 |
+| Blunder | 損失 ≥ 5.0目 |
+| Phase (19x19) | 序盤: <50手, 中盤: 50-199手, 終盤: ≥200手 |
 
 ## Data Quality
 
@@ -68,7 +69,7 @@
   - >= 12: 1
 
 ## Important Moves (Black) Top 2
-| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | MTag | Reason |
+| # | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |
 |---|---|-------|------|------|------------|----------|--------|---------|------|--------|
 | 5 | B | F17 | 2.5 | D16 | 1 | - | Low | mistake | 地の損失 | unknown |
 | 17 | B | R8 | 6.0 | T6 | 1 | - | Low | blunder | 地の損失 | unknown |
@@ -78,7 +79,7 @@
 - 不明 (unknown): 2
 
 ## Important Moves (White) Top 1
-| # | P | Coord | Loss | Best | Candidates | Best Gap | Danger | Mistake | MTag | Reason |
+| # | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |
 |---|---|-------|------|------|------------|----------|--------|---------|------|--------|
 | 34 | W | B6 | 12.0 | B3 | 1 | - | Low | blunder | 地の損失 | unknown |
 

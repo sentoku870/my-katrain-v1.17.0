@@ -132,13 +132,13 @@ class TestSkillProfileSection:
     def test_summary_skill_profile_present(self):
         """Section header '## Skill Profile' present."""
         radar = make_aggregated_result()
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         assert any("## Skill Profile" in line for line in lines)
 
     def test_summary_skill_profile_no_radar_shows_section(self):
         """Section shown with placeholder message when no radar."""
-        lines = _build_skill_profile_section(None)
+        lines = _build_skill_profile_section(None, lang="en")
 
         assert any("## Skill Profile" in line for line in lines)
         assert any("No radar data available" in line for line in lines)
@@ -146,7 +146,7 @@ class TestSkillProfileSection:
     def test_summary_overall_tier_display(self):
         """Overall tier is displayed."""
         radar = make_aggregated_result(overall_tier=SkillTier.TIER_4)
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "Tier 4" in content
@@ -154,7 +154,7 @@ class TestSkillProfileSection:
     def test_summary_games_aggregated_display(self):
         """Games aggregated count is displayed."""
         radar = make_aggregated_result(games_aggregated=7)
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "7 games" in content
@@ -165,7 +165,7 @@ class TestSkillProfileSection:
             endgame=None,
             endgame_tier=SkillTier.TIER_UNKNOWN,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # The Endgame row should have N/A
@@ -174,7 +174,7 @@ class TestSkillProfileSection:
     def test_summary_table_format(self):
         """Table has correct headers."""
         radar = make_aggregated_result()
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "| Axis | Score | Tier | Moves |" in content
@@ -182,7 +182,7 @@ class TestSkillProfileSection:
     def test_summary_table_uses_round_score(self):
         """Table scores match round_score() output."""
         radar = make_aggregated_result(opening=4.25)  # Should round to 4.3
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # round_score(4.25) = 4.3
@@ -203,7 +203,7 @@ class TestWeakAxes:
             fighting=2.2,
             fighting_tier=SkillTier.TIER_2,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "Weak areas" in content
@@ -215,7 +215,7 @@ class TestWeakAxes:
             endgame=2.45,  # Raw is < 2.5, rounds to 2.5 for display
             endgame_tier=SkillTier.TIER_2,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # Should be listed as weak because 2.45 < 2.5
@@ -232,7 +232,7 @@ class TestWeakAxes:
             fighting_tier=SkillTier.TIER_1,
             endgame_tier=SkillTier.TIER_2,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # Find the weak areas line
@@ -264,11 +264,11 @@ class TestPracticePriorities:
             fighting=2.0,
             fighting_tier=SkillTier.TIER_2,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
-        # Phase 53: Japanese header "練習の優先順位"
-        assert "練習の優先順位" in content
+        # Phase 54: English output with lang="en"
+        assert "Practice priorities:" in content
         # Should have hint for fighting
         assert AXIS_PRACTICE_HINTS[RadarAxis.FIGHTING] in content
 
@@ -282,7 +282,7 @@ class TestPracticePriorities:
             fighting_tier=SkillTier.TIER_1,
             endgame_tier=SkillTier.TIER_2,
         )
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # Count practice priority items (Phase 53: Japanese header)
@@ -431,7 +431,7 @@ class TestRadarIntegrationEdgeCases:
             games_aggregated=1,
         )
 
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "## Skill Profile" in content
@@ -448,7 +448,7 @@ class TestRadarIntegrationEdgeCases:
             awareness=4.0,
         )
 
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         # Should not have weak areas section
@@ -465,7 +465,7 @@ class TestRadarIntegrationEdgeCases:
             fighting_tier=SkillTier.TIER_2,
         )
 
-        lines = _build_skill_profile_section(radar)
+        lines = _build_skill_profile_section(radar, lang="en")
 
         content = "\n".join(lines)
         assert "Weak areas" in content

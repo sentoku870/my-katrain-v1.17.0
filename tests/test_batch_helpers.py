@@ -5,6 +5,7 @@ from katrain.core.batch.helpers import (
     truncate_game_name,
     format_wr_gap,
     make_markdown_link_target,
+    escape_markdown_table_cell,
 )
 
 
@@ -158,3 +159,50 @@ class TestMakeMarkdownLinkTarget:
             "/reports/karte/file.md"
         )
         assert result == "file.md"
+
+
+class TestEscapeMarkdownTableCell:
+    """Tests for escape_markdown_table_cell function."""
+
+    def test_escapes_brackets(self):
+        """Brackets should be escaped."""
+        assert escape_markdown_table_cell("[a]") == "\\[a\\]"
+
+    def test_escapes_pipes(self):
+        """Pipes should be escaped to prevent column breaks."""
+        assert escape_markdown_table_cell("a|b") == "a\\|b"
+
+    def test_replaces_newlines(self):
+        """Newlines should become spaces to prevent row breaks."""
+        assert escape_markdown_table_cell("a\nb") == "a b"
+        # \r\n: \n becomes space, \r is removed → one space
+        assert escape_markdown_table_cell("a\r\nb") == "a b"
+
+    def test_combined(self):
+        """All escaping should work together."""
+        assert escape_markdown_table_cell("[a|b]\nc") == "\\[a\\|b\\] c"
+
+    def test_none_returns_placeholder(self):
+        """None should return safe placeholder."""
+        assert escape_markdown_table_cell(None) == "-"
+
+    def test_empty_string(self):
+        """Empty string should remain empty."""
+        assert escape_markdown_table_cell("") == ""
+
+    def test_normal_text_unchanged(self):
+        """Normal text without special chars should pass through."""
+        assert escape_markdown_table_cell("normal text") == "normal text"
+
+    def test_multibyte_preserved(self):
+        """Multibyte characters should be preserved."""
+        assert escape_markdown_table_cell("日本語テスト") == "日本語テスト"
+
+    def test_brackets_in_game_name(self):
+        """Real-world game name with brackets."""
+        name = "[ゆうだい03]vs[陈晨59902]"
+        result = escape_markdown_table_cell(name)
+        assert "\\[" in result
+        assert "\\]" in result
+        assert "[" not in result.replace("\\[", "")
+        assert "]" not in result.replace("\\]", "")
