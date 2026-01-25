@@ -14,11 +14,14 @@ Note:
     将来的にはProtocolベースのインターフェースに移行予定。
 """
 
+import logging
 import os
 import re
+from collections import Counter
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
+from katrain.core.lang import i18n
 from katrain.core.analysis.models import (
     EngineType,
     EvalSnapshot,
@@ -43,6 +46,11 @@ from katrain.core.eval_metrics import (
     get_practice_priorities_from_stats,
 )
 from katrain.core.analysis.critical_moves import CriticalMove, select_critical_moves
+from katrain.core.analysis.meaning_tags import MeaningTagId
+from katrain.core.analysis.skill_radar import compute_radar_from_moves
+from katrain.core.analysis.style import StyleResult, determine_style
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +289,42 @@ def _build_error_karte(
     return "\n".join(sections)
 
 
+# ---------------------------------------------------------------------------
+# Style Archetype helpers (Phase 57)
+# ---------------------------------------------------------------------------
+
+
+def _build_tag_counts_from_moves(
+    moves: List["MoveEval"],
+    player: Optional[str]
+) -> Dict[MeaningTagId, int]:
+    """Build MeaningTagId counts from cached meaning_tag_id field."""
+    filtered = [m for m in moves if player is None or m.player == player]
+    tag_ids = [m.meaning_tag_id for m in filtered if m.meaning_tag_id is not None]
+
+    valid_tags: List[MeaningTagId] = []
+    for tid in tag_ids:
+        try:
+            valid_tags.append(MeaningTagId(tid))
+        except ValueError:
+            continue
+    return dict(Counter(valid_tags))
+
+
+def _compute_style_safe(
+    moves: List["MoveEval"],
+    player: Optional[str]
+) -> Optional[StyleResult]:
+    """Compute style with graceful fallback on error."""
+    try:
+        radar = compute_radar_from_moves(moves, player=player)
+        tag_counts = _build_tag_counts_from_moves(moves, player)
+        return determine_style(radar, tag_counts)
+    except Exception:
+        logger.debug("Style computation failed", exc_info=True)
+        return None
+
+
 def _build_karte_report_impl(
     game: Any,  # Game object
     snapshot: EvalSnapshot,  # Pre-computed snapshot (avoid double computation)
@@ -390,6 +434,13 @@ def _build_karte_report_impl(
             elif match_white and not match_black:
                 filtered_player = "W"
             # If both or neither match, filtered_player stays None (show both)
+
+    # Style Archetype (Phase 57)
+    style_result = _compute_style_safe(snapshot.moves, filtered_player)
+    if style_result is not None:
+        style_name = i18n._(style_result.archetype.name_key)
+        meta_lines.append(f"- Style: {style_name}")
+        meta_lines.append(f"- Style Confidence: {style_result.confidence:.0%}")
 
     def worst_move_for(player: str) -> Optional[MoveEval]:
         """worst move を canonical loss で選択（KataGo/Leela 両対応）。"""

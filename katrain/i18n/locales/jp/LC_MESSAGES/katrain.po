@@ -1804,3 +1804,22 @@ msgstr "手数不足（10手以上必要）"
 
 msgid "radar:tier-unknown"
 msgstr "Tier ? (不明)"
+
+#. Phase 57: Style Archetype (name only, summary deferred)
+msgid "style:kiai_fighter:name"
+msgstr "剛腕ファイター"
+
+msgid "style:cosmic_architect:name"
+msgstr "大局観の建築家"
+
+msgid "style:precision_machine:name"
+msgstr "精密機械"
+
+msgid "style:shinobi_survivor:name"
+msgstr "忍びの生存者"
+
+msgid "style:ai_native:name"
+msgstr "AI世代"
+
+msgid "style:balance_master:name"
+msgstr "バランスマスター"
