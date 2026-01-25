@@ -14,10 +14,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core.batch.helpers import (
+    escape_markdown_table_cell,
     get_canonical_loss,
-    truncate_game_name,
     make_markdown_link_target,
+    truncate_game_name,
 )
+from katrain.common.locale_utils import normalize_lang_code
 
 _logger = logging.getLogger("katrain.core.batch.stats")
 
@@ -394,7 +396,8 @@ def build_batch_summary(
         lines.append("|------|-----:|:------:|----------|-----:|----------|")
         for game_name, move_num, player, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
-            lines.append(f"| {truncate_game_name(game_name)} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
+            display_name = escape_markdown_table_cell(truncate_game_name(game_name))
+            lines.append(f"| {display_name} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
 
     # Games list
     lines.append("\n## Games Included\n")
@@ -484,7 +487,7 @@ AXIS_LABELS = {
     RadarAxis.AWARENESS: "Awareness",
 }
 
-# Practice hints for weak axes
+# Practice hints for weak axes (English - default)
 AXIS_PRACTICE_HINTS = {
     RadarAxis.OPENING: "Study fuseki patterns and joseki choices",
     RadarAxis.FIGHTING: "Practice life & death problems and fighting tesuji",
@@ -492,6 +495,355 @@ AXIS_PRACTICE_HINTS = {
     RadarAxis.STABILITY: "Focus on solid shape; avoid overplays in won positions",
     RadarAxis.AWARENESS: "Review AI's top choices to calibrate intuition",
 }
+
+# =============================================================================
+# Phase 54: Localization Helpers
+# =============================================================================
+
+# Localized axis practice hints
+AXIS_PRACTICE_HINTS_LOCALIZED: Dict[str, Dict[RadarAxis, str]] = {
+    "jp": {
+        RadarAxis.OPENING: "布石のパターンと定石選択を学ぶ",
+        RadarAxis.FIGHTING: "詰碁と戦いの手筋を練習する",
+        RadarAxis.ENDGAME: "ヨセの計算と終盤の手順を学ぶ",
+        RadarAxis.STABILITY: "堅実な形を心がけ、優勢での無理を避ける",
+        RadarAxis.AWARENESS: "AIの候補手を確認し、直感を調整する",
+    },
+    "en": AXIS_PRACTICE_HINTS,  # Use English defaults
+}
+
+# Meaning tag practice hints (lowercase snake_case IDs)
+MTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "connection_miss": "石の連絡を意識した打ち方を練習",
+        "reading_failure": "詰碁で読みを強化",
+        "life_death_error": "死活問題を集中的に解く",
+        "overplay": "形勢判断を意識し、無理な手を避ける",
+        "slow_move": "盤面全体を見渡し、大きな場所を探す",
+        "direction_error": "石の方向性と全局的なバランスを意識",
+        "shape_error": "良い形・悪い形を学び、効率を高める",
+        "timing_error": "手順の優先度を見直す",
+    },
+    "en": {
+        "connection_miss": "Practice connecting moves and cut prevention",
+        "reading_failure": "Strengthen reading with tsumego",
+        "life_death_error": "Focus on life & death problems",
+        "overplay": "Consider whole-board evaluation before aggressive moves",
+        "slow_move": "Look for bigger moves across the board",
+        "direction_error": "Study directional play and whole-board balance",
+        "shape_error": "Learn good/bad shapes to improve efficiency",
+        "timing_error": "Review move order priorities",
+    },
+}
+
+# Reason tag practice hints (lowercase snake_case keys)
+RTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "need_connect": "石の連絡と切断に注意",
+        "low_liberties": "呼吸点の管理を意識",
+        "atari": "アタリへの反応を確認",
+        "reading_failure": "読みの深さを意識",
+        "life_death": "死活の判断を磨く",
+        "territory_loss": "地の損失を意識",
+    },
+    "en": {
+        "need_connect": "Pay attention to connections and cuts",
+        "low_liberties": "Manage liberties carefully",
+        "atari": "Check responses to atari",
+        "reading_failure": "Deepen reading depth",
+        "life_death": "Improve life & death judgment",
+        "territory_loss": "Consider territory implications",
+    },
+}
+
+# Localized intro texts
+PRACTICE_INTRO_TEXTS: Dict[str, str] = {
+    "jp": "上記のデータに基づき、以下を重点的に練習してください：\n",
+    "en": "Based on the data above, consider focusing on:\n",
+}
+
+# Localized notes headers
+NOTES_HEADERS: Dict[str, str] = {
+    "jp": "## 注記",
+    "en": "## Notes",
+}
+
+# Localized hint line formats
+HINT_LINE_FORMATS: Dict[str, str] = {
+    "jp": "**{label}**（{count}回）→ {hint}",
+    "en": "**{label}** ({count}x) -> {hint}",
+}
+
+# Localized percentage notes
+PERCENTAGE_NOTES: Dict[str, str] = {
+    "jp": "*パーセンテージはタグ出現回数の割合です（重要局面あたりではありません）*",
+    "en": "*Percentages represent tag occurrence ratios (not per critical move)*",
+}
+
+# Localized color bias notes
+COLOR_BIAS_NOTES: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "B": "*注: 全て黒番のデータです*",
+        "W": "*注: 全て白番のデータです*",
+    },
+    "en": {
+        "B": "*Note: All games played as Black*",
+        "W": "*Note: All games played as White*",
+    },
+}
+
+# Localized phase-based priority texts
+PHASE_PRIORITY_TEXTS: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "opening": "**布石の原理と定石**を学ぶ（平均損失が最も高い）",
+        "middle": "**戦いと読み**を練習する（中盤での平均損失が高い）",
+        "yose": "**ヨセの技術**を学ぶ（平均損失が最も高い）",
+        "blunder_review": "{phase}の大悪手を復習（{count}回発生）",
+        "life_death": "**死活問題**を練習して大悪手を減らす",
+        "no_priority": "特に優先すべき課題なし。バランスの良い練習を続けてください！",
+        "no_weakness": "明確な弱点パターンなし。この調子で頑張ってください！",
+    },
+    "en": {
+        "opening": "Study **opening principles and joseki** (highest avg loss)",
+        "middle": "Practice **fighting and reading** (highest avg loss in middle game)",
+        "yose": "Study **endgame techniques** (highest avg loss)",
+        "blunder_review": "Review {phase} blunders ({count} occurrences)",
+        "life_death": "Practice **life and death problems** to reduce blunders",
+        "no_priority": "No specific priorities identified. Continue balanced practice!",
+        "no_weakness": "No clear weakness pattern detected. Keep up the good work!",
+    },
+}
+
+# Localized phase labels
+PHASE_LABELS_LOCALIZED: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "opening": "序盤",
+        "middle": "中盤",
+        "yose": "終盤",
+    },
+    "en": {
+        "opening": "opening",
+        "middle": "middle game",
+        "yose": "endgame",
+    },
+}
+
+# Localized section headers
+SECTION_HEADERS: Dict[str, Dict[str, str]] = {
+    "jp": {
+        "practice_priorities": "## 練習の優先順位",
+        "games_included": "## 含まれる対局",
+        "skill_profile": "## スキルプロファイル",
+        "weak_areas": "**弱点エリア (< 2.5)**",
+        "practice_label": "**練習の優先順位:**",
+    },
+    "en": {
+        "practice_priorities": "## Practice Priorities",
+        "games_included": "## Games Included",
+        "skill_profile": "## Skill Profile",
+        "weak_areas": "**Weak areas (< 2.5)**",
+        "practice_label": "**Practice priorities:**",
+    },
+}
+
+
+def get_phase_priority_text(key: str, lang: str = "jp", **kwargs) -> str:
+    """Get localized phase priority text with optional formatting."""
+    normalized = normalize_lang_code(lang)
+    texts = PHASE_PRIORITY_TEXTS.get(normalized, PHASE_PRIORITY_TEXTS["en"])
+    template = texts.get(key, "")
+    if kwargs:
+        return template.format(**kwargs)
+    return template
+
+
+def get_phase_label_localized(phase: str, lang: str = "jp") -> str:
+    """Get localized phase label."""
+    normalized = normalize_lang_code(lang)
+    labels = PHASE_LABELS_LOCALIZED.get(normalized, PHASE_LABELS_LOCALIZED["en"])
+    return labels.get(phase, phase)
+
+
+def get_section_header(key: str, lang: str = "jp") -> str:
+    """Get localized section header."""
+    normalized = normalize_lang_code(lang)
+    headers = SECTION_HEADERS.get(normalized, SECTION_HEADERS["en"])
+    return headers.get(key, key)
+
+
+def get_practice_intro_text(lang: str = "jp") -> str:
+    """Get localized practice intro text."""
+    normalized = normalize_lang_code(lang)
+    return PRACTICE_INTRO_TEXTS.get(normalized, PRACTICE_INTRO_TEXTS["en"])
+
+
+def get_notes_header(lang: str = "jp") -> str:
+    """Get localized notes header."""
+    normalized = normalize_lang_code(lang)
+    return NOTES_HEADERS.get(normalized, NOTES_HEADERS["en"])
+
+
+def get_axis_practice_hint(axis: RadarAxis, lang: str = "jp") -> str:
+    """Get localized practice hint for a radar axis."""
+    normalized = normalize_lang_code(lang)
+    hints = AXIS_PRACTICE_HINTS_LOCALIZED.get(normalized, AXIS_PRACTICE_HINTS_LOCALIZED["en"])
+    return hints.get(axis, "")
+
+
+def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> Optional[str]:
+    """Get localized practice hint for a meaning tag ID.
+
+    Args:
+        tag_id: Meaning tag ID (lowercase snake_case, e.g., "connection_miss")
+        lang: Language code ("jp", "en", "ja")
+
+    Returns:
+        Hint text or None if tag not found
+    """
+    normalized = normalize_lang_code(lang)
+    hints = MTAG_PRACTICE_HINTS.get(normalized, MTAG_PRACTICE_HINTS["en"])
+    return hints.get(tag_id.lower())
+
+
+def get_rtag_practice_hint(tag: str, lang: str = "jp") -> Optional[str]:
+    """Get localized practice hint for a reason tag.
+
+    Args:
+        tag: Reason tag (lowercase snake_case, e.g., "need_connect")
+        lang: Language code ("jp", "en", "ja")
+
+    Returns:
+        Hint text or None if tag not found
+    """
+    normalized = normalize_lang_code(lang)
+    hints = RTAG_PRACTICE_HINTS.get(normalized, RTAG_PRACTICE_HINTS["en"])
+    return hints.get(tag.lower())
+
+
+def format_hint_line(label: str, count: int, hint: str, lang: str = "jp") -> str:
+    """Format a practice hint line with localized format.
+
+    Args:
+        label: Tag label (localized)
+        count: Occurrence count
+        hint: Practice hint text
+        lang: Language code
+
+    Returns:
+        Formatted hint line (JP: "**label**（N回）→ hint", EN: "**label** (Nx) -> hint")
+    """
+    normalized = normalize_lang_code(lang)
+    fmt = HINT_LINE_FORMATS.get(normalized, HINT_LINE_FORMATS["en"])
+    return fmt.format(label=label, count=count, hint=hint)
+
+
+def get_percentage_note(lang: str = "jp") -> str:
+    """Get localized percentage explanation note."""
+    normalized = normalize_lang_code(lang)
+    return PERCENTAGE_NOTES.get(normalized, PERCENTAGE_NOTES["en"])
+
+
+def get_color_bias_note(bias: str, lang: str = "jp") -> str:
+    """Get localized color bias note.
+
+    Args:
+        bias: "B" for all-Black, "W" for all-White
+        lang: Language code
+
+    Returns:
+        Localized note text
+    """
+    normalized = normalize_lang_code(lang)
+    notes = COLOR_BIAS_NOTES.get(normalized, COLOR_BIAS_NOTES["en"])
+    return notes.get(bias, "")
+
+
+def detect_color_bias(player_games: List[Tuple[dict, str]]) -> Optional[str]:
+    """Detect if all games are played as one color.
+
+    Args:
+        player_games: List of (stats, role) tuples
+
+    Returns:
+        "B" if all Black, "W" if all White, None if mixed
+    """
+    if not player_games:
+        return None
+    b_games = sum(1 for _, role in player_games if role == "B")
+    w_games = sum(1 for _, role in player_games if role == "W")
+    if b_games > 0 and w_games == 0:
+        return "B"
+    elif w_games > 0 and b_games == 0:
+        return "W"
+    return None
+
+
+def get_dominant_tags(
+    tag_counts: Dict[str, int],
+    min_count: int = 3,
+    max_tags: int = 3,
+) -> List[Tuple[str, int]]:
+    """Get dominant tags sorted by count.
+
+    Args:
+        tag_counts: Dict of tag -> count
+        min_count: Minimum count to include
+        max_tags: Maximum number of tags to return
+
+    Returns:
+        List of (tag, count) tuples, sorted by count descending
+    """
+    qualified = [(tag, count) for tag, count in tag_counts.items() if count >= min_count]
+    qualified.sort(key=lambda x: -x[1])
+    return qualified[:max_tags]
+
+
+def build_tag_based_hints(
+    mtag_counts: Dict[str, int],
+    rtag_counts: Dict[str, int],
+    lang: str = "jp",
+    min_count: int = 3,
+    max_hints: int = 4,
+) -> List[str]:
+    """Build practice hint lines based on dominant meaning/reason tags.
+
+    Args:
+        mtag_counts: Meaning tag ID -> count
+        rtag_counts: Reason tag -> count
+        lang: Language code
+        min_count: Minimum occurrences to include
+        max_hints: Maximum total hints to generate
+
+    Returns:
+        List of formatted hint lines (empty if no qualified tags with hints)
+    """
+    from katrain.core.analysis.meaning_tags.integration import get_meaning_tag_label_safe
+    from katrain.common.locale_utils import to_iso_lang_code
+
+    hints = []
+
+    # Get dominant meaning tags
+    top_mtags = get_dominant_tags(mtag_counts, min_count, max_hints)
+    for tag_id, count in top_mtags:
+        hint = get_mtag_practice_hint(tag_id, lang)
+        if hint:
+            # Get localized label for meaning tag (needs ISO code for lookup)
+            iso_lang = to_iso_lang_code(lang)
+            label = get_meaning_tag_label_safe(tag_id, iso_lang)
+            if label:
+                hints.append(format_hint_line(label, count, hint, lang))
+
+    # Get dominant reason tags if we have room
+    remaining = max_hints - len(hints)
+    if remaining > 0:
+        top_rtags = get_dominant_tags(rtag_counts, min_count, remaining)
+        for tag, count in top_rtags:
+            hint = get_rtag_practice_hint(tag, lang)
+            if hint:
+                label = get_reason_tag_label(tag, fallback_to_raw=True)
+                hints.append(format_hint_line(label, count, hint, lang))
+
+    return hints
 
 
 def _get_tier_label(tier: SkillTier) -> str:
@@ -506,16 +858,18 @@ def _get_axis_label(axis: RadarAxis) -> str:
 
 def _build_skill_profile_section(
     radar: Optional[AggregatedRadarResult],
+    lang: str = "jp",
 ) -> List[str]:
     """Build Skill Profile section for player summary.
 
     Args:
         radar: Aggregated radar result, or None if no data
+        lang: Language code for output ("jp", "en", "ja")
 
     Returns:
         List of markdown lines to append to summary
     """
-    lines = ["\n## Skill Profile\n"]
+    lines = [f"\n{get_section_header('skill_profile', lang)}\n"]
 
     if not radar:
         lines.append("*No radar data available (requires 19x19 games with analysis)*\n")
@@ -556,13 +910,13 @@ def _build_skill_profile_section(
             for axis, score in weak_axes
         ]
         lines.append("")
-        lines.append(f"**Weak areas (< 2.5)**: {', '.join(weak_list)}")
+        lines.append(f"{get_section_header('weak_areas', lang)}: {', '.join(weak_list)}")
 
         # Practice priorities (max 2)
         lines.append("")
-        lines.append("**練習の優先順位:**")
+        lines.append(get_section_header("practice_label", lang))
         for axis, _ in weak_axes[:2]:
-            hint = AXIS_PRACTICE_HINTS.get(axis, "")
+            hint = get_axis_practice_hint(axis, lang)
             if hint:
                 lines.append(f"- {_get_axis_label(axis)}: {hint}")
 
@@ -607,6 +961,7 @@ def build_player_summary(
     analysis_settings: Optional[Dict[str, any]] = None,
     karte_path_map: Optional[Dict[str, str]] = None,
     summary_dir: Optional[str] = None,
+    lang: str = "jp",
 ) -> str:
     """
     Build summary for a single player across their games.
@@ -623,6 +978,7 @@ def build_player_summary(
             - timeout: float or None, timeout in seconds
         karte_path_map: Optional mapping from rel_path to absolute karte file path
         summary_dir: Directory where the summary file is being written (for relative links)
+        lang: Language code for output ("jp", "en", "ja"). Defaults to "jp".
 
     Returns:
         Markdown summary string
@@ -963,7 +1319,7 @@ def build_player_summary(
     # =========================================================================
     # Phase 49: Skill Profile Section
     # =========================================================================
-    lines.extend(_build_skill_profile_section(aggregated_radar))
+    lines.extend(_build_skill_profile_section(aggregated_radar, lang=lang))
 
     # =========================================================================
     # Section 1: Overview
@@ -1075,7 +1431,7 @@ def build_player_summary(
         lines.append("|------|-----:|----------|-----:|----------|--------|")
         for game_name, move_num, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
-            display_name = truncate_game_name(game_name)
+            display_name = escape_markdown_table_cell(truncate_game_name(game_name))
 
             # Phase 53: Generate karte link if mapping available
             karte_path = karte_path_map.get(game_name) if karte_path_map else None
@@ -1138,6 +1494,10 @@ def build_player_summary(
     else:
         lines.append("- No meaning tags classified.")
 
+    # Phase 54: Add percentage explanation note
+    lines.append("")
+    lines.append(get_percentage_note(lang))
+
     # =========================================================================
     # Section 7: Weakness Hypothesis
     # =========================================================================
@@ -1186,13 +1546,13 @@ def build_player_summary(
         for w in weaknesses:
             lines.append(f"- {w}")
     else:
-        lines.append("- No clear weakness pattern detected. Keep up the good work!")
+        lines.append(f"- {get_phase_priority_text('no_weakness', lang)}")
 
     # =========================================================================
     # Section 8: Practice Priorities
     # =========================================================================
-    lines.append("\n## 練習の優先順位\n")
-    lines.append("Based on the data above, consider focusing on:\n")
+    lines.append(f"\n{get_section_header('practice_priorities', lang)}\n")
+    lines.append(get_practice_intro_text(lang))
 
     priorities = []
 
@@ -1200,31 +1560,43 @@ def build_player_summary(
     if phase_avg:
         worst_phase = max(phase_avg.items(), key=lambda x: x[1])
         if worst_phase[1] > 0.5:
-            if worst_phase[0] == "opening":
-                priorities.append("Study **opening principles and joseki** (highest avg loss)")
-            elif worst_phase[0] == "middle":
-                priorities.append("Practice **fighting and reading** (highest avg loss in middle game)")
-            else:
-                priorities.append("Study **endgame techniques** (highest avg loss)")
+            priorities.append(get_phase_priority_text(worst_phase[0], lang))
 
     # Priority 2: High blunder areas
     for phase in ["opening", "middle", "yose"]:
         blunder_key = (phase, MistakeCategory.BLUNDER.name)
         blunder_count = phase_mistake_counts.get(blunder_key, 0)
         if blunder_count >= 3:
-            phase_name = phase_labels.get(phase, phase)
-            priorities.append(f"Review {phase_name.lower()} blunders ({blunder_count} occurrences)")
+            phase_name = get_phase_label_localized(phase, lang)
+            priorities.append(
+                get_phase_priority_text("blunder_review", lang, phase=phase_name, count=blunder_count)
+            )
 
     # Priority 3: Life and death if many blunders
     total_blunders = mistake_counts.get(MistakeCategory.BLUNDER, 0)
     if total_blunders >= 5:
-        priorities.append("Practice **life and death problems** to reduce blunders")
+        priorities.append(get_phase_priority_text("life_death", lang))
 
     if priorities:
         for i, p in enumerate(priorities[:5], 1):  # Max 5 priorities
             lines.append(f"{i}. {p}")
     else:
-        lines.append("- No specific priorities identified. Continue balanced practice!")
+        lines.append(f"- {get_phase_priority_text('no_priority', lang)}")
+
+    # Phase 54: Add tag-based practice hints
+    tag_hints = build_tag_based_hints(
+        meaning_tags_counts,
+        reason_tags_counts,
+        lang=lang,
+        min_count=3,
+        max_hints=4,
+    )
+    if tag_hints:
+        lines.append("")
+        lines.append(get_notes_header(lang))
+        lines.append("")
+        for hint in tag_hints:
+            lines.append(f"- {hint}")
 
     # =========================================================================
     # Section 9: Games Included
@@ -1236,6 +1608,12 @@ def build_player_summary(
         player_moves = stats["moves_by_player"].get(role, 0)
         color = "Black" if role == "B" else "White"
         lines.append(f"{i}. {game_name} ({color}) — {player_moves} moves, {player_loss:.1f} pts lost")
+
+    # Phase 54: Add color bias note if all games are same color
+    color_bias = detect_color_bias(player_games)
+    if color_bias:
+        lines.append("")
+        lines.append(get_color_bias_note(color_bias, lang))
 
     return "\n".join(lines)
 

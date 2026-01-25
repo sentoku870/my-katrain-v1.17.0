@@ -1255,11 +1255,22 @@ class TestPlayerSummaryReasonTags:
         # Search using Japanese labels since that's what get_reason_tag_label returns
         lines = summary.split("\n")
         # Japanese labels: アタリ (atari), 呼吸点少 (low liberties)
-        tag_lines = [l for l in lines if "(atari)" in l or "(low liberties)" in l]
+        # Phase 54: Filter to only "Reason Tags" section lines (not hint lines with **)
+        # Reason tag lines format: "- Label (tag): count (pct%)"
+        # Hint lines format: "- **Label (tag)**（count）→ hint"
+        tag_lines = [
+            l for l in lines
+            if ("(atari)" in l or "(low liberties)" in l) and "**" not in l
+        ]
         assert len(tag_lines) == 2
         # atari (alphabetically first) should come before low_liberties
-        atari_idx = next(i for i, l in enumerate(lines) if "(atari)" in l)
-        low_lib_idx = next(i for i, l in enumerate(lines) if "(low liberties)" in l)
+        # Get indices from non-bold lines only
+        reason_lines = [l for l in lines if ("(atari)" in l or "(low liberties)" in l) and "**" not in l]
+        atari_line = next(l for l in reason_lines if "(atari)" in l)
+        low_lib_line = next(l for l in reason_lines if "(low liberties)" in l)
+        # Find their positions in the original lines
+        atari_idx = lines.index(atari_line)
+        low_lib_idx = lines.index(low_lib_line)
         assert atari_idx < low_lib_idx
 
     def test_invalid_reason_tags_not_counted(self):

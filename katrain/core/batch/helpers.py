@@ -752,5 +752,35 @@ def escape_markdown_brackets(text: str) -> str:
 
     Returns:
         Text with [ and ] escaped as \\[ and \\]
+
+    Note:
+        For full table cell safety, use escape_markdown_table_cell() instead.
     """
     return text.replace("[", "\\[").replace("]", "\\]")
+
+
+def escape_markdown_table_cell(text: "Optional[str]") -> str:
+    """Escape text for safe use in markdown table cells.
+
+    Handles:
+    - None → "-" (safe placeholder)
+    - Brackets [ ] → \\[ \\] (prevents link syntax)
+    - Pipes | → \\| (prevents column breaks)
+    - Newlines → space (prevents row breaks)
+
+    Args:
+        text: Plain text to escape, or None
+
+    Returns:
+        Escaped text safe for markdown table cells
+
+    Note:
+        Do NOT use on text that intentionally contains markdown links.
+        Use escape_markdown_brackets() for bracket-only escaping.
+    """
+    if text is None:
+        return "-"
+    result = text.replace("[", "\\[").replace("]", "\\]")
+    result = result.replace("|", "\\|")
+    result = result.replace("\n", " ").replace("\r", "")
+    return result

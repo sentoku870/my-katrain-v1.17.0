@@ -28,8 +28,8 @@
 ## Top Worst Moves
 | Game | # | P | Coord | Loss | Importance | Category |
 |------|---|---|-------|------|------------|----------|
-| test_snapshot_game.s | 10 | B | Q10 | 4.0 | 5.0 | BLUNDER |
-| test_snapshot_game.s | 25 | W | D16 | 3.0 | 3.5 | MISTAKE |
+| test_snapshot_game.sgf | 10 | B | Q10 | 4.0 | 5.0 | BLUNDER |
+| test_snapshot_game.sgf | 25 | W | D16 | 3.0 | 3.5 | MISTAKE |
 
 ## Weakness Hypothesis
 
@@ -43,7 +43,7 @@ Based on cross-tabulation analysis:
 - Middle gameの損失の66.7%が大悪手によるもの
 - Middle gameの6.7%の手が大悪手と判定されている
 
-## Practice Priorities
+## 練習の優先順位
 
 Based on the data above, consider focusing on:
 

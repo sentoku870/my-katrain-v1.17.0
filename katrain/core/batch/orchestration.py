@@ -60,6 +60,8 @@ def run_batch(
     analysis_engine: str = "katago",
     leela_engine: Optional["LeelaEngine"] = None,
     per_move_timeout: float = 30.0,
+    # Phase 54: Output language
+    lang: str = "jp",
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -94,6 +96,7 @@ def run_batch(
         analysis_engine: Engine to use ("katago" or "leela", default: "katago")
         leela_engine: LeelaEngine instance (required if analysis_engine="leela")
         per_move_timeout: Timeout per move for Leela analysis (default: 30.0)
+        lang: Language code for output ("jp", "en", "ja"). Defaults to "jp".
 
     Returns:
         BatchResult with success/fail/skip counts, output counts, and error information
@@ -411,6 +414,8 @@ def run_batch(
                         # Phase 53: Pass karte mapping for link generation
                         karte_path_map=karte_path_map,
                         summary_dir=os.path.dirname(summary_path),
+                        # Phase 54: Output language
+                        lang=lang,
                     )
 
                     # Use safe write with error handling (A3)
