@@ -45,6 +45,11 @@ class BatchResult:
         summary_error: Error message if summary write failed
         analyzed_sgf_written: Number of analyzed SGF files written
         write_errors: List of structured write errors
+        curator_ranking_written: Whether curator ranking JSON was written (Phase 64)
+        curator_guide_written: Whether replay guide JSON was written (Phase 64)
+        curator_games_scored: Number of games scored for curator ranking (Phase 64)
+        curator_guides_generated: Number of replay guides generated (Phase 64)
+        curator_errors: List of curator-related error messages (Phase 64)
     """
 
     success_count: int = 0
@@ -60,3 +65,9 @@ class BatchResult:
     analyzed_sgf_written: int = 0
     # Structured write errors (A3)
     write_errors: List[WriteError] = field(default_factory=list)
+    # Curator outputs (Phase 64)
+    curator_ranking_written: bool = False
+    curator_guide_written: bool = False
+    curator_games_scored: int = 0
+    curator_guides_generated: int = 0
+    curator_errors: List[str] = field(default_factory=list)

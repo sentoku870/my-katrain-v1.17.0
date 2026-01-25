@@ -29,6 +29,7 @@ from katrain.core.batch.helpers import (
 from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
 
 if TYPE_CHECKING:
+    from katrain.core.analysis.skill_radar import AggregatedRadarResult
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.leela.engine import LeelaEngine
@@ -62,6 +63,9 @@ def run_batch(
     per_move_timeout: float = 30.0,
     # Phase 54: Output language
     lang: str = "jp",
+    # Phase 64: Curator outputs
+    generate_curator: bool = False,
+    user_aggregate: Optional["AggregatedRadarResult"] = None,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -159,6 +163,8 @@ def run_batch(
         enabled_outputs.append("Karte")
     if generate_summary:
         enabled_outputs.append("Summary")
+    if generate_curator:
+        enabled_outputs.append("Curator")
     if enabled_outputs:
         log(f"Enabled outputs: {', '.join(enabled_outputs)}")
 
@@ -191,6 +197,9 @@ def run_batch(
 
     # For summary generation, collect game stats
     game_stats_list = [] if generate_summary else None
+
+    # Track (game, stats) tuples for curator output (Phase 64)
+    games_for_curator: List[tuple] = [] if generate_curator else None
 
     # Track actual effective visits used per successful analysis (for variable visits stats)
     selected_visits_list: List[int] = []
@@ -231,7 +240,7 @@ def run_batch(
 
         # Analyze the file
         # We need the Game object if generating karte or summary
-        need_game = generate_karte or generate_summary
+        need_game = generate_karte or generate_summary or generate_curator
 
         # Calculate effective visits (with optional jitter)
         effective_visits = visits
@@ -353,13 +362,17 @@ def run_batch(
                         message=str(e),
                     ))
 
-            # Collect stats for summary
+            # Collect stats for summary and/or curator
             # Phase 44: Pass target_visits for consistent reliability threshold
-            if generate_summary and game is not None:
+            if (generate_summary or generate_curator) and game is not None:
                 try:
                     stats = extract_game_stats(game, rel_path, target_visits=visits)
                     if stats:
-                        game_stats_list.append(stats)
+                        if generate_summary:
+                            game_stats_list.append(stats)
+                        # Phase 64: Collect (game, stats) for curator
+                        if generate_curator:
+                            games_for_curator.append((game, stats))
                 except Exception as e:
                     log(f"  ERROR extracting stats: {e}")
 
@@ -451,5 +464,42 @@ def run_batch(
         # No games were successfully analyzed for summary
         result.summary_error = "No valid game statistics available"
         log("WARNING: Summary generation requested but no valid game statistics available")
+
+    # Phase 64: Generate curator outputs if requested
+    if generate_curator and games_for_curator and not result.cancelled:
+        try:
+            from katrain.core.curator import generate_curator_outputs
+
+            curator_dir = os.path.join(output_dir, "reports", "curator")
+            log("Generating curator outputs...")
+
+            curator_result = generate_curator_outputs(
+                games_and_stats=games_for_curator,
+                curator_dir=curator_dir,
+                batch_timestamp=batch_timestamp,
+                user_aggregate=user_aggregate,
+                lang=lang,
+                log_cb=log_cb,
+            )
+
+            # Update BatchResult with curator results
+            result.curator_ranking_written = curator_result.ranking_path is not None
+            result.curator_guide_written = curator_result.guide_path is not None
+            result.curator_games_scored = curator_result.games_scored
+            result.curator_guides_generated = curator_result.guides_generated
+            result.curator_errors.extend(curator_result.errors)
+
+            if curator_result.errors:
+                log(f"WARNING: {len(curator_result.errors)} curator error(s)")
+
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            result.curator_errors.append(f"Curator generation failed: {e}")
+            log(f"ERROR generating curator outputs: {e}\n{error_details}")
+
+    elif generate_curator and not games_for_curator and not result.cancelled:
+        log("WARNING: Curator generation requested but no valid games available")
+        result.curator_errors.append("No valid games available for curator")
 
     return result
