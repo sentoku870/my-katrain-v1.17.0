@@ -1360,15 +1360,15 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 56: Style Archetype Core
+### Phase 56: Style Archetype Core ✅
 
 **目的**: RadarMetrics + MeaningTagsから棋風アーキタイプを判定。
 
 **In-scope:**
-- `StyleArchetype` frozen dataclass（id, name_ja, name_en, positive_summary）
-- 6アーキタイプ定義: 剛腕/構想家/精密/シノビ/AI寄り/バランス
+- `StyleArchetype` frozen dataclass（id, name_key, summary_key, high_axes, low_axes, reinforcing_tags）
+- 6アーキタイプ定義: KIAI_FIGHTER/COSMIC_ARCHITECT/PRECISION_MACHINE/SHINOBI_SURVIVOR/AI_NATIVE/BALANCE_MASTER
 - `determine_style(radar, tag_counts)` ルールベース判定
-- 相対評価: 5軸内の偏差で判定（固定閾値なし）
+- 相対評価: 5軸内の偏差で判定（バランス優先ルール）
 
 **Out-of-scope:**
 - ML分類器
@@ -1377,15 +1377,17 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **成果物:**
 - `katrain/core/analysis/style/__init__.py`
 - `katrain/core/analysis/style/models.py`（6アーキタイプ定義）
-- `katrain/core/analysis/style/analyzer.py`（~100行）
-- `tests/test_style_analyzer.py`
+- `katrain/core/analysis/style/analyzer.py`（~200行）
+- `tests/test_style_analyzer.py`（30テスト）
 
 **受け入れ条件:**
-- [ ] RadarMetrics入力で6種のいずれかを返す
-- [ ] Fighting軸最高 + overplayタグ多 → kiai_fighter
-- [ ] 全軸バランス → balance_master
+- [x] RadarMetrics入力で6種のいずれかを返す
+- [x] Fighting軸突出（deviation >= 0.5）+ reinforcing_tags significant → KIAI_FIGHTER
+- [x] 全軸バランス（max |deviation| < 0.5）→ 常にBALANCE_MASTER
 
 **依存**: Phase 48（Radar）, Phase 46（MeaningTags）
+
+**完了**: 2026-01-25（PR #192）
 
 ---
 

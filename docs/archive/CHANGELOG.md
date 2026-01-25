@@ -1,10 +1,37 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-54 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-56 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 56 完了（Style Archetype Core）
+  - 新規: `katrain/core/analysis/style/` パッケージ
+    - `models.py`: StyleArchetypeId, StyleArchetype, StyleResult, STYLE_ARCHETYPES
+    - `analyzer.py`: determine_style(), compute_confidence(), scores_are_tied()
+    - `__init__.py`: 公開API exports
+  - 6アーキタイプ定義:
+    - KIAI_FIGHTER（剛腕ファイター）: Fighting高、Stability低
+    - COSMIC_ARCHITECT（天空の構想家）: Opening高、Endgame低
+    - PRECISION_MACHINE（精密機械）: Endgame高、Fighting低
+    - SHINOBI_SURVIVOR（シノビの達人）: Stability高、Opening低
+    - AI_NATIVE（新人類）: Awareness高
+    - BALANCE_MASTER（バランスマスター）: フォールバック
+  - 判定ロジック:
+    - 相対評価: 5軸平均からの偏差で判定
+    - バランス優先ルール: max|deviation| < 0.5 → 常にBALANCE_MASTER
+    - 決定論的タイブレーク: Enum定義順
+    - 浮動小数点tolerance: math.isclose(abs_tol=1e-9)
+  - 新規: `tests/test_style_analyzer.py`（30件）
+  - テスト総数: 2307件
+- 2026-01-25: Phase 55 完了（Report Foundation + User Aggregation）
+  - 新規: `katrain/core/reports/` レポート基盤
+    - `sections/registry.py`: セクションレジストリ
+    - `sections/types.py`: SectionRegistration, SectionWriter型定義
+  - 新規: `katrain/core/analysis/user_aggregate.py`
+    - UserAggregateStore: ユーザー別レーダー履歴管理
+    - GameRadarEntry, UserRadarAggregate dataclass
+  - テスト総数: 2277件
 - 2026-01-25: Phase 54 完了（Report Quality Improvements）
   - 新規: `escape_markdown_table_cell()` 追加（helpers.py）
     - テーブルセルの安全なエスケープ（`[`, `]`, `|`, 改行対応）
