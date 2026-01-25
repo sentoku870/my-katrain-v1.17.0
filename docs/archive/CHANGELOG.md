@@ -1,10 +1,29 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-59 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-60 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 60 完了（Pacing/Tilt Integration）
+  - 新規: `katrain/core/reports/sections/time_section.py`（~110行）
+    - `_format_time_management()`: Time Managementセクション生成
+    - 早打ち/長考の悪手率計算
+    - ティルトエピソード検出結果表示
+  - 更新: `katrain/core/analysis/time/pacing.py`
+    - `get_pacing_icon()`: PacingMetrics → アイコン変換（🐇/🐢/🔥）
+    - `extract_pacing_stats_for_summary()`: サマリ用統計抽出
+  - 更新: `katrain/core/reports/karte_report.py`
+    - Important Moves表にTime列（アイコン）追加
+    - `parse_time_data()`/`analyze_pacing()`統合
+  - 更新: `katrain/gui/features/summary_formatter.py`
+    - Time Managementセクション統合
+  - 更新: `katrain/i18n/locales/*/katrain.po`（25キー追加）
+  - 新規: `tests/test_time_section.py`
+  - テスト修正: MagicMock無限ループ防止（6テストファイル）
+    - `game.root.children = []` 設定追加
+    - fixture scope を `class` に変更（Kivy再初期化削減）
+  - テスト総数: 2399件
 - 2026-01-25: Phase 59 完了（Pacing & Tilt Core）
   - 更新: `katrain/core/analysis/time/pacing.py`（新規、~360行）
     - `analyze_pacing()`: メインエントリポイント

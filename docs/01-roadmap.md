@@ -1527,15 +1527,19 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - GUI上の時間表示
 
 **成果物:**
-- `katrain/core/reports/sections/time_section.py`（~80行）
-- `katrain/i18n/locales/*/katrain.po`更新（8キー）
+- `katrain/core/reports/sections/time_section.py`（~110行）
+- `katrain/core/analysis/time/pacing.py`更新（`get_pacing_icon()`, `extract_pacing_stats_for_summary()`追加）
+- `katrain/i18n/locales/*/katrain.po`更新（25キー）
+- `tests/test_time_section.py`（新規）
 
 **受け入れ条件:**
-- [ ] Summaryに早打ち悪手率（相対）、ティルト疑い回数を表示
-- [ ] Karteの該当局面に🐇/🐢/🔥アイコン付与
-- [ ] 時間タグなしSGFでセクション非表示
+- [x] Summaryに早打ち悪手率（相対）、ティルト疑い回数を表示
+- [x] Karteの該当局面に🐇/🐢/🔥アイコン付与
+- [x] 時間タグなしSGFでセクション非表示
 
 **依存**: Phase 55, Phase 59
+
+**完了**: 2026-01-25（PR #195）
 
 ---
 
