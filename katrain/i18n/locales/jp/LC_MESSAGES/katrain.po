@@ -1848,3 +1848,40 @@ msgstr "全黒番手"
 
 msgid "time:all_white_moves"
 msgstr "全白番手"
+
+#. Phase 62: Risk Management section
+msgid "risk:section_title"
+msgstr "勝負術"
+
+msgid "risk:black"
+msgstr "黒番"
+
+msgid "risk:white"
+msgstr "白番"
+
+msgid "risk:when_winning"
+msgstr "優勢時"
+
+msgid "risk:when_losing"
+msgstr "劣勢時"
+
+msgid "risk:solid"
+msgstr "堅実派"
+
+msgid "risk:risk_taker"
+msgstr "勝負師"
+
+msgid "risk:mixed"
+msgstr "バランス型"
+
+msgid "risk:fighter"
+msgstr "粘り強い"
+
+msgid "risk:resigned"
+msgstr "諦めがち"
+
+msgid "risk:strategy_mismatch"
+msgstr "戦略不整合"
+
+msgid "risk:estimated_suffix"
+msgstr "(推定)"
