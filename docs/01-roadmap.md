@@ -1391,29 +1391,30 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 57: Style統合
+### Phase 57: Style Karte Integration ✅
 
-**目的**: 判定したスタイルをSummary/Karteに出力。
+**目的**: 判定したスタイルをKarteに出力。
 
-**In-scope:**
-- Summaryに「My Style Identity」セクション追加（Phase 53レジストリ使用）
-- Karteにスタイルメタデータ埋め込み
-- i18n対応（6アーキタイプ × 2言語 = 12キー）
+**実装内容:**
+- Karte Metaセクションにスタイル情報追加
+  - `- Style: 剛腕ファイター`（i18n対応）
+  - `- Style Confidence: 85%`
+- i18n対応（6アーキタイプ × 2言語 = 12キー、name_keyのみ）
+- 12件の統合テスト（CI-safe）
 
-**Out-of-scope:**
-- coach.mdプロンプト変更（Deferred）
-- スタイル履歴トラッキング
+**Deferred to future phases:**
+- Summary「My Style Identity」セクション（SectionRegistry経由）
+- `style:*:summary` i18nキー
+- coach.mdプロンプト変更
 
 **成果物:**
-- `katrain/core/reports/sections/style_section.py`（~60行）
-- `katrain/i18n/locales/*/katrain.po`更新（12キー）
+- `katrain/core/reports/karte_report.py`更新（+51行）
+- `katrain/i18n/locales/*/katrain.po`更新（6キー×2言語）
+- `tests/test_karte_style_integration.py`新規（12件）
 
-**受け入れ条件:**
-- [ ] Summary.mdに「My Style Identity: 【剛腕ファイター】」形式で表示
-- [ ] 英語/日本語で正しく表示
-- [ ] Phase 55のレジストリ経由で挿入
+**依存**: Phase 56
 
-**依存**: Phase 55, Phase 56
+**完了**: 2026-01-25（PR #193）
 
 ---
 

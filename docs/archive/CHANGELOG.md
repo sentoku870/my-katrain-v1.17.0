@@ -1,10 +1,26 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-56 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-57 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 57 完了（Style Karte Integration）
+  - 更新: `katrain/core/reports/karte_report.py`
+    - `_build_tag_counts_from_moves()`: MeaningTagIdカウント集計
+    - `_compute_style_safe()`: スタイル計算（エラー時None返却）
+    - Meta出力にStyle/Style Confidence行追加
+  - 更新: `katrain/i18n/locales/*/katrain.po`
+    - 6件のスタイル名i18nキー追加（en/jp）
+    - `style:kiai_fighter:name` → "Kiai Fighter" / "剛腕ファイター"
+    - `style:cosmic_architect:name` → "Cosmic Architect" / "大局観の建築家"
+    - `style:precision_machine:name` → "Precision Machine" / "精密機械"
+    - `style:shinobi_survivor:name` → "Shinobi Survivor" / "忍びの生存者"
+    - `style:ai_native:name` → "AI Native" / "AI世代"
+    - `style:balance_master:name` → "Balance Master" / "バランスマスター"
+  - 新規: `tests/test_karte_style_integration.py`（12件）
+  - ゴールデンファイル更新（4件）
+  - テスト総数: 2319件
 - 2026-01-25: Phase 56 完了（Style Archetype Core）
   - 新規: `katrain/core/analysis/style/` パッケージ
     - `models.py`: StyleArchetypeId, StyleArchetype, StyleResult, STYLE_ARCHETYPES
