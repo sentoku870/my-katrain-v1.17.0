@@ -310,6 +310,29 @@ from katrain.core.analysis.style import (
 )
 
 # =============================================================================
+# Explicit imports from risk/ (Phase 61)
+# =============================================================================
+
+from katrain.core.analysis.risk import (
+    # Enums
+    RiskJudgmentType,
+    RiskBehavior,
+    # Dataclasses
+    RiskContext,
+    RiskAnalysisConfig,
+    PlayerRiskStats,
+    RiskAnalysisResult,
+    # Main function
+    analyze_risk,
+    # Helper functions
+    to_player_perspective,
+    determine_judgment,
+    determine_behavior_from_stdev,
+    determine_behavior_from_volatility,
+    check_strategy_mismatch,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -559,4 +582,21 @@ __all__ = [
     "TAG_SIGNIFICANT_COUNT",
     "SCORE_TOLERANCE",
     "CONFIDENCE_NORMALIZATION",
+    # === risk/ (Phase 61) ===
+    # Enums
+    "RiskJudgmentType",
+    "RiskBehavior",
+    # Dataclasses
+    "RiskContext",
+    "RiskAnalysisConfig",
+    "PlayerRiskStats",
+    "RiskAnalysisResult",
+    # Main function
+    "analyze_risk",
+    # Helper functions
+    "to_player_perspective",
+    "determine_judgment",
+    "determine_behavior_from_stdev",
+    "determine_behavior_from_volatility",
+    "check_strategy_mismatch",
 ]
