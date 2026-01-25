@@ -1823,3 +1823,28 @@ msgstr "AI世代"
 
 msgid "style:balance_master:name"
 msgstr "バランスマスター"
+
+#. Phase 60: Time Management section
+msgid "time:section_title"
+msgstr "時間管理"
+
+msgid "time:blitz_moves"
+msgstr "早打ち手数"
+
+msgid "time:blitz_mistake_rate"
+msgstr "早打ち悪手率"
+
+msgid "time:long_think_moves"
+msgstr "長考手数"
+
+msgid "time:long_think_mistake_rate"
+msgstr "長考悪手率"
+
+msgid "time:tilt_episodes"
+msgstr "ティルト区間"
+
+msgid "time:all_black_moves"
+msgstr "全黒番手"
+
+msgid "time:all_white_moves"
+msgstr "全白番手"

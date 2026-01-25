@@ -1875,3 +1875,28 @@ msgstr "AI Native"
 
 msgid "style:balance_master:name"
 msgstr "Balance Master"
+
+#. Phase 60: Time Management section
+msgid "time:section_title"
+msgstr "Time Management"
+
+msgid "time:blitz_moves"
+msgstr "Blitz moves"
+
+msgid "time:blitz_mistake_rate"
+msgstr "Blitz Mistake Rate"
+
+msgid "time:long_think_moves"
+msgstr "Long think moves"
+
+msgid "time:long_think_mistake_rate"
+msgstr "Long Think Mistake Rate"
+
+msgid "time:tilt_episodes"
+msgstr "Tilt Episodes"
+
+msgid "time:all_black_moves"
+msgstr "All Black moves"
+
+msgid "time:all_white_moves"
+msgstr "All White moves"

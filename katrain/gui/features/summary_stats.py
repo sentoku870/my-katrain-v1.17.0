@@ -254,6 +254,38 @@ def extract_sgf_statistics(
         # Add to stats dict
         stats["reason_tags_counts"] = reason_tags_counts  # {tag: count}
 
+        # Phase 60: Time analysis (pacing/tilt)
+        try:
+            from katrain.core.analysis.time import (
+                parse_time_data,
+                analyze_pacing,
+                extract_pacing_stats_for_summary,
+            )
+            from katrain.core.analysis.logic import snapshot_from_game
+
+            time_data = parse_time_data(move_tree)
+            if time_data.has_time_data:
+                # Reuse temp_game from reason_tags if available, otherwise create it
+                if "temp_game" not in dir():
+                    from katrain.core.game import Game
+                    temp_game = Game(ctx, engine, move_tree=move_tree)
+                    # Load analysis data
+                    sgf_nodes = list(move_tree.nodes_in_tree)
+                    game_nodes = list(temp_game.root.nodes_in_tree)
+                    for sgf_node, game_node in zip(sgf_nodes, game_nodes):
+                        analysis = extract_analysis_from_sgf_node(sgf_node)
+                        if analysis:
+                            game_node.analysis = analysis
+
+                snapshot = snapshot_from_game(temp_game)
+                pacing_result = analyze_pacing(time_data, list(snapshot.moves))
+                stats["pacing_stats"] = extract_pacing_stats_for_summary(pacing_result)
+            else:
+                stats["pacing_stats"] = {"has_time_data": False}
+        except Exception as e:
+            logger.debug(f"Time analysis failed for {path}: {e}")
+            stats["pacing_stats"] = {"has_time_data": False}
+
         return stats
 
     except Exception as e:

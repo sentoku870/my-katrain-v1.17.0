@@ -18,6 +18,10 @@ Phase 59: Pacing & Tilt Core
     - LossSource: Source of canonical loss values
     - analyze_pacing(): Main analysis function
 
+Phase 60: Report Integration
+    - get_pacing_icon(): Convert PacingMetrics to icon
+    - extract_pacing_stats_for_summary(): Convert result to dict
+
 Example usage:
     >>> from katrain.core.analysis.time import parse_time_data, analyze_pacing
     >>> time_data = parse_time_data(game.root)
@@ -37,6 +41,9 @@ from .pacing import (
     PacingAnalysisResult,
     GamePacingStats,
     analyze_pacing,
+    # Phase 60
+    get_pacing_icon,
+    extract_pacing_stats_for_summary,
 )
 
 __all__ = [
@@ -53,4 +60,7 @@ __all__ = [
     "PacingAnalysisResult",
     "GamePacingStats",
     "analyze_pacing",
+    # Phase 60
+    "get_pacing_icon",
+    "extract_pacing_stats_for_summary",
 ]

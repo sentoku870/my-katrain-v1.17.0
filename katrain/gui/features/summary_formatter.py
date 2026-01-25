@@ -146,6 +146,11 @@ def build_summary_from_stats(
     # Reason Tags Distribution
     _append_reason_tags(lines, reason_tags_totals, stats_list, focus_player)
 
+    # Time Management (Phase 60)
+    time_section = _format_time_management(stats_list, focus_player)
+    if time_section:
+        lines.append(time_section)
+
     # Top Worst Moves
     _append_worst_moves(lines, all_worst_moves, config_fn, focus_player)
 
@@ -571,6 +576,154 @@ def _append_urgent_miss_in_weakness(
         lines.append("- 詰碁（死活）訓練で読みの精度向上")
         lines.append("- 対局中、戦いの前に「自分の石は安全か？」「相手の弱点はどこか？」を確認")
         lines.append("- 急場見逃し区間のSGFを重点的に復習")
+
+
+def _format_time_management(
+    stats_list: List[StatsDict],
+    focus_player: Optional[str],
+) -> str:
+    """Time Managementセクションを生成.
+
+    Phase 60: Pacing/Tilt統合
+
+    Args:
+        stats_list: 統計データ辞書のリスト（各辞書にpacing_statsキーを含む）
+        focus_player: 対象プレイヤー名（None の場合は全プレイヤー）
+
+    Returns:
+        Markdown形式のTime Managementセクション（時間データなしの場合は空文字列）
+    """
+    from katrain.core.reports.sections.time_section import (
+        TimeStatsData,
+        format_time_stats,
+        format_tilt_episode,
+        get_section_title,
+        get_tilt_episodes_label,
+        get_player_label,
+    )
+
+    # Check if any game has time data
+    has_any_time_data = any(
+        stats.get("pacing_stats", {}).get("has_time_data", False)
+        for stats in stats_list
+    )
+    if not has_any_time_data:
+        return ""
+
+    lines = [f"## {get_section_title()}"]
+
+    def _aggregate_stats(stats_list: List[StatsDict], player_color: str, focus_player: Optional[str] = None):
+        """Aggregate time stats for a player color."""
+        total_blitz = 0
+        total_blitz_mistake = 0
+        total_long_think = 0
+        total_long_think_mistake = 0
+        tilt_episodes = []
+
+        for stats in stats_list:
+            pacing = stats.get("pacing_stats", {})
+            if not pacing.get("has_time_data", False):
+                continue
+
+            # If focus_player specified, check if this player is in the game
+            if focus_player:
+                if stats.get("player_black") == focus_player:
+                    color = "B"
+                elif stats.get("player_white") == focus_player:
+                    color = "W"
+                else:
+                    continue
+                if color != player_color:
+                    continue
+
+            ps = pacing.get("player_stats", {}).get(player_color, {})
+            total_blitz += ps.get("blitz_count", 0)
+            total_blitz_mistake += ps.get("blitz_mistake_count", 0)
+            total_long_think += ps.get("long_think_count", 0)
+            total_long_think_mistake += ps.get("long_think_mistake_count", 0)
+
+            for ep in pacing.get("tilt_episodes", []):
+                if ep.get("player") == player_color:
+                    ep_copy = ep.copy()
+                    ep_copy["game_name"] = stats.get("game_name", "")
+                    tilt_episodes.append(ep_copy)
+
+        return TimeStatsData(
+            blitz_count=total_blitz,
+            blitz_mistake_count=total_blitz_mistake,
+            long_think_count=total_long_think,
+            long_think_mistake_count=total_long_think_mistake,
+        ), tilt_episodes
+
+    def _format_player_section(label: str, stats_data: TimeStatsData, tilt_episodes: list) -> List[str]:
+        """Format a single player's time management section."""
+        section_lines = [f"\n### {label}", ""]
+        section_lines.extend(format_time_stats(stats_data))
+
+        if tilt_episodes:
+            section_lines.append("")
+            section_lines.append(f"**{get_tilt_episodes_label()}:**")
+            for ep in tilt_episodes:
+                section_lines.append(
+                    format_tilt_episode(
+                        game_name=ep.get("game_name", ""),
+                        start_move=ep["start_move"],
+                        end_move=ep["end_move"],
+                        severity=ep["severity"],
+                        cumulative_loss=ep["cumulative_loss"],
+                    )
+                )
+        return section_lines
+
+    if focus_player:
+        # Aggregate across all games where focus_player appears (as B or W)
+        total_blitz = 0
+        total_blitz_mistake = 0
+        total_long_think = 0
+        total_long_think_mistake = 0
+        tilt_episodes = []
+
+        for stats in stats_list:
+            pacing = stats.get("pacing_stats", {})
+            if not pacing.get("has_time_data", False):
+                continue
+
+            if stats.get("player_black") == focus_player:
+                player_color = "B"
+            elif stats.get("player_white") == focus_player:
+                player_color = "W"
+            else:
+                continue
+
+            ps = pacing.get("player_stats", {}).get(player_color, {})
+            total_blitz += ps.get("blitz_count", 0)
+            total_blitz_mistake += ps.get("blitz_mistake_count", 0)
+            total_long_think += ps.get("long_think_count", 0)
+            total_long_think_mistake += ps.get("long_think_mistake_count", 0)
+
+            for ep in pacing.get("tilt_episodes", []):
+                if ep.get("player") == player_color:
+                    ep_copy = ep.copy()
+                    ep_copy["game_name"] = stats.get("game_name", "")
+                    tilt_episodes.append(ep_copy)
+
+        stats_data = TimeStatsData(
+            blitz_count=total_blitz,
+            blitz_mistake_count=total_blitz_mistake,
+            long_think_count=total_long_think,
+            long_think_mistake_count=total_long_think_mistake,
+        )
+        lines.extend(_format_player_section(focus_player, stats_data, tilt_episodes))
+
+    else:
+        # Show Black and White separately
+        for player_color in ["B", "W"]:
+            stats_data, tilt_episodes = _aggregate_stats(stats_list, player_color)
+            label = get_player_label(player_color)
+            lines.extend(_format_player_section(label, stats_data, tilt_episodes))
+
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _append_practice_priorities(
