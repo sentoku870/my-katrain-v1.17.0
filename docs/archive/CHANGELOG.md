@@ -1,10 +1,37 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-60 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-61 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-25: Phase 61 完了（Risk Context Core）
+  - 新規: `katrain/core/analysis/risk/` パッケージ
+    - `models.py`（~210行）: Enum + Dataclass定義
+      - `RiskJudgmentType`: WINNING, LOSING, CLOSE
+      - `RiskBehavior`: SOLID, COMPLICATING, NEUTRAL
+      - `RiskContext`: 手ごとのリスク分析コンテキスト
+      - `RiskAnalysisConfig`: 閾値設定
+      - `PlayerRiskStats`: プレイヤー別統計
+      - `RiskAnalysisResult`: 分析結果
+    - `analyzer.py`（~320行）: 分析ロジック
+      - `analyze_risk()`: メインエントリポイント
+      - `to_player_perspective()`: Black視点→手番視点変換
+      - `determine_judgment()`: 形勢判定（AND条件）
+      - `determine_behavior_from_stdev()`: delta_stdevから行動分類
+      - `determine_behavior_from_volatility()`: volatilityから行動分類
+      - `check_strategy_mismatch()`: 戦略ミスマッチ検出
+    - `__init__.py`（~60行）: 公開API
+  - 機能:
+    - ScoreStdev利用時: delta_stdev計算（post - pre）
+    - ScoreStdev不在時: volatilityフォールバック（母集団標準偏差）
+    - 視点変換: Black視点→手番視点（WRとScoreを反転）
+    - 判定閾値: inclusive（>=, <=）
+    - 戦略ミスマッチ: WINNING+COMPLICATING, LOSING+SOLID
+    - 堅牢なdictアクセス（KeyError/TypeErrorをリークしない）
+  - 更新: `katrain/core/analysis/__init__.py`（+30行）
+  - 新規: `tests/test_risk_analyzer.py`（69件）
+  - テスト総数: 2477件
 - 2026-01-25: Phase 60 完了（Pacing/Tilt Integration）
   - 新規: `katrain/core/reports/sections/time_section.py`（~110行）
     - `_format_time_management()`: Time Managementセクション生成

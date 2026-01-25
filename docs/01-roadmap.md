@@ -1543,17 +1543,15 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 61: Risk Context Core
+### Phase 61: Risk Context Core ✅
 
 **目的**: 形勢に応じたリスクテイク行動を分析。ScoreStdev不在時のフォールバック付き。
 
 **In-scope:**
 - `RiskContext` dataclass（judgment_type, risk_behavior, is_strategy_mismatch）
-- 状況判定: WINNING/LOSING/CLOSE（相対閾値）
+- 状況判定: WINNING/LOSING/CLOSE（AND条件：WR AND Score両方必要）
 - ScoreStdev利用時: delta_stdev計算
-- フォールバック（ScoreStdev不在時）:
-  - winrate_volatility（直近N手のWR標準偏差）
-  - scorelead_volatility（直近N手のScoreLead標準偏差）
+- フォールバック（ScoreStdev不在時）: volatility_metric（直近N手のScoreLead標準偏差）
 - Graceful degradation
 
 **Out-of-scope:**
@@ -1561,17 +1559,19 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - KataGo設定自動変更
 
 **成果物:**
-- `katrain/core/analysis/risk/__init__.py`
-- `katrain/core/analysis/risk/models.py`
-- `katrain/core/analysis/risk/analyzer.py`（~200行）
-- `tests/test_risk_analyzer.py`
+- `katrain/core/analysis/risk/__init__.py`（~60行）
+- `katrain/core/analysis/risk/models.py`（~210行）
+- `katrain/core/analysis/risk/analyzer.py`（~320行）
+- `tests/test_risk_analyzer.py`（69テスト）
 
 **受け入れ条件:**
-- [ ] ScoreStdev存在時: delta_stdevで複雑化度を計算
-- [ ] ScoreStdev不在時: volatilityにフォールバック
-- [ ] RiskContext dataclassで結果返却
+- [x] ScoreStdev存在時: delta_stdevで複雑化度を計算
+- [x] ScoreStdev不在時: volatilityにフォールバック
+- [x] RiskContext dataclassで結果返却
 
 **依存**: なし
+
+**完了**: 2026-01-25（PR #196）
 
 ---
 
