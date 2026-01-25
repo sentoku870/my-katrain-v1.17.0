@@ -150,6 +150,44 @@ python -m katrain 2>&1
 
 ---
 
-## 5. 変更履歴
+## 5. 一時デバッグログのルール
 
+デバッグ中に一時的なログを追加する場合のルール。
+
+### 5.1 追加時のルール
+
+```python
+# ✅ 良い例: [DEBUG] prefix を付ける
+print(f"[DEBUG] radar data: {radar_data}")
+Logger.log(f"[DEBUG] mesh vertices: {len(vertices)}", "DEBUG")
+
+# ❌ 悪い例: prefix なし（本番コードと区別できない）
+print(f"radar data: {radar_data}")
+```
+
+### 5.2 削除確認
+
+修正完了後、コミット前に必ず残存確認:
+
+```powershell
+# PowerShell
+Select-String -Path "katrain/**/*.py" -Pattern "\[DEBUG\]" -Recurse
+```
+
+または Claude Code が Grep で確認:
+```
+Grep(pattern="\[DEBUG\]", path="katrain", type="py")
+```
+
+### 5.3 本番コミットのチェックリスト
+
+- [ ] `[DEBUG]` ログがすべて削除されている
+- [ ] 一時的な `print()` 文がない
+- [ ] テストが通る
+
+---
+
+## 6. 変更履歴
+
+- 2026-01-25: v1.1 一時デバッグログのルールを追加
 - 2025-12-30: v1.0 作成（Claude Code移行対応）

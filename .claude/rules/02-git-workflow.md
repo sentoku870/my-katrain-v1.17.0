@@ -1,8 +1,7 @@
 # Git ワークフロー（Git Workflow）
 
 > このファイルは myKatrain での Git/GitHub 運用ルールを定義します。
-> Claude Code は Git 操作（commit/push/PR作成）を直接実行しません。
-> ユーザーに手順を提示し、ユーザーが実行します。
+> Claude Code はコミットまで実行可。push/PR作成はユーザー確認後に実行。
 
 ---
 
@@ -163,19 +162,25 @@ git stash pop           # 変更を戻す
 ## 6. Claude Code の役割
 
 ### Claude Code がやること
-- ファイルの編集（Plan Mode で確認後）
+- ファイルの編集
+- `git add` / `git commit`（コミットまで実行可）
 - 差分の説明
 - 次のコマンドの提示
 
-### Claude Code がやらないこと
-- `git commit`
+### ユーザー確認後に実行
 - `git push`
 - `gh pr create`
 
-→ これらはユーザーが実行します。
+→ push/PR作成は「pushしていい？」等の確認後に実行。
+
+### Claude Code がやらないこと（禁止）
+- `git push --force`（明示的な指示がない限り）
+- `git reset --hard`（明示的な指示がない限り）
+- main ブランチへの直接 push（code-change の場合）
 
 ---
 
 ## 7. 変更履歴
 
+- 2026-01-25: v1.1 Claude Codeのコミット実行を許可、push/PRは確認後に変更
 - 2025-12-30: v1.0 作成（Claude Code移行対応、Codex CLI から移行）

@@ -78,8 +78,34 @@ docs-only（ドキュメントのみ）:
 
 ### 3.3 動作確認（必須）
 - **起動確認**: `python -m katrain`
-- **テスト**: `uv run pytest tests`
+- **テスト（全体）**: `uv run pytest tests`
 - **UTF-8強制**（PowerShell）: `$env:PYTHONUTF8 = "1"`
+
+#### テストコマンド詳細
+
+```powershell
+# 全テスト実行
+uv run pytest tests
+
+# 単一ファイル
+uv run pytest tests/test_batch_analyzer.py -v
+
+# 単一テスト関数
+uv run pytest tests/test_batch_analyzer.py::test_function_name -v
+
+# キーワードでフィルタ
+uv run pytest tests -k "radar" -v
+
+# Golden test 期待値更新
+uv run pytest tests/test_golden_summary.py --update-golden
+uv run pytest tests/test_golden_karte.py --update-golden
+
+# 失敗時に即停止
+uv run pytest tests -x
+
+# 直前の失敗テストのみ再実行
+uv run pytest tests --lf
+```
 
 ### 3.4 トークン削減ルール（必須）
 
