@@ -1900,3 +1900,40 @@ msgstr "All Black moves"
 
 msgid "time:all_white_moves"
 msgstr "All White moves"
+
+#. Phase 62: Risk Management section
+msgid "risk:section_title"
+msgstr "Game Management"
+
+msgid "risk:black"
+msgstr "Black"
+
+msgid "risk:white"
+msgstr "White"
+
+msgid "risk:when_winning"
+msgstr "When winning"
+
+msgid "risk:when_losing"
+msgstr "When losing"
+
+msgid "risk:solid"
+msgstr "Solid"
+
+msgid "risk:risk_taker"
+msgstr "Risk Taker"
+
+msgid "risk:mixed"
+msgstr "Mixed"
+
+msgid "risk:fighter"
+msgstr "Fighter"
+
+msgid "risk:resigned"
+msgstr "Resigned"
+
+msgid "risk:strategy_mismatch"
+msgstr "Strategy mismatches"
+
+msgid "risk:estimated_suffix"
+msgstr "(estimated)"

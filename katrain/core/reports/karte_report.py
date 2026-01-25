@@ -954,12 +954,52 @@ def _build_karte_report_impl(
         lines.append("")
         return lines
 
+    # Phase 62: Risk Management section
+    def risk_management_section() -> List[str]:
+        """Generate Risk Management section.
+
+        Dependencies (via closure from file scope):
+            - game: Game instance from enclosing function
+            - i18n: Imported at file top (line 24)
+            - logger: Defined at file top (line 59)
+        """
+        try:
+            from katrain.core.analysis import analyze_risk
+            from katrain.core.reports.sections.risk_section import (
+                extract_risk_display_data,
+                format_risk_stats,
+                get_section_title,
+            )
+        except ImportError as e:
+            logger.warning(f"Risk section import failed: {e}", exc_info=True)
+            return []
+
+        try:
+            risk_result = analyze_risk(game)
+            if not risk_result.contexts:
+                return []
+
+            lines = [f"## {get_section_title()}", ""]
+
+            for player, label_key in [("B", "risk:black"), ("W", "risk:white")]:
+                data = extract_risk_display_data(risk_result, player)
+                if data.has_winning_data or data.has_losing_data:
+                    lines.append(f"### {i18n._(label_key)}")
+                    lines.extend(format_risk_stats(data, risk_result.fallback_used))
+                    lines.append("")
+
+            return lines if len(lines) > 2 else []
+        except Exception as e:
+            logger.debug(f"Risk section generation failed: {e}", exc_info=True)
+            return []
+
     # Assemble sections
     sections = ["## Meta", *meta_lines, ""]
     sections += ["## Players", *players_lines, ""]
     sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
     sections += definitions_section()
     sections += data_quality_section()
+    sections += risk_management_section()  # Phase 62: Risk Management
 
     # Phase 3: Apply player filter to sections
     if filtered_player is None:
