@@ -2333,5 +2333,5 @@ class TestJPLabels:
 
         # Should contain auto recommendation hint
         assert "Auto recommended:" in summary
-        # Should contain confidence in JP
-        assert "信頼度:" in summary
+        # Should contain confidence in JP (推定確度 for auto-strictness, Phase 53)
+        assert "推定確度:" in summary

@@ -665,3 +665,92 @@ def needs_leela_karte_warning(analysis_engine: str, generate_karte: bool) -> boo
         False
     """
     return analysis_engine == "leela" and generate_karte
+
+
+# =============================================================================
+# Markdown/Report Formatting Helpers (Phase 53)
+# =============================================================================
+
+
+def truncate_game_name(name: str, max_len: int = 35) -> str:
+    """Truncate game name preserving head (players) and tail (ID suffix).
+
+    Example: "[ゆうだい03]vs[陈晨59902]1766534654030022615"
+           → "[ゆうだい03]vs[陈...22615"
+
+    Args:
+        name: Full game name (typically rel_path or filename)
+        max_len: Maximum length (default 35)
+
+    Returns:
+        Truncated name with "..." in middle if too long
+    """
+    if len(name) <= max_len:
+        return name
+    head_len = 18
+    tail_len = 5
+    ellipsis = "..."
+    return f"{name[:head_len]}{ellipsis}{name[-tail_len:]}"
+
+
+def format_wr_gap(value: Optional[float]) -> str:
+    """Format WR Gap with clamping and precision.
+
+    Args:
+        value: winrateLost (0.0-1.0 range, can be negative due to search variance)
+
+    Returns:
+        Formatted string like "15.0%" or "-" if None
+    """
+    if value is None:
+        return "-"
+    # Clamp to [0, 1] - negative values occur when candidate has higher winrate
+    # than root due to search variance; we display as 0.0%
+    clamped = max(0.0, min(1.0, value))
+    return f"{clamped * 100:.1f}%"
+
+
+def make_markdown_link_target(from_dir: str, to_file: str) -> str:
+    """Create markdown-compatible relative link target.
+
+    - Computes relative path (with fallback for cross-drive on Windows)
+    - Converts backslashes to forward slashes (Windows)
+    - URL-encodes problematic characters (brackets, spaces, multibyte)
+
+    Args:
+        from_dir: Directory containing the source markdown file
+        to_file: Absolute path to the target file
+
+    Returns:
+        URL-encoded relative path suitable for markdown links,
+        or just the filename if relpath fails (cross-drive)
+    """
+    from urllib.parse import quote as url_quote
+
+    try:
+        rel = os.path.relpath(to_file, from_dir)
+    except ValueError:
+        # Cross-drive on Windows (e.g., D:\foo vs C:\bar)
+        # Fallback to just the filename
+        rel = os.path.basename(to_file)
+
+    # Convert Windows backslashes to forward slashes
+    rel = rel.replace("\\", "/")
+    # URL-encode brackets, spaces, multibyte chars
+    # Keep / - _ . as-is (safe path characters)
+    return url_quote(rel, safe="/-_.")
+
+
+def escape_markdown_brackets(text: str) -> str:
+    """Escape brackets for markdown table cells.
+
+    Prevents broken markdown when game names contain brackets like
+    "[ゆうだい03]vs[陈晨...]" which would be interpreted as link syntax.
+
+    Args:
+        text: Text to escape (typically a truncated game name)
+
+    Returns:
+        Text with [ and ] escaped as \\[ and \\]
+    """
+    return text.replace("[", "\\[").replace("]", "\\]")

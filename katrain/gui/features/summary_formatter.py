@@ -10,6 +10,7 @@ Phase 23 PR #3: 型ヒント追加
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
+from katrain.core.batch.helpers import truncate_game_name
 from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
 
@@ -176,7 +177,7 @@ def _append_individual_game_overview(
     lines.append("| Game | Opponent | Result | My Loss | Opp Loss | Ratio |")
     lines.append("|------|----------|--------|---------|----------|-------|")
     for s in stats_list:
-        game_short = s["game_name"][:20] + "..." if len(s["game_name"]) > 23 else s["game_name"]
+        game_short = truncate_game_name(s["game_name"])
         if s["player_black"] == focus_player:
             opp_name = s["player_white"]
             my_loss = s.get("loss_by_player", {}).get("B", 0.0)
@@ -408,7 +409,7 @@ def _append_worst_moves(
         lines.append("|------|---------|------|--------|------------|")
 
         for seq in sequences:
-            short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+            short_game = truncate_game_name(seq['game'])
             avg_loss = seq['total_loss'] / seq['count']
             lines.append(
                 f"| {short_game} | #{seq['start']}-{seq['end']} | "
@@ -437,7 +438,7 @@ def _append_worst_moves(
                     cat_name = ct.name
                     break
 
-            lines.append(f"| {game_name[:20]} | {temp_move.move_number} | {temp_move.player} | {coord} | {temp_move.points_lost:.1f} | {temp_move.importance:.1f} | {cat_name} |")
+            lines.append(f"| {truncate_game_name(game_name)} | {temp_move.move_number} | {temp_move.player} | {coord} | {temp_move.points_lost:.1f} | {temp_move.importance:.1f} | {cat_name} |")
     elif sequences:
         lines.append("通常のワースト手: なし（すべて急場見逃しパターン）")
     else:
@@ -447,7 +448,7 @@ def _append_worst_moves(
             coord = gtp or '-'
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
-            lines.append(f"| {game_name[:20]} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |")
+            lines.append(f"| {truncate_game_name(game_name)} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |")
 
     lines.append("")
 
@@ -558,7 +559,7 @@ def _append_urgent_miss_in_weakness(
         lines.append("")
         lines.append("**急場見逃しパターン**:")
         for seq in sequences:
-            short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+            short_game = truncate_game_name(seq['game'])
             avg_loss = seq['total_loss'] / seq['count']
             lines.append(
                 f"- {short_game} #{seq['start']}-{seq['end']}: "
@@ -588,7 +589,7 @@ def _append_practice_priorities(
         eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
     }
 
-    lines.append("## Practice Priorities" + (f" ({focus_player})" if focus_player else ""))
+    lines.append("## 練習の優先順位" + (f" ({focus_player})" if focus_player else ""))
     lines.append("\nBased on the data above, consider focusing on:\n")
 
     priorities = []

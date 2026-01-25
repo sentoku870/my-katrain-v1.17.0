@@ -195,6 +195,9 @@ def run_batch(
     # Timestamp for filenames (includes seconds to reduce collision risk)
     batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
+    # Phase 53: Map rel_path -> full karte file path for summary links
+    karte_path_map: Dict[str, str] = {}
+
     # Process each file
     for i, (abs_path, rel_path) in enumerate(sgf_files):
         # Check for cancellation
@@ -330,6 +333,8 @@ def run_batch(
                     else:
                         result.karte_written += 1
                         log(f"  Saved Karte: {karte_filename}")
+                        # Phase 53: Store mapping for summary link generation
+                        karte_path_map[rel_path] = karte_path
 
                 except Exception as e:
                     import traceback
@@ -403,6 +408,9 @@ def run_batch(
                         player_games,
                         skill_preset=skill_preset,
                         analysis_settings=analysis_settings,
+                        # Phase 53: Pass karte mapping for link generation
+                        karte_path_map=karte_path_map,
+                        summary_dir=os.path.dirname(summary_path),
                     )
 
                     # Use safe write with error handling (A3)

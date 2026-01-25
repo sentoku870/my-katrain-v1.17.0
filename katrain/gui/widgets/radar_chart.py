@@ -5,7 +5,7 @@ import math
 from typing import Dict, List, Optional
 
 from kivy.clock import Clock
-from kivy.graphics import Color, Ellipse, Line, Mesh
+from kivy.graphics import Color, Ellipse, Line
 from kivy.metrics import dp
 from kivy.properties import DictProperty, ListProperty, NumericProperty, StringProperty
 from kivy.uix.label import Label
@@ -17,7 +17,6 @@ from katrain.gui.widgets.radar_geometry import (
     AXIS_ORDER,
     NEUTRAL_SCORE,
     NUM_AXES,
-    build_mesh_data,
     calculate_vertex,
     get_data_polygon,
     get_label_position,
@@ -106,43 +105,51 @@ class RadarChartWidget(RelativeLayout):
     def _do_redraw(self, *_):
         self.canvas.before.clear()
 
+        # Guard: Skip if widget not in window or not properly sized
+        if not self.get_root_window():
+            return
+        if self.width <= 0 or self.height <= 0:
+            return
+
         cx, cy = self.width / 2, self.height / 2
         center = (cx, cy)
         max_r = min(self.width, self.height) / 2 - self.padding
         if max_r <= 0:
             return
 
-        with self.canvas.before:
-            # 1. Grid pentagons (fixed fractions: 20%, 40%, 60%, 80%, 100%)
-            for frac in self.GRID_FRACTIONS:
-                Color(*self.grid_color)
-                Line(points=self._get_grid_ring_points(frac, center, max_r), width=1)
+        try:
+            with self.canvas.before:
+                # 1. Grid pentagons (fixed fractions: 20%, 40%, 60%, 80%, 100%)
+                for frac in self.GRID_FRACTIONS:
+                    Color(*self.grid_color)
+                    Line(points=self._get_grid_ring_points(frac, center, max_r), width=1)
 
-            # 2. Axis lines
-            for i in range(NUM_AXES):
-                Color(*self.grid_color)
-                vx, vy = calculate_vertex(i, 5.0, center, max_r)
-                Line(points=[cx, cy, vx, vy], width=1)
+                # 2. Axis lines
+                for i in range(NUM_AXES):
+                    Color(*self.grid_color)
+                    vx, vy = calculate_vertex(i, 5.0, center, max_r)
+                    Line(points=[cx, cy, vx, vy], width=1)
 
-            # 3. Data polygon
-            if self.scores:
-                poly = get_data_polygon(self.scores, center, max_r)
-                verts, inds = build_mesh_data(poly, center)
-                Color(*self.fill_color)
-                Mesh(vertices=verts, indices=inds, mode="triangles")
-                Color(*self.outline_color)
-                Line(points=poly, width=dp(1.5))
+                # 3. Data polygon - outline only (Mesh disabled for stability)
+                if self.scores:
+                    poly = get_data_polygon(self.scores, center, max_r)
+                    # Skip Mesh fill - just draw outline for now
+                    Color(*self.outline_color)
+                    Line(points=poly, width=dp(2))
 
-                # 4. Vertex dots
-                for i, axis in enumerate(AXIS_ORDER):
-                    tier = self.tiers.get(axis, "unknown")
-                    Color(*tier_to_color(tier))
-                    score = self.scores.get(axis) or NEUTRAL_SCORE
-                    vx, vy = calculate_vertex(i, score, center, max_r)
-                    dot = dp(8)
-                    Ellipse(pos=(vx - dot / 2, vy - dot / 2), size=(dot, dot))
+                    # 4. Vertex dots
+                    for i, axis in enumerate(AXIS_ORDER):
+                        tier = self.tiers.get(axis, "unknown")
+                        Color(*tier_to_color(tier))
+                        score = self.scores.get(axis) or NEUTRAL_SCORE
+                        vx, vy = calculate_vertex(i, score, center, max_r)
+                        dot = dp(8)
+                        Ellipse(pos=(vx - dot / 2, vy - dot / 2), size=(dot, dot))
 
-        self._update_labels(center, max_r)
+            self._update_labels(center, max_r)
+        except Exception:
+            # If any rendering error occurs, clear canvas and skip drawing
+            self.canvas.before.clear()
 
     def _update_labels(self, center: tuple, max_r: float):
         for i, axis in enumerate(AXIS_ORDER):

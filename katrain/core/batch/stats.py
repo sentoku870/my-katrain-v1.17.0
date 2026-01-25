@@ -13,7 +13,11 @@ from collections import defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
-from katrain.core.batch.helpers import get_canonical_loss
+from katrain.core.batch.helpers import (
+    get_canonical_loss,
+    truncate_game_name,
+    make_markdown_link_target,
+)
 
 _logger = logging.getLogger("katrain.core.batch.stats")
 
@@ -61,6 +65,9 @@ from katrain.core.analysis.skill_radar import (
     aggregate_radar,
     round_score,
 )
+
+# Phase 53: Confidence label for auto-strictness (推定確度)
+from katrain.core.analysis.presentation import get_auto_confidence_label
 
 
 # Generic player names to skip
@@ -387,7 +394,7 @@ def build_batch_summary(
         lines.append("|------|-----:|:------:|----------|-----:|----------|")
         for game_name, move_num, player, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
-            lines.append(f"| {game_name[:30]} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
+            lines.append(f"| {truncate_game_name(game_name)} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
 
     # Games list
     lines.append("\n## Games Included\n")
@@ -553,7 +560,7 @@ def _build_skill_profile_section(
 
         # Practice priorities (max 2)
         lines.append("")
-        lines.append("**Practice priorities:**")
+        lines.append("**練習の優先順位:**")
         for axis, _ in weak_axes[:2]:
             hint = AXIS_PRACTICE_HINTS.get(axis, "")
             if hint:
@@ -598,6 +605,8 @@ def build_player_summary(
     skill_preset: str = DEFAULT_SKILL_PRESET,
     *,
     analysis_settings: Optional[Dict[str, any]] = None,
+    karte_path_map: Optional[Dict[str, str]] = None,
+    summary_dir: Optional[str] = None,
 ) -> str:
     """
     Build summary for a single player across their games.
@@ -612,6 +621,8 @@ def build_player_summary(
             - jitter_pct: float, jitter percentage (if variable_visits)
             - deterministic: bool, whether deterministic mode (if variable_visits)
             - timeout: float or None, timeout in seconds
+        karte_path_map: Optional mapping from rel_path to absolute karte file path
+        summary_dir: Directory where the summary file is being written (for relative links)
 
     Returns:
         Markdown summary string
@@ -810,10 +821,11 @@ def build_player_summary(
     # Build strictness info line using JP labels
     effective_label = SKILL_PRESET_LABELS.get(effective_preset, effective_preset)
     if skill_preset == "auto" and auto_recommendation:
-        conf_label = CONFIDENCE_LABELS.get(auto_recommendation.confidence.value, auto_recommendation.confidence.value)
+        # Phase 53: Use get_auto_confidence_label for 推定確度 (not 信頼度)
+        conf_label = get_auto_confidence_label(auto_recommendation.confidence.value)
         strictness_info = (
             f"自動 → {effective_label} "
-            f"(信頼度: {conf_label}, "
+            f"({conf_label}, "
             f"大悪手={auto_recommendation.blunder_count}, 重要={auto_recommendation.important_count})"
         )
     else:
@@ -856,8 +868,9 @@ def build_player_summary(
                 hint_preset = "standard"
 
         hint_label = SKILL_PRESET_LABELS.get(hint_preset, hint_preset)
-        hint_conf_label = CONFIDENCE_LABELS.get(hint_conf.value, hint_conf.value)
-        lines.append(f"- Auto recommended: {hint_label} (信頼度: {hint_conf_label})")
+        # Phase 53: Use get_auto_confidence_label for 推定確度
+        hint_conf_label = get_auto_confidence_label(hint_conf.value)
+        lines.append(f"- Auto recommended: {hint_label} ({hint_conf_label})")
 
     lines.append("")
     lines.append("| Metric | Definition |")
@@ -1051,19 +1064,28 @@ def build_player_summary(
         lines.append("| " + " | ".join(cells) + " |")
 
     # =========================================================================
-    # Section 5: Top 10 Worst Moves
+    # Section 5: Top 10 Worst Moves (Phase 53: added カルテ column)
     # =========================================================================
     lines.append("\n## Top 10 Worst Moves\n")
     all_worst.sort(key=lambda x: x[3], reverse=True)
     all_worst = all_worst[:10]
 
     if all_worst:
-        lines.append("| Game | Move | Position | Loss | Category |")
-        lines.append("|------|-----:|----------|-----:|----------|")
+        lines.append("| Game | Move | Position | Loss | Category | カルテ |")
+        lines.append("|------|-----:|----------|-----:|----------|--------|")
         for game_name, move_num, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
-            short_game = game_name[:30] + "..." if len(game_name) > 33 else game_name
-            lines.append(f"| {short_game} | {move_num} | {gtp} | {loss:.1f} | {cat_name} |")
+            display_name = truncate_game_name(game_name)
+
+            # Phase 53: Generate karte link if mapping available
+            karte_path = karte_path_map.get(game_name) if karte_path_map else None
+            if karte_path and summary_dir:
+                link_target = make_markdown_link_target(summary_dir, karte_path)
+                karte_cell = f"[表示]({link_target})"
+            else:
+                karte_cell = "-"
+
+            lines.append(f"| {display_name} | {move_num} | {gtp} | {loss:.1f} | {cat_name} | {karte_cell} |")
     else:
         lines.append("- No significant mistakes found.")
 
@@ -1169,7 +1191,7 @@ def build_player_summary(
     # =========================================================================
     # Section 8: Practice Priorities
     # =========================================================================
-    lines.append("\n## Practice Priorities\n")
+    lines.append("\n## 練習の優先順位\n")
     lines.append("Based on the data above, consider focusing on:\n")
 
     priorities = []

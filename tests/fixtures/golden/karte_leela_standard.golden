@@ -16,7 +16,7 @@
 ## Definitions
 
 - Strictness: 標準 (手動)
-- Auto recommended: 標準 (信頼度: 低)
+- Auto recommended: 標準 (推定確度: 低)
 
 | Metric | Definition |
 |--------|------------|

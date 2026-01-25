@@ -267,7 +267,8 @@ class TestPracticePriorities:
         lines = _build_skill_profile_section(radar)
 
         content = "\n".join(lines)
-        assert "Practice priorities" in content
+        # Phase 53: Japanese header "練習の優先順位"
+        assert "練習の優先順位" in content
         # Should have hint for fighting
         assert AXIS_PRACTICE_HINTS[RadarAxis.FIGHTING] in content
 
@@ -284,8 +285,8 @@ class TestPracticePriorities:
         lines = _build_skill_profile_section(radar)
 
         content = "\n".join(lines)
-        # Count practice priority items
-        priority_count = content.count("Practice priorities")
+        # Count practice priority items (Phase 53: Japanese header)
+        priority_count = content.count("練習の優先順位")
         hint_count = sum(1 for hint in AXIS_PRACTICE_HINTS.values() if hint in content)
         # Should have max 2 hints
         assert hint_count <= 2

@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
+from katrain.core.batch.helpers import truncate_game_name
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
@@ -472,7 +473,7 @@ def _format_top_worst_moves(
         lines.append("|------|---------|------|--------|------------|")
 
         for seq in sequences:
-            short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+            short_game = truncate_game_name(seq['game'])
             avg_loss = seq['total_loss'] / seq['count']
             lines.append(
                 f"| {short_game} | #{seq['start']}-{seq['end']} | "
@@ -512,7 +513,7 @@ def _format_top_worst_moves(
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
 
             # ゲーム名が長い場合は短縮
-            short_game = game_name[:20] + "..." if len(game_name) > 23 else game_name
+            short_game = truncate_game_name(game_name)
             lines.append(
                 f"| {short_game} | {move.move_number} | {move.player or '-'} | "
                 f"{coord or '-'} | {loss:.1f} | {importance:.1f} | {mistake} |"
@@ -575,7 +576,7 @@ def _format_weakness_hypothesis(
         lines.append("")
         lines.append("**急場見逃しパターン**:")
         for seq in sequences:
-            short_game = seq['game'][:20] + "..." if len(seq['game']) > 23 else seq['game']
+            short_game = truncate_game_name(seq['game'])
             avg_loss = seq['total_loss'] / seq['count']
             lines.append(
                 f"- {short_game} #{seq['start']}-{seq['end']}: "
@@ -609,12 +610,12 @@ def _format_practice_priorities(
     # PR#1: LOW confidence → placeholder only
     if confidence_level == eval_metrics.ConfidenceLevel.LOW:
         return "\n".join([
-            f"## Practice Priorities ({player_name})",
+            f"## 練習の優先順位 ({player_name})",
             "",
             "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
         ])
 
-    lines = [f"## Practice Priorities ({player_name})"]
+    lines = [f"## 練習の優先順位 ({player_name})"]
     lines.append("")
     lines.append("Based on the data above, consider focusing on:")
     lines.append("")
