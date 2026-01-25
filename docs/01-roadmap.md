@@ -166,7 +166,7 @@
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 55 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | 📋 TBD |
+| 55 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | ✅ Done |
 | 56 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | 📋 TBD |
 | 57 | Style統合 | Summary/Karteにスタイルセクション追加 | 📋 TBD |
 | 58 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | 📋 TBD |
@@ -1347,11 +1347,16 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - `tests/test_user_aggregate.py`
 
 **受け入れ条件:**
-- [ ] ReportSection登録・取得・挿入位置指定が動作
-- [ ] 既存summary/karte生成が壊れていない（回帰テストパス）
-- [ ] UserRadarAggregateが直近N局のRadar平均を返す
+- [x] ReportSection登録・取得・挿入位置指定が動作
+- [x] 既存summary/karte生成が壊れていない（回帰テストパス）
+- [x] UserRadarAggregateが直近N局のRadar平均を返す
+- [x] normalize_lang()が"ja"/"ja_JP"/"JA" → "jp"変換
+- [x] DuplicateSectionErrorで重複検出
+- [x] compute_section_order()が安定した挿入順序を保証
 
 **依存**: なし（新規基盤）
+
+**完了**: 2026-01-25（PR #191）
 
 ---
 
