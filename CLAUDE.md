@@ -17,8 +17,8 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-62（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合）
-- **次**: Phase 63-66（Post-60拡張: Curator）
+- **完了**: Phase 1-63（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring）
+- **次**: Phase 64-66（Post-60拡張: Curator出力・統合）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -230,12 +230,15 @@ katrain/
 │   │       ├── models.py    ← MeaningTagId, MeaningTag
 │   │       ├── registry.py  ← MEANING_TAG_REGISTRY
 │   │       └── classifier.py ← classify_meaning_tag()
-│   └── batch/        ← バッチ処理パッケージ（Phase 42）
-│       ├── models.py       ← WriteError, BatchResult
-│       ├── helpers.py      ← 純粋関数（Kivy非依存）
-│       ├── analysis.py     ← analyze_single_file, analyze_single_file_leela
-│       ├── orchestration.py ← run_batch() メインエントリ
-│       └── stats.py        ← 統計抽出、サマリ生成
+│   ├── batch/        ← バッチ処理パッケージ（Phase 42）
+│   │   ├── models.py       ← WriteError, BatchResult
+│   │   ├── helpers.py      ← 純粋関数（Kivy非依存）
+│   │   ├── analysis.py     ← analyze_single_file, analyze_single_file_leela
+│   │   ├── orchestration.py ← run_batch() メインエントリ
+│   │   └── stats.py        ← 統計抽出、サマリ生成
+│   └── curator/      ← 棋譜適合度スコアリング（Phase 63）
+│       ├── models.py       ← SuitabilityScore, SuitabilityConfig
+│       └── scoring.py      ← スコアリングロジック
 ├── gui/
 │   ├── controlspanel.py ← 右パネル
 │   ├── badukpan.py      ← 盤面表示
@@ -419,5 +422,5 @@ docs/
 詳細な変更履歴は [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md) を参照してください。
 
 **最新の変更（2026-01-26）:**
-- Phase 62 完了（Risk統合）
-- テスト総数: 2495件
+- Phase 63 完了（Curator Scoring）
+- テスト総数: 2547件

@@ -1628,11 +1628,13 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - `tests/test_curator_scoring.py`
 
 **受け入れ条件:**
-- [ ] UserRadarAggregate + 棋譜MeaningTagsからスコア計算
-- [ ] スコアがバッチ内パーセンタイルで表現
-- [ ] ScoreStdev不在時もcomplexity計算可能
+- [x] UserRadarAggregate + 棋譜MeaningTagsからスコア計算
+- [x] スコアがバッチ内パーセンタイルで表現（ECDF-style）
+- [x] ScoreStdev不在時もstability計算可能（volatilityフォールバック）
 
 **依存**: Phase 55（UserRadarAggregate）, Phase 48, Phase 46
+
+**完了**: 2026-01-26（PR #198）
 
 ---
 
