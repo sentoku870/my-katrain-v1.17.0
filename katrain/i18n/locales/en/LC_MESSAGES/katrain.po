@@ -1856,3 +1856,22 @@ msgstr "Insufficient moves (need 10+)"
 
 msgid "radar:tier-unknown"
 msgstr "Tier ?"
+
+#. Phase 57: Style Archetype (name only, summary deferred)
+msgid "style:kiai_fighter:name"
+msgstr "Kiai Fighter"
+
+msgid "style:cosmic_architect:name"
+msgstr "Cosmic Architect"
+
+msgid "style:precision_machine:name"
+msgstr "Precision Machine"
+
+msgid "style:shinobi_survivor:name"
+msgstr "Shinobi Survivor"
+
+msgid "style:ai_native:name"
+msgstr "AI Native"
+
+msgid "style:balance_master:name"
+msgstr "Balance Master"
