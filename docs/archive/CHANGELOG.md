@@ -1,10 +1,23 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-68 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-69 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-27: Phase 69 完了（Parser/Base Test Enhancement）
+  - `tests/test_parser.py` 拡張: 19テスト追加
+    - TestMoveClass (9): ラウンドトリップ、I列拒否、等価性・ハッシュ
+    - TestParseError (3): 不正SGF検出
+    - TestPropertyEdgeCases (5): KM/HA無効値、標準ボードサイズ
+    - TestRoundTrip (2): 特殊文字、変化ツリーのセマンティック等価性
+  - `tests/test_base_katrain.py` 新規作成: 17テスト
+    - TestParseVersion (4): バージョン文字列パース
+    - TestPlayerClass (7): プロパティ・メソッド
+    - TestKaTrainBaseConfig (4): 設定取得（分離環境）
+    - TestKaTrainBaseLogging (2): ログバッファ記録
+  - テスト総数: 2758件（+36件）
+  - PRs: #207
 - 2026-01-26: Phase 68 完了（Command Pattern for KataGoEngine）
   - Phase 68-A: Command Core
     - 新規: `katrain/core/engine_query.py`（~140行）

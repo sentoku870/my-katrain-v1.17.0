@@ -203,7 +203,7 @@
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 69 | テスト強化 | sgf_parser + base_katrain テスト | 📋 |
+| 69 | テスト強化 | sgf_parser + base_katrain テスト | ✅ |
 | 70 | 複雑関数リファクタ | analyze_extra分割 + 重複解消 | 📋 |
 | 71 | batch/stats.py 分割 | `batch/stats/` パッケージ化 | 📋 |
 | 72 | karte_report.py 分割 | `reports/karte/` パッケージ化 | 📋 |
@@ -1899,14 +1899,25 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 69: テスト強化（sgf_parser + base_katrain）
+#### Phase 69: テスト強化（sgf_parser + base_katrain）（完了）
 
 **In-scope:**
-- `tests/test_parser.py` 拡張（エッジケース、ラウンドトリップ）
-- `tests/test_base_katrain.py` 新規（設定読み込み/保存、マイグレーション）
+- `tests/test_parser.py` 拡張（Move, ParseError, EdgeCases, RoundTrip）
+- `tests/test_base_katrain.py` 新規（parse_version, Player, config, logging）
 
 **成果物:**
-- テストファイル 2件（100-150行追加）
+- `tests/test_parser.py`: 19テスト追加
+  - TestMoveClass (9): ラウンドトリップ、I列拒否、等価性・ハッシュ
+  - TestParseError (3): 不正SGF検出
+  - TestPropertyEdgeCases (5): KM/HA無効値、標準ボードサイズ
+  - TestRoundTrip (2): 特殊文字、変化ツリーのセマンティック等価性
+- `tests/test_base_katrain.py`: 17テスト新規
+  - TestParseVersion (4): バージョン文字列パース
+  - TestPlayerClass (7): プロパティ・メソッド
+  - TestKaTrainBaseConfig (4): 設定取得（分離環境）
+  - TestKaTrainBaseLogging (2): ログバッファ記録
+
+**完了日**: 2026-01-27（PR #207）
 
 ---
 
