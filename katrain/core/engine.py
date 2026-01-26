@@ -1,4 +1,3 @@
-import copy
 import json
 import os
 import platform
@@ -25,6 +24,7 @@ from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move
 from katrain.core.utils import find_package_resource, json_truncate_arrays
+from katrain.core.engine_query import build_analysis_query
 
 
 def _ensure_str(line) -> str:
@@ -745,22 +745,21 @@ class KataGoEngine(BaseEngine):
         include_policy=True,
         report_every: Optional[float] = None,
     ):
+        # Check for unsupported AE commands
         nodes = analysis_node.nodes_from_root
-        moves = [m for node in nodes for m in node.moves]
-        initial_stones = [m for node in nodes for m in node.placements]
         clear_placements = [m for node in nodes for m in node.clear_placements]
         if clear_placements:  # TODO: support these
             self.katrain.log(f"Not analyzing node {analysis_node} as there are AE commands in the path", OUTPUT_DEBUG)
             return
 
-        if next_move:
-            moves.append(next_move)
+        # Resolve ownership
         if ownership is None:
             ownership = self.config["_enable_ownership"] and not next_move
 
+        # Resolve visits with analysis_focus and analyze_fast
         if visits is None:
             visits = self.config["max_visits"]
-            
+
             # analysis_focus に基づいて visits を調整
             focus = self.config.get("analysis_focus")
             if focus:
@@ -773,59 +772,27 @@ class KataGoEngine(BaseEngine):
                 # analysis_focus がない場合のデフォルト処理（analyze_fast時）
                 visits = self.config["fast_visits"]
 
-        size_x, size_y = analysis_node.board_size
+        # Build query using engine_query module (Phase 68)
+        query = build_analysis_query(
+            analysis_node=analysis_node,
+            visits=visits,
+            ponder=ponder,
+            ownership=ownership,
+            rules=self.get_rules(analysis_node.ruleset),
+            base_priority=self.base_priority,
+            priority=priority,
+            override_settings=self.override_settings,
+            wide_root_noise=self.config["wide_root_noise"],
+            max_time=self.config.get("max_time"),
+            time_limit=time_limit,
+            next_move=next_move,
+            find_alternatives=find_alternatives,
+            region_of_interest=region_of_interest,
+            extra_settings=extra_settings,
+            include_policy=include_policy,
+            report_every=report_every,
+            ponder_key=self.PONDER_KEY,
+        )
 
-        if find_alternatives:
-            avoid = [
-                {
-                    "moves": list(analysis_node.analysis["moves"].keys()),
-                    "player": analysis_node.next_player,
-                    "untilDepth": 1,
-                }
-            ]
-        elif region_of_interest:
-            xmin, xmax, ymin, ymax = region_of_interest
-            avoid = [
-                {
-                    "moves": [
-                        Move((x, y)).gtp()
-                        for x in range(0, size_x)
-                        for y in range(0, size_y)
-                        if x < xmin or x > xmax or y < ymin or y > ymax
-                    ],
-                    "player": player,
-                    "untilDepth": 1,  # tried a large number here, or 2, but this seems more natural
-                }
-                for player in "BW"
-            ]
-        else:
-            avoid = []
-
-        settings = copy.copy(self.override_settings)
-        settings["wideRootNoise"] = self.config["wide_root_noise"]
-        if time_limit:
-            settings["maxTime"] = self.config["max_time"]
-
-        query = {
-            "rules": self.get_rules(analysis_node.ruleset),
-            "priority": self.base_priority + priority,
-            "analyzeTurns": [len(moves)],
-            "maxVisits": visits,
-            "komi": analysis_node.komi,
-            "boardXSize": size_x,
-            "boardYSize": size_y,
-            "includeOwnership": ownership and not next_move,
-            "includeMovesOwnership": ownership and not next_move,
-            "includePolicy": include_policy,
-            "initialStones": [[m.player, m.gtp()] for m in initial_stones],
-            "initialPlayer": analysis_node.initial_player,
-            "moves": [[m.player, m.gtp()] for m in moves],
-            "overrideSettings": {**settings, **(extra_settings or {})},
-            self.PONDER_KEY: ponder,
-        }
-        if report_every is not None:
-            query["reportDuringSearchEvery"] = report_every
-        if avoid:
-            query["avoidMoves"] = avoid
         self.send_query(query, callback, error_callback, next_move, analysis_node)
         analysis_node.analysis_visits_requested = max(analysis_node.analysis_visits_requested, visits)
