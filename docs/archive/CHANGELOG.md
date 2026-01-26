@@ -1,10 +1,24 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-61 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-65 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-26: Phase 65 完了（Post-54 Integration Tests）
+  - 新規: `tests/test_post54_integration.py`（10テスト）
+    - `TestStylePacingRiskContract`: Style, Pacing, Risk契約テスト
+    - `TestCuratorEndToEnd`: Curator出力スキーマ・決定性テスト
+    - `TestBatchWithCurator`: バッチ処理統合テスト
+    - `TestBatchPerformance`: パフォーマンステスト（@slow）
+  - 新規: `tests/test_regression_post54.py`（12テスト）
+    - `TestRegressionExistingFeatures`: APIシグネチャ回帰テスト
+    - `TestRegressionGracefulHandling`: 欠損データ対応テスト
+  - 機能:
+    - Phase 55-64の4機能（Style, Pacing, Risk, Curator）統合テスト
+    - 既存ゴールデンテストとの互換性確認
+    - 契約レベルのアサーション（内部実装に依存しない）
+  - テスト総数: 2601件（+22件）
 - 2026-01-25: Phase 61 完了（Risk Context Core）
   - 新規: `katrain/core/analysis/risk/` パッケージ
     - `models.py`（~210行）: Enum + Dataclass定義
