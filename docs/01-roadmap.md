@@ -195,7 +195,7 @@
 |------:|--------|----------|:----:|
 | 68-A | Command Core | `engine_cmd/commands.py`, `executor.py`, `engine_query.py` | ✅ |
 | 68-B | Engine統合 | `request_analysis` で `build_analysis_query()` 使用 | ✅ |
-| 68-C | Pondering（任意） | pondering Command化 | 📋 OPTIONAL |
+| 68-C | Pondering便利メソッド | `is_pondering`, `get_ponder_command()`, `stop_pondering()` | ✅ |
 
 **詳細**: [Phase 68 詳細](#phase-68-command-pattern-for-katagoengine完了)
 
@@ -1861,17 +1861,23 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 **完了日**: 2026-01-26（PR #205）
 
-#### Phase 68-C: Pondering（OPTIONAL）📋
+#### Phase 68-C: Pondering便利メソッド ✅
 
 **In-scope:**
-- pondering 開始/停止を Command 化
-- `_stop_pondering_unlocked()` の Command 対応
+- `executor.is_pondering` プロパティ
+- `executor.get_ponder_command()` メソッド
+- `executor.stop_pondering()` メソッド
+- 13件のponderingテスト追加
+
+**成果物:**
+- `katrain/core/engine_cmd/executor.py` にpondering関連メソッド追加
+- `tests/test_engine_commands.py` にTestPonderingクラス追加
 
 **受け入れ条件:**
-- [ ] `uv run pytest tests -v` パス
-- [ ] pondering 動作確認
+- [x] `uv run pytest tests/test_engine_commands.py -v` パス（57テスト）
+- [x] pondering テスト13件全パス
 
-**依存**: Phase 68-B ✅
+**完了日**: 2026-01-26（PR #206予定）
 
 ---
 

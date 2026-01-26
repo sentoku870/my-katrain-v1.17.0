@@ -323,3 +323,83 @@ class CommandExecutor:
         """Get the number of active commands (with query_id)."""
         with self._lock:
             return len(self.commands)
+
+    # ============================================================
+    # Pondering convenience methods (Phase 68-C)
+    # ============================================================
+
+    @property
+    def is_pondering(self) -> bool:
+        """Check if any pondering command is currently active.
+
+        A command is considered pondering if it has ponder=True attribute
+        and is either pending or active.
+
+        Returns:
+            True if a pondering command is active, False otherwise.
+        """
+        with self._lock:
+            # Check pending commands
+            for cmd in self._pending_commands:
+                if getattr(cmd, 'ponder', False):
+                    return True
+            # Check active commands
+            for cmd in self.commands.values():
+                if getattr(cmd, 'ponder', False):
+                    return True
+            return False
+
+    def get_ponder_command(self) -> Optional[AnalysisCommand]:
+        """Get the current pondering command, if any.
+
+        Searches both pending and active commands for one with ponder=True.
+
+        Returns:
+            The pondering command if found, None otherwise.
+
+        Note:
+            If multiple pondering commands exist (shouldn't normally happen),
+            returns the first one found (pending checked before active).
+        """
+        with self._lock:
+            # Check pending commands first
+            for cmd in self._pending_commands:
+                if getattr(cmd, 'ponder', False):
+                    return cmd
+            # Check active commands
+            for cmd in self.commands.values():
+                if getattr(cmd, 'ponder', False):
+                    return cmd
+            return None
+
+    def stop_pondering(self, terminate: bool = True) -> bool:
+        """Stop the current pondering command, if any.
+
+        This is a convenience method that finds the current pondering command
+        and cancels it. It also calls engine.stop_pondering() to ensure
+        proper cleanup of the engine's ponder_query state.
+
+        Args:
+            terminate: If True, also send terminate_query to engine.
+                      Defaults to True for pondering.
+
+        Returns:
+            True if pondering was stopped, False if no pondering was active.
+
+        Note:
+            This method calls engine.stop_pondering() to ensure the engine's
+            internal ponder_query tracking is also cleared.
+        """
+        ponder_cmd = self.get_ponder_command()
+
+        if ponder_cmd:
+            # Cancel the command through executor
+            self.cancel_command(ponder_cmd, terminate=terminate)
+
+            # Also call engine's stop_pondering to clear ponder_query state
+            # This ensures both executor and engine are in sync
+            self.engine.stop_pondering()
+
+            return True
+
+        return False
