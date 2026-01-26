@@ -1,9 +1,11 @@
 import os
 from unittest.mock import MagicMock
 
+import pytest
+
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.game import Game, KaTrainSGF
-from katrain.core.sgf_parser import SGF, SGFNode
+from katrain.core.sgf_parser import SGF, SGFNode, Move, ParseError
 
 
 def test_simple():
@@ -195,3 +197,158 @@ def test_placements():
     print(root.properties)
     assert 6 == len(root.clear_placements)
     assert 25 + 14 * 14 == len(root.placements)
+
+
+# =============================================================================
+# Phase 69: Test Enhancement - Move, ParseError, EdgeCases, RoundTrip
+# =============================================================================
+
+
+class TestMoveClass:
+    """Move class tests.
+
+    実装確認済み:
+    - __hash__() 実装あり（sgf_parser.py:78-79）→ ハッシュ可能
+    """
+
+    def test_from_gtp_roundtrip_d4(self):
+        """D4のラウンドトリップ"""
+        m = Move.from_gtp("D4", player="B")
+        assert m.gtp() == "D4"
+        assert m.player == "B"
+
+    def test_from_gtp_roundtrip_q16(self):
+        """Q16のラウンドトリップ"""
+        m = Move.from_gtp("Q16", player="W")
+        assert m.gtp() == "Q16"
+
+    def test_from_gtp_pass(self):
+        """パス手"""
+        m = Move.from_gtp("pass", player="W")
+        assert m.is_pass
+        assert m.gtp() == "pass"
+
+    def test_from_gtp_pass_case_insensitive(self):
+        """PASS, Pass も受け入れる"""
+        for variant in ["pass", "PASS", "Pass"]:
+            m = Move.from_gtp(variant, player="B")
+            assert m.is_pass
+
+    def test_from_gtp_j1_roundtrip(self):
+        """J1がラウンドトリップできる（I列スキップ後）"""
+        m = Move.from_gtp("J1", player="B")
+        assert m.gtp() == "J1"
+        assert isinstance(m.coords, tuple)
+        assert len(m.coords) == 2
+
+    def test_from_gtp_i_column_rejected(self):
+        """I列は無効（GTP_COORDに含まれない）"""
+        with pytest.raises(ValueError):
+            Move.from_gtp("I1", player="B")
+
+    def test_from_gtp_invalid_format_raises(self):
+        """無効フォーマットでValueError"""
+        with pytest.raises(ValueError):
+            Move.from_gtp("XYZ", player="B")
+
+    def test_equality_and_hash(self):
+        """等価性とハッシュ（__hash__実装確認済み）"""
+        m1 = Move.from_gtp("D4", player="B")
+        m2 = Move.from_gtp("D4", player="B")
+        m3 = Move.from_gtp("D4", player="W")
+        assert m1 == m2
+        assert m1 != m3
+        # ハッシュ可能（__hash__実装済み）
+        s = {m1}
+        assert m2 in s
+
+    def test_opponent_property(self):
+        """opponentプロパティ"""
+        assert Move.from_gtp("D4", player="B").opponent == "W"
+        assert Move.from_gtp("D4", player="W").opponent == "B"
+
+
+class TestParseError:
+    """ParseError tests（実装確認済み）"""
+
+    def test_missing_opening_paren(self):
+        """開き括弧なし → ParseError"""
+        with pytest.raises(ParseError):
+            SGF.parse_sgf("GM[1]FF[4]SZ[19]")
+
+    def test_unclosed_property_value(self):
+        """閉じ括弧なし → ParseError"""
+        with pytest.raises(ParseError):
+            SGF.parse_sgf("(;GM[1]FF[4]SZ[19")
+
+    def test_empty_string(self):
+        """空文字列 → ParseError"""
+        with pytest.raises(ParseError):
+            SGF.parse_sgf("")
+
+
+class TestPropertyEdgeCases:
+    """Property edge case tests（board_size: タプル返却確認済み）"""
+
+    def test_komi_invalid_returns_numeric(self):
+        """無効なKMでも数値が返る"""
+        root = SGF.parse_sgf("(;GM[1]KM[invalid])")
+        assert isinstance(root.komi, (int, float))
+
+    def test_handicap_invalid_returns_int(self):
+        """無効なHAでも整数が返る"""
+        root = SGF.parse_sgf("(;GM[1]HA[invalid])")
+        assert isinstance(root.handicap, int)
+
+    def test_board_size_9x9(self):
+        """SZ[9] - 標準9x9ボード"""
+        root = SGF.parse_sgf("(;GM[1]SZ[9])")
+        assert root.board_size == (9, 9)
+
+    def test_board_size_13x13(self):
+        """SZ[13] - 標準13x13ボード"""
+        root = SGF.parse_sgf("(;GM[1]SZ[13])")
+        assert root.board_size == (13, 13)
+
+    def test_board_size_19x19(self):
+        """SZ[19] - 標準19x19ボード"""
+        root = SGF.parse_sgf("(;GM[1]SZ[19])")
+        assert root.board_size == (19, 19)
+
+
+class TestRoundTrip:
+    """Roundtrip tests.
+
+    get_property()は単一値を返す（sgf_parser.py:196）
+    """
+
+    def test_special_chars_semantic_equivalence(self):
+        """特殊文字を含むコメントのセマンティック等価性"""
+        input_sgf = r"(;GM[1]C[Test\]with\\brackets])"
+        root = SGF.parse_sgf(input_sgf)
+        output = root.sgf()
+        reparsed = SGF.parse_sgf(output)
+        # get_property()は単一値を返す（型は同一）
+        original_comment = root.get_property("C")
+        reparsed_comment = reparsed.get_property("C")
+        assert original_comment == reparsed_comment
+
+    def test_variation_tree_semantic_equivalence(self):
+        """変化ツリーのセマンティック等価性"""
+        input_sgf = "(;GM[1]SZ[9](;B[dd](;W[ff])(;W[gg]))(;B[ee]))"
+        root = SGF.parse_sgf(input_sgf)
+        assert len(root.children) == 2
+        assert len(root.children[0].children) == 2
+
+        output = root.sgf()
+        reparsed = SGF.parse_sgf(output)
+
+        # 構造の等価性
+        assert len(reparsed.children) == len(root.children)
+        assert len(reparsed.children[0].children) == len(root.children[0].children)
+
+        # プロパティ保存の確認（脆弱性が低い追加チェック）
+        assert root.children[0].get_property("B") == "dd"
+        assert reparsed.children[0].get_property("B") == "dd"
+        assert root.children[1].get_property("B") == "ee"
+        assert reparsed.children[1].get_property("B") == "ee"
