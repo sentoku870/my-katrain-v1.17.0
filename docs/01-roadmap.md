@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-26（Phase 66完了）
+> 最終更新: 2026-01-26（Phase 68完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -180,6 +180,42 @@
 | 66 | Post-54 品質強化 | Summary/Karte品質改善、不変条件テスト | ✅ |
 
 **詳細**: [Phase 55–66 詳細](#phase-5566-詳細post-54-拡張)
+
+### Phase 67: Engine Stability Improvements ✅ **完了**（2026-01-26）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 67 | エンジン安定性向上 | shutdown改善、fakes.py、leak check | ✅ |
+
+**詳細**: [Phase 67 詳細](#phase-67-engine-stability-improvements-完了)
+
+### Phase 68: Command Pattern for KataGoEngine ✅ **完了**（2026-01-26）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 68-A | Command Core | `engine_cmd/commands.py`, `executor.py`, `engine_query.py` | ✅ |
+| 68-B | Engine統合 | `request_analysis` で `build_analysis_query()` 使用 | ✅ |
+| 68-C | Pondering（任意） | pondering Command化 | 📋 OPTIONAL |
+
+**詳細**: [Phase 68 詳細](#phase-68-command-pattern-for-katagoengine完了)
+
+### Phase 69–79: Large Refactor & Maintainability（予定）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 69 | テスト強化 | sgf_parser + base_katrain テスト | 📋 |
+| 70 | 複雑関数リファクタ | analyze_extra分割 + 重複解消 | 📋 |
+| 71 | batch/stats.py 分割 | `batch/stats/` パッケージ化 | 📋 |
+| 72 | karte_report.py 分割 | `reports/karte/` パッケージ化 | 📋 |
+| 73 | KaTrainGui分割 A | KeyboardManager | 📋 |
+| 74 | KaTrainGui分割 B | ConfigManager | 📋 |
+| 75 | KaTrainGui分割 C | PopupManager | 📋 |
+| 76 | KaTrainGui分割 D | GameStateManager | 📋 |
+| 77 | エラーハンドリング A | 監査・分類 | 📋 |
+| 78 | エラーハンドリング B | ユーザー操作パス | 📋 |
+| 79 | エラーハンドリング C | バックグラウンドパス | 📋 |
+
+**詳細**: [Phase 69–79 詳細](#phase-6979-large-refactor--maintainability予定)
 
 ### 未定（TBD / Post-52）
 
@@ -1745,6 +1781,244 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **依存**: Phase 65
 
 **完了日**: 2026-01-26
+
+---
+
+### Phase 67: Engine Stability Improvements ✅ **完了**
+
+**目的**: KataGoEngine と LeelaEngine のシャットダウン安定性向上、テスト基盤強化。
+
+**In-scope:**
+- Robust shutdown sequence（ヘルパーメソッド追加）
+  - `_safe_queue_put()`, `_safe_terminate()`, `_safe_close_pipes()`, `_safe_force_kill()`
+- `put_nowait()` + タイムアウトフォールバックでデッドロック防止
+- Leela engine shutdown の明示的パイプクローズ
+- `critical_moves.py` インポート修正（`build_eval_snapshot` → `snapshot_from_game`）
+
+**Out-of-scope:**
+- 新機能追加
+- Command Pattern導入（Phase 68）
+
+**成果物:**
+- `katrain/core/engine.py` 更新（+151行）
+- `katrain/core/leela/engine.py` 更新（+17行）
+- `tests/fakes.py` 新規（FakePopen, FakePipe, MinimalKatrain）
+- `tests/test_engine_coverage.py` 新規（14テスト）
+- `tests/tools/check_engine_leak.py` 新規（リーク検証ツール）
+
+**受け入れ条件:**
+- [x] `uv run pytest tests -v` パス（2640件）
+- [x] `python -m katrain` 起動確認
+- [x] エンジン終了時のリークなし
+
+**依存**: Phase 66
+
+**完了日**: 2026-01-26
+
+---
+
+### Phase 68: Command Pattern for KataGoEngine ✅ **完了**
+
+**目的**: KataGoEngine のリクエスト処理を Command Pattern でリファクタリングし、テスト容易性と拡張性を向上。
+
+**重要制約**: `katrain/core/engine.py` との名前衝突を避けるため、パッケージ名は `katrain/core/engine_cmd/` を使用。
+
+#### Phase 68-A: Command Core ✅
+
+**成果物:**
+- `katrain/core/engine_query.py`: `build_analysis_query()` 関数（~140行）
+- `katrain/core/engine_cmd/__init__.py`: 公開API
+- `katrain/core/engine_cmd/commands.py`: `AnalysisCommand` ABC, `StandardAnalysisCommand`（~220行）
+- `katrain/core/engine_cmd/executor.py`: `CommandExecutor`（~250行）
+- `tests/test_engine_query.py`: クエリビルドテスト（14件）
+- `tests/test_engine_commands.py`: コマンドテスト（30件）
+
+**主な特徴:**
+- `@dataclass(eq=False)` による identity-based hashing（Set対応）
+- `_cancelled` threading.Event によるスレッドセーフなキャンセル検出
+- `deque(maxlen=100)` による履歴管理
+- Option A delivery guarantee（at most one late delivery）
+
+**受け入れ条件:**
+- [x] `uv run pytest tests/test_engine_commands.py tests/test_engine_query.py -v` パス（44件）
+- [x] `python -m katrain` 起動確認
+
+**完了日**: 2026-01-26（PR #204）
+
+#### Phase 68-B: Engine統合 ✅
+
+**成果物:**
+- `katrain/core/engine.py` 更新（-33行、DRY化）
+
+**変更内容:**
+- `build_analysis_query()` を `engine_query.py` からインポート
+- `request_analysis()` を `build_analysis_query()` 使用にリファクタリング
+- 後方互換性を完全維持
+
+**受け入れ条件:**
+- [x] `uv run pytest tests -v` 全テストパス（2659件）
+- [x] `python -m katrain` で解析動作確認
+
+**完了日**: 2026-01-26（PR #205）
+
+#### Phase 68-C: Pondering（OPTIONAL）📋
+
+**In-scope:**
+- pondering 開始/停止を Command 化
+- `_stop_pondering_unlocked()` の Command 対応
+
+**受け入れ条件:**
+- [ ] `uv run pytest tests -v` パス
+- [ ] pondering 動作確認
+
+**依存**: Phase 68-B ✅
+
+---
+
+### Phase 69–79: Large Refactor & Maintainability（予定）
+
+**目的**: コード品質向上、テストカバレッジ拡大、保守性改善のための段階的リファクタリング。
+
+**背景（調査結果）:**
+- `__main__.py`: 1,420行 / 109メソッド（God Object）
+- `batch/stats.py`: 1,798行（単一責務違反）
+- `karte_report.py`: 1,610行（単一責務違反）
+- `except Exception`: 約90箇所（サイレント失敗リスク）
+
+**共通の受け入れ条件:**
+- [ ] `uv run pytest tests -v` パス
+- [ ] `python -m katrain` 起動確認
+- [ ] 後方互換維持（re-export で既存インポートパス保持）
+- [ ] mypy（OPTIONAL、必須ではない）
+
+---
+
+#### Phase 69: テスト強化（sgf_parser + base_katrain）
+
+**In-scope:**
+- `tests/test_parser.py` 拡張（エッジケース、ラウンドトリップ）
+- `tests/test_base_katrain.py` 新規（設定読み込み/保存、マイグレーション）
+
+**成果物:**
+- テストファイル 2件（100-150行追加）
+
+---
+
+#### Phase 70: 複雑関数リファクタリング
+
+**In-scope:**
+- `game.py` の `analyze_extra()` 分割（119行→5メソッド）
+- `_compute_important_moves()` の重複ループ解消
+- 単体テスト追加
+
+**成果物:**
+- `katrain/core/game.py` 更新
+- `tests/test_game_analysis.py`
+
+---
+
+#### Phase 71: batch/stats.py 分割
+
+**In-scope:**
+- `katrain/core/batch/stats/` パッケージ化
+  - `models.py`, `extraction.py`, `aggregation.py`, `formatting.py`
+- `__init__.py` で re-export（後方互換）
+- lazy import で循環依存回避
+
+**成果物:**
+- `katrain/core/batch/stats/` パッケージ
+- `tests/test_batch_stats_imports.py`（互換性テスト）
+
+---
+
+#### Phase 72: karte_report.py 分割
+
+**In-scope:**
+- `katrain/core/reports/karte/` パッケージ化
+  - `models.py`, `builder.py`, `sections/`, `formatters.py`
+- `__init__.py` で re-export
+
+**成果物:**
+- `katrain/core/reports/karte/` パッケージ
+- `tests/test_karte_imports.py`（互換性テスト）
+
+---
+
+#### Phase 73: KaTrainGui分割 A（KeyboardManager）
+
+**In-scope:**
+- `_on_keyboard_down()` (97行/40分岐) を KeyboardManager に抽出
+- ディスパッチテーブルパターン導入
+
+**成果物:**
+- `katrain/gui/managers/keyboard_manager.py`
+- `tests/test_keyboard_manager.py`
+
+---
+
+#### Phase 74: KaTrainGui分割 B（ConfigManager）
+
+**In-scope:**
+- 設定管理を ConfigManager に集約
+- 3パターンのアクセスを統一インターフェースに
+
+**成果物:**
+- `katrain/gui/managers/config_manager.py`
+
+---
+
+#### Phase 75: KaTrainGui分割 C（PopupManager）
+
+**In-scope:**
+- `_do_*_popup` メソッド群を PopupManager に移動
+
+**成果物:**
+- `katrain/gui/managers/popup_manager.py`
+
+---
+
+#### Phase 76: KaTrainGui分割 D（GameStateManager）
+
+**In-scope:**
+- ゲーム状態のライフサイクル管理を分離
+
+**成果物:**
+- `katrain/gui/managers/game_state_manager.py`
+
+---
+
+#### Phase 77: エラーハンドリング A（監査・分類）
+
+**In-scope:**
+- 全 `except Exception` を監査（約90箇所）
+- 意図的（noqa付き）vs 改善対象を分類
+- 分類結果をドキュメント化
+
+**成果物:**
+- `docs/archive/error-handling-audit.md`
+
+---
+
+#### Phase 78: エラーハンドリング B（ユーザー操作パス）
+
+**In-scope:**
+- ユーザー操作に直結する箇所の改善
+- 具体的な例外クラスへの変更
+- 適切なログ出力追加
+
+**成果物:**
+- 複数ファイル更新
+
+---
+
+#### Phase 79: エラーハンドリング C（バックグラウンドパス）
+
+**In-scope:**
+- バックグラウンド処理の改善
+- サイレント失敗の排除
+
+**成果物:**
+- 複数ファイル更新
 
 ---
 
