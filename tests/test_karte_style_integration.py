@@ -176,8 +176,12 @@ class TestKarteStyleIntegration:
             f"Expected '- Style Confidence: 85%' in output.\nGot:\n{karte_output[:500]}"
         )
 
-    def test_karte_meta_omits_style_on_failure(self, mock_game, mock_snapshot):
-        """Verify Karte Meta section omits style lines when computation fails."""
+    def test_karte_meta_shows_unknown_style_on_failure(self, mock_game, mock_snapshot):
+        """Verify Karte Meta section shows 'Unknown' style when computation fails.
+
+        Phase 66: When style computation fails (returns None), we show
+        'Style: Unknown' but no confidence line.
+        """
         from katrain.core.reports.karte_report import _build_karte_report_impl
 
         with patch(
@@ -191,7 +195,9 @@ class TestKarteStyleIntegration:
                 player_filter=None,
             )
 
-        assert "- Style:" not in karte_output
+        # Phase 66: Show "Unknown" when style computation fails
+        assert "- Style:" in karte_output, "Style line should be present with 'Unknown'"
+        # No confidence line when computation fails
         assert "- Style Confidence:" not in karte_output
 
 

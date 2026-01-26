@@ -13,8 +13,12 @@ from collections import defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
+from dataclasses import dataclass
+
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
+    format_game_display_label,
+    format_game_link_target,
     get_canonical_loss,
     make_markdown_link_target,
     truncate_game_name,
@@ -74,6 +78,132 @@ from katrain.core.analysis.presentation import get_auto_confidence_label
 
 # Generic player names to skip
 SKIP_PLAYER_NAMES = frozenset({"Black", "White", "黒", "白", "", "?", "Unknown", "不明"})
+
+
+# =============================================================================
+# Evidence Support (Phase 66)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class EvidenceMove:
+    """Lightweight evidence holder - avoids synthesizing MoveEval.
+
+    Contains only the fields needed for evidence display.
+    Does NOT inherit from or synthesize MoveEval.
+
+    Attributes:
+        game_name: Name/path of the game file
+        move_number: Move number in the game
+        player: "B" or "W"
+        gtp: GTP coordinate (e.g., "D4")
+        points_lost: Loss in points
+        mistake_category: MistakeCategory enum value
+    """
+
+    game_name: str
+    move_number: int
+    player: str
+    gtp: str
+    points_lost: float
+    mistake_category: "MistakeCategory"
+
+
+def _select_evidence_moves(
+    candidates: List["EvidenceMove"],
+    max_count: int = 2,
+) -> List["EvidenceMove"]:
+    """Select representative evidence moves with game deduplication.
+
+    Args:
+        candidates: List of EvidenceMove objects
+        max_count: Maximum moves to return
+
+    Returns:
+        Selected moves, deduplicated by game, sorted by loss descending
+
+    Selection criteria:
+        - Only MISTAKE or BLUNDER categories (already filtered by caller)
+        - points_lost is not None (already guaranteed by worst_moves source)
+        - Stable sort: loss desc, move_number asc, game_name asc
+    """
+    # Sort: loss desc, move_number asc, game_name asc (deterministic)
+    sorted_candidates = sorted(
+        candidates,
+        key=lambda e: (-e.points_lost, e.move_number, e.game_name),
+    )
+
+    # Dedupe by game_name
+    seen_games: set = set()
+    selected = []
+    for ev in sorted_candidates:
+        if ev.game_name not in seen_games:
+            selected.append(ev)
+            seen_games.add(ev.game_name)
+        if len(selected) >= max_count:
+            break
+
+    return selected
+
+
+def _format_evidence_with_links(
+    evidence: List["EvidenceMove"],
+    karte_path_map: Optional[Dict[str, str]],
+    summary_dir: Optional[str],
+    lang: str = "jp",
+) -> str:
+    """Format evidence moves with karte links (Markdown-safe).
+
+    Args:
+        evidence: List of EvidenceMove objects
+        karte_path_map: Mapping from game_name to karte file path
+        summary_dir: Directory containing the summary file (for relative links)
+        lang: Language code
+
+    Returns:
+        Formatted string like "例: `Game1` #12 Q16 (-8.5目) [カルテ](link), ..."
+        or "(該当する代表例なし)" if empty
+
+    Note:
+        - Game name wrapped in backticks (`) to avoid bracket issues in Markdown
+        - Uses format_game_link_target() for consistent URL encoding
+    """
+    import os
+
+    if not evidence:
+        return "(該当する代表例なし)" if lang == "jp" else "(no representative examples)"
+
+    prefix = "例: " if lang == "jp" else "e.g.: "
+    parts = []
+
+    for ev in evidence:
+        # Format loss as points (already in points unit from worst_moves)
+        loss_label = f"-{ev.points_lost:.1f}目" if lang == "jp" else f"-{ev.points_lost:.1f}pt"
+
+        # Build display label (short) - NO escaping needed, will be wrapped in backticks
+        display = format_game_display_label(ev.game_name, max_len=20, escape_mode="none")
+
+        # Build link if available
+        karte_path = karte_path_map.get(ev.game_name) if karte_path_map else None
+        if karte_path and summary_dir:
+            # Make relative to summary_dir
+            try:
+                rel_path = os.path.relpath(karte_path, summary_dir)
+            except ValueError:
+                # Cross-drive on Windows
+                rel_path = os.path.basename(karte_path)
+            rel_path = rel_path.replace("\\", "/")
+            link_target = format_game_link_target(rel_path, preserve_path=True)
+
+            link_text = "カルテ" if lang == "jp" else "karte"
+            # Wrap display in backticks for Markdown safety
+            parts.append(
+                f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label}) [{link_text}]({link_target})"
+            )
+        else:
+            parts.append(f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label})")
+
+    return prefix + ", ".join(parts)
 
 
 def extract_game_stats(
@@ -1477,26 +1607,46 @@ def build_player_summary(
     # =========================================================================
     lines.append("\n## Top 3 Mistake Types\n")
 
-    if meaning_tags_counts:
+    # Phase 66: Filter out UNCERTAIN before counting
+    from katrain.core.analysis.meaning_tags.models import MeaningTagId
+
+    uncertain_value = MeaningTagId.UNCERTAIN.value  # "uncertain"
+    filtered_counts = {
+        tag_id: count
+        for tag_id, count in meaning_tags_counts.items()
+        if tag_id != uncertain_value
+    }
+
+    if filtered_counts:
+        total_classified = sum(filtered_counts.values())
         # Sort by count desc, then by tag name asc for deterministic ordering
         sorted_tags = sorted(
-            meaning_tags_counts.items(),
+            filtered_counts.items(),
             key=lambda x: (-x[1], x[0])
         )[:3]  # Top 3
 
-        total_meaning_tags = sum(meaning_tags_counts.values())
+        top3_total = sum(count for _, count in sorted_tags)
+        other_count = total_classified - top3_total
+
         for tag_id, count in sorted_tags:
-            pct = (count / total_meaning_tags * 100) if total_meaning_tags > 0 else 0.0
-            # Use safe label getter (returns None for invalid IDs)
+            pct = (count / total_classified * 100) if total_classified > 0 else 0.0
+            # Use safe label getter with current UI language
             from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
-            label = get_meaning_tag_label_safe(tag_id, "ja") or tag_id
+            label = get_meaning_tag_label_safe(tag_id, lang) or tag_id
             lines.append(f"- {label}: {count} ({pct:.1f}%)")
+
+        # Phase 66: Add localized clarification note
+        lines.append("")
+        uncertain_count = meaning_tags_counts.get(uncertain_value, 0)
+        if lang == "jp":
+            uncertain_label = "分類困難"
+            note = f"*分類済み: {total_classified}件（「{uncertain_label}」{uncertain_count}件を除く）。Top 3 以外: {other_count}件*"
+        else:
+            uncertain_label = "Uncertain"
+            note = f'*Classified: {total_classified} (excluding "{uncertain_label}" {uncertain_count}). Other than Top 3: {other_count}*'
+        lines.append(note)
     else:
         lines.append("- No meaning tags classified.")
-
-    # Phase 54: Add percentage explanation note
-    lines.append("")
-    lines.append(get_percentage_note(lang))
 
     # =========================================================================
     # Section 7: Weakness Hypothesis
@@ -1545,6 +1695,29 @@ def build_player_summary(
     if weaknesses:
         for w in weaknesses:
             lines.append(f"- {w}")
+
+        # Phase 66: Add evidence for weakness hypothesis
+        # Collect evidence candidates from already-collected all_worst
+        # all_worst has tuples: (game_name, move_num, gtp, loss, cat)
+        evidence_candidates = []
+        for game_name, move_num, gtp, loss, cat in all_worst:
+            if cat in (MistakeCategory.MISTAKE, MistakeCategory.BLUNDER):
+                ev = EvidenceMove(
+                    game_name=game_name,
+                    move_number=move_num,
+                    player="",  # Not displayed, single-player context
+                    gtp=gtp,
+                    points_lost=loss,
+                    mistake_category=cat,
+                )
+                evidence_candidates.append(ev)
+
+        # Select and format evidence (max 2, deduplicated by game)
+        evidence = _select_evidence_moves(evidence_candidates, max_count=2)
+        evidence_str = _format_evidence_with_links(
+            evidence, karte_path_map, summary_dir, lang
+        )
+        lines.append(f"  {evidence_str}")
     else:
         lines.append(f"- {get_phase_priority_text('no_weakness', lang)}")
 

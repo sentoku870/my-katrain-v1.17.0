@@ -20,6 +20,7 @@ from typing import (
 from katrain.core.analysis.models import (
     ConfidenceLevel,
     EngineType,
+    MistakeCategory,
     MoveEval,
     PhaseMistakeStats,
     get_canonical_loss_from_move,
@@ -185,6 +186,29 @@ def get_reason_tag_label(tag: str, fallback_to_raw: bool = True) -> str:
     if fallback_to_raw:
         return tag
     return f"??? ({tag})"
+
+
+# =============================================================================
+# Mistake category label (Phase 66)
+# =============================================================================
+
+
+def get_mistake_category_label(category: MistakeCategory) -> str:
+    """Get localized label for mistake category.
+
+    Uses current app language via i18n._().
+    Key format: "mistake:{category.value}" (category.value is lowercase)
+
+    Args:
+        category: MistakeCategory enum value
+
+    Returns:
+        Localized label (e.g., "大悪手" for BLUNDER in Japanese)
+    """
+    from katrain.core.lang import i18n
+
+    key = f"mistake:{category.value}"  # e.g., "mistake:blunder"
+    return i18n._(key)
 
 
 # =============================================================================
