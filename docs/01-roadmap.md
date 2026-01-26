@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-25（Phase 54完了）
+> 最終更新: 2026-01-26（Phase 66完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -138,7 +138,7 @@
 | 43 | Stability Audit | Atomic save、Shutdown改善 | ✅ |
 | 44 | Batch Analysis Fixes | 信頼性閾値一貫性、完了チャイム | ✅ |
 
-### Phase 45–52: Lexicon・MeaningTags・Radar・Critical 3
+### Phase 45–52: Lexicon・MeaningTags・Radar・Critical 3 ✅ **完了**
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
@@ -153,7 +153,7 @@
 
 **詳細**: [Phase 45–52 詳細](#phase-4552-詳細lexiconmeaningtagsradarcritical-3)
 
-### Phase 53–54: Batch Report Quality（2026-01-25 完了）
+### Phase 53–54: Batch Report Quality ✅ **完了**（2026-01-25）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
@@ -162,22 +162,22 @@
 
 **詳細**: [Phase 53–54 詳細](#phase-5354-詳細batch-report-quality)
 
-### Phase 55–66: Post-54 拡張（Style / Pacing / Risk / Curator）
+### Phase 55–66: Post-54 拡張（Style / Pacing / Risk / Curator）✅ **完了**（2026-01-26）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 55 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | ✅ Done |
-| 56 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | 📋 TBD |
-| 57 | Style統合 | Summary/Karteにスタイルセクション追加 | 📋 TBD |
-| 58 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | 📋 TBD |
-| 59 | Pacing & Tilt Core | `analysis/time/pacing.py`（相対メトリクス） | 📋 TBD |
-| 60 | Pacing/Tilt統合 | Summary/Karteに時間分析セクション追加 | 📋 TBD |
-| 61 | Risk Context Core | `analysis/risk/`（形勢判断＋フォールバック） | 📋 TBD |
-| 62 | Risk統合 | Karteに「勝負術」セクション追加 | 📋 TBD |
-| 63 | Curator Scoring | `curator/scoring.py`（適合度スコア） | 📋 TBD |
-| 64 | Curator出力 | `curator_ranking.json`, `replay_guide.json` | 📋 TBD |
-| 65 | Post-54 Integration | 統合テスト、回帰テスト | 📋 TBD |
-| 66 | Post-54 品質強化 | ドキュメント整理、i18n完了 | 📋 TBD |
+| 55 | レポート基盤 + ユーザー集計 | `reports/section_registry.py`, `UserRadarAggregate` | ✅ |
+| 56 | Style Archetype Core | `analysis/style/`（6アーキタイプ判定） | ✅ |
+| 57 | Style統合 | Summary/Karteにスタイルセクション追加 | ✅ |
+| 58 | 時間データパーサー | `analysis/time/parser.py`（SGF BL/WL読取） | ✅ |
+| 59 | Pacing & Tilt Core | `analysis/time/pacing.py`（相対メトリクス） | ✅ |
+| 60 | Pacing/Tilt統合 | Summary/Karteに時間分析セクション追加 | ✅ |
+| 61 | Risk Context Core | `analysis/risk/`（形勢判断＋フォールバック） | ✅ |
+| 62 | Risk統合 | Karteに「勝負術」セクション追加 | ✅ |
+| 63 | Curator Scoring | `curator/scoring.py`（適合度スコア） | ✅ |
+| 64 | Curator出力 | `curator_ranking.json`, `replay_guide.json` | ✅ |
+| 65 | Post-54 Integration | 統合テスト、回帰テスト | ✅ |
+| 66 | Post-54 品質強化 | Summary/Karte品質改善、不変条件テスト | ✅ |
 
 **詳細**: [Phase 55–66 詳細](#phase-5566-詳細post-54-拡張)
 
