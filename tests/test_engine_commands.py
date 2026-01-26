@@ -733,3 +733,266 @@ class TestGuardPattern:
 
         # Only one result should be processed (before cancel)
         assert len(processed) == 1
+
+
+# ======== Phase 68-C: Pondering ========
+
+
+class TestPondering:
+    """Tests for pondering convenience methods (Phase 68-C)."""
+
+    def test_is_pondering_false_when_no_commands(self, mock_engine):
+        """is_pondering should be False when no commands."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+
+        executor = CommandExecutor(mock_engine)
+
+        assert executor.is_pondering is False
+
+    def test_is_pondering_false_for_non_ponder_command(self, mock_engine):
+        """is_pondering should be False for regular commands."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=False,
+        )
+
+        executor.submit(cmd)
+
+        assert executor.is_pondering is False
+
+    def test_is_pondering_true_for_pending_ponder_command(self, mock_engine):
+        """is_pondering should be True for pending ponder command."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+
+        # Command is still pending (no callback yet)
+        assert cmd in executor._pending_commands
+        assert executor.is_pondering is True
+
+    def test_is_pondering_true_for_active_ponder_command(self, mock_engine):
+        """is_pondering should be True for active ponder command."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+        cb = mock_engine.send_query.call_args[0][1]
+
+        # Move to active (partial result)
+        cb({"id": "QUERY:1", "moveInfos": []}, True)
+
+        assert "QUERY:1" in executor.commands
+        assert executor.is_pondering is True
+
+    def test_is_pondering_false_after_ponder_completed(self, mock_engine):
+        """is_pondering should be False after ponder command completed."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+        cb = mock_engine.send_query.call_args[0][1]
+
+        # Complete the command
+        cb({"id": "QUERY:1", "moveInfos": []}, False)
+
+        assert cmd.status == "completed"
+        assert executor.is_pondering is False
+
+    def test_get_ponder_command_returns_none_when_no_ponder(self, mock_engine):
+        """get_ponder_command should return None when no pondering."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+
+        # No commands
+        assert executor.get_ponder_command() is None
+
+        # Regular command
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=False,
+        )
+        executor.submit(cmd)
+
+        assert executor.get_ponder_command() is None
+
+    def test_get_ponder_command_returns_ponder_command(self, mock_engine):
+        """get_ponder_command should return the pondering command."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+
+        assert executor.get_ponder_command() is cmd
+
+    def test_get_ponder_command_prefers_pending(self, mock_engine):
+        """get_ponder_command should return pending ponder before active."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        executor = CommandExecutor(mock_engine)
+
+        # Submit first ponder command and activate it
+        cmd1 = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+        executor.submit(cmd1)
+        cb1 = mock_engine.send_query.call_args[0][1]
+        cb1({"id": "QUERY:1", "moveInfos": []}, True)
+
+        # Submit second ponder command (pending)
+        cmd2 = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+        executor.submit(cmd2)
+
+        # Should return pending one first
+        result = executor.get_ponder_command()
+        assert result is cmd2
+
+    def test_stop_pondering_returns_false_when_no_ponder(self, mock_engine):
+        """stop_pondering should return False when no pondering."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+
+        executor = CommandExecutor(mock_engine)
+
+        result = executor.stop_pondering()
+
+        assert result is False
+
+    def test_stop_pondering_cancels_ponder_command(self, mock_engine):
+        """stop_pondering should cancel the pondering command."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        # Add stop_pondering to mock engine
+        mock_engine.stop_pondering = MagicMock()
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+
+        result = executor.stop_pondering()
+
+        assert result is True
+        assert cmd.status == "cancelled"
+        assert cmd.is_cancelled()
+        assert executor.is_pondering is False
+
+    def test_stop_pondering_calls_engine_stop_pondering(self, mock_engine):
+        """stop_pondering should call engine.stop_pondering()."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        mock_engine.stop_pondering = MagicMock()
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+        executor.stop_pondering()
+
+        mock_engine.stop_pondering.assert_called_once()
+
+    def test_stop_pondering_with_terminate_false(self, mock_engine):
+        """stop_pondering(terminate=False) should not call terminate_query."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        mock_engine.stop_pondering = MagicMock()
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+        cb = mock_engine.send_query.call_args[0][1]
+
+        # Activate the command
+        cb({"id": "QUERY:1", "moveInfos": []}, True)
+
+        # Stop without terminate
+        executor.stop_pondering(terminate=False)
+
+        assert cmd.status == "cancelled"
+        # terminate_query should not be called
+        mock_engine.terminate_query.assert_not_called()
+
+    def test_stop_pondering_with_terminate_true(self, mock_engine):
+        """stop_pondering(terminate=True) should call terminate_query."""
+        from katrain.core.engine_cmd.executor import CommandExecutor
+        from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+
+        mock_engine.stop_pondering = MagicMock()
+
+        executor = CommandExecutor(mock_engine)
+        cmd = StandardAnalysisCommand(
+            node=create_mock_node(),
+            engine=mock_engine,
+            ponder=True,
+        )
+
+        executor.submit(cmd)
+        cb = mock_engine.send_query.call_args[0][1]
+
+        # Activate the command
+        cb({"id": "QUERY:1", "moveInfos": []}, True)
+
+        # Stop with terminate (default)
+        executor.stop_pondering(terminate=True)
+
+        assert cmd.status == "cancelled"
+        # terminate_query should be called
+        mock_engine.terminate_query.assert_called_once_with("QUERY:1", ignore_further_results=True)
