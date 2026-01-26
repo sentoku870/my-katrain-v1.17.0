@@ -1,10 +1,33 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-66 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-68 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-26: Phase 68 完了（Command Pattern for KataGoEngine）
+  - Phase 68-A: Command Core
+    - 新規: `katrain/core/engine_query.py`（~140行）
+      - `build_analysis_query()`: KataGoクエリ構築の純粋関数
+      - `_build_avoid_list()`: 回避リスト構築ヘルパー
+    - 新規: `katrain/core/engine_cmd/` パッケージ
+      - `commands.py`（~220行）: `AnalysisCommand` ABC, `StandardAnalysisCommand`
+      - `executor.py`（~400行）: `CommandExecutor`（ライフサイクル管理）
+    - 新規: `tests/test_engine_query.py`（14テスト）
+    - 新規: `tests/test_engine_commands.py`（43テスト）
+  - Phase 68-B: Engine統合
+    - 変更: `engine.py` が `build_analysis_query()` をインポートして使用
+    - 削減: ~33行（クエリ構築ロジック移動）
+  - Phase 68-C: Pondering便利メソッド
+    - 新規: `executor.is_pondering` プロパティ
+    - 新規: `executor.get_ponder_command()` メソッド
+    - 新規: `executor.stop_pondering()` メソッド
+    - 追加: 13テスト（TestPondering）
+  - テスト総数: 2722件（+82件）
+- 2026-01-26: Phase 67 完了（Engine Stability Improvements）
+  - I/O例外ハンドリング強化
+  - スレッド安全性の向上
+  - PRs: #203
 - 2026-01-26: Phase 66 完了（Post-54 品質強化）
   - A) ゲームラベル括弧バランス保証:
     - 新規: `_ensure_balanced_brackets()` - 2パスアルゴリズムで正しいネスト保証
