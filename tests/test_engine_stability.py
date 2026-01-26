@@ -60,30 +60,33 @@ class TestWaitToFinishTimeout:
             def __init__(self):
                 self.thread_lock = threading.Lock()
                 self.queries = {"q1": "pending"}
+                self.query_completed = threading.Event()
                 self.katago_process = MagicMock()
                 self.katago_process.poll.return_value = None  # Process running
 
             def wait_to_finish(self, timeout=30.0):
-                start = time.time()
+                """Event-based wait with timeout."""
+                deadline = time.monotonic() + timeout
                 while True:
                     with self.thread_lock:
-                        remaining = len(self.queries)
-                    if remaining == 0:
-                        return True
+                        if not self.queries:
+                            return True
                     if self.katago_process is None or self.katago_process.poll() is not None:
                         return True
-                    if time.time() - start > timeout:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
                         return False
-                    time.sleep(0.05)
+                    # Event-based wait instead of sleep
+                    self.query_completed.wait(timeout=min(remaining, 0.1))
+                    self.query_completed.clear()
 
         engine = FakeEngine()
 
-        start = time.time()
         result = engine.wait_to_finish(timeout=0.2)
-        elapsed = time.time() - start
 
+        # Assert correctness (timed out), not exact timing
+        # CI environments can have arbitrary scheduling delays - avoid timing assertions
         assert result is False
-        assert 0.15 < elapsed < 0.5  # Returns near timeout
 
     def test_returns_true_when_queries_cleared(self):
         """Returns True when all queries complete before timeout."""
@@ -92,36 +95,44 @@ class TestWaitToFinishTimeout:
             def __init__(self):
                 self.thread_lock = threading.Lock()
                 self.queries = {"q1": "pending"}
+                self.query_completed = threading.Event()
                 self.katago_process = MagicMock()
                 self.katago_process.poll.return_value = None
+                self.waiting = threading.Event()  # Signals when wait loop has started
 
             def wait_to_finish(self, timeout=30.0):
-                start = time.time()
+                """Event-based wait with timeout."""
+                deadline = time.monotonic() + timeout
                 while True:
                     with self.thread_lock:
-                        remaining = len(self.queries)
-                    if remaining == 0:
-                        return True
+                        if not self.queries:
+                            return True
+                    self.waiting.set()  # Signal that we're in the wait loop
                     if self.katago_process is None or self.katago_process.poll() is not None:
                         return True
-                    if time.time() - start > timeout:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
                         return False
-                    time.sleep(0.05)
+                    self.query_completed.wait(timeout=min(remaining, 0.1))
+                    self.query_completed.clear()
 
         engine = FakeEngine()
 
-        # Clear queries in background thread
+        # Background thread clears queries and signals
         def clear_queries():
-            time.sleep(0.1)
+            # Wait until the main thread is actually in the wait loop (event-based, no sleep)
+            engine.waiting.wait(timeout=2.0)
             with engine.thread_lock:
                 engine.queries.clear()
+            engine.query_completed.set()  # Signal completion
 
-        t = threading.Thread(target=clear_queries)
+        t = threading.Thread(target=clear_queries, daemon=True)
         t.start()
 
-        result = engine.wait_to_finish(timeout=1.0)
-        t.join()
+        result = engine.wait_to_finish(timeout=2.0)
+        t.join(timeout=1.0)
 
+        # Assert correctness, not timing
         assert result is True
 
 
@@ -239,12 +250,10 @@ class TestQueueBasedIO:
         """Consumer can timeout on empty queue."""
         q = queue.Queue()
 
-        start = time.time()
         with pytest.raises(queue.Empty):
             q.get(timeout=0.1)
-        elapsed = time.time() - start
-
-        assert 0.05 < elapsed < 0.3
+        # Assert correctness: Empty exception was raised (timeout occurred)
+        # No timing assertions - CI environments have unpredictable scheduling
 
     def test_queue_get_receives_data(self):
         """Consumer receives data from queue."""

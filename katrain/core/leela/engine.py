@@ -160,16 +160,25 @@ class LeelaEngine:
         # Wait for process to exit
         graceful = True
         try:
-            proc.wait(timeout=timeout)
-            logger.info("Leela shutdown completed gracefully")
+            exit_code = proc.wait(timeout=timeout)
+            logger.debug(f"Leela terminated gracefully: exit_code={exit_code}")
         except subprocess.TimeoutExpired:
             logger.warning(f"Leela shutdown timeout after {timeout}s, killing")
             proc.kill()
             try:
-                proc.wait(timeout=2.0)
+                exit_code = proc.wait(timeout=2.0)
+                logger.debug(f"Leela killed: exit_code={exit_code}")
             except subprocess.TimeoutExpired:
-                logger.error("Leela process did not terminate after kill")
+                logger.error("Leela process did not terminate after kill - process may be orphaned")
             graceful = False
+
+        # Ensure pipes are closed (allows reader threads to exit)
+        for pipe in [proc.stdin, proc.stdout, proc.stderr]:
+            if pipe and not getattr(pipe, "closed", True):
+                try:
+                    pipe.close()
+                except Exception:  # noqa: BLE001 - shutdown cleanup
+                    pass
 
         # Join thread AFTER process termination (stdout now closed, readline returns)
         if self._analysis_thread and self._analysis_thread.is_alive():

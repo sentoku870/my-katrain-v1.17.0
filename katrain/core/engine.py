@@ -326,9 +326,12 @@ class KataGoEngine(BaseEngine):
     def shutdown(self, finish=False):
         """Shutdown engine safely.
 
+        This method guarantees completion - all exceptions are logged and swallowed.
+        Queue operations use timeouts to prevent deadlock.
+
         Shutdown sequence (order matters):
         1. Set _shutdown_event -> notify consumer threads to stop
-        2. Put None to write_queue -> notify writer thread to stop
+        2. Put None to write_queue -> notify writer thread to stop (non-blocking)
         3. process.terminate() -> start process termination
         4. Close pipes explicitly -> guarantee EOF for reader threads
         5. Join threads with timeout -> wait for graceful shutdown
@@ -347,68 +350,122 @@ class KataGoEngine(BaseEngine):
         # Step 1: Signal shutdown to consumer threads
         self._shutdown_event.set()
 
-        # Step 2: Signal writer thread to stop
-        try:
-            self.write_queue.put(None)
-        except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
-            try:
-                self.katrain.log(f"Shutdown: write_queue.put failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-            except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
-                pass
+        # Step 2: Signal writer thread to stop (non-blocking to prevent deadlock)
+        self._safe_queue_put(self.write_queue, None, "write_queue termination")
 
         if process:
             # Step 3: Terminate process (start graceful shutdown)
-            self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
-            try:
-                process.terminate()
-            except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
-                try:
-                    self.katrain.log(f"Shutdown: terminate failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-                except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
-                    pass
+            self._safe_terminate(process)
 
             # Step 4: Close pipes explicitly (guarantee EOF for readline())
-            for pipe in [process.stdin, process.stdout, process.stderr]:
-                try:
-                    if pipe:
-                        pipe.close()
-                except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
-                    try:
-                        self.katrain.log(f"Shutdown: pipe.close failed (ignored): {e}", OUTPUT_EXTRA_DEBUG)
-                    except Exception:  # noqa: BLE001 - nested cleanup, logging itself may fail
-                        pass
+            self._safe_close_pipes(process)
 
             # Step 5: Wait for threads to finish (short timeout)
             if finish is not None:  # don't care if exiting app
-                all_threads = [
-                    self.stdout_reader_thread,
-                    self.stderr_reader_thread,
-                    self.analysis_thread,
-                    self.stderr_thread,
-                    self.write_stdin_thread,
-                ]
-                for t in all_threads:
-                    if t and t.is_alive():
-                        t.join(timeout=2.0)
-                        if t.is_alive():
-                            self.katrain.log(
-                                f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG
-                            )
+                self._join_threads_with_timeout()
 
             # Step 6: Force kill if still alive (suspended process workaround)
-            try:
-                if process.poll() is None:
-                    self.katrain.log("Process still alive, sending SIGKILL", OUTPUT_DEBUG)
-                    process.kill()
-                    process.wait(timeout=1.0)
-            except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
-                self.katrain.log(f"Force kill failed: {e}", OUTPUT_DEBUG)
+            self._safe_force_kill(process)
 
             # Step 7: Clear process reference (last step)
             self.katago_process = None
             self.katrain.log("Terminated KataGo process", OUTPUT_DEBUG)
 
         self.katrain.log("Engine shutdown complete", OUTPUT_DEBUG)
+
+    def _safe_queue_put(self, q, item, context):
+        """Put item to queue with timeout to prevent deadlock.
+
+        Uses put_nowait() first, falls back to put(timeout=1.0) if full.
+        Never blocks indefinitely.
+        """
+        try:
+            q.put_nowait(item)
+        except queue.Full:
+            # Queue is full - try with timeout
+            try:
+                q.put(item, timeout=1.0)
+            except queue.Full:
+                self.katrain.log(
+                    f"Shutdown: queue still full after timeout during {context}, skipping",
+                    OUTPUT_DEBUG,
+                )
+        except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
+            self.katrain.log(
+                f"Shutdown: unexpected error during {context}: {type(e).__name__}: {e}",
+                OUTPUT_EXTRA_DEBUG,
+            )
+
+    def _safe_terminate(self, process):
+        """Request graceful process termination."""
+        self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
+        try:
+            process.terminate()
+        except OSError as e:
+            self.katrain.log(f"Shutdown: OSError during terminate: {e}", OUTPUT_DEBUG)
+        except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
+            self.katrain.log(
+                f"Shutdown: unexpected error during terminate: {type(e).__name__}: {e}",
+                OUTPUT_EXTRA_DEBUG,
+            )
+
+    def _safe_close_pipes(self, process):
+        """Close stdin/stdout/stderr pipes."""
+        for name, pipe in [
+            ("stdin", process.stdin),
+            ("stdout", process.stdout),
+            ("stderr", process.stderr),
+        ]:
+            if pipe:
+                try:
+                    pipe.close()
+                except BrokenPipeError:
+                    self.katrain.log(f"Shutdown: pipe {name} already broken", OUTPUT_EXTRA_DEBUG)
+                except OSError as e:
+                    self.katrain.log(f"Shutdown: OSError closing {name}: {e}", OUTPUT_DEBUG)
+                except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
+                    self.katrain.log(
+                        f"Shutdown: unexpected error closing {name}: {type(e).__name__}: {e}",
+                        OUTPUT_EXTRA_DEBUG,
+                    )
+
+    def _join_threads_with_timeout(self):
+        """Wait for all threads to finish with timeout."""
+        all_threads = [
+            self.stdout_reader_thread,
+            self.stderr_reader_thread,
+            self.analysis_thread,
+            self.stderr_thread,
+            self.write_stdin_thread,
+        ]
+        for t in all_threads:
+            if t and t.is_alive():
+                t.join(timeout=2.0)
+                if t.is_alive():
+                    self.katrain.log(
+                        f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG
+                    )
+
+    def _safe_force_kill(self, process):
+        """Force kill process if still alive."""
+        try:
+            if process.poll() is None:
+                self.katrain.log("Process still alive, forcing kill", OUTPUT_DEBUG)
+                process.kill()
+                try:
+                    exit_code = process.wait(timeout=1.0)
+                    self.katrain.log(f"Process killed: exit_code={exit_code}", OUTPUT_DEBUG)
+                except subprocess.TimeoutExpired:
+                    self.katrain.log(
+                        "Process did not respond to kill - process may be orphaned", OUTPUT_ERROR
+                    )
+        except OSError as e:
+            self.katrain.log(f"Shutdown: OSError during force kill: {e}", OUTPUT_DEBUG)
+        except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
+            self.katrain.log(
+                f"Shutdown: unexpected error during force kill: {type(e).__name__}: {e}",
+                OUTPUT_EXTRA_DEBUG,
+            )
 
     def is_idle(self):
         # Note: queue.empty() is best-effort and not strictly reliable.

@@ -342,7 +342,7 @@ def select_critical_moves(
         List[CriticalMove] - Up to max_moves items, sorted by critical_score descending
     """
     from katrain.core.analysis import (
-        build_eval_snapshot,
+        snapshot_from_game,
         classify_game_phase,
         get_canonical_loss_from_move,
         pick_important_moves,
@@ -350,7 +350,7 @@ def select_critical_moves(
     from katrain.core.analysis.meaning_tags import MeaningTagId, get_tag_label
 
     # Step 1: Build snapshot and get important moves
-    snapshot = build_eval_snapshot(game)
+    snapshot = snapshot_from_game(game)
     important_moves = pick_important_moves(snapshot, level=level, recompute=True)
 
     if not important_moves:
