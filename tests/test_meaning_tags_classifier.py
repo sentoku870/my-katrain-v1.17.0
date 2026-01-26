@@ -514,14 +514,18 @@ class TestClassifyMeaningTagCapture:
         tag = classify_meaning_tag(move)
         assert tag.id == MeaningTagId.CAPTURE_RACE_LOSS
 
-    def test_only_atari_not_semeai(self) -> None:
-        """atari alone with large loss is not CAPTURE_RACE_LOSS."""
+    def test_only_atari_becomes_capture_race_loss(self) -> None:
+        """atari alone with large loss becomes CAPTURE_RACE_LOSS (Phase 66 fallback).
+
+        Phase 66 added single-tag fallbacks to reduce UNCERTAIN classifications.
+        Single atari with loss >= THRESHOLD_LOSS_MEDIUM triggers CAPTURE_RACE_LOSS.
+        """
         move = MockMoveEval(
             score_loss=THRESHOLD_LOSS_LARGE,
             reason_tags=["atari"],
         )
         tag = classify_meaning_tag(move)
-        assert tag.id != MeaningTagId.CAPTURE_RACE_LOSS
+        assert tag.id == MeaningTagId.CAPTURE_RACE_LOSS
 
 
 class TestClassifyMeaningTagLifeDeath:

@@ -1824,6 +1824,26 @@ msgstr "AI世代"
 msgid "style:balance_master:name"
 msgstr "バランスマスター"
 
+#. Phase 66: Style confidence gating
+msgid "style:unknown"
+msgstr "不明"
+
+msgid "style:insufficient_data"
+msgstr "データ不足"
+
+#. Phase 66: Mistake category labels
+msgid "mistake:good"
+msgstr "良手"
+
+msgid "mistake:inaccuracy"
+msgstr "軽微なミス"
+
+msgid "mistake:mistake"
+msgstr "悪手"
+
+msgid "mistake:blunder"
+msgstr "大悪手"
+
 #. Phase 60: Time Management section
 msgid "time:section_title"
 msgstr "時間管理"

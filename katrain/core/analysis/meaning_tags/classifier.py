@@ -496,5 +496,45 @@ def classify_meaning_tag(
     if loss >= THRESHOLD_LOSS_MEDIUM and not has_tactical_tags and not _is_endgame:
         return _make_tag(MeaningTagId.TERRITORIAL_LOSS)
 
+    # Priority 11b: Single-tag fallbacks (Phase 66)
+    # These catch tactical tags that didn't match higher-priority combination rules.
+    #
+    # Semantic notes:
+    # - READING_FAILURE: single low_liberties implies the player didn't read
+    #   the liberty situation correctly.
+    # - CAPTURE_RACE_LOSS: single atari implies missed atari awareness.
+    # - ENDGAME_SLIP: single endgame_hint in non-endgame-detected positions.
+    #
+    # Loss thresholds: Using same scale for KataGo (points) and Leela (K-scaled).
+    if loss >= THRESHOLD_LOSS_MEDIUM:  # 2.0
+        # Single low_liberties (no need_connect, no atari, no cut_risk)
+        if (
+            has_low_liberties
+            and not has_need_connect
+            and not has_atari
+            and not has_cut_risk
+        ):
+            return _make_tag(MeaningTagId.READING_FAILURE)
+
+        # Single atari (no low_liberties, no need_connect, no cut_risk)
+        if (
+            has_atari
+            and not has_low_liberties
+            and not has_need_connect
+            and not has_cut_risk
+        ):
+            return _make_tag(MeaningTagId.CAPTURE_RACE_LOSS)
+
+    # Single endgame_hint (lower threshold, only if not already detected as endgame)
+    if has_endgame_hint and loss >= THRESHOLD_LOSS_SMALL:  # 1.0
+        if (
+            not has_atari
+            and not has_low_liberties
+            and not has_need_connect
+            and not has_cut_risk
+            and not _is_endgame
+        ):
+            return _make_tag(MeaningTagId.ENDGAME_SLIP)
+
     # Priority 12: UNCERTAIN (fallback)
     return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_match")

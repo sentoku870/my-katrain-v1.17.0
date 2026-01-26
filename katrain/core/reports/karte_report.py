@@ -163,6 +163,10 @@ class MixedEngineSnapshotError(ValueError):
 KARTE_ERROR_CODE_MIXED_ENGINE = "KARTE_ERROR_CODE: MIXED_ENGINE"
 KARTE_ERROR_CODE_GENERATION_FAILED = "KARTE_ERROR_CODE: GENERATION_FAILED"
 
+# Style confidence threshold (Phase 66)
+# Below this threshold, style name is shown as "Unknown" and 勝負術 section is hidden
+STYLE_CONFIDENCE_THRESHOLD = 0.2
+
 
 def is_single_engine_snapshot(snapshot: EvalSnapshot) -> bool:
     """Check if snapshot contains data from only one engine type.
@@ -452,12 +456,24 @@ def _build_karte_report_impl(
                 filtered_player = "W"
             # If both or neither match, filtered_player stays None (show both)
 
-    # Style Archetype (Phase 57)
+    # Style Archetype (Phase 57, confidence gating added Phase 66)
     style_result = _compute_style_safe(snapshot.moves, filtered_player)
     if style_result is not None:
-        style_name = i18n._(style_result.archetype.name_key)
-        meta_lines.append(f"- Style: {style_name}")
-        meta_lines.append(f"- Style Confidence: {style_result.confidence:.0%}")
+        confidence = style_result.confidence
+        if confidence >= STYLE_CONFIDENCE_THRESHOLD:
+            style_name = i18n._(style_result.archetype.name_key)
+            meta_lines.append(f"- Style: {style_name}")
+            meta_lines.append(f"- Style Confidence: {confidence:.0%}")
+        else:
+            # Low confidence: show "Unknown" with data insufficiency note
+            unknown_label = i18n._("style:unknown")
+            insufficient_label = i18n._("style:insufficient_data")
+            meta_lines.append(f"- Style: {unknown_label}")
+            meta_lines.append(f"- Style Confidence: {confidence:.0%} ({insufficient_label})")
+    else:
+        # style_result is None (computation failed)
+        unknown_label = i18n._("style:unknown")
+        meta_lines.append(f"- Style: {unknown_label}")
 
     def worst_move_for(player: str) -> Optional[MoveEval]:
         """worst move を canonical loss で選択（KataGo/Leela 両対応）。"""
@@ -999,7 +1015,9 @@ def _build_karte_report_impl(
     sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
     sections += definitions_section()
     sections += data_quality_section()
-    sections += risk_management_section()  # Phase 62: Risk Management
+    # Phase 62: Risk Management - only include if style confidence is sufficient (Phase 66)
+    if style_result is not None and style_result.confidence >= STYLE_CONFIDENCE_THRESHOLD:
+        sections += risk_management_section()
 
     # Phase 3: Apply player filter to sections
     if filtered_player is None:

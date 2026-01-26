@@ -1876,6 +1876,26 @@ msgstr "AI Native"
 msgid "style:balance_master:name"
 msgstr "Balance Master"
 
+#. Phase 66: Style confidence gating
+msgid "style:unknown"
+msgstr "Unknown"
+
+msgid "style:insufficient_data"
+msgstr "insufficient data"
+
+#. Phase 66: Mistake category labels
+msgid "mistake:good"
+msgstr "Good"
+
+msgid "mistake:inaccuracy"
+msgstr "Inaccuracy"
+
+msgid "mistake:mistake"
+msgstr "Mistake"
+
+msgid "mistake:blunder"
+msgstr "Blunder"
+
 #. Phase 60: Time Management section
 msgid "time:section_title"
 msgstr "Time Management"
