@@ -477,18 +477,17 @@ class TestSelectCriticalMoves:
     actual source module, not where they're imported to.
     """
 
-    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_empty_game_returns_empty(self):
         """Game with no moves returns empty list."""
         game = build_stub_game_with_analysis([])
 
         with patch(
-            "katrain.core.analysis.critical_moves.build_eval_snapshot"
+            "katrain.core.analysis.snapshot_from_game"
         ) as mock_snapshot:
             mock_snapshot.return_value = EvalSnapshot(moves=[])
 
             with patch(
-                "katrain.core.analysis.critical_moves.pick_important_moves"
+                "katrain.core.analysis.pick_important_moves"
             ) as mock_pick:
                 mock_pick.return_value = []
 
@@ -496,25 +495,24 @@ class TestSelectCriticalMoves:
 
         assert result == []
 
-    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_respects_max_moves(self):
         """Returns at most max_moves items."""
         game = create_standard_test_game(num_moves=20)
         snapshot = create_standard_test_snapshot(num_moves=20)
 
         with patch(
-            "katrain.core.analysis.critical_moves.build_eval_snapshot"
+            "katrain.core.analysis.snapshot_from_game"
         ) as mock_snapshot:
             mock_snapshot.return_value = snapshot
 
             with patch(
-                "katrain.core.analysis.critical_moves.pick_important_moves"
+                "katrain.core.analysis.pick_important_moves"
             ) as mock_pick:
                 # Return all moves as important
                 mock_pick.return_value = snapshot.moves
 
                 with patch(
-                    "katrain.core.analysis.critical_moves.classify_meaning_tag"
+                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
                 ) as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
@@ -524,7 +522,6 @@ class TestSelectCriticalMoves:
 
         assert len(result) <= 2
 
-    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_critical_move_fields_populated(self):
         """All CriticalMove fields are populated (score_stdev may be None)."""
         game = build_stub_game_with_analysis([
@@ -543,17 +540,17 @@ class TestSelectCriticalMoves:
         ])
 
         with patch(
-            "katrain.core.analysis.critical_moves.build_eval_snapshot"
+            "katrain.core.analysis.snapshot_from_game"
         ) as mock_snapshot:
             mock_snapshot.return_value = snapshot
 
             with patch(
-                "katrain.core.analysis.critical_moves.pick_important_moves"
+                "katrain.core.analysis.pick_important_moves"
             ) as mock_pick:
                 mock_pick.return_value = snapshot.moves
 
                 with patch(
-                    "katrain.core.analysis.critical_moves.classify_meaning_tag"
+                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
                 ) as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
@@ -579,7 +576,6 @@ class TestSelectCriticalMoves:
         assert cm.critical_score is not None
         # score_stdev may be None (for Leela or unanalyzed)
 
-    @pytest.mark.skip(reason="Phase 53: select_critical_moves has import bug (build_eval_snapshot)")
     def test_select_deterministic_same_game(self):
         """Same game produces same results across multiple calls."""
         game = create_standard_test_game(num_moves=10)
@@ -590,17 +586,17 @@ class TestSelectCriticalMoves:
 
         for _ in range(ITERATIONS):
             with patch(
-                "katrain.core.analysis.critical_moves.build_eval_snapshot"
+                "katrain.core.analysis.snapshot_from_game"
             ) as mock_snapshot:
                 mock_snapshot.return_value = snapshot
 
                 with patch(
-                    "katrain.core.analysis.critical_moves.pick_important_moves"
+                    "katrain.core.analysis.pick_important_moves"
                 ) as mock_pick:
                     mock_pick.return_value = snapshot.moves[:5]  # Top 5 moves
 
                     with patch(
-                        "katrain.core.analysis.critical_moves.classify_meaning_tag"
+                        "katrain.core.analysis.meaning_tags.classify_meaning_tag"
                     ) as mock_classify:
                         mock_tag = MagicMock()
                         mock_tag.id.value = "overplay"
@@ -674,3 +670,24 @@ class TestCriticalMoveDataclass:
 
         assert isinstance(cm.reason_tags, tuple)
         assert cm.reason_tags == ("atari", "low_liberties")
+
+
+class TestCriticalMovesImports:
+    """Ensure critical_moves module can be imported without errors."""
+
+    def test_module_imports_successfully(self):
+        """Regression test: critical_moves must import without error."""
+        # Direct module import (not relying on package __init__.py exports)
+        import katrain.core.analysis.critical_moves as critical_moves
+
+        assert hasattr(critical_moves, "select_critical_moves")
+
+    def test_snapshot_from_game_available(self):
+        """Ensure the patched function exists in the module namespace."""
+        import katrain.core.analysis.critical_moves as critical_moves
+
+        # The function should be imported into the module
+        # Note: It's only imported inside select_critical_moves, so we check
+        # that select_critical_moves exists and can be called
+        assert hasattr(critical_moves, "select_critical_moves")
+        assert callable(critical_moves.select_critical_moves)
