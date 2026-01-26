@@ -1704,12 +1704,19 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ### Phase 66: Post-54 品質強化 ✅
 
-**目的**: ドキュメント整理、i18n完了、運用準備。
+**目的**: ドキュメント整理、i18n完了、Summary/Karte品質改善。
 
 **In-scope:**
 - ドキュメント更新（usage-guide.md, 01-roadmap.md）
 - i18n完了確認（全新規キー翻訳済み）
 - 手動E2Eテスト（起動→バッチ→レポート確認）
+- **Summary/Karte品質改善**（PR #202）:
+  - A) ゲームラベル括弧バランス保証
+  - B) Weakness Hypothesisエビデンス追加
+  - C) Style信頼度ゲート（20%未満で「不明」表示）
+  - D) MTag単一タグフォールバック（UNCERTAIN削減）
+  - E) ミスカテゴリラベルローカライズ
+  - F) Top Mistake Types明確化（分類済み/UNCERTAIN件数表示）
 
 **Out-of-scope:**
 - 新機能追加
@@ -1718,11 +1725,22 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 **成果物:**
 - `docs/usage-guide.md`更新（9章: Post-54新機能ガイド追加）
 - `docs/01-roadmap.md`更新
+- `katrain/core/batch/helpers.py`: `_ensure_balanced_brackets()`, `_smart_truncate()`, `format_game_display_label()`, `format_game_link_target()`
+- `katrain/core/batch/stats.py`: `EvidenceMove`, `_select_evidence_moves()`, `_format_evidence_with_links()`
+- `katrain/core/reports/karte_report.py`: `STYLE_CONFIDENCE_THRESHOLD`
+- `katrain/core/analysis/meaning_tags/classifier.py`: Priority 11b単一タグフォールバック
+- `katrain/core/analysis/presentation.py`: `get_mistake_category_label()`
+- `tests/test_report_invariants.py`: 40件の不変条件テスト
 
 **受け入れ条件:**
 - [x] 手動E2E（起動→SGF読込→バッチ→レポート）パス
 - [x] 英語/日本語UIで新セクション正しく表示
-- [x] 全i18nキー翻訳済み（540キー、fuzzy: 0、未翻訳: 0）
+- [x] 全i18nキー翻訳済み（548キー、fuzzy: 0、未翻訳: 0）
+- [x] 括弧バランス保証（全分岐で正しくネスト）
+- [x] Weakness Hypothesisにエビデンス表示
+- [x] Style信頼度 < 20%で「不明」表示
+- [x] 単一タグ（atari, low_liberties, endgame_hint）がUNCERTAINにならない
+- [x] 全テストパス（2640件）
 
 **依存**: Phase 65
 

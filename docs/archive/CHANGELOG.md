@@ -1,10 +1,34 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-65 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-66 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-26: Phase 66 完了（Post-54 品質強化）
+  - A) ゲームラベル括弧バランス保証:
+    - 新規: `_ensure_balanced_brackets()` - 2パスアルゴリズムで正しいネスト保証
+    - 新規: `_smart_truncate()` - 長さ制限＋括弧バランス保証
+    - 新規: `format_game_display_label()` - 表示ラベル生成（エスケープモード対応）
+    - 新規: `format_game_link_target()` - URLエンコード統一
+  - B) Weakness Hypothesisエビデンス追加:
+    - 新規: `EvidenceMove` dataclass - 軽量エビデンスホルダー
+    - 新規: `_select_evidence_moves()` - ゲーム重複排除＋決定論的選択
+    - 新規: `_format_evidence_with_links()` - Markdown安全フォーマット（バッククォート使用）
+  - C) Style信頼度ゲート:
+    - 新規: `STYLE_CONFIDENCE_THRESHOLD = 0.2` - 20%未満で「不明」表示
+    - 更新: 勝負術セクション非表示（信頼度 < 20%時）
+  - D) MTag単一タグフォールバック:
+    - 更新: Priority 11b追加（atari→CAPTURE_RACE_LOSS, low_liberties→READING_FAILURE, endgame_hint→ENDGAME_SLIP）
+    - 効果: UNCERTAIN分類が減少
+  - E) ミスカテゴリラベルローカライズ:
+    - 新規: `get_mistake_category_label()` - i18n経由でラベル取得
+    - 新規i18nキー: `mistake:good`, `mistake:inaccuracy`, `mistake:mistake`, `mistake:blunder`
+  - F) Top Mistake Types明確化:
+    - 更新: UNCERTAIN除外後の分類済み件数を分母に使用
+    - 更新: ローカライズ注記（分類済み/UNCERTAIN/その他件数表示）
+  - 新規: `tests/test_report_invariants.py`（40件）
+  - テスト総数: 2640件（+39件）
 - 2026-01-26: Phase 65 完了（Post-54 Integration Tests）
   - 新規: `tests/test_post54_integration.py`（10テスト）
     - `TestStylePacingRiskContract`: Style, Pacing, Risk契約テスト
