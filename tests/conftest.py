@@ -414,3 +414,245 @@ def partial_analysis_scattered(make_moves):
         if i % 2 == 1:
             moves[i].root_visits = 0
     return moves
+
+
+# ---------------------------------------------------------------------------
+# Phase 70: Game/Engine Test Infrastructure
+# ---------------------------------------------------------------------------
+
+from unittest.mock import MagicMock
+
+from katrain.core.game import Game, Move
+from katrain.core.game_node import GameNode
+
+
+class MockKaTrainStub:
+    """Lightweight stub for KaTrain.
+
+    Provides minimal interface needed by Game without KaTrainBase inheritance.
+
+    MINIMAL REQUIRED INTERFACE (v6):
+    --------------------------------
+    Attributes:
+        pondering: bool            - Used by STOP mode (set to False)
+        controls: object           - Needs .set_status() method for status messages
+
+    Methods:
+        config(key, default=None)  - Used by Game for thresholds/rules lookup
+        log(*args, **kwargs)       - Called for debug output (can be no-op)
+    """
+    def __init__(self):
+        self.pondering = False
+        self.controls = MagicMock()
+        self._config = {
+            "trainer/eval_thresholds": [0, 0.5, 1.0, 2.0, 5.0],
+            "game/handicap": 0,
+            "game/rules": "japanese",
+        }
+
+    def config(self, key, default=None):
+        return self._config.get(key, default)
+
+    def log(self, *args, **kwargs):
+        pass
+
+
+class MockEngine:
+    """Mock engine with call tracking.
+
+    MINIMAL REQUIRED INTERFACE (v6):
+    --------------------------------
+    Attributes:
+        config: dict               - Needs "max_visits", "fast_visits" keys
+
+    Methods:
+        request_analysis(*args, **kwargs)  - Called by node.analyze()
+        stop_pondering()                   - Called by STOP mode
+        terminate_queries()                - Called by STOP mode
+
+    Tracking (test-only):
+        stop_pondering_called: bool
+        terminate_queries_called: bool
+        request_analysis_calls: List[dict]
+        reset_tracking()
+    """
+    def __init__(self, config=None):
+        self.config = config or {"max_visits": 100, "fast_visits": 50}
+        self.stop_pondering_called = False
+        self.terminate_queries_called = False
+        self.request_analysis_calls = []
+
+    def request_analysis(self, *args, **kwargs):
+        """Track analysis requests for assertion."""
+        self.request_analysis_calls.append({"args": args, "kwargs": kwargs})
+
+    def stop_pondering(self):
+        self.stop_pondering_called = True
+
+    def terminate_queries(self):
+        self.terminate_queries_called = True
+
+    def reset_tracking(self):
+        """Reset call tracking for fresh assertions."""
+        self.stop_pondering_called = False
+        self.terminate_queries_called = False
+        self.request_analysis_calls = []
+
+
+# ---------------------------------------------------------------------------
+# Analysis State Factories (v6)
+# ---------------------------------------------------------------------------
+
+def make_analysis(
+    *,
+    root_present: bool = True,
+    completed: bool = True,
+    moves: dict = None,
+    score: float = 0.0,
+    visits: int = 500,
+) -> dict:
+    """Factory for creating analysis dict with explicit state control.
+
+    Args:
+        root_present: If True, include "root" dict; if False, set to None
+        completed: Value for "completed" flag
+        moves: Dict of move candidates (default: {"D4": {...}})
+        score: scoreLead value (used if root_present=True)
+        visits: visits value for root and moves
+
+    Returns:
+        Analysis dict matching GameNode.analysis structure
+
+    Examples:
+        # Complete analysis with moves
+        make_analysis(score=5.0)
+
+        # Incomplete analysis (analysis_complete=False)
+        make_analysis(completed=False)
+
+        # No root (analysis_exists=False when root is None)
+        make_analysis(root_present=False)
+
+        # Empty moves (triggers LOCAL mode bug)
+        make_analysis(moves={})
+    """
+    if moves is None:
+        moves = {"D4": {"visits": visits // 5, "scoreLead": score}}
+
+    return {
+        "root": {"scoreLead": score, "visits": visits} if root_present else None,
+        "moves": moves,
+        "completed": completed,
+        "ownership": None,
+        "policy": None,
+    }
+
+
+def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
+    """Setup analysis data on a node for testing.
+
+    For points_lost to work correctly, both node and parent need analysis.
+
+    BEHAVIOR (v6 - fixed):
+    - Always sets node.analysis
+    - Only sets parent.analysis if:
+      a) parent_score is provided, AND
+      b) parent exists, AND
+      c) parent.analysis is not already set (or force_parent=True)
+
+    Args:
+        node: GameNode to setup
+        score: scoreLead for this node
+        parent_score: scoreLead for parent (optional)
+        force_parent: If True, overwrite parent.analysis even if already set
+
+    Example:
+        # Simple: just set node analysis
+        setup_analyzed_node(node, score=5.0)
+
+        # With parent for points_lost calculation
+        setup_analyzed_node(node, score=5.0, parent_score=0.0)
+
+        # Chain setup (preserves earlier parent analysis)
+        setup_analyzed_node(node1, score=0.0)
+        setup_analyzed_node(node2, score=3.0, parent_score=0.0)  # Sets node2's parent
+        setup_analyzed_node(node3, score=5.0)  # node2 already has analysis, not overwritten
+    """
+    node.analysis = make_analysis(score=score)
+
+    if node.parent and parent_score is not None:
+        # Only set parent analysis if not already set (or forced)
+        parent_has_analysis = (
+            node.parent.analysis.get("root") is not None
+            if isinstance(node.parent.analysis, dict)
+            else False
+        )
+        if force_parent or not parent_has_analysis:
+            node.parent.analysis = make_analysis(score=parent_score, moves={})
+
+
+# ---------------------------------------------------------------------------
+# Game/Engine Fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_katrain():
+    """Lightweight KaTrain stub."""
+    return MockKaTrainStub()
+
+
+@pytest.fixture
+def mock_engine():
+    """Single mock engine."""
+    return MockEngine()
+
+
+@pytest.fixture
+def mock_engines():
+    """Separate engines for B and W (for STOP mode tests)."""
+    return {"B": MockEngine(), "W": MockEngine()}
+
+
+@pytest.fixture
+def root_node():
+    """Create a root GameNode (19x19)."""
+    return GameNode(properties={"SZ": 19})
+
+
+@pytest.fixture
+def root_node_9x9():
+    """Create a root GameNode (9x9)."""
+    return GameNode(properties={"SZ": 9})
+
+
+@pytest.fixture
+def game(mock_katrain, mock_engine, root_node):
+    """Create a Game instance for testing.
+
+    Note: Game.__init__ converts single engine to {"B": engine, "W": engine}
+    """
+    # Reset tracking (Game.__init__ calls stop_pondering)
+    mock_engine.reset_tracking()
+    g = Game(mock_katrain, mock_engine, move_tree=root_node)
+    mock_engine.reset_tracking()  # Reset again after init
+    return g
+
+
+@pytest.fixture
+def game_with_separate_engines(mock_katrain, mock_engines, root_node):
+    """Create a Game with separate B/W engines for STOP mode tests."""
+    for e in mock_engines.values():
+        e.reset_tracking()
+    g = Game(mock_katrain, mock_engines, move_tree=root_node)
+    for e in mock_engines.values():
+        e.reset_tracking()
+    return g
+
+
+@pytest.fixture
+def game_9x9(mock_katrain, mock_engine, root_node_9x9):
+    """Create a 9x9 Game instance."""
+    mock_engine.reset_tracking()
+    g = Game(mock_katrain, mock_engine, move_tree=root_node_9x9)
+    mock_engine.reset_tracking()
+    return g
