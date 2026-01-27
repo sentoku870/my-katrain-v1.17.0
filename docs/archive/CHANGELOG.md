@@ -1,9 +1,39 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-76 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-77 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-28: Phase 77 完了（エラーハンドリング A - 監査・分類）
+  - 全 `except Exception` ハンドラを AST 解析で監査
+  - 新規スクリプト:
+    - `scripts/audit_exceptions.py`: AST ベースの検出（173ファイルスキャン、108件検出）
+    - `scripts/generate_audit_stub.py`: Markdown テーブルスタブ生成
+    - `scripts/generate_audit_doc.py`: 完全監査ドキュメント生成（自動分類付き）
+    - `scripts/verify_audit.py`: 監査ドキュメント検証（enum/TODO/? チェック）
+  - 新規ドキュメント:
+    - `docs/archive/error-handling-audit.md`: 全108件の分類結果
+  - 分類結果:
+    - intentional（意図的）: 39件
+    - improve（改善対象）: 69件
+    - noqa コメント付き: 18件
+  - カテゴリ分布:
+    - file-io-fallback: 32件
+    - ui-state-restore: 22件
+    - thread-exception: 18件
+    - partial-failure: 14件
+    - external-lib: 10件
+    - shutdown-cleanup: 4件
+    - callback-protection: 4件
+    - traceback-format: 4件
+  - DoD 全条件パス:
+    - スキップファイル: 0件
+    - 件数一致: JSON 108 == Doc 108
+    - TODO/? 残存: 0件
+    - enum 違反: 0件
+    - 既存テスト: 2918件パス
+  - PRs: #215
 
 - 2026-01-28: Phase 76 完了（KaTrainGui分割D - GameStateManager）
   - KaTrainGuiからゲーム状態のライフサイクル管理をGameStateManagerに抽出

@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-28（Phase 76完了）
+> 最終更新: 2026-01-28（Phase 77完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -2052,15 +2052,25 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 77: エラーハンドリング A（監査・分類）
+#### Phase 77: エラーハンドリング A（監査・分類）✓ 2026-01-28
 
 **In-scope:**
-- 全 `except Exception` を監査（約90箇所）
+- 全 `except Exception` を監査（108箇所検出）
 - 意図的（noqa付き）vs 改善対象を分類
 - 分類結果をドキュメント化
 
 **成果物:**
-- `docs/archive/error-handling-audit.md`
+- `scripts/audit_exceptions.py`（AST解析スクリプト）
+- `scripts/generate_audit_stub.py`（スタブ生成）
+- `scripts/generate_audit_doc.py`（ドキュメント生成）
+- `scripts/verify_audit.py`（検証スクリプト）
+- `docs/archive/error-handling-audit.md`（108件分類済み）
+
+**結果サマリ:**
+- 検出パターン: except Exception, bare except, except BaseException
+- 総数: 108件（intentional: 39件, improve: 69件）
+- noqa付き: 18件
+- 検証: 全DoD条件パス
 
 ---
 
