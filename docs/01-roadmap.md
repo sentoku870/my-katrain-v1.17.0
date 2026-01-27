@@ -204,12 +204,12 @@
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 69 | テスト強化 | sgf_parser + base_katrain テスト | ✅ |
-| 70 | 複雑関数リファクタ | analyze_extra分割 + 重複解消 | 📋 |
-| 71 | batch/stats.py 分割 | `batch/stats/` パッケージ化 | 📋 |
-| 72 | karte_report.py 分割 | `reports/karte/` パッケージ化 | 📋 |
-| 73 | KaTrainGui分割 A | KeyboardManager | 📋 |
-| 74 | KaTrainGui分割 B | ConfigManager | 📋 |
-| 75 | KaTrainGui分割 C | PopupManager | 📋 |
+| 70 | 複雑関数リファクタ | analyze_extra分割 + 重複解消 | ✅ |
+| 71 | batch/stats.py 分割 | `batch/stats/` パッケージ化 | ✅ |
+| 72 | karte_report.py 分割 | `reports/karte/` パッケージ化 | ✅ |
+| 73 | KaTrainGui分割 A | KeyboardManager | ✅ |
+| 74 | KaTrainGui分割 B | ConfigManager | ✅ |
+| 75 | KaTrainGui分割 C | PopupManager | ✅ |
 | 76 | KaTrainGui分割 D | GameStateManager | 📋 |
 | 77 | エラーハンドリング A | 監査・分類 | 📋 |
 | 78 | エラーハンドリング B | ユーザー操作パス | 📋 |

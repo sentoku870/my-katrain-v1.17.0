@@ -1,10 +1,33 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-74 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-75 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-28: Phase 75 完了（KaTrainGui分割C - PopupManager）
+  - KaTrainGuiから設定系ポップアップ管理責務をPopupManagerに抽出
+  - 新規: `katrain/gui/managers/popup_manager.py`（~154行）
+    - PopupManagerクラス: ポップアップのキャッシュと開閉制御
+    - 依存注入パターン（ファクトリ関数、状態アクセサ、コールバック）
+  - 設計特徴:
+    - Kivy完全非依存（typing のみ使用）
+    - キャッシュポリシー:
+      - new_game, timer, teacher, ai: キャッシュ再利用（初回のみファクトリ呼び出し）
+      - engine_recovery: 毎回新規作成（キャッシュなし）
+    - タイマー一時停止ポリシー:
+      - new_game, timer, teacher, ai: pause_timer()を呼ぶ
+      - engine_recovery: pause_timer()を呼ばない（エラー条件によるトリガーのため）
+    - getattr fallbackパターン（`__self__`属性の堅牢性）
+    - Null-safe `_safe_pause_timer`（getattr chain使用）
+  - KaTrainGui統合:
+    - 5メソッドをPopupManagerに委譲（`_do_new_game_popup`等）
+    - 4つの状態変数削除（`new_game_popup`, `ai_settings_popup`, `teacher_settings_popup`, `timer_settings_popup`）
+    - 5つのファクトリメソッド追加（`_create_*_popup`）
+  - 新規テスト:
+    - `tests/test_popup_manager.py`（21テスト）: ユニットテスト（Kivy非依存）
+  - テスト総数: 2896件（+21件）
+  - PRs: #213
 - 2026-01-27: Phase 74 完了（KaTrainGui分割B - ConfigManager）
   - KaTrainGuiから設定管理責務をConfigManagerに抽出
   - 新規: `katrain/gui/managers/config_manager.py`（~196行）
