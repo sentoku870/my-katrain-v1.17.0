@@ -864,56 +864,44 @@ class Game(BaseGame):
 
         戻り値: [(手数, 重要度スコア, GameNode), ...]  を
                 手数昇順に並べたリスト。
+
+        Phase 70: 単一パスアルゴリズムに最適化。
+        重複ループを解消し、heapq.nlargest で上位 max_moves 件を効率的に抽出。
         """
-        candidates = []
+        import heapq
 
+        IMPORTANCE_THRESHOLD = 0.5  # 小さい変化をノイズとして除外
+
+        # 単一パスで全ノードを収集
+        all_nodes = []
         prev_score = None
-        for node in self._iter_main_branch_nodes():
-            move_no = len(node.nodes_from_root) - 1
 
+        for node in self._iter_main_branch_nodes():
             # 解析が終わっていない手はスキップ
             if not node.analysis_complete or node.score is None:
                 continue
 
+            move_no = len(node.nodes_from_root) - 1
             points_lost = node.points_lost or 0.0
             delta_score = 0.0 if prev_score is None else abs(node.score - prev_score)
 
             # 「ミス or 大きな形勢変化」を重要度とする
             importance = max(points_lost, delta_score)
 
-            # あまりに小さい変化はノイズとして捨てる
-            if importance > 0.5:
-                candidates.append((move_no, importance, node))
-
+            all_nodes.append((move_no, importance, node))
             prev_score = node.score
 
-        # 1 手も取れなかった場合はフォールバック
+        # 閾値を超える候補を抽出、なければ全ノードをフォールバック
+        candidates = [(m, i, n) for m, i, n in all_nodes if i > IMPORTANCE_THRESHOLD]
         if not candidates:
-            fallback = []
-            prev_score = None
-            for node in self._iter_main_branch_nodes():
-                move_no = len(node.nodes_from_root) - 1
-                if not node.analysis_complete or node.score is None:
-                    continue
+            candidates = all_nodes
 
-                points_lost = node.points_lost or 0.0
-                delta_score = 0.0 if prev_score is None else abs(node.score - prev_score)
-                fallback_importance = max(points_lost, delta_score)
-
-                fallback.append((move_no, fallback_importance, node))
-                prev_score = node.score
-
-            # 重要度の大きい順に上位 max_moves 件
-            fallback.sort(key=lambda t: t[1], reverse=True)
-            candidates = fallback[:max_moves]
-        else:
-            # 通常ケース: 重要度の大きい順に上位 max_moves 件だけ残す
-            candidates.sort(key=lambda t: t[1], reverse=True)
-            candidates = candidates[:max_moves]
+        # 重要度の大きい順に上位 max_moves 件を抽出
+        top = heapq.nlargest(max_moves, candidates, key=lambda t: t[1])
 
         # ナビゲーションで扱いやすいように、手数順に並べ直して返す
-        candidates.sort(key=lambda t: t[0])
-        return candidates
+        top.sort(key=lambda t: t[0])
+        return top
 
     def get_important_move_numbers(self, max_moves: int = 20):
         """
@@ -1078,76 +1066,76 @@ class Game(BaseGame):
             self.region_of_interest = None
         self.katrain.controls.set_status("", OUTPUT_INFO)
 
-    def analyze_extra(self, mode, **kwargs):
-        # Normalize mode to AnalysisMode at entry point
-        mode = parse_analysis_mode(mode)
+    # ---------------------------------------------------------------------------
+    # analyze_extra() handler methods (Phase 70 refactoring)
+    # ---------------------------------------------------------------------------
 
-        stones = {s.coords for s in self.stones}
-        cn = self.current_node
+    def _handle_stop_mode(self):
+        """Handle STOP mode: stop pondering and terminate queries on all engines."""
+        self.katrain.pondering = False
+        for e in set(self.engines.values()):
+            e.stop_pondering()
+            e.terminate_queries()
 
-        if mode == AnalysisMode.STOP:
-            self.katrain.pondering = False
-            for e in set(self.engines.values()):
-                e.stop_pondering()
-                e.terminate_queries()
-            return
+    def _handle_ponder_mode(self, cn, engine):
+        """Handle PONDER mode: start background pondering on current node."""
+        cn.analyze(
+            engine,
+            ponder=True,
+            priority=PRIORITY_EXTRA_ANALYSIS,
+            region_of_interest=self.region_of_interest,
+            time_limit=False,
+        )
 
-        engine = self.engines[cn.next_player]
+    def _handle_extra_mode(self, cn, engine):
+        """Handle EXTRA mode: add more visits to current node analysis."""
+        visits = cn.analysis_visits_requested + engine.config["max_visits"]
+        self.katrain.controls.set_status(i18n._("extra analysis").format(visits=visits), STATUS_ANALYSIS)
+        cn.analyze(
+            engine,
+            visits=visits,
+            priority=PRIORITY_EXTRA_ANALYSIS,
+            region_of_interest=self.region_of_interest,
+            time_limit=False,
+        )
 
-        if mode == AnalysisMode.PONDER:
-            cn.analyze(
-                engine,
-                ponder=True,
-                priority=PRIORITY_EXTRA_ANALYSIS,
-                region_of_interest=self.region_of_interest,
-                time_limit=False,
+    def _handle_game_mode(self, engine, **kwargs):
+        """Handle GAME mode: re-analyze all nodes in the game tree."""
+        nodes = self.root.nodes_in_tree
+        only_mistakes = kwargs.get("mistakes_only", False)
+        move_range = kwargs.get("move_range", None)
+        if move_range:
+            if move_range[1] < move_range[0]:
+                move_range = reversed(move_range)
+        threshold = self.katrain.config("trainer/eval_thresholds")[-4]
+        if "visits" in kwargs:
+            visits = kwargs["visits"]
+        else:
+            min_visits = min(node.analysis_visits_requested for node in nodes)
+            visits = min_visits + engine.config["max_visits"]
+        for node in nodes:
+            max_point_loss = max(c.points_lost or 0 for c in [node] + node.children)
+            if only_mistakes and max_point_loss <= threshold:
+                continue
+            if move_range and (not node.depth - 1 in range(move_range[0], move_range[1] + 1)):
+                continue
+            node.analyze(engine, visits=visits, priority=-1_000_000, time_limit=False, report_every=None)
+        if not move_range:
+            self.katrain.controls.set_status(i18n._("game re-analysis").format(visits=visits), STATUS_ANALYSIS)
+        else:
+            self.katrain.controls.set_status(
+                i18n._("move range analysis").format(
+                    start_move=move_range[0], end_move=move_range[1], visits=visits
+                ),
+                STATUS_ANALYSIS,
             )
-            return
 
-        if mode == AnalysisMode.EXTRA:
-            visits = cn.analysis_visits_requested + engine.config["max_visits"]
-            self.katrain.controls.set_status(i18n._("extra analysis").format(visits=visits), STATUS_ANALYSIS)
-            cn.analyze(
-                engine,
-                visits=visits,
-                priority=PRIORITY_EXTRA_ANALYSIS,
-                region_of_interest=self.region_of_interest,
-                time_limit=False,
-            )
-            return
+    def _handle_sweep_equalize_modes(self, cn, engine, mode, stones):
+        """Handle SWEEP, EQUALIZE, ALTERNATIVE, and LOCAL modes.
 
-        if mode == AnalysisMode.GAME:
-            nodes = self.root.nodes_in_tree
-            only_mistakes = kwargs.get("mistakes_only", False)
-            move_range = kwargs.get("move_range", None)
-            if move_range:
-                if move_range[1] < move_range[0]:
-                    move_range = reversed(move_range)
-            threshold = self.katrain.config("trainer/eval_thresholds")[-4]
-            if "visits" in kwargs:
-                visits = kwargs["visits"]
-            else:
-                min_visits = min(node.analysis_visits_requested for node in nodes)
-                visits = min_visits + engine.config["max_visits"]
-            for node in nodes:
-                max_point_loss = max(c.points_lost or 0 for c in [node] + node.children)
-                if only_mistakes and max_point_loss <= threshold:
-                    continue
-                if move_range and (not node.depth - 1 in range(move_range[0], move_range[1] + 1)):
-                    continue
-                node.analyze(engine, visits=visits, priority=-1_000_000, time_limit=False, report_every=None)
-            if not move_range:
-                self.katrain.controls.set_status(i18n._("game re-analysis").format(visits=visits), STATUS_ANALYSIS)
-            else:
-                self.katrain.controls.set_status(
-                    i18n._("move range analysis").format(
-                        start_move=move_range[0], end_move=move_range[1], visits=visits
-                    ),
-                    STATUS_ANALYSIS,
-                )
-            return
-
-        elif mode == AnalysisMode.SWEEP:
+        These modes share a common refinement loop at the end.
+        """
+        if mode == AnalysisMode.SWEEP:
             board_size_x, board_size_y = self.board_size
 
             if cn.analysis_exists:
@@ -1175,6 +1163,7 @@ class Game(BaseGame):
             visits = engine.config["fast_visits"]
             self.katrain.controls.set_status(i18n._("sweep analysis").format(visits=visits), STATUS_ANALYSIS)
             priority = PRIORITY_SWEEP
+
         elif mode in (AnalysisMode.EQUALIZE, AnalysisMode.ALTERNATIVE, AnalysisMode.LOCAL):
             if not cn.analysis_complete and mode != AnalysisMode.LOCAL:
                 self.katrain.controls.set_status(i18n._("wait-before-extra-analysis"), STATUS_INFO, self.current_node)
@@ -1183,19 +1172,53 @@ class Game(BaseGame):
                 self.katrain.controls.set_status(i18n._("alternative analysis"), STATUS_ANALYSIS)
                 cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives="alternative")
                 visits = engine.config["fast_visits"]
-            else:  # equalize
+            else:  # equalize or local
                 visits = max(d["visits"] for d in cn.analysis["moves"].values())
                 self.katrain.controls.set_status(i18n._("equalizing analysis").format(visits=visits), STATUS_ANALYSIS)
             priority = PRIORITY_EQUALIZE
             analyze_moves = [Move.from_gtp(gtp, player=cn.next_player) for gtp, _ in cn.analysis["moves"].items()]
-        else:
-            raise ValueError(f"Invalid analysis mode: {mode}")
 
+        else:
+            raise ValueError(f"Invalid analysis mode for sweep/equalize handler: {mode}")
+
+        # Common refinement loop for SWEEP/EQUALIZE/ALTERNATIVE/LOCAL
         for move in analyze_moves:
             if cn.analysis["moves"].get(move.gtp(), {"visits": 0})["visits"] < visits:
                 cn.analyze(
                     engine, priority=priority, visits=visits, refine_move=move, time_limit=False
                 )  # explicitly requested so take as long as you need
+
+    # ---------------------------------------------------------------------------
+    # analyze_extra() main dispatcher (Phase 70 refactoring)
+    # ---------------------------------------------------------------------------
+
+    def analyze_extra(self, mode, **kwargs):
+        """Dispatch to appropriate handler based on analysis mode.
+
+        Phase 70: Refactored from 119-line monolithic method to dispatcher + 5 handlers.
+        """
+        # Normalize mode to AnalysisMode at entry point
+        mode = parse_analysis_mode(mode)
+
+        stones = {s.coords for s in self.stones}
+        cn = self.current_node
+
+        if mode == AnalysisMode.STOP:
+            return self._handle_stop_mode()
+
+        engine = self.engines[cn.next_player]
+
+        if mode == AnalysisMode.PONDER:
+            return self._handle_ponder_mode(cn, engine)
+
+        if mode == AnalysisMode.EXTRA:
+            return self._handle_extra_mode(cn, engine)
+
+        if mode == AnalysisMode.GAME:
+            return self._handle_game_mode(engine, **kwargs)
+
+        # SWEEP / EQUALIZE / ALTERNATIVE / LOCAL
+        self._handle_sweep_equalize_modes(cn, engine, mode, stones)
 
     def selfplay(self, until_move, target_b_advantage=None):
         cn = self.current_node
