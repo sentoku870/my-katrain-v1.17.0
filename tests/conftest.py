@@ -11,6 +11,7 @@ import re
 import os
 from pathlib import Path
 from typing import List, Optional
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -19,6 +20,8 @@ from katrain.core.eval_metrics import (
     MistakeCategory,
     PositionDifficulty,
 )
+from katrain.core.game import Game, Move
+from katrain.core.game_node import GameNode
 
 
 # ---------------------------------------------------------------------------
@@ -419,11 +422,6 @@ def partial_analysis_scattered(make_moves):
 # ---------------------------------------------------------------------------
 # Phase 70: Game/Engine Test Infrastructure
 # ---------------------------------------------------------------------------
-
-from unittest.mock import MagicMock
-
-from katrain.core.game import Game, Move
-from katrain.core.game_node import GameNode
 
 
 class MockKaTrainStub:
