@@ -76,6 +76,24 @@
 | 5 | - | B | P4 | 2.5 | R4 | 1 | - | Low | mistake | 地の損失 | unknown |
 | 17 | - | B | E16 | 6.0 | C13 | 1 | - | Low | blunder | 地の損失 | unknown |
 
+## Critical 3 (Black)
+
+最も重要なミス（重点復習用）:
+
+### 1. Move #17 (B) E16
+- **Loss**: 6.0目
+- **Type**: 地の損失
+- **Phase**: opening
+- **Difficulty**: ONLY
+- **Context**: (none)
+
+### 2. Move #5 (B) P4
+- **Loss**: 2.5目
+- **Type**: 地の損失
+- **Phase**: opening
+- **Difficulty**: ONLY
+- **Context**: (none)
+
 ## Reason Tags Distribution (Black)
 
 - 不明 (unknown): 2
@@ -84,6 +102,17 @@
 | # | Time | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |
 |---|------|---|-------|------|------|------------|----------|--------|---------|------|--------|
 | 34 | - | W | B10 | 12.0 | F12 | 1 | - | Mid | blunder | 読み抜け | low_liberties |
+
+## Critical 3 (White)
+
+最も重要なミス（重点復習用）:
+
+### 1. Move #34 (W) B10
+- **Loss**: 12.0目
+- **Type**: 地の損失
+- **Phase**: opening
+- **Difficulty**: ONLY
+- **Context**: (none)
 
 ## Reason Tags Distribution (White)
 
