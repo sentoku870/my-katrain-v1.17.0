@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-27（Phase 72完了）
+> 最終更新: 2026-01-27（Phase 73完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -1985,15 +1985,20 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 73: KaTrainGui分割 A（KeyboardManager）
+#### Phase 73: KaTrainGui分割 A（KeyboardManager）（2026-01-27 完了）
 
-**In-scope:**
-- `_on_keyboard_down()` (97行/40分岐) を KeyboardManager に抽出
-- ディスパッチテーブルパターン導入
+**実装内容:**
+- KaTrainGuiからキーボード処理（約145行）をKeyboardManagerに抽出
+- 依存注入パターン（SGFManagerと同様）でKivy非依存テストを実現
+- `_on_keyboard_down()`, `_on_keyboard_up()`, `_single_key_action()`, `shortcuts`プロパティを移動
+- `KaTrainGui.shortcuts`は委譲プロパティとして後方互換維持
 
 **成果物:**
-- `katrain/gui/managers/keyboard_manager.py`
-- `tests/test_keyboard_manager.py`
+- `katrain/gui/managers/__init__.py`（空パッケージ）
+- `katrain/gui/managers/keyboard_manager.py`（~280行）
+- `tests/test_keyboard_manager.py`（53テスト）
+
+**テスト:** 2826件（+53件）
 
 ---
 
