@@ -1,9 +1,21 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-75 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-76 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-28: Phase 76 完了（KaTrainGui分割D - GameStateManager）
+  - KaTrainGuiからゲーム状態のライフサイクル管理をGameStateManagerに抽出
+  - 新規: `katrain/gui/managers/game_state_manager.py`（~130行）
+    - GameStateManagerクラス: undo/redo、重要局面ナビゲーション、投了、ノート設定、挿入モード
+    - 依存注入パターン（Kivy非依存テスト実現）
+  - 設計特徴:
+    - PEP 562 lazy imports（`__init__.py`でKivy依存を遅延読み込み）
+    - `set_note`にガード追加（早期UI呼び出し対策）
+    - "smart" undoはKaTrainGuiに残存（player_info依存）
+  - テスト: 22件追加（`tests/test_game_state_manager.py`）
+  - テスト総数: 2918件
 
 - 2026-01-28: Phase 75 完了（KaTrainGui分割C - PopupManager）
   - KaTrainGuiから設定系ポップアップ管理責務をPopupManagerに抽出
