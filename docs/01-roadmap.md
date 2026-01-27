@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-27（Phase 73完了）
+> 最終更新: 2026-01-27（Phase 74完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -2002,14 +2002,28 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 74: KaTrainGui分割 B（ConfigManager）
+#### Phase 74: KaTrainGui分割 B（ConfigManager）（2026-01-27 完了）
 
 **In-scope:**
 - 設定管理を ConfigManager に集約
 - 3パターンのアクセスを統一インターフェースに
 
 **成果物:**
-- `katrain/gui/managers/config_manager.py`
+- `katrain/gui/managers/config_manager.py`（~196行）
+- `tests/test_config_manager.py`（36テスト）
+- `tests/test_config_imports.py`（13テスト）
+
+**設計特徴:**
+- Kivy完全非依存（依存注入パターン）
+- 更新セマンティクス明確化:
+  - `set_section()`: REPLACE
+  - `save_export_settings()`: PARTIAL UPDATE
+  - `save_batch_options()`: PARTIAL UPDATE（batch_optionsのみMERGE）
+- コピーセマンティクス:
+  - `get()`: 直接参照（変更禁止ポリシー）
+  - `get_section()`: SHALLOW COPY
+
+**テスト:** 2875件（+49件）
 
 ---
 
