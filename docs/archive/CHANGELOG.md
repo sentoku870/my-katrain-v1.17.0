@@ -1,10 +1,24 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-72 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-73 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-27: Phase 73 完了（KaTrainGui分割A - KeyboardManager）
+  - KaTrainGuiからキーボード処理（約145行）をKeyboardManagerに抽出
+  - 新規: `katrain/gui/managers/` パッケージ
+    - `__init__.py`（7行）: 空パッケージ（docstringのみ）
+    - `keyboard_manager.py`（~280行）: KeyboardManagerクラス
+  - 設計特徴:
+    - 依存注入パターン（SGFManagerと同様）
+    - Kivy依存（platform, Clock, Clipboard）をコンストラクタで注入
+    - Kivy非依存のユニットテストが可能
+    - `KaTrainGui.shortcuts`は委譲プロパティとして後方互換維持
+  - 新規: `tests/test_keyboard_manager.py`（53テスト）
+    - ナビゲーション、ポップアップ、修飾キー、単独キー等をカバー
+  - テスト総数: 2826件（+53件）
+  - PRs: #211
 - 2026-01-27: Phase 72 完了（karte_report.py 分割）
   - `katrain/core/reports/karte_report.py`（1,610行、1,009行関数含む）を12モジュールのパッケージに分割
   - 新規: `katrain/core/reports/karte/` パッケージ
