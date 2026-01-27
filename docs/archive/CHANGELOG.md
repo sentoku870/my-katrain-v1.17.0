@@ -1,10 +1,31 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-71 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-72 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-27: Phase 72 完了（karte_report.py 分割）
+  - `katrain/core/reports/karte_report.py`（1,610行、1,009行関数含む）を12モジュールのパッケージに分割
+  - 新規: `katrain/core/reports/karte/` パッケージ
+    - `models.py`（~80行）: 例外クラス、定数（最下層）
+    - `helpers.py`（~80行）: 純粋関数（`has_loss_data`, `format_loss_with_engine_suffix`等）
+    - `builder.py`（~580行）: メインエントリポイント（`build_karte_report`）
+    - `json_export.py`（~230行）: JSON出力（`build_karte_json`）
+    - `llm_prompt.py`（~60行）: LLMプロンプト生成（`build_critical_3_prompt`）
+    - `sections/context.py`（~60行）: `KarteContext` dataclass（閉包変数の明示化）
+    - `sections/summary.py`（~210行）: サマリ・分布セクション
+    - `sections/important_moves.py`（~310行）: 重要手・タグセクション
+    - `sections/diagnosis.py`（~330行）: 弱点・練習優先度セクション
+    - `sections/metadata.py`（~220行）: 定義・品質・リスクセクション
+  - シム化: `karte_report.py`（~45行）- 後方互換シム
+  - 新規: `tests/test_karte_imports.py`（13テスト）- 後方互換性・lazy importテスト
+  - 設計特徴:
+    - `KarteContext` dataclass で閉包変数を明示化
+    - `karte/__init__.py` でlazy wrapper使用（循環インポート回避）
+    - 依存階層: models → helpers/context → sections → builder
+  - テスト総数: 2773件（+13件）
+  - PRs: #210
 - 2026-01-27: Phase 71 完了（batch/stats.py 分割）
   - `katrain/core/batch/stats.py`（1,799行）を4モジュールのサブパッケージに分割
   - 新規: `katrain/core/batch/stats/` パッケージ
