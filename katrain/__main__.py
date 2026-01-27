@@ -111,6 +111,7 @@ from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.managers.popup_manager import PopupManager
+from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.commands import (
     analyze_commands,
@@ -280,6 +281,15 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
         self.config_popup = None  # popup_commands.do_config_popup()で独自管理
+
+        # Phase 76: GameStateManager
+        self._game_state_manager = GameStateManager(
+            get_game=lambda: self.game,
+            get_play_analyze_mode=lambda: self.play_analyze_mode,
+            mode_analyze=MODE_ANALYZE,
+            switch_ui_mode=lambda: self.play_mode.switch_ui_mode() if self.play_mode else None,
+            clear_animating_pv=lambda: setattr(self.board_gui, "animating_pv", None) if self.board_gui else None,
+        )
 
         self.pondering = False
         self.show_move_num = False
@@ -716,7 +726,12 @@ class KaTrainGui(Screen, KaTrainBase):
             player_setup_block.update_player_info(bw, self.players_info[bw])
 
     def set_note(self, note):
-        self.game.current_node.note = note
+        # Guard: kv on_text may fire before _game_state_manager is initialized
+        if hasattr(self, "_game_state_manager"):
+            self._game_state_manager.set_note(note)
+        elif self.game and self.game.current_node:
+            # Fallback: direct assignment during early UI construction
+            self.game.current_node.note = note
 
     # The message loop is here to make sure moves happen in the right order, and slow operations don't hang the GUI
     def _message_loop_thread(self):
@@ -755,9 +770,7 @@ class KaTrainGui(Screen, KaTrainBase):
         game_commands.do_new_game(self, move_tree, analyze_fast, sgf_filename)
 
     def _do_insert_mode(self, mode="toggle"):
-        self.game.set_insert_mode(mode)
-        if self.play_analyze_mode != MODE_ANALYZE:
-            self.play_mode.switch_ui_mode()
+        self._game_state_manager.do_insert_mode(mode)
 
     def _do_ai_move(self, node=None):
         if node is None or self.game.current_node == node:
@@ -773,16 +786,21 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
 
     def _do_undo(self, n_times=1):
-        game_commands.do_undo(self, n_times)
+        # "smart" mode handling stays here (requires player_info access)
+        if n_times == "smart":
+            n_times = 1
+            if self.play_analyze_mode == MODE_PLAY and self.last_player_info.ai and self.next_player_info.human:
+                n_times = 2
+        self._game_state_manager.do_undo(n_times)
 
     def _do_reset_analysis(self):
-        self.game.reset_current_analysis()
+        self._game_state_manager.do_reset_analysis()
 
     def _do_resign(self):
-        self.game.current_node.end_state = f"{self.game.current_node.player}+R"
+        self._game_state_manager.do_resign()
 
     def _do_redo(self, n_times=1):
-        game_commands.do_redo(self, n_times)
+        self._game_state_manager.do_redo(n_times)
 
     def _do_rotate(self):
         self.board_gui.rotate_gridpos()
@@ -795,12 +813,10 @@ class KaTrainGui(Screen, KaTrainBase):
     # 重要局面ナビゲーション
     # ------------------------------------------------------------------
     def _do_prev_important(self):
-        if self.game:
-            self.game.jump_to_prev_important_move()
+        self._game_state_manager.do_prev_important()
 
     def _do_next_important(self):
-        if self.game:
-            self.game.jump_to_next_important_move()
+        self._game_state_manager.do_next_important()
 
     def _do_switch_branch(self, *args):
         self.board_gui.animating_pv = None
