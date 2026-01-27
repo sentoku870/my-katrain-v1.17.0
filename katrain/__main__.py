@@ -108,6 +108,7 @@ from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
+from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.commands import (
     analyze_commands,
@@ -221,6 +222,35 @@ class KaTrainGui(Screen, KaTrainBase):
             action_dispatcher=lambda action: self(action),
         )
 
+        # Keyboard input management (Phase 73)
+        self._keyboard_manager = KeyboardManager(
+            # Kivy dependencies (injected)
+            get_platform=lambda: kivy_platform,
+            schedule_once=Clock.schedule_once,
+            clipboard_copy=Clipboard.copy,
+            # State accessors
+            get_note_focus=lambda: self.controls.note.focus if self.controls else False,
+            get_popup_open=lambda: self.popup_open,
+            get_game=lambda: self.game,
+            # Action dispatcher
+            action_dispatcher=lambda action, *args: self(action, *args),
+            # Widget accessors
+            get_analysis_controls=lambda: self.analysis_controls,
+            get_board_gui=lambda: self.board_gui,
+            get_controls=lambda: self.controls,
+            get_nav_drawer=lambda: self.nav_drawer,
+            get_play_mode=lambda: self.play_mode,
+            # State modifiers
+            get_set_zen=lambda: (self.zen, lambda v: setattr(self, "zen", v)),
+            toggle_continuous_analysis=self.toggle_continuous_analysis,
+            toggle_move_num=self.toggle_move_num,
+            load_from_clipboard=self._sgf_manager.load_sgf_from_clipboard,
+            # Utilities
+            logger=self.log,
+            status_setter=lambda msg, level: self.controls.set_status(msg, level) if self.controls else None,
+            get_debug_level=lambda: self.debug_level,
+        )
+
         self.new_game_popup = None
         self.config_popup = None
         self.ai_settings_popup = None
@@ -231,9 +261,6 @@ class KaTrainGui(Screen, KaTrainBase):
         self.show_move_num = False
 
         self.message_queue = Queue()
-
-        self.last_key_down = None
-        self.last_focus_event = 0
 
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events = []
@@ -428,10 +455,13 @@ class KaTrainGui(Screen, KaTrainBase):
         animation_event = Clock.schedule_interval(self.handle_animations, 0.1)
         self._clock_events.append(animation_event)
 
-        Window.request_keyboard(None, self, "").bind(on_key_down=self._on_keyboard_down, on_key_up=self._on_keyboard_up)
+        Window.request_keyboard(None, self, "").bind(
+            on_key_down=self._keyboard_manager.on_keyboard_down,
+            on_key_up=self._keyboard_manager.on_keyboard_up,
+        )
 
         def set_focus_event(*args):
-            self.last_focus_event = time.time()
+            self._keyboard_manager.last_focus_event = time.time()
 
         MDApp.get_running_app().root_window.bind(focus=set_focus_event)
 
@@ -1117,35 +1147,8 @@ class KaTrainGui(Screen, KaTrainBase):
 
     @property
     def shortcuts(self):
-        return {
-            k: v
-            for ks, v in [
-                (Theme.KEY_ANALYSIS_CONTROLS_SHOW_CHILDREN, self.analysis_controls.show_children),
-                (Theme.KEY_ANALYSIS_CONTROLS_EVAL, self.analysis_controls.eval),
-                (Theme.KEY_ANALYSIS_CONTROLS_HINTS, self.analysis_controls.hints),
-                (Theme.KEY_ANALYSIS_CONTROLS_OWNERSHIP, self.analysis_controls.ownership),
-                (Theme.KEY_ANALYSIS_CONTROLS_POLICY, self.analysis_controls.policy),
-                (Theme.KEY_AI_MOVE, ("ai-move",)),
-                (Theme.KEY_ANALYZE_EXTRA_EXTRA, ("analyze-extra", "extra")),
-                (Theme.KEY_ANALYZE_EXTRA_EQUALIZE, ("analyze-extra", "equalize")),
-                (Theme.KEY_ANALYZE_EXTRA_SWEEP, ("analyze-extra", "sweep")),
-                (Theme.KEY_ANALYZE_EXTRA_ALTERNATIVE, ("analyze-extra", "alternative")),
-                (Theme.KEY_SELECT_BOX, ("select-box",)),
-                (Theme.KEY_RESET_ANALYSIS, ("reset-analysis",)),
-                (Theme.KEY_INSERT_MODE, ("insert-mode",)),
-                (Theme.KEY_PASS, ("play", None)),
-                (Theme.KEY_SELFPLAY_TO_END, ("selfplay-setup", "end", None)),
-                (Theme.KEY_NAV_PREV_BRANCH, ("undo", "branch")),
-                (Theme.KEY_NAV_BRANCH_DOWN, ("switch-branch", 1)),
-                (Theme.KEY_NAV_BRANCH_UP, ("switch-branch", -1)),
-                (Theme.KEY_TIMER_POPUP, ("timer-popup",)),
-                (Theme.KEY_TEACHER_POPUP, ("teacher-popup",)),
-                (Theme.KEY_AI_POPUP, ("ai-popup",)),
-                (Theme.KEY_CONFIG_POPUP, ("config-popup",)),
-                (Theme.KEY_STOP_ANALYSIS, ("analyze-extra", "stop")),
-            ]
-            for k in (ks if isinstance(ks, list) else [ks])
-        }
+        """Delegate to KeyboardManager for backward compatibility."""
+        return self._keyboard_manager.shortcuts
 
     @property
     def popup_open(self) -> Popup:
@@ -1153,120 +1156,6 @@ class KaTrainGui(Screen, KaTrainBase):
         if app:
             first_child = app.root_window.children[0]
             return first_child if isinstance(first_child, Popup) else None
-
-    def _on_keyboard_down(self, _keyboard, keycode, _text, modifiers):
-        self.last_key_down = keycode
-        ctrl_pressed = "ctrl" in modifiers or ("meta" in modifiers and kivy_platform == "macosx")
-        shift_pressed = "shift" in modifiers
-        if self.controls.note.focus:
-            return  # when making notes, don't allow keyboard shortcuts
-        popup = self.popup_open
-        if popup:
-            if keycode[1] in [
-                Theme.KEY_DEEPERANALYSIS_POPUP,
-                Theme.KEY_REPORT_POPUP,
-                Theme.KEY_TIMER_POPUP,
-                Theme.KEY_TEACHER_POPUP,
-                Theme.KEY_AI_POPUP,
-                Theme.KEY_CONFIG_POPUP,
-                Theme.KEY_TSUMEGO_FRAME,
-            ]:  # switch between popups
-                popup.dismiss()
-
-                return
-            elif keycode[1] in Theme.KEY_SUBMIT_POPUP:
-                fn = getattr(popup.content, "on_submit", None)
-                if fn:
-                    fn()
-                return
-            else:
-                return
-
-        if keycode[1] == Theme.KEY_TOGGLE_CONTINUOUS_ANALYSIS:
-            self.toggle_continuous_analysis(quiet=shift_pressed)
-        elif keycode[1] == Theme.KEY_TOGGLE_MOVENUM:
-            self.toggle_move_num()
-        elif keycode[1] == Theme.KEY_TOGGLE_COORDINATES:
-            self.board_gui.toggle_coordinates()
-        elif keycode[1] in Theme.KEY_PAUSE_TIMER and not ctrl_pressed:
-            self.controls.timer.paused = not self.controls.timer.paused
-        elif keycode[1] in Theme.KEY_ZEN:
-            self.zen = (self.zen + 1) % 3
-        elif keycode[1] in Theme.KEY_NAV_PREV:
-            self("undo", 1 + shift_pressed * 9 + ctrl_pressed * 9999)
-        elif keycode[1] in Theme.KEY_NAV_NEXT:
-            self("redo", 1 + shift_pressed * 9 + ctrl_pressed * 9999)
-        elif keycode[1] == Theme.KEY_NAV_GAME_START:
-            self("undo", 9999)
-        elif keycode[1] == Theme.KEY_NAV_GAME_END:
-            self("redo", 9999)
-        elif keycode[1] == Theme.KEY_MOVE_TREE_MAKE_SELECTED_NODE_MAIN_BRANCH:
-            self.controls.move_tree.make_selected_node_main_branch()
-        elif keycode[1] == Theme.KEY_NAV_MISTAKE and not ctrl_pressed:
-            self("find-mistake", "undo" if shift_pressed else "redo")
-        elif keycode[1] == Theme.KEY_MOVE_TREE_DELETE_SELECTED_NODE and ctrl_pressed:
-            self.controls.move_tree.delete_selected_node()
-        elif keycode[1] == Theme.KEY_MOVE_TREE_TOGGLE_SELECTED_NODE_COLLAPSE and not ctrl_pressed:
-            self.controls.move_tree.toggle_selected_node_collapse()
-        elif keycode[1] == Theme.KEY_NEW_GAME and ctrl_pressed:
-            self("new-game-popup")
-        elif keycode[1] == Theme.KEY_LOAD_GAME and ctrl_pressed:
-            self("analyze-sgf-popup")
-        elif keycode[1] == Theme.KEY_SAVE_GAME and ctrl_pressed:
-            self("save-game")
-        elif keycode[1] == Theme.KEY_SAVE_GAME_AS and ctrl_pressed:
-            self("save-game-as-popup")
-        elif keycode[1] == Theme.KEY_COPY and ctrl_pressed:
-            Clipboard.copy(self.game.root.sgf())
-            self.controls.set_status(i18n._("Copied SGF to clipboard."), STATUS_INFO)
-        elif keycode[1] == Theme.KEY_PASTE and ctrl_pressed:
-            self.load_sgf_from_clipboard()
-        elif keycode[1] == Theme.KEY_NAV_PREV_BRANCH and shift_pressed:
-            self("undo", "main-branch")
-        elif keycode[1] == Theme.KEY_DEEPERANALYSIS_POPUP:
-            self.analysis_controls.dropdown.open_game_analysis_popup()
-        elif keycode[1] == Theme.KEY_TSUMEGO_FRAME:
-            self.analysis_controls.dropdown.open_tsumego_frame_popup()
-        elif keycode[1] == Theme.KEY_REPORT_POPUP:
-            self.analysis_controls.dropdown.open_report_popup()
-        elif keycode[1] == "f10" and self.debug_level >= OUTPUT_EXTRA_DEBUG:
-            import yappi
-
-            yappi.set_clock_type("cpu")
-            yappi.start()
-            self.log("starting profiler", OUTPUT_ERROR)
-        elif keycode[1] == "f11" and self.debug_level >= OUTPUT_EXTRA_DEBUG:
-            import time
-            import yappi
-
-            stats = yappi.get_func_stats()
-            filename = f"callgrind.{int(time.time())}.prof"
-            stats.save(filename, type="callgrind")
-            self.log(f"wrote profiling results to {filename}", OUTPUT_ERROR)
-        elif not ctrl_pressed:
-            shortcut = self.shortcuts.get(keycode[1])
-            if shortcut is not None:
-                if isinstance(shortcut, Widget):
-                    shortcut.trigger_action(duration=0)
-                else:
-                    self(*shortcut)
-
-    def _on_keyboard_up(self, _keyboard, keycode):
-        if keycode[1] in ["alt", "tab"]:
-            Clock.schedule_once(lambda *_args: self._single_key_action(keycode), 0.05)
-
-    def _single_key_action(self, keycode):
-        if (
-            self.controls.note.focus
-            or self.popup_open
-            or keycode != self.last_key_down
-            or time.time() - self.last_focus_event < 0.2  # this is here to prevent alt-tab from firing alt or tab
-        ):
-            return
-        if keycode[1] == "alt":
-            self.nav_drawer.set_state("toggle")
-        elif keycode[1] == "tab":
-            self.play_mode.switch_ui_mode()
 
 
 class KaTrainApp(MDApp):
