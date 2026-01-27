@@ -22,13 +22,13 @@ class TestBuildTagCountsFromMoves:
     """Unit tests for _build_tag_counts_from_moves helper."""
 
     def test_empty_moves_returns_empty_dict(self):
-        from katrain.core.reports.karte_report import _build_tag_counts_from_moves
+        from katrain.core.reports.karte.builder import _build_tag_counts_from_moves
 
         result = _build_tag_counts_from_moves([], None)
         assert result == {}
 
     def test_counts_cached_meaning_tag_id(self):
-        from katrain.core.reports.karte_report import _build_tag_counts_from_moves
+        from katrain.core.reports.karte.builder import _build_tag_counts_from_moves
 
         moves = [
             MagicMock(player="B", meaning_tag_id="overplay"),
@@ -43,7 +43,7 @@ class TestBuildTagCountsFromMoves:
         assert result[MeaningTagId.SLOW_MOVE] == 1
 
     def test_filters_by_player_B(self):
-        from katrain.core.reports.karte_report import _build_tag_counts_from_moves
+        from katrain.core.reports.karte.builder import _build_tag_counts_from_moves
 
         moves = [
             MagicMock(player="B", meaning_tag_id="overplay"),
@@ -56,7 +56,7 @@ class TestBuildTagCountsFromMoves:
         assert MeaningTagId.SLOW_MOVE not in result
 
     def test_skips_none_meaning_tag_id(self):
-        from katrain.core.reports.karte_report import _build_tag_counts_from_moves
+        from katrain.core.reports.karte.builder import _build_tag_counts_from_moves
 
         moves = [
             MagicMock(player="B", meaning_tag_id=None),
@@ -68,7 +68,7 @@ class TestBuildTagCountsFromMoves:
         assert len(result) == 1
 
     def test_skips_invalid_tag_id(self):
-        from katrain.core.reports.karte_report import _build_tag_counts_from_moves
+        from katrain.core.reports.karte.builder import _build_tag_counts_from_moves
 
         moves = [
             MagicMock(player="B", meaning_tag_id="invalid_tag_xyz"),
@@ -90,22 +90,22 @@ class TestComputeStyleSafe:
     """Unit tests for _compute_style_safe with graceful fallback."""
 
     def test_returns_none_on_exception(self):
-        from katrain.core.reports.karte_report import _compute_style_safe
+        from katrain.core.reports.karte.builder import _compute_style_safe
 
         with patch(
-            "katrain.core.reports.karte_report.compute_radar_from_moves",
+            "katrain.core.reports.karte.builder.compute_radar_from_moves",
             side_effect=ValueError("Test error"),
         ):
             result = _compute_style_safe([], None)
             assert result is None
 
     def test_logs_exception_at_debug_level(self):
-        from katrain.core.reports.karte_report import _compute_style_safe
+        from katrain.core.reports.karte.builder import _compute_style_safe
 
         with patch(
-            "katrain.core.reports.karte_report.compute_radar_from_moves",
+            "katrain.core.reports.karte.builder.compute_radar_from_moves",
             side_effect=ValueError("Test error"),
-        ), patch("katrain.core.reports.karte_report.logger") as mock_logger:
+        ), patch("katrain.core.reports.karte.builder.logger") as mock_logger:
             _compute_style_safe([], None)
             mock_logger.debug.assert_called_once()
             call_kwargs = mock_logger.debug.call_args[1]
@@ -150,17 +150,17 @@ class TestKarteStyleIntegration:
 
     def test_karte_meta_includes_style_lines(self, mock_game, mock_snapshot):
         """Verify Karte Meta section contains Style and Style Confidence lines."""
-        from katrain.core.reports.karte_report import _build_karte_report_impl
+        from katrain.core.reports.karte.builder import _build_karte_report_impl
 
         mock_style = MagicMock()
         mock_style.archetype.name_key = "style:kiai_fighter:name"
         mock_style.confidence = 0.85
 
         with patch(
-            "katrain.core.reports.karte_report._compute_style_safe",
+            "katrain.core.reports.karte.builder._compute_style_safe",
             return_value=mock_style,
         ), patch(
-            "katrain.core.reports.karte_report.i18n._", return_value="Kiai Fighter"
+            "katrain.core.reports.karte.builder.i18n._", return_value="Kiai Fighter"
         ):
             karte_output = _build_karte_report_impl(
                 game=mock_game,
@@ -182,10 +182,10 @@ class TestKarteStyleIntegration:
         Phase 66: When style computation fails (returns None), we show
         'Style: Unknown' but no confidence line.
         """
-        from katrain.core.reports.karte_report import _build_karte_report_impl
+        from katrain.core.reports.karte.builder import _build_karte_report_impl
 
         with patch(
-            "katrain.core.reports.karte_report._compute_style_safe",
+            "katrain.core.reports.karte.builder._compute_style_safe",
             return_value=None,
         ):
             karte_output = _build_karte_report_impl(
