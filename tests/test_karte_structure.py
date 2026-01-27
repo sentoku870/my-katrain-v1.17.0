@@ -844,7 +844,7 @@ class TestBuildKarteReportErrorHandling:
 
     def test_error_karte_structure(self):
         """Error karte should have expected structure."""
-        from katrain.core.reports.karte_report import _build_error_karte
+        from katrain.core.reports.karte.builder import _build_error_karte
 
         result = _build_error_karte(
             game_id="game123",

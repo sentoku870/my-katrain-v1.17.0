@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-27（Phase 71完了）
+> 最終更新: 2026-01-27（Phase 72完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -1958,16 +1958,30 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 72: karte_report.py 分割
+#### Phase 72: karte_report.py 分割（2026-01-27 完了）
 
 **In-scope:**
 - `katrain/core/reports/karte/` パッケージ化
-  - `models.py`, `builder.py`, `sections/`, `formatters.py`
-- `__init__.py` で re-export
+  - `models.py`: 例外・定数（最下層）
+  - `helpers.py`: 純粋関数
+  - `builder.py`: メインエントリポイント
+  - `json_export.py`: JSON出力
+  - `llm_prompt.py`: LLMプロンプト生成
+  - `sections/`: セクション生成関数群
+    - `context.py`: KarteContext dataclass（閉包変数の明示化）
+    - `summary.py`: サマリ・分布セクション
+    - `important_moves.py`: 重要手・タグセクション
+    - `diagnosis.py`: 弱点・練習優先度セクション
+    - `metadata.py`: 定義・品質・リスクセクション
+- `karte_report.py` をシムに変換（後方互換性維持）
+- `karte/__init__.py` でlazy wrapper使用（循環インポート回避）
 
 **成果物:**
-- `katrain/core/reports/karte/` パッケージ
-- `tests/test_karte_imports.py`（互換性テスト）
+- `katrain/core/reports/karte/` パッケージ（12ファイル）
+- `katrain/core/reports/karte_report.py`（シム、~45行）
+- `tests/test_karte_imports.py`（13テスト）
+
+**完了日**: 2026-01-27
 
 ---
 
