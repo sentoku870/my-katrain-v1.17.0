@@ -1921,7 +1921,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 70: 複雑関数リファクタリング
+#### Phase 70: 複雑関数リファクタリング ✅
 
 **In-scope:**
 - `game.py` の `analyze_extra()` 分割（119行→5メソッド）
@@ -1930,7 +1930,11 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 **成果物:**
 - `katrain/core/game.py` 更新
-- `tests/test_game_analysis.py`
+- `tests/test_game_analysis.py`（26テスト）
+- `tests/conftest.py` 共有フィクスチャ追加
+- `tests/test_game_core.py` リファクタ
+
+**完了日**: 2026-01-27（PR #208）
 
 ---
 
