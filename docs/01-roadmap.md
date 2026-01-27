@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-27（Phase 74完了）
+> 最終更新: 2026-01-28（Phase 76完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -2037,13 +2037,18 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 76: KaTrainGui分割 D（GameStateManager）
+#### Phase 76: KaTrainGui分割 D（GameStateManager）✓ 2026-01-28
 
 **In-scope:**
 - ゲーム状態のライフサイクル管理を分離
+- undo/redo、重要局面ナビゲーション、投了、ノート設定、挿入モード
 
 **成果物:**
-- `katrain/gui/managers/game_state_manager.py`
+- `katrain/gui/managers/game_state_manager.py`（~130行）
+- `tests/test_game_state_manager.py`（22テスト）
+- PEP 562 lazy imports（Kivy非依存テスト実現）
+
+**テスト:** 2918件（+22件）
 
 ---
 
