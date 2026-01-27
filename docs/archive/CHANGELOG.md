@@ -1,10 +1,36 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-73 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-74 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-27: Phase 74 完了（KaTrainGui分割B - ConfigManager）
+  - KaTrainGuiから設定管理責務をConfigManagerに抽出
+  - 新規: `katrain/gui/managers/config_manager.py`（~196行）
+    - ConfigManagerクラス: 設定の読み取り・書き込み・セクション管理
+    - 依存注入パターン（config_dict, save_config, logger, log_level_info）
+  - 設計特徴:
+    - Kivy完全非依存（typing のみ使用）
+    - 更新セマンティクス明確化:
+      - `set_section()`: REPLACE（セクション全体を置き換え）
+      - `save_export_settings()`: PARTIAL UPDATE（None は「変更しない」）
+      - `save_batch_options()`: PARTIAL UPDATE（batch_options サブツリーのみ MERGE）
+    - コピーセマンティクス:
+      - `get()`: 直接参照を返す（パフォーマンス優先、呼び出し元は変更禁止）
+      - `get_section()`: SHALLOW COPY を返す（トップレベルキーのみ保護）
+    - 非dict値への安全な対応（空辞書またはdefaultを返す）
+    - 破損データ対応（batch_optionsが非dictの場合、ログ出力して{}にリセット）
+  - KaTrainGui統合: 4メソッドをConfigManagerに委譲
+    - `set_config_section()` → `_config_manager.set_section()`
+    - `_load_export_settings()` → `_config_manager.load_export_settings()`
+    - `_save_export_settings()` → `_config_manager.save_export_settings()`
+    - `_save_batch_options()` → `_config_manager.save_batch_options()`
+  - 新規テスト:
+    - `tests/test_config_manager.py`（36テスト）: ユニットテスト（Kivy非依存）
+    - `tests/test_config_imports.py`（13テスト）: 後方互換API・シグネチャ検証
+  - テスト総数: 2875件（+49件）
+  - PRs: #212
 - 2026-01-27: Phase 73 完了（KaTrainGui分割A - KeyboardManager）
   - KaTrainGuiからキーボード処理（約145行）をKeyboardManagerに抽出
   - 新規: `katrain/gui/managers/` パッケージ
