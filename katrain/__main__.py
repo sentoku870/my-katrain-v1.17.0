@@ -109,6 +109,7 @@ from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
+from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.commands import (
     analyze_commands,
@@ -222,6 +223,14 @@ class KaTrainGui(Screen, KaTrainBase):
             action_dispatcher=lambda action: self(action),
         )
 
+        # Config management (Phase 74)
+        self._config_manager = ConfigManager(
+            config_dict=self._config,
+            save_config=super().save_config,
+            logger=self.log,
+            log_level_info=OUTPUT_INFO,
+        )
+
         # Keyboard input management (Phase 73)
         self._keyboard_manager = KeyboardManager(
             # Kivy dependencies (injected)
@@ -266,19 +275,19 @@ class KaTrainGui(Screen, KaTrainBase):
         self._clock_events = []
 
     def _load_export_settings(self) -> dict:
-        """Delegates to settings_popup.load_export_settings()."""
-        return load_export_settings(self)
+        """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
+        return self._config_manager.load_export_settings()
 
     def _save_export_settings(self, sgf_directory: str = None, selected_players: list = None):
-        """Delegates to settings_popup.save_export_settings()."""
-        save_export_settings(self, sgf_directory, selected_players)
+        """Delegates to ConfigManager.save_export_settings() (Phase 74)."""
+        self._config_manager.save_export_settings(sgf_directory, selected_players)
 
     def _save_batch_options(self, options: dict):
-        """Delegates to settings_popup.save_batch_options()."""
-        save_batch_options(self, options)
+        """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
+        self._config_manager.save_batch_options(options)
 
     def set_config_section(self, section: str, value: dict) -> None:
-        """設定セクションを書き込む。
+        """設定セクションを書き込む（Phase 74: ConfigManagerに委譲）。
 
         Args:
             section: セクション名（例: "export_settings", "mykatrain_settings", "general"）
@@ -287,7 +296,7 @@ class KaTrainGui(Screen, KaTrainBase):
         Note:
             保存は別途 save_config(section) を呼ぶ必要がある。
         """
-        self._config[section] = value
+        self._config_manager.set_section(section, value)
 
     def log(self, message, level=OUTPUT_INFO):
         super().log(message, level)
