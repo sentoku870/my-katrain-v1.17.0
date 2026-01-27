@@ -110,6 +110,7 @@ from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.commands import (
     analyze_commands,
@@ -260,11 +261,25 @@ class KaTrainGui(Screen, KaTrainBase):
             get_debug_level=lambda: self.debug_level,
         )
 
-        self.new_game_popup = None
-        self.config_popup = None
-        self.ai_settings_popup = None
-        self.teacher_settings_popup = None
-        self.timer_settings_popup = None
+        # Phase 75: PopupManager
+        self._popup_manager = PopupManager(
+            create_new_game_popup=self._create_new_game_popup,
+            create_timer_popup=self._create_timer_popup,
+            create_teacher_popup=self._create_teacher_popup,
+            create_ai_popup=self._create_ai_popup,
+            create_engine_recovery_popup=self._create_engine_recovery_popup,
+            get_popup_open=lambda: self.popup_open,
+            is_engine_recovery_popup=lambda p: (
+                isinstance(p, EngineRecoveryPopup)
+                or isinstance(getattr(p, "content", None), EngineRecoveryPopup)
+            ),
+            pause_timer=self._safe_pause_timer,
+            on_new_game_opened=lambda p: p.content.update_from_current_game(),
+            logger=self.log,
+            log_level_debug=OUTPUT_DEBUG,
+        )
+
+        self.config_popup = None  # popup_commands.do_config_popup()で独自管理
 
         self.pondering = False
         self.show_move_num = False
@@ -285,6 +300,69 @@ class KaTrainGui(Screen, KaTrainBase):
     def _save_batch_options(self, options: dict):
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
+
+    # ========== PopupManager support methods (Phase 75) ==========
+
+    def _safe_pause_timer(self):
+        """タイマーを安全に一時停止（controls/timer未初期化時はスキップ）"""
+        timer = getattr(getattr(self, "controls", None), "timer", None)
+        if timer:
+            timer.paused = True
+
+    def _create_new_game_popup(self):
+        """NewGamePopupのファクトリ"""
+        raw = I18NPopup(
+            title_key="New Game title",
+            size=[dp(800), dp(900)],
+            content=NewGamePopup(self),
+        )
+        popup = getattr(raw, "__self__", raw)
+        popup.content.popup = popup
+        return popup
+
+    def _create_timer_popup(self):
+        """TimerPopupのファクトリ"""
+        raw = I18NPopup(
+            title_key="timer settings",
+            size=[dp(600), dp(500)],
+            content=ConfigTimerPopup(self),
+        )
+        popup = getattr(raw, "__self__", raw)
+        popup.content.popup = popup
+        return popup
+
+    def _create_teacher_popup(self):
+        """TeacherPopupのファクトリ"""
+        raw = I18NPopup(
+            title_key="teacher settings",
+            size=[dp(800), dp(825)],
+            content=ConfigTeacherPopup(self),
+        )
+        popup = getattr(raw, "__self__", raw)
+        popup.content.popup = popup
+        return popup
+
+    def _create_ai_popup(self):
+        """AIPopupのファクトリ"""
+        raw = I18NPopup(
+            title_key="ai settings",
+            size=[dp(750), dp(750)],
+            content=ConfigAIPopup(self),
+        )
+        popup = getattr(raw, "__self__", raw)
+        popup.content.popup = popup
+        return popup
+
+    def _create_engine_recovery_popup(self, error_message, code):
+        """EngineRecoveryPopupのファクトリ"""
+        raw = I18NPopup(
+            title_key="engine recovery",
+            size=[dp(600), dp(700)],
+            content=EngineRecoveryPopup(self, error_message=error_message, code=code),
+        )
+        popup = getattr(raw, "__self__", raw)
+        popup.content.popup = popup
+        return popup
 
     def set_config_section(self, section: str, value: dict) -> None:
         """設定セクションを書き込む（Phase 74: ConfigManagerに委譲）。
@@ -755,57 +833,22 @@ class KaTrainGui(Screen, KaTrainBase):
         self.board_gui.selecting_region_of_interest = True
 
     def _do_new_game_popup(self):
-        self.controls.timer.paused = True
-        if not self.new_game_popup:
-            self.new_game_popup = I18NPopup(
-                title_key="New Game title", size=[dp(800), dp(900)], content=NewGamePopup(self)
-            ).__self__
-            self.new_game_popup.content.popup = self.new_game_popup
-        self.new_game_popup.open()
-        self.new_game_popup.content.update_from_current_game()
+        self._popup_manager.open_new_game_popup()
 
     def _do_timer_popup(self):
-        self.controls.timer.paused = True
-        if not self.timer_settings_popup:
-            self.timer_settings_popup = I18NPopup(
-                title_key="timer settings", size=[dp(600), dp(500)], content=ConfigTimerPopup(self)
-            ).__self__
-            self.timer_settings_popup.content.popup = self.timer_settings_popup
-        self.timer_settings_popup.open()
+        self._popup_manager.open_timer_popup()
 
     def _do_teacher_popup(self):
-        self.controls.timer.paused = True
-        if not self.teacher_settings_popup:
-            self.teacher_settings_popup = I18NPopup(
-                title_key="teacher settings", size=[dp(800), dp(825)], content=ConfigTeacherPopup(self)
-            ).__self__
-            self.teacher_settings_popup.content.popup = self.teacher_settings_popup
-        self.teacher_settings_popup.open()
+        self._popup_manager.open_teacher_popup()
 
     def _do_config_popup(self):
         popup_commands.do_config_popup(self)
 
     def _do_ai_popup(self):
-        self.controls.timer.paused = True
-        if not self.ai_settings_popup:
-            self.ai_settings_popup = I18NPopup(
-                title_key="ai settings", size=[dp(750), dp(750)], content=ConfigAIPopup(self)
-            ).__self__
-            self.ai_settings_popup.content.popup = self.ai_settings_popup
-        self.ai_settings_popup.open()
+        self._popup_manager.open_ai_popup()
 
     def _do_engine_recovery_popup(self, error_message, code):
-        current_open = self.popup_open
-        if current_open and isinstance(current_open.content, EngineRecoveryPopup):
-            self.log(f"Not opening engine recovery popup with {error_message} as one is already open", OUTPUT_DEBUG)
-            return
-        popup = I18NPopup(
-            title_key="engine recovery",
-            size=[dp(600), dp(700)],
-            content=EngineRecoveryPopup(self, error_message=error_message, code=code),
-        ).__self__
-        popup.content.popup = popup
-        popup.open()
+        self._popup_manager.open_engine_recovery_popup(error_message, code)
 
     def _do_tsumego_frame(self, ko, margin):
         from katrain.core.tsumego_frame import tsumego_frame_from_katrain_game
