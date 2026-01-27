@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-26（Phase 68完了）
+> 最終更新: 2026-01-27（Phase 71完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -1938,7 +1938,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 71: batch/stats.py 分割
+#### Phase 71: batch/stats.py 分割（2026-01-27 完了）
 
 **In-scope:**
 - `katrain/core/batch/stats/` パッケージ化
@@ -1947,8 +1947,14 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 - lazy import で循環依存回避
 
 **成果物:**
-- `katrain/core/batch/stats/` パッケージ
-- `tests/test_batch_stats_imports.py`（互換性テスト）
+- `katrain/core/batch/stats/` パッケージ（4モジュール）
+  - `models.py`: EvidenceMove + i18n定数（239行）
+  - `extraction.py`: extract_game_stats, extract_players_from_stats（343行）
+  - `aggregation.py`: build_batch_summary, i18n getters, helpers（563行）
+  - `formatting.py`: build_player_summary（766行、遅延ロード）
+- `tests/test_batch_stats_imports.py`（17テスト）
+
+**完了日**: 2026-01-27（PR #209）
 
 ---
 

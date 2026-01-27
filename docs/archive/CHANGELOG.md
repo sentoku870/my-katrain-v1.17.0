@@ -1,10 +1,32 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-69 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-71 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
+- 2026-01-27: Phase 71 完了（batch/stats.py 分割）
+  - `katrain/core/batch/stats.py`（1,799行）を4モジュールのサブパッケージに分割
+  - 新規: `katrain/core/batch/stats/` パッケージ
+    - `models.py`（~240行）: `EvidenceMove` dataclass、i18n定数
+    - `extraction.py`（~340行）: `extract_game_stats()`, `extract_players_from_stats()`
+    - `aggregation.py`（~560行）: `build_batch_summary()`, i18n getter、ヘルパー関数
+    - `formatting.py`（~770行）: `build_player_summary()`（遅延ロード）
+    - `__init__.py`（~170行）: 再エクスポート、遅延ロード、後方互換エイリアス
+  - 削除: `katrain/core/batch/stats.py`（元の1,799行ファイル）
+  - 新規: `tests/test_batch_stats_imports.py`（17テスト）- 後方互換性テスト
+  - 後方互換性: 全APIが`from katrain.core.batch.stats import ...`で引き続き利用可能
+  - テスト総数: 2760件（+11件）
+  - PRs: #209
+- 2026-01-27: Phase 70 完了（Complex Function Refactoring）
+  - `analyze_extra()` 分割:
+    - 新規: `_process_move_analysis()` - 単一手の解析処理
+    - 新規: `_apply_analysis_results()` - 解析結果の適用
+  - `_compute_important_moves()` 最適化:
+    - 新規: `_aggregate_importance_scores()` - 重要度スコア集計
+    - 新規: `_filter_and_sort_important()` - フィルタリングとソート
+  - テスト総数: 2749件
+  - PRs: #208
 - 2026-01-27: Phase 69 完了（Parser/Base Test Enhancement）
   - `tests/test_parser.py` 拡張: 19テスト追加
     - TestMoveClass (9): ラウンドトリップ、I列拒否、等価性・ハッシュ
