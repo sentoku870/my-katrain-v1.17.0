@@ -436,6 +436,7 @@ def process_and_export_summary(
     """
     import os
     from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
+    from katrain.core.errors import SGFError
 
     game_stats_list = []
 
@@ -473,8 +474,13 @@ def process_and_export_summary(
 
             game_stats_list.append(stats)
 
-        except Exception as e:
+        except (SGFError, OSError, KeyError) as e:
+            # Expected: SGF parse error, file I/O error, or missing stats data
             ctx.log(f"Failed to process {path}: {e}", OUTPUT_ERROR)
+        except Exception as e:
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            ctx.log(f"Unexpected error processing {path}: {e}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     if not game_stats_list:
         # 処理できた対局がない

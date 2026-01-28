@@ -10,6 +10,8 @@
 from collections import Counter
 from typing import TYPE_CHECKING, Dict, List, Optional
 
+from katrain.core.constants import OUTPUT_ERROR
+from katrain.core.errors import SGFError
 from katrain.core.game import KaTrainSGF
 from katrain.gui.features.types import LogFunction
 
@@ -46,8 +48,13 @@ def scan_player_names(
             if player_white:
                 player_counts[player_white] = player_counts.get(player_white, 0) + 1
 
-        except Exception as e:
+        except (SGFError, OSError) as e:
+            # Expected: SGF parse error or file I/O error
             log_fn(f"Failed to scan {path}: {e}", OUTPUT_ERROR)
+        except Exception as e:
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            log_fn(f"Unexpected error scanning {path}: {e}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     return player_counts
 

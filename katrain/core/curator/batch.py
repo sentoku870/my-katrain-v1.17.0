@@ -258,9 +258,15 @@ def generate_curator_outputs(
             json.dump(ranking_data, f, ensure_ascii=False, indent=2)
         result.ranking_path = str(ranking_path)
         log(f"Written: {ranking_filename}")
-    except Exception as e:
+    except OSError as e:
+        # Expected: File I/O error
         result.errors.append(f"Failed to write {ranking_filename}: {e}")
         log(f"Error writing {ranking_filename}: {e}")
+    except Exception as e:
+        # Unexpected: Internal bug - traceback required
+        import traceback
+        result.errors.append(f"Unexpected error writing {ranking_filename}: {e}")
+        log(f"Unexpected error writing {ranking_filename}: {e}\n{traceback.format_exc()}")
 
     # Generate replay guides
     guides: List[Dict[str, Any]] = []
@@ -278,9 +284,15 @@ def generate_curator_outputs(
             )
             guides.append(guide.to_dict())
             result.guides_generated += 1
+        except (KeyError, ValueError) as e:
+            # Expected: Game data structure or value issue
+            result.errors.append(f"Guide extraction skipped for {game_id}: {e}")
+            log(f"Guide extraction skipped for {game_id}: {e}")
         except Exception as e:
-            result.errors.append(f"Failed to extract guide for {game_id}: {e}")
-            log(f"Error extracting guide for {game_id}: {e}")
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            result.errors.append(f"Unexpected error extracting guide for {game_id}: {e}")
+            log(f"Unexpected error extracting guide for {game_id}: {e}\n{traceback.format_exc()}")
 
     # Build guide JSON
     guide_data = {
@@ -298,9 +310,15 @@ def generate_curator_outputs(
             json.dump(guide_data, f, ensure_ascii=False, indent=2)
         result.guide_path = str(guide_path)
         log(f"Written: {guide_filename}")
-    except Exception as e:
+    except OSError as e:
+        # Expected: File I/O error
         result.errors.append(f"Failed to write {guide_filename}: {e}")
         log(f"Error writing {guide_filename}: {e}")
+    except Exception as e:
+        # Unexpected: Internal bug - traceback required
+        import traceback
+        result.errors.append(f"Unexpected error writing {guide_filename}: {e}")
+        log(f"Unexpected error writing {guide_filename}: {e}\n{traceback.format_exc()}")
 
     log(
         f"Curator outputs complete: {result.games_scored} scored, "

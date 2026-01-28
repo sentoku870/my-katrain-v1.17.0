@@ -184,7 +184,15 @@ def _is_writable_directory(path: Optional[Path]) -> bool:
     try:
         p = Path(path) if not isinstance(path, Path) else path
         return p.is_dir() and os.access(p, os.W_OK)
+    except (OSError, TypeError):
+        # Expected: Invalid path or wrong type
+        return False
     except Exception:
+        # Unexpected: Internal bug - log with traceback
+        import logging
+        logging.getLogger(__name__).debug(
+            f"Unexpected directory check error: {path}", exc_info=True
+        )
         return False
 
 
@@ -233,8 +241,15 @@ def load_coach_md() -> str:
         )
         if dev_path.exists():
             return dev_path.read_text(encoding="utf-8")
-    except Exception:
+    except OSError:
+        # Expected: File not found or permission denied (PyInstaller environment)
         pass
+    except Exception:
+        # Unexpected: Internal bug - log with traceback, but still use fallback
+        import logging
+        logging.getLogger(__name__).debug(
+            "Unexpected error loading coach.md", exc_info=True
+        )
 
     # フォールバック（パッケージ環境、PyInstaller等）
     return COACH_MD_FALLBACK
@@ -335,15 +350,29 @@ def create_llm_package(
 
         return PackageResult(success=True, output_path=output_path)
 
-    except PermissionError as e:
+    except OSError as e:
+        # Expected: File I/O error (includes PermissionError, FileNotFoundError)
         return PackageResult(
             success=False,
             output_path=None,
-            error_message=f"Permission denied: {e}",
+            error_message=f"File I/O error: {e}",
+        )
+    except zipfile.BadZipFile as e:
+        # Expected: ZIP format error
+        return PackageResult(
+            success=False,
+            output_path=None,
+            error_message=f"ZIP format error: {e}",
         )
     except Exception as e:
+        # Unexpected: Internal bug - log with traceback
+        import logging
+        import traceback
+        logging.getLogger(__name__).debug(
+            f"Unexpected package creation error: {e}\n{traceback.format_exc()}"
+        )
         return PackageResult(
             success=False,
             output_path=None,
-            error_message=str(e),
+            error_message=f"Unexpected error: {e}",
         )

@@ -99,7 +99,8 @@ class TestComputeStyleSafe:
             result = _compute_style_safe([], None)
             assert result is None
 
-    def test_logs_exception_at_debug_level(self):
+    def test_logs_expected_exception_without_traceback(self):
+        """Phase 79: Expected exceptions (ValueError, KeyError) log without traceback."""
         from katrain.core.reports.karte.builder import _compute_style_safe
 
         with patch(
@@ -108,8 +109,24 @@ class TestComputeStyleSafe:
         ), patch("katrain.core.reports.karte.builder.logger") as mock_logger:
             _compute_style_safe([], None)
             mock_logger.debug.assert_called_once()
+            # Expected exceptions: no exc_info (no traceback)
+            call_args = mock_logger.debug.call_args
+            assert "exc_info" not in call_args[1], "Expected exception should not have exc_info"
+
+    def test_logs_unexpected_exception_with_traceback(self):
+        """Phase 79: Unexpected exceptions log with exc_info=True for traceback."""
+        from katrain.core.reports.karte.builder import _compute_style_safe
+
+        # Use a non-Expected exception (not ValueError or KeyError)
+        with patch(
+            "katrain.core.reports.karte.builder.compute_radar_from_moves",
+            side_effect=RuntimeError("Unexpected error"),
+        ), patch("katrain.core.reports.karte.builder.logger") as mock_logger:
+            _compute_style_safe([], None)
+            mock_logger.debug.assert_called_once()
+            # Unexpected exceptions: must have exc_info=True for traceback
             call_kwargs = mock_logger.debug.call_args[1]
-            assert call_kwargs.get("exc_info") is True
+            assert call_kwargs.get("exc_info") is True, "Unexpected exception should have exc_info=True"
 
 
 # -----------------------------------------------------------------------------

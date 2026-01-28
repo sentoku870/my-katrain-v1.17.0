@@ -11,12 +11,19 @@ should wrap these with Clock.schedule_once() for thread safety.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
+import traceback
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 from katrain.core.batch.models import BatchResult, WriteError
+from katrain.core.reports.karte.models import (
+    KarteGenerationError,
+    MixedEngineSnapshotError,
+)
 from katrain.core.batch.helpers import (
     collect_sgf_files_recursive,
     has_analysis,
@@ -348,18 +355,39 @@ def run_batch(
                         # Phase 53: Store mapping for summary link generation
                         karte_path_map[rel_path] = karte_path
 
-                except Exception as e:
-                    import traceback
+                except (KarteGenerationError, MixedEngineSnapshotError) as e:
+                    # Expected: Karte generation domain error
                     result.karte_failed += 1
-                    error_details = traceback.format_exc()
-                    log(f"  ERROR generating karte: {e}\n{error_details}")
-                    # Record as a structured error too
+                    log(f"  Karte generation error ({rel_path}): {e}")
                     result.write_errors.append(WriteError(
                         file_kind="karte",
                         sgf_id=rel_path,
                         target_path="(generation failed)",
                         exception_type=type(e).__name__,
-                        message=str(e),
+                        message=f"[generation] {e}",
+                    ))
+                except OSError as e:
+                    # Expected: File write I/O error
+                    result.karte_failed += 1
+                    log(f"  Karte write error ({rel_path}): {e}")
+                    result.write_errors.append(WriteError(
+                        file_kind="karte",
+                        sgf_id=rel_path,
+                        target_path=str(karte_path) if "karte_path" in dir() else "(path unknown)",
+                        exception_type=type(e).__name__,
+                        message=f"[write] {e}",
+                    ))
+                except Exception as e:
+                    # Unexpected: Internal bug - traceback required
+                    result.karte_failed += 1
+                    log(f"  Unexpected karte error ({rel_path}): {e}")
+                    log(f"    {traceback.format_exc()}")
+                    result.write_errors.append(WriteError(
+                        file_kind="karte",
+                        sgf_id=rel_path,
+                        target_path="(generation failed)",
+                        exception_type=type(e).__name__,
+                        message=f"[unexpected] {e}",
                     ))
 
             # Collect stats for summary and/or curator
@@ -373,8 +401,13 @@ def run_batch(
                         # Phase 64: Collect (game, stats) for curator
                         if generate_curator:
                             games_for_curator.append((game, stats))
+                except (KeyError, ValueError) as e:
+                    # Expected: External SGF data structure issue
+                    log(f"  Stats extraction error ({rel_path}): {e}")
                 except Exception as e:
-                    log(f"  ERROR extracting stats: {e}")
+                    # Unexpected: Internal bug - traceback required
+                    log(f"  Unexpected stats error ({rel_path}): {e}")
+                    log(f"    {traceback.format_exc()}")
 
         else:
             if cancel_flag and cancel_flag[0]:
@@ -455,11 +488,15 @@ def run_batch(
                 log(f"No players with >= {min_games_per_player} games found")
                 result.summary_error = f"No players with >= {min_games_per_player} games"
 
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
+        except (OSError, KeyError, ValueError) as e:
+            # Expected: File I/O or stats structure issue
             result.summary_error = str(e)
-            log(f"ERROR generating summary: {e}\n{error_details}")
+            log(f"Summary generation error: {e}")
+        except Exception as e:
+            # Unexpected: Internal bug - traceback required
+            result.summary_error = str(e)
+            log(f"Unexpected summary error: {e}")
+            log(f"  {traceback.format_exc()}")
     elif generate_summary and not game_stats_list and not result.cancelled:
         # No games were successfully analyzed for summary
         result.summary_error = "No valid game statistics available"
@@ -492,11 +529,15 @@ def run_batch(
             if curator_result.errors:
                 log(f"WARNING: {len(curator_result.errors)} curator error(s)")
 
+        except (OSError, json.JSONDecodeError) as e:
+            # Expected: File I/O or JSON processing error
+            result.curator_errors.append(f"Curator I/O error: {e}")
+            log(f"Curator I/O error: {e}")
         except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            result.curator_errors.append(f"Curator generation failed: {e}")
-            log(f"ERROR generating curator outputs: {e}\n{error_details}")
+            # Unexpected: Internal bug - traceback required
+            result.curator_errors.append(f"Curator unexpected error: {e}")
+            log(f"Unexpected curator error: {e}")
+            log(f"  {traceback.format_exc()}")
 
     elif generate_curator and not games_for_curator and not result.cancelled:
         log("WARNING: Curator generation requested but no valid games available")

@@ -219,6 +219,11 @@ def risk_management_section(ctx: KarteContext) -> List[str]:
                 lines.append("")
 
         return lines if len(lines) > 2 else []
-    except Exception as e:
-        logger.debug(f"Risk section generation failed: {e}", exc_info=True)
+    except (KeyError, ValueError) as e:
+        # Expected: Data structure issue or invalid value (optional feature)
+        logger.debug(f"Risk section skipped: {e}")
+        return []
+    except Exception:
+        # Unexpected: Internal bug - traceback required
+        logger.debug("Unexpected risk section error", exc_info=True)
         return []

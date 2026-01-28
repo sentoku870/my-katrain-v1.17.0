@@ -11,9 +11,11 @@ from __future__ import annotations
 import os
 import time
 import traceback
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
+from katrain.core.errors import SGFError
 
 if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
@@ -148,11 +150,26 @@ def analyze_single_file(
 
         return success_result(game)
 
+    except SGFError as e:
+        # Expected: External SGF file parse/structure error
+        sgf_name = Path(sgf_path).name
+        log(f"    SGF parse error ({sgf_name}): {e}")
+        return fail_result()
+    except OSError as e:
+        # Expected: File I/O error (includes PermissionError, FileNotFoundError)
+        sgf_name = Path(sgf_path).name
+        log(f"    File I/O error ({sgf_name}): {e}")
+        return fail_result()
+    except UnicodeDecodeError as e:
+        # Expected: Encoding mismatch in SGF file
+        sgf_name = Path(sgf_path).name
+        log(f"    Encoding error ({sgf_name}): {e}")
+        return fail_result()
     except Exception as e:
-        # Never swallow exceptions silently - log full traceback
-        error_tb = traceback.format_exc()
-        log(f"    ERROR: {e}")
-        log(f"    Traceback:\n{error_tb}")
+        # Unexpected: Internal bug - traceback required
+        sgf_name = Path(sgf_path).name
+        log(f"    Unexpected error ({sgf_name}): {e}")
+        log(f"    {traceback.format_exc()}")
         return fail_result()
 
 
@@ -387,8 +404,24 @@ def analyze_single_file_leela(
 
         return success_result(game, snapshot)
 
+    except SGFError as e:
+        # Expected: External SGF file parse/structure error
+        sgf_name = Path(sgf_path).name
+        log(f"    SGF parse error ({sgf_name}): {e}")
+        return fail_result()
+    except OSError as e:
+        # Expected: File I/O error (includes PermissionError, FileNotFoundError)
+        sgf_name = Path(sgf_path).name
+        log(f"    File I/O error ({sgf_name}): {e}")
+        return fail_result()
+    except UnicodeDecodeError as e:
+        # Expected: Encoding mismatch in SGF file
+        sgf_name = Path(sgf_path).name
+        log(f"    Encoding error ({sgf_name}): {e}")
+        return fail_result()
     except Exception as e:
-        error_tb = traceback.format_exc()
-        log(f"    ERROR: {e}")
-        log(f"    Traceback:\n{error_tb}")
+        # Unexpected: Internal bug - traceback required
+        sgf_name = Path(sgf_path).name
+        log(f"    Unexpected error ({sgf_name}): {e}")
+        log(f"    {traceback.format_exc()}")
         return fail_result()
