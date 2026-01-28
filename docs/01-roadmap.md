@@ -199,7 +199,7 @@
 
 **詳細**: [Phase 68 詳細](#phase-68-command-pattern-for-katagoengine完了)
 
-### Phase 69–79: Large Refactor & Maintainability（予定）
+### Phase 69–79: Large Refactor & Maintainability ✅ **完了**（2026-01-28）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
@@ -210,12 +210,12 @@
 | 73 | KaTrainGui分割 A | KeyboardManager | ✅ |
 | 74 | KaTrainGui分割 B | ConfigManager | ✅ |
 | 75 | KaTrainGui分割 C | PopupManager | ✅ |
-| 76 | KaTrainGui分割 D | GameStateManager | 📋 |
-| 77 | エラーハンドリング A | 監査・分類 | 📋 |
-| 78 | エラーハンドリング B | ユーザー操作パス | 📋 |
-| 79 | エラーハンドリング C | バックグラウンドパス | 📋 |
+| 76 | KaTrainGui分割 D | GameStateManager | ✅ |
+| 77 | エラーハンドリング A | 監査・分類 | ✅ |
+| 78 | エラーハンドリング B | ユーザー操作パス | ✅ |
+| 79 | エラーハンドリング C | バックグラウンドパス | ✅ |
 
-**詳細**: [Phase 69–79 詳細](#phase-6979-large-refactor--maintainability予定)
+**詳細**: [Phase 69–79 詳細](#phase-6979-large-refactor--maintainability完了)
 
 ### 未定（TBD / Post-52）
 
@@ -1881,7 +1881,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-### Phase 69–79: Large Refactor & Maintainability（予定）
+### Phase 69–79: Large Refactor & Maintainability ✅ **完了**（2026-01-28）
 
 **目的**: コード品質向上、テストカバレッジ拡大、保守性改善のための段階的リファクタリング。
 
@@ -1899,7 +1899,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 69: テスト強化（sgf_parser + base_katrain）（完了）
+#### Phase 69: テスト強化（sgf_parser + base_katrain）✓ 2026-01-27
 
 **In-scope:**
 - `tests/test_parser.py` 拡張（Move, ParseError, EdgeCases, RoundTrip）
@@ -1921,7 +1921,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 70: 複雑関数リファクタリング ✅
+#### Phase 70: 複雑関数リファクタリング ✓ 2026-01-27
 
 **In-scope:**
 - `game.py` の `analyze_extra()` 分割（119行→5メソッド）
@@ -1938,7 +1938,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 71: batch/stats.py 分割（2026-01-27 完了）
+#### Phase 71: batch/stats.py 分割 ✓ 2026-01-27
 
 **In-scope:**
 - `katrain/core/batch/stats/` パッケージ化
@@ -1958,7 +1958,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 72: karte_report.py 分割（2026-01-27 完了）
+#### Phase 72: karte_report.py 分割 ✓ 2026-01-27
 
 **In-scope:**
 - `katrain/core/reports/karte/` パッケージ化
@@ -1985,7 +1985,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 73: KaTrainGui分割 A（KeyboardManager）（2026-01-27 完了）
+#### Phase 73: KaTrainGui分割 A（KeyboardManager）✓ 2026-01-27
 
 **実装内容:**
 - KaTrainGuiからキーボード処理（約145行）をKeyboardManagerに抽出
@@ -2002,7 +2002,7 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 74: KaTrainGui分割 B（ConfigManager）（2026-01-27 完了）
+#### Phase 74: KaTrainGui分割 B（ConfigManager）✓ 2026-01-27
 
 **In-scope:**
 - 設定管理を ConfigManager に集約
@@ -2027,13 +2027,16 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 75: KaTrainGui分割 C（PopupManager）
+#### Phase 75: KaTrainGui分割 C（PopupManager）✓ 2026-01-28
 
 **In-scope:**
 - `_do_*_popup` メソッド群を PopupManager に移動
 
 **成果物:**
-- `katrain/gui/managers/popup_manager.py`
+- `katrain/gui/managers/popup_manager.py`（~154行）
+- `tests/test_popup_manager.py`（21テスト）
+
+**テスト:** 2896件（+21件）
 
 ---
 
