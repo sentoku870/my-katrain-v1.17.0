@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-28（Phase 77完了）
+> 最終更新: 2026-01-28（Phase 78完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -2074,15 +2074,33 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 78: エラーハンドリング B（ユーザー操作パス）
+#### Phase 78: エラーハンドリング B（ユーザー操作パス）✓ 2026-01-28
 
 **In-scope:**
-- ユーザー操作に直結する箇所の改善
-- 具体的な例外クラスへの変更
-- 適切なログ出力追加
+- Phase 77監査結果に基づき、ユーザー操作に直結する20箇所を改善
+- 広範な`except Exception`を具体的な例外クラスに置換
+- Safe Boundary Pattern の適用（既知例外→境界フォールバック）
+- 例外ハンドラ内での安全なプレビュー構築（プライバシー保護）
 
-**成果物:**
-- 複数ファイル更新
+**成果物（8ファイル、20ハンドラ）:**
+
+| Sub-Phase | ファイル | 行番号 | 変更内容 |
+|-----------|----------|--------|----------|
+| 78A | `sgf_parser.py` | 681, 691, 705 | GIB komi/date抽出: (AttributeError, ValueError) |
+| 78A | `settings_popup.py` | 202, 253, 286, 293, 1196 | Export/Import/Save: OSError, UnicodeDecodeError, JSONDecodeError |
+| 78B | `sgf_manager.py` | 120, 153, 160, 176, 254 | クリップボード/ファイル操作: ParseError, OSError |
+| 78C | `engine_compare_popup.py` | 96 | 比較ビルド: (ValueError, AttributeError) |
+| 78C | `package_export_ui.py` | 79, 86 | カルテ/SGF生成: ドメイン固有例外 |
+| 78C | `popups.py` | 245, 294 | Spinner/InputParse: ValueError, from e |
+| 78C | `settings_export.py` | 259 | Atomic save cleanup: ログ付きre-raise |
+| 78C | `batch_analyze_sgf.py` | 197 | エンジン起動: (OSError, RuntimeError, EngineError) |
+
+**設計原則:**
+- サイレントな例外無視を排除（全ハンドラでログ出力）
+- `from e`によるtraceback保持
+- ユーザー向けメッセージは簡潔、詳細はログのみ
+
+**PRs:** #216
 
 ---
 

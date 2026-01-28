@@ -1,9 +1,28 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-77 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-78 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-28: Phase 78 完了（エラーハンドリング B - ユーザー操作パス）
+  - Phase 77監査結果に基づき、ユーザー操作に直結する20箇所を改善
+  - 8ファイル更新:
+    - `katrain/core/sgf_parser.py`: GIB komi/date抽出 (AttributeError, ValueError)
+    - `katrain/gui/features/settings_popup.py`: Export/Import/Save (OSError, UnicodeDecodeError, JSONDecodeError)
+    - `katrain/gui/sgf_manager.py`: クリップボード/ファイル操作 (ParseError, OSError)
+    - `katrain/gui/features/engine_compare_popup.py`: 比較ビルド (ValueError, AttributeError)
+    - `katrain/gui/features/package_export_ui.py`: カルテ/SGF生成 (KarteGenerationError, MixedEngineSnapshotError)
+    - `katrain/gui/popups.py`: Spinner fallback (ValueError), InputParseError with traceback
+    - `katrain/common/settings_export.py`: Atomic save cleanup with logging
+    - `katrain/tools/batch_analyze_sgf.py`: エンジン起動 (OSError, RuntimeError, EngineError)
+  - 設計原則:
+    - Safe Boundary Pattern（既知例外→境界フォールバック）
+    - サイレントな例外無視を排除（全ハンドラでログ出力）
+    - `from e`によるtraceback保持
+    - 例外ハンドラ内での安全なプレビュー構築（プライバシー保護）
+  - テスト: 2918件パス（変更なし）
+  - PRs: #216
 
 - 2026-01-28: Phase 77 完了（エラーハンドリング A - 監査・分類）
   - 全 `except Exception` ハンドラを AST 解析で監査
