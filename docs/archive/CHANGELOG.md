@@ -1,9 +1,33 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-78 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-79 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-28: Phase 79 完了（エラーハンドリング C - バックグラウンドパス）
+  - Phase 77監査結果に基づき、バックグラウンド処理の27箇所を改善
+  - 12ファイル更新:
+    - `katrain/core/batch/analysis.py`: analyze_single_file, analyze_single_file_leela (SGFError, OSError, UnicodeDecodeError)
+    - `katrain/core/batch/orchestration.py`: Karte generation, stats extraction, summary, curator (KarteGenerationError, MixedEngineSnapshotError, OSError, KeyError, ValueError)
+    - `katrain/core/curator/batch.py`: Ranking JSON, guide extraction, guide JSON (OSError, KeyError, ValueError)
+    - `katrain/core/reports/karte/builder.py`: Style computation, karte report, time analysis, histogram (ValueError, KeyError)
+    - `katrain/core/reports/karte/json_export.py`: Phase classification (ValueError)
+    - `katrain/core/reports/karte/sections/important_moves.py`: Context extraction, Critical 3 (KeyError)
+    - `katrain/core/reports/karte/sections/metadata.py`: Risk section (KeyError, ValueError)
+    - `katrain/core/reports/package_export.py`: Directory check, coach.md loading, ZIP creation (OSError, TypeError, zipfile.BadZipFile)
+    - `katrain/gui/features/summary_aggregator.py`: SGF scan (SGFError, OSError)
+    - `katrain/gui/features/summary_io.py`: Player/category save, clipboard, file export (OSError, RuntimeError)
+    - `katrain/gui/features/summary_ui.py`: SGF processing loop (SGFError, OSError, KeyError)
+    - `tests/test_karte_style_integration.py`: Expected/Unexpected exception split対応
+  - 設計原則:
+    - Expected exceptions（既知の失敗）: 短いログ、tracebackなし
+    - Unexpected exceptions（内部バグ）: traceback必須（exc_info=True or traceback.format_exc()）
+    - WriteError message prefix pattern: `[generation]`, `[write]`, `[unexpected]`
+  - 新規テスト:
+    - `test_error_handling_phase79.py`（5テスト）: analyze_single_file, _is_writable_directory, create_llm_package
+  - テスト: 2924件パス（+6件）
+  - PRs: #217
 
 - 2026-01-28: Phase 78 完了（エラーハンドリング B - ユーザー操作パス）
   - Phase 77監査結果に基づき、ユーザー操作に直結する20箇所を改善

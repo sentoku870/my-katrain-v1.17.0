@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-28（Phase 78完了）
+> 最終更新: 2026-01-28（Phase 79完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -2104,14 +2104,23 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
 
 ---
 
-#### Phase 79: エラーハンドリング C（バックグラウンドパス）
+#### Phase 79: エラーハンドリング C（バックグラウンドパス）✓ 2026-01-28
 
 **In-scope:**
-- バックグラウンド処理の改善
-- サイレント失敗の排除
+- Phase 77監査結果に基づき、バックグラウンド処理の27箇所を改善
+- 12ファイル更新: batch/analysis.py, batch/orchestration.py, curator/batch.py, reports/karte/builder.py, reports/karte/json_export.py, reports/karte/sections/important_moves.py, reports/karte/sections/metadata.py, reports/package_export.py, gui/features/summary_aggregator.py, gui/features/summary_io.py, gui/features/summary_ui.py, tests/test_karte_style_integration.py
+- Expected例外（SGFError, OSError, ValueError, KeyError等）: 短いログ、tracebackなし
+- Unexpected例外: traceback必須（exc_info=True or traceback.format_exc()）
+- WriteError message prefix pattern: [generation], [write], [unexpected]
 
 **成果物:**
-- 複数ファイル更新
+- Phase 79A: Core Batch（6箇所）
+- Phase 79B: Reports（11箇所）
+- Phase 79C: Curator（3箇所）
+- Phase 79D: Summary（7箇所）
+- 新規テスト: test_error_handling_phase79.py（5テスト）
+- テスト総数: 2924件（+6件）
+- PRs: #217
 
 ---
 
