@@ -96,8 +96,13 @@ def _compute_style_safe(
         radar = compute_radar_from_moves(moves, player=player)
         tag_counts = _build_tag_counts_from_moves(moves, player)
         return determine_style(radar, tag_counts)
+    except (ValueError, KeyError) as e:
+        # Expected: External data structure issue (optional feature)
+        logger.debug(f"Style computation skipped: {e}")
+        return None
     except Exception:
-        logger.debug("Style computation failed", exc_info=True)
+        # Unexpected: Internal bug - traceback required (optional feature)
+        logger.debug("Unexpected style computation error", exc_info=True)
         return None
 
 
@@ -169,12 +174,16 @@ def build_karte_report(
         raise
 
     except Exception as e:
+        # Unexpected: Internal bug - traceback required
+        import traceback
         error_msg = (
             f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
             f"Failed to generate karte: {type(e).__name__}: {e}"
         )
         if game.katrain:
-            game.katrain.log(error_msg, OUTPUT_DEBUG)
+            game.katrain.log(
+                f"{error_msg}\n{traceback.format_exc()}", OUTPUT_DEBUG
+            )
 
         if raise_on_error:
             raise KarteGenerationError(
@@ -291,8 +300,13 @@ def _build_karte_report_impl(
         if time_data.has_time_data:
             pacing_result = analyze_pacing(time_data, list(snapshot.moves))
             pacing_map = {m.move_number: m for m in pacing_result.pacing_metrics}
-    except Exception as e:
-        logger.debug(f"Time analysis failed: {e}")
+    except (ValueError, KeyError) as e:
+        # Expected: Time data missing or malformed in SGF (common case)
+        logger.debug(f"Time analysis skipped: {e}")
+        # pacing_map remains None → all Time columns show "-"
+    except Exception:
+        # Unexpected: Internal bug - traceback required (optional feature)
+        logger.debug("Unexpected time analysis error", exc_info=True)
         # pacing_map remains None → all Time columns show "-"
 
     # Meta
@@ -393,9 +407,17 @@ def _build_karte_report_impl(
             _sum_stats, histogram, _ptloss = ai_module.game_report(
                 game, thresholds=thresholds, depth_filter=None
             )
-        except Exception as exc:  # pragma: no cover - defensive fallback
+        except (ValueError, KeyError) as exc:  # pragma: no cover - defensive fallback
+            # Expected: Threshold config or game data structure issue
             game.katrain.log(
-                f"Failed to build histogram for Karte export: {exc}", OUTPUT_DEBUG
+                f"Histogram generation skipped: {exc}", OUTPUT_DEBUG
+            )
+            histogram = None
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            game.katrain.log(
+                f"Unexpected histogram error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG
             )
             histogram = None
 

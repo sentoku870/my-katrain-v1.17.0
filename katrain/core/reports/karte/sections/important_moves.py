@@ -112,10 +112,19 @@ def get_context_info_for_move(game: Any, move_eval: MoveEval) -> Dict[str, Any]:
                 else:
                     context["danger"] = "Low"
 
-    except Exception as e:
+    except KeyError as e:
+        # Expected: SGF tree structure issue (missing node data)
         if game.katrain:
             game.katrain.log(
-                f"Failed to get context info for move #{move_eval.move_number}: {e}",
+                f"Context extraction skipped for move #{move_eval.move_number}: {e}",
+                OUTPUT_DEBUG,
+            )
+    except Exception as e:
+        # Unexpected: Internal bug - traceback required
+        import traceback
+        if game.katrain:
+            game.katrain.log(
+                f"Unexpected context error for move #{move_eval.move_number}: {e}\n{traceback.format_exc()}",
                 OUTPUT_DEBUG,
             )
 
@@ -273,9 +282,18 @@ def critical_3_section_for(
             lang=ctx.lang,
             level=level,
         )
-    except Exception as exc:
+    except KeyError as exc:
+        # Expected: Game data structure issue
         if ctx.game.katrain:
-            ctx.game.katrain.log(f"Failed to compute Critical 3: {exc}", OUTPUT_DEBUG)
+            ctx.game.katrain.log(f"Critical 3 skipped: {exc}", OUTPUT_DEBUG)
+        return []
+    except Exception as exc:
+        # Unexpected: Internal bug - traceback required
+        import traceback
+        if ctx.game.katrain:
+            ctx.game.katrain.log(
+                f"Unexpected Critical 3 error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG
+            )
         return []
 
     # Filter by player

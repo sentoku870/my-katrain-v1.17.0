@@ -191,7 +191,16 @@ def build_karte_json(
         # phase: use classify_game_phase
         try:
             phase = classify_game_phase(mv.move_number, board_x)
+        except ValueError:
+            # Expected: Invalid move number or board size
+            phase = "unknown"
         except Exception:
+            # Unexpected: Internal bug - traceback required
+            import logging
+            logging.getLogger(__name__).debug(
+                f"Unexpected phase classification error for move {mv.move_number}",
+                exc_info=True
+            )
             phase = "unknown"
 
         # Phase 47: Get meaning tag info

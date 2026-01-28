@@ -95,8 +95,13 @@ def save_summaries_per_player(
                 saved_files.append(full_path)
                 ctx.log(f"Summary saved: {full_path}", OUTPUT_INFO)
 
-        except Exception as exc:
+        except OSError as exc:
+            # Expected: File I/O error
             ctx.log(f"Failed to save summary for {player_name}: {exc}", OUTPUT_ERROR)
+        except Exception as exc:
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            ctx.log(f"Unexpected error saving summary for {player_name}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     # 結果ポップアップ
     if saved_files:
@@ -181,8 +186,13 @@ def save_categorized_summaries_from_stats(
             saved_files.append(full_path)
             ctx.log(f"Summary saved: {full_path}", OUTPUT_INFO)
 
-        except Exception as exc:
+        except OSError as exc:
+            # Expected: File I/O error
             ctx.log(f"Failed to save summary for {category}: {exc}", OUTPUT_ERROR)
+        except Exception as exc:
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            ctx.log(f"Unexpected error saving summary for {category}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     # 結果ポップアップ
     if saved_files:
@@ -240,8 +250,13 @@ def save_summary_file(
         # クリップボードにコピー
         try:
             Clipboard.copy(summary_text)
-        except Exception as exc:
+        except RuntimeError as exc:
+            # Expected: Kivy clipboard backend issue
             ctx.log(f"Clipboard copy failed: {exc}", OUTPUT_DEBUG)
+        except Exception as exc:
+            # Unexpected: Internal bug - traceback required
+            import traceback
+            ctx.log(f"Unexpected clipboard error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG)
 
         ctx.controls.set_status(f"Summary exported to {full_path}", STATUS_INFO, check_level=False)
         Popup(
@@ -249,10 +264,20 @@ def save_summary_file(
             content=Label(text=f"Saved to:\n{full_path}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
         ).open()
-    except Exception as exc:
+    except OSError as exc:
+        # Expected: File I/O error
         ctx.log(f"Failed to export Summary to {full_path}: {exc}", OUTPUT_ERROR)
         Popup(
             title="Error",
             content=Label(text=f"Failed to save:\n{exc}", halign="center", valign="middle"),
+            size_hint=(0.5, 0.3),
+        ).open()
+    except Exception as exc:
+        # Unexpected: Internal bug - traceback required
+        import traceback
+        ctx.log(f"Unexpected error exporting Summary to {full_path}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
+        Popup(
+            title="Error",
+            content=Label(text=f"Unexpected error:\n{exc}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
         ).open()
