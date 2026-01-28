@@ -13,7 +13,7 @@ Usage:
     python tools/verify_no_kivy.py
 
 Requirements:
-    - Python 3.9+
+    - Python 3.13+
     - Must be run from repository root
 """
 

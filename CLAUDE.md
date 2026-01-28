@@ -9,7 +9,7 @@
 
 ### 1.1 基本情報
 - **プロジェクト名**: myKatrain（KaTrain fork）
-- **技術スタック**: Python 3.9+ / Kivy（GUI）/ KataGo（解析エンジン）
+- **技術スタック**: Python 3.13+ / Kivy（GUI）/ KataGo（解析エンジン）
 - **リポジトリ**: `sentoku870/my-katrain-v1.17.0`
 - **ローカルパス**: `D:\github\katrain-1.17.0`
 

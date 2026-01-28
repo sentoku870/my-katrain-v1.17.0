@@ -19,7 +19,7 @@ This is a standalone PoC - it does **not** modify any existing KaTrain/Kivy code
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.13+
 - PySide6
 
 ## Installation & Running (Windows PowerShell)
