@@ -8,6 +8,7 @@
 - Core層へ最終文字列を渡す
 """
 
+import logging
 from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
@@ -15,6 +16,7 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
 from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
+from katrain.core.reports.karte.models import KarteGenerationError, MixedEngineSnapshotError
 from katrain.core.lang import i18n
 from katrain.core.reports.package_export import (
     PackageContent,
@@ -76,14 +78,28 @@ def _do_export_package_impl(ctx: "FeatureContext", anonymize: bool) -> None:
     # API: build_karte_report(skill_preset=str) - 検証済み
     try:
         karte_md = game.build_karte_report(skill_preset=skill_preset)
+    except (KarteGenerationError, MixedEngineSnapshotError) as e:
+        # Karte generation failure: data issues or mixed engine analysis
+        logging.info(f"Karte generation failed: {e}")
+        ctx.log(f"Failed to generate karte: {e}", OUTPUT_ERROR)
+        return
     except Exception as e:
+        # Boundary fallback: unexpected error during karte generation
+        logging.warning(f"Unexpected karte generation error: {e}", exc_info=True)
         ctx.log(f"Failed to generate karte: {e}", OUTPUT_ERROR)
         return
 
     # 3. SGF文字列取得（元のツリーは変更しない）
     try:
         sgf_content = game.root.sgf()
+    except (ValueError, AttributeError) as e:
+        # SGF serialization failure: invalid node data or missing attributes
+        logging.info(f"SGF generation failed: {e}")
+        ctx.log(f"Failed to get SGF: {e}", OUTPUT_ERROR)
+        return
     except Exception as e:
+        # Boundary fallback: unexpected error generating SGF
+        logging.warning(f"Unexpected SGF generation error: {e}", exc_info=True)
         ctx.log(f"Failed to get SGF: {e}", OUTPUT_ERROR)
         return
 

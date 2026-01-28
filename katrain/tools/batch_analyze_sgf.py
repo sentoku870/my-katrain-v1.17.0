@@ -28,9 +28,12 @@ import sys
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 # KaTrain imports for CLI entry point
+import traceback
+
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
+from katrain.core.errors import EngineError
 
 # =============================================================================
 # Phase 42-B: Backward compatibility re-exports from katrain.core.batch
@@ -194,9 +197,16 @@ Examples:
     engine_config = katrain.config("engine")
     try:
         engine = KataGoEngine(katrain, engine_config)
-    except Exception as e:
+    except (OSError, RuntimeError, EngineError) as e:
+        # Engine startup failure: executable not found, process crash, or engine error
+        # All three are expected failure modes for engine initialization
         print(f"Error starting KataGo engine: {e}")
         print("Please ensure KataGo is properly configured in KaTrain settings.")
+        sys.exit(1)
+    except Exception as e:
+        # Boundary fallback: truly unexpected error during engine initialization
+        print(f"Unexpected error starting KataGo engine: {e}")
+        traceback.print_exc()
         sys.exit(1)
 
     # Process each file

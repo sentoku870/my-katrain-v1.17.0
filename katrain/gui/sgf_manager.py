@@ -11,6 +11,7 @@ __main__.pyから抽出されたSGFファイル管理機能。
 - ファイル操作とUI操作を分離
 """
 
+import logging
 import os
 import re
 from typing import Any, Callable, List, Optional
@@ -21,7 +22,7 @@ from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp, sp
 from kivy.uix.dropdown import DropDown
 
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_INFO
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_ERROR, STATUS_INFO
 from katrain.core.game import KaTrainSGF
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import ParseError
@@ -117,11 +118,22 @@ class SGFManager:
 
         try:
             move_tree = KaTrainSGF.parse_sgf(clipboard)
+        except (ParseError, ValueError) as exc:
+            # SGF parse failure: syntax error or invalid coordinates
+            # Safe preview: avoid TypeError if clipboard is None or non-string
+            preview = ""
+            try:
+                preview = (clipboard[:50] + "...") if clipboard and len(clipboard) > 50 else (clipboard or "")
+            except (TypeError, AttributeError):
+                preview = "<unreadable>"
+            logging.info(f"Clipboard SGF parse failed: {exc}, preview: {preview}")
+            # UI message: simple, no raw clipboard content (privacy)
+            self._set_status(f"Failed to import from clipboard: {exc}", STATUS_INFO)
+            return
         except Exception as exc:
-            self._set_status(
-                i18n._("Failed to import from clipboard").format(error=exc, contents=clipboard[:50]),
-                STATUS_INFO
-            )
+            # Boundary fallback: unexpected error parsing clipboard SGF
+            logging.warning(f"Unexpected clipboard SGF error: {exc}", exc_info=True)
+            self._set_status(f"Failed to import from clipboard: {exc}", STATUS_INFO)
             return
 
         engine = self._get_engine()
@@ -150,15 +162,29 @@ class SGFManager:
             msg = game.write_sgf(filename)
             self._log(msg, OUTPUT_INFO)
             self._set_status(msg, STATUS_INFO)
-        except Exception as e:
+        except OSError as e:
+            # File write failure: permission denied, disk full, invalid path
+            logging.warning(f"SGF save failed to {filename}: {e}", exc_info=True)
             self._log(f"Failed to save SGF to {filename}: {e}", OUTPUT_ERROR)
+            self._set_status(f"Save failed: {e}", STATUS_ERROR)
+        except Exception as e:
+            # Boundary fallback: unexpected error during SGF save
+            logging.error(f"Unexpected error saving SGF to {filename}: {e}", exc_info=True)
+            self._log(f"Failed to save SGF to {filename}: {e}", OUTPUT_ERROR)
+            self._set_status(f"Save failed: {e}", STATUS_ERROR)
 
     def open_recent_sgf(self) -> None:
         """最近のSGFファイルを開く（ドロップダウン表示）。"""
         try:
             sgf_dir = os.path.abspath(os.path.expanduser(self._config("general/sgf_load", ".")))
+        except (OSError, KeyError, TypeError) as e:
+            # Path expansion or config read failure
+            logging.debug(f"Failed to determine sgf load directory: {e}")
+            self._dispatch("analyze-sgf-popup")
+            return
         except Exception as e:
-            self._log(f"Failed to determine sgf load directory: {e}", OUTPUT_DEBUG)
+            # Boundary fallback: unexpected error determining SGF directory
+            logging.warning(f"Unexpected error getting SGF directory: {e}", exc_info=True)
             self._dispatch("analyze-sgf-popup")
             return
 
@@ -173,8 +199,14 @@ class SGFManager:
                 if f.lower().endswith(".sgf") and os.path.isfile(os.path.join(sgf_dir, f))
             ]
             sgf_files.sort(key=os.path.getmtime, reverse=True)
+        except OSError as e:
+            # Directory listing or file stat failure
+            logging.debug(f"Failed to list SGF files in {sgf_dir}: {e}")
+            self._dispatch("analyze-sgf-popup")
+            return
         except Exception as e:
-            self._log(f"Failed to list SGF files in {sgf_dir}: {e}", OUTPUT_DEBUG)
+            # Boundary fallback: unexpected error listing SGF files
+            logging.warning(f"Unexpected error listing SGF files in {sgf_dir}: {e}", exc_info=True)
             self._dispatch("analyze-sgf-popup")
             return
 
@@ -251,8 +283,13 @@ class SGFManager:
                 dropdown.open(sgf_button)
             else:
                 raise AttributeError("SGF button not available")
+        except (AttributeError, RuntimeError) as e:
+            # Dropdown open failure: widget not available or in invalid state
+            logging.debug(f"Failed to open recent SGF dropdown: {e}")
+            self._dispatch("analyze-sgf-popup")
         except Exception as e:
-            self._log(f"Failed to open recent SGF dropdown: {e}", OUTPUT_DEBUG)
+            # Boundary fallback: unexpected Kivy widget error
+            logging.warning(f"Unexpected error opening SGF dropdown: {e}", exc_info=True)
             self._dispatch("analyze-sgf-popup")
 
     def do_analyze_sgf_popup(self, katrain) -> None:

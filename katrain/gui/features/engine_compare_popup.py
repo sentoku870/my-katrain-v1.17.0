@@ -8,6 +8,7 @@ in a tabbed interface with:
 - Statistics summary (統計サマリー)
 """
 
+import logging
 from typing import TYPE_CHECKING, Callable, List, Optional
 
 from kivy.clock import Clock
@@ -93,7 +94,14 @@ def _show_engine_compare_popup_impl(ctx: "FeatureContext") -> None:
     # Build comparison result
     try:
         result = build_comparison_from_game(game)
+    except (ValueError, AttributeError) as e:
+        # Comparison build failure: invalid game state or missing analysis data
+        logging.info(f"Engine comparison build failed: {e}")
+        ctx.log(f"{i18n._('engine-compare:build-error')}: {e}", OUTPUT_ERROR)
+        return
     except Exception as e:
+        # Boundary fallback: unexpected error building comparison
+        logging.warning(f"Unexpected error in engine comparison: {e}", exc_info=True)
         ctx.log(f"{i18n._('engine-compare:build-error')}: {e}", OUTPUT_ERROR)
         return
 

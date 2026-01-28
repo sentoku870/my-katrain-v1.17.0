@@ -1,5 +1,6 @@
 import glob
 import json
+import logging
 import os
 import re
 import stat
@@ -242,10 +243,11 @@ class QuickConfigGui(MDBoxLayout):
         ) and getattr(widget, "input_property", None):
             try:
                 ret = {widget.input_property: widget.input_value}
-            except Exception as e:  # TODO : on widget?
+            except Exception as e:
+                # Re-raise as InputParseError with full context and traceback
                 raise InputParseError(
                     f"Could not parse value '{widget.raw_input_value}' for {widget.input_property} ({widget.__class__.__name__}): {e}"
-                )
+                ) from e
         else:
             ret = {}
         for c in widget.children:
@@ -288,12 +290,17 @@ class QuickConfigGui(MDBoxLayout):
             elif isinstance(widget, LabelledSelectionSlider):
                 widget.set_value(value)
             elif isinstance(widget, LabelledSpinner):
-                selected = 0
+                selected = 0  # Safe default before try block
                 try:
                     selected = widget.value_refs.index(value)
-                except Exception:
-                    # Control-flow: value not found in list, fall back to index 0
-                    pass
+                except ValueError:
+                    # Control-flow: config value not in spinner options.
+                    # Fall back to first option (index 0) - this can happen when
+                    # options changed between versions or config was manually edited.
+                    logging.debug(
+                        f"Spinner value '{value}' not found in {widget.input_property}, using default index 0"
+                    )
+                    # selected remains 0 (set above)
                 widget.text = widget.values[selected]
             else:
                 widget.text = str(value)
