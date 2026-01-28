@@ -217,12 +217,82 @@
 
 **詳細**: [Phase 69–79 詳細](#phase-6979-large-refactor--maintainability完了)
 
-### 未定（TBD / Post-52）
+### Phase 80–87: Analysis Intelligence（Karte/Summaryの意味付け強化）📋 **Planned**
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 8 | 初心者向けヒント | 構造解析 + テンプレ | 📋 TBD |
-| 10+ | クイズUI拡張 | クイズモードUI完成 | 📋 TBD |
+| 80 | 共通基盤（Area判定・抽出ヘルパ） | `get_area_name()` / Area分類、ownership・scoreStdev取得ヘルパ、最小テスト | 📋 Planned |
+| 81 | Ownership差分クラスタ抽出（MVP） | ownership diff + clustering（BFS/Union-Find想定）、最小ユニットテスト | 📋 Planned |
+| 82 | Consequence判定 + Karteへ限定統合 | 3分類（Group Death/Territory Loss/Missed Kill）、Critical 3のContextが(none)時のみ注入 | 📋 Planned |
+| 83 | Complexityフィルタ（最小ルール） | `scoreStdev>20` Chaos判定、除外/減点、件数カウント、回帰テスト | 📋 Planned |
+| 84 | Recurring Pattern集計コア（MVP） | `pattern_miner`（signature集計・ランキング）、テストSGFセット | 📋 Planned |
+| 85 | PatternのSummary統合（レンダリング） | summary出力テンプレ（Markdown）、ゴールデン更新/スナップショット | 📋 Planned |
+| 86 | Reason Generator（限定実装） | 単発タグ＋上位N組み合わせのみ自然文、残りはタグ併記フォールバック、i18n最小 | 📋 Planned |
+| 87 | バッファ（調整・拡張・磨き込み） | 閾値調整、追加指標、説明文改善、ドキュメント整理（拡張は原則ここへ集約） | 📋 Planned |
+
+**Phase 80**: 後続の前提を固定するための共通基盤。Area判定（隅/辺/中央など）と、ownership・scoreStdev等の取得ヘルパを整備する。
+このフェーズではKarte/Summaryの出力仕様は変えない（土台固めのみ）。
+
+**Phase 81**: ownership差分から「変動の塊（クラスタ）」を抽出するMVP。再現性と安定性を優先し、分類やレポート統合は次へ送る。
+外部依存は増やさず、BFS/Union-Find等の軽量実装を想定。
+
+**Phase 82**: クラスタを3分類（Group Death / Territory Loss / Missed Kill）へ落とし込む。
+Karteへの統合は「Critical 3のContextが(none)のときのみ」注入する限定運用で安全に入れる。
+
+**Phase 83**: Complexity（Chaos）フィルタの最小導入。まずは `scoreStdev > 20` の単一ルールから開始し、除外/減点の影響を可視化する。
+調整可能性のため、除外件数カウントやログを合わせて入れる。
+
+**Phase 84**: Recurring Patternの集計コア（MVP）。MistakeSignatureは最小構成で頻度上位を抽出し、検出の正しさをテストで固める。
+テスト用に「同じミスを繰り返すSGFセット」を用意する。
+
+**Phase 85**: PatternをSummaryへ統合し、出力テンプレ（Markdown）を確定する。
+表示の安定性（回帰）を重視し、ゴールデン更新やスナップショットテストを追加する。
+
+**Phase 86**: Reason Generator（自然文）を"限定実装"で導入。単発タグ＋上位N組み合わせのみ自然文、残りはタグ併記フォールバック。
+i18nの増加は最小限に抑え、欠損時に崩れないことを優先する。
+
+**Phase 87**: 調整・拡張・磨き込み用バッファ。閾値チューニング、追加指標、説明文改善、ドキュメント整理をここに集約する。
+（Situation/Status拡張やsignature拡張など"膨らむ要素"は原則ここで扱う）
+
+### Phase 88–94: Beginner Experience & Study Modes 📋 **Planned**
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | 📋 Planned |
+| 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | 📋 Planned |
+| 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | 📋 Planned |
+| 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | 📋 Planned |
+| 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、任意ハイライト、i18n整備 | 📋 Planned |
+| 93 | Active Review MVP | Fog of War、回答入力、即時採点（最小）、基本UI統合 | 📋 Planned |
+| 94 | Active Review 拡張 | Retry/Hint、セッションサマリ、ゲーム化、（任意）80系連携 | 📋 Planned |
+
+**Phase 88**: PC初心者の事故を根治するため、設定UIの再構成と「安全なデフォルト導線」を整備する。
+human-likeは通常モデルと混在しない設計に寄せ、迷いポイントを減らす。
+
+**Phase 89**: "まず動かす"自動モードを用意し、初回導入の失敗率を下げる。
+実行テスト＋OpenCL→CPUフォールバックなど、起動/解析が通ることを最優先にする。
+
+**Phase 90**: エラー救済を強化し、診断情報を「共有可能な形」で自動収集できるようにする。
+LLM相談用コピー、diagnosticsダンプ、復旧導線（自動へ戻す等）を整備する。
+
+**Phase 91**: 初心者向けヒント（Safety Net）MVP。1手1ヒント枠で、コア4（self-atari等）を中心に出す。
+チート衝突を避け、Review/Analysis中心＋ON/OFFで提供する。
+
+**Phase 92**: 初心者ヒント拡張。テンプレ翻訳、信頼度フィルタ、任意ハイライト、i18n整備を追加する。
+誤判定・出しすぎのノイズを増やさないことを優先する。
+
+**Phase 93**: Active Review Mode（次の一手予測）MVP。Fog of WarでAIヒントを隠し、ユーザー回答→即時採点の最小ループを作る。
+UI統合と基本評価指標の提示までに絞る。
+
+**Phase 94**: Active Review拡張。Retry/Hint/セッションサマリ等の学習導線を追加する。
+必要に応じてPhase 80系（弱点パターン等）との接続も検討する。
+
+### 未定（TBD / Post-52）
+
+※「初心者向けヒント」「Active Review」「KataGoセットアップ救済」は Phase 88–94 に移動。
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
 | - | Ownership Volatility (Idea #3) | 盤面リスクオーバーレイ | 📋 Future |
 | - | Style Matching Quiz (Idea #5) | スタイル判定クイズ | 📋 Future |
 | - | Lexicon UI Browser | 用語ポップアップ | 📋 Future |
@@ -2737,5 +2807,10 @@ Phase 45 (Lexicon) ──→ Phase 46 (MeaningTags Core) ──→ Phase 47 (Mea
   - Phase 7: デイリーコーチ（単局カルテ）+ カルテ品質向上に焦点
   - Phase 8: 初心者向けヒントは任意機能として後回し
 - 2025-12-31: Phase 5完了を反映（カルテ出力 + Freedom追加 + LLM連携テスト成功）
+- 2026-01-29: Phase 80-94追加（Analysis Intelligence + Beginner Experience）
+  - Phase 80-87: Karte/Summaryの意味付け強化（Ownership差分、Complexity、Pattern等）
+  - Phase 88-94: KataGoセットアップ救済、初心者向けヒント、Active Review
+  - 未定セクション更新（Phase 8等をPhase 88-94に移動）
+  - 詳細仕様書を `docs/future/` に追加
 - 2025-12-30: Claude Code移行対応で整理、Phase 4.5完了を反映
 - 2025-12-26: v0.1作成
