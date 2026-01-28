@@ -9,6 +9,8 @@
 # - do_mykatrain_settings_popup: myKatrain設定ポップアップの表示
 # - _reset_tab_settings: タブ別設定リセット (Phase 27)
 
+import json
+import logging
 import os
 import shutil
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
@@ -199,11 +201,14 @@ def _do_export_settings(
             i18n._("mykatrain:settings:export_success").format(path=file_path),
             STATUS_INFO,
         )
+    except OSError as e:
+        # File write failure: permission denied, disk full, invalid path
+        logging.warning(f"Settings export failed to {file_path}: {e}", exc_info=True)
+        ctx.controls.set_status(f"Export failed: {e}", STATUS_ERROR)
     except Exception as e:
-        ctx.controls.set_status(
-            f"Export failed: {e}",
-            STATUS_ERROR,
-        )
+        # Boundary fallback: unexpected error during settings export
+        logging.error(f"Unexpected error exporting settings to {file_path}: {e}", exc_info=True)
+        ctx.controls.set_status(f"Export failed: {e}", STATUS_ERROR)
 
 
 def _do_import_settings(
@@ -248,9 +253,18 @@ def _do_import_settings(
         imported = parse_exported_settings(json_str)
 
     except ValueError as e:
+        # JSON parse or validation error
+        logging.warning(f"Settings import validation failed: {e}")
+        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
+        return
+    except (OSError, UnicodeDecodeError) as e:
+        # File read failure: file not found, permission denied, encoding error
+        logging.warning(f"Settings import read failed from {file_path}: {e}", exc_info=True)
         ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
         return
     except Exception as e:
+        # Boundary fallback: unexpected error during settings import
+        logging.error(f"Unexpected error importing settings from {file_path}: {e}", exc_info=True)
         ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
         return
 
@@ -258,7 +272,9 @@ def _do_import_settings(
     backup_path = create_backup_path(ctx.config_file)
     try:
         shutil.copy2(ctx.config_file, backup_path)
-    except IOError as e:
+    except OSError as e:
+        # Backup failure: permission denied, disk full
+        logging.warning(f"Settings import backup failed: {e}", exc_info=True)
         ctx.controls.set_status(f"Backup failed: {e}", STATUS_ERROR)
         return
 
@@ -283,16 +299,58 @@ def _do_import_settings(
         ctx._config_store._load()
         ctx._config = dict(ctx._config_store)
 
-    except Exception as e:
+    except (OSError, json.JSONDecodeError) as e:
+        # Atomic save or reload failure
+        logging.error(f"Settings import save failed: {e}", exc_info=True)
         # Rollback on failure
         ctx._config = original_config
+        rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
             ctx._config_store._load()
             ctx._config = dict(ctx._config_store)
-        except Exception:
-            pass  # Ignore rollback failure
-        ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
+        except Exception as rollback_err:
+            # Boundary fallback: rollback itself failed.
+            # At this point the config may be in an inconsistent state.
+            # We log but cannot recover - user must restart or manually fix.
+            logging.error(
+                f"CRITICAL: Settings rollback failed after import error. "
+                f"Config may be inconsistent. Error: {rollback_err}",
+                exc_info=True,
+            )
+            rollback_failed = True
+        if rollback_failed:
+            ctx.controls.set_status(
+                f"Import failed, restore may be incomplete. Restart recommended. Error: {e}",
+                STATUS_ERROR,
+            )
+        else:
+            ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
+        return
+    except Exception as e:
+        # Boundary fallback: unexpected error during save
+        logging.error(f"Unexpected error during settings save: {e}", exc_info=True)
+        # Rollback on failure
+        ctx._config = original_config
+        rollback_failed = False
+        try:
+            shutil.copy2(backup_path, ctx.config_file)
+            ctx._config_store._load()
+            ctx._config = dict(ctx._config_store)
+        except Exception as rollback_err:
+            logging.error(
+                f"CRITICAL: Settings rollback failed after import error. "
+                f"Config may be inconsistent. Error: {rollback_err}",
+                exc_info=True,
+            )
+            rollback_failed = True
+        if rollback_failed:
+            ctx.controls.set_status(
+                f"Import failed, restore may be incomplete. Restart recommended. Error: {e}",
+                STATUS_ERROR,
+            )
+        else:
+            ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
         return
 
     ctx.controls.set_status(
@@ -1193,8 +1251,17 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
             updated_engine = {**existing_engine, "analysis_engine": new_engine_value}
             ctx.set_config_section("engine", updated_engine)
             ctx.save_config("engine")
+        except OSError as e:
+            # File write failure during engine config save
+            logging.error(f"Failed to save engine config (file error): {e}", exc_info=True)
+            ctx.controls.set_status(
+                i18n._("mykatrain:settings:engine_save_error"),
+                STATUS_ERROR,
+            )
+            # Continue with other saves (partial save is better than nothing)
         except Exception as e:
-            logging.exception("Failed to save engine config")
+            # Boundary fallback: unexpected error (config structure issue, etc.)
+            logging.error(f"Failed to save engine config (unexpected): {e}", exc_info=True)
             ctx.controls.set_status(
                 i18n._("mykatrain:settings:engine_save_error"),
                 STATUS_ERROR,

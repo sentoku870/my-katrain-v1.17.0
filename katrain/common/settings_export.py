@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from dataclasses import dataclass
@@ -256,11 +257,13 @@ def atomic_save_config(
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=indent, ensure_ascii=False)
         os.replace(temp_path, config_file_path)
-    except Exception:
-        # Clean up temp file on failure
+    except Exception as e:
+        # Atomic save failed - clean up temp file before re-raising
+        logging.debug(f"Atomic save failed, cleaning up temp file: {e}")
         try:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
-        except OSError:
-            pass  # Ignore cleanup failure
-        raise
+        except OSError as cleanup_err:
+            # Cleanup failure is secondary; log but don't mask original error
+            logging.debug(f"Failed to cleanup temp file {temp_path}: {cleanup_err}")
+        raise  # Re-raise original exception with preserved traceback
