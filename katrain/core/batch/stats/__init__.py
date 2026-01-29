@@ -35,6 +35,25 @@ from .extraction import (
     extract_players_from_stats,
 )
 
+# Pattern Mining - recurring mistake detection (Phase 84)
+from .pattern_miner import (
+    MistakeSignature,
+    GameRef,
+    PatternCluster,
+    create_signature,
+    mine_patterns,
+    get_severity,
+    normalize_primary_tag,
+    determine_phase,
+    get_area_from_gtp,
+    get_opening_threshold,
+    get_area_threshold,
+    LOSS_THRESHOLD,
+    OPENING_THRESHOLDS,
+    AREA_THRESHOLDS,
+    MAX_GAME_REFS_PER_CLUSTER,
+)
+
 # Aggregation - includes i18n getters and helper functions
 from .aggregation import (
     build_batch_summary,
@@ -118,6 +137,22 @@ __all__ = [
     "extract_players_from_stats",
     "build_player_summary",
     "EvidenceMove",
+    # Pattern Mining (Phase 84)
+    "MistakeSignature",
+    "GameRef",
+    "PatternCluster",
+    "create_signature",
+    "mine_patterns",
+    "get_severity",
+    "normalize_primary_tag",
+    "determine_phase",
+    "get_area_from_gtp",
+    "get_opening_threshold",
+    "get_area_threshold",
+    "LOSS_THRESHOLD",
+    "OPENING_THRESHOLDS",
+    "AREA_THRESHOLDS",
+    "MAX_GAME_REFS_PER_CLUSTER",
     # Constants (tests)
     "SKIP_PLAYER_NAMES",
     "TIER_LABELS",
