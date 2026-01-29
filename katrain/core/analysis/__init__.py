@@ -333,6 +333,22 @@ from katrain.core.analysis.risk import (
 )
 
 # =============================================================================
+# Explicit imports from board_context.py (Phase 80)
+# =============================================================================
+
+from katrain.core.analysis.board_context import (
+    # Enums
+    BoardArea,
+    # Dataclasses
+    OwnershipContext,
+    # Functions
+    classify_area,
+    get_area_name,
+    extract_ownership_context,
+    get_score_stdev,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -599,4 +615,14 @@ __all__ = [
     "determine_behavior_from_stdev",
     "determine_behavior_from_volatility",
     "check_strategy_mismatch",
+    # === board_context.py (Phase 80) ===
+    # Enums
+    "BoardArea",
+    # Dataclasses
+    "OwnershipContext",
+    # Functions
+    "classify_area",
+    "get_area_name",
+    "extract_ownership_context",
+    "get_score_stdev",
 ]
