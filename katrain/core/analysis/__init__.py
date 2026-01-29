@@ -349,6 +349,26 @@ from katrain.core.analysis.board_context import (
 )
 
 # =============================================================================
+# Explicit imports from ownership_cluster.py (Phase 81)
+# =============================================================================
+
+from katrain.core.analysis.ownership_cluster import (
+    # Constants
+    DEFAULT_NEUTRAL_EPSILON,
+    # Enums
+    ClusterType,
+    # Dataclasses
+    OwnershipDelta,
+    OwnershipCluster,
+    ClusterExtractionConfig,
+    ClusterExtractionResult,
+    # Functions
+    compute_ownership_delta,
+    extract_clusters,
+    extract_clusters_from_nodes,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -625,4 +645,18 @@ __all__ = [
     "get_area_name",
     "extract_ownership_context",
     "get_score_stdev",
+    # === ownership_cluster.py (Phase 81) ===
+    # Constants
+    "DEFAULT_NEUTRAL_EPSILON",
+    # Enums
+    "ClusterType",
+    # Dataclasses
+    "OwnershipDelta",
+    "OwnershipCluster",
+    "ClusterExtractionConfig",
+    "ClusterExtractionResult",
+    # Functions
+    "compute_ownership_delta",
+    "extract_clusters",
+    "extract_clusters_from_nodes",
 ]
