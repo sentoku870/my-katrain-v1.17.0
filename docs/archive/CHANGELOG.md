@@ -1,9 +1,55 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-80 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-82 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 82 完了（Consequence判定 + Karteへ限定統合）
+  - Phase 81のOwnershipクラスタを3分類（GROUP_DEATH / TERRITORY_LOSS / MISSED_KILL）へ分類
+  - 新規ファイル:
+    - `katrain/core/analysis/cluster_classifier.py`: クラスタ分類ロジック（~600行）
+    - `tests/test_cluster_classifier.py`: ユニットテスト（57件）
+    - `tests/test_karte_cluster_context.py`: 統合テスト（16件）
+  - 追加API:
+    - `ClusterSemantics` enum（GROUP_DEATH/TERRITORY_LOSS/MISSED_KILL/AMBIGUOUS）
+    - `ClassifiedCluster` dataclass - 分類結果
+    - `StoneCache` class - 石位置のキャッシュ
+    - `compute_stones_at_node()` - 純粋関数での石再構築（UI副作用なし）
+    - `classify_cluster()` - クラスタを3分類に判定
+    - `_get_cluster_context_for_move()` - Karte統合用エントリポイント
+    - `get_semantics_label()` - ローカライズラベル取得（en/jp）
+  - Karte統合:
+    - `important_moves.py`: Critical 3で`reason_tags`が空の場合のみクラスタ分類を注入
+  - 技術仕様:
+    - 石再構築: nodes_from_rootから再構築（current_node変更なし、スレッドセーフ）
+    - SGF処理: placements(AB/AW)は取りなし、moves(B/W)は取りあり、AEで除去
+    - 自殺手: 自グループを除去（安全に処理）
+    - mainline: ordered_children[0]で辿る
+    - 信頼度閾値: semantics別（GROUP_DEATH=0.3, MISSED_KILL=0.4, TERRITORY_LOSS=0.5）
+  - テスト: 3067件パス（+79件）
+  - PRs: #220
+
+- 2026-01-30: Phase 81 完了（Ownershipクラスタ抽出MVP）
+  - ownership差分から変動の塊（クラスタ）を抽出するMVP
+  - 新規ファイル:
+    - `katrain/core/analysis/ownership_cluster.py`: クラスタ抽出ロジック
+    - `tests/test_ownership_cluster.py`: ユニットテスト
+  - 追加API:
+    - `OwnershipDelta` dataclass - ownership差分
+    - `OwnershipCluster` dataclass - 抽出されたクラスタ
+    - `ClusterType` enum（TO_BLACK/TO_WHITE）
+    - `ClusterExtractionConfig` dataclass - 抽出設定
+    - `ClusterExtractionResult` dataclass - 抽出結果
+    - `compute_ownership_delta()` - 差分計算
+    - `extract_clusters()` - BFSでクラスタ抽出
+    - `extract_clusters_from_nodes()` - GameNode→クラスタ抽出
+  - 技術仕様:
+    - BFS: deque使用でO(1)
+    - 閾値: min_delta=0.2, min_cluster_size=2
+    - sum_delta符号: >0で黒有利化、<0で白有利化
+  - テスト: 2988件パス（+27件）
+  - PRs: #219
 
 - 2026-01-30: Phase 80 完了（共通基盤 - Area判定・抽出ヘルパ）
   - Phase 81-87（Analysis Intelligence）の土台となる共通基盤を整備

@@ -425,5 +425,5 @@ docs/
 詳細な変更履歴は [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md) を参照してください。
 
 **最新の変更（2026-01-30）:**
-- Phase 81 完了（Ownershipクラスタ抽出MVP）
-- テスト総数: 2988件
+- Phase 82 完了（Consequence判定 + Karteへ限定統合）
+- テスト総数: 3067件
