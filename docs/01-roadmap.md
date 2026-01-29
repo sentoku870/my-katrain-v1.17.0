@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 83完了）
+> 最終更新: 2026-01-30（Phase 84完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -223,9 +223,9 @@
 |------:|--------|----------|:----:|
 | 80 | 共通基盤（Area判定・抽出ヘルパ） | `get_area_name()` / Area分類、ownership・scoreStdev取得ヘルパ、最小テスト | ✅ Done |
 | 81 | Ownership差分クラスタ抽出（MVP） | ownership diff + clustering（BFS）、27ユニットテスト | ✅ Done |
-| 82 | Consequence判定 + Karteへ限定統合 | 3分類（Group Death/Territory Loss/Missed Kill）、Critical 3のContextが(none)時のみ注入 | 📋 Planned |
-| 83 | Complexityフィルタ（最小ルール） | `scoreStdev>20` Chaos判定、除外/減点、件数カウント、回帰テスト | 📋 Planned |
-| 84 | Recurring Pattern集計コア（MVP） | `pattern_miner`（signature集計・ランキング）、テストSGFセット | 📋 Planned |
+| 82 | Consequence判定 + Karteへ限定統合 | 3分類（Group Death/Territory Loss/Missed Kill）、Critical 3のContextが(none)時のみ注入 | ✅ Done |
+| 83 | Complexityフィルタ（最小ルール） | `scoreStdev>20` Chaos判定、除外/減点、件数カウント、回帰テスト | ✅ Done |
+| 84 | Recurring Pattern集計コア（MVP） | `pattern_miner`（signature集計・ランキング）、テストSGFセット | ✅ Done |
 | 85 | PatternのSummary統合（レンダリング） | summary出力テンプレ（Markdown）、ゴールデン更新/スナップショット | 📋 Planned |
 | 86 | Reason Generator（限定実装） | 単発タグ＋上位N組み合わせのみ自然文、残りはタグ併記フォールバック、i18n最小 | 📋 Planned |
 | 87 | バッファ（調整・拡張・磨き込み） | 閾値調整、追加指標、説明文改善、ドキュメント整理（拡張は原則ここへ集約） | 📋 Planned |
@@ -242,8 +242,8 @@ Karteへの統合は「Critical 3のContextが(none)のときのみ」注入す�
 **Phase 83**: ✅ Complexity（Chaos）フィルタの最小導入。`scoreStdev > 20` で70%割引（除外ではなく減点）。
 `ComplexityFilterStats`でログ出力、`complexity_discounted`フラグでKarte表示。（2026-01-30完了）
 
-**Phase 84**: Recurring Patternの集計コア（MVP）。MistakeSignatureは最小構成で頻度上位を抽出し、検出の正しさをテストで固める。
-テスト用に「同じミスを繰り返すSGFセット」を用意する。
+**Phase 84**: ✅ Recurring Patternの集計コア（MVP）。`pattern_miner.py`でMistakeSignature/GameRef/PatternClusterを実装。
+`mine_patterns()`で複数ゲームから頻出パターンを抽出。盤サイズ対応、GTP Iスキップ対応、56テスト。（2026-01-30完了）
 
 **Phase 85**: PatternをSummaryへ統合し、出力テンプレ（Markdown）を確定する。
 表示の安定性（回帰）を重視し、ゴールデン更新やスナップショットテストを追加する。

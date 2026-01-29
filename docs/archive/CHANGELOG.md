@@ -1,9 +1,38 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-83 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-84 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 84 完了（Recurring Pattern Mining Core）
+  - 複数SGFを横断して繰り返しミスを検出する基盤
+  - 新規ファイル:
+    - `katrain/core/batch/stats/pattern_miner.py`: パターン抽出ロジック（~280行）
+    - `tests/test_pattern_miner.py`: ユニットテスト（56件）
+  - 変更ファイル:
+    - `katrain/core/batch/stats/__init__.py`: エクスポート追加
+  - 追加API:
+    - `MistakeSignature` frozen dataclass - ミスのパターン署名（phase/area/primary_tag/severity）
+    - `GameRef` frozen dataclass - ゲーム内参照（game_name/move_number/player）
+    - `PatternCluster` dataclass - パターンの集約（count/total_loss/game_refs/impact_score）
+    - `create_signature()` - MoveEvalから署名を生成
+    - `mine_patterns()` - 複数ゲームから頻出パターンを抽出
+    - `get_severity()` - MistakeCategory → severity文字列
+    - `determine_phase()` - 手番号からフェーズを判定（盤サイズ対応）
+    - `get_area_from_gtp()` - GTP座標からエリアを判定（Iスキップ対応）
+  - 定数:
+    - `LOSS_THRESHOLD = 2.5` - ミス判定閾値
+    - `OPENING_THRESHOLDS` - 盤サイズ別序盤閾値（9:15, 13:25, 19:40）
+    - `AREA_THRESHOLDS` - 盤サイズ別エリア閾値（9:3, 13:4, 19:4）
+    - `MAX_GAME_REFS_PER_CLUSTER = 10` - クラスタ当たり参照上限
+  - 技術仕様:
+    - GTP座標のIスキップ対応（K=9, J=8）
+    - 入力正規化（小文字、空白除去）
+    - 決定論的ソート（-impact_score, signature.sort_key()）
+    - FakeMoveEval（SimpleNamespace）でテスト分離
+  - テスト: 3144件パス（+56件）
+  - PRs: #222
 
 - 2026-01-30: Phase 83 完了（Complexity Filter）
   - 高変動局面（scoreStdev > 20）のミスをCritical 3選定で70%割引
