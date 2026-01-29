@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 80完了）
+> 最終更新: 2026-01-30（Phase 81完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -222,7 +222,7 @@
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 80 | 共通基盤（Area判定・抽出ヘルパ） | `get_area_name()` / Area分類、ownership・scoreStdev取得ヘルパ、最小テスト | ✅ Done |
-| 81 | Ownership差分クラスタ抽出（MVP） | ownership diff + clustering（BFS/Union-Find想定）、最小ユニットテスト | 📋 Planned |
+| 81 | Ownership差分クラスタ抽出（MVP） | ownership diff + clustering（BFS）、27ユニットテスト | ✅ Done |
 | 82 | Consequence判定 + Karteへ限定統合 | 3分類（Group Death/Territory Loss/Missed Kill）、Critical 3のContextが(none)時のみ注入 | 📋 Planned |
 | 83 | Complexityフィルタ（最小ルール） | `scoreStdev>20` Chaos判定、除外/減点、件数カウント、回帰テスト | 📋 Planned |
 | 84 | Recurring Pattern集計コア（MVP） | `pattern_miner`（signature集計・ランキング）、テストSGFセット | 📋 Planned |
