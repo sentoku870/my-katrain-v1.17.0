@@ -253,6 +253,7 @@ from katrain.core.analysis.skill_radar import (
 from katrain.core.analysis.critical_moves import (
     # Dataclass
     CriticalMove,
+    ComplexityFilterStats,  # Phase 83
     # Main function
     select_critical_moves,
     # Constants (for testing)
@@ -260,10 +261,15 @@ from katrain.core.analysis.critical_moves import (
     DEFAULT_MEANING_TAG_WEIGHT,
     DIVERSITY_PENALTY_FACTOR,
     CRITICAL_SCORE_PRECISION,
+    # Phase 83 constants
+    THRESHOLD_SCORE_STDEV_CHAOS,
+    COMPLEXITY_DISCOUNT_FACTOR,
     # Internal functions (exported for testing)
     _get_meaning_tag_weight,
     _compute_diversity_penalty,
+    _compute_complexity_discount,  # Phase 83
     _compute_critical_score,
+    _sort_key,
     _build_node_map,
     _get_score_stdev_from_node,
     _get_score_stdev_for_move,
@@ -608,6 +614,7 @@ __all__ = [
     # === critical_moves.py (Phase 50) ===
     # Dataclass
     "CriticalMove",
+    "ComplexityFilterStats",  # Phase 83
     # Main function
     "select_critical_moves",
     # Constants (for testing)
@@ -615,10 +622,15 @@ __all__ = [
     "DEFAULT_MEANING_TAG_WEIGHT",
     "DIVERSITY_PENALTY_FACTOR",
     "CRITICAL_SCORE_PRECISION",
+    # Phase 83 constants
+    "THRESHOLD_SCORE_STDEV_CHAOS",
+    "COMPLEXITY_DISCOUNT_FACTOR",
     # Internal functions (exported for testing)
     "_get_meaning_tag_weight",
     "_compute_diversity_penalty",
+    "_compute_complexity_discount",  # Phase 83
     "_compute_critical_score",
+    "_sort_key",
     "_build_node_map",
     "_get_score_stdev_from_node",
     "_get_score_stdev_for_move",

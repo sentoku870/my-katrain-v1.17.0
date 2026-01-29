@@ -325,6 +325,16 @@ def critical_3_section_for(
         lines.append(f"- **Type**: {cm.meaning_tag_label}")
         lines.append(f"- **Phase**: {cm.game_phase}")
         lines.append(f"- **Difficulty**: {cm.position_difficulty.upper()}")
+
+        # Phase 83: Show complexity note (using ctx.lang for consistency)
+        if cm.complexity_discounted:
+            chaos_note = (
+                "乱戦局面（評価の変動大）"
+                if ctx.lang == "ja"
+                else "Complex position (high volatility)"
+            )
+            lines.append(f"- **Note**: {chaos_note}")
+
         if cm.reason_tags:
             lines.append(f"- **Context**: {', '.join(cm.reason_tags)}")
         else:

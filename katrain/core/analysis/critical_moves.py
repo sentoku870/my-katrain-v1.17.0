@@ -26,9 +26,12 @@ Example:
     ...     print(f"Move #{cm.move_number}: {cm.meaning_tag_label}")
 """
 
+import logging
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+
+_log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -62,6 +65,10 @@ DEFAULT_MEANING_TAG_WEIGHT = 0.7  # Fallback for unknown tags (future-proofing)
 DIVERSITY_PENALTY_FACTOR = 0.5  # Multiplier for repeated tags
 
 CRITICAL_SCORE_PRECISION = 4  # Decimal places for deterministic rounding
+
+# Phase 83: Complexity filter
+THRESHOLD_SCORE_STDEV_CHAOS = 20.0  # Chaos threshold (strictly >)
+COMPLEXITY_DISCOUNT_FACTOR = 0.3  # Discount rate (30% retained)
 
 
 # =============================================================================
@@ -119,6 +126,30 @@ class CriticalMove:
     importance_score: float
     critical_score: float
 
+    # Phase 83: Complexity filter metadata
+    complexity_discounted: bool = False
+
+
+# =============================================================================
+# Data Model (Phase 83)
+# =============================================================================
+
+
+@dataclass
+class ComplexityFilterStats:
+    """Statistics for complexity filter application (Phase 83)."""
+
+    total_candidates: int = 0
+    discounted_count: int = 0
+    max_stdev_seen: Optional[float] = None
+
+    @property
+    def discount_rate(self) -> float:
+        """Percentage of candidates that were discounted."""
+        if self.total_candidates == 0:
+            return 0.0
+        return 100.0 * self.discounted_count / self.total_candidates
+
 
 # =============================================================================
 # Scoring Functions
@@ -163,14 +194,39 @@ def _compute_diversity_penalty(
     return DIVERSITY_PENALTY_FACTOR**count
 
 
+def _compute_complexity_discount(score_stdev: Optional[float]) -> float:
+    """Compute complexity discount factor (Phase 83).
+
+    Chaotic positions (high scoreStdev) receive reduced importance to filter
+    out noise from volatile situations where mistakes are harder to evaluate.
+
+    Boundary behavior:
+        score_stdev <= 20.0: no discount (1.0)
+        score_stdev >  20.0: discounted (0.3)
+
+    Args:
+        score_stdev: KataGo scoreStdev value (None for Leela/unanalyzed)
+
+    Returns:
+        1.0: Normal (no discount, including Leela/unanalyzed)
+        COMPLEXITY_DISCOUNT_FACTOR: High complexity (discounted)
+    """
+    if score_stdev is None:
+        return 1.0
+    if score_stdev > THRESHOLD_SCORE_STDEV_CHAOS:
+        return COMPLEXITY_DISCOUNT_FACTOR
+    return 1.0
+
+
 def _compute_critical_score(
     importance: float,
     tag_id: Optional[str],
     selected_tag_ids: Tuple[str, ...],
+    complexity_discount: float = 1.0,
 ) -> float:
     """Compute critical score with deterministic rounding.
 
-    Formula: importance * meaning_tag_weight * diversity_penalty
+    Formula: importance * meaning_tag_weight * diversity_penalty * complexity_discount
 
     Uses Decimal ROUND_HALF_UP to eliminate floating-point variance.
 
@@ -178,6 +234,7 @@ def _compute_critical_score(
         importance: MoveEval.importance_score
         tag_id: meaning_tag_id (None allowed)
         selected_tag_ids: Already-selected tag IDs for diversity penalty
+        complexity_discount: Phase 83 complexity filter discount (default 1.0)
 
     Returns:
         Critical score rounded to CRITICAL_SCORE_PRECISION decimal places
@@ -185,7 +242,7 @@ def _compute_critical_score(
     weight = _get_meaning_tag_weight(tag_id)
     penalty = _compute_diversity_penalty(tag_id, selected_tag_ids)
 
-    raw_score = importance * weight * penalty
+    raw_score = importance * weight * penalty * complexity_discount
 
     # Deterministic rounding (Python's round() uses banker's rounding)
     quantized = Decimal(str(raw_score)).quantize(
@@ -202,6 +259,32 @@ def _sort_key(move_number: int, score: float) -> Tuple[float, int]:
     Secondary: move_number ascending (earlier moves prioritized)
     """
     return (-score, move_number)
+
+
+def _log_complexity_filter_stats(stats: ComplexityFilterStats) -> None:
+    """Log complexity filter statistics (Phase 83).
+
+    INFO: when discounted_count > 0
+    DEBUG: when no discounts applied
+    """
+    if stats.max_stdev_seen is not None:
+        stdev_str = f"{stats.max_stdev_seen:.1f}"
+    else:
+        stdev_str = "n/a"
+
+    if stats.discounted_count > 0:
+        _log.info(
+            "Complexity filter: %d/%d candidates discounted (%.1f%%), max_stdev=%s",
+            stats.discounted_count,
+            stats.total_candidates,
+            stats.discount_rate,
+            stdev_str,
+        )
+    else:
+        _log.debug(
+            "Complexity filter: no discounts applied (max_stdev=%s)",
+            stdev_str,
+        )
 
 
 # =============================================================================
@@ -370,10 +453,16 @@ def select_critical_moves(
         if isinstance(board_size_tuple, (list, tuple)) and len(board_size_tuple) >= 1:
             board_size = board_size_tuple[0]
 
-    # Step 5: Greedy selection with diversity penalty
+    # Step 5: Greedy selection with diversity penalty and complexity filter
     candidates = list(important_moves)
     selected: List[CriticalMove] = []
     selected_tag_ids: Tuple[str, ...] = ()
+
+    # Phase 83: Track statistics and cache stdev
+    filter_stats = ComplexityFilterStats(total_candidates=len(candidates))
+    max_stdev_seen: Optional[float] = None
+    discounted_move_numbers: Set[int] = set()
+    stdev_cache: Dict[int, Optional[float]] = {}
 
     for _ in range(max_moves):
         if not candidates:
@@ -382,10 +471,30 @@ def select_critical_moves(
         # Compute critical scores for all candidates
         scores: Dict[int, float] = {}
         for move in candidates:
-            tag_id = meaning_tag_map.get(move.move_number)
+            # Phase 83: Normalize early for consistent weight/penalty calculation
+            tag_id = meaning_tag_map.get(move.move_number) or "uncertain"
             importance = move.importance_score or 0.0
+
+            # Phase 83: Get stdev with caching
+            if move.move_number not in stdev_cache:
+                stdev_cache[move.move_number] = _get_score_stdev_for_move(
+                    node_map, move.move_number
+                )
+            score_stdev = stdev_cache[move.move_number]
+            complexity_discount = _compute_complexity_discount(score_stdev)
+
+            if complexity_discount < 1.0:
+                discounted_move_numbers.add(move.move_number)
+
+            if score_stdev is not None:
+                if max_stdev_seen is None or score_stdev > max_stdev_seen:
+                    max_stdev_seen = score_stdev
+
             scores[move.move_number] = _compute_critical_score(
-                importance, tag_id, selected_tag_ids
+                importance,
+                tag_id,
+                selected_tag_ids,
+                complexity_discount=complexity_discount,
             )
 
         # Sort by (critical_score DESC, move_number ASC)
@@ -393,7 +502,8 @@ def select_critical_moves(
 
         # Select best candidate
         best = candidates.pop(0)
-        best_tag_id = meaning_tag_map.get(best.move_number, "uncertain")
+        # tag_id already normalized in scoring loop, but ensure consistency here
+        best_tag_id = meaning_tag_map.get(best.move_number) or "uncertain"
 
         # Build CriticalMove
         try:
@@ -402,6 +512,8 @@ def select_critical_moves(
         except ValueError:
             # Unknown tag - use raw ID as label
             tag_label = best_tag_id
+
+        best_stdev = stdev_cache.get(best.move_number)
 
         critical_move = CriticalMove(
             move_number=best.move_number,
@@ -417,14 +529,20 @@ def select_critical_moves(
                 else "unknown"
             ),
             reason_tags=tuple(best.reason_tags) if best.reason_tags else (),
-            score_stdev=_get_score_stdev_for_move(node_map, best.move_number),
+            score_stdev=best_stdev,
             game_phase=classify_game_phase(best.move_number, board_size),
             importance_score=best.importance_score or 0.0,
             critical_score=scores[best.move_number],
+            complexity_discounted=(best.move_number in discounted_move_numbers),
         )
 
         selected.append(critical_move)
         selected_tag_ids = (*selected_tag_ids, best_tag_id)
+
+    # Phase 83: Log statistics
+    filter_stats.discounted_count = len(discounted_move_numbers)
+    filter_stats.max_stdev_seen = max_stdev_seen
+    _log_complexity_filter_stats(filter_stats)
 
     return selected
 
@@ -436,6 +554,7 @@ def select_critical_moves(
 __all__ = [
     # Data Model
     "CriticalMove",
+    "ComplexityFilterStats",  # Phase 83
     # Main Function
     "select_critical_moves",
     # Constants (for testing)
@@ -443,10 +562,15 @@ __all__ = [
     "DEFAULT_MEANING_TAG_WEIGHT",
     "DIVERSITY_PENALTY_FACTOR",
     "CRITICAL_SCORE_PRECISION",
+    # Phase 83 constants
+    "THRESHOLD_SCORE_STDEV_CHAOS",
+    "COMPLEXITY_DISCOUNT_FACTOR",
     # Internal functions (exported for testing)
     "_get_meaning_tag_weight",
     "_compute_diversity_penalty",
+    "_compute_complexity_discount",  # Phase 83
     "_compute_critical_score",
+    "_sort_key",
     "_build_node_map",
     "_get_score_stdev_from_node",
     "_get_score_stdev_for_move",
