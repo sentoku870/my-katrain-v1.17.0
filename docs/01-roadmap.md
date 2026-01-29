@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 82完了）
+> 最終更新: 2026-01-30（Phase 83完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -239,8 +239,8 @@
 **Phase 82**: クラスタを3分類（Group Death / Territory Loss / Missed Kill）へ落とし込む。
 Karteへの統合は「Critical 3のContextが(none)のときのみ」注入する限定運用で安全に入れる。
 
-**Phase 83**: Complexity（Chaos）フィルタの最小導入。まずは `scoreStdev > 20` の単一ルールから開始し、除外/減点の影響を可視化する。
-調整可能性のため、除外件数カウントやログを合わせて入れる。
+**Phase 83**: ✅ Complexity（Chaos）フィルタの最小導入。`scoreStdev > 20` で70%割引（除外ではなく減点）。
+`ComplexityFilterStats`でログ出力、`complexity_discounted`フラグでKarte表示。（2026-01-30完了）
 
 **Phase 84**: Recurring Patternの集計コア（MVP）。MistakeSignatureは最小構成で頻度上位を抽出し、検出の正しさをテストで固める。
 テスト用に「同じミスを繰り返すSGFセット」を用意する。

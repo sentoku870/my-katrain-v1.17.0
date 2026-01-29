@@ -1,9 +1,31 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-82 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-83 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 83 完了（Complexity Filter）
+  - 高変動局面（scoreStdev > 20）のミスをCritical 3選定で70%割引
+  - 変更ファイル:
+    - `katrain/core/analysis/critical_moves.py`: 複雑度フィルタ追加（+132行）
+    - `katrain/core/analysis/__init__.py`: re-export追加
+    - `katrain/core/reports/karte/sections/important_moves.py`: 複雑度注記追加
+  - 新規テストファイル:
+    - `tests/test_complexity_filter.py`: ユニットテスト（12件）
+  - 追加API:
+    - `THRESHOLD_SCORE_STDEV_CHAOS` (20.0) - Chaos判定閾値
+    - `COMPLEXITY_DISCOUNT_FACTOR` (0.3) - 割引率
+    - `ComplexityFilterStats` dataclass - フィルタ統計
+    - `_compute_complexity_discount()` - 割引計算（None=1.0, >20=0.3）
+    - `CriticalMove.complexity_discounted` - 割引されたかどうかのフラグ
+  - 設計ポイント:
+    - 除外ではなく割引（大きなミスは残る）
+    - stdev_cacheで二重計算回避
+    - ctx.lang分岐でi18n不要
+    - INFO/DEBUGログで可視化
+  - テスト: 3088件パス（+21件）
+  - PRs: #221
 
 - 2026-01-30: Phase 82 完了（Consequence判定 + Karteへ限定統合）
   - Phase 81のOwnershipクラスタを3分類（GROUP_DEATH / TERRITORY_LOSS / MISSED_KILL）へ分類
