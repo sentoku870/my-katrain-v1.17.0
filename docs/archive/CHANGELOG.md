@@ -1,9 +1,28 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-79 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-80 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 80 完了（共通基盤 - Area判定・抽出ヘルパ）
+  - Phase 81-87（Analysis Intelligence）の土台となる共通基盤を整備
+  - 新規ファイル:
+    - `katrain/core/analysis/board_context.py`: Area判定、ownership/scoreStdev抽出
+  - 追加API:
+    - `BoardArea` enum（CORNER/EDGE/CENTER）
+    - `classify_area()` - 座標→BoardArea判定
+    - `get_area_name()` - 区域名取得（jp/en対応）
+    - `OwnershipContext` dataclass - ownership_grid + scoreStdev + board_size
+    - `extract_ownership_context()` - GameNode→OwnershipContext抽出
+    - `get_score_stdev()` - scoreStdevヘルパ
+  - 技術仕様:
+    - 言語コード: デフォルト "jp"、"ja"は"jp"として扱う
+    - 座標: (col, row) = (x, y)、None/範囲外→None返却
+    - ownership_grid: grid[row][col]、row 0=下辺(y=0)
+    - board_size正規化: tuple→そのまま、int→(n,n)、その他→(19,19)
+  - テスト: 2961件パス（+37件）
+  - PRs: #218
 
 - 2026-01-28: Phase 79 完了（エラーハンドリング C - バックグラウンドパス）
   - Phase 77監査結果に基づき、バックグラウンド処理の27箇所を改善
