@@ -13,6 +13,10 @@ import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
+from katrain.core.analysis.cluster_classifier import (
+    StoneCache,
+    _get_cluster_context_for_move,
+)
 from katrain.core.analysis.critical_moves import select_critical_moves
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
@@ -312,6 +316,9 @@ def critical_3_section_for(
     lines.append(intro)
     lines.append("")
 
+    # Phase 82: Create cache for stone positions (shared across Critical Moves)
+    stone_cache = StoneCache(ctx.game)
+
     for i, cm in enumerate(player_critical, 1):
         lines.append(f"### {i}. Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}")
         lines.append(f"- **Loss**: {cm.score_loss:.1f}{unit}")
@@ -321,7 +328,14 @@ def critical_3_section_for(
         if cm.reason_tags:
             lines.append(f"- **Context**: {', '.join(cm.reason_tags)}")
         else:
-            lines.append("- **Context**: (none)")
+            # Phase 82: Inject cluster classification when reason_tags is empty
+            cluster_context = _get_cluster_context_for_move(
+                ctx.game, cm.move_number, ctx.lang, stone_cache
+            )
+            if cluster_context:
+                lines.append(f"- **Context**: {cluster_context}")
+            else:
+                lines.append("- **Context**: (none)")
         lines.append("")
 
     return lines

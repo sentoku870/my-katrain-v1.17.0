@@ -369,6 +369,38 @@ from katrain.core.analysis.ownership_cluster import (
 )
 
 # =============================================================================
+# Explicit imports from cluster_classifier.py (Phase 82)
+# =============================================================================
+
+from katrain.core.analysis.cluster_classifier import (
+    # Type aliases (exported for annotation)
+    StonePosition,
+    StoneSet,
+    # Enums
+    ClusterSemantics,
+    # Dataclasses
+    ClassifiedCluster,
+    ClusterClassificationContext,
+    # Stone reconstruction
+    compute_stones_at_node,
+    StoneCache,
+    # Classification helpers
+    is_opponent_gain,
+    get_stones_in_cluster,
+    compute_cluster_ownership_avg,
+    compute_confidence,
+    should_inject,
+    get_semantics_label,
+    # Classification
+    classify_cluster,
+    # Context building
+    get_ownership_context_pair,
+    build_classification_context,
+    # Karte integration (private but exported for testing)
+    _get_cluster_context_for_move,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -659,4 +691,30 @@ __all__ = [
     "compute_ownership_delta",
     "extract_clusters",
     "extract_clusters_from_nodes",
+    # === cluster_classifier.py (Phase 82) ===
+    # Type aliases
+    "StonePosition",
+    "StoneSet",
+    # Enums
+    "ClusterSemantics",
+    # Dataclasses
+    "ClassifiedCluster",
+    "ClusterClassificationContext",
+    # Stone reconstruction
+    "compute_stones_at_node",
+    "StoneCache",
+    # Classification helpers
+    "is_opponent_gain",
+    "get_stones_in_cluster",
+    "compute_cluster_ownership_avg",
+    "compute_confidence",
+    "should_inject",
+    "get_semantics_label",
+    # Classification
+    "classify_cluster",
+    # Context building
+    "get_ownership_context_pair",
+    "build_classification_context",
+    # Karte integration
+    "_get_cluster_context_for_move",
 ]
