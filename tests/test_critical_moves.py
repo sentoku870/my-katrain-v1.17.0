@@ -27,10 +27,15 @@ from katrain.core.analysis import (
     DEFAULT_MEANING_TAG_WEIGHT,
     DIVERSITY_PENALTY_FACTOR,
     CRITICAL_SCORE_PRECISION,
+    # Phase 83 constants
+    THRESHOLD_SCORE_STDEV_CHAOS,
+    COMPLEXITY_DISCOUNT_FACTOR,
     # Internal functions
     _get_meaning_tag_weight,
     _compute_diversity_penalty,
+    _compute_complexity_discount,  # Phase 83
     _compute_critical_score,
+    _sort_key,
     _build_node_map,
     _get_score_stdev_from_node,
     _get_score_stdev_for_move,
@@ -691,3 +696,234 @@ class TestCriticalMovesImports:
         # that select_critical_moves exists and can be called
         assert hasattr(critical_moves, "select_critical_moves")
         assert callable(critical_moves.select_critical_moves)
+
+
+# =============================================================================
+# Test: Phase 83 Complexity Filter Integration
+# =============================================================================
+
+
+class TestSelectCriticalMovesComplexity:
+    """Integration tests for complexity filter in selection (Phase 83)."""
+
+    def test_chaotic_move_gets_lower_critical_score(self):
+        """Move with high stdev gets lower critical score than equal-importance normal move.
+
+        Setup:
+            Move 1: stdev=5.0 (normal)
+            Move 2: stdev=25.0 (chaotic)
+            Both have equal importance_score=10.0
+
+        Expected:
+            Move 1 selected first (higher effective score)
+            Move 2 selected second (discounted)
+        """
+        game = build_stub_game_with_analysis([
+            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
+            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
+        ])
+
+        snapshot = create_test_snapshot([
+            {
+                "move_number": 1,
+                "player": "B",
+                "gtp": "D4",
+                "score_loss": 5.0,
+                "importance_score": 10.0,
+            },
+            {
+                "move_number": 2,
+                "player": "W",
+                "gtp": "Q16",
+                "score_loss": 5.0,
+                "importance_score": 10.0,
+            },
+        ])
+
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
+            mock_snapshot.return_value = snapshot
+
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
+                mock_pick.return_value = snapshot.moves
+
+                with patch(
+                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
+                ) as mock_classify:
+                    mock_tag = MagicMock()
+                    mock_tag.id.value = "overplay"
+                    mock_classify.return_value = mock_tag
+
+                    result = select_critical_moves(game, max_moves=2)
+
+        # Assertions using ordering (robust to rounding)
+        assert len(result) == 2
+        assert result[0].move_number == 1, "Normal move should be selected first"
+        assert result[0].complexity_discounted is False
+        assert result[1].move_number == 2, "Chaotic move should be selected second"
+        assert result[1].complexity_discounted is True
+        # Score ordering (discounted < normal)
+        assert result[1].critical_score < result[0].critical_score
+
+    def test_leela_moves_not_penalized(self):
+        """Leela moves (no scoreStdev in analysis) are not discounted."""
+        game = build_stub_game_with_analysis([
+            ("B", (3, 3), 0.5, {"root": {"winrate": 0.55}}),
+        ])
+
+        snapshot = create_test_snapshot([
+            {
+                "move_number": 1,
+                "player": "B",
+                "gtp": "D4",
+                "score_loss": 5.0,
+                "importance_score": 10.0,
+            },
+        ])
+
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
+            mock_snapshot.return_value = snapshot
+
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
+                mock_pick.return_value = snapshot.moves
+
+                with patch(
+                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
+                ) as mock_classify:
+                    mock_tag = MagicMock()
+                    mock_tag.id.value = "overplay"
+                    mock_classify.return_value = mock_tag
+
+                    result = select_critical_moves(game, max_moves=1)
+
+        assert len(result) == 1
+        assert result[0].complexity_discounted is False
+        assert result[0].score_stdev is None
+
+    def test_high_importance_chaotic_move_can_still_win(self):
+        """Chaotic move with much higher importance can still be selected first.
+
+        Setup:
+            Move 1: importance=5.0, stdev=5.0 -> effective ~5.0
+            Move 2: importance=50.0, stdev=25.0 -> effective ~15.0 (50*0.3)
+
+        Expected: Move 2 selected first (15.0 > 5.0)
+        """
+        game = build_stub_game_with_analysis([
+            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
+            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
+        ])
+
+        snapshot = create_test_snapshot([
+            {
+                "move_number": 1,
+                "player": "B",
+                "gtp": "D4",
+                "score_loss": 1.0,
+                "importance_score": 5.0,
+            },
+            {
+                "move_number": 2,
+                "player": "W",
+                "gtp": "Q16",
+                "score_loss": 10.0,
+                "importance_score": 50.0,
+            },
+        ])
+
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
+            mock_snapshot.return_value = snapshot
+
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
+                mock_pick.return_value = snapshot.moves
+
+                with patch(
+                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
+                ) as mock_classify:
+                    mock_tag = MagicMock()
+                    mock_tag.id.value = "overplay"
+                    mock_classify.return_value = mock_tag
+
+                    result = select_critical_moves(game, max_moves=2)
+
+        assert result[0].move_number == 2, "High importance chaotic move wins"
+        assert result[0].complexity_discounted is True
+        assert result[0].critical_score > result[1].critical_score
+
+
+class TestCriticalScoreWithComplexityDiscount:
+    """Unit tests for _compute_critical_score() with complexity_discount parameter."""
+
+    def test_default_discount_is_one(self):
+        """Default complexity_discount=1.0 (backward compatible)."""
+        score_without = _compute_critical_score(10.0, "overplay", ())
+        score_with = _compute_critical_score(10.0, "overplay", (), complexity_discount=1.0)
+        assert score_without == score_with
+
+    def test_discount_reduces_score(self):
+        """complexity_discount < 1.0 reduces the score (ordering test)."""
+        score_normal = _compute_critical_score(10.0, "overplay", ())
+        score_discounted = _compute_critical_score(
+            10.0, "overplay", (), complexity_discount=0.3
+        )
+        assert score_discounted < score_normal
+        assert score_discounted > 0
+
+    def test_discount_combines_with_diversity_penalty(self):
+        """Discount and diversity penalty both reduce score."""
+        base_score = _compute_critical_score(10.0, "overplay", ())
+        score_with_diversity = _compute_critical_score(10.0, "overplay", ("overplay",))
+        score_with_both = _compute_critical_score(
+            10.0, "overplay", ("overplay",), complexity_discount=0.3
+        )
+
+        assert score_with_diversity < base_score
+        assert score_with_both < score_with_diversity
+        assert score_with_both > 0
+
+
+class TestSortingOrderInvariant:
+    """Test that sorting order is correct (highest score at index 0)."""
+
+    def test_sort_key_puts_highest_score_first(self):
+        """Verify _sort_key produces correct ordering for pop(0)."""
+        candidates = [
+            (1, 5.0),
+            (2, 15.0),
+            (3, 10.0),
+        ]
+
+        sorted_candidates = sorted(
+            candidates, key=lambda x: _sort_key(x[0], x[1])
+        )
+
+        assert sorted_candidates[0] == (2, 15.0), "Highest score should be first"
+        assert sorted_candidates[1] == (3, 10.0)
+        assert sorted_candidates[2] == (1, 5.0), "Lowest score should be last"
+
+    def test_sort_key_tiebreaker_is_move_number(self):
+        """Equal scores -> earlier move_number wins."""
+        candidates = [
+            (5, 10.0),
+            (2, 10.0),
+            (8, 10.0),
+        ]
+
+        sorted_candidates = sorted(
+            candidates, key=lambda x: _sort_key(x[0], x[1])
+        )
+
+        assert sorted_candidates[0] == (2, 10.0)
+        assert sorted_candidates[1] == (5, 10.0)
+        assert sorted_candidates[2] == (8, 10.0)
+
+    def test_sort_order_would_fail_if_inverted(self):
+        """Sanity check: inverted key would produce wrong order."""
+        candidates = [(1, 5.0), (2, 15.0)]
+
+        correct_order = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
+        assert correct_order[0][1] == 15.0
+
+        wrong_order = sorted(candidates, key=lambda x: (x[1], x[0]))
+        assert wrong_order[0][1] == 5.0
+
+        assert correct_order[0] != wrong_order[0]
