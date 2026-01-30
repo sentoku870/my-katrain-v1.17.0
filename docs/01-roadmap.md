@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 87.6完了）
+> 最終更新: 2026-01-30（Phase 88完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -263,11 +263,15 @@ Leelaゲーティング（両UI）、"Setup Leela"ショートカットボタン
 Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`を解析失敗時にインクリメント、
 `_DummyEngine`クラス追加（`engine=None`クラッシュ防止）、解析品質ログ追加。（2026-01-30完了）
 
+**Phase 88**: ✅ KataGo設定UI再構成とhuman-like排他制御。`model_labels.py`（クロスプラットフォームbasename対応）、
+`humanlike_config.py`（Option A: パス空時強制OFF）、Switchトグル+ステータス表示、
+モデル強度ラベル（軽量/標準/強力/その他）、`humanlike_model_last`永続化、i18n（EN/JP）追加。（2026-01-30完了）
+
 ### Phase 88–94: Beginner Experience & Study Modes 📋 **Planned**
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | 📋 Planned |
+| 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | ✅ Done |
 | 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | 📋 Planned |
 | 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | 📋 Planned |
 | 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | 📋 Planned |
