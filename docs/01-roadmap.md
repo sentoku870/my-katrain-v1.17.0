@@ -252,8 +252,8 @@ TYPE_CHECKINGガード、GTP座標検証、決定論的ソート、22契約テ�
 **Phase 86**: ✅ Reason Generator（自然文）の限定実装。`reason_generator.py`で12単発タグ＋8組み合わせテンプレート（JP/EN）を提供。
 Critical 3とRecurring PatternsにReason行を追加。ワイルドカードマッチング、lang=None→日本語デフォルト、20テスト追加。（2026-01-30完了）
 
-**Phase 87**: 調整・拡張・磨き込み用バッファ。閾値チューニング、追加指標、説明文改善、ドキュメント整理をここに集約する。
-（Situation/Status拡張やsignature拡張など"膨らむ要素"は原則ここで扱う）
+**Phase 87**: ✅ MistakeSignatureにplayer軸追加（黒/白分離分析）、Reason Generatorテンプレート7個追加（8→15個）。
+`normalize_player()`でB/W/?正規化、Summary出力に`[Black]/[White]`表示、i18nキー追加、ワイルドカード優先順位テスト追加。（2026-01-30完了）
 
 ### Phase 88–94: Beginner Experience & Study Modes 📋 **Planned**
 
