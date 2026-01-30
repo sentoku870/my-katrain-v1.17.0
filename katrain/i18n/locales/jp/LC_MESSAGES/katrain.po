@@ -1960,3 +1960,61 @@ msgstr "不明"
 #. Phase 85: Pattern format strings
 msgid "pattern:count-loss"
 msgstr "{count}回、総損失{loss:.1f}目"
+
+#. Phase 88: Settings Mode
+msgid "mode:automatic"
+msgstr "自動"
+
+msgid "mode:standard"
+msgstr "標準"
+
+msgid "mode:advanced"
+msgstr "高機能"
+
+msgid "mode:automatic:desc"
+msgstr "推奨設定を使用中"
+
+#. Phase 88: Model Labels
+msgid "model:current"
+msgstr "現在のモデル"
+
+msgid "model:light"
+msgstr "軽量（高速）"
+
+msgid "model:standard"
+msgstr "標準（推奨）"
+
+msgid "model:strong"
+msgstr "強力（重い）"
+
+msgid "model:unknown"
+msgstr "その他"
+
+msgid "model:unknown_with_name"
+msgstr "その他: {name}"
+
+msgid "model:none"
+msgstr "（モデル未選択）"
+
+#. Phase 88: human-like Toggle
+msgid "humanlike:toggle_label"
+msgstr "人間らしいモード（実験）を有効にする"
+
+msgid "humanlike:status_off"
+msgstr "通常の解析（推奨）"
+
+msgid "humanlike:status_on"
+msgstr "人間らしい傾向を優先（精度が変わる可能性）"
+
+msgid "humanlike:no_path_warning"
+msgstr "human-likeモデルファイルを先に選択してください"
+
+msgid "humanlike:path_not_found"
+msgstr "以前のhuman-likeモデルファイルが見つかりません"
+
+msgid "humanlike:forced_off"
+msgstr "human-likeモードを無効化しました（有効なパスなし）"
+
+#. Phase 88: Details
+msgid "details:title"
+msgstr "詳細"

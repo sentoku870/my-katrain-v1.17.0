@@ -5,6 +5,7 @@
         "altcommand": "",
         "model": "katrain/models/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
         "humanlike_model": "",
+        "humanlike_model_last": "",
         "config": "katrain/KataGo/analysis_config.cfg",
         "max_visits": 500,
         "fast_visits": 25,
