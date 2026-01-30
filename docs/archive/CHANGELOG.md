@@ -1,9 +1,46 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-89 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-90 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 90 完了（Error Recovery & Diagnostics - エラー救済/診断）
+  - エラー発生時の復旧導線とLLM相談支援機能を実装
+  - 新規ファイル:
+    - `katrain/core/error_recovery.py`: スレッドセーフ重複排除、4096バイトUTF-8制限（~93行）
+    - `katrain/gui/features/recovery_actions.py`: 4つの復旧アクション関数（~233行）
+    - `tests/test_error_recovery.py`: エラー復旧テスト（19件）
+  - 変更ファイル:
+    - `katrain/core/diagnostics.py`: collect_diagnostics_bundle()、format_llm_diagnostics_text()パブリックAPI追加、extra_filesパラメータ追加
+    - `katrain/core/base_katrain.py`: get_config_snapshot()メソッド追加
+    - `katrain/core/auto_setup.py`: prepare_reset_to_auto()関数追加
+    - `katrain/gui/features/context.py`: FeatureContext Protocol拡張
+    - `katrain/gui/popups.py`: EngineRecoveryPopupに4つのアクションメソッド追加
+    - `katrain/popups.kv`: 復旧ボタン4つ追加
+    - `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`: 8翻訳キー追加
+    - `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`: 8翻訳キー追加
+  - 追加API:
+    - `DiagnosticsTrigger` Enum - ENGINE_START_FAILED, TEST_ANALYSIS_FAILED, CONSECUTIVE_FAILURE, MANUAL
+    - `RecoveryEvent` frozen dataclass - trigger, error_message, event_id（SHA256ベース）
+    - `should_auto_dump()` - スレッドセーフ重複排除（threading.Lock）
+    - `truncate_to_bytes()` - UTF-8バイト境界で安全に切り詰め（4096バイト制限）
+    - `collect_diagnostics_bundle()` - DiagnosticsBundle収集のパブリックAPI
+    - `format_llm_diagnostics_text()` - LLM用サニタイズ済みテキスト生成
+    - `prepare_reset_to_auto()` - 自動モード復帰用設定準備
+    - `get_config_snapshot()` - 設定スナップショット取得（プライベート属性回避）
+  - UI機能:
+    - 「自動モードに戻す（推奨）」ボタン - ワンクリック復帰
+    - 「LLM相談用にコピー」ボタン - サニタイズ済み診断テキストをクリップボードへ
+    - 「診断ZIPを保存」ボタン - llm_prompt.txt含むZIP生成
+    - 「ログをコピー」ボタン - 末尾200行をサニタイズしてコピー
+  - 技術仕様:
+    - Python 3.9互換: Optional/Dict/List構文使用（PEP604不可）
+    - スレッド安全: メインスレッドでデータ収集、バックグラウンドはZIP作成のみ
+    - 重複排除: SHA256ベースevent_id + threading.Lockで二重ダンプ防止
+    - バイト制限: UTF-8バイト単位で4096バイト以下を強制
+  - テスト: 3316件パス（+19件）
+  - PRs: #231
 
 - 2026-01-30: Phase 89 完了（Auto Setup Mode - "まず動かす"自動モード）
   - 初回起動で解析が成功する確率を最大化する自動セットアップモードを実装

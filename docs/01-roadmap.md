@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 88完了）
+> 最終更新: 2026-01-30（Phase 90完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -273,7 +273,7 @@ Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`
 |------:|--------|----------|:----:|
 | 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | ✅ Done |
 | 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | ✅ Done |
-| 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | 📋 Planned |
+| 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | ✅ Done |
 | 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | 📋 Planned |
 | 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、任意ハイライト、i18n整備 | 📋 Planned |
 | 93 | Active Review MVP | Fog of War、回答入力、即時採点（最小）、基本UI統合 | 📋 Planned |
@@ -285,8 +285,9 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 89**: "まず動かす"自動モードを用意し、初回導入の失敗率を下げる。
 実行テスト＋OpenCL→CPUフォールバックなど、起動/解析が通ることを最優先にする。
 
-**Phase 90**: エラー救済を強化し、診断情報を「共有可能な形」で自動収集できるようにする。
-LLM相談用コピー、diagnosticsダンプ、復旧導線（自動へ戻す等）を整備する。
+**Phase 90**: ✅ エラー救済機能の実装。`error_recovery.py`（スレッドセーフ重複排除、4096バイトUTF-8制限）、
+`recovery_actions.py`（4つの復旧アクション）、EngineRecoveryPopupに復旧ボタン追加、
+`collect_diagnostics_bundle()`/`format_llm_diagnostics_text()`パブリックAPI、`extra_files`でllm_prompt.txt注入。（2026-01-30完了）
 
 **Phase 91**: 初心者向けヒント（Safety Net）MVP。1手1ヒント枠で、コア4（self-atari等）を中心に出す。
 チート衝突を避け、Review/Analysis中心＋ON/OFFで提供する。
