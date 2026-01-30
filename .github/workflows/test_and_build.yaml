@@ -57,16 +57,15 @@ jobs:
         run: |
           set -x
           python --version
-          uv run python -c "import katrain; print('katrain imported')"
-          # Try to collect tests and capture the error
-          if ! uv run pytest tests --collect-only 2>&1; then
-            echo "Collection failed! Checking individual test files..."
-            for f in tests/test_*.py; do
-              echo "Testing $f..."
-              uv run python -c "import sys; sys.path.insert(0, '.'); exec(open('$f').read())" 2>&1 || echo "Failed: $f"
-            done
-          fi
-          uv run pytest tests -v --tb=long
+          # Test direct import of conftest
+          uv run python -c "import sys; sys.path.insert(0, 'tests'); import conftest; print('conftest imported')" 2>&1 || echo "conftest import failed"
+          # Run pytest with verbose collection
+          uv run pytest tests --collect-only --quiet 2>&1 | tee /tmp/collect.log || true
+          echo "=== Collection output ==="
+          cat /tmp/collect.log
+          echo "=== End collection output ==="
+          # Run actual tests
+          uv run pytest tests
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
