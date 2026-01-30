@@ -54,16 +54,9 @@ jobs:
           sync-groups: dev
 
       - name: Run tests
-        run: |
-          set -x
-          python --version
-          # Try to import each test file directly
-          for f in tests/test_*.py; do
-            echo "Importing $f..."
-            uv run python -c "import importlib.util; spec = importlib.util.spec_from_file_location('mod', '$f'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print('OK')" 2>&1 || echo "FAILED: $f"
-          done
-          # Run actual tests
-          uv run pytest tests
+        env:
+          KIVY_NO_FILELOG: 1
+        run: uv run pytest tests --import-mode=importlib -p no:faulthandler
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
