@@ -36,11 +36,13 @@ def _skip_kivy_on_ci():
 
 # =============================================================================
 # Pure Python Tests（Kivy不要）
+# Note: TestMakeHashable imports from kivyutils, so it needs CI skip
 # =============================================================================
 
 
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Imports from kivyutils which requires Kivy")
 class TestMakeHashable:
-    """_make_hashableのテスト（Pure Python）"""
+    """_make_hashableのテスト（Pure Python but imports from kivyutils）"""
 
     @pytest.fixture
     def make_hashable(self):
