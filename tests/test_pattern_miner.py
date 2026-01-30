@@ -21,6 +21,7 @@ from katrain.core.batch.stats.pattern_miner import (
     create_signature,
     mine_patterns,
     get_severity,
+    normalize_player,
     normalize_primary_tag,
     determine_phase,
     get_area_from_gtp,
@@ -83,6 +84,7 @@ class TestMistakeSignature:
             area="corner",
             primary_tag="overplay",
             severity="mistake",
+            player="B",
         )
         with pytest.raises(AttributeError):
             sig.phase = "endgame"
@@ -94,18 +96,19 @@ class TestMistakeSignature:
             area="edge",
             primary_tag="life_death",
             severity="blunder",
+            player="W",
         )
-        assert sig.sort_key() == ("middle", "edge", "life_death", "blunder")
+        assert sig.sort_key() == ("middle", "edge", "life_death", "blunder", "W")
 
     def test_equality(self):
         """Two signatures with same values should be equal."""
-        sig1 = MistakeSignature("opening", "corner", "overplay", "mistake")
-        sig2 = MistakeSignature("opening", "corner", "overplay", "mistake")
+        sig1 = MistakeSignature("opening", "corner", "overplay", "mistake", "B")
+        sig2 = MistakeSignature("opening", "corner", "overplay", "mistake", "B")
         assert sig1 == sig2
 
     def test_hashable(self):
         """MistakeSignature should be hashable (usable as dict key)."""
-        sig = MistakeSignature("middle", "center", "uncertain", "blunder")
+        sig = MistakeSignature("middle", "center", "uncertain", "blunder", "W")
         d = {sig: 1}
         assert d[sig] == 1
 
@@ -131,7 +134,7 @@ class TestPatternCluster:
 
     def test_impact_score(self):
         """impact_score formula: total_loss * (1.0 + 0.1 * count)."""
-        sig = MistakeSignature("middle", "corner", "overplay", "mistake")
+        sig = MistakeSignature("middle", "corner", "overplay", "mistake", "B")
         cluster = PatternCluster(
             signature=sig,
             count=5,
@@ -143,7 +146,7 @@ class TestPatternCluster:
 
     def test_impact_score_count_zero(self):
         """impact_score with count=0."""
-        sig = MistakeSignature("endgame", "edge", "urgent", "blunder")
+        sig = MistakeSignature("endgame", "edge", "urgent", "blunder", "W")
         cluster = PatternCluster(
             signature=sig,
             count=0,
@@ -176,6 +179,29 @@ class TestGetSeverity:
     def test_inaccuracy_skip(self):
         """INACCURACY -> None (skip)."""
         assert get_severity(MistakeCategory.INACCURACY) is None
+
+
+# =============================================================================
+# Test: normalize_player
+# =============================================================================
+
+
+class TestNormalizePlayer:
+    """Tests for normalize_player() helper (Phase 87)."""
+
+    @pytest.mark.parametrize("input_val,expected", [
+        ("B", "B"),
+        ("W", "W"),
+        ("b", "B"),  # lowercase accepted
+        ("w", "W"),  # lowercase accepted
+        (None, "?"),
+        ("", "?"),
+        ("X", "?"),
+        ("black", "?"),  # not supported, falls back to "?"
+    ])
+    def test_normalize_player(self, input_val, expected):
+        """Parametrized test for normalize_player()."""
+        assert normalize_player(input_val) == expected
 
 
 # =============================================================================

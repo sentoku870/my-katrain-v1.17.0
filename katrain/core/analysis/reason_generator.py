@@ -132,7 +132,7 @@ SINGLE_TAG_REASONS: Dict[str, ReasonTemplate] = {
     ),
 }
 
-# Combination reason templates (8 entries)
+# Combination reason templates (15 entries)
 # Key: (phase, area, tag) where "*" means "don't inspect this slot"
 COMBINATION_REASONS: Dict[Tuple[str, str, str], ReasonTemplate] = {
     ("opening", "corner", "direction_error"): ReasonTemplate(
@@ -167,6 +167,35 @@ COMBINATION_REASONS: Dict[Tuple[str, str, str], ReasonTemplate] = {
     ("middle", "*", "overplay"): ReasonTemplate(
         jp="中盤での無理な攻めが裏目に出ました。",
         en="An overplay in the midgame backfired.",
+    ),
+    # Phase 87: Additional combination templates (7 entries)
+    ("opening", "corner", "overplay"): ReasonTemplate(
+        jp="隅での定石選択が無理でした。相手の反撃に備えましょう。",
+        en="An overplay in the corner joseki. Be prepared for counterattacks.",
+    ),
+    ("opening", "edge", "slow_move"): ReasonTemplate(
+        jp="序盤の辺で緩い手を打ちました。大場を優先しましょう。",
+        en="A slow move on the side in the opening. Prioritize big points.",
+    ),
+    ("middle", "corner", "capture_race_loss"): ReasonTemplate(
+        jp="隅の攻め合いで手数を読み間違えました。",
+        en="Miscounted liberties in a corner capturing race.",
+    ),
+    ("middle", "edge", "life_death_error"): ReasonTemplate(
+        jp="辺の石の死活で判断ミスがありました。",
+        en="A life and death misjudgment on the side.",
+    ),
+    ("middle", "center", "direction_error"): ReasonTemplate(
+        jp="中央の戦いで攻め方向を誤りました。",
+        en="Wrong direction of attack in the center fight.",
+    ),
+    ("endgame", "edge", "slow_move"): ReasonTemplate(
+        jp="辺のヨセで大きな先手を逃しました。",
+        en="Missed a big sente move in side endgame.",
+    ),
+    ("endgame", "center", "territorial_loss"): ReasonTemplate(
+        jp="中央の地の出入りで損をしました。",
+        en="Lost points in center territory exchange.",
     ),
 }
 

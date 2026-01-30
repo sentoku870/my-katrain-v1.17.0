@@ -77,7 +77,7 @@ Based on cross-tabulation analysis:
 
 The following patterns were detected multiple times (by impact):
 
-1. **Opening / Corner / Blunder (overplay)**: 3 times, total loss 15.0 pts
+1. **Opening / Corner / Blunder (overplay) [Black]**: 3 times, total loss 15.0 pts
    - game_1.sgf #25(B), game_2.sgf #25(B), game_3.sgf #25(B)
 ## 練習の優先順位 (TestPlayer)
 
