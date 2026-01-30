@@ -57,6 +57,8 @@ def do_new_game(
     from katrain.core.game import Game
 
     ctx.pondering = False
+    # Phase 93: Disable Active Review on new game/SGF load
+    ctx._disable_active_review_if_needed()
     # Phase 16: Clear resign hint tracking on new game
     ctx._leela_manager.clear_resign_hint_tracking()
     mode = ctx.play_analyze_mode

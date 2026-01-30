@@ -637,7 +637,7 @@
             graph.hidden = not (args[1]['score'] or args[1]['winrate'])
         ScoreGraph:
             id: graph
-            opacity: 0 if self.hidden else 1
+            opacity: 0 if (self.hidden or app.is_fog_active()) else 1
             size_hint_y: None
             height: root.graph_height
         BoxLayout:
@@ -1017,6 +1017,27 @@
                 id: ownership
                 text: i18n._('analysis:territory')
                 padding: 0,0,show_children.width/8,0 # space button a bit more
+            MDBoxLayout:
+                adaptive_width: True
+                spacing: CP_SPACING
+                size_hint: None, 0.7
+                pos_hint: {'center_y':0.5}
+                padding: show_children.width/8,0,show_children.width/8,0
+                ClickableLabel:
+                    text: i18n._("active_review:toggle_off") if app.gui and app.gui.active_review_mode else i18n._("active_review:toggle_on")
+                    halign: 'center'
+                    font_size: self.parent.height / 3
+                    color: Theme.CHECKBOX_SELECTED if (app.gui and app.gui.active_review_mode) else Theme.CHECKBOX_UNSELECTED
+                    size_hint_x: None
+                    width: self.texture_size[0] + 4
+                    on_left_press: app.gui.active_review_mode = not app.gui.active_review_mode if app.gui else None
+                MDCheckbox:
+                    id: active_review_checkbox
+                    size_hint: None,0.5
+                    pos_hint: {'center_y': 0.5}
+                    width: self.height
+                    active: app.gui.active_review_mode if app.gui else False
+                    on_active: app.gui.active_review_mode = self.active if app.gui else None
             MDFloatLayout:
                 width: analysis_button.width
                 size_hint: None, 1

@@ -2208,3 +2208,67 @@ msgstr "human-likeモードを無効化しました（有効なパスなし）"
 #. Phase 88: Details
 msgid "details:title"
 msgstr "詳細"
+
+#. Phase 93: Active Review Mode
+msgid "active_review:title"
+msgstr "能動的検討"
+
+msgid "active_review:toggle_on"
+msgstr "検討開始"
+
+msgid "active_review:toggle_off"
+msgstr "検討終了"
+
+msgid "active_review:fog_active"
+msgstr "次の一手を予測してください"
+
+#. Phase 93: Active Review Grades
+msgid "active_review:grade:perfect"
+msgstr "最善手！"
+
+msgid "active_review:grade:excellent"
+msgstr "素晴らしい！"
+
+msgid "active_review:grade:good"
+msgstr "良い"
+
+msgid "active_review:grade:slack"
+msgstr "緩手"
+
+msgid "active_review:grade:blunder"
+msgstr "悪手"
+
+msgid "active_review:grade:not_in_candidates"
+msgstr "珍しい手"
+
+#. Phase 93: Active Review Feedback
+msgid "active_review:feedback:your_move"
+msgstr "あなたの予測: {move}"
+
+msgid "active_review:feedback:ai_best"
+msgstr "AI最善手: {move}"
+
+msgid "active_review:feedback:score_loss"
+msgstr "損失: {loss:.1f}目"
+
+msgid "active_review:feedback:score_loss_na"
+msgstr "損失: N/A"
+
+msgid "active_review:feedback:matches_game"
+msgstr "（実際の棋譜と一致）"
+
+#. Phase 93: Active Review Errors
+msgid "active_review:no_node"
+msgstr "局面が選択されていません。"
+
+msgid "active_review:analysis_required"
+msgstr "解析が必要です。先に解析を実行してください。"
+
+msgid "active_review:analysis_low_visits"
+msgstr "解析が不十分です（{visits}回）。100回以上必要です。"
+
+msgid "active_review:no_candidates"
+msgstr "候補手がありません。"
+
+msgid "active_review:best_is_pass"
+msgstr "最善手がパスです。この局面はスキップします。"

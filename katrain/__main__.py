@@ -69,7 +69,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.core.window import Window
 from kivy.uix.widget import Widget
 from kivy.resources import resource_find
-from kivy.properties import NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
 from kivy.metrics import dp
 from katrain.core.ai import generate_ai_move, LeelaNotAvailableError
@@ -129,6 +129,11 @@ from katrain.gui.features.commands import (
 )
 from katrain.core.sgf_parser import Move
 from katrain.core.errors import EngineError
+from katrain.core.study.active_review import (
+    is_review_ready,
+    ActiveReviewer,
+    GuessGrade,
+)
 from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.package_export_ui import do_export_package
@@ -205,6 +210,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
     zen = NumericProperty(0)
     controls = ObjectProperty(None)
+    active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1041,6 +1047,64 @@ class KaTrainGui(Screen, KaTrainBase):
         except IllegalMoveException as e:
             self.controls.set_status(f"Illegal Move: {str(e)}", STATUS_ERROR)
 
+    # =========================================================================
+    # Phase 93: Active Review Mode
+    # =========================================================================
+
+    def is_fog_active(self) -> bool:
+        """Check if Fog of War is active (for hiding AI hints).
+
+        This is an additive condition - existing hint display rules
+        (analysis_controls, MODE_PLAY, etc.) function independently.
+        This adds an additional hide condition for Active Review.
+
+        Returns:
+            True if Fog is active (hide hints), False otherwise
+        """
+        return self.active_review_mode
+
+    def _disable_active_review_if_needed(self) -> None:
+        """Disable Active Review mode if currently active.
+
+        Called when:
+        - Switching to PLAY mode
+        - Loading new game/SGF
+        - Starting quiz session
+        """
+        if self.active_review_mode:
+            self.active_review_mode = False
+
+    def _do_active_review_guess(self, coords):
+        """Handle user's guess in Active Review mode.
+
+        Args:
+            coords: Board coordinates (col, row) tuple
+        """
+        from katrain.gui.features.active_review_ui import show_guess_feedback
+
+        if not self.game:
+            return
+
+        node = self.game.current_node
+
+        # Check if node is ready for review
+        ready_result = is_review_ready(node)
+        if not ready_result.ready:
+            # Show appropriate message
+            if ready_result.message_key:
+                msg = i18n._(ready_result.message_key)
+                if ready_result.visits > 0:
+                    msg = msg.format(visits=ready_result.visits)
+                self.controls.set_status(msg, STATUS_INFO)
+            return
+
+        # Evaluate the guess
+        reviewer = ActiveReviewer()  # TODO: use skill preset from config
+        evaluation = reviewer.evaluate_guess(coords, node)
+
+        # Show feedback popup
+        show_guess_feedback(self, evaluation)
+
     def _do_analyze_extra(self, mode, **kwargs):
         analyze_commands.do_analyze_extra(self, mode, **kwargs)
 
@@ -1384,6 +1448,8 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def _start_quiz_session(self, quiz_items: List[eval_metrics.QuizItem]) -> None:
         """Delegates to quiz_session.start_quiz_session()."""
+        # Phase 93: Disable Active Review when starting quiz
+        self._disable_active_review_if_needed()
         start_quiz_session(
             self,
             quiz_items,
