@@ -58,8 +58,9 @@ jobs:
           KIVY_NO_FILELOG: 1
           KIVY_NO_CONSOLELOG: 1
           KIVY_NO_ENV_CONFIG: 1
+          KIVY_GL_BACKEND: mock
           SDL_VIDEODRIVER: dummy
-          DISPLAY: ""
+          DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
         run: |
           echo "=== Debug: Python and pytest versions ==="
