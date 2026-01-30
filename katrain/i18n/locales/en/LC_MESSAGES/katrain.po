@@ -207,6 +207,30 @@ msgstr "Leela engine failed to start. Check Leela Zero settings."
 msgid "mykatrain:batch:open_leela_settings"
 msgstr "Setup Leela"
 
+msgid "mykatrain:recovery:reset_to_auto"
+msgstr "Reset to Auto Mode (Recommended)"
+
+msgid "mykatrain:recovery:copy_for_llm"
+msgstr "Copy for LLM Help"
+
+msgid "mykatrain:recovery:save_diagnostics"
+msgstr "Save Diagnostics ZIP"
+
+msgid "mykatrain:recovery:copy_log"
+msgstr "Copy Log (Last 200 Lines)"
+
+msgid "mykatrain:recovery:copied"
+msgstr "Copied to clipboard"
+
+msgid "mykatrain:recovery:saved"
+msgstr "Saved to: {path}"
+
+msgid "mykatrain:recovery:log_copied"
+msgstr "Log copied to clipboard"
+
+msgid "mykatrain:recovery:reset_success"
+msgstr "Reset to auto mode. Restarting engine..."
+
 #. player options in the setup and on the right
 msgid "player:type"
 msgstr "Player"

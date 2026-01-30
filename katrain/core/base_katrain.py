@@ -55,7 +55,7 @@ class Player:
         return f"{self.player_type} ({self.player_subtype})"
 
 
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 def _save_config_with_errors(
@@ -210,6 +210,17 @@ class KaTrainBase:
                 return self._config.get(setting, default)
         except KeyError:
             self.log(f"Missing configuration option {setting}", OUTPUT_ERROR)
+
+    def get_config_snapshot(self) -> Dict[str, Any]:
+        """Get a shallow copy of current config for diagnostics.
+
+        This is the public API for accessing config data.
+        Avoids direct access to _config private attribute.
+
+        Returns:
+            Shallow copy of config dictionary.
+        """
+        return dict(self._config)
 
     def update_player(self, bw, **kwargs):
         self.players_info[bw].update(**kwargs)

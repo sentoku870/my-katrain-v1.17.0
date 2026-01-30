@@ -14,7 +14,7 @@ import json
 import os
 import re
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 from katrain.common.platform import get_platform
 from katrain.core.constants import DATA_FOLDER
@@ -350,3 +350,29 @@ def resolve_auto_engine_settings(
         "max_visits": 100,
         "fast_visits": 10,
     }, None
+
+
+# =============================================================================
+# Reset to Auto Mode (Phase 90)
+# =============================================================================
+
+
+def prepare_reset_to_auto() -> Dict[str, Dict[str, Any]]:
+    """Prepare config changes for reset to auto mode.
+
+    Returns:
+        Dict of config changes to apply.
+        Does NOT apply changes (caller responsibility).
+
+    Usage:
+        changes = prepare_reset_to_auto()
+        ctx.set_config_section("auto_setup", changes["auto_setup"])
+        ctx.save_config("auto_setup")
+    """
+    return {
+        "auto_setup": {
+            **DEFAULT_AUTO_SETUP,
+            "mode": "auto",
+            "first_run_completed": False,
+        }
+    }
