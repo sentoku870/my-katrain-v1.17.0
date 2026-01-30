@@ -796,3 +796,60 @@ class KataGoEngine(BaseEngine):
 
         self.send_query(query, callback, error_callback, next_move, analysis_node)
         analysis_node.analysis_visits_requested = max(analysis_node.analysis_visits_requested, visits)
+
+    # =========================================================================
+    # Phase 89: Auto Mode Support
+    # =========================================================================
+
+    def get_backend_type(self) -> str:
+        """Get backend type for display (best-effort heuristic).
+
+        This is for display purposes only and not definitive.
+        The actual backend is determined by the KataGo binary.
+
+        Returns:
+            One of: "OpenCL", "CUDA", "Eigen", "TensorRT", "Unknown"
+        """
+        exe_path = self.get_engine_path(self.config.get("katago", ""))
+        if not exe_path:
+            return "Unknown"
+
+        basename = os.path.basename(exe_path).lower()
+
+        if "opencl" in basename:
+            return "OpenCL"
+        if "cuda" in basename:
+            return "CUDA"
+        if "eigen" in basename or "cpu" in basename:
+            return "Eigen"
+        if "tensorrt" in basename:
+            return "TensorRT"
+
+        # Default assumption based on bundled binaries
+        return "OpenCL"
+
+    def create_minimal_analysis_query(self) -> dict:
+        """Create a minimal analysis query for testing.
+
+        Used for auto mode test analysis:
+        - 9x9 empty board
+        - 10 visits only
+        - No ownership, no ponder
+
+        Returns:
+            Query dict ready to send to KataGo.
+        """
+        query_id = f"test_analysis_{time.time()}"
+
+        return {
+            "id": query_id,
+            "rules": self.get_rules("chinese"),
+            "komi": 7.5,
+            "boardXSize": 9,
+            "boardYSize": 9,
+            "initialStones": [],
+            "moves": [],
+            "maxVisits": 10,
+            "includeOwnership": False,
+            "includePolicy": False,
+        }

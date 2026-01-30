@@ -1433,6 +1433,76 @@ msgstr "出力設定"
 msgid "mykatrain:settings:tab_leela"
 msgstr "Leela Zero"
 
+msgid "mykatrain:settings:tab_auto"
+msgstr "自動セットアップ"
+
+# Phase 89: Auto Setup Mode
+msgid "mykatrain:settings:auto_mode_header"
+msgstr "自動セットアップ"
+
+msgid "mykatrain:settings:auto_mode_description"
+msgstr "簡単な解析でエンジン設定をテストします。"
+
+msgid "mykatrain:settings:test_analysis"
+msgstr "テスト解析"
+
+msgid "mykatrain:settings:testing_in_progress"
+msgstr "テスト中..."
+
+msgid "mykatrain:settings:test_success"
+msgstr "成功！エンジン: {engine}"
+
+msgid "mykatrain:settings:unknown_error"
+msgstr "不明なエラーが発生しました"
+
+msgid "mykatrain:settings:try_cpu_fallback"
+msgstr "CPUモードを試す"
+
+msgid "mykatrain:settings:trying_cpu_fallback"
+msgstr "CPUモードに切り替え中..."
+
+msgid "mykatrain:settings:copy_diagnostics"
+msgstr "診断情報をコピー"
+
+msgid "mykatrain:settings:timeout_title"
+msgstr "解析がタイムアウトしました"
+
+msgid "mykatrain:settings:timeout_description"
+msgstr "エンジンが応答していません。再起動してください。"
+
+msgid "mykatrain:settings:restart_engine"
+msgstr "エンジンを再起動"
+
+msgid "mykatrain:settings:restarting_engine"
+msgstr "エンジンを再起動中..."
+
+msgid "mykatrain:settings:engine_restarted"
+msgstr "エンジンを再起動しました"
+
+msgid "mykatrain:settings:engine_restart_failed"
+msgstr "エンジンの再起動に失敗しました"
+
+msgid "mykatrain:settings:try_test_again"
+msgstr "もう一度テストを実行してください。"
+
+msgid "mykatrain:settings:timeout_note"
+msgstr "※CPUモードへの切り替えはグラフィックエラー時のみ有効です。"
+
+msgid "mykatrain:settings:error_lightweight_missing"
+msgstr "軽量モデル（b10c128）が見つかりません"
+
+msgid "mykatrain:settings:lightweight_model_instructions"
+msgstr "b10c128モデルをダウンロードして以下に配置してください: {models_dir}"
+
+msgid "mykatrain:settings:retry"
+msgstr "再試行"
+
+msgid "mykatrain:settings:cpu_fallback_also_failed"
+msgstr "CPUモードでも失敗しました"
+
+msgid "mykatrain:settings:cpu_fallback_verification_failed"
+msgstr "CPUバイナリの動作確認に失敗しました"
+
 # Leela Zero Settings (Phase 15)
 msgid "mykatrain:settings:leela_section"
 msgstr "Leela Zero設定"
