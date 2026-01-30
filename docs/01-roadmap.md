@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 91完了）
+> 最終更新: 2026-01-31（Phase 92完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -274,8 +274,8 @@ Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`
 | 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | ✅ Done |
 | 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | ✅ Done |
 | 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | ✅ Done |
-| 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | 📋 Planned |
-| 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、任意ハイライト、i18n整備 | 📋 Planned |
+| 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | ✅ Done |
+| 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、盤上ハイライト、i18n整備 | ✅ Done |
 | 93 | Active Review MVP | Fog of War、回答入力、即時採点（最小）、基本UI統合 | 📋 Planned |
 | 94 | Active Review 拡張 | Retry/Hint、セッションサマリ、ゲーム化、（任意）80系連携 | 📋 Planned |
 
@@ -293,8 +293,8 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 4カテゴリ検出（SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RISK）、モードゲーティング（PLAYモード無効）、
 ノードキャッシュ、設定トグル、i18n対応。（2026-01-30完了）
 
-**Phase 92**: 初心者ヒント拡張。テンプレ翻訳、信頼度フィルタ、任意ハイライト、i18n整備を追加する。
-誤判定・出しすぎのノイズを増やさないことを優先する。
+**Phase 92**: ✅ 初心者ヒント拡張。テンプレ10個ID化（MeaningTagマッピング6カテゴリ追加）、信頼度フィルタ（MIN_VISITS=200）、
+盤上ハイライト（オレンジ半透明円）、i18n完全化（30キー）、キャッシュ設定対応、CI修正（Kivy headless対応）。（2026-01-31完了）
 
 **Phase 93**: Active Review Mode（次の一手予測）MVP。Fog of WarでAIヒントを隠し、ユーザー回答→即時採点の最小ループを作る。
 UI統合と基本評価指標の提示までに絞る。
