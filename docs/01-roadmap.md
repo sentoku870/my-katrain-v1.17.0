@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 92完了）
+> 最終更新: 2026-01-31（Phase 93完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -296,8 +296,9 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 92**: ✅ 初心者ヒント拡張。テンプレ10個ID化（MeaningTagマッピング6カテゴリ追加）、信頼度フィルタ（MIN_VISITS=200）、
 盤上ハイライト（オレンジ半透明円）、i18n完全化（30キー）、キャッシュ設定対応、CI修正（Kivy headless対応）。（2026-01-31完了）
 
-**Phase 93**: Active Review Mode（次の一手予測）MVP。Fog of WarでAIヒントを隠し、ユーザー回答→即時採点の最小ループを作る。
-UI統合と基本評価指標の提示までに絞る。
+**Phase 93**: ✅ Active Review Mode（次の一手予測）MVP。Fog of WarでAIヒントを隠し、ユーザー回答→即時採点。
+`core/study/active_review.py`新規、`gui/features/active_review_ui.py`でフィードバックポップアップ、
+スキル別閾値（beginner/standard/advanced/pro）、自動無効化（PLAY/新ゲーム/クイズ）。（2026-01-31完了）
 
 **Phase 94**: Active Review拡張。Retry/Hint/セッションサマリ等の学習導線を追加する。
 必要に応じてPhase 80系（弱点パターン等）との接続も検討する。
