@@ -1,9 +1,36 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-90 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-91 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 91 完了（Beginner Hints - 初心者向けヒント）
+  - 初心者の自滅を防ぐヒントシステムを実装
+  - 新規ファイル:
+    - `katrain/core/beginner/__init__.py`: パッケージ公開API
+    - `katrain/core/beginner/models.py`: HintCategory, BeginnerHint, DetectorInput
+    - `katrain/core/beginner/detector.py`: 4検出関数 + find_matching_group
+    - `katrain/core/beginner/hints.py`: compute_beginner_hint, get_beginner_hint_cached
+    - `tests/test_beginner_hints.py`: 16テスト
+  - 変更ファイル:
+    - `katrain/config.json`: beginner_hints セクション追加
+    - `katrain/gui/controlspanel.py`: ヒント表示追加
+    - `katrain/gui/features/settings_popup.py`: ON/OFFトグル追加
+    - `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`: 10翻訳キー追加
+    - `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`: 10翻訳キー追加
+  - 4カテゴリ検出:
+    - SELF_ATARI: 自アタリ検出（1石除外、取り返し考慮）
+    - IGNORE_ATARI: アタリ放置検出（サイズ3以上）
+    - MISSED_CAPTURE: 取り逃し検出（サイズ2以上）
+    - CUT_RISK: 切断リスク検出（改善閾値15.0、総サイズ6以上）
+  - 技術仕様:
+    - モードゲーティング: PLAYモードでは無効（チート防止）
+    - ノードキャッシュ: センチネル値で未計算とNoneを区別
+    - ノード状態管理: try-finallyで確実に復元
+    - ランタイムガード: assert不使用（-O対応）
+  - テスト: 3332件パス（+16件）
+  - PRs: #232
 
 - 2026-01-30: Phase 90 完了（Error Recovery & Diagnostics - エラー救済/診断）
   - エラー発生時の復旧導線とLLM相談支援機能を実装

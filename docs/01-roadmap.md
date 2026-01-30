@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 90完了）
+> 最終更新: 2026-01-30（Phase 91完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -289,8 +289,9 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 `recovery_actions.py`（4つの復旧アクション）、EngineRecoveryPopupに復旧ボタン追加、
 `collect_diagnostics_bundle()`/`format_llm_diagnostics_text()`パブリックAPI、`extra_files`でllm_prompt.txt注入。（2026-01-30完了）
 
-**Phase 91**: 初心者向けヒント（Safety Net）MVP。1手1ヒント枠で、コア4（self-atari等）を中心に出す。
-チート衝突を避け、Review/Analysis中心＋ON/OFFで提供する。
+**Phase 91**: ✅ 初心者向けヒント（Safety Net）MVP。`katrain/core/beginner/`パッケージ新規作成、
+4カテゴリ検出（SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RISK）、モードゲーティング（PLAYモード無効）、
+ノードキャッシュ、設定トグル、i18n対応。（2026-01-30完了）
 
 **Phase 92**: 初心者ヒント拡張。テンプレ翻訳、信頼度フィルタ、任意ハイライト、i18n整備を追加する。
 誤判定・出しすぎのノイズを増やさないことを優先する。
