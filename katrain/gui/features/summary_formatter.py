@@ -49,6 +49,11 @@ SEVERITY_KEYS = {
     "mistake": "pattern:severity-mistake",
     "blunder": "pattern:severity-blunder",
 }
+PLAYER_KEYS = {
+    "B": "pattern:player-black",
+    "W": "pattern:player-white",
+    "?": "pattern:player-unknown",
+}
 MAX_DISPLAY_REFS = 3
 
 
@@ -400,6 +405,7 @@ def _append_recurring_patterns(
     unknown_phases: set = set()
     unknown_areas: set = set()
     unknown_severities: set = set()
+    unknown_players: set = set()
 
     for idx, cluster in enumerate(pattern_clusters, 1):
         sig = cluster.signature
@@ -411,10 +417,13 @@ def _append_recurring_patterns(
             unknown_areas.add(sig.area)
         if sig.severity not in SEVERITY_KEYS:
             unknown_severities.add(sig.severity)
+        if sig.player not in PLAYER_KEYS:
+            unknown_players.add(sig.player)
 
         phase_label = i18n._(PHASE_KEYS.get(sig.phase, "pattern:phase-middle"))
         area_label = i18n._(AREA_KEYS.get(sig.area, "pattern:area-center"))
         severity_label = i18n._(SEVERITY_KEYS.get(sig.severity, "pattern:severity-mistake"))
+        player_label = i18n._(PLAYER_KEYS.get(sig.player, "pattern:player-unknown"))
 
         count_loss_text = i18n._("pattern:count-loss").format(
             count=cluster.count,
@@ -423,7 +432,7 @@ def _append_recurring_patterns(
 
         lines.append(
             f"{idx}. **{phase_label} / {area_label} / {severity_label} "
-            f"({sig.primary_tag})**: {count_loss_text}"
+            f"({sig.primary_tag}) [{player_label}]**: {count_loss_text}"
         )
 
         refs_text = _format_game_refs(cluster.game_refs, MAX_DISPLAY_REFS)
@@ -448,6 +457,8 @@ def _append_recurring_patterns(
         _logger.debug("Unknown area value(s) in pattern clusters: %s", unknown_areas)
     if unknown_severities:
         _logger.debug("Unknown severity value(s) in pattern clusters: %s", unknown_severities)
+    if unknown_players:
+        _logger.debug("Unknown player value(s) in pattern clusters: %s", unknown_players)
 
 
 def build_summary_from_stats(

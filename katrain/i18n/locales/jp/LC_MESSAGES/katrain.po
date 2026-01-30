@@ -1941,6 +1941,16 @@ msgstr "悪手"
 msgid "pattern:severity-blunder"
 msgstr "大悪手"
 
+#. Phase 87: Pattern player labels
+msgid "pattern:player-black"
+msgstr "黒"
+
+msgid "pattern:player-white"
+msgstr "白"
+
+msgid "pattern:player-unknown"
+msgstr "不明"
+
 #. Phase 85: Pattern format strings
 msgid "pattern:count-loss"
 msgstr "{count}回、総損失{loss:.1f}目"

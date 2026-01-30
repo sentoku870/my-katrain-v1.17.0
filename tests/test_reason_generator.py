@@ -2,6 +2,7 @@
 """Tests for reason_generator.py (Phase 86)."""
 
 import pytest
+from unittest.mock import patch
 
 from katrain.core.analysis.board_context import BoardArea
 from katrain.core.analysis.reason_generator import (
@@ -221,3 +222,50 @@ class TestWildcardMatching:
         assert result is not None
         # Should use single-tag template
         assert "無理な手" in result
+
+
+# =============================================================================
+# Wildcard Precedence Tests (Phase 87)
+# =============================================================================
+
+
+class TestWildcardPrecedence:
+    """Tests to lock wildcard matching priority (Phase 87)."""
+
+    def test_exact_beats_area_wildcard(self):
+        """Exact (phase, area, tag) beats (phase, '*', tag)."""
+        # Inject exact template that competes with existing ("middle", "*", "overplay")
+        test_combo = {
+            ("middle", "center", "overplay"): ReasonTemplate(jp="EXACT_JP", en="EXACT_EN"),
+        }
+        # Patch the module-level dict used by generate_reason()
+        with patch.dict(
+            "katrain.core.analysis.reason_generator.COMBINATION_REASONS",
+            test_combo,
+        ):
+            result = generate_reason("overplay", phase="middle", area="center", lang="jp")
+            # Assert injected template is selected (not wildcard)
+            assert result == "EXACT_JP"
+
+    def test_area_wildcard_when_no_exact(self):
+        """Area wildcard matches when no exact template exists."""
+        # ("middle", "*", "overplay") exists, no exact for ("middle", "edge", "overplay")
+        result = generate_reason("overplay", phase="middle", area="edge", lang="jp")
+        # Should get wildcard template, not None
+        assert result is not None
+        assert "中盤" in result  # Wildcard template text
+
+    def test_fallback_to_single_tag(self):
+        """No combo match falls back to single tag template."""
+        # No combo for (opening, center, slow_move)
+        result = generate_reason("slow_move", phase="opening", area="center", lang="jp")
+        assert result is not None
+        # Should get single-tag template
+        assert "遅い" in result or "緩い" in result
+
+    def test_new_template_matches(self):
+        """New templates return expected content (Phase 87)."""
+        result = generate_reason("overplay", phase="opening", area="corner", lang="jp")
+        # New template added in Task 2
+        assert result is not None
+        assert "定石" in result  # Contains "joseki" in JP template

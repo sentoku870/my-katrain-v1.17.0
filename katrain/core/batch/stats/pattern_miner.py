@@ -65,15 +65,17 @@ class MistakeSignature:
         area: Board area ("corner", "edge", "center")
         primary_tag: MeaningTagId value (e.g., "overplay", "uncertain")
         severity: Mistake severity ("mistake", "blunder")
+        player: Player color ("B" or "W")
     """
     phase: str
     area: str
     primary_tag: str
     severity: str
+    player: str
 
-    def sort_key(self) -> Tuple[str, str, str, str]:
+    def sort_key(self) -> Tuple[str, str, str, str, str]:
         """Return deterministic sort key for stable ordering."""
-        return (self.phase, self.area, self.primary_tag, self.severity)
+        return (self.phase, self.area, self.primary_tag, self.severity, self.player)
 
 
 @dataclass(frozen=True)
@@ -133,6 +135,29 @@ def get_severity(mistake_category: MistakeCategory) -> Optional[str]:
     if mistake_category == MistakeCategory.BLUNDER:
         return "blunder"
     return None  # GOOD, INACCURACY, or unknown
+
+
+def normalize_player(player: Optional[str]) -> str:
+    """Normalize player to canonical format.
+
+    Args:
+        player: Raw player value from MoveEval ('B'/'W'/None or lowercase)
+
+    Returns:
+        "B", "W", or "?" (unknown/pass)
+
+    Note:
+        MoveEval.player is documented as 'B'/'W'/None.
+        Defensive: accepts lowercase, returns "?" for anything else.
+    """
+    if player is None:
+        return "?"
+    upper = player.upper()
+    if upper == "B":
+        return "B"
+    if upper == "W":
+        return "W"
+    return "?"
 
 
 def normalize_primary_tag(meaning_tag_id: Optional[str]) -> str:
@@ -252,9 +277,10 @@ def create_signature(
     if severity is None:
         return None
 
-    # Check player
-    if move_eval.player is None:
-        return None
+    # Normalize player (skip if unknown)
+    norm_player = normalize_player(move_eval.player)
+    if norm_player == "?":
+        return None  # Skip pass/unknown moves
 
     # Get area (skip pass/resign/invalid)
     area = get_area_from_gtp(move_eval.gtp, board_size)
@@ -272,6 +298,7 @@ def create_signature(
         area=area,
         primary_tag=primary_tag,
         severity=severity,
+        player=norm_player,
     )
 
 

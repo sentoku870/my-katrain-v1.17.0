@@ -1993,6 +1993,16 @@ msgstr "Mistake"
 msgid "pattern:severity-blunder"
 msgstr "Blunder"
 
+#. Phase 87: Pattern player labels
+msgid "pattern:player-black"
+msgstr "Black"
+
+msgid "pattern:player-white"
+msgstr "White"
+
+msgid "pattern:player-unknown"
+msgstr "Unknown"
+
 #. Phase 85: Pattern format strings
 msgid "pattern:count-loss"
 msgstr "{count} times, total loss {loss:.1f} pts"
