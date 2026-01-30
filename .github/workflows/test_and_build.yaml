@@ -53,10 +53,40 @@ jobs:
           python-version: ${{ matrix.python-version }}
           sync-groups: dev
 
+      - name: Debug - Check pytest version and environment
+        run: |
+          echo "=== Python version ==="
+          uv run python --version
+          echo "=== Pytest version ==="
+          uv run pytest --version
+          echo "=== Working directory ==="
+          pwd
+          ls -la tests/ | head -20
+          echo "=== Test file count ==="
+          find tests -name "test_*.py" | wc -l
+
+      - name: Debug - Import test with verbose
+        env:
+          KIVY_NO_FILELOG: 1
+          KIVY_NO_CONSOLELOG: 1
+        run: |
+          echo "=== Testing single simple import ==="
+          uv run python -c "import sys; print(sys.path)"
+          uv run python -c "from tests.conftest import TESTS_DIR; print(TESTS_DIR)"
+
+      - name: Debug - Run pytest on single file first
+        env:
+          KIVY_NO_FILELOG: 1
+          KIVY_NO_CONSOLELOG: 1
+        run: |
+          echo "=== Running pytest on test_version.py only ==="
+          uv run pytest tests/test_version.py -v --tb=short || echo "Single file test failed with code $?"
+
       - name: Run tests
         env:
           KIVY_NO_FILELOG: 1
-        run: uv run pytest tests --import-mode=importlib -p no:faulthandler
+          KIVY_NO_CONSOLELOG: 1
+        run: uv run pytest tests --import-mode=importlib -p no:faulthandler -v --tb=short 2>&1 | head -500 || echo "Tests failed with code $?"
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
