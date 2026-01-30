@@ -407,6 +407,24 @@ from katrain.core.analysis.cluster_classifier import (
 )
 
 # =============================================================================
+# Explicit imports from reason_generator.py (Phase 86)
+# =============================================================================
+
+from katrain.core.analysis.reason_generator import (
+    # Dataclass
+    ReasonTemplate,
+    # Constants
+    SUPPORTED_TAGS,
+    PHASE_VOCABULARY,
+    AREA_VOCABULARY,
+    SINGLE_TAG_REASONS,
+    COMBINATION_REASONS,
+    # Functions
+    generate_reason,
+    generate_reason_safe,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -729,4 +747,16 @@ __all__ = [
     "build_classification_context",
     # Karte integration
     "_get_cluster_context_for_move",
+    # === reason_generator.py (Phase 86) ===
+    # Dataclass
+    "ReasonTemplate",
+    # Constants
+    "SUPPORTED_TAGS",
+    "PHASE_VOCABULARY",
+    "AREA_VOCABULARY",
+    "SINGLE_TAG_REASONS",
+    "COMBINATION_REASONS",
+    # Functions
+    "generate_reason",
+    "generate_reason_safe",
 ]

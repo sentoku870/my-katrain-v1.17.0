@@ -16,6 +16,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 from katrain.core import eval_metrics
+from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.batch.helpers import truncate_game_name
 from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
@@ -427,6 +428,17 @@ def _append_recurring_patterns(
 
         refs_text = _format_game_refs(cluster.game_refs, MAX_DISPLAY_REFS)
         lines.append(f"   - {refs_text}")
+
+        # Phase 86: Add reason line if available
+        reason = generate_reason_safe(
+            sig.primary_tag,
+            phase=sig.phase,
+            area=sig.area,
+            lang=i18n.current_lang,
+        )
+        if reason:
+            lines.append(f"   - {reason}")
+
         lines.append("")
 
     # Log unknown signature field values (once per call)

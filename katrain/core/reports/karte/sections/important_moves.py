@@ -18,6 +18,8 @@ from katrain.core.analysis.cluster_classifier import (
     _get_cluster_context_for_move,
 )
 from katrain.core.analysis.critical_moves import select_critical_moves
+from katrain.core.analysis.reason_generator import generate_reason_safe
+from katrain.core.batch.stats import get_area_from_gtp
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
 from katrain.core.analysis.time import get_pacing_icon
@@ -323,6 +325,21 @@ def critical_3_section_for(
         lines.append(f"### {i}. Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}")
         lines.append(f"- **Loss**: {cm.score_loss:.1f}{unit}")
         lines.append(f"- **Type**: {cm.meaning_tag_label}")
+
+        # Phase 86: Add reason line if available
+        try:
+            area = get_area_from_gtp(cm.gtp_coord, ctx.game.board_size)
+        except Exception:
+            area = None
+        reason = generate_reason_safe(
+            cm.meaning_tag_id,
+            phase=cm.game_phase,
+            area=area,
+            lang=ctx.lang,
+        )
+        if reason:
+            lines.append(f"- **Reason**: {reason}")
+
         lines.append(f"- **Phase**: {cm.game_phase}")
         lines.append(f"- **Difficulty**: {cm.position_difficulty.upper()}")
 
