@@ -333,7 +333,7 @@ class ControlsPanel(BoxLayout):
         return True
 
     def _format_beginner_hint(self, hint) -> str:
-        """Format a BeginnerHint for display (Phase 91)
+        """Format a BeginnerHint for display (Phase 91-92)
 
         Args:
             hint: BeginnerHint instance
@@ -343,12 +343,20 @@ class ControlsPanel(BoxLayout):
         """
         from katrain.core.lang import i18n
 
-        # Map category to i18n key
+        # Map category to i18n key (Phase 91: 4 detectors, Phase 92: 6 MeaningTag)
         category_keys = {
+            # Phase 91: Priority detectors
             HintCategory.SELF_ATARI: "beginner_hint:self_atari",
             HintCategory.IGNORE_ATARI: "beginner_hint:ignore_atari",
             HintCategory.MISSED_CAPTURE: "beginner_hint:missed_capture",
             HintCategory.CUT_RISK: "beginner_hint:cut_risk",
+            # Phase 92: MeaningTag fallbacks
+            HintCategory.LOW_LIBERTIES: "beginner_hint:low_liberties",
+            HintCategory.SELF_CAPTURE_LIKE: "beginner_hint:self_capture_like",
+            HintCategory.BAD_SHAPE: "beginner_hint:bad_shape",
+            HintCategory.HEAVY_GROUP: "beginner_hint:heavy_group",
+            HintCategory.MISSED_DEFENSE: "beginner_hint:missed_defense",
+            HintCategory.URGENT_VS_BIG: "beginner_hint:urgent_vs_big",
         }
 
         key = category_keys.get(hint.category)
@@ -362,10 +370,18 @@ class ControlsPanel(BoxLayout):
         # If i18n key is not found (returns key), use fallback
         if title.startswith("beginner_hint:"):
             fallbacks = {
+                # Phase 91: Priority detectors
                 HintCategory.SELF_ATARI: ("Dangerous Move", "Playing here puts your group in atari."),
                 HintCategory.IGNORE_ATARI: ("Atari Ignored", "Your group is still in atari."),
                 HintCategory.MISSED_CAPTURE: ("Missed Capture", "You could have captured opponent's stones."),
                 HintCategory.CUT_RISK: ("Cut Risk", "Your groups could be cut apart here."),
+                # Phase 92: MeaningTag fallbacks
+                HintCategory.LOW_LIBERTIES: ("Low Liberties", "This group has few liberties and is in danger."),
+                HintCategory.SELF_CAPTURE_LIKE: ("Life and Death", "This position involves life and death of stones."),
+                HintCategory.BAD_SHAPE: ("Bad Shape", "This is an inefficient shape."),
+                HintCategory.HEAVY_GROUP: ("Heavy Stones", "Your stones have become heavy."),
+                HintCategory.MISSED_DEFENSE: ("Weak Connection", "Your stones' connection is weak."),
+                HintCategory.URGENT_VS_BIG: ("Slow Move", "There are bigger moves elsewhere."),
             }
             title, body = fallbacks.get(hint.category, ("Hint", ""))
 

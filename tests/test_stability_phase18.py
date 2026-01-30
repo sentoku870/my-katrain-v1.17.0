@@ -6,6 +6,7 @@ PR #110: Critical Fixes (P1 + P2)
 """
 
 import importlib.util
+import os
 
 import pytest
 
@@ -25,13 +26,23 @@ def _kivy_available():
     return importlib.util.find_spec("kivy") is not None
 
 
+def _skip_kivy_on_ci():
+    """Check if Kivy tests should be skipped (not installed or running on CI)."""
+    if not _kivy_available():
+        return True
+    # On CI, Kivy is installed but display is not available
+    return os.environ.get("CI", "").lower() == "true"
+
+
 # =============================================================================
 # Pure Python Tests（Kivy不要）
+# Note: TestMakeHashable imports from kivyutils, so it needs CI skip
 # =============================================================================
 
 
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Imports from kivyutils which requires Kivy")
 class TestMakeHashable:
-    """_make_hashableのテスト（Pure Python）"""
+    """_make_hashableのテスト（Pure Python but imports from kivyutils）"""
 
     @pytest.fixture
     def make_hashable(self):
@@ -149,7 +160,7 @@ class TestFontNameResolution:
 # =============================================================================
 
 
-@pytest.mark.skipif(not _kivy_available(), reason="Kivy not installed")
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Kivy not available or headless CI")
 class TestCacheConfig:
     """キャッシュ設定のテスト（Kivyインポート必要）"""
 
@@ -180,7 +191,7 @@ class TestCacheConfig:
         assert callable(clear_texture_caches)
 
 
-@pytest.mark.skipif(not _kivy_available(), reason="Kivy not installed")
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Kivy not available or headless CI")
 class TestPopupClockBinding:
     """Popup Clockバインディングのテスト（Kivyインポート必要）"""
 
@@ -203,7 +214,7 @@ class TestPopupClockBinding:
         assert callable(_get_app_gui)
 
 
-@pytest.mark.skipif(not _kivy_available(), reason="Kivy not installed")
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Kivy not available or headless CI")
 class TestFallbackTexture:
     """フォールバックテクスチャのテスト（Kivyインポート必要）"""
 
@@ -340,7 +351,7 @@ class TestArrayAccessGuards:
 # =============================================================================
 
 
-@pytest.mark.skipif(not _kivy_available(), reason="Kivy not installed")
+@pytest.mark.skipif(_skip_kivy_on_ci(), reason="Kivy not available or headless CI")
 class TestAnimatePvInterval:
     """animate_pv インターバルのテスト（Kivyインポート必要）"""
 

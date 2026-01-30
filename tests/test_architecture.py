@@ -8,6 +8,8 @@ v5改善:
 - 副作用検出: Assign/AnnAssign内の関数呼び出しも検出
 """
 
+from __future__ import annotations
+
 import ast
 from pathlib import Path
 from typing import List, Set, Tuple

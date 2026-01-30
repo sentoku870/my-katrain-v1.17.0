@@ -54,7 +54,19 @@ jobs:
           sync-groups: dev
 
       - name: Run tests
-        run: uv run pytest tests
+        env:
+          KIVY_NO_FILELOG: 1
+          KIVY_NO_CONSOLELOG: 1
+          KIVY_NO_ENV_CONFIG: 1
+          KIVY_GL_BACKEND: mock
+          SDL_VIDEODRIVER: dummy
+          DISPLAY: ":0"
+          PYTHONUNBUFFERED: 1
+        run: |
+          uv run python -m pytest tests -p no:faulthandler 2>&1
+          exit_code=$?
+          echo "Exit code: $exit_code"
+          exit $exit_code
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo

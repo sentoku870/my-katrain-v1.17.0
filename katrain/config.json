@@ -98,8 +98,8 @@
     },
     "beginner_hints": {
         "enabled": false,
-        "scope": "review_only",
-        "board_highlight": true
+        "board_highlight": true,
+        "require_reliable": true
     },
     "ai": {
         "ai:default": {},

@@ -9,6 +9,8 @@ This module tests the pacing analysis functionality including:
 - Edge cases
 """
 
+from __future__ import annotations
+
 import pytest
 from dataclasses import dataclass
 from typing import Optional

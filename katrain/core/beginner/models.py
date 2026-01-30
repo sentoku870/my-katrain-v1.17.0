@@ -9,12 +9,51 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 class HintCategory(Enum):
-    """Categories of beginner hints (detection priority order)"""
+    """Categories of beginner hints (detection priority order)
 
+    Priority detectors (Phase 91): SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RISK
+    MeaningTag fallbacks (Phase 92): LOW_LIBERTIES, SELF_CAPTURE_LIKE, BAD_SHAPE,
+                                     HEAVY_GROUP, MISSED_DEFENSE, URGENT_VS_BIG
+    """
+
+    # Priority detectors (Phase 91)
     SELF_ATARI = "self_atari"
     IGNORE_ATARI = "ignore_atari"
     MISSED_CAPTURE = "missed_capture"
     CUT_RISK = "cut_risk"
+
+    # MeaningTag fallbacks (Phase 92)
+    LOW_LIBERTIES = "low_liberties"
+    SELF_CAPTURE_LIKE = "self_capture_like"
+    BAD_SHAPE = "bad_shape"
+    HEAVY_GROUP = "heavy_group"
+    MISSED_DEFENSE = "missed_defense"
+    URGENT_VS_BIG = "urgent_vs_big"
+
+    @classmethod
+    def from_meaning_tag_id(cls, tag_id: Optional[str]) -> Optional["HintCategory"]:
+        """Map MeaningTagId string to HintCategory.
+
+        Returns None for unknown/unsupported IDs (no crash).
+
+        Args:
+            tag_id: MeaningTagId value (e.g., "capture_race_loss")
+
+        Returns:
+            Corresponding HintCategory or None if unknown
+        """
+        if tag_id is None:
+            return None
+
+        _MAPPING = {
+            "capture_race_loss": cls.LOW_LIBERTIES,
+            "life_death_error": cls.SELF_CAPTURE_LIKE,
+            "shape_mistake": cls.BAD_SHAPE,
+            "overplay": cls.HEAVY_GROUP,
+            "connection_miss": cls.MISSED_DEFENSE,
+            "endgame_slip": cls.URGENT_VS_BIG,
+        }
+        return _MAPPING.get(tag_id)  # Returns None for unknown
 
 
 @dataclass(frozen=True)

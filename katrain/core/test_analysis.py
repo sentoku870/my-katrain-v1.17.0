@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import List, Optional
 
 
 class ErrorCategory(Enum):
@@ -35,8 +36,8 @@ class TestAnalysisResult:
     """
 
     success: bool
-    error_category: ErrorCategory | None
-    error_message: str | None
+    error_category: Optional[ErrorCategory]
+    error_message: Optional[str]
 
 
 # =============================================================================

@@ -1,5 +1,7 @@
 """isort:skip_file"""
 
+from __future__ import annotations
+
 # first, logging level lower
 import os
 import sys

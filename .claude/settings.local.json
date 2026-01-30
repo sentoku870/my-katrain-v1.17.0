@@ -41,7 +41,24 @@
       "Bash(uv run python:*)",
       "Bash(pip install:*)",
       "Bash(git restore:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(uv pip:*)",
+      "Bash(Select-String -Pattern \"kivy\")",
+      "Bash($env:PYTHONUTF8=\"1\")",
+      "Bash($env:PYTHONUTF8 = \"1\")",
+      "Bash(PYTHONUTF8=1 uv run pytest:*)",
+      "Bash(set PYTHONUTF8=1:*)",
+      "Bash(Select-Object -First 100)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(gh workflow list:*)",
+      "Bash(gh run rerun:*)",
+      "Bash(gh run download:*)",
+      "Bash(gh pr view:*)",
+      "Bash(uv run:*)",
+      "Bash(gh run list:*)"
     ]
   }
 }

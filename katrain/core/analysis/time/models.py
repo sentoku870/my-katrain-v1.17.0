@@ -8,6 +8,8 @@ This module defines the core data structures for SGF time parsing:
 Part of Phase 58: Time Data Parser.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional
 

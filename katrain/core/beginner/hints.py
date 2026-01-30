@@ -1,9 +1,12 @@
-"""Phase 91: Beginner Hint Computation
+"""Phase 91-92: Beginner Hint Computation
 
 Main entry points for computing beginner hints.
+
+Phase 91: 4 priority detectors (SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RISK)
+Phase 92: MeaningTag fallback, reliability filter, gating functions
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Union
 
 from katrain.core.beginner.detector import (
     detect_cut_risk,
@@ -11,15 +14,181 @@ from katrain.core.beginner.detector import (
     detect_missed_capture,
     detect_self_atari,
 )
-from katrain.core.beginner.models import BeginnerHint, DetectorInput
+from katrain.core.beginner.models import BeginnerHint, DetectorInput, HintCategory
 from katrain.core.board_analysis import extract_groups_from_game
 
 # Sentinel value for cache (distinguishes None from "not computed")
 _NOT_COMPUTED = object()
 
+# Phase 92: Reliability filter constant
+MIN_RELIABLE_VISITS = 200
 
-def compute_beginner_hint(game: Any, node: Any) -> Optional[BeginnerHint]:
-    """Compute a beginner hint for a specific node
+# Phase 92: Detector categories (always reliable, use board state)
+_DETECTOR_CATEGORIES = frozenset(
+    {
+        HintCategory.SELF_ATARI,
+        HintCategory.IGNORE_ATARI,
+        HintCategory.MISSED_CAPTURE,
+        HintCategory.CUT_RISK,
+    }
+)
+
+
+# =============================================================================
+# Phase 92: Reliability Filter Functions
+# =============================================================================
+
+
+def _get_visits_from_node(node: Any) -> Optional[int]:
+    """Get visits from node analysis using public helper.
+
+    Args:
+        node: GameNode to check
+
+    Returns:
+        Number of visits, or None if analysis unavailable
+    """
+    from katrain.core.analysis import get_root_visits
+
+    analysis = getattr(node, "analysis", None)
+    return get_root_visits(analysis)
+
+
+def _is_reliable(node: Any) -> bool:
+    """Check if node analysis is reliable enough for hints.
+
+    Args:
+        node: GameNode to check
+
+    Returns:
+        True if visits >= MIN_RELIABLE_VISITS, False otherwise
+    """
+    visits = _get_visits_from_node(node)
+    if visits is None:
+        return False
+    return visits >= MIN_RELIABLE_VISITS
+
+
+# =============================================================================
+# Phase 92c: Gating Pure Functions (Kivy-independent)
+# =============================================================================
+
+
+def _normalize_board_size(board_size: Union[int, Tuple[int, int]]) -> Tuple[int, int]:
+    """Normalize board_size to (width, height) tuple.
+
+    Args:
+        board_size: Either int (square board) or (width, height) tuple.
+
+    Returns:
+        Tuple of (width, height).
+    """
+    if isinstance(board_size, int):
+        return (board_size, board_size)
+    return board_size
+
+
+def should_show_beginner_hints(enabled: bool, mode: str) -> bool:
+    """Check if beginner hints should be shown (pure function).
+
+    Args:
+        enabled: beginner_hints/enabled config value
+        mode: Current play_analyze_mode
+
+    Returns:
+        True if hints should be displayed.
+    """
+    from katrain.core.constants import MODE_PLAY
+
+    if not enabled:
+        return False
+    if mode == MODE_PLAY:
+        return False
+    return True
+
+
+def should_draw_board_highlight(
+    enabled: bool,
+    mode: str,
+    board_highlight: bool,
+) -> bool:
+    """Check if board highlight should be drawn (pure function).
+
+    Args:
+        enabled: beginner_hints/enabled config value
+        mode: Current play_analyze_mode
+        board_highlight: beginner_hints/board_highlight config value
+
+    Returns:
+        True if highlight should be drawn.
+    """
+    if not should_show_beginner_hints(enabled, mode):
+        return False
+    return board_highlight
+
+
+def is_coords_valid(
+    coords: Optional[Tuple[int, int]],
+    board_size: Union[int, Tuple[int, int]],
+) -> bool:
+    """Check if coords are valid for the given board size (pure function).
+
+    Args:
+        coords: (x, y) coordinates or None
+        board_size: Board size (int or tuple)
+
+    Returns:
+        True if coords are within bounds.
+    """
+    if coords is None:
+        return False
+    x, y = coords
+    board_size_x, board_size_y = _normalize_board_size(board_size)
+    return 0 <= x < board_size_x and 0 <= y < board_size_y
+
+
+def _get_meaning_tag_hint(
+    node: Any, move_coords: Optional[Tuple[int, int]]
+) -> Optional[BeginnerHint]:
+    """Get beginner hint from node's MeaningTag (Phase 92).
+
+    Checks if the node has a meaning_tag_id attribute (typically set by
+    batch analysis) and maps it to a beginner hint category.
+
+    MeaningTag-based hints have lower severity (1) than detector hints (2-3).
+
+    Args:
+        node: GameNode to check
+        move_coords: Coordinates of the move for highlighting
+
+    Returns:
+        BeginnerHint if a valid MeaningTag mapping exists, None otherwise
+    """
+    # Check for meaning_tag_id on the node (may be set by batch analysis)
+    tag_id = getattr(node, "meaning_tag_id", None)
+    if tag_id is None:
+        return None
+
+    # Map to HintCategory (returns None for unknown/unsupported tags)
+    category = HintCategory.from_meaning_tag_id(tag_id)
+    if category is None:
+        return None
+
+    return BeginnerHint(
+        category=category,
+        coords=move_coords,
+        severity=1,  # Lower priority than detectors
+        context={"source": "meaning_tag", "tag_id": tag_id},
+    )
+
+
+def compute_beginner_hint(
+    game: Any,
+    node: Any,
+    *,
+    require_reliable: bool = True,
+) -> Optional[BeginnerHint]:
+    """Compute a beginner hint for a specific node (Phase 91-92)
 
     Node state transitions:
     1. Save original_node
@@ -27,11 +196,14 @@ def compute_beginner_hint(game: Any, node: Any) -> Optional[BeginnerHint]:
     3. Move to node.parent -> get groups_before
     4. Move back to node <- Required for CUT_RISK
     5. Run detectors
-    6. Restore original_node
+    6. MeaningTag fallback (Phase 92)
+    7. Apply reliability filter (Phase 92)
+    8. Restore original_node
 
     Args:
         game: Game instance
         node: GameNode to evaluate
+        require_reliable: If True, filter non-detector hints when visits < threshold
 
     Returns:
         BeginnerHint if a warning applies, None otherwise
@@ -93,6 +265,20 @@ def compute_beginner_hint(game: Any, node: Any) -> Optional[BeginnerHint]:
             return hint
 
         hint = detect_cut_risk(inp, game)  # Needs game for find_connect_points
+        if hint:
+            return hint
+
+        # Phase 92: MeaningTag fallback (lower priority than detectors)
+        hint = _get_meaning_tag_hint(node, move.coords)
+
+        # Phase 92: Apply reliability filter for non-detector hints
+        if hint and require_reliable:
+            # Detector hints use board state (always reliable)
+            # MeaningTag hints need analysis reliability check
+            if hint.category not in _DETECTOR_CATEGORIES:
+                if not _is_reliable(node):
+                    return None
+
         return hint
 
     finally:
@@ -101,26 +287,39 @@ def compute_beginner_hint(game: Any, node: Any) -> Optional[BeginnerHint]:
             game.set_current_node(original_node)
 
 
-def get_beginner_hint_cached(game: Any, node: Any) -> Optional[BeginnerHint]:
-    """Get beginner hint with node-level caching
+def get_beginner_hint_cached(
+    game: Any,
+    node: Any,
+    *,
+    require_reliable: bool = True,
+) -> Optional[BeginnerHint]:
+    """Get beginner hint with node-level caching (Phase 91-92)
 
     Caches the result on the node to avoid recomputation.
     Uses a sentinel value to distinguish None (no hint) from
     "not yet computed".
 
+    Phase 92: Cache key includes require_reliable setting to prevent
+    stale results when the setting changes.
+
     Args:
         game: Game instance
         node: GameNode to evaluate
+        require_reliable: If True, filter non-detector hints when visits < threshold
 
     Returns:
         BeginnerHint if a warning applies, None otherwise
     """
     cache_attr = "_beginner_hint_cache"
 
+    # Phase 92: Cache stores (require_reliable, hint) tuple
     cached = getattr(node, cache_attr, _NOT_COMPUTED)
     if cached is not _NOT_COMPUTED:
-        return cached  # None is a valid cached value
+        cached_require_reliable, cached_hint = cached
+        if cached_require_reliable == require_reliable:
+            return cached_hint
+        # Setting changed, recompute
 
-    hint = compute_beginner_hint(game, node)
-    setattr(node, cache_attr, hint)
+    hint = compute_beginner_hint(game, node, require_reliable=require_reliable)
+    setattr(node, cache_attr, (require_reliable, hint))
     return hint

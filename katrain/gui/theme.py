@@ -52,6 +52,8 @@ class Theme:
     MISTAKE_BUTTON_COLOR = [0.79, 0.06, 0.06, 1]
     STAT_WORSE_COLOR = [0.8, 0.4, 0.2, 1]
     STAT_BETTER_COLOR = [0.2, 0.5, 0.1, 1]
+    # Primary button color (blue-ish to match app theme)
+    PRIMARY_COLOR = [0.25, 0.45, 0.65, 1]
 
     # gui spacing
     RIGHT_PANEL_ASPECT_RATIO = 0.4  # W/H
@@ -106,6 +108,8 @@ class Theme:
     BOARD_COLOR_TINT = [1, 1, 1, 1]  # multiplied by texture
 
     HINT_TEXT_COLOR = BLACK
+    # Phase 92: Beginner hint highlight color (semi-transparent orange)
+    BEGINNER_HINT_COLOR = [1.0, 0.6, 0.2, 0.5]
 
     REGION_BORDER_COLOR = LIGHTER_BACKGROUND_COLOR
     INSERT_BOARD_COLOR_TINT = [1, 1, 1, 0.6]

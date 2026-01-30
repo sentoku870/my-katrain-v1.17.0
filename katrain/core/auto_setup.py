@@ -14,7 +14,7 @@ import json
 import os
 import re
 import shutil
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from katrain.common.platform import get_platform
 from katrain.core.constants import DATA_FOLDER
@@ -42,7 +42,7 @@ MIGRATED_DEFAULT_MODE: str = "standard"
 # =============================================================================
 
 # Cache for packaged config.json
-_PACKAGED_DEFAULTS: dict | None = None
+_PACKAGED_DEFAULTS: Optional[Dict] = None
 
 
 def _get_packaged_defaults() -> dict:

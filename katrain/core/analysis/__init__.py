@@ -22,6 +22,8 @@ Note: シンボルの __module__ パスが変更されます。
       （調査結果: リポジトリ内に pickle/cache 使用箇所なし）
 """
 
+from typing import Dict, Optional
+
 # =============================================================================
 # Explicit imports from models.py
 # =============================================================================
@@ -425,6 +427,31 @@ from katrain.core.analysis.reason_generator import (
 )
 
 # =============================================================================
+# Phase 92: Public Wrapper Functions
+# =============================================================================
+
+
+def get_root_visits(analysis: Optional[Dict]) -> Optional[int]:
+    """Get root visits from analysis dict (public API).
+
+    This is the public wrapper for _get_root_visits().
+    Use this function instead of _get_root_visits() in external modules.
+
+    Supports multiple formats:
+    - rootInfo.visits (KataGo standard)
+    - root.visits (KaTrain internal)
+    - visits (direct reference)
+
+    Args:
+        analysis: Analysis dictionary from node, or None
+
+    Returns:
+        Number of visits, or None if analysis is None or visits not found.
+    """
+    return _get_root_visits(analysis)
+
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -557,6 +584,7 @@ __all__ = [
     # Difficulty Metrics (Phase 12)
     "_normalize_candidates",
     "_get_root_visits",
+    "get_root_visits",  # Phase 92: Public wrapper
     "_determine_reliability",
     "_compute_policy_difficulty",
     "_compute_transition_difficulty",
