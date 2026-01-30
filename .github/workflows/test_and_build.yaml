@@ -60,7 +60,21 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           SDL_VIDEODRIVER: dummy
           DISPLAY: ""
-        run: uv run python -m pytest tests -p no:faulthandler
+          PYTHONUNBUFFERED: 1
+        run: |
+          echo "=== Debug: Python and pytest versions ==="
+          uv run python --version
+          uv run python -c "import pytest; print(f'pytest {pytest.__version__}')"
+          echo "=== Debug: Try importing test modules directly ==="
+          uv run python -c "from tests import conftest; print('conftest import OK')" || echo "conftest import FAILED"
+          uv run python -c "from tests import test_beginner_hints; print('test_beginner_hints import OK')" || echo "test_beginner_hints import FAILED"
+          echo "=== Debug: List test files ==="
+          ls -la tests/*.py | head -20
+          echo "=== Running pytest ==="
+          uv run python -m pytest tests -p no:faulthandler 2>&1
+          exit_code=$?
+          echo "Exit code: $exit_code"
+          exit $exit_code
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
