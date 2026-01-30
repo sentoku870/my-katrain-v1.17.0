@@ -1,9 +1,34 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-85 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-86 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 86 完了（Reason Generator 限定実装）
+  - ミスパターンから自然言語の「理由文」を生成する限定実装
+  - 新規ファイル:
+    - `katrain/core/analysis/reason_generator.py`: 理由生成ロジック（~320行）
+    - `tests/test_reason_generator.py`: ユニットテスト（20件）
+  - 変更ファイル:
+    - `katrain/core/analysis/__init__.py`: エクスポート追加
+    - `katrain/core/reports/karte/sections/important_moves.py`: Critical 3にReason行追加
+    - `katrain/gui/features/summary_formatter.py`: Recurring PatternsにReason行追加
+  - 追加API:
+    - `ReasonTemplate` frozen dataclass - 日英テンプレート
+    - `SUPPORTED_TAGS` frozenset - 対象タグ（12件）
+    - `PHASE_VOCABULARY`, `AREA_VOCABULARY` frozenset - 有効値セット
+    - `SINGLE_TAG_REASONS` dict - 単発タグテンプレート（12件、JP+EN）
+    - `COMBINATION_REASONS` dict - 組み合わせテンプレート（8件、JP+EN、ワイルドカード対応）
+    - `generate_reason()` - 理由文生成（None返却可）
+    - `generate_reason_safe()` - 安全版（例外を投げない）
+  - 技術仕様:
+    - ワイルドカード `"*"` でスロット非検査（例: `(phase, "*", tag)` は任意のareaにマッチ）
+    - 言語正規化: `lang=None`→日本語、`lang=""`→英語、未知→英語フォールバック
+    - `normalize_lang_code()` 委譲（内部コード "jp"/"en"）
+    - area=None でも `(phase, "*", tag)` ワイルドカードにマッチ
+  - テスト: 3180件パス（+20件）
+  - PRs: #224
 
 - 2026-01-30: Phase 85 完了（Pattern to Summary Integration）
   - Phase 84の`mine_patterns()`をSummaryレポートに統合

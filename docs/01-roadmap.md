@@ -249,8 +249,8 @@ Karteへの統合は「Critical 3のContextが(none)のときのみ」注入す�
 `extraction.py`に`pattern_data`/`source_index`追加、`summary_formatter.py`にパターンマイニング統合（+435行）。
 TYPE_CHECKINGガード、GTP座標検証、決定論的ソート、22契約テスト追加。（2026-01-30完了）
 
-**Phase 86**: Reason Generator（自然文）を"限定実装"で導入。単発タグ＋上位N組み合わせのみ自然文、残りはタグ併記フォールバック。
-i18nの増加は最小限に抑え、欠損時に崩れないことを優先する。
+**Phase 86**: ✅ Reason Generator（自然文）の限定実装。`reason_generator.py`で12単発タグ＋8組み合わせテンプレート（JP/EN）を提供。
+Critical 3とRecurring PatternsにReason行を追加。ワイルドカードマッチング、lang=None→日本語デフォルト、20テスト追加。（2026-01-30完了）
 
 **Phase 87**: 調整・拡張・磨き込み用バッファ。閾値チューニング、追加指標、説明文改善、ドキュメント整理をここに集約する。
 （Situation/Status拡張やsignature拡張など"膨らむ要素"は原則ここで扱う）
