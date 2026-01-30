@@ -2,6 +2,7 @@
 
 Pure functions with no Kivy dependencies for CI-safe testing.
 """
+from __future__ import annotations
 
 
 def normalize_humanlike_config(
