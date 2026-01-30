@@ -7,6 +7,8 @@ for inclusion in diagnostic exports. It is intentionally minimal
 to avoid circular import issues.
 """
 
+from __future__ import annotations
+
 from collections import deque
 from threading import Lock
 from typing import Callable, Optional

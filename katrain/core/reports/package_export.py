@@ -11,6 +11,8 @@
 匿名化処理自体はGUI層の責務。このモジュールは最終文字列を受け取るだけ。
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
