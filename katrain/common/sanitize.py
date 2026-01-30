@@ -6,6 +6,8 @@ Replaces sensitive information (paths, usernames, hostnames) with placeholders.
 This module is Kivy-independent and can be used from both Core and GUI layers.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import socket
