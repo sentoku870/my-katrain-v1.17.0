@@ -237,7 +237,11 @@ class BadukPanWidget(Widget):
                     i18n._("move too fast").format(num=self.katrain.config("timer/minimal_use", 0)), STATUS_TEACHING
                 )
             else:
-                katrain("play", self.ghost_stone)
+                # Phase 93: Active Review mode intercepts play action
+                if katrain.active_review_mode:
+                    katrain("active_review_guess", self.ghost_stone)
+                else:
+                    katrain("play", self.ghost_stone)
         elif not self.ghost_stone:
             xd, xp, yd, yp = self._find_closest(touch.x, touch.y)
             nodes_here = [
@@ -658,7 +662,7 @@ class BadukPanWidget(Widget):
             # ownership - allow one move out of date for smooth animation,
             # drawn first so the board is shaded underneath all other elements.
             ownership = current_node.ownership or (current_node.parent and current_node.parent.ownership)
-            if katrain.analysis_controls.ownership.active and ownership:
+            if katrain.analysis_controls.ownership.active and ownership and not katrain.is_fog_active():
                 if (
                     current_node.children
                     and katrain.controls.status_state[1] == STATUS_TEACHING
@@ -679,7 +683,8 @@ class BadukPanWidget(Widget):
                     ownership_grid = var_to_grid(ownership, (board_size_x, board_size_y))
                     self.draw_territory(ownership_grid)
             # stones
-            all_dots_off = not katrain.analysis_controls.eval.active
+            # Phase 93: Fog of War also disables eval dots
+            all_dots_off = not katrain.analysis_controls.eval.active or katrain.is_fog_active()
             has_stone = {}
             drawn_stone = {}
             for m in katrain.game.stones:
@@ -758,7 +763,7 @@ class BadukPanWidget(Widget):
             pass_btn = getattr(board_controls, "pass_btn", None) if board_controls else None
             if pass_btn:
                 pass_btn.canvas.after.clear()
-            if katrain.analysis_controls.policy.active and policy:
+            if katrain.analysis_controls.policy.active and policy and not katrain.is_fog_active():
                 policy_grid = var_to_grid(policy, (board_size_x, board_size_y))
                 best_move_policy = max(*policy)
                 colors = Theme.EVAL_COLORS[self.trainer_config["theme"]]
@@ -1148,6 +1153,7 @@ class BadukPanWidget(Widget):
                 katrain.analysis_controls.hints.active
                 and not katrain.analysis_controls.policy.active
                 and not game_ended
+                and not katrain.is_fog_active()  # Phase 93: Fog of War
             ):
                 hint_moves = current_node.candidate_moves
             elif katrain.controls.status_state[1] == STATUS_TEACHING:  # show score hint for teaching  undo
@@ -1173,7 +1179,8 @@ class BadukPanWidget(Widget):
             leela_enabled = katrain.config("leela/enabled", False)
             leela_analysis = current_node.leela_analysis if leela_enabled else None
 
-            if leela_analysis and leela_analysis.is_valid:
+            # Phase 93: Fog of War hides Leela candidates too
+            if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
                 # Draw Leela candidate markers
                 low_visits_threshold = katrain.config("trainer/low_visits", 25)
                 top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
@@ -1281,7 +1288,8 @@ class BadukPanWidget(Widget):
                             )
 
             # children of current moves in undo / review
-            if katrain.analysis_controls.show_children.active:
+            # Phase 93: Fog of War hides child markers (could reveal next move)
+            if katrain.analysis_controls.show_children.active and not katrain.is_fog_active():
                 for child_node in current_node.children:
                     move = child_node.move
                     if move and move.coords is not None:

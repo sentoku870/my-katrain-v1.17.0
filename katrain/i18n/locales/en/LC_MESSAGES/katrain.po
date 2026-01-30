@@ -2262,3 +2262,67 @@ msgstr "Human-like mode disabled (no valid model path)"
 #. Phase 88: Details
 msgid "details:title"
 msgstr "Details"
+
+#. Phase 93: Active Review Mode
+msgid "active_review:title"
+msgstr "Active Review"
+
+msgid "active_review:toggle_on"
+msgstr "Start Review"
+
+msgid "active_review:toggle_off"
+msgstr "End Review"
+
+msgid "active_review:fog_active"
+msgstr "Click to guess the next move"
+
+#. Phase 93: Active Review Grades
+msgid "active_review:grade:perfect"
+msgstr "Perfect!"
+
+msgid "active_review:grade:excellent"
+msgstr "Excellent!"
+
+msgid "active_review:grade:good"
+msgstr "Good"
+
+msgid "active_review:grade:slack"
+msgstr "Slack"
+
+msgid "active_review:grade:blunder"
+msgstr "Blunder"
+
+msgid "active_review:grade:not_in_candidates"
+msgstr "Unusual Move"
+
+#. Phase 93: Active Review Feedback
+msgid "active_review:feedback:your_move"
+msgstr "Your guess: {move}"
+
+msgid "active_review:feedback:ai_best"
+msgstr "AI best: {move}"
+
+msgid "active_review:feedback:score_loss"
+msgstr "Loss: {loss:.1f} points"
+
+msgid "active_review:feedback:score_loss_na"
+msgstr "Loss: N/A"
+
+msgid "active_review:feedback:matches_game"
+msgstr "(Same as game)"
+
+#. Phase 93: Active Review Errors
+msgid "active_review:no_node"
+msgstr "No position selected."
+
+msgid "active_review:analysis_required"
+msgstr "Analysis required. Run analysis first."
+
+msgid "active_review:analysis_low_visits"
+msgstr "Analysis incomplete ({visits} visits). Need at least 100."
+
+msgid "active_review:no_candidates"
+msgstr "No candidate moves available."
+
+msgid "active_review:best_is_pass"
+msgstr "Best move is pass. Skipping this position."

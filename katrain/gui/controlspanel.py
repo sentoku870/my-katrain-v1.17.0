@@ -92,6 +92,9 @@ class PlayAnalyzeSelect(MDFloatLayout):
         if self.mode == new_mode:
             return
         self.save_ui_state()
+        # Phase 93: Disable Active Review when entering PLAY mode
+        if new_mode == MODE_PLAY:
+            self.katrain._disable_active_review_if_needed()
         self.mode = new_mode
         self.katrain.controls.timer_or_movetree.mode = self.mode
         self.load_ui_state()
@@ -192,7 +195,14 @@ class ControlsPanel(BoxLayout):
                 teach=katrain.players_info[self.active_comment_node.player].being_taught, details=details
             )
 
-        if self.active_comment_node.analysis_exists:
+        # Phase 93: Fog of War hides stats during Active Review
+        if katrain.is_fog_active():
+            # Fog of War: hide all stats
+            self.stats.score = ""
+            self.stats.winrate = ""
+            self.stats.points_lost = None
+            self.stats.player = ""
+        elif self.active_comment_node.analysis_exists:
             # 解析結果あり → stats を埋める
             self.stats.score = self.active_comment_node.format_score() or ""
             self.stats.winrate = self.active_comment_node.format_winrate() or ""
@@ -320,6 +330,10 @@ class ControlsPanel(BoxLayout):
         """
         katrain = self.katrain
         if not katrain:
+            return False
+
+        # Phase 93: Fog of War hides beginner hints too
+        if katrain.is_fog_active():
             return False
 
         # Check config
