@@ -435,3 +435,166 @@ class TestConstants:
     def test_min_reliable_visits_value(self):
         """MIN_RELIABLE_VISITS should be 100 as documented."""
         assert MIN_RELIABLE_VISITS == 100
+
+
+# ---------------------------------------------------------------------------
+# Test: PERFECT Grade Invariant (Phase 94)
+# ---------------------------------------------------------------------------
+
+
+class TestPerfectGradeInvariant:
+    """Tests for PERFECT grade invariant.
+
+    PERFECT grade is assigned only when order==0.
+    This invariant is critical for ai_best_match_rate calculation in ReviewSession.
+    If this invariant breaks, the rate calculation will be incorrect.
+    """
+
+    def test_perfect_grade_only_for_order_zero(self):
+        """PERFECT grade is assigned only when order==0."""
+        reviewer = ActiveReviewer("standard")
+
+        # order=0 should get PERFECT (regardless of loss)
+        assert reviewer._determine_grade(0.0, order=0) == GuessGrade.PERFECT
+        assert reviewer._determine_grade(0.5, order=0) == GuessGrade.PERFECT
+        assert reviewer._determine_grade(10.0, order=0) == GuessGrade.PERFECT
+
+    def test_non_zero_order_never_perfect(self):
+        """order > 0 should never get PERFECT grade."""
+        reviewer = ActiveReviewer("standard")
+
+        # Even with 0 loss, order > 0 should not be PERFECT
+        assert reviewer._determine_grade(0.0, order=1) != GuessGrade.PERFECT
+        assert reviewer._determine_grade(0.0, order=2) != GuessGrade.PERFECT
+
+    def test_invariant_across_all_presets(self):
+        """Invariant holds for all skill presets."""
+        for preset in ["beginner", "standard", "advanced", "pro"]:
+            reviewer = ActiveReviewer(preset)
+
+            # order=0 -> PERFECT
+            assert reviewer._determine_grade(0.0, order=0) == GuessGrade.PERFECT
+
+            # order > 0 -> not PERFECT
+            assert reviewer._determine_grade(0.0, order=1) != GuessGrade.PERFECT
+
+
+# ---------------------------------------------------------------------------
+# Test: get_hint_for_best_move (Phase 94)
+# ---------------------------------------------------------------------------
+
+
+class TestGetHintForBestMove:
+    """Tests for get_hint_for_best_move function."""
+
+    def test_returns_none_for_none_node(self):
+        """Returns None when node is None."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        result = get_hint_for_best_move(None)
+        assert result is None
+
+    def test_returns_none_for_no_analysis(self):
+        """Returns None when node has no analysis."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=False)
+
+        result = get_hint_for_best_move(node)
+        assert result is None
+
+    def test_returns_none_for_no_candidates(self):
+        """Returns None when node has no candidate moves."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=True)
+        type(node).analysis = PropertyMock(return_value={"rootInfo": {}})
+        type(node).candidate_moves = PropertyMock(return_value=[])
+
+        result = get_hint_for_best_move(node)
+        assert result is None
+
+    def test_returns_string_for_valid_analysis(self):
+        """May return string when node has valid analysis."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=True)
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {"scoreStdev": 10.0}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
+        type(node).depth = PropertyMock(return_value=50)
+        node.meaning_tag_id = None  # No batch analysis
+
+        # May return None or string depending on analysis context
+        result = get_hint_for_best_move(node, lang="en")
+        # Just verify it doesn't crash
+        assert result is None or isinstance(result, str)
+
+    def test_returns_hint_from_meaning_tag_if_set(self):
+        """Returns MeaningTag description if node has meaning_tag_id."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=True)
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
+        type(node).depth = PropertyMock(return_value=50)
+        # Set meaning_tag_id from batch analysis
+        node.meaning_tag_id = "overplay"
+
+        result = get_hint_for_best_move(node, lang="en")
+
+        # Should return the description for overplay
+        assert result is not None
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_returns_none_for_uncertain_tag(self):
+        """Returns None if meaning_tag_id is UNCERTAIN."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=True)
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
+        type(node).depth = PropertyMock(return_value=50)
+        # UNCERTAIN is not useful as a hint
+        node.meaning_tag_id = "uncertain"
+
+        result = get_hint_for_best_move(node, lang="en")
+        assert result is None
+
+    def test_lang_jp_normalized(self):
+        """lang="jp" is properly normalized for MeaningTags."""
+        from katrain.core.study.active_review import get_hint_for_best_move
+
+        node = MagicMock()
+        type(node).analysis_exists = PropertyMock(return_value=True)
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
+        type(node).depth = PropertyMock(return_value=50)
+        node.meaning_tag_id = "overplay"
+
+        # Should work with "jp" which gets normalized to "ja"
+        result = get_hint_for_best_move(node, lang="jp")
+        assert result is not None
+        # Japanese text check (contains Japanese characters)
+        assert any(ord(c) > 127 for c in result)

@@ -2,14 +2,15 @@
 """Active Review Mode UI components.
 
 Provides:
-- show_guess_feedback(): Display feedback popup after user guess
+- show_guess_feedback(): Display feedback popup after user guess (Phase 93 + 94)
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.label import Label
 
 from katrain.core.lang import i18n
@@ -56,12 +57,23 @@ def _format_score_loss(loss):
     return i18n._("active_review:feedback:score_loss").format(loss=loss)
 
 
-def show_guess_feedback(katrain: "KaTrainGui", evaluation: GuessEvaluation) -> None:
+def show_guess_feedback(
+    katrain: "KaTrainGui",
+    evaluation: GuessEvaluation,
+    allow_retry: bool = False,
+    on_retry: Optional[Callable[[], None]] = None,
+    on_hint_request: Optional[Callable[[], Optional[str]]] = None,
+) -> None:
     """Show feedback popup for user's guess.
 
     Args:
         katrain: KaTrainGui instance
         evaluation: GuessEvaluation result from ActiveReviewer
+        allow_retry: If True, show Retry and Hint buttons (Phase 94)
+        on_retry: Callback when Retry button is pressed
+        on_hint_request: Callback when Hint button is pressed
+            - Returns hint string to display
+            - Returns None to show "no hint available" message
     """
     content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(15))
 
@@ -139,10 +151,25 @@ def show_guess_feedback(katrain: "KaTrainGui", evaluation: GuessEvaluation) -> N
 
     content.add_widget(details_layout)
 
+    # Hint display area (initially empty, filled when hint is requested)
+    hint_label = Label(
+        text="",
+        color=Theme.INFO_COLOR if hasattr(Theme, "INFO_COLOR") else (0.4, 0.6, 0.8, 1),
+        size_hint_y=None,
+        height=dp(0),  # Initially hidden
+        halign="left",
+        text_size=(dp(280), None),
+    )
+    hint_label.bind(texture_size=lambda lbl, size: setattr(lbl, "height", size[1] if lbl.text else 0))
+    content.add_widget(hint_label)
+
+    # Calculate popup height based on whether buttons will be shown
+    popup_height = dp(280) if not allow_retry else dp(340)
+
     # Create popup
     popup = I18NPopup(
         title_key="active_review:title",
-        size=[dp(320), dp(280)],
+        size=[dp(320), popup_height],
         content=content,
         auto_dismiss=True,
     ).__self__
@@ -151,8 +178,56 @@ def show_guess_feedback(katrain: "KaTrainGui", evaluation: GuessEvaluation) -> N
     popup.size_hint = (None, None)
     popup.pos_hint = {"right": 0.98, "top": 0.98}
 
+    # Add Retry/Hint buttons if allowed (Phase 94)
+    if allow_retry:
+        button_layout = BoxLayout(
+            orientation="horizontal",
+            spacing=dp(10),
+            size_hint_y=None,
+            height=dp(40),
+        )
+
+        # Retry button
+        retry_btn = Button(
+            text=i18n._("active_review:button:retry"),
+            size_hint_x=0.5,
+        )
+
+        def on_retry_pressed(instance):
+            popup.dismiss()
+            if on_retry:
+                on_retry()
+
+        retry_btn.bind(on_press=on_retry_pressed)
+        button_layout.add_widget(retry_btn)
+
+        # Hint button
+        hint_btn = Button(
+            text=i18n._("active_review:button:hint"),
+            size_hint_x=0.5,
+        )
+
+        def on_hint_pressed(instance):
+            # Request hint from callback
+            hint_text = None
+            if on_hint_request:
+                hint_text = on_hint_request()
+
+            if hint_text:
+                hint_label.text = hint_text
+            else:
+                hint_label.text = i18n._("active_review:hint:unavailable")
+
+            # Disable hint button after use
+            hint_btn.disabled = True
+
+        hint_btn.bind(on_press=on_hint_pressed)
+        button_layout.add_widget(hint_btn)
+
+        content.add_widget(button_layout)
+
     popup.open()
 
-    # Auto-dismiss after 3 seconds for good grades
-    if evaluation.grade in (GuessGrade.PERFECT, GuessGrade.EXCELLENT, GuessGrade.GOOD):
+    # Auto-dismiss after 3 seconds for good grades (only if no retry buttons)
+    if not allow_retry and evaluation.grade in (GuessGrade.PERFECT, GuessGrade.EXCELLENT, GuessGrade.GOOD):
         Clock.schedule_once(lambda dt: popup.dismiss(), 3.0)
