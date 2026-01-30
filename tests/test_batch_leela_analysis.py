@@ -51,14 +51,13 @@ class MockLeelaEngineForBatch:
         # Simulate immediate callback with mock result
         from katrain.core.leela.models import LeelaPositionEval, LeelaCandidate
 
-        # Create a simple mock result
+        # Create a simple mock result (using actual LeelaCandidate fields)
         mock_result = LeelaPositionEval(
             candidates=[
                 LeelaCandidate(
                     move="D4",
                     visits=100,
                     winrate=0.55,
-                    eval_pct=55.0,
                     prior=0.1,
                     pv=["D4", "Q16"],
                 ),
@@ -66,7 +65,6 @@ class MockLeelaEngineForBatch:
                     move="Q16",
                     visits=50,
                     winrate=0.52,
-                    eval_pct=52.0,
                     prior=0.08,
                     pv=["Q16", "D4"],
                 ),
@@ -237,21 +235,124 @@ class TestRunBatchLeelaParameters:
 
 
 # ---------------------------------------------------------------------------
-# Test: Leela karte generation limitation
+# Test: Phase 87.6 - Empty SGF handling and karte counter tracking
 # ---------------------------------------------------------------------------
 
-class TestLeelaKarteLimitation:
-    """Test that Leela karte generation is appropriately limited."""
+def _make_mock_katrain():
+    """Create a properly mocked katrain object for Game initialization."""
+    katrain = Mock()
 
-    def test_leela_karte_note_in_log(self, tmp_path):
-        """Leela batch logs note about karte limitation."""
+    # Config mock that returns appropriate values for different keys
+    def mock_config(key, default=None):
+        configs = {
+            "trainer": {
+                "eval_thresholds": [0.5, 2, 5, 10],
+                "save_analysis": True,
+                "save_marks": True,
+                "save_feedback": [True, True, True, True, True, True],
+            },
+            "leela": {"fast_visits": 100},
+        }
+        return configs.get(key, default if default is not None else {})
+
+    katrain.config = mock_config
+
+    # Game.__init__ calls katrain.engine.stop_pondering()
+    mock_engine = Mock()
+    mock_engine.stop_pondering = Mock()
+    katrain.engine = mock_engine
+    # Game uses katrain.log()
+    katrain.log = Mock()
+    # Game uses katrain.pondering
+    katrain.pondering = False
+    return katrain
+
+
+class TestLeelaEmptySGFHandling:
+    """Phase 87.6: Test that empty SGF files are handled correctly."""
+
+    def test_leela_empty_sgf_returns_failure(self, tmp_path):
+        """Empty SGF (0 moves) should return failure when return_game=True.
+
+        Phase 87.6: Empty SGF (root node only, no moves) should be treated
+        as analysis failure and return (None, empty snapshot).
+        """
+        from katrain.core.batch.analysis import analyze_single_file_leela
+        from katrain.core.analysis.models import EvalSnapshot
+
+        # Create an empty SGF (root node only, no moves)
+        sgf_file = tmp_path / "empty.sgf"
+        sgf_file.write_text("(;GM[1]FF[4]SZ[19])")
+
+        katrain = _make_mock_katrain()
+        leela = MockLeelaEngineForBatch(alive=True)
+
+        log_messages = []
+
+        result = analyze_single_file_leela(
+            katrain=katrain,
+            leela_engine=leela,
+            sgf_path=str(sgf_file),
+            return_game=True,
+            log_cb=lambda msg: log_messages.append(msg),
+        )
+
+        # Should return tuple (None, EvalSnapshot(moves=[]))
+        assert isinstance(result, tuple), f"Expected tuple, got {type(result)}"
+        assert len(result) == 2, f"Expected 2-tuple, got {len(result)}-tuple"
+        game, snapshot = result
+        assert game is None, "Empty SGF should return game=None"
+        assert isinstance(snapshot, EvalSnapshot), f"Expected EvalSnapshot, got {type(snapshot)}"
+        assert len(snapshot.moves) == 0, f"Expected 0 moves, got {len(snapshot.moves)}"
+
+        # Should log the error
+        assert any("ERROR" in msg and "0 moves" in msg for msg in log_messages), \
+            f"Expected 'ERROR: Empty SGF (0 moves)' in logs, got: {log_messages}"
+
+    def test_leela_empty_sgf_returns_false_without_return_game(self, tmp_path):
+        """Empty SGF (0 moves) should return False when return_game=False."""
+        from katrain.core.batch.analysis import analyze_single_file_leela
+
+        # Create an empty SGF (root node only, no moves)
+        sgf_file = tmp_path / "empty.sgf"
+        sgf_file.write_text("(;GM[1]FF[4]SZ[19])")
+
+        katrain = _make_mock_katrain()
+        leela = MockLeelaEngineForBatch(alive=True)
+
+        result = analyze_single_file_leela(
+            katrain=katrain,
+            leela_engine=leela,
+            sgf_path=str(sgf_file),
+            return_game=False,
+        )
+
+        # Should return False
+        assert result is False, f"Expected False, got {result}"
+
+
+class TestLeelaKarteCounterTracking:
+    """Phase 87.6: Test that karte counters track failed files correctly."""
+
+    def test_batch_karte_failed_tracks_analysis_failures(self, tmp_path):
+        """karte_failed should be incremented when analysis fails.
+
+        Phase 87.6: When generate_karte=True, files that fail analysis
+        should increment karte_failed so karte_total reflects input count.
+        """
         from katrain.tools.batch_analyze_sgf import run_batch
 
+        # Create input directory with 2 empty SGF files (will fail)
         input_dir = tmp_path / "input"
         input_dir.mkdir()
+        (input_dir / "empty1.sgf").write_text("(;GM[1]FF[4]SZ[19])")
+        (input_dir / "empty2.sgf").write_text("(;GM[1]FF[4]SZ[19])")
 
-        katrain = Mock()
-        katrain.config = Mock(return_value={})
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        katrain = _make_mock_katrain()
+        # Note: Don't override katrain.config - _make_mock_katrain sets it up correctly
         engine = Mock()
         leela = MockLeelaEngineForBatch(alive=True)
 
@@ -261,14 +362,76 @@ class TestLeelaKarteLimitation:
             katrain=katrain,
             engine=engine,
             input_dir=str(input_dir),
+            output_dir=str(output_dir),
             analysis_engine="leela",
             leela_engine=leela,
             generate_karte=True,
             log_cb=lambda msg: log_messages.append(msg),
         )
 
-        # Should have a note about karte limitation
-        assert any("karte" in msg.lower() and "not" in msg.lower() for msg in log_messages)
+        # Both files should fail (empty SGF)
+        assert result.fail_count == 2, f"Expected 2 failures, got {result.fail_count}"
+        assert result.success_count == 0, f"Expected 0 successes, got {result.success_count}"
+
+        # karte_failed should also be 2
+        assert result.karte_failed == 2, \
+            f"Expected karte_failed=2, got {result.karte_failed}"
+
+        # karte_total = karte_written + karte_failed should be 2 (not 0/0)
+        karte_total = result.karte_written + result.karte_failed
+        assert karte_total == 2, \
+            f"Expected karte_total=2, got karte_written={result.karte_written} + karte_failed={result.karte_failed} = {karte_total}"
+
+    def test_batch_counters_consistency_with_mixed_results(self, tmp_path):
+        """Counters should be consistent with success + fail = total input.
+
+        Test with mixed results: 1 valid SGF (with moves) and 1 empty SGF.
+        """
+        from katrain.tools.batch_analyze_sgf import run_batch
+
+        # Create input directory
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+
+        # 1 empty SGF (will fail)
+        (input_dir / "empty.sgf").write_text("(;GM[1]FF[4]SZ[19])")
+
+        # 1 SGF with moves (should succeed)
+        (input_dir / "valid.sgf").write_text("(;GM[1]FF[4]SZ[19];B[dd];W[pp])")
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        katrain = _make_mock_katrain()
+        # Note: Don't override katrain.config - _make_mock_katrain sets it up correctly
+        engine = Mock()
+        leela = MockLeelaEngineForBatch(alive=True)
+
+        log_messages = []
+
+        result = run_batch(
+            katrain=katrain,
+            engine=engine,
+            input_dir=str(input_dir),
+            output_dir=str(output_dir),
+            analysis_engine="leela",
+            leela_engine=leela,
+            generate_karte=True,
+            log_cb=lambda msg: log_messages.append(msg),
+        )
+
+        # Total should be 2 (1 empty + 1 valid)
+        total_files = result.success_count + result.fail_count
+        assert total_files == 2, \
+            f"Expected total=2, got success={result.success_count} + fail={result.fail_count} = {total_files}"
+
+        # Empty file fails, valid file succeeds
+        assert result.fail_count == 1, f"Expected 1 failure (empty SGF), got {result.fail_count}"
+        assert result.success_count == 1, f"Expected 1 success (valid SGF), got {result.success_count}"
+
+        # karte_failed should match fail_count when generate_karte=True
+        assert result.karte_failed == 1, \
+            f"Expected karte_failed=1, got {result.karte_failed}"
 
 
 # ---------------------------------------------------------------------------

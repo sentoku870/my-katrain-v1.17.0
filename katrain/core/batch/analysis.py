@@ -17,6 +17,23 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import SGFError
 
+
+class _DummyEngine:
+    """Dummy engine for Leela batch analysis.
+
+    Game.__init__ requires an engine with stop_pondering() method.
+    Since Leela analysis doesn't use KataGo, we provide a no-op engine.
+    """
+
+    def stop_pondering(self) -> None:
+        """No-op: Leela batch analysis doesn't use KataGo pondering."""
+        pass
+
+    def request_analysis(self, *args, **kwargs) -> bool:
+        """No-op: Leela batch analysis doesn't use KataGo analysis."""
+        return False
+
+
 if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
@@ -260,7 +277,7 @@ def analyze_single_file_leela(
         log("    [2/4] Creating game...")
         game = Game(
             katrain=katrain,
-            engine=None,  # No KataGo engine
+            engine=_DummyEngine(),  # Dummy engine for Game.__init__ (no KataGo analysis)
             move_tree=move_tree,
             analyze_fast=False,
             sgf_filename=sgf_path,
@@ -287,8 +304,8 @@ def analyze_single_file_leela(
         total_moves = len(move_nodes)
 
         if total_moves == 0:
-            log("    No moves to analyze")
-            return success_result(game, EvalSnapshot(moves=[]))
+            log("    ERROR: Empty SGF (0 moves)")
+            return fail_result()  # Phase 87.6: Empty SGF is treated as analysis failure
 
         log(f"    Found {total_moves} moves to analyze")
 
@@ -379,6 +396,26 @@ def analyze_single_file_leela(
 
         # Create EvalSnapshot
         snapshot = EvalSnapshot(moves=move_evals)
+
+        # Phase 87.6: Log analysis quality using parse_error as single source of truth
+        valid_count = len(move_evals)
+        if valid_count < total_moves:
+            # Count errors by type from position_evals.parse_error field
+            # Use getattr for robustness against None or missing attribute
+            timeout_count = sum(1 for ev in position_evals
+                                if getattr(ev, "parse_error", None) == "timeout")
+            no_result_count = sum(1 for ev in position_evals
+                                  if getattr(ev, "parse_error", None) == "no result")
+            other_error_count = sum(1 for ev in position_evals
+                                    if getattr(ev, "parse_error", None) not in (None, "timeout", "no result"))
+
+            log(f"    Analysis quality: {valid_count}/{total_moves} valid moves")
+            if timeout_count > 0:
+                log(f"      - {timeout_count} timeouts")
+            if no_result_count > 0:
+                log(f"      - {no_result_count} no results")
+            if other_error_count > 0:
+                log(f"      - {other_error_count} parse errors")
 
         # Save SGF if requested (note: Leela analysis is in snapshot, not in game nodes)
         if save_sgf:
