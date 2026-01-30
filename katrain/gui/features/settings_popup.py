@@ -37,6 +37,7 @@ from katrain.common.settings_export import (
     parse_exported_settings,
 )
 from katrain.core import eval_metrics
+from katrain.core.auto_setup import should_show_auto_tab_first  # Phase 89
 from katrain.core.constants import (
     LEELA_K_DEFAULT,
     LEELA_K_MAX,
@@ -1160,6 +1161,29 @@ def do_mykatrain_settings_popup(
     )
     tab3_inner.add_widget(tab3_reset_btn)
 
+    # === Tab 4: Auto Setup (Phase 89) ===
+    tab4 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_auto"))
+    tab4_inner = BoxLayout(
+        orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None
+    )
+    tab4_inner.bind(minimum_height=tab4_inner.setter("height"))
+
+    # Auto Setup content will be rendered by show_auto_mode_content()
+    # We need access to katrain instance for engine operations
+    # The ctx provides access via ctx._katrain (internal, but necessary)
+    from katrain.gui.features.auto_mode_popup import show_auto_mode_content
+
+    # Get katrain instance from ctx (FeatureContext is actually KaTrainGui)
+    katrain_instance = ctx  # ctx IS the KaTrainGui instance
+
+    # Build Auto Mode content
+    show_auto_mode_content(ctx, tab4_inner, katrain_instance)
+
+    # Wrap in ScrollView like other tabs
+    tab4_scroll = ScrollView(do_scroll_x=False)
+    tab4_scroll.add_widget(tab4_inner)
+    tab4.add_widget(tab4_scroll)
+
     # Buttons (outside TabbedPanel)
     buttons_layout = BoxLayout(
         orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
@@ -1210,21 +1234,34 @@ def do_mykatrain_settings_popup(
     tab3.add_widget(tab3_scroll)
     tabbed_panel.add_widget(tab3)
 
-    # Phase 87.5: Tab lookup dictionary (direct references, not dependent on tab_list)
+    # Phase 89: Add Auto Setup tab
+    tabbed_panel.add_widget(tab4)
+
+    # Phase 87.5 + Phase 89: Tab lookup dictionary
     tab_by_id = {
         "analysis": tab1,
         "export": tab2,
         "leela": tab3,
+        "auto": tab4,  # Phase 89
     }
 
-    # Phase 87.5: Switch to initial_tab if specified
+    # Phase 89: Determine if Auto tab should be shown first
+    # Conditions: mode == "auto" AND first_run_completed == False
+    auto_setup_config = ctx.config("auto_setup") or {}
+    show_auto_first = should_show_auto_tab_first(auto_setup_config)
+
+    # Phase 87.5 + Phase 89: Switch to initial_tab if specified, or auto if conditions met
     if initial_tab and initial_tab in tab_by_id:
         from kivy.clock import Clock
         target_tab = tab_by_id[initial_tab]
         Clock.schedule_once(lambda dt: tabbed_panel.switch_to(target_tab), 0.1)
+    elif show_auto_first:
+        # Phase 89: Auto tab first for new users
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: tabbed_panel.switch_to(tab4), 0.1)
 
-    # Set default tab to tab1 (Analysis)
-    tabbed_panel.default_tab = tab1
+    # Set default tab to tab1 (Analysis) or tab4 (Auto) based on conditions
+    tabbed_panel.default_tab = tab4 if show_auto_first else tab1
 
     # Apply Japanese-capable font to tab headers (fix tofu rendering)
     # TabbedPanelHeader may not have font_name directly accessible;

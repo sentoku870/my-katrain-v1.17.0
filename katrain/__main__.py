@@ -104,6 +104,12 @@ from katrain.gui.popups import (
 from katrain.gui.sound import play_sound
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
+from katrain.core.auto_setup import find_cpu_katago  # Phase 89
+from katrain.core.test_analysis import (  # Phase 89
+    TestAnalysisResult,
+    ErrorCategory,
+    classify_engine_error,
+)
 from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
 from katrain.core.leela.engine import LeelaEngine
 from katrain.gui.leela_manager import LeelaManager
@@ -202,6 +208,7 @@ class KaTrainGui(Screen, KaTrainBase):
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
         self.engine = None
+        self.engine_unhealthy = False  # Phase 89: For TIMEOUT recovery
 
         # Leela engine management (Phase 15, refactored in PR #121)
         self._leela_manager = LeelaManager(
@@ -637,6 +644,199 @@ class KaTrainGui(Screen, KaTrainBase):
     def shutdown_leela_engine(self) -> None:
         """Shutdown Leela engine."""
         self._leela_manager.shutdown_engine()
+
+    # =========================================================================
+    # Phase 89: Auto Setup Mode Methods
+    # =========================================================================
+
+    def restart_engine_with_fallback(
+        self, fallback_type: str
+    ) -> tuple[bool, TestAnalysisResult]:
+        """Restart engine with CPU fallback and verify.
+
+        Processing flow:
+        1. Find CPU binary
+        2. Restart engine with CPU binary
+        3. Run minimal analysis to verify
+        4. Only persist if verification succeeds
+
+        Persistence policy:
+        - Only on verification success: persist engine.katago
+        - On verification failure: do NOT persist (keep original settings)
+
+        Args:
+            fallback_type: Type of fallback ("cpu" for now).
+
+        Returns:
+            (success, result) tuple:
+            - success: True if verification passed
+            - result: TestAnalysisResult with details
+        """
+        if fallback_type != "cpu":
+            return False, TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.UNKNOWN,
+                error_message=f"Unknown fallback type: {fallback_type}",
+            )
+
+        # Find CPU binary
+        cpu_katago = find_cpu_katago()
+        if cpu_katago is None:
+            return False, TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.ENGINE_START_FAILED,
+                error_message="CPU KataGo binary not found",
+            )
+
+        # Shutdown current engine
+        if self.engine:
+            self.engine.shutdown(finish=False)
+            self.engine = None
+
+        # Create new engine with CPU binary
+        try:
+            engine_config = dict(self.config("engine"))
+            engine_config["katago"] = cpu_katago
+            self.engine = KataGoEngine(self, engine_config)
+        except Exception as e:
+            return False, TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.ENGINE_START_FAILED,
+                error_message=f"Failed to start CPU engine: {e}",
+            )
+
+        # Verify with minimal analysis
+        result = self._verify_engine_works()
+        if result.success:
+            # Persist only on success
+            self._save_engine_katago_path(cpu_katago)
+            self.engine_unhealthy = False
+
+        return result.success, result
+
+    def restart_engine(self) -> bool:
+        """Restart engine with same settings (for TIMEOUT recovery).
+
+        Returns:
+            True if engine restarted successfully.
+        """
+        if self.engine:
+            self.engine.shutdown(finish=False)
+            self.engine = None
+
+        try:
+            engine_config = self.config("engine")
+            self.engine = KataGoEngine(self, engine_config)
+            self.engine_unhealthy = False
+            return self.engine.check_alive()
+        except Exception:
+            return False
+
+    def save_auto_setup_result(self, success: bool) -> None:
+        """Persist test analysis result to config.
+
+        Updates auto_setup section:
+        - first_run_completed = True
+        - last_test_result = "success" | "failed"
+
+        Args:
+            success: True if test analysis succeeded.
+        """
+        auto_setup = dict(self._config.get("auto_setup", {}))
+        auto_setup["first_run_completed"] = True
+        auto_setup["last_test_result"] = "success" if success else "failed"
+        self._config["auto_setup"] = auto_setup
+        self._config_manager.save_config()
+
+    def _verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
+        """Verify engine works with minimal analysis.
+
+        Args:
+            timeout_seconds: Timeout for analysis response.
+
+        Returns:
+            TestAnalysisResult with success/failure details.
+        """
+        if not self.engine:
+            return TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.ENGINE_START_FAILED,
+                error_message="Engine is None",
+            )
+
+        if not self.engine.check_alive():
+            # Collect error from stderr if available
+            error_text = ""
+            if hasattr(self.engine, "stderr_queue"):
+                while not self.engine.stderr_queue.empty():
+                    try:
+                        error_text += self.engine.stderr_queue.get_nowait() + "\n"
+                    except Exception:
+                        break
+
+            error_category = classify_engine_error(error_text) if error_text else ErrorCategory.ENGINE_START_FAILED
+            return TestAnalysisResult(
+                success=False,
+                error_category=error_category,
+                error_message=error_text[:200] if error_text else "Engine not alive",
+            )
+
+        # Create minimal query
+        query = self.engine.create_minimal_analysis_query()
+        result_event = threading.Event()
+        analysis_result: dict = {}
+
+        def on_result(analysis: dict):
+            analysis_result.update(analysis)
+            result_event.set()
+
+        try:
+            self.engine.request_analysis(
+                analysis_node=None,
+                callback=on_result,
+                override_queries=[query],
+            )
+        except Exception as e:
+            return TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.ENGINE_START_FAILED,
+                error_message=f"Failed to request analysis: {e}",
+            )
+
+        # Wait for result
+        is_timeout = not result_event.wait(timeout=timeout_seconds)
+        if is_timeout:
+            return TestAnalysisResult(
+                success=False,
+                error_category=ErrorCategory.TIMEOUT,
+                error_message=f"Analysis did not respond within {timeout_seconds}s",
+            )
+
+        # Check for errors in result
+        if "error" in analysis_result:
+            error_text = str(analysis_result.get("error", ""))
+            return TestAnalysisResult(
+                success=False,
+                error_category=classify_engine_error(error_text),
+                error_message=error_text[:200],
+            )
+
+        return TestAnalysisResult(
+            success=True,
+            error_category=None,
+            error_message=None,
+        )
+
+    def _save_engine_katago_path(self, katago_path: str) -> None:
+        """Save engine.katago path to config.
+
+        Args:
+            katago_path: Path to KataGo binary.
+        """
+        engine_config = dict(self._config.get("engine", {}))
+        engine_config["katago"] = katago_path
+        self._config["engine"] = engine_config
+        self._config_manager.save_config()
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
