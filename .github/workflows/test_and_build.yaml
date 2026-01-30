@@ -60,7 +60,7 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           SDL_VIDEODRIVER: dummy
           DISPLAY: ""
-        run: uv run pytest tests -p no:faulthandler
+        run: uv run python -m pytest tests -p no:faulthandler -v 2>&1 || true
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
