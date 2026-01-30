@@ -57,7 +57,10 @@ jobs:
         env:
           KIVY_NO_FILELOG: 1
           KIVY_NO_CONSOLELOG: 1
-        run: uv run pytest tests --import-mode=importlib -p no:faulthandler
+          KIVY_NO_ENV_CONFIG: 1
+          SDL_VIDEODRIVER: dummy
+          DISPLAY: ""
+        run: uv run pytest tests --import-mode=importlib -p no:faulthandler -v 2>&1 || exit $?
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
