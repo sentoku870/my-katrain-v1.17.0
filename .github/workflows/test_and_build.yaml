@@ -54,7 +54,7 @@ jobs:
           sync-groups: dev
 
       - name: Run tests
-        run: uv run pytest tests
+        run: uv run pytest tests -v --tb=long
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
