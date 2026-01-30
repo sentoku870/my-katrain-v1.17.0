@@ -53,18 +53,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           sync-groups: dev
 
-      - name: Debug - Collect-only test
-        env:
-          KIVY_NO_FILELOG: 1
-          KIVY_NO_CONSOLELOG: 1
-          KIVY_NO_ENV_CONFIG: 1
-          SDL_VIDEODRIVER: dummy
-          DISPLAY: ""
-        run: |
-          echo "=== Running pytest --collect-only ==="
-          uv run pytest tests --collect-only -q 2>&1 | head -100 || echo "Collect-only exited with code $?"
-          echo "=== Collect-only finished ==="
-
       - name: Run tests
         env:
           KIVY_NO_FILELOG: 1
@@ -72,7 +60,7 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           SDL_VIDEODRIVER: dummy
           DISPLAY: ""
-        run: uv run pytest tests --import-mode=importlib -p no:faulthandler
+        run: uv run pytest tests -p no:faulthandler
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
