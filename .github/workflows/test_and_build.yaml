@@ -70,10 +70,11 @@ jobs:
           uv run python -c "from tests import test_beginner_hints; print('test_beginner_hints import OK')" || echo "test_beginner_hints import FAILED"
           echo "=== Debug: List test files ==="
           ls -la tests/*.py | head -20
-          echo "=== Running pytest --collect-only on single file ==="
-          uv run python -m pytest tests/test_ai.py --collect-only -p no:faulthandler 2>&1 || echo "Collection failed"
-          echo "=== Running pytest on single simple file ==="
-          uv run python -m pytest tests/test_ai.py -p no:faulthandler -v 2>&1 || echo "Single file test failed"
+          echo "=== Collect tests file by file ==="
+          for f in tests/test_*.py; do
+            echo "Collecting: $f"
+            uv run python -m pytest "$f" --collect-only -p no:faulthandler 2>&1 || { echo "FAILED: $f"; break; }
+          done
           echo "=== Running pytest on all tests ==="
           uv run python -m pytest tests -p no:faulthandler 2>&1
           exit_code=$?
