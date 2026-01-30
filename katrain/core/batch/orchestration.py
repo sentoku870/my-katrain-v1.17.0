@@ -392,9 +392,10 @@ def run_batch(
 
             # Collect stats for summary and/or curator
             # Phase 44: Pass target_visits for consistent reliability threshold
+            # Phase 85: Pass source_index for deterministic sorting
             if (generate_summary or generate_curator) and game is not None:
                 try:
-                    stats = extract_game_stats(game, rel_path, target_visits=visits)
+                    stats = extract_game_stats(game, rel_path, target_visits=visits, source_index=i)
                     if stats:
                         if generate_summary:
                             game_stats_list.append(stats)

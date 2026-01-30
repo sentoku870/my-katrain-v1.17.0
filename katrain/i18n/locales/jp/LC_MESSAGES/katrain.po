@@ -1905,3 +1905,42 @@ msgstr "戦略不整合"
 
 msgid "risk:estimated_suffix"
 msgstr "(推定)"
+
+#. Phase 85: Recurring Patterns section header
+msgid "pattern:section-header"
+msgstr "繰り返しパターン"
+
+#. Phase 85: Recurring Patterns intro text
+msgid "pattern:intro"
+msgstr "以下のパターンが複数回検出されました（影響度順）:"
+
+#. Phase 85: Pattern phase labels
+msgid "pattern:phase-opening"
+msgstr "序盤"
+
+msgid "pattern:phase-middle"
+msgstr "中盤"
+
+msgid "pattern:phase-endgame"
+msgstr "終盤"
+
+#. Phase 85: Pattern area labels
+msgid "pattern:area-corner"
+msgstr "隅"
+
+msgid "pattern:area-edge"
+msgstr "辺"
+
+msgid "pattern:area-center"
+msgstr "中央"
+
+#. Phase 85: Pattern severity labels
+msgid "pattern:severity-mistake"
+msgstr "悪手"
+
+msgid "pattern:severity-blunder"
+msgstr "大悪手"
+
+#. Phase 85: Pattern format strings
+msgid "pattern:count-loss"
+msgstr "{count}回、総損失{loss:.1f}目"

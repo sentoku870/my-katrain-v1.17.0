@@ -29,6 +29,7 @@ def extract_game_stats(
     rel_path: str,
     log_cb: Optional[Callable[[str], None]] = None,
     target_visits: Optional[int] = None,
+    source_index: int = 0,
 ) -> Optional[dict]:
     """Extract statistics from a Game object for summary generation.
 
@@ -38,6 +39,8 @@ def extract_game_stats(
         log_cb: Optional callback for logging errors
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
+        source_index: Index for deterministic sorting (Phase 85).
+            Used as tie-breaker when game_name, date, total_moves are identical.
 
     Returns:
         Dictionary with game statistics, or None if extraction failed
@@ -80,6 +83,7 @@ def extract_game_stats(
             "date": date,
             "board_size": (board_size, board_size),
             "total_moves": len(snapshot.moves),
+            "source_index": source_index,  # Phase 85: deterministic sort tie-breaker
             "total_points_lost": snapshot.total_points_lost,
             "moves_by_player": {"B": 0, "W": 0},
             "loss_by_player": {"B": 0.0, "W": 0.0},
@@ -282,6 +286,38 @@ def extract_game_stats(
                         # radar_by_player[player] remains None
 
         stats["radar_by_player"] = radar_by_player
+
+        # Phase 85: Extract pattern_data for pattern mining
+        # Only include MISTAKE/BLUNDER moves with at least one loss field set
+        pattern_data = []
+        for move in snapshot.moves:
+            # Only MISTAKE or BLUNDER
+            if move.mistake_category not in (
+                eval_metrics.MistakeCategory.MISTAKE,
+                eval_metrics.MistakeCategory.BLUNDER,
+            ):
+                continue
+
+            # Skip if ALL loss fields are None
+            has_loss = (
+                move.score_loss is not None
+                or move.leela_loss_est is not None
+                or move.points_lost is not None
+            )
+            if not has_loss:
+                continue
+
+            pattern_data.append({
+                "move_number": move.move_number,
+                "player": move.player,
+                "gtp": move.gtp,
+                "score_loss": move.score_loss,
+                "leela_loss_est": move.leela_loss_est,
+                "points_lost": move.points_lost,
+                "mistake_category": move.mistake_category.name,
+                "meaning_tag_id": move.meaning_tag_id,
+            })
+        stats["pattern_data"] = pattern_data
 
         return stats
 
