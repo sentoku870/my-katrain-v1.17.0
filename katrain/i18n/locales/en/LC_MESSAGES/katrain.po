@@ -1397,6 +1397,36 @@ msgstr "Strong"
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "Auto"
 
+msgid "mykatrain:settings:beginner_hints"
+msgstr "Beginner Hints:"
+
+msgid "mykatrain:settings:beginner_hints_desc"
+msgstr "Show safety hints for self-atari, ignored atari, missed captures, and cut risks (Review mode only)"
+
+msgid "beginner_hint:self_atari:title"
+msgstr "Dangerous Move"
+
+msgid "beginner_hint:self_atari:body"
+msgstr "Playing here puts your group in atari."
+
+msgid "beginner_hint:ignore_atari:title"
+msgstr "Atari Ignored"
+
+msgid "beginner_hint:ignore_atari:body"
+msgstr "Your group is still in atari."
+
+msgid "beginner_hint:missed_capture:title"
+msgstr "Missed Capture"
+
+msgid "beginner_hint:missed_capture:body"
+msgstr "You could have captured opponent's stones."
+
+msgid "beginner_hint:cut_risk:title"
+msgstr "Cut Risk"
+
+msgid "beginner_hint:cut_risk:body"
+msgstr "Your groups could be cut apart here."
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 

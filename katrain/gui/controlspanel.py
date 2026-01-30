@@ -21,6 +21,7 @@ from katrain.gui.theme import Theme
 from katrain.gui.sound import play_sound, stop_sound
 from katrain.core.eval_metrics import classify_mistake
 from katrain.core.errors import UIStateError
+from katrain.core.beginner import get_beginner_hint_cached, HintCategory
 
 
 class PlayAnalyzeSelect(MDFloatLayout):
@@ -291,7 +292,16 @@ class ControlsPanel(BoxLayout):
             difficulty_lines = format_difficulty_metrics(metrics)
             detail_lines.extend(difficulty_lines)
 
-        # 4) info テキストの末尾に追記
+        # 4) Beginner Hint (Phase 91)
+        # Show beginner safety hint if enabled and not in PLAY mode
+        if self._should_show_beginner_hints():
+            hint = get_beginner_hint_cached(game, self.active_comment_node)
+            if hint:
+                hint_text = self._format_beginner_hint(hint)
+                if hint_text:
+                    detail_lines.append(hint_text)
+
+        # 5) info テキストの末尾に追記
         if detail_lines:
             if info:
                 info += "\n"
@@ -301,6 +311,65 @@ class ControlsPanel(BoxLayout):
         self.graph.update_value(current_node)
         self.note.text = current_node.note
         self.info.text = info
+
+    def _should_show_beginner_hints(self) -> bool:
+        """Check if beginner hints should be displayed (Phase 91)
+
+        Returns:
+            True if hints should be shown, False otherwise
+        """
+        katrain = self.katrain
+        if not katrain:
+            return False
+
+        # Check config
+        if not katrain.config("beginner_hints/enabled", False):
+            return False
+
+        # Disable in PLAY mode (avoid cheating)
+        if katrain.play_analyze_mode == MODE_PLAY:
+            return False
+
+        return True
+
+    def _format_beginner_hint(self, hint) -> str:
+        """Format a BeginnerHint for display (Phase 91)
+
+        Args:
+            hint: BeginnerHint instance
+
+        Returns:
+            Formatted string for display
+        """
+        from katrain.core.lang import i18n
+
+        # Map category to i18n key
+        category_keys = {
+            HintCategory.SELF_ATARI: "beginner_hint:self_atari",
+            HintCategory.IGNORE_ATARI: "beginner_hint:ignore_atari",
+            HintCategory.MISSED_CAPTURE: "beginner_hint:missed_capture",
+            HintCategory.CUT_RISK: "beginner_hint:cut_risk",
+        }
+
+        key = category_keys.get(hint.category)
+        if not key:
+            return ""
+
+        # Get localized title
+        title = i18n._(f"{key}:title")
+        body = i18n._(f"{key}:body")
+
+        # If i18n key is not found (returns key), use fallback
+        if title.startswith("beginner_hint:"):
+            fallbacks = {
+                HintCategory.SELF_ATARI: ("Dangerous Move", "Playing here puts your group in atari."),
+                HintCategory.IGNORE_ATARI: ("Atari Ignored", "Your group is still in atari."),
+                HintCategory.MISSED_CAPTURE: ("Missed Capture", "You could have captured opponent's stones."),
+                HintCategory.CUT_RISK: ("Cut Risk", "Your groups could be cut apart here."),
+            }
+            title, body = fallbacks.get(hint.category, ("Hint", ""))
+
+        return f"[Hint] {title}: {body}"
 
     def update_timer(self, _dt):
         game = self.katrain and self.katrain.game

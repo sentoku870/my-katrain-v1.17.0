@@ -726,6 +726,53 @@ def do_mykatrain_settings_popup(
     tab1_inner.add_widget(pv_filter_layout)
     register_searchable(i18n._("mykatrain:settings:pv_filter_level"), pv_filter_label, pv_filter_layout)
 
+    # Phase 91: Beginner Hints toggle
+    beginner_hints_label = Label(
+        text=i18n._("mykatrain:settings:beginner_hints"),
+        size_hint_y=None,
+        height=dp(25),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    beginner_hints_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    tab1_inner.add_widget(beginner_hints_label)
+
+    current_beginner_hints = ctx.config("beginner_hints/enabled", False)
+    selected_beginner_hints = [current_beginner_hints]
+
+    beginner_hints_layout = BoxLayout(
+        orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8)
+    )
+    beginner_hints_checkbox = CheckBox(
+        active=current_beginner_hints,
+        size_hint_x=None,
+        width=dp(30),
+    )
+    beginner_hints_checkbox.bind(
+        active=lambda chk, active: selected_beginner_hints.__setitem__(0, active)
+    )
+    beginner_hints_desc = Label(
+        text=i18n._("mykatrain:settings:beginner_hints_desc"),
+        size_hint_x=0.9,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    beginner_hints_desc.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    beginner_hints_layout.add_widget(beginner_hints_checkbox)
+    beginner_hints_layout.add_widget(beginner_hints_desc)
+    tab1_inner.add_widget(beginner_hints_layout)
+    register_searchable(
+        i18n._("mykatrain:settings:beginner_hints"), beginner_hints_label, beginner_hints_layout
+    )
+
     # Reset button for Analysis tab (Phase 27)
     tab1_reset_btn = Button(
         text=i18n._("mykatrain:settings:reset"),
@@ -1298,6 +1345,12 @@ def do_mykatrain_settings_popup(
         general["pv_filter_level"] = selected_pv_filter[0]
         ctx.set_config_section("general", general)
         ctx.save_config("general")
+
+        # Phase 91: Save beginner_hints enabled state
+        beginner_hints_config = ctx.config("beginner_hints") or {}
+        beginner_hints_config["enabled"] = selected_beginner_hints[0]
+        ctx.set_config_section("beginner_hints", beginner_hints_config)
+        ctx.save_config("beginner_hints")
 
         # [Phase 34] Capture UI state early for consistency (with defensive fallback)
         leela_will_be_enabled = getattr(leela_enabled_checkbox, "active", None)
