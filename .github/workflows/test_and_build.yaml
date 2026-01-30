@@ -58,7 +58,14 @@ jobs:
           set -x
           python --version
           uv run python -c "import katrain; print('katrain imported')"
-          uv run pytest tests --collect-only 2>&1 | head -100 || true
+          # Try to collect tests and capture the error
+          if ! uv run pytest tests --collect-only 2>&1; then
+            echo "Collection failed! Checking individual test files..."
+            for f in tests/test_*.py; do
+              echo "Testing $f..."
+              uv run python -c "import sys; sys.path.insert(0, '.'); exec(open('$f').read())" 2>&1 || echo "Failed: $f"
+            done
+          fi
           uv run pytest tests -v --tb=long
 
       - name: Check I18N conversion
