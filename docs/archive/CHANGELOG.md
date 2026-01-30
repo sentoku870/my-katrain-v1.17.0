@@ -1,9 +1,39 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-84 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-85 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 85 完了（Pattern to Summary Integration）
+  - Phase 84の`mine_patterns()`をSummaryレポートに統合
+  - 変更ファイル:
+    - `katrain/core/batch/stats/extraction.py`: `pattern_data`フィールドと`source_index`パラメータ追加
+    - `katrain/core/batch/orchestration.py`: `source_index`渡し追加
+    - `katrain/gui/features/summary_formatter.py`: パターンマイニング統合（+435行）
+    - `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`: 11翻訳キー追加
+    - `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`: 11翻訳キー追加
+  - 新規テストファイル:
+    - `tests/test_pattern_summary_contract.py`: 契約テスト（22件）
+  - 追加API:
+    - `_PatternMoveEval` クラス - duck-typed MoveEval for pattern mining
+    - `_FakeSnapshot` クラス - duck-typed EvalSnapshot
+    - `_normalize_board_size()` - board_size正規化（tuple/list両対応）
+    - `_filter_by_board_size()` - 正方形board_sizeでフィルタ
+    - `_stable_sort_key()` - 決定論的ソートキー（source_index tie-breaker）
+    - `_is_valid_player()`, `_is_valid_gtp()`, `_is_valid_move_number()` - 入力検証
+    - `_reconstruct_pattern_input()` - stats_listからパターンマイニング入力を再構築
+    - `_mine_patterns_safe()` - 遅延importラッパー
+    - `_format_game_refs()` - ゲーム参照のフォーマット
+    - `_append_recurring_patterns()` - Recurring Patternsセクション追加
+  - 技術仕様:
+    - TYPE_CHECKINGガードで循環import防止
+    - GTP座標検証（正規表現+board_size範囲チェック）
+    - 決定論的ソート（game_name, date, total_moves, source_index）
+    - invalid dataでクラッシュしない本番安全性
+    - unknown phase/area/severity時にdebugログ出力
+  - テスト: 3160件パス（+22件）
+  - PRs: #223
 
 - 2026-01-30: Phase 84 完了（Recurring Pattern Mining Core）
   - 複数SGFを横断して繰り返しミスを検出する基盤
