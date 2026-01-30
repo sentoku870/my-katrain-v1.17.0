@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-24（Phase 52完了）
+> 最終更新: 2026-01-30（Phase 88完了）
 
 ---
 
@@ -16,6 +16,8 @@ katrain/
 │   ├── platform.py       # get_platform()（Phase 20、Kivy非依存OS判定）
 │   ├── config_store.py   # JsonFileConfigStore（Phase 20、Mapping実装）
 │   ├── locale_utils.py   # normalize_lang_code(), to_iso_lang_code()（Phase 52-A）
+│   ├── model_labels.py   # classify_model_strength(), get_model_basename()（Phase 88）
+│   ├── humanlike_config.py # normalize_humanlike_config()（Phase 88）
 │   └── lexicon/          # 囲碁用語辞書パッケージ（Phase 45）
 │       ├── models.py       # LexiconEntry, DiagramInfo, AIPerspective（frozen dataclass）
 │       ├── validation.py   # 2段階バリデーションパイプライン
@@ -344,6 +346,10 @@ uv run python i18n.py -todo
 
 > 詳細な変更履歴は `CLAUDE.md` セクション10を参照。
 
+- 2026-01-30: Phase 88 完了（KataGo Settings UI Reorg + human-like Toggle）
+  - **common/model_labels.py**: モデル強度分類（classify_model_strength()）
+  - **common/humanlike_config.py**: 正規化ロジック（normalize_humanlike_config()）
+  - **gui/popups.py**: humanlike toggle UI、モデルラベル表示
 - 2026-01-24: Phase 52 完了（Stabilization & Documentation）
   - ドキュメント更新（本ファイル、CLAUDE.md、roadmap）
   - Radar ゴールデンテスト追加（17件）

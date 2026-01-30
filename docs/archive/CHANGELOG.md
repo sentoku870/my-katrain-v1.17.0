@@ -1,9 +1,35 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-87.6 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-88 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 88 完了（KataGo Settings UI Reorganization + human-like Exclusivity）
+  - KataGo設定UIの再構成とhuman-like排他制御を実装
+  - 新規ファイル:
+    - `katrain/common/model_labels.py`: モデル強度分類（~60行）
+    - `katrain/common/humanlike_config.py`: 正規化ロジック（~40行）
+    - `tests/test_model_labels.py`: カテゴリ判定テスト（20件）
+    - `tests/test_humanlike_config.py`: 正規化ロジックテスト（9件）
+  - 変更ファイル:
+    - `katrain/config.json`: `humanlike_model_last`キー追加
+    - `katrain/gui/popups.py`: humanlike_enabled, on_humanlike_enabled, _handle_humanlike_toggle, get_model_display_text追加
+    - `katrain/popups.kv`: Switchトグル+ステータス表示、モデル強度ラベル追加
+    - `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`: 18翻訳キー追加
+    - `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`: 18翻訳キー追加
+  - 追加API:
+    - `classify_model_strength()` - ファイル名からLight/Standard/Strong/Unknown分類
+    - `get_model_i18n_key()` - i18nキー返却（"model:light"等）
+    - `get_model_basename()` - クロスプラットフォームbasename取得
+    - `normalize_humanlike_config()` - Option A正規化（パス空時は強制OFF）
+  - 技術仕様:
+    - クロスプラットフォーム: `_cross_platform_basename()`でLinux CIでもWindowsパス対応
+    - Option A排他制御: トグルON+パス空→強制OFF、パス退避→`humanlike_model_last`
+    - UIバインディング: Kivy `on_<property>` 自動コールバック使用
+    - モデルラベルはi18nキーのみ返却（文字列結合なし）
+  - テスト: 3231件パス（+29件）
+  - PRs: #228, #229
 
 - 2026-01-30: Phase 87.6 完了（Leela Batch Output Fix）
   - Leela Zeroバッチ解析で解析済みSGF・カルテ・サマリーが生成されない問題を修正
