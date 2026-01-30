@@ -528,6 +528,58 @@ class EngineRecoveryPopup(QuickConfigGui):
         super().__init__(katrain)
         self.error_message = str(error_message)
         self.code = code
+        # Trigger auto-dump via single gate (should_auto_dump)
+        self._trigger_auto_dump()
+
+    def _trigger_auto_dump(self):
+        """Trigger auto-dump using recovery_actions (single gate)."""
+        from katrain.core.error_recovery import DiagnosticsTrigger
+        from katrain.gui.features.recovery_actions import trigger_auto_dump
+
+        trigger_auto_dump(
+            self.katrain,
+            DiagnosticsTrigger.ENGINE_START_FAILED,
+            str(self.code) if self.code else "unknown",
+            self.error_message,
+        )
+
+    def on_reset_to_auto(self):
+        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.lang import i18n
+        from katrain.gui.features.recovery_actions import reset_to_auto_mode
+
+        if reset_to_auto_mode(self.katrain):
+            self.katrain.log(i18n._("mykatrain:recovery:reset_success"), OUTPUT_INFO)
+        self.popup.dismiss()
+
+    def on_copy_for_llm(self):
+        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.lang import i18n
+        from katrain.gui.features.recovery_actions import copy_for_llm
+
+        if copy_for_llm(self.katrain, self.error_message):
+            self.katrain.log(i18n._("mykatrain:recovery:copied"), OUTPUT_INFO)
+
+    def on_save_diagnostics(self):
+        from katrain.common.file_opener import open_file_in_folder
+        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.lang import i18n
+        from katrain.gui.features.recovery_actions import save_diagnostics_zip
+
+        result = save_diagnostics_zip(self.katrain, self.error_message)
+        if result:
+            self.katrain.log(
+                i18n._("mykatrain:recovery:saved").format(path=result), OUTPUT_INFO
+            )
+            open_file_in_folder(result)
+
+    def on_copy_log(self):
+        from katrain.core.constants import OUTPUT_INFO
+        from katrain.core.lang import i18n
+        from katrain.gui.features.recovery_actions import copy_log_tail
+
+        if copy_log_tail(self.katrain):
+            self.katrain.log(i18n._("mykatrain:recovery:log_copied"), OUTPUT_INFO)
 
 
 class BaseConfigPopup(QuickConfigGui):

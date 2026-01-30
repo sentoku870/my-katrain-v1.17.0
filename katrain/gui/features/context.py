@@ -9,8 +9,11 @@
 #   - 機能モジュールのテスト容易性向上（モック可能）
 #   - 循環インポートの防止
 #   - 依存関係の明示化
+#
+# Phase 90で拡張: エラー復旧に必要なメソッドを追加。
+# Python 3.9互換: Optional/Dict/List構文を使用。
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -27,16 +30,29 @@ class FeatureContext(Protocol):
         controls: コントロールパネル。Kivy の id バインディングにより
                   アプリ起動時に自動的に設定されるため、機能モジュールが
                   呼ばれる時点では常に設定済み。
+        engine: KataGoEngine インスタンス。None の場合あり。
+        version: アプリケーションバージョン文字列。
+        config_file: 設定ファイルのパス。
 
     Methods:
         config: 設定値を取得
         set_config_section: 設定セクションを書き込む
         save_config: 設定をファイルに保存
         log: ログメッセージを出力
+        get_recent_logs: 最近のログを取得
+        get_config_snapshot: 設定のスナップショットを取得
+        restart_engine: エンジンを再起動
+
+    Implementation Notes:
+        KaTrainGui と BaseKaTrain がこの Protocol を満たす。
+        各メソッドは既存実装を参照（Grep で "def <method>" で検索可能）。
     """
 
     game: Optional["Game"]
     controls: "ControlsPanel"
+    engine: Any  # KataGoEngine or None - avoid circular import
+    version: str
+    config_file: str
 
     def config(self, setting: str, default: Any = None) -> Any:
         """設定値を取得する。
@@ -76,5 +92,32 @@ class FeatureContext(Protocol):
         Args:
             message: ログメッセージ
             level: ログレベル（OUTPUT_INFO=0, OUTPUT_DEBUG=1, OUTPUT_ERROR=2）
+        """
+        ...
+
+    def get_recent_logs(self) -> List[str]:
+        """最近のログエントリを取得する。
+
+        Returns:
+            最近のログエントリのリスト。
+        """
+        ...
+
+    def get_config_snapshot(self) -> Dict[str, Any]:
+        """設定のスナップショットを取得する（Phase 90追加）。
+
+        This is the public API for accessing config data.
+        Avoids direct access to _config private attribute.
+
+        Returns:
+            Shallow copy of config dictionary.
+        """
+        ...
+
+    def restart_engine(self) -> bool:
+        """エンジンを再起動する。
+
+        Returns:
+            True if engine restarted successfully.
         """
         ...

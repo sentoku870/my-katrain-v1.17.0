@@ -1190,6 +1190,30 @@ msgstr "Leelaエンジンの起動に失敗しました。Leela Zero設定を確
 msgid "mykatrain:batch:open_leela_settings"
 msgstr "Leela設定"
 
+msgid "mykatrain:recovery:reset_to_auto"
+msgstr "自動モードに戻す（推奨）"
+
+msgid "mykatrain:recovery:copy_for_llm"
+msgstr "LLM相談用にコピー"
+
+msgid "mykatrain:recovery:save_diagnostics"
+msgstr "診断ZIPを保存"
+
+msgid "mykatrain:recovery:copy_log"
+msgstr "ログをコピー（直近200行）"
+
+msgid "mykatrain:recovery:copied"
+msgstr "クリップボードにコピーしました"
+
+msgid "mykatrain:recovery:saved"
+msgstr "保存しました: {path}"
+
+msgid "mykatrain:recovery:log_copied"
+msgstr "ログをクリップボードにコピーしました"
+
+msgid "mykatrain:recovery:reset_success"
+msgstr "自動モードに戻しました。エンジンを再起動中..."
+
 msgid "Close"
 msgstr "閉じる"
 

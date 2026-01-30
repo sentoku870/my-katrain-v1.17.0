@@ -743,16 +743,39 @@
             on_press: root.update_config(True)
 
 <EngineRecoveryPopup>:
+    orientation: 'vertical'
+    padding: dp(10)
+    spacing: dp(8)
+
     Label:
-        padding: CP_PADDING, CP_PADDING*3
-        text: i18n._("engine died popup opening message").format(code=root.code,error_message=root.error_message) + "\n\n" +  i18n._("change engine suggestion").format(link="[color=#CCCC11][u][ref=engine_settings]"+i18n._('menu:settings')+"[/ref][/u][/color]") + "\n\n" +  i18n._("go to engine help page").format(link="[color=#CCCC11][u][ref=engine_help]"+i18n._('link_here')+"[/ref][/u][/color]")
+        text: i18n._("engine died popup opening message").format(code=root.code,error_message=root.error_message) + "\n\n" + i18n._("change engine suggestion").format(link="[color=#CCCC11][u][ref=engine_settings]"+i18n._('menu:settings')+"[/ref][/u][/color]")
         text_size: self.size
         font_size: sp(Theme.DESC_FONT_SIZE)
         markup: True
         valign: 'top'
-        on_ref_press:  app.webbrowser('engine:help') if args[1]=='engine_help' else  app.gui('config-popup')
+        size_hint_y: 0.35
+        on_ref_press: app.gui('config-popup')
 
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: 0.65
+        spacing: dp(6)
 
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:reset_to_auto")
+            on_press: root.on_reset_to_auto()
+
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:copy_for_llm")
+            on_press: root.on_copy_for_llm()
+
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:save_diagnostics")
+            on_press: root.on_save_diagnostics()
+
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:copy_log")
+            on_press: root.on_copy_log()
 
 
 <ReAnalyzeGamePopup>:
