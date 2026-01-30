@@ -637,7 +637,7 @@
             graph.hidden = not (args[1]['score'] or args[1]['winrate'])
         ScoreGraph:
             id: graph
-            opacity: 0 if (self.hidden or app.is_fog_active()) else 1
+            opacity: 0 if (self.hidden or (app.gui and app.gui.is_fog_active())) else 1
             size_hint_y: None
             height: root.graph_height
         BoxLayout:
@@ -1027,7 +1027,7 @@
                     text: i18n._("active_review:toggle_off") if app.gui and app.gui.active_review_mode else i18n._("active_review:toggle_on")
                     halign: 'center'
                     font_size: self.parent.height / 3
-                    color: Theme.CHECKBOX_SELECTED if (app.gui and app.gui.active_review_mode) else Theme.CHECKBOX_UNSELECTED
+                    color: active_review_checkbox.selected_color if (app.gui and app.gui.active_review_mode) else active_review_checkbox.unselected_color
                     size_hint_x: None
                     width: self.texture_size[0] + 4
                     on_left_press: app.gui.active_review_mode = not app.gui.active_review_mode if app.gui else None
