@@ -63,19 +63,6 @@ jobs:
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
         run: |
-          echo "=== Debug: Python and pytest versions ==="
-          uv run python --version
-          uv run python -c "import pytest; print(f'pytest {pytest.__version__}')"
-          echo "=== Debug: Try importing test modules directly ==="
-          uv run python -c "from tests import conftest; print('conftest import OK')" || echo "conftest import FAILED"
-          uv run python -c "from tests import test_beginner_hints; print('test_beginner_hints import OK')" || echo "test_beginner_hints import FAILED"
-          echo "=== Debug: List test files ==="
-          ls -la tests/*.py | head -20
-          echo "=== Debug: Try importing radar_geometry directly ==="
-          uv run python -c "from katrain.gui.widgets.radar_geometry import calculate_vertex; print('radar_geometry import OK')" 2>&1 || echo "radar_geometry import FAILED"
-          echo "=== Debug: Show full traceback on test_radar_geometry collection ==="
-          uv run python -m pytest tests/test_radar_geometry.py --collect-only -p no:faulthandler 2>&1 || echo "Collection failed"
-          echo "=== Running pytest on all tests ==="
           uv run python -m pytest tests -p no:faulthandler 2>&1
           exit_code=$?
           echo "Exit code: $exit_code"
