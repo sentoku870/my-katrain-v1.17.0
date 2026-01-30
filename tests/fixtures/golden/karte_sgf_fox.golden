@@ -83,6 +83,7 @@
 ### 1. Move #17 (B) R8
 - **Loss**: 6.0目
 - **Type**: 地の損失
+- **Reason**: 地を損しました。
 - **Phase**: opening
 - **Difficulty**: ONLY
 - **Context**: (none)
@@ -90,6 +91,7 @@
 ### 2. Move #5 (B) F17
 - **Loss**: 2.5目
 - **Type**: 地の損失
+- **Reason**: 地を損しました。
 - **Phase**: opening
 - **Difficulty**: ONLY
 - **Context**: (none)
@@ -110,6 +112,7 @@
 ### 1. Move #34 (W) B6
 - **Loss**: 12.0目
 - **Type**: 地の損失
+- **Reason**: 地を損しました。
 - **Phase**: opening
 - **Difficulty**: ONLY
 - **Context**: (none)
