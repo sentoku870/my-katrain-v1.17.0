@@ -53,7 +53,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           sync-groups: dev
 
-      - name: Debug - Try importing test modules directly
+      - name: Debug - Collect-only test
         env:
           KIVY_NO_FILELOG: 1
           KIVY_NO_CONSOLELOG: 1
@@ -61,28 +61,9 @@ jobs:
           SDL_VIDEODRIVER: dummy
           DISPLAY: ""
         run: |
-          echo "=== Testing direct imports of new test modules ==="
-          uv run python -c "
-          import sys
-          sys.path.insert(0, '.')
-          print('Importing conftest...')
-          try:
-              from tests import conftest
-              print('conftest imported successfully')
-          except Exception as e:
-              print(f'conftest import failed: {e}')
-              import traceback
-              traceback.print_exc()
-
-          print('Importing test_beginner_hints...')
-          try:
-              from tests import test_beginner_hints
-              print('test_beginner_hints imported successfully')
-          except Exception as e:
-              print(f'test_beginner_hints import failed: {e}')
-              import traceback
-              traceback.print_exc()
-          " || echo "Direct import test exited with code $?"
+          echo "=== Running pytest --collect-only ==="
+          uv run pytest tests --collect-only -q 2>&1 | head -100 || echo "Collect-only exited with code $?"
+          echo "=== Collect-only finished ==="
 
       - name: Run tests
         env:
@@ -91,7 +72,7 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           SDL_VIDEODRIVER: dummy
           DISPLAY: ""
-        run: uv run pytest tests --import-mode=importlib -p no:faulthandler --tb=long 2>&1 || exit $?
+        run: uv run pytest tests --import-mode=importlib -p no:faulthandler
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
