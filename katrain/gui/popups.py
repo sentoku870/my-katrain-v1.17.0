@@ -57,6 +57,8 @@ from katrain.gui.kivyutils import (
 )
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.progress_loader import ProgressLoader
+from katrain.common.humanlike_config import normalize_humanlike_config
+from katrain.common.model_labels import classify_model_strength, get_model_basename
 
 
 def _get_app_gui():
@@ -826,17 +828,85 @@ class BaseConfigPopup(QuickConfigGui):
 
 
 class ConfigPopup(BaseConfigPopup):
+    # Phase 88: Settings mode and humanlike toggle
+    current_mode = StringProperty("standard")  # "automatic", "standard", "advanced"
+    humanlike_enabled = BooleanProperty(False)
+
     def __init__(self, katrain):
         super().__init__(katrain)
         Clock.schedule_once(self.check_katas)
         MDApp.get_running_app().bind(language=self.check_models)
         MDApp.get_running_app().bind(language=self.check_katas)
+        # Initialize humanlike_enabled from config
+        humanlike_model = self.katrain.config("engine/humanlike_model", "")
+        self.humanlike_enabled = bool(humanlike_model)
+
+    def on_humanlike_enabled(self, instance, value: bool):
+        """Kivy auto-callback when humanlike_enabled changes."""
+        self._handle_humanlike_toggle(value)
+
+    def _handle_humanlike_toggle(self, enabled: bool):
+        """Handle human-like toggle change.
+
+        When forcing OFF, always clear humanlike_model_path to avoid stale state.
+        """
+        if enabled:
+            last = self.katrain.config("engine/humanlike_model_last", "")
+            if last and os.path.exists(last):
+                self.humanlike_model_path.text = last
+                self.humanlike_enabled = True
+            elif last:
+                # File missing - force OFF and clear path
+                self.katrain.controls.set_status(i18n._("humanlike:path_not_found"), STATUS_INFO)
+                self.humanlike_enabled = False
+                self.humanlike_model_path.text = ""
+            else:
+                # No previous path - force OFF
+                self.katrain.controls.set_status(i18n._("humanlike:no_path_warning"), STATUS_INFO)
+                self.humanlike_enabled = False
+                self.humanlike_model_path.text = ""
+        else:
+            self.humanlike_enabled = False
+            # Note: Don't clear path here - update_config will preserve it in last_path
+
+    def get_model_display_text(self, model_path: str) -> str:
+        """Get localized display text for model.
+
+        Handles empty path gracefully with model:none fallback.
+        """
+        if not model_path:
+            return i18n._("model:none")
+
+        category = classify_model_strength(model_path)
+        if category == "unknown":
+            basename = get_model_basename(model_path)
+            if not basename:
+                return i18n._("model:none")
+            # Use placeholder form: "Other: {name}"
+            return i18n._("model:unknown_with_name").format(name=basename)
+        return i18n._(f"model:{category}")
 
     def update_config(self, save_to_file=True, close_popup=True):
+        # Phase 88: Normalize humanlike config before saving
+        model, last, effective_on = normalize_humanlike_config(
+            self.humanlike_enabled,
+            self.humanlike_model_path.text,
+            self.katrain.config("engine/humanlike_model_last", "")
+        )
+        # Update humanlike_model_path to normalized value before parent saves
+        self.humanlike_model_path.text = model
+        # Store last path in config (will be saved by parent)
+        self.katrain._config["engine"]["humanlike_model_last"] = last
+
         updated = super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         self.katrain.debug_level = self.katrain.config("general/debug_level", OUTPUT_INFO)
 
-        ignore = {"max_visits", "fast_visits", "max_time", "enable_ownership", "wide_root_noise"}
+        # Sync UI state to match persisted config
+        if self.humanlike_enabled and not effective_on:
+            self.katrain.controls.set_status(i18n._("humanlike:forced_off"), STATUS_INFO)
+        self.humanlike_enabled = effective_on
+
+        ignore = {"max_visits", "fast_visits", "max_time", "enable_ownership", "wide_root_noise", "humanlike_model_last"}
         detected_restart = [key for key in updated if "engine" in key and not any(ig in key for ig in ignore)]
         if detected_restart:
 
