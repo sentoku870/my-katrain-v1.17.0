@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-30（Phase 87.5完了）
+> 最終更新: 2026-01-30（Phase 87.6完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -258,6 +258,10 @@ Critical 3とRecurring PatternsにReason行を追加。ワイルドカードマ�
 **Phase 87.5**: ✅ Batch Analysis UIとSettings UIの一貫性・安全性改善。`is_leela_configured()`ヘルパー追加、
 `analysis_engine`/`leela_engine`を`run_batch()`に渡す[CRITICAL]、3ステップLeela起動ロジック、Variable visits連動、
 Leelaゲーティング（両UI）、"Setup Leela"ショートカットボタン、`extract_game_stats()`/`build_karte_report()`にsnapshot対応。（2026-01-30完了）
+
+**Phase 87.6**: ✅ Leela Zeroバッチ解析の出力生成バグを修正。0手SGFを失敗扱いに変更（`fail_result()`）、
+Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`を解析失敗時にインクリメント、
+`_DummyEngine`クラス追加（`engine=None`クラッシュ防止）、解析品質ログ追加。（2026-01-30完了）
 
 ### Phase 88–94: Beginner Experience & Study Modes 📋 **Planned**
 

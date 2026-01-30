@@ -1,9 +1,26 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-87.5 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-87.6 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 87.6 完了（Leela Batch Output Fix）
+  - Leela Zeroバッチ解析で解析済みSGF・カルテ・サマリーが生成されない問題を修正
+  - 変更ファイル:
+    - `katrain/core/batch/analysis.py`: `_DummyEngine`追加、0手SGFをfail_result()に変更、解析品質ログ追加
+    - `katrain/core/batch/orchestration.py`: Success gate強化、karte_failed追跡追加、古いログメッセージ削除
+    - `katrain/core/batch/stats/extraction.py`: 空snapshot時のログ追加
+    - `tests/test_batch_leela_analysis.py`: Phase 87.6テスト追加（4件）
+  - 追加API:
+    - `_DummyEngine` クラス - engine=None時のクラッシュ防止（no-op stop_pondering()）
+  - 技術仕様:
+    - Success gate: game is not None だけでなく snapshot.moves も検証
+    - 0手SGF: fail_result()を返却（以前はsuccess_result()で空snapshotを返していた）
+    - karte_failed: 解析失敗時にインクリメント（karte_total = karte_written + karte_failed）
+    - parse_errorカウント: getattr()でNone/missing属性に対するガード
+  - テスト: 3202件パス（+3件）
+  - PRs: #227
 
 - 2026-01-30: Phase 87.5 完了（Batch Analysis UI & Settings UI Consistency）
   - Batch UIとSettings UIの一貫性・安全性改善
