@@ -54,7 +54,12 @@ jobs:
           sync-groups: dev
 
       - name: Run tests
-        run: uv run pytest tests -v --tb=long
+        run: |
+          set -x
+          python --version
+          uv run python -c "import katrain; print('katrain imported')"
+          uv run pytest tests --collect-only 2>&1 | head -100 || true
+          uv run pytest tests -v --tb=long
 
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
