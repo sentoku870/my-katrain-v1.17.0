@@ -5,14 +5,18 @@ This module provides:
 - Data models for evaluation results (GuessGrade, GuessEvaluation, ReviewReadyResult)
 - is_review_ready() to check if a node has sufficient analysis
 - ActiveReviewer class for evaluating user guesses against AI candidates
+- get_hint_for_best_move() for generating position-based hints (Phase 94)
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
+
+_log = logging.getLogger(__name__)
 
 # =============================================================================
 # Constants
@@ -235,3 +239,167 @@ class ActiveReviewer:
         if score_loss < self.thresholds["blunder"]:
             return GuessGrade.SLACK
         return GuessGrade.BLUNDER
+
+
+# =============================================================================
+# Hint Generation (Phase 94)
+# =============================================================================
+
+# Hint text mapping by reason tag
+# Maps tactical reason_tags to i18n keys for hints
+_HINT_KEYS_BY_REASON_TAG: Dict[str, str] = {
+    "atari": "active_review:hint:atari",
+    "low_liberties": "active_review:hint:liberties",
+    "need_connect": "active_review:hint:connection",
+    "cut_risk": "active_review:hint:connection",
+    "capture_possible": "active_review:hint:capture",
+    "can_save": "active_review:hint:save",
+    "endgame_hint": "active_review:hint:endgame",
+    "chase_mode": "active_review:hint:attack",
+}
+
+# Priority order for reason tags (lower index = higher priority)
+_HINT_PRIORITY: List[str] = [
+    "atari",
+    "low_liberties",
+    "need_connect",
+    "cut_risk",
+    "capture_possible",
+    "can_save",
+    "chase_mode",
+    "endgame_hint",
+]
+
+
+def get_hint_for_best_move(
+    node: Optional["GameNode"],
+    lang: str = "jp",
+) -> Optional[str]:
+    """Generate a position-based hint for the AI's best move.
+
+    Uses the node's analysis data (reason_tags, position type) to provide
+    a tactical hint about what kind of move to look for.
+
+    Args:
+        node: GameNode with analysis (uses parent's analysis for context)
+        lang: Language code ("jp" or "en")
+
+    Returns:
+        Hint text string, or None if no relevant hint available
+
+    Note:
+        - Uses i18n keys that map to hint text in .po files
+        - Falls back to MeaningTag description if the node has meaning_tag_id
+        - Returns None if:
+          - Node has no analysis
+          - No tactical context detected
+          - UNCERTAIN MeaningTag
+    """
+    from katrain.core.lang import i18n
+
+    if node is None:
+        return None
+
+    # Check if node has sufficient analysis
+    if not node.analysis_exists:
+        return None
+
+    # Try to get hint from reason tags on the current position
+    # First check if there's any tactical context we can use
+    hint_key = _get_hint_key_from_analysis(node)
+    if hint_key:
+        hint = i18n._(hint_key)
+        # Check if i18n returned the key itself (untranslated)
+        if hint != hint_key:
+            return hint
+
+    # Fallback: Check if node has meaning_tag_id from batch analysis
+    meaning_tag_id = getattr(node, "meaning_tag_id", None)
+    if meaning_tag_id is not None:
+        return _get_hint_from_meaning_tag(meaning_tag_id, lang)
+
+    # No hint available
+    return None
+
+
+def _get_hint_key_from_analysis(node: "GameNode") -> Optional[str]:
+    """Extract i18n key for hint from node's analysis data.
+
+    Checks the position for tactical indicators and returns an appropriate
+    hint key based on priority order.
+
+    Args:
+        node: GameNode with analysis
+
+    Returns:
+        i18n key string, or None if no relevant hint
+    """
+    # Get the analysis info to look for tactical patterns
+    analysis = node.analysis
+
+    if not analysis:
+        return None
+
+    # Check for rootInfo which may contain position indicators
+    root_info = analysis.get("rootInfo", {})
+
+    # Try to infer tactical context from candidate moves' characteristics
+    candidates = node.candidate_moves
+    if not candidates:
+        return None
+
+    # Look at the best move and see if we can determine its purpose
+    best = candidates[0]
+    best_move = best.get("move", "")
+
+    # Check if this is an endgame position based on score closeness
+    score_stdev = root_info.get("scoreStdev", 0)
+    if score_stdev < 3.0 and node.depth > 150:
+        return "active_review:hint:endgame"
+
+    # Check for life/death situations based on ownership uncertainty
+    ownership = root_info.get("ownership", [])
+    if ownership:
+        # High ownership variance suggests tactical fighting
+        if any(abs(o) < 0.3 for o in ownership[:50]):  # Early cells
+            return "active_review:hint:fighting"
+
+    # Default: no specific hint available
+    return None
+
+
+def _get_hint_from_meaning_tag(
+    meaning_tag_id: str,
+    lang: str,
+) -> Optional[str]:
+    """Get hint from MeaningTag description.
+
+    Args:
+        meaning_tag_id: MeaningTagId.value string (e.g., "overplay")
+        lang: Language code ("jp" or "en")
+
+    Returns:
+        Description text, or None if UNCERTAIN or invalid
+    """
+    from katrain.core.analysis.meaning_tags import (
+        MeaningTagId,
+        get_tag_description,
+        normalize_lang,
+    )
+
+    # Skip UNCERTAIN - not useful as a hint
+    if meaning_tag_id == MeaningTagId.UNCERTAIN.value:
+        return None
+
+    try:
+        tag_id = MeaningTagId(meaning_tag_id)
+    except ValueError:
+        _log.debug("Unknown meaning_tag_id: %s", meaning_tag_id)
+        return None
+
+    # Normalize language (jp -> ja for MeaningTags registry)
+    normalized_lang = normalize_lang(lang)
+    description = get_tag_description(tag_id, normalized_lang)
+
+    # Return None if description is empty
+    return description if description else None

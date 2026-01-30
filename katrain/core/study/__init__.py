@@ -12,7 +12,13 @@ from katrain.core.study.active_review import (
     GuessEvaluation,
     GuessGrade,
     ReviewReadyResult,
+    get_hint_for_best_move,
     is_review_ready,
+)
+from katrain.core.study.review_session import (
+    GuessResult,
+    ReviewSession,
+    SessionSummary,
 )
 
 __all__ = [
@@ -23,4 +29,9 @@ __all__ = [
     "GuessEvaluation",
     "is_review_ready",
     "ActiveReviewer",
+    # Phase 94 additions
+    "GuessResult",
+    "SessionSummary",
+    "ReviewSession",
+    "get_hint_for_best_move",
 ]

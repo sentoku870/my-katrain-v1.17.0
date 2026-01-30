@@ -312,6 +312,10 @@ class KaTrainGui(Screen, KaTrainBase):
 
         self.message_queue = Queue()
 
+        # Phase 94: Active Review session tracking
+        self._active_review_session = None
+        self.bind(active_review_mode=self._on_active_review_mode_change)
+
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events = []
 
@@ -1070,22 +1074,89 @@ class KaTrainGui(Screen, KaTrainBase):
         - Switching to PLAY mode
         - Loading new game/SGF
         - Starting quiz session
+
+        Note: Calls _end_active_review(show_summary=False) for proper cleanup.
+        """
+        self._end_active_review(show_summary=False)
+
+    def _end_active_review(self, show_summary: bool) -> None:
+        """End Active Review mode with summary display control.
+
+        IMPORTANT: All Active Review terminations must go through this method.
+        Do not directly set `active_review_mode = False`.
+
+        Args:
+            show_summary: True to display summary popup
+                - User manual OFF: True
+                - Forced termination (SGF/new game/quiz): False
+        """
+        if not self.active_review_mode:
+            return
+
+        # Show summary (conditional)
+        if show_summary and self._active_review_session:
+            if self._active_review_session.results:  # total_guesses > 0
+                from katrain.gui.features.active_review_summary import (
+                    show_session_summary,
+                )
+
+                summary = self._active_review_session.get_summary()
+                show_session_summary(self, summary)
+
+        # Clear session
+        self._active_review_session = None
+
+        # Turn off mode
+        self.active_review_mode = False
+
+    def toggle_active_review(self) -> None:
+        """Toggle Active Review mode from UI (called from gui.kv).
+
+        All OFFs go through _end_active_review(), so do not directly set
+        the property; use this method instead.
         """
         if self.active_review_mode:
-            self.active_review_mode = False
+            self._end_active_review(show_summary=True)
+        else:
+            self.active_review_mode = True  # Observer creates session
+
+    def _on_active_review_mode_change(self, instance, value):
+        """Handler for active_review_mode property changes.
+
+        ON only - creates session. OFF is no-op (handled by _end_active_review()).
+        """
+        from katrain.core.study.review_session import ReviewSession
+
+        if value:  # ON
+            skill_preset = self.config("general/skill_preset") or "standard"
+            self._active_review_session = ReviewSession(skill_preset)
+        # OFF: _end_active_review() already handled - no-op
 
     def _do_active_review_guess(self, coords):
         """Handle user's guess in Active Review mode.
 
         Args:
             coords: Board coordinates (col, row) tuple
+
+        Phase 94 Session Tracking:
+        - Detects node changes during retry and aborts pending
+        - Records final answers to session
+        - Allows retry on first bad guess (BLUNDER/SLACK/NOT_IN_CANDIDATES)
         """
         from katrain.gui.features.active_review_ui import show_guess_feedback
+        from katrain.core.study.active_review import get_hint_for_best_move
 
         if not self.game:
             return
 
         node = self.game.current_node
+
+        # Node change detection: abort pending if move_number differs
+        if self._active_review_session and self._active_review_session.has_pending:
+            pending_move = self._active_review_session._pending_move_number
+            if node.move_number != pending_move:
+                self._active_review_session.abort_pending()
+                # Continue as new position below
 
         # Check if node is ready for review
         ready_result = is_review_ready(node)
@@ -1098,12 +1169,47 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.controls.set_status(msg, STATUS_INFO)
             return
 
+        # Session tracking: begin new position if not in retry
+        is_retry = self._active_review_session and self._active_review_session.has_pending
+        if self._active_review_session and not is_retry:
+            self._active_review_session.begin_position(node.move_number)
+
         # Evaluate the guess
-        reviewer = ActiveReviewer()  # TODO: use skill preset from config
+        skill_preset = self.config("general/skill_preset") or "standard"
+        reviewer = ActiveReviewer(skill_preset)
         evaluation = reviewer.evaluate_guess(coords, node)
 
+        # Determine if retry is allowed
+        # First attempt with bad grade gets retry option
+        bad_grades = (GuessGrade.BLUNDER, GuessGrade.SLACK, GuessGrade.NOT_IN_CANDIDATES)
+        allow_retry = not is_retry and evaluation.grade in bad_grades
+
+        # Define callbacks for retry/hint
+        def on_retry():
+            if self._active_review_session:
+                self._active_review_session.mark_retry()
+            # User will click again to retry
+
+        def on_hint_request():
+            if self._active_review_session:
+                self._active_review_session.mark_hint_used()
+            # Get hint based on position
+            lang = self.config("general/lang") or "en"
+            return get_hint_for_best_move(node, lang)
+
+        # Record final guess if not allowing retry (good grade or second attempt)
+        if not allow_retry:
+            if self._active_review_session:
+                self._active_review_session.record_final_guess(evaluation)
+
         # Show feedback popup
-        show_guess_feedback(self, evaluation)
+        show_guess_feedback(
+            self,
+            evaluation,
+            allow_retry=allow_retry,
+            on_retry=on_retry if allow_retry else None,
+            on_hint_request=on_hint_request if allow_retry else None,
+        )
 
     def _do_analyze_extra(self, mode, **kwargs):
         analyze_commands.do_analyze_extra(self, mode, **kwargs)

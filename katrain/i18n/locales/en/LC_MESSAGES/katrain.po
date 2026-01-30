@@ -2326,3 +2326,65 @@ msgstr "No candidate moves available."
 
 msgid "active_review:best_is_pass"
 msgstr "Best move is pass. Skipping this position."
+
+# Phase 94: Active Review Extension - Retry/Hint/Summary
+msgid "active_review:button:retry"
+msgstr "Retry"
+
+msgid "active_review:button:hint"
+msgstr "Hint"
+
+msgid "active_review:hint:unavailable"
+msgstr "No hint available"
+
+msgid "active_review:hint:atari"
+msgstr "Look for a capturing move or atari response."
+
+msgid "active_review:hint:liberties"
+msgstr "Consider the liberty count of stones."
+
+msgid "active_review:hint:connection"
+msgstr "Think about stone connections or cutting points."
+
+msgid "active_review:hint:capture"
+msgstr "There may be a capturing opportunity."
+
+msgid "active_review:hint:save"
+msgstr "A group might need to be saved."
+
+msgid "active_review:hint:endgame"
+msgstr "Consider endgame (yose) priorities."
+
+msgid "active_review:hint:attack"
+msgstr "There may be an attacking move."
+
+msgid "active_review:hint:fighting"
+msgstr "A fighting situation requires attention."
+
+msgid "active_review:summary:title"
+msgstr "Session Results"
+
+msgid "active_review:summary:popup_title"
+msgstr "Active Review Summary"
+
+msgid "active_review:summary:stats"
+msgstr ""
+"Total: {total}\n"
+"- Perfect: {perfect}\n"
+"- Excellent: {excellent}\n"
+"- Good: {good}\n"
+"- Slack: {slack}\n"
+"- Blunder: {blunder}\n"
+"- Unusual: {unusual}"
+
+msgid "active_review:summary:rates"
+msgstr ""
+"AI Match: {ai_match:.1f}%\n"
+"Game Match: {game_match:.1f}%\n"
+"Avg Loss: {avg_loss}"
+
+msgid "active_review:button:copy_summary"
+msgstr "Copy to Clipboard"
+
+msgid "active_review:copied"
+msgstr "Copied"

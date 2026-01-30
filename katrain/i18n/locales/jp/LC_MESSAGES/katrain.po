@@ -2272,3 +2272,65 @@ msgstr "候補手がありません。"
 
 msgid "active_review:best_is_pass"
 msgstr "最善手がパスです。この局面はスキップします。"
+
+# Phase 94: Active Review Extension - Retry/Hint/Summary
+msgid "active_review:button:retry"
+msgstr "もう一度"
+
+msgid "active_review:button:hint"
+msgstr "ヒント"
+
+msgid "active_review:hint:unavailable"
+msgstr "ヒントがありません"
+
+msgid "active_review:hint:atari"
+msgstr "取る手やアタリへの対応を探してみましょう。"
+
+msgid "active_review:hint:liberties"
+msgstr "石のダメの数を考慮してみましょう。"
+
+msgid "active_review:hint:connection"
+msgstr "石の連絡や切断点を考えてみましょう。"
+
+msgid "active_review:hint:capture"
+msgstr "取れる石があるかもしれません。"
+
+msgid "active_review:hint:save"
+msgstr "助けが必要な石があるかもしれません。"
+
+msgid "active_review:hint:endgame"
+msgstr "ヨセの優先順位を考えましょう。"
+
+msgid "active_review:hint:attack"
+msgstr "攻めの手があるかもしれません。"
+
+msgid "active_review:hint:fighting"
+msgstr "戦いの局面に注意が必要です。"
+
+msgid "active_review:summary:title"
+msgstr "セッション結果"
+
+msgid "active_review:summary:popup_title"
+msgstr "能動的検討サマリー"
+
+msgid "active_review:summary:stats"
+msgstr ""
+"予測回数: {total}\n"
+"- 最善手: {perfect}\n"
+"- 素晴らしい: {excellent}\n"
+"- 良い: {good}\n"
+"- 緩手: {slack}\n"
+"- 悪手: {blunder}\n"
+"- 珍しい手: {unusual}"
+
+msgid "active_review:summary:rates"
+msgstr ""
+"AI一致率: {ai_match:.1f}%\n"
+"棋譜一致率: {game_match:.1f}%\n"
+"平均損失: {avg_loss}"
+
+msgid "active_review:button:copy_summary"
+msgstr "クリップボードにコピー"
+
+msgid "active_review:copied"
+msgstr "コピーしました"
