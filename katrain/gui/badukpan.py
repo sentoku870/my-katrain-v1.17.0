@@ -43,6 +43,11 @@ from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.utils import evaluation_class, format_visits, var_to_grid, json_truncate_arrays
 from katrain.core.analysis import get_pv_filter_config, filter_candidates_by_pv_complexity, DEFAULT_PV_FILTER_LEVEL
+from katrain.core.beginner.hints import (
+    get_beginner_hint_cached,
+    is_coords_valid,
+    should_draw_board_highlight,
+)
 from katrain.gui.kivyutils import draw_circle, draw_text, cached_texture
 from katrain.gui.popups import I18NPopup, ReAnalyzeGamePopup, GameReportPopup, TsumegoFramePopup
 from katrain.gui.theme import Theme
@@ -733,6 +738,9 @@ class BadukPanWidget(Widget):
                     self.draw_stone(2, y, "W", evalcol=evalcol, evalscale=y / (board_size_y - 1))
                     self.draw_stone(3, y, "W", innercol=Theme.STONE_COLORS["B"], evalcol=evalcol)
 
+            # Phase 92c: Draw beginner hint highlight
+            self.draw_beginner_hint_highlight()
+
             policy = current_node.policy
             if (
                 not policy
@@ -807,6 +815,47 @@ class BadukPanWidget(Widget):
                             )
 
         self.redraw_hover_contents_trigger()
+
+    # =========================================================================
+    # Phase 92c: Beginner Hint Highlight
+    # =========================================================================
+
+    def _should_draw_beginner_highlight(self) -> bool:
+        """Check if beginner hint highlight should be drawn (Phase 92c)."""
+        katrain = self.katrain
+        if not katrain:
+            return False
+        return should_draw_board_highlight(
+            enabled=katrain.config("beginner_hints/enabled", False),
+            mode=katrain.play_analyze_mode,
+            board_highlight=katrain.config("beginner_hints/board_highlight", True),
+        )
+
+    def draw_beginner_hint_highlight(self) -> None:
+        """Draw highlight circle at beginner hint coordinate (Phase 92c).
+
+        Draws a semi-transparent circle behind the stone to indicate
+        a beginner-relevant mistake or warning.
+        """
+        if not self._should_draw_beginner_highlight():
+            return
+
+        katrain = self.katrain
+        node = katrain.game.current_node
+        require_reliable = katrain.config("beginner_hints/require_reliable", True)
+        hint = get_beginner_hint_cached(katrain.game, node, require_reliable=require_reliable)
+
+        if hint is None or hint.coords is None:
+            return
+
+        board_size = katrain.game.board_size
+        if not is_coords_valid(hint.coords, board_size):
+            return
+
+        x, y = hint.coords
+        # gridpos[y][x] - note: y is first index
+        pos = (self.gridpos[y][x][0], self.gridpos[y][x][1])
+        draw_circle(pos, self.stone_size * 1.1, Theme.BEGINNER_HINT_COLOR)
 
     def draw_territory(self, grid, loss_color=None):
         if Theme.TERRITORY_DISPLAY == "marks":

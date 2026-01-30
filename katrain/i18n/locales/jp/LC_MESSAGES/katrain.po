@@ -1379,6 +1379,72 @@ msgstr "切られそう"
 msgid "beginner_hint:cut_risk:body"
 msgstr "ここを切られると石が分断されます。"
 
+msgid "beginner_hint:self_atari:why"
+msgstr "アタリに打つと、次に相手に取られます。"
+
+msgid "beginner_hint:ignore_atari:why"
+msgstr "アタリを放置すると石を失います。"
+
+msgid "beginner_hint:missed_capture:why"
+msgstr "取れる石を取ると盤面が有利になります。"
+
+msgid "beginner_hint:cut_risk:why"
+msgstr "石が分断されると弱いグループができます。"
+
+msgid "beginner_hint:low_liberties:title"
+msgstr "呼吸点が少ない"
+
+msgid "beginner_hint:low_liberties:body"
+msgstr "このグループは呼吸点が少なく危険です。"
+
+msgid "beginner_hint:low_liberties:why"
+msgstr "呼吸点が少ないと攻め合いで不利です。"
+
+msgid "beginner_hint:self_capture_like:title"
+msgstr "死活の危険"
+
+msgid "beginner_hint:self_capture_like:body"
+msgstr "石の生死に関わる局面です。"
+
+msgid "beginner_hint:self_capture_like:why"
+msgstr "大石の生死は勝敗に直結します。"
+
+msgid "beginner_hint:bad_shape:title"
+msgstr "愚形"
+
+msgid "beginner_hint:bad_shape:body"
+msgstr "形の悪い手です。"
+
+msgid "beginner_hint:bad_shape:why"
+msgstr "愚形は後で悪影響が出やすいです。"
+
+msgid "beginner_hint:heavy_group:title"
+msgstr "重い石"
+
+msgid "beginner_hint:heavy_group:body"
+msgstr "石が重くなっています。"
+
+msgid "beginner_hint:heavy_group:why"
+msgstr "重い石は攻められやすくなります。"
+
+msgid "beginner_hint:missed_defense:title"
+msgstr "つながりが弱い"
+
+msgid "beginner_hint:missed_defense:body"
+msgstr "石のつながりが弱くなっています。"
+
+msgid "beginner_hint:missed_defense:why"
+msgstr "切断されると弱い石ができます。"
+
+msgid "beginner_hint:urgent_vs_big:title"
+msgstr "緩手"
+
+msgid "beginner_hint:urgent_vs_big:body"
+msgstr "もっと大きな場所があります。"
+
+msgid "beginner_hint:urgent_vs_big:why"
+msgstr "大場より急場を優先しましょう。"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

@@ -1401,7 +1401,9 @@ msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
 
 msgid "mykatrain:settings:beginner_hints_desc"
-msgstr "Show safety hints for self-atari, ignored atari, missed captures, and cut risks (Review mode only)"
+msgstr ""
+"Show safety hints for self-atari, ignored atari, missed captures, and cut "
+"risks (Review mode only)"
 
 msgid "beginner_hint:self_atari:title"
 msgstr "Dangerous Move"
@@ -1426,6 +1428,72 @@ msgstr "Cut Risk"
 
 msgid "beginner_hint:cut_risk:body"
 msgstr "Your groups could be cut apart here."
+
+msgid "beginner_hint:self_atari:why"
+msgstr "A move that puts your own stones in atari can be captured next."
+
+msgid "beginner_hint:ignore_atari:why"
+msgstr "Ignoring atari will lose your stones."
+
+msgid "beginner_hint:missed_capture:why"
+msgstr "Capturing stones improves your position."
+
+msgid "beginner_hint:cut_risk:why"
+msgstr "Cut groups become weak and can be attacked."
+
+msgid "beginner_hint:low_liberties:title"
+msgstr "Low Liberties"
+
+msgid "beginner_hint:low_liberties:body"
+msgstr "This group has few liberties and is in danger."
+
+msgid "beginner_hint:low_liberties:why"
+msgstr "Groups with few liberties lose capturing races."
+
+msgid "beginner_hint:self_capture_like:title"
+msgstr "Life and Death"
+
+msgid "beginner_hint:self_capture_like:body"
+msgstr "This position involves life and death of stones."
+
+msgid "beginner_hint:self_capture_like:why"
+msgstr "Large group survival directly affects the game result."
+
+msgid "beginner_hint:bad_shape:title"
+msgstr "Bad Shape"
+
+msgid "beginner_hint:bad_shape:body"
+msgstr "This is an inefficient shape."
+
+msgid "beginner_hint:bad_shape:why"
+msgstr "Bad shapes cause problems later in the game."
+
+msgid "beginner_hint:heavy_group:title"
+msgstr "Heavy Stones"
+
+msgid "beginner_hint:heavy_group:body"
+msgstr "Your stones have become heavy."
+
+msgid "beginner_hint:heavy_group:why"
+msgstr "Heavy stones are easy targets for attack."
+
+msgid "beginner_hint:missed_defense:title"
+msgstr "Weak Connection"
+
+msgid "beginner_hint:missed_defense:body"
+msgstr "Your stones' connection is weak."
+
+msgid "beginner_hint:missed_defense:why"
+msgstr "Cut stones create weak groups."
+
+msgid "beginner_hint:urgent_vs_big:title"
+msgstr "Slow Move"
+
+msgid "beginner_hint:urgent_vs_big:body"
+msgstr "There are bigger moves elsewhere."
+
+msgid "beginner_hint:urgent_vs_big:why"
+msgstr "Urgent moves should come before big moves."
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
