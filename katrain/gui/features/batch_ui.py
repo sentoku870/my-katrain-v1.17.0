@@ -176,6 +176,7 @@ def build_batch_popup_widgets(
     batch_options: BatchOptions,
     default_input_dir: str,
     default_output_dir: str,
+    leela_enabled: bool = False,  # Phase 87.5: Leela gating parameter
 ) -> Tuple[BoxLayout, BatchWidgets]:
     """バッチポップアップのウィジェットを構築
 
@@ -534,6 +535,16 @@ def build_batch_popup_widgets(
     options_row5.add_widget(sound_label)
     main_layout.add_widget(options_row5)
 
+    # Phase 87.5: Variable visits linkage - enable/disable Jitter% and Deterministic
+    def update_variable_visits_controls(*_args):
+        checkbox = widgets["variable_visits_checkbox"]
+        is_variable = getattr(checkbox, "active", False)
+        widgets["jitter_input"].disabled = not is_variable
+        widgets["deterministic_checkbox"].disabled = not is_variable
+
+    widgets["variable_visits_checkbox"].bind(active=update_variable_visits_controls)
+    update_variable_visits_controls()  # Set initial state
+
     # Options row 6: Analysis Engine selection
     options_row6 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
@@ -547,7 +558,12 @@ def build_batch_popup_widgets(
     )
     engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
+    # Phase 87.5: Apply Leela gating to saved engine selection
     saved_engine = batch_options.get("analysis_engine", "katago")
+    # If Leela not configured and Leela was selected, fallback to KataGo
+    if not leela_enabled and saved_engine == "leela":
+        saved_engine = "katago"
+
     widgets["engine_katago"] = ToggleButton(
         text=i18n._("mykatrain:batch:engine_katago"),
         group="analysis_engine",
@@ -561,26 +577,39 @@ def build_batch_popup_widgets(
         state="down" if saved_engine == "leela" else "normal",
         size_hint_x=0.15,
         font_name=Theme.DEFAULT_FONT,
+        disabled=not leela_enabled,  # Phase 87.5: Disable if Leela not configured
     )
 
-    # Warning label for Leela not enabled (initially hidden)
+    # Warning label for Leela not enabled
     widgets["leela_warning_label"] = Label(
         text=i18n._("mykatrain:batch:leela_not_enabled_warning"),
-        size_hint_x=0.4,
+        size_hint_x=0.28,
         halign="left",
         valign="middle",
         color=(1.0, 0.6, 0.2, 1),  # Orange warning color
         font_name=Theme.DEFAULT_FONT,
+        opacity=0 if leela_enabled else 1,  # Phase 87.5: Hide if Leela configured
     )
     widgets["leela_warning_label"].bind(
         size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+
+    # Phase 87.5: Setup Leela button (visible only when Leela not configured)
+    widgets["leela_settings_btn"] = Button(
+        text=i18n._("mykatrain:batch:open_leela_settings"),
+        size_hint_x=0.12,
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        opacity=0 if leela_enabled else 1,
+        disabled=leela_enabled,
     )
 
     options_row6.add_widget(engine_label)
     options_row6.add_widget(widgets["engine_katago"])
     options_row6.add_widget(widgets["engine_leela"])
     options_row6.add_widget(widgets["leela_warning_label"])
-    options_row6.add_widget(Label(size_hint_x=0.12))  # spacer
+    options_row6.add_widget(widgets["leela_settings_btn"])
     main_layout.add_widget(options_row6)
 
     # Leela選択時はvisits_inputを無効化（Phase 37: UI仕様）

@@ -414,11 +414,15 @@ def save_batch_options(ctx: "FeatureContext", options: Dict[str, Any]) -> None:
     ctx.save_config("mykatrain_settings")
 
 
-def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
+def do_mykatrain_settings_popup(
+    ctx: "FeatureContext",
+    initial_tab: Optional[str] = None,  # Phase 87.5: "analysis", "export", "leela"
+) -> None:
     """myKatrain設定ポップアップを表示
 
     Args:
         ctx: FeatureContext providing config, save_config, controls
+        initial_tab: Optional tab to select on open ("analysis", "export", "leela")
     """
     current_settings = ctx.config("mykatrain_settings") or {}
 
@@ -546,15 +550,34 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
         (EngineType.LEELA.value, i18n._("mykatrain:settings:engine_leela")),
     ]
 
+    # Phase 87.5: Check if Leela is configured for gating
+    from katrain.gui.features.batch_core import is_leela_configured
+    leela_enabled_for_gating = is_leela_configured(ctx)
+
     engine_layout = BoxLayout(
         orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3)
     )
     for engine_value, engine_label_text in engine_options:
+        # Phase 87.5: Disable Leela checkbox if not configured
+        is_leela_option = (engine_value == EngineType.LEELA.value)
+        should_disable = is_leela_option and not leela_enabled_for_gating
+
+        # If Leela not configured and currently selected, force to KataGo
+        is_active = (engine_value == current_engine)
+        if is_leela_option and not leela_enabled_for_gating and is_active:
+            is_active = False
+            # Force KataGo to be selected
+            if engine_value == EngineType.KATAGO.value:
+                pass  # Will be handled by the katago iteration
+            else:
+                selected_engine[0] = EngineType.KATAGO.value
+
         checkbox = CheckBox(
             group="analysis_engine_setting",
-            active=(engine_value == current_engine),
+            active=is_active,
             size_hint_x=None,
             width=dp(30),
+            disabled=should_disable,  # Phase 87.5
         )
         checkbox.bind(
             active=lambda chk, active, val=engine_value: (
@@ -1186,6 +1209,19 @@ def do_mykatrain_settings_popup(ctx: "FeatureContext") -> None:
     tab3_scroll.add_widget(tab3_inner)
     tab3.add_widget(tab3_scroll)
     tabbed_panel.add_widget(tab3)
+
+    # Phase 87.5: Tab lookup dictionary (direct references, not dependent on tab_list)
+    tab_by_id = {
+        "analysis": tab1,
+        "export": tab2,
+        "leela": tab3,
+    }
+
+    # Phase 87.5: Switch to initial_tab if specified
+    if initial_tab and initial_tab in tab_by_id:
+        from kivy.clock import Clock
+        target_tab = tab_by_id[initial_tab]
+        Clock.schedule_once(lambda dt: tabbed_panel.switch_to(target_tab), 0.1)
 
     # Set default tab to tab1 (Analysis)
     tabbed_panel.default_tab = tab1

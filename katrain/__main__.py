@@ -155,6 +155,7 @@ from katrain.gui.features.batch_core import (
     create_log_callback,
     create_progress_callback,
     create_summary_callback,
+    is_leela_configured,
     run_batch_in_thread,
 )
 from katrain.gui.features.batch_ui import (
@@ -1106,7 +1107,11 @@ class KaTrainGui(Screen, KaTrainBase):
         default_output_dir = batch_options.get("output_dir", "")
 
         # 2. Build widgets
-        main_layout, widgets = build_batch_popup_widgets(batch_options, default_input_dir, default_output_dir)
+        # Phase 87.5: Check if Leela is configured for gating
+        leela_enabled = is_leela_configured(self)
+        main_layout, widgets = build_batch_popup_widgets(
+            batch_options, default_input_dir, default_output_dir, leela_enabled
+        )
 
         # 3. Create popup
         popup = create_batch_popup(main_layout)
@@ -1156,6 +1161,17 @@ class KaTrainGui(Screen, KaTrainBase):
         widgets["close_button"].bind(on_release=on_close)
         widgets["input_browse"].bind(on_release=browse_input)
         widgets["output_browse"].bind(on_release=browse_output)
+
+        # Phase 87.5: Setup Leela button callback
+        def open_leela_settings(*_args):
+            popup.dismiss()
+            from kivy.clock import Clock
+            Clock.schedule_once(
+                lambda dt: do_mykatrain_settings_popup(self, initial_tab="leela"),
+                0.15
+            )
+
+        widgets["leela_settings_btn"].bind(on_press=open_leela_settings)
 
         # 7. Open popup
         popup.open()

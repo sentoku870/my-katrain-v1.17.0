@@ -1083,13 +1083,13 @@ msgid "mykatrain:batch:output_hint"
 msgstr "(空欄=入力と同じ)"
 
 msgid "mykatrain:batch:visits"
-msgstr "訪問数"
+msgstr "訪問数 (手毎)"
 
 msgid "mykatrain:batch:visits_hint"
 msgstr "(デフォルト)"
 
 msgid "mykatrain:batch:timeout"
-msgstr "タイムアウト(秒)"
+msgstr "タイムアウト (秒/ファイル)"
 
 msgid "mykatrain:batch:skip_analyzed"
 msgstr "解析済みファイルをスキップ"
@@ -1183,6 +1183,12 @@ msgstr "⚠ Leelaが未有効"
 
 msgid "mykatrain:batch:error_leela_not_enabled"
 msgstr "Leela Zeroが有効になっていません。設定で有効にしてください。"
+
+msgid "mykatrain:batch:leela_start_failed"
+msgstr "Leelaエンジンの起動に失敗しました。Leela Zero設定を確認してください。"
+
+msgid "mykatrain:batch:open_leela_settings"
+msgstr "Leela設定"
 
 msgid "Close"
 msgstr "閉じる"

@@ -98,13 +98,13 @@ msgid "mykatrain:batch:output_hint"
 msgstr "(same as input if empty)"
 
 msgid "mykatrain:batch:visits"
-msgstr "Visits"
+msgstr "Visits (per move)"
 
 msgid "mykatrain:batch:visits_hint"
 msgstr "(default)"
 
 msgid "mykatrain:batch:timeout"
-msgstr "Timeout (sec)"
+msgstr "Timeout (sec/file)"
 
 msgid "mykatrain:batch:skip_analyzed"
 msgstr "Skip already analyzed files"
@@ -200,6 +200,12 @@ msgstr "⚠ Leela not enabled"
 
 msgid "mykatrain:batch:error_leela_not_enabled"
 msgstr "Leela Zero is not enabled. Please enable it in Settings first."
+
+msgid "mykatrain:batch:leela_start_failed"
+msgstr "Leela engine failed to start. Check Leela Zero settings."
+
+msgid "mykatrain:batch:open_leela_settings"
+msgstr "Setup Leela"
 
 #. player options in the setup and on the right
 msgid "player:type"
