@@ -431,4 +431,4 @@ docs/
 - Phase 86 完了（Reason Generator: 12単発タグ+8組み合わせテンプレート、Critical 3/Recurring PatternsにReason行追加）
 - Phase 85 完了（Pattern to Summary Integration: Recurring Patternsセクション追加）
 - Phase 84 完了（Recurring Pattern Mining: MistakeSignature/PatternCluster、mine_patterns()）
-- テスト総数: 3202件
+- テスト総数: 3231件
