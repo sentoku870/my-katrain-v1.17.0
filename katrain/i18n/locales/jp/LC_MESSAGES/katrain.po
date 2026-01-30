@@ -1349,6 +1349,36 @@ msgstr "厳選"
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "自動"
 
+msgid "mykatrain:settings:beginner_hints"
+msgstr "初心者向けヒント:"
+
+msgid "mykatrain:settings:beginner_hints_desc"
+msgstr "自アタリ、アタリ放置、取り逃し、切断リスクの警告を表示（レビューモードのみ）"
+
+msgid "beginner_hint:self_atari:title"
+msgstr "あぶない手"
+
+msgid "beginner_hint:self_atari:body"
+msgstr "そこに打つと、すぐ取られやすいです。"
+
+msgid "beginner_hint:ignore_atari:title"
+msgstr "アタリ放置"
+
+msgid "beginner_hint:ignore_atari:body"
+msgstr "取られそうな石をそのままにしています。"
+
+msgid "beginner_hint:missed_capture:title"
+msgstr "取り逃し"
+
+msgid "beginner_hint:missed_capture:body"
+msgstr "いま取れる石を逃しています。"
+
+msgid "beginner_hint:cut_risk:title"
+msgstr "切られそう"
+
+msgid "beginner_hint:cut_risk:body"
+msgstr "ここを切られると石が分断されます。"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

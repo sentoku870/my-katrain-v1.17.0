@@ -96,6 +96,11 @@
         "eval_show_ai": true,
         "lock_ai": false
     },
+    "beginner_hints": {
+        "enabled": false,
+        "scope": "review_only",
+        "board_highlight": true
+    },
     "ai": {
         "ai:default": {},
         "ai:antimirror": {},
