@@ -66,6 +66,8 @@ def extract_game_stats(
         if snapshot is None:
             snapshot = game.build_eval_snapshot()
         if not snapshot.moves:
+            if log_cb:
+                log_cb(f"  Stats skipped for {rel_path}: no valid moves in snapshot")
             return None
 
         # Get game metadata

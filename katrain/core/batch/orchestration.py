@@ -141,9 +141,6 @@ def run_batch(
             log("Error: Leela Zero engine is not running")
             return result
         log("Using Leela Zero for analysis")
-        # Note: Karte generation is limited for Leela in Phase 36 MVP
-        if generate_karte:
-            log("Note: Karte generation is not yet supported for Leela analysis")
     else:
         log("Using KataGo for analysis")
 
@@ -286,14 +283,28 @@ def run_batch(
                 save_sgf=save_analyzed_sgf,
                 return_game=True,  # Always return game for Leela (need snapshot)
             )
-            # Leela returns (Game, EvalSnapshot) tuple
-            if isinstance(game_result, tuple):
+            # Leela returns (Game, EvalSnapshot) tuple per contract (analysis.py:207-211)
+            if isinstance(game_result, tuple) and len(game_result) == 2:
                 game, leela_snapshot = game_result
-                success = game is not None
+                # Phase 87.6: Success requires both game and valid analysis data
+                if game is None:
+                    success = False
+                    # fail_result() was called - detailed error already logged in analysis.py
+                    # Log file identification here for consistency
+                    log(f"  FAILED: Analysis error for {rel_path}")
+                elif leela_snapshot is None or len(leela_snapshot.moves) == 0:
+                    success = False
+                    # Could be: empty SGF (0 moves) or all moves failed
+                    # Detailed reason already logged by analysis.py
+                    log(f"  FAILED: No valid analysis data for {rel_path}")
+                else:
+                    success = True
             else:
+                # Defensive: unexpected return type from analyze_single_file_leela
                 game = None
                 leela_snapshot = None
                 success = False
+                log(f"  ERROR: Unexpected return type from Leela analysis for {rel_path}: {type(game_result)}")
         else:
             # KataGo analysis (default)
             game_result = analyze_single_file(
@@ -404,6 +415,7 @@ def run_batch(
                 try:
                     stats = extract_game_stats(
                         game, rel_path,
+                        log_cb=log_cb,  # Phase 87.6: Wire logging callback
                         target_visits=visits,
                         source_index=i,
                         snapshot=leela_snapshot,  # Phase 87.5: Use pre-built snapshot for Leela
@@ -428,6 +440,10 @@ def run_batch(
                 result.cancelled = True
                 break
             result.fail_count += 1
+            # Phase 87.6: Track karte_failed for files that couldn't be analyzed
+            # This ensures karte_total reflects input count, not just successful analyses
+            if generate_karte:
+                result.karte_failed += 1
 
     # Generate per-player summaries if requested and not cancelled
     if generate_summary and game_stats_list and not result.cancelled:
