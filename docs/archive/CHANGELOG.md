@@ -1,9 +1,31 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-86 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-87.5 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 87.5 完了（Batch Analysis UI & Settings UI Consistency）
+  - Batch UIとSettings UIの一貫性・安全性改善
+  - 変更ファイル:
+    - `katrain/__main__.py`: Leela gating呼び出し
+    - `katrain/core/batch/orchestration.py`: leela_snapshot渡し、karte有効化
+    - `katrain/core/batch/stats/extraction.py`: snapshotパラメータ追加
+    - `katrain/core/reports/karte/builder.py`: snapshotパラメータ追加
+    - `katrain/gui/features/batch_core.py`: is_leela_configured()、3ステップLeela起動
+    - `katrain/gui/features/batch_ui.py`: Variable visits連動、Leelaゲーティング
+    - `katrain/gui/features/settings_popup.py`: initial_tab対応、Leelaゲーティング
+  - 追加API:
+    - `is_leela_configured()` - Leela設定状態検出ヘルパー
+    - `extract_game_stats(snapshot=)` - 事前構築snapshot対応
+    - `build_karte_report(snapshot=)` - 事前構築snapshot対応
+  - 技術仕様:
+    - 3ステップLeela起動: 既存確認→起動試行→最終検証
+    - 失敗時STATUS_ERRORでステータスバー通知
+    - Variable visits OFF時にJitter%/Deterministic無効化
+    - Leela未設定時は両UIでLeelaオプション無効化
+  - テスト: 3199件パス（+7件）
+  - PRs: #226
 
 - 2026-01-30: Phase 86 完了（Reason Generator 限定実装）
   - ミスパターンから自然言語の「理由文」を生成する限定実装
