@@ -31,6 +31,7 @@ def create_single_game_stats(
     total_moves: int = 50,
     total_points_lost: float = 15.0,
     date: str = "2025-01-05",
+    source_index: int = 0,
 ) -> dict:
     """
     Create a synthetic game stats dictionary.
@@ -116,6 +117,7 @@ def create_single_game_stats(
         "date": date,
         "board_size": (19, 19),
         "total_moves": total_moves,
+        "source_index": source_index,  # Phase 85: deterministic sort tie-breaker
         "total_points_lost": total_points_lost,
         "moves_by_player": moves_by_player,
         "loss_by_player": loss_by_player,
@@ -132,6 +134,29 @@ def create_single_game_stats(
             "direction_error": 2,
             "timing_error": 1,
         },
+        # Phase 85: pattern_data for pattern mining
+        "pattern_data": [
+            {
+                "move_number": 25,
+                "player": "B",
+                "gtp": "D4",
+                "score_loss": 5.0,
+                "leela_loss_est": None,
+                "points_lost": 5.0,
+                "mistake_category": "BLUNDER",
+                "meaning_tag_id": "overplay",
+            },
+            {
+                "move_number": 45,
+                "player": "B",
+                "gtp": "Q16",
+                "score_loss": 3.5,
+                "leela_loss_est": None,
+                "points_lost": 3.5,
+                "mistake_category": "MISTAKE",
+                "meaning_tag_id": "life_death",
+            },
+        ],
     }
 
 
@@ -146,6 +171,7 @@ def create_multi_game_stats_list(num_games: int = 3) -> list:
             total_moves=40 + i * 10,
             total_points_lost=10.0 + i * 5.0,
             date=f"2025-01-0{i + 1}",
+            source_index=i,  # Phase 85: deterministic sort tie-breaker
         )
         stats_list.append(stats)
     return stats_list

@@ -1957,3 +1957,42 @@ msgstr "Strategy mismatches"
 
 msgid "risk:estimated_suffix"
 msgstr "(estimated)"
+
+#. Phase 85: Recurring Patterns section header
+msgid "pattern:section-header"
+msgstr "Recurring Patterns"
+
+#. Phase 85: Recurring Patterns intro text
+msgid "pattern:intro"
+msgstr "The following patterns were detected multiple times (by impact):"
+
+#. Phase 85: Pattern phase labels
+msgid "pattern:phase-opening"
+msgstr "Opening"
+
+msgid "pattern:phase-middle"
+msgstr "Midgame"
+
+msgid "pattern:phase-endgame"
+msgstr "Endgame"
+
+#. Phase 85: Pattern area labels
+msgid "pattern:area-corner"
+msgstr "Corner"
+
+msgid "pattern:area-edge"
+msgstr "Edge"
+
+msgid "pattern:area-center"
+msgstr "Center"
+
+#. Phase 85: Pattern severity labels
+msgid "pattern:severity-mistake"
+msgstr "Mistake"
+
+msgid "pattern:severity-blunder"
+msgstr "Blunder"
+
+#. Phase 85: Pattern format strings
+msgid "pattern:count-loss"
+msgstr "{count} times, total loss {loss:.1f} pts"
