@@ -14,7 +14,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
-from katrain.core.batch.helpers import get_canonical_loss
+from katrain.core.analysis.models import get_canonical_loss_from_move
 
 from .models import SKIP_PLAYER_NAMES
 
@@ -30,6 +30,7 @@ def extract_game_stats(
     log_cb: Optional[Callable[[str], None]] = None,
     target_visits: Optional[int] = None,
     source_index: int = 0,
+    snapshot: Optional[Any] = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
 ) -> Optional[dict]:
     """Extract statistics from a Game object for summary generation.
 
@@ -41,6 +42,9 @@ def extract_game_stats(
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
         source_index: Index for deterministic sorting (Phase 85).
             Used as tie-breaker when game_name, date, total_moves are identical.
+        snapshot: Optional pre-built EvalSnapshot. If provided, uses this instead of
+            calling game.build_eval_snapshot(). Used for Leela analysis where
+            the snapshot is returned separately from the Game object.
 
     Returns:
         Dictionary with game statistics, or None if extraction failed
@@ -58,7 +62,9 @@ def extract_game_stats(
             compute_radar_from_moves,
         )
 
-        snapshot = game.build_eval_snapshot()
+        # Phase 87.5: Use provided snapshot or build from game
+        if snapshot is None:
+            snapshot = game.build_eval_snapshot()
         if not snapshot.moves:
             return None
 
@@ -140,7 +146,7 @@ def extract_game_stats(
 
         for move in snapshot.moves:
             player = move.player
-            canonical_loss = get_canonical_loss(move.points_lost)
+            canonical_loss = get_canonical_loss_from_move(move)  # Phase 87.5: Handles both KataGo and Leela
             stats["moves_by_player"][player] = stats["moves_by_player"].get(player, 0) + 1
             stats["loss_by_player"][player] = stats["loss_by_player"].get(player, 0.0) + canonical_loss
 

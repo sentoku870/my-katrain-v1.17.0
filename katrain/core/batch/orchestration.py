@@ -24,6 +24,7 @@ from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
+from katrain.core.reports.karte.builder import build_karte_report
 from katrain.core.batch.helpers import (
     collect_sgf_files_recursive,
     has_analysis,
@@ -328,11 +329,16 @@ def run_batch(
                 log(f"  Saved SGF: {sgf_output_path}")
 
             # Generate karte if requested
-            # Note: Leela karte generation is limited in Phase 36 MVP (no leela_loss_est in Game nodes)
+            # Phase 87.5: Leela karte now supported via snapshot parameter
             # Phase 44: Pass target_visits for consistent reliability threshold in karte
-            if generate_karte and game is not None and analysis_engine != "leela":
+            if generate_karte and game is not None:
                 try:
-                    karte_text = game.build_karte_report(player_filter=karte_player_filter, target_visits=visits)
+                    karte_text = build_karte_report(
+                        game,
+                        player_filter=karte_player_filter,
+                        target_visits=visits,
+                        snapshot=leela_snapshot,  # Phase 87.5: Pass pre-built snapshot for Leela
+                    )
                     # Include path hash to avoid filename collisions for files with same basename
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
                     karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.md"
@@ -393,9 +399,15 @@ def run_batch(
             # Collect stats for summary and/or curator
             # Phase 44: Pass target_visits for consistent reliability threshold
             # Phase 85: Pass source_index for deterministic sorting
+            # Phase 87.5: Pass leela_snapshot for Leela analysis
             if (generate_summary or generate_curator) and game is not None:
                 try:
-                    stats = extract_game_stats(game, rel_path, target_visits=visits, source_index=i)
+                    stats = extract_game_stats(
+                        game, rel_path,
+                        target_visits=visits,
+                        source_index=i,
+                        snapshot=leela_snapshot,  # Phase 87.5: Use pre-built snapshot for Leela
+                    )
                     if stats:
                         if generate_summary:
                             game_stats_list.append(stats)

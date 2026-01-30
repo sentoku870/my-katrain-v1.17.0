@@ -252,3 +252,71 @@ class TestNeedsLeelaKarteWarning:
         """Empty engine string + karte -> no warning."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
         assert needs_leela_karte_warning("", generate_karte=True) is False
+
+
+# ---------------------------------------------------------------------------
+# Test: is_leela_configured() helper (Phase 87.5)
+# ---------------------------------------------------------------------------
+
+
+class TestIsLeelaConfigured:
+    """Tests for is_leela_configured() helper function."""
+
+    def test_enabled_true(self):
+        """Leela enabled=True -> configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {"enabled": True}
+        assert is_leela_configured(mock_ctx) is True
+
+    def test_exe_path_fallback(self):
+        """Leela enabled=False but exe_path set -> configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {"enabled": False, "exe_path": "/path/to/leela"}
+        assert is_leela_configured(mock_ctx) is True
+
+    def test_not_configured_empty(self):
+        """Empty config -> not configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {}
+        assert is_leela_configured(mock_ctx) is False
+
+    def test_not_configured_none(self):
+        """Config returns None -> not configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = None
+        assert is_leela_configured(mock_ctx) is False
+
+    def test_enabled_false_no_exe(self):
+        """Leela enabled=False, no exe_path -> not configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {"enabled": False}
+        assert is_leela_configured(mock_ctx) is False
+
+    def test_empty_exe_path(self):
+        """Empty exe_path string -> not configured."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {"enabled": False, "exe_path": ""}
+        assert is_leela_configured(mock_ctx) is False
+
+    def test_config_called_with_leela(self):
+        """Verify config is called with 'leela' key."""
+        from katrain.gui.features.batch_core import is_leela_configured
+
+        mock_ctx = MagicMock()
+        mock_ctx.config.return_value = {"enabled": True}
+
+        is_leela_configured(mock_ctx)
+
+        mock_ctx.config.assert_called_once_with("leela")

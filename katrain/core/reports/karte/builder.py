@@ -118,6 +118,7 @@ def build_karte_report(
     raise_on_error: bool = False,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     target_visits: Optional[int] = None,
+    snapshot: Optional[Any] = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
 
@@ -131,6 +132,9 @@ def build_karte_report(
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
+        snapshot: Optional pre-built EvalSnapshot. If provided, uses this instead of
+            calling game.build_eval_snapshot(). Used for Leela analysis where
+            the snapshot is returned separately from the Game object.
 
     Returns:
         Markdown-formatted karte report.
@@ -146,7 +150,9 @@ def build_karte_report(
 
     try:
         # 1. Compute snapshot once (avoid double computation)
-        snapshot = game.build_eval_snapshot()
+        # Phase 87.5: Use provided snapshot or build from game
+        if snapshot is None:
+            snapshot = game.build_eval_snapshot()
 
         # 2. Mixed-engine check (Phase 37: enforcement point)
         if not is_single_engine_snapshot(snapshot):
