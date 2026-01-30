@@ -57,13 +57,11 @@ jobs:
         run: |
           set -x
           python --version
-          # Test direct import of conftest
-          uv run python -c "import sys; sys.path.insert(0, 'tests'); import conftest; print('conftest imported')" 2>&1 || echo "conftest import failed"
-          # Run pytest with verbose collection
-          uv run pytest tests --collect-only --quiet 2>&1 | tee /tmp/collect.log || true
-          echo "=== Collection output ==="
-          cat /tmp/collect.log
-          echo "=== End collection output ==="
+          # Try to import each test file directly
+          for f in tests/test_*.py; do
+            echo "Importing $f..."
+            uv run python -c "import importlib.util; spec = importlib.util.spec_from_file_location('mod', '$f'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print('OK')" 2>&1 || echo "FAILED: $f"
+          done
           # Run actual tests
           uv run pytest tests
 
