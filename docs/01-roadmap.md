@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 93完了）
+> 最終更新: 2026-01-31（Phase 94完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -276,8 +276,8 @@ Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`
 | 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | ✅ Done |
 | 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | ✅ Done |
 | 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、盤上ハイライト、i18n整備 | ✅ Done |
-| 93 | Active Review MVP | Fog of War、回答入力、即時採点（最小）、基本UI統合 | 📋 Planned |
-| 94 | Active Review 拡張 | Retry/Hint、セッションサマリ、ゲーム化、（任意）80系連携 | 📋 Planned |
+| 93 | Active Review MVP | Fog of War、回答入力、即時採点（最小）、基本UI統合 | ✅ Done |
+| 94 | Active Review 拡張 | Retry/Hint、セッションサマリ、ゲーム化、（任意）80系連携 | ✅ Done |
 
 **Phase 88**: PC初心者の事故を根治するため、設定UIの再構成と「安全なデフォルト導線」を整備する。
 human-likeは通常モデルと混在しない設計に寄せ、迷いポイントを減らす。
@@ -300,8 +300,8 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 `core/study/active_review.py`新規、`gui/features/active_review_ui.py`でフィードバックポップアップ、
 スキル別閾値（beginner/standard/advanced/pro）、自動無効化（PLAY/新ゲーム/クイズ）。（2026-01-31完了）
 
-**Phase 94**: Active Review拡張。Retry/Hint/セッションサマリ等の学習導線を追加する。
-必要に応じてPhase 80系（弱点パターン等）との接続も検討する。
+**Phase 94**: ✅ Active Review拡張。セッション追跡（ReviewSession）、Retry/Hint機能、サマリUI＋クリップボード出力。
+スキル別プリセット統合、MeaningTagベースのヒント、i18n 17キー追加。（2026-01-31完了）
 
 ### 未定（TBD / Post-52）
 
