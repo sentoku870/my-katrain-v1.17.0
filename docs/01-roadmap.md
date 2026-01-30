@@ -272,7 +272,7 @@ Success gateを強化（gameとsnapshot両方をチェック）、`karte_failed`
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 88 | KataGo設定UI再構成 + human-like排他 | モード選択/サマリ/詳細折りたたみ、human-likeトグル排他 | ✅ Done |
-| 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | 📋 Planned |
+| 89 | 自動(まず動かす)モード | 実行テスト、OpenCL→CPUフォールバック、軽量モデル運用の導線 | ✅ Done |
 | 90 | エラー救済/診断 | LLM用コピー、diagnostics自動ダンプ、サニタイズ、復旧導線 | 📋 Planned |
 | 91 | Beginner Hint MVP | 1手1ヒント枠、コア4判定、Review/Analysis中心、ON/OFF | 📋 Planned |
 | 92 | Beginner Hint 拡張 | 翻訳テンプレ、信頼度フィルタ、任意ハイライト、i18n整備 | 📋 Planned |

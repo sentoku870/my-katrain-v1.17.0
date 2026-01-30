@@ -1,6 +1,6 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-30（Phase 88完了）
+> 最終更新: 2026-01-30（Phase 89完了）
 
 ---
 
@@ -58,6 +58,9 @@ katrain/
 │   │   ├── orchestration.py # run_batch() メインエントリ
 │   │   └── stats.py         # extract_game_stats, build_player_summary
 │   │
+│   ├── auto_setup.py       # 自動セットアップロジック（Phase 89）
+│   ├── test_analysis.py    # エラー分類・テスト解析結果（Phase 89）
+│   │
 │   ├── leela/             # Leela Zero対応（Phase 31-36）
 │   │   └── conversion.py    # leela_position_to_move_eval(), leela_sequence_to_eval_snapshot()
 │   │
@@ -91,7 +94,8 @@ katrain/
 │       ├── batch_core.py        # バッチ解析コア
 │       ├── batch_ui.py          # バッチ解析UI
 │       ├── settings_popup.py    # 設定ポップアップ
-│       └── skill_radar_popup.py # スキルレーダーポップアップ（Phase 51）
+│       ├── skill_radar_popup.py # スキルレーダーポップアップ（Phase 51）
+│       └── auto_mode_popup.py   # 自動セットアップUI（Phase 89）
 │
 ├── gui.kv                # Kivyレイアウト定義
 ├── katrain.kv            # 追加レイアウト

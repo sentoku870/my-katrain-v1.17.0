@@ -1,9 +1,41 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-88 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-89 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-30: Phase 89 完了（Auto Setup Mode - "まず動かす"自動モード）
+  - 初回起動で解析が成功する確率を最大化する自動セットアップモードを実装
+  - 新規ファイル:
+    - `katrain/core/auto_setup.py`: 自動セットアップコアロジック（~352行）
+    - `katrain/core/test_analysis.py`: エラー分類・テスト解析結果（~188行）
+    - `katrain/gui/features/auto_mode_popup.py`: 自動セットアップUI（~743行）
+    - `tests/test_auto_setup.py`: 自動セットアップテスト（23件）
+    - `tests/test_test_analysis.py`: エラー分類テスト（43件）
+  - 変更ファイル:
+    - `katrain/__main__.py`: engine_unhealthy属性、restart_engine_with_fallback()、restart_engine()、save_auto_setup_result()追加
+    - `katrain/core/engine.py`: get_backend_type()、create_minimal_analysis_query()追加
+    - `katrain/gui/features/settings_popup.py`: Auto Setupタブ（tab4）追加
+    - `katrain/i18n/locales/en/LC_MESSAGES/katrain.po`: 24翻訳キー追加
+    - `katrain/i18n/locales/jp/LC_MESSAGES/katrain.po`: 24翻訳キー追加
+  - 追加API:
+    - `ErrorCategory` Enum - ENGINE_START_FAILED, MODEL_LOAD_FAILED, BACKEND_ERROR, TIMEOUT, LIGHTWEIGHT_MISSING, UNKNOWN
+    - `TestAnalysisResult` frozen dataclass - success, error_category, error_message
+    - `classify_engine_error()` - 2段階パターンマッチング（強/弱シグナル）
+    - `get_auto_setup_config()` - 新規/既存ユーザー判定とモード決定
+    - `should_show_auto_tab_first()` - Autoタブ優先表示判定
+    - `find_lightweight_model()` - b10c128軽量モデル検索
+    - `find_cpu_katago()` - CPU版KataGo（Eigen）検索
+    - `resolve_auto_engine_settings()` - 自動モード用エンジン設定構築
+  - 技術仕様:
+    - 新規ユーザー検出: USER_CONFIG_FILE存在チェック
+    - エラー分類: 2段階パターンマッチング（OpenCL/CUDA/モデル/エンジン起動）
+    - CPUフォールバック: OpenCL失敗時にEigen版へ自動切替、検証付き永続化
+    - スレッド安全: AutoModeStateクラス（per-popup状態管理）、Clock.schedule_once()
+    - パス解決: DATA_FOLDER定数使用（ハードコードなし）
+  - テスト: 3297件パス（+66件）
+  - PRs: #230
 
 - 2026-01-30: Phase 88 完了（KataGo Settings UI Reorganization + human-like Exclusivity）
   - KataGo設定UIの再構成とhuman-like排他制御を実装
