@@ -15,7 +15,7 @@ from katrain.common.typed_config import (
     TypedConfigWriter,
 )
 from katrain.core.ai import ai_rank_estimation
-from katrain.core.state import StateNotifier
+from katrain.core.state import Event, EventType, StateNotifier
 from katrain.core.log_buffer import LogBuffer
 from katrain.core.constants import (
     PLAYER_HUMAN,
@@ -222,7 +222,13 @@ class KaTrainBase:
 
     def save_config(self, key=None):
         """Save config to file. Logs errors but does not raise."""
-        _save_config_with_errors(self._config, self._config_store, self.log, key)
+        failed_keys = _save_config_with_errors(self._config, self._config_store, self.log, key)
+
+        # Phase 105: CONFIG_UPDATED通知（全セクション保存成功時のみ）
+        if not failed_keys:
+            self.state_notifier.notify(
+                Event.create(EventType.CONFIG_UPDATED, {"key": key})
+            )
 
     def config(self, setting, default=None):
         try:

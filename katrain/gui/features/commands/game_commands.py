@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from kivy.clock import Clock
 
+from katrain.core.notify_helpers import notify_game_changed
+
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
@@ -94,5 +96,9 @@ def do_new_game(
             node_list.append(node)
     # Schedule graph update on main thread (this function may run in background thread)
     Clock.schedule_once(lambda _dt: ctx.controls.graph.set_nodes_from_list(node_list), 0)
+
+    # Phase 105: GAME_CHANGED通知（キーワード引数必須）
+    notify_game_changed(ctx, source="new_game")
+
     # update_state is thread-safe: uses message_queue internally
     ctx.update_state(redraw_board=True)
