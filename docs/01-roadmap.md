@@ -339,8 +339,9 @@ Fog of War等の制御もController側に集約し、メインクラスの `_do_
 Active Review連携（Quiz開始時にdisable_if_needed）、19テスト追加。
 また、SGF読み込み時のQuery flooding問題（100 pending limit）を修正: analyze_all_nodesにスロットリング追加。（2026-01-31完了）
 
-**Phase 99**: `config()`の辞書直参照問題を解消する土台。主要セクションをfrozen dataclass化し、型付き `get_<section>()` を追加する。
-後方互換のため `config()` は当面維持し、置換は段階的に行う。
+**Phase 99**: ✅ ConfigStore基盤（型付き読み取り）。`common/typed_config/`新設、frozen dataclass（EngineConfig, TrainerConfig, LeelaConfig）、
+safe_*ヘルパー関数（bool/float拒否、タイポ保護）、TypedConfigReader（スナップショット読み取り）。
+KaTrainBase/FeatureContext: `get_engine_config()`, `get_trainer_config()`, `get_leela_config()`追加。116テスト。（2026-01-31完了）
 
 **Phase 100**: 読み取り系から段階移行。影響範囲が大きい箇所から `get_<section>()` へ置換していく（差分を小さく）。
 更新系にはまだ手を出さない。
