@@ -5,20 +5,15 @@
 # __main__.py から抽出したクイズポップアップ関連の関数を配置します。
 # - do_quiz_popup: クイズ選択ポップアップの表示
 # - format_points_loss: 損失ポイントの表示フォーマット
+#
+# Note: Kivy imports are deferred inside functions to allow
+# importing this module in headless CI environment (Phase 101 fix).
 
 from typing import TYPE_CHECKING, Callable, List, Optional
-
-from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
-from katrain.gui.popups import I18NPopup
-from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -50,6 +45,16 @@ def do_quiz_popup(
         start_quiz_session_fn: クイズセッション開始コールバック
         update_state_fn: UI状態更新コールバック
     """
+    # Lazy imports to avoid Kivy initialization in headless CI
+    from kivy.metrics import dp
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
+    from kivy.uix.scrollview import ScrollView
+
+    from katrain.gui.popups import I18NPopup
+    from katrain.gui.theme import Theme
+
     if not ctx.game:
         return
 
