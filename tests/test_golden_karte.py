@@ -530,6 +530,8 @@ class TestKarteFromSGF:
                 pass
             def stop_pondering(self):
                 pass
+            def has_query_capacity(self, headroom: int = 10) -> bool:
+                return True
         return MockEngine()
 
     def load_game_with_mock_analysis(self, sgf_key: str, mock_katrain, mock_engine):

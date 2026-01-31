@@ -18,6 +18,10 @@ class MockEngine:
         # Game.__init__ expects engines to provide this (KataGoEngine does).
         return
 
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        # Game.analyze_all_nodes() calls this for throttling.
+        return True
+
 
 @pytest.fixture
 def new_game():

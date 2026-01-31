@@ -140,11 +140,7 @@ from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.package_export_ui import do_export_package
 from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
-from katrain.gui.features.quiz_popup import (
-    do_quiz_popup,
-    format_points_loss,
-)
-from katrain.gui.features.quiz_session import start_quiz_session
+from katrain.gui.managers.quiz_manager import QuizManager
 from katrain.gui.features.batch_core import (
     collect_batch_options,
     create_log_callback,
@@ -314,6 +310,14 @@ class KaTrainGui(Screen, KaTrainBase):
             logger=self.log,
         )
         self.bind(active_review_mode=self._on_active_review_mode_change)
+
+        # Phase 98: Quiz Manager
+        self._quiz_manager = QuizManager(
+            get_ctx=lambda: self,
+            get_active_review_controller=lambda: self._active_review_controller,
+            update_state_fn=lambda: self.update_state(redraw_board=True),
+            logger=self.log,
+        )
 
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events = []
@@ -1238,12 +1242,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
     def _do_quiz_popup(self):
-        """Delegates to quiz_popup.do_quiz_popup()."""
-        do_quiz_popup(
-            self,
-            self._start_quiz_session,
-            lambda: self.update_state(redraw_board=True),
-        )
+        """Delegates to QuizManager (Phase 98)."""
+        self._quiz_manager.do_quiz_popup()
 
     def _do_mykatrain_settings_popup(self):
         """Delegates to settings_popup.do_mykatrain_settings_popup()."""
@@ -1358,19 +1358,12 @@ class KaTrainGui(Screen, KaTrainBase):
         popup.open()
 
     def _format_points_loss(self, loss: Optional[float]) -> str:
-        """Delegates to quiz_popup.format_points_loss()."""
-        return format_points_loss(loss)
+        """Delegates to QuizManager (Phase 98)."""
+        return self._quiz_manager.format_points_loss(loss)
 
     def _start_quiz_session(self, quiz_items: List[eval_metrics.QuizItem]) -> None:
-        """Delegates to quiz_session.start_quiz_session()."""
-        # Phase 93: Disable Active Review when starting quiz
-        self._disable_active_review_if_needed()
-        start_quiz_session(
-            self,
-            quiz_items,
-            self._format_points_loss,
-            lambda: self.update_state(redraw_board=True),
-        )
+        """Delegates to QuizManager (Phase 98)."""
+        self._quiz_manager.start_quiz_session(quiz_items)
 
     def _do_diagnostics_popup(self):
         """Show diagnostics popup for bug report generation."""

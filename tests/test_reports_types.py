@@ -36,6 +36,9 @@ class MockEngine:
     def stop_pondering(self):
         return
 
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        return True
+
 
 @pytest.fixture
 def sample_game():

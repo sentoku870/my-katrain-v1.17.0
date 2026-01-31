@@ -241,6 +241,10 @@ class KataGoEngine(BaseEngine):
                 self.terminate_queries(only_for_node=None, lock=False)
                 self.ponder_query = None
                 self.queries = {}
+            # Phase 98 fix: Reset pending counter when queries are cleared
+            # This is safe because all responses for cleared queries will be ignored
+            with self._pending_query_lock:
+                self._pending_query_count = 0
 
     def terminate_queries(self, only_for_node=None, lock=True):
         if lock:
@@ -607,6 +611,8 @@ class KataGoEngine(BaseEngine):
                             self.katrain.log(
                                 f"Query result {query_id} discarded -- recent new game or node reset?", OUTPUT_DEBUG
                             )
+                        # Phase 98 fix: Decrement pending count even for discarded queries
+                        self._decrement_pending_count()
                         continue
                     query_found = True
                     callback, error_callback, start_time, next_move, _ = self.queries[query_id]
@@ -719,6 +725,9 @@ class KataGoEngine(BaseEngine):
                         query["reportDuringSearchEvery"] = PONDERING_REPORT_DT
                         self.ponder_query = query
                     else:
+                        # Duplicate ponder query - discard without sending
+                        # Must decrement counter since send_query already incremented it
+                        self._decrement_pending_count()
                         continue
 
                 terminate = query.get("action") == "terminate"
@@ -785,6 +794,27 @@ class KataGoEngine(BaseEngine):
         """Decrement pending counter. Called on query completion/error."""
         with self._pending_query_lock:
             self._pending_query_count = max(0, self._pending_query_count - 1)
+
+    def get_pending_count(self) -> int:
+        """Get current pending query count (thread-safe).
+
+        Returns:
+            Current number of pending queries.
+        """
+        with self._pending_query_lock:
+            return self._pending_query_count
+
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        """Check if engine has capacity for more queries.
+
+        Args:
+            headroom: Minimum free slots required (default: 10)
+
+        Returns:
+            True if pending_count <= MAX_PENDING_QUERIES - headroom
+        """
+        with self._pending_query_lock:
+            return self._pending_query_count <= MAX_PENDING_QUERIES - headroom
 
     def send_query(self, query, callback, error_callback, next_move=None, node=None):
         """Send query to engine with safety checks.

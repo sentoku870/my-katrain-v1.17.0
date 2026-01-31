@@ -205,3 +205,82 @@ class TestDecrementPendingCount:
             t.join()
 
         assert engine._pending_query_count == 50
+
+
+class TestGetPendingCount:
+    """Test get_pending_count method."""
+
+    def test_returns_current_count(self, minimal_engine):
+        """get_pending_count returns current pending count."""
+        engine, _ = minimal_engine
+        engine._pending_query_count = 42
+
+        assert engine.get_pending_count() == 42
+
+    def test_thread_safe_read(self, minimal_engine):
+        """get_pending_count is thread-safe."""
+        engine, _ = minimal_engine
+        engine._pending_query_count = 50
+
+        results = []
+
+        def reader():
+            for _ in range(10):
+                results.append(engine.get_pending_count())
+
+        threads = [threading.Thread(target=reader) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All reads should return 50
+        assert all(r == 50 for r in results)
+
+
+class TestHasQueryCapacity:
+    """Test has_query_capacity method."""
+
+    def test_has_capacity_when_empty(self, minimal_engine):
+        """has_query_capacity returns True when queue is empty."""
+        engine, max_pending = minimal_engine
+        engine._pending_query_count = 0
+
+        assert engine.has_query_capacity() is True
+        assert engine.has_query_capacity(headroom=50) is True
+
+    def test_no_capacity_at_limit(self, minimal_engine):
+        """has_query_capacity returns False at limit."""
+        engine, max_pending = minimal_engine
+        engine._pending_query_count = max_pending
+
+        assert engine.has_query_capacity(headroom=1) is False
+        assert engine.has_query_capacity(headroom=10) is False
+
+    def test_respects_headroom(self, minimal_engine):
+        """has_query_capacity respects headroom parameter."""
+        engine, max_pending = minimal_engine
+
+        # At 90 pending with limit 100
+        engine._pending_query_count = 90
+
+        # Default headroom=10: 90 <= 100-10 = True
+        assert engine.has_query_capacity() is True
+
+        # Headroom=5: 90 <= 100-5 = True
+        assert engine.has_query_capacity(headroom=5) is True
+
+        # Headroom=15: 90 <= 100-15 = False
+        assert engine.has_query_capacity(headroom=15) is False
+
+    def test_edge_case_at_threshold(self, minimal_engine):
+        """has_query_capacity edge case exactly at threshold."""
+        engine, max_pending = minimal_engine
+
+        # At 90 with headroom=10: 90 <= 90 = True
+        engine._pending_query_count = 90
+        assert engine.has_query_capacity(headroom=10) is True
+
+        # At 91 with headroom=10: 91 <= 90 = False
+        engine._pending_query_count = 91
+        assert engine.has_query_capacity(headroom=10) is False

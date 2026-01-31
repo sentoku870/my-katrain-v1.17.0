@@ -478,6 +478,8 @@ class TestSummaryFromSGF:
                 pass
             def stop_pondering(self):
                 pass
+            def has_query_capacity(self, headroom: int = 10) -> bool:
+                return True
         return MockEngine()
 
     @pytest.fixture

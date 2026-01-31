@@ -313,7 +313,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 |------:|--------|----------|:----:|
 | 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、10テスト追加 | ✅ Done |
 | 97 | Active Review 分離（Controller化） | `gui/managers/active_review_controller.py`、ActiveReviewController、委譲、19テスト追加 | ✅ Done |
-| 98 | Quiz 分離（Controller化） | `features/quiz/controller.py`、モード遷移の統合テスト | 📋 Planned |
+| 98 | Quiz 分離（Controller化） | `gui/managers/quiz_manager.py`、QuizManager、3メソッド委譲、19テスト追加 | ✅ Done |
 | 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | 📋 Planned |
 | 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | 📋 Planned |
 | 101 | Config 更新API（制御された更新） | `update_<section>()`、最小バリデーション、自動保存の基盤 | 📋 Planned |
