@@ -431,4 +431,4 @@ docs/
 - Phase 92 完了（Beginner Hints Extension: MeaningTagマッピング6カテゴリ、信頼度フィルタ、盤上ハイライト、i18n 30キー、CI修正）
 - Phase 91 完了（Beginner Hints MVP: 4カテゴリ検出、モードゲーティング、ノードキャッシュ）
 - Phase 90 完了（Error Recovery & Diagnostics: 復旧ボタン4つ、LLM用コピー、diagnostics自動ダンプ）
-- テスト総数: 3488件
+- テスト総数: 3495件
