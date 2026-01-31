@@ -22,6 +22,7 @@ from katrain.gui.sound import play_sound, stop_sound
 from katrain.core.eval_metrics import classify_mistake
 from katrain.core.errors import UIStateError
 from katrain.core.beginner import get_beginner_hint_cached, HintCategory
+from katrain.core.state import EventType
 
 
 class PlayAnalyzeSelect(MDFloatLayout):
@@ -121,6 +122,10 @@ class ControlsPanel(BoxLayout):
         self.beep_start = 5.2
         self.timer_interval = 0.07
 
+        # Phase 106: 購読状態管理
+        self._subscribed_notifier = None
+        self._analysis_callback = None
+
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
 
@@ -132,6 +137,44 @@ class ControlsPanel(BoxLayout):
         if self._timer_event:
             self._timer_event.cancel()
             self._timer_event = None
+
+    def on_katrain(self, instance, katrain):
+        """katrain設定時にANALYSIS_COMPLETE購読を管理（Phase 106）"""
+        # 旧notifierからunsubscribe
+        if self._subscribed_notifier is not None and self._analysis_callback is not None:
+            self._subscribed_notifier.unsubscribe(
+                EventType.ANALYSIS_COMPLETE,
+                self._analysis_callback
+            )
+            self._subscribed_notifier = None
+            self._analysis_callback = None
+
+        if katrain is None:
+            return
+
+        # 新notifierにsubscribe
+        notifier = katrain.state_notifier
+        self._analysis_callback = self._on_analysis_complete
+        notifier.subscribe(EventType.ANALYSIS_COMPLETE, self._analysis_callback)
+        self._subscribed_notifier = notifier
+
+    def _on_analysis_complete(self, event):
+        """ANALYSIS_COMPLETE → グラフデータ更新（メインスレッドにディスパッチ）"""
+        def _update_graph(dt):
+            graph = getattr(self, "graph", None)
+            katrain = getattr(self, "katrain", None)
+            if graph is None or katrain is None:
+                return
+            game = getattr(katrain, "game", None)
+            if game is None:
+                return
+            current_node = getattr(game, "current_node", None)
+            if current_node is None:
+                return
+            if hasattr(graph, "update_value"):
+                graph.update_value(current_node)
+
+        Clock.schedule_once(_update_graph, 0)
 
     def update_players(self, *_args):
         for bw, player_info in self.katrain.players_info.items():
