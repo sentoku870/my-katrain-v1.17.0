@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 94完了）
+> 最終更新: 2026-01-31（Phase 95完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -302,6 +302,10 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 
 **Phase 94**: ✅ Active Review拡張。セッション追跡（ReviewSession）、Retry/Hint機能、サマリUI＋クリップボード出力。
 スキル別プリセット統合、MeaningTagベースのヒント、i18n 17キー追加。（2026-01-31完了）
+
+**Phase 95**: ✅ 安定性改善。(A) Lock→RLockでundo/redoのレースコンディション修正、Graph.set_nodes_from_list追加。
+(B) send_query安全機構（pending counter、_invoke_error_callback）、バッチ前engine check_alive。
+(C) バッチサーキットブレーカー（AnalysisTimeoutError、EngineFailureTracker、3連続失敗で中断）。30テスト追加。（2026-01-31完了）
 
 ### 未定（TBD / Post-52）
 
