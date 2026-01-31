@@ -4,6 +4,8 @@ Phase 73: KeyboardManager抽出
 Phase 74: ConfigManager抽出
 Phase 75: PopupManager抽出
 Phase 76: GameStateManager抽出
+Phase 96: SummaryManager抽出
+Phase 97: ActiveReviewController抽出
 
 Note: PEP 562 lazy imports を使用。
 各マネージャーは初めてアクセスされた時のみインポートされる。
@@ -12,9 +14,19 @@ Note: PEP 562 lazy imports を使用。
 """
 from typing import TYPE_CHECKING
 
-__all__ = ["KeyboardManager", "ConfigManager", "PopupManager", "GameStateManager", "SummaryManager"]
+__all__ = [
+    "KeyboardManager",
+    "ConfigManager",
+    "PopupManager",
+    "GameStateManager",
+    "SummaryManager",
+    "ActiveReviewController",
+]
 
 if TYPE_CHECKING:
+    from katrain.gui.managers.active_review_controller import (
+        ActiveReviewController as ActiveReviewController,
+    )
     from katrain.gui.managers.config_manager import ConfigManager as ConfigManager
     from katrain.gui.managers.game_state_manager import GameStateManager as GameStateManager
     from katrain.gui.managers.keyboard_manager import KeyboardManager as KeyboardManager
@@ -44,4 +56,8 @@ def __getattr__(name: str):
         from katrain.gui.managers.summary_manager import SummaryManager
 
         return SummaryManager
+    if name == "ActiveReviewController":
+        from katrain.gui.managers.active_review_controller import ActiveReviewController
+
+        return ActiveReviewController
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
