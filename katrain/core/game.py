@@ -506,12 +506,36 @@ class Game(BaseGame):
         analyze_fast: bool = False,
         even_if_present: bool = True,
     ) -> None:
+        """Analyze all nodes with throttling to avoid overwhelming the engine.
+
+        Throttling logic:
+        - Before each request, check if engine has capacity (headroom=10)
+        - If at capacity, wait 0.1s and retry (up to 50 attempts = 5s max wait)
+        - If still no capacity after waiting, skip the node to avoid blocking forever
+        """
+        import time
+
         for node in self.root.nodes_in_tree:
             # forced, or not present, or something went wrong in loading
             if even_if_present or not node.analysis_from_sgf or not node.load_analysis():
+                # Throttle: wait for engine capacity before sending request
+                engine = self.engines[node.next_player]
+                max_wait_attempts = 50  # 50 * 0.1s = 5s max wait per node
+                for _ in range(max_wait_attempts):
+                    if engine.has_query_capacity(headroom=10):
+                        break
+                    time.sleep(0.1)
+                else:
+                    # Timeout waiting for capacity - log and skip this node
+                    self.katrain.log(
+                        f"Skipping analysis for move {node.move_number}: engine at capacity",
+                        OUTPUT_DEBUG,
+                    )
+                    continue
+
                 node.clear_analysis()
                 node.analyze(
-                    self.engines[node.next_player],
+                    engine,
                     priority=priority,
                     analyze_fast=analyze_fast,
                 )

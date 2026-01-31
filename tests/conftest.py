@@ -458,7 +458,7 @@ class MockKaTrainStub:
 class MockEngine:
     """Mock engine with call tracking.
 
-    MINIMAL REQUIRED INTERFACE (v6):
+    MINIMAL REQUIRED INTERFACE (v7):
     --------------------------------
     Attributes:
         config: dict               - Needs "max_visits", "fast_visits" keys
@@ -467,6 +467,7 @@ class MockEngine:
         request_analysis(*args, **kwargs)  - Called by node.analyze()
         stop_pondering()                   - Called by STOP mode
         terminate_queries()                - Called by STOP mode
+        has_query_capacity(headroom)       - Called by analyze_all_nodes() for throttling
 
     Tracking (test-only):
         stop_pondering_called: bool
@@ -489,6 +490,10 @@ class MockEngine:
 
     def terminate_queries(self):
         self.terminate_queries_called = True
+
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        """Mock always has capacity (no throttling in tests)."""
+        return True
 
     def reset_tracking(self):
         """Reset call tracking for fresh assertions."""
