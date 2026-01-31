@@ -11,11 +11,13 @@
 #   - 依存関係の明示化
 #
 # Phase 90で拡張: エラー復旧に必要なメソッドを追加。
+# Phase 99で拡張: 型付き設定アクセサを追加。
 # Python 3.9互換: Optional/Dict/List構文を使用。
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
 
 if TYPE_CHECKING:
+    from katrain.common.typed_config import EngineConfig, LeelaConfig, TrainerConfig
     from katrain.core.game import Game
     from katrain.gui.controlspanel import ControlsPanel
 
@@ -42,6 +44,9 @@ class FeatureContext(Protocol):
         get_recent_logs: 最近のログを取得
         get_config_snapshot: 設定のスナップショットを取得
         restart_engine: エンジンを再起動
+        get_engine_config: 型付きエンジン設定を取得（Phase 99）
+        get_trainer_config: 型付きトレーナー設定を取得（Phase 99）
+        get_leela_config: 型付きLeela設定を取得（Phase 99）
 
     Implementation Notes:
         KaTrainGui と BaseKaTrain がこの Protocol を満たす。
@@ -119,5 +124,29 @@ class FeatureContext(Protocol):
 
         Returns:
             True if engine restarted successfully.
+        """
+        ...
+
+    def get_engine_config(self) -> "EngineConfig":
+        """型付きエンジン設定を取得する（Phase 99追加）。
+
+        Returns:
+            EngineConfigインスタンス（frozen）
+        """
+        ...
+
+    def get_trainer_config(self) -> "TrainerConfig":
+        """型付きトレーナー設定を取得する（Phase 99追加）。
+
+        Returns:
+            TrainerConfigインスタンス（frozen）
+        """
+        ...
+
+    def get_leela_config(self) -> "LeelaConfig":
+        """型付きLeela設定を取得する（Phase 99追加）。
+
+        Returns:
+            LeelaConfigインスタンス（frozen）
         """
         ...

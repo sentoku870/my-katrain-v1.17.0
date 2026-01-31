@@ -166,14 +166,30 @@ def _get_module_package(file_path: Path, root: Path) -> str:
         return ""
 
 
+# 副作用のない純粋なビルトイン関数（定数定義で許可）
+_PURE_BUILTIN_FUNCTIONS = frozenset({
+    "frozenset",  # immutable set creation
+    "tuple",      # immutable sequence creation
+    "bytes",      # immutable bytes creation
+})
+
+
 def _has_call_in_node(node: ast.AST) -> bool:
     """ノード内に関数呼び出しがあるかチェック（v5追加: B対応）
 
     Assign/AnnAssignの右辺に関数呼び出しがあるかを検出
     例: DEFAULT = os.getenv("X") → True
+
+    Note:
+        frozenset, tuple等の純粋ビルトイン関数は許可される。
+        これらは副作用がなく、定数定義に適している。
     """
     for child in ast.walk(node):
         if isinstance(child, ast.Call):
+            # 純粋ビルトイン関数は許可
+            if isinstance(child.func, ast.Name):
+                if child.func.id in _PURE_BUILTIN_FUNCTIONS:
+                    continue
             return True
     return False
 
