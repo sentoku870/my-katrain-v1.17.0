@@ -25,6 +25,7 @@ from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move
 from katrain.core.utils import find_package_resource, json_truncate_arrays
 from katrain.core.engine_query import build_analysis_query
+from katrain.core.notify_helpers import maybe_notify_analysis_complete
 
 
 # Maximum pending queries before rejecting new ones
@@ -659,6 +660,15 @@ class KataGoEngine(BaseEngine):
                     # Decrement pending count on success completion (non-partial only)
                     if not partial_result:
                         self._decrement_pending_count()
+
+                    # Phase 105: ANALYSIS_COMPLETE通知（キーワード引数必須）
+                    maybe_notify_analysis_complete(
+                        katrain=self.katrain,
+                        partial_result=partial_result,
+                        results_exist=results_exist,
+                        query_id=query_id,
+                    )
+
                 if getattr(self.katrain, "update_state", None):  # easier mocking etc
                     self.katrain.update_state()
             except Exception as e:  # noqa: BLE001 - thread exception, must log and continue processing
