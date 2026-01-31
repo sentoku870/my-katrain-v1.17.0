@@ -353,6 +353,9 @@ MERGEパターン（既存値保持＋指定キーのみ更新）、JSON-safe永
 
 **Phase 102**: 更新系も含めて主要機能を移行し、辞書直参照を封じ込める。
 `config()`は互換維持しつつ、内部では安全な経路へ寄せる。
+`__main__.py:_save_engine_katago_path()`を1行に簡略化、`settings_popup.py`のengine/leelaセクションを
+`update_engine_config()`/`update_leela_config()`に移行。デフォルト値をLeelaConfig.from_dict()から取得（ハードコード禁止）。
+4テスト追加。（2026-01-31完了）
 
 **Phase 103**: 通知の中核 `StateNotifier` を定義（subscribe/notify）。まずは最小イベント型の雛形を用意する。
 既存の通知経路は残し、置換を急がない。

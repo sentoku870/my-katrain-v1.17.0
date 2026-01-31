@@ -1,9 +1,23 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-101 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-102 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-31: Phase 102 完了（update_*_config()移行）
+  - engine/leela設定の呼び出し元を型付きAPIに移行
+  - 変更ファイル:
+    - `katrain/__main__.py`: `_save_engine_katago_path()`を`update_engine_config()`に簡略化
+    - `katrain/gui/features/settings_popup.py`: engine/leelaセクションを`update_*_config()`に移行
+    - `tests/test_typed_config_writer.py`: 4テスト追加
+  - 技術詳細:
+    - デフォルト値を`LeelaConfig.from_dict({})`から取得（ハードコード禁止）
+    - TypedConfigWriterがMERGEセマンティクスを自動処理（未知キー保持）
+    - 防御的バリデーション維持（try/exceptでの入力パース）
+  - Grep検証: engine/leelaの旧パターンは除外対象の`popups.py`のみ
+  - テスト: 3698件パス（+4件）
+  - PR: #243
 
 - 2026-01-31: Phase 101 完了（TypedConfigWriter更新API）
   - 型付き設定更新APIを実装し、バリデーションと自動保存の基盤を構築
