@@ -6,6 +6,7 @@ evaluating how well they match a user's learning needs.
 
 import math
 from types import MappingProxyType
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Set, Tuple, Union
 
 from katrain.core.analysis.skill_radar import AggregatedRadarResult
@@ -22,6 +23,7 @@ from .models import (
 if TYPE_CHECKING:
     from katrain.core.analysis.meaning_tags.models import MeaningTagId
     from katrain.core.game import Game
+    from katrain.core.game_node import GameNode
 
 
 # =============================================================================
@@ -43,8 +45,8 @@ def _normalize_meaning_tag_key(key: Union[str, "MeaningTagId"]) -> str:
         str(MeaningTagId.OVERPLAY) = "MeaningTagId.OVERPLAY" (wrong)
         MeaningTagId.OVERPLAY.value = "overplay" (correct)
     """
-    if hasattr(key, "value"):
-        return key.value
+    if isinstance(key, Enum):
+        return str(key.value)
     return str(key)
 
 
@@ -200,7 +202,7 @@ def _collect_score_leads(game: "Game") -> List[float]:
         Missing root_info is silently skipped (common for unanalyzed nodes).
     """
     values: List[float] = []
-    node = game.root
+    node: Optional["GameNode"] = game.root
     while node is not None:
         # Skip if no analysis data
         if node.analysis:

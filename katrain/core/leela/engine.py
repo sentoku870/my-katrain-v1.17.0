@@ -152,6 +152,7 @@ class LeelaEngine:
 
         # Try graceful quit
         try:
+            assert proc.stdin is not None  # PIPE mode guarantees non-None
             proc.stdin.write("quit\n")
             proc.stdin.flush()
         except (BrokenPipeError, OSError):
@@ -209,6 +210,7 @@ class LeelaEngine:
             return False
 
         try:
+            assert proc.stdin is not None  # PIPE mode guarantees non-None
             proc.stdin.write(cmd + "\n")
             proc.stdin.flush()
             logger.debug(f"Sent: {cmd}")
@@ -357,6 +359,7 @@ class LeelaEngine:
                     return
 
                 try:
+                    assert proc.stdout is not None  # PIPE mode guarantees non-None
                     line = proc.stdout.readline()
                     if not line:
                         break

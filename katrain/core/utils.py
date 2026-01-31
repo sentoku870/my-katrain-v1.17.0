@@ -4,7 +4,7 @@ from pathlib import Path
 import random
 import struct
 import sys
-from typing import List, Tuple, TypeVar
+from typing import Dict, List, Tuple, TypeVar
 
 import importlib.resources as pkg_resources
 
@@ -15,7 +15,7 @@ T = TypeVar("T")
 def var_to_grid(array_var: List[T], size: Tuple[int, int]) -> List[List[T]]:
     """convert ownership/policy to grid format such that grid[y][x] is for move with coords x,y"""
     ix = 0
-    grid = [[]] * size[1]
+    grid: List[List[T]] = [[]] * size[1]
     for y in range(size[1] - 1, -1, -1):
         grid[y] = array_var[ix : ix + size[0]]
         ix += size[0]
@@ -39,7 +39,7 @@ def check_thread(tb=False):  # for checking if draws occur in correct thread
         traceback.print_stack()
 
 
-PATHS = {}
+PATHS: Dict[str, str] = {}
 
 
 def find_package_resource(path, silent_errors=False):
