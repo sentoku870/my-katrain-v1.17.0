@@ -440,7 +440,12 @@ def build_comparison_from_game(
     )
 
     # Step 6: 相関係数（手動Spearman、N<5でNone）
-    paired = [(c.katago_loss, c.leela_loss) for c in comparisons if c.has_both]
+    # Note: Equivalent to `if c.has_both` but enables mypy type narrowing
+    paired = [
+        (c.katago_loss, c.leela_loss)
+        for c in comparisons
+        if c.katago_loss is not None and c.leela_loss is not None
+    ]
     correlation = compute_spearman_manual(paired) if len(paired) >= 5 else None
 
     # Step 7: 乖離Top5（タイブレーク付きソート）

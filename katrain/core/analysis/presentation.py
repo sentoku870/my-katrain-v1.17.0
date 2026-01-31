@@ -10,12 +10,16 @@ katrain.core.analysis.presentation - 表示/フォーマット関数
 from __future__ import annotations
 
 from typing import (
+    TYPE_CHECKING,
     Callable,
     Dict,
     List,
     Optional,
     Set,
 )
+
+if TYPE_CHECKING:
+    from katrain.core.analysis.models import DifficultyMetrics
 
 from katrain.core.analysis.models import (
     ConfidenceLevel,
@@ -242,11 +246,13 @@ def select_representative_moves(
     # Skip moves with score_loss=None (NEVER convert to 0.0)
     with_loss = [m for m in filtered if m.score_loss is not None]
 
+    def _sort_key(m: MoveEval) -> tuple[float, int]:
+        # Invariant: with_loss only contains moves where score_loss is not None
+        assert m.score_loss is not None
+        return (-m.score_loss, m.move_number)
+
     # Sort by score_loss descending, then move_number ascending for determinism
-    sorted_moves = sorted(
-        with_loss,
-        key=lambda m: (-m.score_loss, m.move_number),
-    )
+    sorted_moves = sorted(with_loss, key=_sort_key)
 
     return sorted_moves[:max_count]
 

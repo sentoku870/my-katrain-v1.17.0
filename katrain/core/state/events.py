@@ -26,7 +26,7 @@ class EventType(Enum):
     ANALYSIS_COMPLETE = "analysis_complete"  # Analysis completed
 
 
-def _freeze_payload(payload: Optional[dict]) -> Optional[Mapping[str, Any]]:
+def _freeze_payload(payload: Optional[dict[str, Any]]) -> Optional[Mapping[str, Any]]:
     """Convert payload to an immutable MappingProxyType (shallow copy).
 
     Args:
@@ -67,7 +67,7 @@ class Event:
 
     @classmethod
     def create(
-        cls, event_type: EventType, payload: Optional[dict] = None
+        cls, event_type: EventType, payload: Optional[dict[str, Any]] = None
     ) -> "Event":
         """Factory method to create an Event with frozen payload.
 

@@ -117,8 +117,9 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
 
         # Compute time_spent (only if both current and previous are valid)
         time_spent: Optional[float] = None
-        if time_left is not None and prev_time[player] is not None:
-            delta = prev_time[player] - time_left
+        prev = prev_time[player]  # Safe: prev_time always has "B" and "W" keys
+        if time_left is not None and prev is not None:
+            delta = prev - time_left
             if delta >= -_EPS:
                 # Treat tiny negative deltas as 0 (floating point tolerance)
                 time_spent = max(0.0, delta)
@@ -129,7 +130,7 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
                     "treating time_spent as unknown",
                     move_number,
                     player,
-                    prev_time[player],
+                    prev,
                     time_left,
                 )
                 # time_spent remains None
