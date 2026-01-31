@@ -379,7 +379,9 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 108**: ✅ mypy導入（静的型検査基盤）。pyproject.tomlにmypy依存と[tool.mypy]設定を追加、katrain/py.typedマーカー作成、CIに警告モード（non-blocking）ステップ追加。（2026-02-01完了）
 
-**Phase 109–112**: mypy strict を段階適用。core/analysis→core→gui/features→全体へ拡大する。
+**Phase 109**: ✅ core/state strict mode + 型エラー修正。core/stateにper-module strict flags追加、events.py/presentation.py/parser.py/engine_compare.pyの6件の型エラーを修正。mypyエラー276→272。（2026-02-01完了）
+
+**Phase 110–112**: mypy strict を段階適用。core/analysis→core→gui/features→全体へ拡大する。
 他フェーズと並行可能だが、最終的にCIで型エラーをブロックできる状態まで持っていく。
 
 ### 未定（TBD / Post-52）

@@ -1,9 +1,26 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-108 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-109 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 109 完了（core/state strict mode + 型エラー修正）
+  - core/stateパッケージにmypy strict mode（per-module flags）を適用
+  - 6件の型エラーを修正（core/state: 2件、core/analysis: 4件）
+  - 変更ファイル:
+    - `pyproject.toml`: core/stateにstrict override追加（disallow_any_generics, disallow_untyped_defs等）
+    - `katrain/core/state/events.py`: `dict` → `dict[str, Any]`（2箇所）
+    - `katrain/core/analysis/presentation.py`: TYPE_CHECKING import追加、_sort_keyヘルパー関数追加
+    - `katrain/core/analysis/time/parser.py`: ローカル変数導入で型ナローイング
+    - `katrain/core/analysis/engine_compare.py`: 明示的条件式で型ナローイング
+  - 技術仕様:
+    - `strict = true`は他モジュールに波及するため、per-module flags方式を採用
+    - フラグ: disallow_any_generics, disallow_incomplete_defs, disallow_untyped_defs, check_untyped_defs, strict_equality, strict_concatenate
+    - core/stateは`mypy --strict`でエラーゼロを達成
+  - mypyエラー数: 276 → 272（4件減少）
+  - テスト: 3785件パス（変更なし）
+  - PR: #250
 
 - 2026-02-01: Phase 108 完了（mypy導入）
   - mypyを開発依存に追加し、CI警告モード（non-blocking）で静的型検査基盤を導入
