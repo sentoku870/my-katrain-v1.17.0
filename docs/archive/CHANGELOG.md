@@ -5,6 +5,20 @@
 
 ---
 
+- 2026-02-01: Phase 110 完了（core パッケージ型エラー修正 第1弾）
+  - coreパッケージの9件のmypy型エラーを修正
+  - 変更ファイル:
+    - `katrain/core/utils.py`: `Dict`インポート追加、`grid`/`PATHS`変数に型注釈追加
+    - `katrain/core/curator/scoring.py`: `Enum`インポート追加、`isinstance(key, Enum)`判定、`node`変数に`Optional["GameNode"]`注釈
+    - `katrain/core/leela/engine.py`: stdin/stdout非None保証の`assert`追加（3箇所）
+  - 技術仕様:
+    - `hasattr`から`isinstance(Enum)`への変更で型ナローイング改善
+    - subprocess.Popenの`PIPE`モード時はstdin/stdoutが非None保証
+    - `grid: List[List[T]]`で型注釈を明示（aliasing問題は将来対応）
+  - mypyエラー数: 272 → 263（9件減少）
+  - テスト: 3776件パス（変更なし）
+  - PR: #251
+
 - 2026-02-01: Phase 109 完了（core/state strict mode + 型エラー修正）
   - core/stateパッケージにmypy strict mode（per-module flags）を適用
   - 6件の型エラーを修正（core/state: 2件、core/analysis: 4件）

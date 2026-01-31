@@ -381,7 +381,9 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 109**: ✅ core/state strict mode + 型エラー修正。core/stateにper-module strict flags追加、events.py/presentation.py/parser.py/engine_compare.pyの6件の型エラーを修正。mypyエラー276→272。（2026-02-01完了）
 
-**Phase 110–112**: mypy strict を段階適用。core/analysis→core→gui/features→全体へ拡大する。
+**Phase 110**: ✅ core パッケージ型エラー修正（第1弾）。utils.py/curator/scoring.py/leela/engine.pyの9件の型エラーを修正。型注釈追加、isinstance判定、assert追加。mypyエラー272→263。（2026-02-01完了）
+
+**Phase 111–112**: mypy strict を段階適用。core/analysis→core→gui/features→全体へ拡大する。
 他フェーズと並行可能だが、最終的にCIで型エラーをブロックできる状態まで持っていく。
 
 ### 未定（TBD / Post-52）
