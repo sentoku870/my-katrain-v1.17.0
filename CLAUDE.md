@@ -425,7 +425,7 @@ docs/
 詳細な変更履歴は [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md) を参照してください。
 
 **最新の変更（2026-01-31）:**
-- Phase 98 完了（QuizManager抽出: gui/managers/quiz_manager.py新設、3メソッド委譲、19テスト追加）
+- Phase 98 完了（QuizManager抽出: gui/managers/quiz_manager.py新設、3メソッド委譲、19テスト追加、Query flooding fix: analyze_all_nodesスロットリング）
 - Phase 97 完了（ActiveReviewController抽出: gui/managers/active_review_controller.py新設、5メソッド委譲、19テスト追加）
 - Phase 96 完了（SummaryManager抽出: gui/managers/summary_manager.py新設、15メソッド委譲、10テスト追加）
 - Phase 95 完了（Stability Improvements: Lock→RLock、Graph.set_nodes_from_list、send_query安全機構、バッチサーキットブレーカー、30テスト追加）
@@ -434,4 +434,4 @@ docs/
 - Phase 92 完了（Beginner Hints Extension: MeaningTagマッピング6カテゴリ、信頼度フィルタ、盤上ハイライト、i18n 30キー、CI修正）
 - Phase 91 完了（Beginner Hints MVP: 4カテゴリ検出、モードゲーティング、ノードキャッシュ）
 - Phase 90 完了（Error Recovery & Diagnostics: 復旧ボタン4つ、LLM用コピー、diagnostics自動ダンプ）
-- テスト総数: 3537件
+- テスト総数: 3543件

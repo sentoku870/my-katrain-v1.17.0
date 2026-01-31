@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 97完了）
+> 最終更新: 2026-01-31（Phase 98完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -335,8 +335,9 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 97**: Active Reviewの状態と処理をControllerに分離し、KaTrainGuiは委譲のみへ寄せる。
 Fog of War等の制御もController側に集約し、メインクラスの `_do_*` 集中を緩和する。
 
-**Phase 98**: Quizも同様にControllerへ分離し、モード遷移の統合テストを追加する。
-Review系の責務分離をここで揃え、以後の変更を局所化する。
+**Phase 98**: ✅ QuizManager抽出。`gui/managers/quiz_manager.py`新設、3メソッド委譲（do_quiz_popup, start_quiz_session, format_points_loss）、
+Active Review連携（Quiz開始時にdisable_if_needed）、19テスト追加。
+また、SGF読み込み時のQuery flooding問題（100 pending limit）を修正: analyze_all_nodesにスロットリング追加。（2026-01-31完了）
 
 **Phase 99**: `config()`の辞書直参照問題を解消する土台。主要セクションをfrozen dataclass化し、型付き `get_<section>()` を追加する。
 後方互換のため `config()` は当面維持し、置換は段階的に行う。
