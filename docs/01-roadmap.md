@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 95完了）
+> 最終更新: 2026-01-31（Phase 95完了、Phase 96–112計画追加）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -306,6 +306,67 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 95**: ✅ 安定性改善。(A) Lock→RLockでundo/redoのレースコンディション修正、Graph.set_nodes_from_list追加。
 (B) send_query安全機構（pending counter、_invoke_error_callback）、バッチ前engine check_alive。
 (C) バッチサーキットブレーカー（AnalysisTimeoutError、EngineFailureTracker、3連続失敗で中断）。30テスト追加。（2026-01-31完了）
+
+### Phase 96–112: Architecture Refactoring & Code Health 📋 Planned
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、最小テスト | 📋 Planned |
+| 97 | Active Review 分離（Controller化） | `features/active_review/controller.py`、ReviewController Protocol、委譲 | 📋 Planned |
+| 98 | Quiz 分離（Controller化） | `features/quiz/controller.py`、モード遷移の統合テスト | 📋 Planned |
+| 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | 📋 Planned |
+| 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | 📋 Planned |
+| 101 | Config 更新API（制御された更新） | `update_<section>()`、最小バリデーション、自動保存の基盤 | 📋 Planned |
+| 102 | Config 移行(2) 既存 config() 依存の縮小 | 主要機能の更新系を移行、辞書直参照の封じ込め | 📋 Planned |
+| 103 | StateNotifier 定義（最小イベント） | `core/state/notifier.py`、subscribe/notify、イベント型の雛形 | 📋 Planned |
+| 104 | Notifier 統合（KaTrainBase） | GUI/ヘッドレス共用に統合、基本イベント（game_changed等） | 📋 Planned |
+| 105 | 主要状態変更の notify 移行(1) | ゲーム状態変更の通知を優先的に移行、直接呼び出し温存 | 📋 Planned |
+| 106 | UIの subscribe 移行(1) | UI側を段階移行、Clock直叩きとの共存を許容 | 📋 Planned |
+| 107 | 非推奨化・整理（通知経路の一本化） | `update_state()`直呼びの縮小、通知経路の整理 | 📋 Planned |
+| 108 | mypy 導入(0) 設定・CI警告モード | `mypy.ini`、py.typed、CIを警告モードで開始 | 📋 Planned |
+| 109 | mypy strict(1) core/analysis | core/analysis を strict 化、型エラー修正 | 📋 Planned |
+| 110 | mypy strict(2) core | core を strict 化、型の穴埋め | 📋 Planned |
+| 111 | mypy strict(3) gui/features | gui/features を strict 化（最小範囲で） | 📋 Planned |
+| 112 | mypy strict(4) 全体・CIブロック | 全体 strict と CI で型エラーをブロック有効化 | 📋 Planned |
+
+**Phase 96**: KaTrainGui肥大化のQuick Win。サマリー関連ヘルパをSummaryManagerへ移し、GUI本体を薄くする。
+テスト追加で回帰を防ぎ、以後の抽出作業の型を作る。
+
+**Phase 97**: Active Reviewの状態と処理をControllerに分離し、KaTrainGuiは委譲のみへ寄せる。
+Fog of War等の制御もController側に集約し、メインクラスの `_do_*` 集中を緩和する。
+
+**Phase 98**: Quizも同様にControllerへ分離し、モード遷移の統合テストを追加する。
+Review系の責務分離をここで揃え、以後の変更を局所化する。
+
+**Phase 99**: `config()`の辞書直参照問題を解消する土台。主要セクションをfrozen dataclass化し、型付き `get_<section>()` を追加する。
+後方互換のため `config()` は当面維持し、置換は段階的に行う。
+
+**Phase 100**: 読み取り系から段階移行。影響範囲が大きい箇所から `get_<section>()` へ置換していく（差分を小さく）。
+更新系にはまだ手を出さない。
+
+**Phase 101**: 制御された更新API（`update_<section>()`）を追加し、バリデーションと自動保存の基盤を作る。
+「保存漏れ」「意図しない変更」を構造的に防ぐ。
+
+**Phase 102**: 更新系も含めて主要機能を移行し、辞書直参照を封じ込める。
+`config()`は互換維持しつつ、内部では安全な経路へ寄せる。
+
+**Phase 103**: 通知の中核 `StateNotifier` を定義（subscribe/notify）。まずは最小イベント型の雛形を用意する。
+既存の通知経路は残し、置換を急がない。
+
+**Phase 104**: KaTrainBaseへ統合し、GUI/ヘッドレスで共通利用できる形にする。
+基本イベント（game_changed/config_updated等）の導線を確立する。
+
+**Phase 105**: notify移行の第1段。ゲーム状態変更など"効果が大きいところ"から段階移行する。
+直接呼び出しやClock更新は共存させ、破壊的変更を避ける。
+
+**Phase 106**: UI側をsubscribeへ段階移行。部品単位で移し、挙動差分が出たら戻せる設計にする。
+ここでも共存を許容し、一本化は次へ送る。
+
+**Phase 107**: 直接 `update_state()` 呼び出し等を非推奨化し、通知経路を整理して一本化に近づける。
+移行完了のチェックリストをここで確定する。
+
+**Phase 108–112**: mypy strict を段階適用。最初は警告モードで導入し、core/analysis→core→gui/features→全体へ拡大する。
+他フェーズと並行可能だが、最終的にCIで型エラーをブロックできる状態まで持っていく。
 
 ### 未定（TBD / Post-52）
 
