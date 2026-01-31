@@ -1363,7 +1363,6 @@ def do_mykatrain_settings_popup(
         from katrain.core.analysis import needs_leela_warning
         import logging
 
-        existing_engine = ctx.config("engine") or {}
         new_engine_value = selected_engine[0]
 
         # Consistency check: warn if Leela selected but not enabled
@@ -1374,10 +1373,9 @@ def do_mykatrain_settings_popup(
             )
 
         # MERGE: preserve other engine keys (katago, model, etc.)
+        # Phase 102: Use typed config API
         try:
-            updated_engine = {**existing_engine, "analysis_engine": new_engine_value}
-            ctx.set_config_section("engine", updated_engine)
-            ctx.save_config("engine")
+            ctx.update_engine_config(analysis_engine=new_engine_value)
         except OSError as e:
             # File write failure during engine config save
             logging.error(f"Failed to save engine config (file error): {e}", exc_info=True)
@@ -1405,47 +1403,57 @@ def do_mykatrain_settings_popup(
         }
         ctx.set_config_section("mykatrain_settings", mykatrain_settings)
         ctx.save_config("mykatrain_settings")
-        # Save Leela settings (MERGE with existing to preserve resign_hint settings)
-        existing_leela = ctx.config("leela") or {}
-        new_leela_config = {
-            **existing_leela,  # 既存設定を保持（resign_hint_*等）
-            "enabled": leela_will_be_enabled,  # Phase 34: use captured value for consistency
-            "exe_path": leela_path_input.text.strip(),
-            "loss_scale_k": clamp_k(leela_k_slider.value),
-            "max_visits": 1000,  # default, overwritten below
-            "top_moves_show": leela_top_moves_spinner.selected[1],
-            "top_moves_show_secondary": leela_top_moves_spinner_2.selected[1],
-        }
-        try:
-            new_leela_config["max_visits"] = max(100, min(100000, int(leela_visits_input.text)))
-        except ValueError:
-            pass  # use default
-
-        # leela.fast_visits (Phase 30)
+        # Save Leela settings (Phase 102: Use typed config API)
+        # TypedConfigWriter automatically preserves unknown keys (resign_hint_* etc.)
+        from katrain.common.typed_config import LeelaConfig
         from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
 
+        # Get defaults from single source (no hardcoding)
+        _leela_defaults = LeelaConfig.from_dict({})
+
+        # Calculate values with validation
+        leela_enabled = leela_will_be_enabled
+        leela_exe_path = leela_path_input.text.strip()
+        leela_loss_scale = clamp_k(leela_k_slider.value)
+        leela_top_show = leela_top_moves_spinner.selected[1]
+        leela_top_show_2 = leela_top_moves_spinner_2.selected[1]
+
+        # max_visits: parse with validation
         try:
-            fast_visits = int(leela_fast_visits_input.text.strip())
-            max_visits = new_leela_config["max_visits"]
+            computed_max_visits = max(100, min(100000, int(leela_visits_input.text)))
+        except ValueError:
+            computed_max_visits = _leela_defaults.max_visits
+
+        # fast_visits: parse with validation (Phase 30)
+        try:
+            fast_visits_raw = int(leela_fast_visits_input.text.strip())
             # UI Validation:
             # - 下限: LEELA_FAST_VISITS_MIN (50) または max_visits のうち小さい方
             # - 上限: max_visits
             # エッジケース: max_visits < 50 の場合、fast_visits も max_visits に制限
-            lower_bound = min(LEELA_FAST_VISITS_MIN, max_visits)
-            new_leela_config["fast_visits"] = max(lower_bound, min(max_visits, fast_visits))
+            lower_bound = min(LEELA_FAST_VISITS_MIN, computed_max_visits)
+            computed_fast_visits = max(lower_bound, min(computed_max_visits, fast_visits_raw))
         except ValueError:
-            new_leela_config["fast_visits"] = 200  # default
+            computed_fast_visits = _leela_defaults.fast_visits
 
-        # leela.play_visits (Phase 40)
+        # play_visits: parse with validation (Phase 40)
         try:
-            play_visits = int(leela_play_visits_input.text.strip())
-            max_visits = new_leela_config.get("max_visits", 1000)
-            new_leela_config["play_visits"] = max(50, min(max_visits, play_visits))
+            play_visits_raw = int(leela_play_visits_input.text.strip())
+            computed_play_visits = max(50, min(computed_max_visits, play_visits_raw))
         except ValueError:
-            new_leela_config["play_visits"] = 500  # default
+            computed_play_visits = _leela_defaults.play_visits
 
-        ctx.set_config_section("leela", new_leela_config)
-        ctx.save_config("leela")
+        # Update via typed config API (handles MERGE and persistence)
+        ctx.update_leela_config(
+            enabled=leela_enabled,
+            exe_path=leela_exe_path,
+            loss_scale_k=leela_loss_scale,
+            max_visits=computed_max_visits,
+            top_moves_show=leela_top_show,
+            top_moves_show_secondary=leela_top_show_2,
+            fast_visits=computed_fast_visits,
+            play_visits=computed_play_visits,
+        )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
 

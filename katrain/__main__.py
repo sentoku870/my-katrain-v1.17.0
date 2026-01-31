@@ -848,10 +848,7 @@ class KaTrainGui(Screen, KaTrainBase):
         Args:
             katago_path: Path to KataGo binary.
         """
-        engine_config = dict(self._config.get("engine", {}))
-        engine_config["katago"] = katago_path
-        self._config["engine"] = engine_config
-        self.save_config("engine")
+        self.update_engine_config(katago=katago_path)
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
