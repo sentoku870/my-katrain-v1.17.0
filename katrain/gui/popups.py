@@ -948,7 +948,7 @@ class ConfigPopup(BaseConfigPopup):
         # Update humanlike_model_path to normalized value before parent saves
         self.humanlike_model_path.text = model
         # Store last path in config (will be saved by parent)
-        self.katrain._config["engine"]["humanlike_model_last"] = last
+        self.katrain.update_engine_config(humanlike_model_last=last)
 
         updated = super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         self.katrain.debug_level = self.katrain.config("general/debug_level", OUTPUT_INFO)
