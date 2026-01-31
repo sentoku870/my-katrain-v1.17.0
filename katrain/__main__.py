@@ -118,6 +118,7 @@ from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.summary_manager import SummaryManager
 from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
@@ -138,26 +139,6 @@ from katrain.gui.error_handler import ErrorHandler
 from katrain.gui.features.karte_export import determine_user_color, do_export_karte
 from katrain.gui.features.package_export_ui import do_export_package
 from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
-from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node, extract_sgf_statistics
-from katrain.gui.features.summary_aggregator import (
-    scan_player_names,
-    categorize_games_by_stats,
-    collect_rank_info,
-)
-from katrain.gui.features.summary_formatter import build_summary_from_stats
-from katrain.gui.features.summary_ui import (
-    do_export_summary,
-    do_export_summary_ui,
-    process_summary_with_selected_players,
-    scan_and_show_player_selection,
-    show_player_selection_dialog,
-    process_and_export_summary,
-)
-from katrain.gui.features.summary_io import (
-    save_summaries_per_player,
-    save_categorized_summaries_from_stats,
-    save_summary_file,
-)
 from katrain.gui.features.quiz_popup import (
     do_quiz_popup,
     format_points_loss,
@@ -247,6 +228,15 @@ class KaTrainGui(Screen, KaTrainBase):
             save_config=super().save_config,
             logger=self.log,
             log_level_info=OUTPUT_INFO,
+        )
+
+        # Summary export management (Phase 96)
+        self._summary_manager = SummaryManager(
+            get_ctx=lambda: self,
+            get_engine=lambda: self.engine,
+            get_config=self.config,
+            config_manager=self._config_manager,
+            logger=self.log,
         )
 
         # Keyboard input management (Phase 73)
@@ -1315,118 +1305,64 @@ class KaTrainGui(Screen, KaTrainBase):
         return determine_user_color(self.game, username)
 
     def _do_export_summary(self, *args, **kwargs):
-        """Delegates to summary_ui.do_export_summary()."""
-        do_export_summary(
-            self,
-            self._scan_and_show_player_selection,
-            self._load_export_settings,
-            self._save_export_settings,
-        )
+        """Delegates to SummaryManager.do_export_summary() (Phase 96)."""
+        self._summary_manager.do_export_summary(*args, **kwargs)
 
     def _do_export_summary_ui(self, *args, **kwargs):
-        """Delegates to summary_ui.do_export_summary_ui()."""
-        do_export_summary_ui(
-            self,
-            self._scan_and_show_player_selection,
-            self._load_export_settings,
-            self._save_export_settings,
-        )
+        """Delegates to SummaryManager.do_export_summary_ui() (Phase 96)."""
+        self._summary_manager.do_export_summary_ui(*args, **kwargs)
 
     def _extract_analysis_from_sgf_node(self, node) -> dict:
-        """SGFノードのKTプロパティから解析データを抽出。
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.extract_analysis_from_sgf_node(node)
 
-        Delegates to summary_stats.extract_analysis_from_sgf_node().
-        """
-        return extract_analysis_from_sgf_node(node)
-
-    def _extract_sgf_statistics(self, path: str) -> dict:
-        """SGFファイルから統計データを直接抽出（KTプロパティ解析）。
-
-        Delegates to summary_stats.extract_sgf_statistics().
-        """
-        return extract_sgf_statistics(path, self, self.engine, self.log)
+    def _extract_sgf_statistics(self, path: str) -> Optional[dict]:
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.extract_sgf_statistics(path)
 
     def _scan_player_names(self, sgf_files: list) -> dict:
-        """Delegates to summary_aggregator.scan_player_names()."""
-        return scan_player_names(sgf_files, self.log)
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.scan_player_names(sgf_files)
 
     def _scan_and_show_player_selection(self, sgf_files: list):
-        """Delegates to summary_ui.scan_and_show_player_selection()."""
-        scan_and_show_player_selection(
-            sgf_files,
-            self,
-            self._scan_player_names,
-            self._process_summary_with_selected_players,
-            self._show_player_selection_dialog,
-        )
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.scan_and_show_player_selection(sgf_files)
 
     def _process_summary_with_selected_players(self, sgf_files: list, selected_players: list):
-        """Delegates to summary_ui.process_summary_with_selected_players()."""
-        process_summary_with_selected_players(
-            sgf_files,
-            selected_players,
-            self._process_and_export_summary,
-        )
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.process_summary_with_selected_players(sgf_files, selected_players)
 
     def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
-        """Delegates to summary_ui.show_player_selection_dialog()."""
-        show_player_selection_dialog(
-            sorted_players,
-            sgf_files,
-            self._load_export_settings,
-            self._save_export_settings,
-            self._process_and_export_summary,
-        )
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.show_player_selection_dialog(sorted_players, sgf_files)
 
-    def _process_and_export_summary(self, sgf_paths: list, progress_popup, selected_players: list = None):
-        """Delegates to summary_ui.process_and_export_summary()."""
-        process_and_export_summary(
-            sgf_paths,
-            progress_popup,
-            selected_players,
-            self,
-            self._extract_sgf_statistics,
-            self._categorize_games_by_stats,
-            self._save_summaries_per_player,
-            self._save_categorized_summaries_from_stats,
-        )
+    def _process_and_export_summary(self, sgf_paths: list, progress_popup, selected_players: Optional[list] = None):
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.process_and_export_summary(sgf_paths, progress_popup, selected_players)
 
     def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
-        """Delegates to summary_aggregator.categorize_games_by_stats()."""
-        return categorize_games_by_stats(game_stats_list, focus_player)
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.categorize_games_by_stats(game_stats_list, focus_player)
 
     def _collect_rank_info(self, stats_list: list, focus_player: str) -> str:
-        """Delegates to summary_aggregator.collect_rank_info()."""
-        return collect_rank_info(stats_list, focus_player)
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.collect_rank_info(stats_list, focus_player)
 
-    def _build_summary_from_stats(self, stats_list: list, focus_player: str = None) -> str:
-        """Delegates to summary_formatter.build_summary_from_stats()."""
-        return build_summary_from_stats(stats_list, focus_player, self.config)
+    def _build_summary_from_stats(self, stats_list: list, focus_player: Optional[str] = None) -> str:
+        """Delegates to SummaryManager (Phase 96)."""
+        return self._summary_manager.build_summary_from_stats(stats_list, focus_player)
 
     def _save_summaries_per_player(self, game_stats_list: list, selected_players: list, progress_popup):
-        """Delegates to summary_io.save_summaries_per_player()."""
-        save_summaries_per_player(
-            game_stats_list,
-            selected_players,
-            progress_popup,
-            self,
-            self._categorize_games_by_stats,
-            self._build_summary_from_stats,
-        )
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.save_summaries_per_player(game_stats_list, selected_players, progress_popup)
 
     def _save_categorized_summaries_from_stats(self, categorized_games: dict, player_name: str, progress_popup):
-        """Delegates to summary_io.save_categorized_summaries_from_stats()."""
-        save_categorized_summaries_from_stats(
-            categorized_games,
-            player_name,
-            progress_popup,
-            self,
-            self._build_summary_from_stats,
-        )
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.save_categorized_summaries_from_stats(categorized_games, player_name, progress_popup)
 
     def _save_summary_file(self, summary_text: str, player_name: str, progress_popup):
-        """Delegates to summary_io.save_summary_file()."""
-        save_summary_file(summary_text, player_name, progress_popup, self)
+        """Delegates to SummaryManager (Phase 96)."""
+        self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
     def _do_quiz_popup(self):
         """Delegates to quiz_popup.do_quiz_popup()."""
