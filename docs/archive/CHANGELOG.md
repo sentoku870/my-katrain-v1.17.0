@@ -1,9 +1,27 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-104 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-105 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 105 完了（Notifier発火ポイント追加）
+  - StateNotifierに実際の発火ポイント（notify()呼び出し）を追加
+  - 新規ファイル:
+    - `katrain/core/notify_helpers.py`: ヘルパー関数2つ（Kivy非依存）
+    - `tests/test_phase105_notify.py`: 15テスト追加
+  - 変更ファイル:
+    - `pyproject.toml`: integrationマーカー登録
+    - `katrain/core/base_katrain.py`: CONFIG_UPDATED発火（save_config成功時）
+    - `katrain/core/engine.py`: ANALYSIS_COMPLETE発火（解析完了時）
+    - `katrain/gui/features/commands/game_commands.py`: GAME_CHANGED発火（新規ゲーム時）
+  - 技術仕様:
+    - `notify_game_changed(ctx, *, source)`: キーワード専用引数でGAME_CHANGED通知
+    - `maybe_notify_analysis_complete(katrain, *, partial_result, results_exist, query_id)`: 条件付きANALYSIS_COMPLETE通知
+    - 防御的アクセス: `getattr(ctx, "state_notifier", None)`でnotifier未設定時も安全
+    - unbound methodパターン: save_config()テストでロジック複製を回避
+  - テスト: 3747件パス（+15件）
+  - PR: #246
 
 - 2026-02-01: Phase 104 完了（Notifier統合）
   - StateNotifierをKaTrainBaseに統合し、GUI/ヘッドレスで共通利用可能に

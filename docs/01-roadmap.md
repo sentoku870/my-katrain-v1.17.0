@@ -365,8 +365,9 @@ ConfigPopupのengine直接代入を`update_engine_config()`に移行。27テス�
 StateNotifierにロガー注入（`Callable[[str], None]`）、KaTrainBaseにstate_notifierプロパティ追加、
 FeatureContext Protocol更新。7テスト追加。（2026-02-01完了）
 
-**Phase 105**: notify移行の第1段。ゲーム状態変更など"効果が大きいところ"から段階移行する。
-直接呼び出しやClock更新は共存させ、破壊的変更を避ける。
+**Phase 105**: ✅ notify移行の第1段。ゲーム状態変更など"効果が大きいところ"から段階移行。
+notify_helpers.py新設（Kivy非依存）、CONFIG_UPDATED/ANALYSIS_COMPLETE/GAME_CHANGED発火、
+integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 106**: UI側をsubscribeへ段階移行。部品単位で移し、挙動差分が出たら戻せる設計にする。
 ここでも共存を許容し、一本化は次へ送る。
