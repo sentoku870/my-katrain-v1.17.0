@@ -1027,10 +1027,11 @@ class BadukPanWidget(Widget):
         candidates = leela_analysis.candidates
         current_node = self.katrain.game.current_node  # Phase 16: for PV registration
 
-        # Cache config outside loop for performance (Phase 17)
+        # Cache config outside loop for performance (Phase 17, Phase 100: typed config)
         katrain = self.katrain
-        top_show = katrain.config("leela/top_moves_show", LEELA_TOP_MOVE_LOSS)
-        top_show_2 = katrain.config("leela/top_moves_show_secondary", LEELA_TOP_MOVE_WINRATE)
+        leela_cfg = katrain.get_leela_config()
+        top_show = leela_cfg.top_moves_show
+        top_show_2 = leela_cfg.top_moves_show_secondary
 
         # Find max visits for scaling
         max_visits = max((c.visits for c in candidates), default=1)
@@ -1175,17 +1176,21 @@ class BadukPanWidget(Widget):
             top_move_coords = None
             child_moves = {c.move.gtp() for c in current_node.children if c.move}
 
+            # Phase 100: Cache typed config for this draw call (no persistent cache)
+            leela_cfg = katrain.get_leela_config()
+            trainer_cfg = katrain.get_trainer_config()
+
             # Check if Leela mode is active and has analysis
-            leela_enabled = katrain.config("leela/enabled", False)
+            leela_enabled = leela_cfg.enabled
             leela_analysis = current_node.leela_analysis if leela_enabled else None
 
             # Phase 93: Fog of War hides Leela candidates too
             if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
                 # Draw Leela candidate markers
-                low_visits_threshold = katrain.config("trainer/low_visits", 25)
+                low_visits_threshold = trainer_cfg.low_visits
                 top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
             elif hint_moves:
-                low_visits_threshold = katrain.config("trainer/low_visits", 25)
+                low_visits_threshold = trainer_cfg.low_visits
                 top_moves_show = [
                     opt
                     for opt in [

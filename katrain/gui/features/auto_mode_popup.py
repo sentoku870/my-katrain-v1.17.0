@@ -728,13 +728,13 @@ def _copy_diagnostics(result: TestAnalysisResult, ctx: "FeatureContext") -> None
         f"Error Message: {result.error_message or 'None'}",
     ]
 
-    # Add engine info if available
-    engine_config = ctx.config("engine", {})
+    # Add engine info if available (Phase 100: typed config)
+    engine_config = ctx.get_engine_config()
     diag_lines.extend([
         "",
         "=== Engine Config ===",
-        f"KataGo: {engine_config.get('katago', '')}",
-        f"Model: {engine_config.get('model', '')}",
+        f"KataGo: {engine_config.katago or ''}",
+        f"Model: {engine_config.model or ''}",
     ])
 
     diag_text = "\n".join(diag_lines)

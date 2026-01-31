@@ -44,11 +44,12 @@ def is_leela_configured(ctx: "FeatureContext") -> bool:
     Returns:
         True if Leela is configured and usable
     """
-    leela_config = ctx.config("leela") or {}
-    if leela_config.get("enabled", False):
+    # Phase 100: Use typed config for read access
+    leela_config = ctx.get_leela_config()
+    if leela_config.enabled:
         return True
     # Fallback: exe_path set means user intends to use Leela
-    return bool(leela_config.get("exe_path", ""))
+    return bool(leela_config.exe_path or "")
 
 
 if TYPE_CHECKING:

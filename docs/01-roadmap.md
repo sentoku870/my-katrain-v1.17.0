@@ -343,8 +343,8 @@ Active Review連携（Quiz開始時にdisable_if_needed）、19テスト追加�
 safe_*ヘルパー関数（bool/float拒否、タイポ保護）、TypedConfigReader（スナップショット読み取り）。
 KaTrainBase/FeatureContext: `get_engine_config()`, `get_trainer_config()`, `get_leela_config()`追加。116テスト。（2026-01-31完了）
 
-**Phase 100**: 読み取り系から段階移行。影響範囲が大きい箇所から `get_<section>()` へ置換していく（差分を小さく）。
-更新系にはまだ手を出さない。
+**Phase 100**: ✅ 読み取り系から段階移行。batch_core, auto_mode_popup, badukpanの7 call sitesを`get_*_config()`へ移行。
+settings_popup, trainer/top_moves_show*は後続dict依存のためスコープ外。8テスト追加。（2026-01-31完了）
 
 **Phase 101**: 制御された更新API（`update_<section>()`）を追加し、バリデーションと自動保存の基盤を作る。
 「保存漏れ」「意図しない変更」を構造的に防ぐ。
