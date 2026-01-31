@@ -761,7 +761,7 @@ class KaTrainGui(Screen, KaTrainBase):
         auto_setup["first_run_completed"] = True
         auto_setup["last_test_result"] = "success" if success else "failed"
         self._config["auto_setup"] = auto_setup
-        self._config_manager.save_config()
+        self.save_config("auto_setup")
 
     def _verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
         """Verify engine works with minimal analysis.
@@ -851,7 +851,7 @@ class KaTrainGui(Screen, KaTrainBase):
         engine_config = dict(self._config.get("engine", {}))
         engine_config["katago"] = katago_path
         self._config["engine"] = engine_config
-        self._config_manager.save_config()
+        self.save_config("engine")
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）

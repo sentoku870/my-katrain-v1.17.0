@@ -981,6 +981,7 @@ def do_mykatrain_settings_popup(
     # Note: Section label is no longer needed as it's now a separate tab
 
     # Leela Enabled Checkbox
+    # Note: leela_config is used as dict throughout this section, keep as dict
     leela_config = ctx.config("leela") or {}
     leela_enabled_row = BoxLayout(
         orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5)
