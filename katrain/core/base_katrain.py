@@ -12,6 +12,7 @@ from katrain.common.typed_config import (
     LeelaConfig,
     TrainerConfig,
     TypedConfigReader,
+    TypedConfigWriter,
 )
 from katrain.core.ai import ai_rank_estimation
 from katrain.core.log_buffer import LogBuffer
@@ -204,6 +205,7 @@ class KaTrainBase:
             sys.exit(1)
         self._config = dict(self._config_store)
         self._typed_config = TypedConfigReader(self._config)
+        self._typed_config_writer = TypedConfigWriter(self._config, self.save_config)
         return config_file
 
     def save_config(self, key=None):
@@ -254,6 +256,48 @@ class KaTrainBase:
             LeelaConfigインスタンス（frozen）
         """
         return self._typed_config.get_leela()
+
+    def update_engine_config(self, **kwargs) -> EngineConfig:
+        """engineセクションを部分更新。自動保存。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のEngineConfig（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        return self._typed_config_writer.update_engine(**kwargs)
+
+    def update_trainer_config(self, **kwargs) -> TrainerConfig:
+        """trainerセクションを部分更新。自動保存。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のTrainerConfig（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        return self._typed_config_writer.update_trainer(**kwargs)
+
+    def update_leela_config(self, **kwargs) -> LeelaConfig:
+        """leelaセクションを部分更新。自動保存。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のLeelaConfig（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        return self._typed_config_writer.update_leela(**kwargs)
 
     def update_player(self, bw, **kwargs):
         self.players_info[bw].update(**kwargs)
