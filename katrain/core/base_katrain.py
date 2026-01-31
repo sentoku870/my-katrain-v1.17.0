@@ -7,6 +7,12 @@ import sys
 from kivy import Config
 
 from katrain.common.config_store import JsonFileConfigStore
+from katrain.common.typed_config import (
+    EngineConfig,
+    LeelaConfig,
+    TrainerConfig,
+    TypedConfigReader,
+)
 from katrain.core.ai import ai_rank_estimation
 from katrain.core.log_buffer import LogBuffer
 from katrain.core.constants import (
@@ -197,6 +203,7 @@ class KaTrainBase:
             self.log(f"Failed to load config {config_file}: {e}", OUTPUT_ERROR)
             sys.exit(1)
         self._config = dict(self._config_store)
+        self._typed_config = TypedConfigReader(self._config)
         return config_file
 
     def save_config(self, key=None):
@@ -223,6 +230,30 @@ class KaTrainBase:
             Shallow copy of config dictionary.
         """
         return dict(self._config)
+
+    def get_engine_config(self) -> EngineConfig:
+        """型付きエンジン設定を取得。
+
+        Returns:
+            EngineConfigインスタンス（frozen）
+        """
+        return self._typed_config.get_engine()
+
+    def get_trainer_config(self) -> TrainerConfig:
+        """型付きトレーナー設定を取得。
+
+        Returns:
+            TrainerConfigインスタンス（frozen）
+        """
+        return self._typed_config.get_trainer()
+
+    def get_leela_config(self) -> LeelaConfig:
+        """型付きLeela設定を取得。
+
+        Returns:
+            LeelaConfigインスタンス（frozen）
+        """
+        return self._typed_config.get_leela()
 
     def update_player(self, bw, **kwargs):
         self.players_info[bw].update(**kwargs)
