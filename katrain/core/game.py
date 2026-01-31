@@ -81,7 +81,7 @@ class BaseGame:
         bypass_config=False,  # TODO: refactor?
     ):
         self.katrain = katrain
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # RLock for set_current_node → _calculate_groups reentry
         self.game_id = datetime.strftime(datetime.now(), "%Y-%m-%d %H %M %S")
         self.sgf_filename = sgf_filename
 
@@ -259,61 +259,73 @@ class BaseGame:
         self._calculate_groups()
 
     def undo(self, n_times=1, stop_on_mistake=None):
-        break_on_branch = False
-        cn = self.current_node  # avoid race conditions
-        break_on_main_branch = False
-        last_branching_node = cn
-        if n_times == "branch":
-            n_times = 9999
-            break_on_branch = True
-        elif n_times == "main-branch":
-            n_times = 9999
-            break_on_main_branch = True
-        for move in range(n_times):
-            if (
-                stop_on_mistake is not None
-                and cn.points_lost is not None
-                and cn.points_lost >= stop_on_mistake
-                and self.katrain.players_info[cn.player].player_type != PLAYER_AI
-            ):
-                self.set_current_node(cn.parent)
-                return
-            previous_cn = cn
-            if cn.shortcut_from:
-                cn = cn.shortcut_from
-            elif not cn.is_root:
-                cn = cn.parent
-            else:
-                break  # root
-            if break_on_branch and len(cn.children) > 1:
-                break
-            elif break_on_main_branch and cn.ordered_children[0] != previous_cn:  # implies > 1 child
-                last_branching_node = cn
-        if break_on_main_branch:
-            cn = last_branching_node
-        if cn is not self.current_node:
-            self.set_current_node(cn)
+        """Undo moves with thread-safe state update.
+
+        Lock scope: state mutation only (current_node, _calculate_groups).
+        UI updates are triggered separately by caller via update_state().
+        """
+        with self._lock:
+            break_on_branch = False
+            cn = self.current_node
+            break_on_main_branch = False
+            last_branching_node = cn
+            if n_times == "branch":
+                n_times = 9999
+                break_on_branch = True
+            elif n_times == "main-branch":
+                n_times = 9999
+                break_on_main_branch = True
+            for move in range(n_times):
+                if (
+                    stop_on_mistake is not None
+                    and cn.points_lost is not None
+                    and cn.points_lost >= stop_on_mistake
+                    and self.katrain.players_info[cn.player].player_type != PLAYER_AI
+                ):
+                    self.set_current_node(cn.parent)
+                    return
+                previous_cn = cn
+                if cn.shortcut_from:
+                    cn = cn.shortcut_from
+                elif not cn.is_root:
+                    cn = cn.parent
+                else:
+                    break  # root
+                if break_on_branch and len(cn.children) > 1:
+                    break
+                elif break_on_main_branch and cn.ordered_children[0] != previous_cn:  # implies > 1 child
+                    last_branching_node = cn
+            if break_on_main_branch:
+                cn = last_branching_node
+            if cn is not self.current_node:
+                self.set_current_node(cn)
 
     def redo(self, n_times=1, stop_on_mistake=None):
-        cn = self.current_node  # avoid race conditions
-        for move in range(n_times):
-            if cn.children:
-                child = cn.ordered_children[0]
-                shortcut_to = [m for m, v in cn.shortcuts_to if child == v]  # are we about to go to a shortcut node?
-                if shortcut_to:
-                    child = shortcut_to[0]
-                cn = child
-            if (
-                move > 0
-                and stop_on_mistake is not None
-                and cn.points_lost is not None
-                and cn.points_lost >= stop_on_mistake
-                and self.katrain.players_info[cn.player].player_type != PLAYER_AI
-            ):
-                self.set_current_node(cn.parent)
-                return
-        if stop_on_mistake is None:
-            self.set_current_node(cn)
+        """Redo moves with thread-safe state update.
+
+        Lock scope: state mutation only (current_node, _calculate_groups).
+        UI updates are triggered separately by caller via update_state().
+        """
+        with self._lock:
+            cn = self.current_node
+            for move in range(n_times):
+                if cn.children:
+                    child = cn.ordered_children[0]
+                    shortcut_to = [m for m, v in cn.shortcuts_to if child == v]  # are we about to go to a shortcut node?
+                    if shortcut_to:
+                        child = shortcut_to[0]
+                    cn = child
+                if (
+                    move > 0
+                    and stop_on_mistake is not None
+                    and cn.points_lost is not None
+                    and cn.points_lost >= stop_on_mistake
+                    and self.katrain.players_info[cn.player].player_type != PLAYER_AI
+                ):
+                    self.set_current_node(cn.parent)
+                    return
+            if stop_on_mistake is None:
+                self.set_current_node(cn)
 
     @property
     def komi(self):
@@ -975,14 +987,16 @@ class Game(BaseGame):
         super().set_current_node(node)
 
     def undo(self, n_times=1, stop_on_mistake=None):
-        if self.insert_mode:  # in insert mode, undo = delete
-            cn = self.current_node  # avoid race conditions
-            if n_times == 1 and cn not in self.insert_after.nodes_from_root:
-                cn.parent.children = [c for c in cn.parent.children if c != cn]
-                self.current_node = cn.parent
-                self._calculate_groups()
-            return
-        super().undo(n_times=n_times, stop_on_mistake=stop_on_mistake)
+        """Undo with insert-mode handling. Thread-safe via RLock."""
+        with self._lock:
+            if self.insert_mode:  # in insert mode, undo = delete
+                cn = self.current_node
+                if n_times == 1 and cn not in self.insert_after.nodes_from_root:
+                    cn.parent.children = [c for c in cn.parent.children if c != cn]
+                    self.current_node = cn.parent
+                    self._calculate_groups()
+                return
+            super().undo(n_times=n_times, stop_on_mistake=stop_on_mistake)
 
     def reset_current_analysis(self):
         cn = self.current_node

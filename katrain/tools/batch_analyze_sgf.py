@@ -33,7 +33,7 @@ import traceback
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
 from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
-from katrain.core.errors import EngineError
+from katrain.core.errors import AnalysisTimeoutError, EngineError
 
 # =============================================================================
 # Phase 42-B: Backward compatibility re-exports from katrain.core.batch
@@ -212,6 +212,7 @@ Examples:
     # Process each file
     success_count = 0
     fail_count = 0
+    timeout_count = 0  # Phase 95C: Track timeouts separately
 
     def log_print(msg: str):
         print(msg)
@@ -227,21 +228,28 @@ Examples:
         if output_path.lower().endswith(('.gib', '.ngf')):
             output_path = output_path[:-4] + '.sgf'
 
-        success = analyze_single_file(
-            katrain=katrain,
-            engine=engine,
-            sgf_path=sgf_path,
-            output_path=output_path,
-            visits=args.visits,
-            timeout=args.timeout,
-            log_cb=log_print,
-        )
+        # Phase 95C: Handle AnalysisTimeoutError explicitly
+        try:
+            success = analyze_single_file(
+                katrain=katrain,
+                engine=engine,
+                sgf_path=sgf_path,
+                output_path=output_path,
+                visits=args.visits,
+                timeout=args.timeout,
+                log_cb=log_print,
+            )
 
-        if success:
-            success_count += 1
-            print(f"  Saved: {output_path}")
-        else:
-            fail_count += 1
+            if success:
+                success_count += 1
+                print(f"  Saved: {output_path}")
+            else:
+                fail_count += 1
+
+        except AnalysisTimeoutError as e:
+            # Timeout = skip and continue (per v5 spec: Option A)
+            timeout_count += 1
+            print(f"  TIMEOUT: {e}")
 
     # Cleanup
     engine.shutdown(finish=True)
@@ -251,8 +259,11 @@ Examples:
     print("Batch analysis complete!")
     print(f"  Success: {success_count}")
     print(f"  Failed: {fail_count}")
+    if timeout_count > 0:
+        print(f"  Timeout: {timeout_count}")
 
-    sys.exit(0 if fail_count == 0 else 1)
+    # Exit code: 1 if any failures or timeouts
+    sys.exit(0 if (fail_count == 0 and timeout_count == 0) else 1)
 
 
 if __name__ == "__main__":

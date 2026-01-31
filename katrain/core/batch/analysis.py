@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
-from katrain.core.errors import SGFError
+from katrain.core.errors import AnalysisTimeoutError, SGFError
 
 
 class _DummyEngine:
@@ -133,7 +133,10 @@ def analyze_single_file(
                 return fail_result()
             if time.time() - start_time > timeout:
                 log(f"    ERROR: Analysis timed out after {timeout}s")
-                return fail_result()
+                raise AnalysisTimeoutError(
+                    f"Analysis timed out after {timeout}s",
+                    user_message="Analysis timeout - engine may be unresponsive"
+                )
             time.sleep(poll_interval)
 
         # Give a moment for final processing
@@ -328,7 +331,10 @@ def analyze_single_file_leela(
             # Check file timeout
             if time.time() - file_start_time > file_timeout:
                 log(f"    ERROR: File timeout after {file_timeout}s at move {i + 1}")
-                return fail_result()
+                raise AnalysisTimeoutError(
+                    f"Leela analysis timed out after {file_timeout}s at move {i + 1}",
+                    user_message="Analysis timeout - engine may be unresponsive"
+                )
 
             # Check for cancellation
             if cancel_flag and cancel_flag[0]:

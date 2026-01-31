@@ -50,3 +50,13 @@ class SGFError(KaTrainError):
     """SGF load/parse errors."""
 
     pass
+
+
+class AnalysisTimeoutError(EngineError):
+    """Analysis timed out - likely engine issue.
+
+    This is distinct from file errors to enable circuit breaker logic
+    in batch processing.
+    """
+
+    pass
