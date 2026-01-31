@@ -1,9 +1,38 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-106A の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-108 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 108 完了（mypy導入）
+  - mypyを開発依存に追加し、CI警告モード（non-blocking）で静的型検査基盤を導入
+  - 変更ファイル:
+    - `pyproject.toml`: mypy>=1.8.0をdev依存に追加、[tool.mypy]セクション追加
+    - `.github/workflows/test_and_build.yaml`: mypy警告モードステップ追加（Python 3.9のみ）
+  - 新規ファイル:
+    - `katrain/py.typed`: PEP 561マーカーファイル（空ファイル）
+  - 技術仕様:
+    - python_version = "3.9"（プロジェクト最小サポートバージョン）
+    - ignore_missing_imports = true（サードパーティ型スタブ欠落対応）
+    - Kivy関連モジュール（kivy.*, kivymd.*, kivy_garden.*）は完全スキップ
+    - CIではcontinue-on-error: trueで非blocking実行
+  - テスト: 3776件パス（変更なし）
+  - PR: #249
+
+- 2026-02-01: Phase 107 完了（KaTrainGui Subscribe）
+  - KaTrainGuiにStateNotifier購読ハンドラを追加
+  - 変更ファイル:
+    - `katrain/__main__.py`: _subscribe_to_events()、_unsubscribe_from_events()、_on_*イベントハンドラ追加
+  - 新規ファイル:
+    - `tests/test_phase107_gui_subscribe.py`: 18テスト追加
+  - 技術仕様:
+    - 3イベント購読: GAME_CHANGED, ANALYSIS_COMPLETE, CONFIG_UPDATED
+    - coalescing付きUI更新スケジュール（_schedule_ui_update）
+    - スレッドセーフロック（_update_lock）
+    - 既存のupdate_state()呼び出しは維持（共存）
+  - テスト: 3785件パス（+18件）
+  - PR: #248
 
 - 2026-02-01: Phase 106A 完了（UI Subscribe MVP）
   - ControlsPanelにANALYSIS_COMPLETE購読機能を追加
