@@ -1,9 +1,25 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-103 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-104 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 104 完了（Notifier統合）
+  - StateNotifierをKaTrainBaseに統合し、GUI/ヘッドレスで共通利用可能に
+  - 変更ファイル:
+    - `katrain/core/state/notifier.py`: ロガー注入対応（LoggerType、_log_error()追加）
+    - `katrain/core/base_katrain.py`: StateNotifier初期化、state_notifierプロパティ追加
+    - `katrain/gui/features/context.py`: FeatureContext Protocolにstate_notifier追加
+    - `tests/test_state_notifier.py`: ロガー注入テスト4件追加
+    - `tests/test_typed_config_integration.py`: 統合テスト3件追加
+  - 技術仕様:
+    - LoggerType = Callable[[str], None]（レベルは呼び出し元でバインド）
+    - エラー時は結合メッセージ（msg + traceback）を1回のロガー呼び出しで出力
+    - ロガー未設定または失敗時はstderrにフォールバック（例外安全）
+    - Kivy非依存を維持（core/state/にログレベル定数の依存なし）
+  - テスト: 3732件パス（+7件）
+  - PR: #245
 
 - 2026-01-31: Phase 103 完了（StateNotifier基盤）
   - 疎結合な状態変更通知システムの基盤を構築

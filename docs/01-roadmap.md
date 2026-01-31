@@ -361,8 +361,9 @@ MERGEパターン（既存値保持＋指定キーのみ更新）、JSON-safe永
 EventType（3種）/Event（frozen dataclass、MappingProxyType payload）/StateNotifier（RLockスレッドセーフ）。
 ConfigPopupのengine直接代入を`update_engine_config()`に移行。27テスト追加。（2026-01-31完了）
 
-**Phase 104**: KaTrainBaseへ統合し、GUI/ヘッドレスで共通利用できる形にする。
-基本イベント（game_changed/config_updated等）の導線を確立する。
+**Phase 104**: ✅ KaTrainBaseへ統合し、GUI/ヘッドレスで共通利用できる形にする。
+StateNotifierにロガー注入（`Callable[[str], None]`）、KaTrainBaseにstate_notifierプロパティ追加、
+FeatureContext Protocol更新。7テスト追加。（2026-02-01完了）
 
 **Phase 105**: notify移行の第1段。ゲーム状態変更など"効果が大きいところ"から段階移行する。
 直接呼び出しやClock更新は共存させ、破壊的変更を避ける。
