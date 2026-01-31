@@ -377,7 +377,9 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 107**: ✅ KaTrainGuiにStateNotifier購読ハンドラを追加。3イベント（GAME_CHANGED, ANALYSIS_COMPLETE, CONFIG_UPDATED）を購読し、coalescing付きUI更新スケジュール（スレッドセーフ）を実装。既存のupdate_state()呼び出しは維持（共存）。18テスト追加。（2026-02-01完了）
 
-**Phase 108–112**: mypy strict を段階適用。最初は警告モードで導入し、core/analysis→core→gui/features→全体へ拡大する。
+**Phase 108**: ✅ mypy導入（静的型検査基盤）。pyproject.tomlにmypy依存と[tool.mypy]設定を追加、katrain/py.typedマーカー作成、CIに警告モード（non-blocking）ステップ追加。（2026-02-01完了）
+
+**Phase 109–112**: mypy strict を段階適用。core/analysis→core→gui/features→全体へ拡大する。
 他フェーズと並行可能だが、最終的にCIで型エラーをブロックできる状態まで持っていく。
 
 ### 未定（TBD / Post-52）
