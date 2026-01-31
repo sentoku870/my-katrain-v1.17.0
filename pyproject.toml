@@ -69,6 +69,19 @@ module = [
 ignore_missing_imports = true
 ignore_errors = true
 
+# Phase 109: core/state strict mode (per-module flags only)
+[[tool.mypy.overrides]]
+module = [
+    "katrain.core.state",
+    "katrain.core.state.*",
+]
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+strict_equality = true
+strict_concatenate = true
+
 [tool.hatch.build.targets.sdist]
 include = ["katrain"]
 
