@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-01（Phase 106A完了）
+> 最終更新: 2026-02-01（Phase 107完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -314,15 +314,15 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、10テスト追加 | ✅ Done |
 | 97 | Active Review 分離（Controller化） | `gui/managers/active_review_controller.py`、ActiveReviewController、委譲、19テスト追加 | ✅ Done |
 | 98 | Quiz 分離（Controller化） | `gui/managers/quiz_manager.py`、QuizManager、3メソッド委譲、19テスト追加 | ✅ Done |
-| 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | 📋 Planned |
-| 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | 📋 Planned |
-| 101 | Config 更新API（制御された更新） | `update_<section>()`、最小バリデーション、自動保存の基盤 | 📋 Planned |
-| 102 | Config 移行(2) 既存 config() 依存の縮小 | 主要機能の更新系を移行、辞書直参照の封じ込め | 📋 Planned |
+| 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | ✅ Done |
+| 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | ✅ Done |
+| 101 | Config 更新API（制御された更新） | `update_<section>()`、最小バリデーション、自動保存の基盤 | ✅ Done |
+| 102 | Config 移行(2) 既存 config() 依存の縮小 | 主要機能の更新系を移行、辞書直参照の封じ込め | ✅ Done |
 | 103 | StateNotifier 定義（最小イベント） | `core/state/notifier.py`、subscribe/notify、イベント型の雛形 | ✅ Done |
-| 104 | Notifier 統合（KaTrainBase） | GUI/ヘッドレス共用に統合、基本イベント（game_changed等） | 📋 Planned |
-| 105 | 主要状態変更の notify 移行(1) | ゲーム状態変更の通知を優先的に移行、直接呼び出し温存 | 📋 Planned |
-| 106 | UIの subscribe 移行(1) | UI側を段階移行、Clock直叩きとの共存を許容 | 📋 Planned |
-| 107 | 非推奨化・整理（通知経路の一本化） | `update_state()`直呼びの縮小、通知経路の整理 | 📋 Planned |
+| 104 | Notifier 統合（KaTrainBase） | GUI/ヘッドレス共用に統合、基本イベント（game_changed等） | ✅ Done |
+| 105 | 主要状態変更の notify 移行(1) | ゲーム状態変更の通知を優先的に移行、直接呼び出し温存 | ✅ Done |
+| 106 | UIの subscribe 移行(1) | UI側を段階移行、Clock直叩きとの共存を許容 | ✅ Done |
+| 107 | 非推奨化・整理（通知経路の一本化） | `update_state()`直呼びの縮小、通知経路の整理 | ✅ Done |
 | 108 | mypy 導入(0) 設定・CI警告モード | `mypy.ini`、py.typed、CIを警告モードで開始 | 📋 Planned |
 | 109 | mypy strict(1) core/analysis | core/analysis を strict 化、型エラー修正 | 📋 Planned |
 | 110 | mypy strict(2) core | core を strict 化、型の穴埋め | 📋 Planned |
@@ -375,8 +375,7 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
   Clock.schedule_onceでメインスレッドディスパッチ、11テスト追加。（2026-02-01完了）
 - **106B**: 他のUI部品（BadukPan等）への拡張。後回し可（107に依存しない）。
 
-**Phase 107**: 直接 `update_state()` 呼び出し等を非推奨化し、通知経路を整理して一本化に近づける。
-移行完了のチェックリストをここで確定する。
+**Phase 107**: ✅ KaTrainGuiにStateNotifier購読ハンドラを追加。3イベント（GAME_CHANGED, ANALYSIS_COMPLETE, CONFIG_UPDATED）を購読し、coalescing付きUI更新スケジュール（スレッドセーフ）を実装。既存のupdate_state()呼び出しは維持（共存）。18テスト追加。（2026-02-01完了）
 
 **Phase 108–112**: mypy strict を段階適用。最初は警告モードで導入し、core/analysis→core→gui/features→全体へ拡大する。
 他フェーズと並行可能だが、最終的にCIで型エラーをブロックできる状態まで持っていく。
