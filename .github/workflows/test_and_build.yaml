@@ -63,8 +63,14 @@ jobs:
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
         run: |
-          uv run python -m pytest tests -p no:faulthandler 2>&1
+          # Show memory info before tests
+          echo "=== Memory before tests ==="
+          free -m || true
+          # Run tests with verbose output and no timeout hiding
+          uv run python -m pytest tests -v --tb=short 2>&1
           exit_code=$?
+          echo "=== Memory after tests ==="
+          free -m || true
           echo "Exit code: $exit_code"
           exit $exit_code
 

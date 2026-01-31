@@ -4,20 +4,15 @@
 #
 # __main__.py から抽出したクイズセッション関連の関数を配置します。
 # - start_quiz_session: クイズセッションの開始と問題表示
+#
+# Note: Kivy imports are deferred inside the function to allow
+# patching this module in headless CI environment (Phase 101 fix).
 
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
-
-from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
-from katrain.gui.popups import I18NPopup
-from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -37,6 +32,16 @@ def start_quiz_session(
         format_points_loss_fn: 損失ポイントフォーマット関数
         update_state_fn: UI状態更新コールバック
     """
+    # Lazy imports to avoid Kivy initialization in headless CI
+    from kivy.metrics import dp
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
+    from kivy.uix.scrollview import ScrollView
+
+    from katrain.gui.popups import I18NPopup
+    from katrain.gui.theme import Theme
+
     if not ctx.game:
         return
     if not quiz_items:

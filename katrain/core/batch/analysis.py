@@ -23,6 +23,8 @@ class _DummyEngine:
 
     Game.__init__ requires an engine with stop_pondering() method.
     Since Leela analysis doesn't use KataGo, we provide a no-op engine.
+
+    Phase 101 fix: Added has_query_capacity() for analyze_all_nodes() throttling.
     """
 
     def stop_pondering(self) -> None:
@@ -32,6 +34,10 @@ class _DummyEngine:
     def request_analysis(self, *args, **kwargs) -> bool:
         """No-op: Leela batch analysis doesn't use KataGo analysis."""
         return False
+
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        """Always has capacity: dummy engine doesn't actually queue queries."""
+        return True
 
 
 if TYPE_CHECKING:

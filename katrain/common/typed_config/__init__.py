@@ -4,6 +4,7 @@
 # get_<section>()メソッドで型安全なアクセスを提供。
 #
 # Phase 99で追加。既存のconfig()は維持（後方互換）。
+# Phase 101で更新API追加。
 
 from katrain.common.typed_config.models import (
     EngineConfig,
@@ -18,6 +19,11 @@ from katrain.common.typed_config.models import (
     safe_str,
 )
 from katrain.common.typed_config.reader import TypedConfigReader
+from katrain.common.typed_config.writer import (
+    TypedConfigWriter,
+    UnknownFieldError,
+    _to_json_safe,
+)
 
 __all__ = [
     # Dataclasses
@@ -26,6 +32,10 @@ __all__ = [
     "TrainerConfig",
     # Reader
     "TypedConfigReader",
+    # Writer (Phase 101)
+    "TypedConfigWriter",
+    "UnknownFieldError",
+    "_to_json_safe",
     # Helper functions
     "safe_int",
     "safe_float",

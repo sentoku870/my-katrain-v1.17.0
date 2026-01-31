@@ -12,6 +12,7 @@
 #
 # Phase 90で拡張: エラー復旧に必要なメソッドを追加。
 # Phase 99で拡張: 型付き設定アクセサを追加。
+# Phase 101で拡張: 型付き設定更新APIを追加。
 # Python 3.9互換: Optional/Dict/List構文を使用。
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
@@ -47,6 +48,9 @@ class FeatureContext(Protocol):
         get_engine_config: 型付きエンジン設定を取得（Phase 99）
         get_trainer_config: 型付きトレーナー設定を取得（Phase 99）
         get_leela_config: 型付きLeela設定を取得（Phase 99）
+        update_engine_config: 型付きエンジン設定を更新（Phase 101）
+        update_trainer_config: 型付きトレーナー設定を更新（Phase 101）
+        update_leela_config: 型付きLeela設定を更新（Phase 101）
 
     Implementation Notes:
         KaTrainGui と BaseKaTrain がこの Protocol を満たす。
@@ -148,5 +152,47 @@ class FeatureContext(Protocol):
 
         Returns:
             LeelaConfigインスタンス（frozen）
+        """
+        ...
+
+    def update_engine_config(self, **kwargs) -> "EngineConfig":
+        """engineセクションを部分更新する（Phase 101追加）。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のEngineConfigインスタンス（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        ...
+
+    def update_trainer_config(self, **kwargs) -> "TrainerConfig":
+        """trainerセクションを部分更新する（Phase 101追加）。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のTrainerConfigインスタンス（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        ...
+
+    def update_leela_config(self, **kwargs) -> "LeelaConfig":
+        """leelaセクションを部分更新する（Phase 101追加）。
+
+        Args:
+            **kwargs: 更新するフィールドと値
+
+        Returns:
+            更新後のLeelaConfigインスタンス（frozen）
+
+        Raises:
+            UnknownFieldError: 存在しないフィールド名が指定された場合
         """
         ...
