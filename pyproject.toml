@@ -33,6 +33,7 @@ katrain = "katrain.__main__:run_app"
 [dependency-groups]
 dev = [
     "black>=24.8.0,<25",
+    "mypy>=1.8.0",
     "polib>=1.2.0,<2",
     "pyinstaller>=6.14.1",
     "pytest>=8.3.2,<9",
@@ -52,6 +53,21 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests that initialize KaTrainBase (may be slow)",
 ]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "kivy.*",
+    "kivymd.*",
+    "kivy_garden.*",
+]
+ignore_missing_imports = true
+ignore_errors = true
 
 [tool.hatch.build.targets.sdist]
 include = ["katrain"]

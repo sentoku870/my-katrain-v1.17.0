@@ -74,6 +74,11 @@ jobs:
           echo "Exit code: $exit_code"
           exit $exit_code
 
+      - name: Type check with mypy (warnings only)
+        if: matrix.python-version == '3.9'
+        run: uv run mypy katrain --no-error-summary
+        continue-on-error: true
+
       - name: Check I18N conversion
         run: uv run python i18n.py -todo
 
