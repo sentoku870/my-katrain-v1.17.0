@@ -27,6 +27,10 @@ from katrain.core.utils import find_package_resource, json_truncate_arrays
 from katrain.core.engine_query import build_analysis_query
 
 
+# Maximum pending queries before rejecting new ones
+MAX_PENDING_QUERIES = 100
+
+
 def _ensure_str(line) -> str:
     """Normalize line to str, handling bytes/str/None."""
     if line is None:
@@ -132,6 +136,9 @@ class KataGoEngine(BaseEngine):
         # Shutdown event (recreated on each start, not cleared)
         self._shutdown_event = threading.Event()
         self.thread_lock = threading.Lock()
+        # Pending query counter for backlog protection (Phase 95B)
+        self._pending_query_count = 0
+        self._pending_query_lock = threading.Lock()
         if config.get("altcommand", ""):
             self.command = config["altcommand"]
             self.shell = True
@@ -176,6 +183,9 @@ class KataGoEngine(BaseEngine):
             self._stderr_queue = queue.Queue()
             # Important: recreate event (not clear()) to prevent old threads from resuming
             self._shutdown_event = threading.Event()
+            # Reset pending query counter on start/restart
+            with self._pending_query_lock:
+                self._pending_query_count = 0
             try:
                 self.katrain.log(f"Starting KataGo with {self.command}", OUTPUT_DEBUG)
                 startupinfo = None
@@ -270,6 +280,9 @@ class KataGoEngine(BaseEngine):
 
     def restart(self):
         self.queries = {}
+        # Reset pending counter before shutdown
+        with self._pending_query_lock:
+            self._pending_query_count = 0
         self.shutdown(finish=False)
         self.start()
 
@@ -611,9 +624,11 @@ class KataGoEngine(BaseEngine):
                 # Process results outside the lock
                 if "error" in analysis:
                     if error_callback:
-                        error_callback(analysis)
+                        self._invoke_error_callback(error_callback, analysis)
                     elif not (next_move and "Illegal move" in analysis["error"]):  # sweep
                         self.katrain.log(f"{analysis} received from KataGo", OUTPUT_ERROR)
+                    # Decrement pending count on error completion
+                    self._decrement_pending_count()
                 elif "warning" in analysis:
                     self.katrain.log(f"{analysis} received from KataGo", OUTPUT_DEBUG)
                 elif "terminateId" in analysis:
@@ -635,6 +650,9 @@ class KataGoEngine(BaseEngine):
                             f"Error in engine callback for query {query_id}: {e}\n{traceback.format_exc()}",
                             OUTPUT_ERROR,
                         )
+                    # Decrement pending count on success completion (non-partial only)
+                    if not partial_result:
+                        self._decrement_pending_count()
                 if getattr(self.katrain, "update_state", None):  # easier mocking etc
                     self.katrain.update_state()
             except Exception as e:  # noqa: BLE001 - thread exception, must log and continue processing
@@ -724,8 +742,102 @@ class KataGoEngine(BaseEngine):
             if old_ponder_query:
                 self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
 
+    def _invoke_error_callback(self, error_callback, error_msg):
+        """Invoke error callback, handling headless/test environments.
+
+        Strategy:
+        1. Try to schedule on Kivy main thread (preferred for UI safety)
+        2. If Kivy unavailable (ImportError) -> sync fallback (headless/test only)
+        3. If schedule fails at runtime -> log only, do NOT call callback off-thread
+
+        Thread safety rule: UI-touching callbacks MUST run on main thread.
+        Sync fallback is only safe in headless environments (no UI to corrupt).
+        """
+        if error_callback is None:
+            return
+
+        # Try Kivy Clock scheduling if Kivy is available (loaded by GUI layer)
+        # Use sys.modules check to avoid importing Kivy in core layer (architecture rule)
+        import sys
+        clock_module = sys.modules.get('kivy.clock')
+        if clock_module is not None:
+            try:
+                Clock = getattr(clock_module, 'Clock', None)
+                if Clock is not None:
+                    Clock.schedule_once(lambda _dt: error_callback(error_msg), 0)
+                    return
+            except Exception as e:
+                # schedule_once failed at runtime (Kivy exists but broken state)
+                # Do NOT call callback - could corrupt UI from wrong thread
+                self.katrain.log(
+                    f"Failed to schedule error_callback: {e}. Error: {error_msg}",
+                    OUTPUT_ERROR
+                )
+                return
+
+        # Sync fallback: Kivy not loaded (headless/test - no UI exists)
+        try:
+            error_callback(error_msg)
+        except Exception as e:
+            self.katrain.log(f"Error in error_callback: {e}", OUTPUT_ERROR)
+
+    def _decrement_pending_count(self):
+        """Decrement pending counter. Called on query completion/error."""
+        with self._pending_query_lock:
+            self._pending_query_count = max(0, self._pending_query_count - 1)
+
     def send_query(self, query, callback, error_callback, next_move=None, node=None):
-        self.write_queue.put((query, callback, error_callback, next_move, node))
+        """Send query to engine with safety checks.
+
+        Threading contract:
+            - callback: Called from engine read thread. MUST NOT touch Kivy UI directly.
+                       Use Clock.schedule_once() if UI update needed.
+            - error_callback: Scheduled on Kivy main thread via _invoke_error_callback().
+                             Safe to touch UI.
+
+        Args:
+            query: Query dict to send to engine.
+            callback: Function(analysis_dict, is_partial) for successful results.
+                     Called from background thread - must be thread-safe.
+            error_callback: Function(error_dict) for errors.
+                           Will be scheduled on main thread.
+            next_move: Optional next move node.
+            node: Optional analysis node.
+
+        Returns:
+            True if query was accepted and queued.
+            False if query was rejected (engine dead, pending limit).
+        """
+        # Safety 1: Engine alive check
+        if not self.check_alive():
+            error_msg = {"error": "Engine not alive", "id": query.get("id", "unknown")}
+            self._invoke_error_callback(error_callback, error_msg)
+            return False
+
+        # Safety 2: Pending query limit check
+        with self._pending_query_lock:
+            if self._pending_query_count >= MAX_PENDING_QUERIES:
+                error_msg = {"error": "Too many pending queries", "id": query.get("id", "unknown")}
+                self._invoke_error_callback(error_callback, error_msg)
+                self.katrain.log(
+                    f"Query rejected: {self._pending_query_count} pending (limit: {MAX_PENDING_QUERIES})",
+                    OUTPUT_ERROR
+                )
+                return False
+            self._pending_query_count += 1
+
+        # Queue the query (decrement on completion/error in _analysis_read_thread)
+        try:
+            self.write_queue.put((query, callback, error_callback, next_move, node))
+            return True
+        except Exception as e:
+            # Queue insertion failed (should not happen, but safety net)
+            with self._pending_query_lock:
+                self._pending_query_count = max(0, self._pending_query_count - 1)
+            self.katrain.log(f"Failed to queue query: {e}", OUTPUT_ERROR)
+            error_msg = {"error": f"Queue error: {e}", "id": query.get("id", "unknown")}
+            self._invoke_error_callback(error_callback, error_msg)
+            return False
 
     def request_analysis(
         self,

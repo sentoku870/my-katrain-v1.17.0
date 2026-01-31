@@ -116,6 +116,11 @@ def create_on_start_callback(
             ctx.controls.set_status(i18n._("mykatrain:batch:error_no_engine"), STATUS_ERROR)
             return
 
+        # Check engine is alive (Phase 95B)
+        if not engine.check_alive():
+            ctx.controls.set_status(i18n._("mykatrain:batch:error_engine_dead"), STATUS_ERROR)
+            return
+
         # Start
         is_running[0] = True
         cancel_flag[0] = False

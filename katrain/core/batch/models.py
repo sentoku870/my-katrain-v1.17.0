@@ -50,6 +50,10 @@ class BatchResult:
         curator_games_scored: Number of games scored for curator ranking (Phase 64)
         curator_guides_generated: Number of replay guides generated (Phase 64)
         curator_errors: List of curator-related error messages (Phase 64)
+        aborted: Whether batch was aborted due to circuit breaker (Phase 95C)
+        abort_reason: Reason for abort if aborted (Phase 95C)
+        engine_failure_count: Number of engine-related failures (timeout, dead) (Phase 95C)
+        file_error_count: Number of file-related errors (SGF parse, I/O) (Phase 95C)
     """
 
     success_count: int = 0
@@ -71,3 +75,8 @@ class BatchResult:
     curator_games_scored: int = 0
     curator_guides_generated: int = 0
     curator_errors: List[str] = field(default_factory=list)
+    # Circuit breaker fields (Phase 95C)
+    aborted: bool = False
+    abort_reason: Optional[str] = None
+    engine_failure_count: int = 0
+    file_error_count: int = 0

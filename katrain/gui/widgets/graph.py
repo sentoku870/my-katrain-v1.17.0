@@ -27,13 +27,18 @@ class Graph(Widget):
         self.bind(pos=self.update_graph, size=self.update_graph)
         self.redraw_trigger = Clock.create_trigger(self.update_graph, 0.1)
 
-    def initialize_from_game(self, root):
-        self.nodes = [root]
-        node = root
-        while node.children:
-            node = node.ordered_children[0]
-            self.nodes.append(node)
-        self.highlighted_index = 0
+    def set_nodes_from_list(self, node_list):
+        """Set nodes from a pre-built node list.
+
+        Thread-safe: acquires _lock before modifying state.
+        Must be called from Kivy main thread.
+
+        Args:
+            node_list: List of GameNode references (snapshot at call time)
+        """
+        with self._lock:
+            self.nodes = node_list
+            self.highlighted_index = 0
         self.redraw_trigger()
 
     def update_graph(self, *args):

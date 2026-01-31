@@ -156,6 +156,9 @@ msgstr "Please select a valid input directory"
 msgid "mykatrain:batch:error_no_engine"
 msgstr "KataGo engine is not running"
 
+msgid "mykatrain:batch:error_engine_dead"
+msgstr "Engine is not responding. Please check settings."
+
 msgid "mykatrain:batch:player_filter"
 msgstr "Player Filter:"
 

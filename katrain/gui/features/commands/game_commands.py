@@ -7,6 +7,8 @@ The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureCont
 
 from typing import TYPE_CHECKING, Optional, Union
 
+from kivy.clock import Clock
+
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
@@ -83,5 +85,14 @@ def do_new_game(
             player_info.player_type = PLAYER_HUMAN
             player_info.player_subtype = PLAYING_NORMAL
         ctx.update_player(bw, player_type=player_info.player_type, player_subtype=player_info.player_subtype)
-    ctx.controls.graph.initialize_from_game(ctx.game.root)
+    # Build node list snapshot under game lock, then schedule UI update on main thread
+    with ctx.game._lock:
+        node_list = [ctx.game.root]
+        node = ctx.game.root
+        while node.children:
+            node = node.ordered_children[0]
+            node_list.append(node)
+    # Schedule graph update on main thread (this function may run in background thread)
+    Clock.schedule_once(lambda _dt: ctx.controls.graph.set_nodes_from_list(node_list), 0)
+    # update_state is thread-safe: uses message_queue internally
     ctx.update_state(redraw_board=True)

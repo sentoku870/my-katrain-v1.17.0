@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 from katrain.core.batch.models import BatchResult, WriteError
+from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
 from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
@@ -41,6 +42,46 @@ if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.leela.engine import LeelaEngine
+
+
+class EngineFailureTracker:
+    """Track consecutive engine-related failures for circuit breaker.
+
+    Engine failures: TIMEOUT, ENGINE_DEAD, EngineError exception
+    File failures: FILE_ERROR (do not count toward abort)
+    """
+
+    def __init__(self, max_failures: int = 3):
+        self.consecutive_engine_failures = 0
+        self.max_failures = max_failures
+        self.last_failure_file: Optional[str] = None
+        self.last_failure_reason: Optional[str] = None
+
+    def record_engine_failure(self, file_path: str, reason: str) -> bool:
+        """Record engine failure. Returns True if should abort."""
+        self.consecutive_engine_failures += 1
+        self.last_failure_file = file_path
+        self.last_failure_reason = reason
+        return self.consecutive_engine_failures >= self.max_failures
+
+    def record_file_error(self) -> None:
+        """Record file error. Does NOT count toward abort, does NOT reset counter."""
+        pass
+
+    def record_success(self) -> None:
+        """Record success. Resets consecutive failure count."""
+        self.consecutive_engine_failures = 0
+        self.last_failure_file = None
+        self.last_failure_reason = None
+
+    def should_abort(self) -> bool:
+        return self.consecutive_engine_failures >= self.max_failures
+
+    def get_abort_message(self) -> str:
+        return (
+            f"Batch aborted: {self.consecutive_engine_failures} consecutive engine failures. "
+            f"Last: {self.last_failure_file} ({self.last_failure_reason})"
+        )
 
 
 def run_batch(
@@ -215,6 +256,9 @@ def run_batch(
     # Phase 53: Map rel_path -> full karte file path for summary links
     karte_path_map: Dict[str, str] = {}
 
+    # Phase 95C: Circuit breaker for consecutive engine failures
+    tracker = EngineFailureTracker(max_failures=3)
+
     # Process each file
     for i, (abs_path, rel_path) in enumerate(sgf_files):
         # Check for cancellation
@@ -260,75 +304,114 @@ def run_batch(
                 log(f"  Variable visits: {visits} -> {effective_visits}")
 
         # Select analysis function based on engine type
+        # Phase 95C: Wrap in try/except for circuit breaker
         leela_snapshot = None
-        if analysis_engine == "leela" and leela_engine is not None:
-            # Phase 36 MVP: Leela batch always uses QUICK (fast_visits)
-            # UI visits_input is ignored for Leela (spec: Batch Leela visits)
-            from katrain.core.analysis.models import AnalysisStrength, resolve_visits
-            leela_config = katrain.config("leela") or {}
-            effective_visits = resolve_visits(AnalysisStrength.QUICK, leela_config, "leela")
-            log(f"  Leela visits: {effective_visits} (from leela.fast_visits)")
+        game = None
+        success = False
+        try:
+            if analysis_engine == "leela" and leela_engine is not None:
+                # Phase 36 MVP: Leela batch always uses QUICK (fast_visits)
+                # UI visits_input is ignored for Leela (spec: Batch Leela visits)
+                from katrain.core.analysis.models import AnalysisStrength, resolve_visits
+                leela_config = katrain.config("leela") or {}
+                effective_visits = resolve_visits(AnalysisStrength.QUICK, leela_config, "leela")
+                log(f"  Leela visits: {effective_visits} (from leela.fast_visits)")
 
-            # Leela Zero analysis
-            game_result = analyze_single_file_leela(
-                katrain=katrain,
-                leela_engine=leela_engine,
-                sgf_path=abs_path,
-                output_path=sgf_output_path,
-                visits=effective_visits,
-                file_timeout=timeout,
-                per_move_timeout=per_move_timeout,
-                cancel_flag=cancel_flag,
-                log_cb=log_cb,
-                save_sgf=save_analyzed_sgf,
-                return_game=True,  # Always return game for Leela (need snapshot)
-            )
-            # Leela returns (Game, EvalSnapshot) tuple per contract (analysis.py:207-211)
-            if isinstance(game_result, tuple) and len(game_result) == 2:
-                game, leela_snapshot = game_result
-                # Phase 87.6: Success requires both game and valid analysis data
-                if game is None:
-                    success = False
-                    # fail_result() was called - detailed error already logged in analysis.py
-                    # Log file identification here for consistency
-                    log(f"  FAILED: Analysis error for {rel_path}")
-                elif leela_snapshot is None or len(leela_snapshot.moves) == 0:
-                    success = False
-                    # Could be: empty SGF (0 moves) or all moves failed
-                    # Detailed reason already logged by analysis.py
-                    log(f"  FAILED: No valid analysis data for {rel_path}")
+                # Leela Zero analysis
+                game_result = analyze_single_file_leela(
+                    katrain=katrain,
+                    leela_engine=leela_engine,
+                    sgf_path=abs_path,
+                    output_path=sgf_output_path,
+                    visits=effective_visits,
+                    file_timeout=timeout,
+                    per_move_timeout=per_move_timeout,
+                    cancel_flag=cancel_flag,
+                    log_cb=log_cb,
+                    save_sgf=save_analyzed_sgf,
+                    return_game=True,  # Always return game for Leela (need snapshot)
+                )
+                # Leela returns (Game, EvalSnapshot) tuple per contract (analysis.py:207-211)
+                if isinstance(game_result, tuple) and len(game_result) == 2:
+                    game, leela_snapshot = game_result
+                    # Phase 87.6: Success requires both game and valid analysis data
+                    if game is None:
+                        success = False
+                        # fail_result() was called - detailed error already logged in analysis.py
+                        # Log file identification here for consistency
+                        log(f"  FAILED: Analysis error for {rel_path}")
+                    elif leela_snapshot is None or len(leela_snapshot.moves) == 0:
+                        success = False
+                        # Could be: empty SGF (0 moves) or all moves failed
+                        # Detailed reason already logged by analysis.py
+                        log(f"  FAILED: No valid analysis data for {rel_path}")
+                    else:
+                        success = True
                 else:
-                    success = True
+                    # Defensive: unexpected return type from analyze_single_file_leela
+                    game = None
+                    leela_snapshot = None
+                    success = False
+                    log(f"  ERROR: Unexpected return type from Leela analysis for {rel_path}: {type(game_result)}")
             else:
-                # Defensive: unexpected return type from analyze_single_file_leela
-                game = None
-                leela_snapshot = None
-                success = False
-                log(f"  ERROR: Unexpected return type from Leela analysis for {rel_path}: {type(game_result)}")
-        else:
-            # KataGo analysis (default)
-            game_result = analyze_single_file(
-                katrain=katrain,
-                engine=engine,
-                sgf_path=abs_path,
-                output_path=sgf_output_path,
-                visits=effective_visits,
-                timeout=timeout,
-                cancel_flag=cancel_flag,
-                log_cb=log_cb,
-                save_sgf=save_analyzed_sgf,
-                return_game=need_game,
-            )
+                # KataGo analysis (default)
+                game_result = analyze_single_file(
+                    katrain=katrain,
+                    engine=engine,
+                    sgf_path=abs_path,
+                    output_path=sgf_output_path,
+                    visits=effective_visits,
+                    timeout=timeout,
+                    cancel_flag=cancel_flag,
+                    log_cb=log_cb,
+                    save_sgf=save_analyzed_sgf,
+                    return_game=need_game,
+                )
 
-            # Handle result based on return type
-            if need_game:
-                game = game_result
-                success = game is not None
-            else:
-                success = game_result
-                game = None
+                # Handle result based on return type
+                if need_game:
+                    game = game_result
+                    success = game is not None
+                else:
+                    success = game_result
+                    game = None
 
+        except AnalysisTimeoutError as e:
+            # Phase 95C: Timeout = engine failure
+            result.engine_failure_count += 1
+            log(f"  TIMEOUT ({rel_path}): {e}")
+            if tracker.record_engine_failure(rel_path, str(e)):
+                log(tracker.get_abort_message())
+                result.aborted = True
+                result.abort_reason = tracker.get_abort_message()
+                break
+
+        except EngineError as e:
+            # Phase 95C: Other engine errors
+            result.engine_failure_count += 1
+            log(f"  ENGINE ERROR ({rel_path}): {e}")
+            if tracker.record_engine_failure(rel_path, str(e)):
+                log(tracker.get_abort_message())
+                result.aborted = True
+                result.abort_reason = tracker.get_abort_message()
+                break
+
+        except (SGFError, OSError, UnicodeDecodeError) as e:
+            # File-related errors - do not count toward circuit breaker
+            result.file_error_count += 1
+            tracker.record_file_error()
+            log(f"  FILE ERROR ({rel_path}): {e}")
+
+        except Exception as e:
+            # Unexpected error - treat as file error (safer)
+            result.file_error_count += 1
+            tracker.record_file_error()
+            log(f"  UNEXPECTED ({rel_path}): {e}")
+            log(f"    {traceback.format_exc()}")
+
+        # Track success for circuit breaker
         if success:
+            tracker.record_success()
             result.success_count += 1
 
             # Record effective visits used (only numeric, for variable visits stats)
