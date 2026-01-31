@@ -14,6 +14,12 @@ Snapshot Semantics:
 - notify() takes a snapshot of the listener list before notification
 - Listeners unsubscribed during notify() still receive the current event
 - Next notify() will not call unsubscribed listeners
+
+Logger Injection (Phase 104):
+- Logger is optional: Callable[[str], None] or None
+- Caller binds the log level via closure (core layer doesn't know OUTPUT_DEBUG etc.)
+- Logger is called once per error with combined message + traceback
+- If logger is None or fails, fallback to stderr
 """
 import sys
 import threading
@@ -21,6 +27,9 @@ import traceback
 from typing import Callable, Optional
 
 from katrain.core.state.events import Event, EventType
+
+# Logger type: level is bound by caller via closure (core layer is level-agnostic)
+LoggerType = Callable[[str], None]
 
 
 class StateNotifier:
@@ -33,12 +42,25 @@ class StateNotifier:
         >>> notifier.subscribe(EventType.GAME_CHANGED, on_game_changed)
         >>> notifier.notify(Event.create(EventType.GAME_CHANGED, {"id": 1}))
         Game changed: {'id': 1}
+
+    Logger Injection Example:
+        >>> def my_logger(msg: str) -> None:
+        ...     print(f"[LOG] {msg}")
+        >>> notifier = StateNotifier(logger=my_logger)
     """
 
-    def __init__(self) -> None:
-        """Initialize the notifier with empty subscriber lists."""
+    def __init__(self, logger: Optional[LoggerType] = None) -> None:
+        """Initialize the notifier with empty subscriber lists.
+
+        Args:
+            logger: Optional logger function. If provided, called on callback errors.
+                   Signature: Callable[[str], None]. The log level should be
+                   bound by the caller via closure (e.g., lambda msg: log(msg, DEBUG)).
+                   If None, errors are printed to stderr.
+        """
         self._subscribers: dict[EventType, list[Callable[[Event], None]]] = {}
         self._lock = threading.RLock()
+        self._logger = logger
 
     def subscribe(
         self, event_type: EventType, callback: Callable[[Event], None]
@@ -96,14 +118,43 @@ class StateNotifier:
                 callback(event)
             except Exception as e:
                 # Log error but continue with other callbacks
-                # Phase 104 will inject a proper logger
-                cb_name = getattr(callback, "__name__", repr(callback))
-                print(
-                    f"[StateNotifier] {event.event_type.value}: "
-                    f"{cb_name} failed: {type(e).__name__}: {e!r}",
-                    file=sys.stderr,
-                )
-                traceback.print_exc(file=sys.stderr)
+                self._log_error(event, callback, e)
+
+    def _log_error(
+        self, event: Event, callback: Callable[[Event], None], e: Exception
+    ) -> None:
+        """Log error when a callback fails (logger injection support, exception-safe).
+
+        The logger is called once with a combined message containing:
+        - Callback name, event type, and exception details
+        - Full traceback
+
+        This single-call approach improves test determinism.
+
+        If logger is None or fails, falls back to stderr.
+
+        Args:
+            event: The event that was being notified
+            callback: The callback that failed
+            e: The exception that was raised
+        """
+        cb_name = getattr(callback, "__name__", repr(callback))
+        msg = (
+            f"[StateNotifier] {event.event_type.value}: "
+            f"{cb_name} failed: {type(e).__name__}: {e!r}"
+        )
+        tb = traceback.format_exc()
+        full_msg = f"{msg}\n{tb}"
+
+        if self._logger:
+            try:
+                self._logger(full_msg)
+            except Exception:
+                # Logger failed, fallback to stderr
+                print(full_msg, file=sys.stderr)
+        else:
+            # No logger configured, use stderr
+            print(full_msg, file=sys.stderr)
 
     def clear(self, event_type: Optional[EventType] = None) -> None:
         """Clear subscribers (primarily for testing).

@@ -192,3 +192,64 @@ class TestTypedConfigMultipleCalls:
         # Note: frozen dataclassは同じ値でも異なるインスタンス
         # (eq=Trueなのでcfg1 == cfg2はTrue)
         assert cfg1 == cfg2
+
+
+class TestKaTrainBaseStateNotifier:
+    """KaTrainBaseのStateNotifier統合テスト（Phase 104追加）
+
+    Note: 全テストは振る舞いベース検証。notifier._logger等の
+    プライベート属性への直接アクセスは避ける。
+    """
+
+    def test_state_notifier_initialized(self, katrain_base):
+        """KaTrainBaseでStateNotifierが初期化されること"""
+        from katrain.core.state import StateNotifier
+
+        # プロパティ経由でアクセス（_state_notifierは避ける）
+        notifier = katrain_base.state_notifier
+        assert isinstance(notifier, StateNotifier)
+
+    def test_state_notifier_property_returns_same_instance(self, katrain_base):
+        """state_notifierプロパティは同一インスタンスを返す"""
+        notifier1 = katrain_base.state_notifier
+        notifier2 = katrain_base.state_notifier
+        assert notifier1 is notifier2
+
+    def test_state_notifier_logger_integration(self, katrain_base, monkeypatch):
+        """StateNotifierのロガーがKaTrainBase.logに接続されていること
+
+        振る舞いベース検証: 悪いコールバックを登録し、notify()を呼び、
+        KaTrainBase.logが呼ばれることを確認（内部実装に依存しない）
+
+        Note: original_logは呼ばない（副作用・ノイズ回避）。
+        """
+        import threading
+
+        from katrain.core.state import Event, EventType
+
+        # キャプチャのみ（original_logは呼ばない）
+        captured_logs: list[tuple[str, int]] = []
+        capture_lock = threading.Lock()
+
+        def capturing_log(message, level=1):
+            with capture_lock:
+                captured_logs.append((message, level))
+            # original_log は呼ばない（副作用回避）
+
+        monkeypatch.setattr(katrain_base, "log", capturing_log)
+
+        # 悪いコールバックを登録
+        def bad_callback(event: Event) -> None:
+            raise ValueError("intentional error for test")
+
+        katrain_base.state_notifier.subscribe(EventType.GAME_CHANGED, bad_callback)
+        katrain_base.state_notifier.notify(Event.create(EventType.GAME_CHANGED))
+
+        # ロガーが呼ばれたことを確認（エラーメッセージを検証）
+        with capture_lock:
+            log_snapshot = list(captured_logs)
+
+        assert len(log_snapshot) == 1  # 結合メッセージで1回のみ
+        msg, _ = log_snapshot[0]
+        assert "bad_callback failed" in msg
+        assert "ValueError" in msg
