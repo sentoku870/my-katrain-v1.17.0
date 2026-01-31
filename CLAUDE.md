@@ -17,9 +17,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-106A（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP）
-- **計画中**: Phase 107–112（Architecture Refactoring & Code Health）
-- **次**: Phase 107から順次実装、または優先度に応じて並行着手（106Bは後回し可）
+- **完了**: Phase 1-107（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe）
+- **計画中**: Phase 108–112（Architecture Refactoring & Code Health）
+- **次**: Phase 108から順次実装、または優先度に応じて並行着手（106Bは後回し可）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -425,6 +425,7 @@ docs/
 詳細な変更履歴は [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md) を参照してください。
 
 **最新の変更（2026-02-01）:**
+- Phase 107 完了（KaTrainGui Subscribe: 3イベント購読（GAME_CHANGED, ANALYSIS_COMPLETE, CONFIG_UPDATED）、coalescing付きUI更新スケジュール、スレッドセーフロック、18テスト追加）
 - Phase 106A 完了（UI Subscribe MVP: ControlsPanelにANALYSIS_COMPLETE購読、on_katrain()でsubscribe/unsubscribe管理、Clock.schedule_onceでメインスレッドディスパッチ、11テスト追加）
 - Phase 105 完了（Notifier発火ポイント追加: notify_helpers.py新設、CONFIG_UPDATED/ANALYSIS_COMPLETE/GAME_CHANGED発火、integrationマーカー登録、15テスト追加）
 - Phase 104 完了（Notifier統合: StateNotifierにロガー注入、KaTrainBaseにstate_notifierプロパティ、FeatureContext Protocol更新、7テスト追加）
@@ -442,4 +443,4 @@ docs/
 - Phase 92 完了（Beginner Hints Extension: MeaningTagマッピング6カテゴリ、信頼度フィルタ、盤上ハイライト、i18n 30キー、CI修正）
 - Phase 91 完了（Beginner Hints MVP: 4カテゴリ検出、モードゲーティング、ノードキャッシュ）
 - Phase 90 完了（Error Recovery & Diagnostics: 復旧ボタン4つ、LLM用コピー、diagnostics自動ダンプ）
-- テスト総数: 3767件
+- テスト総数: 3785件
