@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 96完了）
+> 最終更新: 2026-01-31（Phase 97完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -312,7 +312,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、10テスト追加 | ✅ Done |
-| 97 | Active Review 分離（Controller化） | `gui/managers/active_review_controller.py`、ActiveReviewController、委譲 | 📋 Planned |
+| 97 | Active Review 分離（Controller化） | `gui/managers/active_review_controller.py`、ActiveReviewController、委譲、19テスト追加 | ✅ Done |
 | 98 | Quiz 分離（Controller化） | `features/quiz/controller.py`、モード遷移の統合テスト | 📋 Planned |
 | 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | 📋 Planned |
 | 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | 📋 Planned |
