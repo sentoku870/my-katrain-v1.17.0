@@ -189,7 +189,11 @@ def create_multi_game_stats_list(num_games: int = 3) -> list:
 # ---------------------------------------------------------------------------
 
 def create_mock_katrain_gui():
-    """Create a mock KaTrainGui instance for testing."""
+    """Create a mock KaTrainGui instance for testing.
+
+    Note (Phase 96): KaTrainGui._build_summary_from_stats now delegates to
+    SummaryManager.build_summary_from_stats, so we need to set up _summary_manager.
+    """
     mock_gui = MagicMock()
 
     # Mock config method
@@ -211,10 +215,21 @@ def create_mock_katrain_gui():
 
     mock_gui.config = mock_config
 
+    # Import actual functions for testing
+    from katrain.gui.features.summary_formatter import build_summary_from_stats
+    from katrain.gui.features.summary_aggregator import collect_rank_info
+
+    # Set up _summary_manager mock with actual function delegates (Phase 96)
+    mock_summary_manager = MagicMock()
+    mock_summary_manager.build_summary_from_stats = lambda stats_list, focus_player=None: \
+        build_summary_from_stats(stats_list, focus_player, mock_config)
+    mock_summary_manager.collect_rank_info = collect_rank_info
+    mock_gui._summary_manager = mock_summary_manager
+
     # Import the actual method for testing
     from katrain.__main__ import KaTrainGui
 
-    # Bind the actual method to the mock
+    # Bind the actual method to the mock (now uses _summary_manager)
     mock_gui._build_summary_from_stats = lambda stats_list, focus_player=None: \
         KaTrainGui._build_summary_from_stats(mock_gui, stats_list, focus_player)
     mock_gui._collect_rank_info = lambda stats_list, focus_player: \
