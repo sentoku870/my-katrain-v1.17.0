@@ -152,6 +152,21 @@ class TestMergeSemantics:
         assert isinstance(config["engine"], dict)
         assert config["engine"]["max_visits"] == 1000
 
+    def test_leela_preserves_unknown_keys(self):
+        """leelaセクションでも未知キーが保持される（AC6 - Phase 102）"""
+        config = {
+            "leela": {
+                "enabled": False,
+                "resign_hint_dummy": "should_be_preserved",  # 未知キー
+            }
+        }
+        writer = TypedConfigWriter(config, lambda s: None)
+
+        writer.update_leela(enabled=True)
+
+        assert config["leela"]["enabled"] is True
+        assert config["leela"]["resign_hint_dummy"] == "should_be_preserved"
+
 
 # =============================================================================
 # Field Validation (AC4)
@@ -431,3 +446,49 @@ class TestIntegrationPattern:
         writer.update_trainer(low_visits=50)
 
         assert received_sections == ["engine", "leela", "trainer"]
+
+
+# =============================================================================
+# Value Normalization (Phase 102 AC7)
+# =============================================================================
+
+
+class TestValueNormalization:
+    """値の正規化テスト（AC7）
+
+    設計上の動作:
+    - 無効な値（None, 不正な型）は from_dict() でデフォルトに正規化される
+    - Optional[str]フィールド（exe_path等）のNoneはそのまま永続化される
+    - 呼び出し側はNoneを渡さない方が望ましい（意図を明確にするため）
+    """
+
+    def test_none_for_optional_str_is_persisted(self):
+        """Optional[str]フィールドのNoneはそのまま永続化される（by design）"""
+        config = {"leela": {"exe_path": "/existing/path"}}
+        writer = TypedConfigWriter(config, lambda s: None)
+
+        writer.update_leela(exe_path=None)
+
+        # exe_pathはOptional[str]なのでNoneがそのまま永続化される
+        assert config["leela"]["exe_path"] is None
+
+    def test_none_for_int_field_uses_default(self, leela_defaults):
+        """intフィールドのNoneはデフォルト値に正規化される（by design）"""
+        config = {"leela": {"max_visits": 2000}}
+        writer = TypedConfigWriter(config, lambda s: None)
+
+        writer.update_leela(max_visits=None)
+
+        # NoneはLeelaConfig.from_dict()でデフォルト値に正規化
+        assert config["leela"]["max_visits"] == leela_defaults.max_visits
+
+    def test_invalid_string_for_int_uses_default(self, leela_defaults):
+        """intフィールドへの無効文字列はデフォルト値に正規化される（by design）"""
+        config = {"leela": {"max_visits": 2000}}
+        writer = TypedConfigWriter(config, lambda s: None)
+
+        # 無効な文字列を渡す
+        writer.update_leela(max_visits="invalid")
+
+        # safe_int("invalid", default)でデフォルト値に正規化（例外は発生しない）
+        assert config["leela"]["max_visits"] == leela_defaults.max_visits
