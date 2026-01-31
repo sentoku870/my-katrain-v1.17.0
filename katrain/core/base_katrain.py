@@ -15,6 +15,7 @@ from katrain.common.typed_config import (
     TypedConfigWriter,
 )
 from katrain.core.ai import ai_rank_estimation
+from katrain.core.state import StateNotifier
 from katrain.core.log_buffer import LogBuffer
 from katrain.core.constants import (
     PLAYER_HUMAN,
@@ -135,6 +136,17 @@ class KaTrainBase:
         #            Config.set("kivy", "log_level", "trace")
         self.players_info = {"B": Player("B"), "W": Player("W")}
         self.reset_players()
+
+        # StateNotifier (Phase 104): Closure binds log level (OUTPUT_DEBUG)
+        # core/state/ doesn't depend on log level constants (Kivy-independent)
+        self._state_notifier = StateNotifier(
+            logger=lambda msg: self.log(msg, OUTPUT_DEBUG)
+        )
+
+    @property
+    def state_notifier(self) -> StateNotifier:
+        """State change notification system (Phase 104)."""
+        return self._state_notifier
 
     def log(self, message, level=OUTPUT_INFO):
         self._log_buffer.append(message, level)

@@ -13,6 +13,7 @@
 # Phase 90で拡張: エラー復旧に必要なメソッドを追加。
 # Phase 99で拡張: 型付き設定アクセサを追加。
 # Phase 101で拡張: 型付き設定更新APIを追加。
+# Phase 104で拡張: state_notifierプロパティを追加。
 # Python 3.9互換: Optional/Dict/List構文を使用。
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
@@ -20,6 +21,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
 if TYPE_CHECKING:
     from katrain.common.typed_config import EngineConfig, LeelaConfig, TrainerConfig
     from katrain.core.game import Game
+    from katrain.core.state import StateNotifier
     from katrain.gui.controlspanel import ControlsPanel
 
 
@@ -51,6 +53,7 @@ class FeatureContext(Protocol):
         update_engine_config: 型付きエンジン設定を更新（Phase 101）
         update_trainer_config: 型付きトレーナー設定を更新（Phase 101）
         update_leela_config: 型付きLeela設定を更新（Phase 101）
+        state_notifier: 状態変更通知システム（Phase 104）
 
     Implementation Notes:
         KaTrainGui と BaseKaTrain がこの Protocol を満たす。
@@ -194,5 +197,14 @@ class FeatureContext(Protocol):
 
         Raises:
             UnknownFieldError: 存在しないフィールド名が指定された場合
+        """
+        ...
+
+    @property
+    def state_notifier(self) -> "StateNotifier":
+        """状態変更通知システム（Phase 104追加）。
+
+        Returns:
+            StateNotifierインスタンス
         """
         ...

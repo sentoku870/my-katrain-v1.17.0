@@ -430,3 +430,75 @@ class TestKivyIsolation:
             f"stdout={result.stdout}\n"
             f"stderr={result.stderr}"
         )
+
+
+class TestStateNotifierLogger:
+    """Logger injection tests (Phase 104)."""
+
+    def test_logger_injection_called_on_error(self) -> None:
+        """Logger is called once with combined msg+traceback on callback error."""
+        logs: list[str] = []
+        notifier = StateNotifier(logger=logs.append)
+
+        def bad_callback(event: Event) -> None:
+            raise ValueError("intentional")
+
+        notifier.subscribe(EventType.GAME_CHANGED, bad_callback)
+        notifier.notify(Event.create(EventType.GAME_CHANGED))
+
+        # Logger called exactly once (combined message)
+        assert len(logs) == 1
+        combined_msg = logs[0]
+        assert "bad_callback failed" in combined_msg
+        assert "ValueError" in combined_msg
+        assert "Traceback" in combined_msg
+
+    def test_logger_none_fallback_to_stderr(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
+        """Logger=None falls back to stderr."""
+        notifier = StateNotifier(logger=None)
+
+        def bad_callback(event: Event) -> None:
+            raise RuntimeError("test error")
+
+        notifier.subscribe(EventType.GAME_CHANGED, bad_callback)
+        notifier.notify(Event.create(EventType.GAME_CHANGED))
+
+        captured = capsys.readouterr()
+        assert "bad_callback failed" in captured.err
+        assert "RuntimeError" in captured.err
+        assert "Traceback" in captured.err
+
+    def test_logger_optional_parameter_backward_compatible(self) -> None:
+        """Logger parameter is optional (backward compatible)."""
+        notifier = StateNotifier()  # No logger argument
+        assert notifier is not None
+
+        # Normal operation still works
+        received: list[Event] = []
+        notifier.subscribe(EventType.GAME_CHANGED, received.append)
+        notifier.notify(Event.create(EventType.GAME_CHANGED))
+        assert len(received) == 1
+
+    def test_logger_failure_falls_back_to_stderr(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
+        """If logger raises, falls back to stderr (exception-safe)."""
+
+        def crashing_logger(msg: str) -> None:
+            raise RuntimeError("logger crashed")
+
+        notifier = StateNotifier(logger=crashing_logger)
+
+        def bad_callback(event: Event) -> None:
+            raise ValueError("callback error")
+
+        notifier.subscribe(EventType.GAME_CHANGED, bad_callback)
+        # notify() should not raise (exception-safe)
+        notifier.notify(Event.create(EventType.GAME_CHANGED))
+
+        # Fallback to stderr
+        captured = capsys.readouterr()
+        assert "bad_callback failed" in captured.err
+        assert "ValueError" in captured.err
