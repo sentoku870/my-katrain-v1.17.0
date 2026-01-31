@@ -1,9 +1,42 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-91 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-101 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-31: Phase 101 完了（TypedConfigWriter更新API）
+  - 型付き設定更新APIを実装し、バリデーションと自動保存の基盤を構築
+  - 新規ファイル:
+    - `katrain/common/typed_config/writer.py`: TypedConfigWriter, UnknownFieldError, _to_json_safe（~250行）
+    - `tests/test_typed_config_writer.py`: TypedConfigWriterテスト（29件）
+  - 変更ファイル:
+    - `katrain/common/typed_config/__init__.py`: エクスポート追加
+    - `katrain/core/base_katrain.py`: update_*_config()メソッド3種追加、TypedConfigWriter初期化
+    - `katrain/gui/features/context.py`: FeatureContext Protocol更新（update_*_config追加）
+    - `katrain/core/batch/analysis.py`: _DummyEngine.has_query_capacity()追加（CI修正）
+    - `katrain/gui/features/quiz_session.py`: Kivyインポート遅延読み込み（CI修正）
+    - `katrain/gui/features/quiz_popup.py`: Kivyインポート遅延読み込み（CI修正）
+  - 追加API:
+    - `TypedConfigWriter`: MERGEパターンで既存値保持＋指定キーのみ更新
+    - `UnknownFieldError`: 存在しないフィールド名のエラー
+    - `update_engine_config(**kwargs)`: engineセクションの部分更新
+    - `update_trainer_config(**kwargs)`: trainerセクションの部分更新
+    - `update_leela_config(**kwargs)`: leelaセクションの部分更新
+    - `_to_json_safe()`: tuple→list, Path→str等のJSON変換
+  - 技術仕様:
+    - MERGEパターン: 既存値保持＋指定キーのみ更新＋未知キー保持
+    - フィールド検証: dataclass.fields()で有効フィールドを検証
+    - JSON-safe永続化: tuple→list, Path→str変換で確実にJSONシリアライズ可能
+    - 警告ポリシー: 無効値のデフォルトフォールバック時にWARNINGログ
+    - dataclass要件: is_dataclass()でランタイムチェック
+  - CI修正:
+    - exit code 102問題を解決（Kivyインポートの遅延読み込みパターン導入）
+    - _DummyEngineにhas_query_capacity()メソッド追加
+  - GitHub設定:
+    - mainブランチ保護ルール設定（CI必須化: test 3.9/3.12/3.13）
+  - テスト: 3694件パス（+29件）
+  - PRs: #242
 
 - 2026-01-30: Phase 91 完了（Beginner Hints - 初心者向けヒント）
   - 初心者の自滅を防ぐヒントシステムを実装

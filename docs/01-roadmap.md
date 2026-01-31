@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 98完了）
+> 最終更新: 2026-01-31（Phase 101完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -347,7 +347,9 @@ KaTrainBase/FeatureContext: `get_engine_config()`, `get_trainer_config()`, `get_
 settings_popup, trainer/top_moves_show*は後続dict依存のためスコープ外。8テスト追加。（2026-01-31完了）
 
 **Phase 101**: 制御された更新API（`update_<section>()`）を追加し、バリデーションと自動保存の基盤を作る。
-「保存漏れ」「意図しない変更」を構造的に防ぐ。
+「保存漏れ」「意図しない変更」を構造的に防ぐ。TypedConfigWriter実装、UnknownFieldErrorによるフィールド検証、
+MERGEパターン（既存値保持＋指定キーのみ更新）、JSON-safe永続化。CI修正（Kivyインポート遅延読み込み）。
+ブランチ保護ルール設定（CI必須化）。29テスト追加。（2026-01-31完了）
 
 **Phase 102**: 更新系も含めて主要機能を移行し、辞書直参照を封じ込める。
 `config()`は互換維持しつつ、内部では安全な経路へ寄せる。
