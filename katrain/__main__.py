@@ -141,6 +141,7 @@ from katrain.gui.features.karte_export import determine_user_color, do_export_ka
 from katrain.gui.features.package_export_ui import do_export_package
 from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
 from katrain.gui.managers.quiz_manager import QuizManager
+from katrain.core.state import EventType  # Phase 107
 from katrain.gui.features.batch_core import (
     collect_batch_options,
     create_log_callback,
@@ -322,6 +323,13 @@ class KaTrainGui(Screen, KaTrainBase):
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events = []
 
+        # Phase 107: StateNotifier購読（スレッドセーフ）
+        self._ui_update_lock = threading.Lock()  # フラグ保護用ロック
+        self._pending_ui_update = None  # Clock event for coalescing
+        self._pending_redraw_board = False  # Accumulated redraw flag
+        self._state_subscriptions_setup = False
+        self._setup_state_subscriptions()
+
     def _load_export_settings(self) -> dict:
         """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
         return self._config_manager.load_export_settings()
@@ -333,6 +341,72 @@ class KaTrainGui(Screen, KaTrainBase):
     def _save_batch_options(self, options: dict):
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
+
+    # ========== Phase 107: StateNotifier購読ハンドラ ==========
+
+    def _setup_state_subscriptions(self):
+        """StateNotifier購読を設定（重複登録防止付き）"""
+        if self._state_subscriptions_setup:
+            return
+        self._state_subscriptions_setup = True
+
+        self.state_notifier.subscribe(EventType.GAME_CHANGED, self._on_game_changed)
+        self.state_notifier.subscribe(EventType.ANALYSIS_COMPLETE, self._on_analysis_complete)
+        self.state_notifier.subscribe(EventType.CONFIG_UPDATED, self._on_config_updated)
+
+    def _schedule_ui_update(self, redraw_board: bool = False) -> None:
+        """UI更新をスケジュール（coalescing付き、スレッドセーフ）
+
+        同一フレーム内の複数イベントを1回のupdate_gui()呼び出しに集約。
+        redraw_board=Trueが1回でもあれば、最終的にredraw_board=Trueで呼び出す。
+
+        Note: ANALYSIS_COMPLETEはバックグラウンドスレッドから呼ばれるため、
+        _ui_update_lockでフラグアクセスを保護する。
+        """
+        with self._ui_update_lock:
+            # redraw_boardフラグを蓄積（ORで結合）
+            self._pending_redraw_board = self._pending_redraw_board or redraw_board
+
+            # 既にスケジュール済みなら何もしない
+            if self._pending_ui_update is not None:
+                return
+
+            # ロック内でスケジュール（Clock.schedule_onceはスレッドセーフ）
+            self._pending_ui_update = Clock.schedule_once(self._do_ui_update, 0)
+
+    def _do_ui_update(self, dt) -> None:
+        """UI更新コールバック（メインスレッドで実行）"""
+        # フラグ読み取りとリセットをロック内で
+        with self._ui_update_lock:
+            self._pending_ui_update = None
+            redraw = self._pending_redraw_board
+            self._pending_redraw_board = False
+
+        # 安全チェック（getattr使用でAttributeError防止）
+        game = getattr(self, "game", None)
+        if game is None:
+            return
+        current_node = getattr(game, "current_node", None)
+        if current_node is None:
+            return
+
+        try:
+            self.update_gui(current_node, redraw_board=redraw)
+        except Exception as e:
+            # コールバック例外をログ（UIスタック防止）
+            self.log(f"update_gui failed: {e}", OUTPUT_DEBUG)
+
+    def _on_game_changed(self, event) -> None:
+        """GAME_CHANGED → UI更新（redraw_board=True）"""
+        self._schedule_ui_update(redraw_board=True)
+
+    def _on_analysis_complete(self, event) -> None:
+        """ANALYSIS_COMPLETE → UI更新"""
+        self._schedule_ui_update(redraw_board=False)
+
+    def _on_config_updated(self, event) -> None:
+        """CONFIG_UPDATED → UI更新"""
+        self._schedule_ui_update(redraw_board=False)
 
     # ========== PopupManager support methods (Phase 75) ==========
 
