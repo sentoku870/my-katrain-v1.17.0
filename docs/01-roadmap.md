@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 95完了、Phase 96–112計画追加）
+> 最終更新: 2026-01-31（Phase 96完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -307,11 +307,11 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 (B) send_query安全機構（pending counter、_invoke_error_callback）、バッチ前engine check_alive。
 (C) バッチサーキットブレーカー（AnalysisTimeoutError、EngineFailureTracker、3連続失敗で中断）。30テスト追加。（2026-01-31完了）
 
-### Phase 96–112: Architecture Refactoring & Code Health 📋 Planned
+### Phase 96–112: Architecture Refactoring & Code Health
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
-| 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、最小テスト | 📋 Planned |
+| 96 | SummaryManager 抽出（Quick Win） | `gui/managers/summary_manager.py` 新設、KaTrainGuiから委譲、10テスト追加 | ✅ Done |
 | 97 | Active Review 分離（Controller化） | `features/active_review/controller.py`、ReviewController Protocol、委譲 | 📋 Planned |
 | 98 | Quiz 分離（Controller化） | `features/quiz/controller.py`、モード遷移の統合テスト | 📋 Planned |
 | 99 | ConfigStore 基盤（型付き読み取り） | frozen dataclass（engine/trainer等）、`get_<section>()` 追加、後方互換維持 | 📋 Planned |
