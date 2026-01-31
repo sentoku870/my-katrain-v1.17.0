@@ -1,9 +1,28 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-102 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-103 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-01-31: Phase 103 完了（StateNotifier基盤）
+  - 疎結合な状態変更通知システムの基盤を構築
+  - 新規ファイル:
+    - `katrain/core/state/__init__.py`: 公開API（EventType, Event, StateNotifier）
+    - `katrain/core/state/events.py`: EventType enum（3種）、Event frozen dataclass
+    - `katrain/core/state/notifier.py`: StateNotifier実装（subscribe/notify/unsubscribe）
+    - `tests/test_state_notifier.py`: 単体テスト（27件）
+  - 変更ファイル:
+    - `katrain/gui/popups.py`: ConfigPopupのengine直接代入を`update_engine_config()`に移行
+  - 技術仕様:
+    - Kivy非依存（core層配置）
+    - スレッドセーフ（RLock使用）
+    - 例外安全（1リスナー失敗が他に影響しない）
+    - Event.payload: MappingProxyTypeで浅い不変性を保証
+    - スナップショットセマンティクス: notify中のunsubscribeは次回から反映
+    - 防御的コピー: 通知中のリスナーリスト変更に安全
+  - テスト: 3725件パス（+27件）
+  - PR: #244
 
 - 2026-01-31: Phase 102 完了（update_*_config()移行）
   - engine/leela設定の呼び出し元を型付きAPIに移行

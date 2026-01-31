@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 101完了）
+> 最終更新: 2026-01-31（Phase 103完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -318,7 +318,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 100 | Config 移行(1) 主要箇所の読み取り置換 | 参照箇所を `get_<section>()` へ段階移行、差分最小 | 📋 Planned |
 | 101 | Config 更新API（制御された更新） | `update_<section>()`、最小バリデーション、自動保存の基盤 | 📋 Planned |
 | 102 | Config 移行(2) 既存 config() 依存の縮小 | 主要機能の更新系を移行、辞書直参照の封じ込め | 📋 Planned |
-| 103 | StateNotifier 定義（最小イベント） | `core/state/notifier.py`、subscribe/notify、イベント型の雛形 | 📋 Planned |
+| 103 | StateNotifier 定義（最小イベント） | `core/state/notifier.py`、subscribe/notify、イベント型の雛形 | ✅ Done |
 | 104 | Notifier 統合（KaTrainBase） | GUI/ヘッドレス共用に統合、基本イベント（game_changed等） | 📋 Planned |
 | 105 | 主要状態変更の notify 移行(1) | ゲーム状態変更の通知を優先的に移行、直接呼び出し温存 | 📋 Planned |
 | 106 | UIの subscribe 移行(1) | UI側を段階移行、Clock直叩きとの共存を許容 | 📋 Planned |
@@ -357,8 +357,9 @@ MERGEパターン（既存値保持＋指定キーのみ更新）、JSON-safe永
 `update_engine_config()`/`update_leela_config()`に移行。デフォルト値をLeelaConfig.from_dict()から取得（ハードコード禁止）。
 4テスト追加。（2026-01-31完了）
 
-**Phase 103**: 通知の中核 `StateNotifier` を定義（subscribe/notify）。まずは最小イベント型の雛形を用意する。
-既存の通知経路は残し、置換を急がない。
+**Phase 103**: ✅ 通知の中核 `StateNotifier` を定義（subscribe/notify）。`core/state/`パッケージ新設、
+EventType（3種）/Event（frozen dataclass、MappingProxyType payload）/StateNotifier（RLockスレッドセーフ）。
+ConfigPopupのengine直接代入を`update_engine_config()`に移行。27テスト追加。（2026-01-31完了）
 
 **Phase 104**: KaTrainBaseへ統合し、GUI/ヘッドレスで共通利用できる形にする。
 基本イベント（game_changed/config_updated等）の導線を確立する。
