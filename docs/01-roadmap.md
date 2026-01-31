@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-01-31（Phase 103完了）
+> 最終更新: 2026-02-01（Phase 106A完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -371,6 +371,9 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 106**: UI側をsubscribeへ段階移行。部品単位で移し、挙動差分が出たら戻せる設計にする。
 ここでも共存を許容し、一本化は次へ送る。
+- **106A**: ✅ ControlsPanelにANALYSIS_COMPLETE購読、on_katrain()でsubscribe/unsubscribe管理、
+  Clock.schedule_onceでメインスレッドディスパッチ、11テスト追加。（2026-02-01完了）
+- **106B**: 他のUI部品（BadukPan等）への拡張。後回し可（107に依存しない）。
 
 **Phase 107**: 直接 `update_state()` 呼び出し等を非推奨化し、通知経路を整理して一本化に近づける。
 移行完了のチェックリストをここで確定する。

@@ -1,9 +1,23 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-105 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-106A の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 106A 完了（UI Subscribe MVP）
+  - ControlsPanelにANALYSIS_COMPLETE購読機能を追加
+  - 変更ファイル:
+    - `katrain/gui/controlspanel.py`: EventTypeインポート、on_katrain()、_on_analysis_complete()追加
+  - 新規ファイル:
+    - `tests/test_phase106_subscribe.py`: 11テスト追加（CI環境ではスキップ）
+  - 技術仕様:
+    - on_katrain()でsubscribe/unsubscribe管理（katrainプロパティ変更時に自動呼び出し）
+    - _on_analysis_complete(): Clock.schedule_once()でメインスレッドにディスパッチ
+    - graph.update_value(current_node)呼び出し（冪等性により二重呼び出し安全）
+    - 既存のupdate_state()パスと共存（Phase 107で整理予定）
+  - テスト: 3767件パス（+11件）
+  - PR: #247
 
 - 2026-02-01: Phase 105 完了（Notifier発火ポイント追加）
   - StateNotifierに実際の発火ポイント（notify()呼び出し）を追加
