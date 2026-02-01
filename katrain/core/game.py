@@ -4,7 +4,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Iterator, cast
 
 from . import eval_metrics
 from .eval_metrics import (
@@ -77,21 +77,21 @@ class BaseGame:
     root: GameNode
     current_node: GameNode
     game_id: str
-    sgf_filename: Optional[str]
+    sgf_filename: str | None
     insert_mode: bool
     external_game: bool
     main_time_used: int
-    board: List[List[int]]
-    chains: List[List[Move]]
-    prisoners: List[Move]
-    last_capture: List[Move]
+    board: list[list[int]]
+    chains: list[list[Move]]
+    prisoners: list[Move]
+    last_capture: list[Move]
 
     def __init__(
         self,
         katrain: Any,
-        move_tree: Optional[GameNode] = None,
-        game_properties: Optional[Dict[str, Any]] = None,
-        sgf_filename: Optional[str] = None,
+        move_tree: GameNode | None = None,
+        game_properties: dict[str, Any | None] = None,
+        sgf_filename: str | None = None,
         bypass_config: bool = False,  # TODO: refactor?
     ) -> None:
         self.katrain = katrain
@@ -134,7 +134,7 @@ class BaseGame:
                         "RU": katrain.config("game/rules"),
                     }
                 )
-            merged_props: Dict[str, List[Any]] = {
+            merged_props: dict[str, list[Any]] = {
                 k: [v] for k, v in default_properties.items()
             }
             if game_properties:
@@ -153,7 +153,7 @@ class BaseGame:
 
         # restore shortcuts
         all_nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
-        shortcut_id_to_node: Dict[Any, GameNode] = {
+        shortcut_id_to_node: dict[Any, GameNode] = {
             node.get_property("KTSID", None): node for node in all_nodes
         }
         for node in all_nodes:
@@ -166,10 +166,10 @@ class BaseGame:
         board_size_x, board_size_y = self.board_size
         self.board = [
             [-1 for _x in range(board_size_x)] for _y in range(board_size_y)
-        ]  # type: List[List[int]]  #  board pos -> chain id
-        self.chains = []  # type: List[List[Move]]  #   chain id -> chain
-        self.prisoners = []  # type: List[Move]
-        self.last_capture = []  # type: List[Move]
+        ]  # type: list[list[int]]  #  board pos -> chain id
+        self.chains = []  # type: list[list[Move]]  #   chain id -> chain
+        self.prisoners = []  # type: list[Move]
+        self.last_capture = []  # type: list[Move]
 
     def _calculate_groups(self) -> None:
         with self._lock:
@@ -192,7 +192,7 @@ class BaseGame:
     def _validate_move_and_update_chains(self, move: Move, ignore_ko: bool) -> None:
         board_size_x, board_size_y = self.board_size
 
-        def neighbours(moves: List[Move]) -> set[int]:
+        def neighbours(moves: list[Move]) -> set[int]:
             return {
                 self.board[m.coords[1] + dy][m.coords[0] + dx]
                 for m in moves
@@ -274,7 +274,7 @@ class BaseGame:
         return played_node
 
     # Insert a list of moves from root, often just adding one.
-    def sync_branch(self, moves: List[Move]) -> GameNode:
+    def sync_branch(self, moves: list[Move]) -> GameNode:
         node: GameNode = self.root
         with self._lock:
             for move in moves:
@@ -345,7 +345,7 @@ class BaseGame:
             if cn is not self.current_node:
                 self.set_current_node(cn)
 
-    def redo(self, n_times: int = 1, stop_on_mistake: Optional[float] = None) -> None:
+    def redo(self, n_times: int = 1, stop_on_mistake: float | None = None) -> None:
         """Redo moves with thread-safe state update.
 
         Lock scope: state mutation only (current_node, _calculate_groups).
@@ -380,16 +380,16 @@ class BaseGame:
         return self.root.komi
 
     @property
-    def board_size(self) -> Tuple[int, int]:
+    def board_size(self) -> tuple[int, int]:
         return self.root.board_size
 
     @property
-    def stones(self) -> List[Move]:
+    def stones(self) -> list[Move]:
         with self._lock:
             return sum(self.chains, [])
 
     @property
-    def end_result(self) -> Optional[str]:
+    def end_result(self) -> str | None:
         if self.current_node.end_state:
             return str(self.current_node.end_state)
         if self.current_node.parent and self.current_node.is_pass and self.current_node.parent.is_pass:
@@ -397,7 +397,7 @@ class BaseGame:
         return None
 
     @property
-    def prisoner_count(self) -> Dict[str, int]:
+    def prisoner_count(self) -> dict[str, int]:
         # returns prisoners that are of a certain colour as {B: black stones captures, W: white stones captures}
         return {player: sum([m.player == player for m in self.prisoners]) for player in Move.PLAYERS}
 
@@ -406,10 +406,10 @@ class BaseGame:
         return KataGoEngine.get_rules(self.root.ruleset)
 
     @property
-    def manual_score(self) -> Optional[str]:
+    def manual_score(self) -> str | None:
         rules = self.rules
         parent = self.current_node.parent
-        parent_ownership: Optional[List[float]] = None
+        parent_ownership: list[float | None] = None
         if isinstance(parent, GameNode):
             parent_ownership = parent.ownership
         if (
@@ -435,7 +435,7 @@ class BaseGame:
         max_unknown = 10
         max_dame = 4 * (board_size_x + board_size_y)
 
-        def japanese_score_square(square: Tuple[int, int], owner: float) -> float:
+        def japanese_score_square(square: tuple[int, int], owner: float) -> float:
             player = stones.get(square, None)
             if (
                 (player == "B" and owner > hi_threshold)
@@ -480,7 +480,7 @@ class BaseGame:
                 return f"{i18n._(player_info.player_type)} ({i18n._(player_info.player_subtype)}){SGF_INTERNAL_COMMENTS_MARKER}"
 
         root_properties = self.root.properties
-        x_properties: Dict[str, Any] = {}
+        x_properties: dict[str, Any] = {}
         for bw in "BW":
             if not self.external_game:
                 x_properties["P" + bw] = player_name(self.katrain.players_info[bw])
@@ -499,7 +499,7 @@ class BaseGame:
         base_game_name = f"{PROGRAM_NAME}_{player_names['B']} vs {player_names['W']}"
         return f"{base_game_name} {self.game_id}.sgf"
 
-    def write_sgf(self, filename: str, trainer_config: Optional[Dict[str, Any]] = None) -> str:
+    def write_sgf(self, filename: str, trainer_config: dict[str, Any | None] = None) -> str:
         if trainer_config is None:
             trainer_config = self.katrain.config("trainer", {})
         save_feedback = trainer_config.get("save_feedback", False)
@@ -528,18 +528,18 @@ class Game(BaseGame):
     """Extensions related to analysis etc."""
 
     # Class-level type annotations for instance variables
-    engines: Dict[str, KataGoEngine]
-    insert_after: Optional[GameNode]
-    region_of_interest: Optional[List[int]]
+    engines: dict[str, KataGoEngine]
+    insert_after: GameNode | None
+    region_of_interest: list[int | None]
 
     def __init__(
         self,
         katrain: Any,
-        engine: Union[Dict[str, KataGoEngine], KataGoEngine],
-        move_tree: Optional[GameNode] = None,
+        engine: dict[str, KataGoEngine, KataGoEngine],
+        move_tree: GameNode | None = None,
         analyze_fast: bool = False,
-        game_properties: Optional[Dict[str, Any]] = None,
-        sgf_filename: Optional[str] = None,
+        game_properties: dict[str, Any | None] = None,
+        sgf_filename: str | None = None,
     ) -> None:
         super().__init__(
             katrain=katrain, move_tree=move_tree, game_properties=game_properties, sgf_filename=sgf_filename
@@ -619,7 +619,7 @@ class Game(BaseGame):
         *,
         loss_threshold: float = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD,
         limit: int = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT,
-    ) -> List[QuizItem]:
+    ) -> list[QuizItem]:
         """
         現在の対局（メイン分岐）からクイズ用の大きなミス一覧を返す。
 
@@ -637,10 +637,10 @@ class Game(BaseGame):
 
     def build_quiz_questions(
         self,
-        quiz_items: List[QuizItem],
+        quiz_items: list[QuizItem],
         *,
         max_choices: int = 3,
-    ) -> List[QuizQuestion]:
+    ) -> list[QuizQuestion]:
         """
         Convert quiz items into quiz questions using existing analysis only.
 
@@ -664,7 +664,7 @@ class Game(BaseGame):
         """
         snapshot = self.build_eval_snapshot()
 
-        counts: Dict[MistakeCategory, int] = {}
+        counts: dict[MistakeCategory, int] = {}
         for m in snapshot.moves:
             # None の場合は GOOD 扱いに寄せる
             cat = m.mistake_category or MistakeCategory.GOOD
@@ -684,14 +684,14 @@ class Game(BaseGame):
     # 重要局面レポート / YoseAnalyzer 連携用のヘルパー
     # ------------------------------------------------------------------
 
-    def _find_node_by_move_number(self, move_number: int) -> Optional[GameNode]:
+    def _find_node_by_move_number(self, move_number: int) -> GameNode | None:
         """メインブランチの手数でノードを検索
 
         Args:
             move_number: 手数（1-indexed）
 
         Returns:
-            Optional[GameNode]: 見つかったノード、または None
+            GameNode | None: 見つかったノード、または None
         """
         for node in eval_metrics.iter_main_branch_nodes(self):
             node_move_no = len(node.nodes_from_root) - 1
@@ -704,7 +704,7 @@ class Game(BaseGame):
         *,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
         compute_reason_tags: bool = True,
-    ) -> List[MoveEval]:
+    ) -> list[MoveEval]:
         """
         現在の対局（メイン分岐）について、
         重要度スコアの大きい手 (= 重要局面候補) を MoveEval のリストとして返す。
@@ -775,7 +775,7 @@ class Game(BaseGame):
         self,
         *,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-        max_lines: Optional[int] = None,
+        max_lines: int | None = None,
     ) -> str:
         """
         現在の対局（メイン分岐）について、
@@ -808,10 +808,10 @@ class Game(BaseGame):
     def build_karte_report(
         self,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-        player_filter: Optional[str] = None,
+        player_filter: str | None = None,
         raise_on_error: bool = False,
         skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
-        target_visits: Optional[int] = None,
+        target_visits: int | None = None,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
 
@@ -849,8 +849,8 @@ class Game(BaseGame):
 
     @staticmethod
     def build_summary_report(
-        game_data_list: List[GameSummaryData],
-        focus_player: Optional[str] = None
+        game_data_list: list[GameSummaryData],
+        focus_player: str | None = None
     ) -> str:
         """
         複数局から統計まとめを生成（Phase 6）
@@ -944,7 +944,7 @@ class Game(BaseGame):
             node = child
             yield node
 
-    def get_main_branch_node_before_move(self, move_number: int) -> Optional[GameNode]:
+    def get_main_branch_node_before_move(self, move_number: int) -> GameNode | None:
         """
         メイン分岐上で指定手数の直前局面を返す（なければ None）。
         move_number が 1 以下なら root を返す。
@@ -963,7 +963,7 @@ class Game(BaseGame):
 
     def _compute_important_moves(
         self, max_moves: int = 20
-    ) -> List[Tuple[int, float, GameNode]]:
+    ) -> list[tuple[int, float, GameNode]]:
         """
         メイン分岐上のノードから「重要そうな手」を抽出して返す。
 
@@ -978,8 +978,8 @@ class Game(BaseGame):
         IMPORTANCE_THRESHOLD = 0.5  # 小さい変化をノイズとして除外
 
         # 単一パスで全ノードを収集
-        all_nodes: List[Tuple[int, float, GameNode]] = []
-        prev_score: Optional[float] = None
+        all_nodes: list[tuple[int, float, GameNode]] = []
+        prev_score: float | None = None
 
         for node in self._iter_main_branch_nodes():
             # 解析が終わっていない手はスキップ
@@ -1008,7 +1008,7 @@ class Game(BaseGame):
         top.sort(key=lambda t: t[0])
         return top
 
-    def get_important_move_numbers(self, max_moves: int = 20) -> List[int]:
+    def get_important_move_numbers(self, max_moves: int = 20) -> list[int]:
         """
         「重要局面」と判定された手数のリストだけを返す。
         ScoreGraph などから呼ぶことを想定。
@@ -1016,7 +1016,7 @@ class Game(BaseGame):
         important = self._compute_important_moves(max_moves=max_moves)
         return [move_no for move_no, _importance, _node in important]
 
-    def get_next_important_node(self, max_moves: int = 20) -> Optional[GameNode]:
+    def get_next_important_node(self, max_moves: int = 20) -> GameNode | None:
         """
         現在の手より「後ろにある」重要局面ノードを返す。
         なければ None。
@@ -1034,7 +1034,7 @@ class Game(BaseGame):
         # すべて現在手より前なら、今回はジャンプしない仕様にしておく
         return None
 
-    def get_prev_important_node(self, max_moves: int = 20) -> Optional[GameNode]:
+    def get_prev_important_node(self, max_moves: int = 20) -> GameNode | None:
         """
         現在の手より「前にある」重要局面ノードを返す。
         なければ None。
@@ -1045,7 +1045,7 @@ class Game(BaseGame):
 
         current_move_no = len(self.current_node.nodes_from_root) - 1
 
-        prev_node: Optional[GameNode] = None
+        prev_node: GameNode | None = None
         for move_no, _importance, node in important:
             if move_no >= current_move_no:
                 break
@@ -1053,7 +1053,7 @@ class Game(BaseGame):
 
         return prev_node
 
-    def jump_to_next_important_move(self, max_moves: int = 20) -> Optional[GameNode]:
+    def jump_to_next_important_move(self, max_moves: int = 20) -> GameNode | None:
         """
         次の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
@@ -1063,7 +1063,7 @@ class Game(BaseGame):
             self.set_current_node(node)
         return node
 
-    def jump_to_prev_important_move(self, max_moves: int = 20) -> Optional[GameNode]:
+    def jump_to_prev_important_move(self, max_moves: int = 20) -> GameNode | None:
         """
         前の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
@@ -1101,7 +1101,7 @@ class Game(BaseGame):
         cn.clear_analysis()
         cn.analyze(engine)
 
-    def redo(self, n_times: int = 1, stop_on_mistake: Optional[float] = None) -> None:
+    def redo(self, n_times: int = 1, stop_on_mistake: float | None = None) -> None:
         if self.insert_mode:
             return
         super().redo(n_times=n_times, stop_on_mistake=stop_on_mistake)
@@ -1177,7 +1177,7 @@ class Game(BaseGame):
                 played_node.analyze(self.engines[played_node.next_player])
         return played_node
 
-    def set_region_of_interest(self, region_of_interest: Tuple[int, int, int, int]) -> None:
+    def set_region_of_interest(self, region_of_interest: tuple[int, int, int, int]) -> None:
         x1, x2, y1, y2 = region_of_interest
         xmin, xmax = min(x1, x2), max(x1, x2)
         ymin, ymax = min(y1, y2), max(y1, y2)
@@ -1225,7 +1225,7 @@ class Game(BaseGame):
         """Handle GAME mode: re-analyze all nodes in the game tree."""
         nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
         only_mistakes = kwargs.get("mistakes_only", False)
-        move_range: Optional[Tuple[int, int]] = kwargs.get("move_range", None)
+        move_range: tuple[int, int | None] = kwargs.get("move_range", None)
         if move_range:
             if move_range[1] < move_range[0]:
                 move_range = (move_range[1], move_range[0])  # Swap to ensure correct order
@@ -1257,13 +1257,13 @@ class Game(BaseGame):
         cn: GameNode,
         engine: KataGoEngine,
         mode: AnalysisMode,
-        stones: set[Tuple[int, int] | None],
+        stones: set[tuple[int, int] | None],
     ) -> None:
         """Handle SWEEP, EQUALIZE, ALTERNATIVE, and LOCAL modes.
 
         These modes share a common refinement loop at the end.
         """
-        analyze_moves: List[Move]
+        analyze_moves: list[Move]
         visits: int
         priority: int
 
@@ -1271,7 +1271,7 @@ class Game(BaseGame):
             board_size_x, board_size_y = self.board_size
 
             if cn.analysis_exists:
-                policy_grid: Optional[List[List[float]]] = (
+                policy_grid: list[list[float | None]] = (
                     var_to_grid(self.current_node.policy, size=(board_size_x, board_size_y))
                     if self.current_node.policy
                     else None
@@ -1366,11 +1366,11 @@ class Game(BaseGame):
         # SWEEP / EQUALIZE / ALTERNATIVE / LOCAL
         self._handle_sweep_equalize_modes(cn, engine, parsed_mode, stones)
 
-    def selfplay(self, until_move: int | str, target_b_advantage: Optional[float] = None) -> None:
+    def selfplay(self, until_move: int | str, target_b_advantage: float | None = None) -> None:
         cn = self.current_node
 
-        analysis_kwargs: Dict[str, Any]
-        engine_settings: Dict[str, Any]
+        analysis_kwargs: dict[str, Any]
+        engine_settings: dict[str, Any]
         if target_b_advantage is not None:
             analysis_kwargs = {"visits": max(25, self.katrain.config("engine/fast_visits"))}
             engine_settings = {"wideRootNoise": 0.03}
@@ -1378,7 +1378,7 @@ class Game(BaseGame):
             analysis_kwargs = {}
             engine_settings = {}
 
-        def set_analysis(node: GameNode, result: Dict[str, Any]) -> None:
+        def set_analysis(node: GameNode, result: dict[str, Any]) -> None:
             node.set_analysis(result)
             analyze_and_play(node)
 
