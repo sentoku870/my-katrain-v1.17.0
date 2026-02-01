@@ -19,12 +19,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    FrozenSet,
-    List,
-    Optional,
-    Set,
-    Tuple,
 )
 
 _log = logging.getLogger(__name__)
@@ -143,14 +137,14 @@ class EngineType(Enum):
 # =============================================================================
 
 # Derive from EngineType to prevent drift (EngineType.UNKNOWN excluded)
-VALID_ANALYSIS_ENGINES: FrozenSet[str] = frozenset({
+VALID_ANALYSIS_ENGINES: frozenset[str] = frozenset({
     EngineType.KATAGO.value,
     EngineType.LEELA.value,
 })
 DEFAULT_ANALYSIS_ENGINE: str = EngineType.KATAGO.value
 
 
-def get_analysis_engine(engine_config: Dict[str, Any]) -> str:
+def get_analysis_engine(engine_config: dict[str, Any]) -> str:
     """設定から解析エンジンを取得する。
 
     Args:
@@ -199,7 +193,7 @@ def needs_leela_warning(selected_engine: str, leela_enabled: bool) -> bool:
 # Engine-specific default visits values.
 # These are HARD SAFETY DEFAULTS used when config.json is missing keys.
 # User-facing defaults should be set in config.json itself.
-ENGINE_VISITS_DEFAULTS: Dict[str, Dict[str, int]] = {
+ENGINE_VISITS_DEFAULTS: dict[str, dict[str, int]] = {
     "katago": {"max_visits": 500, "fast_visits": 25},
     "leela": {"max_visits": 1000, "fast_visits": 200},
 }
@@ -210,7 +204,7 @@ LEELA_FAST_VISITS_MIN = 50
 
 def resolve_visits(
     strength: AnalysisStrength,
-    engine_config: Dict[str, Any],
+    engine_config: dict[str, Any],
     engine_type: str = "katago",
 ) -> int:
     """解析強度からvisits数を解決する。
@@ -279,51 +273,51 @@ class MoveEval:
     """
 
     move_number: int                    # 手数（1, 2, 3, ...）
-    player: Optional[str]               # 'B' / 'W' / None（ルートなど）
-    gtp: Optional[str]                  # "D4" のような座標 or "pass" / None
+    player: str | None               # 'B' / 'W' / None（ルートなど）
+    gtp: str | None                  # "D4" のような座標 or "pass" / None
 
     # 評価値（BLACK-PERSPECTIVE: 正=黒有利）
-    score_before: Optional[float]       # この手を打つ前の評価
-    score_after: Optional[float]        # この手を打った直後の評価
-    delta_score: Optional[float]        # score_after - score_before (黒視点)
+    score_before: float | None       # この手を打つ前の評価
+    score_after: float | None        # この手を打った直後の評価
+    delta_score: float | None        # score_after - score_before (黒視点)
 
-    winrate_before: Optional[float]     # この手を打つ前の勝率
-    winrate_after: Optional[float]      # この手を打った直後の勝率
-    delta_winrate: Optional[float]      # winrate_after - winrate_before (黒視点)
+    winrate_before: float | None     # この手を打つ前の勝率
+    winrate_after: float | None      # この手を打った直後の勝率
+    delta_winrate: float | None      # winrate_after - winrate_before (黒視点)
 
     # KaTrain 標準の指標（SIDE-TO-MOVE: 手番視点）
-    points_lost: Optional[float]        # その手で失った期待値（手番視点、正=損失）
-    realized_points_lost: Optional[float]  # 実際の進行で確定した損失
+    points_lost: float | None        # その手で失った期待値（手番視点、正=損失）
+    realized_points_lost: float | None  # 実際の進行で確定した損失
     root_visits: int                    # その局面の root 訪問回数（見ている深さの目安）
     is_reliable: bool = False           # visits を根拠にした信頼度フラグ（保守的に False）
 
     # 将来の拡張用メタ情報
-    tag: Optional[str] = None           # "opening"/"middle"/"yose" など自由タグ
-    importance_score: Optional[float] = None  # 後で計算する「重要度スコア」
+    tag: str | None = None           # "opening"/"middle"/"yose" など自由タグ
+    importance_score: float | None = None  # 後で計算する「重要度スコア」
 
-    score_loss: Optional[float] = None
+    score_loss: float | None = None
     """その手による地合損失（悪くなった分だけ、目単位）。"""
 
-    winrate_loss: Optional[float] = None
+    winrate_loss: float | None = None
     """その手による勝率損失（悪くなった分だけ、0〜1）。"""
 
     mistake_category: MistakeCategory = MistakeCategory.GOOD
     """ミス分類（GOOD / INACCURACY / MISTAKE / BLUNDER）。"""
 
-    position_difficulty: Optional["PositionDifficulty"] = None
+    position_difficulty: PositionDifficulty | None = None
     """局面難易度（EASY / NORMAL / HARD / ONLY_MOVE / UNKNOWN など）。"""
 
-    position_difficulty_score: Optional[float] = None
+    position_difficulty_score: float | None = None
     """局面難易度を 0.0〜1.0 の連続値で表した補助スコア（大きいほど難しい想定）。"""
 
-    reason_tags: List[str] = field(default_factory=list)
+    reason_tags: list[str] = field(default_factory=list)
     """戦術的コンテキストの理由タグ（Phase 5: 構造の言語化）。
 
     例: ["atari", "low_liberties", "need_connect", "chase_mode", ...]
     盤面の戦術的状況に基づいて board_analysis モジュールで計算される。
     """
 
-    leela_loss_est: Optional[float] = None
+    leela_loss_est: float | None = None
     """Leela Zero による推定損失（0以上、Noneは非Leela解析）。
 
     Note:
@@ -333,7 +327,7 @@ class MoveEval:
     - 最大値: LEELA_LOSS_EST_MAX（50.0）
     """
 
-    meaning_tag_id: Optional[str] = None
+    meaning_tag_id: str | None = None
     """意味タグID（Phase 47: Meaning Tags Integration）。
 
     classify_meaning_tag() で分類された結果のID文字列。
@@ -426,7 +420,7 @@ class EvalSnapshot:
     - worst_canonical_move: score_loss 最大の手（推奨）
     """
 
-    moves: List[MoveEval] = field(default_factory=list)
+    moves: list[MoveEval] = field(default_factory=list)
 
     # -------------------------------------------------------------------------
     # Legacy properties (backward compatibility, may include negative values)
@@ -446,7 +440,7 @@ class EvalSnapshot:
         return float(max(vals)) if vals else 0.0
 
     @property
-    def worst_move(self) -> Optional[MoveEval]:
+    def worst_move(self) -> MoveEval | None:
         """points_lost 最大の手を返す。後方互換用。"""
         candidates = [m for m in self.moves if m.points_lost is not None]
         if not candidates:
@@ -484,7 +478,7 @@ class EvalSnapshot:
         return float(max(vals)) if vals else 0.0
 
     @property
-    def worst_canonical_move(self) -> Optional[MoveEval]:
+    def worst_canonical_move(self) -> MoveEval | None:
         """score_loss 最大の手を返す。"""
         candidates = [m for m in self.moves if get_canonical_loss_from_move(m) > 0.0]
         if not candidates:
@@ -514,9 +508,9 @@ class EvalSnapshot:
         return self.difficulty_unknown_count / len(self.moves)
 
     @property
-    def difficulty_distribution(self) -> Dict[PositionDifficulty, int]:
+    def difficulty_distribution(self) -> dict[PositionDifficulty, int]:
         """局面難易度の分布を返す。"""
-        dist: Dict[PositionDifficulty, int] = {d: 0 for d in PositionDifficulty}
+        dist: dict[PositionDifficulty, int] = {d: 0 for d in PositionDifficulty}
         for m in self.moves:
             if m.position_difficulty is not None:
                 dist[m.position_difficulty] += 1
@@ -555,8 +549,8 @@ class GameSummaryData:
     player_black: str
     player_white: str
     snapshot: EvalSnapshot
-    board_size: Tuple[int, int]
-    date: Optional[str] = None
+    board_size: tuple[int, int]
+    date: str | None = None
 
 
 @dataclass
@@ -568,22 +562,22 @@ class SummaryStats:
     total_points_lost: float = 0.0
     avg_points_lost_per_move: float = 0.0
 
-    mistake_counts: Dict[MistakeCategory, int] = field(default_factory=dict)
-    mistake_total_loss: Dict[MistakeCategory, float] = field(default_factory=dict)
+    mistake_counts: dict[MistakeCategory, int] = field(default_factory=dict)
+    mistake_total_loss: dict[MistakeCategory, float] = field(default_factory=dict)
 
-    freedom_counts: Dict["PositionDifficulty", int] = field(default_factory=dict)
+    freedom_counts: dict[PositionDifficulty, int] = field(default_factory=dict)
 
-    phase_moves: Dict[str, int] = field(default_factory=dict)  # "opening"/"middle"/"yose"
-    phase_loss: Dict[str, float] = field(default_factory=dict)
+    phase_moves: dict[str, int] = field(default_factory=dict)  # "opening"/"middle"/"yose"
+    phase_loss: dict[str, float] = field(default_factory=dict)
 
     # Phase × MistakeCategory クロス集計 (Phase 6.5で追加)
-    phase_mistake_counts: Dict[Tuple[str, MistakeCategory], int] = field(default_factory=dict)
-    phase_mistake_loss: Dict[Tuple[str, MistakeCategory], float] = field(default_factory=dict)
+    phase_mistake_counts: dict[tuple[str, MistakeCategory], int] = field(default_factory=dict)
+    phase_mistake_loss: dict[tuple[str, MistakeCategory], float] = field(default_factory=dict)
 
-    worst_moves: List[Tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
+    worst_moves: list[tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
 
     # PR#1: Store all moves for confidence level computation
-    all_moves: List[MoveEval] = field(default_factory=list)
+    all_moves: list[MoveEval] = field(default_factory=list)
 
     def get_mistake_percentage(self, category: MistakeCategory) -> float:
         """ミス分類の割合を計算"""
@@ -622,7 +616,7 @@ class SummaryStats:
         total_loss = self.phase_loss.get(phase, 0.0)
         return total_loss / count
 
-    def get_practice_priorities(self) -> List[str]:
+    def get_practice_priorities(self) -> list[str]:
         """統計から1-3個の練習優先項目を導出（Phase 6.5 改善版）"""
         priorities = []
         phase_name_ja = {"opening": "序盤", "middle": "中盤", "yose": "ヨセ"}
@@ -693,10 +687,10 @@ class SummaryStats:
 @dataclass
 class PhaseMistakeStats:
     """単局または複数局の Phase × Mistake 集計結果"""
-    phase_mistake_counts: Dict[Tuple[str, str], int] = field(default_factory=dict)
-    phase_mistake_loss: Dict[Tuple[str, str], float] = field(default_factory=dict)
-    phase_moves: Dict[str, int] = field(default_factory=dict)
-    phase_loss: Dict[str, float] = field(default_factory=dict)
+    phase_mistake_counts: dict[tuple[str, str], int] = field(default_factory=dict)
+    phase_mistake_loss: dict[tuple[str, str], float] = field(default_factory=dict)
+    phase_moves: dict[str, int] = field(default_factory=dict)
+    phase_loss: dict[str, float] = field(default_factory=dict)
     total_moves: int = 0
     total_loss: float = 0.0
 
@@ -711,7 +705,7 @@ class QuizItem:
     """Large-mistake quiz entry derived from existing evaluations."""
 
     move_number: int
-    player: Optional[str]
+    player: str | None
     loss: float
 
 
@@ -736,8 +730,8 @@ class SkillPreset:
     """Skill presets for quiz extraction and mistake thresholds."""
 
     quiz: QuizConfig
-    score_thresholds: Tuple[float, float, float]
-    winrate_thresholds: Tuple[float, float, float]
+    score_thresholds: tuple[float, float, float]
+    winrate_thresholds: tuple[float, float, float]
     reason_tag_thresholds: ReasonTagThresholds  # Phase 17
 
 
@@ -746,7 +740,7 @@ class SkillPreset:
 # =============================================================================
 
 
-SKILL_PRESETS: Dict[str, SkillPreset] = {
+SKILL_PRESETS: dict[str, SkillPreset] = {
     # Relaxed (Lv1): very forgiving, for absolute beginners or casual review.
     # t3=15.0, t2=0.5*t3=7.5, t1=0.2*t3=3.0
     "relaxed": SkillPreset(
@@ -794,7 +788,7 @@ DEFAULT_SKILL_PRESET = "standard"
 
 # Preset order from loosest to strictest (for tie-breaking toward standard)
 # Index 2 = "standard" is the center for tie-breaking
-PRESET_ORDER: List[str] = ["relaxed", "beginner", "standard", "advanced", "pro"]
+PRESET_ORDER: list[str] = ["relaxed", "beginner", "standard", "advanced", "pro"]
 
 
 # =============================================================================
@@ -853,7 +847,7 @@ class UrgentMissConfig:
 
 
 # 棋力別の急場見逃し検出設定
-URGENT_MISS_CONFIGS: Dict[str, UrgentMissConfig] = {
+URGENT_MISS_CONFIGS: dict[str, UrgentMissConfig] = {
     # Relaxed: only detect catastrophic oversight (50+ points)
     "relaxed": UrgentMissConfig(
         threshold_loss=50.0,
@@ -892,7 +886,7 @@ class QuizChoice:
     """Choice shown in quiz mode for a single position."""
 
     move: str
-    points_lost: Optional[float]
+    points_lost: float | None
 
 
 @dataclass
@@ -900,9 +894,9 @@ class QuizQuestion:
     """Quiz entry paired with candidate moves for the position before the mistake."""
 
     item: QuizItem
-    choices: List[QuizChoice]
-    best_move: Optional[str] = None
-    node_before_move: Optional[GameNode] = None
+    choices: list[QuizChoice]
+    best_move: str | None = None
+    node_before_move: GameNode | None = None
 
     @property
     def has_analysis(self) -> bool:
@@ -1016,7 +1010,7 @@ class MistakeStreak:
     end_move: int  # 終了手数
     move_count: int  # ミスの回数（同一プレイヤーの手数）
     total_loss: float  # 合計損失
-    moves: List[MoveEval] = field(default_factory=list)  # ミスした手のリスト
+    moves: list[MoveEval] = field(default_factory=list)  # ミスした手のリスト
 
     @property
     def avg_loss(self) -> float:
@@ -1030,7 +1024,7 @@ class SkillEstimation:
     estimated_level: str  # "beginner", "standard", "advanced", etc.
     confidence: float     # 0.0〜1.0
     reason: str           # 推定理由の説明
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 
 # =============================================================================
@@ -1038,8 +1032,8 @@ class SkillEstimation:
 # =============================================================================
 
 
-SCORE_THRESHOLDS: Tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].score_thresholds
-WINRATE_THRESHOLDS: Tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].winrate_thresholds
+SCORE_THRESHOLDS: tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].score_thresholds
+WINRATE_THRESHOLDS: tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].winrate_thresholds
 
 
 # =============================================================================
@@ -1063,7 +1057,7 @@ class PVFilterConfig:
 
 
 # PVFilterLevelごとのプリセット設定
-PV_FILTER_CONFIGS: Dict[str, PVFilterConfig] = {
+PV_FILTER_CONFIGS: dict[str, PVFilterConfig] = {
     "weak": PVFilterConfig(
         max_candidates=15,
         max_points_lost=4.0,
@@ -1084,7 +1078,7 @@ PV_FILTER_CONFIGS: Dict[str, PVFilterConfig] = {
 # skill_preset から pv_filter_level へのマッピング（AUTO用）
 # skill_presetは「ミス判定の厳しさ」: 激甘=大きな損失のみ指摘、激辛=小さな損失も指摘
 # PVフィルタは逆方向: 激甘→候補手多め(WEAK)、激辛→候補手少なめ(STRONG)
-SKILL_TO_PV_FILTER: Dict[str, str] = {
+SKILL_TO_PV_FILTER: dict[str, str] = {
     "relaxed": "weak",     # 激甘 → 候補手多め
     "beginner": "weak",    # 甘口 → 候補手多め
     "standard": "medium",  # 標準 → 標準
@@ -1127,7 +1121,7 @@ class DifficultyMetrics:
     overall_difficulty: float
     is_reliable: bool
     is_unknown: bool = False
-    debug_factors: Optional[Dict[str, Any]] = None
+    debug_factors: dict[str, Any] | None = None
 
 
 # モジュールレベル定数（frozen dataclass + ClassVar 問題を回避）

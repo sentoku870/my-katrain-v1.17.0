@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
+from typing import Any, Mapping, cast
 
 _logger = logging.getLogger("katrain.core.analysis.skill_radar")
 
@@ -62,14 +62,14 @@ class SkillTier(str, Enum):
 # =============================================================================
 
 # Tier numeric representation for median calculation
-TIER_TO_INT: Dict[SkillTier, int] = {
+TIER_TO_INT: dict[SkillTier, int] = {
     SkillTier.TIER_1: 1,
     SkillTier.TIER_2: 2,
     SkillTier.TIER_3: 3,
     SkillTier.TIER_4: 4,
     SkillTier.TIER_5: 5,
 }
-INT_TO_TIER: Dict[int, SkillTier] = {v: k for k, v in TIER_TO_INT.items()}
+INT_TO_TIER: dict[int, SkillTier] = {v: k for k, v in TIER_TO_INT.items()}
 
 
 # =============================================================================
@@ -78,7 +78,7 @@ INT_TO_TIER: Dict[int, SkillTier] = {v: k for k, v in TIER_TO_INT.items()}
 
 # APL (Average Point Loss) -> Tier thresholds
 # Half-open intervals: [lower, upper), apl < threshold
-APL_TIER_THRESHOLDS: List[Tuple[float, SkillTier, float]] = [
+APL_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
     (0.4, SkillTier.TIER_5, 5.0),
     (0.8, SkillTier.TIER_4, 4.0),
     (1.2, SkillTier.TIER_3, 3.0),
@@ -88,7 +88,7 @@ APL_TIER_THRESHOLDS: List[Tuple[float, SkillTier, float]] = [
 
 # Blunder Rate -> Tier thresholds
 # Half-open intervals: [lower, upper), rate < threshold
-BLUNDER_RATE_TIER_THRESHOLDS: List[Tuple[float, SkillTier, float]] = [
+BLUNDER_RATE_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
     (0.01, SkillTier.TIER_5, 5.0),
     (0.03, SkillTier.TIER_4, 4.0),
     (0.05, SkillTier.TIER_3, 3.0),
@@ -98,7 +98,7 @@ BLUNDER_RATE_TIER_THRESHOLDS: List[Tuple[float, SkillTier, float]] = [
 
 # Match Rate -> Tier thresholds
 # Higher is better, half-open intervals: [lower, upper), rate < threshold
-MATCH_RATE_TIER_THRESHOLDS: List[Tuple[float, SkillTier, float]] = [
+MATCH_RATE_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
     (0.25, SkillTier.TIER_1, 1.0),  # rate < 0.25
     (0.35, SkillTier.TIER_2, 2.0),  # 0.25 <= rate < 0.35
     (0.45, SkillTier.TIER_3, 3.0),  # 0.35 <= rate < 0.45
@@ -147,7 +147,7 @@ OPTIONAL_RADAR_DICT_KEYS = frozenset({"valid_move_counts"})
 # =============================================================================
 
 
-def round_score(v: Optional[float]) -> Optional[float]:
+def round_score(v: float | None) -> float | None:
     """Round score to 1 decimal place for display.
 
     This is the SINGLE SOURCE OF TRUTH for score display rounding.
@@ -212,7 +212,7 @@ class RadarMetrics:
     # Valid move counts per axis (immutable via MappingProxyType)
     valid_move_counts: Mapping[RadarAxis, int]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary.
 
         Returns:
@@ -276,11 +276,11 @@ class AggregatedRadarResult:
     """
 
     # Raw scores: 1.0-5.0 or None if no valid data
-    opening: Optional[float]
-    fighting: Optional[float]
-    endgame: Optional[float]
-    stability: Optional[float]
-    awareness: Optional[float]
+    opening: float | None
+    fighting: float | None
+    endgame: float | None
+    stability: float | None
+    awareness: float | None
 
     # Per-axis tier (TIER_UNKNOWN if score is None)
     opening_tier: SkillTier
@@ -298,7 +298,7 @@ class AggregatedRadarResult:
     # Aggregation metadata
     games_aggregated: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """JSON-serializable dict with null for None values.
 
         Output schema is canonical and stable for golden tests.
@@ -363,7 +363,7 @@ class AggregatedRadarResult:
 # =============================================================================
 
 
-def apl_to_tier_and_score(apl: float) -> Tuple[SkillTier, float]:
+def apl_to_tier_and_score(apl: float) -> tuple[SkillTier, float]:
     """Convert APL (Average Point Loss) to tier and display score.
 
     Args:
@@ -381,7 +381,7 @@ def apl_to_tier_and_score(apl: float) -> Tuple[SkillTier, float]:
     return SkillTier.TIER_1, 1.0  # fallback (shouldn't reach)
 
 
-def blunder_rate_to_tier_and_score(rate: float) -> Tuple[SkillTier, float]:
+def blunder_rate_to_tier_and_score(rate: float) -> tuple[SkillTier, float]:
     """Convert Blunder Rate to tier and display score.
 
     Args:
@@ -398,7 +398,7 @@ def blunder_rate_to_tier_and_score(rate: float) -> Tuple[SkillTier, float]:
     return SkillTier.TIER_1, 1.0  # fallback
 
 
-def match_rate_to_tier_and_score(rate: float) -> Tuple[SkillTier, float]:
+def match_rate_to_tier_and_score(rate: float) -> tuple[SkillTier, float]:
     """Convert Match Rate to tier and display score.
 
     Args:
@@ -421,7 +421,7 @@ def match_rate_to_tier_and_score(rate: float) -> Tuple[SkillTier, float]:
 # =============================================================================
 
 
-def is_garbage_time(winrate_before: Optional[float]) -> bool:
+def is_garbage_time(winrate_before: float | None) -> bool:
     """Detect if position is in "garbage time" (game essentially decided).
 
     Args:
@@ -453,7 +453,7 @@ def is_garbage_time(winrate_before: Optional[float]) -> bool:
 # =============================================================================
 
 
-def compute_overall_tier(tiers: List[SkillTier]) -> SkillTier:
+def compute_overall_tier(tiers: list[SkillTier]) -> SkillTier:
     """Compute overall tier from 5 axis tiers using median.
 
     Args:
@@ -500,7 +500,7 @@ def compute_overall_tier(tiers: List[SkillTier]) -> SkillTier:
 # =============================================================================
 
 
-def radar_from_dict(d: Optional[Dict[str, Any]]) -> Optional[RadarMetrics]:
+def radar_from_dict(d: dict[str, Any] | None) -> RadarMetrics | None:
     """Reconstruct RadarMetrics from to_dict() output.
 
     Args:
@@ -556,7 +556,7 @@ def radar_from_dict(d: Optional[Dict[str, Any]]) -> Optional[RadarMetrics]:
         overall_tier = SkillTier(overall_tier_str)
 
         # Parse valid_move_counts (optional, default to 0 for missing axes)
-        valid_move_counts: Dict[RadarAxis, int] = {}
+        valid_move_counts: dict[RadarAxis, int] = {}
         for axis in RadarAxis:
             count = valid_move_counts_raw.get(axis.value, 0)
             valid_move_counts[axis] = int(count)
@@ -581,8 +581,8 @@ def radar_from_dict(d: Optional[Dict[str, Any]]) -> Optional[RadarMetrics]:
 
 
 def aggregate_radar(
-    radar_list: List[RadarMetrics],
-) -> Optional[AggregatedRadarResult]:
+    radar_list: list[RadarMetrics],
+) -> AggregatedRadarResult | None:
     """Aggregate multiple RadarMetrics into one AggregatedRadarResult.
 
     Args:
@@ -618,7 +618,7 @@ def aggregate_radar(
 
     # Helper to derive tier from aggregated score using APL thresholds
     # (since all axes use 1.0-5.0 score range mapped from tier)
-    def score_to_tier(score: Optional[float]) -> SkillTier:
+    def score_to_tier(score: float | None) -> SkillTier:
         if score is None:
             return SkillTier.TIER_UNKNOWN
         # Reverse mapping: score 1.0-5.0 -> tier
@@ -634,9 +634,9 @@ def aggregate_radar(
             return SkillTier.TIER_1
 
     # Compute per-axis aggregated scores and counts
-    aggregated_scores: Dict[RadarAxis, Optional[float]] = {}
-    aggregated_tiers: Dict[RadarAxis, SkillTier] = {}
-    aggregated_counts: Dict[RadarAxis, int] = {}
+    aggregated_scores: dict[RadarAxis, float | None] = {}
+    aggregated_tiers: dict[RadarAxis, SkillTier] = {}
+    aggregated_counts: dict[RadarAxis, int] = {}
 
     for axis in RadarAxis:
         # Collect scores from games where this axis is valid (tier != UNKNOWN)
@@ -696,7 +696,7 @@ def aggregate_radar(
 # =============================================================================
 
 
-def compute_opening_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
+def compute_opening_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Opening axis (序盤力).
 
     Target: move_number <= OPENING_END_MOVE (50)
@@ -728,7 +728,7 @@ def compute_opening_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
     return tier, score, len(filtered)
 
 
-def compute_fighting_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
+def compute_fighting_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Fighting axis (戦闘力).
 
     Target: position_difficulty == HARD
@@ -763,7 +763,7 @@ def compute_fighting_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
     return tier, score, len(filtered)
 
 
-def compute_endgame_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
+def compute_endgame_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Endgame axis (終盤力).
 
     Target: move_number >= ENDGAME_START_MOVE (150)
@@ -798,7 +798,7 @@ def compute_endgame_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
     return tier, score, len(filtered)
 
 
-def compute_stability_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
+def compute_stability_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Stability axis (安定性).
 
     Target: All moves
@@ -829,7 +829,7 @@ def compute_stability_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
     return tier, score, len(moves)
 
 
-def compute_awareness_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
+def compute_awareness_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Awareness axis (感性 / AI match rate).
 
     Target: All moves
@@ -872,8 +872,8 @@ def compute_awareness_axis(moves: List[Any]) -> Tuple[SkillTier, float, int]:
 
 
 def compute_radar_from_moves(
-    moves: List[Any],
-    player: Optional[str] = None,
+    moves: list[Any],
+    player: str | None = None,
 ) -> RadarMetrics:
     """Compute 5-axis radar metrics from MoveEval list.
 

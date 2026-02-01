@@ -29,7 +29,7 @@ Example:
 import logging
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any
 
 _log = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 # Learning-value-based weights (life-death/reading > strategic > minor)
-MEANING_TAG_WEIGHTS: Dict[str, float] = {
+MEANING_TAG_WEIGHTS: dict[str, float] = {
     # High priority - fundamental reading errors
     "life_death_error": 1.5,
     "capture_race_loss": 1.4,
@@ -116,10 +116,10 @@ class CriticalMove:
     meaning_tag_id: str
     meaning_tag_label: str
     position_difficulty: str
-    reason_tags: Tuple[str, ...]
+    reason_tags: tuple[str, ...]
 
     # Context
-    score_stdev: Optional[float]
+    score_stdev: float | None
     game_phase: str
 
     # Scoring
@@ -141,7 +141,7 @@ class ComplexityFilterStats:
 
     total_candidates: int = 0
     discounted_count: int = 0
-    max_stdev_seen: Optional[float] = None
+    max_stdev_seen: float | None = None
 
     @property
     def discount_rate(self) -> float:
@@ -156,7 +156,7 @@ class ComplexityFilterStats:
 # =============================================================================
 
 
-def _get_meaning_tag_weight(tag_id: Optional[str]) -> float:
+def _get_meaning_tag_weight(tag_id: str | None) -> float:
     """Get weight for a MeaningTag (handles None/unknown).
 
     Args:
@@ -174,8 +174,8 @@ def _get_meaning_tag_weight(tag_id: Optional[str]) -> float:
 
 
 def _compute_diversity_penalty(
-    tag_id: Optional[str],
-    selected_tag_ids: Tuple[str, ...],
+    tag_id: str | None,
+    selected_tag_ids: tuple[str, ...],
 ) -> float:
     """Compute penalty for tag overlap with already-selected tags.
 
@@ -194,7 +194,7 @@ def _compute_diversity_penalty(
     return DIVERSITY_PENALTY_FACTOR**count
 
 
-def _compute_complexity_discount(score_stdev: Optional[float]) -> float:
+def _compute_complexity_discount(score_stdev: float | None) -> float:
     """Compute complexity discount factor (Phase 83).
 
     Chaotic positions (high scoreStdev) receive reduced importance to filter
@@ -220,8 +220,8 @@ def _compute_complexity_discount(score_stdev: Optional[float]) -> float:
 
 def _compute_critical_score(
     importance: float,
-    tag_id: Optional[str],
-    selected_tag_ids: Tuple[str, ...],
+    tag_id: str | None,
+    selected_tag_ids: tuple[str, ...],
     complexity_discount: float = 1.0,
 ) -> float:
     """Compute critical score with deterministic rounding.
@@ -252,7 +252,7 @@ def _compute_critical_score(
     return float(quantized)
 
 
-def _sort_key(move_number: int, score: float) -> Tuple[float, int]:
+def _sort_key(move_number: int, score: float) -> tuple[float, int]:
     """Deterministic sort key for candidate selection.
 
     Primary: critical_score descending (negated for ascending sort)
@@ -292,7 +292,7 @@ def _log_complexity_filter_stats(stats: ComplexityFilterStats) -> None:
 # =============================================================================
 
 
-def _build_node_map(game: "Game") -> Dict[int, "GameNode"]:
+def _build_node_map(game: "Game") -> dict[int, "GameNode"]:
     """Build move_number -> GameNode mapping for main branch.
 
     Note:
@@ -308,13 +308,13 @@ def _build_node_map(game: "Game") -> Dict[int, "GameNode"]:
     """
     from katrain.core.analysis import iter_main_branch_nodes
 
-    node_map: Dict[int, Any] = {}
+    node_map: dict[int, Any] = {}
     for node in iter_main_branch_nodes(game):
         node_map[node.depth] = node
     return node_map
 
 
-def _get_score_stdev_from_node(node: "GameNode") -> Optional[float]:
+def _get_score_stdev_from_node(node: "GameNode") -> float | None:
     """Safely extract scoreStdev from a GameNode.
 
     KataGo: node.analysis["root"]["scoreStdev"]
@@ -343,9 +343,9 @@ def _get_score_stdev_from_node(node: "GameNode") -> Optional[float]:
 
 
 def _get_score_stdev_for_move(
-    node_map: Dict[int, "GameNode"],
+    node_map: dict[int, "GameNode"],
     move_number: int,
-) -> Optional[float]:
+) -> float | None:
     """Get scoreStdev for a move number.
 
     Args:
@@ -367,9 +367,9 @@ def _get_score_stdev_for_move(
 
 
 def _classify_meaning_tags(
-    moves: List[Any],  # List[MoveEval]
+    moves: list[Any],  # list[MoveEval]
     snapshot: Any,  # EvalSnapshot
-) -> Dict[int, str]:
+) -> dict[int, str]:
     """Build local meaning_tag_id mapping (non-mutating).
 
     If move already has meaning_tag_id set, uses that.
@@ -385,7 +385,7 @@ def _classify_meaning_tags(
 
     total_moves = len(snapshot.moves)
     ctx = ClassificationContext(total_moves=total_moves)
-    result: Dict[int, str] = {}
+    result: dict[int, str] = {}
 
     for move in moves:
         if move.meaning_tag_id is not None:
@@ -408,7 +408,7 @@ def select_critical_moves(
     max_moves: int = 3,
     lang: str = "ja",
     level: str = "normal",
-) -> List[CriticalMove]:
+) -> list[CriticalMove]:
     """Select top critical moves for focused review.
 
     Determinism guarantee:
@@ -456,21 +456,21 @@ def select_critical_moves(
 
     # Step 5: Greedy selection with diversity penalty and complexity filter
     candidates = list(important_moves)
-    selected: List[CriticalMove] = []
-    selected_tag_ids: Tuple[str, ...] = ()
+    selected: list[CriticalMove] = []
+    selected_tag_ids: tuple[str, ...] = ()
 
     # Phase 83: Track statistics and cache stdev
     filter_stats = ComplexityFilterStats(total_candidates=len(candidates))
-    max_stdev_seen: Optional[float] = None
-    discounted_move_numbers: Set[int] = set()
-    stdev_cache: Dict[int, Optional[float]] = {}
+    max_stdev_seen: float | None = None
+    discounted_move_numbers: set[int] = set()
+    stdev_cache: dict[int, float | None] = {}
 
     for _ in range(max_moves):
         if not candidates:
             break
 
         # Compute critical scores for all candidates
-        scores: Dict[int, float] = {}
+        scores: dict[int, float] = {}
         for move in candidates:
             # Phase 83: Normalize early for consistent weight/penalty calculation
             tag_id = meaning_tag_map.get(move.move_number) or "uncertain"
