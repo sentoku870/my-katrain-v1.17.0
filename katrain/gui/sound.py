@@ -1,9 +1,11 @@
+from typing import Any, Dict, List, Sequence
+
 from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivy.core.audio import SoundLoader
 from kivy.utils import platform
 
-cached_sounds = {}
+cached_sounds: Dict[str, Any] = {}
 
 # prefer ffpyplayer on linux, then others, avoid gst and avoid or ffpyplayer on windows
 ranking = [("ffplay", 98 if platform in ["win", "macosx"] else -2), ("sdl", -1), ("gst", 99), ("", 0)]
@@ -13,8 +15,8 @@ except Exception as e:
     print("Exception sorting sound loaders: ", e)  # private vars, so could break with versions etc
 
 
-def play_sound(file, volume=1, cache=True):
-    def _play(sound):
+def play_sound(file: str, volume: float = 1, cache: bool = True) -> None:
+    def _play(sound: Any) -> None:
         if sound:
             sound.play()
             sound.seek(0)
@@ -31,7 +33,7 @@ def play_sound(file, volume=1, cache=True):
             Clock.schedule_once(lambda _dt: _play(sound), 0)
 
 
-def stop_sound(file):
+def stop_sound(file: str) -> None:
     sound = cached_sounds.get(file)
     if sound:
         sound.stop()
