@@ -41,7 +41,7 @@ class SGFManager:
     def __init__(
         self,
         config_getter: Callable[[str, Any], Any],
-        config_setter: Callable[[str, str, Any], None],
+        config_setter: Callable[[str, Any], None],
         save_config: Callable[[str], None],
         logger: Callable[[str, int], None],
         status_setter: Callable[[str, int], None],
@@ -106,7 +106,7 @@ class SGFManager:
         """クリップボードからSGFを読み込む。"""
         clipboard = Clipboard.paste()
         if not clipboard:
-            self._set_status("Ctrl-V pressed but clipboard is empty.", STATUS_INFO)
+            self._set_status("Ctrl-V pressed but clipboard is empty.", int(int(STATUS_INFO)))
             return
 
         url_match = re.match(r"(?P<url>https?://[^\s]+)", clipboard)
@@ -128,17 +128,17 @@ class SGFManager:
                 preview = "<unreadable>"
             logging.info(f"Clipboard SGF parse failed: {exc}, preview: {preview}")
             # UI message: simple, no raw clipboard content (privacy)
-            self._set_status(f"Failed to import from clipboard: {exc}", STATUS_INFO)
+            self._set_status(f"Failed to import from clipboard: {exc}", int(STATUS_INFO))
             return
         except Exception as exc:
             # Boundary fallback: unexpected error parsing clipboard SGF
             logging.warning(f"Unexpected clipboard SGF error: {exc}", exc_info=True)
-            self._set_status(f"Failed to import from clipboard: {exc}", STATUS_INFO)
+            self._set_status(f"Failed to import from clipboard: {exc}", int(STATUS_INFO))
             return
 
         engine = self._get_engine()
         if engine:
-            move_tree.nodes_in_tree[-1].analyze(engine, analyze_fast=False)
+            move_tree.nodes_in_tree[-1].analyze(engine, analyze_fast=False)  # type: ignore[attr-defined]
 
         self._new_game(move_tree, True, None)
         self._redo(9999)
@@ -161,17 +161,17 @@ class SGFManager:
         try:
             msg = game.write_sgf(filename)
             self._log(msg, OUTPUT_INFO)
-            self._set_status(msg, STATUS_INFO)
+            self._set_status(msg, int(STATUS_INFO))
         except OSError as e:
             # File write failure: permission denied, disk full, invalid path
             logging.warning(f"SGF save failed to {filename}: {e}", exc_info=True)
             self._log(f"Failed to save SGF to {filename}: {e}", OUTPUT_ERROR)
-            self._set_status(f"Save failed: {e}", STATUS_ERROR)
+            self._set_status(f"Save failed: {e}", int(STATUS_ERROR))
         except Exception as e:
             # Boundary fallback: unexpected error during SGF save
             logging.error(f"Unexpected error saving SGF to {filename}: {e}", exc_info=True)
             self._log(f"Failed to save SGF to {filename}: {e}", OUTPUT_ERROR)
-            self._set_status(f"Save failed: {e}", STATUS_ERROR)
+            self._set_status(f"Save failed: {e}", int(STATUS_ERROR))
 
     def open_recent_sgf(self) -> None:
         """最近のSGFファイルを開く（ドロップダウン表示）。"""
@@ -245,10 +245,10 @@ class SGFManager:
         item_height = dp(34)
         font_size = sp(13)
 
-        def truncate(text, max_len=35):
+        def truncate(text: str, max_len: int = 35) -> str:
             return text if len(text) <= max_len else text[: max_len - 3] + "..."
 
-        def load_and_analyze(path, *_load_args):
+        def load_and_analyze(path: str, *_load_args: Any) -> None:
             dropdown.dismiss()
             self.load_sgf_file(path, fast=fast, rewind=rewind)
 
@@ -292,7 +292,7 @@ class SGFManager:
             logging.warning(f"Unexpected error opening SGF dropdown: {e}", exc_info=True)
             self._dispatch("analyze-sgf-popup")
 
-    def do_analyze_sgf_popup(self, katrain) -> None:
+    def do_analyze_sgf_popup(self, katrain: Any) -> None:
         """SGF解析ポップアップを開く。
 
         Args:
@@ -311,13 +311,14 @@ class SGFManager:
                 title_key="load sgf title", size=[dp(1200), dp(800)], content=popup_contents
             ).__self__
 
-            def readfile(*_args):
+            def readfile(*_args: Any) -> None:
                 filename = popup_contents.filesel.filename
-                self.fileselect_popup.dismiss()
+                if self.fileselect_popup:
+                    self.fileselect_popup.dismiss()
                 path, file = os.path.split(filename)
-                if path != self._config("general/sgf_load"):
+                if path != self._config("general/sgf_load", None):
                     self._log(f"Updating sgf load path default to {path}", OUTPUT_DEBUG)
-                    general = dict(self._config("general") or {})
+                    general = dict(self._config("general", {}) or {})
                     general["sgf_load"] = path
                     self._set_config_section("general", general)
                     self._save_config("general")
@@ -327,10 +328,11 @@ class SGFManager:
 
             popup_contents.filesel.on_success = readfile
             popup_contents.filesel.on_submit = readfile
-        self.fileselect_popup.open()
-        self.fileselect_popup.content.filesel.ids.list_view._trigger_update()
+        if self.fileselect_popup:
+            self.fileselect_popup.open()
+            self.fileselect_popup.content.filesel.ids.list_view._trigger_update()
 
-    def do_save_game_as_popup(self, katrain) -> None:
+    def do_save_game_as_popup(self, katrain: Any) -> None:
         """名前を付けて保存ポップアップを開く。
 
         Args:
@@ -348,7 +350,7 @@ class SGFManager:
             title_key="save sgf title", size=[dp(1200), dp(800)], content=popup_contents
         ).__self__
 
-        def readfile(*_args):
+        def readfile(*_args: Any) -> None:
             filename = popup_contents.filesel.filename
             if not filename.lower().endswith(".sgf"):
                 filename += ".sgf"
@@ -356,9 +358,9 @@ class SGFManager:
             path, file = os.path.split(filename.strip())
             if not path:
                 path = popup_contents.filesel.path
-            if path != self._config("general/sgf_save"):
+            if path != self._config("general/sgf_save", None):
                 self._log(f"Updating sgf save path default to {path}", OUTPUT_DEBUG)
-                general = dict(self._config("general") or {})
+                general = dict(self._config("general", {}) or {})
                 general["sgf_save"] = path
                 self._set_config_section("general", general)
                 self._save_config("general")

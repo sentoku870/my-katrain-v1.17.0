@@ -58,7 +58,26 @@
       "Bash(gh run download:*)",
       "Bash(gh pr view:*)",
       "Bash(uv run:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(Select-String \"gui.features\")",
+      "Bash(ForEach-Object { $_Line -split ':')",
+      "Bash(Select-Object -First 1 })",
+      "Bash(Sort-Object)",
+      "Bash(Group-Object)",
+      "Bash(Sort-Object Count -Descending)",
+      "Bash(Select-Object Count, Name)",
+      "Bash(Select-String -Pattern \"auto_mode_popup.py\")",
+      "Bash(powershell -Command:*)",
+      "Bash(uv sync:*)",
+      "Bash(Select-String -Path pyproject.toml -Pattern 'python_version\\\\s*=\\\\s*\"\"3\\\\.11\"\"')",
+      "Bash(Select-String -Path pyproject.toml -Pattern 'disallow_untyped_defs\\\\s*=\\\\s*true')",
+      "Bash(Select-String \": error:\")",
+      "Bash(Select-String \"katrain[\\\\/]core[\\\\/]game\\\\.py\")",
+      "Bash(Measure-Object)",
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(Select-String:*)",
+      "Bash(Out-String)",
+      "Bash(git reset:*)"
     ]
   }
 }
