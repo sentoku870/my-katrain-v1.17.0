@@ -209,7 +209,13 @@ class TestSummaryManagerPureFunctionWrappers:
 
             result = manager.build_summary_from_stats([{}], "Player1")
 
-            mock_build.assert_called_once_with([{}], "Player1", get_config)
+            # Verify the call was made with correct args
+            # Note: config_fn is now wrapped in a lambda, so we check it's callable
+            assert mock_build.call_count == 1
+            args, kwargs = mock_build.call_args
+            assert args[0] == [{}]
+            assert args[1] == "Player1"
+            assert callable(args[2])  # config_fn is now a lambda wrapper
             assert result == "Summary text"
 
     def test_extract_analysis_from_sgf_node_delegates_to_stats(self):

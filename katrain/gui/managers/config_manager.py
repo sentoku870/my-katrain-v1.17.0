@@ -41,7 +41,7 @@ class ConfigManager:
 
     def __init__(
         self,
-        config_dict: dict,
+        config_dict: Dict[str, Any],
         save_config: Callable[[Optional[str]], None],
         logger: Optional[Callable[[str, int], None]] = None,
         log_level_info: int = 0,
@@ -87,7 +87,7 @@ class ConfigManager:
             return default
         return self._config.get(setting, default)
 
-    def get_section(self, section: str) -> dict:
+    def get_section(self, section: str) -> Dict[str, Any]:
         """セクション全体を取得（SHALLOW COPYを返す）
 
         Args:
@@ -113,7 +113,7 @@ class ConfigManager:
 
     # ========== 書き込み ==========
 
-    def set_section(self, section: str, value: dict) -> None:
+    def set_section(self, section: str, value: Dict[str, Any]) -> None:
         """セクション全体を設定（REPLACE）
 
         Args:
@@ -126,7 +126,7 @@ class ConfigManager:
 
     # ========== エクスポート設定（PARTIAL UPDATE） ==========
 
-    def load_export_settings(self) -> dict:
+    def load_export_settings(self) -> Dict[str, Any]:
         """エクスポート設定をロード
 
         Returns:
@@ -155,7 +155,7 @@ class ConfigManager:
 
     # ========== バッチオプション（PARTIAL UPDATE） ==========
 
-    def save_batch_options(self, options: dict) -> None:
+    def save_batch_options(self, options: Dict[str, Any]) -> None:
         """バッチオプションを保存（PARTIAL UPDATE - batch_optionsサブツリーのみ）
 
         mykatrain_settings.batch_optionsをMERGE更新。

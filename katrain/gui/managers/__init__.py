@@ -13,7 +13,7 @@ Note: PEP 562 lazy imports を使用。
 これにより、GameStateManagerの単体テスト時に他のマネージャー（GUI依存あり）を
 読み込まずに済む。
 """
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 __all__ = [
     "KeyboardManager",
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from katrain.gui.managers.summary_manager import SummaryManager as SummaryManager
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """PEP 562: Lazy module attribute access."""
     if name == "KeyboardManager":
         from katrain.gui.managers.keyboard_manager import KeyboardManager
