@@ -10,7 +10,7 @@
 
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
@@ -78,9 +78,9 @@ def create_browse_callback(
 def create_on_start_callback(
     ctx: "FeatureContext",
     widgets: BatchWidgets,
-    is_running: List[bool],
-    cancel_flag: List[bool],
-    get_player_filter_fn: Callable[[], Optional[str]],
+    is_running: list[bool],
+    cancel_flag: list[bool],
+    get_player_filter_fn: Callable[[], str | None],
     run_batch_thread_fn: Callable[[], None],
 ) -> Callable[..., None]:
     """開始ボタンコールバックを作成
@@ -137,7 +137,7 @@ def create_on_start_callback(
 
 def create_on_close_callback(
     popup: Any,
-    is_running: List[bool],
+    is_running: list[bool],
 ) -> Callable[..., None]:
     """閉じるボタンコールバックを作成
 
@@ -158,7 +158,7 @@ def create_on_close_callback(
 
 def create_get_player_filter_fn(
     filter_buttons: BatchWidgets,
-) -> Callable[[], Optional[str]]:
+) -> Callable[[], str | None]:
     """プレイヤーフィルター取得関数を作成
 
     Args:
@@ -167,7 +167,7 @@ def create_get_player_filter_fn(
     Returns:
         プレイヤーフィルター取得関数
     """
-    def get_player_filter() -> Optional[str]:
+    def get_player_filter() -> str | None:
         if filter_buttons["filter_black"].state == "down":
             return "B"
         elif filter_buttons["filter_white"].state == "down":
@@ -182,7 +182,7 @@ def build_batch_popup_widgets(
     default_input_dir: str,
     default_output_dir: str,
     leela_enabled: bool = False,  # Phase 87.5: Leela gating parameter
-) -> Tuple[BoxLayout, BatchWidgets]:
+) -> tuple[BoxLayout, BatchWidgets]:
     """バッチポップアップのウィジェットを構築
 
     Args:

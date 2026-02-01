@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.reason_generator import generate_reason_safe
@@ -30,9 +30,9 @@ _logger = logging.getLogger("katrain.gui.features.summary_formatter")
 _GTP_COORD_PATTERN = re.compile(r"^[a-hj-t](?:[1-9]|1[0-9]|2[0-5])$", re.IGNORECASE)
 
 # Type aliases for clarity
-StatsDict = Dict[str, Any]
+StatsDict = dict[str, Any]
 ConfigFn = Callable[[str], Any]
-PhaseMistakeKey = Tuple[str, MistakeCategory]
+PhaseMistakeKey = tuple[str, MistakeCategory]
 
 # Phase 85: i18n key mappings for pattern fields
 PHASE_KEYS = {
@@ -73,9 +73,9 @@ class _PatternMoveEval:
     )
 
     # Type annotations for __slots__ members (Phase 111)
-    mistake_category: Optional[MistakeCategory]
+    mistake_category: MistakeCategory | None
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         # Safe extraction with defaults
         self.move_number = data.get("move_number", 0)
         self.player = data.get("player")
@@ -105,11 +105,11 @@ class _FakeSnapshot:
     """Duck-typed EvalSnapshot for pattern mining."""
     __slots__ = ("moves",)
 
-    def __init__(self, moves: List["_PatternMoveEval"]) -> None:
+    def __init__(self, moves: list[_PatternMoveEval]) -> None:
         self.moves = moves
 
 
-def _normalize_board_size(bs: Union[Tuple[int, int], List[int], None]) -> Optional[Tuple[int, int]]:
+def _normalize_board_size(bs: tuple[int, int] | list[int] | None) -> tuple[int, int] | None:
     """Normalize board_size to (w, h) tuple.
 
     Handles both tuple and list (from JSON deserialization).
@@ -128,8 +128,8 @@ def _normalize_board_size(bs: Union[Tuple[int, int], List[int], None]) -> Option
 
 
 def _filter_by_board_size(
-    stats_list: List[StatsDict],
-) -> Tuple[List[StatsDict], Optional[int]]:
+    stats_list: list[StatsDict],
+) -> tuple[list[StatsDict], int | None]:
     """Filter stats_list to games with consistent board size.
 
     Only square boards (w == h) are supported for pattern mining.
@@ -143,9 +143,9 @@ def _filter_by_board_size(
         If no valid games, returns ([], None).
     """
     # Count normalized (w, h) tuples
-    size_counts: Counter[Tuple[int, int]] = Counter()
-    non_square_games: List[str] = []
-    invalid_games: List[str] = []
+    size_counts: Counter[tuple[int, int]] = Counter()
+    non_square_games: list[str] = []
+    invalid_games: list[str] = []
 
     for stats in stats_list:
         game_name = stats.get("game_name", "unknown")
@@ -207,7 +207,7 @@ def _filter_by_board_size(
     return filtered, most_common_size
 
 
-def _stable_sort_key(stats: StatsDict) -> Tuple[str, str, int, int]:
+def _stable_sort_key(stats: StatsDict) -> tuple[str, str, int, int]:
     """Generate fully stable sort key for stats dict.
 
     Returns:
@@ -222,12 +222,12 @@ def _stable_sort_key(stats: StatsDict) -> Tuple[str, str, int, int]:
     )
 
 
-def _is_valid_player(player: Optional[str]) -> bool:
+def _is_valid_player(player: str | None) -> bool:
     """Check if player is valid ("B" or "W")."""
     return player in ("B", "W")
 
 
-def _is_valid_gtp(gtp: Optional[str], board_size: int = 19) -> bool:
+def _is_valid_gtp(gtp: str | None, board_size: int = 19) -> bool:
     """Check if gtp is a valid coordinate for the given board size.
 
     Validates:
@@ -283,9 +283,9 @@ def _is_valid_move_number(move_number: Any) -> bool:
 
 
 def _reconstruct_pattern_input(
-    stats_list: List[StatsDict],
+    stats_list: list[StatsDict],
     board_size: int,
-) -> List[Tuple[str, _FakeSnapshot]]:
+) -> list[tuple[str, _FakeSnapshot]]:
     """Reconstruct pattern mining input from stats_list.
 
     Returns games sorted by (game_name, date, total_moves, source_index),
@@ -364,17 +364,17 @@ def _reconstruct_pattern_input(
 
 
 def _mine_patterns_safe(
-    games: List[Tuple[str, _FakeSnapshot]],
+    games: list[tuple[str, _FakeSnapshot]],
     board_size: int,
     min_count: int,
     top_n: int,
-) -> List["PatternCluster"]:
+) -> list[PatternCluster]:
     """Wrapper for mine_patterns with lazy import."""
     from katrain.core.batch.stats.pattern_miner import mine_patterns
     return mine_patterns(games, board_size=board_size, min_count=min_count, top_n=top_n)  # type: ignore[arg-type]
 
 
-def _format_game_refs(game_refs: List["GameRef"], max_display: int = 3) -> str:
+def _format_game_refs(game_refs: list[GameRef], max_display: int = 3) -> str:
     """Format game refs with deterministic ordering."""
     sorted_refs = sorted(
         game_refs,
@@ -388,9 +388,9 @@ def _format_game_refs(game_refs: List["GameRef"], max_display: int = 3) -> str:
 
 
 def _append_recurring_patterns(
-    lines: List[str],
-    pattern_clusters: List["PatternCluster"],
-    focus_player: Optional[str],
+    lines: list[str],
+    pattern_clusters: list[PatternCluster],
+    focus_player: str | None,
 ) -> None:
     """Append Recurring Patterns section to lines."""
     from katrain.core.lang import i18n
@@ -467,8 +467,8 @@ def _append_recurring_patterns(
 
 
 def build_summary_from_stats(
-    stats_list: List[StatsDict],
-    focus_player: Optional[str],
+    stats_list: list[StatsDict],
+    focus_player: str | None,
     config_fn: ConfigFn,
 ) -> str:
     """統計dictリストからsummaryテキストを生成.
@@ -514,8 +514,8 @@ def build_summary_from_stats(
             phase_loss_total[phase] += stats["phase_loss"][phase]
 
     # Phase × Mistake クロス集計
-    phase_mistake_counts_total: Dict[Tuple[str, Any], int] = {}
-    phase_mistake_loss_total: Dict[Tuple[str, Any], float] = {}
+    phase_mistake_counts_total: dict[tuple[str, Any], int] = {}
+    phase_mistake_loss_total: dict[tuple[str, Any], float] = {}
     for stats in stats_list:
         for key, count in stats.get("phase_mistake_counts", {}).items():
             phase_mistake_counts_total[key] = phase_mistake_counts_total.get(key, 0) + count
@@ -523,13 +523,13 @@ def build_summary_from_stats(
             phase_mistake_loss_total[key] = phase_mistake_loss_total.get(key, 0.0) + loss
 
     # Aggregate reason_tags counts
-    reason_tags_totals: Dict[str, int] = {}
+    reason_tags_totals: dict[str, int] = {}
     for stats in stats_list:
         for tag, count in stats.get("reason_tags_counts", {}).items():
             reason_tags_totals[tag] = reason_tags_totals.get(tag, 0) + count
 
     # Worst moves の集計
-    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]] = []
+    all_worst_moves: list[tuple[str, int, str, str, float, float, MistakeCategory]] = []
     for stats in stats_list:
         game_name = stats["game_name"]
         for move_num, player, gtp, loss, importance, cat in stats["worst_moves"]:
@@ -631,8 +631,8 @@ def build_summary_from_stats(
 
 
 def _append_individual_game_overview(
-    lines: List[str],
-    stats_list: List[StatsDict],
+    lines: list[str],
+    stats_list: list[StatsDict],
     focus_player: str,
 ) -> None:
     """個別対局テーブルを追加."""
@@ -657,8 +657,8 @@ def _append_individual_game_overview(
 
 
 def _append_opponent_aggregate(
-    lines: List[str],
-    stats_list: List[StatsDict],
+    lines: list[str],
+    stats_list: list[StatsDict],
     focus_player: str,
     total_games: int,
 ) -> None:
@@ -687,11 +687,11 @@ def _append_opponent_aggregate(
 
 
 def _append_mistake_distribution(
-    lines: List[str],
-    mistake_totals: Dict[MistakeCategory, int],
-    mistake_loss_totals: Dict[MistakeCategory, float],
+    lines: list[str],
+    mistake_totals: dict[MistakeCategory, int],
+    mistake_loss_totals: dict[MistakeCategory, float],
     total_moves: int,
-    focus_player: Optional[str],
+    focus_player: str | None,
 ) -> None:
     """Mistake Distributionテーブル."""
     lines.append("## Mistake Distribution" + (f" ({focus_player})" if focus_player else ""))
@@ -708,10 +708,10 @@ def _append_mistake_distribution(
 
 
 def _append_freedom_distribution(
-    lines: List[str],
-    freedom_totals: Dict[PositionDifficulty, int],
+    lines: list[str],
+    freedom_totals: dict[PositionDifficulty, int],
     total_moves: int,
-    focus_player: Optional[str],
+    focus_player: str | None,
 ) -> None:
     """Freedom Distribution（非UNKNOWNがある場合のみ）."""
     has_real_freedom_data = any(
@@ -734,10 +734,10 @@ def _append_freedom_distribution(
 
 
 def _append_phase_mistake_breakdown(
-    lines: List[str],
-    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
-    phase_mistake_loss_total: Dict[PhaseMistakeKey, float],
-    focus_player: Optional[str],
+    lines: list[str],
+    phase_mistake_counts_total: dict[PhaseMistakeKey, int],
+    phase_mistake_loss_total: dict[PhaseMistakeKey, float],
+    focus_player: str | None,
 ) -> None:
     """Phase × Mistake クロス集計テーブル."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
@@ -762,10 +762,10 @@ def _append_phase_mistake_breakdown(
 
 
 def _append_reason_tags(
-    lines: List[str],
-    reason_tags_totals: Dict[str, int],
-    stats_list: List[StatsDict],
-    focus_player: Optional[str],
+    lines: list[str],
+    reason_tags_totals: dict[str, int],
+    stats_list: list[StatsDict],
+    focus_player: str | None,
 ) -> None:
     """Reason Tags Distribution."""
     if not reason_tags_totals:
@@ -823,10 +823,10 @@ def _append_reason_tags(
 
 
 def _append_worst_moves(
-    lines: List[str],
-    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]],
+    lines: list[str],
+    all_worst_moves: list[tuple[str, int, str, str, float, float, MistakeCategory]],
     config_fn: ConfigFn,
-    focus_player: Optional[str],
+    focus_player: str | None,
 ) -> None:
     """Top Worst Movesセクション."""
     from katrain.core.reports.summary_report import (
@@ -918,13 +918,13 @@ def _append_worst_moves(
 
 
 def _append_weakness_hypothesis(
-    lines: List[str],
-    phase_mistake_loss_total: Dict[PhaseMistakeKey, float],
-    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
-    phase_loss_total: Dict[str, float],
-    phase_moves_total: Dict[str, int],
-    focus_player: Optional[str],
-) -> List[Tuple[PhaseMistakeKey, float]]:
+    lines: list[str],
+    phase_mistake_loss_total: dict[PhaseMistakeKey, float],
+    phase_mistake_counts_total: dict[PhaseMistakeKey, int],
+    phase_loss_total: dict[str, float],
+    phase_moves_total: dict[str, int],
+    focus_player: str | None,
+) -> list[tuple[PhaseMistakeKey, float]]:
     """弱点仮説セクション."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
 
@@ -938,7 +938,7 @@ def _append_weakness_hypothesis(
         eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
     }
 
-    sorted_combos: List[Tuple[Tuple[str, MistakeCategory], float]] = []
+    sorted_combos: list[tuple[tuple[str, MistakeCategory], float]] = []
     if phase_mistake_loss_total:
         sorted_combos = sorted(
             [(k, v) for k, v in phase_mistake_loss_total.items() if k[1] in cat_names_ja and v > 0],
@@ -986,8 +986,8 @@ def _append_weakness_hypothesis(
 
 
 def _append_urgent_miss_in_weakness(
-    lines: List[str],
-    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]],
+    lines: list[str],
+    all_worst_moves: list[tuple[str, int, str, str, float, float, MistakeCategory]],
     config_fn: ConfigFn,
 ) -> None:
     """弱点仮説セクションに急場見逃しパターンを追加."""
@@ -1038,8 +1038,8 @@ def _append_urgent_miss_in_weakness(
 
 
 def _format_time_management(
-    stats_list: List[StatsDict],
-    focus_player: Optional[str],
+    stats_list: list[StatsDict],
+    focus_player: str | None,
 ) -> str:
     """Time Managementセクションを生成.
 
@@ -1071,7 +1071,7 @@ def _format_time_management(
 
     lines = [f"## {get_section_title()}"]
 
-    def _aggregate_stats(stats_list: List[StatsDict], player_color: str, focus_player: Optional[str] = None) -> Tuple["TimeStatsData", List[Dict[str, Any]]]:
+    def _aggregate_stats(stats_list: list[StatsDict], player_color: str, focus_player: str | None = None) -> tuple[TimeStatsData, list[dict[str, Any]]]:
         """Aggregate time stats for a player color."""
         total_blitz = 0
         total_blitz_mistake = 0
@@ -1114,7 +1114,7 @@ def _format_time_management(
             long_think_mistake_count=total_long_think_mistake,
         ), tilt_episodes
 
-    def _format_player_section(label: str, stats_data: "TimeStatsData", tilt_episodes: List[Dict[str, Any]]) -> List[str]:
+    def _format_player_section(label: str, stats_data: TimeStatsData, tilt_episodes: list[dict[str, Any]]) -> list[str]:
         """Format a single player's time management section."""
         section_lines = [f"\n### {label}", ""]
         section_lines.extend(format_time_stats(stats_data))
@@ -1186,12 +1186,12 @@ def _format_time_management(
 
 
 def _append_practice_priorities(
-    lines: List[str],
-    sorted_combos: List[Tuple[PhaseMistakeKey, float]],
-    phase_mistake_counts_total: Dict[PhaseMistakeKey, int],
-    phase_loss_total: Dict[str, float],
+    lines: list[str],
+    sorted_combos: list[tuple[PhaseMistakeKey, float]],
+    phase_mistake_counts_total: dict[PhaseMistakeKey, int],
+    phase_loss_total: dict[str, float],
     total_moves: int,
-    focus_player: Optional[str],
+    focus_player: str | None,
 ) -> None:
     """Practice Prioritiesセクション."""
     phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}

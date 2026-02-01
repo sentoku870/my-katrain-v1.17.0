@@ -9,7 +9,7 @@
 
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
 def do_export_summary(
     ctx: "FeatureContext",
-    scan_and_show_callback: Callable[[List[str]], None],
-    load_export_settings_fn: Callable[[], Dict[str, Any]],
+    scan_and_show_callback: Callable[[list[str]], None],
+    load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
 ) -> None:
     """Schedule summary export on the main Kivy thread.
@@ -50,8 +50,8 @@ def do_export_summary(
 
 def do_export_summary_ui(
     ctx: "FeatureContext",
-    scan_and_show_callback: Callable[[List[str]], None],
-    load_export_settings_fn: Callable[[], Dict[str, Any]],
+    scan_and_show_callback: Callable[[list[str]], None],
+    load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
 ) -> None:
     """ディレクトリ選択とまとめ生成（自動分類）
@@ -167,9 +167,9 @@ def do_export_summary_ui(
 
 
 def process_summary_with_selected_players(
-    sgf_files: List[str],
-    selected_players: List[str],
-    process_and_export_fn: Callable[[List[str], "Popup", List[str]], None],
+    sgf_files: list[str],
+    selected_players: list[str],
+    process_and_export_fn: Callable[[list[str], "Popup", list[str]], None],
 ) -> None:
     """選択されたプレイヤーでサマリー処理を開始
 
@@ -201,11 +201,11 @@ def process_summary_with_selected_players(
 
 
 def scan_and_show_player_selection(
-    sgf_files: List[str],
+    sgf_files: list[str],
     ctx: "FeatureContext",
-    scan_player_names_fn: Callable[[List[str]], Dict[str, int]],
-    process_summary_fn: Callable[[List[str], List[str]], None],
-    show_player_selection_fn: Callable[[List[Tuple[str, int]], List[str]], None],
+    scan_player_names_fn: Callable[[list[str]], dict[str, int]],
+    process_summary_fn: Callable[[list[str], list[str]], None],
+    show_player_selection_fn: Callable[[list[tuple[str, int]], list[str]], None],
 ) -> None:
     """プレイヤー名をスキャンして選択ダイアログを表示
 
@@ -275,11 +275,11 @@ def scan_and_show_player_selection(
 
 
 def show_player_selection_dialog(
-    sorted_players: List[Tuple[str, int]],
-    sgf_files: List[str],
-    load_export_settings_fn: Callable[[], Dict[str, Any]],
+    sorted_players: list[tuple[str, int]],
+    sgf_files: list[str],
+    load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
-    process_and_export_fn: Callable[[List[str], "Popup", List[str]], None],
+    process_and_export_fn: Callable[[list[str], "Popup", list[str]], None],
 ) -> None:
     """プレイヤー選択ダイアログを表示
 
@@ -300,7 +300,7 @@ def show_player_selection_dialog(
     last_selected_players = export_settings.get("last_selected_players", [])
 
     # チェックボックスリスト
-    checkbox_dict = {}  # {player_name: CheckBox}
+    checkbox_dict: dict[str, Any] = {}  # {player_name: CheckBox}
 
     content_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
 
@@ -414,14 +414,14 @@ def show_player_selection_dialog(
 
 
 def process_and_export_summary(
-    sgf_paths: List[str],
+    sgf_paths: list[str],
     progress_popup: "Popup",
-    selected_players: List[str],
+    selected_players: list[str],
     ctx: "FeatureContext",
-    extract_sgf_statistics_fn: Callable[[str], Dict[str, Any]],
-    categorize_games_fn: Callable[[List[Dict[str, Any]], Optional[str]], Dict[str, Any]],
-    save_summaries_per_player_fn: Callable[[List[Dict[str, Any]], List[str], "Popup"], None],
-    save_categorized_summaries_fn: Callable[[Dict[str, Any], Optional[str], "Popup"], None],
+    extract_sgf_statistics_fn: Callable[[str], dict[str, Any]],
+    categorize_games_fn: Callable[[list[dict[str, Any]], str | None], dict[str, Any]],
+    save_summaries_per_player_fn: Callable[[list[dict[str, Any]], list[str], "Popup"], None],
+    save_categorized_summaries_fn: Callable[[dict[str, Any], str | None, "Popup"], None],
 ) -> None:
     """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）
 
