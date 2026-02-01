@@ -28,6 +28,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    cast,
 )
 
 if TYPE_CHECKING:
@@ -261,7 +262,7 @@ def compute_spearman_manual(paired: List[Tuple[float, float]]) -> Optional[float
     if math.isnan(corr) or math.isinf(corr):
         return None
 
-    return corr
+    return cast(float, corr)
 
 
 def _extract_leela_loss(node: Any) -> Optional[float]:
@@ -331,7 +332,7 @@ def _extract_leela_loss(node: Any) -> Optional[float]:
     # K=0.5 がデフォルト
     K = 0.5
     loss = (best_wr - played_wr) * K * 100
-    return max(0.0, loss)
+    return cast(float, max(0.0, loss))
 
 
 # =============================================================================

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
         MoveEval,
     )
     from katrain.core.analysis.time import PacingMetrics
-    from katrain.core.eval_metrics import AutoStrictnessResult
+    from katrain.core.analysis.models import AutoRecommendation
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ class KarteContext:
     thresholds: List[float]  # Raw thresholds from config
     effective_thresholds: Tuple[float, float, float]  # Score thresholds for classification
     effective_preset: str  # "beginner" / "standard" / "advanced"
-    auto_recommendation: Optional[AutoStrictnessResult]
+    auto_recommendation: Optional["AutoRecommendation"]
 
     # Computed metadata
     confidence_level: ConfidenceLevel

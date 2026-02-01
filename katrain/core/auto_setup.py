@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 # Default auto_setup config for new users
-DEFAULT_AUTO_SETUP: dict = {
+DEFAULT_AUTO_SETUP: dict[str, Any] = {
     "mode": "auto",  # New users start in auto mode
     "first_run_completed": False,
     "last_test_result": None,  # "success" | "failed" | None
@@ -42,10 +42,10 @@ MIGRATED_DEFAULT_MODE: str = "standard"
 # =============================================================================
 
 # Cache for packaged config.json
-_PACKAGED_DEFAULTS: Optional[Dict] = None
+_PACKAGED_DEFAULTS: Optional[dict[str, Any]] = None
 
 
-def _get_packaged_defaults() -> dict:
+def _get_packaged_defaults() -> dict[str, Any]:
     """Get packaged config.json defaults (cached).
 
     Returns:
@@ -59,13 +59,15 @@ def _get_packaged_defaults() -> dict:
     return _PACKAGED_DEFAULTS
 
 
-def get_packaged_engine_defaults() -> dict:
+def get_packaged_engine_defaults() -> dict[str, Any]:
     """Get packaged engine section defaults.
 
     Returns:
         The engine section from packaged config.
     """
-    return _get_packaged_defaults().get("engine", {})
+    defaults = _get_packaged_defaults()
+    engine = defaults.get("engine", {})
+    return dict(engine) if engine else {}
 
 
 # =============================================================================
@@ -73,7 +75,7 @@ def get_packaged_engine_defaults() -> dict:
 # =============================================================================
 
 
-def get_auto_setup_config(user_config: dict, is_new_user: bool) -> dict:
+def get_auto_setup_config(user_config: dict[str, Any], is_new_user: bool) -> dict[str, Any]:
     """Get auto_setup config section.
 
     Args:
@@ -108,7 +110,7 @@ def get_auto_setup_config(user_config: dict, is_new_user: bool) -> dict:
     return migrated
 
 
-def _has_custom_engine_settings(user_engine: dict) -> bool:
+def _has_custom_engine_settings(user_engine: dict[str, Any]) -> bool:
     """Check if user has custom engine settings.
 
     Compares against packaged defaults. Empty strings mean "use default".
@@ -141,7 +143,7 @@ def _has_custom_engine_settings(user_engine: dict) -> bool:
     return False
 
 
-def should_show_auto_tab_first(auto_setup: dict) -> bool:
+def should_show_auto_tab_first(auto_setup: dict[str, Any]) -> bool:
     """Determine if Auto Setup tab should be shown first in settings.
 
     Conditions (both must be true):
@@ -279,6 +281,7 @@ def find_cpu_katago() -> str | None:
         ]
 
     for candidate in candidates:
+        path: str | None
         if candidate.startswith("katrain"):
             path = find_package_resource(candidate)
         else:
@@ -316,8 +319,8 @@ def _is_likely_opencl_binary(path: str) -> bool:
 
 
 def resolve_auto_engine_settings(
-    base_engine: dict,
-) -> tuple[dict | None, "TestAnalysisResult | None"]:
+    base_engine: dict[str, Any],
+) -> tuple[dict[str, Any] | None, "TestAnalysisResult | None"]:
     """Build engine settings for auto mode.
 
     Note:

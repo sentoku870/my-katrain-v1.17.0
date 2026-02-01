@@ -9,7 +9,7 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.logic_loss import detect_engine_type
@@ -90,7 +90,7 @@ def weakness_hypothesis_for(
             count = stats.phase_mistake_counts.get(key, 0)
 
             # Select representative moves for this phase/category
-            def phase_cat_filter(mv):
+            def phase_cat_filter(mv: Any) -> bool:
                 mv_phase = mv.tag or "unknown"
                 mv_cat = mv.mistake_category.name if mv.mistake_category else "GOOD"
                 return mv_phase == phase and mv_cat == category

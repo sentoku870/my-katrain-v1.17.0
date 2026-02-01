@@ -302,7 +302,7 @@ class ImportResult:
     success_count: int = 0
     failed_count: int = 0
     skipped_count: int = 0
-    failed_files: List[tuple] = field(default_factory=list)  # (filename, error_message)
+    failed_files: List[tuple[str, str]] = field(default_factory=list)  # (filename, error_message)
     skipped_files: List[str] = field(default_factory=list)
     average_analyzed_ratio: Optional[float] = None
 

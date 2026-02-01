@@ -213,9 +213,12 @@ def compute_move_distance(
     if best_move.is_pass or actual_move.is_pass:
         return None
 
+    # coords is (x, y) for placed stones, None for pass (checked above)
+    if best_move.coords is None or actual_move.coords is None:
+        return None
     bx, by = best_move.coords
     ax, ay = actual_move.coords
-    return abs(bx - ax) + abs(by - ay)
+    return int(abs(bx - ax) + abs(by - ay))
 
 
 def is_endgame(

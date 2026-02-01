@@ -33,47 +33,53 @@ from katrain.core.utils import find_package_resource
 
 
 class Player:
-    def __init__(self, player="B", player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL, periods_used=0):
+    def __init__(
+        self,
+        player: str = "B",
+        player_type: str = PLAYER_HUMAN,
+        player_subtype: str = PLAYING_NORMAL,
+        periods_used: int = 0,
+    ) -> None:
         self.player = player
-        self.sgf_rank = None
-        self.calculated_rank = None
-        self.name = ""
+        self.sgf_rank: str | None = None
+        self.calculated_rank: float | None = None
+        self.name: str = ""
         self.update(player_type, player_subtype)
         self.periods_used = periods_used
 
-    def update(self, player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL):
+    def update(self, player_type: str = PLAYER_HUMAN, player_subtype: str = PLAYING_NORMAL) -> None:
         self.player_type = player_type
         self.player_subtype = player_subtype
 
     @property
-    def ai(self):
+    def ai(self) -> bool:
         return self.player_type == PLAYER_AI
 
     @property
-    def human(self):
+    def human(self) -> bool:
         return self.player_type == PLAYER_HUMAN
 
     @property
-    def being_taught(self):
+    def being_taught(self) -> bool:
         return self.player_type == PLAYER_HUMAN and self.player_subtype == PLAYING_TEACHING
 
     @property
-    def strategy(self):
+    def strategy(self) -> str:
         return self.player_subtype if self.ai else AI_DEFAULT
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.player_type} ({self.player_subtype})"
 
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 
 def _save_config_with_errors(
-    config: dict,
-    config_store,
+    config: dict[str, Any],
+    config_store: JsonFileConfigStore,
     log_func: Callable[[str, int], None],
-    key: Optional[str] = None,
-) -> List[str]:
+    key: str | None = None,
+) -> list[str]:
     """Save config sections, collecting failures.
 
     This is a module-level function for testability (avoids BaseKaTrain init).
@@ -106,7 +112,7 @@ def _save_config_with_errors(
     return failed_keys
 
 
-def parse_version(s):
+def parse_version(s: str) -> list[int]:
     parts = [int(p) for p in s.split(".")]
     while len(parts) < 3:
         parts.append(0)
@@ -119,9 +125,11 @@ class KaTrainBase:
 
     """Settings, logging, and players functionality, so other classes like bots who need a katrain instance can be used without a GUI"""
 
-    def __init__(self, force_package_config=False, debug_level=None, **kwargs):
-        self.debug_level = debug_level or 0
-        self.game = None
+    def __init__(self, force_package_config: bool = False, debug_level: int | None = None, **kwargs: Any) -> None:
+        from katrain.core.game import Game  # Local import to avoid circular dependency
+
+        self.debug_level: int = debug_level or 0
+        self.game: Game | None = None
         self._log_buffer = LogBuffer()
 
         self.logger = lambda message, level=OUTPUT_INFO: self.log(message, level)
@@ -148,7 +156,7 @@ class KaTrainBase:
         """State change notification system (Phase 104)."""
         return self._state_notifier
 
-    def log(self, message, level=OUTPUT_INFO):
+    def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         self._log_buffer.append(message, level)
         if level == OUTPUT_ERROR:
             print(f"ERROR: {message}")
@@ -163,7 +171,7 @@ class KaTrainBase:
         """
         return self._log_buffer.get_lines()
 
-    def _load_config(self, force_package_config):
+    def _load_config(self, force_package_config: bool) -> str:
         if len(sys.argv) > 1 and sys.argv[1].endswith("config.json"):
             config_file = os.path.abspath(sys.argv[1])
             self.log(f"Using command line config file {config_file}", OUTPUT_INFO)
@@ -186,7 +194,10 @@ class KaTrainBase:
                         self.log(f"Copied package config to local file {config_file}", OUTPUT_INFO)
                     else:  # user file exists
                         try:
-                            version_str = JsonFileConfigStore(user_config_file).get("general")["version"]
+                            general_config = JsonFileConfigStore(user_config_file).get("general")
+                            if general_config is None:
+                                raise KeyError("general section missing")
+                            version_str = general_config["version"]
                             version = parse_version(version_str)
                             self.log(f"Parsed version: {version}", OUTPUT_DEBUG)
                         except Exception as e:  # noqa: BLE001 - config version parse may fail in many ways
@@ -220,7 +231,7 @@ class KaTrainBase:
         self._typed_config_writer = TypedConfigWriter(self._config, self.save_config)
         return config_file
 
-    def save_config(self, key=None):
+    def save_config(self, key: str | None = None) -> None:
         """Save config to file. Logs errors but does not raise."""
         failed_keys = _save_config_with_errors(self._config, self._config_store, self.log, key)
 
@@ -230,7 +241,7 @@ class KaTrainBase:
                 Event.create(EventType.CONFIG_UPDATED, {"key": key})
             )
 
-    def config(self, setting, default=None):
+    def config(self, setting: str, default: Any = None) -> Any:
         try:
             if "/" in setting:
                 cat, key = setting.split("/")
@@ -239,8 +250,9 @@ class KaTrainBase:
                 return self._config.get(setting, default)
         except KeyError:
             self.log(f"Missing configuration option {setting}", OUTPUT_ERROR)
+            return default
 
-    def get_config_snapshot(self) -> Dict[str, Any]:
+    def get_config_snapshot(self) -> dict[str, Any]:
         """Get a shallow copy of current config for diagnostics.
 
         This is the public API for accessing config data.
@@ -275,7 +287,7 @@ class KaTrainBase:
         """
         return self._typed_config.get_leela()
 
-    def update_engine_config(self, **kwargs) -> EngineConfig:
+    def update_engine_config(self, **kwargs: Any) -> EngineConfig:
         """engineセクションを部分更新。自動保存。
 
         Args:
@@ -289,7 +301,7 @@ class KaTrainBase:
         """
         return self._typed_config_writer.update_engine(**kwargs)
 
-    def update_trainer_config(self, **kwargs) -> TrainerConfig:
+    def update_trainer_config(self, **kwargs: Any) -> TrainerConfig:
         """trainerセクションを部分更新。自動保存。
 
         Args:
@@ -303,7 +315,7 @@ class KaTrainBase:
         """
         return self._typed_config_writer.update_trainer(**kwargs)
 
-    def update_leela_config(self, **kwargs) -> LeelaConfig:
+    def update_leela_config(self, **kwargs: Any) -> LeelaConfig:
         """leelaセクションを部分更新。自動保存。
 
         Args:
@@ -317,11 +329,11 @@ class KaTrainBase:
         """
         return self._typed_config_writer.update_leela(**kwargs)
 
-    def update_player(self, bw, **kwargs):
+    def update_player(self, bw: str, **kwargs: Any) -> None:
         self.players_info[bw].update(**kwargs)
         self.update_calculated_ranks()
 
-    def update_calculated_ranks(self):
+    def update_calculated_ranks(self) -> None:
         for bw, player_info in self.players_info.items():
             if player_info.player_type == PLAYER_AI:
                 settings = self.config(f"ai/{player_info.strategy}")
@@ -329,7 +341,7 @@ class KaTrainBase:
             else:
                 player_info.calculated_rank = None
 
-    def reset_players(self):
+    def reset_players(self) -> None:
         self.update_player("B")
         self.update_player("W")
         for v in self.players_info.values():
@@ -337,8 +349,10 @@ class KaTrainBase:
 
     @property
     def last_player_info(self) -> Player:
+        assert self.game is not None, "Game not initialized"
         return self.players_info[self.game.current_node.player]
 
     @property
     def next_player_info(self) -> Player:
+        assert self.game is not None, "Game not initialized"
         return self.players_info[self.game.current_node.next_player]

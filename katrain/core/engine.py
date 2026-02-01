@@ -7,7 +7,7 @@ import subprocess
 import threading
 import time
 import traceback
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from katrain.common.platform import get_platform
 
@@ -32,13 +32,13 @@ from katrain.core.notify_helpers import maybe_notify_analysis_complete
 MAX_PENDING_QUERIES = 100
 
 
-def _ensure_str(line) -> str:
+def _ensure_str(line: bytes | str | None) -> str:
     """Normalize line to str, handling bytes/str/None."""
     if line is None:
         return ""
     if isinstance(line, bytes):
         return line.decode("utf-8", errors="replace")
-    return line
+    return str(line)
 
 
 class BaseEngine:
@@ -54,13 +54,13 @@ class BaseEngine:
     ]
     RULESETS = {fromkey: name for abbr, name in RULESETS_ABBR for fromkey in [abbr, name]}
 
-    def __init__(self, katrain, config):
+    def __init__(self, katrain: Any, config: Dict[str, Any]) -> None:
         self.katrain = katrain
         self.config = config
 
     @staticmethod
-    def get_rules(ruleset):
-        if ruleset.strip().startswith("{"):
+    def get_rules(ruleset: str | Dict[str, Any]) -> str | Dict[str, Any]:
+        if isinstance(ruleset, str) and ruleset.strip().startswith("{"):
             try:
                 ruleset = json.loads(ruleset)
             except json.JSONDecodeError:
@@ -69,13 +69,13 @@ class BaseEngine:
             return ruleset
         return KataGoEngine.RULESETS.get(str(ruleset).lower(), "japanese")
 
-    def advance_showing_game(self):
+    def advance_showing_game(self) -> None:
         pass  # avoid transitional error
 
-    def status(self):
+    def status(self) -> str:
         return ""  # avoid transitional error
 
-    def get_engine_path(self, exe):
+    def get_engine_path(self, exe: str) -> str | None:
         if not exe:
             if get_platform() == "win":
                 exe = "katrain/KataGo/katago.exe"
@@ -90,18 +90,18 @@ class BaseEngine:
         exepath, exename = os.path.split(exe)
 
         if exepath and not os.path.isfile(exe):
-            self.on_error(i18n._("Kata exe not found").format(exe=exe), "KATAGO-EXE")
+            self.on_error(i18n._("Kata exe not found").format(exe=exe), "KATAGO-EXE", True)
             return None
         elif not exepath:
             paths = os.getenv("PATH", ".").split(os.pathsep) + ["/opt/homebrew/bin/"]
             exe_with_paths = [os.path.join(path, exe) for path in paths if os.path.isfile(os.path.join(path, exe))]
             if not exe_with_paths:
-                self.on_error(i18n._("Kata exe not found in path").format(exe=exe), "KATAGO-EXE")
+                self.on_error(i18n._("Kata exe not found in path").format(exe=exe), "KATAGO-EXE", True)
                 return None
             exe = exe_with_paths[0]
         return exe
 
-    def on_error(self, message, code, allow_popup):
+    def on_error(self, message: str, code: str, allow_popup: bool = True) -> None:
         # Subclasses should override to implement proper logging
         pass
 
@@ -113,27 +113,27 @@ class KataGoEngine(BaseEngine):
     # Timeout for Queue.get() in consumer threads (seconds)
     IO_TIMEOUT = 5.0
 
-    def __init__(self, katrain, config):
+    def __init__(self, katrain: Any, config: Dict[str, Any]) -> None:
         super().__init__(katrain, config)
 
         self.allow_recovery = self.config.get("allow_recovery", True)  # if false, don't give popups
-        self.queries = {}  # outstanding query id -> start time and callback
-        self.ponder_query = None
+        self.queries: Dict[str, Any] = {}  # outstanding query id -> start time and callback
+        self.ponder_query: Optional[Dict[str, Any]] = None
         self.query_counter = 0
-        self.katago_process = None
+        self.katago_process: Optional[subprocess.Popen[bytes]] = None
         self.base_priority = 0
-        self.override_settings = {"reportAnalysisWinratesAs": "BLACK"}  # force these settings
-        self.analysis_thread = None
-        self.stderr_thread = None
-        self.write_stdin_thread = None
+        self.override_settings: Dict[str, str] = {"reportAnalysisWinratesAs": "BLACK"}  # force these settings
+        self.analysis_thread: Optional[threading.Thread] = None
+        self.stderr_thread: Optional[threading.Thread] = None
+        self.write_stdin_thread: Optional[threading.Thread] = None
         # Pipe reader threads (Phase 22: I/O timeout)
-        self.stdout_reader_thread = None
-        self.stderr_reader_thread = None
+        self.stdout_reader_thread: Optional[threading.Thread] = None
+        self.stderr_reader_thread: Optional[threading.Thread] = None
         self.shell = False
-        self.write_queue = queue.Queue()
+        self.write_queue: queue.Queue[Tuple[Dict[str, Any], Optional[Callable[..., None]], Optional[Callable[..., None]], Optional[Move], Optional[GameNode]] | None] = queue.Queue()
         # Output queues for non-blocking I/O (Phase 22)
-        self._stdout_queue = queue.Queue()
-        self._stderr_queue = queue.Queue()
+        self._stdout_queue: queue.Queue[bytes | None] = queue.Queue()
+        self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()
         # Shutdown event (recreated on each start, not cleared)
         self._shutdown_event = threading.Event()
         self.thread_lock = threading.Lock()
@@ -171,12 +171,12 @@ class KataGoEngine(BaseEngine):
                 )
         self.start()
 
-    def on_error(self, message, code=None, allow_popup=True):
+    def on_error(self, message: str, code: str | None = None, allow_popup: bool = True) -> None:
         self.katrain.log(message, OUTPUT_ERROR)
         if self.allow_recovery and allow_popup:
             self.katrain("engine_recovery_popup", message, code)
 
-    def start(self):
+    def start(self) -> None:
         with self.thread_lock:
             # Recreate queues and shutdown event for clean restart
             self.write_queue = queue.Queue()
@@ -234,7 +234,7 @@ class KataGoEngine(BaseEngine):
             self.stderr_thread.start()
             self.write_stdin_thread.start()
 
-    def on_new_game(self):
+    def on_new_game(self) -> None:
         self.base_priority += 1
         if not self.is_idle():
             with self.thread_lock:
@@ -247,7 +247,7 @@ class KataGoEngine(BaseEngine):
             with self._pending_query_lock:
                 self._pending_query_count = 0
 
-    def terminate_queries(self, only_for_node=None, lock=True):
+    def terminate_queries(self, only_for_node: Optional[GameNode] = None, lock: bool = True) -> None:
         if lock:
             with self.thread_lock:
                 return self.terminate_queries(only_for_node=only_for_node, lock=False)
@@ -255,20 +255,20 @@ class KataGoEngine(BaseEngine):
             if only_for_node is None or only_for_node is node:
                 self.terminate_query(query_id)
 
-    def stop_pondering(self):
+    def stop_pondering(self) -> None:
         """Stop pondering (public API, acquires lock)."""
         with self.thread_lock:
             pq = self._stop_pondering_unlocked()
         if pq:
             self.terminate_query(pq["id"], ignore_further_results=False)
 
-    def _stop_pondering_unlocked(self):
+    def _stop_pondering_unlocked(self) -> Optional[Dict[str, Any]]:
         """Stop pondering without acquiring lock (caller must hold thread_lock)."""
         pq = self.ponder_query
         self.ponder_query = None
         return pq
 
-    def terminate_query(self, query_id, ignore_further_results=True):
+    def terminate_query(self, query_id: str, ignore_further_results: bool = True) -> None:
         """Terminate a query (thread-safe).
 
         Args:
@@ -283,7 +283,7 @@ class KataGoEngine(BaseEngine):
                 with self.thread_lock:
                     self.queries.pop(query_id, None)
 
-    def restart(self):
+    def restart(self) -> None:
         self.queries = {}
         # Reset pending counter before shutdown
         with self._pending_query_lock:
@@ -291,23 +291,23 @@ class KataGoEngine(BaseEngine):
         self.shutdown(finish=False)
         self.start()
 
-    def check_alive(self, os_error="", exception_if_dead=False, maybe_open_recovery=False):
-        ok = self.katago_process and self.katago_process.poll() is None
+    def check_alive(self, os_error: str = "", exception_if_dead: bool = False, maybe_open_recovery: bool = False) -> bool:
+        ok: bool = self.katago_process is not None and self.katago_process.poll() is None
         if not ok and exception_if_dead:
             if self.katago_process:
-                code = self.katago_process and self.katago_process.poll()
+                code = self.katago_process.poll()
                 if code == 3221225781:
                     died_msg = i18n._("Engine missing DLL")
                 else:
                     died_msg = i18n._("Engine died unexpectedly").format(error=f"{os_error} status {code}")
                 if code != 1:  # deliberate exit
-                    self.on_error(died_msg, code, allow_popup=maybe_open_recovery)
+                    self.on_error(died_msg, str(code) if code is not None else None, allow_popup=maybe_open_recovery)
                 self.katago_process = None  # return from threads
             else:
                 self.katrain.log(i18n._("Engine died unexpectedly").format(error=os_error), OUTPUT_DEBUG)
         return ok
 
-    def wait_to_finish(self, timeout=30.0):
+    def wait_to_finish(self, timeout: float = 30.0) -> bool:
         """Wait for queries to complete with timeout (thread-safe).
 
         Args:
@@ -341,7 +341,7 @@ class KataGoEngine(BaseEngine):
                 return False
             time.sleep(0.1)
 
-    def shutdown(self, finish=False):
+    def shutdown(self, finish: bool = False) -> None:
         """Shutdown engine safely.
 
         This method guarantees completion - all exceptions are logged and swallowed.
@@ -391,7 +391,7 @@ class KataGoEngine(BaseEngine):
 
         self.katrain.log("Engine shutdown complete", OUTPUT_DEBUG)
 
-    def _safe_queue_put(self, q, item, context):
+    def _safe_queue_put(self, q: queue.Queue[Any], item: Any, context: str) -> None:
         """Put item to queue with timeout to prevent deadlock.
 
         Uses put_nowait() first, falls back to put(timeout=1.0) if full.
@@ -414,7 +414,7 @@ class KataGoEngine(BaseEngine):
                 OUTPUT_EXTRA_DEBUG,
             )
 
-    def _safe_terminate(self, process):
+    def _safe_terminate(self, process: subprocess.Popen[bytes]) -> None:
         """Request graceful process termination."""
         self.katrain.log("Terminating KataGo process", OUTPUT_DEBUG)
         try:
@@ -427,7 +427,7 @@ class KataGoEngine(BaseEngine):
                 OUTPUT_EXTRA_DEBUG,
             )
 
-    def _safe_close_pipes(self, process):
+    def _safe_close_pipes(self, process: subprocess.Popen[bytes]) -> None:
         """Close stdin/stdout/stderr pipes."""
         for name, pipe in [
             ("stdin", process.stdin),
@@ -447,7 +447,7 @@ class KataGoEngine(BaseEngine):
                         OUTPUT_EXTRA_DEBUG,
                     )
 
-    def _join_threads_with_timeout(self):
+    def _join_threads_with_timeout(self) -> None:
         """Wait for all threads to finish with timeout."""
         all_threads = [
             self.stdout_reader_thread,
@@ -464,7 +464,7 @@ class KataGoEngine(BaseEngine):
                         f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG
                     )
 
-    def _safe_force_kill(self, process):
+    def _safe_force_kill(self, process: subprocess.Popen[bytes]) -> None:
         """Force kill process if still alive."""
         try:
             if process.poll() is None:
@@ -485,17 +485,17 @@ class KataGoEngine(BaseEngine):
                 OUTPUT_EXTRA_DEBUG,
             )
 
-    def is_idle(self):
+    def is_idle(self) -> bool:
         # Note: queue.empty() is best-effort and not strictly reliable.
         # This function is advisory; don't use for precise control flow.
         with self.thread_lock:
             return not self.queries and self.write_queue.empty()
 
-    def queries_remaining(self):
+    def queries_remaining(self) -> int:
         with self.thread_lock:
             return len(self.queries) + int(not self.write_queue.empty())
 
-    def _pipe_reader_thread(self, pipe, output_queue, name):
+    def _pipe_reader_thread(self, pipe: Any, output_queue: queue.Queue[bytes | None], name: str) -> None:
         """Read from pipe and put lines into queue (blocking I/O isolated here).
 
         This thread performs blocking readline() calls. When the process terminates
@@ -518,7 +518,7 @@ class KataGoEngine(BaseEngine):
         output_queue.put(None)
         self.katrain.log(f"Pipe reader {name} finished", OUTPUT_DEBUG)
 
-    def _read_stderr_thread(self):
+    def _read_stderr_thread(self) -> None:
         """Process stderr lines from queue (non-blocking with timeout)."""
         while not self._shutdown_event.is_set():
             try:
@@ -551,7 +551,7 @@ class KataGoEngine(BaseEngine):
                 )
                 return
 
-    def _analysis_read_thread(self):
+    def _analysis_read_thread(self) -> None:
         """Process analysis results from queue (non-blocking with timeout)."""
         while not self._shutdown_event.is_set():
             try:
@@ -677,7 +677,7 @@ class KataGoEngine(BaseEngine):
                     OUTPUT_ERROR,
                 )
 
-    def _handle_engine_timeout(self):
+    def _handle_engine_timeout(self) -> None:
         """Handle engine timeout (called from background thread).
 
         Called when analysis thread detects that:
@@ -695,7 +695,7 @@ class KataGoEngine(BaseEngine):
         if self.allow_recovery:
             self.on_error("Engine timeout", code="timeout", allow_popup=True)
 
-    def _write_stdin_thread(self):
+    def _write_stdin_thread(self) -> None:
         """Write queries to KataGo stdin (TOCTOU-safe).
 
         Flush only in a thread since it returns only when the other program reads.
@@ -712,8 +712,13 @@ class KataGoEngine(BaseEngine):
             # Check for termination signal (None)
             if item is None:
                 return
+            query: Dict[str, Any]
+            callback: Optional[Callable[..., None]]
+            error_callback: Optional[Callable[..., None]]
+            next_move: Optional[Move]
+            node: Optional[GameNode]
             query, callback, error_callback, next_move, node = item
-            old_ponder_query = None  # To call terminate_query outside of lock
+            old_ponder_query: Optional[Dict[str, Any]] = None  # To call terminate_query outside of lock
             with self.thread_lock:
                 if "id" not in query:
                     self.query_counter += 1
@@ -721,7 +726,7 @@ class KataGoEngine(BaseEngine):
 
                 ponder = query.pop(self.PONDER_KEY, False)
                 if ponder:  # handle pondering in here to be in lock and such
-                    pq = self.ponder_query or {}
+                    pq: Dict[str, Any] = self.ponder_query or {}
                     # basically we handle pondering by just asking for these queries a lot and ignoring duplicates
                     # when a different ponder query comes in, e.g. due to selecting a roi or different node, switch
                     differences = {
@@ -752,6 +757,8 @@ class KataGoEngine(BaseEngine):
             if process is None:
                 return
             try:
+                if process.stdin is None:
+                    return
                 process.stdin.write((json.dumps(query) + "\n").encode())
                 process.stdin.flush()
             except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
@@ -761,7 +768,7 @@ class KataGoEngine(BaseEngine):
             if old_ponder_query:
                 self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
 
-    def _invoke_error_callback(self, error_callback, error_msg):
+    def _invoke_error_callback(self, error_callback: Optional[Callable[..., None]], error_msg: Dict[str, Any]) -> None:
         """Invoke error callback, handling headless/test environments.
 
         Strategy:
@@ -800,7 +807,7 @@ class KataGoEngine(BaseEngine):
         except Exception as e:
             self.katrain.log(f"Error in error_callback: {e}", OUTPUT_ERROR)
 
-    def _decrement_pending_count(self):
+    def _decrement_pending_count(self) -> None:
         """Decrement pending counter. Called on query completion/error."""
         with self._pending_query_lock:
             self._pending_query_count = max(0, self._pending_query_count - 1)
@@ -826,7 +833,7 @@ class KataGoEngine(BaseEngine):
         with self._pending_query_lock:
             return self._pending_query_count <= MAX_PENDING_QUERIES - headroom
 
-    def send_query(self, query, callback, error_callback, next_move=None, node=None):
+    def send_query(self, query: Dict[str, Any], callback: Optional[Callable[..., None]], error_callback: Optional[Callable[..., None]], next_move: Optional[Move] = None, node: Optional[GameNode] = None) -> bool:
         """Send query to engine with safety checks.
 
         Threading contract:
@@ -882,21 +889,21 @@ class KataGoEngine(BaseEngine):
     def request_analysis(
         self,
         analysis_node: GameNode,
-        callback: Callable,
-        error_callback: Optional[Callable] = None,
-        visits: int = None,
+        callback: Callable[..., None],
+        error_callback: Optional[Callable[..., None]] = None,
+        visits: Optional[int] = None,
         analyze_fast: bool = False,
-        time_limit=True,
+        time_limit: bool = True,
         find_alternatives: bool = False,
-        region_of_interest: Optional[List] = None,
+        region_of_interest: Optional[List[int]] = None,
         priority: int = 0,
-        ponder=False,  # infinite visits, cancellable
+        ponder: bool = False,  # infinite visits, cancellable
         ownership: Optional[bool] = None,
-        next_move: Optional[GameNode] = None,
-        extra_settings: Optional[Dict] = None,
-        include_policy=True,
+        next_move: Optional[Move] = None,
+        extra_settings: Optional[Dict[str, Any]] = None,
+        include_policy: bool = True,
         report_every: Optional[float] = None,
-    ):
+    ) -> None:
         # Check for unsupported AE commands
         nodes = analysis_node.nodes_from_root
         clear_placements = [m for node in nodes for m in node.clear_placements]
@@ -980,7 +987,7 @@ class KataGoEngine(BaseEngine):
         # Default assumption based on bundled binaries
         return "OpenCL"
 
-    def create_minimal_analysis_query(self) -> dict:
+    def create_minimal_analysis_query(self) -> Dict[str, Any]:
         """Create a minimal analysis query for testing.
 
         Used for auto mode test analysis:

@@ -806,7 +806,7 @@ PRESET_ORDER: List[str] = ["relaxed", "beginner", "standard", "advanced", "pro"]
 # with code that imports them from models.py
 
 # Lazy import to avoid circular dependency
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import for label constants from presentation module."""
     if name in ("SKILL_PRESET_LABELS", "CONFIDENCE_LABELS", "REASON_TAG_LABELS", "VALID_REASON_TAGS"):
         from katrain.core.analysis.presentation import (

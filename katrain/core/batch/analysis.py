@@ -12,7 +12,7 @@ import os
 import time
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, Union, cast
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
@@ -31,7 +31,7 @@ class _DummyEngine:
         """No-op: Leela batch analysis doesn't use KataGo pondering."""
         pass
 
-    def request_analysis(self, *args, **kwargs) -> bool:
+    def request_analysis(self, *args: Any, **kwargs: Any) -> bool:
         """No-op: Leela batch analysis doesn't use KataGo analysis."""
         return False
 
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.game import Game
+    from katrain.core.game_node import GameNode
     from katrain.core.leela.engine import LeelaEngine
     from katrain.core.leela.models import LeelaPositionEval
     from katrain.core.analysis.models import EvalSnapshot, MoveEval
@@ -286,7 +287,7 @@ def analyze_single_file_leela(
         log("    [2/4] Creating game...")
         game = Game(
             katrain=katrain,
-            engine=_DummyEngine(),  # Dummy engine for Game.__init__ (no KataGo analysis)
+            engine=cast(Any, _DummyEngine()),  # Dummy engine for Game.__init__ (no KataGo analysis)
             move_tree=move_tree,
             analyze_fast=False,
             sgf_filename=sgf_path,
@@ -301,12 +302,12 @@ def analyze_single_file_leela(
         log("    [3/4] Analyzing moves with Leela Zero...")
 
         # Collect all moves from main branch
-        main_branch_nodes = []
-        current = game.root
+        main_branch_nodes: List["GameNode"] = []
+        current: Optional["GameNode"] = game.root
         while current:
             main_branch_nodes.append(current)
             children = current.children
-            current = children[0] if children else None
+            current = cast("GameNode", children[0]) if children else None
 
         # Skip root node, process only move nodes
         move_nodes = [n for n in main_branch_nodes if n.move is not None]
@@ -328,6 +329,8 @@ def analyze_single_file_leela(
 
         for node in move_nodes:
             player = node.player
+            if node.move is None:
+                continue
             gtp_coord = node.move.gtp()
             current_moves = current_moves + [(player, gtp_coord)]
             moves_sequence.append(current_moves.copy())
@@ -395,6 +398,8 @@ def analyze_single_file_leela(
 
             move_number = i + 1
             player = node.player
+            if node.move is None:
+                continue
             gtp_coord = node.move.gtp()
 
             move_eval = leela_position_to_move_eval(

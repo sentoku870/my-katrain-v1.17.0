@@ -338,7 +338,8 @@ def _get_score_stdev_from_node(node: "GameNode") -> Optional[float]:
     if root_info is None:
         return None
 
-    return root_info.get("scoreStdev")
+    score_stdev = root_info.get("scoreStdev")
+    return float(score_stdev) if score_stdev is not None else None
 
 
 def _get_score_stdev_for_move(

@@ -8,7 +8,7 @@ game.pyから抽出された重要手レポート生成機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.models import (
@@ -79,7 +79,7 @@ def build_important_moves_report(
         }
         return mapping.get(mc, "-")
 
-    def fmt_difficulty(difficulty) -> str:
+    def fmt_difficulty(difficulty: Any) -> str:
         """
         PositionDifficulty を短い日本語ラベルに変換する。
 

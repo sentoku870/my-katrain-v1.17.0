@@ -23,10 +23,10 @@ from katrain.common.locale_utils import normalize_lang_code
 # =============================================================================
 
 # Valid internal language codes
-_VALID_LANGS: frozenset = frozenset({"jp", "en"})
+_VALID_LANGS: frozenset[str] = frozenset({"jp", "en"})
 
 # Supported meaning tags (Phase 86 scope)
-SUPPORTED_TAGS: frozenset = frozenset({
+SUPPORTED_TAGS: frozenset[str] = frozenset({
     "life_death_error",
     "overplay",
     "direction_error",
@@ -42,10 +42,10 @@ SUPPORTED_TAGS: frozenset = frozenset({
 })
 
 # Valid phase values (from MistakeSignature.phase)
-PHASE_VOCABULARY: frozenset = frozenset({"opening", "middle", "endgame"})
+PHASE_VOCABULARY: frozenset[str] = frozenset({"opening", "middle", "endgame"})
 
 # Valid area values (from BoardArea enum .value)
-AREA_VOCABULARY: frozenset = frozenset({"corner", "edge", "center"})
+AREA_VOCABULARY: frozenset[str] = frozenset({"corner", "edge", "center"})
 
 
 # =============================================================================

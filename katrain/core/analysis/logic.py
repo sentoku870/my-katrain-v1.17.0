@@ -631,7 +631,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     node_list = list(nodes)
 
     # 解析済みSGFの場合、load_analysis() を呼び出し
-    loaded_nodes: set = set()
+    loaded_nodes: set[int] = set()
     for node in node_list:
         node_id = id(node)
         if node_id not in loaded_nodes:
@@ -987,9 +987,9 @@ def get_pv_filter_config(
 
 
 def filter_candidates_by_pv_complexity(
-    candidates: List[Dict],
+    candidates: List[dict[str, Any]],
     config: PVFilterConfig,
-) -> List[Dict]:
+) -> List[dict[str, Any]]:
     """
     候補手リストをPV複雑度でフィルタリングする（Phase 11）。
 
@@ -1050,7 +1050,7 @@ def filter_candidates_by_pv_complexity(
 _difficulty_logger = logging.getLogger(__name__)
 
 
-def _normalize_candidates(candidates: List[Dict]) -> Optional[List[Dict]]:
+def _normalize_candidates(candidates: List[dict[str, Any]]) -> Optional[List[dict[str, Any]]]:
     """候補手リストを正規化（ソート + バリデーション）。
 
     order 欠損時は UNKNOWN（手番依存のソートを回避）。
@@ -1081,7 +1081,7 @@ def _normalize_candidates(candidates: List[Dict]) -> Optional[List[Dict]]:
     return None
 
 
-def _get_root_visits(analysis: Optional[Dict]) -> Optional[int]:
+def _get_root_visits(analysis: Optional[dict[str, Any]]) -> Optional[int]:
     """analysis から root_visits を取得（複数キーに対応）。
 
     KaTrain/KataGo の複数フォーマットに対応。
@@ -1104,16 +1104,19 @@ def _get_root_visits(analysis: Optional[Dict]) -> Optional[int]:
     # KataGo 標準: rootInfo.visits
     root_info = analysis.get("rootInfo", {})
     if "visits" in root_info:
-        return root_info.get("visits")
+        visits_value = root_info.get("visits")
+        return int(visits_value) if visits_value is not None else None
 
     # KaTrain 内部フォーマット: root.visits
     root = analysis.get("root", {})
     if "visits" in root:
-        return root.get("visits")
+        visits_value = root.get("visits")
+        return int(visits_value) if visits_value is not None else None
 
     # 直接参照（一部のカスタムフォーマット対応）
     if "visits" in analysis:
-        return analysis.get("visits")
+        visits_value = analysis.get("visits")
+        return int(visits_value) if visits_value is not None else None
 
     return None
 
@@ -1149,9 +1152,9 @@ def _determine_reliability(
 
 
 def _compute_policy_difficulty(
-    candidates: List[Dict],
+    candidates: List[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[Optional[float], Optional[Dict]]:
+) -> Tuple[Optional[float], Optional[dict[str, Any]]]:
     """候補手の拮抗度から Policy 難易度を計算。
 
     scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
@@ -1199,9 +1202,9 @@ def _compute_policy_difficulty(
 
 
 def _compute_transition_difficulty(
-    candidates: List[Dict],
+    candidates: List[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[Optional[float], Optional[Dict]]:
+) -> Tuple[Optional[float], Optional[dict[str, Any]]]:
     """評価の急落度から Transition 難易度を計算。
 
     scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
@@ -1250,9 +1253,9 @@ def _compute_transition_difficulty(
 
 
 def _compute_state_difficulty(
-    candidates: List[Dict],
+    candidates: List[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[float, Optional[Dict]]:
+) -> Tuple[float, Optional[dict[str, Any]]]:
     """盤面の複雑さから State 難易度を計算。
 
     v1: 仕様書の「控えめに扱う」に従い、常に 0.0 を返す。
@@ -1274,7 +1277,7 @@ def _compute_state_difficulty(
 
 
 def compute_difficulty_metrics(
-    candidates: List[Dict],
+    candidates: List[dict[str, Any]],
     root_visits: Optional[int] = None,
     include_debug: bool = False,
 ) -> DifficultyMetrics:
@@ -1351,7 +1354,7 @@ def compute_difficulty_metrics(
     )
 
 
-def _get_candidates_from_node(node: "GameNode") -> Tuple[List[Dict], Optional[int]]:
+def _get_candidates_from_node(node: "GameNode") -> Tuple[List[dict[str, Any]], Optional[int]]:
     """GameNode から候補手リストと root_visits を取得。
 
     _get_root_visits() を使用して複数キーに対応。

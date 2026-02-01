@@ -85,7 +85,8 @@ def _get_winrate_from_node(node: GameNode) -> Optional[float]:
     root_info = analysis.get("root")
     if root_info is None:
         return None
-    return root_info.get("winrate")
+    winrate = root_info.get("winrate")
+    return float(winrate) if winrate is not None else None
 
 
 def _get_score_lead_from_node(node: GameNode) -> Optional[float]:
@@ -102,7 +103,8 @@ def _get_score_lead_from_node(node: GameNode) -> Optional[float]:
     root_info = analysis.get("root")
     if root_info is None:
         return None
-    return root_info.get("scoreLead")
+    score_lead = root_info.get("scoreLead")
+    return float(score_lead) if score_lead is not None else None
 
 
 def _get_score_stdev_from_node(node: GameNode) -> Optional[float]:
@@ -119,7 +121,8 @@ def _get_score_stdev_from_node(node: GameNode) -> Optional[float]:
     root_info = analysis.get("root")
     if root_info is None:
         return None
-    return root_info.get("scoreStdev")
+    score_stdev = root_info.get("scoreStdev")
+    return float(score_stdev) if score_stdev is not None else None
 
 
 def _get_player_from_node(node: GameNode) -> Optional[Literal["B", "W"]]:
@@ -138,9 +141,11 @@ def _get_player_from_node(node: GameNode) -> Optional[Literal["B", "W"]]:
     if move is None:
         return None
     player = getattr(move, "player", None)
-    if player not in ("B", "W"):
-        raise ValueError(f"Unexpected player value: {player!r}")
-    return player
+    if player == "B":
+        return "B"
+    if player == "W":
+        return "W"
+    raise ValueError(f"Unexpected player value: {player!r}")
 
 
 # =============================================================================

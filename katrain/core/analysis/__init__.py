@@ -22,7 +22,7 @@ Note: シンボルの __module__ パスが変更されます。
       （調査結果: リポジトリ内に pickle/cache 使用箇所なし）
 """
 
-from typing import Dict, Optional
+from typing import Any, Optional
 
 # =============================================================================
 # Explicit imports from models.py
@@ -396,7 +396,7 @@ from katrain.core.analysis.cluster_classifier import (
     is_opponent_gain,
     get_stones_in_cluster,
     compute_cluster_ownership_avg,
-    compute_confidence,
+    compute_confidence as compute_cluster_confidence,
     should_inject,
     get_semantics_label,
     # Classification
@@ -431,7 +431,7 @@ from katrain.core.analysis.reason_generator import (
 # =============================================================================
 
 
-def get_root_visits(analysis: Optional[Dict]) -> Optional[int]:
+def get_root_visits(analysis: Optional[dict[str, Any]]) -> Optional[int]:
     """Get root visits from analysis dict (public API).
 
     This is the public wrapper for _get_root_visits().
@@ -765,7 +765,7 @@ __all__ = [
     "is_opponent_gain",
     "get_stones_in_cluster",
     "compute_cluster_ownership_avg",
-    "compute_confidence",
+    "compute_cluster_confidence",
     "should_inject",
     "get_semantics_label",
     # Classification

@@ -10,7 +10,7 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.eval_metrics import classify_mistake, get_canonical_loss_from_move
@@ -189,7 +189,7 @@ def common_difficult_positions(ctx: KarteContext) -> List[str]:
 def distribution_lines_for(
     ctx: KarteContext,
     player: str,
-    bucket_label_func,
+    bucket_label_func: Callable[[Any], str],
 ) -> List[str]:
     """Generate mistake distribution lines for a player.
 

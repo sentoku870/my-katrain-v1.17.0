@@ -8,7 +8,7 @@ Phase 80のboard_context.pyを基盤とし、BFSで隣接変動セルをグル�
 from collections import Counter, deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, FrozenSet, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Tuple
 
 # 直接インポート（循環import防止）
 from katrain.core.analysis.board_context import (
@@ -100,7 +100,7 @@ class OwnershipCluster:
     primary_area: Optional[BoardArea]
     cell_count: int
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換（シリアライズ用）。"""
         return {
             "coords": sorted(self.coords),
@@ -201,7 +201,7 @@ def _bfs_cluster(
     start_col: int,
     start_row: int,
     delta_grid: Tuple[Tuple[float, ...], ...],
-    visited: set,
+    visited: set[Tuple[int, int]],
     threshold: float,
     use_8: bool,
     width: int,
@@ -277,7 +277,7 @@ def _compute_primary_area(
     )
 
 
-def _cluster_sort_key(cluster: OwnershipCluster) -> tuple:
+def _cluster_sort_key(cluster: OwnershipCluster) -> Tuple[int, float, Tuple[int, int]]:
     """クラスタのソートキー。"""
     type_order = _CLUSTER_TYPE_ORDER[cluster.cluster_type]
     min_coord = min(cluster.coords)  # (col, row) の辞書順最小
@@ -375,7 +375,7 @@ def extract_clusters(
     total_changed_cells = len(changed_cells)
 
     # BFSでクラスタ抽出
-    visited: set = set()
+    visited: set[Tuple[int, int]] = set()
     raw_clusters: List[OwnershipCluster] = []
 
     for col, row in changed_cells:

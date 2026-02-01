@@ -32,7 +32,7 @@ class LeelaCandidate:
         """Display evaluation as percentage (0-100)."""
         return self.winrate * 100.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate and clamp winrate to 0.0-1.0."""
         if self.winrate < 0.0:
             self.winrate = 0.0
@@ -79,7 +79,7 @@ class LeelaPositionEval:
         best = self.best_candidate
         return best.eval_pct if best else None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Calculate root_visits if not set."""
         if self.root_visits == 0 and self.candidates:
             self.root_visits = sum(c.visits for c in self.candidates)

@@ -5,7 +5,7 @@ between engine.py and engine_cmd/commands.py.
 """
 
 import copy
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from katrain.core.sgf_parser import Move
 
@@ -19,7 +19,7 @@ def build_analysis_query(
     visits: int,
     ponder: bool,
     ownership: bool,
-    rules: str,
+    rules: str | Dict[str, Any],
     base_priority: int,
     priority: int,
     override_settings: Dict[str, Any],

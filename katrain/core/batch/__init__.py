@@ -14,6 +14,8 @@ Structure:
     - stats.py: Game stats extraction and summary generation
 """
 
+from typing import Any
+
 # =============================================================================
 # Explicit imports from models.py
 # =============================================================================
@@ -109,7 +111,7 @@ __all__ = [
 # Lazy imports for heavy modules (Phase 42-B)
 # =============================================================================
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import for heavy modules to avoid circular imports.
 
     Available:

@@ -13,7 +13,7 @@ All functions in this module:
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from katrain.core import eval_metrics
 from katrain.core.batch.helpers import truncate_game_name
@@ -191,7 +191,7 @@ def _format_meta_section(game_data_list: List[GameSummaryData], focus_player: Op
 def _format_overall_stats(
     player_name: str,
     stats: SummaryStats,
-    confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """総合統計セクションを生成"""
     # PR#1: Import ConfidenceLevel for default handling
@@ -356,10 +356,10 @@ def _convert_sgf_to_gtp_coord(sgf_coord: str, board_size: int = 19) -> str:
 
 
 def _detect_urgent_miss_sequences(
-    worst_moves: List,
+    worst_moves: List[Tuple[str, Any]],
     threshold_loss: float = 20.0,
     min_consecutive: int = 3
-) -> Tuple[List, List]:
+) -> Tuple[List[Any], List[Tuple[str, Any]]]:
     """
     連続する大損失手を「急場見逃しパターン」として検出
 
@@ -442,7 +442,7 @@ def _detect_urgent_miss_sequences(
 def _format_top_worst_moves(
     player_name: str,
     stats: SummaryStats,
-    confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """最悪手Top 10セクションを生成（急場見逃しパターンを分離）"""
     # PR#1: Default to HIGH if not provided
@@ -528,7 +528,7 @@ def _format_top_worst_moves(
 def _format_weakness_hypothesis(
     player_name: str,
     stats: SummaryStats,
-    confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """弱点仮説セクションを生成（複数局サマリー用）"""
     # PR#1: Default to HIGH if not provided
@@ -600,7 +600,7 @@ def _format_weakness_hypothesis(
 def _format_practice_priorities(
     player_name: str,
     stats: SummaryStats,
-    confidence_level: "eval_metrics.ConfidenceLevel" = None,
+    confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """練習優先事項セクションを生成"""
     # PR#1: Default to HIGH if not provided
