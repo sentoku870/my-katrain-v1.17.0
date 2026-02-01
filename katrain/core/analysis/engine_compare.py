@@ -23,11 +23,7 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
     Iterable,
-    List,
-    Optional,
-    Tuple,
     cast,
 )
 
@@ -85,9 +81,9 @@ class MoveComparison:
     move_number: int
     player: str
     gtp: str
-    katago_loss: Optional[float]
-    leela_loss: Optional[float]
-    loss_diff: Optional[float]
+    katago_loss: float | None
+    leela_loss: float | None
+    loss_diff: float | None
 
     @property
     def abs_diff(self) -> float:
@@ -99,7 +95,7 @@ class MoveComparison:
         """両エンジンのデータがあるか。"""
         return self.katago_loss is not None and self.leela_loss is not None
 
-    def sort_key_divergent(self) -> Tuple[float, int, float]:
+    def sort_key_divergent(self) -> tuple[float, int, float]:
         """乖離Top5用ソートキー。
 
         Returns:
@@ -153,13 +149,13 @@ class EngineComparisonResult:
         total_moves: 全手数（playable_moves）
     """
 
-    move_comparisons: List[MoveComparison]
+    move_comparisons: list[MoveComparison]
     katago_stats: EngineStats
     leela_stats: EngineStats
-    correlation: Optional[float]
-    divergent_moves: List[MoveComparison]
-    mean_diff: Optional[float]
-    warnings: List[ComparisonWarning] = field(default_factory=list)
+    correlation: float | None
+    divergent_moves: list[MoveComparison]
+    mean_diff: float | None
+    warnings: list[ComparisonWarning] = field(default_factory=list)
     total_moves: int = 0
 
 
@@ -169,8 +165,8 @@ class EngineComparisonResult:
 
 
 def compute_engine_stats(
-    losses: List[float],
-    thresholds: Tuple[float, float, float],
+    losses: list[float],
+    thresholds: tuple[float, float, float],
 ) -> EngineStats:
     """損失リストから統計を計算。
 
@@ -202,7 +198,7 @@ def compute_engine_stats(
     )
 
 
-def compute_spearman_manual(paired: List[Tuple[float, float]]) -> Optional[float]:
+def compute_spearman_manual(paired: list[tuple[float, float]]) -> float | None:
     """手動Spearman順位相関係数（scipy不使用）。
 
     アルゴリズム:
@@ -221,7 +217,7 @@ def compute_spearman_manual(paired: List[Tuple[float, float]]) -> Optional[float
     x = [p[0] for p in paired]
     y = [p[1] for p in paired]
 
-    def to_ranks(values: List[float]) -> List[float]:
+    def to_ranks(values: list[float]) -> list[float]:
         """中央順位法で順位を計算。"""
         n = len(values)
         sorted_idx = sorted(range(n), key=lambda i: values[i])
@@ -265,7 +261,7 @@ def compute_spearman_manual(paired: List[Tuple[float, float]]) -> Optional[float
     return cast(float, corr)
 
 
-def _extract_leela_loss(node: Any) -> Optional[float]:
+def _extract_leela_loss(node: Any) -> float | None:
     """GameNodeからLeela損失を抽出。
 
     Args:
@@ -342,7 +338,7 @@ def _extract_leela_loss(node: Any) -> Optional[float]:
 
 def build_comparison_from_game(
     game: "Game",
-    score_thresholds: Optional[Tuple[float, float, float]] = None,
+    score_thresholds: tuple[float, float, float | None] = None,
     divergent_threshold: float = 1.0,
     divergent_limit: int = 5,
 ) -> EngineComparisonResult:
@@ -363,11 +359,11 @@ def build_comparison_from_game(
     if score_thresholds is None:
         score_thresholds = SCORE_THRESHOLDS
 
-    warnings: List[ComparisonWarning] = [ComparisonWarning.SEMANTICS_DIFFER]
+    warnings: list[ComparisonWarning] = [ComparisonWarning.SEMANTICS_DIFFER]
 
     # Step 1: GameNodeからmove_info（player, gtp）を収集
     # → これがマスターリスト（エンジン解析有無に依存しない）
-    move_info_by_num: Dict[int, Tuple[str, str]] = {}
+    move_info_by_num: dict[int, tuple[str, str]] = {}
     for node in iter_main_branch_nodes(game):
         move = getattr(node, "move", None)
         if move is None:
@@ -395,27 +391,27 @@ def build_comparison_from_game(
 
     # Step 2: KataGo snapshot取得
     katago_snapshot = snapshot_from_game(game)
-    katago_by_move: Dict[int, float] = {}
+    katago_by_move: dict[int, float] = {}
     for m in katago_snapshot.moves:
         if m.score_loss is not None:
             katago_by_move[m.move_number] = m.score_loss
 
     # Step 3: Leela分析を収集（GameNode._leela_analysis）
-    leela_by_move: Dict[int, float] = {}
+    leela_by_move: dict[int, float] = {}
     for node in iter_main_branch_nodes(game):
         loss_est = _extract_leela_loss(node)
         if loss_est is not None:
             leela_by_move[node.depth] = loss_est
 
     # Step 4: MoveComparison構築（マスターリストベース）
-    comparisons: List[MoveComparison] = []
+    comparisons: list[MoveComparison] = []
     for move_num in sorted(move_info_by_num.keys()):
         player, gtp = move_info_by_num[move_num]
         katago_loss = katago_by_move.get(move_num)
         leela_loss = leela_by_move.get(move_num)
 
         # 差分計算（両方ある場合のみ）
-        loss_diff: Optional[float] = None
+        loss_diff: float | None = None
         if katago_loss is not None and leela_loss is not None:
             loss_diff = katago_loss - leela_loss
 

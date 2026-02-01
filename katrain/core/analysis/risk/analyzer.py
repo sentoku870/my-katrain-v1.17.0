@@ -16,7 +16,7 @@ Part of Phase 61: Risk Context Core.
 """
 
 import math
-from typing import Any, Iterator, List, Literal, Optional, Tuple
+from typing import Any, Iterator, Literal
 
 from katrain.core.analysis.logic import iter_main_branch_nodes
 
@@ -43,7 +43,7 @@ def to_player_perspective(
     winrate_black: float,
     score_lead_black: float,
     player: str,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Convert Black-perspective values to side-to-move perspective.
 
     KataGo/KaTrain returns values from Black's perspective.
@@ -68,7 +68,7 @@ def to_player_perspective(
 # =============================================================================
 
 
-def _get_winrate_from_node(node: GameNode) -> Optional[float]:
+def _get_winrate_from_node(node: GameNode) -> float | None:
     """Safely extract winrate from a node.
 
     Contract:
@@ -89,7 +89,7 @@ def _get_winrate_from_node(node: GameNode) -> Optional[float]:
     return float(winrate) if winrate is not None else None
 
 
-def _get_score_lead_from_node(node: GameNode) -> Optional[float]:
+def _get_score_lead_from_node(node: GameNode) -> float | None:
     """Safely extract scoreLead from a node.
 
     Contract:
@@ -107,7 +107,7 @@ def _get_score_lead_from_node(node: GameNode) -> Optional[float]:
     return float(score_lead) if score_lead is not None else None
 
 
-def _get_score_stdev_from_node(node: GameNode) -> Optional[float]:
+def _get_score_stdev_from_node(node: GameNode) -> float | None:
     """Safely extract scoreStdev from a node.
 
     Contract:
@@ -125,7 +125,7 @@ def _get_score_stdev_from_node(node: GameNode) -> Optional[float]:
     return float(score_stdev) if score_stdev is not None else None
 
 
-def _get_player_from_node(node: GameNode) -> Optional[Literal["B", "W"]]:
+def _get_player_from_node(node: GameNode) -> Literal["B", "W"] | None:
     """Extract and normalize player from a node.
 
     Contract:
@@ -154,10 +154,10 @@ def _get_player_from_node(node: GameNode) -> Optional[Literal["B", "W"]]:
 
 
 def _get_volatility_window_values(
-    score_history: List[Optional[float]],
+    score_history: list[float | None],
     current_index: int,
     window_size: int,
-) -> List[float]:
+) -> list[float]:
     """Get scoreLead values for volatility calculation.
 
     Args:
@@ -180,7 +180,7 @@ def _get_volatility_window_values(
     return [v for v in window if v is not None]
 
 
-def _compute_volatility(values: List[float]) -> Optional[float]:
+def _compute_volatility(values: list[float]) -> float | None:
     """Compute volatility (population standard deviation).
 
     Args:
@@ -271,7 +271,7 @@ def determine_behavior_from_stdev(
 
 
 def determine_behavior_from_volatility(
-    volatility: Optional[float],
+    volatility: float | None,
     config: RiskAnalysisConfig,
 ) -> RiskBehavior:
     """Classify behavior from volatility.
@@ -306,7 +306,7 @@ def determine_behavior_from_volatility(
 def check_strategy_mismatch(
     judgment: RiskJudgmentType,
     behavior: RiskBehavior,
-) -> Tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """Check if behavior contradicts optimal strategy for the situation.
 
     Mismatch rules:
@@ -357,7 +357,7 @@ def _iter_move_nodes(game: Any) -> Iterator[GameNode]:
 
 def analyze_risk(
     game: Any,
-    config: Optional[RiskAnalysisConfig] = None,
+    config: RiskAnalysisConfig | None = None,
 ) -> RiskAnalysisResult:
     """Analyze risk-taking behavior throughout a game.
 
@@ -379,8 +379,8 @@ def analyze_risk(
 
     # score_history[i] = move (i+1)'s pre_node's scoreLead
     # current_index = move_number - 1
-    score_history: List[Optional[float]] = []
-    contexts: List[RiskContext] = []
+    score_history: list[float | None] = []
+    contexts: list[RiskContext] = []
 
     # Track statistics
     any_stdev_used = False

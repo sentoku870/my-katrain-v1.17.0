@@ -33,7 +33,7 @@ class GameRadarEntry:
     player_name: str
     player_color: str
     radar: RadarMetrics
-    date: Optional[str] = None
+    date: str | None = None
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,7 +48,7 @@ class GameRadarEntry:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Optional["GameRadarEntry"]:
+    def from_dict(cls, d: dict[str, Any]) -> "GameRadarEntry" | None:
         """Deserialize from dictionary.
 
         Returns:
@@ -73,14 +73,14 @@ class UserRadarAggregate:
 
     player_name: str
     history_size: int = DEFAULT_HISTORY_SIZE
-    entries: List[GameRadarEntry] = field(default_factory=list)
+    entries: list[GameRadarEntry] = field(default_factory=list)
 
     def add_game(
         self,
         game_id: str,
         player_color: str,
         radar: RadarMetrics,
-        date: Optional[str] = None,
+        date: str | None = None,
     ) -> None:
         """Add a game to the history with FIFO trimming."""
         self.entries.append(
@@ -95,7 +95,7 @@ class UserRadarAggregate:
         if len(self.entries) > self.history_size:
             self.entries = self.entries[-self.history_size :]
 
-    def get_aggregate(self) -> Optional[AggregatedRadarResult]:
+    def get_aggregate(self) -> AggregatedRadarResult | None:
         """Get aggregated radar from all entries.
 
         Returns:
@@ -110,7 +110,7 @@ class UserRadarAggregate:
         """Number of games in history."""
         return len(self.entries)
 
-    def get_recent_games(self, n: Optional[int] = None) -> List[GameRadarEntry]:
+    def get_recent_games(self, n: int | None = None) -> list[GameRadarEntry]:
         """Get recent games in reverse chronological order.
 
         Args:
@@ -159,11 +159,11 @@ class UserAggregateStore:
             )
         return self._aggregates[player_name]
 
-    def get(self, player_name: str) -> Optional[UserRadarAggregate]:
+    def get(self, player_name: str) -> UserRadarAggregate | None:
         """Get aggregate for player if exists."""
         return self._aggregates.get(player_name)
 
-    def all_players(self) -> List[str]:
+    def all_players(self) -> list[str]:
         """Get list of all player names in store."""
         return list(self._aggregates.keys())
 

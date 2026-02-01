@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 
 
 def compute_loss_from_delta(
-    delta_score: Optional[float],
-    delta_winrate: Optional[float],
-) -> Tuple[Optional[float], Optional[float]]:
+    delta_score: float | None,
+    delta_winrate: float | None,
+) -> tuple[float | None, float | None]:
     """
     手番視点の delta_score / delta_winrate から損失量 (>=0) を計算する。
 
@@ -36,8 +36,8 @@ def compute_loss_from_delta(
     Returns:
         (score_loss, winrate_loss): 損失量のタプル（>=0、Noneの場合は計算不可）
     """
-    score_loss: Optional[float] = None
-    winrate_loss: Optional[float] = None
+    score_loss: float | None = None
+    winrate_loss: float | None = None
 
     if delta_score is not None:
         score_loss = max(0.0, -delta_score)
@@ -49,11 +49,11 @@ def compute_loss_from_delta(
 
 
 def compute_canonical_loss(
-    points_lost: Optional[float],
-    delta_score: Optional[float] = None,
-    delta_winrate: Optional[float] = None,
-    player: Optional[str] = None,
-) -> Tuple[Optional[float], Optional[float]]:
+    points_lost: float | None,
+    delta_score: float | None = None,
+    delta_winrate: float | None = None,
+    player: str | None = None,
+) -> tuple[float | None, float | None]:
     """
     正準的な損失量 (>=0) を計算する。
 
@@ -70,8 +70,8 @@ def compute_canonical_loss(
     Returns:
         (score_loss, winrate_loss): 損失量のタプル（>=0）
     """
-    score_loss: Optional[float] = None
-    winrate_loss: Optional[float] = None
+    score_loss: float | None = None
+    winrate_loss: float | None = None
 
     # Primary: use points_lost if available
     if points_lost is not None:
@@ -93,11 +93,11 @@ def compute_canonical_loss(
 
 
 def classify_mistake(
-    score_loss: Optional[float],
-    winrate_loss: Optional[float],
+    score_loss: float | None,
+    winrate_loss: float | None,
     *,
-    score_thresholds: Tuple[float, float, float] = SCORE_THRESHOLDS,
-    winrate_thresholds: Tuple[float, float, float] = WINRATE_THRESHOLDS,
+    score_thresholds: tuple[float, float, float] = SCORE_THRESHOLDS,
+    winrate_thresholds: tuple[float, float, float] = WINRATE_THRESHOLDS,
 ) -> MistakeCategory:
     """
     損失量から MistakeCategory を決定する。

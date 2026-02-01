@@ -9,7 +9,7 @@ logic.pyから抽出されたクイズ生成関連の関数。
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
@@ -34,8 +34,8 @@ def quiz_items_from_snapshot(
     *,
     loss_threshold: float = DEFAULT_QUIZ_LOSS_THRESHOLD,
     limit: int = DEFAULT_QUIZ_ITEM_LIMIT,
-    preset: Optional[str] = None,
-) -> List[QuizItem]:
+    preset: str | None = None,
+) -> list[QuizItem]:
     """
     EvalSnapshot から「大きなミス」をクイズ形式で取り出す簡易ヘルパー。
 
@@ -56,7 +56,7 @@ def quiz_items_from_snapshot(
         loss_threshold = preset_cfg.loss_threshold
         limit = preset_cfg.limit
 
-    items: List[QuizItem] = []
+    items: list[QuizItem] = []
     for move in snapshot.moves:
         if move.score_loss is None and move.points_lost is None:
             continue
@@ -76,11 +76,11 @@ def quiz_items_from_snapshot(
 
 
 def quiz_points_lost_from_candidate(
-    candidate_move: Dict[str, Any],
+    candidate_move: dict[str, Any],
     *,
-    root_score: Optional[float],
-    next_player: Optional[str],
-) -> Optional[float]:
+    root_score: float | None,
+    next_player: str | None,
+) -> float | None:
     """
     Extract a points-lost style metric from an existing candidate move entry.
 

@@ -7,7 +7,7 @@ Karte/Summaryの出力仕様は変更せず、後続Phase 81-87の土台とし�
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -25,13 +25,13 @@ class BoardArea(Enum):
     CENTER = "center"
 
 
-_AREA_NAMES_JP: Dict[BoardArea, str] = {
+_AREA_NAMES_JP: dict[BoardArea, str] = {
     BoardArea.CORNER: "隅",
     BoardArea.EDGE: "辺",
     BoardArea.CENTER: "中央",
 }
 
-_AREA_NAMES_EN: Dict[BoardArea, str] = {
+_AREA_NAMES_EN: dict[BoardArea, str] = {
     BoardArea.CORNER: "Corner",
     BoardArea.EDGE: "Edge",
     BoardArea.CENTER: "Center",
@@ -39,11 +39,11 @@ _AREA_NAMES_EN: Dict[BoardArea, str] = {
 
 
 def classify_area(
-    coords: Optional[Tuple[int, int]],
-    board_size: Tuple[int, int] = (19, 19),
+    coords: tuple[int, int] | None,
+    board_size: tuple[int, int] = (19, 19),
     corner_threshold: int = 4,
     edge_threshold: int = 4,
-) -> Optional[BoardArea]:
+) -> BoardArea | None:
     """座標からBoardAreaを判定。
 
     Args:
@@ -74,7 +74,7 @@ def classify_area(
     return BoardArea.CENTER
 
 
-def get_area_name(area: Optional[BoardArea], lang: str = "jp") -> str:
+def get_area_name(area: BoardArea | None, lang: str = "jp") -> str:
     """BoardAreaの表示名を取得。lang="ja"は"jp"として扱う。"""
     if area is None:
         return ""
@@ -90,7 +90,7 @@ def get_area_name(area: Optional[BoardArea], lang: str = "jp") -> str:
 # =====================================================================
 
 
-def _normalize_board_size(raw: Union[Tuple[int, int], int, None]) -> Tuple[int, int]:
+def _normalize_board_size(raw: tuple[int, int] | int | None) -> tuple[int, int]:
     """board_sizeを(width, height)タプルに正規化。"""
     if isinstance(raw, tuple) and len(raw) == 2:
         return raw
@@ -99,7 +99,7 @@ def _normalize_board_size(raw: Union[Tuple[int, int], int, None]) -> Tuple[int, 
     return (19, 19)
 
 
-def _safe_get_ownership(node: "GameNode") -> Optional[List[float]]:
+def _safe_get_ownership(node: "GameNode") -> list[float] | None:
     """GameNodeからownership配列を安全に取得。
 
     1. node.ownership プロパティを試行（try/except で保護）
@@ -144,11 +144,11 @@ class OwnershipContext:
     board_size: (width, height)。
     """
 
-    ownership_grid: Optional[List[List[float]]]
-    score_stdev: Optional[float]
-    board_size: Tuple[int, int]
+    ownership_grid: list[list[float]] | None
+    score_stdev: float | None
+    board_size: tuple[int, int]
 
-    def get_ownership_at(self, coords: Optional[Tuple[int, int]]) -> Optional[float]:
+    def get_ownership_at(self, coords: tuple[int, int] | None) -> float | None:
         """指定座標のownership値を取得。範囲外/None→None。"""
         if coords is None or self.ownership_grid is None:
             return None
@@ -165,7 +165,7 @@ class OwnershipContext:
 
 def extract_ownership_context(
     node: "GameNode",
-    board_size: Optional[Tuple[int, int]] = None,
+    board_size: tuple[int, int] | None = None,
 ) -> OwnershipContext:
     """GameNodeからOwnershipContextを抽出。
 
@@ -205,7 +205,7 @@ def extract_ownership_context(
     )
 
 
-def get_score_stdev(node: "GameNode") -> Optional[float]:
+def get_score_stdev(node: "GameNode") -> float | None:
     """GameNodeからscoreStdevを取得（公開ヘルパ）。"""
     from katrain.core.analysis.critical_moves import _get_score_stdev_from_node
 

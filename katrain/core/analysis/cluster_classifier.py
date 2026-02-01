@@ -19,12 +19,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
-    Dict,
-    FrozenSet,
-    List,
-    Optional,
-    Set,
-    Tuple,
     cast,
 )
 
@@ -49,8 +43,8 @@ if TYPE_CHECKING:
 # Type Aliases
 # =====================================================================
 
-StonePosition = Tuple[int, int, str]  # (col, row, player)
-StoneSet = FrozenSet[StonePosition]
+StonePosition = tuple[int, int, str]  # (col, row, player)
+StoneSet = frozenset[StonePosition]
 
 
 # =====================================================================
@@ -72,7 +66,7 @@ class ClusterSemantics(str, Enum):
 # =====================================================================
 
 # Base confidence by semantics type
-BASE_CONFIDENCE: Dict[ClusterSemantics, float] = {
+BASE_CONFIDENCE: dict[ClusterSemantics, float] = {
     ClusterSemantics.GROUP_DEATH: 0.7,  # Stone capture is concrete
     ClusterSemantics.MISSED_KILL: 0.5,  # Threshold-based
     ClusterSemantics.TERRITORY_LOSS: 0.3,  # Fallback (lower)
@@ -185,7 +179,7 @@ def compute_stones_at_node(
     """
     width, height = board_size
     # board[row][col] = player ("B", "W", or None)
-    board: List[List[Optional[str]]] = [[None] * width for _ in range(height)]
+    board: list[list[str | None]] = [[None] * width for _ in range(height)]
 
     for n in node.nodes_from_root:
         # Step 1: placements (AB/AW) - NO CAPTURE LOGIC
@@ -232,7 +226,7 @@ def compute_stones_at_node(
                 board[row][col] = None
 
     # Convert to StoneSet
-    stones: Set[StonePosition] = set()
+    stones: set[StonePosition] = set()
     for row in range(height):
         for col in range(width):
             cell_player = board[row][col]
@@ -243,19 +237,19 @@ def compute_stones_at_node(
 
 
 def _find_group(
-    board: List[List[Optional[str]]],
+    board: list[list[str | None]],
     start_col: int,
     start_row: int,
     width: int,
     height: int,
-) -> Set[Tuple[int, int]]:
+) -> set[tuple[int, int]]:
     """Find connected stones of the same color using BFS (O(1) with deque)."""
     player = board[start_row][start_col]
     if player is None:
         return set()
 
-    visited: Set[Tuple[int, int]] = set()
-    queue: deque[Tuple[int, int]] = deque([(start_col, start_row)])
+    visited: set[tuple[int, int]] = set()
+    queue: deque[tuple[int, int]] = deque([(start_col, start_row)])
 
     while queue:
         col, row = queue.popleft()  # O(1) with deque
@@ -274,8 +268,8 @@ def _find_group(
 
 
 def _has_liberty(
-    board: List[List[Optional[str]]],
-    group: Set[Tuple[int, int]],
+    board: list[list[str | None]],
+    group: set[tuple[int, int]],
     width: int,
     height: int,
 ) -> bool:
@@ -322,7 +316,7 @@ class StoneCache:
         self._cache[move_number] = stones
         return stones
 
-    def _find_node_by_move_number(self, move_number: int) -> Optional["GameNode"]:
+    def _find_node_by_move_number(self, move_number: int) -> "GameNode" | None:
         """Find node by move number on mainline.
 
         Uses ordered_children[0] for mainline traversal
@@ -361,7 +355,7 @@ def is_opponent_gain(cluster: OwnershipCluster, actor: str) -> bool:
 def get_stones_in_cluster(
     cluster: OwnershipCluster,
     stones: StoneSet,
-) -> Tuple[StonePosition, ...]:
+) -> tuple[StonePosition, ...]:
     """Extract stones within a cluster's coordinates.
 
     Args:
@@ -556,7 +550,7 @@ def should_inject(classified: ClassifiedCluster) -> bool:
     return classified.confidence >= threshold
 
 
-def get_semantics_label(semantics: ClusterSemantics, lang: Optional[str]) -> str:
+def get_semantics_label(semantics: ClusterSemantics, lang: str | None) -> str:
     """Get localized label for semantics.
 
     Args:
@@ -684,7 +678,7 @@ def classify_cluster(
 def get_ownership_context_pair(
     parent_node: "GameNode",
     child_node: "GameNode",
-) -> Optional[Tuple[OwnershipContext, OwnershipContext]]:
+) -> tuple[OwnershipContext, OwnershipContext] | None:
     """Get OwnershipContext for both parent and child nodes.
 
     Returns None if either ownership_grid is None.
@@ -708,7 +702,7 @@ def build_classification_context(
     child_node: "GameNode",
     parent_stones: StoneSet,
     child_stones: StoneSet,
-) -> Optional[ClusterClassificationContext]:
+) -> ClusterClassificationContext | None:
     """Build classification context.
 
     Returns None if ownership is missing for either node.
@@ -739,9 +733,9 @@ def build_classification_context(
 def _get_cluster_context_for_move(
     game: "Game",
     move_number: int,
-    lang: Optional[str],
-    cache: Optional[StoneCache] = None,
-) -> Optional[str]:
+    lang: str | None,
+    cache: StoneCache | None = None,
+) -> str | None:
     """Get cluster context string for a move.
 
     Args:
@@ -828,7 +822,7 @@ def _get_cluster_context_for_move(
         return None  # Catch all, don't break Karte
 
 
-def _find_mainline_node(game: "Game", move_number: int) -> Optional["GameNode"]:
+def _find_mainline_node(game: "Game", move_number: int) -> "GameNode" | None:
     """Find node by move number on mainline.
 
     Uses ordered_children[0] for mainline traversal.

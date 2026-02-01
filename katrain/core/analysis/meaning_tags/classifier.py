@@ -15,7 +15,7 @@ Public API:
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from .models import MeaningTag, MeaningTagId
 from .registry import MEANING_TAG_REGISTRY
@@ -83,12 +83,12 @@ class ClassificationContext:
         total_moves: Total moves in the game (for endgame detection)
     """
 
-    best_move_policy: Optional[float] = None
-    actual_move_policy: Optional[float] = None
-    move_distance: Optional[int] = None
-    ownership_flux: Optional[float] = None
-    score_stdev: Optional[float] = None
-    total_moves: Optional[int] = None
+    best_move_policy: float | None = None
+    actual_move_policy: float | None = None
+    move_distance: int | None = None
+    ownership_flux: float | None = None
+    score_stdev: float | None = None
+    total_moves: int | None = None
 
 
 # =============================================================================
@@ -99,7 +99,7 @@ class ClassificationContext:
 class LexiconStoreLike(Protocol):
     """Protocol for LexiconStore-like objects."""
 
-    def get(self, entry_id: str) -> Optional[object]:
+    def get(self, entry_id: str) -> object | None:
         """Get an entry by ID."""
         ...
 
@@ -109,7 +109,7 @@ class LexiconStoreLike(Protocol):
 # =============================================================================
 
 
-def get_loss_value(move_eval: "MoveEval") -> Optional[float]:
+def get_loss_value(move_eval: "MoveEval") -> float | None:
     """Extract loss value from MoveEval.
 
     Priority:
@@ -133,7 +133,7 @@ def get_loss_value(move_eval: "MoveEval") -> Optional[float]:
     return None
 
 
-def classify_gtp_move(gtp: Optional[str]) -> str:
+def classify_gtp_move(gtp: str | None) -> str:
     """Classify GTP move into categories.
 
     Args:
@@ -158,7 +158,7 @@ def classify_gtp_move(gtp: Optional[str]) -> str:
     return "normal"
 
 
-def is_classifiable_move(gtp: Optional[str]) -> bool:
+def is_classifiable_move(gtp: str | None) -> bool:
     """Check if a move can be classified.
 
     Args:
@@ -171,8 +171,8 @@ def is_classifiable_move(gtp: Optional[str]) -> bool:
 
 
 def compute_move_distance(
-    best_gtp: Optional[str], actual_gtp: Optional[str]
-) -> Optional[int]:
+    best_gtp: str | None, actual_gtp: str | None
+) -> int | None:
     """Compute Manhattan distance between two GTP coordinates.
 
     Uses existing Move.from_gtp() which handles:
@@ -222,7 +222,7 @@ def compute_move_distance(
 
 
 def is_endgame(
-    move_number: int, total_moves: Optional[int], has_endgame_hint: bool
+    move_number: int, total_moves: int | None, has_endgame_hint: bool
 ) -> bool:
     """Determine if the position is in the endgame phase.
 
@@ -253,9 +253,9 @@ def is_endgame(
 
 def resolve_lexicon_anchor(
     tag_id: MeaningTagId,
-    lexicon_store: Optional[LexiconStoreLike],
+    lexicon_store: LexiconStoreLike | None,
     validate_anchor: bool,
-) -> Optional[str]:
+) -> str | None:
     """Resolve lexicon_anchor_id for a tag.
 
     Args:
@@ -290,8 +290,8 @@ def resolve_lexicon_anchor(
 def classify_meaning_tag(
     move_eval: "MoveEval",
     *,
-    context: Optional[ClassificationContext] = None,
-    lexicon_store: Optional[LexiconStoreLike] = None,
+    context: ClassificationContext | None = None,
+    lexicon_store: LexiconStoreLike | None = None,
     validate_anchor: bool = True,
 ) -> MeaningTag:
     """Classify a MoveEval into a meaning tag (deterministic).

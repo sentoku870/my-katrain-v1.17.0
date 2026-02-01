@@ -13,7 +13,7 @@ import logging
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from .models import GameTimeData, TimeMetrics
 from katrain.core.analysis.models import MoveEval, get_canonical_loss_from_move
@@ -97,12 +97,12 @@ class GamePacingStats:
     """
 
     # Per-player time thresholds
-    time_median_black: Optional[float]
-    time_median_white: Optional[float]
-    blitz_threshold_black: Optional[float]
-    blitz_threshold_white: Optional[float]
-    long_think_threshold_black: Optional[float]
-    long_think_threshold_white: Optional[float]
+    time_median_black: float | None
+    time_median_white: float | None
+    blitz_threshold_black: float | None
+    blitz_threshold_white: float | None
+    long_think_threshold_black: float | None
+    long_think_threshold_white: float | None
 
     # Loss thresholds
     loss_p90: float
@@ -141,7 +141,7 @@ class PacingMetrics:
 
     move_number: int
     player: str
-    time_spent_sec: Optional[float]
+    time_spent_sec: float | None
     canonical_loss: float
     is_blitz: bool
     is_long_think: bool
@@ -320,7 +320,7 @@ def _compute_game_stats(
     valid_moves = [m for m in moves if m.player is not None]
 
     # Build time map from TimeMetrics
-    time_map: Dict[int, Optional[float]] = {}
+    time_map: dict[int, float | None] = {}
     for tm in time_data.metrics:
         time_map[tm.move_number] = tm.time_spent_sec
 
@@ -421,7 +421,7 @@ def _classify_pacing(
 ) -> list[PacingMetrics]:
     """Classify each move's pacing based on game statistics."""
     # Build time map
-    time_map: Dict[int, Optional[float]] = {}
+    time_map: dict[int, float | None] = {}
     for tm in time_data.metrics:
         time_map[tm.move_number] = tm.time_spent_sec
 
@@ -569,7 +569,7 @@ def _detect_tilt_episodes(
 def analyze_pacing(
     time_data: GameTimeData,
     moves: list[MoveEval],
-    config: Optional[PacingConfig] = None,
+    config: PacingConfig | None = None,
 ) -> PacingAnalysisResult:
     """Analyze game for pacing patterns and tilt episodes.
 
@@ -643,7 +643,7 @@ def analyze_pacing(
 # =============================================================================
 
 
-def get_pacing_icon(metrics: Optional[PacingMetrics]) -> str:
+def get_pacing_icon(metrics: PacingMetrics | None) -> str:
     """Convert PacingMetrics to a display icon.
 
     Priority order: 🔥 > 💭 > 🐇 > 🐢

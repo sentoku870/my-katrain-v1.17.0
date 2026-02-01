@@ -10,7 +10,6 @@ Part of Phase 46: Meaning Tags System Core.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 from .models import MeaningTagId
 
@@ -38,8 +37,8 @@ class MeaningTagDefinition:
     en_label: str
     ja_description: str
     en_description: str
-    default_lexicon_anchor: Optional[str] = None
-    related_reason_tags: Tuple[str, ...] = ()
+    default_lexicon_anchor: str | None = None
+    related_reason_tags: tuple[str, ...] = ()
 
 
 # =============================================================================
@@ -59,7 +58,7 @@ class MeaningTagDefinition:
 #   - overplay, slow-move, shape, reading, life-death
 # =============================================================================
 
-MEANING_TAG_REGISTRY: Dict[MeaningTagId, MeaningTagDefinition] = {
+MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
     MeaningTagId.MISSED_TESUJI: MeaningTagDefinition(
         id=MeaningTagId.MISSED_TESUJI,
         ja_label="手筋見逃し",
