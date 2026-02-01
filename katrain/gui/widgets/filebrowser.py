@@ -41,6 +41,7 @@ import string
 from functools import partial
 from os import walk
 from os.path import dirname, expanduser, getmtime, isdir, isfile, join, sep
+from typing import Any, List, Tuple
 
 from kivy import Config
 from kivy.clock import Clock
@@ -57,13 +58,13 @@ if platform == "win":
     from ctypes import windll, create_unicode_buffer
 
 
-def last_modified_first(files, filesystem):
+def last_modified_first(files: List[str], filesystem: Any) -> List[str]:
     return sorted(f for f in files if filesystem.is_dir(f)) + sorted(
         [f for f in files if not filesystem.is_dir(f)], key=lambda f: -getmtime(f)
     )
 
 
-def get_home_directory():
+def get_home_directory() -> str:
     if platform == "win":
         user_path = expanduser("~")
 
@@ -76,8 +77,8 @@ def get_home_directory():
     return user_path
 
 
-def get_drives():
-    drives = []
+def get_drives() -> List[Tuple[str, str]]:
+    drives: List[Tuple[str, str]] = []
     if platform == "win":
         bitmask = windll.kernel32.GetLogicalDrives()
         for letter in string.ascii_uppercase:
@@ -254,7 +255,7 @@ class LinkTree(TreeView):
     _favs = ObjectProperty(None)
     _computer_node = None
 
-    def fill_tree(self, fav_list):
+    def fill_tree(self, fav_list: List[Tuple[str, str]]) -> None:
         user_path = get_home_directory()
         self._favs = self.add_node(TreeLabel(text="Favorites", is_open=True, no_selection=True))
         self.reload_favs(fav_list)
@@ -268,15 +269,17 @@ class LinkTree(TreeView):
         self._computer_node.bind(on_touch_down=self._drives_touch)
         self.reload_drives()
 
-    def _drives_touch(self, obj, touch):
+    def _drives_touch(self, obj: Any, touch: Any) -> None:
         if obj.collide_point(*touch.pos):
             self.reload_drives()
 
-    def reload_drives(self):
+    def reload_drives(self) -> None:
+        if not self._computer_node:
+            return
         nodes = [(node, node.text + node.path) for node in self._computer_node.nodes if isinstance(node, TreeLabel)]
         sigs = [s[1] for s in nodes]
-        nodes_new = []
-        sig_new = []
+        nodes_new: List[Tuple[str, str]] = []
+        sig_new: List[str] = []
         for path, name in get_drives():
             if platform == "win":
                 text = "{}({})".format((name + " ") if name else "", path)
@@ -291,10 +294,10 @@ class LinkTree(TreeView):
             if text + path + sep not in sigs:
                 self.add_node(TreeLabel(text=text, path=path + sep), self._computer_node)
 
-    def reload_favs(self, fav_list):
+    def reload_favs(self, fav_list: List[Tuple[str, str]]) -> None:
         user_path = get_home_directory()
         favs = self._favs
-        remove = []
+        remove: List[Any] = []
         for node in self.iterate_all_nodes(favs):
             if node != favs:
                 remove.append(node)
@@ -308,7 +311,7 @@ class LinkTree(TreeView):
             if isdir(path):
                 self.add_node(TreeLabel(text=name, path=path), favs)
 
-    def trigger_populate(self, node):
+    def trigger_populate(self, node: Any) -> None:
         if not node.path or node.nodes:
             return
         parent = node.path
@@ -436,17 +439,17 @@ class I18NFileBrowser(BoxLayout):
     argument and the filesystem implementation as the second argument. It
     returns a list of filenames sorted for display in the view."""
 
-    def on_success(self):
+    def on_success(self) -> None:
         pass
 
-    def on_submit(self):
+    def on_submit(self) -> None:
         pass
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super(I18NFileBrowser, self).__init__(**kwargs)
         Clock.schedule_once(self._post_init)
 
-    def _post_init(self, *largs):
+    def _post_init(self, *largs: Any) -> None:
         self.ids.list_view.bind(
             selection=partial(self._attr_callback, "selection"),
             path=partial(self._attr_callback, "path"),
@@ -458,7 +461,7 @@ class I18NFileBrowser(BoxLayout):
             rootpath=partial(self._attr_callback, "rootpath"),
         )
 
-    def _shorten_filenames(self, filenames):
+    def _shorten_filenames(self, filenames: List[str]) -> str:
         if not len(filenames):
             return ""
         elif len(filenames) == 1:
@@ -468,10 +471,10 @@ class I18NFileBrowser(BoxLayout):
         else:
             return filenames[0] + ", _..._, " + filenames[-1]
 
-    def _attr_callback(self, attr, obj, value):
+    def _attr_callback(self, attr: str, obj: Any, value: Any) -> None:
         setattr(self, attr, getattr(obj, attr))
 
-    def button_clicked(self):
+    def button_clicked(self) -> None:
         # In directory selection mode, use current path if file_text is empty or matches current path
         if self.dirselect:
             # Use file_text if it's a valid directory, otherwise use current path

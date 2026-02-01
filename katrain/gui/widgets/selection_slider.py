@@ -1,3 +1,5 @@
+from typing import Any, List, Tuple
+
 from kivy.lang import Builder
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty
 from kivy.uix.widget import Widget
@@ -17,7 +19,7 @@ class SelectionSlider(Widget):
     track_color = ListProperty([1, 1, 1, 0.3])
     thumb_color = ListProperty([0.5, 0.5, 0.5, 1])
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.bind(
             size=self.set_index_and_positions,
@@ -26,28 +28,28 @@ class SelectionSlider(Widget):
             index=self.set_index_and_positions,
         )
 
-    def set_index_and_positions(self, *_args):
+    def set_index_and_positions(self, *_args: Any) -> None:
         self.index = max(0, min(self.index, len(self.values) - 1))
         self.normalized_pos = self.index / (len(self.values) - 1)
         self.px_pos = self.x + self.padding + self.normalized_pos * (self.width - 2 * self.padding)
 
     @property
-    def value(self):
+    def value(self) -> Any:
         return self.values[self.index][0]
 
-    def set_value(self, set_value):  # set to closest value
+    def set_value(self, set_value: float | int) -> None:  # set to closest value
         if isinstance(set_value, (float, int)):
             eq_value = sorted([(abs(v - set_value), i) for i, (v, l) in enumerate(self.values)])
             self.index = eq_value[0][1]
 
-    def set_from_pos(self, pos):
+    def set_from_pos(self, pos: Tuple[float, float]) -> None:
         norm_value = (pos[0] - self.x - self.padding) / (self.width - 2 * self.padding)
         self.index = round(norm_value * (len(self.values) - 1))
         self.dispatch("on_change", self.value)
 
-    def on_touch_down(self, touch):
+    def on_touch_down(self, touch: Any) -> bool | None:
         if self.disabled or not self.collide_point(*touch.pos):
-            return
+            return None
         if touch.is_mouse_scrolling:
             if "down" in touch.button or "left" in touch.button:
                 self.index += 1
@@ -59,22 +61,24 @@ class SelectionSlider(Widget):
             self.set_from_pos(touch.pos)
         return True
 
-    def on_touch_move(self, touch):
+    def on_touch_move(self, touch: Any) -> bool | None:
         if touch.grab_current == self:
             self.set_from_pos(touch.pos)
             return True
+        return None
 
-    def on_touch_up(self, touch):
+    def on_touch_up(self, touch: Any) -> bool | None:
         if touch.grab_current == self:
             self.set_from_pos(touch.pos)
             self.active = False
             self.dispatch("on_select", self.value)
             return True
+        return None
 
-    def on_select(self, value):
+    def on_select(self, value: Any) -> None:
         pass
 
-    def on_change(self, value):
+    def on_change(self, value: Any) -> None:
         pass
 
 

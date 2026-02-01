@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import threading
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -12,6 +13,9 @@ from kivymd.app import MDApp
 from katrain.gui.theme import Theme
 from katrain.core.eval_metrics import classify_mistake, MistakeCategory
 
+if TYPE_CHECKING:
+    from katrain.core.game_node import GameNode
+
 
 class Graph(Widget):
     marker_font_size = NumericProperty(0)
@@ -21,13 +25,13 @@ class Graph(Widget):
     nodes = ListProperty([])
     hidden = BooleanProperty(False)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._lock = threading.Lock()
         self.bind(pos=self.update_graph, size=self.update_graph)
         self.redraw_trigger = Clock.create_trigger(self.update_graph, 0.1)
 
-    def set_nodes_from_list(self, node_list):
+    def set_nodes_from_list(self, node_list: List["GameNode"]) -> None:
         """Set nodes from a pre-built node list.
 
         Thread-safe: acquires _lock before modifying state.
@@ -41,16 +45,17 @@ class Graph(Widget):
             self.highlighted_index = 0
         self.redraw_trigger()
 
-    def update_graph(self, *args):
+    def update_graph(self, *args: Any) -> None:
         pass
 
-    def update_value(self, node):
+    def update_value(self, node: "GameNode") -> None:
         with self._lock:
             self.highlighted_index = index = node.depth
             self.nodes.extend([None] * max(0, index - (len(self.nodes) - 1)))
             self.nodes[index] = node
             if index > 1 and node.parent:  # sometimes there are gaps
-                backfill, bfnode = index - 1, node.parent
+                backfill = index - 1
+                bfnode: Any = node.parent
                 while bfnode is not None and self.nodes[backfill] != bfnode:
                     self.nodes[backfill] = bfnode
                     backfill -= 1
@@ -61,9 +66,10 @@ class Graph(Widget):
             ):
                 self.nodes = self.nodes[: index + 1]  # on branch switching, don't show history from other branch
             if index == len(self.nodes) - 1:  # possibly just switched branch or the line above triggered
-                while node.children:  # add children back
-                    node = node.ordered_children[0]
-                    self.nodes.append(node)
+                current_node: Any = node
+                while current_node.children:  # add children back
+                    current_node = current_node.ordered_children[0]
+                    self.nodes.append(current_node)
             self.redraw_trigger()
 
 
@@ -87,7 +93,7 @@ class ScoreGraph(Graph):
 
     mistake_points = ListProperty([])
 
-    def on_touch_down(self, touch):
+    def on_touch_down(self, touch: Any) -> None:
         if self.collide_point(*touch.pos) and "scroll" not in getattr(touch, "button", ""):
             ix, _ = min(enumerate(self.score_points[::2]), key=lambda ix_v: abs(ix_v[1] - touch.x))
             self.navigate_move = [
@@ -99,10 +105,10 @@ class ScoreGraph(Graph):
         else:
             self.navigate_move = [None, 0, 0, 0]
 
-    def on_touch_move(self, touch):
-        return self.on_touch_down(touch)
+    def on_touch_move(self, touch: Any) -> None:
+        self.on_touch_down(touch)
 
-    def on_touch_up(self, touch):
+    def on_touch_up(self, touch: Any) -> None:
         if self.collide_point(*touch.pos) and self.navigate_move[0] and "scroll" not in getattr(touch, "button", ""):
             katrain = MDApp.get_running_app().gui
             if katrain and katrain.game:
@@ -110,11 +116,11 @@ class ScoreGraph(Graph):
                 katrain.update_state()
         self.navigate_move = [None, 0, 0, 0]
 
-    def show_graphs(self, keys):
+    def show_graphs(self, keys: Dict[str, bool]) -> None:
         self.show_score = keys["score"]
         self.show_winrate = keys["winrate"]
 
-    def update_graph(self, *args):
+    def update_graph(self, *args: Any) -> None:
         nodes = self.nodes
         # 重要手ラインは毎回作り直す
         self.important_points = []

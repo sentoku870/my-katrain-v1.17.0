@@ -1,13 +1,15 @@
 """Widgets package - uses lazy imports to avoid triggering Kivy initialization."""
 from __future__ import annotations
 
+from typing import Any
+
 __all__ = ["ScoreGraph", "MoveTree", "I18NFileBrowser", "SelectionSlider"]
 
 # Lazy loading to avoid Kivy initialization when importing non-Kivy modules
 # like radar_geometry.py
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy load Kivy-dependent widgets on first access."""
     if name == "ScoreGraph":
         from katrain.gui.widgets.graph import ScoreGraph
