@@ -1,5 +1,6 @@
 import logging
 from functools import lru_cache
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from kivy.clock import Clock
 from kivy.core.image import Image
@@ -65,7 +66,7 @@ class TableCellLabel(Label):
     outline_color = Theme.LINE_COLOR
     outline_width = NumericProperty(1.1)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         kwargs["font_name"] = kwargs.get("font_name", i18n.font_name)
         super().__init__(**kwargs)
 
@@ -76,7 +77,7 @@ class TableStatLabel(TableCellLabel):
     scale = NumericProperty(100)
     bar_color = ListProperty([0, 0, 0, 1])
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if "outlines" not in kwargs:
             self.outlines = ["left"] if self.side == "right" else ["right"]
@@ -87,28 +88,28 @@ class TableHeaderLabel(TableCellLabel):
 
 
 class LeftButtonBehavior(ButtonBehavior):  # stops buttons etc activating on right click
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         self.register_event_type("on_left_release")
         self.register_event_type("on_left_press")
         super().__init__(**kwargs)
 
-    def on_touch_down(self, touch):
+    def on_touch_down(self, touch: Any) -> Any:
         return super().on_touch_down(touch)
 
-    def on_release(self):
+    def on_release(self) -> Any:
         if not self.last_touch or "button" not in self.last_touch.profile or self.last_touch.button == "left":
             self.dispatch("on_left_release")
         return super().on_release()
 
-    def on_press(self):
+    def on_press(self) -> Any:
         if not self.last_touch or "button" not in self.last_touch.profile or self.last_touch.button == "left":
             self.dispatch("on_left_press")
         return super().on_press()
 
-    def on_left_release(self):
+    def on_left_release(self) -> None:
         pass
 
-    def on_left_press(self):
+    def on_left_press(self) -> None:
         pass
 
 
@@ -144,8 +145,8 @@ class ToggleButtonMixin(ToggleButtonBehavior):
     active_background_color = ListProperty([1, 1, 1, 1])
 
     @property
-    def active(self):
-        return self.state == "down"
+    def active(self) -> bool:
+        return bool(self.state == "down")
 
 
 class SizedToggleButton(ToggleButtonMixin, SizedButton):
@@ -193,10 +194,10 @@ class StatsLabel(MDBoxLayout):
 
 
 class MyNavigationDrawer(MDNavigationDrawer):
-    def on_touch_down(self, touch):
+    def on_touch_down(self, touch: Any) -> Any:
         return super().on_touch_down(touch)
 
-    def on_touch_up(self, touch):  # in PR - closes NavDrawer on any outside click
+    def on_touch_up(self, touch: Any) -> Any:  # in PR - closes NavDrawer on any outside click
         if self.status == "opened" and self.close_on_click and not self.collide_point(touch.ox, touch.oy):
             self.set_state("close", animation=True)
             return True
@@ -220,19 +221,19 @@ class IMETextField(MDTextField):
     _imo_composition = StringProperty("")
     _imo_cursor = ListProperty(None, allownone=True)
 
-    def _bind_keyboard(self):
+    def _bind_keyboard(self) -> None:
         super()._bind_keyboard()
         Window.bind(on_textedit=self.window_on_textedit)
 
-    def _unbind_keyboard(self):
+    def _unbind_keyboard(self) -> None:
         super()._unbind_keyboard()
         Window.unbind(on_textedit=self.window_on_textedit)
 
-    def do_backspace(self, from_undo=False, mode="bkspc"):
+    def do_backspace(self, from_undo: bool = False, mode: str = "bkspc") -> Any:
         if self._imo_composition == "":  # IMO handles sub-character backspaces
             return super().do_backspace(from_undo, mode)
 
-    def window_on_textedit(self, window, imo_input):
+    def window_on_textedit(self, window: Any, imo_input: str) -> None:
         text_lines = self._lines
         if self._imo_composition:
             pcc, pcr = self._imo_cursor
@@ -262,27 +263,27 @@ class KeyValueSpinner(Spinner):
     selected_index = NumericProperty(0)
     font_name = StringProperty(Theme.DEFAULT_FONT)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.build_values()
         self.bind(size=self.update_dropdown_props, pos=self.update_dropdown_props, value_refs=self.build_values)
 
     @property
-    def input_value(self):
+    def input_value(self) -> Any:
         try:
             return self.value_refs[self.selected_index]
         except KeyError:
             return ""
 
     @property
-    def selected(self):
+    def selected(self) -> Tuple[int, Any, Any]:
         try:
             selected = self.selected_index
             return selected, self.value_refs[selected], self.values[selected]
         except (ValueError, IndexError):
             return 0, "", ""
 
-    def on_text(self, _widget, text):
+    def on_text(self, _widget: Any, text: str) -> None:
         try:
             new_index = self.values.index(text)
             if new_index != self.selected_index:
@@ -291,23 +292,23 @@ class KeyValueSpinner(Spinner):
         except (ValueError, IndexError):
             pass
 
-    def on_select(self, *args):
+    def on_select(self, *args: Any) -> None:
         pass
 
-    def select_key(self, key):
+    def select_key(self, key: Any) -> None:
         try:
             ix = self.value_refs.index(key)
             self.text = self.values[ix]
         except (ValueError, IndexError):
             pass
 
-    def build_values(self, *_args):
+    def build_values(self, *_args: Any) -> None:
         if self.value_refs and self.values:
             self.text = self.values[self.selected_index]
             self.font_name = i18n.font_name
             self.update_dropdown_props()
 
-    def update_dropdown_props(self, *largs):
+    def update_dropdown_props(self, *largs: Any) -> None:
         if not self.sync_height_frac:
             return
         dp = self._dropdown
@@ -331,11 +332,11 @@ class I18NSpinner(KeyValueSpinner):
     selected_index = NumericProperty(0)
     font_name = StringProperty(Theme.DEFAULT_FONT)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         MDApp.get_running_app().bind(language=self.build_values)
 
-    def build_values(self, *_args):
+    def build_values(self, *_args: Any) -> None:
         self.values = [i18n._(ref) for ref in self.value_refs]
         super().build_values()
 
@@ -344,20 +345,20 @@ class PlayerSetup(MDBoxLayout):
     player = OptionProperty("B", options=["B", "W"])
     mode = StringProperty("")
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.player_subtype_ai.value_refs = AI_STRATEGIES_RECOMMENDED_ORDER
         self.player_subtype_human.value_refs = GAME_TYPES
         self.setup_options()
 
-    def setup_options(self, *_args):
+    def setup_options(self, *_args: Any) -> None:
         if self.player_type.selected[1] == self.mode:
             return
         self.mode = self.player_type.selected[1]
         self.update_global_player_info()
 
     @property
-    def player_type_dump(self):
+    def player_type_dump(self) -> dict[str, Any]:
         if self.mode == PLAYER_AI:
             return {"player_type": self.player_type.selected[1], "player_subtype": self.player_subtype_ai.selected[1]}
         else:
@@ -366,14 +367,14 @@ class PlayerSetup(MDBoxLayout):
                 "player_subtype": self.player_subtype_human.selected[1],
             }
 
-    def update_widget(self, player_type, player_subtype):
+    def update_widget(self, player_type: str, player_subtype: str) -> None:
         self.player_type.select_key(player_type)  # should trigger setup options
         if self.mode == PLAYER_AI:
             self.player_subtype_ai.select_key(player_subtype)  # should trigger setup options
         else:
             self.player_subtype_human.select_key(player_subtype)  # should trigger setup options
 
-    def update_global_player_info(self):
+    def update_global_player_info(self) -> None:
         if self.parent and self.parent.update_global:
             katrain = MDApp.get_running_app().gui
             if katrain.game and katrain.game.current_node:
@@ -385,9 +386,9 @@ class PlayerSetupBlock(MDBoxLayout):
     black = ObjectProperty(None)
     white = ObjectProperty(None)
     update_global = BooleanProperty(False)
-    INSTANCES = []
+    INSTANCES: List[Any] = []
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.black = PlayerSetup(player="B")
         self.white = PlayerSetup(player="W")
@@ -396,15 +397,15 @@ class PlayerSetupBlock(MDBoxLayout):
         self.add_widget(self.white)
         PlayerSetupBlock.INSTANCES.append(self)
 
-    def swap_players(self):
+    def swap_players(self) -> None:
         player_dump = {bw: p.player_type_dump for bw, p in self.players.items()}
         for bw in "BW":
             self.update_player_params(bw, player_dump["B" if bw == "W" else "W"])
 
-    def update_player_params(self, bw, params):
+    def update_player_params(self, bw: str, params: dict[str, Any]) -> None:
         self.players[bw].update_widget(**params)
 
-    def update_player_info(self, bw, player_info):  # update sub widget based on gui state change
+    def update_player_info(self, bw: str, player_info: Any) -> None:  # update sub widget based on gui state change
         Clock.schedule_once(
             lambda _dt: self.players[bw].update_widget(
                 player_type=player_info.player_type, player_subtype=player_info.player_subtype
@@ -424,11 +425,11 @@ class PlayerInfo(MDBoxLayout, BackgroundMixin):
     active = BooleanProperty(True)
     alignment = StringProperty("right")
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.bind(player_type=self.set_label, player_subtype=self.set_label, name=self.set_label, rank=self.set_label)
 
-    def set_label(self, *args):
+    def set_label(self, *args: Any) -> None:
         if not self.subtype_label:  # building
             return
         show_player_name = self.name and self.player_type == PLAYER_HUMAN and self.player_subtype == PLAYING_NORMAL
@@ -461,15 +462,15 @@ class AnalysisToggle(MDBoxLayout):
     disabled = BooleanProperty(False)
     tri_state = BooleanProperty(False)
 
-    def trigger_action(self, *args, **kwargs):
+    def trigger_action(self, *args: Any, **kwargs: Any) -> Any:
         return self.checkbox._do_press()
 
-    def activate(self, *_args):
+    def activate(self, *_args: Any) -> None:
         self.checkbox.active = True
 
     @property
-    def active(self):
-        return self.checkbox.active
+    def active(self) -> bool:
+        return bool(self.checkbox.active)
 
 
 class MenuItem(RectangularRippleBehavior, LeftButtonBehavior, MDBoxLayout, BackgroundMixin):
@@ -480,15 +481,15 @@ class MenuItem(RectangularRippleBehavior, LeftButtonBehavior, MDBoxLayout, Backg
     font_name = StringProperty(Theme.DEFAULT_FONT)
     content_width = NumericProperty(100)
 
-    def on_left_release(self):
+    def on_left_release(self) -> None:
         self.anim_complete()  # kill ripple
         self.dispatch("on_close")
         self.dispatch("on_action")
 
-    def on_action(self):
+    def on_action(self) -> None:
         pass
 
-    def on_close(self):
+    def on_close(self) -> None:
         pass
 
 
@@ -520,9 +521,10 @@ class CollapsablePanel(MDBoxLayout):
     close_icon = "Previous-5.png"
     open_icon = "Next-5.png"
 
-    def __init__(self, **kwargs):
-        self.open_close_button, self.header = None, None
-        self.option_buttons = []
+    def __init__(self, **kwargs: Any) -> None:
+        self.open_close_button: Any = None
+        self.header: Any = None
+        self.option_buttons: List[Any] = []
         super().__init__(**kwargs)
         self.orientation = "vertical"
         self.bind(
@@ -536,11 +538,11 @@ class CollapsablePanel(MDBoxLayout):
         MDApp.get_running_app().bind(language=lambda *_: Clock.schedule_once(self.build_options, 0))
         self.build_options()
 
-    def _on_state(self, *_args):
+    def _on_state(self, *_args: Any) -> None:
         self.build()
         self.trigger_select(ix=None)
 
-    def _on_size(self, *_args):
+    def _on_size(self, *_args: Any) -> None:
         height, size_hint_y = 1, None
         if self.state == "open" and self.contents:
             if self.size_hint_y_open is not None:
@@ -552,17 +554,17 @@ class CollapsablePanel(MDBoxLayout):
         self.height, self.size_hint_y = height, size_hint_y
 
     @property
-    def option_state(self):
+    def option_state(self) -> dict[str, bool]:
         return {option: active for option, active in zip(self.options, self.option_active)}
 
-    def set_option_state(self, state_dict):
+    def set_option_state(self, state_dict: dict[str, bool]) -> None:
         for ix, (option, button) in enumerate(zip(self.options, self.option_buttons)):
             if option in state_dict:
                 self.option_active[ix] = state_dict[option]
                 button.state = "down" if state_dict[option] else "normal"
         self.trigger_select(ix=None)
 
-    def build_options(self, *args):
+    def build_options(self, *args: Any) -> None:
         self.header = CollapsablePanelHeader(
             height=self.options_height, size_hint_y=None, spacing=self.options_spacing, padding=[1, 0, 0, 0]
         )
@@ -588,7 +590,7 @@ class CollapsablePanel(MDBoxLayout):
         self.bind(state=lambda *_args: self.open_close_button.setter("icon")(None, self.open_close_icon()))
         self.build()
 
-    def build(self, *args):
+    def build(self, *args: Any) -> None:
         self.header.clear_widgets()
         if self.state == "open":
             for button in self.option_buttons:
@@ -609,14 +611,14 @@ class CollapsablePanel(MDBoxLayout):
                 super().add_widget(w)
         self._on_size()
 
-    def open_close_icon(self):
+    def open_close_icon(self) -> str:
         return self.open_icon if self.state == "open" else self.close_icon
 
-    def add_widget(self, widget, index=0, **_kwargs):
+    def add_widget(self, widget: Any, index: int = 0, **_kwargs: Any) -> None:
         self.contents.append(widget)
         self.build()
 
-    def set_state(self, state="toggle"):
+    def set_state(self, state: str = "toggle") -> None:
         if state == "toggle":
             state = "close" if self.state == "open" else "open"
         self.state = state
@@ -624,14 +626,14 @@ class CollapsablePanel(MDBoxLayout):
         if self.state == "open":
             self.trigger_select(ix=None)
 
-    def trigger_select(self, ix):
+    def trigger_select(self, ix: Optional[int]) -> bool:
         if ix is not None and self.option_buttons:
             self.option_active[ix] = self.option_buttons[ix].state == "down"
         if self.state == "open":
             self.dispatch("on_option_state", {opt: btn.active for opt, btn in zip(self.options, self.option_buttons)})
         return False
 
-    def on_option_state(self, options):
+    def on_option_state(self, options: dict[str, bool]) -> None:
         pass
 
 
@@ -657,11 +659,11 @@ class ScrollableLabel(ScrollView, BackgroundMixin):
     line_height = NumericProperty(1)
     markup = BooleanProperty(False)
 
-    def on_ref_press(self, ref):
+    def on_ref_press(self, ref: str) -> None:
         pass
 
 
-def _make_hashable(value):
+def _make_hashable(value: Any) -> Any:
     """kwargs値をhashableに変換（list/dict/set/tuple対応）
 
     v4: エッジケース対策
@@ -695,7 +697,7 @@ def _make_hashable(value):
 
 
 @lru_cache(maxsize=500)
-def _create_text_texture(text, resolved_font_name, markup, kwargs_tuple):
+def _create_text_texture(text: str, resolved_font_name: str, markup: bool, kwargs_tuple: Tuple[Any, ...]) -> Any:
     """LRU制限付きテクスチャ生成（内部用）
 
     Args:
@@ -708,7 +710,7 @@ def _create_text_texture(text, resolved_font_name, markup, kwargs_tuple):
     return label.texture
 
 
-def cached_text_texture(text, font_name, markup, **kwargs):
+def cached_text_texture(text: str, font_name: Optional[str], markup: bool, **kwargs: Any) -> Any:
     """互換性維持のラッパー（API変更なし）
 
     Note: Kivyの描画はメインスレッドのみなのでスレッドセーフは不要
@@ -721,12 +723,12 @@ def cached_text_texture(text, font_name, markup, **kwargs):
     return _create_text_texture(text, resolved_font_name, markup, kwargs_tuple)
 
 
-def draw_text(pos, text, font_name=None, markup=False, **kwargs):
+def draw_text(pos: Sequence[float], text: str, font_name: Optional[str] = None, markup: bool = False, **kwargs: Any) -> None:
     texture = cached_text_texture(text, font_name, markup, **kwargs)
     Rectangle(texture=texture, pos=(pos[0] - texture.size[0] / 2, pos[1] - texture.size[1] / 2), size=texture.size)
 
 
-def draw_circle(pos, r, col):
+def draw_circle(pos: Sequence[float], r: float, col: Sequence[float]) -> None:
     Color(*col)
     Ellipse(pos=(pos[0] - r, pos[1] - r), size=(2 * r, 2 * r))
 
@@ -735,7 +737,7 @@ def draw_circle(pos, r, col):
 _fallback_texture = None
 
 
-def _get_fallback_texture():
+def _get_fallback_texture() -> Any:
     """1x1透明フォールバックテクスチャを取得（シングルトン）"""
     global _fallback_texture
     if _fallback_texture is None:
@@ -745,11 +747,11 @@ def _get_fallback_texture():
 
 
 # v5: ログは関数外で管理（lru_cache内でログを呼ばない）
-_missing_resources = set()
+_missing_resources: set[str] = set()
 
 
 @lru_cache(maxsize=100)
-def cached_texture(path):
+def cached_texture(path: str) -> Any:
     """画像テクスチャのLRUキャッシュ
 
     Args:
@@ -773,7 +775,7 @@ def cached_texture(path):
     return Image(resolved).texture
 
 
-def clear_texture_caches():
+def clear_texture_caches() -> None:
     """テクスチャキャッシュをクリア（言語変更時に呼び出す）
 
     Note: i18n.set_language()等から呼び出すことで、

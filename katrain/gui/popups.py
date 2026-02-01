@@ -6,7 +6,7 @@ import re
 import stat
 import threading
 import time
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from zipfile import ZipFile
 
 import urllib3
@@ -61,7 +61,7 @@ from katrain.common.humanlike_config import normalize_humanlike_config
 from katrain.common.model_labels import classify_model_strength, get_model_basename
 
 
-def _get_app_gui():
+def _get_app_gui() -> Any:
     """アプリのguiインスタンスを安全に取得
 
     Returns:
@@ -88,9 +88,9 @@ class I18NPopup(Popup):
     title_key = StringProperty("")
     font_name = StringProperty(Theme.DEFAULT_FONT)
     # クラス変数: 前回のupdate_stateイベント（連続dismiss対策）
-    _pending_update_event = None
+    _pending_update_event: Any = None
 
-    def __init__(self, size=None, **kwargs):
+    def __init__(self, size: Optional[List[int]] = None, **kwargs: Any) -> None:
         if size:  # do not exceed window size
             # v3: sizeをミューテートせず新しいリストを作成
             # Kivyは内部でlistに変換するため、listで渡すのがベストプラクティス
@@ -103,7 +103,7 @@ class I18NPopup(Popup):
         super().__init__(size=size, **kwargs)
         self.bind(on_dismiss=self._schedule_update_state)
 
-    def _schedule_update_state(self, popup_instance):
+    def _schedule_update_state(self, popup_instance: Any) -> None:
         """on_dismiss時にupdate_stateをスケジュール（重複防止付き）
 
         Args:
@@ -119,7 +119,7 @@ class I18NPopup(Popup):
         # 0.1秒後に実行（Kivyのレイアウト計算に十分な余裕）
         I18NPopup._pending_update_event = Clock.schedule_once(self._do_update_state, 0.1)
 
-    def _do_update_state(self, dt):
+    def _do_update_state(self, dt: float) -> None:
         """実際のupdate_state呼び出し（nullチェック付き）
 
         Args:
@@ -137,47 +137,47 @@ class LabelledTextInput(MDTextField):
     multiline = BooleanProperty(False)
 
     @property
-    def input_value(self):
+    def input_value(self) -> Any:
         return self.text
 
     @property
-    def raw_input_value(self):
+    def raw_input_value(self) -> Any:
         return self.text
 
 
 class LabelledPathInput(LabelledTextInput):
     check_path = BooleanProperty(True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         Clock.schedule_once(self.check_error, 0)
 
-    def check_error(self, _dt=None):
+    def check_error(self, _dt: Optional[float] = None) -> None:
         file = find_package_resource(self.input_value, silent_errors=True)
         self.error = self.check_path and not (file and os.path.exists(file))
 
-    def on_text(self, widget, text):
+    def on_text(self, widget: Any, text: str) -> Any:
         self.check_error()
         return super().on_text(widget, text)
 
     @property
-    def input_value(self):
+    def input_value(self) -> Any:
         return self.text.strip().replace("\n", " ").replace("\r", " ")
 
 
 class LabelledCheckBox(MDCheckbox):
     input_property = StringProperty("")
 
-    def __init__(self, text=None, **kwargs):
+    def __init__(self, text: Optional[str] = None, **kwargs: Any) -> None:
         if text is not None:
             kwargs["active"] = text.lower() == "true"
         super().__init__(**kwargs)
 
     @property
-    def input_value(self):
+    def input_value(self) -> bool:
         return bool(self.active)
 
-    def raw_input_value(self):
+    def raw_input_value(self) -> Any:
         return self.active
 
 
@@ -185,10 +185,10 @@ class LabelledSpinner(I18NSpinner):
     input_property = StringProperty("")
 
     @property
-    def input_value(self):
+    def input_value(self) -> Any:
         return self.selected[1]  # ref value
 
-    def raw_input_value(self):
+    def raw_input_value(self) -> Any:
         return self.text
 
 
@@ -196,7 +196,7 @@ class LabelledFloatInput(LabelledTextInput):
     input_filter = ObjectProperty("float")
 
     @property
-    def input_value(self):
+    def input_value(self) -> float:
         return float(self.text or "0.0")
 
 
@@ -204,7 +204,7 @@ class LabelledIntInput(LabelledTextInput):
     input_filter = ObjectProperty("int")
 
     @property
-    def input_value(self):
+    def input_value(self) -> int:
         return int(self.text or "0")
 
 
@@ -213,18 +213,18 @@ class LabelledSelectionSlider(BoxLayout):
     values = ListProperty([(0, "")])  # (value:numeric,label:string) pairs
     key_option = BooleanProperty(False)
 
-    def set_value(self, v):
+    def set_value(self, v: Any) -> None:
         self.slider.set_value(v)
         self.textbox.text = str(v)
 
     @property
-    def input_value(self):
+    def input_value(self) -> float:
         if self.textbox.text:
             return float(self.textbox.text)
-        return self.slider.values[self.slider.index][0]
+        return float(self.slider.values[self.slider.index][0])
 
     @property
-    def raw_input_value(self):
+    def raw_input_value(self) -> Any:
         return self.textbox.text
 
 
@@ -233,13 +233,13 @@ class InputParseError(Exception):
 
 
 class QuickConfigGui(MDBoxLayout):
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__()
         self.katrain = katrain
         self.popup = None
         Clock.schedule_once(self.build_and_set_properties, 0)
 
-    def collect_properties(self, widget) -> Dict:
+    def collect_properties(self, widget: Any) -> Dict[str, Any]:
         if isinstance(
             widget, (LabelledTextInput, LabelledSpinner, LabelledCheckBox, LabelledSelectionSlider)
         ) and getattr(widget, "input_property", None):
@@ -257,7 +257,7 @@ class QuickConfigGui(MDBoxLayout):
                 ret[k] = v
         return ret
 
-    def get_setting(self, key) -> Union[Tuple[Any, Dict, str], Tuple[Any, List, int]]:
+    def get_setting(self, key: str) -> Union[Tuple[Any, Dict[str, Any], str], Tuple[Any, List[Any], int]]:
         keys = key.split("/")
         config = self.katrain._config
         for k in keys[:-1]:
@@ -267,9 +267,9 @@ class QuickConfigGui(MDBoxLayout):
 
         if "::" in keys[-1]:
             array_key, ix = keys[-1].split("::")
-            ix = int(ix)
+            ix_int = int(ix)
             array = config[array_key]
-            return array[ix], array, ix
+            return array[ix_int], array, ix_int
         else:
             if keys[-1] not in config:
                 config[keys[-1]] = ""
@@ -279,10 +279,10 @@ class QuickConfigGui(MDBoxLayout):
                 )
             return config[keys[-1]], config, keys[-1]
 
-    def build_and_set_properties(self, *_args):
+    def build_and_set_properties(self, *_args: Any) -> None:
         return self._set_properties_subtree(self)
 
-    def _set_properties_subtree(self, widget):
+    def _set_properties_subtree(self, widget: Any) -> None:
         if isinstance(
             widget, (LabelledTextInput, LabelledSpinner, LabelledCheckBox, LabelledSelectionSlider)
         ) and getattr(widget, "input_property", None):
@@ -309,13 +309,13 @@ class QuickConfigGui(MDBoxLayout):
         for c in widget.children:
             self._set_properties_subtree(c)
 
-    def update_config(self, save_to_file=True, close_popup=True):
-        updated = set()
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
+        updated: set[str] = set()
         for multikey, value in self.collect_properties(self).items():
             old_value, conf, key = self.get_setting(multikey)
             if value != old_value:
                 self.katrain.log(f"Updating setting {multikey} = {value}", OUTPUT_DEBUG)
-                conf[key] = value  # reference straight back to katrain._config - may be array or dict
+                conf[key] = value  # type: ignore[index]  # reference straight back to katrain._config - may be array or dict
                 updated.add(multikey)
         if save_to_file:
             self.katrain.save_config()
@@ -325,7 +325,7 @@ class QuickConfigGui(MDBoxLayout):
 
 
 class ConfigTimerPopup(QuickConfigGui):
-    def update_config(self, save_to_file=True, close_popup=True):
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         for p in self.katrain.players_info.values():
             p.periods_used = 0
@@ -333,12 +333,12 @@ class ConfigTimerPopup(QuickConfigGui):
         self.katrain.game.current_node.time_used = 0
         self.katrain.game.main_time_used = 0
         self.katrain.update_state()
-
+        return set()
 
 class NewGamePopup(QuickConfigGui):
     mode = StringProperty("newgame")
 
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         for bw, info in katrain.players_info.items():
             self.player_setup.update_player_info(bw, info)
@@ -347,13 +347,14 @@ class NewGamePopup(QuickConfigGui):
         self.bind(mode=self.update_playername)
         Clock.schedule_once(self.update_from_current_game, 0.1)
 
-    def normalized_rules(self):
+    def normalized_rules(self) -> str | None:
         rules = self.katrain.game.root.get_property("RU", "japanese").strip().lower()
         for abbr, name in self.katrain.engine.RULESETS_ABBR:
             if abbr == rules or name == rules:
-                return name
+                return str(name)
+        return None
 
-    def update_playerinfo(self, *args):
+    def update_playerinfo(self, *args: Any) -> None:
         for bw, player_setup in self.player_setup.players.items():
             name = self.player_name[bw].text
             if name:
@@ -362,19 +363,19 @@ class NewGamePopup(QuickConfigGui):
                 self.katrain.game.root.clear_property("P" + bw)
             self.katrain.update_player(bw, **player_setup.player_type_dump)
 
-    def update_playername(self, *args):
+    def update_playername(self, *args: Any) -> None:
         for bw in "BW":
             name = self.katrain.game.root.get_property("P" + bw, None)
             if name and SGF_INTERNAL_COMMENTS_MARKER not in name:
                 self.player_name[bw].text = name if self.mode == "editgame" else ""
 
-    def update_from_current_game(self, *args):  # set rules and komi
+    def update_from_current_game(self, *args: Any) -> None:  # set rules and komi
         rules = self.normalized_rules()
         self.km.text = str(self.katrain.game.root.komi)
         if rules is not None:
             self.rules_spinner.select_key(rules.strip())
 
-    def update_config(self, save_to_file=True, close_popup=True):
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         props = self.collect_properties(self)
         self.katrain.log(f"Mode: {self.mode}, settings: {self.katrain.config('game')}", OUTPUT_DEBUG)
@@ -405,24 +406,24 @@ class NewGamePopup(QuickConfigGui):
             self.katrain._do_new_game()
             self.katrain("selfplay-setup", props["game/setup_move"], props["game/setup_advantage"])
         self.update_playerinfo()  # name
+        return set()
 
-
-def wrap_anchor(widget):
+def wrap_anchor(widget: Any) -> AnchorLayout:
     anchor = AnchorLayout()
     anchor.add_widget(widget)
     return anchor
 
 
 class ConfigTeacherPopup(QuickConfigGui):
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         MDApp.get_running_app().bind(language=self.build_and_set_properties)
 
-    def add_option_widgets(self, widgets):
+    def add_option_widgets(self, widgets: List[Any]) -> None:
         for widget in widgets:
             self.options_grid.add_widget(wrap_anchor(widget))
 
-    def build_and_set_properties(self, *_args):
+    def build_and_set_properties(self, *_args: Any) -> None:
         theme = self.katrain.config("trainer/theme")
         undos = self.katrain.config("trainer/num_undo_prompts")
         thresholds = self.katrain.config("trainer/eval_thresholds")
@@ -449,10 +450,10 @@ class ConfigTeacherPopup(QuickConfigGui):
             )
         super().build_and_set_properties()
 
-    def update_config(self, save_to_file=True, close_popup=True):
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         self.build_and_set_properties()
-
+        return set()
 
 class DescriptionLabel(Label):
     pass
@@ -461,7 +462,7 @@ class DescriptionLabel(Label):
 class ConfigAIPopup(QuickConfigGui):
     max_options = NumericProperty(6)
 
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         self.ai_select.value_refs = AI_STRATEGIES_RECOMMENDED_ORDER
         selected_strategies = {p.strategy for p in katrain.players_info.values()}
@@ -470,7 +471,7 @@ class ConfigAIPopup(QuickConfigGui):
         self.build_ai_options()
         self.ai_select.bind(text=self.build_ai_options)
 
-    def estimate_rank_from_options(self, *_args):
+    def estimate_rank_from_options(self, *_args: Any) -> None:
         strategy = self.ai_select.selected[1]
         try:
             options = self.collect_properties(self)  # [strategy]
@@ -482,7 +483,7 @@ class ConfigAIPopup(QuickConfigGui):
         dan_rank = ai_rank_estimation(strategy, options)
         self.estimated_rank_label.text = rank_label(dan_rank)
 
-    def build_ai_options(self, *_args):
+    def build_ai_options(self, *_args: Any) -> None:
         strategy = self.ai_select.selected[1]
         mode_settings = self.katrain.config(f"ai/{strategy}")
         self.options_grid.clear_widgets()
@@ -496,10 +497,10 @@ class ConfigAIPopup(QuickConfigGui):
                     widget.active = v
                     widget.bind(active=self.estimate_rank_from_options)
                 else:
-                    if isinstance(values[0], Tuple):  # with descriptions, possibly language-specific
-                        fixed_values = [(v, re.sub(r"\[(.*?)]", lambda m: i18n._(m[1]), l)) for v, l in values]
+                    if isinstance(values[0], tuple):  # type: ignore[index]  # with descriptions, possibly language-specific
+                        fixed_values = [(v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), l)) for v, l in values]  # type: ignore[attr-defined]
                     else:  # just numbers
-                        fixed_values = [(v, str(v)) for v in values]
+                        fixed_values = [(v, str(v)) for v in values]  # type: ignore[attr-defined]
                     widget = LabelledSelectionSlider(
                         values=fixed_values, input_property=f"ai/{strategy}/{k}", key_option=(k in AI_KEY_PROPERTIES)
                     )
@@ -514,24 +515,24 @@ class ConfigAIPopup(QuickConfigGui):
             self.options_grid.add_widget(Label(size_hint_x=None))
         Clock.schedule_once(self.estimate_rank_from_options)
 
-    def update_config(self, save_to_file=True, close_popup=True):
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         super().update_config(save_to_file=save_to_file, close_popup=close_popup)
         self.katrain.update_calculated_ranks()
         Clock.schedule_once(self.katrain.controls.update_players, 0)
-
+        return set()
 
 class EngineRecoveryPopup(QuickConfigGui):
     error_message = StringProperty("")
     code = ObjectProperty(None)
 
-    def __init__(self, katrain, error_message, code):
+    def __init__(self, katrain: Any, error_message: str, code: Any) -> None:
         super().__init__(katrain)
         self.error_message = str(error_message)
         self.code = code
         # Trigger auto-dump via single gate (should_auto_dump)
         self._trigger_auto_dump()
 
-    def _trigger_auto_dump(self):
+    def _trigger_auto_dump(self) -> None:
         """Trigger auto-dump using recovery_actions (single gate)."""
         from katrain.core.error_recovery import DiagnosticsTrigger
         from katrain.gui.features.recovery_actions import trigger_auto_dump
@@ -543,16 +544,17 @@ class EngineRecoveryPopup(QuickConfigGui):
             self.error_message,
         )
 
-    def on_reset_to_auto(self):
+    def on_reset_to_auto(self) -> None:
         from katrain.core.constants import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import reset_to_auto_mode
 
         if reset_to_auto_mode(self.katrain):
             self.katrain.log(i18n._("mykatrain:recovery:reset_success"), OUTPUT_INFO)
-        self.popup.dismiss()
+        if self.popup:
+            self.popup.dismiss()
 
-    def on_copy_for_llm(self):
+    def on_copy_for_llm(self) -> None:
         from katrain.core.constants import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import copy_for_llm
@@ -560,7 +562,7 @@ class EngineRecoveryPopup(QuickConfigGui):
         if copy_for_llm(self.katrain, self.error_message):
             self.katrain.log(i18n._("mykatrain:recovery:copied"), OUTPUT_INFO)
 
-    def on_save_diagnostics(self):
+    def on_save_diagnostics(self) -> None:
         from katrain.common.file_opener import open_file_in_folder
         from katrain.core.constants import OUTPUT_INFO
         from katrain.core.lang import i18n
@@ -573,7 +575,7 @@ class EngineRecoveryPopup(QuickConfigGui):
             )
             open_file_in_folder(result)
 
-    def on_copy_log(self):
+    def on_copy_log(self) -> None:
         from katrain.core.constants import OUTPUT_INFO
         from katrain.core.lang import i18n
         from katrain.gui.features.recovery_actions import copy_log_tail
@@ -583,15 +585,15 @@ class EngineRecoveryPopup(QuickConfigGui):
 
 
 class BaseConfigPopup(QuickConfigGui):
-    MODEL_ENDPOINTS = {
+    MODEL_ENDPOINTS: Dict[str, str] = {
         "Latest distributed model": "https://katagotraining.org/api/networks/newest_training/",
         "Strongest distributed model": "https://katagotraining.org/api/networks/get_strongest/",
     }
-    MODELS = {
+    MODELS: Dict[str, str] = {
         "old 15 block model": "https://github.com/lightvector/KataGo/releases/download/v1.3.2/g170e-b15c192-s1672170752-d466197061.txt.gz",
         "Human-like model": "https://github.com/lightvector/KataGo/releases/download/v1.15.0/b18c384nbt-humanv0.bin.gz",
     }
-    MODEL_DESC = {
+    MODEL_DESC: Dict[str, str] = {
         "Fat 40 block model": "https://d3dndmfyhecmj0.cloudfront.net/g170/neuralnets/g170e-b40c384x2-s2348692992-d1229892979.zip",
         "Recommended 18b model": "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
         "old 20 block model": "https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170e-b20c256x2-s5303129600-d1228401921.bin.gz",
@@ -599,7 +601,7 @@ class BaseConfigPopup(QuickConfigGui):
         "old 40 block model": "https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170-b40c256x2-s5095420928-d1229425124.bin.gz",
     }
 
-    KATAGOS = {
+    KATAGOS: Dict[str, Dict[str, str]] = {
         "win": {
             "OpenCL v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-windows-x64.zip",
             "Eigen AVX2 (Modern CPUs) v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-windows-x64.zip",
@@ -609,28 +611,31 @@ class BaseConfigPopup(QuickConfigGui):
         "linux": {
             "OpenCL v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-linux-x64.zip",
             "Eigen AVX2 (Modern CPUs) v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-linux-x64.zip",
-            "Eigen (CPU, Non-optimized) v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-linux-x64.zip",            
+            "Eigen (CPU, Non-optimized) v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigen-linux-x64.zip",
             "OpenCL v1.16.0 (bigger boards)": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-linux-x64+bs50.zip",
         },
         "just-descriptions": {},
     }
 
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         self.paths = [self.katrain.config("engine/model"), self.katrain.config("engine/humanlike_model"), "katrain/models", DATA_FOLDER]
         self.katago_paths = [self.katrain.config("engine/katago"), DATA_FOLDER]
-        self.last_clicked_download_models = 0
+        self.last_clicked_download_models = 0.0
 
-    def check_models(self, *args):
+    def check_models(self, *args: Any) -> None:
         all_models = [self.MODELS, self.MODEL_DESC, self.katrain.config("dist_models", {})]
 
-        def extract_model_file(model):
+        def extract_model_file(model: str) -> str | None:
             try:
-                return re.match(r".*/([^/]+)", model)[1].replace(".zip", ".bin.gz")
+                match = re.match(r".*/([^/]+)", model)
+                if match:
+                    return match[1].replace(".zip", ".bin.gz")
+                return None
             except (TypeError, IndexError):
                 return None
 
-        def find_description(path):
+        def find_description(path: str) -> str:
             file = os.path.split(path)[1]
             file_to_desc = {extract_model_file(model): desc for mods in all_models for desc, model in mods.items()}
             if file in file_to_desc:
@@ -638,9 +643,9 @@ class BaseConfigPopup(QuickConfigGui):
             else:
                 return path
 
-        done = set()
-        model_files = []
-        humanlike_model_files = []
+        done: set[str] = set()
+        model_files: list[str] = []
+        humanlike_model_files: list[str] = []
         distributed_training_models = os.path.expanduser(os.path.join(DATA_FOLDER, "katago_contribute/kata1/models"))
         for path in self.paths + [self.model_path.text, self.humanlike_model_path.text, distributed_training_models]:
             path = (path or "").rstrip("/\\")
@@ -667,32 +672,33 @@ class BaseConfigPopup(QuickConfigGui):
                     humanlike_model_files.append(file)
 
         # no description to bottom
-        model_files = sorted(
+        model_files_with_desc: list[tuple[str, str]] = sorted(
             [(find_description(path), path) for path in model_files],
             key=lambda descpath: ("Recommended" not in descpath[0], "  -  " not in descpath[0], descpath[0]),
         )
-        models_available_msg = i18n._("models available").format(num=len(model_files))
-        self.model_files.values = [models_available_msg] + [desc for desc, path in model_files]
-        self.model_files.value_keys = [""] + [path for desc, path in model_files]
+        models_available_msg = i18n._("models available").format(num=len(model_files_with_desc))
+        self.model_files.values = [models_available_msg] + [desc for desc, path in model_files_with_desc]
+        self.model_files.value_keys = [""] + [path for desc, path in model_files_with_desc]
         self.model_files.text = models_available_msg
 
-        humanlike_model_files = sorted(
+        humanlike_model_files_with_desc: list[tuple[str, str]] = sorted(
             [(find_description(path), path) for path in humanlike_model_files],
             key=lambda descpath: ("Recommended" not in descpath[0], "  -  " not in descpath[0], descpath[0]),
         )
-        humanlike_models_available_msg = i18n._("models available").format(num=len(humanlike_model_files))
-        self.humanlike_model_files.values = [humanlike_models_available_msg] + [desc for desc, path in humanlike_model_files]
-        self.humanlike_model_files.value_keys = [""] + [path for desc, path in humanlike_model_files]
+        humanlike_models_available_msg = i18n._("models available").format(num=len(humanlike_model_files_with_desc))
+        self.humanlike_model_files.values = [humanlike_models_available_msg] + [desc for desc, path in humanlike_model_files_with_desc]
+        self.humanlike_model_files.value_keys = [""] + [path for desc, path in humanlike_model_files_with_desc]
         self.humanlike_model_files.text = humanlike_models_available_msg
 
-    def check_katas(self, *args):
-        def find_description(path):
+    def check_katas(self, *args: Any) -> None:
+        def find_description(path: str) -> str:
             file = os.path.split(path)[1].replace(".exe", "")
-            file_to_desc = {
-                re.match(r".*/([^/]+)", kg)[1].replace(".zip", ""): desc
-                for _, kgs in self.KATAGOS.items()
-                for desc, kg in kgs.items()
-            }
+            file_to_desc = {}
+            for _, kgs in self.KATAGOS.items():
+                for desc, kg in kgs.items():
+                    match = re.match(r".*/([^/]+)", kg)
+                    if match:
+                        file_to_desc[match[1].replace(".zip", "")] = desc
             if file in file_to_desc:
                 return f"{file_to_desc[file]}  -  {path}"
             else:
@@ -732,13 +738,13 @@ class BaseConfigPopup(QuickConfigGui):
         self.katago_files.value_keys = ["", ""] + [path for path, desc in kata_files]
         self.katago_files.text = katas_available_msg
 
-    def download_models(self, *_largs):
+    def download_models(self, *_largs: Any) -> None:
         if time.time() - self.last_clicked_download_models > 5:
             self.last_clicked_download_models = time.time()
             threading.Thread(target=self._download_models, daemon=True).start()
 
-    def _download_models(self):
-        def download_complete(req, tmp_path, path, model):
+    def _download_models(self) -> None:
+        def download_complete(req: Any, tmp_path: str, path: str, model: str) -> None:
             try:
                 os.rename(tmp_path, path)
                 self.katrain.log(f"Download of {model} complete -> {path}", OUTPUT_INFO)
@@ -802,14 +808,14 @@ class BaseConfigPopup(QuickConfigGui):
                 0,
             )  # main thread
 
-    def download_katas(self, *_largs):
-        def unzipped_name(zipfile):
+    def download_katas(self, *_largs: Any) -> None:
+        def unzipped_name(zipfile: str) -> str:
             if platform == "win":
                 return zipfile.replace(".zip", ".exe")
             else:
                 return zipfile.replace(".zip", "")
 
-        def download_complete(req, tmp_path, path, binary):
+        def download_complete(req: Any, tmp_path: str, path: str, binary: str) -> None:
             try:
                 if tmp_path.endswith(".zip"):
                     with ZipFile(tmp_path, "r") as zipObj:
@@ -884,7 +890,7 @@ class ConfigPopup(BaseConfigPopup):
     current_mode = StringProperty("standard")  # "automatic", "standard", "advanced"
     humanlike_enabled = BooleanProperty(False)
 
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         Clock.schedule_once(self.check_katas)
         MDApp.get_running_app().bind(language=self.check_models)
@@ -893,11 +899,11 @@ class ConfigPopup(BaseConfigPopup):
         humanlike_model = self.katrain.config("engine/humanlike_model", "")
         self.humanlike_enabled = bool(humanlike_model)
 
-    def on_humanlike_enabled(self, instance, value: bool):
+    def on_humanlike_enabled(self, instance: Any, value: bool) -> None:
         """Kivy auto-callback when humanlike_enabled changes."""
         self._handle_humanlike_toggle(value)
 
-    def _handle_humanlike_toggle(self, enabled: bool):
+    def _handle_humanlike_toggle(self, enabled: bool) -> None:
         """Handle human-like toggle change.
 
         When forcing OFF, always clear humanlike_model_path to avoid stale state.
@@ -938,7 +944,7 @@ class ConfigPopup(BaseConfigPopup):
             return i18n._("model:unknown_with_name").format(name=basename)
         return i18n._(f"model:{category}")
 
-    def update_config(self, save_to_file=True, close_popup=True):
+    def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         # Phase 88: Normalize humanlike config before saving
         model, last, effective_on = normalize_humanlike_config(
             self.humanlike_enabled,
@@ -962,7 +968,7 @@ class ConfigPopup(BaseConfigPopup):
         detected_restart = [key for key in updated if "engine" in key and not any(ig in key for ig in ignore)]
         if detected_restart:
 
-            def restart_engine(_dt):
+            def restart_engine(_dt: Any) -> None:
                 self.katrain.controls.set_status("", STATUS_INFO)
                 self.katrain.log(f"Restarting Engine after {detected_restart} settings change")
                 self.katrain.controls.set_status(i18n._("restarting engine"), STATUS_INFO)
@@ -980,10 +986,11 @@ class ConfigPopup(BaseConfigPopup):
                 self.katrain.update_state()
 
             Clock.schedule_once(restart_engine, 0)
+        return updated
 
 
 class LoadSGFPopup(BaseConfigPopup):
-    def __init__(self, katrain):
+    def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         app = MDApp.get_running_app()
         self.filesel.favorites = [
@@ -993,12 +1000,12 @@ class LoadSGFPopup(BaseConfigPopup):
         self.filesel.path = os.path.abspath(os.path.expanduser(app.gui.config("general/sgf_load")))
         self.filesel.select_string = "Load File"
 
-    def on_submit(self):
+    def on_submit(self) -> None:
         self.filesel.button_clicked()
 
 
 class SaveSGFPopup(BoxLayout):
-    def __init__(self, suggested_filename, **kwargs):
+    def __init__(self, suggested_filename: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.suggested_filename = suggested_filename
         app = MDApp.get_running_app()
@@ -1008,27 +1015,27 @@ class SaveSGFPopup(BoxLayout):
         ]
         save_path = os.path.expanduser(MDApp.get_running_app().gui.config("general/sgf_save") or ".")
 
-        def set_suggested(_widget, path):
+        def set_suggested(_widget: Any, path: str) -> None:
             self.filesel.ids.file_text.text = os.path.join(path, self.suggested_filename)
 
         self.filesel.ids.list_view.bind(path=set_suggested)
         self.filesel.path = os.path.abspath(save_path)
         self.filesel.select_string = "Save File"
 
-    def on_submit(self):
+    def on_submit(self) -> None:
         self.filesel.button_clicked()
 
 
 class ReAnalyzeGamePopup(BoxLayout):
     popup = ObjectProperty(None)
 
-    def on_checkbox_active(self, checkbox, value):
+    def on_checkbox_active(self, checkbox: Any, value: bool) -> None:
         self.start_move.opacity = 1.0 if value else 0.3
         self.end_move.opacity = 1.0 if value else 0.3
         self.start_move.disabled = not value
         self.end_move.disabled = not value
 
-    def __init__(self, katrain, **kwargs):
+    def __init__(self, katrain: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
         self.katrain = katrain
@@ -1041,7 +1048,7 @@ class ReAnalyzeGamePopup(BoxLayout):
 
         self.start_move.text = str(katrain.game.current_node.depth)
 
-    def on_submit(self):
+    def on_submit(self) -> None:
         self.button.trigger_action(duration=0)
 
 
@@ -1049,22 +1056,22 @@ class TsumegoFramePopup(BoxLayout):
     katrain = ObjectProperty(None)
     popup = ObjectProperty(None)
 
-    def on_submit(self):
+    def on_submit(self) -> None:
         self.button.trigger_action(duration=0)
 
 
 class GameReportPopup(BoxLayout):
-    def __init__(self, katrain, **kwargs):
+    def __init__(self, katrain: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.katrain = katrain
         self.depth_filter = None
         Clock.schedule_once(self._refresh, 0)
 
-    def set_depth_filter(self, filter):
+    def set_depth_filter(self, filter: Any) -> None:
         self.depth_filter = filter
         Clock.schedule_once(self._refresh, 0)
 
-    def _refresh(self, _dt=0):
+    def _refresh(self, _dt: float = 0) -> None:
         game = self.katrain.game
         thresholds = self.katrain.config("trainer/eval_thresholds")
 
