@@ -7,7 +7,7 @@ The output is designed for replay guidance and LLM coaching integration.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from katrain.common import to_iso_lang_code
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
@@ -37,11 +37,11 @@ class HighlightMoment:
     player: str
     gtp_coord: str
     meaning_tag_id: str
-    meaning_tag_label: Optional[str]
+    meaning_tag_label: str | None
     score_loss: float
     game_phase: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict with score_loss rounded to 2 decimals."""
         return {
             "move_number": self.move_number,
@@ -70,9 +70,9 @@ class ReplayGuide:
     game_id: str
     game_title: str
     total_moves: int
-    highlight_moments: List[HighlightMoment]
+    highlight_moments: list[HighlightMoment]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
         return {
             "game_id": self.game_id,

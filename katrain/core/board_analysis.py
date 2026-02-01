@@ -14,7 +14,7 @@ board_analysis.py - 盤面戦術分析モジュール (Phase 5)
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, List, Tuple, Dict, Optional, Set
+from typing import TYPE_CHECKING, Any, Set
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -79,12 +79,12 @@ class Group:
     """
     group_id: int
     color: str  # 'B' or 'W'
-    stones: List[Tuple[int, int]]  # [(x, y), ...]
+    stones: list[tuple[int, int]]  # [(x, y), ...]
     liberties_count: int
-    liberties: Set[Tuple[int, int]]
+    liberties: Set[tuple[int, int]]
     is_in_atari: bool  # liberties == 1
     is_low_liberty: bool  # liberties <= 2
-    adjacent_enemy_groups: List[int]
+    adjacent_enemy_groups: list[int]
 
 
 @dataclass
@@ -98,24 +98,24 @@ class BoardState:
         danger_scores: グループごとの危険度スコア {group_id: danger_score}
                       スコアは 0-100 の範囲 (高いほど危険)
     """
-    groups: List[Group]
-    connect_points: List[Tuple[Tuple[int, int], List[int], float]]
+    groups: list[Group]
+    connect_points: list[tuple[tuple[int, int], list[int], float]]
     # [(座標, [連絡するgroup_ids], 危険度改善値), ...]
-    cut_points: List[Tuple[Tuple[int, int], List[int], float]]
+    cut_points: list[tuple[tuple[int, int], list[int], float]]
     # [(座標, [リスクのあるgroup_ids], 危険度増加値), ...]
-    danger_scores: Dict[int, float]  # {group_id: danger_score}
+    danger_scores: dict[int, float]  # {group_id: danger_score}
 
 
 # ==================== Checkpoint 2: グループ抽出 ====================
 
-def extract_groups_from_game(game: Game) -> List[Group]:
+def extract_groups_from_game(game: Game) -> list[Group]:
     """game.chainsから戦術的グループデータを抽出
 
     Args:
         game: Game インスタンス
 
     Returns:
-        List[Group]: 盤面上のすべてのグループ（空でないもののみ）
+        list[Group]: 盤面上のすべてのグループ（空でないもののみ）
     """
     groups = []
     board = game.board
@@ -171,7 +171,7 @@ def extract_groups_from_game(game: Game) -> List[Group]:
 
 # ==================== Checkpoint 3: 危険度スコア計算 ====================
 
-def compute_danger_scores(groups: List[Group], cut_points: List[Tuple[Tuple[int, int], List[int], float]]) -> Dict[int, float]:
+def compute_danger_scores(groups: list[Group], cut_points: list[tuple[tuple[int, int], list[int], float]]) -> dict[int, float]:
     """各グループの危険度スコアを計算
 
     Args:
@@ -179,7 +179,7 @@ def compute_danger_scores(groups: List[Group], cut_points: List[Tuple[Tuple[int,
         cut_points: 切断点のリスト（危険度計算に使用）
 
     Returns:
-        Dict[int, float]: {group_id: danger_score} (0-100の範囲)
+        dict[int, float]: {group_id: danger_score} (0-100の範囲)
     """
     danger_scores = {}
 
@@ -216,9 +216,9 @@ def compute_danger_scores(groups: List[Group], cut_points: List[Tuple[Tuple[int,
 
 def find_connect_points(
     game: Game,
-    groups: List[Group],
-    danger_scores: Dict[int, float]
-) -> List[Tuple[Tuple[int, int], List[int], float]]:
+    groups: list[Group],
+    danger_scores: dict[int, float]
+) -> list[tuple[tuple[int, int], list[int], float]]:
     """2つ以上の味方グループを連絡する点を検出
 
     Args:
@@ -227,7 +227,7 @@ def find_connect_points(
         danger_scores: 危険度スコア辞書
 
     Returns:
-        List[Tuple[Tuple[int, int], List[int], float]]:
+        list[tuple[tuple[int, int], list[int], float]]:
         [(座標, [連絡するgroup_ids], 危険度改善値), ...] を改善度上位10件
     """
     board = game.board
@@ -269,9 +269,9 @@ def find_connect_points(
 
 def find_cut_points(
     game: Game,
-    groups: List[Group],
-    danger_scores: Dict[int, float]
-) -> List[Tuple[Tuple[int, int], List[int], float]]:
+    groups: list[Group],
+    danger_scores: dict[int, float]
+) -> list[tuple[tuple[int, int], list[int], float]]:
     """切断点を検出（v0簡易版: ヒューリスティック）
 
     Args:
@@ -280,7 +280,7 @@ def find_cut_points(
         danger_scores: 危険度スコア辞書
 
     Returns:
-        List[Tuple[Tuple[int, int], List[int], float]]:
+        list[tuple[tuple[int, int], list[int], float]]:
         [(座標, [リスクのあるgroup_ids], 危険度増加値), ...] を危険度上位10件
     """
     board = game.board
@@ -376,9 +376,9 @@ def get_reason_tags_for_move(
     board_state: BoardState,
     move_eval: Any,  # MoveEval インスタンス
     node: Any,  # GameNode
-    candidates: List[dict[str, Any]],
+    candidates: list[dict[str, Any]],
     skill_preset: str = "standard"  # Phase 17: プリセット別閾値
-) -> List[str]:
+) -> list[str]:
     """盤面状態に基づいて理由タグを計算
 
     Args:
@@ -389,7 +389,7 @@ def get_reason_tags_for_move(
         skill_preset: スキルプリセット（"beginner" / "standard" / "advanced"）
 
     Returns:
-        List[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
+        list[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
     """
     tags: list[str] = []
 

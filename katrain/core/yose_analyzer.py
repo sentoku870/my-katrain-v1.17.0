@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from . import eval_metrics
 
@@ -25,7 +25,7 @@ class YoseImportantMovesReport:
 
     level: str
     settings: eval_metrics.ImportantMoveSettings
-    moves: List[eval_metrics.MoveEval] = field(default_factory=list)
+    moves: list[eval_metrics.MoveEval] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class YoseAnalyzer:
         *,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
         recompute: bool = True,
-    ) -> List[eval_metrics.MoveEval]:
+    ) -> list[eval_metrics.MoveEval]:
         return eval_metrics.pick_important_moves(
             self.snapshot,
             level=level,
@@ -68,7 +68,7 @@ class YoseAnalyzer:
         self,
         *,
         level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-        max_moves: Optional[int] = None,
+        max_moves: int | None = None,
         recompute: bool = True,
     ) -> YoseImportantMovesReport:
         moves = self.important_moves(level=level, recompute=recompute)
