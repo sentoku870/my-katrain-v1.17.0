@@ -74,7 +74,7 @@ BASE_CONFIDENCE: dict[ClusterSemantics, float] = {
 }
 
 # Injection thresholds by semantics type
-INJECTION_THRESHOLD: Dict[ClusterSemantics, float] = {
+INJECTION_THRESHOLD: dict[ClusterSemantics, float] = {
     ClusterSemantics.GROUP_DEATH: 0.3,  # Low (captures are important)
     ClusterSemantics.MISSED_KILL: 0.4,  # Medium
     ClusterSemantics.TERRITORY_LOSS: 0.5,  # High (noise reduction)
@@ -92,7 +92,7 @@ SURVIVED_ADVANTAGE_THRESHOLD = 0.3
 DELTA_SCALING_FACTOR = 0.1
 
 # Semantics labels (localized)
-SEMANTICS_LABELS: Dict[ClusterSemantics, Dict[str, str]] = {
+SEMANTICS_LABELS: dict[ClusterSemantics, dict[str, str]] = {
     ClusterSemantics.GROUP_DEATH: {
         "en": "Group captured",
         "jp": "石が取られた",
@@ -124,7 +124,7 @@ class ClassifiedCluster:
     cluster: OwnershipCluster
     semantics: ClusterSemantics
     confidence: float  # 0.0-1.0
-    affected_stones: Tuple[StonePosition, ...]  # Stones in cluster
+    affected_stones: tuple[StonePosition, ...]  # Stones in cluster
     debug_reason: str  # For testing/logging
 
 
@@ -143,7 +143,7 @@ class ClusterClassificationContext:
     child_stones: StoneSet  # Stones after the move
     parent_ownership_ctx: OwnershipContext
     child_ownership_ctx: OwnershipContext
-    board_size: Tuple[int, int]
+    board_size: tuple[int, int]
 
 
 # =====================================================================
@@ -153,7 +153,7 @@ class ClusterClassificationContext:
 
 def compute_stones_at_node(
     node: "SGFNode",
-    board_size: Tuple[int, int],
+    board_size: tuple[int, int],
 ) -> StoneSet:
     """Compute stone positions at a node by replaying from root.
 
@@ -294,7 +294,7 @@ class StoneCache:
     def __init__(self, game: "Game"):
         self._game = game
         self._board_size = game.board_size
-        self._cache: Dict[int, StoneSet] = {}  # move_number -> stones
+        self._cache: dict[int, StoneSet] = {}  # move_number -> stones
 
     def get_stones_at_move(self, move_number: int) -> StoneSet:
         """Get stones at a move number (cached).
@@ -365,7 +365,7 @@ def get_stones_in_cluster(
     Returns:
         Tuple of stones in cluster (sorted for determinism)
     """
-    cluster_points: FrozenSet[Tuple[int, int]] = cluster.coords
+    cluster_points: frozenset[tuple[int, int]] = cluster.coords
     stones_in_cluster = [
         (col, row, player)
         for (col, row, player) in stones
@@ -409,7 +409,7 @@ def _detect_group_death(
     actor: str,
     parent_stones: StoneSet,
     child_stones: StoneSet,
-) -> Tuple[bool, Tuple[StonePosition, ...], str]:
+) -> tuple[bool, tuple[StonePosition, ...], str]:
     """Detect if actor's stones were captured in cluster.
 
     Returns:
@@ -446,7 +446,7 @@ def _detect_territory_loss(
     actor: str,
     parent_stones: StoneSet,
     child_stones: StoneSet,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Detect if actor lost territory (no stone capture).
 
     Returns:
@@ -481,7 +481,7 @@ def _detect_missed_kill(
     actor: str,
     parent_ownership_ctx: OwnershipContext,
     child_ownership_ctx: OwnershipContext,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Detect if actor failed to kill opponent's weak stones.
 
     Uses ownership averaging to determine if:
