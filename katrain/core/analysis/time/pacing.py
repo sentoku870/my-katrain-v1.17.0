@@ -260,7 +260,7 @@ def _detect_loss_sources(moves: list[MoveEval]) -> tuple[LossSource, bool]:
     Returns:
         (primary_source, has_mixed_sources)
     """
-    sources_used: Set[LossSource] = set()
+    sources_used: set[LossSource] = set()
 
     for m in moves:
         if m.player is None:
@@ -510,7 +510,7 @@ def _detect_tilt_episodes(
         if not player_moves:
             continue
 
-        claimed: Set[int] = set()
+        claimed: set[int] = set()
 
         for trigger in player_moves:
             if trigger.move_number in claimed:
