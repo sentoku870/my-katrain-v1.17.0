@@ -106,6 +106,9 @@ def do_quiz_popup(
     items_layout.bind(minimum_height=items_layout.setter("height"))
 
     def jump_to_move(move_number: int) -> None:
+        if ctx.game is None:
+            ctx.controls.set_status("No game loaded.", STATUS_INFO)
+            return
         node = ctx.game.get_main_branch_node_before_move(move_number)
         if node is None:
             ctx.controls.set_status(

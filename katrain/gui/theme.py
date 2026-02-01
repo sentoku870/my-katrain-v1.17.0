@@ -54,6 +54,9 @@ class Theme:
     STAT_BETTER_COLOR = [0.2, 0.5, 0.1, 1]
     # Primary button color (blue-ish to match app theme)
     PRIMARY_COLOR = [0.25, 0.45, 0.65, 1]
+    # Phase 111: Alias for backward compatibility
+    # Note: Colors are List[float] but often assigned tuples; consider Sequence[float] for future strict work
+    SECONDARY_COLOR = PRIMARY_COLOR
 
     # gui spacing
     RIGHT_PANEL_ASPECT_RATIO = 0.4  # W/H

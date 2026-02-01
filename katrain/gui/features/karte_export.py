@@ -9,7 +9,7 @@
 import os
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.uix.label import Label
@@ -143,7 +143,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         return
 
     # Determine player filter(s) and filename(s)
-    exports = []  # [(player_filter, filename), ...]
+    exports: List[Tuple[Optional[str], str]] = []
 
     if karte_format == "both":
         # Both players in one file (player_filter=None)

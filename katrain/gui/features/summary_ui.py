@@ -9,7 +9,7 @@
 
 import os
 import threading
-from typing import TYPE_CHECKING, Callable, List
+from typing import TYPE_CHECKING, Callable, List, Optional
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -418,9 +418,9 @@ def process_and_export_summary(
     selected_players: List[str],
     ctx: "FeatureContext",
     extract_sgf_statistics_fn: Callable[[str], dict],
-    categorize_games_fn: Callable[[List[dict], str], dict],
+    categorize_games_fn: Callable[[List[dict], Optional[str]], dict],
     save_summaries_per_player_fn: Callable[[List[dict], List[str], "Popup"], None],
-    save_categorized_summaries_fn: Callable[[dict, str, "Popup"], None],
+    save_categorized_summaries_fn: Callable[[dict, Optional[str], "Popup"], None],
 ) -> None:
     """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）
 

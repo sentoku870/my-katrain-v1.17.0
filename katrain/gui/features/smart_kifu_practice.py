@@ -4,7 +4,7 @@
 #
 # vs_katago 練習レポートと置石調整提案を表示するUIモジュール。
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -211,6 +211,7 @@ def build_practice_report_card(
     card.add_widget(games_label)
 
     # 勝率
+    winrate_color: Sequence[float]  # Phase 111: Type annotation for list/tuple compatibility
     if stats["winrate"] is not None:
         winrate_text = f"勝率: {stats['winrate']:.0%}（{stats['wins']}勝 {stats['losses']}敗）"
         winrate_color = Theme.TEXT_COLOR

@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 def open_latest_report(ctx: "FeatureContext") -> None:
     """Open the most recent report file."""
     from katrain.common.file_opener import open_file
-    from katrain.core.constants import STATUS_ERROR, STATUS_INFO
+    from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
     from katrain.core.lang import i18n
     from katrain.core.reports.package_export import resolve_output_directory
 
@@ -98,14 +98,14 @@ def open_latest_report(ctx: "FeatureContext") -> None:
     if not output_dir.is_dir():
         ctx.log(
             i18n._("mykatrain:folder-not-exist").format(path=str(output_dir)),
-            STATUS_ERROR,
+            OUTPUT_ERROR,
         )
         return
 
     # Find the most recent report
     report = get_latest_report(output_dir)
     if report is None:
-        ctx.log(i18n._("mykatrain:no-reports-found"), STATUS_INFO)
+        ctx.log(i18n._("mykatrain:no-reports-found"), OUTPUT_INFO)
         return
 
     # Open the file
@@ -115,14 +115,14 @@ def open_latest_report(ctx: "FeatureContext") -> None:
             i18n._("mykatrain:open-failed").format(
                 error=result.error_detail or "Unknown error"
             ),
-            STATUS_ERROR,
+            OUTPUT_ERROR,
         )
 
 
 def open_output_folder(ctx: "FeatureContext") -> None:
     """Open the output folder in the system file manager."""
     from katrain.common.file_opener import open_folder
-    from katrain.core.constants import STATUS_ERROR
+    from katrain.core.constants import OUTPUT_ERROR
     from katrain.core.lang import i18n
     from katrain.core.reports.package_export import resolve_output_directory
 
@@ -134,7 +134,7 @@ def open_output_folder(ctx: "FeatureContext") -> None:
     if not output_dir.is_dir():
         ctx.log(
             i18n._("mykatrain:folder-not-exist").format(path=str(output_dir)),
-            STATUS_ERROR,
+            OUTPUT_ERROR,
         )
         return
 
@@ -144,5 +144,5 @@ def open_output_folder(ctx: "FeatureContext") -> None:
             i18n._("mykatrain:open-failed").format(
                 error=result.error_detail or "Unknown error"
             ),
-            STATUS_ERROR,
+            OUTPUT_ERROR,
         )
