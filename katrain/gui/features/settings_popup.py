@@ -188,7 +188,7 @@ def _do_export_settings(
 
     try:
         # Get current config and app version
-        config_dict = dict(ctx._config)
+        config_dict = dict(ctx._config)  # type: ignore[attr-defined]
         app_version = ctx.config("general", {}).get("version", "unknown")
 
         # Export to JSON string
@@ -280,8 +280,9 @@ def _do_import_settings(
         return
 
     # Save original config for rollback
+    # Note: Accessing private _config is intentional (Phase 111 scope-out)
     original_config = {
-        k: dict(v) if isinstance(v, dict) else v for k, v in ctx._config.items()
+        k: dict(v) if isinstance(v, dict) else v for k, v in ctx._config.items()  # type: ignore[attr-defined]
     }
 
     try:
@@ -289,27 +290,27 @@ def _do_import_settings(
         for section, values in imported.sections.items():
             if section in EXCLUDED_SECTIONS:
                 continue
-            if section not in ctx._config:
-                ctx._config[section] = {}
-            ctx._config[section].update(values)
+            if section not in ctx._config:  # type: ignore[attr-defined]
+                ctx._config[section] = {}  # type: ignore[attr-defined]
+            ctx._config[section].update(values)  # type: ignore[attr-defined]
 
         # Atomic save
-        atomic_save_config(ctx._config, ctx.config_file)
+        atomic_save_config(ctx._config, ctx.config_file)  # type: ignore[attr-defined]
 
         # Reload store (reload-then-sync pattern)
-        ctx._config_store._load()
-        ctx._config = dict(ctx._config_store)
+        ctx._config_store._load()  # type: ignore[attr-defined]
+        ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
 
     except (OSError, json.JSONDecodeError) as e:
         # Atomic save or reload failure
         logging.error(f"Settings import save failed: {e}", exc_info=True)
         # Rollback on failure
-        ctx._config = original_config
+        ctx._config = original_config  # type: ignore[attr-defined]
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()
-            ctx._config = dict(ctx._config_store)
+            ctx._config_store._load()  # type: ignore[attr-defined]
+            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
         except Exception as rollback_err:
             # Boundary fallback: rollback itself failed.
             # At this point the config may be in an inconsistent state.
@@ -332,12 +333,12 @@ def _do_import_settings(
         # Boundary fallback: unexpected error during save
         logging.error(f"Unexpected error during settings save: {e}", exc_info=True)
         # Rollback on failure
-        ctx._config = original_config
+        ctx._config = original_config  # type: ignore[attr-defined]
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()
-            ctx._config = dict(ctx._config_store)
+            ctx._config_store._load()  # type: ignore[attr-defined]
+            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
         except Exception as rollback_err:
             logging.error(
                 f"CRITICAL: Settings rollback failed after import error. "

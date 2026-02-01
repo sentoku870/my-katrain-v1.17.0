@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -79,7 +79,7 @@ class AutoModeState:
 def show_auto_mode_content(
     ctx: "FeatureContext",
     layout: BoxLayout,
-    katrain: "any",  # KaTrainGui instance (for engine access)
+    katrain: Any,  # KaTrainGui instance (for engine access)
 ) -> None:
     """Build Auto Setup tab content.
 
@@ -152,7 +152,7 @@ def show_auto_mode_content(
 
 def _on_test_analysis_clicked(
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     state: AutoModeState,
     result_area: BoxLayout,
     btn: Button,
@@ -203,7 +203,7 @@ def _show_testing_status(result_area: BoxLayout) -> None:
 
 def _execute_test_analysis(
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     timeout_seconds: float = 15.0,
 ) -> TestAnalysisResult:
     """Execute test analysis.
@@ -224,7 +224,8 @@ def _execute_test_analysis(
         return error_result
 
     # Use katrain's verification method
-    return katrain._verify_engine_works(timeout_seconds)
+    # katrain is typed as Any (circular import avoidance), so cast the return type
+    return cast(TestAnalysisResult, katrain._verify_engine_works(timeout_seconds))
 
 
 def _on_test_complete(
@@ -232,7 +233,7 @@ def _on_test_complete(
     result_area: BoxLayout,
     btn: Button,
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     state: AutoModeState,
 ) -> None:
     """Handle test completion.
@@ -269,7 +270,7 @@ def _on_test_complete(
 def _render_success_ui(
     result: TestAnalysisResult,
     layout: BoxLayout,
-    katrain: "any",
+    katrain: Any,
 ) -> None:
     """Render success UI.
 
@@ -299,7 +300,7 @@ def _render_failure_ui(
     result: TestAnalysisResult,
     layout: BoxLayout,
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     state: AutoModeState,
 ) -> None:
     """Render failure UI with recovery options.
@@ -359,7 +360,7 @@ def _render_timeout_ui(
     result: TestAnalysisResult,
     layout: BoxLayout,
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     state: AutoModeState,
 ) -> None:
     """Render timeout UI with restart option.
@@ -494,7 +495,7 @@ def _render_lightweight_missing_ui(
 
 def _on_retry_cpu(
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     result_area: BoxLayout,
     btn: Button,
     state: AutoModeState,
@@ -537,7 +538,7 @@ def _on_fallback_complete(
     result_area: BoxLayout,
     btn: Button,
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
 ) -> None:
     """Handle CPU fallback completion.
 
@@ -598,7 +599,7 @@ def _on_fallback_complete(
 
 def _on_restart_engine(
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
     result_area: BoxLayout,
     btn: Button,
     state: AutoModeState,
@@ -640,7 +641,7 @@ def _on_restart_complete(
     result_area: BoxLayout,
     btn: Button,
     ctx: "FeatureContext",
-    katrain: "any",
+    katrain: Any,
 ) -> None:
     """Handle engine restart completion.
 

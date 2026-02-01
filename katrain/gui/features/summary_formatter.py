@@ -72,6 +72,9 @@ class _PatternMoveEval:
         "leela_loss_est", "points_lost", "mistake_category", "meaning_tag_id"
     )
 
+    # Type annotations for __slots__ members (Phase 111)
+    mistake_category: Optional[MistakeCategory]
+
     def __init__(self, data: dict):
         # Safe extraction with defaults
         self.move_number = data.get("move_number", 0)
@@ -439,11 +442,13 @@ def _append_recurring_patterns(
         lines.append(f"   - {refs_text}")
 
         # Phase 86: Add reason line if available
+        # Phase 111: Safe fallback for lang attribute (current_lang was removed)
+        current_lang = getattr(i18n, "current_lang", None) or getattr(i18n, "lang", None) or "en"
         reason = generate_reason_safe(
             sig.primary_tag,
             phase=sig.phase,
             area=sig.area,
-            lang=i18n.current_lang,
+            lang=current_lang,
         )
         if reason:
             lines.append(f"   - {reason}")

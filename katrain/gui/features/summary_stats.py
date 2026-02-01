@@ -55,7 +55,8 @@ def extract_analysis_from_sgf_node(node) -> Optional[dict]:
         analysis = json.loads(main_data)
 
         # analysis already contains {"root": {...}, "moves": {...}}
-        return analysis
+        # Cast is safe: json.loads returns dict for valid JSON object
+        return analysis  # type: ignore[no-any-return]
 
     except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, IndexError) as e:
         logger.debug("Failed to extract analysis from SGF node: %s", type(e).__name__)
@@ -216,11 +217,12 @@ def extract_sgf_statistics(
         stats["worst_moves"] = stats["worst_moves"][:10]  # Top 10
 
         # Extract reason_tags counts from important moves (Phase 10-B)
-        reason_tags_counts = {}
+        reason_tags_counts: Dict[str, int] = {}
         try:
             # Create a temporary Game object to compute reason_tags
             from katrain.core.game import Game
-            temp_game = Game(ctx, engine, move_tree=move_tree)
+            # Note: Game expects GameNode but SGFNode works at runtime
+            temp_game = Game(ctx, engine, move_tree=move_tree)  # type: ignore[arg-type]
 
             # Load analysis data from SGF into Game nodes
             sgf_nodes = list(move_tree.nodes_in_tree)
@@ -268,7 +270,8 @@ def extract_sgf_statistics(
                 # Reuse temp_game from reason_tags if available, otherwise create it
                 if "temp_game" not in dir():
                     from katrain.core.game import Game
-                    temp_game = Game(ctx, engine, move_tree=move_tree)
+                    # Note: Game expects GameNode but SGFNode works at runtime
+                    temp_game = Game(ctx, engine, move_tree=move_tree)  # type: ignore[arg-type]
                     # Load analysis data
                     sgf_nodes = list(move_tree.nodes_in_tree)
                     game_nodes = list(temp_game.root.nodes_in_tree)

@@ -186,7 +186,7 @@ def start_quiz_session(
         result_label.text = answers.get(current_index, "")
 
         node_before = question.node_before_move
-        if node_before is not None:
+        if node_before is not None and ctx.game is not None:
             ctx.game.set_current_node(node_before)
             update_state_fn()
 

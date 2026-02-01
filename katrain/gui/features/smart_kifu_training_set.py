@@ -6,6 +6,7 @@
 
 import os
 import threading
+import warnings
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from kivy.clock import Clock
@@ -810,6 +811,7 @@ def show_import_batch_output_dialog(
     ctx: "FeatureContext",
     set_id: str,
     on_import_complete: Callable[[], None],
+    katrain_gui: Optional[Any] = None,
 ) -> None:
     """バッチ解析出力フォルダのインポートダイアログを表示
 
@@ -819,7 +821,16 @@ def show_import_batch_output_dialog(
         ctx: FeatureContext
         set_id: インポート先のTraining Set ID
         on_import_complete: インポート完了時のコールバック
+        katrain_gui: KaTrainGui instance for file browser (optional, deprecated in future)
     """
+    # Phase 111: Deprecation warning for future required parameter
+    if katrain_gui is None:
+        warnings.warn(
+            "katrain_gui parameter will be required in a future version. "
+            "Pass the KaTrainGui instance explicitly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     from pathlib import Path
 
     content = BoxLayout(
@@ -856,9 +867,14 @@ def show_import_batch_output_dialog(
         size_hint_x=0.2,
         font_name=Theme.DEFAULT_FONT,
     )
-    browse_btn.bind(on_release=create_browse_callback(
-        folder_input, "解析済みSGFフォルダを選択", ctx.katrain_gui
-    ))
+    # Phase 111: Handle None katrain_gui gracefully
+    if katrain_gui is not None:
+        browse_btn.bind(on_release=create_browse_callback(
+            folder_input, "解析済みSGFフォルダを選択", katrain_gui
+        ))
+    else:
+        browse_btn.disabled = True
+        browse_btn.text = "N/A"
     folder_row.add_widget(folder_label)
     folder_row.add_widget(folder_input)
     folder_row.add_widget(browse_btn)

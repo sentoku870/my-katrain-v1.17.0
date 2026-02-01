@@ -78,15 +78,16 @@ def _show_impl(ctx: "FeatureContext") -> None:
         )
         if len(player_moves) >= MIN_MOVES_FOR_RADAR:
             try:
-                radar[p] = compute_radar_from_moves(snapshot.moves, player=p)
-                print(f"[RADAR DEBUG] Player={p}, id={id(radar[p])}, opening={radar[p].opening:.2f}, fighting={radar[p].fighting:.2f}, stability={radar[p].stability:.2f}")
+                metrics = compute_radar_from_moves(snapshot.moves, player=p)
+                radar[p] = metrics
+                print(f"[RADAR DEBUG] Player={p}, id={id(metrics)}, opening={metrics.opening:.2f}, fighting={metrics.fighting:.2f}, stability={metrics.stability:.2f}")
                 _logger.debug(
                     "[RADAR DEBUG] Player=%s, RadarMetrics id=%d, opening=%.2f, fighting=%.2f, stability=%.2f",
                     p,
-                    id(radar[p]),
-                    radar[p].opening,
-                    radar[p].fighting,
-                    radar[p].stability,
+                    id(metrics),
+                    metrics.opening,
+                    metrics.fighting,
+                    metrics.stability,
                 )
             except Exception as e:
                 ctx.log(f"{i18n._('radar:calc-error')} ({p}): {e}", OUTPUT_ERROR)

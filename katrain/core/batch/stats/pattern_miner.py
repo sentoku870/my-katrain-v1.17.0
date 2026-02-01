@@ -13,7 +13,7 @@ Public API:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from katrain.core.analysis.board_context import BoardArea, classify_area
 from katrain.core.analysis.meaning_tags import (
@@ -303,7 +303,7 @@ def create_signature(
 
 
 def mine_patterns(
-    games: List[Tuple[str, object]],  # List[(game_name, EvalSnapshot)]
+    games: Sequence[Tuple[str, object]],  # Sequence[(game_name, EvalSnapshot)]
     board_size: int = 19,
     min_count: int = 2,
     top_n: int = 5,
