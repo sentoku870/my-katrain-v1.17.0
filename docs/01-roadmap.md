@@ -385,7 +385,7 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 111**: ✅ gui/features型エラー修正。15ファイル修正、53+件のエラーを解消。"any"→Any置換、Optional型ナローイング、STATUS_*→OUTPUT_*変更、i18n.lang安全フォールバック、SECONDARY_COLORエイリアス追加、List→Sequence変更（covariance）。gui/featuresでエラー0件達成。（2026-02-01完了）
 
-**Phase 112**: mypy strict（全体・CIブロック）。全体strictと、CIで型エラーをブロック有効化。
+**Phase 112**: ✅ mypy strict（全体・CIブロック）。全体strictと、CIで型エラーをブロック有効化。1352エラー→0エラー達成。Python 3.11+型構文（`X | None`, `dict[str, Any]`）採用。7サブフェーズ（112-0: strict設定、112A: common/、112B-D: core/、112E-1〜4: gui/、112F: __main__.py、112G: CI typecheck job追加）で段階的修正。全205ファイル型安全化。PR #258-264。（2026-02-01完了）
 
 ### 未定（TBD / Post-52）
 

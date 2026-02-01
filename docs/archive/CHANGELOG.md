@@ -1,9 +1,37 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-111 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-112 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 112 完了（mypy strict全体・CIブロック）
+  - 全205ファイルの型安全化を達成。1352エラー→0エラー。
+  - 7サブフェーズで段階的修正:
+    - **112-0**: pyproject.toml strict flags有効化、Python 3.11化
+    - **112A**: common/ パッケージ（19件）
+    - **112B**: core/ 基盤（sgf_parser.py, game_node.py, game.py、200件）
+    - **112C**: core/ AI・エンジン（ai.py, engine.py, ai_strategies_base.py、115件）
+    - **112D**: core/ 残り（210件）
+    - **112E-1**: gui/widgets/（70件）
+    - **112E-2**: gui/features/（128件）
+    - **112E-3**: gui/managers/（40件）
+    - **112E-4**: gui/ 残り（badukpan.py, popups.py, kivyutils.py, sgf_manager.py等、410件）
+    - **112F**: __main__.py + 残りファイル（171件）
+    - **112G**: CI typecheck job追加（並列実行）
+  - 主要変更:
+    - Python 3.11+型構文採用: `X | None`, `dict[str, Any]`, `list[T]`（`Optional`, `Union`, `List`, `Dict` から移行）
+    - pyproject.toml: requires-python=">=3.11"、python_version="3.11"、6つのstrict flags（disallow_any_generics, disallow_incomplete_defs, disallow_untyped_defs, check_untyped_defs, strict_equality, extra_checks）
+    - CI: typecheck jobを別ジョブ化（testと並列実行）、build jobに依存追加
+    - 全関数に型注釈追加（`-> None`, `*args: Any`, `**kwargs: Any`）
+    - Kivy互換性: 必要箇所に`type: ignore`コメント追加、Anyを活用
+  - 技術仕様:
+    - log()メソッドの`level`パラメータを`int`に統一（`str`/`float`から修正）
+    - ghost_stone型を`tuple[int, int] | None`に修正（`Any = []`から変更）
+    - _config()呼び出しに第2引数（デフォルト値）追加（24箇所）
+    - bool()キャスト追加でno-any-returnエラー解消
+  - テスト: 3776件パス（変更なし）
+  - PR: #258（112-0）、#259（112E-3）、#260（112E-4b）、#261（112E-4c）、#262（112E-4d）、#263（112F）、#264（112G）
 
 - 2026-02-01: Phase 111 完了（gui/features型エラー修正）
   - gui/featuresパッケージの53+件のmypyエラーを解消
