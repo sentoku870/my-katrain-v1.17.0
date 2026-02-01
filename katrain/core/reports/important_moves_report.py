@@ -8,7 +8,7 @@ game.pyから抽出された重要手レポート生成機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.models import (
@@ -19,7 +19,7 @@ from katrain.core.analysis.models import (
 
 
 def build_important_moves_report(
-    important_moves: List[MoveEval],
+    important_moves: list["MoveEval"],
     *,
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
     max_lines: Optional[int] = None,
@@ -109,7 +109,7 @@ def build_important_moves_report(
         level,
         eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
     )
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(
         f"重要局面候補 (level={level}, "
         f"threshold={settings.importance_threshold}, "

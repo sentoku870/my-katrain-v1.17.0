@@ -10,7 +10,7 @@ v5設計方針:
 - 型は実際のGame/SGFNode実装に合わせる
 """
 
-from typing import Any, Optional, Protocol, Tuple
+from typing import Any, Optional, Protocol
 
 
 class RootNodeProvider(Protocol):
@@ -33,7 +33,7 @@ class GameMetadataProvider(Protocol):
     """
 
     @property
-    def board_size(self) -> Tuple[int, int]:
+    def board_size(self) -> tuple[int, int]:
         """盤面サイズ（x, y）。非正方形盤面対応のためタプル。"""
         ...
 

@@ -7,7 +7,7 @@ All section generators receive this context explicitly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import (
@@ -33,29 +33,29 @@ class KarteContext:
     game: Any  # Game object (duck-typed to avoid circular import)
 
     # Thresholds and presets
-    thresholds: List[float]  # Raw thresholds from config
-    effective_thresholds: Tuple[float, float, float]  # Score thresholds for classification
+    thresholds: list[float]  # Raw thresholds from config
+    effective_thresholds: tuple[float, float, float]  # Score thresholds for classification
     effective_preset: str  # "beginner" / "standard" / "advanced"
-    auto_recommendation: Optional["AutoRecommendation"]
+    auto_recommendation: "AutoRecommendation | None"
 
     # Computed metadata
     confidence_level: ConfidenceLevel
-    pacing_map: Optional[Dict[int, PacingMetrics]]
-    histogram: Optional[List[Any]]
+    pacing_map: "dict[int, PacingMetrics] | None"
+    histogram: "list[Any] | None"
 
     # Board and player info
     board_x: int
     board_y: int
     pb: str  # Black player name
     pw: str  # White player name
-    focus_color: Optional[str]  # "B" / "W" / None
+    focus_color: str | None  # "B" / "W" / None
 
     # Important moves
-    important_moves: List[MoveEval]
+    important_moves: list[MoveEval]
     total_moves: int
     settings: ImportantMoveSettings  # Important move settings
 
     # Parameters
     skill_preset: str
-    target_visits: Optional[int]
+    target_visits: int | None
     lang: str  # "ja" or "en" (ISO codes, matching existing karte output)

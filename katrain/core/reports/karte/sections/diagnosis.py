@@ -9,7 +9,7 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.logic_loss import detect_engine_type
@@ -29,7 +29,7 @@ def weakness_hypothesis_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Generate weakness hypothesis section for a player (skill_preset thresholds).
 
     Args:
@@ -144,7 +144,7 @@ def practice_priorities_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Generate practice priorities section for a player.
 
     Args:
@@ -240,7 +240,7 @@ def mistake_streaks_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Detect and display consecutive mistakes by the same player.
 
     Args:
@@ -285,7 +285,7 @@ def urgent_miss_section_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Detect urgent misses (consecutive mistakes indicating missed urgency).
 
     Args:

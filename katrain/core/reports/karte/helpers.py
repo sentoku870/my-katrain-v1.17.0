@@ -6,7 +6,7 @@ It may import from models.py but not from builder, sections, or context.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from katrain.core.analysis.models import EngineType
 
@@ -33,7 +33,7 @@ def has_loss_data(mv: MoveEval) -> bool:
 
 
 def format_loss_with_engine_suffix(
-    loss_val: Optional[float],
+    loss_val: float | None,
     engine_type: EngineType,
 ) -> str:
     """損失値をフォーマット。Leelaは(推定)サフィックス付き。

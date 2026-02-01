@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .section_registry import ReportSection
@@ -33,14 +33,14 @@ class SectionRegistration:
     """Registration metadata for a section."""
 
     section: "ReportSection"
-    after_section_id: Optional[str] = None
+    after_section_id: str | None = None
     enabled_by_default: bool = True
 
 
 def compute_section_order(
-    registrations: List[SectionRegistration],
-    base_section_ids: List[str],
-) -> Tuple[List[SectionRegistration], List[str]]:
+    registrations: list[SectionRegistration],
+    base_section_ids: list[str],
+) -> tuple[list[SectionRegistration], list[str]]:
     """Compute ordered registrations with stable insertion.
 
     Stable insertion: Multiple sections with the same after_section_id
@@ -60,11 +60,11 @@ def compute_section_order(
         Warnings are returned, not logged. Caller is responsible for surfacing
         them via _logger.warning() or similar.
     """
-    warnings: List[str] = []
+    warnings: list[str] = []
     base_set = set(base_section_ids)
-    result_ids: List[str] = list(base_section_ids)
+    result_ids: list[str] = list(base_section_ids)
     regs_by_id: dict[str, SectionRegistration] = {}
-    pending: List[SectionRegistration] = []
+    pending: list[SectionRegistration] = []
 
     # Track insertion offsets per anchor for stable ordering
     insertion_offsets: dict[str, int] = defaultdict(int)
@@ -78,7 +78,7 @@ def compute_section_order(
         seen_ids.add(sid)
 
     # Filter enabled registrations and check base collision
-    enabled: List[SectionRegistration] = []
+    enabled: list[SectionRegistration] = []
     for reg in registrations:
         if not reg.enabled_by_default:
             continue

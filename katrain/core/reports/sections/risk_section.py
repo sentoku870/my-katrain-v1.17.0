@@ -13,7 +13,7 @@ Thresholding (3-tier, separate functions):
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from katrain.core.lang import i18n
 
@@ -74,7 +74,7 @@ def _classify_losing_behavior(complicating_pct: float) -> str:
 def format_risk_stats(
     data: RiskDisplayData,
     fallback_used: bool,
-) -> List[str]:
+) -> list[str]:
     """Format risk statistics as markdown lines.
 
     Args:

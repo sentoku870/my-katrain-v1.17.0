@@ -10,7 +10,7 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.eval_metrics import classify_mistake, get_canonical_loss_from_move
@@ -24,14 +24,14 @@ if TYPE_CHECKING:
     from katrain.core.reports.karte.sections.context import KarteContext
 
 
-def _fmt_float(val: Optional[float]) -> str:
+def _fmt_float(val: float | None) -> str:
     """Format float value or return 'unknown'."""
     return "unknown" if val is None else f"{val:.1f}"
 
 
 def _mistake_label_from_loss(
-    loss_val: Optional[float],
-    thresholds: Tuple[float, float, float],
+    loss_val: float | None,
+    thresholds: tuple[float, float, float],
 ) -> str:
     """Classify a loss value using thresholds."""
     if loss_val is None:
@@ -42,7 +42,7 @@ def _mistake_label_from_loss(
     return category.value
 
 
-def worst_move_for(ctx: KarteContext, player: str) -> Optional[MoveEval]:
+def worst_move_for(ctx: KarteContext, player: str) -> "MoveEval | None":
     """Find worst move for a player using canonical loss (KataGo/Leela compatible).
 
     Args:
@@ -60,7 +60,7 @@ def worst_move_for(ctx: KarteContext, player: str) -> Optional[MoveEval]:
     return max(moves_with_data, key=get_canonical_loss_from_move)
 
 
-def summary_lines_for(ctx: KarteContext, player: str) -> List[str]:
+def summary_lines_for(ctx: KarteContext, player: str) -> list[str]:
     """Generate summary lines for a player.
 
     Args:
@@ -94,7 +94,7 @@ def summary_lines_for(ctx: KarteContext, player: str) -> List[str]:
     ]
 
 
-def opponent_summary_for(ctx: KarteContext, focus_player: str) -> List[str]:
+def opponent_summary_for(ctx: KarteContext, focus_player: str) -> list[str]:
     """Generate opponent summary section (Phase 4: opponent info).
 
     Args:
@@ -135,7 +135,7 @@ def opponent_summary_for(ctx: KarteContext, focus_player: str) -> List[str]:
     ]
 
 
-def common_difficult_positions(ctx: KarteContext) -> List[str]:
+def common_difficult_positions(ctx: KarteContext) -> list[str]:
     """Detect positions where both players made significant errors (Phase 4).
 
     Args:
@@ -190,7 +190,7 @@ def distribution_lines_for(
     ctx: KarteContext,
     player: str,
     bucket_label_func: Callable[[Any], str],
-) -> List[str]:
+) -> list[str]:
     """Generate mistake distribution lines for a player.
 
     Args:

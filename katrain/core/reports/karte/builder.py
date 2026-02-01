@@ -16,7 +16,7 @@ import logging
 import os
 import re
 from collections import Counter
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.meaning_tags import (
@@ -71,14 +71,14 @@ logger = logging.getLogger(__name__)
 
 
 def _build_tag_counts_from_moves(
-    moves: List[MoveEval],
-    player: Optional[str],
-) -> Dict[MeaningTagId, int]:
+    moves: list[MoveEval],
+    player: str | None,
+) -> dict[MeaningTagId, int]:
     """Build MeaningTagId counts from cached meaning_tag_id field."""
     filtered = [m for m in moves if player is None or m.player == player]
     tag_ids = [m.meaning_tag_id for m in filtered if m.meaning_tag_id is not None]
 
-    valid_tags: List[MeaningTagId] = []
+    valid_tags: list[MeaningTagId] = []
     for tid in tag_ids:
         try:
             valid_tags.append(MeaningTagId(tid))
@@ -88,9 +88,9 @@ def _build_tag_counts_from_moves(
 
 
 def _compute_style_safe(
-    moves: List[MoveEval],
-    player: Optional[str],
-) -> Optional[StyleResult]:
+    moves: list[MoveEval],
+    player: str | None,
+) -> StyleResult | None:
     """Compute style with graceful fallback on error."""
     try:
         radar = compute_radar_from_moves(moves, player=player)
@@ -114,11 +114,11 @@ def _compute_style_safe(
 def build_karte_report(
     game: Any,  # Game object (Protocol in future)
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-    player_filter: Optional[str] = None,
+    player_filter: str | None = None,
     raise_on_error: bool = False,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
-    target_visits: Optional[int] = None,
-    snapshot: Optional[Any] = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+    target_visits: int | None = None,
+    snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
 
@@ -206,7 +206,7 @@ def build_karte_report(
 
 def _build_error_karte(
     game_id: str,
-    player_filter: Optional[str],
+    player_filter: str | None,
     error_msg: str,
 ) -> str:
     """Build a minimal karte with ERROR section when generation fails."""
@@ -244,14 +244,14 @@ def _fmt_val(val: Any, default: str = "unknown") -> str:
     return default if val in [None, ""] else str(val)
 
 
-def _normalize_name(name: Optional[str]) -> str:
+def _normalize_name(name: str | None) -> str:
     """Normalize name for comparison."""
     if not name:
         return ""
     return re.sub(r"[^0-9a-z]+", "", str(name).casefold())
 
 
-def _read_aliases(value: Any) -> List[str]:
+def _read_aliases(value: Any) -> list[str]:
     """Read aliases from config value."""
     if not value:
         return []
@@ -266,9 +266,9 @@ def _build_karte_report_impl(
     game: Any,  # Game object
     snapshot: EvalSnapshot,  # Pre-computed snapshot (avoid double computation)
     level: str,
-    player_filter: Optional[str],
+    player_filter: str | None,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
-    target_visits: Optional[int] = None,
+    target_visits: int | None = None,
     lang: str = "ja",
 ) -> str:
     """Internal implementation of build_karte_report.
@@ -300,7 +300,7 @@ def _build_karte_report_impl(
     )
 
     # Phase 60: Build pacing map for Time column
-    pacing_map: Optional[Dict[int, PacingMetrics]] = None
+    pacing_map: dict[int, PacingMetrics] | None = None
     try:
         time_data = parse_time_data(game.root)
         if time_data.has_time_data:
@@ -338,7 +338,7 @@ def _build_karte_report_impl(
         f"- White: {pw}" + (f" ({wr})" if wr else ""),
     ]
 
-    focus_color: Optional[str] = None
+    focus_color: str | None = None
     if game.katrain:
         focus_name = game.katrain.config("general/my_player_name")
         focus_aliases = _read_aliases(game.katrain.config("general/my_player_aliases"))
@@ -353,7 +353,7 @@ def _build_karte_report_impl(
                 focus_color = "B" if match_black else "W"
 
     # Phase 3: Process player_filter parameter
-    filtered_player: Optional[str] = None
+    filtered_player: str | None = None
     if player_filter:
         if player_filter in ("B", "W"):
             filtered_player = player_filter
@@ -390,7 +390,7 @@ def _build_karte_report_impl(
         meta_lines.append(f"- Style: {unknown_label}")
 
     # Compute auto recommendation if skill_preset is "auto"
-    auto_recommendation: Optional[eval_metrics.AutoRecommendation] = None
+    auto_recommendation: eval_metrics.AutoRecommendation | None = None
     effective_preset = skill_preset
     if skill_preset == "auto":
         # Use focus_color if available, otherwise use all moves
@@ -474,7 +474,7 @@ def _build_karte_report_impl(
     )
 
     # Assemble sections
-    sections: List[str] = ["## Meta", *meta_lines, ""]
+    sections: list[str] = ["## Meta", *meta_lines, ""]
     sections += ["## Players", *players_lines, ""]
     sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
     sections += definitions_section(ctx, auto_recommendation)

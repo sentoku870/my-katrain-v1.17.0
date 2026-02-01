@@ -4,9 +4,6 @@ This module is the bottom layer of the karte package.
 It MUST NOT import any other karte modules.
 """
 
-from typing import Optional
-
-
 class KarteGenerationError(Exception):
     """Exception raised when karte generation fails.
 
@@ -21,9 +18,9 @@ class KarteGenerationError(Exception):
         self,
         message: str,
         game_id: str = "",
-        focus_player: Optional[str] = None,
+        focus_player: str | None = None,
         context: str = "",
-        original_error: Optional[Exception] = None,
+        original_error: Exception | None = None,
     ):
         super().__init__(message)
         self.game_id = game_id

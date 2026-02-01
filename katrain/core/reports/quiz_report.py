@@ -9,7 +9,7 @@ game.pyから抽出されたクイズ関連機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
@@ -31,7 +31,7 @@ def get_quiz_items(
     *,
     loss_threshold: float = DEFAULT_QUIZ_LOSS_THRESHOLD,
     limit: int = DEFAULT_QUIZ_ITEM_LIMIT,
-) -> List[QuizItem]:
+) -> list["QuizItem"]:
     """
     EvalSnapshotからクイズ用の大きなミス一覧を返す。
 
@@ -55,11 +55,11 @@ def get_quiz_items(
 
 
 def build_quiz_questions(
-    quiz_items: List[QuizItem],
-    get_node_before_move: Callable[[int], Optional[GameNode]],
+    quiz_items: list["QuizItem"],
+    get_node_before_move: Callable[[int], Optional["GameNode"]],
     *,
     max_choices: int = 3,
-) -> List[QuizQuestion]:
+) -> list["QuizQuestion"]:
     """
     クイズ項目からクイズ問題を生成する。
 
@@ -75,10 +75,10 @@ def build_quiz_questions(
         各局面の候補手情報（candidate_moves）を使用し、
         新たなエンジン解析は開始しない。
     """
-    questions: List[QuizQuestion] = []
+    questions: list["QuizQuestion"] = []
     for item in quiz_items:
         node_before = get_node_before_move(item.move_number)
-        choices: List[QuizChoice] = []
+        choices: list["QuizChoice"] = []
         best_move: Optional[str] = None
 
         if node_before is not None and getattr(node_before, "analysis_exists", False):

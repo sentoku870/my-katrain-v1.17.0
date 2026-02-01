@@ -15,7 +15,7 @@ This module provides:
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, List, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from .insertion import SectionRegistration
@@ -48,7 +48,7 @@ class SectionContext(Protocol):
         ...
 
     @property
-    def focus_player(self) -> Optional[str]:
+    def focus_player(self) -> str | None:
         """Player filter ("B", "W", or None)."""
         ...
 
@@ -69,7 +69,7 @@ class ReportSection(Protocol):
         """Get localized title. lang is "jp" or "en"."""
         ...
 
-    def render_markdown(self, context: SectionContext) -> Optional[str]:
+    def render_markdown(self, context: SectionContext) -> str | None:
         """Render content. Return None to skip."""
         ...
 
@@ -91,7 +91,7 @@ class SectionRegistry:
     def __init__(self) -> None:
         from .insertion import SectionRegistration
 
-        self._registrations: dict[ReportType, List[SectionRegistration]] = {
+        self._registrations: dict[ReportType, list[SectionRegistration]] = {
             rt: [] for rt in ReportType
         }
         self._section_ids: dict[ReportType, set[str]] = {rt: set() for rt in ReportType}
@@ -100,7 +100,7 @@ class SectionRegistry:
         self,
         report_type: ReportType,
         section: ReportSection,
-        after_section_id: Optional[str] = None,
+        after_section_id: str | None = None,
         enabled_by_default: bool = True,
     ) -> None:
         """Register a section. Raises DuplicateSectionError if exists."""
@@ -121,7 +121,7 @@ class SectionRegistry:
             )
         )
 
-    def get_registrations(self, report_type: ReportType) -> List["SectionRegistration"]:
+    def get_registrations(self, report_type: ReportType) -> list["SectionRegistration"]:
         """Get all registrations in registration order."""
         return list(self._registrations[report_type])
 
@@ -132,7 +132,7 @@ class SectionRegistry:
             self._section_ids[rt].clear()
 
 
-_SECTION_REGISTRY: Optional[SectionRegistry] = None
+_SECTION_REGISTRY: SectionRegistry | None = None
 
 
 def get_section_registry() -> SectionRegistry:

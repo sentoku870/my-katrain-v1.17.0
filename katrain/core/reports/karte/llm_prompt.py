@@ -6,7 +6,7 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from katrain.core.reports.karte.models import CRITICAL_3_PROMPT_TEMPLATE
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def build_critical_3_prompt(
-    critical_moves: List[CriticalMove],
+    critical_moves: list[CriticalMove],
     player_level: str = "intermediate",
 ) -> str:
     """Build an LLM prompt from Critical 3 moves.
