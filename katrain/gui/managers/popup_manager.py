@@ -103,29 +103,36 @@ class PopupManager:
         if self._popups["new_game"] is None:
             self._popups["new_game"] = self._create_new_game_popup()
         popup = self._popups["new_game"]
-        popup.open()
-        self._on_new_game_opened(popup)
+        if popup:  # Type narrowing for mypy
+            popup.open()
+            self._on_new_game_opened(popup)
 
     def open_timer_popup(self) -> None:
         """タイマー設定ポップアップを開く（キャッシュ再利用）"""
         self._pause_timer()
         if self._popups["timer"] is None:
             self._popups["timer"] = self._create_timer_popup()
-        self._popups["timer"].open()
+        popup = self._popups["timer"]
+        if popup:  # Type narrowing for mypy
+            popup.open()
 
     def open_teacher_popup(self) -> None:
         """教師設定ポップアップを開く（キャッシュ再利用）"""
         self._pause_timer()
         if self._popups["teacher"] is None:
             self._popups["teacher"] = self._create_teacher_popup()
-        self._popups["teacher"].open()
+        popup = self._popups["teacher"]
+        if popup:  # Type narrowing for mypy
+            popup.open()
 
     def open_ai_popup(self) -> None:
         """AI設定ポップアップを開く（キャッシュ再利用）"""
         self._pause_timer()
         if self._popups["ai"] is None:
             self._popups["ai"] = self._create_ai_popup()
-        self._popups["ai"].open()
+        popup = self._popups["ai"]
+        if popup:  # Type narrowing for mypy
+            popup.open()
 
     def open_engine_recovery_popup(self, error_message: str, code: str) -> None:
         """エンジン復旧ポップアップを開く（重複防止付き、タイマー一時停止なし）

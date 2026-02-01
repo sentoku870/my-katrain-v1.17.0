@@ -20,7 +20,7 @@ Kivy依存性:
     manager.do_export_summary()
 """
 
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -68,7 +68,7 @@ class SummaryManager:
 
     # ========== 設定アクセス（ConfigManager経由・内部用） ==========
 
-    def _load_export_settings(self) -> dict:
+    def _load_export_settings(self) -> Dict[str, Any]:
         """エクスポート設定をロード（内部用）"""
         return self._config_manager.load_export_settings()
 
@@ -80,7 +80,7 @@ class SummaryManager:
 
     # ========== Public API（KaTrainGui互換エントリポイント） ==========
 
-    def do_export_summary(self, *args, **kwargs) -> None:
+    def do_export_summary(self, *args: Any, **kwargs: Any) -> None:
         """Schedule summary export on the main Kivy thread.
 
         Note: *args, **kwargs preserved for Kivy callback compatibility.
@@ -96,7 +96,7 @@ class SummaryManager:
             self._save_export_settings,
         )
 
-    def do_export_summary_ui(self, *args, **kwargs) -> None:
+    def do_export_summary_ui(self, *args: Any, **kwargs: Any) -> None:
         """Execute summary export UI flow.
 
         Note: *args, **kwargs preserved for Kivy callback compatibility.
@@ -113,45 +113,49 @@ class SummaryManager:
 
     # ========== Public API（Pure関数ラッパー・Kivy不要） ==========
 
-    def extract_analysis_from_sgf_node(self, node) -> dict:
+    def extract_analysis_from_sgf_node(self, node: Any) -> Optional[Dict[str, Any]]:
         """SGFノードのKTプロパティから解析データを抽出。"""
         from katrain.gui.features.summary_stats import extract_analysis_from_sgf_node as _extract
 
         return _extract(node)
 
-    def extract_sgf_statistics(self, path: str) -> Optional[dict]:
+    def extract_sgf_statistics(self, path: str) -> Optional[Dict[str, Any]]:
         """SGFファイルから統計データを直接抽出。"""
         from katrain.gui.features.summary_stats import extract_sgf_statistics as _extract
 
-        return _extract(path, self._get_ctx(), self._get_engine(), self._logger)
+        engine = self._get_engine()
+        if not engine:
+            return None
+        return _extract(path, self._get_ctx(), engine, self._logger)
 
-    def scan_player_names(self, sgf_files: List[str]) -> dict:
+    def scan_player_names(self, sgf_files: List[str]) -> Dict[str, Any]:
         """SGFファイル群からプレイヤー名をスキャン。"""
         from katrain.gui.features.summary_aggregator import scan_player_names as _scan
 
         return _scan(sgf_files, self._logger)
 
     def categorize_games_by_stats(
-        self, game_stats_list: List[dict], focus_player: str
-    ) -> dict:
+        self, game_stats_list: List[Dict[str, Any]], focus_player: Optional[str]
+    ) -> Dict[str, Any]:
         """ゲーム統計をカテゴリ分類。"""
         from katrain.gui.features.summary_aggregator import categorize_games_by_stats as _cat
 
         return _cat(game_stats_list, focus_player)
 
-    def collect_rank_info(self, stats_list: List[dict], focus_player: str) -> str:
+    def collect_rank_info(self, stats_list: List[Dict[str, Any]], focus_player: str) -> Optional[str]:
         """段級位情報を収集。"""
         from katrain.gui.features.summary_aggregator import collect_rank_info as _collect
 
         return _collect(stats_list, focus_player)
 
     def build_summary_from_stats(
-        self, stats_list: List[dict], focus_player: Optional[str] = None
+        self, stats_list: List[Dict[str, Any]], focus_player: Optional[str] = None
     ) -> str:
         """統計からサマリテキストを構築。"""
         from katrain.gui.features.summary_formatter import build_summary_from_stats as _build
 
-        return _build(stats_list, focus_player, self._get_config)
+        # Adapt get_config(key, default) to config_fn(key) signature
+        return _build(stats_list, focus_player, lambda key: self._get_config(key, None))
 
     # ========== Public API（UI連携・Kivy必要） ==========
 
@@ -180,7 +184,7 @@ class SummaryManager:
         )
 
     def show_player_selection_dialog(
-        self, sorted_players: List[str], sgf_files: List[str]
+        self, sorted_players: List[Tuple[str, int]], sgf_files: List[str]
     ) -> None:
         """プレイヤー選択ダイアログ表示。Requires Kivy."""
         from katrain.gui.features.summary_ui import show_player_selection_dialog as _show
@@ -196,7 +200,7 @@ class SummaryManager:
     def process_and_export_summary(
         self,
         sgf_paths: List[str],
-        progress_popup,
+        progress_popup: Any,
         selected_players: Optional[List[str]] = None,
     ) -> None:
         """サマリ処理＋エクスポート実行。Requires Kivy."""
@@ -205,9 +209,9 @@ class SummaryManager:
         _process_export(
             sgf_paths,
             progress_popup,
-            selected_players,
+            selected_players or [],  # Convert None to empty list
             self._get_ctx(),
-            self.extract_sgf_statistics,
+            self.extract_sgf_statistics,  # type: ignore[arg-type]  # Returns Optional but callee handles None
             self.categorize_games_by_stats,
             self.save_summaries_per_player,
             self.save_categorized_summaries_from_stats,
@@ -215,9 +219,9 @@ class SummaryManager:
 
     def save_summaries_per_player(
         self,
-        game_stats_list: List[dict],
+        game_stats_list: List[Dict[str, Any]],
         selected_players: List[str],
-        progress_popup,
+        progress_popup: Any,
     ) -> None:
         """プレイヤー別サマリ保存。Requires Kivy."""
         from katrain.gui.features.summary_io import save_summaries_per_player as _save
@@ -233,9 +237,9 @@ class SummaryManager:
 
     def save_categorized_summaries_from_stats(
         self,
-        categorized_games: dict,
-        player_name: str,
-        progress_popup,
+        categorized_games: Dict[str, Any],
+        player_name: Optional[str],
+        progress_popup: Any,
     ) -> None:
         """カテゴリ別サマリ保存。Requires Kivy."""
         from katrain.gui.features.summary_io import save_categorized_summaries_from_stats as _save
@@ -249,7 +253,7 @@ class SummaryManager:
         )
 
     def save_summary_file(
-        self, summary_text: str, player_name: str, progress_popup
+        self, summary_text: str, player_name: str, progress_popup: Any
     ) -> None:
         """サマリファイル保存。Requires Kivy."""
         from katrain.gui.features.summary_io import save_summary_file as _save

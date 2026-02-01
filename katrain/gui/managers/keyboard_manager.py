@@ -139,7 +139,7 @@ class KeyboardManager:
             for k in (ks if isinstance(ks, list) else [ks])
         }
 
-    def on_keyboard_down(self, _keyboard, keycode, _text, modifiers) -> None:
+    def on_keyboard_down(self, _keyboard: Any, keycode: Tuple[int, str], _text: str, modifiers: Optional[List[str]]) -> None:
         """キー押下イベントハンドラ。
 
         Args:
@@ -188,7 +188,7 @@ class KeyboardManager:
 
         # 通常キー処理
         if keycode[1] == Theme.KEY_TOGGLE_CONTINUOUS_ANALYSIS:
-            self._toggle_continuous_analysis(quiet=shift_pressed)
+            self._toggle_continuous_analysis(shift_pressed)  # positional arg to match Callable signature
         elif keycode[1] == Theme.KEY_TOGGLE_MOVENUM:
             self._toggle_move_num()
         elif keycode[1] == Theme.KEY_TOGGLE_COORDINATES:
@@ -236,7 +236,7 @@ class KeyboardManager:
             game = self._get_game()
             if game:
                 self._clipboard_copy(game.root.sgf())
-                self._set_status(i18n._("Copied SGF to clipboard."), STATUS_INFO)
+                self._set_status(i18n._("Copied SGF to clipboard."), int(STATUS_INFO))
         elif keycode[1] == Theme.KEY_PASTE and ctrl_pressed:
             self._load_from_clipboard()
         elif keycode[1] == Theme.KEY_NAV_PREV_BRANCH and shift_pressed:
@@ -276,7 +276,7 @@ class KeyboardManager:
                 else:
                     self._action_dispatcher(*shortcut)
 
-    def on_keyboard_up(self, _keyboard, keycode) -> None:
+    def on_keyboard_up(self, _keyboard: Any, keycode: Tuple[int, str]) -> None:
         """キー解放イベントハンドラ。
 
         Args:
@@ -289,7 +289,7 @@ class KeyboardManager:
         if keycode[1] in ["alt", "tab"]:
             self._schedule_once(lambda dt: self._single_key_action(keycode), 0.05)
 
-    def _single_key_action(self, keycode) -> None:
+    def _single_key_action(self, keycode: Tuple[int, str]) -> None:
         """Alt/Tab単独押下時の処理。
 
         schedule_onceから遅延呼び出しされる。
