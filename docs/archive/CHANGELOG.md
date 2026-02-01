@@ -1,9 +1,34 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-109 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-111 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-01: Phase 111 完了（gui/features型エラー修正）
+  - gui/featuresパッケージの53+件のmypyエラーを解消
+  - 変更ファイル（15ファイル）:
+    - `katrain/gui/features/auto_mode_popup.py`: `"any"` → `Any`（11箇所）、cast追加
+    - `katrain/gui/features/skill_radar_popup.py`: Optional[RadarMetrics]ナローイング
+    - `katrain/gui/features/report_navigator.py`: STATUS_* → OUTPUT_*（log引数型修正）
+    - `katrain/gui/features/summary_formatter.py`: MistakeCategory Optional注釈、i18n.lang安全フォールバック
+    - `katrain/gui/features/summary_stats.py`: Dict型注釈、type: ignore追加
+    - `katrain/gui/features/karte_export.py`: List[Tuple[Optional[str], str]]注釈
+    - `katrain/gui/features/summary_ui.py`: Optional[str] in Callable signatures
+    - `katrain/gui/features/smart_kifu_training_set.py`: katrain_guiオプションパラメータ追加
+    - `katrain/gui/features/smart_kifu_practice.py`: Sequence[float]型注釈
+    - `katrain/gui/features/quiz_popup.py`, `quiz_session.py`: Optional[Game]ナローイング
+    - `katrain/gui/features/settings_popup.py`: type: ignore（プライベート属性アクセス）
+    - `katrain/gui/theme.py`: SECONDARY_COLORエイリアス追加
+    - `katrain/core/batch/stats/pattern_miner.py`: List → Sequence（covariance）
+  - 技術仕様:
+    - i18n.current_lang（存在しない）→ i18n.lang安全フォールバックで潜在バグ修正
+    - settings_popup.pyの_config/_config_storeアクセスはtype: ignoreで対応（将来的にpublic API移行予定）
+    - katrain_guiパラメータはオプション化＋deprecation警告追加（後方互換）
+  - gui/featuresでmypyエラー0件達成
+  - テスト: 3776件パス
+  - goldenファイル更新（潜在バグ修正による出力変更）
+  - PR: #252
 
 - 2026-02-01: Phase 110 完了（core パッケージ型エラー修正 第1弾）
   - coreパッケージの9件のmypy型エラーを修正
