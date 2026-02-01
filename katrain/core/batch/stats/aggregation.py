@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
@@ -66,9 +66,9 @@ if TYPE_CHECKING:
 
 
 def _select_evidence_moves(
-    candidates: List["EvidenceMove"],
+    candidates: list[EvidenceMove],
     max_count: int = 2,
-) -> List["EvidenceMove"]:
+) -> list[EvidenceMove]:
     """Select representative evidence moves with game deduplication.
 
     Args:
@@ -103,9 +103,9 @@ def _select_evidence_moves(
 
 
 def _format_evidence_with_links(
-    evidence: List["EvidenceMove"],
-    karte_path_map: Optional[Dict[str, str]],
-    summary_dir: Optional[str],
+    evidence: list[EvidenceMove],
+    karte_path_map: dict[str, str] | None,
+    summary_dir: str | None,
     lang: str = "jp",
 ) -> str:
     """Format evidence moves with karte links (Markdown-safe).
@@ -168,8 +168,8 @@ def _format_evidence_with_links(
 
 
 def build_batch_summary(
-    game_stats_list: List[dict[str, Any]],
-    focus_player: Optional[str] = None,
+    game_stats_list: list[dict[str, Any]],
+    focus_player: str | None = None,
 ) -> str:
     """Build a multi-game summary markdown from collected stats.
 
@@ -200,8 +200,8 @@ def build_batch_summary(
     # Phase x Mistake breakdown
     lines.append("\n## Phase x Mistake Breakdown\n")
 
-    phase_mistake_counts: Dict[Tuple[str, str], int] = {}
-    phase_mistake_loss: Dict[Tuple[str, str], float] = {}
+    phase_mistake_counts: dict[tuple[str, str], int] = {}
+    phase_mistake_loss: dict[tuple[str, str], float] = {}
     for stats in game_stats_list:
         for key, count in stats.get("phase_mistake_counts", {}).items():
             phase_mistake_counts[key] = phase_mistake_counts.get(key, 0) + count
@@ -219,7 +219,7 @@ def build_batch_summary(
 
     # Worst moves across all games
     lines.append("\n## Top 10 Worst Moves (All Games)\n")
-    all_worst: List[Tuple[str, int, str, str, float, Optional[MistakeCategory]]] = []
+    all_worst: list[tuple[str, int, str, str, float, MistakeCategory | None]] = []
     for stats in game_stats_list:
         game_name = stats["game_name"]
         for move_num, player, gtp, loss, cat in stats.get("worst_moves", []):
@@ -295,7 +295,7 @@ def get_axis_practice_hint(axis: RadarAxis, lang: str = "jp") -> str:
     return hints.get(axis, "")
 
 
-def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> Optional[str]:
+def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> str | None:
     """Get localized practice hint for a meaning tag ID.
 
     Args:
@@ -310,7 +310,7 @@ def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> Optional[str]:
     return hints.get(tag_id.lower())
 
 
-def get_rtag_practice_hint(tag: str, lang: str = "jp") -> Optional[str]:
+def get_rtag_practice_hint(tag: str, lang: str = "jp") -> str | None:
     """Get localized practice hint for a reason tag.
 
     Args:
@@ -368,7 +368,7 @@ def get_color_bias_note(bias: str, lang: str = "jp") -> str:
 # =============================================================================
 
 
-def detect_color_bias(player_games: List[Tuple[dict[str, Any], str]]) -> Optional[str]:
+def detect_color_bias(player_games: list[tuple[dict[str, Any], str]]) -> str | None:
     """Detect if all games are played as one color.
 
     Args:
@@ -389,10 +389,10 @@ def detect_color_bias(player_games: List[Tuple[dict[str, Any], str]]) -> Optiona
 
 
 def get_dominant_tags(
-    tag_counts: Dict[str, int],
+    tag_counts: dict[str, int],
     min_count: int = 3,
     max_tags: int = 3,
-) -> List[Tuple[str, int]]:
+) -> list[tuple[str, int]]:
     """Get dominant tags sorted by count.
 
     Args:
@@ -409,12 +409,12 @@ def get_dominant_tags(
 
 
 def build_tag_based_hints(
-    mtag_counts: Dict[str, int],
-    rtag_counts: Dict[str, int],
+    mtag_counts: dict[str, int],
+    rtag_counts: dict[str, int],
     lang: str = "jp",
     min_count: int = 3,
     max_hints: int = 4,
-) -> List[str]:
+) -> list[str]:
     """Build practice hint lines based on dominant meaning/reason tags.
 
     Args:
@@ -467,9 +467,9 @@ def _get_axis_label(axis: RadarAxis) -> str:
 
 
 def _build_skill_profile_section(
-    radar: Optional[AggregatedRadarResult],
+    radar: AggregatedRadarResult | None,
     lang: str = "jp",
-) -> List[str]:
+) -> list[str]:
     """Build Skill Profile section for player summary.
 
     Args:
@@ -537,8 +537,8 @@ def _build_skill_profile_section(
 
 
 def _build_radar_json_section(
-    radar: Optional[AggregatedRadarResult],
-) -> List[str]:
+    radar: AggregatedRadarResult | None,
+) -> list[str]:
     """Build JSON output block for radar data.
 
     Args:

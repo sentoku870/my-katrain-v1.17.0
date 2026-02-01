@@ -12,7 +12,7 @@ import re
 import time
 import unicodedata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 DEFAULT_TIMEOUT_SECONDS: float = 600.0
 
 # Common encodings for Go SGF files (Fox/Tygem often use GB18030, Nihon-Kiin uses CP932)
-ENCODINGS_TO_TRY: Tuple[str, ...] = (
+ENCODINGS_TO_TRY: tuple[str, ...] = (
     "utf-8",
     "utf-8-sig",
     "gb18030",
@@ -126,7 +126,7 @@ def choose_visits_for_sgf(
 # =============================================================================
 
 
-def get_canonical_loss(points_lost: Optional[float]) -> float:
+def get_canonical_loss(points_lost: float | None) -> float:
     """Return canonical loss value: max(0, points_lost) or 0 if None.
 
     Negative points_lost (gains from opponent mistakes) are clamped to 0.
@@ -155,8 +155,8 @@ _get_canonical_loss = get_canonical_loss
 def parse_timeout_input(
     text: str,
     default: float = DEFAULT_TIMEOUT_SECONDS,
-    log_cb: Optional[Callable[[str], None]] = None,
-) -> Optional[float]:
+    log_cb: Callable[[str], None] | None = None,
+) -> float | None:
     """Parse timeout input text from UI into a float or None.
 
     Args:
@@ -211,8 +211,8 @@ def safe_write_file(
     content: str,
     file_kind: str,
     sgf_id: str,
-    log_cb: Optional[Callable[[str], None]] = None,
-) -> Optional[Any]:
+    log_cb: Callable[[str], None] | None = None,
+) -> Any | None:
     """Safely write content to file with directory creation and error handling.
 
     Args:
@@ -280,8 +280,8 @@ _safe_write_file = safe_write_file
 
 
 def read_sgf_with_fallback(
-    sgf_path: str, log_cb: Optional[Callable[[str], None]] = None
-) -> Tuple[Optional[str], str]:
+    sgf_path: str, log_cb: Callable[[str], None] | None = None
+) -> tuple[str | None, str]:
     """Read an SGF file with encoding fallback.
 
     Args:
@@ -321,8 +321,8 @@ def read_sgf_with_fallback(
 
 
 def parse_sgf_with_fallback(
-    sgf_path: str, log_cb: Optional[Callable[[str], None]] = None
-) -> Optional[Any]:
+    sgf_path: str, log_cb: Callable[[str], None] | None = None
+) -> Any | None:
     """Parse an SGF file with encoding fallback.
 
     Args:
@@ -402,8 +402,8 @@ def has_analysis(sgf_path: str) -> bool:
 def collect_sgf_files_recursive(
     input_dir: str,
     skip_analyzed: bool = False,
-    log_cb: Optional[Callable[[str], None]] = None,
-) -> List[Tuple[str, str]]:
+    log_cb: Callable[[str], None] | None = None,
+) -> list[tuple[str, str]]:
     """Collect all SGF files from the input directory recursively.
 
     Args:
@@ -419,7 +419,7 @@ def collect_sgf_files_recursive(
         if log_cb:
             log_cb(msg)
 
-    sgf_files: List[Tuple[str, str]] = []
+    sgf_files: list[tuple[str, str]] = []
     input_path = Path(input_dir).resolve()
 
     # Extensions to look for (case-insensitive)
@@ -449,7 +449,7 @@ def collect_sgf_files_recursive(
     return sgf_files
 
 
-def collect_sgf_files(input_dir: str, skip_analyzed: bool = False) -> List[str]:
+def collect_sgf_files(input_dir: str, skip_analyzed: bool = False) -> list[str]:
     """Collect all SGF files from the input directory (non-recursive, for CLI compatibility).
 
     Args:
@@ -616,7 +616,7 @@ _normalize_player_name = normalize_player_name
 # =============================================================================
 
 
-def safe_int(text: str, default: Optional[int] = None) -> Optional[int]:
+def safe_int(text: str, default: int | None = None) -> int | None:
     """Parse integer safely, returning default on invalid input.
 
     Note: Does not log warnings to avoid noise from frequent UI validation.
@@ -794,7 +794,7 @@ def _smart_truncate(name: str, max_len: int) -> str:
 def format_game_display_label(
     name: str,
     *,
-    max_len: Optional[int] = None,
+    max_len: int | None = None,
     escape_mode: Literal["table", "plain", "none"] = "none",
 ) -> str:
     """Generate display label for game name.
@@ -888,7 +888,7 @@ def truncate_game_name(name: str, max_len: int = 35) -> str:
     return f"{name[:head_len]}{ellipsis}{name[-tail_len:]}"
 
 
-def format_wr_gap(value: Optional[float]) -> str:
+def format_wr_gap(value: float | None) -> str:
     """Format WR Gap with clamping and precision.
 
     Args:
@@ -953,7 +953,7 @@ def escape_markdown_brackets(text: str) -> str:
     return text.replace("[", "\\[").replace("]", "\\]")
 
 
-def escape_markdown_table_cell(text: "Optional[str]") -> str:
+def escape_markdown_table_cell(text: str | None) -> str:
     """Escape text for safe use in markdown table cells.
 
     Handles:

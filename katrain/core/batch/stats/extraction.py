@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core.analysis.models import get_canonical_loss_from_move
 
@@ -27,11 +27,11 @@ if TYPE_CHECKING:
 def extract_game_stats(
     game: "Game",
     rel_path: str,
-    log_cb: Optional[Callable[[str], None]] = None,
-    target_visits: Optional[int] = None,
+    log_cb: Callable[[str], None] | None = None,
+    target_visits: int | None = None,
     source_index: int = 0,
-    snapshot: Optional[Any] = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
-) -> Optional[dict[str, Any]]:
+    snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+) -> dict[str, Any] | None:
     """Extract statistics from a Game object for summary generation.
 
     Args:
@@ -275,7 +275,7 @@ def extract_game_stats(
             pass
 
         # Phase 49: Compute radar per player (19x19 only)
-        radar_by_player: Dict[str, Optional[Dict[str, Any]]] = {"B": None, "W": None}
+        radar_by_player: dict[str, dict[str, Any] | None] = {"B": None, "W": None}
 
         if board_size == 19 and snapshot and snapshot.moves:
             for player in ("B", "W"):
@@ -334,10 +334,10 @@ def extract_game_stats(
 
 
 def extract_players_from_stats(
-    game_stats_list: List[dict[str, Any]],
+    game_stats_list: list[dict[str, Any]],
     min_games: int = 3,
-    skip_names: Optional[frozenset[str]] = None,
-) -> Dict[str, List[Tuple[dict[str, Any], str]]]:
+    skip_names: frozenset[str] | None = None,
+) -> dict[str, list[tuple[dict[str, Any], str]]]:
     """
     Extract player names and group their games.
 
@@ -362,7 +362,7 @@ def extract_players_from_stats(
         skip_names = SKIP_PLAYER_NAMES
 
     # Track: normalized_name -> [(stats, role, original_name), ...]
-    player_games: Dict[str, List[Tuple[dict[str, Any], str, str]]] = defaultdict(list)
+    player_games: dict[str, list[tuple[dict[str, Any], str, str]]] = defaultdict(list)
 
     for stats in game_stats_list:
         pb_orig = stats.get("player_black", "").strip()
@@ -377,7 +377,7 @@ def extract_players_from_stats(
             player_games[pw_norm].append((stats, "W", pw_orig))
 
     # Filter by min_games and convert to output format
-    result: Dict[str, List[Tuple[dict[str, Any], str]]] = {}
+    result: dict[str, list[tuple[dict[str, Any], str]]] = {}
     for norm_name, games in player_games.items():
         if len(games) >= min_games:
             # Use first original name as display name

@@ -14,7 +14,7 @@ to avoid circular imports. Only import from .models and .aggregation.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
@@ -60,12 +60,12 @@ from .aggregation import (
 
 def build_player_summary(
     player_name: str,
-    player_games: List[Tuple[Dict[str, Any], str]],
+    player_games: list[tuple[dict[str, Any], str]],
     skill_preset: str = DEFAULT_SKILL_PRESET,
     *,
-    analysis_settings: Optional[Dict[str, Any]] = None,
-    karte_path_map: Optional[Dict[str, str]] = None,
-    summary_dir: Optional[str] = None,
+    analysis_settings: dict[str, Any] | None = None,
+    karte_path_map: dict[str, str] | None = None,
+    summary_dir: str | None = None,
     lang: str = "jp",
 ) -> str:
     """
@@ -95,20 +95,20 @@ def build_player_summary(
     # Aggregate only this player's moves across all games
     total_moves = 0
     total_loss = 0.0
-    all_worst: List[Tuple[str, int, str, float, Optional[MistakeCategory]]] = []
+    all_worst: list[tuple[str, int, str, float, MistakeCategory | None]] = []
     games_as_black = 0
     games_as_white = 0
 
     # Aggregated per-player stats
-    mistake_counts: Dict[MistakeCategory, int] = {cat: 0 for cat in MistakeCategory}
-    mistake_total_loss: Dict[MistakeCategory, float] = {cat: 0.0 for cat in MistakeCategory}
-    freedom_counts: Dict[PositionDifficulty, int] = {diff: 0 for diff in PositionDifficulty}
-    phase_moves: Dict[str, int] = {"opening": 0, "middle": 0, "yose": 0, "unknown": 0}
-    phase_loss: Dict[str, float] = {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0}
-    phase_mistake_counts: Dict[Tuple[str, str], int] = {}
-    phase_mistake_loss: Dict[Tuple[str, str], float] = {}
-    reason_tags_counts: Dict[str, int] = {}  # Issue 2: aggregate reason tags
-    meaning_tags_counts: Dict[str, int] = {}  # Phase 47: aggregate meaning tags
+    mistake_counts: dict[MistakeCategory, int] = {cat: 0 for cat in MistakeCategory}
+    mistake_total_loss: dict[MistakeCategory, float] = {cat: 0.0 for cat in MistakeCategory}
+    freedom_counts: dict[PositionDifficulty, int] = {diff: 0 for diff in PositionDifficulty}
+    phase_moves: dict[str, int] = {"opening": 0, "middle": 0, "yose": 0, "unknown": 0}
+    phase_loss: dict[str, float] = {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0}
+    phase_mistake_counts: dict[tuple[str, str], int] = {}
+    phase_mistake_loss: dict[tuple[str, str], float] = {}
+    reason_tags_counts: dict[str, int] = {}  # Issue 2: aggregate reason tags
+    meaning_tags_counts: dict[str, int] = {}  # Phase 47: aggregate meaning tags
     # PR1-1: Important moves stats for Reason Tags clarity
     important_moves_total = 0
     tagged_moves_total = 0
@@ -124,7 +124,7 @@ def build_player_summary(
     board_sizes: set[int] = set()  # Track unique board sizes for Definitions
 
     # Phase 49: Radar metrics collection for aggregation
-    radar_list: List[RadarMetrics] = []
+    radar_list: list[RadarMetrics] = []
 
     for stats, role in player_games:
         if role == "B":
@@ -219,7 +219,7 @@ def build_player_summary(
     # Compute auto recommendation if skill_preset is "auto"
     # =========================================================================
     game_count = len(player_games)
-    auto_recommendation: Optional[AutoRecommendation] = None
+    auto_recommendation: AutoRecommendation | None = None
     effective_preset = skill_preset
 
     if skill_preset == "auto" and reliability_total > 0:
@@ -632,7 +632,7 @@ def build_player_summary(
     weaknesses = []
 
     # Check phase with highest average loss
-    phase_avg: Dict[str, float] = {}
+    phase_avg: dict[str, float] = {}
     for phase in ["opening", "middle", "yose"]:
         count = phase_moves.get(phase, 0)
         loss = phase_loss.get(phase, 0.0)
