@@ -149,7 +149,8 @@ class LeelaManager:
             return
 
         # Cancel old request
-        self.leela_engine.cancel_analysis()
+        if self.leela_engine:
+            self.leela_engine.cancel_analysis()
 
         # New request
         self._pending_node = current_node
@@ -166,7 +167,7 @@ class LeelaManager:
                 coord = m.gtp()
                 moves.append((player, coord))
 
-        def on_leela_result(result: LeelaPositionEval):
+        def on_leela_result(result: LeelaPositionEval) -> None:
             # Discard stale results
             if my_request_id != self._request_id:
                 return
@@ -174,11 +175,12 @@ class LeelaManager:
             with_loss = compute_estimated_loss(result, k=k)
             Clock.schedule_once(lambda dt: self._set_analysis(current_node, with_loss))
 
-        self.leela_engine.request_analysis(
-            moves=moves,
-            callback=on_leela_result,
-            visits=self._config("leela/max_visits", 1000),
-        )
+        if self.leela_engine:
+            self.leela_engine.request_analysis(
+                moves=moves,
+                callback=on_leela_result,
+                visits=self._config("leela/max_visits", 1000),
+            )
 
     def _set_analysis(self, node: Any, analysis: LeelaPositionEval) -> None:
         """Set Leela analysis result on UI thread.
@@ -266,4 +268,4 @@ class LeelaManager:
         Returns:
             True if node is the current node
         """
-        return node == game_current_node
+        return bool(node == game_current_node)

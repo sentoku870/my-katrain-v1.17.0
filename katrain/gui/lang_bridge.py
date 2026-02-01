@@ -16,7 +16,7 @@ from kivy.weakproxy import WeakProxy
 from katrain.core.lang import i18n as core_i18n, DEFAULT_LANGUAGE
 
 
-def _deref_widget(widget_ref: Union[weakref.ref, WeakProxy]):
+def _deref_widget(widget_ref: Union[weakref.ref[Any], WeakProxy]) -> Any:
     """Dereference a widget from either weakref.ref or WeakProxy.
 
     Returns None if the widget has been garbage collected.
@@ -42,11 +42,11 @@ class KivyLangBridge(EventDispatcher):
     font_name = StringProperty("")
     current_lang = StringProperty(DEFAULT_LANGUAGE)
 
-    def __init__(self, lang_instance, **kwargs):
+    def __init__(self, lang_instance: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._lang = lang_instance
         # WeakProxy or weakref.ref - both support () call to get the widget
-        self._observers: List[Tuple[Union[weakref.ref, WeakProxy], Callable, Tuple[Any, ...]]] = []
+        self._observers: List[Tuple[Union[weakref.ref[Any], WeakProxy], Callable[..., Any], Tuple[Any, ...]]] = []
 
         self.font_name = lang_instance.font_name
         self.current_lang = lang_instance.lang or DEFAULT_LANGUAGE
@@ -60,7 +60,7 @@ class KivyLangBridge(EventDispatcher):
         except ImportError:
             pass
 
-    def _on_lang_change(self, lang_instance) -> None:
+    def _on_lang_change(self, lang_instance: Any) -> None:
         """言語変更時の処理"""
         self.font_name = lang_instance.font_name
         self.current_lang = lang_instance.lang or DEFAULT_LANGUAGE
@@ -68,20 +68,20 @@ class KivyLangBridge(EventDispatcher):
 
     def _(self, text: str) -> str:
         """翻訳関数（KVから呼び出される）"""
-        return self._lang._(text)
+        return str(self._lang._(text))
 
     def switch_lang(self, lang: str) -> None:
         """言語切替（ラッパー）"""
         self._lang.switch_lang(lang)
 
-    def set_widget_font(self, widget) -> None:
+    def set_widget_font(self, widget: Any) -> None:
         """ウィジェットにフォントを設定"""
         widget.font_name = self.font_name
         for sub_widget in [getattr(widget, "_hint_lbl", None), getattr(widget, "_msg_lbl", None)]:
             if sub_widget:
                 sub_widget.font_name = self.font_name
 
-    def fbind(self, name, func, *args):
+    def fbind(self, name: str, func: Callable[..., Any], *args: Any) -> Any:
         """KVバインディング用（レガシー互換）"""
         if name == "_":
             widget, property_name, *_ = args[0]
@@ -98,7 +98,7 @@ class KivyLangBridge(EventDispatcher):
         else:
             return super().fbind(name, func, *args)
 
-    def funbind(self, name, func, *args):
+    def funbind(self, name: str, func: Callable[..., Any], *args: Any) -> Any:
         """KVアンバインド用（レガシー互換）"""
         if name == "_":
             widget, *_ = args[0]

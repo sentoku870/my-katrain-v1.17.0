@@ -1,7 +1,9 @@
+from typing import Dict, List, Sequence
+
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
 
 
-def to_hexcol(kivycol):
+def to_hexcol(kivycol: Sequence[float]) -> str:
     return "#" + "".join(f"{round(c * 255):02x}" for c in kivycol[:3])
 
 
@@ -79,12 +81,12 @@ class Theme:
     CAPTURING_SOUND = "capturing.wav"
     COUNTDOWN_SOUND = "countdownbeep.wav"
     MINIMUM_TIME_PASSED_SOUND = "boing.wav"
-    MISTAKE_SOUNDS = []
+    MISTAKE_SOUNDS: List[str] = []
     # Phase 44: Distinct completion chime for batch analysis
     COMPLETION_CHIME_SOUND = "complete_chime.wav"
 
     # eval dots
-    EVAL_COLORS = {
+    EVAL_COLORS: Dict[str, List[List[float]]] = {
         "theme:normal": [
             [0.447, 0.129, 0.42, 1],
             [0.8, 0, 0, 1],

@@ -102,7 +102,7 @@ class ErrorHandler:
             # Capture user_msg in closure
             msg_to_show = user_msg
 
-            def _notify(dt):
+            def _notify(dt: float) -> None:
                 # Guard: controls may not exist during early startup
                 if not hasattr(self._katrain, "controls") or self._katrain.controls is None:
                     self._katrain.log(
@@ -132,11 +132,11 @@ class ErrorHandler:
     def safe_call(
         self,
         func: Callable[..., T],
-        *args,
+        *args: Any,
         notify_user: bool = True,
         fallback_message: str = "Operation failed",
         default: Optional[T] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Optional[T]:
         """Execute func with exception handling.
 

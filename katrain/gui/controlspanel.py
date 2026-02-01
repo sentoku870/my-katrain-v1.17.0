@@ -1,4 +1,5 @@
 import time
+from typing import Any, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.properties import ObjectProperty, OptionProperty
@@ -29,18 +30,18 @@ class PlayAnalyzeSelect(MDFloatLayout):
     katrain = ObjectProperty(None)
     mode = OptionProperty(MODE_ANALYZE, options=[MODE_PLAY, MODE_ANALYZE])
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # 初期化時に timer_or_movetree.mode を現在のモードに設定
         Clock.schedule_once(self._init_timer_mode, 0)
         Clock.schedule_once(self.load_ui_state, 1)
 
-    def _init_timer_mode(self, _dt=None):
+    def _init_timer_mode(self, _dt: Optional[float] = None) -> None:
         """初期化時に timer_or_movetree のモードを設定"""
         if self.katrain and self.katrain.controls:
             self.katrain.controls.timer_or_movetree.mode = self.mode
 
-    def save_ui_state(self):
+    def save_ui_state(self) -> None:
         ui_state = dict(self.katrain.config("ui_state") or {})
         ui_state[self.mode] = {
             "analysis_controls": {
@@ -59,7 +60,7 @@ class PlayAnalyzeSelect(MDFloatLayout):
         self.katrain.set_config_section("ui_state", ui_state)
         self.katrain.save_config("ui_state")
 
-    def load_ui_state(self, _dt=None):
+    def load_ui_state(self, _dt: Optional[float] = None) -> None:
         try:
             state = self.katrain.config(f"ui_state/{self.mode}", {})
             analysis_ids = self.katrain.analysis_controls.ids
@@ -89,7 +90,7 @@ class PlayAnalyzeSelect(MDFloatLayout):
                     log_level=OUTPUT_DEBUG,
                 )
 
-    def select_mode(self, new_mode):  # actual switch state handler
+    def select_mode(self, new_mode: str) -> None:  # actual switch state handler
         if self.mode == new_mode:
             return
         self.save_ui_state()
@@ -101,7 +102,7 @@ class PlayAnalyzeSelect(MDFloatLayout):
         self.load_ui_state()
         self.katrain.update_state()  # for lock ai even if nothing changed
 
-    def switch_ui_mode(self):  # on tab press, fake ui click and trigger everything top down
+    def switch_ui_mode(self) -> None:  # on tab press, fake ui click and trigger everything top down
         if self.mode == MODE_PLAY:
             Clock.schedule_once(
                 lambda _dt: self.analyze.trigger_action(duration=0)
@@ -114,17 +115,17 @@ class ControlsPanel(BoxLayout):
     katrain = ObjectProperty(None)
     button_controls = ObjectProperty(None)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super(ControlsPanel, self).__init__(**kwargs)
-        self.status_state = (None, -1e9, None)
+        self.status_state: Tuple[Optional[str], Any, Any] = (None, -1e9, None)
         self.active_comment_node = None
-        self.last_timer_update = (None, 0, False)
+        self.last_timer_update: Tuple[Any, float, bool] = (None, 0.0, False)
         self.beep_start = 5.2
         self.timer_interval = 0.07
 
         # Phase 106: 購読状態管理
         self._subscribed_notifier = None
-        self._analysis_callback = None
+        self._analysis_callback: Optional[Any] = None
 
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
@@ -138,7 +139,7 @@ class ControlsPanel(BoxLayout):
             self._timer_event.cancel()
             self._timer_event = None
 
-    def on_katrain(self, instance, katrain):
+    def on_katrain(self, instance: Any, katrain: Any) -> None:
         """katrain設定時にANALYSIS_COMPLETE購読を管理（Phase 106）"""
         # 旧notifierからunsubscribe
         if self._subscribed_notifier is not None and self._analysis_callback is not None:
@@ -158,9 +159,9 @@ class ControlsPanel(BoxLayout):
         notifier.subscribe(EventType.ANALYSIS_COMPLETE, self._analysis_callback)
         self._subscribed_notifier = notifier
 
-    def _on_analysis_complete(self, event):
+    def _on_analysis_complete(self, event: Any) -> None:
         """ANALYSIS_COMPLETE → グラフデータ更新（メインスレッドにディスパッチ）"""
-        def _update_graph(dt):
+        def _update_graph(dt: float) -> None:
             graph = getattr(self, "graph", None)
             katrain = getattr(self, "katrain", None)
             if graph is None or katrain is None:
@@ -176,7 +177,7 @@ class ControlsPanel(BoxLayout):
 
         Clock.schedule_once(_update_graph, 0)
 
-    def update_players(self, *_args):
+    def update_players(self, *_args: Any) -> None:
         for bw, player_info in self.katrain.players_info.items():
             self.players[bw].player_type = player_info.player_type
             self.players[bw].player_subtype = player_info.player_subtype
@@ -187,7 +188,7 @@ class ControlsPanel(BoxLayout):
                 else rank_label(player_info.calculated_rank)
             )
 
-    def set_status(self, msg, status_type, at_node=None, check_level=True):
+    def set_status(self, msg: str, status_type: Any, at_node: Any = None, check_level: bool = True) -> None:
         at_node = at_node or self.katrain and self.katrain.game and self.katrain.game.current_node
         if (
             at_node != self.status_state[2]
@@ -202,7 +203,7 @@ class ControlsPanel(BoxLayout):
             self.status.error = status_type == STATUS_ERROR
 
     # handles showing completed analysis and score graph
-    def update_evaluation(self, *_args):
+    def update_evaluation(self, *_args: Any) -> None:
         katrain = self.katrain
         game = katrain and katrain.game
         if not game:
@@ -233,7 +234,7 @@ class ControlsPanel(BoxLayout):
         details = self.info.detailed and not lock_ai
         info = ""
 
-        if move or current_node.is_root:
+        if (move or current_node.is_root) and self.active_comment_node:
             info += self.active_comment_node.comment(
                 teach=katrain.players_info[self.active_comment_node.player].being_taught, details=details
             )
@@ -245,7 +246,7 @@ class ControlsPanel(BoxLayout):
             self.stats.winrate = ""
             self.stats.points_lost = None
             self.stats.player = ""
-        elif self.active_comment_node.analysis_exists:
+        elif self.active_comment_node and self.active_comment_node.analysis_exists:
             # 解析結果あり → stats を埋める
             self.stats.score = self.active_comment_node.format_score() or ""
             self.stats.winrate = self.active_comment_node.format_winrate() or ""
@@ -389,7 +390,7 @@ class ControlsPanel(BoxLayout):
 
         return True
 
-    def _format_beginner_hint(self, hint) -> str:
+    def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92)
 
         Args:
@@ -444,7 +445,7 @@ class ControlsPanel(BoxLayout):
 
         return f"[Hint] {title}: {body}"
 
-    def update_timer(self, _dt):
+    def update_timer(self, _dt: float) -> None:
         game = self.katrain and self.katrain.game
         current_node = game and self.katrain.game.current_node
         if current_node:
