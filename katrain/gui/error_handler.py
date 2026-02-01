@@ -39,7 +39,7 @@ class ErrorHandler:
         error: Exception,
         *,
         notify_user: bool = True,
-        log_level: float = OUTPUT_ERROR,
+        log_level: int = OUTPUT_ERROR,
         fallback_message: str = "An error occurred",
     ) -> None:
         """Handle an exception with logging and optional user notification.
@@ -62,7 +62,7 @@ class ErrorHandler:
         self,
         error: Exception,
         notify_user: bool,
-        log_level: float,
+        log_level: int,
         fallback_message: str,
     ) -> None:
         """Internal implementation of handle()."""
