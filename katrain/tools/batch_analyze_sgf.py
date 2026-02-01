@@ -116,7 +116,7 @@ from katrain.core.analysis.models import EvalSnapshot, MoveEval
 # CLI Entry Point
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Batch analyze SGF files using KaTrain/KataGo",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -214,7 +214,7 @@ Examples:
     fail_count = 0
     timeout_count = 0  # Phase 95C: Track timeouts separately
 
-    def log_print(msg: str):
+    def log_print(msg: str) -> None:
         print(msg)
 
     for i, sgf_path in enumerate(sgf_files):

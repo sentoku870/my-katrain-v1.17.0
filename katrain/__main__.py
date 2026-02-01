@@ -50,7 +50,7 @@ import time
 import random
 import glob
 from datetime import datetime
-from typing import List, Optional, Set
+from typing import Any
 from kivy.clock import Clock
 
 
@@ -191,10 +191,10 @@ class KaTrainGui(Screen, KaTrainBase):
     controls = ObjectProperty(None)
     active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
-        self.engine = None
+        self.engine: Any = None
         self.engine_unhealthy = False  # Phase 89: For TIMEOUT recovery
 
         # Leela engine management (Phase 15, refactored in PR #121)
@@ -214,7 +214,7 @@ class KaTrainGui(Screen, KaTrainBase):
             status_setter=lambda msg, level: self.controls.set_status(msg, level, check_level=False) if self.controls else None,
             new_game_callback=lambda tree, fast, filename: self._do_new_game(move_tree=tree, analyze_fast=fast, sgf_filename=filename),
             redo_callback=lambda moves: self("redo", moves),
-            get_game=lambda: self.game,
+            get_game=lambda: self.game,  # type: ignore[return-value]
             get_engine=lambda: self.engine,
             get_board_controls=lambda: getattr(self, "board_controls", None),
             action_dispatcher=lambda action: self(action),
@@ -288,7 +288,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Phase 76: GameStateManager
         self._game_state_manager = GameStateManager(
-            get_game=lambda: self.game,
+            get_game=lambda: self.game,  # type: ignore[arg-type, return-value]
             get_play_analyze_mode=lambda: self.play_analyze_mode,
             mode_analyze=MODE_ANALYZE,
             switch_ui_mode=lambda: self.play_mode.switch_ui_mode() if self.play_mode else None,
@@ -298,7 +298,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self.pondering = False
         self.show_move_num = False
 
-        self.message_queue = Queue()
+        self.message_queue: Queue[Any] = Queue()
 
         # Phase 97: Active Review Controller
         self._active_review_controller = ActiveReviewController(
@@ -321,7 +321,7 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
-        self._clock_events = []
+        self._clock_events: list[Any] = []
 
         # Phase 107: StateNotifier購読（スレッドセーフ）
         self._ui_update_lock = threading.Lock()  # フラグ保護用ロック
@@ -330,21 +330,21 @@ class KaTrainGui(Screen, KaTrainBase):
         self._state_subscriptions_setup = False
         self._setup_state_subscriptions()
 
-    def _load_export_settings(self) -> dict:
+    def _load_export_settings(self) -> dict[str, Any]:
         """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
         return self._config_manager.load_export_settings()
 
-    def _save_export_settings(self, sgf_directory: str = None, selected_players: list = None):
+    def _save_export_settings(self, sgf_directory: str | None = None, selected_players: list[Any] | None = None) -> None:
         """Delegates to ConfigManager.save_export_settings() (Phase 74)."""
         self._config_manager.save_export_settings(sgf_directory, selected_players)
 
-    def _save_batch_options(self, options: dict):
+    def _save_batch_options(self, options: dict[str, Any]) -> None:
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
 
     # ========== Phase 107: StateNotifier購読ハンドラ ==========
 
-    def _setup_state_subscriptions(self):
+    def _setup_state_subscriptions(self) -> None:
         """StateNotifier購読を設定（重複登録防止付き）"""
         if self._state_subscriptions_setup:
             return
@@ -374,7 +374,7 @@ class KaTrainGui(Screen, KaTrainBase):
             # ロック内でスケジュール（Clock.schedule_onceはスレッドセーフ）
             self._pending_ui_update = Clock.schedule_once(self._do_ui_update, 0)
 
-    def _do_ui_update(self, dt) -> None:
+    def _do_ui_update(self, dt: Any) -> None:
         """UI更新コールバック（メインスレッドで実行）"""
         # フラグ読み取りとリセットをロック内で
         with self._ui_update_lock:
@@ -396,82 +396,82 @@ class KaTrainGui(Screen, KaTrainBase):
             # コールバック例外をログ（UIスタック防止）
             self.log(f"update_gui failed: {e}", OUTPUT_DEBUG)
 
-    def _on_game_changed(self, event) -> None:
+    def _on_game_changed(self, event: Any) -> None:
         """GAME_CHANGED → UI更新（redraw_board=True）"""
         self._schedule_ui_update(redraw_board=True)
 
-    def _on_analysis_complete(self, event) -> None:
+    def _on_analysis_complete(self, event: Any) -> None:
         """ANALYSIS_COMPLETE → UI更新"""
         self._schedule_ui_update(redraw_board=False)
 
-    def _on_config_updated(self, event) -> None:
+    def _on_config_updated(self, event: Any) -> None:
         """CONFIG_UPDATED → UI更新"""
         self._schedule_ui_update(redraw_board=False)
 
     # ========== PopupManager support methods (Phase 75) ==========
 
-    def _safe_pause_timer(self):
+    def _safe_pause_timer(self) -> None:
         """タイマーを安全に一時停止（controls/timer未初期化時はスキップ）"""
         timer = getattr(getattr(self, "controls", None), "timer", None)
         if timer:
             timer.paused = True
 
-    def _create_new_game_popup(self):
+    def _create_new_game_popup(self) -> Any:
         """NewGamePopupのファクトリ"""
         raw = I18NPopup(
             title_key="New Game title",
             size=[dp(800), dp(900)],
             content=NewGamePopup(self),
         )
-        popup = getattr(raw, "__self__", raw)
+        popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
         return popup
 
-    def _create_timer_popup(self):
+    def _create_timer_popup(self) -> Any:
         """TimerPopupのファクトリ"""
         raw = I18NPopup(
             title_key="timer settings",
             size=[dp(600), dp(500)],
             content=ConfigTimerPopup(self),
         )
-        popup = getattr(raw, "__self__", raw)
+        popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
         return popup
 
-    def _create_teacher_popup(self):
+    def _create_teacher_popup(self) -> Any:
         """TeacherPopupのファクトリ"""
         raw = I18NPopup(
             title_key="teacher settings",
             size=[dp(800), dp(825)],
             content=ConfigTeacherPopup(self),
         )
-        popup = getattr(raw, "__self__", raw)
+        popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
         return popup
 
-    def _create_ai_popup(self):
+    def _create_ai_popup(self) -> Any:
         """AIPopupのファクトリ"""
         raw = I18NPopup(
             title_key="ai settings",
             size=[dp(750), dp(750)],
             content=ConfigAIPopup(self),
         )
-        popup = getattr(raw, "__self__", raw)
+        popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
         return popup
 
-    def _create_engine_recovery_popup(self, error_message, code):
+    def _create_engine_recovery_popup(self, error_message: str, code: Any) -> Any:
         """EngineRecoveryPopupのファクトリ"""
         raw = I18NPopup(
             title_key="engine recovery",
             size=[dp(600), dp(700)],
             content=EngineRecoveryPopup(self, error_message=error_message, code=code),
         )
-        popup = getattr(raw, "__self__", raw)
+        popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
         return popup
 
-    def set_config_section(self, section: str, value: dict) -> None:
+    def set_config_section(self, section: str, value: dict[str, Any]) -> None:
         """設定セクションを書き込む（Phase 74: ConfigManagerに委譲）。
 
         Args:
@@ -483,7 +483,7 @@ class KaTrainGui(Screen, KaTrainBase):
         """
         self._config_manager.set_section(section, value)
 
-    def log(self, message, level=OUTPUT_INFO):
+    def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         super().log(message, level)
         if level == OUTPUT_KATAGO_STDERR and "ERROR" not in self.controls.status.text:
             if "starting" in message.lower():
@@ -501,17 +501,17 @@ class KaTrainGui(Screen, KaTrainBase):
         ) and getattr(self, "controls", None):
             self.controls.set_status(f"ERROR: {message}", STATUS_ERROR)
 
-    def handle_animations(self, *_args):
+    def handle_animations(self, *_args: Any) -> None:
         if self.pondering:
             self.board_controls.engine_status_pondering += 5
         else:
             self.board_controls.engine_status_pondering = -1
 
     @property
-    def play_analyze_mode(self):
-        return self.play_mode.mode
+    def play_analyze_mode(self) -> str:
+        return self.play_mode.mode  # type: ignore[no-any-return]
 
-    def toggle_continuous_analysis(self, quiet=False):
+    def toggle_continuous_analysis(self, quiet: bool = False) -> None:
         if self.pondering:
             self.controls.set_status("", STATUS_INFO)
         elif not quiet:  # See #549
@@ -519,7 +519,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self.pondering = not self.pondering
         self.update_state()
 
-    def toggle_move_num(self):
+    def toggle_move_num(self) -> None:
         self.show_move_num = not self.show_move_num
         self.update_state()
 
@@ -550,7 +550,8 @@ class KaTrainGui(Screen, KaTrainBase):
         
         # 全ノードをリセット（過去のノードを含む）
         for node in self.game.root.nodes_in_tree:
-            node.clear_analysis()
+            if hasattr(node, 'clear_analysis'):
+                node.clear_analysis()  # type: ignore[attr-defined]
         
         # 再解析を要求（even_if_present=True により強制的に再解析）
         self.game.analyze_all_nodes(analyze_fast=False, even_if_present=True)
@@ -591,14 +592,14 @@ class KaTrainGui(Screen, KaTrainBase):
         if white_btn is not None:
             white_btn.text = "★白優先" if focus == "white" else "白優先"
 
-    def start(self):
+    def start(self) -> None:
         if self.engine:
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.engine = KataGoEngine(self, self.config("engine"))
 
         # Set up engine error handler with rich context
-        def _handle_engine_error(message, code=None, allow_popup=True):
+        def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
             """Handle engine errors with rich context.
 
             Args:
@@ -654,7 +655,7 @@ class KaTrainGui(Screen, KaTrainBase):
             on_key_up=self._keyboard_manager.on_keyboard_up,
         )
 
-        def set_focus_event(*args):
+        def set_focus_event(*args: Any) -> None:
             self._keyboard_manager.last_focus_event = time.time()
 
         MDApp.get_running_app().root_window.bind(focus=set_focus_event)
@@ -665,8 +666,10 @@ class KaTrainGui(Screen, KaTrainBase):
         # Initialize focus button states on startup
         Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
 
-    def update_gui(self, cn, redraw_board=False):
+    def update_gui(self, cn: Any, redraw_board: bool = False) -> None:
         # Handle prisoners and next player display
+        if not self.game:
+            return
         prisoners = self.game.prisoner_count
 
         # Safe circles parsing with guards for missing/invalid data
@@ -716,7 +719,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self.controls.update_evaluation()
         self.controls.update_timer(1)
         # update move tree
-        self.controls.move_tree.current_node = self.game.current_node
+        if self.game:
+            self.controls.move_tree.current_node = self.game.current_node
 
     # === Leela Engine Management (Phase 15, refactored in PR #121) ===
     # Delegation to LeelaManager for backward compatibility
@@ -817,7 +821,7 @@ class KaTrainGui(Screen, KaTrainBase):
             engine_config = self.config("engine")
             self.engine = KataGoEngine(self, engine_config)
             self.engine_unhealthy = False
-            return self.engine.check_alive()
+            return self.engine.check_alive()  # type: ignore[no-any-return]
         except Exception:
             return False
 
@@ -873,9 +877,9 @@ class KaTrainGui(Screen, KaTrainBase):
         # Create minimal query
         query = self.engine.create_minimal_analysis_query()
         result_event = threading.Event()
-        analysis_result: dict = {}
+        analysis_result: dict[str, Any] = {}
 
-        def on_result(analysis: dict):
+        def on_result(analysis: dict[str, Any]) -> None:
             analysis_result.update(analysis)
             result_event.set()
 
@@ -948,12 +952,12 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self._leela_manager.request_analysis(self.game.current_node, self)
 
-    def update_state(self, redraw_board=False):  # redirect to message queue thread
+    def update_state(self, redraw_board: bool = False) -> None:  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
 
     def _do_update_state(
-        self, redraw_board=False
-    ):  # is called after every message and on receiving analyses and config changes
+        self, redraw_board: bool = False
+    ) -> None:  # is called after every message and on receiving analyses and config changes
         # AI and Trainer/auto-undo handlers
         if not self.game or not self.game.current_node:
             return
@@ -972,7 +976,9 @@ class KaTrainGui(Screen, KaTrainBase):
             if (
                 teaching_undo
                 and cn.analysis_complete
-                and cn.parent.analysis_complete
+                and cn.parent is not None
+                and hasattr(cn.parent, 'analysis_complete')
+                and cn.parent.analysis_complete  # type: ignore[attr-defined]
                 and not cn.children
                 and not self.game.end_result
             ):
@@ -1001,18 +1007,19 @@ class KaTrainGui(Screen, KaTrainBase):
             self.request_leela_analysis()
         Clock.schedule_once(lambda _dt: self.update_gui(cn, redraw_board=redraw_board), -1)  # trigger?
 
-    def update_player(self, bw, **kwargs):
+    def update_player(self, bw: str, **kwargs: Any) -> None:
         super().update_player(bw, **kwargs)
         if self.game:
             sgf_name = self.game.root.get_property("P" + bw)
-            self.players_info[bw].name = None if not sgf_name or SGF_INTERNAL_COMMENTS_MARKER in sgf_name else sgf_name
+            sgf_name_str = sgf_name if isinstance(sgf_name, str) else None
+            self.players_info[bw].name = None if not sgf_name_str or SGF_INTERNAL_COMMENTS_MARKER in sgf_name_str else sgf_name_str  # type: ignore[assignment]
         if self.controls:
             self.controls.update_players()
             self.update_state()
         for player_setup_block in PlayerSetupBlock.INSTANCES:
             player_setup_block.update_player_info(bw, self.players_info[bw])
 
-    def set_note(self, note):
+    def set_note(self, note: str) -> None:
         # Guard: kv on_text may fire before _game_state_manager is initialized
         if hasattr(self, "_game_state_manager"):
             self._game_state_manager.set_note(note)
@@ -1021,16 +1028,16 @@ class KaTrainGui(Screen, KaTrainBase):
             self.game.current_node.note = note
 
     # The message loop is here to make sure moves happen in the right order, and slow operations don't hang the GUI
-    def _message_loop_thread(self):
+    def _message_loop_thread(self) -> None:
         while True:
             msg_name = "<unknown>"  # Safe fallback for error message
             game, msg, args, kwargs = self.message_queue.get()
             try:
                 msg_name = msg  # Capture for error handling
                 self.log(f"Message Loop Received {msg}: {args} for Game {game}", OUTPUT_EXTRA_DEBUG)
-                if game != self.game.game_id:
+                if not self.game or game != self.game.game_id:
                     self.log(
-                        f"Message skipped as it is outdated (current game is {self.game.game_id}", OUTPUT_EXTRA_DEBUG
+                        f"Message skipped as it is outdated (current game is {self.game.game_id if self.game else None}", OUTPUT_EXTRA_DEBUG
                     )
                     continue
                 msg = msg.replace("-", "_")
@@ -1045,7 +1052,7 @@ class KaTrainGui(Screen, KaTrainBase):
                     fallback_message=f"Action '{msg_name}' failed",
                 )
 
-    def __call__(self, message, *args, **kwargs):
+    def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
         if self.game:
             if message.endswith("popup"):  # gui code needs to run in main kivy thread.
                 fn = getattr(self, f"_do_{message.replace('-', '_')}")
@@ -1053,73 +1060,79 @@ class KaTrainGui(Screen, KaTrainBase):
             else:  # game related actions
                 self.message_queue.put([self.game.game_id, message, args, kwargs])
 
-    def _do_new_game(self, move_tree=None, analyze_fast=False, sgf_filename=None):
+    def _do_new_game(self, move_tree: Any = None, analyze_fast: bool = False, sgf_filename: str | None = None) -> None:
         game_commands.do_new_game(self, move_tree, analyze_fast, sgf_filename)
 
-    def _do_insert_mode(self, mode="toggle"):
+    def _do_insert_mode(self, mode: str = "toggle") -> None:
         self._game_state_manager.do_insert_mode(mode)
 
-    def _do_ai_move(self, node=None):
-        if node is None or self.game.current_node == node:
+    def _do_ai_move(self, node: Any = None) -> None:
+        if not self.game or (node is None or self.game.current_node == node):
             mode = self.next_player_info.strategy
             settings = self.config(f"ai/{mode}")
             if settings is not None:
                 try:
-                    generate_ai_move(self.game, mode, settings)
+                    if self.game:
+                        generate_ai_move(self.game, mode, settings)
                 except LeelaNotAvailableError as e:
                     self.log(str(e), OUTPUT_ERROR)
                     self.controls.set_status(str(e), STATUS_ERROR)
             else:
                 self.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
 
-    def _do_undo(self, n_times=1):
+    def _do_undo(self, n_times: int | str = 1) -> None:
         # "smart" mode handling stays here (requires player_info access)
+        times: int = 1
         if n_times == "smart":
-            n_times = 1
+            times = 1
             if self.play_analyze_mode == MODE_PLAY and self.last_player_info.ai and self.next_player_info.human:
-                n_times = 2
-        self._game_state_manager.do_undo(n_times)
+                times = 2
+        elif isinstance(n_times, int):
+            times = n_times
+        self._game_state_manager.do_undo(times)
 
-    def _do_reset_analysis(self):
+    def _do_reset_analysis(self) -> None:
         self._game_state_manager.do_reset_analysis()
 
-    def _do_resign(self):
+    def _do_resign(self) -> None:
         self._game_state_manager.do_resign()
 
-    def _do_redo(self, n_times=1):
+    def _do_redo(self, n_times: int = 1) -> None:
         self._game_state_manager.do_redo(n_times)
 
-    def _do_rotate(self):
+    def _do_rotate(self) -> None:
         self.board_gui.rotate_gridpos()
 
-    def _do_find_mistake(self, fn="redo"):
+    def _do_find_mistake(self, fn: str = "redo") -> None:
         self.board_gui.animating_pv = None
         getattr(self.game, fn)(9999, stop_on_mistake=self.config("trainer/eval_thresholds")[-4])
 
     # ------------------------------------------------------------------
     # 重要局面ナビゲーション
     # ------------------------------------------------------------------
-    def _do_prev_important(self):
+    def _do_prev_important(self) -> None:
         self._game_state_manager.do_prev_important()
 
-    def _do_next_important(self):
+    def _do_next_important(self) -> None:
         self._game_state_manager.do_next_important()
 
-    def _do_switch_branch(self, *args):
+    def _do_switch_branch(self, *args: Any) -> None:
         self.board_gui.animating_pv = None
         self.controls.move_tree.switch_branch(*args)
 
-    def _play_stone_sound(self, _dt=None):
+    def _play_stone_sound(self, _dt: Any = None) -> None:
         play_sound(random.choice(Theme.STONE_SOUNDS))
 
-    def _do_play(self, coords):
+    def _do_play(self, coords: Any) -> None:
         self.board_gui.animating_pv = None
+        if not self.game:
+            return
         try:
             old_prisoner_count = self.game.prisoner_count["W"] + self.game.prisoner_count["B"]
             self.game.play(Move(coords, player=self.next_player_info.player))
             if old_prisoner_count < self.game.prisoner_count["W"] + self.game.prisoner_count["B"]:
                 play_sound(Theme.CAPTURING_SOUND)
-            elif not self.game.current_node.is_pass:
+            elif self.game and not self.game.current_node.is_pass:
                 self._play_stone_sound()
 
         except IllegalMoveException as e:
@@ -1141,46 +1154,48 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ActiveReviewController (Phase 97)."""
         self._active_review_controller.toggle()
 
-    def _on_active_review_mode_change(self, instance, value):
+    def _on_active_review_mode_change(self, instance: Any, value: Any) -> None:
         """Delegates to ActiveReviewController (Phase 97)."""
         self._active_review_controller.on_mode_change(value)
 
-    def _do_active_review_guess(self, coords):
+    def _do_active_review_guess(self, coords: Any) -> None:
         """Delegates to ActiveReviewController (Phase 97)."""
         self._active_review_controller.handle_guess(coords)
 
-    def _do_analyze_extra(self, mode, **kwargs):
+    def _do_analyze_extra(self, mode: str, **kwargs: Any) -> None:
         analyze_commands.do_analyze_extra(self, mode, **kwargs)
 
-    def _do_selfplay_setup(self, until_move, target_b_advantage=None):
+    def _do_selfplay_setup(self, until_move: int | float, target_b_advantage: float | None = None) -> None:
+        if not self.game:
+            return
         self.game.selfplay(int(until_move) if isinstance(until_move, float) else until_move, target_b_advantage)
 
-    def _do_select_box(self):
+    def _do_select_box(self) -> None:
         self.controls.set_status(i18n._("analysis:region:start"), STATUS_INFO)
         self.board_gui.selecting_region_of_interest = True
 
-    def _do_new_game_popup(self):
+    def _do_new_game_popup(self) -> None:
         self._popup_manager.open_new_game_popup()
 
-    def _do_timer_popup(self):
+    def _do_timer_popup(self) -> None:
         self._popup_manager.open_timer_popup()
 
-    def _do_teacher_popup(self):
+    def _do_teacher_popup(self) -> None:
         self._popup_manager.open_teacher_popup()
 
-    def _do_config_popup(self):
+    def _do_config_popup(self) -> None:
         popup_commands.do_config_popup(self)
 
-    def _do_ai_popup(self):
+    def _do_ai_popup(self) -> None:
         self._popup_manager.open_ai_popup()
 
-    def _do_engine_recovery_popup(self, error_message, code):
+    def _do_engine_recovery_popup(self, error_message: str, code: Any) -> None:
         self._popup_manager.open_engine_recovery_popup(error_message, code)
 
-    def _do_tsumego_frame(self, ko, margin):
+    def _do_tsumego_frame(self, ko: bool, margin: int) -> None:
         from katrain.core.tsumego_frame import tsumego_frame_from_katrain_game
 
-        if not self.game.stones:
+        if not self.game or not self.game.stones:
             return
 
         black_to_play_p = self.next_player_info.player == "B"
@@ -1197,11 +1212,12 @@ class KaTrainGui(Screen, KaTrainBase):
                 analysis_region[1][1],
                 analysis_region[1][0],
             ]
-            self.game.set_region_of_interest(flattened_region)
-        node.analyze(self.game.engines[node.next_player])
+            self.game.set_region_of_interest(tuple(flattened_region))  # type: ignore[arg-type]
+        if self.game:
+            node.analyze(self.game.engines[node.next_player])
         self.update_state(redraw_board=True)
 
-    def play_mistake_sound(self, node):
+    def play_mistake_sound(self, node: Any) -> None:
         if self.config("timer/sound") and node.played_mistake_sound is None and Theme.MISTAKE_SOUNDS:
             node.played_mistake_sound = True
             play_sound(random.choice(Theme.MISTAKE_SOUNDS))
@@ -1209,130 +1225,134 @@ class KaTrainGui(Screen, KaTrainBase):
     # === SGF File Management (refactored in PR #122) ===
     # Delegation to SGFManager for backward compatibility
 
-    def load_sgf_file(self, file, fast=False, rewind=True):
+    def load_sgf_file(self, file: str, fast: bool = False, rewind: bool = True) -> None:
         """Load SGF file. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
 
-    def _do_analyze_sgf_popup(self):
+    def _do_analyze_sgf_popup(self) -> None:
         """Open SGF analysis popup. Delegates to SGFManager."""
         self._sgf_manager.do_analyze_sgf_popup(self)
 
-    def _do_open_recent_sgf(self):
+    def _do_open_recent_sgf(self) -> None:
         """Open recent SGF dropdown. Delegates to SGFManager."""
         self._sgf_manager.open_recent_sgf()
 
-    def _do_save_game(self, filename=None):
+    def _do_save_game(self, filename: str | None = None) -> None:
         """Save game. Delegates to export_commands."""
         export_commands.do_save_game(self, filename)
 
-    def _do_save_game_as_popup(self):
+    def _do_save_game_as_popup(self) -> None:
         """Open save-as popup. Delegates to SGFManager."""
         self._sgf_manager.do_save_game_as_popup(self)
 
-    def _do_export_karte(self, *args, **kwargs):
+    def _do_export_karte(self, *args: Any, **kwargs: Any) -> None:
         """Export karte. Delegates to export_commands."""
         export_commands.do_export_karte(self, self._do_mykatrain_settings_popup)
 
-    def _do_export_package(self, anonymize: bool = False, *args, **kwargs):
+    def _do_export_package(self, anonymize: bool = False, *args: Any, **kwargs: Any) -> None:
         """Export LLM package. Delegates to package_export_ui.do_export_package()."""
         do_export_package(self, anonymize=anonymize)
 
-    def _do_open_latest_report(self, *args, **kwargs):
+    def _do_open_latest_report(self, *args: Any, **kwargs: Any) -> None:
         """Open the most recent report file."""
         open_latest_report(self)
 
-    def _do_open_output_folder(self, *args, **kwargs):
+    def _do_open_output_folder(self, *args: Any, **kwargs: Any) -> None:
         """Open the output folder in the system file manager."""
         open_output_folder(self)
 
-    def _determine_user_color(self, username: str) -> Optional[str]:
+    def _determine_user_color(self, username: str) -> str | None:
         """Determine user's color based on player names in SGF.
 
         Delegates to katrain.gui.features.karte_export.determine_user_color().
         """
+        if not self.game:
+            return None
         return determine_user_color(self.game, username)
 
-    def _do_export_summary(self, *args, **kwargs):
+    def _do_export_summary(self, *args: Any, **kwargs: Any) -> None:
         """Delegates to SummaryManager.do_export_summary() (Phase 96)."""
         self._summary_manager.do_export_summary(*args, **kwargs)
 
-    def _do_export_summary_ui(self, *args, **kwargs):
+    def _do_export_summary_ui(self, *args: Any, **kwargs: Any) -> None:
         """Delegates to SummaryManager.do_export_summary_ui() (Phase 96)."""
         self._summary_manager.do_export_summary_ui(*args, **kwargs)
 
-    def _extract_analysis_from_sgf_node(self, node) -> dict:
+    def _extract_analysis_from_sgf_node(self, node: Any) -> dict[str, Any]:
         """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.extract_analysis_from_sgf_node(node)
+        result = self._summary_manager.extract_analysis_from_sgf_node(node)
+        return result if result is not None else {}
 
-    def _extract_sgf_statistics(self, path: str) -> Optional[dict]:
+    def _extract_sgf_statistics(self, path: str) -> dict[str, Any] | None:
         """Delegates to SummaryManager (Phase 96)."""
         return self._summary_manager.extract_sgf_statistics(path)
 
-    def _scan_player_names(self, sgf_files: list) -> dict:
+    def _scan_player_names(self, sgf_files: list[Any]) -> dict[str, Any]:
         """Delegates to SummaryManager (Phase 96)."""
         return self._summary_manager.scan_player_names(sgf_files)
 
-    def _scan_and_show_player_selection(self, sgf_files: list):
+    def _scan_and_show_player_selection(self, sgf_files: list[Any]) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.scan_and_show_player_selection(sgf_files)
 
-    def _process_summary_with_selected_players(self, sgf_files: list, selected_players: list):
+    def _process_summary_with_selected_players(self, sgf_files: list[Any], selected_players: list[Any]) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.process_summary_with_selected_players(sgf_files, selected_players)
 
-    def _show_player_selection_dialog(self, sorted_players: list, sgf_files: list):
+    def _show_player_selection_dialog(self, sorted_players: list[Any], sgf_files: list[Any]) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.show_player_selection_dialog(sorted_players, sgf_files)
 
-    def _process_and_export_summary(self, sgf_paths: list, progress_popup, selected_players: Optional[list] = None):
+    def _process_and_export_summary(self, sgf_paths: list[Any], progress_popup: Any, selected_players: list[Any] | None = None) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.process_and_export_summary(sgf_paths, progress_popup, selected_players)
 
-    def _categorize_games_by_stats(self, game_stats_list: list, focus_player: str) -> dict:
+    def _categorize_games_by_stats(self, game_stats_list: list[Any], focus_player: str) -> dict[str, Any]:
         """Delegates to SummaryManager (Phase 96)."""
         return self._summary_manager.categorize_games_by_stats(game_stats_list, focus_player)
 
-    def _collect_rank_info(self, stats_list: list, focus_player: str) -> str:
+    def _collect_rank_info(self, stats_list: list[Any], focus_player: str) -> str:
         """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.collect_rank_info(stats_list, focus_player)
+        result = self._summary_manager.collect_rank_info(stats_list, focus_player)
+        return result if result is not None else ""
 
-    def _build_summary_from_stats(self, stats_list: list, focus_player: Optional[str] = None) -> str:
+    def _build_summary_from_stats(self, stats_list: list[Any], focus_player: str | None = None) -> str:
         """Delegates to SummaryManager (Phase 96)."""
         return self._summary_manager.build_summary_from_stats(stats_list, focus_player)
 
-    def _save_summaries_per_player(self, game_stats_list: list, selected_players: list, progress_popup):
+    def _save_summaries_per_player(self, game_stats_list: list[Any], selected_players: list[Any], progress_popup: Any) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_summaries_per_player(game_stats_list, selected_players, progress_popup)
 
-    def _save_categorized_summaries_from_stats(self, categorized_games: dict, player_name: str, progress_popup):
+    def _save_categorized_summaries_from_stats(self, categorized_games: dict[str, Any], player_name: str, progress_popup: Any) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_categorized_summaries_from_stats(categorized_games, player_name, progress_popup)
 
-    def _save_summary_file(self, summary_text: str, player_name: str, progress_popup):
+    def _save_summary_file(self, summary_text: str, player_name: str, progress_popup: Any) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
-    def _do_quiz_popup(self):
+    def _do_quiz_popup(self) -> None:
         """Delegates to QuizManager (Phase 98)."""
         self._quiz_manager.do_quiz_popup()
 
-    def _do_mykatrain_settings_popup(self):
+    def _do_mykatrain_settings_popup(self) -> None:
         """Delegates to settings_popup.do_mykatrain_settings_popup()."""
         do_mykatrain_settings_popup(self)
 
-    def _do_training_set_popup(self):
+    def _do_training_set_popup(self) -> None:
         """Show Training Set Manager popup. Delegates to smart_kifu_training_set."""
         show_training_set_manager(self, self)
 
-    def _do_player_profile_popup(self):
+    def _do_player_profile_popup(self) -> None:
         """Show Player Profile popup. Delegates to smart_kifu_profile."""
         show_player_profile_popup(self, self)
 
-    def _do_practice_report_popup(self):
+    def _do_practice_report_popup(self) -> None:
         """Show Practice Report popup. Delegates to smart_kifu_practice."""
         show_practice_report_popup(self, self)
 
-    def _do_batch_analyze_popup(self):
+    def _do_batch_analyze_popup(self) -> None:
         """Show batch analyze folder dialog. Delegates to batch_ui/batch_core functions."""
         import threading
 
@@ -1390,14 +1410,14 @@ class KaTrainGui(Screen, KaTrainBase):
             log_cb,
         )
 
-        def run_batch_thread():
+        def run_batch_thread() -> None:
             """バッチスレッド実行（threading.Thread から呼ばれる）"""
             options = collect_batch_options(widgets, get_player_filter)
             run_batch_in_thread(
                 self, options, cancel_flag, progress_cb, log_cb, summary_cb, self._save_batch_options
             )
 
-        def start_batch_thread():
+        def start_batch_thread() -> None:
             """バッチスレッドを起動"""
             threading.Thread(target=run_batch_thread, daemon=True).start()
 
@@ -1415,7 +1435,7 @@ class KaTrainGui(Screen, KaTrainBase):
         widgets["output_browse"].bind(on_release=browse_output)
 
         # Phase 87.5: Setup Leela button callback
-        def open_leela_settings(*_args):
+        def open_leela_settings(*_args: Any) -> None:
             popup.dismiss()
             from kivy.clock import Clock
             Clock.schedule_once(
@@ -1436,29 +1456,29 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to QuizManager (Phase 98)."""
         self._quiz_manager.start_quiz_session(quiz_items)
 
-    def _do_diagnostics_popup(self):
+    def _do_diagnostics_popup(self) -> None:
         """Show diagnostics popup for bug report generation."""
         from katrain.gui.features.diagnostics_popup import show_diagnostics_popup
 
         show_diagnostics_popup(self)
 
-    def _do_engine_compare_popup(self):
+    def _do_engine_compare_popup(self) -> None:
         """Show engine comparison popup for KataGo/Leela analysis."""
         from katrain.gui.features.engine_compare_popup import show_engine_compare_popup
 
         show_engine_compare_popup(self)
 
-    def _do_skill_radar_popup(self):
+    def _do_skill_radar_popup(self) -> None:
         """Show skill radar popup for 5-axis skill profile."""
         from katrain.gui.features.skill_radar_popup import show_skill_radar_popup
 
         show_skill_radar_popup(self)
 
-    def load_sgf_from_clipboard(self):
+    def load_sgf_from_clipboard(self) -> None:
         """Load SGF from clipboard. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_from_clipboard()
 
-    def on_touch_up(self, touch):
+    def on_touch_up(self, touch: Any) -> bool:
         if touch.is_mouse_scrolling:
             touching_board = self.board_gui.collide_point(*touch.pos) or self.board_controls.collide_point(*touch.pos)
             touching_control_nonscroll = self.controls.collide_point(
@@ -1474,29 +1494,30 @@ class KaTrainGui(Screen, KaTrainBase):
                     self("redo")
                 elif touch.button == "scrolldown":
                     self("undo")
-        return super().on_touch_up(touch)
+        return super().on_touch_up(touch)  # type: ignore[no-any-return]
 
     @property
-    def shortcuts(self):
+    def shortcuts(self) -> dict[str, Any]:
         """Delegate to KeyboardManager for backward compatibility."""
         return self._keyboard_manager.shortcuts
 
     @property
-    def popup_open(self) -> Popup:
+    def popup_open(self) -> Popup | None:
         app = App.get_running_app()
         if app:
             first_child = app.root_window.children[0]
             return first_child if isinstance(first_child, Popup) else None
+        return None
 
 
 class KaTrainApp(MDApp):
     gui = ObjectProperty(None)
     language = StringProperty(DEFAULT_LANGUAGE)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def is_valid_window_position(self, left, top, width, height):
+    def is_valid_window_position(self, left: int, top: int, width: int, height: int) -> bool:
         try:
             from screeninfo import get_monitors
             monitors = get_monitors()
@@ -1508,7 +1529,7 @@ class KaTrainApp(MDApp):
         except Exception as e:
             return True # yolo
 
-    def build(self):
+    def build(self) -> KaTrainGui:
         self.icon = ICON  # how you're supposed to set an icon
 
         self.title = f"KaTrain v{VERSION}"
@@ -1537,13 +1558,15 @@ class KaTrainApp(MDApp):
         self.gui = KaTrainGui()
         Builder.load_file(popup_kv_file)
 
-        win_left = win_top = win_size = None
+        win_left: int | None = None
+        win_top: int | None = None
+        win_size: list[Any] | None = None
         if self.gui.config("ui_state/restoresize", True):
             win_size = self.gui.config("ui_state/size", [])
             win_left = self.gui.config("ui_state/left", None)
             win_top = self.gui.config("ui_state/top", None)
         if not win_size:
-            window_scale_fac = 1
+            window_scale_fac: float = 1.0
             try:
                 from screeninfo import get_monitors
 
@@ -1554,13 +1577,13 @@ class KaTrainApp(MDApp):
             win_size = [1300 * window_scale_fac, 1000 * window_scale_fac]
         self.gui.log(f"Setting window size to {win_size} and position to {[win_left, win_top]}", OUTPUT_DEBUG)
         Window.size = (win_size[0], win_size[1])
-        if win_left is not None and win_top is not None and self.is_valid_window_position(win_left, win_top, win_size[0], win_size[1]):
-            Window.left = win_left
-            Window.top = win_top
+        if win_left is not None and win_top is not None and self.is_valid_window_position(int(win_left), int(win_top), int(win_size[0]), int(win_size[1])):
+            Window.left = int(win_left)
+            Window.top = int(win_top)
 
-        return self.gui
+        return self.gui  # type: ignore[return-value, no-any-return]
 
-    def on_language(self, _instance, language):
+    def on_language(self, _instance: Any, language: str) -> None:
         self.gui.log(f"Switching language to {language}", OUTPUT_INFO)
         i18n.switch_lang(language)
         general = dict(self.gui.config("general") or {})
@@ -1571,7 +1594,7 @@ class KaTrainApp(MDApp):
             self.gui.update_state()
             self.gui.controls.set_status("", STATUS_INFO)
 
-    def webbrowser(self, site_key):
+    def webbrowser(self, site_key: str) -> None:
         websites = {
             "homepage": HOMEPAGE + "#manual",
             "support": HOMEPAGE + "#support",
@@ -1580,11 +1603,11 @@ class KaTrainApp(MDApp):
         if site_key in websites:
             webbrowser.open(websites[site_key])
 
-    def on_start(self):
+    def on_start(self) -> None:
         self.language = self.gui.config("general/lang")
         self.gui.start()
 
-    def on_request_close(self, *_args, source=None):
+    def on_request_close(self, *_args: Any, source: str | None = None) -> bool | None:
         if source == "keyboard":
             return True  # do not close on esc
         if getattr(self, "gui", None):
@@ -1601,8 +1624,9 @@ class KaTrainApp(MDApp):
             self.gui.shutdown_leela_engine()
             # Phase 22: Clockイベントのクリーンアップ
             self.gui.cleanup()
+        return None
 
-    def signal_handler(self, _signal, _frame):
+    def signal_handler(self, _signal: int, _frame: Any) -> None:
         if self.gui.debug_level >= OUTPUT_DEBUG:
             print("TRACEBACKS")
             for threadId, stack in sys._current_frames().items():
@@ -1614,9 +1638,9 @@ class KaTrainApp(MDApp):
         self.stop()
 
 
-def run_app():
+def run_app() -> None:
     class CrashHandler(ExceptionHandler):
-        def handle_exception(self, inst):
+        def handle_exception(self, inst: Exception) -> int:
             ex_type, ex, tb = sys.exc_info()
             trace = "".join(traceback.format_tb(tb))
             app = MDApp.get_running_app()
@@ -1628,7 +1652,7 @@ def run_app():
                 )
             else:
                 print(f"Exception {inst.__class__}: {inst.args}\n{trace}")
-            return ExceptionManager.PASS
+            return ExceptionManager.PASS  # type: ignore[no-any-return]
 
     ExceptionManager.add_handler(CrashHandler())
     app = KaTrainApp()

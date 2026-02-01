@@ -26,6 +26,8 @@ def do_config_popup(ctx: "KaTrainGui") -> None:
         ctx.config_popup = I18NPopup(
             title_key="general settings title", size=[dp(1200), dp(950)], content=ConfigPopup(ctx)
         ).__self__
-        ctx.config_popup.content.popup = ctx.config_popup
-        ctx.config_popup.title += ": " + ctx.config_file
+
+    assert ctx.config_popup is not None
+    ctx.config_popup.content.popup = ctx.config_popup
+    ctx.config_popup.title += ": " + ctx.config_file
     ctx.config_popup.open()
