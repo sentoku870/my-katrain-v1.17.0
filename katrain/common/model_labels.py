@@ -9,7 +9,7 @@ from typing import Literal
 
 StrengthCategory = Literal["light", "standard", "strong", "unknown"]
 
-_STRENGTH_PATTERNS = [
+_STRENGTH_PATTERNS: list[tuple[str, StrengthCategory]] = [
     (r"b10c128", "light"),
     (r"b18c384", "standard"),
     (r"b28|b40", "strong"),

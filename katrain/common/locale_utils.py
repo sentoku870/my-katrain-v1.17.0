@@ -15,10 +15,10 @@ InternalLangCode = Literal["en", "jp"]
 IsoLangCode = Literal["en", "ja"]
 
 # Mapping to internal canonical codes
-_TO_INTERNAL = {"ja": "jp", "jp": "jp", "en": "en"}
+_TO_INTERNAL: dict[str, InternalLangCode] = {"ja": "jp", "jp": "jp", "en": "en"}
 
 # Mapping from internal to ISO codes
-_TO_ISO = {"jp": "ja", "en": "en"}
+_TO_ISO: dict[str, IsoLangCode] = {"jp": "ja", "en": "en"}
 
 
 def normalize_lang_code(lang: Optional[str]) -> InternalLangCode:

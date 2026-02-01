@@ -19,7 +19,7 @@ from threading import Lock
 from typing import Any, Dict, Iterator, Optional
 
 
-class JsonFileConfigStore(Mapping):
+class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
     """JSON file-based configuration store compatible with kivy.storage.jsonstore.JsonStore.
 
     Implements Mapping protocol to support dict(store) conversion.
@@ -85,7 +85,7 @@ class JsonFileConfigStore(Mapping):
                 except OSError:
                     pass
 
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
+    def get(self, key: str) -> dict[str, Any] | None:  # type: ignore[override]
         """Get a section by key.
 
         Args:
@@ -136,7 +136,7 @@ class JsonFileConfigStore(Mapping):
         with self._lock:
             return key in self._data
 
-    def keys(self) -> Iterator[str]:
+    def keys(self) -> Iterator[str]:  # type: ignore[override]
         """Return iterator over section names."""
         with self._lock:
             return iter(list(self._data.keys()))

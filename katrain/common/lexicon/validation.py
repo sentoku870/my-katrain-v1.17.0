@@ -183,10 +183,10 @@ FIELD_TYPE_SPECS: Dict[str, Tuple[type, FieldRequirement]] = {
 # ID format: lowercase letters, numbers, hyphens, and underscores
 # (kebab-case or snake_case accepted)
 # Pattern compiled lazily to avoid module-level side effects
-_ID_PATTERN: Optional[re.Pattern] = None
+_ID_PATTERN: re.Pattern[str] | None = None
 
 
-def _get_id_pattern() -> re.Pattern:
+def _get_id_pattern() -> re.Pattern[str]:
     """Get the compiled ID pattern (lazy initialization)."""
     global _ID_PATTERN
     if _ID_PATTERN is None:

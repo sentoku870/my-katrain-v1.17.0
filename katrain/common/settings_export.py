@@ -26,7 +26,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 SCHEMA_VERSION = "1.0"
 
@@ -199,7 +199,7 @@ def get_package_defaults() -> Dict[str, Any]:
 
     package_config = find_package_resource("katrain/config.json")
     with open(package_config, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return cast(Dict[str, Any], json.load(f))
 
 
 def get_default_value(section: str, key: str) -> Any:

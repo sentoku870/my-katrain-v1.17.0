@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple, cast
 
 import yaml
 
@@ -235,7 +235,7 @@ class LexiconStore:
                 data = yaml.safe_load(f)
                 if data is None:
                     raise LexiconParseError("YAML file is empty")
-                return data
+                return cast(Dict[str, Any], data)
         except yaml.YAMLError as e:
             line = None
             column = None

@@ -243,7 +243,7 @@ class EngineConfig:
     enable_ownership: bool = True
 
     @classmethod
-    def from_dict(cls, d: dict) -> "EngineConfig":
+    def from_dict(cls, d: dict[str, Any]) -> "EngineConfig":
         """dictから生成。欠損キーはデフォルト、型不正は安全に変換。
 
         Args:
@@ -320,7 +320,7 @@ class TrainerConfig:
     lock_ai: bool = False
 
     @classmethod
-    def from_dict(cls, d: dict) -> "TrainerConfig":
+    def from_dict(cls, d: dict[str, Any]) -> "TrainerConfig":
         """dictから生成。JSON list → Tuple 変換（長さ検証あり）。
 
         Args:
@@ -394,7 +394,7 @@ class LeelaConfig:
     top_moves_show_secondary: str = "leela_top_move_winrate"
 
     @classmethod
-    def from_dict(cls, d: dict) -> "LeelaConfig":
+    def from_dict(cls, d: dict[str, Any]) -> "LeelaConfig":
         """dictから生成。
 
         Args:

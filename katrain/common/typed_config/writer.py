@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import fields, is_dataclass
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, Type, cast
 
 from katrain.common.typed_config.models import (
     EngineConfig,
@@ -106,7 +106,7 @@ class TypedConfigWriter:
             UnknownFieldError: 存在しないフィールド名が指定された場合
             TypeError: config_clsがdataclassでない場合
         """
-        return self._update_section("engine", EngineConfig, kwargs)
+        return cast(EngineConfig, self._update_section("engine", EngineConfig, kwargs))
 
     def update_trainer(self, **kwargs: Any) -> TrainerConfig:
         """trainerセクションを部分更新。
@@ -121,7 +121,7 @@ class TypedConfigWriter:
             UnknownFieldError: 存在しないフィールド名が指定された場合
             TypeError: config_clsがdataclassでない場合
         """
-        return self._update_section("trainer", TrainerConfig, kwargs)
+        return cast(TrainerConfig, self._update_section("trainer", TrainerConfig, kwargs))
 
     def update_leela(self, **kwargs: Any) -> LeelaConfig:
         """leelaセクションを部分更新。
@@ -136,14 +136,14 @@ class TypedConfigWriter:
             UnknownFieldError: 存在しないフィールド名が指定された場合
             TypeError: config_clsがdataclassでない場合
         """
-        return self._update_section("leela", LeelaConfig, kwargs)
+        return cast(LeelaConfig, self._update_section("leela", LeelaConfig, kwargs))
 
     def _update_section(
         self,
         section: str,
-        config_cls: Type,
+        config_cls: type[EngineConfig] | type[TrainerConfig] | type[LeelaConfig],
         updates: Dict[str, Any],
-    ) -> Any:
+    ) -> EngineConfig | TrainerConfig | LeelaConfig:
         """セクションを部分更新（内部実装）。
 
         Args:
