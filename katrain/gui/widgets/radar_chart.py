@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line
@@ -54,7 +54,7 @@ class RadarChartWidget(RelativeLayout):
     # Grid ring fractions (equal intervals, not tier boundaries)
     GRID_FRACTIONS = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # Create new dict per instance
         self.scores = {}
@@ -84,11 +84,11 @@ class RadarChartWidget(RelativeLayout):
         for prop in ("pos", "size", "scores", "tiers"):
             self.bind(**{prop: self._schedule_redraw})
 
-    def _schedule_redraw(self, *_):
+    def _schedule_redraw(self, *_: Any) -> None:
         self._redraw_trigger()
 
     def _get_grid_ring_points(
-        self, fraction: float, center: tuple, max_r: float
+        self, fraction: float, center: Tuple[float, float], max_r: float
     ) -> List[float]:
         """Get grid ring points (fixed radius fraction)."""
         radius = max_r * fraction
@@ -102,7 +102,7 @@ class RadarChartWidget(RelativeLayout):
         points.extend(points[:2])
         return points
 
-    def _do_redraw(self, *_):
+    def _do_redraw(self, *_: Any) -> None:
         self.canvas.before.clear()
 
         # Guard: Skip if widget not in window or not properly sized
@@ -151,7 +151,7 @@ class RadarChartWidget(RelativeLayout):
             # If any rendering error occurs, clear canvas and skip drawing
             self.canvas.before.clear()
 
-    def _update_labels(self, center: tuple, max_r: float):
+    def _update_labels(self, center: Tuple[float, float], max_r: float) -> None:
         for i, axis in enumerate(AXIS_ORDER):
             lbl = self._labels[i]
             lx, ly = get_label_position(i, center, max_r)

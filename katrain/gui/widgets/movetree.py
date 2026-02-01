@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union, cast
 
 from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Line, Rectangle
@@ -13,6 +14,13 @@ from kivymd.app import MDApp
 from katrain.gui.kivyutils import BackgroundMixin, draw_circle, draw_text
 from katrain.gui.theme import Theme
 
+if TYPE_CHECKING:
+    from katrain.core.game_node import GameNode
+    from katrain.core.sgf_parser import SGFNode
+
+# Type alias for nodes in the move tree (can be GameNode or SGFNode)
+MoveTreeNode = Union["GameNode", "SGFNode"]
+
 
 class MoveTreeDropdown(DropDown):
     pass
@@ -25,14 +33,14 @@ class MoveTreeCanvas(Widget):
     is_open = BooleanProperty(False)
     menu_selected_node = ObjectProperty(None, allownone=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.move_pos = {}
-        self.move_xy_pos = {}
+        self.move_pos: Dict[Any, Tuple[int, int]] = {}
+        self.move_xy_pos: Dict[Any, Tuple[float, float]] = {}
         self.bind(menu_selected_node=lambda *_args: self.scroll_view_widget.redraw_tree_trigger())
         self.build_dropdown()
 
-    def on_is_open(self, instance, value):
+    def on_is_open(self, instance: Any, value: bool) -> None:
         if value:
             max_content_width = max(option.content_width for option in self.dropdown.container.children)
             self.dropdown.width = max_content_width
@@ -42,19 +50,19 @@ class MoveTreeCanvas(Widget):
             if self.dropdown.attach_to:
                 self.dropdown.dismiss()
 
-    def close_dropdown(self, *largs):
+    def close_dropdown(self, *largs: Any) -> None:
         self.is_open = False
 
-    def build_dropdown(self):
+    def build_dropdown(self) -> None:
         self.dropdown = MoveTreeDropdown(auto_width=False)
         self.dropdown.bind(on_dismiss=self.close_dropdown)
 
-    def set_game_node(self, node):
+    def set_game_node(self, node: "GameNode") -> None:
         katrain = MDApp.get_running_app().gui
         katrain.game.set_current_node(node)
         katrain.update_state()
 
-    def on_touch_up(self, touch):
+    def on_touch_up(self, touch: Any) -> None:
         selected_node = None
         is_open = False
         node, (x, y) = min(
@@ -69,7 +77,7 @@ class MoveTreeCanvas(Widget):
         self.is_open = is_open
         self.menu_selected_node = selected_node
 
-    def delete_selected_node(self):
+    def delete_selected_node(self) -> None:
         selected_node = self.menu_selected_node or self.scroll_view_widget.current_node
         if selected_node and selected_node.parent:
             if selected_node.shortcut_from:
@@ -84,7 +92,7 @@ class MoveTreeCanvas(Widget):
             self.set_game_node(parent)
         self.is_open = False
 
-    def prune_branch(self):
+    def prune_branch(self) -> None:
         selected_node = self.menu_selected_node
         if selected_node and selected_node.parent:
             node = selected_node
@@ -94,7 +102,7 @@ class MoveTreeCanvas(Widget):
             self.set_game_node(selected_node)
         self.is_open = False
 
-    def make_selected_node_main_branch(self):
+    def make_selected_node_main_branch(self) -> None:
         selected_node = self.menu_selected_node or self.scroll_view_widget.current_node
         if selected_node and selected_node.parent:
             node = selected_node
@@ -105,7 +113,7 @@ class MoveTreeCanvas(Widget):
             self.set_game_node(selected_node)
         self.is_open = False
 
-    def toggle_selected_node_collapse(self):
+    def toggle_selected_node_collapse(self) -> None:
         selected_node = self.menu_selected_node or self.scroll_view_widget.current_node
         if selected_node and selected_node.parent:
             if selected_node.shortcut_from:
@@ -117,7 +125,7 @@ class MoveTreeCanvas(Widget):
                 node.add_shortcut(selected_node)
             self.scroll_view_widget.redraw_tree_trigger()
 
-    def switch_branch(self, direction=1):
+    def switch_branch(self, direction: int = 1) -> None:
         pos = self.move_pos.get(self.scroll_view_widget.current_node)
         if not self.scroll_view_widget or not pos:
             return
@@ -127,7 +135,7 @@ class MoveTreeCanvas(Widget):
             return
         self.set_game_node(same_x_moves[new_index][1])
 
-    def draw_move_tree(self, current_node, insert_node):
+    def draw_move_tree(self, current_node: "GameNode | None", insert_node: "GameNode | None") -> None:
         if not self.scroll_view_widget or not current_node:
             return
         spacing = 5
@@ -136,15 +144,15 @@ class MoveTreeCanvas(Widget):
 
         root = current_node.root
 
-        def children_with_shortcuts(move):
+        def children_with_shortcuts(move: Any) -> List[Any]:
             shortcuts = move.shortcuts_to
             via = {v: m for m, v in shortcuts}  # children that are shortcut
             return [m if m not in via else via[m] for m in move.ordered_children]
 
         self.move_pos = {root: (0, 0)}
         stack = children_with_shortcuts(root)[::-1]
-        next_y_pos = defaultdict(int)  # x pos -> max y pos
-        children = defaultdict(list)  # since AI self-play etc may modify the tree between layout and draw!
+        next_y_pos: Dict[int, int] = defaultdict(int)  # x pos -> max y pos
+        children: Dict[Any, List[Any]] = defaultdict(list)  # since AI self-play etc may modify the tree between layout and draw!
         children[root] = [*stack]
         while stack:
             move = stack.pop()
@@ -164,27 +172,27 @@ class MoveTreeCanvas(Widget):
             children[move] = children_with_shortcuts(move)
             stack += children[move][::-1]  # stack, so push top child last to process first
 
-        def draw_stone(pos, player, special_color=None):
+        def draw_stone(pos: Tuple[float, float], player: str, special_color: Any = None) -> None:
             draw_circle(pos, self.move_size / 2 - 0.5, (special_color or Theme.STONE_COLORS[player]))
             Color(*Theme.MOVE_TREE_STONE_OUTLINE_COLORS[player])
             Line(circle=(*pos, self.move_size / 2), width=1)
 
-        def coord_pos(coord):
-            return (coord + 0.5) * (spacing + self.move_size) + spacing / 2
+        def coord_pos(coord: float) -> float:
+            return float((coord + 0.5) * (spacing + self.move_size) + spacing / 2)
 
         self.width = coord_pos(max(x + 0.5 for x, y in self.move_pos.values()))
         self.height = coord_pos(max(y + 0.5 for x, y in self.move_pos.values()))
 
-        def xy_pos(x, y):
+        def xy_pos(x: int, y: int) -> Tuple[float, float]:
             return coord_pos(x), self.height - coord_pos(y)
 
         self.move_xy_pos = {n: xy_pos(x, y) for n, (x, y) in self.move_pos.items()}
 
-        special_nodes = {current_node: Theme.MOVE_TREE_CURRENT, self.menu_selected_node: Theme.MOVE_TREE_SELECTED}
+        special_nodes: Dict[Any, Any] = {current_node: Theme.MOVE_TREE_CURRENT, self.menu_selected_node: Theme.MOVE_TREE_SELECTED}
 
         if insert_node:
             special_nodes[insert_node.parent] = Theme.MOVE_TREE_INSERT_NODE_PARENT
-            insert_path = current_node
+            insert_path: Any = current_node
             while insert_path != insert_node.parent and insert_path.parent:
                 special_nodes[insert_path] = (
                     Theme.MOVE_TREE_INSERT_CURRENT if insert_path == current_node else Theme.MOVE_TREE_INSERT_OTHER
@@ -194,10 +202,10 @@ class MoveTreeCanvas(Widget):
         with self.canvas:
             self.canvas.clear()
             Color(*Theme.MOVE_TREE_LINE)
-            for node, (x, y) in self.move_xy_pos.items():
+            for node, (px, py) in self.move_xy_pos.items():
                 for ci, c in enumerate(children[node]):
                     cx, cy = self.move_xy_pos[c]
-                    Line(points=[x, y, x, cy, cx, cy], width=1)
+                    Line(points=[px, py, px, cy, cx, cy], width=1)
 
             for node, pos in self.move_xy_pos.items():
                 if node in special_nodes:
@@ -221,37 +229,37 @@ class MoveTree(ScrollView, BackgroundMixin):
     current_node = ObjectProperty(None)
     min_height = NumericProperty(dp(50))  # non-expanded height, to determine the node size
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.insert_node = None
+        self.insert_node: "GameNode | None" = None
         self.redraw_tree_trigger = Clock.create_trigger(
             lambda _dt: self.move_tree_canvas.draw_move_tree(self.current_node, self.insert_node), 0.1
         )
         self.bind(current_node=self.redraw_tree_trigger, size=self.redraw_tree_trigger)
 
-    def redraw(self):
+    def redraw(self) -> None:
         self.redraw_tree_trigger()
 
-    def switch_branch(self, direction):
+    def switch_branch(self, direction: int) -> None:
         self.move_tree_canvas.switch_branch(direction)
 
-    def delete_selected_node(self):
+    def delete_selected_node(self) -> None:
         self.move_tree_canvas.delete_selected_node()
         self.redraw_tree_trigger()
 
-    def prune_branch(self):
+    def prune_branch(self) -> None:
         self.move_tree_canvas.prune_branch()
         self.redraw_tree_trigger()
 
-    def make_selected_node_main_branch(self):
+    def make_selected_node_main_branch(self) -> None:
         self.move_tree_canvas.make_selected_node_main_branch()
         self.redraw_tree_trigger()
 
-    def toggle_selected_node_collapse(self):
+    def toggle_selected_node_collapse(self) -> None:
         self.move_tree_canvas.toggle_selected_node_collapse()
         self.redraw_tree_trigger()
 
-    def scroll_to_pixel(self, x, y):
+    def scroll_to_pixel(self, x: float, y: float) -> None:
         if not self._viewport:
             return
         vp = self._viewport
@@ -263,10 +271,11 @@ class MoveTree(ScrollView, BackgroundMixin):
             self.scroll_y = max(0, min(1, sy))
 
     # disable mousewheel
-    def on_scroll_start(self, touch, check_children=True):
+    def on_scroll_start(self, touch: Any, check_children: bool = True) -> bool:
         if "button" in touch.profile and touch.button.startswith("scroll"):
             return False
-        return super().on_scroll_start(touch, check_children)
+        result: Any = super().on_scroll_start(touch, check_children)
+        return bool(result)
 
 
 Builder.load_string(
