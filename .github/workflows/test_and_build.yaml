@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.12", "3.13"]
+        python-version: ["3.11", "3.12"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
           exit $exit_code
 
       - name: Type check with mypy (warnings only)
-        if: matrix.python-version == '3.9'
+        if: matrix.python-version == '3.11'
         run: uv run mypy katrain --no-error-summary
         continue-on-error: true
 
