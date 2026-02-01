@@ -5,7 +5,7 @@ Provides:
 - show_guess_feedback(): Display feedback popup after user guess (Phase 93 + 94)
 """
 
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -43,7 +43,7 @@ GRADE_COLORS = {
 }
 
 
-def _format_score_loss(loss):
+def _format_score_loss(loss: float | None) -> str:
     """Format score loss for display.
 
     Args:
@@ -193,7 +193,7 @@ def show_guess_feedback(
             size_hint_x=0.5,
         )
 
-        def on_retry_pressed(instance):
+        def on_retry_pressed(instance: Any) -> None:
             popup.dismiss()
             if on_retry:
                 on_retry()
@@ -207,7 +207,7 @@ def show_guess_feedback(
             size_hint_x=0.5,
         )
 
-        def on_hint_pressed(instance):
+        def on_hint_pressed(instance: Any) -> None:
             # Request hint from callback
             hint_text = None
             if on_hint_request:

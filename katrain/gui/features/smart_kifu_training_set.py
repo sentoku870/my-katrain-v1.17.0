@@ -7,7 +7,7 @@
 import os
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -47,7 +47,7 @@ COLOR_RATIO_RED = [0.9, 0.3, 0.3, 1.0]
 COLOR_RATIO_GRAY = [0.5, 0.5, 0.5, 1.0]
 
 
-def _format_analyzed_ratio(ratio: Optional[float]) -> tuple:
+def _format_analyzed_ratio(ratio: Optional[float]) -> Tuple[str, List[float]]:
     """解析率を表示文字列と色に変換。
 
     Args:
@@ -113,7 +113,7 @@ def create_browse_callback(
     Returns:
         ブラウズコールバック関数
     """
-    def browse_callback(*_args) -> None:
+    def browse_callback(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
         browse_popup_content = LoadSGFPopup(katrain_gui)
@@ -130,7 +130,7 @@ def create_browse_callback(
             content=browse_popup_content,
         ).__self__
 
-        def on_select(*_args):
+        def on_select(*_args: Any) -> None:
             text_input_widget.text = browse_popup_content.filesel.file_text.text
             browse_popup.dismiss()
 
@@ -209,8 +209,8 @@ def build_training_set_list_widget(
         )
         btn.bind(size=lambda b, _: setattr(b, "text_size", (b.width - dp(10), None)))
 
-        def make_select_fn(sid: str):
-            def select_fn(instance, state):
+        def make_select_fn(sid: str) -> Callable[[Any, str], None]:
+            def select_fn(instance: Any, state: str) -> None:
                 if state == "down":
                     selected_set[0] = sid
                     on_select_callback(sid)
@@ -290,21 +290,21 @@ def show_create_training_set_dialog(
     )
     popup.title = "新規 Training Set 作成"
 
-    def on_create(*_args):
+    def on_create(*_args: Any) -> None:
         name = name_input.text.strip()
         if not name:
             ctx.controls.set_status("セット名を入力してください", STATUS_ERROR)
             return
 
         try:
-            set_id = create_training_set(name)
+            manifest = create_training_set(name)
             popup.dismiss()
             ctx.controls.set_status(f"Training Set '{name}' を作成しました", STATUS_INFO)
-            on_created_callback(set_id)
+            on_created_callback(manifest.set_id)
         except Exception as e:
             ctx.controls.set_status(f"作成エラー: {e}", STATUS_ERROR)
 
-    def on_cancel(*_args):
+    def on_cancel(*_args: Any) -> None:
         popup.dismiss()
 
     create_btn = Button(
@@ -442,8 +442,8 @@ def show_import_sgf_dialog(
             color=Theme.TEXT_COLOR,
         )
 
-        def make_context_select(c: Context):
-            def select_fn(instance, state):
+        def make_context_select(c: Context) -> Callable[[Any, str], None]:
+            def select_fn(instance: Any, state: str) -> None:
                 if state == "down":
                     selected_context[0] = c
             return select_fn
@@ -486,7 +486,7 @@ def show_import_sgf_dialog(
 
     is_importing: List[bool] = [False]
 
-    def on_import(*_args):
+    def on_import(*_args: Any) -> None:
         if is_importing[0]:
             return
 
@@ -502,7 +502,7 @@ def show_import_sgf_dialog(
         is_importing[0] = True
         progress_label.text = "インポート中..."
 
-        def import_thread():
+        def import_thread() -> None:
             try:
                 result = import_sgf_folder(
                     set_id=set_id,
@@ -511,7 +511,7 @@ def show_import_sgf_dialog(
                     origin=folder_path,
                 )
 
-                def update_ui(dt):
+                def update_ui(dt: float) -> None:
                     is_importing[0] = False
                     show_import_result(ctx, result)
                     popup.dismiss()
@@ -520,7 +520,7 @@ def show_import_sgf_dialog(
                 Clock.schedule_once(update_ui, 0)
 
             except Exception as e:
-                def show_error(dt):
+                def show_error(dt: float) -> None:
                     is_importing[0] = False
                     progress_label.text = f"エラー: {e}"
                     ctx.controls.set_status(f"インポートエラー: {e}", STATUS_ERROR)
@@ -529,7 +529,7 @@ def show_import_sgf_dialog(
 
         threading.Thread(target=import_thread, daemon=True).start()
 
-    def on_cancel(*_args):
+    def on_cancel(*_args: Any) -> None:
         if is_importing[0]:
             return
         popup.dismiss()
@@ -716,11 +716,11 @@ def show_training_set_manager(
     list_scroll = ScrollView(size_hint_y=1)
     main_layout.add_widget(list_scroll)
 
-    def refresh_list():
+    def refresh_list() -> None:
         """Training Set 一覧を更新"""
         sets = list_training_sets()
 
-        def on_select(set_id: str):
+        def on_select(set_id: str) -> None:
             selected_set[0] = set_id
 
         new_list = build_training_set_list_widget(sets, selected_set, on_select)
@@ -738,14 +738,14 @@ def show_training_set_manager(
         spacing=dp(10),
     )
 
-    def on_new_set(*_args):
-        def on_created(set_id: str):
+    def on_new_set(*_args: Any) -> None:
+        def on_created(set_id: str) -> None:
             selected_set[0] = set_id
             refresh_list()
 
         show_create_training_set_dialog(ctx, on_created)
 
-    def on_import_sgf(*_args):
+    def on_import_sgf(*_args: Any) -> None:
         if selected_set[0] is None:
             ctx.controls.set_status("インポート先の Training Set を選択してください", STATUS_ERROR)
             return
@@ -913,8 +913,8 @@ def show_import_batch_output_dialog(
             font_name=Theme.DEFAULT_FONT,
         )
 
-        def make_context_fn(c):
-            def set_ctx(instance, state):
+        def make_context_fn(c: Context) -> Callable[[Any, str], None]:
+            def set_ctx(instance: Any, state: str) -> None:
                 if state == "down":
                     selected_context[0] = c
             return set_ctx
@@ -958,7 +958,7 @@ def show_import_batch_output_dialog(
     )
     popup.title = "バッチ出力をインポート"
 
-    def on_import(*_args):
+    def on_import(*_args: Any) -> None:
         folder_path_str = folder_input.text.strip()
         if not folder_path_str:
             result_label.text = "フォルダを選択してください"
@@ -974,7 +974,7 @@ def show_import_batch_output_dialog(
         result_label.text = "インポート中..."
         result_label.color = Theme.TEXT_COLOR
 
-        def do_import():
+        def do_import() -> ImportResult:
             result = import_analyzed_sgf_folder(
                 set_id=set_id,
                 folder_path=folder_path,
@@ -983,7 +983,7 @@ def show_import_batch_output_dialog(
             )
             return result
 
-        def show_result(result: ImportResult):
+        def show_result(result: ImportResult) -> None:
             # IMPORTANT: ratio is not None で判定（0.0 を "--" にしない）
             if result.average_analyzed_ratio is not None:
                 ratio_text = f"{int(result.average_analyzed_ratio * 100)}%"
@@ -1006,7 +1006,7 @@ def show_import_batch_output_dialog(
 
             on_import_complete()
 
-        def import_thread():
+        def import_thread() -> None:
             result = do_import()
             Clock.schedule_once(lambda dt: show_result(result), 0)
 

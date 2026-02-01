@@ -137,7 +137,7 @@ def create_log_callback(
         ログコールバック関数
     """
     def log_cb(msg: str) -> None:
-        def update_log(dt):
+        def update_log(dt: float) -> None:
             log_text_widget.text += msg + "\n"
             # Auto-scroll to bottom
             log_scroll_widget.scroll_y = 0
@@ -158,7 +158,7 @@ def create_progress_callback(
         進行状況コールバック関数
     """
     def progress_cb(current: int, total: int, filename: str) -> None:
-        def update_progress(dt):
+        def update_progress(dt: float) -> None:
             progress_label_widget.text = f"[{current}/{total}] {filename}"
         Clock.schedule_once(update_progress, 0)
 
@@ -185,7 +185,7 @@ def create_summary_callback(
         サマリ表示コールバック関数
     """
     def show_summary_callback(result: BatchResult) -> None:
-        def show_summary(dt):
+        def show_summary(dt: float) -> None:
             is_running[0] = False
             start_button.text = i18n._("mykatrain:batch:start")
             close_button.disabled = False
@@ -317,7 +317,7 @@ def run_batch_in_thread(
             log_cb("=" * 50)
 
             # User-facing notification via status bar
-            def show_error(dt):
+            def show_error(dt: float) -> None:
                 ctx.controls.set_status(error_msg, STATUS_ERROR)
             Clock.schedule_once(show_error, 0)
 

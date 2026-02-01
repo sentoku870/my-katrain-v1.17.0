@@ -5,7 +5,7 @@ These functions handle undo/redo, navigation, and game state changes.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from kivy.clock import Clock
 
@@ -13,6 +13,7 @@ from katrain.core.notify_helpers import notify_game_changed
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
+    from katrain.core.sgf_parser import SGFNode
 
 
 def do_undo(ctx: "KaTrainGui", n_times: Union[int, str] = 1) -> None:
@@ -29,7 +30,8 @@ def do_undo(ctx: "KaTrainGui", n_times: Union[int, str] = 1) -> None:
         if ctx.play_analyze_mode == MODE_PLAY and ctx.last_player_info.ai and ctx.next_player_info.human:
             n_times = 2
     ctx.board_gui.animating_pv = None
-    ctx.game.undo(n_times)
+    if ctx.game:
+        ctx.game.undo(n_times)
 
 
 def do_redo(ctx: "KaTrainGui", n_times: int = 1) -> None:
@@ -40,12 +42,13 @@ def do_redo(ctx: "KaTrainGui", n_times: int = 1) -> None:
         n_times: Number of moves to redo
     """
     ctx.board_gui.animating_pv = None
-    ctx.game.redo(n_times)
+    if ctx.game:
+        ctx.game.redo(n_times)
 
 
 def do_new_game(
     ctx: "KaTrainGui",
-    move_tree=None,
+    move_tree: Optional["SGFNode"] = None,
     analyze_fast: bool = False,
     sgf_filename: Optional[str] = None,
 ) -> None:
@@ -72,11 +75,12 @@ def do_new_game(
         ctx.play_mode.switch_ui_mode()  # for new game, go to play, for loaded, analyze
     ctx.board_gui.animating_pv = None
     ctx.board_gui.reset_rotation()
-    ctx.engine.on_new_game()  # clear queries
+    if ctx.engine:
+        ctx.engine.on_new_game()  # clear queries
     ctx.game = Game(
         ctx,
-        ctx.engine,
-        move_tree=move_tree,
+        ctx.engine,  # type: ignore[arg-type]
+        move_tree=move_tree,  # type: ignore[arg-type]
         analyze_fast=analyze_fast or not move_tree,
         sgf_filename=sgf_filename,
     )
@@ -89,8 +93,8 @@ def do_new_game(
         ctx.update_player(bw, player_type=player_info.player_type, player_subtype=player_info.player_subtype)
     # Build node list snapshot under game lock, then schedule UI update on main thread
     with ctx.game._lock:
-        node_list = [ctx.game.root]
-        node = ctx.game.root
+        node_list: list[Any] = [ctx.game.root]
+        node: Any = ctx.game.root
         while node.children:
             node = node.ordered_children[0]
             node_list.append(node)

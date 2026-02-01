@@ -6,7 +6,7 @@ Provides:
 - format_summary_for_clipboard(): Format summary as Markdown for LLM coaching
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp
@@ -165,7 +165,7 @@ def show_session_summary(katrain: "KaTrainGui", summary: SessionSummary) -> None
     # Store popup reference for status update
     popup_ref = {"popup": None}
 
-    def on_copy_pressed(instance):
+    def on_copy_pressed(instance: Any) -> None:
         clipboard_text = format_summary_for_clipboard(summary)
         Clipboard.copy(clipboard_text)
         # Show confirmation

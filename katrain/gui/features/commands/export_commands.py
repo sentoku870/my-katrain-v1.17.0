@@ -21,7 +21,7 @@ def do_save_game(ctx: "KaTrainGui", filename: Optional[str] = None) -> None:
     ctx._sgf_manager.save_game(filename)
 
 
-def do_export_karte(ctx: "KaTrainGui", settings_popup_callback: Callable) -> None:
+def do_export_karte(ctx: "KaTrainGui", settings_popup_callback: Callable[[], None]) -> None:
     """Export karte report.
 
     Args:

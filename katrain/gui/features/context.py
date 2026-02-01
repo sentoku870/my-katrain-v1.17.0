@@ -158,7 +158,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_engine_config(self, **kwargs) -> "EngineConfig":
+    def update_engine_config(self, **kwargs: Any) -> "EngineConfig":
         """engineセクションを部分更新する（Phase 101追加）。
 
         Args:
@@ -172,7 +172,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_trainer_config(self, **kwargs) -> "TrainerConfig":
+    def update_trainer_config(self, **kwargs: Any) -> "TrainerConfig":
         """trainerセクションを部分更新する（Phase 101追加）。
 
         Args:
@@ -186,7 +186,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_leela_config(self, **kwargs) -> "LeelaConfig":
+    def update_leela_config(self, **kwargs: Any) -> "LeelaConfig":
         """leelaセクションを部分更新する（Phase 101追加）。
 
         Args:

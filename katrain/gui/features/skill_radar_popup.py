@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from kivy.clock import Clock
 
@@ -120,7 +120,7 @@ def _show_impl(ctx: "FeatureContext") -> None:
 class SkillRadarPopup(Popup):
     """Popup with ToggleButton-based player selector."""
 
-    def __init__(self, radar: Dict[str, Optional[RadarMetrics]], **kwargs):
+    def __init__(self, radar: Dict[str, Optional[RadarMetrics]], **kwargs: Any) -> None:
         self.radar = radar
         self.current_side = "B"  # Default to Black
 

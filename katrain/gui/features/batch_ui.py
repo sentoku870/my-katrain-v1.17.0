@@ -48,7 +48,7 @@ def create_browse_callback(
     Returns:
         ブラウズコールバック関数
     """
-    def browse_callback(*_args) -> None:
+    def browse_callback(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
         browse_popup_content = LoadSGFPopup(katrain_gui)
@@ -65,7 +65,7 @@ def create_browse_callback(
             content=browse_popup_content,
         ).__self__
 
-        def on_select(*_args):
+        def on_select(*_args: Any) -> None:
             text_input_widget.text = browse_popup_content.filesel.file_text.text
             browse_popup.dismiss()
 
@@ -96,7 +96,7 @@ def create_on_start_callback(
     Returns:
         開始ボタンコールバック関数
     """
-    def on_start(*_args) -> None:
+    def on_start(*_args: Any) -> None:
         if is_running[0]:
             # Cancel
             cancel_flag[0] = True
@@ -148,7 +148,7 @@ def create_on_close_callback(
     Returns:
         閉じるボタンコールバック関数
     """
-    def on_close(*_args) -> None:
+    def on_close(*_args: Any) -> None:
         if is_running[0]:
             return  # Don't close while running
         popup.dismiss()
@@ -541,7 +541,7 @@ def build_batch_popup_widgets(
     main_layout.add_widget(options_row5)
 
     # Phase 87.5: Variable visits linkage - enable/disable Jitter% and Deterministic
-    def update_variable_visits_controls(*_args):
+    def update_variable_visits_controls(*_args: Any) -> None:
         checkbox = widgets["variable_visits_checkbox"]
         is_variable = getattr(checkbox, "active", False)
         widgets["jitter_input"].disabled = not is_variable
@@ -619,7 +619,7 @@ def build_batch_popup_widgets(
 
     # Leela選択時はvisits_inputを無効化（Phase 37: UI仕様）
     # Leelaはleela.fast_visitsを使用するため、手動入力は不要
-    def update_visits_input_state(*_args):
+    def update_visits_input_state(*_args: Any) -> None:
         is_leela = widgets["engine_leela"].state == "down"
         widgets["visits_input"].disabled = is_leela
 

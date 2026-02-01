@@ -350,11 +350,11 @@ def show_update_preview_dialog(
     )
     popup.title = "プロファイル更新プレビュー"
 
-    def on_apply_click(*_args):
+    def on_apply_click(*_args: Any) -> None:
         popup.dismiss()
         on_apply()
 
-    def on_cancel(*_args):
+    def on_cancel(*_args: Any) -> None:
         popup.dismiss()
 
     apply_btn = Button(
@@ -496,7 +496,7 @@ def show_update_bucket_dialog(
                     all_games.append(game)
         return all_games
 
-    def on_preview(*_args):
+    def on_preview(*_args: Any) -> None:
         try:
             n = int(n_input.text.strip())
             if n <= 0:
@@ -521,7 +521,7 @@ def show_update_bucket_dialog(
         # プレビュー計算
         preview = compute_profile_update_preview(recent_games, None)
 
-        def apply_update():
+        def apply_update() -> None:
             profile = load_player_profile()
 
             # ContextProfile を取得または作成
@@ -553,7 +553,7 @@ def show_update_bucket_dialog(
 
         show_update_preview_dialog(ctx, context, bucket_key, preview, apply_update)
 
-    def on_cancel(*_args):
+    def on_cancel(*_args: Any) -> None:
         popup.dismiss()
 
     preview_btn = Button(
@@ -626,7 +626,7 @@ def show_player_profile_popup(
         spacing=dp(5),
     )
 
-    def refresh_cards():
+    def refresh_cards() -> None:
         """Bucket カードを更新"""
         if cards_container[0] is not None:
             cards_scroll.remove_widget(cards_container[0])
@@ -656,8 +656,8 @@ def show_player_profile_popup(
         cards_container[0] = container
         cards_scroll.add_widget(container)
 
-    def make_context_select(c: Context):
-        def select_fn(instance, state):
+    def make_context_select(c: Context) -> Callable[[Any, str], None]:
+        def select_fn(instance: Any, state: str) -> None:
             if state == "down":
                 selected_context[0] = c
                 refresh_cards()
@@ -699,7 +699,7 @@ def show_player_profile_popup(
     )
     popup.title = "Smart Kifu - Player Profile"
 
-    def on_update(*_args):
+    def on_update(*_args: Any) -> None:
         # Bucket選択ダイアログを表示（簡易版：最初のBucketを選択）
         show_update_bucket_dialog(
             ctx,
@@ -708,7 +708,7 @@ def show_player_profile_popup(
             on_updated=refresh_cards,
         )
 
-    def on_close(*_args):
+    def on_close(*_args: Any) -> None:
         popup.dismiss()
 
     update_btn = Button(

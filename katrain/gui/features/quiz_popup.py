@@ -9,7 +9,7 @@
 # Note: Kivy imports are deferred inside functions to allow
 # importing this module in headless CI environment (Phase 101 fix).
 
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
@@ -168,7 +168,7 @@ def do_quiz_popup(
     popup.pos_hint = {"right": 0.99, "top": 0.99}
     close_button.bind(on_release=lambda *_args: popup.dismiss())
 
-    def start_quiz(*_args):
+    def start_quiz(*_args: Any) -> None:
         popup.dismiss()
         start_quiz_session_fn(quiz_items)
 

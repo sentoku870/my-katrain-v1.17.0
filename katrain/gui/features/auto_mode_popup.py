@@ -53,7 +53,7 @@ class AutoModeState:
     This ensures correct behavior if multiple popups are opened.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._test_running = False
         self._lock = threading.Lock()
 
@@ -138,7 +138,7 @@ def show_auto_mode_content(
         background_color=Theme.PRIMARY_COLOR,
     )
 
-    def on_test_clicked(btn):
+    def on_test_clicked(btn: Any) -> None:
         _on_test_analysis_clicked(ctx, katrain, state, result_area, btn)
 
     test_btn.bind(on_release=on_test_clicked)
@@ -172,7 +172,7 @@ def _on_test_analysis_clicked(
     btn.disabled = True
     Clock.schedule_once(lambda dt: _show_testing_status(result_area), 0)
 
-    def run_test():
+    def run_test() -> None:
         try:
             result = _execute_test_analysis(ctx, katrain)
         finally:
@@ -518,7 +518,7 @@ def _on_retry_cpu(
         0,
     )
 
-    def run_fallback():
+    def run_fallback() -> None:
         try:
             success, result = katrain.restart_engine_with_fallback("cpu")
         finally:
@@ -622,7 +622,7 @@ def _on_restart_engine(
         0,
     )
 
-    def run_restart():
+    def run_restart() -> None:
         try:
             success = katrain.restart_engine()
         finally:

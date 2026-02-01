@@ -9,7 +9,7 @@
 
 import os
 import threading
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 def do_export_summary(
     ctx: "FeatureContext",
     scan_and_show_callback: Callable[[List[str]], None],
-    load_export_settings_fn: Callable[[], dict],
+    load_export_settings_fn: Callable[[], Dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
 ) -> None:
     """Schedule summary export on the main Kivy thread.
@@ -51,7 +51,7 @@ def do_export_summary(
 def do_export_summary_ui(
     ctx: "FeatureContext",
     scan_and_show_callback: Callable[[List[str]], None],
-    load_export_settings_fn: Callable[[], dict],
+    load_export_settings_fn: Callable[[], Dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
 ) -> None:
     """ディレクトリ選択とまとめ生成（自動分類）
@@ -115,7 +115,7 @@ def do_export_summary_ui(
         content=popup_contents
     ).__self__
 
-    def process_directory(*_args):
+    def process_directory(*_args: Any) -> None:
         selected_path = popup_contents.filesel.path
 
         if not selected_path or not os.path.isdir(selected_path):
@@ -203,9 +203,9 @@ def process_summary_with_selected_players(
 def scan_and_show_player_selection(
     sgf_files: List[str],
     ctx: "FeatureContext",
-    scan_player_names_fn: Callable[[List[str]], dict],
+    scan_player_names_fn: Callable[[List[str]], Dict[str, int]],
     process_summary_fn: Callable[[List[str], List[str]], None],
-    show_player_selection_fn: Callable[[List[tuple], List[str]], None],
+    show_player_selection_fn: Callable[[List[Tuple[str, int]], List[str]], None],
 ) -> None:
     """プレイヤー名をスキャンして選択ダイアログを表示
 
@@ -275,9 +275,9 @@ def scan_and_show_player_selection(
 
 
 def show_player_selection_dialog(
-    sorted_players: List[tuple],
+    sorted_players: List[Tuple[str, int]],
     sgf_files: List[str],
-    load_export_settings_fn: Callable[[], dict],
+    load_export_settings_fn: Callable[[], Dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
     process_and_export_fn: Callable[[List[str], "Popup", List[str]], None],
 ) -> None:
@@ -355,7 +355,7 @@ def show_player_selection_dialog(
     # selection_popup を先に定義（on_ok 内で参照するため）
     selection_popup = None
 
-    def on_ok(*args):
+    def on_ok(*args: Any) -> None:
         nonlocal selection_popup
         selected_players = [name for name, cb in checkbox_dict.items() if cb.active]
 
@@ -372,7 +372,8 @@ def show_player_selection_dialog(
             ).open()
             return
 
-        selection_popup.dismiss()
+        if selection_popup:
+            selection_popup.dismiss()
 
         # 選択したプレイヤーを保存
         save_export_settings_fn(selected_players=selected_players)
@@ -417,10 +418,10 @@ def process_and_export_summary(
     progress_popup: "Popup",
     selected_players: List[str],
     ctx: "FeatureContext",
-    extract_sgf_statistics_fn: Callable[[str], dict],
-    categorize_games_fn: Callable[[List[dict], Optional[str]], dict],
-    save_summaries_per_player_fn: Callable[[List[dict], List[str], "Popup"], None],
-    save_categorized_summaries_fn: Callable[[dict, Optional[str], "Popup"], None],
+    extract_sgf_statistics_fn: Callable[[str], Dict[str, Any]],
+    categorize_games_fn: Callable[[List[Dict[str, Any]], Optional[str]], Dict[str, Any]],
+    save_summaries_per_player_fn: Callable[[List[Dict[str, Any]], List[str], "Popup"], None],
+    save_categorized_summaries_fn: Callable[[Dict[str, Any], Optional[str], "Popup"], None],
 ) -> None:
     """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）
 
