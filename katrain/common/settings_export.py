@@ -26,16 +26,16 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, cast
 
 SCHEMA_VERSION = "1.0"
 
 # --- Export exclusion settings ---
 # These sections contain sensitive or environment-specific data
-EXCLUDED_SECTIONS: Set[str] = {"engine", "export_settings", "ui_state"}
+EXCLUDED_SECTIONS: set[str] = {"engine", "export_settings", "ui_state"}
 
 # Keys within sections to exclude (e.g., version, language, paths)
-EXCLUDED_KEYS: Dict[str, Set[str]] = {
+EXCLUDED_KEYS: dict[str, set[str]] = {
     "general": {"version", "lang", "sgf_load", "sgf_save"},
 }
 
@@ -47,7 +47,7 @@ EXCLUDED_KEYS: Dict[str, Set[str]] = {
 # - Only include user-configurable settings from UI
 # - Exclude app version, language settings
 # - Engine paths are excluded via EXCLUDED_SECTIONS
-TAB_RESET_KEYS: Dict[str, List[Tuple[str, str]]] = {
+TAB_RESET_KEYS: dict[str, list[tuple[str, str]]] = {
     # Analysis tab: analysis-related presets
     "analysis": [
         ("engine", "analysis_engine"),  # Phase 34
@@ -99,10 +99,10 @@ class ExportedSettings:
     schema_version: str
     app_version: str
     exported_at: str
-    sections: Dict[str, Dict[str, Any]]
+    sections: dict[str, dict[str, Any]]
 
 
-def export_settings(config: Dict[str, Any], app_version: str) -> str:
+def export_settings(config: dict[str, Any], app_version: str) -> str:
     """Export settings to JSON string.
 
     Excludes sensitive sections (engine, ui_state) and certain keys
@@ -189,7 +189,7 @@ def parse_exported_settings(json_str: str) -> ExportedSettings:
 
 
 @lru_cache(maxsize=1)
-def get_package_defaults() -> Dict[str, Any]:
+def get_package_defaults() -> dict[str, Any]:
     """Get package default settings (cached).
 
     Returns:
@@ -199,7 +199,7 @@ def get_package_defaults() -> Dict[str, Any]:
 
     package_config = find_package_resource("katrain/config.json")
     with open(package_config, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], json.load(f))
+        return cast(dict[str, Any], json.load(f))
 
 
 def get_default_value(section: str, key: str) -> Any:
@@ -230,7 +230,7 @@ def create_backup_path(config_file_path: str) -> str:
 
 
 def atomic_save_config(
-    config: Dict[str, Any], config_file_path: str, indent: int = 4
+    config: dict[str, Any], config_file_path: str, indent: int = 4
 ) -> None:
     """Save config atomically using temp file and os.replace.
 

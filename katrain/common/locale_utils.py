@@ -6,7 +6,7 @@ These match the locale directories in katrain/i18n/locales/.
 
 Part of Phase 52: Stabilization (tofu fix + jp/ja consistency).
 """
-from typing import Literal, Optional
+from typing import Literal
 
 # Canonical internal language codes (match locale directories)
 InternalLangCode = Literal["en", "jp"]
@@ -21,7 +21,7 @@ _TO_INTERNAL: dict[str, InternalLangCode] = {"ja": "jp", "jp": "jp", "en": "en"}
 _TO_ISO: dict[str, IsoLangCode] = {"jp": "ja", "en": "en"}
 
 
-def normalize_lang_code(lang: Optional[str]) -> InternalLangCode:
+def normalize_lang_code(lang: str | None) -> InternalLangCode:
     """Normalize language code to internal canonical form.
 
     Internal canonical codes match locale directories: "en", "jp".
@@ -81,7 +81,7 @@ def normalize_lang_code(lang: Optional[str]) -> InternalLangCode:
     return _TO_INTERNAL.get(normalized, "en")
 
 
-def to_iso_lang_code(lang: Optional[str]) -> IsoLangCode:
+def to_iso_lang_code(lang: str | None) -> IsoLangCode:
     """Convert to ISO 639-1 language code.
 
     Use ONLY at boundaries where ISO codes are required

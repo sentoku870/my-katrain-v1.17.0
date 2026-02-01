@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import fields, is_dataclass
-from typing import Any, Callable, Dict, Type, cast
+from typing import Any, Callable, cast
 
 from katrain.common.typed_config.models import (
     EngineConfig,
@@ -81,7 +81,7 @@ class TypedConfigWriter:
 
     def __init__(
         self,
-        config_dict: Dict[str, Any],
+        config_dict: dict[str, Any],
         save_func: Callable[[str], None],
     ) -> None:
         """Initialize the writer.
@@ -142,7 +142,7 @@ class TypedConfigWriter:
         self,
         section: str,
         config_cls: type[EngineConfig] | type[TrainerConfig] | type[LeelaConfig],
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> EngineConfig | TrainerConfig | LeelaConfig:
         """セクションを部分更新（内部実装）。
 

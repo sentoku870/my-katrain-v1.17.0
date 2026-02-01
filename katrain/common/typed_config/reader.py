@@ -3,7 +3,7 @@
 # TypedConfigReader - 型付き設定リーダー。
 # Phase 99で追加。
 
-from typing import Any, Dict
+from typing import Any
 
 from katrain.common.typed_config.models import (
     EngineConfig,
@@ -32,7 +32,7 @@ class TypedConfigReader:
         leela = reader.get_leela()  # LeelaConfig
     """
 
-    def __init__(self, config_dict: Dict[str, Any]) -> None:
+    def __init__(self, config_dict: dict[str, Any]) -> None:
         """config辞書への参照を保持（コピーしない）。
 
         Args:
