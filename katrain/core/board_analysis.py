@@ -11,8 +11,13 @@ board_analysis.py - 盤面戦術分析モジュール (Phase 5)
 対象ユーザー: 有段者(G3-G4) - カルテ品質向上(LLMコーチング強化)
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, Optional, Set
+from typing import TYPE_CHECKING, Any, List, Tuple, Dict, Optional, Set
+
+if TYPE_CHECKING:
+    from katrain.core.game import Game
 
 
 # ==================== 危険度スコア計算パラメータ ====================
@@ -103,7 +108,7 @@ class BoardState:
 
 # ==================== Checkpoint 2: グループ抽出 ====================
 
-def extract_groups_from_game(game) -> List[Group]:
+def extract_groups_from_game(game: Game) -> List[Group]:
     """game.chainsから戦術的グループデータを抽出
 
     Args:
@@ -122,10 +127,10 @@ def extract_groups_from_game(game) -> List[Group]:
             continue
 
         color = chain[0].player
-        stones = [m.coords for m in chain]
+        stones = [m.coords for m in chain if m.coords is not None]
 
         # 呼吸点をカウント
-        liberties = set()
+        liberties: set[tuple[int, int]] = set()
         for stone in stones:
             x, y = stone
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
@@ -166,7 +171,7 @@ def extract_groups_from_game(game) -> List[Group]:
 
 # ==================== Checkpoint 3: 危険度スコア計算 ====================
 
-def compute_danger_scores(groups: List[Group], cut_points: List) -> Dict[int, float]:
+def compute_danger_scores(groups: List[Group], cut_points: List[Tuple[Tuple[int, int], List[int], float]]) -> Dict[int, float]:
     """各グループの危険度スコアを計算
 
     Args:
@@ -210,7 +215,7 @@ def compute_danger_scores(groups: List[Group], cut_points: List) -> Dict[int, fl
 # ==================== Checkpoint 4: 連絡点/切断点検出 ====================
 
 def find_connect_points(
-    game,
+    game: Game,
     groups: List[Group],
     danger_scores: Dict[int, float]
 ) -> List[Tuple[Tuple[int, int], List[int], float]]:
@@ -238,7 +243,7 @@ def find_connect_points(
                 continue
 
             # 隣接グループを検出
-            adjacent_groups = {}  # {color: [group_ids]}
+            adjacent_groups: dict[str, list[int]] = {}  # {color: [group_ids]}
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
@@ -263,7 +268,7 @@ def find_connect_points(
 
 
 def find_cut_points(
-    game,
+    game: Game,
     groups: List[Group],
     danger_scores: Dict[int, float]
 ) -> List[Tuple[Tuple[int, int], List[int], float]]:
@@ -291,7 +296,7 @@ def find_cut_points(
                 continue
 
             # 隣接グループを色ごとに検出
-            adjacent_groups = {}  # {color: [group_ids]}
+            adjacent_groups: dict[str, list[int]] = {}  # {color: [group_ids]}
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
@@ -330,7 +335,7 @@ def find_cut_points(
 
 # ==================== Checkpoint 5: メインエントリポイント ====================
 
-def analyze_board_at_node(game, node) -> BoardState:
+def analyze_board_at_node(game: Game, node: Any) -> BoardState:
     """特定ノードでの盤面戦術状態を分析
 
     Args:
@@ -369,9 +374,9 @@ def analyze_board_at_node(game, node) -> BoardState:
 
 def get_reason_tags_for_move(
     board_state: BoardState,
-    move_eval,  # MoveEval インスタンス
-    node,  # GameNode
-    candidates: List[Dict],
+    move_eval: Any,  # MoveEval インスタンス
+    node: Any,  # GameNode
+    candidates: List[dict[str, Any]],
     skill_preset: str = "standard"  # Phase 17: プリセット別閾値
 ) -> List[str]:
     """盤面状態に基づいて理由タグを計算
@@ -386,7 +391,7 @@ def get_reason_tags_for_move(
     Returns:
         List[str]: 理由タグのリスト（例: ["atari", "low_liberties", ...]）
     """
-    tags = []
+    tags: list[str] = []
 
     player = move_eval.player
     if not player:

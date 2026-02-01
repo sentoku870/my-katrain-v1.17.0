@@ -4,7 +4,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, cast
 
 from . import eval_metrics
 from .eval_metrics import (
@@ -64,7 +64,7 @@ class IllegalMoveException(Exception):
 
 
 class KaTrainSGF(SGF):
-    _NODE_CLASS = GameNode
+    _NODE_CLASS = GameNode  # type: ignore[assignment]
 
 
 class BaseGame:
@@ -72,14 +72,28 @@ class BaseGame:
 
     DEFAULT_PROPERTIES = {"GM": 1, "FF": 4}
 
+    # Class-level type annotations for instance variables
+    katrain: Any
+    root: GameNode
+    current_node: GameNode
+    game_id: str
+    sgf_filename: Optional[str]
+    insert_mode: bool
+    external_game: bool
+    main_time_used: int
+    board: List[List[int]]
+    chains: List[List[Move]]
+    prisoners: List[Move]
+    last_capture: List[Move]
+
     def __init__(
         self,
-        katrain,
-        move_tree: GameNode = None,
-        game_properties: Optional[Dict] = None,
-        sgf_filename=None,
-        bypass_config=False,  # TODO: refactor?
-    ):
+        katrain: Any,
+        move_tree: Optional[GameNode] = None,
+        game_properties: Optional[Dict[str, Any]] = None,
+        sgf_filename: Optional[str] = None,
+        bypass_config: bool = False,  # TODO: refactor?
+    ) -> None:
         self.katrain = katrain
         self._lock = threading.RLock()  # RLock for set_current_node → _calculate_groups reentry
         self.game_id = datetime.strftime(datetime.now(), "%Y-%m-%d %H %M %S")
@@ -93,9 +107,11 @@ class BaseGame:
             self.external_game = PROGRAM_NAME not in self.root.get_property("AP", "")
             handicap = int(self.root.handicap)
             num_starting_moves_black = 0
-            node = self.root
+            node: GameNode = self.root
             while node.children:
-                node = node.children[0]
+                child = node.children[0]
+                assert isinstance(child, GameNode)
+                node = child
                 if node.player == "B":
                     num_starting_moves_black += 1
                 else:
@@ -118,12 +134,13 @@ class BaseGame:
                         "RU": katrain.config("game/rules"),
                     }
                 )
-            self.root = GameNode(
-                properties={
-                    **default_properties,
-                    **(game_properties or {}),
-                }
-            )
+            merged_props: Dict[str, List[Any]] = {
+                k: [v] for k, v in default_properties.items()
+            }
+            if game_properties:
+                for k, v in game_properties.items():
+                    merged_props[k] = [v] if not isinstance(v, list) else v
+            self.root = GameNode(properties=merged_props)
             handicap = katrain.config("game/handicap")
             if not bypass_config and handicap:
                 self.root.place_handicap_stones(handicap)
@@ -135,14 +152,17 @@ class BaseGame:
         self.main_time_used = 0
 
         # restore shortcuts
-        shortcut_id_to_node = {node.get_property("KTSID", None): node for node in self.root.nodes_in_tree}
-        for node in self.root.nodes_in_tree:
+        all_nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
+        shortcut_id_to_node: Dict[Any, GameNode] = {
+            node.get_property("KTSID", None): node for node in all_nodes
+        }
+        for node in all_nodes:
             shortcut_id = node.get_property("KTSF", None)
             if shortcut_id and shortcut_id in shortcut_id_to_node:
                 shortcut_id_to_node[shortcut_id].add_shortcut(node)
 
     # -- move tree functions --
-    def _init_state(self):
+    def _init_state(self) -> None:
         board_size_x, board_size_y = self.board_size
         self.board = [
             [-1 for _x in range(board_size_x)] for _y in range(board_size_y)
@@ -151,7 +171,7 @@ class BaseGame:
         self.prisoners = []  # type: List[Move]
         self.last_capture = []  # type: List[Move]
 
-    def _calculate_groups(self):
+    def _calculate_groups(self) -> None:
         with self._lock:
             self._init_state()
             try:
@@ -169,13 +189,14 @@ class BaseGame:
             except IllegalMoveException as e:
                 raise Exception(f"Unexpected illegal move ({str(e)})")
 
-    def _validate_move_and_update_chains(self, move: Move, ignore_ko: bool):
+    def _validate_move_and_update_chains(self, move: Move, ignore_ko: bool) -> None:
         board_size_x, board_size_y = self.board_size
 
-        def neighbours(moves):
+        def neighbours(moves: List[Move]) -> set[int]:
             return {
                 self.board[m.coords[1] + dy][m.coords[0] + dx]
                 for m in moves
+                if m.coords is not None
                 for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]
                 if 0 <= m.coords[0] + dx < board_size_x and 0 <= m.coords[1] + dy < board_size_y
             }
@@ -186,6 +207,7 @@ class BaseGame:
         if move.is_pass:
             return
 
+        assert move.coords is not None
         if self.board[move.coords[1]][move.coords[0]] != -1:
             raise IllegalMoveException("Space occupied")
 
@@ -209,6 +231,7 @@ class BaseGame:
             if -1 not in neighbours(self.chains[c]):  # no liberties
                 self.last_capture += self.chains[c]
                 for om in self.chains[c]:
+                    assert om.coords is not None  # stones on board always have coords
                     self.board[om.coords[1]][om.coords[0]] = -1
                 self.chains[c] = []
         if ko_or_snapback and len(self.last_capture) == 1 and not ignore_ko:
@@ -225,6 +248,7 @@ class BaseGame:
             ):
                 self.last_capture += self.chains[this_chain]
                 for om in self.chains[this_chain]:
+                    assert om.coords is not None  # stones on board always have coords
                     self.board[om.coords[1]][om.coords[0]] = -1
                 self.chains[this_chain] = []
                 self.prisoners += self.last_capture
@@ -232,10 +256,12 @@ class BaseGame:
                 raise IllegalMoveException("Suicide")
 
     # Play a Move from the current position, raise IllegalMoveException if invalid.
-    def play(self, move: Move, ignore_ko: bool = False):
+    def play(self, move: Move, ignore_ko: bool = False) -> GameNode:
         board_size_x, board_size_y = self.board_size
-        if not move.is_pass and not (0 <= move.coords[0] < board_size_x and 0 <= move.coords[1] < board_size_y):
-            raise IllegalMoveException(f"Move {move} outside of board coordinates")
+        if not move.is_pass:
+            assert move.coords is not None
+            if not (0 <= move.coords[0] < board_size_x and 0 <= move.coords[1] < board_size_y):
+                raise IllegalMoveException(f"Move {move} outside of board coordinates")
         try:
             self._validate_move_and_update_chains(move, ignore_ko)
         except IllegalMoveException:
@@ -243,52 +269,71 @@ class BaseGame:
             raise
         with self._lock:
             played_node = self.current_node.play(move)
+            assert isinstance(played_node, GameNode)
             self.current_node = played_node
         return played_node
 
     # Insert a list of moves from root, often just adding one.
-    def sync_branch(self, moves: List[Move]):
-        node = self.root
+    def sync_branch(self, moves: List[Move]) -> GameNode:
+        node: GameNode = self.root
         with self._lock:
             for move in moves:
-                node = node.play(move)
+                next_node = node.play(move)
+                assert isinstance(next_node, GameNode)
+                node = next_node
         return node
 
-    def set_current_node(self, node):
+    def set_current_node(self, node: GameNode) -> None:
         self.current_node = node
         self._calculate_groups()
 
-    def undo(self, n_times=1, stop_on_mistake=None):
+    def undo(
+        self, n_times: int | str = 1, stop_on_mistake: Any = None
+    ) -> None:
         """Undo moves with thread-safe state update.
 
         Lock scope: state mutation only (current_node, _calculate_groups).
         UI updates are triggered separately by caller via update_state().
+
+        Args:
+            n_times: Number of moves to undo, or "branch"/"main-branch" for special modes.
+            stop_on_mistake: Stop on mistake threshold (optional).
         """
         with self._lock:
             break_on_branch = False
-            cn = self.current_node
+            cn: GameNode = self.current_node
             break_on_main_branch = False
             last_branching_node = cn
+            effective_n_times: int
             if n_times == "branch":
-                n_times = 9999
+                effective_n_times = 9999
                 break_on_branch = True
             elif n_times == "main-branch":
-                n_times = 9999
+                effective_n_times = 9999
                 break_on_main_branch = True
-            for move in range(n_times):
+            else:
+                assert isinstance(n_times, int)
+                effective_n_times = n_times
+            for move in range(effective_n_times):
                 if (
                     stop_on_mistake is not None
                     and cn.points_lost is not None
                     and cn.points_lost >= stop_on_mistake
                     and self.katrain.players_info[cn.player].player_type != PLAYER_AI
                 ):
-                    self.set_current_node(cn.parent)
+                    parent = cn.parent
+                    if isinstance(parent, GameNode):
+                        self.set_current_node(parent)
                     return
                 previous_cn = cn
                 if cn.shortcut_from:
                     cn = cn.shortcut_from
                 elif not cn.is_root:
-                    cn = cn.parent
+                    parent = cn.parent
+                    if isinstance(parent, GameNode):
+                        cn = parent
+                    else:
+                        break  # root or invalid parent
                 else:
                     break  # root
                 if break_on_branch and len(cn.children) > 1:
@@ -300,21 +345,22 @@ class BaseGame:
             if cn is not self.current_node:
                 self.set_current_node(cn)
 
-    def redo(self, n_times=1, stop_on_mistake=None):
+    def redo(self, n_times: int = 1, stop_on_mistake: Optional[float] = None) -> None:
         """Redo moves with thread-safe state update.
 
         Lock scope: state mutation only (current_node, _calculate_groups).
         UI updates are triggered separately by caller via update_state().
         """
         with self._lock:
-            cn = self.current_node
+            cn: GameNode = self.current_node
             for move in range(n_times):
                 if cn.children:
-                    child = cn.ordered_children[0]
-                    shortcut_to = [m for m, v in cn.shortcuts_to if child == v]  # are we about to go to a shortcut node?
+                    child_node = cn.ordered_children[0]
+                    shortcut_to = [m for m, v in cn.shortcuts_to if child_node == v]  # are we about to go to a shortcut node?
                     if shortcut_to:
-                        child = shortcut_to[0]
-                    cn = child
+                        child_node = shortcut_to[0]
+                    assert isinstance(child_node, GameNode)
+                    cn = child_node
                 if (
                     move > 0
                     and stop_on_mistake is not None
@@ -322,55 +368,66 @@ class BaseGame:
                     and cn.points_lost >= stop_on_mistake
                     and self.katrain.players_info[cn.player].player_type != PLAYER_AI
                 ):
-                    self.set_current_node(cn.parent)
+                    parent = cn.parent
+                    if isinstance(parent, GameNode):
+                        self.set_current_node(parent)
                     return
             if stop_on_mistake is None:
                 self.set_current_node(cn)
 
     @property
-    def komi(self):
+    def komi(self) -> float:
         return self.root.komi
 
     @property
-    def board_size(self):
+    def board_size(self) -> Tuple[int, int]:
         return self.root.board_size
 
     @property
-    def stones(self):
+    def stones(self) -> List[Move]:
         with self._lock:
             return sum(self.chains, [])
 
     @property
-    def end_result(self):
+    def end_result(self) -> Optional[str]:
         if self.current_node.end_state:
-            return self.current_node.end_state
+            return str(self.current_node.end_state)
         if self.current_node.parent and self.current_node.is_pass and self.current_node.parent.is_pass:
             return self.manual_score or i18n._("board-game-end")
+        return None
 
     @property
-    def prisoner_count(
-        self,
-    ) -> Dict:  # returns prisoners that are of a certain colour as {B: black stones captures, W: white stones captures}
+    def prisoner_count(self) -> Dict[str, int]:
+        # returns prisoners that are of a certain colour as {B: black stones captures, W: white stones captures}
         return {player: sum([m.player == player for m in self.prisoners]) for player in Move.PLAYERS}
 
     @property
-    def rules(self):
+    def rules(self) -> Any:
         return KataGoEngine.get_rules(self.root.ruleset)
 
     @property
-    def manual_score(self):
+    def manual_score(self) -> Optional[str]:
         rules = self.rules
+        parent = self.current_node.parent
+        parent_ownership: Optional[List[float]] = None
+        if isinstance(parent, GameNode):
+            parent_ownership = parent.ownership
         if (
             not self.current_node.ownership
             or str(rules).lower() not in ["jp", "japanese"]
-            or not self.current_node.parent
-            or not self.current_node.parent.ownership
+            or not parent
+            or not parent_ownership
         ):
             if not self.current_node.score:
                 return None
-            return self.current_node.format_score(round(2 * self.current_node.score) / 2) + "?"
+            score = self.current_node.score
+            assert score is not None
+            formatted = self.current_node.format_score(round(2 * score) / 2)
+            return formatted + "?" if formatted else None
         board_size_x, board_size_y = self.board_size
-        mean_ownership = [(c + p) / 2 for c, p in zip(self.current_node.ownership, self.current_node.parent.ownership)]
+        current_ownership = self.current_node.ownership
+        assert current_ownership is not None
+        mean_ownership = [(c + p) / 2 for c, p in zip(current_ownership, parent_ownership)]
         ownership_grid = var_to_grid(mean_ownership, (board_size_x, board_size_y))
         stones = {m.coords: m.player for m in self.stones}
         lo_threshold = 0.15
@@ -378,7 +435,7 @@ class BaseGame:
         max_unknown = 10
         max_dame = 4 * (board_size_x + board_size_y)
 
-        def japanese_score_square(square, owner):
+        def japanese_score_square(square: Tuple[int, int], owner: float) -> float:
             player = stones.get(square, None)
             if (
                 (player == "B" and owner > hi_threshold)
@@ -409,21 +466,21 @@ class BaseGame:
             return None
         return self.current_node.format_score(score)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             "\n".join("".join(self.chains[c][0].player if c >= 0 else "-" for c in line) for line in self.board)
             + f"\ncaptures: {self.prisoner_count}"
         )
 
-    def update_root_properties(self):
-        def player_name(player_info):
+    def update_root_properties(self) -> None:
+        def player_name(player_info: Any) -> str:
             if player_info.name and player_info.player_type == PLAYER_HUMAN:
-                return player_info.name
+                return str(player_info.name)
             else:
                 return f"{i18n._(player_info.player_type)} ({i18n._(player_info.player_subtype)}){SGF_INTERNAL_COMMENTS_MARKER}"
 
         root_properties = self.root.properties
-        x_properties = {}
+        x_properties: Dict[str, Any] = {}
         for bw in "BW":
             if not self.external_game:
                 x_properties["P" + bw] = player_name(self.katrain.players_info[bw])
@@ -434,7 +491,7 @@ class BaseGame:
             x_properties["RE"] = self.end_result
         self.root.properties = {**root_properties, **{k: [v] for k, v in x_properties.items()}}
 
-    def generate_filename(self):
+    def generate_filename(self) -> str:
         self.update_root_properties()
         player_names = {
             bw: re.sub(r"[\u200b\u3164'<>:\"/\\|?*]", "", self.root.get_property("P" + bw, bw)) for bw in "BW"
@@ -442,7 +499,7 @@ class BaseGame:
         base_game_name = f"{PROGRAM_NAME}_{player_names['B']} vs {player_names['W']}"
         return f"{base_game_name} {self.game_id}.sgf"
 
-    def write_sgf(self, filename: str, trainer_config: Optional[Dict] = None):
+    def write_sgf(self, filename: str, trainer_config: Optional[Dict[str, Any]] = None) -> str:
         if trainer_config is None:
             trainer_config = self.katrain.config("trainer", {})
         save_feedback = trainer_config.get("save_feedback", False)
@@ -470,19 +527,24 @@ class BaseGame:
 class Game(BaseGame):
     """Extensions related to analysis etc."""
 
+    # Class-level type annotations for instance variables
+    engines: Dict[str, KataGoEngine]
+    insert_after: Optional[GameNode]
+    region_of_interest: Optional[List[int]]
+
     def __init__(
         self,
-        katrain,
-        engine: Union[Dict, KataGoEngine],
-        move_tree: GameNode = None,
-        analyze_fast=False,
-        game_properties: Optional[Dict] = None,
-        sgf_filename=None,
-    ):
+        katrain: Any,
+        engine: Union[Dict[str, KataGoEngine], KataGoEngine],
+        move_tree: Optional[GameNode] = None,
+        analyze_fast: bool = False,
+        game_properties: Optional[Dict[str, Any]] = None,
+        sgf_filename: Optional[str] = None,
+    ) -> None:
         super().__init__(
             katrain=katrain, move_tree=move_tree, game_properties=game_properties, sgf_filename=sgf_filename
         )
-        if not isinstance(engine, Dict):
+        if not isinstance(engine, dict):
             engine = {"B": engine, "W": engine}
         self.engines = engine
 
@@ -502,7 +564,7 @@ class Game(BaseGame):
 
     def analyze_all_nodes(
         self,
-        priority=PRIORITY_GAME_ANALYSIS,
+        priority: int = PRIORITY_GAME_ANALYSIS,
         analyze_fast: bool = False,
         even_if_present: bool = True,
     ) -> None:
@@ -515,7 +577,10 @@ class Game(BaseGame):
         """
         import time
 
-        for node in self.root.nodes_in_tree:
+        for sgf_node in self.root.nodes_in_tree:
+            if not isinstance(sgf_node, GameNode):
+                continue
+            node: GameNode = sgf_node
             # forced, or not present, or something went wrong in loading
             if even_if_present or not node.analysis_from_sgf or not node.load_analysis():
                 # Throttle: wait for engine capacity before sending request
@@ -867,14 +932,16 @@ class Game(BaseGame):
     # 重要局面ナビ用のヘルパー
     # ------------------------------------------------------------------
 
-    def _iter_main_branch_nodes(self):
+    def _iter_main_branch_nodes(self) -> "Iterator[GameNode]":
         """
         ルートからメイン分岐（ordered_children[0] を辿った一本の線）
         上のノードだけを順に返す。
         """
-        node = self.root
+        node: GameNode = self.root
         while node.children:
-            node = node.ordered_children[0]
+            child = node.ordered_children[0]
+            assert isinstance(child, GameNode)
+            node = child
             yield node
 
     def get_main_branch_node_before_move(self, move_number: int) -> Optional[GameNode]:
@@ -894,7 +961,9 @@ class Game(BaseGame):
                 break
         return None
 
-    def _compute_important_moves(self, max_moves: int = 20):
+    def _compute_important_moves(
+        self, max_moves: int = 20
+    ) -> List[Tuple[int, float, GameNode]]:
         """
         メイン分岐上のノードから「重要そうな手」を抽出して返す。
 
@@ -909,8 +978,8 @@ class Game(BaseGame):
         IMPORTANCE_THRESHOLD = 0.5  # 小さい変化をノイズとして除外
 
         # 単一パスで全ノードを収集
-        all_nodes = []
-        prev_score = None
+        all_nodes: List[Tuple[int, float, GameNode]] = []
+        prev_score: Optional[float] = None
 
         for node in self._iter_main_branch_nodes():
             # 解析が終わっていない手はスキップ
@@ -939,7 +1008,7 @@ class Game(BaseGame):
         top.sort(key=lambda t: t[0])
         return top
 
-    def get_important_move_numbers(self, max_moves: int = 20):
+    def get_important_move_numbers(self, max_moves: int = 20) -> List[int]:
         """
         「重要局面」と判定された手数のリストだけを返す。
         ScoreGraph などから呼ぶことを想定。
@@ -947,7 +1016,7 @@ class Game(BaseGame):
         important = self._compute_important_moves(max_moves=max_moves)
         return [move_no for move_no, _importance, _node in important]
 
-    def get_next_important_node(self, max_moves: int = 20):
+    def get_next_important_node(self, max_moves: int = 20) -> Optional[GameNode]:
         """
         現在の手より「後ろにある」重要局面ノードを返す。
         なければ None。
@@ -965,7 +1034,7 @@ class Game(BaseGame):
         # すべて現在手より前なら、今回はジャンプしない仕様にしておく
         return None
 
-    def get_prev_important_node(self, max_moves: int = 20):
+    def get_prev_important_node(self, max_moves: int = 20) -> Optional[GameNode]:
         """
         現在の手より「前にある」重要局面ノードを返す。
         なければ None。
@@ -976,7 +1045,7 @@ class Game(BaseGame):
 
         current_move_no = len(self.current_node.nodes_from_root) - 1
 
-        prev_node = None
+        prev_node: Optional[GameNode] = None
         for move_no, _importance, node in important:
             if move_no >= current_move_no:
                 break
@@ -984,7 +1053,7 @@ class Game(BaseGame):
 
         return prev_node
 
-    def jump_to_next_important_move(self, max_moves: int = 20):
+    def jump_to_next_important_move(self, max_moves: int = 20) -> Optional[GameNode]:
         """
         次の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
@@ -994,7 +1063,7 @@ class Game(BaseGame):
             self.set_current_node(node)
         return node
 
-    def jump_to_prev_important_move(self, max_moves: int = 20):
+    def jump_to_prev_important_move(self, max_moves: int = 20) -> Optional[GameNode]:
         """
         前の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
@@ -1004,55 +1073,68 @@ class Game(BaseGame):
             self.set_current_node(node)
         return node
 
-    def set_current_node(self, node):
+    def set_current_node(self, node: GameNode) -> None:
         if self.insert_mode:
             self.katrain.controls.set_status(i18n._("finish inserting before navigating"), STATUS_ERROR)
             return
         super().set_current_node(node)
 
-    def undo(self, n_times=1, stop_on_mistake=None):
+    def undo(self, n_times: int | str = 1, stop_on_mistake: Any = None) -> None:
         """Undo with insert-mode handling. Thread-safe via RLock."""
         with self._lock:
             if self.insert_mode:  # in insert mode, undo = delete
                 cn = self.current_node
-                if n_times == 1 and cn not in self.insert_after.nodes_from_root:
-                    cn.parent.children = [c for c in cn.parent.children if c != cn]
-                    self.current_node = cn.parent
-                    self._calculate_groups()
+                if self.insert_after is not None and n_times == 1 and cn not in self.insert_after.nodes_from_root:
+                    parent = cn.parent
+                    if parent is not None:
+                        parent.children = [c for c in parent.children if c != cn]
+                        if isinstance(parent, GameNode):
+                            self.current_node = parent
+                        self._calculate_groups()
                 return
             super().undo(n_times=n_times, stop_on_mistake=stop_on_mistake)
 
-    def reset_current_analysis(self):
+    def reset_current_analysis(self) -> None:
         cn = self.current_node
         engine = self.engines[cn.next_player]
         engine.terminate_queries(cn)
         cn.clear_analysis()
         cn.analyze(engine)
 
-    def redo(self, n_times=1, stop_on_mistake=None):
+    def redo(self, n_times: int = 1, stop_on_mistake: Optional[float] = None) -> None:
         if self.insert_mode:
             return
         super().redo(n_times=n_times, stop_on_mistake=stop_on_mistake)
 
-    def set_insert_mode(self, mode):
+    def set_insert_mode(self, mode: bool | str) -> None:
+        effective_mode: bool
         if mode == "toggle":
-            mode = not self.insert_mode
-        if mode == self.insert_mode:
+            effective_mode = not self.insert_mode
+        else:
+            assert isinstance(mode, bool)
+            effective_mode = mode
+        if effective_mode == self.insert_mode:
             return
-        self.insert_mode = mode
-        if mode:
+        self.insert_mode = effective_mode
+        if effective_mode:
             children = self.current_node.ordered_children
             if not children:
                 self.insert_mode = False
             else:
-                self.insert_after = self.current_node.ordered_children[0]
+                child = self.current_node.ordered_children[0]
+                assert isinstance(child, GameNode)
+                self.insert_after = child
                 self.katrain.controls.set_status(i18n._("starting insert mode"), STATUS_INFO)
         else:
-            copy_from_node = self.insert_after
-            copy_to_node = self.current_node
+            if self.insert_after is None:
+                return
+            copy_from_node: GameNode = self.insert_after
+            copy_to_node: GameNode = self.current_node
             num_copied = 0
-            if copy_to_node != self.insert_after.parent:
-                above_insertion_root = self.insert_after.parent.nodes_from_root
+            insert_parent = self.insert_after.parent
+            if copy_to_node != insert_parent:
+                assert insert_parent is not None
+                above_insertion_root = insert_parent.nodes_from_root
                 already_inserted_moves = [
                     n.move for n in copy_to_node.nodes_from_root if n not in above_insertion_root and n.move
                 ]
@@ -1068,7 +1150,9 @@ class Game(BaseGame):
                                 num_copied += 1
                         if not copy_from_node.children:
                             break
-                        copy_from_node = copy_from_node.ordered_children[0]
+                        next_child = copy_from_node.ordered_children[0]
+                        assert isinstance(next_child, GameNode)
+                        copy_from_node = next_child
                 except IllegalMoveException:
                     pass  # illegal move = stop
                 self._calculate_groups()  # recalculate groups
@@ -1083,7 +1167,7 @@ class Game(BaseGame):
         self.katrain.update_state(redraw_board=True)
 
     # Play a Move from the current position, raise IllegalMoveException if invalid.
-    def play(self, move: Move, ignore_ko: bool = False, analyze=True):
+    def play(self, move: Move, ignore_ko: bool = False, analyze: bool = True) -> GameNode:
         played_node = super().play(move, ignore_ko)
         if analyze:
             if self.region_of_interest:
@@ -1093,7 +1177,7 @@ class Game(BaseGame):
                 played_node.analyze(self.engines[played_node.next_player])
         return played_node
 
-    def set_region_of_interest(self, region_of_interest):
+    def set_region_of_interest(self, region_of_interest: Tuple[int, int, int, int]) -> None:
         x1, x2, y1, y2 = region_of_interest
         xmin, xmax = min(x1, x2), max(x1, x2)
         ymin, ymax = min(y1, y2), max(y1, y2)
@@ -1108,14 +1192,14 @@ class Game(BaseGame):
     # analyze_extra() handler methods (Phase 70 refactoring)
     # ---------------------------------------------------------------------------
 
-    def _handle_stop_mode(self):
+    def _handle_stop_mode(self) -> None:
         """Handle STOP mode: stop pondering and terminate queries on all engines."""
         self.katrain.pondering = False
         for e in set(self.engines.values()):
             e.stop_pondering()
             e.terminate_queries()
 
-    def _handle_ponder_mode(self, cn, engine):
+    def _handle_ponder_mode(self, cn: GameNode, engine: KataGoEngine) -> None:
         """Handle PONDER mode: start background pondering on current node."""
         cn.analyze(
             engine,
@@ -1125,7 +1209,7 @@ class Game(BaseGame):
             time_limit=False,
         )
 
-    def _handle_extra_mode(self, cn, engine):
+    def _handle_extra_mode(self, cn: GameNode, engine: KataGoEngine) -> None:
         """Handle EXTRA mode: add more visits to current node analysis."""
         visits = cn.analysis_visits_requested + engine.config["max_visits"]
         self.katrain.controls.set_status(i18n._("extra analysis").format(visits=visits), STATUS_ANALYSIS)
@@ -1137,14 +1221,14 @@ class Game(BaseGame):
             time_limit=False,
         )
 
-    def _handle_game_mode(self, engine, **kwargs):
+    def _handle_game_mode(self, engine: KataGoEngine, **kwargs: Any) -> None:
         """Handle GAME mode: re-analyze all nodes in the game tree."""
-        nodes = self.root.nodes_in_tree
+        nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
         only_mistakes = kwargs.get("mistakes_only", False)
-        move_range = kwargs.get("move_range", None)
+        move_range: Optional[Tuple[int, int]] = kwargs.get("move_range", None)
         if move_range:
             if move_range[1] < move_range[0]:
-                move_range = reversed(move_range)
+                move_range = (move_range[1], move_range[0])  # Swap to ensure correct order
         threshold = self.katrain.config("trainer/eval_thresholds")[-4]
         if "visits" in kwargs:
             visits = kwargs["visits"]
@@ -1152,12 +1236,12 @@ class Game(BaseGame):
             min_visits = min(node.analysis_visits_requested for node in nodes)
             visits = min_visits + engine.config["max_visits"]
         for node in nodes:
-            max_point_loss = max(c.points_lost or 0 for c in [node] + node.children)
+            max_point_loss = max(c.points_lost or 0 for c in [node] + [ch for ch in node.children if isinstance(ch, GameNode)])
             if only_mistakes and max_point_loss <= threshold:
                 continue
-            if move_range and (not node.depth - 1 in range(move_range[0], move_range[1] + 1)):
+            if move_range and (node.depth - 1 not in range(move_range[0], move_range[1] + 1)):
                 continue
-            node.analyze(engine, visits=visits, priority=-1_000_000, time_limit=False, report_every=None)
+            node.analyze(engine, visits=visits, priority=-1_000_000, time_limit=False)
         if not move_range:
             self.katrain.controls.set_status(i18n._("game re-analysis").format(visits=visits), STATUS_ANALYSIS)
         else:
@@ -1168,29 +1252,49 @@ class Game(BaseGame):
                 STATUS_ANALYSIS,
             )
 
-    def _handle_sweep_equalize_modes(self, cn, engine, mode, stones):
+    def _handle_sweep_equalize_modes(
+        self,
+        cn: GameNode,
+        engine: KataGoEngine,
+        mode: AnalysisMode,
+        stones: set[Tuple[int, int] | None],
+    ) -> None:
         """Handle SWEEP, EQUALIZE, ALTERNATIVE, and LOCAL modes.
 
         These modes share a common refinement loop at the end.
         """
+        analyze_moves: List[Move]
+        visits: int
+        priority: int
+
         if mode == AnalysisMode.SWEEP:
             board_size_x, board_size_y = self.board_size
 
             if cn.analysis_exists:
-                policy_grid = (
+                policy_grid: Optional[List[List[float]]] = (
                     var_to_grid(self.current_node.policy, size=(board_size_x, board_size_y))
                     if self.current_node.policy
                     else None
                 )
-                analyze_moves = sorted(
-                    [
+                if policy_grid is not None:
+                    # Sort by policy value when grid is available
+                    analyze_moves = sorted(
+                        [
+                            Move(coords=(x, y), player=cn.next_player)
+                            for x in range(board_size_x)
+                            for y in range(board_size_y)
+                            if policy_grid[y][x] >= 0
+                        ],
+                        key=lambda mv: -policy_grid[mv.coords[1]][mv.coords[0]] if mv.coords else 0,
+                    )
+                else:
+                    # No policy grid - use all empty points
+                    analyze_moves = [
                         Move(coords=(x, y), player=cn.next_player)
                         for x in range(board_size_x)
                         for y in range(board_size_y)
-                        if (policy_grid is None and (x, y) not in stones) or policy_grid[y][x] >= 0
-                    ],
-                    key=lambda mv: -policy_grid[mv.coords[1]][mv.coords[0]],
-                )
+                        if (x, y) not in stones
+                    ]
             else:
                 analyze_moves = [
                     Move(coords=(x, y), player=cn.next_player)
@@ -1208,7 +1312,7 @@ class Game(BaseGame):
                 return
             if mode == AnalysisMode.ALTERNATIVE:  # also do a quick update on current candidates so it doesn't look too weird
                 self.katrain.controls.set_status(i18n._("alternative analysis"), STATUS_ANALYSIS)
-                cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives="alternative")
+                cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives=True)
                 visits = engine.config["fast_visits"]
             else:  # equalize or local
                 visits = max(d["visits"] for d in cn.analysis["moves"].values())
@@ -1230,48 +1334,55 @@ class Game(BaseGame):
     # analyze_extra() main dispatcher (Phase 70 refactoring)
     # ---------------------------------------------------------------------------
 
-    def analyze_extra(self, mode, **kwargs):
+    def analyze_extra(self, mode: str | AnalysisMode, **kwargs: Any) -> None:
         """Dispatch to appropriate handler based on analysis mode.
 
         Phase 70: Refactored from 119-line monolithic method to dispatcher + 5 handlers.
         """
         # Normalize mode to AnalysisMode at entry point
-        mode = parse_analysis_mode(mode)
+        parsed_mode = parse_analysis_mode(mode)
 
         stones = {s.coords for s in self.stones}
         cn = self.current_node
 
-        if mode == AnalysisMode.STOP:
-            return self._handle_stop_mode()
+        if parsed_mode == AnalysisMode.STOP:
+            self._handle_stop_mode()
+            return
 
         engine = self.engines[cn.next_player]
 
-        if mode == AnalysisMode.PONDER:
-            return self._handle_ponder_mode(cn, engine)
+        if parsed_mode == AnalysisMode.PONDER:
+            self._handle_ponder_mode(cn, engine)
+            return
 
-        if mode == AnalysisMode.EXTRA:
-            return self._handle_extra_mode(cn, engine)
+        if parsed_mode == AnalysisMode.EXTRA:
+            self._handle_extra_mode(cn, engine)
+            return
 
-        if mode == AnalysisMode.GAME:
-            return self._handle_game_mode(engine, **kwargs)
+        if parsed_mode == AnalysisMode.GAME:
+            self._handle_game_mode(engine, **kwargs)
+            return
 
         # SWEEP / EQUALIZE / ALTERNATIVE / LOCAL
-        self._handle_sweep_equalize_modes(cn, engine, mode, stones)
+        self._handle_sweep_equalize_modes(cn, engine, parsed_mode, stones)
 
-    def selfplay(self, until_move, target_b_advantage=None):
+    def selfplay(self, until_move: int | str, target_b_advantage: Optional[float] = None) -> None:
         cn = self.current_node
 
+        analysis_kwargs: Dict[str, Any]
+        engine_settings: Dict[str, Any]
         if target_b_advantage is not None:
             analysis_kwargs = {"visits": max(25, self.katrain.config("engine/fast_visits"))}
             engine_settings = {"wideRootNoise": 0.03}
         else:
-            analysis_kwargs = engine_settings = {}
+            analysis_kwargs = {}
+            engine_settings = {}
 
-        def set_analysis(node, result):
+        def set_analysis(node: GameNode, result: Dict[str, Any]) -> None:
             node.set_analysis(result)
             analyze_and_play(node)
 
-        def request_analysis_for_node(node):
+        def request_analysis_for_node(node: GameNode) -> None:
             self.engines[node.player].request_analysis(
                 node,
                 callback=lambda result, _partial: set_analysis(node, result),
@@ -1281,16 +1392,19 @@ class Game(BaseGame):
                 **analysis_kwargs,
             )
 
-        def analyze_and_play(node):
+        def analyze_and_play(node: GameNode) -> None:
             nonlocal cn, engine_settings
             candidates = node.candidate_moves
             if self.katrain.game is not self:
                 return  # a new game happened
             ai_thoughts = "Move generated by AI self-play\n"
+            selected_move: Move
             if until_move != "end" and target_b_advantage is not None:  # setup pos
+                assert isinstance(until_move, int)  # narrow type: not "end" means it's int
                 if node.depth >= until_move or candidates[0]["move"] == "pass":
                     self.set_current_node(node)
                     return
+                assert cn.score is not None and node.score is not None
                 target_score = cn.score + (node.depth - cn.depth + 1) * (target_b_advantage - cn.score) / (
                     until_move - cn.depth
                 )
@@ -1300,22 +1414,22 @@ class Game(BaseGame):
                 if abs(node.score - target_score) < 3 * stddev:
                     weighted_cands = [
                         (
-                            move,
-                            math.exp(-0.5 * (abs(move["scoreLead"] - target_score) / stddev) ** 2)
-                            * math.exp(-0.5 * (min(0, move["pointsLost"]) / max_loss) ** 2),
+                            cand,
+                            math.exp(-0.5 * (abs(cand["scoreLead"] - target_score) / stddev) ** 2)
+                            * math.exp(-0.5 * (min(0, cand["pointsLost"]) / max_loss) ** 2),
                         )
-                        for i, move in enumerate(candidates)
-                        if move["pointsLost"] < max_loss or i == 0
+                        for i, cand in enumerate(candidates)
+                        if cand["pointsLost"] < max_loss or i == 0
                     ]
                     move_info = weighted_selection_without_replacement(weighted_cands, 1)[0][0]
-                    for move, wt in weighted_cands:
+                    for cand, wt in weighted_cands:
                         self.katrain.log(
-                            f"{'* ' if move_info == move else '  '} {move['move']} {move['scoreLead']} {wt}",
+                            f"{'* ' if move_info == cand else '  '} {cand['move']} {cand['scoreLead']} {wt}",
                             OUTPUT_EXTRA_DEBUG,
                         )
-                        ai_thoughts += f"Move option: {move['move']} score {move['scoreLead']:.2f} loss {move['pointsLost']:.2f} weight {wt:.3e}\n"
+                        ai_thoughts += f"Move option: {cand['move']} score {cand['scoreLead']:.2f} loss {cand['pointsLost']:.2f} weight {wt:.3e}\n"
                 else:  # we're a bit lost, far away from target, just push it closer
-                    move_info = min(candidates, key=lambda move: abs(move["scoreLead"] - target_score))
+                    move_info = min(candidates, key=lambda m: abs(m["scoreLead"] - target_score))
                     self.katrain.log(
                         f"* Played {move_info['move']} {move_info['scoreLead']} because score deviation between current score {node.score} and target score {target_score} > {3*stddev}",
                         OUTPUT_EXTRA_DEBUG,
@@ -1326,17 +1440,17 @@ class Game(BaseGame):
                     f"Self-play until {until_move} target {target_b_advantage}: {len(candidates)} candidates -> move {move_info['move']} score {move_info['scoreLead']} point loss {move_info['pointsLost']}",
                     OUTPUT_DEBUG,
                 )
-                move = Move.from_gtp(move_info["move"], player=node.next_player)
+                selected_move = Move.from_gtp(move_info["move"], player=node.next_player)
             elif candidates:  # just selfplay to end
-                move = Move.from_gtp(candidates[0]["move"], player=node.next_player)
+                selected_move = Move.from_gtp(candidates[0]["move"], player=node.next_player)
             else:  # 1 visit etc
                 polmoves = node.policy_ranking
-                move = polmoves[0][1] if polmoves else Move(None)
-            if move.is_pass:
+                selected_move = polmoves[0][1] if polmoves else Move(None)
+            if selected_move.is_pass:
                 if self.current_node == cn:
                     self.set_current_node(node)
                 return
-            new_node = GameNode(parent=node, move=move)
+            new_node = GameNode(parent=node, move=selected_move)
             new_node.ai_thoughts = ai_thoughts
             if until_move != "end" and target_b_advantage is not None:
                 self.set_current_node(new_node)
@@ -1354,7 +1468,7 @@ class Game(BaseGame):
 
         request_analysis_for_node(cn)
 
-    def analyze_undo(self, node):
+    def analyze_undo(self, node: GameNode) -> None:
         train_config = self.katrain.config("trainer")
         move = node.move
         if node != self.current_node or node.auto_undo is not None or not node.analysis_complete or not move:
@@ -1363,15 +1477,17 @@ class Game(BaseGame):
         thresholds = train_config["eval_thresholds"]
         num_undo_prompts = train_config["num_undo_prompts"]
         i = 0
-        while i < len(thresholds) and points_lost < thresholds[i]:
+        while i < len(thresholds) and points_lost is not None and points_lost < thresholds[i]:
             i += 1
         num_undos = num_undo_prompts[i] if i < len(num_undo_prompts) else 0
+        undo: bool
+        parent = node.parent
         if num_undos == 0:
             undo = False
         elif num_undos < 1:  # probability
-            undo = int(node.undo_threshold < num_undos) and len(node.parent.children) == 1
+            undo = bool(node.undo_threshold < num_undos) and parent is not None and len(parent.children) == 1
         else:
-            undo = len(node.parent.children) <= num_undos
+            undo = parent is not None and len(parent.children) <= num_undos
 
         node.auto_undo = undo
         if undo:

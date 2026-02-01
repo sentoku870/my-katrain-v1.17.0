@@ -9,7 +9,7 @@ import os
 import subprocess
 import threading
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 from uuid import uuid4
 
 from katrain.core.leela.parser import parse_lz_analyze
@@ -35,7 +35,7 @@ class LeelaEngine:
     DEFAULT_VISITS = 1000
     DEFAULT_INTERVAL = 100  # centiseconds for lz-analyze
 
-    def __init__(self, katrain, config: dict):
+    def __init__(self, katrain: Any, config: dict[str, Any]) -> None:
         """Initialize LeelaEngine.
 
         Args:
@@ -46,7 +46,7 @@ class LeelaEngine:
         """
         self.katrain = katrain
         self.config = config
-        self.process: Optional[subprocess.Popen] = None
+        self.process: Optional[subprocess.Popen[str]] = None
         self._lock = threading.Lock()
         self._analysis_thread: Optional[threading.Thread] = None
         self._shutdown_event = threading.Event()
@@ -309,7 +309,7 @@ class LeelaEngine:
         board_size: int,
         komi: float,
         request_id: str,
-    ):
+    ) -> None:
         """Run analysis in background thread.
 
         Args:

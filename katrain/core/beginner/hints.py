@@ -314,10 +314,15 @@ def get_beginner_hint_cached(
 
     # Phase 92: Cache stores (require_reliable, hint) tuple
     cached = getattr(node, cache_attr, _NOT_COMPUTED)
-    if cached is not _NOT_COMPUTED:
+    if cached is not _NOT_COMPUTED and isinstance(cached, tuple) and len(cached) == 2:
         cached_require_reliable, cached_hint = cached
         if cached_require_reliable == require_reliable:
-            return cached_hint
+            # cached_hint is BeginnerHint | None (trust the cache we set)
+            if cached_hint is None:
+                return None
+            # Cast to expected return type (we control what goes in the cache)
+            from typing import cast
+            return cast(Optional[BeginnerHint], cached_hint)
         # Setting changed, recompute
 
     hint = compute_beginner_hint(game, node, require_reliable=require_reliable)

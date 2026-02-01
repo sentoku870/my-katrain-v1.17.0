@@ -19,7 +19,7 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, cast
 import uuid
 
 from katrain.core.constants import DATA_FOLDER
@@ -39,7 +39,7 @@ from katrain.core.smart_kifu.models import (
 )
 
 if TYPE_CHECKING:
-    pass
+    from katrain.core.smart_kifu.models import BucketProfile
 
 
 logger = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ def list_training_sets() -> List[str]:
 # =============================================================================
 
 
-def _game_entry_to_dict(entry: GameEntry) -> dict:
+def _game_entry_to_dict(entry: GameEntry) -> dict[str, Any]:
     """GameEntryを辞書に変換。"""
     return {
         "game_id": entry.game_id,
@@ -129,7 +129,7 @@ def _game_entry_to_dict(entry: GameEntry) -> dict:
     }
 
 
-def _dict_to_game_entry(d: dict) -> GameEntry:
+def _dict_to_game_entry(d: dict[str, Any]) -> GameEntry:
     """辞書をGameEntryに変換。"""
     source_dict = d.get("source", {})
     return GameEntry(
@@ -248,7 +248,7 @@ def create_training_set(name: str) -> TrainingSetManifest:
 # =============================================================================
 
 
-def _bucket_profile_to_dict(profile: "BucketProfile") -> dict:
+def _bucket_profile_to_dict(profile: "BucketProfile") -> dict[str, Any]:
     """BucketProfileを辞書に変換。"""
     from katrain.core.smart_kifu.models import BucketProfile
     return {
@@ -265,7 +265,7 @@ def _bucket_profile_to_dict(profile: "BucketProfile") -> dict:
     }
 
 
-def _dict_to_bucket_profile(d: dict) -> "BucketProfile":
+def _dict_to_bucket_profile(d: dict[str, Any]) -> "BucketProfile":
     """辞書をBucketProfileに変換。"""
     from katrain.core.smart_kifu.models import BucketProfile, Confidence, ViewerPreset
     return BucketProfile(
@@ -377,7 +377,7 @@ def save_player_profile(profile: PlayerProfile) -> None:
 # =============================================================================
 
 
-def _extract_sgf_metadata(sgf_content: str) -> dict:
+def _extract_sgf_metadata(sgf_content: str) -> dict[str, int | str | None]:
     """SGFからメタデータを抽出（簡易版）。
 
     Args:
@@ -388,7 +388,7 @@ def _extract_sgf_metadata(sgf_content: str) -> dict:
     """
     import re
 
-    metadata = {
+    metadata: dict[str, int | str | None] = {
         "board_size": None,
         "handicap": None,
         "move_count": None,
@@ -504,10 +504,10 @@ def import_sgf_to_training_set(
             note="",
         ),
         tags=tags,
-        board_size=metadata["board_size"],
-        handicap=metadata["handicap"],
-        move_count=metadata["move_count"],
-        result=metadata["result"],
+        board_size=cast("int | None", metadata["board_size"]),
+        handicap=cast("int | None", metadata["handicap"]),
+        move_count=cast("int | None", metadata["move_count"]),
+        result=cast("str | None", metadata["result"]),
         analyzed_ratio=ratio,
         engine_profile_id=None,
     )

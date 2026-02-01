@@ -66,7 +66,7 @@ class Lang:
 i18n = Lang(DEFAULT_LANGUAGE)
 
 
-def rank_label(rank):
+def rank_label(rank: float | None) -> str:
     if rank is None:
         return "??k"
     if rank >= 0.5:

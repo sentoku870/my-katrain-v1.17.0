@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
@@ -90,7 +90,7 @@ def _select_evidence_moves(
     )
 
     # Dedupe by game_name
-    seen_games: set = set()
+    seen_games: set[str] = set()
     selected = []
     for ev in sorted_candidates:
         if ev.game_name not in seen_games:
@@ -168,7 +168,7 @@ def _format_evidence_with_links(
 
 
 def build_batch_summary(
-    game_stats_list: List[dict],
+    game_stats_list: List[dict[str, Any]],
     focus_player: Optional[str] = None,
 ) -> str:
     """Build a multi-game summary markdown from collected stats.
@@ -252,7 +252,7 @@ def build_batch_summary(
 # =============================================================================
 
 
-def get_phase_priority_text(key: str, lang: str = "jp", **kwargs) -> str:
+def get_phase_priority_text(key: str, lang: str = "jp", **kwargs: Any) -> str:
     """Get localized phase priority text with optional formatting."""
     normalized = normalize_lang_code(lang)
     texts = PHASE_PRIORITY_TEXTS.get(normalized, PHASE_PRIORITY_TEXTS["en"])
@@ -368,7 +368,7 @@ def get_color_bias_note(bias: str, lang: str = "jp") -> str:
 # =============================================================================
 
 
-def detect_color_bias(player_games: List[Tuple[dict, str]]) -> Optional[str]:
+def detect_color_bias(player_games: List[Tuple[dict[str, Any], str]]) -> Optional[str]:
     """Detect if all games are played as one color.
 
     Args:

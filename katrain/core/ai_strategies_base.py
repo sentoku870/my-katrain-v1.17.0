@@ -12,14 +12,14 @@ ai.pyから抽出された基底クラスとユーティリティ関数。
 from abc import ABC, abstractmethod
 import math
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     PRIORITY_EXTRA_AI_QUERY,
 )
-from katrain.core.game import Game, Move
+from katrain.core.game import Game, GameNode, Move
 
 
 # =============================================================================
@@ -29,9 +29,9 @@ from katrain.core.game import Game, Move
 STRATEGY_REGISTRY: Dict[str, type] = {}
 
 
-def register_strategy(strategy_name: str):
+def register_strategy(strategy_name: str) -> Callable[[Type["AIStrategy"]], Type["AIStrategy"]]:
     """Decorator to register a strategy class in the registry."""
-    def decorator(strategy_class):
+    def decorator(strategy_class: Type["AIStrategy"]) -> Type["AIStrategy"]:
         STRATEGY_REGISTRY[strategy_name] = strategy_class
         return strategy_class
     return decorator
@@ -41,12 +41,12 @@ def register_strategy(strategy_name: str):
 # Interpolation Utilities
 # =============================================================================
 
-def interp_ix(lst: List, x: float) -> Tuple[int, float]:
+def interp_ix(lst: List[float] | Tuple[float, ...], x: float) -> Tuple[int, float]:
     """Find interpolation index and fraction."""
     i = 0
     while i + 1 < len(lst) - 1 and lst[i + 1] < x:
         i += 1
-    t = max(0, min(1, (x - lst[i]) / (lst[i + 1] - lst[i])))
+    t = max(0.0, min(1.0, (x - lst[i]) / (lst[i + 1] - lst[i])))
     return i, t
 
 
@@ -54,20 +54,22 @@ def interp1d(lst: List[Tuple[float, float]], x: float) -> float:
     """1D linear interpolation."""
     xs, ys = zip(*lst)
     i, t = interp_ix(xs, x)
-    return (1 - t) * ys[i] + t * ys[i + 1]
+    result: float = (1 - t) * ys[i] + t * ys[i + 1]
+    return result
 
 
-def interp2d(gridspec: Tuple, x: float, y: float) -> float:
+def interp2d(gridspec: Tuple[List[float], List[float], List[List[float]]], x: float, y: float) -> float:
     """2D bilinear interpolation."""
     xs, ys, matrix = gridspec
     i, t = interp_ix(xs, x)
     j, s = interp_ix(ys, y)
-    return (
+    result: float = (
         matrix[j][i] * (1 - t) * (1 - s)
         + matrix[j][i + 1] * t * (1 - s)
         + matrix[j + 1][i] * (1 - t) * s
         + matrix[j + 1][i + 1] * t * s
     )
+    return result
 
 
 # =============================================================================
@@ -111,7 +113,7 @@ def policy_weighted_move(
 
 def generate_influence_territory_weights(
     ai_mode: str,
-    ai_settings: Dict,
+    ai_settings: Dict[str, Any],
     policy_grid: List[List[float]],
     size: Tuple[int, int],
 ) -> Tuple[List[Tuple[float, float, int, int]], str]:
@@ -120,16 +122,16 @@ def generate_influence_territory_weights(
 
     thr_line = ai_settings["threshold"] - 1  # zero-based
     if ai_mode == AI_INFLUENCE:
-        def weight(x, y):
-            return (1 / ai_settings["line_weight"]) ** (
+        def weight(x: int, y: int) -> float:
+            return float((1 / ai_settings["line_weight"]) ** (
                 max(0, thr_line - min(size[0] - 1 - x, x))
                 + max(0, thr_line - min(size[1] - 1 - y, y))
-            )
+            ))
     else:
-        def weight(x, y):
-            return (1 / ai_settings["line_weight"]) ** (
+        def weight(x: int, y: int) -> float:
+            return float((1 / ai_settings["line_weight"]) ** (
                 max(0, min(size[0] - 1 - x, x, size[1] - 1 - y, y) - thr_line)
-            )
+            ))
 
     weighted_coords = [
         (policy_grid[y][x] * weight(x, y), weight(x, y), x, y)
@@ -146,15 +148,16 @@ def generate_influence_territory_weights(
 
 def generate_local_tenuki_weights(
     ai_mode: str,
-    ai_settings: Dict,
+    ai_settings: Dict[str, Any],
     policy_grid: List[List[float]],
-    cn,  # GameNode
+    cn: GameNode,
     size: Tuple[int, int],
 ) -> Tuple[List[Tuple[float, float, int, int]], str]:
     """Generate position weights for local/tenuki strategies."""
     from katrain.core.constants import AI_TENUKI
 
     var = ai_settings["stddev"] ** 2
+    assert cn.move is not None and cn.move.coords is not None
     mx, my = cn.move.coords
     weighted_coords = [
         (policy_grid[y][x], math.exp(-0.5 * ((x - mx) ** 2 + (y - my) ** 2) / var), x, y)
@@ -185,7 +188,7 @@ class AIStrategy(ABC):
     All AI strategies inherit from this class and implement generate_move().
     """
 
-    def __init__(self, game: Game, ai_settings: Dict):
+    def __init__(self, game: Game, ai_settings: Dict[str, Any]) -> None:
         """Initialize the strategy.
 
         Args:
@@ -210,7 +213,7 @@ class AIStrategy(ABC):
         """
         pass
 
-    def request_analysis(self, extra_settings: Dict) -> Optional[Dict]:
+    def request_analysis(self, extra_settings: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Helper to request additional analysis with custom settings.
 
         Args:
@@ -224,9 +227,9 @@ class AIStrategy(ABC):
             OUTPUT_DEBUG,
         )
         error = False
-        analysis = None
+        analysis: Optional[Dict[str, Any]] = None
 
-        def set_analysis(a, partial_result):
+        def set_analysis(a: Dict[str, Any], partial_result: bool) -> None:
             nonlocal analysis
             if not partial_result:
                 analysis = a
@@ -234,7 +237,7 @@ class AIStrategy(ABC):
                     f"[{self.strategy_name}] Analysis received", OUTPUT_DEBUG
                 )
 
-        def set_error(a):
+        def set_error(a: Any) -> None:
             nonlocal error
             self.game.katrain.log(
                 f"[{self.strategy_name}] Error in additional analysis query: {a}",
@@ -264,7 +267,7 @@ class AIStrategy(ABC):
             )
         return analysis
 
-    def wait_for_analysis(self):
+    def wait_for_analysis(self) -> None:
         """Wait for the analysis to complete."""
         self.game.katrain.log(
             f"[{self.strategy_name}] Waiting for regular analysis to complete...",

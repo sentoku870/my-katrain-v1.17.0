@@ -42,12 +42,12 @@ class AnalysisCommand(ABC):
     query_id: Optional[str] = field(default=None)
     start_time: Optional[float] = field(default=None)
     status: str = field(default="pending")
-    error: Optional[Dict] = field(default=None)
-    result: Optional[Dict] = field(default=None)
+    error: Optional[dict[str, Any]] = field(default=None)
+    result: Optional[dict[str, Any]] = field(default=None)
     _cancelled: threading.Event = field(default_factory=threading.Event, repr=False)
 
     @abstractmethod
-    def prepare(self) -> Dict[str, Any]:
+    def prepare(self) -> dict[str, Any]:
         """Build and return the KataGo query dict.
 
         This method is called by the executor before sending the query.
@@ -60,7 +60,7 @@ class AnalysisCommand(ABC):
         pass
 
     @abstractmethod
-    def on_result(self, analysis: Dict, partial: bool) -> bool:
+    def on_result(self, analysis: dict[str, Any], partial: bool) -> bool:
         """Handle analysis result from KataGo.
 
         Called by the executor when a result is received. May be called
@@ -80,7 +80,7 @@ class AnalysisCommand(ABC):
         """
         pass
 
-    def on_error(self, error: Dict) -> None:
+    def on_error(self, error: dict[str, Any]) -> None:
         """Handle error from KataGo.
 
         Called by the executor when an error is received for this query.
@@ -144,21 +144,21 @@ class StandardAnalysisCommand(AnalysisCommand):
     """
 
     engine: Optional["KataGoEngine"] = field(default=None)
-    callback: Optional[Callable[[Dict, bool], None]] = field(default=None)
-    error_callback: Optional[Callable[[Dict], None]] = field(default=None)
+    callback: Optional[Callable[[dict[str, Any], bool], None]] = field(default=None)
+    error_callback: Optional[Callable[[dict[str, Any]], None]] = field(default=None)
     visits: Optional[int] = field(default=None)
     next_move: Optional["Move"] = field(default=None)
-    extra_settings: Optional[Dict[str, Any]] = field(default=None)
+    extra_settings: Optional[dict[str, Any]] = field(default=None)
     ponder: bool = field(default=False)
     find_alternatives: bool = field(default=False)
-    region_of_interest: Optional[list] = field(default=None)
+    region_of_interest: Optional[list[int]] = field(default=None)
     time_limit: bool = field(default=True)
     ownership: Optional[bool] = field(default=None)
     include_policy: bool = field(default=True)
     report_every: Optional[float] = field(default=None)
     priority: int = field(default=0)
 
-    def prepare(self) -> Dict[str, Any]:
+    def prepare(self) -> dict[str, Any]:
         """Build the KataGo query dict.
 
         Uses the engine's config for default values. Does NOT set PONDER_KEY
@@ -220,7 +220,7 @@ class StandardAnalysisCommand(AnalysisCommand):
 
         return query
 
-    def on_result(self, analysis: Dict, partial: bool) -> bool:
+    def on_result(self, analysis: dict[str, Any], partial: bool) -> bool:
         """Handle analysis result.
 
         Calls the callback if set and result is valid (not noResults).
@@ -243,7 +243,7 @@ class StandardAnalysisCommand(AnalysisCommand):
 
         return True
 
-    def on_error(self, error: Dict) -> None:
+    def on_error(self, error: dict[str, Any]) -> None:
         """Handle error, calling error_callback if set."""
         super().on_error(error)
         if self.error_callback:

@@ -13,9 +13,12 @@ Public API:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from katrain.core.analysis.board_context import BoardArea, classify_area
+
+if TYPE_CHECKING:
+    from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.analysis.meaning_tags import (
     MeaningTagId,
     THRESHOLD_ENDGAME_RATIO,
@@ -253,7 +256,7 @@ def get_area_from_gtp(gtp: Optional[str], board_size: int = 19) -> Optional[str]
 # =============================================================================
 
 def create_signature(
-    move_eval,  # MoveEval or duck-typed object
+    move_eval: Any,  # MoveEval or duck-typed object
     total_moves: Optional[int],
     board_size: int = 19,
 ) -> Optional[MistakeSignature]:
@@ -303,7 +306,7 @@ def create_signature(
 
 
 def mine_patterns(
-    games: Sequence[Tuple[str, object]],  # Sequence[(game_name, EvalSnapshot)]
+    games: Sequence[Tuple[str, "EvalSnapshot"]],
     board_size: int = 19,
     min_count: int = 2,
     top_n: int = 5,
@@ -336,6 +339,10 @@ def mine_patterns(
             # Get loss for aggregation
             loss = get_loss_value(move_eval)
             if loss is None:
+                continue
+
+            # Skip moves without player info
+            if move_eval.player is None:
                 continue
 
             # Create game reference

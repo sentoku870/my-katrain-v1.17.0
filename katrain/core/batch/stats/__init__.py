@@ -3,7 +3,7 @@
 Public API is eagerly exported; formatting module uses lazy loading.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # =============================================================================
 # Eager Exports (lightweight, frequently used, or required by tests)
@@ -96,10 +96,10 @@ _BACKWARD_COMPAT_ALIASES = {
     "_build_player_summary": "build_player_summary",
 }
 
-_lazy_cache: dict = {}
+_lazy_cache: dict[str, Any] = {}
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy load formatting module symbols and handle aliases."""
     if name in _BACKWARD_COMPAT_ALIASES:
         target = _BACKWARD_COMPAT_ALIASES[name]
@@ -120,7 +120,7 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def __dir__():
+def __dir__() -> list[str]:
     """Return list of public attributes for introspection."""
     # Return only __all__ symbols for clean dir() output
     return list(__all__)

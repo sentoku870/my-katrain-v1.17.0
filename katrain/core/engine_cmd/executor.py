@@ -7,7 +7,7 @@ of analysis commands, including submission, result delivery, and cancellation.
 import threading
 import time
 from collections import deque
-from typing import TYPE_CHECKING, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from katrain.core.engine_cmd.commands import AnalysisCommand
 
@@ -62,7 +62,7 @@ class CommandExecutor:
         self.commands: Dict[str, AnalysisCommand] = {}
         self._pending_commands: Set[AnalysisCommand] = set()
         self._lock = threading.Lock()
-        self._history: deque = deque(maxlen=self.MAX_HISTORY_SIZE)
+        self._history: deque[AnalysisCommand] = deque(maxlen=self.MAX_HISTORY_SIZE)
 
     @property
     def history(self) -> List[AnalysisCommand]:
@@ -113,7 +113,7 @@ class CommandExecutor:
         if command.is_cancelled():
             return command
 
-        def callback_wrapper(analysis: Dict, partial: bool) -> None:
+        def callback_wrapper(analysis: dict[str, Any], partial: bool) -> None:
             """Wrap the command's on_result with lifecycle management."""
             query_id = analysis.get("id")
 
@@ -152,9 +152,10 @@ class CommandExecutor:
                     if not partial and command.status == "executing":
                         command.status = "completed"
                         # Invariant: commands contains only ACTIVE
-                        self.commands.pop(command.query_id, None)
+                        if command.query_id is not None:
+                            self.commands.pop(command.query_id, None)
 
-        def error_wrapper(error: Dict) -> None:
+        def error_wrapper(error: dict[str, Any]) -> None:
             """Wrap the command's on_error with lifecycle management."""
             # Use error["id"] or fallback to command.query_id
             query_id = error.get("id") or command.query_id

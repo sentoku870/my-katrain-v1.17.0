@@ -15,6 +15,7 @@ from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
     DEFAULT_QUIZ_LOSS_THRESHOLD,
     EvalSnapshot,
+    QuizConfig,
     QuizItem,
     SKILL_PRESETS,
     DEFAULT_SKILL_PRESET,
@@ -22,7 +23,7 @@ from katrain.core.analysis.models import (
 )
 
 
-def get_skill_preset_quiz_config(name: str):
+def get_skill_preset_quiz_config(name: str) -> QuizConfig:
     """Return quiz config from skill preset."""
     preset = SKILL_PRESETS.get(name, SKILL_PRESETS[DEFAULT_SKILL_PRESET])
     return preset.quiz

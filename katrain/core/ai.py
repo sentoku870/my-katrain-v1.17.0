@@ -26,7 +26,7 @@ import heapq
 import math
 import random
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from katrain.core.constants import (
     AI_ACCURACY_DECAY_BASE,
@@ -41,6 +41,7 @@ from katrain.core.constants import (
 )
 from katrain.core.lang import i18n
 from katrain.core.game import Game, GameNode, Move
+from katrain.core.leela.models import LeelaPositionEval
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement, evaluation_class
 
 # =============================================================================
@@ -64,61 +65,80 @@ from katrain.core.ai_strategies_base import (
     AIStrategy,
 )
 
-def ai_rank_estimation(strategy, settings) -> int:
+def ai_rank_estimation(strategy: str, settings: Dict[str, Any]) -> float:
     if strategy in [AI_DEFAULT, AI_HANDICAP, AI_JIGO, AI_PRO]:
-        return 9
+        return 9.0
     if strategy == AI_RANK:
-        return 1 - settings["kyu_rank"]
+        return 1 - float(settings["kyu_rank"])
     if strategy == AI_HUMAN:
-        return 1 - settings["human_kyu_rank"]
+        return 1 - float(settings["human_kyu_rank"])
 
+    elo: float = 0.0
     if strategy in [AI_WEIGHTED, AI_SCORELOSS, AI_LOCAL, AI_TENUKI, AI_TERRITORY, AI_INFLUENCE, AI_PICK]:
         if strategy == AI_WEIGHTED:
             elo = interp1d(AI_WEIGHTED_ELO, settings["weaken_fac"])
         if strategy == AI_SCORELOSS:
-            elo = interp1d(AI_SCORELOSS_ELO, settings["strength"])
+            # Convert int ELO values to float for type compatibility
+            scoreloss_elo: List[Tuple[float, float]] = [(x, float(y)) for x, y in AI_SCORELOSS_ELO]
+            elo = interp1d(scoreloss_elo, settings["strength"])
+        Interp2DGrid = Tuple[List[float], List[float], List[List[float]]]
         if strategy == AI_PICK:
-            elo = interp2d(AI_PICK_ELO_GRID, settings["pick_frac"], settings["pick_n"])
+            elo = interp2d(cast(Interp2DGrid, tuple(AI_PICK_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
         if strategy == AI_LOCAL:
-            elo = interp2d(AI_LOCAL_ELO_GRID, settings["pick_frac"], settings["pick_n"])
+            elo = interp2d(cast(Interp2DGrid, tuple(AI_LOCAL_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
         if strategy == AI_TENUKI:
-            elo = interp2d(AI_TENUKI_ELO_GRID, settings["pick_frac"], settings["pick_n"])
+            elo = interp2d(cast(Interp2DGrid, tuple(AI_TENUKI_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
         if strategy == AI_TERRITORY:
-            elo = interp2d(AI_TERRITORY_ELO_GRID, settings["pick_frac"], settings["pick_n"])
+            elo = interp2d(cast(Interp2DGrid, tuple(AI_TERRITORY_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
         if strategy == AI_INFLUENCE:
-            elo = interp2d(AI_INFLUENCE_ELO_GRID, settings["pick_frac"], settings["pick_n"])
+            elo = interp2d(cast(Interp2DGrid, tuple(AI_INFLUENCE_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
 
-        kyu = interp1d(CALIBRATED_RANK_ELO, elo)
+        # Convert CALIBRATED_RANK_ELO to proper type
+        calibrated_elo: List[Tuple[float, float]] = [(x, float(y)) for x, y in CALIBRATED_RANK_ELO]
+        kyu = interp1d(calibrated_elo, elo)
         return 1 - kyu
     else:
-        return AI_STRENGTH[strategy]
+        return float(AI_STRENGTH[strategy])
 
-def game_report(game, thresholds, depth_filter=None):
-    cn = game.current_node
-    nodes = cn.nodes_from_root
+def game_report(
+    game: "Game",
+    thresholds: List[float],
+    depth_filter: Optional[Tuple[float, float]] = None,
+) -> Tuple[Dict[str, Dict[str, float]], List[Dict[str, int]], Dict[str, List[float]]]:
+    cn: GameNode = game.current_node
+    nodes: List[GameNode] = [n for n in cn.nodes_from_root if isinstance(n, GameNode)]
     while cn.children:  # main branch
-        cn = cn.children[0]
-        nodes.append(cn)
+        child = cn.children[0]
+        if isinstance(child, GameNode):
+            cn = child
+            nodes.append(cn)
+        else:
+            break
 
     x, y = game.board_size
-    depth_filter = [math.ceil(board_frac * x * y) for board_frac in depth_filter or (0, 1e9)]
-    nodes = [n for n in nodes if n.move and not n.is_root and depth_filter[0] <= n.depth < depth_filter[1]]
-    histogram = [{"B": 0, "W": 0} for _ in thresholds]
-    ai_top_move_count = {"B": 0, "W": 0}
-    ai_approved_move_count = {"B": 0, "W": 0}
-    player_ptloss = {"B": [], "W": []}
-    weights = {"B": [], "W": []}
+    depth_filter_list = [math.ceil(board_frac * x * y) for board_frac in depth_filter or (0, 1e9)]
+    nodes = [n for n in nodes if n.move and not n.is_root and depth_filter_list[0] <= n.depth < depth_filter_list[1]]
+    histogram: List[Dict[str, int]] = [{"B": 0, "W": 0} for _ in thresholds]
+    ai_top_move_count: Dict[str, int] = {"B": 0, "W": 0}
+    ai_approved_move_count: Dict[str, int] = {"B": 0, "W": 0}
+    player_ptloss: Dict[str, List[float]] = {"B": [], "W": []}
+    weights: Dict[str, List[Tuple[float, float]]] = {"B": [], "W": []}
 
     for n in nodes:
         points_lost = n.points_lost
-        if n.points_lost is None:
+        if points_lost is None:
             continue
         else:
-            points_lost = max(0, points_lost)
+            points_lost = max(0.0, points_lost)
         bucket = len(thresholds) - 1 - evaluation_class(points_lost, thresholds)
         player_ptloss[n.player].append(points_lost)
         histogram[bucket][n.player] += 1
-        cands = n.parent.candidate_moves
+
+        parent = n.parent
+        if parent is None or not isinstance(parent, GameNode):
+            continue
+
+        cands = parent.candidate_moves
         filtered_cands = [d for d in cands if d["order"] < ADDITIONAL_MOVE_ORDER and "prior" in d]
         weight = min(
             1.0,
@@ -128,10 +148,15 @@ def game_report(game, thresholds, depth_filter=None):
         # adj_weight between 0.05 - 1, dependent on difficulty and points lost
         adj_weight = max(0.05, min(1.0, max(weight, points_lost / 4)))
         weights[n.player].append((weight, adj_weight))
-        if n.parent.analysis_complete:
-            ai_top_move_count[n.player] += int(cands[0]["move"] == n.move.gtp())
+
+        move = n.move
+        if move is None:
+            continue
+
+        if parent.analysis_complete:
+            ai_top_move_count[n.player] += int(cands[0]["move"] == move.gtp())
             ai_approved_move_count[n.player] += int(
-                n.move.gtp()
+                move.gtp()
                 in [d["move"] for d in filtered_cands if d["order"] == 0 or (d["pointsLost"] < 0.5 and d["order"] < 5)]
             )
 
@@ -175,7 +200,7 @@ class DefaultStrategy(AIStrategy):
         
         if not candidate_moves:
             self.game.katrain.log(f"[DefaultStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
-            top_cand = Move(is_pass=True, player=self.cn.next_player)
+            top_cand = Move(None, player=self.cn.next_player)
         else:
             top_move_data = candidate_moves[0]
             top_cand = Move.from_gtp(top_move_data["move"], player=self.cn.next_player)
@@ -290,7 +315,7 @@ class JigoStrategy(AIStrategy):
         
         if not candidate_moves:
             self.game.katrain.log(f"[JigoStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
-            return Move(is_pass=True, player=self.cn.next_player), "No candidate moves found, passing"
+            return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
         
         # Get top engine move for reference
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
@@ -342,7 +367,7 @@ class ScoreLossStrategy(AIStrategy):
         
         if not candidate_moves:
             self.game.katrain.log(f"[ScoreLossStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
-            return Move(is_pass=True, player=self.cn.next_player), "No candidate moves found, passing"
+            return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
         
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[ScoreLossStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
@@ -384,65 +409,67 @@ class ScoreLossStrategy(AIStrategy):
 
 class OwnershipBaseStrategy(AIStrategy):
     """Base class for ownership-based strategies"""
-    
-    def settledness(self, d, player_sign, player):
+
+    def settledness(self, d: Dict[str, Any], player_sign: int, player: str) -> float:
         """Calculate settledness for Simple Ownership strategy"""
-        ownership_sum = sum([abs(o) for o in d["ownership"] if player_sign * o > 0])
+        ownership: List[float] = d["ownership"]
+        ownership_sum = sum([abs(o) for o in ownership if player_sign * o > 0])
         self.game.katrain.log(f"[{self.strategy_name}] Calculating settledness for {player}, sign={player_sign}: {ownership_sum:.2f}", OUTPUT_DEBUG)
         return ownership_sum
-    
-    def is_attachment(self, move):
+
+    def is_attachment(self, move: Move) -> bool:
         """Check if a move is an attachment"""
-        if move.is_pass:
+        if move.is_pass or move.coords is None:
             return False
-            
-        stones_with_player = {(*s.coords, s.player) for s in self.game.stones}
-        
+
+        stones_with_player = {(*s.coords, s.player) for s in self.game.stones if s.coords is not None}
+
         attach_opponent_stones = sum(
             (move.coords[0] + dx, move.coords[1] + dy, self.cn.player) in stones_with_player
             for dx in [-1, 0, 1]
             for dy in [-1, 0, 1]
             if abs(dx) + abs(dy) == 1
         )
-        
+
         nearby_own_stones = sum(
             (move.coords[0] + dx, move.coords[1] + dy, self.cn.next_player) in stones_with_player
             for dx in [-2, 0, 1, 2]
             for dy in [-2 - 1, 0, 1, 2]
             if abs(dx) + abs(dy) <= 2  # allows clamps/jumps
         )
-        
+
         is_attach = attach_opponent_stones >= 1 and nearby_own_stones == 0
         self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} an attachment? {is_attach} (opponent stones: {attach_opponent_stones}, own stones: {nearby_own_stones})", OUTPUT_DEBUG)
         return is_attach
-    
-    def is_tenuki(self, move):
+
+    def is_tenuki(self, move: Move) -> bool:
         """Check if a move is a tenuki (far from previous moves)"""
-        if move.is_pass:
+        if move.is_pass or move.coords is None:
             return False
-            
+
         result = not any(
             not node
             or not node.move
             or node.move.is_pass
+            or node.move.coords is None
             or max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords)) < 5
             for node in [self.cn, self.cn.parent]
         )
-        
-        distances = []
+
+        distances: List[int] = []
         for node in [self.cn, self.cn.parent]:
-            if node and node.move and not node.move.is_pass:
+            if node and node.move and not node.move.is_pass and node.move.coords is not None:
                 dist = max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords))
                 distances.append(dist)
-                
+
         if distances:
             self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (distances: {distances})", OUTPUT_DEBUG)
         else:
             self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (no valid previous moves)", OUTPUT_DEBUG)
-            
+
         return result
-    
-    def get_moves_with_settledness(self):
+
+    def get_moves_with_settledness(self) -> List[Tuple[Move, float, float, bool, bool, Dict[str, Any]]]:
         """Get moves with ownership and settledness information"""
         self.game.katrain.log(f"[{self.strategy_name}] Getting moves with settledness information", OUTPUT_DEBUG)
         
@@ -528,7 +555,7 @@ class SimpleOwnershipStrategy(OwnershipBaseStrategy):
         
         if not candidate_moves:
             self.game.katrain.log(f"[SimpleOwnershipStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
-            return Move(is_pass=True, player=self.cn.next_player), "No candidate moves found, passing"
+            return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
         
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[SimpleOwnershipStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
@@ -571,15 +598,19 @@ class SimpleOwnershipStrategy(OwnershipBaseStrategy):
 @register_strategy(AI_SETTLE_STONES)
 class SettleStonesStrategy(OwnershipBaseStrategy):
     """Settle Stones strategy - focuses on settled stones"""
-    
-    def settledness(self, d, player_sign, player):
+
+    def settledness(self, d: Dict[str, Any], player_sign: int, player: str) -> float:
         """Calculate settledness for Settle Stones strategy"""
         board_size_x, board_size_y = self.game.board_size
-        ownership_grid = var_to_grid(d["ownership"], (board_size_x, board_size_y))
-        
+        ownership_grid: List[List[float]] = var_to_grid(d["ownership"], (board_size_x, board_size_y))
+
         # Sum the absolute ownership values of existing stones
-        stone_ownership_values = [abs(ownership_grid[s.coords[0]][s.coords[1]]) for s in self.game.stones if s.player == player]
-        total_settledness = sum(stone_ownership_values)
+        stone_ownership_values: List[float] = [
+            abs(ownership_grid[s.coords[0]][s.coords[1]])
+            for s in self.game.stones
+            if s.player == player and s.coords is not None
+        ]
+        total_settledness: float = sum(stone_ownership_values)
         
         self.game.katrain.log(f"[SettleStonesStrategy] Calculating settledness for {player}, sign={player_sign}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[SettleStonesStrategy] Number of stones considered: {len(stone_ownership_values)}", OUTPUT_DEBUG)
@@ -601,7 +632,7 @@ class SettleStonesStrategy(OwnershipBaseStrategy):
         
         if not candidate_moves:
             self.game.katrain.log(f"[SettleStonesStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
-            return Move(is_pass=True, player=self.cn.next_player), "No candidate moves found, passing"
+            return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
         
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[SettleStonesStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
@@ -660,8 +691,12 @@ class PolicyStrategy(AIStrategy):
             return DefaultStrategy(self.game, self.settings).generate_move()
         
         policy_moves = self.cn.policy_ranking
+        if policy_moves is None:
+            self.game.katrain.log(f"[PolicyStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            return DefaultStrategy(self.game, self.settings).generate_move()
+
         pass_policy = self.cn.policy[-1]
-        
+
         self.game.katrain.log(f"[PolicyStrategy] Got {len(policy_moves)} policy moves", OUTPUT_DEBUG)
         self.game.katrain.log(f"[PolicyStrategy] Current move depth: {self.cn.depth}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[PolicyStrategy] Opening moves setting: {self.settings.get('opening_moves', 0)}", OUTPUT_DEBUG)
@@ -717,8 +752,12 @@ class WeightedStrategy(AIStrategy):
             return DefaultStrategy(self.game, self.settings).generate_move()
         
         policy_moves = self.cn.policy_ranking
+        if policy_moves is None:
+            self.game.katrain.log(f"[WeightedStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            return DefaultStrategy(self.game, self.settings).generate_move()
+
         pass_policy = self.cn.policy[-1]
-        
+
         self.game.katrain.log(f"[WeightedStrategy] Got {len(policy_moves)} policy moves", OUTPUT_DEBUG)
         
         # Log top 5 policy moves
@@ -778,66 +817,85 @@ class WeightedStrategy(AIStrategy):
 
 class PickBasedStrategy(AIStrategy):
     """Base class for pick-based strategies"""
-    
-    def get_n_moves(self, legal_policy_moves):
+
+    def get_n_moves(self, legal_policy_moves: List[Tuple[float, Move]]) -> int:
         """Calculate the number of moves to consider"""
         board_squares = self.game.board_size[0] * self.game.board_size[1]
-        
+
         if self.settings.get("pick_frac") is not None:
             n_moves = max(1, int(self.settings["pick_frac"] * len(legal_policy_moves) + self.settings["pick_n"]))
             self.game.katrain.log(f"[{self.strategy_name}] Calculated n_moves={n_moves} from pick_frac={self.settings['pick_frac']}, pick_n={self.settings['pick_n']}, legal_moves={len(legal_policy_moves)}", OUTPUT_DEBUG)
         else:
             n_moves = 1  # Default
             self.game.katrain.log(f"[{self.strategy_name}] Using default n_moves={n_moves} (no pick_frac in settings)", OUTPUT_DEBUG)
-            
+
         return n_moves
-    
-    def generate_weighted_coords(self, legal_policy_moves, policy_grid, size):
+
+    def generate_weighted_coords(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[List[Tuple[float, float, int, int]], str]:
         """Generate weighted coordinates for selection"""
         self.game.katrain.log(f"[{self.strategy_name}] Generating weighted coordinates (default equal weights implementation)", OUTPUT_DEBUG)
-        
+
         # Default implementation for AI_PICK - equal weights
-        weighted_coords = [
+        weighted_coords: List[Tuple[float, float, int, int]] = [
             (policy_grid[y][x], 1, x, y)
             for x in range(size[0])
             for y in range(size[1])
             if policy_grid[y][x] > 0
         ]
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
-        
+
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0])
             self.game.katrain.log(f"[{self.strategy_name}] Top 5 weighted coordinates by policy value:", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
                 self.game.katrain.log(f"[{self.strategy_name}] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}", OUTPUT_DEBUG)
-                
+
         return weighted_coords, "Generated equal weights for all moves. "
-    
-    def handle_endgame(self, legal_policy_moves, policy_grid, size):
+
+    def handle_endgame(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[Optional[List[Tuple[float, float, int, int]]], str, Optional[int], bool]:
         """Handle special endgame case"""
         board_squares = size[0] * size[1]
         endgame_threshold = self.settings.get("endgame", AI_ENDGAME_FILL_RATIO_DEFAULT) * board_squares
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Checking endgame condition: move depth {self.cn.depth} vs threshold {endgame_threshold}", OUTPUT_DEBUG)
-        
+
         if self.cn.depth > endgame_threshold:
             self.game.katrain.log(f"[{self.strategy_name}] In endgame phase (move {self.cn.depth} > {endgame_threshold})", OUTPUT_DEBUG)
-            
-            weighted_coords = [(pol, 1, *mv.coords) for pol, mv in legal_policy_moves]
+
+            weighted_coords: List[Tuple[float, float, int, int]] = [
+                (pol, 1, mv.coords[0], mv.coords[1])
+                for pol, mv in legal_policy_moves
+                if mv.coords is not None
+            ]
             ai_thoughts = f"Generated equal weights as move number >= {self.settings['endgame'] * size[0] * size[1]}. "
-            
+
             n_moves = int(max(self.get_n_moves(legal_policy_moves), len(legal_policy_moves) // 2))
             self.game.katrain.log(f"[{self.strategy_name}] Using endgame n_moves={n_moves}", OUTPUT_DEBUG)
-            
+
             self.game.katrain.log(f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates for endgame", OUTPUT_DEBUG)
-            
+
             return weighted_coords, ai_thoughts, n_moves, True
-            
+
         self.game.katrain.log(f"[{self.strategy_name}] Not in endgame phase yet", OUTPUT_DEBUG)
         return None, "", None, False
-    
-    def select_from_weighted_coords(self, weighted_coords, n_moves, pass_policy):
+
+    def select_from_weighted_coords(
+        self,
+        weighted_coords: List[Tuple[float, float, int, int]],
+        n_moves: int,
+        pass_policy: float,
+    ) -> Tuple[Move, str]:
         """Select moves from weighted coordinates"""
         self.game.katrain.log(f"[{self.strategy_name}] Selecting from {len(weighted_coords)} weighted coordinates, n_moves={n_moves}", OUTPUT_DEBUG)
         
@@ -868,8 +926,10 @@ class PickBasedStrategy(AIStrategy):
                 self.game.katrain.log(f"[{self.strategy_name}] Pass policy {pass_policy:.2%} is better than top move {aimove.gtp()} ({new_top[0][0]:.2%}), switching to top policy move", OUTPUT_DEBUG)
                 
                 policy_moves = self.cn.policy_ranking
+                if policy_moves is None:
+                    return DefaultStrategy(self.game, self.settings).generate_move()
                 top_policy_move = policy_moves[0][1]
-                
+
                 ai_thoughts += f"But found pass ({pass_policy:.2%} to be higher rated than {aimove.gtp()} ({new_top[0][0]:.2%}) so will play top policy move instead."
                 aimove = top_policy_move
                 
@@ -878,15 +938,17 @@ class PickBasedStrategy(AIStrategy):
                 self.game.katrain.log(f"[{self.strategy_name}] Top move is better than pass, keeping it", OUTPUT_DEBUG)
         else:
             self.game.katrain.log(f"[{self.strategy_name}] No moves selected, falling back to top policy move", OUTPUT_DEBUG)
-            
+
             policy_moves = self.cn.policy_ranking
+            if policy_moves is None:
+                return DefaultStrategy(self.game, self.settings).generate_move()
             top_policy_move = policy_moves[0][1]
             aimove = top_policy_move
-            
+
             ai_thoughts = f"Pick policy strategy failed to find legal moves, so is playing top policy move {aimove.gtp()}."
-            
+
             self.game.katrain.log(f"[{self.strategy_name}] Final move (fallback): {aimove.gtp()}", OUTPUT_DEBUG)
-            
+
         return aimove, ai_thoughts
     
     def generate_move(self) -> Tuple[Move, str]:
@@ -899,29 +961,33 @@ class PickBasedStrategy(AIStrategy):
             return DefaultStrategy(self.game, self.settings).generate_move()
         
         policy_moves = self.cn.policy_ranking
+        if policy_moves is None:
+            self.game.katrain.log(f"[{self.strategy_name}] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            return DefaultStrategy(self.game, self.settings).generate_move()
+
         pass_policy = self.cn.policy[-1]
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Got {len(policy_moves)} policy moves", OUTPUT_DEBUG)
-        
+
         # Log top 5 policy moves
         self.game.katrain.log(f"[{self.strategy_name}] Top 5 policy moves:", OUTPUT_DEBUG)
         for i, (prob, move) in enumerate(policy_moves[:5]):
             self.game.katrain.log(f"[{self.strategy_name}] #{i+1}: {move.gtp()} - {prob:.2%}", OUTPUT_DEBUG)
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Pass policy: {pass_policy:.2%}", OUTPUT_DEBUG)
-        
+
         # Check for pass in top 5
         top_5_pass = any([polmove[1].is_pass for polmove in policy_moves[:5]])
         self.game.katrain.log(f"[{self.strategy_name}] Pass in top 5: {top_5_pass}", OUTPUT_DEBUG)
-        
+
         # Get override settings
         override = self.settings.get("pick_override", 0.0)
         overridetwo = self.settings.get("pick_override_two", 1.0)
         self.game.katrain.log(f"[{self.strategy_name}] Override settings: single={override:.2%}, combined={overridetwo:.2%}", OUTPUT_DEBUG)
-        
+
         # Check if we should override with top move
         override_move, override_thoughts = self.should_play_top_move(
-            policy_moves, 
+            policy_moves,
             top_5_pass,
             override=override,
             overridetwo=overridetwo
@@ -946,6 +1012,7 @@ class PickBasedStrategy(AIStrategy):
         
         if is_endgame:
             self.game.katrain.log(f"[{self.strategy_name}] Using endgame logic", OUTPUT_DEBUG)
+            assert end_coords is not None and end_n_moves is not None
             return self.select_from_weighted_coords(end_coords, end_n_moves, pass_policy)
         
         # Get weighted coordinates
@@ -968,19 +1035,24 @@ class PickBasedStrategy(AIStrategy):
 @register_strategy(AI_PICK)
 class PickStrategy(PickBasedStrategy):
     """Pick strategy - picks a move from a subset of legal moves"""
-    
+
     def generate_move(self) -> Tuple[Move, str]:
         self.game.katrain.log(f"[PickStrategy] Starting move generation using base PickBasedStrategy implementation", OUTPUT_DEBUG)
         return super().generate_move()
 
-    def handle_endgame(self, legal_policy_moves, policy_grid, size):
+    def handle_endgame(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[Optional[List[Tuple[float, float, int, int]]], str, Optional[int], bool]:
         return None, "", None, False
 
 @register_strategy(AI_RANK)
 class RankStrategy(PickBasedStrategy):
     """Rank strategy - similar to Pick but calibrated based on rank"""
-    
-    def get_n_moves(self, legal_policy_moves):
+
+    def get_n_moves(self, legal_policy_moves: List[Tuple[float, Move]]) -> int:
         """Calculate n_moves based on rank"""
         self.game.katrain.log(f"[RankStrategy] Calculating n_moves based on rank", OUTPUT_DEBUG)
         
@@ -1021,45 +1093,62 @@ class RankStrategy(PickBasedStrategy):
         denominator = 1.31165 * (modified_calib_avemodrank + 1) - 0.082653
         self.game.katrain.log(f"[RankStrategy] Denominator: {denominator:.4f}", OUTPUT_DEBUG)
         
-        n_moves = board_squares * norm_leg_moves / denominator
-        n_moves = max(1, round(n_moves))
-        
+        n_moves_float = board_squares * norm_leg_moves / denominator
+        n_moves: int = max(1, int(round(n_moves_float)))
+
         self.game.katrain.log(f"[RankStrategy] Calculated n_moves: {n_moves}", OUTPUT_DEBUG)
-        
+
         return n_moves
     
-    def should_play_top_move(self, policy_moves, top_5_pass, override=0.0, overridetwo=1.0):
+    def should_play_top_move(
+        self,
+        policy_moves: List[Tuple[float, Move]],
+        top_5_pass: bool,
+        override: float = 0.0,
+        overridetwo: float = 1.0,
+    ) -> Tuple[Optional[Move], str]:
         """Special override logic for rank-based"""
         self.game.katrain.log(f"[RankStrategy] Calculating special override thresholds based on rank", OUTPUT_DEBUG)
-        
+
         size = self.game.board_size
         board_squares = size[0] * size[1]
         legal_policy_moves = [(pol, mv) for pol, mv in policy_moves if not mv.is_pass and pol > 0]
-        
+
         # Parameters for calculating the overrides
         self.game.katrain.log(f"[RankStrategy] Board squares: {board_squares}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[RankStrategy] Legal non-pass moves: {len(legal_policy_moves)}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[RankStrategy] Kyu rank: {self.settings['kyu_rank']}", OUTPUT_DEBUG)
-        
+
         # Calibrated override based on board filling
         ratio = (board_squares - len(legal_policy_moves)) / board_squares
         override = 0.8 * (1 - 0.5 * ratio)
         self.game.katrain.log(f"[RankStrategy] Calculated override: {override:.2%} (from board filling ratio {ratio:.2f})", OUTPUT_DEBUG)
-        
+
         overridetwo = 0.85 + max(0, 0.02 * (self.settings["kyu_rank"] - 8))
         self.game.katrain.log(f"[RankStrategy] Calculated overridetwo: {overridetwo:.2%} (from kyu rank adjustment)", OUTPUT_DEBUG)
-        
+
         # Call the parent class method with calculated overrides
         return super().should_play_top_move(policy_moves, top_5_pass, override, overridetwo)
 
-    def handle_endgame(self, legal_policy_moves, policy_grid, size):
+    def handle_endgame(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[Optional[List[Tuple[float, float, int, int]]], str, Optional[int], bool]:
         return None, "", None, False
+
 
 @register_strategy(AI_INFLUENCE)
 class InfluenceStrategy(PickBasedStrategy):
     """Influence strategy - weights moves based on influence (distance from edge)"""
-    
-    def generate_weighted_coords(self, legal_policy_moves, policy_grid, size):
+
+    def generate_weighted_coords(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[List[Tuple[float, float, int, int]], str]:
         """Generate influence-based weights"""
         self.game.katrain.log(f"[InfluenceStrategy] Generating influence-based weights", OUTPUT_DEBUG)
         self.game.katrain.log(f"[InfluenceStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}", OUTPUT_DEBUG)
@@ -1080,8 +1169,13 @@ class InfluenceStrategy(PickBasedStrategy):
 @register_strategy(AI_TERRITORY)
 class TerritoryStrategy(PickBasedStrategy):
     """Territory strategy - weights moves based on territory (distance from center)"""
-    
-    def generate_weighted_coords(self, legal_policy_moves, policy_grid, size):
+
+    def generate_weighted_coords(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[List[Tuple[float, float, int, int]], str]:
         """Generate territory-based weights"""
         self.game.katrain.log(f"[TerritoryStrategy] Generating territory-based weights", OUTPUT_DEBUG)
         self.game.katrain.log(f"[TerritoryStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}", OUTPUT_DEBUG)
@@ -1102,23 +1196,29 @@ class TerritoryStrategy(PickBasedStrategy):
 @register_strategy(AI_LOCAL)
 class LocalStrategy(PickBasedStrategy):
     """Local strategy - weights moves based on proximity to the last move"""
-    
+
     def generate_move(self) -> Tuple[Move, str]:
         # Handle the case where there's no previous move
         if not (self.cn.move and self.cn.move.coords):
             self.game.katrain.log(f"[LocalStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy", OUTPUT_DEBUG)
             self.game.katrain.log(f"[LocalStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02", OUTPUT_DEBUG)
             return WeightedStrategy(self.game, {
-                "pick_override": 0.9, 
-                "weaken_fac": 1, 
+                "pick_override": 0.9,
+                "weaken_fac": 1,
                 "lower_bound": 0.02
             }).generate_move()
-        
+
         return super().generate_move()
-    
-    def generate_weighted_coords(self, legal_policy_moves, policy_grid, size):
+
+    def generate_weighted_coords(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[List[Tuple[float, float, int, int]], str]:
         """Generate local-based weights"""
         self.game.katrain.log(f"[LocalStrategy] Generating local-based weights around previous move", OUTPUT_DEBUG)
+        assert self.cn.move is not None, "Move cannot be None at this point"
         self.game.katrain.log(f"[LocalStrategy] Previous move: {self.cn.move.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[LocalStrategy] Variance setting: {self.settings['stddev']}", OUTPUT_DEBUG)
         weighted_coords, ai_thoughts = generate_local_tenuki_weights(
@@ -1139,23 +1239,29 @@ class LocalStrategy(PickBasedStrategy):
 @register_strategy(AI_TENUKI)
 class TenukiStrategy(PickBasedStrategy):
     """Tenuki strategy - weights moves based on distance from the last move"""
-    
+
     def generate_move(self) -> Tuple[Move, str]:
         # Handle the case where there's no previous move
         if not (self.cn.move and self.cn.move.coords):
             self.game.katrain.log(f"[TenukiStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy", OUTPUT_DEBUG)
             self.game.katrain.log(f"[TenukiStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02", OUTPUT_DEBUG)
             return WeightedStrategy(self.game, {
-                "pick_override": 0.9, 
-                "weaken_fac": 1, 
+                "pick_override": 0.9,
+                "weaken_fac": 1,
                 "lower_bound": 0.02
             }).generate_move()
-        
+
         return super().generate_move()
-    
-    def generate_weighted_coords(self, legal_policy_moves, policy_grid, size):
+
+    def generate_weighted_coords(
+        self,
+        legal_policy_moves: List[Tuple[float, Move]],
+        policy_grid: List[List[float]],
+        size: Tuple[int, int],
+    ) -> Tuple[List[Tuple[float, float, int, int]], str]:
         """Generate tenuki-based weights"""
         self.game.katrain.log(f"[TenukiStrategy] Generating tenuki-based weights (far from previous move)", OUTPUT_DEBUG)
+        assert self.cn.move is not None, "Move cannot be None at this point"
         self.game.katrain.log(f"[TenukiStrategy] Previous move: {self.cn.move.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[TenukiStrategy] Variance setting: {self.settings['stddev']}", OUTPUT_DEBUG)
         weighted_coords, ai_thoughts = generate_local_tenuki_weights(
@@ -1177,15 +1283,15 @@ class TenukiStrategy(PickBasedStrategy):
 @register_strategy(AI_PRO)
 class HumanStyleStrategy(AIStrategy):
     """Strategy that imitates human play at various skill levels"""
-    
-    def __init__(self, game: Game, ai_settings: Dict):
+
+    def __init__(self, game: Game, ai_settings: Dict[str, Any]):
         super().__init__(game, ai_settings)
         self.game.katrain.log(f"[HumanStyleStrategy] Initializing HumanStyleStrategy", OUTPUT_DEBUG)
         self.game.katrain.log(f"[HumanStyleStrategy] AI settings: {ai_settings}", OUTPUT_DEBUG)
-        
+
     def generate_move(self) -> Tuple[Move, str]:
         self.game.katrain.log(f"[HumanStyleStrategy] Starting move generation", OUTPUT_DEBUG)
-        
+
         if "human_kyu_rank" in self.settings:
             human_kyu_rank = round(self.settings["human_kyu_rank"])
             human_style = "rank" if self.settings["modern_style"] else "preaz"
@@ -1199,20 +1305,21 @@ class HumanStyleStrategy(AIStrategy):
         else:
             pro_year = round(self.settings["pro_year"])
             human_profile = f"proyear_{pro_year}"
-        
+
         self.game.katrain.log(f"[HumanStyleStrategy] Human profile string: {human_profile}", OUTPUT_DEBUG)
-        
+
         # Define override settings (separate from includePolicy)
-        override_settings = {
+        override_settings: Dict[str, Any] = {
             "humanSLProfile": human_profile,
             "ignorePreRootHistory": False,
         }
         self.game.katrain.log(f"[HumanStyleStrategy] Override settings for engine: {override_settings}", OUTPUT_DEBUG)
-        
+
         # Request analysis from engine - note includePolicy is a direct parameter
-        analysis = None
-        
-        def set_analysis(a, partial_result):
+        analysis: Optional[Dict[str, Any]] = None
+        error = False  # Define error BEFORE the nested function
+
+        def set_analysis(a: Optional[Dict[str, Any]], partial_result: bool) -> None:
             nonlocal analysis
             if not partial_result:
                 self.game.katrain.log(f"[HumanStyleStrategy] Full analysis results received", OUTPUT_DEBUG)
@@ -1228,13 +1335,11 @@ class HumanStyleStrategy(AIStrategy):
             else:
                 self.game.katrain.log(f"[HumanStyleStrategy] Received partial analysis results - ignoring", OUTPUT_DEBUG)
 
-        def set_error(a):
+        def set_error(a: Any) -> None:
             nonlocal error
             error = True
             self.game.katrain.log(f"[HumanStyleStrategy] Error in human analysis query: {a}", OUTPUT_ERROR)
             self.game.katrain.log(f"[HumanStyleStrategy] Will attempt to fall back to policy move", OUTPUT_DEBUG)
-            
-        error = False
         self.game.katrain.log(f"[HumanStyleStrategy] Getting engine for player", OUTPUT_DEBUG)
         engine = self.game.engines[self.cn.player]
         self.game.katrain.log(f"[HumanStyleStrategy] Using engine for player {self.cn.player}", OUTPUT_DEBUG)
@@ -1323,7 +1428,7 @@ class HumanStyleStrategy(AIStrategy):
         self.game.katrain.log(f"[HumanStyleStrategy] Final decision: {move.gtp()}", OUTPUT_DEBUG)
         return move, ai_thoughts
 
-def generate_ai_move(game: Game, ai_mode: str, ai_settings: Dict) -> Tuple[Move, GameNode]:
+def generate_ai_move(game: Game, ai_mode: str, ai_settings: Dict[str, Any]) -> Tuple[Move, GameNode]:
     """Generate a move using the selected AI strategy"""
     game.katrain.log(f"Generate AI move called with mode: {ai_mode}", OUTPUT_DEBUG)
     
@@ -1395,9 +1500,9 @@ class LeelaStrategy(AIStrategy):
 
         # 4. Request analysis with synchronous wait
         event = threading.Event()
-        result_holder: List[Optional[object]] = [None]
+        result_holder: List[Optional[LeelaPositionEval]] = [None]
 
-        def on_result(eval_result):
+        def on_result(eval_result: LeelaPositionEval) -> None:
             result_holder[0] = eval_result
             event.set()
 
@@ -1439,15 +1544,15 @@ class LeelaStrategy(AIStrategy):
             )
 
         # 6. Validate result
-        result = result_holder[0]
-        if not result or not result.is_valid:
+        result: Optional[LeelaPositionEval] = result_holder[0]
+        if result is None or not result.is_valid:
             error_msg = result.parse_error if result else "unknown"
             katrain.log(f"[LeelaStrategy] Analysis failed: {error_msg}", OUTPUT_ERROR)
             raise LeelaNotAvailableError(i18n._("leela:error:analysis_failed"))
 
         # 7. Get best move
         best = result.best_candidate
-        if not best:
+        if best is None:
             raise LeelaNotAvailableError(i18n._("leela:error:no_candidates"))
 
         move = Move.from_gtp(best.move, player=current_node.next_player)

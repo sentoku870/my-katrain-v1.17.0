@@ -223,8 +223,8 @@ def detect_cut_risk(inp: DetectorInput, game: Any) -> Optional[BeginnerHint]:
         game.set_current_node(inp.node)
 
     # Build danger scores for groups
-    danger_scores = {
-        g.group_id: (
+    danger_scores: dict[int, float] = {
+        g.group_id: float(
             DANGER_ATARI
             if g.is_in_atari
             else (DANGER_LOW_LIBERTY if g.is_low_liberty else 0)

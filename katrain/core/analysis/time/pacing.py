@@ -13,7 +13,7 @@ import logging
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from .models import GameTimeData, TimeMetrics
 from katrain.core.analysis.models import MoveEval, get_canonical_loss_from_move
@@ -668,7 +668,7 @@ def get_pacing_icon(metrics: Optional[PacingMetrics]) -> str:
     return "-"
 
 
-def extract_pacing_stats_for_summary(result: PacingAnalysisResult) -> dict:
+def extract_pacing_stats_for_summary(result: PacingAnalysisResult) -> dict[str, Any]:
     """Convert PacingAnalysisResult to a dict for stats_dict storage.
 
     Phase 59 guarantees:

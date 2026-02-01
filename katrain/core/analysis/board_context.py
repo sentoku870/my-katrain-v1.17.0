@@ -110,7 +110,9 @@ def _safe_get_ownership(node: "GameNode") -> Optional[List[float]]:
     try:
         ownership = getattr(node, "ownership", None)
         if ownership is not None:
-            return ownership
+            if isinstance(ownership, list):
+                return list(ownership)
+            return None
     except Exception:
         pass
 
@@ -118,7 +120,10 @@ def _safe_get_ownership(node: "GameNode") -> Optional[List[float]]:
     try:
         analysis = getattr(node, "analysis", None)
         if isinstance(analysis, dict):
-            return analysis.get("ownership")
+            result = analysis.get("ownership")
+            if isinstance(result, list):
+                return list(result)
+            return None
     except Exception:
         pass
 

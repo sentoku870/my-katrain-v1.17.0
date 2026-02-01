@@ -1,17 +1,32 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from katrain.core.game_node import GameNode
 from katrain.core.sgf_parser import Move
+
+if TYPE_CHECKING:
+    from katrain.core.game import Game
 
 # tsumego frame ported from lizgoban by kaorahi
 # note: coords = (j, i) in katrain
 
-near_to_edge = 2
-offence_to_win = 5
+near_to_edge: int = 2
+offence_to_win: int = 5
 
-BLACK = "B"
-WHITE = "W"
+BLACK: str = "B"
+WHITE: str = "W"
+
+# Type aliases for stone structures
+StoneDict = dict[str, Any]
+StonesGrid = list[list[StoneDict]]
+FrameRange = list[int]  # [i0, i1, j0, j1]
+RegionTuple = tuple[tuple[int, int], tuple[int, int]]  # ((i_min, i_max), (j_min, j_max))
 
 
-def tsumego_frame_from_katrain_game(game, komi, black_to_play_p, ko_p, margin):
+def tsumego_frame_from_katrain_game(
+    game: Game, komi: float, black_to_play_p: bool, ko_p: bool, margin: int
+) -> tuple[GameNode, RegionTuple | None]:
     current_node = game.current_node
     bw_board = [[game.chains[c][0].player if c >= 0 else "-" for c in line] for line in game.board]
     isize, jsize = ij_sizes(bw_board)
@@ -21,15 +36,21 @@ def tsumego_frame_from_katrain_game(game, komi, black_to_play_p, ko_p, margin):
 
     played_node = GameNode(parent=current_node, properties={"AB": sgf_blacks, "AW": sgf_whites})  # this inserts
 
-    katrain_region = analysis_region and (analysis_region[1], analysis_region[0])
+    katrain_region: RegionTuple | None = (
+        (analysis_region[1], analysis_region[0]) if analysis_region else None
+    )
     return (played_node, katrain_region)
 
 
-def katrain_sgf_from_ijs(ijs, isize, jsize, player):
+def katrain_sgf_from_ijs(
+    ijs: list[tuple[int, int]], isize: int, jsize: int, player: str
+) -> list[str]:
     return [Move((j, i)).sgf((jsize, isize)) for i, j in ijs]
 
 
-def tsumego_frame(bw_board, komi, black_to_play_p, ko_p, margin):
+def tsumego_frame(
+    bw_board: list[list[str]], komi: float, black_to_play_p: bool, ko_p: bool, margin: int
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]], RegionTuple | None]:
     stones = stones_from_bw_board(bw_board)
     filled_stones = tsumego_frame_stones(stones, komi, black_to_play_p, ko_p, margin)
     region_pos = pick_all(filled_stones, "tsumego_frame_region_mark")
@@ -39,20 +60,24 @@ def tsumego_frame(bw_board, komi, black_to_play_p, ko_p, margin):
     return (blacks, whites, get_analysis_region(region_pos))
 
 
-def pick_all(stones, key):
+def pick_all(stones: StonesGrid, key: str) -> list[list[Any]]:
     return [[i, j, s.get("black")] for i, row in enumerate(stones) for j, s in enumerate(row) if s.get(key)]
 
 
-def get_analysis_region(region_pos):
+def get_analysis_region(region_pos: list[list[Any]]) -> RegionTuple | None:
     if len(region_pos) == 0:
         return None
     ai, aj, dummy = tuple(zip(*region_pos))
     ri = (min(ai), max(ai))
     rj = (min(aj), max(aj))
-    return ri[0] < ri[1] and rj[0] < rj[1] and (ri, rj)
+    if ri[0] < ri[1] and rj[0] < rj[1]:
+        return (ri, rj)
+    return None
 
 
-def tsumego_frame_stones(stones, komi, black_to_play_p, ko_p, margin):
+def tsumego_frame_stones(
+    stones: StonesGrid, komi: float, black_to_play_p: bool, ko_p: bool, margin: int
+) -> StonesGrid:
     sizes = ij_sizes(stones)
     isize, jsize = sizes
     ijs = [
@@ -97,41 +122,41 @@ def tsumego_frame_stones(stones, komi, black_to_play_p, ko_p, margin):
 
 # detect corner/edge/center problems
 # (avoid putting border stones on the first lines)
-def snap(k, to):
+def snap(k: int, to: int) -> int:
     return to if abs(k - to) <= near_to_edge else k
 
 
-def snap0(k):
+def snap0(k: int) -> int:
     return snap(k, 0)
 
 
-def snapS(k, size):
+def snapS(k: int, size: int) -> int:
     return snap(k, size - 1)
 
 
-def min_by(ary, key, sign):
+def min_by(ary: list[dict[str, Any]], key: str, sign: int) -> dict[str, Any]:
     by = [sign * z[key] for z in ary]
     return ary[by.index(min(by))]
 
 
-def need_flip_p(kmin, kmax, size):
+def need_flip_p(kmin: int, kmax: int, size: int) -> bool:
     return kmin < size - kmax - 1
 
 
-def guess_black_to_attack(extrema, sizes):
+def guess_black_to_attack(extrema: list[dict[str, Any]], sizes: tuple[int, int]) -> bool:
     return sum([sign_of_color(z) * height2(z, sizes) for z in extrema]) > 0
 
 
-def sign_of_color(z):
+def sign_of_color(z: dict[str, Any]) -> int:
     return 1 if z["black"] else -1
 
 
-def height2(z, sizes):
+def height2(z: dict[str, Any], sizes: tuple[int, int]) -> float:
     isize, jsize = sizes
     return height(z["i"], isize) + height(z["j"], jsize)
 
 
-def height(k, size):
+def height(k: int, size: int) -> float:
     return size - abs(k - (size - 1) / 2)
 
 
@@ -139,20 +164,38 @@ def height(k, size):
 # sub
 
 
-def put_border(stones, sizes, frame_range, is_black):
+def put_border(
+    stones: StonesGrid, sizes: tuple[int, int], frame_range: FrameRange, is_black: bool
+) -> None:
     i0, i1, j0, j1 = frame_range
     put_twin(stones, sizes, i0, i1, j0, j1, is_black, False)
     put_twin(stones, sizes, j0, j1, i0, i1, is_black, True)
 
 
-def put_twin(stones, sizes, beg, end, at0, at1, is_black, reverse_p):
+def put_twin(
+    stones: StonesGrid,
+    sizes: tuple[int, int],
+    beg: int,
+    end: int,
+    at0: int,
+    at1: int,
+    is_black: bool,
+    reverse_p: bool,
+) -> None:
     for at in (at0, at1):
         for k in range(beg, end + 1):
             i, j = (at, k) if reverse_p else (k, at)
             put_stone(stones, sizes, i, j, is_black, False, True)
 
 
-def put_outside(stones, sizes, frame_range, black_to_attack_p, black_to_play_p, komi):
+def put_outside(
+    stones: StonesGrid,
+    sizes: tuple[int, int],
+    frame_range: FrameRange,
+    black_to_attack_p: bool,
+    black_to_play_p: bool,
+    komi: float,
+) -> None:
     isize, jsize = sizes
     count = 0
     offense_komi = (+1 if black_to_attack_p else -1) * komi
@@ -203,7 +246,14 @@ OO
 )
 
 
-def put_ko_threat(stones, sizes, frame_range, black_to_attack_p, black_to_play_p, ko_p):
+def put_ko_threat(
+    stones: StonesGrid,
+    sizes: tuple[int, int],
+    frame_range: FrameRange,
+    black_to_attack_p: bool,
+    black_to_play_p: bool,
+    ko_p: bool,
+) -> None:
     isize, jsize = sizes
     for_offense_p = xor(ko_p, xor(black_to_attack_p, black_to_play_p))
     pattern, top_p, left_p = offense_ko_threat if for_offense_p else defense_ko_threat
@@ -220,7 +270,7 @@ def put_ko_threat(stones, sizes, frame_range, black_to_attack_p, black_to_play_p
             put_stone(stones, sizes, ai, aj, black, empty)
 
 
-def xor(a, b):
+def xor(a: bool, b: bool) -> bool:
     return bool(a) != bool(b)
 
 
@@ -228,12 +278,12 @@ def xor(a, b):
 # util
 
 
-def flip_stones(stones, flip_spec):
+def flip_stones(stones: StonesGrid, flip_spec: list[bool]) -> StonesGrid:
     swap_p = flip_spec[2]
     sizes = ij_sizes(stones)
     isize, jsize = sizes
     new_isize, new_jsize = [jsize, isize] if swap_p else [isize, jsize]
-    new_stones = [[None for z in range(new_jsize)] for row in range(new_isize)]
+    new_stones: StonesGrid = [[{} for z in range(new_jsize)] for row in range(new_isize)]
     for i, row in enumerate(stones):
         for j, z in enumerate(row):
             new_i, new_j = flip_ij((i, j), sizes, flip_spec)
@@ -241,7 +291,15 @@ def flip_stones(stones, flip_spec):
     return new_stones
 
 
-def put_stone(stones, sizes, i, j, black, empty, tsumego_frame_region_mark=False):
+def put_stone(
+    stones: StonesGrid,
+    sizes: tuple[int, int],
+    i: int,
+    j: int,
+    black: bool,
+    empty: bool,
+    tsumego_frame_region_mark: bool = False,
+) -> None:
     isize, jsize = sizes
     if i < 0 or isize <= i or j < 0 or jsize <= j:
         return
@@ -257,26 +315,26 @@ def put_stone(stones, sizes, i, j, black, empty, tsumego_frame_region_mark=False
     )
 
 
-def inside_p(i, j, region):
+def inside_p(i: int, j: int, region: FrameRange) -> bool:
     i0, i1, j0, j1 = region
     return i0 <= i and i <= i1 and j0 <= j and j <= j1
 
 
-def stones_from_bw_board(bw_board):
+def stones_from_bw_board(bw_board: list[list[str]]) -> StonesGrid:
     return [[stone_from_str(s) for s in row] for row in bw_board]
 
 
-def stone_from_str(s):
+def stone_from_str(s: str) -> StoneDict:
     black = s == BLACK
     white = s == WHITE
     return {"stone": True, "black": black} if (black or white) else {}
 
 
-def ij_sizes(stones):
+def ij_sizes(stones: list[list[Any]]) -> tuple[int, int]:
     return (len(stones), len(stones[0]))
 
 
-def flip_ij(ij, sizes, flip_spec):
+def flip_ij(ij: tuple[int, int], sizes: tuple[int, int], flip_spec: list[bool]) -> tuple[int, int]:
     i, j = ij
     isize, jsize = sizes
     flip_i, flip_j, swap_ij = flip_spec
@@ -285,5 +343,5 @@ def flip_ij(ij, sizes, flip_spec):
     return (fj, fi) if swap_ij else (fi, fj)
 
 
-def flip1(k, size, flag):
+def flip1(k: int, size: int, flag: bool) -> int:
     return size - 1 - k if flag else k

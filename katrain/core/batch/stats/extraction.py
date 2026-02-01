@@ -31,7 +31,7 @@ def extract_game_stats(
     target_visits: Optional[int] = None,
     source_index: int = 0,
     snapshot: Optional[Any] = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
-) -> Optional[dict]:
+) -> Optional[dict[str, Any]]:
     """Extract statistics from a Game object for summary generation.
 
     Args:
@@ -334,10 +334,10 @@ def extract_game_stats(
 
 
 def extract_players_from_stats(
-    game_stats_list: List[dict],
+    game_stats_list: List[dict[str, Any]],
     min_games: int = 3,
-    skip_names: Optional[frozenset] = None,
-) -> Dict[str, List[Tuple[dict, str]]]:
+    skip_names: Optional[frozenset[str]] = None,
+) -> Dict[str, List[Tuple[dict[str, Any], str]]]:
     """
     Extract player names and group their games.
 
@@ -362,7 +362,7 @@ def extract_players_from_stats(
         skip_names = SKIP_PLAYER_NAMES
 
     # Track: normalized_name -> [(stats, role, original_name), ...]
-    player_games: Dict[str, List[Tuple[dict, str, str]]] = defaultdict(list)
+    player_games: Dict[str, List[Tuple[dict[str, Any], str, str]]] = defaultdict(list)
 
     for stats in game_stats_list:
         pb_orig = stats.get("player_black", "").strip()
@@ -377,7 +377,7 @@ def extract_players_from_stats(
             player_games[pw_norm].append((stats, "W", pw_orig))
 
     # Filter by min_games and convert to output format
-    result: Dict[str, List[Tuple[dict, str]]] = {}
+    result: Dict[str, List[Tuple[dict[str, Any], str]]] = {}
     for norm_name, games in player_games.items():
         if len(games) >= min_games:
             # Use first original name as display name

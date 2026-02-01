@@ -14,7 +14,7 @@ to avoid circular imports. Only import from .models and .aggregation.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
@@ -60,10 +60,10 @@ from .aggregation import (
 
 def build_player_summary(
     player_name: str,
-    player_games: List[Tuple[dict, str]],
+    player_games: List[Tuple[Dict[str, Any], str]],
     skill_preset: str = DEFAULT_SKILL_PRESET,
     *,
-    analysis_settings: Optional[Dict[str, any]] = None,
+    analysis_settings: Optional[Dict[str, Any]] = None,
     karte_path_map: Optional[Dict[str, str]] = None,
     summary_dir: Optional[str] = None,
     lang: str = "jp",
@@ -121,7 +121,7 @@ def build_player_summary(
     reliability_total_visits = 0
     reliability_with_visits = 0
     reliability_max_visits = 0  # PR1-2: Track max visits across all games
-    board_sizes: set = set()  # Track unique board sizes for Definitions
+    board_sizes: set[int] = set()  # Track unique board sizes for Definitions
 
     # Phase 49: Radar metrics collection for aggregation
     radar_list: List[RadarMetrics] = []

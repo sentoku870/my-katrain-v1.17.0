@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 import json
 import os
 import random
@@ -58,7 +58,7 @@ class PackageContent:
     karte_md: str  # 匿名化済み（必要な場合）
     sgf_content: str  # 匿名化済み（必要な場合）
     coach_md: str
-    game_info: dict
+    game_info: dict[str, Any]
     skill_preset: str = "standard"
     anonymized: bool = False  # manifest用フラグ
 
@@ -277,10 +277,10 @@ def generate_package_filename() -> str:
 
 
 def build_manifest(
-    game_info: dict,
+    game_info: dict[str, Any],
     skill_preset: str,
     anonymized: bool,
-) -> dict:
+) -> dict[str, Any]:
     """manifest.json を生成
 
     プライバシー保護: 絶対パス、ユーザー名、ファイルサイズは含めない

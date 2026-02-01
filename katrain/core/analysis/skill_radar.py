@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 
 _logger = logging.getLogger("katrain.core.analysis.skill_radar")
 
@@ -610,11 +610,11 @@ def aggregate_radar(
 
     # Helper to get tier for an axis from a RadarMetrics
     def get_axis_tier(rm: RadarMetrics, axis: RadarAxis) -> SkillTier:
-        return getattr(rm, f"{axis.value}_tier")
+        return cast(SkillTier, getattr(rm, f"{axis.value}_tier"))
 
     # Helper to get score for an axis from a RadarMetrics
     def get_axis_score(rm: RadarMetrics, axis: RadarAxis) -> float:
-        return getattr(rm, axis.value)
+        return cast(float, getattr(rm, axis.value))
 
     # Helper to derive tier from aggregated score using APL thresholds
     # (since all axes use 1.0-5.0 score range mapped from tier)

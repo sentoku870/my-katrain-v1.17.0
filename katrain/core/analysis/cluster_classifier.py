@@ -25,6 +25,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    cast,
 )
 
 from katrain.common.locale_utils import normalize_lang_code
@@ -41,6 +42,7 @@ from katrain.core.analysis.ownership_cluster import (
 if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.game_node import GameNode
+    from katrain.core.sgf_parser import SGFNode
 
 
 # =====================================================================
@@ -156,7 +158,7 @@ class ClusterClassificationContext:
 
 
 def compute_stones_at_node(
-    node: "GameNode",
+    node: "SGFNode",
     board_size: Tuple[int, int],
 ) -> StoneSet:
     """Compute stone positions at a node by replaying from root.
@@ -188,14 +190,14 @@ def compute_stones_at_node(
     for n in node.nodes_from_root:
         # Step 1: placements (AB/AW) - NO CAPTURE LOGIC
         for move in n.placements:
-            if move.is_pass:
+            if move.is_pass or move.coords is None:
                 continue
             col, row = move.coords
             board[row][col] = move.player
 
         # Step 2: moves (B/W) - WITH CAPTURE LOGIC
         for move in n.moves:
-            if move.is_pass:
+            if move.is_pass or move.coords is None:
                 continue
             col, row = move.coords
             player = move.player
@@ -225,7 +227,7 @@ def compute_stones_at_node(
 
         # Step 3: AE (clear) handling
         for clear_move in n.clear_placements:
-            if not clear_move.is_pass:
+            if not clear_move.is_pass and clear_move.coords is not None:
                 col, row = clear_move.coords
                 board[row][col] = None
 
@@ -233,8 +235,9 @@ def compute_stones_at_node(
     stones: Set[StonePosition] = set()
     for row in range(height):
         for col in range(width):
-            if board[row][col] is not None:
-                stones.add((col, row, board[row][col]))
+            cell_player = board[row][col]
+            if cell_player is not None:
+                stones.add((col, row, cell_player))
 
     return frozenset(stones)
 
@@ -330,7 +333,7 @@ class StoneCache:
             if not node.children:
                 return None
             # ordered_children[0] = mainline
-            node = node.ordered_children[0]
+            node = cast("GameNode", node.ordered_children[0])
         return node
 
 
@@ -768,9 +771,10 @@ def _get_cluster_context_for_move(
         if child_node is None:
             return None  # Mainline resolution failed
 
-        parent_node = child_node.parent
-        if parent_node is None:
+        parent_node_raw = child_node.parent
+        if parent_node_raw is None:
             return None  # Root node has no parent
+        parent_node = cast("GameNode", parent_node_raw)
 
         # Get player (actor) from the move
         move = child_node.move
@@ -833,7 +837,7 @@ def _find_mainline_node(game: "Game", move_number: int) -> Optional["GameNode"]:
     for _ in range(move_number):
         if not node.children:
             return None
-        node = node.ordered_children[0]
+        node = cast("GameNode", node.ordered_children[0])
     return node
 
 

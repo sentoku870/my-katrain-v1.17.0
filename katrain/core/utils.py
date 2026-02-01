@@ -4,7 +4,7 @@ from pathlib import Path
 import random
 import struct
 import sys
-from typing import Dict, List, Tuple, TypeVar
+from typing import Any, Dict, List, Tuple, TypeVar
 
 import importlib.resources as pkg_resources
 
@@ -22,14 +22,14 @@ def var_to_grid(array_var: List[T], size: Tuple[int, int]) -> List[List[T]]:
     return grid
 
 
-def evaluation_class(points_lost: float, eval_thresholds: List[float]):
+def evaluation_class(points_lost: float, eval_thresholds: List[float]) -> int:
     i = 0
     while i < len(eval_thresholds) - 1 and points_lost < eval_thresholds[i]:
         i += 1
     return i
 
 
-def check_thread(tb=False):  # for checking if draws occur in correct thread
+def check_thread(tb: bool = False) -> None:  # for checking if draws occur in correct thread
     import threading
 
     print("build in ", threading.current_thread().ident)
@@ -42,12 +42,17 @@ def check_thread(tb=False):  # for checking if draws occur in correct thread
 PATHS: Dict[str, str] = {}
 
 
-def find_package_resource(path, silent_errors=False):
+def find_package_resource(path: str, silent_errors: bool = False) -> str:
     global PATHS
     if path.startswith("katrain"):
         if not PATHS.get("PACKAGE"):
             try:
-                PATHS["PACKAGE"] = str(pkg_resources.files("katrain").absolute())
+                files_ref = pkg_resources.files("katrain")
+                # Handle both Traversable and Path types
+                if hasattr(files_ref, "absolute"):
+                    PATHS["PACKAGE"] = str(files_ref.absolute())  # type: ignore[union-attr]
+                else:
+                    PATHS["PACKAGE"] = str(files_ref)
             except (ModuleNotFoundError, FileNotFoundError, ValueError) as e:
                 print(f"Package path not found, installation possibly broken. Error: {e}", file=sys.stderr)
                 return f"FILENOTFOUND/{path}"
@@ -56,19 +61,19 @@ def find_package_resource(path, silent_errors=False):
         return str(Path(path).expanduser().absolute())
 
 
-def pack_floats(float_list):
+def pack_floats(float_list: List[float] | None) -> bytes:
     if float_list is None:
         return b""
     return struct.pack(f"{len(float_list)}e", *float_list)
 
 
-def unpack_floats(str, num):
-    if not str:
+def unpack_floats(data: bytes, num: int) -> Tuple[float, ...] | None:
+    if not data:
         return None
-    return struct.unpack(f"{num}e", str)
+    return struct.unpack(f"{num}e", data)
 
 
-def format_visits(n):
+def format_visits(n: int) -> str:
     if n < 1000:
         return str(n)
     if n < 1e5:
@@ -78,7 +83,7 @@ def format_visits(n):
     return f"{n/1e6:.0f}M"
 
 
-def json_truncate_arrays(data, lim=20):
+def json_truncate_arrays(data: Any, lim: int = 20) -> Any:
     if isinstance(data, list):
         if data and isinstance(data[0], dict):
             return [json_truncate_arrays(d) for d in data]
@@ -91,7 +96,11 @@ def json_truncate_arrays(data, lim=20):
         return data
 
 
-def weighted_selection_without_replacement(items: List[Tuple], pick_n: int) -> List[Tuple]:
-    """For a list of tuples where the second element is a weight, returns random items with those weights, without replacement."""
-    elt = [(math.log(random.random()) / (item[1] + 1e-18), item) for item in items]  # magic
+TupleT = TypeVar("TupleT", bound=Tuple[Any, ...])
+
+
+def weighted_selection_without_replacement(items: List[TupleT], pick_n: int) -> List[TupleT]:
+    """For a list of tuples where the second element (index 1) is a weight, returns random items with those weights, without replacement."""
+    # Type ignore: we trust that item[1] exists and is numeric based on the docstring contract
+    elt = [(math.log(random.random()) / (item[1] + 1e-18), item) for item in items]  # type: ignore[index,operator]
     return [e[1] for e in heapq.nlargest(pick_n, elt)]  # NB fine if too small

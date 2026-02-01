@@ -17,7 +17,7 @@ import re
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from katrain.core.batch.models import BatchResult, WriteError
 from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from katrain.core.analysis.skill_radar import AggregatedRadarResult
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
+    from katrain.core.game import Game
     from katrain.core.leela.engine import LeelaEngine
 
 
@@ -242,10 +243,10 @@ def run_batch(
     total = len(sgf_files)
 
     # For summary generation, collect game stats
-    game_stats_list = [] if generate_summary else None
+    game_stats_list: list[dict[str, Any]] | None = [] if generate_summary else None
 
     # Track (game, stats) tuples for curator output (Phase 64)
-    games_for_curator: List[tuple] = [] if generate_curator else None
+    games_for_curator: list[Tuple["Game", dict[str, Any]]] | None = [] if generate_curator else None
 
     # Track actual effective visits used per successful analysis (for variable visits stats)
     selected_visits_list: List[int] = []
@@ -355,7 +356,7 @@ def run_batch(
                     log(f"  ERROR: Unexpected return type from Leela analysis for {rel_path}: {type(game_result)}")
             else:
                 # KataGo analysis (default)
-                game_result = analyze_single_file(
+                katago_result = analyze_single_file(
                     katrain=katrain,
                     engine=engine,
                     sgf_path=abs_path,
@@ -370,10 +371,17 @@ def run_batch(
 
                 # Handle result based on return type
                 if need_game:
-                    game = game_result
-                    success = game is not None
+                    # When return_game=True, result is Game | None
+                    if isinstance(katago_result, bool):
+                        # Shouldn't happen, but handle gracefully
+                        game = None
+                        success = katago_result
+                    else:
+                        game = katago_result
+                        success = game is not None
                 else:
-                    success = game_result
+                    # When return_game=False, result is bool
+                    success = bool(katago_result)
                     game = None
 
         except AnalysisTimeoutError as e:
@@ -504,10 +512,10 @@ def run_batch(
                         snapshot=leela_snapshot,  # Phase 87.5: Use pre-built snapshot for Leela
                     )
                     if stats:
-                        if generate_summary:
+                        if generate_summary and game_stats_list is not None:
                             game_stats_list.append(stats)
                         # Phase 64: Collect (game, stats) for curator
-                        if generate_curator:
+                        if generate_curator and games_for_curator is not None and game is not None:
                             games_for_curator.append((game, stats))
                 except (KeyError, ValueError) as e:
                     # Expected: External SGF data structure issue

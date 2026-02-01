@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterator, Optional, Tuple, Union, cast
 
 from katrain.core.smart_kifu.models import (
     CONFIDENCE_HIGH_MIN_ANALYZED_RATIO,
@@ -34,6 +34,7 @@ from katrain.core.smart_kifu.models import (
 if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.game_node import GameNode
+    from katrain.core.sgf_parser import SGFNode
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ def compute_engine_profile_id(snapshot: EngineProfileSnapshot) -> str:
         - 空文字列は除外（model_name="" は含めない）
         - JSONキー: model, visits, komi（アルファベット順でソート）
     """
-    d: dict = {}
+    d: dict[str, Any] = {}
 
     # model_name: None と空文字列は除外
     if snapshot.model_name is not None and snapshot.model_name != "":
@@ -129,7 +130,7 @@ def compute_game_id(sgf_content: str) -> str:
 # =============================================================================
 
 
-def iter_main_branch_nodes(root: "GameNode") -> Iterator["GameNode"]:
+def iter_main_branch_nodes(root: Union["GameNode", "SGFNode"]) -> Iterator[Union["GameNode", "SGFNode"]]:
     """メインラインのノードを走査（root自体は含めない）。
 
     Args:
@@ -143,7 +144,7 @@ def iter_main_branch_nodes(root: "GameNode") -> Iterator["GameNode"]:
         - pass ノードも含める
         - 分岐は無視（children[0] のみ）
     """
-    node = root
+    node: Union["GameNode", "SGFNode"] = root
     while node.children:
         node = node.children[0]
         yield node
@@ -168,7 +169,7 @@ def compute_analyzed_ratio_from_game(game: "Game") -> Optional[float]:
     nodes = list(iter_main_branch_nodes(game.root))
     if not nodes:
         return None  # 着手がない場合
-    analyzed = sum(1 for n in nodes if n.analysis is not None)
+    analyzed = sum(1 for n in nodes if getattr(n, "analysis", None) is not None)
     return analyzed / len(nodes)
 
 
@@ -222,7 +223,8 @@ def compute_analyzed_ratio_from_sgf_file(sgf_path: str) -> Optional[float]:
     if not nodes:
         return None  # 着手なし
 
-    analyzed = sum(1 for n in nodes if has_analysis_data(n))
+    # Use getattr for SGFNode compatibility (analysis_from_sgf may not exist)
+    analyzed = sum(1 for n in nodes if bool(getattr(n, "analysis_from_sgf", None)))
     return analyzed / len(nodes)
 
 

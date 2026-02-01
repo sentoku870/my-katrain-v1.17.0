@@ -16,7 +16,7 @@ from katrain.core.analysis.presentation import get_auto_confidence_label
 from katrain.core.lang import i18n
 
 if TYPE_CHECKING:
-    from katrain.core.eval_metrics import AutoStrictnessResult
+    from katrain.core.analysis.models import AutoRecommendation
     from katrain.core.reports.karte.sections.context import KarteContext
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def definitions_section(
     ctx: KarteContext,
-    auto_recommendation: Optional[AutoStrictnessResult],
+    auto_recommendation: Optional["AutoRecommendation"],
 ) -> List[str]:
     """Generate definitions section with thresholds from SKILL_PRESETS.
 

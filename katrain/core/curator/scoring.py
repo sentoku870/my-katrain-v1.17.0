@@ -7,7 +7,7 @@ evaluating how well they match a user's learning needs.
 import math
 from types import MappingProxyType
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from katrain.core.analysis.skill_radar import AggregatedRadarResult
 
@@ -213,8 +213,8 @@ def _collect_score_leads(game: "Game") -> List[float]:
                 if score_lead is not None and isinstance(score_lead, (int, float)):
                     if math.isfinite(score_lead):
                         values.append(float(score_lead))
-        # Follow mainline only
-        node = node.children[0] if node.children else None
+        # Follow mainline only (cast to GameNode since game.root is GameNode)
+        node = cast("GameNode", node.children[0]) if node.children else None
     return values
 
 
