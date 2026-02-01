@@ -9,7 +9,9 @@
 # Note: Kivy imports are deferred inside functions to allow
 # importing this module in headless CI environment (Phase 101 fix).
 
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def format_points_loss(loss: Optional[float]) -> str:
+def format_points_loss(loss: float | None) -> str:
     """損失ポイントの表示フォーマット
 
     Args:
@@ -35,7 +37,7 @@ def format_points_loss(loss: Optional[float]) -> str:
 
 def do_quiz_popup(
     ctx: "FeatureContext",
-    start_quiz_session_fn: Callable[[List[eval_metrics.QuizItem]], None],
+    start_quiz_session_fn: Callable[[list[eval_metrics.QuizItem]], None],
     update_state_fn: Callable[[], None],
 ) -> None:
     """クイズ選択ポップアップを表示

@@ -1,4 +1,6 @@
 # katrain/gui/features/commands/popup_commands.py
+from __future__ import annotations
+
 """Popup-related command handlers extracted from KaTrainGui (Phase 41-B).
 
 These functions handle opening various popup dialogs.

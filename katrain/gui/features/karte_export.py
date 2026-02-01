@@ -6,10 +6,12 @@
 # - Pure関数: determine_user_color
 # - UI関数: do_export_karte_ui (FeatureContext経由)
 
+from __future__ import annotations
+
 import os
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.uix.label import Label
@@ -25,7 +27,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def determine_user_color(game: "Game", username: str) -> Optional[str]:
+def determine_user_color(game: "Game", username: str) -> str | None:
     """Determine user's color based on player names in SGF.
 
     Args:
@@ -43,7 +45,7 @@ def determine_user_color(game: "Game", username: str) -> Optional[str]:
     if not username or not game:
         return None
 
-    def normalize_name(name: Optional[str]) -> str:
+    def normalize_name(name: str | None) -> str:
         """Normalize player name for matching.
 
         Removes non-alphanumeric characters and converts to lowercase.
@@ -143,7 +145,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         return
 
     # Determine player filter(s) and filename(s)
-    exports: List[Tuple[Optional[str], str]] = []
+    exports: list[tuple[str | None, str]] = []
 
     if karte_format == "both":
         # Both players in one file (player_filter=None)

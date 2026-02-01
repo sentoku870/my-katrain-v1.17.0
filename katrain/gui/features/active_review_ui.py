@@ -1,11 +1,13 @@
 # katrain/gui/features/active_review_ui.py
+from __future__ import annotations
+
 """Active Review Mode UI components.
 
 Provides:
 - show_guess_feedback(): Display feedback popup after user guess (Phase 93 + 94)
 """
 
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -61,8 +63,8 @@ def show_guess_feedback(
     katrain: "KaTrainGui",
     evaluation: GuessEvaluation,
     allow_retry: bool = False,
-    on_retry: Optional[Callable[[], None]] = None,
-    on_hint_request: Optional[Callable[[], Optional[str]]] = None,
+    on_retry: Callable[[], None] | None = None,
+    on_hint_request: Callable[[], str | None] | None = None,
 ) -> None:
     """Show feedback popup for user's guess.
 

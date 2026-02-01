@@ -10,9 +10,11 @@ Thread safety:
     - NO ctx.log() calls in background thread (not thread-safe)
     - Success logging done via Kivy Clock.schedule_once on main thread
 """
+from __future__ import annotations
+
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
@@ -132,7 +134,7 @@ def save_diagnostics_zip(
     ctx: "FeatureContext",
     error_context: str = "",
     include_llm_prompt: bool = True,
-) -> Optional[Path]:
+) -> Path | None:
     """Save diagnostics ZIP (reuses existing infrastructure).
 
     Args:
@@ -157,7 +159,7 @@ def save_diagnostics_zip(
         san_ctx = get_sanitization_context()
 
         # Prepare extra files
-        extra_files: Optional[Dict[str, str]] = None
+        extra_files: dict[str, str] | None = None
         if include_llm_prompt:
             llm_text = format_llm_diagnostics_text(bundle, san_ctx, error_context)
             extra_files = {"llm_prompt.txt": llm_text}

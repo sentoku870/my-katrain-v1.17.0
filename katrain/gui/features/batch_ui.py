@@ -8,6 +8,8 @@
 # - create_on_close_callback: 閉じるボタンコールバック作成
 # - build_batch_popup_widgets: バッチポップアップのウィジェット構築
 
+from __future__ import annotations
+
 import os
 import threading
 from typing import TYPE_CHECKING, Any, Callable

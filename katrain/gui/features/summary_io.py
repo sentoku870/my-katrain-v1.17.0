@@ -7,10 +7,12 @@
 # - save_categorized_summaries_from_stats: カテゴリ別の保存処理
 # - save_summary_file: 単一ファイル保存処理
 
+from __future__ import annotations
+
 import os
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.core.clipboard import Clipboard
 from kivy.uix.label import Label
@@ -25,12 +27,12 @@ if TYPE_CHECKING:
 
 
 def save_summaries_per_player(
-    game_stats_list: List[Dict[str, Any]],
-    selected_players: List[str],
+    game_stats_list: list[dict[str, Any]],
+    selected_players: list[str],
     progress_popup: "Popup",
     ctx: "FeatureContext",
-    categorize_games_fn: Callable[[List[Dict[str, Any]], str], Dict[str, Any]],
-    build_summary_fn: Callable[[List[Dict[str, Any]], str], str],
+    categorize_games_fn: Callable[[list[dict[str, Any]], str], dict[str, Any]],
+    build_summary_fn: Callable[[list[dict[str, Any]], str], str],
 ) -> None:
     """各プレイヤーごとに別ファイルでサマリーを保存
 
@@ -131,11 +133,11 @@ def save_summaries_per_player(
 
 
 def save_categorized_summaries_from_stats(
-    categorized_games: Dict[str, List[Dict[str, Any]]],
-    player_name: Optional[str],
+    categorized_games: dict[str, list[dict[str, Any]]],
+    player_name: str | None,
     progress_popup: "Popup",
     ctx: "FeatureContext",
-    build_summary_fn: Callable[[List[Dict[str, Any]], Optional[str]], str],
+    build_summary_fn: Callable[[list[dict[str, Any]], str | None], str],
 ) -> None:
     """カテゴリごとにsummary.mdを保存
 
@@ -221,7 +223,7 @@ def save_categorized_summaries_from_stats(
 
 def save_summary_file(
     summary_text: str,
-    player_name: Optional[str],
+    player_name: str | None,
     progress_popup: "Popup",
     ctx: "FeatureContext",
 ) -> None:

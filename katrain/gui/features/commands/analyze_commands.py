@@ -1,4 +1,6 @@
 # katrain/gui/features/commands/analyze_commands.py
+from __future__ import annotations
+
 """Analysis-related command handlers extracted from KaTrainGui (Phase 41-B).
 
 These functions handle analysis mode changes and related operations.

@@ -1,17 +1,19 @@
 # katrain/gui/features/commands/export_commands.py
+from __future__ import annotations
+
 """Export-related command handlers extracted from KaTrainGui (Phase 41-B).
 
 These functions handle saving games and exporting reports.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
 
-def do_save_game(ctx: "KaTrainGui", filename: Optional[str] = None) -> None:
+def do_save_game(ctx: "KaTrainGui", filename: str | None = None) -> None:
     """Save game to SGF file.
 
     Args:

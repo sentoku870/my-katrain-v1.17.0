@@ -1,4 +1,6 @@
 # katrain/gui/features/package_export_ui.py
+from __future__ import annotations
+
 """LLM Package Export - UI実装
 
 責務（v5）:

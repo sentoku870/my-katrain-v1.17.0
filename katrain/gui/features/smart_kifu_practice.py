@@ -4,7 +4,9 @@
 #
 # vs_katago 練習レポートと置石調整提案を表示するUIモジュール。
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -52,7 +54,7 @@ BUCKET_LABELS = {
 # =============================================================================
 
 
-def collect_vs_katago_games(bucket_key: Optional[str] = None) -> List[GameEntry]:
+def collect_vs_katago_games(bucket_key: str | None = None) -> list[GameEntry]:
     """vs_katago のゲームを収集
 
     Args:
@@ -61,7 +63,7 @@ def collect_vs_katago_games(bucket_key: Optional[str] = None) -> List[GameEntry]
     Returns:
         vs_katago のゲームエントリリスト
     """
-    all_games: List[GameEntry] = []
+    all_games: list[GameEntry] = []
     for set_id in list_training_sets():
         manifest = load_manifest(set_id)
         if manifest is None:
@@ -80,9 +82,9 @@ def collect_vs_katago_games(bucket_key: Optional[str] = None) -> List[GameEntry]
 
 
 def compute_practice_stats(
-    games: List[GameEntry],
+    games: list[GameEntry],
     recent_n: int = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """練習統計を計算
 
     Args:
@@ -146,7 +148,7 @@ def compute_practice_stats(
 
 def build_practice_report_card(
     bucket_key: str,
-    stats: Dict[str, Any],
+    stats: dict[str, Any],
 ) -> BoxLayout:
     """練習レポートカードを構築
 

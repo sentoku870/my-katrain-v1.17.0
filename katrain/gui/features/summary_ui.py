@@ -7,6 +7,8 @@
 # - do_export_summary_ui: メインUI処理
 # - process_summary_with_selected_players: 選択後の処理開始
 
+from __future__ import annotations
+
 import os
 import threading
 from typing import TYPE_CHECKING, Any, Callable

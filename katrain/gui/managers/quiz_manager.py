@@ -4,7 +4,9 @@ Manages Quiz popup and session lifecycle.
 Extracted from KaTrainGui for improved testability.
 """
 
-from typing import TYPE_CHECKING, Callable, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from katrain.core.eval_metrics import QuizItem
@@ -33,7 +35,7 @@ class QuizManager:
     def __init__(
         self,
         get_ctx: Callable[[], "FeatureContext"],
-        get_active_review_controller: Callable[[], Optional["ActiveReviewController"]],
+        get_active_review_controller: Callable[[], "ActiveReviewController" | None],
         update_state_fn: Callable[[], None],
         logger: Callable[[str, int], None],
     ) -> None:
@@ -60,7 +62,7 @@ class QuizManager:
             self._update_state_fn,
         )
 
-    def start_quiz_session(self, quiz_items: List["QuizItem"]) -> None:
+    def start_quiz_session(self, quiz_items: list["QuizItem"]) -> None:
         """Start quiz session. Disables Active Review if active.
 
         Args:
@@ -94,7 +96,7 @@ class QuizManager:
             self._update_state_fn,
         )
 
-    def format_points_loss(self, loss: Optional[float]) -> str:
+    def format_points_loss(self, loss: float | None) -> str:
         """Format points loss for display.
 
         Args:
