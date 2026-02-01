@@ -460,7 +460,7 @@ def analyze_risk(
     black_contexts = [c for c in contexts if c.player == "B"]
     white_contexts = [c for c in contexts if c.player == "W"]
 
-    def make_stats(ctxs: List[RiskContext]) -> PlayerRiskStats:
+    def make_stats(ctxs: list[RiskContext]) -> PlayerRiskStats:
         return PlayerRiskStats(
             total_contexts=len(ctxs),
             winning_count=sum(1 for c in ctxs if c.judgment_type == RiskJudgmentType.WINNING),
