@@ -10,7 +10,7 @@
 import os
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from kivy.core.clipboard import Clipboard
 from kivy.uix.label import Label
@@ -25,12 +25,12 @@ if TYPE_CHECKING:
 
 
 def save_summaries_per_player(
-    game_stats_list: List[dict],
+    game_stats_list: List[Dict[str, Any]],
     selected_players: List[str],
     progress_popup: "Popup",
     ctx: "FeatureContext",
-    categorize_games_fn: Callable[[List[dict], str], dict],
-    build_summary_fn: Callable[[List[dict], str], str],
+    categorize_games_fn: Callable[[List[Dict[str, Any]], str], Dict[str, Any]],
+    build_summary_fn: Callable[[List[Dict[str, Any]], str], str],
 ) -> None:
     """各プレイヤーごとに別ファイルでサマリーを保存
 
@@ -131,11 +131,11 @@ def save_summaries_per_player(
 
 
 def save_categorized_summaries_from_stats(
-    categorized_games: dict,
+    categorized_games: Dict[str, List[Dict[str, Any]]],
     player_name: Optional[str],
     progress_popup: "Popup",
     ctx: "FeatureContext",
-    build_summary_fn: Callable[[List[dict], Optional[str]], str],
+    build_summary_fn: Callable[[List[Dict[str, Any]], Optional[str]], str],
 ) -> None:
     """カテゴリごとにsummary.mdを保存
 

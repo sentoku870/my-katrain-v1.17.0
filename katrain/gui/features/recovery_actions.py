@@ -211,7 +211,7 @@ def trigger_auto_dump(
     except Exception:
         return  # Silently fail if data capture fails
 
-    def dump_thread():
+    def dump_thread() -> None:
         """Background thread: file I/O only, no UI calls."""
         try:
             extra_files = {"llm_prompt.txt": llm_text}

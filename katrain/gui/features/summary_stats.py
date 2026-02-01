@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def extract_analysis_from_sgf_node(node) -> Optional[dict]:
+def extract_analysis_from_sgf_node(node: Any) -> Optional[Dict[str, Any]]:
     """SGFノードのKTプロパティから解析データを抽出。
 
     Args:
@@ -72,7 +72,7 @@ def extract_sgf_statistics(
     ctx: "FeatureContext",
     engine: "KataGoEngine",
     log_fn: LogFunction,
-) -> Optional[dict]:
+) -> Optional[Dict[str, Any]]:
     """SGFファイルから統計データを直接抽出（KTプロパティ解析）。
 
     Args:
@@ -233,7 +233,7 @@ def extract_sgf_statistics(
                 analysis = extract_analysis_from_sgf_node(sgf_node)
                 if analysis:
                     # Directly set analysis dict (already in correct format)
-                    game_node.analysis = analysis
+                    game_node.analysis = analysis  # type: ignore[attr-defined]
 
             # Get skill preset for tag threshold calculation (Option 0-B: Problem 3 fix)
             skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
@@ -278,7 +278,7 @@ def extract_sgf_statistics(
                     for sgf_node, game_node in zip(sgf_nodes, game_nodes):
                         analysis = extract_analysis_from_sgf_node(sgf_node)
                         if analysis:
-                            game_node.analysis = analysis
+                            game_node.analysis = analysis  # type: ignore[attr-defined]
 
                 snapshot = snapshot_from_game(temp_game)
                 pacing_result = analyze_pacing(time_data, list(snapshot.moves))

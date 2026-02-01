@@ -5,6 +5,8 @@
 # Displays a popup when the resign condition is met (low winrate for
 # consecutive moves). The popup suggests the user consider resigning.
 
+from typing import TYPE_CHECKING, Any
+
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -15,8 +17,11 @@ from katrain.core.leela.logic import ResignConditionResult
 from katrain.gui.kivyutils import SizedRectangleButton
 from katrain.gui.popups import I18NPopup
 
+if TYPE_CHECKING:
+    from katrain.__main__ import KaTrainGui
 
-def show_resign_hint_popup(katrain, result: ResignConditionResult) -> None:
+
+def show_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult) -> None:
     """Show resign hint popup (must be called on UI thread).
 
     Args:
@@ -56,7 +61,7 @@ def show_resign_hint_popup(katrain, result: ResignConditionResult) -> None:
     popup.open()
 
 
-def schedule_resign_hint_popup(katrain, result: ResignConditionResult) -> None:
+def schedule_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult) -> None:
     """Schedule resign hint popup on UI thread (for callbacks from non-UI threads).
 
     Args:

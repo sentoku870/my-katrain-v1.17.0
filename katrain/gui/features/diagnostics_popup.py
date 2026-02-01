@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -279,7 +279,7 @@ def _on_generate_zip(
 
 def _on_generate_complete(
     ctx: "FeatureContext",
-    result,
+    result: Any,
     generate_btn: Button,
     parent_popup: Popup,
 ) -> None:

@@ -121,7 +121,7 @@ def _reset_tab_settings(
         content=confirm_layout,
     ).__self__
 
-    def do_reset(*_args):
+    def do_reset(*_args: Any) -> None:
         """実際のリセット処理"""
         affected_sections: Set[str] = set()
 
@@ -458,12 +458,12 @@ def do_mykatrain_settings_popup(
     # Searchable widgets list (populated after widget creation)
     searchable_widgets: List[Dict[str, Any]] = []
 
-    def register_searchable(label_text: str, *widgets):
+    def register_searchable(label_text: str, *widgets: Any) -> None:
         """検索対象としてウィジェットを登録"""
         for widget in widgets:
             searchable_widgets.append({"label_text": label_text, "widget": widget})
 
-    def on_search_text_change(instance, value):
+    def on_search_text_change(instance: Any, value: str) -> None:
         """検索テキスト変更時のフィルタ処理"""
         query = value.strip().lower()
         for item in searchable_widgets:
@@ -476,7 +476,7 @@ def do_mykatrain_settings_popup(
             else:
                 widget.opacity = 1.0
 
-    def on_search_clear(*_args):
+    def on_search_clear(*_args: Any) -> None:
         """検索をクリア"""
         search_input.text = ""
 
@@ -494,7 +494,7 @@ def do_mykatrain_settings_popup(
     # popup 変数を先に宣言（リセット用のコールバックで使用）
     popup = None
 
-    def reopen_popup():
+    def reopen_popup() -> None:
         """ポップアップをリロードして再表示"""
         from kivy.clock import Clock
 
@@ -1317,7 +1317,7 @@ def do_mykatrain_settings_popup(
     # schedule after construction to ensure widgets are ready.
     from kivy.clock import Clock
 
-    def _set_tab_fonts(dt):
+    def _set_tab_fonts(dt: float) -> None:
         for tab in tabbed_panel.tab_list:
             # Try public font_name first (TabbedPanelHeader)
             if hasattr(tab, "font_name"):
@@ -1340,7 +1340,7 @@ def do_mykatrain_settings_popup(
     ).__self__
 
     # Save callback
-    def save_settings(*_args):
+    def save_settings(*_args: Any) -> None:
         # Save skill preset and pv_filter_level to general config
         general = ctx.config("general") or {}
         general["skill_preset"] = selected_skill_preset[0]
@@ -1459,7 +1459,7 @@ def do_mykatrain_settings_popup(
         popup.dismiss()
 
     # Directory browse callbacks
-    def browse_output(*_args):
+    def browse_output(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
         browse_popup_content = LoadSGFPopup(ctx)
@@ -1474,14 +1474,14 @@ def do_mykatrain_settings_popup(
             content=browse_popup_content,
         ).__self__
 
-        def on_select(*_args):
+        def on_select(*_args: Any) -> None:
             output_input.text = browse_popup_content.filesel.file_text.text
             browse_popup.dismiss()
 
         browse_popup_content.filesel.bind(on_success=on_select)
         browse_popup.open()
 
-    def browse_input(*_args):
+    def browse_input(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
         browse_popup_content = LoadSGFPopup(ctx)
@@ -1496,14 +1496,14 @@ def do_mykatrain_settings_popup(
             content=browse_popup_content,
         ).__self__
 
-        def on_select(*_args):
+        def on_select(*_args: Any) -> None:
             input_input.text = browse_popup_content.filesel.file_text.text
             browse_popup.dismiss()
 
         browse_popup_content.filesel.bind(on_success=on_select)
         browse_popup.open()
 
-    def browse_leela_exe(*_args):
+    def browse_leela_exe(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
         browse_popup_content = LoadSGFPopup(ctx)
@@ -1521,7 +1521,7 @@ def do_mykatrain_settings_popup(
             content=browse_popup_content,
         ).__self__
 
-        def on_select(*_args):
+        def on_select(*_args: Any) -> None:
             selected = browse_popup_content.filesel.file_text.text
             if selected and os.path.isfile(selected):
                 leela_path_input.text = selected

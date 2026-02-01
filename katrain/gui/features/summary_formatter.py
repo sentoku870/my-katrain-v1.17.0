@@ -75,7 +75,7 @@ class _PatternMoveEval:
     # Type annotations for __slots__ members (Phase 111)
     mistake_category: Optional[MistakeCategory]
 
-    def __init__(self, data: dict):
+    def __init__(self, data: Dict[str, Any]) -> None:
         # Safe extraction with defaults
         self.move_number = data.get("move_number", 0)
         self.player = data.get("player")
@@ -105,7 +105,7 @@ class _FakeSnapshot:
     """Duck-typed EvalSnapshot for pattern mining."""
     __slots__ = ("moves",)
 
-    def __init__(self, moves: list):
+    def __init__(self, moves: List["_PatternMoveEval"]) -> None:
         self.moves = moves
 
 
@@ -277,7 +277,7 @@ def _is_valid_gtp(gtp: Optional[str], board_size: int = 19) -> bool:
         return False
 
 
-def _is_valid_move_number(move_number) -> bool:
+def _is_valid_move_number(move_number: Any) -> bool:
     """Check if move_number is a positive integer."""
     return isinstance(move_number, int) and move_number > 0
 
@@ -371,7 +371,7 @@ def _mine_patterns_safe(
 ) -> List["PatternCluster"]:
     """Wrapper for mine_patterns with lazy import."""
     from katrain.core.batch.stats.pattern_miner import mine_patterns
-    return mine_patterns(games, board_size=board_size, min_count=min_count, top_n=top_n)
+    return mine_patterns(games, board_size=board_size, min_count=min_count, top_n=top_n)  # type: ignore[arg-type]
 
 
 def _format_game_refs(game_refs: List["GameRef"], max_display: int = 3) -> str:
@@ -405,10 +405,10 @@ def _append_recurring_patterns(
     lines.append("")
 
     # Track unknown values for logging (once per call, not per cluster)
-    unknown_phases: set = set()
-    unknown_areas: set = set()
-    unknown_severities: set = set()
-    unknown_players: set = set()
+    unknown_phases: set[str] = set()
+    unknown_areas: set[str] = set()
+    unknown_severities: set[str] = set()
+    unknown_players: set[str] = set()
 
     for idx, cluster in enumerate(pattern_clusters, 1):
         sig = cluster.signature
@@ -529,7 +529,7 @@ def build_summary_from_stats(
             reason_tags_totals[tag] = reason_tags_totals.get(tag, 0) + count
 
     # Worst moves の集計
-    all_worst_moves: List[Tuple] = []
+    all_worst_moves: List[Tuple[str, int, str, str, float, float, MistakeCategory]] = []
     for stats in stats_list:
         game_name = stats["game_name"]
         for move_num, player, gtp, loss, importance, cat in stats["worst_moves"]:
@@ -843,7 +843,7 @@ def _append_worst_moves(
 
     # TempMoveクラス
     class TempMove:
-        def __init__(self, move_num, player, gtp, loss, importance):
+        def __init__(self, move_num: int, player: str, gtp: str, loss: float, importance: float) -> None:
             self.move_number = move_num
             self.player = player
             self.gtp = gtp
@@ -938,7 +938,7 @@ def _append_weakness_hypothesis(
         eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
     }
 
-    sorted_combos: List[Tuple] = []
+    sorted_combos: List[Tuple[Tuple[str, MistakeCategory], float]] = []
     if phase_mistake_loss_total:
         sorted_combos = sorted(
             [(k, v) for k, v in phase_mistake_loss_total.items() if k[1] in cat_names_ja and v > 0],
@@ -997,7 +997,7 @@ def _append_urgent_miss_in_weakness(
     from katrain.core.reports.summary_report import _detect_urgent_miss_sequences
 
     class TempMove:
-        def __init__(self, move_num, player, gtp, loss, importance):
+        def __init__(self, move_num: int, player: str, gtp: str, loss: float, importance: float) -> None:
             self.move_number = move_num
             self.player = player
             self.gtp = gtp
@@ -1071,7 +1071,7 @@ def _format_time_management(
 
     lines = [f"## {get_section_title()}"]
 
-    def _aggregate_stats(stats_list: List[StatsDict], player_color: str, focus_player: Optional[str] = None):
+    def _aggregate_stats(stats_list: List[StatsDict], player_color: str, focus_player: Optional[str] = None) -> Tuple["TimeStatsData", List[Dict[str, Any]]]:
         """Aggregate time stats for a player color."""
         total_blitz = 0
         total_blitz_mistake = 0
@@ -1114,7 +1114,7 @@ def _format_time_management(
             long_think_mistake_count=total_long_think_mistake,
         ), tilt_episodes
 
-    def _format_player_section(label: str, stats_data: TimeStatsData, tilt_episodes: list) -> List[str]:
+    def _format_player_section(label: str, stats_data: "TimeStatsData", tilt_episodes: List[Dict[str, Any]]) -> List[str]:
         """Format a single player's time management section."""
         section_lines = [f"\n### {label}", ""]
         section_lines.extend(format_time_stats(stats_data))

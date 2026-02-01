@@ -9,7 +9,7 @@ in a tabbed interface with:
 """
 
 import logging
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -202,7 +202,7 @@ def _format_warnings(result: EngineComparisonResult) -> str:
 def _build_moves_tab(
     ctx: "FeatureContext",
     result: EngineComparisonResult,
-) -> tuple:
+) -> Tuple[BoxLayout, Dict[str, Any]]:
     """Build the moves comparison tab.
 
     Returns:
@@ -278,7 +278,7 @@ def _build_moves_tab(
     layout.add_widget(scroll)
 
     # Bind filter buttons
-    def on_filter_change(instance, value):
+    def on_filter_change(instance: Any, value: str) -> None:
         if value == "down":
             filter_state["divergent_only"] = instance == filter_btn
             _rebuild_moves_table(ctx, result, table_container, filter_state)
@@ -293,7 +293,7 @@ def _rebuild_moves_table(
     ctx: "FeatureContext",
     result: EngineComparisonResult,
     container: BoxLayout,
-    filter_state: dict,
+    filter_state: Dict[str, Any],
 ) -> None:
     """Rebuild the moves table based on filter state."""
     container.clear_widgets()
@@ -441,8 +441,8 @@ def _add_cell(row: BoxLayout, text: str, width: float) -> None:
 def _on_row_click(
     ctx: "FeatureContext",
     move: MoveComparison,
-    instance,
-    touch,
+    instance: Any,
+    touch: Any,
 ) -> bool:
     """Handle row click to jump to move."""
     if not instance.collide_point(*touch.pos):
