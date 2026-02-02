@@ -109,13 +109,13 @@ def run_batch(
     deterministic: bool = True,
     # Engine selection (Phase 36)
     analysis_engine: str = "katago",
-    leela_engine: "LeelaEngine | None" = None,
+    leela_engine: LeelaEngine | None = None,
     per_move_timeout: float = 30.0,
     # Phase 54: Output language
     lang: str = "jp",
     # Phase 64: Curator outputs
     generate_curator: bool = False,
-    user_aggregate: "AggregatedRadarResult | None" = None,
+    user_aggregate: AggregatedRadarResult | None = None,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).

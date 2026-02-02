@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable, cast
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
+from katrain.core.game_node import GameNode
 
 
 class _DummyEngine:
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.game import Game
-    from katrain.core.game_node import GameNode
     from katrain.core.leela.engine import LeelaEngine
     from katrain.core.leela.models import LeelaPositionEval
     from katrain.core.analysis.models import EvalSnapshot, MoveEval
