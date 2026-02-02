@@ -43,7 +43,7 @@ import string
 from functools import partial
 from os import walk
 from os.path import dirname, expanduser, getmtime, isdir, isfile, join, sep
-from typing import Any
+from typing import Any, List
 
 from kivy import Config
 from kivy.clock import Clock
