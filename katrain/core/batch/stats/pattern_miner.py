@@ -13,7 +13,7 @@ Public API:
 """
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Sequence
 
 from katrain.core.analysis.board_context import BoardArea, classify_area
 
@@ -76,7 +76,7 @@ class MistakeSignature:
     severity: str
     player: str
 
-    def sort_key(self) -> Tuple[str, str, str, str, str]:
+    def sort_key(self) -> tuple[str, str, str, str, str]:
         """Return deterministic sort key for stable ordering."""
         return (self.phase, self.area, self.primary_tag, self.severity, self.player)
 
@@ -108,7 +108,7 @@ class PatternCluster:
     signature: MistakeSignature
     count: int
     total_loss: float
-    game_refs: List[GameRef] = field(default_factory=list)
+    game_refs: list[GameRef] = field(default_factory=list)
 
     @property
     def impact_score(self) -> float:
@@ -124,7 +124,7 @@ class PatternCluster:
 # Helper Functions
 # =============================================================================
 
-def get_severity(mistake_category: MistakeCategory) -> Optional[str]:
+def get_severity(mistake_category: MistakeCategory) -> str | None:
     """Convert MistakeCategory to severity string.
 
     Args:
@@ -140,7 +140,7 @@ def get_severity(mistake_category: MistakeCategory) -> Optional[str]:
     return None  # GOOD, INACCURACY, or unknown
 
 
-def normalize_player(player: Optional[str]) -> str:
+def normalize_player(player: str | None) -> str:
     """Normalize player to canonical format.
 
     Args:
@@ -163,7 +163,7 @@ def normalize_player(player: Optional[str]) -> str:
     return "?"
 
 
-def normalize_primary_tag(meaning_tag_id: Optional[str]) -> str:
+def normalize_primary_tag(meaning_tag_id: str | None) -> str:
     """Normalize meaning_tag_id to a primary tag string.
 
     Args:
@@ -189,7 +189,7 @@ def get_area_threshold(board_size: int) -> int:
 
 def determine_phase(
     move_number: int,
-    total_moves: Optional[int],
+    total_moves: int | None,
     board_size: int = 19,
 ) -> str:
     """Determine the game phase for a move.
@@ -210,7 +210,7 @@ def determine_phase(
     return "middle"
 
 
-def get_area_from_gtp(gtp: Optional[str], board_size: int = 19) -> Optional[str]:
+def get_area_from_gtp(gtp: str | None, board_size: int = 19) -> str | None:
     """Get board area from GTP coordinate string.
 
     Handles normalization (lowercase, whitespace) and error cases.
@@ -257,9 +257,9 @@ def get_area_from_gtp(gtp: Optional[str], board_size: int = 19) -> Optional[str]
 
 def create_signature(
     move_eval: Any,  # MoveEval or duck-typed object
-    total_moves: Optional[int],
+    total_moves: int | None,
     board_size: int = 19,
-) -> Optional[MistakeSignature]:
+) -> MistakeSignature | None:
     """Create a mistake signature from a move evaluation.
 
     Args:
@@ -306,11 +306,11 @@ def create_signature(
 
 
 def mine_patterns(
-    games: Sequence[Tuple[str, "EvalSnapshot"]],
+    games: Sequence[tuple[str, "EvalSnapshot"]],
     board_size: int = 19,
     min_count: int = 2,
     top_n: int = 5,
-) -> List[PatternCluster]:
+) -> list[PatternCluster]:
     """Extract frequent mistake patterns from multiple games.
 
     Args:
@@ -326,7 +326,7 @@ def mine_patterns(
     if not games or top_n <= 0:
         return []
 
-    clusters: Dict[MistakeSignature, PatternCluster] = {}
+    clusters: dict[MistakeSignature, PatternCluster] = {}
 
     for game_name, snapshot in games:
         total_moves = len(snapshot.moves)

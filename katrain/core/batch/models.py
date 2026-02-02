@@ -7,7 +7,7 @@ All classes are Kivy-independent and can be used in headless contexts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any
 
 
 @dataclass
@@ -65,18 +65,18 @@ class BatchResult:
     karte_written: int = 0
     karte_failed: int = 0
     summary_written: bool = False
-    summary_error: Optional[str] = None
+    summary_error: str | None = None
     analyzed_sgf_written: int = 0
     # Structured write errors (A3)
-    write_errors: List[WriteError] = field(default_factory=list)
+    write_errors: list[WriteError] = field(default_factory=list)
     # Curator outputs (Phase 64)
     curator_ranking_written: bool = False
     curator_guide_written: bool = False
     curator_games_scored: int = 0
     curator_guides_generated: int = 0
-    curator_errors: List[str] = field(default_factory=list)
+    curator_errors: list[str] = field(default_factory=list)
     # Circuit breaker fields (Phase 95C)
     aborted: bool = False
-    abort_reason: Optional[str] = None
+    abort_reason: str | None = None
     engine_failure_count: int = 0
     file_error_count: int = 0

@@ -12,10 +12,11 @@ import os
 import time
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
+from katrain.core.game_node import GameNode
 
 
 class _DummyEngine:
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.game import Game
-    from katrain.core.game_node import GameNode
     from katrain.core.leela.engine import LeelaEngine
     from katrain.core.leela.models import LeelaPositionEval
     from katrain.core.analysis.models import EvalSnapshot, MoveEval
@@ -54,14 +54,14 @@ def analyze_single_file(
     katrain: "KaTrainBase",
     engine: "KataGoEngine",
     sgf_path: str,
-    output_path: Optional[str] = None,
-    visits: Optional[int] = None,
+    output_path: str | None = None,
+    visits: int | None = None,
     timeout: float = 600.0,
-    cancel_flag: Optional[List[bool]] = None,
-    log_cb: Optional[Callable[[str], None]] = None,
+    cancel_flag: list[bool] | None = None,
+    log_cb: Callable[[str], None] | None = None,
     save_sgf: bool = True,
     return_game: bool = False,
-) -> "Union[bool, Optional[Game]]":
+) -> bool | Game | None:
     """
     Analyze a single SGF file and optionally save with analysis data.
 
@@ -88,10 +88,10 @@ def analyze_single_file(
         if log_cb:
             log_cb(msg)
 
-    def fail_result() -> Union[bool, None]:
+    def fail_result() -> bool | None:
         return None if return_game else False
 
-    def success_result(game_obj: "Game") -> Union[bool, "Game"]:
+    def success_result(game_obj: "Game") -> bool | Game:
         return game_obj if return_game else True
 
     try:
@@ -204,15 +204,15 @@ def analyze_single_file_leela(
     katrain: "KaTrainBase",
     leela_engine: "LeelaEngine",
     sgf_path: str,
-    output_path: Optional[str] = None,
-    visits: Optional[int] = None,
+    output_path: str | None = None,
+    visits: int | None = None,
     file_timeout: float = 600.0,
     per_move_timeout: float = 30.0,
-    cancel_flag: Optional[List[bool]] = None,
-    log_cb: Optional[Callable[[str], None]] = None,
+    cancel_flag: list[bool] | None = None,
+    log_cb: Callable[[str], None] | None = None,
     save_sgf: bool = True,
     return_game: bool = False,
-) -> "Union[bool, Tuple[Optional[Game], EvalSnapshot]]":
+) -> bool | tuple[Game | None, EvalSnapshot]:
     """
     Analyze a single SGF file using Leela Zero engine.
 
@@ -253,12 +253,12 @@ def analyze_single_file_leela(
         if log_cb:
             log_cb(msg)
 
-    def fail_result() -> Union[bool, Tuple[None, EvalSnapshot]]:
+    def fail_result() -> bool | tuple[None, EvalSnapshot]:
         if return_game:
             return None, EvalSnapshot(moves=[])
         return False
 
-    def success_result(game_obj: "Game", snapshot: "EvalSnapshot") -> Union[bool, Tuple["Game", "EvalSnapshot"]]:
+    def success_result(game_obj: "Game", snapshot: "EvalSnapshot") -> bool | tuple[Game, EvalSnapshot]:
         if return_game:
             return game_obj, snapshot
         return True
@@ -302,12 +302,12 @@ def analyze_single_file_leela(
         log("    [3/4] Analyzing moves with Leela Zero...")
 
         # Collect all moves from main branch
-        main_branch_nodes: List["GameNode"] = []
-        current: Optional["GameNode"] = game.root
+        main_branch_nodes: list[GameNode] = []
+        current: GameNode | None = game.root
         while current:
             main_branch_nodes.append(current)
             children = current.children
-            current = cast("GameNode", children[0]) if children else None
+            current = cast(GameNode, children[0]) if children else None
 
         # Skip root node, process only move nodes
         move_nodes = [n for n in main_branch_nodes if n.move is not None]
@@ -320,12 +320,12 @@ def analyze_single_file_leela(
         log(f"    Found {total_moves} moves to analyze")
 
         # Collect evaluations for each position
-        move_evals: List["MoveEval"] = []
-        position_evals: List["LeelaPositionEval"] = []
+        move_evals: list[MoveEval] = []
+        position_evals: list[LeelaPositionEval] = []
 
         # Build position sequence (moves leading to each position)
-        moves_sequence: List[List[Tuple[str, str]]] = []  # List of move lists
-        current_moves: List[Tuple[str, str]] = []
+        moves_sequence: list[list[tuple[str, str]]] = []  # List of move lists
+        current_moves: list[tuple[str, str]] = []
 
         for node in move_nodes:
             player = node.player
@@ -351,10 +351,10 @@ def analyze_single_file_leela(
                 return fail_result()
 
             # Request analysis
-            result_holder: List[Optional["LeelaPositionEval"]] = [None]
+            result_holder: list[LeelaPositionEval | None] = [None]
             result_event = threading.Event()
 
-            def on_result(eval_result: "LeelaPositionEval") -> None:
+            def on_result(eval_result: LeelaPositionEval) -> None:
                 result_holder[0] = eval_result
                 result_event.set()
 

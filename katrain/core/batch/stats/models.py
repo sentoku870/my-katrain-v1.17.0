@@ -10,7 +10,7 @@ No dependencies on other stats submodules.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 # Phase 49: Radar imports for type hints
 from katrain.core.analysis.skill_radar import (
@@ -93,7 +93,7 @@ AXIS_PRACTICE_HINTS = {
 # =============================================================================
 
 # Localized axis practice hints
-AXIS_PRACTICE_HINTS_LOCALIZED: Dict[str, Dict[RadarAxis, str]] = {
+AXIS_PRACTICE_HINTS_LOCALIZED: dict[str, dict[RadarAxis, str]] = {
     "jp": {
         RadarAxis.OPENING: "布石のパターンと定石選択を学ぶ",
         RadarAxis.FIGHTING: "詰碁と戦いの手筋を練習する",
@@ -105,7 +105,7 @@ AXIS_PRACTICE_HINTS_LOCALIZED: Dict[str, Dict[RadarAxis, str]] = {
 }
 
 # Meaning tag practice hints (lowercase snake_case IDs)
-MTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
+MTAG_PRACTICE_HINTS: dict[str, dict[str, str]] = {
     "jp": {
         "connection_miss": "石の連絡を意識した打ち方を練習",
         "reading_failure": "詰碁で読みを強化",
@@ -129,7 +129,7 @@ MTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
 }
 
 # Reason tag practice hints (lowercase snake_case keys)
-RTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
+RTAG_PRACTICE_HINTS: dict[str, dict[str, str]] = {
     "jp": {
         "need_connect": "石の連絡と切断に注意",
         "low_liberties": "呼吸点の管理を意識",
@@ -149,31 +149,31 @@ RTAG_PRACTICE_HINTS: Dict[str, Dict[str, str]] = {
 }
 
 # Localized intro texts
-PRACTICE_INTRO_TEXTS: Dict[str, str] = {
+PRACTICE_INTRO_TEXTS: dict[str, str] = {
     "jp": "上記のデータに基づき、以下を重点的に練習してください：\n",
     "en": "Based on the data above, consider focusing on:\n",
 }
 
 # Localized notes headers
-NOTES_HEADERS: Dict[str, str] = {
+NOTES_HEADERS: dict[str, str] = {
     "jp": "## 注記",
     "en": "## Notes",
 }
 
 # Localized hint line formats
-HINT_LINE_FORMATS: Dict[str, str] = {
+HINT_LINE_FORMATS: dict[str, str] = {
     "jp": "**{label}**（{count}回）→ {hint}",
     "en": "**{label}** ({count}x) -> {hint}",
 }
 
 # Localized percentage notes
-PERCENTAGE_NOTES: Dict[str, str] = {
+PERCENTAGE_NOTES: dict[str, str] = {
     "jp": "*パーセンテージはタグ出現回数の割合です（重要局面あたりではありません）*",
     "en": "*Percentages represent tag occurrence ratios (not per critical move)*",
 }
 
 # Localized color bias notes
-COLOR_BIAS_NOTES: Dict[str, Dict[str, str]] = {
+COLOR_BIAS_NOTES: dict[str, dict[str, str]] = {
     "jp": {
         "B": "*注: 全て黒番のデータです*",
         "W": "*注: 全て白番のデータです*",
@@ -185,7 +185,7 @@ COLOR_BIAS_NOTES: Dict[str, Dict[str, str]] = {
 }
 
 # Localized phase-based priority texts
-PHASE_PRIORITY_TEXTS: Dict[str, Dict[str, str]] = {
+PHASE_PRIORITY_TEXTS: dict[str, dict[str, str]] = {
     "jp": {
         "opening": "**布石の原理と定石**を学ぶ（平均損失が最も高い）",
         "middle": "**戦いと読み**を練習する（中盤での平均損失が高い）",
@@ -207,7 +207,7 @@ PHASE_PRIORITY_TEXTS: Dict[str, Dict[str, str]] = {
 }
 
 # Localized phase labels
-PHASE_LABELS_LOCALIZED: Dict[str, Dict[str, str]] = {
+PHASE_LABELS_LOCALIZED: dict[str, dict[str, str]] = {
     "jp": {
         "opening": "序盤",
         "middle": "中盤",
@@ -221,7 +221,7 @@ PHASE_LABELS_LOCALIZED: Dict[str, Dict[str, str]] = {
 }
 
 # Localized section headers
-SECTION_HEADERS: Dict[str, Dict[str, str]] = {
+SECTION_HEADERS: dict[str, dict[str, str]] = {
     "jp": {
         "practice_priorities": "## 練習の優先順位",
         "games_included": "## 含まれる対局",

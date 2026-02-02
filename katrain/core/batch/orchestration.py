@@ -17,7 +17,7 @@ import re
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core.batch.models import BatchResult, WriteError
 from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
@@ -55,8 +55,8 @@ class EngineFailureTracker:
     def __init__(self, max_failures: int = 3):
         self.consecutive_engine_failures = 0
         self.max_failures = max_failures
-        self.last_failure_file: Optional[str] = None
-        self.last_failure_reason: Optional[str] = None
+        self.last_failure_file: str | None = None
+        self.last_failure_reason: str | None = None
 
     def record_engine_failure(self, file_path: str, reason: str) -> bool:
         """Record engine failure. Returns True if should abort."""
@@ -89,18 +89,18 @@ def run_batch(
     katrain: "KaTrainBase",
     engine: "KataGoEngine",
     input_dir: str,
-    output_dir: Optional[str] = None,
-    visits: Optional[int] = None,
+    output_dir: str | None = None,
+    visits: int | None = None,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     skip_analyzed: bool = False,
-    progress_cb: Optional[Callable[[int, int, str], None]] = None,
-    log_cb: Optional[Callable[[str], None]] = None,
-    cancel_flag: Optional[List[bool]] = None,
+    progress_cb: Callable[[int, int, str], None] | None = None,
+    log_cb: Callable[[str], None] | None = None,
+    cancel_flag: list[bool] | None = None,
     # Extended options for karte/summary generation
     save_analyzed_sgf: bool = True,
     generate_karte: bool = False,
     generate_summary: bool = False,
-    karte_player_filter: Optional[str] = None,
+    karte_player_filter: str | None = None,
     min_games_per_player: int = 3,
     skill_preset: str = DEFAULT_SKILL_PRESET,
     # Variable visits options
@@ -109,13 +109,13 @@ def run_batch(
     deterministic: bool = True,
     # Engine selection (Phase 36)
     analysis_engine: str = "katago",
-    leela_engine: Optional["LeelaEngine"] = None,
+    leela_engine: LeelaEngine | None = None,
     per_move_timeout: float = 30.0,
     # Phase 54: Output language
     lang: str = "jp",
     # Phase 64: Curator outputs
     generate_curator: bool = False,
-    user_aggregate: Optional["AggregatedRadarResult"] = None,
+    user_aggregate: AggregatedRadarResult | None = None,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -246,16 +246,16 @@ def run_batch(
     game_stats_list: list[dict[str, Any]] | None = [] if generate_summary else None
 
     # Track (game, stats) tuples for curator output (Phase 64)
-    games_for_curator: list[Tuple["Game", dict[str, Any]]] | None = [] if generate_curator else None
+    games_for_curator: list[tuple[Game, dict[str, Any]]] | None = [] if generate_curator else None
 
     # Track actual effective visits used per successful analysis (for variable visits stats)
-    selected_visits_list: List[int] = []
+    selected_visits_list: list[int] = []
 
     # Timestamp for filenames (includes seconds to reduce collision risk)
     batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # Phase 53: Map rel_path -> full karte file path for summary links
-    karte_path_map: Dict[str, str] = {}
+    karte_path_map: dict[str, str] = {}
 
     # Phase 95C: Circuit breaker for consecutive engine failures
     tracker = EngineFailureTracker(max_failures=3)
