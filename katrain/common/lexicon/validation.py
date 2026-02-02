@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple
+from typing import Any, Literal
 
 from .models import AIPerspective, DiagramInfo, LexiconEntry
 
@@ -37,7 +37,7 @@ class LexiconParseError(LexiconError):
     """
 
     def __init__(
-        self, message: str, line: Optional[int] = None, column: Optional[int] = None
+        self, message: str, line: int | None = None, column: int | None = None
     ):
         self.line = line
         self.column = column
@@ -76,7 +76,7 @@ class ValidationIssue:
     """
 
     entry_index: int
-    entry_id: Optional[str]
+    entry_id: str | None
     field: str
     message: str
     is_error: bool
@@ -92,7 +92,7 @@ class ValidationResult:
         entries_skipped: Number of entries skipped due to errors.
     """
 
-    issues: List[ValidationIssue] = field(default_factory=list)
+    issues: list[ValidationIssue] = field(default_factory=list)
     entries_loaded: int = 0
     entries_skipped: int = 0
 
@@ -145,7 +145,7 @@ class ValidationResult:
 #   "warn_level3" = warn if level == 3 and empty
 FieldRequirement = Literal[True, False, "level3", "warn", "warn_level3"]
 
-FIELD_TYPE_SPECS: Dict[str, Tuple[type, FieldRequirement]] = {
+FIELD_TYPE_SPECS: dict[str, tuple[type, FieldRequirement]] = {
     # All levels required
     "id": (str, True),
     "level": (int, True),
@@ -199,7 +199,7 @@ def _get_id_pattern() -> re.Pattern[str]:
 # ---------------------------------------------------------------------------
 
 
-def validate_entry_dict(data: Any, entry_index: int) -> List[ValidationIssue]:
+def validate_entry_dict(data: Any, entry_index: int) -> list[ValidationIssue]:
     """Stage 1: Validate raw dict from YAML.
 
     Checks:
@@ -217,7 +217,7 @@ def validate_entry_dict(data: Any, entry_index: int) -> List[ValidationIssue]:
     Returns:
         List of ValidationIssue objects (errors and warnings).
     """
-    issues: List[ValidationIssue] = []
+    issues: list[ValidationIssue] = []
 
     # Check if entry is a dict
     if not isinstance(data, dict):
@@ -377,7 +377,7 @@ def validate_entry_dict(data: Any, entry_index: int) -> List[ValidationIssue]:
 # ---------------------------------------------------------------------------
 
 
-def build_entry_from_dict(data: Dict[str, Any]) -> LexiconEntry:
+def build_entry_from_dict(data: dict[str, Any]) -> LexiconEntry:
     """Stage 2: Build immutable LexiconEntry from validated dict.
 
     Precondition: validate_entry_dict() returned no errors.
@@ -448,9 +448,9 @@ def build_entry_from_dict(data: Dict[str, Any]) -> LexiconEntry:
 
 
 def validate_references(
-    entries: List[LexiconEntry],
-    known_ids: Set[str],
-) -> List[ValidationIssue]:
+    entries: list[LexiconEntry],
+    known_ids: set[str],
+) -> list[ValidationIssue]:
     """Validate ID references across all entries.
 
     Checks related_ids, prerequisites, and contrast_with fields for
@@ -463,7 +463,7 @@ def validate_references(
     Returns:
         List of warning issues for unknown ID references.
     """
-    issues: List[ValidationIssue] = []
+    issues: list[ValidationIssue] = []
 
     # Create index mapping for error messages
     id_to_index = {entry.id: i for i, entry in enumerate(entries)}

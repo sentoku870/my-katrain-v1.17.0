@@ -4,7 +4,7 @@
 # Phase 99で追加。
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 # 認識されるbool文字列
 _TRUE_STRINGS = frozenset({"true", "1", "yes"})
@@ -151,8 +151,8 @@ def normalize_path(value: Any) -> Optional[str]:
 
 
 def safe_float_tuple(
-    value: Any, default: Tuple[float, ...]
-) -> Tuple[float, ...]:
+    value: Any, default: tuple[float, ...]
+) -> tuple[float, ...]:
     """list/tuple → Tuple[float, ...] 変換。長さ不一致/失敗時はdefault。
 
     Args:
@@ -177,8 +177,8 @@ def safe_float_tuple(
 
 
 def safe_bool_tuple(
-    value: Any, default: Tuple[bool, ...]
-) -> Tuple[bool, ...]:
+    value: Any, default: tuple[bool, ...]
+) -> tuple[bool, ...]:
     """list/tuple → Tuple[bool, ...] 変換。長さ不一致時はdefault。
 
     Args:
@@ -305,10 +305,10 @@ class TrainerConfig:
     """
 
     theme: str = "theme:normal"
-    num_undo_prompts: Tuple[float, ...] = (1.0, 1.0, 1.0, 0.5, 0.0, 0.0)
-    eval_thresholds: Tuple[float, ...] = (12.0, 6.0, 3.0, 1.5, 0.5, 0.0)
-    save_feedback: Tuple[bool, ...] = (True, True, True, True, False, False)
-    show_dots: Tuple[bool, ...] = (True, True, True, True, True, True)
+    num_undo_prompts: tuple[float, ...] = (1.0, 1.0, 1.0, 0.5, 0.0, 0.0)
+    eval_thresholds: tuple[float, ...] = (12.0, 6.0, 3.0, 1.5, 0.5, 0.0)
+    save_feedback: tuple[bool, ...] = (True, True, True, True, False, False)
+    show_dots: tuple[bool, ...] = (True, True, True, True, True, True)
     extra_precision: bool = False
     save_analysis: bool = False
     save_marks: bool = False

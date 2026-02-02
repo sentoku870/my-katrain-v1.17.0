@@ -4,7 +4,6 @@ Phase 26: Report Navigation UX Improvements.
 """
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 import logging
 import os
 import subprocess
@@ -22,8 +21,8 @@ class OpenResult:
     """Result of file/folder open operation."""
 
     success: bool
-    error_message: Optional[str] = None  # Internal error code (for debugging)
-    error_detail: Optional[str] = None  # Detailed message (for logging/UI)
+    error_message: str | None = None  # Internal error code (for debugging)
+    error_detail: str | None = None  # Detailed message (for logging/UI)
 
 
 def open_folder(path: Path) -> OpenResult:

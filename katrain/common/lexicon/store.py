@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple, cast
+from typing import Any, Mapping, cast
 
 import yaml
 
@@ -40,16 +40,16 @@ class _LexiconSnapshot:
     All collections are immutable for thread-safe access.
     """
 
-    entries: Tuple[LexiconEntry, ...]
+    entries: tuple[LexiconEntry, ...]
     by_id: Mapping[str, LexiconEntry]
-    by_category: Mapping[str, Tuple[LexiconEntry, ...]]
-    by_level: Mapping[int, Tuple[LexiconEntry, ...]]
+    by_category: Mapping[str, tuple[LexiconEntry, ...]]
+    by_level: Mapping[int, tuple[LexiconEntry, ...]]
     by_ja_title: Mapping[str, LexiconEntry]
     by_en_title: Mapping[str, LexiconEntry]
-    categories: FrozenSet[str]
+    categories: frozenset[str]
 
 
-def _build_snapshot(entries: List[LexiconEntry]) -> _LexiconSnapshot:
+def _build_snapshot(entries: list[LexiconEntry]) -> _LexiconSnapshot:
     """Build an immutable snapshot from a list of entries.
 
     Args:
@@ -59,34 +59,34 @@ def _build_snapshot(entries: List[LexiconEntry]) -> _LexiconSnapshot:
         Immutable _LexiconSnapshot.
     """
     # Build ID index
-    by_id: Dict[str, LexiconEntry] = {}
+    by_id: dict[str, LexiconEntry] = {}
     for entry in entries:
         by_id[entry.id] = entry
 
     # Build category index
-    by_category_temp: Dict[str, List[LexiconEntry]] = {}
+    by_category_temp: dict[str, list[LexiconEntry]] = {}
     for entry in entries:
         if entry.category not in by_category_temp:
             by_category_temp[entry.category] = []
         by_category_temp[entry.category].append(entry)
 
-    by_category: Dict[str, Tuple[LexiconEntry, ...]] = {
+    by_category: dict[str, tuple[LexiconEntry, ...]] = {
         cat: tuple(entries_list) for cat, entries_list in by_category_temp.items()
     }
 
     # Build level index
-    by_level_temp: Dict[int, List[LexiconEntry]] = {1: [], 2: [], 3: []}
+    by_level_temp: dict[int, list[LexiconEntry]] = {1: [], 2: [], 3: []}
     for entry in entries:
         if entry.level in by_level_temp:
             by_level_temp[entry.level].append(entry)
 
-    by_level: Dict[int, Tuple[LexiconEntry, ...]] = {
+    by_level: dict[int, tuple[LexiconEntry, ...]] = {
         level: tuple(entries_list) for level, entries_list in by_level_temp.items()
     }
 
     # Build title indices (first entry wins for collisions)
-    by_ja_title: Dict[str, LexiconEntry] = {}
-    by_en_title: Dict[str, LexiconEntry] = {}
+    by_ja_title: dict[str, LexiconEntry] = {}
+    by_en_title: dict[str, LexiconEntry] = {}
 
     for entry in entries:
         # Japanese title lookup: ja_term, ja_title
@@ -151,7 +151,7 @@ class LexiconStore:
             path: Path to the lexicon YAML file.
         """
         self._path = path
-        self._snapshot: Optional[_LexiconSnapshot] = None
+        self._snapshot: _LexiconSnapshot | None = None
 
     def load(self) -> ValidationResult:
         """Load and validate the lexicon YAML file.
@@ -179,8 +179,8 @@ class LexiconStore:
             raise LexiconParseError("'entries' must be a list")
 
         # Process entries
-        entries: List[LexiconEntry] = []
-        seen_ids: Set[str] = set()
+        entries: list[LexiconEntry] = []
+        seen_ids: set[str] = set()
 
         for i, entry_data in enumerate(entries_data):
             # Stage 1: Validate dict
@@ -228,14 +228,14 @@ class LexiconStore:
 
         return result
 
-    def _load_yaml(self) -> Dict[str, Any]:
+    def _load_yaml(self) -> dict[str, Any]:
         """Load YAML with line number preservation for syntax errors."""
         try:
             with open(self._path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
                 if data is None:
                     raise LexiconParseError("YAML file is empty")
-                return cast(Dict[str, Any], data)
+                return cast(dict[str, Any], data)
         except yaml.YAMLError as e:
             line = None
             column = None
@@ -244,11 +244,11 @@ class LexiconStore:
                 column = e.problem_mark.column + 1
             raise LexiconParseError(f"YAML syntax error: {e}", line=line, column=column) from e
 
-    def _check_title_collisions(self, entries: List[LexiconEntry]) -> List[ValidationIssue]:
+    def _check_title_collisions(self, entries: list[LexiconEntry]) -> list[ValidationIssue]:
         """Check for title collisions and emit warnings."""
-        issues: List[ValidationIssue] = []
-        seen_ja: Dict[str, str] = {}  # title -> first entry id
-        seen_en: Dict[str, str] = {}  # title -> first entry id
+        issues: list[ValidationIssue] = []
+        seen_ja: dict[str, str] = {}  # title -> first entry id
+        seen_en: dict[str, str] = {}  # title -> first entry id
 
         for i, entry in enumerate(entries):
             # Check Japanese titles
@@ -306,7 +306,7 @@ class LexiconStore:
             raise LexiconNotLoadedError("Lexicon not loaded. Call load() first.")
         return self._snapshot
 
-    def get(self, entry_id: str) -> Optional[LexiconEntry]:
+    def get(self, entry_id: str) -> LexiconEntry | None:
         """Get an entry by ID.
 
         Args:
@@ -321,7 +321,7 @@ class LexiconStore:
         snapshot = self._require_loaded()
         return snapshot.by_id.get(entry_id)
 
-    def get_by_title(self, title: str, lang: str = "ja") -> Optional[LexiconEntry]:
+    def get_by_title(self, title: str, lang: str = "ja") -> LexiconEntry | None:
         """Get an entry by title.
 
         Args:
@@ -347,7 +347,7 @@ class LexiconStore:
             key = title.strip().lower()
             return snapshot.by_en_title.get(key)
 
-    def get_by_category(self, category: str) -> Tuple[LexiconEntry, ...]:
+    def get_by_category(self, category: str) -> tuple[LexiconEntry, ...]:
         """Get all entries in a category.
 
         Args:
@@ -362,7 +362,7 @@ class LexiconStore:
         snapshot = self._require_loaded()
         return snapshot.by_category.get(category, ())
 
-    def get_by_level(self, level: int) -> Tuple[LexiconEntry, ...]:
+    def get_by_level(self, level: int) -> tuple[LexiconEntry, ...]:
         """Get all entries at a specific level.
 
         Args:
@@ -378,7 +378,7 @@ class LexiconStore:
         return snapshot.by_level.get(level, ())
 
     @property
-    def all_entries(self) -> Tuple[LexiconEntry, ...]:
+    def all_entries(self) -> tuple[LexiconEntry, ...]:
         """Get all entries.
 
         Returns:
@@ -391,7 +391,7 @@ class LexiconStore:
         return snapshot.entries
 
     @property
-    def all_categories(self) -> FrozenSet[str]:
+    def all_categories(self) -> frozenset[str]:
         """Get all category names.
 
         Returns:

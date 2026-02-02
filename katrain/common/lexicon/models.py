@@ -8,7 +8,7 @@ All classes use frozen=True and Tuple[str, ...] for complete immutability.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,7 @@ class DiagramInfo:
         annotation: Annotation text for the diagram.
     """
 
-    setup: Tuple[str, ...] = ()
+    setup: tuple[str, ...] = ()
     annotation: str = ""
 
 
@@ -89,15 +89,15 @@ class LexiconEntry:
     level: int  # 1, 2, or 3
     category: str
     ja_term: str
-    en_terms: Tuple[str, ...]  # Non-empty tuple required
+    en_terms: tuple[str, ...]  # Non-empty tuple required
     ja_one_liner: str
     en_one_liner: str
     ja_short: str
     en_short: str
 
     # === Recommended fields - missing/empty = warning, default used ===
-    sources: Tuple[str, ...] = ()
-    related_ids: Tuple[str, ...] = ()
+    sources: tuple[str, ...] = ()
+    related_ids: tuple[str, ...] = ()
 
     # === Level 3 required fields - missing/empty for Level 3 = error ===
     ja_title: str = ""
@@ -106,17 +106,17 @@ class LexiconEntry:
     en_expanded: str = ""
 
     # === Level 3 recommended fields - empty for Level 3 = warning ===
-    decision_checklist: Tuple[str, ...] = ()
-    signals: Tuple[str, ...] = ()
-    common_failure_modes: Tuple[str, ...] = ()
-    drills: Tuple[str, ...] = ()
-    prerequisites: Tuple[str, ...] = ()
+    decision_checklist: tuple[str, ...] = ()
+    signals: tuple[str, ...] = ()
+    common_failure_modes: tuple[str, ...] = ()
+    drills: tuple[str, ...] = ()
+    prerequisites: tuple[str, ...] = ()
 
     # === Optional fields - always use defaults ===
-    pitfalls: Tuple[str, ...] = ()
-    recognize_by: Tuple[str, ...] = ()
+    pitfalls: tuple[str, ...] = ()
+    recognize_by: tuple[str, ...] = ()
     micro_example: str = ""
-    diagram: Optional[DiagramInfo] = None
-    contrast_with: Tuple[str, ...] = ()
+    diagram: DiagramInfo | None = None
+    contrast_with: tuple[str, ...] = ()
     nuances: str = ""
-    ai_perspective: Optional[AIPerspective] = None
+    ai_perspective: AIPerspective | None = None

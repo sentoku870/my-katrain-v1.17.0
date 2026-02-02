@@ -16,7 +16,7 @@ import os
 import tempfile
 from collections.abc import Mapping
 from threading import Lock
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator
 
 
 class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
@@ -34,7 +34,7 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
         self._filename = filename
         self._indent = indent
         self._lock = Lock()
-        self._data: Dict[str, Dict[str, Any]] = {}
+        self._data: dict[str, dict[str, Any]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -148,7 +148,7 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
         with self._lock:
             return key in self._data
 
-    def __getitem__(self, key: str) -> Dict[str, Any]:
+    def __getitem__(self, key: str) -> dict[str, Any]:
         """Get section by key (Mapping protocol)."""
         with self._lock:
             return self._data[key]
