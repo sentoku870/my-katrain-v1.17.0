@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-01（Phase 111完了）
+> 最終更新: 2026-02-02（Phase 115完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -287,6 +287,43 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 
 **Phase 90**: ✅ エラー救済機能の実装。`error_recovery.py`（スレッドセーフ重複排除、4096バイトUTF-8制限）、
 `recovery_actions.py`（4つの復旧アクション）、EngineRecoveryPopupに復旧ボタン追加、
+
+### Phase 112-113: mypy strict全体・CIブロック + Modern Typing Migration ✅ **完了**（2026-02-02）
+
+| Phase | ゴール | 主成果物 | 状態 |
+|------:|--------|----------|:----:|
+| 112 | mypy strict全体・CIブロック | 全205ファイル型安全化、1352→0エラー、CI typecheck job追加 | ✅ |
+| 113 | Python 3.11 modern syntax migration | 302ファイル、~1,750注釈を機械的に変換、PEP 604/585準拠 | ✅ |
+| 114 | Forward Reference + i18n + Semantic Type Fixes（Part 1） | 66ファイル mechanical 変換、6サブフェーズ（114A-F）、PR #277 | ✅ |
+| 115 | Critical Files Modern Syntax（Part 2） | engine.py + 検証（badukpan.py, __main__.py）、統合テスト完了、PR #277含む | ✅ |
+
+**Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
+pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
+全205ファイル（~35,000行）のmypy strict エラーを1352→0に削減。
+
+**Phase 113**: ✅ Python 3.11 modern syntax migration（2026-02-02）。
+302ファイル・~1,750注釈を PEP 604/585 に統一。`Optional[X]` → `X | None`, `Dict[K,V]` → `dict[K,V]`, `List[X]` → `list[X]`, `Union[X,Y]` → `X | Y`。
+Forward Reference Policy適用：`from __future__ import annotations` ある → unquoted unions、ない → Phase 114 defer。
+69ファイル（78→69の carryover）が Phase 114/115 へ。
+
+**Phase 114**: ✅ Forward Reference + i18n + Semantic Type Fixes（Part 1）（2026-02-02）。
+66ファイルの mechanical 型変換。6サブフェーズ（114A: Analysis&Batch 25F、114B: Utilities 20F、114C: GUI 15F、114D: i18n 1F、114E: Tests 10F、114F: Scripts&Common 4F）で段階実行。
+Gate 0 (構文) ✅、Gate 1 (mypy strict 0新規エラー) ✅、Gate 2 (pytest 3776 PASS) ✅。
+PR #277 マージ（squash）。
+
+**Phase 115**: ✅ Critical Files Modern Syntax（Part 2）（2026-02-02）。
+3ファイル：engine.py (CRITICAL, 15+型ヒント, 150+dependents) + badukpan.py (検証) + __main__.py (検証)。
+Integration test全て完了：SGF読込→解析→エクスポート、言語切替OK。
+PR #277に統合（phase 114-115 unified）。
+
+**成果**:
+- ✅ 全69ファイル modern typing 化完了（302 + 69 = 371ファイル）
+- ✅ `from __future__ import annotations` 100%導入
+- ✅ mypy strict: 0新規エラー（pre-existing 85件は Phase 116で対応）
+- ✅ pytest: 3776 PASS 維持（回帰なし）
+- ✅ 手動テスト：全ワークフロー OK（解析、エクスポート、言語切替）
+
+---
 `collect_diagnostics_bundle()`/`format_llm_diagnostics_text()`パブリックAPI、`extra_files`でllm_prompt.txt注入。（2026-01-30完了）
 
 **Phase 91**: ✅ 初心者向けヒント（Safety Net）MVP。`katrain/core/beginner/`パッケージ新規作成、

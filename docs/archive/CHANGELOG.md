@@ -5,6 +5,23 @@
 
 ---
 
+- 2026-02-02: Phase 115 完了（Modern Typing Syntax Unification - PEP 604/585）
+  - Phase 114 + 115: 全69ファイルにおいて modern typing syntax への統一完了
+  - Phase 114（66ファイル）: 機械的な型変換（`Optional[X]` → `X | None`, `Dict[K,V]` → `dict[K,V]` 等）
+    - 6サブフェーズ（114A-F）で段階的実行
+    - Gate 0-2 全てパス（構文OK、mypy strict 0新規エラー、pytest 3776 PASS）
+  - Phase 115（3ファイル）: 重大ファイル + 検証
+    - 115A: `core/engine.py`（15+型ヒント、150+dependents）を現代構文に変換
+    - 115B-C: `gui/badukpan.py`, `__main__.py` 検証（既にmodern）
+    - 統合テスト全て完了：SGF読込→解析→エクスポート、言語切替 OK
+  - 成果:
+    - ✅ 全69ファイル modern typing 化完了
+    - ✅ `from __future__ import annotations` 100% 導入
+    - ✅ mypy strict: 0新規エラー（pre-existing 85件は Phase 116で対応予定）
+    - ✅ pytest: 3776 PASS 維持（回帰なし）
+    - ✅ PR #277 マージ（squash merge、main統合）
+  - 注記: 85件の pre-existing mypy エラーは Phase 113 以前の issue で、Phase 114/115 による新規エラーではなし
+
 - 2026-02-02: Phase 113 完了（Python 3.11 Modern Syntax Migration）
   - Legacy typing（`Optional[X]`, `List[X]`, `Dict[K,V]`, `Union[X,Y]`）を現代構文に統一。
   - 302ファイル、~1,750注釈を機械的に変換
