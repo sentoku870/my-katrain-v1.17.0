@@ -4,9 +4,11 @@ Structure:
 - Top-level: Pure functions (Kivy-independent, testable)
 - Bottom: UI functions (lazy imports inside functions)
 """
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 import logging
 
 # --- Constants ---
@@ -35,7 +37,7 @@ class ReportInfo:
     mtime: float  # Modified time (st_mtime)
 
 
-def find_recent_reports(output_dir: Path, limit: int = 10) -> List[ReportInfo]:
+def find_recent_reports(output_dir: Path, limit: int = 10) -> list[ReportInfo]:
     """Find recent reports in the output directory.
 
     Args:
@@ -64,7 +66,7 @@ def find_recent_reports(output_dir: Path, limit: int = 10) -> List[ReportInfo]:
     return reports[:limit]
 
 
-def get_latest_report(output_dir: Path) -> Optional[ReportInfo]:
+def get_latest_report(output_dir: Path) -> ReportInfo | None:
     """Get the most recent report.
 
     Args:

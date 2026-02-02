@@ -9,8 +9,10 @@
 # - create_summary_callback: 完了時のサマリ表示コールバック作成
 # - run_batch_in_thread: バックグラウンドスレッドでバッチ実行
 
+from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 
@@ -58,7 +60,7 @@ if TYPE_CHECKING:
 
 def collect_batch_options(
     widgets: BatchWidgets,
-    get_player_filter_fn: Callable[[], Optional[str]],
+    get_player_filter_fn: Callable[[], str | None],
 ) -> BatchOptions:
     """UIウィジェットからバッチオプションを収集
 
@@ -166,7 +168,7 @@ def create_progress_callback(
 
 
 def create_summary_callback(
-    is_running: List[bool],
+    is_running: list[bool],
     start_button: Any,
     close_button: Any,
     progress_label: Any,
@@ -226,7 +228,7 @@ def create_summary_callback(
 def run_batch_in_thread(
     ctx: "FeatureContext",
     options: BatchOptions,
-    cancel_flag: List[bool],
+    cancel_flag: list[bool],
     progress_cb: Callable[[int, int, str], None],
     log_cb: Callable[[str], None],
     on_complete: Callable[[BatchResult], None],

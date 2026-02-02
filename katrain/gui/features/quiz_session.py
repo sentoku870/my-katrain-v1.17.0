@@ -8,7 +8,9 @@
 # Note: Kivy imports are deferred inside the function to allow
 # patching this module in headless CI environment (Phase 101 fix).
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
@@ -20,8 +22,8 @@ if TYPE_CHECKING:
 
 def start_quiz_session(
     ctx: "FeatureContext",
-    quiz_items: List[eval_metrics.QuizItem],
-    format_points_loss_fn: Callable[[Optional[float]], str],
+    quiz_items: list[eval_metrics.QuizItem],
+    format_points_loss_fn: Callable[[float | None], str],
     update_state_fn: Callable[[], None],
 ) -> None:
     """クイズセッションを開始
@@ -114,7 +116,7 @@ def start_quiz_session(
     popup.size_hint = (0.38, 0.55)
     popup.pos_hint = {"right": 0.99, "top": 0.99}
 
-    answers: Dict[int, str] = {}
+    answers: dict[int, str] = {}
     current_index = 0
     total_questions = len(questions)
 
@@ -133,7 +135,7 @@ def start_quiz_session(
         played_move_item = getattr(item, "played_move", None)
         played_move = played_move_q if played_move_q is not None else played_move_item
 
-        def display_move(move_id: Optional[str]) -> str:
+        def display_move(move_id: str | None) -> str:
             if move_id is None:
                 return i18n._("Unknown move")
             return move_id or i18n._("Pass")

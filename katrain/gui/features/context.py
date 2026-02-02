@@ -16,7 +16,9 @@
 # Phase 104で拡張: state_notifierプロパティを追加。
 # Python 3.9互換: Optional/Dict/List構文を使用。
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from katrain.common.typed_config import EngineConfig, LeelaConfig, TrainerConfig
@@ -60,7 +62,7 @@ class FeatureContext(Protocol):
         各メソッドは既存実装を参照（Grep で "def <method>" で検索可能）。
     """
 
-    game: Optional["Game"]
+    game: "Game" | None
     controls: "ControlsPanel"
     engine: Any  # KataGoEngine or None - avoid circular import
     version: str
@@ -78,7 +80,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def set_config_section(self, section: str, value: Dict[str, Any]) -> None:
+    def set_config_section(self, section: str, value: dict[str, Any]) -> None:
         """設定セクションを書き込む。
 
         Args:
@@ -90,7 +92,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def save_config(self, key: Optional[str] = None) -> None:
+    def save_config(self, key: str | None = None) -> None:
         """設定をファイルに保存する。
 
         Args:
@@ -107,7 +109,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_recent_logs(self) -> List[str]:
+    def get_recent_logs(self) -> list[str]:
         """最近のログエントリを取得する。
 
         Returns:
@@ -115,7 +117,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_config_snapshot(self) -> Dict[str, Any]:
+    def get_config_snapshot(self) -> dict[str, Any]:
         """設定のスナップショットを取得する（Phase 90追加）。
 
         This is the public API for accessing config data.

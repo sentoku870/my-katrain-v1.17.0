@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 
@@ -66,7 +66,7 @@ def _show_impl(ctx: "FeatureContext") -> None:
         ctx.log(i18n._("radar:no-data"), OUTPUT_ERROR)
         return
 
-    radar: Dict[str, Optional[RadarMetrics]] = {}
+    radar: dict[str, RadarMetrics | None] = {}
     for p in ("B", "W"):
         player_moves = [m for m in snapshot.moves if m.player == p]
         print(f"[RADAR DEBUG] Player={p}, num_moves={len(player_moves)}, move_numbers={[m.move_number for m in player_moves[:5]]}")
@@ -120,7 +120,7 @@ def _show_impl(ctx: "FeatureContext") -> None:
 class SkillRadarPopup(Popup):
     """Popup with ToggleButton-based player selector."""
 
-    def __init__(self, radar: Dict[str, Optional[RadarMetrics]], **kwargs: Any) -> None:
+    def __init__(self, radar: dict[str, RadarMetrics | None], **kwargs: Any) -> None:
         self.radar = radar
         self.current_side = "B"  # Default to Black
 
@@ -215,7 +215,7 @@ class SkillRadarPopup(Popup):
             self.content_container.add_widget(_no_data_content())
 
 
-def _build_popup(radar: Dict[str, Optional[RadarMetrics]]) -> None:
+def _build_popup(radar: dict[str, RadarMetrics | None]) -> None:
     """Build and display the popup."""
     popup = SkillRadarPopup(radar)
     popup.open()

@@ -4,9 +4,11 @@
 #
 # Player Profile の表示・更新を行うUIモジュール。
 
+from __future__ import annotations
+
 import threading
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -75,7 +77,7 @@ PRESET_LABELS = {
 
 def build_bucket_card(
     bucket_key: str,
-    profile: Optional[BucketProfile],
+    profile: BucketProfile | None,
 ) -> BoxLayout:
     """Bucket カードウィジェットを構築
 
@@ -192,9 +194,9 @@ def build_bucket_card(
 
 
 def compute_profile_update_preview(
-    games: List[GameEntry],
-    engine_profile_id: Optional[str],
-) -> Dict[str, Any]:
+    games: list[GameEntry],
+    engine_profile_id: str | None,
+) -> dict[str, Any]:
     """プロファイル更新のプレビューを計算
 
     Args:
@@ -216,7 +218,7 @@ def compute_profile_update_preview(
 
     # engine_profile_id が指定されていない場合は最多のものを選択
     if engine_profile_id is None:
-        ep_counts: Dict[Optional[str], int] = {}
+        ep_counts: dict[str | None, int] = {}
         for g in games:
             ep_id = g.engine_profile_id
             ep_counts[ep_id] = ep_counts.get(ep_id, 0) + 1
@@ -277,7 +279,7 @@ def show_update_preview_dialog(
     ctx: "FeatureContext",
     context: Context,
     bucket_key: str,
-    preview: Dict[str, Any],
+    preview: dict[str, Any],
     on_apply: Callable[[], None],
 ) -> None:
     """更新プレビューダイアログを表示
@@ -479,9 +481,9 @@ def show_update_bucket_dialog(
     )
     popup.title = "Bucket 更新"
 
-    def collect_games_for_bucket() -> List[GameEntry]:
+    def collect_games_for_bucket() -> list[GameEntry]:
         """指定されたContext/Bucketに該当するゲームを全Training Setから収集"""
-        all_games: List[GameEntry] = []
+        all_games: list[GameEntry] = []
         for set_id in list_training_sets():
             manifest = load_manifest(set_id)
             if manifest is None:
@@ -597,8 +599,8 @@ def show_player_profile_popup(
         katrain_gui: KaTrainGui インスタンス
     """
     # 状態管理
-    selected_context: List[Context] = [Context.HUMAN]
-    cards_container: List[Optional[BoxLayout]] = [None]
+    selected_context: list[Context] = [Context.HUMAN]
+    cards_container: list[BoxLayout | None] = [None]
 
     # メインレイアウト
     main_layout = BoxLayout(

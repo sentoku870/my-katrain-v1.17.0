@@ -9,7 +9,7 @@ Kivy依存（platform, Clock, Clipboard）は全てコンストラクタで注�
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
@@ -30,18 +30,18 @@ class KeyboardManager:
         clipboard_copy: Callable[[str], None],
         # State accessors
         get_note_focus: Callable[[], bool],
-        get_popup_open: Callable[[], Optional[Any]],
-        get_game: Callable[[], Optional[Any]],
+        get_popup_open: Callable[[], Any | None],
+        get_game: Callable[[], Any | None],
         # Action dispatcher
         action_dispatcher: Callable[..., None],
         # Widget accessors
-        get_analysis_controls: Callable[[], Optional[Any]],
-        get_board_gui: Callable[[], Optional[Any]],
-        get_controls: Callable[[], Optional[Any]],
-        get_nav_drawer: Callable[[], Optional[Any]],
-        get_play_mode: Callable[[], Optional[Any]],
+        get_analysis_controls: Callable[[], Any | None],
+        get_board_gui: Callable[[], Any | None],
+        get_controls: Callable[[], Any | None],
+        get_nav_drawer: Callable[[], Any | None],
+        get_play_mode: Callable[[], Any | None],
         # State modifiers
-        get_set_zen: Callable[[], Tuple[int, Callable[[int], None]]],
+        get_set_zen: Callable[[], tuple[int, Callable[[int], None]]],
         toggle_continuous_analysis: Callable[[bool], None],
         toggle_move_num: Callable[[], None],
         load_from_clipboard: Callable[[], None],
@@ -49,7 +49,7 @@ class KeyboardManager:
         logger: Callable[[str, int], None],
         status_setter: Callable[[str, int], None],
         # Debug level for profiler (optional)
-        get_debug_level: Optional[Callable[[], int]] = None,
+        get_debug_level: Callable[[], int | None] | None = None,
     ):
         """初期化。全依存をコンストラクタで受け取る。"""
         # Kivy代替
@@ -78,10 +78,10 @@ class KeyboardManager:
         self._set_status = status_setter
         self._get_debug_level = get_debug_level
         # Internal state
-        self.last_key_down: Optional[Tuple[int, str]] = None
+        self.last_key_down: tuple[int, str] | None = None
         self.last_focus_event: float = 0.0
 
-    def _parse_modifiers(self, modifiers: Optional[List[str]]) -> Tuple[bool, bool]:
+    def _parse_modifiers(self, modifiers: list[str] | None) -> tuple[bool, bool]:
         """修飾キーを安全にパース。None/不正値に対応。
 
         Args:
@@ -99,7 +99,7 @@ class KeyboardManager:
         return ctrl, shift
 
     @property
-    def shortcuts(self) -> Dict[str, Any]:
+    def shortcuts(self) -> dict[str, Any]:
         """ショートカットキー辞書を返す。
 
         Returns:
@@ -139,14 +139,14 @@ class KeyboardManager:
             for k in (ks if isinstance(ks, list) else [ks])
         }
 
-    def on_keyboard_down(self, _keyboard: Any, keycode: Tuple[int, str], _text: str, modifiers: Optional[List[str]]) -> None:
+    def on_keyboard_down(self, _keyboard: Any, keycode: tuple[int, str], _text: str, modifiers: list[str] | None) -> None:
         """キー押下イベントハンドラ。
 
         Args:
             _keyboard: Keyboard instance (unused)
-            keycode: Tuple[int, str] - (scancode, key_name)
+            keycode: tuple[int, str] - (scancode, key_name)
             _text: str - text representation (unused)
-            modifiers: List[str] | None - ["ctrl", "shift", "alt", "meta", etc.]
+            modifiers: list[str] | None - ["ctrl", "shift", "alt", "meta", etc.]
 
         Returns:
             None
@@ -276,12 +276,12 @@ class KeyboardManager:
                 else:
                     self._action_dispatcher(*shortcut)
 
-    def on_keyboard_up(self, _keyboard: Any, keycode: Tuple[int, str]) -> None:
+    def on_keyboard_up(self, _keyboard: Any, keycode: tuple[int, str]) -> None:
         """キー解放イベントハンドラ。
 
         Args:
             _keyboard: Keyboard instance (unused)
-            keycode: Tuple[int, str] - (scancode, key_name)
+            keycode: tuple[int, str] - (scancode, key_name)
 
         Returns:
             None (既存動作維持)
@@ -289,7 +289,7 @@ class KeyboardManager:
         if keycode[1] in ["alt", "tab"]:
             self._schedule_once(lambda dt: self._single_key_action(keycode), 0.05)
 
-    def _single_key_action(self, keycode: Tuple[int, str]) -> None:
+    def _single_key_action(self, keycode: tuple[int, str]) -> None:
         """Alt/Tab単独押下時の処理。
 
         schedule_onceから遅延呼び出しされる。

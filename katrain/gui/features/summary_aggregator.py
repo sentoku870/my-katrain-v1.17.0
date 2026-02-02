@@ -7,8 +7,10 @@
 # - categorize_games_by_stats: 統計データから対局を分類
 # - collect_rank_info: focus_playerの段級位情報を収集
 
+from __future__ import annotations
+
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.constants import OUTPUT_ERROR
 from katrain.core.errors import SGFError
@@ -20,9 +22,9 @@ if TYPE_CHECKING:
 
 
 def scan_player_names(
-    sgf_files: List[str],
+    sgf_files: list[str],
     log_fn: LogFunction,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """SGFファイルから全プレイヤー名をスキャン（出現回数付き）
 
     Args:
@@ -34,7 +36,7 @@ def scan_player_names(
     """
     from katrain.core.constants import OUTPUT_ERROR
 
-    player_counts: Dict[str, int] = {}
+    player_counts: dict[str, int] = {}
 
     for path in sgf_files:
         try:
@@ -60,9 +62,9 @@ def scan_player_names(
 
 
 def categorize_games_by_stats(
-    game_stats_list: List[Dict[str, Any]],
-    focus_player: Optional[str],
-) -> Dict[str, List[Dict[str, Any]]]:
+    game_stats_list: list[dict[str, Any]],
+    focus_player: str | None,
+) -> dict[str, list[dict[str, Any]]]:
     """統計データから対局を分類（互先/置碁）
 
     Args:
@@ -76,7 +78,7 @@ def categorize_games_by_stats(
             "handi_strong": [...] # 置碁（上手・白）
         }
     """
-    categories: Dict[str, List[Dict[str, Any]]] = {
+    categories: dict[str, list[dict[str, Any]]] = {
         "even": [],          # 互先
         "handi_weak": [],    # 置碁（下手・黒）
         "handi_strong": [],  # 置碁（上手・白）
@@ -120,9 +122,9 @@ def categorize_games_by_stats(
 
 
 def collect_rank_info(
-    stats_list: List[Dict[str, Any]],
-    focus_player: Optional[str],
-) -> Optional[str]:
+    stats_list: list[dict[str, Any]],
+    focus_player: str | None,
+) -> str | None:
     """focus_player の段級位情報を収集（Phase 10-C）
 
     Args:
@@ -136,7 +138,7 @@ def collect_rank_info(
         return None
 
     # 全ゲームから focus_player の段級位を探す
-    ranks: List[str] = []
+    ranks: list[str] = []
     for stats in stats_list:
         if stats["player_black"] == focus_player and stats.get("rank_black"):
             ranks.append(stats["rank_black"])

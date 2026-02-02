@@ -8,8 +8,10 @@ in a tabbed interface with:
 - Statistics summary (統計サマリー)
 """
 
+from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -202,7 +204,7 @@ def _format_warnings(result: EngineComparisonResult) -> str:
 def _build_moves_tab(
     ctx: "FeatureContext",
     result: EngineComparisonResult,
-) -> Tuple[BoxLayout, Dict[str, Any]]:
+) -> tuple[BoxLayout, dict[str, Any]]:
     """Build the moves comparison tab.
 
     Returns:
@@ -293,7 +295,7 @@ def _rebuild_moves_table(
     ctx: "FeatureContext",
     result: EngineComparisonResult,
     container: BoxLayout,
-    filter_state: Dict[str, Any],
+    filter_state: dict[str, Any],
 ) -> None:
     """Rebuild the moves table based on filter state."""
     container.clear_widgets()

@@ -4,10 +4,12 @@
 #
 # Training Set の一覧表示・作成・SGFインポートを行うUIモジュール。
 
+from __future__ import annotations
+
 import os
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -47,7 +49,7 @@ COLOR_RATIO_RED = [0.9, 0.3, 0.3, 1.0]
 COLOR_RATIO_GRAY = [0.5, 0.5, 0.5, 1.0]
 
 
-def _format_analyzed_ratio(ratio: Optional[float]) -> Tuple[str, List[float]]:
+def _format_analyzed_ratio(ratio: float | None) -> tuple[str, list[float]]:
     """解析率を表示文字列と色に変換。
 
     Args:
@@ -79,7 +81,7 @@ if TYPE_CHECKING:
 # Type Aliases
 # =============================================================================
 
-TrainingSetWidgets = Dict[str, Any]
+TrainingSetWidgets = dict[str, Any]
 
 
 # =============================================================================
@@ -146,8 +148,8 @@ def create_browse_callback(
 
 
 def build_training_set_list_widget(
-    sets: List[str],
-    selected_set: List[Optional[str]],
+    sets: list[str],
+    selected_set: list[str | None],
     on_select_callback: Callable[[str], None],
 ) -> BoxLayout:
     """Training Set 一覧ウィジェットを構築
@@ -425,7 +427,7 @@ def show_import_sgf_dialog(
     )
     context_label.bind(size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
-    selected_context: List[Context] = [Context.HUMAN]
+    selected_context: list[Context] = [Context.HUMAN]
 
     context_buttons_container = BoxLayout(
         orientation="horizontal",
@@ -484,7 +486,7 @@ def show_import_sgf_dialog(
     )
     popup.title = "SGF インポート"
 
-    is_importing: List[bool] = [False]
+    is_importing: list[bool] = [False]
 
     def on_import(*_args: Any) -> None:
         if is_importing[0]:
@@ -691,8 +693,8 @@ def show_training_set_manager(
         katrain_gui: KaTrainGui インスタンス
     """
     # 状態管理
-    selected_set: List[Optional[str]] = [None]
-    set_list_container: List[Optional[BoxLayout]] = [None]
+    selected_set: list[str | None] = [None]
+    set_list_container: list[BoxLayout | None] = [None]
 
     # メインレイアウト
     main_layout = BoxLayout(
@@ -811,7 +813,7 @@ def show_import_batch_output_dialog(
     ctx: "FeatureContext",
     set_id: str,
     on_import_complete: Callable[[], None],
-    katrain_gui: Optional[Any] = None,
+    katrain_gui: Any | None = None,
 ) -> None:
     """バッチ解析出力フォルダのインポートダイアログを表示
 

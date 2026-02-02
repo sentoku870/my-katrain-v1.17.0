@@ -30,7 +30,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 
 class PopupManager:
@@ -54,7 +54,7 @@ class PopupManager:
         create_ai_popup: Callable[[], Any],
         create_engine_recovery_popup: Callable[[str, str], Any],
         # State accessors
-        get_popup_open: Callable[[], Optional[Any]],
+        get_popup_open: Callable[[], Any | None],
         is_engine_recovery_popup: Callable[[Any], bool],
         # Timer control (null-safe)
         pause_timer: Callable[[], None],
@@ -79,7 +79,7 @@ class PopupManager:
             logger: ロギング関数 (message, level)
             log_level_debug: OUTPUT_DEBUG相当のログレベル
         """
-        self._popups: Dict[str, Optional[Any]] = {
+        self._popups: dict[str, Any | None] = {
             "new_game": None,
             "timer": None,
             "teacher": None,

@@ -4,7 +4,9 @@ Manages Active Review mode lifecycle and user interaction.
 Extracted from KaTrainGui for improved testability.
 """
 
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -21,8 +23,8 @@ ShowFeedbackFn = Callable[
         Any,  # katrain: KaTrainGui instance (via get_ctx)
         "GuessEvaluation",
         bool,  # allow_retry
-        Optional[Callable[[], None]],  # on_retry
-        Optional[Callable[[], Optional[str]]],  # on_hint_request
+        Callable[[], None] | None,  # on_retry
+        Callable[[], str | None] | None,  # on_hint_request
     ],
     None,
 ]
@@ -55,13 +57,13 @@ class ActiveReviewController:
         self,
         get_ctx: Callable[[], "FeatureContext"],
         get_config: Callable[..., Any],  # config(setting, default=None)
-        get_game: Callable[[], Optional["Game"]],
-        get_controls: Callable[[], Optional["ControlsPanel"]],
+        get_game: Callable[[], "Game" | None],
+        get_controls: Callable[[], "ControlsPanel" | None],
         get_mode: Callable[[], bool],
         set_mode: Callable[[bool], None],
         logger: Callable[..., None],  # log(message, level=OUTPUT_INFO)
-        show_feedback_fn: Optional[ShowFeedbackFn] = None,
-        show_summary_fn: Optional[ShowSummaryFn] = None,
+        show_feedback_fn: ShowFeedbackFn | None = None,
+        show_summary_fn: ShowSummaryFn | None = None,
     ) -> None:
         """Initialize with dependency injection.
 
@@ -88,7 +90,7 @@ class ActiveReviewController:
         self._show_feedback_fn = show_feedback_fn
         self._show_summary_fn = show_summary_fn
 
-        self._session: Optional["ReviewSession"] = None
+        self._session: "ReviewSession" | None = None
 
     def _get_show_feedback(self) -> ShowFeedbackFn:
         """Get feedback UI function (lazy import if not injected)."""
@@ -107,7 +109,7 @@ class ActiveReviewController:
         return show_session_summary
 
     @property
-    def session(self) -> Optional["ReviewSession"]:
+    def session(self) -> "ReviewSession" | None:
         """Current review session (read-only).
 
         Returns:
@@ -172,7 +174,7 @@ class ActiveReviewController:
             # Clear session only - do NOT call _end_review() (recursion risk)
             self._session = None
 
-    def handle_guess(self, coords: Tuple[int, int]) -> None:
+    def handle_guess(self, coords: tuple[int, int]) -> None:
         """Handle user's guess in Active Review mode.
 
         Args:
@@ -241,7 +243,7 @@ class ActiveReviewController:
             if self._session:
                 self._session.mark_retry()
 
-        def on_hint_request() -> Optional[str]:
+        def on_hint_request() -> str | None:
             if self._session:
                 self._session.mark_hint_used()
             lang = self._get_config("general/lang", "en") or "en"

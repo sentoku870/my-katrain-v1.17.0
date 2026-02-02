@@ -23,7 +23,9 @@ Kivy非依存で、ユニットテスト可能な設計。
     manager.save_batch_options({"visits": 200})
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any, Callable
 
 
 class ConfigManager:
@@ -41,9 +43,9 @@ class ConfigManager:
 
     def __init__(
         self,
-        config_dict: Dict[str, Any],
-        save_config: Callable[[Optional[str]], None],
-        logger: Optional[Callable[[str, int], None]] = None,
+        config_dict: dict[str, Any],
+        save_config: Callable[[str | None], None],
+        logger: Callable[[str, int], None] | None = None,
         log_level_info: int = 0,
     ):
         """ConfigManagerを初期化する。
@@ -87,7 +89,7 @@ class ConfigManager:
             return default
         return self._config.get(setting, default)
 
-    def get_section(self, section: str) -> Dict[str, Any]:
+    def get_section(self, section: str) -> dict[str, Any]:
         """セクション全体を取得（SHALLOW COPYを返す）
 
         Args:
@@ -113,7 +115,7 @@ class ConfigManager:
 
     # ========== 書き込み ==========
 
-    def set_section(self, section: str, value: Dict[str, Any]) -> None:
+    def set_section(self, section: str, value: dict[str, Any]) -> None:
         """セクション全体を設定（REPLACE）
 
         Args:
@@ -126,7 +128,7 @@ class ConfigManager:
 
     # ========== エクスポート設定（PARTIAL UPDATE） ==========
 
-    def load_export_settings(self) -> Dict[str, Any]:
+    def load_export_settings(self) -> dict[str, Any]:
         """エクスポート設定をロード
 
         Returns:
@@ -136,8 +138,8 @@ class ConfigManager:
 
     def save_export_settings(
         self,
-        sgf_directory: Optional[str] = None,
-        selected_players: Optional[List[str]] = None,
+        sgf_directory: str | None = None,
+        selected_players: list[str] | None = None,
     ) -> None:
         """エクスポート設定を保存（PARTIAL UPDATE）
 
@@ -155,7 +157,7 @@ class ConfigManager:
 
     # ========== バッチオプション（PARTIAL UPDATE） ==========
 
-    def save_batch_options(self, options: Dict[str, Any]) -> None:
+    def save_batch_options(self, options: dict[str, Any]) -> None:
         """バッチオプションを保存（PARTIAL UPDATE - batch_optionsサブツリーのみ）
 
         mykatrain_settings.batch_optionsをMERGE更新。

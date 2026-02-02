@@ -6,13 +6,15 @@
 # - extract_analysis_from_sgf_node: SGFノードから解析データを抽出
 # - extract_sgf_statistics: SGFファイルから統計データを抽出
 
+from __future__ import annotations
+
 import base64
 import binascii
 import gzip
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
 from katrain.core.game import KaTrainSGF
@@ -25,7 +27,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def extract_analysis_from_sgf_node(node: Any) -> Optional[Dict[str, Any]]:
+def extract_analysis_from_sgf_node(node: Any) -> dict[str, Any] | None:
     """SGFノードのKTプロパティから解析データを抽出。
 
     Args:
@@ -72,7 +74,7 @@ def extract_sgf_statistics(
     ctx: "FeatureContext",
     engine: "KataGoEngine",
     log_fn: LogFunction,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """SGFファイルから統計データを直接抽出（KTプロパティ解析）。
 
     Args:
@@ -217,7 +219,7 @@ def extract_sgf_statistics(
         stats["worst_moves"] = stats["worst_moves"][:10]  # Top 10
 
         # Extract reason_tags counts from important moves (Phase 10-B)
-        reason_tags_counts: Dict[str, int] = {}
+        reason_tags_counts: dict[str, int] = {}
         try:
             # Create a temporary Game object to compute reason_tags
             from katrain.core.game import Game

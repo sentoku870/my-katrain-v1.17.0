@@ -19,21 +19,21 @@
 """
 from __future__ import annotations
 
-from typing import Callable, Optional, Protocol
+from typing import Callable, Protocol
 
 
 class GameNodeProtocol(Protocol):
     """GameStateManagerが使用するGameNodeの最小インターフェース"""
 
     player: str
-    note: Optional[str]
-    end_state: Optional[str]
+    note: str | None
+    end_state: str | None
 
 
 class GameProtocol(Protocol):
     """GameStateManagerが使用するGameの最小インターフェース"""
 
-    current_node: Optional[GameNodeProtocol]
+    current_node: GameNodeProtocol | None
 
     def undo(self, n_times: int = 1) -> None:
         ...
@@ -74,7 +74,7 @@ class GameStateManager:
 
     def __init__(
         self,
-        get_game: Callable[[], Optional[GameProtocol]],
+        get_game: Callable[[], GameProtocol | None],
         get_play_analyze_mode: Callable[[], str],
         mode_analyze: str,
         switch_ui_mode: Callable[[], None],
@@ -164,7 +164,7 @@ class GameStateManager:
 
         Type assumption:
             noteは常にstr型。KivyのTextInput.textは常に文字列を返すため、
-            Optional[str]対応は不要。歴史的にKaTrainGui.set_noteは型注釈なしだったが、
+            str | None対応は不要。歴史的にKaTrainGui.set_noteは型注釈なしだったが、
             実際の使用ではすべて文字列。
         """
         game = self._get_game()

@@ -1,11 +1,13 @@
 # katrain/gui/features/commands/game_commands.py
+from __future__ import annotations
+
 """Game-related command handlers extracted from KaTrainGui (Phase 41-B).
 
 These functions handle undo/redo, navigation, and game state changes.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from kivy.clock import Clock
 
@@ -48,9 +50,9 @@ def do_redo(ctx: "KaTrainGui", n_times: int = 1) -> None:
 
 def do_new_game(
     ctx: "KaTrainGui",
-    move_tree: Optional["SGFNode"] = None,
+    move_tree: "SGFNode" | None = None,
     analyze_fast: bool = False,
-    sgf_filename: Optional[str] = None,
+    sgf_filename: str | None = None,
 ) -> None:
     """Start a new game or load an SGF.
 

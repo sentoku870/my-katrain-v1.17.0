@@ -9,11 +9,13 @@
 # - do_mykatrain_settings_popup: myKatrain設定ポップアップの表示
 # - _reset_tab_settings: タブ別設定リセット (Phase 27)
 
+from __future__ import annotations
+
 import json
 import logging
 import os
 import shutil
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -123,7 +125,7 @@ def _reset_tab_settings(
 
     def do_reset(*_args: Any) -> None:
         """実際のリセット処理"""
-        affected_sections: Set[str] = set()
+        affected_sections: set[str] = set()
 
         for section, key in keys:
             default_val = get_default_value(section, key)
@@ -365,7 +367,7 @@ def _do_import_settings(
     on_import_complete()
 
 
-def load_export_settings(ctx: "FeatureContext") -> Dict[str, Any]:
+def load_export_settings(ctx: "FeatureContext") -> dict[str, Any]:
     """エクスポート設定を読み込む
 
     Args:
@@ -379,8 +381,8 @@ def load_export_settings(ctx: "FeatureContext") -> Dict[str, Any]:
 
 def save_export_settings(
     ctx: "FeatureContext",
-    sgf_directory: Optional[str] = None,
-    selected_players: Optional[List[str]] = None,
+    sgf_directory: str | None = None,
+    selected_players: list[str] | None = None,
 ) -> None:
     """エクスポート設定を保存する
 
@@ -401,7 +403,7 @@ def save_export_settings(
     ctx.save_config("export_settings")
 
 
-def save_batch_options(ctx: "FeatureContext", options: Dict[str, Any]) -> None:
+def save_batch_options(ctx: "FeatureContext", options: dict[str, Any]) -> None:
     """バッチオプションを保存する
 
     Args:
@@ -418,7 +420,7 @@ def save_batch_options(ctx: "FeatureContext", options: Dict[str, Any]) -> None:
 
 def do_mykatrain_settings_popup(
     ctx: "FeatureContext",
-    initial_tab: Optional[str] = None,  # Phase 87.5: "analysis", "export", "leela"
+    initial_tab: str | None = None,  # Phase 87.5: "analysis", "export", "leela"
 ) -> None:
     """myKatrain設定ポップアップを表示
 
@@ -456,7 +458,7 @@ def do_mykatrain_settings_popup(
     search_layout.add_widget(search_clear_btn)
 
     # Searchable widgets list (populated after widget creation)
-    searchable_widgets: List[Dict[str, Any]] = []
+    searchable_widgets: list[dict[str, Any]] = []
 
     def register_searchable(label_text: str, *widgets: Any) -> None:
         """検索対象としてウィジェットを登録"""

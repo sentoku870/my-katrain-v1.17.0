@@ -1,4 +1,6 @@
 # katrain/gui/features/active_review_summary.py
+from __future__ import annotations
+
 """Active Review Summary UI (Phase 94).
 
 Provides:

@@ -5,6 +5,8 @@
 # Displays a popup when the resign condition is met (low winrate for
 # consecutive moves). The popup suggests the user consider resigning.
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
