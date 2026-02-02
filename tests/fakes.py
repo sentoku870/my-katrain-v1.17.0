@@ -6,10 +6,11 @@ Usage:
     from tests.fakes import FakePopen, FakePipe, MinimalKatrain
 """
 
+from __future__ import annotations
+
 import queue
 import subprocess
 import threading
-from typing import Union
 
 
 class FakePipe:
@@ -35,7 +36,7 @@ class FakePipe:
         self._buffer: queue.Queue = queue.Queue()
         self._eof = threading.Event()
 
-    def write(self, data: Union[bytes, str]) -> int:
+    def write(self, data: bytes | str) -> int:
         """Write data to pipe. Raises BrokenPipeError if closed."""
         if self.closed:
             raise BrokenPipeError("Pipe closed")
@@ -45,7 +46,7 @@ class FakePipe:
         """Flush is a no-op for fake pipes."""
         pass
 
-    def readline(self) -> Union[bytes, str]:
+    def readline(self) -> bytes | str:
         """
         Return next line or EOF marker.
 
@@ -70,7 +71,7 @@ class FakePipe:
         self._eof.set()
 
     # Test helper methods
-    def feed(self, data: Union[bytes, str]) -> None:
+    def feed(self, data: bytes | str) -> None:
         """Test helper: feed data to the pipe for readline() to return."""
         self._buffer.put(data)
 

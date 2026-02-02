@@ -11,9 +11,11 @@ Note: Golden test compatibility is verified by running existing golden tests
 in the acceptance criteria, not duplicated here.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 

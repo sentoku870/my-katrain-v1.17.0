@@ -1,4 +1,6 @@
-from typing import Any, List, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 from kivy.lang import Builder
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty
@@ -42,7 +44,7 @@ class SelectionSlider(Widget):
             eq_value = sorted([(abs(v - set_value), i) for i, (v, l) in enumerate(self.values)])
             self.index = eq_value[0][1]
 
-    def set_from_pos(self, pos: Tuple[float, float]) -> None:
+    def set_from_pos(self, pos: tuple[float, float]) -> None:
         norm_value = (pos[0] - self.x - self.padding) / (self.width - 2 * self.padding)
         self.index = round(norm_value * (len(self.values) - 1))
         self.dispatch("on_change", self.value)

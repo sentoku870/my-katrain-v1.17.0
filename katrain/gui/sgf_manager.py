@@ -11,10 +11,12 @@ __main__.pyから抽出されたSGFファイル管理機能。
 - ファイル操作とUI操作を分離
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import re
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable
 
 import urllib3
 from kivy.clock import Clock
@@ -45,7 +47,7 @@ class SGFManager:
         save_config: Callable[[str], None],
         logger: Callable[[str, int], None],
         status_setter: Callable[[str, int], None],
-        new_game_callback: Callable[[Any, bool, Optional[str]], None],
+        new_game_callback: Callable[[Any, bool, str | None], None],
         redo_callback: Callable[[int], None],
         get_game: Callable[[], Any],
         get_engine: Callable[[], Any],
@@ -144,7 +146,7 @@ class SGFManager:
         self._redo(9999)
         self._log("Imported game from clipboard.", OUTPUT_INFO)
 
-    def save_game(self, filename: Optional[str] = None) -> None:
+    def save_game(self, filename: str | None = None) -> None:
         """ゲームを保存する。
 
         Args:
@@ -228,7 +230,7 @@ class SGFManager:
         )
 
     def _show_recent_sgf_dropdown(
-        self, sgf_files: List[str], labels: List[str], fast: bool, rewind: bool
+        self, sgf_files: list[str], labels: list[str], fast: bool, rewind: bool
     ) -> None:
         """最近のSGFファイルのドロップダウンを表示する。
 

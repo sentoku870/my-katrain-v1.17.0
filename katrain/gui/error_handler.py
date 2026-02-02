@@ -5,8 +5,10 @@ Provides consistent logging, user notification, and thread-safe status updates.
 The handler itself is designed to never throw exceptions.
 """
 
+from __future__ import annotations
+
 import traceback
-from typing import Any, Callable, Optional, TYPE_CHECKING, TypeVar
+from typing import Any, Callable, TYPE_CHECKING, TypeVar
 
 from kivy.clock import Clock
 
@@ -135,9 +137,9 @@ class ErrorHandler:
         *args: Any,
         notify_user: bool = True,
         fallback_message: str = "Operation failed",
-        default: Optional[T] = None,
+        default: T | None = None,
         **kwargs: Any,
-    ) -> Optional[T]:
+    ) -> T | None:
         """Execute func with exception handling.
 
         Args:

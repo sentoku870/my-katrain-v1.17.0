@@ -10,6 +10,8 @@ This module defines the core data structures for the Style Archetype system:
 Part of Phase 56: Style Archetype Core.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType

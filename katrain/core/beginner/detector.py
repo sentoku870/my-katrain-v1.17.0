@@ -4,16 +4,18 @@ Detection functions for beginner safety hints.
 Each detector returns a BeginnerHint or None.
 """
 
-from typing import Any, List, Optional, Set, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 from katrain.core.beginner.models import BeginnerHint, DetectorInput, HintCategory
 
 
 def find_matching_group(
-    target_stones: Set[Tuple[int, int]],
-    groups: List[Any],
+    target_stones: set[tuple[int, int]],
+    groups: list[Any],
     color: str,
-) -> Optional[Any]:
+) -> Any | None:
     """Match a group across board states using stone coordinate overlap
 
     Args:
@@ -52,7 +54,7 @@ def find_matching_group(
     return best_match
 
 
-def detect_self_atari(inp: DetectorInput) -> Optional[BeginnerHint]:
+def detect_self_atari(inp: DetectorInput) -> BeginnerHint | None:
     """Detect self-atari: playing into atari on your own group
 
     Excluded cases:
@@ -95,7 +97,7 @@ def detect_self_atari(inp: DetectorInput) -> Optional[BeginnerHint]:
     )
 
 
-def detect_ignore_atari(inp: DetectorInput) -> Optional[BeginnerHint]:
+def detect_ignore_atari(inp: DetectorInput) -> BeginnerHint | None:
     """Detect ignoring atari: leaving a friendly group in atari
 
     MVP scope: Only detects "still in atari" case.
@@ -144,7 +146,7 @@ def detect_ignore_atari(inp: DetectorInput) -> Optional[BeginnerHint]:
     return None
 
 
-def detect_missed_capture(inp: DetectorInput) -> Optional[BeginnerHint]:
+def detect_missed_capture(inp: DetectorInput) -> BeginnerHint | None:
     """Detect missed capture: opponent group in atari was not captured
 
     Excluded cases:
@@ -196,7 +198,7 @@ def detect_missed_capture(inp: DetectorInput) -> Optional[BeginnerHint]:
     return None
 
 
-def detect_cut_risk(inp: DetectorInput, game: Any) -> Optional[BeginnerHint]:
+def detect_cut_risk(inp: DetectorInput, game: Any) -> BeginnerHint | None:
     """Detect cut risk: groups that could be connected but aren't
 
     Precondition: game.current_node == inp.node (after state)

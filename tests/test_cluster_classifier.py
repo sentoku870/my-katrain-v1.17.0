@@ -12,7 +12,8 @@ Tests cover:
 - Edge cases (suicide, AE ordering, mainline resolution)
 """
 
-from typing import Optional
+from __future__ import annotations
+
 from dataclasses import dataclass
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -85,10 +86,10 @@ class MockGameNode:
     placements: list[MockMove]
     moves: list[MockMove]
     clear_placements: list[MockMove]
-    nodes_from_root: list["MockGameNode"]
-    children: list["MockGameNode"]
-    parent: Optional["MockGameNode"]
-    move: Optional[MockMove]
+    nodes_from_root: list[MockGameNode]
+    children: list[MockGameNode]
+    parent: MockGameNode | None
+    move: MockMove | None
     board_size: tuple[int, int]
 
     @property
@@ -98,10 +99,10 @@ class MockGameNode:
 
 def create_mock_node(
     board_size: tuple[int, int] = (5, 5),
-    placements: Optional[list[MockMove]] = None,
-    moves: Optional[list[MockMove]] = None,
-    clears: Optional[list[MockMove]] = None,
-    parent: Optional["MockGameNode"] = None,
+    placements: list[MockMove] | None = None,
+    moves: list[MockMove] | None = None,
+    clears: list[MockMove] | None = None,
+    parent: MockGameNode | None = None,
 ) -> MockGameNode:
     """Create a mock node for testing."""
     node = MockGameNode(
@@ -141,7 +142,7 @@ def create_mock_cluster(
 
 def create_mock_ownership_context(
     board_size: tuple[int, int] = (5, 5),
-    ownership_grid: Optional[list[list[float]]] = None,
+    ownership_grid: list[list[float]] | None = None,
 ) -> OwnershipContext:
     """Create a mock OwnershipContext for testing."""
     if ownership_grid is None:

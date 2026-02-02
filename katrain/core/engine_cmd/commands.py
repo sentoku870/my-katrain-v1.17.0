@@ -4,10 +4,12 @@ This module defines the command hierarchy for engine query management.
 Commands encapsulate query preparation, result handling, and lifecycle state.
 """
 
+from __future__ import annotations
+
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core.engine_query import build_analysis_query
 
@@ -38,12 +40,12 @@ class AnalysisCommand(ABC):
         - on_result/on_error/on_cancel are called outside the lock
     """
 
-    node: "GameNode"
-    query_id: Optional[str] = field(default=None)
-    start_time: Optional[float] = field(default=None)
+    node: GameNode
+    query_id: str | None = field(default=None)
+    start_time: float | None = field(default=None)
     status: str = field(default="pending")
-    error: Optional[dict[str, Any]] = field(default=None)
-    result: Optional[dict[str, Any]] = field(default=None)
+    error: dict[str, Any] | None = field(default=None)
+    result: dict[str, Any] | None = field(default=None)
     _cancelled: threading.Event = field(default_factory=threading.Event, repr=False)
 
     @abstractmethod
@@ -143,19 +145,19 @@ class StandardAnalysisCommand(AnalysisCommand):
         priority: Priority offset for this query.
     """
 
-    engine: Optional["KataGoEngine"] = field(default=None)
-    callback: Optional[Callable[[dict[str, Any], bool], None]] = field(default=None)
-    error_callback: Optional[Callable[[dict[str, Any]], None]] = field(default=None)
-    visits: Optional[int] = field(default=None)
-    next_move: Optional["Move"] = field(default=None)
-    extra_settings: Optional[dict[str, Any]] = field(default=None)
+    engine: KataGoEngine | None = field(default=None)
+    callback: Callable[[dict[str, Any], bool], None] | None = field(default=None)
+    error_callback: Callable[[dict[str, Any]], None] | None = field(default=None)
+    visits: int | None = field(default=None)
+    next_move: Move | None = field(default=None)
+    extra_settings: dict[str, Any] | None = field(default=None)
     ponder: bool = field(default=False)
     find_alternatives: bool = field(default=False)
-    region_of_interest: Optional[list[int]] = field(default=None)
+    region_of_interest: list[int] | None = field(default=None)
     time_limit: bool = field(default=True)
-    ownership: Optional[bool] = field(default=None)
+    ownership: bool | None = field(default=None)
     include_policy: bool = field(default=True)
-    report_every: Optional[float] = field(default=None)
+    report_every: float | None = field(default=None)
     priority: int = field(default=0)
 
     def prepare(self) -> dict[str, Any]:

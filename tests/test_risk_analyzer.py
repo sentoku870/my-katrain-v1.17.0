@@ -15,9 +15,11 @@ Test coverage:
 - TestAnalyzeRisk: Integration tests
 """
 
+from __future__ import annotations
+
 import math
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -68,8 +70,8 @@ class MockNode:
 
     analysis_exists: bool = False
     analysis: dict[str, Any] | None = None
-    move: Optional[MockMove] = None
-    parent: Optional["MockNode"] = None
+    move: MockMove | None = None
+    parent: MockNode | None = None
 
 
 def make_node_with_analysis(
@@ -77,7 +79,7 @@ def make_node_with_analysis(
     score_lead: float | None = None,
     score_stdev: float | None = None,
     player: str = "B",
-    parent: Optional["MockNode"] = None,
+    parent: MockNode | None = None,
 ) -> MockNode:
     """Create a MockNode with specified analysis values."""
     root_info: dict[str, Any] = {}

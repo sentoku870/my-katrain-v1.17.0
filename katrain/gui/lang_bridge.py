@@ -6,8 +6,10 @@ v5設計:
 - fbind/funbindでKVバインディングを維持
 - 既存KVファイルの変更不要
 """
+from __future__ import annotations
+
 import weakref
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable
 
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
@@ -16,7 +18,7 @@ from kivy.weakproxy import WeakProxy
 from katrain.core.lang import i18n as core_i18n, DEFAULT_LANGUAGE
 
 
-def _deref_widget(widget_ref: Union[weakref.ref[Any], WeakProxy]) -> Any:
+def _deref_widget(widget_ref: weakref.ref[Any] | WeakProxy) -> Any:
     """Dereference a widget from either weakref.ref or WeakProxy.
 
     Returns None if the widget has been garbage collected.
@@ -46,7 +48,7 @@ class KivyLangBridge(EventDispatcher):
         super().__init__(**kwargs)
         self._lang = lang_instance
         # WeakProxy or weakref.ref - both support () call to get the widget
-        self._observers: List[Tuple[Union[weakref.ref[Any], WeakProxy], Callable[..., Any], Tuple[Any, ...]]] = []
+        self._observers: list[tuple[weakref.ref[Any] | WeakProxy, Callable[..., Any], tuple[Any, ...]]] = []
 
         self.font_name = lang_instance.font_name
         self.current_lang = lang_instance.lang or DEFAULT_LANGUAGE

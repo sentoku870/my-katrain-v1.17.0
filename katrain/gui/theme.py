@@ -1,4 +1,6 @@
-from typing import Dict, List, Sequence
+from __future__ import annotations
+
+from typing import Sequence
 
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
 
@@ -81,12 +83,12 @@ class Theme:
     CAPTURING_SOUND = "capturing.wav"
     COUNTDOWN_SOUND = "countdownbeep.wav"
     MINIMUM_TIME_PASSED_SOUND = "boing.wav"
-    MISTAKE_SOUNDS: List[str] = []
+    MISTAKE_SOUNDS: list[str] = []
     # Phase 44: Distinct completion chime for batch analysis
     COMPLETION_CHIME_SOUND = "complete_chime.wav"
 
     # eval dots
-    EVAL_COLORS: Dict[str, List[List[float]]] = {
+    EVAL_COLORS: dict[str, list[list[float]]] = {
         "theme:normal": [
             [0.447, 0.129, 0.42, 1],
             [0.8, 0, 0, 1],

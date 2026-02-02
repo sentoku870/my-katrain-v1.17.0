@@ -4,9 +4,11 @@ This module defines the data structures for suitability scoring,
 which evaluates how well a professional game record matches a user's learning needs.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, FrozenSet, Mapping, Optional
+from typing import Any, FrozenSet, Mapping
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis
@@ -94,5 +96,5 @@ class SuitabilityScore:
     needs_match: float
     stability: float
     total: float
-    percentile: Optional[int] = None
-    debug_info: Optional[Mapping[str, Any]] = None
+    percentile: int | None = None
+    debug_info: Mapping[str, Any] | None = None

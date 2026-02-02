@@ -6,7 +6,9 @@ Phase 91: 4 priority detectors (SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RI
 Phase 92: MeaningTag fallback, reliability filter, gating functions
 """
 
-from typing import Any, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import Any
 
 from katrain.core.beginner.detector import (
     detect_cut_risk,
@@ -39,7 +41,7 @@ _DETECTOR_CATEGORIES = frozenset(
 # =============================================================================
 
 
-def _get_visits_from_node(node: Any) -> Optional[int]:
+def _get_visits_from_node(node: Any) -> int | None:
     """Get visits from node analysis using public helper.
 
     Args:
@@ -74,7 +76,7 @@ def _is_reliable(node: Any) -> bool:
 # =============================================================================
 
 
-def _normalize_board_size(board_size: Union[int, Tuple[int, int]]) -> Tuple[int, int]:
+def _normalize_board_size(board_size: int | tuple[int, int]) -> tuple[int, int]:
     """Normalize board_size to (width, height) tuple.
 
     Args:
@@ -128,8 +130,8 @@ def should_draw_board_highlight(
 
 
 def is_coords_valid(
-    coords: Optional[Tuple[int, int]],
-    board_size: Union[int, Tuple[int, int]],
+    coords: tuple[int, int] | None,
+    board_size: int | tuple[int, int],
 ) -> bool:
     """Check if coords are valid for the given board size (pure function).
 
@@ -148,8 +150,8 @@ def is_coords_valid(
 
 
 def _get_meaning_tag_hint(
-    node: Any, move_coords: Optional[Tuple[int, int]]
-) -> Optional[BeginnerHint]:
+    node: Any, move_coords: tuple[int, int] | None
+) -> BeginnerHint | None:
     """Get beginner hint from node's MeaningTag (Phase 92).
 
     Checks if the node has a meaning_tag_id attribute (typically set by
@@ -187,7 +189,7 @@ def compute_beginner_hint(
     node: Any,
     *,
     require_reliable: bool = True,
-) -> Optional[BeginnerHint]:
+) -> BeginnerHint | None:
     """Compute a beginner hint for a specific node (Phase 91-92)
 
     Node state transitions:
@@ -292,7 +294,7 @@ def get_beginner_hint_cached(
     node: Any,
     *,
     require_reliable: bool = True,
-) -> Optional[BeginnerHint]:
+) -> BeginnerHint | None:
     """Get beginner hint with node-level caching (Phase 91-92)
 
     Caches the result on the node to avoid recomputation.
@@ -322,7 +324,7 @@ def get_beginner_hint_cached(
                 return None
             # Cast to expected return type (we control what goes in the cache)
             from typing import cast
-            return cast(Optional[BeginnerHint], cached_hint)
+            return cast(BeginnerHint | None, cached_hint)
         # Setting changed, recompute
 
     hint = compute_beginner_hint(game, node, require_reliable=require_reliable)

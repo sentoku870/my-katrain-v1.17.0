@@ -22,7 +22,9 @@ Note: シンボルの __module__ パスが変更されます。
       （調査結果: リポジトリ内に pickle/cache 使用箇所なし）
 """
 
-from typing import Any, Optional
+from __future__ import annotations
+
+from typing import Any
 
 # =============================================================================
 # Explicit imports from models.py
@@ -438,7 +440,7 @@ from katrain.core.analysis.reason_generator import (
 # =============================================================================
 
 
-def get_root_visits(analysis: Optional[dict[str, Any]]) -> Optional[int]:
+def get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     """Get root visits from analysis dict (public API).
 
     This is the public wrapper for _get_root_visits().

@@ -37,11 +37,13 @@ a shortcut to the Documents directory added to the favorites bar::
 .. image:: _static/filebrowser.png
     :align: right
 """
+from __future__ import annotations
+
 import string
 from functools import partial
 from os import walk
 from os.path import dirname, expanduser, getmtime, isdir, isfile, join, sep
-from typing import Any, List, Tuple
+from typing import Any
 
 from kivy import Config
 from kivy.clock import Clock
@@ -58,7 +60,7 @@ if platform == "win":
     from ctypes import windll, create_unicode_buffer
 
 
-def last_modified_first(files: List[str], filesystem: Any) -> List[str]:
+def last_modified_first(files: list[str], filesystem: Any) -> list[str]:
     return sorted(f for f in files if filesystem.is_dir(f)) + sorted(
         [f for f in files if not filesystem.is_dir(f)], key=lambda f: -getmtime(f)
     )
@@ -77,8 +79,8 @@ def get_home_directory() -> str:
     return user_path
 
 
-def get_drives() -> List[Tuple[str, str]]:
-    drives: List[Tuple[str, str]] = []
+def get_drives() -> list[tuple[str, str]]:
+    drives: list[tuple[str, str]] = []
     if platform == "win":
         bitmask = windll.kernel32.GetLogicalDrives()
         for letter in string.ascii_uppercase:
@@ -255,7 +257,7 @@ class LinkTree(TreeView):
     _favs = ObjectProperty(None)
     _computer_node = None
 
-    def fill_tree(self, fav_list: List[Tuple[str, str]]) -> None:
+    def fill_tree(self, fav_list: list[tuple[str, str]]) -> None:
         user_path = get_home_directory()
         self._favs = self.add_node(TreeLabel(text="Favorites", is_open=True, no_selection=True))
         self.reload_favs(fav_list)
@@ -278,8 +280,8 @@ class LinkTree(TreeView):
             return
         nodes = [(node, node.text + node.path) for node in self._computer_node.nodes if isinstance(node, TreeLabel)]
         sigs = [s[1] for s in nodes]
-        nodes_new: List[Tuple[str, str]] = []
-        sig_new: List[str] = []
+        nodes_new: list[tuple[str, str]] = []
+        sig_new: list[str] = []
         for path, name in get_drives():
             if platform == "win":
                 text = "{}({})".format((name + " ") if name else "", path)
@@ -294,7 +296,7 @@ class LinkTree(TreeView):
             if text + path + sep not in sigs:
                 self.add_node(TreeLabel(text=text, path=path + sep), self._computer_node)
 
-    def reload_favs(self, fav_list: List[Tuple[str, str]]) -> None:
+    def reload_favs(self, fav_list: list[tuple[str, str]]) -> None:
         user_path = get_home_directory()
         favs = self._favs
         remove: List[Any] = []
@@ -461,7 +463,7 @@ class I18NFileBrowser(BoxLayout):
             rootpath=partial(self._attr_callback, "rootpath"),
         )
 
-    def _shorten_filenames(self, filenames: List[str]) -> str:
+    def _shorten_filenames(self, filenames: list[str]) -> str:
         if not len(filenames):
             return ""
         elif len(filenames) == 1:

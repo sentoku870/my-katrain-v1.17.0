@@ -8,7 +8,9 @@ The mock analysis follows the same internal schema as real KataGo analysis,
 allowing production code paths to be tested accurately.
 """
 
-from typing import Dict, Any
+from __future__ import annotations
+
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Deterministic loss pattern
@@ -21,7 +23,7 @@ from typing import Dict, Any
 # - BLUNDER: >= 10.0
 #
 # Move indices are kept low (5, 17, 34) to work with all test SGFs.
-LOSS_AT_MOVE: Dict[int, float] = {
+LOSS_AT_MOVE: dict[int, float] = {
     5:  2.5,   # INACCURACY (2.0 <= loss < 5.0)
     17: 6.0,   # MISTAKE (5.0 <= loss < 10.0)
     34: 12.0,  # BLUNDER (>= 10.0)
@@ -35,7 +37,7 @@ def create_mock_analysis_dict(
     move_gtp: str,
     cumulative_score: float,
     visits: int = 500,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create mock analysis dict in the internal schema format.
 

@@ -7,9 +7,11 @@ archetype based on RadarMetrics and MeaningTag counts.
 Part of Phase 56: Style Archetype Core.
 """
 
+from __future__ import annotations
+
 import math
 from types import MappingProxyType
-from typing import List, Mapping, Tuple
+from typing import Mapping
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics
@@ -148,7 +150,7 @@ def determine_style(
         )
 
     # Step 4: Score each archetype (except BALANCE_MASTER)
-    archetype_scores: List[Tuple[StyleArchetype, float]] = []
+    archetype_scores: list[tuple[StyleArchetype, float]] = []
 
     for archetype_id in StyleArchetypeId:
         if archetype_id == StyleArchetypeId.BALANCE_MASTER:

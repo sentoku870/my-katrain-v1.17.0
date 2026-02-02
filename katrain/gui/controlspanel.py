@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import time
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from kivy.clock import Clock
 from kivy.properties import ObjectProperty, OptionProperty
@@ -36,7 +38,7 @@ class PlayAnalyzeSelect(MDFloatLayout):
         Clock.schedule_once(self._init_timer_mode, 0)
         Clock.schedule_once(self.load_ui_state, 1)
 
-    def _init_timer_mode(self, _dt: Optional[float] = None) -> None:
+    def _init_timer_mode(self, _dt: float | None = None) -> None:
         """初期化時に timer_or_movetree のモードを設定"""
         if self.katrain and self.katrain.controls:
             self.katrain.controls.timer_or_movetree.mode = self.mode
@@ -60,7 +62,7 @@ class PlayAnalyzeSelect(MDFloatLayout):
         self.katrain.set_config_section("ui_state", ui_state)
         self.katrain.save_config("ui_state")
 
-    def load_ui_state(self, _dt: Optional[float] = None) -> None:
+    def load_ui_state(self, _dt: float | None = None) -> None:
         try:
             state = self.katrain.config(f"ui_state/{self.mode}", {})
             analysis_ids = self.katrain.analysis_controls.ids
@@ -117,15 +119,15 @@ class ControlsPanel(BoxLayout):
 
     def __init__(self, **kwargs: Any) -> None:
         super(ControlsPanel, self).__init__(**kwargs)
-        self.status_state: Tuple[Optional[str], Any, Any] = (None, -1e9, None)
+        self.status_state: tuple[str | None, Any, Any] = (None, -1e9, None)
         self.active_comment_node = None
-        self.last_timer_update: Tuple[Any, float, bool] = (None, 0.0, False)
+        self.last_timer_update: tuple[Any, float, bool] = (None, 0.0, False)
         self.beep_start = 5.2
         self.timer_interval = 0.07
 
         # Phase 106: 購読状態管理
         self._subscribed_notifier = None
-        self._analysis_callback: Optional[Any] = None
+        self._analysis_callback: Any | None = None
 
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)

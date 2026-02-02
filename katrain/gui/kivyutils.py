@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from functools import lru_cache
-from typing import Any, Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Sequence
 
 from kivy.clock import Clock
 from kivy.core.image import Image
@@ -276,7 +278,7 @@ class KeyValueSpinner(Spinner):
             return ""
 
     @property
-    def selected(self) -> Tuple[int, Any, Any]:
+    def selected(self) -> tuple[int, Any, Any]:
         try:
             selected = self.selected_index
             return selected, self.value_refs[selected], self.values[selected]
@@ -386,7 +388,7 @@ class PlayerSetupBlock(MDBoxLayout):
     black = ObjectProperty(None)
     white = ObjectProperty(None)
     update_global = BooleanProperty(False)
-    INSTANCES: List[Any] = []
+    INSTANCES: list[Any] = []
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -524,7 +526,7 @@ class CollapsablePanel(MDBoxLayout):
     def __init__(self, **kwargs: Any) -> None:
         self.open_close_button: Any = None
         self.header: Any = None
-        self.option_buttons: List[Any] = []
+        self.option_buttons: list[Any] = []
         super().__init__(**kwargs)
         self.orientation = "vertical"
         self.bind(
@@ -626,7 +628,7 @@ class CollapsablePanel(MDBoxLayout):
         if self.state == "open":
             self.trigger_select(ix=None)
 
-    def trigger_select(self, ix: Optional[int]) -> bool:
+    def trigger_select(self, ix: int | None) -> bool:
         if ix is not None and self.option_buttons:
             self.option_active[ix] = self.option_buttons[ix].state == "down"
         if self.state == "open":
@@ -697,7 +699,7 @@ def _make_hashable(value: Any) -> Any:
 
 
 @lru_cache(maxsize=500)
-def _create_text_texture(text: str, resolved_font_name: str, markup: bool, kwargs_tuple: Tuple[Any, ...]) -> Any:
+def _create_text_texture(text: str, resolved_font_name: str, markup: bool, kwargs_tuple: tuple[Any, ...]) -> Any:
     """LRU制限付きテクスチャ生成（内部用）
 
     Args:
@@ -710,7 +712,7 @@ def _create_text_texture(text: str, resolved_font_name: str, markup: bool, kwarg
     return label.texture
 
 
-def cached_text_texture(text: str, font_name: Optional[str], markup: bool, **kwargs: Any) -> Any:
+def cached_text_texture(text: str, font_name: str | None, markup: bool, **kwargs: Any) -> Any:
     """互換性維持のラッパー（API変更なし）
 
     Note: Kivyの描画はメインスレッドのみなのでスレッドセーフは不要
@@ -723,7 +725,7 @@ def cached_text_texture(text: str, font_name: Optional[str], markup: bool, **kwa
     return _create_text_texture(text, resolved_font_name, markup, kwargs_tuple)
 
 
-def draw_text(pos: Sequence[float], text: str, font_name: Optional[str] = None, markup: bool = False, **kwargs: Any) -> None:
+def draw_text(pos: Sequence[float], text: str, font_name: str | None = None, markup: bool = False, **kwargs: Any) -> None:
     texture = cached_text_texture(text, font_name, markup, **kwargs)
     Rectangle(texture=texture, pos=(pos[0] - texture.size[0] / 2, pos[1] - texture.size[1] / 2), size=texture.size)
 
