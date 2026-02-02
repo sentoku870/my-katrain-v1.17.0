@@ -726,7 +726,7 @@ class KaTrainGui(Screen, KaTrainBase):
     # Delegation to LeelaManager for backward compatibility
 
     @property
-    def leela_engine(self) -> Optional[LeelaEngine]:
+    def leela_engine(self) -> LeelaEngine | None:
         """Access to leela_engine for backward compatibility."""
         return self._leela_manager.leela_engine
 
@@ -1448,11 +1448,11 @@ class KaTrainGui(Screen, KaTrainBase):
         # 7. Open popup
         popup.open()
 
-    def _format_points_loss(self, loss: Optional[float]) -> str:
+    def _format_points_loss(self, loss: float | None) -> str:
         """Delegates to QuizManager (Phase 98)."""
         return self._quiz_manager.format_points_loss(loss)
 
-    def _start_quiz_session(self, quiz_items: List[eval_metrics.QuizItem]) -> None:
+    def _start_quiz_session(self, quiz_items: list[eval_metrics.QuizItem]) -> None:
         """Delegates to QuizManager (Phase 98)."""
         self._quiz_manager.start_quiz_session(quiz_items)
 

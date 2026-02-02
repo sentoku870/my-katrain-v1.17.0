@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import platform
@@ -7,7 +9,7 @@ import subprocess
 import threading
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 
 from katrain.common.platform import get_platform
 
@@ -54,12 +56,12 @@ class BaseEngine:
     ]
     RULESETS = {fromkey: name for abbr, name in RULESETS_ABBR for fromkey in [abbr, name]}
 
-    def __init__(self, katrain: Any, config: Dict[str, Any]) -> None:
+    def __init__(self, katrain: Any, config: dict[str, Any]) -> None:
         self.katrain = katrain
         self.config = config
 
     @staticmethod
-    def get_rules(ruleset: str | Dict[str, Any]) -> str | Dict[str, Any]:
+    def get_rules(ruleset: str | dict[str, Any]) -> str | dict[str, Any]:
         if isinstance(ruleset, str) and ruleset.strip().startswith("{"):
             try:
                 ruleset = json.loads(ruleset)
@@ -113,24 +115,24 @@ class KataGoEngine(BaseEngine):
     # Timeout for Queue.get() in consumer threads (seconds)
     IO_TIMEOUT = 5.0
 
-    def __init__(self, katrain: Any, config: Dict[str, Any]) -> None:
+    def __init__(self, katrain: Any, config: dict[str, Any]) -> None:
         super().__init__(katrain, config)
 
         self.allow_recovery = self.config.get("allow_recovery", True)  # if false, don't give popups
-        self.queries: Dict[str, Any] = {}  # outstanding query id -> start time and callback
-        self.ponder_query: Optional[Dict[str, Any]] = None
+        self.queries: dict[str, Any] = {}  # outstanding query id -> start time and callback
+        self.ponder_query: dict[str, Any] | None = None
         self.query_counter = 0
-        self.katago_process: Optional[subprocess.Popen[bytes]] = None
+        self.katago_process: subprocess.Popen[bytes] | None = None
         self.base_priority = 0
-        self.override_settings: Dict[str, str] = {"reportAnalysisWinratesAs": "BLACK"}  # force these settings
-        self.analysis_thread: Optional[threading.Thread] = None
-        self.stderr_thread: Optional[threading.Thread] = None
-        self.write_stdin_thread: Optional[threading.Thread] = None
+        self.override_settings: dict[str, str] = {"reportAnalysisWinratesAs": "BLACK"}  # force these settings
+        self.analysis_thread: threading.Thread | None = None
+        self.stderr_thread: threading.Thread | None = None
+        self.write_stdin_thread: threading.Thread | None = None
         # Pipe reader threads (Phase 22: I/O timeout)
-        self.stdout_reader_thread: Optional[threading.Thread] = None
-        self.stderr_reader_thread: Optional[threading.Thread] = None
+        self.stdout_reader_thread: threading.Thread | None = None
+        self.stderr_reader_thread: threading.Thread | None = None
         self.shell = False
-        self.write_queue: queue.Queue[Tuple[Dict[str, Any], Optional[Callable[..., None]], Optional[Callable[..., None]], Optional[Move], Optional[GameNode]] | None] = queue.Queue()
+        self.write_queue: queue.Queue[tuple[dict[str, Any], Callable[..., None] | None, Callable[..., None] | None, Move | None, GameNode | None] | None] = queue.Queue()
         # Output queues for non-blocking I/O (Phase 22)
         self._stdout_queue: queue.Queue[bytes | None] = queue.Queue()
         self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()
@@ -247,7 +249,7 @@ class KataGoEngine(BaseEngine):
             with self._pending_query_lock:
                 self._pending_query_count = 0
 
-    def terminate_queries(self, only_for_node: Optional[GameNode] = None, lock: bool = True) -> None:
+    def terminate_queries(self, only_for_node: GameNode | None = None, lock: bool = True) -> None:
         if lock:
             with self.thread_lock:
                 return self.terminate_queries(only_for_node=only_for_node, lock=False)
@@ -262,7 +264,7 @@ class KataGoEngine(BaseEngine):
         if pq:
             self.terminate_query(pq["id"], ignore_further_results=False)
 
-    def _stop_pondering_unlocked(self) -> Optional[Dict[str, Any]]:
+    def _stop_pondering_unlocked(self) -> dict[str, Any] | None:
         """Stop pondering without acquiring lock (caller must hold thread_lock)."""
         pq = self.ponder_query
         self.ponder_query = None
@@ -712,13 +714,13 @@ class KataGoEngine(BaseEngine):
             # Check for termination signal (None)
             if item is None:
                 return
-            query: Dict[str, Any]
-            callback: Optional[Callable[..., None]]
-            error_callback: Optional[Callable[..., None]]
-            next_move: Optional[Move]
-            node: Optional[GameNode]
+            query: dict[str, Any]
+            callback: Callable[..., None] | None
+            error_callback: Callable[..., None] | None
+            next_move: Move | None
+            node: GameNode | None
             query, callback, error_callback, next_move, node = item
-            old_ponder_query: Optional[Dict[str, Any]] = None  # To call terminate_query outside of lock
+            old_ponder_query: dict[str, Any] | None = None  # To call terminate_query outside of lock
             with self.thread_lock:
                 if "id" not in query:
                     self.query_counter += 1
@@ -726,7 +728,7 @@ class KataGoEngine(BaseEngine):
 
                 ponder = query.pop(self.PONDER_KEY, False)
                 if ponder:  # handle pondering in here to be in lock and such
-                    pq: Dict[str, Any] = self.ponder_query or {}
+                    pq: dict[str, Any] = self.ponder_query or {}
                     # basically we handle pondering by just asking for these queries a lot and ignoring duplicates
                     # when a different ponder query comes in, e.g. due to selecting a roi or different node, switch
                     differences = {
@@ -768,7 +770,7 @@ class KataGoEngine(BaseEngine):
             if old_ponder_query:
                 self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
 
-    def _invoke_error_callback(self, error_callback: Optional[Callable[..., None]], error_msg: Dict[str, Any]) -> None:
+    def _invoke_error_callback(self, error_callback: Callable[..., None] | None, error_msg: dict[str, Any]) -> None:
         """Invoke error callback, handling headless/test environments.
 
         Strategy:
@@ -833,7 +835,7 @@ class KataGoEngine(BaseEngine):
         with self._pending_query_lock:
             return self._pending_query_count <= MAX_PENDING_QUERIES - headroom
 
-    def send_query(self, query: Dict[str, Any], callback: Optional[Callable[..., None]], error_callback: Optional[Callable[..., None]], next_move: Optional[Move] = None, node: Optional[GameNode] = None) -> bool:
+    def send_query(self, query: dict[str, Any], callback: Callable[..., None] | None, error_callback: Callable[..., None] | None, next_move: Move | None = None, node: GameNode | None = None) -> bool:
         """Send query to engine with safety checks.
 
         Threading contract:
@@ -890,19 +892,19 @@ class KataGoEngine(BaseEngine):
         self,
         analysis_node: GameNode,
         callback: Callable[..., None],
-        error_callback: Optional[Callable[..., None]] = None,
-        visits: Optional[int] = None,
+        error_callback: Callable[..., None] | None = None,
+        visits: int | None = None,
         analyze_fast: bool = False,
         time_limit: bool = True,
         find_alternatives: bool = False,
-        region_of_interest: Optional[List[int]] = None,
+        region_of_interest: list[int] | None = None,
         priority: int = 0,
         ponder: bool = False,  # infinite visits, cancellable
-        ownership: Optional[bool] = None,
-        next_move: Optional[Move] = None,
-        extra_settings: Optional[Dict[str, Any]] = None,
+        ownership: bool | None = None,
+        next_move: Move | None = None,
+        extra_settings: dict[str, Any] | None = None,
         include_policy: bool = True,
-        report_every: Optional[float] = None,
+        report_every: float | None = None,
     ) -> None:
         # Check for unsupported AE commands
         nodes = analysis_node.nodes_from_root
@@ -987,7 +989,7 @@ class KataGoEngine(BaseEngine):
         # Default assumption based on bundled binaries
         return "OpenCL"
 
-    def create_minimal_analysis_query(self) -> Dict[str, Any]:
+    def create_minimal_analysis_query(self) -> dict[str, Any]:
         """Create a minimal analysis query for testing.
 
         Used for auto mode test analysis:
