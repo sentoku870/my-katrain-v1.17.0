@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Set
 
 if TYPE_CHECKING:
     pass
@@ -104,14 +104,14 @@ class GameEntry:
     added_at: str
     context: Context
     source: GameSource = field(default_factory=GameSource)
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     # Cached metadata
-    board_size: Optional[int] = None
-    handicap: Optional[int] = None
-    move_count: Optional[int] = None
-    result: Optional[str] = None
-    analyzed_ratio: Optional[float] = None
-    engine_profile_id: Optional[str] = None
+    board_size: int | None = None
+    handicap: int | None = None
+    move_count: int | None = None
+    result: str | None = None
+    analyzed_ratio: float | None = None
+    engine_profile_id: str | None = None
 
 
 # =============================================================================
@@ -135,13 +135,13 @@ class TrainingSetManifest:
     set_id: str = ""
     name: str = ""
     created_at: str = ""
-    games: List[GameEntry] = field(default_factory=list)
+    games: list[GameEntry] = field(default_factory=list)
 
     def get_game_ids(self) -> Set[str]:
         """重複チェック用にgame_idセットを返す。"""
         return {g.game_id for g in self.games}
 
-    def get_recent_games(self, n: int, context: Optional[Context] = None) -> List[GameEntry]:
+    def get_recent_games(self, n: int, context: Context | None = None) -> list[GameEntry]:
         """added_at降順で直近N局を取得。
 
         Args:
@@ -173,9 +173,9 @@ class EngineProfileSnapshot:
         komi: コミ（None除外、0.0は有効値）
     """
 
-    model_name: Optional[str] = None
-    max_visits: Optional[int] = None
-    komi: Optional[float] = None
+    model_name: str | None = None
+    max_visits: int | None = None
+    komi: float | None = None
 
 
 # =============================================================================
@@ -207,12 +207,12 @@ class BucketProfile:
     viewer_preset: ViewerPreset = ViewerPreset.STANDARD
     confidence: Confidence = Confidence.LOW
     samples: int = 0
-    analyzed_ratio: Optional[float] = None
-    engine_profile_id: Optional[str] = None
+    analyzed_ratio: float | None = None
+    engine_profile_id: str | None = None
     use_for_reports: bool = True
     updated_at: str = ""
     # Phase 2: Practice tracking
-    recent_winrate: Optional[float] = None
+    recent_winrate: float | None = None
     recent_games_count: int = 0
 
 
@@ -226,7 +226,7 @@ class ContextProfile:
     """
 
     context: Context = Context.HUMAN
-    buckets: Dict[str, BucketProfile] = field(default_factory=dict)
+    buckets: dict[str, BucketProfile] = field(default_factory=dict)
 
 
 @dataclass
@@ -243,11 +243,11 @@ class PlayerProfile:
     profile_version: int = 1
     created_at: str = ""
     updated_at: str = ""
-    per_context: Dict[str, ContextProfile] = field(default_factory=dict)
+    per_context: dict[str, ContextProfile] = field(default_factory=dict)
 
     def get_bucket_profile(
         self, context: Context, bucket_key: str
-    ) -> Optional[BucketProfile]:
+    ) -> BucketProfile | None:
         """指定されたContext×Bucketのプロファイルを取得。
 
         Args:
@@ -302,9 +302,9 @@ class ImportResult:
     success_count: int = 0
     failed_count: int = 0
     skipped_count: int = 0
-    failed_files: List[tuple[str, str]] = field(default_factory=list)  # (filename, error_message)
-    skipped_files: List[str] = field(default_factory=list)
-    average_analyzed_ratio: Optional[float] = None
+    failed_files: list[tuple[str, str]] = field(default_factory=list)  # (filename, error_message)
+    skipped_files: list[str] = field(default_factory=list)
+    average_analyzed_ratio: float | None = None
 
     @property
     def has_failures(self) -> bool:
@@ -339,7 +339,7 @@ class TrainingSetSummary:
     total_games: int = 0
     analyzed_games: int = 0
     fully_analyzed_games: int = 0
-    average_analyzed_ratio: Optional[float] = None
+    average_analyzed_ratio: float | None = None
     unanalyzed_games: int = 0
 
 

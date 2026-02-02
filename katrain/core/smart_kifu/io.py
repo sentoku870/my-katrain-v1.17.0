@@ -19,7 +19,7 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 import uuid
 
 from katrain.core.constants import DATA_FOLDER
@@ -85,7 +85,7 @@ def ensure_smart_kifu_dirs() -> None:
 # =============================================================================
 
 
-def list_training_sets() -> List[str]:
+def list_training_sets() -> list[str]:
     """Training Setの一覧を取得。
 
     Returns:
@@ -152,7 +152,7 @@ def _dict_to_game_entry(d: dict[str, Any]) -> GameEntry:
     )
 
 
-def load_manifest(set_id: str) -> Optional[TrainingSetManifest]:
+def load_manifest(set_id: str) -> TrainingSetManifest | None:
     """manifest.jsonを読み込み。
 
     Args:
@@ -424,9 +424,9 @@ def import_sgf_to_training_set(
     sgf_path: Path,
     context: Context,
     origin: str = "",
-    tags: Optional[List[str]] = None,
+    tags: list[str] | None = None,
     compute_ratio: bool = False,
-) -> Tuple[Optional[GameEntry], Optional[ImportErrorCode]]:
+) -> tuple[GameEntry | None, ImportErrorCode | None]:
     """SGFファイルをTraining Setにインポート。
 
     Args:
@@ -593,7 +593,7 @@ def import_analyzed_sgf_folder(
         ImportResult（成功/失敗/スキップの件数、平均解析率）
     """
     result = ImportResult()
-    computed_ratios: List[Optional[float]] = []
+    computed_ratios: list[float | None] = []
 
     if not folder_path.is_dir():
         result.failed_count = 1

@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Iterator, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Iterator, cast
 
 from katrain.core.smart_kifu.models import (
     CONFIDENCE_HIGH_MIN_ANALYZED_RATIO,
@@ -130,7 +130,7 @@ def compute_game_id(sgf_content: str) -> str:
 # =============================================================================
 
 
-def iter_main_branch_nodes(root: Union["GameNode", "SGFNode"]) -> Iterator[Union["GameNode", "SGFNode"]]:
+def iter_main_branch_nodes(root: "GameNode" |  "SGFNode") -> Iterator["GameNode" |  "SGFNode"]:
     """メインラインのノードを走査（root自体は含めない）。
 
     Args:
@@ -144,13 +144,13 @@ def iter_main_branch_nodes(root: Union["GameNode", "SGFNode"]) -> Iterator[Union
         - pass ノードも含める
         - 分岐は無視（children[0] のみ）
     """
-    node: Union["GameNode", "SGFNode"] = root
+    node: "GameNode" |  "SGFNode" = root
     while node.children:
         node = node.children[0]
         yield node
 
 
-def compute_analyzed_ratio_from_game(game: "Game") -> Optional[float]:
+def compute_analyzed_ratio_from_game(game: "Game") -> float | None:
     """Gameオブジェクトからanalyzed_ratioを計算。
 
     Args:
@@ -193,7 +193,7 @@ def has_analysis_data(node: "GameNode") -> bool:
     return bool(getattr(node, "analysis_from_sgf", None))
 
 
-def compute_analyzed_ratio_from_sgf_file(sgf_path: str) -> Optional[float]:
+def compute_analyzed_ratio_from_sgf_file(sgf_path: str) -> float | None:
     """SGFファイルから解析率を計算（軽量版）。
 
     Args:
@@ -265,7 +265,7 @@ def compute_training_set_summary(manifest: TrainingSetManifest) -> TrainingSetSu
 # =============================================================================
 
 
-def compute_confidence(samples: int, analyzed_ratio: Optional[float]) -> Confidence:
+def compute_confidence(samples: int, analyzed_ratio: float | None) -> Confidence:
     """データ品質の信頼度を計算。
 
     v4.1: engine_consistent引数を削除（不一致データは集計前に除外するため）
@@ -386,7 +386,7 @@ def map_viewer_level_to_preset(level: int) -> ViewerPreset:
 
 def suggest_handicap_adjustment(
     winrate: float, current_handicap: int
-) -> Tuple[int, str]:
+) -> tuple[int, str]:
     """勝率に基づいて置石調整を提案。
 
     Args:
