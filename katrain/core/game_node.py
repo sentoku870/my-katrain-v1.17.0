@@ -58,7 +58,7 @@ class GameNode(SGFNode):
     def __init__(
         self,
         parent: "GameNode | None" = None,
-        properties: dict[str, list[Any | None]] = None,
+        properties: dict[str, list[Any | None]] | None = None,
         move: Move | None = None,
     ) -> None:
         super().__init__(parent=parent, properties=properties, move=move)
@@ -161,9 +161,9 @@ class GameNode(SGFNode):
 
     def sgf_properties(  # type: ignore[override]
         self,
-        save_comments_player: dict[str, bool | None] = None,
-        save_comments_class: list[bool | None] = None,
-        eval_thresholds: list[float | None] = None,
+        save_comments_player: dict[str, bool | None] | None = None,
+        save_comments_class: list[bool | None] | None = None,
+        eval_thresholds: list[float | None] | None = None,
         save_analysis: bool = False,
         save_marks: bool = False,
     ) -> dict[str, list[Any]]:

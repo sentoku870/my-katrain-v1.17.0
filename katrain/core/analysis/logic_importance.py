@@ -98,7 +98,7 @@ def get_reliability_scale(root_visits: int) -> float:
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
     *,
-    streak_start_moves: set[int | None] = None,
+    streak_start_moves: set[int | None] | None = None,
     confidence_level: ConfidenceLevel | None = None,
 ) -> None:
     """
@@ -166,7 +166,7 @@ def pick_important_moves(
     level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
     settings: ImportantMoveSettings | None = None,
     recompute: bool = True,
-    streak_start_moves: set[int | None] = None,
+    streak_start_moves: set[int | None] | None = None,
     confidence_level: ConfidenceLevel | None = None,
 ) -> list[MoveEval]:
     """

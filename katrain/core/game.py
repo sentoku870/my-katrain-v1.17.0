@@ -90,7 +90,7 @@ class BaseGame:
         self,
         katrain: Any,
         move_tree: GameNode | None = None,
-        game_properties: dict[str, Any | None] = None,
+        game_properties: dict[str, Any | None] | None = None,
         sgf_filename: str | None = None,
         bypass_config: bool = False,  # TODO: refactor?
     ) -> None:
@@ -499,7 +499,7 @@ class BaseGame:
         base_game_name = f"{PROGRAM_NAME}_{player_names['B']} vs {player_names['W']}"
         return f"{base_game_name} {self.game_id}.sgf"
 
-    def write_sgf(self, filename: str, trainer_config: dict[str, Any | None] = None) -> str:
+    def write_sgf(self, filename: str, trainer_config: dict[str, Any | None] | None = None) -> str:
         if trainer_config is None:
             trainer_config = self.katrain.config("trainer", {})
         save_feedback = trainer_config.get("save_feedback", False)
@@ -538,7 +538,7 @@ class Game(BaseGame):
         engine: dict[str, KataGoEngine, KataGoEngine],
         move_tree: GameNode | None = None,
         analyze_fast: bool = False,
-        game_properties: dict[str, Any | None] = None,
+        game_properties: dict[str, Any | None] | None = None,
         sgf_filename: str | None = None,
     ) -> None:
         super().__init__(
