@@ -22,9 +22,26 @@ def var_to_grid(array_var: List[T], size: Tuple[int, int]) -> List[List[T]]:
     return grid
 
 
-def evaluation_class(points_lost: float, eval_thresholds: List[float]) -> int:
+def evaluation_class(points_lost: float, eval_thresholds: "List[float | None]") -> int:
+    """
+    Evaluate the class (bucket) for a given loss value.
+
+    Args:
+        points_lost: The loss value to evaluate
+        eval_thresholds: Thresholds for each class. None entries are treated as infinity.
+
+    Returns:
+        The class index (0-based)
+    """
     i = 0
-    while i < len(eval_thresholds) - 1 and points_lost < eval_thresholds[i]:
+    while i < len(eval_thresholds) - 1:
+        threshold = eval_thresholds[i]
+        if threshold is None:
+            # None = infinity threshold, skip to next
+            i += 1
+            continue
+        if points_lost < threshold:
+            break
         i += 1
     return i
 

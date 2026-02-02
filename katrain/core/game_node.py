@@ -93,7 +93,7 @@ class GameNode(SGFNode):
             self.shortcut_from = None
 
     def load_analysis(self) -> bool:
-        if not self.analysis_from_sgf:
+        if self.analysis_from_sgf is None or not self.analysis_from_sgf:
             return False
         try:
             szx, szy = self.root.board_size
@@ -321,11 +321,11 @@ class GameNode(SGFNode):
             self.analysis["completed"] = self.analysis["completed"] or (is_normal_query and not partial_result)
 
     @property
-    def ownership(self) -> list[float | None]:
+    def ownership(self) -> list[float | None] | None:
         return self.analysis.get("ownership")
 
     @property
-    def policy(self) -> list[float | None]:
+    def policy(self) -> list[float | None] | None:
         return self.analysis.get("policy")
 
     @property
@@ -372,7 +372,7 @@ class GameNode(SGFNode):
             return f"{leading_player_color} {max(win_rate,1-win_rate):.1%}"
         return None
 
-    def move_policy_stats(self) -> tuple[int | None, float, list[tuple[float, Move]]]:
+    def move_policy_stats(self) -> tuple[int | None, float, list[tuple[float, Move | None]]]:
         single_move = self.move
         parent = self.parent
         if single_move and parent and isinstance(parent, GameNode):
@@ -496,7 +496,9 @@ class GameNode(SGFNode):
             return []
         if not self.analysis["moves"]:
             polmoves = self.policy_ranking
-            top_polmove = polmoves[0][1] if polmoves else Move(None)  # if no info at all, pass
+            # Get top move from policy ranking or default to PASS
+            top_move_opt = polmoves[0][1] if polmoves else None
+            top_polmove = top_move_opt if top_move_opt is not None else Move(None)  # if no info at all, pass
             return [
                 {
                     **self.analysis["root"],
@@ -533,5 +535,7 @@ class GameNode(SGFNode):
             policy_grid = var_to_grid(self.policy, size=(szx, szy))
             moves = [(policy_grid[y][x], Move((x, y), player=self.next_player)) for x in range(szx) for y in range(szy)]
             moves.append((self.policy[-1], Move(None, player=self.next_player)))
-            return sorted(moves, key=lambda mp: -mp[0])
-        return None
+            # Filter out None scores for sorting (treat None as -infinity to place at end)
+            scored_moves = [(p if p is not None else -float('inf'), m) for p, m in moves]
+            return sorted(scored_moves, key=lambda mp: -mp[0])
+        return []
