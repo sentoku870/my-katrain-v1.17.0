@@ -8,7 +8,6 @@ Part of Phase 58: Time Data Parser.
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from katrain.core.sgf_parser import SGFNode
 
@@ -21,7 +20,7 @@ _logger = logging.getLogger(__name__)
 _EPS = 0.001
 
 
-def _extract_time_left(node: SGFNode, player: str) -> Optional[float]:
+def _extract_time_left(node: SGFNode, player: str) -> float | None:
     """Extract time left from node's BL or WL property.
 
     Args:
@@ -94,8 +93,8 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
         >>> td.has_time_data
         True
     """
-    temp_metrics: List[TimeMetrics] = []
-    prev_time: Dict[str, Optional[float]] = {"B": None, "W": None}
+    temp_metrics: list[TimeMetrics] = []
+    prev_time: dict[str, float | None] = {"B": None, "W": None}
 
     move_number = 0
     node = root
@@ -116,7 +115,7 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
         time_left = _extract_time_left(node, player)
 
         # Compute time_spent (only if both current and previous are valid)
-        time_spent: Optional[float] = None
+        time_spent: float | None = None
         prev = prev_time[player]  # Safe: prev_time always has "B" and "W" keys
         if time_left is not None and prev is not None:
             delta = prev - time_left

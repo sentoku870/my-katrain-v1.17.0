@@ -81,7 +81,7 @@ class ReasonTemplate:
 # =============================================================================
 
 # Single-tag reason templates (12 entries)
-SINGLE_TAG_REASONS: Dict[str, ReasonTemplate] = {
+SINGLE_TAG_REASONS: dict[str, ReasonTemplate] = {
     "life_death_error": ReasonTemplate(
         jp="石の生死に関わる読み間違いです。",
         en="A reading mistake involving life and death.",
@@ -134,7 +134,7 @@ SINGLE_TAG_REASONS: Dict[str, ReasonTemplate] = {
 
 # Combination reason templates (15 entries)
 # Key: (phase, area, tag) where "*" means "don't inspect this slot"
-COMBINATION_REASONS: Dict[Tuple[str, str, str], ReasonTemplate] = {
+COMBINATION_REASONS: dict[tuple[str, str, str], ReasonTemplate] = {
     ("opening", "corner", "direction_error"): ReasonTemplate(
         jp="隅での方向判断ミス。布石の基本を復習しましょう。",
         en="Direction misjudgment in the corner. Review opening fundamentals.",
@@ -204,7 +204,7 @@ COMBINATION_REASONS: Dict[Tuple[str, str, str], ReasonTemplate] = {
 # Helper Functions
 # =============================================================================
 
-def _normalize_lang(lang: Optional[str]) -> str:
+def _normalize_lang(lang: str | None) -> str:
     """Normalize language code for reason_generator.
 
     Args:
@@ -233,11 +233,11 @@ def _normalize_lang(lang: Optional[str]) -> str:
 
 
 def _find_combo_match(
-    phase: Optional[str],
-    area: Optional[str],
+    phase: str | None,
+    area: str | None,
     tag: str,
     lang: str,
-) -> Optional[str]:
+) -> str | None:
     """Find matching combination template.
 
     Matching order:
@@ -280,11 +280,11 @@ def _find_combo_match(
 # =============================================================================
 
 def generate_reason(
-    meaning_tag_id: Optional[str],
-    phase: Optional[str] = None,
-    area: Optional[str] = None,
-    lang: Optional[str] = None,
-) -> Optional[str]:
+    meaning_tag_id: str | None,
+    phase: str | None = None,
+    area: str | None = None,
+    lang: str | None = None,
+) -> str | None:
     """Generate natural language reason text.
 
     Args:
@@ -321,11 +321,11 @@ def generate_reason(
 
 
 def generate_reason_safe(
-    meaning_tag_id: Optional[str],
-    phase: Optional[str] = None,
-    area: Optional[str] = None,
-    lang: Optional[str] = None,
-    fallback_label: Optional[str] = None,
+    meaning_tag_id: str | None,
+    phase: str | None = None,
+    area: str | None = None,
+    lang: str | None = None,
+    fallback_label: str | None = None,
 ) -> str:
     """Safe version of generate_reason that never raises.
 

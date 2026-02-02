@@ -11,7 +11,6 @@ Part of Phase 58: Time Data Parser.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -39,8 +38,8 @@ class TimeMetrics:
 
     move_number: int
     player: str  # 'B' or 'W'
-    time_left_sec: Optional[float]
-    time_spent_sec: Optional[float]
+    time_left_sec: float | None
+    time_spent_sec: float | None
 
 
 @dataclass(frozen=True)

@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 
 def get_difficulty_modifier(
-    difficulty: Optional[PositionDifficulty],
+    difficulty: PositionDifficulty | None,
     canonical_loss: float = 0.0,
 ) -> float:
     """
@@ -98,8 +98,8 @@ def get_reliability_scale(root_visits: int) -> float:
 def compute_importance_for_moves(
     moves: Iterable[MoveEval],
     *,
-    streak_start_moves: Optional[Set[int]] = None,
-    confidence_level: Optional[ConfidenceLevel] = None,
+    streak_start_moves: set[int | None] = None,
+    confidence_level: ConfidenceLevel | None = None,
 ) -> None:
     """
     各 MoveEval について重要度スコアを計算し、importance_score に格納する。
@@ -164,11 +164,11 @@ def compute_importance_for_moves(
 def pick_important_moves(
     snapshot: EvalSnapshot,
     level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
-    settings: Optional[ImportantMoveSettings] = None,
+    settings: ImportantMoveSettings | None = None,
     recompute: bool = True,
-    streak_start_moves: Optional[Set[int]] = None,
-    confidence_level: Optional[ConfidenceLevel] = None,
-) -> List[MoveEval]:
+    streak_start_moves: set[int | None] = None,
+    confidence_level: ConfidenceLevel | None = None,
+) -> list[MoveEval]:
     """
     snapshot から重要局面の手数だけを抽出して返す。
 
@@ -203,7 +203,7 @@ def pick_important_moves(
         )
 
     # 1) 通常ルート: importance_score ベース
-    candidates: List[Tuple[float, int, MoveEval]] = []
+    candidates: list[tuple[float, int, MoveEval]] = []
     for move in moves:
         importance = move.importance_score or 0.0
         if importance > threshold:

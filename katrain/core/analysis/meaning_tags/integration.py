@@ -13,8 +13,6 @@ Public API:
     - format_meaning_tag_with_definition(): Display helper with truncation
 """
 
-from typing import Optional
-
 from katrain.common.locale_utils import to_iso_lang_code
 from .models import MeaningTagId
 from .registry import MEANING_TAG_REGISTRY, get_tag_label
@@ -40,9 +38,9 @@ normalize_lang = to_iso_lang_code
 
 
 def get_meaning_tag_label_safe(
-    tag_id_str: Optional[str],
+    tag_id_str: str | None,
     lang: str = "ja",
-) -> Optional[str]:
+) -> str | None:
     """Get meaning tag label with safe None handling.
 
     Unlike get_tag_label() which raises KeyError for invalid IDs,
@@ -132,9 +130,9 @@ def format_meaning_tag_with_definition(
 
 
 def format_meaning_tag_with_definition_safe(
-    tag_id_str: Optional[str],
+    tag_id_str: str | None,
     lang: str = "ja",
-) -> Optional[str]:
+) -> str | None:
     """Safe version of format_meaning_tag_with_definition.
 
     Args:

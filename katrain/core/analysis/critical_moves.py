@@ -423,7 +423,7 @@ def select_critical_moves(
         level: Important move level ("easy"/"normal"/"strict")
 
     Returns:
-        List[CriticalMove] - Up to max_moves items, sorted by critical_score descending
+        list[CriticalMove] - Up to max_moves items, sorted by critical_score descending
     """
     from katrain.core.analysis import (
         snapshot_from_game,

@@ -14,7 +14,7 @@ Part of Phase 61: Risk Context Core.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Mapping
 
 
 class RiskJudgmentType(str, Enum):
@@ -79,17 +79,17 @@ class RiskContext:
 
     # Behavior (result of playing this move)
     risk_behavior: RiskBehavior
-    delta_stdev: Optional[float]  # post_stdev - pre_stdev (KataGo scoreStdev)
-    volatility_metric: Optional[float]  # Past N moves scoreLead std dev (proxy)
+    delta_stdev: float | None  # post_stdev - pre_stdev (KataGo scoreStdev)
+    volatility_metric: float | None  # Past N moves scoreLead std dev (proxy)
 
     # Strategy alignment
     is_strategy_mismatch: bool
-    mismatch_reason: Optional[str]
+    mismatch_reason: str | None
 
     # Data quality
     has_stdev_data: bool  # True=scoreStdev used, False=volatility fallback
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict.
 
         Returns:
@@ -170,7 +170,7 @@ class PlayerRiskStats:
     contexts_with_stdev: int
     contexts_with_fallback: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
         return {
             "total_contexts": self.total_contexts,
@@ -207,7 +207,7 @@ class RiskAnalysisResult:
         white_stats: Statistics for White player
     """
 
-    contexts: Tuple[RiskContext, ...]
+    contexts: tuple[RiskContext, ...]
     has_stdev_data: bool
     fallback_used: bool
     strategy_mismatch_count: int
@@ -216,7 +216,7 @@ class RiskAnalysisResult:
     black_stats: PlayerRiskStats
     white_stats: PlayerRiskStats
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict."""
         return {
             "contexts": [c.to_dict() for c in self.contexts],

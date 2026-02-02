@@ -8,7 +8,7 @@ Phase 80のboard_context.pyを基盤とし、BFSで隣接変動セルをグル�
 from collections import Counter, deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 # 直接インポート（循環import防止）
 from katrain.core.analysis.board_context import (
@@ -44,13 +44,13 @@ class ClusterType(str, Enum):
 
 # クラスタタイプの明示的ソート順序（文字列に依存しない）
 # Note: ClusterType定義の後に配置（NameError防止）
-_CLUSTER_TYPE_ORDER: Dict[ClusterType, int] = {
+_CLUSTER_TYPE_ORDER: dict[ClusterType, int] = {
     ClusterType.TO_BLACK: 0,
     ClusterType.TO_WHITE: 1,
 }
 
 # BoardArea優先度（タイブレーク用）
-_AREA_PRIORITY: Dict[BoardArea, int] = {
+_AREA_PRIORITY: dict[BoardArea, int] = {
     BoardArea.CORNER: 0,  # 最優先
     BoardArea.EDGE: 1,
     BoardArea.CENTER: 2,
@@ -67,12 +67,12 @@ _AREA_PRIORITY_DEFAULT = 99  # 将来追加されるAreaのフォールバック
 class OwnershipDelta:
     """2ノード間のownership差分。"""
 
-    delta_grid: Tuple[Tuple[float, ...], ...]  # immutable, grid[row][col]
-    board_size: Tuple[int, int]  # (width, height)
+    delta_grid: tuple[tuple[float, ...], ...]  # immutable, grid[row][col]
+    board_size: tuple[int, int]  # (width, height)
     parent_context: OwnershipContext
     child_context: OwnershipContext
 
-    def get_delta_at(self, col: int, row: int) -> Optional[float]:
+    def get_delta_at(self, col: int, row: int) -> float | None:
         """指定座標(col, row)の差分値を取得。
 
         Args:
@@ -92,12 +92,12 @@ class OwnershipDelta:
 class OwnershipCluster:
     """ownership変動のクラスタ。"""
 
-    coords: FrozenSet[Tuple[int, int]]  # (col, row)のセット
+    coords: frozenset[tuple[int, int]]  # (col, row)のセット
     cluster_type: ClusterType
     sum_delta: float  # 符号付き合計
     avg_delta: float  # 符号付き平均
     max_abs_delta: float  # 絶対値の最大
-    primary_area: Optional[BoardArea]
+    primary_area: BoardArea | None
     cell_count: int
 
     def to_dict(self) -> dict[str, Any]:
@@ -139,7 +139,7 @@ class ClusterExtractionConfig:
 class ClusterExtractionResult:
     """クラスタ抽出結果。"""
 
-    clusters: Tuple[OwnershipCluster, ...]  # ソート済み
+    clusters: tuple[OwnershipCluster, ...]  # ソート済み
     total_changed_cells: int  # フィルタ前の変動セル数
     black_gain_clusters: int  # TO_BLACKクラスタ数
     white_gain_clusters: int  # TO_WHITEクラスタ数
@@ -152,8 +152,8 @@ class ClusterExtractionResult:
 
 
 def _validate_grid_shape(
-    grid: List[List[float]],
-    board_size: Tuple[int, int],
+    grid: list[list[float]],
+    board_size: tuple[int, int],
     label: str,
 ) -> None:
     """グリッド形状を検証。不整合ならValueError。"""
@@ -181,7 +181,7 @@ def _get_neighbors(
     width: int,
     height: int,
     use_8: bool,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """隣接座標を取得。"""
     # 4方向
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -200,13 +200,13 @@ def _get_neighbors(
 def _bfs_cluster(
     start_col: int,
     start_row: int,
-    delta_grid: Tuple[Tuple[float, ...], ...],
-    visited: set[Tuple[int, int]],
+    delta_grid: tuple[tuple[float, ...], ...],
+    visited: set[tuple[int, int]],
     threshold: float,
     use_8: bool,
     width: int,
     height: int,
-) -> FrozenSet[Tuple[int, int]]:
+) -> frozenset[tuple[int, int]]:
     """BFSで連結成分を抽出。"""
     cluster_coords = set()
     queue = deque([(start_col, start_row)])
@@ -227,9 +227,9 @@ def _bfs_cluster(
 
 
 def _compute_cluster_stats(
-    coords: FrozenSet[Tuple[int, int]],
-    delta_grid: Tuple[Tuple[float, ...], ...],
-) -> Tuple[float, float, float]:
+    coords: frozenset[tuple[int, int]],
+    delta_grid: tuple[tuple[float, ...], ...],
+) -> tuple[float, float, float]:
     """sum_delta, avg_delta, max_abs_deltaを計算。"""
     deltas = [delta_grid[r][c] for c, r in coords]
     sum_delta = sum(deltas)
@@ -238,7 +238,7 @@ def _compute_cluster_stats(
     return sum_delta, avg_delta, max_abs_delta
 
 
-def _determine_cluster_type(sum_delta: float, epsilon: float) -> Optional[ClusterType]:
+def _determine_cluster_type(sum_delta: float, epsilon: float) -> ClusterType | None:
     """クラスタタイプを判定。中立→None（除外対象）。
 
     Args:
@@ -251,9 +251,9 @@ def _determine_cluster_type(sum_delta: float, epsilon: float) -> Optional[Cluste
 
 
 def _compute_primary_area(
-    coords: FrozenSet[Tuple[int, int]],
-    board_size: Tuple[int, int],
-) -> Optional[BoardArea]:
+    coords: frozenset[tuple[int, int]],
+    board_size: tuple[int, int],
+) -> BoardArea | None:
     """クラスタの主要Area（最頻値、タイブレーク=優先度順）を計算。
 
     Note:
@@ -277,7 +277,7 @@ def _compute_primary_area(
     )
 
 
-def _cluster_sort_key(cluster: OwnershipCluster) -> Tuple[int, float, Tuple[int, int]]:
+def _cluster_sort_key(cluster: OwnershipCluster) -> tuple[int, float, tuple[int, int]]:
     """クラスタのソートキー。"""
     type_order = _CLUSTER_TYPE_ORDER[cluster.cluster_type]
     min_coord = min(cluster.coords)  # (col, row) の辞書順最小
@@ -292,7 +292,7 @@ def _cluster_sort_key(cluster: OwnershipCluster) -> Tuple[int, float, Tuple[int,
 def compute_ownership_delta(
     parent_ctx: OwnershipContext,
     child_ctx: OwnershipContext,
-) -> Optional[OwnershipDelta]:
+) -> OwnershipDelta | None:
     """2つのOwnershipContextから差分を計算。
 
     Args:
@@ -324,9 +324,9 @@ def compute_ownership_delta(
     _validate_grid_shape(child_ctx.ownership_grid, board_size, "Child")
 
     # delta計算: child - parent
-    delta_grid: List[List[float]] = []
+    delta_grid: list[list[float]] = []
     for row in range(height):
-        delta_row: List[float] = []
+        delta_row: list[float] = []
         for col in range(width):
             parent_val = parent_ctx.ownership_grid[row][col]
             child_val = child_ctx.ownership_grid[row][col]
@@ -346,7 +346,7 @@ def compute_ownership_delta(
 
 def extract_clusters(
     delta: OwnershipDelta,
-    config: Optional[ClusterExtractionConfig] = None,
+    config: ClusterExtractionConfig | None = None,
 ) -> ClusterExtractionResult:
     """OwnershipDeltaからクラスタを抽出。
 
@@ -365,7 +365,7 @@ def extract_clusters(
     use_8 = config.use_8_neighbors
 
     # 変動セルを特定
-    changed_cells: List[Tuple[int, int]] = []
+    changed_cells: list[tuple[int, int]] = []
     for row in range(height):
         for col in range(width):
             d = delta.delta_grid[row][col]
@@ -375,8 +375,8 @@ def extract_clusters(
     total_changed_cells = len(changed_cells)
 
     # BFSでクラスタ抽出
-    visited: set[Tuple[int, int]] = set()
-    raw_clusters: List[OwnershipCluster] = []
+    visited: set[tuple[int, int]] = set()
+    raw_clusters: list[OwnershipCluster] = []
 
     for col, row in changed_cells:
         if (col, row) not in visited:
@@ -438,8 +438,8 @@ def extract_clusters(
 def extract_clusters_from_nodes(
     parent: "GameNode",
     child: "GameNode",
-    config: Optional[ClusterExtractionConfig] = None,
-) -> Optional[ClusterExtractionResult]:
+    config: ClusterExtractionConfig | None = None,
+) -> ClusterExtractionResult | None:
     """GameNodeからクラスタを抽出（便利ラッパー）。
 
     Args:

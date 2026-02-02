@@ -13,7 +13,7 @@ Part of Phase 56: Style Archetype Core.
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Dict, FrozenSet, Mapping, Optional
+from typing import Any, Mapping
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis
@@ -60,9 +60,9 @@ class StyleArchetype:
     id: StyleArchetypeId
     name_key: str
     summary_key: str
-    high_axes: FrozenSet[RadarAxis]
-    low_axes: FrozenSet[RadarAxis]
-    reinforcing_tags: FrozenSet[MeaningTagId]
+    high_axes: frozenset[RadarAxis]
+    low_axes: frozenset[RadarAxis]
+    reinforcing_tags: frozenset[MeaningTagId]
 
 
 @dataclass(frozen=True)
@@ -82,9 +82,9 @@ class StyleResult:
     archetype: StyleArchetype
     confidence: float
     axis_deviations: Mapping[RadarAxis, float]
-    dominant_axis: Optional[RadarAxis]
+    dominant_axis: RadarAxis | None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dict. Rounding happens HERE only.
 
         Returns:
@@ -105,7 +105,7 @@ class StyleResult:
 # Archetype Registry
 # =============================================================================
 
-STYLE_ARCHETYPES: Dict[StyleArchetypeId, StyleArchetype] = {
+STYLE_ARCHETYPES: dict[StyleArchetypeId, StyleArchetype] = {
     StyleArchetypeId.KIAI_FIGHTER: StyleArchetype(
         id=StyleArchetypeId.KIAI_FIGHTER,
         name_key="style:kiai_fighter:name",

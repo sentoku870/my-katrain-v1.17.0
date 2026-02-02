@@ -10,7 +10,6 @@ Part of Phase 46: Meaning Tags System Core.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class MeaningTagId(str, Enum):
@@ -69,9 +68,9 @@ class MeaningTag:
     """
 
     id: MeaningTagId
-    lexicon_anchor_id: Optional[str] = None
+    lexicon_anchor_id: str | None = None
     confidence: float = 1.0
-    debug_reason: Optional[str] = None
+    debug_reason: str | None = None
 
     def __post_init__(self) -> None:
         """Validate field values after initialization."""
