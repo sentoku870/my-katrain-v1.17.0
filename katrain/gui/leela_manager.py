@@ -11,9 +11,11 @@ __main__.pyから抽出されたLeela解析管理機能。
 - 状態変更はコールバック経由で通知
 """
 
+from __future__ import annotations
+
 import os
 import time
-from typing import Any, Callable, List, Optional, Set, Tuple
+from typing import Any, Callable
 
 from kivy.clock import Clock
 
@@ -58,13 +60,13 @@ class LeelaManager:
         self._schedule_resign_popup = schedule_resign_popup
 
         # Leela engine state
-        self.leela_engine: Optional[LeelaEngine] = None
+        self.leela_engine: LeelaEngine | None = None
         self._pending_node = None
         self._request_id: int = 0
         self._last_request_time: float = 0.0
 
         # Resign hint tracking (use node_key: str to avoid GC issues)
-        self._resign_hint_shown_keys: Set[str] = set()
+        self._resign_hint_shown_keys: set[str] = set()
 
     def start_engine(self, katrain_for_engine: Any) -> bool:
         """Start Leela engine (no-op if already running).
@@ -159,7 +161,7 @@ class LeelaManager:
 
         # Build moves list from current node path (same as KataGoEngine)
         nodes = current_node.nodes_from_root
-        moves: List[Tuple[str, str]] = []
+        moves: list[tuple[str, str]] = []
         for node in nodes:
             for m in node.moves:
                 # m is a Move object with .player ("B"/"W") and .gtp() method

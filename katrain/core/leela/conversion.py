@@ -11,8 +11,9 @@ Design principles:
 - Clear loss semantics: score_loss (points) vs leela_loss_est (estimated from winrate gap)
 """
 
+from __future__ import annotations
+
 import logging
-from typing import List, Optional, Tuple
 
 from katrain.core.analysis.models import (
     EvalSnapshot,
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 LEELA_LOSS_EST_EPSILON = 0.05
 
 
-def _normalize_move(move: str) -> Optional[str]:
+def _normalize_move(move: str) -> str | None:
     """Normalize a GTP coordinate string.
 
     Args:
@@ -81,10 +82,10 @@ def _round_loss_est(loss_est: float) -> float:
 
 
 def _convert_to_black_perspective(
-    parent_best_wr: Optional[float],
-    current_best_wr: Optional[float],
+    parent_best_wr: float | None,
+    current_best_wr: float | None,
     player: str,
-) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None, float | None]:
     """Convert Leela winrate (side-to-move) to black perspective.
 
     Leela's winrate is from the perspective of the player to move (side-to-move).
@@ -115,7 +116,7 @@ def _convert_to_black_perspective(
     return winrate_before, winrate_after, delta_winrate
 
 
-def _compute_winrate_loss(delta_winrate: Optional[float], player: str) -> Optional[float]:
+def _compute_winrate_loss(delta_winrate: float | None, player: str) -> float | None:
     """Compute winrate loss from the perspective of the player who moved.
 
     Args:
@@ -141,10 +142,10 @@ def _compute_winrate_loss(delta_winrate: Optional[float], player: str) -> Option
 
 
 def _compute_leela_loss_for_played_move(
-    parent_eval: Optional[LeelaPositionEval],
+    parent_eval: LeelaPositionEval | None,
     played_move: str,
     k: float,
-) -> Optional[float]:
+) -> float | None:
     """Compute estimated loss for the played move.
 
     Algorithm:
@@ -200,7 +201,7 @@ def _compute_leela_loss_for_played_move(
 
 
 def leela_position_to_move_eval(
-    parent_eval: Optional[LeelaPositionEval],
+    parent_eval: LeelaPositionEval | None,
     current_eval: LeelaPositionEval,
     move_number: int,
     player: str,
@@ -274,8 +275,8 @@ def leela_position_to_move_eval(
 
 
 def leela_sequence_to_eval_snapshot(
-    evals: List[LeelaPositionEval],
-    moves_info: List[Tuple[int, str, str]],
+    evals: list[LeelaPositionEval],
+    moves_info: list[tuple[int, str, str]],
     k: float = LEELA_K_DEFAULT,
 ) -> EvalSnapshot:
     """Convert a sequence of Leela evaluations to an EvalSnapshot.
@@ -322,7 +323,7 @@ def leela_sequence_to_eval_snapshot(
             )
 
     # Convert each evaluation
-    move_evals: List[MoveEval] = []
+    move_evals: list[MoveEval] = []
     for i, (move_num, player, gtp) in enumerate(moves_info):
         parent_eval = evals[i - 1] if i > 0 else None
         current_eval = evals[i]

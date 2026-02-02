@@ -4,10 +4,12 @@ This module provides the CommandExecutor class that manages the lifecycle
 of analysis commands, including submission, result delivery, and cancellation.
 """
 
+from __future__ import annotations
+
 import threading
 import time
 from collections import deque
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.engine_cmd.commands import AnalysisCommand
 
@@ -59,13 +61,13 @@ class CommandExecutor:
             engine: The KataGoEngine instance to send queries to.
         """
         self.engine = engine
-        self.commands: Dict[str, AnalysisCommand] = {}
-        self._pending_commands: Set[AnalysisCommand] = set()
+        self.commands: dict[str, AnalysisCommand] = {}
+        self._pending_commands: set[AnalysisCommand] = set()
         self._lock = threading.Lock()
         self._history: deque[AnalysisCommand] = deque(maxlen=self.MAX_HISTORY_SIZE)
 
     @property
-    def history(self) -> List[AnalysisCommand]:
+    def history(self) -> list[AnalysisCommand]:
         """Return a snapshot of the command history.
 
         Returns:
@@ -303,7 +305,7 @@ class CommandExecutor:
 
         return count
 
-    def get_command(self, query_id: str) -> Optional[AnalysisCommand]:
+    def get_command(self, query_id: str) -> AnalysisCommand | None:
         """Get a command by query_id.
 
         Args:
@@ -350,7 +352,7 @@ class CommandExecutor:
                     return True
             return False
 
-    def get_ponder_command(self) -> Optional[AnalysisCommand]:
+    def get_ponder_command(self) -> AnalysisCommand | None:
         """Get the current pondering command, if any.
 
         Searches both pending and active commands for one with ponder=True.

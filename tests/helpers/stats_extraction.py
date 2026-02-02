@@ -8,12 +8,14 @@ Note: This is a test-only helper. Production code uses
 extract_sgf_statistics() which reads KT properties from SGF files.
 """
 
-from typing import Dict, Any, List, Tuple
+from __future__ import annotations
+
+from typing import Any
 
 from katrain.core import eval_metrics
 
 
-def extract_stats_from_nodes(game: Any) -> Dict[str, Any]:
+def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
     """
     Extract stats dict from a mock-analyzed Game object.
 
@@ -44,7 +46,7 @@ def extract_stats_from_nodes(game: Any) -> Dict[str, Any]:
     rank_black = root.get_property("BR", None)
     rank_white = root.get_property("WR", None)
 
-    stats: Dict[str, Any] = {
+    stats: dict[str, Any] = {
         # Metadata fields (required by build_summary_from_stats)
         "game_name": game.sgf_filename or "unknown",
         "player_black": player_black,

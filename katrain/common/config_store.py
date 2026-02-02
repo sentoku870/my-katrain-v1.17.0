@@ -11,6 +11,8 @@ Usage:
     store.put("general", version="1.0", language="en")
     value = store.get("general")["version"]
 """
+from __future__ import annotations
+
 import json
 import os
 import tempfile

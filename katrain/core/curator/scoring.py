@@ -4,12 +4,15 @@ This module implements suitability scoring for game records,
 evaluating how well they match a user's learning needs.
 """
 
+from __future__ import annotations
+
 import math
 from types import MappingProxyType
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Mapping, cast
 
 from katrain.core.analysis.skill_radar import AggregatedRadarResult
+from katrain.core.game_node import GameNode
 
 from .models import (
     AXIS_TO_MEANING_TAGS,
@@ -23,7 +26,6 @@ from .models import (
 if TYPE_CHECKING:
     from katrain.core.analysis.meaning_tags.models import MeaningTagId
     from katrain.core.game import Game
-    from katrain.core.game_node import GameNode
 
 
 # =============================================================================
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 
-def _normalize_meaning_tag_key(key: Union[str, "MeaningTagId"]) -> str:
+def _normalize_meaning_tag_key(key: str | MeaningTagId) -> str:
     """Normalize MeaningTagId or string to string key.
 
     Args:
@@ -51,8 +53,8 @@ def _normalize_meaning_tag_key(key: Union[str, "MeaningTagId"]) -> str:
 
 
 def _combine_meaning_tags(
-    meaning_tags_by_player: Dict[str, Dict[str, int]],
-) -> Dict[str, int]:
+    meaning_tags_by_player: dict[str, dict[str, int]],
+) -> dict[str, int]:
     """Combine meaning tags from both players (B + W).
 
     Args:
@@ -64,7 +66,7 @@ def _combine_meaning_tags(
     Note:
         Uses UNCERTAIN_TAG = MeaningTagId.UNCERTAIN.value for filtering.
     """
-    combined: Dict[str, int] = {}
+    combined: dict[str, int] = {}
     for player_tags in meaning_tags_by_player.values():
         for key, count in player_tags.items():
             normalized = _normalize_meaning_tag_key(key)
@@ -95,8 +97,8 @@ def _round_half_up(value: float) -> int:
 
 
 def _wrap_debug_info(
-    debug_dict: Optional[Dict[str, Any]],
-) -> Optional[Mapping[str, Any]]:
+    debug_dict: dict[str, Any] | None,
+) -> Mapping[str, Any] | None:
     """Wrap debug dict in MappingProxyType for immutability.
 
     Args:
@@ -120,8 +122,8 @@ def _wrap_debug_info(
 
 
 def compute_needs_match(
-    user_aggregate: Optional[AggregatedRadarResult],
-    meaning_tags_combined: Dict[str, int],
+    user_aggregate: AggregatedRadarResult | None,
+    meaning_tags_combined: dict[str, int],
     config: SuitabilityConfig = DEFAULT_CONFIG,
 ) -> float:
     """Compute needs_match score.
@@ -154,7 +156,7 @@ def compute_needs_match(
         return 0.0
 
     # Collect related tags for weak axes
-    related_tags: Set[str] = set()
+    related_tags: set[str] = set()
     for axis in weak_axes:
         related_tags.update(AXIS_TO_MEANING_TAGS[axis])  # KeyError impossible
 
@@ -175,7 +177,7 @@ def compute_needs_match(
 # =============================================================================
 
 
-def _collect_score_leads(game: "Game") -> List[float]:
+def _collect_score_leads(game: Game) -> list[float]:
     """Collect scoreLead values from mainline nodes only.
 
     Traversal rules:
@@ -201,8 +203,8 @@ def _collect_score_leads(game: "Game") -> List[float]:
         This ensures consistent behavior for stability calculation.
         Missing root_info is silently skipped (common for unanalyzed nodes).
     """
-    values: List[float] = []
-    node: Optional["GameNode"] = game.root
+    values: list[float] = []
+    node: GameNode | None = game.root
     while node is not None:
         # Skip if no analysis data
         if node.analysis:
@@ -214,11 +216,11 @@ def _collect_score_leads(game: "Game") -> List[float]:
                     if math.isfinite(score_lead):
                         values.append(float(score_lead))
         # Follow mainline only (cast to GameNode since game.root is GameNode)
-        node = cast("GameNode", node.children[0]) if node.children else None
+        node = cast(GameNode, node.children[0]) if node.children else None
     return values
 
 
-def _compute_volatility(values: List[float]) -> Optional[float]:
+def _compute_volatility(values: list[float]) -> float | None:
     """Compute volatility as population standard deviation.
 
     Mirrors Phase 61 logic (katrain/core/analysis/risk/analyzer.py:178-195).
@@ -242,7 +244,7 @@ def _compute_volatility(values: List[float]) -> Optional[float]:
 
 
 def compute_stability(
-    game: "Game",
+    game: Game,
     config: SuitabilityConfig = DEFAULT_CONFIG,
 ) -> float:
     """Compute stability score from game's scoreLead volatility.
@@ -305,8 +307,8 @@ def _compute_total(
 
 
 def compute_batch_percentiles(
-    scores: List[SuitabilityScore],
-) -> List[SuitabilityScore]:
+    scores: list[SuitabilityScore],
+) -> list[SuitabilityScore]:
     """Assign percentile ranks based on total score using ECDF-style calculation.
 
     Specification (ECDF-style):
@@ -331,7 +333,7 @@ def compute_batch_percentiles(
     totals = [s.total for s in scores]
 
     # For each score, count how many scores have total <= this total
-    result: List[SuitabilityScore] = []
+    result: list[SuitabilityScore] = []
     for score in scores:
         count_le = sum(1 for t in totals if t <= score.total)
         percentile = _round_half_up((count_le / n) * 100)
@@ -354,9 +356,9 @@ def compute_batch_percentiles(
 
 
 def score_game_suitability(
-    user_aggregate: Optional[AggregatedRadarResult],
-    game: "Game",
-    game_stats: Dict[str, Any],
+    user_aggregate: AggregatedRadarResult | None,
+    game: Game,
+    game_stats: dict[str, Any],
     config: SuitabilityConfig = DEFAULT_CONFIG,
 ) -> SuitabilityScore:
     """Score a single game's suitability.
@@ -384,7 +386,7 @@ def score_game_suitability(
     total = _compute_total(needs_match, stability, config)
 
     # Build debug info
-    debug_dict: Dict[str, Any] = {
+    debug_dict: dict[str, Any] = {
         "meaning_tags_combined": meaning_tags_combined,
         "weak_axes": (
             [
@@ -407,10 +409,10 @@ def score_game_suitability(
 
 
 def score_batch_suitability(
-    user_aggregate: Optional[AggregatedRadarResult],
-    games_and_stats: List[Tuple["Game", Dict[str, Any]]],
+    user_aggregate: AggregatedRadarResult | None,
+    games_and_stats: list[tuple[Game, dict[str, Any]]],
     config: SuitabilityConfig = DEFAULT_CONFIG,
-) -> List[SuitabilityScore]:
+) -> list[SuitabilityScore]:
     """Score multiple games and compute batch-relative percentiles.
 
     Args:

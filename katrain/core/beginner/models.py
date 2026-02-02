@@ -3,9 +3,11 @@
 Data models for beginner hint detection system.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class HintCategory(Enum):
@@ -31,7 +33,7 @@ class HintCategory(Enum):
     URGENT_VS_BIG = "urgent_vs_big"
 
     @classmethod
-    def from_meaning_tag_id(cls, tag_id: Optional[str]) -> Optional["HintCategory"]:
+    def from_meaning_tag_id(cls, tag_id: str | None) -> HintCategory | None:
         """Map MeaningTagId string to HintCategory.
 
         Returns None for unknown/unsupported IDs (no crash).
@@ -68,9 +70,9 @@ class BeginnerHint:
     """
 
     category: HintCategory
-    coords: Optional[Tuple[int, int]]
+    coords: tuple[int, int] | None
     severity: int
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -92,10 +94,10 @@ class DetectorInput:
     """
 
     node: Any  # GameNode
-    parent: Optional[Any]  # Optional[GameNode]
-    move_coords: Optional[Tuple[int, int]]
+    parent: Any | None  # GameNode | None
+    move_coords: tuple[int, int] | None
     player: str  # "B" or "W"
-    groups_after: List[Any]  # List[Group]
-    groups_before: List[Any]  # List[Group]
+    groups_after: list[Any]  # list[Group]
+    groups_before: list[Any]  # list[Group]
     was_capture: bool
     captured_count: int

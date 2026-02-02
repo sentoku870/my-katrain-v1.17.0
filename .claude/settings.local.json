@@ -79,7 +79,12 @@
       "Bash(Out-String)",
       "Bash(git reset:*)",
       "Bash(for f in katrain/core/batch/*.py katrain/core/batch/stats/*.py)",
-      "Bash(do echo \"=== $f ===\")"
+      "Bash(do echo \"=== $f ===\")",
+      "Bash(while read f)",
+      "Bash(do if ! head -30 \"$f\")",
+      "Read(//d/github/katrain-1.17.0/**)",
+      "Bash(Get-ChildItem katrain -Recurse -Filter *.py)",
+      "Bash(Select-Object -Property Filename, LineNumber, Line)"
     ]
   }
 }

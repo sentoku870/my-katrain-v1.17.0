@@ -3,6 +3,9 @@
 Phase 73: KaTrainGuiからキーボード処理を抽出。
 Kivyインポート不要 - 全て依存注入でモック/スタブ。
 """
+
+from __future__ import annotations
+
 from typing import Callable
 
 import pytest
@@ -96,11 +99,11 @@ class ScheduleOnceRecorder:
     def __init__(self):
         self.calls = []  # [(callback, delay), ...]
 
-    def __call__(self, callback: Callable[[float], None], delay: float):
+    def __call__(self, callback: Callable[[float], None], delay: float) -> None:
         """Kivy Clock.schedule_once互換"""
         self.calls.append((callback, delay))
 
-    def execute_pending(self, dt: float = 0.0):
+    def execute_pending(self, dt: float = 0.0) -> None:
         """保留中のコールバックを実行（テスト用）"""
         for callback, _ in self.calls:
             callback(dt)

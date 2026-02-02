@@ -3,8 +3,9 @@
 These models are separate from KataGo's analysis structures.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass
@@ -23,9 +24,9 @@ class LeelaCandidate:
     move: str
     winrate: float  # 0.0-1.0 normalized
     visits: int
-    pv: List[str] = field(default_factory=list)
-    prior: Optional[float] = None
-    loss_est: Optional[float] = None  # Set by compute_estimated_loss()
+    pv: list[str] = field(default_factory=list)
+    prior: float | None = None
+    loss_est: float | None = None  # Set by compute_estimated_loss()
 
     @property
     def eval_pct(self) -> float:
@@ -50,9 +51,9 @@ class LeelaPositionEval:
         parse_error: Error message if parsing failed (else None)
     """
 
-    candidates: List[LeelaCandidate] = field(default_factory=list)
+    candidates: list[LeelaCandidate] = field(default_factory=list)
     root_visits: int = 0
-    parse_error: Optional[str] = None
+    parse_error: str | None = None
 
     @property
     def is_valid(self) -> bool:
@@ -60,7 +61,7 @@ class LeelaPositionEval:
         return len(self.candidates) > 0 and self.parse_error is None
 
     @property
-    def best_candidate(self) -> Optional[LeelaCandidate]:
+    def best_candidate(self) -> LeelaCandidate | None:
         """Get the best candidate (order 0, or highest winrate)."""
         if not self.candidates:
             return None
@@ -68,13 +69,13 @@ class LeelaPositionEval:
         return max(self.candidates, key=lambda c: c.winrate)
 
     @property
-    def best_winrate(self) -> Optional[float]:
+    def best_winrate(self) -> float | None:
         """Get best candidate's winrate (0.0-1.0)."""
         best = self.best_candidate
         return best.winrate if best else None
 
     @property
-    def best_eval_pct(self) -> Optional[float]:
+    def best_eval_pct(self) -> float | None:
         """Get best candidate's evaluation as percentage (0-100)."""
         best = self.best_candidate
         return best.eval_pct if best else None

@@ -3,9 +3,10 @@
 Parses the GTP extended output format from lz-analyze command.
 """
 
+from __future__ import annotations
+
 import logging
 import re
-from typing import List, Optional
 
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
@@ -73,7 +74,7 @@ def parse_lz_analyze(raw_output: str) -> LeelaPositionEval:
         logger.warning(f"GTP error in lz-analyze: {error_msg}")
         return LeelaPositionEval(parse_error=f"GTP error: {error_msg}")
 
-    candidates: List[LeelaCandidate] = []
+    candidates: list[LeelaCandidate] = []
     skipped_count = 0
 
     # Find all candidate matches
@@ -148,7 +149,7 @@ def parse_lz_analyze(raw_output: str) -> LeelaPositionEval:
     return LeelaPositionEval(candidates=candidates)
 
 
-def parse_single_info_line(line: str) -> Optional[LeelaCandidate]:
+def parse_single_info_line(line: str) -> LeelaCandidate | None:
     """Parse a single info segment into a LeelaCandidate.
 
     Utility function for testing or incremental parsing.

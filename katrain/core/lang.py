@@ -4,10 +4,13 @@
 変更通知はコールバックリストで提供。
 GUI層でKivyブリッジが登録する。
 """
+
+from __future__ import annotations
+
 import gettext
 import os
 import sys
-from typing import Callable, List, Optional
+from typing import Callable
 
 from katrain.common import DEFAULT_FONT
 from katrain.core.utils import find_package_resource
@@ -21,8 +24,8 @@ class Lang:
     FONTS = {"jp": "NotoSansJP-Regular.otf"}
 
     def __init__(self, lang: str):
-        self._change_callbacks: List[Callable[["Lang"], None]] = []
-        self.lang: Optional[str] = None
+        self._change_callbacks: list[Callable[[Lang], None]] = []
+        self.lang: str | None = None
         self.font_name: str = DEFAULT_FONT
         self.ugettext: Callable[[str], str] = lambda x: x
         self.switch_lang(lang)
@@ -30,12 +33,12 @@ class Lang:
     def _(self, text: str) -> str:
         return self.ugettext(text)
 
-    def add_change_callback(self, callback: Callable[["Lang"], None]) -> None:
+    def add_change_callback(self, callback: Callable[[Lang], None]) -> None:
         """言語変更時のコールバックを追加"""
         if callback not in self._change_callbacks:
             self._change_callbacks.append(callback)
 
-    def remove_change_callback(self, callback: Callable[["Lang"], None]) -> None:
+    def remove_change_callback(self, callback: Callable[[Lang], None]) -> None:
         """コールバックを削除"""
         if callback in self._change_callbacks:
             self._change_callbacks.remove(callback)

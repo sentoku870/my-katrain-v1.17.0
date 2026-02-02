@@ -1,8 +1,9 @@
 # tests/test_ownership_cluster.py
 """Phase 81: Ownership差分クラスタ抽出のテスト。"""
 
+from __future__ import annotations
+
 import pytest
-from typing import Optional
 
 from katrain.core.analysis.board_context import BoardArea, OwnershipContext
 from katrain.core.analysis.ownership_cluster import (
@@ -26,7 +27,7 @@ from katrain.core.analysis.ownership_cluster import (
 
 
 def make_ctx(
-    grid: Optional[list[list[float]]],
+    grid: list[list[float]] | None,
     board_size: tuple[int, int],
     score_stdev: float | None = None,
 ) -> OwnershipContext:

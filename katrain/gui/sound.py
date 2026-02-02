@@ -1,11 +1,13 @@
-from typing import Any, Dict, List, Sequence
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivy.core.audio import SoundLoader
 from kivy.utils import platform
 
-cached_sounds: Dict[str, Any] = {}
+cached_sounds: dict[str, Any] = {}
 
 # prefer ffpyplayer on linux, then others, avoid gst and avoid or ffpyplayer on windows
 ranking = [("ffplay", 98 if platform in ["win", "macosx"] else -2), ("sdl", -1), ("gst", 99), ("", 0)]

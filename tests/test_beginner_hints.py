@@ -6,7 +6,7 @@ Phase 91: Basic detectors (SELF_ATARI, IGNORE_ATARI, MISSED_CAPTURE, CUT_RISK)
 Phase 92: MeaningTag fallback, reliability filter, gating functions
 """
 
-from typing import Set, Tuple
+from __future__ import annotations
 
 import pytest
 
@@ -31,7 +31,7 @@ from katrain.core.sgf_parser import Move
 class MockGroup:
     """Mock Group for testing find_matching_group"""
 
-    def __init__(self, color: str, stones: Set[tuple[int, int]]):
+    def __init__(self, color: str, stones: set[tuple[int, int]]):
         self.color = color
         self.stones = stones
 

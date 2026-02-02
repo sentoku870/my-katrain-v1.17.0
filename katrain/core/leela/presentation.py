@@ -4,7 +4,7 @@ This module provides color calculation and formatting functions
 for displaying Leela analysis results.
 """
 
-from typing import Optional, Tuple
+from __future__ import annotations
 
 from katrain.core.constants import (
     LEELA_COLOR_BEST,
@@ -17,10 +17,10 @@ from katrain.core.constants import (
 
 
 def lerp_color(
-    c1: Tuple[float, float, float, float],
-    c2: Tuple[float, float, float, float],
+    c1: tuple[float, float, float, float],
+    c2: tuple[float, float, float, float],
     t: float,
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """Linear interpolation between two colors.
 
     Args:
@@ -40,7 +40,7 @@ def lerp_color(
     )
 
 
-def loss_to_color(loss_est: float) -> Tuple[float, float, float, float]:
+def loss_to_color(loss_est: float) -> tuple[float, float, float, float]:
     """Convert estimated loss to display color.
 
     Uses color gradient based on loss thresholds:
@@ -76,7 +76,7 @@ def loss_to_color(loss_est: float) -> Tuple[float, float, float, float]:
         return lerp_color(LEELA_COLOR_MEDIUM, LEELA_COLOR_LARGE, t)
 
 
-def format_loss_est(loss: Optional[float]) -> str:
+def format_loss_est(loss: float | None) -> str:
     """Format estimated loss for display.
 
     Args:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import glob
 import json
 import logging
@@ -6,7 +8,7 @@ import re
 import stat
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable
 from zipfile import ZipFile
 
 import urllib3
@@ -90,7 +92,7 @@ class I18NPopup(Popup):
     # クラス変数: 前回のupdate_stateイベント（連続dismiss対策）
     _pending_update_event: Any = None
 
-    def __init__(self, size: Optional[List[int]] = None, **kwargs: Any) -> None:
+    def __init__(self, size: list[int] | None = None, **kwargs: Any) -> None:
         if size:  # do not exceed window size
             # v3: sizeをミューテートせず新しいリストを作成
             # Kivyは内部でlistに変換するため、listで渡すのがベストプラクティス
@@ -152,7 +154,7 @@ class LabelledPathInput(LabelledTextInput):
         super().__init__(**kwargs)
         Clock.schedule_once(self.check_error, 0)
 
-    def check_error(self, _dt: Optional[float] = None) -> None:
+    def check_error(self, _dt: float | None = None) -> None:
         file = find_package_resource(self.input_value, silent_errors=True)
         self.error = self.check_path and not (file and os.path.exists(file))
 
@@ -168,7 +170,7 @@ class LabelledPathInput(LabelledTextInput):
 class LabelledCheckBox(MDCheckbox):
     input_property = StringProperty("")
 
-    def __init__(self, text: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, text: str | None = None, **kwargs: Any) -> None:
         if text is not None:
             kwargs["active"] = text.lower() == "true"
         super().__init__(**kwargs)
@@ -239,7 +241,7 @@ class QuickConfigGui(MDBoxLayout):
         self.popup = None
         Clock.schedule_once(self.build_and_set_properties, 0)
 
-    def collect_properties(self, widget: Any) -> Dict[str, Any]:
+    def collect_properties(self, widget: Any) -> dict[str, Any]:
         if isinstance(
             widget, (LabelledTextInput, LabelledSpinner, LabelledCheckBox, LabelledSelectionSlider)
         ) and getattr(widget, "input_property", None):
@@ -257,7 +259,7 @@ class QuickConfigGui(MDBoxLayout):
                 ret[k] = v
         return ret
 
-    def get_setting(self, key: str) -> Union[Tuple[Any, Dict[str, Any], str], Tuple[Any, List[Any], int]]:
+    def get_setting(self, key: str) -> tuple[Any, dict[str, Any], str] | tuple[Any, list[Any], int]:
         keys = key.split("/")
         config = self.katrain._config
         for k in keys[:-1]:
@@ -419,7 +421,7 @@ class ConfigTeacherPopup(QuickConfigGui):
         super().__init__(katrain)
         MDApp.get_running_app().bind(language=self.build_and_set_properties)
 
-    def add_option_widgets(self, widgets: List[Any]) -> None:
+    def add_option_widgets(self, widgets: list[Any]) -> None:
         for widget in widgets:
             self.options_grid.add_widget(wrap_anchor(widget))
 
@@ -585,15 +587,15 @@ class EngineRecoveryPopup(QuickConfigGui):
 
 
 class BaseConfigPopup(QuickConfigGui):
-    MODEL_ENDPOINTS: Dict[str, str] = {
+    MODEL_ENDPOINTS: dict[str, str] = {
         "Latest distributed model": "https://katagotraining.org/api/networks/newest_training/",
         "Strongest distributed model": "https://katagotraining.org/api/networks/get_strongest/",
     }
-    MODELS: Dict[str, str] = {
+    MODELS: dict[str, str] = {
         "old 15 block model": "https://github.com/lightvector/KataGo/releases/download/v1.3.2/g170e-b15c192-s1672170752-d466197061.txt.gz",
         "Human-like model": "https://github.com/lightvector/KataGo/releases/download/v1.15.0/b18c384nbt-humanv0.bin.gz",
     }
-    MODEL_DESC: Dict[str, str] = {
+    MODEL_DESC: dict[str, str] = {
         "Fat 40 block model": "https://d3dndmfyhecmj0.cloudfront.net/g170/neuralnets/g170e-b40c384x2-s2348692992-d1229892979.zip",
         "Recommended 18b model": "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz",
         "old 20 block model": "https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170e-b20c256x2-s5303129600-d1228401921.bin.gz",
@@ -601,7 +603,7 @@ class BaseConfigPopup(QuickConfigGui):
         "old 40 block model": "https://github.com/lightvector/KataGo/releases/download/v1.4.5/g170-b40c256x2-s5095420928-d1229425124.bin.gz",
     }
 
-    KATAGOS: Dict[str, Dict[str, str]] = {
+    KATAGOS: dict[str, dict[str, str]] = {
         "win": {
             "OpenCL v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-opencl-windows-x64.zip",
             "Eigen AVX2 (Modern CPUs) v1.16.0": "https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-windows-x64.zip",

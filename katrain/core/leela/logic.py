@@ -5,8 +5,9 @@ The estimated loss is a relative measure showing how much worse
 each candidate is compared to the best candidate.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import Optional
 
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
@@ -105,7 +106,7 @@ def compute_estimated_loss(
     )
 
 
-def format_loss_est(loss: Optional[float]) -> str:
+def format_loss_est(loss: float | None) -> str:
     """Format estimated loss for display.
 
     Args:
@@ -143,7 +144,6 @@ def compute_loss_color_ratio(loss_est: float, threshold_large: float = 5.0) -> f
 # =============================================================================
 
 from dataclasses import dataclass
-from typing import List
 
 # Constants for resign hint
 RESIGN_WINRATE_THRESHOLD = 0.05       # 5%
@@ -167,7 +167,7 @@ class ResignConditionResult:
 
 
 def check_resign_condition(
-    history: List[LeelaPositionEval],
+    history: list[LeelaPositionEval],
     winrate_threshold: float = RESIGN_WINRATE_THRESHOLD,
     consecutive_moves: int = RESIGN_CONSECUTIVE_MOVES,
     max_visits: int = 1000,

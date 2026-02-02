@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Line, Rectangle
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
     from katrain.core.sgf_parser import SGFNode
 
 # Type alias for nodes in the move tree (can be GameNode or SGFNode)
-MoveTreeNode = Union["GameNode", "SGFNode"]
+MoveTreeNode = "GameNode | SGFNode"
 
 
 class MoveTreeDropdown(DropDown):
@@ -35,8 +37,8 @@ class MoveTreeCanvas(Widget):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.move_pos: Dict[Any, Tuple[int, int]] = {}
-        self.move_xy_pos: Dict[Any, Tuple[float, float]] = {}
+        self.move_pos: dict[Any, tuple[int, int]] = {}
+        self.move_xy_pos: dict[Any, tuple[float, float]] = {}
         self.bind(menu_selected_node=lambda *_args: self.scroll_view_widget.redraw_tree_trigger())
         self.build_dropdown()
 
@@ -144,15 +146,15 @@ class MoveTreeCanvas(Widget):
 
         root = current_node.root
 
-        def children_with_shortcuts(move: Any) -> List[Any]:
+        def children_with_shortcuts(move: Any) -> list[Any]:
             shortcuts = move.shortcuts_to
             via = {v: m for m, v in shortcuts}  # children that are shortcut
             return [m if m not in via else via[m] for m in move.ordered_children]
 
         self.move_pos = {root: (0, 0)}
         stack = children_with_shortcuts(root)[::-1]
-        next_y_pos: Dict[int, int] = defaultdict(int)  # x pos -> max y pos
-        children: Dict[Any, List[Any]] = defaultdict(list)  # since AI self-play etc may modify the tree between layout and draw!
+        next_y_pos: dict[int, int] = defaultdict(int)  # x pos -> max y pos
+        children: Dict[Any, list[Any]] = defaultdict(list)  # since AI self-play etc may modify the tree between layout and draw!
         children[root] = [*stack]
         while stack:
             move = stack.pop()
@@ -172,7 +174,7 @@ class MoveTreeCanvas(Widget):
             children[move] = children_with_shortcuts(move)
             stack += children[move][::-1]  # stack, so push top child last to process first
 
-        def draw_stone(pos: Tuple[float, float], player: str, special_color: Any = None) -> None:
+        def draw_stone(pos: tuple[float, float], player: str, special_color: Any = None) -> None:
             draw_circle(pos, self.move_size / 2 - 0.5, (special_color or Theme.STONE_COLORS[player]))
             Color(*Theme.MOVE_TREE_STONE_OUTLINE_COLORS[player])
             Line(circle=(*pos, self.move_size / 2), width=1)
@@ -183,12 +185,12 @@ class MoveTreeCanvas(Widget):
         self.width = coord_pos(max(x + 0.5 for x, y in self.move_pos.values()))
         self.height = coord_pos(max(y + 0.5 for x, y in self.move_pos.values()))
 
-        def xy_pos(x: int, y: int) -> Tuple[float, float]:
+        def xy_pos(x: int, y: int) -> tuple[float, float]:
             return coord_pos(x), self.height - coord_pos(y)
 
         self.move_xy_pos = {n: xy_pos(x, y) for n, (x, y) in self.move_pos.items()}
 
-        special_nodes: Dict[Any, Any] = {current_node: Theme.MOVE_TREE_CURRENT, self.menu_selected_node: Theme.MOVE_TREE_SELECTED}
+        special_nodes: dict[Any, Any] = {current_node: Theme.MOVE_TREE_CURRENT, self.menu_selected_node: Theme.MOVE_TREE_SELECTED}
 
         if insert_node:
             special_nodes[insert_node.parent] = Theme.MOVE_TREE_INSERT_NODE_PARENT

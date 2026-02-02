@@ -5,7 +5,8 @@ Tests verify that cluster classification is correctly injected
 into Karte's Critical 3 section when reason_tags is empty.
 """
 
-from typing import Optional
+from __future__ import annotations
+
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch, PropertyMock
 
@@ -42,25 +43,25 @@ class MockGameNode:
     placements: list[MockMove]
     moves: list[MockMove]
     clear_placements: list[MockMove]
-    nodes_from_root: list["MockGameNode"]
-    children: list["MockGameNode"]
-    parent: Optional["MockGameNode"]
+    nodes_from_root: list[MockGameNode]
+    children: list[MockGameNode]
+    parent: MockGameNode | None
     move: MockMove | None
     board_size: tuple[int, int]
     analysis: dict | None
 
     @property
-    def ordered_children(self) -> list["MockGameNode"]:
+    def ordered_children(self) -> list[MockGameNode]:
         return self.children
 
 
 def create_mock_node(
     board_size: tuple[int, int] = (5, 5),
-    placements: Optional[list[MockMove]] = None,
-    moves: Optional[list[MockMove]] = None,
-    clears: Optional[list[MockMove]] = None,
-    parent: Optional[MockGameNode] = None,
-    analysis: Optional[dict] = None,
+    placements: list[MockMove] | None = None,
+    moves: list[MockMove] | None = None,
+    clears: list[MockMove] | None = None,
+    parent: MockGameNode | None = None,
+    analysis: dict | None = None,
 ) -> MockGameNode:
     """Create a mock node for testing."""
     node = MockGameNode(

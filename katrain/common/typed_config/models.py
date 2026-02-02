@@ -3,8 +3,10 @@
 # Frozen dataclass定義と型変換ヘルパー関数。
 # Phase 99で追加。
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 # 認識されるbool文字列
 _TRUE_STRINGS = frozenset({"true", "1", "yes"})
@@ -128,7 +130,7 @@ def safe_str(value: Any, default: str) -> str:
     return value
 
 
-def normalize_path(value: Any) -> Optional[str]:
+def normalize_path(value: Any) -> str | None:
     """パス正規化。None/空文字/空白のみ/非strはNone。有効パスはそのまま。
 
     Args:
@@ -230,12 +232,12 @@ class EngineConfig:
     """
 
     analysis_engine: str = "katago"
-    katago: Optional[str] = None
-    altcommand: Optional[str] = None
-    model: Optional[str] = None
-    humanlike_model: Optional[str] = None
-    humanlike_model_last: Optional[str] = None
-    config: Optional[str] = None
+    katago: str | None = None
+    altcommand: str | None = None
+    model: str | None = None
+    humanlike_model: str | None = None
+    humanlike_model_last: str | None = None
+    config: str | None = None
     max_visits: int = 500
     fast_visits: int = 25
     max_time: float = 8.0
@@ -382,7 +384,7 @@ class LeelaConfig:
     """
 
     enabled: bool = False
-    exe_path: Optional[str] = None
+    exe_path: str | None = None
     max_visits: int = 1000
     fast_visits: int = 200
     play_visits: int = 500
