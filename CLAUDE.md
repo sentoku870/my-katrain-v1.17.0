@@ -18,7 +18,8 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ### 1.3 現在のフェーズ
 - **完了**: Phase 1-115（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe、mypy導入、core/state strict + 型エラー修正、core型エラー修正第1弾、gui/features型エラー修正、mypy strict全体・CIブロック、Python 3.11 modern syntax migration、Forward Reference + i18n + Semantic Type Fixes）
-- **次**: Phase 116（Pre-existing型エラー修正）
+- **完了**: Phase 116（Top Moves色表示修正 + mypy strict完全準拠）
+- **次**: Phase 117（コード品質改善）
 
 詳細は `docs/01-roadmap.md` を参照。
 
@@ -423,7 +424,25 @@ docs/
 
 詳細な変更履歴は [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md) を参照してください。
 
-**最新の変更（2026-02-01）:**
+**最新の変更（2026-02-03）:**
+
+### Phase 116: Top Moves色表示修正 + mypy strict完全準拠
+
+**症状**：KataGo の Top Moves（盤上の候補手マーカー）が全て紫色で表示され、品質に応じた色のグラデーションが表示されていない。Leela Zero では正常にマルチカラー表示される。
+
+**根本原因**：KataGo の candidate_moves 計算で、手の品質を示す「点数損失」の値が不適切に処理されており、全ての手が同じ色の分類に割り当てられていた。
+
+**修正内容**：
+1. **KataGo 点数損失の正規化** (`game_node.py`): 負の値や異常な範囲の損失値をクランプして、色分類が複数のカラー段階にまたがるよう修正
+2. **初期化安定性の向上** (`badukpan.py`): 設定の読み込み前に `eval_color()` が呼ばれる場合の安全性を強化
+
+**結果**：
+- KataGo Top Moves が複数色のグラデーション（緑→黄→オレンジ→赤）で表示
+- mypy strict mode 完全準拠（エラー 0件達成）
+- 全テスト合格（3776件）
+
+---
+
 - Phase 112 完了（mypy strict全体・CIブロック: 1352エラー→0エラー達成、Python 3.11+型構文採用、CI typecheck job追加、7サブフェーズ（112-0/A/B/C/D/E-1〜4/F/G）で段階的修正、全205ファイル型安全化、PR #258-264）
 - Phase 111 完了（gui/features型エラー修正: 15ファイル修正、53+件エラー解消、"any"→Any置換、Optional型ナローイング、STATUS_*→OUTPUT_*変更、i18n.lang安全フォールバック、SECONDARY_COLORエイリアス追加、gui/featuresでエラー0件達成）
 - Phase 110 完了（core パッケージ型エラー修正 第1弾: utils.py/curator/scoring.py/leela/engine.pyの9件修正、型注釈追加、isinstance判定、assert追加、mypyエラー272→263）
