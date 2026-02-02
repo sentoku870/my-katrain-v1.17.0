@@ -409,7 +409,7 @@ class BaseGame:
     def manual_score(self) -> str | None:
         rules = self.rules
         parent = self.current_node.parent
-        parent_ownership: list[float | None] = None
+        parent_ownership: list[float | None] | None = None
         if isinstance(parent, GameNode):
             parent_ownership = parent.ownership
         if (
@@ -530,7 +530,7 @@ class Game(BaseGame):
     # Class-level type annotations for instance variables
     engines: dict[str, KataGoEngine]
     insert_after: GameNode | None
-    region_of_interest: list[int | None]
+    region_of_interest: list[int | None] | None
 
     def __init__(
         self,
@@ -1225,7 +1225,7 @@ class Game(BaseGame):
         """Handle GAME mode: re-analyze all nodes in the game tree."""
         nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
         only_mistakes = kwargs.get("mistakes_only", False)
-        move_range: tuple[int, int | None] = kwargs.get("move_range", None)
+        move_range: tuple[int, int] | None = kwargs.get("move_range", None)
         if move_range:
             if move_range[1] < move_range[0]:
                 move_range = (move_range[1], move_range[0])  # Swap to ensure correct order
@@ -1271,7 +1271,7 @@ class Game(BaseGame):
             board_size_x, board_size_y = self.board_size
 
             if cn.analysis_exists:
-                policy_grid: list[list[float | None]] = (
+                policy_grid: list[list[float | None]] | None = (
                     var_to_grid(self.current_node.policy, size=(board_size_x, board_size_y))
                     if self.current_node.policy
                     else None
@@ -1445,7 +1445,8 @@ class Game(BaseGame):
                 selected_move = Move.from_gtp(candidates[0]["move"], player=node.next_player)
             else:  # 1 visit etc
                 polmoves = node.policy_ranking
-                selected_move = polmoves[0][1] if polmoves else Move(None)
+                top_move = polmoves[0][1] if polmoves else None
+                selected_move = top_move if top_move is not None else Move(None)
             if selected_move.is_pass:
                 if self.current_node == cn:
                     self.set_current_node(node)

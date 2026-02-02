@@ -50,7 +50,7 @@ class GameNode(SGFNode):
     end_state: Any
     shortcuts_to: list[tuple["GameNode", "GameNode"]]
     shortcut_from: "GameNode | None"
-    analysis_from_sgf: list[str | None]
+    analysis_from_sgf: list[str | None] | None
     analysis: dict[str, Any]
     analysis_visits_requested: int
     _leela_analysis: Any
