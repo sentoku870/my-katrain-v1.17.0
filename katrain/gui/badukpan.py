@@ -370,8 +370,11 @@ class BadukPanWidget(Widget):
             draw_text(pos=self.gridpos[y][x], text=text, font_size=self.stone_size * 0.9, font_name="Roboto")
 
     def eval_color(self, points_lost: float, show_dots_for_class: list[bool] | None = None) -> list[float] | None:
-        i = evaluation_class(points_lost, self.trainer_config["eval_thresholds"])
-        colors = Theme.EVAL_COLORS[self.trainer_config["theme"]]
+        # Use defaults if trainer_config not fully initialized
+        eval_thresholds = self.trainer_config.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0])
+        theme = self.trainer_config.get("theme", "theme:normal")
+        i = evaluation_class(points_lost, eval_thresholds)
+        colors = Theme.EVAL_COLORS[theme]
         if show_dots_for_class is None or show_dots_for_class[i]:
             return colors[i]
         return None
