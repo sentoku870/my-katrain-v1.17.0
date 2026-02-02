@@ -1048,6 +1048,11 @@ class BadukPanWidget(Widget):
         # Find max visits for scaling
         max_visits = max((c.visits for c in candidates), default=1)
 
+        # Debug: Print top 5 Leela candidate moves for color distribution analysis
+        for idx, cand in enumerate(candidates[:5]):
+            loss_val = cand.loss_est if cand.loss_est is not None else 0.0
+            katrain.log(f"[DEBUG Leela] #{idx}: {cand.move:3s} Loss: {loss_val:6.2f}", OUTPUT_EXTRA_DEBUG)
+
         for i, candidate in enumerate(candidates):
             move = Move.from_gtp(candidate.move)
             if move.coords is None:
@@ -1211,6 +1216,12 @@ class BadukPanWidget(Widget):
                     ]
                     if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
                 ]
+                # Debug: Print top 5 KataGo candidate moves for color distribution analysis
+                eval_thresholds = trainer_cfg.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0]) if hasattr(trainer_cfg, "get") else self.trainer_config.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0])
+                for idx, move_data in enumerate(hint_moves[:5]):
+                    points_lost = move_data.get("pointsLost", 0)
+                    class_idx = evaluation_class(points_lost, eval_thresholds)
+                    katrain.log(f"[DEBUG KataGo] #{idx}: {move_data.get('move', '?'):3s} Loss: {points_lost:6.2f}, Class: {class_idx} (color)", OUTPUT_EXTRA_DEBUG)
                 for move_dict in hint_moves:
                     move = Move.from_gtp(move_dict["move"])
                     if move.coords is not None:

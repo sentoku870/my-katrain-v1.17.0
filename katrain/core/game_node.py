@@ -520,8 +520,8 @@ class GameNode(SGFNode):
         return sorted(
             [
                 {
-                    "pointsLost": self.player_sign(self.next_player) * (root_score - d["scoreLead"]),
-                    "relativePointsLost": self.player_sign(self.next_player) * (top_score_lead - d["scoreLead"]),
+                    "pointsLost": max(0, self.player_sign(self.next_player) * (root_score - d["scoreLead"])),
+                    "relativePointsLost": max(0, self.player_sign(self.next_player) * (top_score_lead - d["scoreLead"])),
                     "winrateLost": self.player_sign(self.next_player) * (root_winrate - d["winrate"]),
                     **d,
                 }
