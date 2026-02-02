@@ -538,7 +538,7 @@ class Game(BaseGame):
     def __init__(
         self,
         katrain: Any,
-        engine: dict[str, KataGoEngine, KataGoEngine],
+        engine: dict[str, Any] | Any,
         move_tree: GameNode | None = None,
         analyze_fast: bool = False,
         game_properties: dict[str, Any | None] | None = None,
