@@ -1,9 +1,41 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-112 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-113 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-02: Phase 113 完了（Python 3.11 Modern Syntax Migration）
+  - Legacy typing（`Optional[X]`, `List[X]`, `Dict[K,V]`, `Union[X,Y]`）を現代構文に統一。
+  - 302ファイル、~1,750注釈を機械的に変換
+  - 6サブフェーズ（113A-F）で段階的実行：
+    - **113A**: common/ パッケージ（10ファイル、86注釈）
+    - **113B-1**: core/analysis/ 高トラフィックファイル（5ファイル、~320注釈）
+    - **113B-2**: core/analysis/ サブディレクトリ（20ファイル、~235注釈、Set/Dict修正含む）
+    - **113C-1**: core/batch/ パッケージ（9ファイル、165注釈、GameNode import修正）
+    - **113C-2**: core/reports/ パッケージ（20ファイル、99注釈）
+    - **113D-1**: core game core（3ファイル、~210注釈）- **CRITICAL**: ai.py, game.py, game_node.py（150+ファイル依存）
+    - **113D-2**: core 残り（6ファイル、147注釈、17ファイルは Phase 114 defer）
+    - **113E-1**: gui/features 高トラフィック（3ファイル、121注釈）
+    - **113E-2**: gui/features 残り（40ファイル、359注釈、merge conflict解決）
+    - **113F-1**: core/analysis tests（3ファイル、50注釈）
+    - **113F-2**: batch/report tests（8ファイル、35注釈）
+    - **113F-3**: integration/other tests（37ファイル、204注釈）
+  - Forward Reference Policy適用:
+    - ファイルに `from __future__ import annotations` ある → unquoted unions（`X | None`）に変換
+    - ファイルに `from __future__` ない → `Optional["X"]` のまま維持（Phase 114 defer）
+  - Safety gates全て PASS:
+    - Gate 0: compileall ✅（構文エラーなし）
+    - Gate 1: pytest 3776 PASS ✅
+    - Gate 2: mypy strict（既知エラーのみ）
+    - Gate 3-4: 113D-1は integration tests + 手動スモークテスト完了 ✅
+  - PR マージ: #265-276（計12 PR）
+  - Phase 114 carryover: 78ファイル（41 Optional[, 19 List[, 13 Dict[, 5 Union[を defer）
+  - 主要な修正:
+    - PR #268: GameNode import + 二重クォートの type hint 修正
+    - PR #267: Set/Dict/Tuple変換の欠落修正（analyzer.py, pacing.py, cluster_classifier.py）
+    - PR #273: main ブランチとの merge conflicts 解決（rebase実施）
+  - テスト: 3776件パス（前回比変更なし）
 
 - 2026-02-01: Phase 112 完了（mypy strict全体・CIブロック）
   - 全205ファイルの型安全化を達成。1352エラー→0エラー。

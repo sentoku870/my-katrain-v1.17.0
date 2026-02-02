@@ -387,6 +387,8 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 
 **Phase 112**: ✅ mypy strict（全体・CIブロック）。全体strictと、CIで型エラーをブロック有効化。1352エラー→0エラー達成。Python 3.11+型構文（`X | None`, `dict[str, Any]`）採用。7サブフェーズ（112-0: strict設定、112A: common/、112B-D: core/、112E-1〜4: gui/、112F: __main__.py、112G: CI typecheck job追加）で段階的修正。全205ファイル型安全化。PR #258-264。（2026-02-01完了）
 
+**Phase 113**: ✅ Python 3.11 modern syntax migration。Legacy typing（`Optional[X]`, `List[X]`, `Dict[K,V]`, `Union[X,Y]`）を現代構文（`X | None`, `list[X]`, `dict[K,V]`, `X | Y`）に統一。302ファイル、~1,750注釈を機械的に変換。6サブフェーズ（113A: common/、113B-1〜2: analysis/、113C-1〜2: batch+reports/、113D-1〜2: core game files、113E-1〜2: gui/features、113F-1〜3: tests）で段階的実行。Forward Reference Policy適用（`from __future__ import annotations`ある→unquoted union、なし→Phase 114 defer）。PR #265-276（計12PR）。Safety gates全て PASS（compileall/pytest 3776 PASS/mypy は既知エラーのみ）。（2026-02-02完了）
+
 ### 未定（TBD / Post-52）
 
 ※「初心者向けヒント」「Active Review」「KataGoセットアップ救済」は Phase 88–94 に移動。
