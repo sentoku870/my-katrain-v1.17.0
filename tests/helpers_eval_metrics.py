@@ -4,7 +4,6 @@ Shared test fixtures and stubs for eval_metrics tests.
 
 import pytest
 from dataclasses import dataclass
-from typing import Optional, List
 
 from katrain.core.eval_metrics import (
     MoveEval,
@@ -21,21 +20,21 @@ def make_move_eval(
     move_number: int = 1,
     player: str = "B",
     gtp: str = "D4",
-    score_before: Optional[float] = None,
-    score_after: Optional[float] = None,
-    delta_score: Optional[float] = None,
-    winrate_before: Optional[float] = None,
-    winrate_after: Optional[float] = None,
-    delta_winrate: Optional[float] = None,
-    points_lost: Optional[float] = None,
-    realized_points_lost: Optional[float] = None,
+    score_before: float | None = None,
+    score_after: float | None = None,
+    delta_score: float | None = None,
+    winrate_before: float | None = None,
+    winrate_after: float | None = None,
+    delta_winrate: float | None = None,
+    points_lost: float | None = None,
+    realized_points_lost: float | None = None,
     root_visits: int = 1000,
-    score_loss: Optional[float] = None,
-    winrate_loss: Optional[float] = None,
+    score_loss: float | None = None,
+    winrate_loss: float | None = None,
     mistake_category: MistakeCategory = MistakeCategory.GOOD,
-    position_difficulty: Optional[PositionDifficulty] = None,
-    importance_score: Optional[float] = None,
-    leela_loss_est: Optional[float] = None,  # Phase 32: Leela support
+    position_difficulty: PositionDifficulty | None = None,
+    importance_score: float | None = None,
+    leela_loss_est: float | None = None,  # Phase 32: Leela support
 ) -> MoveEval:
     """Helper to create MoveEval with sensible defaults"""
     m = MoveEval(
@@ -86,23 +85,23 @@ class StubGameNode:
     score/winrate: BLACK-PERSPECTIVE (from KataGo)
     points_lost: SIDE-TO-MOVE perspective (computed with player_sign)
     """
-    move: Optional[StubMove] = None
-    parent: Optional["StubGameNode"] = None
-    children: Optional[List["StubGameNode"]] = None
-    _score: Optional[float] = None  # Black-perspective
-    _winrate: Optional[float] = None  # Black-perspective
+    move: StubMove | None = None
+    parent: "StubGameNode | None" = None
+    children: "list[StubGameNode] | None" = None
+    _score: float | None = None  # Black-perspective
+    _winrate: float | None = None  # Black-perspective
     analysis_exists: bool = True
     root_visits: int = 1000
     depth: int = 1
     move_number: int = 0
 
     @property
-    def score(self) -> Optional[float]:
+    def score(self) -> float | None:
         """BLACK-PERSPECTIVE: positive = black ahead"""
         return self._score
 
     @property
-    def winrate(self) -> Optional[float]:
+    def winrate(self) -> float | None:
         """BLACK-PERSPECTIVE: > 0.5 = black winning"""
         return self._winrate
 
@@ -112,7 +111,7 @@ class StubGameNode:
         return {"B": 1, "W": -1, None: 0}[player]
 
     @property
-    def points_lost(self) -> Optional[float]:
+    def points_lost(self) -> float | None:
         """
         SIDE-TO-MOVE perspective: positive = loss for the moving player.
 
@@ -134,11 +133,11 @@ class StubGameNode:
 @dataclass
 class StubGame:
     """Minimal stub for Game object with a root node"""
-    root: Optional[StubGameNode] = None
+    root: StubGameNode | None = None
 
 
 def build_stub_game_tree(
-    moves: List[tuple],
+    moves: list[tuple],
 ) -> StubGame:
     """
     Build a simple game tree from a list of moves.

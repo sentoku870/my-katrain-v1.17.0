@@ -4,7 +4,6 @@ Kivy完全非依存:
 - GameStateManagerのみをインスタンス化
 - 全依存はモック/スタブで注入
 """
-from typing import List, Optional
 
 import pytest
 
@@ -16,21 +15,21 @@ class MockNode:
 
     def __init__(self, player: str = "B"):
         self.player = player
-        self.note: Optional[str] = None
-        self.end_state: Optional[str] = None
+        self.note: str | None = None
+        self.end_state: str | None = None
 
 
 class MockGame:
     """Gameのモック"""
 
     def __init__(self):
-        self.undo_calls: List[int] = []
-        self.redo_calls: List[int] = []
+        self.undo_calls: list[int] = []
+        self.redo_calls: list[int] = []
         self.jump_prev_count = 0
         self.jump_next_count = 0
         self.reset_analysis_count = 0
-        self.insert_mode_calls: List[str] = []
-        self.current_node: Optional[MockNode] = MockNode()
+        self.insert_mode_calls: list[str] = []
+        self.current_node: MockNode | None = MockNode()
 
     def undo(self, n_times: int = 1) -> None:
         self.undo_calls.append(n_times)
@@ -57,11 +56,11 @@ def mock_game() -> MockGame:
 
 
 def create_manager(
-    game: Optional[MockGame] = None,
+    game: MockGame | None = None,
     play_analyze_mode: str = "analyze",
     mode_analyze: str = "analyze",
-    clear_calls: Optional[List[bool]] = None,
-    switch_calls: Optional[List[bool]] = None,
+    clear_calls: list[bool] | None = None,
+    switch_calls: list[bool] | None = None,
 ) -> GameStateManager:
     """テスト用GameStateManagerファクトリ"""
     if clear_calls is None:
@@ -83,7 +82,7 @@ class TestUndoRedo:
 
     def test_do_undo_clears_animating_pv_and_delegates(self, mock_game: MockGame) -> None:
         """do_undoがanimating_pvをクリアしてgame.undoに委譲"""
-        clear_calls: List[bool] = []
+        clear_calls: list[bool] = []
         manager = create_manager(game=mock_game, clear_calls=clear_calls)
 
         manager.do_undo(3)
@@ -93,7 +92,7 @@ class TestUndoRedo:
 
     def test_do_undo_with_none_game_does_not_crash(self) -> None:
         """game=Noneでもクラッシュせず、clear_animating_pvは呼ばれる"""
-        clear_calls: List[bool] = []
+        clear_calls: list[bool] = []
         manager = create_manager(game=None, clear_calls=clear_calls)
 
         manager.do_undo(1)  # Should not raise
@@ -102,7 +101,7 @@ class TestUndoRedo:
 
     def test_do_redo_clears_animating_pv_and_delegates(self, mock_game: MockGame) -> None:
         """do_redoがanimating_pvをクリアしてgame.redoに委譲"""
-        clear_calls: List[bool] = []
+        clear_calls: list[bool] = []
         manager = create_manager(game=mock_game, clear_calls=clear_calls)
 
         manager.do_redo(5)
@@ -256,7 +255,7 @@ class TestInsertMode:
 
     def test_do_insert_mode_switches_ui_when_not_analyze(self, mock_game: MockGame) -> None:
         """MODE_ANALYZE以外ではswitch_ui_modeが呼ばれる"""
-        switch_calls: List[bool] = []
+        switch_calls: list[bool] = []
         manager = create_manager(
             game=mock_game,
             play_analyze_mode="play",
@@ -270,7 +269,7 @@ class TestInsertMode:
 
     def test_do_insert_mode_no_switch_when_analyze(self, mock_game: MockGame) -> None:
         """MODE_ANALYZEではswitch_ui_modeは呼ばれない"""
-        switch_calls: List[bool] = []
+        switch_calls: list[bool] = []
         manager = create_manager(
             game=mock_game,
             play_analyze_mode="analyze",
@@ -284,7 +283,7 @@ class TestInsertMode:
 
     def test_do_insert_mode_no_switch_when_game_none(self) -> None:
         """game=Noneではswitch_ui_modeは呼ばれない（ゲーム操作がスキップされるため）"""
-        switch_calls: List[bool] = []
+        switch_calls: list[bool] = []
         manager = create_manager(
             game=None,
             play_analyze_mode="play",
@@ -336,7 +335,7 @@ class TestCallbackInvocation:
 
     def test_clear_animating_pv_called_before_undo(self, mock_game: MockGame) -> None:
         """clear_animating_pvがundo前に呼ばれる"""
-        call_order: List[str] = []
+        call_order: list[str] = []
 
         def track_clear() -> None:
             call_order.append("clear")
@@ -363,7 +362,7 @@ class TestCallbackInvocation:
 
     def test_clear_animating_pv_called_before_redo(self, mock_game: MockGame) -> None:
         """clear_animating_pvがredo前に呼ばれる"""
-        call_order: List[str] = []
+        call_order: list[str] = []
 
         def track_clear() -> None:
             call_order.append("clear")
