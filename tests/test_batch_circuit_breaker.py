@@ -1,6 +1,5 @@
 """Tests for batch processing circuit breaker."""
 import pytest
-from typing import Optional
 
 
 class TestEngineFailureTracker:
