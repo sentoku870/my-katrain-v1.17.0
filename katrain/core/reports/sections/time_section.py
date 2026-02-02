@@ -7,7 +7,7 @@ This module provides i18n-aware formatting functions for time analysis results.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Optional
 
 from katrain.core.lang import i18n
 
@@ -22,7 +22,7 @@ class TimeStatsData:
     long_think_mistake_count: int
 
 
-def format_time_stats(stats: TimeStatsData) -> List[str]:
+def format_time_stats(stats: TimeStatsData) -> list[str]:
     """Format time statistics as markdown lines.
 
     Args:

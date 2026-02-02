@@ -9,7 +9,7 @@ Contains:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.presentation import get_auto_confidence_label
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 def definitions_section(
     ctx: KarteContext,
-    auto_recommendation: Optional["AutoRecommendation"],
-) -> List[str]:
+    auto_recommendation: "AutoRecommendation | None",
+) -> list[str]:
     """Generate definitions section with thresholds from SKILL_PRESETS.
 
     Args:
@@ -127,7 +127,7 @@ def definitions_section(
     return lines
 
 
-def data_quality_section(ctx: KarteContext) -> List[str]:
+def data_quality_section(ctx: KarteContext) -> list[str]:
     """Generate data quality section with reliability statistics.
 
     Args:
@@ -184,7 +184,7 @@ def data_quality_section(ctx: KarteContext) -> List[str]:
     return lines
 
 
-def risk_management_section(ctx: KarteContext) -> List[str]:
+def risk_management_section(ctx: KarteContext) -> list[str]:
     """Generate risk management section (Phase 62).
 
     Args:

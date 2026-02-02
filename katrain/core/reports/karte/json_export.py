@@ -7,7 +7,7 @@ Contains:
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.meaning_tags import (
@@ -25,10 +25,10 @@ from katrain.core.eval_metrics import (
 def build_karte_json(
     game: Any,  # Game object (Protocol in future)
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-    player_filter: Optional[str] = None,
+    player_filter: str | None = None,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     lang: str = "ja",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
     Phase 23 PR #2: LLM用JSON出力オプション
@@ -93,7 +93,7 @@ def build_karte_json(
     score_thresholds = preset.score_thresholds
 
     # Meta section
-    def get_property(prop: str, default: Optional[str] = None) -> Optional[str]:
+    def get_property(prop: str, default: str | None = None) -> str | None:
         val = game.root.get_property(prop, default)
         return val if val not in [None, ""] else default
 
@@ -116,7 +116,7 @@ def build_karte_json(
     }
 
     # Summary section
-    def compute_summary_for(player: str) -> Tuple[float, Dict[str, int]]:
+    def compute_summary_for(player: str) -> tuple[float, dict[str, int]]:
         player_moves = [m for m in moves if m.player == player]
         total_lost = sum(
             max(0.0, m.points_lost)
@@ -125,7 +125,7 @@ def build_karte_json(
         )
 
         # Count by mistake category
-        counts: Dict[str, int] = {"good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0}
+        counts: dict[str, int] = {"good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0}
         for m in player_moves:
             loss = get_canonical_loss_from_move(m)
             cat = classify_mistake(
@@ -169,10 +169,10 @@ def build_karte_json(
             m for m in important_move_evals if m.player == player_filter
         ]
 
-    important_moves_list: List[Dict[str, Any]] = []
+    important_moves_list: list[dict[str, Any]] = []
     for mv in important_move_evals:
         # Coords: handle pass and normal moves
-        coords: Optional[str] = None
+        coords: str | None = None
         if mv.gtp:
             if mv.gtp.lower() == "pass":
                 coords = "pass"

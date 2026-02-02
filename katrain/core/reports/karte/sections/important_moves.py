@@ -10,7 +10,7 @@ Contains:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.cluster_classifier import (
@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 
 def _mistake_label_from_loss(
-    loss_val: Optional[float],
-    thresholds: Tuple[float, float, float],
+    loss_val: float | None,
+    thresholds: tuple[float, float, float],
 ) -> str:
     """Classify a loss value using thresholds."""
     if loss_val is None:
@@ -48,7 +48,7 @@ def _mistake_label_from_loss(
     return category.value
 
 
-def get_context_info_for_move(game: Any, move_eval: MoveEval) -> Dict[str, Any]:
+def get_context_info_for_move(game: Any, move_eval: MoveEval) -> dict[str, Any]:
     """Extract context info (candidates, best gap, danger, best move) for a move.
 
     CRITICAL FIX: Best move and candidates are extracted from PRE-MOVE node
@@ -62,7 +62,7 @@ def get_context_info_for_move(game: Any, move_eval: MoveEval) -> Dict[str, Any]:
     Returns:
         Dict with keys: candidates, best_gap, danger, best_move
     """
-    context: Dict[str, Any] = {
+    context: dict[str, Any] = {
         "candidates": None,
         "best_gap": None,
         "danger": None,
@@ -141,7 +141,7 @@ def important_lines_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Generate important moves table for a player.
 
     Args:
@@ -221,7 +221,7 @@ def reason_tags_distribution_for(
     ctx: KarteContext,
     player: str,
     label: str,
-) -> List[str]:
+) -> list[str]:
     """Generate reason tags distribution for a player (Phase 12).
 
     Args:
@@ -235,7 +235,7 @@ def reason_tags_distribution_for(
     player_moves = [mv for mv in ctx.important_moves if mv.player == player]
 
     # Count tags
-    reason_tags_counts: Dict[str, int] = {}
+    reason_tags_counts: dict[str, int] = {}
     for mv in player_moves:
         for tag in mv.reason_tags:
             reason_tags_counts[tag] = reason_tags_counts.get(tag, 0) + 1
@@ -266,7 +266,7 @@ def critical_3_section_for(
     player: str,
     label: str,
     level: str,
-) -> List[str]:
+) -> list[str]:
     """Generate Critical 3 section for focused review (Phase 50).
 
     Selects top 3 critical mistakes using weighted scoring with

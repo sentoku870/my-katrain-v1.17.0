@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 import json
 import os
 import random
@@ -68,8 +68,8 @@ class PackageResult:
     """エクスポート結果"""
 
     success: bool
-    output_path: Optional[Path]
-    error_message: Optional[str] = None
+    output_path: Path | None
+    error_message: str | None = None
 
 
 # --- ユーティリティ関数（GUI層でも使用） ---
@@ -179,7 +179,7 @@ def get_downloads_folder() -> Path:
     return Path.home() / "Downloads"
 
 
-def _is_writable_directory(path: Optional[Path]) -> bool:
+def _is_writable_directory(path: Path | None) -> bool:
     """ディレクトリが存在し、書込可能か"""
     if path is None:
         return False

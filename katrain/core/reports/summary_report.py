@@ -13,7 +13,7 @@ All functions in this module:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from katrain.core import eval_metrics
 from katrain.core.batch.helpers import truncate_game_name
@@ -29,7 +29,7 @@ from katrain.core.game_node import Move
 
 
 def build_summary_report(
-    game_data_list: List[GameSummaryData],
+    game_data_list: list["GameSummaryData"],
     focus_player: Optional[str] = None
 ) -> str:
     """
@@ -78,11 +78,11 @@ def build_summary_report(
 
 
 def _aggregate_player_stats(
-    game_data_list: List[GameSummaryData],
+    game_data_list: list["GameSummaryData"],
     focus_player: Optional[str] = None
-) -> Dict[str, SummaryStats]:
+) -> dict[str, "SummaryStats"]:
     """プレイヤー別に統計を集計"""
-    player_stats: Dict[str, SummaryStats] = {}
+    player_stats: dict[str, "SummaryStats"] = {}
 
     for game_data in game_data_list:
         for player_color in ["B", "W"]:
@@ -160,7 +160,7 @@ def _aggregate_player_stats(
     return player_stats
 
 
-def _format_meta_section(game_data_list: List[GameSummaryData], focus_player: Optional[str]) -> str:
+def _format_meta_section(game_data_list: list["GameSummaryData"], focus_player: Optional[str]) -> str:
     """メタ情報セクションを生成"""
     lines = ["## Meta"]
     lines.append(f"- Games analyzed: {len(game_data_list)}")
@@ -356,10 +356,10 @@ def _convert_sgf_to_gtp_coord(sgf_coord: str, board_size: int = 19) -> str:
 
 
 def _detect_urgent_miss_sequences(
-    worst_moves: List[Tuple[str, Any]],
+    worst_moves: list[tuple[str, Any]],
     threshold_loss: float = 20.0,
     min_consecutive: int = 3
-) -> Tuple[List[Any], List[Tuple[str, Any]]]:
+) -> tuple[list[Any], list[tuple[str, Any]]]:
     """
     連続する大損失手を「急場見逃しパターン」として検出
 
