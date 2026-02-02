@@ -1294,7 +1294,11 @@ class BadukPanWidget(Widget):
 
                         if engine_best_move:
                             top_move_coords = move.coords
-                            Color(*Theme.TOP_MOVE_BORDER_COLOR)
+                            # Use the same color as the move marker for consistency
+                            if evalcol:
+                                Color(*evalcol)
+                            else:
+                                Color(*Theme.TOP_MOVE_BORDER_COLOR)
                             Line(
                                 circle=(
                                     self.gridpos[move.coords[1]][move.coords[0]][0],
