@@ -1,9 +1,44 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-113 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-116 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
+
+- 2026-02-03: Phase 116 完了（Pre-existing型エラー修正 + Top Moves カラー回帰修正）
+  - **目的**: Phase 113-115 で残された 82 件の pre-existing 型エラーを修正し、mypy strict mode 100% 準拠を達成
+  - **背景**: Phase 112 で strict flags 導入時に 1352 エラーを 0 に削減したが、Phase 113-115 では構文変換に専念し、pre-existing エラーはスキップされていた
+  - **スコープ**: 82 件の型エラーを 6 サブフェーズで修正
+    - **Phase 116A**: 軽微な修正（4件、import + GUI層）
+    - **Phase 116B**: 暗黙的Optional修正（9件、型注釈のみ）
+    - **Phase 116C**: None代入エラー修正（5件、セマンティクス保持）
+    - **Phase 116D**: game_node.py 集中修正（8件）
+    - **Phase 116E**: ai.py 集中修正（38件、最大）
+    - **Phase 116F**: game.py + engine型エラー（最終仕上げ、18件）
+  - **コア修正**:
+    - **Top Moves カラー回帰修正**: `eval_color()` を defensive `.get()` に変更（trainer_config初期化不完全時のKeyError防止）
+    - **KataGo カラー勾配修正**: 負のpointsLost値に対するクランピング追加
+    - **型エラー修正**: Move|None セマンティクス、float型安全性、evaluation_class signature 拡張
+    - **engine型エラー**: Protocol定義で抽象化（dict型パラメータ修正）
+  - **成果**:
+    - ✅ mypy strict: 82エラー → 0エラー（100%準拠）
+    - ✅ テスト: 3776 PASS（回帰なし）
+    - ✅ Top Moves: 単色紫 → 多色グラデーション
+    - ✅ 10 個の回帰テスト追加（eval_color完全カバー）
+    - ✅ 11 コミット main マージ完了
+    - ✅ 包括的なドキュメント・検証ガイド作成
+  - **ドキュメント**:
+    - PHASE116_REGRESSION_VERIFICATION.md（技術詳細）
+    - PHASE116_EVIDENCE_SUMMARY.md（証拠集計）
+    - FINAL_VERIFICATION_REPORT.md（英文報告）
+    - FINAL_VERIFICATION_JA.md（日本語報告）
+    - QUICK_VERIFY.md（5分検証）
+    - VERIFICATION_CHECKLIST.md（詳細手順）
+    - PHASE116_MERGE_COMPLETE.md（マージ報告）
+  - **テスト**:
+    - tests/test_eval_color_regression.py: 10新規テスト追加（全PASS）
+    - tests/data/test_top_moves_color.sgf: テスト用SGFファイル
+  - **PR**: メインラインでの11コミット統合（80a39e2, 4c8ad90 他）
 
 - 2026-02-02: Phase 115 完了（Modern Typing Syntax Unification - PEP 604/585）
   - Phase 114 + 115: 全69ファイルにおいて modern typing syntax への統一完了
