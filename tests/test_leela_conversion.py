@@ -6,7 +6,6 @@ loss calculation, edge cases, and EvalSnapshot compatibility.
 
 import logging
 import pytest
-from typing import List, Optional
 
 from katrain.core.analysis.models import (
     EvalSnapshot,
@@ -49,7 +48,7 @@ def make_candidate(move: str, eval_pct: float, visits: int = 100) -> LeelaCandid
 
 
 def make_position_eval(
-    candidates: List[LeelaCandidate],
+    candidates: list[LeelaCandidate],
     root_visits: int = 500,
 ) -> LeelaPositionEval:
     """Create a LeelaPositionEval for testing."""

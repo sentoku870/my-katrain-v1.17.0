@@ -9,7 +9,7 @@ Usage:
 import queue
 import subprocess
 import threading
-from typing import Optional, Union
+from typing import Union
 
 
 class FakePipe:
@@ -88,7 +88,7 @@ class FakePopen:
 
     def __init__(self, args, **kwargs):
         self.args = args
-        self.returncode: Optional[int] = None
+        self.returncode: int | None = None
         self._alive = True
 
         # Determine text mode from kwargs (matches real Popen behavior)
@@ -105,7 +105,7 @@ class FakePopen:
         self._terminate_event = threading.Event()
         self._kill_event = threading.Event()
 
-    def poll(self) -> Optional[int]:
+    def poll(self) -> int | None:
         """Return None if alive, returncode if dead."""
         if self._alive:
             return None
@@ -124,7 +124,7 @@ class FakePopen:
         self.stdout.signal_eof()
         self.stderr.signal_eof()
 
-    def wait(self, timeout: Optional[float] = None) -> int:
+    def wait(self, timeout: float | None = None) -> int:
         """
         Wait for process to exit.
 
@@ -171,7 +171,7 @@ class MinimalKatrain:
     avoiding MagicMock's fragile single-return-value behavior.
     """
 
-    def __init__(self, overrides: Optional[dict] = None):
+    def __init__(self, overrides: dict | None = None):
         """
         Args:
             overrides: dict of config keys to override (e.g., {"engine/katago": "/path/to/katago"})

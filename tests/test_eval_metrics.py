@@ -15,7 +15,6 @@ Key insight about perspectives:
 """
 
 import pytest
-from typing import Optional
 
 from katrain.core.eval_metrics import (
     MoveEval,

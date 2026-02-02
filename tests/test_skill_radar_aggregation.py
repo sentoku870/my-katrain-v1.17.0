@@ -15,7 +15,6 @@ Test priority:
 """
 
 from types import MappingProxyType, SimpleNamespace
-from typing import Optional
 
 import pytest
 
@@ -62,7 +61,7 @@ def make_radar_metrics(
     stability_tier: SkillTier = SkillTier.TIER_3,
     awareness_tier: SkillTier = SkillTier.TIER_3,
     overall_tier: SkillTier = SkillTier.TIER_3,
-    valid_move_counts: Optional[dict] = None,
+    valid_move_counts: dict | None = None,
 ) -> RadarMetrics:
     """Create a RadarMetrics instance for testing."""
     if valid_move_counts is None:
@@ -92,10 +91,10 @@ def make_radar_metrics(
 def make_move_stub(
     move_number: int = 1,
     player: str = "B",
-    points_lost: Optional[float] = 0.0,
+    points_lost: float | None = 0.0,
     mistake_category: MistakeCategory = MistakeCategory.GOOD,
-    position_difficulty: Optional[PositionDifficulty] = PositionDifficulty.NORMAL,
-    winrate_before: Optional[float] = 0.5,
+    position_difficulty: PositionDifficulty | None = PositionDifficulty.NORMAL,
+    winrate_before: float | None = 0.5,
 ) -> SimpleNamespace:
     """Create a lightweight MoveEval stub for testing."""
     return SimpleNamespace(

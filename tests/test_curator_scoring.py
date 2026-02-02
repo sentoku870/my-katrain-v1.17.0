@@ -3,7 +3,7 @@
 import dataclasses
 import math
 from types import MappingProxyType
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -40,11 +40,11 @@ from katrain.core.curator.scoring import (
 
 
 def _make_aggregated_radar(
-    opening: Optional[float] = 3.0,
-    fighting: Optional[float] = 3.0,
-    endgame: Optional[float] = 3.0,
-    stability: Optional[float] = 3.0,
-    awareness: Optional[float] = 3.0,
+    opening: float | None = 3.0,
+    fighting: float | None = 3.0,
+    endgame: float | None = 3.0,
+    stability: float | None = 3.0,
+    awareness: float | None = 3.0,
 ) -> AggregatedRadarResult:
     """Create an AggregatedRadarResult for testing."""
     return AggregatedRadarResult(
@@ -64,7 +64,7 @@ def _make_aggregated_radar(
     )
 
 
-def _make_mock_game(score_leads: List[Optional[float]]) -> MagicMock:
+def _make_mock_game(score_leads: list[float | None]) -> MagicMock:
     """Create a mock Game with specified scoreLead values on mainline."""
     game = MagicMock()
 
@@ -451,7 +451,7 @@ class TestRoundHalfUp:
 class TestPercentileECDF:
     """Tests for ECDF-style percentile calculation."""
 
-    def _make_scores(self, totals: List[float]) -> List[SuitabilityScore]:
+    def _make_scores(self, totals: list[float]) -> list[SuitabilityScore]:
         """Create SuitabilityScore list from totals."""
         return [
             SuitabilityScore(needs_match=0.5, stability=0.5, total=t) for t in totals
@@ -523,7 +523,7 @@ class TestBatchScoring:
         """Basic scoring returns valid SuitabilityScore."""
         aggregate = _make_aggregated_radar(fighting=2.0)  # Weak FIGHTING
         game = _make_mock_game([1.0, 2.0, 3.0])
-        stats: Dict[str, Any] = {
+        stats: dict[str, Any] = {
             "meaning_tags_by_player": {"B": {"reading_failure": 3}, "W": {}}
         }
 
@@ -560,7 +560,7 @@ class TestBatchScoring:
         """debug_info from score_game_suitability is immutable."""
         aggregate = _make_aggregated_radar()
         game = _make_mock_game([1.0, 2.0])
-        stats: Dict[str, Any] = {"meaning_tags_by_player": {"B": {}, "W": {}}}
+        stats: dict[str, Any] = {"meaning_tags_by_player": {"B": {}, "W": {}}}
 
         score = score_game_suitability(aggregate, game, stats)
 

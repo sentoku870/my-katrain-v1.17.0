@@ -15,7 +15,7 @@ Test matrix (from Phase 52-B plan v6):
 
 import json
 import pytest
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from enum import Enum
 
 from tests.conftest import (
@@ -45,7 +45,7 @@ from katrain.core.analysis.skill_radar import (
 
 
 @pytest.fixture
-def sample_radar_dict() -> Dict[str, Any]:
+def sample_radar_dict() -> dict[str, Any]:
     """Sample RadarMetrics.to_dict() output for testing.
 
     This matches the actual output format of RadarMetrics.to_dict():

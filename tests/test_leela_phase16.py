@@ -208,7 +208,7 @@ class TestPVTypeCompatibility:
     """Tests for PV type compatibility between KataGo and Leela."""
 
     def test_leela_pv_is_list_str(self):
-        """LeelaCandidate.pv should be List[str]."""
+        """LeelaCandidate.pv should be list[str]."""
         candidate = LeelaCandidate(
             move="D4",
             winrate=0.5,
@@ -249,7 +249,7 @@ class TestKataGoPVRegression:
     """Regression tests to ensure KataGo PV still works."""
 
     def test_katago_pv_format_unchanged(self):
-        """KataGo move_dict['pv'] format should be List[str]."""
+        """KataGo move_dict['pv'] format should be list[str]."""
         # Mock KataGo move_dict
         move_dict = {"move": "D4", "pv": ["D4", "Q16", "R14"]}
 

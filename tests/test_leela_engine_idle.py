@@ -5,7 +5,7 @@ CI-safe (no real engines).
 """
 import threading
 import pytest
-from typing import Optional, Callable, List
+from typing import Callable
 from unittest.mock import Mock, patch
 
 
@@ -21,8 +21,8 @@ class MockLeelaEngineWithState:
     """
 
     def __init__(self):
-        self._current_request_id: Optional[str] = None
-        self._pending_callback: Optional[Callable] = None
+        self._current_request_id: str | None = None
+        self._pending_callback: Callable | None = None
         self._result_index: int = 0
         self.preset_results: List = []
         self._alive: bool = True
@@ -39,9 +39,9 @@ class MockLeelaEngineWithState:
 
     def request_analysis(
         self,
-        moves: List[str],
+        moves: list[str],
         callback: Callable,
-        visits: Optional[int] = None,
+        visits: int | None = None,
         board_size: int = 19,
         komi: float = 6.5,
     ) -> bool:

@@ -8,7 +8,6 @@ Test classes:
     TestBuildKarteReportMixedEngineGuard: Integration tests (Game mock)
 """
 
-from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,8 +29,8 @@ from katrain.core.reports.karte_report import (
 def make_move_eval(
     move_number: int,
     player: str,
-    score_loss: Optional[float] = None,
-    leela_loss_est: Optional[float] = None,
+    score_loss: float | None = None,
+    leela_loss_est: float | None = None,
 ) -> MoveEval:
     """Create a MoveEval for testing with minimal required fields.
 

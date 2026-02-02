@@ -4,13 +4,13 @@
 """
 
 import pytest
-from typing import Any, List, Optional, Tuple
+from typing import Any
 from unittest.mock import MagicMock
 
 
-def make_stub_show_feedback() -> Tuple[Any, List]:
+def make_stub_show_feedback() -> tuple[Any, list]:
     """スタブのshow_feedback_fnを作成（呼び出し記録付き）"""
-    calls: List[Tuple] = []
+    calls: list[tuple] = []
 
     def stub(ctx, evaluation, allow_retry, on_retry, on_hint_request):
         calls.append((ctx, evaluation, allow_retry, on_retry, on_hint_request))
@@ -18,9 +18,9 @@ def make_stub_show_feedback() -> Tuple[Any, List]:
     return stub, calls
 
 
-def make_stub_show_summary() -> Tuple[Any, List]:
+def make_stub_show_summary() -> tuple[Any, list]:
     """スタブのshow_summary_fnを作成（呼び出し記録付き）"""
-    calls: List[Tuple] = []
+    calls: list[tuple] = []
 
     def stub(ctx, summary):
         calls.append((ctx, summary))

@@ -7,7 +7,6 @@ All tests are deterministic and don't require KataGo.
 
 import pytest
 from types import SimpleNamespace
-from typing import List, Optional
 
 from katrain.core.analysis.models import MistakeCategory
 from katrain.core.analysis.meaning_tags import (
@@ -40,13 +39,13 @@ from katrain.core.batch.stats.pattern_miner import (
 
 def make_fake_move_eval(
     move_number: int,
-    player: Optional[str],
-    gtp: Optional[str],
-    score_loss: Optional[float] = None,
-    leela_loss_est: Optional[float] = None,
-    points_lost: Optional[float] = None,
+    player: str | None,
+    gtp: str | None,
+    score_loss: float | None = None,
+    leela_loss_est: float | None = None,
+    points_lost: float | None = None,
     mistake_category: MistakeCategory = MistakeCategory.MISTAKE,
-    meaning_tag_id: Optional[str] = "overplay",
+    meaning_tag_id: str | None = "overplay",
 ) -> SimpleNamespace:
     """Create a lightweight MoveEval substitute for testing.
 
@@ -65,7 +64,7 @@ def make_fake_move_eval(
     )
 
 
-def make_fake_snapshot(moves: List[SimpleNamespace]) -> SimpleNamespace:
+def make_fake_snapshot(moves: list[SimpleNamespace]) -> SimpleNamespace:
     """Create a lightweight EvalSnapshot substitute for testing."""
     return SimpleNamespace(moves=moves)
 

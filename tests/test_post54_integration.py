@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -105,7 +105,7 @@ def make_radar(
 
 
 def make_time_metrics(
-    move_number: int, player: str, time_spent: Optional[float] = None
+    move_number: int, player: str, time_spent: float | None = None
 ) -> TimeMetrics:
     """Create a TimeMetrics instance for testing."""
     return TimeMetrics(
@@ -117,9 +117,9 @@ def make_time_metrics(
 
 
 def make_time_data(
-    move_numbers: List[int],
-    players: Optional[List[str]] = None,
-    time_spents: Optional[List[Optional[float]]] = None,
+    move_numbers: list[int],
+    players: list[str] | None = None,
+    time_spents: list[float | None] | None = None,
 ) -> GameTimeData:
     """Create GameTimeData for testing."""
     if players is None:
@@ -148,9 +148,9 @@ def make_time_data(
 def make_move_eval(
     move_number: int,
     player: str = "B",
-    score_loss: Optional[float] = None,
-    leela_loss_est: Optional[float] = None,
-    points_lost: Optional[float] = None,
+    score_loss: float | None = None,
+    leela_loss_est: float | None = None,
+    points_lost: float | None = None,
 ) -> MoveEval:
     """Create a MoveEval instance for testing."""
     return MoveEval(
@@ -176,7 +176,7 @@ class MockMove:
     """Mock Move object for testing."""
 
     player: str
-    coords: Optional[tuple] = None
+    coords: tuple | None = None
 
     @property
     def is_pass(self) -> bool:
@@ -188,10 +188,10 @@ class MockNode:
     """Mock GameNode for testing."""
 
     analysis_exists: bool = False
-    analysis: Optional[Dict[str, Any]] = None
-    move: Optional[MockMove] = None
+    analysis: dict[str, Any] | None = None
+    move: Optional["MockMove"] = None
     parent: Optional["MockNode"] = None
-    children: List["MockNode"] = None
+    children: list["MockNode"] = None
 
     def __post_init__(self):
         if self.children is None:
@@ -199,14 +199,14 @@ class MockNode:
 
 
 def make_node_with_analysis(
-    winrate: Optional[float] = None,
-    score_lead: Optional[float] = None,
-    score_stdev: Optional[float] = None,
+    winrate: float | None = None,
+    score_lead: float | None = None,
+    score_stdev: float | None = None,
     player: str = "B",
-    parent: Optional[MockNode] = None,
+    parent: Optional["MockNode"] = None,
 ) -> MockNode:
     """Create a MockNode with specified analysis values."""
-    root_info: Dict[str, Any] = {}
+    root_info: dict[str, Any] = {}
     if winrate is not None:
         root_info["winrate"] = winrate
     if score_lead is not None:
@@ -273,7 +273,7 @@ class TestStylePacingRiskContract:
     def test_style_returns_valid_result(self):
         """determine_style returns StyleResult with valid archetype."""
         radar = make_radar()
-        tag_counts: Dict[MeaningTagId, int] = {}
+        tag_counts: dict[MeaningTagId, int] = {}
 
         result = determine_style(radar, tag_counts)
 
@@ -468,7 +468,7 @@ class TestBatchPerformance:
         """
         # Style analysis
         radar = make_radar()
-        tag_counts: Dict[MeaningTagId, int] = {}
+        tag_counts: dict[MeaningTagId, int] = {}
 
         start = time.perf_counter()
         for _ in range(100):

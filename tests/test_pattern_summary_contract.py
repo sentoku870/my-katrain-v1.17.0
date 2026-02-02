@@ -9,7 +9,7 @@ This module tests:
 """
 
 import logging
-from typing import List, Tuple, Union
+from typing import Union
 
 import pytest
 
@@ -38,7 +38,7 @@ def mock_config_fn(key: str, default=None):
 
 def create_single_game_stats(
     game_name: str = "test_game.sgf",
-    board_size: Union[Tuple[int, int], List[int]] = (19, 19),
+    board_size: Union[tuple[int, int], list[int]] = (19, 19),
     date: str = "2025-01-05",
     total_moves: int = 50,
     source_index: int = 0,

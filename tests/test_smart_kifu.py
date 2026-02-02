@@ -187,7 +187,7 @@ class TestBucketProfileDataclass:
         assert profile.analyzed_ratio is None
 
     def test_bucket_profile_analyzed_ratio_optional(self):
-        """BucketProfile.analyzed_ratio is Optional[float]."""
+        """BucketProfile.analyzed_ratio is float | None."""
         from katrain.core.smart_kifu import BucketProfile
 
         # None is valid
