@@ -338,7 +338,7 @@ def _extract_leela_loss(node: Any) -> float | None:
 
 def build_comparison_from_game(
     game: "Game",
-    score_thresholds: tuple[float, float, float | None] = None,
+    score_thresholds: tuple[float, float, float | None] | None = None,
     divergent_threshold: float = 1.0,
     divergent_limit: int = 5,
 ) -> EngineComparisonResult:
@@ -427,13 +427,15 @@ def build_comparison_from_game(
         )
 
     # Step 5: 統計計算
+    # Use default thresholds if not provided
+    thresholds = score_thresholds if score_thresholds is not None else (1.0, 3.0, 5.0)
     katago_stats = compute_engine_stats(
         [c.katago_loss for c in comparisons if c.katago_loss is not None],
-        score_thresholds,
+        thresholds,  # type: ignore[arg-type]
     )
     leela_stats = compute_engine_stats(
         [c.leela_loss for c in comparisons if c.leela_loss is not None],
-        score_thresholds,
+        thresholds,  # type: ignore[arg-type]
     )
 
     # Step 6: 相関係数（手動Spearman、N<5でNone）

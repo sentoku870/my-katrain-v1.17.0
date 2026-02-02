@@ -427,7 +427,10 @@ class BaseGame:
         board_size_x, board_size_y = self.board_size
         current_ownership = self.current_node.ownership
         assert current_ownership is not None
-        mean_ownership = [(c + p) / 2 for c, p in zip(current_ownership, parent_ownership)]
+        mean_ownership: list[float] = []
+        for c, p in zip(current_ownership, parent_ownership):
+            if c is not None and p is not None:
+                mean_ownership.append((c + p) / 2)
         ownership_grid = var_to_grid(mean_ownership, (board_size_x, board_size_y))
         stones = {m.coords: m.player for m in self.stones}
         lo_threshold = 0.15
@@ -1278,15 +1281,21 @@ class Game(BaseGame):
                 )
                 if policy_grid is not None:
                     # Sort by policy value when grid is available
-                    analyze_moves = sorted(
-                        [
-                            Move(coords=(x, y), player=cn.next_player)
-                            for x in range(board_size_x)
-                            for y in range(board_size_y)
-                            if policy_grid[y][x] >= 0
-                        ],
-                        key=lambda mv: -policy_grid[mv.coords[1]][mv.coords[0]] if mv.coords else 0,
-                    )
+                    moves_to_analyze: list[Move] = []
+                    for x in range(board_size_x):
+                        for y in range(board_size_y):
+                            pval = policy_grid[y][x]
+                            if pval is not None and pval >= 0:
+                                moves_to_analyze.append(Move(coords=(x, y), player=cn.next_player))
+
+                    def get_policy_key(mv: Move) -> float:
+                        if mv.coords:
+                            pval = policy_grid[mv.coords[1]][mv.coords[0]]
+                            if pval is not None:
+                                return -pval
+                        return 0.0
+
+                    analyze_moves = sorted(moves_to_analyze, key=get_policy_key)
                 else:
                     # No policy grid - use all empty points
                     analyze_moves = [

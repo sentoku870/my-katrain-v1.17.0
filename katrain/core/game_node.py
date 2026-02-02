@@ -102,7 +102,7 @@ class GameNode(SGFNode):
             if version > ANALYSIS_FORMAT_VERSION:
                 raise ValueError(f"Can not decode analysis data with version {version}, please update {PROGRAM_NAME}")
             ownership_data, policy_data, main_data, *_ = [
-                gzip.decompress(base64.standard_b64decode(data)) for data in self.analysis_from_sgf
+                gzip.decompress(base64.standard_b64decode(data)) for data in self.analysis_from_sgf if data is not None
             ]
             self.analysis = {
                 **json.loads(main_data),
@@ -437,8 +437,10 @@ class GameNode(SGFNode):
                         text += policy_rank_msg.format(rank=currmove_pol_rank, probability=currmove_pol_prob) + "\n"
                     if currmove_pol_rank != 1 and policy_ranking and (sgf or details):
                         policy_best_msg = i18n._("Info:policy best")
-                        pol_move, pol_prob = policy_ranking[0][1].gtp(), policy_ranking[0][0]
-                        text += policy_best_msg.format(move=pol_move, probability=pol_prob) + "\n"
+                        pol_move_obj = policy_ranking[0][1]
+                        if pol_move_obj is not None:
+                            pol_move, pol_prob = pol_move_obj.gtp(), policy_ranking[0][0]
+                            text += policy_best_msg.format(move=pol_move, probability=pol_prob) + "\n"
             if self.auto_undo and sgf:
                 text += i18n._("Info:teaching undo") + "\n"
                 candidates = self.candidate_moves

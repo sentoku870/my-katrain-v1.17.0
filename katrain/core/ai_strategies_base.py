@@ -114,7 +114,7 @@ def policy_weighted_move(
 def generate_influence_territory_weights(
     ai_mode: str,
     ai_settings: Dict[str, Any],
-    policy_grid: List[List[float]],
+    policy_grid: List[List[float | None]],
     size: Tuple[int, int],
 ) -> Tuple[List[Tuple[float, float, int, int]], str]:
     """Generate position weights for influence/territory strategies."""
@@ -133,12 +133,12 @@ def generate_influence_territory_weights(
                 max(0, min(size[0] - 1 - x, x, size[1] - 1 - y, y) - thr_line)
             ))
 
-    weighted_coords = [
-        (policy_grid[y][x] * weight(x, y), weight(x, y), x, y)
-        for x in range(size[0])
-        for y in range(size[1])
-        if policy_grid[y][x] > 0
-    ]
+    weighted_coords: List[Tuple[float, float, int, int]] = []
+    for x in range(size[0]):
+        for y in range(size[1]):
+            pval = policy_grid[y][x]
+            if pval is not None and pval > 0:
+                weighted_coords.append((pval * weight(x, y), weight(x, y), x, y))
     ai_thoughts = (
         f"Generated weights for {ai_mode} according to weight factor "
         f"{ai_settings['line_weight']} and distance from {thr_line + 1}th line. "
@@ -149,7 +149,7 @@ def generate_influence_territory_weights(
 def generate_local_tenuki_weights(
     ai_mode: str,
     ai_settings: Dict[str, Any],
-    policy_grid: List[List[float]],
+    policy_grid: List[List[float | None]],
     cn: GameNode,
     size: Tuple[int, int],
 ) -> Tuple[List[Tuple[float, float, int, int]], str]:
@@ -159,12 +159,12 @@ def generate_local_tenuki_weights(
     var = ai_settings["stddev"] ** 2
     assert cn.move is not None and cn.move.coords is not None
     mx, my = cn.move.coords
-    weighted_coords = [
-        (policy_grid[y][x], math.exp(-0.5 * ((x - mx) ** 2 + (y - my) ** 2) / var), x, y)
-        for x in range(size[0])
-        for y in range(size[1])
-        if policy_grid[y][x] > 0
-    ]
+    weighted_coords: List[Tuple[float, float, int, int]] = []
+    for x in range(size[0]):
+        for y in range(size[1]):
+            pval = policy_grid[y][x]
+            if pval is not None and pval > 0:
+                weighted_coords.append((pval, math.exp(-0.5 * ((x - mx) ** 2 + (y - my) ** 2) / var), x, y))
     ai_thoughts = (
         f"Generated weights based on one minus gaussian with variance {var} "
         f"around coordinates {mx},{my}. "
@@ -282,7 +282,7 @@ class AIStrategy(ABC):
 
     def should_play_top_move(
         self,
-        policy_moves: List[Tuple[float, Move]],
+        policy_moves: List[Tuple[float, Move | None]],
         top_5_pass: bool,
         override: float = 0.0,
         overridetwo: float = 1.0,
@@ -298,7 +298,8 @@ class AIStrategy(ABC):
         Returns:
             Tuple of (Move or None, explanation)
         """
-        top_policy_move = policy_moves[0][1]
+        top_policy_move_opt = policy_moves[0][1]
+        top_policy_move = top_policy_move_opt if top_policy_move_opt is not None else Move(None)
         self.game.katrain.log(
             f"[{self.strategy_name}] Checking if should play top move. "
             f"Top move: {top_policy_move.gtp()} ({policy_moves[0][0]:.2%})",

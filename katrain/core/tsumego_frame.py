@@ -34,7 +34,7 @@ def tsumego_frame_from_katrain_game(
     sgf_blacks = katrain_sgf_from_ijs(blacks, isize, jsize, "B")
     sgf_whites = katrain_sgf_from_ijs(whites, isize, jsize, "W")
 
-    played_node = GameNode(parent=current_node, properties={"AB": sgf_blacks, "AW": sgf_whites})  # this inserts
+    played_node = GameNode(parent=current_node, properties={"AB": sgf_blacks, "AW": sgf_whites})  # type: ignore[dict-item]  # this inserts
 
     katrain_region: RegionTuple | None = (
         (analysis_region[1], analysis_region[0]) if analysis_region else None

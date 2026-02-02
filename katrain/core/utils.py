@@ -4,7 +4,7 @@ from pathlib import Path
 import random
 import struct
 import sys
-from typing import Any, Dict, List, Tuple, TypeVar
+from typing import Any, Dict, List, Sequence, Tuple, TypeVar
 
 import importlib.resources as pkg_resources
 
@@ -22,7 +22,7 @@ def var_to_grid(array_var: List[T], size: Tuple[int, int]) -> List[List[T]]:
     return grid
 
 
-def evaluation_class(points_lost: float, eval_thresholds: "List[float | None]") -> int:
+def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]) -> int:
     """
     Evaluate the class (bucket) for a given loss value.
 
