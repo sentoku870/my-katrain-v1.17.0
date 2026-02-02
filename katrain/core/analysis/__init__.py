@@ -139,7 +139,6 @@ from katrain.core.analysis.logic import (
     compute_loss_from_delta,
     compute_canonical_loss,
     classify_mistake,
-    detect_engine_type,
     # Snapshot
     snapshot_from_nodes,
     iter_main_branch_nodes,
@@ -171,6 +170,14 @@ from katrain.core.analysis.logic import (
     extract_difficult_positions,
     # Difficulty Metrics Public API (Phase 12.5)
     difficulty_metrics_from_node,
+)
+
+# =============================================================================
+# Explicit imports from logic_loss.py (Phase B split)
+# =============================================================================
+
+from katrain.core.analysis.logic_loss import (
+    detect_engine_type,
 )
 
 # =============================================================================

@@ -12,10 +12,6 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
 )
 
 if TYPE_CHECKING:
@@ -38,7 +34,7 @@ from katrain.core.analysis.logic_loss import detect_engine_type
 
 
 # Japanese labels for skill presets
-SKILL_PRESET_LABELS: Dict[str, str] = {
+SKILL_PRESET_LABELS: dict[str, str] = {
     "relaxed": "激甘",
     "beginner": "甘口",
     "standard": "標準",
@@ -48,14 +44,14 @@ SKILL_PRESET_LABELS: Dict[str, str] = {
 }
 
 # Japanese labels for confidence levels
-CONFIDENCE_LABELS: Dict[str, str] = {
+CONFIDENCE_LABELS: dict[str, str] = {
     "high": "高",
     "medium": "中",
     "low": "低",
 }
 
 # 理由タグの日本語ラベル（カルテ・サマリーで使用）
-REASON_TAG_LABELS: Dict[str, str] = {
+REASON_TAG_LABELS: dict[str, str] = {
     "atari": "アタリ (atari)",
     "low_liberties": "呼吸点少 (low liberties)",
     "cut_risk": "切断リスク (cut risk)",
@@ -70,7 +66,7 @@ REASON_TAG_LABELS: Dict[str, str] = {
 }
 
 # All valid reason tags that can be emitted
-VALID_REASON_TAGS: Set[str] = set(REASON_TAG_LABELS.keys())
+VALID_REASON_TAGS: set[str] = set(REASON_TAG_LABELS.keys())
 
 
 # =============================================================================
@@ -221,11 +217,11 @@ def get_mistake_category_label(category: MistakeCategory) -> str:
 
 
 def select_representative_moves(
-    moves: List[MoveEval],
+    moves: list[MoveEval],
     *,
     max_count: int = 3,
-    category_filter: Optional[Callable[[MoveEval], bool]] = None,
-) -> List[MoveEval]:
+    category_filter: Callable[[MoveEval], bool] | None = None,
+) -> list[MoveEval]:
     """Select representative moves for evidence attachment.
 
     Uses score_loss as the canonical loss metric. Moves with score_loss=None
@@ -305,7 +301,7 @@ def format_loss_label(
 
 
 def format_evidence_examples(
-    moves: List[MoveEval],
+    moves: list[MoveEval],
     *,
     lang: str = "ja",
 ) -> str:
@@ -347,7 +343,7 @@ def get_practice_priorities_from_stats(
     stats: PhaseMistakeStats,
     *,
     max_priorities: int = 3,
-) -> List[str]:
+) -> list[str]:
     """
     PhaseMistakeStats から練習優先項目を導出する。
 
@@ -419,7 +415,7 @@ def get_difficulty_label(overall: float) -> str:
         return "難"
 
 
-def format_difficulty_metrics(metrics: "DifficultyMetrics") -> List[str]:
+def format_difficulty_metrics(metrics: "DifficultyMetrics") -> list[str]:
     """DifficultyMetricsを表示用文字列リストに変換。
 
     Args:

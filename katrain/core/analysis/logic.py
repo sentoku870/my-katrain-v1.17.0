@@ -17,12 +17,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
 )
 
 from katrain.core.analysis.models import (
@@ -103,7 +98,7 @@ def get_urgent_miss_config(skill_preset: str) -> UrgentMissConfig:
 # =============================================================================
 
 
-def _distance_from_range(value: int, target_range: Tuple[int, int]) -> int:
+def _distance_from_range(value: int, target_range: tuple[int, int]) -> int:
     """Calculate distance from target range (0 if within range)."""
     low, high = target_range
     if value < low:
@@ -114,12 +109,12 @@ def _distance_from_range(value: int, target_range: Tuple[int, int]) -> int:
 
 
 def recommend_auto_strictness(
-    moves: List["MoveEval"],
+    moves: list[MoveEval],
     *,
     game_count: int = 1,
-    reliability_pct: Optional[float] = None,
-    target_blunder_per_game: Tuple[int, int] = (3, 10),
-    target_important_per_game: Tuple[int, int] = (10, 30),
+    reliability_pct: float | None = None,
+    target_blunder_per_game: tuple[int, int] = (3, 10),
+    target_important_per_game: tuple[int, int] = (10, 30),
     reliability_threshold: float = 20.0,
 ) -> AutoRecommendation:
     """
@@ -155,7 +150,7 @@ def recommend_auto_strictness(
     )
 
     # Evaluate each preset
-    results: List[Tuple[str, int, int, int]] = []  # (preset_name, score, blunders, important)
+    results: list[tuple[str, int, int, int]] = []  # (preset_name, score, blunders, important)
     for preset_name in PRESET_ORDER:
         preset = SKILL_PRESETS[preset_name]
         t1, t2, t3 = preset.score_thresholds
@@ -289,7 +284,7 @@ from katrain.core.analysis.logic_importance import (
 
 
 def compute_effective_threshold(
-    target_visits: Optional[int] = None,
+    target_visits: int | None = None,
     max_threshold: int = RELIABILITY_VISITS_THRESHOLD,
     ratio: float = RELIABILITY_RATIO,
 ) -> int:
@@ -319,7 +314,7 @@ def is_reliable_from_visits(
     root_visits: int,
     *,
     threshold: int = RELIABILITY_VISITS_THRESHOLD,
-    target_visits: Optional[int] = None,
+    target_visits: int | None = None,
 ) -> bool:
     """
     visits のみを根拠にした簡易信頼度判定。
@@ -335,7 +330,7 @@ def compute_reliability_stats(
     moves: Iterable[MoveEval],
     *,
     threshold: int = RELIABILITY_VISITS_THRESHOLD,
-    target_visits: Optional[int] = None,
+    target_visits: int | None = None,
 ) -> ReliabilityStats:
     """
     Compute reliability statistics for a collection of moves.
@@ -436,7 +431,7 @@ def compute_confidence_level(
 # =============================================================================
 
 
-def get_phase_thresholds(board_size: int = 19) -> Tuple[int, int]:
+def get_phase_thresholds(board_size: int = 19) -> tuple[int, int]:
     """
     Get phase classification thresholds for a given board size.
 
@@ -486,14 +481,14 @@ def classify_game_phase(move_number: int, board_size: int = 19) -> str:
 
 
 def _assess_difficulty_from_policy(
-    policy: List[float],
+    policy: list[float],
     *,
     board_size: Any = 19,
     entropy_easy_threshold: float = 2.5,
     entropy_hard_threshold: float = 1.0,
     top5_easy_threshold: float = 0.5,
     top5_hard_threshold: float = 0.9,
-) -> Tuple[PositionDifficulty, float]:
+) -> tuple[PositionDifficulty, float]:
     """
     Policy entropy から局面難易度を推定する（fallback用）。
     """
@@ -546,7 +541,7 @@ def assess_position_difficulty_from_parent(
     good_rel_threshold: float = 1.0,
     near_rel_threshold: float = 2.0,
     use_policy_fallback: bool = True,
-) -> Tuple[Optional[PositionDifficulty], Optional[float]]:
+) -> tuple[PositionDifficulty | None, float | None]:
     """
     親ノードの candidate_moves から局面難易度をざっくり評価する。
     """
@@ -557,8 +552,8 @@ def assess_position_difficulty_from_parent(
     # 1. candidate_moves からの判定
     candidate_moves = getattr(parent, "candidate_moves", None)
     if candidate_moves is not None and len(candidate_moves) > 0:
-        good_moves: List[float] = []
-        near_moves: List[float] = []
+        good_moves: list[float] = []
+        near_moves: list[float] = []
 
         for mv in candidate_moves:
             rel = mv.get("relativePointsLost")
@@ -627,7 +622,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     任意の GameNode 群から EvalSnapshot を作成するユーティリティ。
     """
     # GameNode と MoveEval のペアを保持
-    node_evals: List[Tuple[GameNode, MoveEval]] = []
+    node_evals: list[tuple[GameNode, MoveEval]] = []
     node_list = list(nodes)
 
     # 解析済みSGFの場合、load_analysis() を呼び出し
@@ -658,7 +653,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     node_evals.sort(key=lambda pair: pair[1].move_number)
 
     # 連続する手から before / delta を埋める
-    prev: Optional[MoveEval] = None
+    prev: MoveEval | None = None
     for node, m in node_evals:
         if prev is not None:
             m.score_before = prev.score_after
@@ -713,7 +708,7 @@ def iter_main_branch_nodes(game: Any) -> Iterable[GameNode]:
 
     while True:
         if getattr(node, "move", None) is not None:
-            yield node  # type: ignore[misc]
+            yield node
 
         children = getattr(node, "children", None)
         if not children:
@@ -757,7 +752,7 @@ from katrain.core.analysis.logic_quiz import (
 def aggregate_phase_mistake_stats(
     moves: Iterable[MoveEval],
     *,
-    score_thresholds: Optional[Tuple[float, float, float]] = None,
+    score_thresholds: tuple[float, float, float] | None = None,
     board_size: int = 19,
 ) -> PhaseMistakeStats:
     """
@@ -807,18 +802,18 @@ def aggregate_phase_mistake_stats(
 
 
 def detect_mistake_streaks(
-    moves: List[MoveEval],
+    moves: list[MoveEval],
     *,
     loss_threshold: float = 2.0,
     min_consecutive: int = 2,
-) -> List[MistakeStreak]:
+) -> list[MistakeStreak]:
     """
     同一プレイヤーの連続ミスを検出する（Go-aware streak detection）
     """
     if not moves:
         return []
 
-    player_moves: Dict[str, List[MoveEval]] = {"B": [], "W": []}
+    player_moves: dict[str, list[MoveEval]] = {"B": [], "W": []}
     for m in moves:
         if m.player in player_moves:
             player_moves[m.player].append(m)
@@ -830,7 +825,7 @@ def detect_mistake_streaks(
             continue
 
         sorted_moves = sorted(pmoves, key=lambda m: m.move_number)
-        current_streak: List[MoveEval] = []
+        current_streak: list[MoveEval] = []
 
         for m in sorted_moves:
             if m.points_lost is None:
@@ -894,7 +889,7 @@ from katrain.core.analysis.logic_importance import (
 
 
 def estimate_skill_level_from_tags(
-    reason_tags_counts: Dict[str, int],
+    reason_tags_counts: dict[str, int],
     total_important_moves: int
 ) -> SkillEstimation:
     """
@@ -962,7 +957,7 @@ def estimate_skill_level_from_tags(
 def get_pv_filter_config(
     pv_filter_level: str,
     skill_preset: str = DEFAULT_SKILL_PRESET,
-) -> Optional[PVFilterConfig]:
+) -> PVFilterConfig | None:
     """
     PVフィルタ設定を取得する。
 
@@ -987,9 +982,9 @@ def get_pv_filter_config(
 
 
 def filter_candidates_by_pv_complexity(
-    candidates: List[dict[str, Any]],
+    candidates: list[dict[str, Any]],
     config: PVFilterConfig,
-) -> List[dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     候補手リストをPV複雑度でフィルタリングする（Phase 11）。
 
@@ -1050,7 +1045,7 @@ def filter_candidates_by_pv_complexity(
 _difficulty_logger = logging.getLogger(__name__)
 
 
-def _normalize_candidates(candidates: List[dict[str, Any]]) -> Optional[List[dict[str, Any]]]:
+def _normalize_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
     """候補手リストを正規化（ソート + バリデーション）。
 
     order 欠損時は UNKNOWN（手番依存のソートを回避）。
@@ -1081,7 +1076,7 @@ def _normalize_candidates(candidates: List[dict[str, Any]]) -> Optional[List[dic
     return None
 
 
-def _get_root_visits(analysis: Optional[dict[str, Any]]) -> Optional[int]:
+def _get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     """analysis から root_visits を取得（複数キーに対応）。
 
     KaTrain/KataGo の複数フォーマットに対応。
@@ -1122,9 +1117,9 @@ def _get_root_visits(analysis: Optional[dict[str, Any]]) -> Optional[int]:
 
 
 def _determine_reliability(
-    root_visits: Optional[int],
+    root_visits: int | None,
     candidate_count: int,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """信頼性を判定。
 
     フォールバック係数なし、シンプルなルール。
@@ -1152,9 +1147,9 @@ def _determine_reliability(
 
 
 def _compute_policy_difficulty(
-    candidates: List[dict[str, Any]],
+    candidates: list[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[Optional[float], Optional[dict[str, Any]]]:
+) -> tuple[float | None, dict[str, Any] | None]:
     """候補手の拮抗度から Policy 難易度を計算。
 
     scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
@@ -1202,9 +1197,9 @@ def _compute_policy_difficulty(
 
 
 def _compute_transition_difficulty(
-    candidates: List[dict[str, Any]],
+    candidates: list[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[Optional[float], Optional[dict[str, Any]]]:
+) -> tuple[float | None, dict[str, Any] | None]:
     """評価の急落度から Transition 難易度を計算。
 
     scoreLead 欠損時は None を返す（UNKNOWN 扱い）。
@@ -1253,9 +1248,9 @@ def _compute_transition_difficulty(
 
 
 def _compute_state_difficulty(
-    candidates: List[dict[str, Any]],
+    candidates: list[dict[str, Any]],
     include_debug: bool = False,
-) -> Tuple[float, Optional[dict[str, Any]]]:
+) -> tuple[float, dict[str, Any] | None]:
     """盤面の複雑さから State 難易度を計算。
 
     v1: 仕様書の「控えめに扱う」に従い、常に 0.0 を返す。
@@ -1277,8 +1272,8 @@ def _compute_state_difficulty(
 
 
 def compute_difficulty_metrics(
-    candidates: List[dict[str, Any]],
-    root_visits: Optional[int] = None,
+    candidates: list[dict[str, Any]],
+    root_visits: int | None = None,
     include_debug: bool = False,
 ) -> DifficultyMetrics:
     """局面の難易度メトリクスを計算。
@@ -1354,7 +1349,7 @@ def compute_difficulty_metrics(
     )
 
 
-def _get_candidates_from_node(node: "GameNode") -> Tuple[List[dict[str, Any]], Optional[int]]:
+def _get_candidates_from_node(node: "GameNode") -> tuple[list[dict[str, Any]], int | None]:
     """GameNode から候補手リストと root_visits を取得。
 
     _get_root_visits() を使用して複数キーに対応。
@@ -1384,12 +1379,12 @@ def _get_candidates_from_node(node: "GameNode") -> Tuple[List[dict[str, Any]], O
 
 
 def extract_difficult_positions(
-    nodes: List["GameNode"],
+    nodes: list[GameNode],
     limit: int = DEFAULT_DIFFICULT_POSITIONS_LIMIT,
     min_move_number: int = DEFAULT_MIN_MOVE_NUMBER,
     exclude_unreliable: bool = False,
     include_debug: bool = False,
-) -> List[Tuple[int, "GameNode", DifficultyMetrics]]:
+) -> list[tuple[int, GameNode, DifficultyMetrics]]:
     """複数局面から難所候補を抽出。
 
     exclude_unreliable=False がデフォルト（unreliable も含めて結果を返す）。
