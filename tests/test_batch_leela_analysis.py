@@ -5,7 +5,7 @@ CI-safe (no real engines, uses mocks).
 """
 import pytest
 import threading
-from typing import List, Optional, Callable, Tuple
+from typing import Callable
 from unittest.mock import Mock, MagicMock, patch
 
 
@@ -18,9 +18,9 @@ class MockLeelaEngineForBatch:
 
     def __init__(self, alive: bool = True):
         self._alive = alive
-        self._current_request_id: Optional[str] = None
+        self._current_request_id: str | None = None
         self._lock = threading.Lock()
-        self.analysis_calls: List[dict] = []
+        self.analysis_calls: list[dict] = []
 
     def is_alive(self) -> bool:
         return self._alive
@@ -31,9 +31,9 @@ class MockLeelaEngineForBatch:
 
     def request_analysis(
         self,
-        moves: List[Tuple[str, str]],
+        moves: list[tuple[str, str]],
         callback: Callable,
-        visits: Optional[int] = None,
+        visits: int | None = None,
         board_size: int = 19,
         komi: float = 6.5,
     ) -> bool:

@@ -14,7 +14,7 @@ Test philosophy:
 import base64
 import gzip
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -31,10 +31,10 @@ from katrain.core import eval_metrics
 # ---------------------------------------------------------------------------
 
 def create_kt_payload(
-    analysis_dict: Optional[Dict[str, Any]] = None,
+    analysis_dict: dict[str, Any] | None = None,
     include_ownership: bool = True,
     include_policy: bool = True,
-) -> List[bytes]:
+) -> list[bytes]:
     """Create a valid KT payload list for testing.
 
     KaTrain SGF format: [ownership_data, policy_data, main_data]
@@ -68,7 +68,7 @@ def create_kt_payload(
 
 def create_mock_node(
     analysis_from_sgf: Any = None,
-    move_property: Optional[str] = None,
+    move_property: str | None = None,
     player: str = "B",
 ) -> Mock:
     """Create a mock SGF node for testing.
@@ -289,8 +289,8 @@ class TestExtractSgfStatistics:
 
     def _create_mock_move_tree(
         self,
-        properties: Dict[str, str],
-        nodes: List[Mock],
+        properties: dict[str, str],
+        nodes: list[Mock],
     ) -> Mock:
         """Create a mock move tree.
 

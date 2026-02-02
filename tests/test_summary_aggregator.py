@@ -12,7 +12,6 @@ Test philosophy:
 - No Kivy imports required
 """
 
-from typing import Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,8 +32,8 @@ def create_game_stats(
     player_black: str = "PlayerB",
     player_white: str = "PlayerW",
     handicap: int = 0,
-    rank_black: Optional[str] = None,
-    rank_white: Optional[str] = None,
+    rank_black: str | None = None,
+    rank_white: str | None = None,
 ) -> dict:
     """Create a minimal game stats dictionary for testing."""
     return {

@@ -4,7 +4,6 @@ CI-safe (no real engines), using mock/stub only.
 Tests that Leela-analyzed data shows (推定) suffix in Export Karte output.
 """
 import pytest
-from typing import Optional, List
 from unittest.mock import Mock
 
 from katrain.core.analysis.models import (
@@ -24,7 +23,7 @@ from tests.helpers_eval_metrics import make_move_eval
 # Test helper: create mock Game for build_karte_report()
 # ---------------------------------------------------------------------------
 
-def create_mock_game(moves: List[MoveEval]) -> Mock:
+def create_mock_game(moves: list[MoveEval]) -> Mock:
     """build_karte_report() 用の最小 Game モック"""
     snapshot = EvalSnapshot(moves=moves)
 

@@ -13,7 +13,6 @@ Test philosophy:
 - No Kivy imports required
 """
 
-from typing import Optional
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -26,8 +25,8 @@ from katrain.gui.features.karte_export import determine_user_color
 # ---------------------------------------------------------------------------
 
 def create_mock_game(
-    player_black: Optional[str] = None,
-    player_white: Optional[str] = None,
+    player_black: str | None = None,
+    player_white: str | None = None,
 ) -> Mock:
     """Create a mock Game with root.get_property method.
 

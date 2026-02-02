@@ -14,7 +14,6 @@ Test priority:
 
 import json
 from types import MappingProxyType, SimpleNamespace
-from typing import Optional
 
 import pytest
 
@@ -55,7 +54,7 @@ def make_radar_metrics(
     stability_tier: SkillTier = SkillTier.TIER_3,
     awareness_tier: SkillTier = SkillTier.TIER_3,
     overall_tier: SkillTier = SkillTier.TIER_3,
-    valid_move_counts: Optional[dict] = None,
+    valid_move_counts: dict | None = None,
 ) -> RadarMetrics:
     """Create a RadarMetrics instance for testing."""
     if valid_move_counts is None:
@@ -83,11 +82,11 @@ def make_radar_metrics(
 
 
 def make_aggregated_result(
-    opening: Optional[float] = 4.0,
-    fighting: Optional[float] = 3.0,
-    endgame: Optional[float] = 2.0,
-    stability: Optional[float] = 4.5,
-    awareness: Optional[float] = 3.5,
+    opening: float | None = 4.0,
+    fighting: float | None = 3.0,
+    endgame: float | None = 2.0,
+    stability: float | None = 4.5,
+    awareness: float | None = 3.5,
     opening_tier: SkillTier = SkillTier.TIER_4,
     fighting_tier: SkillTier = SkillTier.TIER_3,
     endgame_tier: SkillTier = SkillTier.TIER_2,

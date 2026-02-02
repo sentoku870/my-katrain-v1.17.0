@@ -5,7 +5,7 @@ Tests verify that cluster classification is correctly injected
 into Karte's Critical 3 section when reason_tags is empty.
 """
 
-from typing import List, Optional, Tuple
+from typing import Optional
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch, PropertyMock
 
@@ -28,7 +28,7 @@ from katrain.core.analysis.board_context import OwnershipContext
 @dataclass
 class MockMove:
     """Mock Move for testing."""
-    coords: Optional[Tuple[int, int]]
+    coords: tuple[int, int] | None
     player: str
 
     @property
@@ -39,26 +39,26 @@ class MockMove:
 @dataclass
 class MockGameNode:
     """Mock GameNode for testing."""
-    placements: List[MockMove]
-    moves: List[MockMove]
-    clear_placements: List[MockMove]
-    nodes_from_root: List["MockGameNode"]
-    children: List["MockGameNode"]
+    placements: list[MockMove]
+    moves: list[MockMove]
+    clear_placements: list[MockMove]
+    nodes_from_root: list["MockGameNode"]
+    children: list["MockGameNode"]
     parent: Optional["MockGameNode"]
-    move: Optional[MockMove]
-    board_size: Tuple[int, int]
-    analysis: Optional[dict]
+    move: MockMove | None
+    board_size: tuple[int, int]
+    analysis: dict | None
 
     @property
-    def ordered_children(self) -> List["MockGameNode"]:
+    def ordered_children(self) -> list["MockGameNode"]:
         return self.children
 
 
 def create_mock_node(
-    board_size: Tuple[int, int] = (5, 5),
-    placements: Optional[List[MockMove]] = None,
-    moves: Optional[List[MockMove]] = None,
-    clears: Optional[List[MockMove]] = None,
+    board_size: tuple[int, int] = (5, 5),
+    placements: Optional[list[MockMove]] = None,
+    moves: Optional[list[MockMove]] = None,
+    clears: Optional[list[MockMove]] = None,
     parent: Optional[MockGameNode] = None,
     analysis: Optional[dict] = None,
 ) -> MockGameNode:
@@ -80,7 +80,7 @@ def create_mock_node(
 
 def create_mock_game(
     root: MockGameNode,
-    board_size: Tuple[int, int] = (5, 5),
+    board_size: tuple[int, int] = (5, 5),
 ) -> MagicMock:
     """Create a mock Game object."""
     game = MagicMock()
