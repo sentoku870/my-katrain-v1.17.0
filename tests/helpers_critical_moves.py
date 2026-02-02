@@ -9,7 +9,7 @@ Part of Phase 50: Critical 3 Focused Review Mode.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from tests.helpers_eval_metrics import (
     StubGame,
@@ -37,7 +37,7 @@ class StubGameNodeWithAnalysis(StubGameNode):
     appropriately based on whether analysis["root"] exists.
     """
 
-    analysis: Optional[Dict[str, Any]] = None
+    analysis: dict[str, Any] | None = None
 
     def __post_init__(self):
         """Update analysis_exists based on analysis data."""
@@ -54,7 +54,7 @@ class StubGameNodeWithAnalysis(StubGameNode):
 
 
 def build_stub_game_with_analysis(
-    moves: List[Tuple[str, Optional[Tuple[int, int]], float, Optional[Dict[str, Any]]]],
+    moves: list[tuple[str, tuple[int, int] | None, float, dict[str, Any] | None]],
 ) -> StubGame:
     """Build a stub game with analysis data.
 
@@ -113,7 +113,7 @@ def build_stub_game_with_analysis(
 
 
 def create_test_snapshot(
-    move_data: List[Dict[str, Any]],
+    move_data: list[dict[str, Any]],
 ) -> EvalSnapshot:
     """Create a test EvalSnapshot from move data dictionaries.
 
@@ -134,7 +134,7 @@ def create_test_snapshot(
     """
     from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 
-    moves: List[MoveEval] = []
+    moves: list[MoveEval] = []
 
     for data in move_data:
         move_number = data["move_number"]
@@ -184,8 +184,8 @@ def create_test_snapshot(
 
 
 def create_test_snapshot_with_tags(
-    move_data: List[Dict[str, Any]],
-) -> Tuple[EvalSnapshot, Dict[int, str]]:
+    move_data: list[dict[str, Any]],
+) -> tuple[EvalSnapshot, dict[int, str]]:
     """Create test EvalSnapshot and meaning_tag_map.
 
     Convenience function that returns both the snapshot and a pre-built
@@ -204,7 +204,7 @@ def create_test_snapshot_with_tags(
         ... ])
     """
     snapshot = create_test_snapshot(move_data)
-    tag_map: Dict[int, str] = {}
+    tag_map: dict[int, str] = {}
 
     for data in move_data:
         if "tag_id" in data:
@@ -230,8 +230,8 @@ def create_standard_test_game(num_moves: int = 10) -> StubGame:
     Returns:
         StubGame with analysis data suitable for most tests.
     """
-    moves: List[
-        Tuple[str, Optional[Tuple[int, int]], float, Optional[Dict[str, Any]]]
+    moves: list[
+        tuple[str, tuple[int, int] | None, float, dict[str, Any] | None]
     ] = []
 
     for i in range(num_moves):
@@ -258,11 +258,11 @@ def create_standard_test_snapshot(
     Returns:
         EvalSnapshot suitable for testing critical move selection.
     """
-    move_data: List[Dict[str, Any]] = []
+    move_data: list[dict[str, Any]] = []
 
     for i in range(num_moves):
         move_number = i + 1
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "move_number": move_number,
             "player": "B" if move_number % 2 == 1 else "W",
             "gtp": f"D{move_number + 3}",
