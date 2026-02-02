@@ -4,7 +4,7 @@ import copy
 import gzip
 import json
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from katrain.core.constants import (
     ANALYSIS_FORMAT_VERSION,
@@ -40,26 +40,26 @@ class GameNode(SGFNode):
     """Represents a single game node, with one or more moves and placements."""
 
     # Class-level type annotations for instance variables
-    auto_undo: Optional[bool]
-    played_mistake_sound: Optional[bool]
+    auto_undo: bool | None
+    played_mistake_sound: bool | None
     ai_thoughts: str
     note: str
     move_number: int
     time_used: float
     undo_threshold: float
     end_state: Any
-    shortcuts_to: List[Tuple["GameNode", "GameNode"]]
-    shortcut_from: Optional["GameNode"]
-    analysis_from_sgf: Optional[List[str]]
-    analysis: Dict[str, Any]
+    shortcuts_to: list[tuple["GameNode", "GameNode"]]
+    shortcut_from: "GameNode | None"
+    analysis_from_sgf: list[str | None]
+    analysis: dict[str, Any]
     analysis_visits_requested: int
     _leela_analysis: Any
 
     def __init__(
         self,
-        parent: Optional["GameNode"] = None,
-        properties: Optional[Dict[str, List[Any]]] = None,
-        move: Optional[Move] = None,
+        parent: "GameNode | None" = None,
+        properties: dict[str, list[Any | None]] = None,
+        move: Move | None = None,
     ) -> None:
         super().__init__(parent=parent, properties=properties, move=move)
         self.auto_undo = None  # None = not analyzed. False: not undone (good move). True: undone (bad move)
@@ -115,7 +115,7 @@ class GameNode(SGFNode):
             print(f"Error in loading analysis: {e}")
             return False
 
-    def add_list_property(self, property: str, values: List[Any]) -> None:
+    def add_list_property(self, property: str, values: list[Any]) -> None:
         if property == "KT":
             self.analysis_from_sgf = values
         elif property == "C":
@@ -161,12 +161,12 @@ class GameNode(SGFNode):
 
     def sgf_properties(  # type: ignore[override]
         self,
-        save_comments_player: Optional[Dict[str, bool]] = None,
-        save_comments_class: Optional[List[bool]] = None,
-        eval_thresholds: Optional[List[float]] = None,
+        save_comments_player: dict[str, bool | None] = None,
+        save_comments_class: list[bool | None] = None,
+        eval_thresholds: list[float | None] = None,
         save_analysis: bool = False,
         save_marks: bool = False,
-    ) -> Dict[str, List[Any]]:
+    ) -> dict[str, list[Any]]:
         properties = copy.copy(super().sgf_properties())
         note = self.note.strip()
         if save_analysis and self.analysis_complete:
@@ -231,7 +231,7 @@ class GameNode(SGFNode):
         return properties
 
     @staticmethod
-    def order_children(children: List["GameNode"]) -> List["GameNode"]:  # type: ignore[override]
+    def order_children(children: list["GameNode"]) -> list["GameNode"]:  # type: ignore[override]
         return sorted(
             children, key=lambda c: 0.5 if c.auto_undo is None else int(c.auto_undo)
         )  # analyzed/not undone main, non-teach second, undone last
@@ -241,10 +241,10 @@ class GameNode(SGFNode):
         self,
         engine: Any,
         priority: int = PRIORITY_DEFAULT,
-        visits: Optional[int] = None,
+        visits: int | None = None,
         ponder: bool = False,
         time_limit: bool = True,
-        refine_move: Optional[Move] = None,
+        refine_move: Move | None = None,
         analyze_fast: bool = False,
         find_alternatives: bool = False,
         region_of_interest: Any = None,
@@ -266,7 +266,7 @@ class GameNode(SGFNode):
             report_every=report_every,
         )
 
-    def update_move_analysis(self, move_analysis: Dict[str, Any], move_gtp: str) -> None:
+    def update_move_analysis(self, move_analysis: dict[str, Any], move_gtp: str) -> None:
         cur = self.analysis["moves"].get(move_gtp)
         if cur is None:
             self.analysis["moves"][move_gtp] = {
@@ -285,8 +285,8 @@ class GameNode(SGFNode):
 
     def set_analysis(
         self,
-        analysis_json: Dict[str, Any],
-        refine_move: Optional[Move] = None,
+        analysis_json: dict[str, Any],
+        refine_move: Move | None = None,
         additional_moves: bool = False,
         region_of_interest: Any = None,
         partial_result: bool = False,
@@ -321,11 +321,11 @@ class GameNode(SGFNode):
             self.analysis["completed"] = self.analysis["completed"] or (is_normal_query and not partial_result)
 
     @property
-    def ownership(self) -> Optional[List[float]]:
+    def ownership(self) -> list[float | None]:
         return self.analysis.get("ownership")
 
     @property
-    def policy(self) -> Optional[List[float]]:
+    def policy(self) -> list[float | None]:
         return self.analysis.get("policy")
 
     @property
@@ -341,14 +341,14 @@ class GameNode(SGFNode):
         return int(((self.analysis or {}).get("root") or {}).get("visits", 0))
 
     @property
-    def score(self) -> Optional[float]:
+    def score(self) -> float | None:
         if self.analysis_exists:
             root = self.analysis["root"]
             if root is not None:
                 return float(root.get("scoreLead", 0))
         return None
 
-    def format_score(self, score: Optional[float] = None) -> Optional[str]:
+    def format_score(self, score: float | None = None) -> str | None:
         score = score or self.score
         if score is not None:
             leading_player = 'B' if score >= 0 else 'W'
@@ -357,14 +357,14 @@ class GameNode(SGFNode):
         return None
 
     @property
-    def winrate(self) -> Optional[float]:
+    def winrate(self) -> float | None:
         if self.analysis_exists:
             root = self.analysis["root"]
             if root is not None:
                 return float(root.get("winrate", 0.5))
         return None
 
-    def format_winrate(self, win_rate: Optional[float] = None) -> Optional[str]:
+    def format_winrate(self, win_rate: float | None = None) -> str | None:
         win_rate = win_rate or self.winrate
         if win_rate is not None:
             leading_player = 'B' if win_rate > 0.5 else 'W'
@@ -372,7 +372,7 @@ class GameNode(SGFNode):
             return f"{leading_player_color} {max(win_rate,1-win_rate):.1%}"
         return None
 
-    def move_policy_stats(self) -> Tuple[Optional[int], float, List[Tuple[float, Move]]]:
+    def move_policy_stats(self) -> tuple[int | None, float, list[tuple[float, Move]]]:
         single_move = self.move
         parent = self.parent
         if single_move and parent and isinstance(parent, GameNode):
@@ -383,7 +383,7 @@ class GameNode(SGFNode):
                         return ix + 1, p, policy_ranking
         return None, 0.0, []
 
-    def make_pv(self, player: str, pv: List[str], interactive: bool) -> str:
+    def make_pv(self, player: str, pv: list[str], interactive: bool) -> str:
         pvtext = f"{player}{' '.join(pv)}"
         if interactive:
             pvtext = f"[u][ref={pvtext}][color={INFO_PV_COLOR}]{pvtext}[/color][/ref][/u]"
@@ -457,7 +457,7 @@ class GameNode(SGFNode):
         return text
 
     @property
-    def points_lost(self) -> Optional[float]:
+    def points_lost(self) -> float | None:
         single_move = self.move
         parent = self.parent
         if single_move and parent and isinstance(parent, GameNode) and self.analysis_exists and parent.analysis_exists:
@@ -468,7 +468,7 @@ class GameNode(SGFNode):
         return None
 
     @property
-    def parent_realized_points_lost(self) -> Optional[float]:
+    def parent_realized_points_lost(self) -> float | None:
         single_move = self.move
         parent = self.parent
         if (
@@ -487,11 +487,11 @@ class GameNode(SGFNode):
         return None
 
     @staticmethod
-    def player_sign(player: Optional[str]) -> int:
+    def player_sign(player: str | None) -> int:
         return {"B": 1, "W": -1, None: 0}[player]
 
     @property
-    def candidate_moves(self) -> List[Dict[str, Any]]:
+    def candidate_moves(self) -> list[dict[str, Any]]:
         if not self.analysis_exists:
             return []
         if not self.analysis["moves"]:
@@ -527,7 +527,7 @@ class GameNode(SGFNode):
         )
 
     @property
-    def policy_ranking(self) -> Optional[List[Tuple[float, Move]]]:  # return moves from highest policy value to lowest
+    def policy_ranking(self) -> list[tuple[float, Move | None]]:  # return moves from highest policy value to lowest
         if self.policy:
             szx, szy = self.board_size
             policy_grid = var_to_grid(self.policy, size=(szx, szy))
