@@ -10,7 +10,6 @@ These tests ensure that:
 
 import pytest
 from unittest.mock import MagicMock, PropertyMock
-from typing import List, Dict, Optional
 
 from katrain.core.study.active_review import (
     MIN_RELIABLE_VISITS,
@@ -32,9 +31,9 @@ from katrain.core.study.active_review import (
 def make_mock_node(
     analysis_exists: bool = True,
     root_visits: int = 200,
-    candidate_moves: Optional[List[Dict]] = None,
+    candidate_moves: list[dict] | None = None,
     next_player: str = "B",
-    ordered_children: Optional[List] = None,
+    ordered_children: list | None = None,
 ) -> MagicMock:
     """Create a mock GameNode for testing.
 

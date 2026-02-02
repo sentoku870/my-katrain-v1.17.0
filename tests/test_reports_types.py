@@ -5,7 +5,7 @@ PR #115: Phase B2 - reports/パッケージ骨格
 v5改善:
 - 属性存在テスト
 - Gameインスタンスを作成して検証
-- 実際の戻り値型を検証（board_size: Tuple[int, int]等）
+- 実際の戻り値型を検証（board_size: tuple[int, int]等）
 - FeatureContext.configとConfigReaderの互換性を確認
 """
 
@@ -60,7 +60,7 @@ class TestGameMetadataProviderCompatibility:
 
     def test_game_attributes_types(self, sample_game):
         """属性の型が正しい（v5: 実際の型を検証）"""
-        # board_size は Tuple[int, int]（非正方形盤面対応）
+        # board_size は tuple[int, int]（非正方形盤面対応）
         board_size = sample_game.board_size
         assert isinstance(
             board_size, tuple

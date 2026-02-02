@@ -5,7 +5,6 @@ Part of Phase 46: Meaning Tags System Core - PR-2.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import pytest
 
@@ -52,13 +51,13 @@ class MockMoveEval:
     """Mock MoveEval for testing."""
 
     move_number: int = 50
-    player: Optional[str] = "B"
-    gtp: Optional[str] = "D4"
-    score_loss: Optional[float] = None
-    leela_loss_est: Optional[float] = None
-    points_lost: Optional[float] = None
+    player: str | None = "B"
+    gtp: str | None = "D4"
+    score_loss: float | None = None
+    leela_loss_est: float | None = None
+    points_lost: float | None = None
     is_reliable: bool = True
-    reason_tags: List[str] = field(default_factory=list)
+    reason_tags: list[str] = field(default_factory=list)
 
 
 class MockLexiconEntry:
@@ -71,10 +70,10 @@ class MockLexiconEntry:
 class MockLexiconStore:
     """Mock LexiconStore for testing."""
 
-    def __init__(self, entries: Optional[Dict[str, MockLexiconEntry]] = None):
+    def __init__(self, entries: dict[str, MockLexiconEntry] | None = None):
         self._entries = entries or {}
 
-    def get(self, entry_id: str) -> Optional[MockLexiconEntry]:
+    def get(self, entry_id: str) -> MockLexiconEntry | None:
         return self._entries.get(entry_id)
 
 

@@ -7,7 +7,6 @@ tests/test_engine_compare.py - Phase 39 エンジン比較ロジックのテス�
 """
 
 import math
-from typing import List, Optional, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,8 +32,8 @@ def make_move_comparison(
     move_number: int,
     player: str = "B",
     gtp: str = "D4",
-    katago_loss: Optional[float] = None,
-    leela_loss: Optional[float] = None,
+    katago_loss: float | None = None,
+    leela_loss: float | None = None,
 ) -> MoveComparison:
     """テスト用MoveComparisonを作成。"""
     loss_diff = None
@@ -51,7 +50,7 @@ def make_move_comparison(
 
 
 def make_mock_game(
-    moves: List[Tuple[int, str, str, Optional[float], Optional[float]]],
+    moves: list[tuple[int, str, str, float | None, float | None]],
 ) -> MagicMock:
     """モックGameを作成。
 

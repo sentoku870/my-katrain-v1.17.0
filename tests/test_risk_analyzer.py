@@ -17,7 +17,7 @@ Test coverage:
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -55,7 +55,7 @@ class MockMove:
     """Mock Move object for testing."""
 
     player: str
-    coords: Optional[tuple] = None
+    coords: tuple | None = None
 
     @property
     def is_pass(self) -> bool:
@@ -67,20 +67,20 @@ class MockNode:
     """Mock GameNode for testing."""
 
     analysis_exists: bool = False
-    analysis: Optional[Dict[str, Any]] = None
+    analysis: dict[str, Any] | None = None
     move: Optional[MockMove] = None
     parent: Optional["MockNode"] = None
 
 
 def make_node_with_analysis(
-    winrate: Optional[float] = None,
-    score_lead: Optional[float] = None,
-    score_stdev: Optional[float] = None,
+    winrate: float | None = None,
+    score_lead: float | None = None,
+    score_stdev: float | None = None,
     player: str = "B",
-    parent: Optional[MockNode] = None,
+    parent: Optional["MockNode"] = None,
 ) -> MockNode:
     """Create a MockNode with specified analysis values."""
-    root_info: Dict[str, Any] = {}
+    root_info: dict[str, Any] = {}
     if winrate is not None:
         root_info["winrate"] = winrate
     if score_lead is not None:

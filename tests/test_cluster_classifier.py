@@ -12,7 +12,7 @@ Tests cover:
 - Edge cases (suicide, AE ordering, mainline resolution)
 """
 
-from typing import List, Optional, Tuple
+from typing import Optional
 from dataclasses import dataclass
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -71,7 +71,7 @@ from katrain.core.analysis.board_context import (
 @dataclass
 class MockMove:
     """Mock Move for testing."""
-    coords: Optional[Tuple[int, int]]
+    coords: tuple[int, int] | None
     player: str
 
     @property
@@ -82,26 +82,26 @@ class MockMove:
 @dataclass
 class MockGameNode:
     """Mock GameNode for testing."""
-    placements: List[MockMove]
-    moves: List[MockMove]
-    clear_placements: List[MockMove]
-    nodes_from_root: List["MockGameNode"]
-    children: List["MockGameNode"]
+    placements: list[MockMove]
+    moves: list[MockMove]
+    clear_placements: list[MockMove]
+    nodes_from_root: list["MockGameNode"]
+    children: list["MockGameNode"]
     parent: Optional["MockGameNode"]
     move: Optional[MockMove]
-    board_size: Tuple[int, int]
+    board_size: tuple[int, int]
 
     @property
-    def ordered_children(self) -> List["MockGameNode"]:
+    def ordered_children(self) -> list["MockGameNode"]:
         return self.children
 
 
 def create_mock_node(
-    board_size: Tuple[int, int] = (5, 5),
-    placements: Optional[List[MockMove]] = None,
-    moves: Optional[List[MockMove]] = None,
-    clears: Optional[List[MockMove]] = None,
-    parent: Optional[MockGameNode] = None,
+    board_size: tuple[int, int] = (5, 5),
+    placements: Optional[list[MockMove]] = None,
+    moves: Optional[list[MockMove]] = None,
+    clears: Optional[list[MockMove]] = None,
+    parent: Optional["MockGameNode"] = None,
 ) -> MockGameNode:
     """Create a mock node for testing."""
     node = MockGameNode(
@@ -124,7 +124,7 @@ def create_mock_cluster(
     sum_delta: float = -3.0,
     avg_delta: float = -1.0,
     max_abs_delta: float = 1.0,
-    primary_area: Optional[BoardArea] = BoardArea.CORNER,
+    primary_area: BoardArea | None = BoardArea.CORNER,
     cell_count: int = 3,
 ) -> OwnershipCluster:
     """Create a mock cluster for testing."""
@@ -140,8 +140,8 @@ def create_mock_cluster(
 
 
 def create_mock_ownership_context(
-    board_size: Tuple[int, int] = (5, 5),
-    ownership_grid: Optional[List[List[float]]] = None,
+    board_size: tuple[int, int] = (5, 5),
+    ownership_grid: Optional[list[list[float]]] = None,
 ) -> OwnershipContext:
     """Create a mock OwnershipContext for testing."""
     if ownership_grid is None:

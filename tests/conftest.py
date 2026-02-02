@@ -10,7 +10,6 @@ This module provides:
 import re
 import os
 from pathlib import Path
-from typing import List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -308,8 +307,8 @@ def make_moves():
         *,
         player: str = "B",
         visits: int = 500,
-        loss_pattern: Optional[List[float]] = None,
-    ) -> List[MoveEval]:
+        loss_pattern: list[float] | None = None,
+    ) -> list[MoveEval]:
         """
         Create a list of MoveEval objects for testing.
 
@@ -472,7 +471,7 @@ class MockEngine:
     Tracking (test-only):
         stop_pondering_called: bool
         terminate_queries_called: bool
-        request_analysis_calls: List[dict]
+        request_analysis_calls: list[dict]
         reset_tracking()
     """
     def __init__(self, config=None):

@@ -14,7 +14,7 @@ All tests are engine-free (no KataGo/Leela required).
 """
 
 import pytest
-from typing import Dict, List, Any, Tuple
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from katrain.core.analysis import (
@@ -587,7 +587,7 @@ class TestSelectCriticalMoves:
         snapshot = create_standard_test_snapshot(num_moves=10)
 
         ITERATIONS = 5
-        results: List[List[CriticalMove]] = []
+        results: list[list[CriticalMove]] = []
 
         for _ in range(ITERATIONS):
             with patch(

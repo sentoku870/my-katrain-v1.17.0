@@ -2,7 +2,7 @@
 """Phase 81: Ownership差分クラスタ抽出のテスト。"""
 
 import pytest
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from katrain.core.analysis.board_context import BoardArea, OwnershipContext
 from katrain.core.analysis.ownership_cluster import (
@@ -26,9 +26,9 @@ from katrain.core.analysis.ownership_cluster import (
 
 
 def make_ctx(
-    grid: Optional[List[List[float]]],
-    board_size: Tuple[int, int],
-    score_stdev: Optional[float] = None,
+    grid: Optional[list[list[float]]],
+    board_size: tuple[int, int],
+    score_stdev: float | None = None,
 ) -> OwnershipContext:
     """テスト用OwnershipContext生成ヘルパー。
 
@@ -49,9 +49,9 @@ def make_ctx(
 
 
 def make_delta(
-    parent_grid: List[List[float]],
-    child_grid: List[List[float]],
-    board_size: Tuple[int, int],
+    parent_grid: list[list[float]],
+    child_grid: list[list[float]],
+    board_size: tuple[int, int],
 ) -> OwnershipDelta:
     """テスト用OwnershipDelta生成ヘルパー。"""
     parent_ctx = make_ctx(parent_grid, board_size)

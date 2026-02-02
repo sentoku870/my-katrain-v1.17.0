@@ -7,7 +7,6 @@ Test priority:
 """
 
 from types import SimpleNamespace
-from typing import Optional
 
 import pytest
 
@@ -56,10 +55,10 @@ from katrain.core.analysis.skill_radar import (
 def make_move_stub(
     move_number: int = 1,
     player: str = "B",
-    points_lost: Optional[float] = 0.0,
+    points_lost: float | None = 0.0,
     mistake_category: MistakeCategory = MistakeCategory.GOOD,
-    position_difficulty: Optional[PositionDifficulty] = PositionDifficulty.NORMAL,
-    winrate_before: Optional[float] = 0.5,
+    position_difficulty: PositionDifficulty | None = PositionDifficulty.NORMAL,
+    winrate_before: float | None = 0.5,
 ) -> SimpleNamespace:
     """Create a lightweight MoveEval stub for testing.
 

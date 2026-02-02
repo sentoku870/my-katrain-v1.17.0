@@ -13,7 +13,7 @@ in the acceptance criteria, not duplicated here.
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pytest
 
@@ -72,7 +72,7 @@ def make_radar(
 def make_move_eval(
     move_number: int,
     player: str = "B",
-    score_loss: Optional[float] = None,
+    score_loss: float | None = None,
 ) -> MoveEval:
     """Create a MoveEval instance for testing."""
     return MoveEval(
@@ -97,7 +97,7 @@ class MockMove:
     """Mock Move object for testing."""
 
     player: str
-    coords: Optional[tuple] = None
+    coords: tuple | None = None
 
     @property
     def is_pass(self) -> bool:
@@ -109,10 +109,10 @@ class MockNode:
     """Mock GameNode for testing."""
 
     analysis_exists: bool = False
-    analysis: Optional[Dict[str, Any]] = None
+    analysis: dict[str, Any] | None = None
     move: Optional[MockMove] = None
     parent: Optional["MockNode"] = None
-    children: List["MockNode"] = None
+    children: list["MockNode"] = None
 
     def __post_init__(self):
         if self.children is None:
@@ -182,7 +182,7 @@ class TestRegressionExistingFeatures:
     def test_determine_style_api_signature(self):
         """determine_style is callable with expected arguments."""
         radar = make_radar()
-        tag_counts: Dict[MeaningTagId, int] = {}
+        tag_counts: dict[MeaningTagId, int] = {}
 
         result = determine_style(radar, tag_counts)
 
@@ -205,7 +205,7 @@ class TestRegressionGracefulHandling:
     def test_style_on_empty_moves(self):
         """determine_style handles empty tag_counts gracefully."""
         radar = make_radar()
-        tag_counts: Dict[MeaningTagId, int] = {}  # Empty
+        tag_counts: dict[MeaningTagId, int] = {}  # Empty
 
         # Should not raise
         result = determine_style(radar, tag_counts)
@@ -221,7 +221,7 @@ class TestRegressionGracefulHandling:
             black_moves_with_time=0,
             white_moves_with_time=0,
         )
-        moves: List[MoveEval] = []
+        moves: list[MoveEval] = []
 
         # Should not raise
         result = analyze_pacing(time_data, moves)
@@ -239,7 +239,7 @@ class TestRegressionGracefulHandling:
             black_moves_with_time=1,
             white_moves_with_time=0,
         )
-        moves: List[MoveEval] = []  # Empty
+        moves: list[MoveEval] = []  # Empty
 
         # Should not raise
         result = analyze_pacing(time_data, moves)
