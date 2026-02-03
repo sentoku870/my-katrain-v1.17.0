@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-03（Phase 116完了）
+> 最終更新: 2026-02-04（Phase 117完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -296,6 +296,8 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 113 | Python 3.11 modern syntax migration | 302ファイル、~1,750注釈を機械的に変換、PEP 604/585準拠 | ✅ |
 | 114 | Forward Reference + i18n + Semantic Type Fixes（Part 1） | 66ファイル mechanical 変換、6サブフェーズ（114A-F）、PR #277 | ✅ |
 | 115 | Critical Files Modern Syntax（Part 2） | engine.py + 検証（badukpan.py, __main__.py）、統合テスト完了、PR #277含む | ✅ |
+| 116 | Pre-existing型エラー修正 | Phase 115までの型安全基盤上で最後の85件を解消、全205ファイル 100% 準拠 | ✅ |
+| 117 | Top Moves カラー回帰修正 | evaluation_class() のdescending threshold ロジック修正、56新規テスト、PR #278 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -425,6 +427,10 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 **Phase 112**: ✅ mypy strict（全体・CIブロック）。全体strictと、CIで型エラーをブロック有効化。1352エラー→0エラー達成。Python 3.11+型構文（`X | None`, `dict[str, Any]`）採用。7サブフェーズ（112-0: strict設定、112A: common/、112B-D: core/、112E-1〜4: gui/、112F: __main__.py、112G: CI typecheck job追加）で段階的修正。全205ファイル型安全化。PR #258-264。（2026-02-01完了）
 
 **Phase 113**: ✅ Python 3.11 modern syntax migration。Legacy typing（`Optional[X]`, `List[X]`, `Dict[K,V]`, `Union[X,Y]`）を現代構文（`X | None`, `list[X]`, `dict[K,V]`, `X | Y`）に統一。302ファイル、~1,750注釈を機械的に変換。6サブフェーズ（113A: common/、113B-1〜2: analysis/、113C-1〜2: batch+reports/、113D-1〜2: core game files、113E-1〜2: gui/features、113F-1〜3: tests）で段階的実行。Forward Reference Policy適用（`from __future__ import annotations`ある→unquoted union、なし→Phase 114 defer）。PR #265-276（計12PR）。Safety gates全て PASS（compileall/pytest 3776 PASS/mypy は既知エラーのみ）。（2026-02-02完了）
+
+**Phase 116**: ✅ Pre-existing型エラー修正（最後の仕上げ）。phase 112-115で作った型安全基盤の上で、残りの85件の型エラーを解消。engine.py/game_node.py/badukpan.py等の重要ファイルを修正。全205ファイルで mypy strict 100% 達成。（2026-02-01完了）
+
+**Phase 117**: ✅ Top Moves カラー回帰修正（根本解決）。Phase 116D で発生した evaluation_class() ロジック反転バグを修正。descending threshold `[12, 6, 3, 1.5, 0.5, 0]` に対して、`<` から `>=` へ条件を変更。56新規テスト追加、3832全テスト PASS、golden karte テスト更新、CI Windows API 対応（mypy ignore directives）。PR #278 マージ。（2026-02-04完了）
 
 ### 未定（TBD / Post-52）
 

@@ -1,11 +1,33 @@
 # 変更履歴（CHANGELOG）
 
-> このファイルは myKatrain の Phase 1-116 の変更履歴を記録しています。
+> このファイルは myKatrain の Phase 1-117 の変更履歴を記録しています。
 > CLAUDE.md から分離されました（2026-01-24）。
 
 ---
 
-- 2026-02-03: Phase 116 完了（Pre-existing型エラー修正 + Top Moves カラー回帰修正）
+- 2026-02-04: Phase 117 完了（Top Moves カラー回帰修正）
+  - **目的**: Phase 116D で発生した evaluation_class() ロジック反転バグを修正し、Top Moves 多色グラデーション表示を復旧
+  - **根本原因**: 降順閾値 `[12, 6, 3, 1.5, 0.5, 0]` に対して `<` 条件を使用していたため、損失値 < 12 の全て（優秀～良好な手）が index 0（紫）として返される問題
+  - **スコープ**: evaluation_class() ロジック修正 + badukpan.py 設定値更新 + CI 修正
+    - **コア修正**: utils.py:43 で `if points_lost < threshold:` を `if points_lost >= threshold:` に変更
+    - **設定更新**: badukpan.py のフォールバック閾値を実際の config.json 値と統一 `[12.0, 6.0, 3.0, 1.5, 0.5, 0.0]`
+    - **デバッグ削除**: 過渡的な `[DEBUG KataGo]` ログ行を削除
+    - **CI 対応**: Windows API（ctypes.windll, os.startfile）の mypy ignore directives 追加
+  - **テスト**: 56 新規テスト追加（index bounds, exact mapping, monotonicity, all buckets reachable, None threshold handling, edge cases）
+  - **成果**:
+    - ✅ Top Moves: 単色紫 → 多色グラデーション（紫→赤→オレンジ→黄→緑）
+    - ✅ 全テスト: 3832 PASS（3832 passed, 8 skipped, 1 xfailed）
+    - ✅ mypy strict: 0 errors in 205 files
+    - ✅ Golden テスト: 3 files updated（karte_sgf_*.golden）
+    - ✅ CI: Python 3.11/3.12 両バージョン PASS
+  - **PR**: #278 main マージ完了（commit 70feeac）
+  - **コード変更量**: +215行、-28行（56 テスト + 設定更新 + CI 修正）
+  - **検証**:
+    - 第1悪い commit: `0872793`（Phase 116D）
+    - 正確なコードパス: badukpan.py:1200+ → badukpan.py:376 → utils.py:43 → badukpan.py:378
+    - 最小diff: 1 operator change（`<` → `>=`）+ docstring clarification
+
+- 2026-02-03: Phase 116 完了（Pre-existing型エラー修正）
   - **目的**: Phase 113-115 で残された 82 件の pre-existing 型エラーを修正し、mypy strict mode 100% 準拠を達成
   - **背景**: Phase 112 で strict flags 導入時に 1352 エラーを 0 に削減したが、Phase 113-115 では構文変換に専念し、pre-existing エラーはスキップされていた
   - **スコープ**: 82 件の型エラーを 6 サブフェーズで修正
