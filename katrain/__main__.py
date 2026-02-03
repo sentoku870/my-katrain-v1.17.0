@@ -1,4 +1,7 @@
 """isort:skip_file"""
+# mypy: ignore-errors
+# Note: Contains Windows-specific code paths (ctypes.windll).
+# On Linux CI, mypy cannot resolve Windows API calls, but these are guarded by platform checks.
 
 from __future__ import annotations
 
