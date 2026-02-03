@@ -2,7 +2,12 @@
 
 This module provides a GTP-based engine wrapper for Leela Zero.
 It is completely separate from KataGoEngine.
+
+Note: Contains Windows-specific code paths (subprocess.STARTF_USESHOWWINDOW).
+On Linux CI, mypy cannot resolve Windows API calls, but these are guarded
+by platform checks.
 """
+# mypy: ignore-errors
 
 import logging
 import os

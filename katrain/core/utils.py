@@ -26,12 +26,15 @@ def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]
     """
     Evaluate the class (bucket) for a given loss value.
 
+    Thresholds are assumed to be in DESCENDING order (e.g. [12, 6, 3, 1.5, 0.5, 0]).
+    Returns index 0 for worst (largest loss) and len-1 for best (smallest loss).
+
     Args:
-        points_lost: The loss value to evaluate
+        points_lost: The loss value to evaluate (positive=bad, negative=good/gain)
         eval_thresholds: Thresholds for each class. None entries are treated as infinity.
 
     Returns:
-        The class index (0-based)
+        The class index (0-based), in range [0, len(eval_thresholds)-1]
     """
     i = 0
     while i < len(eval_thresholds) - 1:
@@ -40,7 +43,7 @@ def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]
             # None = infinity threshold, skip to next
             i += 1
             continue
-        if points_lost < threshold:
+        if points_lost >= threshold:
             break
         i += 1
     return i

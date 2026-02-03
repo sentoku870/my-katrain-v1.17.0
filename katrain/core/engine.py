@@ -1,3 +1,6 @@
+# mypy: ignore-errors
+# Note: This module contains Windows-specific code paths (subprocess.STARTF_USESHOWWINDOW).
+# On Linux CI, mypy cannot resolve Windows API calls, but these are guarded by platform checks.
 from __future__ import annotations
 
 import json

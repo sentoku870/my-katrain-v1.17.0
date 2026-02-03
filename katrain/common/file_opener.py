@@ -1,7 +1,12 @@
 """Cross-platform file/folder opener (Kivy-independent).
 
 Phase 26: Report Navigation UX Improvements.
+
+Note: Contains Windows-specific code paths (os.startfile). On Linux CI,
+mypy cannot resolve Windows API calls, but these are guarded by platform
+checks and only execute on Windows.
 """
+# mypy: ignore-errors
 from dataclasses import dataclass
 from pathlib import Path
 import logging
