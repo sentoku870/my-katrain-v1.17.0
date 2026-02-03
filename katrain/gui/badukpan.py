@@ -371,7 +371,7 @@ class BadukPanWidget(Widget):
 
     def eval_color(self, points_lost: float, show_dots_for_class: list[bool] | None = None) -> list[float] | None:
         # Use defaults if trainer_config not fully initialized
-        eval_thresholds = self.trainer_config.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0])
+        eval_thresholds = self.trainer_config.get("eval_thresholds", [12.0, 6.0, 3.0, 1.5, 0.5, 0.0])
         theme = self.trainer_config.get("theme", "theme:normal")
         i = evaluation_class(points_lost, eval_thresholds)
         colors = Theme.EVAL_COLORS[theme]
@@ -1216,12 +1216,6 @@ class BadukPanWidget(Widget):
                     ]
                     if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
                 ]
-                # Debug: Print top 5 KataGo candidate moves for color distribution analysis
-                eval_thresholds = trainer_cfg.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0]) if hasattr(trainer_cfg, "get") else self.trainer_config.get("eval_thresholds", [1.0, 2.0, 5.0, 10.0, 15.0])
-                for idx, move_data in enumerate(hint_moves[:5]):
-                    points_lost = move_data.get("pointsLost", 0)
-                    class_idx = evaluation_class(points_lost, eval_thresholds)
-                    katrain.log(f"[DEBUG KataGo] #{idx}: {move_data.get('move', '?'):3s} Loss: {points_lost:6.2f}, Class: {class_idx} (color)", OUTPUT_EXTRA_DEBUG)
                 for move_dict in hint_moves:
                     move = Move.from_gtp(move_dict["move"])
                     if move.coords is not None:
