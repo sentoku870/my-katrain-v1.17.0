@@ -271,6 +271,9 @@ def compute_stability(
     if volatility is None:
         return config.stability_insufficient_data  # Default 0.0
 
+    if config.max_volatility <= 0:
+        return config.stability_insufficient_data
+
     normalized = volatility / config.max_volatility
     clamped = max(0.0, min(1.0, normalized))
     return 1.0 - clamped
