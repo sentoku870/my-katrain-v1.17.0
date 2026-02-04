@@ -289,7 +289,8 @@ class KataGoEngine(BaseEngine):
                     self.queries.pop(query_id, None)
 
     def restart(self) -> None:
-        self.queries = {}
+        with self.thread_lock:
+            self.queries = {}
         # Reset pending counter before shutdown
         with self._pending_query_lock:
             self._pending_query_count = 0
@@ -681,6 +682,9 @@ class KataGoEngine(BaseEngine):
                     f"Unexpected exception {e} while processing KataGo output {line}\n{traceback.format_exc()}",
                     OUTPUT_ERROR,
                 )
+                # Decrement pending count if query was found but processing failed
+                if query_found:
+                    self._decrement_pending_count()
 
     def _handle_engine_timeout(self) -> None:
         """Handle engine timeout (called from background thread).
@@ -768,6 +772,9 @@ class KataGoEngine(BaseEngine):
                 process.stdin.flush()
             except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
                 self.katrain.log(f"Exception in writing to katago: {e}", OUTPUT_DEBUG)
+                # Decrement pending count for non-terminate queries that failed to send
+                if not terminate:
+                    self._decrement_pending_count()
                 return  # some other thread will take care of this
             # Terminate old ponder query outside of lock to avoid deadlock
             if old_ponder_query:
