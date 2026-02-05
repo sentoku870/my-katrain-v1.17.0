@@ -14,11 +14,18 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from collections.abc import Mapping
+from datetime import datetime
 from threading import Lock
 from typing import Any, Iterator
+
+
+def _get_logger() -> logging.Logger:
+    """Get module logger (lazy to avoid side effect at import time)."""
+    return logging.getLogger(__name__)
 
 
 class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
@@ -45,7 +52,21 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
             try:
                 with open(self._filename, "r", encoding="utf-8") as f:
                     self._data = json.load(f)
-            except (json.JSONDecodeError, IOError):
+                # Runtime guard: verify all values are dicts (invariant enforcement)
+                if isinstance(self._data, dict):
+                    for key, value in list(self._data.items()):
+                        if not isinstance(value, dict):
+                            _get_logger().warning("Config section %s is not a dict (got %s), removing", key, type(value).__name__)
+                            del self._data[key]
+            except (json.JSONDecodeError, IOError) as e:
+                _get_logger().warning("Corrupt config file %s: %s", self._filename, e, exc_info=True)
+                # Preserve corrupt file for manual recovery with timestamp
+                try:
+                    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                    corrupt_path = f"{self._filename}.corrupt.{timestamp}"
+                    os.rename(self._filename, corrupt_path)
+                except OSError:
+                    pass  # Already logged above
                 self._data = {}
         else:
             self._data = {}
@@ -94,10 +115,11 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
             key: Section name
 
         Returns:
-            Section data as dict, or None if not found
+            Section data as dict (shallow copy), or None if not found
         """
         with self._lock:
-            return self._data.get(key)
+            value = self._data.get(key)
+            return dict(value) if value is not None else None
 
     def put(self, key: str, **kwargs: Any) -> None:
         """Store a section.
@@ -153,7 +175,7 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
     def __getitem__(self, key: str) -> dict[str, Any]:
         """Get section by key (Mapping protocol)."""
         with self._lock:
-            return self._data[key]
+            return dict(self._data[key])
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over keys (Mapping protocol)."""

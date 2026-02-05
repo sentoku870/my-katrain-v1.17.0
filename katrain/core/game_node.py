@@ -3,6 +3,7 @@ import binascii
 import copy
 import gzip
 import json
+import logging
 import random
 from typing import Any
 
@@ -20,6 +21,8 @@ from katrain.common import INFO_PV_COLOR
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move, SGFNode
 from katrain.core.utils import evaluation_class, pack_floats, unpack_floats, var_to_grid
+
+logger = logging.getLogger(__name__)
 
 
 def analysis_dumps(analysis: dict[str, Any]) -> list[str]:
@@ -112,7 +115,7 @@ class GameNode(SGFNode):
             return True
         except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, ValueError) as e:
             # Specific exceptions for SGF analysis deserialization failures
-            print(f"Error in loading analysis: {e}")
+            logger.warning("Error in loading analysis: %s", e, exc_info=True)
             return False
 
     def add_list_property(self, property: str, values: list[Any]) -> None:
@@ -174,7 +177,7 @@ class GameNode(SGFNode):
                 properties["KT"] = analysis_dumps(self.analysis)
             except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, ValueError) as e:
                 # Specific exceptions for SGF analysis serialization failures
-                print(f"Error in saving analysis: {e}")
+                logger.warning("Error in saving analysis: %s", e, exc_info=True)
         if self.points_lost and save_comments_class is not None and eval_thresholds is not None:
             show_class = save_comments_class[evaluation_class(self.points_lost, eval_thresholds)]
         else:
@@ -275,13 +278,13 @@ class GameNode(SGFNode):
                 **move_analysis,
             }  # some default values for keys missing in rootInfo
         else:
-            cur["order"] = min(
+            merged_order = min(
                 cur["order"], move_analysis.get("order", ADDITIONAL_MOVE_ORDER)
             )  # parent arriving after child
             if cur["visits"] < move_analysis["visits"]:
-                cur.update(move_analysis)
+                self.analysis["moves"][move_gtp] = {**cur, **move_analysis, "order": merged_order}
             else:  # prior etc only
-                cur.update({k: v for k, v in move_analysis.items() if k not in cur})
+                self.analysis["moves"][move_gtp] = {**cur, **{k: v for k, v in move_analysis.items() if k not in cur}, "order": merged_order}
 
     def set_analysis(
         self,
