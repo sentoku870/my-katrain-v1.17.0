@@ -46,7 +46,7 @@ class YoseAnalyzer:
 
     # Game オブジェクトから直接作りたい場合用の入口
     @classmethod
-    def from_game(cls, game: "Game") -> "YoseAnalyzer":
+    def from_game(cls, game: Game) -> YoseAnalyzer:
         snapshot = eval_metrics.snapshot_from_game(game)
         return cls(snapshot)
 

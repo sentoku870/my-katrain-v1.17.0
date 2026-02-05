@@ -21,10 +21,11 @@ Logger Injection (Phase 104):
 - Logger is called once per error with combined message + traceback
 - If logger is None or fails, fallback to stderr
 """
+
 import sys
 import threading
 import traceback
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from katrain.core.state.events import Event, EventType
 
@@ -49,7 +50,7 @@ class StateNotifier:
         >>> notifier = StateNotifier(logger=my_logger)
     """
 
-    def __init__(self, logger: Optional[LoggerType] = None) -> None:
+    def __init__(self, logger: LoggerType | None = None) -> None:
         """Initialize the notifier with empty subscriber lists.
 
         Args:
@@ -62,9 +63,7 @@ class StateNotifier:
         self._lock = threading.RLock()
         self._logger = logger
 
-    def subscribe(
-        self, event_type: EventType, callback: Callable[[Event], None]
-    ) -> None:
+    def subscribe(self, event_type: EventType, callback: Callable[[Event], None]) -> None:
         """Subscribe a callback to an event type.
 
         Duplicate subscriptions are ignored (same callback won't be called twice).
@@ -79,9 +78,7 @@ class StateNotifier:
             if callback not in self._subscribers[event_type]:
                 self._subscribers[event_type].append(callback)
 
-    def unsubscribe(
-        self, event_type: EventType, callback: Callable[[Event], None]
-    ) -> None:
+    def unsubscribe(self, event_type: EventType, callback: Callable[[Event], None]) -> None:
         """Unsubscribe a callback from an event type.
 
         Unsubscribing a non-existent callback is a no-op.
@@ -120,9 +117,7 @@ class StateNotifier:
                 # Log error but continue with other callbacks
                 self._log_error(event, callback, e)
 
-    def _log_error(
-        self, event: Event, callback: Callable[[Event], None], e: Exception
-    ) -> None:
+    def _log_error(self, event: Event, callback: Callable[[Event], None], e: Exception) -> None:
         """Log error when a callback fails (logger injection support, exception-safe).
 
         The logger is called once with a combined message containing:
@@ -139,10 +134,7 @@ class StateNotifier:
             e: The exception that was raised
         """
         cb_name = getattr(callback, "__name__", repr(callback))
-        msg = (
-            f"[StateNotifier] {event.event_type.value}: "
-            f"{cb_name} failed: {type(e).__name__}: {e!r}"
-        )
+        msg = f"[StateNotifier] {event.event_type.value}: {cb_name} failed: {type(e).__name__}: {e!r}"
         tb = traceback.format_exc()
         full_msg = f"{msg}\n{tb}"
 
@@ -156,7 +148,7 @@ class StateNotifier:
             # No logger configured, use stderr
             print(full_msg, file=sys.stderr)
 
-    def clear(self, event_type: Optional[EventType] = None) -> None:
+    def clear(self, event_type: EventType | None = None) -> None:
         """Clear subscribers (primarily for testing).
 
         Args:

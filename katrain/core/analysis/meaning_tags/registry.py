@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meaning Tags Registry.
 
 This module defines the static registry of all meaning tags:

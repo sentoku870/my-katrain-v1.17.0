@@ -14,7 +14,7 @@ import json
 import os
 import re
 import shutil
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from katrain.common.platform import get_platform
 from katrain.core.constants import DATA_FOLDER
@@ -42,7 +42,7 @@ MIGRATED_DEFAULT_MODE: str = "standard"
 # =============================================================================
 
 # Cache for packaged config.json
-_PACKAGED_DEFAULTS: Optional[dict[str, Any]] = None
+_PACKAGED_DEFAULTS: dict[str, Any] | None = None
 
 
 def _get_packaged_defaults() -> dict[str, Any]:
@@ -54,7 +54,7 @@ def _get_packaged_defaults() -> dict[str, Any]:
     global _PACKAGED_DEFAULTS
     if _PACKAGED_DEFAULTS is None:
         package_config = find_package_resource("katrain/config.json")
-        with open(package_config, "r", encoding="utf-8") as f:
+        with open(package_config, encoding="utf-8") as f:
             _PACKAGED_DEFAULTS = json.load(f)
     return _PACKAGED_DEFAULTS
 
@@ -137,10 +137,7 @@ def _has_custom_engine_settings(user_engine: dict[str, Any]) -> bool:
     # config is different from package default
     user_config_path = user_engine.get("config", "")
     packaged_config = packaged.get("config", "")
-    if user_config_path and user_config_path != packaged_config:
-        return True
-
-    return False
+    return bool(user_config_path and user_config_path != packaged_config)
 
 
 def should_show_auto_tab_first(auto_setup: dict[str, Any]) -> bool:
@@ -161,10 +158,7 @@ def should_show_auto_tab_first(auto_setup: dict[str, Any]) -> bool:
     Returns:
         True if Auto Setup tab should be shown first.
     """
-    return (
-        auto_setup.get("mode") == "auto"
-        and auto_setup.get("first_run_completed", False) is False
-    )
+    return auto_setup.get("mode") == "auto" and auto_setup.get("first_run_completed", False) is False
 
 
 # =============================================================================
@@ -320,7 +314,7 @@ def _is_likely_opencl_binary(path: str) -> bool:
 
 def resolve_auto_engine_settings(
     base_engine: dict[str, Any],
-) -> tuple[dict[str, Any] | None, "TestAnalysisResult | None"]:
+) -> tuple[dict[str, Any] | None, TestAnalysisResult | None]:
     """Build engine settings for auto mode.
 
     Note:
@@ -360,7 +354,7 @@ def resolve_auto_engine_settings(
 # =============================================================================
 
 
-def prepare_reset_to_auto() -> Dict[str, Dict[str, Any]]:
+def prepare_reset_to_auto() -> dict[str, dict[str, Any]]:
     """Prepare config changes for reset to auto mode.
 
     Returns:

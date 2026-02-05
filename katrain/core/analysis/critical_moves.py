@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Critical 3 Focused Review Mode.
 
 This module provides functionality to select the top 3 most critical mistakes
@@ -267,10 +266,7 @@ def _log_complexity_filter_stats(stats: ComplexityFilterStats) -> None:
     INFO: when discounted_count > 0
     DEBUG: when no discounts applied
     """
-    if stats.max_stdev_seen is not None:
-        stdev_str = f"{stats.max_stdev_seen:.1f}"
-    else:
-        stdev_str = "n/a"
+    stdev_str = f"{stats.max_stdev_seen:.1f}" if stats.max_stdev_seen is not None else "n/a"
 
     if stats.discounted_count > 0:
         _log.info(
@@ -426,10 +422,10 @@ def select_critical_moves(
         list[CriticalMove] - Up to max_moves items, sorted by critical_score descending
     """
     from katrain.core.analysis import (
-        snapshot_from_game,
         classify_game_phase,
         get_canonical_loss_from_move,
         pick_important_moves,
+        snapshot_from_game,
     )
     from katrain.core.analysis.meaning_tags import MeaningTagId, get_tag_label
 
@@ -478,18 +474,15 @@ def select_critical_moves(
 
             # Phase 83: Get stdev with caching
             if move.move_number not in stdev_cache:
-                stdev_cache[move.move_number] = _get_score_stdev_for_move(
-                    node_map, move.move_number
-                )
+                stdev_cache[move.move_number] = _get_score_stdev_for_move(node_map, move.move_number)
             score_stdev = stdev_cache[move.move_number]
             complexity_discount = _compute_complexity_discount(score_stdev)
 
             if complexity_discount < 1.0:
                 discounted_move_numbers.add(move.move_number)
 
-            if score_stdev is not None:
-                if max_stdev_seen is None or score_stdev > max_stdev_seen:
-                    max_stdev_seen = score_stdev
+            if score_stdev is not None and (max_stdev_seen is None or score_stdev > max_stdev_seen):
+                max_stdev_seen = score_stdev
 
             scores[move.move_number] = _compute_critical_score(
                 importance,
@@ -524,11 +517,7 @@ def select_critical_moves(
             delta_winrate=best.delta_winrate or 0.0,
             meaning_tag_id=best_tag_id,
             meaning_tag_label=tag_label,
-            position_difficulty=(
-                best.position_difficulty.value
-                if best.position_difficulty is not None
-                else "unknown"
-            ),
+            position_difficulty=(best.position_difficulty.value if best.position_difficulty is not None else "unknown"),
             reason_tags=tuple(best.reason_tags) if best.reason_tags else (),
             score_stdev=best_stdev,
             game_phase=classify_game_phase(best.move_number, board_size),

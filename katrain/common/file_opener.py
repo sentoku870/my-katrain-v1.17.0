@@ -6,12 +6,13 @@ Note: Contains Windows-specific code paths (os.startfile). On Linux CI,
 mypy cannot resolve Windows API calls, but these are guarded by platform
 checks and only execute on Windows.
 """
+
 # mypy: ignore-errors
-from dataclasses import dataclass
-from pathlib import Path
 import logging
 import os
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 
 from katrain.common.platform import get_platform
 

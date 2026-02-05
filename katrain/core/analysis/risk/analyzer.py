@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Risk Context Analyzer.
 
 This module provides risk analysis logic for evaluating whether a player's
@@ -16,7 +15,8 @@ Part of Phase 61: Risk Context Core.
 """
 
 import math
-from typing import Any, Iterator, Literal
+from collections.abc import Iterator
+from typing import Any, Literal
 
 from katrain.core.analysis.logic import iter_main_branch_nodes
 
@@ -28,7 +28,6 @@ from .models import (
     RiskContext,
     RiskJudgmentType,
 )
-
 
 # Type alias for GameNode (to avoid importing from katrain.core.game_node)
 GameNode = Any
@@ -227,17 +226,11 @@ def determine_judgment(
         - Otherwise → CLOSE
     """
     # WINNING requires both conditions
-    if (
-        winrate_player >= config.winning_winrate_threshold
-        and score_lead_player >= config.winning_score_threshold
-    ):
+    if winrate_player >= config.winning_winrate_threshold and score_lead_player >= config.winning_score_threshold:
         return RiskJudgmentType.WINNING
 
     # LOSING requires both conditions
-    if (
-        winrate_player <= config.losing_winrate_threshold
-        and score_lead_player <= config.losing_score_threshold
-    ):
+    if winrate_player <= config.losing_winrate_threshold and score_lead_player <= config.losing_score_threshold:
         return RiskJudgmentType.LOSING
 
     # Otherwise CLOSE
@@ -427,9 +420,7 @@ def analyze_risk(
             any_stdev_used = True
         else:
             # Fallback: volatility from score_history
-            values = _get_volatility_window_values(
-                score_history, current_index, config.volatility_window
-            )
+            values = _get_volatility_window_values(score_history, current_index, config.volatility_window)
             volatility = _compute_volatility(values)
             behavior = determine_behavior_from_volatility(volatility, config)
             has_stdev = False

@@ -17,7 +17,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Iterator, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.smart_kifu.models import (
     CONFIDENCE_HIGH_MIN_ANALYZED_RATIO,
@@ -130,7 +131,7 @@ def compute_game_id(sgf_content: str) -> str:
 # =============================================================================
 
 
-def iter_main_branch_nodes(root: "GameNode" |  "SGFNode") -> Iterator["GameNode" |  "SGFNode"]:
+def iter_main_branch_nodes(root: GameNode | SGFNode) -> Iterator[GameNode | SGFNode]:
     """メインラインのノードを走査（root自体は含めない）。
 
     Args:
@@ -144,13 +145,13 @@ def iter_main_branch_nodes(root: "GameNode" |  "SGFNode") -> Iterator["GameNode"
         - pass ノードも含める
         - 分岐は無視（children[0] のみ）
     """
-    node: "GameNode" |  "SGFNode" = root
+    node: GameNode | SGFNode = root
     while node.children:
         node = node.children[0]
         yield node
 
 
-def compute_analyzed_ratio_from_game(game: "Game") -> float | None:
+def compute_analyzed_ratio_from_game(game: Game) -> float | None:
     """Gameオブジェクトからanalyzed_ratioを計算。
 
     Args:
@@ -173,7 +174,7 @@ def compute_analyzed_ratio_from_game(game: "Game") -> float | None:
     return analyzed / len(nodes)
 
 
-def has_analysis_data(node: "GameNode") -> bool:
+def has_analysis_data(node: GameNode) -> bool:
     """ノードに解析データが存在するかチェック（軽量）。
 
     KTプロパティ（analysis_from_sgf）の存在と非空をチェック。
@@ -288,17 +289,11 @@ def compute_confidence(samples: int, analyzed_ratio: float | None) -> Confidence
         return Confidence.LOW
 
     # High: samples >= 30 かつ analyzed_ratio >= 0.7
-    if (
-        samples >= CONFIDENCE_HIGH_MIN_SAMPLES
-        and analyzed_ratio >= CONFIDENCE_HIGH_MIN_ANALYZED_RATIO
-    ):
+    if samples >= CONFIDENCE_HIGH_MIN_SAMPLES and analyzed_ratio >= CONFIDENCE_HIGH_MIN_ANALYZED_RATIO:
         return Confidence.HIGH
 
     # Medium: samples >= 10 かつ analyzed_ratio >= 0.4
-    if (
-        samples >= CONFIDENCE_MEDIUM_MIN_SAMPLES
-        and analyzed_ratio >= CONFIDENCE_MEDIUM_MIN_ANALYZED_RATIO
-    ):
+    if samples >= CONFIDENCE_MEDIUM_MIN_SAMPLES and analyzed_ratio >= CONFIDENCE_MEDIUM_MIN_ANALYZED_RATIO:
         return Confidence.MEDIUM
 
     return Confidence.LOW
@@ -384,9 +379,7 @@ def map_viewer_level_to_preset(level: int) -> ViewerPreset:
 # =============================================================================
 
 
-def suggest_handicap_adjustment(
-    winrate: float, current_handicap: int
-) -> tuple[int, str]:
+def suggest_handicap_adjustment(winrate: float, current_handicap: int) -> tuple[int, str]:
     """勝率に基づいて置石調整を提案。
 
     Args:

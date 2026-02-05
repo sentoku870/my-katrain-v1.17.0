@@ -20,7 +20,6 @@ from katrain.core.batch.helpers import truncate_game_name
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
-    MoveEval,
     PositionDifficulty,
     SummaryStats,
     get_canonical_loss_from_move,
@@ -28,10 +27,7 @@ from katrain.core.eval_metrics import (
 from katrain.core.game_node import Move
 
 
-def build_summary_report(
-    game_data_list: list["GameSummaryData"],
-    focus_player: Optional[str] = None
-) -> str:
+def build_summary_report(game_data_list: list["GameSummaryData"], focus_player: str | None = None) -> str:
     """
     複数局から統計まとめを生成（Phase 6）
 
@@ -78,18 +74,14 @@ def build_summary_report(
 
 
 def _aggregate_player_stats(
-    game_data_list: list["GameSummaryData"],
-    focus_player: Optional[str] = None
+    game_data_list: list["GameSummaryData"], focus_player: str | None = None
 ) -> dict[str, "SummaryStats"]:
     """プレイヤー別に統計を集計"""
-    player_stats: dict[str, "SummaryStats"] = {}
+    player_stats: dict[str, SummaryStats] = {}
 
     for game_data in game_data_list:
         for player_color in ["B", "W"]:
-            player_name = (
-                game_data.player_black if player_color == "B"
-                else game_data.player_white
-            )
+            player_name = game_data.player_black if player_color == "B" else game_data.player_white
 
             # focus_player指定がある場合、それ以外はスキップ
             if focus_player and player_name != focus_player:
@@ -160,7 +152,7 @@ def _aggregate_player_stats(
     return player_stats
 
 
-def _format_meta_section(game_data_list: list["GameSummaryData"], focus_player: Optional[str]) -> str:
+def _format_meta_section(game_data_list: list["GameSummaryData"], focus_player: str | None) -> str:
     """メタ情報セクションを生成"""
     lines = ["## Meta"]
     lines.append(f"- Games analyzed: {len(game_data_list)}")
@@ -212,8 +204,7 @@ def _format_overall_stats(
         worst_game, worst_move = stats.worst_moves[0]
         loss = worst_move.points_lost if worst_move.points_lost else worst_move.score_loss
         lines.append(
-            f"- Worst single move: {worst_game} #{worst_move.move_number} "
-            f"{worst_move.gtp or '-'} ({loss:.1f} points)"
+            f"- Worst single move: {worst_game} #{worst_move.move_number} {worst_move.gtp or '-'} ({loss:.1f} points)"
         )
 
     # PR#1: Add LOW confidence warning
@@ -237,14 +228,11 @@ def _format_mistake_distribution(player_name: str, stats: SummaryStats) -> str:
         MistakeCategory.BLUNDER: "Blunder",
     }
 
-    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
-                MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
         count = stats.mistake_counts.get(cat, 0)
         pct = stats.get_mistake_percentage(cat)
         avg_loss = stats.get_mistake_avg_loss(cat)
-        lines.append(
-            f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |"
-        )
+        lines.append(f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |")
 
     return "\n".join(lines)
 
@@ -262,13 +250,15 @@ def _format_freedom_distribution(player_name: str, stats: SummaryStats) -> str:
         PositionDifficulty.ONLY_MOVE: "Only move",
     }
 
-    for diff in [PositionDifficulty.EASY, PositionDifficulty.NORMAL,
-                 PositionDifficulty.HARD, PositionDifficulty.ONLY_MOVE]:
+    for diff in [
+        PositionDifficulty.EASY,
+        PositionDifficulty.NORMAL,
+        PositionDifficulty.HARD,
+        PositionDifficulty.ONLY_MOVE,
+    ]:
         count = stats.freedom_counts.get(diff, 0)
         pct = stats.get_freedom_percentage(diff)
-        lines.append(
-            f"| {difficulty_labels[diff]} | {count} | {pct:.1f}% |"
-        )
+        lines.append(f"| {difficulty_labels[diff]} | {count} | {pct:.1f}% |")
 
     return "\n".join(lines)
 
@@ -290,9 +280,7 @@ def _format_phase_breakdown(player_name: str, stats: SummaryStats) -> str:
         count = stats.phase_moves.get(phase, 0)
         loss = stats.phase_loss.get(phase, 0.0)
         avg_loss = stats.get_phase_avg_loss(phase)
-        lines.append(
-            f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |"
-        )
+        lines.append(f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |")
 
     return "\n".join(lines)
 
@@ -313,8 +301,7 @@ def _format_phase_mistake_breakdown(player_name: str, stats: SummaryStats) -> st
     for phase in ["opening", "middle", "yose"]:
         cells = [phase_labels.get(phase, phase)]
 
-        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
-                    MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
             count = stats.phase_mistake_counts.get((phase, cat), 0)
             loss = stats.phase_mistake_loss.get((phase, cat), 0.0)
 
@@ -356,9 +343,7 @@ def _convert_sgf_to_gtp_coord(sgf_coord: str, board_size: int = 19) -> str:
 
 
 def _detect_urgent_miss_sequences(
-    worst_moves: list[tuple[str, Any]],
-    threshold_loss: float = 20.0,
-    min_consecutive: int = 3
+    worst_moves: list[tuple[str, Any]], threshold_loss: float = 20.0, min_consecutive: int = 3
 ) -> tuple[list[Any], list[tuple[str, Any]]]:
     """
     連続する大損失手を「急場見逃しパターン」として検出
@@ -379,51 +364,51 @@ def _detect_urgent_miss_sequences(
     # worst_movesを手数でソート（同じゲーム内で連続しているかチェックするため）
     sorted_moves = sorted(worst_moves, key=lambda x: (x[0], x[1].move_number))
 
-    for i, (game_name, move) in enumerate(sorted_moves):
+    for _i, (game_name, move) in enumerate(sorted_moves):
         loss = move.points_lost if move.points_lost else move.score_loss or 0
 
         if loss >= threshold_loss:
             if current_seq is None:
                 # 新しいシーケンス開始
                 current_seq = {
-                    'game': game_name,
-                    'start': move.move_number,
-                    'end': move.move_number,
-                    'moves': [(game_name, move)],
-                    'total_loss': loss,
-                    'count': 1
+                    "game": game_name,
+                    "start": move.move_number,
+                    "end": move.move_number,
+                    "moves": [(game_name, move)],
+                    "total_loss": loss,
+                    "count": 1,
                 }
-            elif current_seq['game'] == game_name and move.move_number <= current_seq['end'] + 2:
+            elif current_seq["game"] == game_name and move.move_number <= current_seq["end"] + 2:
                 # 連続している（1手スキップまで許容）
-                current_seq['end'] = move.move_number
-                current_seq['moves'].append((game_name, move))
-                current_seq['total_loss'] += loss
-                current_seq['count'] += 1
+                current_seq["end"] = move.move_number
+                current_seq["moves"].append((game_name, move))
+                current_seq["total_loss"] += loss
+                current_seq["count"] += 1
             else:
                 # 連続が途切れた
-                if current_seq['count'] >= min_consecutive:
+                if current_seq["count"] >= min_consecutive:
                     sequences.append(current_seq)
                 else:
                     # 閾値を超えているが連続していない → 通常のワースト手に追加
-                    filtered_moves.extend(current_seq['moves'])
+                    filtered_moves.extend(current_seq["moves"])
 
                 # 新しいシーケンス開始
                 current_seq = {
-                    'game': game_name,
-                    'start': move.move_number,
-                    'end': move.move_number,
-                    'moves': [(game_name, move)],
-                    'total_loss': loss,
-                    'count': 1
+                    "game": game_name,
+                    "start": move.move_number,
+                    "end": move.move_number,
+                    "moves": [(game_name, move)],
+                    "total_loss": loss,
+                    "count": 1,
                 }
         else:
             # 閾値未満
             if current_seq:
-                if current_seq['count'] >= min_consecutive:
+                if current_seq["count"] >= min_consecutive:
                     sequences.append(current_seq)
                 else:
                     # 閾値を超えているが連続していない → 通常のワースト手に追加
-                    filtered_moves.extend(current_seq['moves'])
+                    filtered_moves.extend(current_seq["moves"])
                 current_seq = None
 
             # 通常のワースト手に追加
@@ -431,10 +416,10 @@ def _detect_urgent_miss_sequences(
 
     # 最後のシーケンス処理
     if current_seq:
-        if current_seq['count'] >= min_consecutive:
+        if current_seq["count"] >= min_consecutive:
             sequences.append(current_seq)
         else:
-            filtered_moves.extend(current_seq['moves'])
+            filtered_moves.extend(current_seq["moves"])
 
     return sequences, filtered_moves
 
@@ -459,11 +444,7 @@ def _format_top_worst_moves(
         return "\n".join(lines)
 
     # 急場見逃しパターンを検出
-    sequences, filtered_moves = _detect_urgent_miss_sequences(
-        stats.worst_moves,
-        threshold_loss=20.0,
-        min_consecutive=3
-    )
+    sequences, filtered_moves = _detect_urgent_miss_sequences(stats.worst_moves, threshold_loss=20.0, min_consecutive=3)
 
     # 急場見逃しパターンがあれば表示
     if sequences:
@@ -473,8 +454,8 @@ def _format_top_worst_moves(
         lines.append("|------|---------|------|--------|------------|")
 
         for seq in sequences:
-            short_game = truncate_game_name(seq['game'])
-            avg_loss = seq['total_loss'] / seq['count']
+            short_game = truncate_game_name(seq["game"])
+            avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
                 f"| {short_game} | #{seq['start']}-{seq['end']} | "
                 f"{seq['count']}手 | {seq['total_loss']:.1f}目 | {avg_loss:.1f}目 |"
@@ -503,11 +484,11 @@ def _format_top_worst_moves(
 
         for game_name, move in display_moves:
             loss = move.points_lost if move.points_lost else move.score_loss
-            importance = move.importance if hasattr(move, 'importance') and move.importance else loss
+            importance = move.importance if hasattr(move, "importance") and move.importance else loss
             mistake = mistake_labels.get(move.mistake_category, "UNKNOWN")
 
             # 座標変換（SGF座標→GTP座標）
-            coord = move.gtp or '-'
+            coord = move.gtp or "-"
             # move.gtp が2文字の小文字アルファベット（SGF座標）の場合、変換
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
@@ -549,9 +530,7 @@ def _format_weakness_hypothesis(
     urgent_config = eval_metrics.get_urgent_miss_config("standard")
 
     sequences, _ = _detect_urgent_miss_sequences(
-        stats.worst_moves,
-        threshold_loss=urgent_config.threshold_loss,
-        min_consecutive=urgent_config.min_consecutive
+        stats.worst_moves, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive
     )
 
     # クロス集計から弱点を抽出
@@ -576,8 +555,8 @@ def _format_weakness_hypothesis(
         lines.append("")
         lines.append("**急場見逃しパターン**:")
         for seq in sequences:
-            short_game = truncate_game_name(seq['game'])
-            avg_loss = seq['total_loss'] / seq['count']
+            short_game = truncate_game_name(seq["game"])
+            avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
                 f"- {short_game} #{seq['start']}-{seq['end']}: "
                 f"{seq['count']}手連続、総損失{seq['total_loss']:.1f}目（平均{avg_loss:.1f}目/手）"
@@ -609,11 +588,13 @@ def _format_practice_priorities(
 
     # PR#1: LOW confidence → placeholder only
     if confidence_level == eval_metrics.ConfidenceLevel.LOW:
-        return "\n".join([
-            f"## 練習の優先順位 ({player_name})",
-            "",
-            "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
-        ])
+        return "\n".join(
+            [
+                f"## 練習の優先順位 ({player_name})",
+                "",
+                "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
+            ]
+        )
 
     lines = [f"## 練習の優先順位 ({player_name})"]
     lines.append("")

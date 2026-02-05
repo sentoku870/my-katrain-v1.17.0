@@ -13,8 +13,8 @@ board_analysis.py - 盤面戦術分析モジュール (Phase 5)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Set
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -22,45 +22,45 @@ if TYPE_CHECKING:
 
 # ==================== 危険度スコア計算パラメータ ====================
 # 呼吸点による基本危険度 (0-100スケール)
-DANGER_ATARI = 60           # 1呼吸点（アタリ）
-DANGER_LOW_LIBERTY = 35     # 2呼吸点
+DANGER_ATARI = 60  # 1呼吸点（アタリ）
+DANGER_LOW_LIBERTY = 35  # 2呼吸点
 DANGER_MEDIUM_LIBERTY = 15  # 3呼吸点
 
 # 切断リスクボーナス
-DANGER_CUT_BONUS_PER_POINT = 5   # 切断点1つあたりの危険度増加
-DANGER_CUT_BONUS_CAP = 20        # 切断ボーナスの上限
+DANGER_CUT_BONUS_PER_POINT = 5  # 切断点1つあたりの危険度増加
+DANGER_CUT_BONUS_CAP = 20  # 切断ボーナスの上限
 
 # グループサイズボーナス
-LARGE_GROUP_THRESHOLD = 10       # 大石と判定する石数
-LARGE_GROUP_BONUS = 10           # 大石の危険度ボーナス
-MEDIUM_GROUP_THRESHOLD = 6       # 中石と判定する石数
-MEDIUM_GROUP_BONUS = 5           # 中石の危険度ボーナス
+LARGE_GROUP_THRESHOLD = 10  # 大石と判定する石数
+LARGE_GROUP_BONUS = 10  # 大石の危険度ボーナス
+MEDIUM_GROUP_THRESHOLD = 6  # 中石と判定する石数
+MEDIUM_GROUP_BONUS = 5  # 中石の危険度ボーナス
 
 # ==================== 切断点検出パラメータ ====================
 # 危険度係数（切断の影響度計算用）
-CUT_COEFFICIENT_HIGH = 0.8       # 高危険度（60以上）のグループ
-CUT_COEFFICIENT_MEDIUM = 0.5     # 中危険度（35以上）のグループ
-CUT_COEFFICIENT_LOW = 0.3        # 低危険度のグループ
-CUT_DANGER_THRESHOLD_HIGH = 60   # 高危険度判定閾値
-CUT_DANGER_THRESHOLD_MEDIUM = 35 # 中危険度判定閾値
-CUT_MINIMUM_DANGER_INCREASE = 10 # 切断点として認識する最低危険度増加
+CUT_COEFFICIENT_HIGH = 0.8  # 高危険度（60以上）のグループ
+CUT_COEFFICIENT_MEDIUM = 0.5  # 中危険度（35以上）のグループ
+CUT_COEFFICIENT_LOW = 0.3  # 低危険度のグループ
+CUT_DANGER_THRESHOLD_HIGH = 60  # 高危険度判定閾値
+CUT_DANGER_THRESHOLD_MEDIUM = 35  # 中危険度判定閾値
+CUT_MINIMUM_DANGER_INCREASE = 10  # 切断点として認識する最低危険度増加
 
 # ==================== 連絡点検出パラメータ ====================
 CONNECT_IMPROVEMENT_RATIO = 0.3  # 連絡による危険度改善率
 
 # ==================== 理由タグ判定パラメータ ====================
-TAG_CUT_RISK_DANGER_THRESHOLD = 40       # cut_risk タグの危険度閾値
-TAG_NEED_CONNECT_IMPROVEMENT = 20        # need_connect タグの改善値閾値
-TAG_THIN_MIN_LIBERTIES = 3               # thin タグの最低呼吸点数
-TAG_THIN_MIN_CUT_POINTS = 3              # thin タグの最低切断点数
-TAG_CHASE_MODE_ENEMY_DANGER = 60         # chase_mode の敵危険度閾値
-TAG_CHASE_MODE_MY_DANGER_MAX = 35        # chase_mode の自分危険度上限
-TAG_READING_FAILURE_DANGER = 40          # reading_failure の危険度閾値
-ENDGAME_MOVE_THRESHOLD = 150             # この手数以降をヨセと判定
+TAG_CUT_RISK_DANGER_THRESHOLD = 40  # cut_risk タグの危険度閾値
+TAG_NEED_CONNECT_IMPROVEMENT = 20  # need_connect タグの改善値閾値
+TAG_THIN_MIN_LIBERTIES = 3  # thin タグの最低呼吸点数
+TAG_THIN_MIN_CUT_POINTS = 3  # thin タグの最低切断点数
+TAG_CHASE_MODE_ENEMY_DANGER = 60  # chase_mode の敵危険度閾値
+TAG_CHASE_MODE_MY_DANGER_MAX = 35  # chase_mode の自分危険度上限
+TAG_READING_FAILURE_DANGER = 40  # reading_failure の危険度閾値
+ENDGAME_MOVE_THRESHOLD = 150  # この手数以降をヨセと判定
 
 # ==================== 結果件数パラメータ ====================
 MAX_CONNECT_POINTS = 10  # 返す連絡点の最大数
-MAX_CUT_POINTS = 10      # 返す切断点の最大数
+MAX_CUT_POINTS = 10  # 返す切断点の最大数
 
 
 @dataclass
@@ -77,11 +77,12 @@ class Group:
         is_low_liberty: 呼吸点が少ないか (liberties_count <= 2)
         adjacent_enemy_groups: 隣接する敵グループのIDリスト
     """
+
     group_id: int
     color: str  # 'B' or 'W'
     stones: list[tuple[int, int]]  # [(x, y), ...]
     liberties_count: int
-    liberties: Set[tuple[int, int]]
+    liberties: set[tuple[int, int]]
     is_in_atari: bool  # liberties == 1
     is_low_liberty: bool  # liberties <= 2
     adjacent_enemy_groups: list[int]
@@ -98,6 +99,7 @@ class BoardState:
         danger_scores: グループごとの危険度スコア {group_id: danger_score}
                       スコアは 0-100 の範囲 (高いほど危険)
     """
+
     groups: list[Group]
     connect_points: list[tuple[tuple[int, int], list[int], float]]
     # [(座標, [連絡するgroup_ids], 危険度改善値), ...]
@@ -107,6 +109,7 @@ class BoardState:
 
 
 # ==================== Checkpoint 2: グループ抽出 ====================
+
 
 def extract_groups_from_game(game: Game) -> list[Group]:
     """game.chainsから戦術的グループデータを抽出
@@ -135,13 +138,12 @@ def extract_groups_from_game(game: Game) -> list[Group]:
             x, y = stone
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
-                    if board[ny][nx] == -1:  # 空点
-                        liberties.add((nx, ny))
+                if 0 <= nx < board_size_x and 0 <= ny < board_size_y and board[ny][nx] == -1:  # 空点
+                    liberties.add((nx, ny))
 
         liberties_count = len(liberties)
-        is_in_atari = (liberties_count == 1)
-        is_low_liberty = (liberties_count <= 2)
+        is_in_atari = liberties_count == 1
+        is_low_liberty = liberties_count <= 2
 
         # 隣接する敵グループを検出
         adjacent_enemy_groups = set()
@@ -155,23 +157,28 @@ def extract_groups_from_game(game: Game) -> list[Group]:
                         if chains[neighbor_id][0].player != color:
                             adjacent_enemy_groups.add(neighbor_id)
 
-        groups.append(Group(
-            group_id=group_id,
-            color=color,
-            stones=stones,
-            liberties_count=liberties_count,
-            liberties=liberties,
-            is_in_atari=is_in_atari,
-            is_low_liberty=is_low_liberty,
-            adjacent_enemy_groups=list(adjacent_enemy_groups)
-        ))
+        groups.append(
+            Group(
+                group_id=group_id,
+                color=color,
+                stones=stones,
+                liberties_count=liberties_count,
+                liberties=liberties,
+                is_in_atari=is_in_atari,
+                is_low_liberty=is_low_liberty,
+                adjacent_enemy_groups=list(adjacent_enemy_groups),
+            )
+        )
 
     return groups
 
 
 # ==================== Checkpoint 3: 危険度スコア計算 ====================
 
-def compute_danger_scores(groups: list[Group], cut_points: list[tuple[tuple[int, int], list[int], float]]) -> dict[int, float]:
+
+def compute_danger_scores(
+    groups: list[Group], cut_points: list[tuple[tuple[int, int], list[int], float]]
+) -> dict[int, float]:
     """各グループの危険度スコアを計算
 
     Args:
@@ -195,10 +202,7 @@ def compute_danger_scores(groups: list[Group], cut_points: list[tuple[tuple[int,
             danger += DANGER_MEDIUM_LIBERTY
 
         # 切断リスクボーナス（近くの切断点をカウント）
-        nearby_cuts = sum(
-            1 for coords, group_ids, _ in cut_points
-            if group.group_id in group_ids
-        )
+        nearby_cuts = sum(1 for coords, group_ids, _ in cut_points if group.group_id in group_ids)
         danger += min(DANGER_CUT_BONUS_CAP, nearby_cuts * DANGER_CUT_BONUS_PER_POINT)
 
         # サイズボーナス
@@ -214,10 +218,9 @@ def compute_danger_scores(groups: list[Group], cut_points: list[tuple[tuple[int,
 
 # ==================== Checkpoint 4: 連絡点/切断点検出 ====================
 
+
 def find_connect_points(
-    game: Game,
-    groups: list[Group],
-    danger_scores: dict[int, float]
+    game: Game, groups: list[Group], danger_scores: dict[int, float]
 ) -> list[tuple[tuple[int, int], list[int], float]]:
     """2つ以上の味方グループを連絡する点を検出
 
@@ -254,7 +257,7 @@ def find_connect_points(
                             adjacent_groups.setdefault(group.color, []).append(neighbor_id)
 
             # この点が同色の2つ以上のグループを連絡するか
-            for color, group_ids in adjacent_groups.items():
+            for _color, group_ids in adjacent_groups.items():
                 unique_groups = list(set(group_ids))
                 if len(unique_groups) >= 2:
                     # 危険度改善を計算
@@ -268,9 +271,7 @@ def find_connect_points(
 
 
 def find_cut_points(
-    game: Game,
-    groups: list[Group],
-    danger_scores: dict[int, float]
+    game: Game, groups: list[Group], danger_scores: dict[int, float]
 ) -> list[tuple[tuple[int, int], list[int], float]]:
     """切断点を検出（v0簡易版: ヒューリスティック）
 
@@ -307,7 +308,7 @@ def find_cut_points(
                             adjacent_groups.setdefault(group.color, []).append(neighbor_id)
 
             # 各色について、2つ以上のグループが隣接していれば切断候補
-            for color, group_ids in adjacent_groups.items():
+            for _color, group_ids in adjacent_groups.items():
                 unique_groups = list(set(group_ids))
                 if len(unique_groups) >= 2:
                     # 危険度増加を計算
@@ -334,6 +335,7 @@ def find_cut_points(
 
 
 # ==================== Checkpoint 5: メインエントリポイント ====================
+
 
 def analyze_board_at_node(game: Game, node: Any) -> BoardState:
     """特定ノードでの盤面戦術状態を分析
@@ -362,22 +364,18 @@ def analyze_board_at_node(game: Game, node: Any) -> BoardState:
     # 適切な危険度スコアで連絡点を再計算
     connect_points = find_connect_points(game, groups, danger_scores)
 
-    return BoardState(
-        groups=groups,
-        connect_points=connect_points,
-        cut_points=cut_points,
-        danger_scores=danger_scores
-    )
+    return BoardState(groups=groups, connect_points=connect_points, cut_points=cut_points, danger_scores=danger_scores)
 
 
 # ==================== Checkpoint 6: 理由タグ判定関数 ====================
+
 
 def get_reason_tags_for_move(
     board_state: BoardState,
     move_eval: Any,  # MoveEval インスタンス
     node: Any,  # GameNode
     candidates: list[dict[str, Any]],
-    skill_preset: str = "standard"  # Phase 17: プリセット別閾値
+    skill_preset: str = "standard",  # Phase 17: プリセット別閾値
 ) -> list[str]:
     """盤面状態に基づいて理由タグを計算
 
@@ -404,25 +402,18 @@ def get_reason_tags_for_move(
         return tags
 
     # 最大危険度
-    max_my_danger = max(
-        (board_state.danger_scores.get(g.group_id, 0) for g in my_groups),
-        default=0
-    )
-    max_enemy_danger = max(
-        (board_state.danger_scores.get(g.group_id, 0) for g in enemy_groups),
-        default=0
-    )
+    max_my_danger = max((board_state.danger_scores.get(g.group_id, 0) for g in my_groups), default=0)
+    max_enemy_danger = max((board_state.danger_scores.get(g.group_id, 0) for g in enemy_groups), default=0)
 
     # タグ 1: atari（打った手の周辺3マス以内のアタリのみ検出）
     move_coord = node.move.coords if node.move else None
     has_atari = False
     if move_coord:
         nearby_atari_groups = [
-            g for g in my_groups
-            if g.is_in_atari and any(
-                abs(stone[0] - move_coord[0]) <= 3 and abs(stone[1] - move_coord[1]) <= 3
-                for stone in g.stones
-            )
+            g
+            for g in my_groups
+            if g.is_in_atari
+            and any(abs(stone[0] - move_coord[0]) <= 3 and abs(stone[1] - move_coord[1]) <= 3 for stone in g.stones)
         ]
         if nearby_atari_groups:
             tags.append("atari")
@@ -459,19 +450,22 @@ def get_reason_tags_for_move(
 
     # タグ 8: endgame_hint（条件緩和: yoseタグまたは後半70%以降）
     is_endgame = False
-    if hasattr(move_eval, 'tag') and move_eval.tag == "yose":
+    if (
+        hasattr(move_eval, "tag")
+        and move_eval.tag == "yose"
+        or hasattr(move_eval, "move_number")
+        and move_eval.move_number > ENDGAME_MOVE_THRESHOLD
+    ):
         is_endgame = True
-    elif hasattr(move_eval, 'move_number'):
-        if move_eval.move_number > ENDGAME_MOVE_THRESHOLD:
-            is_endgame = True
 
     if is_endgame:
         tags.append("endgame_hint")
 
     # タグ 9: heavy_loss（大損失: プリセット別閾値 - Phase 17, Option 0-B 一元化）
     # 閾値は eval_metrics.SKILL_PRESETS から取得
-    if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
+    if hasattr(move_eval, "points_lost") and move_eval.points_lost is not None:
         from katrain.core import eval_metrics
+
         preset = eval_metrics.get_skill_preset(skill_preset)
         if move_eval.points_lost >= preset.reason_tag_thresholds.heavy_loss:
             tags.append("heavy_loss")
@@ -480,10 +474,14 @@ def get_reason_tags_for_move(
     # 閾値は eval_metrics.SKILL_PRESETS から取得
     # 注: 急場見逃しパターン全体の検出は __main__.py で実施済み
     # ここでは簡易版として、大損失 + 危険度高い場合を検出
-    if hasattr(move_eval, 'points_lost') and move_eval.points_lost is not None:
+    if hasattr(move_eval, "points_lost") and move_eval.points_lost is not None:
         from katrain.core import eval_metrics
+
         preset = eval_metrics.get_skill_preset(skill_preset)
-        if move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure and max_my_danger >= TAG_READING_FAILURE_DANGER:
+        if (
+            move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure
+            and max_my_danger >= TAG_READING_FAILURE_DANGER
+        ):
             tags.append("reading_failure")
 
     return tags

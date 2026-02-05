@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def definitions_section(
     ctx: KarteContext,
-    auto_recommendation: "AutoRecommendation | None",
+    auto_recommendation: AutoRecommendation | None,
 ) -> list[str]:
     """Generate definitions section with thresholds from SKILL_PRESETS.
 
@@ -46,7 +46,6 @@ def definitions_section(
 
     # Get JP labels
     preset_labels = eval_metrics.SKILL_PRESET_LABELS
-    conf_labels = eval_metrics.CONFIDENCE_LABELS
 
     # Build strictness info line with JP labels
     if ctx.skill_preset == "auto" and auto_recommendation:
@@ -79,9 +78,7 @@ def definitions_section(
         else:
             hint_moves = list(ctx.snapshot.moves)
         hint_rec = eval_metrics.recommend_auto_strictness(hint_moves, game_count=1)
-        hint_preset_jp = preset_labels.get(
-            hint_rec.recommended_preset, hint_rec.recommended_preset
-        )
+        hint_preset_jp = preset_labels.get(hint_rec.recommended_preset, hint_rec.recommended_preset)
         hint_conf_label = get_auto_confidence_label(hint_rec.confidence.value)
         lines.append(f"- Auto recommended: {hint_preset_jp} ({hint_conf_label})")
 
@@ -99,7 +96,7 @@ def definitions_section(
                 f"| Mistake | 損失 {t2:.1f} - {t3:.1f}目 |",
                 f"| Blunder | 損失 ≥ {t3:.1f}目 |",
                 f"| Phase ({ctx.board_x}x{ctx.board_y}) | "
-                f"序盤: <{opening_end}手, 中盤: {opening_end}-{middle_end-1}手, "
+                f"序盤: <{opening_end}手, 中盤: {opening_end}-{middle_end - 1}手, "
                 f"終盤: ≥{middle_end}手 |",
                 "",
             ]
@@ -110,16 +107,14 @@ def definitions_section(
                 "",
                 "| Metric | Definition |",
                 "|--------|------------|",
-                "| Points Lost | Score difference between actual move and best move "
-                "(clamped to ≥0) |",
-                "| WR Gap | Winrate change (before → after move). Large point loss "
-                "may have small WR change |",
+                "| Points Lost | Score difference between actual move and best move (clamped to ≥0) |",
+                "| WR Gap | Winrate change (before → after move). Large point loss may have small WR change |",
                 f"| Good | Loss < {t1:.1f} pts |",
                 f"| Inaccuracy | Loss {t1:.1f} - {t2:.1f} pts |",
                 f"| Mistake | Loss {t2:.1f} - {t3:.1f} pts |",
                 f"| Blunder | Loss ≥ {t3:.1f} pts |",
                 f"| Phase ({ctx.board_x}x{ctx.board_y}) | "
-                f"Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, "
+                f"Opening: <{opening_end}, Middle: {opening_end}-{middle_end - 1}, "
                 f"Endgame: ≥{middle_end} |",
                 "",
             ]
@@ -137,26 +132,20 @@ def data_quality_section(ctx: KarteContext) -> list[str]:
         List of markdown lines for data quality section
     """
     # Pass target_visits for consistent reliability threshold
-    rel_stats = eval_metrics.compute_reliability_stats(
-        ctx.snapshot.moves, target_visits=ctx.target_visits
-    )
+    rel_stats = eval_metrics.compute_reliability_stats(ctx.snapshot.moves, target_visits=ctx.target_visits)
 
     # Confidence level label
-    confidence_label = eval_metrics.get_confidence_label(
-        ctx.confidence_level, lang=ctx.lang
-    )
+    confidence_label = eval_metrics.get_confidence_label(ctx.confidence_level, lang=ctx.lang)
 
     lines = [
         "## Data Quality",
         "",
         f"- **{confidence_label}**",
         f"- Moves analyzed: {rel_stats.total_moves}",
-        f"- Coverage: {rel_stats.moves_with_visits} / {rel_stats.total_moves} "
-        f"({rel_stats.coverage_pct:.1f}%)",
+        f"- Coverage: {rel_stats.moves_with_visits} / {rel_stats.total_moves} ({rel_stats.coverage_pct:.1f}%)",
         f"- Reliable (visits ≥ {rel_stats.effective_threshold}): "
         f"{rel_stats.reliable_count} ({rel_stats.reliability_pct:.1f}%)",
-        f"- Low-confidence: {rel_stats.low_confidence_count} "
-        f"({rel_stats.low_confidence_pct:.1f}%)",
+        f"- Low-confidence: {rel_stats.low_confidence_count} ({rel_stats.low_confidence_pct:.1f}%)",
     ]
 
     if rel_stats.moves_with_visits > 0:
@@ -169,9 +158,7 @@ def data_quality_section(ctx: KarteContext) -> list[str]:
     # LOW confidence warning
     if ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW:
         lines.append("")
-        lines.append(
-            "⚠️ 解析訪問数が少ないため、結果が不安定な可能性があります。再解析を推奨します。"
-        )
+        lines.append("⚠️ 解析訪問数が少ないため、結果が不安定な可能性があります。再解析を推奨します。")
     elif rel_stats.is_low_reliability:
         lines.append("")
         lines.append("⚠ Low analysis reliability (<20%). Results may be unstable.")

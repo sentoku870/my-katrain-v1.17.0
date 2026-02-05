@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 
 
 def do_export_summary(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     scan_and_show_callback: Callable[[list[str]], None],
     load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
@@ -43,15 +44,13 @@ def do_export_summary(
     # export_summary is executed from _message_loop_thread (NOT the main Kivy thread).
     # Any Kivy UI creation must happen on the main thread.
     Clock.schedule_once(
-        lambda dt: do_export_summary_ui(
-            ctx, scan_and_show_callback, load_export_settings_fn, save_export_settings_fn
-        ),
-        0
+        lambda dt: do_export_summary_ui(ctx, scan_and_show_callback, load_export_settings_fn, save_export_settings_fn),
+        0,
     )
 
 
 def do_export_summary_ui(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     scan_and_show_callback: Callable[[list[str]], None],
     load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
@@ -73,7 +72,7 @@ def do_export_summary_ui(
         # SGFファイルを取得
         sgf_files = []
         for file in os.listdir(default_input_dir):
-            if file.lower().endswith('.sgf'):
+            if file.lower().endswith(".sgf"):
                 sgf_files.append(os.path.join(default_input_dir, file))
 
         if len(sgf_files) < 2:
@@ -91,11 +90,7 @@ def do_export_summary_ui(
             return
 
         # プレイヤー名をスキャンして処理（バックグラウンド）
-        threading.Thread(
-            target=scan_and_show_callback,
-            args=(sgf_files,),
-            daemon=True
-        ).start()
+        threading.Thread(target=scan_and_show_callback, args=(sgf_files,), daemon=True).start()
         return
 
     # 入力ディレクトリ未設定の場合: ディレクトリ選択ダイアログ
@@ -116,7 +111,7 @@ def do_export_summary_ui(
         title=i18n._("Select directory containing SGF files"),
         title_font=Theme.DEFAULT_FONT,
         size_hint=(0.8, 0.8),
-        content=popup_contents
+        content=popup_contents,
     ).__self__
 
     def process_directory(*_args: Any) -> None:
@@ -127,11 +122,7 @@ def do_export_summary_ui(
             Popup(
                 title=i18n._("Error"),
                 title_font=Theme.DEFAULT_FONT,
-                content=Label(
-                    text="Please select a valid directory.",
-                    halign="center",
-                    valign="middle"
-                ),
+                content=Label(text="Please select a valid directory.", halign="center", valign="middle"),
                 size_hint=(0.5, 0.3),
             ).open()
             return
@@ -139,7 +130,7 @@ def do_export_summary_ui(
         # ディレクトリ内の全SGFファイルを取得
         sgf_files = []
         for file in os.listdir(selected_path):
-            if file.lower().endswith('.sgf'):
+            if file.lower().endswith(".sgf"):
                 sgf_files.append(os.path.join(selected_path, file))
 
         if len(sgf_files) < 2:
@@ -150,7 +141,7 @@ def do_export_summary_ui(
                 content=Label(
                     text=f"Found only {len(sgf_files)} SGF file(s).\nNeed at least 2 games for summary.",
                     halign="center",
-                    valign="middle"
+                    valign="middle",
                 ),
                 size_hint=(0.5, 0.3),
             ).open()
@@ -162,11 +153,7 @@ def do_export_summary_ui(
         save_export_settings_fn(sgf_directory=selected_path)
 
         # プレイヤー名をスキャン（バックグラウンド）
-        threading.Thread(
-            target=scan_and_show_callback,
-            args=(sgf_files,),
-            daemon=True
-        ).start()
+        threading.Thread(target=scan_and_show_callback, args=(sgf_files,), daemon=True).start()
 
     popup_contents.filesel.on_success = process_directory
     load_popup.open()
@@ -175,7 +162,7 @@ def do_export_summary_ui(
 def process_summary_with_selected_players(
     sgf_files: list[str],
     selected_players: list[str],
-    process_and_export_fn: Callable[[list[str], "Popup", list[str]], None],
+    process_and_export_fn: Callable[[list[str], Popup, list[str]], None],
 ) -> None:
     """選択されたプレイヤーでサマリー処理を開始
 
@@ -185,31 +172,25 @@ def process_summary_with_selected_players(
         process_and_export_fn: 処理・エクスポート関数
     """
     # 進行状況ポップアップ
-    progress_label = Label(
-        text=f"Processing {len(sgf_files)} games...",
-        halign="center",
-        valign="middle"
-    )
+    progress_label = Label(text=f"Processing {len(sgf_files)} games...", halign="center", valign="middle")
     progress_popup = Popup(
         title=i18n._("Generating Summary"),
         title_font=Theme.DEFAULT_FONT,
         content=progress_label,
         size_hint=(0.5, 0.3),
-        auto_dismiss=False
+        auto_dismiss=False,
     )
     progress_popup.open()
 
     # バックグラウンドで処理
     threading.Thread(
-        target=process_and_export_fn,
-        args=(sgf_files, progress_popup, selected_players),
-        daemon=True
+        target=process_and_export_fn, args=(sgf_files, progress_popup, selected_players), daemon=True
     ).start()
 
 
 def scan_and_show_player_selection(
     sgf_files: list[str],
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     scan_player_names_fn: Callable[[list[str]], dict[str, int]],
     process_summary_fn: Callable[[list[str], list[str]], None],
     show_player_selection_fn: Callable[[list[tuple[str, int]], list[str]], None],
@@ -235,14 +216,10 @@ def scan_and_show_player_selection(
             lambda dt: Popup(
                 title=i18n._("Error"),
                 title_font=Theme.DEFAULT_FONT,
-                content=Label(
-                    text="No player names found in SGF files.",
-                    halign="center",
-                    valign="middle"
-                ),
+                content=Label(text="No player names found in SGF files.", halign="center", valign="middle"),
                 size_hint=(0.5, 0.3),
             ).open(),
-            0
+            0,
         )
         return
 
@@ -251,10 +228,7 @@ def scan_and_show_player_selection(
         # デフォルトユーザーがSGF内に存在するか確認
         if default_user in player_counts:
             # プレイヤー選択をスキップ、デフォルトユーザーを自動選択
-            Clock.schedule_once(
-                lambda dt: process_summary_fn(sgf_files, [default_user]),
-                0
-            )
+            Clock.schedule_once(lambda dt: process_summary_fn(sgf_files, [default_user]), 0)
             return
         else:
             # デフォルトユーザーが見つからない場合は警告して選択ダイアログへ
@@ -270,17 +244,14 @@ def scan_and_show_player_selection(
                     ),
                     size_hint=(0.5, 0.3),
                 ).open(),
-                0
+                0,
             )
 
     # 出現回数でソート（多い順）
     sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
 
     # 選択ダイアログを表示（UIスレッドで）
-    Clock.schedule_once(
-        lambda dt: show_player_selection_fn(sorted_players, sgf_files),
-        0
-    )
+    Clock.schedule_once(lambda dt: show_player_selection_fn(sorted_players, sgf_files), 0)
 
 
 def show_player_selection_dialog(
@@ -288,7 +259,7 @@ def show_player_selection_dialog(
     sgf_files: list[str],
     load_export_settings_fn: Callable[[], dict[str, Any]],
     save_export_settings_fn: Callable[..., None],
-    process_and_export_fn: Callable[[list[str], "Popup", list[str]], None],
+    process_and_export_fn: Callable[[list[str], Popup, list[str]], None],
 ) -> None:
     """プレイヤー選択ダイアログを表示
 
@@ -300,8 +271,8 @@ def show_player_selection_dialog(
         process_and_export_fn: 処理・エクスポート関数
     """
     from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.checkbox import CheckBox
     from kivy.uix.button import Button
+    from kivy.uix.checkbox import CheckBox
     from kivy.uix.scrollview import ScrollView
 
     # 前回の選択を読み込む
@@ -322,12 +293,12 @@ def show_player_selection_dialog(
         valign="middle",
         font_name=Theme.DEFAULT_FONT,
     )
-    instruction_label.bind(size=instruction_label.setter('text_size'))
+    instruction_label.bind(size=instruction_label.setter("text_size"))
     content_layout.add_widget(instruction_label)
 
     # スクロール可能なチェックボックスリスト
     scroll_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(5))
-    scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
+    scroll_layout.bind(minimum_height=scroll_layout.setter("height"))
 
     for player_name, count in sorted_players:
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(30))
@@ -348,7 +319,7 @@ def show_player_selection_dialog(
             valign="middle",
             font_name=Theme.DEFAULT_FONT,
         )
-        label.bind(size=label.setter('text_size'))
+        label.bind(size=label.setter("text_size"))
 
         row.add_widget(checkbox)
         row.add_widget(label)
@@ -373,11 +344,7 @@ def show_player_selection_dialog(
             Popup(
                 title=i18n._("Warning"),
                 title_font=Theme.DEFAULT_FONT,
-                content=Label(
-                    text="Please select at least one player.",
-                    halign="center",
-                    valign="middle"
-                ),
+                content=Label(text="Please select at least one player.", halign="center", valign="middle"),
                 size_hint=(0.4, 0.2),
             ).open()
             return
@@ -389,25 +356,19 @@ def show_player_selection_dialog(
         save_export_settings_fn(selected_players=selected_players)
 
         # 進行状況ポップアップ
-        progress_label = Label(
-            text=f"Processing {len(sgf_files)} games...",
-            halign="center",
-            valign="middle"
-        )
+        progress_label = Label(text=f"Processing {len(sgf_files)} games...", halign="center", valign="middle")
         progress_popup = Popup(
             title=i18n._("Generating Summary"),
             title_font=Theme.DEFAULT_FONT,
             content=progress_label,
             size_hint=(0.5, 0.3),
-            auto_dismiss=False
+            auto_dismiss=False,
         )
         progress_popup.open()
 
         # バックグラウンドで処理
         threading.Thread(
-            target=process_and_export_fn,
-            args=(sgf_files, progress_popup, selected_players),
-            daemon=True
+            target=process_and_export_fn, args=(sgf_files, progress_popup, selected_players), daemon=True
         ).start()
 
     ok_button = Button(text="OK")
@@ -427,13 +388,13 @@ def show_player_selection_dialog(
 
 def process_and_export_summary(
     sgf_paths: list[str],
-    progress_popup: "Popup",
+    progress_popup: Popup,
     selected_players: list[str],
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     extract_sgf_statistics_fn: Callable[[str], dict[str, Any]],
     categorize_games_fn: Callable[[list[dict[str, Any]], str | None], dict[str, Any]],
-    save_summaries_per_player_fn: Callable[[list[dict[str, Any]], list[str], "Popup"], None],
-    save_categorized_summaries_fn: Callable[[dict[str, Any], str | None, "Popup"], None],
+    save_summaries_per_player_fn: Callable[[list[dict[str, Any]], list[str], Popup], None],
+    save_categorized_summaries_fn: Callable[[dict[str, Any], str | None, Popup], None],
 ) -> None:
     """バックグラウンドでの複数局処理（プレイヤーフィルタリング対応）
 
@@ -448,6 +409,7 @@ def process_and_export_summary(
         save_categorized_summaries_fn: 分類別サマリ保存関数
     """
     import os
+
     from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
     from katrain.core.errors import SGFError
 
@@ -458,11 +420,9 @@ def process_and_export_summary(
             # 進行状況更新（UI）
             Clock.schedule_once(
                 lambda dt, i=i, path=path: setattr(
-                    progress_popup.content,
-                    "text",
-                    f"Processing {i+1}/{len(sgf_paths)}...\n{os.path.basename(path)}"
+                    progress_popup.content, "text", f"Processing {i + 1}/{len(sgf_paths)}...\n{os.path.basename(path)}"
                 ),
-                0
+                0,
             )
 
             # SGFから統計を直接抽出
@@ -493,6 +453,7 @@ def process_and_export_summary(
         except Exception as e:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             ctx.log(f"Unexpected error processing {path}: {e}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     if not game_stats_list:
@@ -505,11 +466,11 @@ def process_and_export_summary(
                 content=Label(
                     text="No games could be processed.\nCheck that games have analysis data.",
                     halign="center",
-                    valign="middle"
+                    valign="middle",
                 ),
                 size_hint=(0.5, 0.3),
             ).open(),
-            0
+            0,
         )
         return
 
@@ -517,8 +478,7 @@ def process_and_export_summary(
     if selected_players and len(selected_players) > 1:
         # 各プレイヤーごとに処理
         Clock.schedule_once(
-            lambda dt: save_summaries_per_player_fn(game_stats_list, selected_players, progress_popup),
-            0
+            lambda dt: save_summaries_per_player_fn(game_stats_list, selected_players, progress_popup), 0
         )
     else:
         # 1プレイヤーまたは未選択の場合は従来通り
@@ -527,6 +487,5 @@ def process_and_export_summary(
 
         # 各カテゴリごとにまとめレポート生成
         Clock.schedule_once(
-            lambda dt: save_categorized_summaries_fn(categorized_games, focus_player, progress_popup),
-            0
+            lambda dt: save_categorized_summaries_fn(categorized_games, focus_player, progress_popup), 0
         )

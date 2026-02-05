@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import copy
 import math
 import time
 from typing import Any
-import copy
 
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.graphics.context_instructions import Color, PopMatrix, PushMatrix, Rotate, Translate
 from kivy.graphics.texture import Texture
-from kivy.graphics.context_instructions import Color, Rotate, Translate, PushMatrix, PopMatrix
 from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty
@@ -18,7 +18,17 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
+from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
+from katrain.core.beginner.hints import (
+    get_beginner_hint_cached,
+    is_coords_valid,
+    should_draw_board_highlight,
+)
 from katrain.core.constants import (
+    LEELA_COLOR_BEST,
+    LEELA_TOP_MOVE_LOSS,
+    LEELA_TOP_MOVE_VISITS,
+    LEELA_TOP_MOVE_WINRATE,
     MODE_PLAY,
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
@@ -30,34 +40,26 @@ from katrain.core.constants import (
     TOP_MOVE_SCORE,
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
-    LEELA_COLOR_BEST,
-    LEELA_TOP_MOVE_LOSS,
-    LEELA_TOP_MOVE_WINRATE,
-    LEELA_TOP_MOVE_VISITS,
-)
-from katrain.core.leela.presentation import (
-    loss_to_color,
-    format_winrate_pct,
-    format_visits as format_leela_visits,
-    format_loss_est,
 )
 from katrain.core.game import Move
 from katrain.core.lang import i18n
-from katrain.core.utils import evaluation_class, format_visits, var_to_grid, json_truncate_arrays
-from katrain.core.analysis import get_pv_filter_config, filter_candidates_by_pv_complexity, DEFAULT_PV_FILTER_LEVEL
-from katrain.core.beginner.hints import (
-    get_beginner_hint_cached,
-    is_coords_valid,
-    should_draw_board_highlight,
+from katrain.core.leela.presentation import (
+    format_loss_est,
+    format_winrate_pct,
+    loss_to_color,
 )
-from katrain.gui.kivyutils import draw_circle, draw_text, cached_texture
-from katrain.gui.popups import I18NPopup, ReAnalyzeGamePopup, GameReportPopup, TsumegoFramePopup
+from katrain.core.leela.presentation import (
+    format_visits as format_leela_visits,
+)
+from katrain.core.utils import evaluation_class, format_visits, json_truncate_arrays, var_to_grid
+from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
+from katrain.gui.popups import GameReportPopup, I18NPopup, ReAnalyzeGamePopup, TsumegoFramePopup
 from katrain.gui.theme import Theme
 
 
 class BadukPanWidget(Widget):
     def __init__(self, **kwargs: Any) -> None:
-        super(BadukPanWidget, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.trainer_config: dict[str, Any] = {}
         self.ghost_stone: tuple[int, int] | None = None
         self.gridpos: Any = None
@@ -258,14 +260,14 @@ class BadukPanWidget(Widget):
                     katrain.update_state()
                 else:  # load comments & pv
                     katrain.log(
-                        f"\nAnalysis:\n{json_truncate_arrays(nodes_here[-1].analysis,lim=5)}", OUTPUT_EXTRA_DEBUG
+                        f"\nAnalysis:\n{json_truncate_arrays(nodes_here[-1].analysis, lim=5)}", OUTPUT_EXTRA_DEBUG
                     )
                     katrain.log(
-                        f"\nParent Analysis:\n{json_truncate_arrays(nodes_here[-1].parent.analysis,lim=5)}",
+                        f"\nParent Analysis:\n{json_truncate_arrays(nodes_here[-1].parent.analysis, lim=5)}",
                         OUTPUT_EXTRA_DEBUG,
                     )
                     katrain.log(
-                        f"\nRoot Stats:\n{json_truncate_arrays(nodes_here[-1].analysis['root'],lim=5)}", OUTPUT_DEBUG
+                        f"\nRoot Stats:\n{json_truncate_arrays(nodes_here[-1].analysis['root'], lim=5)}", OUTPUT_DEBUG
                     )
                     katrain.controls.info.text = nodes_here[-1].comment(sgf=True)
                     katrain.controls.active_comment_node = nodes_here[-1]
@@ -317,7 +319,9 @@ class BadukPanWidget(Widget):
             if ownership is not None:
                 mark_color = *Theme.STONE_COLORS[owner][:3], 1.0
                 other_color = *Theme.STONE_COLORS[other][:3], 1.0
-                outline_color = tuple(map(lambda y: sum(y) / float(len(y)), zip(*(mark_color, other_color))))
+                outline_color = tuple(
+                    map(lambda y: sum(y) / float(len(y)), zip(*(mark_color, other_color), strict=False))
+                )
                 mark_value = ownership
             else:
                 assert loss is not None
@@ -470,7 +474,9 @@ class BadukPanWidget(Widget):
             grid_spaces_margin_y = [0.75, 0.75]  # bottom, top
         return grid_spaces_margin_x, grid_spaces_margin_y
 
-    def calculate_grid_spaces(self, board_size_x: int, board_size_y: int, grid_spaces_margin_x: list[float], grid_spaces_margin_y: list[float]) -> tuple[float, float]:
+    def calculate_grid_spaces(
+        self, board_size_x: int, board_size_y: int, grid_spaces_margin_x: list[float], grid_spaces_margin_y: list[float]
+    ) -> tuple[float, float]:
         x_grid_spaces = board_size_x - 1 + sum(grid_spaces_margin_x)
         y_grid_spaces = board_size_y - 1 + sum(grid_spaces_margin_y)
 
@@ -481,13 +487,17 @@ class BadukPanWidget(Widget):
         # produce tiny gaps between shaded grid squares
         return math.floor(min(width / x_grid_spaces, height / y_grid_spaces) + 0.1)
 
-    def calculate_board_margins(self, x_grid_spaces: float, y_grid_spaces: float, grid_size: float) -> tuple[float, float]:
+    def calculate_board_margins(
+        self, x_grid_spaces: float, y_grid_spaces: float, grid_size: float
+    ) -> tuple[float, float]:
         board_width_with_margins = x_grid_spaces * grid_size
         board_height_with_margins = y_grid_spaces * grid_size
 
         return board_width_with_margins, board_height_with_margins
 
-    def calculate_extra_px_margins(self, width: float, height: float, board_width_with_margins: float, board_height_with_margins: float) -> tuple[float, float]:
+    def calculate_extra_px_margins(
+        self, width: float, height: float, board_width_with_margins: float, board_height_with_margins: float
+    ) -> tuple[float, float]:
         extra_px_margin_x = round((width - board_width_with_margins) / 2, 4)
         extra_px_margin_y = round((height - board_height_with_margins) / 2, 4)
 
@@ -576,7 +586,14 @@ class BadukPanWidget(Widget):
                     self.gridpos[yi][xi] = [self.initial_gridpos_x[index_x], self.initial_gridpos_y[index_y]]
 
     def draw_board_background(
-        self, katrain: Any, gridpos_x: list[float], gridpos_y: list[float], x_grid_spaces: float, y_grid_spaces: float, grid_spaces_margin_x: list[float], grid_spaces_margin_y: list[float]
+        self,
+        katrain: Any,
+        gridpos_x: list[float],
+        gridpos_y: list[float],
+        x_grid_spaces: float,
+        y_grid_spaces: float,
+        grid_spaces_margin_x: list[float],
+        grid_spaces_margin_y: list[float],
     ) -> None:
         if katrain.game.insert_mode:
             Color(*Theme.INSERT_BOARD_COLOR_TINT)  # dreamy
@@ -649,7 +666,6 @@ class BadukPanWidget(Widget):
         if self.rotation_degree == 90:
             y_text = Move.GTP_COORD[board_size_y - i - 1]
         elif self.rotation_degree == 180:
-
             y_text = str(board_size_y - i)
         elif self.rotation_degree == 270:
             y_text = Move.GTP_COORD[i]
@@ -681,7 +697,7 @@ class BadukPanWidget(Widget):
                     and current_node.children[-1].ownership
                 ):  # loss
                     loss_grid = var_to_grid(
-                        [a - b for a, b in zip(current_node.children[-1].ownership, ownership)],
+                        [a - b for a, b in zip(current_node.children[-1].ownership, ownership, strict=False)],
                         (board_size_x, board_size_y),
                     )
                     for y in range(board_size_y - 1, -1, -1):
@@ -803,7 +819,7 @@ class BadukPanWidget(Widget):
                             Color(*Theme.HINT_TEXT_COLOR)
                             draw_text(
                                 pos=(self.gridpos[y][x][0], self.gridpos[y][x][1]),
-                                text=f"{100 * move_policy :.2f}"[:4] + "%",
+                                text=f"{100 * move_policy:.2f}"[:4] + "%",
                                 font_name="Roboto",
                                 font_size=self.grid_size / 4,
                                 halign="center",
@@ -1046,7 +1062,7 @@ class BadukPanWidget(Widget):
         top_show_2 = leela_cfg.top_moves_show_secondary
 
         # Find max visits for scaling
-        max_visits = max((c.visits for c in candidates), default=1)
+        max((c.visits for c in candidates), default=1)
 
         # Debug: Print top 5 Leela candidate moves for color distribution analysis
         for idx, cand in enumerate(candidates[:5]):
@@ -1081,10 +1097,7 @@ class BadukPanWidget(Widget):
             evalsize = self.stone_size * scale
 
             # Get color based on loss_est
-            if candidate.loss_est is not None:
-                evalcol = loss_to_color(candidate.loss_est)
-            else:
-                evalcol = LEELA_COLOR_BEST
+            evalcol = loss_to_color(candidate.loss_est) if candidate.loss_est is not None else LEELA_COLOR_BEST
 
             # Draw board-colored circle to cover grid lines
             if text_on:
@@ -1226,7 +1239,7 @@ class BadukPanWidget(Widget):
                         if (
                             move_dict["visits"] < low_visits_threshold
                             and not engine_best_move
-                            and not move_dict["move"] in child_moves
+                            and move_dict["move"] not in child_moves
                         ):
                             scale = Theme.UNCERTAIN_HINT_SCALE
                             text_on = False
@@ -1283,7 +1296,7 @@ class BadukPanWidget(Widget):
 
                             keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict['scoreLead']:.1f}"
                             winrate = move_dict["winrate"] if player_sign == 1 else 1 - move_dict["winrate"]
-                            keys[TOP_MOVE_WINRATE] = f"{winrate*100:.1f}"
+                            keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
                             keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict['winrateLost']:+.1%}"
                             keys[TOP_MOVE_VISITS] = format_visits(move_dict["visits"])
 
@@ -1491,7 +1504,7 @@ class BadukPanWidget(Widget):
         else:
             # This is a rot90 for list of lists. Based on the code found in
             # stackoverflow.com/questions/8421337/rotating-a-two-dimensional-array-in-python
-            self.gridpos = list(list(x) for x in zip(*reversed(self.gridpos)))
+            self.gridpos = list(list(x) for x in zip(*reversed(self.gridpos), strict=False))
 
         self.rotation_degree += 90
         if self.rotation_degree == 360:
@@ -1549,7 +1562,7 @@ class AnalysisControls(MDBoxLayout):
 
     def on_mykatrain_is_open(self, instance: Any, value: Any) -> None:
         if value:
-            if not hasattr(self, 'mykatrain_dropdown') or not hasattr(self, 'mykatrain_button'):
+            if not hasattr(self, "mykatrain_dropdown") or not hasattr(self, "mykatrain_button"):
                 self.mykatrain_is_open = False
                 return
             if self.mykatrain_dropdown.container.children:
@@ -1558,7 +1571,7 @@ class AnalysisControls(MDBoxLayout):
             else:
                 self.mykatrain_dropdown.width = 250
             self.mykatrain_dropdown.open(self.mykatrain_button)
-        elif hasattr(self, 'mykatrain_dropdown') and self.mykatrain_dropdown.attach_to:
+        elif hasattr(self, "mykatrain_dropdown") and self.mykatrain_dropdown.attach_to:
             self.mykatrain_dropdown.dismiss()
 
     def close_dropdown(self, *largs: Any) -> None:
@@ -1582,6 +1595,7 @@ class AnalysisControls(MDBoxLayout):
 
 class MyKatrainDropDown(DropDown):
     """Dropdown menu for myKatrain extension features"""
+
     pass
 
 

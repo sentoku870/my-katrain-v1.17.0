@@ -38,7 +38,7 @@ def extract_analysis_from_sgf_node(node: Any) -> dict[str, Any] | None:
     """
     # CRITICAL: GameNode.add_list_property() は KT プロパティを
     # node.properties ではなく node.analysis_from_sgf に保存する
-    kt_data = getattr(node, 'analysis_from_sgf', None)
+    kt_data = getattr(node, "analysis_from_sgf", None)
 
     if not kt_data:
         return None
@@ -71,8 +71,8 @@ def extract_analysis_from_sgf_node(node: Any) -> dict[str, Any] | None:
 
 def extract_sgf_statistics(
     path: str,
-    ctx: "FeatureContext",
-    engine: "KataGoEngine",
+    ctx: FeatureContext,
+    engine: KataGoEngine,
     log_fn: LogFunction,
 ) -> dict[str, Any] | None:
     """SGFファイルから統計データを直接抽出（KTプロパティ解析）。
@@ -223,6 +223,7 @@ def extract_sgf_statistics(
         try:
             # Create a temporary Game object to compute reason_tags
             from katrain.core.game import Game
+
             # Note: Game expects GameNode but SGFNode works at runtime
             temp_game = Game(ctx, engine, move_tree=move_tree)  # type: ignore[arg-type]
 
@@ -230,7 +231,7 @@ def extract_sgf_statistics(
             sgf_nodes = list(move_tree.nodes_in_tree)
             game_nodes = list(temp_game.root.nodes_in_tree)
 
-            for sgf_node, game_node in zip(sgf_nodes, game_nodes):
+            for sgf_node, game_node in zip(sgf_nodes, game_nodes, strict=False):
                 # Extract analysis from SGF node
                 analysis = extract_analysis_from_sgf_node(sgf_node)
                 if analysis:
@@ -252,6 +253,7 @@ def extract_sgf_statistics(
             # If reason_tags computation fails, log but continue
             log_fn(f"Failed to compute reason_tags for {path}: {e}", OUTPUT_ERROR)
             import traceback
+
             log_fn(traceback.format_exc(), OUTPUT_ERROR)
             reason_tags_counts = {}
 
@@ -260,24 +262,25 @@ def extract_sgf_statistics(
 
         # Phase 60: Time analysis (pacing/tilt)
         try:
+            from katrain.core.analysis.logic import snapshot_from_game
             from katrain.core.analysis.time import (
-                parse_time_data,
                 analyze_pacing,
                 extract_pacing_stats_for_summary,
+                parse_time_data,
             )
-            from katrain.core.analysis.logic import snapshot_from_game
 
             time_data = parse_time_data(move_tree)
             if time_data.has_time_data:
                 # Reuse temp_game from reason_tags if available, otherwise create it
                 if "temp_game" not in dir():
                     from katrain.core.game import Game
+
                     # Note: Game expects GameNode but SGFNode works at runtime
                     temp_game = Game(ctx, engine, move_tree=move_tree)  # type: ignore[arg-type]
                     # Load analysis data
                     sgf_nodes = list(move_tree.nodes_in_tree)
                     game_nodes = list(temp_game.root.nodes_in_tree)
-                    for sgf_node, game_node in zip(sgf_nodes, game_nodes):
+                    for sgf_node, game_node in zip(sgf_nodes, game_nodes, strict=False):
                         analysis = extract_analysis_from_sgf_node(sgf_node)
                         if analysis:
                             game_node.analysis = analysis  # type: ignore[attr-defined]
@@ -296,5 +299,6 @@ def extract_sgf_statistics(
     except Exception as e:
         log_fn(f"Failed to extract statistics from {path}: {e}", OUTPUT_ERROR)
         import traceback
+
         log_fn(traceback.format_exc(), OUTPUT_ERROR)
         return None

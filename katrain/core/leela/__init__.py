@@ -9,27 +9,27 @@ This package provides:
 Note: This is completely separate from KataGo functionality.
 """
 
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
-from katrain.core.leela.parser import parse_lz_analyze, normalize_winrate_from_raw
+from katrain.core.leela.conversion import (
+    leela_position_to_move_eval,
+    leela_sequence_to_eval_snapshot,
+)
+from katrain.core.leela.engine import LeelaEngine
 from katrain.core.leela.logic import (
     LEELA_K_DEFAULT,
-    LEELA_K_MIN,
     LEELA_K_MAX,
+    LEELA_K_MIN,
     LEELA_LOSS_EST_MAX,
     clamp_k,
     compute_estimated_loss,
     format_loss_est,
 )
-from katrain.core.leela.engine import LeelaEngine
+from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
+from katrain.core.leela.parser import normalize_winrate_from_raw, parse_lz_analyze
 from katrain.core.leela.presentation import (
+    format_visits,
+    format_winrate_pct,
     lerp_color,
     loss_to_color,
-    format_winrate_pct,
-    format_visits,
-)
-from katrain.core.leela.conversion import (
-    leela_position_to_move_eval,
-    leela_sequence_to_eval_snapshot,
 )
 
 __all__ = [

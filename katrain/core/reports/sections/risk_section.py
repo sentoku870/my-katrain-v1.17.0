@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Risk Management section for Karte reports.
 
 Phase 62: Risk Integration
@@ -13,9 +12,6 @@ Thresholding (3-tier, separate functions):
 """
 
 from dataclasses import dataclass
-from typing import Optional
-
-from katrain.core.lang import i18n
 
 # Canonical import from top-level analysis package
 from katrain.core.analysis import (
@@ -23,6 +19,7 @@ from katrain.core.analysis import (
     RiskBehavior,
     RiskJudgmentType,
 )
+from katrain.core.lang import i18n
 
 
 @dataclass(frozen=True)
@@ -30,8 +27,8 @@ class RiskDisplayData:
     """Display data for risk section."""
 
     player: str  # "B" or "W"
-    winning_solid_pct: Optional[float]  # SOLID % when WINNING (0-100)
-    losing_complicating_pct: Optional[float]  # COMPLICATING % when LOSING (0-100)
+    winning_solid_pct: float | None  # SOLID % when WINNING (0-100)
+    losing_complicating_pct: float | None  # COMPLICATING % when LOSING (0-100)
     mismatch_count: int
     has_winning_data: bool
     has_losing_data: bool
@@ -131,36 +128,18 @@ def extract_risk_display_data(
     player_contexts = [ctx for ctx in result.contexts if ctx.player == player]
 
     # Count WINNING contexts (denominator) and SOLID within WINNING (numerator)
-    winning_contexts = [
-        ctx for ctx in player_contexts
-        if ctx.judgment_type == RiskJudgmentType.WINNING
-    ]
+    winning_contexts = [ctx for ctx in player_contexts if ctx.judgment_type == RiskJudgmentType.WINNING]
     winning_total = len(winning_contexts)
-    winning_solid = sum(
-        1 for ctx in winning_contexts
-        if ctx.risk_behavior == RiskBehavior.SOLID
-    )
+    winning_solid = sum(1 for ctx in winning_contexts if ctx.risk_behavior == RiskBehavior.SOLID)
 
     # Count LOSING contexts (denominator) and COMPLICATING within LOSING (numerator)
-    losing_contexts = [
-        ctx for ctx in player_contexts
-        if ctx.judgment_type == RiskJudgmentType.LOSING
-    ]
+    losing_contexts = [ctx for ctx in player_contexts if ctx.judgment_type == RiskJudgmentType.LOSING]
     losing_total = len(losing_contexts)
-    losing_complicating = sum(
-        1 for ctx in losing_contexts
-        if ctx.risk_behavior == RiskBehavior.COMPLICATING
-    )
+    losing_complicating = sum(1 for ctx in losing_contexts if ctx.risk_behavior == RiskBehavior.COMPLICATING)
 
     # Calculate percentages (None if no data)
-    winning_pct = (
-        winning_solid / winning_total * 100
-        if winning_total > 0 else None
-    )
-    losing_pct = (
-        losing_complicating / losing_total * 100
-        if losing_total > 0 else None
-    )
+    winning_pct = winning_solid / winning_total * 100 if winning_total > 0 else None
+    losing_pct = losing_complicating / losing_total * 100 if losing_total > 0 else None
 
     # Mismatch count from stats (this is a summary, not behavior-specific)
     stats = result.black_stats if player == "B" else result.white_stats

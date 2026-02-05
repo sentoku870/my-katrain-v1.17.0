@@ -11,7 +11,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
 
 
 class ErrorCategory(Enum):
@@ -36,8 +35,8 @@ class TestAnalysisResult:
     """
 
     success: bool
-    error_category: Optional[ErrorCategory]
-    error_message: Optional[str]
+    error_category: ErrorCategory | None
+    error_message: str | None
 
 
 # =============================================================================
@@ -88,10 +87,7 @@ def _matches_any_pattern(text: str, patterns: list[str]) -> bool:
     Returns:
         True if any pattern matches.
     """
-    for pattern in patterns:
-        if re.search(pattern, text):
-            return True
-    return False
+    return any(re.search(pattern, text) for pattern in patterns)
 
 
 def classify_engine_error(error_text: str, is_timeout: bool = False) -> ErrorCategory:

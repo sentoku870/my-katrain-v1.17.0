@@ -6,16 +6,20 @@ v5設計:
 - fbind/funbindでKVバインディングを維持
 - 既存KVファイルの変更不要
 """
+
 from __future__ import annotations
 
+import contextlib
 import weakref
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 from kivy.weakproxy import WeakProxy
 
-from katrain.core.lang import i18n as core_i18n, DEFAULT_LANGUAGE
+from katrain.core.lang import DEFAULT_LANGUAGE
+from katrain.core.lang import i18n as core_i18n
 
 
 def _deref_widget(widget_ref: weakref.ref[Any] | WeakProxy) -> Any:
@@ -41,6 +45,7 @@ class KivyLangBridge(EventDispatcher):
     v5: fbind/funbindレガシーAPIを維持。
     KVファイルの変更は不要。
     """
+
     font_name = StringProperty("")
     current_lang = StringProperty(DEFAULT_LANGUAGE)
 
@@ -58,6 +63,7 @@ class KivyLangBridge(EventDispatcher):
         # テクスチャキャッシュクリアをGUI層で登録
         try:
             from katrain.gui.kivyutils import clear_texture_caches
+
             lang_instance.add_change_callback(lambda _: clear_texture_caches())
         except ImportError:
             pass
@@ -88,15 +94,10 @@ class KivyLangBridge(EventDispatcher):
         if name == "_":
             widget, property_name, *_ = args[0]
             # WeakProxy is already a weak reference, don't wrap it again
-            if isinstance(widget, WeakProxy):
-                widget_ref = widget
-            else:
-                widget_ref = weakref.ref(widget)
+            widget_ref = widget if isinstance(widget, WeakProxy) else weakref.ref(widget)
             self._observers.append((widget_ref, func, args))
-            try:
+            with contextlib.suppress(Exception):
                 self.set_widget_font(widget)
-            except Exception:
-                pass
         else:
             return super().fbind(name, func, *args)
 
@@ -105,7 +106,8 @@ class KivyLangBridge(EventDispatcher):
         if name == "_":
             widget, *_ = args[0]
             self._observers = [
-                (ref, f, a) for ref, f, a in self._observers
+                (ref, f, a)
+                for ref, f, a in self._observers
                 if _deref_widget(ref) is not None and _deref_widget(ref) is not widget
             ]
         else:

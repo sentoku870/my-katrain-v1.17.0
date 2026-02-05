@@ -8,17 +8,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 # Kivy imports for type hints only
 if TYPE_CHECKING:
-    from kivy.uix.button import Button
-    from kivy.uix.checkbox import CheckBox
-    from kivy.uix.label import Label
-    from kivy.uix.scrollview import ScrollView
-    from kivy.uix.textinput import TextInput
-    from kivy.uix.togglebutton import ToggleButton
-    from kivy.uix.widget import Widget
+    pass
 
 # Use string literals for forward references
 # This avoids Kivy import at runtime

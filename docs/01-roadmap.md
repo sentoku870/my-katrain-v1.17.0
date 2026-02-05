@@ -300,6 +300,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 117 | Top Moves カラー回帰修正 | evaluation_class() のdescending threshold ロジック修正、56新規テスト、PR #278 | ✅ |
 | 118 | UI Tofu & i18n Fixes | settings/quiz/chartの文字化け修正、human-like単純化、レイアウト修正 | ✅ |
 | 119 | UI Architecture Hardening | UIコンポーネント共通化、未使用コード削減、複雑性解消 | ✅ |
+| 120 | Final Codebase Polish & Modernization | Ruff一括適用、高リスクリファクタリング（Gui/Dialog）、コード品質統一 | 📋 |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -443,6 +444,9 @@ Karte Exportのレイアウト崩れも修正。
 **Phase 119**: ✅ UI Architecture Hardening & Code Cleanup（Completed）。
 UIコンポーネントの共通化（Tofu恒久対策）と、未使用コード・複雑性の解消（リファクタリング）完了。
 `katrain.gui.widgets.factory`導入とレガシー`humanlike_config`削除により、メンテナビリティと安全性が向上。
+
+**Phase 120**: 📋 Final Codebase Polish & Modernization（Planned）。
+Ruff等のツール導入によるコードスタイルの完全統一、およびPhase 19などで後回しにした高リスクなリファクタリング（KaTrainGuiの最終整理や `dialog_coordinator` など）の回収。
 
 
 ### 未定（TBD / Post-52）

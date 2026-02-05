@@ -16,7 +16,8 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import urllib3
 from kivy.clock import Clock
@@ -225,13 +226,9 @@ class SGFManager:
 
         # Build and open dropdown on the main thread
         file_entries = [os.path.basename(path) for path in sgf_files]
-        Clock.schedule_once(
-            lambda *_dt: self._show_recent_sgf_dropdown(sgf_files, file_entries, fast, rewind)
-        )
+        Clock.schedule_once(lambda *_dt: self._show_recent_sgf_dropdown(sgf_files, file_entries, fast, rewind))
 
-    def _show_recent_sgf_dropdown(
-        self, sgf_files: list[str], labels: list[str], fast: bool, rewind: bool
-    ) -> None:
+    def _show_recent_sgf_dropdown(self, sgf_files: list[str], labels: list[str], fast: bool, rewind: bool) -> None:
         """最近のSGFファイルのドロップダウンを表示する。
 
         Args:
@@ -254,7 +251,7 @@ class SGFManager:
             dropdown.dismiss()
             self.load_sgf_file(path, fast=fast, rewind=rewind)
 
-        for idx, (path, filename) in enumerate(zip(sgf_files, labels)):
+        for idx, (path, filename) in enumerate(zip(sgf_files, labels, strict=False)):
             label = f"[NEW] {filename}" if idx < 3 else filename
             label = truncate(label)
             menu_item = MenuItem(text=label, content_width=max(base_width, len(label) * dp(7)))

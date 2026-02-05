@@ -10,8 +10,8 @@ to avoid circular import issues.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from threading import Lock
-from typing import Callable, Optional
 
 from katrain.core.constants import OUTPUT_ERROR
 
@@ -33,7 +33,7 @@ class LogBuffer:
     MAX_LINES = 500
     MAX_CHARS_PER_LINE = 2000
 
-    def __init__(self, timestamp_fn: Optional[Callable[[], str]] = None) -> None:
+    def __init__(self, timestamp_fn: Callable[[], str] | None = None) -> None:
         """Initialize LogBuffer.
 
         Args:

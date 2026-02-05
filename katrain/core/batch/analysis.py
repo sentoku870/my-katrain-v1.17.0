@@ -11,8 +11,9 @@ from __future__ import annotations
 import os
 import time
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
@@ -42,17 +43,17 @@ class _DummyEngine:
 
 
 if TYPE_CHECKING:
+    from katrain.core.analysis.models import EvalSnapshot, MoveEval
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.game import Game
     from katrain.core.leela.engine import LeelaEngine
     from katrain.core.leela.models import LeelaPositionEval
-    from katrain.core.analysis.models import EvalSnapshot, MoveEval
 
 
 def analyze_single_file(
-    katrain: "KaTrainBase",
-    engine: "KataGoEngine",
+    katrain: KaTrainBase,
+    engine: KataGoEngine,
     sgf_path: str,
     output_path: str | None = None,
     visits: int | None = None,
@@ -91,7 +92,7 @@ def analyze_single_file(
     def fail_result() -> bool | None:
         return None if return_game else False
 
-    def success_result(game_obj: "Game") -> bool | Game:
+    def success_result(game_obj: Game) -> bool | Game:
         return game_obj if return_game else True
 
     try:
@@ -141,8 +142,7 @@ def analyze_single_file(
             if time.time() - start_time > timeout:
                 log(f"    ERROR: Analysis timed out after {timeout}s")
                 raise AnalysisTimeoutError(
-                    f"Analysis timed out after {timeout}s",
-                    user_message="Analysis timeout - engine may be unresponsive"
+                    f"Analysis timed out after {timeout}s", user_message="Analysis timeout - engine may be unresponsive"
                 )
             time.sleep(poll_interval)
 
@@ -201,8 +201,8 @@ def analyze_single_file(
 
 
 def analyze_single_file_leela(
-    katrain: "KaTrainBase",
-    leela_engine: "LeelaEngine",
+    katrain: KaTrainBase,
+    leela_engine: LeelaEngine,
     sgf_path: str,
     output_path: str | None = None,
     visits: int | None = None,
@@ -243,11 +243,12 @@ def analyze_single_file_leela(
     """
     import threading
 
+    from katrain.core.analysis.models import EvalSnapshot
+
     # Import here to avoid circular imports
     from katrain.core.game import Game
-    from katrain.core.analysis.models import EvalSnapshot, MoveEval
-    from katrain.core.leela.models import LeelaPositionEval
     from katrain.core.leela.conversion import leela_position_to_move_eval
+    from katrain.core.leela.models import LeelaPositionEval
 
     def log(msg: str) -> None:
         if log_cb:
@@ -258,7 +259,7 @@ def analyze_single_file_leela(
             return None, EvalSnapshot(moves=[])
         return False
 
-    def success_result(game_obj: "Game", snapshot: "EvalSnapshot") -> bool | tuple[Game, EvalSnapshot]:
+    def success_result(game_obj: Game, snapshot: EvalSnapshot) -> bool | tuple[Game, EvalSnapshot]:
         if return_game:
             return game_obj, snapshot
         return True
@@ -336,13 +337,13 @@ def analyze_single_file_leela(
             moves_sequence.append(current_moves.copy())
 
         # Analyze each position
-        for i, (node, moves_to_position) in enumerate(zip(move_nodes, moves_sequence)):
+        for i, (_node, moves_to_position) in enumerate(zip(move_nodes, moves_sequence, strict=False)):
             # Check file timeout
             if time.time() - file_start_time > file_timeout:
                 log(f"    ERROR: File timeout after {file_timeout}s at move {i + 1}")
                 raise AnalysisTimeoutError(
                     f"Leela analysis timed out after {file_timeout}s at move {i + 1}",
-                    user_message="Analysis timeout - engine may be unresponsive"
+                    user_message="Analysis timeout - engine may be unresponsive",
                 )
 
             # Check for cancellation
@@ -388,7 +389,7 @@ def analyze_single_file_leela(
         # Step 4: Convert to MoveEval
         log("    [4/4] Converting to evaluation data...")
 
-        for i, (node, current_eval) in enumerate(zip(move_nodes, position_evals)):
+        for i, (node, current_eval) in enumerate(zip(move_nodes, position_evals, strict=False)):
             # Get parent eval (position before this move)
             parent_eval = position_evals[i - 1] if i > 0 else None
 
@@ -419,12 +420,11 @@ def analyze_single_file_leela(
         if valid_count < total_moves:
             # Count errors by type from position_evals.parse_error field
             # Use getattr for robustness against None or missing attribute
-            timeout_count = sum(1 for ev in position_evals
-                                if getattr(ev, "parse_error", None) == "timeout")
-            no_result_count = sum(1 for ev in position_evals
-                                  if getattr(ev, "parse_error", None) == "no result")
-            other_error_count = sum(1 for ev in position_evals
-                                    if getattr(ev, "parse_error", None) not in (None, "timeout", "no result"))
+            timeout_count = sum(1 for ev in position_evals if getattr(ev, "parse_error", None) == "timeout")
+            no_result_count = sum(1 for ev in position_evals if getattr(ev, "parse_error", None) == "no result")
+            other_error_count = sum(
+                1 for ev in position_evals if getattr(ev, "parse_error", None) not in (None, "timeout", "no result")
+            )
 
             log(f"    Analysis quality: {valid_count}/{total_moves} valid moves")
             if timeout_count > 0:

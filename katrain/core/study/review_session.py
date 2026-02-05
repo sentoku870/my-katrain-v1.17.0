@@ -12,7 +12,6 @@ Part of Phase 94: Active Review Extension.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 from katrain.core.study.active_review import GuessEvaluation, GuessGrade
 
@@ -45,7 +44,7 @@ class GuessResult:
         return self.evaluation.grade
 
     @property
-    def score_loss(self) -> Optional[float]:
+    def score_loss(self) -> float | None:
         return self.evaluation.score_loss
 
     @property
@@ -90,10 +89,10 @@ class SessionSummary:
     game_move_match_rate: float  # matches_game_move==True percentage * 100
 
     # Loss statistics
-    average_score_loss: Optional[float]  # NOT_IN_CANDIDATES excluded
+    average_score_loss: float | None  # NOT_IN_CANDIDATES excluded
 
     # Worst 3 moves (score_loss descending, final answers only)
-    worst_misses: Tuple["GuessResult", ...]  # Tuple for immutability
+    worst_misses: tuple["GuessResult", ...]  # Tuple for immutability
 
     # Retry/Hint statistics
     total_retries: int
@@ -120,9 +119,9 @@ class ReviewSession:
             skill_preset: One of "beginner", "standard", "advanced", "pro"
         """
         self.skill_preset = skill_preset
-        self.results: List[GuessResult] = []
+        self.results: list[GuessResult] = []
         # Current position's pending state
-        self._pending_move_number: Optional[int] = None
+        self._pending_move_number: int | None = None
         self._pending_retry_count: int = 0
         self._pending_hint_used: bool = False
 
@@ -193,10 +192,7 @@ class ReviewSession:
             This is a safeguard to detect event ordering issues.
         """
         if self._pending_move_number is None:
-            _log.warning(
-                "record_final_guess() called without begin_position() - "
-                "possible event ordering issue"
-            )
+            _log.warning("record_final_guess() called without begin_position() - possible event ordering issue")
             return False
 
         result = GuessResult(
@@ -222,15 +218,11 @@ class ReviewSession:
 
         # Grade counts
         perfect_count = sum(1 for r in self.results if r.grade == GuessGrade.PERFECT)
-        excellent_count = sum(
-            1 for r in self.results if r.grade == GuessGrade.EXCELLENT
-        )
+        excellent_count = sum(1 for r in self.results if r.grade == GuessGrade.EXCELLENT)
         good_count = sum(1 for r in self.results if r.grade == GuessGrade.GOOD)
         slack_count = sum(1 for r in self.results if r.grade == GuessGrade.SLACK)
         blunder_count = sum(1 for r in self.results if r.grade == GuessGrade.BLUNDER)
-        not_in_candidates_count = sum(
-            1 for r in self.results if r.grade == GuessGrade.NOT_IN_CANDIDATES
-        )
+        not_in_candidates_count = sum(1 for r in self.results if r.grade == GuessGrade.NOT_IN_CANDIDATES)
 
         # AI best match rate (PERFECT grade count)
         ai_best_match_rate = (perfect_count / total * 100) if total > 0 else 0.0
@@ -245,9 +237,7 @@ class ReviewSession:
 
         # Worst misses (top 3 by score_loss, exclude None)
         results_with_loss = [r for r in self.results if r.score_loss is not None]
-        sorted_by_loss = sorted(
-            results_with_loss, key=lambda r: r.score_loss or 0, reverse=True
-        )
+        sorted_by_loss = sorted(results_with_loss, key=lambda r: r.score_loss or 0, reverse=True)
         worst_misses = tuple(sorted_by_loss[:3])
 
         # Retry/Hint statistics

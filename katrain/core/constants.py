@@ -116,7 +116,7 @@ AI_ENDGAME_FILL_RATIO_DEFAULT: float = 0.75
 
 AI_OPTION_VALUES = {
     "kyu_rank": [(k, f"{k}[strength:kyu]") for k in range(15, 0, -1)]
-    + [(k, f"{1-k}[strength:dan]") for k in range(0, -3, -1)],
+    + [(k, f"{1 - k}[strength:dan]") for k in range(0, -3, -1)],
     "strength": [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 1],
     "opening_moves": range(0, 51),
     "pick_override": [0, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1],
@@ -129,17 +129,17 @@ AI_OPTION_VALUES = {
     "line_weight": range(0, 11),
     "threshold": [2, 2.5, 3, 3.5, 4, 4.5],
     "automatic": "bool",
-    "pda": [(x / 10, f"{'W' if x<0 else 'B'}+{abs(x/10):.1f}") for x in range(-30, 31)],
+    "pda": [(x / 10, f"{'W' if x < 0 else 'B'}+{abs(x / 10):.1f}") for x in range(-30, 31)],
     "max_points_lost": [x / 10 for x in range(51)],
     "settled_weight": [x / 4 for x in range(0, 17)],
     "opponent_fac": [x / 10 for x in range(-20, 11)],
     "min_visits": range(1, 10),
     "attach_penalty": [x / 10 for x in range(-10, 51)],
     "tenuki_penalty": [x / 10 for x in range(-10, 51)],
-    "human_kyu_rank": [(k, f"{k}[strength:kyu]") for k in range(20, 0, -1)] +
-                  [(k, f"{1-k}[strength:dan]") for k in range(0, -9,-1)],
+    "human_kyu_rank": [(k, f"{k}[strength:kyu]") for k in range(20, 0, -1)]
+    + [(k, f"{1 - k}[strength:dan]") for k in range(0, -9, -1)],
     "modern_style": "bool",
-    "pro_year": range(1800,2024),
+    "pro_year": range(1800, 2024),
 }
 
 AI_KEY_PROPERTIES = {
@@ -326,27 +326,26 @@ LEELA_K_RECOMMENDED_MAX = 1.0
 LEELA_LOSS_EST_MAX = 50.0
 
 # Color thresholds for loss visualization (loss_est values)
-LEELA_LOSS_THRESHOLD_SMALL = 2.0   # 0.1 - 2.0: small loss
+LEELA_LOSS_THRESHOLD_SMALL = 2.0  # 0.1 - 2.0: small loss
 LEELA_LOSS_THRESHOLD_MEDIUM = 5.0  # 2.1 - 5.0: medium loss
 # > 5.0: large loss
 
 # Colors for Leela candidate markers (RGBA, 0.0-1.0)
 # Match Kivy Color specification
-LEELA_COLOR_BEST = (0.298, 0.686, 0.314, 1.0)    # Green #4CAF50
-LEELA_COLOR_SMALL = (1.0, 0.922, 0.231, 1.0)     # Yellow #FFEB3B
-LEELA_COLOR_MEDIUM = (1.0, 0.596, 0.0, 1.0)      # Orange #FF9800
-LEELA_COLOR_LARGE = (0.957, 0.263, 0.212, 1.0)   # Red #F44336
+LEELA_COLOR_BEST = (0.298, 0.686, 0.314, 1.0)  # Green #4CAF50
+LEELA_COLOR_SMALL = (1.0, 0.922, 0.231, 1.0)  # Yellow #FFEB3B
+LEELA_COLOR_MEDIUM = (1.0, 0.596, 0.0, 1.0)  # Orange #FF9800
+LEELA_COLOR_LARGE = (0.957, 0.263, 0.212, 1.0)  # Red #F44336
 
 
 # --- Analysis Modes ---
 import logging
-from enum import Enum
-from typing import Union
+from enum import StrEnum
 
 _logger = logging.getLogger(__name__)
 
 
-class AnalysisMode(str, Enum):
+class AnalysisMode(StrEnum):
     """Analysis mode for analyze_extra().
 
     Note: "toggle" is NOT included here - it is an action token
@@ -367,7 +366,7 @@ class AnalysisMode(str, Enum):
 
 
 def parse_analysis_mode(
-    value: Union[str, AnalysisMode],
+    value: str | AnalysisMode,
     fallback: AnalysisMode = AnalysisMode.STOP,
 ) -> AnalysisMode:
     """Normalize a string or Enum to AnalysisMode.

@@ -24,46 +24,67 @@ Usage:
 
 import heapq
 import math
-import random
 import time
 from typing import Any, cast
-
-from katrain.core.constants import (
-    AI_ACCURACY_DECAY_BASE,
-    AI_DEFAULT, AI_ENDGAME_FILL_RATIO_DEFAULT, AI_HANDICAP, AI_INFLUENCE, AI_INFLUENCE_ELO_GRID, AI_JIGO,
-    AI_ANTIMIRROR, AI_LOCAL, AI_LOCAL_ELO_GRID, AI_PASS_LOSS_THRESHOLD, AI_PICK, AI_PICK_ELO_GRID,
-    AI_POLICY, AI_RANK, AI_SCORELOSS, AI_SCORELOSS_ELO, AI_SETTLE_STONES,
-    AI_SIMPLE_OWNERSHIP, AI_STRENGTH,
-    AI_TENUKI, AI_TENUKI_ELO_GRID, AI_TERRITORY, AI_TERRITORY_ELO_GRID,
-    AI_WEIGHTED, AI_WEIGHTED_ELO, CALIBRATED_RANK_ELO, OUTPUT_DEBUG,
-    OUTPUT_ERROR, OUTPUT_INFO, PRIORITY_EXTRA_AI_QUERY, ADDITIONAL_MOVE_ORDER, AI_HUMAN, AI_PRO,
-    AI_LEELA,
-)
-from katrain.core.lang import i18n
-from katrain.core.game import Game, GameNode, Move
-from katrain.core.leela.models import LeelaPositionEval
-from katrain.core.utils import var_to_grid, weighted_selection_without_replacement, evaluation_class
 
 # =============================================================================
 # Base classes and utilities (extracted to ai_strategies_base.py, re-exported)
 # =============================================================================
-
 from katrain.core.ai_strategies_base import (
     # Registry
     STRATEGY_REGISTRY,
-    register_strategy,
-    # Interpolation utilities
-    interp_ix,
-    interp1d,
-    interp2d,
-    # Move generation utilities
-    fmt_moves,
-    policy_weighted_move,
-    generate_influence_territory_weights,
-    generate_local_tenuki_weights,
     # Base class
     AIStrategy,
+    # Move generation utilities
+    fmt_moves,
+    generate_influence_territory_weights,
+    generate_local_tenuki_weights,
+    interp1d,
+    interp2d,
+    # Interpolation utilities
+    register_strategy,
 )
+from katrain.core.constants import (
+    ADDITIONAL_MOVE_ORDER,
+    AI_ACCURACY_DECAY_BASE,
+    AI_ANTIMIRROR,
+    AI_DEFAULT,
+    AI_ENDGAME_FILL_RATIO_DEFAULT,
+    AI_HANDICAP,
+    AI_HUMAN,
+    AI_INFLUENCE,
+    AI_INFLUENCE_ELO_GRID,
+    AI_JIGO,
+    AI_LEELA,
+    AI_LOCAL,
+    AI_LOCAL_ELO_GRID,
+    AI_PASS_LOSS_THRESHOLD,
+    AI_PICK,
+    AI_PICK_ELO_GRID,
+    AI_POLICY,
+    AI_PRO,
+    AI_RANK,
+    AI_SCORELOSS,
+    AI_SCORELOSS_ELO,
+    AI_SETTLE_STONES,
+    AI_SIMPLE_OWNERSHIP,
+    AI_STRENGTH,
+    AI_TENUKI,
+    AI_TENUKI_ELO_GRID,
+    AI_TERRITORY,
+    AI_TERRITORY_ELO_GRID,
+    AI_WEIGHTED,
+    AI_WEIGHTED_ELO,
+    CALIBRATED_RANK_ELO,
+    OUTPUT_DEBUG,
+    OUTPUT_ERROR,
+    PRIORITY_EXTRA_AI_QUERY,
+)
+from katrain.core.game import Game, GameNode, Move
+from katrain.core.lang import i18n
+from katrain.core.leela.models import LeelaPositionEval
+from katrain.core.utils import evaluation_class, var_to_grid, weighted_selection_without_replacement
+
 
 def ai_rank_estimation(strategy: str, settings: dict[str, Any]) -> float:
     if strategy in [AI_DEFAULT, AI_HANDICAP, AI_JIGO, AI_PRO]:
@@ -99,6 +120,7 @@ def ai_rank_estimation(strategy: str, settings: dict[str, Any]) -> float:
         return 1 - kyu
     else:
         return float(AI_STRENGTH[strategy])
+
 
 def game_report(
     game: "Game",
@@ -161,7 +183,7 @@ def game_report(
             )
 
     wt_loss = {
-        bw: sum(s * aw for s, (w, aw) in zip(player_ptloss[bw], weights[bw]))
+        bw: sum(s * aw for s, (w, aw) in zip(player_ptloss[bw], weights[bw], strict=False))
         / (sum(aw for _, aw in weights[bw]) or 1e-6)
         for bw in "BW"
     }
@@ -187,225 +209,257 @@ def game_report(
 # Strategy implementations
 # =============================================================================
 
+
 @register_strategy(AI_DEFAULT)
 class DefaultStrategy(AIStrategy):
     """Default strategy - simply plays the top move from the engine"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[DefaultStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[DefaultStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         candidate_moves = self.cn.candidate_moves
         self.game.katrain.log(f"[DefaultStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+
         if not candidate_moves:
-            self.game.katrain.log(f"[DefaultStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
+            self.game.katrain.log("[DefaultStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
             top_cand = Move(None, player=self.cn.next_player)
         else:
             top_move_data = candidate_moves[0]
             top_cand = Move.from_gtp(top_move_data["move"], player=self.cn.next_player)
-            self.game.katrain.log(f"[DefaultStrategy] Top move: {top_cand.gtp()} with stats: {top_move_data}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(
+                f"[DefaultStrategy] Top move: {top_cand.gtp()} with stats: {top_move_data}", OUTPUT_DEBUG
+            )
+
         ai_thoughts = f"Default strategy found {len(candidate_moves)} moves returned from the engine and chose {top_cand.gtp()} as top move"
         self.game.katrain.log(f"[DefaultStrategy] Final decision: {top_cand.gtp()}", OUTPUT_DEBUG)
-        
+
         return top_cand, ai_thoughts
+
 
 @register_strategy(AI_HANDICAP)
 class HandicapStrategy(AIStrategy):
     """Handicap strategy - uses playoutDoublingAdvantage to analyze the position"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[HandicapStrategy] Starting move generation", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[HandicapStrategy] Starting move generation", OUTPUT_DEBUG)
+
         # Calculate PDA (Playout Doubling Advantage)
         pda = self.settings["pda"]
         self.game.katrain.log(f"[HandicapStrategy] Initial PDA from settings: {pda}", OUTPUT_DEBUG)
-        
+
         if self.settings["automatic"]:
             n_handicaps = len(self.game.root.get_list_property("AB", []))
             MOVE_VALUE = 14  # could be rules dependent
             b_stones_advantage = max(n_handicaps - 1, 0) - (self.cn.komi - MOVE_VALUE / 2) / MOVE_VALUE
             pda = min(3, max(-3, -b_stones_advantage * (3 / 8)))  # max PDA at 8 stone adv, normal 9 stone game is 8.46
-            
-            self.game.katrain.log(f"[HandicapStrategy] Automatic PDA calculation:", OUTPUT_DEBUG)
+
+            self.game.katrain.log("[HandicapStrategy] Automatic PDA calculation:", OUTPUT_DEBUG)
             self.game.katrain.log(f"[HandicapStrategy] - Handicap stones: {n_handicaps}", OUTPUT_DEBUG)
             self.game.katrain.log(f"[HandicapStrategy] - Komi: {self.cn.komi}", OUTPUT_DEBUG)
             self.game.katrain.log(f"[HandicapStrategy] - Stone advantage: {b_stones_advantage}", OUTPUT_DEBUG)
             self.game.katrain.log(f"[HandicapStrategy] - Calculated PDA: {pda}", OUTPUT_DEBUG)
-        
+
         # Request additional analysis with PDA
         self.game.katrain.log(f"[HandicapStrategy] Requesting analysis with PDA={pda}", OUTPUT_DEBUG)
         handicap_analysis = self.request_analysis(
             {"playoutDoublingAdvantage": pda, "playoutDoublingAdvantagePla": "BLACK"}
         )
-        
+
         if not handicap_analysis:
-            self.game.katrain.log("[HandicapStrategy] Error getting handicap-based move, falling back to DefaultStrategy", OUTPUT_ERROR)
+            self.game.katrain.log(
+                "[HandicapStrategy] Error getting handicap-based move, falling back to DefaultStrategy", OUTPUT_ERROR
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
-        
+
         self.wait_for_analysis()
-        
+
         candidate_moves = handicap_analysis["moveInfos"]
-        self.game.katrain.log(f"[HandicapStrategy] Analysis returned {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[HandicapStrategy] Analysis returned {len(candidate_moves)} candidate moves", OUTPUT_DEBUG
+        )
+
         # Get top candidate move
         top_move_data = candidate_moves[0]
         top_cand = Move.from_gtp(top_move_data["move"], player=self.cn.next_player)
-        
+
         # Log details about the top move
         self.game.katrain.log(f"[HandicapStrategy] Top move: {top_cand.gtp()}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[HandicapStrategy] Score lead: {handicap_analysis['rootInfo']['scoreLead']}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[HandicapStrategy] Score lead: {handicap_analysis['rootInfo']['scoreLead']}", OUTPUT_DEBUG
+        )
         self.game.katrain.log(f"[HandicapStrategy] Win rate: {handicap_analysis['rootInfo']['winrate']}", OUTPUT_DEBUG)
-        
+
         ai_thoughts = f"Handicap strategy found {len(candidate_moves)} moves returned from the engine and chose {top_cand.gtp()} as top move. PDA based score {self.cn.format_score(handicap_analysis['rootInfo']['scoreLead'])} and win rate {self.cn.format_winrate(handicap_analysis['rootInfo']['winrate'])}"
-        
+
         self.game.katrain.log(f"[HandicapStrategy] Final decision: {top_cand.gtp()}", OUTPUT_DEBUG)
         return top_cand, ai_thoughts
+
 
 @register_strategy(AI_ANTIMIRROR)
 class AntimirrorStrategy(AIStrategy):
     """Antimirror strategy - uses antiMirror to analyze the position"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[AntimirrorStrategy] Starting move generation", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[AntimirrorStrategy] Starting move generation", OUTPUT_DEBUG)
+
         # Request analysis with antimirror option
-        self.game.katrain.log(f"[AntimirrorStrategy] Requesting analysis with antiMirror=True", OUTPUT_DEBUG)
+        self.game.katrain.log("[AntimirrorStrategy] Requesting analysis with antiMirror=True", OUTPUT_DEBUG)
         antimirror_analysis = self.request_analysis({"antiMirror": True})
-        
+
         if not antimirror_analysis:
-            self.game.katrain.log("[AntimirrorStrategy] Error getting antimirror move, falling back to DefaultStrategy", OUTPUT_ERROR)
+            self.game.katrain.log(
+                "[AntimirrorStrategy] Error getting antimirror move, falling back to DefaultStrategy", OUTPUT_ERROR
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
-        
+
         self.wait_for_analysis()
-        
+
         candidate_moves = antimirror_analysis["moveInfos"]
-        self.game.katrain.log(f"[AntimirrorStrategy] Analysis returned {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[AntimirrorStrategy] Analysis returned {len(candidate_moves)} candidate moves", OUTPUT_DEBUG
+        )
+
         # Get top candidate move
         top_move_data = candidate_moves[0]
         top_cand = Move.from_gtp(top_move_data["move"], player=self.cn.next_player)
-        
+
         # Log details about the top move
         self.game.katrain.log(f"[AntimirrorStrategy] Top move: {top_cand.gtp()}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[AntimirrorStrategy] Score lead: {antimirror_analysis['rootInfo']['scoreLead']}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[AntimirrorStrategy] Win rate: {antimirror_analysis['rootInfo']['winrate']}", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[AntimirrorStrategy] Score lead: {antimirror_analysis['rootInfo']['scoreLead']}", OUTPUT_DEBUG
+        )
+        self.game.katrain.log(
+            f"[AntimirrorStrategy] Win rate: {antimirror_analysis['rootInfo']['winrate']}", OUTPUT_DEBUG
+        )
+
         # Log the top 3 moves for comparison
         for i, move_data in enumerate(candidate_moves[:3]):
             move = Move.from_gtp(move_data["move"], player=self.cn.next_player)
-            self.game.katrain.log(f"[AntimirrorStrategy] Move #{i+1}: {move.gtp()} - visits: {move_data.get('visits', 'N/A')}, points lost: {move_data.get('pointsLost', 'N/A')}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(
+                f"[AntimirrorStrategy] Move #{i + 1}: {move.gtp()} - visits: {move_data.get('visits', 'N/A')}, points lost: {move_data.get('pointsLost', 'N/A')}",
+                OUTPUT_DEBUG,
+            )
+
         ai_thoughts = f"AntiMirror strategy found {len(candidate_moves)} moves returned from the engine and chose {top_cand.gtp()} as top move. antiMirror based score {self.cn.format_score(antimirror_analysis['rootInfo']['scoreLead'])} and win rate {self.cn.format_winrate(antimirror_analysis['rootInfo']['winrate'])}"
-        
+
         self.game.katrain.log(f"[AntimirrorStrategy] Final decision: {top_cand.gtp()}", OUTPUT_DEBUG)
         return top_cand, ai_thoughts
+
 
 @register_strategy(AI_JIGO)
 class JigoStrategy(AIStrategy):
     """Jigo strategy - aims for a specific score difference"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[JigoStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[JigoStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         candidate_moves = self.cn.candidate_moves
         self.game.katrain.log(f"[JigoStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+
         if not candidate_moves:
-            self.game.katrain.log(f"[JigoStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
+            self.game.katrain.log("[JigoStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
             return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
-        
+
         # Get top engine move for reference
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[JigoStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
-        
+
         # Calculate player sign (1 for black, -1 for white)
         sign = self.cn.player_sign(self.cn.next_player)
         self.game.katrain.log(f"[JigoStrategy] Player sign: {sign}", OUTPUT_DEBUG)
-        
+
         # Get target score from settings
         target_score = self.settings["target_score"]
         self.game.katrain.log(f"[JigoStrategy] Target score: {target_score}", OUTPUT_DEBUG)
-        
+
         # Log score leads before selecting jigo move
         self.game.katrain.log("[JigoStrategy] Candidate move score leads:", OUTPUT_DEBUG)
-        for i, move_data in enumerate(candidate_moves[:5]):
+        for _i, move_data in enumerate(candidate_moves[:5]):
             move = Move.from_gtp(move_data["move"], player=self.cn.next_player)
             score_diff = abs(sign * move_data["scoreLead"] - target_score)
-            self.game.katrain.log(f"[JigoStrategy] - {move.gtp()}: scoreLead={move_data['scoreLead']}, diff from target={score_diff}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(
+                f"[JigoStrategy] - {move.gtp()}: scoreLead={move_data['scoreLead']}, diff from target={score_diff}",
+                OUTPUT_DEBUG,
+            )
+
         # Find the move that gives a score closest to the target
-        jigo_move = min(
-            candidate_moves, 
-            key=lambda move: abs(sign * move["scoreLead"] - target_score)
-        )
-        
+        jigo_move = min(candidate_moves, key=lambda move: abs(sign * move["scoreLead"] - target_score))
+
         aimove = Move.from_gtp(jigo_move["move"], player=self.cn.next_player)
         jigo_score_diff = abs(sign * jigo_move["scoreLead"] - target_score)
-        
+
         self.game.katrain.log(f"[JigoStrategy] Selected move: {aimove.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[JigoStrategy] Selected move score lead: {jigo_move['scoreLead']}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[JigoStrategy] Distance from target: {jigo_score_diff}", OUTPUT_DEBUG)
-        
+
         ai_thoughts = f"Jigo strategy found {len(candidate_moves)} candidate moves (best {top_cand.gtp()}) and chose {aimove.gtp()} as closest to 0.5 point win"
-        
+
         self.game.katrain.log(f"[JigoStrategy] Final decision: {aimove.gtp()}", OUTPUT_DEBUG)
         return aimove, ai_thoughts
+
 
 @register_strategy(AI_SCORELOSS)
 class ScoreLossStrategy(AIStrategy):
     """ScoreLoss strategy - weights moves based on point loss"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[ScoreLossStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[ScoreLossStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         candidate_moves = self.cn.candidate_moves
-        self.game.katrain.log(f"[ScoreLossStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[ScoreLossStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG
+        )
+
         if not candidate_moves:
-            self.game.katrain.log(f"[ScoreLossStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
+            self.game.katrain.log("[ScoreLossStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
             return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
-        
+
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[ScoreLossStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
-        
+
         # Check if top move is pass
         if top_cand.is_pass:
-            self.game.katrain.log(f"[ScoreLossStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[ScoreLossStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG
+            )
             return top_cand, "Top move is pass, so passing regardless of strategy."
-        
+
         # Get strength parameter
         c = self.settings["strength"]
         self.game.katrain.log(f"[ScoreLossStrategy] Strength parameter: {c}", OUTPUT_DEBUG)
-        
+
         # Calculate weights for moves based on point loss
-        self.game.katrain.log(f"[ScoreLossStrategy] Calculating weights for candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[ScoreLossStrategy] Calculating weights for candidate moves", OUTPUT_DEBUG)
+
         moves = []
         for i, d in enumerate(candidate_moves):
             move = Move.from_gtp(d["move"], player=self.cn.next_player)
             points_lost = d["pointsLost"]
             weight = math.exp(min(200, -c * max(0, points_lost)))
-            
-            self.game.katrain.log(f"[ScoreLossStrategy] Move {i+1}: {move.gtp()} - Points lost: {points_lost:.2f}, Weight: {weight:.6f}", OUTPUT_DEBUG)
+
+            self.game.katrain.log(
+                f"[ScoreLossStrategy] Move {i + 1}: {move.gtp()} - Points lost: {points_lost:.2f}, Weight: {weight:.6f}",
+                OUTPUT_DEBUG,
+            )
             moves.append((points_lost, weight, move))
-        
+
         # Select move based on weights
-        self.game.katrain.log(f"[ScoreLossStrategy] Selecting move with weighted selection", OUTPUT_DEBUG)
+        self.game.katrain.log("[ScoreLossStrategy] Selecting move with weighted selection", OUTPUT_DEBUG)
         topmove = weighted_selection_without_replacement(moves, 1)[0]
         aimove = topmove[2]
-        
+
         self.game.katrain.log(f"[ScoreLossStrategy] Selected move: {aimove.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[ScoreLossStrategy] Selected move points lost: {topmove[0]:.2f}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[ScoreLossStrategy] Selected move weight: {topmove[1]:.6f}", OUTPUT_DEBUG)
-        
+
         ai_thoughts = f"ScoreLoss strategy found {len(candidate_moves)} candidate moves (best {top_cand.gtp()}) and chose {aimove.gtp()} (weight {topmove[1]:.3f}, point loss {topmove[0]:.1f}) based on score weights."
-        
+
         self.game.katrain.log(f"[ScoreLossStrategy] Final decision: {aimove.gtp()}", OUTPUT_DEBUG)
         return aimove, ai_thoughts
+
 
 class OwnershipBaseStrategy(AIStrategy):
     """Base class for ownership-based strategies"""
@@ -414,7 +468,10 @@ class OwnershipBaseStrategy(AIStrategy):
         """Calculate settledness for Simple Ownership strategy"""
         ownership: list[float] = d["ownership"]
         ownership_sum = sum([abs(o) for o in ownership if player_sign * o > 0])
-        self.game.katrain.log(f"[{self.strategy_name}] Calculating settledness for {player}, sign={player_sign}: {ownership_sum:.2f}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Calculating settledness for {player}, sign={player_sign}: {ownership_sum:.2f}",
+            OUTPUT_DEBUG,
+        )
         return ownership_sum
 
     def is_attachment(self, move: Move) -> bool:
@@ -439,7 +496,10 @@ class OwnershipBaseStrategy(AIStrategy):
         )
 
         is_attach = attach_opponent_stones >= 1 and nearby_own_stones == 0
-        self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} an attachment? {is_attach} (opponent stones: {attach_opponent_stones}, own stones: {nearby_own_stones})", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Is move {move.gtp()} an attachment? {is_attach} (opponent stones: {attach_opponent_stones}, own stones: {nearby_own_stones})",
+            OUTPUT_DEBUG,
+        )
         return is_attach
 
     def is_tenuki(self, move: Move) -> bool:
@@ -452,148 +512,202 @@ class OwnershipBaseStrategy(AIStrategy):
             or not node.move
             or node.move.is_pass
             or node.move.coords is None
-            or max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords)) < 5
+            or max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords, strict=False)) < 5
             for node in [self.cn, self.cn.parent]
         )
 
         distances: list[int] = []
         for node in [self.cn, self.cn.parent]:
             if node and node.move and not node.move.is_pass and node.move.coords is not None:
-                dist = max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords))
+                dist = max(abs(last_c - cand_c) for last_c, cand_c in zip(node.move.coords, move.coords, strict=False))
                 distances.append(dist)
 
         if distances:
-            self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (distances: {distances})", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (distances: {distances})", OUTPUT_DEBUG
+            )
         else:
-            self.game.katrain.log(f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (no valid previous moves)", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Is move {move.gtp()} a tenuki? {result} (no valid previous moves)",
+                OUTPUT_DEBUG,
+            )
 
         return result
 
     def get_moves_with_settledness(self) -> list[tuple[Move, float, float, bool, bool, dict[str, Any]]]:
         """Get moves with ownership and settledness information"""
         self.game.katrain.log(f"[{self.strategy_name}] Getting moves with settledness information", OUTPUT_DEBUG)
-        
+
         next_player_sign = self.cn.player_sign(self.cn.next_player)
         candidate_moves = self.cn.candidate_moves
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Processing {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[{self.strategy_name}] Settings: max_points_lost={self.settings['max_points_lost']}, min_visits={self.settings.get('min_visits', 1)}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[{self.strategy_name}] Penalties: attach={self.settings['attach_penalty']}, tenuki={self.settings['tenuki_penalty']}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[{self.strategy_name}] Weights: settled={self.settings['settled_weight']}, opponent_fac={self.settings['opponent_fac']}", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Settings: max_points_lost={self.settings['max_points_lost']}, min_visits={self.settings.get('min_visits', 1)}",
+            OUTPUT_DEBUG,
+        )
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Penalties: attach={self.settings['attach_penalty']}, tenuki={self.settings['tenuki_penalty']}",
+            OUTPUT_DEBUG,
+        )
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Weights: settled={self.settings['settled_weight']}, opponent_fac={self.settings['opponent_fac']}",
+            OUTPUT_DEBUG,
+        )
+
         moves_data = []
         for d in candidate_moves:
             # Check basic filtering conditions
             if "pointsLost" not in d:
-                self.game.katrain.log(f"[{self.strategy_name}] Move {d['move']} has no pointsLost, skipping", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Move {d['move']} has no pointsLost, skipping", OUTPUT_DEBUG
+                )
                 continue
-                
+
             if d["pointsLost"] >= self.settings["max_points_lost"]:
-                self.game.katrain.log(f"[{self.strategy_name}] Move {d['move']} has pointsLost={d['pointsLost']}, which exceeds max_points_lost={self.settings['max_points_lost']}, skipping", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Move {d['move']} has pointsLost={d['pointsLost']}, which exceeds max_points_lost={self.settings['max_points_lost']}, skipping",
+                    OUTPUT_DEBUG,
+                )
                 continue
-                
+
             if "ownership" not in d:
-                self.game.katrain.log(f"[{self.strategy_name}] Move {d['move']} has no ownership data, skipping", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Move {d['move']} has no ownership data, skipping", OUTPUT_DEBUG
+                )
                 continue
-                
+
             if not (d["order"] <= 1 or d["visits"] >= self.settings.get("min_visits", 1)):
-                self.game.katrain.log(f"[{self.strategy_name}] Move {d['move']} has order={d['order']} and visits={d.get('visits', 'N/A')}, doesn't meet criteria, skipping", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Move {d['move']} has order={d['order']} and visits={d.get('visits', 'N/A')}, doesn't meet criteria, skipping",
+                    OUTPUT_DEBUG,
+                )
                 continue
-            
+
             move = Move.from_gtp(d["move"], player=self.cn.next_player)
             if move.is_pass and d["pointsLost"] > AI_PASS_LOSS_THRESHOLD:
-                self.game.katrain.log(f"[{self.strategy_name}] Move {move.gtp()} is pass with high point loss ({d['pointsLost']}), skipping", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Move {move.gtp()} is pass with high point loss ({d['pointsLost']}), skipping",
+                    OUTPUT_DEBUG,
+                )
                 continue
-            
+
             # Calculate metrics
             own_settledness = self.settledness(d, next_player_sign, self.cn.next_player)
             opp_settledness = self.settledness(d, -next_player_sign, self.cn.player)
             is_attach = self.is_attachment(move)
             is_tenuki = self.is_tenuki(move)
-            
+
             # Calculate total score for sorting
-            score = (d["pointsLost"] 
-                    + self.settings["attach_penalty"] * is_attach 
-                    + self.settings["tenuki_penalty"] * is_tenuki
-                    - self.settings["settled_weight"] * (own_settledness + self.settings["opponent_fac"] * opp_settledness))
-            
-            self.game.katrain.log(f"[{self.strategy_name}] Move {move.gtp()}: points_lost={d['pointsLost']:.2f}, own_settled={own_settledness:.2f}, opp_settled={opp_settledness:.2f}, attach={is_attach}, tenuki={is_tenuki}, score={score:.2f}", OUTPUT_DEBUG)
-            
-            moves_data.append((
-                move,
-                own_settledness,
-                opp_settledness,
-                is_attach,
-                is_tenuki,
-                d,
-                score  # Store the score for debugging
-            ))
-        
+            score = (
+                d["pointsLost"]
+                + self.settings["attach_penalty"] * is_attach
+                + self.settings["tenuki_penalty"] * is_tenuki
+                - self.settings["settled_weight"] * (own_settledness + self.settings["opponent_fac"] * opp_settledness)
+            )
+
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Move {move.gtp()}: points_lost={d['pointsLost']:.2f}, own_settled={own_settledness:.2f}, opp_settled={opp_settledness:.2f}, attach={is_attach}, tenuki={is_tenuki}, score={score:.2f}",
+                OUTPUT_DEBUG,
+            )
+
+            moves_data.append(
+                (
+                    move,
+                    own_settledness,
+                    opp_settledness,
+                    is_attach,
+                    is_tenuki,
+                    d,
+                    score,  # Store the score for debugging
+                )
+            )
+
         # Sort moves by score
         sorted_moves = sorted(
             moves_data,
-            key=lambda t: t[6]  # Sort by the precalculated score
+            key=lambda t: t[6],  # Sort by the precalculated score
         )
-        
-        self.game.katrain.log(f"[{self.strategy_name}] Found {len(sorted_moves)} valid moves with settledness data", OUTPUT_DEBUG)
+
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Found {len(sorted_moves)} valid moves with settledness data", OUTPUT_DEBUG
+        )
         if sorted_moves:
-            self.game.katrain.log(f"[{self.strategy_name}] Top move after sorting: {sorted_moves[0][0].gtp()} with score {sorted_moves[0][6]:.2f}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Top move after sorting: {sorted_moves[0][0].gtp()} with score {sorted_moves[0][6]:.2f}",
+                OUTPUT_DEBUG,
+            )
+
         # Return all data except the score which was just for debugging
-        return [(move, own_settled, opp_settled, is_attach, is_tenuki, d) for move, own_settled, opp_settled, is_attach, is_tenuki, d, _ in sorted_moves]
+        return [
+            (move, own_settled, opp_settled, is_attach, is_tenuki, d)
+            for move, own_settled, opp_settled, is_attach, is_tenuki, d, _ in sorted_moves
+        ]
+
 
 @register_strategy(AI_SIMPLE_OWNERSHIP)
 class SimpleOwnershipStrategy(OwnershipBaseStrategy):
     """Simple Ownership strategy - weights moves based on territory control"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[SimpleOwnershipStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[SimpleOwnershipStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         candidate_moves = self.cn.candidate_moves
-        self.game.katrain.log(f"[SimpleOwnershipStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[SimpleOwnershipStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG
+        )
+
         if not candidate_moves:
-            self.game.katrain.log(f"[SimpleOwnershipStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
+            self.game.katrain.log("[SimpleOwnershipStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
             return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
-        
+
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[SimpleOwnershipStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
-        
+
         # Check if top move is pass
         if top_cand.is_pass:
-            self.game.katrain.log(f"[SimpleOwnershipStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[SimpleOwnershipStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG
+            )
             return top_cand, "Top move is pass, so passing regardless of strategy."
-        
+
         # Get moves sorted by settledness criteria
-        self.game.katrain.log(f"[SimpleOwnershipStrategy] Getting moves with settledness info", OUTPUT_DEBUG)
+        self.game.katrain.log("[SimpleOwnershipStrategy] Getting moves with settledness info", OUTPUT_DEBUG)
         moves_with_settledness = self.get_moves_with_settledness()
-        
+
         if moves_with_settledness:
-            self.game.katrain.log(f"[SimpleOwnershipStrategy] Found {len(moves_with_settledness)} moves with settledness info", OUTPUT_DEBUG)
-            
+            self.game.katrain.log(
+                f"[SimpleOwnershipStrategy] Found {len(moves_with_settledness)} moves with settledness info",
+                OUTPUT_DEBUG,
+            )
+
             # Log top 5 candidates in detail
-            self.game.katrain.log(f"[SimpleOwnershipStrategy] Top 5 candidates:", OUTPUT_DEBUG)
+            self.game.katrain.log("[SimpleOwnershipStrategy] Top 5 candidates:", OUTPUT_DEBUG)
             for i, (move, settled, oppsettled, isattach, istenuki, d) in enumerate(moves_with_settledness[:5]):
-                self.game.katrain.log(f"[SimpleOwnershipStrategy] #{i+1}: {move.gtp()} - pt_lost: {d['pointsLost']:.1f}, visits: {d.get('visits', 'N/A')}, settledness: {settled:.1f}, opp_settled: {oppsettled:.1f}, attach: {isattach}, tenuki: {istenuki}", OUTPUT_DEBUG)
-            
+                self.game.katrain.log(
+                    f"[SimpleOwnershipStrategy] #{i + 1}: {move.gtp()} - pt_lost: {d['pointsLost']:.1f}, visits: {d.get('visits', 'N/A')}, settledness: {settled:.1f}, opp_settled: {oppsettled:.1f}, attach: {isattach}, tenuki: {istenuki}",
+                    OUTPUT_DEBUG,
+                )
+
             # Format candidate moves for ai_thoughts
             cands = [
                 f"{move.gtp()} ({d['pointsLost']:.1f} pt lost, {d.get('visits', 'N/A')} visits, {settled:.1f} settledness, {oppsettled:.1f} opponent settledness{', attachment' if isattach else ''}{', tenuki' if istenuki else ''})"
                 for move, settled, oppsettled, isattach, istenuki, d in moves_with_settledness[:5]
             ]
-            
+
             ai_thoughts = f"{AI_SIMPLE_OWNERSHIP} strategy. Top 5 Candidates {', '.join(cands)} "
             aimove = moves_with_settledness[0][0]
-            
+
             self.game.katrain.log(f"[SimpleOwnershipStrategy] Selected move: {aimove.gtp()}", OUTPUT_DEBUG)
         else:
             error_msg = "No moves found - are you using an older KataGo with no per-move ownership info?"
             self.game.katrain.log(f"[SimpleOwnershipStrategy] Error: {error_msg}", OUTPUT_ERROR)
             raise Exception(error_msg)
-        
+
         self.game.katrain.log(f"[SimpleOwnershipStrategy] Final decision: {aimove.gtp()}", OUTPUT_DEBUG)
         return aimove, ai_thoughts
+
 
 @register_strategy(AI_SETTLE_STONES)
 class SettleStonesStrategy(OwnershipBaseStrategy):
@@ -611,229 +725,275 @@ class SettleStonesStrategy(OwnershipBaseStrategy):
             if s.player == player and s.coords is not None
         ]
         total_settledness: float = sum(stone_ownership_values)
-        
-        self.game.katrain.log(f"[SettleStonesStrategy] Calculating settledness for {player}, sign={player_sign}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[SettleStonesStrategy] Number of stones considered: {len(stone_ownership_values)}", OUTPUT_DEBUG)
+
+        self.game.katrain.log(
+            f"[SettleStonesStrategy] Calculating settledness for {player}, sign={player_sign}", OUTPUT_DEBUG
+        )
+        self.game.katrain.log(
+            f"[SettleStonesStrategy] Number of stones considered: {len(stone_ownership_values)}", OUTPUT_DEBUG
+        )
         self.game.katrain.log(f"[SettleStonesStrategy] Total settledness: {total_settledness:.2f}", OUTPUT_DEBUG)
-        
+
         if stone_ownership_values:
-            self.game.katrain.log(f"[SettleStonesStrategy] Min stone ownership: {min(stone_ownership_values):.2f}", OUTPUT_DEBUG)
-            self.game.katrain.log(f"[SettleStonesStrategy] Max stone ownership: {max(stone_ownership_values):.2f}", OUTPUT_DEBUG)
-            self.game.katrain.log(f"[SettleStonesStrategy] Avg stone ownership: {total_settledness / len(stone_ownership_values):.2f}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(
+                f"[SettleStonesStrategy] Min stone ownership: {min(stone_ownership_values):.2f}", OUTPUT_DEBUG
+            )
+            self.game.katrain.log(
+                f"[SettleStonesStrategy] Max stone ownership: {max(stone_ownership_values):.2f}", OUTPUT_DEBUG
+            )
+            self.game.katrain.log(
+                f"[SettleStonesStrategy] Avg stone ownership: {total_settledness / len(stone_ownership_values):.2f}",
+                OUTPUT_DEBUG,
+            )
+
         return total_settledness
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[SettleStonesStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[SettleStonesStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         candidate_moves = self.cn.candidate_moves
-        self.game.katrain.log(f"[SettleStonesStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[SettleStonesStrategy] Analysis found {len(candidate_moves)} candidate moves", OUTPUT_DEBUG
+        )
+
         if not candidate_moves:
-            self.game.katrain.log(f"[SettleStonesStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
+            self.game.katrain.log("[SettleStonesStrategy] No candidate moves found, will play pass", OUTPUT_DEBUG)
             return Move(None, player=self.cn.next_player), "No candidate moves found, passing"
-        
+
         top_cand = Move.from_gtp(candidate_moves[0]["move"], player=self.cn.next_player)
         self.game.katrain.log(f"[SettleStonesStrategy] Top engine move would be: {top_cand.gtp()}", OUTPUT_DEBUG)
-        
+
         # Check if top move is pass
         if top_cand.is_pass:
-            self.game.katrain.log(f"[SettleStonesStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[SettleStonesStrategy] Top move is pass, so passing regardless of strategy", OUTPUT_DEBUG
+            )
             return top_cand, "Top move is pass, so passing regardless of strategy."
-        
+
         # Log the number of stones on the board
         black_stones = sum(1 for s in self.game.stones if s.player == "B")
         white_stones = sum(1 for s in self.game.stones if s.player == "W")
-        self.game.katrain.log(f"[SettleStonesStrategy] Stones on board: B={black_stones}, W={white_stones}", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[SettleStonesStrategy] Stones on board: B={black_stones}, W={white_stones}", OUTPUT_DEBUG
+        )
+
         # Get moves sorted by settledness criteria
-        self.game.katrain.log(f"[SettleStonesStrategy] Getting moves with settledness info", OUTPUT_DEBUG)
+        self.game.katrain.log("[SettleStonesStrategy] Getting moves with settledness info", OUTPUT_DEBUG)
         moves_with_settledness = self.get_moves_with_settledness()
-        
+
         if moves_with_settledness:
-            self.game.katrain.log(f"[SettleStonesStrategy] Found {len(moves_with_settledness)} moves with settledness info", OUTPUT_DEBUG)
-            
+            self.game.katrain.log(
+                f"[SettleStonesStrategy] Found {len(moves_with_settledness)} moves with settledness info", OUTPUT_DEBUG
+            )
+
             # Log top 5 candidates in detail
-            self.game.katrain.log(f"[SettleStonesStrategy] Top 5 candidates:", OUTPUT_DEBUG)
+            self.game.katrain.log("[SettleStonesStrategy] Top 5 candidates:", OUTPUT_DEBUG)
             for i, (move, settled, oppsettled, isattach, istenuki, d) in enumerate(moves_with_settledness[:5]):
-                self.game.katrain.log(f"[SettleStonesStrategy] #{i+1}: {move.gtp()} - pt_lost: {d['pointsLost']:.1f}, visits: {d.get('visits', 'N/A')}, settledness: {settled:.1f}, opp_settled: {oppsettled:.1f}, attach: {isattach}, tenuki: {istenuki}", OUTPUT_DEBUG)
-            
+                self.game.katrain.log(
+                    f"[SettleStonesStrategy] #{i + 1}: {move.gtp()} - pt_lost: {d['pointsLost']:.1f}, visits: {d.get('visits', 'N/A')}, settledness: {settled:.1f}, opp_settled: {oppsettled:.1f}, attach: {isattach}, tenuki: {istenuki}",
+                    OUTPUT_DEBUG,
+                )
+
             # Format candidate moves for ai_thoughts
             cands = [
                 f"{move.gtp()} ({d['pointsLost']:.1f} pt lost, {d.get('visits', 'N/A')} visits, {settled:.1f} settledness, {oppsettled:.1f} opponent settledness{', attachment' if isattach else ''}{', tenuki' if istenuki else ''})"
                 for move, settled, oppsettled, isattach, istenuki, d in moves_with_settledness[:5]
             ]
-            
+
             ai_thoughts = f"{AI_SETTLE_STONES} strategy. Top 5 Candidates {', '.join(cands)} "
             aimove = moves_with_settledness[0][0]
-            
+
             self.game.katrain.log(f"[SettleStonesStrategy] Selected move: {aimove.gtp()}", OUTPUT_DEBUG)
         else:
             error_msg = "No moves found - are you using an older KataGo with no per-move ownership info?"
             self.game.katrain.log(f"[SettleStonesStrategy] Error: {error_msg}", OUTPUT_ERROR)
             raise Exception(error_msg)
-        
+
         self.game.katrain.log(f"[SettleStonesStrategy] Final decision: {aimove.gtp()}", OUTPUT_DEBUG)
         return aimove, ai_thoughts
+
 
 @register_strategy(AI_POLICY)
 class PolicyStrategy(AIStrategy):
     """Policy strategy - plays the top move suggested by policy network"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[PolicyStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[PolicyStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         # Ensure policy is available
         if not self.cn.policy:
-            self.game.katrain.log(f"[PolicyStrategy] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[PolicyStrategy] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
-        
+
         policy_moves = self.cn.policy_ranking
         if policy_moves is None:
-            self.game.katrain.log(f"[PolicyStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[PolicyStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
 
         pass_policy = self.cn.policy[-1]
 
         self.game.katrain.log(f"[PolicyStrategy] Got {len(policy_moves)} policy moves", OUTPUT_DEBUG)
         self.game.katrain.log(f"[PolicyStrategy] Current move depth: {self.cn.depth}", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[PolicyStrategy] Opening moves setting: {self.settings.get('opening_moves', 0)}", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[PolicyStrategy] Opening moves setting: {self.settings.get('opening_moves', 0)}", OUTPUT_DEBUG
+        )
+
         # Log top 5 policy moves
-        self.game.katrain.log(f"[PolicyStrategy] Top 5 policy moves:", OUTPUT_DEBUG)
+        self.game.katrain.log("[PolicyStrategy] Top 5 policy moves:", OUTPUT_DEBUG)
         for i, (prob, move) in enumerate(policy_moves[:5]):
             move_str = move.gtp() if move is not None else "None"
-            self.game.katrain.log(f"[PolicyStrategy] #{i+1}: {move_str} - {prob:.2%}", OUTPUT_DEBUG)
-        
+            self.game.katrain.log(f"[PolicyStrategy] #{i + 1}: {move_str} - {prob:.2%}", OUTPUT_DEBUG)
+
         self.game.katrain.log(f"[PolicyStrategy] Pass policy: {pass_policy:.2%}", OUTPUT_DEBUG)
 
         # Check for pass in top 5
         top_5_pass = any([polmove[1] is not None and polmove[1].is_pass for polmove in policy_moves[:5]])
         self.game.katrain.log(f"[PolicyStrategy] Pass in top 5: {top_5_pass}", OUTPUT_DEBUG)
-        
+
         # Handle opening moves override
         if self.cn.depth <= self.settings.get("opening_moves", 0):
-            self.game.katrain.log(f"[PolicyStrategy] In opening phase, using WeightedStrategy instead", OUTPUT_DEBUG)
-            weighted_settings = {
-                "pick_override": 0.9, 
-                "weaken_fac": 1, 
-                "lower_bound": 0.02
-            }
+            self.game.katrain.log("[PolicyStrategy] In opening phase, using WeightedStrategy instead", OUTPUT_DEBUG)
+            weighted_settings = {"pick_override": 0.9, "weaken_fac": 1, "lower_bound": 0.02}
             self.game.katrain.log(f"[PolicyStrategy] Weighted settings: {weighted_settings}", OUTPUT_DEBUG)
             return WeightedStrategy(self.game, weighted_settings).generate_move()
-        
+
         # Check for pass in top 5
         if top_5_pass:
             aimove_opt = policy_moves[0][1]
             aimove = aimove_opt if aimove_opt is not None else Move(None)
-            self.game.katrain.log(f"[PolicyStrategy] Playing top move {aimove.gtp()} because pass in top 5", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[PolicyStrategy] Playing top move {aimove.gtp()} because pass in top 5", OUTPUT_DEBUG
+            )
             ai_thoughts = "Playing top one because one of them is pass."
             return aimove, ai_thoughts
 
         # Otherwise play top policy move
         aimove_opt = policy_moves[0][1]
         aimove = aimove_opt if aimove_opt is not None else Move(None)
-        self.game.katrain.log(f"[PolicyStrategy] Playing top policy move {aimove.gtp()} with probability {policy_moves[0][0]:.2%}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[PolicyStrategy] Playing top policy move {aimove.gtp()} with probability {policy_moves[0][0]:.2%}",
+            OUTPUT_DEBUG,
+        )
         ai_thoughts = f"Playing top policy move {aimove.gtp()}."
 
         self.game.katrain.log(f"[PolicyStrategy] Final decision: {aimove.gtp()}", OUTPUT_DEBUG)
         return aimove, ai_thoughts
 
+
 @register_strategy(AI_WEIGHTED)
 class WeightedStrategy(AIStrategy):
     """Weighted strategy - weights moves based on policy and a weakening factor"""
-    
+
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[WeightedStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[WeightedStrategy] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         # Ensure policy is available
         if not self.cn.policy:
-            self.game.katrain.log(f"[WeightedStrategy] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[WeightedStrategy] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
-        
+
         policy_moves = self.cn.policy_ranking
         if policy_moves is None:
-            self.game.katrain.log(f"[WeightedStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                "[WeightedStrategy] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
 
         pass_policy = self.cn.policy[-1]
 
         self.game.katrain.log(f"[WeightedStrategy] Got {len(policy_moves)} policy moves", OUTPUT_DEBUG)
-        
+
         # Log top 5 policy moves
-        self.game.katrain.log(f"[WeightedStrategy] Top 5 policy moves:", OUTPUT_DEBUG)
+        self.game.katrain.log("[WeightedStrategy] Top 5 policy moves:", OUTPUT_DEBUG)
         for i, (prob, mv) in enumerate(policy_moves[:5]):
             mv_str = mv.gtp() if mv is not None else "None"
-            self.game.katrain.log(f"[WeightedStrategy] #{i+1}: {mv_str} - {prob:.2%}", OUTPUT_DEBUG)
+            self.game.katrain.log(f"[WeightedStrategy] #{i + 1}: {mv_str} - {prob:.2%}", OUTPUT_DEBUG)
 
         self.game.katrain.log(f"[WeightedStrategy] Pass policy: {pass_policy:.2%}", OUTPUT_DEBUG)
 
         # Check for pass in top 5
         top_5_pass = any([polmove[1] is not None and polmove[1].is_pass for polmove in policy_moves[:5]])
         self.game.katrain.log(f"[WeightedStrategy] Pass in top 5: {top_5_pass}", OUTPUT_DEBUG)
-        
+
         # Get override threshold
         override = self.settings.get("pick_override", 0.0)
         self.game.katrain.log(f"[WeightedStrategy] Override threshold: {override:.2%}", OUTPUT_DEBUG)
-        
+
         # Check if we should override with top move
-        override_move, override_thoughts = self.should_play_top_move(
-            policy_moves, 
-            top_5_pass,
-            override=override
-        )
-        
+        override_move, override_thoughts = self.should_play_top_move(policy_moves, top_5_pass, override=override)
+
         if override_move:
             self.game.katrain.log(f"[WeightedStrategy] Using override move: {override_move.gtp()}", OUTPUT_DEBUG)
             return override_move, override_thoughts
-        
+
         # Apply weighted policy move selection
         lower_bound = self.settings.get("lower_bound", 0.02)
         weaken_fac = self.settings.get("weaken_fac", 1.0)
-        
-        self.game.katrain.log(f"[WeightedStrategy] Using weighted selection with lower_bound={lower_bound:.2%}, weaken_fac={weaken_fac}", OUTPUT_DEBUG)
-        
+
+        self.game.katrain.log(
+            f"[WeightedStrategy] Using weighted selection with lower_bound={lower_bound:.2%}, weaken_fac={weaken_fac}",
+            OUTPUT_DEBUG,
+        )
+
         # Generate list of weighted coordinates
         weighted_coords = [
-            (pv, pv ** (1 / weaken_fac), mv) for pv, mv in policy_moves if mv is not None and pv > lower_bound and not mv.is_pass
+            (pv, pv ** (1 / weaken_fac), mv)
+            for pv, mv in policy_moves
+            if mv is not None and pv > lower_bound and not mv.is_pass
         ]
-        
+
         self.game.katrain.log(f"[WeightedStrategy] Found {len(weighted_coords)} moves above lower bound", OUTPUT_DEBUG)
-        
+
         move: Move
         if weighted_coords:
-            self.game.katrain.log(f"[WeightedStrategy] Performing weighted selection", OUTPUT_DEBUG)
+            self.game.katrain.log("[WeightedStrategy] Performing weighted selection", OUTPUT_DEBUG)
             top = weighted_selection_without_replacement(weighted_coords, 1)[0]
             move = top[2]
             prob = top[0]
 
-            self.game.katrain.log(f"[WeightedStrategy] Selected move {move.gtp()} with probability {prob:.2%}", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[WeightedStrategy] Selected move {move.gtp()} with probability {prob:.2%}", OUTPUT_DEBUG
+            )
             ai_thoughts = f"Playing policy-weighted random move {move.gtp()} ({prob:.1%}) from {len(weighted_coords)} moves above lower_bound of {lower_bound:.1%}."
         else:
             move_opt = policy_moves[0][1]
             move = move_opt if move_opt is not None else Move(None)
-            self.game.katrain.log(f"[WeightedStrategy] No moves above lower bound, playing top policy move {move.gtp()}", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[WeightedStrategy] No moves above lower bound, playing top policy move {move.gtp()}", OUTPUT_DEBUG
+            )
             ai_thoughts = f"Playing top policy move because no non-pass move > above lower_bound of {lower_bound:.1%}."
 
         self.game.katrain.log(f"[WeightedStrategy] Final decision: {move.gtp()}", OUTPUT_DEBUG)
         return move, ai_thoughts
+
 
 class PickBasedStrategy(AIStrategy):
     """Base class for pick-based strategies"""
 
     def get_n_moves(self, legal_policy_moves: list[tuple[float, Move | None]]) -> int:
         """Calculate the number of moves to consider"""
-        board_squares = self.game.board_size[0] * self.game.board_size[1]
+        self.game.board_size[0] * self.game.board_size[1]
 
         if self.settings.get("pick_frac") is not None:
             n_moves = max(1, int(self.settings["pick_frac"] * len(legal_policy_moves) + self.settings["pick_n"]))
-            self.game.katrain.log(f"[{self.strategy_name}] Calculated n_moves={n_moves} from pick_frac={self.settings['pick_frac']}, pick_n={self.settings['pick_n']}, legal_moves={len(legal_policy_moves)}", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Calculated n_moves={n_moves} from pick_frac={self.settings['pick_frac']}, pick_n={self.settings['pick_n']}, legal_moves={len(legal_policy_moves)}",
+                OUTPUT_DEBUG,
+            )
         else:
             n_moves = 1  # Default
-            self.game.katrain.log(f"[{self.strategy_name}] Using default n_moves={n_moves} (no pick_frac in settings)", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Using default n_moves={n_moves} (no pick_frac in settings)", OUTPUT_DEBUG
+            )
 
         return n_moves
 
@@ -844,7 +1004,10 @@ class PickBasedStrategy(AIStrategy):
         size: tuple[int, int],
     ) -> tuple[list[tuple[float, float, int, int]], str]:
         """Generate weighted coordinates for selection"""
-        self.game.katrain.log(f"[{self.strategy_name}] Generating weighted coordinates (default equal weights implementation)", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Generating weighted coordinates (default equal weights implementation)",
+            OUTPUT_DEBUG,
+        )
 
         # Default implementation for AI_PICK - equal weights
         weighted_coords: list[tuple[float, float, int, int]] = []
@@ -854,13 +1017,17 @@ class PickBasedStrategy(AIStrategy):
                 if pval is not None and pval > 0:
                     weighted_coords.append((pval, 1.0, x, y))
 
-        self.game.katrain.log(f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG
+        )
 
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0])
             self.game.katrain.log(f"[{self.strategy_name}] Top 5 weighted coordinates by policy value:", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
-                self.game.katrain.log(f"[{self.strategy_name}] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] #{i + 1}: ({x},{y}) - policy={pol:.2%}, weight={wt}", OUTPUT_DEBUG
+                )
 
         return weighted_coords, "Generated equal weights for all moves. "
 
@@ -874,10 +1041,15 @@ class PickBasedStrategy(AIStrategy):
         board_squares = size[0] * size[1]
         endgame_threshold = self.settings.get("endgame", AI_ENDGAME_FILL_RATIO_DEFAULT) * board_squares
 
-        self.game.katrain.log(f"[{self.strategy_name}] Checking endgame condition: move depth {self.cn.depth} vs threshold {endgame_threshold}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Checking endgame condition: move depth {self.cn.depth} vs threshold {endgame_threshold}",
+            OUTPUT_DEBUG,
+        )
 
         if self.cn.depth > endgame_threshold:
-            self.game.katrain.log(f"[{self.strategy_name}] In endgame phase (move {self.cn.depth} > {endgame_threshold})", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] In endgame phase (move {self.cn.depth} > {endgame_threshold})", OUTPUT_DEBUG
+            )
 
             weighted_coords: list[tuple[float, float, int, int]] = [
                 (pol, 1, mv.coords[0], mv.coords[1])
@@ -889,7 +1061,10 @@ class PickBasedStrategy(AIStrategy):
             n_moves = int(max(self.get_n_moves(legal_policy_moves), len(legal_policy_moves) // 2))
             self.game.katrain.log(f"[{self.strategy_name}] Using endgame n_moves={n_moves}", OUTPUT_DEBUG)
 
-            self.game.katrain.log(f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates for endgame", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Generated {len(weighted_coords)} weighted coordinates for endgame",
+                OUTPUT_DEBUG,
+            )
 
             return weighted_coords, ai_thoughts, n_moves, True
 
@@ -905,34 +1080,42 @@ class PickBasedStrategy(AIStrategy):
         """Select moves from weighted coordinates"""
         if weighted_coords is None:
             weighted_coords = []
-        self.game.katrain.log(f"[{self.strategy_name}] Selecting from {len(weighted_coords)} weighted coordinates, n_moves={n_moves}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Selecting from {len(weighted_coords)} weighted coordinates, n_moves={n_moves}",
+            OUTPUT_DEBUG,
+        )
 
         # Perform weighted selection
         pick_moves = weighted_selection_without_replacement(weighted_coords, n_moves)
         self.game.katrain.log(f"[{self.strategy_name}] Picked {len(pick_moves)} moves", OUTPUT_DEBUG)
-        
+
         if pick_moves:
             # Get top 5 from picked moves
             top_picked = heapq.nlargest(5, pick_moves)
             self.game.katrain.log(f"[{self.strategy_name}] Top 5 after selection:", OUTPUT_DEBUG)
             for i, (p, wt, x, y) in enumerate(top_picked):
-                self.game.katrain.log(f"[{self.strategy_name}] #{i+1}: ({x},{y}) - policy={p:.2%}, weight={wt}", OUTPUT_DEBUG)
-            
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] #{i + 1}: ({x},{y}) - policy={p:.2%}, weight={wt}", OUTPUT_DEBUG
+                )
+
             # Convert to move objects
-            new_top = [
-                (p, Move((x, y), player=self.cn.next_player)) for p, wt, x, y in top_picked
-            ]
-            
+            new_top = [(p, Move((x, y), player=self.cn.next_player)) for p, wt, x, y in top_picked]
+
             aimove = new_top[0][1]
             ai_thoughts = f"Top 5 among these were {fmt_moves(new_top)} and picked top {aimove.gtp()}. "
-            
-            self.game.katrain.log(f"[{self.strategy_name}] Top picked move: {aimove.gtp()} ({new_top[0][0]:.2%})", OUTPUT_DEBUG)
+
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Top picked move: {aimove.gtp()} ({new_top[0][0]:.2%})", OUTPUT_DEBUG
+            )
             self.game.katrain.log(f"[{self.strategy_name}] Pass policy: {pass_policy}", OUTPUT_DEBUG)
 
             # Check if pass is better
             if pass_policy is not None and new_top[0][0] < pass_policy:
-                self.game.katrain.log(f"[{self.strategy_name}] Pass policy {pass_policy:.2%} is better than top move {aimove.gtp()} ({new_top[0][0]:.2%}), switching to top policy move", OUTPUT_DEBUG)
-                
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Pass policy {pass_policy:.2%} is better than top move {aimove.gtp()} ({new_top[0][0]:.2%}), switching to top policy move",
+                    OUTPUT_DEBUG,
+                )
+
                 policy_moves = self.cn.policy_ranking
                 if policy_moves is None:
                     return DefaultStrategy(self.game, self.settings).generate_move()
@@ -942,11 +1125,15 @@ class PickBasedStrategy(AIStrategy):
                 ai_thoughts += f"But found pass ({pass_policy:.2%} to be higher rated than {aimove.gtp()} ({new_top[0][0]:.2%}) so will play top policy move instead."
                 aimove = top_policy_move
 
-                self.game.katrain.log(f"[{self.strategy_name}] Final move (after pass check): {aimove.gtp()}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[{self.strategy_name}] Final move (after pass check): {aimove.gtp()}", OUTPUT_DEBUG
+                )
             else:
                 self.game.katrain.log(f"[{self.strategy_name}] Top move is better than pass, keeping it", OUTPUT_DEBUG)
         else:
-            self.game.katrain.log(f"[{self.strategy_name}] No moves selected, falling back to top policy move", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] No moves selected, falling back to top policy move", OUTPUT_DEBUG
+            )
 
             policy_moves = self.cn.policy_ranking
             if policy_moves is None:
@@ -954,24 +1141,30 @@ class PickBasedStrategy(AIStrategy):
             top_policy_move_opt = policy_moves[0][1]
             aimove = top_policy_move_opt if top_policy_move_opt is not None else Move(None)
 
-            ai_thoughts = f"Pick policy strategy failed to find legal moves, so is playing top policy move {aimove.gtp()}."
+            ai_thoughts = (
+                f"Pick policy strategy failed to find legal moves, so is playing top policy move {aimove.gtp()}."
+            )
 
             self.game.katrain.log(f"[{self.strategy_name}] Final move (fallback): {aimove.gtp()}", OUTPUT_DEBUG)
 
         return aimove, ai_thoughts
-    
+
     def generate_move(self) -> tuple[Move, str]:
         self.game.katrain.log(f"[{self.strategy_name}] Starting move generation", OUTPUT_DEBUG)
         self.wait_for_analysis()
-        
+
         # Ensure policy is available
         if not self.cn.policy:
-            self.game.katrain.log(f"[{self.strategy_name}] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] No policy data available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
-        
+
         policy_moves = self.cn.policy_ranking
         if policy_moves is None:
-            self.game.katrain.log(f"[{self.strategy_name}] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[{self.strategy_name}] No policy ranking available, falling back to DefaultStrategy", OUTPUT_DEBUG
+            )
             return DefaultStrategy(self.game, self.settings).generate_move()
 
         pass_policy = self.cn.policy[-1]
@@ -982,7 +1175,7 @@ class PickBasedStrategy(AIStrategy):
         self.game.katrain.log(f"[{self.strategy_name}] Top 5 policy moves:", OUTPUT_DEBUG)
         for i, (prob, move) in enumerate(policy_moves[:5]):
             move_str = move.gtp() if move is not None else "None"
-            self.game.katrain.log(f"[{self.strategy_name}] #{i+1}: {move_str} - {prob:.2%}", OUTPUT_DEBUG)
+            self.game.katrain.log(f"[{self.strategy_name}] #{i + 1}: {move_str} - {prob:.2%}", OUTPUT_DEBUG)
 
         self.game.katrain.log(f"[{self.strategy_name}] Pass policy: {pass_policy}", OUTPUT_DEBUG)
 
@@ -993,64 +1186,70 @@ class PickBasedStrategy(AIStrategy):
         # Get override settings
         override = self.settings.get("pick_override", 0.0)
         overridetwo = self.settings.get("pick_override_two", 1.0)
-        self.game.katrain.log(f"[{self.strategy_name}] Override settings: single={override:.2%}, combined={overridetwo:.2%}", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Override settings: single={override:.2%}, combined={overridetwo:.2%}", OUTPUT_DEBUG
+        )
 
         # Check if we should override with top move
         override_move, override_thoughts = self.should_play_top_move(
-            policy_moves,
-            top_5_pass,
-            override=override,
-            overridetwo=overridetwo
+            policy_moves, top_5_pass, override=override, overridetwo=overridetwo
         )
-        
+
         if override_move:
             self.game.katrain.log(f"[{self.strategy_name}] Using override move: {override_move.gtp()}", OUTPUT_DEBUG)
             return override_move, override_thoughts
-        
+
         # Get legal policy moves (filter out None and pass moves)
         legal_policy_moves: list[tuple[float, Move | None]] = []
         for pol, mv in policy_moves:
             if mv is not None and not mv.is_pass and pol > 0:
                 legal_policy_moves.append((pol, mv))
-        self.game.katrain.log(f"[{self.strategy_name}] Found {len(legal_policy_moves)} legal non-pass policy moves", OUTPUT_DEBUG)
-        
+        self.game.katrain.log(
+            f"[{self.strategy_name}] Found {len(legal_policy_moves)} legal non-pass policy moves", OUTPUT_DEBUG
+        )
+
         # Create policy grid
-# Create policy grid
+        # Create policy grid
         size = self.game.board_size
         self.game.katrain.log(f"[{self.strategy_name}] Board size: {size}", OUTPUT_DEBUG)
         policy_grid = var_to_grid(self.cn.policy, size)
-        
+
         # Check for endgame
         end_coords, end_thoughts, end_n_moves, is_endgame = self.handle_endgame(legal_policy_moves, policy_grid, size)
-        
+
         if is_endgame:
             self.game.katrain.log(f"[{self.strategy_name}] Using endgame logic", OUTPUT_DEBUG)
             assert end_coords is not None and end_n_moves is not None
             return self.select_from_weighted_coords(end_coords, end_n_moves, pass_policy)
-        
+
         # Get weighted coordinates
         self.game.katrain.log(f"[{self.strategy_name}] Generating weighted coordinates", OUTPUT_DEBUG)
         weighted_coords, weight_thoughts = self.generate_weighted_coords(legal_policy_moves, policy_grid, size)
-        
+
         # Get number of moves to consider
         n_moves = self.get_n_moves(legal_policy_moves)
         self.game.katrain.log(f"[{self.strategy_name}] Using n_moves={n_moves}", OUTPUT_DEBUG)
-        
-        ai_thoughts = weight_thoughts + f"Picked {min(n_moves, len(weighted_coords))} random moves according to weights. "
-        
+
+        ai_thoughts = (
+            weight_thoughts + f"Picked {min(n_moves, len(weighted_coords))} random moves according to weights. "
+        )
+
         # Select and return move
         self.game.katrain.log(f"[{self.strategy_name}] Selecting move from weighted coordinates", OUTPUT_DEBUG)
         move, thoughts = self.select_from_weighted_coords(weighted_coords, n_moves, pass_policy)
-        
+
         self.game.katrain.log(f"[{self.strategy_name}] Final decision: {move.gtp()}", OUTPUT_DEBUG)
         return move, ai_thoughts + thoughts
+
 
 @register_strategy(AI_PICK)
 class PickStrategy(PickBasedStrategy):
     """Pick strategy - picks a move from a subset of legal moves"""
 
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[PickStrategy] Starting move generation using base PickBasedStrategy implementation", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            "[PickStrategy] Starting move generation using base PickBasedStrategy implementation", OUTPUT_DEBUG
+        )
         return super().generate_move()
 
     def handle_endgame(
@@ -1061,58 +1260,56 @@ class PickStrategy(PickBasedStrategy):
     ) -> tuple[list[tuple[float, float, int, int]] | None, str, int | None, bool]:
         return None, "", None, False
 
+
 @register_strategy(AI_RANK)
 class RankStrategy(PickBasedStrategy):
     """Rank strategy - similar to Pick but calibrated based on rank"""
 
     def get_n_moves(self, legal_policy_moves: list[tuple[float, Move | None]]) -> int:
         """Calculate n_moves based on rank"""
-        self.game.katrain.log(f"[RankStrategy] Calculating n_moves based on rank", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[RankStrategy] Calculating n_moves based on rank", OUTPUT_DEBUG)
+
         size = self.game.board_size
         board_squares = size[0] * size[1]
         norm_leg_moves = len(legal_policy_moves) / board_squares
-        
+
         self.game.katrain.log(f"[RankStrategy] Board squares: {board_squares}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[RankStrategy] Legal moves: {len(legal_policy_moves)}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[RankStrategy] Normalized legal moves: {norm_leg_moves:.4f}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[RankStrategy] Kyu rank: {self.settings['kyu_rank']}", OUTPUT_DEBUG)
-        
+
         # Calculate n_moves using the rank formula
         orig_calib_avemodrank = 0.063015 + 0.7624 * board_squares / (
             10 ** (-0.05737 * self.settings["kyu_rank"] + 1.9482)
         )
-        
-        self.game.katrain.log(f"[RankStrategy] Original calibrated average mod rank: {orig_calib_avemodrank:.4f}", OUTPUT_DEBUG)
-        
+
+        self.game.katrain.log(
+            f"[RankStrategy] Original calibrated average mod rank: {orig_calib_avemodrank:.4f}", OUTPUT_DEBUG
+        )
+
         exponent_term = (
-            3.002 * norm_leg_moves * norm_leg_moves
-            - norm_leg_moves
-            - 0.034889 * self.settings["kyu_rank"]
-            - 0.5097
+            3.002 * norm_leg_moves * norm_leg_moves - norm_leg_moves - 0.034889 * self.settings["kyu_rank"] - 0.5097
         )
         self.game.katrain.log(f"[RankStrategy] Exponent term: {exponent_term:.4f}", OUTPUT_DEBUG)
-        
+
         modified_calib_avemodrank = (
-            0.3931
-            + 0.6559
-            * norm_leg_moves
-            * math.exp(-1 * exponent_term ** 2)
-            - 0.01093 * self.settings["kyu_rank"]
+            0.3931 + 0.6559 * norm_leg_moves * math.exp(-1 * exponent_term**2) - 0.01093 * self.settings["kyu_rank"]
         ) * orig_calib_avemodrank
-        
-        self.game.katrain.log(f"[RankStrategy] Modified calibrated average mod rank: {modified_calib_avemodrank:.4f}", OUTPUT_DEBUG)
-        
+
+        self.game.katrain.log(
+            f"[RankStrategy] Modified calibrated average mod rank: {modified_calib_avemodrank:.4f}", OUTPUT_DEBUG
+        )
+
         denominator = 1.31165 * (modified_calib_avemodrank + 1) - 0.082653
         self.game.katrain.log(f"[RankStrategy] Denominator: {denominator:.4f}", OUTPUT_DEBUG)
-        
+
         n_moves_float = board_squares * norm_leg_moves / denominator
         n_moves: int = max(1, int(round(n_moves_float)))
 
         self.game.katrain.log(f"[RankStrategy] Calculated n_moves: {n_moves}", OUTPUT_DEBUG)
 
         return n_moves
-    
+
     def should_play_top_move(
         self,
         policy_moves: list[tuple[float, Move | None]],
@@ -1121,7 +1318,7 @@ class RankStrategy(PickBasedStrategy):
         overridetwo: float = 1.0,
     ) -> tuple[Move | None, str]:
         """Special override logic for rank-based"""
-        self.game.katrain.log(f"[RankStrategy] Calculating special override thresholds based on rank", OUTPUT_DEBUG)
+        self.game.katrain.log("[RankStrategy] Calculating special override thresholds based on rank", OUTPUT_DEBUG)
 
         size = self.game.board_size
         board_squares = size[0] * size[1]
@@ -1135,10 +1332,14 @@ class RankStrategy(PickBasedStrategy):
         # Calibrated override based on board filling
         ratio = (board_squares - len(legal_policy_moves)) / board_squares
         override = 0.8 * (1 - 0.5 * ratio)
-        self.game.katrain.log(f"[RankStrategy] Calculated override: {override:.2%} (from board filling ratio {ratio:.2f})", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[RankStrategy] Calculated override: {override:.2%} (from board filling ratio {ratio:.2f})", OUTPUT_DEBUG
+        )
 
         overridetwo = 0.85 + max(0, 0.02 * (self.settings["kyu_rank"] - 8))
-        self.game.katrain.log(f"[RankStrategy] Calculated overridetwo: {overridetwo:.2%} (from kyu rank adjustment)", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[RankStrategy] Calculated overridetwo: {overridetwo:.2%} (from kyu rank adjustment)", OUTPUT_DEBUG
+        )
 
         # Call the parent class method with calculated overrides
         return super().should_play_top_move(policy_moves, top_5_pass, override, overridetwo)
@@ -1163,21 +1364,27 @@ class InfluenceStrategy(PickBasedStrategy):
         size: tuple[int, int],
     ) -> tuple[list[tuple[float, float, int, int]], str]:
         """Generate influence-based weights"""
-        self.game.katrain.log(f"[InfluenceStrategy] Generating influence-based weights", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[InfluenceStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}", OUTPUT_DEBUG)
-        weighted_coords, ai_thoughts = generate_influence_territory_weights(
-            AI_INFLUENCE, 
-            self.settings, 
-            policy_grid, 
-            size
+        self.game.katrain.log("[InfluenceStrategy] Generating influence-based weights", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[InfluenceStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}",
+            OUTPUT_DEBUG,
         )
-        self.game.katrain.log(f"[InfluenceStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
+        weighted_coords, ai_thoughts = generate_influence_territory_weights(
+            AI_INFLUENCE, self.settings, policy_grid, size
+        )
+        self.game.katrain.log(
+            f"[InfluenceStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG
+        )
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0] * t[1])
-            self.game.katrain.log(f"[InfluenceStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
+            self.game.katrain.log("[InfluenceStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
-                self.game.katrain.log(f"[InfluenceStrategy] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol*wt:.2%}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[InfluenceStrategy] #{i + 1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol * wt:.2%}",
+                    OUTPUT_DEBUG,
+                )
         return weighted_coords, ai_thoughts
+
 
 @register_strategy(AI_TERRITORY)
 class TerritoryStrategy(PickBasedStrategy):
@@ -1190,21 +1397,27 @@ class TerritoryStrategy(PickBasedStrategy):
         size: tuple[int, int],
     ) -> tuple[list[tuple[float, float, int, int]], str]:
         """Generate territory-based weights"""
-        self.game.katrain.log(f"[TerritoryStrategy] Generating territory-based weights", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[TerritoryStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}", OUTPUT_DEBUG)
-        weighted_coords, ai_thoughts = generate_influence_territory_weights(
-            AI_TERRITORY, 
-            self.settings, 
-            policy_grid, 
-            size
+        self.game.katrain.log("[TerritoryStrategy] Generating territory-based weights", OUTPUT_DEBUG)
+        self.game.katrain.log(
+            f"[TerritoryStrategy] Settings: threshold={self.settings['threshold']}, line_weight={self.settings['line_weight']}",
+            OUTPUT_DEBUG,
         )
-        self.game.katrain.log(f"[TerritoryStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
+        weighted_coords, ai_thoughts = generate_influence_territory_weights(
+            AI_TERRITORY, self.settings, policy_grid, size
+        )
+        self.game.katrain.log(
+            f"[TerritoryStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG
+        )
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0] * t[1])
-            self.game.katrain.log(f"[TerritoryStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
+            self.game.katrain.log("[TerritoryStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
-                self.game.katrain.log(f"[TerritoryStrategy] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol*wt:.2%}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[TerritoryStrategy] #{i + 1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol * wt:.2%}",
+                    OUTPUT_DEBUG,
+                )
         return weighted_coords, ai_thoughts
+
 
 @register_strategy(AI_LOCAL)
 class LocalStrategy(PickBasedStrategy):
@@ -1213,13 +1426,17 @@ class LocalStrategy(PickBasedStrategy):
     def generate_move(self) -> tuple[Move, str]:
         # Handle the case where there's no previous move
         if not (self.cn.move and self.cn.move.coords):
-            self.game.katrain.log(f"[LocalStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy", OUTPUT_DEBUG)
-            self.game.katrain.log(f"[LocalStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02", OUTPUT_DEBUG)
-            return WeightedStrategy(self.game, {
-                "pick_override": 0.9,
-                "weaken_fac": 1,
-                "lower_bound": 0.02
-            }).generate_move()
+            self.game.katrain.log(
+                "[LocalStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy",
+                OUTPUT_DEBUG,
+            )
+            self.game.katrain.log(
+                "[LocalStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02",
+                OUTPUT_DEBUG,
+            )
+            return WeightedStrategy(
+                self.game, {"pick_override": 0.9, "weaken_fac": 1, "lower_bound": 0.02}
+            ).generate_move()
 
         return super().generate_move()
 
@@ -1230,24 +1447,24 @@ class LocalStrategy(PickBasedStrategy):
         size: tuple[int, int],
     ) -> tuple[list[tuple[float, float, int, int]], str]:
         """Generate local-based weights"""
-        self.game.katrain.log(f"[LocalStrategy] Generating local-based weights around previous move", OUTPUT_DEBUG)
+        self.game.katrain.log("[LocalStrategy] Generating local-based weights around previous move", OUTPUT_DEBUG)
         assert self.cn.move is not None, "Move cannot be None at this point"
         self.game.katrain.log(f"[LocalStrategy] Previous move: {self.cn.move.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[LocalStrategy] Variance setting: {self.settings['stddev']}", OUTPUT_DEBUG)
         weighted_coords, ai_thoughts = generate_local_tenuki_weights(
-            AI_LOCAL, 
-            self.settings, 
-            policy_grid, 
-            self.cn, 
-            size
+            AI_LOCAL, self.settings, policy_grid, self.cn, size
         )
         self.game.katrain.log(f"[LocalStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0] * t[1])
-            self.game.katrain.log(f"[LocalStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
+            self.game.katrain.log("[LocalStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
-                self.game.katrain.log(f"[LocalStrategy] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol*wt:.2%}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[LocalStrategy] #{i + 1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol * wt:.2%}",
+                    OUTPUT_DEBUG,
+                )
         return weighted_coords, ai_thoughts
+
 
 @register_strategy(AI_TENUKI)
 class TenukiStrategy(PickBasedStrategy):
@@ -1256,13 +1473,17 @@ class TenukiStrategy(PickBasedStrategy):
     def generate_move(self) -> tuple[Move, str]:
         # Handle the case where there's no previous move
         if not (self.cn.move and self.cn.move.coords):
-            self.game.katrain.log(f"[TenukiStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy", OUTPUT_DEBUG)
-            self.game.katrain.log(f"[TenukiStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02", OUTPUT_DEBUG)
-            return WeightedStrategy(self.game, {
-                "pick_override": 0.9,
-                "weaken_fac": 1,
-                "lower_bound": 0.02
-            }).generate_move()
+            self.game.katrain.log(
+                "[TenukiStrategy] No previous move with valid coordinates found, falling back to WeightedStrategy",
+                OUTPUT_DEBUG,
+            )
+            self.game.katrain.log(
+                "[TenukiStrategy] Using default weighted settings: pick_override=0.9, weaken_fac=1, lower_bound=0.02",
+                OUTPUT_DEBUG,
+            )
+            return WeightedStrategy(
+                self.game, {"pick_override": 0.9, "weaken_fac": 1, "lower_bound": 0.02}
+            ).generate_move()
 
         return super().generate_move()
 
@@ -1273,24 +1494,24 @@ class TenukiStrategy(PickBasedStrategy):
         size: tuple[int, int],
     ) -> tuple[list[tuple[float, float, int, int]], str]:
         """Generate tenuki-based weights"""
-        self.game.katrain.log(f"[TenukiStrategy] Generating tenuki-based weights (far from previous move)", OUTPUT_DEBUG)
+        self.game.katrain.log("[TenukiStrategy] Generating tenuki-based weights (far from previous move)", OUTPUT_DEBUG)
         assert self.cn.move is not None, "Move cannot be None at this point"
         self.game.katrain.log(f"[TenukiStrategy] Previous move: {self.cn.move.gtp()}", OUTPUT_DEBUG)
         self.game.katrain.log(f"[TenukiStrategy] Variance setting: {self.settings['stddev']}", OUTPUT_DEBUG)
         weighted_coords, ai_thoughts = generate_local_tenuki_weights(
-            AI_TENUKI, 
-            self.settings, 
-            policy_grid, 
-            self.cn, 
-            size
+            AI_TENUKI, self.settings, policy_grid, self.cn, size
         )
         self.game.katrain.log(f"[TenukiStrategy] Generated {len(weighted_coords)} weighted coordinates", OUTPUT_DEBUG)
         if weighted_coords:
             top5 = heapq.nlargest(5, weighted_coords, key=lambda t: t[0] * t[1])
-            self.game.katrain.log(f"[TenukiStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
+            self.game.katrain.log("[TenukiStrategy] Top 5 weighted coordinates (by policy*weight):", OUTPUT_DEBUG)
             for i, (pol, wt, x, y) in enumerate(top5):
-                self.game.katrain.log(f"[TenukiStrategy] #{i+1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol*wt:.2%}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[TenukiStrategy] #{i + 1}: ({x},{y}) - policy={pol:.2%}, weight={wt}, combined={pol * wt:.2%}",
+                    OUTPUT_DEBUG,
+                )
         return weighted_coords, ai_thoughts
+
 
 @register_strategy(AI_HUMAN)
 @register_strategy(AI_PRO)
@@ -1299,18 +1520,18 @@ class HumanStyleStrategy(AIStrategy):
 
     def __init__(self, game: Game, ai_settings: dict[str, Any]):
         super().__init__(game, ai_settings)
-        self.game.katrain.log(f"[HumanStyleStrategy] Initializing HumanStyleStrategy", OUTPUT_DEBUG)
+        self.game.katrain.log("[HumanStyleStrategy] Initializing HumanStyleStrategy", OUTPUT_DEBUG)
         self.game.katrain.log(f"[HumanStyleStrategy] AI settings: {ai_settings}", OUTPUT_DEBUG)
 
     def generate_move(self) -> tuple[Move, str]:
-        self.game.katrain.log(f"[HumanStyleStrategy] Starting move generation", OUTPUT_DEBUG)
+        self.game.katrain.log("[HumanStyleStrategy] Starting move generation", OUTPUT_DEBUG)
 
         if "human_kyu_rank" in self.settings:
             human_kyu_rank = round(self.settings["human_kyu_rank"])
             human_style = "rank" if self.settings["modern_style"] else "preaz"
 
             if human_kyu_rank <= 0:  # dan ranks
-                rank_text = f"{1-human_kyu_rank}d"
+                rank_text = f"{1 - human_kyu_rank}d"
             else:  # kyu ranks
                 rank_text = f"{human_kyu_rank}k"
 
@@ -1335,76 +1556,96 @@ class HumanStyleStrategy(AIStrategy):
         def set_analysis(a: dict[str, Any] | None, partial_result: bool) -> None:
             nonlocal analysis
             if not partial_result:
-                self.game.katrain.log(f"[HumanStyleStrategy] Full analysis results received", OUTPUT_DEBUG)
+                self.game.katrain.log("[HumanStyleStrategy] Full analysis results received", OUTPUT_DEBUG)
                 analysis = a
                 # Log some analysis stats for debugging
                 if a:
-                    self.game.katrain.log(f"[HumanStyleStrategy] Analysis contains humanPolicy: {'humanPolicy' in a}", OUTPUT_DEBUG)
-                    self.game.katrain.log(f"[HumanStyleStrategy] Analysis contains moveInfos: {len(a.get('moveInfos', []))} moves", OUTPUT_DEBUG)
-                    if 'humanPolicy' in a:
-                        policy_sum = sum(a['humanPolicy'])
-                        policy_max = max(a['humanPolicy'])
-                        self.game.katrain.log(f"[HumanStyleStrategy] Human policy sum: {policy_sum}, max: {policy_max}", OUTPUT_DEBUG)
+                    self.game.katrain.log(
+                        f"[HumanStyleStrategy] Analysis contains humanPolicy: {'humanPolicy' in a}", OUTPUT_DEBUG
+                    )
+                    self.game.katrain.log(
+                        f"[HumanStyleStrategy] Analysis contains moveInfos: {len(a.get('moveInfos', []))} moves",
+                        OUTPUT_DEBUG,
+                    )
+                    if "humanPolicy" in a:
+                        policy_sum = sum(a["humanPolicy"])
+                        policy_max = max(a["humanPolicy"])
+                        self.game.katrain.log(
+                            f"[HumanStyleStrategy] Human policy sum: {policy_sum}, max: {policy_max}", OUTPUT_DEBUG
+                        )
             else:
-                self.game.katrain.log(f"[HumanStyleStrategy] Received partial analysis results - ignoring", OUTPUT_DEBUG)
+                self.game.katrain.log("[HumanStyleStrategy] Received partial analysis results - ignoring", OUTPUT_DEBUG)
 
         def set_error(a: Any) -> None:
             nonlocal error
             error = True
             self.game.katrain.log(f"[HumanStyleStrategy] Error in human analysis query: {a}", OUTPUT_ERROR)
-            self.game.katrain.log(f"[HumanStyleStrategy] Will attempt to fall back to policy move", OUTPUT_DEBUG)
-        self.game.katrain.log(f"[HumanStyleStrategy] Getting engine for player", OUTPUT_DEBUG)
+            self.game.katrain.log("[HumanStyleStrategy] Will attempt to fall back to policy move", OUTPUT_DEBUG)
+
+        self.game.katrain.log("[HumanStyleStrategy] Getting engine for player", OUTPUT_DEBUG)
         engine = self.game.engines[self.cn.player]
         self.game.katrain.log(f"[HumanStyleStrategy] Using engine for player {self.cn.player}", OUTPUT_DEBUG)
-        
-        self.game.katrain.log(f"[HumanStyleStrategy] Requesting analysis with human profile settings", OUTPUT_DEBUG)
+
+        self.game.katrain.log("[HumanStyleStrategy] Requesting analysis with human profile settings", OUTPUT_DEBUG)
         engine.request_analysis(
             self.cn,
             callback=set_analysis,
             error_callback=set_error,
             priority=PRIORITY_EXTRA_AI_QUERY,
             include_policy=True,
-            extra_settings=override_settings
+            extra_settings=override_settings,
         )
-        self.game.katrain.log(f"[HumanStyleStrategy] Analysis request sent, waiting for results", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[HumanStyleStrategy] Analysis request sent, waiting for results", OUTPUT_DEBUG)
+
         # Wait for analysis to complete
         wait_count = 0
         while not (error or analysis):
             import time
+
             time.sleep(0.01)
             wait_count += 1
             if wait_count % 100 == 0:  # Log every 1 second
-                self.game.katrain.log(f"[HumanStyleStrategy] Still waiting for analysis results ({wait_count/100:.1f}s)", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[HumanStyleStrategy] Still waiting for analysis results ({wait_count / 100:.1f}s)", OUTPUT_DEBUG
+                )
             engine.check_alive(exception_if_dead=True)
-        
-        self.game.katrain.log(f"[HumanStyleStrategy] Finished waiting for analysis, error={error}, analysis received={analysis is not None}", OUTPUT_DEBUG)
-            
+
+        self.game.katrain.log(
+            f"[HumanStyleStrategy] Finished waiting for analysis, error={error}, analysis received={analysis is not None}",
+            OUTPUT_DEBUG,
+        )
+
         if error or not analysis:
-            self.game.katrain.log(f"[HumanStyleStrategy] Analysis failed or returned empty", OUTPUT_DEBUG)
+            self.game.katrain.log("[HumanStyleStrategy] Analysis failed or returned empty", OUTPUT_DEBUG)
             # Fall back to policy
             policy_move = self.cn.policy_ranking[0][1] if self.cn.policy_ranking else None
             if policy_move:
-                self.game.katrain.log(f"[HumanStyleStrategy] Falling back to top policy move: {policy_move.gtp()}", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    f"[HumanStyleStrategy] Falling back to top policy move: {policy_move.gtp()}", OUTPUT_DEBUG
+                )
                 return policy_move, "Falling back to policy move due to error in human analysis."
             else:
-                self.game.katrain.log(f"[HumanStyleStrategy] No policy moves available for fallback - will return pass", OUTPUT_DEBUG)
+                self.game.katrain.log(
+                    "[HumanStyleStrategy] No policy moves available for fallback - will return pass", OUTPUT_DEBUG
+                )
                 return Move(None, player=self.cn.next_player), "No valid moves found."
-        
+
         # Check if human policy is available
-        self.game.katrain.log(f"[HumanStyleStrategy] Processing analysis results", OUTPUT_DEBUG)
+        self.game.katrain.log("[HumanStyleStrategy] Processing analysis results", OUTPUT_DEBUG)
         if "humanPolicy" not in analysis:
             error_msg = "humanPolicy not found in analysis—have you downloaded and configured your human model yet?"
             raise Exception(error_msg)
-        
-        self.game.katrain.log(f"[HumanStyleStrategy] Human policy found in analysis", OUTPUT_DEBUG)
+
+        self.game.katrain.log("[HumanStyleStrategy] Human policy found in analysis", OUTPUT_DEBUG)
         board_size = self.game.board_size
         self.game.katrain.log(f"[HumanStyleStrategy] Board size: {board_size}", OUTPUT_DEBUG)
         human_policy = analysis["humanPolicy"]
         self.game.katrain.log(f"[HumanStyleStrategy] Human policy length: {len(human_policy)}", OUTPUT_DEBUG)
         if len(human_policy) != 362:
-            self.game.katrain.log(f"[HumanStyleStrategy] WARNING: Human policy length {len(human_policy)} != 362", OUTPUT_ERROR)
-        
+            self.game.katrain.log(
+                f"[HumanStyleStrategy] WARNING: Human policy length {len(human_policy)} != 362", OUTPUT_ERROR
+            )
+
         # Create a list of moves with their human policy weights
         moves = []
         for x in range(board_size[0]):
@@ -1412,53 +1653,66 @@ class HumanStyleStrategy(AIStrategy):
                 idx = (board_size[1] - y - 1) * board_size[0] + x
                 if idx < len(human_policy) and human_policy[idx] > 0:
                     moves.append((Move((x, y), player=self.cn.next_player), human_policy[idx]))
-        
-        self.game.katrain.log(f"[HumanStyleStrategy] Generated {len(moves)} candidate moves from human policy", OUTPUT_DEBUG)
-                    
+
+        self.game.katrain.log(
+            f"[HumanStyleStrategy] Generated {len(moves)} candidate moves from human policy", OUTPUT_DEBUG
+        )
+
         # Add pass move if it has positive probability
         if len(human_policy) > board_size[0] * board_size[1] and human_policy[-1] > 0:
-            self.game.katrain.log(f"[HumanStyleStrategy] Adding pass move with probability {human_policy[-1]}", OUTPUT_DEBUG)
+            self.game.katrain.log(
+                f"[HumanStyleStrategy] Adding pass move with probability {human_policy[-1]}", OUTPUT_DEBUG
+            )
             moves.append((Move(None, player=self.cn.next_player), human_policy[-1]))
-            
-        self.game.katrain.log(f"[HumanStyleStrategy] Performing weighted selection from {len(moves)} moves", OUTPUT_DEBUG)
+
+        self.game.katrain.log(
+            f"[HumanStyleStrategy] Performing weighted selection from {len(moves)} moves", OUTPUT_DEBUG
+        )
         top_moves = sorted(moves, key=lambda x: -x[1])
-        self.game.katrain.log(f"[HumanStyleStrategy] Top 5 moves by probability:", OUTPUT_DEBUG)
-        
+        self.game.katrain.log("[HumanStyleStrategy] Top 5 moves by probability:", OUTPUT_DEBUG)
+
         # Create a formatted string of top 5 moves for ai_thoughts
-        top_moves_str = "\n".join([f"#{i+1}: {move.gtp()} - {prob:.1%}" for i, (move, prob) in enumerate(top_moves[:5])])
+        top_moves_str = "\n".join(
+            [f"#{i + 1}: {move.gtp()} - {prob:.1%}" for i, (move, prob) in enumerate(top_moves[:5])]
+        )
 
         self.game.katrain.log(f"[HumanStyleStrategy]\n{top_moves_str}", OUTPUT_DEBUG)
-        
+
         selected = weighted_selection_without_replacement(moves, 1)[0]
         move = selected[0]
         prob = selected[1]
-        
+
         # Find the rank of the selected move
-        selected_rank = next((i+1 for i, (m, _) in enumerate(top_moves) if m.gtp() == move.gtp()), "ERROR: move not found in ranking")
-        
-        self.game.katrain.log(f"[HumanStyleStrategy] Selected move {move.gtp()} with probability {prob:.4f}", OUTPUT_DEBUG)
+        selected_rank = next(
+            (i + 1 for i, (m, _) in enumerate(top_moves) if m.gtp() == move.gtp()), "ERROR: move not found in ranking"
+        )
+
+        self.game.katrain.log(
+            f"[HumanStyleStrategy] Selected move {move.gtp()} with probability {prob:.4f}", OUTPUT_DEBUG
+        )
         ai_thoughts = f"\n{top_moves_str}\n\nPlayed move {move.gtp()} ({prob:.1%}) as the #{selected_rank} top move."
         self.game.katrain.log(f"[HumanStyleStrategy] Final decision: {move.gtp()}", OUTPUT_DEBUG)
         return move, ai_thoughts
 
+
 def generate_ai_move(game: Game, ai_mode: str, ai_settings: dict[str, Any]) -> tuple[Move, GameNode]:
     """Generate a move using the selected AI strategy"""
     game.katrain.log(f"Generate AI move called with mode: {ai_mode}", OUTPUT_DEBUG)
-    
+
     # Create the appropriate strategy based on mode
 
     strategy = STRATEGY_REGISTRY[ai_mode](game, ai_settings)
-    
+
     # Generate the move
     game.katrain.log(f"Generating move using {strategy.__class__.__name__}", OUTPUT_DEBUG)
     move, ai_thoughts = strategy.generate_move()
-    
+
     # Play the move and return
     game.katrain.log(f"Playing move {move.gtp()} and creating game node", OUTPUT_DEBUG)
     played_node = game.play(move)
     game.katrain.log(f"AI thoughts: {ai_thoughts}", OUTPUT_DEBUG)
     played_node.ai_thoughts = ai_thoughts
-    
+
     game.katrain.log(f"Move generation complete: {move.gtp()}", OUTPUT_DEBUG)
     return move, played_node
 
@@ -1467,8 +1721,10 @@ def generate_ai_move(game: Game, ai_mode: str, ai_settings: dict[str, Any]) -> t
 # Leela Zero Strategy (Phase 40)
 # =============================================================================
 
+
 class LeelaNotAvailableError(Exception):
     """Raised when Leela engine is not available for play."""
+
     pass
 
 
@@ -1490,15 +1746,11 @@ class LeelaStrategy(AIStrategy):
 
         if not leela:
             if not katrain.start_leela_engine():
-                raise LeelaNotAvailableError(
-                    i18n._("leela:error:start_failed")
-                )
+                raise LeelaNotAvailableError(i18n._("leela:error:start_failed"))
             leela = katrain.leela_engine
 
         if not leela or not leela.is_alive():
-            raise LeelaNotAvailableError(
-                i18n._("leela:error:not_running")
-            )
+            raise LeelaNotAvailableError(i18n._("leela:error:not_running"))
 
         # 2. Get play_visits from config (single source of truth)
         visits = katrain.config("leela/play_visits", 500)
@@ -1546,15 +1798,11 @@ class LeelaStrategy(AIStrategy):
             time.sleep(poll_interval)
             elapsed += poll_interval
             if not leela.is_alive():
-                raise LeelaNotAvailableError(
-                    i18n._("leela:error:engine_died")
-                )
+                raise LeelaNotAvailableError(i18n._("leela:error:engine_died"))
 
         if not event.is_set():
             leela.cancel_analysis()
-            raise LeelaNotAvailableError(
-                i18n._("leela:error:timeout")
-            )
+            raise LeelaNotAvailableError(i18n._("leela:error:timeout"))
 
         # 6. Validate result
         result: LeelaPositionEval | None = result_holder[0]
@@ -1569,10 +1817,7 @@ class LeelaStrategy(AIStrategy):
             raise LeelaNotAvailableError(i18n._("leela:error:no_candidates"))
 
         move = Move.from_gtp(best.move, player=current_node.next_player)
-        ai_thoughts = (
-            f"Leela Zero played {best.move} "
-            f"(winrate {best.eval_pct:.1f}%, {best.visits} visits)"
-        )
+        ai_thoughts = f"Leela Zero played {best.move} (winrate {best.eval_pct:.1f}%, {best.visits} visits)"
 
         self.game.katrain.log(f"[LeelaStrategy] Selected: {move.gtp()}", OUTPUT_DEBUG)
         return move, ai_thoughts

@@ -11,8 +11,9 @@ import os
 import re
 import time
 import unicodedata
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -279,9 +280,7 @@ _safe_write_file = safe_write_file
 # =============================================================================
 
 
-def read_sgf_with_fallback(
-    sgf_path: str, log_cb: Callable[[str], None] | None = None
-) -> tuple[str | None, str]:
+def read_sgf_with_fallback(sgf_path: str, log_cb: Callable[[str], None] | None = None) -> tuple[str | None, str]:
     """Read an SGF file with encoding fallback.
 
     Args:
@@ -320,9 +319,7 @@ def read_sgf_with_fallback(
     return None, ""
 
 
-def parse_sgf_with_fallback(
-    sgf_path: str, log_cb: Callable[[str], None] | None = None
-) -> Any | None:
+def parse_sgf_with_fallback(sgf_path: str, log_cb: Callable[[str], None] | None = None) -> Any | None:
     """Parse an SGF file with encoding fallback.
 
     Args:
@@ -354,9 +351,7 @@ def parse_sgf_with_fallback(
             # Fallback: write to temp file if only parse_file is available
             import tempfile
 
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".sgf", delete=False, encoding="utf-8"
-            ) as tmp:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".sgf", delete=False, encoding="utf-8") as tmp:
                 tmp.write(content)
                 tmp_path = tmp.name
             try:
@@ -484,9 +479,7 @@ def collect_sgf_files(input_dir: str, skip_analyzed: bool = False) -> list[str]:
 # =============================================================================
 
 
-def wait_for_analysis(
-    engine: KataGoEngine, timeout: float = 300.0, poll_interval: float = 0.5
-) -> bool:
+def wait_for_analysis(engine: KataGoEngine, timeout: float = 300.0, poll_interval: float = 0.5) -> bool:
     """Wait for the engine to finish all pending analysis queries.
 
     Args:
@@ -543,7 +536,7 @@ def sanitize_filename(name: str, max_length: int = 50) -> str:
 
     # Truncate to max length
     if len(safe) > max_length:
-        safe = safe[: max_length].rstrip("_")
+        safe = safe[:max_length].rstrip("_")
 
     # Strip trailing dots and spaces again after truncation (Windows requirement)
     safe = safe.rstrip(". ")
@@ -671,7 +664,6 @@ def needs_leela_karte_warning(analysis_engine: str, generate_karte: bool) -> boo
 # Markdown/Report Formatting Helpers (Phase 53, enhanced Phase 66)
 # =============================================================================
 
-import re
 import urllib.parse
 from typing import Literal
 
@@ -778,15 +770,12 @@ def _smart_truncate(name: str, max_len: int) -> str:
             return _finalize(f"{p1}vs{truncated_p2}")
 
         # Last resort: truncate P1 too
-        return _finalize(f"{name[:max_len-3]}...")
+        return _finalize(f"{name[: max_len - 3]}...")
 
     # Non-standard format: simple truncation preserving tail
     head_len = max(1, max_len - 8)  # Reserve 8 for "..." + 5-char tail
     tail_len = min(5, max_len - head_len - 3)
-    if tail_len > 0:
-        raw = f"{name[:head_len]}...{name[-tail_len:]}"
-    else:
-        raw = f"{name[:max_len-3]}..."
+    raw = f"{name[:head_len]}...{name[-tail_len:]}" if tail_len > 0 else f"{name[: max_len - 3]}..."
 
     return _finalize(raw)
 
@@ -816,10 +805,7 @@ def format_game_display_label(
         - Double-escaping is caller's responsibility to avoid
     """
     # Extract basename if path
-    if os.sep in name or "/" in name:
-        display = os.path.basename(name)
-    else:
-        display = name
+    display = os.path.basename(name) if os.sep in name or "/" in name else name
 
     # Truncate if needed
     if max_len is not None and len(display) > max_len:

@@ -48,10 +48,7 @@ def get_sanitization_context(app_dir: str = "") -> SanitizationContext:
     username = os.environ.get("USERNAME") or os.environ.get("USER") or ""
     hostname = socket.gethostname()
     home_dir = str(Path(os.path.expanduser("~")).resolve())
-    if not app_dir:
-        app_dir = str(Path.cwd().resolve())
-    else:
-        app_dir = str(Path(app_dir).resolve())
+    app_dir = str(Path.cwd().resolve()) if not app_dir else str(Path(app_dir).resolve())
 
     return SanitizationContext(
         username=username,

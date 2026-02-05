@@ -10,7 +10,7 @@ v5設計方針:
 - 型は実際のGame/SGFNode実装に合わせる
 """
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 
 class RootNodeProvider(Protocol):
@@ -19,7 +19,7 @@ class RootNodeProvider(Protocol):
     GameNode.get_property() に対応
     """
 
-    def get_property(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get_property(self, key: str, default: str | None = None) -> str | None:
         """SGFプロパティを取得"""
         ...
 
@@ -38,16 +38,13 @@ class GameMetadataProvider(Protocol):
         ...
 
     @property
-    def komi(self) -> float:
-        ...
+    def komi(self) -> float: ...
 
     @property
-    def rules(self) -> str:
-        ...
+    def rules(self) -> str: ...
 
     @property
-    def sgf_filename(self) -> Optional[str]:
-        ...
+    def sgf_filename(self) -> str | None: ...
 
     @property
     def root(self) -> RootNodeProvider:

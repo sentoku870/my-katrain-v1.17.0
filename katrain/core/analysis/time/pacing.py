@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Pacing & Tilt Analysis.
 
 This module analyzes the correlation between time consumption and loss
@@ -12,11 +11,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
-from .models import GameTimeData, TimeMetrics
 from katrain.core.analysis.models import MoveEval, get_canonical_loss_from_move
+
+from .models import GameTimeData
 
 _logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ MIN_MOVES_FOR_STATS = 10
 # =============================================================================
 
 
-class LossSource(str, Enum):
+class LossSource(StrEnum):
     """Source of canonical loss values."""
 
     SCORE = "score"  # KataGo score_loss
@@ -58,7 +58,7 @@ class LossSource(str, Enum):
     NONE = "none"  # No loss data
 
 
-class TiltSeverity(str, Enum):
+class TiltSeverity(StrEnum):
     """Severity classification for tilt episodes.
 
     Precedence order (checked first to last):
@@ -343,25 +343,13 @@ def _compute_game_stats(
     time_median_white = _compute_median(white_times) if white_times else None
 
     # Compute thresholds
-    blitz_threshold_black = (
-        time_median_black * config.blitz_multiplier
-        if time_median_black is not None
-        else None
-    )
-    blitz_threshold_white = (
-        time_median_white * config.blitz_multiplier
-        if time_median_white is not None
-        else None
-    )
+    blitz_threshold_black = time_median_black * config.blitz_multiplier if time_median_black is not None else None
+    blitz_threshold_white = time_median_white * config.blitz_multiplier if time_median_white is not None else None
     long_think_threshold_black = (
-        time_median_black * config.long_think_multiplier
-        if time_median_black is not None
-        else None
+        time_median_black * config.long_think_multiplier if time_median_black is not None else None
     )
     long_think_threshold_white = (
-        time_median_white * config.long_think_multiplier
-        if time_median_white is not None
-        else None
+        time_median_white * config.long_think_multiplier if time_median_white is not None else None
     )
 
     # Collect positive losses for p90
@@ -383,10 +371,7 @@ def _compute_game_stats(
     loss_source, has_mixed_sources = _detect_loss_sources(valid_moves)
 
     if has_mixed_sources:
-        _logger.warning(
-            "Mixed loss sources detected (KataGo + Leela); "
-            "severity thresholds may be less accurate."
-        )
+        _logger.warning("Mixed loss sources detected (KataGo + Leela); severity thresholds may be less accurate.")
 
     return GamePacingStats(
         time_median_black=time_median_black,
@@ -602,17 +587,14 @@ def analyze_pacing(
     if missing_moves:
         missing_sample = sorted(missing_moves)[:5]
         _logger.warning(
-            "MoveEval coverage incomplete: missing %d/%d moves (first few: %s). "
-            "Pacing analysis will skip these moves.",
+            "MoveEval coverage incomplete: missing %d/%d moves (first few: %s). Pacing analysis will skip these moves.",
             len(missing_moves),
             expected_max_move,
             missing_sample,
         )
 
     # Compute game stats
-    game_stats = _compute_game_stats(
-        time_data, moves, config, missing_moves, expected_max_move
-    )
+    game_stats = _compute_game_stats(time_data, moves, config, missing_moves, expected_max_move)
 
     # Check minimum moves
     if game_stats.total_moves_analyzed < config.min_moves_for_stats:

@@ -8,8 +8,9 @@ MERGEパターンで既存値を保持しつつ、指定されたキーのみ更
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import fields, is_dataclass
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from katrain.common.typed_config.models import (
     EngineConfig,
@@ -160,19 +161,14 @@ class TypedConfigWriter:
         """
         # 0. Dataclass要件チェック
         if not is_dataclass(config_cls):
-            raise TypeError(
-                f"{config_cls.__name__} is not a dataclass. "
-                "TypedConfigWriter requires dataclass models."
-            )
+            raise TypeError(f"{config_cls.__name__} is not a dataclass. TypedConfigWriter requires dataclass models.")
 
         # 1. フィールド名検証
         valid_fields = {f.name for f in fields(config_cls)}
         unknown = set(updates.keys()) - valid_fields
         if unknown:
             sorted_unknown = sorted(unknown)
-            raise UnknownFieldError(
-                f"{config_cls.__name__} has no field(s): {sorted_unknown}"
-            )
+            raise UnknownFieldError(f"{config_cls.__name__} has no field(s): {sorted_unknown}")
 
         # 2. 既存dict取得 -> Shallow MERGE
         existing = self._config.get(section)
@@ -232,9 +228,7 @@ class TypedConfigWriter:
             return False
 
         # list <-> tuple（等価なコンテナ）
-        if isinstance(input_val, (list, tuple)) and isinstance(
-            output_val, (list, tuple)
-        ):
+        if isinstance(input_val, (list, tuple)) and isinstance(output_val, (list, tuple)):
             return list(input_val) != list(output_val)
 
         # 文字列 -> 数値（有効な変換）

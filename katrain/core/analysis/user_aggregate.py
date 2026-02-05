@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any
 
 from .skill_radar import (
     AggregatedRadarResult,
@@ -48,7 +48,7 @@ class GameRadarEntry:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "GameRadarEntry" | None:
+    def from_dict(cls, d: dict[str, Any]) -> GameRadarEntry | None:
         """Deserialize from dictionary.
 
         Returns:
@@ -131,11 +131,9 @@ class UserRadarAggregate:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "UserRadarAggregate":
+    def from_dict(cls, d: dict[str, Any]) -> UserRadarAggregate:
         """Deserialize from dictionary."""
-        entries = [
-            e for ed in d.get("entries", []) if (e := GameRadarEntry.from_dict(ed))
-        ]
+        entries = [e for ed in d.get("entries", []) if (e := GameRadarEntry.from_dict(ed))]
         return cls(
             player_name=d["player_name"],
             history_size=d.get("history_size", DEFAULT_HISTORY_SIZE),
@@ -154,9 +152,7 @@ class UserAggregateStore:
     def get_or_create(self, player_name: str) -> UserRadarAggregate:
         """Get or create aggregate for player."""
         if player_name not in self._aggregates:
-            self._aggregates[player_name] = UserRadarAggregate(
-                player_name=player_name, history_size=self._history_size
-            )
+            self._aggregates[player_name] = UserRadarAggregate(player_name=player_name, history_size=self._history_size)
         return self._aggregates[player_name]
 
     def get(self, player_name: str) -> UserRadarAggregate | None:

@@ -6,10 +6,12 @@ Phase 73: KaTrainGuiからキーボード処理を抽出。
 重要: このモジュールはインポート時にKivy UIクラスを読み込まない。
 Kivy依存（platform, Clock, Clipboard）は全てコンストラクタで注入。
 """
+
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
@@ -92,9 +94,7 @@ class KeyboardManager:
         if modifiers is None:
             modifiers = []
         mod_set = set(modifiers)
-        ctrl = "ctrl" in mod_set or (
-            "meta" in mod_set and self._get_platform() == "macosx"
-        )
+        ctrl = "ctrl" in mod_set or ("meta" in mod_set and self._get_platform() == "macosx")
         shift = "shift" in mod_set
         return ctrl, shift
 
@@ -139,7 +139,9 @@ class KeyboardManager:
             for k in (ks if isinstance(ks, list) else [ks])
         }
 
-    def on_keyboard_down(self, _keyboard: Any, keycode: tuple[int, str], _text: str, modifiers: list[str] | None) -> None:
+    def on_keyboard_down(
+        self, _keyboard: Any, keycode: tuple[int, str], _text: str, modifiers: list[str] | None
+    ) -> None:
         """キー押下イベントハンドラ。
 
         Args:
@@ -260,6 +262,7 @@ class KeyboardManager:
                     # OUTPUT_EXTRA_DEBUG = 4
                     # Dead code: KEY_TSUMEGO_FRAME = "f10" matches first
                     import yappi
+
                     yappi.set_clock_type("cpu")
                     yappi.start()
                     self._log("starting profiler", 1)  # OUTPUT_ERROR = 1
@@ -268,7 +271,9 @@ class KeyboardManager:
                 debug_level = self._get_debug_level()
                 if debug_level is not None and debug_level >= 4:
                     import time as time_module
+
                     import yappi
+
                     stats = yappi.get_func_stats()
                     filename = f"callgrind.{int(time_module.time())}.prof"
                     stats.save(filename, type="callgrind")

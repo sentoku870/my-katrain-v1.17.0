@@ -11,7 +11,7 @@ in a tabbed interface with:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -27,7 +27,6 @@ from kivy.uix.togglebutton import ToggleButton
 from katrain.core.analysis.engine_compare import (
     ComparisonWarning,
     EngineComparisonResult,
-    EngineStats,
     MoveComparison,
     build_comparison_from_game,
 )
@@ -71,7 +70,7 @@ COL_WIDTHS = {
 # =============================================================================
 
 
-def show_engine_compare_popup(ctx: "FeatureContext") -> None:
+def show_engine_compare_popup(ctx: FeatureContext) -> None:
     """Show engine comparison popup.
 
     Args:
@@ -85,7 +84,7 @@ def show_engine_compare_popup(ctx: "FeatureContext") -> None:
 # =============================================================================
 
 
-def _show_engine_compare_popup_impl(ctx: "FeatureContext") -> None:
+def _show_engine_compare_popup_impl(ctx: FeatureContext) -> None:
     """Implementation of engine comparison popup display."""
     # Check if game is loaded
     game = getattr(ctx, "game", None)
@@ -118,7 +117,7 @@ def _show_engine_compare_popup_impl(ctx: "FeatureContext") -> None:
     _build_and_show_popup(ctx, result)
 
 
-def _build_and_show_popup(ctx: "FeatureContext", result: EngineComparisonResult) -> None:
+def _build_and_show_popup(ctx: FeatureContext, result: EngineComparisonResult) -> None:
     """Build and show the popup."""
     content = BoxLayout(orientation="vertical", spacing=dp(5), padding=dp(5))
 
@@ -203,7 +202,7 @@ def _format_warnings(result: EngineComparisonResult) -> str:
 
 
 def _build_moves_tab(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     result: EngineComparisonResult,
 ) -> tuple[BoxLayout, dict[str, Any]]:
     """Build the moves comparison tab.
@@ -293,7 +292,7 @@ def _build_moves_tab(
 
 
 def _rebuild_moves_table(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     result: EngineComparisonResult,
     container: BoxLayout,
     filter_state: dict[str, Any],
@@ -368,7 +367,7 @@ def _build_header_row() -> BoxLayout:
 
 
 def _build_move_row(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     move: MoveComparison,
     result: EngineComparisonResult,
 ) -> BoxLayout:
@@ -442,7 +441,7 @@ def _add_cell(row: BoxLayout, text: str, width: float) -> None:
 
 
 def _on_row_click(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     move: MoveComparison,
     instance: Any,
     touch: Any,
@@ -535,8 +534,8 @@ def _build_stats_comparison_grid(result: EngineComparisonResult) -> GridLayout:
     # Header
     add_row(
         "",
-        f"[b]KataGo[/b]",
-        f"[b]Leela[/b]",
+        "[b]KataGo[/b]",
+        "[b]Leela[/b]",
     )
     # Enable markup for header cells
     for child in grid.children[:3]:

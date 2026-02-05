@@ -9,7 +9,8 @@ from __future__ import annotations
 import os
 import threading
 import warnings
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -22,11 +23,9 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
 from katrain.core.constants import STATUS_ERROR, STATUS_INFO
-from katrain.core.lang import i18n
 from katrain.core.smart_kifu import (
     Context,
     ImportResult,
-    TrainingSetManifest,
     compute_training_set_summary,
     create_training_set,
     import_analyzed_sgf_folder,
@@ -36,7 +35,6 @@ from katrain.core.smart_kifu import (
 )
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
-
 
 # =============================================================================
 # Analyzed Ratio Formatting (Phase 28)
@@ -72,6 +70,7 @@ def _format_analyzed_ratio(ratio: float | None) -> tuple[str, list[float]]:
         return (f"{pct}%", COLOR_RATIO_YELLOW)
     else:
         return (f"{pct}%", COLOR_RATIO_RED)
+
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -115,6 +114,7 @@ def create_browse_callback(
     Returns:
         ブラウズコールバック関数
     """
+
     def browse_callback(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
@@ -217,6 +217,7 @@ def build_training_set_list_widget(
                 if state == "down":
                     selected_set[0] = sid
                     on_select_callback(sid)
+
             return select_fn
 
         btn.bind(state=make_select_fn(set_id))
@@ -232,7 +233,7 @@ def build_training_set_list_widget(
 
 
 def show_create_training_set_dialog(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     on_created_callback: Callable[[str], None],
 ) -> None:
     """新規 Training Set 作成ダイアログを表示
@@ -341,7 +342,7 @@ def show_create_training_set_dialog(
 
 
 def show_import_sgf_dialog(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain_gui: Any,
     set_id: str,
     on_import_complete: Callable[[], None],
@@ -449,6 +450,7 @@ def show_import_sgf_dialog(
             def select_fn(instance: Any, state: str) -> None:
                 if state == "down":
                     selected_context[0] = c
+
             return select_fn
 
         btn.bind(state=make_context_select(ctx_enum))
@@ -522,7 +524,8 @@ def show_import_sgf_dialog(
 
                 Clock.schedule_once(update_ui, 0)
 
-            except Exception as e:
+            except Exception:
+
                 def show_error(dt: float) -> None:
                     is_importing[0] = False
                     progress_label.text = f"エラー: {e}"
@@ -562,7 +565,7 @@ def show_import_sgf_dialog(
     popup.open()
 
 
-def show_import_result(ctx: "FeatureContext", result: ImportResult) -> None:
+def show_import_result(ctx: FeatureContext, result: ImportResult) -> None:
     """インポート結果をポップアップで表示
 
     Args:
@@ -577,9 +580,7 @@ def show_import_result(ctx: "FeatureContext", result: ImportResult) -> None:
 
     # サマリ
     summary_text = (
-        f"成功: {result.success_count} 件\n"
-        f"重複スキップ: {result.skipped_count} 件\n"
-        f"失敗: {result.failed_count} 件"
+        f"成功: {result.success_count} 件\n重複スキップ: {result.skipped_count} 件\n失敗: {result.failed_count} 件"
     )
     summary_label = Label(
         text=summary_text,
@@ -669,12 +670,11 @@ def show_import_result(ctx: "FeatureContext", result: ImportResult) -> None:
     if result.has_failures:
         ctx.controls.set_status(
             f"インポート完了: 成功{result.success_count}, スキップ{result.skipped_count}, 失敗{result.failed_count}",
-            STATUS_ERROR
+            STATUS_ERROR,
         )
     else:
         ctx.controls.set_status(
-            f"インポート完了: 成功{result.success_count}, スキップ{result.skipped_count}",
-            STATUS_INFO
+            f"インポート完了: 成功{result.success_count}, スキップ{result.skipped_count}", STATUS_INFO
         )
 
 
@@ -684,7 +684,7 @@ def show_import_result(ctx: "FeatureContext", result: ImportResult) -> None:
 
 
 def show_training_set_manager(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain_gui: Any,
 ) -> None:
     """Training Set Manager ポップアップを表示
@@ -811,7 +811,7 @@ def show_training_set_manager(
 
 
 def show_import_batch_output_dialog(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     set_id: str,
     on_import_complete: Callable[[], None],
     katrain_gui: Any | None = None,
@@ -829,8 +829,7 @@ def show_import_batch_output_dialog(
     # Phase 111: Deprecation warning for future required parameter
     if katrain_gui is None:
         warnings.warn(
-            "katrain_gui parameter will be required in a future version. "
-            "Pass the KaTrainGui instance explicitly.",
+            "katrain_gui parameter will be required in a future version. Pass the KaTrainGui instance explicitly.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -872,9 +871,7 @@ def show_import_batch_output_dialog(
     )
     # Phase 111: Handle None katrain_gui gracefully
     if katrain_gui is not None:
-        browse_btn.bind(on_release=create_browse_callback(
-            folder_input, "解析済みSGFフォルダを選択", katrain_gui
-        ))
+        browse_btn.bind(on_release=create_browse_callback(folder_input, "解析済みSGFフォルダを選択", katrain_gui))
     else:
         browse_btn.disabled = True
         browse_btn.text = "N/A"
@@ -920,6 +917,7 @@ def show_import_batch_output_dialog(
             def set_ctx(instance: Any, state: str) -> None:
                 if state == "down":
                     selected_context[0] = c
+
             return set_ctx
 
         btn.bind(state=make_context_fn(ctx_enum))

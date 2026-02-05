@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Language and locale utilities (Kivy-independent).
 
 Canonical internal language codes: "en", "jp"
@@ -6,6 +5,7 @@ These match the locale directories in katrain/i18n/locales/.
 
 Part of Phase 52: Stabilization (tofu fix + jp/ja consistency).
 """
+
 from typing import Literal
 
 # Canonical internal language codes (match locale directories)

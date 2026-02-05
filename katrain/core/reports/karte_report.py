@@ -7,6 +7,17 @@ For new code, prefer importing from katrain.core.reports.karte directly.
 """
 
 # Exceptions and constants from models (no side effects)
+# Callable APIs from their respective modules
+from katrain.core.reports.karte.builder import build_karte_report
+
+# Helper functions from helpers (pure functions, no side effects)
+from katrain.core.reports.karte.helpers import (
+    format_loss_with_engine_suffix,
+    has_loss_data,
+    is_single_engine_snapshot,
+)
+from katrain.core.reports.karte.json_export import build_karte_json
+from katrain.core.reports.karte.llm_prompt import build_critical_3_prompt
 from katrain.core.reports.karte.models import (
     CRITICAL_3_PROMPT_TEMPLATE,
     KARTE_ERROR_CODE_GENERATION_FAILED,
@@ -15,18 +26,6 @@ from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
-
-# Helper functions from helpers (pure functions, no side effects)
-from katrain.core.reports.karte.helpers import (
-    format_loss_with_engine_suffix,
-    has_loss_data,
-    is_single_engine_snapshot,
-)
-
-# Callable APIs from their respective modules
-from katrain.core.reports.karte.builder import build_karte_report
-from katrain.core.reports.karte.json_export import build_karte_json
-from katrain.core.reports.karte.llm_prompt import build_critical_3_prompt
 
 __all__ = [
     # Public APIs

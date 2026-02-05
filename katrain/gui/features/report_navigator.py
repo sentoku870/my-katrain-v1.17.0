@@ -4,12 +4,13 @@ Structure:
 - Top-level: Pure functions (Kivy-independent, testable)
 - Bottom: UI functions (lazy imports inside functions)
 """
+
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-import logging
 
 # --- Constants ---
 
@@ -56,9 +57,7 @@ def find_recent_reports(output_dir: Path, limit: int = 10) -> list[ReportInfo]:
             if path.is_file():
                 try:
                     mtime = path.stat().st_mtime
-                    reports.append(
-                        ReportInfo(path=path, report_type=report_type, mtime=mtime)
-                    )
+                    reports.append(ReportInfo(path=path, report_type=report_type, mtime=mtime))
                 except OSError:
                     continue
 
@@ -85,7 +84,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def open_latest_report(ctx: "FeatureContext") -> None:
+def open_latest_report(ctx: FeatureContext) -> None:
     """Open the most recent report file."""
     from katrain.common.file_opener import open_file
     from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
@@ -114,14 +113,12 @@ def open_latest_report(ctx: "FeatureContext") -> None:
     result = open_file(report.path)
     if not result.success:
         ctx.log(
-            i18n._("mykatrain:open-failed").format(
-                error=result.error_detail or "Unknown error"
-            ),
+            i18n._("mykatrain:open-failed").format(error=result.error_detail or "Unknown error"),
             OUTPUT_ERROR,
         )
 
 
-def open_output_folder(ctx: "FeatureContext") -> None:
+def open_output_folder(ctx: FeatureContext) -> None:
     """Open the output folder in the system file manager."""
     from katrain.common.file_opener import open_folder
     from katrain.core.constants import OUTPUT_ERROR
@@ -143,8 +140,6 @@ def open_output_folder(ctx: "FeatureContext") -> None:
     result = open_folder(output_dir)
     if not result.success:
         ctx.log(
-            i18n._("mykatrain:open-failed").format(
-                error=result.error_detail or "Unknown error"
-            ),
+            i18n._("mykatrain:open-failed").format(error=result.error_detail or "Unknown error"),
             OUTPUT_ERROR,
         )

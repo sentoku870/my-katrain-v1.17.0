@@ -17,10 +17,10 @@ import json
 import logging
 import os
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
-import uuid
 
 from katrain.core.constants import DATA_FOLDER
 from katrain.core.smart_kifu.logic import (
@@ -166,7 +166,7 @@ def load_manifest(set_id: str) -> TrainingSetManifest | None:
         return None
 
     try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             data = json.load(f)
 
         games = [_dict_to_game_entry(g) for g in data.get("games", [])]
@@ -248,9 +248,8 @@ def create_training_set(name: str) -> TrainingSetManifest:
 # =============================================================================
 
 
-def _bucket_profile_to_dict(profile: "BucketProfile") -> dict[str, Any]:
+def _bucket_profile_to_dict(profile: BucketProfile) -> dict[str, Any]:
     """BucketProfileを辞書に変換。"""
-    from katrain.core.smart_kifu.models import BucketProfile
     return {
         "viewer_level": profile.viewer_level,
         "viewer_preset": profile.viewer_preset.value,
@@ -265,9 +264,10 @@ def _bucket_profile_to_dict(profile: "BucketProfile") -> dict[str, Any]:
     }
 
 
-def _dict_to_bucket_profile(d: dict[str, Any]) -> "BucketProfile":
+def _dict_to_bucket_profile(d: dict[str, Any]) -> BucketProfile:
     """辞書をBucketProfileに変換。"""
     from katrain.core.smart_kifu.models import BucketProfile, Confidence, ViewerPreset
+
     return BucketProfile(
         viewer_level=d.get("viewer_level", 5),
         viewer_preset=ViewerPreset(d.get("viewer_preset", "standard")),
@@ -301,7 +301,7 @@ def load_player_profile() -> PlayerProfile:
         )
 
     try:
-        with open(profile_path, "r", encoding="utf-8") as f:
+        with open(profile_path, encoding="utf-8") as f:
             data = json.load(f)
 
         per_context = {}
@@ -451,7 +451,7 @@ def import_sgf_to_training_set(
 
     # SGF読み込み
     try:
-        with open(sgf_path, "r", encoding="utf-8") as f:
+        with open(sgf_path, encoding="utf-8") as f:
             sgf_content = f.read()
     except OSError:
         return None, ImportErrorCode.FILE_NOT_FOUND
@@ -630,9 +630,7 @@ def import_analyzed_sgf_folder(
 
     # 平均解析率を計算（None除外）
     valid_ratios = [r for r in computed_ratios if r is not None]
-    result.average_analyzed_ratio = (
-        sum(valid_ratios) / len(valid_ratios) if valid_ratios else None
-    )
+    result.average_analyzed_ratio = sum(valid_ratios) / len(valid_ratios) if valid_ratios else None
 
     return result
 

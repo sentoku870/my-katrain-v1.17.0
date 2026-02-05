@@ -13,6 +13,7 @@ Note: PEP 562 lazy imports を使用。
 これにより、GameStateManagerの単体テスト時に他のマネージャー（GUI依存あり）を
 読み込まずに済む。
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

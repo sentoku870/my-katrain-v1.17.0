@@ -16,42 +16,41 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from katrain.common.locale_utils import normalize_lang_code
+
+# Import types for type hints
+from katrain.core.analysis.skill_radar import (
+    AggregatedRadarResult,
+    RadarAxis,
+    SkillTier,
+    round_score,
+)
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
     format_game_display_label,
     format_game_link_target,
     truncate_game_name,
 )
-from katrain.common.locale_utils import normalize_lang_code
-
-from .models import (
-    EvidenceMove,
-    TIER_LABELS,
-    AXIS_LABELS,
-    AXIS_PRACTICE_HINTS,
-    AXIS_PRACTICE_HINTS_LOCALIZED,
-    MTAG_PRACTICE_HINTS,
-    RTAG_PRACTICE_HINTS,
-    PRACTICE_INTRO_TEXTS,
-    NOTES_HEADERS,
-    HINT_LINE_FORMATS,
-    PERCENTAGE_NOTES,
-    COLOR_BIAS_NOTES,
-    PHASE_PRIORITY_TEXTS,
-    PHASE_LABELS_LOCALIZED,
-    SECTION_HEADERS,
-)
-
-# Import types for type hints
-from katrain.core.analysis.skill_radar import (
-    RadarAxis,
-    SkillTier,
-    AggregatedRadarResult,
-    round_score,
-)
 from katrain.core.eval_metrics import (
     MistakeCategory,
     get_reason_tag_label,
+)
+
+from .models import (
+    AXIS_LABELS,
+    AXIS_PRACTICE_HINTS_LOCALIZED,
+    COLOR_BIAS_NOTES,
+    HINT_LINE_FORMATS,
+    MTAG_PRACTICE_HINTS,
+    NOTES_HEADERS,
+    PERCENTAGE_NOTES,
+    PHASE_LABELS_LOCALIZED,
+    PHASE_PRIORITY_TEXTS,
+    PRACTICE_INTRO_TEXTS,
+    RTAG_PRACTICE_HINTS,
+    SECTION_HEADERS,
+    TIER_LABELS,
+    EvidenceMove,
 )
 
 _logger = logging.getLogger("katrain.core.batch.stats")
@@ -153,9 +152,7 @@ def _format_evidence_with_links(
 
             link_text = "カルテ" if lang == "jp" else "karte"
             # Wrap display in backticks for Markdown safety
-            parts.append(
-                f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label}) [{link_text}]({link_target})"
-            )
+            parts.append(f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label}) [{link_text}]({link_target})")
         else:
             parts.append(f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label})")
 
@@ -427,8 +424,8 @@ def build_tag_based_hints(
     Returns:
         List of formatted hint lines (empty if no qualified tags with hints)
     """
-    from katrain.core.analysis.meaning_tags.integration import get_meaning_tag_label_safe
     from katrain.common.locale_utils import to_iso_lang_code
+    from katrain.core.analysis.meaning_tags.integration import get_meaning_tag_label_safe
 
     hints = []
 
@@ -506,19 +503,12 @@ def _build_skill_profile_section(
         lines.append(f"| {axis_label} | {score_str} | {tier_str} | {count} |")
 
     # Weak areas (score < 2.5)
-    weak_axes = [
-        (axis, getattr(radar, axis.value))
-        for axis in RadarAxis
-        if radar.is_weak_axis(axis)
-    ]
+    weak_axes = [(axis, getattr(radar, axis.value)) for axis in RadarAxis if radar.is_weak_axis(axis)]
 
     if weak_axes:
         # Sort by score (lowest first)
         weak_axes.sort(key=lambda x: x[1])
-        weak_list = [
-            f"{_get_axis_label(axis)} ({round_score(score)})"
-            for axis, score in weak_axes
-        ]
+        weak_list = [f"{_get_axis_label(axis)} ({round_score(score)})" for axis, score in weak_axes]
         lines.append("")
         lines.append(f"{get_section_header('weak_areas', lang)}: {', '.join(weak_list)}")
 

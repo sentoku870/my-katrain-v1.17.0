@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meaning Tags Classifier.
 
 This module implements the deterministic rule-based classification system
@@ -170,9 +169,7 @@ def is_classifiable_move(gtp: str | None) -> bool:
     return classify_gtp_move(gtp) == "normal"
 
 
-def compute_move_distance(
-    best_gtp: str | None, actual_gtp: str | None
-) -> int | None:
+def compute_move_distance(best_gtp: str | None, actual_gtp: str | None) -> int | None:
     """Compute Manhattan distance between two GTP coordinates.
 
     Uses existing Move.from_gtp() which handles:
@@ -221,9 +218,7 @@ def compute_move_distance(
     return int(abs(bx - ax) + abs(by - ay))
 
 
-def is_endgame(
-    move_number: int, total_moves: int | None, has_endgame_hint: bool
-) -> bool:
+def is_endgame(move_number: int, total_moves: int | None, has_endgame_hint: bool) -> bool:
     """Determine if the position is in the endgame phase.
 
     Criteria (OR):
@@ -371,13 +366,7 @@ def classify_meaning_tag(
 
     # Composite conditions
     is_urgent = has_atari or has_low_liberties or has_cut_risk
-    has_tactical_tags = (
-        has_atari
-        or has_low_liberties
-        or has_cut_risk
-        or has_need_connect
-        or has_chase_mode
-    )
+    has_tactical_tags = has_atari or has_low_liberties or has_cut_risk or has_need_connect or has_chase_mode
     has_semeai_pattern = has_atari and has_low_liberties
 
     # =========================================================================
@@ -405,11 +394,7 @@ def classify_meaning_tag(
         return _make_tag(MeaningTagId.LIFE_DEATH_ERROR)
 
     # Condition B: Catastrophic loss + (atari OR low_liberties) BUT NOT both
-    if (
-        loss >= THRESHOLD_LOSS_CATASTROPHIC
-        and (has_atari or has_low_liberties)
-        and not has_semeai_pattern
-    ):
+    if loss >= THRESHOLD_LOSS_CATASTROPHIC and (has_atari or has_low_liberties) and not has_semeai_pattern:
         return _make_tag(MeaningTagId.LIFE_DEATH_ERROR)
 
     # Priority 3: CONNECTION_MISS
@@ -511,32 +496,16 @@ def classify_meaning_tag(
     # Loss thresholds: Using same scale for KataGo (points) and Leela (K-scaled).
     if loss >= THRESHOLD_LOSS_MEDIUM:  # 2.0
         # Single low_liberties (no need_connect, no atari, no cut_risk)
-        if (
-            has_low_liberties
-            and not has_need_connect
-            and not has_atari
-            and not has_cut_risk
-        ):
+        if has_low_liberties and not has_need_connect and not has_atari and not has_cut_risk:
             return _make_tag(MeaningTagId.READING_FAILURE)
 
         # Single atari (no low_liberties, no need_connect, no cut_risk)
-        if (
-            has_atari
-            and not has_low_liberties
-            and not has_need_connect
-            and not has_cut_risk
-        ):
+        if has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk:
             return _make_tag(MeaningTagId.CAPTURE_RACE_LOSS)
 
     # Single endgame_hint (lower threshold, only if not already detected as endgame)
     if has_endgame_hint and loss >= THRESHOLD_LOSS_SMALL:  # 1.0
-        if (
-            not has_atari
-            and not has_low_liberties
-            and not has_need_connect
-            and not has_cut_risk
-            and not _is_endgame
-        ):
+        if not has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk and not _is_endgame:
             return _make_tag(MeaningTagId.ENDGAME_SLIP)
 
     # Priority 12: UNCERTAIN (fallback)

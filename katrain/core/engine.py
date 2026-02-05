@@ -3,6 +3,7 @@
 # On Linux CI, mypy cannot resolve Windows API calls, but these are guarded by platform checks.
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import platform
@@ -12,26 +13,25 @@ import subprocess
 import threading
 import time
 import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from katrain.common.platform import get_platform
-
 from katrain.core.constants import (
+    DATA_FOLDER,
+    KATAGO_EXCEPTION,
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_EXTRA_DEBUG,
     OUTPUT_KATAGO_STDERR,
-    DATA_FOLDER,
-    KATAGO_EXCEPTION,
     PONDERING_REPORT_DT,
 )
+from katrain.core.engine_query import build_analysis_query
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
+from katrain.core.notify_helpers import maybe_notify_analysis_complete
 from katrain.core.sgf_parser import Move
 from katrain.core.utils import find_package_resource, json_truncate_arrays
-from katrain.core.engine_query import build_analysis_query
-from katrain.core.notify_helpers import maybe_notify_analysis_complete
-
 
 # Maximum pending queries before rejecting new ones
 MAX_PENDING_QUERIES = 100
@@ -47,7 +47,6 @@ def _ensure_str(line: bytes | str | None) -> str:
 
 
 class BaseEngine:
-
     RULESETS_ABBR = [
         ("jp", "japanese"),
         ("cn", "chinese"),
@@ -66,10 +65,8 @@ class BaseEngine:
     @staticmethod
     def get_rules(ruleset: str | dict[str, Any]) -> str | dict[str, Any]:
         if isinstance(ruleset, str) and ruleset.strip().startswith("{"):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 ruleset = json.loads(ruleset)
-            except json.JSONDecodeError:
-                pass
         if isinstance(ruleset, dict):
             return ruleset
         return KataGoEngine.RULESETS.get(str(ruleset).lower(), "japanese")
@@ -135,7 +132,10 @@ class KataGoEngine(BaseEngine):
         self.stdout_reader_thread: threading.Thread | None = None
         self.stderr_reader_thread: threading.Thread | None = None
         self.shell = False
-        self.write_queue: queue.Queue[tuple[dict[str, Any], Callable[..., None] | None, Callable[..., None] | None, Move | None, GameNode | None] | None] = queue.Queue()
+        self.write_queue: queue.Queue[
+            tuple[dict[str, Any], Callable[..., None] | None, Callable[..., None] | None, Move | None, GameNode | None]
+            | None
+        ] = queue.Queue()
         # Output queues for non-blocking I/O (Phase 22)
         self._stdout_queue: queue.Queue[bytes | None] = queue.Queue()
         self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()
@@ -148,17 +148,17 @@ class KataGoEngine(BaseEngine):
         if config.get("altcommand", ""):
             self.command = config["altcommand"]
             self.shell = True
-        else:    
+        else:
             model = find_package_resource(config["model"])
             cfg = find_package_resource(config["config"])
             exe = self.get_engine_path(config.get("katago", "").strip())
-            
+
             if not exe:
                 return
-                
+
             # Add human model to command if provided
             if config.get("humanlike_model", ""):
-                human_model_path = find_package_resource(config.get("humanlike_model",""))
+                human_model_path = find_package_resource(config.get("humanlike_model", ""))
                 if os.path.isfile(human_model_path):
                     self.command = shlex.split(
                         f'"{exe}" analysis -model "{model}" -human-model "{human_model_path}" -config "{cfg}" -override-config "homeDataDir={os.path.expanduser(DATA_FOLDER)}"'
@@ -226,9 +226,7 @@ class KataGoEngine(BaseEngine):
             self.analysis_thread = threading.Thread(
                 target=self._analysis_read_thread, daemon=True, name="katago-analysis"
             )
-            self.stderr_thread = threading.Thread(
-                target=self._read_stderr_thread, daemon=True, name="katago-stderr"
-            )
+            self.stderr_thread = threading.Thread(target=self._read_stderr_thread, daemon=True, name="katago-stderr")
             self.write_stdin_thread = threading.Thread(
                 target=self._write_stdin_thread, daemon=True, name="katago-stdin"
             )
@@ -297,7 +295,9 @@ class KataGoEngine(BaseEngine):
         self.shutdown(finish=False)
         self.start()
 
-    def check_alive(self, os_error: str = "", exception_if_dead: bool = False, maybe_open_recovery: bool = False) -> bool:
+    def check_alive(
+        self, os_error: str = "", exception_if_dead: bool = False, maybe_open_recovery: bool = False
+    ) -> bool:
         ok: bool = self.katago_process is not None and self.katago_process.poll() is None
         if not ok and exception_if_dead:
             if self.katago_process:
@@ -367,9 +367,7 @@ class KataGoEngine(BaseEngine):
         if finish and process:
             completed = self.wait_to_finish()
             if not completed:
-                self.katrain.log(
-                    "Engine shutdown: wait_to_finish timed out, proceeding to terminate", OUTPUT_DEBUG
-                )
+                self.katrain.log("Engine shutdown: wait_to_finish timed out, proceeding to terminate", OUTPUT_DEBUG)
 
         # Step 1: Signal shutdown to consumer threads
         self._shutdown_event.set()
@@ -466,9 +464,7 @@ class KataGoEngine(BaseEngine):
             if t and t.is_alive():
                 t.join(timeout=2.0)
                 if t.is_alive():
-                    self.katrain.log(
-                        f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG
-                    )
+                    self.katrain.log(f"Thread {t.name} did not stop within 2s timeout", OUTPUT_DEBUG)
 
     def _safe_force_kill(self, process: subprocess.Popen[bytes]) -> None:
         """Force kill process if still alive."""
@@ -480,9 +476,7 @@ class KataGoEngine(BaseEngine):
                     exit_code = process.wait(timeout=1.0)
                     self.katrain.log(f"Process killed: exit_code={exit_code}", OUTPUT_DEBUG)
                 except subprocess.TimeoutExpired:
-                    self.katrain.log(
-                        "Process did not respond to kill - process may be orphaned", OUTPUT_ERROR
-                    )
+                    self.katrain.log("Process did not respond to kill - process may be orphaned", OUTPUT_ERROR)
         except OSError as e:
             self.katrain.log(f"Shutdown: OSError during force kill: {e}", OUTPUT_DEBUG)
         except Exception as e:  # noqa: BLE001 - shutdown cleanup, must continue
@@ -607,7 +601,6 @@ class KataGoEngine(BaseEngine):
                 error_callback = None
                 start_time = None
                 next_move = None
-                should_delete = False
                 query_found = False
 
                 with self.thread_lock:
@@ -625,14 +618,12 @@ class KataGoEngine(BaseEngine):
                     callback, error_callback, start_time, next_move, _ = self.queries[query_id]
                     if "error" in analysis:
                         del self.queries[query_id]
-                        should_delete = True
                     elif "warning" in analysis or "terminateId" in analysis:
                         pass  # No deletion needed for warnings/terminate confirmations
                     else:
                         partial_result = analysis.get("isDuringSearch", False)
                         if not partial_result:
                             del self.queries[query_id]
-                            should_delete = True
 
                 # Process results outside the lock
                 if "error" in analysis:
@@ -642,16 +633,14 @@ class KataGoEngine(BaseEngine):
                         self.katrain.log(f"{analysis} received from KataGo", OUTPUT_ERROR)
                     # Decrement pending count on error completion
                     self._decrement_pending_count()
-                elif "warning" in analysis:
-                    self.katrain.log(f"{analysis} received from KataGo", OUTPUT_DEBUG)
-                elif "terminateId" in analysis:
+                elif "warning" in analysis or "terminateId" in analysis:
                     self.katrain.log(f"{analysis} received from KataGo", OUTPUT_DEBUG)
                 else:
                     partial_result = analysis.get("isDuringSearch", False)
                     time_taken = time.time() - start_time
                     results_exist = not analysis.get("noResults", False)
                     self.katrain.log(
-                        f"[{time_taken:.1f}][{query_id}][{'....' if partial_result else 'done'}] KataGo analysis received: {len(analysis.get('moveInfos',[]))} candidate moves, {analysis['rootInfo']['visits'] if results_exist else 'n/a'} visits",
+                        f"[{time_taken:.1f}][{query_id}][{'....' if partial_result else 'done'}] KataGo analysis received: {len(analysis.get('moveInfos', []))} candidate moves, {analysis['rootInfo']['visits'] if results_exist else 'n/a'} visits",
                         OUTPUT_DEBUG,
                     )
                     self.katrain.log(json_truncate_arrays(analysis), OUTPUT_EXTRA_DEBUG)
@@ -797,20 +786,18 @@ class KataGoEngine(BaseEngine):
         # Try Kivy Clock scheduling if Kivy is available (loaded by GUI layer)
         # Use sys.modules check to avoid importing Kivy in core layer (architecture rule)
         import sys
-        clock_module = sys.modules.get('kivy.clock')
+
+        clock_module = sys.modules.get("kivy.clock")
         if clock_module is not None:
             try:
-                Clock = getattr(clock_module, 'Clock', None)
+                Clock = getattr(clock_module, "Clock", None)
                 if Clock is not None:
                     Clock.schedule_once(lambda _dt: error_callback(error_msg), 0)
                     return
             except Exception as e:
                 # schedule_once failed at runtime (Kivy exists but broken state)
                 # Do NOT call callback - could corrupt UI from wrong thread
-                self.katrain.log(
-                    f"Failed to schedule error_callback: {e}. Error: {error_msg}",
-                    OUTPUT_ERROR
-                )
+                self.katrain.log(f"Failed to schedule error_callback: {e}. Error: {error_msg}", OUTPUT_ERROR)
                 return
 
         # Sync fallback: Kivy not loaded (headless/test - no UI exists)
@@ -845,7 +832,14 @@ class KataGoEngine(BaseEngine):
         with self._pending_query_lock:
             return self._pending_query_count <= MAX_PENDING_QUERIES - headroom
 
-    def send_query(self, query: dict[str, Any], callback: Callable[..., None] | None, error_callback: Callable[..., None] | None, next_move: Move | None = None, node: GameNode | None = None) -> bool:
+    def send_query(
+        self,
+        query: dict[str, Any],
+        callback: Callable[..., None] | None,
+        error_callback: Callable[..., None] | None,
+        next_move: Move | None = None,
+        node: GameNode | None = None,
+    ) -> bool:
         """Send query to engine with safety checks.
 
         Threading contract:
@@ -879,8 +873,7 @@ class KataGoEngine(BaseEngine):
                 error_msg = {"error": "Too many pending queries", "id": query.get("id", "unknown")}
                 self._invoke_error_callback(error_callback, error_msg)
                 self.katrain.log(
-                    f"Query rejected: {self._pending_query_count} pending (limit: {MAX_PENDING_QUERIES})",
-                    OUTPUT_ERROR
+                    f"Query rejected: {self._pending_query_count} pending (limit: {MAX_PENDING_QUERIES})", OUTPUT_ERROR
                 )
                 return False
             self._pending_query_count += 1
@@ -935,10 +928,11 @@ class KataGoEngine(BaseEngine):
             focus = self.config.get("analysis_focus")
             if focus:
                 # 優先しない色のターンの場合、fast_visits を使用
-                if (focus == "black" and analysis_node.next_player == "W") or \
-                   (focus == "white" and analysis_node.next_player == "B"):
-                    if self.config.get("fast_visits"):
-                        visits = self.config["fast_visits"]
+                if (
+                    (focus == "black" and analysis_node.next_player == "W")
+                    or (focus == "white" and analysis_node.next_player == "B")
+                ) and self.config.get("fast_visits"):
+                    visits = self.config["fast_visits"]
             elif analyze_fast and self.config.get("fast_visits"):
                 # analysis_focus がない場合のデフォルト処理（analyze_fast時）
                 visits = self.config["fast_visits"]

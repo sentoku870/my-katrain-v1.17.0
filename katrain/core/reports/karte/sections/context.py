@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import (
+        AutoRecommendation,
         ConfidenceLevel,
         EvalSnapshot,
         ImportantMoveSettings,
         MoveEval,
     )
     from katrain.core.analysis.time import PacingMetrics
-    from katrain.core.analysis.models import AutoRecommendation
 
 
 @dataclass(frozen=True)
@@ -36,12 +36,12 @@ class KarteContext:
     thresholds: list[float]  # Raw thresholds from config
     effective_thresholds: tuple[float, float, float]  # Score thresholds for classification
     effective_preset: str  # "beginner" / "standard" / "advanced"
-    auto_recommendation: "AutoRecommendation | None"
+    auto_recommendation: AutoRecommendation | None
 
     # Computed metadata
     confidence_level: ConfidenceLevel
-    pacing_map: "dict[int, PacingMetrics] | None"
-    histogram: "list[Any] | None"
+    pacing_map: dict[int, PacingMetrics] | None
+    histogram: list[Any] | None
 
     # Board and player info
     board_x: int

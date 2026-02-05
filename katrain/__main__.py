@@ -14,7 +14,7 @@ os.environ["KCFG_KIVY_LOG_LEVEL"] = os.environ.get("KCFG_KIVY_LOG_LEVEL", "warni
 from kivy.utils import platform as kivy_platform
 
 if kivy_platform == "win":
-    from ctypes import windll, c_int64
+    from ctypes import c_int64, windll
 
     if hasattr(windll.user32, "SetProcessDpiAwarenessContext"):
         windll.user32.SetProcessDpiAwarenessContext(c_int64(-4))
@@ -24,8 +24,9 @@ import kivy
 kivy.require("2.0.0")
 
 # next, icon
-from katrain.core.utils import find_package_resource, PATHS
 from kivy.config import Config
+
+from katrain.core.utils import PATHS, find_package_resource
 
 if kivy_platform == "macosx":
     ICON = find_package_resource("katrain/img/icon.icns")
@@ -42,109 +43,63 @@ if getattr(sys, "frozen", False):
         os.environ["SSL_CERT_FILE"] = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
 
 
-import re
-import signal
-import json
-import threading
-import traceback
-from queue import Queue
-import webbrowser
-import time
-import random
 import glob
-from datetime import datetime
+import random
+import signal
+import threading
+import time
+import traceback
+import webbrowser
+from queue import Queue
 from typing import Any
-from kivy.clock import Clock
 
-
-from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.app import App
-from kivy.core.clipboard import Clipboard
-from kivy.lang import Builder
-from kivy.resources import resource_add_path
-from kivy.uix.popup import Popup
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.screenmanager import Screen
-from kivy.uix.togglebutton import ToggleButton
-from kivy.core.window import Window
-from kivy.uix.widget import Widget
-from kivy.resources import resource_find
-from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.clock import Clock
+from kivy.core.clipboard import Clipboard
+from kivy.core.window import Window
+from kivy.lang import Builder
 from kivy.metrics import dp
-from katrain.core.ai import generate_ai_move, LeelaNotAvailableError
+from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.resources import resource_add_path, resource_find
+from kivy.uix.popup import Popup
+from kivy.uix.screenmanager import Screen
+from kivymd.app import MDApp
 
-from katrain.core.lang import DEFAULT_LANGUAGE, i18n
+from katrain.core import eval_metrics
+from katrain.core.ai import LeelaNotAvailableError, generate_ai_move
+from katrain.core.auto_setup import find_cpu_katago  # Phase 89
+from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
-    AnalysisMode,
-    OUTPUT_ERROR,
-    OUTPUT_KATAGO_STDERR,
-    OUTPUT_INFO,
-    OUTPUT_DEBUG,
-    OUTPUT_EXTRA_DEBUG,
-    MODE_ANALYZE,
+    DATA_FOLDER,
     HOMEPAGE,
-    VERSION,
+    MODE_ANALYZE,
+    MODE_PLAY,
+    OUTPUT_DEBUG,
+    OUTPUT_ERROR,
+    OUTPUT_EXTRA_DEBUG,
+    OUTPUT_INFO,
+    OUTPUT_KATAGO_STDERR,
+    SGF_INTERNAL_COMMENTS_MARKER,
     STATUS_ERROR,
     STATUS_INFO,
-    PLAYING_NORMAL,
-    PLAYER_HUMAN,
-    SGF_INTERNAL_COMMENTS_MARKER,
-    MODE_PLAY,
-    DATA_FOLDER,
-    AI_DEFAULT,
-    parse_analysis_mode,
+    VERSION,
 )
-from katrain.core import eval_metrics
-from katrain.gui.popups import (
-    ConfigTeacherPopup,
-    ConfigTimerPopup,
-    I18NPopup,
-    SaveSGFPopup,
-    EngineRecoveryPopup,
-)
-from katrain.gui.sound import play_sound
-from katrain.core.base_katrain import KaTrainBase
 from katrain.core.engine import KataGoEngine
-from katrain.core.auto_setup import find_cpu_katago  # Phase 89
+from katrain.core.errors import EngineError
+from katrain.core.game import IllegalMoveException
+from katrain.core.lang import DEFAULT_LANGUAGE, i18n
+from katrain.core.leela.engine import LeelaEngine
+from katrain.core.sgf_parser import Move
+from katrain.core.state import EventType  # Phase 107
 from katrain.core.test_analysis import (  # Phase 89
-    TestAnalysisResult,
     ErrorCategory,
+    TestAnalysisResult,
     classify_engine_error,
 )
-from katrain.core.game import Game, IllegalMoveException, KaTrainSGF, BaseGame
-from katrain.core.leela.engine import LeelaEngine
-from katrain.gui.leela_manager import LeelaManager
-from katrain.gui.sgf_manager import SGFManager
-from katrain.gui.managers.keyboard_manager import KeyboardManager
-from katrain.gui.managers.config_manager import ConfigManager
-from katrain.gui.managers.summary_manager import SummaryManager
-from katrain.gui.managers.popup_manager import PopupManager
-from katrain.gui.managers.game_state_manager import GameStateManager
-from katrain.gui.managers.active_review_controller import ActiveReviewController
-from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
-from katrain.gui.features.commands import (
-    analyze_commands,
-    export_commands,
-    game_commands,
-    popup_commands,
-)
-from katrain.core.sgf_parser import Move
-from katrain.core.errors import EngineError
-from katrain.core.study.active_review import (
-    is_review_ready,
-    ActiveReviewer,
-    GuessGrade,
-)
+from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
+from katrain.gui.controlspanel import ControlsPanel  # noqa F401
 from katrain.gui.error_handler import ErrorHandler
-from katrain.gui.features.karte_export import determine_user_color, do_export_karte
-from katrain.gui.features.package_export_ui import do_export_package
-from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
-from katrain.gui.managers.quiz_manager import QuizManager
-from katrain.core.state import EventType  # Phase 107
 from katrain.gui.features.batch_core import (
     collect_batch_options,
     create_log_callback,
@@ -154,37 +109,61 @@ from katrain.gui.features.batch_core import (
     run_batch_in_thread,
 )
 from katrain.gui.features.batch_ui import (
-    create_browse_callback,
-    create_on_start_callback,
-    create_on_close_callback,
-    create_get_player_filter_fn,
     build_batch_popup_widgets,
     create_batch_popup,
+    create_browse_callback,
+    create_get_player_filter_fn,
+    create_on_close_callback,
+    create_on_start_callback,
 )
+from katrain.gui.features.commands import (
+    analyze_commands,
+    export_commands,
+    game_commands,
+    popup_commands,
+)
+from katrain.gui.features.karte_export import determine_user_color
+from katrain.gui.features.package_export_ui import do_export_package
+from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
+from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
-    load_export_settings,
-    save_export_settings,
-    save_batch_options,
     do_mykatrain_settings_popup,
-)
-from katrain.gui.features.smart_kifu_training_set import (
-    show_training_set_manager,
-)
-from katrain.gui.features.smart_kifu_profile import (
-    show_player_profile_popup,
 )
 from katrain.gui.features.smart_kifu_practice import (
     show_practice_report_popup,
 )
-from katrain.gui.popups import ConfigPopup, LoadSGFPopup, NewGamePopup, ConfigAIPopup
-from katrain.gui.theme import Theme
-from kivymd.app import MDApp
+from katrain.gui.features.smart_kifu_profile import (
+    show_player_profile_popup,
+)
+from katrain.gui.features.smart_kifu_training_set import (
+    show_training_set_manager,
+)
 
 # used in kv
-from katrain.gui.kivyutils import *
-from katrain.gui.widgets import MoveTree, I18NFileBrowser, SelectionSlider, ScoreGraph  # noqa F401
-from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
-from katrain.gui.controlspanel import ControlsPanel  # noqa F401
+# used in kv
+from katrain.gui.kivyutils import (
+    PlayerSetupBlock,
+)  # noqa: F401
+from katrain.gui.leela_manager import LeelaManager
+from katrain.gui.managers.active_review_controller import ActiveReviewController
+from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.game_state_manager import GameStateManager
+from katrain.gui.managers.keyboard_manager import KeyboardManager
+from katrain.gui.managers.popup_manager import PopupManager
+from katrain.gui.managers.quiz_manager import QuizManager
+from katrain.gui.managers.summary_manager import SummaryManager
+from katrain.gui.popups import (
+    ConfigAIPopup,
+    ConfigTeacherPopup,
+    ConfigTimerPopup,
+    EngineRecoveryPopup,
+    I18NPopup,
+    NewGamePopup,
+)
+from katrain.gui.sgf_manager import SGFManager
+from katrain.gui.sound import play_sound
+from katrain.gui.theme import Theme
+from katrain.gui.widgets import I18NFileBrowser, MoveTree, ScoreGraph, SelectionSlider  # noqa F401
 
 
 class KaTrainGui(Screen, KaTrainBase):
@@ -214,8 +193,12 @@ class KaTrainGui(Screen, KaTrainBase):
             config_setter=lambda section, values: self.set_config_section(section, values),
             save_config=self.save_config,
             logger=self.log,
-            status_setter=lambda msg, level: self.controls.set_status(msg, level, check_level=False) if self.controls else None,
-            new_game_callback=lambda tree, fast, filename: self._do_new_game(move_tree=tree, analyze_fast=fast, sgf_filename=filename),
+            status_setter=lambda msg, level: (
+                self.controls.set_status(msg, level, check_level=False) if self.controls else None
+            ),
+            new_game_callback=lambda tree, fast, filename: self._do_new_game(
+                move_tree=tree, analyze_fast=fast, sgf_filename=filename
+            ),
             redo_callback=lambda moves: self("redo", moves),
             get_game=lambda: self.game,  # type: ignore[return-value]
             get_engine=lambda: self.engine,
@@ -278,8 +261,7 @@ class KaTrainGui(Screen, KaTrainBase):
             create_engine_recovery_popup=self._create_engine_recovery_popup,
             get_popup_open=lambda: self.popup_open,
             is_engine_recovery_popup=lambda p: (
-                isinstance(p, EngineRecoveryPopup)
-                or isinstance(getattr(p, "content", None), EngineRecoveryPopup)
+                isinstance(p, EngineRecoveryPopup) or isinstance(getattr(p, "content", None), EngineRecoveryPopup)
             ),
             pause_timer=self._safe_pause_timer,
             on_new_game_opened=lambda p: p.content.update_from_current_game(),
@@ -337,7 +319,9 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
         return self._config_manager.load_export_settings()
 
-    def _save_export_settings(self, sgf_directory: str | None = None, selected_players: list[Any] | None = None) -> None:
+    def _save_export_settings(
+        self, sgf_directory: str | None = None, selected_players: list[Any] | None = None
+    ) -> None:
         """Delegates to ConfigManager.save_export_settings() (Phase 74)."""
         self._config_manager.save_export_settings(sgf_directory, selected_players)
 
@@ -550,12 +534,12 @@ class KaTrainGui(Screen, KaTrainBase):
         """現在のノード以降のすべての解析をリセットして再実行する."""
         if not self.game or not self.game.root:
             return
-        
+
         # 全ノードをリセット（過去のノードを含む）
         for node in self.game.root.nodes_in_tree:
-            if hasattr(node, 'clear_analysis'):
+            if hasattr(node, "clear_analysis"):
                 node.clear_analysis()  # type: ignore[attr-defined]
-        
+
         # 再解析を要求（even_if_present=True により強制的に再解析）
         self.game.analyze_all_nodes(analyze_fast=False, even_if_present=True)
         self.log("Re-analysis started with new analysis_focus setting", OUTPUT_DEBUG)
@@ -632,7 +616,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.engine.config["analysis_focus"] = None
         except Exception:
             pass
-        
+
         threading.Thread(target=self._message_loop_thread, daemon=True).start()
         sgf_args = [
             f
@@ -745,9 +729,7 @@ class KaTrainGui(Screen, KaTrainBase):
     # Phase 89: Auto Setup Mode Methods
     # =========================================================================
 
-    def restart_engine_with_fallback(
-        self, fallback_type: str
-    ) -> tuple[bool, TestAnalysisResult]:
+    def restart_engine_with_fallback(self, fallback_type: str) -> tuple[bool, TestAnalysisResult]:
         """Restart engine with CPU fallback and verify.
 
         Processing flow:
@@ -980,7 +962,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 teaching_undo
                 and cn.analysis_complete
                 and cn.parent is not None
-                and hasattr(cn.parent, 'analysis_complete')
+                and hasattr(cn.parent, "analysis_complete")
                 and cn.parent.analysis_complete  # type: ignore[attr-defined]
                 and not cn.children
                 and not self.game.end_result
@@ -1015,7 +997,9 @@ class KaTrainGui(Screen, KaTrainBase):
         if self.game:
             sgf_name = self.game.root.get_property("P" + bw)
             sgf_name_str = sgf_name if isinstance(sgf_name, str) else None
-            self.players_info[bw].name = None if not sgf_name_str or SGF_INTERNAL_COMMENTS_MARKER in sgf_name_str else sgf_name_str  # type: ignore[assignment]
+            self.players_info[bw].name = (
+                None if not sgf_name_str or SGF_INTERNAL_COMMENTS_MARKER in sgf_name_str else sgf_name_str
+            )  # type: ignore[assignment]
         if self.controls:
             self.controls.update_players()
             self.update_state()
@@ -1040,7 +1024,8 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.log(f"Message Loop Received {msg}: {args} for Game {game}", OUTPUT_EXTRA_DEBUG)
                 if not self.game or game != self.game.game_id:
                     self.log(
-                        f"Message skipped as it is outdated (current game is {self.game.game_id if self.game else None}", OUTPUT_EXTRA_DEBUG
+                        f"Message skipped as it is outdated (current game is {self.game.game_id if self.game else None}",
+                        OUTPUT_EXTRA_DEBUG,
                     )
                     continue
                 msg = msg.replace("-", "_")
@@ -1306,7 +1291,9 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.show_player_selection_dialog(sorted_players, sgf_files)
 
-    def _process_and_export_summary(self, sgf_paths: list[Any], progress_popup: Any, selected_players: list[Any] | None = None) -> None:
+    def _process_and_export_summary(
+        self, sgf_paths: list[Any], progress_popup: Any, selected_players: list[Any] | None = None
+    ) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.process_and_export_summary(sgf_paths, progress_popup, selected_players)
 
@@ -1323,11 +1310,15 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to SummaryManager (Phase 96)."""
         return self._summary_manager.build_summary_from_stats(stats_list, focus_player)
 
-    def _save_summaries_per_player(self, game_stats_list: list[Any], selected_players: list[Any], progress_popup: Any) -> None:
+    def _save_summaries_per_player(
+        self, game_stats_list: list[Any], selected_players: list[Any], progress_popup: Any
+    ) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_summaries_per_player(game_stats_list, selected_players, progress_popup)
 
-    def _save_categorized_summaries_from_stats(self, categorized_games: dict[str, Any], player_name: str, progress_popup: Any) -> None:
+    def _save_categorized_summaries_from_stats(
+        self, categorized_games: dict[str, Any], player_name: str, progress_popup: Any
+    ) -> None:
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_categorized_summaries_from_stats(categorized_games, player_name, progress_popup)
 
@@ -1358,22 +1349,6 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_batch_analyze_popup(self) -> None:
         """Show batch analyze folder dialog. Delegates to batch_ui/batch_core functions."""
         import threading
-
-        from katrain.gui.features.batch_ui import (
-            build_batch_popup_widgets,
-            create_batch_popup,
-            create_browse_callback,
-            create_on_start_callback,
-            create_on_close_callback,
-            create_get_player_filter_fn,
-        )
-        from katrain.gui.features.batch_core import (
-            collect_batch_options,
-            create_log_callback,
-            create_progress_callback,
-            create_summary_callback,
-            run_batch_in_thread,
-        )
 
         # 1. Load saved options
         mykatrain_settings = self.config("mykatrain_settings") or {}
@@ -1416,9 +1391,7 @@ class KaTrainGui(Screen, KaTrainBase):
         def run_batch_thread() -> None:
             """バッチスレッド実行（threading.Thread から呼ばれる）"""
             options = collect_batch_options(widgets, get_player_filter)
-            run_batch_in_thread(
-                self, options, cancel_flag, progress_cb, log_cb, summary_cb, self._save_batch_options
-            )
+            run_batch_in_thread(self, options, cancel_flag, progress_cb, log_cb, summary_cb, self._save_batch_options)
 
         def start_batch_thread() -> None:
             """バッチスレッドを起動"""
@@ -1441,10 +1414,8 @@ class KaTrainGui(Screen, KaTrainBase):
         def open_leela_settings(*_args: Any) -> None:
             popup.dismiss()
             from kivy.clock import Clock
-            Clock.schedule_once(
-                lambda dt: do_mykatrain_settings_popup(self, initial_tab="leela"),
-                0.15
-            )
+
+            Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(self, initial_tab="leela"), 0.15)
 
         widgets["leela_settings_btn"].bind(on_press=open_leela_settings)
 
@@ -1523,14 +1494,19 @@ class KaTrainApp(MDApp):
     def is_valid_window_position(self, left: int, top: int, width: int, height: int) -> bool:
         try:
             from screeninfo import get_monitors
+
             monitors = get_monitors()
             for monitor in monitors:
-                if (left >= monitor.x and left + width <= monitor.x + monitor.width and
-                    top >= monitor.y and top + height <= monitor.y + monitor.height):
+                if (
+                    left >= monitor.x
+                    and left + width <= monitor.x + monitor.width
+                    and top >= monitor.y
+                    and top + height <= monitor.y + monitor.height
+                ):
                     return True
             return False
-        except Exception as e:
-            return True # yolo
+        except Exception:
+            return True  # yolo
 
     def build(self) -> KaTrainGui:
         self.icon = ICON  # how you're supposed to set an icon
@@ -1575,12 +1551,16 @@ class KaTrainApp(MDApp):
 
                 for m in get_monitors():
                     window_scale_fac = min(window_scale_fac, (m.height - 100) / 1000, (m.width - 100) / 1300)
-            except Exception as e:
+            except Exception:
                 window_scale_fac = 0.85
             win_size = [1300 * window_scale_fac, 1000 * window_scale_fac]
         self.gui.log(f"Setting window size to {win_size} and position to {[win_left, win_top]}", OUTPUT_DEBUG)
         Window.size = (win_size[0], win_size[1])
-        if win_left is not None and win_top is not None and self.is_valid_window_position(int(win_left), int(win_top), int(win_size[0]), int(win_size[1])):
+        if (
+            win_left is not None
+            and win_top is not None
+            and self.is_valid_window_position(int(win_left), int(win_top), int(win_size[0]), int(win_size[1]))
+        ):
             Window.left = int(win_left)
             Window.top = int(win_top)
 

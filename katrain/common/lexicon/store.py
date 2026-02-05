@@ -9,10 +9,11 @@ This module provides:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Mapping, cast
+from typing import Any, cast
 
 import yaml
 
@@ -26,7 +27,6 @@ from .validation import (
     validate_entry_dict,
     validate_references,
 )
-
 
 # ---------------------------------------------------------------------------
 # Internal Snapshot
@@ -231,7 +231,7 @@ class LexiconStore:
     def _load_yaml(self) -> dict[str, Any]:
         """Load YAML with line number preservation for syntax errors."""
         try:
-            with open(self._path, "r", encoding="utf-8") as f:
+            with open(self._path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
                 if data is None:
                     raise LexiconParseError("YAML file is empty")

@@ -15,27 +15,27 @@ import json
 import os
 import re
 import traceback
+from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
+from katrain.core.batch.helpers import (
+    DEFAULT_TIMEOUT_SECONDS,
+    choose_visits_for_sgf,
+    collect_sgf_files_recursive,
+    get_unique_filename,
+    has_analysis,
+    safe_write_file,
+    sanitize_filename,
+)
 from katrain.core.batch.models import BatchResult, WriteError
 from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
+from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
+from katrain.core.reports.karte.builder import build_karte_report
 from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
-from katrain.core.reports.karte.builder import build_karte_report
-from katrain.core.batch.helpers import (
-    collect_sgf_files_recursive,
-    has_analysis,
-    choose_visits_for_sgf,
-    safe_write_file,
-    sanitize_filename,
-    get_unique_filename,
-    DEFAULT_TIMEOUT_SECONDS,
-)
-from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
 
 if TYPE_CHECKING:
     from katrain.core.analysis.skill_radar import AggregatedRadarResult
@@ -86,8 +86,8 @@ class EngineFailureTracker:
 
 
 def run_batch(
-    katrain: "KaTrainBase",
-    engine: "KataGoEngine",
+    katrain: KaTrainBase,
+    engine: KataGoEngine,
     input_dir: str,
     output_dir: str | None = None,
     visits: int | None = None,
@@ -158,9 +158,9 @@ def run_batch(
     # Import here to avoid circular imports
     from katrain.core.batch.analysis import analyze_single_file, analyze_single_file_leela
     from katrain.core.batch.stats import (
+        build_player_summary,
         extract_game_stats,
         extract_players_from_stats,
-        build_player_summary,
     )
 
     result = BatchResult()
@@ -277,12 +277,12 @@ def run_batch(
         # Determine base name for output files
         base_name = os.path.splitext(os.path.basename(rel_path))[0]
         # Sanitize filename
-        base_name = re.sub(r'[<>:"/\\|?*]', '_', base_name)[:50]
+        base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)[:50]
 
         # Determine SGF output path (preserve relative path structure)
         output_rel_path = rel_path
-        if output_rel_path.lower().endswith(('.gib', '.ngf')):
-            output_rel_path = output_rel_path[:-4] + '.sgf'
+        if output_rel_path.lower().endswith((".gib", ".ngf")):
+            output_rel_path = output_rel_path[:-4] + ".sgf"
 
         sgf_output_path = None
         if save_analyzed_sgf:
@@ -314,6 +314,7 @@ def run_batch(
                 # Phase 36 MVP: Leela batch always uses QUICK (fast_visits)
                 # UI visits_input is ignored for Leela (spec: Batch Leela visits)
                 from katrain.core.analysis.models import AnalysisStrength, resolve_visits
+
                 leela_config = katrain.config("leela") or {}
                 effective_visits = resolve_visits(AnalysisStrength.QUICK, leela_config, "leela")
                 log(f"  Leela visits: {effective_visits} (from leela.fast_visits)")
@@ -467,36 +468,42 @@ def run_batch(
                     # Expected: Karte generation domain error
                     result.karte_failed += 1
                     log(f"  Karte generation error ({rel_path}): {e}")
-                    result.write_errors.append(WriteError(
-                        file_kind="karte",
-                        sgf_id=rel_path,
-                        target_path="(generation failed)",
-                        exception_type=type(e).__name__,
-                        message=f"[generation] {e}",
-                    ))
+                    result.write_errors.append(
+                        WriteError(
+                            file_kind="karte",
+                            sgf_id=rel_path,
+                            target_path="(generation failed)",
+                            exception_type=type(e).__name__,
+                            message=f"[generation] {e}",
+                        )
+                    )
                 except OSError as e:
                     # Expected: File write I/O error
                     result.karte_failed += 1
                     log(f"  Karte write error ({rel_path}): {e}")
-                    result.write_errors.append(WriteError(
-                        file_kind="karte",
-                        sgf_id=rel_path,
-                        target_path=str(karte_path) if "karte_path" in dir() else "(path unknown)",
-                        exception_type=type(e).__name__,
-                        message=f"[write] {e}",
-                    ))
+                    result.write_errors.append(
+                        WriteError(
+                            file_kind="karte",
+                            sgf_id=rel_path,
+                            target_path=str(karte_path) if "karte_path" in dir() else "(path unknown)",
+                            exception_type=type(e).__name__,
+                            message=f"[write] {e}",
+                        )
+                    )
                 except Exception as e:
                     # Unexpected: Internal bug - traceback required
                     result.karte_failed += 1
                     log(f"  Unexpected karte error ({rel_path}): {e}")
                     log(f"    {traceback.format_exc()}")
-                    result.write_errors.append(WriteError(
-                        file_kind="karte",
-                        sgf_id=rel_path,
-                        target_path="(generation failed)",
-                        exception_type=type(e).__name__,
-                        message=f"[unexpected] {e}",
-                    ))
+                    result.write_errors.append(
+                        WriteError(
+                            file_kind="karte",
+                            sgf_id=rel_path,
+                            target_path="(generation failed)",
+                            exception_type=type(e).__name__,
+                            message=f"[unexpected] {e}",
+                        )
+                    )
 
             # Collect stats for summary and/or curator
             # Phase 44: Pass target_visits for consistent reliability threshold
@@ -505,7 +512,8 @@ def run_batch(
             if (generate_summary or generate_curator) and game is not None:
                 try:
                     stats = extract_game_stats(
-                        game, rel_path,
+                        game,
+                        rel_path,
                         log_cb=log_cb,  # Phase 87.6: Wire logging callback
                         target_visits=visits,
                         source_index=i,

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.engine_query import build_analysis_query
 
@@ -184,11 +185,15 @@ class StandardAnalysisCommand(AnalysisCommand):
 
             # Apply analysis_focus adjustments
             focus = config.get("analysis_focus")
-            if focus:
-                if (focus == "black" and self.node.next_player == "W") or \
-                   (focus == "white" and self.node.next_player == "B"):
-                    if config.get("fast_visits"):
-                        visits = config["fast_visits"]
+            if (
+                focus
+                and (
+                    (focus == "black" and self.node.next_player == "W")
+                    or (focus == "white" and self.node.next_player == "B")
+                )
+                and config.get("fast_visits")
+            ):
+                visits = config["fast_visits"]
 
         # Resolve ownership
         ownership = self.ownership

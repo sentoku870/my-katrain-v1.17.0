@@ -13,16 +13,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
 import json
 import os
 import random
 import string
 import sys
 import zipfile
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.constants import VERSION
 
@@ -75,7 +75,7 @@ class PackageResult:
 # --- ユーティリティ関数（GUI層でも使用） ---
 
 
-def get_player_names_from_tree(root_node: "SGFNode") -> tuple[str, str]:
+def get_player_names_from_tree(root_node: SGFNode) -> tuple[str, str]:
     """SGFツリーからプレイヤー名を取得
 
     APIシグネチャ（検証済み）:
@@ -192,9 +192,8 @@ def _is_writable_directory(path: Path | None) -> bool:
     except Exception:
         # Unexpected: Internal bug - log with traceback
         import logging
-        logging.getLogger(__name__).debug(
-            f"Unexpected directory check error: {path}", exc_info=True
-        )
+
+        logging.getLogger(__name__).debug(f"Unexpected directory check error: {path}", exc_info=True)
         return False
 
 
@@ -236,11 +235,7 @@ def load_coach_md() -> str:
     # docs/ の場所: katrain-1.17.0/docs/
     # 相対パス: ../../../docs/
     try:
-        dev_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "docs"
-            / "03-llm-validation.md"
-        )
+        dev_path = Path(__file__).parent.parent.parent.parent / "docs" / "03-llm-validation.md"
         if dev_path.exists():
             return dev_path.read_text(encoding="utf-8")
     except OSError:
@@ -249,9 +244,8 @@ def load_coach_md() -> str:
     except Exception:
         # Unexpected: Internal bug - log with traceback, but still use fallback
         import logging
-        logging.getLogger(__name__).debug(
-            "Unexpected error loading coach.md", exc_info=True
-        )
+
+        logging.getLogger(__name__).debug("Unexpected error loading coach.md", exc_info=True)
 
     # フォールバック（パッケージ環境、PyInstaller等）
     return COACH_MD_FALLBACK
@@ -267,9 +261,7 @@ def generate_package_filename() -> str:
     XXXX: 4桁のランダム英数字
     """
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    random_suffix = "".join(
-        random.choices(string.ascii_lowercase + string.digits, k=4)
-    )
+    random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
     return f"llm_package_{timestamp}_{random_suffix}.zip"
 
 
@@ -370,9 +362,8 @@ def create_llm_package(
         # Unexpected: Internal bug - log with traceback
         import logging
         import traceback
-        logging.getLogger(__name__).debug(
-            f"Unexpected package creation error: {e}\n{traceback.format_exc()}"
-        )
+
+        logging.getLogger(__name__).debug(f"Unexpected package creation error: {e}\n{traceback.format_exc()}")
         return PackageResult(
             success=False,
             output_path=None,

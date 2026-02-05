@@ -7,16 +7,16 @@ and logs for export as a sanitized ZIP bundle. It is Kivy-independent.
 """
 
 import json
-import os
 import platform
 import random
 import string
 import sys
 import zipfile
-from dataclasses import asdict, dataclass, field
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 from katrain.common.sanitize import (
     SanitizationContext,
@@ -24,7 +24,6 @@ from katrain.common.sanitize import (
     sanitize_text,
 )
 from katrain.common.settings_export import EXCLUDED_SECTIONS
-
 
 # --- Data Classes ---
 
@@ -50,7 +49,7 @@ class KataGoInfo:
     model_path: str
     config_path: str
     is_running: bool
-    version: Optional[str] = None
+    version: str | None = None
 
 
 @dataclass
@@ -69,8 +68,8 @@ class DiagnosticsBundle:
     system_info: SystemInfo
     katago_info: KataGoInfo
     app_info: AppInfo
-    settings: Dict[str, Any]
-    logs: List[str]
+    settings: dict[str, Any]
+    logs: list[str]
 
 
 @dataclass
@@ -78,8 +77,8 @@ class DiagnosticsResult:
     """Result of diagnostics ZIP generation."""
 
     success: bool
-    output_path: Optional[Path] = None
-    error_message: Optional[str] = None
+    output_path: Path | None = None
+    error_message: str | None = None
 
 
 # --- Collection Functions ---
@@ -107,7 +106,7 @@ def collect_katago_info(
     model_path: str = "",
     config_path: str = "",
     is_running: bool = False,
-    version: Optional[str] = None,
+    version: str | None = None,
 ) -> KataGoInfo:
     """Collect KataGo engine information.
 
@@ -139,8 +138,8 @@ def collect_app_info(
 
 
 def collect_settings_snapshot(
-    config_data: Dict[str, Any],
-) -> Dict[str, Any]:
+    config_data: dict[str, Any],
+) -> dict[str, Any]:
     """Create a snapshot of settings with sensitive sections excluded.
 
     Args:
@@ -149,7 +148,7 @@ def collect_settings_snapshot(
     Returns:
         Config dictionary with EXCLUDED_SECTIONS removed.
     """
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for section, values in config_data.items():
         if section not in EXCLUDED_SECTIONS:
             result[section] = values
@@ -174,12 +173,12 @@ def generate_diagnostics_filename() -> str:
 
 
 def collect_diagnostics_bundle(
-    engine_info: Optional[Tuple[str, str, str, bool, Optional[str]]] = None,
+    engine_info: tuple[str, str, str, bool, str | None] | None = None,
     app_version: str = "unknown",
     config_path: str = "",
     data_folder: str = "",
-    config_data: Optional[Dict[str, Any]] = None,
-    logs: Optional[List[str]] = None,
+    config_data: dict[str, Any] | None = None,
+    logs: list[str] | None = None,
 ) -> DiagnosticsBundle:
     """Public API to collect diagnostics bundle.
 
@@ -290,7 +289,7 @@ Please help me troubleshoot based on the information above.
 def _write_json_entry(
     zf: zipfile.ZipFile,
     name: str,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     ctx: SanitizationContext,
 ) -> None:
     """Write a JSON entry to the ZIP with sanitization.
@@ -305,7 +304,7 @@ def _write_json_entry(
 def _write_logs_entry(
     zf: zipfile.ZipFile,
     name: str,
-    lines: List[str],
+    lines: list[str],
     ctx: SanitizationContext,
 ) -> None:
     """Write log entries to the ZIP with per-line sanitization."""
@@ -319,8 +318,8 @@ def create_diagnostics_zip(
     output_path: Path,
     ctx: SanitizationContext,
     *,
-    extra_files: Optional[Dict[str, str]] = None,
-    now_fn: Optional[Callable[[], datetime]] = None,
+    extra_files: dict[str, str] | None = None,
+    now_fn: Callable[[], datetime] | None = None,
 ) -> DiagnosticsResult:
     """Create a diagnostics ZIP bundle.
 

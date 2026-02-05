@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.analysis.models import get_canonical_loss_from_move
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 
 
 def extract_game_stats(
-    game: "Game",
+    game: Game,
     rel_path: str,
     log_cb: Callable[[str], None] | None = None,
     target_visits: int | None = None,
@@ -51,7 +52,6 @@ def extract_game_stats(
     """
     try:
         from katrain.core import eval_metrics
-        from katrain.core.eval_metrics import compute_effective_threshold
         from katrain.core.analysis.meaning_tags import (
             ClassificationContext,
             MeaningTagId,
@@ -61,6 +61,7 @@ def extract_game_stats(
             MIN_MOVES_FOR_RADAR,
             compute_radar_from_moves,
         )
+        from katrain.core.eval_metrics import compute_effective_threshold
 
         # Phase 87.5: Use provided snapshot or build from game
         if snapshot is None:
@@ -138,8 +139,22 @@ def extract_game_stats(
             "meaning_tags_by_player": {"B": {}, "W": {}},
             # Reliability stats for Data Quality section
             "reliability_by_player": {
-                "B": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
-                "W": {"total": 0, "reliable": 0, "low_confidence": 0, "total_visits": 0, "with_visits": 0, "max_visits": 0},
+                "B": {
+                    "total": 0,
+                    "reliable": 0,
+                    "low_confidence": 0,
+                    "total_visits": 0,
+                    "with_visits": 0,
+                    "max_visits": 0,
+                },
+                "W": {
+                    "total": 0,
+                    "reliable": 0,
+                    "low_confidence": 0,
+                    "total_visits": 0,
+                    "with_visits": 0,
+                    "max_visits": 0,
+                },
             },
         }
 
@@ -159,17 +174,19 @@ def extract_game_stats(
 
             # Per-player phase stats
             if player in ("B", "W"):
-                stats["phase_moves_by_player"][player][phase] = (
-                    stats["phase_moves_by_player"][player].get(phase, 0) + 1
-                )
+                stats["phase_moves_by_player"][player][phase] = stats["phase_moves_by_player"][player].get(phase, 0) + 1
                 stats["phase_loss_by_player"][player][phase] = (
                     stats["phase_loss_by_player"][player].get(phase, 0.0) + canonical_loss
                 )
 
             # Mistake category
             if move.mistake_category:
-                stats["mistake_counts"][move.mistake_category] = stats["mistake_counts"].get(move.mistake_category, 0) + 1
-                stats["mistake_total_loss"][move.mistake_category] = stats["mistake_total_loss"].get(move.mistake_category, 0.0) + canonical_loss
+                stats["mistake_counts"][move.mistake_category] = (
+                    stats["mistake_counts"].get(move.mistake_category, 0) + 1
+                )
+                stats["mistake_total_loss"][move.mistake_category] = (
+                    stats["mistake_total_loss"].get(move.mistake_category, 0.0) + canonical_loss
+                )
 
                 # Per-player mistake stats
                 if player in ("B", "W"):
@@ -196,7 +213,9 @@ def extract_game_stats(
 
             # Freedom/difficulty
             if move.position_difficulty:
-                stats["freedom_counts"][move.position_difficulty] = stats["freedom_counts"].get(move.position_difficulty, 0) + 1
+                stats["freedom_counts"][move.position_difficulty] = (
+                    stats["freedom_counts"].get(move.position_difficulty, 0) + 1
+                )
 
                 # Per-player freedom stats
                 if player in ("B", "W"):
@@ -226,7 +245,9 @@ def extract_game_stats(
 
             # Track worst moves
             if move.points_lost and move.points_lost >= 2.0:
-                stats["worst_moves"].append((move.move_number, player, move.gtp, move.points_lost, move.mistake_category))
+                stats["worst_moves"].append(
+                    (move.move_number, player, move.gtp, move.points_lost, move.mistake_category)
+                )
 
         # Sort worst moves by loss
         stats["worst_moves"].sort(key=lambda x: x[3], reverse=True)
@@ -238,6 +259,7 @@ def extract_game_stats(
         # Phase 47: Also classify meaning tags for Top 3 Mistake Types
         try:
             from katrain.core.eval_metrics import validate_reason_tag
+
             important_moves = game.get_important_move_evals(compute_reason_tags=True)
 
             # Phase 47: Create context once with total_moves
@@ -287,10 +309,7 @@ def extract_game_stats(
                         radar_by_player[player] = radar.to_dict()
                     except Exception as e:
                         # Log failure but don't break batch processing
-                        _logger.debug(
-                            "Radar computation failed for player=%s in %s: %s",
-                            player, rel_path, e
-                        )
+                        _logger.debug("Radar computation failed for player=%s in %s: %s", player, rel_path, e)
                         # radar_by_player[player] remains None
 
         stats["radar_by_player"] = radar_by_player
@@ -307,24 +326,22 @@ def extract_game_stats(
                 continue
 
             # Skip if ALL loss fields are None
-            has_loss = (
-                move.score_loss is not None
-                or move.leela_loss_est is not None
-                or move.points_lost is not None
-            )
+            has_loss = move.score_loss is not None or move.leela_loss_est is not None or move.points_lost is not None
             if not has_loss:
                 continue
 
-            pattern_data.append({
-                "move_number": move.move_number,
-                "player": move.player,
-                "gtp": move.gtp,
-                "score_loss": move.score_loss,
-                "leela_loss_est": move.leela_loss_est,
-                "points_lost": move.points_lost,
-                "mistake_category": move.mistake_category.name,
-                "meaning_tag_id": move.meaning_tag_id,
-            })
+            pattern_data.append(
+                {
+                    "move_number": move.move_number,
+                    "player": move.player,
+                    "gtp": move.gtp,
+                    "score_loss": move.score_loss,
+                    "leela_loss_est": move.leela_loss_est,
+                    "points_lost": move.points_lost,
+                    "mistake_category": move.mistake_category.name,
+                    "meaning_tag_id": move.meaning_tag_id,
+                }
+            )
         stats["pattern_data"] = pattern_data
 
         return stats
@@ -378,7 +395,7 @@ def extract_players_from_stats(
 
     # Filter by min_games and convert to output format
     result: dict[str, list[tuple[dict[str, Any], str]]] = {}
-    for norm_name, games in player_games.items():
+    for _norm_name, games in player_games.items():
         if len(games) >= min_games:
             # Use first original name as display name
             display_name = games[0][2]

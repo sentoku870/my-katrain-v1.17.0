@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
@@ -24,12 +25,12 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
+from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
-from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -50,6 +51,7 @@ def create_browse_callback(
     Returns:
         ブラウズコールバック関数
     """
+
     def browse_callback(*_args: Any) -> None:
         from katrain.gui.popups import LoadSGFPopup
 
@@ -78,7 +80,7 @@ def create_browse_callback(
 
 
 def create_on_start_callback(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     widgets: BatchWidgets,
     is_running: list[bool],
     cancel_flag: list[bool],
@@ -98,6 +100,7 @@ def create_on_start_callback(
     Returns:
         開始ボタンコールバック関数
     """
+
     def on_start(*_args: Any) -> None:
         if is_running[0]:
             # Cancel
@@ -150,6 +153,7 @@ def create_on_close_callback(
     Returns:
         閉じるボタンコールバック関数
     """
+
     def on_close(*_args: Any) -> None:
         if is_running[0]:
             return  # Don't close while running
@@ -169,6 +173,7 @@ def create_get_player_filter_fn(
     Returns:
         プレイヤーフィルター取得関数
     """
+
     def get_player_filter() -> str | None:
         if filter_buttons["filter_black"].state == "down":
             return "B"
@@ -318,10 +323,7 @@ def build_batch_popup_widgets(
     # Options row 2: skip analyzed checkbox
     options_row2 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
 
-    widgets["skip_checkbox"] = CheckBox(
-        active=batch_options.get("skip_analyzed", True),
-        size_hint_x=None, width=dp(30)
-    )
+    widgets["skip_checkbox"] = CheckBox(active=batch_options.get("skip_analyzed", True), size_hint_x=None, width=dp(30))
     skip_label = Label(
         text=i18n._("mykatrain:batch:skip_analyzed"),
         size_hint_x=0.4,
@@ -357,8 +359,7 @@ def build_batch_popup_widgets(
     options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
     widgets["save_sgf_checkbox"] = CheckBox(
-        active=batch_options.get("save_analyzed_sgf", False),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("save_analyzed_sgf", False), size_hint_x=None, width=dp(30)
     )
     save_sgf_label = Label(
         text=i18n._("mykatrain:batch:save_analyzed_sgf"),
@@ -371,8 +372,7 @@ def build_batch_popup_widgets(
     save_sgf_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     widgets["karte_checkbox"] = CheckBox(
-        active=batch_options.get("generate_karte", True),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("generate_karte", True), size_hint_x=None, width=dp(30)
     )
     karte_label = Label(
         text=i18n._("mykatrain:batch:generate_karte"),
@@ -385,8 +385,7 @@ def build_batch_popup_widgets(
     karte_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     widgets["summary_checkbox"] = CheckBox(
-        active=batch_options.get("generate_summary", True),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("generate_summary", True), size_hint_x=None, width=dp(30)
     )
     summary_label = Label(
         text=i18n._("mykatrain:batch:generate_summary"),
@@ -474,8 +473,7 @@ def build_batch_popup_widgets(
     options_row5 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
     widgets["variable_visits_checkbox"] = CheckBox(
-        active=batch_options.get("variable_visits", False),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("variable_visits", False), size_hint_x=None, width=dp(30)
     )
     variable_visits_label = Label(
         text=i18n._("mykatrain:batch:variable_visits"),
@@ -505,8 +503,7 @@ def build_batch_popup_widgets(
     )
 
     widgets["deterministic_checkbox"] = CheckBox(
-        active=batch_options.get("deterministic", True),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("deterministic", True), size_hint_x=None, width=dp(30)
     )
     deterministic_label = Label(
         text=i18n._("mykatrain:batch:deterministic"),
@@ -519,8 +516,7 @@ def build_batch_popup_widgets(
     deterministic_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     widgets["sound_checkbox"] = CheckBox(
-        active=batch_options.get("sound_on_finish", False),
-        size_hint_x=None, width=dp(30)
+        active=batch_options.get("sound_on_finish", False), size_hint_x=None, width=dp(30)
     )
     sound_label = Label(
         text=i18n._("mykatrain:batch:sound_on_finish"),
@@ -597,9 +593,7 @@ def build_batch_popup_widgets(
         font_name=Theme.DEFAULT_FONT,
         opacity=0 if leela_enabled else 1,  # Phase 87.5: Hide if Leela configured
     )
-    widgets["leela_warning_label"].bind(
-        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
-    )
+    widgets["leela_warning_label"].bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     # Phase 87.5: Setup Leela button (visible only when Leela not configured)
     widgets["leela_settings_btn"] = Button(
@@ -654,7 +648,7 @@ def build_batch_popup_widgets(
         background_color=(0.1, 0.1, 0.1, 1),
         foreground_color=(0.9, 0.9, 0.9, 1),
     )
-    widgets["log_text"].bind(minimum_height=widgets["log_text"].setter('height'))
+    widgets["log_text"].bind(minimum_height=widgets["log_text"].setter("height"))
     widgets["log_scroll"].add_widget(widgets["log_text"])
     main_layout.add_widget(widgets["log_scroll"])
 

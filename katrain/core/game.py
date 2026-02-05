@@ -3,60 +3,50 @@ import math
 import os
 import re
 import threading
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Any, Iterator, cast
+from typing import Any
 
-from . import eval_metrics
-from .eval_metrics import (
-    EvalSnapshot,
-    GameSummaryData,
-    MistakeCategory,
-    MistakeStreak,
-    MoveEval,
-    PhaseMistakeStats,
-    PositionDifficulty,
-    QuizItem,
-    QuizQuestion,
-    SummaryStats,
-    aggregate_phase_mistake_stats,
-    classify_mistake,
-    detect_mistake_streaks,
-    get_canonical_loss_from_move,
-    get_practice_priorities_from_stats,
-    snapshot_from_game,
-)
 from katrain.core.constants import (
-    AnalysisMode,
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
     OUTPUT_INFO,
     PLAYER_AI,
     PLAYER_HUMAN,
+    PRIORITY_ALTERNATIVES,
+    PRIORITY_DEFAULT,
+    PRIORITY_EQUALIZE,
+    PRIORITY_EXTRA_ANALYSIS,
+    PRIORITY_GAME_ANALYSIS,
+    PRIORITY_SWEEP,
     PROGRAM_NAME,
     SGF_INTERNAL_COMMENTS_MARKER,
     STATUS_ANALYSIS,
     STATUS_ERROR,
     STATUS_INFO,
     STATUS_TEACHING,
-    PRIORITY_GAME_ANALYSIS,
-    PRIORITY_EXTRA_ANALYSIS,
-    PRIORITY_SWEEP,
-    PRIORITY_ALTERNATIVES,
-    PRIORITY_EQUALIZE,
-    PRIORITY_DEFAULT,
+    AnalysisMode,
     parse_analysis_mode,
 )
-
-
-# KarteGenerationError moved to reports/karte_report.py (PR #119)
-# Re-export for backward compatibility
-from katrain.core.reports.karte_report import KarteGenerationError
-
 from katrain.core.engine import KataGoEngine
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n, rank_label
+
+# KarteGenerationError moved to reports/karte_report.py (PR #119)
+# Re-export for backward compatibility
 from katrain.core.sgf_parser import SGF, Move
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement
+
+from . import eval_metrics
+from .eval_metrics import (
+    EvalSnapshot,
+    GameSummaryData,
+    MistakeCategory,
+    MoveEval,
+    QuizItem,
+    QuizQuestion,
+    snapshot_from_game,
+)
 
 
 class IllegalMoveException(Exception):
@@ -120,7 +110,7 @@ class BaseGame:
             if (
                 handicap >= 2
                 and not self.root.placements
-                and not (num_starting_moves_black == handicap)
+                and num_starting_moves_black != handicap
                 and not (self.root.children and self.root.children[0].placements)
             ):  # not really according to sgf, and not sure if still needed, last clause for fox
                 self.root.place_handicap_stones(handicap)
@@ -134,9 +124,7 @@ class BaseGame:
                         "RU": katrain.config("game/rules"),
                     }
                 )
-            merged_props: dict[str, list[Any]] = {
-                k: [v] for k, v in default_properties.items()
-            }
+            merged_props: dict[str, list[Any]] = {k: [v] for k, v in default_properties.items()}
             if game_properties:
                 for k, v in game_properties.items():
                     merged_props[k] = [v] if not isinstance(v, list) else v
@@ -153,9 +141,7 @@ class BaseGame:
 
         # restore shortcuts
         all_nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
-        shortcut_id_to_node: dict[Any, GameNode] = {
-            node.get_property("KTSID", None): node for node in all_nodes
-        }
+        shortcut_id_to_node: dict[Any, GameNode] = {node.get_property("KTSID", None): node for node in all_nodes}
         for node in all_nodes:
             shortcut_id = node.get_property("KTSF", None)
             if shortcut_id and shortcut_id in shortcut_id_to_node:
@@ -164,9 +150,7 @@ class BaseGame:
     # -- move tree functions --
     def _init_state(self) -> None:
         board_size_x, board_size_y = self.board_size
-        self.board = [
-            [-1 for _x in range(board_size_x)] for _y in range(board_size_y)
-        ]  # type: list[list[int]]  #  board pos -> chain id
+        self.board = [[-1 for _x in range(board_size_x)] for _y in range(board_size_y)]  # type: list[list[int]]  #  board pos -> chain id
         self.chains = []  # type: list[list[Move]]  #   chain id -> chain
         self.prisoners = []  # type: list[Move]
         self.last_capture = []  # type: list[Move]
@@ -287,9 +271,7 @@ class BaseGame:
         self.current_node = node
         self._calculate_groups()
 
-    def undo(
-        self, n_times: int | str = 1, stop_on_mistake: Any = None
-    ) -> None:
+    def undo(self, n_times: int | str = 1, stop_on_mistake: Any = None) -> None:
         """Undo moves with thread-safe state update.
 
         Lock scope: state mutation only (current_node, _calculate_groups).
@@ -314,7 +296,7 @@ class BaseGame:
             else:
                 assert isinstance(n_times, int)
                 effective_n_times = n_times
-            for move in range(effective_n_times):
+            for _move in range(effective_n_times):
                 if (
                     stop_on_mistake is not None
                     and cn.points_lost is not None
@@ -356,7 +338,9 @@ class BaseGame:
             for move in range(n_times):
                 if cn.children:
                     child_node = cn.ordered_children[0]
-                    shortcut_to = [m for m, v in cn.shortcuts_to if child_node == v]  # are we about to go to a shortcut node?
+                    shortcut_to = [
+                        m for m, v in cn.shortcuts_to if child_node == v
+                    ]  # are we about to go to a shortcut node?
                     if shortcut_to:
                         child_node = shortcut_to[0]
                     assert isinstance(child_node, GameNode)
@@ -428,7 +412,7 @@ class BaseGame:
         current_ownership = self.current_node.ownership
         assert current_ownership is not None
         mean_ownership: list[float] = []
-        for c, p in zip(current_ownership, parent_ownership):
+        for c, p in zip(current_ownership, parent_ownership, strict=False):
             if c is not None and p is not None:
                 mean_ownership.append((c + p) / 2)
         ownership_grid = var_to_grid(mean_ownership, (board_size_x, board_size_y))
@@ -439,7 +423,7 @@ class BaseGame:
         max_dame = 4 * (board_size_x + board_size_y)
 
         def japanese_score_square(square: tuple[int, int], owner: float) -> float:
-            player = stones.get(square, None)
+            player = stones.get(square)
             if (
                 (player == "B" and owner > hi_threshold)
                 or (player == "W" and owner < -hi_threshold)
@@ -608,7 +592,6 @@ class Game(BaseGame):
                     analyze_fast=analyze_fast,
                 )
 
-
     def build_eval_snapshot(self) -> EvalSnapshot:
         """
         現在の Game（メイン分岐）から EvalSnapshot を生成するヘルパー。
@@ -634,9 +617,7 @@ class Game(BaseGame):
         from katrain.core.reports import quiz_report
 
         snapshot = self.build_eval_snapshot()
-        return quiz_report.get_quiz_items(
-            snapshot, loss_threshold=loss_threshold, limit=limit
-        )
+        return quiz_report.get_quiz_items(snapshot, loss_threshold=loss_threshold, limit=limit)
 
     def build_quiz_questions(
         self,
@@ -745,7 +726,7 @@ class Game(BaseGame):
                     board_state = board_analysis.analyze_board_at_node(self, node)
 
                     # 候補手を取得
-                    candidates = node.candidate_moves if hasattr(node, 'candidate_moves') else []
+                    candidates = node.candidate_moves if hasattr(node, "candidate_moves") else []
 
                     # タグを計算（Phase 17: skill_preset を渡す）
                     move_eval.reason_tags = board_analysis.get_reason_tags_for_move(
@@ -759,8 +740,7 @@ class Game(BaseGame):
                 except Exception as e:
                     # 失敗時は優雅に処理: 分析失敗時は "unknown" を設定
                     self.katrain.log(
-                        f"Failed to compute reason tags for move #{move_eval.move_number}: {e}",
-                        OUTPUT_DEBUG
+                        f"Failed to compute reason tags for move #{move_eval.move_number}: {e}", OUTPUT_DEBUG
                     )
                     move_eval.reason_tags = ["unknown"]
                     unknown_count += 1
@@ -768,8 +748,7 @@ class Game(BaseGame):
             # unknown_count をログに出力（カバレッジ確認用）
             if unknown_count > 0 and important_moves:
                 self.katrain.log(
-                    f"[ReasonTags] {unknown_count}/{len(important_moves)} moves have unknown reason tags",
-                    OUTPUT_DEBUG
+                    f"[ReasonTags] {unknown_count}/{len(important_moves)} moves have unknown reason tags", OUTPUT_DEBUG
                 )
 
         return important_moves
@@ -849,12 +828,8 @@ class Game(BaseGame):
             target_visits=target_visits,
         )
 
-
     @staticmethod
-    def build_summary_report(
-        game_data_list: list[GameSummaryData],
-        focus_player: str | None = None
-    ) -> str:
+    def build_summary_report(game_data_list: list[GameSummaryData], focus_player: str | None = None) -> str:
         """
         複数局から統計まとめを生成（Phase 6）
 
@@ -869,6 +844,7 @@ class Game(BaseGame):
             Markdown形式のまとめレポート
         """
         from katrain.core.reports import summary_report
+
         return summary_report.build_summary_report(game_data_list, focus_player)
 
     def log_important_moves_for_debug(
@@ -964,9 +940,7 @@ class Game(BaseGame):
                 break
         return None
 
-    def _compute_important_moves(
-        self, max_moves: int = 20
-    ) -> list[tuple[int, float, GameNode]]:
+    def _compute_important_moves(self, max_moves: int = 20) -> list[tuple[int, float, GameNode]]:
         """
         メイン分岐上のノードから「重要そうな手」を抽出して返す。
 
@@ -1228,10 +1202,9 @@ class Game(BaseGame):
         """Handle GAME mode: re-analyze all nodes in the game tree."""
         nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
         only_mistakes = kwargs.get("mistakes_only", False)
-        move_range: tuple[int, int] | None = kwargs.get("move_range", None)
-        if move_range:
-            if move_range[1] < move_range[0]:
-                move_range = (move_range[1], move_range[0])  # Swap to ensure correct order
+        move_range: tuple[int, int] | None = kwargs.get("move_range")
+        if move_range and move_range[1] < move_range[0]:
+            move_range = (move_range[1], move_range[0])  # Swap to ensure correct order
         threshold = self.katrain.config("trainer/eval_thresholds")[-4]
         if "visits" in kwargs:
             visits = kwargs["visits"]
@@ -1239,7 +1212,9 @@ class Game(BaseGame):
             min_visits = min(node.analysis_visits_requested for node in nodes)
             visits = min_visits + engine.config["max_visits"]
         for node in nodes:
-            max_point_loss = max(c.points_lost or 0 for c in [node] + [ch for ch in node.children if isinstance(ch, GameNode)])
+            max_point_loss = max(
+                c.points_lost or 0 for c in [node] + [ch for ch in node.children if isinstance(ch, GameNode)]
+            )
             if only_mistakes and max_point_loss <= threshold:
                 continue
             if move_range and (node.depth - 1 not in range(move_range[0], move_range[1] + 1)):
@@ -1249,9 +1224,7 @@ class Game(BaseGame):
             self.katrain.controls.set_status(i18n._("game re-analysis").format(visits=visits), STATUS_ANALYSIS)
         else:
             self.katrain.controls.set_status(
-                i18n._("move range analysis").format(
-                    start_move=move_range[0], end_move=move_range[1], visits=visits
-                ),
+                i18n._("move range analysis").format(start_move=move_range[0], end_move=move_range[1], visits=visits),
                 STATUS_ANALYSIS,
             )
 
@@ -1319,7 +1292,9 @@ class Game(BaseGame):
             if not cn.analysis_complete and mode != AnalysisMode.LOCAL:
                 self.katrain.controls.set_status(i18n._("wait-before-extra-analysis"), STATUS_INFO, self.current_node)
                 return
-            if mode == AnalysisMode.ALTERNATIVE:  # also do a quick update on current candidates so it doesn't look too weird
+            if (
+                mode == AnalysisMode.ALTERNATIVE
+            ):  # also do a quick update on current candidates so it doesn't look too weird
                 self.katrain.controls.set_status(i18n._("alternative analysis"), STATUS_ANALYSIS)
                 cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives=True)
                 visits = engine.config["fast_visits"]
@@ -1440,7 +1415,7 @@ class Game(BaseGame):
                 else:  # we're a bit lost, far away from target, just push it closer
                     move_info = min(candidates, key=lambda m: abs(m["scoreLead"] - target_score))
                     self.katrain.log(
-                        f"* Played {move_info['move']} {move_info['scoreLead']} because score deviation between current score {node.score} and target score {target_score} > {3*stddev}",
+                        f"* Played {move_info['move']} {move_info['scoreLead']} because score deviation between current score {node.score} and target score {target_score} > {3 * stddev}",
                         OUTPUT_EXTRA_DEBUG,
                     )
                     ai_thoughts += f"Move played to close difference between score {node.score:.1f} and target {target_score:.1f} quickly."

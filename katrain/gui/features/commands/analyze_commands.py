@@ -7,14 +7,14 @@ These functions handle analysis mode changes and related operations.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
     from katrain.core.constants import AnalysisMode
 
 
-def do_analyze_extra(ctx: "KaTrainGui", mode: Union[str, "AnalysisMode"], **kwargs: Any) -> None:
+def do_analyze_extra(ctx: KaTrainGui, mode: str | AnalysisMode, **kwargs: Any) -> None:
     """Perform extra analysis in the specified mode.
 
     Args:

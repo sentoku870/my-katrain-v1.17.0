@@ -6,7 +6,8 @@ They can be safely imported in tests without Kivy dependencies.
 
 Phase 105: Initial implementation
 """
-from typing import Any, Optional
+
+from typing import Any
 
 from katrain.core.state import Event, EventType
 
@@ -34,7 +35,7 @@ def maybe_notify_analysis_complete(
     *,
     partial_result: bool,
     results_exist: bool,
-    query_id: Optional[str],
+    query_id: str | None,
 ) -> bool:
     """Notify ANALYSIS_COMPLETE if conditions are met.
 

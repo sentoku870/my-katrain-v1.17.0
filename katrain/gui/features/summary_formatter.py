@@ -13,7 +13,8 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.reason_generator import generate_reason_safe
@@ -67,9 +68,16 @@ class _PatternMoveEval:
 
     Safely handles invalid/missing data without raising exceptions.
     """
+
     __slots__ = (
-        "move_number", "player", "gtp", "score_loss",
-        "leela_loss_est", "points_lost", "mistake_category", "meaning_tag_id"
+        "move_number",
+        "player",
+        "gtp",
+        "score_loss",
+        "leela_loss_est",
+        "points_lost",
+        "mistake_category",
+        "meaning_tag_id",
     )
 
     # Type annotations for __slots__ members (Phase 111)
@@ -103,6 +111,7 @@ class _PatternMoveEval:
 
 class _FakeSnapshot:
     """Duck-typed EvalSnapshot for pattern mining."""
+
     __slots__ = ("moves",)
 
     def __init__(self, moves: list[_PatternMoveEval]) -> None:
@@ -190,8 +199,7 @@ def _filter_by_board_size(
     if len(size_counts) > 1:
         skipped_count = sum(c for t, c in size_counts.items() if t != most_common_tuple)
         _logger.warning(
-            "Mixed board sizes detected: %s. Using %dx%d for pattern mining; "
-            "skipping %d game(s) with other sizes.",
+            "Mixed board sizes detected: %s. Using %dx%d for pattern mining; skipping %d game(s) with other sizes.",
             {f"{t[0]}x{t[1]}": c for t, c in size_counts.items()},
             most_common_size,
             most_common_size,
@@ -199,10 +207,7 @@ def _filter_by_board_size(
         )
 
     # Filter to only games with the most common size (using normalized comparison)
-    filtered = [
-        s for s in stats_list
-        if _normalize_board_size(s.get("board_size")) == most_common_tuple
-    ]
+    filtered = [s for s in stats_list if _normalize_board_size(s.get("board_size")) == most_common_tuple]
 
     return filtered, most_common_size
 
@@ -263,16 +268,13 @@ def _is_valid_gtp(gtp: str | None, board_size: int = 19) -> bool:
         row_num = int(gtp_stripped[1:])
 
         # GTP columns: A-H, J-T (I is skipped), max 19 for 19x19
-        col_index = ord(col_char) - ord('a')
-        if col_char >= 'j':
+        col_index = ord(col_char) - ord("a")
+        if col_char >= "j":
             col_index -= 1  # Adjust for skipped 'I'
 
         if col_index < 0 or col_index >= board_size:
             return False
-        if row_num < 1 or row_num > board_size:
-            return False
-
-        return True
+        return not (row_num < 1 or row_num > board_size)
     except (ValueError, IndexError):
         return False
 
@@ -312,7 +314,7 @@ def _reconstruct_pattern_input(
                 d.get("move_number", 0),
                 d.get("player", ""),
                 d.get("gtp", ""),
-            )
+            ),
         )
 
         valid_moves = []
@@ -321,25 +323,20 @@ def _reconstruct_pattern_input(
 
             # Validate all required fields
             if not _is_valid_move_number(move_eval.move_number):
-                _logger.debug(
-                    "Skipping invalid move_number=%s in %s",
-                    d.get("move_number"), game_name
-                )
+                _logger.debug("Skipping invalid move_number=%s in %s", d.get("move_number"), game_name)
                 skipped_moves_count += 1
                 continue
 
             if not _is_valid_player(move_eval.player):
                 _logger.debug(
-                    "Skipping invalid player='%s' at move %d in %s",
-                    move_eval.player, move_eval.move_number, game_name
+                    "Skipping invalid player='%s' at move %d in %s", move_eval.player, move_eval.move_number, game_name
                 )
                 skipped_moves_count += 1
                 continue
 
             if not _is_valid_gtp(move_eval.gtp, board_size):
                 _logger.debug(
-                    "Skipping invalid gtp='%s' at move %d in %s",
-                    move_eval.gtp, move_eval.move_number, game_name
+                    "Skipping invalid gtp='%s' at move %d in %s", move_eval.gtp, move_eval.move_number, game_name
                 )
                 skipped_moves_count += 1
                 continue
@@ -355,10 +352,7 @@ def _reconstruct_pattern_input(
             games.append((game_name, _FakeSnapshot(valid_moves)))
 
     if skipped_moves_count > 0:
-        _logger.warning(
-            "Skipped %d invalid move(s) during pattern mining input reconstruction.",
-            skipped_moves_count
-        )
+        _logger.warning("Skipped %d invalid move(s) during pattern mining input reconstruction.", skipped_moves_count)
 
     return games
 
@@ -371,20 +365,15 @@ def _mine_patterns_safe(
 ) -> list[PatternCluster]:
     """Wrapper for mine_patterns with lazy import."""
     from katrain.core.batch.stats.pattern_miner import mine_patterns
+
     return mine_patterns(games, board_size=board_size, min_count=min_count, top_n=top_n)  # type: ignore[arg-type]
 
 
 def _format_game_refs(game_refs: list[GameRef], max_display: int = 3) -> str:
     """Format game refs with deterministic ordering."""
-    sorted_refs = sorted(
-        game_refs,
-        key=lambda r: (r.game_name, r.move_number, r.player)
-    )
+    sorted_refs = sorted(game_refs, key=lambda r: (r.game_name, r.move_number, r.player))
     display_refs = sorted_refs[:max_display]
-    return ", ".join(
-        f"{r.game_name} #{r.move_number}({r.player})"
-        for r in display_refs
-    )
+    return ", ".join(f"{r.game_name} #{r.move_number}({r.player})" for r in display_refs)
 
 
 def _append_recurring_patterns(
@@ -599,8 +588,7 @@ def build_summary_from_stats(
 
     # Weakness Hypothesis
     sorted_combos = _append_weakness_hypothesis(
-        lines, phase_mistake_loss_total, phase_mistake_counts_total,
-        phase_loss_total, phase_moves_total, focus_player
+        lines, phase_mistake_loss_total, phase_mistake_counts_total, phase_loss_total, phase_moves_total, focus_player
     )
 
     # Urgent miss patterns in weakness section
@@ -625,7 +613,9 @@ def build_summary_from_stats(
                 _logger.warning("Pattern mining failed: %s", e)
 
     # Practice Priorities
-    _append_practice_priorities(lines, sorted_combos, phase_mistake_counts_total, phase_loss_total, total_moves, focus_player)
+    _append_practice_priorities(
+        lines, sorted_combos, phase_mistake_counts_total, phase_loss_total, total_moves, focus_player
+    )
 
     return "\n".join(lines)
 
@@ -715,8 +705,7 @@ def _append_freedom_distribution(
 ) -> None:
     """Freedom Distribution（非UNKNOWNがある場合のみ）."""
     has_real_freedom_data = any(
-        count > 0 for diff, count in freedom_totals.items()
-        if diff != eval_metrics.PositionDifficulty.UNKNOWN
+        count > 0 for diff, count in freedom_totals.items() if diff != eval_metrics.PositionDifficulty.UNKNOWN
     )
 
     if has_real_freedom_data:
@@ -775,11 +764,7 @@ def _append_reason_tags(
     lines.append(f"## ミス理由タグ分布{focus_suffix}")
     lines.append("")
 
-    sorted_tags = sorted(
-        reason_tags_totals.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
+    sorted_tags = sorted(reason_tags_totals.items(), key=lambda x: x[1], reverse=True)
 
     for tag, count in sorted_tags:
         label = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
@@ -788,21 +773,15 @@ def _append_reason_tags(
     lines.append("")
 
     # 棋力推定
-    total_important = sum(
-        sum(stats.get("reason_tags_counts", {}).values())
-        for stats in stats_list
-    )
+    total_important = sum(sum(stats.get("reason_tags_counts", {}).values()) for stats in stats_list)
     if total_important >= 5:
-        estimation = eval_metrics.estimate_skill_level_from_tags(
-            reason_tags_totals,
-            total_important
-        )
+        estimation = eval_metrics.estimate_skill_level_from_tags(reason_tags_totals, total_important)
 
         level_labels = {
             "beginner": "初級〜中級（G0-G1相当）",
             "standard": "有段者（G2-G3相当）",
             "advanced": "高段者（G4相当）",
-            "unknown": "不明"
+            "unknown": "不明",
         }
 
         lines.append(f"## 推定棋力{focus_suffix}")
@@ -814,7 +793,7 @@ def _append_reason_tags(
         preset_recommendations = {
             "beginner": "beginner（緩め：5目以上を大悪手判定）",
             "standard": "standard（標準：2目以上を悪手判定）",
-            "advanced": "advanced（厳しめ：1目以上を悪手判定）"
+            "advanced": "advanced（厳しめ：1目以上を悪手判定）",
         }
         if estimation.estimated_level in preset_recommendations:
             lines.append(f"- **推奨プリセット**: {preset_recommendations[estimation.estimated_level]}")
@@ -830,8 +809,8 @@ def _append_worst_moves(
 ) -> None:
     """Top Worst Movesセクション."""
     from katrain.core.reports.summary_report import (
-        _detect_urgent_miss_sequences,
         _convert_sgf_to_gtp_coord,
+        _detect_urgent_miss_sequences,
     )
 
     lines.append("## Top Worst Moves" + (f" ({focus_player})" if focus_player else ""))
@@ -860,9 +839,7 @@ def _append_worst_moves(
     urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
 
     sequences, filtered_moves = _detect_urgent_miss_sequences(
-        moves_for_detection,
-        threshold_loss=urgent_config.threshold_loss,
-        min_consecutive=urgent_config.min_consecutive
+        moves_for_detection, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive
     )
 
     # 急場見逃しパターン
@@ -873,8 +850,8 @@ def _append_worst_moves(
         lines.append("|------|---------|------|--------|------------|")
 
         for seq in sequences:
-            short_game = truncate_game_name(seq['game'])
-            avg_loss = seq['total_loss'] / seq['count']
+            short_game = truncate_game_name(seq["game"])
+            avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
                 f"| {short_game} | #{seq['start']}-{seq['end']} | "
                 f"{seq['count']}手 | {seq['total_loss']:.1f}目 | {avg_loss:.1f}目 |"
@@ -892,27 +869,31 @@ def _append_worst_moves(
         lines.append("|------|---|---|-------|------|------------|----------|")
 
         for game_name, temp_move in display_moves:
-            coord = temp_move.gtp or '-'
+            coord = temp_move.gtp or "-"
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
 
             cat_name = "UNKNOWN"
-            for gn, mn, pl, gt, ls, imp, ct in all_worst_moves:
+            for gn, mn, _pl, _gt, _ls, _imp, ct in all_worst_moves:
                 if gn == game_name and mn == temp_move.move_number:
                     cat_name = ct.name
                     break
 
-            lines.append(f"| {truncate_game_name(game_name)} | {temp_move.move_number} | {temp_move.player} | {coord} | {temp_move.points_lost:.1f} | {temp_move.importance:.1f} | {cat_name} |")
+            lines.append(
+                f"| {truncate_game_name(game_name)} | {temp_move.move_number} | {temp_move.player} | {coord} | {temp_move.points_lost:.1f} | {temp_move.importance:.1f} | {cat_name} |"
+            )
     elif sequences:
         lines.append("通常のワースト手: なし（すべて急場見逃しパターン）")
     else:
         lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
         lines.append("|------|---|---|-------|------|------------|----------|")
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves:
-            coord = gtp or '-'
+            coord = gtp or "-"
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
-            lines.append(f"| {truncate_game_name(game_name)} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |")
+            lines.append(
+                f"| {truncate_game_name(game_name)} | {move_num} | {player} | {coord} | {loss:.1f} | {importance:.1f} | {cat.name} |"
+            )
 
     lines.append("")
 
@@ -943,15 +924,14 @@ def _append_weakness_hypothesis(
         sorted_combos = sorted(
             [(k, v) for k, v in phase_mistake_loss_total.items() if k[1] in cat_names_ja and v > 0],
             key=lambda x: x[1],
-            reverse=True
+            reverse=True,
         )
 
         for i, (key, loss) in enumerate(sorted_combos[:3]):
             phase, category = key
             count = phase_mistake_counts_total.get(key, 0)
             hypotheses.append(
-                f"{i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** "
-                f"({count}回、損失{loss:.1f}目)"
+                f"{i + 1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** ({count}回、損失{loss:.1f}目)"
             )
 
     if hypotheses:
@@ -1014,17 +994,15 @@ def _append_urgent_miss_in_weakness(
     urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
 
     sequences, _ = _detect_urgent_miss_sequences(
-        moves_for_detection,
-        threshold_loss=urgent_config.threshold_loss,
-        min_consecutive=urgent_config.min_consecutive
+        moves_for_detection, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive
     )
 
     if sequences:
         lines.append("")
         lines.append("**急場見逃しパターン**:")
         for seq in sequences:
-            short_game = truncate_game_name(seq['game'])
-            avg_loss = seq['total_loss'] / seq['count']
+            short_game = truncate_game_name(seq["game"])
+            avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
                 f"- {short_game} #{seq['start']}-{seq['end']}: "
                 f"{seq['count']}手連続、総損失{seq['total_loss']:.1f}目（平均{avg_loss:.1f}目/手）"
@@ -1054,24 +1032,23 @@ def _format_time_management(
     """
     from katrain.core.reports.sections.time_section import (
         TimeStatsData,
-        format_time_stats,
         format_tilt_episode,
+        format_time_stats,
+        get_player_label,
         get_section_title,
         get_tilt_episodes_label,
-        get_player_label,
     )
 
     # Check if any game has time data
-    has_any_time_data = any(
-        stats.get("pacing_stats", {}).get("has_time_data", False)
-        for stats in stats_list
-    )
+    has_any_time_data = any(stats.get("pacing_stats", {}).get("has_time_data", False) for stats in stats_list)
     if not has_any_time_data:
         return ""
 
     lines = [f"## {get_section_title()}"]
 
-    def _aggregate_stats(stats_list: list[StatsDict], player_color: str, focus_player: str | None = None) -> tuple[TimeStatsData, list[dict[str, Any]]]:
+    def _aggregate_stats(
+        stats_list: list[StatsDict], player_color: str, focus_player: str | None = None
+    ) -> tuple[TimeStatsData, list[dict[str, Any]]]:
         """Aggregate time stats for a player color."""
         total_blitz = 0
         total_blitz_mistake = 0
@@ -1211,8 +1188,7 @@ def _append_practice_priorities(
         phase, category = key
         count = phase_mistake_counts_total.get(key, 0)
         priorities.append(
-            f"- {i+1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** "
-            f"({count}回、損失{loss:.1f}目)"
+            f"- {i + 1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** ({count}回、損失{loss:.1f}目)"
         )
 
     # フォールバック

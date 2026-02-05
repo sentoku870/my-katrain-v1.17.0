@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Pattern Mining for Recurring Mistake Detection.
 
 Phase 84: Extracts and aggregates mistake signatures from multiple games
@@ -12,17 +11,16 @@ Public API:
     - mine_patterns: Extract top patterns from multiple games
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
-from katrain.core.analysis.board_context import BoardArea, classify_area
+from katrain.core.analysis.board_context import classify_area
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.analysis.meaning_tags import (
     MeaningTagId,
-    THRESHOLD_ENDGAME_RATIO,
-    THRESHOLD_MOVE_ENDGAME_ABSOLUTE,
     get_loss_value,
     is_endgame,
 )
@@ -37,7 +35,7 @@ LOSS_THRESHOLD = 2.5  # Best-effort threshold for mistake detection
 
 # Opening phase thresholds by board size
 OPENING_THRESHOLDS = {
-    9: 15,   # 9x9: 15 moves
+    9: 15,  # 9x9: 15 moves
     13: 25,  # 13x13: 25 moves
     19: 40,  # 19x19: 40 moves
 }
@@ -45,9 +43,9 @@ DEFAULT_OPENING_THRESHOLD = 40
 
 # Area classification thresholds by board size
 AREA_THRESHOLDS = {
-    9: 3,    # 9x9: 3-line (corner if < 3 from both edges)
-    13: 4,   # 13x13: 4-line
-    19: 4,   # 19x19: 4-line (default)
+    9: 3,  # 9x9: 3-line (corner if < 3 from both edges)
+    13: 4,  # 13x13: 4-line
+    19: 4,  # 19x19: 4-line (default)
 }
 DEFAULT_AREA_THRESHOLD = 4
 
@@ -58,6 +56,7 @@ MAX_GAME_REFS_PER_CLUSTER = 10
 # =============================================================================
 # Data Models
 # =============================================================================
+
 
 @dataclass(frozen=True)
 class MistakeSignature:
@@ -70,6 +69,7 @@ class MistakeSignature:
         severity: Mistake severity ("mistake", "blunder")
         player: Player color ("B" or "W")
     """
+
     phase: str
     area: str
     primary_tag: str
@@ -90,6 +90,7 @@ class GameRef:
         move_number: Move number (1-indexed)
         player: Player color ("B" or "W")
     """
+
     game_name: str
     move_number: int
     player: str
@@ -105,6 +106,7 @@ class PatternCluster:
         total_loss: Cumulative loss (points)
         game_refs: References to specific occurrences (max MAX_GAME_REFS_PER_CLUSTER)
     """
+
     signature: MistakeSignature
     count: int
     total_loss: float
@@ -123,6 +125,7 @@ class PatternCluster:
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def get_severity(mistake_category: MistakeCategory) -> str | None:
     """Convert MistakeCategory to severity string.
@@ -254,6 +257,7 @@ def get_area_from_gtp(gtp: str | None, board_size: int = 19) -> str | None:
 # =============================================================================
 # Core Functions
 # =============================================================================
+
 
 def create_signature(
     move_eval: Any,  # MoveEval or duck-typed object

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
 

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
 
-def do_config_popup(ctx: "KaTrainGui") -> None:
+def do_config_popup(ctx: KaTrainGui) -> None:
     """Open the general settings popup.
 
     Args:

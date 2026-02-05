@@ -9,14 +9,15 @@ katrain.core.analysis.presentation - 表示/フォーマット関数
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
-    Callable,
 )
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import DifficultyMetrics
 
+from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.analysis.models import (
     ConfidenceLevel,
     EngineType,
@@ -25,8 +26,6 @@ from katrain.core.analysis.models import (
     PhaseMistakeStats,
     get_canonical_loss_from_move,
 )
-from katrain.core.analysis.logic_loss import detect_engine_type
-
 
 # =============================================================================
 # Label Constants (moved from models.py in PR#56)
@@ -366,14 +365,11 @@ def get_practice_priorities_from_stats(
     }
 
     # 1. Phase × Mistake で最悪の組み合わせを特定（GOODは除外）
-    non_good_losses = [
-        (k, v) for k, v in stats.phase_mistake_loss.items()
-        if k[1] != "GOOD" and v > 0
-    ]
+    non_good_losses = [(k, v) for k, v in stats.phase_mistake_loss.items() if k[1] != "GOOD" and v > 0]
     if non_good_losses:
         sorted_combos = sorted(non_good_losses, key=lambda x: x[1], reverse=True)
         # 上位2つを抽出
-        for i, (key, loss) in enumerate(sorted_combos[:2]):
+        for _i, (key, loss) in enumerate(sorted_combos[:2]):
             phase, category = key
             count = stats.phase_mistake_counts.get(key, 0)
             priorities.append(
@@ -415,7 +411,7 @@ def get_difficulty_label(overall: float) -> str:
         return "難"
 
 
-def format_difficulty_metrics(metrics: "DifficultyMetrics") -> list[str]:
+def format_difficulty_metrics(metrics: DifficultyMetrics) -> list[str]:
     """DifficultyMetricsを表示用文字列リストに変換。
 
     Args:

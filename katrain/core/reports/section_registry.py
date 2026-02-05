@@ -14,7 +14,7 @@ This module provides:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
@@ -78,7 +78,7 @@ class ReportSection(Protocol):
         ...
 
 
-class ReportType(str, Enum):
+class ReportType(StrEnum):
     """Types of reports that support pluggable sections."""
 
     KARTE = "karte"
@@ -89,11 +89,8 @@ class SectionRegistry:
     """Registry for pluggable report sections."""
 
     def __init__(self) -> None:
-        from .insertion import SectionRegistration
 
-        self._registrations: dict[ReportType, list[SectionRegistration]] = {
-            rt: [] for rt in ReportType
-        }
+        self._registrations: dict[ReportType, list[SectionRegistration]] = {rt: [] for rt in ReportType}
         self._section_ids: dict[ReportType, set[str]] = {rt: set() for rt in ReportType}
 
     def register(
@@ -108,9 +105,7 @@ class SectionRegistry:
 
         sid = section.section_id
         if sid in self._section_ids[report_type]:
-            raise DuplicateSectionError(
-                f"Section '{sid}' already registered for {report_type.value}"
-            )
+            raise DuplicateSectionError(f"Section '{sid}' already registered for {report_type.value}")
 
         self._section_ids[report_type].add(sid)
         self._registrations[report_type].append(
@@ -121,7 +116,7 @@ class SectionRegistry:
             )
         )
 
-    def get_registrations(self, report_type: ReportType) -> list["SectionRegistration"]:
+    def get_registrations(self, report_type: ReportType) -> list[SectionRegistration]:
         """Get all registrations in registration order."""
         return list(self._registrations[report_type])
 

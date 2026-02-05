@@ -7,13 +7,14 @@ These functions handle saving games and exporting reports.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
 
-def do_save_game(ctx: "KaTrainGui", filename: str | None = None) -> None:
+def do_save_game(ctx: KaTrainGui, filename: str | None = None) -> None:
     """Save game to SGF file.
 
     Args:
@@ -23,7 +24,7 @@ def do_save_game(ctx: "KaTrainGui", filename: str | None = None) -> None:
     ctx._sgf_manager.save_game(filename)
 
 
-def do_export_karte(ctx: "KaTrainGui", settings_popup_callback: Callable[[], None]) -> None:
+def do_export_karte(ctx: KaTrainGui, settings_popup_callback: Callable[[], None]) -> None:
     """Export karte report.
 
     Args:

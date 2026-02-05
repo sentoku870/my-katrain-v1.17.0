@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Time Data Parser.
 
 This module provides functionality to parse BL/WL time tags from SGF files
@@ -60,9 +59,7 @@ def _extract_time_left(node: SGFNode, player: str) -> float | None:
     try:
         result = float(value_str)
         if result < 0:
-            _logger.warning(
-                "Negative time value %s='%s', treating as None", prop, value
-            )
+            _logger.warning("Negative time value %s='%s', treating as None", prop, value)
             return None
         return result
     except (ValueError, TypeError):
@@ -125,8 +122,7 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
             else:
                 # Byoyomi reset or increment - treat as unknown
                 _logger.warning(
-                    "Move %d (%s): time increased (%.3f -> %.3f), "
-                    "treating time_spent as unknown",
+                    "Move %d (%s): time increased (%.3f -> %.3f), treating time_spent as unknown",
                     move_number,
                     player,
                     prev,
@@ -162,12 +158,8 @@ def parse_time_data(root: SGFNode) -> GameTimeData:
 
     # Time data exists - return ALL moves to preserve move_number alignment
     # (moves with missing tags have time_left_sec=None)
-    black_count = sum(
-        1 for m in temp_metrics if m.player == "B" and m.time_left_sec is not None
-    )
-    white_count = sum(
-        1 for m in temp_metrics if m.player == "W" and m.time_left_sec is not None
-    )
+    black_count = sum(1 for m in temp_metrics if m.player == "B" and m.time_left_sec is not None)
+    white_count = sum(1 for m in temp_metrics if m.player == "W" and m.time_left_sec is not None)
 
     return GameTimeData(
         metrics=tuple(temp_metrics),

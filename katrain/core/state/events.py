@@ -9,10 +9,12 @@ Design Notes:
 - Nested objects in payload are still mutable (shallow copy only)
 - For deep immutability, use flat payloads or specialized Event subclasses
 """
+
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping, Optional
+from typing import Any
 
 
 class EventType(Enum):
@@ -26,7 +28,7 @@ class EventType(Enum):
     ANALYSIS_COMPLETE = "analysis_complete"  # Analysis completed
 
 
-def _freeze_payload(payload: Optional[dict[str, Any]]) -> Optional[Mapping[str, Any]]:
+def _freeze_payload(payload: dict[str, Any] | None) -> Mapping[str, Any] | None:
     """Convert payload to an immutable MappingProxyType (shallow copy).
 
     Args:
@@ -63,12 +65,10 @@ class Event:
     """
 
     event_type: EventType
-    _payload: Optional[Mapping[str, Any]] = field(default=None, repr=False)
+    _payload: Mapping[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
-    def create(
-        cls, event_type: EventType, payload: Optional[dict[str, Any]] = None
-    ) -> "Event":
+    def create(cls, event_type: EventType, payload: dict[str, Any] | None = None) -> "Event":
         """Factory method to create an Event with frozen payload.
 
         Args:
@@ -81,7 +81,7 @@ class Event:
         return cls(event_type=event_type, _payload=_freeze_payload(payload))
 
     @property
-    def payload(self) -> Optional[Mapping[str, Any]]:
+    def payload(self) -> Mapping[str, Any] | None:
         """Read-only access to the payload.
 
         Returns:

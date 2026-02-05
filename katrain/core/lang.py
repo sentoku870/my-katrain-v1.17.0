@@ -10,17 +10,17 @@ from __future__ import annotations
 import gettext
 import os
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 from katrain.common import DEFAULT_FONT
 from katrain.core.utils import find_package_resource
-
 
 DEFAULT_LANGUAGE = "en"
 
 
 class Lang:
     """Language manager (v5: Observable継承なし、コールバックベース)."""
+
     FONTS = {"jp": "NotoSansJP-Regular.otf"}
 
     def __init__(self, lang: str):
@@ -75,4 +75,4 @@ def rank_label(rank: float | None) -> str:
     if rank >= 0.5:
         return f"{rank:.0f}{i18n._('strength:dan')}"
     else:
-        return f"{1-rank:.0f}{i18n._('strength:kyu')}"
+        return f"{1 - rank:.0f}{i18n._('strength:kyu')}"

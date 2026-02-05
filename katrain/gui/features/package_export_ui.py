@@ -18,8 +18,8 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
 from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
-from katrain.core.reports.karte.models import KarteGenerationError, MixedEngineSnapshotError
 from katrain.core.lang import i18n
+from katrain.core.reports.karte.models import KarteGenerationError, MixedEngineSnapshotError
 from katrain.core.reports.package_export import (
     PackageContent,
     anonymize_karte_content,
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def do_export_package(ctx: "FeatureContext", anonymize: bool = False) -> None:
+def do_export_package(ctx: FeatureContext, anonymize: bool = False) -> None:
     """Export Packageをメインスレッドでスケジュール
 
     Args:
@@ -46,7 +46,7 @@ def do_export_package(ctx: "FeatureContext", anonymize: bool = False) -> None:
     Clock.schedule_once(lambda dt: _do_export_package_impl(ctx, anonymize), 0)
 
 
-def _do_export_package_impl(ctx: "FeatureContext", anonymize: bool) -> None:
+def _do_export_package_impl(ctx: FeatureContext, anonymize: bool) -> None:
     """Export Package 実行（内部実装）
 
     処理順序（v5 - 責務分離）:

@@ -21,100 +21,43 @@ Note:
 
 # Disable Kivy's argument parser before importing any Kivy-related modules
 import os
+
 os.environ["KIVY_NO_ARGS"] = "1"
 
 import argparse
 import sys
-from typing import Callable, Dict, List, Optional, Tuple, Union
 
 # KaTrain imports for CLI entry point
 import traceback
 
 from katrain.core.base_katrain import KaTrainBase
-from katrain.core.engine import KataGoEngine
-from katrain.core.constants import OUTPUT_INFO, OUTPUT_ERROR, OUTPUT_DEBUG
-from katrain.core.errors import AnalysisTimeoutError, EngineError
 
 # =============================================================================
 # Phase 42-B: Backward compatibility re-exports from katrain.core.batch
 # =============================================================================
 # All batch processing logic is now in katrain.core.batch.
 # Re-export everything here so existing code continues to work.
-
 from katrain.core.batch import (
-    # === Models ===
-    WriteError,
-    BatchResult,
     # === Constants ===
-    DEFAULT_TIMEOUT_SECONDS,
-    ENCODINGS_TO_TRY,
-    # === Helper functions ===
-    # Variable visits
-    choose_visits_for_sgf,
-    # Loss calculation
-    get_canonical_loss,
-    # Timeout parsing
-    parse_timeout_input,
-    # File I/O
-    safe_write_file,
-    read_sgf_with_fallback,
-    parse_sgf_with_fallback,
-    has_analysis,
-    # File discovery
-    collect_sgf_files_recursive,
-    collect_sgf_files,
-    # Engine polling
-    wait_for_analysis,
-    # Filename sanitization
-    sanitize_filename,
-    get_unique_filename,
-    normalize_player_name,
-    # UI validation
-    safe_int,
-    needs_leela_karte_warning,
-    # === Analysis functions (lazy imports) ===
     analyze_single_file,
-    analyze_single_file_leela,
-    # === Orchestration (lazy imports) ===
-    run_batch,
-    # === Stats functions (lazy imports) ===
-    extract_game_stats,
-    build_batch_summary,
-    extract_players_from_stats,
-    build_player_summary,
+    collect_sgf_files,
 )
 
 # Private name aliases (unchanged API for backward compatibility)
-from katrain.core.batch.helpers import (
-    get_canonical_loss as _get_canonical_loss,
-    safe_write_file as _safe_write_file,
-    sanitize_filename as _sanitize_filename,
-    get_unique_filename as _get_unique_filename,
-    normalize_player_name as _normalize_player_name,
-)
-
 # Stats function private aliases
-from katrain.core.batch.stats import (
-    extract_game_stats as _extract_game_stats,
-    build_batch_summary as _build_batch_summary,
-    extract_players_from_stats as _extract_players_from_stats,
-    build_player_summary as _build_player_summary,
-)
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_INFO
+from katrain.core.engine import KataGoEngine
+from katrain.core.errors import AnalysisTimeoutError, EngineError
 
 # =============================================================================
 # Additional backward-compat re-exports for Leela support
 # =============================================================================
 # These were previously imported directly in this module and used by tests.
 
-from katrain.core.leela.engine import LeelaEngine
-from katrain.core.leela.conversion import leela_position_to_move_eval
-from katrain.core.leela.models import LeelaPositionEval
-from katrain.core.analysis.models import EvalSnapshot, MoveEval
-
-
 # ---------------------------------------------------------------------------
 # CLI Entry Point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -225,8 +168,8 @@ Examples:
         output_path = os.path.join(output_dir, file_name)
 
         # Ensure .sgf extension for converted formats
-        if output_path.lower().endswith(('.gib', '.ngf')):
-            output_path = output_path[:-4] + '.sgf'
+        if output_path.lower().endswith((".gib", ".ngf")):
+            output_path = output_path[:-4] + ".sgf"
 
         # Phase 95C: Handle AnalysisTimeoutError explicitly
         try:

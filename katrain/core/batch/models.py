@@ -7,7 +7,6 @@ All classes are Kivy-independent and can be used in headless contexts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass

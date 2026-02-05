@@ -8,11 +8,12 @@ The handler itself is designed to never throw exceptions.
 from __future__ import annotations
 
 import traceback
-from typing import Any, Callable, TYPE_CHECKING, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from kivy.clock import Clock
 
-from katrain.core.constants import OUTPUT_ERROR, OUTPUT_DEBUG, STATUS_ERROR
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, STATUS_ERROR
 from katrain.core.errors import KaTrainError
 
 if TYPE_CHECKING:
@@ -33,7 +34,7 @@ class ErrorHandler:
     IMPORTANT: The handle() method is designed to NEVER throw exceptions.
     """
 
-    def __init__(self, katrain: "KaTrainGui"):
+    def __init__(self, katrain: KaTrainGui):
         self._katrain = katrain
 
     def handle(

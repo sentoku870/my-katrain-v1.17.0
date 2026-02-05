@@ -15,20 +15,20 @@ from katrain.common.typed_config import (
     TypedConfigWriter,
 )
 from katrain.core.ai import ai_rank_estimation
-from katrain.core.state import Event, EventType, StateNotifier
-from katrain.core.log_buffer import LogBuffer
 from katrain.core.constants import (
-    PLAYER_HUMAN,
-    PLAYER_AI,
-    PLAYING_NORMAL,
-    PLAYING_TEACHING,
-    OUTPUT_INFO,
-    OUTPUT_ERROR,
-    OUTPUT_DEBUG,
     AI_DEFAULT,
     CONFIG_MIN_VERSION,
     DATA_FOLDER,
+    OUTPUT_DEBUG,
+    OUTPUT_ERROR,
+    OUTPUT_INFO,
+    PLAYER_AI,
+    PLAYER_HUMAN,
+    PLAYING_NORMAL,
+    PLAYING_TEACHING,
 )
+from katrain.core.log_buffer import LogBuffer
+from katrain.core.state import Event, EventType, StateNotifier
 from katrain.core.utils import find_package_resource
 
 
@@ -71,7 +71,8 @@ class Player:
         return f"{self.player_type} ({self.player_subtype})"
 
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def _save_config_with_errors(
@@ -147,9 +148,7 @@ class KaTrainBase:
 
         # StateNotifier (Phase 104): Closure binds log level (OUTPUT_DEBUG)
         # core/state/ doesn't depend on log level constants (Kivy-independent)
-        self._state_notifier = StateNotifier(
-            logger=lambda msg: self.log(msg, OUTPUT_DEBUG)
-        )
+        self._state_notifier = StateNotifier(logger=lambda msg: self.log(msg, OUTPUT_DEBUG))
 
     @property
     def state_notifier(self) -> StateNotifier:
@@ -187,8 +186,11 @@ class KaTrainBase:
                         parent_dir = os.path.split(user_config_file)[0]
                         self.log(f"Creating parent directory if needed: {parent_dir}", OUTPUT_DEBUG)
                         os.makedirs(parent_dir, exist_ok=True)
-                        
-                        self.log(f"Copying package config {package_config_file} to user config {user_config_file}", OUTPUT_DEBUG)
+
+                        self.log(
+                            f"Copying package config {package_config_file} to user config {user_config_file}",
+                            OUTPUT_DEBUG,
+                        )
                         shutil.copyfile(package_config_file, user_config_file)
                         config_file = user_config_file
                         self.log(f"Copied package config to local file {config_file}", OUTPUT_INFO)
@@ -237,9 +239,7 @@ class KaTrainBase:
 
         # Phase 105: CONFIG_UPDATED通知（全セクション保存成功時のみ）
         if not failed_keys:
-            self.state_notifier.notify(
-                Event.create(EventType.CONFIG_UPDATED, {"key": key})
-            )
+            self.state_notifier.notify(Event.create(EventType.CONFIG_UPDATED, {"key": key}))
 
     def config(self, setting: str, default: Any = None) -> Any:
         try:
@@ -334,7 +334,7 @@ class KaTrainBase:
         self.update_calculated_ranks()
 
     def update_calculated_ranks(self) -> None:
-        for bw, player_info in self.players_info.items():
+        for _bw, player_info in self.players_info.items():
             if player_info.player_type == PLAYER_AI:
                 settings = self.config(f"ai/{player_info.strategy}")
                 player_info.calculated_rank = ai_rank_estimation(player_info.player_subtype, settings)

@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
 
 
-def show_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult) -> None:
+def show_resign_hint_popup(katrain: KaTrainGui, result: ResignConditionResult) -> None:
     """Show resign hint popup (must be called on UI thread).
 
     Args:
@@ -34,18 +34,19 @@ def show_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult)
 
     # i18n variables: winrate_pct (0-100 scale), moves (count)
     message = i18n._("leela:resign_hint:message").format(
-        winrate_pct=int(result.winrate_pct),
-        moves=result.consecutive_count
+        winrate_pct=int(result.winrate_pct), moves=result.consecutive_count
     )
-    content.add_widget(Label(
-        text=message,
-        size_hint_y=None,
-        height=dp(60),
-        halign="center",
-        valign="middle",
-    ))
+    content.add_widget(
+        Label(
+            text=message,
+            size_hint_y=None,
+            height=dp(60),
+            halign="center",
+            valign="middle",
+        )
+    )
     # Ensure text wraps properly
-    content.children[0].bind(size=content.children[0].setter('text_size'))
+    content.children[0].bind(size=content.children[0].setter("text_size"))
 
     ok_btn = SizedRectangleButton(
         text=i18n._("leela:resign_hint:ok"),
@@ -63,7 +64,7 @@ def show_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult)
     popup.open()
 
 
-def schedule_resign_hint_popup(katrain: "KaTrainGui", result: ResignConditionResult) -> None:
+def schedule_resign_hint_popup(katrain: KaTrainGui, result: ResignConditionResult) -> None:
     """Schedule resign hint popup on UI thread (for callbacks from non-UI threads).
 
     Args:

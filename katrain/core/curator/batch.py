@@ -7,12 +7,13 @@ from batch-analyzed games.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
-from .guide_extractor import ReplayGuide, extract_replay_guide
+from .guide_extractor import extract_replay_guide
 from .models import UNCERTAIN_TAG, SuitabilityScore
 from .scoring import score_batch_suitability
 
@@ -46,11 +47,11 @@ class CuratorBatchResult:
         errors: List of error messages
     """
 
-    ranking_path: Optional[str] = None
-    guide_path: Optional[str] = None
+    ranking_path: str | None = None
+    guide_path: str | None = None
     games_scored: int = 0
     guides_generated: int = 0
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -79,7 +80,7 @@ def _get_iso_generated_timestamp() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def _build_game_title(stats: Dict[str, Any]) -> str:
+def _build_game_title(stats: dict[str, Any]) -> str:
     """Build display title from game stats.
 
     Uses player names if available, otherwise falls back to game_name.
@@ -97,9 +98,9 @@ def _build_game_title(stats: Dict[str, Any]) -> str:
 
 
 def _extract_recommended_tags(
-    stats: Dict[str, Any],
+    stats: dict[str, Any],
     max_tags: int = 3,
-) -> List[str]:
+) -> list[str]:
     """Extract recommended tags from game stats.
 
     Tags are sorted by occurrence count (descending), then alphabetically for ties.
@@ -115,7 +116,7 @@ def _extract_recommended_tags(
     meaning_tags_by_player = stats.get("meaning_tags_by_player", {})
 
     # Combine tags from both players
-    combined: Dict[str, int] = {}
+    combined: dict[str, int] = {}
     for player_tags in meaning_tags_by_player.values():
         for tag, count in player_tags.items():
             if tag == UNCERTAIN_TAG:
@@ -135,8 +136,8 @@ def _extract_recommended_tags(
 
 
 def _get_user_weak_axes_sorted(
-    user_aggregate: Optional["AggregatedRadarResult"],
-) -> List[str]:
+    user_aggregate: AggregatedRadarResult | None,
+) -> list[str]:
     """Get user's weak axes as sorted list of axis values.
 
     Returns empty list if no user aggregate.
@@ -147,9 +148,7 @@ def _get_user_weak_axes_sorted(
 
     from katrain.core.curator.models import SUPPORTED_AXES
 
-    weak_axes = [
-        axis.value for axis in SUPPORTED_AXES if user_aggregate.is_weak_axis(axis)
-    ]
+    weak_axes = [axis.value for axis in SUPPORTED_AXES if user_aggregate.is_weak_axis(axis)]
     return sorted(weak_axes)
 
 
@@ -159,12 +158,12 @@ def _get_user_weak_axes_sorted(
 
 
 def generate_curator_outputs(
-    games_and_stats: List[Tuple["Game", Dict[str, Any]]],
+    games_and_stats: list[tuple[Game, dict[str, Any]]],
     curator_dir: str,
     batch_timestamp: str,
-    user_aggregate: Optional["AggregatedRadarResult"] = None,
+    user_aggregate: AggregatedRadarResult | None = None,
     lang: str = "jp",
-    log_cb: Optional[Callable[[str], None]] = None,
+    log_cb: Callable[[str], None] | None = None,
 ) -> CuratorBatchResult:
     """Generate curator_ranking.json and replay_guide.json.
 
@@ -209,8 +208,8 @@ def generate_curator_outputs(
     result.games_scored = len(scores)
 
     # Build rankings
-    rankings: List[Dict[str, Any]] = []
-    for i, ((game, stats), score) in enumerate(zip(games_and_stats, scores)):
+    rankings: list[dict[str, Any]] = []
+    for i, ((_game, stats), score) in enumerate(zip(games_and_stats, scores, strict=False)):
         game_id = stats.get("game_name", f"game_{i}")
         rankings.append(
             {
@@ -265,11 +264,12 @@ def generate_curator_outputs(
     except Exception as e:
         # Unexpected: Internal bug - traceback required
         import traceback
+
         result.errors.append(f"Unexpected error writing {ranking_filename}: {e}")
         log(f"Unexpected error writing {ranking_filename}: {e}\n{traceback.format_exc()}")
 
     # Generate replay guides
-    guides: List[Dict[str, Any]] = []
+    guides: list[dict[str, Any]] = []
     for game, stats in games_and_stats:
         game_id = stats.get("game_name", "unknown")
         try:
@@ -291,6 +291,7 @@ def generate_curator_outputs(
         except Exception as e:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             result.errors.append(f"Unexpected error extracting guide for {game_id}: {e}")
             log(f"Unexpected error extracting guide for {game_id}: {e}\n{traceback.format_exc()}")
 
@@ -317,6 +318,7 @@ def generate_curator_outputs(
     except Exception as e:
         # Unexpected: Internal bug - traceback required
         import traceback
+
         result.errors.append(f"Unexpected error writing {guide_filename}: {e}")
         log(f"Unexpected error writing {guide_filename}: {e}\n{traceback.format_exc()}")
 

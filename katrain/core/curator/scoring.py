@@ -7,9 +7,10 @@ evaluating how well they match a user's learning needs.
 from __future__ import annotations
 
 import math
-from types import MappingProxyType
+from collections.abc import Mapping
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Mapping, cast
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, cast
 
 from katrain.core.analysis.skill_radar import AggregatedRadarResult
 from katrain.core.game_node import GameNode
@@ -165,9 +166,7 @@ def compute_needs_match(
     if total_occurrences < config.min_tag_occurrences:
         return 0.0
 
-    matching_occurrences = sum(
-        count for tag, count in meaning_tags_combined.items() if tag in related_tags
-    )
+    matching_occurrences = sum(count for tag, count in meaning_tags_combined.items() if tag in related_tags)
 
     return matching_occurrences / total_occurrences
 
@@ -392,11 +391,7 @@ def score_game_suitability(
     debug_dict: dict[str, Any] = {
         "meaning_tags_combined": meaning_tags_combined,
         "weak_axes": (
-            [
-                axis.value
-                for axis in SUPPORTED_AXES
-                if user_aggregate is not None and user_aggregate.is_weak_axis(axis)
-            ]
+            [axis.value for axis in SUPPORTED_AXES if user_aggregate is not None and user_aggregate.is_weak_axis(axis)]
             if user_aggregate is not None
             else []
         ),
@@ -427,10 +422,7 @@ def score_batch_suitability(
         List of SuitabilityScore with percentiles computed (ECDF-style)
     """
     # Score each game
-    scores = [
-        score_game_suitability(user_aggregate, game, stats, config)
-        for game, stats in games_and_stats
-    ]
+    scores = [score_game_suitability(user_aggregate, game, stats, config) for game, stats in games_and_stats]
 
     # Compute percentiles
     return compute_batch_percentiles(scores)

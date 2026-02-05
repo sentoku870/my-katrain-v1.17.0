@@ -34,7 +34,6 @@ def scan_player_names(
     Returns:
         {player_name: count} の辞書
     """
-    from katrain.core.constants import OUTPUT_ERROR
 
     player_counts: dict[str, int] = {}
 
@@ -56,6 +55,7 @@ def scan_player_names(
         except Exception as e:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             log_fn(f"Unexpected error scanning {path}: {e}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     return player_counts
@@ -79,8 +79,8 @@ def categorize_games_by_stats(
         }
     """
     categories: dict[str, list[dict[str, Any]]] = {
-        "even": [],          # 互先
-        "handi_weak": [],    # 置碁（下手・黒）
+        "even": [],  # 互先
+        "handi_weak": [],  # 置碁（下手・黒）
         "handi_strong": [],  # 置碁（上手・白）
     }
 
@@ -89,8 +89,8 @@ def categorize_games_by_stats(
 
         # focus_playerが設定されている場合のみフィルタリング
         if focus_player:
-            is_black = (stats["player_black"] == focus_player)
-            is_white = (stats["player_white"] == focus_player)
+            is_black = stats["player_black"] == focus_player
+            is_white = stats["player_white"] == focus_player
 
             # focus_playerが対局者でない場合はスキップ
             if not is_black and not is_white:

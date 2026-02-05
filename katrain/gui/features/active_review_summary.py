@@ -13,13 +13,13 @@ from typing import TYPE_CHECKING, Any
 from kivy.core.clipboard import Clipboard
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.scrollview import ScrollView
 
 from katrain.core.lang import i18n
 from katrain.core.study.review_session import SessionSummary
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Button, Label
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
@@ -72,7 +72,7 @@ def format_summary_for_clipboard(summary: SessionSummary) -> str:
     return "\n".join(lines)
 
 
-def show_session_summary(katrain: "KaTrainGui", summary: SessionSummary) -> None:
+def show_session_summary(katrain: KaTrainGui, summary: SessionSummary) -> None:
     """Show session results popup.
 
     Args:
@@ -109,11 +109,7 @@ def show_session_summary(katrain: "KaTrainGui", summary: SessionSummary) -> None
     )
 
     # Format average loss
-    avg_loss = (
-        f"{summary.average_score_loss:.2f}"
-        if summary.average_score_loss is not None
-        else "N/A"
-    )
+    avg_loss = f"{summary.average_score_loss:.2f}" if summary.average_score_loss is not None else "N/A"
 
     rates_text = i18n._("active_review:summary:rates").format(
         ai_match=summary.ai_best_match_rate,
@@ -129,12 +125,8 @@ def show_session_summary(katrain: "KaTrainGui", summary: SessionSummary) -> None
         halign="left",
         valign="top",
     )
-    stats_label.bind(
-        width=lambda lbl, w: setattr(lbl, "text_size", (w - dp(10), None))
-    )
-    stats_label.bind(
-        texture_size=lambda lbl, size: setattr(lbl, "height", size[1] + dp(10))
-    )
+    stats_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w - dp(10), None)))
+    stats_label.bind(texture_size=lambda lbl, size: setattr(lbl, "height", size[1] + dp(10)))
     stats_layout.add_widget(stats_label)
 
     # Rates label
@@ -145,12 +137,8 @@ def show_session_summary(katrain: "KaTrainGui", summary: SessionSummary) -> None
         halign="left",
         valign="top",
     )
-    rates_label.bind(
-        width=lambda lbl, w: setattr(lbl, "text_size", (w - dp(10), None))
-    )
-    rates_label.bind(
-        texture_size=lambda lbl, size: setattr(lbl, "height", size[1] + dp(10))
-    )
+    rates_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w - dp(10), None)))
+    rates_label.bind(texture_size=lambda lbl, size: setattr(lbl, "height", size[1] + dp(10)))
     stats_layout.add_widget(rates_label)
 
     scroll.add_widget(stats_layout)

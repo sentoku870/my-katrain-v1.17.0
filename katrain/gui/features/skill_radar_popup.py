@@ -1,4 +1,5 @@
 """Skill radar popup for 5-axis visualization."""
+
 from __future__ import annotations
 
 import logging
@@ -39,12 +40,12 @@ TIER_I18N = {
 }
 
 
-def show_skill_radar_popup(ctx: "FeatureContext") -> None:
+def show_skill_radar_popup(ctx: FeatureContext) -> None:
     """Show skill radar popup (main entry point)."""
     Clock.schedule_once(lambda _: _show_impl(ctx), 0)
 
 
-def _show_impl(ctx: "FeatureContext") -> None:
+def _show_impl(ctx: FeatureContext) -> None:
     """Implementation of skill radar popup display."""
     game = getattr(ctx, "game", None)
     if not game:
@@ -69,7 +70,9 @@ def _show_impl(ctx: "FeatureContext") -> None:
     radar: dict[str, RadarMetrics | None] = {}
     for p in ("B", "W"):
         player_moves = [m for m in snapshot.moves if m.player == p]
-        print(f"[RADAR DEBUG] Player={p}, num_moves={len(player_moves)}, move_numbers={[m.move_number for m in player_moves[:5]]}")
+        print(
+            f"[RADAR DEBUG] Player={p}, num_moves={len(player_moves)}, move_numbers={[m.move_number for m in player_moves[:5]]}"
+        )
         _logger.debug(
             "[RADAR DEBUG] Player=%s, num_moves=%d, move_numbers=%s",
             p,
@@ -80,7 +83,9 @@ def _show_impl(ctx: "FeatureContext") -> None:
             try:
                 metrics = compute_radar_from_moves(snapshot.moves, player=p)
                 radar[p] = metrics
-                print(f"[RADAR DEBUG] Player={p}, id={id(metrics)}, opening={metrics.opening:.2f}, fighting={metrics.fighting:.2f}, stability={metrics.stability:.2f}")
+                print(
+                    f"[RADAR DEBUG] Player={p}, id={id(metrics)}, opening={metrics.opening:.2f}, fighting={metrics.fighting:.2f}, stability={metrics.stability:.2f}"
+                )
                 _logger.debug(
                     "[RADAR DEBUG] Player=%s, RadarMetrics id=%d, opening=%.2f, fighting=%.2f, stability=%.2f",
                     p,
@@ -99,10 +104,16 @@ def _show_impl(ctx: "FeatureContext") -> None:
     b_r = radar.get("B")
     w_r = radar.get("W")
     same_obj = b_r is w_r if (b_r and w_r) else "N/A"
-    print(f"[RADAR DEBUG] Final: B_id={id(b_r) if b_r else 'None'}, W_id={id(w_r) if w_r else 'None'}, same_object={same_obj}")
+    print(
+        f"[RADAR DEBUG] Final: B_id={id(b_r) if b_r else 'None'}, W_id={id(w_r) if w_r else 'None'}, same_object={same_obj}"
+    )
     if b_r and w_r:
-        print(f"[RADAR DEBUG] B scores: o={b_r.opening}, f={b_r.fighting}, e={b_r.endgame}, s={b_r.stability}, a={b_r.awareness}")
-        print(f"[RADAR DEBUG] W scores: o={w_r.opening}, f={w_r.fighting}, e={w_r.endgame}, s={w_r.stability}, a={w_r.awareness}")
+        print(
+            f"[RADAR DEBUG] B scores: o={b_r.opening}, f={b_r.fighting}, e={b_r.endgame}, s={b_r.stability}, a={b_r.awareness}"
+        )
+        print(
+            f"[RADAR DEBUG] W scores: o={w_r.opening}, f={w_r.fighting}, e={w_r.endgame}, s={w_r.stability}, a={w_r.awareness}"
+        )
     _logger.debug(
         "[RADAR DEBUG] Final radar dict: B_id=%s, W_id=%s, same_object=%s",
         id(radar.get("B")) if radar.get("B") else "None",
@@ -201,7 +212,9 @@ class SkillRadarPopup(Popup):
         r = self.radar.get(self.current_side)
         print(f"[RADAR DEBUG] _refresh_content: side={self.current_side}, radar_id={id(r) if r else 'None'}")
         if r:
-            print(f"[RADAR DEBUG] Displaying: o={r.opening}, f={r.fighting}, e={r.endgame}, s={r.stability}, a={r.awareness}")
+            print(
+                f"[RADAR DEBUG] Displaying: o={r.opening}, f={r.fighting}, e={r.endgame}, s={r.stability}, a={r.awareness}"
+            )
         _logger.debug(
             "[RADAR DEBUG] _refresh_content: side=%s, radar_id=%s, opening=%.2f, fighting=%.2f",
             self.current_side,

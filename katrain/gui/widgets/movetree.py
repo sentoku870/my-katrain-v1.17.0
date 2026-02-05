@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, cast
+from typing import TYPE_CHECKING, Any
 
 from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Line, Rectangle
@@ -18,7 +18,6 @@ from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
-    from katrain.core.sgf_parser import SGFNode
 
 # Type alias for nodes in the move tree (can be GameNode or SGFNode)
 MoveTreeNode = "GameNode | SGFNode"
@@ -59,7 +58,7 @@ class MoveTreeCanvas(Widget):
         self.dropdown = MoveTreeDropdown(auto_width=False)
         self.dropdown.bind(on_dismiss=self.close_dropdown)
 
-    def set_game_node(self, node: "GameNode") -> None:
+    def set_game_node(self, node: GameNode) -> None:
         katrain = MDApp.get_running_app().gui
         katrain.game.set_current_node(node)
         katrain.update_state()
@@ -137,7 +136,7 @@ class MoveTreeCanvas(Widget):
             return
         self.set_game_node(same_x_moves[new_index][1])
 
-    def draw_move_tree(self, current_node: "GameNode | None", insert_node: "GameNode | None") -> None:
+    def draw_move_tree(self, current_node: GameNode | None, insert_node: GameNode | None) -> None:
         if not self.scroll_view_widget or not current_node:
             return
         spacing = 5
@@ -149,12 +148,14 @@ class MoveTreeCanvas(Widget):
         def children_with_shortcuts(move: Any) -> list[Any]:
             shortcuts = move.shortcuts_to
             via = {v: m for m, v in shortcuts}  # children that are shortcut
-            return [m if m not in via else via[m] for m in move.ordered_children]
+            return [via.get(m, m) for m in move.ordered_children]
 
         self.move_pos = {root: (0, 0)}
         stack = children_with_shortcuts(root)[::-1]
         next_y_pos: dict[int, int] = defaultdict(int)  # x pos -> max y pos
-        children: Dict[Any, list[Any]] = defaultdict(list)  # since AI self-play etc may modify the tree between layout and draw!
+        children: dict[Any, list[Any]] = defaultdict(
+            list
+        )  # since AI self-play etc may modify the tree between layout and draw!
         children[root] = [*stack]
         while stack:
             move = stack.pop()
@@ -163,10 +164,7 @@ class MoveTreeCanvas(Widget):
             else:
                 parent = move.parent
 
-            if parent:
-                x = self.move_pos[parent][0] + 1
-            else:
-                x = 0
+            x = self.move_pos[parent][0] + 1 if parent else 0
             y = max(next_y_pos[x], self.move_pos[parent][1])
             next_y_pos[x] = y + 1
             next_y_pos[x - 1] = max(next_y_pos[x], next_y_pos[x - 1])
@@ -190,7 +188,10 @@ class MoveTreeCanvas(Widget):
 
         self.move_xy_pos = {n: xy_pos(x, y) for n, (x, y) in self.move_pos.items()}
 
-        special_nodes: dict[Any, Any] = {current_node: Theme.MOVE_TREE_CURRENT, self.menu_selected_node: Theme.MOVE_TREE_SELECTED}
+        special_nodes: dict[Any, Any] = {
+            current_node: Theme.MOVE_TREE_CURRENT,
+            self.menu_selected_node: Theme.MOVE_TREE_SELECTED,
+        }
 
         if insert_node:
             special_nodes[insert_node.parent] = Theme.MOVE_TREE_INSERT_NODE_PARENT
@@ -205,7 +206,7 @@ class MoveTreeCanvas(Widget):
             self.canvas.clear()
             Color(*Theme.MOVE_TREE_LINE)
             for node, (px, py) in self.move_xy_pos.items():
-                for ci, c in enumerate(children[node]):
+                for _ci, c in enumerate(children[node]):
                     cx, cy = self.move_xy_pos[c]
                     Line(points=[px, py, px, cy, cx, cy], width=1)
 
@@ -233,7 +234,7 @@ class MoveTree(ScrollView, BackgroundMixin):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.insert_node: "GameNode | None" = None
+        self.insert_node: GameNode | None = None
         self.redraw_tree_trigger = Clock.create_trigger(
             lambda _dt: self.move_tree_canvas.draw_move_tree(self.current_node, self.insert_node), 0.1
         )
@@ -337,6 +338,6 @@ Builder.load_string(
         on_action: root.katrain.controls.move_tree.prune_branch()
         -background_color: Theme.LIGHTER_BACKGROUND_COLOR
         -height: dp(45)
-        -width_margin: 1.6        
+        -width_margin: 1.6
 """
 )

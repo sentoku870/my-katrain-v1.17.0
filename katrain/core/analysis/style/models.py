@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Style Archetype Data Models.
 
 This module defines the core data structures for the Style Archetype system:
@@ -12,16 +11,16 @@ Part of Phase 56: Style Archetype Core.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
-from types import MappingProxyType
-from typing import Any, Mapping
+from enum import StrEnum
+from typing import Any
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis
 
 
-class StyleArchetypeId(str, Enum):
+class StyleArchetypeId(StrEnum):
     """Style archetype identifiers.
 
     Inherits from str for direct JSON serialization (no .value needed).
@@ -96,9 +95,7 @@ class StyleResult:
         return {
             "archetype_id": self.archetype.id.value,
             "confidence": round(self.confidence, 2),
-            "axis_deviations": {
-                k.value: round(v, 3) for k, v in self.axis_deviations.items()
-            },
+            "axis_deviations": {k.value: round(v, 3) for k, v in self.axis_deviations.items()},
             "dominant_axis": self.dominant_axis.value if self.dominant_axis else None,
         }
 

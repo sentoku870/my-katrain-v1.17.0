@@ -5,7 +5,7 @@ between engine.py and engine_cmd/commands.py.
 """
 
 import copy
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.sgf_parser import Move
 
@@ -19,21 +19,21 @@ def build_analysis_query(
     visits: int,
     ponder: bool,
     ownership: bool,
-    rules: str | Dict[str, Any],
+    rules: str | dict[str, Any],
     base_priority: int,
     priority: int,
-    override_settings: Dict[str, Any],
+    override_settings: dict[str, Any],
     wide_root_noise: float,
-    max_time: Optional[float] = None,
+    max_time: float | None = None,
     time_limit: bool = True,
-    next_move: Optional[Move] = None,
+    next_move: Move | None = None,
     find_alternatives: bool = False,
-    region_of_interest: Optional[List[int]] = None,
-    extra_settings: Optional[Dict[str, Any]] = None,
+    region_of_interest: list[int] | None = None,
+    extra_settings: dict[str, Any] | None = None,
     include_policy: bool = True,
-    report_every: Optional[float] = None,
+    report_every: float | None = None,
     ponder_key: str = "_kt_continuous",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a KataGo analysis query dict.
 
     This is a pure function with no side effects. It does NOT set the query ID
@@ -91,7 +91,7 @@ def build_analysis_query(
         settings["maxTime"] = max_time
 
     # Build query
-    query: Dict[str, Any] = {
+    query: dict[str, Any] = {
         "rules": rules,
         "priority": base_priority + priority,
         "analyzeTurns": [len(moves)],
@@ -120,10 +120,10 @@ def build_analysis_query(
 def _build_avoid_list(
     analysis_node: "GameNode",
     find_alternatives: bool,
-    region_of_interest: Optional[List[int]],
+    region_of_interest: list[int] | None,
     size_x: int,
     size_y: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Build the avoidMoves list for KataGo query.
 
     Args:

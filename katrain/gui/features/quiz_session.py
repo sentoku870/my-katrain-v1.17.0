@@ -10,7 +10,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 
 def start_quiz_session(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     quiz_items: list[eval_metrics.QuizItem],
     format_points_loss_fn: Callable[[float | None], str],
     update_state_fn: Callable[[], None],
@@ -37,11 +38,11 @@ def start_quiz_session(
     # Lazy imports to avoid Kivy initialization in headless CI
     from kivy.metrics import dp
     from kivy.uix.boxlayout import BoxLayout
-    from katrain.gui.widgets.factory import Button, Label
     from kivy.uix.scrollview import ScrollView
 
     from katrain.gui.popups import I18NPopup
     from katrain.gui.theme import Theme
+    from katrain.gui.widgets.factory import Button, Label
 
     if not ctx.game:
         return
@@ -150,12 +151,8 @@ def start_quiz_session(
 
         lines = [
             i18n._("Correct!") if is_best else i18n._("Incorrect"),
-            i18n._("Best move: {move}").format(
-                move=display_move(best_move)
-            ),
-            i18n._("Selected move loss: {loss_text}").format(
-                loss_text=loss_text
-            ),
+            i18n._("Best move: {move}").format(move=display_move(best_move)),
+            i18n._("Selected move loss: {loss_text}").format(loss_text=loss_text),
             i18n._("Played move {move} loss: {loss_text}").format(
                 move=display_move(played_move),
                 loss_text=played_loss_text,
@@ -164,9 +161,7 @@ def start_quiz_session(
 
         if choice.points_lost is not None and played_loss is not None:
             delta = choice.points_lost - played_loss
-            lines.append(
-                i18n._("Delta vs played: {delta:+.1f} points").format(delta=delta)
-            )
+            lines.append(i18n._("Delta vs played: {delta:+.1f} points").format(delta=delta))
 
         text = "\n".join(lines)
         answers[current_index] = text

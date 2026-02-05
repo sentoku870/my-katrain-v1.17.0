@@ -13,18 +13,20 @@ __main__.pyから抽出されたLeela解析管理機能。
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from kivy.clock import Clock
 
 from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.leela.engine import LeelaEngine
 from katrain.core.leela.logic import (
-    compute_estimated_loss,
     LEELA_K_DEFAULT,
     check_resign_condition,
+    compute_estimated_loss,
 )
 from katrain.core.leela.models import LeelaPositionEval
 
@@ -86,10 +88,8 @@ class LeelaManager:
         exe_path = self._config("leela/exe_path", "")
         if not exe_path or not os.path.isfile(exe_path):
             from katrain.core.lang import i18n
-            self._log(
-                i18n._("leela:error:exe_not_found").format(exe_path or "(empty)"),
-                OUTPUT_ERROR
-            )
+
+            self._log(i18n._("leela:error:exe_not_found").format(exe_path or "(empty)"), OUTPUT_ERROR)
             return False
 
         self.shutdown_engine()
@@ -98,6 +98,7 @@ class LeelaManager:
             self.leela_engine = LeelaEngine(katrain_for_engine, leela_config)
             if self.leela_engine.start():
                 from katrain.core.lang import i18n
+
                 self._log(i18n._("leela:status:started"), OUTPUT_INFO)
                 return True
             self.leela_engine = None
@@ -110,10 +111,8 @@ class LeelaManager:
     def shutdown_engine(self) -> None:
         """Shutdown Leela engine."""
         if self.leela_engine:
-            try:
+            with contextlib.suppress(Exception):
                 self.leela_engine.shutdown()
-            except Exception:
-                pass
             self.leela_engine = None
         self._pending_node = None
 

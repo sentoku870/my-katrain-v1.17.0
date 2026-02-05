@@ -54,7 +54,7 @@ class CommandExecutor:
 
     MAX_HISTORY_SIZE = 100
 
-    def __init__(self, engine: "KataGoEngine"):
+    def __init__(self, engine: KataGoEngine):
         """Initialize the executor.
 
         Args:
@@ -108,7 +108,7 @@ class CommandExecutor:
         query_dict = command.prepare()
 
         # PONDER_KEY is set ONLY here (single ownership)
-        if hasattr(command, 'ponder') and hasattr(self.engine, 'PONDER_KEY'):
+        if hasattr(command, "ponder") and hasattr(self.engine, "PONDER_KEY"):
             query_dict[self.engine.PONDER_KEY] = command.ponder
 
         # Check if cancelled during prepare()
@@ -185,7 +185,7 @@ class CommandExecutor:
             query_dict,
             callback_wrapper,
             error_wrapper,
-            getattr(command, 'next_move', None),
+            getattr(command, "next_move", None),
             command.node,
         )
 
@@ -344,13 +344,10 @@ class CommandExecutor:
         with self._lock:
             # Check pending commands
             for cmd in self._pending_commands:
-                if getattr(cmd, 'ponder', False):
+                if getattr(cmd, "ponder", False):
                     return True
             # Check active commands
-            for cmd in self.commands.values():
-                if getattr(cmd, 'ponder', False):
-                    return True
-            return False
+            return any(getattr(cmd, "ponder", False) for cmd in self.commands.values())
 
     def get_ponder_command(self) -> AnalysisCommand | None:
         """Get the current pondering command, if any.
@@ -367,11 +364,11 @@ class CommandExecutor:
         with self._lock:
             # Check pending commands first
             for cmd in self._pending_commands:
-                if getattr(cmd, 'ponder', False):
+                if getattr(cmd, "ponder", False):
                     return cmd
             # Check active commands
             for cmd in self.commands.values():
-                if getattr(cmd, 'ponder', False):
+                if getattr(cmd, "ponder", False):
                     return cmd
             return None
 

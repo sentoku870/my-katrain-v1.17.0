@@ -16,46 +16,47 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from katrain.core.analysis.presentation import get_auto_confidence_label
+from katrain.core.analysis.skill_radar import (
+    RadarMetrics,
+    aggregate_radar,
+    radar_from_dict,
+)
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
     make_markdown_link_target,
     truncate_game_name,
 )
 from katrain.core.eval_metrics import (
-    MistakeCategory,
-    PositionDifficulty,
-    SKILL_PRESETS,
     DEFAULT_SKILL_PRESET,
     SKILL_PRESET_LABELS,
+    SKILL_PRESETS,
     AutoConfidence,
     AutoRecommendation,
-    get_phase_thresholds,
+    MistakeCategory,
+    PositionDifficulty,
     _distance_from_range,
     compute_effective_threshold,
+    get_phase_thresholds,
     get_reason_tag_label,
 )
-from katrain.core.analysis.skill_radar import (
-    RadarMetrics,
-    radar_from_dict,
-    aggregate_radar,
+
+from .aggregation import (
+    _build_skill_profile_section,
+    _format_evidence_with_links,
+    _select_evidence_moves,
+    build_tag_based_hints,
+    detect_color_bias,
+    get_color_bias_note,
+    get_notes_header,
+    get_phase_label_localized,
+    get_phase_priority_text,
+    get_practice_intro_text,
+    get_section_header,
 )
-from katrain.core.analysis.presentation import get_auto_confidence_label
 
 # Import from sibling modules (NOT from package entry point)
 from .models import EvidenceMove
-from .aggregation import (
-    _select_evidence_moves,
-    _format_evidence_with_links,
-    _build_skill_profile_section,
-    build_tag_based_hints,
-    detect_color_bias,
-    get_phase_priority_text,
-    get_phase_label_localized,
-    get_section_header,
-    get_practice_intro_text,
-    get_notes_header,
-    get_color_bias_note,
-)
 
 
 def build_player_summary(
@@ -346,7 +347,9 @@ def build_player_summary(
     if len(board_sizes) == 1:
         board_size = list(board_sizes)[0]
         opening_end, middle_end = get_phase_thresholds(board_size)
-        lines.append(f"| Phase ({board_size}x{board_size}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end-1}, Endgame: ≥{middle_end} |")
+        lines.append(
+            f"| Phase ({board_size}x{board_size}) | Opening: <{opening_end}, Middle: {opening_end}-{middle_end - 1}, Endgame: ≥{middle_end} |"
+        )
     else:
         lines.append("| Phase | Mixed board sizes - thresholds vary |")
 
@@ -470,8 +473,7 @@ def build_player_summary(
     }
 
     total_categorized = sum(mistake_counts.values())
-    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
-                MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
         count = mistake_counts.get(cat, 0)
         pct = (count / total_categorized * 100) if total_categorized > 0 else 0.0
         avg_loss = (mistake_total_loss.get(cat, 0.0) / count) if count > 0 else 0.0
@@ -507,8 +509,7 @@ def build_player_summary(
     for phase in ["opening", "middle", "yose"]:
         cells = [phase_labels.get(phase, phase)]
 
-        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY,
-                    MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
             key = (phase, cat.name)
             count = phase_mistake_counts.get(key, 0)
             loss = phase_mistake_loss.get(key, 0.0)
@@ -557,16 +558,15 @@ def build_player_summary(
 
     # PR1-1: Add explanatory note about what is counted
     if important_moves_total > 0:
-        lines.append(f"*Tags computed for {important_moves_total} important moves "
-                     f"(mistakes/blunders with loss ≥ threshold). "
-                     f"{tagged_moves_total} moves had ≥1 tag.*\n")
+        lines.append(
+            f"*Tags computed for {important_moves_total} important moves "
+            f"(mistakes/blunders with loss ≥ threshold). "
+            f"{tagged_moves_total} moves had ≥1 tag.*\n"
+        )
 
     if reason_tags_counts:
         # Sort by count desc, then by tag name asc for deterministic ordering
-        sorted_tags = sorted(
-            reason_tags_counts.items(),
-            key=lambda x: (-x[1], x[0])
-        )[:10]  # Top 10
+        sorted_tags = sorted(reason_tags_counts.items(), key=lambda x: (-x[1], x[0]))[:10]  # Top 10
 
         # PR1-1: Use tag_occurrences_total as denominator (sum of all tag counts)
         # Percentage = this tag's occurrences / total tag occurrences
@@ -586,19 +586,12 @@ def build_player_summary(
     from katrain.core.analysis.meaning_tags.models import MeaningTagId
 
     uncertain_value = MeaningTagId.UNCERTAIN.value  # "uncertain"
-    filtered_counts = {
-        tag_id: count
-        for tag_id, count in meaning_tags_counts.items()
-        if tag_id != uncertain_value
-    }
+    filtered_counts = {tag_id: count for tag_id, count in meaning_tags_counts.items() if tag_id != uncertain_value}
 
     if filtered_counts:
         total_classified = sum(filtered_counts.values())
         # Sort by count desc, then by tag name asc for deterministic ordering
-        sorted_tags = sorted(
-            filtered_counts.items(),
-            key=lambda x: (-x[1], x[0])
-        )[:3]  # Top 3
+        sorted_tags = sorted(filtered_counts.items(), key=lambda x: (-x[1], x[0]))[:3]  # Top 3
 
         top3_total = sum(count for _, count in sorted_tags)
         other_count = total_classified - top3_total
@@ -607,6 +600,7 @@ def build_player_summary(
             pct = (count / total_classified * 100) if total_classified > 0 else 0.0
             # Use safe label getter with current UI language
             from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
+
             label = get_meaning_tag_label_safe(tag_id, lang) or tag_id
             lines.append(f"- {label}: {count} ({pct:.1f}%)")
 
@@ -652,9 +646,7 @@ def build_player_summary(
     if total_categorized > 0:
         bad_rate = total_bad / total_categorized * 100
         if bad_rate > 10:
-            weaknesses.append(
-                f"High mistake/blunder rate: {bad_rate:.1f}% of moves are mistakes or blunders"
-            )
+            weaknesses.append(f"High mistake/blunder rate: {bad_rate:.1f}% of moves are mistakes or blunders")
 
     # Check for phase-specific problems
     for phase in ["opening", "middle", "yose"]:
@@ -663,8 +655,7 @@ def build_player_summary(
         blunder_loss = phase_mistake_loss.get(blunder_key, 0.0)
         if blunder_count >= 3 and blunder_loss >= 10:
             weaknesses.append(
-                f"{phase_labels.get(phase, phase)}: {blunder_count} blunders "
-                f"totaling {blunder_loss:.1f} points lost"
+                f"{phase_labels.get(phase, phase)}: {blunder_count} blunders totaling {blunder_loss:.1f} points lost"
             )
 
     if weaknesses:
@@ -689,9 +680,7 @@ def build_player_summary(
 
         # Select and format evidence (max 2, deduplicated by game)
         evidence = _select_evidence_moves(evidence_candidates, max_count=2)
-        evidence_str = _format_evidence_with_links(
-            evidence, karte_path_map, summary_dir, lang
-        )
+        evidence_str = _format_evidence_with_links(evidence, karte_path_map, summary_dir, lang)
         lines.append(f"  {evidence_str}")
     else:
         lines.append(f"- {get_phase_priority_text('no_weakness', lang)}")
@@ -716,9 +705,7 @@ def build_player_summary(
         blunder_count = phase_mistake_counts.get(blunder_key, 0)
         if blunder_count >= 3:
             phase_name = get_phase_label_localized(phase, lang)
-            priorities.append(
-                get_phase_priority_text("blunder_review", lang, phase=phase_name, count=blunder_count)
-            )
+            priorities.append(get_phase_priority_text("blunder_review", lang, phase=phase_name, count=blunder_count))
 
     # Priority 3: Life and death if many blunders
     total_blunders = mistake_counts.get(MistakeCategory.BLUNDER, 0)

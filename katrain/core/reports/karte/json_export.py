@@ -110,27 +110,19 @@ def build_karte_json(
         },
         "result": get_property("RE"),
         "skill_preset": effective_preset,
-        "units": {
-            "points_lost": "目数（着手前評価 - 着手後評価、手番視点で正規化、常に0以上）"
-        },
+        "units": {"points_lost": "目数（着手前評価 - 着手後評価、手番視点で正規化、常に0以上）"},
     }
 
     # Summary section
     def compute_summary_for(player: str) -> tuple[float, dict[str, int]]:
         player_moves = [m for m in moves if m.player == player]
-        total_lost = sum(
-            max(0.0, m.points_lost)
-            for m in player_moves
-            if m.points_lost is not None
-        )
+        total_lost = sum(max(0.0, m.points_lost) for m in player_moves if m.points_lost is not None)
 
         # Count by mistake category
         counts: dict[str, int] = {"good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0}
         for m in player_moves:
             loss = get_canonical_loss_from_move(m)
-            cat = classify_mistake(
-                score_loss=loss, winrate_loss=None, score_thresholds=score_thresholds
-            )
+            cat = classify_mistake(score_loss=loss, winrate_loss=None, score_thresholds=score_thresholds)
             key = cat.value.lower()
             if key in counts:
                 counts[key] += 1
@@ -165,19 +157,14 @@ def build_karte_json(
 
     # Apply player filter if specified
     if player_filter in ("B", "W"):
-        important_move_evals = [
-            m for m in important_move_evals if m.player == player_filter
-        ]
+        important_move_evals = [m for m in important_move_evals if m.player == player_filter]
 
     important_moves_list: list[dict[str, Any]] = []
     for mv in important_move_evals:
         # Coords: handle pass and normal moves
         coords: str | None = None
         if mv.gtp:
-            if mv.gtp.lower() == "pass":
-                coords = "pass"
-            else:
-                coords = mv.gtp
+            coords = "pass" if mv.gtp.lower() == "pass" else mv.gtp
 
         # points_lost: use get_canonical_loss_from_move for consistency
         points_lost = get_canonical_loss_from_move(mv)
@@ -197,9 +184,9 @@ def build_karte_json(
         except Exception:
             # Unexpected: Internal bug - traceback required
             import logging
+
             logging.getLogger(__name__).debug(
-                f"Unexpected phase classification error for move {mv.move_number}",
-                exc_info=True
+                f"Unexpected phase classification error for move {mv.move_number}", exc_info=True
             )
             phase = "unknown"
 
@@ -210,9 +197,7 @@ def build_karte_json(
         important_moves_list.append(
             {
                 "move_number": mv.move_number,
-                "player": (
-                    "black" if mv.player == "B" else "white" if mv.player == "W" else None
-                ),
+                "player": ("black" if mv.player == "B" else "white" if mv.player == "W" else None),
                 "coords": coords,
                 "points_lost": round(points_lost, 1),
                 "importance": round(importance, 2),

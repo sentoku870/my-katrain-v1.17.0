@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Risk Context System - Public API.
 
 This package provides risk-taking behavior analysis based on game situation.

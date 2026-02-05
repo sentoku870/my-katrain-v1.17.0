@@ -82,9 +82,7 @@ def get_default_lexicon_path() -> Path:
     if env_path:
         path = Path(env_path).resolve()
         if not path.exists():
-            raise FileNotFoundError(
-                f"LEXICON_PATH points to non-existent file: {path}"
-            )
+            raise FileNotFoundError(f"LEXICON_PATH points to non-existent file: {path}")
         return path
 
     # 2. Repository-relative path (dev/test default)

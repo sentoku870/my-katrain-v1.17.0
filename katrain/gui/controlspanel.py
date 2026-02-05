@@ -8,6 +8,7 @@ from kivy.properties import ObjectProperty, OptionProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
+from katrain.core.beginner import HintCategory, get_beginner_hint_cached
 from katrain.core.constants import (
     MODE_ANALYZE,
     MODE_PLAY,
@@ -15,17 +16,14 @@ from katrain.core.constants import (
     PLAYER_HUMAN,
     STATUS_ANALYSIS,
     STATUS_ERROR,
-    AI_DEFAULT,
-    PLAYER_AI,
 )
-from katrain.core.lang import rank_label
-from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel
-from katrain.gui.theme import Theme
-from katrain.gui.sound import play_sound, stop_sound
-from katrain.core.eval_metrics import classify_mistake
 from katrain.core.errors import UIStateError
-from katrain.core.beginner import get_beginner_hint_cached, HintCategory
+from katrain.core.eval_metrics import classify_mistake
+from katrain.core.lang import rank_label
 from katrain.core.state import EventType
+from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel
+from katrain.gui.sound import play_sound, stop_sound
+from katrain.gui.theme import Theme
 
 
 class PlayAnalyzeSelect(MDFloatLayout):
@@ -118,7 +116,7 @@ class ControlsPanel(BoxLayout):
     button_controls = ObjectProperty(None)
 
     def __init__(self, **kwargs: Any) -> None:
-        super(ControlsPanel, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.status_state: tuple[str | None, Any, Any] = (None, -1e9, None)
         self.active_comment_node = None
         self.last_timer_update: tuple[Any, float, bool] = (None, 0.0, False)
@@ -145,10 +143,7 @@ class ControlsPanel(BoxLayout):
         """katrain設定時にANALYSIS_COMPLETE購読を管理（Phase 106）"""
         # 旧notifierからunsubscribe
         if self._subscribed_notifier is not None and self._analysis_callback is not None:
-            self._subscribed_notifier.unsubscribe(
-                EventType.ANALYSIS_COMPLETE,
-                self._analysis_callback
-            )
+            self._subscribed_notifier.unsubscribe(EventType.ANALYSIS_COMPLETE, self._analysis_callback)
             self._subscribed_notifier = None
             self._analysis_callback = None
 
@@ -163,6 +158,7 @@ class ControlsPanel(BoxLayout):
 
     def _on_analysis_complete(self, event: Any) -> None:
         """ANALYSIS_COMPLETE → グラフデータ更新（メインスレッドにディスパッチ）"""
+
         def _update_graph(dt: float) -> None:
             graph = getattr(self, "graph", None)
             katrain = getattr(self, "katrain", None)
@@ -344,6 +340,7 @@ class ControlsPanel(BoxLayout):
                 difficulty_metrics_from_node,
                 format_difficulty_metrics,
             )
+
             metrics = difficulty_metrics_from_node(self.active_comment_node)
             difficulty_lines = format_difficulty_metrics(metrics)
             detail_lines.extend(difficulty_lines)
@@ -387,10 +384,7 @@ class ControlsPanel(BoxLayout):
             return False
 
         # Disable in PLAY mode (avoid cheating)
-        if katrain.play_analyze_mode == MODE_PLAY:
-            return False
-
-        return True
+        return katrain.play_analyze_mode != MODE_PLAY
 
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92)
@@ -503,10 +497,7 @@ class ControlsPanel(BoxLayout):
             else:
                 new_beeping = False
 
-            if player.periods_used == byo_num:
-                time_remaining = 0
-            else:
-                time_remaining = byo_len - current_node.time_used
+            time_remaining = 0 if player.periods_used == byo_num else byo_len - current_node.time_used
             periods_rem = byo_num - player.periods_used
 
             if sounds_on:

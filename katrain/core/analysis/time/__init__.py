@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Time Analysis Package - Public API.
 
 This package provides SGF time tag parsing and pacing/tilt analysis.
@@ -31,20 +30,20 @@ Example usage:
 """
 
 from .models import GameTimeData, TimeMetrics
-from .parser import parse_time_data
 from .pacing import (
+    GamePacingStats,
     LossSource,
+    PacingAnalysisResult,
     PacingConfig,
     PacingMetrics,
-    TiltSeverity,
     TiltEpisode,
-    PacingAnalysisResult,
-    GamePacingStats,
+    TiltSeverity,
     analyze_pacing,
+    extract_pacing_stats_for_summary,
     # Phase 60
     get_pacing_icon,
-    extract_pacing_stats_for_summary,
 )
+from .parser import parse_time_data
 
 __all__ = [
     # Phase 58

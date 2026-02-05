@@ -7,7 +7,7 @@ Phase 80のboard_context.pyを基盤とし、BFSで隣接変動セルをグル�
 
 from collections import Counter, deque
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 # 直接インポート（循環import防止）
@@ -35,7 +35,7 @@ DEFAULT_NEUTRAL_EPSILON = 1e-4
 # =====================================================================
 
 
-class ClusterType(str, Enum):
+class ClusterType(StrEnum):
     """クラスタの種類（黒有利/白有利）。"""
 
     TO_BLACK = "to_black"  # sum_delta > 0: 黒に有利化
@@ -159,15 +159,10 @@ def _validate_grid_shape(
     """グリッド形状を検証。不整合ならValueError。"""
     width, height = board_size
     if len(grid) != height:
-        raise ValueError(
-            f"{label} grid row count mismatch: expected {height}, got {len(grid)}"
-        )
+        raise ValueError(f"{label} grid row count mismatch: expected {height}, got {len(grid)}")
     for row_idx, row in enumerate(grid):
         if len(row) != width:
-            raise ValueError(
-                f"{label} grid column count mismatch at row {row_idx}: "
-                f"expected {width}, got {len(row)}"
-            )
+            raise ValueError(f"{label} grid column count mismatch at row {row_idx}: expected {width}, got {len(row)}")
 
 
 def _is_changed_cell(delta: float, threshold: float) -> bool:
@@ -307,10 +302,7 @@ def compute_ownership_delta(
     """
     # board_sizeチェック
     if parent_ctx.board_size != child_ctx.board_size:
-        raise ValueError(
-            f"Board size mismatch: parent={parent_ctx.board_size}, "
-            f"child={child_ctx.board_size}"
-        )
+        raise ValueError(f"Board size mismatch: parent={parent_ctx.board_size}, child={child_ctx.board_size}")
 
     # どちらかのgridがNoneなら早期リターン（エラーではない）
     if parent_ctx.ownership_grid is None or child_ctx.ownership_grid is None:
@@ -396,9 +388,7 @@ def extract_clusters(
                 continue
 
             # 統計計算
-            sum_delta, avg_delta, max_abs_delta = _compute_cluster_stats(
-                coords, delta.delta_grid
-            )
+            sum_delta, avg_delta, max_abs_delta = _compute_cluster_stats(coords, delta.delta_grid)
 
             # クラスタタイプ判定（中立は除外）
             cluster_type = _determine_cluster_type(sum_delta, config.neutral_epsilon)

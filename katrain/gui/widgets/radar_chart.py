@@ -1,18 +1,19 @@
 """5-axis radar chart Kivy widget."""
+
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line
 from kivy.metrics import dp
 from kivy.properties import DictProperty, ListProperty, NumericProperty, StringProperty
-from katrain.gui.widgets.factory import Label
 from kivy.uix.relativelayout import RelativeLayout
 
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Label
 from katrain.gui.widgets.radar_geometry import (
     AXIS_ORDER,
     NEUTRAL_SCORE,
@@ -62,7 +63,7 @@ class RadarChartWidget(RelativeLayout):
         self._redraw_trigger = Clock.create_trigger(self._do_redraw, 0)
 
         # Fixed labels (created once at init, only text updated on redraw)
-        self._labels: List[Label] = []
+        self._labels: list[Label] = []
         for _ in range(NUM_AXES):
             lbl = Label(
                 text="",
@@ -87,12 +88,10 @@ class RadarChartWidget(RelativeLayout):
     def _schedule_redraw(self, *_: Any) -> None:
         self._redraw_trigger()
 
-    def _get_grid_ring_points(
-        self, fraction: float, center: Tuple[float, float], max_r: float
-    ) -> List[float]:
+    def _get_grid_ring_points(self, fraction: float, center: tuple[float, float], max_r: float) -> list[float]:
         """Get grid ring points (fixed radius fraction)."""
         radius = max_r * fraction
-        points: List[float] = []
+        points: list[float] = []
         for i in range(NUM_AXES):
             angle_deg = 90 - (360 / NUM_AXES) * i  # ANGLE_OFFSET_DEG = 90
             angle_rad = math.radians(angle_deg)
@@ -151,7 +150,7 @@ class RadarChartWidget(RelativeLayout):
             # If any rendering error occurs, clear canvas and skip drawing
             self.canvas.before.clear()
 
-    def _update_labels(self, center: Tuple[float, float], max_r: float) -> None:
+    def _update_labels(self, center: tuple[float, float], max_r: float) -> None:
         for i, axis in enumerate(AXIS_ORDER):
             lbl = self._labels[i]
             lx, ly = get_label_position(i, center, max_r)

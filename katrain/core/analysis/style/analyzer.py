@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Style Archetype Analyzer.
 
 This module provides the core logic for determining a user's playing style
@@ -10,8 +9,8 @@ Part of Phase 56: Style Archetype Core.
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Mapping
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics
@@ -22,7 +21,6 @@ from .models import (
     StyleArchetypeId,
     StyleResult,
 )
-
 
 # =============================================================================
 # Constants
@@ -130,9 +128,7 @@ def determine_style(
     top_axis, top_deviation = sorted_axes[0]
 
     # Tie check: if second axis has same deviation (within tolerance), dominant_axis is None
-    if len(sorted_axes) > 1 and math.isclose(
-        sorted_axes[1][1], top_deviation, abs_tol=SCORE_TOLERANCE
-    ):
+    if len(sorted_axes) > 1 and math.isclose(sorted_axes[1][1], top_deviation, abs_tol=SCORE_TOLERANCE):
         dominant_axis = None
     elif top_deviation >= DEVIATION_HIGH_THRESHOLD:
         dominant_axis = top_axis
@@ -159,33 +155,21 @@ def determine_style(
 
         # High axis score (0.5 weight)
         if archetype.high_axes:
-            high_match = sum(
-                1
-                for ax in archetype.high_axes
-                if deviations[ax] >= DEVIATION_HIGH_THRESHOLD
-            )
+            high_match = sum(1 for ax in archetype.high_axes if deviations[ax] >= DEVIATION_HIGH_THRESHOLD)
             high_axis_score = (high_match / len(archetype.high_axes)) * 0.5
         else:
             high_axis_score = 0.0
 
         # Low axis score (0.2 weight)
         if archetype.low_axes:
-            low_match = sum(
-                1
-                for ax in archetype.low_axes
-                if deviations[ax] <= DEVIATION_LOW_THRESHOLD
-            )
+            low_match = sum(1 for ax in archetype.low_axes if deviations[ax] <= DEVIATION_LOW_THRESHOLD)
             low_axis_score = (low_match / len(archetype.low_axes)) * 0.2
         else:
             low_axis_score = 0.0
 
         # Tag score (0.3 weight)
         if archetype.reinforcing_tags:
-            sig_tags = sum(
-                1
-                for tag in archetype.reinforcing_tags
-                if tag_counts.get(tag, 0) >= TAG_SIGNIFICANT_COUNT
-            )
+            sig_tags = sum(1 for tag in archetype.reinforcing_tags if tag_counts.get(tag, 0) >= TAG_SIGNIFICANT_COUNT)
             tag_score = (sig_tags / len(archetype.reinforcing_tags)) * 0.3
         else:
             tag_score = 0.0

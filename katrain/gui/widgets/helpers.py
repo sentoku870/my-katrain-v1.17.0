@@ -3,16 +3,15 @@ UI構築ヘルパー関数
 
 重複するUIパターンを共通化し、コードの保守性を向上させる。
 """
-from __future__ import annotations
 
-from typing import Optional, Tuple
+from __future__ import annotations
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.textinput import TextInput
 
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Button, Label
 
 
 def bind_label_text_size(label: Label) -> Label:
@@ -65,7 +64,7 @@ def create_text_input_row(
     with_browse: bool = False,
     browse_text: str = "Browse...",
     browse_size_hint_x: float = 0.15,
-) -> Tuple[BoxLayout, TextInput, Optional[Button]]:
+) -> tuple[BoxLayout, TextInput, Button | None]:
     """Label + TextInput の行を作成する。
 
     Args:

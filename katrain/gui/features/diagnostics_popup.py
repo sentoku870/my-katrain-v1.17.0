@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def show_diagnostics_popup(ctx: "FeatureContext") -> None:
+def show_diagnostics_popup(ctx: FeatureContext) -> None:
     """Show diagnostics popup with system info and bug report generation.
 
     Args:
@@ -46,7 +46,7 @@ def show_diagnostics_popup(ctx: "FeatureContext") -> None:
     Clock.schedule_once(lambda dt: _show_diagnostics_popup_impl(ctx), 0)
 
 
-def _show_diagnostics_popup_impl(ctx: "FeatureContext") -> None:
+def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
     """Implementation of diagnostics popup display."""
     # Collect diagnostic information
     bundle = _collect_diagnostics(ctx)
@@ -93,14 +93,12 @@ def _show_diagnostics_popup_impl(ctx: "FeatureContext") -> None:
 
     # Bind buttons
     close_btn.bind(on_release=popup.dismiss)
-    generate_btn.bind(
-        on_release=lambda btn: _on_generate_zip(ctx, bundle, generate_btn, popup)
-    )
+    generate_btn.bind(on_release=lambda btn: _on_generate_zip(ctx, bundle, generate_btn, popup))
 
     popup.open()
 
 
-def _collect_diagnostics(ctx: "FeatureContext") -> DiagnosticsBundle:
+def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
     """Collect all diagnostic information.
 
     Args:
@@ -242,7 +240,7 @@ def _build_info_display(bundle: DiagnosticsBundle) -> BoxLayout:
 
 
 def _on_generate_zip(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     bundle: DiagnosticsBundle,
     generate_btn: Button,
     parent_popup: Popup,
@@ -271,15 +269,13 @@ def _on_generate_zip(
         result = create_diagnostics_zip(bundle, output_path, sanitization_ctx)
 
         # Update UI on main thread
-        Clock.schedule_once(
-            lambda dt: _on_generate_complete(ctx, result, generate_btn, parent_popup), 0
-        )
+        Clock.schedule_once(lambda dt: _on_generate_complete(ctx, result, generate_btn, parent_popup), 0)
 
     threading.Thread(target=generate_thread, daemon=True).start()
 
 
 def _on_generate_complete(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     result: Any,
     generate_btn: Button,
     parent_popup: Popup,
@@ -346,9 +342,7 @@ def _show_success_popup(output_path: Path) -> None:
     )
 
     close_btn.bind(on_release=popup.dismiss)
-    open_folder_btn.bind(
-        on_release=lambda btn: (open_file_in_folder(output_path), popup.dismiss())
-    )
+    open_folder_btn.bind(on_release=lambda btn: (open_file_in_folder(output_path), popup.dismiss()))
 
     popup.open()
 

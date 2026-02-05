@@ -6,34 +6,28 @@
 
 from __future__ import annotations
 
-import threading
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
-from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
 from katrain.core.constants import STATUS_ERROR, STATUS_INFO
-from katrain.core.lang import i18n
 from katrain.core.smart_kifu import (
     BucketProfile,
     Confidence,
     Context,
     ContextProfile,
     GameEntry,
-    PlayerProfile,
-    TrainingSetManifest,
     ViewerPreset,
     compute_bucket_key,
     compute_confidence,
-    estimate_viewer_level,
     list_training_sets,
     load_manifest,
     load_player_profile,
@@ -97,11 +91,12 @@ def build_bucket_card(
     )
     # 背景色を設定するためのキャンバス命令
     from kivy.graphics import Color, Rectangle
+
     with card.canvas.before:
         Color(0.2, 0.2, 0.25, 1)  # 暗い背景
         rect = Rectangle(pos=card.pos, size=card.size)
-    card.bind(pos=lambda inst, val: setattr(rect, 'pos', val))
-    card.bind(size=lambda inst, val: setattr(rect, 'size', val))
+    card.bind(pos=lambda inst, val: setattr(rect, "pos", val))
+    card.bind(size=lambda inst, val: setattr(rect, "size", val))
 
     # タイトル行
     title_label = Label(
@@ -170,10 +165,7 @@ def build_bucket_card(
         size_hint_y=None,
         height=dp(25),
     )
-    if profile.analyzed_ratio is not None:
-        ratio_text = f"{profile.analyzed_ratio:.0%}"
-    else:
-        ratio_text = "N/A"
+    ratio_text = f"{profile.analyzed_ratio:.0%}" if profile.analyzed_ratio is not None else "N/A"
     ratio_label = Label(
         text=f"解析率: {ratio_text}",
         color=Theme.TEXT_COLOR,
@@ -241,10 +233,7 @@ def compute_profile_update_preview(
 
     # analyzed_ratio の平均を計算
     analyzed_ratios = [g.analyzed_ratio for g in filtered_games if g.analyzed_ratio is not None]
-    if analyzed_ratios:
-        avg_analyzed_ratio = sum(analyzed_ratios) / len(analyzed_ratios)
-    else:
-        avg_analyzed_ratio = None
+    avg_analyzed_ratio = sum(analyzed_ratios) / len(analyzed_ratios) if analyzed_ratios else None
 
     confidence = compute_confidence(samples, avg_analyzed_ratio)
 
@@ -276,7 +265,7 @@ def compute_profile_update_preview(
 
 
 def show_update_preview_dialog(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     context: Context,
     bucket_key: str,
     preview: dict[str, Any],
@@ -312,12 +301,12 @@ def show_update_preview_dialog(
     # プレビュー情報
     info_lines = [
         f"集計局数: {preview['samples']}局（全{preview.get('total_games', 0)}局中）",
-        f"解析率: {preview['analyzed_ratio']:.0%}" if preview['analyzed_ratio'] is not None else "解析率: N/A",
+        f"解析率: {preview['analyzed_ratio']:.0%}" if preview["analyzed_ratio"] is not None else "解析率: N/A",
         f"信頼度: {CONFIDENCE_LABELS.get(preview['confidence'], 'N/A')}",
         f"Viewer Level: Lv{preview['viewer_level']} ({PRESET_LABELS.get(preview['viewer_preset'], 'N/A')})",
     ]
 
-    if preview.get('engine_profile_id'):
+    if preview.get("engine_profile_id"):
         info_lines.append(f"Engine Profile: {preview['engine_profile_id'][:20]}...")
 
     for line in info_lines:
@@ -390,7 +379,7 @@ def show_update_preview_dialog(
 
 
 def show_update_bucket_dialog(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     context: Context,
     bucket_key: str,
     on_updated: Callable[[], None],
@@ -589,7 +578,7 @@ def show_update_bucket_dialog(
 
 
 def show_player_profile_popup(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain_gui: Any,
 ) -> None:
     """Player Profile ポップアップを表示
@@ -663,6 +652,7 @@ def show_player_profile_popup(
             if state == "down":
                 selected_context[0] = c
                 refresh_cards()
+
         return select_fn
 
     for ctx_enum in [Context.HUMAN, Context.VS_KATAGO, Context.GENERATED]:

@@ -152,9 +152,7 @@ def normalize_path(value: Any) -> str | None:
     return value  # 有効パスはそのまま（stripしない）
 
 
-def safe_float_tuple(
-    value: Any, default: tuple[float, ...]
-) -> tuple[float, ...]:
+def safe_float_tuple(value: Any, default: tuple[float, ...]) -> tuple[float, ...]:
     """list/tuple → Tuple[float, ...] 変換。長さ不一致/失敗時はdefault。
 
     Args:
@@ -178,9 +176,7 @@ def safe_float_tuple(
         return default
 
 
-def safe_bool_tuple(
-    value: Any, default: tuple[bool, ...]
-) -> tuple[bool, ...]:
+def safe_bool_tuple(value: Any, default: tuple[bool, ...]) -> tuple[bool, ...]:
     """list/tuple → Tuple[bool, ...] 変換。長さ不一致時はdefault。
 
     Args:
@@ -245,7 +241,7 @@ class EngineConfig:
     enable_ownership: bool = True
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "EngineConfig":
+    def from_dict(cls, d: dict[str, Any]) -> EngineConfig:
         """dictから生成。欠損キーはデフォルト、型不正は安全に変換。
 
         Args:
@@ -322,7 +318,7 @@ class TrainerConfig:
     lock_ai: bool = False
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "TrainerConfig":
+    def from_dict(cls, d: dict[str, Any]) -> TrainerConfig:
         """dictから生成。JSON list → Tuple 変換（長さ検証あり）。
 
         Args:
@@ -354,12 +350,8 @@ class TrainerConfig:
             save_marks=safe_bool(d.get("save_marks"), default=False),
             low_visits=safe_int(d.get("low_visits"), 25),
             eval_on_show_last=safe_int(d.get("eval_on_show_last"), 3),
-            top_moves_show=safe_str(
-                d.get("top_moves_show"), "top_move_delta_score"
-            ),
-            top_moves_show_secondary=safe_str(
-                d.get("top_moves_show_secondary"), "top_move_visits"
-            ),
+            top_moves_show=safe_str(d.get("top_moves_show"), "top_move_delta_score"),
+            top_moves_show_secondary=safe_str(d.get("top_moves_show_secondary"), "top_move_visits"),
             eval_show_ai=safe_bool(d.get("eval_show_ai"), default=True),
             lock_ai=safe_bool(d.get("lock_ai"), default=False),
         )
@@ -396,7 +388,7 @@ class LeelaConfig:
     top_moves_show_secondary: str = "leela_top_move_winrate"
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "LeelaConfig":
+    def from_dict(cls, d: dict[str, Any]) -> LeelaConfig:
         """dictから生成。
 
         Args:
@@ -412,19 +404,9 @@ class LeelaConfig:
             fast_visits=safe_int(d.get("fast_visits"), 200),
             play_visits=safe_int(d.get("play_visits"), 500),
             loss_scale_k=safe_float(d.get("loss_scale_k"), 0.5),
-            resign_hint_enabled=safe_bool(
-                d.get("resign_hint_enabled"), default=False
-            ),
-            resign_winrate_threshold=safe_int(
-                d.get("resign_winrate_threshold"), 5
-            ),
-            resign_consecutive_moves=safe_int(
-                d.get("resign_consecutive_moves"), 3
-            ),
-            top_moves_show=safe_str(
-                d.get("top_moves_show"), "leela_top_move_loss"
-            ),
-            top_moves_show_secondary=safe_str(
-                d.get("top_moves_show_secondary"), "leela_top_move_winrate"
-            ),
+            resign_hint_enabled=safe_bool(d.get("resign_hint_enabled"), default=False),
+            resign_winrate_threshold=safe_int(d.get("resign_winrate_threshold"), 5),
+            resign_consecutive_moves=safe_int(d.get("resign_consecutive_moves"), 3),
+            top_moves_show=safe_str(d.get("top_moves_show"), "leela_top_move_loss"),
+            top_moves_show_secondary=safe_str(d.get("top_moves_show_secondary"), "leela_top_move_winrate"),
         )

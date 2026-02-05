@@ -15,26 +15,25 @@
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
-from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.scrollview import ScrollView
 
 from katrain.core.auto_setup import (
     get_model_search_dirs,
     resolve_auto_engine_settings,
 )
-from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, STATUS_INFO
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.lang import i18n
 from katrain.core.test_analysis import (
     ErrorCategory,
     TestAnalysisResult,
     should_offer_cpu_fallback,
-    should_offer_restart,
 )
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Button, Label
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -76,7 +75,7 @@ class AutoModeState:
 
 
 def show_auto_mode_content(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     layout: BoxLayout,
     katrain: Any,  # KaTrainGui instance (for engine access)
 ) -> None:
@@ -153,7 +152,7 @@ def show_auto_mode_content(
 
 
 def _on_test_analysis_clicked(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     state: AutoModeState,
     result_area: BoxLayout,
@@ -205,7 +204,7 @@ def _show_testing_status(result_area: BoxLayout) -> None:
 
 
 def _execute_test_analysis(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     timeout_seconds: float = 15.0,
 ) -> TestAnalysisResult:
@@ -235,7 +234,7 @@ def _on_test_complete(
     result: TestAnalysisResult,
     result_area: BoxLayout,
     btn: Button,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     state: AutoModeState,
 ) -> None:
@@ -303,7 +302,7 @@ def _render_success_ui(
 def _render_failure_ui(
     result: TestAnalysisResult,
     layout: BoxLayout,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     state: AutoModeState,
 ) -> None:
@@ -347,9 +346,7 @@ def _render_failure_ui(
             font_name=Theme.DEFAULT_FONT,
             background_color=Theme.SECONDARY_COLOR,
         )
-        cpu_btn.bind(
-            on_release=lambda btn: _on_retry_cpu(ctx, katrain, layout, btn, state)
-        )
+        cpu_btn.bind(on_release=lambda btn: _on_retry_cpu(ctx, katrain, layout, btn, state))
         btn_layout.add_widget(cpu_btn)
 
     # Copy diagnostics button
@@ -366,7 +363,7 @@ def _render_failure_ui(
 def _render_timeout_ui(
     result: TestAnalysisResult,
     layout: BoxLayout,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     state: AutoModeState,
 ) -> None:
@@ -429,9 +426,7 @@ def _render_timeout_ui(
         font_name=Theme.DEFAULT_FONT,
         background_color=Theme.PRIMARY_COLOR,
     )
-    restart_btn.bind(
-        on_release=lambda btn: _on_restart_engine(ctx, katrain, layout, btn, state)
-    )
+    restart_btn.bind(on_release=lambda btn: _on_restart_engine(ctx, katrain, layout, btn, state))
     btn_layout.add_widget(restart_btn)
 
     # Copy diagnostics button
@@ -460,7 +455,7 @@ def _render_timeout_ui(
 
 def _render_lightweight_missing_ui(
     layout: BoxLayout,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
 ) -> None:
     """Render lightweight model missing UI.
 
@@ -486,9 +481,7 @@ def _render_lightweight_missing_ui(
     search_dirs = get_model_search_dirs()
     models_dir = search_dirs[0] if search_dirs else "~/.katrain/models/"
 
-    instructions = i18n._("mykatrain:settings:lightweight_model_instructions").format(
-        models_dir=models_dir
-    )
+    instructions = i18n._("mykatrain:settings:lightweight_model_instructions").format(models_dir=models_dir)
     instr_label = Label(
         text=instructions,
         font_name=Theme.DEFAULT_FONT,
@@ -508,7 +501,7 @@ def _render_lightweight_missing_ui(
 
 
 def _on_retry_cpu(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     result_area: BoxLayout,
     btn: Button,
@@ -551,7 +544,7 @@ def _on_fallback_complete(
     result: TestAnalysisResult,
     result_area: BoxLayout,
     btn: Button,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
 ) -> None:
     """Handle CPU fallback completion.
@@ -615,7 +608,7 @@ def _on_fallback_complete(
 
 
 def _on_restart_engine(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
     result_area: BoxLayout,
     btn: Button,
@@ -657,7 +650,7 @@ def _on_restart_complete(
     success: bool,
     result_area: BoxLayout,
     btn: Button,
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain: Any,
 ) -> None:
     """Handle engine restart completion.
@@ -734,7 +727,7 @@ def _show_status(layout: BoxLayout, message: str) -> None:
     layout.add_widget(label)
 
 
-def _copy_diagnostics(result: TestAnalysisResult, ctx: "FeatureContext") -> None:
+def _copy_diagnostics(result: TestAnalysisResult, ctx: FeatureContext) -> None:
     """Copy diagnostic information to clipboard.
 
     Args:
@@ -752,14 +745,16 @@ def _copy_diagnostics(result: TestAnalysisResult, ctx: "FeatureContext") -> None
 
     # Add engine info if available (Phase 100: typed config)
     engine_config = ctx.get_engine_config()
-    diag_lines.extend([
-        "",
-        "=== Engine Config ===",
-        f"KataGo: {engine_config.katago or ''}",
-        f"Model: {engine_config.model or ''}",
-    ])
+    diag_lines.extend(
+        [
+            "",
+            "=== Engine Config ===",
+            f"KataGo: {engine_config.katago or ''}",
+            f"Model: {engine_config.model or ''}",
+        ]
+    )
 
     diag_text = "\n".join(diag_lines)
     Clipboard.copy(diag_text)
 
-    ctx.log(f"Diagnostics copied to clipboard", OUTPUT_DEBUG)
+    ctx.log("Diagnostics copied to clipboard", OUTPUT_DEBUG)

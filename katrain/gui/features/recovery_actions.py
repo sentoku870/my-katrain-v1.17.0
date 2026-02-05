@@ -10,6 +10,7 @@ Thread safety:
     - NO ctx.log() calls in background thread (not thread-safe)
     - Success logging done via Kivy Clock.schedule_once on main thread
 """
+
 from __future__ import annotations
 
 import threading
@@ -42,7 +43,7 @@ if TYPE_CHECKING:
 LOG_COPY_LINES = 200  # Bounded tail
 
 
-def _build_bundle(ctx: "FeatureContext") -> "DiagnosticsBundle":
+def _build_bundle(ctx: FeatureContext) -> DiagnosticsBundle:
     """Build DiagnosticsBundle from FeatureContext using PUBLIC API.
 
     Uses only public methods - no private attribute access.
@@ -74,7 +75,7 @@ def _build_bundle(ctx: "FeatureContext") -> "DiagnosticsBundle":
     )
 
 
-def copy_for_llm(ctx: "FeatureContext", error_context: str = "") -> bool:
+def copy_for_llm(ctx: FeatureContext, error_context: str = "") -> bool:
     """Copy LLM-ready diagnostics to clipboard.
 
     Thread-safe: Only accesses Clipboard (Kivy main thread safe).
@@ -93,7 +94,7 @@ def copy_for_llm(ctx: "FeatureContext", error_context: str = "") -> bool:
         return False
 
 
-def copy_log_tail(ctx: "FeatureContext") -> bool:
+def copy_log_tail(ctx: FeatureContext) -> bool:
     """Copy sanitized log tail to clipboard.
 
     Thread-safe: Only accesses Clipboard (Kivy main thread safe).
@@ -112,7 +113,7 @@ def copy_log_tail(ctx: "FeatureContext") -> bool:
         return False
 
 
-def reset_to_auto_mode(ctx: "FeatureContext") -> bool:
+def reset_to_auto_mode(ctx: FeatureContext) -> bool:
     """Reset to auto mode and restart engine.
 
     Uses real KaTrainGui APIs via FeatureContext protocol.
@@ -131,7 +132,7 @@ def reset_to_auto_mode(ctx: "FeatureContext") -> bool:
 
 
 def save_diagnostics_zip(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     error_context: str = "",
     include_llm_prompt: bool = True,
 ) -> Path | None:
@@ -164,9 +165,7 @@ def save_diagnostics_zip(
             llm_text = format_llm_diagnostics_text(bundle, san_ctx, error_context)
             extra_files = {"llm_prompt.txt": llm_text}
 
-        result = create_diagnostics_zip(
-            bundle, output_path, san_ctx, extra_files=extra_files
-        )
+        result = create_diagnostics_zip(bundle, output_path, san_ctx, extra_files=extra_files)
 
         if result.success:
             return result.output_path
@@ -179,7 +178,7 @@ def save_diagnostics_zip(
 
 
 def trigger_auto_dump(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     trigger: DiagnosticsTrigger,
     code: str,
     error_message: str,
@@ -217,16 +216,12 @@ def trigger_auto_dump(
         """Background thread: file I/O only, no UI calls."""
         try:
             extra_files = {"llm_prompt.txt": llm_text}
-            result = create_diagnostics_zip(
-                bundle, output_path, san_ctx, extra_files=extra_files
-            )
+            result = create_diagnostics_zip(bundle, output_path, san_ctx, extra_files=extra_files)
 
             # Schedule logging on main thread
             if result.success:
                 Clock.schedule_once(
-                    lambda dt: ctx.log(
-                        f"Auto-saved diagnostics: {result.output_path}", OUTPUT_INFO
-                    ),
+                    lambda dt: ctx.log(f"Auto-saved diagnostics: {result.output_path}", OUTPUT_INFO),
                     0,
                 )
         except Exception:

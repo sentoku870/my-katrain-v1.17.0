@@ -10,7 +10,8 @@ Contains:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.eval_metrics import classify_mistake, get_canonical_loss_from_move
@@ -36,13 +37,11 @@ def _mistake_label_from_loss(
     """Classify a loss value using thresholds."""
     if loss_val is None:
         return "unknown"
-    category = classify_mistake(
-        score_loss=loss_val, winrate_loss=None, score_thresholds=thresholds
-    )
+    category = classify_mistake(score_loss=loss_val, winrate_loss=None, score_thresholds=thresholds)
     return category.value
 
 
-def worst_move_for(ctx: KarteContext, player: str) -> "MoveEval | None":
+def worst_move_for(ctx: KarteContext, player: str) -> MoveEval | None:
     """Find worst move for a player using canonical loss (KataGo/Leela compatible).
 
     Args:
@@ -71,11 +70,7 @@ def summary_lines_for(ctx: KarteContext, player: str) -> list[str]:
         List of markdown lines for summary section
     """
     player_moves = [mv for mv in ctx.snapshot.moves if mv.player == player]
-    total_lost = sum(
-        max(0.0, mv.points_lost)
-        for mv in player_moves
-        if mv.points_lost is not None
-    )
+    total_lost = sum(max(0.0, mv.points_lost) for mv in player_moves if mv.points_lost is not None)
     worst = worst_move_for(ctx, player)
     if worst:
         worst_loss = get_canonical_loss_from_move(worst)
@@ -109,11 +104,7 @@ def opponent_summary_for(ctx: KarteContext, focus_player: str) -> list[str]:
     if not opponent_moves:
         return []
 
-    total_lost = sum(
-        max(0.0, mv.points_lost)
-        for mv in opponent_moves
-        if mv.points_lost is not None
-    )
+    total_lost = sum(max(0.0, mv.points_lost) for mv in opponent_moves if mv.points_lost is not None)
     worst = worst_move_for(ctx, opponent)
     opponent_name = ctx.pw if opponent == "W" else ctx.pb
     if worst:
@@ -172,16 +163,12 @@ def common_difficult_positions(ctx: KarteContext) -> list[str]:
 
     difficult.sort(key=lambda x: x[3], reverse=True)
     lines = ["## Common Difficult Positions", ""]
-    lines.append(
-        "Both players made significant errors (2+ points) in consecutive moves:"
-    )
+    lines.append("Both players made significant errors (2+ points) in consecutive moves:")
     lines.append("")
     lines.append("| Move # | Black Loss | White Loss | Total Loss |")
     lines.append("|--------|------------|------------|------------|")
     for move_num, b_loss, w_loss, total in difficult[:5]:
-        lines.append(
-            f"| {move_num}-{move_num+1} | {b_loss:.1f} | {w_loss:.1f} | {total:.1f} |"
-        )
+        lines.append(f"| {move_num}-{move_num + 1} | {b_loss:.1f} | {w_loss:.1f} | {total:.1f} |")
     lines.append("")
     return lines
 

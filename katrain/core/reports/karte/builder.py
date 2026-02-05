@@ -182,14 +182,10 @@ def build_karte_report(
     except Exception as e:
         # Unexpected: Internal bug - traceback required
         import traceback
-        error_msg = (
-            f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
-            f"Failed to generate karte: {type(e).__name__}: {e}"
-        )
+
+        error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\nFailed to generate karte: {type(e).__name__}: {e}"
         if game.katrain:
-            game.katrain.log(
-                f"{error_msg}\n{traceback.format_exc()}", OUTPUT_DEBUG
-            )
+            game.katrain.log(f"{error_msg}\n{traceback.format_exc()}", OUTPUT_DEBUG)
 
         if raise_on_error:
             raise KarteGenerationError(
@@ -294,9 +290,7 @@ def _build_karte_report_impl(
     confidence_level = eval_metrics.compute_confidence_level(snapshot.moves)
     settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
         level,
-        eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[
-            eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL
-        ],
+        eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
     )
 
     # Phase 60: Build pacing map for Time column
@@ -394,10 +388,7 @@ def _build_karte_report_impl(
     effective_preset = skill_preset
     if skill_preset == "auto":
         # Use focus_color if available, otherwise use all moves
-        if focus_color:
-            focus_moves = [m for m in snapshot.moves if m.player == focus_color]
-        else:
-            focus_moves = list(snapshot.moves)
+        focus_moves = [m for m in snapshot.moves if m.player == focus_color] if focus_color else list(snapshot.moves)
         auto_recommendation = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
         effective_preset = auto_recommendation.recommended_preset
 
@@ -410,21 +401,16 @@ def _build_karte_report_impl(
         try:
             from katrain.core import ai as ai_module
 
-            _sum_stats, histogram, _ptloss = ai_module.game_report(
-                game, thresholds=thresholds, depth_filter=None
-            )
+            _sum_stats, histogram, _ptloss = ai_module.game_report(game, thresholds=thresholds, depth_filter=None)
         except (ValueError, KeyError) as exc:  # pragma: no cover - defensive fallback
             # Expected: Threshold config or game data structure issue
-            game.katrain.log(
-                f"Histogram generation skipped: {exc}", OUTPUT_DEBUG
-            )
+            game.katrain.log(f"Histogram generation skipped: {exc}", OUTPUT_DEBUG)
             histogram = None
         except Exception as exc:  # pragma: no cover - defensive fallback
             # Unexpected: Internal bug - traceback required
             import traceback
-            game.katrain.log(
-                f"Unexpected histogram error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG
-            )
+
+            game.katrain.log(f"Unexpected histogram error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG)
             histogram = None
 
     # Bucket label function for distribution

@@ -5,7 +5,7 @@ Provides a base exception class with user-facing messages and debug context,
 plus specialized subclasses for different error domains.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class KaTrainError(Exception):
@@ -20,8 +20,8 @@ class KaTrainError(Exception):
         self,
         message: str,
         *,
-        user_message: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        user_message: str | None = None,
+        context: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.user_message = user_message or message

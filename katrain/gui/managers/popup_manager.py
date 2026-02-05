@@ -28,9 +28,11 @@
     manager.open_new_game_popup()
     manager.open_engine_recovery_popup("error message", "E001")
 """
+
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class PopupManager:

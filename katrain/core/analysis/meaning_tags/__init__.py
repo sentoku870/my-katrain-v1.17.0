@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meaning Tags System - Public API.
 
 This package provides semantic classification of Go mistakes based on
@@ -77,6 +76,13 @@ from .classifier import (
     is_endgame,
     resolve_lexicon_anchor,
 )
+from .integration import (
+    MAX_DESCRIPTION_LENGTH,
+    format_meaning_tag_with_definition,
+    format_meaning_tag_with_definition_safe,
+    get_meaning_tag_label_safe,
+    normalize_lang,
+)
 from .models import MeaningTag, MeaningTagId
 from .registry import (
     MEANING_TAG_REGISTRY,
@@ -84,13 +90,6 @@ from .registry import (
     get_tag_definition,
     get_tag_description,
     get_tag_label,
-)
-from .integration import (
-    MAX_DESCRIPTION_LENGTH,
-    format_meaning_tag_with_definition,
-    format_meaning_tag_with_definition_safe,
-    get_meaning_tag_label_safe,
-    normalize_lang,
 )
 
 __all__ = [

@@ -46,10 +46,9 @@ def find_matching_group(
         stones_set = set(g.stones)
         overlap = len(target_set & stones_set)
         min_size = min(len(target_set), len(stones_set))
-        if min_size > 0 and overlap >= min_size * 0.5:
-            if overlap > best_overlap:
-                best_overlap = overlap
-                best_match = g
+        if min_size > 0 and overlap >= min_size * 0.5 and overlap > best_overlap:
+            best_overlap = overlap
+            best_match = g
 
     return best_match
 
@@ -117,9 +116,7 @@ def detect_ignore_atari(inp: DetectorInput) -> BeginnerHint | None:
 
     # Find friendly groups that were in atari before the move (size >= 3)
     atari_groups_before = [
-        g
-        for g in inp.groups_before
-        if g.color == inp.player and g.is_in_atari and len(g.stones) >= 3
+        g for g in inp.groups_before if g.color == inp.player and g.is_in_atari and len(g.stones) >= 3
     ]
 
     if not atari_groups_before:
@@ -165,11 +162,7 @@ def detect_missed_capture(inp: DetectorInput) -> BeginnerHint | None:
     opponent = "W" if inp.player == "B" else "B"
 
     # Find opponent groups that were in atari (size >= 2)
-    capturable = [
-        g
-        for g in inp.groups_before
-        if g.color == opponent and g.is_in_atari and len(g.stones) >= 2
-    ]
+    capturable = [g for g in inp.groups_before if g.color == opponent and g.is_in_atari and len(g.stones) >= 2]
 
     if not capturable:
         return None
@@ -226,11 +219,7 @@ def detect_cut_risk(inp: DetectorInput, game: Any) -> BeginnerHint | None:
 
     # Build danger scores for groups
     danger_scores: dict[int, float] = {
-        g.group_id: float(
-            DANGER_ATARI
-            if g.is_in_atari
-            else (DANGER_LOW_LIBERTY if g.is_low_liberty else 0)
-        )
+        g.group_id: float(DANGER_ATARI if g.is_in_atari else (DANGER_LOW_LIBERTY if g.is_low_liberty else 0))
         for g in inp.groups_after
     }
 
@@ -246,11 +235,7 @@ def detect_cut_risk(inp: DetectorInput, game: Any) -> BeginnerHint | None:
             continue
 
         # Calculate total size of player's groups that would be connected
-        total_size = sum(
-            len(g.stones)
-            for g in inp.groups_after
-            if g.group_id in group_ids and g.color == inp.player
-        )
+        total_size = sum(len(g.stones) for g in inp.groups_after if g.group_id in group_ids and g.color == inp.player)
 
         if total_size < MIN_TOTAL_SIZE:
             continue

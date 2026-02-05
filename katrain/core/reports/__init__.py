@@ -16,6 +16,7 @@ from katrain.core.reports.insertion import (
     SectionRegistration,
     compute_section_order,
 )
+
 # Import from karte package (lazy wrappers) to avoid eager loading of builder/sections
 from katrain.core.reports.karte import (
     KarteGenerationError,

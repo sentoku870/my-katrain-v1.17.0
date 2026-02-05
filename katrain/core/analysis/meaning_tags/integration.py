@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meaning Tags Integration Helpers.
 
 This module provides helper functions for integrating meaning tags with
@@ -14,9 +13,9 @@ Public API:
 """
 
 from katrain.common.locale_utils import to_iso_lang_code
+
 from .models import MeaningTagId
 from .registry import MEANING_TAG_REGISTRY, get_tag_label
-
 
 # =============================================================================
 # Language Normalization (for meaning tags registry - needs ISO codes)

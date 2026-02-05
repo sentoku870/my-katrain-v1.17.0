@@ -12,18 +12,20 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 
 from katrain.core import eval_metrics
 from katrain.core.batch import (
-    BatchResult,
     DEFAULT_TIMEOUT_SECONDS,
+    BatchResult,
     parse_timeout_input,
-    safe_int as _safe_int,  # Alias to keep existing local references
-    needs_leela_karte_warning,
     run_batch,  # Phase 42-B: Now from core.batch
+)
+from katrain.core.batch import (
+    safe_int as _safe_int,  # Alias to keep existing local references
 )
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 # Phase 87.5: Shared helper for Leela enabled detection
-def is_leela_configured(ctx: "FeatureContext") -> bool:
+def is_leela_configured(ctx: FeatureContext) -> bool:
     """Check if Leela is properly configured (enabled or has exe_path).
 
     Args:
@@ -138,11 +140,13 @@ def create_log_callback(
     Returns:
         ログコールバック関数
     """
+
     def log_cb(msg: str) -> None:
         def update_log(dt: float) -> None:
             log_text_widget.text += msg + "\n"
             # Auto-scroll to bottom
             log_scroll_widget.scroll_y = 0
+
         Clock.schedule_once(update_log, 0)
 
     return log_cb
@@ -159,9 +163,11 @@ def create_progress_callback(
     Returns:
         進行状況コールバック関数
     """
+
     def progress_cb(current: int, total: int, filename: str) -> None:
         def update_progress(dt: float) -> None:
             progress_label_widget.text = f"[{current}/{total}] {filename}"
+
         Clock.schedule_once(update_progress, 0)
 
     return progress_cb
@@ -186,6 +192,7 @@ def create_summary_callback(
     Returns:
         サマリ表示コールバック関数
     """
+
     def show_summary_callback(result: BatchResult) -> None:
         def show_summary(dt: float) -> None:
             is_running[0] = False
@@ -226,7 +233,7 @@ def create_summary_callback(
 
 
 def run_batch_in_thread(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     options: BatchOptions,
     cancel_flag: list[bool],
     progress_cb: Callable[[int, int, str], None],
@@ -254,22 +261,24 @@ def run_batch_in_thread(
     options["timeout"] = timeout
 
     # Save options for next time
-    save_batch_options_fn({
-        "input_dir": options["input_dir"],
-        "output_dir": options["output_dir"] or "",
-        "visits": options["visits"],
-        "timeout": options["timeout"],
-        "skip_analyzed": options["skip_analyzed"],
-        "save_analyzed_sgf": options["save_analyzed_sgf"],
-        "generate_karte": options["generate_karte"],
-        "generate_summary": options["generate_summary"],
-        "karte_player_filter": options["karte_player_filter"],
-        "min_games_per_player": options["min_games_per_player"],
-        "variable_visits": options["variable_visits"],
-        "jitter_pct": options["jitter_pct"],
-        "deterministic": options["deterministic"],
-        "sound_on_finish": options["sound_on_finish"],
-    })
+    save_batch_options_fn(
+        {
+            "input_dir": options["input_dir"],
+            "output_dir": options["output_dir"] or "",
+            "visits": options["visits"],
+            "timeout": options["timeout"],
+            "skip_analyzed": options["skip_analyzed"],
+            "save_analyzed_sgf": options["save_analyzed_sgf"],
+            "generate_karte": options["generate_karte"],
+            "generate_summary": options["generate_summary"],
+            "karte_player_filter": options["karte_player_filter"],
+            "min_games_per_player": options["min_games_per_player"],
+            "variable_visits": options["variable_visits"],
+            "jitter_pct": options["jitter_pct"],
+            "deterministic": options["deterministic"],
+            "sound_on_finish": options["sound_on_finish"],
+        }
+    )
 
     # Get skill preset for karte/summary generation
     skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
@@ -321,6 +330,7 @@ def run_batch_in_thread(
             # User-facing notification via status bar
             def show_error(dt: float) -> None:
                 ctx.controls.set_status(error_msg, STATUS_ERROR)
+
             Clock.schedule_once(show_error, 0)
 
             # Return failed result - set cancelled=True for unambiguous failure
@@ -350,8 +360,8 @@ def run_batch_in_thread(
         variable_visits=options["variable_visits"],
         jitter_pct=options["jitter_pct"],
         deterministic=options["deterministic"],
-        analysis_engine=analysis_engine,      # Phase 87.5
-        leela_engine=leela_engine,            # Phase 87.5
+        analysis_engine=analysis_engine,  # Phase 87.5
+        leela_engine=leela_engine,  # Phase 87.5
     )
 
     # Play completion sound if enabled

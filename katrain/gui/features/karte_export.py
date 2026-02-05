@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def determine_user_color(game: "Game", username: str) -> str | None:
+def determine_user_color(game: Game, username: str) -> str | None:
     """Determine user's color based on player names in SGF.
 
     Args:
@@ -77,7 +77,7 @@ def determine_user_color(game: "Game", username: str) -> str | None:
         return None
 
 
-def do_export_karte(ctx: "FeatureContext", open_settings_callback: Any) -> None:
+def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """Schedule karte export on the main Kivy thread.
 
     Args:
@@ -89,7 +89,7 @@ def do_export_karte(ctx: "FeatureContext", open_settings_callback: Any) -> None:
     Clock.schedule_once(lambda dt: do_export_karte_ui(ctx, open_settings_callback), 0)
 
 
-def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> None:
+def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """Export karte using myKatrain settings.
 
     Args:
@@ -132,7 +132,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
     )
     base_name = base_name[:50]  # Truncate to avoid overly long filenames
     # Sanitize filename: replace problematic characters
-    base_name = re.sub(r'[<>:"/\\|?*]', '_', base_name)
+    base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)
 
     # Check if analysis data exists
     snapshot = ctx.game.build_eval_snapshot()
@@ -172,9 +172,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
                 title=i18n._("Warning"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
-                    text=i18n._(
-                        f"Could not determine color for '{default_user}'.\nExporting both players."
-                    ),
+                    text=i18n._(f"Could not determine color for '{default_user}'.\nExporting both players."),
                     halign="center",
                     valign="middle",
                     font_name=Theme.DEFAULT_FONT,
@@ -200,10 +198,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
                 title=i18n._("Error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
-                    text=f"Failed to save karte:\n{exc}",
-                    halign="center",
-                    valign="middle",
-                    font_name=Theme.DEFAULT_FONT
+                    text=f"Failed to save karte:\n{exc}", halign="center", valign="middle", font_name=Theme.DEFAULT_FONT
                 ),
                 size_hint=(0.5, 0.3),
             ).open()
@@ -218,7 +213,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         text=i18n._("mykatrain:export-karte:success-msg").format(files=files_text),
         halign="center",
         valign="middle",
-        font_name=Theme.DEFAULT_FONT
+        font_name=Theme.DEFAULT_FONT,
     )
     content.add_widget(msg_label)
 
@@ -230,10 +225,10 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         Clipboard.copy(files_text)
         instance.text = i18n._("mykatrain:clipboard-copied")
         # Reset text after 2 seconds
-        Clock.schedule_once(lambda dt: setattr(instance, 'text', i18n._("mykatrain:clipboard-copy")), 2)
+        Clock.schedule_once(lambda dt: setattr(instance, "text", i18n._("mykatrain:clipboard-copy")), 2)
 
     copy_btn.bind(on_release=copy_path)
-    
+
     btn_box.add_widget(copy_btn)
     btn_box.add_widget(close_btn)
     content.add_widget(btn_box)

@@ -18,12 +18,12 @@ from katrain.core.analysis.cluster_classifier import (
     _get_cluster_context_for_move,
 )
 from katrain.core.analysis.critical_moves import select_critical_moves
-from katrain.core.analysis.reason_generator import generate_reason_safe
-from katrain.core.batch.stats import get_area_from_gtp
 from katrain.core.analysis.logic_loss import detect_engine_type
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
+from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.analysis.time import get_pacing_icon
 from katrain.core.batch.helpers import format_wr_gap
+from katrain.core.batch.stats import get_area_from_gtp
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.eval_metrics import classify_mistake, get_canonical_loss_from_move
 from katrain.core.reports.karte.helpers import format_loss_with_engine_suffix
@@ -42,9 +42,7 @@ def _mistake_label_from_loss(
     """Classify a loss value using thresholds."""
     if loss_val is None:
         return "unknown"
-    category = classify_mistake(
-        score_loss=loss_val, winrate_loss=None, score_thresholds=thresholds
-    )
+    category = classify_mistake(score_loss=loss_val, winrate_loss=None, score_thresholds=thresholds)
     return category.value
 
 
@@ -128,6 +126,7 @@ def get_context_info_for_move(game: Any, move_eval: MoveEval) -> dict[str, Any]:
     except Exception as e:
         # Unexpected: Internal bug - traceback required
         import traceback
+
         if game.katrain:
             game.katrain.log(
                 f"Unexpected context error for move #{move_eval.move_number}: {e}\n{traceback.format_exc()}",
@@ -158,22 +157,14 @@ def important_lines_for(
     player_moves = [mv for mv in ctx.important_moves if mv.player == player][:max_count]
 
     # Add "(候補)" suffix for LOW confidence
-    title_suffix = (
-        " (候補)" if ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW else ""
-    )
-    lines = [
-        f"## Important Moves ({label}){title_suffix} Top {len(player_moves) or max_count}"
-    ]
+    title_suffix = " (候補)" if ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW else ""
+    lines = [f"## Important Moves ({label}){title_suffix} Top {len(player_moves) or max_count}"]
 
     if player_moves:
         # Table header
+        lines.append("| # | Time | P | Coord | Loss | Best | Candidates | WR Gap | Danger | Mistake | MTag | Reason |")
         lines.append(
-            "| # | Time | P | Coord | Loss | Best | Candidates | WR Gap | "
-            "Danger | Mistake | MTag | Reason |"
-        )
-        lines.append(
-            "|---|------|---|-------|------|------|------------|----------|"
-            "--------|---------|------|--------|"
+            "|---|------|---|-------|------|------|------------|----------|--------|---------|------|--------|"
         )
 
         for mv in player_moves:
@@ -183,18 +174,12 @@ def important_lines_for(
             reason_str = ", ".join(mv.reason_tags) if mv.reason_tags else "-"
 
             # Meaning tag label
-            meaning_tag_label = (
-                get_meaning_tag_label_safe(mv.meaning_tag_id, ctx.lang) or "-"
-            )
+            meaning_tag_label = get_meaning_tag_label_safe(mv.meaning_tag_id, ctx.lang) or "-"
 
             # Context info (from PRE-MOVE node)
             context = get_context_info_for_move(ctx.game, mv)
             best_move_str = context["best_move"] or "-"
-            candidates_str = (
-                str(context["candidates"])
-                if context["candidates"] is not None
-                else "-"
-            )
+            candidates_str = str(context["candidates"]) if context["candidates"] is not None else "-"
             wr_gap_str = format_wr_gap(context["best_gap"])
             danger_str = context["danger"] or "-"
 
@@ -296,10 +281,9 @@ def critical_3_section_for(
     except Exception as exc:
         # Unexpected: Internal bug - traceback required
         import traceback
+
         if ctx.game.katrain:
-            ctx.game.katrain.log(
-                f"Unexpected Critical 3 error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG
-            )
+            ctx.game.katrain.log(f"Unexpected Critical 3 error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG)
         return []
 
     # Filter by player
@@ -308,11 +292,7 @@ def critical_3_section_for(
         return []
 
     unit = "目" if ctx.lang == "ja" else " pts"
-    intro = (
-        "最も重要なミス（重点復習用）:"
-        if ctx.lang == "ja"
-        else "Most impactful mistakes for focused review:"
-    )
+    intro = "最も重要なミス（重点復習用）:" if ctx.lang == "ja" else "Most impactful mistakes for focused review:"
 
     lines = [f"## Critical 3 ({label})", ""]
     lines.append(intro)
@@ -345,20 +325,14 @@ def critical_3_section_for(
 
         # Phase 83: Show complexity note (using ctx.lang for consistency)
         if cm.complexity_discounted:
-            chaos_note = (
-                "乱戦局面（評価の変動大）"
-                if ctx.lang == "ja"
-                else "Complex position (high volatility)"
-            )
+            chaos_note = "乱戦局面（評価の変動大）" if ctx.lang == "ja" else "Complex position (high volatility)"
             lines.append(f"- **Note**: {chaos_note}")
 
         if cm.reason_tags:
             lines.append(f"- **Context**: {', '.join(cm.reason_tags)}")
         else:
             # Phase 82: Inject cluster classification when reason_tags is empty
-            cluster_context = _get_cluster_context_for_move(
-                ctx.game, cm.move_number, ctx.lang, stone_cache
-            )
+            cluster_context = _get_cluster_context_for_move(ctx.game, cm.move_number, ctx.lang, stone_cache)
             if cluster_context:
                 lines.append(f"- **Context**: {cluster_context}")
             else:

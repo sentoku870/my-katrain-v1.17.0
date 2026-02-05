@@ -17,6 +17,7 @@ Usage:
         TAB_RESET_KEYS,
     )
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ import logging
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any, cast
 
@@ -122,9 +123,7 @@ def export_settings(config: dict[str, Any], app_version: str) -> str:
         if not isinstance(values, dict):
             continue
         if section in EXCLUDED_KEYS:
-            section_filtered = {
-                k: v for k, v in values.items() if k not in EXCLUDED_KEYS[section]
-            }
+            section_filtered = {k: v for k, v in values.items() if k not in EXCLUDED_KEYS[section]}
         else:
             section_filtered = dict(values)
 
@@ -136,7 +135,7 @@ def export_settings(config: dict[str, Any], app_version: str) -> str:
     export_data = {
         "schema_version": SCHEMA_VERSION,
         "app_version": app_version,
-        "exported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "exported_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "sections": filtered,
     }
     return json.dumps(export_data, indent=2, ensure_ascii=False)
@@ -169,9 +168,7 @@ def parse_exported_settings(json_str: str) -> ExportedSettings:
 
     schema_ver = data.get("schema_version")
     if schema_ver != SCHEMA_VERSION:
-        raise ValueError(
-            f"Unsupported schema version: {schema_ver} (expected {SCHEMA_VERSION})"
-        )
+        raise ValueError(f"Unsupported schema version: {schema_ver} (expected {SCHEMA_VERSION})")
 
     sections = data.get("sections")
     if not isinstance(sections, dict):
@@ -198,7 +195,7 @@ def get_package_defaults() -> dict[str, Any]:
     from katrain.core.utils import find_package_resource
 
     package_config = find_package_resource("katrain/config.json")
-    with open(package_config, "r", encoding="utf-8") as f:
+    with open(package_config, encoding="utf-8") as f:
         return cast(dict[str, Any], json.load(f))
 
 
@@ -229,9 +226,7 @@ def create_backup_path(config_file_path: str) -> str:
     return f"{config_file_path}.backup.{timestamp}"
 
 
-def atomic_save_config(
-    config: dict[str, Any], config_file_path: str, indent: int = 4
-) -> None:
+def atomic_save_config(config: dict[str, Any], config_file_path: str, indent: int = 4) -> None:
     """Save config atomically using temp file and os.replace.
 
     This ensures that the config file is never left in a corrupted state,
@@ -250,9 +245,7 @@ def atomic_save_config(
     if dirname:
         os.makedirs(dirname, exist_ok=True)
 
-    fd, temp_path = tempfile.mkstemp(
-        suffix=".json", prefix="config_", dir=dirname or "."
-    )
+    fd, temp_path = tempfile.mkstemp(suffix=".json", prefix="config_", dir=dirname or ".")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=indent, ensure_ascii=False)

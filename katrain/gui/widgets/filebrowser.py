@@ -41,13 +41,14 @@ a shortcut to the Documents directory added to the favorites bar::
 .. image:: _static/filebrowser.png
     :align: right
 """
+
 from __future__ import annotations
 
 import string
 from functools import partial
 from os import walk
 from os.path import dirname, expanduser, getmtime, isdir, isfile, join, sep
-from typing import Any, List
+from typing import Any
 
 from kivy import Config
 from kivy.clock import Clock
@@ -61,7 +62,7 @@ from kivy.utils import platform
 from katrain.gui.theme import Theme
 
 if platform == "win":
-    from ctypes import windll, create_unicode_buffer
+    from ctypes import create_unicode_buffer, windll
 
 
 def last_modified_first(files: list[str], filesystem: Any) -> list[str]:
@@ -287,10 +288,7 @@ class LinkTree(TreeView):
         nodes_new: list[tuple[str, str]] = []
         sig_new: list[str] = []
         for path, name in get_drives():
-            if platform == "win":
-                text = "{}({})".format((name + " ") if name else "", path)
-            else:
-                text = name
+            text = "{}({})".format(name + " " if name else "", path) if platform == "win" else name
             nodes_new.append((text, path))
             sig_new.append(text + path + sep)
         for node, sig in nodes:
@@ -303,7 +301,7 @@ class LinkTree(TreeView):
     def reload_favs(self, fav_list: list[tuple[str, str]]) -> None:
         user_path = get_home_directory()
         favs = self._favs
-        remove: List[Any] = []
+        remove: list[Any] = []
         for node in self.iterate_all_nodes(favs):
             if node != favs:
                 remove.append(node)
@@ -452,7 +450,7 @@ class I18NFileBrowser(BoxLayout):
         pass
 
     def __init__(self, **kwargs: Any) -> None:
-        super(I18NFileBrowser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         Clock.schedule_once(self._post_init)
 
     def _post_init(self, *largs: Any) -> None:

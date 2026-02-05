@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Risk Context Data Models.
 
 This module defines the core data structures for the Risk Context system:
@@ -13,11 +12,11 @@ Part of Phase 61: Risk Context Core.
 """
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Mapping
+from enum import StrEnum
+from typing import Any
 
 
-class RiskJudgmentType(str, Enum):
+class RiskJudgmentType(StrEnum):
     """Game situation judgment from the side-to-move perspective.
 
     Inherits from str for direct JSON serialization (no .value needed).
@@ -28,7 +27,7 @@ class RiskJudgmentType(str, Enum):
     CLOSE = "close"  # Close game (flexible strategy)
 
 
-class RiskBehavior(str, Enum):
+class RiskBehavior(StrEnum):
     """Move behavior classification based on complexity change.
 
     Inherits from str for direct JSON serialization (no .value needed).
@@ -103,9 +102,7 @@ class RiskContext:
             "score_lead_before": round(self.score_lead_before, 2),
             "risk_behavior": self.risk_behavior.value,
             "delta_stdev": round(self.delta_stdev, 3) if self.delta_stdev is not None else None,
-            "volatility_metric": (
-                round(self.volatility_metric, 3) if self.volatility_metric is not None else None
-            ),
+            "volatility_metric": (round(self.volatility_metric, 3) if self.volatility_metric is not None else None),
             "is_strategy_mismatch": self.is_strategy_mismatch,
             "mismatch_reason": self.mismatch_reason,
             "has_stdev_data": self.has_stdev_data,

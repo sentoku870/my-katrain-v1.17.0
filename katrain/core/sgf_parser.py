@@ -1,10 +1,11 @@
 import copy
-import chardet
 import logging
 import math
 import re
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
+
+import chardet
 
 
 class ParseError(Exception):
@@ -54,7 +55,7 @@ class Move:
         return cls(coords=(col_idx, row_num), player=player)
 
     @classmethod
-    def from_sgf(cls, sgf_coords: str, board_size: Tuple[int, int], player: str = "B") -> "Move":
+    def from_sgf(cls, sgf_coords: str, board_size: tuple[int, int], player: str = "B") -> "Move":
         """Initialize a move from SGF coordinates and player"""
         if sgf_coords == "" or (
             sgf_coords == "tt" and board_size[0] <= 19 and board_size[1] <= 19
@@ -65,7 +66,7 @@ class Move:
             player=player,
         )
 
-    def __init__(self, coords: Optional[Tuple[int, int]] = None, player: str = "B"):
+    def __init__(self, coords: tuple[int, int] | None = None, player: str = "B"):
         """Initialize a move from zero-based coordinates and player"""
         self.player = player
         self.coords = coords
@@ -88,7 +89,7 @@ class Move:
         assert self.coords is not None
         return Move.GTP_COORD[self.coords[0]] + str(self.coords[1] + 1)
 
-    def sgf(self, board_size: Tuple[int, int]) -> str:
+    def sgf(self, board_size: tuple[int, int]) -> str:
         """Returns SGF coordinates of the move"""
         if self.is_pass:
             return ""
@@ -112,18 +113,18 @@ class Move:
 
 
 class SGFNode:
-    children: List["SGFNode"]
-    properties: Dict[str, List[Any]]
-    moves_cache: Optional[List[Move]]
+    children: list["SGFNode"]
+    properties: dict[str, list[Any]]
+    moves_cache: list[Move] | None
     _parent: Optional["SGFNode"]
     _root: Optional["SGFNode"]
-    _depth: Optional[int]
+    _depth: int | None
 
     def __init__(
         self,
         parent: Optional["SGFNode"] = None,
-        properties: Optional[Dict[str, Any]] = None,
-        move: Optional[Move] = None,
+        properties: dict[str, Any] | None = None,
+        move: Move | None = None,
     ) -> None:
         self.children = []
         self.properties = defaultdict(list)
@@ -143,17 +144,17 @@ class SGFNode:
     def __repr__(self) -> str:
         return f"SGFNode({dict(self.properties)})"
 
-    def sgf_properties(self, **xargs: Any) -> Dict[str, List[Any]]:
+    def sgf_properties(self, **xargs: Any) -> dict[str, list[Any]]:
         """For hooking into in a subclass and overriding/formatting any additional properties to be output."""
         return copy.deepcopy(self.properties)
 
     @staticmethod
-    def order_children(children: List["SGFNode"]) -> List["SGFNode"]:
+    def order_children(children: list["SGFNode"]) -> list["SGFNode"]:
         """For hooking into in a subclass and overriding branch order."""
         return children
 
     @property
-    def ordered_children(self) -> List["SGFNode"]:
+    def ordered_children(self) -> list["SGFNode"]:
         return self.order_children(self.children)
 
     @staticmethod
@@ -176,7 +177,7 @@ class SGFNode:
                 ]
             )
 
-        stack: List[str | SGFNode] = [")", self, "("]
+        stack: list[str | SGFNode] = [")", self, "("]
         sgf_str = ""
         while stack:
             item = stack.pop()
@@ -191,7 +192,7 @@ class SGFNode:
                         stack.extend([")", c, "("])
         return sgf_str
 
-    def add_list_property(self, property: str, values: List[Any]) -> None:
+    def add_list_property(self, property: str, values: list[Any]) -> None:
         """Add some values to the property list."""
         # SiZe[19] ==> SZ[19] etc. for old SGF
         normalized_property = re.sub("[a-z]", "", property)
@@ -213,7 +214,7 @@ class SGFNode:
         """Get the first value of the property, typically when exactly one is expected."""
         return self.properties.get(property, [default])[0]
 
-    def clear_property(self, property: str) -> Optional[List[Any]]:
+    def clear_property(self, property: str) -> list[Any] | None:
         """Removes property if it exists."""
         return self.properties.pop(property, None)
 
@@ -248,7 +249,7 @@ class SGFNode:
         return self._depth
 
     @property
-    def board_size(self) -> Tuple[int, int]:
+    def board_size(self) -> tuple[int, int]:
         """Retrieves the root's SZ property, or 19 if missing. Parses it, and returns board size as a tuple x,y"""
         size = str(self.root.get_property("SZ", "19"))
         if ":" in size:
@@ -281,7 +282,7 @@ class SGFNode:
         return str(self.root.get_property("RU", "japanese"))
 
     @property
-    def moves(self) -> List[Move]:
+    def moves(self) -> list[Move]:
         """Returns all moves in the node - typically 'move' will be better."""
         if self.moves_cache is None:
             self.moves_cache = [
@@ -291,7 +292,7 @@ class SGFNode:
             ]
         return self.moves_cache
 
-    def _expanded_placements(self, player: Optional[str]) -> List[Move]:
+    def _expanded_placements(self, player: str | None) -> list[Move]:
         sgf_pl = player if player is not None else "E"  # AE
         placements = self.get_list_property("A" + sgf_pl, [])
         if not placements:
@@ -316,22 +317,22 @@ class SGFNode:
             return [Move.from_sgf(sgf_coord, player=player or "B", board_size=board_size) for sgf_coord in placements]
 
     @property
-    def placements(self) -> List[Move]:
+    def placements(self) -> list[Move]:
         """Returns all placements (AB/AW) in the node."""
         return [coord for pl in Move.PLAYERS for coord in self._expanded_placements(pl)]
 
     @property
-    def clear_placements(self) -> List[Move]:
+    def clear_placements(self) -> list[Move]:
         """Returns all AE clear square commends in the node."""
         return self._expanded_placements(None)
 
     @property
-    def move_with_placements(self) -> List[Move]:
+    def move_with_placements(self) -> list[Move]:
         """Returns all moves (B/W) and placements (AB/AW) in the node."""
         return self.placements + self.moves
 
     @property
-    def move(self) -> Optional[Move]:
+    def move(self) -> Move | None:
         """Returns the single move for the node if one exists, or None if no moves (or multiple ones) exist."""
         moves = self.moves
         if len(moves) == 1:
@@ -355,10 +356,10 @@ class SGFNode:
         return not self.children and not self.properties
 
     @property
-    def nodes_in_tree(self) -> List["SGFNode"]:
+    def nodes_in_tree(self) -> list["SGFNode"]:
         """Returns all nodes in the tree rooted at this node"""
-        stack: List[SGFNode] = [self]
-        nodes: List[SGFNode] = []
+        stack: list[SGFNode] = [self]
+        nodes: list[SGFNode] = []
         while stack:
             item = stack.pop(0)
             nodes.append(item)
@@ -366,9 +367,9 @@ class SGFNode:
         return nodes
 
     @property
-    def nodes_from_root(self) -> List["SGFNode"]:
+    def nodes_from_root(self) -> list["SGFNode"]:
         """Returns all nodes from the root up to this node, i.e. the moves played in the current branch of the game"""
-        nodes: List[SGFNode] = [self]
+        nodes: list[SGFNode] = [self]
         n: SGFNode = self
         while not n.is_root:
             assert n.parent is not None
@@ -544,7 +545,7 @@ class SGF:
                 values = re.split(r"\]\s*\[", value)
                 current_move.add_list_property(property, [SGFNode._unescape_value(v) for v in values])
         if self.ix < len(self.contents):
-            raise ParseError(f"Parse Error: unexpected character at {self.contents[self.ix:self.ix+25]}")
+            raise ParseError(f"Parse Error: unexpected character at {self.contents[self.ix : self.ix + 25]}")
         raise ParseError("Parse Error: expected ')' at end of input.")
 
     # NGF parser adapted from https://github.com/fohristiwhirl/gofish/
@@ -620,21 +621,18 @@ class SGF:
         for line in lines:
             line = line.strip().upper()
 
-            if len(line) >= 7:
-                if line[0:2] == "PM":
-                    if line[4] in ["B", "W"]:
+            if len(line) >= 7 and line[0:2] == "PM" and line[4] in ["B", "W"]:
+                # move format is similar to SGF, but uppercase and out-by-1
 
-                        # move format is similar to SGF, but uppercase and out-by-1
+                key = line[4]
+                raw_move = line[5:7].lower()
+                if raw_move == "aa":
+                    value = ""  # pass
+                else:
+                    value = chr(ord(raw_move[0]) - 1) + chr(ord(raw_move[1]) - 1)
 
-                        key = line[4]
-                        raw_move = line[5:7].lower()
-                        if raw_move == "aa":
-                            value = ""  # pass
-                        else:
-                            value = chr(ord(raw_move[0]) - 1) + chr(ord(raw_move[1]) - 1)
-
-                        node = cls._NODE_CLASS(parent=node)
-                        node.set_property(key, value)
+                node = cls._NODE_CLASS(parent=node)
+                node.set_property(key, value)
 
         if len(root.children) == 0:  # We'll assume we failed in this case
             raise ParseError("Found no moves")
@@ -648,10 +646,9 @@ class SGF:
             name = raw
             rank = ""
             foo = raw.split("(")
-            if len(foo) == 2:
-                if foo[1][-1] == ")":
-                    name = foo[0].strip()
-                    rank = foo[1][0:-1]
+            if len(foo) == 2 and foo[1][-1] == ")":
+                name = foo[0].strip()
+                rank = foo[1][0:-1]
             return name, rank
 
         def gib_make_result(grlt: int, zipsu: int) -> str:
@@ -720,7 +717,7 @@ class SGF:
                 if "DT" not in root.properties:
                     date_match = re.search(r"C(\d\d\d\d):(\d\d):(\d\d)", line)
                     if date_match is not None:
-                        date = "{}-{}-{}".format(date_match.group(1), date_match.group(2), date_match.group(3))
+                        date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
                         root.set_property("DT", date)
 
                 if "RE" not in root.properties:

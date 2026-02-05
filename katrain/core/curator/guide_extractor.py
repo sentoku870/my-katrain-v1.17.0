@@ -83,7 +83,7 @@ class ReplayGuide:
 
 
 def extract_replay_guide(
-    game: "Game",
+    game: Game,
     game_id: str,
     game_title: str,
     total_moves: int,

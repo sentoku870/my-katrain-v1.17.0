@@ -11,10 +11,10 @@ Radar Layout:
 - Axis 0 (Opening) at 12 o'clock (top)
 - Clockwise order: Opening -> Fighting -> Endgame -> Stability -> Awareness
 """
+
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
 
 NUM_AXES = 5
 ANGLE_OFFSET_DEG = 90  # 12 o'clock position (top) = 90 degrees
@@ -26,9 +26,9 @@ NEUTRAL_SCORE = 3.0
 def calculate_vertex(
     axis_index: int,
     score: float,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     max_radius: float,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Calculate (x, y) coordinate from axis index (0-4) and score (1.0-5.0).
 
     Args:
@@ -58,15 +58,15 @@ def calculate_vertex(
 
 def get_pentagon_points(
     level: float,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     max_radius: float,
-) -> List[float]:
+) -> list[float]:
     """Get regular pentagon points for specified level (for grid).
 
     Returns:
         [x0, y0, x1, y1, ..., x0, y0] closed 12-element list
     """
-    points: List[float] = []
+    points: list[float] = []
     for i in range(NUM_AXES):
         x, y = calculate_vertex(i, level, center, max_radius)
         points.extend([x, y])
@@ -75,16 +75,16 @@ def get_pentagon_points(
 
 
 def get_data_polygon(
-    scores: Dict[str, Optional[float]],
-    center: Tuple[float, float],
+    scores: dict[str, float | None],
+    center: tuple[float, float],
     max_radius: float,
-) -> List[float]:
+) -> list[float]:
     """Generate data polygon points from score dictionary.
 
     Args:
         scores: {"opening": 3.5, "fighting": None, ...}
     """
-    points: List[float] = []
+    points: list[float] = []
     for i, axis in enumerate(AXIS_ORDER):
         score = scores.get(axis) or NEUTRAL_SCORE
         x, y = calculate_vertex(i, score, center, max_radius)
@@ -95,10 +95,10 @@ def get_data_polygon(
 
 def get_label_position(
     axis_index: int,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     max_radius: float,
     offset: float = 1.18,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Get axis label position (outside the pentagon).
 
     IMPORTANT: Must use the same angle formula as calculate_vertex!
@@ -120,9 +120,9 @@ def _is_valid_coord(value: float) -> bool:
 
 
 def build_mesh_data(
-    polygon: List[float],
-    center: Tuple[float, float],
-) -> Tuple[List[float], List[int]]:
+    polygon: list[float],
+    center: tuple[float, float],
+) -> tuple[list[float], list[int]]:
     """Generate vertices and indices for Kivy Mesh (triangle fan).
 
     Returns:
@@ -145,7 +145,7 @@ def build_mesh_data(
     if not all(_is_valid_coord(v) for v in polygon):
         return ([], [])
 
-    vertices: List[float] = [center[0], center[1], 0.0, 0.0]
+    vertices: list[float] = [center[0], center[1], 0.0, 0.0]
     n = (len(polygon) - 2) // 2
 
     # Guard: Need at least 3 vertices for a triangle
@@ -155,14 +155,14 @@ def build_mesh_data(
     for i in range(n):
         vertices.extend([polygon[i * 2], polygon[i * 2 + 1], 0.0, 0.0])
 
-    indices: List[int] = []
+    indices: list[int] = []
     for i in range(1, n):
         indices.extend([0, i, i + 1])
     indices.extend([0, n, 1])
     return (vertices, indices)
 
 
-def tier_to_color(tier_value: str) -> List[float]:
+def tier_to_color(tier_value: str) -> list[float]:
     """Get color from tier string."""
     colors = {
         "tier_5": [0.2, 0.7, 0.2, 1.0],  # Green (Advanced/Elite)

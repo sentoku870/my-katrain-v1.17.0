@@ -6,7 +6,8 @@ Extracted from KaTrainGui for improved testability.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from katrain.core.eval_metrics import QuizItem
@@ -34,8 +35,8 @@ class QuizManager:
 
     def __init__(
         self,
-        get_ctx: Callable[[], "FeatureContext"],
-        get_active_review_controller: Callable[[], "ActiveReviewController" | None],
+        get_ctx: Callable[[], FeatureContext],
+        get_active_review_controller: Callable[[], ActiveReviewController | None],
         update_state_fn: Callable[[], None],
         logger: Callable[[str, int], None],
     ) -> None:
@@ -62,7 +63,7 @@ class QuizManager:
             self._update_state_fn,
         )
 
-    def start_quiz_session(self, quiz_items: list["QuizItem"]) -> None:
+    def start_quiz_session(self, quiz_items: list[QuizItem]) -> None:
         """Start quiz session. Disables Active Review if active.
 
         Args:

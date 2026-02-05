@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Set
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
@@ -137,7 +137,7 @@ class TrainingSetManifest:
     created_at: str = ""
     games: list[GameEntry] = field(default_factory=list)
 
-    def get_game_ids(self) -> Set[str]:
+    def get_game_ids(self) -> set[str]:
         """重複チェック用にgame_idセットを返す。"""
         return {g.game_id for g in self.games}
 
@@ -245,9 +245,7 @@ class PlayerProfile:
     updated_at: str = ""
     per_context: dict[str, ContextProfile] = field(default_factory=dict)
 
-    def get_bucket_profile(
-        self, context: Context, bucket_key: str
-    ) -> BucketProfile | None:
+    def get_bucket_profile(self, context: Context, bucket_key: str) -> BucketProfile | None:
         """指定されたContext×Bucketのプロファイルを取得。
 
         Args:

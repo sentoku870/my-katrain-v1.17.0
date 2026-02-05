@@ -8,7 +8,7 @@ import re
 import stat
 import threading
 import time
-from typing import Any, Callable
+from typing import Any
 from zipfile import ZipFile
 
 import urllib3
@@ -18,13 +18,13 @@ from kivy.properties import BooleanProperty, ListProperty, NumericProperty, Obje
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from katrain.gui.widgets.factory import Label, Popup
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.textfield import MDTextField
 
+from katrain.common.model_labels import classify_model_strength, get_model_basename
 from katrain.core.ai import ai_rank_estimation, game_report
 from katrain.core.constants import (
     AI_CONFIG_DEFAULT,
@@ -36,30 +36,24 @@ from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_INFO,
+    PLAYER_HUMAN,
     SGF_INTERNAL_COMMENTS_MARKER,
     STATUS_INFO,
-    PLAYER_HUMAN,
-    ADDITIONAL_MOVE_ORDER,
 )
 from katrain.core.engine import KataGoEngine
 from katrain.core.lang import i18n, rank_label
 from katrain.core.sgf_parser import Move
-from katrain.core.utils import PATHS, find_package_resource, evaluation_class
+from katrain.core.utils import PATHS, find_package_resource
 from katrain.gui.kivyutils import (
     BackgroundMixin,
     I18NSpinner,
-    BackgroundLabel,
-    TableHeaderLabel,
     TableCellLabel,
+    TableHeaderLabel,
     TableStatLabel,
-    PlayerInfo,
-    SizedRectangleButton,
-    AutoSizedRectangleButton,
 )
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Label, Popup
 from katrain.gui.widgets.progress_loader import ProgressLoader
-
-from katrain.common.model_labels import classify_model_strength, get_model_basename
 
 
 def _get_app_gui() -> Any:
@@ -337,6 +331,7 @@ class ConfigTimerPopup(QuickConfigGui):
         self.katrain.update_state()
         return set()
 
+
 class NewGamePopup(QuickConfigGui):
     mode = StringProperty("newgame")
 
@@ -410,6 +405,7 @@ class NewGamePopup(QuickConfigGui):
         self.update_playerinfo()  # name
         return set()
 
+
 def wrap_anchor(widget: Any) -> AnchorLayout:
     anchor = AnchorLayout()
     anchor.add_widget(widget)
@@ -439,7 +435,7 @@ class ConfigTeacherPopup(QuickConfigGui):
             self.options_grid.add_widget(DescriptionLabel(text=i18n._(k), font_name=i18n.font_name, font_size=dp(17)))
 
         for i, color, threshold, undo, show_dot, savesgf in list(
-            zip(range(len(thresholds)), Theme.EVAL_COLORS[theme], thresholds, undos, show_dots, savesgfs)
+            zip(range(len(thresholds)), Theme.EVAL_COLORS[theme], thresholds, undos, show_dots, savesgfs, strict=False)
         )[::-1]:
             self.add_option_widgets(
                 [
@@ -457,9 +453,9 @@ class ConfigTeacherPopup(QuickConfigGui):
         self.build_and_set_properties()
         return set()
 
+
 class DescriptionLabel(Label):
     font_name = StringProperty(Theme.DEFAULT_FONT)
-
 
 
 class ConfigAIPopup(QuickConfigGui):
@@ -524,6 +520,7 @@ class ConfigAIPopup(QuickConfigGui):
         Clock.schedule_once(self.katrain.controls.update_players, 0)
         return set()
 
+
 class EngineRecoveryPopup(QuickConfigGui):
     error_message = StringProperty("")
     code = ObjectProperty(None)
@@ -573,9 +570,7 @@ class EngineRecoveryPopup(QuickConfigGui):
 
         result = save_diagnostics_zip(self.katrain, self.error_message)
         if result:
-            self.katrain.log(
-                i18n._("mykatrain:recovery:saved").format(path=result), OUTPUT_INFO
-            )
+            self.katrain.log(i18n._("mykatrain:recovery:saved").format(path=result), OUTPUT_INFO)
             open_file_in_folder(result)
 
     def on_copy_log(self) -> None:
@@ -622,7 +617,12 @@ class BaseConfigPopup(QuickConfigGui):
 
     def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
-        self.paths = [self.katrain.config("engine/model"), self.katrain.config("engine/humanlike_model"), "katrain/models", DATA_FOLDER]
+        self.paths = [
+            self.katrain.config("engine/model"),
+            self.katrain.config("engine/humanlike_model"),
+            "katrain/models",
+            DATA_FOLDER,
+        ]
         self.katago_paths = [self.katrain.config("engine/katago"), DATA_FOLDER]
         self.last_clicked_download_models = 0.0
 
@@ -689,7 +689,9 @@ class BaseConfigPopup(QuickConfigGui):
             key=lambda descpath: ("Recommended" not in descpath[0], "  -  " not in descpath[0], descpath[0]),
         )
         humanlike_models_available_msg = i18n._("models available").format(num=len(humanlike_model_files_with_desc))
-        self.humanlike_model_files.values = [humanlike_models_available_msg] + [desc for desc, path in humanlike_model_files_with_desc]
+        self.humanlike_model_files.values = [humanlike_models_available_msg] + [
+            desc for desc, path in humanlike_model_files_with_desc
+        ]
         self.humanlike_model_files.value_keys = [""] + [path for desc, path in humanlike_model_files_with_desc]
         self.humanlike_model_files.text = humanlike_models_available_msg
 
@@ -779,7 +781,9 @@ class BaseConfigPopup(QuickConfigGui):
 
         for name, url in {**self.MODELS, **dist_models}.items():
             filename = os.path.split(url)[1]
-            if not any(os.path.split(f)[1] == filename for f in self.model_files.values + self.humanlike_model_files.values):
+            if not any(
+                os.path.split(f)[1] == filename for f in self.model_files.values + self.humanlike_model_files.values
+            ):
                 savepath = os.path.expanduser(os.path.join(DATA_FOLDER, filename))
                 savepath_tmp = savepath + ".part"
                 self.katrain.log(f"Downloading {name} from {url} to {savepath_tmp}", OUTPUT_INFO)
@@ -902,7 +906,6 @@ class ConfigPopup(BaseConfigPopup):
         MDApp.get_running_app().bind(language=self.check_models)
         MDApp.get_running_app().bind(language=self.check_katas)
 
-
     def get_model_display_text(self, model_path: str) -> str:
         """Get localized display text for model.
 
@@ -925,7 +928,7 @@ class ConfigPopup(BaseConfigPopup):
         # Simplify: Treat non-empty path as enabled
         model_path = self.humanlike_model_path.text
         enabled = bool(model_path)
-        
+
         if enabled:
             model = model_path
             last = model_path
@@ -946,7 +949,14 @@ class ConfigPopup(BaseConfigPopup):
         if enabled and not effective_on:
             self.katrain.controls.set_status(i18n._("humanlike:forced_off"), STATUS_INFO)
 
-        ignore = {"max_visits", "fast_visits", "max_time", "enable_ownership", "wide_root_noise", "humanlike_model_last"}
+        ignore = {
+            "max_visits",
+            "fast_visits",
+            "max_time",
+            "enable_ownership",
+            "wide_root_noise",
+            "humanlike_model_last",
+        }
         detected_restart = [key for key in updated if "engine" in key and not any(ig in key for ig in ignore)]
         if detected_restart:
 
@@ -1069,7 +1079,7 @@ class GameReportPopup(BoxLayout):
         table.add_widget(TableHeaderLabel(text=i18n._("header:keystats"), background_color=Theme.BACKGROUND_COLOR))
         table.add_widget(TableHeaderLabel(text="", background_color=Theme.BACKGROUND_COLOR))
 
-        for i, (label, fmt, stat, scale, more_is_better) in enumerate(
+        for _i, (label, fmt, stat, scale, more_is_better) in enumerate(
             [
                 ("accuracy", "{:.1f}", "accuracy", 100, True),
                 ("meanpointloss", "{:.2f}", "mean_ptloss", 5, False),
@@ -1091,7 +1101,7 @@ class GameReportPopup(BoxLayout):
                     ),
                     background_color=Theme.BOX_BACKGROUND_COLOR,
                 )
-                for (bw, side) in zip("BW", ["left", "right"])
+                for (bw, side) in zip("BW", ["left", "right"], strict=False)
             }
             table.add_widget(statcell["B"])
             table.add_widget(TableCellLabel(text=i18n._(f"stat:{label}"), background_color=Theme.BOX_BACKGROUND_COLOR))
@@ -1101,7 +1111,7 @@ class GameReportPopup(BoxLayout):
         table.add_widget(TableHeaderLabel(text=i18n._("stats:pointslost"), background_color=Theme.BACKGROUND_COLOR))
         table.add_widget(TableHeaderLabel(text=i18n._("header:num moves"), background_color=Theme.BACKGROUND_COLOR))
 
-        for i, (col, label, pt) in enumerate(zip(colors[::-1], labels[::-1], thresholds[::-1])):
+        for i, (col, label, _pt) in enumerate(zip(colors[::-1], labels[::-1], thresholds[::-1], strict=False)):
             statcell = {
                 bw: TableStatLabel(
                     text=str(histogram[i][bw]),
@@ -1111,7 +1121,7 @@ class GameReportPopup(BoxLayout):
                     bar_color=col,
                     background_color=Theme.BOX_BACKGROUND_COLOR,
                 )
-                for (bw, side) in zip("BW", ["left", "right"])
+                for (bw, side) in zip("BW", ["left", "right"], strict=False)
             }
             table.add_widget(statcell["B"])
             table.add_widget(TableCellLabel(text=label, background_color=col))

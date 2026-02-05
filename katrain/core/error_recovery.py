@@ -5,14 +5,15 @@ Thread-safe deduplication with deterministic event IDs.
 
 Python 3.9 compatible - uses Optional/Union instead of PEP604.
 """
+
 import hashlib
 import threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from katrain.core.diagnostics import DiagnosticsBundle
+    pass
 
 
 class DiagnosticsTrigger(Enum):
@@ -33,20 +34,16 @@ class RecoveryEvent:
     event_id: str  # Deterministic, for deduplication
 
     @staticmethod
-    def create(
-        trigger: DiagnosticsTrigger, code: str, error_message: str
-    ) -> "RecoveryEvent":
+    def create(trigger: DiagnosticsTrigger, code: str, error_message: str) -> "RecoveryEvent":
         """Create event with deterministic SHA256-based ID."""
         raw = f"{trigger.value}:{code}:{error_message}"
         event_id = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
-        return RecoveryEvent(
-            trigger=trigger, error_message=error_message, event_id=event_id
-        )
+        return RecoveryEvent(trigger=trigger, error_message=error_message, event_id=event_id)
 
 
 # Thread-safe deduplication (single gate)
 _dedupe_lock = threading.Lock()
-_last_dump_event_id: Optional[str] = None
+_last_dump_event_id: str | None = None
 
 
 def should_auto_dump(event: RecoveryEvent) -> bool:

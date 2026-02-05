@@ -20,23 +20,23 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from enum import Enum
+from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Mapping, cast
+from typing import Any, cast
 
 _logger = logging.getLogger("katrain.core.analysis.skill_radar")
 
 from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
-
 
 # =============================================================================
 # Enums
 # =============================================================================
 
 
-class RadarAxis(str, Enum):
+class RadarAxis(StrEnum):
     """5-axis radar dimensions for skill evaluation."""
 
     OPENING = "opening"  # 序盤力
@@ -46,7 +46,7 @@ class RadarAxis(str, Enum):
     AWARENESS = "awareness"  # 感性（AI一致率）
 
 
-class SkillTier(str, Enum):
+class SkillTier(StrEnum):
     """Skill tier classification (Tier 1-5 + Unknown)."""
 
     TIER_1 = "tier_1"  # Novice (初学) - 15級以下
@@ -238,9 +238,7 @@ class RadarMetrics:
                 "awareness": self.awareness_tier.value,
             },
             "overall_tier": self.overall_tier.value,
-            "valid_move_counts": {
-                axis.value: count for axis, count in self.valid_move_counts.items()
-            },
+            "valid_move_counts": {axis.value: count for axis, count in self.valid_move_counts.items()},
         }
 
 
@@ -334,10 +332,7 @@ class AggregatedRadarResult:
             "games_aggregated": self.games_aggregated,
             "overall_tier": self.overall_tier.value,
             "valid_move_counts": {
-                axis.value: count
-                for axis, count in sorted(
-                    self.valid_move_counts.items(), key=lambda x: x[0].value
-                )
+                axis.value: count for axis, count in sorted(self.valid_move_counts.items(), key=lambda x: x[0].value)
             },
         }
 
@@ -442,10 +437,7 @@ def is_garbage_time(winrate_before: float | None) -> bool:
     """
     if winrate_before is None:
         return False
-    return (
-        winrate_before >= GARBAGE_TIME_WINRATE_HIGH
-        or winrate_before <= GARBAGE_TIME_WINRATE_LOW
-    )
+    return winrate_before >= GARBAGE_TIME_WINRATE_HIGH or winrate_before <= GARBAGE_TIME_WINRATE_LOW
 
 
 # =============================================================================
@@ -641,16 +633,12 @@ def aggregate_radar(
     for axis in RadarAxis:
         # Collect scores from games where this axis is valid (tier != UNKNOWN)
         valid_scores = [
-            get_axis_score(rm, axis)
-            for rm in radar_list
-            if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
+            get_axis_score(rm, axis) for rm in radar_list if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
         ]
 
         # Collect counts from games where this axis is valid (filtered)
         valid_counts = [
-            rm.valid_move_counts.get(axis, 0)
-            for rm in radar_list
-            if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
+            rm.valid_move_counts.get(axis, 0) for rm in radar_list if get_axis_tier(rm, axis) != SkillTier.TIER_UNKNOWN
         ]
 
         if valid_scores:
@@ -668,9 +656,7 @@ def aggregate_radar(
     overall_tier = compute_overall_tier(axis_tiers_list)
 
     # Check minimum valid axes for overall tier
-    valid_axis_count = sum(
-        1 for t in axis_tiers_list if t != SkillTier.TIER_UNKNOWN
-    )
+    valid_axis_count = sum(1 for t in axis_tiers_list if t != SkillTier.TIER_UNKNOWN)
     if valid_axis_count < MIN_VALID_AXES_FOR_OVERALL:
         overall_tier = SkillTier.TIER_UNKNOWN
 
@@ -786,9 +772,7 @@ def compute_endgame_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     filtered = [
         m
         for m in moves
-        if m.move_number >= ENDGAME_START_MOVE
-        and not is_garbage_time(m.winrate_before)
-        and m.points_lost is not None
+        if m.move_number >= ENDGAME_START_MOVE and not is_garbage_time(m.winrate_before) and m.points_lost is not None
     ]
     if not filtered:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
@@ -821,9 +805,7 @@ def compute_stability_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     if not moves:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
 
-    blunders = len(
-        [m for m in moves if m.mistake_category == MistakeCategory.BLUNDER]
-    )
+    blunders = len([m for m in moves if m.mistake_category == MistakeCategory.BLUNDER])
     rate = blunders / len(moves)
     tier, score = blunder_rate_to_tier_and_score(rate)
     return tier, score, len(moves)
@@ -854,8 +836,7 @@ def compute_awareness_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     valid = [
         m
         for m in moves
-        if m.position_difficulty != PositionDifficulty.ONLY_MOVE
-        and not is_garbage_time(m.winrate_before)
+        if m.position_difficulty != PositionDifficulty.ONLY_MOVE and not is_garbage_time(m.winrate_before)
     ]
     if not valid:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
@@ -900,9 +881,7 @@ def compute_radar_from_moves(
     stability_tier, stability_score, stability_count = compute_stability_axis(moves)
     awareness_tier, awareness_score, awareness_count = compute_awareness_axis(moves)
 
-    overall_tier = compute_overall_tier(
-        [opening_tier, fighting_tier, endgame_tier, stability_tier, awareness_tier]
-    )
+    overall_tier = compute_overall_tier([opening_tier, fighting_tier, endgame_tier, stability_tier, awareness_tier])
 
     return RadarMetrics(
         opening=opening_score,

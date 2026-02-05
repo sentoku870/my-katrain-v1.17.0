@@ -23,7 +23,6 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
     cast,
 )
 
@@ -129,7 +128,7 @@ class EngineStats:
     analyzed_moves: int
 
     @classmethod
-    def empty(cls) -> "EngineStats":
+    def empty(cls) -> EngineStats:
         """空の統計を返す（解析手0の場合用）。"""
         return cls(0.0, 0.0, 0, 0, 0, 0)
 
@@ -245,7 +244,7 @@ def compute_spearman_manual(paired: list[tuple[float, float]]) -> float | None:
     mean_x = sum(rank_x) / n
     mean_y = sum(rank_y) / n
 
-    num = sum((rx - mean_x) * (ry - mean_y) for rx, ry in zip(rank_x, rank_y))
+    num = sum((rx - mean_x) * (ry - mean_y) for rx, ry in zip(rank_x, rank_y, strict=False))
     den_x = sum((rx - mean_x) ** 2 for rx in rank_x) ** 0.5
     den_y = sum((ry - mean_y) ** 2 for ry in rank_y) ** 0.5
 
@@ -337,7 +336,7 @@ def _extract_leela_loss(node: Any) -> float | None:
 
 
 def build_comparison_from_game(
-    game: "Game",
+    game: Game,
     score_thresholds: tuple[float, float, float | None] | None = None,
     divergent_threshold: float = 1.0,
     divergent_limit: int = 5,
@@ -441,16 +440,12 @@ def build_comparison_from_game(
     # Step 6: 相関係数（手動Spearman、N<5でNone）
     # Note: Equivalent to `if c.has_both` but enables mypy type narrowing
     paired = [
-        (c.katago_loss, c.leela_loss)
-        for c in comparisons
-        if c.katago_loss is not None and c.leela_loss is not None
+        (c.katago_loss, c.leela_loss) for c in comparisons if c.katago_loss is not None and c.leela_loss is not None
     ]
     correlation = compute_spearman_manual(paired) if len(paired) >= 5 else None
 
     # Step 7: 乖離Top5（タイブレーク付きソート）
-    with_diff = [
-        c for c in comparisons if c.has_both and c.abs_diff >= divergent_threshold
-    ]
+    with_diff = [c for c in comparisons if c.has_both and c.abs_diff >= divergent_threshold]
     divergent = sorted(with_diff, key=lambda c: c.sort_key_divergent())[:divergent_limit]
 
     # Step 8: 平均差分

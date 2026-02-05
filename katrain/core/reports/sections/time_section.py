@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Time Management section formatting for reports.
 
 Phase 60: Pacing/Tilt integration.
@@ -7,7 +6,6 @@ This module provides i18n-aware formatting functions for time analysis results.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from katrain.core.lang import i18n
 
@@ -38,8 +36,7 @@ def format_time_stats(stats: TimeStatsData) -> list[str]:
     if stats.blitz_count > 0:
         rate = stats.blitz_mistake_count / stats.blitz_count * 100
         lines.append(
-            f"- {i18n._('time:blitz_mistake_rate')}: {rate:.1f}% "
-            f"({stats.blitz_mistake_count}/{stats.blitz_count})"
+            f"- {i18n._('time:blitz_mistake_rate')}: {rate:.1f}% ({stats.blitz_mistake_count}/{stats.blitz_count})"
         )
     else:
         lines.append(f"- {i18n._('time:blitz_mistake_rate')}: N/A")
@@ -91,7 +88,7 @@ def get_tilt_episodes_label() -> str:
     return i18n._("time:tilt_episodes")
 
 
-def get_player_label(player_color: Optional[str], focus_player: Optional[str] = None) -> str:
+def get_player_label(player_color: str | None, focus_player: str | None = None) -> str:
     """Get localized player label.
 
     Args:

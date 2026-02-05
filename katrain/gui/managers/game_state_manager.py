@@ -17,9 +17,11 @@
     manager.do_undo(n_times=1)
     manager.do_redo(n_times=5)
 """
+
 from __future__ import annotations
 
-from typing import Callable, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 
 class GameNodeProtocol(Protocol):
@@ -35,23 +37,17 @@ class GameProtocol(Protocol):
 
     current_node: GameNodeProtocol | None
 
-    def undo(self, n_times: int = 1) -> None:
-        ...
+    def undo(self, n_times: int = 1) -> None: ...
 
-    def redo(self, n_times: int = 1) -> None:
-        ...
+    def redo(self, n_times: int = 1) -> None: ...
 
-    def jump_to_prev_important_move(self) -> None:
-        ...
+    def jump_to_prev_important_move(self) -> None: ...
 
-    def jump_to_next_important_move(self) -> None:
-        ...
+    def jump_to_next_important_move(self) -> None: ...
 
-    def reset_current_analysis(self) -> None:
-        ...
+    def reset_current_analysis(self) -> None: ...
 
-    def set_insert_mode(self, mode: str) -> None:
-        ...
+    def set_insert_mode(self, mode: str) -> None: ...
 
 
 class GameStateManager:

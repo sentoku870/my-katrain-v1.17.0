@@ -8,13 +8,12 @@ game.pyから抽出された重要手レポート生成機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.models import (
     MistakeCategory,
     MoveEval,
-    PositionDifficulty,
 )
 
 
@@ -22,7 +21,7 @@ def build_important_moves_report(
     important_moves: list["MoveEval"],
     *,
     level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
-    max_lines: Optional[int] = None,
+    max_lines: int | None = None,
 ) -> str:
     """
     重要局面をテキストレポートとして返す。
@@ -58,17 +57,17 @@ def build_important_moves_report(
     if max_lines is not None and max_lines > 0:
         important_moves = important_moves[:max_lines]
 
-    def fmt_score(v: Optional[float]) -> str:
+    def fmt_score(v: float | None) -> str:
         if v is None:
             return "-"
         return f"{v:+.1f}"
 
-    def fmt_winrate(v: Optional[float]) -> str:
+    def fmt_winrate(v: float | None) -> str:
         if v is None:
             return "-"
         return f"{v:+.1f}%"
 
-    def fmt_mistake(mc: Optional[MistakeCategory]) -> str:
+    def fmt_mistake(mc: MistakeCategory | None) -> str:
         if mc is None:
             return "-"
         mapping = {
@@ -111,9 +110,7 @@ def build_important_moves_report(
     )
     lines: list[str] = []
     lines.append(
-        f"重要局面候補 (level={level}, "
-        f"threshold={settings.importance_threshold}, "
-        f"max_moves={settings.max_moves})"
+        f"重要局面候補 (level={level}, threshold={settings.importance_threshold}, max_moves={settings.max_moves})"
     )
     lines.append("")  # 空行
 
@@ -137,8 +134,6 @@ def build_important_moves_report(
         mc = fmt_mistake(m.mistake_category)
         df = fmt_difficulty(getattr(m, "position_difficulty", None))
 
-        lines.append(
-            f"{move_no:>3}   {player:>1}   {gtp:>4}   {pl:>7}  {mc:>4}  {df:>4}  {ds:>7}  {dw:>7}"
-        )
+        lines.append(f"{move_no:>3}   {player:>1}   {gtp:>4}   {pl:>7}  {mc:>4}  {df:>4}  {ds:>7}  {dw:>7}")
 
     return "\n".join(lines)

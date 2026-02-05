@@ -36,7 +36,7 @@ def build_critical_3_prompt(
         return ""
 
     move_sections = []
-    for i, cm in enumerate(critical_moves, 1):
+    for _i, cm in enumerate(critical_moves, 1):
         section = f"""### Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}
 - Loss: {cm.score_loss:.1f} pts (side-to-move perspective)
 - Type: {cm.meaning_tag_label}

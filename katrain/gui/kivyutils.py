@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from kivy.clock import Clock
 from kivy.core.image import Image
@@ -24,7 +25,6 @@ from kivy.resources import resource_find
 _logger = logging.getLogger(__name__)
 from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
-from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.widget import Widget
@@ -33,7 +33,6 @@ from kivymd.uix.behaviors import CircularRippleBehavior, RectangularRippleBehavi
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import BaseFlatButton, BasePressedButton
 from kivymd.uix.navigationdrawer import MDNavigationDrawer
-from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.textfield import MDTextField
 
 from katrain.core.constants import (
@@ -47,6 +46,7 @@ from katrain.core.constants import (
 )
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
+from katrain.gui.widgets.factory import Button, Label
 
 
 class BackgroundMixin(Widget):  # -- mixins
@@ -434,16 +434,13 @@ class PlayerInfo(MDBoxLayout, BackgroundMixin):
         if not self.subtype_label:  # building
             return
         show_player_name = self.name and self.player_type == PLAYER_HUMAN and self.player_subtype == PLAYING_NORMAL
-        if show_player_name:
-            text = self.name
-        else:
-            text = i18n._(self.player_subtype)
+        text = self.name if show_player_name else i18n._(self.player_subtype)
         if (
             self.rank
             and self.player_subtype != PLAYING_TEACHING
             and (show_player_name or self.player_type == PLAYER_AI)
         ):
-            text += " ({})".format(self.rank)
+            text += f" ({self.rank})"
         self.subtype_label.text = text
 
 
@@ -556,10 +553,10 @@ class CollapsablePanel(MDBoxLayout):
 
     @property
     def option_state(self) -> dict[str, bool]:
-        return {option: active for option, active in zip(self.options, self.option_active)}
+        return {option: active for option, active in zip(self.options, self.option_active, strict=False)}
 
     def set_option_state(self, state_dict: dict[str, bool]) -> None:
-        for ix, (option, button) in enumerate(zip(self.options, self.option_buttons)):
+        for ix, (option, button) in enumerate(zip(self.options, self.option_buttons, strict=False)):
             if option in state_dict:
                 self.option_active[ix] = state_dict[option]
                 button.state = "down" if state_dict[option] else "normal"
@@ -571,7 +568,9 @@ class CollapsablePanel(MDBoxLayout):
         )
         self.option_buttons = []
         option_labels = self.option_labels or [i18n._(f"tab:{opt}") for opt in self.options]
-        for ix, (lbl, opt_col, active) in enumerate(zip(option_labels, self.option_colors, self.option_active)):
+        for ix, (lbl, opt_col, active) in enumerate(
+            zip(option_labels, self.option_colors, self.option_active, strict=False)
+        ):
             button = CollapsablePanelTab(
                 text=lbl,
                 font_name=i18n.font_name,
@@ -631,7 +630,10 @@ class CollapsablePanel(MDBoxLayout):
         if ix is not None and self.option_buttons:
             self.option_active[ix] = self.option_buttons[ix].state == "down"
         if self.state == "open":
-            self.dispatch("on_option_state", {opt: btn.active for opt, btn in zip(self.options, self.option_buttons)})
+            self.dispatch(
+                "on_option_state",
+                {opt: btn.active for opt, btn in zip(self.options, self.option_buttons, strict=False)},
+            )
         return False
 
     def on_option_state(self, options: dict[str, bool]) -> None:
@@ -724,7 +726,9 @@ def cached_text_texture(text: str, font_name: str | None, markup: bool, **kwargs
     return _create_text_texture(text, resolved_font_name, markup, kwargs_tuple)
 
 
-def draw_text(pos: Sequence[float], text: str, font_name: str | None = None, markup: bool = False, **kwargs: Any) -> None:
+def draw_text(
+    pos: Sequence[float], text: str, font_name: str | None = None, markup: bool = False, **kwargs: Any
+) -> None:
     texture = cached_text_texture(text, font_name, markup, **kwargs)
     Rectangle(texture=texture, pos=(pos[0] - texture.size[0] / 2, pos[1] - texture.size[1] / 2), size=texture.size)
 

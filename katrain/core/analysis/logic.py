@@ -13,62 +13,45 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Iterable,
 )
 
 from katrain.core.analysis.models import (
-    AutoConfidence,
-    AutoRecommendation,
-    ConfidenceLevel,
+    _CONFIDENCE_THRESHOLDS,
     DEFAULT_DIFFICULT_POSITIONS_LIMIT,
-    DEFAULT_IMPORTANT_MOVE_LEVEL,
     DEFAULT_MIN_MOVE_NUMBER,
-    DEFAULT_PV_FILTER_LEVEL,
-    DEFAULT_QUIZ_ITEM_LIMIT,
-    DEFAULT_QUIZ_LOSS_THRESHOLD,
     DEFAULT_SKILL_PRESET,
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
-    DIFFICULTY_MODIFIER_HARD,
-    DIFFICULTY_MODIFIER_ONLY_MOVE,
     DIFFICULTY_UNKNOWN,
+    MIN_COVERAGE_MOVES,
+    POLICY_GAP_MAX,
+    PRESET_ORDER,
+    PV_FILTER_CONFIGS,
+    RELIABILITY_RATIO,
+    RELIABILITY_VISITS_THRESHOLD,
+    SKILL_PRESETS,
+    SKILL_TO_PV_FILTER,
+    TRANSITION_DROP_MAX,
+    URGENT_MISS_CONFIGS,
+    VALID_REASON_TAGS,
+    AutoConfidence,
+    AutoRecommendation,
+    ConfidenceLevel,
     DifficultyMetrics,
     EvalSnapshot,
-    IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
-    ImportantMoveSettings,
-    MistakeCategory,
     MistakeStreak,
     MoveEval,
     PhaseMistakeStats,
-    POLICY_GAP_MAX,
     PositionDifficulty,
-    PRESET_ORDER,
-    PV_FILTER_CONFIGS,
     PVFilterConfig,
-    PVFilterLevel,
-    QuizItem,
-    RELIABILITY_RATIO,
-    RELIABILITY_SCALE_THRESHOLDS,
-    RELIABILITY_VISITS_THRESHOLD,
     ReliabilityStats,
-    SCORE_THRESHOLDS,
-    SKILL_PRESETS,
-    SKILL_TO_PV_FILTER,
     SkillEstimation,
     SkillPreset,
-    STREAK_START_BONUS,
-    SWING_MAGNITUDE_WEIGHT,
-    TRANSITION_DROP_MAX,
     UrgentMissConfig,
-    URGENT_MISS_CONFIGS,
-    VALID_REASON_TAGS,
-    WINRATE_THRESHOLDS,
-    _CONFIDENCE_THRESHOLDS,
-    MIN_COVERAGE_MOVES,
     get_canonical_loss_from_move,
 )
 
@@ -140,14 +123,8 @@ def recommend_auto_strictness(
         reliability_pct = stats.reliability_pct
 
     # Scale target ranges by game count
-    blunder_range = (
-        target_blunder_per_game[0] * game_count,
-        target_blunder_per_game[1] * game_count
-    )
-    important_range = (
-        target_important_per_game[0] * game_count,
-        target_important_per_game[1] * game_count
-    )
+    blunder_range = (target_blunder_per_game[0] * game_count, target_blunder_per_game[1] * game_count)
+    important_range = (target_important_per_game[0] * game_count, target_important_per_game[1] * game_count)
 
     # Evaluate each preset
     results: list[tuple[str, int, int, int]] = []  # (preset_name, score, blunders, important)
@@ -186,7 +163,7 @@ def recommend_auto_strictness(
             blunder_count=std_blunders,
             important_count=std_important,
             score=best_score,
-            reason=f"Low reliability ({reliability_pct:.1f}%)"
+            reason=f"Low reliability ({reliability_pct:.1f}%)",
         )
 
     # Determine confidence based on score
@@ -203,7 +180,7 @@ def recommend_auto_strictness(
         blunder_count=best_blunders,
         important_count=best_important,
         score=best_score,
-        reason=f"blunder={best_blunders}, important={best_important}"
+        reason=f"blunder={best_blunders}, important={best_important}",
     )
 
 
@@ -496,10 +473,7 @@ def _assess_difficulty_from_policy(
         return PositionDifficulty.UNKNOWN, 0.5
 
     # Handle both int and tuple board_size
-    if isinstance(board_size, tuple):
-        board_points = board_size[0] * board_size[1]
-    else:
-        board_points = board_size * board_size
+    board_points = board_size[0] * board_size[1] if isinstance(board_size, tuple) else board_size * board_size
 
     # Safety check
     if board_points < 9:
@@ -608,9 +582,7 @@ from katrain.core.analysis.logic_loss import (
     classify_mistake,
     compute_canonical_loss,
     compute_loss_from_delta,
-    detect_engine_type,
 )
-
 
 # =============================================================================
 # Snapshot creation
@@ -654,7 +626,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
 
     # 連続する手から before / delta を埋める
     prev: MoveEval | None = None
-    for node, m in node_evals:
+    for _node, m in node_evals:
         if prev is not None:
             m.score_before = prev.score_after
             m.winrate_before = prev.winrate_after
@@ -714,13 +686,9 @@ def iter_main_branch_nodes(game: Any) -> Iterable[GameNode]:
         if not children:
             break
 
-        main_children = [
-            c for c in children if getattr(c, "is_mainline", False)
-        ]
+        main_children = [c for c in children if getattr(c, "is_mainline", False)]
         if not main_children:
-            main_children = [
-                c for c in children if getattr(c, "is_main", False)
-            ]
+            main_children = [c for c in children if getattr(c, "is_main", False)]
 
         next_node = main_children[0] if main_children else children[0]
         node = next_node
@@ -742,7 +710,6 @@ from katrain.core.analysis.logic_quiz import (
     quiz_items_from_snapshot,
     quiz_points_lost_from_candidate,
 )
-
 
 # =============================================================================
 # Phase mistake stats
@@ -831,14 +798,16 @@ def detect_mistake_streaks(
             if m.points_lost is None:
                 if len(current_streak) >= min_consecutive:
                     total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-                    streaks.append(MistakeStreak(
-                        player=player,
-                        start_move=current_streak[0].move_number,
-                        end_move=current_streak[-1].move_number,
-                        move_count=len(current_streak),
-                        total_loss=total_loss,
-                        moves=list(current_streak),
-                    ))
+                    streaks.append(
+                        MistakeStreak(
+                            player=player,
+                            start_move=current_streak[0].move_number,
+                            end_move=current_streak[-1].move_number,
+                            move_count=len(current_streak),
+                            total_loss=total_loss,
+                            moves=list(current_streak),
+                        )
+                    )
                 current_streak = []
                 continue
 
@@ -848,26 +817,30 @@ def detect_mistake_streaks(
             else:
                 if len(current_streak) >= min_consecutive:
                     total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-                    streaks.append(MistakeStreak(
-                        player=player,
-                        start_move=current_streak[0].move_number,
-                        end_move=current_streak[-1].move_number,
-                        move_count=len(current_streak),
-                        total_loss=total_loss,
-                        moves=list(current_streak),
-                    ))
+                    streaks.append(
+                        MistakeStreak(
+                            player=player,
+                            start_move=current_streak[0].move_number,
+                            end_move=current_streak[-1].move_number,
+                            move_count=len(current_streak),
+                            total_loss=total_loss,
+                            moves=list(current_streak),
+                        )
+                    )
                 current_streak = []
 
         if len(current_streak) >= min_consecutive:
             total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-            streaks.append(MistakeStreak(
-                player=player,
-                start_move=current_streak[0].move_number,
-                end_move=current_streak[-1].move_number,
-                move_count=len(current_streak),
-                total_loss=total_loss,
-                moves=list(current_streak),
-            ))
+            streaks.append(
+                MistakeStreak(
+                    player=player,
+                    start_move=current_streak[0].move_number,
+                    end_move=current_streak[-1].move_number,
+                    move_count=len(current_streak),
+                    total_loss=total_loss,
+                    moves=list(current_streak),
+                )
+            )
 
     streaks.sort(key=lambda s: s.start_move)
     return streaks
@@ -882,25 +855,18 @@ from katrain.core.analysis.logic_importance import (
     pick_important_moves,
 )
 
-
 # =============================================================================
 # Skill estimation
 # =============================================================================
 
 
-def estimate_skill_level_from_tags(
-    reason_tags_counts: dict[str, int],
-    total_important_moves: int
-) -> SkillEstimation:
+def estimate_skill_level_from_tags(reason_tags_counts: dict[str, int], total_important_moves: int) -> SkillEstimation:
     """
     理由タグ分布から棋力を推定（Phase 13）
     """
     if total_important_moves < 5:
         return SkillEstimation(
-            estimated_level="unknown",
-            confidence=0.0,
-            reason="重要局面数が不足（< 5手）",
-            metrics={}
+            estimated_level="unknown", confidence=0.0, reason="重要局面数が不足（< 5手）", metrics={}
         )
 
     heavy_loss_count = reason_tags_counts.get("heavy_loss", 0)
@@ -912,7 +878,7 @@ def estimate_skill_level_from_tags(
     metrics = {
         "heavy_loss_rate": heavy_loss_rate,
         "reading_failure_rate": reading_failure_rate,
-        "total_important_moves": float(total_important_moves)
+        "total_important_moves": float(total_important_moves),
     }
 
     if heavy_loss_rate >= 0.4:
@@ -920,7 +886,7 @@ def estimate_skill_level_from_tags(
             estimated_level="beginner",
             confidence=min(0.9, heavy_loss_rate * 1.5),
             reason=f"大損失の出現率が高い（{heavy_loss_rate:.1%}）→ 大局観・判断力を強化する段階",
-            metrics=metrics
+            metrics=metrics,
         )
 
     if heavy_loss_rate < 0.15 and reading_failure_rate < 0.1:
@@ -929,7 +895,7 @@ def estimate_skill_level_from_tags(
             estimated_level="advanced",
             confidence=min(0.9, max(0.5, confidence)),
             reason=f"大損失・読み抜けともに少ない（大損失{heavy_loss_rate:.1%}、読み抜け{reading_failure_rate:.1%}）→ 高段者レベル",
-            metrics=metrics
+            metrics=metrics,
         )
 
     if reading_failure_rate >= 0.15:
@@ -937,7 +903,7 @@ def estimate_skill_level_from_tags(
             estimated_level="standard",
             confidence=min(0.9, reading_failure_rate * 2),
             reason=f"読み抜けの出現率が高い（{reading_failure_rate:.1%}）→ 戦術的な読み・形判断を強化する段階",
-            metrics=metrics
+            metrics=metrics,
         )
 
     confidence = 0.5
@@ -945,7 +911,7 @@ def estimate_skill_level_from_tags(
         estimated_level="standard",
         confidence=confidence,
         reason=f"大損失{heavy_loss_rate:.1%}、読み抜け{reading_failure_rate:.1%} → 標準的な有段者レベル",
-        metrics=metrics
+        metrics=metrics,
     )
 
 
@@ -1029,7 +995,7 @@ def filter_candidates_by_pv_complexity(
 
     # Step 3: max_candidates 制限（order順でカット、best_move除外済み）
     filtered = sorted(filtered, key=lambda c: c.get("order", 999))
-    filtered = filtered[:config.max_candidates]
+    filtered = filtered[: config.max_candidates]
 
     # Step 4: best_moveを先頭に挿入（別枠、上限外）
     if best_move:
@@ -1186,12 +1152,16 @@ def _compute_policy_difficulty(
     # gap が 0 なら difficulty=1、POLICY_GAP_MAX 以上なら difficulty=0
     difficulty = max(0.0, min(1.0, 1.0 - gap / POLICY_GAP_MAX))
 
-    debug = {
-        "top1_score": top1_score,
-        "top2_score": top2_score,
-        "gap": gap,
-        "normalized": difficulty,
-    } if include_debug else None
+    debug = (
+        {
+            "top1_score": top1_score,
+            "top2_score": top2_score,
+            "gap": gap,
+            "normalized": difficulty,
+        }
+        if include_debug
+        else None
+    )
 
     return difficulty, debug
 
@@ -1237,12 +1207,16 @@ def _compute_transition_difficulty(
     # drop が TRANSITION_DROP_MAX 以上なら difficulty=1
     difficulty = max(0.0, min(1.0, drop / TRANSITION_DROP_MAX))
 
-    debug = {
-        "top1_score": top1_score,
-        "top2_score": top2_score,
-        "drop": drop,
-        "normalized": difficulty,
-    } if include_debug else None
+    debug = (
+        {
+            "top1_score": top1_score,
+            "top2_score": top2_score,
+            "drop": drop,
+            "normalized": difficulty,
+        }
+        if include_debug
+        else None
+    )
 
     return difficulty, debug
 
@@ -1263,10 +1237,14 @@ def _compute_state_difficulty(
     Returns:
         (difficulty, debug_info) タプル。v1 では常に (0.0, debug)。
     """
-    debug = {
-        "v1_note": "state_difficulty disabled in v1",
-        "candidate_count": len(candidates),
-    } if include_debug else None
+    debug = (
+        {
+            "v1_note": "state_difficulty disabled in v1",
+            "candidate_count": len(candidates),
+        }
+        if include_debug
+        else None
+    )
 
     return 0.0, debug
 
@@ -1301,9 +1279,7 @@ def compute_difficulty_metrics(
         return DIFFICULTY_UNKNOWN
 
     # 信頼性チェック（フォールバック係数なし）
-    is_reliable, reliability_reason = _determine_reliability(
-        root_visits, len(normalized)
-    )
+    is_reliable, reliability_reason = _determine_reliability(root_visits, len(normalized))
 
     # 各成分の計算
     policy, policy_debug = _compute_policy_difficulty(normalized, include_debug)
@@ -1349,7 +1325,7 @@ def compute_difficulty_metrics(
     )
 
 
-def _get_candidates_from_node(node: "GameNode") -> tuple[list[dict[str, Any]], int | None]:
+def _get_candidates_from_node(node: GameNode) -> tuple[list[dict[str, Any]], int | None]:
     """GameNode から候補手リストと root_visits を取得。
 
     _get_root_visits() を使用して複数キーに対応。
@@ -1405,7 +1381,7 @@ def extract_difficult_positions(
     unreliable_count = 0
 
     for node in nodes:
-        move_number = node.move_number if hasattr(node, 'move_number') else 0
+        move_number = node.move_number if hasattr(node, "move_number") else 0
 
         if move_number < min_move_number:
             continue
@@ -1439,7 +1415,7 @@ def extract_difficult_positions(
     return results[:limit]
 
 
-def difficulty_metrics_from_node(node: "GameNode") -> DifficultyMetrics:
+def difficulty_metrics_from_node(node: GameNode) -> DifficultyMetrics:
     """GameNode から難易度メトリクスを計算。
 
     Public API: GUIから呼び出す用。内部で_get_candidates_from_nodeを使用。

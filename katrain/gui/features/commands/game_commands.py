@@ -7,7 +7,7 @@ These functions handle undo/redo, navigation, and game state changes.
 The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureContext).
 """
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from katrain.core.sgf_parser import SGFNode
 
 
-def do_undo(ctx: "KaTrainGui", n_times: Union[int, str] = 1) -> None:
+def do_undo(ctx: KaTrainGui, n_times: int | str = 1) -> None:
     """Undo moves.
 
     Args:
@@ -36,7 +36,7 @@ def do_undo(ctx: "KaTrainGui", n_times: Union[int, str] = 1) -> None:
         ctx.game.undo(n_times)
 
 
-def do_redo(ctx: "KaTrainGui", n_times: int = 1) -> None:
+def do_redo(ctx: KaTrainGui, n_times: int = 1) -> None:
     """Redo moves.
 
     Args:
@@ -49,8 +49,8 @@ def do_redo(ctx: "KaTrainGui", n_times: int = 1) -> None:
 
 
 def do_new_game(
-    ctx: "KaTrainGui",
-    move_tree: "SGFNode" | None = None,
+    ctx: KaTrainGui,
+    move_tree: SGFNode | None = None,
     analyze_fast: bool = False,
     sgf_filename: str | None = None,
 ) -> None:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Meaning Tags Data Models.
 
 This module defines the core data structures for the Meaning Tags system:
@@ -9,10 +8,10 @@ Part of Phase 46: Meaning Tags System Core.
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class MeaningTagId(str, Enum):
+class MeaningTagId(StrEnum):
     """Meaning tag identifiers.
 
     Inherits from str for direct JSON serialization (no .value needed).

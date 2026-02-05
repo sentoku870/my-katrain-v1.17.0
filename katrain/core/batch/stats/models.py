@@ -52,7 +52,7 @@ class EvidenceMove:
     player: str
     gtp: str
     points_lost: float
-    mistake_category: "MistakeCategory"
+    mistake_category: MistakeCategory
 
 
 # =============================================================================

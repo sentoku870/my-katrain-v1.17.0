@@ -7,8 +7,6 @@ each candidate is compared to the best candidate.
 
 from __future__ import annotations
 
-from copy import deepcopy
-
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
 # Constants for K (loss scale factor)
@@ -79,10 +77,7 @@ def compute_estimated_loss(
         loss_est = loss_pct * k
 
         # Apply rounding and clamping
-        if loss_est < 0.05:
-            loss_est = 0.0
-        else:
-            loss_est = round(loss_est, 1)
+        loss_est = 0.0 if loss_est < 0.05 else round(loss_est, 1)
 
         # Clamp to maximum
         if loss_est > LEELA_LOSS_EST_MAX:
@@ -146,9 +141,9 @@ def compute_loss_color_ratio(loss_est: float, threshold_large: float = 5.0) -> f
 from dataclasses import dataclass
 
 # Constants for resign hint
-RESIGN_WINRATE_THRESHOLD = 0.05       # 5%
-RESIGN_CONSECUTIVE_MOVES = 3          # 3 consecutive moves
-RESIGN_RELIABILITY_RATIO = 0.8        # 80% of max_visits for "reliable"
+RESIGN_WINRATE_THRESHOLD = 0.05  # 5%
+RESIGN_CONSECUTIVE_MOVES = 3  # 3 consecutive moves
+RESIGN_RELIABILITY_RATIO = 0.8  # 80% of max_visits for "reliable"
 
 
 @dataclass
@@ -157,7 +152,7 @@ class ResignConditionResult:
 
     should_show_hint: bool
     consecutive_count: int
-    avg_winrate: float           # Internal: 0.0-1.0
+    avg_winrate: float  # Internal: 0.0-1.0
     is_reliable: bool
 
     @property

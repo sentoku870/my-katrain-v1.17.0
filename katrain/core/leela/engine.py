@@ -14,11 +14,12 @@ import os
 import subprocess
 import threading
 import time
-from typing import Any, Callable, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 from uuid import uuid4
 
-from katrain.core.leela.parser import parse_lz_analyze
 from katrain.core.leela.models import LeelaPositionEval
+from katrain.core.leela.parser import parse_lz_analyze
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +52,17 @@ class LeelaEngine:
         """
         self.katrain = katrain
         self.config = config
-        self.process: Optional[subprocess.Popen[str]] = None
+        self.process: subprocess.Popen[str] | None = None
         self._lock = threading.Lock()
-        self._analysis_thread: Optional[threading.Thread] = None
+        self._analysis_thread: threading.Thread | None = None
         self._shutdown_event = threading.Event()
-        self._current_request_id: Optional[str] = None
+        self._current_request_id: str | None = None
         self._gtp_ready = threading.Event()
 
         # State
         self._board_size = 19
         self._komi = 6.5
-        self._moves: List[Tuple[str, str]] = []  # [(player, coord), ...]
+        self._moves: list[tuple[str, str]] = []  # [(player, coord), ...]
 
     def start(self) -> bool:
         """Start Leela engine process.
@@ -118,7 +119,7 @@ class LeelaEngine:
         Returns:
             True if engine responded, False on timeout.
         """
-        start = time.time()
+        time.time()
         # Read any initial output
         time.sleep(0.5)
 
@@ -226,7 +227,7 @@ class LeelaEngine:
 
     def set_position(
         self,
-        moves: List[Tuple[str, str]],
+        moves: list[tuple[str, str]],
         board_size: int = 19,
         komi: float = 6.5,
     ) -> bool:
@@ -240,9 +241,8 @@ class LeelaEngine:
         Returns:
             True if position set successfully.
         """
-        if not self.is_alive():
-            if not self.start():
-                return False
+        if not self.is_alive() and not self.start():
+            return False
 
         # Reset board if needed
         if board_size != self._board_size:
@@ -269,9 +269,9 @@ class LeelaEngine:
 
     def request_analysis(
         self,
-        moves: List[Tuple[str, str]],
+        moves: list[tuple[str, str]],
         callback: Callable[[LeelaPositionEval], None],
-        visits: Optional[int] = None,
+        visits: int | None = None,
         board_size: int = 19,
         komi: float = 6.5,
     ) -> bool:
@@ -308,7 +308,7 @@ class LeelaEngine:
 
     def _run_analysis(
         self,
-        moves: List[Tuple[str, str]],
+        moves: list[tuple[str, str]],
         callback: Callable[[LeelaPositionEval], None],
         visits: int,
         board_size: int,
@@ -438,7 +438,7 @@ class LeelaEngine:
         with self._lock:
             return self._current_request_id is None
 
-    def get_winrate(self) -> Optional[float]:
+    def get_winrate(self) -> float | None:
         """Get current position winrate (synchronous).
 
         Returns:

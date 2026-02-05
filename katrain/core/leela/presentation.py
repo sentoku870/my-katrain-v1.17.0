@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from katrain.core.constants import (
     LEELA_COLOR_BEST,
-    LEELA_COLOR_SMALL,
-    LEELA_COLOR_MEDIUM,
     LEELA_COLOR_LARGE,
-    LEELA_LOSS_THRESHOLD_SMALL,
+    LEELA_COLOR_MEDIUM,
+    LEELA_COLOR_SMALL,
     LEELA_LOSS_THRESHOLD_MEDIUM,
+    LEELA_LOSS_THRESHOLD_SMALL,
 )
 
 
@@ -65,9 +65,7 @@ def loss_to_color(loss_est: float) -> tuple[float, float, float, float]:
 
     elif loss_est <= LEELA_LOSS_THRESHOLD_MEDIUM:
         # 2.1 - 5.0: Yellow → Orange
-        t = (loss_est - LEELA_LOSS_THRESHOLD_SMALL) / (
-            LEELA_LOSS_THRESHOLD_MEDIUM - LEELA_LOSS_THRESHOLD_SMALL
-        )
+        t = (loss_est - LEELA_LOSS_THRESHOLD_SMALL) / (LEELA_LOSS_THRESHOLD_MEDIUM - LEELA_LOSS_THRESHOLD_SMALL)
         return lerp_color(LEELA_COLOR_SMALL, LEELA_COLOR_MEDIUM, t)
 
     else:

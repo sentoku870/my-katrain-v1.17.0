@@ -1,4 +1,5 @@
 """Widgets package - uses lazy imports to avoid triggering Kivy initialization."""
+
 from __future__ import annotations
 
 from typing import Any

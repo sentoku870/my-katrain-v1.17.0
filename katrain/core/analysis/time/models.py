@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Time Data Models.
 
 This module defines the core data structures for SGF time parsing:

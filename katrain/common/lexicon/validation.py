@@ -15,7 +15,6 @@ from typing import Any, Literal
 
 from .models import AIPerspective, DiagramInfo, LexiconEntry
 
-
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
@@ -36,9 +35,7 @@ class LexiconParseError(LexiconError):
         column: Column number (1-indexed) if available from YAML parser.
     """
 
-    def __init__(
-        self, message: str, line: int | None = None, column: int | None = None
-    ):
+    def __init__(self, message: str, line: int | None = None, column: int | None = None):
         self.line = line
         self.column = column
         super().__init__(message)

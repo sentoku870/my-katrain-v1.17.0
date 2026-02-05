@@ -4,6 +4,7 @@ This module is the bottom layer of the karte package.
 It MUST NOT import any other karte modules.
 """
 
+
 class KarteGenerationError(Exception):
     """Exception raised when karte generation fails.
 

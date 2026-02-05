@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Reason Generator for Mistake Pattern Explanations.
 
 Phase 86: Generates natural language "reason" text from MistakeSignature
@@ -14,7 +13,6 @@ Public API:
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 from katrain.common.locale_utils import normalize_lang_code
 
@@ -26,20 +24,22 @@ from katrain.common.locale_utils import normalize_lang_code
 _VALID_LANGS: frozenset[str] = frozenset({"jp", "en"})
 
 # Supported meaning tags (Phase 86 scope)
-SUPPORTED_TAGS: frozenset[str] = frozenset({
-    "life_death_error",
-    "overplay",
-    "direction_error",
-    "capture_race_loss",
-    "connection_miss",
-    "reading_failure",
-    "shape_mistake",
-    "slow_move",
-    "missed_tesuji",
-    "endgame_slip",
-    "territorial_loss",
-    "uncertain",
-})
+SUPPORTED_TAGS: frozenset[str] = frozenset(
+    {
+        "life_death_error",
+        "overplay",
+        "direction_error",
+        "capture_race_loss",
+        "connection_miss",
+        "reading_failure",
+        "shape_mistake",
+        "slow_move",
+        "missed_tesuji",
+        "endgame_slip",
+        "territorial_loss",
+        "uncertain",
+    }
+)
 
 # Valid phase values (from MistakeSignature.phase)
 PHASE_VOCABULARY: frozenset[str] = frozenset({"opening", "middle", "endgame"})
@@ -51,6 +51,7 @@ AREA_VOCABULARY: frozenset[str] = frozenset({"corner", "edge", "center"})
 # =============================================================================
 # Data Models
 # =============================================================================
+
 
 @dataclass(frozen=True)
 class ReasonTemplate:
@@ -204,6 +205,7 @@ COMBINATION_REASONS: dict[tuple[str, str, str], ReasonTemplate] = {
 # Helper Functions
 # =============================================================================
 
+
 def _normalize_lang(lang: str | None) -> str:
     """Normalize language code for reason_generator.
 
@@ -278,6 +280,7 @@ def _find_combo_match(
 # =============================================================================
 # Public API
 # =============================================================================
+
 
 def generate_reason(
     meaning_tag_id: str | None,

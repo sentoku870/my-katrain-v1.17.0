@@ -15,17 +15,16 @@ from __future__ import annotations
 
 import logging
 
+from katrain.core.analysis.logic_loss import classify_mistake
 from katrain.core.analysis.models import (
     EvalSnapshot,
-    MistakeCategory,
     MoveEval,
 )
-from katrain.core.analysis.logic_loss import classify_mistake
-from katrain.core.leela.models import LeelaPositionEval
 from katrain.core.leela.logic import (
     LEELA_K_DEFAULT,
     LEELA_LOSS_EST_MAX,
 )
+from katrain.core.leela.models import LeelaPositionEval
 
 logger = logging.getLogger(__name__)
 
@@ -105,12 +104,12 @@ def _convert_to_black_perspective(
 
     if player == "B":
         # Black played: parent is black-to-move, current is white-to-move
-        winrate_before = parent_best_wr           # Black's winrate (parent: B to move)
-        winrate_after = 1.0 - current_best_wr     # Black's winrate (current: W to move)
+        winrate_before = parent_best_wr  # Black's winrate (parent: B to move)
+        winrate_after = 1.0 - current_best_wr  # Black's winrate (current: W to move)
     else:  # player == "W"
         # White played: parent is white-to-move, current is black-to-move
-        winrate_before = 1.0 - parent_best_wr     # Black's winrate (parent: W to move)
-        winrate_after = current_best_wr           # Black's winrate (current: B to move)
+        winrate_before = 1.0 - parent_best_wr  # Black's winrate (parent: W to move)
+        winrate_after = current_best_wr  # Black's winrate (current: B to move)
 
     delta_winrate = winrate_after - winrate_before  # Black perspective change
     return winrate_before, winrate_after, delta_winrate
@@ -193,7 +192,7 @@ def _compute_leela_loss_for_played_move(
 
     # Calculate loss estimate
     # Both winrates are from side-to-move perspective, so no conversion needed
-    loss_pct = (best.eval_pct - played_candidate.eval_pct)  # Difference in percentage (0-100 scale)
+    loss_pct = best.eval_pct - played_candidate.eval_pct  # Difference in percentage (0-100 scale)
     loss_est = loss_pct * k
 
     # Round and clamp
@@ -299,28 +298,21 @@ def leela_sequence_to_eval_snapshot(
     """
     # Validation: length match
     if len(evals) != len(moves_info):
-        raise ValueError(
-            f"Length mismatch: evals={len(evals)}, moves_info={len(moves_info)}"
-        )
+        raise ValueError(f"Length mismatch: evals={len(evals)}, moves_info={len(moves_info)}")
 
     # Validation: move_number monotonic and >= 1
-    for i, (move_num, player, gtp) in enumerate(moves_info):
+    for i, (move_num, _player, _gtp) in enumerate(moves_info):
         if move_num < 1:
             raise ValueError(f"Invalid move_number={move_num} at index {i}")
         if i > 0 and move_num <= moves_info[i - 1][0]:
-            raise ValueError(
-                f"Non-monotonic move_number: {moves_info[i - 1][0]} -> {move_num}"
-            )
+            raise ValueError(f"Non-monotonic move_number: {moves_info[i - 1][0]} -> {move_num}")
 
     # Warning: player alternation (not an error, just log)
     for i in range(1, len(moves_info)):
         prev_player = moves_info[i - 1][1]
         curr_player = moves_info[i][1]
         if prev_player == curr_player:
-            logger.warning(
-                f"Non-alternating players at move {moves_info[i][0]}: "
-                f"{prev_player} -> {curr_player}"
-            )
+            logger.warning(f"Non-alternating players at move {moves_info[i][0]}: {prev_player} -> {curr_player}")
 
     # Convert each evaluation
     move_evals: list[MoveEval] = []

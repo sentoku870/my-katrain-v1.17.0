@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.core.clipboard import Clipboard
 from kivy.uix.label import Label
@@ -29,8 +30,8 @@ if TYPE_CHECKING:
 def save_summaries_per_player(
     game_stats_list: list[dict[str, Any]],
     selected_players: list[str],
-    progress_popup: "Popup",
-    ctx: "FeatureContext",
+    progress_popup: Popup,
+    ctx: FeatureContext,
     categorize_games_fn: Callable[[list[dict[str, Any]], str], dict[str, Any]],
     build_summary_fn: Callable[[list[dict[str, Any]], str], str],
 ) -> None:
@@ -60,7 +61,8 @@ def save_summaries_per_player(
         try:
             # このプレイヤーが参加しているゲームのみフィルタ
             player_games = [
-                stats for stats in game_stats_list
+                stats
+                for stats in game_stats_list
                 if stats["player_black"] == player_name or stats["player_white"] == player_name
             ]
 
@@ -87,7 +89,7 @@ def save_summaries_per_player(
                 # ファイル名にプレイヤー名を含める
                 label = category_labels[category]
                 # プレイヤー名のサニタイズ
-                safe_player_name = re.sub(r'[<>:"/\\|?*]', '_', player_name)[:30]
+                safe_player_name = re.sub(r'[<>:"/\\|?*]', "_", player_name)[:30]
                 filename = f"summary_{safe_player_name}_{label}_{timestamp}.md"
                 full_path = os.path.join(output_dir, filename)
 
@@ -103,6 +105,7 @@ def save_summaries_per_player(
         except Exception as exc:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             ctx.log(f"Unexpected error saving summary for {player_name}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     # 結果ポップアップ
@@ -137,8 +140,8 @@ def save_summaries_per_player(
 def save_categorized_summaries_from_stats(
     categorized_games: dict[str, list[dict[str, Any]]],
     player_name: str | None,
-    progress_popup: "Popup",
-    ctx: "FeatureContext",
+    progress_popup: Popup,
+    ctx: FeatureContext,
     build_summary_fn: Callable[[list[dict[str, Any]], str | None], str],
 ) -> None:
     """カテゴリごとにsummary.mdを保存
@@ -196,6 +199,7 @@ def save_categorized_summaries_from_stats(
         except Exception as exc:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             ctx.log(f"Unexpected error saving summary for {category}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
 
     # 結果ポップアップ
@@ -205,9 +209,7 @@ def save_categorized_summaries_from_stats(
             title=i18n._("Summaries exported"),
             title_font=Theme.DEFAULT_FONT,
             content=Label(
-                text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}",
-                halign="center",
-                valign="middle"
+                text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}", halign="center", valign="middle"
             ),
             size_hint=(0.6, 0.5),
         ).open()
@@ -219,7 +221,7 @@ def save_categorized_summaries_from_stats(
             content=Label(
                 text="No categories had enough games (need 2+).\nCheck that focus_player matches SGF player names.",
                 halign="center",
-                valign="middle"
+                valign="middle",
             ),
             size_hint=(0.5, 0.3),
         ).open()
@@ -228,8 +230,8 @@ def save_categorized_summaries_from_stats(
 def save_summary_file(
     summary_text: str,
     player_name: str | None,
-    progress_popup: "Popup",
-    ctx: "FeatureContext",
+    progress_popup: Popup,
+    ctx: FeatureContext,
 ) -> None:
     """まとめファイルを保存
 
@@ -262,6 +264,7 @@ def save_summary_file(
         except Exception as exc:
             # Unexpected: Internal bug - traceback required
             import traceback
+
             ctx.log(f"Unexpected clipboard error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG)
 
         ctx.controls.set_status(f"Summary exported to {full_path}", STATUS_INFO, check_level=False)
@@ -283,6 +286,7 @@ def save_summary_file(
     except Exception as exc:
         # Unexpected: Internal bug - traceback required
         import traceback
+
         ctx.log(f"Unexpected error exporting Summary to {full_path}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
         Popup(
             title=i18n._("Error"),

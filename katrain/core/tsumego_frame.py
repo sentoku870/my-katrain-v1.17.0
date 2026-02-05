@@ -36,15 +36,11 @@ def tsumego_frame_from_katrain_game(
 
     played_node = GameNode(parent=current_node, properties={"AB": sgf_blacks, "AW": sgf_whites})  # type: ignore[dict-item]  # this inserts
 
-    katrain_region: RegionTuple | None = (
-        (analysis_region[1], analysis_region[0]) if analysis_region else None
-    )
+    katrain_region: RegionTuple | None = (analysis_region[1], analysis_region[0]) if analysis_region else None
     return (played_node, katrain_region)
 
 
-def katrain_sgf_from_ijs(
-    ijs: list[tuple[int, int]], isize: int, jsize: int, player: str
-) -> list[str]:
+def katrain_sgf_from_ijs(ijs: list[tuple[int, int]], isize: int, jsize: int, player: str) -> list[str]:
     return [Move((j, i)).sgf((jsize, isize)) for i, j in ijs]
 
 
@@ -67,7 +63,7 @@ def pick_all(stones: StonesGrid, key: str) -> list[list[Any]]:
 def get_analysis_region(region_pos: list[list[Any]]) -> RegionTuple | None:
     if len(region_pos) == 0:
         return None
-    ai, aj, dummy = tuple(zip(*region_pos))
+    ai, aj, dummy = tuple(zip(*region_pos, strict=False))
     ri = (min(ai), max(ai))
     rj = (min(aj), max(aj))
     if ri[0] < ri[1] and rj[0] < rj[1]:
@@ -75,9 +71,7 @@ def get_analysis_region(region_pos: list[list[Any]]) -> RegionTuple | None:
     return None
 
 
-def tsumego_frame_stones(
-    stones: StonesGrid, komi: float, black_to_play_p: bool, ko_p: bool, margin: int
-) -> StonesGrid:
+def tsumego_frame_stones(stones: StonesGrid, komi: float, black_to_play_p: bool, ko_p: bool, margin: int) -> StonesGrid:
     sizes = ij_sizes(stones)
     isize, jsize = sizes
     ijs = [
@@ -164,9 +158,7 @@ def height(k: int, size: int) -> float:
 # sub
 
 
-def put_border(
-    stones: StonesGrid, sizes: tuple[int, int], frame_range: FrameRange, is_black: bool
-) -> None:
+def put_border(stones: StonesGrid, sizes: tuple[int, int], frame_range: FrameRange, is_black: bool) -> None:
     i0, i1, j0, j1 = frame_range
     put_twin(stones, sizes, i0, i1, j0, j1, is_black, False)
     put_twin(stones, sizes, j0, j1, i0, i1, is_black, True)

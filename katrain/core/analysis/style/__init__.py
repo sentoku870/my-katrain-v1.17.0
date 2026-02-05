@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Style Archetype System - Public API.
 
 This package provides style archetype analysis based on RadarMetrics and

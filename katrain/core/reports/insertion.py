@@ -32,7 +32,7 @@ class DuplicateSectionError(Exception):
 class SectionRegistration:
     """Registration metadata for a section."""
 
-    section: "ReportSection"
+    section: ReportSection
     after_section_id: str | None = None
     enabled_by_default: bool = True
 
@@ -127,9 +127,7 @@ def compute_section_order(
                 sid = reg.section.section_id
                 after = reg.after_section_id
                 # Unified message: covers both cycles and missing anchors
-                warnings.append(
-                    f"Unresolved dependency: '{sid}' -> '{after}'. Appending at end."
-                )
+                warnings.append(f"Unresolved dependency: '{sid}' -> '{after}'. Appending at end.")
                 result_ids.append(sid)
             break
         pending = still_pending

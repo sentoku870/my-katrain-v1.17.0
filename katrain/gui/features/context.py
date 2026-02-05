@@ -62,8 +62,8 @@ class FeatureContext(Protocol):
         各メソッドは既存実装を参照（Grep で "def <method>" で検索可能）。
     """
 
-    game: "Game" | None
-    controls: "ControlsPanel"
+    game: Game | None
+    controls: ControlsPanel
     engine: Any  # KataGoEngine or None - avoid circular import
     version: str
     config_file: str
@@ -136,7 +136,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_engine_config(self) -> "EngineConfig":
+    def get_engine_config(self) -> EngineConfig:
         """型付きエンジン設定を取得する（Phase 99追加）。
 
         Returns:
@@ -144,7 +144,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_trainer_config(self) -> "TrainerConfig":
+    def get_trainer_config(self) -> TrainerConfig:
         """型付きトレーナー設定を取得する（Phase 99追加）。
 
         Returns:
@@ -152,7 +152,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_leela_config(self) -> "LeelaConfig":
+    def get_leela_config(self) -> LeelaConfig:
         """型付きLeela設定を取得する（Phase 99追加）。
 
         Returns:
@@ -160,7 +160,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_engine_config(self, **kwargs: Any) -> "EngineConfig":
+    def update_engine_config(self, **kwargs: Any) -> EngineConfig:
         """engineセクションを部分更新する（Phase 101追加）。
 
         Args:
@@ -174,7 +174,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_trainer_config(self, **kwargs: Any) -> "TrainerConfig":
+    def update_trainer_config(self, **kwargs: Any) -> TrainerConfig:
         """trainerセクションを部分更新する（Phase 101追加）。
 
         Args:
@@ -188,7 +188,7 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def update_leela_config(self, **kwargs: Any) -> "LeelaConfig":
+    def update_leela_config(self, **kwargs: Any) -> LeelaConfig:
         """leelaセクションを部分更新する（Phase 101追加）。
 
         Args:
@@ -203,7 +203,7 @@ class FeatureContext(Protocol):
         ...
 
     @property
-    def state_notifier(self) -> "StateNotifier":
+    def state_notifier(self) -> StateNotifier:
         """状態変更通知システム（Phase 104追加）。
 
         Returns:

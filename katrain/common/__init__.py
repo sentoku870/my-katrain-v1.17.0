@@ -5,10 +5,10 @@
 #
 # 注意: 実行時に変更される値はここに配置しないでください。
 
-from katrain.common.theme_constants import DEFAULT_FONT, INFO_PV_COLOR
-from katrain.common.platform import get_platform
 from katrain.common.config_store import JsonFileConfigStore
 from katrain.common.locale_utils import normalize_lang_code, to_iso_lang_code
+from katrain.common.platform import get_platform
+from katrain.common.theme_constants import DEFAULT_FONT, INFO_PV_COLOR
 
 __all__ = [
     "DEFAULT_FONT",

@@ -25,6 +25,15 @@ Example usage:
     result = generate_curator_outputs(games_and_stats, curator_dir, batch_timestamp)
 """
 
+from .batch import (
+    CuratorBatchResult,
+    generate_curator_outputs,
+)
+from .guide_extractor import (
+    HighlightMoment,
+    ReplayGuide,
+    extract_replay_guide,
+)
 from .models import (
     AXIS_TO_MEANING_TAGS,
     DEFAULT_CONFIG,
@@ -39,15 +48,6 @@ from .scoring import (
     compute_stability,
     score_batch_suitability,
     score_game_suitability,
-)
-from .batch import (
-    CuratorBatchResult,
-    generate_curator_outputs,
-)
-from .guide_extractor import (
-    HighlightMoment,
-    ReplayGuide,
-    extract_replay_guide,
 )
 
 __all__ = [

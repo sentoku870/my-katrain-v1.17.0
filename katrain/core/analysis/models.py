@@ -13,12 +13,12 @@ Note: EvalSnapshot.worst_canonical_move などは logic.py の関数を使用す
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
 )
 
 _log = logging.getLogger(__name__)
@@ -37,10 +37,10 @@ else:
 class MistakeCategory(Enum):
     """ミスの大きさを4段階で分類するカテゴリ。"""
 
-    GOOD = "good"              # 実質問題なし
+    GOOD = "good"  # 実質問題なし
     INACCURACY = "inaccuracy"  # 軽い損
-    MISTAKE = "mistake"        # はっきり損
-    BLUNDER = "blunder"        # 大きな損
+    MISTAKE = "mistake"  # はっきり損
+    BLUNDER = "blunder"  # 大きな損
 
     def is_error(self) -> bool:
         """GOOD 以外ならミス扱い、といった判定用の補助メソッド。"""
@@ -55,25 +55,26 @@ class PVFilterLevel(Enum):
     ユーザーにとって理解しやすい候補手のみを表示する。
     """
 
-    OFF = "off"          # フィルタなし（全候補手を表示）
-    WEAK = "weak"        # 緩め（候補手多め、激甘〜甘口向け）
-    MEDIUM = "medium"    # 標準
-    STRONG = "strong"    # 厳しめ（候補手少なめ、辛口〜激辛向け）
-    AUTO = "auto"        # Skill Presetに連動
+    OFF = "off"  # フィルタなし（全候補手を表示）
+    WEAK = "weak"  # 緩め（候補手多め、激甘〜甘口向け）
+    MEDIUM = "medium"  # 標準
+    STRONG = "strong"  # 厳しめ（候補手少なめ、辛口〜激辛向け）
+    AUTO = "auto"  # Skill Presetに連動
 
 
 class PositionDifficulty(Enum):
     """局面難易度を表すラベル。"""
 
-    EASY = "easy"        # 良い手が多く、多少ズレても致命傷になりにくい
-    NORMAL = "normal"    # 標準的な難易度
-    HARD = "hard"        # 良い手が少なく、正解の幅が狭い
-    ONLY_MOVE = "only"   # ほぼ「この一手」に近い局面
+    EASY = "easy"  # 良い手が多く、多少ズレても致命傷になりにくい
+    NORMAL = "normal"  # 標準的な難易度
+    HARD = "hard"  # 良い手が少なく、正解の幅が狭い
+    ONLY_MOVE = "only"  # ほぼ「この一手」に近い局面
     UNKNOWN = "unknown"  # 候補手情報が無いなどで評価不能
 
 
 class AutoConfidence(Enum):
     """Confidence level for auto-strictness recommendation."""
+
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -137,10 +138,12 @@ class EngineType(Enum):
 # =============================================================================
 
 # Derive from EngineType to prevent drift (EngineType.UNKNOWN excluded)
-VALID_ANALYSIS_ENGINES: frozenset[str] = frozenset({
-    EngineType.KATAGO.value,
-    EngineType.LEELA.value,
-})
+VALID_ANALYSIS_ENGINES: frozenset[str] = frozenset(
+    {
+        EngineType.KATAGO.value,
+        EngineType.LEELA.value,
+    }
+)
 DEFAULT_ANALYSIS_ENGINE: str = EngineType.KATAGO.value
 
 
@@ -229,9 +232,7 @@ def resolve_visits(
         UIでのユーザー入力バリデーション（例: Leelaは50以上）も呼び出し側の責務。
     """
     if engine_type not in ENGINE_VISITS_DEFAULTS:
-        _log.warning(
-            "Unknown engine_type '%s', falling back to katago defaults", engine_type
-        )
+        _log.warning("Unknown engine_type '%s', falling back to katago defaults", engine_type)
     defaults = ENGINE_VISITS_DEFAULTS.get(engine_type, ENGINE_VISITS_DEFAULTS["katago"])
     key = "fast_visits" if strength == AnalysisStrength.QUICK else "max_visits"
 
@@ -272,27 +273,27 @@ class MoveEval:
     delta_score/delta_winrate を直接損失として使わないこと。
     """
 
-    move_number: int                    # 手数（1, 2, 3, ...）
-    player: str | None               # 'B' / 'W' / None（ルートなど）
-    gtp: str | None                  # "D4" のような座標 or "pass" / None
+    move_number: int  # 手数（1, 2, 3, ...）
+    player: str | None  # 'B' / 'W' / None（ルートなど）
+    gtp: str | None  # "D4" のような座標 or "pass" / None
 
     # 評価値（BLACK-PERSPECTIVE: 正=黒有利）
-    score_before: float | None       # この手を打つ前の評価
-    score_after: float | None        # この手を打った直後の評価
-    delta_score: float | None        # score_after - score_before (黒視点)
+    score_before: float | None  # この手を打つ前の評価
+    score_after: float | None  # この手を打った直後の評価
+    delta_score: float | None  # score_after - score_before (黒視点)
 
-    winrate_before: float | None     # この手を打つ前の勝率
-    winrate_after: float | None      # この手を打った直後の勝率
-    delta_winrate: float | None      # winrate_after - winrate_before (黒視点)
+    winrate_before: float | None  # この手を打つ前の勝率
+    winrate_after: float | None  # この手を打った直後の勝率
+    delta_winrate: float | None  # winrate_after - winrate_before (黒視点)
 
     # KaTrain 標準の指標（SIDE-TO-MOVE: 手番視点）
-    points_lost: float | None        # その手で失った期待値（手番視点、正=損失）
+    points_lost: float | None  # その手で失った期待値（手番視点、正=損失）
     realized_points_lost: float | None  # 実際の進行で確定した損失
-    root_visits: int                    # その局面の root 訪問回数（見ている深さの目安）
-    is_reliable: bool = False           # visits を根拠にした信頼度フラグ（保守的に False）
+    root_visits: int  # その局面の root 訪問回数（見ている深さの目安）
+    is_reliable: bool = False  # visits を根拠にした信頼度フラグ（保守的に False）
 
     # 将来の拡張用メタ情報
-    tag: str | None = None           # "opening"/"middle"/"yose" など自由タグ
+    tag: str | None = None  # "opening"/"middle"/"yose" など自由タグ
     importance_score: float | None = None  # 後で計算する「重要度スコア」
 
     score_loss: float | None = None
@@ -343,8 +344,9 @@ class MoveEval:
 @dataclass(frozen=True)
 class ImportantMoveSettings:
     """重要局面の抽出条件をまとめた設定."""
+
     importance_threshold: float  # importance がこの値を超えたものだけ採用
-    max_moves: int               # 最大件数（大きい順に上位だけ残す）
+    max_moves: int  # 最大件数（大きい順に上位だけ残す）
 
 
 # 棋力イメージ別プリセット（あとで UI から切り替えやすくするための土台）
@@ -429,9 +431,7 @@ class EvalSnapshot:
     @property
     def total_points_lost(self) -> float:
         """生の points_lost 合計（負の値を含む可能性あり）。後方互換用。"""
-        return float(
-            sum(m.points_lost for m in self.moves if m.points_lost is not None)
-        )
+        return float(sum(m.points_lost for m in self.moves if m.points_lost is not None))
 
     @property
     def max_points_lost(self) -> float:
@@ -496,8 +496,7 @@ class EvalSnapshot:
         return sum(
             1
             for m in self.moves
-            if m.position_difficulty is None
-            or m.position_difficulty == PositionDifficulty.UNKNOWN
+            if m.position_difficulty is None or m.position_difficulty == PositionDifficulty.UNKNOWN
         )
 
     @property
@@ -522,16 +521,16 @@ class EvalSnapshot:
     # Filtering methods
     # -------------------------------------------------------------------------
 
-    def filtered(self, predicate: Callable[[MoveEval], bool]) -> "EvalSnapshot":
+    def filtered(self, predicate: Callable[[MoveEval], bool]) -> EvalSnapshot:
         return EvalSnapshot(moves=[m for m in self.moves if predicate(m)])
 
-    def by_player(self, player: str) -> "EvalSnapshot":
+    def by_player(self, player: str) -> EvalSnapshot:
         return self.filtered(lambda m: m.player == player)
 
-    def first_n_moves(self, n: int) -> "EvalSnapshot":
+    def first_n_moves(self, n: int) -> EvalSnapshot:
         return EvalSnapshot(moves=self.moves[:n])
 
-    def last_n_moves(self, n: int) -> "EvalSnapshot":
+    def last_n_moves(self, n: int) -> EvalSnapshot:
         if n <= 0:
             return EvalSnapshot()
         return EvalSnapshot(moves=self.moves[-n:])
@@ -545,6 +544,7 @@ class EvalSnapshot:
 @dataclass
 class GameSummaryData:
     """1局分のデータ（複数局まとめ用）"""
+
     game_name: str
     player_black: str
     player_white: str
@@ -556,6 +556,7 @@ class GameSummaryData:
 @dataclass
 class SummaryStats:
     """複数局の集計統計"""
+
     player_name: str
     total_games: int = 0
     total_moves: int = 0
@@ -594,7 +595,7 @@ class SummaryStats:
         total_loss = self.mistake_total_loss.get(category, 0.0)
         return total_loss / count
 
-    def get_freedom_percentage(self, difficulty: "PositionDifficulty") -> float:
+    def get_freedom_percentage(self, difficulty: PositionDifficulty) -> float:
         """Freedom（手の自由度）の割合を計算"""
         if self.total_moves == 0:
             return 0.0
@@ -627,7 +628,7 @@ class SummaryStats:
             worst_combo = max(
                 self.phase_mistake_loss.items(),
                 key=lambda x: x[1],  # 損失の大きさでソート
-                default=None
+                default=None,
             )
             if worst_combo and worst_combo[1] > 0:
                 phase, category = worst_combo[0]
@@ -658,10 +659,7 @@ class SummaryStats:
         if difficult_total > 0 and self.total_moves > 0:
             difficult_pct = 100.0 * difficult_total / self.total_moves
             if difficult_pct > 15.0:  # 15%以上が難しい局面
-                priorities.append(
-                    f"**難しい局面での読みを改善**"
-                    f"（{difficult_pct:.1f}%の手が狭い/一択）"
-                )
+                priorities.append(f"**難しい局面での読みを改善**（{difficult_pct:.1f}%の手が狭い/一択）")
 
         # 3. 全体的なミス率が高い
         mistake_count = self.mistake_counts.get(MistakeCategory.MISTAKE, 0)
@@ -670,10 +668,7 @@ class SummaryStats:
         if serious_mistakes > 0 and self.total_moves > 0:
             serious_pct = 100.0 * serious_mistakes / self.total_moves
             if serious_pct > 5.0 and len(priorities) < 3:  # 5%以上がミス/大悪手
-                priorities.append(
-                    f"**全体的に悪手・大悪手を減らす**"
-                    f"（{serious_mistakes}回、{serious_pct:.1f}%）"
-                )
+                priorities.append(f"**全体的に悪手・大悪手を減らす**（{serious_mistakes}回、{serious_pct:.1f}%）")
 
         # 最大3個に制限
         return priorities[:3]
@@ -687,6 +682,7 @@ class SummaryStats:
 @dataclass
 class PhaseMistakeStats:
     """単局または複数局の Phase × Mistake 集計結果"""
+
     phase_mistake_counts: dict[tuple[str, str], int] = field(default_factory=dict)
     phase_mistake_loss: dict[tuple[str, str], float] = field(default_factory=dict)
     phase_moves: dict[str, int] = field(default_factory=dict)
@@ -714,14 +710,14 @@ class QuizConfig:
     """Configuration for extracting quiz items from an EvalSnapshot."""
 
     loss_threshold: float  # minimum loss (points) to consider a move
-    limit: int             # maximum number of quiz items to return
+    limit: int  # maximum number of quiz items to return
 
 
 @dataclass(frozen=True)
 class ReasonTagThresholds:
     """Thresholds for reason tag detection (Phase 17)."""
 
-    heavy_loss: float      # minimum loss for heavy_loss tag
+    heavy_loss: float  # minimum loss for heavy_loss tag
     reading_failure: float  # minimum loss for reading_failure tag
 
 
@@ -799,16 +795,18 @@ PRESET_ORDER: list[str] = ["relaxed", "beginner", "standard", "advanced", "pro"]
 # They are re-exported here to maintain backward compatibility
 # with code that imports them from models.py
 
+
 # Lazy import to avoid circular dependency
 def __getattr__(name: str) -> Any:
     """Lazy import for label constants from presentation module."""
     if name in ("SKILL_PRESET_LABELS", "CONFIDENCE_LABELS", "REASON_TAG_LABELS", "VALID_REASON_TAGS"):
         from katrain.core.analysis.presentation import (
-            SKILL_PRESET_LABELS,
             CONFIDENCE_LABELS,
             REASON_TAG_LABELS,
+            SKILL_PRESET_LABELS,
             VALID_REASON_TAGS,
         )
+
         return {
             "SKILL_PRESET_LABELS": SKILL_PRESET_LABELS,
             "CONFIDENCE_LABELS": CONFIDENCE_LABELS,
@@ -826,12 +824,13 @@ def __getattr__(name: str) -> Any:
 @dataclass
 class AutoRecommendation:
     """Result of auto-strictness recommendation algorithm."""
-    recommended_preset: str      # "relaxed", "beginner", "standard", "advanced", "pro"
+
+    recommended_preset: str  # "relaxed", "beginner", "standard", "advanced", "pro"
     confidence: AutoConfidence
-    blunder_count: int           # Blunder count using recommended preset's t3
-    important_count: int         # Mistake+blunder count using recommended preset's t2
-    score: int                   # Distance score (lower is better)
-    reason: str                  # Human-readable explanation
+    blunder_count: int  # Blunder count using recommended preset's t3
+    important_count: int  # Mistake+blunder count using recommended preset's t2
+    score: int  # Distance score (lower is better)
+    reason: str  # Human-readable explanation
 
 
 # =============================================================================
@@ -842,37 +841,23 @@ class AutoRecommendation:
 @dataclass(frozen=True)
 class UrgentMissConfig:
     """急場見逃しパターン検出の設定."""
+
     threshold_loss: float  # 損失閾値（この値を超える手を対象）
-    min_consecutive: int   # 最小連続手数
+    min_consecutive: int  # 最小連続手数
 
 
 # 棋力別の急場見逃し検出設定
 URGENT_MISS_CONFIGS: dict[str, UrgentMissConfig] = {
     # Relaxed: only detect catastrophic oversight (50+ points)
-    "relaxed": UrgentMissConfig(
-        threshold_loss=50.0,
-        min_consecutive=5
-    ),
+    "relaxed": UrgentMissConfig(threshold_loss=50.0, min_consecutive=5),
     # 級位者: 大石の生き死にでも見逃しやすい。30目以上の超大損失のみ検出
-    "beginner": UrgentMissConfig(
-        threshold_loss=30.0,
-        min_consecutive=4
-    ),
+    "beginner": UrgentMissConfig(threshold_loss=30.0, min_consecutive=4),
     # 標準: 20目超の損失で検出（有段者の急場見逃し）
-    "standard": UrgentMissConfig(
-        threshold_loss=20.0,
-        min_consecutive=3
-    ),
+    "standard": UrgentMissConfig(threshold_loss=20.0, min_consecutive=3),
     # 高段者: より小さな急場（コウ、ヨセの急場）も検出
-    "advanced": UrgentMissConfig(
-        threshold_loss=15.0,
-        min_consecutive=3
-    ),
+    "advanced": UrgentMissConfig(threshold_loss=15.0, min_consecutive=3),
     # Pro: detect even small urgent oversights (10+ points)
-    "pro": UrgentMissConfig(
-        threshold_loss=10.0,
-        min_consecutive=2
-    ),
+    "pro": UrgentMissConfig(threshold_loss=10.0, min_consecutive=2),
 }
 
 
@@ -933,16 +918,17 @@ SWING_MAGNITUDE_WEIGHT = 0.5
 
 # Reliability scale thresholds
 RELIABILITY_SCALE_THRESHOLDS = [
-    (500, 1.0),   # visits >= 500: full weight
-    (200, 0.8),   # visits >= 200: 80%
-    (100, 0.5),   # visits >= 100: 50%
-    (0, 0.3),     # visits < 100: 30%
+    (500, 1.0),  # visits >= 500: full weight
+    (200, 0.8),  # visits >= 200: 80%
+    (100, 0.5),  # visits >= 100: 50%
+    (0, 0.3),  # visits < 100: 30%
 ]
 
 
 @dataclass
 class ReliabilityStats:
     """Data Quality / Reliability statistics for a set of moves."""
+
     total_moves: int = 0
     reliable_count: int = 0
     low_confidence_count: int = 0
@@ -1005,6 +991,7 @@ _CONFIDENCE_THRESHOLDS = {
 @dataclass
 class MistakeStreak:
     """同一プレイヤーの連続ミス情報"""
+
     player: str  # "B" or "W"
     start_move: int  # 開始手数
     end_move: int  # 終了手数
@@ -1021,9 +1008,10 @@ class MistakeStreak:
 @dataclass
 class SkillEstimation:
     """棋力推定結果（Phase 13）"""
+
     estimated_level: str  # "beginner", "standard", "advanced", etc.
-    confidence: float     # 0.0〜1.0
-    reason: str           # 推定理由の説明
+    confidence: float  # 0.0〜1.0
+    reason: str  # 推定理由の説明
     metrics: dict[str, Any] = field(default_factory=dict)
 
 
@@ -1079,11 +1067,11 @@ PV_FILTER_CONFIGS: dict[str, PVFilterConfig] = {
 # skill_presetは「ミス判定の厳しさ」: 激甘=大きな損失のみ指摘、激辛=小さな損失も指摘
 # PVフィルタは逆方向: 激甘→候補手多め(WEAK)、激辛→候補手少なめ(STRONG)
 SKILL_TO_PV_FILTER: dict[str, str] = {
-    "relaxed": "weak",     # 激甘 → 候補手多め
-    "beginner": "weak",    # 甘口 → 候補手多め
+    "relaxed": "weak",  # 激甘 → 候補手多め
+    "beginner": "weak",  # 甘口 → 候補手多め
     "standard": "medium",  # 標準 → 標準
     "advanced": "strong",  # 辛口 → 候補手少なめ
-    "pro": "strong",       # 激辛 → 候補手少なめ
+    "pro": "strong",  # 激辛 → 候補手少なめ
 }
 
 DEFAULT_PV_FILTER_LEVEL = "auto"

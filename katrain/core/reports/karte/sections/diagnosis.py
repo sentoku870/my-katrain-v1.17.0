@@ -106,21 +106,21 @@ def weakness_hypothesis_for(
             if is_low_conf:
                 # LOW: "～の傾向が見られる"
                 lines.append(
-                    f"{i+1}. {phase_names.get(phase, phase)}の"
+                    f"{i + 1}. {phase_names.get(phase, phase)}の"
                     f"{cat_names_ja.get(category, category)}の傾向が見られる "
                     f"({count}回、損失{loss:.1f}目)"
                 )
             elif is_medium_conf:
                 # MEDIUM: "～の傾向あり"
                 lines.append(
-                    f"{i+1}. **{phase_names.get(phase, phase)}の"
+                    f"{i + 1}. **{phase_names.get(phase, phase)}の"
                     f"{cat_names_ja.get(category, category)}** 傾向あり "
                     f"({count}回、損失{loss:.1f}目)"
                 )
             else:
                 # HIGH: Assertive wording
                 lines.append(
-                    f"{i+1}. **{phase_names.get(phase, phase)}の"
+                    f"{i + 1}. **{phase_names.get(phase, phase)}の"
                     f"{cat_names_ja.get(category, category)}** "
                     f"({count}回、損失{loss:.1f}目)"
                 )
@@ -184,9 +184,7 @@ def practice_priorities_for(
 
     # Get priorities
     # MEDIUM confidence → shortened version (max 1)
-    max_priorities = (
-        1 if ctx.confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
-    )
+    max_priorities = 1 if ctx.confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
     priorities = get_practice_priorities_from_stats(stats, max_priorities=max_priorities)
 
     lines = [f"## 練習の優先順位 ({label})", ""]
@@ -203,16 +201,10 @@ def practice_priorities_for(
                 ("middle", "Middle"),
                 ("yose", "Endgame"),
             ]:
-                if (
-                    phase_name.lower() in priority.lower()
-                    or phase_key in priority.lower()
-                ):
+                if phase_name.lower() in priority.lower() or phase_key in priority.lower():
                     # Find worst move in this phase
                     phase_moves = [
-                        mv
-                        for mv in player_moves
-                        if (mv.tag or "unknown") == phase_key
-                        and mv.score_loss is not None
+                        mv for mv in player_moves if (mv.tag or "unknown") == phase_key and mv.score_loss is not None
                     ]
                     if phase_moves:
                         anchor_move = max(
@@ -226,10 +218,7 @@ def practice_priorities_for(
                 if loss > 0.0:
                     engine_type = detect_engine_type(anchor_move)
                     loss_label = format_loss_label(loss, engine_type, lang=ctx.lang)
-                    lines.append(
-                        f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で "
-                        f"{loss_label}の損失)"
-                    )
+                    lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で {loss_label}の損失)")
     else:
         lines.append("- No specific priorities identified. Keep up the good work!")
     lines.append("")

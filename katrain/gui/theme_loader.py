@@ -6,12 +6,12 @@ making it testable without GUI dependencies.
 
 import json
 import logging
-from typing import Any, Type
+from typing import Any
 
 _logger = logging.getLogger(__name__)
 
 
-def load_theme_overrides(theme_file: str, theme_class: Type[Any]) -> None:
+def load_theme_overrides(theme_file: str, theme_class: type[Any]) -> None:
     """Load theme overrides from JSON file.
 
     Args:

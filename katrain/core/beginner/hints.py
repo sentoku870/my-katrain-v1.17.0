@@ -104,9 +104,7 @@ def should_show_beginner_hints(enabled: bool, mode: str) -> bool:
 
     if not enabled:
         return False
-    if mode == MODE_PLAY:
-        return False
-    return True
+    return mode != MODE_PLAY
 
 
 def should_draw_board_highlight(
@@ -149,9 +147,7 @@ def is_coords_valid(
     return 0 <= x < board_size_x and 0 <= y < board_size_y
 
 
-def _get_meaning_tag_hint(
-    node: Any, move_coords: tuple[int, int] | None
-) -> BeginnerHint | None:
+def _get_meaning_tag_hint(node: Any, move_coords: tuple[int, int] | None) -> BeginnerHint | None:
     """Get beginner hint from node's MeaningTag (Phase 92).
 
     Checks if the node has a meaning_tag_id attribute (typically set by
@@ -277,9 +273,8 @@ def compute_beginner_hint(
         if hint and require_reliable:
             # Detector hints use board state (always reliable)
             # MeaningTag hints need analysis reliability check
-            if hint.category not in _DETECTOR_CATEGORIES:
-                if not _is_reliable(node):
-                    return None
+            if hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+                return None
 
         return hint
 
@@ -324,6 +319,7 @@ def get_beginner_hint_cached(
                 return None
             # Cast to expected return type (we control what goes in the cache)
             from typing import cast
+
             return cast(BeginnerHint | None, cached_hint)
         # Setting changed, recompute
 

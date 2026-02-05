@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import (
     TYPE_CHECKING,
     cast,
@@ -28,7 +28,6 @@ from katrain.core.analysis.board_context import (
     extract_ownership_context,
 )
 from katrain.core.analysis.ownership_cluster import (
-    ClusterExtractionConfig,
     OwnershipCluster,
     extract_clusters_from_nodes,
 )
@@ -52,7 +51,7 @@ StoneSet = frozenset[StonePosition]
 # =====================================================================
 
 
-class ClusterSemantics(str, Enum):
+class ClusterSemantics(StrEnum):
     """Semantic classification of a cluster."""
 
     GROUP_DEATH = "group_death"  # Actor's stones were captured
@@ -152,7 +151,7 @@ class ClusterClassificationContext:
 
 
 def compute_stones_at_node(
-    node: "SGFNode",
+    node: SGFNode,
     board_size: tuple[int, int],
 ) -> StoneSet:
     """Compute stone positions at a node by replaying from root.
@@ -203,12 +202,11 @@ def compute_stones_at_node(
             opponent = "W" if player == "B" else "B"
             for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nc, nr = col + dc, row + dr
-                if 0 <= nc < width and 0 <= nr < height:
-                    if board[nr][nc] == opponent:
-                        group = _find_group(board, nc, nr, width, height)
-                        if not _has_liberty(board, group, width, height):
-                            for gc, gr in group:
-                                board[gr][gc] = None
+                if 0 <= nc < width and 0 <= nr < height and board[nr][nc] == opponent:
+                    group = _find_group(board, nc, nr, width, height)
+                    if not _has_liberty(board, group, width, height):
+                        for gc, gr in group:
+                            board[gr][gc] = None
 
             # Suicide check (Rev.6: remove self-group)
             # After capturing opponent, if self has no liberties, remove self.
@@ -277,9 +275,8 @@ def _has_liberty(
     for col, row in group:
         for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nc, nr = col + dc, row + dr
-            if 0 <= nc < width and 0 <= nr < height:
-                if board[nr][nc] is None:
-                    return True
+            if 0 <= nc < width and 0 <= nr < height and board[nr][nc] is None:
+                return True
     return False
 
 
@@ -291,7 +288,7 @@ def _has_liberty(
 class StoneCache:
     """Cache for stone positions during Karte generation (one game)."""
 
-    def __init__(self, game: "Game"):
+    def __init__(self, game: Game):
         self._game = game
         self._board_size = game.board_size
         self._cache: dict[int, StoneSet] = {}  # move_number -> stones
@@ -316,7 +313,7 @@ class StoneCache:
         self._cache[move_number] = stones
         return stones
 
-    def _find_node_by_move_number(self, move_number: int) -> "GameNode" | None:
+    def _find_node_by_move_number(self, move_number: int) -> GameNode | None:
         """Find node by move number on mainline.
 
         Uses ordered_children[0] for mainline traversal
@@ -366,11 +363,7 @@ def get_stones_in_cluster(
         Tuple of stones in cluster (sorted for determinism)
     """
     cluster_points: frozenset[tuple[int, int]] = cluster.coords
-    stones_in_cluster = [
-        (col, row, player)
-        for (col, row, player) in stones
-        if (col, row) in cluster_points
-    ]
+    stones_in_cluster = [(col, row, player) for (col, row, player) in stones if (col, row) in cluster_points]
     return tuple(sorted(stones_in_cluster))
 
 
@@ -422,9 +415,7 @@ def _detect_group_death(
     )
 
     # Get actor's stones in cluster at child
-    child_actor_stones_set = frozenset(
-        (s[0], s[1]) for s in child_stones if s[2] == actor
-    )
+    child_actor_stones_set = frozenset((s[0], s[1]) for s in child_stones if s[2] == actor)
 
     # Find stones that disappeared
     disappeared = []
@@ -676,8 +667,8 @@ def classify_cluster(
 
 
 def get_ownership_context_pair(
-    parent_node: "GameNode",
-    child_node: "GameNode",
+    parent_node: GameNode,
+    child_node: GameNode,
 ) -> tuple[OwnershipContext, OwnershipContext] | None:
     """Get OwnershipContext for both parent and child nodes.
 
@@ -698,8 +689,8 @@ def get_ownership_context_pair(
 
 def build_classification_context(
     actor: str,
-    parent_node: "GameNode",
-    child_node: "GameNode",
+    parent_node: GameNode,
+    child_node: GameNode,
     parent_stones: StoneSet,
     child_stones: StoneSet,
 ) -> ClusterClassificationContext | None:
@@ -731,7 +722,7 @@ def build_classification_context(
 
 
 def _get_cluster_context_for_move(
-    game: "Game",
+    game: Game,
     move_number: int,
     lang: str | None,
     cache: StoneCache | None = None,
@@ -822,7 +813,7 @@ def _get_cluster_context_for_move(
         return None  # Catch all, don't break Karte
 
 
-def _find_mainline_node(game: "Game", move_number: int) -> "GameNode" | None:
+def _find_mainline_node(game: Game, move_number: int) -> GameNode | None:
     """Find node by move number on mainline.
 
     Uses ordered_children[0] for mainline traversal.

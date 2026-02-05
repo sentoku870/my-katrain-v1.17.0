@@ -21,6 +21,7 @@ Example:
     >>> notifier.notify(Event.create(EventType.CONFIG_UPDATED, {"key": "value"}))
     Config updated: {'key': 'value'}
 """
+
 from katrain.core.state.events import Event, EventType
 from katrain.core.state.notifier import StateNotifier
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import threading
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -10,8 +10,8 @@ from kivy.properties import BooleanProperty, Clock, ListProperty, NumericPropert
 from kivy.uix.widget import Widget
 from kivymd.app import MDApp
 
+from katrain.core.eval_metrics import MistakeCategory, classify_mistake
 from katrain.gui.theme import Theme
-from katrain.core.eval_metrics import classify_mistake, MistakeCategory
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -31,7 +31,7 @@ class Graph(Widget):
         self.bind(pos=self.update_graph, size=self.update_graph)
         self.redraw_trigger = Clock.create_trigger(self.update_graph, 0.1)
 
-    def set_nodes_from_list(self, node_list: List["GameNode"]) -> None:
+    def set_nodes_from_list(self, node_list: list[GameNode]) -> None:
         """Set nodes from a pre-built node list.
 
         Thread-safe: acquires _lock before modifying state.
@@ -48,7 +48,7 @@ class Graph(Widget):
     def update_graph(self, *args: Any) -> None:
         pass
 
-    def update_value(self, node: "GameNode") -> None:
+    def update_value(self, node: GameNode) -> None:
         with self._lock:
             self.highlighted_index = index = node.depth
             self.nodes.extend([None] * max(0, index - (len(self.nodes) - 1)))
@@ -116,7 +116,7 @@ class ScoreGraph(Graph):
                 katrain.update_state()
         self.navigate_move = [None, 0, 0, 0]
 
-    def show_graphs(self, keys: Dict[str, bool]) -> None:
+    def show_graphs(self, keys: dict[str, bool]) -> None:
         self.show_score = keys["score"]
         self.show_winrate = keys["winrate"]
 
@@ -133,13 +133,8 @@ class ScoreGraph(Graph):
         score_nn_values = [n.score for n in nodes if n and n.score]
         score_values_range = min(score_nn_values or [0]), max(score_nn_values or [0])
 
-        winrate_values = [
-            (n.winrate - 0.5) * 100 if n and n.winrate else math.nan
-            for n in nodes
-        ]
-        winrate_nn_values = [
-            (n.winrate - 0.5) * 100 for n in nodes if n and n.winrate
-        ]
+        winrate_values = [(n.winrate - 0.5) * 100 if n and n.winrate else math.nan for n in nodes]
+        winrate_nn_values = [(n.winrate - 0.5) * 100 for n in nodes if n and n.winrate]
         winrate_values_range = min(winrate_nn_values or [0]), max(winrate_nn_values or [0])
 
         score_granularity = 5
@@ -147,18 +142,14 @@ class ScoreGraph(Graph):
 
         self.score_scale = (
             max(
-                math.ceil(
-                    max(-score_values_range[0], score_values_range[1]) / score_granularity
-                ),
+                math.ceil(max(-score_values_range[0], score_values_range[1]) / score_granularity),
                 1,
             )
             * score_granularity
         )
         self.winrate_scale = (
             max(
-                math.ceil(
-                    max(-winrate_values_range[0], winrate_values_range[1]) / winrate_granularity
-                ),
+                math.ceil(max(-winrate_values_range[0], winrate_values_range[1]) / winrate_granularity),
                 1,
             )
             * winrate_granularity
@@ -192,9 +183,7 @@ class ScoreGraph(Graph):
 
             if math.isnan(score_dot_point[1]):
                 score_dot_point[1] = (
-                    self.y
-                    + self.height / 2
-                    + available_height / 2 * ((score_nn_values or [0])[-1] / self.score_scale)
+                    self.y + self.height / 2 + available_height / 2 * ((score_nn_values or [0])[-1] / self.score_scale)
                 )
             self.score_dot_pos = score_dot_point
 
@@ -248,9 +237,7 @@ class ScoreGraph(Graph):
             get_important = getattr(game, "get_important_move_numbers", None)
             if callable(get_important):
                 # 重要局面の「インデックス集合」
-                important_indices = {
-                    int(i) for i in get_important() if i is not None
-                }
+                important_indices = {int(i) for i in get_important() if i is not None}
                 max_idx = len(score_line_points) - 1
 
                 # nodes[i] に対応する x 座標を直接使う
@@ -258,9 +245,7 @@ class ScoreGraph(Graph):
                     if 0 <= idx <= max_idx:
                         x = score_line_points[idx][0]
                         # グラフ全体の高さにわたる縦線
-                        important_points.extend(
-                            [x, self.y, x, self.y + self.height]
-                        )
+                        important_points.extend([x, self.y, x, self.y + self.height])
 
         self.important_points = important_points
 

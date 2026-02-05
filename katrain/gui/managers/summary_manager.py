@@ -22,7 +22,8 @@ Kivy依存性:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.engine import KataGoEngine
@@ -47,10 +48,10 @@ class SummaryManager:
 
     def __init__(
         self,
-        get_ctx: Callable[[], "FeatureContext"],
-        get_engine: Callable[[], "KataGoEngine" | None],
+        get_ctx: Callable[[], FeatureContext],
+        get_engine: Callable[[], KataGoEngine | None],
         get_config: Callable[[str, Any], Any],
-        config_manager: "ConfigManager",
+        config_manager: ConfigManager,
         logger: Callable[[str, int], None],
     ):
         """SummaryManagerを初期化する。
@@ -150,9 +151,7 @@ class SummaryManager:
 
         return _collect(stats_list, focus_player)
 
-    def build_summary_from_stats(
-        self, stats_list: list[dict[str, Any]], focus_player: str | None = None
-    ) -> str:
+    def build_summary_from_stats(self, stats_list: list[dict[str, Any]], focus_player: str | None = None) -> str:
         """統計からサマリテキストを構築。"""
         from katrain.gui.features.summary_formatter import build_summary_from_stats as _build
 
@@ -173,9 +172,7 @@ class SummaryManager:
             self.show_player_selection_dialog,
         )
 
-    def process_summary_with_selected_players(
-        self, sgf_files: list[str], selected_players: list[str]
-    ) -> None:
+    def process_summary_with_selected_players(self, sgf_files: list[str], selected_players: list[str]) -> None:
         """選択されたプレイヤーでサマリ処理。Requires Kivy."""
         from katrain.gui.features.summary_ui import process_summary_with_selected_players as _process
 
@@ -185,9 +182,7 @@ class SummaryManager:
             self.process_and_export_summary,
         )
 
-    def show_player_selection_dialog(
-        self, sorted_players: list[tuple[str, int]], sgf_files: list[str]
-    ) -> None:
+    def show_player_selection_dialog(self, sorted_players: list[tuple[str, int]], sgf_files: list[str]) -> None:
         """プレイヤー選択ダイアログ表示。Requires Kivy."""
         from katrain.gui.features.summary_ui import show_player_selection_dialog as _show
 
@@ -254,9 +249,7 @@ class SummaryManager:
             self.build_summary_from_stats,
         )
 
-    def save_summary_file(
-        self, summary_text: str, player_name: str, progress_popup: Any
-    ) -> None:
+    def save_summary_file(self, summary_text: str, player_name: str, progress_popup: Any) -> None:
         """サマリファイル保存。Requires Kivy."""
         from katrain.gui.features.summary_io import save_summary_file as _save
 

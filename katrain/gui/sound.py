@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any
 
 from kivy.clock import Clock
-from kivymd.app import MDApp
 from kivy.core.audio import SoundLoader
 from kivy.utils import platform
+from kivymd.app import MDApp
 
 cached_sounds: dict[str, Any] = {}
 

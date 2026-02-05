@@ -6,13 +6,13 @@ which evaluates how well a professional game record matches a user's learning ne
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, FrozenSet, Mapping
+from typing import Any
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.analysis.skill_radar import RadarAxis
-
 
 # =============================================================================
 # Constants
@@ -23,7 +23,7 @@ UNCERTAIN_TAG: str = MeaningTagId.UNCERTAIN.value
 
 # Radar axis to MeaningTag mapping based on Go domain knowledge
 # Phase 63 supports exactly these 5 axes
-AXIS_TO_MEANING_TAGS: Mapping[RadarAxis, FrozenSet[str]] = MappingProxyType(
+AXIS_TO_MEANING_TAGS: Mapping[RadarAxis, frozenset[str]] = MappingProxyType(
     {
         RadarAxis.FIGHTING: frozenset(
             {
@@ -35,16 +35,14 @@ AXIS_TO_MEANING_TAGS: Mapping[RadarAxis, FrozenSet[str]] = MappingProxyType(
         ),
         RadarAxis.OPENING: frozenset({"direction_error"}),
         RadarAxis.ENDGAME: frozenset({"endgame_slip", "territorial_loss"}),
-        RadarAxis.STABILITY: frozenset(
-            {"overplay", "connection_miss", "shape_mistake"}
-        ),
+        RadarAxis.STABILITY: frozenset({"overplay", "connection_miss", "shape_mistake"}),
         RadarAxis.AWARENESS: frozenset({"slow_move"}),
     }
 )
 
 # Phase 63 supports exactly these 5 axes
 # This prevents breakage if RadarAxis enum gains new members in the future
-SUPPORTED_AXES: FrozenSet[RadarAxis] = frozenset(AXIS_TO_MEANING_TAGS.keys())
+SUPPORTED_AXES: frozenset[RadarAxis] = frozenset(AXIS_TO_MEANING_TAGS.keys())
 
 
 # =============================================================================

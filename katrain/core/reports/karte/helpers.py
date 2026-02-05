@@ -25,11 +25,7 @@ def has_loss_data(mv: MoveEval) -> bool:
         0.0 は有効な損失値（完璧な手）として True を返す。
         これにより「データなし」と「真の 0.0 損失」を区別できる。
     """
-    return (
-        mv.score_loss is not None
-        or mv.leela_loss_est is not None
-        or mv.points_lost is not None
-    )
+    return mv.score_loss is not None or mv.leela_loss_est is not None or mv.points_lost is not None
 
 
 def format_loss_with_engine_suffix(

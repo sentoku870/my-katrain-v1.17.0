@@ -11,16 +11,18 @@ Usage:
     store.put("general", version="1.0", language="en")
     value = store.get("general")["version"]
 """
+
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import datetime
 from threading import Lock
-from typing import Any, Iterator
+from typing import Any
 
 
 def _get_logger() -> logging.Logger:
@@ -50,15 +52,17 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
         """Load data from JSON file."""
         if os.path.exists(self._filename):
             try:
-                with open(self._filename, "r", encoding="utf-8") as f:
+                with open(self._filename, encoding="utf-8") as f:
                     self._data = json.load(f)
                 # Runtime guard: verify all values are dicts (invariant enforcement)
                 if isinstance(self._data, dict):
                     for key, value in list(self._data.items()):
                         if not isinstance(value, dict):
-                            _get_logger().warning("Config section %s is not a dict (got %s), removing", key, type(value).__name__)
+                            _get_logger().warning(
+                                "Config section %s is not a dict (got %s), removing", key, type(value).__name__
+                            )
                             del self._data[key]
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 _get_logger().warning("Corrupt config file %s: %s", self._filename, e, exc_info=True)
                 # Preserve corrupt file for manual recovery with timestamp
                 try:
@@ -103,10 +107,8 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
             if fd is not None:
                 os.close(fd)
             if temp_path is not None:
-                try:
+                with contextlib.suppress(OSError):
                     os.unlink(temp_path)
-                except OSError:
-                    pass
 
     def get(self, key: str) -> dict[str, Any] | None:  # type: ignore[override]
         """Get a section by key.
