@@ -1472,6 +1472,7 @@ def do_mykatrain_settings_popup(
 
         browse_popup = Popup(
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            title_font=Theme.DEFAULT_FONT,
             size_hint=(0.8, 0.8),
             content=browse_popup_content,
         ).__self__
@@ -1494,6 +1495,7 @@ def do_mykatrain_settings_popup(
 
         browse_popup = Popup(
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            title_font=Theme.DEFAULT_FONT,
             size_hint=(0.8, 0.8),
             content=browse_popup_content,
         ).__self__
@@ -1519,6 +1521,7 @@ def do_mykatrain_settings_popup(
 
         browse_popup = Popup(
             title="Select Leela Zero executable",
+            title_font=Theme.DEFAULT_FONT,
             size_hint=(0.8, 0.8),
             content=browse_popup_content,
         ).__self__

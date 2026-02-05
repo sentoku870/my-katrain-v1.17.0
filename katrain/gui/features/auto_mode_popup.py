@@ -96,6 +96,7 @@ def show_auto_mode_content(
     # Header
     header = Label(
         text=i18n._("mykatrain:settings:auto_mode_header"),
+        font_name=Theme.DEFAULT_FONT,
         font_size="18sp",
         size_hint_y=None,
         height="40dp",
@@ -109,6 +110,7 @@ def show_auto_mode_content(
     desc_text = i18n._("mykatrain:settings:auto_mode_description")
     desc = Label(
         text=desc_text,
+        font_name=Theme.DEFAULT_FONT,
         font_size="14sp",
         size_hint_y=None,
         height="60dp",
@@ -133,6 +135,7 @@ def show_auto_mode_content(
     # Test button
     test_btn = Button(
         text=i18n._("mykatrain:settings:test_analysis"),
+        font_name=Theme.DEFAULT_FONT,
         size_hint_y=None,
         height="48dp",
         background_color=Theme.PRIMARY_COLOR,
@@ -192,6 +195,7 @@ def _show_testing_status(result_area: BoxLayout) -> None:
     result_area.clear_widgets()
     status = Label(
         text=i18n._("mykatrain:settings:testing_in_progress"),
+        font_name=Theme.DEFAULT_FONT,
         font_size="16sp",
         size_hint_y=None,
         height="40dp",
@@ -285,6 +289,7 @@ def _render_success_ui(
 
     success_label = Label(
         text=f"✓ {success_text}",
+        font_name=Theme.DEFAULT_FONT,
         font_size="16sp",
         size_hint_y=None,
         height="60dp",
@@ -316,6 +321,7 @@ def _render_failure_ui(
     error_msg = result.error_message or i18n._("mykatrain:settings:unknown_error")
     error_label = Label(
         text=f"✗ {error_msg}",
+        font_name=Theme.DEFAULT_FONT,
         font_size="14sp",
         size_hint_y=None,
         height="80dp",
@@ -339,6 +345,7 @@ def _render_failure_ui(
     if should_offer_cpu_fallback(result):
         cpu_btn = Button(
             text=i18n._("mykatrain:settings:try_cpu_fallback"),
+            font_name=Theme.DEFAULT_FONT,
             background_color=Theme.SECONDARY_COLOR,
         )
         cpu_btn.bind(
@@ -349,6 +356,7 @@ def _render_failure_ui(
     # Copy diagnostics button
     diag_btn = Button(
         text=i18n._("mykatrain:settings:copy_diagnostics"),
+        font_name=Theme.DEFAULT_FONT,
     )
     diag_btn.bind(on_release=lambda btn: _copy_diagnostics(result, ctx))
     btn_layout.add_widget(diag_btn)
@@ -385,6 +393,7 @@ def _render_timeout_ui(
     # Timeout message
     timeout_label = Label(
         text=f"⏰ {i18n._('mykatrain:settings:timeout_title')}",
+        font_name=Theme.DEFAULT_FONT,
         font_size="16sp",
         size_hint_y=None,
         height="40dp",
@@ -397,6 +406,7 @@ def _render_timeout_ui(
 
     desc_label = Label(
         text=i18n._("mykatrain:settings:timeout_description"),
+        font_name=Theme.DEFAULT_FONT,
         font_size="14sp",
         size_hint_y=None,
         height="40dp",
@@ -417,6 +427,7 @@ def _render_timeout_ui(
     # Restart engine button
     restart_btn = Button(
         text=i18n._("mykatrain:settings:restart_engine"),
+        font_name=Theme.DEFAULT_FONT,
         background_color=Theme.PRIMARY_COLOR,
     )
     restart_btn.bind(
@@ -427,6 +438,7 @@ def _render_timeout_ui(
     # Copy diagnostics button
     diag_btn = Button(
         text=i18n._("mykatrain:settings:copy_diagnostics"),
+        font_name=Theme.DEFAULT_FONT,
     )
     diag_btn.bind(on_release=lambda btn: _copy_diagnostics(result, ctx))
     btn_layout.add_widget(diag_btn)
@@ -436,6 +448,7 @@ def _render_timeout_ui(
     # Note about CPU fallback
     note_label = Label(
         text=i18n._("mykatrain:settings:timeout_note"),
+        font_name=Theme.DEFAULT_FONT,
         font_size="12sp",
         size_hint_y=None,
         height="30dp",
@@ -459,6 +472,7 @@ def _render_lightweight_missing_ui(
     # Error message
     error_label = Label(
         text=f"⚠ {i18n._('mykatrain:settings:error_lightweight_missing')}",
+        font_name=Theme.DEFAULT_FONT,
         font_size="16sp",
         size_hint_y=None,
         height="40dp",
@@ -478,6 +492,7 @@ def _render_lightweight_missing_ui(
     )
     instr_label = Label(
         text=instructions,
+        font_name=Theme.DEFAULT_FONT,
         font_size="14sp",
         size_hint_y=None,
         height="80dp",
@@ -560,6 +575,7 @@ def _on_fallback_complete(
 
         success_label = Label(
             text=f"✓ {success_text}",
+            font_name=Theme.DEFAULT_FONT,
             font_size="16sp",
             size_hint_y=None,
             height="60dp",
@@ -576,6 +592,7 @@ def _on_fallback_complete(
         # CPU fallback also failed
         error_label = Label(
             text=f"✗ {i18n._('mykatrain:settings:cpu_fallback_also_failed')}",
+            font_name=Theme.DEFAULT_FONT,
             font_size="14sp",
             size_hint_y=None,
             height="60dp",
@@ -588,6 +605,7 @@ def _on_fallback_complete(
         if result.error_message:
             detail_label = Label(
                 text=result.error_message[:200],
+                font_name=Theme.DEFAULT_FONT,
                 font_size="12sp",
                 size_hint_y=None,
                 height="40dp",
@@ -658,6 +676,7 @@ def _on_restart_complete(
     if success:
         status_label = Label(
             text=f"✓ {i18n._('mykatrain:settings:engine_restarted')}",
+            font_name=Theme.DEFAULT_FONT,
             font_size="16sp",
             size_hint_y=None,
             height="40dp",
@@ -669,6 +688,7 @@ def _on_restart_complete(
 
         hint_label = Label(
             text=i18n._("mykatrain:settings:try_test_again"),
+            font_name=Theme.DEFAULT_FONT,
             font_size="14sp",
             size_hint_y=None,
             height="30dp",
@@ -679,6 +699,7 @@ def _on_restart_complete(
     else:
         error_label = Label(
             text=f"✗ {i18n._('mykatrain:settings:engine_restart_failed')}",
+            font_name=Theme.DEFAULT_FONT,
             font_size="14sp",
             size_hint_y=None,
             height="40dp",
@@ -704,6 +725,7 @@ def _show_status(layout: BoxLayout, message: str) -> None:
     layout.clear_widgets()
     label = Label(
         text=message,
+        font_name=Theme.DEFAULT_FONT,
         font_size="14sp",
         size_hint_y=None,
         height="40dp",

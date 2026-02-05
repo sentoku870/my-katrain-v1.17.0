@@ -167,6 +167,7 @@ def _build_and_show_popup(ctx: "FeatureContext", result: EngineComparisonResult)
     # Create popup
     popup = Popup(
         title=i18n._("engine-compare:title"),
+        title_font=Theme.DEFAULT_FONT,
         content=content,
         size_hint=(0.85, 0.85),
     )

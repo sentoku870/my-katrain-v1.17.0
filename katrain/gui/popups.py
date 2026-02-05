@@ -89,6 +89,7 @@ def _get_app_gui() -> Any:
 class I18NPopup(Popup):
     title_key = StringProperty("")
     font_name = StringProperty(Theme.DEFAULT_FONT)
+    title_font = StringProperty(Theme.DEFAULT_FONT)
     # クラス変数: 前回のupdate_stateイベント（連続dismiss対策）
     _pending_update_event: Any = None
 
@@ -458,7 +459,8 @@ class ConfigTeacherPopup(QuickConfigGui):
         return set()
 
 class DescriptionLabel(Label):
-    pass
+    font_name = StringProperty(Theme.DEFAULT_FONT)
+
 
 
 class ConfigAIPopup(QuickConfigGui):
@@ -879,7 +881,11 @@ class BaseConfigPopup(QuickConfigGui):
         if not downloading:
             if not self.KATAGOS.get(platform):
                 self.katago_download_progress_box.add_widget(
-                    Label(text=f"No binaries available for platform {platform}", text_size=(None, dp(50)))
+                    Label(
+                        text=f"No binaries available for platform {platform}",
+                        text_size=(None, dp(50)),
+                        font_name=Theme.DEFAULT_FONT,
+                    )
                 )
             else:
                 self.katago_download_progress_box.add_widget(
@@ -890,44 +896,13 @@ class BaseConfigPopup(QuickConfigGui):
 class ConfigPopup(BaseConfigPopup):
     # Phase 88: Settings mode and humanlike toggle
     current_mode = StringProperty("standard")  # "automatic", "standard", "advanced"
-    humanlike_enabled = BooleanProperty(False)
 
     def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         Clock.schedule_once(self.check_katas)
         MDApp.get_running_app().bind(language=self.check_models)
         MDApp.get_running_app().bind(language=self.check_katas)
-        # Initialize humanlike_enabled from config
-        humanlike_model = self.katrain.config("engine/humanlike_model", "")
-        self.humanlike_enabled = bool(humanlike_model)
 
-    def on_humanlike_enabled(self, instance: Any, value: bool) -> None:
-        """Kivy auto-callback when humanlike_enabled changes."""
-        self._handle_humanlike_toggle(value)
-
-    def _handle_humanlike_toggle(self, enabled: bool) -> None:
-        """Handle human-like toggle change.
-
-        When forcing OFF, always clear humanlike_model_path to avoid stale state.
-        """
-        if enabled:
-            last = self.katrain.config("engine/humanlike_model_last", "")
-            if last and os.path.exists(last):
-                self.humanlike_model_path.text = last
-                self.humanlike_enabled = True
-            elif last:
-                # File missing - force OFF and clear path
-                self.katrain.controls.set_status(i18n._("humanlike:path_not_found"), STATUS_INFO)
-                self.humanlike_enabled = False
-                self.humanlike_model_path.text = ""
-            else:
-                # No previous path - force OFF
-                self.katrain.controls.set_status(i18n._("humanlike:no_path_warning"), STATUS_INFO)
-                self.humanlike_enabled = False
-                self.humanlike_model_path.text = ""
-        else:
-            self.humanlike_enabled = False
-            # Note: Don't clear path here - update_config will preserve it in last_path
 
     def get_model_display_text(self, model_path: str) -> str:
         """Get localized display text for model.
@@ -948,9 +923,13 @@ class ConfigPopup(BaseConfigPopup):
 
     def update_config(self, save_to_file: bool = True, close_popup: bool = True) -> set[str]:
         # Phase 88: Normalize humanlike config before saving
+        # Simplify: Treat non-empty path as enabled
+        model_path = self.humanlike_model_path.text
+        enabled = bool(model_path)
+        
         model, last, effective_on = normalize_humanlike_config(
-            self.humanlike_enabled,
-            self.humanlike_model_path.text,
+            enabled,
+            model_path,
             self.katrain.config("engine/humanlike_model_last", "")
         )
         # Update humanlike_model_path to normalized value before parent saves
@@ -962,9 +941,8 @@ class ConfigPopup(BaseConfigPopup):
         self.katrain.debug_level = self.katrain.config("general/debug_level", OUTPUT_INFO)
 
         # Sync UI state to match persisted config
-        if self.humanlike_enabled and not effective_on:
+        if enabled and not effective_on:
             self.katrain.controls.set_status(i18n._("humanlike:forced_off"), STATUS_INFO)
-        self.humanlike_enabled = effective_on
 
         ignore = {"max_visits", "fast_visits", "max_time", "enable_ownership", "wide_root_noise", "humanlike_model_last"}
         detected_restart = [key for key in updated if "engine" in key and not any(ig in key for ig in ignore)]

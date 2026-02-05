@@ -110,6 +110,7 @@ def save_summaries_per_player(
         files_text = "\n".join([os.path.basename(f) for f in saved_files])
         Popup(
             title=i18n._("Summaries exported"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}",
                 halign="center",
@@ -122,6 +123,7 @@ def save_summaries_per_player(
     else:
         Popup(
             title=i18n._("No summaries generated"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text="No players had enough games (need 2+ per category).",
                 halign="center",
@@ -200,7 +202,8 @@ def save_categorized_summaries_from_stats(
     if saved_files:
         files_text = "\n".join([os.path.basename(f) for f in saved_files])
         Popup(
-            title="Summaries exported",
+            title=i18n._("Summaries exported"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=f"Saved {len(saved_files)} summary file(s):\n\n{files_text}",
                 halign="center",
@@ -211,7 +214,8 @@ def save_categorized_summaries_from_stats(
         ctx.controls.set_status(f"{len(saved_files)} summaries exported", STATUS_INFO, check_level=False)
     else:
         Popup(
-            title="No summaries generated",
+            title=i18n._("No summaries generated"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text="No categories had enough games (need 2+).\nCheck that focus_player matches SGF player names.",
                 halign="center",
@@ -262,7 +266,8 @@ def save_summary_file(
 
         ctx.controls.set_status(f"Summary exported to {full_path}", STATUS_INFO, check_level=False)
         Popup(
-            title="Summary exported",
+            title=i18n._("Summary exported"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(text=f"Saved to:\n{full_path}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
         ).open()
@@ -270,7 +275,8 @@ def save_summary_file(
         # Expected: File I/O error
         ctx.log(f"Failed to export Summary to {full_path}: {exc}", OUTPUT_ERROR)
         Popup(
-            title="Error",
+            title=i18n._("Error"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(text=f"Failed to save:\n{exc}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
         ).open()
@@ -279,7 +285,8 @@ def save_summary_file(
         import traceback
         ctx.log(f"Unexpected error exporting Summary to {full_path}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
         Popup(
-            title="Error",
+            title=i18n._("Error"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(text=f"Unexpected error:\n{exc}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
         ).open()

@@ -2391,3 +2391,37 @@ msgstr "Copy to Clipboard"
 
 msgid "active_review:copied"
 msgstr "Copied"
+
+# Common UI
+msgid "Error"
+msgstr "Error"
+
+msgid "Warning"
+msgstr "Warning"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Browse..."
+msgstr "Browse..."
+
+# Karte Export
+msgid "mykatrain:export-karte:success-title"
+msgstr "Karte Exported"
+
+msgid "mykatrain:export-karte:success-msg"
+msgstr ""
+"Saved to:\n"
+"{files}"
+
+msgid "mykatrain:clipboard-copy"
+msgstr "Copy path"
+
+msgid "mykatrain:clipboard-copied"
+msgstr "Copied!"

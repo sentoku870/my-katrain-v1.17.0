@@ -115,6 +115,7 @@ def create_text_input_row(
             size_hint_x=browse_size_hint_x,
             background_color=Theme.LIGHTER_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
+            font_name=Theme.DEFAULT_FONT,
         )
         row.add_widget(browse_button)
 

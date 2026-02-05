@@ -14,6 +14,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
+from kivy.core.clipboard import Clipboard
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
@@ -105,6 +109,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
     if not output_dir or not os.path.isdir(output_dir):
         Popup(
             title=i18n._("Error"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("mykatrain:error:output_dir_not_configured"),
                 halign="center",
@@ -134,6 +139,7 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
     if not snapshot.moves:
         Popup(
             title=i18n._("Error"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("mykatrain:error:no_analysis_data"),
                 halign="center",
@@ -163,7 +169,8 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         else:
             # Fallback to both in one file
             Popup(
-                title="Warning",
+                title=i18n._("Warning"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=i18n._(
                         f"Could not determine color for '{default_user}'.\nExporting both players."
@@ -190,17 +197,52 @@ def do_export_karte_ui(ctx: "FeatureContext", open_settings_callback: Any) -> No
         except Exception as exc:
             ctx.log(f"Failed to save karte: {exc}", OUTPUT_ERROR)
             Popup(
-                title="Error",
-                content=Label(text=f"Failed to save karte:\n{exc}", halign="center", valign="middle"),
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
+                content=Label(
+                    text=f"Failed to save karte:\n{exc}",
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT
+                ),
                 size_hint=(0.5, 0.3),
             ).open()
             return
 
     # Show confirmation
     files_text = "\n".join(saved_files)
-    ctx.controls.set_status("Karte(s) exported", STATUS_INFO, check_level=False)
-    Popup(
-        title="Karte exported",
-        content=Label(text=f"Saved to:\n{files_text}", halign="center", valign="middle"),
-        size_hint=(0.6, 0.4),
-    ).open()
+    ctx.controls.set_status(i18n._("mykatrain:export-karte:success-title"), STATUS_INFO, check_level=False)
+
+    content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
+    msg_label = Label(
+        text=i18n._("mykatrain:export-karte:success-msg").format(files=files_text),
+        halign="center",
+        valign="middle",
+        font_name=Theme.DEFAULT_FONT
+    )
+    content.add_widget(msg_label)
+
+    btn_box = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(10))
+    copy_btn = Button(text=i18n._("mykatrain:clipboard-copy"), font_name=Theme.DEFAULT_FONT)
+    close_btn = Button(text=i18n._("OK"), font_name=Theme.DEFAULT_FONT)
+
+    def copy_path(instance: Any) -> None:
+        Clipboard.copy(files_text)
+        instance.text = i18n._("mykatrain:clipboard-copied")
+        # Reset text after 2 seconds
+        Clock.schedule_once(lambda dt: setattr(instance, 'text', i18n._("mykatrain:clipboard-copy")), 2)
+
+    copy_btn.bind(on_release=copy_path)
+    
+    btn_box.add_widget(copy_btn)
+    btn_box.add_widget(close_btn)
+    content.add_widget(btn_box)
+
+    popup = Popup(
+        title=i18n._("mykatrain:export-karte:success-title"),
+        title_font=Theme.DEFAULT_FONT,
+        content=content,
+        size_hint=(0.7, 0.5),
+    )
+    close_btn.bind(on_release=popup.dismiss)
+    popup.open()

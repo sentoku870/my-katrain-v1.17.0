@@ -128,6 +128,7 @@ def create_browse_callback(
 
         browse_popup = Popup(
             title=title,
+            title_font=Theme.DEFAULT_FONT,
             size_hint=(0.8, 0.8),
             content=browse_popup_content,
         ).__self__

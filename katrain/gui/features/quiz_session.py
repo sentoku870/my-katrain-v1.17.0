@@ -61,6 +61,7 @@ def start_quiz_session(
         size_hint_y=None,
         height=dp(60),
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     question_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
     content.add_widget(question_label)
@@ -82,6 +83,7 @@ def start_quiz_session(
         size_hint_y=None,
         height=dp(70),
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     result_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
     content.add_widget(result_label)
@@ -91,16 +93,19 @@ def start_quiz_session(
         text=i18n._("Prev"),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     next_button = Button(
         text=i18n._("Next"),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     close_button = Button(
         text=i18n._("Close"),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
     nav_layout.add_widget(prev_button)
     nav_layout.add_widget(next_button)
@@ -200,6 +205,7 @@ def start_quiz_session(
                 size_hint_y=None,
                 height=dp(80),
                 color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
             )
             no_data_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, None)))
             choices_layout.add_widget(no_data_label)
@@ -211,6 +217,7 @@ def start_quiz_session(
                     height=dp(44),
                     background_color=Theme.BOX_BACKGROUND_COLOR,
                     color=Theme.TEXT_COLOR,
+                    font_name=Theme.DEFAULT_FONT,
                 )
                 btn.bind(on_release=lambda _btn, c=choice: on_select(c))
                 choices_layout.add_widget(btn)

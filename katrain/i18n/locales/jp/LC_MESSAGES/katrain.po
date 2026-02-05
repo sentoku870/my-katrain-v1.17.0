@@ -2337,3 +2337,37 @@ msgstr "クリップボードにコピー"
 
 msgid "active_review:copied"
 msgstr "コピーしました"
+
+# Common UI
+msgid "Error"
+msgstr "エラー"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Browse..."
+msgstr "参照..."
+
+# Karte Export
+msgid "mykatrain:export-karte:success-title"
+msgstr "カルテ出力完了"
+
+msgid "mykatrain:export-karte:success-msg"
+msgstr ""
+"以下に保存しました：\n"
+"{files}"
+
+msgid "mykatrain:clipboard-copy"
+msgstr "パスをコピー"
+
+msgid "mykatrain:clipboard-copied"
+msgstr "コピーしました！"

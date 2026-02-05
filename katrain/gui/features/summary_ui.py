@@ -78,7 +78,8 @@ def do_export_summary_ui(
 
         if len(sgf_files) < 2:
             Popup(
-                title="Error",
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=f"Found only {len(sgf_files)} SGF file(s) in batch directory.\nNeed at least 2 games for summary.",
                     halign="center",
@@ -113,6 +114,7 @@ def do_export_summary_ui(
 
     load_popup = Popup(
         title=i18n._("Select directory containing SGF files"),
+        title_font=Theme.DEFAULT_FONT,
         size_hint=(0.8, 0.8),
         content=popup_contents
     ).__self__
@@ -123,7 +125,8 @@ def do_export_summary_ui(
         if not selected_path or not os.path.isdir(selected_path):
             load_popup.dismiss()
             Popup(
-                title="Error",
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text="Please select a valid directory.",
                     halign="center",
@@ -142,7 +145,8 @@ def do_export_summary_ui(
         if len(sgf_files) < 2:
             load_popup.dismiss()
             Popup(
-                title="Error",
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=f"Found only {len(sgf_files)} SGF file(s).\nNeed at least 2 games for summary.",
                     halign="center",
@@ -187,7 +191,8 @@ def process_summary_with_selected_players(
         valign="middle"
     )
     progress_popup = Popup(
-        title="Generating Summary",
+        title=i18n._("Generating Summary"),
+        title_font=Theme.DEFAULT_FONT,
         content=progress_label,
         size_hint=(0.5, 0.3),
         auto_dismiss=False
@@ -228,7 +233,8 @@ def scan_and_show_player_selection(
     if not player_counts:
         Clock.schedule_once(
             lambda dt: Popup(
-                title="Error",
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text="No player names found in SGF files.",
                     halign="center",
@@ -254,7 +260,8 @@ def scan_and_show_player_selection(
             # デフォルトユーザーが見つからない場合は警告して選択ダイアログへ
             Clock.schedule_once(
                 lambda dt: Popup(
-                    title="Warning",
+                    title=i18n._("Warning"),
+                    title_font=Theme.DEFAULT_FONT,
                     content=Label(
                         text=f"Default user '{default_user}' not found in SGF files.\nPlease select players manually.",
                         halign="center",
@@ -364,7 +371,8 @@ def show_player_selection_dialog(
         if not selected_players:
             # 警告
             Popup(
-                title="Warning",
+                title=i18n._("Warning"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text="Please select at least one player.",
                     halign="center",
@@ -387,7 +395,8 @@ def show_player_selection_dialog(
             valign="middle"
         )
         progress_popup = Popup(
-            title="Generating Summary",
+            title=i18n._("Generating Summary"),
+            title_font=Theme.DEFAULT_FONT,
             content=progress_label,
             size_hint=(0.5, 0.3),
             auto_dismiss=False
@@ -408,7 +417,8 @@ def show_player_selection_dialog(
     content_layout.add_widget(button_layout)
 
     selection_popup = Popup(
-        title="Select Players",
+        title=i18n._("Select Players"),
+        title_font=Theme.DEFAULT_FONT,
         content=content_layout,
         size_hint=(0.6, 0.7),
     )
@@ -490,7 +500,8 @@ def process_and_export_summary(
         Clock.schedule_once(lambda dt: progress_popup.dismiss(), 0)
         Clock.schedule_once(
             lambda dt: Popup(
-                title="Error",
+                title=i18n._("Error"),
+                title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text="No games could be processed.\nCheck that games have analysis data.",
                     halign="center",

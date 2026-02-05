@@ -142,6 +142,7 @@ def _do_export_package_impl(ctx: "FeatureContext", anonymize: bool) -> None:
         # 成功ポップアップ表示
         Popup(
             title=i18n._("Package Exported"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("Package saved to:\n%s") % str(result.output_path),
                 halign="center",
@@ -158,6 +159,7 @@ def _do_export_package_impl(ctx: "FeatureContext", anonymize: bool) -> None:
         # エラーポップアップ表示
         Popup(
             title=i18n._("Error"),
+            title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("Failed to export package:\n%s") % result.error_message,
                 halign="center",

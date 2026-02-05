@@ -86,6 +86,7 @@ def _show_diagnostics_popup_impl(ctx: "FeatureContext") -> None:
     # Create popup
     popup = Popup(
         title=i18n._("Diagnostics"),
+        title_font=Theme.DEFAULT_FONT,
         content=content,
         size_hint=(0.8, 0.8),
     )
@@ -339,6 +340,7 @@ def _show_success_popup(output_path: Path) -> None:
 
     popup = Popup(
         title=i18n._("Bug Report Generated"),
+        title_font=Theme.DEFAULT_FONT,
         content=content,
         size_hint=(0.6, 0.4),
     )
@@ -362,6 +364,7 @@ def _show_error_popup(error_message: str) -> None:
 
     popup = Popup(
         title=i18n._("Error"),
+        title_font=Theme.DEFAULT_FONT,
         content=content,
         size_hint=(0.6, 0.3),
     )

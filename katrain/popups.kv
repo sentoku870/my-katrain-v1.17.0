@@ -156,35 +156,15 @@
                     size_hint_y: 0.7
                     on_select: if self.selected_index != 0: model_path.text = self.value_keys[self.selected_index]
 
-        # Humanlike Model Section (Phase 88: toggle + conditional path)
+        # Humanlike Model Section
         ConfigSectionGridLayout:
             cols: 2
-            # Toggle row
-            DescriptionLabel:
-                text: i18n._("humanlike:toggle_label")
-                size_hint: (0.33, 1)
-
-            BoxLayout:
-                orientation: 'horizontal'
-                size_hint: (0.67, 1)
-                Switch:
-                    id: humanlike_toggle
-                    active: root.humanlike_enabled
-                    on_active: root.humanlike_enabled = self.active
-                    size_hint: (0.2, 1)
-                DescriptionLabel:
-                    text: i18n._("humanlike:status_on") if root.humanlike_enabled else i18n._("humanlike:status_off")
-                    size_hint: (0.8, 1)
-                    halign: 'left'
-
-            # Path input row (always visible but visually de-emphasized when OFF)
+            # Path input row
             DescriptionLabel:
                 text: i18n._("engine:humanlike_model")
                 size_hint: (0.33, 1)
-                opacity: 1.0 if root.humanlike_enabled else 0.5
 
             AnchorLayout:
-                opacity: 1.0 if root.humanlike_enabled else 0.5
                 LabelledPathInput:
                     id: humanlike_model_path
                     input_property: "engine/humanlike_model"
@@ -194,7 +174,6 @@
                 size_hint: (0.33, 1)
 
             AnchorLayout:
-                opacity: 1.0 if root.humanlike_enabled else 0.5
                 KeyValueSpinner:
                     id: humanlike_model_files
                     text: ''
