@@ -19,8 +19,7 @@ from typing import TYPE_CHECKING, Any, Callable, cast
 
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.scrollview import ScrollView
 
 from katrain.core.auto_setup import (

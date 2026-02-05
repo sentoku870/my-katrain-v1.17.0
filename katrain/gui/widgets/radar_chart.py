@@ -8,7 +8,7 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Ellipse, Line
 from kivy.metrics import dp
 from kivy.properties import DictProperty, ListProperty, NumericProperty, StringProperty
-from kivy.uix.label import Label
+from katrain.gui.widgets.factory import Label
 from kivy.uix.relativelayout import RelativeLayout
 
 from katrain.core.lang import i18n

@@ -9,8 +9,7 @@ from typing import Optional, Tuple
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.textinput import TextInput
 
 from katrain.gui.theme import Theme
@@ -52,7 +51,6 @@ def create_styled_label(
         halign=halign,
         valign=valign,
         color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
     )
     return bind_label_text_size(label)
 
@@ -115,7 +113,6 @@ def create_text_input_row(
             size_hint_x=browse_size_hint_x,
             background_color=Theme.LIGHTER_BACKGROUND_COLOR,
             color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
         )
         row.add_widget(browse_button)
 

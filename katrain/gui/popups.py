@@ -18,8 +18,7 @@ from kivy.properties import BooleanProperty, ListProperty, NumericProperty, Obje
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
+from katrain.gui.widgets.factory import Label, Popup
 from kivy.utils import platform
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -59,7 +58,7 @@ from katrain.gui.kivyutils import (
 )
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.progress_loader import ProgressLoader
-from katrain.common.humanlike_config import normalize_humanlike_config
+
 from katrain.common.model_labels import classify_model_strength, get_model_basename
 
 
@@ -927,11 +926,14 @@ class ConfigPopup(BaseConfigPopup):
         model_path = self.humanlike_model_path.text
         enabled = bool(model_path)
         
-        model, last, effective_on = normalize_humanlike_config(
-            enabled,
-            model_path,
-            self.katrain.config("engine/humanlike_model_last", "")
-        )
+        if enabled:
+            model = model_path
+            last = model_path
+            effective_on = True
+        else:
+            model = ""
+            last = self.katrain.config("engine/humanlike_model_last", "")
+            effective_on = False
         # Update humanlike_model_path to normalized value before parent saves
         self.humanlike_model_path.text = model
         # Store last path in config (will be saved by parent)

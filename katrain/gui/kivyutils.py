@@ -24,8 +24,7 @@ from kivy.resources import resource_find
 _logger = logging.getLogger(__name__)
 from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from katrain.gui.widgets.factory import Button, Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.widget import Widget

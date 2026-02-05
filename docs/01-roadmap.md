@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-05（Phase 118完了）
+> 最終更新: 2026-02-05（Phase 119完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -288,7 +288,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 90**: ✅ エラー救済機能の実装。`error_recovery.py`（スレッドセーフ重複排除、4096バイトUTF-8制限）、
 `recovery_actions.py`（4つの復旧アクション）、EngineRecoveryPopupに復旧ボタン追加、
 
-### Phase 112-119: mypy strict全体・CIブロック + Modern Typing + UI Cleanup 📋 **Active**
+### Phase 112-119: mypy strict全体・CIブロック + Modern Typing + UI Cleanup ✅ **完了**（2026-02-05）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
@@ -299,7 +299,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 116 | Pre-existing型エラー修正 | Phase 115までの型安全基盤上で最後の85件を解消、全205ファイル 100% 準拠 | ✅ |
 | 117 | Top Moves カラー回帰修正 | evaluation_class() のdescending threshold ロジック修正、56新規テスト、PR #278 | ✅ |
 | 118 | UI Tofu & i18n Fixes | settings/quiz/chartの文字化け修正、human-like単純化、レイアウト修正 | ✅ |
-| 119 | UI Architecture Hardening | UIコンポーネント共通化、未使用コード削減、複雑性解消 | 📋 |
+| 119 | UI Architecture Hardening | UIコンポーネント共通化、未使用コード削減、複雑性解消 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -439,6 +439,11 @@ integrationマーカー登録、15テスト追加。（2026-02-01完了）
 `font_name=Theme.DEFAULT_FONT`を明示的に適用。
 あわせて「Human-like」トグルを廃止し、モデルパス入力のみで判定する単純なUIへ移行。
 Karte Exportのレイアウト崩れも修正。
+
+**Phase 119**: ✅ UI Architecture Hardening & Code Cleanup（Completed）。
+UIコンポーネントの共通化（Tofu恒久対策）と、未使用コード・複雑性の解消（リファクタリング）完了。
+`katrain.gui.widgets.factory`導入とレガシー`humanlike_config`削除により、メンテナビリティと安全性が向上。
+
 
 ### 未定（TBD / Post-52）
 

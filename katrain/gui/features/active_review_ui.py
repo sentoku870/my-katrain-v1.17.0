@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from katrain.gui.widgets.factory import Button, Label
 
 from katrain.core.lang import i18n
 from katrain.core.study.active_review import GuessEvaluation, GuessGrade

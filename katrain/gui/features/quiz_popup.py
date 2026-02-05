@@ -50,8 +50,7 @@ def do_quiz_popup(
     # Lazy imports to avoid Kivy initialization in headless CI
     from kivy.metrics import dp
     from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.button import Button
-    from kivy.uix.label import Label
+    from katrain.gui.widgets.factory import Button, Label
     from kivy.uix.scrollview import ScrollView
 
     from katrain.gui.popups import I18NPopup
