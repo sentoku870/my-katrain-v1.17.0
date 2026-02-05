@@ -111,7 +111,7 @@ for lang in locales:
 for ext in ["py", "kv"]:
     lc = 0
     for file in glob.glob(f"katrain/*.{ext}") + glob.glob(f"katrain/**/*.{ext}"):
-        with open(file, "r") as f:
+        with open(file, "r", encoding="utf-8") as f:
             for i, line in enumerate(f.readlines()):
                 if line.strip():
                     lc += 1

@@ -1603,4 +1603,52 @@ class BadukPanControls(MDFloatLayout):
     engine_status_col = ListProperty(Theme.ENGINE_DOWN_COLOR)
     engine_status_pondering = NumericProperty(-1)
     queries_remaining = NumericProperty(0)
-    sgf_button = ObjectProperty(None)
+
+    def update_controls(self, gui: Any) -> None:
+        """Update controls (prisoners, engine status) from GUI state."""
+        game = gui.game
+        if not game:
+            return
+
+        # Update prisoners
+        prisoners = game.prisoner_count
+        # Handle circle display if available
+        circles = getattr(self, "circles", None)
+        if circles and len(circles) == 2:
+            try:
+                top, bot = [w.__self__ for w in circles]
+                if gui.next_player_info.player == "W":
+                    top, bot = bot, top
+                    gui.controls.players["W"].active = True
+                    gui.controls.players["B"].active = False
+                else:
+                    gui.controls.players["W"].active = False
+                    gui.controls.players["B"].active = True
+                mid_container = getattr(self, "mid_circles_container", None)
+                if mid_container:
+                    mid_container.clear_widgets()
+                    mid_container.add_widget(bot)
+                    mid_container.add_widget(top)
+            except (ValueError, AttributeError, TypeError) as e:
+                gui.log(f"circles parsing failed: {e}", OUTPUT_DEBUG)
+        else:
+            if gui.next_player_info.player == "W":
+                gui.controls.players["W"].active = True
+                gui.controls.players["B"].active = False
+            else:
+                gui.controls.players["W"].active = False
+                gui.controls.players["B"].active = True
+
+        gui.controls.players["W"].captures = prisoners["W"]
+        gui.controls.players["B"].captures = prisoners["B"]
+
+        # Update engine status dot
+        engine = gui.engine
+        if not engine or not engine.katago_process or engine.katago_process.poll() is not None:
+            self.engine_status_col = Theme.ENGINE_DOWN_COLOR
+        elif engine.is_idle():
+            self.engine_status_col = Theme.ENGINE_READY_COLOR
+        else:
+            self.engine_status_col = Theme.ENGINE_BUSY_COLOR
+        if engine:
+            self.queries_remaining = engine.queries_remaining()

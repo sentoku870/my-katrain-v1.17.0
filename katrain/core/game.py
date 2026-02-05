@@ -34,6 +34,7 @@ from katrain.core.lang import i18n, rank_label
 
 # KarteGenerationError moved to reports/karte_report.py (PR #119)
 # Re-export for backward compatibility
+from katrain.core.reports.karte.models import KarteGenerationError
 from katrain.core.sgf_parser import SGF, Move
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement
 

@@ -115,8 +115,14 @@ class KataGoEngine(BaseEngine):
     # Timeout for Queue.get() in consumer threads (seconds)
     IO_TIMEOUT = 5.0
 
-    def __init__(self, katrain: Any, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        katrain: Any,
+        config: dict[str, Any],
+        status_callback: Callable[[str, str], None] | None = None,
+    ) -> None:
         super().__init__(katrain, config)
+        self.status_callback = status_callback
 
         self.allow_recovery = self.config.get("allow_recovery", True)  # if false, don't give popups
         self.queries: dict[str, Any] = {}  # outstanding query id -> start time and callback
@@ -533,6 +539,15 @@ class KataGoEngine(BaseEngine):
                         return
                     try:
                         self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
+                        # Phase 120: Status callback for UI updates
+                        if self.status_callback:
+                            lower_line = line.lower()
+                            if "starting" in lower_line:
+                                self.status_callback("starting", line)
+                            elif line.startswith("Tuning"):
+                                self.status_callback("tuning", line)
+                            elif "ready" in lower_line:
+                                self.status_callback("ready", line)
                     except Exception as e:  # noqa: BLE001 - thread exception, must log and continue
                         self.katrain.log(
                             f"Error processing stderr: {line!r}: {e}\n{traceback.format_exc()}",

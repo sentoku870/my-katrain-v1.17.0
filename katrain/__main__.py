@@ -59,7 +59,6 @@ from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.metrics import dp
 from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.resources import resource_add_path, resource_find
 from kivy.uix.popup import Popup
@@ -147,19 +146,14 @@ from katrain.gui.kivyutils import (
 from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.managers.active_review_controller import ActiveReviewController
 from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.managers.quiz_manager import QuizManager
 from katrain.gui.managers.summary_manager import SummaryManager
-from katrain.gui.popups import (
-    ConfigAIPopup,
-    ConfigTeacherPopup,
-    ConfigTimerPopup,
-    EngineRecoveryPopup,
-    I18NPopup,
-    NewGamePopup,
-)
+
+# deleted imports
 from katrain.gui.sgf_manager import SGFManager
 from katrain.gui.sound import play_sound
 from katrain.gui.theme import Theme
@@ -252,17 +246,16 @@ class KaTrainGui(Screen, KaTrainBase):
             get_debug_level=lambda: self.debug_level,
         )
 
-        # Phase 75: PopupManager
+        # Phase 120: DialogFactory & PopupManager
+        self.dialog_factory = DialogFactory(self)
         self._popup_manager = PopupManager(
-            create_new_game_popup=self._create_new_game_popup,
-            create_timer_popup=self._create_timer_popup,
-            create_teacher_popup=self._create_teacher_popup,
-            create_ai_popup=self._create_ai_popup,
-            create_engine_recovery_popup=self._create_engine_recovery_popup,
+            create_new_game_popup=self.dialog_factory.create_new_game_popup,
+            create_timer_popup=self.dialog_factory.create_timer_popup,
+            create_teacher_popup=self.dialog_factory.create_teacher_popup,
+            create_ai_popup=self.dialog_factory.create_ai_popup,
+            create_engine_recovery_popup=self.dialog_factory.create_engine_recovery_popup,
             get_popup_open=lambda: self.popup_open,
-            is_engine_recovery_popup=lambda p: (
-                isinstance(p, EngineRecoveryPopup) or isinstance(getattr(p, "content", None), EngineRecoveryPopup)
-            ),
+            is_engine_recovery_popup=self.dialog_factory.is_engine_recovery_popup,
             pause_timer=self._safe_pause_timer,
             on_new_game_opened=lambda p: p.content.update_from_current_game(),
             logger=self.log,
@@ -403,60 +396,7 @@ class KaTrainGui(Screen, KaTrainBase):
         if timer:
             timer.paused = True
 
-    def _create_new_game_popup(self) -> Any:
-        """NewGamePopupのファクトリ"""
-        raw = I18NPopup(
-            title_key="New Game title",
-            size=[dp(800), dp(900)],
-            content=NewGamePopup(self),
-        )
-        popup: Any = getattr(raw, "__self__", raw)
-        popup.content.popup = popup
-        return popup
-
-    def _create_timer_popup(self) -> Any:
-        """TimerPopupのファクトリ"""
-        raw = I18NPopup(
-            title_key="timer settings",
-            size=[dp(600), dp(500)],
-            content=ConfigTimerPopup(self),
-        )
-        popup: Any = getattr(raw, "__self__", raw)
-        popup.content.popup = popup
-        return popup
-
-    def _create_teacher_popup(self) -> Any:
-        """TeacherPopupのファクトリ"""
-        raw = I18NPopup(
-            title_key="teacher settings",
-            size=[dp(800), dp(825)],
-            content=ConfigTeacherPopup(self),
-        )
-        popup: Any = getattr(raw, "__self__", raw)
-        popup.content.popup = popup
-        return popup
-
-    def _create_ai_popup(self) -> Any:
-        """AIPopupのファクトリ"""
-        raw = I18NPopup(
-            title_key="ai settings",
-            size=[dp(750), dp(750)],
-            content=ConfigAIPopup(self),
-        )
-        popup: Any = getattr(raw, "__self__", raw)
-        popup.content.popup = popup
-        return popup
-
-    def _create_engine_recovery_popup(self, error_message: str, code: Any) -> Any:
-        """EngineRecoveryPopupのファクトリ"""
-        raw = I18NPopup(
-            title_key="engine recovery",
-            size=[dp(600), dp(700)],
-            content=EngineRecoveryPopup(self, error_message=error_message, code=code),
-        )
-        popup: Any = getattr(raw, "__self__", raw)
-        popup.content.popup = popup
-        return popup
+    # ========== PopupManager support methods (Factories moved to DialogFactory) ==========
 
     def set_config_section(self, section: str, value: dict[str, Any]) -> None:
         """設定セクションを書き込む（Phase 74: ConfigManagerに委譲）。
@@ -470,18 +410,24 @@ class KaTrainGui(Screen, KaTrainBase):
         """
         self._config_manager.set_section(section, value)
 
+    def _on_engine_status(self, event_type: str, message: str) -> None:
+        """Handle engine status updates (Phase 120: Decoupled logging)."""
+        if not getattr(self, "controls", None):
+            return
+
+        if event_type == "starting":
+            self.controls.set_status("KataGo engine starting...", STATUS_INFO)
+        elif event_type == "tuning":
+            self.controls.set_status(
+                "KataGo is tuning settings for first startup, please wait." + message, STATUS_INFO
+            )
+        elif event_type == "ready":
+            self.controls.set_status("KataGo engine ready.", STATUS_INFO)
+
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         super().log(message, level)
-        if level == OUTPUT_KATAGO_STDERR and "ERROR" not in self.controls.status.text:
-            if "starting" in message.lower():
-                self.controls.set_status("KataGo engine starting...", STATUS_INFO)
-            elif message.startswith("Tuning"):
-                self.controls.set_status(
-                    "KataGo is tuning settings for first startup, please wait." + message, STATUS_INFO
-                )
-                return
-            elif "ready" in message.lower():
-                self.controls.set_status("KataGo engine ready.", STATUS_INFO)
+        # Phase 120: Removed fragile log parsing.
+        # Engine status updates are now handled by _on_engine_status via KataGoEngine callback.
         if (
             level == OUTPUT_ERROR
             or (level == OUTPUT_KATAGO_STDERR and "error" in message.lower() and "tuning" not in message.lower())
@@ -583,7 +529,8 @@ class KaTrainGui(Screen, KaTrainBase):
         if self.engine:
             return
         self.board_gui.trainer_config = self.config("trainer")
-        self.engine = KataGoEngine(self, self.config("engine"))
+        self.board_gui.trainer_config = self.config("trainer")
+        self.engine = KataGoEngine(self, self.config("engine"), status_callback=self._on_engine_status)
 
         # Set up engine error handler with rich context
         def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
@@ -657,47 +604,11 @@ class KaTrainGui(Screen, KaTrainBase):
         # Handle prisoners and next player display
         if not self.game:
             return
-        prisoners = self.game.prisoner_count
 
-        # Safe circles parsing with guards for missing/invalid data
-        circles = getattr(self.board_controls, "circles", None)
-        if circles and len(circles) == 2:
-            try:
-                top, bot = [w.__self__ for w in circles]
-                if self.next_player_info.player == "W":
-                    top, bot = bot, top
-                    self.controls.players["W"].active = True
-                    self.controls.players["B"].active = False
-                else:
-                    self.controls.players["W"].active = False
-                    self.controls.players["B"].active = True
-                mid_container = getattr(self.board_controls, "mid_circles_container", None)
-                if mid_container:
-                    mid_container.clear_widgets()
-                    mid_container.add_widget(bot)
-                    mid_container.add_widget(top)
-            except (ValueError, AttributeError, TypeError) as e:
-                self.log(f"circles parsing failed: {e}", OUTPUT_DEBUG)
-        else:
-            # circles missing or invalid - just update player active states
-            if self.next_player_info.player == "W":
-                self.controls.players["W"].active = True
-                self.controls.players["B"].active = False
-            else:
-                self.controls.players["W"].active = False
-                self.controls.players["B"].active = True
+        # Phase 120: Delegated UI updates to BadukPanControls
+        if self.board_controls:
+            self.board_controls.update_controls(self)
 
-        self.controls.players["W"].captures = prisoners["W"]
-        self.controls.players["B"].captures = prisoners["B"]
-
-        # update engine status dot
-        if not self.engine or not self.engine.katago_process or self.engine.katago_process.poll() is not None:
-            self.board_controls.engine_status_col = Theme.ENGINE_DOWN_COLOR
-        elif self.engine.is_idle():
-            self.board_controls.engine_status_col = Theme.ENGINE_READY_COLOR
-        else:
-            self.board_controls.engine_status_col = Theme.ENGINE_BUSY_COLOR
-        self.board_controls.queries_remaining = self.engine.queries_remaining()
 
         # redraw board/stones
         if redraw_board:

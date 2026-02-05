@@ -40,7 +40,9 @@ from katrain.core.base_katrain import KaTrainBase
 from katrain.core.batch import (
     # === Constants ===
     DEFAULT_TIMEOUT_SECONDS,
+    ENCODINGS_TO_TRY,
     analyze_single_file,
+    analyze_single_file_leela,
     choose_visits_for_sgf,
     collect_sgf_files,
     collect_sgf_files_recursive,
@@ -75,10 +77,75 @@ from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.errors import AnalysisTimeoutError, EngineError
 
+# Private aliases for backward compatibility (used by tests/external scripts)
+_get_canonical_loss = get_canonical_loss
+_get_unique_filename = get_unique_filename
+_normalize_player_name = normalize_player_name
+_safe_write_file = safe_write_file
+_sanitize_filename = sanitize_filename
+_safe_int = safe_int
+
+_build_batch_summary = build_batch_summary
+_build_player_summary = build_player_summary
+_extract_game_stats = extract_game_stats
+_extract_players_from_stats = extract_players_from_stats
+
 # =============================================================================
 # Additional backward-compat re-exports for Leela support
 # =============================================================================
 # These were previously imported directly in this module and used by tests.
+from katrain.core.eval_metrics import EvalSnapshot, MoveEval
+from katrain.core.leela.conversion import leela_position_to_move_eval
+from katrain.core.leela.engine import LeelaEngine
+from katrain.core.leela.models import LeelaPositionEval
+
+__all__ = [
+    # Constants
+    "DEFAULT_TIMEOUT_SECONDS",
+    "ENCODINGS_TO_TRY",
+    # Functions
+    "analyze_single_file",
+    "analyze_single_file_leela",
+    "choose_visits_for_sgf",
+    "collect_sgf_files",
+    "collect_sgf_files_recursive",
+    "has_analysis",
+    "parse_sgf_with_fallback",
+    "parse_timeout_input",
+    "read_sgf_with_fallback",
+    "run_batch",
+    "wait_for_analysis",
+    "build_batch_summary",
+    "build_player_summary",
+    "extract_game_stats",
+    "extract_players_from_stats",
+    "get_canonical_loss",
+    "get_unique_filename",
+    "needs_leela_karte_warning",
+    "normalize_player_name",
+    "safe_int",
+    "safe_write_file",
+    "sanitize_filename",
+    # Models
+    "BatchResult",
+    "WriteError",
+    "EvalSnapshot",
+    "MoveEval",
+    "LeelaEngine",
+    "LeelaPositionEval",
+    "leela_position_to_move_eval",
+    # Private aliases
+    "_get_canonical_loss",
+    "_get_unique_filename",
+    "_normalize_player_name",
+    "_safe_write_file",
+    "_sanitize_filename",
+    "_safe_int",
+    "_build_batch_summary",
+    "_build_player_summary",
+    "_extract_game_stats",
+    "_extract_players_from_stats",
+]
 
 # ---------------------------------------------------------------------------
 # CLI Entry Point

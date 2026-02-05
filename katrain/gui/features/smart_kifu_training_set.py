@@ -524,7 +524,7 @@ def show_import_sgf_dialog(
 
                 Clock.schedule_once(update_ui, 0)
 
-            except Exception:
+            except Exception as e:
 
                 def show_error(dt: float) -> None:
                     is_importing[0] = False

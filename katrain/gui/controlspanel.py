@@ -384,7 +384,7 @@ class ControlsPanel(BoxLayout):
             return False
 
         # Disable in PLAY mode (avoid cheating)
-        return katrain.play_analyze_mode != MODE_PLAY
+        return bool(katrain.play_analyze_mode != MODE_PLAY)
 
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92)

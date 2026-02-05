@@ -21,6 +21,7 @@ from katrain.core import eval_metrics
 from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     BatchResult,
+    needs_leela_karte_warning,  # Phase 42-B: Re-export for compatibility
     parse_timeout_input,
     run_batch,  # Phase 42-B: Now from core.batch
 )

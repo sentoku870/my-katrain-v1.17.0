@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from katrain.core.batch.helpers import needs_leela_karte_warning
 from katrain.gui.features.context import FeatureContext
 
-__all__ = ["FeatureContext"]
+__all__ = ["FeatureContext", "needs_leela_karte_warning"]
