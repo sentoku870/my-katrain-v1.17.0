@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Test helpers for Critical 3 module tests.
 
@@ -8,18 +7,16 @@ All helpers are engine-free (no KataGo/Leela required).
 Part of Phase 50: Critical 3 Focused Review Mode.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
+from katrain.core.analysis.models import EvalSnapshot, MoveEval
 from tests.helpers_eval_metrics import (
     StubGame,
     StubGameNode,
     StubMove,
     make_move_eval,
 )
-
-from katrain.core.analysis.models import EvalSnapshot, MoveEval
-
 
 # =============================================================================
 # Extended Stub Classes
@@ -43,9 +40,7 @@ class StubGameNodeWithAnalysis(StubGameNode):
         """Update analysis_exists based on analysis data."""
         # analysis_exists is a field in parent class
         # We need to update it based on analysis content
-        self.analysis_exists = (
-            self.analysis is not None and self.analysis.get("root") is not None
-        )
+        self.analysis_exists = self.analysis is not None and self.analysis.get("root") is not None
 
 
 # =============================================================================
@@ -230,9 +225,7 @@ def create_standard_test_game(num_moves: int = 10) -> StubGame:
     Returns:
         StubGame with analysis data suitable for most tests.
     """
-    moves: list[
-        tuple[str, tuple[int, int] | None, float, dict[str, Any] | None]
-    ] = []
+    moves: list[tuple[str, tuple[int, int] | None, float, dict[str, Any] | None]] = []
 
     for i in range(num_moves):
         player = "B" if i % 2 == 0 else "W"

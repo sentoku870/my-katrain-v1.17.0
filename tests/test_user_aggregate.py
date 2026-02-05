@@ -5,13 +5,10 @@ PR #Phase55: Report foundation + User aggregation
 """
 
 import json
-
-import pytest
 from types import MappingProxyType
 
 from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics, SkillTier
 from katrain.core.analysis.user_aggregate import (
-    DEFAULT_HISTORY_SIZE,
     GameRadarEntry,
     UserAggregateStore,
     UserRadarAggregate,

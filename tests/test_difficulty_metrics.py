@@ -19,14 +19,14 @@ Phase 12: 難易度分解（Difficulty Metrics）のユニットテスト
 import pytest
 
 from katrain.core.analysis import (
+    DEFAULT_DIFFICULT_POSITIONS_LIMIT,
+    DEFAULT_MIN_MOVE_NUMBER,
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
     DIFFICULTY_UNKNOWN,
-    DEFAULT_DIFFICULT_POSITIONS_LIMIT,
-    DEFAULT_MIN_MOVE_NUMBER,
-    DifficultyMetrics,
     POLICY_GAP_MAX,
     TRANSITION_DROP_MAX,
+    DifficultyMetrics,
     _compute_policy_difficulty,
     _compute_state_difficulty,
     _compute_transition_difficulty,
@@ -35,7 +35,6 @@ from katrain.core.analysis import (
     _normalize_candidates,
     compute_difficulty_metrics,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -397,9 +396,7 @@ class TestComputeDifficultyMetrics:
 
     def test_debug_info(self):
         """デバッグ情報の確認"""
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, include_debug=True
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, include_debug=True)
         assert metrics.debug_factors is not None
         assert "policy" in metrics.debug_factors
         assert "transition" in metrics.debug_factors
@@ -460,8 +457,8 @@ class TestSignHandling:
     def test_mixed_sign_scorelead(self):
         """正負混在のscoreLeadでも差の絶対値で計算"""
         candidates = [
-            {"order": 0, "scoreLead": 2.0},    # 黒2目有利
-            {"order": 1, "scoreLead": -3.0},   # 白3目有利 → gap=5.0
+            {"order": 0, "scoreLead": 2.0},  # 黒2目有利
+            {"order": 1, "scoreLead": -3.0},  # 白3目有利 → gap=5.0
             {"order": 2, "scoreLead": -5.0},
         ]
         metrics = compute_difficulty_metrics(candidates, root_visits=1000)
@@ -597,40 +594,47 @@ class TestDifficultyFormatting:
     def test_get_difficulty_label_easy(self):
         """overall < 0.3 は '易'"""
         from katrain.core.analysis import get_difficulty_label
+
         assert get_difficulty_label(0.0) == "易"
         assert get_difficulty_label(0.29) == "易"
 
     def test_get_difficulty_label_medium_boundary(self):
         """overall = 0.3 は '中'（境界）"""
         from katrain.core.analysis import get_difficulty_label
+
         assert get_difficulty_label(0.30) == "中"
 
     def test_get_difficulty_label_medium(self):
         """0.3 <= overall < 0.6 は '中'"""
         from katrain.core.analysis import get_difficulty_label
+
         assert get_difficulty_label(0.5) == "中"
         assert get_difficulty_label(0.59) == "中"
 
     def test_get_difficulty_label_hard_boundary(self):
         """overall = 0.6 は '難'（境界）"""
         from katrain.core.analysis import get_difficulty_label
+
         assert get_difficulty_label(0.60) == "難"
 
     def test_get_difficulty_label_hard(self):
         """overall >= 0.6 は '難'"""
         from katrain.core.analysis import get_difficulty_label
+
         assert get_difficulty_label(0.8) == "難"
         assert get_difficulty_label(1.0) == "難"
 
     def test_format_unknown_returns_empty(self):
         """is_unknown=True の場合は空リスト"""
-        from katrain.core.analysis import format_difficulty_metrics, DIFFICULTY_UNKNOWN
+        from katrain.core.analysis import DIFFICULTY_UNKNOWN, format_difficulty_metrics
+
         lines = format_difficulty_metrics(DIFFICULTY_UNKNOWN)
         assert lines == []
 
     def test_format_reliable(self):
         """信頼性が高い場合のフォーマット"""
-        from katrain.core.analysis import format_difficulty_metrics, DifficultyMetrics
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
         metrics = DifficultyMetrics(
             policy_difficulty=0.65,
             transition_difficulty=0.72,
@@ -650,7 +654,8 @@ class TestDifficultyFormatting:
 
     def test_format_unreliable(self):
         """信頼性が低い場合のフォーマット"""
-        from katrain.core.analysis import format_difficulty_metrics, DifficultyMetrics
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
         metrics = DifficultyMetrics(
             policy_difficulty=0.45,
             transition_difficulty=0.32,

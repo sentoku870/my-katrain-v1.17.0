@@ -4,10 +4,8 @@ Tests only pure functions (Kivy-independent).
 UI functions are tested manually via smoke tests.
 mtime is set explicitly with os.utime() for deterministic tests.
 """
-import os
-from pathlib import Path
 
-import pytest
+import os
 
 from katrain.gui.features.report_navigator import (
     REPORT_PATTERNS,

@@ -7,14 +7,8 @@ Test categories:
 """
 
 import json
-import os
-import tempfile
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
-
 
 # =============================================================================
 # Test Fixtures
@@ -100,7 +94,7 @@ class TestGameEntryDataclass:
 
     def test_game_entry_dataclass(self):
         """GameEntry can be created with required fields."""
-        from katrain.core.smart_kifu import Context, GameEntry, GameSource
+        from katrain.core.smart_kifu import Context, GameEntry
 
         entry = GameEntry(
             game_id="sha1:abc123",
@@ -578,7 +572,7 @@ class TestManifestIO:
 
         # Read raw JSON
         manifest_path = get_training_sets_dir() / "ts_version" / "manifest.json"
-        with open(manifest_path, "r") as f:
+        with open(manifest_path) as f:
             data = json.load(f)
         assert data["manifest_version"] == 1
 

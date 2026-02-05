@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Integration tests for Phase 55-64 features.
 
 Part of Phase 65: Post-54 Integration.
@@ -27,8 +26,6 @@ from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import MoveEval
 from katrain.core.analysis.risk import (
     RiskAnalysisResult,
-    RiskBehavior,
-    RiskJudgmentType,
     analyze_risk,
 )
 from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics, SkillTier
@@ -40,11 +37,9 @@ from katrain.core.analysis.style import (
 from katrain.core.analysis.time.models import GameTimeData, TimeMetrics
 from katrain.core.analysis.time.pacing import (
     PacingAnalysisResult,
-    PacingConfig,
     analyze_pacing,
 )
 from katrain.core.curator.batch import generate_curator_outputs
-
 
 # =============================================================================
 # JSON Normalization Helper (for determinism tests)
@@ -106,9 +101,7 @@ def make_radar(
     )
 
 
-def make_time_metrics(
-    move_number: int, player: str, time_spent: float | None = None
-) -> TimeMetrics:
+def make_time_metrics(move_number: int, player: str, time_spent: float | None = None) -> TimeMetrics:
     """Create a TimeMetrics instance for testing."""
     return TimeMetrics(
         move_number=move_number,
@@ -129,21 +122,14 @@ def make_time_data(
     if time_spents is None:
         time_spents = [10.0] * len(move_numbers)
 
-    metrics = tuple(
-        make_time_metrics(mn, p, ts)
-        for mn, p, ts in zip(move_numbers, players, time_spents)
-    )
+    metrics = tuple(make_time_metrics(mn, p, ts) for mn, p, ts in zip(move_numbers, players, time_spents, strict=False))
     has_time = any(m.time_left_sec is not None for m in metrics)
 
     return GameTimeData(
         metrics=metrics,
         has_time_data=has_time,
-        black_moves_with_time=sum(
-            1 for m in metrics if m.player == "B" and m.time_left_sec is not None
-        ),
-        white_moves_with_time=sum(
-            1 for m in metrics if m.player == "W" and m.time_left_sec is not None
-        ),
+        black_moves_with_time=sum(1 for m in metrics if m.player == "B" and m.time_left_sec is not None),
+        white_moves_with_time=sum(1 for m in metrics if m.player == "W" and m.time_left_sec is not None),
     )
 
 
@@ -191,9 +177,9 @@ class MockNode:
 
     analysis_exists: bool = False
     analysis: dict[str, Any] | None = None
-    move: Optional["MockMove"] = None
-    parent: Optional["MockNode"] = None
-    children: list["MockNode"] = None
+    move: Optional[MockMove] = None
+    parent: Optional[MockNode] = None
+    children: list[MockNode] = None
 
     def __post_init__(self):
         if self.children is None:
@@ -205,7 +191,7 @@ def make_node_with_analysis(
     score_lead: float | None = None,
     score_stdev: float | None = None,
     player: str = "B",
-    parent: Optional["MockNode"] = None,
+    parent: Optional[MockNode] = None,
 ) -> MockNode:
     """Create a MockNode with specified analysis values."""
     root_info: dict[str, Any] = {}
@@ -476,9 +462,7 @@ class TestBatchPerformance:
         for _ in range(100):
             determine_style(radar, tag_counts)
         style_elapsed = time.perf_counter() - start
-        assert style_elapsed < 5.0, (
-            f"Style analysis: {style_elapsed:.2f}s for 100 calls (limit: 5.0s)"
-        )
+        assert style_elapsed < 5.0, f"Style analysis: {style_elapsed:.2f}s for 100 calls (limit: 5.0s)"
 
         # Pacing analysis
         time_data = make_time_data([1, 2, 3, 4, 5])
@@ -488,9 +472,7 @@ class TestBatchPerformance:
         for _ in range(100):
             analyze_pacing(time_data, moves)
         pacing_elapsed = time.perf_counter() - start
-        assert pacing_elapsed < 5.0, (
-            f"Pacing analysis: {pacing_elapsed:.2f}s for 100 calls (limit: 5.0s)"
-        )
+        assert pacing_elapsed < 5.0, f"Pacing analysis: {pacing_elapsed:.2f}s for 100 calls (limit: 5.0s)"
 
         # Risk analysis
         game = make_mock_game_with_nodes(5)
@@ -499,6 +481,4 @@ class TestBatchPerformance:
         for _ in range(100):
             analyze_risk(game)
         risk_elapsed = time.perf_counter() - start
-        assert risk_elapsed < 5.0, (
-            f"Risk analysis: {risk_elapsed:.2f}s for 100 calls (limit: 5.0s)"
-        )
+        assert risk_elapsed < 5.0, f"Risk analysis: {risk_elapsed:.2f}s for 100 calls (limit: 5.0s)"

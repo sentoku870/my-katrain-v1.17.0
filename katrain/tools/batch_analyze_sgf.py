@@ -39,8 +39,34 @@ from katrain.core.base_katrain import KaTrainBase
 # Re-export everything here so existing code continues to work.
 from katrain.core.batch import (
     # === Constants ===
+    DEFAULT_TIMEOUT_SECONDS,
     analyze_single_file,
+    choose_visits_for_sgf,
     collect_sgf_files,
+    collect_sgf_files_recursive,
+    has_analysis,
+    parse_sgf_with_fallback,
+    parse_timeout_input,
+    read_sgf_with_fallback,
+    # === Models ===
+    BatchResult,
+    WriteError,
+    # === Main ===
+    run_batch,
+    wait_for_analysis,
+    # === Stats ===
+    build_batch_summary,
+    build_player_summary,
+    extract_game_stats,
+    extract_players_from_stats,
+    # === Helpers ===
+    get_canonical_loss,
+    get_unique_filename,
+    needs_leela_karte_warning,
+    normalize_player_name,
+    safe_int,
+    safe_write_file,
+    sanitize_filename,
 )
 
 # Private name aliases (unchanged API for backward compatibility)

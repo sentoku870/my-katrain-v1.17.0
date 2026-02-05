@@ -14,30 +14,24 @@ Test matrix (from Phase 52-B plan v6):
 """
 
 import json
-import pytest
-from typing import Dict, Any
-from enum import Enum
+from typing import Any
 
-from tests.conftest import (
-    round_half_up,
-    _stabilize_float,
-    normalize_radar_output,
-    RADAR_SCHEMA_DEFAULTS,
-    load_golden,
-    save_golden,
-    update_golden_if_requested,
-    GOLDEN_DIR,
-)
+import pytest
 
 # Import radar types for testing
 from katrain.core.analysis.skill_radar import (
     RadarAxis,
-    SkillTier,
     RadarMetrics,
+    SkillTier,
     compute_overall_tier,
-    radar_from_dict,
 )
-
+from tests.conftest import (
+    _stabilize_float,
+    load_golden,
+    normalize_radar_output,
+    round_half_up,
+    update_golden_if_requested,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -100,13 +94,15 @@ def sample_radar_metrics() -> RadarMetrics:
         stability_tier=SkillTier.TIER_3,
         awareness_tier=SkillTier.TIER_4,
         overall_tier=SkillTier.TIER_3,
-        valid_move_counts=MappingProxyType({
-            RadarAxis.OPENING: 45,
-            RadarAxis.FIGHTING: 80,
-            RadarAxis.ENDGAME: 30,
-            RadarAxis.STABILITY: 155,
-            RadarAxis.AWARENESS: 155,
-        }),
+        valid_move_counts=MappingProxyType(
+            {
+                RadarAxis.OPENING: 45,
+                RadarAxis.FIGHTING: 80,
+                RadarAxis.ENDGAME: 30,
+                RadarAxis.STABILITY: 155,
+                RadarAxis.AWARENESS: 155,
+            }
+        ),
     )
 
 
@@ -143,7 +139,7 @@ class TestRadarNormalization:
         # Positive tests - ensure our function works correctly
         assert round_half_up(1.0, 2) == 1.0
         assert round_half_up(1.005, 2) == 1.01  # 0.5 rounds up
-        assert round_half_up(1.004, 2) == 1.0   # 0.4 rounds down
+        assert round_half_up(1.004, 2) == 1.0  # 0.4 rounds down
         assert round_half_up(2.555, 2) == 2.56
 
     def test_rounding_none_handling(self):

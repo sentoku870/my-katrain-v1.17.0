@@ -1,41 +1,39 @@
-# -*- coding: utf-8 -*-
 """Tests for pattern_miner module (Phase 84).
 
 Uses FakeMoveEval (SimpleNamespace) to avoid MoveEval constructor drift.
 All tests are deterministic and don't require KataGo.
 """
 
-import pytest
 from types import SimpleNamespace
 
-from katrain.core.analysis.models import MistakeCategory
+import pytest
+
 from katrain.core.analysis.meaning_tags import (
     THRESHOLD_ENDGAME_RATIO,
     THRESHOLD_MOVE_ENDGAME_ABSOLUTE,
 )
+from katrain.core.analysis.models import MistakeCategory
 from katrain.core.batch.stats.pattern_miner import (
-    MistakeSignature,
+    AREA_THRESHOLDS,
+    LOSS_THRESHOLD,
+    MAX_GAME_REFS_PER_CLUSTER,
+    OPENING_THRESHOLDS,
     GameRef,
+    MistakeSignature,
     PatternCluster,
     create_signature,
-    mine_patterns,
-    get_severity,
-    normalize_player,
-    normalize_primary_tag,
     determine_phase,
     get_area_from_gtp,
-    get_opening_threshold,
-    get_area_threshold,
-    LOSS_THRESHOLD,
-    OPENING_THRESHOLDS,
-    AREA_THRESHOLDS,
-    MAX_GAME_REFS_PER_CLUSTER,
+    get_severity,
+    mine_patterns,
+    normalize_player,
+    normalize_primary_tag,
 )
-
 
 # =============================================================================
 # Test Helpers
 # =============================================================================
+
 
 def make_fake_move_eval(
     move_number: int,
@@ -72,6 +70,7 @@ def make_fake_snapshot(moves: list[SimpleNamespace]) -> SimpleNamespace:
 # =============================================================================
 # Test: Data Model Basics
 # =============================================================================
+
 
 class TestMistakeSignature:
     """Tests for MistakeSignature dataclass."""
@@ -160,6 +159,7 @@ class TestPatternCluster:
 # Test: get_severity
 # =============================================================================
 
+
 class TestGetSeverity:
     """Tests for get_severity function."""
 
@@ -188,16 +188,19 @@ class TestGetSeverity:
 class TestNormalizePlayer:
     """Tests for normalize_player() helper (Phase 87)."""
 
-    @pytest.mark.parametrize("input_val,expected", [
-        ("B", "B"),
-        ("W", "W"),
-        ("b", "B"),  # lowercase accepted
-        ("w", "W"),  # lowercase accepted
-        (None, "?"),
-        ("", "?"),
-        ("X", "?"),
-        ("black", "?"),  # not supported, falls back to "?"
-    ])
+    @pytest.mark.parametrize(
+        "input_val,expected",
+        [
+            ("B", "B"),
+            ("W", "W"),
+            ("b", "B"),  # lowercase accepted
+            ("w", "W"),  # lowercase accepted
+            (None, "?"),
+            ("", "?"),
+            ("X", "?"),
+            ("black", "?"),  # not supported, falls back to "?"
+        ],
+    )
     def test_normalize_player(self, input_val, expected):
         """Parametrized test for normalize_player()."""
         assert normalize_player(input_val) == expected
@@ -206,6 +209,7 @@ class TestNormalizePlayer:
 # =============================================================================
 # Test: normalize_primary_tag
 # =============================================================================
+
 
 class TestNormalizePrimaryTag:
     """Tests for normalize_primary_tag function."""
@@ -227,6 +231,7 @@ class TestNormalizePrimaryTag:
 # =============================================================================
 # Test: determine_phase
 # =============================================================================
+
 
 class TestDeterminePhase:
     """Tests for determine_phase function."""
@@ -267,6 +272,7 @@ class TestDeterminePhase:
 # Test: get_area_from_gtp (19x19)
 # =============================================================================
 
+
 class TestGetAreaFromGtp19x19:
     """Tests for get_area_from_gtp on 19x19 board."""
 
@@ -288,6 +294,7 @@ class TestGetAreaFromGtp19x19:
 # Test: get_area_from_gtp (9x9)
 # =============================================================================
 
+
 class TestGetAreaFromGtp9x9:
     """Tests for get_area_from_gtp on 9x9 board."""
 
@@ -307,6 +314,7 @@ class TestGetAreaFromGtp9x9:
 # =============================================================================
 # Test: GTP Normalization
 # =============================================================================
+
 
 class TestGtpNormalization:
     """Tests for GTP coordinate normalization."""
@@ -350,6 +358,7 @@ class TestGtpNormalization:
 # =============================================================================
 # Test: create_signature
 # =============================================================================
+
 
 class TestCreateSignature:
     """Tests for create_signature function."""
@@ -470,6 +479,7 @@ class TestCreateSignature:
 # Test: mine_patterns
 # =============================================================================
 
+
 class TestMinePatterns:
     """Tests for mine_patterns function."""
 
@@ -500,10 +510,15 @@ class TestMinePatterns:
 
         games = [
             ("game1.sgf", make_fake_snapshot([move_high, move_low])),
-            ("game2.sgf", make_fake_snapshot([
-                make_fake_move_eval(50, "B", "D4", score_loss=10.0),
-                make_fake_move_eval(50, "W", "K10", score_loss=3.0),
-            ])),
+            (
+                "game2.sgf",
+                make_fake_snapshot(
+                    [
+                        make_fake_move_eval(50, "B", "D4", score_loss=10.0),
+                        make_fake_move_eval(50, "W", "K10", score_loss=3.0),
+                    ]
+                ),
+            ),
         ]
 
         result = mine_patterns(games, board_size=19, min_count=2)
@@ -516,12 +531,18 @@ class TestMinePatterns:
         """Same impact_score should sort by signature.sort_key()."""
         # Two patterns with same impact_score
         move1 = make_fake_move_eval(
-            50, "B", "D4", score_loss=5.0,
-            meaning_tag_id="aaa"  # Alphabetically first
+            50,
+            "B",
+            "D4",
+            score_loss=5.0,
+            meaning_tag_id="aaa",  # Alphabetically first
         )
         move2 = make_fake_move_eval(
-            50, "B", "D4", score_loss=5.0,
-            meaning_tag_id="zzz"  # Alphabetically last
+            50,
+            "B",
+            "D4",
+            score_loss=5.0,
+            meaning_tag_id="zzz",  # Alphabetically last
         )
 
         games = [
@@ -539,10 +560,7 @@ class TestMinePatterns:
 
     def test_top_n(self):
         """top_n should limit results."""
-        moves = [
-            make_fake_move_eval(i, "B", "D4", score_loss=float(i), meaning_tag_id=f"tag{i}")
-            for i in range(1, 10)
-        ]
+        moves = [make_fake_move_eval(i, "B", "D4", score_loss=float(i), meaning_tag_id=f"tag{i}") for i in range(1, 10)]
 
         games = [
             ("game1.sgf", make_fake_snapshot(moves)),
@@ -566,10 +584,7 @@ class TestMinePatterns:
         """game_refs should not exceed MAX_GAME_REFS_PER_CLUSTER."""
         # Create many games with same pattern
         move = make_fake_move_eval(50, "B", "D4", score_loss=5.0)
-        games = [
-            (f"game{i}.sgf", make_fake_snapshot([move]))
-            for i in range(20)
-        ]
+        games = [(f"game{i}.sgf", make_fake_snapshot([move])) for i in range(20)]
 
         result = mine_patterns(games, board_size=19, min_count=1, top_n=1)
         assert len(result) == 1
@@ -579,10 +594,7 @@ class TestMinePatterns:
     def test_game_refs_encounter_order(self):
         """game_refs should preserve encounter order."""
         move = make_fake_move_eval(50, "B", "D4", score_loss=5.0)
-        games = [
-            (f"game{i}.sgf", make_fake_snapshot([move]))
-            for i in range(5)
-        ]
+        games = [(f"game{i}.sgf", make_fake_snapshot([move])) for i in range(5)]
 
         result = mine_patterns(games, board_size=19, min_count=1, top_n=1)
         refs = result[0].game_refs
@@ -593,10 +605,7 @@ class TestMinePatterns:
     def test_total_moves_from_snapshot(self):
         """total_moves should be derived from len(snapshot.moves)."""
         # Short game - move 50 would be endgame if total is 60
-        moves_short = [
-            make_fake_move_eval(i, "B", "D4", score_loss=5.0)
-            for i in range(1, 61)
-        ]
+        moves_short = [make_fake_move_eval(i, "B", "D4", score_loss=5.0) for i in range(1, 61)]
         # Override move 50 to have meaningful loss
         moves_short[49] = make_fake_move_eval(50, "B", "D4", score_loss=5.0)
 
@@ -612,7 +621,9 @@ class TestMinePatterns:
         """Same signature from multiple moves should aggregate correctly."""
         # Same pattern in multiple games
         move = make_fake_move_eval(
-            50, "B", "D4",
+            50,
+            "B",
+            "D4",
             score_loss=5.0,
             mistake_category=MistakeCategory.MISTAKE,
             meaning_tag_id="overplay",
@@ -635,6 +646,7 @@ class TestMinePatterns:
 # =============================================================================
 # Test: Constants
 # =============================================================================
+
 
 class TestConstants:
     """Tests for module constants."""

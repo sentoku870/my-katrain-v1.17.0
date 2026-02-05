@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
 """Unit tests for Phase 83 Complexity filter.
 
 All tests are CI-friendly (no real engine, no file I/O).
 """
-import pytest
 
 from katrain.core.analysis.critical_moves import (
-    THRESHOLD_SCORE_STDEV_CHAOS,
     COMPLEXITY_DISCOUNT_FACTOR,
-    _compute_complexity_discount,
+    THRESHOLD_SCORE_STDEV_CHAOS,
     ComplexityFilterStats,
+    _compute_complexity_discount,
 )
 
 

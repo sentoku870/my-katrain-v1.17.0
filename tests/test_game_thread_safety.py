@@ -1,7 +1,6 @@
 """Thread safety tests for Game.undo/redo operations."""
+
 import threading
-import pytest
-from unittest.mock import MagicMock
 
 
 class TestGameRLockBehavior:
@@ -9,7 +8,6 @@ class TestGameRLockBehavior:
 
     def test_game_lock_is_rlock(self):
         """Verify RLock is reentrant (the property we rely on in Game)."""
-        import threading
 
         # RLock property: same thread can acquire multiple times
         rlock = threading.RLock()
@@ -24,7 +22,6 @@ class TestGameRLockBehavior:
 
     def test_rlock_vs_lock_behavior(self):
         """Demonstrate difference between Lock and RLock."""
-        import threading
 
         # Regular Lock blocks on second acquire (would deadlock if blocking=True)
         lock = threading.Lock()
@@ -46,6 +43,7 @@ class TestGameRLockBehavior:
         # Import the module and check the lock type in __init__
         # We check the source code pattern rather than instantiation
         import inspect
+
         from katrain.core.game import BaseGame
 
         # Get the source code of __init__
@@ -53,8 +51,7 @@ class TestGameRLockBehavior:
 
         # Verify RLock is used, not Lock
         assert "threading.RLock()" in source, "BaseGame should use RLock"
-        assert "threading.Lock()" not in source or "RLock" in source, \
-            "BaseGame should not use plain Lock"
+        assert "threading.Lock()" not in source or "RLock" in source, "BaseGame should not use plain Lock"
 
 
 class TestGraphSetNodesFromList:
@@ -67,24 +64,19 @@ class TestGraphSetNodesFromList:
     def test_set_nodes_from_list_exists_in_source(self):
         """Verify set_nodes_from_list method exists in graph.py source."""
         import os
-        graph_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "katrain", "gui", "widgets", "graph.py"
-        )
-        with open(graph_path, 'r', encoding='utf-8') as f:
+
+        graph_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "katrain", "gui", "widgets", "graph.py")
+        with open(graph_path, encoding="utf-8") as f:
             source = f.read()
 
-        assert "def set_nodes_from_list(self" in source, \
-            "Graph should have set_nodes_from_list method"
+        assert "def set_nodes_from_list(self" in source, "Graph should have set_nodes_from_list method"
 
     def test_set_nodes_from_list_uses_lock_in_source(self):
         """Verify set_nodes_from_list uses _lock in its implementation."""
         import os
-        graph_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "katrain", "gui", "widgets", "graph.py"
-        )
-        with open(graph_path, 'r', encoding='utf-8') as f:
+
+        graph_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "katrain", "gui", "widgets", "graph.py")
+        with open(graph_path, encoding="utf-8") as f:
             source = f.read()
 
         # Find the method implementation
@@ -99,17 +91,14 @@ class TestGraphSetNodesFromList:
         method_source = source[method_start:next_def]
 
         # Verify lock is used
-        assert "with self._lock:" in method_source, \
-            "set_nodes_from_list should use _lock with context manager"
+        assert "with self._lock:" in method_source, "set_nodes_from_list should use _lock with context manager"
 
     def test_graph_init_creates_lock_in_source(self):
         """Verify Graph.__init__ creates _lock."""
         import os
-        graph_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "katrain", "gui", "widgets", "graph.py"
-        )
-        with open(graph_path, 'r', encoding='utf-8') as f:
+
+        graph_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "katrain", "gui", "widgets", "graph.py")
+        with open(graph_path, encoding="utf-8") as f:
             source = f.read()
 
         # Find __init__ method
@@ -123,5 +112,4 @@ class TestGraphSetNodesFromList:
 
         init_source = source[init_start:next_def]
 
-        assert "_lock = threading.Lock()" in init_source, \
-            "Graph.__init__ should create _lock with threading.Lock()"
+        assert "_lock = threading.Lock()" in init_source, "Graph.__init__ should create _lock with threading.Lock()"

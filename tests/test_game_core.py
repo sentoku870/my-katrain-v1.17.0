@@ -3,10 +3,8 @@
 Tests for Game class initialization and basic operations.
 Uses shared fixtures from conftest.py (Phase 70).
 """
-import pytest
 
-from katrain.core.game import Game, Move
-from katrain.core.game_node import GameNode
+from katrain.core.game import Move
 
 # Fixtures used: game, game_9x9, mock_engine, mock_katrain, root_node (from conftest.py)
 

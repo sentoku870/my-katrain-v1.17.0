@@ -6,8 +6,6 @@ Focused on 3 high-value paths:
 3. create_llm_package with ZIP error (B11)
 """
 
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock
 
 
@@ -45,9 +43,7 @@ class TestAnalyzeSingleFileSGFError:
 
         # Assertions: graceful failure + logged
         assert result is False, "Invalid SGF should return False"
-        assert any("error" in log.lower() for log in logs), (
-            f"Should log error message, got: {logs}"
-        )
+        assert any("error" in log.lower() for log in logs), f"Should log error message, got: {logs}"
 
 
 class TestIsWritableDirectory:
@@ -82,11 +78,11 @@ class TestCreateLlmPackageZipError:
 
     def test_zip_write_error_returns_failure_result(self, tmp_path, monkeypatch):
         """OSError during ZIP write should return PackageResult(success=False)."""
+
         from katrain.core.reports.package_export import (
-            create_llm_package,
             PackageContent,
+            create_llm_package,
         )
-        import zipfile
 
         # Create test content
         content = PackageContent(
@@ -111,6 +107,7 @@ class TestCreateLlmPackageZipError:
 
         # Patch at the usage site
         import katrain.core.reports.package_export as pkg_mod
+
         monkeypatch.setattr(pkg_mod.zipfile, "ZipFile", MockZipFile)
 
         # Use a valid path for the test

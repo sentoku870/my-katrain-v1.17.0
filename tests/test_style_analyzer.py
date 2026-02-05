@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Style Archetype Analyzer.
 
 Part of Phase 56: Style Archetype Core.
@@ -14,10 +13,8 @@ from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics, SkillTier
 from katrain.core.analysis.style import (
     STYLE_ARCHETYPES,
     StyleArchetypeId,
-    StyleResult,
     determine_style,
 )
-
 
 # =============================================================================
 # Test Helper
@@ -217,7 +214,7 @@ class TestTypeSafety:
     def test_axis_deviations_uses_radar_axis_keys(self):
         """axis_deviations has RadarAxis enum keys."""
         result = determine_style(make_radar(), {})
-        for key in result.axis_deviations.keys():
+        for key in result.axis_deviations:
             assert isinstance(key, RadarAxis)
 
     def test_dominant_axis_is_radar_axis_or_none(self):
@@ -297,7 +294,7 @@ class TestStyleResultToDict:
         """axis_deviations keys in to_dict are string values."""
         result = determine_style(make_radar(), {})
         d = result.to_dict()
-        for key in d["axis_deviations"].keys():
+        for key in d["axis_deviations"]:
             assert isinstance(key, str)
 
     def test_to_dict_confidence_rounded(self):

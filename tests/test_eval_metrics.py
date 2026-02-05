@@ -17,25 +17,25 @@ Key insight about perspectives:
 import pytest
 
 from katrain.core.eval_metrics import (
-    MoveEval,
-    MistakeCategory,
-    PositionDifficulty,
-    EvalSnapshot,
-    compute_loss_from_delta,
-    compute_canonical_loss,
-    classify_mistake,
-    compute_importance_for_moves,
     SCORE_THRESHOLDS,
     WINRATE_THRESHOLDS,
+    EvalSnapshot,
+    MistakeCategory,
+    MoveEval,
+    PositionDifficulty,
+    classify_mistake,
+    compute_canonical_loss,
+    compute_importance_for_moves,
+    compute_loss_from_delta,
 )
 
 # Import shared helpers
-from tests.helpers_eval_metrics import make_move_eval, StubGameNode, StubMove
-
+from tests.helpers_eval_metrics import StubGameNode, StubMove, make_move_eval
 
 # ---------------------------------------------------------------------------
 # Test: compute_loss_from_delta (legacy function)
 # ---------------------------------------------------------------------------
+
 
 class TestComputeLossFromDelta:
     """Tests for compute_loss_from_delta function (side-to-move expected)"""
@@ -73,43 +73,56 @@ class TestComputeLossFromDelta:
 # Test: classify_mistake
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyMistake:
     """Tests for classify_mistake function with standard thresholds"""
 
-    @pytest.mark.parametrize("score_loss,expected", [
-        (0.0, MistakeCategory.GOOD),
-        (0.3, MistakeCategory.GOOD),
-        (0.99, MistakeCategory.GOOD),
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,expected",
+        [
+            (0.0, MistakeCategory.GOOD),
+            (0.3, MistakeCategory.GOOD),
+            (0.99, MistakeCategory.GOOD),
+        ],
+    )
     def test_good_move(self, score_loss, expected):
         """Loss below inaccuracy threshold is GOOD"""
         assert classify_mistake(score_loss, None) == expected
 
-    @pytest.mark.parametrize("score_loss,expected", [
-        (1.0, MistakeCategory.INACCURACY),
-        (1.5, MistakeCategory.INACCURACY),
-        (1.99, MistakeCategory.INACCURACY),
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,expected",
+        [
+            (1.0, MistakeCategory.INACCURACY),
+            (1.5, MistakeCategory.INACCURACY),
+            (1.99, MistakeCategory.INACCURACY),
+        ],
+    )
     def test_inaccuracy(self, score_loss, expected):
         """Loss in inaccuracy range"""
         assert classify_mistake(score_loss, None) == expected
 
-    @pytest.mark.parametrize("score_loss,expected", [
-        # Standard thresholds: (1.0, 2.5, 5.0) - mistake is >= 2.5
-        (2.5, MistakeCategory.MISTAKE),
-        (3.0, MistakeCategory.MISTAKE),
-        (4.99, MistakeCategory.MISTAKE),
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,expected",
+        [
+            # Standard thresholds: (1.0, 2.5, 5.0) - mistake is >= 2.5
+            (2.5, MistakeCategory.MISTAKE),
+            (3.0, MistakeCategory.MISTAKE),
+            (4.99, MistakeCategory.MISTAKE),
+        ],
+    )
     def test_mistake(self, score_loss, expected):
         """Loss in mistake range (standard: 2.5 <= loss < 5.0)"""
         assert classify_mistake(score_loss, None) == expected
 
-    @pytest.mark.parametrize("score_loss,expected", [
-        # Standard thresholds: blunder is >= 5.0
-        (5.0, MistakeCategory.BLUNDER),
-        (10.0, MistakeCategory.BLUNDER),
-        (100.0, MistakeCategory.BLUNDER),
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,expected",
+        [
+            # Standard thresholds: blunder is >= 5.0
+            (5.0, MistakeCategory.BLUNDER),
+            (10.0, MistakeCategory.BLUNDER),
+            (100.0, MistakeCategory.BLUNDER),
+        ],
+    )
     def test_blunder(self, score_loss, expected):
         """Loss above blunder threshold (standard: >= 5.0)"""
         assert classify_mistake(score_loss, None) == expected
@@ -146,16 +159,19 @@ class TestCategoryConsistencyBetweenKarteAndSummary:
     Fix: mistake_label_from_loss() now delegates to classify_mistake().
     """
 
-    @pytest.mark.parametrize("loss,expected", [
-        (0.5, MistakeCategory.GOOD),
-        (1.0, MistakeCategory.INACCURACY),
-        (2.0, MistakeCategory.INACCURACY),
-        (2.5, MistakeCategory.MISTAKE),
-        (4.9, MistakeCategory.MISTAKE),
-        (5.0, MistakeCategory.BLUNDER),
-        (6.1, MistakeCategory.BLUNDER),  # This was the problematic case
-        (10.0, MistakeCategory.BLUNDER),
-    ])
+    @pytest.mark.parametrize(
+        "loss,expected",
+        [
+            (0.5, MistakeCategory.GOOD),
+            (1.0, MistakeCategory.INACCURACY),
+            (2.0, MistakeCategory.INACCURACY),
+            (2.5, MistakeCategory.MISTAKE),
+            (4.9, MistakeCategory.MISTAKE),
+            (5.0, MistakeCategory.BLUNDER),
+            (6.1, MistakeCategory.BLUNDER),  # This was the problematic case
+            (10.0, MistakeCategory.BLUNDER),
+        ],
+    )
     def test_classify_mistake_standard_thresholds(self, loss, expected):
         """classify_mistake uses standard thresholds: 1.0, 2.5, 5.0"""
         assert classify_mistake(score_loss=loss, winrate_loss=None) == expected
@@ -176,6 +192,7 @@ class TestCategoryConsistencyBetweenKarteAndSummary:
 # ---------------------------------------------------------------------------
 # Test: Perspective consistency with StubGameNode
 # ---------------------------------------------------------------------------
+
 
 class TestPerspectiveConsistency:
     """
@@ -231,6 +248,7 @@ class TestPerspectiveConsistency:
 # CRITICAL REGRESSION TESTS - Using compute_canonical_loss
 # ---------------------------------------------------------------------------
 
+
 class TestCanonicalLossRequirements:
     """
     CRITICAL REGRESSION TESTS for canonical loss calculation.
@@ -242,19 +260,20 @@ class TestCanonicalLossRequirements:
     Key requirement: canonical loss must be >= 0 for bad moves, 0 for good moves.
     """
 
-    @pytest.mark.parametrize("player,parent_score,current_score,expected_loss", [
-        # Black blunders
-        ("B", 5.0, 2.0, 3.0),    # Black lost 3 points
-        ("B", 10.0, 0.0, 10.0),  # Black lost 10 points
-        ("B", 0.0, -5.0, 5.0),   # Black went behind
-        # White blunders
-        ("W", -5.0, -2.0, 3.0),  # White lost 3 points of advantage
-        ("W", -10.0, 0.0, 10.0), # White lost 10 points of advantage
-        ("W", 0.0, 5.0, 5.0),    # White went behind
-    ])
-    def test_blunder_produces_positive_canonical_loss(
-        self, player, parent_score, current_score, expected_loss
-    ):
+    @pytest.mark.parametrize(
+        "player,parent_score,current_score,expected_loss",
+        [
+            # Black blunders
+            ("B", 5.0, 2.0, 3.0),  # Black lost 3 points
+            ("B", 10.0, 0.0, 10.0),  # Black lost 10 points
+            ("B", 0.0, -5.0, 5.0),  # Black went behind
+            # White blunders
+            ("W", -5.0, -2.0, 3.0),  # White lost 3 points of advantage
+            ("W", -10.0, 0.0, 10.0),  # White lost 10 points of advantage
+            ("W", 0.0, 5.0, 5.0),  # White went behind
+        ],
+    )
+    def test_blunder_produces_positive_canonical_loss(self, player, parent_score, current_score, expected_loss):
         """
         REGRESSION TEST: Blunders must produce positive canonical loss.
 
@@ -279,19 +298,20 @@ class TestCanonicalLossRequirements:
             f"{player}'s blunder must have canonical loss {expected_loss}, got {score_loss}"
         )
 
-    @pytest.mark.parametrize("player,parent_score,current_score", [
-        # Black good moves
-        ("B", 2.0, 5.0),    # Black gained 3 points
-        ("B", 0.0, 10.0),   # Black gained 10 points
-        ("B", -5.0, 0.0),   # Black recovered
-        # White good moves
-        ("W", -2.0, -5.0),  # White gained 3 points of advantage
-        ("W", 0.0, -10.0),  # White gained 10 points of advantage
-        ("W", 5.0, 0.0),    # White recovered
-    ])
-    def test_good_move_produces_zero_canonical_loss(
-        self, player, parent_score, current_score
-    ):
+    @pytest.mark.parametrize(
+        "player,parent_score,current_score",
+        [
+            # Black good moves
+            ("B", 2.0, 5.0),  # Black gained 3 points
+            ("B", 0.0, 10.0),  # Black gained 10 points
+            ("B", -5.0, 0.0),  # Black recovered
+            # White good moves
+            ("W", -2.0, -5.0),  # White gained 3 points of advantage
+            ("W", 0.0, -10.0),  # White gained 10 points of advantage
+            ("W", 5.0, 0.0),  # White recovered
+        ],
+    )
+    def test_good_move_produces_zero_canonical_loss(self, player, parent_score, current_score):
         """
         REGRESSION TEST: Good moves must produce zero canonical loss.
         """
@@ -305,9 +325,7 @@ class TestCanonicalLossRequirements:
             player=player,
         )
 
-        assert score_loss == 0.0, (
-            f"{player}'s good move must have zero canonical loss, got {score_loss}"
-        )
+        assert score_loss == 0.0, f"{player}'s good move must have zero canonical loss, got {score_loss}"
 
     def test_delta_fallback_white_blunder(self):
         """
@@ -318,13 +336,11 @@ class TestCanonicalLossRequirements:
         # delta_score = -2.0 - (-5.0) = +3.0 (black got better)
         score_loss, _ = compute_canonical_loss(
             points_lost=None,  # Force delta fallback
-            delta_score=3.0,   # Black-perspective delta
+            delta_score=3.0,  # Black-perspective delta
             player="W",
         )
 
-        assert score_loss == 3.0, (
-            "Delta fallback must produce correct loss for White's blunder"
-        )
+        assert score_loss == 3.0, "Delta fallback must produce correct loss for White's blunder"
 
     def test_delta_fallback_white_good_move(self):
         """
@@ -339,14 +355,13 @@ class TestCanonicalLossRequirements:
             player="W",
         )
 
-        assert score_loss == 0.0, (
-            "Delta fallback must produce zero for White's good move"
-        )
+        assert score_loss == 0.0, "Delta fallback must produce zero for White's good move"
 
 
 # ---------------------------------------------------------------------------
 # Test: compute_canonical_loss function
 # ---------------------------------------------------------------------------
+
 
 class TestComputeCanonicalLoss:
     """
@@ -416,6 +431,7 @@ class TestComputeCanonicalLoss:
 # ---------------------------------------------------------------------------
 # Test: MoveEval and EvalSnapshot
 # ---------------------------------------------------------------------------
+
 
 class TestMoveEval:
     """Tests for MoveEval dataclass"""
@@ -539,6 +555,7 @@ class TestEvalSnapshot:
 # Test: Importance scoring
 # ---------------------------------------------------------------------------
 
+
 class TestComputeImportance:
     """Tests for compute_importance_for_moves function"""
 
@@ -546,14 +563,22 @@ class TestComputeImportance:
         """Moves with high loss should have high importance"""
         moves = [
             make_move_eval(
-                move_number=1, player="B", gtp="D4",
-                delta_score=-0.5, delta_winrate=-0.01,
-                points_lost=0.5, score_loss=0.5,
+                move_number=1,
+                player="B",
+                gtp="D4",
+                delta_score=-0.5,
+                delta_winrate=-0.01,
+                points_lost=0.5,
+                score_loss=0.5,
             ),
             make_move_eval(
-                move_number=2, player="W", gtp="Q16",
-                delta_score=8.0, delta_winrate=0.15,  # Black-perspective
-                points_lost=8.0, score_loss=8.0,
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                delta_score=8.0,
+                delta_winrate=0.15,  # Black-perspective
+                points_lost=8.0,
+                score_loss=8.0,
             ),
         ]
 
@@ -565,11 +590,13 @@ class TestComputeImportance:
         """Importance scores should always be non-negative"""
         moves = [
             make_move_eval(
-                move_number=1, player="B", gtp="D4",
+                move_number=1,
+                player="B",
+                gtp="D4",
                 delta_score=5.0,  # Good move
                 delta_winrate=0.1,
                 points_lost=-2.0,  # Negative loss (good move)
-                score_loss=0.0,   # Canonical: clamped to 0
+                score_loss=0.0,  # Canonical: clamped to 0
             ),
         ]
 
@@ -581,6 +608,7 @@ class TestComputeImportance:
 # ---------------------------------------------------------------------------
 # Test: Delta vs Points Lost consistency (documentation)
 # ---------------------------------------------------------------------------
+
 
 class TestDeltaVsPointsLostConsistency:
     """
@@ -629,16 +657,14 @@ class TestDeltaVsPointsLostConsistency:
             player="W",
         )
 
-        assert loss == 3.0, (
-            "Delta fallback with perspective correction must produce 3.0 for White's blunder"
-        )
+        assert loss == 3.0, "Delta fallback with perspective correction must produce 3.0 for White's blunder"
 
 
 # ---------------------------------------------------------------------------
 # Integration Tests: snapshot_from_nodes, iter_main_branch_nodes, snapshot_from_game
 # ---------------------------------------------------------------------------
 
-from tests.helpers_eval_metrics import build_stub_game_tree, StubGame
+from tests.helpers_eval_metrics import StubGame, build_stub_game_tree
 
 
 class TestSnapshotFromNodes:
@@ -649,11 +675,13 @@ class TestSnapshotFromNodes:
         from katrain.core.eval_metrics import snapshot_from_nodes
 
         # Build a simple game: B plays, W plays, B plays
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),    # Black plays, score becomes +1.0 (good for black)
-            ("W", (15, 15), -2.0), # White plays, score becomes -2.0 (good for white)
-            ("B", (3, 15), 0.0),   # Black plays, score becomes 0.0 (even)
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),  # Black plays, score becomes +1.0 (good for black)
+                ("W", (15, 15), -2.0),  # White plays, score becomes -2.0 (good for white)
+                ("B", (3, 15), 0.0),  # Black plays, score becomes 0.0 (even)
+            ]
+        )
 
         # Collect all nodes with moves
         nodes = []
@@ -674,10 +702,12 @@ class TestSnapshotFromNodes:
         """Verify score_before/after are chained correctly"""
         from katrain.core.eval_metrics import snapshot_from_nodes
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 5.0),
-            ("W", (15, 15), 2.0),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 5.0),
+                ("W", (15, 15), 2.0),
+            ]
+        )
 
         nodes = []
         node = game.root
@@ -708,10 +738,12 @@ class TestSnapshotFromNodes:
         """Verify importance scores are computed for all moves"""
         from katrain.core.eval_metrics import snapshot_from_nodes
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 5.0),
-            ("W", (15, 15), 10.0),  # White loses 5 points (big mistake)
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 5.0),
+                ("W", (15, 15), 10.0),  # White loses 5 points (big mistake)
+            ]
+        )
 
         nodes = []
         node = game.root
@@ -734,11 +766,13 @@ class TestIterMainBranchNodes:
         """Iterate through a simple main branch"""
         from katrain.core.eval_metrics import iter_main_branch_nodes
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),
-            ("W", (15, 15), -1.0),
-            ("B", (3, 15), 0.5),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),
+                ("W", (15, 15), -1.0),
+                ("B", (3, 15), 0.5),
+            ]
+        )
 
         nodes = list(iter_main_branch_nodes(game))
 
@@ -771,9 +805,11 @@ class TestIterMainBranchNodes:
         """Game with single move"""
         from katrain.core.eval_metrics import iter_main_branch_nodes
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),
+            ]
+        )
 
         nodes = list(iter_main_branch_nodes(game))
 
@@ -788,11 +824,13 @@ class TestSnapshotFromGame:
         """Convert a simple game to snapshot"""
         from katrain.core.eval_metrics import snapshot_from_game
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 2.0),
-            ("W", (15, 15), -3.0),
-            ("B", (3, 15), 1.0),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 2.0),
+                ("W", (15, 15), -3.0),
+                ("B", (3, 15), 1.0),
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -806,9 +844,11 @@ class TestSnapshotFromGame:
         from katrain.core.eval_metrics import snapshot_from_game
 
         # Black makes a bad move: score goes from 0 to -5 (white gets ahead)
-        game = build_stub_game_tree([
-            ("B", (3, 3), -5.0),  # Black's bad move
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), -5.0),  # Black's bad move
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -820,10 +860,12 @@ class TestSnapshotFromGame:
         """Verify canonical properties are accessible"""
         from katrain.core.eval_metrics import snapshot_from_game
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), -3.0),  # Black loses 3
-            ("W", (15, 15), 0.0),  # White loses 3
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), -3.0),  # Black loses 3
+                ("W", (15, 15), 0.0),  # White loses 3
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -859,13 +901,15 @@ class TestMoveNumberNotAllZero:
         """Move numbers should be sequential (1, 2, 3, ...)"""
         from katrain.core.eval_metrics import snapshot_from_game
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),
-            ("W", (15, 15), -1.0),
-            ("B", (3, 15), 0.5),
-            ("W", (15, 3), -0.5),
-            ("B", (9, 9), 0.0),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),
+                ("W", (15, 15), -1.0),
+                ("B", (3, 15), 0.5),
+                ("W", (15, 3), -0.5),
+                ("B", (9, 9), 0.0),
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -877,11 +921,13 @@ class TestMoveNumberNotAllZero:
         """Move numbers should NOT all be 0 (regression check)"""
         from katrain.core.eval_metrics import snapshot_from_game
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),
-            ("W", (15, 15), -2.0),
-            ("B", (3, 15), 0.5),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),
+                ("W", (15, 15), -2.0),
+                ("B", (3, 15), 0.5),
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -889,23 +935,23 @@ class TestMoveNumberNotAllZero:
 
         # At least one move_number should be non-zero
         assert any(n != 0 for n in move_numbers), (
-            f"All move_numbers are 0: {move_numbers}. "
-            "This indicates depth is not being used correctly."
+            f"All move_numbers are 0: {move_numbers}. This indicates depth is not being used correctly."
         )
 
         # In fact, none should be 0 for moves after the root
         assert all(n > 0 for n in move_numbers), (
-            f"Some move_numbers are 0: {move_numbers}. "
-            "All moves after root should have move_number > 0."
+            f"Some move_numbers are 0: {move_numbers}. All moves after root should have move_number > 0."
         )
 
     def test_single_move_has_move_number_1(self):
         """Single move should have move_number = 1"""
         from katrain.core.eval_metrics import snapshot_from_game
 
-        game = build_stub_game_tree([
-            ("B", (3, 3), 1.0),
-        ])
+        game = build_stub_game_tree(
+            [
+                ("B", (3, 3), 1.0),
+            ]
+        )
 
         snapshot = snapshot_from_game(game)
 
@@ -925,23 +971,42 @@ class TestAvgLossUsesCanonicalLoss:
         """Average loss per category should never be negative"""
         from katrain.core.eval_metrics import (
             get_canonical_loss_from_move,
-            EvalSnapshot,
         )
 
         # Create moves with various losses including negative (good moves)
         moves = [
-            make_move_eval(move_number=1, player="B", gtp="D4",
-                           points_lost=-1.0, score_loss=0.0,  # Good move
-                           mistake_category=MistakeCategory.GOOD),
-            make_move_eval(move_number=2, player="B", gtp="Q16",
-                           points_lost=3.0, score_loss=3.0,  # Mistake
-                           mistake_category=MistakeCategory.MISTAKE),
-            make_move_eval(move_number=3, player="B", gtp="D16",
-                           points_lost=-0.5, score_loss=0.0,  # Good move
-                           mistake_category=MistakeCategory.GOOD),
-            make_move_eval(move_number=4, player="B", gtp="Q4",
-                           points_lost=1.5, score_loss=1.5,  # Inaccuracy
-                           mistake_category=MistakeCategory.INACCURACY),
+            make_move_eval(
+                move_number=1,
+                player="B",
+                gtp="D4",
+                points_lost=-1.0,
+                score_loss=0.0,  # Good move
+                mistake_category=MistakeCategory.GOOD,
+            ),
+            make_move_eval(
+                move_number=2,
+                player="B",
+                gtp="Q16",
+                points_lost=3.0,
+                score_loss=3.0,  # Mistake
+                mistake_category=MistakeCategory.MISTAKE,
+            ),
+            make_move_eval(
+                move_number=3,
+                player="B",
+                gtp="D16",
+                points_lost=-0.5,
+                score_loss=0.0,  # Good move
+                mistake_category=MistakeCategory.GOOD,
+            ),
+            make_move_eval(
+                move_number=4,
+                player="B",
+                gtp="Q4",
+                points_lost=1.5,
+                score_loss=1.5,  # Inaccuracy
+                mistake_category=MistakeCategory.INACCURACY,
+            ),
         ]
 
         # Verify canonical loss is always >= 0
@@ -960,22 +1025,47 @@ class TestAvgLossUsesCanonicalLoss:
         # Create moves with known losses
         moves = [
             # GOOD moves: canonical loss = 0 (because points_lost is negative)
-            make_move_eval(move_number=1, player="B", gtp="D4",
-                           points_lost=-1.0, score_loss=0.0,
-                           mistake_category=MistakeCategory.GOOD),
-            make_move_eval(move_number=2, player="B", gtp="Q16",
-                           points_lost=-0.2, score_loss=0.0,
-                           mistake_category=MistakeCategory.GOOD),
-            make_move_eval(move_number=3, player="B", gtp="D16",
-                           points_lost=0.3, score_loss=0.3,
-                           mistake_category=MistakeCategory.GOOD),
+            make_move_eval(
+                move_number=1,
+                player="B",
+                gtp="D4",
+                points_lost=-1.0,
+                score_loss=0.0,
+                mistake_category=MistakeCategory.GOOD,
+            ),
+            make_move_eval(
+                move_number=2,
+                player="B",
+                gtp="Q16",
+                points_lost=-0.2,
+                score_loss=0.0,
+                mistake_category=MistakeCategory.GOOD,
+            ),
+            make_move_eval(
+                move_number=3,
+                player="B",
+                gtp="D16",
+                points_lost=0.3,
+                score_loss=0.3,
+                mistake_category=MistakeCategory.GOOD,
+            ),
             # MISTAKE moves: canonical loss = score_loss
-            make_move_eval(move_number=4, player="B", gtp="Q4",
-                           points_lost=3.0, score_loss=3.0,
-                           mistake_category=MistakeCategory.MISTAKE),
-            make_move_eval(move_number=5, player="B", gtp="K10",
-                           points_lost=4.0, score_loss=4.0,
-                           mistake_category=MistakeCategory.MISTAKE),
+            make_move_eval(
+                move_number=4,
+                player="B",
+                gtp="Q4",
+                points_lost=3.0,
+                score_loss=3.0,
+                mistake_category=MistakeCategory.MISTAKE,
+            ),
+            make_move_eval(
+                move_number=5,
+                player="B",
+                gtp="K10",
+                points_lost=4.0,
+                score_loss=4.0,
+                mistake_category=MistakeCategory.MISTAKE,
+            ),
         ]
 
         # Calculate expected avg loss per category
@@ -1004,7 +1094,7 @@ class TestAvgLossUsesCanonicalLoss:
             player="B",
             gtp="D4",
             points_lost=-2.0,  # Negative (good move)
-            score_loss=0.0,    # Canonical = 0
+            score_loss=0.0,  # Canonical = 0
         )
         assert get_canonical_loss_from_move(m) == 0.0
 
@@ -1013,7 +1103,7 @@ class TestAvgLossUsesCanonicalLoss:
             move_number=2,
             player="B",
             gtp="Q16",
-            points_lost=3.5,   # Positive (bad move)
+            points_lost=3.5,  # Positive (bad move)
             score_loss=None,
         )
         assert get_canonical_loss_from_move(m2) == 3.5
@@ -1044,9 +1134,8 @@ class TestMistakeDistributionConsistency:
         sum(phase_mistake_loss for all phases) / sum(phase_mistake_counts for all phases)
         """
         from katrain.core.eval_metrics import (
-            SummaryStats,
             MistakeCategory,
-            PositionDifficulty,
+            SummaryStats,
         )
 
         # Create a SummaryStats with known values
@@ -1059,10 +1148,10 @@ class TestMistakeDistributionConsistency:
                 MistakeCategory.BLUNDER: 2,
             },
             mistake_total_loss={
-                MistakeCategory.GOOD: 5.0,      # Avg = 0.05
+                MistakeCategory.GOOD: 5.0,  # Avg = 0.05
                 MistakeCategory.INACCURACY: 30.0,  # Avg = 1.5
-                MistakeCategory.MISTAKE: 17.5,     # Avg = 3.5
-                MistakeCategory.BLUNDER: 12.0,     # Avg = 6.0
+                MistakeCategory.MISTAKE: 17.5,  # Avg = 3.5
+                MistakeCategory.BLUNDER: 12.0,  # Avg = 6.0
             },
             phase_mistake_counts={
                 ("opening", MistakeCategory.GOOD): 30,
@@ -1096,24 +1185,16 @@ class TestMistakeDistributionConsistency:
 
         # Verify phase counts sum to category counts
         for cat in MistakeCategory:
-            phase_sum = sum(
-                stats.phase_mistake_counts.get((phase, cat), 0)
-                for phase in ["opening", "middle", "yose"]
-            )
+            phase_sum = sum(stats.phase_mistake_counts.get((phase, cat), 0) for phase in ["opening", "middle", "yose"])
             assert phase_sum == stats.mistake_counts.get(cat, 0), (
                 f"Phase counts for {cat} ({phase_sum}) != category count ({stats.mistake_counts.get(cat, 0)})"
             )
 
         # Verify phase losses sum to category losses
         for cat in MistakeCategory:
-            phase_sum = sum(
-                stats.phase_mistake_loss.get((phase, cat), 0.0)
-                for phase in ["opening", "middle", "yose"]
-            )
+            phase_sum = sum(stats.phase_mistake_loss.get((phase, cat), 0.0) for phase in ["opening", "middle", "yose"])
             expected = stats.mistake_total_loss.get(cat, 0.0)
-            assert abs(phase_sum - expected) < 0.01, (
-                f"Phase loss for {cat} ({phase_sum}) != category loss ({expected})"
-            )
+            assert abs(phase_sum - expected) < 0.01, f"Phase loss for {cat} ({phase_sum}) != category loss ({expected})"
 
         # Verify Avg Loss calculation
         for cat in MistakeCategory:
@@ -1121,9 +1202,7 @@ class TestMistakeDistributionConsistency:
             count = stats.mistake_counts.get(cat, 0)
             total_loss = stats.mistake_total_loss.get(cat, 0.0)
             expected_avg = total_loss / count if count > 0 else 0.0
-            assert abs(avg - expected_avg) < 0.01, (
-                f"Avg loss for {cat} ({avg}) != expected ({expected_avg})"
-            )
+            assert abs(avg - expected_avg) < 0.01, f"Avg loss for {cat} ({avg}) != expected ({expected_avg})"
 
     def test_phase_sum_matches_total(self):
         """
@@ -1131,7 +1210,6 @@ class TestMistakeDistributionConsistency:
         """
         from katrain.core.eval_metrics import (
             SummaryStats,
-            MistakeCategory,
         )
 
         stats = SummaryStats(
@@ -1155,6 +1233,7 @@ class TestMistakeDistributionConsistency:
 # Test: Reason Tags Completeness (A1)
 # ---------------------------------------------------------------------------
 
+
 class TestReasonTagsCompleteness:
     """Tests to ensure all reason tags are properly defined (A1)."""
 
@@ -1162,7 +1241,6 @@ class TestReasonTagsCompleteness:
         """Every tag that can be emitted must have a label."""
         from katrain.core.eval_metrics import (
             REASON_TAG_LABELS,
-            VALID_REASON_TAGS,
             validate_reason_tag,
         )
 
@@ -1219,7 +1297,7 @@ class TestReasonTagsCompleteness:
         """VALID_REASON_TAGS should exactly match REASON_TAG_LABELS keys."""
         from katrain.core.eval_metrics import REASON_TAG_LABELS, VALID_REASON_TAGS
 
-        assert VALID_REASON_TAGS == set(REASON_TAG_LABELS.keys())
+        assert set(REASON_TAG_LABELS.keys()) == VALID_REASON_TAGS
 
     def test_no_duplicate_labels(self):
         """Each tag should have a unique label."""
@@ -1234,6 +1312,7 @@ class TestReasonTagsCompleteness:
 # ---------------------------------------------------------------------------
 # Test: 5-level Skill Presets
 # ---------------------------------------------------------------------------
+
 
 class TestSkillPresets:
     """Tests for SKILL_PRESETS configuration (5-level system)."""
@@ -1288,7 +1367,7 @@ class TestSkillPresets:
 
     def test_get_skill_preset_fallback(self):
         """Unknown preset names should fall back to 'standard'."""
-        from katrain.core.eval_metrics import get_skill_preset, SKILL_PRESETS
+        from katrain.core.eval_metrics import SKILL_PRESETS, get_skill_preset
 
         result = get_skill_preset("nonexistent")
         assert result == SKILL_PRESETS["standard"]
@@ -1359,7 +1438,7 @@ class TestAutoStrictness:
         from katrain.core.eval_metrics import PRESET_ORDER
 
         expected = ["relaxed", "beginner", "standard", "advanced", "pro"]
-        assert PRESET_ORDER == expected
+        assert expected == PRESET_ORDER
 
     def test_distance_from_range_within(self):
         """Value within range should return 0."""
@@ -1385,9 +1464,7 @@ class TestAutoStrictness:
 
     def test_recommend_standard_on_low_reliability(self):
         """Low reliability (< 20%) should return 'standard' with LOW confidence."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, AutoConfidence, MoveEval
-        )
+        from katrain.core.eval_metrics import AutoConfidence, MoveEval, recommend_auto_strictness
 
         # Create moves with very low visits (< threshold)
         moves = [
@@ -1395,9 +1472,14 @@ class TestAutoStrictness:
                 move_number=i,
                 player="B" if i % 2 == 1 else "W",
                 gtp=f"D{i}",
-                score_before=None, score_after=0.0, delta_score=None,
-                winrate_before=None, winrate_after=0.5, delta_winrate=None,
-                points_lost=1.0, realized_points_lost=None,
+                score_before=None,
+                score_after=0.0,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=0.5,
+                delta_winrate=None,
+                points_lost=1.0,
+                realized_points_lost=None,
                 root_visits=10,  # Very low visits
                 score_loss=1.0,
             )
@@ -1412,9 +1494,7 @@ class TestAutoStrictness:
 
     def test_recommend_for_many_blunders(self):
         """Many high-loss moves: algorithm picks preset yielding closest to target range."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, MoveEval, SKILL_PRESETS
-        )
+        from katrain.core.eval_metrics import MoveEval, recommend_auto_strictness
 
         # Create moves with high loss (many blunders under any preset)
         # All 50 moves have loss=16.0
@@ -1430,8 +1510,12 @@ class TestAutoStrictness:
                 move_number=i,
                 player="B" if i % 2 == 1 else "W",
                 gtp=f"D{i}",
-                score_before=None, score_after=0.0, delta_score=None,
-                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                score_before=None,
+                score_after=0.0,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=0.5,
+                delta_winrate=None,
                 points_lost=16.0,  # High loss
                 realized_points_lost=None,
                 root_visits=500,
@@ -1448,9 +1532,7 @@ class TestAutoStrictness:
 
     def test_recommend_for_few_blunders(self):
         """Few low-loss moves: algorithm picks preset closest to target or tie-break."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, MoveEval
-        )
+        from katrain.core.eval_metrics import MoveEval, recommend_auto_strictness
 
         # Create moves with low loss (0 blunders under any settings)
         # loss=0.3 is below t3 for all presets (even pro t3=1.0)
@@ -1463,8 +1545,12 @@ class TestAutoStrictness:
                 move_number=i,
                 player="B" if i % 2 == 1 else "W",
                 gtp=f"D{i}",
-                score_before=None, score_after=0.0, delta_score=None,
-                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                score_before=None,
+                score_after=0.0,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=0.5,
+                delta_winrate=None,
                 points_lost=0.3,  # Very low loss
                 realized_points_lost=None,
                 root_visits=500,
@@ -1491,9 +1577,7 @@ class TestAutoStrictness:
 
     def test_multi_game_scaling(self):
         """Target ranges should scale with game_count."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, MoveEval
-        )
+        from katrain.core.eval_metrics import MoveEval, recommend_auto_strictness
 
         # Create moves that would produce ~5 blunders per game (within 3-10 range)
         # under 'standard' preset (t3=5.0)
@@ -1501,17 +1585,23 @@ class TestAutoStrictness:
         for game_idx in range(3):
             for i in range(1, 51):
                 loss = 6.0 if i <= 5 else 0.5  # 5 blunders per "game"
-                moves.append(MoveEval(
-                    move_number=game_idx * 50 + i,
-                    player="B" if i % 2 == 1 else "W",
-                    gtp=f"D{i}",
-                    score_before=None, score_after=0.0, delta_score=None,
-                    winrate_before=None, winrate_after=0.5, delta_winrate=None,
-                    points_lost=loss,
-                    realized_points_lost=None,
-                    root_visits=500,
-                    score_loss=loss,
-                ))
+                moves.append(
+                    MoveEval(
+                        move_number=game_idx * 50 + i,
+                        player="B" if i % 2 == 1 else "W",
+                        gtp=f"D{i}",
+                        score_before=None,
+                        score_after=0.0,
+                        delta_score=None,
+                        winrate_before=None,
+                        winrate_after=0.5,
+                        delta_winrate=None,
+                        points_lost=loss,
+                        realized_points_lost=None,
+                        root_visits=500,
+                        score_loss=loss,
+                    )
+                )
 
         # 3 games × ~5 blunders = ~15 blunders total
         # Target range for 3 games: (9, 30) for blunders
@@ -1523,9 +1613,7 @@ class TestAutoStrictness:
 
     def test_canonical_loss_semantics(self):
         """Should use max(0, score_loss) for counting, not raw values."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, MoveEval
-        )
+        from katrain.core.eval_metrics import MoveEval, recommend_auto_strictness
 
         # Create moves with negative score_loss (gains) - should be treated as 0
         moves = [
@@ -1533,8 +1621,12 @@ class TestAutoStrictness:
                 move_number=i,
                 player="B" if i % 2 == 1 else "W",
                 gtp=f"D{i}",
-                score_before=None, score_after=0.0, delta_score=None,
-                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                score_before=None,
+                score_after=0.0,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=0.5,
+                delta_winrate=None,
                 points_lost=-5.0,  # Negative = gain
                 realized_points_lost=None,
                 root_visits=500,
@@ -1551,9 +1643,7 @@ class TestAutoStrictness:
 
     def test_confidence_levels(self):
         """Should return correct confidence based on score."""
-        from katrain.core.eval_metrics import (
-            recommend_auto_strictness, AutoConfidence, MoveEval
-        )
+        from katrain.core.eval_metrics import AutoConfidence, MoveEval, recommend_auto_strictness
 
         # Create moves that produce exactly the target range (score=0 → HIGH)
         moves = [
@@ -1561,8 +1651,12 @@ class TestAutoStrictness:
                 move_number=i,
                 player="B" if i % 2 == 1 else "W",
                 gtp=f"D{i}",
-                score_before=None, score_after=0.0, delta_score=None,
-                winrate_before=None, winrate_after=0.5, delta_winrate=None,
+                score_before=None,
+                score_after=0.0,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=0.5,
+                delta_winrate=None,
                 points_lost=6.0 if i <= 6 else (3.0 if i <= 20 else 0.5),
                 realized_points_lost=None,
                 root_visits=500,
@@ -1574,11 +1668,7 @@ class TestAutoStrictness:
         rec = recommend_auto_strictness(moves, reliability_pct=80.0)
 
         # Confidence should be HIGH, MEDIUM, or LOW based on distance score
-        assert rec.confidence in [
-            AutoConfidence.HIGH,
-            AutoConfidence.MEDIUM,
-            AutoConfidence.LOW
-        ]
+        assert rec.confidence in [AutoConfidence.HIGH, AutoConfidence.MEDIUM, AutoConfidence.LOW]
         assert rec.score >= 0  # Score is non-negative distance
 
 
@@ -1592,7 +1682,6 @@ from katrain.core.eval_metrics import (
     compute_reliability_stats,
     get_confidence_label,
     get_important_moves_limit,
-    MIN_COVERAGE_MOVES,
 )
 
 
@@ -1607,8 +1696,12 @@ class TestConfidenceLevel:
                 move_number=i,
                 player="B",
                 gtp=f"D{i}",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
                 points_lost=1.0,
                 realized_points_lost=None,
                 root_visits=500,  # >= 200 threshold = reliable
@@ -1631,8 +1724,12 @@ class TestConfidenceLevel:
                     move_number=i,
                     player="B",
                     gtp=f"D{i}",
-                    score_before=0.0, score_after=0.0, delta_score=0.0,
-                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    score_before=0.0,
+                    score_after=0.0,
+                    delta_score=0.0,
+                    winrate_before=0.5,
+                    winrate_after=0.5,
+                    delta_winrate=0.0,
                     points_lost=1.0,
                     realized_points_lost=None,
                     root_visits=visits,
@@ -1656,8 +1753,12 @@ class TestConfidenceLevel:
                     move_number=i,
                     player="B",
                     gtp=f"D{i}",
-                    score_before=0.0, score_after=0.0, delta_score=0.0,
-                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    score_before=0.0,
+                    score_after=0.0,
+                    delta_score=0.0,
+                    winrate_before=0.5,
+                    winrate_after=0.5,
+                    delta_winrate=0.0,
                     points_lost=1.0,
                     realized_points_lost=None,
                     root_visits=visits,
@@ -1680,8 +1781,12 @@ class TestConfidenceLevel:
                     move_number=i,
                     player="B",
                     gtp=f"D{i}",
-                    score_before=0.0, score_after=0.0, delta_score=0.0,
-                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    score_before=0.0,
+                    score_after=0.0,
+                    delta_score=0.0,
+                    winrate_before=0.5,
+                    winrate_after=0.5,
+                    delta_winrate=0.0,
                     points_lost=1.0,
                     realized_points_lost=None,
                     root_visits=visits,
@@ -1702,8 +1807,12 @@ class TestConfidenceLevel:
                     move_number=i,
                     player="B",
                     gtp=f"D{i}",
-                    score_before=0.0, score_after=0.0, delta_score=0.0,
-                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    score_before=0.0,
+                    score_after=0.0,
+                    delta_score=0.0,
+                    winrate_before=0.5,
+                    winrate_after=0.5,
+                    delta_winrate=0.0,
                     points_lost=1.0,
                     realized_points_lost=None,
                     root_visits=visits,
@@ -1731,8 +1840,12 @@ class TestConfidenceLevel:
                     move_number=i,
                     player="B",
                     gtp=f"D{i}",
-                    score_before=0.0, score_after=0.0, delta_score=0.0,
-                    winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                    score_before=0.0,
+                    score_after=0.0,
+                    delta_score=0.0,
+                    winrate_before=0.5,
+                    winrate_after=0.5,
+                    delta_winrate=0.0,
                     points_lost=1.0,
                     realized_points_lost=None,
                     root_visits=visits,
@@ -1876,9 +1989,9 @@ class TestConfidenceLevel:
 # ---------------------------------------------------------------------------
 
 from katrain.core.eval_metrics import (
-    select_representative_moves,
     format_evidence_examples,
     get_evidence_count,
+    select_representative_moves,
 )
 
 
@@ -1934,18 +2047,19 @@ class TestEvidenceAttachments:
     def test_select_representative_moves_with_filter(self):
         """Category filter should be applied before selection"""
         moves = [
-            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=5.0,
-                           mistake_category=MistakeCategory.BLUNDER),
-            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=3.0,
-                           mistake_category=MistakeCategory.MISTAKE),
-            make_move_eval(move_number=3, player="B", gtp="D16", score_loss=6.0,
-                           mistake_category=MistakeCategory.BLUNDER),
+            make_move_eval(
+                move_number=1, player="B", gtp="D4", score_loss=5.0, mistake_category=MistakeCategory.BLUNDER
+            ),
+            make_move_eval(
+                move_number=2, player="B", gtp="Q16", score_loss=3.0, mistake_category=MistakeCategory.MISTAKE
+            ),
+            make_move_eval(
+                move_number=3, player="B", gtp="D16", score_loss=6.0, mistake_category=MistakeCategory.BLUNDER
+            ),
         ]
         # Filter for BLUNDER only
         result = select_representative_moves(
-            moves,
-            max_count=5,
-            category_filter=lambda m: m.mistake_category == MistakeCategory.BLUNDER
+            moves, max_count=5, category_filter=lambda m: m.mistake_category == MistakeCategory.BLUNDER
         )
 
         assert len(result) == 2
@@ -2005,11 +2119,11 @@ class TestEvidenceAttachments:
 # ---------------------------------------------------------------------------
 
 from katrain.core.eval_metrics import (
-    get_difficulty_modifier,
-    get_reliability_scale,
     DIFFICULTY_MODIFIER_HARD,
     DIFFICULTY_MODIFIER_ONLY_MOVE,
     STREAK_START_BONUS,
+    get_difficulty_modifier,
+    get_reliability_scale,
 )
 
 
@@ -2066,10 +2180,8 @@ class TestImportanceRankingRedesign:
     def test_importance_uses_canonical_loss_as_primary(self):
         """Importance should use score_loss as primary component"""
         moves = [
-            make_move_eval(move_number=1, player="B", gtp="D4",
-                           score_loss=5.0, root_visits=500),
-            make_move_eval(move_number=2, player="B", gtp="Q16",
-                           score_loss=2.0, root_visits=500),
+            make_move_eval(move_number=1, player="B", gtp="D4", score_loss=5.0, root_visits=500),
+            make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=2.0, root_visits=500),
         ]
         compute_importance_for_moves(moves)
 
@@ -2079,14 +2191,20 @@ class TestImportanceRankingRedesign:
     def test_importance_with_hard_difficulty_bonus(self):
         """HARD difficulty should increase importance"""
         move_normal = make_move_eval(
-            move_number=1, player="B", gtp="D4",
-            score_loss=5.0, root_visits=500,
-            position_difficulty=PositionDifficulty.NORMAL
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_loss=5.0,
+            root_visits=500,
+            position_difficulty=PositionDifficulty.NORMAL,
         )
         move_hard = make_move_eval(
-            move_number=2, player="B", gtp="Q16",
-            score_loss=5.0, root_visits=500,
-            position_difficulty=PositionDifficulty.HARD
+            move_number=2,
+            player="B",
+            gtp="Q16",
+            score_loss=5.0,
+            root_visits=500,
+            position_difficulty=PositionDifficulty.HARD,
         )
         compute_importance_for_moves([move_normal, move_hard])
 
@@ -2097,14 +2215,20 @@ class TestImportanceRankingRedesign:
     def test_importance_with_only_move_penalty(self):
         """ONLY_MOVE difficulty should decrease importance"""
         move_normal = make_move_eval(
-            move_number=1, player="B", gtp="D4",
-            score_loss=5.0, root_visits=500,
-            position_difficulty=PositionDifficulty.NORMAL
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_loss=5.0,
+            root_visits=500,
+            position_difficulty=PositionDifficulty.NORMAL,
         )
         move_only = make_move_eval(
-            move_number=2, player="B", gtp="Q16",
-            score_loss=5.0, root_visits=500,
-            position_difficulty=PositionDifficulty.ONLY_MOVE
+            move_number=2,
+            player="B",
+            gtp="Q16",
+            score_loss=5.0,
+            root_visits=500,
+            position_difficulty=PositionDifficulty.ONLY_MOVE,
         )
         compute_importance_for_moves([move_normal, move_only])
 
@@ -2113,10 +2237,8 @@ class TestImportanceRankingRedesign:
 
     def test_importance_with_streak_start_bonus(self):
         """Streak start moves should get +2.0 bonus"""
-        move1 = make_move_eval(move_number=10, player="B", gtp="D10",
-                               score_loss=3.0, root_visits=500)
-        move2 = make_move_eval(move_number=20, player="B", gtp="Q10",
-                               score_loss=3.0, root_visits=500)
+        move1 = make_move_eval(move_number=10, player="B", gtp="D10", score_loss=3.0, root_visits=500)
+        move2 = make_move_eval(move_number=20, player="B", gtp="Q10", score_loss=3.0, root_visits=500)
 
         # Only move 10 is a streak start
         streak_starts = {10}
@@ -2145,10 +2267,8 @@ class TestImportanceRankingRedesign:
 
     def test_importance_reliability_scale_applied(self):
         """Lower visits should reduce importance via reliability scale"""
-        move_high = make_move_eval(move_number=1, player="B", gtp="D4",
-                                   score_loss=5.0, root_visits=500)
-        move_low = make_move_eval(move_number=2, player="B", gtp="Q16",
-                                  score_loss=5.0, root_visits=50)
+        move_high = make_move_eval(move_number=1, player="B", gtp="D4", score_loss=5.0, root_visits=500)
+        move_low = make_move_eval(move_number=2, player="B", gtp="Q16", score_loss=5.0, root_visits=50)
         compute_importance_for_moves([move_high, move_low])
 
         # High visits (scale=1.0) should have higher importance than low visits (scale=0.3)
@@ -2160,10 +2280,12 @@ class TestImportanceRankingRedesign:
     def test_importance_non_negative(self):
         """Importance should never be negative even with ONLY_MOVE penalty"""
         move = make_move_eval(
-            move_number=1, player="B", gtp="D4",
+            move_number=1,
+            player="B",
+            gtp="D4",
             score_loss=1.0,  # Small loss
             root_visits=500,
-            position_difficulty=PositionDifficulty.ONLY_MOVE  # -2.0 penalty
+            position_difficulty=PositionDifficulty.ONLY_MOVE,  # -2.0 penalty
         )
         compute_importance_for_moves([move])
 
@@ -2173,21 +2295,23 @@ class TestImportanceRankingRedesign:
     def test_confidence_level_affects_components(self):
         """LOW confidence should use only canonical_loss component"""
         move = make_move_eval(
-            move_number=10, player="B", gtp="D10",
-            score_loss=5.0, root_visits=500,
+            move_number=10,
+            player="B",
+            gtp="D10",
+            score_loss=5.0,
+            root_visits=500,
             position_difficulty=PositionDifficulty.HARD,
-            score_before=5.0, score_after=-5.0,  # Swing
+            score_before=5.0,
+            score_after=-5.0,  # Swing
         )
         streak_starts = {10}
 
         # HIGH confidence: all components
-        compute_importance_for_moves([move], streak_start_moves=streak_starts,
-                                     confidence_level=ConfidenceLevel.HIGH)
+        compute_importance_for_moves([move], streak_start_moves=streak_starts, confidence_level=ConfidenceLevel.HIGH)
         high_importance = move.importance_score
 
         # LOW confidence: only canonical_loss
-        compute_importance_for_moves([move], streak_start_moves=streak_starts,
-                                     confidence_level=ConfidenceLevel.LOW)
+        compute_importance_for_moves([move], streak_start_moves=streak_starts, confidence_level=ConfidenceLevel.LOW)
         low_importance = move.importance_score
 
         # HIGH should include difficulty bonus and streak bonus

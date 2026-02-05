@@ -1,9 +1,8 @@
 """Tests for JsonFileConfigStore."""
-import json
+
 import os
-import tempfile
+
 import pytest
-from pathlib import Path
 
 from katrain.common.config_store import JsonFileConfigStore
 
@@ -120,7 +119,7 @@ class TestJsonFileConfigStore:
         store = JsonFileConfigStore(temp_config, indent=2)
         store.put("test", value=42)
 
-        with open(temp_config, "r") as f:
+        with open(temp_config) as f:
             content = f.read()
 
         # Check that indentation is applied

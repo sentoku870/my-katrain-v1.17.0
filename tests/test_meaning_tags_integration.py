@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for meaning_tags/integration.py.
 
 Part of Phase 47: Meaning Tags Integration - PR-1.
@@ -14,7 +13,6 @@ from katrain.core.analysis.meaning_tags import (
     get_meaning_tag_label_safe,
     normalize_lang,
 )
-
 
 # =============================================================================
 # normalize_lang Tests
@@ -136,7 +134,7 @@ class TestFormatMeaningTagWithDefinition:
         # Format: "Label: description..."
         # Find description part after ": "
         colon_idx = result.index(": ")
-        description_part = result[colon_idx + 2:]
+        description_part = result[colon_idx + 2 :]
         # Should be MAX_DESCRIPTION_LENGTH + "..."
         assert len(description_part) <= MAX_DESCRIPTION_LENGTH + 3
 

@@ -12,40 +12,37 @@ import pytest
 
 from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
 from katrain.core.analysis.skill_radar import (
-    # Enums
-    RadarAxis,
-    SkillTier,
-    # Dataclass
-    RadarMetrics,
-    # Constants
-    TIER_TO_INT,
-    INT_TO_TIER,
     APL_TIER_THRESHOLDS,
     BLUNDER_RATE_TIER_THRESHOLDS,
-    MATCH_RATE_TIER_THRESHOLDS,
+    ENDGAME_START_MOVE,
     GARBAGE_TIME_WINRATE_HIGH,
     GARBAGE_TIME_WINRATE_LOW,
-    OPENING_END_MOVE,
-    ENDGAME_START_MOVE,
+    INT_TO_TIER,
+    MATCH_RATE_TIER_THRESHOLDS,
     NEUTRAL_DISPLAY_SCORE,
     NEUTRAL_TIER,
+    OPENING_END_MOVE,
+    # Constants
+    TIER_TO_INT,
+    # Enums
+    RadarAxis,
+    # Dataclass
+    RadarMetrics,
+    SkillTier,
     # Conversion functions
     apl_to_tier_and_score,
     blunder_rate_to_tier_and_score,
-    match_rate_to_tier_and_score,
-    # Detection functions
-    is_garbage_time,
-    compute_overall_tier,
+    compute_awareness_axis,
+    compute_endgame_axis,
+    compute_fighting_axis,
     # Axis computation functions
     compute_opening_axis,
-    compute_fighting_axis,
-    compute_endgame_axis,
-    compute_stability_axis,
-    compute_awareness_axis,
+    compute_overall_tier,
     # Main entry point
     compute_radar_from_moves,
+    is_garbage_time,
+    match_rate_to_tier_and_score,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -529,51 +526,37 @@ class TestOverallTier:
 
     def test_two_tiers_1_5_gives_tier_3(self):
         """[1, 5] -> avg=3.0 -> TIER_3."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_1, SkillTier.TIER_5]
-        )
+        result = compute_overall_tier([SkillTier.TIER_1, SkillTier.TIER_5])
         assert result == SkillTier.TIER_3
 
     def test_two_tiers_2_4_gives_tier_3(self):
         """[2, 4] -> avg=3.0 -> TIER_3."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_2, SkillTier.TIER_4]
-        )
+        result = compute_overall_tier([SkillTier.TIER_2, SkillTier.TIER_4])
         assert result == SkillTier.TIER_3
 
     def test_two_tiers_1_2_gives_tier_2(self):
         """[1, 2] -> avg=1.5 -> ceil=2 -> TIER_2."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_1, SkillTier.TIER_2]
-        )
+        result = compute_overall_tier([SkillTier.TIER_1, SkillTier.TIER_2])
         assert result == SkillTier.TIER_2
 
     def test_two_tiers_4_5_gives_tier_5(self):
         """[4, 5] -> avg=4.5 -> ceil=5 -> TIER_5."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_4, SkillTier.TIER_5]
-        )
+        result = compute_overall_tier([SkillTier.TIER_4, SkillTier.TIER_5])
         assert result == SkillTier.TIER_5
 
     def test_three_tiers_1_2_3_gives_tier_2(self):
         """[1, 2, 3] -> middle=2 -> TIER_2."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_1, SkillTier.TIER_2, SkillTier.TIER_3]
-        )
+        result = compute_overall_tier([SkillTier.TIER_1, SkillTier.TIER_2, SkillTier.TIER_3])
         assert result == SkillTier.TIER_2
 
     def test_three_tiers_3_4_5_gives_tier_4(self):
         """[3, 4, 5] -> middle=4 -> TIER_4."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_3, SkillTier.TIER_4, SkillTier.TIER_5]
-        )
+        result = compute_overall_tier([SkillTier.TIER_3, SkillTier.TIER_4, SkillTier.TIER_5])
         assert result == SkillTier.TIER_4
 
     def test_four_tiers_1_2_3_4_gives_tier_3(self):
         """[1, 2, 3, 4] -> avg(2,3)=2.5 -> ceil=3 -> TIER_3."""
-        result = compute_overall_tier(
-            [SkillTier.TIER_1, SkillTier.TIER_2, SkillTier.TIER_3, SkillTier.TIER_4]
-        )
+        result = compute_overall_tier([SkillTier.TIER_1, SkillTier.TIER_2, SkillTier.TIER_3, SkillTier.TIER_4])
         assert result == SkillTier.TIER_3
 
     def test_five_tiers_with_two_unknown_gives_tier_4(self):

@@ -6,7 +6,6 @@ Tests for:
 """
 
 import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -15,10 +14,8 @@ from katrain.core.smart_kifu.io import (
     create_training_set,
     import_analyzed_sgf_folder,
     import_sgf_to_training_set,
-    load_manifest,
 )
 from katrain.core.smart_kifu.models import Context, ImportErrorCode
-
 
 # =============================================================================
 # Test Fixtures
@@ -51,12 +48,8 @@ def temp_smart_kifu_dir(monkeypatch, tmp_path):
     def mock_get_training_sets_dir():
         return training_sets_dir
 
-    monkeypatch.setattr(
-        "katrain.core.smart_kifu.io.get_smart_kifu_dir", mock_get_smart_kifu_dir
-    )
-    monkeypatch.setattr(
-        "katrain.core.smart_kifu.io.get_training_sets_dir", mock_get_training_sets_dir
-    )
+    monkeypatch.setattr("katrain.core.smart_kifu.io.get_smart_kifu_dir", mock_get_smart_kifu_dir)
+    monkeypatch.setattr("katrain.core.smart_kifu.io.get_training_sets_dir", mock_get_training_sets_dir)
 
     return training_sets_dir
 
@@ -69,9 +62,7 @@ def temp_smart_kifu_dir(monkeypatch, tmp_path):
 class TestImportSgfToTrainingSet:
     """Tests for import_sgf_to_training_set() function."""
 
-    def test_import_with_compute_ratio_true(
-        self, temp_smart_kifu_dir, analyzed_data_dir
-    ):
+    def test_import_with_compute_ratio_true(self, temp_smart_kifu_dir, analyzed_data_dir):
         """Import with compute_ratio=True should set analyzed_ratio."""
         # Create a training set
         manifest = create_training_set("Test Set")
@@ -91,9 +82,7 @@ class TestImportSgfToTrainingSet:
         assert error_code is None
         assert entry.analyzed_ratio == 1.0
 
-    def test_import_with_compute_ratio_false(
-        self, temp_smart_kifu_dir, analyzed_data_dir
-    ):
+    def test_import_with_compute_ratio_false(self, temp_smart_kifu_dir, analyzed_data_dir):
         """Import with compute_ratio=False should leave analyzed_ratio as None."""
         manifest = create_training_set("Test Set")
         assert manifest is not None
@@ -111,9 +100,7 @@ class TestImportSgfToTrainingSet:
         assert error_code is None
         assert entry.analyzed_ratio is None
 
-    def test_import_returns_duplicate_error_code(
-        self, temp_smart_kifu_dir, analyzed_data_dir
-    ):
+    def test_import_returns_duplicate_error_code(self, temp_smart_kifu_dir, analyzed_data_dir):
         """Duplicate import should return ImportErrorCode.DUPLICATE."""
         manifest = create_training_set("Test Set")
         assert manifest is not None
@@ -122,22 +109,16 @@ class TestImportSgfToTrainingSet:
         sgf_path = analyzed_data_dir / "fully_analyzed.sgf"
 
         # First import
-        entry1, error1 = import_sgf_to_training_set(
-            set_id=set_id, sgf_path=sgf_path, context=Context.HUMAN
-        )
+        entry1, error1 = import_sgf_to_training_set(set_id=set_id, sgf_path=sgf_path, context=Context.HUMAN)
         assert entry1 is not None
         assert error1 is None
 
         # Second import (duplicate)
-        entry2, error2 = import_sgf_to_training_set(
-            set_id=set_id, sgf_path=sgf_path, context=Context.HUMAN
-        )
+        entry2, error2 = import_sgf_to_training_set(set_id=set_id, sgf_path=sgf_path, context=Context.HUMAN)
         assert entry2 is None
         assert error2 == ImportErrorCode.DUPLICATE
 
-    def test_import_nonexistent_file_returns_file_not_found(
-        self, temp_smart_kifu_dir
-    ):
+    def test_import_nonexistent_file_returns_file_not_found(self, temp_smart_kifu_dir):
         """Importing nonexistent file should return FILE_NOT_FOUND."""
         manifest = create_training_set("Test Set")
         assert manifest is not None
@@ -152,9 +133,7 @@ class TestImportSgfToTrainingSet:
         assert entry is None
         assert error_code == ImportErrorCode.FILE_NOT_FOUND
 
-    def test_import_to_nonexistent_set_returns_file_not_found(
-        self, temp_smart_kifu_dir, analyzed_data_dir
-    ):
+    def test_import_to_nonexistent_set_returns_file_not_found(self, temp_smart_kifu_dir, analyzed_data_dir):
         """Importing to nonexistent training set should return FILE_NOT_FOUND."""
         sgf_path = analyzed_data_dir / "fully_analyzed.sgf"
 
@@ -192,9 +171,7 @@ class TestImportAnalyzedSgfFolder:
         assert result.failed_count == 0
         assert result.average_analyzed_ratio is not None
 
-    def test_import_folder_calculates_average(
-        self, temp_smart_kifu_dir, tmp_path, analyzed_data_dir
-    ):
+    def test_import_folder_calculates_average(self, temp_smart_kifu_dir, tmp_path, analyzed_data_dir):
         """Import folder should calculate correct average_analyzed_ratio."""
         # Create a folder with specific files
         test_folder = tmp_path / "test_sgf"
@@ -218,9 +195,7 @@ class TestImportAnalyzedSgfFolder:
         # Average of 1.0 and 0.0 = 0.5
         assert result.average_analyzed_ratio == pytest.approx(0.5, rel=0.01)
 
-    def test_import_folder_handles_duplicates(
-        self, temp_smart_kifu_dir, analyzed_data_dir
-    ):
+    def test_import_folder_handles_duplicates(self, temp_smart_kifu_dir, analyzed_data_dir):
         """Import folder should skip duplicates correctly."""
         manifest = create_training_set("Test Set")
         assert manifest is not None
@@ -282,9 +257,7 @@ class TestImportAnalyzedSgfFolder:
         assert result.skipped_count == 0
         assert result.average_analyzed_ratio is None
 
-    def test_import_folder_with_none_ratios(
-        self, temp_smart_kifu_dir, tmp_path, analyzed_data_dir
-    ):
+    def test_import_folder_with_none_ratios(self, temp_smart_kifu_dir, tmp_path, analyzed_data_dir):
         """Average should handle files that return None for ratio."""
         # Create folder with only root_only.sgf (returns None)
         test_folder = tmp_path / "test_sgf"

@@ -3,7 +3,6 @@
 Tests for _safe_int() helper function in batch_core.py.
 CI-safe (no real engines, no Kivy UI).
 """
-import pytest
 
 
 class TestSafeInt:

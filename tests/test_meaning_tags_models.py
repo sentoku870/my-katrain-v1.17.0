@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for meaning_tags/models.py.
 
 Part of Phase 46: Meaning Tags System Core - PR-1.
@@ -10,7 +9,6 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from katrain.core.analysis.meaning_tags import MeaningTag, MeaningTagId
-
 
 # =============================================================================
 # MeaningTagId Tests

@@ -3,7 +3,7 @@
 
 from unittest.mock import Mock
 
-from katrain.core.base_katrain import _save_config_with_errors, OUTPUT_ERROR
+from katrain.core.base_katrain import OUTPUT_ERROR, _save_config_with_errors
 
 
 def test_save_config_continues_on_partial_failure():
@@ -14,7 +14,7 @@ def test_save_config_continues_on_partial_failure():
 
     def mock_put(key, **kwargs):
         if key == "bad":
-            raise IOError("Simulated error")
+            raise OSError("Simulated error")
         saved_keys.append(key)
 
     mock_store = Mock()
@@ -32,7 +32,7 @@ def test_save_config_logs_each_failure_and_summary():
     """Verify failures are logged with key names and summary."""
     config = {"sec1": {"a": 1}, "sec2": {"b": 2}}
     mock_store = Mock()
-    mock_store.put = Mock(side_effect=IOError("disk full"))
+    mock_store.put = Mock(side_effect=OSError("disk full"))
 
     logged = []
 

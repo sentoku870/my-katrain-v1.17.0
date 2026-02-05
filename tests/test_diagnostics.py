@@ -8,7 +8,6 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -16,7 +15,6 @@ from katrain.common.sanitize import SanitizationContext
 from katrain.core.diagnostics import (
     AppInfo,
     DiagnosticsBundle,
-    DiagnosticsResult,
     KataGoInfo,
     SystemInfo,
     collect_app_info,
@@ -26,7 +24,6 @@ from katrain.core.diagnostics import (
     create_diagnostics_zip,
     generate_diagnostics_filename,
 )
-
 
 # --- Test Fixtures (deterministic, CI-stable) ---
 
@@ -106,9 +103,7 @@ def assert_no_forbidden_tokens(content: str, filename: str) -> None:
     for token in FORBIDDEN_TOKENS:
         token_lower = token.lower()
         if token_lower in content_lower:
-            raise AssertionError(
-                f"Found forbidden token '{token}' (case-insensitive) in {filename}"
-            )
+            raise AssertionError(f"Found forbidden token '{token}' (case-insensitive) in {filename}")
 
 
 class TestCollectSystemInfo:
@@ -241,9 +236,7 @@ class TestGenerateDiagnosticsFilename:
 class TestZipStructure:
     """Tests for ZIP structure and contents."""
 
-    def test_contains_required_files(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_contains_required_files(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """ZIP contains all required files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -259,9 +252,7 @@ class TestZipStructure:
                 assert "settings.json" in names
                 assert "logs.txt" in names
 
-    def test_manifest_schema_version(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_manifest_schema_version(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Manifest has correct schema version."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -271,9 +262,7 @@ class TestZipStructure:
                 manifest = json.loads(zf.read("manifest.json"))
                 assert manifest["schema_version"] == "1.0"
 
-    def test_manifest_files_list(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_manifest_files_list(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Manifest contains file list with types."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -289,9 +278,7 @@ class TestZipStructure:
                 assert files["settings.json"] == "settings"
                 assert files["logs.txt"] == "logs"
 
-    def test_manifest_privacy_flags(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_manifest_privacy_flags(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Manifest includes privacy information."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -302,25 +289,19 @@ class TestZipStructure:
                 assert manifest["privacy"]["sanitized"] is True
                 assert "paths" in manifest["privacy"]["rules_applied"]
 
-    def test_manifest_timestamp_deterministic(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_manifest_timestamp_deterministic(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Manifest timestamp is deterministic with now_fn injection."""
         fixed_time = datetime(2026, 1, 17, 14, 30, 0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
-            create_diagnostics_zip(
-                sample_bundle, output_path, ctx, now_fn=lambda: fixed_time
-            )
+            create_diagnostics_zip(sample_bundle, output_path, ctx, now_fn=lambda: fixed_time)
 
             with zipfile.ZipFile(output_path, "r") as zf:
                 manifest = json.loads(zf.read("manifest.json"))
                 assert manifest["generated_at"] == "2026-01-17T14:30:00"
 
-    def test_all_files_utf8(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_all_files_utf8(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """All files can be decoded as UTF-8."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -336,9 +317,7 @@ class TestZipStructure:
 class TestNoForbiddenTokens:
     """Verify no sensitive information leaks in ZIP contents."""
 
-    def test_system_info_no_forbidden(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_system_info_no_forbidden(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """system_info.json contains no forbidden tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -348,9 +327,7 @@ class TestNoForbiddenTokens:
                 content = zf.read("system_info.json").decode("utf-8")
                 assert_no_forbidden_tokens(content, "system_info.json")
 
-    def test_katago_info_no_forbidden(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_katago_info_no_forbidden(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """katago_info.json contains no forbidden tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -360,9 +337,7 @@ class TestNoForbiddenTokens:
                 content = zf.read("katago_info.json").decode("utf-8")
                 assert_no_forbidden_tokens(content, "katago_info.json")
 
-    def test_app_info_no_forbidden(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_app_info_no_forbidden(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """app_info.json contains no forbidden tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -372,9 +347,7 @@ class TestNoForbiddenTokens:
                 content = zf.read("app_info.json").decode("utf-8")
                 assert_no_forbidden_tokens(content, "app_info.json")
 
-    def test_settings_no_forbidden(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_settings_no_forbidden(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """settings.json contains no forbidden tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -384,9 +357,7 @@ class TestNoForbiddenTokens:
                 content = zf.read("settings.json").decode("utf-8")
                 assert_no_forbidden_tokens(content, "settings.json")
 
-    def test_logs_no_forbidden(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_logs_no_forbidden(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """logs.txt contains no forbidden tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -400,9 +371,7 @@ class TestNoForbiddenTokens:
 class TestDiagnosticsResult:
     """Tests for DiagnosticsResult handling."""
 
-    def test_success_result(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_success_result(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Successful generation returns success result."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -412,9 +381,7 @@ class TestDiagnosticsResult:
             assert result.output_path == output_path
             assert result.error_message is None
 
-    def test_error_result_invalid_path(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_error_result_invalid_path(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Invalid path returns error result."""
         # Try to write to a non-existent directory
         output_path = Path("/nonexistent/directory/test.zip")
@@ -427,9 +394,7 @@ class TestDiagnosticsResult:
 class TestSanitizedContent:
     """Verify content is properly sanitized with placeholders."""
 
-    def test_katago_paths_use_placeholders(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_katago_paths_use_placeholders(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """KataGo paths are replaced with <APP_DIR> placeholder."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -441,9 +406,7 @@ class TestSanitizedContent:
                 assert "<APP_DIR>" in data["exe_path"]
                 assert "<APP_DIR>" in data["model_path"]
 
-    def test_app_paths_use_placeholders(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_app_paths_use_placeholders(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """App paths are replaced with placeholder tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"
@@ -458,9 +421,7 @@ class TestSanitizedContent:
                 # Original username should not appear
                 assert TEST_USERNAME not in data["config_path"]
 
-    def test_logs_use_placeholders(
-        self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext
-    ) -> None:
+    def test_logs_use_placeholders(self, sample_bundle: DiagnosticsBundle, ctx: SanitizationContext) -> None:
         """Log messages use placeholder tokens."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "test.zip"

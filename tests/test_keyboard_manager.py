@@ -6,12 +6,11 @@ Kivyインポート不要 - 全て依存注入でモック/スタブ。
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 
 from katrain.gui.managers.keyboard_manager import KeyboardManager
-
 
 # === 実状態を持つスタブ（MagicMockより堅牢） ===
 
@@ -215,9 +214,7 @@ def manager(stubs):
         get_play_mode=lambda: stubs["play_mode"],
         # State modifiers
         get_set_zen=stubs["zen"].get_set,
-        toggle_continuous_analysis=lambda quiet: stubs["dispatched_actions"].append(
-            ("toggle_analysis", (quiet,))
-        ),
+        toggle_continuous_analysis=lambda quiet: stubs["dispatched_actions"].append(("toggle_analysis", (quiet,))),
         toggle_move_num=lambda: stubs["dispatched_actions"].append(("toggle_movenum", ())),
         load_from_clipboard=lambda: stubs["dispatched_actions"].append(("load_clipboard", ())),
         # Utilities
@@ -606,9 +603,7 @@ class TestShortcutsProperty:
             get_note_focus=lambda: stubs["controls"].note.focus,
             get_popup_open=lambda: stubs["popup"],
             get_game=lambda: stubs["game"],
-            action_dispatcher=lambda action, *args: stubs["dispatched_actions"].append(
-                (action, args)
-            ),
+            action_dispatcher=lambda action, *args: stubs["dispatched_actions"].append((action, args)),
             get_analysis_controls=lambda: None,  # None
             get_board_gui=lambda: stubs["board_gui"],
             get_controls=lambda: stubs["controls"],

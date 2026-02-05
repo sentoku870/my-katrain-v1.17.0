@@ -3,13 +3,13 @@
 Note: Most tests require mocking as they depend on external process.
 """
 
-import pytest
 import threading
 import time
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
 
 from katrain.core.leela.engine import LeelaEngine
-from katrain.core.leela.models import LeelaPositionEval
 
 
 class MockKatrain:
@@ -157,12 +157,13 @@ class TestRequestAnalysis:
 
     def test_request_id_uniqueness(self):
         """Test that each request gets unique ID."""
-        engine = LeelaEngine(MockKatrain(), {})
+        LeelaEngine(MockKatrain(), {})
         ids = set()
 
         for _ in range(10):
             # Simulate generating request IDs
             from uuid import uuid4
+
             ids.add(str(uuid4()))
 
         assert len(ids) == 10
@@ -244,9 +245,7 @@ class TestIntegrationMocked:
         proc.stdin = MagicMock()
 
         # Mock stdout to return analysis output
-        sample_output = (
-            "info move D4 visits 100 winrate 5000 order 0 pv D4 D16\n"
-        )
+        sample_output = "info move D4 visits 100 winrate 5000 order 0 pv D4 D16\n"
 
         def readline_side_effect():
             return sample_output

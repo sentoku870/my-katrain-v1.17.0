@@ -1,14 +1,16 @@
 """Tests for send_query() safety mechanisms."""
+
 import queue
 import threading
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 @pytest.fixture
 def minimal_engine():
     """Create a minimal engine instance for testing send_query safety."""
-    from katrain.core.engine import KataGoEngine, MAX_PENDING_QUERIES
+    from katrain.core.engine import MAX_PENDING_QUERIES, KataGoEngine
 
     # Use object.__new__ to create instance without __init__
     engine = object.__new__(KataGoEngine)
@@ -45,11 +47,9 @@ class TestSendQuerySafety:
         mock_clock.schedule_once = mock_schedule_once
         mock_clock_module = MagicMock()
         mock_clock_module.Clock = mock_clock
-        with patch.dict('sys.modules', {'kivy.clock': mock_clock_module}):
+        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
             result = engine.send_query(
-                {"id": "test"},
-                callback=MagicMock(),
-                error_callback=lambda e: error_received.append(e)
+                {"id": "test"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
             )
 
         assert result is False
@@ -68,11 +68,9 @@ class TestSendQuerySafety:
         mock_clock.schedule_once = mock_schedule_once
         mock_clock_module = MagicMock()
         mock_clock_module.Clock = mock_clock
-        with patch.dict('sys.modules', {'kivy.clock': mock_clock_module}):
+        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
             result = engine.send_query(
-                {"id": "overflow"},
-                callback=MagicMock(),
-                error_callback=lambda e: error_received.append(e)
+                {"id": "overflow"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
             )
 
         assert result is False
@@ -86,11 +84,7 @@ class TestSendQuerySafety:
         engine, _ = minimal_engine
         initial_count = engine._pending_query_count
 
-        result = engine.send_query(
-            {"id": "test"},
-            callback=MagicMock(),
-            error_callback=None
-        )
+        result = engine.send_query({"id": "test"}, callback=MagicMock(), error_callback=None)
 
         assert result is True
         assert engine._pending_query_count == initial_count + 1
@@ -102,11 +96,7 @@ class TestSendQuerySafety:
         engine, MAX_PENDING = minimal_engine
         engine._pending_query_count = MAX_PENDING - 1
 
-        result = engine.send_query(
-            {"id": "test"},
-            callback=MagicMock(),
-            error_callback=None
-        )
+        result = engine.send_query({"id": "test"}, callback=MagicMock(), error_callback=None)
 
         assert result is True
         assert engine._pending_query_count == MAX_PENDING
@@ -123,20 +113,18 @@ class TestInvokeErrorCallback:
 
         # Simulate Kivy not loaded by removing it from sys.modules
         import sys
-        original_kivy_clock = sys.modules.get('kivy.clock')
+
+        original_kivy_clock = sys.modules.get("kivy.clock")
         try:
             # Remove kivy.clock from sys.modules if present
-            if 'kivy.clock' in sys.modules:
-                del sys.modules['kivy.clock']
+            if "kivy.clock" in sys.modules:
+                del sys.modules["kivy.clock"]
 
-            engine._invoke_error_callback(
-                lambda msg: callback_received.append(msg),
-                {"error": "test"}
-            )
+            engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
         finally:
             # Restore original state
             if original_kivy_clock is not None:
-                sys.modules['kivy.clock'] = original_kivy_clock
+                sys.modules["kivy.clock"] = original_kivy_clock
 
         assert len(callback_received) == 1
         assert callback_received[0]["error"] == "test"
@@ -158,11 +146,8 @@ class TestInvokeErrorCallback:
         mock_clock_module.Clock = mock_clock
 
         # Patch sys.modules to make it look like Kivy is loaded
-        with patch.dict('sys.modules', {'kivy.clock': mock_clock_module}):
-            engine._invoke_error_callback(
-                lambda msg: callback_received.append(msg),
-                {"error": "test"}
-            )
+        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
+            engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
 
         # Should have called schedule_once
         mock_clock.schedule_once.assert_called_once()

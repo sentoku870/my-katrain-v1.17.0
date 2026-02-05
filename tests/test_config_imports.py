@@ -11,8 +11,6 @@ import ast
 import inspect
 from pathlib import Path
 
-import pytest
-
 
 class TestConfigManagerImport:
     """ConfigManagerのインポートテスト"""
@@ -128,9 +126,7 @@ class TestKaTrainGuiDelegationExists:
 
         # KaTrainGuiクラス内のメソッド名を収集
         method_names = [
-            item.name
-            for item in ast.iter_child_nodes(katrain_gui_class)
-            if isinstance(item, ast.FunctionDef)
+            item.name for item in ast.iter_child_nodes(katrain_gui_class) if isinstance(item, ast.FunctionDef)
         ]
 
         # 必須メソッドの存在確認

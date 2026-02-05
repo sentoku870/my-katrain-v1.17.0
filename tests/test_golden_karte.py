@@ -12,28 +12,27 @@ Key principles:
 4. Use --update-goldens flag to update expected output
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock
+
+import pytest
 
 from katrain.core.eval_metrics import (
-    MoveEval,
+    ConfidenceLevel,
     EvalSnapshot,
     MistakeCategory,
+    MoveEval,
     PositionDifficulty,
-    ConfidenceLevel,
+    classify_mistake,
     compute_confidence_level,
     compute_importance_for_moves,
-    classify_mistake,
-    SKILL_PRESETS,
 )
-
-from tests.conftest import normalize_output, load_golden, save_golden, GOLDEN_DIR
-
+from tests.conftest import GOLDEN_DIR, load_golden, normalize_output, save_golden
 
 # ---------------------------------------------------------------------------
 # Helper to create comprehensive test moves
 # ---------------------------------------------------------------------------
+
 
 def create_standard_game_moves() -> list:
     """
@@ -181,6 +180,7 @@ def create_low_confidence_moves() -> list:
 # Tests for normalize_output
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeOutput:
     """Tests for the normalize_output function."""
 
@@ -236,13 +236,14 @@ class TestNormalizeOutput:
 # Tests for Karte structure and content
 # ---------------------------------------------------------------------------
 
+
 class TestKarteStructure:
     """Tests verifying Karte report structure."""
 
     def test_high_confidence_has_full_sections(self):
         """HIGH confidence Karte should have all sections without warnings."""
         moves = create_standard_game_moves()
-        snapshot = EvalSnapshot(moves=moves)
+        EvalSnapshot(moves=moves)
 
         # Verify HIGH confidence
         level = compute_confidence_level(moves)
@@ -260,16 +261,32 @@ class TestKarteStructure:
         """Moves with same importance should be ordered by move_number."""
         moves = [
             MoveEval(
-                move_number=10, player="B", gtp="D10",
-                score_before=0.0, score_after=-5.0, delta_score=-5.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
-                points_lost=5.0, realized_points_lost=None, root_visits=500,
+                move_number=10,
+                player="B",
+                gtp="D10",
+                score_before=0.0,
+                score_after=-5.0,
+                delta_score=-5.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=500,
             ),
             MoveEval(
-                move_number=5, player="W", gtp="D5",
-                score_before=0.0, score_after=-5.0, delta_score=-5.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
-                points_lost=5.0, realized_points_lost=None, root_visits=500,
+                move_number=5,
+                player="W",
+                gtp="D5",
+                score_before=0.0,
+                score_after=-5.0,
+                delta_score=-5.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=500,
             ),
         ]
         for m in moves:
@@ -279,10 +296,7 @@ class TestKarteStructure:
 
         # Both have same loss, so importance should be similar
         # Order should be deterministic based on move_number
-        sorted_moves = sorted(
-            moves,
-            key=lambda m: (-m.importance_score, m.move_number)
-        )
+        sorted_moves = sorted(moves, key=lambda m: (-m.importance_score, m.move_number))
 
         # With same importance, lower move_number comes first
         assert sorted_moves[0].move_number == 5
@@ -292,6 +306,7 @@ class TestKarteStructure:
 # ---------------------------------------------------------------------------
 # Tests for confidence boundaries (Unit-style, no SGF)
 # ---------------------------------------------------------------------------
+
 
 class TestConfidenceBoundaries:
     """
@@ -308,9 +323,14 @@ class TestConfidenceBoundaries:
                 move_number=i + 1,
                 player="B",
                 gtp=f"D{i + 1}",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.5, realized_points_lost=None,
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.5,
+                realized_points_lost=None,
                 root_visits=250,  # All reliable
             )
             moves.append(move)
@@ -328,9 +348,14 @@ class TestConfidenceBoundaries:
                 move_number=i + 1,
                 player="B",
                 gtp=f"D{i + 1}",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.5, realized_points_lost=None,
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.5,
+                realized_points_lost=None,
                 root_visits=visits,
             )
             moves.append(move)
@@ -348,9 +373,14 @@ class TestConfidenceBoundaries:
                 move_number=i + 1,
                 player="B",
                 gtp=f"D{i + 1}",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.5, realized_points_lost=None,
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.5,
+                realized_points_lost=None,
                 root_visits=visits,
             )
             moves.append(move)
@@ -368,9 +398,14 @@ class TestConfidenceBoundaries:
                 move_number=i + 1,
                 player="B",
                 gtp=f"D{i + 1}",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.5, realized_points_lost=None,
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.5,
+                realized_points_lost=None,
                 root_visits=visits,
             )
             moves.append(move)
@@ -434,6 +469,7 @@ class TestConfidenceBoundaries:
 # Tests for deterministic sorting
 # ---------------------------------------------------------------------------
 
+
 class TestDeterministicSorting:
     """Tests verifying deterministic ordering in output."""
 
@@ -446,9 +482,15 @@ class TestDeterministicSorting:
                 move_number=i,
                 player="B",
                 gtp=f"D{i}",
-                score_before=0.0, score_after=-5.0, delta_score=-5.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
-                points_lost=5.0, realized_points_lost=None, root_visits=500,
+                score_before=0.0,
+                score_after=-5.0,
+                delta_score=-5.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=500,
             )
             move.score_loss = 5.0
             moves.append(move)
@@ -456,10 +498,7 @@ class TestDeterministicSorting:
         compute_importance_for_moves(moves)
 
         # Sort like the code does: importance desc, move_number asc
-        sorted_moves = sorted(
-            moves,
-            key=lambda m: (-m.importance_score, m.move_number)
-        )
+        sorted_moves = sorted(moves, key=lambda m: (-m.importance_score, m.move_number))
 
         # With same importance, should be ordered 10, 20, 30
         assert sorted_moves[0].move_number == 10
@@ -476,9 +515,15 @@ class TestDeterministicSorting:
                 move_number=i,
                 player="B",
                 gtp=f"D{i}",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.47, delta_winrate=-0.03,
-                points_lost=3.0, realized_points_lost=None, root_visits=500,
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.47,
+                delta_winrate=-0.03,
+                points_lost=3.0,
+                realized_points_lost=None,
+                root_visits=500,
             )
             move.score_loss = 3.0
             moves.append(move)
@@ -494,6 +539,7 @@ class TestDeterministicSorting:
 # ---------------------------------------------------------------------------
 # E2E Tests: SGF → Karte (Phase 24)
 # ---------------------------------------------------------------------------
+
 
 class TestKarteFromSGF:
     """
@@ -517,6 +563,7 @@ class TestKarteFromSGF:
         Scope=class to reuse across tests, reducing Kivy reinitialization overhead.
         """
         from katrain.core.base_katrain import KaTrainBase
+
         return KaTrainBase(force_package_config=True, debug_level=0)
 
     @pytest.fixture(scope="class")
@@ -525,13 +572,17 @@ class TestKarteFromSGF:
 
         Scope=class to reuse across tests.
         """
+
         class MockEngine:
             def request_analysis(self, *args, **kwargs):
                 pass
+
             def stop_pondering(self):
                 pass
+
             def has_query_capacity(self, headroom: int = 10) -> bool:
                 return True
+
         return MockEngine()
 
     def load_game_with_mock_analysis(self, sgf_key: str, mock_katrain, mock_engine):
@@ -549,9 +600,7 @@ class TestKarteFromSGF:
         return game
 
     @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
-    def test_karte_from_sgf_matches_golden(
-        self, sgf_key: str, mock_katrain, mock_engine, request
-    ):
+    def test_karte_from_sgf_matches_golden(self, sgf_key: str, mock_katrain, mock_engine, request):
         """
         Test that Karte output matches golden file.
 
@@ -581,9 +630,7 @@ class TestKarteFromSGF:
         )
 
     @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
-    def test_karte_output_is_deterministic(
-        self, sgf_key: str, mock_katrain, mock_engine
-    ):
+    def test_karte_output_is_deterministic(self, sgf_key: str, mock_katrain, mock_engine):
         """
         Verify that karte generation is deterministic.
 
@@ -599,8 +646,7 @@ class TestKarteFromSGF:
         output2 = normalize_output(build_karte_report(game2))
 
         assert output1 == output2, (
-            f"Karte output for {sgf_key} is not deterministic.\n"
-            f"First run differs from second run."
+            f"Karte output for {sgf_key} is not deterministic.\nFirst run differs from second run."
         )
 
 
@@ -727,6 +773,5 @@ class TestKarteFromLeelaSnapshot:
 
         expected = load_golden(golden_name)
         assert normalized == expected, (
-            f"Leela karte output does not match golden file.\n"
-            f"Run with --update-goldens to update the expected output."
+            "Leela karte output does not match golden file.\nRun with --update-goldens to update the expected output."
         )

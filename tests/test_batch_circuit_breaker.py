@@ -1,4 +1,5 @@
 """Tests for batch processing circuit breaker."""
+
 import pytest
 
 
@@ -8,6 +9,7 @@ class TestEngineFailureTracker:
     @pytest.fixture
     def tracker(self):
         from katrain.core.batch.orchestration import EngineFailureTracker
+
         return EngineFailureTracker(max_failures=3)
 
     def test_aborts_after_max_consecutive_failures(self, tracker):
@@ -68,10 +70,7 @@ class TestAnalysisTimeoutError:
         from katrain.core.errors import AnalysisTimeoutError
 
         with pytest.raises(AnalysisTimeoutError) as exc_info:
-            raise AnalysisTimeoutError(
-                "Timeout after 60s",
-                user_message="Analysis timeout"
-            )
+            raise AnalysisTimeoutError("Timeout after 60s", user_message="Analysis timeout")
 
         assert "60s" in str(exc_info.value)
         assert exc_info.value.user_message == "Analysis timeout"
@@ -97,7 +96,7 @@ class TestBatchResultAbortedField:
         from katrain.core.batch.models import BatchResult
 
         result = BatchResult()
-        assert hasattr(result, 'aborted')
+        assert hasattr(result, "aborted")
         assert result.aborted is False
 
     def test_batch_result_has_abort_reason(self):
@@ -105,7 +104,7 @@ class TestBatchResultAbortedField:
         from katrain.core.batch.models import BatchResult
 
         result = BatchResult()
-        assert hasattr(result, 'abort_reason')
+        assert hasattr(result, "abort_reason")
         assert result.abort_reason is None
 
     def test_batch_result_has_failure_counts(self):
@@ -113,8 +112,8 @@ class TestBatchResultAbortedField:
         from katrain.core.batch.models import BatchResult
 
         result = BatchResult()
-        assert hasattr(result, 'engine_failure_count')
-        assert hasattr(result, 'file_error_count')
+        assert hasattr(result, "engine_failure_count")
+        assert hasattr(result, "file_error_count")
         assert result.engine_failure_count == 0
         assert result.file_error_count == 0
 

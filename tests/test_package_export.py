@@ -3,16 +3,16 @@
 重要: このテストはKivyをインポートしない。
 Core層のみをテストし、CIで確実に実行可能。
 """
+
 import json
 import zipfile
 from pathlib import Path
-
-import pytest
 
 from katrain.core.reports.package_export import (
     COACH_MD_FALLBACK,
     PackageContent,
     PackageResult,
+    _is_writable_directory,
     anonymize_karte_content,
     anonymize_sgf_string,
     build_manifest,
@@ -21,7 +21,6 @@ from katrain.core.reports.package_export import (
     get_downloads_folder,
     load_coach_md,
     resolve_output_directory,
-    _is_writable_directory,
 )
 
 

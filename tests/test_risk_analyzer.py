@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Risk Context Analyzer.
 
 Part of Phase 61: Risk Context Core.
@@ -45,7 +44,6 @@ from katrain.core.analysis.risk.analyzer import (
     _get_volatility_window_values,
     _get_winrate_from_node,
 )
-
 
 # =============================================================================
 # Mock Classes
@@ -311,73 +309,55 @@ class TestStrategyMismatch:
 
     def test_winning_complicating_mismatch(self):
         """WINNING + COMPLICATING → mismatch."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.WINNING, RiskBehavior.COMPLICATING
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.WINNING, RiskBehavior.COMPLICATING)
         assert is_mismatch is True
         assert reason == "unnecessary_risk_when_winning"
 
     def test_losing_solid_mismatch(self):
         """LOSING + SOLID → mismatch."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.LOSING, RiskBehavior.SOLID
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.LOSING, RiskBehavior.SOLID)
         assert is_mismatch is True
         assert reason == "passive_when_losing"
 
     def test_winning_solid_ok(self):
         """WINNING + SOLID → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.WINNING, RiskBehavior.SOLID
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.WINNING, RiskBehavior.SOLID)
         assert is_mismatch is False
         assert reason is None
 
     def test_winning_neutral_ok(self):
         """WINNING + NEUTRAL → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.WINNING, RiskBehavior.NEUTRAL
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.WINNING, RiskBehavior.NEUTRAL)
         assert is_mismatch is False
         assert reason is None
 
     def test_losing_complicating_ok(self):
         """LOSING + COMPLICATING → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.LOSING, RiskBehavior.COMPLICATING
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.LOSING, RiskBehavior.COMPLICATING)
         assert is_mismatch is False
         assert reason is None
 
     def test_losing_neutral_ok(self):
         """LOSING + NEUTRAL → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.LOSING, RiskBehavior.NEUTRAL
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.LOSING, RiskBehavior.NEUTRAL)
         assert is_mismatch is False
         assert reason is None
 
     def test_close_solid_ok(self):
         """CLOSE + SOLID → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.CLOSE, RiskBehavior.SOLID
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.CLOSE, RiskBehavior.SOLID)
         assert is_mismatch is False
         assert reason is None
 
     def test_close_complicating_ok(self):
         """CLOSE + COMPLICATING → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.CLOSE, RiskBehavior.COMPLICATING
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.CLOSE, RiskBehavior.COMPLICATING)
         assert is_mismatch is False
         assert reason is None
 
     def test_close_neutral_ok(self):
         """CLOSE + NEUTRAL → OK."""
-        is_mismatch, reason = check_strategy_mismatch(
-            RiskJudgmentType.CLOSE, RiskBehavior.NEUTRAL
-        )
+        is_mismatch, reason = check_strategy_mismatch(RiskJudgmentType.CLOSE, RiskBehavior.NEUTRAL)
         assert is_mismatch is False
         assert reason is None
 

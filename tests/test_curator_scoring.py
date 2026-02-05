@@ -1,7 +1,6 @@
 """Tests for Curator Scoring (Phase 63)."""
 
 import dataclasses
-import math
 from types import MappingProxyType
 from typing import Any
 from unittest.mock import MagicMock
@@ -32,7 +31,6 @@ from katrain.core.curator.scoring import (
     _round_half_up,
     _wrap_debug_info,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -97,9 +95,7 @@ class TestModels:
 
     def test_suitability_score_is_frozen(self):
         """Ensure SuitabilityScore is frozen (immutable)."""
-        score = SuitabilityScore(
-            needs_match=0.5, stability=0.5, total=0.5, percentile=50
-        )
+        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5, percentile=50)
         with pytest.raises(dataclasses.FrozenInstanceError):
             score.needs_match = 0.6  # type: ignore
 
@@ -166,13 +162,12 @@ class TestRadarAxisMapping:
         field_names = {f.name for f in dataclasses.fields(AggregatedRadarResult)}
         for axis in SUPPORTED_AXES:
             assert axis.value in field_names, (
-                f"RadarAxis.{axis.name}.value='{axis.value}' "
-                f"is not a field of AggregatedRadarResult."
+                f"RadarAxis.{axis.name}.value='{axis.value}' is not a field of AggregatedRadarResult."
             )
 
     def test_supported_axes_matches_mapping_keys(self):
         """Ensure SUPPORTED_AXES equals AXIS_TO_MEANING_TAGS keys."""
-        assert SUPPORTED_AXES == frozenset(AXIS_TO_MEANING_TAGS.keys())
+        assert frozenset(AXIS_TO_MEANING_TAGS.keys()) == SUPPORTED_AXES
 
 
 # =============================================================================
@@ -185,7 +180,7 @@ class TestUncertainTag:
 
     def test_uncertain_tag_matches_enum(self):
         """Ensure UNCERTAIN_TAG equals MeaningTagId.UNCERTAIN.value."""
-        assert UNCERTAIN_TAG == MeaningTagId.UNCERTAIN.value
+        assert MeaningTagId.UNCERTAIN.value == UNCERTAIN_TAG
 
 
 # =============================================================================
@@ -453,9 +448,7 @@ class TestPercentileECDF:
 
     def _make_scores(self, totals: list[float]) -> list[SuitabilityScore]:
         """Create SuitabilityScore list from totals."""
-        return [
-            SuitabilityScore(needs_match=0.5, stability=0.5, total=t) for t in totals
-        ]
+        return [SuitabilityScore(needs_match=0.5, stability=0.5, total=t) for t in totals]
 
     def test_ascending_totals(self):
         """Ascending totals: [0.3, 0.5, 0.7] -> [33, 67, 100]."""
@@ -523,9 +516,7 @@ class TestBatchScoring:
         """Basic scoring returns valid SuitabilityScore."""
         aggregate = _make_aggregated_radar(fighting=2.0)  # Weak FIGHTING
         game = _make_mock_game([1.0, 2.0, 3.0])
-        stats: dict[str, Any] = {
-            "meaning_tags_by_player": {"B": {"reading_failure": 3}, "W": {}}
-        }
+        stats: dict[str, Any] = {"meaning_tags_by_player": {"B": {"reading_failure": 3}, "W": {}}}
 
         score = score_game_suitability(aggregate, game, stats)
 

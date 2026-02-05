@@ -4,17 +4,15 @@ Tests the JSON output functionality for LLM consumption.
 Uses mock game objects following the pattern established in test_golden_karte.py.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
-from katrain.core.reports.karte_report import build_karte_json
 from katrain.core.eval_metrics import (
-    MoveEval,
     EvalSnapshot,
-    MistakeCategory,
+    MoveEval,
     PositionDifficulty,
     classify_mistake,
 )
+from katrain.core.reports.karte_report import build_karte_json
 
 
 def create_mock_game_with_analysis():
@@ -93,13 +91,15 @@ def create_mock_game_with_analysis():
 
     # Mock root node properties
     mock_root = Mock()
-    mock_root.get_property = Mock(side_effect=lambda prop, default=None: {
-        "PB": "TestBlack",
-        "PW": "TestWhite",
-        "DT": "2024-01-15",
-        "RE": "B+5.5",
-        "GN": "Test Game",
-    }.get(prop, default))
+    mock_root.get_property = Mock(
+        side_effect=lambda prop, default=None: {
+            "PB": "TestBlack",
+            "PW": "TestWhite",
+            "DT": "2024-01-15",
+            "RE": "B+5.5",
+            "GN": "Test Game",
+        }.get(prop, default)
+    )
     mock_root.handicap = None
     mock_game.root = mock_root
 
@@ -273,8 +273,6 @@ class TestBuildKarteJson:
             coords = move["coords"]
             if coords is not None:
                 # Should be GTP format (letter + number) or "pass"
-                assert coords == "pass" or (
-                    len(coords) >= 2 and
-                    coords[0].isalpha() and
-                    coords[1:].isdigit()
-                ), f"Invalid coords format: {coords}"
+                assert coords == "pass" or (len(coords) >= 2 and coords[0].isalpha() and coords[1:].isdigit()), (
+                    f"Invalid coords format: {coords}"
+                )

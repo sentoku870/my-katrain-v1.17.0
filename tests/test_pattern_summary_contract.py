@@ -12,20 +12,17 @@ from __future__ import annotations
 
 import logging
 
-import pytest
-
 from katrain.core import eval_metrics
 from katrain.gui.features.summary_formatter import (
     AREA_KEYS,
     PHASE_KEYS,
     SEVERITY_KEYS,
-    _FakeSnapshot,
-    _PatternMoveEval,
     _filter_by_board_size,
     _is_valid_gtp,
     _is_valid_move_number,
     _is_valid_player,
     _normalize_board_size,
+    _PatternMoveEval,
     _reconstruct_pattern_input,
     _stable_sort_key,
     build_summary_from_stats,
@@ -254,13 +251,13 @@ class TestInputValidation:
 
         # Invalid format (production safety - must not crash)
         assert _is_valid_gtp("Z99") is False  # out of range letter
-        assert _is_valid_gtp("A0") is False   # 0 is invalid row
+        assert _is_valid_gtp("A0") is False  # 0 is invalid row
         assert _is_valid_gtp("A26") is False  # row > 25
-        assert _is_valid_gtp("I5") is False   # I is skipped in GTP
+        assert _is_valid_gtp("I5") is False  # I is skipped in GTP
         assert _is_valid_gtp("AA1") is False  # double letter
-        assert _is_valid_gtp("1A") is False   # reversed format
-        assert _is_valid_gtp("D") is False    # missing number
-        assert _is_valid_gtp("4") is False    # missing letter
+        assert _is_valid_gtp("1A") is False  # reversed format
+        assert _is_valid_gtp("D") is False  # missing number
+        assert _is_valid_gtp("4") is False  # missing letter
         assert _is_valid_gtp("D4D4") is False  # garbage
 
     def test_valid_gtp_board_size_bounds(self):
@@ -273,7 +270,7 @@ class TestInputValidation:
         # 9x9 board
         assert _is_valid_gtp("J9", board_size=9) is True
         assert _is_valid_gtp("J10", board_size=9) is False  # row out of bounds
-        assert _is_valid_gtp("K9", board_size=9) is False   # col out of bounds (K=10th)
+        assert _is_valid_gtp("K9", board_size=9) is False  # col out of bounds (K=10th)
 
     def test_valid_move_number(self):
         assert _is_valid_move_number(1) is True
@@ -334,15 +331,9 @@ class TestDeterministicOrdering:
     def test_stable_sort_key_uses_source_index(self):
         """source_index should break ties when other fields are equal."""
         stats_list = [
-            create_single_game_stats(
-                game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=2
-            ),
-            create_single_game_stats(
-                game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=1
-            ),
-            create_single_game_stats(
-                game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=0
-            ),
+            create_single_game_stats(game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=2),
+            create_single_game_stats(game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=1),
+            create_single_game_stats(game_name="same.sgf", date="2025-01-01", total_moves=50, source_index=0),
         ]
 
         # Verify order is deterministic
@@ -396,13 +387,15 @@ class TestProductionSafety:
     def test_summary_does_not_crash_on_corrupt_data(self):
         """Summary generation should not crash with corrupt data."""
         stats_list = [create_single_game_stats(game_name="good.sgf")]
-        stats_list[0]["pattern_data"].append({
-            "move_number": 99,
-            "player": "INVALID",  # Invalid player
-            "gtp": "A1",
-            "score_loss": 10.0,
-            "mistake_category": "BLUNDER",
-        })
+        stats_list[0]["pattern_data"].append(
+            {
+                "move_number": 99,
+                "player": "INVALID",  # Invalid player
+                "gtp": "A1",
+                "score_loss": 10.0,
+                "mistake_category": "BLUNDER",
+            }
+        )
 
         # Should NOT raise
         output = build_summary_from_stats(stats_list, "TestPlayer", mock_config_fn)
@@ -411,20 +404,24 @@ class TestProductionSafety:
     def test_summary_does_not_crash_on_invalid_gtp_format(self):
         """Summary generation should not crash with invalid GTP coordinates."""
         stats_list = [create_single_game_stats(game_name="good.sgf")]
-        stats_list[0]["pattern_data"].append({
-            "move_number": 50,
-            "player": "B",
-            "gtp": "Z99",  # Invalid coordinate format
-            "score_loss": 10.0,
-            "mistake_category": "BLUNDER",
-        })
-        stats_list[0]["pattern_data"].append({
-            "move_number": 51,
-            "player": "W",
-            "gtp": "I5",  # 'I' is skipped in GTP
-            "score_loss": 8.0,
-            "mistake_category": "BLUNDER",
-        })
+        stats_list[0]["pattern_data"].append(
+            {
+                "move_number": 50,
+                "player": "B",
+                "gtp": "Z99",  # Invalid coordinate format
+                "score_loss": 10.0,
+                "mistake_category": "BLUNDER",
+            }
+        )
+        stats_list[0]["pattern_data"].append(
+            {
+                "move_number": 51,
+                "player": "W",
+                "gtp": "I5",  # 'I' is skipped in GTP
+                "score_loss": 8.0,
+                "mistake_category": "BLUNDER",
+            }
+        )
 
         # Should NOT raise - invalid moves are filtered out
         output = build_summary_from_stats(stats_list, "TestPlayer", mock_config_fn)

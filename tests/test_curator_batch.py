@@ -10,7 +10,6 @@ Tests cover:
 import json
 import os
 import tempfile
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,7 +32,6 @@ from katrain.core.curator.models import (
     UNCERTAIN_TAG,
     SuitabilityScore,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -91,16 +89,12 @@ class TestHelperFunctions:
 
     def test_normalize_percentile_with_value(self):
         """Percentile int is passed through."""
-        score = SuitabilityScore(
-            needs_match=0.5, stability=0.5, total=0.5, percentile=75
-        )
+        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5, percentile=75)
         assert _normalize_percentile(score) == 75
 
     def test_normalize_percentile_with_none(self):
         """Percentile None is normalized to 0."""
-        score = SuitabilityScore(
-            needs_match=0.5, stability=0.5, total=0.5, percentile=None
-        )
+        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5, percentile=None)
         assert _normalize_percentile(score) == 0
 
     def test_build_game_title_with_players(self):
@@ -275,9 +269,7 @@ class TestExtractReplayGuide:
     def test_select_critical_moves_called_with_level(self, mock_game):
         """Verify select_critical_moves is called with explicit level parameter."""
         # Patch the function where it's imported from (inside the function body)
-        with patch(
-            "katrain.core.analysis.select_critical_moves"
-        ) as mock_select:
+        with patch("katrain.core.analysis.select_critical_moves") as mock_select:
             mock_select.return_value = []
 
             extract_replay_guide(
@@ -296,9 +288,7 @@ class TestExtractReplayGuide:
 
     def test_lang_converted_to_iso(self, mock_game):
         """Verify lang is converted to ISO for select_critical_moves."""
-        with patch(
-            "katrain.core.analysis.select_critical_moves"
-        ) as mock_select:
+        with patch("katrain.core.analysis.select_critical_moves") as mock_select:
             mock_select.return_value = []
 
             extract_replay_guide(
@@ -314,9 +304,7 @@ class TestExtractReplayGuide:
 
     def test_returns_replay_guide(self, mock_game):
         """Verify return type is ReplayGuide."""
-        with patch(
-            "katrain.core.analysis.select_critical_moves"
-        ) as mock_select:
+        with patch("katrain.core.analysis.select_critical_moves") as mock_select:
             mock_select.return_value = []
 
             result = extract_replay_guide(
@@ -392,11 +380,10 @@ class TestGenerateCuratorOutputs:
 
     def test_float_precision_in_ranking(self, tmp_curator_dir, mock_game, sample_stats):
         """Verify float fields are rounded to 3 decimal places."""
-        with patch(
-            "katrain.core.curator.batch.score_batch_suitability"
-        ) as mock_score, patch(
-            "katrain.core.curator.batch.extract_replay_guide"
-        ) as mock_guide:
+        with (
+            patch("katrain.core.curator.batch.score_batch_suitability") as mock_score,
+            patch("katrain.core.curator.batch.extract_replay_guide") as mock_guide,
+        ):
             mock_score.return_value = [
                 SuitabilityScore(
                     needs_match=0.8541234567,
@@ -426,15 +413,12 @@ class TestGenerateCuratorOutputs:
         assert ranking["stability"] == 0.922
         assert ranking["total"] == 0.879
 
-    def test_percentile_none_normalized_to_zero(
-        self, tmp_curator_dir, mock_game, sample_stats
-    ):
+    def test_percentile_none_normalized_to_zero(self, tmp_curator_dir, mock_game, sample_stats):
         """Verify percentile=None becomes 0 in JSON."""
-        with patch(
-            "katrain.core.curator.batch.score_batch_suitability"
-        ) as mock_score, patch(
-            "katrain.core.curator.batch.extract_replay_guide"
-        ) as mock_guide:
+        with (
+            patch("katrain.core.curator.batch.score_batch_suitability") as mock_score,
+            patch("katrain.core.curator.batch.extract_replay_guide") as mock_guide,
+        ):
             mock_score.return_value = [
                 SuitabilityScore(
                     needs_match=0.5,
@@ -461,15 +445,12 @@ class TestGenerateCuratorOutputs:
 
         assert data["rankings"][0]["score_percentile"] == 0
 
-    def test_percentile_is_int_0_to_100(
-        self, tmp_curator_dir, mock_game, sample_stats
-    ):
+    def test_percentile_is_int_0_to_100(self, tmp_curator_dir, mock_game, sample_stats):
         """Verify percentile scale and type in JSON."""
-        with patch(
-            "katrain.core.curator.batch.score_batch_suitability"
-        ) as mock_score, patch(
-            "katrain.core.curator.batch.extract_replay_guide"
-        ) as mock_guide:
+        with (
+            patch("katrain.core.curator.batch.score_batch_suitability") as mock_score,
+            patch("katrain.core.curator.batch.extract_replay_guide") as mock_guide,
+        ):
             mock_score.return_value = [
                 SuitabilityScore(0.5, 0.5, 0.5, percentile=75),
             ]
@@ -530,9 +511,7 @@ class TestGenerateCuratorOutputs:
 
         assert data["user_weak_axes"] == ["endgame", "fighting"]
 
-    def test_partial_failure_counting(
-        self, tmp_curator_dir, mock_game, sample_stats
-    ):
+    def test_partial_failure_counting(self, tmp_curator_dir, mock_game, sample_stats):
         """Verify error counting when guide extraction fails."""
         stats1 = {**sample_stats, "game_name": "game1.sgf"}
         stats2 = {**sample_stats, "game_name": "game2.sgf"}
@@ -541,11 +520,10 @@ class TestGenerateCuratorOutputs:
         guide1 = ReplayGuide("game1.sgf", "Game 1", 100, [])
         guide3 = ReplayGuide("game3.sgf", "Game 3", 100, [])
 
-        with patch(
-            "katrain.core.curator.batch.score_batch_suitability"
-        ) as mock_score, patch(
-            "katrain.core.curator.batch.extract_replay_guide"
-        ) as mock_guide:
+        with (
+            patch("katrain.core.curator.batch.score_batch_suitability") as mock_score,
+            patch("katrain.core.curator.batch.extract_replay_guide") as mock_guide,
+        ):
             mock_score.return_value = [
                 SuitabilityScore(0.5, 0.5, 0.5, percentile=50),
                 SuitabilityScore(0.6, 0.6, 0.6, percentile=60),
@@ -571,19 +549,16 @@ class TestGenerateCuratorOutputs:
         assert result.guides_generated == 2
         assert len(result.errors) == 1
 
-    def test_rankings_sorted_by_percentile_total_game_id(
-        self, tmp_curator_dir, mock_game, sample_stats
-    ):
+    def test_rankings_sorted_by_percentile_total_game_id(self, tmp_curator_dir, mock_game, sample_stats):
         """Verify rankings are sorted correctly."""
         stats1 = {**sample_stats, "game_name": "game_a.sgf"}
         stats2 = {**sample_stats, "game_name": "game_b.sgf"}
         stats3 = {**sample_stats, "game_name": "game_c.sgf"}
 
-        with patch(
-            "katrain.core.curator.batch.score_batch_suitability"
-        ) as mock_score, patch(
-            "katrain.core.curator.batch.extract_replay_guide"
-        ) as mock_guide:
+        with (
+            patch("katrain.core.curator.batch.score_batch_suitability") as mock_score,
+            patch("katrain.core.curator.batch.extract_replay_guide") as mock_guide,
+        ):
             # Same percentile and total, should sort by game_id
             mock_score.return_value = [
                 SuitabilityScore(0.5, 0.5, 0.5, percentile=50),

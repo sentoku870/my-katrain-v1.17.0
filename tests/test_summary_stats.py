@@ -19,16 +19,16 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from katrain.core import eval_metrics
 from katrain.gui.features.summary_stats import (
     extract_analysis_from_sgf_node,
     extract_sgf_statistics,
 )
-from katrain.core import eval_metrics
-
 
 # ---------------------------------------------------------------------------
 # Helper: Create valid KT payload
 # ---------------------------------------------------------------------------
+
 
 def create_kt_payload(
     analysis_dict: dict[str, Any] | None = None,
@@ -96,6 +96,7 @@ def create_mock_node(
 # ---------------------------------------------------------------------------
 # Tests for extract_analysis_from_sgf_node()
 # ---------------------------------------------------------------------------
+
 
 class TestExtractAnalysisFromSgfNode:
     """Tests for extract_analysis_from_sgf_node() function."""
@@ -266,6 +267,7 @@ class TestExtractAnalysisFromSgfNode:
 # ---------------------------------------------------------------------------
 # Tests for extract_sgf_statistics()
 # ---------------------------------------------------------------------------
+
 
 class TestExtractSgfStatistics:
     """Tests for extract_sgf_statistics() function."""

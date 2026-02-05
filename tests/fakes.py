@@ -93,9 +93,7 @@ class FakePopen:
         self._alive = True
 
         # Determine text mode from kwargs (matches real Popen behavior)
-        text_mode = kwargs.get("text", False) or kwargs.get(
-            "universal_newlines", False
-        )
+        text_mode = kwargs.get("text", False) or kwargs.get("universal_newlines", False)
 
         # Fake pipes with correct mode
         self.stdin = FakePipe(text_mode=text_mode)

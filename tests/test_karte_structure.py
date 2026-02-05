@@ -5,9 +5,10 @@ These tests verify the structure of generated karte reports without
 depending on exact text content (which would be brittle).
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
+
 from katrain.core.eval_metrics import (
     EvalSnapshot,
     MistakeStreak,
@@ -131,22 +132,46 @@ class TestAggregatePhaseMistakeStats:
         """Multiple moves should be aggregated correctly."""
         moves = [
             MoveEval(
-                move_number=10, player="B", gtp="D4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.5, realized_points_lost=None, root_visits=100,
+                move_number=10,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.5,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=100, player="B", gtp="Q10",
-                score_before=0.0, score_after=-5.0, delta_score=-5.0,
-                winrate_before=0.5, winrate_after=0.4, delta_winrate=-0.1,
-                points_lost=5.0, realized_points_lost=None, root_visits=100,
+                move_number=100,
+                player="B",
+                gtp="Q10",
+                score_before=0.0,
+                score_after=-5.0,
+                delta_score=-5.0,
+                winrate_before=0.5,
+                winrate_after=0.4,
+                delta_winrate=-0.1,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=150, player="B", gtp="R15",
-                score_before=-5.0, score_after=-10.0, delta_score=-5.0,
-                winrate_before=0.4, winrate_after=0.3, delta_winrate=-0.1,
-                points_lost=5.0, realized_points_lost=None, root_visits=100,
+                move_number=150,
+                player="B",
+                gtp="R15",
+                score_before=-5.0,
+                score_after=-10.0,
+                delta_score=-5.0,
+                winrate_before=0.4,
+                winrate_after=0.3,
+                delta_winrate=-0.1,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         stats = aggregate_phase_mistake_stats(moves)
@@ -222,20 +247,36 @@ class TestReasonTagsHandling:
     def test_move_eval_default_reason_tags(self):
         """MoveEval should default to empty reason_tags."""
         move = MoveEval(
-            move_number=1, player="B", gtp="D4",
-            score_before=0.0, score_after=0.0, delta_score=0.0,
-            winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-            points_lost=0.0, realized_points_lost=None, root_visits=100,
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_before=0.0,
+            score_after=0.0,
+            delta_score=0.0,
+            winrate_before=0.5,
+            winrate_after=0.5,
+            delta_winrate=0.0,
+            points_lost=0.0,
+            realized_points_lost=None,
+            root_visits=100,
         )
         assert move.reason_tags == []
 
     def test_move_eval_with_reason_tags(self):
         """MoveEval should accept reason_tags."""
         move = MoveEval(
-            move_number=1, player="B", gtp="D4",
-            score_before=0.0, score_after=0.0, delta_score=0.0,
-            winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-            points_lost=0.0, realized_points_lost=None, root_visits=100,
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_before=0.0,
+            score_after=0.0,
+            delta_score=0.0,
+            winrate_before=0.5,
+            winrate_after=0.5,
+            delta_winrate=0.0,
+            points_lost=0.0,
+            realized_points_lost=None,
+            root_visits=100,
             reason_tags=["atari", "low_liberties"],
         )
         assert move.reason_tags == ["atari", "low_liberties"]
@@ -243,10 +284,18 @@ class TestReasonTagsHandling:
     def test_unknown_tag_is_valid(self):
         """'unknown' should be a valid reason tag."""
         move = MoveEval(
-            move_number=1, player="B", gtp="D4",
-            score_before=0.0, score_after=0.0, delta_score=0.0,
-            winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-            points_lost=0.0, realized_points_lost=None, root_visits=100,
+            move_number=1,
+            player="B",
+            gtp="D4",
+            score_before=0.0,
+            score_after=0.0,
+            delta_score=0.0,
+            winrate_before=0.5,
+            winrate_after=0.5,
+            delta_winrate=0.0,
+            points_lost=0.0,
+            realized_points_lost=None,
+            root_visits=100,
             reason_tags=["unknown"],
         )
         assert move.reason_tags == ["unknown"]
@@ -318,10 +367,15 @@ class TestAggregatePhaseMistakeStatsWithBoardSize:
             move_number=20,  # Would be opening on 19x19, but middle on 9x9
             player="B",
             gtp="D4",
-            score_before=0.0, score_after=-5.0, delta_score=-5.0,
-            winrate_before=0.5, winrate_after=0.4, delta_winrate=-0.1,
+            score_before=0.0,
+            score_after=-5.0,
+            delta_score=-5.0,
+            winrate_before=0.5,
+            winrate_after=0.4,
+            delta_winrate=-0.1,
             points_lost=5.0,
-            realized_points_lost=None, root_visits=100,
+            realized_points_lost=None,
+            root_visits=100,
         )
         stats_19 = aggregate_phase_mistake_stats([move], board_size=19)
         stats_9 = aggregate_phase_mistake_stats([move], board_size=9)
@@ -370,11 +424,18 @@ class TestDetectMistakeStreaks:
         """Moves with no significant loss should return no streaks."""
         moves = [
             MoveEval(
-                move_number=i, player="B" if i % 2 == 1 else "W", gtp="D4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                move_number=i,
+                player="B" if i % 2 == 1 else "W",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
                 points_lost=0.5,  # Below threshold
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             )
             for i in range(1, 11)
         ]
@@ -385,18 +446,32 @@ class TestDetectMistakeStreaks:
         """Single mistake should not form a streak."""
         moves = [
             MoveEval(
-                move_number=2, player="B", gtp="D4",
-                score_before=0.0, score_after=-5.0, delta_score=-5.0,
-                winrate_before=0.5, winrate_after=0.4, delta_winrate=-0.1,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-5.0,
+                delta_score=-5.0,
+                winrate_before=0.5,
+                winrate_after=0.4,
+                delta_winrate=-0.1,
                 points_lost=5.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
                 points_lost=0.5,  # Good move, breaks streak
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
@@ -406,25 +481,46 @@ class TestDetectMistakeStreaks:
         """Consecutive mistakes by same player should form a streak."""
         moves = [
             MoveEval(
-                move_number=2, player="B", gtp="D4",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
                 points_lost=3.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10",
-                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
-                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-7.0,
+                delta_score=-4.0,
+                winrate_before=0.45,
+                winrate_after=0.35,
+                delta_winrate=-0.1,
                 points_lost=4.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=6, player="B", gtp="R15",
-                score_before=-7.0, score_after=-12.0, delta_score=-5.0,
-                winrate_before=0.35, winrate_after=0.25, delta_winrate=-0.1,
+                move_number=6,
+                player="B",
+                gtp="R15",
+                score_before=-7.0,
+                score_after=-12.0,
+                delta_score=-5.0,
+                winrate_before=0.35,
+                winrate_after=0.25,
+                delta_winrate=-0.1,
                 points_lost=5.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
@@ -440,25 +536,46 @@ class TestDetectMistakeStreaks:
         # Black makes 3 consecutive mistakes, with White moves in between
         moves = [
             MoveEval(
-                move_number=1, player="B", gtp="D4",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
                 points_lost=3.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=2, player="W", gtp="Q16",
-                score_before=-3.0, score_after=-3.0, delta_score=0.0,
-                winrate_before=0.45, winrate_after=0.45, delta_winrate=0.0,
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                score_before=-3.0,
+                score_after=-3.0,
+                delta_score=0.0,
+                winrate_before=0.45,
+                winrate_after=0.45,
+                delta_winrate=0.0,
                 points_lost=0.0,  # White plays well
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=3, player="B", gtp="Q10",
-                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
-                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                move_number=3,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-7.0,
+                delta_score=-4.0,
+                winrate_before=0.45,
+                winrate_after=0.35,
+                delta_winrate=-0.1,
                 points_lost=4.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
@@ -471,31 +588,76 @@ class TestDetectMistakeStreaks:
         moves = [
             # First streak
             MoveEval(
-                move_number=2, player="B", gtp="D4", score_before=0.0, score_after=-3.0,
-                delta_score=-3.0, winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
-                points_lost=3.0, realized_points_lost=None, root_visits=100,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
+                points_lost=3.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10", score_before=-3.0, score_after=-6.0,
-                delta_score=-3.0, winrate_before=0.45, winrate_after=0.4, delta_winrate=-0.05,
-                points_lost=3.0, realized_points_lost=None, root_visits=100,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-6.0,
+                delta_score=-3.0,
+                winrate_before=0.45,
+                winrate_after=0.4,
+                delta_winrate=-0.05,
+                points_lost=3.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             # Good move breaks streak
             MoveEval(
-                move_number=6, player="B", gtp="R15", score_before=-6.0, score_after=-6.0,
-                delta_score=0.0, winrate_before=0.4, winrate_after=0.4, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=6,
+                player="B",
+                gtp="R15",
+                score_before=-6.0,
+                score_after=-6.0,
+                delta_score=0.0,
+                winrate_before=0.4,
+                winrate_after=0.4,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             # Second streak
             MoveEval(
-                move_number=8, player="B", gtp="S1", score_before=-6.0, score_after=-10.0,
-                delta_score=-4.0, winrate_before=0.4, winrate_after=0.3, delta_winrate=-0.1,
-                points_lost=4.0, realized_points_lost=None, root_visits=100,
+                move_number=8,
+                player="B",
+                gtp="S1",
+                score_before=-6.0,
+                score_after=-10.0,
+                delta_score=-4.0,
+                winrate_before=0.4,
+                winrate_after=0.3,
+                delta_winrate=-0.1,
+                points_lost=4.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=10, player="B", gtp="A1", score_before=-10.0, score_after=-15.0,
-                delta_score=-5.0, winrate_before=0.3, winrate_after=0.2, delta_winrate=-0.1,
-                points_lost=5.0, realized_points_lost=None, root_visits=100,
+                move_number=10,
+                player="B",
+                gtp="A1",
+                score_before=-10.0,
+                score_after=-15.0,
+                delta_score=-5.0,
+                winrate_before=0.3,
+                winrate_after=0.2,
+                delta_winrate=-0.1,
+                points_lost=5.0,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
@@ -561,24 +723,48 @@ class TestEvalSnapshotDifficultyStats:
         """Should count UNKNOWN difficulties correctly."""
         moves = [
             MoveEval(
-                move_number=1, player="B", gtp="D4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.EASY,
             ),
             MoveEval(
-                move_number=2, player="W", gtp="Q16",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.UNKNOWN,
             ),
             MoveEval(
-                move_number=3, player="B", gtp="D16",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=3,
+                player="B",
+                gtp="D16",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=None,  # Also counts as UNKNOWN
             ),
         ]
@@ -589,17 +775,33 @@ class TestEvalSnapshotDifficultyStats:
         """Should calculate UNKNOWN rate correctly."""
         moves = [
             MoveEval(
-                move_number=1, player="B", gtp="D4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.EASY,
             ),
             MoveEval(
-                move_number=2, player="W", gtp="Q16",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.UNKNOWN,
             ),
         ]
@@ -615,31 +817,63 @@ class TestEvalSnapshotDifficultyStats:
         """Should calculate difficulty distribution correctly."""
         moves = [
             MoveEval(
-                move_number=1, player="B", gtp="D4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.EASY,
             ),
             MoveEval(
-                move_number=2, player="W", gtp="Q16",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.EASY,
             ),
             MoveEval(
-                move_number=3, player="B", gtp="D16",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=3,
+                player="B",
+                gtp="D16",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.HARD,
             ),
             MoveEval(
-                move_number=4, player="W", gtp="Q4",
-                score_before=0.0, score_after=0.0, delta_score=0.0,
-                winrate_before=0.5, winrate_after=0.5, delta_winrate=0.0,
-                points_lost=0.0, realized_points_lost=None, root_visits=100,
+                move_number=4,
+                player="W",
+                gtp="Q4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=100,
                 position_difficulty=PositionDifficulty.ONLY_MOVE,
             ),
         ]
@@ -871,25 +1105,46 @@ class TestDetectMistakeStreaksNoneHandling:
         """moves with points_lost=None should conservatively break streaks."""
         moves = [
             MoveEval(
-                move_number=2, player="B", gtp="D4",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
                 points_lost=3.0,  # Start of potential streak
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10",
-                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
-                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-7.0,
+                delta_score=-4.0,
+                winrate_before=0.45,
+                winrate_after=0.35,
+                delta_winrate=-0.1,
                 points_lost=None,  # Unknown loss - should break streak
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=6, player="B", gtp="R15",
-                score_before=-7.0, score_after=-12.0, delta_score=-5.0,
-                winrate_before=0.35, winrate_after=0.25, delta_winrate=-0.1,
+                move_number=6,
+                player="B",
+                gtp="R15",
+                score_before=-7.0,
+                score_after=-12.0,
+                delta_score=-5.0,
+                winrate_before=0.35,
+                winrate_after=0.25,
+                delta_winrate=-0.1,
                 points_lost=5.0,  # After the break
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         # Should not form a streak because None in the middle breaks it
@@ -900,25 +1155,46 @@ class TestDetectMistakeStreaksNoneHandling:
         """points_lost=0.0 should NOT be treated as None (truthiness bug check)."""
         moves = [
             MoveEval(
-                move_number=2, player="B", gtp="D4",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
                 points_lost=3.0,  # Above threshold
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10",
-                score_before=-3.0, score_after=-3.0, delta_score=0.0,
-                winrate_before=0.45, winrate_after=0.45, delta_winrate=0.0,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-3.0,
+                delta_score=0.0,
+                winrate_before=0.45,
+                winrate_after=0.45,
+                delta_winrate=0.0,
                 points_lost=0.0,  # Zero - should NOT be treated as None
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=6, player="B", gtp="R15",
-                score_before=-3.0, score_after=-8.0, delta_score=-5.0,
-                winrate_before=0.45, winrate_after=0.30, delta_winrate=-0.15,
+                move_number=6,
+                player="B",
+                gtp="R15",
+                score_before=-3.0,
+                score_after=-8.0,
+                delta_score=-5.0,
+                winrate_before=0.45,
+                winrate_after=0.30,
+                delta_winrate=-0.15,
                 points_lost=5.0,  # Above threshold
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         # 0.0 is below threshold, so it breaks the streak normally (not as None)
@@ -931,25 +1207,46 @@ class TestDetectMistakeStreaksNoneHandling:
         """Streak before None should be flushed correctly."""
         moves = [
             MoveEval(
-                move_number=2, player="B", gtp="D4",
-                score_before=0.0, score_after=-3.0, delta_score=-3.0,
-                winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+                move_number=2,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=-3.0,
+                delta_score=-3.0,
+                winrate_before=0.5,
+                winrate_after=0.45,
+                delta_winrate=-0.05,
                 points_lost=3.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=4, player="B", gtp="Q10",
-                score_before=-3.0, score_after=-7.0, delta_score=-4.0,
-                winrate_before=0.45, winrate_after=0.35, delta_winrate=-0.1,
+                move_number=4,
+                player="B",
+                gtp="Q10",
+                score_before=-3.0,
+                score_after=-7.0,
+                delta_score=-4.0,
+                winrate_before=0.45,
+                winrate_after=0.35,
+                delta_winrate=-0.1,
                 points_lost=4.0,
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
             MoveEval(
-                move_number=6, player="B", gtp="R15",
-                score_before=-7.0, score_after=-7.0, delta_score=0.0,
-                winrate_before=0.35, winrate_after=0.35, delta_winrate=0.0,
+                move_number=6,
+                player="B",
+                gtp="R15",
+                score_before=-7.0,
+                score_after=-7.0,
+                delta_score=0.0,
+                winrate_before=0.35,
+                winrate_after=0.35,
+                delta_winrate=0.0,
                 points_lost=None,  # None at end - should flush the streak
-                realized_points_lost=None, root_visits=100,
+                realized_points_lost=None,
+                root_visits=100,
             ),
         ]
         streaks = detect_mistake_streaks(moves, loss_threshold=2.0, min_consecutive=2)
@@ -963,7 +1260,7 @@ class TestUrgentMissConfigsIntegration:
 
     def test_get_urgent_miss_config_all_presets(self):
         """All skill presets should have urgent miss configs."""
-        from katrain.core.eval_metrics import get_urgent_miss_config, PRESET_ORDER
+        from katrain.core.eval_metrics import PRESET_ORDER, get_urgent_miss_config
 
         for preset in PRESET_ORDER:
             config = get_urgent_miss_config(preset)
@@ -993,24 +1290,27 @@ class TestWeaknessHypothesisSkillPreset:
 
         # Create a move with 3.0 loss
         move = MoveEval(
-            move_number=100, player="B", gtp="D4",
-            score_before=0.0, score_after=-3.0, delta_score=-3.0,
-            winrate_before=0.5, winrate_after=0.45, delta_winrate=-0.05,
+            move_number=100,
+            player="B",
+            gtp="D4",
+            score_before=0.0,
+            score_after=-3.0,
+            delta_score=-3.0,
+            winrate_before=0.5,
+            winrate_after=0.45,
+            delta_winrate=-0.05,
             points_lost=3.0,
-            realized_points_lost=None, root_visits=100,
+            realized_points_lost=None,
+            root_visits=100,
         )
 
         # Standard: thresholds [1.0, 2.5, 5.0] -> 3.0 is MISTAKE
         standard = get_skill_preset("standard")
-        stats_standard = aggregate_phase_mistake_stats(
-            [move], score_thresholds=standard.score_thresholds
-        )
+        stats_standard = aggregate_phase_mistake_stats([move], score_thresholds=standard.score_thresholds)
 
         # Beginner: thresholds [2.0, 5.0, 10.0] -> 3.0 is INACCURACY
         beginner = get_skill_preset("beginner")
-        stats_beginner = aggregate_phase_mistake_stats(
-            [move], score_thresholds=beginner.score_thresholds
-        )
+        stats_beginner = aggregate_phase_mistake_stats([move], score_thresholds=beginner.score_thresholds)
 
         # Verify classification differs based on thresholds
         assert ("middle", "MISTAKE") in stats_standard.phase_mistake_counts
@@ -1054,15 +1354,11 @@ class TestLabelThresholdConsistency:
         assert relaxed.score_thresholds == (3.0, 7.5, 15.0)
 
         # 3.7 loss under relaxed: 3.0 <= 3.7 < 7.5 → INACCURACY
-        result = classify_mistake(
-            score_loss=3.7, winrate_loss=None, score_thresholds=relaxed.score_thresholds
-        )
+        result = classify_mistake(score_loss=3.7, winrate_loss=None, score_thresholds=relaxed.score_thresholds)
         assert result.value == "inaccuracy"
 
         # 12.7 loss under relaxed: 7.5 <= 12.7 < 15.0 → MISTAKE (not BLUNDER)
-        result = classify_mistake(
-            score_loss=12.7, winrate_loss=None, score_thresholds=relaxed.score_thresholds
-        )
+        result = classify_mistake(score_loss=12.7, winrate_loss=None, score_thresholds=relaxed.score_thresholds)
         assert result.value == "mistake"
 
     def test_strict_thresholds_classify_correctly(self):
@@ -1074,9 +1370,7 @@ class TestLabelThresholdConsistency:
         assert pro.score_thresholds == (0.2, 0.5, 1.0)
 
         # 3.9 loss under pro: 3.9 >= 1.0 → BLUNDER
-        result = classify_mistake(
-            score_loss=3.9, winrate_loss=None, score_thresholds=pro.score_thresholds
-        )
+        result = classify_mistake(score_loss=3.9, winrate_loss=None, score_thresholds=pro.score_thresholds)
         assert result.value == "blunder"
 
     def test_same_loss_differs_by_preset(self):
@@ -1084,7 +1378,7 @@ class TestLabelThresholdConsistency:
         from katrain.core.eval_metrics import classify_mistake, get_skill_preset
 
         standard = get_skill_preset("standard")  # (1.0, 2.5, 5.0)
-        relaxed = get_skill_preset("relaxed")    # (3.0, 7.5, 15.0)
+        relaxed = get_skill_preset("relaxed")  # (3.0, 7.5, 15.0)
 
         loss = 3.0
 
@@ -1094,9 +1388,7 @@ class TestLabelThresholdConsistency:
         )
 
         # Under relaxed: 3.0 <= 3.0 < 7.5 → INACCURACY
-        relaxed_result = classify_mistake(
-            score_loss=loss, winrate_loss=None, score_thresholds=relaxed.score_thresholds
-        )
+        relaxed_result = classify_mistake(score_loss=loss, winrate_loss=None, score_thresholds=relaxed.score_thresholds)
 
         assert standard_result.value == "mistake"
         assert relaxed_result.value == "inaccuracy"
@@ -1108,27 +1400,19 @@ class TestLabelThresholdConsistency:
         standard = get_skill_preset("standard")  # (1.0, 2.5, 5.0)
 
         # At exactly t1 (1.0): should be INACCURACY (>= t1)
-        result = classify_mistake(
-            score_loss=1.0, winrate_loss=None, score_thresholds=standard.score_thresholds
-        )
+        result = classify_mistake(score_loss=1.0, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "inaccuracy"
 
         # Just below t1 (0.99): should be GOOD
-        result = classify_mistake(
-            score_loss=0.99, winrate_loss=None, score_thresholds=standard.score_thresholds
-        )
+        result = classify_mistake(score_loss=0.99, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "good"
 
         # At exactly t3 (5.0): should be BLUNDER (>= t3)
-        result = classify_mistake(
-            score_loss=5.0, winrate_loss=None, score_thresholds=standard.score_thresholds
-        )
+        result = classify_mistake(score_loss=5.0, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "blunder"
 
         # Just below t3 (4.99): should be MISTAKE
-        result = classify_mistake(
-            score_loss=4.99, winrate_loss=None, score_thresholds=standard.score_thresholds
-        )
+        result = classify_mistake(score_loss=4.99, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "mistake"
 
     def test_none_loss_returns_good(self):
@@ -1137,7 +1421,5 @@ class TestLabelThresholdConsistency:
 
         standard = get_skill_preset("standard")
 
-        result = classify_mistake(
-            score_loss=None, winrate_loss=None, score_thresholds=standard.score_thresholds
-        )
+        result = classify_mistake(score_loss=None, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "good"

@@ -7,8 +7,8 @@ This module provides:
 - Test configuration
 """
 
-import re
 import os
+import re
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -16,12 +16,9 @@ import pytest
 
 from katrain.core.eval_metrics import (
     MoveEval,
-    MistakeCategory,
-    PositionDifficulty,
 )
-from katrain.core.game import Game, Move
+from katrain.core.game import Game
 from katrain.core.game_node import GameNode
-
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -35,6 +32,7 @@ GOLDEN_DIR = FIXTURES_DIR / "golden"
 # ---------------------------------------------------------------------------
 # CI Environment Detection
 # ---------------------------------------------------------------------------
+
 
 def is_ci_environment() -> bool:
     """
@@ -50,12 +48,12 @@ def is_ci_environment() -> bool:
 
     # CI providers that set boolean-like values
     ci_env_vars = [
-        "CI",             # Generic (GitHub Actions, GitLab CI, etc.)
-        "GITHUB_ACTIONS", # GitHub Actions
-        "GITLAB_CI",      # GitLab CI
-        "CIRCLECI",       # CircleCI
-        "TRAVIS",         # Travis CI
-        "BUILDKITE",      # Buildkite
+        "CI",  # Generic (GitHub Actions, GitLab CI, etc.)
+        "GITHUB_ACTIONS",  # GitHub Actions
+        "GITLAB_CI",  # GitLab CI
+        "CIRCLECI",  # CircleCI
+        "TRAVIS",  # Travis CI
+        "BUILDKITE",  # Buildkite
     ]
 
     for var in ci_env_vars:
@@ -64,15 +62,13 @@ def is_ci_environment() -> bool:
             return True
 
     # JENKINS_URL is set to the URL, so existence check is sufficient
-    if os.environ.get("JENKINS_URL"):
-        return True
-
-    return False
+    return bool(os.environ.get("JENKINS_URL"))
 
 
 # ---------------------------------------------------------------------------
 # Normalization for Golden Tests
 # ---------------------------------------------------------------------------
+
 
 def normalize_output(text: str) -> str:
     """
@@ -96,43 +92,19 @@ def normalize_output(text: str) -> str:
 
     # 2. Normalize timestamps (various formats)
     # ISO format: 2025-01-05T12:34:56
-    result = re.sub(
-        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',
-        '[TIMESTAMP]',
-        result
-    )
+    result = re.sub(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", "[TIMESTAMP]", result)
     # Date format: 2025-01-05
-    result = re.sub(
-        r'\d{4}-\d{2}-\d{2}',
-        '[DATE]',
-        result
-    )
+    result = re.sub(r"\d{4}-\d{2}-\d{2}", "[DATE]", result)
     # Time format: 12:34:56 (colon-separated)
-    result = re.sub(
-        r'\d{2}:\d{2}:\d{2}',
-        '[TIME]',
-        result
-    )
+    result = re.sub(r"\d{2}:\d{2}:\d{2}", "[TIME]", result)
     # Time format: 12 34 56 (space-separated, as in game_id from filename)
-    result = re.sub(
-        r'\d{2} \d{2} \d{2}',
-        '[TIME]',
-        result
-    )
+    result = re.sub(r"\d{2} \d{2} \d{2}", "[TIME]", result)
 
     # 3. Normalize absolute paths (Windows and Unix)
     # Windows: D:\github\... or C:\Users\...
-    result = re.sub(
-        r'[A-Z]:\\[^\s\]]+',
-        '[PATH]',
-        result
-    )
+    result = re.sub(r"[A-Z]:\\[^\s\]]+", "[PATH]", result)
     # Unix: /home/... or /tmp/...
-    result = re.sub(
-        r'/(?:home|tmp|var|usr)[^\s\]]*',
-        '[PATH]',
-        result
-    )
+    result = re.sub(r"/(?:home|tmp|var|usr)[^\s\]]*", "[PATH]", result)
 
     # 4. Normalize floating point numbers to 1 decimal place
     # Match numbers like 3.14159 or -12.345 (but not integers)
@@ -142,11 +114,7 @@ def normalize_output(text: str) -> str:
         return f"{num:.1f}"
 
     # Match floats that have decimal points with 2+ digits after
-    result = re.sub(
-        r'-?\d+\.\d{2,}',
-        round_float,
-        result
-    )
+    result = re.sub(r"-?\d+\.\d{2,}", round_float, result)
 
     # 5. Normalize trailing newlines (single trailing newline)
     result = result.rstrip("\n") + "\n"
@@ -180,9 +148,9 @@ def update_golden_if_requested(name: str, content: str, request: pytest.FixtureR
 # ---------------------------------------------------------------------------
 
 # Imports for Radar normalization (local to avoid polluting module namespace)
-from decimal import Decimal, ROUND_HALF_UP
-from enum import Enum
 import json
+from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum
 from typing import Any
 
 # Top-level only schema fill. Nested values are data-dependent.
@@ -285,6 +253,7 @@ def save_golden_json(name: str, data: dict) -> None:
 # Pytest Configuration
 # ---------------------------------------------------------------------------
 
+
 def pytest_addoption(parser):
     """Add custom pytest options."""
     parser.addoption(
@@ -299,9 +268,11 @@ def pytest_addoption(parser):
 # Fixtures for creating test data
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def make_moves():
     """Factory fixture to create a list of MoveEval objects."""
+
     def _make_moves(
         count: int = 10,
         *,
@@ -387,6 +358,7 @@ def sparse_moves(make_moves):
 # Edge case fixtures for confidence gating tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def all_zero_visits_moves(make_moves):
     """Fixture: all moves have zero visits."""
@@ -438,6 +410,7 @@ class MockKaTrainStub:
         config(key, default=None)  - Used by Game for thresholds/rules lookup
         log(*args, **kwargs)       - Called for debug output (can be no-op)
     """
+
     def __init__(self):
         self.pondering = False
         self.controls = MagicMock()
@@ -474,6 +447,7 @@ class MockEngine:
         request_analysis_calls: list[dict]
         reset_tracking()
     """
+
     def __init__(self, config=None):
         self.config = config or {"max_visits": 100, "fast_visits": 50}
         self.stop_pondering_called = False
@@ -504,6 +478,7 @@ class MockEngine:
 # ---------------------------------------------------------------------------
 # Analysis State Factories (v6)
 # ---------------------------------------------------------------------------
+
 
 def make_analysis(
     *,
@@ -585,9 +560,7 @@ def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
     if node.parent and parent_score is not None:
         # Only set parent analysis if not already set (or forced)
         parent_has_analysis = (
-            node.parent.analysis.get("root") is not None
-            if isinstance(node.parent.analysis, dict)
-            else False
+            node.parent.analysis.get("root") is not None if isinstance(node.parent.analysis, dict) else False
         )
         if force_parent or not parent_has_analysis:
             node.parent.analysis = make_analysis(score=parent_score, moves={})
@@ -596,6 +569,7 @@ def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
 # ---------------------------------------------------------------------------
 # Game/Engine Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_katrain():

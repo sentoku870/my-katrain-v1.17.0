@@ -122,9 +122,7 @@ class TestSectionRegistry:
         registry = SectionRegistry()
         registry.register(ReportType.KARTE, MockSection("first"))
         registry.register(ReportType.KARTE, MockSection("second"))
-        ids = [
-            r.section.section_id for r in registry.get_registrations(ReportType.KARTE)
-        ]
+        ids = [r.section.section_id for r in registry.get_registrations(ReportType.KARTE)]
         assert ids == ["first", "second"]
 
 
@@ -140,9 +138,7 @@ class TestComputeSectionOrder:
 
     def test_insert_after_base(self):
         """Sections are inserted after their anchor."""
-        regs = [
-            SectionRegistration(section=MockSection("style"), after_section_id="summary")
-        ]
+        regs = [SectionRegistration(section=MockSection("style"), after_section_id="summary")]
         ordered, warnings = compute_section_order(regs, ["meta", "summary", "dist"])
         assert [r.section.section_id for r in ordered] == ["style"]
         assert ordered[0].after_section_id == "summary"
@@ -152,9 +148,7 @@ class TestComputeSectionOrder:
         """Multiple sections with same anchor maintain registration order."""
         regs = [
             SectionRegistration(section=MockSection("first"), after_section_id="anchor"),
-            SectionRegistration(
-                section=MockSection("second"), after_section_id="anchor"
-            ),
+            SectionRegistration(section=MockSection("second"), after_section_id="anchor"),
             SectionRegistration(section=MockSection("third"), after_section_id="anchor"),
         ]
         ordered, warnings = compute_section_order(regs, ["anchor", "other"])
@@ -176,11 +170,7 @@ class TestComputeSectionOrder:
 
     def test_after_not_found(self):
         """Missing anchor generates warning and appends at end."""
-        regs = [
-            SectionRegistration(
-                section=MockSection("orphan"), after_section_id="nonexistent"
-            )
-        ]
+        regs = [SectionRegistration(section=MockSection("orphan"), after_section_id="nonexistent")]
         ordered, warnings = compute_section_order(regs, ["meta"])
         assert [r.section.section_id for r in ordered] == ["orphan"]
         assert len(warnings) == 1
@@ -209,12 +199,8 @@ class TestComputeSectionOrder:
     def test_disabled_excluded(self):
         """Disabled sections are excluded from output."""
         regs = [
-            SectionRegistration(
-                section=MockSection("enabled"), enabled_by_default=True
-            ),
-            SectionRegistration(
-                section=MockSection("disabled"), enabled_by_default=False
-            ),
+            SectionRegistration(section=MockSection("enabled"), enabled_by_default=True),
+            SectionRegistration(section=MockSection("disabled"), enabled_by_default=False),
         ]
         ordered, _ = compute_section_order(regs, [])
         assert [r.section.section_id for r in ordered] == ["enabled"]

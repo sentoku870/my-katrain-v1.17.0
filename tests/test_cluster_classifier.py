@@ -15,54 +15,47 @@ Tests cover:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
+from katrain.core.analysis.board_context import (
+    BoardArea,
+    OwnershipContext,
+)
 from katrain.core.analysis.cluster_classifier import (
-    # Enums
-    ClusterSemantics,
-    # Dataclasses
-    ClassifiedCluster,
-    ClusterClassificationContext,
-    # Stone reconstruction
-    compute_stones_at_node,
-    StoneCache,
-    # Classification helpers
-    is_opponent_gain,
-    get_stones_in_cluster,
-    compute_cluster_ownership_avg,
-    compute_confidence,
-    should_inject,
-    get_semantics_label,
-    # Classification
-    classify_cluster,
-    # Context
-    build_classification_context,
-    _get_cluster_context_for_move,
-    # Internal (for testing)
-    _detect_group_death,
-    _detect_territory_loss,
-    _detect_missed_kill,
-    _find_group,
-    _has_liberty,
     # Constants
     BASE_CONFIDENCE,
-    INJECTION_THRESHOLD,
-    TERRITORY_LOSS_MIN_DELTA,
     DELTA_SCALING_FACTOR,
+    ClassifiedCluster,
+    ClusterClassificationContext,
+    # Enums
+    ClusterSemantics,
+    StoneCache,
     # Type aliases
     StoneSet,
+    # Internal (for testing)
+    _detect_group_death,
+    _detect_missed_kill,
+    _detect_territory_loss,
+    _find_group,
+    _has_liberty,
+    # Context
+    classify_cluster,
+    compute_cluster_ownership_avg,
+    compute_confidence,
+    # Stone reconstruction
+    compute_stones_at_node,
+    get_semantics_label,
+    get_stones_in_cluster,
+    # Classification helpers
+    is_opponent_gain,
+    should_inject,
 )
 from katrain.core.analysis.ownership_cluster import (
     ClusterType,
     OwnershipCluster,
 )
-from katrain.core.analysis.board_context import (
-    BoardArea,
-    OwnershipContext,
-)
-
 
 # =====================================================================
 # Test Fixtures and Helpers
@@ -72,6 +65,7 @@ from katrain.core.analysis.board_context import (
 @dataclass
 class MockMove:
     """Mock Move for testing."""
+
     coords: tuple[int, int] | None
     player: str
 
@@ -83,6 +77,7 @@ class MockMove:
 @dataclass
 class MockGameNode:
     """Mock GameNode for testing."""
+
     placements: list[MockMove]
     moves: list[MockMove]
     clear_placements: list[MockMove]
@@ -93,7 +88,7 @@ class MockGameNode:
     board_size: tuple[int, int]
 
     @property
-    def ordered_children(self) -> list["MockGameNode"]:
+    def ordered_children(self) -> list[MockGameNode]:
         return self.children
 
 
@@ -428,12 +423,14 @@ class TestGetStonesInCluster:
         cluster = create_mock_cluster(
             coords=frozenset([(0, 0), (1, 0), (0, 1)]),  # 3 points
         )
-        stones: StoneSet = frozenset([
-            (0, 0, "B"),  # In cluster
-            (1, 0, "B"),  # In cluster
-            (2, 0, "W"),  # Outside cluster
-            (0, 1, "B"),  # In cluster
-        ])
+        stones: StoneSet = frozenset(
+            [
+                (0, 0, "B"),  # In cluster
+                (1, 0, "B"),  # In cluster
+                (2, 0, "W"),  # Outside cluster
+                (0, 1, "B"),  # In cluster
+            ]
+        )
 
         result = get_stones_in_cluster(cluster, stones)
 
@@ -475,9 +472,7 @@ class TestDetectGroupDeath:
         parent_stones: StoneSet = frozenset([(0, 0, "B"), (1, 1, "W")])
         child_stones: StoneSet = frozenset([(1, 1, "W")])  # Black gone
 
-        is_death, affected, reason = _detect_group_death(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_death, affected, reason = _detect_group_death(cluster, "B", parent_stones, child_stones)
 
         assert is_death is True
         assert (0, 0, "B") in affected
@@ -491,9 +486,7 @@ class TestDetectGroupDeath:
         parent_stones: StoneSet = frozenset([(0, 0, "B"), (1, 0, "B")])
         child_stones: StoneSet = frozenset()  # All gone
 
-        is_death, affected, reason = _detect_group_death(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_death, affected, reason = _detect_group_death(cluster, "B", parent_stones, child_stones)
 
         assert is_death is True
         assert len(affected) == 2
@@ -507,9 +500,7 @@ class TestDetectGroupDeath:
         parent_stones: StoneSet = frozenset([(0, 0, "B")])
         child_stones: StoneSet = frozenset([(0, 0, "B")])  # Still there
 
-        is_death, affected, reason = _detect_group_death(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_death, affected, reason = _detect_group_death(cluster, "B", parent_stones, child_stones)
 
         assert is_death is False
         assert affected == ()
@@ -532,9 +523,7 @@ class TestDetectTerritoryLoss:
         parent_stones: StoneSet = frozenset()
         child_stones: StoneSet = frozenset()  # No stone changes
 
-        is_loss, reason = _detect_territory_loss(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_loss, reason = _detect_territory_loss(cluster, "B", parent_stones, child_stones)
 
         assert is_loss is True
         assert "Territory loss" in reason
@@ -548,9 +537,7 @@ class TestDetectTerritoryLoss:
         parent_stones: StoneSet = frozenset()
         child_stones: StoneSet = frozenset()
 
-        is_loss, reason = _detect_territory_loss(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_loss, reason = _detect_territory_loss(cluster, "B", parent_stones, child_stones)
 
         assert is_loss is False
         assert "< 1.0" in reason
@@ -564,9 +551,7 @@ class TestDetectTerritoryLoss:
         parent_stones: StoneSet = frozenset([(0, 0, "B")])
         child_stones: StoneSet = frozenset()  # Stone removed
 
-        is_loss, reason = _detect_territory_loss(
-            cluster, "B", parent_stones, child_stones
-        )
+        is_loss, reason = _detect_territory_loss(cluster, "B", parent_stones, child_stones)
 
         assert is_loss is False
         assert "capture" in reason.lower()
@@ -596,9 +581,7 @@ class TestDetectMissedKill:
             ownership_grid=[[-0.4] * 5 for _ in range(5)],
         )
 
-        is_missed, reason = _detect_missed_kill(
-            cluster, "B", parent_ctx, child_ctx
-        )
+        is_missed, reason = _detect_missed_kill(cluster, "B", parent_ctx, child_ctx)
 
         assert is_missed is True
         assert "Missed kill" in reason
@@ -618,9 +601,7 @@ class TestDetectMissedKill:
             ownership_grid=[[-0.4] * 5 for _ in range(5)],
         )
 
-        is_missed, reason = _detect_missed_kill(
-            cluster, "B", parent_ctx, child_ctx
-        )
+        is_missed, reason = _detect_missed_kill(cluster, "B", parent_ctx, child_ctx)
 
         assert is_missed is False
 
@@ -640,9 +621,7 @@ class TestDetectMissedKill:
             ownership_grid=[[0.4] * 5 for _ in range(5)],
         )
 
-        is_missed, reason = _detect_missed_kill(
-            cluster, "W", parent_ctx, child_ctx
-        )
+        is_missed, reason = _detect_missed_kill(cluster, "W", parent_ctx, child_ctx)
 
         assert is_missed is True
 

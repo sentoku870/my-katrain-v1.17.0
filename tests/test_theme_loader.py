@@ -3,8 +3,6 @@
 
 import logging
 
-import pytest
-
 from katrain.gui.theme_loader import load_theme_overrides
 
 
@@ -24,9 +22,7 @@ def test_theme_loading_applies_known_keys(tmp_path):
 def test_theme_loading_ignores_unknown_keys(tmp_path, caplog):
     """Verify unknown keys are logged and ignored."""
     theme_file = tmp_path / "theme_test.json"
-    theme_file.write_text(
-        '{"UNKNOWN_KEY": "value", "TEXT_COLOR": [1,1,1,1]}', encoding="utf-8"
-    )
+    theme_file.write_text('{"UNKNOWN_KEY": "value", "TEXT_COLOR": [1,1,1,1]}', encoding="utf-8")
 
     class MockTheme:
         TEXT_COLOR = [0, 0, 0, 1]

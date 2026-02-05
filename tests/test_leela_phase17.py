@@ -1,16 +1,14 @@
 """Phase 17 tests for Leela top moves display selection."""
 
-import pytest
-from katrain.core.leela.models import LeelaCandidate
-from katrain.core.leela.presentation import format_loss_est, format_winrate_pct, format_visits
 from katrain.core.constants import (
     LEELA_TOP_MOVE_LOSS,
-    LEELA_TOP_MOVE_WINRATE,
-    LEELA_TOP_MOVE_VISITS,
     LEELA_TOP_MOVE_NOTHING,
     LEELA_TOP_MOVE_OPTIONS,
     LEELA_TOP_MOVE_OPTIONS_SECONDARY,
+    LEELA_TOP_MOVE_VISITS,
+    LEELA_TOP_MOVE_WINRATE,
 )
+from katrain.core.leela.presentation import format_loss_est, format_visits, format_winrate_pct
 
 
 class TestLeelaTopMoveConstants:
@@ -67,10 +65,7 @@ class TestDisplayFormatSelection:
         """Two non-empty lines should produce newline-separated format."""
         line1 = "2.5"
         line2 = "52.3%"
-        if line2:
-            fmt = "{line1}\n{line2}"
-        else:
-            fmt = "{line1}"
+        fmt = "{line1}\n{line2}" if line2 else "{line1}"
         result = fmt.format(line1=line1, line2=line2)
         assert "\n" in result
         assert result == "2.5\n52.3%"
@@ -79,10 +74,7 @@ class TestDisplayFormatSelection:
         """NOTHING (empty line2) should produce single-line format."""
         line1 = "2.5"
         line2 = ""  # NOTHING returns ""
-        if line2:
-            fmt = "{line1}\n{line2}"
-        else:
-            fmt = "{line1}"
+        fmt = "{line1}\n{line2}" if line2 else "{line1}"
         result = fmt.format(line1=line1, line2=line2)
         assert "\n" not in result
         assert result == "2.5"
@@ -97,7 +89,7 @@ class TestConfigDefaults:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         leela = config.get("leela", {})
@@ -115,7 +107,7 @@ class TestConfigDefaults:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         leela = config.get("leela", {})

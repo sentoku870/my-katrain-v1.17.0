@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Regression tests for Phase 55-64 features.
 
 Part of Phase 65: Post-54 Integration.
@@ -17,8 +16,6 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
-import pytest
-
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
 from katrain.core.analysis.risk import analyze_risk
@@ -32,7 +29,6 @@ from katrain.core.analysis.style import determine_style
 from katrain.core.analysis.time.models import GameTimeData, TimeMetrics
 from katrain.core.analysis.time.pacing import analyze_pacing
 from katrain.core.curator.batch import generate_curator_outputs
-
 
 # =============================================================================
 # Test Helpers (reused from integration tests)
@@ -113,8 +109,8 @@ class MockNode:
     analysis_exists: bool = False
     analysis: dict[str, Any] | None = None
     move: Optional[MockMove] = None
-    parent: Optional["MockNode"] = None
-    children: list["MockNode"] = None
+    parent: Optional[MockNode] = None
+    children: list[MockNode] = None
 
     def __post_init__(self):
         if self.children is None:
@@ -234,9 +230,7 @@ class TestRegressionGracefulHandling:
     def test_pacing_on_empty_moves(self):
         """analyze_pacing handles empty moves list gracefully."""
         time_data = GameTimeData(
-            metrics=(
-                TimeMetrics(move_number=1, player="B", time_left_sec=100.0, time_spent_sec=10.0),
-            ),
+            metrics=(TimeMetrics(move_number=1, player="B", time_left_sec=100.0, time_spent_sec=10.0),),
             has_time_data=True,
             black_moves_with_time=1,
             white_moves_with_time=0,

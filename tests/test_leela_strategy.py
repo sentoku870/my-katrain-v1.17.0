@@ -2,8 +2,10 @@
 
 This module tests the Leela Zero AI strategy for move generation.
 """
-import pytest
+
 from unittest.mock import MagicMock
+
+import pytest
 
 from katrain.core.ai import STRATEGY_REGISTRY
 from katrain.core.constants import AI_LEELA
@@ -19,16 +21,19 @@ class TestLeelaStrategyRegistration:
     def test_ai_leela_in_recommended_order(self):
         """AI_LEELA should appear in recommended order."""
         from katrain.core.constants import AI_STRATEGIES_RECOMMENDED_ORDER
+
         assert AI_LEELA in AI_STRATEGIES_RECOMMENDED_ORDER
 
     def test_ai_leela_in_strategies(self):
         """AI_LEELA should be in AI_STRATEGIES."""
         from katrain.core.constants import AI_STRATEGIES
+
         assert AI_LEELA in AI_STRATEGIES
 
     def test_ai_leela_has_strength(self):
         """AI_LEELA should have a strength value."""
         from katrain.core.constants import AI_STRENGTH
+
         assert AI_LEELA in AI_STRENGTH
         assert AI_STRENGTH[AI_LEELA] == 9
 
@@ -50,7 +55,7 @@ class TestLeelaStrategyErrors:
 
     def test_no_engine_raises(self, mock_game):
         """Should raise when leela_engine is None and start fails."""
-        from katrain.core.ai import LeelaStrategy, LeelaNotAvailableError
+        from katrain.core.ai import LeelaNotAvailableError, LeelaStrategy
 
         mock_game.katrain.leela_engine = None
         mock_game.katrain.start_leela_engine = MagicMock(return_value=False)
@@ -61,7 +66,7 @@ class TestLeelaStrategyErrors:
 
     def test_dead_engine_raises(self, mock_game):
         """Should raise when engine is not alive."""
-        from katrain.core.ai import LeelaStrategy, LeelaNotAvailableError
+        from katrain.core.ai import LeelaNotAvailableError, LeelaStrategy
 
         mock_game.katrain.leela_engine = MagicMock()
         mock_game.katrain.leela_engine.is_alive.return_value = False
@@ -72,7 +77,7 @@ class TestLeelaStrategyErrors:
 
     def test_request_analysis_failure_raises(self, mock_game):
         """Should raise when request_analysis returns False."""
-        from katrain.core.ai import LeelaStrategy, LeelaNotAvailableError
+        from katrain.core.ai import LeelaNotAvailableError, LeelaStrategy
 
         leela = MagicMock()
         leela.is_alive.return_value = True
@@ -181,16 +186,19 @@ class TestLeelaNotAvailableError:
     def test_exception_can_be_imported(self):
         """LeelaNotAvailableError should be importable."""
         from katrain.core.ai import LeelaNotAvailableError
+
         assert LeelaNotAvailableError is not None
 
     def test_exception_is_exception_subclass(self):
         """LeelaNotAvailableError should be an Exception subclass."""
         from katrain.core.ai import LeelaNotAvailableError
+
         assert issubclass(LeelaNotAvailableError, Exception)
 
     def test_exception_message(self):
         """LeelaNotAvailableError should preserve its message."""
         from katrain.core.ai import LeelaNotAvailableError
+
         error = LeelaNotAvailableError("Test message")
         assert str(error) == "Test message"
 
@@ -204,7 +212,7 @@ class TestConfigSettings:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         assert "ai" in config
@@ -216,7 +224,7 @@ class TestConfigSettings:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         assert "leela" in config

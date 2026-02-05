@@ -11,17 +11,11 @@ from __future__ import annotations
 import pytest
 
 from katrain.core.beginner.detector import (
-    detect_ignore_atari,
-    detect_missed_capture,
-    detect_self_atari,
     find_matching_group,
 )
 from katrain.core.beginner.hints import compute_beginner_hint, get_beginner_hint_cached
-from katrain.core.beginner.models import BeginnerHint, DetectorInput, HintCategory
-from katrain.core.game import Game
-from katrain.core.game_node import GameNode
+from katrain.core.beginner.models import BeginnerHint, HintCategory
 from katrain.core.sgf_parser import Move
-
 
 # ---------------------------------------------------------------------------
 # find_matching_group tests
@@ -133,7 +127,7 @@ class TestBasicDetection:
         node = game_9x9.current_node
 
         # First call computes (likely None for simple position)
-        hint1 = get_beginner_hint_cached(game_9x9, node)
+        get_beginner_hint_cached(game_9x9, node)
 
         # Phase 92: Cache format is (require_reliable, hint) tuple
         # Add a marker to verify cache is used
@@ -156,12 +150,18 @@ class TestCutRiskDetection:
         """CUT_RISK should detect when find_connect_points returns high improvement"""
         # Play enough moves to create stones
         moves = [
-            ("D5", "B"), ("A1", "W"),
-            ("D4", "B"), ("A2", "W"),
-            ("D3", "B"), ("A3", "W"),
-            ("E3", "B"), ("A4", "W"),
-            ("F3", "B"), ("A5", "W"),
-            ("G3", "B"), ("A6", "W"),
+            ("D5", "B"),
+            ("A1", "W"),
+            ("D4", "B"),
+            ("A2", "W"),
+            ("D3", "B"),
+            ("A3", "W"),
+            ("E3", "B"),
+            ("A4", "W"),
+            ("F3", "B"),
+            ("A5", "W"),
+            ("G3", "B"),
+            ("A6", "W"),
         ]
         for coord, player in moves:
             game_9x9.play(Move.from_gtp(coord, player), analyze=False)
@@ -540,7 +540,7 @@ class TestReliabilityFilter:
 
     def test_is_reliable_true(self):
         """Returns True when visits >= threshold"""
-        from katrain.core.beginner.hints import _is_reliable, MIN_RELIABLE_VISITS
+        from katrain.core.beginner.hints import MIN_RELIABLE_VISITS, _is_reliable
 
         class MockNode:
             analysis = {"rootInfo": {"visits": MIN_RELIABLE_VISITS}}
@@ -549,7 +549,7 @@ class TestReliabilityFilter:
 
     def test_is_reliable_false_low_visits(self):
         """Returns False when visits < threshold"""
-        from katrain.core.beginner.hints import _is_reliable, MIN_RELIABLE_VISITS
+        from katrain.core.beginner.hints import MIN_RELIABLE_VISITS, _is_reliable
 
         class MockNode:
             analysis = {"rootInfo": {"visits": MIN_RELIABLE_VISITS - 1}}
@@ -700,7 +700,7 @@ class TestCacheWithReliableSettings:
             delattr(node, "_beginner_hint_cache")
 
         # First call
-        hint1 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
+        get_beginner_hint_cached(game_9x9, node, require_reliable=True)
 
         # Modify cache to verify it's used
         node._beginner_hint_cache = (True, "MARKER")
@@ -755,18 +755,14 @@ class TestShouldDrawBoardHighlight:
         """Returns False when beginner hints disabled."""
         from katrain.core.beginner.hints import should_draw_board_highlight
 
-        result = should_draw_board_highlight(
-            enabled=False, mode="analyze", board_highlight=True
-        )
+        result = should_draw_board_highlight(enabled=False, mode="analyze", board_highlight=True)
         assert result is False
 
     def test_returns_false_when_board_highlight_disabled(self):
         """Returns False when board_highlight=False."""
         from katrain.core.beginner.hints import should_draw_board_highlight
 
-        result = should_draw_board_highlight(
-            enabled=True, mode="analyze", board_highlight=False
-        )
+        result = should_draw_board_highlight(enabled=True, mode="analyze", board_highlight=False)
         assert result is False
 
     def test_returns_false_in_play_mode(self):
@@ -774,18 +770,14 @@ class TestShouldDrawBoardHighlight:
         from katrain.core.beginner.hints import should_draw_board_highlight
         from katrain.core.constants import MODE_PLAY
 
-        result = should_draw_board_highlight(
-            enabled=True, mode=MODE_PLAY, board_highlight=True
-        )
+        result = should_draw_board_highlight(enabled=True, mode=MODE_PLAY, board_highlight=True)
         assert result is False
 
     def test_returns_true_when_all_conditions_met(self):
         """Returns True when all conditions are met."""
         from katrain.core.beginner.hints import should_draw_board_highlight
 
-        result = should_draw_board_highlight(
-            enabled=True, mode="analyze", board_highlight=True
-        )
+        result = should_draw_board_highlight(enabled=True, mode="analyze", board_highlight=True)
         assert result is True
 
 
@@ -903,11 +895,7 @@ class TestBeginnerHintI18n:
         po = polib.pofile(po_path)
         existing_keys = {entry.msgid for entry in po}
 
-        expected_keys = {
-            f"beginner_hint:{cat}:{suffix}"
-            for cat in self.CATEGORIES
-            for suffix in self.SUFFIXES
-        }
+        expected_keys = {f"beginner_hint:{cat}:{suffix}" for cat in self.CATEGORIES for suffix in self.SUFFIXES}
 
         missing = expected_keys - existing_keys
         assert not missing, f"Missing keys in JP: {missing}"
@@ -920,11 +908,7 @@ class TestBeginnerHintI18n:
         po = polib.pofile(po_path)
         existing_keys = {entry.msgid for entry in po}
 
-        expected_keys = {
-            f"beginner_hint:{cat}:{suffix}"
-            for cat in self.CATEGORIES
-            for suffix in self.SUFFIXES
-        }
+        expected_keys = {f"beginner_hint:{cat}:{suffix}" for cat in self.CATEGORIES for suffix in self.SUFFIXES}
 
         missing = expected_keys - existing_keys
         assert not missing, f"Missing keys in EN: {missing}"
@@ -938,9 +922,8 @@ class TestBeginnerHintI18n:
 
         empty_keys = []
         for entry in po:
-            if entry.msgid.startswith("beginner_hint:"):
-                if not entry.msgstr:
-                    empty_keys.append(entry.msgid)
+            if entry.msgid.startswith("beginner_hint:") and not entry.msgstr:
+                empty_keys.append(entry.msgid)
 
         assert not empty_keys, f"Empty msgstr in JP: {empty_keys}"
 
@@ -953,8 +936,7 @@ class TestBeginnerHintI18n:
 
         empty_keys = []
         for entry in po:
-            if entry.msgid.startswith("beginner_hint:"):
-                if not entry.msgstr:
-                    empty_keys.append(entry.msgid)
+            if entry.msgid.startswith("beginner_hint:") and not entry.msgstr:
+                empty_keys.append(entry.msgid)
 
         assert not empty_keys, f"Empty msgstr in EN: {empty_keys}"

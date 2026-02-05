@@ -1,9 +1,8 @@
 """Phase 15 integration tests for Leela UI."""
 
-import pytest
 from katrain.core.game_node import GameNode
+from katrain.core.leela.logic import compute_estimated_loss
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
-from katrain.core.leela.logic import compute_estimated_loss, LEELA_K_DEFAULT
 
 
 class TestLeelaRequestPrevention:
@@ -12,9 +11,7 @@ class TestLeelaRequestPrevention:
     def test_skip_if_already_analyzed(self):
         """Analyzed node should not be re-analyzed (is_valid == True)."""
         node = GameNode()
-        analysis = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)]
-        )
+        analysis = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)])
         node.set_leela_analysis(analysis)
 
         # Confirm: recognized as analyzed
@@ -92,9 +89,9 @@ class TestKataGoRegression:
         node.analysis["moves"]["D4"] = {"scoreLead": 0.5, "visits": 100}
 
         # Set Leela analysis
-        node.set_leela_analysis(LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)]
-        ))
+        node.set_leela_analysis(
+            LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)])
+        )
 
         # Confirm KataGo analysis unchanged
         assert node.analysis["moves"]["D4"]["scoreLead"] == 0.5
@@ -107,9 +104,9 @@ class TestKataGoRegression:
         """clear_analysis() should clear both."""
         node = GameNode()
         node.analysis["moves"]["D4"] = {"scoreLead": 0.5, "visits": 100}
-        node.set_leela_analysis(LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)]
-        ))
+        node.set_leela_analysis(
+            LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)])
+        )
 
         node.clear_analysis()
 
@@ -126,7 +123,7 @@ class TestConfigIntegration:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         assert "leela" in config
@@ -141,7 +138,7 @@ class TestConfigIntegration:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         leela = config["leela"]
@@ -155,16 +152,16 @@ class TestLeelaLogicClampK:
 
     def test_clamp_k_too_low(self):
         """K value below minimum should be clamped."""
-        from katrain.core.leela.logic import clamp_k
         from katrain.core.constants import LEELA_K_MIN
+        from katrain.core.leela.logic import clamp_k
 
         result = clamp_k(0.05)
         assert result == LEELA_K_MIN
 
     def test_clamp_k_too_high(self):
         """K value above maximum should be clamped."""
-        from katrain.core.leela.logic import clamp_k
         from katrain.core.constants import LEELA_K_MAX
+        from katrain.core.leela.logic import clamp_k
 
         result = clamp_k(5.0)
         assert result == LEELA_K_MAX

@@ -1,7 +1,5 @@
 """Tests for GameNode Leela analysis support."""
 
-import pytest
-
 from katrain.core.game_node import GameNode
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
@@ -35,9 +33,7 @@ class TestGameNodeLeelaAnalysis:
         node = GameNode()
 
         # Set first
-        eval_result = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)]
-        )
+        eval_result = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)])
         node.set_leela_analysis(eval_result)
         assert node.leela_analysis is not None
 
@@ -50,9 +46,7 @@ class TestGameNodeLeelaAnalysis:
         node = GameNode()
 
         # Set Leela analysis
-        eval_result = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)]
-        )
+        eval_result = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)])
         node.set_leela_analysis(eval_result)
         assert node.leela_analysis is not None
 
@@ -65,9 +59,7 @@ class TestGameNodeLeelaAnalysis:
         node = GameNode()
 
         # Set Leela analysis
-        leela_result = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.52, visits=100)]
-        )
+        leela_result = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.52, visits=100)])
         node.set_leela_analysis(leela_result)
 
         # KataGo analysis should still be default
@@ -88,9 +80,7 @@ class TestGameNodeLeelaAnalysis:
         node = GameNode()
 
         # Set Leela analysis
-        leela_result = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.52, visits=100)]
-        )
+        leela_result = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.52, visits=100)])
         node.set_leela_analysis(leela_result)
 
         # Modify KataGo analysis

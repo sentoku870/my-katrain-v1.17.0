@@ -8,15 +8,15 @@ Verifies:
 - Field types
 """
 
-import pytest
 from dataclasses import FrozenInstanceError
 
+import pytest
+
 from katrain.common.lexicon.models import (
-    DiagramInfo,
     AIPerspective,
+    DiagramInfo,
     LexiconEntry,
 )
-
 
 # ---------------------------------------------------------------------------
 # DiagramInfo Tests

@@ -3,15 +3,15 @@
 Tests for analyze_single_file_leela() and run_batch() with Leela engine.
 CI-safe (no real engines, uses mocks).
 """
-import pytest
-import threading
-from typing import Callable
-from unittest.mock import Mock, MagicMock, patch
 
+import threading
+from collections.abc import Callable
+from unittest.mock import Mock
 
 # ---------------------------------------------------------------------------
 # Mock LeelaEngine for testing
 # ---------------------------------------------------------------------------
+
 
 class MockLeelaEngineForBatch:
     """Mock LeelaEngine that simulates analysis behavior."""
@@ -41,15 +41,17 @@ class MockLeelaEngineForBatch:
         if not self._alive:
             return False
 
-        self.analysis_calls.append({
-            "moves": moves,
-            "visits": visits,
-            "board_size": board_size,
-            "komi": komi,
-        })
+        self.analysis_calls.append(
+            {
+                "moves": moves,
+                "visits": visits,
+                "board_size": board_size,
+                "komi": komi,
+            }
+        )
 
         # Simulate immediate callback with mock result
-        from katrain.core.leela.models import LeelaPositionEval, LeelaCandidate
+        from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
         # Create a simple mock result (using actual LeelaCandidate fields)
         mock_result = LeelaPositionEval(
@@ -85,6 +87,7 @@ class MockLeelaEngineForBatch:
 # ---------------------------------------------------------------------------
 # Test: run_batch engine validation
 # ---------------------------------------------------------------------------
+
 
 class TestRunBatchEngineValidation:
     """Test run_batch() engine selection validation."""
@@ -157,7 +160,7 @@ class TestRunBatchEngineValidation:
 
         log_messages = []
 
-        result = run_batch(
+        run_batch(
             katrain=katrain,
             engine=engine,
             input_dir=str(input_dir),
@@ -172,17 +175,20 @@ class TestRunBatchEngineValidation:
 # Test: analyze_single_file_leela function signature
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeSingleFileLeelaSignature:
     """Test analyze_single_file_leela() function exists and has correct signature."""
 
     def test_function_exists(self):
         """Function exists in batch module."""
         from katrain.tools.batch_analyze_sgf import analyze_single_file_leela
+
         assert callable(analyze_single_file_leela)
 
     def test_function_parameters(self):
         """Function has expected parameters."""
         import inspect
+
         from katrain.tools.batch_analyze_sgf import analyze_single_file_leela
 
         sig = inspect.signature(analyze_single_file_leela)
@@ -208,12 +214,14 @@ class TestAnalyzeSingleFileLeelaSignature:
 # Test: run_batch with Leela parameters
 # ---------------------------------------------------------------------------
 
+
 class TestRunBatchLeelaParameters:
     """Test run_batch() has Leela-related parameters."""
 
     def test_run_batch_has_leela_params(self):
         """run_batch has analysis_engine and leela_engine parameters."""
         import inspect
+
         from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
@@ -226,6 +234,7 @@ class TestRunBatchLeelaParameters:
     def test_run_batch_default_engine_is_katago(self):
         """Default analysis_engine is 'katago'."""
         import inspect
+
         from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
@@ -237,6 +246,7 @@ class TestRunBatchLeelaParameters:
 # ---------------------------------------------------------------------------
 # Test: Phase 87.6 - Empty SGF handling and karte counter tracking
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_katrain():
     """Create a properly mocked katrain object for Game initialization."""
@@ -277,8 +287,8 @@ class TestLeelaEmptySGFHandling:
         Phase 87.6: Empty SGF (root node only, no moves) should be treated
         as analysis failure and return (None, empty snapshot).
         """
-        from katrain.core.batch.analysis import analyze_single_file_leela
         from katrain.core.analysis.models import EvalSnapshot
+        from katrain.core.batch.analysis import analyze_single_file_leela
 
         # Create an empty SGF (root node only, no moves)
         sgf_file = tmp_path / "empty.sgf"
@@ -306,8 +316,9 @@ class TestLeelaEmptySGFHandling:
         assert len(snapshot.moves) == 0, f"Expected 0 moves, got {len(snapshot.moves)}"
 
         # Should log the error
-        assert any("ERROR" in msg and "0 moves" in msg for msg in log_messages), \
+        assert any("ERROR" in msg and "0 moves" in msg for msg in log_messages), (
             f"Expected 'ERROR: Empty SGF (0 moves)' in logs, got: {log_messages}"
+        )
 
     def test_leela_empty_sgf_returns_false_without_return_game(self, tmp_path):
         """Empty SGF (0 moves) should return False when return_game=False."""
@@ -374,13 +385,13 @@ class TestLeelaKarteCounterTracking:
         assert result.success_count == 0, f"Expected 0 successes, got {result.success_count}"
 
         # karte_failed should also be 2
-        assert result.karte_failed == 2, \
-            f"Expected karte_failed=2, got {result.karte_failed}"
+        assert result.karte_failed == 2, f"Expected karte_failed=2, got {result.karte_failed}"
 
         # karte_total = karte_written + karte_failed should be 2 (not 0/0)
         karte_total = result.karte_written + result.karte_failed
-        assert karte_total == 2, \
+        assert karte_total == 2, (
             f"Expected karte_total=2, got karte_written={result.karte_written} + karte_failed={result.karte_failed} = {karte_total}"
+        )
 
     def test_batch_counters_consistency_with_mixed_results(self, tmp_path):
         """Counters should be consistent with success + fail = total input.
@@ -422,21 +433,22 @@ class TestLeelaKarteCounterTracking:
 
         # Total should be 2 (1 empty + 1 valid)
         total_files = result.success_count + result.fail_count
-        assert total_files == 2, \
+        assert total_files == 2, (
             f"Expected total=2, got success={result.success_count} + fail={result.fail_count} = {total_files}"
+        )
 
         # Empty file fails, valid file succeeds
         assert result.fail_count == 1, f"Expected 1 failure (empty SGF), got {result.fail_count}"
         assert result.success_count == 1, f"Expected 1 success (valid SGF), got {result.success_count}"
 
         # karte_failed should match fail_count when generate_karte=True
-        assert result.karte_failed == 1, \
-            f"Expected karte_failed=1, got {result.karte_failed}"
+        assert result.karte_failed == 1, f"Expected karte_failed=1, got {result.karte_failed}"
 
 
 # ---------------------------------------------------------------------------
 # Test: LeelaEngine imports
 # ---------------------------------------------------------------------------
+
 
 class TestLeelaImports:
     """Test that Leela-related imports work."""
@@ -444,16 +456,19 @@ class TestLeelaImports:
     def test_leela_engine_import(self):
         """LeelaEngine can be imported from batch module."""
         from katrain.tools.batch_analyze_sgf import LeelaEngine
+
         assert LeelaEngine is not None
 
     def test_leela_position_eval_import(self):
         """LeelaPositionEval can be imported from batch module."""
         from katrain.tools.batch_analyze_sgf import LeelaPositionEval
+
         assert LeelaPositionEval is not None
 
     def test_leela_conversion_import(self):
         """leela_position_to_move_eval can be imported from batch module."""
         from katrain.tools.batch_analyze_sgf import leela_position_to_move_eval
+
         assert callable(leela_position_to_move_eval)
 
 
@@ -461,15 +476,18 @@ class TestLeelaImports:
 # Test: EvalSnapshot import
 # ---------------------------------------------------------------------------
 
+
 class TestEvalSnapshotImport:
     """Test EvalSnapshot is properly imported for Leela analysis."""
 
     def test_eval_snapshot_import(self):
         """EvalSnapshot can be imported from batch module."""
         from katrain.tools.batch_analyze_sgf import EvalSnapshot
+
         assert EvalSnapshot is not None
 
     def test_move_eval_import(self):
         """MoveEval can be imported from batch module."""
         from katrain.tools.batch_analyze_sgf import MoveEval
+
         assert MoveEval is not None

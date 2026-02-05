@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Risk Management section.
 
 Phase 62: Risk Integration
@@ -17,31 +16,32 @@ Duck-typing note:
   will fail - but that's intentional (it's an API contract change).
 """
 
-import pytest
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from katrain.core.reports.sections.risk_section import (
+    RiskDisplayData,
+    _classify_losing_behavior,
+    _classify_winning_behavior,
     extract_risk_display_data,
     format_risk_stats,
-    _classify_winning_behavior,
-    _classify_losing_behavior,
-    RiskDisplayData,
 )
-
 
 # ============================================================
 # Duck-typed stubs (decoupled from Phase 61 dataclasses)
 # ============================================================
 
-class JudgmentStub(str, Enum):
+
+class JudgmentStub(StrEnum):
     """Stub for RiskJudgmentType (only WINNING/LOSING needed for Phase 62)."""
+
     WINNING = "winning"
     LOSING = "losing"
 
 
-class BehaviorStub(str, Enum):
+class BehaviorStub(StrEnum):
     """Stub for RiskBehavior."""
+
     SOLID = "solid"
     COMPLICATING = "complicating"
 
@@ -49,12 +49,14 @@ class BehaviorStub(str, Enum):
 @dataclass
 class StubStats:
     """Minimal stub for PlayerRiskStats."""
+
     mismatch_count: int = 0
 
 
 @dataclass
 class StubContext:
     """Minimal stub for RiskContext (only fields used by extract_risk_display_data)."""
+
     player: str
     judgment_type: JudgmentStub
     risk_behavior: BehaviorStub
@@ -63,6 +65,7 @@ class StubContext:
 @dataclass
 class StubResult:
     """Minimal stub for RiskAnalysisResult."""
+
     contexts: tuple
     black_stats: StubStats
     white_stats: StubStats
@@ -194,9 +197,7 @@ class TestExtractRiskDisplayData:
 
     def test_only_winning_no_losing(self):
         """Only WINNING contexts -> no losing data."""
-        contexts = (
-            make_stub_context("B", JudgmentStub.WINNING, BehaviorStub.SOLID),
-        )
+        contexts = (make_stub_context("B", JudgmentStub.WINNING, BehaviorStub.SOLID),)
         result = make_stub_result(contexts)
         data = extract_risk_display_data(result, "B")
         assert data.winning_solid_pct == 100.0
@@ -205,9 +206,7 @@ class TestExtractRiskDisplayData:
 
     def test_only_losing_no_winning(self):
         """Only LOSING contexts -> no winning data."""
-        contexts = (
-            make_stub_context("B", JudgmentStub.LOSING, BehaviorStub.COMPLICATING),
-        )
+        contexts = (make_stub_context("B", JudgmentStub.LOSING, BehaviorStub.COMPLICATING),)
         result = make_stub_result(contexts)
         data = extract_risk_display_data(result, "B")
         assert data.winning_solid_pct is None
@@ -342,13 +341,10 @@ class TestCanonicalImports:
     def test_required_symbols_importable(self):
         """Required symbols can be imported from katrain.core.analysis."""
         from katrain.core.analysis import (
-            analyze_risk,
-            RiskAnalysisResult,
-            RiskContext,
-            RiskJudgmentType,
             RiskBehavior,
-            PlayerRiskStats,
+            RiskJudgmentType,
         )
+
         # Minimal checks - just verify imports succeeded
         assert RiskJudgmentType.WINNING is not None
         assert RiskJudgmentType.LOSING is not None

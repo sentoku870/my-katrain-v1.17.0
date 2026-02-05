@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 """Tests for reason_generator.py (Phase 86)."""
 
-import pytest
 from unittest.mock import patch
 
 from katrain.core.analysis.board_context import BoardArea
@@ -15,7 +13,6 @@ from katrain.core.analysis.reason_generator import (
     generate_reason,
     generate_reason_safe,
 )
-
 
 # =============================================================================
 # Template Coverage Tests
@@ -57,12 +54,12 @@ class TestVocabularyValidation:
     def test_area_vocabulary_matches_board_area(self):
         """AREA_VOCABULARY matches BoardArea enum values."""
         board_area_values = {area.value for area in BoardArea}
-        assert AREA_VOCABULARY == board_area_values
+        assert board_area_values == AREA_VOCABULARY
 
     def test_phase_vocabulary_matches_signature(self):
         """PHASE_VOCABULARY contains valid phase values."""
         expected = {"opening", "middle", "endgame"}
-        assert PHASE_VOCABULARY == expected
+        assert expected == PHASE_VOCABULARY
 
 
 # =============================================================================

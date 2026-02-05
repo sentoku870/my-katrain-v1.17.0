@@ -13,7 +13,6 @@ import pytest
 from katrain.core import eval_metrics
 from katrain.gui.features.summary_formatter import build_summary_from_stats
 
-
 # Test fixture path
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -52,7 +51,6 @@ def create_test_summary_stats() -> list:
         "total_points_lost": 10.0,
         "date": "2024-01-01",
         "loss_by_player": {"B": 5.0, "W": 5.0},
-
         # Mistake counts
         "mistake_counts": {
             eval_metrics.MistakeCategory.GOOD: 20,
@@ -66,7 +64,6 @@ def create_test_summary_stats() -> list:
             eval_metrics.MistakeCategory.MISTAKE: 3.0,
             eval_metrics.MistakeCategory.BLUNDER: 5.0,
         },
-
         # Freedom counts (all UNKNOWN)
         "freedom_counts": {
             eval_metrics.PositionDifficulty.EASY: 0,
@@ -75,11 +72,9 @@ def create_test_summary_stats() -> list:
             eval_metrics.PositionDifficulty.ONLY_MOVE: 0,
             eval_metrics.PositionDifficulty.UNKNOWN: 30,
         },
-
         # Phase data
         "phase_moves": {"opening": 10, "middle": 15, "yose": 5, "unknown": 0},
         "phase_loss": {"opening": 2.0, "middle": 6.0, "yose": 2.0, "unknown": 0.0},
-
         # Phase × Mistake cross-tabulation
         "phase_mistake_counts": {
             ("opening", eval_metrics.MistakeCategory.GOOD): 8,
@@ -109,10 +104,8 @@ def create_test_summary_stats() -> list:
             ("yose", eval_metrics.MistakeCategory.MISTAKE): 0.5,
             ("yose", eval_metrics.MistakeCategory.BLUNDER): 1.0,
         },
-
         # Reason tags
         "reason_tags_counts": {},
-
         # Worst moves
         "worst_moves": [
             (10, "B", "Q10", 4.0, 5.0, eval_metrics.MistakeCategory.BLUNDER),

@@ -1,22 +1,20 @@
 """Tests for Leela UI components."""
 
-import pytest
-
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
-from katrain.core.leela.presentation import (
-    lerp_color,
-    loss_to_color,
-    format_winrate_pct,
-    format_visits,
-    format_loss_est,
-)
 from katrain.core.constants import (
     LEELA_COLOR_BEST,
-    LEELA_COLOR_SMALL,
-    LEELA_COLOR_MEDIUM,
     LEELA_COLOR_LARGE,
-    LEELA_LOSS_THRESHOLD_SMALL,
+    LEELA_COLOR_MEDIUM,
+    LEELA_COLOR_SMALL,
     LEELA_LOSS_THRESHOLD_MEDIUM,
+    LEELA_LOSS_THRESHOLD_SMALL,
+)
+from katrain.core.leela.models import LeelaCandidate
+from katrain.core.leela.presentation import (
+    format_loss_est,
+    format_visits,
+    format_winrate_pct,
+    lerp_color,
+    loss_to_color,
 )
 
 

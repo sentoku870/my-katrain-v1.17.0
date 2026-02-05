@@ -1,4 +1,5 @@
 """Integration tests for skill_radar_popup (mock-based, CI-safe)."""
+
 import os
 from unittest.mock import MagicMock, patch
 
@@ -8,8 +9,7 @@ from katrain.core.analysis.skill_radar import SkillTier
 
 # Skip tests that import Kivy-dependent modules on CI (no display available)
 _CI_SKIP = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="Requires display - cannot import Kivy modules on headless CI"
+    os.environ.get("CI", "").lower() == "true", reason="Requires display - cannot import Kivy modules on headless CI"
 )
 
 
@@ -127,7 +127,7 @@ class TestTierI18NMapping:
         """All i18n keys should follow radar:tier-* format."""
         from katrain.gui.features.skill_radar_popup import TIER_I18N
 
-        for tier, key in TIER_I18N.items():
+        for _tier, key in TIER_I18N.items():
             assert key.startswith("radar:tier-"), f"Invalid key format: {key}"
 
 
@@ -147,7 +147,7 @@ class TestAxisI18NMapping:
         """All axis i18n keys should follow radar:axis-* format."""
         from katrain.gui.widgets.radar_chart import AXIS_I18N
 
-        for axis, key in AXIS_I18N.items():
+        for _axis, key in AXIS_I18N.items():
             assert key.startswith("radar:axis-"), f"Invalid key format: {key}"
 
 

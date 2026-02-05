@@ -2,11 +2,11 @@
 
 CI-safe: No Kivy imports.
 """
-import pytest
+
 from katrain.common.model_labels import (
     classify_model_strength,
-    get_model_i18n_key,
     get_model_basename,
+    get_model_i18n_key,
 )
 
 

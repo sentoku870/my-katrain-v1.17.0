@@ -6,22 +6,20 @@ without requiring KataGo to be running.
 """
 
 import os
-import tempfile
-import pytest
-from pathlib import Path
 
+import pytest
+
+from katrain.core.game import KaTrainSGF
 from katrain.tools.batch_analyze_sgf import (
-    has_analysis,
+    DEFAULT_TIMEOUT_SECONDS,
+    choose_visits_for_sgf,
     collect_sgf_files,
     collect_sgf_files_recursive,
-    read_sgf_with_fallback,
+    has_analysis,
     parse_sgf_with_fallback,
     parse_timeout_input,
-    choose_visits_for_sgf,
-    DEFAULT_TIMEOUT_SECONDS,
-    ENCODINGS_TO_TRY,
+    read_sgf_with_fallback,
 )
-from katrain.core.game import KaTrainSGF
 
 
 class TestHasAnalysis:
@@ -280,15 +278,17 @@ class TestBatchAnalyzerCLI:
     def test_import(self):
         """Should be able to import the batch analyzer module."""
         from katrain.tools import batch_analyze_sgf
-        assert hasattr(batch_analyze_sgf, 'main')
-        assert hasattr(batch_analyze_sgf, 'analyze_single_file')
-        assert hasattr(batch_analyze_sgf, 'wait_for_analysis')
-        assert hasattr(batch_analyze_sgf, 'run_batch')
-        assert hasattr(batch_analyze_sgf, 'BatchResult')
+
+        assert hasattr(batch_analyze_sgf, "main")
+        assert hasattr(batch_analyze_sgf, "analyze_single_file")
+        assert hasattr(batch_analyze_sgf, "wait_for_analysis")
+        assert hasattr(batch_analyze_sgf, "run_batch")
+        assert hasattr(batch_analyze_sgf, "BatchResult")
 
     def test_batch_result_dataclass(self):
         """BatchResult should have expected fields."""
         from katrain.tools.batch_analyze_sgf import BatchResult
+
         result = BatchResult()
         assert result.success_count == 0
         assert result.fail_count == 0
@@ -299,6 +299,7 @@ class TestBatchAnalyzerCLI:
     def test_batch_result_extended_fields(self):
         """BatchResult should have extended output count fields."""
         from katrain.tools.batch_analyze_sgf import BatchResult
+
         result = BatchResult()
         # New fields for karte/summary generation
         assert result.karte_written == 0
@@ -314,7 +315,7 @@ class TestBatchAnalyzerCLI:
             karte_failed=1,
             summary_written=True,
             summary_error=None,
-            analyzed_sgf_written=5
+            analyzed_sgf_written=5,
         )
         assert result2.karte_written == 3
         assert result2.karte_failed == 1
@@ -323,10 +324,7 @@ class TestBatchAnalyzerCLI:
         assert result2.analyzed_sgf_written == 5
 
         # Test with summary error
-        result3 = BatchResult(
-            summary_written=False,
-            summary_error="No valid game statistics available"
-        )
+        result3 = BatchResult(summary_written=False, summary_error="No valid game statistics available")
         assert result3.summary_written is False
         assert result3.summary_error == "No valid game statistics available"
 
@@ -336,8 +334,8 @@ class TestAnalyzeSingleFileLogging:
 
     def test_log_cb_receives_progress(self, tmp_path):
         """log_cb should receive progress messages."""
+
         from katrain.tools.batch_analyze_sgf import analyze_single_file
-        from unittest.mock import MagicMock
 
         # Create a valid SGF
         sgf_content = "(;GM[1]FF[4]SZ[19];B[pd])"
@@ -353,7 +351,7 @@ class TestAnalyzeSingleFileLogging:
             log_messages.append(msg)
 
         # This will fail because katrain/engine are None, but should log the error
-        result = analyze_single_file(
+        analyze_single_file(
             katrain=None,
             engine=None,
             sgf_path=str(sgf_file),
@@ -402,7 +400,7 @@ class TestAnalyzeSingleFileExtended:
 
         # Call with save_sgf=False (will still fail due to None katrain, but parameter is accepted)
         log_messages = []
-        result = analyze_single_file(
+        analyze_single_file(
             katrain=None,
             engine=None,
             sgf_path=str(sgf_file),
@@ -439,8 +437,9 @@ class TestRunBatchExtended:
 
     def test_run_batch_extended_parameters(self):
         """run_batch should accept extended parameters."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         import inspect
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
         params = list(sig.parameters.keys())
@@ -453,8 +452,9 @@ class TestRunBatchExtended:
 
     def test_run_batch_parameter_defaults(self):
         """run_batch should have correct default values for backward compatibility."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         import inspect
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
 
@@ -497,16 +497,16 @@ class TestHelperFunctions:
         import katrain.tools.batch_analyze_sgf as module
 
         # Check internal helper functions exist (for documentation)
-        assert hasattr(module, "_extract_game_stats")
-        assert hasattr(module, "_build_batch_summary")
-        assert callable(module._extract_game_stats)
-        assert callable(module._build_batch_summary)
+        assert hasattr(module, "extract_game_stats")
+        assert hasattr(module, "build_batch_summary")
+        assert callable(module.extract_game_stats)
+        assert callable(module.build_batch_summary)
 
-    def test_build_batch_summary_empty_list(self):
-        """_build_batch_summary should handle empty list."""
-        from katrain.tools.batch_analyze_sgf import _build_batch_summary
+    def testbuild_batch_summary_empty_list(self):
+        """build_batch_summary should handle empty list."""
+        from katrain.tools.batch_analyze_sgf import build_batch_summary
 
-        result = _build_batch_summary([])
+        result = build_batch_summary([])
         assert isinstance(result, str)
         # Should still return valid markdown
         assert "#" in result or "No" in result or "0" in result
@@ -518,6 +518,7 @@ class TestBatchOutputBehavior:
     def test_karte_filename_includes_path_hash(self):
         """Karte filenames should include path hash to avoid collisions."""
         import hashlib
+
         rel_path_1 = "pro/game.sgf"
         rel_path_2 = "amateur/game.sgf"
 
@@ -539,6 +540,7 @@ class TestBatchOutputBehavior:
     def test_timestamp_format_includes_seconds(self):
         """Batch timestamp should include seconds to reduce collision risk."""
         from datetime import datetime
+
         # Verify the expected format: YYYYMMDD-HHMMSS
         test_timestamp = datetime(2025, 1, 3, 12, 0, 30).strftime("%Y%m%d-%H%M%S")
         assert test_timestamp == "20250103-120030"
@@ -546,8 +548,9 @@ class TestBatchOutputBehavior:
 
     def test_output_directory_structure_creation(self, tmp_path):
         """Output directories should be created only when needed."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         from unittest.mock import MagicMock
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         # Create mock katrain and engine
         mock_katrain = MagicMock()
@@ -562,7 +565,7 @@ class TestBatchOutputBehavior:
         output_dir = tmp_path / "output"
 
         # Run with all options OFF
-        result = run_batch(
+        run_batch(
             katrain=mock_katrain,
             engine=mock_engine,
             input_dir=str(input_dir),
@@ -582,8 +585,8 @@ class TestBatchOutputBehavior:
     def test_summary_generation_without_sgf_save(self, tmp_path):
         """Summary should be generated even when save_analyzed_sgf is OFF."""
         # This test verifies the code path doesn't depend on saved SGFs
-        from katrain.tools.batch_analyze_sgf import _build_batch_summary
         from katrain.core.eval_metrics import MistakeCategory
+        from katrain.tools.batch_analyze_sgf import build_batch_summary
 
         # Create mock game stats (as if extracted from in-memory Game objects)
         game_stats = [
@@ -610,7 +613,7 @@ class TestBatchOutputBehavior:
         ]
 
         # Build summary from in-memory stats
-        summary = _build_batch_summary(game_stats)
+        summary = build_batch_summary(game_stats)
 
         # Verify summary content
         assert "# Multi-Game Summary" in summary
@@ -620,8 +623,9 @@ class TestBatchOutputBehavior:
 
     def test_analyzed_sgf_not_written_when_disabled(self, tmp_path):
         """Analyzed SGF should NOT be written when save_analyzed_sgf is OFF."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         from unittest.mock import MagicMock
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         # Create mock katrain and engine
         mock_katrain = MagicMock()
@@ -686,10 +690,7 @@ class TestBatchErrorHandling:
         assert result_skipped.summary_error is None
 
         # State 3: Error
-        result_error = BatchResult(
-            summary_written=False,
-            summary_error="No valid game statistics available"
-        )
+        result_error = BatchResult(summary_written=False, summary_error="No valid game statistics available")
         assert result_error.summary_written is False
         assert result_error.summary_error is not None
         assert "No valid" in result_error.summary_error
@@ -707,7 +708,7 @@ class TestBatchErrorHandling:
             summary_written=True,
             summary_error=None,
             analyzed_sgf_written=10,
-            output_dir="/tmp/test"
+            output_dir="/tmp/test",
         )
 
         # Verify all fields are accessible for GUI formatting
@@ -732,14 +733,32 @@ class TestPlayerExtraction:
 
     def test_extract_players_basic(self):
         """Basic player extraction."""
-        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+        from katrain.tools.batch_analyze_sgf import extract_players_from_stats
 
         stats = [
-            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
-            {"player_black": "Alice", "player_white": "Charlie", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 6.0, "W": 3.0}, "worst_moves": []},
-            {"player_black": "Bob", "player_white": "Alice", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 4.0, "W": 5.0}, "worst_moves": []},
+            {
+                "player_black": "Alice",
+                "player_white": "Bob",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
+            {
+                "player_black": "Alice",
+                "player_white": "Charlie",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 6.0, "W": 3.0},
+                "worst_moves": [],
+            },
+            {
+                "player_black": "Bob",
+                "player_white": "Alice",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 4.0, "W": 5.0},
+                "worst_moves": [],
+            },
         ]
-        groups = _extract_players_from_stats(stats, min_games=2)
+        groups = extract_players_from_stats(stats, min_games=2)
         assert "Alice" in groups
         assert len(groups["Alice"]) == 3  # Alice played in all 3 games
         assert "Bob" in groups
@@ -748,25 +767,55 @@ class TestPlayerExtraction:
 
     def test_skip_generic_names(self):
         """Generic names should be skipped."""
-        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+        from katrain.tools.batch_analyze_sgf import extract_players_from_stats
 
         stats = [
-            {"player_black": "Black", "player_white": "White", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
-            {"player_black": "黒", "player_white": "白", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {
+                "player_black": "Black",
+                "player_white": "White",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
+            {
+                "player_black": "黒",
+                "player_white": "白",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
         ]
-        groups = _extract_players_from_stats(stats, min_games=1)
+        groups = extract_players_from_stats(stats, min_games=1)
         assert len(groups) == 0
 
     def test_name_normalization(self):
         """Names with different whitespace should group together."""
-        from katrain.tools.batch_analyze_sgf import _extract_players_from_stats
+        from katrain.tools.batch_analyze_sgf import extract_players_from_stats
 
         stats = [
-            {"player_black": "Alice  ", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
-            {"player_black": " Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
-            {"player_black": "Alice", "player_white": "Bob", "moves_by_player": {"B": 50, "W": 50}, "loss_by_player": {"B": 5.0, "W": 4.0}, "worst_moves": []},
+            {
+                "player_black": "Alice  ",
+                "player_white": "Bob",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
+            {
+                "player_black": " Alice",
+                "player_white": "Bob",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
+            {
+                "player_black": "Alice",
+                "player_white": "Bob",
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 5.0, "W": 4.0},
+                "worst_moves": [],
+            },
         ]
-        groups = _extract_players_from_stats(stats, min_games=1)
+        groups = extract_players_from_stats(stats, min_games=1)
         # All 3 "Alice" variations should be grouped together
         assert len(groups) == 2  # Alice and Bob
         # Find Alice's group (display name may vary based on first occurrence)
@@ -783,59 +832,59 @@ class TestFilenameSanitization:
     """Tests for filename sanitization."""
 
     def test_basic_names(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("Alice") == "Alice"
-        assert _sanitize_filename("Bob Smith") == "Bob_Smith"
+        assert sanitize_filename("Alice") == "Alice"
+        assert sanitize_filename("Bob Smith") == "Bob_Smith"
 
     def test_cjk_names(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("田中太郎") == "田中太郎"
+        assert sanitize_filename("田中太郎") == "田中太郎"
         # Slash is invalid character, should be replaced
-        result = _sanitize_filename("山田/ヨセ")
+        result = sanitize_filename("山田/ヨセ")
         assert "/" not in result
         assert "山田" in result
 
     def test_invalid_chars(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        result = _sanitize_filename("Alice<>Bob")
+        result = sanitize_filename("Alice<>Bob")
         assert "<" not in result
         assert ">" not in result
 
-        result = _sanitize_filename("User:Name")
+        result = sanitize_filename("User:Name")
         assert ":" not in result
 
     def test_windows_reserved(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("CON") == "_CON_"
-        assert _sanitize_filename("NUL") == "_NUL_"
-        assert _sanitize_filename("com1") == "_com1_"
+        assert sanitize_filename("CON") == "_CON_"
+        assert sanitize_filename("NUL") == "_NUL_"
+        assert sanitize_filename("com1") == "_com1_"
 
     def test_whitespace(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
         # Full-width spaces should be normalized
-        result = _sanitize_filename("　全角スペース　")
+        result = sanitize_filename("　全角スペース　")
         assert result == "全角スペース"
 
-        result = _sanitize_filename("  multiple   spaces  ")
+        result = sanitize_filename("  multiple   spaces  ")
         assert result == "multiple_spaces"
 
     def test_empty_fallback(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("") == "unknown"
-        assert _sanitize_filename("   ") == "unknown"
-        assert _sanitize_filename("...") == "unknown"
+        assert sanitize_filename("") == "unknown"
+        assert sanitize_filename("   ") == "unknown"
+        assert sanitize_filename("...") == "unknown"
 
     def test_length_truncation(self):
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
         long_name = "a" * 100
-        result = _sanitize_filename(long_name)
+        result = sanitize_filename(long_name)
         assert len(result) <= 50
 
 
@@ -844,7 +893,7 @@ class TestEntropyNormalization:
 
     def test_uniform_distribution_all_sizes(self):
         """Uniform distribution should be EASY on all board sizes."""
-        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
 
         for size in [9, 13, 19]:
             n = size * size
@@ -854,7 +903,7 @@ class TestEntropyNormalization:
 
     def test_concentrated_distribution_all_sizes(self):
         """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
-        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
 
         for size in [9, 13, 19]:
             n = size * size
@@ -862,12 +911,13 @@ class TestEntropyNormalization:
             concentrated[0] = 0.95
             concentrated[1] = 0.05
             diff, _ = _assess_difficulty_from_policy(concentrated, board_size=size)
-            assert diff in (PositionDifficulty.ONLY_MOVE, PositionDifficulty.HARD), \
+            assert diff in (PositionDifficulty.ONLY_MOVE, PositionDifficulty.HARD), (
                 f"Concentrated distribution on {size}x{size} should be ONLY_MOVE or HARD"
+            )
 
     def test_board_size_as_tuple(self):
         """Should handle board_size as tuple (x, y)."""
-        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
 
         uniform = [1.0 / 361] * 361
         diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
@@ -886,7 +936,7 @@ class TestEntropyNormalization:
 
     def test_empty_policy(self):
         """Empty policy should return UNKNOWN."""
-        from katrain.core.eval_metrics import _assess_difficulty_from_policy, PositionDifficulty
+        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
 
         diff, score = _assess_difficulty_from_policy([])
         assert diff == PositionDifficulty.UNKNOWN
@@ -898,8 +948,9 @@ class TestRunBatchMinGamesParameter:
 
     def test_run_batch_has_min_games_parameter(self):
         """run_batch should accept min_games_per_player parameter."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         import inspect
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
         params = list(sig.parameters.keys())
@@ -908,54 +959,55 @@ class TestRunBatchMinGamesParameter:
 
     def test_run_batch_min_games_default(self):
         """min_games_per_player should default to 3."""
-        from katrain.tools.batch_analyze_sgf import run_batch
         import inspect
+
+        from katrain.tools.batch_analyze_sgf import run_batch
 
         sig = inspect.signature(run_batch)
         assert sig.parameters["min_games_per_player"].default == 3
 
 
 class TestCanonicalLossHelper:
-    """Tests for _get_canonical_loss helper (single source of truth)."""
+    """Tests for get_canonical_loss helper (single source of truth)."""
 
     def test_positive_loss_unchanged(self):
         """Positive loss should be returned as-is."""
-        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+        from katrain.tools.batch_analyze_sgf import get_canonical_loss
 
-        assert _get_canonical_loss(5.0) == 5.0
-        assert _get_canonical_loss(0.5) == 0.5
-        assert _get_canonical_loss(100.0) == 100.0
+        assert get_canonical_loss(5.0) == 5.0
+        assert get_canonical_loss(0.5) == 0.5
+        assert get_canonical_loss(100.0) == 100.0
 
     def test_negative_loss_clamped_to_zero(self):
         """Negative loss (gain from opponent mistake) should be clamped to 0."""
-        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+        from katrain.tools.batch_analyze_sgf import get_canonical_loss
 
-        assert _get_canonical_loss(-3.0) == 0.0
-        assert _get_canonical_loss(-0.1) == 0.0
-        assert _get_canonical_loss(-100.0) == 0.0
+        assert get_canonical_loss(-3.0) == 0.0
+        assert get_canonical_loss(-0.1) == 0.0
+        assert get_canonical_loss(-100.0) == 0.0
 
     def test_zero_loss_unchanged(self):
         """Zero loss should remain zero."""
-        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+        from katrain.tools.batch_analyze_sgf import get_canonical_loss
 
-        assert _get_canonical_loss(0.0) == 0.0
+        assert get_canonical_loss(0.0) == 0.0
 
     def test_none_returns_zero(self):
         """None should return 0."""
-        from katrain.tools.batch_analyze_sgf import _get_canonical_loss
+        from katrain.tools.batch_analyze_sgf import get_canonical_loss
 
-        assert _get_canonical_loss(None) == 0.0
+        assert get_canonical_loss(None) == 0.0
 
 
 class TestSafeWriteFile:
-    """Tests for _safe_write_file helper (A3: I/O error handling)."""
+    """Tests for safe_write_file helper (A3: I/O error handling)."""
 
     def test_creates_parent_directories(self, tmp_path):
         """Should create parent directories if they don't exist."""
-        from katrain.tools.batch_analyze_sgf import _safe_write_file
+        from katrain.tools.batch_analyze_sgf import safe_write_file
 
         nested_path = tmp_path / "a" / "b" / "c" / "test.md"
-        error = _safe_write_file(
+        error = safe_write_file(
             path=str(nested_path),
             content="test content",
             file_kind="karte",
@@ -967,7 +1019,7 @@ class TestSafeWriteFile:
 
     def test_returns_error_on_permission_denied(self, tmp_path, monkeypatch):
         """Should return WriteError on PermissionError."""
-        from katrain.tools.batch_analyze_sgf import _safe_write_file, WriteError
+        from katrain.tools.batch_analyze_sgf import WriteError, safe_write_file
 
         test_path = tmp_path / "test.md"
 
@@ -977,7 +1029,7 @@ class TestSafeWriteFile:
 
         monkeypatch.setattr("builtins.open", mock_open)
 
-        error = _safe_write_file(
+        error = safe_write_file(
             path=str(test_path),
             content="test content",
             file_kind="karte",
@@ -992,7 +1044,7 @@ class TestSafeWriteFile:
 
     def test_returns_error_on_oserror(self, tmp_path, monkeypatch):
         """Should return WriteError on OSError."""
-        from katrain.tools.batch_analyze_sgf import _safe_write_file, WriteError
+        from katrain.tools.batch_analyze_sgf import safe_write_file
 
         test_path = tmp_path / "test.md"
 
@@ -1001,7 +1053,7 @@ class TestSafeWriteFile:
 
         monkeypatch.setattr("builtins.open", mock_open)
 
-        error = _safe_write_file(
+        error = safe_write_file(
             path=str(test_path),
             content="test content",
             file_kind="summary",
@@ -1013,12 +1065,12 @@ class TestSafeWriteFile:
 
     def test_writes_unicode_content(self, tmp_path):
         """Should handle Unicode content correctly."""
-        from katrain.tools.batch_analyze_sgf import _safe_write_file
+        from katrain.tools.batch_analyze_sgf import safe_write_file
 
         test_path = tmp_path / "unicode_test.md"
         unicode_content = "# カルテ\n仙得 vs 顺势而韦\n囲碁分析"
 
-        error = _safe_write_file(
+        error = safe_write_file(
             path=str(test_path),
             content=unicode_content,
             file_kind="karte",
@@ -1078,28 +1130,28 @@ class TestBatchResultWriteErrors:
 
 
 class TestSanitizeFilenameTrailingChars:
-    """Tests for _sanitize_filename trailing dots/spaces handling."""
+    """Tests for sanitize_filename trailing dots/spaces handling."""
 
     def test_strips_trailing_dots(self):
         """Should strip trailing dots (Windows requirement)."""
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("name...") == "name"
+        assert sanitize_filename("name...") == "name"
         # Dots in the middle are preserved, only trailing dots stripped
-        assert _sanitize_filename("file.name..") == "file.name"
+        assert sanitize_filename("file.name..") == "file.name"
 
     def test_strips_trailing_spaces(self):
         """Should strip trailing spaces (Windows requirement)."""
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("name   ") == "name"
+        assert sanitize_filename("name   ") == "name"
 
     def test_handles_only_dots_and_spaces(self):
         """Should return 'unknown' for only dots and spaces."""
-        from katrain.tools.batch_analyze_sgf import _sanitize_filename
+        from katrain.tools.batch_analyze_sgf import sanitize_filename
 
-        assert _sanitize_filename("...   ") == "unknown"
-        assert _sanitize_filename("   ") == "unknown"
+        assert sanitize_filename("...   ") == "unknown"
+        assert sanitize_filename("   ") == "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -1112,8 +1164,8 @@ class TestPlayerSummaryReasonTags:
 
     def test_reason_tags_counted_in_stats(self):
         """Verify reason_tags_by_player is populated in game stats."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         # Create a mock stats dict with reason tags
         mock_stats = {
@@ -1151,7 +1203,7 @@ class TestPlayerSummaryReasonTags:
 
         # Build summary for player B
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Verify reason tags section is present
         assert "## Reason Tags (Top 10)" in summary
@@ -1161,8 +1213,8 @@ class TestPlayerSummaryReasonTags:
 
     def test_reason_tags_aggregated_across_games(self):
         """Verify reason tags are correctly aggregated across multiple games."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         def make_mock_stats(name, reason_tags):
             return {
@@ -1202,7 +1254,7 @@ class TestPlayerSummaryReasonTags:
         stats2 = make_mock_stats("game2.sgf", {"B": {"low_liberties": 3, "need_connect": 2}, "W": {}})
 
         player_games = [(stats1, "B"), (stats2, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Check aggregated counts (8 total for low_liberties)
         assert "呼吸点少 (low liberties): 8" in summary
@@ -1211,8 +1263,8 @@ class TestPlayerSummaryReasonTags:
 
     def test_reason_tags_ordering_is_deterministic(self):
         """Verify reason tags are sorted by count desc, then by tag name asc."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1249,7 +1301,7 @@ class TestPlayerSummaryReasonTags:
         }
 
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Both have count 5, should be sorted alphabetically: atari before low_liberties
         # Search using Japanese labels since that's what get_reason_tag_label returns
@@ -1258,10 +1310,7 @@ class TestPlayerSummaryReasonTags:
         # Phase 54: Filter to only "Reason Tags" section lines (not hint lines with **)
         # Reason tag lines format: "- Label (tag): count (pct%)"
         # Hint lines format: "- **Label (tag)**（count）→ hint"
-        tag_lines = [
-            l for l in lines
-            if ("(atari)" in l or "(low liberties)" in l) and "**" not in l
-        ]
+        tag_lines = [l for l in lines if ("(atari)" in l or "(low liberties)" in l) and "**" not in l]
         assert len(tag_lines) == 2
         # atari (alphabetically first) should come before low_liberties
         # Get indices from non-bold lines only
@@ -1286,8 +1335,8 @@ class TestPlayerSummaryReasonTags:
 
     def test_no_reason_tags_shows_message(self):
         """Verify empty reason tags shows appropriate message."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1320,7 +1369,7 @@ class TestPlayerSummaryReasonTags:
         }
 
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         assert "## Reason Tags (Top 10)" in summary
         assert "No reason tags recorded" in summary
@@ -1331,8 +1380,8 @@ class TestDefinitionsSection:
 
     def test_definitions_section_present_in_summary(self):
         """Verify Definitions section is present in Player Summary."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1370,13 +1419,14 @@ class TestDefinitionsSection:
         }
 
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Check Definitions section exists
         assert "## Definitions" in summary
 
         # Check that thresholds come from SKILL_PRESETS (not hardcoded)
         from katrain.core.eval_metrics import SKILL_PRESETS
+
         preset = SKILL_PRESETS["standard"]
         t1, t2, t3 = preset.score_thresholds
 
@@ -1387,7 +1437,7 @@ class TestDefinitionsSection:
 
     def test_thresholds_match_skill_presets(self):
         """Verify thresholds in Definitions match SKILL_PRESETS exactly."""
-        from katrain.core.eval_metrics import SKILL_PRESETS, DEFAULT_SKILL_PRESET
+        from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET, SKILL_PRESETS
 
         preset = SKILL_PRESETS.get("standard", SKILL_PRESETS[DEFAULT_SKILL_PRESET])
         t1, t2, t3 = preset.score_thresholds
@@ -1422,8 +1472,8 @@ class TestDataQualitySection:
 
     def test_data_quality_section_present(self):
         """Verify Data Quality section is present in Player Summary."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1461,7 +1511,7 @@ class TestDataQualitySection:
         }
 
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Check Data Quality section exists
         assert "## Data Quality" in summary
@@ -1471,8 +1521,8 @@ class TestDataQualitySection:
 
     def test_low_reliability_warning_triggers(self):
         """Verify warning appears when reliability < 20%."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         # Create stats with low reliability (1 reliable out of 10 = 10%)
         mock_stats = {
@@ -1511,7 +1561,7 @@ class TestDataQualitySection:
         }
 
         player_games = [(mock_stats, "B")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Should have the warning
         assert "⚠ Low analysis reliability (<20%)" in summary
@@ -1522,18 +1572,51 @@ class TestReliabilityStatsHelper:
 
     def test_compute_reliability_stats_basic(self):
         """Test basic reliability stats computation."""
-        from katrain.core.eval_metrics import compute_reliability_stats, MoveEval, RELIABILITY_VISITS_THRESHOLD
+        from katrain.core.eval_metrics import MoveEval, compute_reliability_stats
 
         moves = [
-            MoveEval(move_number=1, player="B", gtp="D4", score_before=None, score_after=None,
-                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=1.0, realized_points_lost=None, root_visits=500),
-            MoveEval(move_number=2, player="W", gtp="Q16", score_before=None, score_after=None,
-                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=0.5, realized_points_lost=None, root_visits=100),  # Low confidence
-            MoveEval(move_number=3, player="B", gtp="C3", score_before=None, score_after=None,
-                     delta_score=None, winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=2.0, realized_points_lost=None, root_visits=0),  # Zero visits
+            MoveEval(
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=1.0,
+                realized_points_lost=None,
+                root_visits=500,
+            ),
+            MoveEval(
+                move_number=2,
+                player="W",
+                gtp="Q16",
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=0.5,
+                realized_points_lost=None,
+                root_visits=100,
+            ),  # Low confidence
+            MoveEval(
+                move_number=3,
+                player="B",
+                gtp="C3",
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=2.0,
+                realized_points_lost=None,
+                root_visits=0,
+            ),  # Zero visits
         ]
 
         stats = compute_reliability_stats(moves)
@@ -1555,21 +1638,15 @@ class TestReliabilityStatsHelper:
         # so we need to set moves_with_visits for accurate testing
 
         # 10% reliability (1/10 of moves_with_visits reliable) - should be low
-        low_stats = ReliabilityStats(
-            total_moves=10, reliable_count=1, low_confidence_count=9, moves_with_visits=10
-        )
+        low_stats = ReliabilityStats(total_moves=10, reliable_count=1, low_confidence_count=9, moves_with_visits=10)
         assert low_stats.is_low_reliability is True
 
         # 80% reliability (8/10 of moves_with_visits reliable) - should NOT be low
-        high_stats = ReliabilityStats(
-            total_moves=10, reliable_count=8, low_confidence_count=2, moves_with_visits=10
-        )
+        high_stats = ReliabilityStats(total_moves=10, reliable_count=8, low_confidence_count=2, moves_with_visits=10)
         assert high_stats.is_low_reliability is False
 
         # Exactly 20% (2/10 of moves_with_visits reliable) - should NOT be low (>=20% is OK)
-        borderline = ReliabilityStats(
-            total_moves=10, reliable_count=2, low_confidence_count=8, moves_with_visits=10
-        )
+        borderline = ReliabilityStats(total_moves=10, reliable_count=2, low_confidence_count=8, moves_with_visits=10)
         assert borderline.is_low_reliability is False
 
 
@@ -1594,13 +1671,13 @@ class TestBestGapFormatting:
 
         # Test cases
         assert format_best_gap(-1e-9) == "0%"  # Tiny negative -> 0%
-        assert format_best_gap(1e-9) == "0%"   # Tiny positive -> 0%
-        assert format_best_gap(-0.001) == "0%" # Small negative -> 0%
-        assert format_best_gap(0.0) == "0%"    # Zero -> 0%
-        assert format_best_gap(0.01) == "1%"   # 1% stays 1%
-        assert format_best_gap(-0.01) == "-1%" # -1% stays -1% (if that's valid)
+        assert format_best_gap(1e-9) == "0%"  # Tiny positive -> 0%
+        assert format_best_gap(-0.001) == "0%"  # Small negative -> 0%
+        assert format_best_gap(0.0) == "0%"  # Zero -> 0%
+        assert format_best_gap(0.01) == "1%"  # 1% stays 1%
+        assert format_best_gap(-0.01) == "-1%"  # -1% stays -1% (if that's valid)
         assert format_best_gap(0.25) == "25%"  # Normal value
-        assert format_best_gap(None) == "-"    # None -> "-"
+        assert format_best_gap(None) == "-"  # None -> "-"
 
 
 class TestReasonTagsFromImportantMoves:
@@ -1612,7 +1689,7 @@ class TestReasonTagsFromImportantMoves:
         This test documents the expected behavior:
         - reason_tags are populated by get_important_move_evals(compute_reason_tags=True)
         - build_eval_snapshot() returns moves with empty reason_tags
-        - _extract_game_stats should use get_important_move_evals() for reason_tags
+        - extract_game_stats should use get_important_move_evals() for reason_tags
 
         A full integration test would require a complete Game object with analysis,
         which is impractical for unit tests.
@@ -1638,8 +1715,8 @@ class TestReasonTagsFromImportantMoves:
 
     def test_summary_with_nonempty_reason_tags(self):
         """Verify summary shows reason tags when they are present in stats."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1674,8 +1751,22 @@ class TestReasonTagsFromImportantMoves:
                 "W": {"low_liberties": 9, "endgame_hint": 4, "need_connect": 3},
             },
             "reliability_by_player": {
-                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
-                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+                "B": {
+                    "total": 50,
+                    "reliable": 40,
+                    "low_confidence": 10,
+                    "total_visits": 20000,
+                    "with_visits": 50,
+                    "max_visits": 500,
+                },
+                "W": {
+                    "total": 50,
+                    "reliable": 45,
+                    "low_confidence": 5,
+                    "total_visits": 25000,
+                    "with_visits": 50,
+                    "max_visits": 600,
+                },
             },
             # PR1-1: Important moves stats for Reason Tags clarity
             "important_moves_stats_by_player": {
@@ -1687,7 +1778,7 @@ class TestReasonTagsFromImportantMoves:
 
         # Build summary for White player (仙得 equivalent)
         player_games = [(mock_stats, "W")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # Reason tags should be present (not "No reason tags recorded")
         assert "## Reason Tags (Top 10)" in summary
@@ -1701,8 +1792,8 @@ class TestPR1ReasonTagsClarity:
 
     def test_reason_tags_shows_important_moves_count(self):
         """Verify Reason Tags section shows important moves count and tagged count."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1736,8 +1827,22 @@ class TestPR1ReasonTagsClarity:
                 "W": {"low_liberties": 5, "need_connect": 3},
             },
             "reliability_by_player": {
-                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
-                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+                "B": {
+                    "total": 50,
+                    "reliable": 40,
+                    "low_confidence": 10,
+                    "total_visits": 20000,
+                    "with_visits": 50,
+                    "max_visits": 500,
+                },
+                "W": {
+                    "total": 50,
+                    "reliable": 45,
+                    "low_confidence": 5,
+                    "total_visits": 25000,
+                    "with_visits": 50,
+                    "max_visits": 600,
+                },
             },
             # PR1-1: Important moves stats
             "important_moves_stats_by_player": {
@@ -1748,7 +1853,7 @@ class TestPR1ReasonTagsClarity:
         }
 
         player_games = [(mock_stats, "W")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # PR1-1: Should show important moves count and tagged count in note
         assert "Tags computed for 7 important moves" in summary
@@ -1760,8 +1865,8 @@ class TestPR1DataQualityMaxVisits:
 
     def test_data_quality_shows_max_visits(self):
         """Verify Data Quality section shows max visits."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
         from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         mock_stats = {
             "game_name": "test_game.sgf",
@@ -1792,8 +1897,22 @@ class TestPR1DataQualityMaxVisits:
             "phase_mistake_loss_by_player": {"B": {}, "W": {}},
             "reason_tags_by_player": {"B": {}, "W": {}},
             "reliability_by_player": {
-                "B": {"total": 50, "reliable": 40, "low_confidence": 10, "total_visits": 20000, "with_visits": 50, "max_visits": 500},
-                "W": {"total": 50, "reliable": 45, "low_confidence": 5, "total_visits": 25000, "with_visits": 50, "max_visits": 600},
+                "B": {
+                    "total": 50,
+                    "reliable": 40,
+                    "low_confidence": 10,
+                    "total_visits": 20000,
+                    "with_visits": 50,
+                    "max_visits": 500,
+                },
+                "W": {
+                    "total": 50,
+                    "reliable": 45,
+                    "low_confidence": 5,
+                    "total_visits": 25000,
+                    "with_visits": 50,
+                    "max_visits": 600,
+                },
             },
             "important_moves_stats_by_player": {
                 "B": {"important_count": 0, "tagged_count": 0, "tag_occurrences": 0},
@@ -1803,7 +1922,7 @@ class TestPR1DataQualityMaxVisits:
         }
 
         player_games = [(mock_stats, "W")]
-        summary = _build_player_summary("TestPlayer", player_games)
+        summary = build_player_summary("TestPlayer", player_games)
 
         # PR1-2: Should show max visits
         assert "Max visits: 600" in summary
@@ -1812,21 +1931,51 @@ class TestPR1DataQualityMaxVisits:
 
     def test_reliability_stats_max_visits(self):
         """Verify ReliabilityStats tracks max_visits correctly."""
-        from katrain.core.eval_metrics import compute_reliability_stats, MoveEval
+        from katrain.core.eval_metrics import MoveEval, compute_reliability_stats
 
         moves = [
-            MoveEval(move_number=1, player="B", gtp="D4", root_visits=100,
-                     score_before=None, score_after=None, delta_score=None,
-                     winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=None, realized_points_lost=None),
-            MoveEval(move_number=2, player="W", gtp="D16", root_visits=150,
-                     score_before=None, score_after=None, delta_score=None,
-                     winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=None, realized_points_lost=None),
-            MoveEval(move_number=3, player="B", gtp="Q4", root_visits=120,
-                     score_before=None, score_after=None, delta_score=None,
-                     winrate_before=None, winrate_after=None, delta_winrate=None,
-                     points_lost=None, realized_points_lost=None),
+            MoveEval(
+                move_number=1,
+                player="B",
+                gtp="D4",
+                root_visits=100,
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=None,
+                realized_points_lost=None,
+            ),
+            MoveEval(
+                move_number=2,
+                player="W",
+                gtp="D16",
+                root_visits=150,
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=None,
+                realized_points_lost=None,
+            ),
+            MoveEval(
+                move_number=3,
+                player="B",
+                gtp="Q4",
+                root_visits=120,
+                score_before=None,
+                score_after=None,
+                delta_score=None,
+                winrate_before=None,
+                winrate_after=None,
+                delta_winrate=None,
+                points_lost=None,
+                realized_points_lost=None,
+            ),
         ]
 
         stats = compute_reliability_stats(moves)
@@ -1838,6 +1987,7 @@ class TestPR1BestGapRobustFormatting:
 
     def test_best_gap_rounding_based(self):
         """Verify Best Gap uses int(round(val)) for robust formatting."""
+
         # Reproduce the new formatting logic from game.py
         def format_best_gap_new(best_gap):
             """New rounding-based formatting logic."""
@@ -1852,21 +2002,21 @@ class TestPR1BestGapRobustFormatting:
                 return "-"
 
         # Test cases
-        assert format_best_gap_new(-1e-9) == "0%"   # Tiny negative -> 0%
-        assert format_best_gap_new(1e-9) == "0%"    # Tiny positive -> 0%
+        assert format_best_gap_new(-1e-9) == "0%"  # Tiny negative -> 0%
+        assert format_best_gap_new(1e-9) == "0%"  # Tiny positive -> 0%
         assert format_best_gap_new(-0.001) == "0%"  # Small negative -> 0%
-        assert format_best_gap_new(0.0) == "0%"     # Zero -> 0%
+        assert format_best_gap_new(0.0) == "0%"  # Zero -> 0%
         assert format_best_gap_new(-0.004) == "0%"  # Rounds to 0
-        assert format_best_gap_new(0.004) == "0%"   # Rounds to 0
+        assert format_best_gap_new(0.004) == "0%"  # Rounds to 0
         # Note: 0.005 * 100 = 0.5, Python banker's rounding rounds 0.5 -> 0
-        assert format_best_gap_new(0.005) == "0%"   # Rounds to 0 (banker's rounding)
-        assert format_best_gap_new(0.006) == "1%"   # Rounds to 1
-        assert format_best_gap_new(0.01) == "1%"    # 1%
+        assert format_best_gap_new(0.005) == "0%"  # Rounds to 0 (banker's rounding)
+        assert format_best_gap_new(0.006) == "1%"  # Rounds to 1
+        assert format_best_gap_new(0.01) == "1%"  # 1%
         assert format_best_gap_new(-0.01) == "-1%"  # -1%
-        assert format_best_gap_new(0.25) == "25%"   # Normal value
+        assert format_best_gap_new(0.25) == "25%"  # Normal value
         assert format_best_gap_new(0.495) == "50%"  # Rounds to 50 (banker's rounding)
         assert format_best_gap_new(0.505) == "50%"  # Rounds to 50 (banker's rounding)
-        assert format_best_gap_new(None) == "-"     # None -> "-"
+        assert format_best_gap_new(None) == "-"  # None -> "-"
 
 
 class TestBatchOptionsPersistence:
@@ -1965,10 +2115,14 @@ class TestBatchOptionsPersistence:
 
     def test_partial_save_preserves_existing(self):
         """Partial save preserves existing values."""
-        config_storage = {"mykatrain_settings": {"batch_options": {
-            "input_dir": "C:\\existing",
-            "visits": 100,
-        }}}
+        config_storage = {
+            "mykatrain_settings": {
+                "batch_options": {
+                    "input_dir": "C:\\existing",
+                    "visits": 100,
+                }
+            }
+        }
 
         def save_batch_options(options):
             mykatrain_settings = config_storage.get("mykatrain_settings", {})
@@ -2005,7 +2159,7 @@ class TestBatchOptionsPersistence:
             "batch_export_input_directory": "C:\\legacy\\path",
             "batch_options": {
                 "input_dir": "C:\\new\\path",
-            }
+            },
         }
 
         batch_options = mykatrain_settings.get("batch_options", {})
@@ -2187,7 +2341,7 @@ class TestPerGameMetrics:
 
     def test_per_game_metrics_calculated(self):
         """Per-game metrics should be calculated from totals."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         # Create mock player games (2 games with proper stats structure)
         stats1 = _make_mock_stats(moves_b=100, loss_b=10.0, blunders_b=2, mistakes_b=3)
@@ -2198,7 +2352,7 @@ class TestPerGameMetrics:
             (stats2, "B"),
         ]
 
-        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+        summary = build_player_summary("TestPlayer", player_games, skill_preset="standard")
 
         # Verify per-game averages section exists
         assert "Per-game averages" in summary
@@ -2208,10 +2362,10 @@ class TestPerGameMetrics:
 
     def test_per_game_metrics_zero_games(self):
         """Per-game metrics should show '-' for zero games."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         player_games = []
-        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+        summary = build_player_summary("TestPlayer", player_games, skill_preset="standard")
 
         # With no games, should show "-" placeholder
         assert "Per-game averages" in summary or "Games analyzed**: 0" in summary
@@ -2222,7 +2376,7 @@ class TestAnalysisSettingsSection:
 
     def test_analysis_settings_present(self):
         """Analysis Settings section should be present when analysis_settings provided."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         stats = _make_mock_stats()
         player_games = [(stats, "B")]
@@ -2233,7 +2387,7 @@ class TestAnalysisSettingsSection:
             "timeout": 600,
         }
 
-        summary = _build_player_summary(
+        summary = build_player_summary(
             "TestPlayer",
             player_games,
             skill_preset="standard",
@@ -2248,7 +2402,7 @@ class TestAnalysisSettingsSection:
 
     def test_analysis_settings_variable_visits_on(self):
         """Analysis Settings should show variable visits details when enabled."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         stats = _make_mock_stats()
         player_games = [(stats, "B")]
@@ -2261,7 +2415,7 @@ class TestAnalysisSettingsSection:
             "timeout": 600,
         }
 
-        summary = _build_player_summary(
+        summary = build_player_summary(
             "TestPlayer",
             player_games,
             skill_preset="standard",
@@ -2274,12 +2428,12 @@ class TestAnalysisSettingsSection:
 
     def test_analysis_settings_not_present_when_none(self):
         """Analysis Settings section should not appear when analysis_settings is None."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         stats = _make_mock_stats()
         player_games = [(stats, "B")]
 
-        summary = _build_player_summary(
+        summary = build_player_summary(
             "TestPlayer",
             player_games,
             skill_preset="standard",
@@ -2294,7 +2448,7 @@ class TestJPLabels:
 
     def test_skill_preset_labels_import(self):
         """SKILL_PRESET_LABELS should be importable from eval_metrics."""
-        from katrain.core.eval_metrics import SKILL_PRESET_LABELS, CONFIDENCE_LABELS
+        from katrain.core.eval_metrics import CONFIDENCE_LABELS, SKILL_PRESET_LABELS
 
         # Verify all expected keys exist
         assert "relaxed" in SKILL_PRESET_LABELS
@@ -2319,28 +2473,28 @@ class TestJPLabels:
 
     def test_summary_uses_jp_labels(self):
         """Player summary should use JP labels for strictness."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         stats = _make_mock_stats()
         player_games = [(stats, "B")]
 
         # Test manual mode
-        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+        summary = build_player_summary("TestPlayer", player_games, skill_preset="standard")
         assert "標準" in summary  # JP label for "standard"
         assert "(手動)" in summary  # JP label for "(manual)"
 
         # Test auto mode
-        summary_auto = _build_player_summary("TestPlayer", player_games, skill_preset="auto")
+        summary_auto = build_player_summary("TestPlayer", player_games, skill_preset="auto")
         assert "自動" in summary_auto  # JP label for "auto"
 
     def test_auto_hint_in_manual_mode(self):
         """Auto hint should appear when manual mode is used."""
-        from katrain.tools.batch_analyze_sgf import _build_player_summary
+        from katrain.tools.batch_analyze_sgf import build_player_summary
 
         stats = _make_mock_stats(blunders_b=5, mistakes_b=10)
         player_games = [(stats, "B")]
 
-        summary = _build_player_summary("TestPlayer", player_games, skill_preset="standard")
+        summary = build_player_summary("TestPlayer", player_games, skill_preset="standard")
 
         # Should contain auto recommendation hint
         assert "Auto recommended:" in summary

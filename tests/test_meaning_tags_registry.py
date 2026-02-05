@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for meaning_tags/registry.py.
 
 Part of Phase 46: Meaning Tags System Core - PR-1.
@@ -14,7 +13,6 @@ from katrain.core.analysis.meaning_tags import (
     get_tag_description,
     get_tag_label,
 )
-
 
 # =============================================================================
 # MEANING_TAG_REGISTRY Tests
@@ -82,18 +80,14 @@ class TestLexiconAnchors:
     def test_five_tags_have_anchors(self) -> None:
         """Exactly 5 tags should have Lexicon anchors."""
         tags_with_anchors = {
-            tag_id
-            for tag_id, defn in MEANING_TAG_REGISTRY.items()
-            if defn.default_lexicon_anchor is not None
+            tag_id for tag_id, defn in MEANING_TAG_REGISTRY.items() if defn.default_lexicon_anchor is not None
         }
         assert tags_with_anchors == set(self.TAGS_WITH_ANCHORS.keys())
 
     def test_seven_tags_have_no_anchors(self) -> None:
         """Exactly 7 tags should have no Lexicon anchors."""
         tags_without_anchors = {
-            tag_id
-            for tag_id, defn in MEANING_TAG_REGISTRY.items()
-            if defn.default_lexicon_anchor is None
+            tag_id for tag_id, defn in MEANING_TAG_REGISTRY.items() if defn.default_lexicon_anchor is None
         }
         assert tags_without_anchors == self.TAGS_WITHOUT_ANCHORS
 
@@ -107,9 +101,7 @@ class TestLexiconAnchors:
             (MeaningTagId.TERRITORIAL_LOSS, "territory"),
         ],
     )
-    def test_specific_anchor_values(
-        self, tag_id: MeaningTagId, expected_anchor: str
-    ) -> None:
+    def test_specific_anchor_values(self, tag_id: MeaningTagId, expected_anchor: str) -> None:
         """Verify specific anchor IDs match the plan."""
         definition = MEANING_TAG_REGISTRY[tag_id]
         assert definition.default_lexicon_anchor == expected_anchor

@@ -6,22 +6,19 @@ tests/test_engine_compare.py - Phase 39 エンジン比較ロジックのテス�
 - scipy不使用（手動Spearmanテスト + 条件付きscipy比較）
 """
 
-import math
 from unittest.mock import MagicMock
 
 import pytest
 
 from katrain.core.analysis.engine_compare import (
+    PARTIAL_OVERLAP_THRESHOLD,
     ComparisonWarning,
     EngineComparisonResult,
     EngineStats,
     MoveComparison,
-    PARTIAL_OVERLAP_THRESHOLD,
-    build_comparison_from_game,
     compute_engine_stats,
     compute_spearman_manual,
 )
-
 
 # =============================================================================
 # Helper Functions
@@ -68,7 +65,7 @@ def make_mock_game(
     # 手ノードを作成
     nodes = [root]
     prev_node = root
-    for move_num, player_str, gtp, score_loss, leela_loss in moves:
+    for move_num, player_str, gtp, _score_loss, leela_loss in moves:
         node = MagicMock()
         node.depth = move_num
         node.parent = prev_node
@@ -392,8 +389,7 @@ class TestEdgeCases:
         import time
 
         comparisons = [
-            make_move_comparison(i, katago_loss=float(i % 10), leela_loss=float((i + 1) % 10))
-            for i in range(1, 501)
+            make_move_comparison(i, katago_loss=float(i % 10), leela_loss=float((i + 1) % 10)) for i in range(1, 501)
         ]
 
         start = time.time()

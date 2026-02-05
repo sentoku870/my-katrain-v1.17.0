@@ -3,11 +3,9 @@
 Cross-platform file/folder opener tests.
 Uses mock to avoid actually opening files/folders during tests.
 """
-import os
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
+import os
+from unittest.mock import MagicMock, patch
 
 from katrain.common import file_opener
 from katrain.common.file_opener import (

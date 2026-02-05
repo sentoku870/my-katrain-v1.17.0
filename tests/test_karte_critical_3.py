@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Integration tests for Critical 3 section in Karte report (Phase 50).
 
@@ -12,14 +11,12 @@ All tests are engine-free (no KataGo/Leela required).
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
 
-from katrain.core.analysis import CriticalMove, select_critical_moves
+from katrain.core.analysis import CriticalMove
 from katrain.core.reports.karte_report import (
-    build_critical_3_prompt,
     CRITICAL_3_PROMPT_TEMPLATE,
+    build_critical_3_prompt,
 )
-
 
 # =============================================================================
 # Test Fixtures

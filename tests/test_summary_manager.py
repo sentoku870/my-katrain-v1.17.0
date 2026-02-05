@@ -13,11 +13,12 @@ Note: これはUI統合テストではなく、配線の正確性を検証する
 - テストでは lambda msg, lvl: None または lambda msg, lvl=0: None のどちらも使用可能
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ========== テスト用ヘルパー ==========
+
 
 def make_test_logger():
     """テスト用のloggerを作成（呼び出し記録付き）
@@ -26,8 +27,10 @@ def make_test_logger():
     2引数を受け取れるloggerが必要。デフォルト値(lvl=0)は任意。
     """
     calls = []
+
     def logger(msg: str, lvl: int = 0) -> None:
         calls.append((msg, lvl))
+
     logger.calls = calls
     return logger
 
@@ -134,9 +137,7 @@ class TestSummaryManagerPureFunctionWrappers:
             logger=logger,
         )
 
-        with patch(
-            "katrain.gui.features.summary_aggregator.scan_player_names"
-        ) as mock_scan:
+        with patch("katrain.gui.features.summary_aggregator.scan_player_names") as mock_scan:
             mock_scan.return_value = {"Player1": 5, "Player2": 3}
 
             result = manager.scan_player_names(["game1.sgf", "game2.sgf"])
@@ -156,9 +157,7 @@ class TestSummaryManagerPureFunctionWrappers:
             logger=make_test_logger(),
         )
 
-        with patch(
-            "katrain.gui.features.summary_aggregator.categorize_games_by_stats"
-        ) as mock_cat:
+        with patch("katrain.gui.features.summary_aggregator.categorize_games_by_stats") as mock_cat:
             mock_cat.return_value = {"even": [], "handi_weak": [], "handi_strong": []}
 
             result = manager.categorize_games_by_stats([{"player": "P1"}], "P1")
@@ -178,9 +177,7 @@ class TestSummaryManagerPureFunctionWrappers:
             logger=make_test_logger(),
         )
 
-        with patch(
-            "katrain.gui.features.summary_aggregator.collect_rank_info"
-        ) as mock_collect:
+        with patch("katrain.gui.features.summary_aggregator.collect_rank_info") as mock_collect:
             mock_collect.return_value = "4d"
 
             result = manager.collect_rank_info([{"rank": "4d"}], "Player1")
@@ -202,9 +199,7 @@ class TestSummaryManagerPureFunctionWrappers:
             logger=make_test_logger(),
         )
 
-        with patch(
-            "katrain.gui.features.summary_formatter.build_summary_from_stats"
-        ) as mock_build:
+        with patch("katrain.gui.features.summary_formatter.build_summary_from_stats") as mock_build:
             mock_build.return_value = "Summary text"
 
             result = manager.build_summary_from_stats([{}], "Player1")
@@ -230,9 +225,7 @@ class TestSummaryManagerPureFunctionWrappers:
             logger=make_test_logger(),
         )
 
-        with patch(
-            "katrain.gui.features.summary_stats.extract_analysis_from_sgf_node"
-        ) as mock_extract:
+        with patch("katrain.gui.features.summary_stats.extract_analysis_from_sgf_node") as mock_extract:
             mock_extract.return_value = {"score_loss": 1.5}
             mock_node = MagicMock()
 

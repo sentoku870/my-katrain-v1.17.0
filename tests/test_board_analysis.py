@@ -12,29 +12,29 @@ Note: extract_groups_from_game, find_connect_points, find_cut_points,
 """
 
 import pytest
-from dataclasses import FrozenInstanceError
+
 from katrain.core.board_analysis import (
-    Group,
     BoardState,
+    Group,
     compute_danger_scores,
     get_reason_tags_for_move,
 )
 
-
 # ==================== Fixtures ====================
+
 
 @pytest.fixture
 def simple_group():
     """基本的なグループ（3呼吸点）"""
     return Group(
         group_id=0,
-        color='B',
+        color="B",
         stones=[(3, 3), (3, 4)],
         liberties_count=3,
         liberties={(2, 3), (4, 3), (3, 5)},
         is_in_atari=False,
         is_low_liberty=False,
-        adjacent_enemy_groups=[1]
+        adjacent_enemy_groups=[1],
     )
 
 
@@ -43,13 +43,13 @@ def atari_group():
     """アタリ状態のグループ（1呼吸点）"""
     return Group(
         group_id=1,
-        color='B',
+        color="B",
         stones=[(5, 5)],
         liberties_count=1,
         liberties={(5, 6)},
         is_in_atari=True,
         is_low_liberty=True,
-        adjacent_enemy_groups=[2]
+        adjacent_enemy_groups=[2],
     )
 
 
@@ -58,13 +58,13 @@ def low_liberty_group():
     """2呼吸点のグループ"""
     return Group(
         group_id=2,
-        color='W',
+        color="W",
         stones=[(10, 10), (10, 11)],
         liberties_count=2,
         liberties={(9, 10), (11, 10)},
         is_in_atari=False,
         is_low_liberty=True,
-        adjacent_enemy_groups=[0]
+        adjacent_enemy_groups=[0],
     )
 
 
@@ -74,13 +74,13 @@ def large_group():
     stones = [(i, 5) for i in range(10)]
     return Group(
         group_id=3,
-        color='B',
+        color="B",
         stones=stones,
         liberties_count=4,
         liberties={(0, 4), (9, 6), (0, 6), (9, 4)},
         is_in_atari=False,
         is_low_liberty=False,
-        adjacent_enemy_groups=[]
+        adjacent_enemy_groups=[],
     )
 
 
@@ -90,17 +90,18 @@ def medium_group():
     stones = [(i, 8) for i in range(7)]
     return Group(
         group_id=4,
-        color='W',
+        color="W",
         stones=stones,
         liberties_count=5,
         liberties={(0, 7), (6, 9), (0, 9), (6, 7), (3, 7)},
         is_in_atari=False,
         is_low_liberty=False,
-        adjacent_enemy_groups=[]
+        adjacent_enemy_groups=[],
     )
 
 
 # ==================== Group Dataclass Tests ====================
+
 
 class TestGroup:
     """Group dataclass のテスト"""
@@ -108,7 +109,7 @@ class TestGroup:
     def test_group_creation(self, simple_group):
         """基本的なグループ作成"""
         assert simple_group.group_id == 0
-        assert simple_group.color == 'B'
+        assert simple_group.color == "B"
         assert len(simple_group.stones) == 2
         assert simple_group.liberties_count == 3
         assert not simple_group.is_in_atari
@@ -129,6 +130,7 @@ class TestGroup:
 
 # ==================== BoardState Dataclass Tests ====================
 
+
 class TestBoardState:
     """BoardState dataclass のテスト"""
 
@@ -140,10 +142,7 @@ class TestBoardState:
         danger_scores = {0: 15.0, 1: 60.0}
 
         state = BoardState(
-            groups=groups,
-            connect_points=connect_points,
-            cut_points=cut_points,
-            danger_scores=danger_scores
+            groups=groups, connect_points=connect_points, cut_points=cut_points, danger_scores=danger_scores
         )
 
         assert len(state.groups) == 2
@@ -153,18 +152,14 @@ class TestBoardState:
 
     def test_empty_board_state(self):
         """空の盤面状態"""
-        state = BoardState(
-            groups=[],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={}
-        )
+        state = BoardState(groups=[], connect_points=[], cut_points=[], danger_scores={})
 
         assert len(state.groups) == 0
         assert len(state.danger_scores) == 0
 
 
 # ==================== compute_danger_scores Tests ====================
+
 
 class TestComputeDangerScores:
     """compute_danger_scores のテスト（pure function）"""
@@ -191,13 +186,13 @@ class TestComputeDangerScores:
         """4呼吸点以上のグループの基本危険度は0"""
         group = Group(
             group_id=0,
-            color='B',
+            color="B",
             stones=[(5, 5)],
             liberties_count=4,
             liberties={(4, 5), (6, 5), (5, 4), (5, 6)},
             is_in_atari=False,
             is_low_liberty=False,
-            adjacent_enemy_groups=[]
+            adjacent_enemy_groups=[],
         )
         cut_points = []
         scores = compute_danger_scores([group], cut_points)
@@ -269,12 +264,11 @@ class TestComputeDangerScores:
 
 # ==================== Invariant Tests ====================
 
+
 class TestInvariants:
     """プロパティベースのテスト（数値に依存しない）"""
 
-    def test_danger_scores_non_negative(
-        self, simple_group, atari_group, low_liberty_group, large_group
-    ):
+    def test_danger_scores_non_negative(self, simple_group, atari_group, low_liberty_group, large_group):
         """危険度スコアは常に非負"""
         groups = [simple_group, atari_group, low_liberty_group, large_group]
         cut_points = []
@@ -283,9 +277,7 @@ class TestInvariants:
         for score in scores.values():
             assert score >= 0
 
-    def test_all_groups_have_danger_score(
-        self, simple_group, atari_group, low_liberty_group
-    ):
+    def test_all_groups_have_danger_score(self, simple_group, atari_group, low_liberty_group):
         """すべてのグループに危険度スコアが割り当てられる"""
         groups = [simple_group, atari_group, low_liberty_group]
         cut_points = []
@@ -297,16 +289,24 @@ class TestInvariants:
     def test_atari_always_more_dangerous_than_non_atari(self):
         """アタリグループは常に非アタリより危険"""
         atari = Group(
-            group_id=0, color='B', stones=[(5, 5)],
-            liberties_count=1, liberties={(5, 6)},
-            is_in_atari=True, is_low_liberty=True,
-            adjacent_enemy_groups=[]
+            group_id=0,
+            color="B",
+            stones=[(5, 5)],
+            liberties_count=1,
+            liberties={(5, 6)},
+            is_in_atari=True,
+            is_low_liberty=True,
+            adjacent_enemy_groups=[],
         )
         non_atari = Group(
-            group_id=1, color='B', stones=[(10, 10)],
-            liberties_count=4, liberties={(9, 10), (11, 10), (10, 9), (10, 11)},
-            is_in_atari=False, is_low_liberty=False,
-            adjacent_enemy_groups=[]
+            group_id=1,
+            color="B",
+            stones=[(10, 10)],
+            liberties_count=4,
+            liberties={(9, 10), (11, 10), (10, 9), (10, 11)},
+            is_in_atari=False,
+            is_low_liberty=False,
+            adjacent_enemy_groups=[],
         )
         scores = compute_danger_scores([atari, non_atari], [])
         assert scores[0] > scores[1]
@@ -314,18 +314,14 @@ class TestInvariants:
 
 # ==================== get_reason_tags_for_move Tests ====================
 
+
 class TestGetReasonTags:
     """get_reason_tags_for_move のテスト"""
 
     class MockMoveEval:
         """MoveEval のモック"""
-        def __init__(
-            self,
-            player='B',
-            move_number=50,
-            points_lost=None,
-            tag=None
-        ):
+
+        def __init__(self, player="B", move_number=50, points_lost=None, tag=None):
             self.player = player
             self.move_number = move_number
             self.points_lost = points_lost
@@ -333,6 +329,7 @@ class TestGetReasonTags:
 
     class MockNode:
         """GameNode のモック"""
+
         class MockMove:
             def __init__(self, coords):
                 self.coords = coords
@@ -342,12 +339,7 @@ class TestGetReasonTags:
 
     def test_empty_groups_returns_empty_tags(self):
         """グループがない場合は空のタグ"""
-        board_state = BoardState(
-            groups=[],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={}
-        )
+        board_state = BoardState(groups=[], connect_points=[], cut_points=[], danger_scores={})
         move_eval = self.MockMoveEval()
         node = self.MockNode()
 
@@ -356,12 +348,7 @@ class TestGetReasonTags:
 
     def test_no_player_returns_empty_tags(self, simple_group):
         """プレイヤーがない場合は空のタグ"""
-        board_state = BoardState(
-            groups=[simple_group],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={0: 15.0}
-        )
+        board_state = BoardState(groups=[simple_group], connect_points=[], cut_points=[], danger_scores={0: 15.0})
         move_eval = self.MockMoveEval(player=None)
         node = self.MockNode()
 
@@ -371,12 +358,9 @@ class TestGetReasonTags:
     def test_atari_tag_emitted(self, atari_group):
         """アタリ状態でatariタグが発行される"""
         board_state = BoardState(
-            groups=[atari_group],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={atari_group.group_id: 60.0}
+            groups=[atari_group], connect_points=[], cut_points=[], danger_scores={atari_group.group_id: 60.0}
         )
-        move_eval = self.MockMoveEval(player='B')
+        move_eval = self.MockMoveEval(player="B")
         # 着手がアタリグループの近く（3マス以内）
         node = self.MockNode(coords=(5, 5))
 
@@ -389,9 +373,9 @@ class TestGetReasonTags:
             groups=[low_liberty_group],
             connect_points=[],
             cut_points=[],
-            danger_scores={low_liberty_group.group_id: 35.0}
+            danger_scores={low_liberty_group.group_id: 35.0},
         )
-        move_eval = self.MockMoveEval(player='W')
+        move_eval = self.MockMoveEval(player="W")
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -402,21 +386,21 @@ class TestGetReasonTags:
         # atari_group を敵（W）に、simple_group を味方（B）に
         enemy_atari = Group(
             group_id=10,
-            color='W',
+            color="W",
             stones=[(15, 15)],
             liberties_count=1,
             liberties={(15, 16)},
             is_in_atari=True,
             is_low_liberty=True,
-            adjacent_enemy_groups=[0]
+            adjacent_enemy_groups=[0],
         )
         board_state = BoardState(
             groups=[simple_group, enemy_atari],
             connect_points=[],
             cut_points=[],
-            danger_scores={simple_group.group_id: 15.0, enemy_atari.group_id: 60.0}
+            danger_scores={simple_group.group_id: 15.0, enemy_atari.group_id: 60.0},
         )
-        move_eval = self.MockMoveEval(player='B')
+        move_eval = self.MockMoveEval(player="B")
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -425,12 +409,9 @@ class TestGetReasonTags:
     def test_endgame_hint_after_move_150(self, simple_group):
         """150手以降でendgame_hintタグ"""
         board_state = BoardState(
-            groups=[simple_group],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={simple_group.group_id: 15.0}
+            groups=[simple_group], connect_points=[], cut_points=[], danger_scores={simple_group.group_id: 15.0}
         )
-        move_eval = self.MockMoveEval(player='B', move_number=160)
+        move_eval = self.MockMoveEval(player="B", move_number=160)
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -439,12 +420,9 @@ class TestGetReasonTags:
     def test_endgame_hint_with_yose_tag(self, simple_group):
         """yoseタグでendgame_hintタグ"""
         board_state = BoardState(
-            groups=[simple_group],
-            connect_points=[],
-            cut_points=[],
-            danger_scores={simple_group.group_id: 15.0}
+            groups=[simple_group], connect_points=[], cut_points=[], danger_scores={simple_group.group_id: 15.0}
         )
-        move_eval = self.MockMoveEval(player='B', move_number=50, tag="yose")
+        move_eval = self.MockMoveEval(player="B", move_number=50, tag="yose")
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -457,9 +435,9 @@ class TestGetReasonTags:
             groups=[simple_group],
             connect_points=connect_points,
             cut_points=[],
-            danger_scores={simple_group.group_id: 15.0}
+            danger_scores={simple_group.group_id: 15.0},
         )
-        move_eval = self.MockMoveEval(player='B')
+        move_eval = self.MockMoveEval(player="B")
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -472,9 +450,9 @@ class TestGetReasonTags:
             groups=[simple_group],
             connect_points=connect_points,
             cut_points=[],
-            danger_scores={simple_group.group_id: 15.0}
+            danger_scores={simple_group.group_id: 15.0},
         )
-        move_eval = self.MockMoveEval(player='B')
+        move_eval = self.MockMoveEval(player="B")
         node = self.MockNode()
 
         tags = get_reason_tags_for_move(board_state, move_eval, node, [])
@@ -483,34 +461,51 @@ class TestGetReasonTags:
 
 # ==================== Threshold Consistency Tests ====================
 
+
 class TestThresholdConsistency:
     """閾値の一貫性テスト"""
 
     def test_liberty_danger_ordering(self):
         """呼吸点数に応じた危険度順序"""
         lib1 = Group(
-            group_id=0, color='B', stones=[(5, 5)],
-            liberties_count=1, liberties={(5, 6)},
-            is_in_atari=True, is_low_liberty=True,
-            adjacent_enemy_groups=[]
+            group_id=0,
+            color="B",
+            stones=[(5, 5)],
+            liberties_count=1,
+            liberties={(5, 6)},
+            is_in_atari=True,
+            is_low_liberty=True,
+            adjacent_enemy_groups=[],
         )
         lib2 = Group(
-            group_id=1, color='B', stones=[(10, 10)],
-            liberties_count=2, liberties={(9, 10), (11, 10)},
-            is_in_atari=False, is_low_liberty=True,
-            adjacent_enemy_groups=[]
+            group_id=1,
+            color="B",
+            stones=[(10, 10)],
+            liberties_count=2,
+            liberties={(9, 10), (11, 10)},
+            is_in_atari=False,
+            is_low_liberty=True,
+            adjacent_enemy_groups=[],
         )
         lib3 = Group(
-            group_id=2, color='B', stones=[(15, 15)],
-            liberties_count=3, liberties={(14, 15), (16, 15), (15, 14)},
-            is_in_atari=False, is_low_liberty=False,
-            adjacent_enemy_groups=[]
+            group_id=2,
+            color="B",
+            stones=[(15, 15)],
+            liberties_count=3,
+            liberties={(14, 15), (16, 15), (15, 14)},
+            is_in_atari=False,
+            is_low_liberty=False,
+            adjacent_enemy_groups=[],
         )
         lib4 = Group(
-            group_id=3, color='B', stones=[(3, 3)],
-            liberties_count=4, liberties={(2, 3), (4, 3), (3, 2), (3, 4)},
-            is_in_atari=False, is_low_liberty=False,
-            adjacent_enemy_groups=[]
+            group_id=3,
+            color="B",
+            stones=[(3, 3)],
+            liberties_count=4,
+            liberties={(2, 3), (4, 3), (3, 2), (3, 4)},
+            is_in_atari=False,
+            is_low_liberty=False,
+            adjacent_enemy_groups=[],
         )
 
         scores = compute_danger_scores([lib1, lib2, lib3, lib4], [])

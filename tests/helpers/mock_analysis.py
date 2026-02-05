@@ -24,8 +24,8 @@ from typing import Any
 #
 # Move indices are kept low (5, 17, 34) to work with all test SGFs.
 LOSS_AT_MOVE: dict[int, float] = {
-    5:  2.5,   # INACCURACY (2.0 <= loss < 5.0)
-    17: 6.0,   # MISTAKE (5.0 <= loss < 10.0)
+    5: 2.5,  # INACCURACY (2.0 <= loss < 5.0)
+    17: 6.0,  # MISTAKE (5.0 <= loss < 10.0)
     34: 12.0,  # BLUNDER (>= 10.0)
     # All other moves: 0.3 (GOOD)
 }
@@ -114,11 +114,6 @@ def inject_mock_analysis(game: Any) -> None:
         # Calculate score change based on player
         # Black losing points means score decreases (from black's view)
         # White losing points means score increases (from black's view)
-        if player == "B":
-            cumulative_score = cumulative_score - loss
-        else:
-            cumulative_score = cumulative_score + loss
+        cumulative_score = cumulative_score - loss if player == "B" else cumulative_score + loss
 
-        node.analysis = create_mock_analysis_dict(
-            node.move.gtp(), cumulative_score
-        )
+        node.analysis = create_mock_analysis_dict(node.move.gtp(), cumulative_score)

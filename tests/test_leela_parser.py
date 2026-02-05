@@ -1,14 +1,15 @@
 """Tests for Leela Zero lz-analyze parser."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
+from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 from katrain.core.leela.parser import (
-    parse_lz_analyze,
     normalize_winrate_from_raw,
+    parse_lz_analyze,
     parse_single_info_line,
 )
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
 
 class TestNormalizeWinrateFromRaw:
@@ -123,10 +124,7 @@ class TestParseLzAnalyze:
 
     def test_skip_invalid_visits(self):
         """Test skipping candidates with invalid visits."""
-        sample = (
-            "info move C4 visits 0 winrate 5000 order 0 pv C4 "
-            "info move D4 visits 100 winrate 5100 order 1 pv D4"
-        )
+        sample = "info move C4 visits 0 winrate 5000 order 0 pv C4 info move D4 visits 100 winrate 5100 order 1 pv D4"
         result = parse_lz_analyze(sample)
 
         assert result.is_valid
@@ -158,10 +156,7 @@ class TestParseLzAnalyze:
 
     def test_root_visits_calculated(self):
         """Test that root_visits is calculated from candidates."""
-        sample = (
-            "info move C4 visits 100 winrate 5000 order 0 pv C4 "
-            "info move D4 visits 200 winrate 5100 order 1 pv D4"
-        )
+        sample = "info move C4 visits 100 winrate 5000 order 0 pv C4 info move D4 visits 200 winrate 5100 order 1 pv D4"
         result = parse_lz_analyze(sample)
 
         assert result.root_visits == 300
@@ -227,9 +222,7 @@ class TestLeelaPositionEvalModel:
     def test_is_valid(self):
         """Test is_valid property."""
         # Valid with candidates
-        eval_result = LeelaPositionEval(
-            candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)]
-        )
+        eval_result = LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100)])
         assert eval_result.is_valid
 
         # Invalid: no candidates

@@ -2,6 +2,7 @@
 
 Phase 66: Tests for Summary/Karte quality improvements.
 """
+
 import pytest
 
 
@@ -264,8 +265,7 @@ class TestEvidenceSelection:
         from katrain.core.batch.stats import EvidenceMove, _select_evidence_moves
 
         candidates = [
-            EvidenceMove(f"game{i}.sgf", i, "B", f"D{i}", float(10 - i), MistakeCategory.BLUNDER)
-            for i in range(1, 6)
+            EvidenceMove(f"game{i}.sgf", i, "B", f"D{i}", float(10 - i), MistakeCategory.BLUNDER) for i in range(1, 6)
         ]
 
         result1 = _select_evidence_moves(candidates, max_count=3)

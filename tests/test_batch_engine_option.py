@@ -3,13 +3,13 @@
 Tests that batch UI correctly collects and persists engine selection.
 CI-safe (no real engines, no Kivy UI).
 """
-import pytest
-from unittest.mock import Mock, MagicMock
 
+from unittest.mock import MagicMock, Mock
 
 # ---------------------------------------------------------------------------
 # Test: collect_batch_options() includes analysis_engine
 # ---------------------------------------------------------------------------
+
 
 class TestCollectBatchOptionsEngine:
     """Test collect_batch_options() collects analysis_engine."""
@@ -111,6 +111,7 @@ class TestCollectBatchOptionsEngine:
 # Test: Config persistence pattern
 # ---------------------------------------------------------------------------
 
+
 class TestBatchEngineConfigPersistence:
     """Test batch.analysis_engine config persistence pattern."""
 
@@ -140,6 +141,7 @@ class TestBatchEngineConfigPersistence:
 
     def test_fallback_for_invalid_value(self):
         """Invalid engine value should fallback to 'katago'."""
+
         def get_engine_type(batch_config):
             engine = batch_config.get("analysis_engine", "katago")
             if engine not in ("katago", "leela"):
@@ -159,6 +161,7 @@ class TestBatchEngineConfigPersistence:
 # ---------------------------------------------------------------------------
 # Test: needs_leela_warning integration
 # ---------------------------------------------------------------------------
+
 
 class TestNeedsLeelaWarningBatchIntegration:
     """Test needs_leela_warning() for batch validation."""
@@ -201,12 +204,14 @@ class TestNeedsLeelaWarningBatchIntegration:
 # Test: BatchWidgets type includes engine widgets
 # ---------------------------------------------------------------------------
 
+
 class TestBatchWidgetsType:
     """Test BatchWidgets type documentation includes engine widgets."""
 
     def test_types_module_exists(self):
         """types.py module exists and can be imported."""
         from katrain.gui.features import types
+
         assert hasattr(types, "BatchWidgets")
         assert hasattr(types, "BatchOptions")
 
@@ -226,31 +231,37 @@ class TestNeedsLeelaKarteWarning:
     def test_leela_with_karte_returns_true(self):
         """Leela + karte enabled -> warning needed."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("leela", generate_karte=True) is True
 
     def test_leela_without_karte_returns_false(self):
         """Leela + karte disabled -> no warning."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("leela", generate_karte=False) is False
 
     def test_katago_with_karte_returns_false(self):
         """KataGo + karte enabled -> no warning (fully supported)."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("katago", generate_karte=True) is False
 
     def test_katago_without_karte_returns_false(self):
         """KataGo + karte disabled -> no warning."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("katago", generate_karte=False) is False
 
     def test_unknown_engine_with_karte_returns_false(self):
         """Unknown engine + karte -> no warning (conservative)."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("unknown", generate_karte=True) is False
 
     def test_empty_engine_with_karte_returns_false(self):
         """Empty engine string + karte -> no warning."""
         from katrain.gui.features.batch_core import needs_leela_karte_warning
+
         assert needs_leela_karte_warning("", generate_karte=True) is False
 
 
@@ -280,9 +291,7 @@ class TestIsLeelaConfigured:
         from katrain.gui.features.batch_core import is_leela_configured
 
         mock_ctx = MagicMock()
-        mock_ctx.get_leela_config.return_value = LeelaConfig(
-            enabled=False, exe_path="/path/to/leela"
-        )
+        mock_ctx.get_leela_config.return_value = LeelaConfig(enabled=False, exe_path="/path/to/leela")
         assert is_leela_configured(mock_ctx) is True
 
     def test_not_configured_defaults(self):
@@ -300,9 +309,7 @@ class TestIsLeelaConfigured:
         from katrain.gui.features.batch_core import is_leela_configured
 
         mock_ctx = MagicMock()
-        mock_ctx.get_leela_config.return_value = LeelaConfig(
-            enabled=False, exe_path=None
-        )
+        mock_ctx.get_leela_config.return_value = LeelaConfig(enabled=False, exe_path=None)
         assert is_leela_configured(mock_ctx) is False
 
     def test_get_leela_config_called(self):

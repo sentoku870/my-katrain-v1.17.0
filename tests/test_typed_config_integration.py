@@ -58,9 +58,7 @@ class TestTypedConfigIntegration:
         typed_value = katrain_base.get_engine_config().max_visits
 
         # 値が一致することを確認
-        assert raw_value == typed_value, (
-            f"Value mismatch: config()={raw_value!r} vs typed={typed_value!r}"
-        )
+        assert raw_value == typed_value, f"Value mismatch: config()={raw_value!r} vs typed={typed_value!r}"
 
         # 型が一致することを確認（想定: 両方int）
         assert isinstance(raw_value, int), (

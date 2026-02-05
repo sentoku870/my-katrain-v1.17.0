@@ -7,10 +7,10 @@ UI rendering tests are manual (see Phase 14.7 manual test plan).
 import pytest
 
 from katrain.core.game_node import GameNode
+from katrain.core.leela.logic import LEELA_K_DEFAULT, compute_estimated_loss
 from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 from katrain.core.leela.parser import parse_lz_analyze
-from katrain.core.leela.logic import compute_estimated_loss, LEELA_K_DEFAULT
-from katrain.core.leela.presentation import loss_to_color, format_loss_est, format_winrate_pct
+from katrain.core.leela.presentation import format_loss_est, format_winrate_pct, loss_to_color
 
 
 class TestParserToLogicPipeline:
@@ -104,9 +104,7 @@ class TestLogicToGameNodePipeline:
 
         # Set Leela analysis
         node.set_leela_analysis(
-            LeelaPositionEval(
-                candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)]
-            )
+            LeelaPositionEval(candidates=[LeelaCandidate(move="D4", winrate=0.5, visits=100, loss_est=0.0)])
         )
         assert node.leela_analysis is not None
 
@@ -159,6 +157,7 @@ info move D4 visits 8000 winrate 5100 order 1 pv D4 Q16 C16"""
 
         # Best should be green, second should be slightly warmer
         from katrain.core.constants import LEELA_COLOR_BEST
+
         assert best_color == LEELA_COLOR_BEST
         # Second color should have higher red component than best
         assert second_color != best_color
@@ -206,7 +205,7 @@ class TestConfigIntegration:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         # Check leela section exists
@@ -230,6 +229,7 @@ class TestRealSamplesPipeline:
     def samples_dir(self):
         """Get samples directory."""
         from pathlib import Path
+
         return Path(__file__).parent / "fixtures" / "leela_samples"
 
     def test_even_game_opening_pipeline(self, samples_dir):
@@ -238,7 +238,7 @@ class TestRealSamplesPipeline:
         if not sample_file.exists():
             pytest.skip("Sample file not found")
 
-        with open(sample_file, "r", encoding="utf-8") as f:
+        with open(sample_file, encoding="utf-8") as f:
             raw_output = f.read()
 
         # Full pipeline
@@ -259,7 +259,7 @@ class TestRealSamplesPipeline:
         if not sample_file.exists():
             pytest.skip("Sample file not found")
 
-        with open(sample_file, "r", encoding="utf-8") as f:
+        with open(sample_file, encoding="utf-8") as f:
             raw_output = f.read()
 
         # Full pipeline

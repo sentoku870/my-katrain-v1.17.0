@@ -5,11 +5,13 @@ MagicMockで代替し、必要な属性を手動設定してメソッドを直�
 
 CI環境ではKivyインポートがクラッシュするため、スキップ。
 """
+
+import concurrent.futures
 import os
 import threading
-import concurrent.futures
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 def _is_ci_environment():
@@ -19,10 +21,7 @@ def _is_ci_environment():
 
 
 # CI環境ではKaTrainGuiのインポートがクラッシュするためスキップ
-pytestmark = pytest.mark.skipif(
-    _is_ci_environment(),
-    reason="KaTrainGui import crashes on headless CI"
-)
+pytestmark = pytest.mark.skipif(_is_ci_environment(), reason="KaTrainGui import crashes on headless CI")
 
 
 class TestSetupStateSubscriptions:
@@ -206,10 +205,7 @@ class TestDoUiUpdateCallback:
         # _do_ui_updateを直接呼び出し
         KaTrainGui._do_ui_update(gui, 0)
 
-        gui.update_gui.assert_called_once_with(
-            gui.game.current_node,
-            redraw_board=True
-        )
+        gui.update_gui.assert_called_once_with(gui.game.current_node, redraw_board=True)
 
     def test_skips_when_no_game(self):
         """game=Noneの場合はスキップ"""
@@ -299,10 +295,7 @@ class TestDoUiUpdateCallback:
 
         KaTrainGui._do_ui_update(gui, 0)
 
-        gui.update_gui.assert_called_once_with(
-            gui.game.current_node,
-            redraw_board=False
-        )
+        gui.update_gui.assert_called_once_with(gui.game.current_node, redraw_board=False)
 
 
 class TestThreadSafety:
@@ -322,19 +315,18 @@ class TestThreadSafety:
         schedule_lock = threading.Lock()
 
         with patch("katrain.__main__.Clock.schedule_once") as mock_schedule:
+
             def track_schedule(fn, delay):
                 nonlocal schedule_call_count
                 with schedule_lock:
                     schedule_call_count += 1
                 return MagicMock()
+
             mock_schedule.side_effect = track_schedule
 
             # 10スレッドから同時に呼び出し
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [
-                    executor.submit(KaTrainGui._schedule_ui_update, gui, redraw_board=True)
-                    for _ in range(10)
-                ]
+                futures = [executor.submit(KaTrainGui._schedule_ui_update, gui, redraw_board=True) for _ in range(10)]
                 concurrent.futures.wait(futures)
 
         # 1回のみスケジュールされる

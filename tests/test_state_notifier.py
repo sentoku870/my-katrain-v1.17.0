@@ -8,6 +8,7 @@ Test categories:
 - Snapshot semantics (unsubscribe during notify)
 - Event immutability (frozen dataclass, MappingProxyType)
 """
+
 import subprocess
 import sys
 import threading
@@ -105,9 +106,7 @@ class TestStateNotifier:
         assert game_count == 2
         assert config_count == 1
 
-    def test_callback_exception_does_not_affect_others(
-        self, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_callback_exception_does_not_affect_others(self, capsys: pytest.CaptureFixture) -> None:
         """One callback's exception doesn't prevent other callbacks."""
         notifier = StateNotifier()
         results: list[str] = []
@@ -425,10 +424,7 @@ class TestKivyIsolation:
             timeout=30,
         )
         assert result.returncode == 0, (
-            f"Kivy imported:\n"
-            f"returncode={result.returncode}\n"
-            f"stdout={result.stdout}\n"
-            f"stderr={result.stderr}"
+            f"Kivy imported:\nreturncode={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
         )
 
 
@@ -453,9 +449,7 @@ class TestStateNotifierLogger:
         assert "ValueError" in combined_msg
         assert "Traceback" in combined_msg
 
-    def test_logger_none_fallback_to_stderr(
-        self, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_logger_none_fallback_to_stderr(self, capsys: pytest.CaptureFixture) -> None:
         """Logger=None falls back to stderr."""
         notifier = StateNotifier(logger=None)
 
@@ -481,9 +475,7 @@ class TestStateNotifierLogger:
         notifier.notify(Event.create(EventType.GAME_CHANGED))
         assert len(received) == 1
 
-    def test_logger_failure_falls_back_to_stderr(
-        self, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_logger_failure_falls_back_to_stderr(self, capsys: pytest.CaptureFixture) -> None:
         """If logger raises, falls back to stderr (exception-safe)."""
 
         def crashing_logger(msg: str) -> None:

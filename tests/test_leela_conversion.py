@@ -5,6 +5,7 @@ loss calculation, edge cases, and EvalSnapshot compatibility.
 """
 
 import logging
+
 import pytest
 
 from katrain.core.analysis.models import (
@@ -12,19 +13,16 @@ from katrain.core.analysis.models import (
     MistakeCategory,
     MoveEval,
 )
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
-from katrain.core.leela.logic import LEELA_K_DEFAULT, LEELA_LOSS_EST_MAX
 from katrain.core.leela.conversion import (
+    _compute_winrate_loss,
+    _convert_to_black_perspective,
     _normalize_move,
     _round_loss_est,
-    _convert_to_black_perspective,
-    _compute_winrate_loss,
-    _compute_leela_loss_for_played_move,
     leela_position_to_move_eval,
     leela_sequence_to_eval_snapshot,
-    LEELA_LOSS_EST_EPSILON,
 )
-
+from katrain.core.leela.logic import LEELA_K_DEFAULT, LEELA_LOSS_EST_MAX
+from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
 # =============================================================================
 # Helper functions for creating test data
@@ -73,13 +71,17 @@ class TestBasicConversion:
 
     def test_single_move_conversion(self):
         """#1: Single move conversion works correctly."""
-        parent = make_position_eval([
-            make_candidate("D4", 55.0),  # best
-            make_candidate("Q16", 50.0),  # played
-        ])
-        current = make_position_eval([
-            make_candidate("Q4", 48.0),
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 55.0),  # best
+                make_candidate("Q16", 50.0),  # played
+            ]
+        )
+        current = make_position_eval(
+            [
+                make_candidate("Q4", 48.0),
+            ]
+        )
 
         result = leela_position_to_move_eval(
             parent_eval=parent,
@@ -152,10 +154,12 @@ class TestBasicConversion:
 
     def test_best_move_loss_zero(self):
         """#5: Best move has loss_est = 0.0."""
-        parent = make_position_eval([
-            make_candidate("D4", 55.0),  # best
-            make_candidate("Q16", 50.0),
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 55.0),  # best
+                make_candidate("Q16", 50.0),
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(
@@ -170,10 +174,12 @@ class TestBasicConversion:
 
     def test_worse_move_positive_loss(self):
         """#6: Worse move has positive loss_est."""
-        parent = make_position_eval([
-            make_candidate("D4", 60.0),  # best
-            make_candidate("Q16", 50.0),  # 10% worse
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 60.0),  # best
+                make_candidate("Q16", 50.0),  # 10% worse
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(
@@ -190,10 +196,12 @@ class TestBasicConversion:
 
     def test_k_scaling_affects_loss(self):
         """#7: K coefficient scales the loss."""
-        parent = make_position_eval([
-            make_candidate("D4", 60.0),
-            make_candidate("Q16", 50.0),
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 60.0),
+                make_candidate("Q16", 50.0),
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result_k05 = leela_position_to_move_eval(
@@ -221,10 +229,12 @@ class TestBasicConversion:
 
     def test_loss_clamped_at_max(self):
         """#8: Loss is clamped at LEELA_LOSS_EST_MAX."""
-        parent = make_position_eval([
-            make_candidate("D4", 99.0),  # best
-            make_candidate("Q16", 1.0),  # worst (98% diff)
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 99.0),  # best
+                make_candidate("Q16", 1.0),  # worst (98% diff)
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(
@@ -371,10 +381,12 @@ class TestBasicConversion:
 
     def test_pass_move_handled(self):
         """#16: Pass move is handled correctly."""
-        parent = make_position_eval([
-            make_candidate("D4", 55.0),
-            make_candidate("PASS", 45.0),
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 55.0),
+                make_candidate("PASS", 45.0),
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(
@@ -399,10 +411,12 @@ class TestReview1Issues:
 
     def test_played_move_not_in_candidates_returns_none(self):
         """#17: Played move not in candidates returns leela_loss_est=None."""
-        parent = make_position_eval([
-            make_candidate("D4", 55.0),
-            make_candidate("Q16", 50.0),
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 55.0),
+                make_candidate("Q16", 50.0),
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(
@@ -567,10 +581,12 @@ class TestReview2Issues:
     def test_leela_loss_est_independent_of_delta_winrate(self):
         """#23: leela_loss_est is independent of delta_winrate."""
         # Create a scenario where loss_est and delta_winrate differ
-        parent = make_position_eval([
-            make_candidate("D4", 60.0),  # best
-            make_candidate("Q16", 55.0),  # played (5% worse)
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 60.0),  # best
+                make_candidate("Q16", 55.0),  # played (5% worse)
+            ]
+        )
         # Current position: black now has 70% (improved despite suboptimal move)
         current = make_position_eval([make_candidate("Q4", 30.0)])  # W-to-move, W=30%, B=70%
 
@@ -642,10 +658,12 @@ class TestReview2Issues:
     def test_leela_loss_est_same_perspective_no_flip(self):
         """#27: leela_loss_est uses same perspective (no flip needed)."""
         # Both candidates are in the same position, so same perspective
-        parent = make_position_eval([
-            make_candidate("D4", 60.0),  # best
-            make_candidate("Q16", 40.0),  # 20% worse
-        ])
+        parent = make_position_eval(
+            [
+                make_candidate("D4", 60.0),  # best
+                make_candidate("Q16", 40.0),  # 20% worse
+            ]
+        )
         current = make_position_eval([make_candidate("Q4", 50.0)])
 
         result = leela_position_to_move_eval(

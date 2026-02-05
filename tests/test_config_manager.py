@@ -226,9 +226,7 @@ class TestSaveExportSettings:
         config = {"export_settings": {}}
         manager = ConfigManager(config, lambda k: None)
 
-        manager.save_export_settings(
-            sgf_directory="/new/path", selected_players=["Alice", "Bob"]
-        )
+        manager.save_export_settings(sgf_directory="/new/path", selected_players=["Alice", "Bob"])
 
         assert config["export_settings"]["last_sgf_directory"] == "/new/path"
         assert config["export_settings"]["last_selected_players"] == ["Alice", "Bob"]
@@ -416,9 +414,7 @@ class TestIntegration:
         assert config["export_settings"]["last_selected_players"] == ["Alice"]
 
         # 複数キー更新
-        manager.save_export_settings(
-            sgf_directory="/second/path", selected_players=["Bob"]
-        )
+        manager.save_export_settings(sgf_directory="/second/path", selected_players=["Bob"])
         assert config["export_settings"]["last_sgf_directory"] == "/second/path"
         assert config["export_settings"]["last_selected_players"] == ["Bob"]
 

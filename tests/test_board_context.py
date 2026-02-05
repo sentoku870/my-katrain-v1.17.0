@@ -4,8 +4,6 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from katrain.core.analysis.board_context import (
     BoardArea,
     OwnershipContext,
@@ -16,7 +14,6 @@ from katrain.core.analysis.board_context import (
     get_area_name,
     get_score_stdev,
 )
-
 
 # =====================================================================
 # classify_area

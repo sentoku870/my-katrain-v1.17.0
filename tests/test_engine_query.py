@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from katrain.core.engine_query import build_analysis_query, _build_avoid_list
+from katrain.core.engine_query import _build_avoid_list, build_analysis_query
 
 
 @pytest.fixture

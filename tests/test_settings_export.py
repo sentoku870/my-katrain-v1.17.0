@@ -1,24 +1,22 @@
 # tests/test_settings_export.py
 """Tests for katrain.common.settings_export module (22 tests)."""
+
 import json
 import os
 import tempfile
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch
 
 from katrain.common.settings_export import (
     SCHEMA_VERSION,
-    EXCLUDED_SECTIONS,
-    EXCLUDED_KEYS,
     TAB_RESET_KEYS,
-    ExportedSettings,
-    export_settings,
-    parse_exported_settings,
-    get_default_value,
-    create_backup_path,
-    atomic_save_config,
     _ensure_json_safe,
+    atomic_save_config,
+    create_backup_path,
+    export_settings,
+    get_default_value,
+    parse_exported_settings,
 )
 
 
@@ -43,9 +41,7 @@ def mock_package_defaults():
             "loss_scale_k": 0.5,
         },
     }
-    with patch(
-        "katrain.common.settings_export.get_package_defaults", return_value=defaults
-    ):
+    with patch("katrain.common.settings_export.get_package_defaults", return_value=defaults):
         yield defaults
 
 
@@ -197,9 +193,7 @@ class TestParseExportedSettings:
 
     def test_parse_null_values_in_section(self):
         """Null values in sections should be preserved."""
-        json_str = json.dumps(
-            {"schema_version": "1.0", "sections": {"general": {"key": None}}}
-        )
+        json_str = json.dumps({"schema_version": "1.0", "sections": {"general": {"key": None}}})
         result = parse_exported_settings(json_str)
         assert result.sections["general"]["key"] is None
 
@@ -264,7 +258,7 @@ class TestAtomicSave:
             config = {"general": {"skill_preset": "standard"}}
             atomic_save_config(config, config_path)
             assert os.path.exists(config_path)
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 loaded = json.load(f)
             assert loaded["general"]["skill_preset"] == "standard"
 
@@ -278,7 +272,7 @@ class TestAtomicSave:
             # Replace with new data
             config = {"new": "data"}
             atomic_save_config(config, config_path)
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 loaded = json.load(f)
             assert "new" in loaded
             assert "old" not in loaded
@@ -314,7 +308,7 @@ class TestAtomicSave:
             with pytest.raises(TypeError):
                 atomic_save_config({"bad": NotSerializable()}, config_path)
             # Original file should be intact
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 loaded = json.load(f)
             assert loaded == original
 

@@ -4,8 +4,6 @@ import subprocess
 import sys
 import textwrap
 
-import pytest
-
 
 class TestBackwardCompatibleImports:
     """Verify old import paths still work (shim functionality)."""

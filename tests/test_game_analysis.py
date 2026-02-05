@@ -3,16 +3,17 @@
 Tests for Game.analyze_extra() and Game._compute_important_moves().
 Uses shared fixtures from conftest.py.
 """
+
 import pytest
 
 from katrain.core.constants import AnalysisMode
-from katrain.core.game import Game, Move
+from katrain.core.game import Move
 from katrain.core.game_node import GameNode
-
 
 # ---------------------------------------------------------------------------
 # Analysis State Factories (copied from conftest.py for import convenience)
 # ---------------------------------------------------------------------------
+
 
 def make_analysis(
     *,
@@ -41,9 +42,7 @@ def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
 
     if node.parent and parent_score is not None:
         parent_has_analysis = (
-            node.parent.analysis.get("root") is not None
-            if isinstance(node.parent.analysis, dict)
-            else False
+            node.parent.analysis.get("root") is not None if isinstance(node.parent.analysis, dict) else False
         )
         if force_parent or not parent_has_analysis:
             node.parent.analysis = make_analysis(score=parent_score, moves={})
@@ -52,6 +51,7 @@ def setup_analyzed_node(node, score, parent_score=None, *, force_parent=False):
 # ---------------------------------------------------------------------------
 # TestAnalyzeExtraStopMode
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzeExtraStopMode:
     """Tests for analyze_extra(AnalysisMode.STOP)."""
@@ -79,6 +79,7 @@ class TestAnalyzeExtraStopMode:
 # TestAnalyzeExtraPonderMode
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeExtraPonderMode:
     """Tests for analyze_extra(AnalysisMode.PONDER)."""
 
@@ -99,6 +100,7 @@ class TestAnalyzeExtraPonderMode:
 # TestAnalyzeExtraExtraMode
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeExtraExtraMode:
     """Tests for analyze_extra(AnalysisMode.EXTRA)."""
 
@@ -116,6 +118,7 @@ class TestAnalyzeExtraExtraMode:
 # ---------------------------------------------------------------------------
 # TestAnalyzeExtraGameMode
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzeExtraGameMode:
     """Tests for analyze_extra(AnalysisMode.GAME)."""
@@ -148,6 +151,7 @@ class TestAnalyzeExtraGameMode:
 # TestAnalyzeExtraSweepMode
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeExtraSweepMode:
     """Tests for analyze_extra(AnalysisMode.SWEEP)."""
 
@@ -166,6 +170,7 @@ class TestAnalyzeExtraSweepMode:
 # ---------------------------------------------------------------------------
 # TestAnalyzeExtraEqualizeMode
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzeExtraEqualizeMode:
     """Tests for analyze_extra(AnalysisMode.EQUALIZE)."""
@@ -198,6 +203,7 @@ class TestAnalyzeExtraEqualizeMode:
 # TestAnalyzeExtraAlternativeMode
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeExtraAlternativeMode:
     """Tests for analyze_extra(AnalysisMode.ALTERNATIVE)."""
 
@@ -221,6 +227,7 @@ class TestAnalyzeExtraAlternativeMode:
 # TestAnalyzeExtraLocalMode
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzeExtraLocalMode:
     """Tests for analyze_extra(AnalysisMode.LOCAL)."""
 
@@ -233,7 +240,7 @@ class TestAnalyzeExtraLocalMode:
             root_present=True,
             moves={
                 "D4": {"visits": 100, "scoreLead": 2.0},  # Max visits = 100
-                "E5": {"visits": 50, "scoreLead": 1.5},   # Under-visited, will be refined
+                "E5": {"visits": 50, "scoreLead": 1.5},  # Under-visited, will be refined
             },
         )
         mock_engine.reset_tracking()
@@ -291,6 +298,7 @@ class TestAnalyzeExtraLocalMode:
 # ---------------------------------------------------------------------------
 # TestComputeImportantMoves
 # ---------------------------------------------------------------------------
+
 
 class TestComputeImportantMoves:
     """Tests for Game._compute_important_moves()."""

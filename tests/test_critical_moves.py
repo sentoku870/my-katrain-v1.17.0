@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit tests for Critical 3 module (Phase 50).
 
@@ -13,52 +12,40 @@ Tests cover:
 All tests are engine-free (no KataGo/Leela required).
 """
 
-import pytest
-from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from katrain.core.analysis import (
-    # Dataclass
-    CriticalMove,
-    # Main function
-    select_critical_moves,
-    # Constants
-    MEANING_TAG_WEIGHTS,
+    CRITICAL_SCORE_PRECISION,
     DEFAULT_MEANING_TAG_WEIGHT,
     DIVERSITY_PENALTY_FACTOR,
-    CRITICAL_SCORE_PRECISION,
+    # Constants
+    MEANING_TAG_WEIGHTS,
     # Phase 83 constants
-    THRESHOLD_SCORE_STDEV_CHAOS,
-    COMPLEXITY_DISCOUNT_FACTOR,
+    CriticalMove,
+    EvalSnapshot,
+    # Other imports
+    _build_node_map,
+    _classify_meaning_tags,
+    _compute_critical_score,
+    _compute_diversity_penalty,
     # Internal functions
     _get_meaning_tag_weight,
-    _compute_diversity_penalty,
-    _compute_complexity_discount,  # Phase 83
-    _compute_critical_score,
-    _sort_key,
-    _build_node_map,
-    _get_score_stdev_from_node,
     _get_score_stdev_for_move,
-    _classify_meaning_tags,
-    # Other imports
-    MoveEval,
-    EvalSnapshot,
+    _get_score_stdev_from_node,
+    _sort_key,
+    # Main function
+    select_critical_moves,
 )
-from katrain.core.analysis.meaning_tags import MeaningTagId, MeaningTag
-
 from tests.helpers_critical_moves import (
     StubGameNodeWithAnalysis,
+    StubMove,
     build_stub_game_with_analysis,
-    create_test_snapshot,
-    create_test_snapshot_with_tags,
     create_standard_test_game,
     create_standard_test_snapshot,
-    StubGame,
-    StubGameNode,
-    StubMove,
-    make_move_eval,
+    create_test_snapshot,
 )
-
 
 # =============================================================================
 # Test: MeaningTag Weight Functions
@@ -142,14 +129,14 @@ class TestDiversityPenalty:
         """Two overlaps give DIVERSITY_PENALTY_FACTOR^2 = 0.25."""
         selected = ("overplay", "overplay")
         penalty = _compute_diversity_penalty("overplay", selected)
-        assert penalty == DIVERSITY_PENALTY_FACTOR ** 2
+        assert penalty == DIVERSITY_PENALTY_FACTOR**2
         assert penalty == 0.25
 
     def test_diversity_penalty_three_overlaps(self):
         """Three overlaps give DIVERSITY_PENALTY_FACTOR^3 = 0.125."""
         selected = ("overplay", "overplay", "overplay")
         penalty = _compute_diversity_penalty("overplay", selected)
-        assert penalty == DIVERSITY_PENALTY_FACTOR ** 3
+        assert penalty == DIVERSITY_PENALTY_FACTOR**3
         assert penalty == 0.125
 
     def test_diversity_penalty_empty_selected(self):
@@ -244,11 +231,13 @@ class TestNodeMapAndScoreStdev:
 
     def test_node_map_uses_depth(self):
         """node_map keys match node.depth values."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
-            ("B", (3, 15), 1.0, {"root": {"scoreStdev": 4.0}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
+                ("B", (3, 15), 1.0, {"root": {"scoreStdev": 4.0}}),
+            ]
+        )
         node_map = _build_node_map(game)
 
         for move_no, node in node_map.items():
@@ -256,10 +245,12 @@ class TestNodeMapAndScoreStdev:
 
     def test_node_map_indexing_consistency(self):
         """node_map[1] = first move, root (depth=0) excluded."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
+            ]
+        )
         node_map = _build_node_map(game)
 
         # Root (depth=0) should not be in map
@@ -342,10 +333,12 @@ class TestNodeMapAndScoreStdev:
 
     def test_score_stdev_for_move_found(self):
         """Get scoreStdev for a valid move number."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 7.5}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 7.5}}),
+            ]
+        )
         node_map = _build_node_map(game)
 
         stdev = _get_score_stdev_for_move(node_map, 2)
@@ -353,9 +346,11 @@ class TestNodeMapAndScoreStdev:
 
     def test_score_stdev_for_move_not_found(self):
         """Return None for non-existent move number."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
+            ]
+        )
         node_map = _build_node_map(game)
 
         stdev = _get_score_stdev_for_move(node_map, 99)
@@ -372,9 +367,11 @@ class TestClassifyMeaningTags:
 
     def test_classify_uses_existing_tag(self):
         """If MoveEval already has meaning_tag_id, use it."""
-        snapshot = create_test_snapshot([
-            {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
+            ]
+        )
         # Set existing tag
         snapshot.moves[0].meaning_tag_id = "life_death_error"
 
@@ -384,19 +381,19 @@ class TestClassifyMeaningTags:
 
     def test_classify_non_mutating(self):
         """_classify_meaning_tags() does not modify MoveEval objects."""
-        snapshot = create_test_snapshot([
-            {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
-            {"move_number": 2, "score_loss": 3.0, "importance_score": 8.0},
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
+                {"move_number": 2, "score_loss": 3.0, "importance_score": 8.0},
+            ]
+        )
         # Record original values
         original_tags = [m.meaning_tag_id for m in snapshot.moves]
 
         # Mock classify_meaning_tag to return a fixed tag
         # Note: classify_meaning_tag is imported inside the function,
         # so we patch at the source module
-        with patch(
-            "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-        ) as mock_classify:
+        with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
             mock_tag = MagicMock()
             mock_tag.id.value = "overplay"
             mock_classify.return_value = mock_tag
@@ -409,16 +406,16 @@ class TestClassifyMeaningTags:
 
     def test_classify_calls_classifier_for_none_tags(self):
         """Calls classify_meaning_tag() when meaning_tag_id is None."""
-        snapshot = create_test_snapshot([
-            {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {"move_number": 1, "score_loss": 5.0, "importance_score": 10.0},
+            ]
+        )
         assert snapshot.moves[0].meaning_tag_id is None
 
         # Note: classify_meaning_tag is imported inside the function,
         # so we patch at the source module
-        with patch(
-            "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-        ) as mock_classify:
+        with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
             mock_tag = MagicMock()
             mock_tag.id.value = "direction_error"
             mock_classify.return_value = mock_tag
@@ -486,14 +483,10 @@ class TestSelectCriticalMoves:
         """Game with no moves returns empty list."""
         game = build_stub_game_with_analysis([])
 
-        with patch(
-            "katrain.core.analysis.snapshot_from_game"
-        ) as mock_snapshot:
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = EvalSnapshot(moves=[])
 
-            with patch(
-                "katrain.core.analysis.pick_important_moves"
-            ) as mock_pick:
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 mock_pick.return_value = []
 
                 result = select_critical_moves(game, max_moves=3)
@@ -505,20 +498,14 @@ class TestSelectCriticalMoves:
         game = create_standard_test_game(num_moves=20)
         snapshot = create_standard_test_snapshot(num_moves=20)
 
-        with patch(
-            "katrain.core.analysis.snapshot_from_game"
-        ) as mock_snapshot:
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = snapshot
 
-            with patch(
-                "katrain.core.analysis.pick_important_moves"
-            ) as mock_pick:
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 # Return all moves as important
                 mock_pick.return_value = snapshot.moves
 
-                with patch(
-                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                ) as mock_classify:
+                with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
                     mock_classify.return_value = mock_tag
@@ -529,34 +516,32 @@ class TestSelectCriticalMoves:
 
     def test_critical_move_fields_populated(self):
         """All CriticalMove fields are populated (score_stdev may be None)."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
-        ])
-        snapshot = create_test_snapshot([
-            {
-                "move_number": 1,
-                "player": "B",
-                "gtp": "D4",
-                "score_loss": 5.0,
-                "importance_score": 10.0,
-                "delta_winrate": -0.05,
-            },
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
+            ]
+        )
+        snapshot = create_test_snapshot(
+            [
+                {
+                    "move_number": 1,
+                    "player": "B",
+                    "gtp": "D4",
+                    "score_loss": 5.0,
+                    "importance_score": 10.0,
+                    "delta_winrate": -0.05,
+                },
+            ]
+        )
 
-        with patch(
-            "katrain.core.analysis.snapshot_from_game"
-        ) as mock_snapshot:
+        with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = snapshot
 
-            with patch(
-                "katrain.core.analysis.pick_important_moves"
-            ) as mock_pick:
+            with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 mock_pick.return_value = snapshot.moves
 
-                with patch(
-                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                ) as mock_classify:
+                with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
                     mock_classify.return_value = mock_tag
@@ -590,19 +575,13 @@ class TestSelectCriticalMoves:
         results: list[list[CriticalMove]] = []
 
         for _ in range(ITERATIONS):
-            with patch(
-                "katrain.core.analysis.snapshot_from_game"
-            ) as mock_snapshot:
+            with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
                 mock_snapshot.return_value = snapshot
 
-                with patch(
-                    "katrain.core.analysis.pick_important_moves"
-                ) as mock_pick:
+                with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                     mock_pick.return_value = snapshot.moves[:5]  # Top 5 moves
 
-                    with patch(
-                        "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                    ) as mock_classify:
+                    with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                         mock_tag = MagicMock()
                         mock_tag.id.value = "overplay"
                         mock_classify.return_value = mock_tag
@@ -614,16 +593,10 @@ class TestSelectCriticalMoves:
         first = results[0]
         for i, result in enumerate(results[1:], start=2):
             assert len(result) == len(first), f"Iteration {i}: length mismatch"
-            for j, (cm1, cm2) in enumerate(zip(first, result)):
-                assert cm1.move_number == cm2.move_number, (
-                    f"Iteration {i}, move {j}: move_number mismatch"
-                )
-                assert cm1.critical_score == cm2.critical_score, (
-                    f"Iteration {i}, move {j}: critical_score mismatch"
-                )
-                assert cm1.meaning_tag_id == cm2.meaning_tag_id, (
-                    f"Iteration {i}, move {j}: meaning_tag_id mismatch"
-                )
+            for j, (cm1, cm2) in enumerate(zip(first, result, strict=False)):
+                assert cm1.move_number == cm2.move_number, f"Iteration {i}, move {j}: move_number mismatch"
+                assert cm1.critical_score == cm2.critical_score, f"Iteration {i}, move {j}: critical_score mismatch"
+                assert cm1.meaning_tag_id == cm2.meaning_tag_id, f"Iteration {i}, move {j}: meaning_tag_id mismatch"
 
 
 # =============================================================================
@@ -718,27 +691,31 @@ class TestSelectCriticalMovesComplexity:
             Move 1 selected first (higher effective score)
             Move 2 selected second (discounted)
         """
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
+            ]
+        )
 
-        snapshot = create_test_snapshot([
-            {
-                "move_number": 1,
-                "player": "B",
-                "gtp": "D4",
-                "score_loss": 5.0,
-                "importance_score": 10.0,
-            },
-            {
-                "move_number": 2,
-                "player": "W",
-                "gtp": "Q16",
-                "score_loss": 5.0,
-                "importance_score": 10.0,
-            },
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {
+                    "move_number": 1,
+                    "player": "B",
+                    "gtp": "D4",
+                    "score_loss": 5.0,
+                    "importance_score": 10.0,
+                },
+                {
+                    "move_number": 2,
+                    "player": "W",
+                    "gtp": "Q16",
+                    "score_loss": 5.0,
+                    "importance_score": 10.0,
+                },
+            ]
+        )
 
         with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = snapshot
@@ -746,9 +723,7 @@ class TestSelectCriticalMovesComplexity:
             with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 mock_pick.return_value = snapshot.moves
 
-                with patch(
-                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                ) as mock_classify:
+                with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
                     mock_classify.return_value = mock_tag
@@ -766,19 +741,23 @@ class TestSelectCriticalMovesComplexity:
 
     def test_leela_moves_not_penalized(self):
         """Leela moves (no scoreStdev in analysis) are not discounted."""
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"winrate": 0.55}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"winrate": 0.55}}),
+            ]
+        )
 
-        snapshot = create_test_snapshot([
-            {
-                "move_number": 1,
-                "player": "B",
-                "gtp": "D4",
-                "score_loss": 5.0,
-                "importance_score": 10.0,
-            },
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {
+                    "move_number": 1,
+                    "player": "B",
+                    "gtp": "D4",
+                    "score_loss": 5.0,
+                    "importance_score": 10.0,
+                },
+            ]
+        )
 
         with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = snapshot
@@ -786,9 +765,7 @@ class TestSelectCriticalMovesComplexity:
             with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 mock_pick.return_value = snapshot.moves
 
-                with patch(
-                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                ) as mock_classify:
+                with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
                     mock_classify.return_value = mock_tag
@@ -808,27 +785,31 @@ class TestSelectCriticalMovesComplexity:
 
         Expected: Move 2 selected first (15.0 > 5.0)
         """
-        game = build_stub_game_with_analysis([
-            ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
-            ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
-        ])
+        game = build_stub_game_with_analysis(
+            [
+                ("B", (3, 3), 0.5, {"root": {"scoreStdev": 5.0}}),
+                ("W", (15, 15), -1.0, {"root": {"scoreStdev": 25.0}}),
+            ]
+        )
 
-        snapshot = create_test_snapshot([
-            {
-                "move_number": 1,
-                "player": "B",
-                "gtp": "D4",
-                "score_loss": 1.0,
-                "importance_score": 5.0,
-            },
-            {
-                "move_number": 2,
-                "player": "W",
-                "gtp": "Q16",
-                "score_loss": 10.0,
-                "importance_score": 50.0,
-            },
-        ])
+        snapshot = create_test_snapshot(
+            [
+                {
+                    "move_number": 1,
+                    "player": "B",
+                    "gtp": "D4",
+                    "score_loss": 1.0,
+                    "importance_score": 5.0,
+                },
+                {
+                    "move_number": 2,
+                    "player": "W",
+                    "gtp": "Q16",
+                    "score_loss": 10.0,
+                    "importance_score": 50.0,
+                },
+            ]
+        )
 
         with patch("katrain.core.analysis.snapshot_from_game") as mock_snapshot:
             mock_snapshot.return_value = snapshot
@@ -836,9 +817,7 @@ class TestSelectCriticalMovesComplexity:
             with patch("katrain.core.analysis.pick_important_moves") as mock_pick:
                 mock_pick.return_value = snapshot.moves
 
-                with patch(
-                    "katrain.core.analysis.meaning_tags.classify_meaning_tag"
-                ) as mock_classify:
+                with patch("katrain.core.analysis.meaning_tags.classify_meaning_tag") as mock_classify:
                     mock_tag = MagicMock()
                     mock_tag.id.value = "overplay"
                     mock_classify.return_value = mock_tag
@@ -862,9 +841,7 @@ class TestCriticalScoreWithComplexityDiscount:
     def test_discount_reduces_score(self):
         """complexity_discount < 1.0 reduces the score (ordering test)."""
         score_normal = _compute_critical_score(10.0, "overplay", ())
-        score_discounted = _compute_critical_score(
-            10.0, "overplay", (), complexity_discount=0.3
-        )
+        score_discounted = _compute_critical_score(10.0, "overplay", (), complexity_discount=0.3)
         assert score_discounted < score_normal
         assert score_discounted > 0
 
@@ -872,9 +849,7 @@ class TestCriticalScoreWithComplexityDiscount:
         """Discount and diversity penalty both reduce score."""
         base_score = _compute_critical_score(10.0, "overplay", ())
         score_with_diversity = _compute_critical_score(10.0, "overplay", ("overplay",))
-        score_with_both = _compute_critical_score(
-            10.0, "overplay", ("overplay",), complexity_discount=0.3
-        )
+        score_with_both = _compute_critical_score(10.0, "overplay", ("overplay",), complexity_discount=0.3)
 
         assert score_with_diversity < base_score
         assert score_with_both < score_with_diversity
@@ -892,9 +867,7 @@ class TestSortingOrderInvariant:
             (3, 10.0),
         ]
 
-        sorted_candidates = sorted(
-            candidates, key=lambda x: _sort_key(x[0], x[1])
-        )
+        sorted_candidates = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
 
         assert sorted_candidates[0] == (2, 15.0), "Highest score should be first"
         assert sorted_candidates[1] == (3, 10.0)
@@ -908,9 +881,7 @@ class TestSortingOrderInvariant:
             (8, 10.0),
         ]
 
-        sorted_candidates = sorted(
-            candidates, key=lambda x: _sort_key(x[0], x[1])
-        )
+        sorted_candidates = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
 
         assert sorted_candidates[0] == (2, 10.0)
         assert sorted_candidates[1] == (5, 10.0)

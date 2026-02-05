@@ -3,16 +3,17 @@
 CI-friendly: no Kivy event loop required.
 Tests production code directly where possible.
 """
+
 import pytest
 
+from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
 from katrain.core.analysis import (
-    EngineType,
-    VALID_ANALYSIS_ENGINES,
     DEFAULT_ANALYSIS_ENGINE,
+    VALID_ANALYSIS_ENGINES,
+    EngineType,
     get_analysis_engine,
     needs_leela_warning,
 )
-from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
 
 
 class TestNeedsLeelaWarning:

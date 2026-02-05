@@ -4,7 +4,6 @@ Phase 29: Diagnostics + Bug Report Bundle.
 """
 
 import json
-import os
 
 import pytest
 

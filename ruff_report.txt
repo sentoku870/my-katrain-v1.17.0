@@ -1,0 +1,222 @@
+F403 `from katrain.gui.kivyutils import *` used; unable to detect undefined names
+   --> katrain\__main__.py:143:1
+    |
+142 | # used in kv
+143 | from katrain.gui.kivyutils import *
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+144 | from katrain.gui.leela_manager import LeelaManager
+145 | from katrain.gui.managers.active_review_controller import ActiveReviewController
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\analysis\cluster_classifier.py:537:5
+    |
+536 |       # TERRITORY_LOSS has additional requirement
+537 | /     if classified.semantics == ClusterSemantics.TERRITORY_LOSS:
+538 | |         if abs(classified.cluster.sum_delta) < TERRITORY_LOSS_MIN_DELTA:
+    | |________________________________________________________________________^
+539 |               return False
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\analysis\logic.py:605:13
+    |
+603 |           node_id = id(node)
+604 |           if node_id not in loaded_nodes:
+605 | /             if hasattr(node, "analysis_from_sgf") and node.analysis_from_sgf:
+606 | |                 if hasattr(node, "load_analysis"):
+    | |__________________________________________________^
+607 |                       node.load_analysis()
+608 |               loaded_nodes.add(node_id)
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\analysis\logic.py:613:17
+    |
+611 |               parent_id = id(parent)
+612 |               if parent_id not in loaded_nodes:
+613 | /                 if hasattr(parent, "analysis_from_sgf") and parent.analysis_from_sgf:
+614 | |                     if hasattr(parent, "load_analysis"):
+    | |________________________________________________________^
+615 |                           parent.load_analysis()
+616 |                   loaded_nodes.add(parent_id)
+    |
+help: Combine `if` statements using `and`
+
+B007 Loop control variable `node` not used within loop body
+   --> katrain\core\analysis\logic.py:629:9
+    |
+627 |     # 連続する手から before / delta を埋める
+628 |     prev: MoveEval | None = None
+629 |     for node, m in node_evals:
+    |         ^^^^
+630 |         if prev is not None:
+631 |             m.score_before = prev.score_after
+    |
+help: Rename unused `node` to `_node`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\analysis\meaning_tags\classifier.py:507:5
+    |
+506 |       # Single endgame_hint (lower threshold, only if not already detected as endgame)
+507 | /     if has_endgame_hint and loss >= THRESHOLD_LOSS_SMALL:  # 1.0
+508 | |         if not has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk and not _is_endgame:
+    | |_____________________________________________________________________________________________________________________^
+509 |               return _make_tag(MeaningTagId.ENDGAME_SLIP)
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\auto_setup.py:285:9
+    |
+283 |               path = shutil.which(candidate)
+284 |
+285 | /         if path and os.path.isfile(path):
+286 | |             # Skip if likely OpenCL binary (filename-based heuristic)
+287 | |             if not _is_likely_opencl_binary(path):
+    | |__________________________________________________^
+288 |                   return path
+    |
+help: Combine `if` statements using `and`
+
+B007 Loop control variable `node` not used within loop body
+   --> katrain\core\batch\analysis.py:340:17
+    |
+339 |         # Analyze each position
+340 |         for i, (node, moves_to_position) in enumerate(zip(move_nodes, moves_sequence, strict=False)):
+    |                 ^^^^
+341 |             # Check file timeout
+342 |             if time.time() - file_start_time > file_timeout:
+    |
+help: Rename unused `node` to `_node`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\beginner\hints.py:273:9
+    |
+272 |           # Phase 92: Apply reliability filter for non-detector hints
+273 | /         if hint and require_reliable:
+274 | |             # Detector hints use board state (always reliable)
+275 | |             # MeaningTag hints need analysis reliability check
+276 | |             if hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+    | |____________________________________________________________________________________^
+277 |                   return None
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\board_analysis.py:156:21
+    |
+154 |                   if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
+155 |                       neighbor_id = board[ny][nx]
+156 | /                     if neighbor_id >= 0 and neighbor_id < len(chains) and chains[neighbor_id]:
+157 | |                         if chains[neighbor_id][0].player != color:
+    | |__________________________________________________________________^
+158 |                               adjacent_enemy_groups.add(neighbor_id)
+    |
+help: Combine `if` statements using `and`
+
+B007 Loop control variable `game` not used within loop body
+   --> katrain\core\curator\batch.py:212:14
+    |
+210 |     # Build rankings
+211 |     rankings: list[dict[str, Any]] = []
+212 |     for i, ((game, stats), score) in enumerate(zip(games_and_stats, scores, strict=False)):
+    |              ^^^^
+213 |         game_id = stats.get("game_name", f"game_{i}")
+214 |         rankings.append(
+    |
+help: Rename unused `game` to `_game`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\curator\scoring.py:214:17
+    |
+212 |               if root_info is not None:
+213 |                   score_lead = root_info.get("scoreLead")
+214 | /                 if score_lead is not None and isinstance(score_lead, (int, float)):
+215 | |                     if math.isfinite(score_lead):
+    | |_________________________________________________^
+216 |                           values.append(float(score_lead))
+217 |           # Follow mainline only (cast to GameNode since game.root is GameNode)
+    |
+help: Combine `if` statements using `and`
+
+B007 Loop control variable `player` not used within loop body
+   --> katrain\core\leela\conversion.py:304:23
+    |
+303 |     # Validation: move_number monotonic and >= 1
+304 |     for i, (move_num, player, gtp) in enumerate(moves_info):
+    |                       ^^^^^^
+305 |         if move_num < 1:
+306 |             raise ValueError(f"Invalid move_number={move_num} at index {i}")
+    |
+help: Rename unused `player` to `_player`
+
+B007 Loop control variable `gtp` not used within loop body
+   --> katrain\core\leela\conversion.py:304:31
+    |
+303 |     # Validation: move_number monotonic and >= 1
+304 |     for i, (move_num, player, gtp) in enumerate(moves_info):
+    |                               ^^^
+305 |         if move_num < 1:
+306 |             raise ValueError(f"Invalid move_number={move_num} at index {i}")
+    |
+help: Rename unused `gtp` to `_gtp`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\reports\karte\sections\summary.py:145:9
+    |
+143 |           next_mv = moves_list[i + 1]
+144 |           # Both players lost 2+ points each
+145 | /         if (
+146 | |             mv.points_lost is not None
+147 | |             and mv.points_lost >= 2.0
+148 | |             and next_mv.points_lost is not None
+149 | |             and next_mv.points_lost >= 2.0
+150 | |         ):
+151 | |             # Verify turn alternation
+152 | |             if mv.player != next_mv.player:
+    | |___________________________________________^
+153 |                   total = mv.points_lost + next_mv.points_lost
+154 |                   # Assign losses correctly to black/white
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\core\study\active_review.py:360:5
+    |
+358 |       # Check for life/death situations based on ownership uncertainty
+359 |       ownership = root_info.get("ownership", [])
+360 | /     if ownership:
+361 | |         # High ownership variance suggests tactical fighting
+362 | |         if any(abs(o) < 0.3 for o in ownership[:50]):  # Early cells
+    | |_____________________________________________________^
+363 |               return "active_review:hint:fighting"
+    |
+help: Combine `if` statements using `and`
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> katrain\gui\leela_manager.py:142:9
+    |
+141 |           # Start engine if needed
+142 | /         if not self.leela_engine or not self.leela_engine.is_alive():
+143 | |             if not self.start_engine(katrain_for_engine):
+    | |_________________________________________________________^
+144 |                   return
+    |
+help: Combine `if` statements using `and`
+
+B007 Loop control variable `i` not used within loop body
+    --> katrain\gui\popups.py:1082:13
+     |
+1080 |         table.add_widget(TableHeaderLabel(text="", background_color=Theme.BACKGROUND_COLOR))
+1081 |
+1082 |         for i, (label, fmt, stat, scale, more_is_better) in enumerate(
+     |             ^
+1083 |             [
+1084 |                 ("accuracy", "{:.1f}", "accuracy", 100, True),
+     |
+help: Rename unused `i` to `_i`
+
+Found 18 errors.

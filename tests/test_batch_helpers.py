@@ -1,11 +1,14 @@
 """Tests for batch helper functions (Phase 53)."""
+
 import os
+
 import pytest
+
 from katrain.core.batch.helpers import (
-    truncate_game_name,
+    escape_markdown_table_cell,
     format_wr_gap,
     make_markdown_link_target,
-    escape_markdown_table_cell,
+    truncate_game_name,
 )
 
 
@@ -83,18 +86,12 @@ class TestMakeMarkdownLinkTarget:
 
     def test_sibling_folder(self):
         """Links to sibling folders should work."""
-        result = make_markdown_link_target(
-            "/reports/summary",
-            "/reports/karte/file.md"
-        )
+        result = make_markdown_link_target("/reports/summary", "/reports/karte/file.md")
         assert result == "../karte/file.md"
 
     def test_encodes_brackets(self):
         """Brackets should be URL-encoded."""
-        result = make_markdown_link_target(
-            "/reports/summary",
-            "/reports/karte/karte_[player]vs[player].md"
-        )
+        result = make_markdown_link_target("/reports/summary", "/reports/karte/karte_[player]vs[player].md")
         assert "%5B" in result  # [ encoded
         assert "%5D" in result  # ] encoded
         assert "[" not in result
@@ -102,51 +99,36 @@ class TestMakeMarkdownLinkTarget:
 
     def test_encodes_spaces(self):
         """Spaces should be URL-encoded."""
-        result = make_markdown_link_target(
-            "/reports/summary",
-            "/reports/karte/karte_player name.md"
-        )
+        result = make_markdown_link_target("/reports/summary", "/reports/karte/karte_player name.md")
         assert "%20" in result  # space encoded
         assert " " not in result
 
     def test_keeps_safe_chars(self):
         """Safe path characters should not be encoded."""
-        result = make_markdown_link_target(
-            "/reports/summary",
-            "/reports/karte/karte_test-file_v1.0.md"
-        )
+        result = make_markdown_link_target("/reports/summary", "/reports/karte/karte_test-file_v1.0.md")
         # Hyphens, underscores, dots, slashes should not be encoded
         assert "-" in result
         assert "_" in result
         assert "." in result
         assert "/" in result
 
-    @pytest.mark.skipif(os.name != 'nt', reason="Windows-only test")
+    @pytest.mark.skipif(os.name != "nt", reason="Windows-only test")
     def test_windows_backslash(self):
         """On Windows, backslashes should become forward slashes."""
-        result = make_markdown_link_target(
-            "C:\\reports\\summary",
-            "C:\\reports\\karte\\file.md"
-        )
+        result = make_markdown_link_target("C:\\reports\\summary", "C:\\reports\\karte\\file.md")
         assert "\\" not in result
-        assert "../karte/file.md" == result
+        assert result == "../karte/file.md"
 
-    @pytest.mark.skipif(os.name != 'nt', reason="Windows-only test")
+    @pytest.mark.skipif(os.name != "nt", reason="Windows-only test")
     def test_cross_drive_fallback(self):
         """Cross-drive paths on Windows should fallback to basename."""
-        result = make_markdown_link_target(
-            "C:\\reports\\summary",
-            "D:\\other\\karte\\file.md"
-        )
+        result = make_markdown_link_target("C:\\reports\\summary", "D:\\other\\karte\\file.md")
         # Should fallback to just filename
         assert "file.md" in result
 
     def test_multibyte_filename(self):
         """Multibyte characters should be URL-encoded."""
-        result = make_markdown_link_target(
-            "/reports/summary",
-            "/reports/karte/karte_日本語.md"
-        )
+        result = make_markdown_link_target("/reports/summary", "/reports/karte/karte_日本語.md")
         # Should URL-encode multibyte chars
         assert ".md" in result
         # Japanese chars should be percent-encoded
@@ -154,10 +136,7 @@ class TestMakeMarkdownLinkTarget:
 
     def test_same_directory(self):
         """Links in the same directory should work."""
-        result = make_markdown_link_target(
-            "/reports/karte",
-            "/reports/karte/file.md"
-        )
+        result = make_markdown_link_target("/reports/karte", "/reports/karte/file.md")
         assert result == "file.md"
 
 

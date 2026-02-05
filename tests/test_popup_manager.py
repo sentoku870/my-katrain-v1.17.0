@@ -5,7 +5,6 @@ Kivy完全非依存:
 - 全依存はモック/スタブで注入
 - 内部状態（_popups等）へのアクセスを避け、ブラックボックステストを実現
 """
-import pytest
 
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.gui.managers.popup_manager import PopupManager
@@ -71,9 +70,11 @@ def create_manager(
     if log_calls is None:
         log_calls = []
     if get_popup_open is None:
-        get_popup_open = lambda: None
+        def get_popup_open():
+            return None
     if is_engine_recovery_fn is None:
-        is_engine_recovery_fn = lambda p: False
+        def is_engine_recovery_fn(p):
+            return False
 
     def make_factory(key):
         def factory(*args):
@@ -255,9 +256,7 @@ class TestTeacherAndAiPopups:
             "ai": [],
             "engine": [],
         }
-        manager, counts, created_popups, _, _, _ = create_manager(
-            created_popups=created_popups
-        )
+        manager, counts, created_popups, _, _, _ = create_manager(created_popups=created_popups)
 
         # Act
         manager.open_teacher_popup()
@@ -278,9 +277,7 @@ class TestTeacherAndAiPopups:
             "ai": [],
             "engine": [],
         }
-        manager, counts, created_popups, _, _, _ = create_manager(
-            created_popups=created_popups
-        )
+        manager, counts, created_popups, _, _, _ = create_manager(created_popups=created_popups)
 
         # Act
         manager.open_ai_popup()
@@ -301,9 +298,7 @@ class TestTeacherAndAiPopups:
             "ai": [],
             "engine": [],
         }
-        manager, counts, created_popups, _, _, _ = create_manager(
-            created_popups=created_popups
-        )
+        manager, counts, created_popups, _, _, _ = create_manager(created_popups=created_popups)
 
         # Act
         manager.open_timer_popup()
@@ -328,9 +323,7 @@ class TestNewGamePostOpenHook:
             "ai": [],
             "engine": [],
         }
-        manager, _, created_popups, _, on_new_game_calls, _ = create_manager(
-            created_popups=created_popups
-        )
+        manager, _, created_popups, _, on_new_game_calls, _ = create_manager(created_popups=created_popups)
 
         # Act
         manager.open_new_game_popup()

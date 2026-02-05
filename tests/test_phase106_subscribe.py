@@ -2,9 +2,12 @@
 
 全テストはKivy依存。CI環境ではスキップ、ローカルでのみ実行。
 """
+
 import os
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from katrain.core.state import Event, EventType, StateNotifier
 
 
@@ -139,8 +142,10 @@ class TestAnalysisCompleteCallback:
         dummy.katrain = mock_katrain
 
         with patch("katrain.gui.controlspanel.Clock") as mock_clock:
+
             def execute_scheduled(fn, delay):
                 fn(0)
+
             mock_clock.schedule_once.side_effect = execute_scheduled
 
             event = Event.create(EventType.ANALYSIS_COMPLETE, {"query_id": "Q1"})
@@ -157,8 +162,10 @@ class TestAnalysisCompleteCallback:
         dummy.graph = None
 
         with patch("katrain.gui.controlspanel.Clock") as mock_clock:
+
             def execute_scheduled(fn, delay):
                 fn(0)
+
             mock_clock.schedule_once.side_effect = execute_scheduled
 
             event = Event.create(EventType.ANALYSIS_COMPLETE, {"query_id": "Q1"})
@@ -174,8 +181,10 @@ class TestAnalysisCompleteCallback:
         dummy.katrain.game = None
 
         with patch("katrain.gui.controlspanel.Clock") as mock_clock:
+
             def execute_scheduled(fn, delay):
                 fn(0)
+
             mock_clock.schedule_once.side_effect = execute_scheduled
 
             event = Event.create(EventType.ANALYSIS_COMPLETE, {"query_id": "Q1"})
@@ -193,8 +202,10 @@ class TestAnalysisCompleteCallback:
         dummy.katrain.game = mock_game
 
         with patch("katrain.gui.controlspanel.Clock") as mock_clock:
+
             def execute_scheduled(fn, delay):
                 fn(0)
+
             mock_clock.schedule_once.side_effect = execute_scheduled
 
             event = Event.create(EventType.ANALYSIS_COMPLETE, {"query_id": "Q1"})
@@ -209,7 +220,7 @@ class TestSubscriptionEdgeCases:
         """katrainが複数回変更されても正しく動作"""
         notifiers = [StateNotifier() for _ in range(3)]
         katrains = [MagicMock() for _ in range(3)]
-        for k, n in zip(katrains, notifiers):
+        for k, n in zip(katrains, notifiers, strict=False):
             k.state_notifier = n
 
         from katrain.gui.controlspanel import ControlsPanel

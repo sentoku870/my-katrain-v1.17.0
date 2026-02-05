@@ -9,9 +9,9 @@ from katrain.core.sgf_parser import SGF, SGFNode
 def test_simple():
     input_sgf = "(;GM[1]FF[4]SZ[19]DT[2020-04-12]AB[dd][dj];B[dp];W[pp];B[pj])"
     root = SGF.parse_sgf(input_sgf)
-    assert "4" == root.get_property("FF")
+    assert root.get_property("FF") == "4"
     assert root.get_property("XYZ") is None
-    assert "dp" == root.children[0].get_property("B")
+    assert root.children[0].get_property("B") == "dp"
     assert input_sgf == root.sgf()
 
 
@@ -39,14 +39,14 @@ or \\]
 def test_backslash_escape():
     nasty_string = "[]]\\"
     nasty_strings = ["[\\]\\]\\\\", "[", "]", "\\", "\\[", "\\]", "\\\\[", "\\\\]", "]]]\\]]\\]]["]
-    assert "[\\]\\]\\\\" == SGFNode._escape_value(nasty_string)
+    assert SGFNode._escape_value(nasty_string) == "[\\]\\]\\\\"
     for x in nasty_strings:
         assert x == SGFNode._unescape_value(SGFNode._escape_value(x))
 
     c2 = ["]", "\\"]
     node = SGFNode(properties={"C1": nasty_string})
     node.set_property("C2", c2)
-    assert "(;C1[[\\]\\]\\\\]C2[\\]][\\\\])" == node.sgf()
+    assert node.sgf() == "(;C1[[\\]\\]\\\\]C2[\\]][\\\\])"
     assert {"C1": [nasty_string], "C2": c2} == SGF.parse_sgf(node.sgf()).properties
 
 
@@ -87,8 +87,8 @@ def test_pandanet():
     move = root
     while move.children:
         move = move.children[0]
-    assert 94 == len(move.get_list_property("TW"))
-    assert "Trilan" == move.get_property("OS")
+    assert len(move.get_list_property("TW")) == 94
+    assert move.get_property("OS") == "Trilan"
     while move.parent:
         move = move.parent
     assert move is root
@@ -112,7 +112,7 @@ SZ[19]TM[600]KM[0.500000]LT[]
 
 )"""
     tree = SGF.parse_sgf(input_sgf)
-    assert 2 == len(tree.nodes_in_tree)
+    assert len(tree.nodes_in_tree) == 2
 
 
 def test_ogs():
@@ -123,7 +123,7 @@ def test_ogs():
 def test_gibo():
     file = os.path.join(os.path.dirname(__file__), "data/test.gib")
     root = SGF.parse_file(file)
-    assert {
+    assert root.properties == {
         "PW": ["wildsim1"],
         "WR": ["2D"],
         "PB": ["kim"],
@@ -131,15 +131,15 @@ def test_gibo():
         "RE": ["W+T"],
         "KM": [6.5],
         "DT": ["2020-06-14"],
-    } == root.properties
-    assert "pd" == root.children[0].get_property("B")
+    }
+    assert root.children[0].get_property("B") == "pd"
 
 
 def test_ngf():
     file = os.path.join(os.path.dirname(__file__), "data/handicap2.ngf")
     root = SGF.parse_file(file)
     root.properties["AB"].sort()
-    assert {
+    assert root.properties == {
         "AB": ["dp", "pd"],
         "DT": ["2017-03-16"],
         "HA": [2],
@@ -147,8 +147,8 @@ def test_ngf():
         "PW": ["ace550"],
         "RE": ["W+"],
         "SZ": [19],
-    } == root.properties
-    assert "pq" == root.children[0].get_property("W")
+    }
+    assert root.children[0].get_property("W") == "pq"
 
 
 def test_foxwq():
@@ -158,40 +158,40 @@ def test_foxwq():
         katrain = KaTrainBase(force_package_config=True, debug_level=0)
         game = Game(katrain, MagicMock(), move_tree)
 
-        assert [] == move_tree.placements
-        assert [] == game.root.placements
+        assert move_tree.placements == []
+        assert game.root.placements == []
         while game.current_node.children:
-            assert 1 == len(game.current_node.children)
+            assert len(game.current_node.children) == 1
             game.redo(1)
 
 
 def test_next_player():
     input_sgf = "(;GM[1]FF[4]AB[aa]AW[bb])"
-    assert "B" == SGF.parse_sgf(input_sgf).next_player
-    assert "B" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "B"
+    assert SGF.parse_sgf(input_sgf).initial_player == "B"
     input_sgf = "(;GM[1]FF[4]AB[aa]AW[bb]PL[B])"
-    assert "B" == SGF.parse_sgf(input_sgf).next_player
-    assert "B" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "B"
+    assert SGF.parse_sgf(input_sgf).initial_player == "B"
     input_sgf = "(;GM[1]FF[4]AB[aa]AW[bb]PL[W])"
-    assert "W" == SGF.parse_sgf(input_sgf).next_player
-    assert "W" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "W"
+    assert SGF.parse_sgf(input_sgf).initial_player == "W"
     input_sgf = "(;GM[1]FF[4]AB[aa])"
-    assert "W" == SGF.parse_sgf(input_sgf).next_player
-    assert "W" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "W"
+    assert SGF.parse_sgf(input_sgf).initial_player == "W"
     input_sgf = "(;GM[1]FF[4]AB[aa]PL[B])"
-    assert "B" == SGF.parse_sgf(input_sgf).next_player
-    assert "B" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "B"
+    assert SGF.parse_sgf(input_sgf).initial_player == "B"
     input_sgf = "(;GM[1]FF[4]AB[aa];B[dd])"  # branch exists
-    assert "B" == SGF.parse_sgf(input_sgf).next_player
-    assert "B" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "B"
+    assert SGF.parse_sgf(input_sgf).initial_player == "B"
     input_sgf = "(;GM[1]FF[4]AB[aa];W[dd])"  # branch exists
-    assert "W" == SGF.parse_sgf(input_sgf).next_player
-    assert "W" == SGF.parse_sgf(input_sgf).initial_player
+    assert SGF.parse_sgf(input_sgf).next_player == "W"
+    assert SGF.parse_sgf(input_sgf).initial_player == "W"
 
 
 def test_placements():
     input_sgf = "(;GM[1]FF[4]SZ[19]DT[2020-04-12]AB[dd][aa:ee]AW[ff:zz]AE[aa][bb][cc:dd])"
     root = SGF.parse_sgf(input_sgf)
     print(root.properties)
-    assert 6 == len(root.clear_placements)
-    assert 25 + 14 * 14 == len(root.placements)
+    assert len(root.clear_placements) == 6
+    assert len(root.placements) == 25 + 14 * 14

@@ -8,18 +8,14 @@ into Karte's Critical 3 section when reason_tags is empty.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
-import pytest
-
+from katrain.core.analysis.board_context import OwnershipContext
 from katrain.core.analysis.cluster_classifier import (
     ClusterSemantics,
     StoneCache,
     _get_cluster_context_for_move,
-    compute_stones_at_node,
 )
-from katrain.core.analysis.board_context import OwnershipContext
-
 
 # =====================================================================
 # Mock Fixtures
@@ -29,6 +25,7 @@ from katrain.core.analysis.board_context import OwnershipContext
 @dataclass
 class MockMove:
     """Mock Move for testing."""
+
     coords: tuple[int, int] | None
     player: str
 
@@ -40,6 +37,7 @@ class MockMove:
 @dataclass
 class MockGameNode:
     """Mock GameNode for testing."""
+
     placements: list[MockMove]
     moves: list[MockMove]
     clear_placements: list[MockMove]
@@ -179,9 +177,7 @@ class TestGetClusterContextForMove:
         game = create_mock_game(root)
 
         # Patch extract_ownership_context to return None grid
-        with patch(
-            "katrain.core.analysis.cluster_classifier.extract_ownership_context"
-        ) as mock_extract:
+        with patch("katrain.core.analysis.cluster_classifier.extract_ownership_context") as mock_extract:
             mock_extract.return_value = OwnershipContext(
                 ownership_grid=None,  # Missing
                 score_stdev=5.0,
@@ -258,18 +254,21 @@ class TestClusterContextLabels:
     def test_english_label(self):
         """English label for GROUP_DEATH."""
         from katrain.core.analysis.cluster_classifier import get_semantics_label
+
         label = get_semantics_label(ClusterSemantics.GROUP_DEATH, "en")
         assert label == "Group captured"
 
     def test_japanese_label(self):
         """Japanese label for GROUP_DEATH."""
         from katrain.core.analysis.cluster_classifier import get_semantics_label
+
         label = get_semantics_label(ClusterSemantics.GROUP_DEATH, "jp")
         assert label == "石が取られた"
 
     def test_ja_normalized_to_jp(self):
         """'ja' is normalized to 'jp'."""
         from katrain.core.analysis.cluster_classifier import get_semantics_label
+
         label = get_semantics_label(ClusterSemantics.GROUP_DEATH, "ja")
         assert label == "石が取られた"
 
@@ -279,16 +278,16 @@ class TestInjectionThresholds:
 
     def test_low_impact_territory_not_injected(self):
         """Small territory change (sum_delta < 1.0) is not injected."""
+        from katrain.core.analysis.board_context import BoardArea
         from katrain.core.analysis.cluster_classifier import (
-            should_inject,
-            ClassifiedCluster,
             TERRITORY_LOSS_MIN_DELTA,
+            ClassifiedCluster,
+            should_inject,
         )
         from katrain.core.analysis.ownership_cluster import (
-            OwnershipCluster,
             ClusterType,
+            OwnershipCluster,
         )
-        from katrain.core.analysis.board_context import BoardArea
 
         # sum_delta = -0.5 < 1.0
         cluster = OwnershipCluster(
@@ -314,15 +313,15 @@ class TestInjectionThresholds:
 
     def test_significant_territory_injected(self):
         """Large territory change (sum_delta >= 1.0) is injected."""
+        from katrain.core.analysis.board_context import BoardArea
         from katrain.core.analysis.cluster_classifier import (
-            should_inject,
             ClassifiedCluster,
+            should_inject,
         )
         from katrain.core.analysis.ownership_cluster import (
-            OwnershipCluster,
             ClusterType,
+            OwnershipCluster,
         )
-        from katrain.core.analysis.board_context import BoardArea
 
         # sum_delta = -3.0 >= 1.0
         cluster = OwnershipCluster(
@@ -347,16 +346,16 @@ class TestInjectionThresholds:
 
     def test_group_death_low_threshold(self):
         """GROUP_DEATH has low injection threshold (0.3)."""
+        from katrain.core.analysis.board_context import BoardArea
         from katrain.core.analysis.cluster_classifier import (
-            should_inject,
-            ClassifiedCluster,
             INJECTION_THRESHOLD,
+            ClassifiedCluster,
+            should_inject,
         )
         from katrain.core.analysis.ownership_cluster import (
-            OwnershipCluster,
             ClusterType,
+            OwnershipCluster,
         )
-        from katrain.core.analysis.board_context import BoardArea
 
         cluster = OwnershipCluster(
             coords=frozenset([(0, 0)]),
@@ -381,15 +380,15 @@ class TestInjectionThresholds:
 
     def test_ambiguous_never_injected(self):
         """AMBIGUOUS is never injected."""
+        from katrain.core.analysis.board_context import BoardArea
         from katrain.core.analysis.cluster_classifier import (
-            should_inject,
             ClassifiedCluster,
+            should_inject,
         )
         from katrain.core.analysis.ownership_cluster import (
-            OwnershipCluster,
             ClusterType,
+            OwnershipCluster,
         )
-        from katrain.core.analysis.board_context import BoardArea
 
         cluster = OwnershipCluster(
             coords=frozenset([(0, 0)]),

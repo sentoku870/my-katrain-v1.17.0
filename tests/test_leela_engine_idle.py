@@ -3,15 +3,17 @@
 Tests the is_idle() method state transitions and thread safety.
 CI-safe (no real engines).
 """
-import threading
-import pytest
-from typing import Callable
-from unittest.mock import Mock, patch
 
+import threading
+from collections.abc import Callable
+from unittest.mock import Mock
+
+import pytest
 
 # ---------------------------------------------------------------------------
 # Mock LeelaEngine for testing (matches production interface)
 # ---------------------------------------------------------------------------
+
 
 class MockLeelaEngineWithState:
     """State transition mock for LeelaEngine.
@@ -97,6 +99,7 @@ class MockLeelaEngineWithState:
 # ---------------------------------------------------------------------------
 # Test: is_idle() state transitions
 # ---------------------------------------------------------------------------
+
 
 class TestLeelaEngineIsIdle:
     """Test is_idle() state transitions."""
@@ -230,6 +233,7 @@ class TestLeelaEngineIsIdleThreadSafety:
 # Test: Production LeelaEngine.is_idle() (if available)
 # ---------------------------------------------------------------------------
 
+
 class TestProductionLeelaEngineIsIdle:
     """Test production LeelaEngine has is_idle() method."""
 
@@ -238,19 +242,20 @@ class TestProductionLeelaEngineIsIdle:
         from katrain.core.leela.engine import LeelaEngine
 
         assert hasattr(LeelaEngine, "is_idle")
-        assert callable(getattr(LeelaEngine, "is_idle"))
+        assert callable(LeelaEngine.is_idle)
 
     def test_leela_engine_has_cancel_analysis_method(self):
         """LeelaEngine class has cancel_analysis() method."""
         from katrain.core.leela.engine import LeelaEngine
 
         assert hasattr(LeelaEngine, "cancel_analysis")
-        assert callable(getattr(LeelaEngine, "cancel_analysis"))
+        assert callable(LeelaEngine.cancel_analysis)
 
     def test_is_idle_returns_bool(self):
         """is_idle() signature returns bool."""
-        from katrain.core.leela.engine import LeelaEngine
         import inspect
+
+        from katrain.core.leela.engine import LeelaEngine
 
         sig = inspect.signature(LeelaEngine.is_idle)
         # Should have self as only parameter

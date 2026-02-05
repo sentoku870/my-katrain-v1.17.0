@@ -20,8 +20,6 @@ from katrain.common.lexicon.validation import (
     LexiconNotLoadedError,
     LexiconParseError,
 )
-from katrain.common.lexicon.models import LexiconEntry
-
 
 # ---------------------------------------------------------------------------
 # Fixture Paths
@@ -526,7 +524,7 @@ class TestLexiconStoreIntegration:
             pytest.skip(f"Real lexicon not found: {real_lexicon_path}")
 
         # Parse YAML directly
-        with open(real_lexicon_path, "r", encoding="utf-8") as f:
+        with open(real_lexicon_path, encoding="utf-8") as f:
             raw_data = yaml.safe_load(f)
 
         raw_entries = raw_data.get("entries", [])

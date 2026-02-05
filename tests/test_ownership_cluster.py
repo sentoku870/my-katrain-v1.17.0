@@ -7,19 +7,15 @@ import pytest
 
 from katrain.core.analysis.board_context import BoardArea, OwnershipContext
 from katrain.core.analysis.ownership_cluster import (
-    ClusterType,
-    ClusterExtractionConfig,
-    ClusterExtractionResult,
-    OwnershipCluster,
-    OwnershipDelta,
-    compute_ownership_delta,
-    extract_clusters,
-    extract_clusters_from_nodes,
     _AREA_PRIORITY,
     _AREA_PRIORITY_DEFAULT,
+    ClusterExtractionConfig,
+    ClusterType,
+    OwnershipDelta,
     _compute_primary_area,
+    compute_ownership_delta,
+    extract_clusters,
 )
-
 
 # =============================================================================
 # Test Helpers
@@ -121,12 +117,8 @@ def test_delta_sign_convention():
         config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1),
     )
 
-    black_clusters = [
-        c for c in result.clusters if c.cluster_type == ClusterType.TO_BLACK
-    ]
-    white_clusters = [
-        c for c in result.clusters if c.cluster_type == ClusterType.TO_WHITE
-    ]
+    black_clusters = [c for c in result.clusters if c.cluster_type == ClusterType.TO_BLACK]
+    white_clusters = [c for c in result.clusters if c.cluster_type == ClusterType.TO_WHITE]
 
     assert len(black_clusters) == 1
     assert len(white_clusters) == 1
@@ -149,9 +141,7 @@ def test_neutral_cluster_excluded():
     delta = make_delta(parent_grid, child_grid, (2, 2))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False),
     )
     # (0,0)と(1,0)は4方向で隣接 → 1クラスタだがsum=0で除外
     assert len(result.clusters) == 0
@@ -171,16 +161,12 @@ def test_max_abs_delta_uses_absolute_value():
     delta = make_delta(parent_grid, child_grid, (2, 2))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False),
     )
 
     # (0,0)と(1,0)は隣接するが、符号が異なるため別クラスタ
     # ここでは白クラスタ（-0.9）のmax_abs_deltaを検証
-    white_clusters = [
-        c for c in result.clusters if c.cluster_type == ClusterType.TO_WHITE
-    ]
+    white_clusters = [c for c in result.clusters if c.cluster_type == ClusterType.TO_WHITE]
     assert len(white_clusters) == 1
     assert white_clusters[0].max_abs_delta == pytest.approx(0.9)
 
@@ -195,9 +181,7 @@ def test_max_abs_delta_mixed_signs_in_cluster():
     delta = make_delta(parent_grid, child_grid, (3, 1))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False),
     )
 
     assert len(result.clusters) == 1
@@ -376,9 +360,7 @@ def test_4_neighbors_no_diagonal():
     delta = make_delta(parent_grid, child_grid, (2, 2))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False),
     )
     assert len(result.clusters) == 2  # 別々のクラスタ
 
@@ -392,9 +374,7 @@ def test_8_neighbors_with_diagonal():
     delta = make_delta(parent_grid, child_grid, (2, 2))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=True
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=True),
     )
     assert len(result.clusters) == 1  # 1つのクラスタ
 
@@ -417,18 +397,14 @@ def test_min_cluster_size_filters_small_clusters():
     # min_cluster_size=3 → 2セルクラスタは除外
     result_3 = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=3, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=3, use_8_neighbors=False),
     )
     assert len(result_3.clusters) == 0
 
     # min_cluster_size=2 → 2セルクラスタは含まれる
     result_2 = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=2, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=2, use_8_neighbors=False),
     )
     assert len(result_2.clusters) == 1
     assert result_2.clusters[0].cell_count == 2
@@ -443,9 +419,7 @@ def test_min_cluster_size_boundary_exact():
     delta = make_delta(parent_grid, child_grid, (3, 1))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=3, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=3, use_8_neighbors=False),
     )
     assert len(result.clusters) == 1
     assert result.clusters[0].cell_count == 3
@@ -465,9 +439,7 @@ def test_delta_threshold_boundary_inclusive():
     delta = make_delta(parent_grid, child_grid, (2, 1))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.15, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.15, min_cluster_size=1, use_8_neighbors=False),
     )
 
     # (0,0)のみが変動セルとして扱われる
@@ -484,9 +456,7 @@ def test_delta_threshold_boundary_negative():
     delta = make_delta(parent_grid, child_grid, (2, 1))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.15, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.15, min_cluster_size=1, use_8_neighbors=False),
     )
 
     assert len(result.clusters) == 1
@@ -504,13 +474,6 @@ def test_import_from_module_directly():
     # この単純なインポートが成功すれば循環importは発生していない
     from katrain.core.analysis.ownership_cluster import (
         ClusterType,
-        OwnershipDelta,
-        OwnershipCluster,
-        ClusterExtractionConfig,
-        ClusterExtractionResult,
-        compute_ownership_delta,
-        extract_clusters,
-        extract_clusters_from_nodes,
     )
 
     # 基本的な動作確認
@@ -521,7 +484,6 @@ def test_import_from_package():
     """パッケージ経由でインポートできること"""
     from katrain.core.analysis import (
         ClusterType,
-        extract_clusters,
     )
 
     assert ClusterType.TO_BLACK.value == "to_black"
@@ -540,9 +502,7 @@ def test_cluster_to_dict():
     delta = make_delta(parent_grid, child_grid, (3, 1))
     result = extract_clusters(
         delta,
-        config=ClusterExtractionConfig(
-            delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False
-        ),
+        config=ClusterExtractionConfig(delta_threshold=0.1, min_cluster_size=1, use_8_neighbors=False),
     )
 
     assert len(result.clusters) == 1

@@ -13,29 +13,21 @@ Test priority:
 """
 
 import json
-from types import MappingProxyType, SimpleNamespace
+from types import MappingProxyType
 
-import pytest
-
-from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
 from katrain.core.analysis.skill_radar import (
+    AggregatedRadarResult,
     RadarAxis,
     RadarMetrics,
     SkillTier,
-    AggregatedRadarResult,
-    MIN_MOVES_FOR_RADAR,
-    radar_from_dict,
-    aggregate_radar,
-    round_score,
 )
 from katrain.core.batch.stats import (
-    _build_skill_profile_section,
-    _build_radar_json_section,
-    TIER_LABELS,
     AXIS_LABELS,
     AXIS_PRACTICE_HINTS,
+    TIER_LABELS,
+    _build_radar_json_section,
+    _build_skill_profile_section,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -233,7 +225,7 @@ class TestWeakAxes:
         )
         lines = _build_skill_profile_section(radar, lang="en")
 
-        content = "\n".join(lines)
+        "\n".join(lines)
         # Find the weak areas line
         weak_line = None
         for line in lines:
@@ -285,7 +277,7 @@ class TestPracticePriorities:
 
         content = "\n".join(lines)
         # Count practice priority items (Phase 53: Japanese header)
-        priority_count = content.count("練習の優先順位")
+        content.count("練習の優先順位")
         hint_count = sum(1 for hint in AXIS_PRACTICE_HINTS.values() if hint in content)
         # Should have max 2 hints
         assert hint_count <= 2

@@ -1,18 +1,15 @@
 """Tests for Leela estimated loss calculation logic."""
 
-import pytest
-
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 from katrain.core.leela.logic import (
-    LEELA_K_DEFAULT,
-    LEELA_K_MIN,
     LEELA_K_MAX,
+    LEELA_K_MIN,
     LEELA_LOSS_EST_MAX,
     clamp_k,
     compute_estimated_loss,
-    format_loss_est,
     compute_loss_color_ratio,
+    format_loss_est,
 )
+from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
 
 class TestClampK:
@@ -212,9 +209,7 @@ class TestComputeEstimatedLoss:
     def test_pv_copied(self):
         """Test that PV list is copied, not shared."""
         pv_original = ["D4", "C16", "Q4"]
-        candidates = [
-            LeelaCandidate(move="D4", winrate=0.5, visits=100, pv=pv_original)
-        ]
+        candidates = [LeelaCandidate(move="D4", winrate=0.5, visits=100, pv=pv_original)]
         position = LeelaPositionEval(candidates=candidates)
 
         result = compute_estimated_loss(position)

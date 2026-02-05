@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Phase 60: Time Management integration.
 
 Tests for:
@@ -8,14 +7,13 @@ Tests for:
 - Phase 59 invariant enforcement
 """
 
-import pytest
 from unittest.mock import MagicMock
 
 from katrain.core.analysis.time import (
-    PacingMetrics,
     PacingAnalysisResult,
-    get_pacing_icon,
+    PacingMetrics,
     extract_pacing_stats_for_summary,
+    get_pacing_icon,
 )
 
 
@@ -125,16 +123,34 @@ class TestExtractPacingStatsForSummary:
         """When has_time_data is True, return full stats."""
         metrics = (
             PacingMetrics(
-                move_number=1, player="B", time_spent_sec=1.0, canonical_loss=5.0,
-                is_blitz=True, is_long_think=False, is_impulsive=True, is_overthinking=False,
+                move_number=1,
+                player="B",
+                time_spent_sec=1.0,
+                canonical_loss=5.0,
+                is_blitz=True,
+                is_long_think=False,
+                is_impulsive=True,
+                is_overthinking=False,
             ),
             PacingMetrics(
-                move_number=2, player="B", time_spent_sec=2.0, canonical_loss=0.5,
-                is_blitz=True, is_long_think=False, is_impulsive=False, is_overthinking=False,
+                move_number=2,
+                player="B",
+                time_spent_sec=2.0,
+                canonical_loss=0.5,
+                is_blitz=True,
+                is_long_think=False,
+                is_impulsive=False,
+                is_overthinking=False,
             ),
             PacingMetrics(
-                move_number=3, player="W", time_spent_sec=50.0, canonical_loss=3.0,
-                is_blitz=False, is_long_think=True, is_impulsive=False, is_overthinking=True,
+                move_number=3,
+                player="W",
+                time_spent_sec=50.0,
+                canonical_loss=3.0,
+                is_blitz=False,
+                is_long_think=True,
+                is_impulsive=False,
+                is_overthinking=True,
             ),
         )
         result = PacingAnalysisResult(
@@ -189,16 +205,34 @@ class TestPhase59Invariants:
         """Blitz mistake rate must be <= 100%."""
         metrics = (
             PacingMetrics(
-                move_number=1, player="B", time_spent_sec=1.0, canonical_loss=5.0,
-                is_blitz=True, is_long_think=False, is_impulsive=True, is_overthinking=False,
+                move_number=1,
+                player="B",
+                time_spent_sec=1.0,
+                canonical_loss=5.0,
+                is_blitz=True,
+                is_long_think=False,
+                is_impulsive=True,
+                is_overthinking=False,
             ),
             PacingMetrics(
-                move_number=2, player="B", time_spent_sec=2.0, canonical_loss=0.5,
-                is_blitz=True, is_long_think=False, is_impulsive=False, is_overthinking=False,
+                move_number=2,
+                player="B",
+                time_spent_sec=2.0,
+                canonical_loss=0.5,
+                is_blitz=True,
+                is_long_think=False,
+                is_impulsive=False,
+                is_overthinking=False,
             ),
             PacingMetrics(
-                move_number=3, player="B", time_spent_sec=10.0, canonical_loss=0.5,
-                is_blitz=False, is_long_think=False, is_impulsive=False, is_overthinking=False,
+                move_number=3,
+                player="B",
+                time_spent_sec=10.0,
+                canonical_loss=0.5,
+                is_blitz=False,
+                is_long_think=False,
+                is_impulsive=False,
+                is_overthinking=False,
             ),
         )
         result = PacingAnalysisResult(
@@ -223,32 +257,45 @@ class TestFormatTimeManagement:
 
     def test_no_time_data_returns_empty_string(self):
         from katrain.gui.features.summary_formatter import _format_time_management
+
         stats_list = [{"pacing_stats": {"has_time_data": False}}]
         result = _format_time_management(stats_list, None)
         assert result == ""
 
     def test_blitz_count_zero_shows_na(self):
         from katrain.gui.features.summary_formatter import _format_time_management
-        stats_list = [{
-            "player_black": "TestPlayer",
-            "player_white": "Opponent",
-            "pacing_stats": {
-                "has_time_data": True,
-                "player_stats": {
-                    "B": {"blitz_count": 0, "blitz_mistake_count": 0,
-                          "long_think_count": 5, "long_think_mistake_count": 1},
-                    "W": {"blitz_count": 0, "blitz_mistake_count": 0,
-                          "long_think_count": 0, "long_think_mistake_count": 0},
+
+        stats_list = [
+            {
+                "player_black": "TestPlayer",
+                "player_white": "Opponent",
+                "pacing_stats": {
+                    "has_time_data": True,
+                    "player_stats": {
+                        "B": {
+                            "blitz_count": 0,
+                            "blitz_mistake_count": 0,
+                            "long_think_count": 5,
+                            "long_think_mistake_count": 1,
+                        },
+                        "W": {
+                            "blitz_count": 0,
+                            "blitz_mistake_count": 0,
+                            "long_think_count": 0,
+                            "long_think_mistake_count": 0,
+                        },
+                    },
+                    "tilt_episodes": [],
                 },
-                "tilt_episodes": [],
-            },
-        }]
+            }
+        ]
         result = _format_time_management(stats_list, "TestPlayer")
         assert "N/A" in result
 
     def test_focus_player_color_changes_across_games(self):
         """focus_playerが黒→白と変わるケースを正しく集約できる。"""
         from katrain.gui.features.summary_formatter import _format_time_management
+
         stats_list = [
             {
                 "player_black": "TestPlayer",
@@ -256,10 +303,18 @@ class TestFormatTimeManagement:
                 "pacing_stats": {
                     "has_time_data": True,
                     "player_stats": {
-                        "B": {"blitz_count": 10, "blitz_mistake_count": 2,
-                              "long_think_count": 5, "long_think_mistake_count": 1},
-                        "W": {"blitz_count": 8, "blitz_mistake_count": 3,
-                              "long_think_count": 4, "long_think_mistake_count": 2},
+                        "B": {
+                            "blitz_count": 10,
+                            "blitz_mistake_count": 2,
+                            "long_think_count": 5,
+                            "long_think_mistake_count": 1,
+                        },
+                        "W": {
+                            "blitz_count": 8,
+                            "blitz_mistake_count": 3,
+                            "long_think_count": 4,
+                            "long_think_mistake_count": 2,
+                        },
                     },
                     "tilt_episodes": [],
                 },
@@ -270,10 +325,18 @@ class TestFormatTimeManagement:
                 "pacing_stats": {
                     "has_time_data": True,
                     "player_stats": {
-                        "B": {"blitz_count": 6, "blitz_mistake_count": 1,
-                              "long_think_count": 3, "long_think_mistake_count": 0},
-                        "W": {"blitz_count": 10, "blitz_mistake_count": 3,
-                              "long_think_count": 5, "long_think_mistake_count": 2},
+                        "B": {
+                            "blitz_count": 6,
+                            "blitz_mistake_count": 1,
+                            "long_think_count": 3,
+                            "long_think_mistake_count": 0,
+                        },
+                        "W": {
+                            "blitz_count": 10,
+                            "blitz_mistake_count": 3,
+                            "long_think_count": 5,
+                            "long_think_mistake_count": 2,
+                        },
                     },
                     "tilt_episodes": [],
                 },
@@ -288,20 +351,31 @@ class TestFormatTimeManagement:
     def test_no_focus_player_uses_all_moves_label(self):
         """focus_player=None時、'All Black moves'/'All White moves'と表示。"""
         from katrain.gui.features.summary_formatter import _format_time_management
-        stats_list = [{
-            "player_black": "Player1",
-            "player_white": "Player2",
-            "pacing_stats": {
-                "has_time_data": True,
-                "player_stats": {
-                    "B": {"blitz_count": 5, "blitz_mistake_count": 1,
-                          "long_think_count": 3, "long_think_mistake_count": 0},
-                    "W": {"blitz_count": 4, "blitz_mistake_count": 2,
-                          "long_think_count": 2, "long_think_mistake_count": 1},
+
+        stats_list = [
+            {
+                "player_black": "Player1",
+                "player_white": "Player2",
+                "pacing_stats": {
+                    "has_time_data": True,
+                    "player_stats": {
+                        "B": {
+                            "blitz_count": 5,
+                            "blitz_mistake_count": 1,
+                            "long_think_count": 3,
+                            "long_think_mistake_count": 0,
+                        },
+                        "W": {
+                            "blitz_count": 4,
+                            "blitz_mistake_count": 2,
+                            "long_think_count": 2,
+                            "long_think_mistake_count": 1,
+                        },
+                    },
+                    "tilt_episodes": [],
                 },
-                "tilt_episodes": [],
-            },
-        }]
+            }
+        ]
         result = _format_time_management(stats_list, None)
         assert "All Black moves" in result
         assert "All White moves" in result

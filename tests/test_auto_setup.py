@@ -5,24 +5,18 @@ CI-safe: No real KataGo binaries, GPU, or OpenCL required.
 All engine/subprocess interactions are mocked.
 """
 
-import os
 from unittest.mock import patch
 
-import pytest
-
 from katrain.core.auto_setup import (
-    DEFAULT_AUTO_SETUP,
     MIGRATED_DEFAULT_MODE,
     _has_custom_engine_settings,
     find_cpu_katago,
     find_lightweight_model,
     get_auto_setup_config,
-    get_model_search_dirs,
     resolve_auto_engine_settings,
     should_show_auto_tab_first,
 )
 from katrain.core.test_analysis import ErrorCategory
-
 
 # =============================================================================
 # TestNewUserDetection
@@ -274,12 +268,14 @@ class TestFindCpuKatago:
         eigen = tmp_path / "katago-eigen.exe"
         eigen.touch()
 
-        with patch(
-            "katrain.core.auto_setup.find_package_resource",
-            return_value=str(eigen),
+        with (
+            patch(
+                "katrain.core.auto_setup.find_package_resource",
+                return_value=str(eigen),
+            ),
+            patch("katrain.core.auto_setup.get_platform", return_value="win"),
         ):
-            with patch("katrain.core.auto_setup.get_platform", return_value="win"):
-                result = find_cpu_katago()
+            result = find_cpu_katago()
 
         # Result depends on whether file passes _is_likely_opencl_binary
         # Since "eigen" is not in the opencl list, it should be found
@@ -290,12 +286,14 @@ class TestFindCpuKatago:
         opencl = tmp_path / "katago-opencl.exe"
         opencl.touch()
 
-        with patch(
-            "katrain.core.auto_setup.find_package_resource",
-            return_value=str(opencl),
+        with (
+            patch(
+                "katrain.core.auto_setup.find_package_resource",
+                return_value=str(opencl),
+            ),
+            patch("katrain.core.auto_setup.get_platform", return_value="win"),
         ):
-            with patch("katrain.core.auto_setup.get_platform", return_value="win"):
-                result = find_cpu_katago()
+            result = find_cpu_katago()
 
         # Should skip the opencl binary
         # Note: This test may need adjustment based on actual implementation

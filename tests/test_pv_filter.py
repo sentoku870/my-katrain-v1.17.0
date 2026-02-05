@@ -8,18 +8,15 @@ Tests for PV Filter (Phase 11)
 - AUTOマッピングの確認
 """
 
-import pytest
-
 from katrain.core.analysis import (
-    PVFilterConfig,
-    PVFilterLevel,
+    DEFAULT_PV_FILTER_LEVEL,
     PV_FILTER_CONFIGS,
     SKILL_TO_PV_FILTER,
-    DEFAULT_PV_FILTER_LEVEL,
-    get_pv_filter_config,
+    PVFilterConfig,
+    PVFilterLevel,
     filter_candidates_by_pv_complexity,
+    get_pv_filter_config,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -35,9 +32,9 @@ FIXTURE_CANDIDATES_NORMAL = [
 
 # STRONG: max_pv_length=6, MEDIUM: max_pv_length=10, WEAK: max_pv_length=15
 FIXTURE_PV_BOUNDARY = [
-    {"order": 0, "pointsLost": 0.0, "pv": ["A1"] * 5, "move": "A1"},   # pv=5: 全レベル通過
-    {"order": 1, "pointsLost": 0.0, "pv": ["B2"] * 6, "move": "B2"},   # pv=6: STRONG境界
-    {"order": 2, "pointsLost": 0.0, "pv": ["C3"] * 7, "move": "C3"},   # pv=7: STRONG除外
+    {"order": 0, "pointsLost": 0.0, "pv": ["A1"] * 5, "move": "A1"},  # pv=5: 全レベル通過
+    {"order": 1, "pointsLost": 0.0, "pv": ["B2"] * 6, "move": "B2"},  # pv=6: STRONG境界
+    {"order": 2, "pointsLost": 0.0, "pv": ["C3"] * 7, "move": "C3"},  # pv=7: STRONG除外
     {"order": 3, "pointsLost": 0.0, "pv": ["D4"] * 10, "move": "D4"},  # pv=10: MEDIUM境界
     {"order": 4, "pointsLost": 0.0, "pv": ["E5"] * 11, "move": "E5"},  # pv=11: MEDIUM除外
     {"order": 5, "pointsLost": 0.0, "pv": ["F6"] * 15, "move": "F6"},  # pv=15: WEAK境界
@@ -53,11 +50,11 @@ FIXTURE_NO_BEST_MOVE = [
 
 # STRONG: max_points_lost=1.0 （<=比較なので1.0は通過、1.01は除外）
 FIXTURE_POINTS_LOST_BOUNDARY = [
-    {"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"},     # best_move（別枠）
-    {"order": 1, "pointsLost": 0.99, "pv": ["B2"], "move": "B2"},    # 閾値未満: 通過
-    {"order": 2, "pointsLost": 1.0, "pv": ["C3"], "move": "C3"},     # 閾値ちょうど: 通過
-    {"order": 3, "pointsLost": 1.01, "pv": ["D4"], "move": "D4"},    # 閾値超過: 除外
-    {"order": 4, "pointsLost": 2.0, "pv": ["E5"], "move": "E5"},     # 閾値超過: 除外
+    {"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"},  # best_move（別枠）
+    {"order": 1, "pointsLost": 0.99, "pv": ["B2"], "move": "B2"},  # 閾値未満: 通過
+    {"order": 2, "pointsLost": 1.0, "pv": ["C3"], "move": "C3"},  # 閾値ちょうど: 通過
+    {"order": 3, "pointsLost": 1.01, "pv": ["D4"], "move": "D4"},  # 閾値超過: 除外
+    {"order": 4, "pointsLost": 2.0, "pv": ["E5"], "move": "E5"},  # 閾値超過: 除外
 ]
 
 

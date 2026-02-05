@@ -6,9 +6,9 @@ and don't appear as raw keys in the UI.
 """
 
 import gettext
-import os
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 class TestBatchAnalyzeI18n:
@@ -19,6 +19,7 @@ class TestBatchAnalyzeI18n:
         """Get the path to the locales directory."""
         # Find katrain package
         import katrain
+
         katrain_dir = Path(katrain.__file__).parent
         return katrain_dir / "i18n" / "locales"
 
@@ -44,8 +45,7 @@ class TestBatchAnalyzeI18n:
             assert translated != key, f"Key '{key}' was not translated"
             # Should contain expected text
             assert expected_substring in translated, (
-                f"Translation for '{key}' should contain '{expected_substring}', "
-                f"but got: '{translated}'"
+                f"Translation for '{key}' should contain '{expected_substring}', but got: '{translated}'"
             )
 
     def test_japanese_translations_exist(self, locale_dir):
@@ -87,8 +87,7 @@ class TestBatchAnalyzeI18n:
 
             # Allow 1 second tolerance for filesystem timing
             assert mo_mtime >= po_mtime - 1, (
-                f"MO file for {lang} is older than PO file. "
-                f"Run: python Tools/i18n/msgfmt.py -o {mo_file} {po_file}"
+                f"MO file for {lang} is older than PO file. Run: python Tools/i18n/msgfmt.py -o {mo_file} {po_file}"
             )
 
     def test_all_batch_keys_translated(self, locale_dir):
@@ -117,9 +116,7 @@ class TestBatchAnalyzeI18n:
 
             for key in batch_keys:
                 translated = locales.gettext(key)
-                assert translated != key, (
-                    f"Key '{key}' is not translated in '{lang}' locale"
-                )
+                assert translated != key, f"Key '{key}' is not translated in '{lang}' locale"
 
     def test_skill_auto_key_translated(self, locale_dir):
         """The skill_auto key should be translated in supported locales."""
@@ -130,6 +127,4 @@ class TestBatchAnalyzeI18n:
         for lang in locales_list:
             locale = gettext.translation("katrain", str(locale_dir), languages=[lang])
             translated = locale.gettext(key)
-            assert translated != key, (
-                f"Key '{key}' is not translated in '{lang}' locale"
-            )
+            assert translated != key, f"Key '{key}' is not translated in '{lang}' locale"

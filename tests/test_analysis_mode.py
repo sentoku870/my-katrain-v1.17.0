@@ -3,8 +3,6 @@
 
 import json
 
-import pytest
-
 from katrain.core.constants import AnalysisMode, parse_analysis_mode
 
 
@@ -14,7 +12,7 @@ class TestAnalysisModeEnumInterop:
     def test_string_equality(self):
         """String comparison works in both directions."""
         assert AnalysisMode.STOP == "stop"
-        assert "stop" == AnalysisMode.STOP
+        assert AnalysisMode.STOP == "stop"
         assert AnalysisMode.PONDER == "ponder"
         assert AnalysisMode.EXTRA == "extra"
         assert AnalysisMode.GAME == "game"

@@ -13,16 +13,14 @@ Test philosophy:
 - No Kivy imports required
 """
 
-from unittest.mock import MagicMock, Mock
-
-import pytest
+from unittest.mock import Mock
 
 from katrain.gui.features.karte_export import determine_user_color
-
 
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def create_mock_game(
     player_black: str | None = None,
@@ -54,6 +52,7 @@ def create_mock_game(
 # ---------------------------------------------------------------------------
 # Tests for determine_user_color()
 # ---------------------------------------------------------------------------
+
 
 class TestDetermineUserColor:
     """Tests for determine_user_color() function."""

@@ -3,25 +3,29 @@
 CI-safe (no real engines), using mock/stub only.
 Tests that Leela-analyzed data shows (推定) suffix in Export Karte output.
 """
-import pytest
+
 from unittest.mock import Mock
 
+import pytest
+
 from katrain.core.analysis.models import (
-    MoveEval, EvalSnapshot, EngineType, MistakeCategory,
-    get_canonical_loss_from_move,
+    EngineType,
+    EvalSnapshot,
+    MistakeCategory,
+    MoveEval,
 )
 from katrain.core.reports.karte_report import (
+    KARTE_ERROR_CODE_MIXED_ENGINE,
     build_karte_report,
     format_loss_with_engine_suffix,
     has_loss_data,
-    KARTE_ERROR_CODE_MIXED_ENGINE,
 )
 from tests.helpers_eval_metrics import make_move_eval
-
 
 # ---------------------------------------------------------------------------
 # Test helper: create mock Game for build_karte_report()
 # ---------------------------------------------------------------------------
+
 
 def create_mock_game(moves: list[MoveEval]) -> Mock:
     """build_karte_report() 用の最小 Game モック"""
@@ -40,6 +44,7 @@ def create_mock_game(moves: list[MoveEval]) -> Mock:
         if key == "general/my_player_aliases":
             return []  # リストを返す（反復される）
         return None  # その他は None
+
     game.katrain = Mock()
     game.katrain.config = mock_config
     game.katrain.log = Mock()
@@ -72,14 +77,17 @@ def create_mock_game(moves: list[MoveEval]) -> Mock:
 class TestHasLossData:
     """Unit tests for has_loss_data()."""
 
-    @pytest.mark.parametrize("score_loss,leela_loss_est,points_lost,expected", [
-        (3.5, None, None, True),    # KataGo
-        (None, 3.5, None, True),    # Leela
-        (None, None, 3.5, True),    # Legacy
-        (0.0, None, None, True),    # 真の 0.0 (KataGo)
-        (None, 0.0, None, True),    # 真の 0.0 (Leela)
-        (None, None, None, False),  # データなし
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,leela_loss_est,points_lost,expected",
+        [
+            (3.5, None, None, True),  # KataGo
+            (None, 3.5, None, True),  # Leela
+            (None, None, 3.5, True),  # Legacy
+            (0.0, None, None, True),  # 真の 0.0 (KataGo)
+            (None, 0.0, None, True),  # 真の 0.0 (Leela)
+            (None, None, None, False),  # データなし
+        ],
+    )
     def test_has_loss_data(self, score_loss, leela_loss_est, points_lost, expected):
         mv = make_move_eval(
             score_loss=score_loss,
@@ -95,21 +103,24 @@ class TestHasLossData:
 class TestFormatLossWithEngineSuffix:
     """Unit tests for format_loss_with_engine_suffix()."""
 
-    @pytest.mark.parametrize("loss_val,engine_type,expected", [
-        # KataGo: サフィックスなし
-        (6.0, EngineType.KATAGO, "6.0"),
-        (0.0, EngineType.KATAGO, "0.0"),
-        (3.14159, EngineType.KATAGO, "3.1"),  # 小数点1桁丸め
-        # Leela: サフィックスあり
-        (6.0, EngineType.LEELA, "6.0(推定)"),
-        (0.0, EngineType.LEELA, "0.0(推定)"),
-        (3.14159, EngineType.LEELA, "3.1(推定)"),
-        # UNKNOWN: サフィックスなし（KataGo同様）
-        (6.0, EngineType.UNKNOWN, "6.0"),
-        # None: "unknown"（サフィックスなし）
-        (None, EngineType.KATAGO, "unknown"),
-        (None, EngineType.LEELA, "unknown"),
-    ])
+    @pytest.mark.parametrize(
+        "loss_val,engine_type,expected",
+        [
+            # KataGo: サフィックスなし
+            (6.0, EngineType.KATAGO, "6.0"),
+            (0.0, EngineType.KATAGO, "0.0"),
+            (3.14159, EngineType.KATAGO, "3.1"),  # 小数点1桁丸め
+            # Leela: サフィックスあり
+            (6.0, EngineType.LEELA, "6.0(推定)"),
+            (0.0, EngineType.LEELA, "0.0(推定)"),
+            (3.14159, EngineType.LEELA, "3.1(推定)"),
+            # UNKNOWN: サフィックスなし（KataGo同様）
+            (6.0, EngineType.UNKNOWN, "6.0"),
+            # None: "unknown"（サフィックスなし）
+            (None, EngineType.KATAGO, "unknown"),
+            (None, EngineType.LEELA, "unknown"),
+        ],
+    )
     def test_format_loss(self, loss_val, engine_type, expected):
         result = format_loss_with_engine_suffix(loss_val, engine_type)
         assert result == expected
@@ -126,7 +137,9 @@ class TestKarteLeelaWorstMove:
         """Mock Game with Leela-analyzed moves."""
         moves = [
             make_move_eval(
-                move_number=1, player="B", gtp="D4",
+                move_number=1,
+                player="B",
+                gtp="D4",
                 points_lost=None,  # Leela: points_lost は None
                 leela_loss_est=3.5,
                 score_loss=None,
@@ -134,7 +147,9 @@ class TestKarteLeelaWorstMove:
                 mistake_category=MistakeCategory.MISTAKE,
             ),
             make_move_eval(
-                move_number=2, player="W", gtp="Q16",
+                move_number=2,
+                player="W",
+                gtp="Q16",
                 points_lost=None,
                 leela_loss_est=6.0,  # worst move for W
                 score_loss=None,
@@ -142,7 +157,9 @@ class TestKarteLeelaWorstMove:
                 mistake_category=MistakeCategory.BLUNDER,
             ),
             make_move_eval(
-                move_number=3, player="B", gtp="Q4",
+                move_number=3,
+                player="B",
+                gtp="Q4",
                 points_lost=None,
                 leela_loss_est=1.0,
                 score_loss=None,
@@ -158,10 +175,7 @@ class TestKarteLeelaWorstMove:
 
         # "- Worst move:" 行が存在し、"unknown" ではない
         assert "- Worst move:" in output
-        worst_move_lines = [
-            line for line in output.split("\n")
-            if "- Worst move:" in line
-        ]
+        worst_move_lines = [line for line in output.split("\n") if "- Worst move:" in line]
         for line in worst_move_lines:
             # "unknown" のみの行ではない（損失データがある）
             assert "loss " in line
@@ -171,10 +185,7 @@ class TestKarteLeelaWorstMove:
         output = build_karte_report(leela_game)
 
         # worst move 行に (推定) が含まれる
-        worst_move_lines = [
-            line for line in output.split("\n")
-            if "- Worst move:" in line and "loss" in line
-        ]
+        worst_move_lines = [line for line in output.split("\n") if "- Worst move:" in line and "loss" in line]
         assert len(worst_move_lines) > 0, "No worst move lines found"
         for line in worst_move_lines:
             assert "(推定)" in line, f"Missing suffix in: {line}"
@@ -210,16 +221,11 @@ class TestKarteLeelaImportantMoves:
 
         # テーブルデータ行を抽出（| で始まり、B/W を含む、ヘッダー/セパレータ除外）
         lines = output.split("\n")
-        data_rows = [
-            line for line in lines
-            if line.startswith("|")
-            and ("| B |" in line or "| W |" in line)
-        ]
+        data_rows = [line for line in lines if line.startswith("|") and ("| B |" in line or "| W |" in line)]
 
         # 少なくとも1行は (推定) を含む
         assert len(data_rows) > 0, "No table data rows found"
-        assert any("(推定)" in row for row in data_rows), \
-            f"No table row contains suffix. Found: {data_rows[:3]}"
+        assert any("(推定)" in row for row in data_rows), f"No table row contains suffix. Found: {data_rows[:3]}"
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +239,9 @@ class TestKarteKataGoUnchanged:
         """Mock Game with KataGo-analyzed moves."""
         moves = [
             make_move_eval(
-                move_number=1, player="B", gtp="D4",
+                move_number=1,
+                player="B",
+                gtp="D4",
                 points_lost=3.5,
                 score_loss=3.5,  # KataGo: score_loss 設定
                 leela_loss_est=None,
@@ -241,7 +249,9 @@ class TestKarteKataGoUnchanged:
                 mistake_category=MistakeCategory.MISTAKE,
             ),
             make_move_eval(
-                move_number=2, player="W", gtp="Q16",
+                move_number=2,
+                player="W",
+                gtp="Q16",
                 points_lost=6.0,
                 score_loss=6.0,
                 leela_loss_est=None,
@@ -284,7 +294,9 @@ class TestKarteMixedEngine:
         moves = [
             # Move 1: KataGo
             make_move_eval(
-                move_number=1, player="B", gtp="D4",
+                move_number=1,
+                player="B",
+                gtp="D4",
                 points_lost=2.0,
                 score_loss=2.0,
                 leela_loss_est=None,
@@ -293,7 +305,9 @@ class TestKarteMixedEngine:
             ),
             # Move 2: Leela
             make_move_eval(
-                move_number=2, player="W", gtp="Q16",
+                move_number=2,
+                player="W",
+                gtp="Q16",
                 points_lost=None,
                 score_loss=None,
                 leela_loss_est=4.0,

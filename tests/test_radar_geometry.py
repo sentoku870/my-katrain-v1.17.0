@@ -2,6 +2,7 @@
 
 NO Kivy imports - all tests run in headless CI.
 """
+
 import math
 
 import pytest
@@ -38,7 +39,7 @@ class TestCalculateVertex:
         angles = [math.degrees(math.atan2(p[1], p[0])) for p in pts]
         # 90 deg -> 18 deg -> -54 deg -> -126 deg -> -198 deg (clockwise)
         expected = [90, 18, -54, -126, -198]
-        for actual, exp in zip(angles, expected):
+        for actual, exp in zip(angles, expected, strict=False):
             # -198 deg and 162 deg are the same (360 deg period)
             diff = (actual - exp + 180) % 360 - 180
             assert abs(diff) < 0.1

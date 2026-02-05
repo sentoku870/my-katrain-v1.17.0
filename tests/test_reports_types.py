@@ -25,11 +25,13 @@ from katrain.core.reports.types import (
 
 class MockKaTrain(KaTrainBase):
     """テスト用のKaTrainモック"""
+
     pass
 
 
 class MockEngine:
     """テスト用のEngineモック"""
+
     def request_analysis(self, *args, **kwargs):
         pass
 
@@ -62,13 +64,9 @@ class TestGameMetadataProviderCompatibility:
         """属性の型が正しい（v5: 実際の型を検証）"""
         # board_size は tuple[int, int]（非正方形盤面対応）
         board_size = sample_game.board_size
-        assert isinstance(
-            board_size, tuple
-        ), f"board_size should be tuple, got {type(board_size)}"
+        assert isinstance(board_size, tuple), f"board_size should be tuple, got {type(board_size)}"
         assert len(board_size) == 2, f"board_size should be (x, y), got {board_size}"
-        assert all(
-            isinstance(d, int) for d in board_size
-        ), f"board_size elements should be int"
+        assert all(isinstance(d, int) for d in board_size), "board_size elements should be int"
 
         # komi は float
         assert isinstance(sample_game.komi, (int, float))
@@ -77,9 +75,7 @@ class TestGameMetadataProviderCompatibility:
         assert isinstance(sample_game.rules, str)
 
         # sgf_filename は None または str
-        assert sample_game.sgf_filename is None or isinstance(
-            sample_game.sgf_filename, str
-        )
+        assert sample_game.sgf_filename is None or isinstance(sample_game.sgf_filename, str)
 
         # root プロパティ
         assert hasattr(sample_game, "root")
@@ -199,9 +195,7 @@ class TestReportsNoGuiImport:
         """types.pyがgui/をインポートしていない"""
         from pathlib import Path
 
-        types_file = (
-            Path(__file__).parent.parent / "katrain" / "core" / "reports" / "types.py"
-        )
+        types_file = Path(__file__).parent.parent / "katrain" / "core" / "reports" / "types.py"
         content = types_file.read_text(encoding="utf-8")
 
         # モジュールレベルのguiインポートがないことを確認
@@ -212,13 +206,7 @@ class TestReportsNoGuiImport:
         """__init__.pyがgui/をインポートしていない"""
         from pathlib import Path
 
-        init_file = (
-            Path(__file__).parent.parent
-            / "katrain"
-            / "core"
-            / "reports"
-            / "__init__.py"
-        )
+        init_file = Path(__file__).parent.parent / "katrain" / "core" / "reports" / "__init__.py"
         content = init_file.read_text(encoding="utf-8")
 
         # モジュールレベルのguiインポートがないことを確認

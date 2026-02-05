@@ -2,16 +2,17 @@
 
 Phase 32: Report Leela support
 """
+
 import pytest
+
 from katrain.core.analysis import (
     EngineType,
-    MoveEval,
     detect_engine_type,
     get_canonical_loss_from_move,
 )
 from katrain.core.analysis.presentation import (
-    format_loss_label,
     format_evidence_examples,
+    format_loss_label,
 )
 from tests.helpers_eval_metrics import make_move_eval
 
@@ -19,14 +20,17 @@ from tests.helpers_eval_metrics import make_move_eval
 class TestDetectEngineType:
     """Tests for detect_engine_type function"""
 
-    @pytest.mark.parametrize("score_loss,leela_loss_est,expected", [
-        (3.5, None, EngineType.KATAGO),      # KataGo: score_loss set
-        (0.0, None, EngineType.KATAGO),      # KataGo: score_loss=0 is valid
-        (None, 2.5, EngineType.LEELA),       # Leela: leela_loss_est set
-        (None, 0.0, EngineType.LEELA),       # Leela: leela_loss_est=0 is valid
-        (None, None, EngineType.UNKNOWN),    # Neither set
-        (3.5, 2.5, EngineType.KATAGO),       # Both set: KataGo wins
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,leela_loss_est,expected",
+        [
+            (3.5, None, EngineType.KATAGO),  # KataGo: score_loss set
+            (0.0, None, EngineType.KATAGO),  # KataGo: score_loss=0 is valid
+            (None, 2.5, EngineType.LEELA),  # Leela: leela_loss_est set
+            (None, 0.0, EngineType.LEELA),  # Leela: leela_loss_est=0 is valid
+            (None, None, EngineType.UNKNOWN),  # Neither set
+            (3.5, 2.5, EngineType.KATAGO),  # Both set: KataGo wins
+        ],
+    )
     def test_engine_type_detection(self, score_loss, leela_loss_est, expected):
         m = make_move_eval(
             score_loss=score_loss,
@@ -38,18 +42,21 @@ class TestDetectEngineType:
 class TestGetCanonicalLossLeela:
     """Tests for get_canonical_loss_from_move with Leela support"""
 
-    @pytest.mark.parametrize("score_loss,leela_loss_est,points_lost,expected", [
-        (3.5, None, None, 3.5),              # KataGo: use score_loss
-        (None, 2.5, None, 2.5),              # Leela: use leela_loss_est
-        (None, None, 1.5, 1.5),              # Fallback: use points_lost
-        (None, None, -1.0, 0.0),             # Fallback: clamp negative
-        (None, None, None, 0.0),             # Default: 0.0
-        (3.5, 2.5, 1.5, 3.5),                # Priority: score_loss first
-        (None, 2.5, 1.5, 2.5),               # Priority: leela_loss_est second
-        # Clamp tests
-        (-1.0, None, None, 0.0),             # Clamp negative score_loss
-        (None, -0.5, None, 0.0),             # Clamp negative leela_loss_est
-    ])
+    @pytest.mark.parametrize(
+        "score_loss,leela_loss_est,points_lost,expected",
+        [
+            (3.5, None, None, 3.5),  # KataGo: use score_loss
+            (None, 2.5, None, 2.5),  # Leela: use leela_loss_est
+            (None, None, 1.5, 1.5),  # Fallback: use points_lost
+            (None, None, -1.0, 0.0),  # Fallback: clamp negative
+            (None, None, None, 0.0),  # Default: 0.0
+            (3.5, 2.5, 1.5, 3.5),  # Priority: score_loss first
+            (None, 2.5, 1.5, 2.5),  # Priority: leela_loss_est second
+            # Clamp tests
+            (-1.0, None, None, 0.0),  # Clamp negative score_loss
+            (None, -0.5, None, 0.0),  # Clamp negative leela_loss_est
+        ],
+    )
     def test_canonical_loss_priority(self, score_loss, leela_loss_est, points_lost, expected):
         m = make_move_eval(
             score_loss=score_loss,
@@ -62,27 +69,30 @@ class TestGetCanonicalLossLeela:
 class TestFormatLossLabel:
     """Tests for format_loss_label function"""
 
-    @pytest.mark.parametrize("loss,engine_type,lang,expected", [
-        # KataGo Japanese - positive loss
-        (3.5, EngineType.KATAGO, "ja", "-3.5目"),
-        # KataGo Japanese - zero loss (no minus sign)
-        (0.0, EngineType.KATAGO, "ja", "0.0目"),
-        # KataGo English
-        (3.5, EngineType.KATAGO, "en", "-3.5 pts"),
-        (0.0, EngineType.KATAGO, "en", "0.0 pts"),
-        # Leela Japanese
-        (2.5, EngineType.LEELA, "ja", "-2.5目(推定)"),
-        (0.0, EngineType.LEELA, "ja", "0.0目(推定)"),
-        # Leela English
-        (2.5, EngineType.LEELA, "en", "-2.5 pts(est.)"),
-        (0.0, EngineType.LEELA, "en", "0.0 pts(est.)"),
-        # Unknown (same as KataGo)
-        (1.0, EngineType.UNKNOWN, "ja", "-1.0目"),
-        (1.0, EngineType.UNKNOWN, "en", "-1.0 pts"),
-        # Edge case: negative loss treated as zero
-        (-1.0, EngineType.KATAGO, "ja", "0.0目"),
-        (-0.5, EngineType.LEELA, "en", "0.0 pts(est.)"),
-    ])
+    @pytest.mark.parametrize(
+        "loss,engine_type,lang,expected",
+        [
+            # KataGo Japanese - positive loss
+            (3.5, EngineType.KATAGO, "ja", "-3.5目"),
+            # KataGo Japanese - zero loss (no minus sign)
+            (0.0, EngineType.KATAGO, "ja", "0.0目"),
+            # KataGo English
+            (3.5, EngineType.KATAGO, "en", "-3.5 pts"),
+            (0.0, EngineType.KATAGO, "en", "0.0 pts"),
+            # Leela Japanese
+            (2.5, EngineType.LEELA, "ja", "-2.5目(推定)"),
+            (0.0, EngineType.LEELA, "ja", "0.0目(推定)"),
+            # Leela English
+            (2.5, EngineType.LEELA, "en", "-2.5 pts(est.)"),
+            (0.0, EngineType.LEELA, "en", "0.0 pts(est.)"),
+            # Unknown (same as KataGo)
+            (1.0, EngineType.UNKNOWN, "ja", "-1.0目"),
+            (1.0, EngineType.UNKNOWN, "en", "-1.0 pts"),
+            # Edge case: negative loss treated as zero
+            (-1.0, EngineType.KATAGO, "ja", "0.0目"),
+            (-0.5, EngineType.LEELA, "en", "0.0 pts(est.)"),
+        ],
+    )
     def test_format_loss_label(self, loss, engine_type, lang, expected):
         assert format_loss_label(loss, engine_type, lang) == expected
 

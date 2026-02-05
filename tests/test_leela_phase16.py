@@ -1,14 +1,12 @@
 """Phase 16 tests for Leela enhancements: PV replay and resign hint."""
 
 import pytest
-from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
+
 from katrain.core.leela.logic import (
-    check_resign_condition,
     ResignConditionResult,
-    RESIGN_WINRATE_THRESHOLD,
-    RESIGN_CONSECUTIVE_MOVES,
-    RESIGN_RELIABILITY_RATIO,
+    check_resign_condition,
 )
+from katrain.core.leela.models import LeelaCandidate, LeelaPositionEval
 
 
 class TestCheckResignCondition:
@@ -277,7 +275,7 @@ class TestConfigIntegration:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         assert "leela" in config
@@ -291,7 +289,7 @@ class TestConfigIntegration:
         from pathlib import Path
 
         config_path = Path(__file__).parent.parent / "katrain" / "config.json"
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
 
         leela = config["leela"]

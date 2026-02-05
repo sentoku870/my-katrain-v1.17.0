@@ -8,10 +8,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 from unittest.mock import MagicMock
-
-import pytest
 
 
 @dataclass(frozen=True)
@@ -19,7 +16,7 @@ class MockLeelaConfig:
     """Mock LeelaConfig for testing."""
 
     enabled: bool = False
-    exe_path: Optional[str] = None
+    exe_path: str | None = None
     top_moves_show: str = "leela_top_move_loss"
     top_moves_show_secondary: str = "leela_top_move_winrate"
 
@@ -28,8 +25,8 @@ class MockLeelaConfig:
 class MockEngineConfig:
     """Mock EngineConfig for testing."""
 
-    katago: Optional[str] = None
-    model: Optional[str] = None
+    katago: str | None = None
+    model: str | None = None
 
 
 class TestIsLeelaConfiguredTypedConfig:
@@ -50,9 +47,7 @@ class TestIsLeelaConfiguredTypedConfig:
         from katrain.gui.features.batch_core import is_leela_configured
 
         ctx = MagicMock()
-        ctx.get_leela_config.return_value = MockLeelaConfig(
-            enabled=False, exe_path="/path/to/leela"
-        )
+        ctx.get_leela_config.return_value = MockLeelaConfig(enabled=False, exe_path="/path/to/leela")
 
         assert is_leela_configured(ctx) is True
 
@@ -61,9 +56,7 @@ class TestIsLeelaConfiguredTypedConfig:
         from katrain.gui.features.batch_core import is_leela_configured
 
         ctx = MagicMock()
-        ctx.get_leela_config.return_value = MockLeelaConfig(
-            enabled=False, exe_path=None
-        )
+        ctx.get_leela_config.return_value = MockLeelaConfig(enabled=False, exe_path=None)
 
         assert is_leela_configured(ctx) is False
 
@@ -75,7 +68,8 @@ class TestIsLeelaConfiguredTypedConfig:
         # Note: In real code, normalize_path("") returns None, not ""
         # This test verifies the `or ""` fallback works correctly
         ctx.get_leela_config.return_value = MockLeelaConfig(
-            enabled=False, exe_path=None  # normalize_path("") -> None
+            enabled=False,
+            exe_path=None,  # normalize_path("") -> None
         )
 
         result = is_leela_configured(ctx)

@@ -19,7 +19,6 @@ from katrain.common.typed_config import (
 )
 from katrain.common.typed_config.writer import _to_json_safe
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -326,9 +325,7 @@ class TestJsonSerialization:
 class TestInvalidValueHandling:
     """無効値処理のテスト"""
 
-    def test_invalid_int_logs_warning_and_persists_normalized(
-        self, caplog, engine_defaults
-    ):
+    def test_invalid_int_logs_warning_and_persists_normalized(self, caplog, engine_defaults):
         """無効なint値: 警告ログ + 正規化値を永続化（AC2, AC6）"""
         config = {"engine": {}}
         writer = TypedConfigWriter(config, lambda s: None)
@@ -404,7 +401,7 @@ class TestSaveFailure:
         config = {"engine": {"max_visits": 500}}
 
         def failing_save(section):
-            raise IOError("Disk full")
+            raise OSError("Disk full")
 
         writer = TypedConfigWriter(config, failing_save)
 
@@ -426,7 +423,7 @@ class TestIntegrationPattern:
     def test_writer_mutates_provided_dict(self):
         """WriterはDEEP COPYではなく参照を変更"""
         config = {"engine": {"max_visits": 500}}
-        original_engine_dict = config["engine"]
+        config["engine"]
         writer = TypedConfigWriter(config, lambda s: None)
 
         writer.update_engine(max_visits=1000)

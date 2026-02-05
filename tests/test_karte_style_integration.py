@@ -1,17 +1,16 @@
-# -*- coding: utf-8 -*-
 """Integration tests for Karte style output (Phase 57).
 
 All tests are self-contained with no external file dependencies.
 Uses MagicMock for game/snapshot to minimize CI fragility.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
-from katrain.core.analysis.style import STYLE_ARCHETYPES
 from katrain.core.analysis.models import EvalSnapshot
-
+from katrain.core.analysis.style import STYLE_ARCHETYPES
 
 # -----------------------------------------------------------------------------
 # Unit tests for helper functions
@@ -103,10 +102,13 @@ class TestComputeStyleSafe:
         """Phase 79: Expected exceptions (ValueError, KeyError) log without traceback."""
         from katrain.core.reports.karte.builder import _compute_style_safe
 
-        with patch(
-            "katrain.core.reports.karte.builder.compute_radar_from_moves",
-            side_effect=ValueError("Test error"),
-        ), patch("katrain.core.reports.karte.builder.logger") as mock_logger:
+        with (
+            patch(
+                "katrain.core.reports.karte.builder.compute_radar_from_moves",
+                side_effect=ValueError("Test error"),
+            ),
+            patch("katrain.core.reports.karte.builder.logger") as mock_logger,
+        ):
             _compute_style_safe([], None)
             mock_logger.debug.assert_called_once()
             # Expected exceptions: no exc_info (no traceback)
@@ -118,10 +120,13 @@ class TestComputeStyleSafe:
         from katrain.core.reports.karte.builder import _compute_style_safe
 
         # Use a non-Expected exception (not ValueError or KeyError)
-        with patch(
-            "katrain.core.reports.karte.builder.compute_radar_from_moves",
-            side_effect=RuntimeError("Unexpected error"),
-        ), patch("katrain.core.reports.karte.builder.logger") as mock_logger:
+        with (
+            patch(
+                "katrain.core.reports.karte.builder.compute_radar_from_moves",
+                side_effect=RuntimeError("Unexpected error"),
+            ),
+            patch("katrain.core.reports.karte.builder.logger") as mock_logger,
+        ):
             _compute_style_safe([], None)
             mock_logger.debug.assert_called_once()
             # Unexpected exceptions: must have exc_info=True for traceback
@@ -173,11 +178,12 @@ class TestKarteStyleIntegration:
         mock_style.archetype.name_key = "style:kiai_fighter:name"
         mock_style.confidence = 0.85
 
-        with patch(
-            "katrain.core.reports.karte.builder._compute_style_safe",
-            return_value=mock_style,
-        ), patch(
-            "katrain.core.reports.karte.builder.i18n._", return_value="Kiai Fighter"
+        with (
+            patch(
+                "katrain.core.reports.karte.builder._compute_style_safe",
+                return_value=mock_style,
+            ),
+            patch("katrain.core.reports.karte.builder.i18n._", return_value="Kiai Fighter"),
         ):
             karte_output = _build_karte_report_impl(
                 game=mock_game,

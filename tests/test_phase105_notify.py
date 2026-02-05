@@ -6,12 +6,12 @@
 - 統合テスト（KaTrainBase初期化）は @pytest.mark.integration でマーク
 - 全テストはCI/ヘッドレス環境で実行可能
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from katrain.core.state import Event, EventType, StateNotifier
-
 
 # =============================================================================
 # Stub / Fixture
@@ -63,9 +63,7 @@ class TestConfigUpdatedNotification:
         received: list[Event] = []
         config_stub.state_notifier.subscribe(EventType.CONFIG_UPDATED, received.append)
 
-        with patch(
-            "katrain.core.base_katrain._save_config_with_errors", return_value=[]
-        ):
+        with patch("katrain.core.base_katrain._save_config_with_errors", return_value=[]):
             # Unbound method call: use real save_config() implementation
             KaTrainBase.save_config(config_stub, key="general")
 
@@ -95,9 +93,7 @@ class TestConfigUpdatedNotification:
         received: list[Event] = []
         config_stub.state_notifier.subscribe(EventType.CONFIG_UPDATED, received.append)
 
-        with patch(
-            "katrain.core.base_katrain._save_config_with_errors", return_value=[]
-        ):
+        with patch("katrain.core.base_katrain._save_config_with_errors", return_value=[]):
             KaTrainBase.save_config(config_stub, key=None)
 
         assert len(received) == 1
@@ -124,15 +120,11 @@ class TestConfigUpdatedIntegration:
         received: list[Event] = []
         base.state_notifier.subscribe(EventType.CONFIG_UPDATED, received.append)
 
-        with patch(
-            "katrain.core.base_katrain._save_config_with_errors", return_value=[]
-        ):
+        with patch("katrain.core.base_katrain._save_config_with_errors", return_value=[]):
             base.save_config(key="test")
 
         # このassertが失敗 = notify()呼び出しが欠けている
-        assert len(received) == 1, (
-            "CONFIG_UPDATED notification missing in KaTrainBase.save_config()"
-        )
+        assert len(received) == 1, "CONFIG_UPDATED notification missing in KaTrainBase.save_config()"
 
 
 # =============================================================================
@@ -361,7 +353,5 @@ class TestHelperImports:
             timeout=60,  # Increased for slow CI/Windows
         )
         assert result.returncode == 0, (
-            f"Kivy imported by notify_helpers:\n"
-            f"stdout={result.stdout}\n"
-            f"stderr={result.stderr}"
+            f"Kivy imported by notify_helpers:\nstdout={result.stdout}\nstderr={result.stderr}"
         )

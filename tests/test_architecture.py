@@ -11,12 +11,10 @@ v5改善:
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import List, Set, Tuple
 import json
+from pathlib import Path
 
 import pytest
-
 
 # テストファイルからプロジェクトルートを計算（cwdに依存しない）
 _TEST_DIR = Path(__file__).resolve().parent
@@ -37,9 +35,9 @@ class RuntimeImportCollector(ast.NodeVisitor):
         self.runtime_imports: list[str] = []
         self._module_package = module_package  # 相対インポート解決用
         # TYPE_CHECKINGとしてインポートされた名前を追跡
-        self._type_checking_names: Set[str] = set()
+        self._type_checking_names: set[str] = set()
         # typingモジュールのエイリアスを追跡（v5追加）
-        self._typing_aliases: Set[str] = {"typing"}  # デフォルトで"typing"を含む
+        self._typing_aliases: set[str] = {"typing"}  # デフォルトで"typing"を含む
         # 関数/クラス内にいるかどうかのカウンタ
         self._function_depth: int = 0
 
@@ -130,13 +128,9 @@ class RuntimeImportCollector(ast.NodeVisitor):
             return test.id in self._type_checking_names or test.id == "TYPE_CHECKING"
 
         # パターン2: if typing.TYPE_CHECKING: または if t.TYPE_CHECKING: (v5対応)
-        if isinstance(test, ast.Attribute):
-            if isinstance(test.value, ast.Name):
-                # typing/t/T 等のエイリアスを全てチェック
-                return (
-                    test.value.id in self._typing_aliases
-                    and test.attr == "TYPE_CHECKING"
-                )
+        if isinstance(test, ast.Attribute) and isinstance(test.value, ast.Name):
+            # typing/t/T 等のエイリアスを全てチェック
+            return test.value.id in self._typing_aliases and test.attr == "TYPE_CHECKING"
 
         return False
 
@@ -167,11 +161,13 @@ def _get_module_package(file_path: Path, root: Path) -> str:
 
 
 # 副作用のない純粋なビルトイン関数（定数定義で許可）
-_PURE_BUILTIN_FUNCTIONS = frozenset({
-    "frozenset",  # immutable set creation
-    "tuple",      # immutable sequence creation
-    "bytes",      # immutable bytes creation
-})
+_PURE_BUILTIN_FUNCTIONS = frozenset(
+    {
+        "frozenset",  # immutable set creation
+        "tuple",  # immutable sequence creation
+        "bytes",  # immutable bytes creation
+    }
+)
 
 
 def _has_call_in_node(node: ast.AST) -> bool:
@@ -187,9 +183,8 @@ def _has_call_in_node(node: ast.AST) -> bool:
     for child in ast.walk(node):
         if isinstance(child, ast.Call):
             # 純粋ビルトイン関数は許可
-            if isinstance(child.func, ast.Name):
-                if child.func.id in _PURE_BUILTIN_FUNCTIONS:
-                    continue
+            if isinstance(child.func, ast.Name) and child.func.id in _PURE_BUILTIN_FUNCTIONS:
+                continue
             return True
     return False
 
@@ -198,7 +193,7 @@ class TestLayerBoundaries:
     """レイヤー境界のテスト"""
 
     # 許可リスト（将来の例外用、現在は空）
-    ALLOWED_CORE_GUI_IMPORTS: Set[str] = set()
+    ALLOWED_CORE_GUI_IMPORTS: set[str] = set()
 
     def test_no_core_imports_gui(self):
         """core層がgui層をランタイムインポートしていないことを検証"""
@@ -219,10 +214,7 @@ class TestLayerBoundaries:
                     if str(rel_path) not in self.ALLOWED_CORE_GUI_IMPORTS:
                         violations.append(f"{rel_path}: imports {module}")
 
-        assert not violations, (
-            f"Core→GUI runtime import violations:\n"
-            + "\n".join(f"  - {v}" for v in violations)
-        )
+        assert not violations, "Core→GUI runtime import violations:\n" + "\n".join(f"  - {v}" for v in violations)
 
     def test_common_has_no_core_or_gui_imports(self):
         """common/がcore/やgui/をインポートしていないことを検証"""
@@ -245,10 +237,7 @@ class TestLayerBoundaries:
                 if module.startswith(("katrain.core", "katrain.gui")):
                     violations.append(f"{rel_path}: imports {module}")
 
-        assert not violations, (
-            f"common/ should not import core/ or gui/:\n"
-            + "\n".join(f"  - {v}" for v in violations)
-        )
+        assert not violations, "common/ should not import core/ or gui/:\n" + "\n".join(f"  - {v}" for v in violations)
 
     def test_common_no_side_effects(self):
         """common/に副作用コードがないことを検証（v5強化: B対応）
@@ -277,26 +266,17 @@ class TestLayerBoundaries:
             for node in ast.iter_child_nodes(tree):
                 # 禁止1: トップレベルExpr（docstring以外）
                 if isinstance(node, ast.Expr):
-                    if isinstance(node.value, ast.Constant) and isinstance(
-                        node.value.value, str
-                    ):
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
                         continue  # docstringは許可
-                    violations.append(
-                        f"{py_file.name}: side-effect expression at line {node.lineno}"
-                    )
+                    violations.append(f"{py_file.name}: side-effect expression at line {node.lineno}")
 
                 # 禁止2: Assign/AnnAssign内の関数呼び出し（v5追加）
                 if isinstance(node, (ast.Assign, ast.AnnAssign)):
                     value = node.value
                     if value and _has_call_in_node(value):
-                        violations.append(
-                            f"{py_file.name}: function call in assignment at line {node.lineno}"
-                        )
+                        violations.append(f"{py_file.name}: function call in assignment at line {node.lineno}")
 
-        assert not violations, (
-            f"common/ should have no side effects:\n"
-            + "\n".join(f"  - {v}" for v in violations)
-        )
+        assert not violations, "common/ should have no side effects:\n" + "\n".join(f"  - {v}" for v in violations)
 
 
 class TestTypeCheckingSkip:
@@ -540,10 +520,7 @@ class TestDependencyDirection:
                 if module.startswith("katrain.gui"):
                     violations.append(f"{rel_path}: imports {module}")
 
-        assert not violations, (
-            f"reports/ should not import gui/:\n"
-            + "\n".join(f"  - {v}" for v in violations)
-        )
+        assert not violations, "reports/ should not import gui/:\n" + "\n".join(f"  - {v}" for v in violations)
 
     def test_analysis_submodules_do_not_import_gui(self):
         """analysis/ サブモジュールが gui/ をインポートしていないことを検証"""
@@ -563,10 +540,7 @@ class TestDependencyDirection:
                 if module.startswith("katrain.gui"):
                     violations.append(f"{rel_path}: imports {module}")
 
-        assert not violations, (
-            f"analysis/ should not import gui/:\n"
-            + "\n".join(f"  - {v}" for v in violations)
-        )
+        assert not violations, "analysis/ should not import gui/:\n" + "\n".join(f"  - {v}" for v in violations)
 
     def test_ai_strategies_base_does_not_import_gui(self):
         """ai_strategies_base.py が gui/ をインポートしていないことを検証"""
@@ -579,9 +553,7 @@ class TestDependencyDirection:
         runtime_imports = _collect_runtime_imports(source, "katrain.core")
 
         gui_imports = [m for m in runtime_imports if m.startswith("katrain.gui")]
-        assert not gui_imports, (
-            f"ai_strategies_base.py should not import gui/: {gui_imports}"
-        )
+        assert not gui_imports, f"ai_strategies_base.py should not import gui/: {gui_imports}"
 
     def test_batch_does_not_import_kivy(self):
         """core/batch/ must not import kivy* or katrain.gui* (Phase 42-A).
@@ -620,7 +592,7 @@ class TestDependencyDirection:
                 violations.append(f"{rel_path}:{lineno}: imports {module}")
 
         assert not violations, (
-            f"core/batch/ must not import kivy/gui:\n"
+            "core/batch/ must not import kivy/gui:\n"
             + "\n".join(f"  - {v}" for v in violations)
             + "\n\nNote: TYPE_CHECKING imports are allowed and not flagged."
         )
@@ -644,10 +616,10 @@ class AllImportCollector(ast.NodeVisitor):
     FORBIDDEN_PREFIXES = ("kivy", "kivymd", "kivy_garden", "katrain.gui")
 
     def __init__(self, module_package: str = ""):
-        self.all_imports: List[Tuple[int, str]] = []  # (line_no, module_name)
+        self.all_imports: list[tuple[int, str]] = []  # (line_no, module_name)
         self._module_package = module_package
-        self._type_checking_names: Set[str] = set()
-        self._typing_aliases: Set[str] = {"typing"}
+        self._type_checking_names: set[str] = set()
+        self._typing_aliases: set[str] = {"typing"}
         self._in_type_checking_block = False
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -699,9 +671,8 @@ class AllImportCollector(ast.NodeVisitor):
         test = node.test
         if isinstance(test, ast.Name):
             return test.id in self._type_checking_names or test.id == "TYPE_CHECKING"
-        if isinstance(test, ast.Attribute):
-            if isinstance(test.value, ast.Name):
-                return test.value.id in self._typing_aliases and test.attr == "TYPE_CHECKING"
+        if isinstance(test, ast.Attribute) and isinstance(test.value, ast.Name):
+            return test.value.id in self._typing_aliases and test.attr == "TYPE_CHECKING"
         return False
 
     def _resolve_relative_import(self, module: str, level: int) -> str:
@@ -721,7 +692,7 @@ class AllImportCollector(ast.NodeVisitor):
         if level == 1:
             base_parts = parts  # 同じパッケージ
         else:
-            base_parts = parts[:-(level - 1)]  # level-1個削除
+            base_parts = parts[: -(level - 1)]  # level-1個削除
         base = ".".join(base_parts)
         return f"{base}.{module}" if module else base
 
@@ -729,10 +700,9 @@ class AllImportCollector(ast.NodeVisitor):
         """モジュールが禁止リストに該当するか判定"""
         return module.startswith(self.FORBIDDEN_PREFIXES)
 
-    def get_forbidden_imports(self) -> List[Tuple[int, str]]:
+    def get_forbidden_imports(self) -> list[tuple[int, str]]:
         """禁止モジュールのインポートを返す"""
-        return [(lineno, module) for lineno, module in self.all_imports
-                if self.is_forbidden(module)]
+        return [(lineno, module) for lineno, module in self.all_imports if self.is_forbidden(module)]
 
 
 class TestAllImportCollectorUnit:
@@ -775,11 +745,11 @@ class TestAllImportCollectorUnit:
 
     def test_detects_lazy_import(self):
         """関数内の遅延インポートを検出"""
-        source = '''
+        source = """
 def my_function():
     from katrain.gui.theme import Theme
     return Theme
-'''
+"""
         tree = ast.parse(source)
         collector = AllImportCollector()
         collector.visit(tree)
@@ -790,14 +760,14 @@ def my_function():
 
     def test_skips_type_checking_block(self):
         """TYPE_CHECKINGブロックはスキップ"""
-        source = '''
+        source = """
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from katrain.gui.theme import Theme  # should be skipped
 
 from kivy.utils import platform  # should be detected
-'''
+"""
         tree = ast.parse(source)
         collector = AllImportCollector()
         collector.visit(tree)
@@ -809,9 +779,11 @@ from kivy.utils import platform  # should be detected
 
 
 # 許可リストの既知エントリ（削除のみ許可、追加禁止）
-KNOWN_ALLOWLIST_ENTRIES = frozenset({
-    "core/base_katrain.py|kivy",
-})
+KNOWN_ALLOWLIST_ENTRIES = frozenset(
+    {
+        "core/base_katrain.py|kivy",
+    }
+)
 
 
 def _check_import_exists_in_file(file_path: Path, import_prefix: str) -> bool:
@@ -825,10 +797,7 @@ def _check_import_exists_in_file(file_path: Path, import_prefix: str) -> bool:
     collector = AllImportCollector()
     collector.visit(tree)
 
-    for _, module in collector.all_imports:
-        if module == import_prefix or module.startswith(f"{import_prefix}."):
-            return True
-    return False
+    return any(module == import_prefix or module.startswith(f"{import_prefix}.") for _, module in collector.all_imports)
 
 
 class TestKivyIsolation:
@@ -848,7 +817,7 @@ class TestKivyIsolation:
         new_entries = entries - KNOWN_ALLOWLIST_ENTRIES
 
         assert not new_entries, (
-            f"New allowlist entries detected (DELETE-ONLY policy):\n"
+            "New allowlist entries detected (DELETE-ONLY policy):\n"
             + "\n".join(f"  - {e}" for e in new_entries)
             + "\n\nTo fix: Remove the violating import instead of adding to allowlist.\n"
             "The allowlist is DELETE-ONLY. Contact maintainer to discuss exceptions."
@@ -884,7 +853,7 @@ class TestKivyIsolation:
                 # 1. 完全一致: "core/lang.py|kivy._event"
                 # 2. プレフィックス一致: "core/lang.py|katrain.gui" → katrain.gui.* にマッチ
                 is_allowed = False
-                for allowlist_key in allowed_entries.keys():
+                for allowlist_key in allowed_entries:
                     if "|" not in allowlist_key:
                         continue
                     key_file, key_module = allowlist_key.split("|", 1)
@@ -897,7 +866,7 @@ class TestKivyIsolation:
                     violations.append(f"{rel_path}:{lineno}: imports {module}")
 
         assert not violations, (
-            f"Forbidden imports found in core layer:\n"
+            "Forbidden imports found in core layer:\n"
             + "\n".join(f"  - {v}" for v in violations)
             + "\n\nTo fix: Remove the import. Adding to allowlist is NOT permitted."
         )
@@ -907,7 +876,7 @@ class TestKivyIsolation:
         entries = allowlist.get("entries", {})
         stale_entries = []
 
-        for key, info in entries.items():
+        for key, _info in entries.items():
             if "|" not in key:
                 continue
 
@@ -922,7 +891,7 @@ class TestKivyIsolation:
                 stale_entries.append(f"{key}: import no longer exists in file")
 
         assert not stale_entries, (
-            f"Stale allowlist entries (imports already removed):\n"
+            "Stale allowlist entries (imports already removed):\n"
             + "\n".join(f"  - {e}" for e in stale_entries)
             + "\n\nPlease remove these entries from kivy_import_allowlist.json"
         )

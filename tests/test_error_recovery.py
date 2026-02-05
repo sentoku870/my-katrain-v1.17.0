@@ -9,6 +9,7 @@ Focus areas:
 
 Python 3.9 compatible.
 """
+
 import json
 import threading
 import zipfile
@@ -16,15 +17,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
-import pytest
-
 from katrain.core.error_recovery import (
+    LLM_TEXT_MAX_BYTES,
     DiagnosticsTrigger,
     RecoveryEvent,
-    should_auto_dump,
     reset_dedupe_state,
+    should_auto_dump,
     truncate_to_bytes,
-    LLM_TEXT_MAX_BYTES,
 )
 
 
@@ -85,45 +84,25 @@ class TestDedupeThreadSafety:
 
     def test_first_event_triggers_dump(self):
         """First event should trigger dump."""
-        event = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "test_code",
-            "test error"
-        )
+        event = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "test_code", "test error")
         assert should_auto_dump(event) is True
 
     def test_same_event_blocked(self):
         """Same event_id should NOT trigger second dump."""
-        event = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "test_code",
-            "test error"
-        )
+        event = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "test_code", "test error")
         assert should_auto_dump(event) is True
         assert should_auto_dump(event) is False
 
     def test_different_event_allowed(self):
         """Different event_id should trigger dump."""
-        event1 = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "code1",
-            "error1"
-        )
-        event2 = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "code2",
-            "error2"
-        )
+        event1 = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "code1", "error1")
+        event2 = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "code2", "error2")
         assert should_auto_dump(event1) is True
         assert should_auto_dump(event2) is True
 
     def test_concurrent_same_event(self):
         """Concurrent calls with same event should only allow one."""
-        event = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "concurrent_code",
-            "concurrent error"
-        )
+        event = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "concurrent_code", "concurrent error")
 
         results = []
         barrier = threading.Barrier(10)
@@ -143,16 +122,8 @@ class TestDedupeThreadSafety:
 
     def test_event_id_deterministic(self):
         """Same inputs should produce same event_id."""
-        event1 = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "code",
-            "error"
-        )
-        event2 = RecoveryEvent.create(
-            DiagnosticsTrigger.ENGINE_START_FAILED,
-            "code",
-            "error"
-        )
+        event1 = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "code", "error")
+        event2 = RecoveryEvent.create(DiagnosticsTrigger.ENGINE_START_FAILED, "code", "error")
         assert event1.event_id == event2.event_id
         assert len(event1.event_id) == 16  # SHA256[:16]
 
@@ -162,14 +133,14 @@ class TestSanitization:
 
     def test_sensitive_paths_not_in_output(self):
         """Raw sensitive paths should NOT appear in output."""
+        from katrain.common.sanitize import SanitizationContext
         from katrain.core.diagnostics import (
-            DiagnosticsBundle,
-            SystemInfo,
-            KataGoInfo,
             AppInfo,
+            DiagnosticsBundle,
+            KataGoInfo,
+            SystemInfo,
             format_llm_diagnostics_text,
         )
-        from katrain.common.sanitize import SanitizationContext
 
         # Use realistic sensitive paths with a test username
         sensitive_username = "secretuser123"
@@ -188,7 +159,9 @@ class TestSanitization:
                 is_running=False,
                 version=None,
             ),
-            app_info=AppInfo("1.0", f"C:\\Users\\{sensitive_username}\\config.json", f"C:\\Users\\{sensitive_username}\\.katrain"),
+            app_info=AppInfo(
+                "1.0", f"C:\\Users\\{sensitive_username}\\config.json", f"C:\\Users\\{sensitive_username}\\.katrain"
+            ),
             settings={},
             logs=[f"Log with path C:\\Users\\{sensitive_username}\\logfile.txt"],
         )
@@ -210,14 +183,14 @@ class TestSanitization:
 
     def test_output_byte_bounded(self):
         """Output must be <= 4096 UTF-8 bytes."""
+        from katrain.common.sanitize import get_sanitization_context
         from katrain.core.diagnostics import (
-            DiagnosticsBundle,
-            SystemInfo,
-            KataGoInfo,
             AppInfo,
+            DiagnosticsBundle,
+            KataGoInfo,
+            SystemInfo,
             format_llm_diagnostics_text,
         )
-        from katrain.common.sanitize import get_sanitization_context
 
         # Create bundle with very long logs
         long_logs = ["This is a very long log line " * 100] * 100
@@ -242,7 +215,7 @@ class TestResetToAutoConfig:
 
     def test_prepare_reset_returns_correct_config(self):
         """Should return auto mode config."""
-        from katrain.core.auto_setup import prepare_reset_to_auto, DEFAULT_AUTO_SETUP
+        from katrain.core.auto_setup import prepare_reset_to_auto
 
         changes = prepare_reset_to_auto()
 
@@ -273,14 +246,14 @@ class TestZipExtraFiles:
 
     def test_extra_files_included_in_zip(self):
         """extra_files should be added to ZIP."""
+        from katrain.common.sanitize import get_sanitization_context
         from katrain.core.diagnostics import (
-            DiagnosticsBundle,
-            SystemInfo,
-            KataGoInfo,
             AppInfo,
+            DiagnosticsBundle,
+            KataGoInfo,
+            SystemInfo,
             create_diagnostics_zip,
         )
-        from katrain.common.sanitize import get_sanitization_context
 
         bundle = DiagnosticsBundle(
             system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel"),
@@ -309,14 +282,14 @@ class TestZipExtraFiles:
 
     def test_manifest_includes_extra_files(self):
         """Manifest should list extra files."""
+        from katrain.common.sanitize import get_sanitization_context
         from katrain.core.diagnostics import (
-            DiagnosticsBundle,
-            SystemInfo,
-            KataGoInfo,
             AppInfo,
+            DiagnosticsBundle,
+            KataGoInfo,
+            SystemInfo,
             create_diagnostics_zip,
         )
-        from katrain.common.sanitize import get_sanitization_context
 
         bundle = DiagnosticsBundle(
             system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel"),

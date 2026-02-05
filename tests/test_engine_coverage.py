@@ -7,12 +7,9 @@ without requiring real engine binaries by using FakePopen.
 
 import queue
 import threading
-
-import pytest
 from unittest.mock import patch
 
 from tests.fakes import FakePopen, MinimalKatrain
-
 
 # Patch target: engine.py uses "import subprocess" then "subprocess.Popen"
 POPEN_PATCH_TARGET = "katrain.core.engine.subprocess.Popen"

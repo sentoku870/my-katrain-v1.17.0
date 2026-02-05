@@ -3,10 +3,10 @@
 These tests verify thread safety and shutdown behavior of KataGoEngine.
 """
 
+import queue
 import threading
 import time
-import queue
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

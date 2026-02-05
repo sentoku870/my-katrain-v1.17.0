@@ -1,17 +1,16 @@
 """Tests for AnalysisStrength enum and resolve_visits() (Phase 30)."""
 
-import pytest
+from katrain.core.analysis.logic import (
+    compute_effective_threshold,
+    compute_reliability_stats,
+)
 from katrain.core.analysis.models import (
-    AnalysisStrength,
     ENGINE_VISITS_DEFAULTS,
     LEELA_FAST_VISITS_MIN,
     RELIABILITY_RATIO,
     RELIABILITY_VISITS_THRESHOLD,
+    AnalysisStrength,
     resolve_visits,
-)
-from katrain.core.analysis.logic import (
-    compute_effective_threshold,
-    compute_reliability_stats,
 )
 from tests.helpers_eval_metrics import make_move_eval
 
@@ -65,45 +64,28 @@ class TestResolveVisits:
     # --- Contract: Defaults when config is empty (backward compatibility) ---
     def test_katago_defaults_when_config_empty(self):
         """Contract: falls back to ENGINE_VISITS_DEFAULTS when config is empty"""
-        assert (
-            resolve_visits(AnalysisStrength.QUICK, {}, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
-        )
-        assert (
-            resolve_visits(AnalysisStrength.DEEP, {}, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
-        )
+        assert resolve_visits(AnalysisStrength.QUICK, {}, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+        assert resolve_visits(AnalysisStrength.DEEP, {}, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
 
     def test_leela_defaults_when_config_empty(self):
         """Contract: falls back to ENGINE_VISITS_DEFAULTS when config is empty (leela)"""
-        assert (
-            resolve_visits(AnalysisStrength.QUICK, {}, "leela")
-            == ENGINE_VISITS_DEFAULTS["leela"]["fast_visits"]
-        )
-        assert (
-            resolve_visits(AnalysisStrength.DEEP, {}, "leela")
-            == ENGINE_VISITS_DEFAULTS["leela"]["max_visits"]
-        )
+        assert resolve_visits(AnalysisStrength.QUICK, {}, "leela") == ENGINE_VISITS_DEFAULTS["leela"]["fast_visits"]
+        assert resolve_visits(AnalysisStrength.DEEP, {}, "leela") == ENGINE_VISITS_DEFAULTS["leela"]["max_visits"]
 
     def test_partial_config_missing_key_uses_default(self):
         """Contract: missing key falls back to default, present key is used"""
         config = {"max_visits": 1000}
         assert (
-            resolve_visits(AnalysisStrength.QUICK, config, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+            resolve_visits(AnalysisStrength.QUICK, config, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         )
         assert resolve_visits(AnalysisStrength.DEEP, config, "katago") == 1000
 
     # --- Contract: Unknown engine falls back to katago ---
     def test_unknown_engine_falls_back_to_katago(self):
         """Contract: unknown engine_type uses katago defaults"""
+        assert resolve_visits(AnalysisStrength.QUICK, {}, "unknown") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         assert (
-            resolve_visits(AnalysisStrength.QUICK, {}, "unknown")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
-        )
-        assert (
-            resolve_visits(AnalysisStrength.DEEP, {}, "future_engine")
-            == ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
+            resolve_visits(AnalysisStrength.DEEP, {}, "future_engine") == ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
         )
 
     # --- Contract: Invalid values fall back to defaults (no crash) ---
@@ -111,24 +93,21 @@ class TestResolveVisits:
         """Contract: None value falls back to default"""
         config = {"fast_visits": None}
         assert (
-            resolve_visits(AnalysisStrength.QUICK, config, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+            resolve_visits(AnalysisStrength.QUICK, config, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         )
 
     def test_invalid_string_falls_back_to_default(self):
         """Contract: non-numeric string falls back to default"""
         config = {"fast_visits": "invalid"}
         assert (
-            resolve_visits(AnalysisStrength.QUICK, config, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+            resolve_visits(AnalysisStrength.QUICK, config, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         )
 
     def test_empty_string_falls_back_to_default(self):
         """Contract: empty string falls back to default"""
         config = {"fast_visits": ""}
         assert (
-            resolve_visits(AnalysisStrength.QUICK, config, "katago")
-            == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
+            resolve_visits(AnalysisStrength.QUICK, config, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         )
 
     # --- Contract: Return value is always >= 1 ---
@@ -191,13 +170,11 @@ class TestEngineVisitsDefaults:
     def test_fast_visits_less_than_max_visits(self):
         """Contract: fast_visits < max_visits for all engines"""
         for engine, defaults in ENGINE_VISITS_DEFAULTS.items():
-            assert defaults["fast_visits"] < defaults["max_visits"], (
-                f"{engine}: fast >= max"
-            )
+            assert defaults["fast_visits"] < defaults["max_visits"], f"{engine}: fast >= max"
 
     def test_all_values_are_positive(self):
         """Contract: all default values are positive"""
-        for engine, defaults in ENGINE_VISITS_DEFAULTS.items():
+        for _engine, defaults in ENGINE_VISITS_DEFAULTS.items():
             assert defaults["max_visits"] > 0
             assert defaults["fast_visits"] > 0
 
@@ -416,8 +393,9 @@ class TestExtractGameStatsTargetVisits:
 
     def test_extract_game_stats_accepts_target_visits_parameter(self):
         """Contract: extract_game_stats accepts target_visits parameter."""
-        from katrain.core.batch.stats import extract_game_stats
         import inspect
+
+        from katrain.core.batch.stats import extract_game_stats
 
         sig = inspect.signature(extract_game_stats)
         params = list(sig.parameters.keys())
@@ -425,8 +403,9 @@ class TestExtractGameStatsTargetVisits:
 
     def test_extract_game_stats_target_visits_defaults_to_none(self):
         """Contract: target_visits defaults to None."""
-        from katrain.core.batch.stats import extract_game_stats
         import inspect
+
+        from katrain.core.batch.stats import extract_game_stats
 
         sig = inspect.signature(extract_game_stats)
         param = sig.parameters["target_visits"]
@@ -438,8 +417,9 @@ class TestBuildKarteReportTargetVisits:
 
     def test_build_karte_report_accepts_target_visits_parameter(self):
         """Contract: build_karte_report accepts target_visits parameter."""
-        from katrain.core.reports.karte_report import build_karte_report
         import inspect
+
+        from katrain.core.reports.karte_report import build_karte_report
 
         sig = inspect.signature(build_karte_report)
         params = list(sig.parameters.keys())
@@ -447,8 +427,9 @@ class TestBuildKarteReportTargetVisits:
 
     def test_build_karte_report_target_visits_defaults_to_none(self):
         """Contract: target_visits defaults to None."""
-        from katrain.core.reports.karte_report import build_karte_report
         import inspect
+
+        from katrain.core.reports.karte_report import build_karte_report
 
         sig = inspect.signature(build_karte_report)
         param = sig.parameters["target_visits"]
@@ -456,8 +437,9 @@ class TestBuildKarteReportTargetVisits:
 
     def test_game_build_karte_report_accepts_target_visits(self):
         """Contract: Game.build_karte_report accepts target_visits parameter."""
-        from katrain.core.game import Game
         import inspect
+
+        from katrain.core.game import Game
 
         sig = inspect.signature(Game.build_karte_report)
         params = list(sig.parameters.keys())

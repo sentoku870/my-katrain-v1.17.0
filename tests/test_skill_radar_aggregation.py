@@ -20,29 +20,23 @@ import pytest
 
 from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
 from katrain.core.analysis.skill_radar import (
-    # Enums
+    MIN_MOVES_FOR_RADAR,
+    MIN_VALID_AXES_FOR_OVERALL,
+    NEUTRAL_DISPLAY_SCORE,
+    OPTIONAL_RADAR_DICT_KEYS,
+    REQUIRED_RADAR_DICT_KEYS,
+    # Constants
     RadarAxis,
-    SkillTier,
     # Dataclasses
     RadarMetrics,
-    AggregatedRadarResult,
-    # Constants
-    TIER_TO_INT,
-    INT_TO_TIER,
-    MIN_VALID_AXES_FOR_OVERALL,
-    MIN_MOVES_FOR_RADAR,
-    REQUIRED_RADAR_DICT_KEYS,
-    OPTIONAL_RADAR_DICT_KEYS,
-    NEUTRAL_DISPLAY_SCORE,
-    NEUTRAL_TIER,
+    SkillTier,
+    aggregate_radar,
     # Functions
     compute_overall_tier,
     compute_radar_from_moves,
-    round_score,
     radar_from_dict,
-    aggregate_radar,
+    round_score,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -191,9 +185,7 @@ class TestAggregateAxisHandling:
     def test_aggregate_partial_axis_unknown(self):
         """Game1 has valid opening, Game2 has UNKNOWN -> only Game1 contributes."""
         radar1 = make_radar_metrics(opening=4.0, opening_tier=SkillTier.TIER_4)
-        radar2 = make_radar_metrics(
-            opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN
-        )
+        radar2 = make_radar_metrics(opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN)
 
         result = aggregate_radar([radar1, radar2])
 
@@ -204,12 +196,8 @@ class TestAggregateAxisHandling:
 
     def test_aggregate_axis_all_unknown_returns_none(self):
         """All games have UNKNOWN for opening -> opening=None."""
-        radar1 = make_radar_metrics(
-            opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN
-        )
-        radar2 = make_radar_metrics(
-            opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN
-        )
+        radar1 = make_radar_metrics(opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN)
+        radar2 = make_radar_metrics(opening=NEUTRAL_DISPLAY_SCORE, opening_tier=SkillTier.TIER_UNKNOWN)
 
         result = aggregate_radar([radar1, radar2])
 
@@ -359,13 +347,15 @@ class TestAggregateOverallTier:
         result = aggregate_radar([radar])
 
         # Expected from compute_overall_tier
-        expected = compute_overall_tier([
-            SkillTier.TIER_2,
-            SkillTier.TIER_4,
-            SkillTier.TIER_3,
-            SkillTier.TIER_5,
-            SkillTier.TIER_1,
-        ])
+        expected = compute_overall_tier(
+            [
+                SkillTier.TIER_2,
+                SkillTier.TIER_4,
+                SkillTier.TIER_3,
+                SkillTier.TIER_5,
+                SkillTier.TIER_1,
+            ]
+        )
 
         assert result is not None
         assert result.overall_tier == expected
@@ -648,13 +638,11 @@ class TestPhase49Constants:
 
     def test_required_radar_dict_keys(self):
         """Required keys are correct."""
-        assert REQUIRED_RADAR_DICT_KEYS == frozenset(
-            {"scores", "tiers", "overall_tier"}
-        )
+        assert frozenset({"scores", "tiers", "overall_tier"}) == REQUIRED_RADAR_DICT_KEYS
 
     def test_optional_radar_dict_keys(self):
         """Optional keys are correct."""
-        assert OPTIONAL_RADAR_DICT_KEYS == frozenset({"valid_move_counts"})
+        assert frozenset({"valid_move_counts"}) == OPTIONAL_RADAR_DICT_KEYS
 
 
 # =============================================================================

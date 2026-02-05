@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """Tests for katrain/common/locale_utils.py.
 
 Part of Phase 52: Stabilization (tofu fix + jp/ja consistency).
 """
-import pytest
 
 from katrain.common.locale_utils import normalize_lang_code, to_iso_lang_code
 

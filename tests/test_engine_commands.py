@@ -4,11 +4,9 @@ Comprehensive tests for AnalysisCommand, StandardAnalysisCommand, and CommandExe
 """
 
 import threading
-import time
 from unittest.mock import MagicMock
 
 import pytest
-
 
 # ======== Helpers ========
 
@@ -65,8 +63,8 @@ class TestCommandsInvariant:
 
     def test_commands_empty_after_all_completed(self, mock_engine):
         """All commands completed should leave commands dict empty."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         num_commands = 10
@@ -84,8 +82,8 @@ class TestCommandsInvariant:
 
     def test_commands_contains_only_active(self, mock_engine):
         """commands should only contain active (executing) commands."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
 
@@ -108,8 +106,8 @@ class TestCommandsInvariant:
 
     def test_error_removes_from_commands(self, mock_engine):
         """Error should also remove from commands."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -135,8 +133,8 @@ class TestResultsWithoutId:
 
     def test_result_without_id_ignored(self, mock_engine):
         """Result without id should not call callback."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         callback_calls = []
         executor = CommandExecutor(mock_engine)
@@ -158,8 +156,8 @@ class TestResultsWithoutId:
 
     def test_result_with_id_processes_normally(self, mock_engine):
         """Result with id should process normally."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         callback_calls = []
         executor = CommandExecutor(mock_engine)
@@ -188,8 +186,8 @@ class TestErrorCleanup:
 
     def test_error_without_id_uses_command_query_id(self, mock_engine):
         """Error without id should use command.query_id for cleanup."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -210,8 +208,8 @@ class TestErrorCleanup:
 
     def test_error_for_pending_command_cleans_up(self, mock_engine):
         """Error for pending command should clean up."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -234,8 +232,8 @@ class TestEarlyCancel:
 
     def test_cancel_during_prepare_skips_send(self, mock_engine):
         """Cancel during prepare() should skip send_query."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
 
@@ -273,8 +271,8 @@ class TestEarlyCancel:
 
     def test_cancelled_command_not_sent(self, mock_engine):
         """Pre-cancelled command should not be sent."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -296,8 +294,8 @@ class TestPonderKey:
 
     def test_ponder_key_set_exactly_once(self, mock_engine):
         """PONDER_KEY should be set exactly once by executor."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -370,8 +368,8 @@ class TestCancelFlag:
 
     def test_cancel_completed_no_flag_change(self, mock_engine):
         """Cancelling completed command should not set flag."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -387,8 +385,8 @@ class TestCancelFlag:
 
     def test_cancel_success_sets_flag(self, mock_engine):
         """Successful cancel should set flag."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -408,8 +406,8 @@ class TestClearAll:
 
     def test_clear_all_preserves_completed_flag(self, mock_engine):
         """clear_all should not set cancelled flag on completed."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -425,8 +423,8 @@ class TestClearAll:
 
     def test_clear_all_cancels_pending(self, mock_engine):
         """clear_all should cancel pending commands."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -446,8 +444,8 @@ class TestStatusTransitions:
 
     def test_no_results_keeps_pending(self, mock_engine):
         """noResults should not transition status."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -463,8 +461,8 @@ class TestStatusTransitions:
 
     def test_partial_transitions_to_executing(self, mock_engine):
         """Partial result should transition to executing."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -478,8 +476,8 @@ class TestStatusTransitions:
 
     def test_final_transitions_to_completed(self, mock_engine):
         """Final result should transition to completed."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -500,8 +498,8 @@ class TestConcurrency:
 
     def test_concurrent_submits_no_data_corruption(self, mock_engine):
         """Concurrent submits should not corrupt data."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         num_threads = 20
@@ -529,8 +527,8 @@ class TestConcurrency:
 
     def test_concurrent_cancel_and_result(self, mock_engine):
         """Cancel and result should not corrupt state."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         barrier = threading.Barrier(2)
@@ -604,8 +602,8 @@ class TestBackwardCompatibility:
 
     def test_ignore_results_by_query_id(self, mock_engine):
         """ignore_results should work by query_id."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -621,8 +619,8 @@ class TestBackwardCompatibility:
 
     def test_terminate_by_query_id(self, mock_engine):
         """terminate should work by query_id."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -635,9 +633,7 @@ class TestBackwardCompatibility:
 
         assert result is True
         assert cmd.is_cancelled()
-        mock_engine.terminate_query.assert_called_once_with(
-            "QUERY:1", ignore_further_results=True
-        )
+        mock_engine.terminate_query.assert_called_once_with("QUERY:1", ignore_further_results=True)
 
 
 # ======== History ========
@@ -648,13 +644,13 @@ class TestHistory:
 
     def test_history_limited_by_maxlen(self, mock_engine):
         """History should be limited by maxlen."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
 
         # Submit more than MAX_HISTORY_SIZE
-        for i in range(CommandExecutor.MAX_HISTORY_SIZE + 10):
+        for _i in range(CommandExecutor.MAX_HISTORY_SIZE + 10):
             cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
             executor.submit(cmd)
 
@@ -662,8 +658,8 @@ class TestHistory:
 
     def test_history_returns_snapshot(self, mock_engine):
         """history property should return a snapshot."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(node=create_mock_node(), engine=mock_engine)
@@ -686,8 +682,8 @@ class TestImport:
         """Package should import without circular import errors."""
         from katrain.core.engine_cmd import (
             AnalysisCommand,
-            StandardAnalysisCommand,
             CommandExecutor,
+            StandardAnalysisCommand,
         )
 
         assert AnalysisCommand is not None
@@ -703,8 +699,8 @@ class TestGuardPattern:
 
     def test_callback_can_guard_with_is_cancelled(self, mock_engine):
         """Callback can use is_cancelled() to guard."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         processed = []
@@ -751,8 +747,8 @@ class TestPondering:
 
     def test_is_pondering_false_for_non_ponder_command(self, mock_engine):
         """is_pondering should be False for regular commands."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -767,8 +763,8 @@ class TestPondering:
 
     def test_is_pondering_true_for_pending_ponder_command(self, mock_engine):
         """is_pondering should be True for pending ponder command."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -785,8 +781,8 @@ class TestPondering:
 
     def test_is_pondering_true_for_active_ponder_command(self, mock_engine):
         """is_pondering should be True for active ponder command."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -806,8 +802,8 @@ class TestPondering:
 
     def test_is_pondering_false_after_ponder_completed(self, mock_engine):
         """is_pondering should be False after ponder command completed."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -827,8 +823,8 @@ class TestPondering:
 
     def test_get_ponder_command_returns_none_when_no_ponder(self, mock_engine):
         """get_ponder_command should return None when no pondering."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
 
@@ -847,8 +843,8 @@ class TestPondering:
 
     def test_get_ponder_command_returns_ponder_command(self, mock_engine):
         """get_ponder_command should return the pondering command."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
         cmd = StandardAnalysisCommand(
@@ -863,8 +859,8 @@ class TestPondering:
 
     def test_get_ponder_command_prefers_pending(self, mock_engine):
         """get_ponder_command should return pending ponder before active."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         executor = CommandExecutor(mock_engine)
 
@@ -902,8 +898,8 @@ class TestPondering:
 
     def test_stop_pondering_cancels_ponder_command(self, mock_engine):
         """stop_pondering should cancel the pondering command."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         # Add stop_pondering to mock engine
         mock_engine.stop_pondering = MagicMock()
@@ -926,8 +922,8 @@ class TestPondering:
 
     def test_stop_pondering_calls_engine_stop_pondering(self, mock_engine):
         """stop_pondering should call engine.stop_pondering()."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         mock_engine.stop_pondering = MagicMock()
 
@@ -945,8 +941,8 @@ class TestPondering:
 
     def test_stop_pondering_with_terminate_false(self, mock_engine):
         """stop_pondering(terminate=False) should not call terminate_query."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         mock_engine.stop_pondering = MagicMock()
 
@@ -972,8 +968,8 @@ class TestPondering:
 
     def test_stop_pondering_with_terminate_true(self, mock_engine):
         """stop_pondering(terminate=True) should call terminate_query."""
-        from katrain.core.engine_cmd.executor import CommandExecutor
         from katrain.core.engine_cmd.commands import StandardAnalysisCommand
+        from katrain.core.engine_cmd.executor import CommandExecutor
 
         mock_engine.stop_pondering = MagicMock()
 

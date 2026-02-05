@@ -12,23 +12,23 @@ Key principles:
 """
 
 import os
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 from katrain.core import eval_metrics
 
 # Skip tests that require KaTrainGui import on CI (no display available)
 _CI_SKIP = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="Requires display - cannot import KaTrainGui on headless CI"
+    os.environ.get("CI", "").lower() == "true", reason="Requires display - cannot import KaTrainGui on headless CI"
 )
 
-from tests.conftest import normalize_output, load_golden, save_golden, GOLDEN_DIR
-
+from tests.conftest import load_golden, normalize_output, save_golden
 
 # ---------------------------------------------------------------------------
 # Helper to create synthetic stats for testing
 # ---------------------------------------------------------------------------
+
 
 def create_single_game_stats(
     game_name: str = "test_game.sgf",
@@ -188,6 +188,7 @@ def create_multi_game_stats_list(num_games: int = 3) -> list:
 # Mock KaTrainGui for testing _build_summary_from_stats
 # ---------------------------------------------------------------------------
 
+
 def create_mock_katrain_gui():
     """Create a mock KaTrainGui instance for testing.
 
@@ -216,13 +217,14 @@ def create_mock_katrain_gui():
     mock_gui.config = mock_config
 
     # Import actual functions for testing
-    from katrain.gui.features.summary_formatter import build_summary_from_stats
     from katrain.gui.features.summary_aggregator import collect_rank_info
+    from katrain.gui.features.summary_formatter import build_summary_from_stats
 
     # Set up _summary_manager mock with actual function delegates (Phase 96)
     mock_summary_manager = MagicMock()
-    mock_summary_manager.build_summary_from_stats = lambda stats_list, focus_player=None: \
-        build_summary_from_stats(stats_list, focus_player, mock_config)
+    mock_summary_manager.build_summary_from_stats = lambda stats_list, focus_player=None: build_summary_from_stats(
+        stats_list, focus_player, mock_config
+    )
     mock_summary_manager.collect_rank_info = collect_rank_info
     mock_gui._summary_manager = mock_summary_manager
 
@@ -230,10 +232,12 @@ def create_mock_katrain_gui():
     from katrain.__main__ import KaTrainGui
 
     # Bind the actual method to the mock (now uses _summary_manager)
-    mock_gui._build_summary_from_stats = lambda stats_list, focus_player=None: \
-        KaTrainGui._build_summary_from_stats(mock_gui, stats_list, focus_player)
-    mock_gui._collect_rank_info = lambda stats_list, focus_player: \
-        KaTrainGui._collect_rank_info(mock_gui, stats_list, focus_player)
+    mock_gui._build_summary_from_stats = lambda stats_list, focus_player=None: KaTrainGui._build_summary_from_stats(
+        mock_gui, stats_list, focus_player
+    )
+    mock_gui._collect_rank_info = lambda stats_list, focus_player: KaTrainGui._collect_rank_info(
+        mock_gui, stats_list, focus_player
+    )
 
     return mock_gui
 
@@ -241,6 +245,7 @@ def create_mock_katrain_gui():
 # ---------------------------------------------------------------------------
 # Golden Tests for Summary Output
 # ---------------------------------------------------------------------------
+
 
 @_CI_SKIP
 class TestSummaryGolden:
@@ -320,6 +325,7 @@ class TestSummaryGolden:
 # ---------------------------------------------------------------------------
 # Tests for Summary Structure
 # ---------------------------------------------------------------------------
+
 
 @_CI_SKIP
 class TestSummaryStructure:
@@ -409,6 +415,7 @@ class TestSummaryStructure:
 # Tests for Reason Tags
 # ---------------------------------------------------------------------------
 
+
 @_CI_SKIP
 class TestSummaryReasonTags:
     """Tests for reason tags in summary."""
@@ -465,6 +472,7 @@ class TestSummaryFromSGF:
         Scope=class to reuse across tests, reducing Kivy reinitialization overhead.
         """
         from katrain.core.base_katrain import KaTrainBase
+
         return KaTrainBase(force_package_config=True, debug_level=0)
 
     @pytest.fixture(scope="class")
@@ -473,18 +481,23 @@ class TestSummaryFromSGF:
 
         Scope=class to reuse across tests.
         """
+
         class MockEngine:
             def request_analysis(self, *args, **kwargs):
                 pass
+
             def stop_pondering(self):
                 pass
+
             def has_query_capacity(self, headroom: int = 10) -> bool:
                 return True
+
         return MockEngine()
 
     @pytest.fixture
     def mock_config(self):
         """Create a mock config function."""
+
         def config_fn(key, default=None):
             configs = {
                 "general/skill_preset": "standard",
@@ -500,6 +513,7 @@ class TestSummaryFromSGF:
                         return configs[section].get(k, default)
                 return configs.get(key, default)
             return configs.get(key, default)
+
         return config_fn
 
     def load_game_with_mock_analysis(self, sgf_key: str, mock_katrain, mock_engine):
@@ -519,6 +533,7 @@ class TestSummaryFromSGF:
     def extract_stats_from_game(self, game) -> dict:
         """Extract stats from mock-analyzed game using helper."""
         from tests.helpers import extract_stats_from_nodes
+
         return extract_stats_from_nodes(game)
 
     def test_summary_from_sgf_matches_golden(self, mock_katrain, mock_engine, mock_config, request):
@@ -538,9 +553,7 @@ class TestSummaryFromSGF:
             stats_list.append(stats)
 
         # Generate summary (focus on Black player)
-        summary_output = build_summary_from_stats(
-            stats_list, focus_player="B", config_fn=mock_config
-        )
+        summary_output = build_summary_from_stats(stats_list, focus_player="B", config_fn=mock_config)
 
         # Normalize for comparison
         normalized = normalize_output(summary_output)
@@ -558,14 +571,11 @@ class TestSummaryFromSGF:
             pytest.skip(f"Golden file created: {golden_name}")
 
         assert normalized == expected, (
-            f"Summary output does not match golden file.\n"
-            f"Run with --update-goldens to update the expected output."
+            "Summary output does not match golden file.\nRun with --update-goldens to update the expected output."
         )
 
     @pytest.mark.parametrize("sgf_key", ["fox", "alphago", "panda"])
-    def test_single_sgf_summary_matches_golden(
-        self, sgf_key: str, mock_katrain, mock_engine, mock_config, request
-    ):
+    def test_single_sgf_summary_matches_golden(self, sgf_key: str, mock_katrain, mock_engine, mock_config, request):
         """
         Test that Summary output from a single SGF matches golden file.
         """
@@ -576,9 +586,7 @@ class TestSummaryFromSGF:
         stats = self.extract_stats_from_game(game)
 
         # Generate summary
-        summary_output = build_summary_from_stats(
-            [stats], focus_player=None, config_fn=mock_config
-        )
+        summary_output = build_summary_from_stats([stats], focus_player=None, config_fn=mock_config)
 
         # Normalize for comparison
         normalized = normalize_output(summary_output)
@@ -615,9 +623,7 @@ class TestSummaryFromSGF:
             stats = self.extract_stats_from_game(game)
             stats_list1.append(stats)
 
-        output1 = normalize_output(
-            build_summary_from_stats(stats_list1, focus_player="B", config_fn=mock_config)
-        )
+        output1 = normalize_output(build_summary_from_stats(stats_list1, focus_player="B", config_fn=mock_config))
 
         stats_list2 = []
         for sgf_key in ["fox", "alphago", "panda"]:
@@ -625,11 +631,6 @@ class TestSummaryFromSGF:
             stats = self.extract_stats_from_game(game)
             stats_list2.append(stats)
 
-        output2 = normalize_output(
-            build_summary_from_stats(stats_list2, focus_player="B", config_fn=mock_config)
-        )
+        output2 = normalize_output(build_summary_from_stats(stats_list2, focus_player="B", config_fn=mock_config))
 
-        assert output1 == output2, (
-            "Summary output is not deterministic.\n"
-            "First run differs from second run."
-        )
+        assert output1 == output2, "Summary output is not deterministic.\nFirst run differs from second run."

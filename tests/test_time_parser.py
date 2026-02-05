@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Time Data Parser.
 
 Part of Phase 58: Time Data Parser.
@@ -11,7 +10,6 @@ import pytest
 from katrain.core.analysis.time import GameTimeData, TimeMetrics, parse_time_data
 from katrain.core.analysis.time.parser import _extract_time_left
 from katrain.core.game import KaTrainSGF
-
 
 # =============================================================================
 # Test Helpers
@@ -195,9 +193,7 @@ class TestTimeSemantics:
         root = parse_sgf(sgf)
         result = parse_time_data(root)
 
-        white_moves = [
-            m for m in result.metrics if m.player == "W" and m.time_left_sec is not None
-        ]
+        white_moves = [m for m in result.metrics if m.player == "W" and m.time_left_sec is not None]
 
         assert white_moves[0].time_left_sec == 45.0  # After move 1
         assert white_moves[1].time_left_sec == 40.0  # After move 3
@@ -303,15 +299,11 @@ class TestEdgeCases:
 
     def test_dataclass_is_frozen(self):
         """TimeMetrics and GameTimeData are immutable."""
-        m = TimeMetrics(
-            move_number=1, player="B", time_left_sec=100.0, time_spent_sec=5.0
-        )
+        m = TimeMetrics(move_number=1, player="B", time_left_sec=100.0, time_spent_sec=5.0)
         with pytest.raises(Exception):
             m.move_number = 2  # type: ignore
 
-        g = GameTimeData(
-            metrics=(m,), has_time_data=True, black_moves_with_time=1, white_moves_with_time=0
-        )
+        g = GameTimeData(metrics=(m,), has_time_data=True, black_moves_with_time=1, white_moves_with_time=0)
         with pytest.raises(Exception):
             g.has_time_data = False  # type: ignore
 
@@ -334,9 +326,7 @@ class TestRealSGFFiles:
         assert result.white_moves_with_time > 0
 
         # Verify first White move has WL=45 (from panda1.sgf)
-        white_moves = [
-            m for m in result.metrics if m.player == "W" and m.time_left_sec is not None
-        ]
+        white_moves = [m for m in result.metrics if m.player == "W" and m.time_left_sec is not None]
         assert white_moves[0].time_left_sec == 45.0
 
         # Verify second White move (W[ce]) has WL=40, time_spent=5

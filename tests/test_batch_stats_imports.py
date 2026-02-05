@@ -7,7 +7,6 @@ IMPORTANT: These tests must PASS on the current stats.py before refactoring.
 They do NOT depend on __all__ (which stats.py does not define).
 """
 
-import pytest
 from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 
@@ -18,16 +17,18 @@ class TestStatsModuleImports:
     def test_module_import(self):
         """Module can be imported as stats_mod."""
         import katrain.core.batch.stats as stats_mod
+
         assert stats_mod is not None
 
     def test_public_functions_importable(self):
         """All 4 public functions are importable and callable."""
         from katrain.core.batch.stats import (
-            extract_game_stats,
             build_batch_summary,
-            extract_players_from_stats,
             build_player_summary,
+            extract_game_stats,
+            extract_players_from_stats,
         )
+
         assert callable(extract_game_stats)
         assert callable(build_batch_summary)
         assert callable(extract_players_from_stats)
@@ -36,16 +37,18 @@ class TestStatsModuleImports:
     def test_evidence_dataclass_importable(self):
         """EvidenceMove dataclass is importable and is a dataclass."""
         from katrain.core.batch.stats import EvidenceMove
+
         assert is_dataclass(EvidenceMove)
 
     def test_private_functions_importable(self):
         """Private functions used by tests are importable and callable."""
         from katrain.core.batch.stats import (
-            _select_evidence_moves,
-            _format_evidence_with_links,
-            _build_skill_profile_section,
             _build_radar_json_section,
+            _build_skill_profile_section,
+            _format_evidence_with_links,
+            _select_evidence_moves,
         )
+
         assert callable(_select_evidence_moves)
         assert callable(_format_evidence_with_links)
         assert callable(_build_skill_profile_section)
@@ -54,10 +57,11 @@ class TestStatsModuleImports:
     def test_constants_importable(self):
         """Constants used by tests are importable and are Mappings."""
         from katrain.core.batch.stats import (
-            TIER_LABELS,
             AXIS_LABELS,
             AXIS_PRACTICE_HINTS,
+            TIER_LABELS,
         )
+
         assert isinstance(TIER_LABELS, Mapping)
         assert isinstance(AXIS_LABELS, Mapping)
         assert isinstance(AXIS_PRACTICE_HINTS, Mapping)
@@ -65,15 +69,16 @@ class TestStatsModuleImports:
     def test_backward_compat_aliases_exist(self):
         """Backward compatibility aliases exist and point to same functions."""
         from katrain.core.batch.stats import (
-            _extract_game_stats,
             _build_batch_summary,
-            _extract_players_from_stats,
             _build_player_summary,
-            extract_game_stats,
+            _extract_game_stats,
+            _extract_players_from_stats,
             build_batch_summary,
-            extract_players_from_stats,
             build_player_summary,
+            extract_game_stats,
+            extract_players_from_stats,
         )
+
         assert _extract_game_stats is extract_game_stats
         assert _build_batch_summary is build_batch_summary
         assert _extract_players_from_stats is extract_players_from_stats
@@ -108,11 +113,13 @@ class TestEvidenceMoveDataclassShape:
     def test_evidence_move_is_frozen(self):
         """EvidenceMove is immutable (frozen=True)."""
         from katrain.core.batch.stats import EvidenceMove
+
         assert EvidenceMove.__dataclass_params__.frozen is True
 
     def test_evidence_move_field_count(self):
         """EvidenceMove has exactly 6 fields."""
         from katrain.core.batch.stats import EvidenceMove
+
         assert len(fields(EvidenceMove)) == 6
 
 
@@ -248,17 +255,17 @@ class TestI18nGettersSemanticBehavior:
     def test_i18n_getters_are_callable(self):
         """All i18n getter functions are callable."""
         from katrain.core.batch.stats import (
-            get_phase_priority_text,
-            get_phase_label_localized,
-            get_section_header,
-            get_practice_intro_text,
-            get_notes_header,
-            get_axis_practice_hint,
-            get_mtag_practice_hint,
-            get_rtag_practice_hint,
             format_hint_line,
-            get_percentage_note,
+            get_axis_practice_hint,
             get_color_bias_note,
+            get_mtag_practice_hint,
+            get_notes_header,
+            get_percentage_note,
+            get_phase_label_localized,
+            get_phase_priority_text,
+            get_practice_intro_text,
+            get_rtag_practice_hint,
+            get_section_header,
         )
 
         assert callable(get_phase_priority_text)

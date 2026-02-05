@@ -20,6 +20,7 @@ This script:
 CI Note: Use --skip-engine by default in CI environments where real binaries
 are not guaranteed. The script will still verify process counting works.
 """
+
 import argparse
 import json
 import os
@@ -58,9 +59,7 @@ def count_engine_processes():
     except FileNotFoundError:
         # Not Windows - try ps (Unix/Mac)
         try:
-            result = subprocess.run(
-                ["ps", "aux"], capture_output=True, text=True, timeout=30
-            )
+            result = subprocess.run(["ps", "aux"], capture_output=True, text=True, timeout=30)
             count = 0
             for line in result.stdout.strip().split("\n"):
                 line_lower = line.lower()
@@ -89,7 +88,7 @@ def load_user_config():
     for path in config_paths:
         if path.exists():
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 print(f"Warning: Could not load {path}: {e}")
@@ -232,7 +231,7 @@ Examples:
         for i in range(args.cycles):
             success = run_engine_cycle(katago_path, model_path, config_path)
             status = "OK" if success else "FAIL"
-            print(f"  Cycle {i+1}/{args.cycles}: {status}")
+            print(f"  Cycle {i + 1}/{args.cycles}: {status}")
             if not success:
                 print("  Warning: Cycle failed, continuing...")
 

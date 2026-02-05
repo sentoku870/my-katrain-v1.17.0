@@ -3,7 +3,6 @@
 # Unit tests for katrain.common.typed_config.reader
 # Phase 99
 
-import pytest
 
 from katrain.common.typed_config import TypedConfigReader
 from katrain.common.typed_config.models import EngineConfig, LeelaConfig, TrainerConfig
@@ -135,18 +134,14 @@ class TestTypedConfigReaderEdgeCases:
 
     def test_extra_keys_ignored(self):
         """未知のキーは無視される"""
-        reader = TypedConfigReader(
-            {"engine": {"max_visits": 1000, "unknown_key": "value"}}
-        )
+        reader = TypedConfigReader({"engine": {"max_visits": 1000, "unknown_key": "value"}})
         cfg = reader.get_engine()
         assert cfg.max_visits == 1000
         # unknown_keyは無視される（エラーにならない）
 
     def test_nested_dict_in_section(self):
         """セクション内のネストしたdict"""
-        reader = TypedConfigReader(
-            {"engine": {"max_visits": 1000, "nested": {"key": "value"}}}
-        )
+        reader = TypedConfigReader({"engine": {"max_visits": 1000, "nested": {"key": "value"}}})
         cfg = reader.get_engine()
         assert cfg.max_visits == 1000
         # nestedは無視される

@@ -9,19 +9,19 @@ This module verifies that:
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestBackwardCompatImports:
     """Verify imports from tools.batch_analyze_sgf still work."""
 
     def test_dataclass_imports_are_same_class(self):
         """Re-exported classes must be identical (not copies)."""
-        from katrain.tools.batch_analyze_sgf import WriteError, BatchResult
         from katrain.core.batch import (
-            WriteError as CoreWriteError,
             BatchResult as CoreBatchResult,
         )
+        from katrain.core.batch import (
+            WriteError as CoreWriteError,
+        )
+        from katrain.tools.batch_analyze_sgf import BatchResult, WriteError
 
         assert WriteError is CoreWriteError
         assert BatchResult is CoreBatchResult
@@ -29,10 +29,10 @@ class TestBackwardCompatImports:
     def test_function_imports_are_callable(self):
         """Key functions must be importable and callable."""
         from katrain.tools.batch_analyze_sgf import (
+            analyze_single_file,
             has_analysis,
             parse_timeout_input,
             run_batch,
-            analyze_single_file,
         )
 
         assert callable(has_analysis)
@@ -44,10 +44,10 @@ class TestBackwardCompatImports:
         """Private names must still work for existing code."""
         from katrain.tools.batch_analyze_sgf import (
             _get_canonical_loss,
-            _safe_write_file,
-            _sanitize_filename,
             _get_unique_filename,
             _normalize_player_name,
+            _safe_write_file,
+            _sanitize_filename,
         )
 
         assert callable(_get_canonical_loss)
@@ -59,10 +59,10 @@ class TestBackwardCompatImports:
     def test_stats_private_aliases_work(self):
         """Stats function private aliases must work."""
         from katrain.tools.batch_analyze_sgf import (
-            _extract_game_stats,
             _build_batch_summary,
-            _extract_players_from_stats,
             _build_player_summary,
+            _extract_game_stats,
+            _extract_players_from_stats,
         )
 
         assert callable(_extract_game_stats)
@@ -73,9 +73,9 @@ class TestBackwardCompatImports:
     def test_leela_re_exports_work(self):
         """Leela-related re-exports must work for existing tests."""
         from katrain.tools.batch_analyze_sgf import (
+            EvalSnapshot,
             LeelaEngine,
             LeelaPositionEval,
-            EvalSnapshot,
             MoveEval,
             leela_position_to_move_eval,
         )
@@ -106,18 +106,16 @@ class TestCoreImports:
     def test_eager_exports(self):
         """Models and helpers are eagerly available."""
         from katrain.core.batch import (
-            WriteError,
-            BatchResult,
             DEFAULT_TIMEOUT_SECONDS,
             ENCODINGS_TO_TRY,
+            get_unique_filename,
             has_analysis,
+            needs_leela_karte_warning,
+            normalize_player_name,
             parse_timeout_input,
+            safe_int,
             safe_write_file,
             sanitize_filename,
-            get_unique_filename,
-            normalize_player_name,
-            safe_int,
-            needs_leela_karte_warning,
         )
 
         # Verify against actual value, not hardcoded
@@ -138,9 +136,9 @@ class TestCoreImports:
     def test_lazy_exports_via_getattr(self):
         """Heavy functions available via lazy __getattr__."""
         from katrain.core.batch import (
-            run_batch,
             analyze_single_file,
             analyze_single_file_leela,
+            run_batch,
         )
 
         assert callable(run_batch)
@@ -150,10 +148,10 @@ class TestCoreImports:
     def test_lazy_stats_exports(self):
         """Stats functions available via lazy __getattr__."""
         from katrain.core.batch import (
-            extract_game_stats,
             build_batch_summary,
-            extract_players_from_stats,
             build_player_summary,
+            extract_game_stats,
+            extract_players_from_stats,
         )
 
         assert callable(extract_game_stats)
@@ -163,14 +161,14 @@ class TestCoreImports:
 
     def test_explicit_submodule_import(self):
         """Direct submodule import works."""
-        from katrain.core.batch.orchestration import run_batch
         from katrain.core.batch.analysis import (
             analyze_single_file,
             analyze_single_file_leela,
         )
+        from katrain.core.batch.orchestration import run_batch
         from katrain.core.batch.stats import (
-            extract_game_stats,
             build_batch_summary,
+            extract_game_stats,
         )
 
         assert callable(run_batch)
@@ -277,8 +275,8 @@ class TestModuleAllAttribute:
 
     def test_all_exports_are_importable(self):
         """Every name in __all__ should be importable."""
-        from katrain.core.batch import __all__
         import katrain.core.batch as batch_module
+        from katrain.core.batch import __all__
 
         for name in __all__:
             obj = getattr(batch_module, name, None)

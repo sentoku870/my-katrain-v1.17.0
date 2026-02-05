@@ -17,15 +17,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from katrain.gui.features.summary_aggregator import (
-    scan_player_names,
     categorize_games_by_stats,
     collect_rank_info,
+    scan_player_names,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
+
 
 def create_game_stats(
     game_name: str = "test.sgf",
@@ -67,6 +67,7 @@ def create_mock_move_tree(
 # ---------------------------------------------------------------------------
 # Tests for scan_player_names()
 # ---------------------------------------------------------------------------
+
 
 class TestScanPlayerNames:
     """Tests for scan_player_names() function."""
@@ -168,6 +169,7 @@ class TestScanPlayerNames:
 # ---------------------------------------------------------------------------
 # Tests for categorize_games_by_stats()
 # ---------------------------------------------------------------------------
+
 
 class TestCategorizeGamesByStats:
     """Tests for categorize_games_by_stats() function."""
@@ -286,6 +288,7 @@ class TestCategorizeGamesByStats:
 # ---------------------------------------------------------------------------
 # Tests for collect_rank_info()
 # ---------------------------------------------------------------------------
+
 
 class TestCollectRankInfo:
     """Tests for collect_rank_info() function."""

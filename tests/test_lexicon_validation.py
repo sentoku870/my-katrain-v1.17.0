@@ -12,18 +12,17 @@ Verifies:
 
 import pytest
 
+from katrain.common.lexicon.models import LexiconEntry
 from katrain.common.lexicon.validation import (
     LexiconError,
-    LexiconParseError,
     LexiconNotLoadedError,
+    LexiconParseError,
     ValidationIssue,
     ValidationResult,
-    validate_entry_dict,
     build_entry_from_dict,
+    validate_entry_dict,
     validate_references,
 )
-from katrain.common.lexicon.models import LexiconEntry
-
 
 # ---------------------------------------------------------------------------
 # Exception Tests

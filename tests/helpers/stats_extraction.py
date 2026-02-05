@@ -125,9 +125,7 @@ def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
                 # Track worst moves
                 if points_lost > 0.5:
                     importance = max(0, points_lost)
-                    stats["worst_moves"].append(
-                        (move_num, player, node.move.gtp(), points_lost, importance, category)
-                    )
+                    stats["worst_moves"].append((move_num, player, node.move.gtp(), points_lost, importance, category))
 
             prev_score = score
 

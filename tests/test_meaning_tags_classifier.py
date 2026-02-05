@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for meaning_tags/classifier.py.
 
 Part of Phase 46: Meaning Tags System Core - PR-2.
@@ -29,7 +28,6 @@ from katrain.core.analysis.meaning_tags import (
     THRESHOLD_POLICY_VERY_LOW,
     THRESHOLD_SCORE_STDEV_HIGH,
     ClassificationContext,
-    MeaningTag,
     MeaningTagId,
     classify_gtp_move,
     classify_meaning_tag,
@@ -39,7 +37,6 @@ from katrain.core.analysis.meaning_tags import (
     is_endgame,
     resolve_lexicon_anchor,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -533,9 +530,7 @@ class TestClassifyMeaningTagLifeDeath:
     def test_huge_loss_with_ownership_flux(self) -> None:
         """Huge loss + ownership flux = LIFE_DEATH_ERROR."""
         move = MockMoveEval(score_loss=THRESHOLD_LOSS_HUGE)
-        ctx = ClassificationContext(
-            ownership_flux=THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH
-        )
+        ctx = ClassificationContext(ownership_flux=THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH)
         tag = classify_meaning_tag(move, context=ctx)
         assert tag.id == MeaningTagId.LIFE_DEATH_ERROR
 
@@ -606,9 +601,7 @@ class TestClassifyMeaningTagShape:
     def test_very_low_policy(self) -> None:
         """Very low policy + medium loss = SHAPE_MISTAKE."""
         move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
-        ctx = ClassificationContext(
-            actual_move_policy=THRESHOLD_POLICY_VERY_LOW / 2
-        )
+        ctx = ClassificationContext(actual_move_policy=THRESHOLD_POLICY_VERY_LOW / 2)
         tag = classify_meaning_tag(move, context=ctx)
         assert tag.id == MeaningTagId.SHAPE_MISTAKE
 
@@ -749,9 +742,7 @@ class TestClassifyMeaningTagPriority:
             score_loss=THRESHOLD_LOSS_CATASTROPHIC,
             reason_tags=["atari", "low_liberties"],  # semeai pattern
         )
-        ctx = ClassificationContext(
-            ownership_flux=THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH
-        )
+        ctx = ClassificationContext(ownership_flux=THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH)
         tag = classify_meaning_tag(move, context=ctx)
         assert tag.id == MeaningTagId.CAPTURE_RACE_LOSS
 
@@ -761,9 +752,7 @@ class TestClassifyMeaningTagPriority:
             score_loss=THRESHOLD_LOSS_MEDIUM,
             reason_tags=["reading_failure"],
         )
-        ctx = ClassificationContext(
-            actual_move_policy=THRESHOLD_POLICY_VERY_LOW / 2
-        )
+        ctx = ClassificationContext(actual_move_policy=THRESHOLD_POLICY_VERY_LOW / 2)
         tag = classify_meaning_tag(move, context=ctx)
         assert tag.id == MeaningTagId.READING_FAILURE
 
@@ -784,9 +773,7 @@ class TestClassifyMeaningTagDeterminism:
         )
         ctx = ClassificationContext(move_distance=10)
 
-        results = [
-            classify_meaning_tag(move, context=ctx) for _ in range(100)
-        ]
+        results = [classify_meaning_tag(move, context=ctx) for _ in range(100)]
         assert all(r == results[0] for r in results)
 
     def test_context_none_is_deterministic(self) -> None:
@@ -863,9 +850,7 @@ class TestClassifyMeaningTagLexiconAnchor:
             best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
             actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
         )
-        tag = classify_meaning_tag(
-            move, context=ctx, lexicon_store=store, validate_anchor=False
-        )
+        tag = classify_meaning_tag(move, context=ctx, lexicon_store=store, validate_anchor=False)
         assert tag.id == MeaningTagId.MISSED_TESUJI
         assert tag.lexicon_anchor_id == "tesuji"  # Default, not validated
 
@@ -955,9 +940,7 @@ class TestLexiconIntegration:
         ]
 
         for tag_id in tags_with_anchors:
-            anchor = resolve_lexicon_anchor(
-                tag_id, real_lexicon_store, validate_anchor=True
-            )
+            anchor = resolve_lexicon_anchor(tag_id, real_lexicon_store, validate_anchor=True)
             expected = MEANING_TAG_REGISTRY[tag_id].default_lexicon_anchor
             assert anchor == expected, f"{tag_id} should resolve to {expected}"
 

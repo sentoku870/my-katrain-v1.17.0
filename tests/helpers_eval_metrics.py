@@ -2,19 +2,18 @@
 Shared test fixtures and stubs for eval_metrics tests.
 """
 
-import pytest
 from dataclasses import dataclass
 
 from katrain.core.eval_metrics import (
-    MoveEval,
     MistakeCategory,
+    MoveEval,
     PositionDifficulty,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper function to create MoveEval with defaults
 # ---------------------------------------------------------------------------
+
 
 def make_move_eval(
     move_number: int = 1,
@@ -64,9 +63,11 @@ def make_move_eval(
 # Stub classes for testing without real GameNode
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StubMove:
     """Minimal stub for a move (coordinates + player)"""
+
     player: str  # "B" or "W"
     coords: tuple  # (row, col)
 
@@ -85,6 +86,7 @@ class StubGameNode:
     score/winrate: BLACK-PERSPECTIVE (from KataGo)
     points_lost: SIDE-TO-MOVE perspective (computed with player_sign)
     """
+
     move: StubMove | None = None
     parent: "StubGameNode | None" = None
     children: "list[StubGameNode] | None" = None
@@ -130,9 +132,11 @@ class StubGameNode:
 # Helper to build game trees for integration tests
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StubGame:
     """Minimal stub for Game object with a root node"""
+
     root: StubGameNode | None = None
 
 

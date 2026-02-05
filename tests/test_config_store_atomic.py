@@ -29,7 +29,7 @@ def test_atomic_save_preserves_original_on_failure(tmp_path, monkeypatch):
 
     # Patch json.dump IN THE MODULE UNDER TEST
     def failing_dump(*args, **kwargs):
-        raise IOError("Simulated disk error")
+        raise OSError("Simulated disk error")
 
     monkeypatch.setattr("katrain.common.config_store.json.dump", failing_dump)
 
@@ -48,7 +48,7 @@ def test_atomic_save_cleans_temp_on_failure(tmp_path, monkeypatch):
     store = JsonFileConfigStore(str(config_file))
 
     def failing_dump(*args, **kwargs):
-        raise IOError("Simulated error")
+        raise OSError("Simulated error")
 
     monkeypatch.setattr("katrain.common.config_store.json.dump", failing_dump)
 

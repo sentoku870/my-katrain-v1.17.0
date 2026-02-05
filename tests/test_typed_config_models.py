@@ -20,7 +20,6 @@ from katrain.common.typed_config.models import (
     safe_str,
 )
 
-
 # =============================================================================
 # safe_int tests
 # =============================================================================
@@ -424,9 +423,7 @@ class TestTrainerConfigFromDict:
         assert cfg.eval_thresholds == (12.0, 6.0, 3.0, 1.5, 0.5, 0.0)
 
     def test_bool_tuple_conversion(self):
-        cfg = TrainerConfig.from_dict(
-            {"save_feedback": [True, False, True, False, True, False]}
-        )
+        cfg = TrainerConfig.from_dict({"save_feedback": [True, False, True, False, True, False]})
         assert cfg.save_feedback == (True, False, True, False, True, False)
 
     def test_missing_fields_use_defaults(self):

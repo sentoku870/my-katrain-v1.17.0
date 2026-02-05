@@ -10,8 +10,6 @@ Test categories:
 import sys
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestQuizManagerImport:
     """Kivy-free import and instantiation tests."""

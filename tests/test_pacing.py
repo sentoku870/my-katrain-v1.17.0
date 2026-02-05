@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for Phase 59: Pacing & Tilt Core.
 
 This module tests the pacing analysis functionality including:
@@ -11,35 +10,25 @@ This module tests the pacing analysis functionality including:
 
 from __future__ import annotations
 
-import pytest
-from dataclasses import dataclass
-from typing import Optional
-
+from katrain.core.analysis.models import MoveEval
 from katrain.core.analysis.time.models import GameTimeData, TimeMetrics
 from katrain.core.analysis.time.pacing import (
     LossSource,
     PacingConfig,
-    PacingMetrics,
     TiltSeverity,
-    TiltEpisode,
-    PacingAnalysisResult,
-    GamePacingStats,
-    analyze_pacing,
     _compute_median,
     _compute_percentile_90,
     _compute_severity,
-    _detect_coverage_gaps,
     _detect_loss_sources,
+    analyze_pacing,
 )
-from katrain.core.analysis.models import MoveEval
-
 
 # =============================================================================
 # Test Fixtures / Helpers
 # =============================================================================
 
 
-def make_time_metrics(move_number: int, player: str, time_spent: Optional[float] = None) -> TimeMetrics:
+def make_time_metrics(move_number: int, player: str, time_spent: float | None = None) -> TimeMetrics:
     """Create a TimeMetrics instance for testing."""
     return TimeMetrics(
         move_number=move_number,
@@ -51,8 +40,8 @@ def make_time_metrics(move_number: int, player: str, time_spent: Optional[float]
 
 def make_time_data(
     move_numbers: list[int],
-    players: Optional[list[str]] = None,
-    time_spents: Optional[list[Optional[float]]] = None,
+    players: list[str] | None = None,
+    time_spents: list[float | None] | None = None,
 ) -> GameTimeData:
     """Create GameTimeData for testing."""
     if players is None:
@@ -60,10 +49,7 @@ def make_time_data(
     if time_spents is None:
         time_spents = [10.0] * len(move_numbers)
 
-    metrics = tuple(
-        make_time_metrics(mn, p, ts)
-        for mn, p, ts in zip(move_numbers, players, time_spents)
-    )
+    metrics = tuple(make_time_metrics(mn, p, ts) for mn, p, ts in zip(move_numbers, players, time_spents, strict=False))
     has_time = any(m.time_left_sec is not None for m in metrics)
 
     return GameTimeData(
@@ -77,9 +63,9 @@ def make_time_data(
 def make_move_eval(
     move_number: int,
     player: str = "B",
-    score_loss: Optional[float] = None,
-    leela_loss_est: Optional[float] = None,
-    points_lost: Optional[float] = None,
+    score_loss: float | None = None,
+    leela_loss_est: float | None = None,
+    points_lost: float | None = None,
 ) -> MoveEval:
     """Create a MoveEval instance for testing."""
     return MoveEval(
@@ -201,10 +187,7 @@ class TestCoverageGapDetection:
     def test_complete_coverage_no_gaps(self, caplog):
         """Full coverage: no warning, has_coverage_gaps=False."""
         time_data = make_time_data(move_numbers=[1, 2, 3, 4, 5])
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 6)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 6)]
         result = analyze_pacing(time_data, moves)
         assert "coverage incomplete" not in caplog.text
         assert result.game_stats.has_coverage_gaps is False
@@ -240,10 +223,7 @@ class TestCoverageGapDetection:
     def test_time_metrics_determines_expected(self):
         """expected_move_count comes from TimeMetrics max."""
         time_data = make_time_data(move_numbers=list(range(1, 11)))
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 6)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 6)]
         result = analyze_pacing(time_data, moves)
         assert result.game_stats.expected_move_count == 10
         assert result.game_stats.missing_move_eval_count == 5
@@ -281,10 +261,7 @@ class TestPerPlayerMedian:
             players=["B", "W", "B", "W", "B", "W", "B", "W"],
             time_spents=[10.0, 30.0, 10.0, 30.0, 10.0, 30.0, 10.0, 30.0],
         )
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 9)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 9)]
         result = analyze_pacing(time_data, moves)
         assert result.game_stats.time_median_black == 10.0
         assert result.game_stats.time_median_white == 30.0
@@ -298,10 +275,7 @@ class TestPerPlayerMedian:
             players=["B", "B", "B", "B"],
             time_spents=[10.0, 10.0, 10.0, 10.0],
         )
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 9)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 9)]
         result = analyze_pacing(time_data, moves)
         assert result.game_stats.time_median_black == 10.0
         assert result.game_stats.time_median_white is None
@@ -319,10 +293,7 @@ class TestTriggerSemantics:
     def test_p90_equals_max_no_triggers(self):
         """When all losses equal, p90=max, no triggers."""
         time_data = make_time_data(move_numbers=list(range(1, 11)))
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=3.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=3.0) for i in range(1, 11)]
         result = analyze_pacing(time_data, moves)
         assert result.game_stats.loss_p90 == 3.0
         assert result.tilt_episodes == ()
@@ -332,10 +303,7 @@ class TestTriggerSemantics:
         time_data = make_time_data(move_numbers=list(range(1, 11)))
         # losses = [1, 2, 3, 4, 5, 5, 5, 5, 5, 5]
         # p90 = sorted[8] = 5.0
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=float(min(i, 5)))
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=float(min(i, 5))) for i in range(1, 11)]
         result = analyze_pacing(time_data, moves)
         # Max loss is 5.0, p90 is 5.0, so no triggers
         assert result.tilt_episodes == ()
@@ -426,20 +394,14 @@ class TestMixedEngineDetection:
 
     def test_single_source_score(self):
         """All score_loss -> loss_source=SCORE."""
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 11)]
         source, mixed = _detect_loss_sources(moves)
         assert source == LossSource.SCORE
         assert mixed is False
 
     def test_single_source_leela(self):
         """All leela_loss_est -> loss_source=LEELA."""
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", leela_loss_est=2.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", leela_loss_est=2.0) for i in range(1, 11)]
         source, mixed = _detect_loss_sources(moves)
         assert source == LossSource.LEELA
         assert mixed is False
@@ -459,10 +421,7 @@ class TestMixedEngineDetection:
 
     def test_no_loss_data(self):
         """All loss values None -> loss_source=NONE."""
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W")
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W") for i in range(1, 11)]
         source, mixed = _detect_loss_sources(moves)
         assert source == LossSource.NONE
         assert mixed is False
@@ -484,10 +443,7 @@ class TestPacingFlags:
             players=["B", "W", "B", "W", "B", "W", "B", "W"],
             time_spents=[2.0, 30.0, 10.0, 30.0, 10.0, 30.0, 10.0, 30.0],  # Move 1 is blitz
         )
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 9)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 9)]
         # Use custom config to allow fewer than 10 moves
         config = PacingConfig(min_moves_for_stats=1)
         result = analyze_pacing(time_data, moves, config)
@@ -504,10 +460,7 @@ class TestPacingFlags:
             players=["B", "W", "B", "W", "B", "W", "B", "W"],
             time_spents=[35.0, 30.0, 10.0, 30.0, 10.0, 30.0, 10.0, 30.0],  # Move 1 is long
         )
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 9)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 9)]
         # Use custom config to allow fewer than 10 moves
         config = PacingConfig(min_moves_for_stats=1)
         result = analyze_pacing(time_data, moves, config)
@@ -534,20 +487,14 @@ class TestFlags:
             black_moves_with_time=0,
             white_moves_with_time=0,
         )
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 11)]
         result = analyze_pacing(time_data, moves)
         assert result.has_time_data is False
 
     def test_loss_p90_zero_disables_tilt(self):
         """All canonical_loss=0.0 -> tilt disabled."""
         time_data = make_time_data(move_numbers=list(range(1, 11)))
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=0.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=0.0) for i in range(1, 11)]
         result = analyze_pacing(time_data, moves)
         assert result.game_stats.loss_p90 == 0.0
         assert result.game_stats.tilt_detection_enabled is False
@@ -575,10 +522,7 @@ class TestOrdering:
     def test_pacing_metrics_ascending(self):
         """pacing_metrics are in ascending move_number order."""
         time_data = make_time_data(move_numbers=list(range(1, 11)))
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 11)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 11)]
         result = analyze_pacing(time_data, moves)
         nums = [m.move_number for m in result.pacing_metrics]
         assert nums == sorted(nums)
@@ -616,10 +560,7 @@ class TestGameStatsPresence:
     def test_game_stats_with_insufficient_moves(self):
         """game_stats present even with < min_moves."""
         time_data = make_time_data(move_numbers=[1, 2, 3])
-        moves = [
-            make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0)
-            for i in range(1, 4)
-        ]
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0) for i in range(1, 4)]
         config = PacingConfig(min_moves_for_stats=10)  # Require 10, have 3
         result = analyze_pacing(time_data, moves, config)
         assert result.game_stats is not None
@@ -638,6 +579,7 @@ class TestImportSafety:
     def test_pacing_module_imports(self):
         """pacing.py can be imported without errors."""
         from katrain.core.analysis.time import pacing
+
         assert hasattr(pacing, "analyze_pacing")
         assert hasattr(pacing, "PacingConfig")
         assert hasattr(pacing, "TiltSeverity")
@@ -645,14 +587,9 @@ class TestImportSafety:
     def test_package_exports(self):
         """Package exports all expected symbols."""
         from katrain.core.analysis.time import (
-            analyze_pacing,
             PacingConfig,
-            PacingMetrics,
-            TiltSeverity,
-            TiltEpisode,
-            PacingAnalysisResult,
-            GamePacingStats,
-            LossSource,
+            analyze_pacing,
         )
+
         assert analyze_pacing is not None
         assert PacingConfig is not None
