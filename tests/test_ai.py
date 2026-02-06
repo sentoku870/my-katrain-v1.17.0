@@ -26,17 +26,16 @@ class TestAI:
 
         game = Game(katrain, engine)
         n_rounds = 3
+        test_strategies = [s for s in AI_STRATEGIES if s not in [AI_HUMAN, AI_PRO]]
         for _ in range(n_rounds):
-            for strategy in AI_STRATEGIES:
-                if strategy in [AI_HUMAN, AI_PRO]:
-                    continue
+            for strategy in test_strategies:
                 settings = katrain.config(f"ai/{strategy}")
                 move, played_node = generate_ai_move(game, strategy, settings)
                 katrain.log(f"Testing strategy {strategy} -> {move}", OUTPUT_INFO)
                 assert move.coords is not None
                 assert played_node == game.current_node
 
-        assert game.current_node.depth == (len(AI_STRATEGIES) - 3) * n_rounds
+        assert game.current_node.depth == len(test_strategies) * n_rounds
 
         for strategy in AI_STRATEGIES:
             if strategy in [AI_HUMAN, AI_PRO]:

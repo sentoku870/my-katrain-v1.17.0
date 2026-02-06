@@ -305,6 +305,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 122 | Fix Query Rejected Error | `analyze_all_nodes`スロットリング追加 | ✅ |
 | 123 | Leela Zero Slimming | Play機能削除、Analysis温存 | ✅ |
 | 124 | Stability Improvements | `TestAnalysisResult` rename fix, `auto_setup.py` deps | ✅ |
+| 125 | Project Slimming & Archiving | qt/specs/logs整理、ImportError修正 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
