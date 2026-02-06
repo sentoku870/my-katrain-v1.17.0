@@ -696,21 +696,6 @@ class PhaseMistakeStats:
 # =============================================================================
 
 
-@dataclass(frozen=True)
-class QuizItem:
-    """Large-mistake quiz entry derived from existing evaluations."""
-
-    move_number: int
-    player: str | None
-    loss: float
-
-
-@dataclass(frozen=True)
-class QuizConfig:
-    """Configuration for extracting quiz items from an EvalSnapshot."""
-
-    loss_threshold: float  # minimum loss (points) to consider a move
-    limit: int  # maximum number of quiz items to return
 
 
 @dataclass(frozen=True)
@@ -725,7 +710,6 @@ class ReasonTagThresholds:
 class SkillPreset:
     """Skill presets for quiz extraction and mistake thresholds."""
 
-    quiz: QuizConfig
     score_thresholds: tuple[float, float, float]
     winrate_thresholds: tuple[float, float, float]
     reason_tag_thresholds: ReasonTagThresholds  # Phase 17
@@ -740,7 +724,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
     # Relaxed (Lv1): very forgiving, for absolute beginners or casual review.
     # t3=15.0, t2=0.5*t3=7.5, t1=0.2*t3=3.0
     "relaxed": SkillPreset(
-        quiz=QuizConfig(loss_threshold=6.0, limit=10),
         score_thresholds=(3.0, 7.5, 15.0),
         winrate_thresholds=(0.15, 0.30, 0.60),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=45.0, reading_failure=60.0),
@@ -749,7 +732,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
     # t3=10.0, t2=0.5*t3=5.0, t1=0.2*t3=2.0
     # NOTE: Values updated from (2.0, 4.0, 8.0) to follow t1=0.2*t3, t2=0.5*t3 formula.
     "beginner": SkillPreset(
-        quiz=QuizConfig(loss_threshold=4.0, limit=10),
         score_thresholds=(2.0, 5.0, 10.0),
         winrate_thresholds=(0.10, 0.20, 0.40),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=30.0, reading_failure=40.0),
@@ -757,7 +739,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
     # Standard (Lv3): matches existing behavior (backward-compatible).
     # t3=5.0, t2=2.5, t1=1.0 (unchanged)
     "standard": SkillPreset(
-        quiz=QuizConfig(loss_threshold=2.0, limit=10),
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=15.0, reading_failure=20.0),
@@ -765,7 +746,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
     # Advanced (Lv4): more sensitive to small errors (unchanged).
     # t3=3.0, t2=1.5, t1=0.5 (preserved for backward compatibility)
     "advanced": SkillPreset(
-        quiz=QuizConfig(loss_threshold=1.0, limit=10),
         score_thresholds=(0.5, 1.5, 3.0),
         winrate_thresholds=(0.03, 0.07, 0.15),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=10.0, reading_failure=15.0),
@@ -773,7 +753,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
     # Pro (Lv5): strictest thresholds for dan-level analysis.
     # t3=1.0, t2=0.5*t3=0.5, t1=0.2*t3=0.2
     "pro": SkillPreset(
-        quiz=QuizConfig(loss_threshold=0.4, limit=10),
         score_thresholds=(0.2, 0.5, 1.0),
         winrate_thresholds=(0.01, 0.02, 0.04),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=3.0, reading_failure=4.0),
@@ -861,37 +840,6 @@ URGENT_MISS_CONFIGS: dict[str, UrgentMissConfig] = {
 }
 
 
-# =============================================================================
-# Quiz structures
-# =============================================================================
-
-
-@dataclass
-class QuizChoice:
-    """Choice shown in quiz mode for a single position."""
-
-    move: str
-    points_lost: float | None
-
-
-@dataclass
-class QuizQuestion:
-    """Quiz entry paired with candidate moves for the position before the mistake."""
-
-    item: QuizItem
-    choices: list[QuizChoice]
-    best_move: str | None = None
-    node_before_move: GameNode | None = None
-
-    @property
-    def has_analysis(self) -> bool:
-        return self.node_before_move is not None and bool(self.choices)
-
-
-# Backwards-compatible aliases
-QUIZ_CONFIG_DEFAULT = SKILL_PRESETS[DEFAULT_SKILL_PRESET].quiz
-DEFAULT_QUIZ_LOSS_THRESHOLD = QUIZ_CONFIG_DEFAULT.loss_threshold
-DEFAULT_QUIZ_ITEM_LIMIT = QUIZ_CONFIG_DEFAULT.limit
 
 
 # =============================================================================
@@ -1161,10 +1109,6 @@ __all__ = [
     "PhaseMistakeStats",
     "ImportantMoveSettings",
     "ReasonTagThresholds",
-    "QuizItem",
-    "QuizConfig",
-    "QuizChoice",
-    "QuizQuestion",
     "SkillPreset",
     "AutoRecommendation",
     "UrgentMissConfig",
@@ -1184,10 +1128,6 @@ __all__ = [
     # Settings dictionaries
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
-    # Quiz constants
-    "QUIZ_CONFIG_DEFAULT",
-    "DEFAULT_QUIZ_LOSS_THRESHOLD",
-    "DEFAULT_QUIZ_ITEM_LIMIT",
     # Reliability/importance constants
     "RELIABILITY_VISITS_THRESHOLD",
     "UNRELIABLE_IMPORTANCE_SCALE",

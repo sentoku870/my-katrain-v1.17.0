@@ -907,11 +907,6 @@
     width: 250
     katrain: app.gui
     MyKatrainMenuItem:
-        text: i18n._('Generate quiz (beta)')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("quiz-popup")
-    MyKatrainMenuItem:
         text: i18n._('mykatrain:export-karte')
         icon: 'analysis.png'
         shortcut: ''
@@ -942,30 +937,10 @@
         shortcut: ''
         on_action: root.katrain("batch-analyze-popup")
     MyKatrainMenuItem:
-        text: i18n._('mykatrain:training-set')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("training-set-popup")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:player-profile')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("player-profile-popup")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:practice-report')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("practice-report-popup")
-    MyKatrainMenuItem:
         text: i18n._('mykatrain:settings')
         icon: 'General-Settings.png'
         shortcut: ''
         on_action: root.katrain("mykatrain-settings-popup")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:engine-compare')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("engine-compare-popup")
     MyKatrainMenuItem:
         text: i18n._('radar:menu-title')
         icon: 'analysis.png'
@@ -1017,27 +992,6 @@
                 id: ownership
                 text: i18n._('analysis:territory')
                 padding: 0,0,show_children.width/8,0 # space button a bit more
-            MDBoxLayout:
-                adaptive_width: True
-                spacing: CP_SPACING
-                size_hint: None, 0.7
-                pos_hint: {'center_y':0.5}
-                padding: show_children.width/8,0,show_children.width/8,0
-                ClickableLabel:
-                    text: i18n._("active_review:toggle_off") if app.gui and app.gui.active_review_mode else i18n._("active_review:toggle_on")
-                    halign: 'center'
-                    font_size: self.parent.height / 3
-                    color: active_review_checkbox.selected_color if (app.gui and app.gui.active_review_mode) else active_review_checkbox.unselected_color
-                    size_hint_x: None
-                    width: self.texture_size[0] + 4
-                    on_left_press: app.gui.toggle_active_review() if app.gui else None
-                MDCheckbox:
-                    id: active_review_checkbox
-                    size_hint: None,0.5
-                    pos_hint: {'center_y': 0.5}
-                    width: self.height
-                    active: app.gui.active_review_mode if app.gui else False
-                    on_active: app.gui.toggle_active_review() if app.gui and self.active != app.gui.active_review_mode else None
             MDFloatLayout:
                 width: analysis_button.width
                 size_hint: None, 1

@@ -6,8 +6,7 @@ Extracted from KaTrainGui for improved testability.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -56,10 +55,10 @@ class ActiveReviewController:
 
     def __init__(
         self,
-        get_ctx: Callable[[], FeatureContext],
+        get_ctx: Callable[[], "FeatureContext"],
         get_config: Callable[..., Any],  # config(setting, default=None)
-        get_game: Callable[[], Game | None],
-        get_controls: Callable[[], ControlsPanel | None],
+        get_game: Callable[[], "Game" | None],
+        get_controls: Callable[[], "ControlsPanel" | None],
         get_mode: Callable[[], bool],
         set_mode: Callable[[bool], None],
         logger: Callable[..., None],  # log(message, level=OUTPUT_INFO)
@@ -91,7 +90,7 @@ class ActiveReviewController:
         self._show_feedback_fn = show_feedback_fn
         self._show_summary_fn = show_summary_fn
 
-        self._session: ReviewSession | None = None
+        self._session: "ReviewSession" | None = None
 
     def _get_show_feedback(self) -> ShowFeedbackFn:
         """Get feedback UI function (lazy import if not injected)."""
@@ -110,7 +109,7 @@ class ActiveReviewController:
         return show_session_summary
 
     @property
-    def session(self) -> ReviewSession | None:
+    def session(self) -> "ReviewSession" | None:
         """Current review session (read-only).
 
         Returns:
@@ -251,8 +250,9 @@ class ActiveReviewController:
             return get_hint_for_best_move(node, lang)
 
         # Record final guess if not allowing retry
-        if not allow_retry and self._session:
-            self._session.record_final_guess(evaluation)
+        if not allow_retry:
+            if self._session:
+                self._session.record_final_guess(evaluation)
 
         # Show feedback popup via injected/default callback
         show_feedback = self._get_show_feedback()

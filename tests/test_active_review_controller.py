@@ -3,10 +3,9 @@
 全テストがKivy不要で実行可能（UIコールバック注入による）。
 """
 
+import pytest
 from typing import Any
 from unittest.mock import MagicMock
-
-import pytest
 
 
 def make_stub_show_feedback() -> tuple[Any, list]:
@@ -365,9 +364,9 @@ class TestHandleGuess:
 
     def test_handle_guess_calls_feedback_on_ready_node(self, monkeypatch):
         """handle_guess()が準備完了ノードでshow_feedback_fnを呼ぶ"""
-        import katrain.core.study.active_review as ar_module
-        from katrain.core.study.active_review import GuessGrade, ReviewReadyResult
         from katrain.gui.managers.active_review_controller import ActiveReviewController
+        from katrain.core.study.active_review import ReviewReadyResult, GuessGrade
+        import katrain.core.study.active_review as ar_module
 
         stub_feedback, feedback_calls = make_stub_show_feedback()
         stub_summary, _ = make_stub_show_summary()
@@ -418,9 +417,9 @@ class TestHandleGuess:
 
     def test_handle_guess_no_feedback_when_not_ready(self, monkeypatch):
         """handle_guess()が準備未完了ノードでfeedbackを呼ばない"""
-        import katrain.core.study.active_review as ar_module
-        from katrain.core.study.active_review import ReviewReadyResult
         from katrain.gui.managers.active_review_controller import ActiveReviewController
+        from katrain.core.study.active_review import ReviewReadyResult
+        import katrain.core.study.active_review as ar_module
 
         stub_feedback, feedback_calls = make_stub_show_feedback()
         stub_summary, _ = make_stub_show_summary()
@@ -459,9 +458,9 @@ class TestHandleGuess:
 
     def test_handle_guess_allows_retry_on_blunder(self, monkeypatch):
         """handle_guess()がBLUNDERでリトライを許可する"""
-        import katrain.core.study.active_review as ar_module
-        from katrain.core.study.active_review import GuessGrade, ReviewReadyResult
         from katrain.gui.managers.active_review_controller import ActiveReviewController
+        from katrain.core.study.active_review import ReviewReadyResult, GuessGrade
+        import katrain.core.study.active_review as ar_module
 
         stub_feedback, feedback_calls = make_stub_show_feedback()
         stub_summary, _ = make_stub_show_summary()
@@ -509,9 +508,9 @@ class TestHandleGuess:
 
     def test_handle_guess_no_retry_on_second_attempt(self, monkeypatch):
         """handle_guess()が2回目のBLUNDERではリトライを許可しない"""
-        import katrain.core.study.active_review as ar_module
-        from katrain.core.study.active_review import GuessGrade, ReviewReadyResult
         from katrain.gui.managers.active_review_controller import ActiveReviewController
+        from katrain.core.study.active_review import ReviewReadyResult, GuessGrade
+        import katrain.core.study.active_review as ar_module
 
         stub_feedback, feedback_calls = make_stub_show_feedback()
         stub_summary, _ = make_stub_show_summary()
@@ -568,9 +567,9 @@ class TestHandleGuessNodeChange:
 
     def test_handle_guess_aborts_pending_on_node_change(self, monkeypatch):
         """handle_guess()がノード変更時にpendingをabortする"""
-        import katrain.core.study.active_review as ar_module
-        from katrain.core.study.active_review import GuessGrade, ReviewReadyResult
         from katrain.gui.managers.active_review_controller import ActiveReviewController
+        from katrain.core.study.active_review import ReviewReadyResult, GuessGrade
+        import katrain.core.study.active_review as ar_module
 
         stub_feedback, feedback_calls = make_stub_show_feedback()
         stub_summary, _ = make_stub_show_summary()

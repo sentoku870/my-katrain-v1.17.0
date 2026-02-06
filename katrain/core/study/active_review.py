@@ -11,7 +11,7 @@ This module provides:
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -24,7 +24,7 @@ _log = logging.getLogger(__name__)
 
 MIN_RELIABLE_VISITS = 100  # Minimum visits for reliable analysis
 
-GRADE_THRESHOLDS: dict[str, dict[str, float]] = {
+GRADE_THRESHOLDS: Dict[str, Dict[str, float]] = {
     "beginner": {"excellent": 1.5, "good": 4.0, "blunder": 8.0},
     "standard": {"excellent": 0.5, "good": 2.0, "blunder": 5.0},
     "advanced": {"excellent": 0.3, "good": 1.0, "blunder": 3.0},
@@ -76,8 +76,8 @@ class GuessEvaluation:
 
     user_move: str
     ai_best_move: str
-    score_loss: float | None  # None for NOT_IN_CANDIDATES
-    policy_rank: int | None  # 1-indexed, None if not found
+    score_loss: Optional[float]  # None for NOT_IN_CANDIDATES
+    policy_rank: Optional[int]  # 1-indexed, None if not found
     grade: GuessGrade
     matches_game_move: bool
 
@@ -87,7 +87,7 @@ class GuessEvaluation:
 # =============================================================================
 
 
-def _is_pass_move(move_str: str | None) -> bool:
+def _is_pass_move(move_str: Optional[str]) -> bool:
     """Check if move is a pass (case-insensitive)."""
     return move_str is not None and move_str.lower() == "pass"
 
@@ -146,11 +146,13 @@ class ActiveReviewer:
         Args:
             skill_preset: One of "beginner", "standard", "advanced", "pro"
         """
-        self.thresholds = GRADE_THRESHOLDS.get(skill_preset, GRADE_THRESHOLDS["standard"])
+        self.thresholds = GRADE_THRESHOLDS.get(
+            skill_preset, GRADE_THRESHOLDS["standard"]
+        )
 
     def evaluate_guess(
         self,
-        coords: tuple[int, int],
+        coords: Tuple[int, int],
         node: "GameNode",
     ) -> GuessEvaluation:
         """Evaluate user's guess against AI candidates.
@@ -245,7 +247,7 @@ class ActiveReviewer:
 
 # Hint text mapping by reason tag
 # Maps tactical reason_tags to i18n keys for hints
-_HINT_KEYS_BY_REASON_TAG: dict[str, str] = {
+_HINT_KEYS_BY_REASON_TAG: Dict[str, str] = {
     "atari": "active_review:hint:atari",
     "low_liberties": "active_review:hint:liberties",
     "need_connect": "active_review:hint:connection",
@@ -257,7 +259,7 @@ _HINT_KEYS_BY_REASON_TAG: dict[str, str] = {
 }
 
 # Priority order for reason tags (lower index = higher priority)
-_HINT_PRIORITY: list[str] = [
+_HINT_PRIORITY: List[str] = [
     "atari",
     "low_liberties",
     "need_connect",
@@ -272,7 +274,7 @@ _HINT_PRIORITY: list[str] = [
 def get_hint_for_best_move(
     node: Optional["GameNode"],
     lang: str = "jp",
-) -> str | None:
+) -> Optional[str]:
     """Generate a position-based hint for the AI's best move.
 
     Uses the node's analysis data (reason_tags, position type) to provide
@@ -320,7 +322,7 @@ def get_hint_for_best_move(
     return None
 
 
-def _get_hint_key_from_analysis(node: "GameNode") -> str | None:
+def _get_hint_key_from_analysis(node: "GameNode") -> Optional[str]:
     """Extract i18n key for hint from node's analysis data.
 
     Checks the position for tactical indicators and returns an appropriate
@@ -348,7 +350,7 @@ def _get_hint_key_from_analysis(node: "GameNode") -> str | None:
 
     # Look at the best move and see if we can determine its purpose
     best = candidates[0]
-    best.get("move", "")
+    best_move = best.get("move", "")
 
     # Check if this is an endgame position based on score closeness
     score_stdev = root_info.get("scoreStdev", 0)
@@ -369,7 +371,7 @@ def _get_hint_key_from_analysis(node: "GameNode") -> str | None:
 def _get_hint_from_meaning_tag(
     meaning_tag_id: str,
     lang: str,
-) -> str | None:
+) -> Optional[str]:
     """Get hint from MeaningTag description.
 
     Args:

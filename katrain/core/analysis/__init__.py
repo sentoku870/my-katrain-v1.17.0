@@ -9,7 +9,6 @@ Phase B で models.py, logic.py, presentation.py に分離されました。
 - logic.py: 純粋計算関数（オーケストレーター）
   - logic_loss.py: 損失計算関数（PR #126）
   - logic_importance.py: 重要度計算関数（PR #127）
-  - logic_quiz.py: クイズヘルパー関数（PR #128）
 - presentation.py: 表示/フォーマット関数
 
 後方互換性:
@@ -157,9 +156,6 @@ from katrain.core.analysis.logic import (
     # GameNode bridge
     move_eval_from_node,
     pick_important_moves,
-    # Quiz
-    quiz_items_from_snapshot,
-    quiz_points_lost_from_candidate,
     recommend_auto_strictness,
     snapshot_from_game,
     # Snapshot
@@ -185,8 +181,6 @@ from katrain.core.analysis.models import (
     DEFAULT_IMPORTANT_MOVE_LEVEL,
     DEFAULT_MIN_MOVE_NUMBER,
     DEFAULT_PV_FILTER_LEVEL,
-    DEFAULT_QUIZ_ITEM_LIMIT,
-    DEFAULT_QUIZ_LOSS_THRESHOLD,
     DEFAULT_SKILL_PRESET,
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
@@ -201,8 +195,6 @@ from katrain.core.analysis.models import (
     POLICY_GAP_MAX,
     PRESET_ORDER,
     PV_FILTER_CONFIGS,
-    # Quiz constants
-    QUIZ_CONFIG_DEFAULT,
     RELIABILITY_RATIO,  # Phase 44: 90% ratio for relative threshold
     RELIABILITY_SCALE_THRESHOLDS,
     # Reliability/importance constants
@@ -240,10 +232,6 @@ from katrain.core.analysis.models import (
     PositionDifficulty,
     PVFilterConfig,
     PVFilterLevel,
-    QuizChoice,
-    QuizConfig,
-    QuizItem,
-    QuizQuestion,
     ReasonTagThresholds,
     ReliabilityStats,
     SkillEstimation,
@@ -317,27 +305,7 @@ from katrain.core.analysis.reason_generator import (
     generate_reason_safe,
 )
 
-# =============================================================================
-# Explicit imports from risk/ (Phase 61)
-# =============================================================================
-from katrain.core.analysis.risk import (
-    PlayerRiskStats,
-    RiskAnalysisConfig,
-    RiskAnalysisResult,
-    RiskBehavior,
-    # Dataclasses
-    RiskContext,
-    # Enums
-    RiskJudgmentType,
-    # Main function
-    analyze_risk,
-    check_strategy_mismatch,
-    determine_behavior_from_stdev,
-    determine_behavior_from_volatility,
-    determine_judgment,
-    # Helper functions
-    to_player_perspective,
-)
+
 
 # =============================================================================
 # Explicit imports from skill_radar.py (Phase 48)
@@ -475,10 +443,6 @@ __all__ = [
     "PhaseMistakeStats",
     "ImportantMoveSettings",
     "ReasonTagThresholds",
-    "QuizItem",
-    "QuizConfig",
-    "QuizChoice",
-    "QuizQuestion",
     "SkillPreset",
     "AutoRecommendation",
     "UrgentMissConfig",
@@ -506,10 +470,6 @@ __all__ = [
     # Settings dictionaries
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
-    # Quiz constants
-    "QUIZ_CONFIG_DEFAULT",
-    "DEFAULT_QUIZ_LOSS_THRESHOLD",
-    "DEFAULT_QUIZ_ITEM_LIMIT",
     # Reliability/importance constants
     "RELIABILITY_VISITS_THRESHOLD",
     "RELIABILITY_RATIO",  # Phase 44
@@ -564,9 +524,6 @@ __all__ = [
     "snapshot_from_nodes",
     "iter_main_branch_nodes",
     "snapshot_from_game",
-    # Quiz
-    "quiz_items_from_snapshot",
-    "quiz_points_lost_from_candidate",
     # Phase mistake stats
     "aggregate_phase_mistake_stats",
     # Mistake streaks
@@ -706,23 +663,7 @@ __all__ = [
     "TAG_SIGNIFICANT_COUNT",
     "SCORE_TOLERANCE",
     "CONFIDENCE_NORMALIZATION",
-    # === risk/ (Phase 61) ===
-    # Enums
-    "RiskJudgmentType",
-    "RiskBehavior",
-    # Dataclasses
-    "RiskContext",
-    "RiskAnalysisConfig",
-    "PlayerRiskStats",
-    "RiskAnalysisResult",
-    # Main function
-    "analyze_risk",
-    # Helper functions
-    "to_player_perspective",
-    "determine_judgment",
-    "determine_behavior_from_stdev",
-    "determine_behavior_from_volatility",
-    "check_strategy_mismatch",
+
     # === board_context.py (Phase 80) ===
     # Enums
     "BoardArea",

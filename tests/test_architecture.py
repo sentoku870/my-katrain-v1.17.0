@@ -441,12 +441,11 @@ class TestModuleStructure:
         analysis_dir = _PROJECT_ROOT / "katrain" / "core" / "analysis"
 
         expected_files = [
-            "logic.py",
-            "logic_loss.py",
-            "logic_importance.py",
-            "logic_quiz.py",
-            "models.py",
-            "presentation.py",
+"logic.py",
+"logic_loss.py",
+"logic_importance.py",
+"models.py",
+"presentation.py",
         ]
 
         for filename in expected_files:
@@ -463,12 +462,11 @@ class TestModuleStructure:
         reports_dir = _PROJECT_ROOT / "katrain" / "core" / "reports"
 
         expected_files = [
-            "__init__.py",
-            "types.py",
-            "summary_report.py",
-            "quiz_report.py",
-            "karte_report.py",
-            "important_moves_report.py",
+"__init__.py",
+"types.py",
+"summary_report.py",
+"karte_report.py",
+"important_moves_report.py",
         ]
 
         for filename in expected_files:

@@ -7,18 +7,18 @@ Provides:
 - show_guess_feedback(): Display feedback popup after user guess (Phase 93 + 94)
 """
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
 
 from katrain.core.lang import i18n
 from katrain.core.study.active_review import GuessEvaluation, GuessGrade
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
-from katrain.gui.widgets.factory import Button, Label
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
@@ -60,7 +60,7 @@ def _format_score_loss(loss: float | None) -> str:
 
 
 def show_guess_feedback(
-    katrain: KaTrainGui,
+    katrain: "KaTrainGui",
     evaluation: GuessEvaluation,
     allow_retry: bool = False,
     on_retry: Callable[[], None] | None = None,
@@ -99,7 +99,9 @@ def show_guess_feedback(
     details_layout.bind(minimum_height=details_layout.setter("height"))
 
     # Your move
-    your_move_text = i18n._("active_review:feedback:your_move").format(move=evaluation.user_move)
+    your_move_text = i18n._("active_review:feedback:your_move").format(
+        move=evaluation.user_move
+    )
     your_move_label = Label(
         text=your_move_text,
         color=Theme.TEXT_COLOR,
@@ -111,7 +113,9 @@ def show_guess_feedback(
     details_layout.add_widget(your_move_label)
 
     # AI best
-    ai_best_text = i18n._("active_review:feedback:ai_best").format(move=evaluation.ai_best_move)
+    ai_best_text = i18n._("active_review:feedback:ai_best").format(
+        move=evaluation.ai_best_move
+    )
     ai_best_label = Label(
         text=ai_best_text,
         color=Theme.TEXT_COLOR,

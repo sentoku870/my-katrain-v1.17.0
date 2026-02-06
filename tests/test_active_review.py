@@ -8,18 +8,20 @@ These tests ensure that:
 4. score_loss is None (not inf) for NOT_IN_CANDIDATES
 """
 
+import pytest
 from unittest.mock import MagicMock, PropertyMock
 
-import pytest
-
 from katrain.core.study.active_review import (
-    GRADE_THRESHOLDS,
     MIN_RELIABLE_VISITS,
-    ActiveReviewer,
+    GRADE_THRESHOLDS,
     GuessGrade,
-    _is_pass_move,
+    ReviewReadyResult,
+    GuessEvaluation,
     is_review_ready,
+    ActiveReviewer,
+    _is_pass_move,
 )
+
 
 # ---------------------------------------------------------------------------
 # Test Fixtures
@@ -519,8 +521,12 @@ class TestGetHintForBestMove:
 
         node = MagicMock()
         type(node).analysis_exists = PropertyMock(return_value=True)
-        type(node).analysis = PropertyMock(return_value={"rootInfo": {"scoreStdev": 10.0}})
-        type(node).candidate_moves = PropertyMock(return_value=[{"move": "D4", "order": 0, "visits": 1000}])
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {"scoreStdev": 10.0}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
         type(node).depth = PropertyMock(return_value=50)
         node.meaning_tag_id = None  # No batch analysis
 
@@ -535,8 +541,12 @@ class TestGetHintForBestMove:
 
         node = MagicMock()
         type(node).analysis_exists = PropertyMock(return_value=True)
-        type(node).analysis = PropertyMock(return_value={"rootInfo": {}})
-        type(node).candidate_moves = PropertyMock(return_value=[{"move": "D4", "order": 0, "visits": 1000}])
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
         type(node).depth = PropertyMock(return_value=50)
         # Set meaning_tag_id from batch analysis
         node.meaning_tag_id = "overplay"
@@ -554,8 +564,12 @@ class TestGetHintForBestMove:
 
         node = MagicMock()
         type(node).analysis_exists = PropertyMock(return_value=True)
-        type(node).analysis = PropertyMock(return_value={"rootInfo": {}})
-        type(node).candidate_moves = PropertyMock(return_value=[{"move": "D4", "order": 0, "visits": 1000}])
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
         type(node).depth = PropertyMock(return_value=50)
         # UNCERTAIN is not useful as a hint
         node.meaning_tag_id = "uncertain"
@@ -569,8 +583,12 @@ class TestGetHintForBestMove:
 
         node = MagicMock()
         type(node).analysis_exists = PropertyMock(return_value=True)
-        type(node).analysis = PropertyMock(return_value={"rootInfo": {}})
-        type(node).candidate_moves = PropertyMock(return_value=[{"move": "D4", "order": 0, "visits": 1000}])
+        type(node).analysis = PropertyMock(return_value={
+            "rootInfo": {}
+        })
+        type(node).candidate_moves = PropertyMock(return_value=[
+            {"move": "D4", "order": 0, "visits": 1000}
+        ])
         type(node).depth = PropertyMock(return_value=50)
         node.meaning_tag_id = "overplay"
 

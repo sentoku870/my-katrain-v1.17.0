@@ -23,7 +23,7 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from enum import StrEnum
+from katrain.core.compatibility import StrEnum
 from types import MappingProxyType
 from typing import Any, cast
 

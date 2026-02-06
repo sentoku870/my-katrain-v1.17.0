@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
+from katrain.core.compatibility import StrEnum
 from typing import Any
 
 from katrain.core.analysis.meaning_tags import MeaningTagId

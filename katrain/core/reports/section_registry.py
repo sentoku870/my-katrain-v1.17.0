@@ -14,7 +14,7 @@ This module provides:
 
 from __future__ import annotations
 
-from enum import StrEnum
+from katrain.core.compatibility import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:

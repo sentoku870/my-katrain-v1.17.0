@@ -11,8 +11,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from katrain.core import eval_metrics
 from katrain.core.constants import STATUS_INFO
@@ -37,7 +36,7 @@ def format_points_loss(loss: float | None) -> str:
 
 
 def do_quiz_popup(
-    ctx: FeatureContext,
+    ctx: "FeatureContext",
     start_quiz_session_fn: Callable[[list[eval_metrics.QuizItem]], None],
     update_state_fn: Callable[[], None],
 ) -> None:
@@ -51,11 +50,12 @@ def do_quiz_popup(
     # Lazy imports to avoid Kivy initialization in headless CI
     from kivy.metrics import dp
     from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
     from kivy.uix.scrollview import ScrollView
 
     from katrain.gui.popups import I18NPopup
     from katrain.gui.theme import Theme
-    from katrain.gui.widgets.factory import Button, Label
 
     if not ctx.game:
         return
@@ -70,7 +70,9 @@ def do_quiz_popup(
         loss_threshold = cfg.loss_threshold
         limit = cfg.limit
 
-    quiz_items = ctx.game.get_quiz_items(loss_threshold=loss_threshold, limit=limit)
+    quiz_items = ctx.game.get_quiz_items(
+        loss_threshold=loss_threshold, limit=limit
+    )
 
     popup_content = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
 
@@ -81,9 +83,9 @@ def do_quiz_popup(
             "Click a row to jump to the position before the move."
         ).format(limit=limit, loss=loss_threshold)
     else:
-        header_text = i18n._("No moves with loss greater than {loss:.1f} points were found on the main line.").format(
-            loss=loss_threshold
-        )
+        header_text = i18n._(
+            "No moves with loss greater than {loss:.1f} points were found on the main line."
+        ).format(loss=loss_threshold)
 
     header_label = Label(
         text=header_text,
@@ -111,7 +113,9 @@ def do_quiz_popup(
             return
         node = ctx.game.get_main_branch_node_before_move(move_number)
         if node is None:
-            ctx.controls.set_status(f"Could not navigate to move {move_number}.", STATUS_INFO)
+            ctx.controls.set_status(
+                f"Could not navigate to move {move_number}.", STATUS_INFO
+            )
             return
         ctx.game.set_current_node(node)
         update_state_fn()
@@ -132,7 +136,9 @@ def do_quiz_popup(
     scroll.add_widget(items_layout)
     popup_content.add_widget(scroll)
 
-    buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
+    buttons_layout = BoxLayout(
+        orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48)
+    )
     start_button = Button(
         text=i18n._("Start quiz"),
         size_hint=(0.5, None),

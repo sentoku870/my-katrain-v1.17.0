@@ -8,7 +8,7 @@ Part of Phase 46: Meaning Tags System Core.
 """
 
 from dataclasses import dataclass
-from enum import StrEnum
+from katrain.core.compatibility import StrEnum
 
 
 class MeaningTagId(StrEnum):

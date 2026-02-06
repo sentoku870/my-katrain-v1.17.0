@@ -7,7 +7,7 @@ Phase 80のboard_context.pyを基盤とし、BFSで隣接変動セルをグル�
 
 from collections import Counter, deque
 from dataclasses import dataclass
-from enum import StrEnum
+from katrain.core.compatibility import StrEnum
 from typing import TYPE_CHECKING, Any
 
 # 直接インポート（循環import防止）

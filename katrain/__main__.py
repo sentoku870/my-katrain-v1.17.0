@@ -128,15 +128,6 @@ from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
     do_mykatrain_settings_popup,
 )
-from katrain.gui.features.smart_kifu_practice import (
-    show_practice_report_popup,
-)
-from katrain.gui.features.smart_kifu_profile import (
-    show_player_profile_popup,
-)
-from katrain.gui.features.smart_kifu_training_set import (
-    show_training_set_manager,
-)
 
 # used in kv
 # used in kv
@@ -144,13 +135,11 @@ from katrain.gui.kivyutils import (
     PlayerSetupBlock,
 )  # noqa: F401
 from katrain.gui.leela_manager import LeelaManager
-from katrain.gui.managers.active_review_controller import ActiveReviewController
 from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.popup_manager import PopupManager
-from katrain.gui.managers.quiz_manager import QuizManager
 from katrain.gui.managers.summary_manager import SummaryManager
 
 # deleted imports
@@ -165,7 +154,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
     zen = NumericProperty(0)
     controls = ObjectProperty(None)
-    active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode
+    # active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode - REMOVED
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -278,25 +267,11 @@ class KaTrainGui(Screen, KaTrainBase):
 
         self.message_queue: Queue[Any] = Queue()
 
-        # Phase 97: Active Review Controller
-        self._active_review_controller = ActiveReviewController(
-            get_ctx=lambda: self,
-            get_config=self.config,
-            get_game=lambda: self.game,
-            get_controls=lambda: self.controls,
-            get_mode=lambda: self.active_review_mode,
-            set_mode=lambda v: setattr(self, "active_review_mode", v),
-            logger=self.log,
-        )
-        self.bind(active_review_mode=self._on_active_review_mode_change)
-
-        # Phase 98: Quiz Manager
-        self._quiz_manager = QuizManager(
-            get_ctx=lambda: self,
-            get_active_review_controller=lambda: self._active_review_controller,
-            update_state_fn=lambda: self.update_state(redraw_board=True),
-            logger=self.log,
-        )
+        # Phase 97: Active Review Controller - REMOVED
+        # self._active_review_controller = ...
+        
+        # Phase 98: Quiz Manager - REMOVED
+        # self._quiz_manager = ...
 
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events: list[Any] = []
@@ -1042,16 +1017,16 @@ class KaTrainGui(Screen, KaTrainBase):
     # =========================================================================
 
     def is_fog_active(self) -> bool:
-        """Delegates to ActiveReviewController (Phase 97)."""
-        return self._active_review_controller.is_fog_active()
+        """Active Review removed (Phase 130). Always returns False."""
+        return False
 
     def _disable_active_review_if_needed(self) -> None:
-        """Delegates to ActiveReviewController (Phase 97)."""
-        self._active_review_controller.disable_if_needed()
+        """Active Review removed (Phase 130). No-op."""
+        pass
 
     def toggle_active_review(self) -> None:
-        """Delegates to ActiveReviewController (Phase 97)."""
-        self._active_review_controller.toggle()
+        """Active Review removed (Phase 130). No-op."""
+        pass
 
     def _on_active_review_mode_change(self, instance: Any, value: Any) -> None:
         """Delegates to ActiveReviewController (Phase 97)."""
@@ -1238,24 +1213,13 @@ class KaTrainGui(Screen, KaTrainBase):
         self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
     def _do_quiz_popup(self) -> None:
-        """Delegates to QuizManager (Phase 98)."""
-        self._quiz_manager.do_quiz_popup()
+        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
+        # self._quiz_manager.do_quiz_popup()
+        pass
 
     def _do_mykatrain_settings_popup(self) -> None:
         """Delegates to settings_popup.do_mykatrain_settings_popup()."""
         do_mykatrain_settings_popup(self)
-
-    def _do_training_set_popup(self) -> None:
-        """Show Training Set Manager popup. Delegates to smart_kifu_training_set."""
-        show_training_set_manager(self, self)
-
-    def _do_player_profile_popup(self) -> None:
-        """Show Player Profile popup. Delegates to smart_kifu_profile."""
-        show_player_profile_popup(self, self)
-
-    def _do_practice_report_popup(self) -> None:
-        """Show Practice Report popup. Delegates to smart_kifu_practice."""
-        show_practice_report_popup(self, self)
 
     def _do_batch_analyze_popup(self) -> None:
         """Show batch analyze folder dialog. Delegates to batch_ui/batch_core functions."""
@@ -1334,12 +1298,14 @@ class KaTrainGui(Screen, KaTrainBase):
         popup.open()
 
     def _format_points_loss(self, loss: float | None) -> str:
-        """Delegates to QuizManager (Phase 98)."""
-        return self._quiz_manager.format_points_loss(loss)
+        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
+        # return self._quiz_manager.format_points_loss(loss)
+        return f"{loss:.1f}" if loss is not None else ""
 
     def _start_quiz_session(self, quiz_items: list[eval_metrics.QuizItem]) -> None:
-        """Delegates to QuizManager (Phase 98)."""
-        self._quiz_manager.start_quiz_session(quiz_items)
+        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
+        # self._quiz_manager.start_quiz_session(quiz_items)
+        pass
 
     def _do_diagnostics_popup(self) -> None:
         """Show diagnostics popup for bug report generation."""
@@ -1347,11 +1313,6 @@ class KaTrainGui(Screen, KaTrainBase):
 
         show_diagnostics_popup(self)
 
-    def _do_engine_compare_popup(self) -> None:
-        """Show engine comparison popup for KataGo/Leela analysis."""
-        from katrain.gui.features.engine_compare_popup import show_engine_compare_popup
-
-        show_engine_compare_popup(self)
 
     def _do_skill_radar_popup(self) -> None:
         """Show skill radar popup for 5-axis skill profile."""

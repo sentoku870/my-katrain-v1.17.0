@@ -53,7 +53,7 @@ from katrain.core.reports.karte.sections.important_moves import (
 from katrain.core.reports.karte.sections.metadata import (
     data_quality_section,
     definitions_section,
-    risk_management_section,
+
 )
 from katrain.core.reports.karte.sections.summary import (
     common_difficult_positions,
@@ -466,9 +466,7 @@ def _build_karte_report_impl(
     sections += definitions_section(ctx, auto_recommendation)
     sections += data_quality_section(ctx)
 
-    # Phase 62: Risk Management - only include if style confidence is sufficient (Phase 66)
-    if style_result is not None and style_result.confidence >= STYLE_CONFIDENCE_THRESHOLD:
-        sections += risk_management_section(ctx)
+
 
     # Phase 3: Apply player filter to sections
     if filtered_player is None:

@@ -18,7 +18,7 @@ from typing import Any
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
-from katrain.core.analysis.risk import analyze_risk
+
 from katrain.core.analysis.skill_radar import (
     RadarAxis,
     RadarMetrics,
@@ -241,38 +241,9 @@ class TestRegressionGracefulHandling:
         result = analyze_pacing(time_data, moves)
         assert result is not None
 
-    def test_risk_on_no_analysis(self):
-        """analyze_risk handles unanalyzed nodes gracefully."""
-        # Root node with no analysis
-        root = MockNode(
-            analysis_exists=False,
-            analysis=None,
-            move=None,
-            parent=None,
-            children=[],
-        )
-        game = MockGame(root=root)
 
-        # Should not raise
-        result = analyze_risk(game)
-        assert result is not None
-        assert isinstance(result.contexts, tuple)
 
-    def test_risk_on_empty_game(self):
-        """analyze_risk handles game with only root node gracefully."""
-        root = MockNode(
-            analysis_exists=False,
-            analysis=None,
-            move=None,
-            parent=None,
-            children=[],
-        )
-        game = MockGame(root=root)
 
-        # Should not raise
-        result = analyze_risk(game)
-        assert result is not None
-        assert len(result.contexts) == 0
 
     def test_curator_on_no_user_aggregate(self, tmp_path):
         """generate_curator_outputs handles None user_aggregate gracefully."""

@@ -244,11 +244,7 @@ class BadukPanWidget(Widget):
                     i18n._("move too fast").format(num=self.katrain.config("timer/minimal_use", 0)), STATUS_TEACHING
                 )
             else:
-                # Phase 93: Active Review mode intercepts play action
-                if katrain.active_review_mode:
-                    katrain("active_review_guess", self.ghost_stone)
-                else:
-                    katrain("play", self.ghost_stone)
+                katrain("play", self.ghost_stone)
         elif not self.ghost_stone:
             xd, xp, yd, yp = self._find_closest(touch.x, touch.y)
             nodes_here = [

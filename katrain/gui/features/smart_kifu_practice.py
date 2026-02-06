@@ -6,21 +6,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.togglebutton import ToggleButton
 
+from katrain.core.constants import STATUS_INFO
+from katrain.core.lang import i18n
 from katrain.core.smart_kifu import (
+    BucketProfile,
     Context,
     GameEntry,
+    PlayerProfile,
     compute_bucket_key,
     list_training_sets,
     load_manifest,
+    load_player_profile,
     suggest_handicap_adjustment,
 )
 from katrain.gui.popups import I18NPopup
@@ -163,12 +168,11 @@ def build_practice_report_card(
     )
     # 背景色
     from kivy.graphics import Color, Rectangle
-
     with card.canvas.before:
         Color(0.2, 0.2, 0.25, 1)
         rect = Rectangle(pos=card.pos, size=card.size)
-    card.bind(pos=lambda inst, val: setattr(rect, "pos", val))
-    card.bind(size=lambda inst, val: setattr(rect, "size", val))
+    card.bind(pos=lambda inst, val: setattr(rect, 'pos', val))
+    card.bind(size=lambda inst, val: setattr(rect, 'size', val))
 
     # タイトル
     title = BUCKET_LABELS.get(bucket_key, bucket_key)
@@ -235,7 +239,10 @@ def build_practice_report_card(
 
     # 置石調整提案
     if stats["winrate"] is not None and stats["current_handicap"] is not None:
-        suggested, reason = suggest_handicap_adjustment(stats["winrate"], stats["current_handicap"])
+        suggested, reason = suggest_handicap_adjustment(
+            stats["winrate"],
+            stats["current_handicap"]
+        )
         suggestion_label = Label(
             text=f"提案: {reason}",
             size_hint_y=None,
@@ -261,7 +268,7 @@ def build_practice_report_card(
 
 
 def show_practice_report_popup(
-    ctx: FeatureContext,
+    ctx: "FeatureContext",
     katrain_gui: Any,
 ) -> None:
     """練習レポートポップアップを表示

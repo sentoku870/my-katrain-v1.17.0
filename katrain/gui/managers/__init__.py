@@ -24,19 +24,13 @@ __all__ = [
     "PopupManager",
     "GameStateManager",
     "SummaryManager",
-    "ActiveReviewController",
-    "QuizManager",
 ]
 
 if TYPE_CHECKING:
-    from katrain.gui.managers.active_review_controller import (
-        ActiveReviewController as ActiveReviewController,
-    )
     from katrain.gui.managers.config_manager import ConfigManager as ConfigManager
     from katrain.gui.managers.game_state_manager import GameStateManager as GameStateManager
     from katrain.gui.managers.keyboard_manager import KeyboardManager as KeyboardManager
     from katrain.gui.managers.popup_manager import PopupManager as PopupManager
-    from katrain.gui.managers.quiz_manager import QuizManager as QuizManager
     from katrain.gui.managers.summary_manager import SummaryManager as SummaryManager
 
 
@@ -62,12 +56,4 @@ def __getattr__(name: str) -> Any:
         from katrain.gui.managers.summary_manager import SummaryManager
 
         return SummaryManager
-    if name == "ActiveReviewController":
-        from katrain.gui.managers.active_review_controller import ActiveReviewController
-
-        return ActiveReviewController
-    if name == "QuizManager":
-        from katrain.gui.managers.quiz_manager import QuizManager
-
-        return QuizManager
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

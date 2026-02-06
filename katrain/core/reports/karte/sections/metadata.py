@@ -3,7 +3,7 @@
 Contains:
 - definitions_section(): Generate definitions section with thresholds
 - data_quality_section(): Generate data quality section with reliability stats
-- risk_management_section(): Generate risk management section
+
 """
 
 from __future__ import annotations
@@ -171,46 +171,4 @@ def data_quality_section(ctx: KarteContext) -> list[str]:
     return lines
 
 
-def risk_management_section(ctx: KarteContext) -> list[str]:
-    """Generate risk management section (Phase 62).
 
-    Args:
-        ctx: Karte context
-
-    Returns:
-        List of markdown lines for risk management section
-    """
-    try:
-        from katrain.core.analysis import analyze_risk
-        from katrain.core.reports.sections.risk_section import (
-            extract_risk_display_data,
-            format_risk_stats,
-            get_section_title,
-        )
-    except ImportError as e:
-        logger.warning(f"Risk section import failed: {e}", exc_info=True)
-        return []
-
-    try:
-        risk_result = analyze_risk(ctx.game)
-        if not risk_result.contexts:
-            return []
-
-        lines = [f"## {get_section_title()}", ""]
-
-        for player, label_key in [("B", "risk:black"), ("W", "risk:white")]:
-            data = extract_risk_display_data(risk_result, player)
-            if data.has_winning_data or data.has_losing_data:
-                lines.append(f"### {i18n._(label_key)}")
-                lines.extend(format_risk_stats(data, risk_result.fallback_used))
-                lines.append("")
-
-        return lines if len(lines) > 2 else []
-    except (KeyError, ValueError) as e:
-        # Expected: Data structure issue or invalid value (optional feature)
-        logger.debug(f"Risk section skipped: {e}")
-        return []
-    except Exception:
-        # Unexpected: Internal bug - traceback required
-        logger.debug("Unexpected risk section error", exc_info=True)
-        return []

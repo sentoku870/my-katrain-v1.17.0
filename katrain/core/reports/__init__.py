@@ -22,7 +22,6 @@ from katrain.core.reports.karte import (
     KarteGenerationError,
     build_karte_report,
 )
-from katrain.core.reports.quiz_report import build_quiz_questions, get_quiz_items
 from katrain.core.reports.section_registry import (
     ReportSection,
     ReportType,
@@ -52,8 +51,6 @@ __all__ = [
     "CONFIG_READER_REQUIRED_ATTRS",
     # Report functions
     "build_summary_report",
-    "get_quiz_items",
-    "build_quiz_questions",
     "build_karte_report",
     "KarteGenerationError",
     "build_important_moves_report",

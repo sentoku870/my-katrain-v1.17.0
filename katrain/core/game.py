@@ -44,8 +44,6 @@ from .eval_metrics import (
     GameSummaryData,
     MistakeCategory,
     MoveEval,
-    QuizItem,
-    QuizQuestion,
     snapshot_from_game,
 )
 
@@ -601,46 +599,6 @@ class Game(BaseGame):
         """
         return snapshot_from_game(self)
 
-    def get_quiz_items(
-        self,
-        *,
-        loss_threshold: float = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD,
-        limit: int = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT,
-    ) -> list[QuizItem]:
-        """
-        現在の対局（メイン分岐）からクイズ用の大きなミス一覧を返す。
-
-        - 既存の EvalSnapshot と quiz_items_from_snapshot をまとめた入口。
-        - 解析済みの情報だけを使用し、新たな分析は開始しない。
-
-        Deprecated: use reports.quiz_report.get_quiz_items()
-        """
-        from katrain.core.reports import quiz_report
-
-        snapshot = self.build_eval_snapshot()
-        return quiz_report.get_quiz_items(snapshot, loss_threshold=loss_threshold, limit=limit)
-
-    def build_quiz_questions(
-        self,
-        quiz_items: list[QuizItem],
-        *,
-        max_choices: int = 3,
-    ) -> list[QuizQuestion]:
-        """
-        Convert quiz items into quiz questions using existing analysis only.
-
-        - Uses candidate_moves from the position before each mistake.
-        - Does not trigger any new engine analysis.
-
-        Deprecated: use reports.quiz_report.build_quiz_questions()
-        """
-        from katrain.core.reports import quiz_report
-
-        return quiz_report.build_quiz_questions(
-            quiz_items,
-            self.get_main_branch_node_before_move,
-            max_choices=max_choices,
-        )
 
     def log_mistake_summary_for_debug(self) -> None:
         """

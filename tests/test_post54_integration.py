@@ -24,10 +24,7 @@ import pytest
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import MoveEval
-from katrain.core.analysis.risk import (
-    RiskAnalysisResult,
-    analyze_risk,
-)
+
 from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics, SkillTier
 from katrain.core.analysis.style import (
     StyleArchetypeId,
@@ -282,16 +279,7 @@ class TestStylePacingRiskContract:
         assert isinstance(result.tilt_episodes, tuple)
         assert result.game_stats is not None
 
-    def test_risk_returns_valid_result(self):
-        """analyze_risk returns RiskAnalysisResult with valid structure."""
-        game = make_mock_game_with_nodes(5)
 
-        result = analyze_risk(game)
-
-        assert isinstance(result, RiskAnalysisResult)
-        assert isinstance(result.contexts, tuple)
-        assert isinstance(result.has_stdev_data, bool)
-        assert isinstance(result.fallback_used, bool)
 
     def test_all_analyses_complete_without_error(self):
         """All three analyses complete without raising exceptions."""
@@ -307,10 +295,7 @@ class TestStylePacingRiskContract:
         pacing_result = analyze_pacing(time_data, moves)
         assert pacing_result is not None
 
-        # Risk
-        game = make_mock_game_with_nodes(3)
-        risk_result = analyze_risk(game)
-        assert risk_result is not None
+
 
 
 # =============================================================================
@@ -474,11 +459,4 @@ class TestBatchPerformance:
         pacing_elapsed = time.perf_counter() - start
         assert pacing_elapsed < 5.0, f"Pacing analysis: {pacing_elapsed:.2f}s for 100 calls (limit: 5.0s)"
 
-        # Risk analysis
-        game = make_mock_game_with_nodes(5)
 
-        start = time.perf_counter()
-        for _ in range(100):
-            analyze_risk(game)
-        risk_elapsed = time.perf_counter() - start
-        assert risk_elapsed < 5.0, f"Risk analysis: {risk_elapsed:.2f}s for 100 calls (limit: 5.0s)"

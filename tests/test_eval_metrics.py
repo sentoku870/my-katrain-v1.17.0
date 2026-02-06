@@ -1331,7 +1331,6 @@ class TestSkillPresets:
         standard = SKILL_PRESETS["standard"]
         # Original standard thresholds must remain unchanged
         assert standard.score_thresholds == (1.0, 2.5, 5.0)
-        assert standard.quiz.loss_threshold == 2.0
 
     def test_advanced_unchanged(self):
         """Advanced preset should maintain backward-compatible values."""
@@ -1340,7 +1339,6 @@ class TestSkillPresets:
         advanced = SKILL_PRESETS["advanced"]
         # Advanced thresholds preserved from original implementation
         assert advanced.score_thresholds == (0.5, 1.5, 3.0)
-        assert advanced.quiz.loss_threshold == 1.0
 
     def test_score_thresholds_follow_formula(self):
         """New presets (relaxed, beginner, pro) should follow t1=0.2*t3, t2=0.5*t3 formula."""

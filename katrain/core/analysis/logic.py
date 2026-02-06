@@ -702,14 +702,6 @@ def snapshot_from_game(game: Any) -> EvalSnapshot:
     return snapshot_from_nodes(nodes_iter)
 
 
-# =============================================================================
-# Quiz helpers (extracted to logic_quiz.py, re-exported for compatibility)
-# =============================================================================
-
-from katrain.core.analysis.logic_quiz import (
-    quiz_items_from_snapshot,
-    quiz_points_lost_from_candidate,
-)
 
 # =============================================================================
 # Phase mistake stats
@@ -1469,9 +1461,6 @@ __all__ = [
     "snapshot_from_nodes",
     "iter_main_branch_nodes",
     "snapshot_from_game",
-    # Quiz
-    "quiz_items_from_snapshot",
-    "quiz_points_lost_from_candidate",
     # Phase mistake stats
     "aggregate_phase_mistake_stats",
     # Mistake streaks

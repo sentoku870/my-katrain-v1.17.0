@@ -9,8 +9,7 @@ game.pyから抽出されたクイズ関連機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from collections.abc import Callable
-from typing import Optional
+from typing import Callable, Optional
 
 from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
@@ -50,7 +49,9 @@ def get_quiz_items(
     if not snapshot.moves:
         return []
 
-    return quiz_items_from_snapshot(snapshot, loss_threshold=loss_threshold, limit=limit)
+    return quiz_items_from_snapshot(
+        snapshot, loss_threshold=loss_threshold, limit=limit
+    )
 
 
 def build_quiz_questions(
@@ -74,11 +75,11 @@ def build_quiz_questions(
         各局面の候補手情報（candidate_moves）を使用し、
         新たなエンジン解析は開始しない。
     """
-    questions: list[QuizQuestion] = []
+    questions: list["QuizQuestion"] = []
     for item in quiz_items:
         node_before = get_node_before_move(item.move_number)
-        choices: list[QuizChoice] = []
-        best_move: str | None = None
+        choices: list["QuizChoice"] = []
+        best_move: Optional[str] = None
 
         if node_before is not None and getattr(node_before, "analysis_exists", False):
             candidate_moves = node_before.candidate_moves
@@ -95,7 +96,9 @@ def build_quiz_questions(
                         root_score=root_score,
                         next_player=getattr(node_before, "next_player", None),
                     )
-                    choices.append(QuizChoice(move=move_id, points_lost=loss_val))
+                    choices.append(
+                        QuizChoice(move=move_id, points_lost=loss_val)
+                    )
 
         questions.append(
             QuizQuestion(
