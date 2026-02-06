@@ -504,9 +504,16 @@ def classify_meaning_tag(
             return _make_tag(MeaningTagId.CAPTURE_RACE_LOSS)
 
     # Single endgame_hint (lower threshold, only if not already detected as endgame)
-    if has_endgame_hint and loss >= THRESHOLD_LOSS_SMALL:  # 1.0
-        if not has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk and not _is_endgame:
-            return _make_tag(MeaningTagId.ENDGAME_SLIP)
+    if (
+        has_endgame_hint
+        and loss >= THRESHOLD_LOSS_SMALL
+        and not has_atari
+        and not has_low_liberties
+        and not has_need_connect
+        and not has_cut_risk
+        and not _is_endgame
+    ):
+        return _make_tag(MeaningTagId.ENDGAME_SLIP)
 
     # Priority 12: UNCERTAIN (fallback)
     return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_match")

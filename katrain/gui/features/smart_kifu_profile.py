@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-import threading
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp

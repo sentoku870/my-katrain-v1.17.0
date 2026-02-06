@@ -254,6 +254,14 @@ def resolve_visits(
 
 
 # =============================================================================
+# Quiz Defaults (Phase 98)
+# =============================================================================
+
+DEFAULT_QUIZ_LOSS_THRESHOLD = 3.0
+DEFAULT_QUIZ_ITEM_LIMIT = 10
+
+
+# =============================================================================
 # Dataclasses - Basic structures
 # =============================================================================
 
@@ -339,6 +347,41 @@ class MoveEval:
     - None = 未分類（classify未呼び出し or 分類不能）
     - MeaningTagId enum の .value と一致する
     """
+
+
+@dataclass(frozen=True)
+class QuizConfig:
+    """Quiz generation configuration."""
+
+    loss_threshold: float
+    limit: int
+
+
+@dataclass
+class QuizItem:
+    """A generated quiz item."""
+
+    move_number: int
+    player: str | None
+    loss: float
+
+
+@dataclass
+class QuizChoice:
+    move: str
+    points_lost: float | None
+
+
+@dataclass
+class QuizQuestion:
+    item: QuizItem
+    choices: list[QuizChoice]
+    best_move: str | None
+    node_before_move: GameNode | None
+
+    @property
+    def has_analysis(self) -> bool:
+        return self.node_before_move is not None and getattr(self.node_before_move, "analysis_exists", False)
 
 
 @dataclass(frozen=True)
@@ -713,6 +756,7 @@ class SkillPreset:
     score_thresholds: tuple[float, float, float]
     winrate_thresholds: tuple[float, float, float]
     reason_tag_thresholds: ReasonTagThresholds  # Phase 17
+    quiz: QuizConfig  # Phase 98
 
 
 # =============================================================================
@@ -727,6 +771,7 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(3.0, 7.5, 15.0),
         winrate_thresholds=(0.15, 0.30, 0.60),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=45.0, reading_failure=60.0),
+        quiz=QuizConfig(loss_threshold=7.5, limit=5),
     ),
     # Beginner (Lv2): focus on large swings only (conservative thresholds).
     # t3=10.0, t2=0.5*t3=5.0, t1=0.2*t3=2.0
@@ -735,6 +780,7 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(2.0, 5.0, 10.0),
         winrate_thresholds=(0.10, 0.20, 0.40),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=30.0, reading_failure=40.0),
+        quiz=QuizConfig(loss_threshold=5.0, limit=10),
     ),
     # Standard (Lv3): matches existing behavior (backward-compatible).
     # t3=5.0, t2=2.5, t1=1.0 (unchanged)
@@ -742,6 +788,7 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=15.0, reading_failure=20.0),
+        quiz=QuizConfig(loss_threshold=2.5, limit=10),
     ),
     # Advanced (Lv4): more sensitive to small errors (unchanged).
     # t3=3.0, t2=1.5, t1=0.5 (preserved for backward compatibility)
@@ -749,6 +796,7 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(0.5, 1.5, 3.0),
         winrate_thresholds=(0.03, 0.07, 0.15),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=10.0, reading_failure=15.0),
+        quiz=QuizConfig(loss_threshold=1.5, limit=15),
     ),
     # Pro (Lv5): strictest thresholds for dan-level analysis.
     # t3=1.0, t2=0.5*t3=0.5, t1=0.2*t3=0.2
@@ -756,6 +804,7 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(0.2, 0.5, 1.0),
         winrate_thresholds=(0.01, 0.02, 0.04),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=3.0, reading_failure=4.0),
+        quiz=QuizConfig(loss_threshold=0.5, limit=20),
     ),
 }
 

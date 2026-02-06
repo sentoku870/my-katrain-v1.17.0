@@ -288,7 +288,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 **Phase 90**: ✅ エラー救済機能の実装。`error_recovery.py`（スレッドセーフ重複排除、4096バイトUTF-8制限）、
 `recovery_actions.py`（4つの復旧アクション）、EngineRecoveryPopupに復旧ボタン追加、
 
-### Phase 112-121: mypy strict全体・CIブロック + Modern Typing + UI Cleanup + Risk Removal ✅ **完了**（2026-02-06）
+### Phase 112-124: mypy strict全体・CIブロック + Modern Typing + UI Cleanup + Risk Removal + Stability ✅ **完了**（2026-02-06）
 
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
@@ -304,6 +304,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 121 | Risk Analysis Cleanup | `risk_management_section`削除、deferredコード除去 | ✅ |
 | 122 | Fix Query Rejected Error | `analyze_all_nodes`スロットリング追加 | ✅ |
 | 123 | Leela Zero Slimming | Play機能削除、Analysis温存 | ✅ |
+| 124 | Stability Improvements | `TestAnalysisResult` rename fix, `auto_setup.py` deps | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -464,6 +465,13 @@ j`katrain/core/game.py` の `_handle_game_mode` に `engine.has_query_capacity()
 Leela Zeroの「Play」機能（ボット対戦）を削除し、コードベースを軽量化。
 Analysis機能（LeelaManagerによる候補手表示等）は完全に維持しつつ、`ai.py` から `LeelaStrategy` および `AI_LEELA` 定数を削除。
 関連するテストファイル（`test_leela_strategy.py`）も削除し、保守性を向上。
+
+
+**Phase 124**: ✅ Stability Improvements（Completed）。
+`TestAnalysisResult` から `EngineTestResult` へのリネーム漏れ（`auto_mode_popup.py`, `__main__.py`）を修正。
+`katrain/core/test_analysis.py` を `katrain/core/analysis_result.py` にリネームし、Pytestの誤検知を解消。
+`auto_setup.py` の循環参照とインポート欠落を修正し、`_on_engine_status` の欠損による起動クラッシュを解決。
+全テスト（pytest, mypy, ruff）のPASSを確認。
 
 
 ### 未定（TBD / Post-52）

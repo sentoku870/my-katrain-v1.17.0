@@ -20,8 +20,12 @@ from katrain.common.platform import get_platform
 from katrain.core.constants import DATA_FOLDER
 from katrain.core.utils import find_package_resource
 
-if TYPE_CHECKING:
-    from katrain.core.test_analysis import TestAnalysisResult
+from katrain.core.analysis_result import (
+    EngineTestResult,
+    ErrorCategory,
+    run_engine_test,
+    should_offer_cpu_fallback,
+)
 
 # =============================================================================
 # Constants
@@ -314,12 +318,12 @@ def _is_likely_opencl_binary(path: str) -> bool:
 
 def resolve_auto_engine_settings(
     base_engine: dict[str, Any],
-) -> tuple[dict[str, Any] | None, TestAnalysisResult | None]:
+) -> tuple[dict[str, Any] | None, EngineTestResult | None]:
     """Build engine settings for auto mode.
 
     Note:
         - Does not take models_dir parameter (find_lightweight_model() manages search paths)
-        - Errors returned as TestAnalysisResult (uses ErrorCategory.LIGHTWEIGHT_MISSING)
+        - Errors returned as EngineTestResult (uses ErrorCategory.LIGHTWEIGHT_MISSING)
 
     Args:
         base_engine: Base engine config to extend.
@@ -327,15 +331,13 @@ def resolve_auto_engine_settings(
     Returns:
         (engine_settings, error_result)
         - Success: (settings, None)
-        - Lightweight model missing: (None, TestAnalysisResult(category=LIGHTWEIGHT_MISSING))
+        - Lightweight model missing: (None, EngineTestResult(category=LIGHTWEIGHT_MISSING))
     """
-    # Import here to avoid circular dependency
-    from katrain.core.test_analysis import ErrorCategory, TestAnalysisResult
 
     lightweight_model = find_lightweight_model()
 
     if lightweight_model is None:
-        return None, TestAnalysisResult(
+        return None, EngineTestResult(
             success=False,
             error_category=ErrorCategory.LIGHTWEIGHT_MISSING,
             error_message="Lightweight model (b10c128) not found",

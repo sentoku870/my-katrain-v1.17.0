@@ -16,7 +16,10 @@ from katrain.core.auto_setup import (
     resolve_auto_engine_settings,
     should_show_auto_tab_first,
 )
-from katrain.core.test_analysis import ErrorCategory
+from katrain.core.analysis_result import (
+    EngineTestResult,
+    ErrorCategory,
+)
 
 # =============================================================================
 # TestNewUserDetection
@@ -155,12 +158,17 @@ class TestResolveAutoEngineSettings:
         with patch(
             "katrain.core.auto_setup.get_model_search_dirs",
             return_value=[str(tmp_path)],  # Empty directory
-        ):
+        ), patch("katrain.core.auto_setup.run_engine_test") as mock_run_engine:
             settings, error_result = resolve_auto_engine_settings({})
 
         assert settings is None
         assert error_result is not None
-        assert error_result.error_category == ErrorCategory.LIGHTWEIGHT_MISSING
+        mock_run_engine.return_value = EngineTestResult(
+        success=False,
+        error_category=ErrorCategory.BACKEND_ERROR,
+        error_message="Test Error",
+    )
+    assert error_result.error_category == ErrorCategory.LIGHTWEIGHT_MISSING
 
     def test_base_engine_settings_merged(self, tmp_path):
         """Base engine settings are merged with auto settings."""

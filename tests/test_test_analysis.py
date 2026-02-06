@@ -7,14 +7,15 @@ Pure unit tests for error classification logic.
 
 import pytest
 
-from katrain.core.test_analysis import (
+from katrain.core.analysis_result import (
+    EngineTestResult as AnalysisResult,
     ErrorCategory,
-    TestAnalysisResult,
     classify_engine_error,
     should_offer_cpu_fallback,
     should_offer_restart,
     truncate_error_message,
 )
+
 
 # =============================================================================
 # TestErrorCategory
@@ -139,12 +140,12 @@ class TestClassifyEngineError:
 # =============================================================================
 
 
-class TestTestAnalysisResult:
+class TestAnalysisResultTests:
     """Tests for TestAnalysisResult dataclass."""
 
     def test_success_result(self):
         """Successful result has correct fields."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=True,
             error_category=None,
             error_message=None,
@@ -155,7 +156,7 @@ class TestTestAnalysisResult:
 
     def test_failure_result(self):
         """Failure result has correct fields."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.BACKEND_ERROR,
             error_message="clGetPlatformIDs failed",
@@ -166,7 +167,7 @@ class TestTestAnalysisResult:
 
     def test_result_is_frozen(self):
         """TestAnalysisResult is immutable (frozen dataclass)."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=True,
             error_category=None,
             error_message=None,
@@ -185,7 +186,7 @@ class TestShouldOfferCpuFallback:
 
     def test_backend_error_offers_fallback(self):
         """BACKEND_ERROR should offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.BACKEND_ERROR,
             error_message="OpenCL error",
@@ -194,7 +195,7 @@ class TestShouldOfferCpuFallback:
 
     def test_timeout_no_fallback(self):
         """TIMEOUT should NOT offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.TIMEOUT,
             error_message="Timed out",
@@ -203,7 +204,7 @@ class TestShouldOfferCpuFallback:
 
     def test_engine_start_no_fallback(self):
         """ENGINE_START_FAILED should NOT offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.ENGINE_START_FAILED,
             error_message="Binary not found",
@@ -212,7 +213,7 @@ class TestShouldOfferCpuFallback:
 
     def test_model_load_no_fallback(self):
         """MODEL_LOAD_FAILED should NOT offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.MODEL_LOAD_FAILED,
             error_message="Model not found",
@@ -221,7 +222,7 @@ class TestShouldOfferCpuFallback:
 
     def test_lightweight_missing_no_fallback(self):
         """LIGHTWEIGHT_MISSING should NOT offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.LIGHTWEIGHT_MISSING,
             error_message="b10c128 not found",
@@ -230,7 +231,7 @@ class TestShouldOfferCpuFallback:
 
     def test_success_no_fallback(self):
         """Successful result should NOT offer CPU fallback."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=True,
             error_category=None,
             error_message=None,
@@ -248,7 +249,7 @@ class TestShouldOfferRestart:
 
     def test_timeout_offers_restart(self):
         """TIMEOUT should offer engine restart."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.TIMEOUT,
             error_message="Timed out",
@@ -257,7 +258,7 @@ class TestShouldOfferRestart:
 
     def test_backend_error_no_restart(self):
         """BACKEND_ERROR should NOT offer restart (will fail again)."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.BACKEND_ERROR,
             error_message="OpenCL error",
@@ -266,7 +267,7 @@ class TestShouldOfferRestart:
 
     def test_engine_start_no_restart(self):
         """ENGINE_START_FAILED should NOT offer restart (will fail again)."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=False,
             error_category=ErrorCategory.ENGINE_START_FAILED,
             error_message="Binary not found",
@@ -275,7 +276,7 @@ class TestShouldOfferRestart:
 
     def test_success_no_restart(self):
         """Successful result should NOT offer restart."""
-        result = TestAnalysisResult(
+        result = AnalysisResult(
             success=True,
             error_category=None,
             error_message=None,

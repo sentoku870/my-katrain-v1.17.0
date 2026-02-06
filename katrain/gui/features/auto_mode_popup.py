@@ -27,9 +27,10 @@ from katrain.core.auto_setup import (
 )
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.lang import i18n
-from katrain.core.test_analysis import (
-    ErrorCategory,
-    TestAnalysisResult,
+from katrain.core.analysis_result import (
+    EngineTestResult,
+    run_engine_test,
+    should_offer_restart,
     should_offer_cpu_fallback,
 )
 from katrain.gui.theme import Theme
@@ -207,7 +208,7 @@ def _execute_test_analysis(
     ctx: FeatureContext,
     katrain: Any,
     timeout_seconds: float = 15.0,
-) -> TestAnalysisResult:
+) -> EngineTestResult:
     """Execute test analysis.
 
     Args:
@@ -216,7 +217,7 @@ def _execute_test_analysis(
         timeout_seconds: Timeout for analysis response.
 
     Returns:
-        TestAnalysisResult with success/failure details.
+        EngineTestResult with success/failure details.
     """
     # First check if lightweight model exists
     base_engine = ctx.config("engine", {})
@@ -227,11 +228,11 @@ def _execute_test_analysis(
 
     # Use katrain's verification method
     # katrain is typed as Any (circular import avoidance), so cast the return type
-    return cast(TestAnalysisResult, katrain._verify_engine_works(timeout_seconds))
+    return cast(EngineTestResult, katrain._verify_engine_works(timeout_seconds))
 
 
 def _on_test_complete(
-    result: TestAnalysisResult,
+    result: EngineTestResult,
     result_area: BoxLayout,
     btn: Button,
     ctx: FeatureContext,
@@ -270,7 +271,7 @@ def _on_test_complete(
 
 
 def _render_success_ui(
-    result: TestAnalysisResult,
+    result: EngineTestResult,
     layout: BoxLayout,
     katrain: Any,
 ) -> None:
@@ -300,7 +301,7 @@ def _render_success_ui(
 
 
 def _render_failure_ui(
-    result: TestAnalysisResult,
+    result: EngineTestResult,
     layout: BoxLayout,
     ctx: FeatureContext,
     katrain: Any,
@@ -361,7 +362,7 @@ def _render_failure_ui(
 
 
 def _render_timeout_ui(
-    result: TestAnalysisResult,
+    result: EngineTestResult,
     layout: BoxLayout,
     ctx: FeatureContext,
     katrain: Any,
@@ -541,7 +542,7 @@ def _on_retry_cpu(
 
 def _on_fallback_complete(
     success: bool,
-    result: TestAnalysisResult,
+    result: EngineTestResult,
     result_area: BoxLayout,
     btn: Button,
     ctx: FeatureContext,
@@ -727,7 +728,7 @@ def _show_status(layout: BoxLayout, message: str) -> None:
     layout.add_widget(label)
 
 
-def _copy_diagnostics(result: TestAnalysisResult, ctx: FeatureContext) -> None:
+def _copy_diagnostics(result: EngineTestResult, ctx: FeatureContext) -> None:
     """Copy diagnostic information to clipboard.
 
     Args:

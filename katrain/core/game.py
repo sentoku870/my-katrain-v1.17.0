@@ -788,6 +788,45 @@ class Game(BaseGame):
             target_visits=target_visits,
         )
 
+    # ------------------------------------------------------------------
+    # Quiz Methods (Phase B2)
+    # ------------------------------------------------------------------
+
+    def get_quiz_items(
+        self,
+        *,
+        loss_threshold: float = eval_metrics.DEFAULT_QUIZ_LOSS_THRESHOLD,
+        limit: int = eval_metrics.DEFAULT_QUIZ_ITEM_LIMIT,
+    ) -> list[eval_metrics.QuizItem]:
+        """
+        対局からクイズ用の大きなミス一覧を取得。
+        """
+        from katrain.core.reports import quiz_report
+
+        snapshot = self.build_eval_snapshot()
+        return quiz_report.get_quiz_items(
+            snapshot,
+            loss_threshold=loss_threshold,
+            limit=limit,
+        )
+
+    def build_quiz_questions(
+        self,
+        quiz_items: list[eval_metrics.QuizItem],
+        *,
+        max_choices: int = 3,
+    ) -> list[eval_metrics.QuizQuestion]:
+        """
+        クイズ項目からクイズ問題を生成。
+        """
+        from katrain.core.reports import quiz_report
+
+        return quiz_report.build_quiz_questions(
+            quiz_items,
+            self.get_main_branch_node_before_move,
+            max_choices=max_choices,
+        )
+
     @staticmethod
     def build_summary_report(game_data_list: list[GameSummaryData], focus_player: str | None = None) -> str:
         """

@@ -2,7 +2,7 @@
 
 This module provides:
 - Error category classification for engine failures
-- TestAnalysisResult dataclass for unified error handling
+- EngineTestResult dataclass for unified error handling
 - Decision logic for CPU fallback and restart offers
 """
 
@@ -25,13 +25,13 @@ class ErrorCategory(Enum):
 
 
 @dataclass(frozen=True)
-class TestAnalysisResult:
-    """Result of a test analysis attempt.
+class EngineTestResult:
+    """Result of an engine test.
 
     Attributes:
-        success: True if analysis completed successfully.
-        error_category: Category of error if failed, None if successful.
-        error_message: Human-readable error message, None if successful.
+        success: Whether the test passed.
+        error_category: Category of error if failed.
+        error_message: Detailed error message if failed.
     """
 
     success: bool
@@ -144,37 +144,15 @@ def truncate_error_message(msg: str, max_len: int = 200) -> str:
 # =============================================================================
 
 
-def should_offer_cpu_fallback(result: TestAnalysisResult) -> bool:
-    """Determine if CPU fallback should be offered.
-
-    CPU fallback is appropriate for:
-        - BACKEND_ERROR (OpenCL/CUDA failures)
-
-    Not appropriate for:
-        - TIMEOUT (engine hang, not a backend issue)
-        - ENGINE_START_FAILED (binary not found)
-        - MODEL_LOAD_FAILED (model issue, not backend)
-        - LIGHTWEIGHT_MISSING (need model first)
-
-    Args:
-        result: Test analysis result.
-
-    Returns:
-        True if CPU fallback button should be shown.
-    """
+def should_offer_cpu_fallback(result: EngineTestResult) -> bool:
+    """Decide if we should suggest CPU fallback based on error."""
+    if result.success:
+        return False
     return result.error_category == ErrorCategory.BACKEND_ERROR
 
 
-def should_offer_restart(result: TestAnalysisResult) -> bool:
-    """Determine if engine restart should be offered.
-
-    Engine restart is appropriate for:
-        - TIMEOUT (engine may be hung)
-
-    Not appropriate for:
-        - BACKEND_ERROR (will fail again)
-        - ENGINE_START_FAILED (will fail again)
-        - MODEL_LOAD_FAILED (will fail again)
+def should_offer_restart(result: EngineTestResult) -> bool:
+    """Decide if we should suggest restarting the engine (e.g. after timeout).
 
     Args:
         result: Test analysis result.
@@ -182,4 +160,20 @@ def should_offer_restart(result: TestAnalysisResult) -> bool:
     Returns:
         True if restart button should be shown.
     """
+    if result.success:
+        return False
     return result.error_category == ErrorCategory.TIMEOUT
+
+
+def run_engine_test(katrain_app: "KaTrainGui", timeout: float = 15.0) -> EngineTestResult:
+    """Run an engine connectivity test.
+    
+    Args:
+        katrain_app: The KaTrain application instance.
+        timeout: Timeout in seconds for the test.
+        
+    Returns:
+        EngineTestResult with success/failure status.
+    """
+    # Note: Using Any for katrain_app type hint to avoid circular imports at runtime
+    return katrain_app._verify_engine_works(timeout)

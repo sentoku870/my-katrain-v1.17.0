@@ -91,9 +91,9 @@ from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.leela.engine import LeelaEngine
 from katrain.core.sgf_parser import Move
 from katrain.core.state import EventType  # Phase 107
-from katrain.core.test_analysis import (  # Phase 89
+from katrain.core.analysis_result import (  # Phase 89 (moved)
+    EngineTestResult,
     ErrorCategory,
-    TestAnalysisResult,
     classify_engine_error,
 )
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
@@ -385,7 +385,7 @@ class KaTrainGui(Screen, KaTrainBase):
         """
         self._config_manager.set_section(section, value)
 
-    def _on_engine_status(self, event_type: str, message: str) -> None:
+    def check_engine_error(self, result: EngineTestResult, engine_config: dict) -> bool:
         """Handle engine status updates (Phase 120: Decoupled logging)."""
         if not getattr(self, "controls", None):
             return
@@ -497,8 +497,12 @@ class KaTrainGui(Screen, KaTrainBase):
         # ★付き表記で現在の優先側を示す
         if black_btn is not None:
             black_btn.text = "★黒優先" if focus == "black" else "黒優先"
-        if white_btn is not None:
             white_btn.text = "★白優先" if focus == "white" else "白優先"
+
+    def _on_engine_status(self, status_type: str, message: str) -> None:
+        """Handle engine status updates."""
+        if self.controls:
+            self.controls.set_status(message, OUTPUT_INFO)
 
     def start(self) -> None:
         if self.engine:

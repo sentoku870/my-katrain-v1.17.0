@@ -13,19 +13,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.togglebutton import ToggleButton
 
-from katrain.core.constants import STATUS_INFO
-from katrain.core.lang import i18n
 from katrain.core.smart_kifu import (
-    BucketProfile,
     Context,
     GameEntry,
-    PlayerProfile,
     compute_bucket_key,
     list_training_sets,
     load_manifest,
-    load_player_profile,
     suggest_handicap_adjustment,
 )
 from katrain.gui.popups import I18NPopup
@@ -268,7 +262,7 @@ def build_practice_report_card(
 
 
 def show_practice_report_popup(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     katrain_gui: Any,
 ) -> None:
     """練習レポートポップアップを表示

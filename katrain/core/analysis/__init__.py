@@ -161,7 +161,23 @@ from katrain.core.analysis.logic import (
     # Snapshot
     snapshot_from_nodes,
     # Reason tag validation
+    move_eval_from_node,
+    pick_important_moves,
+    recommend_auto_strictness,
+    snapshot_from_game,
+    # Snapshot
+    snapshot_from_nodes,
+    # Reason tag validation
     validate_reason_tag,
+)
+
+# =============================================================================
+# Explicit imports from logic_quiz.py (Phase 98)
+# =============================================================================
+from katrain.core.analysis.logic_quiz import (
+    get_skill_preset_quiz_config,
+    quiz_items_from_snapshot,
+    quiz_points_lost_from_candidate,
 )
 
 # =============================================================================
@@ -179,8 +195,11 @@ from katrain.core.analysis.models import (
     DEFAULT_ANALYSIS_ENGINE,
     DEFAULT_DIFFICULT_POSITIONS_LIMIT,
     DEFAULT_IMPORTANT_MOVE_LEVEL,
+    DEFAULT_IMPORTANT_MOVE_LEVEL,
     DEFAULT_MIN_MOVE_NUMBER,
     DEFAULT_PV_FILTER_LEVEL,
+    DEFAULT_QUIZ_ITEM_LIMIT,
+    DEFAULT_QUIZ_LOSS_THRESHOLD,
     DEFAULT_SKILL_PRESET,
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
@@ -232,6 +251,10 @@ from katrain.core.analysis.models import (
     PositionDifficulty,
     PVFilterConfig,
     PVFilterLevel,
+    QuizConfig,
+    QuizItem,
+    QuizChoice,
+    QuizQuestion,
     ReasonTagThresholds,
     ReliabilityStats,
     SkillEstimation,
@@ -450,6 +473,10 @@ __all__ = [
     "MistakeStreak",
     "SkillEstimation",
     "PVFilterConfig",
+    "QuizConfig",  # Phase 98
+    "QuizItem",  # Phase 98
+    "QuizChoice",  # Phase 98
+    "QuizQuestion",  # Phase 98
     # Phase 12: Difficulty Metrics
     "DifficultyMetrics",
     "DIFFICULTY_UNKNOWN",
@@ -459,6 +486,8 @@ __all__ = [
     "TRANSITION_DROP_MAX",
     "DEFAULT_DIFFICULT_POSITIONS_LIMIT",
     "DEFAULT_MIN_MOVE_NUMBER",
+    "DEFAULT_QUIZ_LOSS_THRESHOLD",  # Phase 98
+    "DEFAULT_QUIZ_ITEM_LIMIT",  # Phase 98
     # Preset dictionaries and lists
     "SKILL_PRESETS",
     "DEFAULT_SKILL_PRESET",
@@ -499,8 +528,13 @@ __all__ = [
     "recommend_auto_strictness",
     # Reason tag validation
     "validate_reason_tag",
+    "validate_reason_tag",
     # GameNode bridge
     "move_eval_from_node",
+    # Logic Quiz (Phase 98)
+    "get_skill_preset_quiz_config",
+    "quiz_items_from_snapshot",
+    "quiz_points_lost_from_candidate",
     # Reliability functions
     "get_difficulty_modifier",
     "get_reliability_scale",
