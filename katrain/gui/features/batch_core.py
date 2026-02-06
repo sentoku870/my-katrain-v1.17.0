@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
+from kivy.uix.checkbox import CheckBox
 
 from katrain.core import eval_metrics
 from katrain.core.batch import (
