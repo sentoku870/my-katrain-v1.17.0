@@ -111,7 +111,8 @@ def collect_batch_options(
         analysis_engine = "leela"
 
     # Curator generation (Phase 126)
-    generate_curator = widgets.get("curator_checkbox", CheckBox(active=False)).active
+    curator_cb = widgets.get("curator_checkbox")
+    generate_curator = curator_cb.active if curator_cb is not None else False
 
     return {
         "input_dir": input_dir,
