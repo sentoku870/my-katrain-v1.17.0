@@ -308,6 +308,11 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 125 | Project Slimming & Archiving | qt/specs/logs整理、ImportError修正 | ✅ |
 | 126 | Curator UI Integration | バッチ解析画面にプロ棋譜おすすめ生成を追加 | ✅ |
 
+**Phase 126**: ✅ Curator UI Integration（2026-02-06）。
+バッチ解析画面に「Curator(おすすめ)生成」チェックボックスを統合。
+解析完了時に `reports/curator/` 内に `curator_ranking.json` 等を自動出力する機能を有効化。
+Kivyメインスレッド違反エラーの修正を含む。
+
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
 全205ファイル（~35,000行）のmypy strict エラーを1352→0に削減。
