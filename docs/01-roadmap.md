@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-06（Phase 121完了）
+> 最終更新: 2026-02-06（Phase 122完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -302,6 +302,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 119 | UI Architecture Hardening | UIコンポーネント共通化、未使用コード削減、複雑性解消 | ✅ |
 | 120 | Final Codebase Polish & Modernization | Ruff一括適用、高リスクリファクタリング、コード品質統一 | ✅ |
 | 121 | Risk Analysis Cleanup | `risk_management_section`削除、deferredコード除去 | ✅ |
+| 122 | Fix Query Rejected Error | `analyze_all_nodes`スロットリング追加 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -449,9 +450,14 @@ UIコンポーネントの共通化（Tofu恒久対策）と、未使用コー�
 **Phase 120**: ✅ Final Codebase Polish & Modernization（Completed）。
 Ruff等のツール導入によるコードスタイルの完全統一、およびPhase 19などで後回しにした高リスクなリファクタリング（KaTrainGuiの最終整理や `dialog_coordinator` など）の回収。
 
+2026-02-06 完了）
 **Phase 121**: ✅ Risk Analysis Cleanup（Completed）。
 DeferredされたPhase 61（Risk Context）の関連コード（`risk_management_section`、`analysis/risk/`）を完全に削除。
 `metadata.py` および `builder.py` からの参照を除去し、コードベースをクリーンな状態（Phase 120ベースライン）に復帰。
+
+**Phase 122**: ✅ Fix Query Rejected Error（Completed）。
+エンジンへのクエリ集中による `ERROR: Query rejected` (100 pending limit) を解消。
+`katrain/core/game.py` の `_handle_game_mode` に `engine.has_query_capacity()` チェックとスロットリング処理を追加。
 
 
 ### 未定（TBD / Post-52）

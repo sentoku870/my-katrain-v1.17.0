@@ -3,6 +3,7 @@ import math
 import os
 import re
 import threading
+import time
 from collections.abc import Iterator
 from datetime import datetime
 from typing import Any
@@ -1178,6 +1179,20 @@ class Game(BaseGame):
                 continue
             if move_range and (node.depth - 1 not in range(move_range[0], move_range[1] + 1)):
                 continue
+
+            # Throttle: wait for engine capacity before sending request
+            max_wait_attempts = 50  # 50 * 0.1s = 5s max wait
+            for _ in range(max_wait_attempts):
+                if engine.has_query_capacity(headroom=10):
+                    break
+                time.sleep(0.1)
+            else:
+                self.katrain.log(
+                    f"Skipping extra analysis for move {node.move_number}: engine at capacity",
+                    OUTPUT_DEBUG,
+                )
+                continue
+
             node.analyze(engine, visits=visits, priority=-1_000_000, time_limit=False)
         if not move_range:
             self.katrain.controls.set_status(i18n._("game re-analysis").format(visits=visits), STATUS_ANALYSIS)
