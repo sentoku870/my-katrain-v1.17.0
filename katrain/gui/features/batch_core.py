@@ -109,6 +109,9 @@ def collect_batch_options(
     if "engine_leela" in widgets and widgets["engine_leela"].state == "down":
         analysis_engine = "leela"
 
+    # Curator generation (Phase 126)
+    generate_curator = widgets.get("curator_checkbox", CheckBox(active=False)).active
+
     return {
         "input_dir": input_dir,
         "output_dir": output_dir,
@@ -118,6 +121,7 @@ def collect_batch_options(
         "save_analyzed_sgf": save_analyzed_sgf,
         "generate_karte": generate_karte,
         "generate_summary": generate_summary,
+        "generate_curator": generate_curator,
         "karte_player_filter": karte_player_filter,
         "min_games_per_player": min_games_per_player,
         "variable_visits": variable_visits,
@@ -272,6 +276,7 @@ def run_batch_in_thread(
             "save_analyzed_sgf": options["save_analyzed_sgf"],
             "generate_karte": options["generate_karte"],
             "generate_summary": options["generate_summary"],
+            "generate_curator": options.get("generate_curator", False),
             "karte_player_filter": options["karte_player_filter"],
             "min_games_per_player": options["min_games_per_player"],
             "variable_visits": options["variable_visits"],
@@ -363,6 +368,8 @@ def run_batch_in_thread(
         deterministic=options["deterministic"],
         analysis_engine=analysis_engine,  # Phase 87.5
         leela_engine=leela_engine,  # Phase 87.5
+        lang=ctx.config("general/language") or "jp",
+        generate_curator=options.get("generate_curator", False),
     )
 
     # Play completion sound if enabled

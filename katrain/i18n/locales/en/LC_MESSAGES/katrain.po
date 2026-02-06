@@ -150,6 +150,9 @@ msgstr "Generate Karte"
 msgid "mykatrain:batch:generate_summary"
 msgstr "Generate Summary"
 
+msgid "mykatrain:batch:generate_curator"
+msgstr "Generate Curator"
+
 msgid "mykatrain:batch:error_input_dir"
 msgstr "Please select a valid input directory"
 

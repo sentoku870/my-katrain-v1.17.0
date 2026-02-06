@@ -72,6 +72,7 @@ BatchWidgets = dict[str, Any]  # More specific: dict[str, "Widget"]
 #   - deterministic: bool - 決定論的
 #   - sound_on_finish: bool - 完了時サウンド
 #   - analysis_engine: str - 解析エンジン "katago" or "leela" (Phase 36)
+#   - generate_curator: bool - Curator（おすすめ）生成 (Phase 126)
 BatchOptions = dict[str, Any]
 
 

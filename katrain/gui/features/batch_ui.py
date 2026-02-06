@@ -355,7 +355,7 @@ def build_batch_popup_widgets(
     skip_hint_row.add_widget(skip_hint_label)
     main_layout.add_widget(skip_hint_row)
 
-    # Options row 3: output options (save SGF, karte, summary)
+    # Options row 3: output options (save SGF, karte, summary, curator)
     options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
     widgets["save_sgf_checkbox"] = CheckBox(
@@ -397,12 +397,27 @@ def build_batch_popup_widgets(
     )
     summary_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
+    widgets["curator_checkbox"] = CheckBox(
+        active=batch_options.get("generate_curator", False), size_hint_x=None, width=dp(30)
+    )
+    curator_label = Label(
+        text=i18n._("mykatrain:batch:generate_curator"),
+        size_hint_x=0.25,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    curator_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
     options_row3.add_widget(widgets["save_sgf_checkbox"])
     options_row3.add_widget(save_sgf_label)
     options_row3.add_widget(widgets["karte_checkbox"])
     options_row3.add_widget(karte_label)
     options_row3.add_widget(widgets["summary_checkbox"])
     options_row3.add_widget(summary_label)
+    options_row3.add_widget(widgets["curator_checkbox"])
+    options_row3.add_widget(curator_label)
     main_layout.add_widget(options_row3)
 
     # Options row 4: Player filter and min games
