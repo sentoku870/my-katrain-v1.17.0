@@ -6,7 +6,6 @@ from katrain.core.ai import ai_rank_estimation, generate_ai_move
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
     AI_HUMAN,
-    AI_LEELA,
     AI_PRO,
     AI_STRATEGIES,
     AI_STRATEGIES_RECOMMENDED_ORDER,
@@ -29,7 +28,7 @@ class TestAI:
         n_rounds = 3
         for _ in range(n_rounds):
             for strategy in AI_STRATEGIES:
-                if strategy in [AI_HUMAN, AI_LEELA, AI_PRO]:
+                if strategy in [AI_HUMAN, AI_PRO]:
                     continue
                 settings = katrain.config(f"ai/{strategy}")
                 move, played_node = generate_ai_move(game, strategy, settings)
@@ -40,7 +39,7 @@ class TestAI:
         assert game.current_node.depth == (len(AI_STRATEGIES) - 3) * n_rounds
 
         for strategy in AI_STRATEGIES:
-            if strategy in [AI_HUMAN, AI_LEELA, AI_PRO]:
+            if strategy in [AI_HUMAN, AI_PRO]:
                 continue
             game = Game(katrain, engine)
             settings = katrain.config(f"ai/{strategy}")
@@ -51,7 +50,7 @@ class TestAI:
     def test_ai_rank_estimation(self):
         katrain = KaTrainBase(force_package_config=True, debug_level=0)
         for strategy in AI_STRATEGIES:
-            if strategy in [AI_HUMAN, AI_LEELA, AI_PRO]:
+            if strategy in [AI_HUMAN, AI_PRO]:
                 continue
             settings = katrain.config(f"ai/{strategy}")
             rank = ai_rank_estimation(strategy, settings)

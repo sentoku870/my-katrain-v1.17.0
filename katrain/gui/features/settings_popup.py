@@ -912,29 +912,9 @@ def do_mykatrain_settings_popup(
     # === Leela Zero Settings Section ===
     # Note: Section label is no longer needed as it's now a separate tab
 
-    # Leela Enabled Checkbox
-    # Note: leela_config is used as dict throughout this section, keep as dict
+    # Leela Enabled Checkbox - REMOVED (Phase 123)
+    # Replaced by Analysis Engine selection logic.
     leela_config = ctx.config("leela") or {}
-    leela_enabled_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
-    leela_enabled_checkbox = CheckBox(
-        active=leela_config.get("enabled", False),
-        size_hint_x=None,
-        width=dp(36),
-    )
-    leela_enabled_label = Label(
-        text=i18n._("mykatrain:settings:leela_enabled"),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    leela_enabled_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    leela_enabled_row.add_widget(leela_enabled_checkbox)
-    leela_enabled_row.add_widget(leela_enabled_label)
-    tab3_inner.add_widget(leela_enabled_row)
-    register_searchable(i18n._("mykatrain:settings:leela_enabled"), leela_enabled_row)
-
-    # Leela Executable Path
     leela_path_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_path_label = Label(
         text=i18n._("mykatrain:settings:leela_exe_path"),
@@ -1042,28 +1022,7 @@ def do_mykatrain_settings_popup(
     tab3_inner.add_widget(leela_fast_visits_row)
     register_searchable(i18n._("mykatrain:settings:leela_fast_visits"), leela_fast_visits_row)
 
-    # Leela Play Visits (Phase 40)
-    leela_play_visits_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-    leela_play_visits_label = Label(
-        text=i18n._("mykatrain:settings:leela_play_visits"),
-        size_hint_x=0.30,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    leela_play_visits_label.bind(size=lambda lbl, _: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    leela_play_visits_input = TextInput(
-        text=str(leela_config.get("play_visits", 500)),
-        multiline=False,
-        input_filter="int",
-        size_hint_x=0.70,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    leela_play_visits_row.add_widget(leela_play_visits_label)
-    leela_play_visits_row.add_widget(leela_play_visits_input)
-    tab3_inner.add_widget(leela_play_visits_row)
-    register_searchable(i18n._("mykatrain:settings:leela_play_visits"), leela_play_visits_row)
+    # Leela Play Visits - REMOVED (Phase 123)
 
     # Leela Top Moves Display
     leela_top_moves_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
@@ -1245,25 +1204,16 @@ def do_mykatrain_settings_popup(
         ctx.set_config_section("beginner_hints", beginner_hints_config)
         ctx.save_config("beginner_hints")
 
-        # [Phase 34] Capture UI state early for consistency (with defensive fallback)
-        leela_will_be_enabled = getattr(leela_enabled_checkbox, "active", None)
-        if leela_will_be_enabled is None:
-            # Fallback to config if checkbox not available (future-proofing)
-            leela_will_be_enabled = (ctx.config("leela") or {}).get("enabled", False)
-
         # [Phase 34] Save analysis engine to engine config (MERGE pattern)
         import logging
 
-        from katrain.core.analysis import needs_leela_warning
+        # from katrain.core.analysis import needs_leela_warning # Removed: impossible condition
 
         new_engine_value = selected_engine[0]
 
-        # Consistency check: warn if Leela selected but not enabled
-        if needs_leela_warning(new_engine_value, leela_will_be_enabled):
-            ctx.controls.set_status(
-                i18n._("mykatrain:settings:engine_leela_not_enabled_warning"),
-                STATUS_INFO,  # Note: STATUS_WARNING does not exist in constants.py
-            )
+        # Phase 123: Leela enabled state is strictly derived from engine selection
+        # "analysis engineで選ぶようにしてほしい" - User request
+        leela_enabled = (new_engine_value == EngineType.LEELA.value)
 
         # MERGE: preserve other engine keys (katago, model, etc.)
         # Phase 102: Use typed config API
@@ -1305,7 +1255,6 @@ def do_mykatrain_settings_popup(
         _leela_defaults = LeelaConfig.from_dict({})
 
         # Calculate values with validation
-        leela_enabled = leela_will_be_enabled
         leela_exe_path = leela_path_input.text.strip()
         leela_loss_scale = clamp_k(leela_k_slider.value)
         leela_top_show = leela_top_moves_spinner.selected[1]
@@ -1329,12 +1278,8 @@ def do_mykatrain_settings_popup(
         except ValueError:
             computed_fast_visits = _leela_defaults.fast_visits
 
-        # play_visits: parse with validation (Phase 40)
-        try:
-            play_visits_raw = int(leela_play_visits_input.text.strip())
-            computed_play_visits = max(50, min(computed_max_visits, play_visits_raw))
-        except ValueError:
-            computed_play_visits = _leela_defaults.play_visits
+        # play_visits: fixed default (Phase 123: removed from UI)
+        computed_play_visits = _leela_defaults.play_visits
 
         # Update via typed config API (handles MERGE and persistence)
         ctx.update_leela_config(

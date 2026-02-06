@@ -303,6 +303,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 120 | Final Codebase Polish & Modernization | Ruff一括適用、高リスクリファクタリング、コード品質統一 | ✅ |
 | 121 | Risk Analysis Cleanup | `risk_management_section`削除、deferredコード除去 | ✅ |
 | 122 | Fix Query Rejected Error | `analyze_all_nodes`スロットリング追加 | ✅ |
+| 123 | Leela Zero Slimming | Play機能削除、Analysis温存 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -457,7 +458,12 @@ DeferredされたPhase 61（Risk Context）の関連コード（`risk_management
 
 **Phase 122**: ✅ Fix Query Rejected Error（Completed）。
 エンジンへのクエリ集中による `ERROR: Query rejected` (100 pending limit) を解消。
-`katrain/core/game.py` の `_handle_game_mode` に `engine.has_query_capacity()` チェックとスロットリング処理を追加。
+j`katrain/core/game.py` の `_handle_game_mode` に `engine.has_query_capacity()` チェックとスロットリング処理を追加。
+
+**Phase 123**: ✅ Leela Zero Slimming（Completed）。
+Leela Zeroの「Play」機能（ボット対戦）を削除し、コードベースを軽量化。
+Analysis機能（LeelaManagerによる候補手表示等）は完全に維持しつつ、`ai.py` から `LeelaStrategy` および `AI_LEELA` 定数を削除。
+関連するテストファイル（`test_leela_strategy.py`）も削除し、保守性を向上。
 
 
 ### 未定（TBD / Post-52）

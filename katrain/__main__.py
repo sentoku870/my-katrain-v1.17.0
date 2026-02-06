@@ -66,7 +66,7 @@ from kivy.uix.screenmanager import Screen
 from kivymd.app import MDApp
 
 from katrain.core import eval_metrics
-from katrain.core.ai import LeelaNotAvailableError, generate_ai_move
+from katrain.core.ai import generate_ai_move
 from katrain.core.auto_setup import find_cpu_katago  # Phase 89
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
