@@ -89,7 +89,7 @@ def open_latest_report(ctx: FeatureContext) -> None:
     from katrain.common.file_opener import open_file
     from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
     from katrain.core.lang import i18n
-    from katrain.core.reports.package_export import resolve_output_directory
+    from katrain.core.utils import resolve_output_directory
 
     # Get output directory (match existing pattern: ctx.config() or {})
     mykatrain_settings = ctx.config("mykatrain_settings") or {}
@@ -123,7 +123,7 @@ def open_output_folder(ctx: FeatureContext) -> None:
     from katrain.common.file_opener import open_folder
     from katrain.core.constants import OUTPUT_ERROR
     from katrain.core.lang import i18n
-    from katrain.core.reports.package_export import resolve_output_directory
+    from katrain.core.utils import resolve_output_directory
 
     # Get output directory (match existing pattern: ctx.config() or {})
     mykatrain_settings = ctx.config("mykatrain_settings") or {}

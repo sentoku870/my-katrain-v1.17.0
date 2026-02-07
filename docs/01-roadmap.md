@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-07（Phase 126完了）
+> 最終更新: 2026-02-07（Phase 128完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -307,6 +307,8 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 124 | Stability Improvements | `TestAnalysisResult` rename fix, `auto_setup.py` deps | ✅ |
 | 125 | Project Slimming & Archiving | qt/specs/logs整理、ImportError修正 | ✅ |
 | 126 | Curator UI Integration | バッチ解析画面にプロ棋譜おすすめ生成を追加 | ✅ |
+| 127 | Diagnostics Extension | Export LLM Package機能追加、診断機能拡張 | ✅ |
+| 128 | Auto Setup Cleanup | 不安定な自動セットアップ機能を削除 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
