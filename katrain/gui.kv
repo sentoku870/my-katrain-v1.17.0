@@ -610,7 +610,6 @@
                 orientation: 'vertical'
                 padding: 2*CP_PADDING,CP_PADDING
                 spacing: CP_SPACING
-                size_hint_x: 0.35
                 SizedRoundedRectangleButton:
                     text: i18n._('undo-button-text')
                     size_hint: 1, 0.5
@@ -911,11 +910,7 @@
         icon: 'analysis.png'
         shortcut: ''
         on_action: root.katrain("export-karte")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:export-package')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("export-package")
+
     MyKatrainMenuItem:
         text: i18n._('mykatrain:open-latest-report')
         icon: 'analysis.png'

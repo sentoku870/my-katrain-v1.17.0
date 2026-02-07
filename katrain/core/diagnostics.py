@@ -39,6 +39,8 @@ class SystemInfo:
     python_bits: str
     machine: str
     processor: str
+    ram_total: str
+    gpu_info: str
 
 
 @dataclass
@@ -84,12 +86,75 @@ class DiagnosticsResult:
 # --- Collection Functions ---
 
 
+def _get_ram_info() -> str:
+    """Get total RAM size."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            stat = MEMORYSTATUSEX()
+            stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+            return f"{stat.ullTotalPhys / (1024**3):.1f} GB"
+        else:
+            # Linux fallback
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if "MemTotal" in line:
+                        kb = int(line.split()[1])
+                        return f"{kb / (1024**2):.1f} GB"
+    except Exception:
+        pass
+    return "Unknown"
+
+
+def _get_gpu_info() -> str:
+    """Get GPU information."""
+    try:
+        if sys.platform == "win32":
+            import subprocess
+
+            cmd = "wmic path win32_videocontroller get name"
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+            out, _ = process.communicate()
+            output = out.decode("utf-8", errors="ignore").strip().split("\n")
+            if len(output) > 1:
+                gpus = [line.strip() for line in output[1:] if line.strip()]
+                return ", ".join(gpus)
+        else:
+            # Basic fallback for now, maybe lspci or nvidia-smi checking could go here
+            pass
+    except Exception:
+        pass
+    return "Unknown"
+
+
 def collect_system_info() -> SystemInfo:
     """Collect system information.
 
     Returns:
         SystemInfo with current system details.
     """
+    import os
+    
+    cpu_info = platform.processor()
+    cpu_count = os.cpu_count()
+    if cpu_count:
+        cpu_info = f"{cpu_info} ({cpu_count} cores)"
+
     return SystemInfo(
         os_name=platform.system(),
         os_version=platform.version(),
@@ -97,7 +162,9 @@ def collect_system_info() -> SystemInfo:
         python_version=platform.python_version(),
         python_bits="64-bit" if sys.maxsize > 2**32 else "32-bit",
         machine=platform.machine(),
-        processor=platform.processor(),
+        processor=cpu_info,
+        ram_total=_get_ram_info(),
+        gpu_info=_get_gpu_info(),
     )
 
 

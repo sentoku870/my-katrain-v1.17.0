@@ -122,7 +122,7 @@ from katrain.gui.features.commands import (
     popup_commands,
 )
 from katrain.gui.features.karte_export import determine_user_color
-from katrain.gui.features.package_export_ui import do_export_package
+
 from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
@@ -1123,9 +1123,7 @@ class KaTrainGui(Screen, KaTrainBase):
         """Export karte. Delegates to export_commands."""
         export_commands.do_export_karte(self, self._do_mykatrain_settings_popup)
 
-    def _do_export_package(self, anonymize: bool = False, *args: Any, **kwargs: Any) -> None:
-        """Export LLM package. Delegates to package_export_ui.do_export_package()."""
-        do_export_package(self, anonymize=anonymize)
+
 
     def _do_open_latest_report(self, *args: Any, **kwargs: Any) -> None:
         """Open the most recent report file."""

@@ -123,3 +123,23 @@ def weighted_selection_without_replacement(items: list[TupleT], pick_n: int) -> 
     # Type ignore: we trust that item[1] exists and is numeric based on the docstring contract
     elt = [(math.log(random.random()) / (item[1] + 1e-18), item) for item in items]  # type: ignore[index,operator]
     return [e[1] for e in heapq.nlargest(pick_n, elt)]  # NB fine if too small
+
+
+def resolve_output_directory(config_dir: str) -> Path:
+    """Resolve the output directory for reports/diagnostics."""
+    if config_dir:
+        path = Path(config_dir).expanduser()
+        if path.exists() and path.is_dir():
+            return path
+    
+    # Fallback to Downloads folder
+    if sys.platform == "win32":
+        import ctypes.wintypes
+        
+        CSIDL_DOWNLOADS = 0x000d
+        SHGFP_TYPE_CURRENT = 0
+        buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+        ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_DOWNLOADS, None, SHGFP_TYPE_CURRENT, buf)
+        return Path(buf.value)
+    else:
+        return Path.home() / "Downloads"

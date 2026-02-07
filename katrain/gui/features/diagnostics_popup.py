@@ -30,7 +30,7 @@ from katrain.core.diagnostics import (
     generate_diagnostics_filename,
 )
 from katrain.core.lang import i18n
-from katrain.core.reports.package_export import resolve_output_directory
+from katrain.core.utils import resolve_output_directory
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
@@ -88,12 +88,26 @@ def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
         title=i18n._("Diagnostics"),
         title_font=Theme.DEFAULT_FONT,
         content=content,
-        size_hint=(0.8, 0.8),
+        size_hint=(0.5, 0.6),
     )
 
     # Bind buttons
     close_btn.bind(on_release=popup.dismiss)
     generate_btn.bind(on_release=lambda btn: _on_generate_zip(ctx, bundle, generate_btn, popup))
+    
+    # Add Copy to Clipboard button (phase 2)
+    copy_btn = Button(
+        text=i18n._("Copy Info"),
+        font_name=Theme.DEFAULT_FONT,
+        size_hint=(0.5, 1),
+    )
+    copy_btn.bind(on_release=lambda btn: _on_copy_info(ctx, bundle, copy_btn))
+    
+    # Re-assemble button box with Copy button in middle
+    button_box.clear_widgets()
+    button_box.add_widget(generate_btn)
+    button_box.add_widget(copy_btn)
+    button_box.add_widget(close_btn)
 
     popup.open()
 
@@ -116,7 +130,7 @@ def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
         katago_info = collect_katago_info(
             exe_path=getattr(engine, "katago", ""),
             model_path=getattr(engine, "model", ""),
-            config_path=getattr(engine, "config", ""),
+            config_path=engine.config.get("config", "") if hasattr(engine, "config") and isinstance(engine.config, dict) else "",
             is_running=getattr(engine, "katago_process", None) is not None,
             version=None,  # Version retrieval not implemented yet
         )
@@ -209,8 +223,10 @@ def _build_info_display(bundle: DiagnosticsBundle) -> BoxLayout:
         i18n._("System"),
         [
             f"OS: {sys_info.os_name} {sys_info.os_release}",
+            f"CPU: {sys_info.processor}",
+            f"RAM: {sys_info.ram_total}",
+            f"GPU: {sys_info.gpu_info}",
             f"Python: {sys_info.python_version} ({sys_info.python_bits})",
-            f"Machine: {sys_info.machine}",
         ],
     )
 
@@ -272,6 +288,34 @@ def _on_generate_zip(
         Clock.schedule_once(lambda dt: _on_generate_complete(ctx, result, generate_btn, parent_popup), 0)
 
     threading.Thread(target=generate_thread, daemon=True).start()
+
+
+def _on_copy_info(
+    ctx: FeatureContext,
+    bundle: DiagnosticsBundle,
+    copy_btn: Button,
+) -> None:
+    """Handle Copy Info button click."""
+    from kivy.core.clipboard import Clipboard
+    from katrain.core.diagnostics import format_llm_diagnostics_text
+    
+    # Generate text format
+    sanitization_ctx = get_sanitization_context(app_dir=str(Path.cwd()))
+    text = format_llm_diagnostics_text(bundle, sanitization_ctx, max_log_lines=50)
+    
+    # Copy to clipboard
+    Clipboard.copy(text)
+    
+    # Flash button text
+    original_text = copy_btn.text
+    copy_btn.text = i18n._("Copied!")
+    copy_btn.disabled = True
+    
+    def restore_btn(dt: float) -> None:
+        copy_btn.text = original_text
+        copy_btn.disabled = False
+        
+    Clock.schedule_once(restore_btn, 1.5)
 
 
 def _on_generate_complete(
