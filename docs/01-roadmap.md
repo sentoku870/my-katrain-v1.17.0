@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-06（Phase 122完了）
+> 最終更新: 2026-02-07（Phase 126完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -308,11 +308,6 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 125 | Project Slimming & Archiving | qt/specs/logs整理、ImportError修正 | ✅ |
 | 126 | Curator UI Integration | バッチ解析画面にプロ棋譜おすすめ生成を追加 | ✅ |
 
-**Phase 126**: ✅ Curator UI Integration（2026-02-06）。
-バッチ解析画面に「Curator(おすすめ)生成」チェックボックスを統合。
-解析完了時に `reports/curator/` 内に `curator_ranking.json` 等を自動出力する機能を有効化。
-Kivyメインスレッド違反エラーの修正を含む。
-
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
 全205ファイル（~35,000行）のmypy strict エラーを1352→0に削減。
@@ -479,6 +474,17 @@ Analysis機能（LeelaManagerによる候補手表示等）は完全に維持し
 `katrain/core/test_analysis.py` を `katrain/core/analysis_result.py` にリネームし、Pytestの誤検知を解消。
 `auto_setup.py` の循環参照とインポート欠落を修正し、`_on_engine_status` の欠損による起動クラッシュを解決。
 全テスト（pytest, mypy, ruff）のPASSを確認。
+
+
+**Phase 125**: ✅ Project Slimming & Archiving（Completed）。
+不要な `qt/specs/logs` 等のファイルを整理・削除。
+`katrain/core/analysis/` 内の ImportError を修正し、プロジェクト構成を最適化。
+
+
+**Phase 126**: ✅ Curator UI Integration（Completed）。
+バッチ解析画面に「Curator(おすすめ)生成」チェックボックスを統合。
+解析完了時に `reports/curator/` 内に `curator_ranking.json` 等を自動出力する機能を有効化。
+Kivyメインスレッド違反エラーの修正を含む。
 
 
 ### 未定（TBD / Post-52）
