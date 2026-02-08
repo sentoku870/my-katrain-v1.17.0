@@ -142,6 +142,10 @@ from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.managers.summary_manager import SummaryManager
+from katrain.gui.managers.auto_setup_controller import AutoSetupController
+from katrain.gui.managers.ui_update_manager import UIUpdateManager
+from katrain.gui.controllers.analysis_controller import AnalysisController
+from katrain.gui.controllers.batch_analysis_controller import BatchAnalysisController
 
 # deleted imports
 from katrain.gui.sgf_manager import SGFManager
@@ -282,7 +286,14 @@ class KaTrainGui(Screen, KaTrainBase):
         self._pending_ui_update = None  # Clock event for coalescing
         self._pending_redraw_board = False  # Accumulated redraw flag
         self._state_subscriptions_setup = False
-        self._setup_state_subscriptions()
+        
+        # New Managers & Controllers (Phase 133)
+        self._ui_update_manager = UIUpdateManager(self, clock=Clock)
+        self._auto_setup_controller = AutoSetupController(self)
+        self._analysis_controller = AnalysisController(self)
+        self._batch_analysis_controller = BatchAnalysisController(self)
+
+        self._ui_update_manager.setup_state_subscriptions()
 
     def _load_export_settings(self) -> dict[str, Any]:
         """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
@@ -298,71 +309,11 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
 
-    # ========== Phase 107: StateNotifier購読ハンドラ ==========
-
-    def _setup_state_subscriptions(self) -> None:
-        """StateNotifier購読を設定（重複登録防止付き）"""
-        if self._state_subscriptions_setup:
-            return
-        self._state_subscriptions_setup = True
-
-        self.state_notifier.subscribe(EventType.GAME_CHANGED, self._on_game_changed)
-        self.state_notifier.subscribe(EventType.ANALYSIS_COMPLETE, self._on_analysis_complete)
-        self.state_notifier.subscribe(EventType.CONFIG_UPDATED, self._on_config_updated)
+    # ========== Phase 133: UI Update logic moved to UIUpdateManager ==========
 
     def _schedule_ui_update(self, redraw_board: bool = False) -> None:
-        """UI更新をスケジュール（coalescing付き、スレッドセーフ）
-
-        同一フレーム内の複数イベントを1回のupdate_gui()呼び出しに集約。
-        redraw_board=Trueが1回でもあれば、最終的にredraw_board=Trueで呼び出す。
-
-        Note: ANALYSIS_COMPLETEはバックグラウンドスレッドから呼ばれるため、
-        _ui_update_lockでフラグアクセスを保護する。
-        """
-        with self._ui_update_lock:
-            # redraw_boardフラグを蓄積（ORで結合）
-            self._pending_redraw_board = self._pending_redraw_board or redraw_board
-
-            # 既にスケジュール済みなら何もしない
-            if self._pending_ui_update is not None:
-                return
-
-            # ロック内でスケジュール（Clock.schedule_onceはスレッドセーフ）
-            self._pending_ui_update = Clock.schedule_once(self._do_ui_update, 0)
-
-    def _do_ui_update(self, dt: Any) -> None:
-        """UI更新コールバック（メインスレッドで実行）"""
-        # フラグ読み取りとリセットをロック内で
-        with self._ui_update_lock:
-            self._pending_ui_update = None
-            redraw = self._pending_redraw_board
-            self._pending_redraw_board = False
-
-        # 安全チェック（getattr使用でAttributeError防止）
-        game = getattr(self, "game", None)
-        if game is None:
-            return
-        current_node = getattr(game, "current_node", None)
-        if current_node is None:
-            return
-
-        try:
-            self.update_gui(current_node, redraw_board=redraw)
-        except Exception as e:
-            # コールバック例外をログ（UIスタック防止）
-            self.log(f"update_gui failed: {e}", OUTPUT_DEBUG)
-
-    def _on_game_changed(self, event: Any) -> None:
-        """GAME_CHANGED → UI更新（redraw_board=True）"""
-        self._schedule_ui_update(redraw_board=True)
-
-    def _on_analysis_complete(self, event: Any) -> None:
-        """ANALYSIS_COMPLETE → UI更新"""
-        self._schedule_ui_update(redraw_board=False)
-
-    def _on_config_updated(self, event: Any) -> None:
-        """CONFIG_UPDATED → UI更新"""
-        self._schedule_ui_update(redraw_board=False)
+        """Delegates to UIUpdateManager (Phase 133)."""
+        self._ui_update_manager.schedule_ui_update(redraw_board=redraw_board)
 
     # ========== PopupManager support methods (Phase 75) ==========
 
@@ -409,60 +360,28 @@ class KaTrainGui(Screen, KaTrainBase):
             self.controls.set_status(f"ERROR: {message}", STATUS_ERROR)
 
     def handle_animations(self, *_args: Any) -> None:
-        if self.pondering:
-            self.board_controls.engine_status_pondering += 5
-        else:
-            self.board_controls.engine_status_pondering = -1
+        """Delegates to AnalysisController (Phase 133)."""
+        self._analysis_controller.handle_animations()
 
     @property
     def play_analyze_mode(self) -> str:
         return self.play_mode.mode  # type: ignore[no-any-return]
 
     def toggle_continuous_analysis(self, quiet: bool = False) -> None:
-        if self.pondering:
-            self.controls.set_status("", STATUS_INFO)
-        elif not quiet:  # See #549
-            Clock.schedule_once(self.analysis_controls.hints.activate, 0)
-        self.pondering = not self.pondering
-        self.update_state()
+        """Delegates to AnalysisController (Phase 133)."""
+        self._analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
 
     def toggle_move_num(self) -> None:
         self.show_move_num = not self.show_move_num
         self.update_state()
 
     def set_analysis_focus_toggle(self, focus: str) -> None:
-        """黒／白優先トグル: 同じボタンを2回押すとフォーカス解除に戻す."""
-        engine = self.engine
-        if not engine or not hasattr(engine, "config"):
-            return
-
-        current = engine.config.get("analysis_focus", None)
-        # 同じ色をもう一度押したら解除、それ以外ならその色に固定
-        new_focus = None if current == focus else focus
-
-        engine.config["analysis_focus"] = new_focus
-        self.log(f"analysis_focus set to: {new_focus}", OUTPUT_DEBUG)
-
-        try:
-            self.update_focus_button_states()
-            # 現在のノード以降のすべての解析をリセットして再実行
-            self._re_analyze_from_current_node()
-        except Exception as e:
-            self.log(f"set_analysis_focus_toggle() failed: {e}", OUTPUT_DEBUG)
+        """Delegates to AnalysisController (Phase 133)."""
+        self._analysis_controller.set_analysis_focus_toggle(focus)
 
     def _re_analyze_from_current_node(self) -> None:
-        """現在のノード以降のすべての解析をリセットして再実行する."""
-        if not self.game or not self.game.root:
-            return
-
-        # 全ノードをリセット（過去のノードを含む）
-        for node in self.game.root.nodes_in_tree:
-            if hasattr(node, "clear_analysis"):
-                node.clear_analysis()  # type: ignore[attr-defined]
-
-        # 再解析を要求（even_if_present=True により強制的に再解析）
-        self.game.analyze_all_nodes(analyze_fast=False, even_if_present=True)
-        self.log("Re-analysis started with new analysis_focus setting", OUTPUT_DEBUG)
+        """Delegates to AnalysisController (Phase 133)."""
+        self._analysis_controller.re_analyze_from_current_node()
 
     def restore_last_mode(self) -> None:
         """前回終了時のモードを復元する。"""
@@ -478,26 +397,8 @@ class KaTrainGui(Screen, KaTrainBase):
             self.log(f"restore_last_mode() failed: {e}", OUTPUT_DEBUG)
 
     def update_focus_button_states(self) -> None:
-        """黒優先・白優先ボタンのラベルを analysis_focus に合わせて更新する."""
-        engine = self.engine
-        if not engine or not hasattr(engine, "config"):
-            return
-
-        focus = engine.config.get("analysis_focus", None)
-
-        board_controls = getattr(self, "board_controls", None)
-        if not board_controls:
-            return
-
-        ids_map = getattr(board_controls, "ids", {}) or {}
-        black_btn = ids_map.get("black_focus_btn")
-        white_btn = ids_map.get("white_focus_btn")
-
-        # ★付き表記で現在の優先側を示す
-        if black_btn is not None:
-            black_btn.text = "★黒優先" if focus == "black" else "黒優先"
-        if white_btn is not None:
-            white_btn.text = "★白優先" if focus == "white" else "白優先"
+        """Delegates to AnalysisController (Phase 133)."""
+        self._analysis_controller.update_focus_button_states()
 
     def start(self) -> None:
         if self.engine:
@@ -614,58 +515,10 @@ class KaTrainGui(Screen, KaTrainBase):
     # =========================================================================
 
     def restart_engine_with_fallback(self, fallback_type: str) -> tuple[bool, TestAnalysisResult]:
-        """Restart engine with CPU fallback and verify.
-
-        Processing flow:
-        1. Find CPU binary
-        2. Restart engine with CPU binary
-        3. Run minimal analysis to verify
-        4. Only persist if verification succeeds
-
-        Persistence policy:
-        - Only on verification success: persist engine.katago
-        - On verification failure: do NOT persist (keep original settings)
-
-        Args:
-            fallback_type: Type of fallback ("cpu" for now).
-
-        Returns:
-            (success, result) tuple:
-            - success: True if verification passed
-            - result: TestAnalysisResult with details
-        """
-        if fallback_type != "cpu":
-            return False, TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.UNKNOWN,
-                error_message=f"Unknown fallback type: {fallback_type}",
-            )
-
-        # Find CPU binary
-        cpu_katago = find_cpu_katago()
-        if cpu_katago is None:
-            return False, TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.ENGINE_START_FAILED,
-                error_message="CPU KataGo binary not found",
-            )
-
-        # Shutdown current engine
-        if self.engine:
-            self.engine.shutdown(finish=False)
-            self.engine = None
-
-        # Create new engine with CPU binary
-        try:
-            engine_config = dict(self.config("engine"))
-            engine_config["katago"] = cpu_katago
-            self.engine = KataGoEngine(self, engine_config)
-        except Exception as e:
-            return False, TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.ENGINE_START_FAILED,
-                error_message=f"Failed to start CPU engine: {e}",
-            )
+        """Delegates to AutoSetupController (Phase 133)."""
+        return self._auto_setup_controller.restart_engine_with_fallback(
+            fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
+        )
 
         # Verify with minimal analysis
         result = self._verify_engine_works()
@@ -677,125 +530,22 @@ class KaTrainGui(Screen, KaTrainBase):
         return result.success, result
 
     def restart_engine(self) -> bool:
-        """Restart engine with same settings (for TIMEOUT recovery).
-
-        Returns:
-            True if engine restarted successfully.
-        """
-        if self.engine:
-            self.engine.shutdown(finish=False)
-            self.engine = None
-
-        try:
-            engine_config = self.config("engine")
-            self.engine = KataGoEngine(self, engine_config)
-            self.engine_unhealthy = False
-            return self.engine.check_alive()  # type: ignore[no-any-return]
-        except Exception:
-            return False
-
-    def save_auto_setup_result(self, success: bool) -> None:
-        """Persist test analysis result to config.
-
-        Updates auto_setup section:
-        - first_run_completed = True
-        - last_test_result = "success" | "failed"
-
-        Args:
-            success: True if test analysis succeeded.
-        """
-        auto_setup = dict(self._config.get("auto_setup", {}))
-        auto_setup["first_run_completed"] = True
-        auto_setup["last_test_result"] = "success" if success else "failed"
-        self._config["auto_setup"] = auto_setup
-        self.save_config("auto_setup")
-
-    def _verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
-        """Verify engine works with minimal analysis.
-
-        Args:
-            timeout_seconds: Timeout for analysis response.
-
-        Returns:
-            TestAnalysisResult with success/failure details.
-        """
-        if not self.engine:
-            return TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.ENGINE_START_FAILED,
-                error_message="Engine is None",
-            )
-
-        if not self.engine.check_alive():
-            # Collect error from stderr if available
-            error_text = ""
-            if hasattr(self.engine, "stderr_queue"):
-                while not self.engine.stderr_queue.empty():
-                    try:
-                        error_text += self.engine.stderr_queue.get_nowait() + "\n"
-                    except Exception:
-                        break
-
-            error_category = classify_engine_error(error_text) if error_text else ErrorCategory.ENGINE_START_FAILED
-            return TestAnalysisResult(
-                success=False,
-                error_category=error_category,
-                error_message=error_text[:200] if error_text else "Engine not alive",
-            )
-
-        # Create minimal query
-        query = self.engine.create_minimal_analysis_query()
-        result_event = threading.Event()
-        analysis_result: dict[str, Any] = {}
-
-        def on_result(analysis: dict[str, Any]) -> None:
-            analysis_result.update(analysis)
-            result_event.set()
-
-        try:
-            self.engine.request_analysis(
-                analysis_node=None,
-                callback=on_result,
-                override_queries=[query],
-            )
-        except Exception as e:
-            return TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.ENGINE_START_FAILED,
-                error_message=f"Failed to request analysis: {e}",
-            )
-
-        # Wait for result
-        is_timeout = not result_event.wait(timeout=timeout_seconds)
-        if is_timeout:
-            return TestAnalysisResult(
-                success=False,
-                error_category=ErrorCategory.TIMEOUT,
-                error_message=f"Analysis did not respond within {timeout_seconds}s",
-            )
-
-        # Check for errors in result
-        if "error" in analysis_result:
-            error_text = str(analysis_result.get("error", ""))
-            return TestAnalysisResult(
-                success=False,
-                error_category=classify_engine_error(error_text),
-                error_message=error_text[:200],
-            )
-
-        return TestAnalysisResult(
-            success=True,
-            error_category=None,
-            error_message=None,
+        """Delegates to AutoSetupController (Phase 133)."""
+        return self._auto_setup_controller.restart_engine(
+            lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
         )
 
-    def _save_engine_katago_path(self, katago_path: str) -> None:
-        """Save engine.katago path to config.
+    def save_auto_setup_result(self, success: bool) -> None:
+        """Delegates to AutoSetupController (Phase 133)."""
+        self._auto_setup_controller.save_auto_setup_result(success)
 
-        Args:
-            katago_path: Path to KataGo binary.
-        """
-        self.update_engine_config(katago=katago_path)
+    def _verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
+        """Delegates to AutoSetupController (Phase 133)."""
+        return self._auto_setup_controller.verify_engine_works(timeout_seconds)
+
+    def _save_engine_katago_path(self, katago_path: str) -> None:
+        """Delegates to AutoSetupController (Phase 133)."""
+        self._auto_setup_controller.save_engine_katago_path(katago_path)
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
@@ -1217,80 +967,8 @@ class KaTrainGui(Screen, KaTrainBase):
         do_mykatrain_settings_popup(self)
 
     def _do_batch_analyze_popup(self) -> None:
-        """Show batch analyze folder dialog. Delegates to batch_ui/batch_core functions."""
-        import threading
-
-        # 1. Load saved options
-        mykatrain_settings = self.config("mykatrain_settings") or {}
-        batch_options = mykatrain_settings.get("batch_options", {})
-        default_input_dir = batch_options.get("input_dir") or mykatrain_settings.get("batch_export_input_directory", "")
-        default_output_dir = batch_options.get("output_dir", "")
-
-        # 2. Build widgets
-        # Phase 87.5: Check if Leela is configured for gating
-        leela_enabled = is_leela_configured(self)
-        main_layout, widgets = build_batch_popup_widgets(
-            batch_options, default_input_dir, default_output_dir, leela_enabled
-        )
-
-        # 3. Create popup
-        popup = create_batch_popup(main_layout)
-
-        # 4. Setup state
-        is_running = [False]
-        cancel_flag = [False]
-
-        # 5. Create callbacks
-        filter_buttons = {
-            "filter_black": widgets["filter_black"],
-            "filter_white": widgets["filter_white"],
-            "filter_both": widgets["filter_both"],
-        }
-        get_player_filter = create_get_player_filter_fn(filter_buttons)
-
-        log_cb = create_log_callback(widgets["log_text"], widgets["log_scroll"])
-        progress_cb = create_progress_callback(widgets["progress_label"])
-        summary_cb = create_summary_callback(
-            is_running,
-            widgets["start_button"],
-            widgets["close_button"],
-            widgets["progress_label"],
-            log_cb,
-        )
-
-        def run_batch_thread() -> None:
-            """バッチスレッド実行（threading.Thread から呼ばれる）"""
-            options = collect_batch_options(widgets, get_player_filter)
-            run_batch_in_thread(self, options, cancel_flag, progress_cb, log_cb, summary_cb, self._save_batch_options)
-
-        def start_batch_thread() -> None:
-            """バッチスレッドを起動"""
-            threading.Thread(target=run_batch_thread, daemon=True).start()
-
-        # 6. Bind callbacks
-        on_start = create_on_start_callback(
-            self, widgets, is_running, cancel_flag, get_player_filter, start_batch_thread
-        )
-        on_close = create_on_close_callback(popup, is_running)
-        browse_input = create_browse_callback(widgets["input_input"], "Select input folder", self)
-        browse_output = create_browse_callback(widgets["output_input"], "Select output folder", self)
-
-        widgets["start_button"].bind(on_release=on_start)
-        widgets["close_button"].bind(on_release=on_close)
-        widgets["input_browse"].bind(on_release=browse_input)
-        widgets["output_browse"].bind(on_release=browse_output)
-
-        # Phase 87.5: Setup Leela button callback
-        def open_leela_settings(*_args: Any) -> None:
-            popup.dismiss()
-            from kivy.clock import Clock
-
-            Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(self, initial_tab="leela"), 0.15)
-
-        widgets["leela_settings_btn"].bind(on_press=open_leela_settings)
-
-        # 7. Open popup
-        popup.open()
+        """Delegates to BatchAnalysisController (Phase 133)."""
+        self._batch_analysis_controller.open_batch_analyze_popup()
 
     def _format_points_loss(self, loss: float | None) -> str:
         """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
