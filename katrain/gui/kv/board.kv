@@ -1,0 +1,122 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+#:import BLACK katrain.gui.theme.BLACK
+#:import STATUS_INFO katrain.core.constants.STATUS_INFO
+
+<BadukPanWidget>:
+    size: self.parent.height, self.parent.height
+    katrain: app.gui
+
+<NavIconButton@TransparentIconButton>:
+    size_hint: 0.06, 0.4
+    icon_size: [min(self.size[0],self.height),min(self.size[0],self.height)]
+    pos_hint: {'center_y': 0.5}
+
+<BadukPanControls>:
+    katrain: app.gui
+    circles: [black_circle,white_circle]
+    mid_circles_container: mid_circles_container
+    pass_btn: pass_btn
+    sgf_button: sgf_button
+    adaptive_height: True
+    AutoSizedRoundedRectangleButton:
+        id: sgf_button
+        text: 'SGF'
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.08,'center_y':0.5}
+        on_release: root.katrain("open-recent-sgf")
+    AutoSizedRoundedRectangleButton:
+        id: pass_btn
+        text: i18n._('pass-button-text')
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.15,'center_y':0.5}
+        on_left_release: root.katrain("play",None)
+    AutoSizedRoundedRectangleButton:
+        id: black_focus_btn
+        text: "黒優先"
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.22,'center_y':0.5}
+        on_release: app.gui.set_analysis_focus_toggle("black")
+    AutoSizedRoundedRectangleButton:
+        id: white_focus_btn
+        text: "白優先"
+        size_hint: None, 0.5
+        pos_hint: {'center_x': 0.29,'center_y':0.5}
+        on_release: app.gui.set_analysis_focus_toggle("white")
+    BoxLayout:
+        size_hint: None, 1
+        width: 8 * self.height
+        pos_hint: {'center_x': 0.5,'center_y':0.5}
+        Label:
+            size_hint: 0.075, 0.5
+        NavIconButton:
+            icon: 'Previous-Mistake.png'
+            color: Theme.MISTAKE_BUTTON_COLOR
+            on_press: root.katrain('find-mistake','undo')
+        NavIconButton:
+            icon: 'Previous-End.png'
+            on_press: root.katrain('undo',9999)
+        NavIconButton:
+            icon: 'Previous-5.png'
+            on_press: root.katrain('undo',10)
+        NavIconButton:
+            icon: 'Previous.png'
+            on_press: root.katrain('undo')
+        MDFloatLayout:
+            size_hint: 0.05, 1
+            id: mid_circles_container
+            CircleWithText:
+                size_hint: 5/8, 1
+                pos_hint: {'center_x': 0.5-3/16}
+                id: black_circle
+                player: 'B'
+                text: ''
+            CircleWithText:
+                size_hint: 5/8, 1
+                pos_hint: {'center_x': 0.5+3/16}
+                id: white_circle
+                player: 'W'
+                text: ''
+        NavIconButton:
+            icon: 'Next.png'
+            on_press: root.katrain('redo')
+        NavIconButton:
+            icon: 'Next-5.png'
+            on_press: root.katrain('redo',10)
+        NavIconButton:
+            icon: 'Next-End.png'
+            on_press: root.katrain('redo',9999)
+        NavIconButton:
+            icon: 'Next-Mistake.png'
+            color: Theme.MISTAKE_BUTTON_COLOR
+            on_press: root.katrain('find-mistake','redo')
+        NavIconButton:
+            icon: 'Rotate.png'
+            on_press: root.katrain('rotate')
+    ClickableLabel:
+        pos_hint: {'center_x': 0.85,'center_y':0.5}
+        size_hint: None, 1
+        width: self.height
+        canvas.before:
+            Color:
+                rgba: Theme.ENGINE_PONDERING_COLOR
+            Ellipse:
+                pos: self.pos[0] + self.width/2 - self.width/6, self.pos[1]  + self.height/2  - self.width/6
+                size: self.width/3, self.width/3
+            Color:
+                rgba: root.engine_status_col
+            Ellipse:
+                angle_start: 0 if root.engine_status_pondering==-1 else root.engine_status_pondering % 360
+                angle_end: 360 if root.engine_status_pondering==-1 else (root.engine_status_pondering  % 360 + 180)
+                pos: self.pos[0] + self.width/2 - self.width/6, self.pos[1]  + self.height/2  - self.width/6
+                size: self.width/3, self.width/3
+            Color:
+                rgba: BLACK
+            Line:
+                circle: self.pos[0] + self.width/2, self.pos[1] + self.height/2, self.width/6
+                width: 1
+        text: str(root.queries_remaining) if root.queries_remaining >= 3 else ''
+        color: BLACK
+        font_size: 0.5 * self.width / max(2,len(self.text))
+        on_press: app.gui.controls.set_status(i18n._('ai-ponder'),STATUS_INFO)

@@ -1,0 +1,68 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import kivy_version kivy.__version__
+#:import Theme katrain.gui.theme.Theme
+
+<LabelledTextInput>:
+    font_name: Theme.DEFAULT_FONT
+    font_size: sp(Theme.INPUT_FONT_SIZE)
+    helper_text_mode: "none"
+    hint_text: ""
+    helper_text: ""
+    color_mode: 'custom'
+    line_color_focus: Theme.TEXT_COLOR
+
+<LabelledPathInput>:
+    font_name: Theme.DEFAULT_FONT
+    font_size: sp(16)
+    multiline: False
+    write_tab: False
+    helper_text_mode: "on_error"
+    helper_text: i18n._("file not found")
+
+<LabelledIntInput>:
+    font_size: sp(Theme.INPUT_FONT_SIZE)
+    write_tab: False
+    size_hint: 0.5, None
+
+<LabelledFloatInput>:
+    font_size: sp(Theme.INPUT_FONT_SIZE)
+    write_tab: False
+    size_hint: 0.5, None
+
+<LabelledCheckBox>:
+    size: sp(Theme.DESC_FONT_SIZE)*2,sp(Theme.DESC_FONT_SIZE)*2
+    size_hint: None,None
+
+<QuickInputButton@SizedRectangleButton>
+    on_left_press: if self.target: self.target.text = self.text
+    size: sp(Theme.DESC_FONT_SIZE) * 2, sp(Theme.DESC_FONT_SIZE) * 2
+    font_size: sp(Theme.DESC_FONT_SIZE)
+
+<I18NPopup>:
+    background_color: Theme.BACKGROUND_COLOR
+    background: self.background if kivy_version < '2.0' else ''
+    title: i18n._(self.title_key)
+    title_size: sp(Theme.DESC_FONT_SIZE)
+    title_font: self.font_name
+    size_hint: None, None
+
+<QuickConfigGui>:
+    orientation: 'vertical'
+    spacing: Theme.CP_SPACING
+    padding: 4*Theme.CP_PADDING,Theme.CP_PADDING, 4*Theme.CP_PADDING, Theme.CP_PADDING
+
+<DescriptionLabel>:
+    font_size: sp(Theme.DESC_FONT_SIZE)
+    multiline: True
+    text_size: self.width, None
+    halign: 'center'
+    valign: 'center'
+
+<SmallDescriptionLabel@DescriptionLabel>
+    font_size: sp(Theme.DESC_FONT_SIZE) * 0.66
+
+<ConfigSectionGridLayout@MDGridLayout+BackgroundMixin>:
+    padding: Theme.CP_PADDING/2
+    spacing: Theme.CP_SMALL_SPACING
+    background_color: Theme.BOX_BACKGROUND_COLOR

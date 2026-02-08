@@ -1,0 +1,390 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+#:import TOP_MOVE_OPTIONS katrain.core.constants.TOP_MOVE_OPTIONS
+
+<ConfigPopup>:
+    model_path: model_path
+    humanlike_model_path: humanlike_model_path
+    katago_path: katago_path
+    model_files: model_files
+    humanlike_model_files: humanlike_model_files
+    katago_files: katago_files
+    download_progress_box: download_progress_box
+    katago_download_progress_box: katago_download_progress_box
+
+    # Top Section - KataGo Controls
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: dp(50)
+        spacing: dp(20)
+        padding: dp(10)
+        DescriptionLabel:
+            text: i18n._('katago settings')
+            font_size: sp(Theme.DESC_FONT_SIZE) * 1.5
+            size_hint_x: 0.4
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("download katago button")
+            on_press: root.download_katas()
+            size_hint: (0.3, 0.8)
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("download models button")
+            on_press: root.download_models()
+            size_hint: (0.3, 0.8)
+
+    # Main Content Area
+    MDBoxLayout:
+        orientation: 'vertical'
+        size_hint: (1, 6)
+        spacing: dp(15)
+        padding: dp(10)
+        ConfigSectionGridLayout:
+            cols: 2
+            DescriptionLabel:
+                text: i18n._("engine:model")
+                size_hint: (0.33, 1)
+            BoxLayout:
+                orientation: 'horizontal'
+                AnchorLayout:
+                    size_hint: (0.7, 1)
+                    LabelledPathInput:
+                        id: model_path
+                        input_property: "engine/model"
+                        on_text: root.check_models()
+                DescriptionLabel:
+                    text: root.get_model_display_text(model_path.text) if model_path else ''
+                    size_hint: (0.3, 1)
+                    halign: 'right'
+            Label:
+                size_hint: (0.33, 1)
+            AnchorLayout:
+                KeyValueSpinner:
+                    id: model_files
+                    text_autoupdate: True
+                    size_hint_y: 0.7
+                    on_select: if self.selected_index != 0: model_path.text = self.value_keys[self.selected_index]
+
+        ConfigSectionGridLayout:
+            cols: 2
+            DescriptionLabel:
+                text: i18n._("engine:humanlike_model")
+                size_hint: (0.33, 1)
+            AnchorLayout:
+                LabelledPathInput:
+                    id: humanlike_model_path
+                    input_property: "engine/humanlike_model"
+                    on_text: root.check_models()
+            Label:
+                size_hint: (0.33, 1)
+            AnchorLayout:
+                KeyValueSpinner:
+                    id: humanlike_model_files
+                    text_autoupdate: True
+                    size_hint_y: 0.7
+                    on_select: if self.selected_index != 0: humanlike_model_path.text = self.value_keys[self.selected_index]
+
+        ConfigSectionGridLayout:
+            cols: 2
+            DescriptionLabel:
+                text: i18n._("engine:katago")
+                size_hint: (0.33, 1)
+            AnchorLayout:
+                LabelledPathInput:
+                    id: katago_path
+                    input_property: "engine/katago"
+                    hint_text: i18n._("engine:katago:hint")
+                    on_text: root.check_katas()
+            Label:
+                size_hint: (0.33, 1)
+            AnchorLayout:
+                KeyValueSpinner:
+                    id: katago_files
+                    text_autoupdate: True
+                    size_hint_y: 0.7
+                    on_select: if self.selected_index != 0: katago_path.text = self.value_keys[self.selected_index]
+
+        ConfigSectionGridLayout:
+            rows: 2
+            cols: 2
+            DescriptionLabel:
+                text: i18n._("engine:config")
+                size_hint: 0.33, 1
+            AnchorLayout:
+                LabelledPathInput:
+                    input_property: "engine/config"
+            DescriptionLabel:
+                text: i18n._("engine:altcommand")
+                size_hint: 0.33, 1
+            AnchorLayout:
+                LabelledPathInput:
+                    check_path: False
+                    input_property: "engine/altcommand"
+                    hint_text: i18n._("engine:altcommand:hint")
+
+    MDBoxLayout:
+        size_hint_y: 0.5
+        orientation: 'horizontal'
+        padding: dp(10)
+        spacing: dp(20)
+        DescriptionLabel:
+            text: i18n._('general settings')
+            font_size: sp(Theme.DESC_FONT_SIZE) * 1.5
+        DescriptionLabel:
+            text: i18n._('engine settings')
+            font_size: sp(Theme.DESC_FONT_SIZE) * 1.5
+
+    MDBoxLayout:
+        size_hint: (1, 4)
+        orientation: 'horizontal'
+        padding: dp(10)
+        spacing: dp(20)
+        ConfigSectionGridLayout:
+            cols: 2
+            spacing: Theme.CP_SPACING
+            padding: Theme.CP_PADDING
+            DescriptionLabel:
+                text: i18n._('count down sound')
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledCheckBox:
+                    input_property: "timer/sound"
+            DescriptionLabel:
+                text: i18n._("general:anim_pv_time")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledFloatInput:
+                    input_property: "general/anim_pv_time"
+                    hint_text: i18n._("engine:time:hint")
+            DescriptionLabel:
+                text: 'Restore window size on startup'
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledCheckBox:
+                    input_property: "ui_state/restoresize"
+            DescriptionLabel:
+                text: i18n._("general:debug_level")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledIntInput:
+                    input_property: "general/debug_level"
+                    helper_text: i18n._("general:debug_level:hint")
+                    helper_text_mode: "on_focus"
+
+        ConfigSectionGridLayout:
+            cols: 2
+            DescriptionLabel:
+                text: i18n._("engine:max_visits")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledIntInput:
+                    input_property: "engine/max_visits"
+            DescriptionLabel:
+                text: i18n._("engine:fast_visits")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledIntInput:
+                    input_property: "engine/fast_visits"
+            DescriptionLabel:
+                text: i18n._("engine:max_time")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledFloatInput:
+                    input_property: "engine/max_time"
+                    hint_text: i18n._("engine:time:hint")
+            DescriptionLabel:
+                text: i18n._("engine:wide_root_noise")
+                size_hint_x: 1.5
+            AnchorLayout:
+                LabelledFloatInput:
+                    input_property: "engine/wide_root_noise"
+                    hint_text: i18n._("engine:wide_root_noise:hint")
+
+    MDBoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: 1
+        MDBoxLayout:
+            size_hint_x: 3 if self.children else 0.0001
+            orientation: 'vertical'
+            id: download_progress_box
+        MDBoxLayout:
+            size_hint_x: 3 if self.children else 0.0001
+            orientation: 'vertical'
+            id: katago_download_progress_box
+        AnchorLayout:
+            AutoSizedRoundedRectangleButton:
+                text: i18n._("update settings")
+                size_hint: (None, None)
+                height: dp(40)
+                padding_x: dp(15)
+                on_press: root.update_config(True)
+
+<ConfigTeacherPopup>
+    options_grid: options_grid
+    themes_spinner: themes_spinner
+    GridLayout:
+        cols: 5
+        rows: 7
+        size_hint: 1, 6.5
+        id: options_grid
+        DescriptionLabel:
+            text: i18n._("dot color")
+        DescriptionLabel:
+            text: i18n._("point loss threshold")
+        DescriptionLabel:
+            text: i18n._("num undos")
+        DescriptionLabel:
+            text: i18n._("show dots")
+        DescriptionLabel:
+            text: i18n._("save dots")
+    AnchorLayout:
+        size_hint: 1, 5
+        GridLayout:
+            cols: 2
+            rows: 7
+            padding: 4
+            size_hint: 0.95, 1
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("theme")
+            AnchorLayout:
+                LabelledSpinner:
+                    size_hint: 0.95,0.8
+                    input_property: 'trainer/theme'
+                    id: themes_spinner
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("stats on top move")
+            AnchorLayout:
+                BoxLayout:
+                    size_hint: 1, 0.75
+                    orientation: 'horizontal'
+                    LabelledSpinner:
+                        id: top_moves_show
+                        value_refs: TOP_MOVE_OPTIONS
+                        input_property: "trainer/top_moves_show"
+                    Label:
+                        size_hint: 0.1, 1
+                        text: '&'
+                        font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                    LabelledSpinner:
+                        id: top_moves_show_secondary
+                        value_refs: TOP_MOVE_OPTIONS
+                        input_property: "trainer/top_moves_show_secondary"
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("show stats if")
+            AnchorLayout:
+                LabelledIntInput:
+                    input_property: "trainer/low_visits"
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("show last n dots")
+            AnchorLayout:
+                LabelledIntInput:
+                    input_property: "trainer/eval_on_show_last"
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("show ai dots")
+            AnchorLayout:
+                LabelledCheckBox:
+                    input_property: "trainer/eval_show_ai"
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("show two digits for point loss near zero")
+            AnchorLayout:
+                LabelledCheckBox:
+                    input_property: "trainer/extra_precision"
+            DescriptionLabel:
+                font_size: sp(Theme.DESC_FONT_SIZE) * 0.8
+                text: i18n._("cache analysis to sgf")
+            AnchorLayout:
+                LabelledCheckBox:
+                    input_property: "trainer/save_analysis"
+    AnchorLayout:
+        size_hint: 1,1
+        AutoSizedRoundedRectangleButton:
+            padding_x: 15
+            size_hint: None,0.75
+            text: i18n._("update teacher")
+            on_press: root.update_config(True)
+
+<ConfigTimerPopup>:
+    MDGridLayout:
+        cols: 2
+        rows: 4
+        spacing: 1.5 * Theme.CP_SPACING
+        size_hint: 1,2.5
+        DescriptionLabel:
+            text: i18n._('main time')
+        AnchorLayout:
+            LabelledIntInput:
+                text: "10"
+                input_property: "timer/main_time"
+        DescriptionLabel:
+            text: i18n._('byoyomi length')
+        AnchorLayout:
+            LabelledIntInput:
+                text: "30"
+                input_property: "timer/byo_length"
+        DescriptionLabel:
+            text: i18n._('byoyomi periods')
+        AnchorLayout:
+            LabelledIntInput:
+                text: "5"
+                input_property: "timer/byo_periods"
+        DescriptionLabel:
+            text: i18n._('minimal time use')
+        AnchorLayout:
+            LabelledIntInput:
+                text: "0"
+                input_property: "timer/minimal_use"
+    AnchorLayout:
+        size_hint: 1,1
+        AutoSizedRoundedRectangleButton:
+            padding_x: 15
+            size_hint: None,0.5
+            text: i18n._("update timer")
+            on_press: root.update_config(True)
+
+<ConfigAIPopup>:
+    options_grid: options_grid
+    help_label: help_label
+    estimated_rank_label: estimated_rank_label
+    ai_select: ai_select
+    BoxLayout:
+        size_hint: 1,1
+        DescriptionLabel:
+            font_size: sp(Theme.DESC_FONT_SIZE)
+            text: i18n._('Select AI')
+        AnchorLayout:
+            I18NSpinner:
+                size_hint: 0.8, 0.5
+                id: ai_select
+    BoxLayout:
+        size_hint: 1,1
+        DescriptionLabel:
+            font_size: sp(Theme.DESC_FONT_SIZE)
+            size_hint: 1, 1
+            text: i18n._('estimated strength')
+        DescriptionLabel:
+            size_hint: 0.8, 1
+            font_size: sp(Theme.DESC_FONT_SIZE)
+            id: estimated_rank_label
+            text: '?' + i18n._('strength:kyu')
+    SmallDescriptionLabel:
+        id: help_label
+        size_hint: 1,1.25
+        text: i18n._('')
+    GridLayout:
+        size_hint: 1, 4
+        id: options_grid
+        rows: root.max_options
+        cols: 2
+    AnchorLayout:
+        size_hint: 1, 1.5
+        AutoSizedRoundedRectangleButton:
+            padding_x: 15
+            size_hint: None,0.5
+            text: i18n._("update ai settings")
+            on_press: root.update_config(True)

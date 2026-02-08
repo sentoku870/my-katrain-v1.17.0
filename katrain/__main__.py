@@ -1382,8 +1382,8 @@ class KaTrainApp(MDApp):
         self.theme_cls.primary_palette = "Gray"
         self.theme_cls.primary_hue = "200"
 
-        kv_file = find_package_resource("katrain/gui.kv")
-        popup_kv_file = find_package_resource("katrain/popups.kv")
+        # Phase 133: KV files are now loaded from katrain/gui/kv/ directory
+
         resource_add_path(PATHS["PACKAGE"] + "/fonts")
         resource_add_path(PATHS["PACKAGE"] + "/sounds")
         resource_add_path(PATHS["PACKAGE"] + "/img")
@@ -1396,12 +1396,18 @@ class KaTrainApp(MDApp):
             load_theme_overrides(theme_file, Theme)
 
         Theme.DEFAULT_FONT = resource_find(Theme.DEFAULT_FONT)
-        Builder.load_file(kv_file)
+        # Load Split KV files (Phase 133)
+        kv_dir = find_package_resource("katrain/gui/kv")
+        kv_files = glob.glob(os.path.join(kv_dir, "*.kv"))
+        # Load widget definitions first to ensure base classes are available
+        for file in sorted(kv_files, key=lambda x: ("widget" not in x.lower(), x)):
+            Builder.load_file(file)
+
 
         Window.bind(on_request_close=self.on_request_close)
         Window.bind(on_dropfile=lambda win, file: self.gui.load_sgf_file(file.decode("utf8")))
         self.gui = KaTrainGui()
-        Builder.load_file(popup_kv_file)
+
 
         win_left: int | None = None
         win_top: int | None = None

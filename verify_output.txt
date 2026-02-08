@@ -1,8 +1,0 @@
-Testing Karte Report JSON...
-  [INFO] Karte Report generated.
-  [PASS] Karte Report JSON valid.
-Testing Summary Report JSON...
-  [INFO] Summary Report generated.
-  [PASS] Summary Report JSON valid.
-
-All JSON verification tests passed!

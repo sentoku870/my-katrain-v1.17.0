@@ -1,0 +1,398 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+#:import PLAYER_HUMAN katrain.core.constants.PLAYER_HUMAN
+#:import MODE_PLAY katrain.core.constants.MODE_PLAY
+#:import STATUS_INFO katrain.core.constants.STATUS_INFO
+
+#:set player_box_height 0.15
+#:set timer_box_height  0.3
+#:set graph_box_height  0.37
+#:set STATS_BOX_HEIGHT  0.27
+#:set INFO_BOX_HEIGHT   1
+
+<PlayerInfo>:
+    captures: 0
+    player: 'B'
+    player_type: 'player:human'
+    player_subtype: 'game:normal'
+    background_color: Theme.BOX_BACKGROUND_COLOR if self.active else Theme.BACKGROUND_COLOR
+    outline_color: Theme.BOX_BACKGROUND_COLOR
+    outline_width: 2
+    padding: [2*Theme.CP_PADDING,Theme.CP_PADDING,Theme.CP_PADDING,Theme.CP_PADDING]
+    subtype_label: subtype_label
+    CircleWithText:
+        size_hint_x: 0.32 if root.alignment=='right' else 1e-9
+        opacity: 1 if root.alignment=='right' else 0
+        player: root.player
+        text: str(root.captures)
+    BoxLayout:
+        size_hint: 0.75, 1
+        pos_hint: {'x':0,'y':0}
+        size_hint: 1,1
+        orientation: 'vertical'
+        Label:
+            size_hint: 1,0.6
+            text: i18n._(root.player_type)
+            font_size: 0.8 * self.height
+            size: self.texture_size
+            max_lines: 1
+            halign: 'center'
+            valign: 'middle'
+        Label: 
+            id: subtype_label
+            text: i18n._(root.player_subtype)
+            size_hint: 1,0.4
+            font_size: self.height * 0.7 if root.player_type==PLAYER_HUMAN else self.height * 0.7 * min(1,18/len(self.text))
+            text_size: self.size if root.player_type==PLAYER_HUMAN else (None,self.height)
+            halign: 'center'
+            valign: 'middle'
+            shorten: root.player_type==PLAYER_HUMAN
+            max_lines: 1
+    CircleWithText:
+        size_hint_x: 1e-9 if root.alignment=='right' else 0.32
+        opacity: 0 if root.alignment=='right' else 1
+        player: root.player
+        text: str(root.captures)
+
+<PauseButton>:
+    height: self.width
+    size_hint: 1, None
+    min_size: min(self.height,self.width)
+    inactive_line_color: Theme.BUTTON_BORDER_COLOR
+    inactive_fill_color: [1,1,1,0]
+    active_line_color: Theme.PAUSE_ACTIVE_COLOR
+    active_fill_color: [1,1,1,0]
+    line_width: max(1.1,self.min_size/20)
+    line_color: root.active_line_color if self.active else root.inactive_line_color
+    fill_color: root.active_fill_color if self.active else root.inactive_fill_color
+    canvas:
+        Color:
+            rgba: root.fill_color
+        Ellipse:
+            pos: root.x + root.width/2 - root.min_size/2, root.y  + root.height/2 - root.min_size/2
+            size: root.min_size,root.min_size
+        Color:
+            rgba: root.inactive_line_color
+        Line:
+            circle: root.x + root.width/2, root.y + root.height/2, root.min_size/2 - root.line_width/2
+            width: root.line_width
+        Color:
+            rgba: root.line_color
+        Line:
+            points: root.x + root.width/2 - root.min_size/8, root.y + root.height/2 - root.min_size/6, root.x + root.width/2 - root.min_size/8, root.y + root.height/2 + root.min_size/6
+            width: root.line_width
+            cap: 'square'
+        Line:
+            points: root.x + root.width/2 + root.min_size/8, root.y + root.height/2 - root.min_size/6, root.x + root.width/2 + root.min_size/8, root.y + root.height/2 + root.min_size/6
+            width: root.line_width
+            cap: 'square'
+
+<TimerLabel@Label>
+    timeout: False
+    color: Theme.TIMER_TEXT_TIMEOUT_COLOR if self.timeout else Theme.TIMER_TEXT_COLOR
+    markup: True
+    max_lines: 1
+    font_name: 'digital-7 (mono).ttf'
+
+<Timer>:
+    spacing: Theme.CP_SPACING
+    padding: Theme.CP_PADDING * 4, Theme.CP_PADDING * 2
+    paused: True
+    timeout: root.state[1] is not None and root.state[1] <= 0
+    MDBoxLayout:
+        size_hint: 0.7,1
+        MDFloatLayout:
+            size_hint: 0.4,1
+            TimerLabel:
+                color: Theme.BACKGROUND_COLOR
+                text: '{}:88'.format('188' if root.state[0] >= 6000 else '88')
+                font_size: 0.85*self.height
+                pos_hint: {'right':1,'center_y':0.5}
+                halign: 'right'
+                valign: 'middle'
+            TimerLabel:
+                id: timer
+                timeout: root.timeout
+                text: "{:2d}:{:02d}".format(int(root.state[0]+0.99)//60,int((root.state[0]+0.99) % 60) )
+                font_size: 0.85*self.height
+                pos_hint: {'right':1,'center_y':0.5}
+                halign: 'right'
+                valign: 'middle'
+        TimerLabel:
+            size_hint: 0.05,1
+            text: "x" if  root.state[1] is not None else ""
+            font_size: self.height * 0.3
+            text_size: self.width, self.height * 0.95
+            halign: 'right'
+            valign: 'top'
+            timeout: root.timeout
+        TimerLabel:
+            size_hint: 0.075,1
+            font_size: self.height * 0.35
+            text_size: self.size
+            halign: 'left'
+            valign: 'top'
+            id: periods
+            text: str(root.state[1]) if root.state[1] is not None else ""
+            max_lines: 1
+            timeout: root.timeout
+    MDBoxLayout:
+        size_hint: 0.2,1
+        PauseButton:
+            pos_hint: {'center_y':0.5}
+            id: pause
+            active: root.paused
+            on_left_press: root.paused = not root.paused
+
+<GraphMarkerLabel@Label>:
+    valign: 'bottom'
+    halign: 'left'
+    text: '+0'
+    size: self.texture_size
+
+<StatsLabel>:
+    orientation: 'horizontal'
+    size_hint_y: 1e-9 if root.hidden else 1
+    opacity: 0 if root.hidden else 1
+    Label:
+        size_hint: 0.6,1
+        id: desc
+        font_size: self.height * 0.7
+        font_name: root.font_name
+        text_size: self.size
+        valign: 'middle'
+        halign: 'center'
+        text: root.label
+        max_lines: 1
+    Label:
+        size_hint: 0.4,1
+        color: root.color
+        font_size: desc.font_size
+        font_name: root.font_name
+        text_size: self.size
+        valign: 'middle'
+        halign: 'center'
+        bold: True
+        text: root.text
+        max_lines: 1
+
+<StatsBox>
+    orientation: 'vertical'
+    background_color: Theme.BOX_BACKGROUND_COLOR
+    labels: {'score':score_label,'winrate':winrate_label,'points':pointloss_label}
+    StatsLabel:
+        id: winrate_label
+        label: i18n._('stats:winrate')
+        text: root.winrate
+        color: Theme.WINRATE_COLOR
+    StatsLabel:
+        id: score_label
+        label: i18n._('stats:score')
+        text: root.score
+        color: Theme.SCORE_COLOR
+    StatsLabel:
+        id: pointloss_label
+        label: i18n._('stats:pointslost') if root.points_lost is None or root.points_lost > 0 else i18n._('stats:pointsgained')
+        text: '{}: {:.1f}'.format(i18n._(f'short color {root.player}'), abs(root.points_lost)) if root.points_lost is not None else '...'
+        color: Theme.POINTLOSS_COLOR
+
+<ScrollableLabel>:
+    background_color: Theme.BOX_BACKGROUND_COLOR
+    do_scroll_x: False
+    scroll_type: ['bars']
+    bar_width: 5
+    bar_color: Theme.SCROLLBAR_COLOR
+    label: label
+    canvas.before:
+        Color:
+            rgba: root.outline_color
+        Line:
+            rectangle:  (*self.pos,*self.size)
+            width: 1
+    Label:
+        id: label
+        lang_change_tracking: i18n._('')
+        markup: root.markup
+        padding: 5, 5
+        font_size: Theme.NOTES_FONT_SIZE
+        line_height: root.line_height
+        color: Theme.TEXT_COLOR
+        size_hint_y: None
+        height: self.texture_size[1]
+        text_size: self.width, None
+        text: root.text
+        on_ref_press: root.dispatch('on_ref_press',args[1])
+
+<CollapsablePanelHeader>:
+    canvas.after:
+        Color:
+            rgba: Theme.BOX_BACKGROUND_COLOR
+        Line:
+            width: 1
+            points: (self.x,self.y+1,self.x+self.width,self.y+1)
+
+<ControlsPanel>:
+    katrain: app.gui
+    orientation: 'vertical'
+    players: {'B':B_player,'W':W_player}
+    timer:timer
+    graph: graph
+    stats: stats
+    notes_panel: notes_panel
+    info: info
+    note: note
+    status: status
+    timer_or_movetree: timer_or_movetree
+    move_tree: move_tree
+    padding: Theme.CP_PADDING,Theme.CP_PADDING,Theme.CP_PADDING,0
+    spacing: Theme.CP_SPACING
+    tab_option_height: max(15,root.height / 30)
+    available_height: root.height - (3 * self.tab_option_height + 2*Theme.CP_PADDING - 4*Theme.CP_SPACING)
+    player_box_height: max(50, 0.08 * root.available_height)
+    timer_box_height:  max(50, 0.11 * root.available_height)
+    graph_height:  max(75, 0.17 * root.height)
+    stat_height: max(20, 0.035 * root.height)
+    BoxLayout: # -- Players
+        size_hint_y: None
+        height: root.player_box_height
+        PlayerInfo:
+            id: B_player
+            player: 'B'
+        PlayerInfo:
+            id: W_player
+            player: 'W'
+    TimerOrMoveTree:
+        id: timer_or_movetree
+        size_hint_y: None
+        height: root.timer_box_height + max(0,int(self.mode != MODE_PLAY) * (root.tab_option_height + root.graph_height - graph_panel.height))
+        BoxLayout:
+            size_hint_x: 1e-9 if self.parent.mode != MODE_PLAY else 1
+            opacity: 0 if self.parent.mode != MODE_PLAY else 1
+            spacing: Theme.CP_SPACING
+            Timer:
+                id: timer
+                size_hint_x: 0.65
+            MDBoxLayout:
+                orientation: 'vertical'
+                padding: 2*Theme.CP_PADDING,Theme.CP_PADDING
+                spacing: Theme.CP_SPACING
+                SizedRoundedRectangleButton:
+                    text: i18n._('undo-button-text')
+                    size_hint: 1, 0.5
+                    on_left_release: root.katrain("undo","smart")
+                SizedRoundedRectangleButton:
+                    text: i18n._('resign')
+                    size_hint: 1, 0.5
+                    on_left_release: root.katrain("resign")
+        MoveTree:
+            id: move_tree
+            min_height: root.timer_box_height
+            size_hint_x: 1e-9 if self.parent.mode == MODE_PLAY else 1
+            opacity: 0 if self.parent.mode == MODE_PLAY else 1
+    CollapsablePanel:
+        id: graph_panel
+        content_height: graph.height + dp(32)
+        options_height: root.tab_option_height
+        closed_label: 'closedlabel:scoregraph'
+        options: ['score','winrate']
+        option_colors: [Theme.SCORE_COLOR,Theme.WINRATE_COLOR]
+        option_active: [True,False,False]
+        on_option_state:
+            graph.show_graphs(args[1])
+            graph.hidden = not (args[1]['score'] or args[1]['winrate'])
+        ScoreGraph:
+            id: graph
+            opacity: 0 if (self.hidden or (app.gui and app.gui.is_fog_active())) else 1
+            size_hint_y: None
+            height: root.graph_height
+        BoxLayout:
+            size_hint_y: None
+            height: dp(32)
+            spacing: dp(4)
+            Button:
+                text: '前の重要局面'
+                size_hint_x: 0.4
+                font_size: sp(12)
+                on_release: root.katrain("prev_important")
+            Button:
+                text: '次の重要局面'
+                size_hint_x: 0.4
+                font_size: sp(12)
+                on_release: root.katrain("next_important")
+            ToggleButton:
+                id: important_line_toggle
+                text: '重要局面'
+                size_hint_x: 0.2
+                state: "down"
+                font_size: sp(12)
+                on_state:
+                    graph.show_important_line = (self.state == "down")
+    CollapsablePanel:
+        id: stats_panel
+        num_active: 3
+        content_height: self.num_active * root.stat_height + 1e-9
+        options_height: root.tab_option_height
+        closed_label: 'closedlabel:movestats'
+        options: ['score','winrate','points']
+        option_colors: [Theme.SCORE_COLOR,Theme.WINRATE_COLOR,Theme.POINTLOSS_COLOR]
+        option_active: [True,True,True]
+        on_option_state:
+            for k, v in args[1].items(): stats.labels[k].hidden = not v
+            self.num_active = sum(args[1].values(),0)
+        StatsBox:
+            id: stats
+    CollapsablePanel:
+        id: notes_panel
+        size_hint_y_open: 1
+        closed_label: 'closedlabel:info&notes'
+        options: ['info','info-details','notes']
+        option_colors: [Theme.INFO_TAB_FONT_COLOR,Theme.INFO_TAB_FONT_COLOR,Theme.NOTES_TAB_FONT_COLOR]
+        option_active: [True,False,False]
+        on_option_state:
+            info.detailed = args[1]['info-details']
+            info.size_hint_y = int(args[1]['info'] or info.detailed)+1e-9
+            info.opacity =  int(args[1]['info'] or info.detailed)
+            notebox.size_hint_y = int(args[1]['notes'])*0.66+1e-9
+            notebox.opacity = int(args[1]['notes'])
+            app.gui.update_state()
+        options_height: root.tab_option_height
+        BGBoxLayout:
+            background_color: Theme.BOX_BACKGROUND_COLOR
+            orientation: 'vertical'
+            ScrollableLabel:
+                id: status
+                error: False
+                size_hint: 1, None
+                height: min(self.parent.height*0.66,self.label.texture_size[1])
+                outline_color: Theme.ERROR_BORDER_COLOR if self.error else Theme.INFO_TAB_FONT_COLOR
+                background_color: Theme.LIGHTER_BACKGROUND_COLOR
+            ScrollableLabel:
+                id: info
+                detailed: False
+                line_height: 1.25
+                markup: True
+                on_ref_press: root.katrain.board_gui.show_pv_from_comments(args[1])
+                size_hint: 1, 1
+                height: self.parent.height - status.height - note.height - 1
+            AnchorLayout:
+                padding: 0
+                id: notebox
+                size_hint: 1,0
+                LabelledTextInput:
+                    id: note
+                    font_size: Theme.NOTES_FONT_SIZE
+                    multiline: True
+                    on_text: root.katrain.set_note(self.text)
+                    hint_text: i18n._('SGF Notes Hint')
+                    color_mode: 'custom'
+                    line_color_focus: Theme.TEXT_COLOR
+                    size_hint: 1, 1
+                    canvas.before:
+                        Color:
+                            rgba: Theme.LIGHTER_GREY if hasattr(Theme, 'LIGHTER_GREY') else [0.8, 0.8, 0.8, 1]
+                        Line:
+                            points: self.x, self.y+self.height, self.x+self.width, self.y+self.height
+                            width: 1
+    Label:
+        size_hint_y: 1e-9

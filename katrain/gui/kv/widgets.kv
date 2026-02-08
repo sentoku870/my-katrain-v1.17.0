@@ -1,0 +1,173 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+#:import BLACK katrain.gui.theme.BLACK
+#:import LIGHTER_GREY katrain.gui.theme.LIGHTER_GREY
+#:import LIGHT_GREY katrain.gui.theme.LIGHT_GREY
+
+#:set CP_SPACING Theme.CP_SPACING
+#:set CP_SMALL_SPACING Theme.CP_SMALL_SPACING
+#:set CP_PADDING Theme.CP_PADDING
+#:set EPSILON 1e-9
+
+# mixins
+<BackgroundMixin>:
+    canvas.before:
+        Color:
+            rgba: root.background_color
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [root.background_radius, ]
+        Color:
+            rgba: root.outline_color
+        Line:
+            rounded_rectangle: (self.x + root.outline_width, self.y + root.outline_width, self.width - 2 * root.outline_width, self.height - 2*root.outline_width, root.background_radius,root.background_radius,root.background_radius,root.background_radius,max(1,root.height))
+            width: root.outline_width or 1
+
+<TableCellLabel>:
+    font_size: self.height/3
+    padding: [Theme.CP_PADDING,Theme.CP_PADDING]
+    line_height: 0.8
+    halign: 'center'
+    canvas.before:
+        Color:
+            rgba: root.background_color
+        Rectangle:
+            size: self.size
+            pos: self.pos
+    canvas:
+        Color:
+            rgba: root.outline_color
+        Line: # left
+            points: (root.x + root.outline_width,root.y,root.x + root.outline_width,root.y+root.size[1])
+            width: root.outline_width if 'left' in root.outlines else 1e-6
+            cap: 'square'
+        Line: # right
+            points: (root.x + root.size[0] - root.outline_width,root.y,root.x + root.size[0] - root.outline_width,root.y+root.size[1])
+            width: root.outline_width if 'right' in root.outlines else 1e-6
+            cap: 'square'
+        Line: # top
+            points: (root.x, root.y+root.size[1]-root.outline_width, root.x + root.size[0], root.y+root.size[1]-root.outline_width)
+            width: root.outline_width if 'top' in root.outlines else 1e-6
+            cap: 'square'
+        Line: # bottom
+            points:  (root.x, root.y+root.outline_width, root.x + root.size[0], root.y+root.outline_width)
+            width: root.outline_width * int('bottom' in root.outlines) + 1e-6
+            cap: 'square'
+
+<TableHeaderLabel>:
+    font_size: self.height/2.5
+
+<TableStatLabel>:
+    canvas.before:
+        Color:
+            rgba: root.bar_color
+        Rectangle:
+            pos: root.x if root.side=='right' else root.x+root.size[0]*(1 - min(1,root.value/root.scale)), root.y
+            size: root.size[0] * min(1,root.value/root.scale), root.size[1]
+
+<SizedButton>:
+    ripple_duration_in_slow: 0.6
+    text_color: Theme.TEXT_COLOR
+    background_color: Theme.BOX_BACKGROUND_COLOR
+    label: label
+    text_size: root.size
+    Label:
+        id: label
+        padding: [root.padding_x,root.padding_y]
+        color: root.text_color
+        font_name: root.font_name
+        font_size: 0.6 * self.height / len(self.text.split('\n')) if root._font_size is None else root._font_size
+        halign: root.halign
+        text: root.text
+
+<AutoSizedButton>:
+    width: root.label.texture_size[0]
+
+<ToggleButtonMixin>:
+    inactive_background_color: Theme.BACKGROUND_COLOR
+    active_background_color: Theme.BOX_BACKGROUND_COLOR
+    background_color: self.active_background_color if self.state=='down' else self.inactive_background_color
+    outline_color: self.active_outline_color if self.state=='down' else self.inactive_outline_color
+
+<SizedRectangleButton>:
+    outline_color: Theme.BUTTON_BORDER_COLOR
+    text_color: self.outline_color
+
+<AutoSizedRectangleButton>:
+    outline_color: Theme.BUTTON_BORDER_COLOR
+    text_color: self.outline_color
+
+<SizedRectangleToggleButton>:
+    inactive_outline_color: Theme.BUTTON_INACTIVE_COLOR
+    active_outline_color: Theme.BUTTON_BORDER_COLOR
+    text_color: self.outline_color
+
+<AutoSizedRectangleToggleButton>:
+    inactive_outline_color: Theme.BUTTON_INACTIVE_COLOR
+    active_outline_color: Theme.BUTTON_BORDER_COLOR
+    text_color: self.outline_color
+
+<SizedRoundedRectangleButton@SizedRectangleButton>:
+    background_radius: self.height/3.5
+
+<AutoSizedRoundedRectangleButton@AutoSizedRectangleButton>:
+    background_radius: self.height/3.5
+
+<BGBoxLayout>:
+    background_color: Theme.BOX_BACKGROUND_COLOR
+
+<TransparentIconButton>:
+    background_normal: ''
+    background_color: (0,0,0,0)
+    image: image
+    Image:
+        id: image
+        size: root.icon_size
+        pos: [root.pos[i] + (root.size[i] - root.icon_size[i])/2 for i in [0,1]]
+        source: root.icon
+        mipmap: True
+        color: [1,1,1,0.4] if root.disabled else root.color
+
+<I18NSpinnerOption@SpinnerOption>:
+    background_color: Theme.LIGHTER_BACKGROUND_COLOR
+    background_normal: ''
+    lang_change_tracking: i18n._('') # for font
+    color: Theme.INPUT_FONT_COLOR
+    canvas.after:
+        Color:
+            rgba: LIGHT_GREY
+        Line
+            points: self.x,self.y,self.x+self.width,self.y
+            width: 1
+
+<Spinner>:
+    -font_size: self.height * 0.5
+    background_color: [*[c*255/88 for c in Theme.BACKGROUND_COLOR[:3]], 1] # compensate for texture
+    option_cls: 'I18NSpinnerOption'
+
+<Button>:
+    track_lang: i18n._('')
+
+<I18NSpinner>
+    sync_height_frac: 1.0
+
+<CircleWithText>:
+    min_size: min(self.height,self.width)
+    Image:
+        id: image
+        pos: (root.pos[0] + (root.width - root.min_size)/2,root.pos[1] + (root.height - root.min_size)/2)
+        size: (root.min_size,root.min_size)
+        source: 'white_circle.png' if root.player=='W' else 'black_circle.png'
+        mipmap: True
+    Label:
+        id: lbl
+        text: root.text
+        text_size: None, root.min_size
+        bold: True
+        valign: 'center'
+        color: Theme.CIRCLE_TEXT_COLORS[root.player]
+        pos: (image.x, image.y)
+        size: image.size
+        font_size: root.min_size * 1.2 / (1 + 1 * len(self.text))

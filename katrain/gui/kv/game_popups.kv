@@ -1,0 +1,281 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+
+<NewGameModeButton@SizedToggleButton>:
+    inactive_background_color: Theme.LIGHTER_BACKGROUND_COLOR
+    active_background_color: Theme.PLAY_ANALYZE_TAB_COLOR
+    ripple_color: Theme.LIGHTER_BACKGROUND_COLOR
+    text_color: self.inactive_background_color if self.state=='down' else self.active_background_color
+    size_hint: 0.33,1
+    _font_size: self.height * 0.45
+    group: 'new_game_mode'
+    allow_no_selection: False
+
+<HideyBoxLayout@BoxLayout>:
+    opacity: 1 if self.size_hint_y > 1e-9 else 0
+
+<NewGamePopup>:
+    restart: restart
+    rules_spinner: rules_spinner
+    km: km
+    player_setup: player_setup
+    player_name: {"W": white_player_name, "B": black_player_name}
+    BoxLayout:
+        size_hint: 1, 0.66
+        BoxLayout:
+            size_hint: 0.7,0.7
+            pos_hint: {'center_x':0.5,'center_y':0.5}
+            NewGameModeButton:
+                text: i18n._('newgame')
+                id: play
+                state: 'down'
+                on_state: if self.state=='down': root.mode = 'newgame'
+            NewGameModeButton:
+                text: i18n._('setupposition')
+                id: analyze_btn
+                on_state: if self.state=='down': root.mode = 'setupposition'
+            NewGameModeButton:
+                text: i18n._('editgame')
+                id: edit_btn
+                on_state: if self.state=='down': root.mode = 'editgame'
+    PlayerSetupBlock:
+        size_hint: 1, 2
+        id: player_setup
+    GridLayout:
+        rows: 3
+        cols: 3
+        size_hint: 1, 1.5
+        spacing: Theme.CP_SPACING
+        padding: Theme.CP_PADDING
+        DescriptionLabel:
+            text: i18n._("player names")
+        AnchorLayout:
+            LabelledTextInput:
+                text: ''
+                id: black_player_name
+                write_tab: False
+                hint_text: i18n._("black player name hint")
+                size_hint: 0.75, None
+        AnchorLayout:
+            LabelledTextInput:
+                text: ''
+                id: white_player_name
+                write_tab: False
+                hint_text: i18n._("white player name hint")
+                size_hint: 0.75, None
+        DescriptionLabel:
+            text: i18n._("ruleset")
+        AnchorLayout:
+            LabelledSpinner:
+                size_hint: 0.95,0.8
+                input_property: 'game/rules'
+                font_size: sp(Theme.DESC_FONT_SIZE)
+                id: rules_spinner
+        Label:
+        DescriptionLabel:
+            text:  i18n._("komi")
+        AnchorLayout:
+            LabelledFloatInput:
+                text: '6.5'
+                id: km
+                input_property: 'game/komi'
+        AnchorLayout:
+            MDBoxLayout:
+                adaptive_size: True
+                spacing: Theme.CP_SPACING
+                QuickInputButton:
+                    text: '0.5'
+                    target: km
+                QuickInputButton:
+                    text: '6.5'
+                    target: km
+                QuickInputButton:
+                    text: '7.5'
+                    target: km
+    HideyBoxLayout:
+        size_hint_y: 1 if root.mode != 'editgame' else 1e-9
+        id: board_setup_section
+        GridLayout:
+            cols: 3
+            rows: 2
+            DescriptionLabel:
+                text: i18n._("board size")
+            AnchorLayout:
+                LabelledTextInput:
+                    text: '19'
+                    id: boardsize
+                    input_property: 'game/size'
+                    write_tab: False
+                    size_hint: 0.5, None
+                    hint_text: i18n._("non square board hint")
+            AnchorLayout:
+                MDBoxLayout:
+                    adaptive_size: True
+                    spacing: Theme.CP_SPACING
+                    QuickInputButton:
+                        text: '9'
+                        target: boardsize
+                    QuickInputButton:
+                        text: '13'
+                        target: boardsize
+                    QuickInputButton:
+                        text: '19'
+                        target: boardsize
+            DescriptionLabel:
+                text:  i18n._("handicap")
+            AnchorLayout:
+                LabelledIntInput:
+                    text: '0'
+                    input_property: 'game/handicap'
+                    write_tab: False
+                    id: handicap
+            AnchorLayout:
+                MDBoxLayout:
+                    adaptive_size: True
+                    spacing: Theme.CP_SPACING
+                    QuickInputButton:
+                        text: '0'
+                        on_left_press: km.text='6.5'
+                        target: handicap
+                    QuickInputButton:
+                        text: '2'
+                        on_left_press: km.text='0.5'
+                        target: handicap
+                    QuickInputButton:
+                        text: '9'
+                        on_left_press: km.text='0.5'
+                        target: handicap
+    HideyBoxLayout:
+        id: new_game_section
+        size_hint_y: 1.5 if root.mode == 'newgame' else 1e-9
+        DescriptionLabel:
+            text: i18n._('clear cache')
+        AnchorLayout:
+            LabelledCheckBox:
+                id: restart
+                input_property: 'game/clear_cache'
+        SmallDescriptionLabel:
+            text: i18n._('avoids replaying')
+    HideyBoxLayout:
+        id: setup_game_section
+        size_hint_y: 1.5 if root.mode == 'setupposition' else 1e-9
+        orientation: 'vertical'
+        SmallDescriptionLabel:
+            text: i18n._('setup position explanation')
+            size_hint: 1, 1.5
+        GridLayout:
+            cols: 2
+            rows: 2
+            size_hint: 1,2
+            DescriptionLabel:
+                text: i18n._('setup position black score')
+            AnchorLayout:
+                LabelledSelectionSlider:
+                    input_property: 'game/setup_advantage'
+                    key_option: True
+                    values: [(pt,f"{pt}") for pt in range(-150,151)]
+            DescriptionLabel:
+                text: i18n._('setup position move number')
+            AnchorLayout:
+                LabelledSelectionSlider:
+                    input_property: 'game/setup_move'
+                    key_option: True
+                    values: [(mv,str(mv)) for mv in range(50,251)]
+    BoxLayout:
+        size_hint_y: 2.5 if root.mode == 'editgame' else 1e-9
+    HideyBoxLayout:
+        size_hint: 1,0.75
+        AnchorLayout:
+            AutoSizedRoundedRectangleButton:
+                padding_x: 15
+                size_hint: None,0.66
+                text: i18n._(root.mode)
+                on_press: root.update_config(True)
+
+<LabelledSelectionSlider>:
+    slider: slider
+    textbox: textbox
+    SelectionSlider:
+        id: slider
+        size_hint: 2.25,1
+        values: root.values
+        on_change: textbox.text = str(slider.value)
+        track_color: Theme.LIGHT_GREY if hasattr(Theme, 'LIGHT_GREY') else [0.8, 0.8, 0.8, 1]
+        thumb_color: (0.6, 0.7, 0.9, 1) if root.key_option else (0.3, 0.4, 0.6, 1)
+    LabelledFloatInput:
+        id: textbox
+
+<EngineRecoveryPopup>:
+    orientation: 'vertical'
+    padding: dp(10)
+    spacing: dp(8)
+    Label:
+        text: i18n._("engine died popup opening message").format(code=root.code,error_message=root.error_message) + "\n\n" + i18n._("change engine suggestion").format(link="[color=#CCCC11][u][ref=engine_settings]"+i18n._('menu:settings')+"[/ref][/u][/color]")
+        text_size: self.size
+        font_size: sp(Theme.DESC_FONT_SIZE)
+        markup: True
+        valign: 'top'
+        size_hint_y: 0.35
+        on_ref_press: app.gui('config-popup')
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: 0.65
+        spacing: dp(6)
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:reset_to_auto")
+            on_press: root.on_reset_to_auto()
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:copy_for_llm")
+            on_press: root.on_copy_for_llm()
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:save_diagnostics")
+            on_press: root.on_save_diagnostics()
+        AutoSizedRoundedRectangleButton:
+            text: i18n._("mykatrain:recovery:copy_log")
+            on_press: root.on_copy_log()
+
+<ReAnalyzeGamePopup>:
+    visits: visits
+    orientation: 'vertical'
+    button: button
+    move_range: move_range
+    start_move: start_move
+    end_move: end_move
+    mistakes: mistakes
+    BoxLayout:
+        size_hint: 1, 1.5
+        orientation: 'vertical'
+        GridLayout:
+            cols: 2
+            rows: 2
+            size_hint: 1, 2
+            DescriptionLabel:
+                text: i18n._('reanalyze max visits')
+            AnchorLayout:
+                LabelledIntInput:
+                    id: visits
+                    text: '2500'
+            BoxLayout:
+                AnchorLayout:
+                    size_hint: 0.3333, 1
+                    LabelledCheckBox:
+                        id: move_range
+                        default_active: False
+                DescriptionLabel:
+                    size_hint: 0.6667, 1
+                    text: i18n._('limit to moves')
+                    halign: 'left'
+            BoxLayout:
+                AnchorLayout:
+                    LabelledIntInput:
+                        helper_text: i18n._('from move')
+                        helper_text_mode: "persistent"
+                        id: start_move
+                        text: '0'
+                AnchorLayout:
+                    LabelledIntInput:
+                        helper_text: i18n._('to move')
+                        helper_text_mode: "persistent"
+                        id: end_move
+                        text: '999'

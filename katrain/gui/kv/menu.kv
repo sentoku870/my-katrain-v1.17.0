@@ -1,0 +1,71 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+
+<HamburgerButton@TransparentIconButton>:
+    icon: 'hamburger.png'
+    width: self.height
+    icon_size: [self.height * 0.5, self.height * 0.5]
+
+<MenuItem>
+    font_size: self.height * 0.5
+    size_hint_y: None
+    height: dp(50)
+    background_color: Theme.BOX_BACKGROUND_COLOR
+    width_margin: 1.33
+    content_width: icon.width + label.texture_size[0] * self.width_margin
+    MDFloatLayout:
+        id: icon
+        size_hint: None, 1
+        width: self.height + 16
+        Image:
+            id:image
+            source: root.icon
+            mipmap: True
+            size_hint: 0.7,0.7
+            pos_hint: {'center_y': 0.5,'center_x': 0.5}
+    AnchorLayout:
+        size_hint_x: 1
+        anchor_x: 'left'
+        Label:
+            id: label
+            text: root.text
+            size: self.texture_size
+            size_hint: None, None
+            font_size: root.font_size
+            font_name: root.font_name
+            color: Theme.MENU_ITEM_FONT_COLOR
+    Label:
+        text: root.shortcut
+        halign: 'left'
+        valign: 'middle'
+        size_hint_x: 1/3
+        font_size: root.font_size
+        font_name: root.font_name
+        color: Theme.MENU_ITEM_SHORTCUT_COLOR
+
+<AnalysisToggle>:
+    adaptive_width: True
+    spacing: Theme.CP_SPACING
+    size_hint: None, 0.7
+    pos_hint: {'center_y':0.5}
+    checkbox: checkbox
+    label: label
+    ClickableLabel:
+        id: label
+        text: root.text
+        halign: 'center'
+        font_size: root.height / 3
+        font_name: root.font_name
+        color: checkbox.disabled_color if root.disabled else (checkbox.selected_color if checkbox.active else checkbox.unselected_color)
+        size_hint_x: None
+        width: self.texture_size[0] + 4
+        on_left_press: checkbox.trigger_action()
+    MDCheckbox:
+        id: checkbox
+        disabled: root.disabled
+        size_hint: None,0.5
+        pos_hint: {'center_y': 0.5}
+        width: self.height
+        active: root.default_active
+        on_active: if app.gui: app.gui.update_state()
