@@ -119,17 +119,11 @@ class LeelaEngine:
         Returns:
             True if engine responded, False on timeout.
         """
-        time.time()
-        # Read any initial output
-        time.sleep(0.5)
-
-        # Send a simple command to verify engine is ready
+        # Send a simple sequence to verify engine is ready
+        # No sleeps needed for buffered output in background thread
         self._send_command("boardsize 19")
-        time.sleep(0.3)
         self._send_command("clear_board")
-        time.sleep(0.3)
         self._send_command(f"komi {self._komi}")
-
         return True
 
     def shutdown(self, timeout: float = 5.0) -> bool:
@@ -231,7 +225,7 @@ class LeelaEngine:
         board_size: int = 19,
         komi: float = 6.5,
     ) -> bool:
-        """Set up board position by replaying moves.
+        """Set up board position by replaying moves (optimized/incremental).
 
         Args:
             moves: List of (player, coord) tuples, e.g., [("B", "D4"), ("W", "Q16")]
@@ -244,25 +238,42 @@ class LeelaEngine:
         if not self.is_alive() and not self.start():
             return False
 
-        # Reset board if needed
+        # Reset board if size changed
         if board_size != self._board_size:
             self._send_command(f"boardsize {board_size}")
             self._board_size = board_size
-            time.sleep(0.1)
+            self._send_command("clear_board")
+            self._moves = []
 
-        self._send_command("clear_board")
-        time.sleep(0.1)
-
+        # Update komi if changed
         if komi != self._komi:
             self._send_command(f"komi {komi}")
             self._komi = komi
-            time.sleep(0.1)
 
-        # Replay moves
-        for player, coord in moves:
-            color = "black" if player.upper() in ("B", "BLACK") else "white"
-            self._send_command(f"play {color} {coord}")
-            time.sleep(0.05)
+        # Find common prefix to avoid full replay
+        common_count = 0
+        for m1, m2 in zip(self._moves, moves):
+            if m1 == m2:
+                common_count += 1
+            else:
+                break
+
+        # If we need to go back or switch branches, clear and replay
+        if common_count < len(self._moves):
+            self._send_command("clear_board")
+            suffix = moves
+        else:
+            suffix = moves[common_count:]
+
+        # Send incremental play commands
+        if suffix:
+            with self._lock:
+                proc = self.process
+                if proc and proc.stdin:
+                    for player, coord in suffix:
+                        color = "black" if player.upper() in ("B", "BLACK") else "white"
+                        proc.stdin.write(f"play {color} {coord}\n")
+                    proc.stdin.flush()
 
         self._moves = list(moves)
         return True
@@ -382,7 +393,6 @@ class LeelaEngine:
 
             # Stop analysis
             self._send_command("name")
-            time.sleep(0.1)
 
             # Check if still valid request
             if self._current_request_id != request_id:

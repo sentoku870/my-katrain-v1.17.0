@@ -546,7 +546,8 @@ class Game(BaseGame):
         # Stop any existing pondering before starting full-game analysis
         katrain.pondering = False
         for e in set(self.engines.values()):
-            e.stop_pondering()
+            if e:
+                e.stop_pondering()
 
         threading.Thread(
             target=lambda: self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=True),
@@ -576,6 +577,11 @@ class Game(BaseGame):
             if even_if_present or not node.analysis_from_sgf or not node.load_analysis():
                 # Throttle: wait for engine capacity before sending request
                 engine = self.engines[node.next_player]
+                
+                # Skip analysis if engine is disabled
+                if not engine:
+                    continue
+                
                 max_wait_attempts = 50  # 50 * 0.1s = 5s max wait per node
                 for _ in range(max_wait_attempts):
                     if engine.has_query_capacity(headroom=10):
@@ -1384,7 +1390,10 @@ class Game(BaseGame):
             analyze_and_play(node)
 
         def request_analysis_for_node(node: GameNode) -> None:
-            self.engines[node.player].request_analysis(
+            engine = self.engines[node.player]
+            if not engine:
+                return
+            engine.request_analysis(
                 node,
                 callback=lambda result, _partial: set_analysis(node, result),
                 priority=PRIORITY_DEFAULT,

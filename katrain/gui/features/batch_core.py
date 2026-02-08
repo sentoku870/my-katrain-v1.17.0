@@ -40,24 +40,6 @@ logger = logging.getLogger(__name__)
 # Aliased as _safe_int to maintain existing local references
 
 
-# Phase 87.5: Shared helper for Leela enabled detection
-def is_leela_configured(ctx: FeatureContext) -> bool:
-    """Check if Leela is properly configured (enabled or has exe_path).
-
-    Args:
-        ctx: FeatureContext providing config access
-
-    Returns:
-        True if Leela is configured and usable
-    """
-    # Phase 100: Use typed config for read access
-    leela_config = ctx.get_leela_config()
-    if leela_config.enabled:
-        return True
-    # Fallback: exe_path set means user intends to use Leela
-    return bool(leela_config.exe_path or "")
-
-
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
@@ -105,10 +87,6 @@ def collect_batch_options(
     deterministic = widgets["deterministic_checkbox"].active
     sound_on_finish = widgets["sound_checkbox"].active
 
-    # Analysis engine selection (Phase 36)
-    analysis_engine = "katago"  # default
-    if "engine_leela" in widgets and widgets["engine_leela"].state == "down":
-        analysis_engine = "leela"
 
     # Curator generation (Phase 126)
     curator_cb = widgets.get("curator_checkbox")
@@ -130,7 +108,6 @@ def collect_batch_options(
         "jitter_pct": jitter_pct,
         "deterministic": deterministic,
         "sound_on_finish": sound_on_finish,
-        "analysis_engine": analysis_engine,
     }
 
 
@@ -291,62 +268,7 @@ def run_batch_in_thread(
     # Get skill preset for karte/summary generation
     skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
 
-    # Import engine attribute - ctx has 'engine' attribute from KaTrainGui
     engine = getattr(ctx, "engine", None)
-
-    # Phase 87.5: Get analysis_engine and prepare leela_engine
-    analysis_engine = options.get("analysis_engine", "katago")
-    leela_engine = None
-
-    if analysis_engine == "leela":
-        # Step 1: Check if leela_engine already exists and is alive
-        existing_leela = getattr(ctx, "leela_engine", None)
-        if existing_leela is not None:
-            is_alive_fn = getattr(existing_leela, "is_alive", None)
-            if callable(is_alive_fn) and is_alive_fn():
-                leela_engine = existing_leela
-                log_cb("Using existing Leela engine.")
-
-        # Step 2: If not alive, attempt to start
-        if leela_engine is None:
-            log_cb("Starting Leela engine...")
-            start_success = False
-            try:
-                start_fn = getattr(ctx, "start_leela_engine", None)
-                if callable(start_fn):
-                    start_success = start_fn()
-            except Exception as e:
-                log_cb(f"Error starting Leela engine: {e}")
-
-            if start_success:
-                leela_engine = getattr(ctx, "leela_engine", None)
-
-        # Step 3: Final validation - abort if still not alive
-        leela_alive = False
-        if leela_engine is not None:
-            is_alive_fn = getattr(leela_engine, "is_alive", None)
-            if callable(is_alive_fn):
-                leela_alive = is_alive_fn()
-
-        if not leela_alive:
-            # Abort with CLEAR user-visible error
-            error_msg = i18n._("mykatrain:batch:leela_start_failed")
-            log_cb("=" * 50)
-            log_cb(f"ERROR: {error_msg}")
-            log_cb("=" * 50)
-
-            # User-facing notification via status bar
-            def show_error(dt: float) -> None:
-                ctx.controls.set_status(error_msg, STATUS_ERROR)
-
-            Clock.schedule_once(show_error, 0)
-
-            # Return failed result - set cancelled=True for unambiguous failure
-            failed_result = BatchResult()
-            failed_result.fail_count = 1
-            failed_result.cancelled = True  # Ensures UI shows as failed/aborted
-            on_complete(failed_result)
-            return
 
     result = run_batch(
         katrain=ctx,
@@ -368,8 +290,6 @@ def run_batch_in_thread(
         variable_visits=options["variable_visits"],
         jitter_pct=options["jitter_pct"],
         deterministic=options["deterministic"],
-        analysis_engine=analysis_engine,  # Phase 87.5
-        leela_engine=leela_engine,  # Phase 87.5
         lang=ctx.config("general/language") or "jp",
         generate_curator=options.get("generate_curator", False),
     )

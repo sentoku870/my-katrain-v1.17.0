@@ -46,9 +46,6 @@ if TYPE_CHECKING:
 #   - variable_visits_checkbox: CheckBox - 可変visits
 #   - deterministic_checkbox: CheckBox - 決定論的
 #   - sound_checkbox: CheckBox - 完了時サウンド
-#   - engine_katago: ToggleButton - KataGoエンジン選択 (Phase 36)
-#   - engine_leela: ToggleButton - Leelaエンジン選択 (Phase 36)
-#   - leela_warning_label: Label - Leela未有効警告 (Phase 36)
 #   - progress_label: Label - 進行状況ラベル
 #   - log_text: TextInput - ログテキスト
 #   - log_scroll: ScrollView - ログスクロール
@@ -71,7 +68,6 @@ BatchWidgets = dict[str, Any]  # More specific: dict[str, "Widget"]
 #   - variable_visits: bool - 可変visits
 #   - deterministic: bool - 決定論的
 #   - sound_on_finish: bool - 完了時サウンド
-#   - analysis_engine: str - 解析エンジン "katago" or "leela" (Phase 36)
 #   - generate_curator: bool - Curator（おすすめ）生成 (Phase 126)
 BatchOptions = dict[str, Any]
 

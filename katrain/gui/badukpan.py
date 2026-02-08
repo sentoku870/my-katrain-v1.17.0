@@ -1075,7 +1075,7 @@ class BadukPanWidget(Widget):
             if candidate.pv:
                 self.active_pv_moves.append((move.coords, candidate.pv, current_node))
 
-            is_best = (i == 0) or (candidate.loss_est is not None and candidate.loss_est == 0.0)
+            is_best = i == 0
             scale = Theme.HINT_SCALE
             text_on = True
             alpha = Theme.HINTS_ALPHA
@@ -1209,6 +1209,10 @@ class BadukPanWidget(Widget):
             # Check if Leela mode is active and has analysis
             leela_enabled = leela_cfg.enabled
             leela_analysis = current_node.leela_analysis if leela_enabled else None
+
+            # Phase 121: Prioritize Leela candidates. If Leela is enabled, suppress KataGo hints.
+            if leela_enabled:
+                hint_moves = []
 
             # Phase 93: Fog of War hides Leela candidates too
             if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():

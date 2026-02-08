@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
     from katrain.core.engine import KataGoEngine
     from katrain.core.game import Game
-    from katrain.core.leela.engine import LeelaEngine
 
 
 class EngineFailureTracker:
@@ -107,10 +106,6 @@ def run_batch(
     variable_visits: bool = False,
     jitter_pct: float = 10.0,
     deterministic: bool = True,
-    # Engine selection (Phase 36)
-    analysis_engine: str = "katago",
-    leela_engine: LeelaEngine | None = None,
-    per_move_timeout: float = 30.0,
     # Phase 54: Output language
     lang: str = "jp",
     # Phase 64: Curator outputs
@@ -147,16 +142,13 @@ def run_batch(
         variable_visits: If True, vary visits per file using hash-based jitter
         jitter_pct: Jitter percentage for variable visits (default: 10.0)
         deterministic: If True, use deterministic hash for variable visits
-        analysis_engine: Engine to use ("katago" or "leela", default: "katago")
-        leela_engine: LeelaEngine instance (required if analysis_engine="leela")
-        per_move_timeout: Timeout per move for Leela analysis (default: 30.0)
         lang: Language code for output ("jp", "en", "ja"). Defaults to "jp".
 
     Returns:
         BatchResult with success/fail/skip counts, output counts, and error information
     """
     # Import here to avoid circular imports
-    from katrain.core.batch.analysis import analyze_single_file, analyze_single_file_leela
+    from katrain.core.batch.analysis import analyze_single_file
     from katrain.core.batch.stats import (
         build_player_summary,
         extract_game_stats,
@@ -174,17 +166,7 @@ def run_batch(
         log(f"Error: Input directory does not exist: {input_dir}")
         return result
 
-    # Validate engine selection (Phase 36)
-    if analysis_engine == "leela":
-        if leela_engine is None:
-            log("Error: Leela Zero selected but no leela_engine provided")
-            return result
-        if not leela_engine.is_alive():
-            log("Error: Leela Zero engine is not running")
-            return result
-        log("Using Leela Zero for analysis")
-    else:
-        log("Using KataGo for analysis")
+    log("Using KataGo for analysis")
 
     # Set output directory
     output_dir = output_dir if output_dir else input_dir
@@ -304,86 +286,54 @@ def run_batch(
             if effective_visits != visits:
                 log(f"  Variable visits: {visits} -> {effective_visits}")
 
-        # Select analysis function based on engine type
+        # Analyze the file
+        # We need the Game object if generating karte or summary
+        need_game = generate_karte or generate_summary or generate_curator
+
+        # Calculate effective visits (with optional jitter)
+        effective_visits = visits
+        if variable_visits and visits is not None:
+            effective_visits = choose_visits_for_sgf(
+                abs_path,
+                visits,
+                jitter_pct=jitter_pct,
+                deterministic=deterministic,
+            )
+            if effective_visits != visits:
+                log(f"  Variable visits: {visits} -> {effective_visits}")
+
+        # KataGo analysis (default)
         # Phase 95C: Wrap in try/except for circuit breaker
-        leela_snapshot = None
         game = None
         success = False
         try:
-            if analysis_engine == "leela" and leela_engine is not None:
-                # Phase 36 MVP: Leela batch always uses QUICK (fast_visits)
-                # UI visits_input is ignored for Leela (spec: Batch Leela visits)
-                from katrain.core.analysis.models import AnalysisStrength, resolve_visits
+            katago_result = analyze_single_file(
+                katrain=katrain,
+                engine=engine,
+                sgf_path=abs_path,
+                output_path=sgf_output_path,
+                visits=effective_visits,
+                timeout=timeout,
+                cancel_flag=cancel_flag,
+                log_cb=log_cb,
+                save_sgf=save_analyzed_sgf,
+                return_game=need_game,
+            )
 
-                leela_config = katrain.config("leela") or {}
-                effective_visits = resolve_visits(AnalysisStrength.QUICK, leela_config, "leela")
-                log(f"  Leela visits: {effective_visits} (from leela.fast_visits)")
-
-                # Leela Zero analysis
-                game_result = analyze_single_file_leela(
-                    katrain=katrain,
-                    leela_engine=leela_engine,
-                    sgf_path=abs_path,
-                    output_path=sgf_output_path,
-                    visits=effective_visits,
-                    file_timeout=timeout,
-                    per_move_timeout=per_move_timeout,
-                    cancel_flag=cancel_flag,
-                    log_cb=log_cb,
-                    save_sgf=save_analyzed_sgf,
-                    return_game=True,  # Always return game for Leela (need snapshot)
-                )
-                # Leela returns (Game, EvalSnapshot) tuple per contract (analysis.py:207-211)
-                if isinstance(game_result, tuple) and len(game_result) == 2:
-                    game, leela_snapshot = game_result
-                    # Phase 87.6: Success requires both game and valid analysis data
-                    if game is None:
-                        success = False
-                        # fail_result() was called - detailed error already logged in analysis.py
-                        # Log file identification here for consistency
-                        log(f"  FAILED: Analysis error for {rel_path}")
-                    elif leela_snapshot is None or len(leela_snapshot.moves) == 0:
-                        success = False
-                        # Could be: empty SGF (0 moves) or all moves failed
-                        # Detailed reason already logged by analysis.py
-                        log(f"  FAILED: No valid analysis data for {rel_path}")
-                    else:
-                        success = True
-                else:
-                    # Defensive: unexpected return type from analyze_single_file_leela
+            # Handle result based on return type
+            if need_game:
+                # When return_game=True, result is Game | None
+                if isinstance(katago_result, bool):
+                    # Shouldn't happen, but handle gracefully
                     game = None
-                    leela_snapshot = None
-                    success = False
-                    log(f"  ERROR: Unexpected return type from Leela analysis for {rel_path}: {type(game_result)}")
+                    success = katago_result
+                else:
+                    game = katago_result
+                    success = game is not None
             else:
-                # KataGo analysis (default)
-                katago_result = analyze_single_file(
-                    katrain=katrain,
-                    engine=engine,
-                    sgf_path=abs_path,
-                    output_path=sgf_output_path,
-                    visits=effective_visits,
-                    timeout=timeout,
-                    cancel_flag=cancel_flag,
-                    log_cb=log_cb,
-                    save_sgf=save_analyzed_sgf,
-                    return_game=need_game,
-                )
-
-                # Handle result based on return type
-                if need_game:
-                    # When return_game=True, result is Game | None
-                    if isinstance(katago_result, bool):
-                        # Shouldn't happen, but handle gracefully
-                        game = None
-                        success = katago_result
-                    else:
-                        game = katago_result
-                        success = game is not None
-                else:
-                    # When return_game=False, result is bool
-                    success = bool(katago_result)
-                    game = None
+                # When return_game=False, result is bool
+                success = bool(katago_result)
+                game = None
 
         except AnalysisTimeoutError as e:
             # Phase 95C: Timeout = engine failure
@@ -440,7 +390,6 @@ def run_batch(
                         game,
                         player_filter=karte_player_filter,
                         target_visits=visits,
-                        snapshot=leela_snapshot,  # Phase 87.5: Pass pre-built snapshot for Leela
                     )
                     # Include path hash to avoid filename collisions for files with same basename
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
@@ -517,7 +466,6 @@ def run_batch(
                         log_cb=log_cb,  # Phase 87.6: Wire logging callback
                         target_visits=visits,
                         source_index=i,
-                        snapshot=leela_snapshot,  # Phase 87.5: Use pre-built snapshot for Leela
                     )
                     if stats:
                         if generate_summary and game_stats_list is not None:

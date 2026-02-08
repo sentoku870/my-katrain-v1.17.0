@@ -1645,6 +1645,12 @@ msgstr "損失スケール (K)"
 msgid "mykatrain:settings:leela_max_visits"
 msgstr "最大訪問数"
 
+msgid "mykatrain:settings:leela_max_candidates"
+msgstr "最大候補手数 (Leela)"
+
+msgid "mykatrain:settings:disable_katago"
+msgstr "KataGo エンジンを無効にする (Leela Zero の検証用)"
+
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (高速解析)"
 

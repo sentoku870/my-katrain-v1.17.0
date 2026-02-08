@@ -9,7 +9,7 @@ Usage:
 Structure:
     - models.py: WriteError, BatchResult dataclasses
     - helpers.py: Constants + pure helper functions
-    - analysis.py: analyze_single_file, analyze_single_file_leela
+    - analysis.py: analyze_single_file
     - orchestration.py: run_batch main entry point
     - stats.py: Game stats extraction and summary generation
 """
@@ -94,7 +94,6 @@ __all__ = [
     # === Lazy exports (via __getattr__) ===
     # analysis.py
     "analyze_single_file",
-    "analyze_single_file_leela",
     # orchestration.py
     "run_batch",
     # stats.py
@@ -115,7 +114,7 @@ def __getattr__(name: str) -> Any:
 
     Available:
     - run_batch (from orchestration)
-    - analyze_single_file, analyze_single_file_leela (from analysis)
+    - analyze_single_file (from analysis)
     - extract_game_stats, build_batch_summary, extract_players_from_stats,
       build_player_summary (from stats)
 
@@ -128,11 +127,6 @@ def __getattr__(name: str) -> Any:
         globals()["analyze_single_file"] = analyze_single_file
         return analyze_single_file
 
-    if name == "analyze_single_file_leela":
-        from katrain.core.batch.analysis import analyze_single_file_leela
-
-        globals()["analyze_single_file_leela"] = analyze_single_file_leela
-        return analyze_single_file_leela
 
     # Orchestration
     if name == "run_batch":

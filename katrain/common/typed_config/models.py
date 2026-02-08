@@ -221,6 +221,7 @@ class EngineConfig:
         max_time: 最大解析時間（秒）
         wide_root_noise: ルートノードのワイドノイズ
         enable_ownership: オーナーシップ表示の有効化
+        disabled: エンジンを無効化するかどうか
 
     Note:
         - config keyは `_enable_ownership`（先頭アンダースコア）
@@ -239,6 +240,7 @@ class EngineConfig:
     max_time: float = 8.0
     wide_root_noise: float = 0.04
     enable_ownership: bool = True
+    disabled: bool = False
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> EngineConfig:
@@ -274,6 +276,7 @@ class EngineConfig:
             max_time=safe_float(d.get("max_time"), 8.0),
             wide_root_noise=safe_float(d.get("wide_root_noise"), 0.04),
             enable_ownership=safe_bool(enable_ownership_val, default=True),
+            disabled=safe_bool(d.get("disabled"), default=False),
         )
 
 
@@ -386,6 +389,7 @@ class LeelaConfig:
     resign_consecutive_moves: int = 3
     top_moves_show: str = "leela_top_move_loss"
     top_moves_show_secondary: str = "leela_top_move_winrate"
+    max_candidates: int = 5
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> LeelaConfig:
@@ -409,4 +413,5 @@ class LeelaConfig:
             resign_consecutive_moves=safe_int(d.get("resign_consecutive_moves"), 3),
             top_moves_show=safe_str(d.get("top_moves_show"), "leela_top_move_loss"),
             top_moves_show_secondary=safe_str(d.get("top_moves_show_secondary"), "leela_top_move_winrate"),
+            max_candidates=safe_int(d.get("max_candidates"), 5),
         )

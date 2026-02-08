@@ -211,7 +211,7 @@ class ControlsPanel(BoxLayout):
             game.current_node is not self.status_state[2]
             and not (self.status_state[1] == STATUS_ERROR and self.status_state[2] is None)
         ) or (
-            self.katrain.engine.is_idle() and self.status_state[1] == STATUS_ANALYSIS
+            self.katrain.engine and self.katrain.engine.is_idle() and self.status_state[1] == STATUS_ANALYSIS
         ):  # clear status if node changes, except startup errors on root. also clear analysis message when no queries
             self.status.text = ""
             self.status_state = (None, -1e9, None)

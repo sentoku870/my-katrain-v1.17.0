@@ -1695,6 +1695,12 @@ msgstr "Loss Scale (K)"
 msgid "mykatrain:settings:leela_max_visits"
 msgstr "Max Visits"
 
+msgid "mykatrain:settings:leela_max_candidates"
+msgstr "Max Candidates (Leela)"
+
+msgid "mykatrain:settings:disable_katago"
+msgstr "Disable KataGo engine (for testing Leela Zero)"
+
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (Quick Analysis)"
 
