@@ -1,0 +1,54 @@
+#:kivy 2.3.0
+#:import Theme katrain.gui.theme.Theme
+#:import MODE_PLAY katrain.core.constants.MODE_PLAY
+
+<KaTrainGui>:
+    board_gui: board_gui
+    controls: controls
+    board_controls: board_controls
+    play_mode: play_mode
+    analysis_controls: analysis_controls
+    nav_drawer: nav_drawer
+    nav_drawer_contents: nav_drawer_contents
+    NavigationLayout:
+        ScreenManager:
+            Screen:
+                name: 'gui'
+                BGBoxLayout:
+                    background_color: Theme.BACKGROUND_COLOR
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        AnalysisControls:
+                            id: analysis_controls
+                            size_hint_y: None
+                            height: 1 if root.zen > 0 else max(sp(Theme.CONTROLS_PANEL_MIN_HEIGHT),min(sp(Theme.CONTROLS_PANEL_MAX_HEIGHT),self.width / Theme.CONTROLS_PANEL_ASPECT_RATIO))
+                            opacity: 0 if root.zen > 0 else 1
+                        BadukPanWidget:
+                            id: board_gui
+                        BadukPanControls:
+                            id: board_controls
+                            size_hint_y: None
+                            height: 1 if root.zen > 0 else max(sp(Theme.CONTROLS_PANEL_MIN_HEIGHT),min(sp(Theme.CONTROLS_PANEL_MAX_HEIGHT),self.width / Theme.CONTROLS_PANEL_ASPECT_RATIO))
+                            opacity: 0 if root.zen > 0 else 1
+                    MDBoxLayout:
+                        size_hint_x: None
+                        width: 1 if root.zen == 2 else self.height * Theme.RIGHT_PANEL_ASPECT_RATIO
+                        opacity: 0 if root.zen == 2 else 1
+                        orientation: 'vertical'
+                        PlayAnalyzeSelect:
+                            id: play_mode
+                            size_hint_y: None
+                            height: analysis_controls.height
+                        ControlsPanel:
+                            id: controls
+        MyNavigationDrawer:
+            id: nav_drawer
+            state: "close"
+            y: 0
+            size_hint_y: None
+            -height: root.height - (analysis_controls.height if 'analysis_controls' in root.ids else 0)
+            -width: self.height * 0.5
+            swipe_edge_width: 0
+            on_state: if self.state == 'close': root.update_state()
+            HamburgerMenuContents:
+                id: nav_drawer_contents
