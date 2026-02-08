@@ -104,7 +104,6 @@ from katrain.gui.features.batch_core import (
     create_log_callback,
     create_progress_callback,
     create_summary_callback,
-    is_leela_configured,
     run_batch_in_thread,
 )
 from katrain.gui.features.batch_ui import (
@@ -122,7 +121,6 @@ from katrain.gui.features.commands import (
     popup_commands,
 )
 from katrain.gui.features.karte_export import determine_user_color
-from katrain.gui.features.package_export_ui import do_export_package
 from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
