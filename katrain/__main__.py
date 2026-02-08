@@ -315,6 +315,10 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to UIUpdateManager (Phase 133)."""
         self._ui_update_manager.schedule_ui_update(redraw_board=redraw_board)
 
+    def get_game(self) -> Game:
+        """現在のゲームオブジェクトを返す（Phase 133: UIUpdateManager用）。"""
+        return self.game
+
     # ========== PopupManager support methods (Phase 75) ==========
 
     def _safe_pause_timer(self) -> None:

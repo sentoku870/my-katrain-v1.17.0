@@ -11,6 +11,7 @@ import threading
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.state import EventType
 
 
@@ -90,7 +91,7 @@ class UIUpdateManager:
             self._ctx.update_gui(game.current_node, redraw_board=redraw)
         except Exception as e:
             # 循環参照やログレベル定数のため、一旦単純な文字列表記
-            self._ctx.log(f"update_gui failed: {e}", 10) # 10 = OUTPUT_DEBUG
+            self._ctx.log(f"update_gui failed: {e}", OUTPUT_DEBUG)
 
     def _on_game_changed(self, event: Any) -> None:
         self.schedule_ui_update(redraw_board=True)
