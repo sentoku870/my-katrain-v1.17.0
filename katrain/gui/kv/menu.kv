@@ -1,6 +1,11 @@
 #:kivy 2.3.0
 #:import i18n katrain.gui.lang_bridge.i18n
 #:import Theme katrain.gui.theme.Theme
+#:import PLAYER_TYPES katrain.core.constants.PLAYER_TYPES
+#:import PLAYER_HUMAN katrain.core.constants.PLAYER_HUMAN
+#:import PLAYER_AI    katrain.core.constants.PLAYER_AI
+#:import MODE_PLAY katrain.core.constants.MODE_PLAY
+#:import MODE_ANALYZE katrain.core.constants.MODE_ANALYZE
 
 <HamburgerButton@TransparentIconButton>:
     icon: 'hamburger.png'
@@ -69,3 +74,338 @@
         width: self.height
         active: root.default_active
         on_active: if app.gui: app.gui.update_state()
+
+<MainMenuItem@MenuItem>:
+    on_close: app.gui.nav_drawer.set_state("close")
+    height: self.parent.item_height or 50
+
+<LangButton@TransparentIconButton>:
+    size_hint: 1,1
+    icon_size: [self.height * 0.6, self.height  * 0.6]
+
+<MenuLabel@BackgroundMixin+Label>:
+    background_color: Theme.BACKGROUND_COLOR
+    font_size: self.height * 0.5
+    height: self.parent.item_height or 50
+    size_hint: 1,None
+
+<MenuLink@ButtonBehavior+MenuLabel>:
+    site_key: ''
+    underline: True
+    on_press: app.webbrowser(self.site_key)
+
+<PlayerSetup>:
+    orientation: 'horizontal'
+    spacing: Theme.CP_SPACING
+    padding: 0, Theme.CP_PADDING
+    player_type: player_type
+    player_subtype_human: player_subtype_human
+    player_subtype_ai: player_subtype_ai
+    MDBoxLayout:
+        size_hint: 0.25, 1
+        ClickableCircle:
+            size_hint: 0.8, 0.8
+            pos_hint: {'center_x':0.5,'center_y':0.5}
+            text: root.player[0]
+            player: root.player
+            on_left_press: root.parent.swap_players()
+    MDBoxLayout:
+        size_hint: 0.5, 1
+        orientation: 'vertical'
+        spacing: Theme.CP_SPACING
+        Label:
+            text: i18n._('player:type')
+            font_size: self.height * 0.5            
+        I18NSpinner:
+            id: player_type
+            value_refs: PLAYER_TYPES
+            on_select: root.setup_options(*args)
+    MDBoxLayout:
+        size_hint: 0.5, 1
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: Theme.CP_SPACING
+            size_hint_x: 1 if root.mode != PLAYER_AI else 1e-9
+            opacity:1 if root.mode != PLAYER_AI else 0
+            Label:
+                text:  i18n._("gametype")
+                font_size: self.height * 0.5
+            BoxLayout:
+                I18NSpinner:
+                    id: player_subtype_human
+                    value_refs: []
+                    on_select: if root.mode==PLAYER_HUMAN: root.update_global_player_info()
+        MDBoxLayout:
+            orientation: 'vertical'
+            spacing: Theme.CP_SPACING
+            size_hint_x: 1 if root.mode == PLAYER_AI else 1e-9
+            opacity: 1 if root.mode == PLAYER_AI else 0
+            Label:
+                text: i18n._("aistrategy")
+                font_size: self.height * 0.5
+            BoxLayout:
+                I18NSpinner:
+                    id: player_subtype_ai
+                    value_refs: []
+                    on_select: if root.mode==PLAYER_AI: root.update_global_player_info()
+
+<PlayerSetupBlock>:
+    orientation: 'vertical'
+    size_hint_y: None
+    spacing: 3*Theme.CP_SPACING
+    padding: Theme.CP_PADDING
+    height: (self.parent.item_height or 50) * 5
+
+<HamburgerMenuContents@MDBoxLayout+BackgroundMixin>:
+    katrain: app.gui
+    player_setup: player_setup
+    background_color: Theme.BOX_BACKGROUND_COLOR
+    orientation: 'vertical'
+    item_height: self.height/20
+    MenuLabel:
+        text: i18n._('menu:playersetup')
+    PlayerSetupBlock:
+        id: player_setup
+        update_global: True
+    MenuLabel:
+        size_hint: 1,1
+    MenuLabel:
+    MDBoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, None
+        adaptive_height: True
+        item_height: root.item_height
+        MainMenuItem:
+            text: i18n._('menu:newgame')
+            icon: 'New-Game.png'
+            shortcut: 'Ctrl-N'
+            on_action: root.katrain("new-game-popup")
+        MainMenuItem:
+            text: i18n._('menu:save')
+            icon: 'Save-Game.png'
+            shortcut: 'Ctrl-S'
+            on_action: root.katrain("save-game")
+        MainMenuItem:
+            text: i18n._('menu:save-as')
+            icon: 'Save-Game-As.png'
+            shortcut: 'Ctrl-D'
+            on_action: root.katrain("save-game-as-popup")
+        MainMenuItem:
+            text: i18n._('menu:load')
+            icon: 'Load-Game.png'
+            shortcut: 'Ctrl-L'
+            on_action: root.katrain("analyze-sgf-popup")
+        MainMenuItem:
+            text: i18n._('menu:clocksettings')
+            icon: 'Time-Settings.png'
+            shortcut: 'F5'
+            on_action: root.katrain('timer-popup')
+        MainMenuItem:
+            text: i18n._('menu:teachsettings')
+            icon: 'Teaching-Settings.png'
+            shortcut: 'F6'
+            on_action: root.katrain('teacher-popup')
+        MainMenuItem:
+            text: i18n._('menu:aisettings')
+            icon: 'AI-Settings.png'
+            shortcut: 'F7'
+            on_action: root.katrain('ai-popup')
+        MainMenuItem:
+            text: i18n._('menu:settings')
+            icon: 'General-Settings.png'
+            shortcut: 'F8'
+            on_action: root.katrain('config-popup')
+    MenuLabel:
+        text: i18n._('menu:lang')
+    MDBoxLayout:
+        size_hint: 1, None
+        height: 1.5 * root.item_height
+        padding: Theme.CP_PADDING, 0
+        LangButton:
+            icon: 'flags/flag-uk.png'
+            on_press: app.language = 'en'
+        LangButton:
+            icon: 'flags/flag-jp.png'
+            on_press: app.language = 'jp'
+    BoxLayout:
+        size_hint: 1,None
+        height: root.item_height
+        item_height: root.item_height
+        MenuLink:
+            text: i18n._('menu:manual')
+            site_key: 'homepage'
+        MenuLink:
+            text: i18n._('menu:support')
+            site_key: 'support'
+
+<OutlineBox@MDBoxLayout+BackgroundMixin>:
+
+<PlayAnalyzeButton@SizedToggleButton>:
+    inactive_background_color: Theme.BOX_BACKGROUND_COLOR
+    active_background_color: Theme.PLAY_ANALYZE_TAB_COLOR
+    ripple_color: Theme.BACKGROUND_COLOR
+    text_color: self.inactive_background_color if self.state=='down' else self.active_background_color
+    size_hint: 0.5,1
+    _font_size: self.height * 0.5
+    group: 'play_analyze'
+    allow_no_selection: False
+
+<PlayAnalyzeSelect>:
+    katrain: app.gui
+    play: play
+    analyze: analyze
+    OutlineBox:
+        size_hint: 0.7,0.7
+        pos_hint: {'center_x':0.5,'center_y':0.45}
+        PlayAnalyzeButton:
+            text: i18n._('btn:Play')
+            id: play
+            on_state: if self.state == 'down': root.select_mode(MODE_PLAY)
+        PlayAnalyzeButton:
+            text: i18n._('btn:Analysis')
+            id: analyze
+            state: 'down'
+            on_state: if self.state == 'down': root.select_mode(MODE_ANALYZE)
+
+<AnalysisMenuItem@MenuItem>:
+    on_close: app.gui.analysis_controls.close_dropdown()
+    background_color: Theme.LIGHTER_BACKGROUND_COLOR
+    height: dp(45)
+    canvas.before:
+        Color:
+            rgba: Theme.MENU_ITEM_FONT_COLOR
+        Line:
+            points: self.x,self.y, self.x,self.y+self.height
+        Color:
+            rgba: Theme.MENU_ITEM_SHORTCUT_COLOR
+        Line:
+            points: self.x,self.y,self.x+self.width,self.y
+            width: 1
+
+<MyKatrainMenuItem@MenuItem>:
+    on_close: app.gui.analysis_controls.close_mykatrain_dropdown()
+    background_color: Theme.LIGHTER_BACKGROUND_COLOR
+    height: dp(45)
+    canvas.before:
+        Color:
+            rgba: Theme.MENU_ITEM_FONT_COLOR
+        Line:
+            points: self.x,self.y, self.x,self.y+self.height
+        Color:
+            rgba: Theme.MENU_ITEM_SHORTCUT_COLOR
+        Line:
+            points: self.x,self.y,self.x+self.width,self.y
+            width: 1
+
+<AnalysisDropDown>:
+    width: 50
+    katrain: app.gui
+    AnalysisMenuItem:
+        text: i18n._("analysis:extra")
+        icon: 'Extra.png'
+        shortcut: 'a'
+        on_action: root.katrain("analyze-extra", "extra")
+    AnalysisMenuItem:
+        text: i18n._("analysis:equalize")
+        icon: 'Equalize.png'
+        shortcut: 's'
+        on_action: root.katrain("analyze-extra", "equalize")
+    AnalysisMenuItem:
+        text: i18n._("analysis:sweep")
+        icon: 'Sweep.png'
+        shortcut: 'd'
+        on_action: root.katrain("analyze-extra", "sweep")
+    AnalysisMenuItem:
+        text: i18n._("analysis:alternatives")
+        icon: 'Alternative.png'
+        shortcut: 'f'
+        on_action: root.katrain("analyze-extra", "alternative")
+    AnalysisMenuItem:
+        text: i18n._("analysis:region")
+        icon: 'local.png'
+        shortcut: 'g'
+        on_action: root.katrain("select-box",)
+    AnalysisMenuItem:
+        text: i18n._("analysis:reset")
+        icon: 'reset.png'
+        shortcut: 'h'
+        on_action: root.katrain("reset-analysis",)
+    AnalysisMenuItem:
+        text: i18n._("analysis:insert")
+        icon: 'Insert-Move.png'
+        shortcut: 'i'
+        on_action: root.katrain("insert-mode")
+    AnalysisMenuItem:
+        text: i18n._("analysis:playtoend")
+        icon: 'Finish.png'
+        shortcut: 'l'
+        on_action: root.katrain("selfplay-setup","end")
+    AnalysisMenuItem:
+        text: i18n._("analysis:game")
+        icon: 'Deeper all.png'
+        shortcut: 'F2'
+        on_action: root.open_game_analysis_popup()
+    AnalysisMenuItem:
+        text: i18n._("analysis:report")
+        icon: 'analysis.png'
+        shortcut: 'F3'
+        on_action: root.open_report_popup()
+    AnalysisMenuItem:
+        text: i18n._("analysis:tsumegoframe")
+        icon: 'New-Game.png'
+        shortcut: 'F10'
+        on_action: root.open_tsumego_frame_popup()
+    AnalysisMenuItem:
+        text: i18n._("analysis:continuous")
+        icon: 'play.png'
+        shortcut: 'space'
+        on_action: root.katrain.toggle_continuous_analysis()
+    AnalysisMenuItem:
+        text: i18n._("analysis:aimove")
+        icon: 'ai.png'
+        shortcut: 'enter'
+        on_action: root.katrain("ai-move")
+
+<MyKatrainDropDown>:
+    width: 250
+    katrain: app.gui
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:export-karte')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("export-karte")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:open-latest-report')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("open-latest-report")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:open-output-folder')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("open-output-folder")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:export-summary')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("export-summary")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:batch-analyze')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("batch-analyze-popup")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:settings')
+        icon: 'General-Settings.png'
+        shortcut: ''
+        on_action: root.katrain("mykatrain-settings-popup")
+    MyKatrainMenuItem:
+        text: i18n._('radar:menu-title')
+        icon: 'analysis.png'
+        shortcut: ''
+        on_action: root.katrain("skill-radar-popup")
+    MyKatrainMenuItem:
+        text: i18n._('mykatrain:diagnostics')
+        icon: 'General-Settings.png'
+        shortcut: ''
+        on_action: root.katrain("diagnostics-popup")
