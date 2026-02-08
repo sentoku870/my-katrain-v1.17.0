@@ -436,6 +436,12 @@ def classify_game_phase(move_number: int, board_size: int = 19) -> str:
 
     Returns:
         "opening" / "middle" / "yose"
+        
+    Note:
+        Boundaries are inclusive for the first phase:
+        - opening: move_number <= opening_end (e.g., <= 50 for 19x19)
+        - middle: opening_end < move_number <= middle_end
+        - yose: move_number > middle_end
     """
     thresholds = {
         9: (15, 50),
@@ -444,9 +450,9 @@ def classify_game_phase(move_number: int, board_size: int = 19) -> str:
     }
     opening_end, middle_end = thresholds.get(board_size, (50, 200))
 
-    if move_number < opening_end:
+    if move_number <= opening_end:  # Changed from < to <=
         return "opening"
-    elif move_number < middle_end:
+    elif move_number <= middle_end:  # Changed from < to <= for consistency
         return "middle"
     else:
         return "yose"

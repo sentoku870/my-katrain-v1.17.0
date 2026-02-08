@@ -13,6 +13,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
+from katrain.core.lang import i18n
 from katrain.core.analysis.cluster_classifier import (
     StoneCache,
     _get_cluster_context_for_move,
@@ -233,11 +234,22 @@ def reason_tags_distribution_for(
             key=lambda x: x[1],
             reverse=True,
         )
+        # Total number of tags to compute percentage
+        total_tags = sum(reason_tags_counts.values())
 
         lines.append("")
         for tag, count in sorted_tags:
             label_text = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
-            lines.append(f"- {label_text}: {count}")
+            percent = (count / total_tags) * 100 if total_tags > 0 else 0
+            # i18n._("diagnosis:reason_tags:percent").format(percent=percent, count=count)
+            # Default fallback if key missing (though we just added it)
+            stats_str = f"{percent:.1f}% ({count})"
+            try:
+                stats_str = i18n._("diagnosis:reason_tags:percent").format(percent=percent, count=count)
+            except Exception:
+                pass
+            
+            lines.append(f"- {label_text}: {stats_str}")
     else:
         lines.append("")
         lines.append("- No reason tags detected.")
@@ -291,18 +303,38 @@ def critical_3_section_for(
     if not player_critical:
         return []
 
-    unit = "目" if ctx.lang == "ja" else " pts"
-    intro = "最も重要なミス（重点復習用）:" if ctx.lang == "ja" else "Most impactful mistakes for focused review:"
+    # Dynamic Title based on count
+    count = len(player_critical)
+    if count == 3:
+        title_text = i18n._("diagnosis:critical_title:all")
+    else:
+        title_text = i18n._("diagnosis:critical_title").format(count=count, n=count)
 
-    lines = [f"## Critical 3 ({label})", ""]
+    intro = "最も重要なミス（重点復習用）:" if ctx.lang == "ja" else "Most impactful mistakes for focused review:"
+    # Use i18n keys for intro if available, or keep hardcoded fallback for now as it wasn't requested to change
+    # But let's stick to requested changes: Units, Phase, Difficulty, Title.
+
+    lines = [f"## {title_text} ({label})", ""]
     lines.append(intro)
     lines.append("")
 
     # Phase 82: Create cache for stone positions (shared across Critical Moves)
     stone_cache = StoneCache(ctx.game)
+    
+    # Difficulty i18n mapping
+    difficulty_map = {
+        "easy": "diagnosis:difficulty:easy",
+        "normal": "diagnosis:difficulty:normal",
+        "hard": "diagnosis:difficulty:hard",
+        "only_move": "diagnosis:difficulty:only",
+        "only": "diagnosis:difficulty:only"
+    }
 
     for i, cm in enumerate(player_critical, 1):
         lines.append(f"### {i}. Move #{cm.move_number} ({cm.player}) {cm.gtp_coord}")
+        
+        # Units i18n
+        unit = i18n._("summary:unit:points")
         lines.append(f"- **Loss**: {cm.score_loss:.1f}{unit}")
         lines.append(f"- **Type**: {cm.meaning_tag_label}")
 
@@ -317,26 +349,54 @@ def critical_3_section_for(
             area=area,
             lang=ctx.lang,
         )
+        
+        # Append Reason Tags to Reason if available for specificity
+        if reason and cm.reason_tags:
+            tag_str = ", ".join(cm.reason_tags)
+            reason = f"{reason} ({tag_str})"
+        elif cm.reason_tags:
+             # Fallback if no reason text but tags exist
+            reason = ", ".join(cm.reason_tags)
+
         if reason:
             lines.append(f"- **Reason**: {reason}")
 
-        lines.append(f"- **Phase**: {cm.game_phase}")
-        lines.append(f"- **Difficulty**: {cm.position_difficulty.upper()}")
+        # Phase i18n
+        phase_key = f"phase:{cm.game_phase}"
+        # Fallback to capitalized english if key misses or phase invalid
+        phase_label = i18n._(phase_key)
+        if phase_label == phase_key: 
+            phase_label = cm.game_phase.capitalize()
+            
+        lines.append(f"- **Phase**: {phase_label}")
+        
+        # Difficulty i18n
+        diff_val = cm.position_difficulty.lower()
+        diff_key = difficulty_map.get(diff_val, f"diagnosis:difficulty:{diff_val}")
+        diff_label = i18n._(diff_key)
+        if diff_label == diff_key:
+             diff_label = cm.position_difficulty.upper()
+             
+        lines.append(f"- **Difficulty**: {diff_label}")
 
         # Phase 83: Show complexity note (using ctx.lang for consistency)
         if cm.complexity_discounted:
-            chaos_note = "乱戦局面（評価の変動大）" if ctx.lang == "ja" else "Complex position (high volatility)"
+            chaos_note = i18n._("diagnosis:note:chaos")
             lines.append(f"- **Note**: {chaos_note}")
 
-        if cm.reason_tags:
-            lines.append(f"- **Context**: {', '.join(cm.reason_tags)}")
-        else:
+        # Context line removed as we merged tags into Reason. 
+        # But wait, original code had explicit "Context" line. 
+        # User asked: "Reason/Context is too generic... convert tags to specific text".
+        # Merging tags into Reason fulfills "specific text" request better than separate line.
+        # However, we still have cluster context if tags are empty.
+        
+        if not cm.reason_tags:
             # Phase 82: Inject cluster classification when reason_tags is empty
             cluster_context = _get_cluster_context_for_move(ctx.game, cm.move_number, ctx.lang, stone_cache)
             if cluster_context:
                 lines.append(f"- **Context**: {cluster_context}")
-            else:
-                lines.append("- **Context**: (none)")
+            # Else no context line needed if empty
+            
         lines.append("")
 
     return lines

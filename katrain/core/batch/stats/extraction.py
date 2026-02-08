@@ -169,6 +169,7 @@ def extract_game_stats(
 
             # Phase classification
             phase = eval_metrics.classify_game_phase(move.move_number, board_size=board_size)
+            move.tag = phase  # Ensure move carries the tag for downstream aggregators
             stats["phase_moves"][phase] = stats["phase_moves"].get(phase, 0) + 1
             stats["phase_loss"][phase] = stats["phase_loss"].get(phase, 0.0) + canonical_loss
 
@@ -292,6 +293,15 @@ def extract_game_stats(
                         stats["meaning_tags_by_player"][player][move.meaning_tag_id] = (
                             stats["meaning_tags_by_player"][player].get(move.meaning_tag_id, 0) + 1
                         )
+
+            # Issue 1 fix: Propagate reason_tags back to snapshot moves for summary report
+            # GameSummaryData uses snapshot, so we need to ensure tags are present there.
+            if important_moves:
+                move_map = {m.move_number: m for m in snapshot.moves}
+                for im in important_moves:
+                    if im.move_number in move_map and im.reason_tags:
+                        move_map[im.move_number].reason_tags = im.reason_tags
+
         except Exception:
             # If important moves extraction fails, reason_tags will be empty but stats still valid
             pass
@@ -344,9 +354,23 @@ def extract_game_stats(
             )
         stats["pattern_data"] = pattern_data
 
-        return stats
+        # Phase 55: Create GameSummaryData for the new JSON-based SummaryAnalyzer
+        from katrain.core.analysis.models import GameSummaryData
+        summary_data = GameSummaryData(
+            game_name=rel_path,
+            player_black=player_black,
+            player_white=player_white,
+            snapshot=snapshot,
+            board_size=(board_size, board_size),
+            date=date,
+            game_id=game.game_id if hasattr(game, "game_id") else None,
+        )
+        stats["summary_data"] = summary_data
 
-    except Exception:
+        return stats
+    except Exception as e:
+        if log_cb:
+            log_cb(f"  Stats extraction failed for {rel_path}: {e}")
         return None
 
 

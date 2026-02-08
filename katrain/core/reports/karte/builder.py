@@ -119,6 +119,7 @@ def build_karte_report(
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
     snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+    lang: str = "ja",
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
 
@@ -148,56 +149,43 @@ def build_karte_report(
     """
     game_id = game.game_id or game.sgf_filename or "unknown"
 
-    try:
-        # 1. Compute snapshot once (avoid double computation)
-        # Phase 87.5: Use provided snapshot or build from game
-        if snapshot is None:
-            snapshot = game.build_eval_snapshot()
+    # 1. Compute snapshot once (avoid double computation)
+    # Phase 87.5: Use provided snapshot or build from game
+    if snapshot is None:
+        snapshot = game.build_eval_snapshot()
 
-        # 2. Mixed-engine check (Phase 37: enforcement point)
-        if not is_single_engine_snapshot(snapshot):
-            error_msg = (
-                f"{KARTE_ERROR_CODE_MIXED_ENGINE}\n"
-                "Mixed-engine analysis detected. "
-                "KataGo and Leela data cannot be combined in a single karte."
-            )
-            if raise_on_error:
-                raise MixedEngineSnapshotError(error_msg)
-            return _build_error_karte(game_id, player_filter, error_msg)
-
-        # 3. Pass snapshot as argument (avoid recomputation in impl)
-        return _build_karte_report_impl(
-            game,
-            snapshot,
-            level,
-            player_filter,
-            skill_preset,
-            target_visits=target_visits,
+    # 2. Mixed-engine check (Phase 37: enforcement point)
+    if not is_single_engine_snapshot(snapshot):
+        error_msg = (
+            f"{KARTE_ERROR_CODE_MIXED_ENGINE}\n"
+            "Mixed-engine analysis detected. "
+            "KataGo and Leela data cannot be combined in a single karte."
         )
-
-    except MixedEngineSnapshotError:
-        # Re-raise dedicated exception (explicitly requested)
-        raise
-
-    except Exception as e:
-        # Unexpected: Internal bug - traceback required
-        import traceback
-
-        error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\nFailed to generate karte: {type(e).__name__}: {e}"
-        if game.katrain:
-            game.katrain.log(f"{error_msg}\n{traceback.format_exc()}", OUTPUT_DEBUG)
-
         if raise_on_error:
-            raise KarteGenerationError(
-                message=error_msg,
-                game_id=game_id,
-                focus_player=player_filter,
-                context="build_karte_report",
-                original_error=e,
-            ) from e
-
-        # Return error markdown instead of crashing
+            raise MixedEngineSnapshotError(error_msg)
         return _build_error_karte(game_id, player_filter, error_msg)
+
+    # 3. Pass snapshot as argument
+    try:
+        return _build_karte_report_impl(
+            game=game,
+            snapshot=snapshot,
+            level=level,
+            player_filter=player_filter,
+            skill_preset=skill_preset,
+            target_visits=target_visits,
+            lang=lang,
+        )
+    except Exception as e:
+        import traceback
+        # Hardcoded debug path for guaranteed visibility
+        debug_log_path = "d:/github/katrain-1.17.0/debug_error.log"
+        try:
+            with open(debug_log_path, "a", encoding="utf-8") as f:
+                f.write(f"Error for {game_id}: {e}\n{traceback.format_exc()}\n")
+        except:
+            pass # Ignore logging failure
+        raise
 
 
 def _build_error_karte(
@@ -294,297 +282,18 @@ def _build_karte_report_impl(
     )
 
     # Phase 60: Build pacing map for Time column
-    pacing_map: dict[int, PacingMetrics] | None = None
-    try:
-        time_data = parse_time_data(game.root)
-        if time_data.has_time_data:
-            pacing_result = analyze_pacing(time_data, list(snapshot.moves))
-            pacing_map = {m.move_number: m for m in pacing_result.pacing_metrics}
-    except (ValueError, KeyError) as e:
-        # Expected: Time data missing or malformed in SGF (common case)
-        logger.debug(f"Time analysis skipped: {e}")
-        # pacing_map remains None → all Time columns show "-"
-    except Exception:
-        # Unexpected: Internal bug - traceback required (optional feature)
-        logger.debug("Unexpected time analysis error", exc_info=True)
-        # pacing_map remains None → all Time columns show "-"
-
-    # Meta
-    board_x, board_y = game.board_size
-    filename = os.path.splitext(os.path.basename(game.sgf_filename or ""))[0] or _fmt_val(
-        game.root.get_property("GN", None), default=game.game_id
-    )
-    meta_lines = [
-        f"- Board: {board_x}x{board_y}",
-        f"- Komi: {_fmt_val(game.komi)}",
-        f"- Rules: {_fmt_val(game.rules)}",
-        f"- Handicap: {_fmt_val(getattr(game.root, 'handicap', None), default='none')}",
-        f"- Game: {filename}",
-        f"- Date: {_fmt_val(game.root.get_property('DT', None), default=game.game_id)}",
-    ]
-
-    pb = _fmt_val(game.root.get_property("PB", None))
-    pw = _fmt_val(game.root.get_property("PW", None))
-    br = game.root.get_property("BR", None)
-    wr = game.root.get_property("WR", None)
-    players_lines = [
-        f"- Black: {pb}" + (f" ({br})" if br else ""),
-        f"- White: {pw}" + (f" ({wr})" if wr else ""),
-    ]
-
-    focus_color: str | None = None
-    if game.katrain:
-        focus_name = game.katrain.config("general/my_player_name")
-        focus_aliases = _read_aliases(game.katrain.config("general/my_player_aliases"))
-        focus_names = [n for n in [focus_name, *focus_aliases] if n]
-        if focus_names:
-            focus_tokens = {_normalize_name(n) for n in focus_names if _normalize_name(n)}
-            pb_norm = _normalize_name(pb)
-            pw_norm = _normalize_name(pw)
-            match_black = pb_norm and any(n in pb_norm for n in focus_tokens)
-            match_white = pw_norm and any(n in pw_norm for n in focus_tokens)
-            if match_black != match_white:
-                focus_color = "B" if match_black else "W"
-
-    # Phase 3: Process player_filter parameter
-    filtered_player: str | None = None
-    if player_filter:
-        if player_filter in ("B", "W"):
-            filtered_player = player_filter
-        else:
-            # Try to match against player names
-            user_norm = _normalize_name(player_filter)
-            pb_norm = _normalize_name(pb)
-            pw_norm = _normalize_name(pw)
-            match_black = pb_norm and user_norm in pb_norm
-            match_white = pw_norm and user_norm in pw_norm
-            if match_black and not match_white:
-                filtered_player = "B"
-            elif match_white and not match_black:
-                filtered_player = "W"
-            # If both or neither match, filtered_player stays None (show both)
-
-    # Style Archetype (Phase 57, confidence gating added Phase 66)
-    style_result = _compute_style_safe(snapshot.moves, filtered_player)
-    if style_result is not None:
-        confidence = style_result.confidence
-        if confidence >= STYLE_CONFIDENCE_THRESHOLD:
-            style_name = i18n._(style_result.archetype.name_key)
-            meta_lines.append(f"- Style: {style_name}")
-            meta_lines.append(f"- Style Confidence: {confidence:.0%}")
-        else:
-            # Low confidence: show "Unknown" with data insufficiency note
-            unknown_label = i18n._("style:unknown")
-            insufficient_label = i18n._("style:insufficient_data")
-            meta_lines.append(f"- Style: {unknown_label}")
-            meta_lines.append(f"- Style Confidence: {confidence:.0%} ({insufficient_label})")
-    else:
-        # style_result is None (computation failed)
-        unknown_label = i18n._("style:unknown")
-        meta_lines.append(f"- Style: {unknown_label}")
-
-    # Compute auto recommendation if skill_preset is "auto"
-    auto_recommendation: eval_metrics.AutoRecommendation | None = None
-    effective_preset = skill_preset
-    if skill_preset == "auto":
-        # Use focus_color if available, otherwise use all moves
-        focus_moves = [m for m in snapshot.moves if m.player == focus_color] if focus_color else list(snapshot.moves)
-        auto_recommendation = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
-        effective_preset = auto_recommendation.recommended_preset
-
-    # Get effective thresholds for classification
-    effective_thresholds = eval_metrics.get_skill_preset(effective_preset).score_thresholds
-
-    # Build histogram for distribution section
-    histogram = None
-    if thresholds:
-        try:
-            from katrain.core import ai as ai_module
-
-            _sum_stats, histogram, _ptloss = ai_module.game_report(game, thresholds=thresholds, depth_filter=None)
-        except (ValueError, KeyError) as exc:  # pragma: no cover - defensive fallback
-            # Expected: Threshold config or game data structure issue
-            game.katrain.log(f"Histogram generation skipped: {exc}", OUTPUT_DEBUG)
-            histogram = None
-        except Exception as exc:  # pragma: no cover - defensive fallback
-            # Unexpected: Internal bug - traceback required
-            import traceback
-
-            game.katrain.log(f"Unexpected histogram error: {exc}\n{traceback.format_exc()}", OUTPUT_DEBUG)
-            histogram = None
-
-    # Bucket label function for distribution
-    def bucket_label(bucket_idx: int) -> str:
-        cls_idx = len(thresholds) - 1 - bucket_idx
-        if cls_idx == 0:
-            return f">= {thresholds[0]}"
-        if cls_idx == len(thresholds) - 1:
-            return f"< {thresholds[-2]}"
-        upper = thresholds[cls_idx - 1]
-        lower = thresholds[cls_idx]
-        return f"{lower} - {upper}"
-
-    # Important moves table (top N derived from existing settings)
-    important_moves = game.get_important_move_evals(level=level)
-
-    # Phase 47: Classify meaning tags for each important move
-    total_moves = len(snapshot.moves)
-    classification_context = ClassificationContext(total_moves=total_moves)
-    for mv in important_moves:
-        if mv.meaning_tag_id is None:
-            meaning_tag = classify_meaning_tag(mv, context=classification_context)
-            mv.meaning_tag_id = meaning_tag.id.value
-
-    # Build KarteContext for section generators
-    ctx = KarteContext(
-        snapshot=snapshot,
+    # (Pacing map is not currently used in JSON export, but could be added later)
+    
+    from katrain.core.reports.karte.json_export import build_karte_json
+    import json
+    
+    json_data = build_karte_json(
         game=game,
-        thresholds=thresholds,
-        effective_thresholds=effective_thresholds,
-        effective_preset=effective_preset,
-        auto_recommendation=auto_recommendation,
-        confidence_level=confidence_level,
-        pacing_map=pacing_map,
-        histogram=histogram,
-        board_x=board_x,
-        board_y=board_y,
-        pb=pb,
-        pw=pw,
-        focus_color=focus_color,
-        important_moves=important_moves,
-        total_moves=total_moves,
-        settings=settings,
+        level=level,
+        player_filter=player_filter,
         skill_preset=skill_preset,
-        target_visits=target_visits,
-        lang=lang,
+        lang=lang
     )
-
-    # Assemble sections
-    sections: list[str] = ["## Meta", *meta_lines, ""]
-    sections += ["## Players", *players_lines, ""]
-    sections += ["## Notes", "- loss is measured for the player who played the move.", ""]
-    sections += definitions_section(ctx, auto_recommendation)
-    sections += data_quality_section(ctx)
-
-
-
-    # Phase 3: Apply player filter to sections
-    if filtered_player is None:
-        # Show both players (current behavior)
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            sections += [
-                f"## Summary (Focus: {focus_name})",
-                *summary_lines_for(ctx, focus_color),
-                "",
-            ]
-            # Phase 4: focus_color がある場合、相手サマリーを追加
-            sections += opponent_summary_for(ctx, focus_color)
-        sections += ["## Summary (Black)", *summary_lines_for(ctx, "B"), ""]
-        sections += ["## Summary (White)", *summary_lines_for(ctx, "W"), ""]
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            sections += [
-                f"## Distributions (Focus: {focus_name})",
-                *distribution_lines_for(ctx, focus_color, bucket_label),
-                "",
-            ]
-        sections += [
-            "## Distributions (Black)",
-            *distribution_lines_for(ctx, "B", bucket_label),
-            "",
-        ]
-        sections += [
-            "## Distributions (White)",
-            *distribution_lines_for(ctx, "W", bucket_label),
-            "",
-        ]
-        # Phase 4: focus_color がある場合、共通困難局面を追加
-        if focus_color:
-            sections += common_difficult_positions(ctx)
-    else:
-        # Show only filtered player
-        filtered_name = "Black" if filtered_player == "B" else "White"
-        # Show focus section only if it matches the filter
-        if focus_color and focus_color == filtered_player:
-            sections += [
-                f"## Summary (Focus: {filtered_name})",
-                *summary_lines_for(ctx, focus_color),
-                "",
-            ]
-        sections += [
-            f"## Summary ({filtered_name})",
-            *summary_lines_for(ctx, filtered_player),
-            "",
-        ]
-        # Phase 4: 相手サマリーを追加
-        sections += opponent_summary_for(ctx, filtered_player)
-        if focus_color and focus_color == filtered_player:
-            sections += [
-                f"## Distributions (Focus: {filtered_name})",
-                *distribution_lines_for(ctx, focus_color, bucket_label),
-                "",
-            ]
-        sections += [
-            f"## Distributions ({filtered_name})",
-            *distribution_lines_for(ctx, filtered_player, bucket_label),
-            "",
-        ]
-        # Phase 4: 共通困難局面を追加
-        sections += common_difficult_positions(ctx)
-
-    focus_label = "Focus"
-
-    # Diagnosis sections
-    if filtered_player is None:
-        # Show both players
-        if focus_color:
-            focus_name = "Black" if focus_color == "B" else "White"
-            # Urgent Miss Detection first
-            sections += urgent_miss_section_for(ctx, focus_color, focus_name)
-            sections += weakness_hypothesis_for(ctx, focus_color, focus_name)
-            sections += practice_priorities_for(ctx, focus_color, focus_name)
-            sections += mistake_streaks_for(ctx, focus_color, focus_name)
-
-        if focus_color:
-            sections += important_lines_for(ctx, focus_color, focus_label)
-            sections.append("")
-            # Phase 50: Critical 3 (Focus player)
-            sections += critical_3_section_for(ctx, focus_color, focus_label, level)
-            # Phase 12: Tag distribution for Focus player
-            sections += reason_tags_distribution_for(ctx, focus_color, focus_label)
-        sections += important_lines_for(ctx, "B", "Black")
-        sections.append("")
-        # Phase 50: Critical 3 (Black)
-        sections += critical_3_section_for(ctx, "B", "Black", level)
-        # Phase 12: Tag distribution for Black
-        sections += reason_tags_distribution_for(ctx, "B", "Black")
-        sections += important_lines_for(ctx, "W", "White")
-        sections.append("")
-        # Phase 50: Critical 3 (White)
-        sections += critical_3_section_for(ctx, "W", "White", level)
-        # Phase 12: Tag distribution for White
-        sections += reason_tags_distribution_for(ctx, "W", "White")
-    else:
-        # Show only filtered player
-        filtered_name = "Black" if filtered_player == "B" else "White"
-        if focus_color and focus_color == filtered_player:
-            # Urgent Miss Detection first
-            sections += urgent_miss_section_for(ctx, focus_color, filtered_name)
-            sections += weakness_hypothesis_for(ctx, focus_color, filtered_name)
-            sections += practice_priorities_for(ctx, focus_color, filtered_name)
-            sections += mistake_streaks_for(ctx, focus_color, filtered_name)
-
-        if focus_color and focus_color == filtered_player:
-            sections += important_lines_for(ctx, focus_color, focus_label)
-            sections.append("")
-            # Phase 50: Critical 3 (Focus player)
-            sections += critical_3_section_for(ctx, focus_color, focus_label, level)
-            sections += reason_tags_distribution_for(ctx, focus_color, focus_label)
-        sections += important_lines_for(ctx, filtered_player, filtered_name)
-        sections.append("")
-        # Phase 50: Critical 3 (filtered player)
-        sections += critical_3_section_for(ctx, filtered_player, filtered_name, level)
-        sections += reason_tags_distribution_for(ctx, filtered_player, filtered_name)
-
-    return "\n".join(sections)
+    
+    json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
+    return json_str

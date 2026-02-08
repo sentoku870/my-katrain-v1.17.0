@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-07（Phase 128完了）
+> 最終更新: 2026-02-08（Phase 129完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -309,6 +309,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 126 | Curator UI Integration | バッチ解析画面にプロ棋譜おすすめ生成を追加 | ✅ |
 | 127 | Diagnostics Extension | Export LLM Package機能追加、診断機能拡張 | ✅ |
 | 128 | Auto Setup Cleanup | 不安定な自動セットアップ機能を削除 | ✅ |
+| 129 | JSON Report Refinements v8 | game_id追加、reason_tags伝播、Karte JSON化 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -487,6 +488,14 @@ Analysis機能（LeelaManagerによる候補手表示等）は完全に維持し
 バッチ解析画面に「Curator(おすすめ)生成」チェックボックスを統合。
 解析完了時に `reports/curator/` 内に `curator_ranking.json` 等を自動出力する機能を有効化。
 Kivyメインスレッド違反エラーの修正を含む。
+
+
+**Phase 129**: ✅ JSON Report Refinements v8（Completed）。
+`GameSummaryData` および `games` リストに `game_id` を追加し、追跡性を向上。
+`reason_tags` を `important_moves` から `snapshot` に伝播させ、Summaryレポートでの理由タグ出力を修正。
+プレイヤー名（black/white）とフェーズ名（endgame）を正規化。
+Karteレポートを `.json` 形式（Markdownラップなし）に変更。
+`status` フィールド（`computed` / `empty_or_not_computed`）を追加し、データ不在と計算結果空を区別。
 
 
 ### 未定（TBD / Post-52）

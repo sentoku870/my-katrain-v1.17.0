@@ -1,10 +1,7 @@
 """Summary report generation for multiple game analysis.
 
 PR #116: Phase B2 - summary_report.py extraction from game.py
-
-This module contains all static methods related to multi-game summary
-report generation. These were previously in the Game class but are
-stateless and can be extracted without any changes to the interface.
+Refactored (Phase 128): Logic separated into summary_logic.py, constants moved to constants.py.
 
 All functions in this module:
 - Are static (no self parameter)
@@ -16,18 +13,27 @@ from datetime import datetime
 from typing import Any, Optional
 
 from katrain.core import eval_metrics
-from katrain.core.batch.helpers import truncate_game_name
+from katrain.core.batch.helpers import format_game_display_label, truncate_game_name
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
     PositionDifficulty,
     SummaryStats,
-    get_canonical_loss_from_move,
 )
 from katrain.core.game_node import Move
+from katrain.core.lang import i18n
+from katrain.core.reports.constants import (
+    BAD_MOVE_LOSS_THRESHOLD,
+    SUMMARY_DEFAULT_MAX_WORST_MOVES,
+    URGENT_MISS_MIN_CONSECUTIVE,
+    URGENT_MISS_THRESHOLD_LOSS,
+)
+from katrain.core.reports.summary_logic import SummaryAnalyzer
 
 
-def build_summary_report(game_data_list: list["GameSummaryData"], focus_player: str | None = None) -> str:
+def build_summary_report(
+    game_data_list: list["GameSummaryData"], focus_player: str | None = None
+) -> str:
     """
     複数局から統計まとめを生成（Phase 6）
 
@@ -39,123 +45,25 @@ def build_summary_report(game_data_list: list["GameSummaryData"], focus_player: 
         Markdown形式のまとめレポート
     """
     if not game_data_list:
-        return "# Multi-Game Summary\n\nNo games provided."
+        # Return empty JSON-like structure or specific message
+        return f"```json\n{{\n  \"meta\": {{\n    \"games_analyzed\": 0\n  }}\n}}\n```"
 
-    # プレイヤー別に統計を集計
-    player_stats = _aggregate_player_stats(game_data_list, focus_player)
-
-    # Markdownセクションをフォーマット
-    sections = ["# Multi-Game Summary\n"]
-    sections.append(_format_meta_section(game_data_list, focus_player))
-
-    for player, stats in player_stats.items():
-        # PR#1: Compute confidence level per player
-        confidence_level = eval_metrics.compute_confidence_level(stats.all_moves)
-
-        sections.append("")
-        sections.append(_format_overall_stats(player, stats, confidence_level))
-        sections.append("")
-        sections.append(_format_mistake_distribution(player, stats))
-        sections.append("")
-        sections.append(_format_freedom_distribution(player, stats))
-        sections.append("")
-        sections.append(_format_phase_breakdown(player, stats))
-        sections.append("")
-        # Phase × Mistake クロス集計テーブル追加
-        sections.append(_format_phase_mistake_breakdown(player, stats))
-        sections.append("")
-        sections.append(_format_top_worst_moves(player, stats, confidence_level))
-        sections.append("")
-        sections.append(_format_weakness_hypothesis(player, stats, confidence_level))
-        sections.append("")
-        sections.append(_format_practice_priorities(player, stats, confidence_level))
-
-    return "\n".join(sections)
+    from katrain.core.reports.summary_json_export import build_summary_json
+    import json
+    
+    json_data = build_summary_json(game_data_list, focus_player)
+    
+    # Phase v6 Stage 1: Return raw JSON string (no Markdown wrapping)
+    json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
+    return json_str
 
 
-def _aggregate_player_stats(
-    game_data_list: list["GameSummaryData"], focus_player: str | None = None
-) -> dict[str, "SummaryStats"]:
-    """プレイヤー別に統計を集計"""
-    player_stats: dict[str, SummaryStats] = {}
-
-    for game_data in game_data_list:
-        for player_color in ["B", "W"]:
-            player_name = game_data.player_black if player_color == "B" else game_data.player_white
-
-            # focus_player指定がある場合、それ以外はスキップ
-            if focus_player and player_name != focus_player:
-                continue
-
-            # プレイヤー統計を初期化
-            if player_name not in player_stats:
-                player_stats[player_name] = SummaryStats(
-                    player_name=player_name,
-                    mistake_counts={cat: 0 for cat in MistakeCategory},
-                    mistake_total_loss={cat: 0.0 for cat in MistakeCategory},
-                    freedom_counts={diff: 0 for diff in PositionDifficulty},
-                    phase_moves={"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
-                    phase_loss={"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
-                )
-
-            stats = player_stats[player_name]
-            stats.total_games += 1
-
-            # このプレイヤーの手のみを集計
-            player_moves = [m for m in game_data.snapshot.moves if m.player == player_color]
-            stats.total_moves += len(player_moves)
-
-            # PR#1: Store moves for confidence level computation
-            stats.all_moves.extend(player_moves)
-
-            for move in player_moves:
-                # 損失を集計（canonical loss: 常に >= 0）
-                loss = get_canonical_loss_from_move(move)
-                if loss > 0:
-                    stats.total_points_lost += loss
-
-                # ミス分類を集計
-                if move.mistake_category:
-                    stats.mistake_counts[move.mistake_category] += 1
-                    if loss > 0:
-                        stats.mistake_total_loss[move.mistake_category] += loss
-
-                # Freedom（手の自由度）を集計
-                if move.position_difficulty:
-                    stats.freedom_counts[move.position_difficulty] += 1
-
-                # 局面タイプを集計
-                phase = move.tag or "unknown"
-                stats.phase_moves[phase] = stats.phase_moves.get(phase, 0) + 1
-                if loss > 0:
-                    stats.phase_loss[phase] = stats.phase_loss.get(phase, 0.0) + loss
-
-                # Phase × MistakeCategory クロス集計
-                if move.mistake_category:
-                    key = (phase, move.mistake_category)
-                    stats.phase_mistake_counts[key] = stats.phase_mistake_counts.get(key, 0) + 1
-                    if loss > 0:
-                        stats.phase_mistake_loss[key] = stats.phase_mistake_loss.get(key, 0.0) + loss
-
-                # 最悪手を記録（Top 10を保持）
-                if loss > 0.5:  # 0.5目以上の損失のみ
-                    stats.worst_moves.append((game_data.game_name, move))
-
-    # 各プレイヤーの統計を完成させる
-    for stats in player_stats.values():
-        if stats.total_moves > 0:
-            stats.avg_points_lost_per_move = stats.total_points_lost / stats.total_moves
-
-        # 最悪手をソートする（Top 10への絞り込みは _format_top_worst_moves で実施）
-        stats.worst_moves.sort(key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True)
-
-    return player_stats
-
-
-def _format_meta_section(game_data_list: list["GameSummaryData"], focus_player: str | None) -> str:
+def _format_meta_section(
+    game_data_list: list["GameSummaryData"], focus_player: str | None
+) -> str:
     """メタ情報セクションを生成"""
-    lines = ["## Meta"]
-    lines.append(f"- Games analyzed: {len(game_data_list)}")
+    lines = [f"## {i18n._('summary:meta')}"]
+    lines.append(f"- {i18n._('summary:meta:games_analyzed')}: {len(game_data_list)}")
 
     # プレイヤー情報
     all_players = set()
@@ -164,18 +72,22 @@ def _format_meta_section(game_data_list: list["GameSummaryData"], focus_player: 
         all_players.add(gd.player_white)
 
     if focus_player:
-        lines.append(f"- Focus player: {focus_player}")
+        lines.append(f"- {i18n._('summary:meta:focus_player')}: {focus_player}")
     else:
-        lines.append(f"- Players: {', '.join(sorted(all_players))}")
+        lines.append(
+            f"- {i18n._('summary:meta:players')}: {', '.join(sorted(all_players))}"
+        )
 
     # 日付範囲
     dates = [gd.date for gd in game_data_list if gd.date]
     if dates:
-        lines.append(f"- Date range: {min(dates)} to {max(dates)}")
+        lines.append(
+            f"- {i18n._('summary:meta:date_range')}: {min(dates)} to {max(dates)}"
+        )
 
     # 生成日時
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines.append(f"- Generated: {now}")
+    lines.append(f"- {i18n._('summary:meta:generated')}: {now}")
 
     return "\n".join(lines)
 
@@ -191,63 +103,87 @@ def _format_overall_stats(
         confidence_level = eval_metrics.ConfidenceLevel.HIGH
 
     # PR#1: Show confidence level prominently
-    confidence_label = eval_metrics.get_confidence_label(confidence_level, lang="ja")
+    # Note: get_confidence_label likely handles i18n internally or returns a key?
+    # Checking usage, it seems to expect lang arg, but here using global i18n
+    # Let's assume we pass lang explicitly if needed, or use a method that uses i18n
+    confidence_label = eval_metrics.get_confidence_label(
+        confidence_level, lang=i18n.lang or "en"
+    )
 
-    lines = [f"## Overall Statistics ({player_name})"]
+    lines = [f"## {i18n._('summary:overall')} ({player_name})"]
     lines.append(f"- **{confidence_label}**")  # PR#1: Confidence level
-    lines.append(f"- Total games: {stats.total_games}")
-    lines.append(f"- Total moves analyzed: {stats.total_moves}")
-    lines.append(f"- Total points lost: {stats.total_points_lost:.1f}")
-    lines.append(f"- Average points lost per move: {stats.avg_points_lost_per_move:.2f}")
+    lines.append(f"- {i18n._('summary:overall:total_games')}: {stats.total_games}")
+    lines.append(
+        f"- {i18n._('summary:overall:total_moves')}: {stats.total_moves}"
+    )
+    lines.append(
+        f"- {i18n._('summary:overall:total_loss')}: {stats.total_points_lost:.1f}"
+    )
+    lines.append(
+        f"- {i18n._('summary:overall:avg_loss')}: {stats.avg_points_lost_per_move:.2f}"
+    )
 
     if stats.worst_moves:
         worst_game, worst_move = stats.worst_moves[0]
-        loss = worst_move.points_lost if worst_move.points_lost else worst_move.score_loss
+        loss = (
+            worst_move.points_lost if worst_move.points_lost else worst_move.score_loss
+        )
         lines.append(
-            f"- Worst single move: {worst_game} #{worst_move.move_number} {worst_move.gtp or '-'} ({loss:.1f} points)"
+            f"- {i18n._('summary:overall:worst_move')}: {worst_game} #{worst_move.move_number} {worst_move.gtp or '-'} ({loss:.1f} {i18n._('summary:points')})"
         )
 
     # PR#1: Add LOW confidence warning
     if confidence_level == eval_metrics.ConfidenceLevel.LOW:
         lines.append("")
-        lines.append("⚠️ 解析訪問数が少ないため、結果が不安定な可能性があります。再解析を推奨します。")
+        lines.append(f"⚠️ {i18n._('summary:warning:low_confidence')}")
 
     return "\n".join(lines)
 
 
 def _format_mistake_distribution(player_name: str, stats: SummaryStats) -> str:
     """ミス分類分布セクションを生成"""
-    lines = [f"## Mistake Distribution ({player_name})"]
-    lines.append("| Category | Count | Percentage | Avg Loss |")
+    lines = [f"## {i18n._('summary:mistake_dist')} ({player_name})"]
+    lines.append(
+        f"| {i18n._('summary:table:category')} | {i18n._('summary:table:count')} | {i18n._('summary:table:percentage')} | {i18n._('summary:table:avg_loss')} |"
+    )
     lines.append("|----------|-------|------------|----------|")
 
     category_labels = {
-        MistakeCategory.GOOD: "Good",
-        MistakeCategory.INACCURACY: "Inaccuracy",
-        MistakeCategory.MISTAKE: "Mistake",
-        MistakeCategory.BLUNDER: "Blunder",
+        MistakeCategory.GOOD: i18n._("mistake:good"),
+        MistakeCategory.INACCURACY: i18n._("mistake:inaccuracy"),
+        MistakeCategory.MISTAKE: i18n._("mistake:mistake"),
+        MistakeCategory.BLUNDER: i18n._("mistake:blunder"),
     }
 
-    for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+    for cat in [
+        MistakeCategory.GOOD,
+        MistakeCategory.INACCURACY,
+        MistakeCategory.MISTAKE,
+        MistakeCategory.BLUNDER,
+    ]:
         count = stats.mistake_counts.get(cat, 0)
         pct = stats.get_mistake_percentage(cat)
         avg_loss = stats.get_mistake_avg_loss(cat)
-        lines.append(f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |")
+        lines.append(
+            f"| {category_labels[cat]} | {count} | {pct:.1f}% | {avg_loss:.2f} |"
+        )
 
     return "\n".join(lines)
 
 
 def _format_freedom_distribution(player_name: str, stats: SummaryStats) -> str:
     """Freedom（手の自由度）分布セクションを生成"""
-    lines = [f"## Freedom Distribution ({player_name})"]
-    lines.append("| Difficulty | Count | Percentage |")
+    lines = [f"## {i18n._('summary:freedom_dist')} ({player_name})"]
+    lines.append(
+        f"| {i18n._('summary:table:difficulty')} | {i18n._('summary:table:count')} | {i18n._('summary:table:percentage')} |"
+    )
     lines.append("|------------|-------|------------|")
 
     difficulty_labels = {
-        PositionDifficulty.EASY: "Easy (wide)",
-        PositionDifficulty.NORMAL: "Normal",
-        PositionDifficulty.HARD: "Hard (narrow)",
-        PositionDifficulty.ONLY_MOVE: "Only move",
+        PositionDifficulty.EASY: i18n._("freedom:easy"),
+        PositionDifficulty.NORMAL: i18n._("freedom:normal"),
+        PositionDifficulty.HARD: i18n._("freedom:hard"),
+        PositionDifficulty.ONLY_MOVE: i18n._("freedom:only_move"),
     }
 
     for diff in [
@@ -265,43 +201,54 @@ def _format_freedom_distribution(player_name: str, stats: SummaryStats) -> str:
 
 def _format_phase_breakdown(player_name: str, stats: SummaryStats) -> str:
     """局面タイプ別内訳セクションを生成"""
-    lines = [f"## Phase Breakdown ({player_name})"]
-    lines.append("| Phase | Moves | Points Lost | Avg Loss |")
+    lines = [f"## {i18n._('summary:phase_breakdown')} ({player_name})"]
+    lines.append(
+        f"| {i18n._('summary:table:phase')} | {i18n._('summary:table:moves')} | {i18n._('summary:table:points_lost')} | {i18n._('summary:table:avg_loss')} |"
+    )
     lines.append("|-------|-------|-------------|----------|")
 
     phase_labels = {
-        "opening": "Opening",
-        "middle": "Middle game",
-        "yose": "Endgame",
-        "unknown": "Unknown",
+        "opening": i18n._("phase:opening"),
+        "middle": i18n._("phase:middle"),
+        "yose": i18n._("phase:yose"),
+        "unknown": i18n._("phase:unknown"),
     }
 
     for phase in ["opening", "middle", "yose", "unknown"]:
         count = stats.phase_moves.get(phase, 0)
         loss = stats.phase_loss.get(phase, 0.0)
         avg_loss = stats.get_phase_avg_loss(phase)
-        lines.append(f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |")
+        lines.append(
+            f"| {phase_labels.get(phase, phase)} | {count} | {loss:.1f} | {avg_loss:.2f} |"
+        )
 
     return "\n".join(lines)
 
 
 def _format_phase_mistake_breakdown(player_name: str, stats: SummaryStats) -> str:
     """Phase × Mistake クロス集計セクションを生成"""
-    lines = [f"## Phase × Mistake Breakdown ({player_name})"]
-    lines.append("| Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |")
+    lines = [f"## {i18n._('summary:phase_mistake_breakdown')} ({player_name})"]
+    lines.append(
+        f"| {i18n._('summary:table:phase')} | {i18n._('mistake:good')} | {i18n._('mistake:inaccuracy')} | {i18n._('mistake:mistake')} | {i18n._('mistake:blunder')} | {i18n._('summary:table:total_loss')} |"
+    )
     lines.append("|-------|------|------------|---------|---------|------------|")
 
     phase_labels = {
-        "opening": "Opening",
-        "middle": "Middle game",
-        "yose": "Endgame",
-        "unknown": "Unknown",
+        "opening": i18n._("phase:opening"),
+        "middle": i18n._("phase:middle"),
+        "yose": i18n._("phase:yose"),
+        "unknown": i18n._("phase:unknown"),
     }
 
     for phase in ["opening", "middle", "yose"]:
         cells = [phase_labels.get(phase, phase)]
 
-        for cat in [MistakeCategory.GOOD, MistakeCategory.INACCURACY, MistakeCategory.MISTAKE, MistakeCategory.BLUNDER]:
+        for cat in [
+            MistakeCategory.GOOD,
+            MistakeCategory.INACCURACY,
+            MistakeCategory.MISTAKE,
+            MistakeCategory.BLUNDER,
+        ]:
             count = stats.phase_mistake_counts.get((phase, cat), 0)
             loss = stats.phase_mistake_loss.get((phase, cat), 0.0)
 
@@ -342,91 +289,10 @@ def _convert_sgf_to_gtp_coord(sgf_coord: str, board_size: int = 19) -> str:
         return sgf_coord
 
 
-def _detect_urgent_miss_sequences(
-    worst_moves: list[tuple[str, Any]], threshold_loss: float = 20.0, min_consecutive: int = 3
-) -> tuple[list[Any], list[tuple[str, Any]]]:
-    """
-    連続する大損失手を「急場見逃しパターン」として検出
-
-    Args:
-        worst_moves: [(game_name, move), ...] のリスト
-        threshold_loss: 損失閾値（デフォルト20目）
-        min_consecutive: 最小連続手数（デフォルト3手）
-
-    Returns:
-        sequences: 検出されたシーケンスのリスト
-        filtered_moves: 急場見逃し区間を除外した通常のワースト手リスト
-    """
-    sequences = []
-    filtered_moves = []
-    current_seq = None
-
-    # worst_movesを手数でソート（同じゲーム内で連続しているかチェックするため）
-    sorted_moves = sorted(worst_moves, key=lambda x: (x[0], x[1].move_number))
-
-    for _i, (game_name, move) in enumerate(sorted_moves):
-        loss = move.points_lost if move.points_lost else move.score_loss or 0
-
-        if loss >= threshold_loss:
-            if current_seq is None:
-                # 新しいシーケンス開始
-                current_seq = {
-                    "game": game_name,
-                    "start": move.move_number,
-                    "end": move.move_number,
-                    "moves": [(game_name, move)],
-                    "total_loss": loss,
-                    "count": 1,
-                }
-            elif current_seq["game"] == game_name and move.move_number <= current_seq["end"] + 2:
-                # 連続している（1手スキップまで許容）
-                current_seq["end"] = move.move_number
-                current_seq["moves"].append((game_name, move))
-                current_seq["total_loss"] += loss
-                current_seq["count"] += 1
-            else:
-                # 連続が途切れた
-                if current_seq["count"] >= min_consecutive:
-                    sequences.append(current_seq)
-                else:
-                    # 閾値を超えているが連続していない → 通常のワースト手に追加
-                    filtered_moves.extend(current_seq["moves"])
-
-                # 新しいシーケンス開始
-                current_seq = {
-                    "game": game_name,
-                    "start": move.move_number,
-                    "end": move.move_number,
-                    "moves": [(game_name, move)],
-                    "total_loss": loss,
-                    "count": 1,
-                }
-        else:
-            # 閾値未満
-            if current_seq:
-                if current_seq["count"] >= min_consecutive:
-                    sequences.append(current_seq)
-                else:
-                    # 閾値を超えているが連続していない → 通常のワースト手に追加
-                    filtered_moves.extend(current_seq["moves"])
-                current_seq = None
-
-            # 通常のワースト手に追加
-            filtered_moves.append((game_name, move))
-
-    # 最後のシーケンス処理
-    if current_seq:
-        if current_seq["count"] >= min_consecutive:
-            sequences.append(current_seq)
-        else:
-            filtered_moves.extend(current_seq["moves"])
-
-    return sequences, filtered_moves
-
-
 def _format_top_worst_moves(
     player_name: str,
     stats: SummaryStats,
+    analyzer: SummaryAnalyzer,
     confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """最悪手Top 10セクションを生成（急場見逃しパターンを分離）"""
@@ -436,43 +302,57 @@ def _format_top_worst_moves(
 
     # PR#1: Limit worst moves count based on confidence
     max_count = eval_metrics.get_important_moves_limit(confidence_level)
-    title_suffix = " (候補)" if confidence_level == eval_metrics.ConfidenceLevel.LOW else ""
-    lines = [f"## Top Worst Moves ({player_name}){title_suffix}"]
+    title_suffix = (
+        f" ({i18n._('summary:suffix:candidate')})"
+        if confidence_level == eval_metrics.ConfidenceLevel.LOW
+        else ""
+    )
+    lines = [f"## {i18n._('summary:top_worst')} ({player_name}){title_suffix}"]
 
     if not stats.worst_moves:
-        lines.append("- No significant mistakes found.")
+        lines.append(f"- {i18n._('summary:no_mistakes')}")
         return "\n".join(lines)
 
-    # 急場見逃しパターンを検出
-    sequences, filtered_moves = _detect_urgent_miss_sequences(stats.worst_moves, threshold_loss=20.0, min_consecutive=3)
+    # 急場見逃しパターンを検出 (using Logic class)
+    # Using hardcoded values in logic class impl, so no args needed if using default
+    # But SummaryAnalyzer._detect_urgent_miss_sequences_impl takes args.
+    # The public method wrapper uses defaults.
+    sequences, filtered_moves = analyzer.detect_urgent_miss_sequences(player_name)
 
     # 急場見逃しパターンがあれば表示
     if sequences:
         lines.append("")
-        lines.append("**注意**: 以下の区間は双方が急場を見逃した可能性があります（損失20目超が3手以上連続）")
-        lines.append("| Game | 手数範囲 | 連続 | 総損失 | 平均損失/手 |")
+        lines.append(f"**{i18n._('summary:warning')}**: {i18n._('summary:urgent_miss_warning').format(loss=URGENT_MISS_THRESHOLD_LOSS, count=URGENT_MISS_MIN_CONSECUTIVE)}")
+        lines.append(
+            f"| {i18n._('summary:table:game')} | {i18n._('summary:table:range')} | {i18n._('summary:table:consecutive')} | {i18n._('summary:table:total_loss')} | {i18n._('summary:table:avg_loss')} |"
+        )
         lines.append("|------|---------|------|--------|------------|")
 
         for seq in sequences:
-            short_game = truncate_game_name(seq["game"])
+            # Use full game name (Phase V4)
+            game_full_id = seq["game"]
             avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
-                f"| {short_game} | #{seq['start']}-{seq['end']} | "
-                f"{seq['count']}手 | {seq['total_loss']:.1f}目 | {avg_loss:.1f}目 |"
+                f"| {game_full_id} | #{seq['start']}-{seq['end']} | "
+                f"{seq['count']}{i18n._('summary:unit:moves')} | {seq['total_loss']:.1f}{i18n._('summary:unit:points')} | {avg_loss:.1f}{i18n._('summary:unit:points')} |"
             )
         lines.append("")
 
     # 通常のワースト手を表示
     if filtered_moves:
         # 損失でソートして confidence level に応じた件数を取得
-        filtered_moves.sort(key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True)
+        filtered_moves.sort(
+            key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True
+        )
         # PR#1: Use max_count from confidence level (default was 10)
-        display_limit = min(10, max_count)
+        display_limit = min(SUMMARY_DEFAULT_MAX_WORST_MOVES, max_count)
         display_moves = filtered_moves[:display_limit]
 
         if sequences:
-            lines.append("通常のワースト手（損失20目以下 or 単発）:")
-        lines.append("| Game | # | P | Coord | Loss | Importance | Category |")
+            lines.append(f"{i18n._('summary:normal_worst')} ({i18n._('summary:less_than').format(val=URGENT_MISS_THRESHOLD_LOSS)}):")
+        lines.append(
+            f"| {i18n._('summary:table:game')} | # | P | {i18n._('summary:table:coord')} | {i18n._('summary:table:loss')} | {i18n._('summary:table:importance')} | {i18n._('summary:table:category')} |"
+        )
         lines.append("|------|---|---|-------|------|------------|----------|")
 
         mistake_labels = {
@@ -484,7 +364,11 @@ def _format_top_worst_moves(
 
         for game_name, move in display_moves:
             loss = move.points_lost if move.points_lost else move.score_loss
-            importance = move.importance if hasattr(move, "importance") and move.importance else loss
+            importance = (
+                move.importance
+                if hasattr(move, "importance") and move.importance
+                else loss
+            )
             mistake = mistake_labels.get(move.mistake_category, "UNKNOWN")
 
             # 座標変換（SGF座標→GTP座標）
@@ -493,15 +377,18 @@ def _format_top_worst_moves(
             if coord and len(coord) == 2 and coord.isalpha() and coord.islower():
                 coord = _convert_sgf_to_gtp_coord(coord, 19)
 
-            # ゲーム名が長い場合は短縮
-            short_game = truncate_game_name(game_name)
+            # Importance score (v128+)
+            importance = move.importance_score or 0.0
+
+            # ゲーム名が長い場合でも短縮しない (Phase V4: Pure Data)
+            game_full_id = game_name
             lines.append(
-                f"| {short_game} | {move.move_number} | {move.player or '-'} | "
+                f"| {game_full_id} | {move.move_number} | {move.player or '-'} | "
                 f"{coord or '-'} | {loss:.1f} | {importance:.1f} | {mistake} |"
             )
     else:
         if sequences:
-            lines.append("通常のワースト手: なし（すべて急場見逃しパターン）")
+            lines.append(f"{i18n._('summary:normal_worst')}: {i18n._('summary:none_urgent_only')}")
 
     return "\n".join(lines)
 
@@ -509,6 +396,7 @@ def _format_top_worst_moves(
 def _format_weakness_hypothesis(
     player_name: str,
     stats: SummaryStats,
+    analyzer: SummaryAnalyzer,
     confidence_level: Optional["eval_metrics.ConfidenceLevel"] = None,
 ) -> str:
     """弱点仮説セクションを生成（複数局サマリー用）"""
@@ -521,17 +409,11 @@ def _format_weakness_hypothesis(
     is_medium_conf = confidence_level == eval_metrics.ConfidenceLevel.MEDIUM
 
     # PR#1: Add "(※参考情報)" suffix for LOW confidence
-    header_suffix = " (※参考情報)" if is_low_conf else ""
-    lines = [f"## Weakness Hypothesis ({player_name}){header_suffix}", ""]
+    header_suffix = f" ({i18n._('summary:suffix:ref')})" if is_low_conf else ""
+    lines = [f"## {i18n._('summary:weakness')} ({player_name}){header_suffix}", ""]
 
-    # 急場見逃しパターンを検出（棋力別閾値を使用）
-    # Note: このメソッドは static なので config にアクセスできない
-    # 現在 UI では使われていないため、標準設定をデフォルトとする
-    urgent_config = eval_metrics.get_urgent_miss_config("standard")
-
-    sequences, _ = _detect_urgent_miss_sequences(
-        stats.worst_moves, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive
-    )
+    # 急場見逃しパターンを検出 (using Logic class)
+    sequences, _ = analyzer.detect_urgent_miss_sequences(player_name)
 
     # クロス集計から弱点を抽出
     priorities = stats.get_practice_priorities()
@@ -539,39 +421,40 @@ def _format_weakness_hypothesis(
     if priorities:
         # PR#1: Use hedged wording for MEDIUM/LOW confidence
         if is_low_conf:
-            lines.append("傾向が見られる項目（※参考情報）:")
+            lines.append(f"{i18n._('summary:weakness:trend_ref')}:")
         elif is_medium_conf:
-            lines.append("傾向が見られる項目（Based on cross-tabulation analysis）:")
+            lines.append(f"{i18n._('summary:weakness:trend')}:")
         else:
-            lines.append("Based on cross-tabulation analysis:")
+            lines.append(f"{i18n._('summary:weakness:analysis')}:")
         lines.append("")
         for priority in priorities:
             lines.append(f"- {priority}")
     else:
-        lines.append("- 明確な弱点パターンは検出されませんでした。")
+        lines.append(f"- {i18n._('summary:weakness:none')}")
 
     # 急場見逃しがあれば追加
     if sequences:
         lines.append("")
-        lines.append("**急場見逃しパターン**:")
+        lines.append(f"**{i18n._('summary:urgent_miss')}**:")
         for seq in sequences:
-            short_game = truncate_game_name(seq["game"])
+            # Use full identifier (Phase V4)
+            game_full_id = seq["game"]
             avg_loss = seq["total_loss"] / seq["count"]
             lines.append(
-                f"- {short_game} #{seq['start']}-{seq['end']}: "
-                f"{seq['count']}手連続、総損失{seq['total_loss']:.1f}目（平均{avg_loss:.1f}目/手）"
+                f"- {game_full_id} #{seq['start']}-{seq['end']}: "
+                f"{seq['count']}{i18n._('summary:unit:moves_continuous')}, {i18n._('summary:total_loss')}{seq['total_loss']:.1f}{i18n._('summary:unit:points')} ({i18n._('summary:avg')}{avg_loss:.1f}{i18n._('summary:unit:points_per_move')})"
             )
 
         lines.append("")
-        lines.append("**推奨アプローチ**:")
-        lines.append("- 詰碁（死活）訓練で読みの精度向上")
-        lines.append("- 対局中、戦いの前に「自分の石は安全か？」「相手の弱点はどこか？」を確認")
-        lines.append("- 急場見逃し区間のSGFを重点的に復習")
+        lines.append(f"**{i18n._('summary:recommendation')}**:")
+        lines.append(f"- {i18n._('summary:rec:tsumego')}")
+        lines.append(f"- {i18n._('summary:rec:safety')}")
+        lines.append(f"- {i18n._('summary:rec:review')}")
 
     # PR#1: Add re-analysis recommendation for LOW confidence
     if is_low_conf:
         lines.append("")
-        lines.append("⚠️ 解析訪問数が少ないため、visits増で再解析を推奨します。")
+        lines.append(f"⚠️ {i18n._('summary:warning:low_visits')}")
 
     return "\n".join(lines)
 
@@ -590,15 +473,15 @@ def _format_practice_priorities(
     if confidence_level == eval_metrics.ConfidenceLevel.LOW:
         return "\n".join(
             [
-                f"## 練習の優先順位 ({player_name})",
+                f"## {i18n._('summary:practice')} ({player_name})",
                 "",
-                "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
+                f"- {i18n._('summary:practice:low_data_msg')}",
             ]
         )
 
-    lines = [f"## 練習の優先順位 ({player_name})"]
+    lines = [f"## {i18n._('summary:practice')} ({player_name})"]
     lines.append("")
-    lines.append("Based on the data above, consider focusing on:")
+    lines.append(i18n._('summary:practice:intro'))
     lines.append("")
 
     priorities = stats.get_practice_priorities()
@@ -608,9 +491,10 @@ def _format_practice_priorities(
         priorities = priorities[:1]
 
     if not priorities:
-        lines.append("- No specific priorities identified. Keep up the good work!")
+        lines.append(f"- {i18n._('summary:practice:none')}")
     else:
         for i, priority in enumerate(priorities, 1):
             lines.append(f"- {i}. {priority}")
 
     return "\n".join(lines)
+

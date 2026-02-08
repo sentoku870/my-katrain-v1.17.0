@@ -444,7 +444,7 @@ def run_batch(
                     )
                     # Include path hash to avoid filename collisions for files with same basename
                     path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
-                    karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.md"
+                    karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.json"
                     karte_path = os.path.join(output_dir, "reports", "karte", karte_filename)
 
                     # Use safe write with error handling (A3)
@@ -559,7 +559,7 @@ def run_batch(
                     # Sanitize filename
                     safe_name = sanitize_filename(player_name)
                     base_path = os.path.join(output_dir, "reports", "summary", f"summary_{safe_name}_{batch_timestamp}")
-                    summary_path = get_unique_filename(base_path, ".md")
+                    summary_path = get_unique_filename(base_path, ".json")
                     summary_filename = os.path.basename(summary_path)
 
                     # Build analysis_settings for the summary

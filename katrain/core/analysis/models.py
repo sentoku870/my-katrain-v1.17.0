@@ -594,6 +594,7 @@ class GameSummaryData:
     snapshot: EvalSnapshot
     board_size: tuple[int, int]
     date: str | None = None
+    game_id: str | None = None
 
 
 @dataclass
@@ -619,6 +620,16 @@ class SummaryStats:
     phase_mistake_loss: dict[tuple[str, MistakeCategory], float] = field(default_factory=dict)
 
     worst_moves: list[tuple[str, MoveEval]] = field(default_factory=list)  # (game_name, move)
+
+    # Reason Tags Aggregation (Phase 128)
+    # Mapping: tag_id -> count of occurrences across all games
+    reason_tags_counts: dict[str, int] = field(default_factory=dict)
+    # Count of important moves analyzed (the denominator for "per important move" stats)
+    important_moves_count: int = 0
+    # Count of moves that had at least one tag
+    tagged_moves_count: int = 0
+    # Total count of all tag occurrences (the denominator for "share of tags" stats)
+    tag_occurrences_total: int = 0
 
     # PR#1: Store all moves for confidence level computation
     all_moves: list[MoveEval] = field(default_factory=list)

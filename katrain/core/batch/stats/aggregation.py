@@ -233,13 +233,30 @@ def build_batch_summary(
             display_name = escape_markdown_table_cell(truncate_game_name(game_name))
             lines.append(f"| {display_name} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
 
-    # Games list
-    lines.append("\n## Games Included\n")
-    for i, stats in enumerate(game_stats_list, 1):
-        game_name = stats["game_name"]
-        loss = stats["total_points_lost"]
-        moves = stats["total_moves"]
-        lines.append(f"{i}. {game_name} — {moves} moves, {loss:.1f} pts lost")
+    # Phase 55: Add JSON block for AI readability using the unified SummaryAnalyzer
+    from katrain.core.reports.summary_report import build_summary_report
+    from katrain.core.analysis.models import GameSummaryData
+
+    # Extract GameSummaryData from the stats list
+    game_data_list = []
+    for stats in game_stats_list:
+        if "summary_data" in stats:
+            game_data_list.append(stats["summary_data"])
+        elif "snapshot" in stats: # Fallback if only snapshot is present
+            game_data_list.append(GameSummaryData(
+                game_name=stats.get("game_name", "unknown"),
+                player_black=stats.get("player_black", "Black"),
+                player_white=stats.get("player_white", "White"),
+                snapshot=stats["snapshot"],
+                board_size=stats.get("board_size", (19, 19)),
+                date=stats.get("date"),
+            ))
+
+    # Get the JSON-wrapped report (focus_player=None for entire batch)
+    json_report = build_summary_report(game_data_list, focus_player=None)
+    
+    # Append the JSON report to the markdown lines
+    lines.append("\n" + json_report)
 
     return "\n".join(lines)
 

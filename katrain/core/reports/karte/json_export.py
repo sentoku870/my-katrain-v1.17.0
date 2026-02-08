@@ -88,38 +88,118 @@ def build_karte_json(
         focus_moves = moves
         auto_rec = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
         effective_preset = auto_rec.recommended_preset
-
+    
     preset = eval_metrics.get_skill_preset(effective_preset)
     score_thresholds = preset.score_thresholds
 
-    # Meta section
+    # Helper to get safe properties
     def get_property(prop: str, default: str | None = None) -> str | None:
         val = game.root.get_property(prop, default)
         return val if val not in [None, ""] else default
 
-    game_name = os.path.splitext(os.path.basename(game.sgf_filename or ""))[0]
-    if not game_name:
-        game_name = get_property("GN") or game.game_id or "unknown"
+    # Identifiers
+    # Generated at (timestamp)
+    import time
+    from datetime import datetime
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    run_id = f"run_{int(time.time())}"
+
+    # Game ID: Unique identifier for the game itself (not this run)
+    # Prefer SGF-derived ID or filename-based hash if possible
+    game_uid = game.game_id or "unknown" 
+    game_filename = os.path.basename(game.sgf_filename or "")
+    if not game_filename:
+        game_filename = get_property("GN") or "unknown_game.sgf"
+    
+    # 2) Definitions as data
+    # Gather potential tags for definitions from MeaningTagId Enum
+    from katrain.core.analysis.meaning_tags import MeaningTagId
+    primary_tags_list = [tag.value for tag in MeaningTagId]
+    
+    # Gather reason codes from known board analysis tags
+    # These are the actual reason tags that can appear in MoveEval.reason_tags
+    reason_codes_list = [
+        "shape", "atari", "clump", "heavy", "overconcentrated", "liberties",
+        "endgame_hint", "connection", "urgent", "tenuki", "cut_risk",
+        "thin", "chase_mode", "reading"
+    ]
+
+    # Phase thresholds based on board size (extract from classify_game_phase logic)
+    phase_thresholds = {
+        "opening_max": 50,  # <= 50 is opening (inclusive)
+        "middle_max": 200,  # <= 200 is middle (inclusive)
+        "endgame_min": 201, # > 200 is endgame
+    }
+
+    definitions = {
+        "thresholds": {
+            "loss": {
+                "inaccuracy": score_thresholds[0],
+                "mistake": score_thresholds[1],
+                "blunder": score_thresholds[2],
+            },
+            "phase": phase_thresholds,
+        },
+        "mistake_types": [cat.value.lower() for cat in eval_metrics.MistakeCategory],
+        "difficulty_levels": [d.value.lower() for d in eval_metrics.PositionDifficulty],
+        "phases": ["opening", "middle", "endgame"],  # Canonical phase names
+        "phase_aliases": {"yose": "endgame"},  # Internal name mappings
+        "category_aliases": {
+            "inaccuracy": "inaccuracy",
+            "mistake": "mistake",
+            "blunder": "blunder"
+        },
+        "reason_code_aliases": {
+            "low_liberties": "liberties",
+            "need_connect": "connection",
+            "heavy_loss": "heavy",
+            "reading_failure": "reading",
+            "shape_mistake": "shape",
+            "endgame_slip": "endgame_hint",
+            "cut_risk": "cut_risk",
+            "thin": "thin",
+            "chase_mode": "chase_mode"
+        },
+        "primary_tags": primary_tags_list,
+        "reason_codes": reason_codes_list,
+        "importance": {
+            "scale": "0.0 to 10.0+",
+            "description": "Move interestingness score derived from loss and semantic tags",
+            "thresholds": {
+                "interesting": 1.0,
+                "important": 3.0,
+                "critical": 6.0
+            }
+        },
+    }
 
     meta = {
-        "game_name": game_name,
+        "game_id": game_uid,
+        "generated_at": generated_at,
+        "run_id": run_id,
+        "source_filename": game_filename,
         "date": get_property("DT"),
         "players": {
             "black": get_property("PB", "unknown"),
             "white": get_property("PW", "unknown"),
         },
         "result": get_property("RE"),
+        "komi": game.komi,
+        "handicap": getattr(game.root, 'handicap', 0),
+        "board_size": [board_x, board_y],
         "skill_preset": effective_preset,
-        "units": {"points_lost": "目数（着手前評価 - 着手後評価、手番視点で正規化、常に0以上）"},
+        "loss_unit": "territory_points",
+        "definitions": definitions,
+        "derived_flags": [],
     }
 
-    # Summary section
+    # Summary section (Unchanged logic, just ensure consistency)
     def compute_summary_for(player: str) -> tuple[float, dict[str, int]]:
         player_moves = [m for m in moves if m.player == player]
         total_lost = sum(max(0.0, m.points_lost) for m in player_moves if m.points_lost is not None)
 
         # Count by mistake category
-        counts: dict[str, int] = {"good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0}
+        counts: dict[str, int] = {cat.value.lower(): 0 for cat in eval_metrics.MistakeCategory}
         for m in player_moves:
             loss = get_canonical_loss_from_move(m)
             cat = classify_mistake(score_loss=loss, winrate_loss=None, score_thresholds=score_thresholds)
@@ -147,7 +227,11 @@ def build_karte_json(
     # Important moves section
     important_move_evals = game.get_important_move_evals(level=level)
 
-    # Phase 47: Classify meaning tags for each important move
+    # Apply player filter if specified
+    if player_filter in ("B", "W"):
+        important_move_evals = [m for m in important_move_evals if m.player == player_filter]
+
+    # Classify meaning tags
     total_moves_for_ctx = len(moves)
     classification_context = ClassificationContext(total_moves=total_moves_for_ctx)
     for mv in important_move_evals:
@@ -155,67 +239,58 @@ def build_karte_json(
             meaning_tag = classify_meaning_tag(mv, context=classification_context)
             mv.meaning_tag_id = meaning_tag.id.value
 
-    # Apply player filter if specified
-    if player_filter in ("B", "W"):
-        important_move_evals = [m for m in important_move_evals if m.player == player_filter]
-
     important_moves_list: list[dict[str, Any]] = []
     for mv in important_move_evals:
-        # Coords: handle pass and normal moves
+        # Coords
         coords: str | None = None
         if mv.gtp:
             coords = "pass" if mv.gtp.lower() == "pass" else mv.gtp
 
-        # points_lost: use get_canonical_loss_from_move for consistency
-        points_lost = get_canonical_loss_from_move(mv)
-
+        # 9) Raw and Clamped Loss
+        loss_clamped = get_canonical_loss_from_move(mv)
+        loss_raw = mv.points_lost if mv.points_lost is not None else mv.score_loss
+        
         # importance score
         importance = mv.importance_score if mv.importance_score is not None else 0.0
 
-        # reason_tags
-        reason_tags = list(mv.reason_tags) if mv.reason_tags else []
-
-        # phase: use classify_game_phase
+        # 7) Reason codes (Normalized v6)
+        raw_reason_codes = list(mv.reason_tags) if mv.reason_tags else []
+        reason_codes = sorted(list(set(definitions["reason_code_aliases"].get(c, c) for c in raw_reason_codes)))
+        
+        # phase
         try:
             phase = classify_game_phase(mv.move_number, board_x)
-        except ValueError:
-            # Expected: Invalid move number or board size
-            phase = "unknown"
+            # Map internal "yose" to canonical "endgame" for JSON output
+            if phase == "yose":
+                phase = "endgame"
         except Exception:
-            # Unexpected: Internal bug - traceback required
-            import logging
-
-            logging.getLogger(__name__).debug(
-                f"Unexpected phase classification error for move {mv.move_number}", exc_info=True
-            )
             phase = "unknown"
 
-        # Phase 47: Get meaning tag info
+        # 4) Unified mistake_type
+        mistake_cat = classify_mistake(score_loss=loss_clamped, winrate_loss=None, score_thresholds=score_thresholds)
+        
+        # Meaning tag
         meaning_tag_id = mv.meaning_tag_id
-        meaning_tag_label = get_meaning_tag_label_safe(meaning_tag_id, lang)
 
-        important_moves_list.append(
-            {
-                "move_number": mv.move_number,
-                "player": ("black" if mv.player == "B" else "white" if mv.player == "W" else None),
-                "coords": coords,
-                "points_lost": round(points_lost, 1),
-                "importance": round(importance, 2),
-                "reason_tags": reason_tags,
-                "phase": phase,
-                "meaning_tag": (
-                    {
-                        "id": meaning_tag_id,
-                        "label": meaning_tag_label,
-                    }
-                    if meaning_tag_id
-                    else None
-                ),
-            }
-        )
+        move_data = {
+            "move_number": mv.move_number,
+            "player": ("black" if mv.player == "B" else "white" if mv.player == "W" else "unknown"),
+            "coords": coords,
+            "loss_clamped": round(loss_clamped, 2),
+            "loss_raw": round(loss_raw, 2) if loss_raw is not None else None,
+            "importance": round(importance, 2),
+            "mistake_type": mistake_cat.value.lower(), # Unified
+            "phase": phase,
+            "difficulty": mv.position_difficulty.value.lower() if mv.position_difficulty else "unknown", # Unified: "only"
+            "reason_codes": reason_codes,
+            "primary_tag": meaning_tag_id,
+            "derived_flags": [],
+        }
+
+        important_moves_list.append(move_data)
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,

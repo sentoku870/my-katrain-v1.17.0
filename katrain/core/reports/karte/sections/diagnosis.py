@@ -20,6 +20,7 @@ from katrain.core.eval_metrics import (
     get_canonical_loss_from_move,
     get_practice_priorities_from_stats,
 )
+from katrain.core.lang import i18n
 
 if TYPE_CHECKING:
     from katrain.core.reports.karte.sections.context import KarteContext
@@ -42,7 +43,7 @@ def weakness_hypothesis_for(
     """
     player_moves = [mv for mv in ctx.snapshot.moves if mv.player == player]
     if not player_moves:
-        return [f"## Weakness Hypothesis ({label})", "- No data available.", ""]
+        return [f"## {i18n._('summary:weakness')} ({label})", f"- {i18n._('summary:no_data')}", ""]
 
     # Get board size
     board_x = ctx.board_x
@@ -65,11 +66,15 @@ def weakness_hypothesis_for(
         reverse=True,
     )
 
-    phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame"}
-    cat_names_ja = {
-        "BLUNDER": "大悪手",
-        "MISTAKE": "悪手",
-        "INACCURACY": "軽微なミス",
+    phase_names = {
+        "opening": i18n._("phase:opening"),
+        "middle": i18n._("phase:middle"),
+        "yose": i18n._("phase:yose"),
+    }
+    cat_names = {
+        "BLUNDER": i18n._("mistake:blunder"),
+        "MISTAKE": i18n._("mistake:mistake"),
+        "INACCURACY": i18n._("mistake:inaccuracy"),
     }
 
     # Confidence-based wording
@@ -77,8 +82,8 @@ def weakness_hypothesis_for(
     is_medium_conf = ctx.confidence_level == eval_metrics.ConfidenceLevel.MEDIUM
 
     # Add "(※参考情報)" suffix for LOW confidence
-    header_suffix = " (※参考情報)" if is_low_conf else ""
-    lines = [f"## Weakness Hypothesis ({label}){header_suffix}", ""]
+    header_suffix = f" ({i18n._('summary:suffix:ref')})" if is_low_conf else ""
+    lines = [f"## {i18n._('summary:weakness')} ({label}){header_suffix}", ""]
 
     # Get evidence count based on confidence level
     evidence_count = eval_metrics.get_evidence_count(ctx.confidence_level)
@@ -102,39 +107,44 @@ def weakness_hypothesis_for(
             )
             evidence_str = eval_metrics.format_evidence_examples(evidence_moves, lang=ctx.lang)
 
+            phase_label = phase_names.get(phase, phase)
+            cat_label = cat_names.get(category, category)
+
             # Confidence-based wording
             if is_low_conf:
                 # LOW: "～の傾向が見られる"
                 lines.append(
-                    f"{i + 1}. {phase_names.get(phase, phase)}の"
-                    f"{cat_names_ja.get(category, category)}の傾向が見られる "
-                    f"({count}回、損失{loss:.1f}目)"
+                    f"{i + 1}. {i18n._('diagnosis:weakness:trend_ref').format(phase=phase_label, category=cat_label)} "
+                    f"({count}{i18n._('summary:unit:times')}, {i18n._('summary:loss')}{loss:.1f}{i18n._('summary:unit:points')})"
                 )
             elif is_medium_conf:
                 # MEDIUM: "～の傾向あり"
                 lines.append(
-                    f"{i + 1}. **{phase_names.get(phase, phase)}の"
-                    f"{cat_names_ja.get(category, category)}** 傾向あり "
-                    f"({count}回、損失{loss:.1f}目)"
+                    f"{i + 1}. **{i18n._('diagnosis:weakness:trend').format(phase=phase_label, category=cat_label)}** "
+                    f"({count}{i18n._('summary:unit:times')}, {i18n._('summary:loss')}{loss:.1f}{i18n._('summary:unit:points')})"
                 )
             else:
                 # HIGH: Assertive wording
+                msg = i18n._("diagnosis:weakness:assertive").format(phase=phase_label, category=cat_label)
+                # Fallback if key missing or same as trend
+                if msg == "diagnosis:weakness:assertive":
+                    msg = f"{phase_label} の {cat_label}"
+                
                 lines.append(
-                    f"{i + 1}. **{phase_names.get(phase, phase)}の"
-                    f"{cat_names_ja.get(category, category)}** "
-                    f"({count}回、損失{loss:.1f}目)"
+                    f"{i + 1}. **{msg}** "
+                    f"({count}{i18n._('summary:unit:times')}, {i18n._('summary:loss')}{loss:.1f}{i18n._('summary:unit:points')})"
                 )
 
             # Add evidence examples on next line (indented)
             if evidence_str:
                 lines.append(f"   {evidence_str}")
     else:
-        lines.append("- 明確な弱点パターンは検出されませんでした。")
+        lines.append(f"- {i18n._('summary:weakness:none')}")
 
     # Add re-analysis recommendation for LOW confidence
     if is_low_conf:
         lines.append("")
-        lines.append("⚠️ 解析訪問数が少ないため、visits増で再解析を推奨します。")
+        lines.append(f"⚠️ {i18n._('summary:warning:low_visits')}")
 
     lines.append("")
     return lines
@@ -158,15 +168,15 @@ def practice_priorities_for(
     # LOW confidence → placeholder only
     if ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW:
         return [
-            f"## 練習の優先順位 ({label})",
+            f"## {i18n._('summary:practice')} ({label})",
             "",
-            "- ※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。",
+            f"- {i18n._('summary:practice:low_data_msg')}",
             "",
         ]
 
     player_moves = [mv for mv in ctx.snapshot.moves if mv.player == player]
     if not player_moves:
-        return [f"## 練習の優先順位 ({label})", "- No data available.", ""]
+        return [f"## {i18n._('summary:practice')} ({label})", f"- {i18n._('summary:no_data')}", ""]
 
     # Get board size
     board_x = ctx.board_x
@@ -187,8 +197,8 @@ def practice_priorities_for(
     max_priorities = 1 if ctx.confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
     priorities = get_practice_priorities_from_stats(stats, max_priorities=max_priorities)
 
-    lines = [f"## 練習の優先順位 ({label})", ""]
-    lines.append("Based on the data above, consider focusing on:")
+    lines = [f"## {i18n._('summary:practice')} ({label})", ""]
+    lines.append(i18n._('summary:practice:intro'))
     lines.append("")
     if priorities:
         for i, priority in enumerate(priorities, 1):
@@ -197,9 +207,9 @@ def practice_priorities_for(
             # Try to find anchor move for this priority
             anchor_move = None
             for phase_key, phase_name in [
-                ("opening", "Opening"),
-                ("middle", "Middle"),
-                ("yose", "Endgame"),
+                ("opening", i18n._("phase:opening")),
+                ("middle", i18n._("phase:middle")),
+                ("yose", i18n._("phase:yose")),
             ]:
                 if phase_name.lower() in priority.lower() or phase_key in priority.lower():
                     # Find worst move in this phase
@@ -218,9 +228,9 @@ def practice_priorities_for(
                 if loss > 0.0:
                     engine_type = detect_engine_type(anchor_move)
                     loss_label = format_loss_label(loss, engine_type, lang=ctx.lang)
-                    lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} で {loss_label}の損失)")
+                    lines.append(f"   (#{anchor_move.move_number} {anchor_move.gtp or '-'} : {loss_label})")
     else:
-        lines.append("- No specific priorities identified. Keep up the good work!")
+        lines.append(f"- {i18n._('summary:practice:none')}")
     lines.append("")
     return lines
 
@@ -257,14 +267,12 @@ def mistake_streaks_for(
     if not streaks:
         return []
 
-    lines = [f"## Mistake Streaks ({label})", ""]
-    lines.append("Consecutive mistakes by the same player:")
+    lines = [f"## {i18n._('diagnosis:streaks')} ({label})", ""]
+    lines.append(i18n._('diagnosis:streaks:intro'))
     lines.append("")
     for i, s in enumerate(streaks, 1):
         lines.append(
-            f"- **Streak {i}**: moves {s.start_move}-{s.end_move} "
-            f"({s.move_count} mistakes, {s.total_loss:.1f} pts lost, "
-            f"avg {s.avg_loss:.1f} pts)"
+            f"- **Streak {i}**: {i18n._('diagnosis:streak_desc').format(start=s.start_move, end=s.end_move, count=s.move_count, loss=s.total_loss, avg=s.avg_loss)}"
         )
     lines.append("")
     return lines
@@ -304,19 +312,19 @@ def urgent_miss_section_for(
 
     # Add "※要再解析" annotation for LOW confidence
     is_low_conf = ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW
-    header_suffix = " (※要再解析)" if is_low_conf else ""
-    lines = [f"## Urgent Miss Detection ({label}){header_suffix}", ""]
-    lines.append("**Warning**: 以下の連続手は急場見逃しの可能性があります:")
+    header_suffix = f" ({i18n._('summary:suffix:reanalyze')})" if is_low_conf else ""
+    lines = [f"## {i18n._('diagnosis:urgent_miss')} ({label}){header_suffix}", ""]
+    lines.append(f"**{i18n._('summary:warning')}**: {i18n._('diagnosis:urgent_miss:intro')}")
     lines.append("")
     # Table with Coords column for coordinate sequence
-    lines.append("| Move Range | Consecutive | Total Loss | Avg Loss | Coords |")
+    lines.append(f"| {i18n._('summary:table:range')} | {i18n._('summary:table:consecutive')} | {i18n._('summary:table:total_loss')} | {i18n._('summary:table:avg_loss')} | {i18n._('summary:table:coord')} |")
     lines.append("|------------|-------------|------------|----------|--------|")
     for s in streaks:
         # Build coordinate sequence from streak moves
         coords = "→".join(mv.gtp or "-" for mv in s.moves) if s.moves else "-"
         lines.append(
-            f"| #{s.start_move}-{s.end_move} | {s.move_count} moves | "
-            f"{s.total_loss:.1f} pts | {s.avg_loss:.1f} pts | {coords} |"
+            f"| #{s.start_move}-{s.end_move} | {s.move_count} {i18n._('summary:unit:moves')} | "
+            f"{s.total_loss:.1f} {i18n._('summary:unit:points')} | {s.avg_loss:.1f} {i18n._('summary:unit:points')} | {coords} |"
         )
     lines.append("")
     return lines
