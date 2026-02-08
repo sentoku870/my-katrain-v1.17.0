@@ -59,7 +59,7 @@ from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import NumericProperty, ObjectProperty, StringProperty
 from kivy.resources import resource_add_path, resource_find
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
@@ -67,6 +67,13 @@ from kivymd.app import MDApp
 
 from katrain.core import eval_metrics
 from katrain.core.ai import generate_ai_move
+from katrain.core.analysis_result import (
+    EngineTestResult as TestAnalysisResult,
+)
+from katrain.core.analysis_result import (  # Phase 89 (Renamed from test_analysis)
+    ErrorCategory,
+    classify_engine_error,
+)
 from katrain.core.auto_setup import find_cpu_katago  # Phase 89
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
@@ -91,11 +98,6 @@ from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.leela.engine import LeelaEngine
 from katrain.core.sgf_parser import Move
 from katrain.core.state import EventType  # Phase 107
-from katrain.core.analysis_result import (  # Phase 89 (Renamed from test_analysis)
-    ErrorCategory,
-    EngineTestResult as TestAnalysisResult,
-    classify_engine_error,
-)
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
 from katrain.gui.controlspanel import ControlsPanel  # noqa F401
 from katrain.gui.error_handler import ErrorHandler
@@ -104,6 +106,7 @@ from katrain.gui.features.batch_core import (
     create_log_callback,
     create_progress_callback,
     create_summary_callback,
+    is_leela_configured,
     run_batch_in_thread,
 )
 from katrain.gui.features.batch_ui import (
@@ -267,7 +270,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Phase 97: Active Review Controller - REMOVED
         # self._active_review_controller = ...
-        
+
         # Phase 98: Quiz Manager - REMOVED
         # self._quiz_manager = ...
 
@@ -391,9 +394,7 @@ class KaTrainGui(Screen, KaTrainBase):
         if event_type == "starting":
             self.controls.set_status("KataGo engine starting...", STATUS_INFO)
         elif event_type == "tuning":
-            self.controls.set_status(
-                "KataGo is tuning settings for first startup, please wait." + message, STATUS_INFO
-            )
+            self.controls.set_status("KataGo is tuning settings for first startup, please wait." + message, STATUS_INFO)
         elif event_type == "ready":
             self.controls.set_status("KataGo engine ready.", STATUS_INFO)
 
@@ -581,7 +582,6 @@ class KaTrainGui(Screen, KaTrainBase):
         # Phase 120: Delegated UI updates to BadukPanControls
         if self.board_controls:
             self.board_controls.update_controls(self)
-
 
         # redraw board/stones
         if redraw_board:
@@ -1121,9 +1121,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Export karte. Delegates to export_commands."""
         export_commands.do_export_karte(self, self._do_mykatrain_settings_popup)
 
-    def _do_export_package(self, anonymize: bool = False, *args: Any, **kwargs: Any) -> None:
-        """Export LLM package. Delegates to package_export_ui.do_export_package()."""
-        do_export_package(self, anonymize=anonymize)
 
     def _do_open_latest_report(self, *args: Any, **kwargs: Any) -> None:
         """Open the most recent report file."""
@@ -1310,7 +1307,6 @@ class KaTrainGui(Screen, KaTrainBase):
         from katrain.gui.features.diagnostics_popup import show_diagnostics_popup
 
         show_diagnostics_popup(self)
-
 
     def _do_skill_radar_popup(self) -> None:
         """Show skill radar popup for 5-axis skill profile."""

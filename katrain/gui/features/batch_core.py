@@ -16,20 +16,19 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
-from kivy.uix.checkbox import CheckBox
 
 from katrain.core import eval_metrics
 from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     BatchResult,
-    needs_leela_karte_warning,  # Phase 42-B: Re-export for compatibility
+    needs_leela_karte_warning,  # noqa: F401
     parse_timeout_input,
-    run_batch,  # Phase 42-B: Now from core.batch
+    run_batch,
 )
 from katrain.core.batch import (
-    safe_int as _safe_int,  # Alias to keep existing local references
+    safe_int as _safe_int,
 )
-from katrain.core.constants import STATUS_ERROR
+from katrain.core.constants import STATUS_ERROR  # noqa: F401
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
 
@@ -92,6 +91,10 @@ def collect_batch_options(
     curator_cb = widgets.get("curator_checkbox")
     generate_curator = curator_cb.active if curator_cb is not None else False
 
+    # Engine selection (Phase 36)
+    engine_leela = widgets.get("engine_leela")
+    analysis_engine = "leela" if engine_leela and engine_leela.state == "down" else "katago"
+
     return {
         "input_dir": input_dir,
         "output_dir": output_dir,
@@ -102,6 +105,7 @@ def collect_batch_options(
         "generate_karte": generate_karte,
         "generate_summary": generate_summary,
         "generate_curator": generate_curator,
+        "analysis_engine": analysis_engine,
         "karte_player_filter": karte_player_filter,
         "min_games_per_player": min_games_per_player,
         "variable_visits": variable_visits,
@@ -314,3 +318,15 @@ def run_batch_in_thread(
 # ---------------------------------------------------------------------------
 
 # NOTE: needs_leela_karte_warning is now imported from katrain.core.batch (Phase 42-A)
+
+def is_leela_configured(ctx: FeatureContext) -> bool:
+    """Leela解析が無効、あるいは実行ファイルが設定されていない場合に警告。
+
+    Args:
+        ctx: カレントコンテクスト（get_leela_configメソッドを持つこと）
+
+    Returns:
+        True if Leela is enabled or has an exe_path set.
+    """
+    leela_config = ctx.get_leela_config()
+    return bool(leela_config.enabled or leela_config.exe_path)
