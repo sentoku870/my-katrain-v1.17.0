@@ -250,6 +250,8 @@ class GameNode(SGFNode):
         region_of_interest: Any = None,
         report_every: float = REPORT_DT,
     ) -> None:
+        if not engine:
+            return
         engine.request_analysis(
             self,
             callback=lambda result, partial_result: self.set_analysis(
@@ -410,7 +412,11 @@ class GameNode(SGFNode):
                 text += i18n._("Info:score").format(score=self.format_score(score)) + "\n"
                 text += i18n._("Info:winrate").format(winrate=self.format_winrate()) + "\n"
             if details:
-                text += f"Visits: {self.root_visits}\n"
+                leela_visits = self.leela_analysis.root_visits if self.leela_analysis else 0
+                if leela_visits > 0:
+                    text += f"Visits: {self.root_visits} (K) / {leela_visits} (L)\n"
+                else:
+                    text += f"Visits: {self.root_visits}\n"
             parent = self.parent
             if parent and isinstance(parent, GameNode) and parent.analysis_exists:
                 parent_candidates = parent.candidate_moves
@@ -498,43 +504,81 @@ class GameNode(SGFNode):
 
     @property
     def candidate_moves(self) -> list[dict[str, Any]]:
-        if not self.analysis_exists:
-            return []
-        if not self.analysis["moves"]:
-            polmoves = self.policy_ranking
-            # Get top move from policy ranking or default to PASS
-            top_move_opt = polmoves[0][1] if polmoves else None
-            top_polmove = top_move_opt if top_move_opt is not None else Move(None)  # if no info at all, pass
-            return [
-                {
-                    **self.analysis["root"],
-                    "pointsLost": 0,
-                    "winrateLost": 0,
-                    "order": 0,
-                    "move": top_polmove.gtp(),
-                    "pv": [top_polmove.gtp()],
-                }
-            ]  # single visit -> go by policy/root
+        # First priority: KataGo analysis (existing logic)
+        if self.analysis_exists:
+            if not self.analysis["moves"]:
+                polmoves = self.policy_ranking
+                # Get top move from policy ranking or default to PASS
+                top_move_opt = polmoves[0][1] if polmoves else None
+                top_polmove = top_move_opt if top_move_opt is not None else Move(None)  # if no info at all, pass
+                return [
+                    {
+                        **self.analysis["root"],
+                        "pointsLost": 0,
+                        "winrateLost": 0,
+                        "order": 0,
+                        "move": top_polmove.gtp(),
+                        "pv": [top_polmove.gtp()],
+                    }
+                ]  # single visit -> go by policy/root
 
-        root_score = self.analysis["root"]["scoreLead"]
-        root_winrate = self.analysis["root"]["winrate"]
-        move_dicts = list(self.analysis["moves"].values())  # prevent incoming analysis from causing crash
-        top_move = [d for d in move_dicts if d["order"] == 0]
-        top_score_lead = top_move[0]["scoreLead"] if top_move else root_score
-        return sorted(
-            [
-                {
-                    "pointsLost": max(0, self.player_sign(self.next_player) * (root_score - d["scoreLead"])),
-                    "relativePointsLost": max(
-                        0, self.player_sign(self.next_player) * (top_score_lead - d["scoreLead"])
-                    ),
-                    "winrateLost": self.player_sign(self.next_player) * (root_winrate - d["winrate"]),
-                    **d,
-                }
-                for d in move_dicts
-            ],
-            key=lambda d: (d["order"], d["pointsLost"]),
-        )
+            root_score = self.analysis["root"]["scoreLead"]
+            root_winrate = self.analysis["root"]["winrate"]
+            move_dicts = list(self.analysis["moves"].values())  # prevent incoming analysis from causing crash
+            top_move = [d for d in move_dicts if d["order"] == 0]
+            top_score_lead = top_move[0]["scoreLead"] if top_move else root_score
+            return sorted(
+                [
+                    {
+                        "pointsLost": max(0, self.player_sign(self.next_player) * (root_score - d["scoreLead"])),
+                        "relativePointsLost": max(
+                            0, self.player_sign(self.next_player) * (top_score_lead - d["scoreLead"])
+                        ),
+                        "winrateLost": self.player_sign(self.next_player) * (root_winrate - d["winrate"]),
+                        **d,
+                    }
+                    for d in move_dicts
+                ],
+                key=lambda d: (d["order"], d["pointsLost"]),
+            )
+        
+        # Second priority: Leela analysis (when KataGo is disabled)
+        if self.leela_analysis and self.leela_analysis.is_valid:
+            leela_candidates = self.leela_analysis.candidates
+            if not leela_candidates:
+                return []
+            
+            # CRITICAL: Sort by winrate (descending), not by visits
+            # Leela parser sorts by visits, but best move = highest winrate
+            sorted_candidates = sorted(leela_candidates, key=lambda c: c.winrate, reverse=True)
+            
+            # Get best candidate's winrate for comparison
+            best_winrate = sorted_candidates[0].winrate
+            
+            # Convert Leela candidates to KataGo format
+            katago_format = []
+            for i, cand in enumerate(sorted_candidates):
+                # Calculate relative losses
+                winrate_lost = best_winrate - cand.winrate
+                points_lost = cand.loss_est if cand.loss_est is not None else 0.0
+                
+                katago_format.append({
+                    "move": cand.move,
+                    "visits": cand.visits,
+                    "winrate": cand.winrate,
+                    "scoreLead": 0.0,  # Leela doesn't provide score
+                    "pointsLost": points_lost,
+                    "relativePointsLost": points_lost,
+                    "winrateLost": winrate_lost,
+                    "order": i,  # Now correctly ordered by winrate
+                    "pv": cand.pv or [cand.move],
+                    "prior": cand.prior,
+                })
+            
+            return katago_format
+        
+        # No analysis available
+        return []
 
     @property
     def policy_ranking(self) -> list[tuple[float, Move | None]]:  # return moves from highest policy value to lowest

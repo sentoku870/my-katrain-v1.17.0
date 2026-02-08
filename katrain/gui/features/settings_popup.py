@@ -541,9 +541,8 @@ def do_mykatrain_settings_popup(
     ]
 
     # Phase 87.5: Check if Leela is configured for gating
-    from katrain.gui.features.batch_core import is_leela_configured
-
-    leela_enabled_for_gating = is_leela_configured(ctx)
+    leela_config = ctx.get_leela_config()
+    leela_enabled_for_gating = leela_config.enabled or bool(leela_config.exe_path or "")
 
     engine_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
     for engine_value, engine_label_text in engine_options:
@@ -585,6 +584,34 @@ def do_mykatrain_settings_popup(
 
     tab1_inner.add_widget(engine_layout)
     register_searchable(i18n._("mykatrain:settings:analysis_engine"), engine_label, engine_layout)
+
+    # Disable KataGo Checkbox (Phase 3 Extension)
+    disable_katago_label = Label(
+        text=i18n._("mykatrain:settings:disable_katago"),
+        size_hint_y=None,
+        height=dp(25),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    disable_katago_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    tab1_inner.add_widget(disable_katago_label)
+
+    current_disable_katago = ctx.config("engine/disabled", False)
+    selected_disable_katago = [current_disable_katago]
+
+    disable_katago_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
+    disable_katago_checkbox = CheckBox(
+        active=current_disable_katago,
+        size_hint_x=None,
+        width=dp(30),
+    )
+    disable_katago_checkbox.bind(active=lambda chk, active: selected_disable_katago.__setitem__(0, active))
+    disable_katago_layout.add_widget(disable_katago_checkbox)
+    disable_katago_layout.add_widget(Label())  # Spacer
+    tab1_inner.add_widget(disable_katago_layout)
+    register_searchable(i18n._("mykatrain:settings:disable_katago"), disable_katago_label, disable_katago_layout)
 
     # Skill Preset (Radio buttons)
     skill_label = Label(
@@ -955,21 +982,21 @@ def do_mykatrain_settings_popup(
     )
     leela_k_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     leela_k_slider = Slider(
-        min=LEELA_K_MIN,
-        max=LEELA_K_MAX,
+        min=0.1,  # Practical minimum
+        max=1.0,  # Practical maximum (reduced from 2.0)
         value=leela_config.get("loss_scale_k", LEELA_K_DEFAULT),
-        step=0.1,
+        step=0.05,  # Finer adjustment (changed from 0.1)
         size_hint_x=0.50,
     )
     leela_k_value_label = Label(
-        text=f"{leela_k_slider.value:.1f}",
+        text=f"{leela_k_slider.value:.2f}",  # Show 2 decimal places for 0.05 step
         size_hint_x=0.20,
         halign="center",
         valign="middle",
         color=Theme.TEXT_COLOR,
         font_name=Theme.DEFAULT_FONT,
     )
-    leela_k_slider.bind(value=lambda inst, val: setattr(leela_k_value_label, "text", f"{val:.1f}"))
+    leela_k_slider.bind(value=lambda inst, val: setattr(leela_k_value_label, "text", f"{val:.2f}"))
     leela_k_row.add_widget(leela_k_label)
     leela_k_row.add_widget(leela_k_slider)
     leela_k_row.add_widget(leela_k_value_label)
@@ -998,6 +1025,34 @@ def do_mykatrain_settings_popup(
     leela_visits_row.add_widget(leela_visits_input)
     tab3_inner.add_widget(leela_visits_row)
     register_searchable(i18n._("mykatrain:settings:leela_max_visits"), leela_visits_row)
+
+    # Leela Max Candidates (Phase 3)
+    leela_cand_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+    leela_cand_label = Label(
+        text=i18n._("mykatrain:settings:leela_max_candidates"),
+        size_hint_x=0.30,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    leela_cand_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    leela_cand_spinner = I18NSpinner(
+        size_hint_x=0.70,
+        height=dp(36),
+    )
+    leela_cand_spinner.value_refs = ["3", "5", "7", "auto"]
+    leela_cand_spinner.build_values()
+    current_val = leela_config.get("max_candidates", 5)
+    # Handle both integer and "auto" string values
+    if current_val == -1 or str(current_val).lower() == "auto":
+        leela_cand_spinner.select_key("auto")
+    else:
+        leela_cand_spinner.select_key(str(current_val))
+    leela_cand_row.add_widget(leela_cand_label)
+    leela_cand_row.add_widget(leela_cand_spinner)
+    tab3_inner.add_widget(leela_cand_row)
+    register_searchable(i18n._("mykatrain:settings:leela_max_candidates"), leela_cand_row)
 
     # Leela Fast Visits (Phase 30)
     leela_fast_visits_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
@@ -1218,6 +1273,9 @@ def do_mykatrain_settings_popup(
         }
         ctx.set_config_section("mykatrain_settings", mykatrain_settings)
         ctx.save_config("mykatrain_settings")
+        # Save engine config (Phase 3 Extension)
+        ctx.update_engine_config(disabled=selected_disable_katago[0])
+
         # Save Leela settings (Phase 102: Use typed config API)
         # TypedConfigWriter automatically preserves unknown keys (resign_hint_* etc.)
         from katrain.common.typed_config import LeelaConfig
@@ -1253,6 +1311,13 @@ def do_mykatrain_settings_popup(
         # play_visits: fixed default (Phase 123: removed from UI)
         computed_play_visits = _leela_defaults.play_visits
 
+        # Convert "auto" to -1 (unlimited)
+        max_cand_value = leela_cand_spinner.selected[1]
+        if str(max_cand_value).lower() == "auto":
+            max_cand_int = -1
+        else:
+            max_cand_int = int(max_cand_value)
+        
         # Update via typed config API (handles MERGE and persistence)
         ctx.update_leela_config(
             enabled=leela_enabled,
@@ -1263,6 +1328,7 @@ def do_mykatrain_settings_popup(
             top_moves_show_secondary=leela_top_show_2,
             fast_visits=computed_fast_visits,
             play_visits=computed_play_visits,
+            max_candidates=max_cand_int,
         )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()

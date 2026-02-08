@@ -120,12 +120,14 @@ class LeelaManager:
         self,
         current_node: Any,
         katrain_for_engine: Any,
+        force: bool = False,
     ) -> None:
         """Request Leela analysis for current node (with debounce and duplicate prevention).
 
         Args:
             current_node: 解析対象のGameNode
             katrain_for_engine: KaTrainインスタンス（エンジン起動用）
+            force: 強制的に再解析をリクエストするかどうか（例: スペースキー押下時）
         """
         if not current_node:
             return
@@ -134,7 +136,7 @@ class LeelaManager:
 
         # Debounce: prevent rapid consecutive calls
         now = time.time()
-        if now - self._last_request_time < 0.3:  # 300ms debounce
+        if not force and now - self._last_request_time < 0.3:  # 300ms debounce
             return
         self._last_request_time = now
 
@@ -144,10 +146,19 @@ class LeelaManager:
                 return
 
         # Skip if already analyzed or pending
-        if current_node.leela_analysis and current_node.leela_analysis.is_valid:
+        max_visits = self._config("leela/max_visits", 1000)
+        already_analyzed = (
+            current_node.leela_analysis
+            and current_node.leela_analysis.is_valid
+            and current_node.leela_analysis.root_visits >= max_visits
+        )
+        if not force and already_analyzed:
             return
-        if current_node == self._pending_node:
+        if not force and current_node == self._pending_node:
             return
+        
+        # Note: When force=True, we don't clear existing analysis
+        # This keeps candidates visible while waiting for new results
 
         # Cancel old request
         if self.leela_engine:
@@ -174,6 +185,13 @@ class LeelaManager:
                 return
             k = self._config("leela/loss_scale_k", LEELA_K_DEFAULT)
             with_loss = compute_estimated_loss(result, k=k)
+
+            # Apply candidate limit (Phase 3)
+            # -1 = auto/unlimited (no limit)
+            max_candidates = self._config("leela/max_candidates", 5)
+            if max_candidates > 0 and len(with_loss.candidates) > max_candidates:
+                with_loss.candidates = with_loss.candidates[:max_candidates]
+
             Clock.schedule_once(lambda dt: self._set_analysis(current_node, with_loss))
 
         if self.leela_engine:

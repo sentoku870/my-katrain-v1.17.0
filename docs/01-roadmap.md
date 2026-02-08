@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-08（Phase 131完了）
+> 最終更新: 2026-02-08（Phase 132完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -312,6 +312,7 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 129 | JSON Report Refinements v8 | game_id追加、reason_tags伝播、Karte JSON化 | ✅ |
 | 130 | JSONレポートのリファクタリング | definitions/schema/extractorsへの集約 | ✅ |
 | 131 | JSONレポートの機能改善 | 難易度ラベル名寄せ、局面フェーズ計算、プリセットmeta追加 | ✅ |
+| 132 | Leela Zero UI改善 | 候補手表示修正、max_candidates/loss_scale_k拡張 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -368,6 +369,12 @@ PR #277に統合（phase 114-115 unified）。
 難易度ラベルの標準化（"easy"→"simple"）、重要手の局面フェーズ（opening/middle/endgame）の動的計算実装。
 Summaryレポートのメタデータへの `skill_preset` 追加。
 フェーズ名（endgame）やプレイヤー名の正規化を徹底。
+
+**Phase 132**: ✅ Leela Zero UI改善（2026-02-08 完了）。
+候補手表示の修正：`GameNode.candidate_moves`で勝率降順ソート実装（訪問数ソートからの変更）、KataGoフォーマットへの変換時に`order`を正しく設定。
+設定オプション拡張：`leela_max_candidates`に「7」と「auto（無制限）」を追加、`loss_scale_k`の範囲を0.1-1.0（0.05刻み）に調整。
+Force解析のUX改善：スペースキー押下時に既存候補手を表示したまま新しい解析結果で上書き（`clear_leela_analysis()`削除）、
+KataGo無効時のLeela解析リクエスト独立化（`__main__.py`のエンジンチェック分離）。
 
 ### Phase 96–112: Architecture Refactoring & Code Health
 

@@ -104,7 +104,6 @@ from katrain.gui.features.batch_core import (
     create_log_callback,
     create_progress_callback,
     create_summary_callback,
-    is_leela_configured,
     run_batch_in_thread,
 )
 from katrain.gui.features.batch_ui import (
@@ -505,7 +504,11 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.board_gui.trainer_config = self.config("trainer")
-        self.engine = KataGoEngine(self, self.config("engine"), status_callback=self._on_engine_status)
+        if self.config("engine/disabled", False):
+            self.log("KataGo engine is disabled in settings.", OUTPUT_INFO)
+            self.engine = None
+        else:
+            self.engine = KataGoEngine(self, self.config("engine"), status_callback=self._on_engine_status)
 
         # Set up engine error handler with rich context
         def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
@@ -530,14 +533,15 @@ class KaTrainGui(Screen, KaTrainBase):
                 notify_user=allow_popup,
             )
 
-        self.engine.on_error = _handle_engine_error
+        if self.engine:
+            self.engine.on_error = _handle_engine_error
 
-        # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
-        try:
-            if hasattr(self.engine, "config") and isinstance(self.engine.config, dict):
-                self.engine.config["analysis_focus"] = None
-        except Exception:
-            pass
+            # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
+            try:
+                if hasattr(self.engine, "config") and isinstance(self.engine.config, dict):
+                    self.engine.config["analysis_focus"] = None
+            except Exception:
+                pass
 
         threading.Thread(target=self._message_loop_thread, daemon=True).start()
         sgf_args = [
@@ -817,11 +821,11 @@ class KaTrainGui(Screen, KaTrainBase):
 
         self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
 
-    def request_leela_analysis(self) -> None:
+    def request_leela_analysis(self, force: bool = False) -> None:
         """Request Leela analysis for current node (with debounce and duplicate prevention)."""
         if not self.game:
             return
-        self._leela_manager.request_analysis(self.game.current_node, self)
+        self._leela_manager.request_analysis(self.game.current_node, self, force=force)
 
     def update_state(self, redraw_board: bool = False) -> None:  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
@@ -863,10 +867,20 @@ class KaTrainGui(Screen, KaTrainBase):
             ):  # cn mismatch stops this if undo fired. avoid message loop here or fires repeatedly.
                 self._do_ai_move(cn)
                 Clock.schedule_once(self._play_stone_sound, 0.25)
-        if self.engine:
-            if self.pondering:
+        # Pondering logic - handle KataGo and Leela separately
+        selected_engine = self.config("engine/analysis_engine", "katago")
+        
+        if self.pondering:
+            # Handle pondering based on selected engine
+            if selected_engine == "leela":
+                # Leela analysis (works even when KataGo is disabled)
+                self.request_leela_analysis(force=self._keyboard_manager.last_key_down and self._keyboard_manager.last_key_down[1] == "spacebar")
+            elif self.engine:
+                # KataGo pondering (only if engine exists)
                 self.game.analyze_extra("ponder")
-            else:
+        else:
+            # Stop pondering
+            if self.engine:
                 self.engine.stop_pondering()
         # Leela engine lifecycle management (Phase 15)
         if not self.config("leela/enabled"):
@@ -1230,11 +1244,7 @@ class KaTrainGui(Screen, KaTrainBase):
         default_output_dir = batch_options.get("output_dir", "")
 
         # 2. Build widgets
-        # Phase 87.5: Check if Leela is configured for gating
-        leela_enabled = is_leela_configured(self)
-        main_layout, widgets = build_batch_popup_widgets(
-            batch_options, default_input_dir, default_output_dir, leela_enabled
-        )
+        main_layout, widgets = build_batch_popup_widgets(batch_options, default_input_dir, default_output_dir)
 
         # 3. Create popup
         popup = create_batch_popup(main_layout)
@@ -1283,14 +1293,6 @@ class KaTrainGui(Screen, KaTrainBase):
         widgets["input_browse"].bind(on_release=browse_input)
         widgets["output_browse"].bind(on_release=browse_output)
 
-        # Phase 87.5: Setup Leela button callback
-        def open_leela_settings(*_args: Any) -> None:
-            popup.dismiss()
-            from kivy.clock import Clock
-
-            Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(self, initial_tab="leela"), 0.15)
-
-        widgets["leela_settings_btn"].bind(on_press=open_leela_settings)
 
         # 7. Open popup
         popup.open()
