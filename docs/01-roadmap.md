@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-08（Phase 129完了）
+> 最終更新: 2026-02-08（Phase 131完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 
 ---
@@ -310,6 +310,8 @@ human-likeは通常モデルと混在しない設計に寄せ、迷いポイン�
 | 127 | Diagnostics Extension | Export LLM Package機能追加、診断機能拡張 | ✅ |
 | 128 | Auto Setup Cleanup | 不安定な自動セットアップ機能を削除 | ✅ |
 | 129 | JSON Report Refinements v8 | game_id追加、reason_tags伝播、Karte JSON化 | ✅ |
+| 130 | JSONレポートのリファクタリング | definitions/schema/extractorsへの集約 | ✅ |
+| 131 | JSONレポートの機能改善 | 難易度ラベル名寄せ、局面フェーズ計算、プリセットmeta追加 | ✅ |
 
 **Phase 112**: ✅ mypy strict全体・CIブロック達成（2026-02-01）。
 pyproject.tomlに global strict flags導入、CI typecheck jobを警告モードで追加。
@@ -357,6 +359,15 @@ PR #277に統合（phase 114-115 unified）。
 **Phase 95**: ✅ 安定性改善。(A) Lock→RLockでundo/redoのレースコンディション修正、Graph.set_nodes_from_list追加。
 (B) send_query安全機構（pending counter、_invoke_error_callback）、バッチ前engine check_alive。
 (C) バッチサーキットブレーカー（AnalysisTimeoutError、EngineFailureTracker、3連続失敗で中断）。30テスト追加。（2026-01-31完了）
+
+**Phase 130**: ✅ JSONレポートのリファクタリング（2026-02-08 完了）。
+レポート関連の定数、型定義、抽出ロジックの分離と集約。
+`definitions.py`（閾値・Enum）、`schema.py`（スキーマ定義）、`extractors.py`（データ抽出共通化）の新設。
+
+**Phase 131**: ✅ JSONレポートの機能改善（2026-02-08 完了）。
+難易度ラベルの標準化（"easy"→"simple"）、重要手の局面フェーズ（opening/middle/endgame）の動的計算実装。
+Summaryレポートのメタデータへの `skill_preset` 追加。
+フェーズ名（endgame）やプレイヤー名の正規化を徹底。
 
 ### Phase 96–112: Architecture Refactoring & Code Health
 

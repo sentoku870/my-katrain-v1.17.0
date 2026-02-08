@@ -32,6 +32,7 @@ def extract_game_stats(
     target_visits: int | None = None,
     source_index: int = 0,
     snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+    skill_preset: str | None = None, # Phase 126
 ) -> dict[str, Any] | None:
     """Extract statistics from a Game object for summary generation.
 
@@ -82,6 +83,14 @@ def extract_game_stats(
             board_size = int(board_size_prop)
         except (ValueError, TypeError):
             board_size = 19
+            
+        # Phase 6.5: Metadata extraction
+        komi_prop = root.get_property("KM", "6.5")
+        try:
+            komi = float(komi_prop)
+        except (ValueError, TypeError):
+            komi = 6.5
+        result = root.get_property("RE", None)
 
         # Calculate stats from snapshot
         stats = {
@@ -299,8 +308,13 @@ def extract_game_stats(
             if important_moves:
                 move_map = {m.move_number: m for m in snapshot.moves}
                 for im in important_moves:
-                    if im.move_number in move_map and im.reason_tags:
-                        move_map[im.move_number].reason_tags = im.reason_tags
+                    if im.move_number in move_map:
+                        target = move_map[im.move_number]
+                        if im.reason_tags:
+                            target.reason_tags = im.reason_tags
+                        # Fix for Issue 3: Propagate meaning_tag_id (primary_tag)
+                        if im.meaning_tag_id:
+                            target.meaning_tag_id = im.meaning_tag_id
 
         except Exception:
             # If important moves extraction fails, reason_tags will be empty but stats still valid
@@ -364,6 +378,11 @@ def extract_game_stats(
             board_size=(board_size, board_size),
             date=date,
             game_id=game.game_id if hasattr(game, "game_id") else None,
+            # Phase 6.5: Populate metadata
+            result=result,
+            handicap=handicap,
+            komi=komi,
+            skill_preset=skill_preset,
         )
         stats["summary_data"] = summary_data
 

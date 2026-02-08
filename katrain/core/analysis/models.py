@@ -595,6 +595,11 @@ class GameSummaryData:
     board_size: tuple[int, int]
     date: str | None = None
     game_id: str | None = None
+    # Phase 6.5: Export Metadata
+    result: str | None = None
+    handicap: int = 0
+    komi: float = 6.5
+    skill_preset: str | None = None
 
 
 @dataclass

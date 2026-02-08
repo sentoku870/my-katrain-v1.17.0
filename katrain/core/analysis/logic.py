@@ -553,12 +553,13 @@ def assess_position_difficulty_from_parent(
             n_near = len(near_moves)
 
             if n_good <= 1 and n_near <= 2:
+                # Forced move or single solution
                 label = PositionDifficulty.ONLY_MOVE
                 score = 1.0
             elif n_good <= 2:
                 label = PositionDifficulty.HARD
                 score = 0.8
-            elif n_good >= 4 or n_near >= 6:
+            elif n_good >= 5 or n_near >= 6:  # Changed from >=4 to >=5 to allow NORMAL for 3-4 good moves
                 label = PositionDifficulty.EASY
                 score = 0.2
             else:
