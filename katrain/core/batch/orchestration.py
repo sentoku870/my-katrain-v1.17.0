@@ -111,6 +111,8 @@ def run_batch(
     # Phase 64: Curator outputs
     generate_curator: bool = False,
     user_aggregate: AggregatedRadarResult | None = None,
+    # Skill Radar output
+    generate_skill_radar: bool = False,
 ) -> BatchResult:
     """
     Run batch analysis on a folder of SGF files (including subfolders).
@@ -183,6 +185,9 @@ def run_batch(
     if generate_summary:
         summary_dir = os.path.join(output_dir, "reports", "summary")
         os.makedirs(summary_dir, exist_ok=True)
+    if generate_skill_radar:
+        skill_radar_dir = os.path.join(output_dir, "reports", "skill_radar")
+        os.makedirs(skill_radar_dir, exist_ok=True)
 
     # Log enabled options
     enabled_outputs = []
@@ -194,6 +199,8 @@ def run_batch(
         enabled_outputs.append("Summary")
     if generate_curator:
         enabled_outputs.append("Curator")
+    if generate_skill_radar:
+        enabled_outputs.append("Skill Radar")
     if enabled_outputs:
         log(f"Enabled outputs: {', '.join(enabled_outputs)}")
 
@@ -618,5 +625,52 @@ def run_batch(
     elif generate_curator and not games_for_curator and not result.cancelled:
         log("WARNING: Curator generation requested but no valid games available")
         result.curator_errors.append("No valid games available for curator")
+
+    # Skill Radar output if requested
+    if generate_skill_radar and not result.cancelled:
+        try:
+            from katrain.tools.export_radar_csv import export_radar_csv
+
+            log("Generating skill radar output...")
+
+            # Check if analyzed SGFs were saved
+            if not save_analyzed_sgf:
+                log("WARNING: Skill Radar requires analyzed SGF files. Enable 'Save analyzed SGFs' option.")
+                result.skill_radar_error = "Analyzed SGF files not saved"
+            else:
+                # Determine output filename
+                radar_filename = f"skill_radar_{batch_timestamp}.txt"
+                radar_path = os.path.join(output_dir, "reports", "skill_radar", radar_filename)
+
+                # Use analyzed directory as input for skill radar
+                analyzed_input_dir = os.path.join(output_dir, "analyzed")
+                
+                if not os.path.exists(analyzed_input_dir) or not os.listdir(analyzed_input_dir):
+                    log("WARNING: No analyzed SGF files found for Skill Radar generation")
+                    result.skill_radar_error = "No analyzed SGF files available"
+                else:
+                    # Call export_radar_csv to generate text output from analyzed SGFs
+                    export_radar_csv(
+                        input_dir=analyzed_input_dir,
+                        output_file=radar_path,
+                        player_filter=karte_player_filter,
+                        verbose=False,
+                        format_type="text",
+                    )
+
+                    if os.path.exists(radar_path):
+                        result.skill_radar_written = True
+                        log(f"  Skill Radar saved: {radar_filename}")
+                    else:
+                        result.skill_radar_error = "Output file not created"
+                        log("WARNING: Skill Radar file was not created")
+
+        except OSError as e:
+            result.skill_radar_error = f"I/O error: {e}"
+            log(f"Skill Radar I/O error: {e}")
+        except Exception as e:
+            result.skill_radar_error = f"Unexpected error: {e}"
+            log(f"Unexpected skill_radar error: {e}")
+            log(f"  {traceback.format_exc()}")
 
     return result

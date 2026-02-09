@@ -1,16 +1,22 @@
-"""Export Skill Radar data from multiple SGF files to CSV format.
+"""Export Skill Radar data from multiple SGF files to CSV or text format.
 
 Usage:
-    python -m katrain.tools.export_radar_csv <input_dir> [-o OUTPUT_FILE] [--player PLAYER_NAME]
+    python -m katrain.tools.export_radar_csv <input_dir> [-o OUTPUT_FILE] [--player PLAYER_NAME] [-f FORMAT]
 
-Example:
+Examples:
+    # CSV format (default)
     python -m katrain.tools.export_radar_csv ./my_games -o radar_data.csv
-    python -m katrain.tools.export_radar_csv ./my_games --player "MyName" -o my_radar.csv
+    
+    # Text format (readable)
+    python -m katrain.tools.export_radar_csv ./my_games -o radar_data.txt -f text
+    
+    # Filter by player name
+    python -m katrain.tools.export_radar_csv ./my_games --player "やまぽうし" -o my_radar.txt -f text
 
 This tool:
 1. Recursively finds all SGF files in the input directory
 2. Extracts Skill Radar data for each game (19x19 board only)
-3. Outputs results in CSV format for easy analysis
+3. Outputs results in CSV or text format for easy analysis
 
 CSV columns:
 - game_name: Relative path to SGF file
@@ -26,6 +32,12 @@ CSV columns:
 - total_moves: Total moves in game
 - date: Game date (from SGF)
 - handicap: Handicap stones
+
+Text format:
+- Human-readable format with Japanese tier names
+- Includes overall tier (総合棋力) with rank range
+- Shows all 5 axes with scores, tiers, and valid move counts
+- Perfect for reviewing multiple games at a glance
 """
 
 from __future__ import annotations
@@ -54,14 +66,16 @@ def export_radar_csv(
     output_file: str | Path,
     player_filter: str | None = None,
     verbose: bool = False,
+    format_type: str = "csv",
 ) -> None:
-    """Export Skill Radar data from SGF files to CSV.
+    """Export Skill Radar data from SGF files to CSV or text format.
     
     Args:
         input_dir: Directory containing SGF files
-        output_file: Output CSV file path
+        output_file: Output file path
         player_filter: Optional player name to filter (case-insensitive partial match)
         verbose: Enable verbose logging
+        format_type: Output format - "csv" or "text" (default: "csv")
     """
     from katrain.core.batch import collect_sgf_files_recursive, parse_sgf_with_fallback
     from katrain.core.analysis.skill_radar import MIN_MOVES_FOR_RADAR, compute_radar_from_moves
@@ -111,6 +125,7 @@ def export_radar_csv(
             
             # Use BaseGame instead of Game (doesn't require katrain/engine)
             from katrain.core.game import BaseGame
+            from katrain.core.analysis.logic import snapshot_from_game
             
             try:
                 game = BaseGame(katrain=None, move_tree=root_node)
@@ -119,9 +134,9 @@ def export_radar_csv(
                 skipped += 1
                 continue
             
-            # Build snapshot
+            # Build snapshot using the direct function instead of Game method
             try:
-                snapshot = game.build_eval_snapshot()
+                snapshot = snapshot_from_game(game)
             except Exception as e:
                 _logger.warning(f"  Skipped (snapshot failed): {rel_path} - {e}")
                 skipped += 1
@@ -135,11 +150,13 @@ def export_radar_csv(
             # Extract metadata
             player_black = root_node.get_property("PB", "Black")
             player_white = root_node.get_property("PW", "White")
+            rank_black = root_node.get_property("BR", "")
+            rank_white = root_node.get_property("WR", "")
             date = root_node.get_property("DT", "")
             handicap = int(root_node.get_property("HA", "0") or "0")
             
             # Process each player
-            for player_name, color in [(player_black, "B"), (player_white, "W")]:
+            for player_name, color, rank in [(player_black, "B", rank_black), (player_white, "W", rank_white)]:
                 # Apply player filter
                 if player_filter and player_filter.lower() not in player_name.lower():
                     continue
@@ -162,6 +179,7 @@ def export_radar_csv(
                 row = {
                     "game_name": rel_path,
                     "player": player_name,
+                    "rank": rank,
                     "color": color,
                     "opening_score": radar.opening,
                     "opening_tier": radar.opening_tier.value,
@@ -192,40 +210,115 @@ def export_radar_csv(
             skipped += 1
             continue
     
-    # Write CSV
+    # Write output
     if not rows:
-        _logger.error("No radar data extracted. CSV not created.")
+        _logger.error("No radar data extracted. Output not created.")
         sys.exit(1)
     
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Define column order
-    fieldnames = [
-        "game_name", "player", "color",
-        "opening_score", "opening_tier",
-        "fighting_score", "fighting_tier",
-        "endgame_score", "endgame_tier",
-        "stability_score", "stability_tier",
-        "awareness_score", "awareness_tier",
-        "overall_tier",
-        "opening_moves", "fighting_moves", "endgame_moves", "stability_moves", "awareness_moves",
-        "total_moves", "date", "handicap",
-    ]
+    if format_type == "text":
+        # Text format output
+        _write_text_format(output_path, rows)
+    else:
+        # CSV format output (default)
+        # Define column order
+        fieldnames = [
+            "game_name", "player", "rank", "color",
+            "opening_score", "opening_tier",
+            "fighting_score", "fighting_tier",
+            "endgame_score", "endgame_tier",
+            "stability_score", "stability_tier",
+            "awareness_score", "awareness_tier",
+            "overall_tier",
+            "opening_moves", "fighting_moves", "endgame_moves", "stability_moves", "awareness_moves",
+            "total_moves", "date", "handicap",
+        ]
+        
+        with output_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
     
-    with output_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
-    
-    _logger.info(f"✓ Exported {processed} radar entries to {output_file}")
+    format_name = "text" if format_type == "text" else "CSV"
+    _logger.info(f"✓ Exported {processed} radar entries to {output_file} ({format_name} format)")
     _logger.info(f"  Processed: {processed} | Skipped: {skipped}")
+
+
+def _write_text_format(output_path: Path, rows: list[dict[str, Any]]) -> None:
+    """Write radar data in readable text format.
+    
+    Args:
+        output_path: Output file path
+        rows: List of radar data dictionaries
+    """
+    tier_names = {
+        "tier_1": "Tier 1 (20k-15k)",
+        "tier_2": "Tier 2 (15k-12k)",
+        "tier_3": "Tier 3 (12k-8k)",
+        "tier_4": "Tier 4 (8k-5k)",
+        "tier_5": "Tier 5 (5k-3k)",
+        "tier_6": "Tier 6 (3k-初段)",
+        "tier_7": "Tier 7 (初段-三段)",
+        "tier_8": "Tier 8 (三段-五段)",
+        "tier_9": "Tier 9 (五段-七段)",
+        "tier_10": "Tier 10 (プロ級)",
+        "unknown": "不明",
+    }
+    
+    with output_path.open("w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write("スキルレーダー分析結果\n")
+        f.write("=" * 80 + "\n\n")
+        
+        for idx, row in enumerate(rows, 1):
+            f.write(f"【対局 {idx}】 {row['game_name']}\n")
+            # Display player name with rank if available
+            player_display = row['player']
+            if row.get('rank'):
+                player_display = f"{row['player']} ({row['rank']})"
+            f.write(f"プレイヤー: {player_display} ({row['color']}番)\n")
+            if row['date']:
+                f.write(f"日付: {row['date']}\n")
+            if row['handicap'] > 0:
+                f.write(f"ハンデ: {row['handicap']}子\n")
+            f.write(f"総手数: {row['total_moves']}手\n")
+            f.write("\n")
+            
+            # Overall tier
+            overall_tier_name = tier_names.get(row['overall_tier'], row['overall_tier'])
+            f.write(f"総合棋力: {overall_tier_name}\n")
+            f.write("-" * 80 + "\n")
+            
+            # 5 axes
+            axes = [
+                ("序盤力", "opening", "Opening"),
+                ("戦闘力", "fighting", "Fighting"),
+                ("終盤力", "endgame", "Endgame"),
+                ("安定性", "stability", "Stability"),
+                ("感性", "awareness", "Awareness"),
+            ]
+            
+            for jp_name, axis_key, en_name in axes:
+                score = row[f"{axis_key}_score"]
+                tier = row[f"{axis_key}_tier"]
+                tier_name = tier_names.get(tier, tier)
+                moves = row[f"{axis_key}_moves"]
+                
+                f.write(f"  {jp_name:8s} ({en_name:10s}): スコア {score:4.1f} | {tier_name:20s} | 有効手数 {moves:3d}\n")
+            
+            f.write("\n")
+        
+        f.write("=" * 80 + "\n")
+        f.write(f"総計: {len(rows)} 件の分析結果\n")
+        f.write("=" * 80 + "\n")
 
 
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Export Skill Radar data from SGF files to CSV format",
+        description="Export Skill Radar data from SGF files to CSV or text format",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -236,7 +329,7 @@ def main() -> None:
     parser.add_argument(
         "-o", "--output",
         default="radar_data.csv",
-        help="Output CSV file path (default: radar_data.csv)",
+        help="Output file path (default: radar_data.csv)",
     )
     parser.add_argument(
         "--player",
@@ -247,6 +340,12 @@ def main() -> None:
         action="store_true",
         help="Enable verbose logging",
     )
+    parser.add_argument(
+        "-f", "--format",
+        choices=["csv", "text"],
+        default="csv",
+        help="Output format: csv or text (default: csv)",
+    )
     
     args = parser.parse_args()
     
@@ -255,6 +354,7 @@ def main() -> None:
         output_file=args.output,
         player_filter=args.player,
         verbose=args.verbose,
+        format_type=args.format,
     )
 
 

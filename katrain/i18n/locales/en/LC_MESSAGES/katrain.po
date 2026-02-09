@@ -153,6 +153,9 @@ msgstr "Generate Summary"
 msgid "mykatrain:batch:generate_curator"
 msgstr "Generate Curator"
 
+msgid "mykatrain:batch:generate_skill_radar"
+msgstr "Skill Radar Output"
+
 msgid "mykatrain:batch:error_input_dir"
 msgstr "Please select a valid input directory"
 

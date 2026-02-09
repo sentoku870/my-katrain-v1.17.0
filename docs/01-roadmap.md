@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-09(Phase 134完了)
+> 最終更新: 2026-02-09(Phase 135完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 
@@ -26,6 +26,7 @@
 | 132 | Leela Zero UI改善 | 候補手表示修正、設定拡張 | ✅ |
 | 133 | プロジェクトのスリム化 | 緊急バグ修正、最適化調査 | ✅ |
 | 134 | 10段階Skill Radar実装 | SkillTier拡張、軸別閾値設定 | ✅ |
+| 135 | Skill Radarバッチ出力 | GUI統合、テキスト形式出力 | ✅ |
 
 ### 直近の更新詳細
 
@@ -49,6 +50,12 @@
 - 軸別閾値定数の定義: Opening/Fighting/Endgame/Stability/Awareness。
 - 星表示バグ修正: 10段階スコア→5つ星マッピングを修正。
 - 実データに基づく反復調整: 8回の閾値調整でバランス改善。
+
+**Phase 135**: ✅ Skill Radarバッチ出力(2026-02-09 完了)。
+- バッチ処理UIにスキルレーダー出力チェックボックス追加。
+- 既存 `export_radar_csv.py` を拡張: テキスト形式出力対応。
+- 分析済みSGFディレクトリを参照する実装: 正確な棋力評価を実現。
+- プレイヤーランク情報（BR/WR）の表示追加。
 
 ---
 

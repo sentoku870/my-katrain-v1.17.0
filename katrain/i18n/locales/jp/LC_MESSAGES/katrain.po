@@ -1145,6 +1145,9 @@ msgstr "サマリーを生成"
 msgid "mykatrain:batch:generate_curator"
 msgstr "Curator(おすすめ)生成"
 
+msgid "mykatrain:batch:generate_skill_radar"
+msgstr "スキルレーダー出力"
+
 msgid "mykatrain:batch:player_filter"
 msgstr "プレイヤー絞り込み:"
 

@@ -355,15 +355,15 @@ def build_batch_popup_widgets(
     skip_hint_row.add_widget(skip_hint_label)
     main_layout.add_widget(skip_hint_row)
 
-    # Options row 3: output options (save SGF, karte, summary, curator)
-    options_row3 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+    # Options row 3a: output options (save SGF, karte)
+    options_row3a = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
     widgets["save_sgf_checkbox"] = CheckBox(
         active=batch_options.get("save_analyzed_sgf", False), size_hint_x=None, width=dp(30)
     )
     save_sgf_label = Label(
         text=i18n._("mykatrain:batch:save_analyzed_sgf"),
-        size_hint_x=0.25,
+        size_hint_x=0.45,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -376,7 +376,7 @@ def build_batch_popup_widgets(
     )
     karte_label = Label(
         text=i18n._("mykatrain:batch:generate_karte"),
-        size_hint_x=0.25,
+        size_hint_x=0.45,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -384,12 +384,21 @@ def build_batch_popup_widgets(
     )
     karte_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
+    options_row3a.add_widget(widgets["save_sgf_checkbox"])
+    options_row3a.add_widget(save_sgf_label)
+    options_row3a.add_widget(widgets["karte_checkbox"])
+    options_row3a.add_widget(karte_label)
+    main_layout.add_widget(options_row3a)
+
+    # Options row 3b: output options (summary, curator, skill_radar)
+    options_row3b = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
+
     widgets["summary_checkbox"] = CheckBox(
         active=batch_options.get("generate_summary", True), size_hint_x=None, width=dp(30)
     )
     summary_label = Label(
         text=i18n._("mykatrain:batch:generate_summary"),
-        size_hint_x=0.25,
+        size_hint_x=0.3,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -402,7 +411,7 @@ def build_batch_popup_widgets(
     )
     curator_label = Label(
         text=i18n._("mykatrain:batch:generate_curator"),
-        size_hint_x=0.25,
+        size_hint_x=0.3,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -410,15 +419,26 @@ def build_batch_popup_widgets(
     )
     curator_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
-    options_row3.add_widget(widgets["save_sgf_checkbox"])
-    options_row3.add_widget(save_sgf_label)
-    options_row3.add_widget(widgets["karte_checkbox"])
-    options_row3.add_widget(karte_label)
-    options_row3.add_widget(widgets["summary_checkbox"])
-    options_row3.add_widget(summary_label)
-    options_row3.add_widget(widgets["curator_checkbox"])
-    options_row3.add_widget(curator_label)
-    main_layout.add_widget(options_row3)
+    widgets["skill_radar_checkbox"] = CheckBox(
+        active=batch_options.get("generate_skill_radar", False), size_hint_x=None, width=dp(30)
+    )
+    skill_radar_label = Label(
+        text=i18n._("mykatrain:batch:generate_skill_radar"),
+        size_hint_x=0.3,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    skill_radar_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+
+    options_row3b.add_widget(widgets["summary_checkbox"])
+    options_row3b.add_widget(summary_label)
+    options_row3b.add_widget(widgets["curator_checkbox"])
+    options_row3b.add_widget(curator_label)
+    options_row3b.add_widget(widgets["skill_radar_checkbox"])
+    options_row3b.add_widget(skill_radar_label)
+    main_layout.add_widget(options_row3b)
 
 
     # Options row 4: Player filter and min games

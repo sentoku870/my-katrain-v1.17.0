@@ -74,6 +74,9 @@ class BatchResult:
     curator_games_scored: int = 0
     curator_guides_generated: int = 0
     curator_errors: list[str] = field(default_factory=list)
+    # Skill Radar outputs
+    skill_radar_written: bool = False
+    skill_radar_error: str | None = None
     # Circuit breaker fields (Phase 95C)
     aborted: bool = False
     abort_reason: str | None = None
