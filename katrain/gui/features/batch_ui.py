@@ -188,7 +188,6 @@ def build_batch_popup_widgets(
     batch_options: BatchOptions,
     default_input_dir: str,
     default_output_dir: str,
-    leela_enabled: bool = False,
 ) -> tuple[BoxLayout, BatchWidgets]:
     """バッチポップアップのウィジェットを構築
 
@@ -421,51 +420,6 @@ def build_batch_popup_widgets(
     options_row3.add_widget(curator_label)
     main_layout.add_widget(options_row3)
 
-    # Engine selection row (Phase 36)
-    engine_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
-    engine_label = Label(
-        text=i18n._("mykatrain:batch:engine") if hasattr(i18n, "_") else "Engine",
-        size_hint_x=0.25,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-
-    saved_engine = batch_options.get("analysis_engine", "katago")
-
-    widgets["engine_katago"] = ToggleButton(
-        text="KataGo",
-        group="engine_select",
-        state="down" if saved_engine == "katago" else "normal",
-        size_hint_x=0.2,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    widgets["engine_leela"] = ToggleButton(
-        text="Leela Zero",
-        group="engine_select",
-        state="down" if saved_engine == "leela" else "normal",
-        size_hint_x=0.2,
-        disabled=not leela_enabled,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    widgets["leela_settings_btn"] = Button(
-        text=i18n._("mykatrain:leela:settings_btn") if hasattr(i18n, "_") else "Settings...",
-        size_hint_x=0.2,
-        disabled=not leela_enabled,
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-
-    engine_row.add_widget(engine_label)
-    engine_row.add_widget(widgets["engine_katago"])
-    engine_row.add_widget(widgets["engine_leela"])
-    engine_row.add_widget(widgets["leela_settings_btn"])
-    engine_row.add_widget(Label(size_hint_x=0.15))  # spacer
-
-    main_layout.add_widget(engine_row)
 
     # Options row 4: Player filter and min games
     options_row4 = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))

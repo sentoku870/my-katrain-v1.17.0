@@ -982,6 +982,13 @@ class ConfigPopup(BaseConfigPopup):
 
 
 class LoadSGFPopup(BaseConfigPopup):
+    __events__ = ("on_success",)
+    filesel = ObjectProperty(None)
+
+    def on_success(self) -> None:
+        """Default handler for on_success event (Kivy requirement)."""
+        pass
+
     def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         app = MDApp.get_running_app()
@@ -997,6 +1004,13 @@ class LoadSGFPopup(BaseConfigPopup):
 
 
 class SaveSGFPopup(BoxLayout):
+    __events__ = ("on_success",)
+    filesel = ObjectProperty(None)
+
+    def on_success(self) -> None:
+        """Default handler for on_success event (Kivy requirement)."""
+        pass
+
     def __init__(self, suggested_filename: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.suggested_filename = suggested_filename

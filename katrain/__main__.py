@@ -101,22 +101,7 @@ from katrain.core.state import EventType  # Phase 107
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
 from katrain.gui.controlspanel import ControlsPanel  # noqa F401
 from katrain.gui.error_handler import ErrorHandler
-from katrain.gui.features.batch_core import (
-    collect_batch_options,
-    create_log_callback,
-    create_progress_callback,
-    create_summary_callback,
-    is_leela_configured,
-    run_batch_in_thread,
-)
-from katrain.gui.features.batch_ui import (
-    build_batch_popup_widgets,
-    create_batch_popup,
-    create_browse_callback,
-    create_get_player_filter_fn,
-    create_on_close_callback,
-    create_on_start_callback,
-)
+# Batch analysis related imports removed; handled by BatchAnalysisController
 from katrain.gui.features.commands import (
     analyze_commands,
     export_commands,

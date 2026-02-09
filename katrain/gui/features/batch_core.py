@@ -91,9 +91,8 @@ def collect_batch_options(
     curator_cb = widgets.get("curator_checkbox")
     generate_curator = curator_cb.active if curator_cb is not None else False
 
-    # Engine selection (Phase 36)
-    engine_leela = widgets.get("engine_leela")
-    analysis_engine = "leela" if engine_leela and engine_leela.state == "down" else "katago"
+    # Engine selection (Hardcoded to katago as per user request)
+    analysis_engine = "katago"
 
     return {
         "input_dir": input_dir,
@@ -319,14 +318,3 @@ def run_batch_in_thread(
 
 # NOTE: needs_leela_karte_warning is now imported from katrain.core.batch (Phase 42-A)
 
-def is_leela_configured(ctx: FeatureContext) -> bool:
-    """Leela解析が無効、あるいは実行ファイルが設定されていない場合に警告。
-
-    Args:
-        ctx: カレントコンテクスト（get_leela_configメソッドを持つこと）
-
-    Returns:
-        True if Leela is enabled or has an exe_path set.
-    """
-    leela_config = ctx.get_leela_config()
-    return bool(leela_config.enabled or leela_config.exe_path)

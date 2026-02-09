@@ -29,51 +29,7 @@ class MockEngineConfig:
     model: str | None = None
 
 
-class TestIsLeelaConfiguredTypedConfig:
-    """Test is_leela_configured() uses typed config correctly."""
-
-    def test_enabled_true_returns_true(self):
-        """When enabled=True, returns True immediately."""
-        from katrain.gui.features.batch_core import is_leela_configured
-
-        ctx = MagicMock()
-        ctx.get_leela_config.return_value = MockLeelaConfig(enabled=True)
-
-        assert is_leela_configured(ctx) is True
-        ctx.get_leela_config.assert_called_once()
-
-    def test_enabled_false_exe_path_set_returns_true(self):
-        """When enabled=False but exe_path is set, returns True."""
-        from katrain.gui.features.batch_core import is_leela_configured
-
-        ctx = MagicMock()
-        ctx.get_leela_config.return_value = MockLeelaConfig(enabled=False, exe_path="/path/to/leela")
-
-        assert is_leela_configured(ctx) is True
-
-    def test_enabled_false_exe_path_none_returns_false(self):
-        """When enabled=False and exe_path=None, returns False."""
-        from katrain.gui.features.batch_core import is_leela_configured
-
-        ctx = MagicMock()
-        ctx.get_leela_config.return_value = MockLeelaConfig(enabled=False, exe_path=None)
-
-        assert is_leela_configured(ctx) is False
-
-    def test_enabled_false_exe_path_empty_returns_false(self):
-        """When enabled=False and exe_path='', returns False (via or '' pattern)."""
-        from katrain.gui.features.batch_core import is_leela_configured
-
-        ctx = MagicMock()
-        # Note: In real code, normalize_path("") returns None, not ""
-        # This test verifies the `or ""` fallback works correctly
-        ctx.get_leela_config.return_value = MockLeelaConfig(
-            enabled=False,
-            exe_path=None,  # normalize_path("") -> None
-        )
-
-        result = is_leela_configured(ctx)
-        assert result is False
+# TestIsLeelaConfiguredTypedConfig removed as is_leela_configured was deleted.
 
 
 class TestDiagnosticsCopyTypedConfig:
