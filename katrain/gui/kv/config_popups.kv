@@ -2,6 +2,21 @@
 #:import i18n katrain.gui.lang_bridge.i18n
 #:import Theme katrain.gui.theme.Theme
 #:import TOP_MOVE_OPTIONS katrain.core.constants.TOP_MOVE_OPTIONS
+#:import I18NFileBrowser katrain.gui.widgets.filebrowser.I18NFileBrowser
+
+<LoadSGFPopup@I18NPopup>:
+    filesel: filesel
+    I18NFileBrowser:
+        id: filesel
+        filters: ['*.sgf', '*.gib', '*.ngf']
+        on_success: root.dispatch('on_success')
+
+<SaveSGFPopup@I18NPopup>:
+    filesel: filesel
+    I18NFileBrowser:
+        id: filesel
+        select_string: "Save File"
+        on_success: root.dispatch('on_success')
 
 <ConfigPopup>:
     model_path: model_path
