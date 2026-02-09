@@ -14,7 +14,7 @@ from zipfile import ZipFile
 import urllib3
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, DictProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
@@ -1061,12 +1061,17 @@ class ReAnalyzeGamePopup(BoxLayout):
 class TsumegoFramePopup(BoxLayout):
     katrain = ObjectProperty(None)
     popup = ObjectProperty(None)
+    button = ObjectProperty(None)
 
     def on_submit(self) -> None:
         self.button.trigger_action(duration=0)
 
 
 class GameReportPopup(BoxLayout):
+    stats = ObjectProperty(None)
+    player_infos = DictProperty({})
+    button = ObjectProperty(None)
+
     def __init__(self, katrain: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.katrain = katrain
@@ -1084,7 +1089,10 @@ class GameReportPopup(BoxLayout):
         sum_stats, histogram, player_ptloss = game_report(game, depth_filter=self.depth_filter, thresholds=thresholds)
         labels = [f"≥ {pt}" if pt > 0 else f"< {thresholds[-2]}" for pt in thresholds]
 
-        table = GridLayout(cols=3, rows=6 + len(thresholds))
+        table = GridLayout(cols=3, rows=6 + len(thresholds), size_hint=(1, None))
+        table.row_default_height = dp(40)
+        table.row_force_default = True
+        table.bind(minimum_height=table.setter("height"))
         colors = [
             [cp * 0.75 for cp in col[:3]] + [1] for col in Theme.EVAL_COLORS[self.katrain.config("trainer/theme")]
         ]

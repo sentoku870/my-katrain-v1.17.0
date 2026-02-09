@@ -153,87 +153,86 @@ class SummaryAnalyzer:
         if not stats or not stats.worst_moves:
             return [], []
 
-        return self._detect_mistake_sequences_impl(
+        return detect_urgent_miss_sequences(
             stats.worst_moves,
             URGENT_MISS_THRESHOLD_LOSS,
             URGENT_MISS_MIN_CONSECUTIVE,
         )
 
-    def _detect_mistake_sequences_impl(
-        self,
-        worst_moves: list[tuple[str, Any]],
-        threshold_loss: float,
-        min_consecutive: int,
-    ) -> tuple[list[Any], list[tuple[str, Any]]]:
-        """
-        連続する大損失手を「ミス連続パターン（mistake sequences）」として検出
-        Implementation moved from summary_report.py
-        """
-        sequences = []
-        filtered_moves = []
-        current_seq = None
+def detect_urgent_miss_sequences(
+    worst_moves: list[tuple[str, Any]],
+    threshold_loss: float,
+    min_consecutive: int,
+) -> tuple[list[Any], list[tuple[str, Any]]]:
+    """
+    連続する大損失手を「ミス連続パターン（mistake sequences）」として検出
+    Implementation moved from summary_report.py
+    """
+    sequences = []
+    filtered_moves = []
+    current_seq = None
 
-        # worst_movesを手数でソート（同じゲーム内で連続しているかチェックするため）
-        sorted_moves = sorted(worst_moves, key=lambda x: (x[0], x[1].move_number))
+    # worst_movesを手数でソート（同じゲーム内で連続しているかチェックするため）
+    sorted_moves = sorted(worst_moves, key=lambda x: (x[0], x[1].move_number))
 
-        for _i, (game_name, move) in enumerate(sorted_moves):
-            loss = move.points_lost if move.points_lost else move.score_loss or 0
+    for _i, (game_name, move) in enumerate(sorted_moves):
+        loss = move.points_lost if move.points_lost else move.score_loss or 0
 
-            if loss >= threshold_loss:
-                if current_seq is None:
-                    # 新しいシーケンス開始
-                    current_seq = {
-                        "game": game_name,
-                        "start": move.move_number,
-                        "end": move.move_number,
-                        "moves": [(game_name, move)],
-                        "total_loss": loss,
-                        "count": 1,
-                    }
-                elif (
-                    current_seq["game"] == game_name
-                    and move.move_number <= current_seq["end"] + 2
-                ):
-                    # 連続している（1手スキップまで許容）
-                    current_seq["end"] = move.move_number
-                    current_seq["moves"].append((game_name, move))
-                    current_seq["total_loss"] += loss
-                    current_seq["count"] += 1
+        if loss >= threshold_loss:
+            if current_seq is None:
+                # 新しいシーケンス開始
+                current_seq = {
+                    "game": game_name,
+                    "start": move.move_number,
+                    "end": move.move_number,
+                    "moves": [(game_name, move)],
+                    "total_loss": loss,
+                    "count": 1,
+                }
+            elif (
+                current_seq["game"] == game_name
+                and move.move_number <= current_seq["end"] + 2
+            ):
+                # 連続している（1手スキップまで許容）
+                current_seq["end"] = move.move_number
+                current_seq["moves"].append((game_name, move))
+                current_seq["total_loss"] += loss
+                current_seq["count"] += 1
+            else:
+                # 連続が途切れた
+                if current_seq["count"] >= min_consecutive:
+                    sequences.append(current_seq)
                 else:
-                    # 連続が途切れた
-                    if current_seq["count"] >= min_consecutive:
-                        sequences.append(current_seq)
-                    else:
-                        # 閾値を超えているが連続していない → 通常のワースト手に追加
-                        filtered_moves.extend(current_seq["moves"])
+                    # 閾値を超えているが連続していない → 通常のワースト手に追加
+                    filtered_moves.extend(current_seq["moves"])
 
-                    # 新しいシーケンス開始
-                    current_seq = {
-                        "game": game_name,
-                        "start": move.move_number,
-                        "end": move.move_number,
-                        "moves": [(game_name, move)],
-                        "total_loss": loss,
-                        "count": 1,
-                    }
-            else:
-                # 閾値未満
-                if current_seq:
-                    if current_seq["count"] >= min_consecutive:
-                        sequences.append(current_seq)
-                    else:
-                        # 閾値を超えているが連続していない → 通常のワースト手に追加
-                        filtered_moves.extend(current_seq["moves"])
-                    current_seq = None
+                # 新しいシーケンス開始
+                current_seq = {
+                    "game": game_name,
+                    "start": move.move_number,
+                    "end": move.move_number,
+                    "moves": [(game_name, move)],
+                    "total_loss": loss,
+                    "count": 1,
+                }
+        else:
+            # 閾値未満
+            if current_seq:
+                if current_seq["count"] >= min_consecutive:
+                    sequences.append(current_seq)
+                else:
+                    # 閾値を超えているが連続していない → 通常のワースト手に追加
+                    filtered_moves.extend(current_seq["moves"])
+                current_seq = None
 
-                # 通常のワースト手に追加
-                filtered_moves.append((game_name, move))
+            # 通常のワースト手に追加
+            filtered_moves.append((game_name, move))
 
-        # 最後のシーケンス処理
-        if current_seq:
-            if current_seq["count"] >= min_consecutive:
-                sequences.append(current_seq)
-            else:
-                filtered_moves.extend(current_seq["moves"])
+    # 最後のシーケンス処理
+    if current_seq:
+        if current_seq["count"] >= min_consecutive:
+            sequences.append(current_seq)
+        else:
+            filtered_moves.extend(current_seq["moves"])
 
-        return sequences, filtered_moves
+    return sequences, filtered_moves

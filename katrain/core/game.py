@@ -1207,6 +1207,23 @@ class Game(BaseGame):
             time_limit=False,
         )
 
+    def _wait_for_engine_capacity(self, engine: KataGoEngine, headroom: int = 10) -> bool:
+        """Wait for engine capacity before sending requests.
+
+        Args:
+            engine: Engine to check capacity for.
+            headroom: Minimum free slots required.
+
+        Returns:
+            True if capacity is available, False if timed out.
+        """
+        max_wait_attempts = 100  # 10s max wait
+        for _ in range(max_wait_attempts):
+            if engine.has_query_capacity(headroom=headroom):
+                return True
+            time.sleep(0.1)
+        return False
+
     def _handle_game_mode(self, engine: KataGoEngine, **kwargs: Any) -> None:
         """Handle GAME mode: re-analyze all nodes in the game tree."""
         nodes = [n for n in self.root.nodes_in_tree if isinstance(n, GameNode)]
@@ -1230,12 +1247,7 @@ class Game(BaseGame):
                 continue
 
             # Throttle: wait for engine capacity before sending request
-            max_wait_attempts = 50  # 50 * 0.1s = 5s max wait
-            for _ in range(max_wait_attempts):
-                if engine.has_query_capacity(headroom=10):
-                    break
-                time.sleep(0.1)
-            else:
+            if not self._wait_for_engine_capacity(engine, headroom=10):
                 self.katrain.log(
                     f"Skipping extra analysis for move {node.move_number}: engine at capacity",
                     OUTPUT_DEBUG,
@@ -1333,6 +1345,13 @@ class Game(BaseGame):
         # Common refinement loop for SWEEP/EQUALIZE/ALTERNATIVE/LOCAL
         for move in analyze_moves:
             if cn.analysis["moves"].get(move.gtp(), {"visits": 0})["visits"] < visits:
+                # Throttle: wait for engine capacity before sending request
+                if not self._wait_for_engine_capacity(engine, headroom=5):
+                    self.katrain.log(
+                        f"Skipping refinement for move {move.gtp()}: engine at capacity",
+                        OUTPUT_DEBUG,
+                    )
+                    continue
                 cn.analyze(
                     engine, priority=priority, visits=visits, refine_move=move, time_limit=False
                 )  # explicitly requested so take as long as you need

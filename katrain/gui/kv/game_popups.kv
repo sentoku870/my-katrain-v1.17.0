@@ -279,3 +279,84 @@
                         helper_text_mode: "persistent"
                         id: end_move
                         text: '999'
+    BoxLayout:
+        size_hint: 1, 1
+        orientation: 'horizontal'
+        spacing: dp(10)
+        DescriptionLabel:
+            text: i18n._('mistakes only')
+            size_hint: 0.6667, 1
+        AnchorLayout:
+            size_hint: 0.3333, 1
+            LabelledCheckBox:
+                id: mistakes
+                default_active: False
+    AnchorLayout:
+        size_hint: 1, 1
+        AutoSizedRoundedRectangleButton:
+            id: button
+            text: i18n._("analysis:game")
+            padding_x: 15
+            size_hint: None, 0.6
+            on_press: root.popup.dismiss(); root.katrain._do_analyze_extra("game", visits=int(root.visits.text), mistakes_only=root.mistakes.active, move_range=(int(root.start_move.text), int(root.end_move.text)) if root.move_range.active else None)
+
+<TsumegoFramePopup>:
+    katrain: None
+    button: button
+    orientation: 'vertical'
+    padding: dp(10)
+    spacing: dp(10)
+    DescriptionLabel:
+        text: i18n._("analysis:tsumegoframe")
+        font_size: sp(Theme.DESC_FONT_SIZE)
+    MDGridLayout:
+        cols: 2
+        spacing: dp(10)
+        DescriptionLabel:
+            text: i18n._("tsumego:ko")
+        LabelledCheckBox:
+            id: ko
+            default_active: False
+        DescriptionLabel:
+            text: i18n._("tsumego:walldistance")
+        LabelledIntInput:
+            id: margin
+            text: '2'
+    AutoSizedRoundedRectangleButton:
+        id: button
+        text: i18n._("OK")
+        size_hint: (0.5, None)
+        height: dp(40)
+        pos_hint: {'center_x': 0.5}
+        on_press: if root.popup: root.popup.dismiss(); root.katrain._do_tsumego_frame(ko.active, int(margin.text))
+
+<GameReportPopup>:
+    stats: stats
+    player_infos: {'B': B_player, 'W': W_player}
+    button: close_button
+    orientation: 'vertical'
+    padding: dp(10)
+    spacing: dp(10)
+    BoxLayout:
+        size_hint_y: None
+        height: dp(60)
+        PlayerInfo:
+            id: B_player
+            player: 'B'
+        PlayerInfo:
+            id: W_player
+            player: 'W'
+    ScrollView:
+        do_scroll_x: False
+        BoxLayout:
+            id: stats
+            orientation: 'vertical'
+            size_hint_y: None
+            height: self.minimum_height
+    AutoSizedRoundedRectangleButton:
+        id: close_button
+        text: i18n._("OK")
+        size_hint: (0.5, None)
+        height: dp(40)
+        pos_hint: {'center_x': 0.5}
+        on_press: if root.popup: root.popup.dismiss()

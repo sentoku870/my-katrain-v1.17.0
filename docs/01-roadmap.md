@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-02-09（Phase 133完了）
+> 最終更新: 2026-02-09（Phase 134完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 

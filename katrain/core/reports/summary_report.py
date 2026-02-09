@@ -28,7 +28,8 @@ from katrain.core.reports.constants import (
     URGENT_MISS_MIN_CONSECUTIVE,
     URGENT_MISS_THRESHOLD_LOSS,
 )
-from katrain.core.reports.summary_logic import SummaryAnalyzer
+from katrain.core.reports.summary_logic import SummaryAnalyzer, detect_urgent_miss_sequences
+_detect_urgent_miss_sequences = detect_urgent_miss_sequences
 
 
 def build_summary_report(
@@ -315,9 +316,9 @@ def _format_top_worst_moves(
 
     # 急場見逃しパターンを検出 (using Logic class)
     # Using hardcoded values in logic class impl, so no args needed if using default
-    # But SummaryAnalyzer._detect_urgent_miss_sequences_impl takes args.
+    # But SummaryAnalyzer.detect_mistake_sequences takes args.
     # The public method wrapper uses defaults.
-    sequences, filtered_moves = analyzer.detect_urgent_miss_sequences(player_name)
+    sequences, filtered_moves = analyzer.detect_mistake_sequences(player_name)
 
     # 急場見逃しパターンがあれば表示
     if sequences:
@@ -413,7 +414,7 @@ def _format_weakness_hypothesis(
     lines = [f"## {i18n._('summary:weakness')} ({player_name}){header_suffix}", ""]
 
     # 急場見逃しパターンを検出 (using Logic class)
-    sequences, _ = analyzer.detect_urgent_miss_sequences(player_name)
+    sequences, _ = analyzer.detect_mistake_sequences(player_name)
 
     # クロス集計から弱点を抽出
     priorities = stats.get_practice_priorities()
