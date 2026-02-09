@@ -61,11 +61,16 @@ class EvidenceMove:
 
 # Tier label mapping (i18n keys with English fallback)
 TIER_LABELS = {
-    SkillTier.TIER_1: "Tier 1 (Novice)",
-    SkillTier.TIER_2: "Tier 2 (Apprentice)",
-    SkillTier.TIER_3: "Tier 3 (Proficient)",
-    SkillTier.TIER_4: "Tier 4 (Advanced)",
-    SkillTier.TIER_5: "Tier 5 (Elite)",
+    SkillTier.TIER_1: "Tier 1 (20k-15k)",
+    SkillTier.TIER_2: "Tier 2 (15k-12k)",
+    SkillTier.TIER_3: "Tier 3 (12k-8k)",
+    SkillTier.TIER_4: "Tier 4 (8k-5k)",
+    SkillTier.TIER_5: "Tier 5 (5k-3k)",
+    SkillTier.TIER_6: "Tier 6 (3k-1d)",
+    SkillTier.TIER_7: "Tier 7 (1d-3d)",
+    SkillTier.TIER_8: "Tier 8 (3d-5d)",
+    SkillTier.TIER_9: "Tier 9 (5d-7d)",
+    SkillTier.TIER_10: "Tier 10 (Pro)",
     SkillTier.TIER_UNKNOWN: "N/A",
 }
 

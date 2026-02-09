@@ -47,13 +47,18 @@ class RadarAxis(StrEnum):
 
 
 class SkillTier(StrEnum):
-    """Skill tier classification (Tier 1-5 + Unknown)."""
+    """Skill tier classification (Tier 1-10 + Unknown)."""
 
-    TIER_1 = "tier_1"  # Novice (初学) - 15級以下
-    TIER_2 = "tier_2"  # Apprentice (習得) - 6-14級
-    TIER_3 = "tier_3"  # Proficient (熟練) - 1-5級
-    TIER_4 = "tier_4"  # Advanced (上級) - 初段〜四段
-    TIER_5 = "tier_5"  # Elite (精鋭) - 五段〜
+    TIER_1 = "tier_1"    # 20k-15k
+    TIER_2 = "tier_2"    # 15k-12k
+    TIER_3 = "tier_3"    # 12k-8k
+    TIER_4 = "tier_4"    # 8k-5k
+    TIER_5 = "tier_5"    # 5k-3k
+    TIER_6 = "tier_6"    # 3k-初段
+    TIER_7 = "tier_7"    # 初段-三段
+    TIER_8 = "tier_8"    # 三段-五段
+    TIER_9 = "tier_9"    # 五段-七段
+    TIER_10 = "tier_10"  # プロ級
     TIER_UNKNOWN = "unknown"
 
 
@@ -68,43 +73,132 @@ TIER_TO_INT: dict[SkillTier, int] = {
     SkillTier.TIER_3: 3,
     SkillTier.TIER_4: 4,
     SkillTier.TIER_5: 5,
+    SkillTier.TIER_6: 6,
+    SkillTier.TIER_7: 7,
+    SkillTier.TIER_8: 8,
+    SkillTier.TIER_9: 9,
+    SkillTier.TIER_10: 10,
 }
 INT_TO_TIER: dict[int, SkillTier] = {v: k for k, v in TIER_TO_INT.items()}
 
 
 # =============================================================================
-# Threshold Constants
+# Threshold Constants (10-Tier System)
 # =============================================================================
 
-# APL (Average Point Loss) -> Tier thresholds
+# APL (Average Point Loss) → Tier thresholds (Default/Stability)
 # Half-open intervals: [lower, upper), apl < threshold
 APL_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
-    (0.4, SkillTier.TIER_5, 5.0),
-    (0.8, SkillTier.TIER_4, 4.0),
-    (1.2, SkillTier.TIER_3, 3.0),
-    (2.0, SkillTier.TIER_2, 2.0),
+    (0.30, SkillTier.TIER_10, 10.0),
+    (0.40, SkillTier.TIER_9, 9.0),
+    (0.55, SkillTier.TIER_8, 8.0),
+    (0.70, SkillTier.TIER_7, 7.0),
+    (0.90, SkillTier.TIER_6, 6.0),
+    (1.10, SkillTier.TIER_5, 5.0),
+    (1.40, SkillTier.TIER_4, 4.0),
+    (1.80, SkillTier.TIER_3, 3.0),
+    (2.50, SkillTier.TIER_2, 2.0),
     (float("inf"), SkillTier.TIER_1, 1.0),
 ]
 
-# Blunder Rate -> Tier thresholds
+# Opening-specific APL thresholds (stricter - losses naturally lower)
+OPENING_APL_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
+    (0.15, SkillTier.TIER_10, 10.0),
+    (0.20, SkillTier.TIER_9, 9.0),
+    (0.25, SkillTier.TIER_8, 8.0),
+    (0.30, SkillTier.TIER_7, 7.0),
+    (0.40, SkillTier.TIER_6, 6.0),
+    (0.55, SkillTier.TIER_5, 5.0),
+    (0.75, SkillTier.TIER_4, 4.0),
+    (1.00, SkillTier.TIER_3, 3.0),
+    (1.50, SkillTier.TIER_2, 2.0),
+    (float("inf"), SkillTier.TIER_1, 1.0),
+]
+
+# Fighting-specific APL thresholds (looser - combat losses naturally higher)
+# Adjusted based on real data analysis (2026-02-09, ×1.1 from baseline)
+FIGHTING_APL_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
+    (0.77, SkillTier.TIER_10, 10.0),  # APL < 0.77 (×1.1 from 0.70)
+    (0.94, SkillTier.TIER_9, 9.0),    # APL < 0.94 (×1.1 from 0.85)
+    (0.99, SkillTier.TIER_8, 8.0),    # APL < 0.99 (×1.1 from 0.90)
+    (1.21, SkillTier.TIER_7, 7.0),    # APL < 1.21 (×1.1 from 1.10)
+    (1.54, SkillTier.TIER_6, 6.0),    # APL < 1.54 (×1.1 from 1.40)
+    (1.98, SkillTier.TIER_5, 5.0),    # APL < 1.98 (×1.1 from 1.80)
+    (2.53, SkillTier.TIER_4, 4.0),    # APL < 2.53 (×1.1 from 2.30)
+    (3.30, SkillTier.TIER_3, 3.0),    # APL < 3.30 (×1.1 from 3.00)
+    (4.40, SkillTier.TIER_2, 2.0),    # APL < 4.40 (×1.1 from 4.00)
+    (float("inf"), SkillTier.TIER_1, 1.0),
+]
+
+# Endgame-specific APL thresholds (moderate)
+# Adjusted based on real data analysis (2026-02-09, ÷1.5 to make stricter)
+ENDGAME_APL_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
+    (0.90, SkillTier.TIER_10, 10.0),  # APL < 0.90 (÷1.5 from 1.40, stricter)
+    (1.40, SkillTier.TIER_9, 9.0),    # APL < 1.40 (÷1.5 from 2.10, stricter)
+    (1.90, SkillTier.TIER_8, 8.0),    # APL < 1.90 (÷1.5 from 2.80, stricter)
+    (2.35, SkillTier.TIER_7, 7.0),    # APL < 2.35 (÷1.5 from 3.50, stricter)
+    (2.80, SkillTier.TIER_6, 6.0),    # APL < 2.80 (÷1.5 from 4.20, stricter)
+    (3.30, SkillTier.TIER_5, 5.0),    # APL < 3.30 (÷1.5 from 4.90, stricter)
+    (3.75, SkillTier.TIER_4, 4.0),    # APL < 3.75 (÷1.5 from 5.60, stricter)
+    (4.20, SkillTier.TIER_3, 3.0),    # APL < 4.20 (÷1.5 from 6.30, stricter)
+    (4.70, SkillTier.TIER_2, 2.0),    # APL < 4.70 (÷1.5 from 7.00, stricter)
+    (float("inf"), SkillTier.TIER_1, 1.0),
+]
+
+# Blunder Rate → Tier thresholds (Stability axis)
 # Half-open intervals: [lower, upper), rate < threshold
 BLUNDER_RATE_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
-    (0.01, SkillTier.TIER_5, 5.0),
-    (0.03, SkillTier.TIER_4, 4.0),
-    (0.05, SkillTier.TIER_3, 3.0),
-    (0.10, SkillTier.TIER_2, 2.0),
+    (0.005, SkillTier.TIER_10, 10.0),
+    (0.010, SkillTier.TIER_9, 9.0),
+    (0.015, SkillTier.TIER_8, 8.0),
+    (0.020, SkillTier.TIER_7, 7.0),
+    (0.030, SkillTier.TIER_6, 6.0),
+    (0.040, SkillTier.TIER_5, 5.0),
+    (0.055, SkillTier.TIER_4, 4.0),
+    (0.075, SkillTier.TIER_3, 3.0),
+    (0.100, SkillTier.TIER_2, 2.0),
     (float("inf"), SkillTier.TIER_1, 1.0),
 ]
 
-# Match Rate -> Tier thresholds
-# Higher is better, half-open intervals: [lower, upper), rate < threshold
-MATCH_RATE_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
-    (0.25, SkillTier.TIER_1, 1.0),  # rate < 0.25
-    (0.35, SkillTier.TIER_2, 2.0),  # 0.25 <= rate < 0.35
-    (0.45, SkillTier.TIER_3, 3.0),  # 0.35 <= rate < 0.45
-    (0.55, SkillTier.TIER_4, 4.0),  # 0.45 <= rate < 0.55
-    (float("inf"), SkillTier.TIER_5, 5.0),  # rate >= 0.55
+# Stability-specific APL thresholds (more lenient than default)
+# Adjusted based on real data analysis (2026-02-09, ×13.5 from baseline, ×2.5 from ×5.4)
+STABILITY_APL_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
+    (5.40, SkillTier.TIER_10, 10.0),  # APL < 5.40 (×2.5 from 2.16, ×13.5 from 0.40)
+    (9.45, SkillTier.TIER_9, 9.0),    # APL < 9.45 (×2.5 from 3.78, ×13.5 from 0.70)
+    (13.50, SkillTier.TIER_8, 8.0),   # APL < 13.50 (×2.5 from 5.40, ×13.5 from 1.00)
+    (17.55, SkillTier.TIER_7, 7.0),   # APL < 17.55 (×2.5 from 7.02, ×13.5 from 1.30)
+    (21.60, SkillTier.TIER_6, 6.0),   # APL < 21.60 (×2.5 from 8.64, ×13.5 from 1.60)
+    (27.00, SkillTier.TIER_5, 5.0),   # APL < 27.00 (×2.5 from 10.80, ×13.5 from 2.00)
+    (33.75, SkillTier.TIER_4, 4.0),   # APL < 33.75 (×2.5 from 13.50, ×13.5 from 2.50)
+    (40.50, SkillTier.TIER_3, 3.0),   # APL < 40.50 (×2.5 from 16.20, ×13.5 from 3.00)
+    (47.25, SkillTier.TIER_2, 2.0),   # APL < 47.25 (×2.5 from 18.90, ×13.5 from 3.50)
+    (float("inf"), SkillTier.TIER_1, 1.0),
 ]
+
+
+# Match Rate → Tier thresholds (Awareness axis)
+# Higher is better, half-open intervals: [lower, upper), rate < threshold
+# Adjusted based on real data analysis (2026-02-09, raised to 90% for Tier 10)
+MATCH_RATE_TIER_THRESHOLDS: list[tuple[float, SkillTier, float]] = [
+    (0.40, SkillTier.TIER_1, 1.0),   # rate < 0.40
+    (0.50, SkillTier.TIER_2, 2.0),   # 0.40 <= rate < 0.50
+    (0.55, SkillTier.TIER_3, 3.0),   # 0.50 <= rate < 0.55
+    (0.60, SkillTier.TIER_4, 4.0),   # 0.55 <= rate < 0.60
+    (0.65, SkillTier.TIER_5, 5.0),   # 0.60 <= rate < 0.65
+    (0.70, SkillTier.TIER_6, 6.0),   # 0.65 <= rate < 0.70
+    (0.75, SkillTier.TIER_7, 7.0),   # 0.70 <= rate < 0.75
+    (0.80, SkillTier.TIER_8, 8.0),   # 0.75 <= rate < 0.80
+    (0.90, SkillTier.TIER_9, 9.0),   # 0.80 <= rate < 0.90 (+5% from 0.85)
+    (float("inf"), SkillTier.TIER_10, 10.0),  # rate >= 0.90 (+5% from 0.85)
+]
+
+# Axis-specific threshold mappings
+AXIS_APL_THRESHOLDS: dict[RadarAxis, list[tuple[float, SkillTier, float]]] = {
+    RadarAxis.OPENING: OPENING_APL_THRESHOLDS,
+    RadarAxis.FIGHTING: FIGHTING_APL_THRESHOLDS,
+    RadarAxis.ENDGAME: ENDGAME_APL_THRESHOLDS,
+    RadarAxis.STABILITY: STABILITY_APL_THRESHOLDS,  # Stability-specific thresholds
+}
 
 
 # =============================================================================
@@ -118,10 +212,10 @@ GARBAGE_TIME_WINRATE_LOW = 0.01
 # Phase boundaries (19x19 only, Phase 48 constraint)
 # move_number is 1-based (1, 2, 3, ...)
 OPENING_END_MOVE = 50  # move_number 1-50 = Opening
-ENDGAME_START_MOVE = 150  # move_number >= 150 = Endgame
+ENDGAME_START_MOVE = 120  # move_number >= 120 = Endgame (adjusted from 150, 2026-02-09)
 
 # Neutral values for axes with 0 valid moves
-NEUTRAL_DISPLAY_SCORE = 3.0
+NEUTRAL_DISPLAY_SCORE = 5.5  # 10-tier system: midpoint (1.0-10.0)
 NEUTRAL_TIER = SkillTier.TIER_UNKNOWN
 
 
@@ -358,19 +452,33 @@ class AggregatedRadarResult:
 # =============================================================================
 
 
-def apl_to_tier_and_score(apl: float) -> tuple[SkillTier, float]:
+def apl_to_tier_and_score(apl: float, axis: RadarAxis | None = None) -> tuple[SkillTier, float]:
     """Convert APL (Average Point Loss) to tier and display score.
 
     Args:
         apl: Average point loss in points per move
+        axis: Radar axis for axis-specific thresholds (default: use APL_TIER_THRESHOLDS)
 
     Returns:
         Tuple of (SkillTier, display_score)
 
     Boundary rule: apl < threshold (half-open interval [lower, upper))
     Example: apl=0.4 -> not < 0.4, but < 0.8 -> TIER_4
+
+    Note:
+        Uses axis-specific thresholds when axis is provided:
+        - Opening: Stricter (losses naturally lower)
+        - Fighting: Looser (combat losses naturally higher)
+        - Endgame: Moderate
+        - Stability: Default thresholds
     """
-    for threshold, tier, score in APL_TIER_THRESHOLDS:
+    # Select thresholds based on axis
+    if axis is not None and axis in AXIS_APL_THRESHOLDS:
+        thresholds = AXIS_APL_THRESHOLDS[axis]
+    else:
+        thresholds = APL_TIER_THRESHOLDS
+    
+    for threshold, tier, score in thresholds:
         if apl < threshold:
             return tier, score
     return SkillTier.TIER_1, 1.0  # fallback (shouldn't reach)
@@ -710,7 +818,7 @@ def compute_opening_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
 
     apl = sum(max(0.0, m.points_lost) for m in filtered) / len(filtered)
-    tier, score = apl_to_tier_and_score(apl)
+    tier, score = apl_to_tier_and_score(apl, RadarAxis.OPENING)
     return tier, score, len(filtered)
 
 
@@ -745,14 +853,14 @@ def compute_fighting_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
 
     apl = sum(max(0.0, m.points_lost) for m in filtered) / len(filtered)
-    tier, score = apl_to_tier_and_score(apl)
+    tier, score = apl_to_tier_and_score(apl, RadarAxis.FIGHTING)
     return tier, score, len(filtered)
 
 
 def compute_endgame_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
     """Compute Endgame axis (終盤力).
 
-    Target: move_number >= ENDGAME_START_MOVE (150)
+    Target: move_number >= ENDGAME_START_MOVE (120)
     Exclude:
         - Garbage time
         - points_lost is None
@@ -778,7 +886,7 @@ def compute_endgame_axis(moves: list[Any]) -> tuple[SkillTier, float, int]:
         return NEUTRAL_TIER, NEUTRAL_DISPLAY_SCORE, 0
 
     apl = sum(max(0.0, m.points_lost) for m in filtered) / len(filtered)
-    tier, score = apl_to_tier_and_score(apl)
+    tier, score = apl_to_tier_and_score(apl, RadarAxis.ENDGAME)
     return tier, score, len(filtered)
 
 

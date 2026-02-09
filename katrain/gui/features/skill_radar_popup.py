@@ -268,8 +268,9 @@ def _player_content(r: RadarMetrics, side: str) -> BoxLayout:
         tier = getattr(r, f"{axis}_tier")
         tier_color = tier_to_color(tier.value)
 
-        # Stars: filled based on score (1-5)
-        filled = min(5, max(1, int(round(score))))
+        # Stars: Map 10-tier score (1-10) to 5-star display (1-5)
+        # Score 1-2 → 1 star, 3-4 → 2 stars, 5-6 → 3 stars, 7-8 → 4 stars, 9-10 → 5 stars
+        filled = min(5, max(1, int(round((score + 1) / 2))))
         stars = "★" * filled + "☆" * (5 - filled)
         axis_name = i18n._(f"radar:axis-{axis}")
 
