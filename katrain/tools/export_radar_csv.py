@@ -247,12 +247,24 @@ def export_radar_csv(
 
 
 def _write_text_format(output_path: Path, rows: list[dict[str, Any]]) -> None:
-    """Write radar data in readable text format.
+    """Write radar data in AI-friendly structured markdown format.
     
     Args:
         output_path: Output file path
         rows: List of radar data dictionaries
     """
+    # Import threshold constants
+    from katrain.core.analysis.skill_radar import (
+        APL_TIER_THRESHOLDS,
+        OPENING_APL_THRESHOLDS,
+        FIGHTING_APL_THRESHOLDS,
+        ENDGAME_APL_THRESHOLDS,
+        STABILITY_APL_THRESHOLDS,
+        BLUNDER_RATE_TIER_THRESHOLDS,
+        MATCH_RATE_TIER_THRESHOLDS,
+        SkillTier,
+    )
+    
     tier_names = {
         "tier_1": "Tier 1 (20k-15k)",
         "tier_2": "Tier 2 (15k-12k)",
@@ -268,51 +280,162 @@ def _write_text_format(output_path: Path, rows: list[dict[str, Any]]) -> None:
     }
     
     with output_path.open("w", encoding="utf-8") as f:
-        f.write("=" * 80 + "\n")
-        f.write("スキルレーダー分析結果\n")
-        f.write("=" * 80 + "\n\n")
+        # Header
+        f.write("# スキルレーダー分析結果\n\n")
+        f.write("> AI解析用の構造化データ\n\n")
+        
+        # Tier definitions
+        f.write("## 評価基準\n\n")
+        
+        # Overall tier calculation
+        f.write("### 総合棋力計算方法\n\n")
+        f.write("- 各軸のスコア（1.0〜10.0）を平均し、四捨五入で整数化\n")
+        f.write("- 整数スコアをTierにマッピング（例: 平均6.2 → 6 → Tier 6）\n\n")
+        
+        # Missing value handling
+        f.write("### 欠損値処理\n\n")
+        f.write("- 有効手数が5手未満の軸は評価対象外（N/A表示）\n")
+        f.write("- N/A軸は総合棋力計算から除外\n\n")
+        
+        # Valid move count definitions
+        f.write("### 有効手数の定義\n\n")
+        f.write("- **序盤力**: 手数1〜50の手（序盤定石・布石局面）\n")
+        f.write("- **戦闘力**: 難しい局面（position_difficulty=HARD）での手\n")
+        f.write("- **終盤力**: 手数150以降、またはヨセタグ付き局面の手\n")
+        f.write("- **安定性**: 全手数（全局面、ガベージタイムも含む）\n")
+        f.write("- **感性**: AI最善手一致率を評価（mistake_category=GOOD）\n\n")
+        
+        # Tier definitions table
+        f.write("### Tier定義\n\n")
+        f.write("| Tier | 棋力範囲 | スコア |\n")
+        f.write("|------|----------|--------|\n")
+        f.write("| Tier 1  | 20k-15k  | 1.0    |\n")
+        f.write("| Tier 2  | 15k-12k  | 2.0    |\n")
+        f.write("| Tier 3  | 12k-8k   | 3.0    |\n")
+        f.write("| Tier 4  | 8k-5k    | 4.0    |\n")
+        f.write("| Tier 5  | 5k-3k    | 5.0    |\n")
+        f.write("| Tier 6  | 3k-初段  | 6.0    |\n")
+        f.write("| Tier 7  | 初段-三段 | 7.0    |\n")
+        f.write("| Tier 8  | 三段-五段 | 8.0    |\n")
+        f.write("| Tier 9  | 五段-七段 | 9.0    |\n")
+        f.write("| Tier 10 | プロ級   | 10.0   |\n")
+        f.write("\n")
+        
+        # Threshold settings
+        f.write("### 閾値設定\n\n")
+        
+        # Opening thresholds
+        f.write("#### 序盤力 (Opening - APL)\n\n")
+        f.write("| APL範囲 | Tier | スコア |\n")
+        f.write("|---------|------|--------|\n")
+        prev_threshold = 0.0
+        for threshold, tier, score in OPENING_APL_THRESHOLDS:
+            if threshold == float("inf"):
+                f.write(f"| {prev_threshold:.2f}+ | {tier.value} | {score:.1f} |\n")
+            else:
+                f.write(f"| {prev_threshold:.2f}-{threshold:.2f} | {tier.value} | {score:.1f} |\n")
+                prev_threshold = threshold
+        f.write("\n")
+        
+        # Fighting thresholds
+        f.write("#### 戦闘力 (Fighting - APL)\n\n")
+        f.write("| APL範囲 | Tier | スコア |\n")
+        f.write("|---------|------|--------|\n")
+        prev_threshold = 0.0
+        for threshold, tier, score in FIGHTING_APL_THRESHOLDS:
+            if threshold == float("inf"):
+                f.write(f"| {prev_threshold:.2f}+ | {tier.value} | {score:.1f} |\n")
+            else:
+                f.write(f"| {prev_threshold:.2f}-{threshold:.2f} | {tier.value} | {score:.1f} |\n")
+                prev_threshold = threshold
+        f.write("\n")
+        
+        # Endgame thresholds
+        f.write("#### 終盤力 (Endgame - APL)\n\n")
+        f.write("| APL範囲 | Tier | スコア |\n")
+        f.write("|---------|------|--------|\n")
+        prev_threshold = 0.0
+        for threshold, tier, score in ENDGAME_APL_THRESHOLDS:
+            if threshold == float("inf"):
+                f.write(f"| {prev_threshold:.2f}+ | {tier.value} | {score:.1f} |\n")
+            else:
+                f.write(f"| {prev_threshold:.2f}-{threshold:.2f} | {tier.value} | {score:.1f} |\n")
+                prev_threshold = threshold
+        f.write("\n")
+        
+        # Stability thresholds
+        f.write("#### 安定性 (Stability - APL)\n\n")
+        f.write("| APL範囲 | Tier | スコア |\n")
+        f.write("|---------|------|--------|\n")
+        prev_threshold = 0.0
+        for threshold, tier, score in STABILITY_APL_THRESHOLDS:
+            if threshold == float("inf"):
+                f.write(f"| {prev_threshold:.2f}+ | {tier.value} | {score:.1f} |\n")
+            else:
+                f.write(f"| {prev_threshold:.2f}-{threshold:.2f} | {tier.value} | {score:.1f} |\n")
+                prev_threshold = threshold
+        f.write("\n")
+        
+        # Awareness (Match Rate) thresholds
+        f.write("#### 感性 (Awareness - Match Rate)\n\n")
+        f.write("| Match Rate範囲 | Tier | スコア |\n")
+        f.write("|----------------|------|--------|\n")
+        prev_threshold = 0.0
+        for threshold, tier, score in MATCH_RATE_TIER_THRESHOLDS:
+            if threshold == float("inf"):
+                f.write(f"| {prev_threshold:.2f}+ | {tier.value} | {score:.1f} |\n")
+            else:
+                f.write(f"| {prev_threshold:.2f}-{threshold:.2f} | {tier.value} | {score:.1f} |\n")
+                prev_threshold = threshold
+        f.write("\n")
+        
+        # Player data
+        f.write("---\n\n")
+        f.write("## 対局データ\n\n")
         
         for idx, row in enumerate(rows, 1):
-            f.write(f"【対局 {idx}】 {row['game_name']}\n")
-            # Display player name with rank if available
+            # Game header
+            f.write(f"### 対局 {idx}: {row['game_name']}\n\n")
+            
+            # Player info
             player_display = row['player']
             if row.get('rank'):
                 player_display = f"{row['player']} ({row['rank']})"
-            f.write(f"プレイヤー: {player_display} ({row['color']}番)\n")
+            f.write(f"**プレイヤー**: {player_display}  \n")
+            f.write(f"**番**: {row['color']}番  \n")
             if row['date']:
-                f.write(f"日付: {row['date']}\n")
+                f.write(f"**日付**: {row['date']}  \n")
             if row['handicap'] > 0:
-                f.write(f"ハンデ: {row['handicap']}子\n")
-            f.write(f"総手数: {row['total_moves']}手\n")
-            f.write("\n")
+                f.write(f"**ハンデ**: {row['handicap']}子  \n")
+            f.write(f"**総手数**: {row['total_moves']}手\n\n")
             
-            # Overall tier
-            overall_tier_name = tier_names.get(row['overall_tier'], row['overall_tier'])
-            f.write(f"総合棋力: {overall_tier_name}\n")
-            f.write("-" * 80 + "\n")
+            # Skill evaluation table
+            f.write("#### スキル評価\n\n")
+            f.write("| 項目 | スコア | Tier | 棋力 | 有効手数 |\n")
+            f.write("|------|--------|------|------|----------|\n")
             
-            # 5 axes
             axes = [
-                ("序盤力", "opening", "Opening"),
-                ("戦闘力", "fighting", "Fighting"),
-                ("終盤力", "endgame", "Endgame"),
-                ("安定性", "stability", "Stability"),
-                ("感性", "awareness", "Awareness"),
+                ("序盤力 (Opening)", "opening"),
+                ("戦闘力 (Fighting)", "fighting"),
+                ("終盤力 (Endgame)", "endgame"),
+                ("安定性 (Stability)", "stability"),
+                ("感性 (Awareness)", "awareness"),
             ]
             
-            for jp_name, axis_key, en_name in axes:
+            for jp_name, axis_key in axes:
                 score = row[f"{axis_key}_score"]
                 tier = row[f"{axis_key}_tier"]
                 tier_name = tier_names.get(tier, tier)
                 moves = row[f"{axis_key}_moves"]
-                
-                f.write(f"  {jp_name:8s} ({en_name:10s}): スコア {score:4.1f} | {tier_name:20s} | 有効手数 {moves:3d}\n")
+                f.write(f"| {jp_name} | {score:.1f} | {tier} | {tier_name} | {moves} |\n")
             
-            f.write("\n")
+            # Overall tier
+            overall_tier_name = tier_names.get(row['overall_tier'], row['overall_tier'])
+            f.write(f"\n**総合棋力**: {overall_tier_name}\n\n")
+            f.write("---\n\n")
         
-        f.write("=" * 80 + "\n")
-        f.write(f"総計: {len(rows)} 件の分析結果\n")
-        f.write("=" * 80 + "\n")
+        # Summary
+        f.write(f"**総計**: {len(rows)} 件の分析結果\n")
 
 
 def main() -> None:
