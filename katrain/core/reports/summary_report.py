@@ -53,10 +53,34 @@ def build_summary_report(
     import json
     
     json_data = build_summary_json(game_data_list, focus_player)
-    
-    # Phase v6 Stage 1: Return raw JSON string (no Markdown wrapping)
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
-    return json_str
+
+    # Combine Markdown and JSON as per Phase v4 requirement
+    # We use all the previously defined _format_* functions here
+    lines = []
+    if not focus_player:
+        lines.append(_format_meta_section(game_data_list, None))
+        # Overall stats for Black/White
+        stats_b = SummaryStats(game_data_list, "B")
+        stats_w = SummaryStats(game_data_list, "W")
+        lines.append(_format_overall_stats("Black", stats_b))
+        lines.append(_format_overall_stats("White", stats_w))
+    else:
+        lines.append(_format_meta_section(game_data_list, focus_player))
+        stats = SummaryStats(game_data_list, focus_player)
+        lines.append(_format_overall_stats(focus_player, stats))
+        lines.append(_format_mistake_distribution(focus_player, stats))
+        lines.append(_format_freedom_distribution(focus_player, stats))
+        lines.append(_format_phase_breakdown(focus_player, stats))
+        lines.append(_format_phase_mistake_breakdown(focus_player, stats))
+        
+        analyzer = SummaryAnalyzer(game_data_list)
+        lines.append(_format_top_worst_moves(focus_player, stats, analyzer))
+        lines.append(_format_weakness_hypothesis(focus_player, stats, analyzer))
+        lines.append(_format_practice_priorities(focus_player, stats))
+
+    markdown_str = "\n\n".join(lines)
+    return markdown_str + "\n\n### Raw Data (JSON)\n\n```json\n" + json_str + "\n```"
 
 
 def _format_meta_section(

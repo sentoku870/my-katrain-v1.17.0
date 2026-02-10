@@ -317,8 +317,6 @@ def extract_game_stats(
             # If important moves extraction fails, reason_tags will be empty but stats still valid
             pass
 
-        return stats
-
         # Phase 85: Extract pattern_data for pattern mining
         # Only include MISTAKE/BLUNDER moves with at least one loss field set
         pattern_data = []
