@@ -58,10 +58,7 @@ def extract_game_stats(
             MeaningTagId,
             classify_meaning_tag,
         )
-        from katrain.core.analysis.skill_radar import (
-            MIN_MOVES_FOR_RADAR,
-            compute_radar_from_moves,
-        )
+        radar = None
         from katrain.core.eval_metrics import compute_effective_threshold
 
         # Phase 87.5: Use provided snapshot or build from game
@@ -320,23 +317,7 @@ def extract_game_stats(
             # If important moves extraction fails, reason_tags will be empty but stats still valid
             pass
 
-        # Phase 49: Compute radar per player (19x19 only)
-        radar_by_player: dict[str, dict[str, Any] | None] = {"B": None, "W": None}
-
-        if board_size == 19 and snapshot and snapshot.moves:
-            for player in ("B", "W"):
-                player_moves = [m for m in snapshot.moves if m.player == player]
-                if len(player_moves) >= MIN_MOVES_FOR_RADAR:
-                    try:
-                        radar = compute_radar_from_moves(player_moves, player=player)
-                        # Store even if some axes are UNKNOWN (per-axis aggregation later)
-                        radar_by_player[player] = radar.to_dict()
-                    except Exception as e:
-                        # Log failure but don't break batch processing
-                        _logger.debug("Radar computation failed for player=%s in %s: %s", player, rel_path, e)
-                        # radar_by_player[player] remains None
-
-        stats["radar_by_player"] = radar_by_player
+        return stats
 
         # Phase 85: Extract pattern_data for pattern mining
         # Only include MISTAKE/BLUNDER moves with at least one loss field set

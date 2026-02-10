@@ -25,12 +25,8 @@ import pytest
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import MoveEval
 
-from katrain.core.analysis.skill_radar import RadarAxis, RadarMetrics, SkillTier
-from katrain.core.analysis.style import (
-    StyleArchetypeId,
-    StyleResult,
-    determine_style,
-)
+from katrain.core.analysis.models import MoveEval
+
 from katrain.core.analysis.time.models import GameTimeData, TimeMetrics
 from katrain.core.analysis.time.pacing import (
     PacingAnalysisResult,
@@ -61,41 +57,6 @@ def normalize_json_for_comparison(data: dict) -> dict:
 # =============================================================================
 # Test Helpers
 # =============================================================================
-
-
-def make_radar(
-    opening: float = 3.0,
-    fighting: float = 3.0,
-    endgame: float = 3.0,
-    stability: float = 3.0,
-    awareness: float = 3.0,
-) -> RadarMetrics:
-    """Create RadarMetrics for testing.
-
-    Scale: 1.0-5.0 (neutral=3.0, high=4.0+, low=2.0-)
-    """
-    return RadarMetrics(
-        opening=opening,
-        fighting=fighting,
-        endgame=endgame,
-        stability=stability,
-        awareness=awareness,
-        opening_tier=SkillTier.TIER_3,
-        fighting_tier=SkillTier.TIER_3,
-        endgame_tier=SkillTier.TIER_3,
-        stability_tier=SkillTier.TIER_3,
-        awareness_tier=SkillTier.TIER_3,
-        overall_tier=SkillTier.TIER_3,
-        valid_move_counts=MappingProxyType(
-            {
-                RadarAxis.OPENING: 10,
-                RadarAxis.FIGHTING: 10,
-                RadarAxis.ENDGAME: 10,
-                RadarAxis.STABILITY: 10,
-                RadarAxis.AWARENESS: 10,
-            }
-        ),
-    )
 
 
 def make_time_metrics(move_number: int, player: str, time_spent: float | None = None) -> TimeMetrics:
@@ -252,21 +213,6 @@ def make_mock_game_with_nodes(node_count: int = 5) -> MockGame:
 # =============================================================================
 
 
-class TestStylePacingRiskContract:
-    """Contract-level tests for Style, Pacing, Risk analyses."""
-
-    def test_style_returns_valid_result(self):
-        """determine_style returns StyleResult with valid archetype."""
-        radar = make_radar()
-        tag_counts: dict[MeaningTagId, int] = {}
-
-        result = determine_style(radar, tag_counts)
-
-        assert isinstance(result, StyleResult)
-        assert result.archetype is not None
-        assert result.archetype.id in StyleArchetypeId
-        assert 0.0 <= result.confidence <= 1.0
-
     def test_pacing_returns_valid_result(self):
         """analyze_pacing returns PacingAnalysisResult with valid structure."""
         time_data = make_time_data([1, 2, 3, 4, 5])
@@ -281,14 +227,8 @@ class TestStylePacingRiskContract:
 
 
 
-    def test_all_analyses_complete_without_error(self):
-        """All three analyses complete without raising exceptions."""
-        # Style
-        radar = make_radar(fighting=4.5)  # High fighting
-        tag_counts = {MeaningTagId.CAPTURE_RACE_LOSS: 3}
-        style_result = determine_style(radar, tag_counts)
-        assert style_result is not None
-
+    def test_pacing_complete_without_error(self):
+        """Pacing analysis completes without raising exceptions."""
         # Pacing
         time_data = make_time_data([1, 2, 3])
         moves = [make_move_eval(i, score_loss=0.1) for i in range(1, 4)]
@@ -439,16 +379,6 @@ class TestBatchPerformance:
         Goal: Detect order-of-magnitude regressions.
         Threshold: 100 calls < 5.0s (generous for slow machines).
         """
-        # Style analysis
-        radar = make_radar()
-        tag_counts: dict[MeaningTagId, int] = {}
-
-        start = time.perf_counter()
-        for _ in range(100):
-            determine_style(radar, tag_counts)
-        style_elapsed = time.perf_counter() - start
-        assert style_elapsed < 5.0, f"Style analysis: {style_elapsed:.2f}s for 100 calls (limit: 5.0s)"
-
         # Pacing analysis
         time_data = make_time_data([1, 2, 3, 4, 5])
         moves = [make_move_eval(i, score_loss=0.5) for i in range(1, 6)]

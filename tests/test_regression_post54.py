@@ -18,53 +18,9 @@ from typing import Any
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
-
-from katrain.core.analysis.skill_radar import (
-    RadarAxis,
-    RadarMetrics,
-    SkillTier,
-    compute_radar_from_moves,
-)
-from katrain.core.analysis.style import determine_style
 from katrain.core.analysis.time.models import GameTimeData, TimeMetrics
 from katrain.core.analysis.time.pacing import analyze_pacing
 from katrain.core.curator.batch import generate_curator_outputs
-
-# =============================================================================
-# Test Helpers (reused from integration tests)
-# =============================================================================
-
-
-def make_radar(
-    opening: float = 3.0,
-    fighting: float = 3.0,
-    endgame: float = 3.0,
-    stability: float = 3.0,
-    awareness: float = 3.0,
-) -> RadarMetrics:
-    """Create RadarMetrics for testing."""
-    return RadarMetrics(
-        opening=opening,
-        fighting=fighting,
-        endgame=endgame,
-        stability=stability,
-        awareness=awareness,
-        opening_tier=SkillTier.TIER_3,
-        fighting_tier=SkillTier.TIER_3,
-        endgame_tier=SkillTier.TIER_3,
-        stability_tier=SkillTier.TIER_3,
-        awareness_tier=SkillTier.TIER_3,
-        overall_tier=SkillTier.TIER_3,
-        valid_move_counts=MappingProxyType(
-            {
-                RadarAxis.OPENING: 10,
-                RadarAxis.FIGHTING: 10,
-                RadarAxis.ENDGAME: 10,
-                RadarAxis.STABILITY: 10,
-                RadarAxis.AWARENESS: 10,
-            }
-        ),
-    )
 
 
 def make_move_eval(
@@ -158,59 +114,7 @@ class TestRegressionExistingFeatures:
         assert snapshot is not None
         assert snapshot.total_points_lost == 0.0
 
-    def test_compute_radar_from_moves_api_signature(self):
-        """compute_radar_from_moves is callable with expected arguments."""
-        moves = [make_move_eval(1, "B", 0.5), make_move_eval(2, "W", 0.3)]
-
-        # Can call with just moves
-        result = compute_radar_from_moves(moves)
-        assert isinstance(result, RadarMetrics)
-
-        # Can call with player filter
-        result_b = compute_radar_from_moves(moves, player="B")
-        assert isinstance(result_b, RadarMetrics)
-
-    def test_compute_radar_from_moves_empty(self):
-        """compute_radar_from_moves handles empty moves list."""
-        result = compute_radar_from_moves([])
-
-        assert isinstance(result, RadarMetrics)
-        # Should return neutral values for all axes
-
-    def test_determine_style_api_signature(self):
-        """determine_style is callable with expected arguments."""
-        radar = make_radar()
-        tag_counts: dict[MeaningTagId, int] = {}
-
-        result = determine_style(radar, tag_counts)
-
-        assert result is not None
-        assert hasattr(result, "archetype")
-        assert hasattr(result, "confidence")
-
-
-# =============================================================================
-# TestRegressionGracefulHandling
-# =============================================================================
-
-
-class TestRegressionGracefulHandling:
-    """Graceful handling of missing/empty data for Phase 55-64 features.
-
-    These tests verify that new features don't crash on edge cases.
-    """
-
-    def test_style_on_empty_moves(self):
-        """determine_style handles empty tag_counts gracefully."""
-        radar = make_radar()
-        tag_counts: dict[MeaningTagId, int] = {}  # Empty
-
-        # Should not raise
-        result = determine_style(radar, tag_counts)
-        assert result is not None
-        assert result.archetype is not None
-
-    def test_pacing_on_no_time_data(self):
+    def test_eval_snapshot_empty_moves(self):
         """analyze_pacing handles missing time data gracefully."""
         # GameTimeData with no time info
         time_data = GameTimeData(

@@ -72,10 +72,6 @@ def collect_batch_options(
     generate_karte = widgets["karte_checkbox"].active
     generate_summary = widgets["summary_checkbox"].active
 
-    # Skill Radar generation
-    skill_radar_cb = widgets.get("skill_radar_checkbox")
-    generate_skill_radar = skill_radar_cb.active if skill_radar_cb is not None else False
-
     # Player filter
     karte_player_filter = get_player_filter_fn()
 
@@ -108,7 +104,6 @@ def collect_batch_options(
         "generate_karte": generate_karte,
         "generate_summary": generate_summary,
         "generate_curator": generate_curator,
-        "generate_skill_radar": generate_skill_radar,
         "analysis_engine": analysis_engine,
         "karte_player_filter": karte_player_filter,
         "min_games_per_player": min_games_per_player,
@@ -264,7 +259,6 @@ def run_batch_in_thread(
             "generate_karte": options["generate_karte"],
             "generate_summary": options["generate_summary"],
             "generate_curator": options.get("generate_curator", False),
-            "generate_skill_radar": options.get("generate_skill_radar", False),
             "karte_player_filter": options["karte_player_filter"],
             "min_games_per_player": options["min_games_per_player"],
             "variable_visits": options["variable_visits"],
@@ -301,7 +295,6 @@ def run_batch_in_thread(
         deterministic=options["deterministic"],
         lang=ctx.config("general/language") or "jp",
         generate_curator=options.get("generate_curator", False),
-        generate_skill_radar=options.get("generate_skill_radar", False),
     )
 
     # Play completion sound if enabled

@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Any
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
-from katrain.core.analysis.skill_radar import RadarAxis
+from typing import Any
 
 # =============================================================================
 # Constants

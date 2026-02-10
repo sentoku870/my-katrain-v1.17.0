@@ -19,12 +19,7 @@ from typing import TYPE_CHECKING, Any
 from katrain.common.locale_utils import normalize_lang_code
 
 # Import types for type hints
-from katrain.core.analysis.skill_radar import (
-    AggregatedRadarResult,
-    RadarAxis,
-    SkillTier,
-    round_score,
-)
+from katrain.core.analysis.models import MoveEval, SummaryStats
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
     format_game_display_label,
@@ -37,8 +32,6 @@ from katrain.core.eval_metrics import (
 )
 
 from .models import (
-    AXIS_LABELS,
-    AXIS_PRACTICE_HINTS_LOCALIZED,
     COLOR_BIAS_NOTES,
     HINT_LINE_FORMATS,
     MTAG_PRACTICE_HINTS,
@@ -49,7 +42,6 @@ from .models import (
     PRACTICE_INTRO_TEXTS,
     RTAG_PRACTICE_HINTS,
     SECTION_HEADERS,
-    TIER_LABELS,
     EvidenceMove,
 )
 
@@ -302,11 +294,6 @@ def get_notes_header(lang: str = "jp") -> str:
     return NOTES_HEADERS.get(normalized, NOTES_HEADERS["en"])
 
 
-def get_axis_practice_hint(axis: RadarAxis, lang: str = "jp") -> str:
-    """Get localized practice hint for a radar axis."""
-    normalized = normalize_lang_code(lang)
-    hints = AXIS_PRACTICE_HINTS_LOCALIZED.get(normalized, AXIS_PRACTICE_HINTS_LOCALIZED["en"])
-    return hints.get(axis, "")
 
 
 def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> str | None:
@@ -470,101 +457,4 @@ def build_tag_based_hints(
     return hints
 
 
-def _get_tier_label(tier: SkillTier) -> str:
-    """Get display label for a tier."""
-    return TIER_LABELS.get(tier, "N/A")
-
-
-def _get_axis_label(axis: RadarAxis) -> str:
-    """Get display label for an axis."""
-    return AXIS_LABELS.get(axis, axis.value)
-
-
-def _build_skill_profile_section(
-    radar: AggregatedRadarResult | None,
-    lang: str = "jp",
-) -> list[str]:
-    """Build Skill Profile section for player summary.
-
-    Args:
-        radar: Aggregated radar result, or None if no data
-        lang: Language code for output ("jp", "en", "ja")
-
-    Returns:
-        List of markdown lines to append to summary
-    """
-    lines = [f"\n{get_section_header('skill_profile', lang)}\n"]
-
-    if not radar:
-        lines.append("*No radar data available (requires 19x19 games with analysis)*\n")
-        return lines
-
-    # Overall tier header
-    overall_label = _get_tier_label(radar.overall_tier)
-    lines.append(f"**Overall: {overall_label}** ({radar.games_aggregated} games aggregated)\n")
-
-    # 5-axis table
-    lines.append("| Axis | Score | Tier | Moves |")
-    lines.append("|------|------:|------|------:|")
-
-    for axis in RadarAxis:
-        axis_label = _get_axis_label(axis)
-        score = getattr(radar, axis.value)
-        tier = getattr(radar, f"{axis.value}_tier")
-        count = radar.valid_move_counts.get(axis, 0)
-
-        # Format score (use round_score for display)
-        score_str = "N/A" if score is None else f"{round_score(score)}"
-        tier_str = _get_tier_label(tier)
-
-        lines.append(f"| {axis_label} | {score_str} | {tier_str} | {count} |")
-
-    # Weak areas (score < 2.5)
-    weak_axes = [(axis, getattr(radar, axis.value)) for axis in RadarAxis if radar.is_weak_axis(axis)]
-
-    if weak_axes:
-        # Sort by score (lowest first)
-        weak_axes.sort(key=lambda x: x[1])
-        weak_list = [f"{_get_axis_label(axis)} ({round_score(score)})" for axis, score in weak_axes]
-        lines.append("")
-        lines.append(f"{get_section_header('weak_areas', lang)}: {', '.join(weak_list)}")
-
-        # Practice priorities (max 2)
-        lines.append("")
-        lines.append(get_section_header("practice_label", lang))
-        for axis, _ in weak_axes[:2]:
-            hint = get_axis_practice_hint(axis, lang)
-            if hint:
-                lines.append(f"- {_get_axis_label(axis)}: {hint}")
-
-    # JSON output block
-    lines.extend(_build_radar_json_section(radar))
-
-    return lines
-
-
-def _build_radar_json_section(
-    radar: AggregatedRadarResult | None,
-) -> list[str]:
-    """Build JSON output block for radar data.
-
-    Args:
-        radar: Aggregated radar result, or None
-
-    Returns:
-        List of markdown lines with JSON block
-    """
-    if not radar:
-        return []
-
-    import json
-
-    # Use canonical to_dict() - single source of truth
-    data = radar.to_dict()
-
-    return [
-        "\n### Radar Data (JSON)\n",
-        "```json",
-        json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True),
-        "```",
-    ]
+# End of aggregation.py

@@ -331,89 +331,8 @@ from katrain.core.analysis.reason_generator import (
 
 
 # =============================================================================
-# Explicit imports from skill_radar.py (Phase 48)
+# Phase 92: Public Wrapper Functions
 # =============================================================================
-from katrain.core.analysis.skill_radar import (
-    APL_TIER_THRESHOLDS,
-    BLUNDER_RATE_TIER_THRESHOLDS,
-    ENDGAME_START_MOVE,
-    GARBAGE_TIME_WINRATE_HIGH,
-    GARBAGE_TIME_WINRATE_LOW,
-    INT_TO_TIER,
-    MATCH_RATE_TIER_THRESHOLDS,
-    MIN_MOVES_FOR_RADAR,
-    # Phase 49 constants
-    MIN_VALID_AXES_FOR_OVERALL,
-    NEUTRAL_DISPLAY_SCORE,
-    NEUTRAL_TIER,
-    OPENING_END_MOVE,
-    OPTIONAL_RADAR_DICT_KEYS,
-    REQUIRED_RADAR_DICT_KEYS,
-    # Constants
-    TIER_TO_INT,
-    AggregatedRadarResult,  # Phase 49
-    # Enums
-    RadarAxis,
-    # Dataclass
-    RadarMetrics,
-    SkillTier,
-    aggregate_radar,
-    # Conversion functions
-    apl_to_tier_and_score,
-    blunder_rate_to_tier_and_score,
-    compute_awareness_axis,
-    compute_endgame_axis,
-    compute_fighting_axis,
-    # Axis computation functions
-    compute_opening_axis,
-    compute_overall_tier,
-    # Main entry point
-    compute_radar_from_moves,
-    compute_stability_axis,
-    # Detection functions
-    is_garbage_time,
-    match_rate_to_tier_and_score,
-    radar_from_dict,
-    # Phase 49: Aggregation functions
-    round_score,
-)
-
-# =============================================================================
-# Explicit imports from style/ (Phase 56)
-# =============================================================================
-from katrain.core.analysis.style import (
-    CONFIDENCE_NORMALIZATION,
-    # Constants
-    DEVIATION_HIGH_THRESHOLD,
-    DEVIATION_LOW_THRESHOLD,
-    SCORE_TOLERANCE,
-    # Registry
-    STYLE_ARCHETYPES,
-    TAG_SIGNIFICANT_COUNT,
-    # Dataclasses
-    StyleArchetype,
-    # Enums
-    StyleArchetypeId,
-    StyleResult,
-    # Helper functions
-    compute_confidence,
-    # Main function
-    determine_style,
-    scores_are_tied,
-)
-
-# =============================================================================
-# Explicit imports from user_aggregate.py (Phase 55)
-# =============================================================================
-from katrain.core.analysis.user_aggregate import (
-    # Constants
-    DEFAULT_HISTORY_SIZE,
-    # Dataclasses
-    GameRadarEntry,
-    # Store class
-    UserAggregateStore,
-    UserRadarAggregate,
-)
 
 # =============================================================================
 # Phase 92: Public Wrapper Functions
@@ -603,49 +522,7 @@ __all__ = [
     "format_difficulty_metrics",
     # Loss label formatting (Phase 32)
     "format_loss_label",
-    # === skill_radar.py (Phase 48) ===
-    # Enums
-    "RadarAxis",
-    "SkillTier",
-    # Dataclass
-    "RadarMetrics",
-    "AggregatedRadarResult",  # Phase 49
-    # Constants
-    "TIER_TO_INT",
-    "INT_TO_TIER",
-    "APL_TIER_THRESHOLDS",
-    "BLUNDER_RATE_TIER_THRESHOLDS",
-    "MATCH_RATE_TIER_THRESHOLDS",
-    "GARBAGE_TIME_WINRATE_HIGH",
-    "GARBAGE_TIME_WINRATE_LOW",
-    "OPENING_END_MOVE",
-    "ENDGAME_START_MOVE",
-    "NEUTRAL_DISPLAY_SCORE",
-    "NEUTRAL_TIER",
-    # Phase 49 constants
-    "MIN_VALID_AXES_FOR_OVERALL",
-    "MIN_MOVES_FOR_RADAR",
-    "REQUIRED_RADAR_DICT_KEYS",
-    "OPTIONAL_RADAR_DICT_KEYS",
-    # Conversion functions
-    "apl_to_tier_and_score",
-    "blunder_rate_to_tier_and_score",
-    "match_rate_to_tier_and_score",
-    # Detection functions
-    "is_garbage_time",
-    "compute_overall_tier",
-    # Axis computation functions
-    "compute_opening_axis",
-    "compute_fighting_axis",
-    "compute_endgame_axis",
-    "compute_stability_axis",
-    "compute_awareness_axis",
-    # Main entry point
-    "compute_radar_from_moves",
-    # Phase 49: Aggregation functions
-    "round_score",
-    "radar_from_dict",
-    "aggregate_radar",
+    # === critical_moves.py (Phase 50) ===
     # === critical_moves.py (Phase 50) ===
     # Dataclass
     "CriticalMove",
@@ -670,34 +547,6 @@ __all__ = [
     "_get_score_stdev_from_node",
     "_get_score_stdev_for_move",
     "_classify_meaning_tags",
-    # === user_aggregate.py (Phase 55) ===
-    # Constants
-    "DEFAULT_HISTORY_SIZE",
-    # Dataclasses
-    "GameRadarEntry",
-    "UserRadarAggregate",
-    # Store class
-    "UserAggregateStore",
-    # === style/ (Phase 56) ===
-    # Enums
-    "StyleArchetypeId",
-    # Dataclasses
-    "StyleArchetype",
-    "StyleResult",
-    # Registry
-    "STYLE_ARCHETYPES",
-    # Main function
-    "determine_style",
-    # Helper functions
-    "compute_confidence",
-    "scores_are_tied",
-    # Constants
-    "DEVIATION_HIGH_THRESHOLD",
-    "DEVIATION_LOW_THRESHOLD",
-    "TAG_SIGNIFICANT_COUNT",
-    "SCORE_TOLERANCE",
-    "CONFIDENCE_NORMALIZATION",
-
     # === board_context.py (Phase 80) ===
     # Enums
     "BoardArea",

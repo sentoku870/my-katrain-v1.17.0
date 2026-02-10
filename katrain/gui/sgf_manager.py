@@ -95,8 +95,10 @@ class SGFManager:
         """
         try:
             file = os.path.abspath(file)
+            if not os.path.isfile(file):
+                raise FileNotFoundError(f"Not a file: {file}")
             move_tree = KaTrainSGF.parse_file(file)
-        except (ParseError, FileNotFoundError) as e:
+        except (ParseError, OSError) as e:
             self._log(i18n._("Failed to load SGF").format(error=e), OUTPUT_ERROR)
             return
         self._new_game(move_tree, fast, file)
@@ -306,6 +308,7 @@ class SGFManager:
             sgf_load_path = os.path.abspath(os.path.expanduser(self._config("general/sgf_load", ".")))
             if os.path.isdir(sgf_load_path):
                 popup_contents.filesel.path = sgf_load_path
+            popup_contents.filesel.file_must_exist = True
             self.fileselect_popup = I18NPopup(
                 title_key="load sgf title", size=[dp(1200), dp(800)], content=popup_contents
             ).__self__

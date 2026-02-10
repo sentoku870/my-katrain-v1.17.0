@@ -7,17 +7,9 @@ from typing import TYPE_CHECKING, Any
 
 # Aggregation - includes i18n getters and helper functions
 from .aggregation import (
-    _build_radar_json_section,
-    _build_skill_profile_section,
-    _format_evidence_with_links,
-    _get_axis_label,
-    _get_tier_label,
-    _select_evidence_moves,
     build_batch_summary,
-    build_tag_based_hints,
     detect_color_bias,
     format_hint_line,
-    get_axis_practice_hint,
     get_color_bias_note,
     get_dominant_tags,
     get_mtag_practice_hint,
@@ -42,22 +34,8 @@ from .extraction import (
 # =============================================================================
 # Models - small dataclass and constants
 from .models import (
-    AXIS_LABELS,
-    AXIS_PRACTICE_HINTS,
-    AXIS_PRACTICE_HINTS_LOCALIZED,
-    COLOR_BIAS_NOTES,
-    HINT_LINE_FORMATS,
-    MTAG_PRACTICE_HINTS,
-    NOTES_HEADERS,
-    PERCENTAGE_NOTES,
-    PHASE_LABELS_LOCALIZED,
-    PHASE_PRIORITY_TEXTS,
-    PRACTICE_INTRO_TEXTS,
-    RTAG_PRACTICE_HINTS,
-    SECTION_HEADERS,
+     EvidenceMove,
     SKIP_PLAYER_NAMES,
-    TIER_LABELS,
-    EvidenceMove,
 )
 
 # Pattern Mining - recurring mistake detection (Phase 84)
@@ -155,27 +133,7 @@ __all__ = [
     "MAX_GAME_REFS_PER_CLUSTER",
     # Constants (tests)
     "SKIP_PLAYER_NAMES",
-    "TIER_LABELS",
-    "AXIS_LABELS",
-    "AXIS_PRACTICE_HINTS",
-    "AXIS_PRACTICE_HINTS_LOCALIZED",
-    "MTAG_PRACTICE_HINTS",
-    "RTAG_PRACTICE_HINTS",
-    "PRACTICE_INTRO_TEXTS",
-    "NOTES_HEADERS",
-    "HINT_LINE_FORMATS",
-    "PERCENTAGE_NOTES",
-    "COLOR_BIAS_NOTES",
-    "PHASE_PRIORITY_TEXTS",
-    "PHASE_LABELS_LOCALIZED",
-    "SECTION_HEADERS",
-    # Private functions (tests)
-    "_select_evidence_moves",
-    "_format_evidence_with_links",
-    "_build_skill_profile_section",
-    "_build_radar_json_section",
-    "_get_tier_label",
-    "_get_axis_label",
+    # i18n getters
     # Backward compat aliases
     "_extract_game_stats",
     "_build_batch_summary",
@@ -187,7 +145,6 @@ __all__ = [
     "get_section_header",
     "get_practice_intro_text",
     "get_notes_header",
-    "get_axis_practice_hint",
     "get_mtag_practice_hint",
     "get_rtag_practice_hint",
     "format_hint_line",

@@ -25,8 +25,6 @@ from katrain.core.analysis.meaning_tags import (
     classify_meaning_tag,
 )
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
-from katrain.core.analysis.skill_radar import compute_radar_from_moves
-from katrain.core.analysis.style import StyleResult, determine_style
 from katrain.core.analysis.time import PacingMetrics, analyze_pacing, parse_time_data
 from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.lang import i18n
@@ -85,25 +83,6 @@ def _build_tag_counts_from_moves(
         except ValueError:
             continue
     return dict(Counter(valid_tags))
-
-
-def _compute_style_safe(
-    moves: list[MoveEval],
-    player: str | None,
-) -> StyleResult | None:
-    """Compute style with graceful fallback on error."""
-    try:
-        radar = compute_radar_from_moves(moves, player=player)
-        tag_counts = _build_tag_counts_from_moves(moves, player)
-        return determine_style(radar, tag_counts)
-    except (ValueError, KeyError) as e:
-        # Expected: External data structure issue (optional feature)
-        logger.debug(f"Style computation skipped: {e}")
-        return None
-    except Exception:
-        # Unexpected: Internal bug - traceback required (optional feature)
-        logger.debug("Unexpected style computation error", exc_info=True)
-        return None
 
 
 # ---------------------------------------------------------------------------

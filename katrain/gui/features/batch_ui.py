@@ -390,7 +390,7 @@ def build_batch_popup_widgets(
     options_row3a.add_widget(karte_label)
     main_layout.add_widget(options_row3a)
 
-    # Options row 3b: output options (summary, curator, skill_radar)
+    # Options row 3b: output options (summary, curator)
     options_row3b = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(5))
 
     widgets["summary_checkbox"] = CheckBox(
@@ -419,25 +419,10 @@ def build_batch_popup_widgets(
     )
     curator_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
-    widgets["skill_radar_checkbox"] = CheckBox(
-        active=batch_options.get("generate_skill_radar", False), size_hint_x=None, width=dp(30)
-    )
-    skill_radar_label = Label(
-        text=i18n._("mykatrain:batch:generate_skill_radar"),
-        size_hint_x=0.3,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    skill_radar_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-
     options_row3b.add_widget(widgets["summary_checkbox"])
     options_row3b.add_widget(summary_label)
     options_row3b.add_widget(widgets["curator_checkbox"])
     options_row3b.add_widget(curator_label)
-    options_row3b.add_widget(widgets["skill_radar_checkbox"])
-    options_row3b.add_widget(skill_radar_label)
     main_layout.add_widget(options_row3b)
 
 

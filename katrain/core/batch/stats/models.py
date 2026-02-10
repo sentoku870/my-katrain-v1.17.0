@@ -9,17 +9,12 @@ No dependencies on other stats submodules.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 # Phase 49: Radar imports for type hints
-from katrain.core.analysis.skill_radar import (
-    RadarAxis,
-    SkillTier,
-)
-
 if TYPE_CHECKING:
-    from katrain.core.analysis.models import MistakeCategory
+    from katrain.core.analysis.models import MistakeCategory, SummaryStats
 
 
 # Generic player names to skip
@@ -53,61 +48,12 @@ class EvidenceMove:
     gtp: str
     points_lost: float
     mistake_category: MistakeCategory
+    analysis_errors: list[str] = field(default_factory=list)
 
 
-# =============================================================================
-# Phase 49: Skill Profile Constants
-# =============================================================================
+# i18n / Notes / Priority Text
 
-# Tier label mapping (i18n keys with English fallback)
-TIER_LABELS = {
-    SkillTier.TIER_1: "Tier 1 (20k-15k)",
-    SkillTier.TIER_2: "Tier 2 (15k-12k)",
-    SkillTier.TIER_3: "Tier 3 (12k-8k)",
-    SkillTier.TIER_4: "Tier 4 (8k-5k)",
-    SkillTier.TIER_5: "Tier 5 (5k-3k)",
-    SkillTier.TIER_6: "Tier 6 (3k-1d)",
-    SkillTier.TIER_7: "Tier 7 (1d-3d)",
-    SkillTier.TIER_8: "Tier 8 (3d-5d)",
-    SkillTier.TIER_9: "Tier 9 (5d-7d)",
-    SkillTier.TIER_10: "Tier 10 (Pro)",
-    SkillTier.TIER_UNKNOWN: "N/A",
-}
-
-# Axis label mapping (i18n keys with English fallback)
-AXIS_LABELS = {
-    RadarAxis.OPENING: "Opening",
-    RadarAxis.FIGHTING: "Fighting",
-    RadarAxis.ENDGAME: "Endgame",
-    RadarAxis.STABILITY: "Stability",
-    RadarAxis.AWARENESS: "Awareness",
-}
-
-# Practice hints for weak axes (English - default)
-AXIS_PRACTICE_HINTS = {
-    RadarAxis.OPENING: "Study fuseki patterns and joseki choices",
-    RadarAxis.FIGHTING: "Practice life & death problems and fighting tesuji",
-    RadarAxis.ENDGAME: "Study yose counting and endgame sequences",
-    RadarAxis.STABILITY: "Focus on solid shape; avoid overplays in won positions",
-    RadarAxis.AWARENESS: "Review AI's top choices to calibrate intuition",
-}
-
-
-# =============================================================================
 # Phase 54: Localization Constants
-# =============================================================================
-
-# Localized axis practice hints
-AXIS_PRACTICE_HINTS_LOCALIZED: dict[str, dict[RadarAxis, str]] = {
-    "jp": {
-        RadarAxis.OPENING: "布石のパターンと定石選択を学ぶ",
-        RadarAxis.FIGHTING: "詰碁と戦いの手筋を練習する",
-        RadarAxis.ENDGAME: "ヨセの計算と終盤の手順を学ぶ",
-        RadarAxis.STABILITY: "堅実な形を心がけ、優勢での無理を避ける",
-        RadarAxis.AWARENESS: "AIの候補手を確認し、直感を調整する",
-    },
-    "en": AXIS_PRACTICE_HINTS,  # Use English defaults
-}
 
 # Meaning tag practice hints (lowercase snake_case IDs)
 MTAG_PRACTICE_HINTS: dict[str, dict[str, str]] = {
@@ -230,15 +176,11 @@ SECTION_HEADERS: dict[str, dict[str, str]] = {
     "jp": {
         "practice_priorities": "## 練習の優先順位",
         "games_included": "## 含まれる対局",
-        "skill_profile": "## スキルプロファイル",
-        "weak_areas": "**弱点エリア (< 2.5)**",
         "practice_label": "**練習の優先順位:**",
     },
     "en": {
         "practice_priorities": "## Practice Priorities",
         "games_included": "## Games Included",
-        "skill_profile": "## Skill Profile",
-        "weak_areas": "**Weak areas (< 2.5)**",
         "practice_label": "**Practice priorities:**",
     },
 }

@@ -18,8 +18,7 @@ from .models import UNCERTAIN_TAG, SuitabilityScore
 from .scoring import score_batch_suitability
 
 if TYPE_CHECKING:
-    from katrain.core.analysis.skill_radar import AggregatedRadarResult
-    from katrain.core.game import Game
+    from katrain.core.base_katrain import KaTrainBase
 
 
 # =============================================================================
