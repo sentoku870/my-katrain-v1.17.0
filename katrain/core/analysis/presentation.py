@@ -83,6 +83,8 @@ def get_confidence_label(level: ConfidenceLevel, lang: str = "ja") -> str:
     Returns:
         Localized label string
     """
+    if lang == "jp":
+        lang = "ja"
     labels = {
         "ja": {
             ConfidenceLevel.HIGH: "信頼度: 高",
@@ -112,6 +114,8 @@ def get_auto_confidence_label(confidence_value: str, lang: str = "ja") -> str:
     Returns:
         Localized label string with full prefix (e.g., "推定確度: 高")
     """
+    if lang == "jp":
+        lang = "ja"
     # Phase 53: Use 推定確度 (certainty) not 信頼度 (reliability) for auto-strictness
     labels = {
         "ja": {"high": "推定確度: 高", "medium": "推定確度: 中", "low": "推定確度: 低"},

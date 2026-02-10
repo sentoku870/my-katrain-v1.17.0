@@ -134,21 +134,13 @@ def _extract_recommended_tags(
     return [tag for tag, _ in sorted_tags[:max_tags]]
 
 
-def _get_user_weak_axes_sorted(
-    user_aggregate: AggregatedRadarResult | None,
-) -> list[str]:
-    """Get user's weak axes as sorted list of axis values.
+def _get_user_weak_axes_sorted() -> list[str]:
+    """Get user's weak axes (Deprecated).
 
-    Returns empty list if no user aggregate.
-    Axes are sorted alphabetically for deterministic output.
+    Returns:
+        Empty list (Radar axes are no longer supported).
     """
-    if user_aggregate is None:
-        return []
-
-    from katrain.core.curator.models import SUPPORTED_AXES
-
-    weak_axes = [axis.value for axis in SUPPORTED_AXES if user_aggregate.is_weak_axis(axis)]
-    return sorted(weak_axes)
+    return []
 
 
 # =============================================================================
@@ -160,7 +152,6 @@ def generate_curator_outputs(
     games_and_stats: list[tuple[Game, dict[str, Any]]],
     curator_dir: str,
     batch_timestamp: str,
-    user_aggregate: AggregatedRadarResult | None = None,
     lang: str = "jp",
     log_cb: Callable[[str], None] | None = None,
 ) -> CuratorBatchResult:
@@ -203,7 +194,7 @@ def generate_curator_outputs(
     log(f"Generating curator outputs for {len(games_and_stats)} games...")
 
     # Score all games
-    scores = score_batch_suitability(user_aggregate, games_and_stats)
+    scores = score_batch_suitability(games_and_stats)
     result.games_scored = len(scores)
 
     # Build rankings
@@ -244,7 +235,7 @@ def generate_curator_outputs(
         "version": JSON_VERSION,
         "generated": generated_ts,
         "total_games": len(games_and_stats),
-        "user_weak_axes": _get_user_weak_axes_sorted(user_aggregate),
+        "user_weak_axes": [],  # Radar axes deprecated
         "rankings": sorted_rankings,
     }
 

@@ -67,8 +67,8 @@
 
 **Phase 137**: ✅ 不要機能削除とバグ修正(2026-02-10 完了)。
 - **Skill Radar 機能の完全削除**: GUI、コアロジック、バッチ処理、統計出力ツールをすべて削除。
-- **削除に伴う不具合修正**: `stats/models.py` の `TypeError` 修正、残存する未使用インポートや定数の除去。
-- **デグレーション修正 (サマリー)**: Skill Radar 削除時に混入した早期 `return` を排除し、`summary_report.py` で Markdown 出力がスキップされていた問題を解消（ユーザー向けの統計表示を復元）。
+- **サマリーレポートの正常化**: 人間向けの構造化テキスト（Markdown）を廃止し、Phase 133 仕様の純粋な JSON 出力に一本化。`summary_report.py` から不要な表示ロジックを完全に排除。
+- **削除に伴う不具合修正**: `stats/models.py` の `TypeError` 修正、残存する未使用インポートや定数の除去、未使用 Widget ファイルの物理削除、`katrain.po` からの `radar:` キー排除。
 - **SGF読み込みバグ修正**: 不適切なパス（ディレクトリ等）選択時の `PermissionError` 回避ロジックを `sgf_manager.py` に実装し、UI レベルでの制約も追加。
 
 ---

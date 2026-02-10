@@ -12,9 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-# Phase 49: Radar imports for type hints
 if TYPE_CHECKING:
-    from katrain.core.analysis.models import MistakeCategory, SummaryStats
+    from katrain.core.analysis.models import MistakeCategory
 
 
 # Generic player names to skip

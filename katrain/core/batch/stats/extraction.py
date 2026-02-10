@@ -58,7 +58,6 @@ def extract_game_stats(
             MeaningTagId,
             classify_meaning_tag,
         )
-        radar = None
         from katrain.core.eval_metrics import compute_effective_threshold
 
         # Phase 87.5: Use provided snapshot or build from game

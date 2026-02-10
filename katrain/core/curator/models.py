@@ -21,30 +21,6 @@ from typing import Any
 # Use MeaningTagId.UNCERTAIN.value to avoid string drift
 UNCERTAIN_TAG: str = MeaningTagId.UNCERTAIN.value
 
-# Radar axis to MeaningTag mapping based on Go domain knowledge
-# Phase 63 supports exactly these 5 axes
-AXIS_TO_MEANING_TAGS: Mapping[RadarAxis, frozenset[str]] = MappingProxyType(
-    {
-        RadarAxis.FIGHTING: frozenset(
-            {
-                "capture_race_loss",
-                "life_death_error",
-                "reading_failure",
-                "missed_tesuji",
-            }
-        ),
-        RadarAxis.OPENING: frozenset({"direction_error"}),
-        RadarAxis.ENDGAME: frozenset({"endgame_slip", "territorial_loss"}),
-        RadarAxis.STABILITY: frozenset({"overplay", "connection_miss", "shape_mistake"}),
-        RadarAxis.AWARENESS: frozenset({"slow_move"}),
-    }
-)
-
-# Phase 63 supports exactly these 5 axes
-# This prevents breakage if RadarAxis enum gains new members in the future
-SUPPORTED_AXES: frozenset[RadarAxis] = frozenset(AXIS_TO_MEANING_TAGS.keys())
-
-
 # =============================================================================
 # Data Classes
 # =============================================================================
@@ -66,8 +42,8 @@ class SuitabilityConfig:
         If needs_match_weight + stability_weight != 1.0, they are normalized.
     """
 
-    needs_match_weight: float = 0.6
-    stability_weight: float = 0.4
+    needs_match_weight: float = 0.0
+    stability_weight: float = 1.0
     min_tag_occurrences: int = 3
     max_volatility: float = 15.0
     stability_insufficient_data: float = 0.0

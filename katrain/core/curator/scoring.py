@@ -16,9 +16,7 @@ from typing import Any, TYPE_CHECKING
 from katrain.core.game_node import GameNode
 
 from .models import (
-    AXIS_TO_MEANING_TAGS,
     DEFAULT_CONFIG,
-    SUPPORTED_AXES,
     UNCERTAIN_TAG,
     SuitabilityConfig,
     SuitabilityScore,
@@ -115,60 +113,6 @@ def _wrap_debug_info(
     if debug_dict is None:
         return None
     return MappingProxyType(dict(debug_dict))  # Copy then wrap
-
-
-# =============================================================================
-# Needs Match Calculation
-# =============================================================================
-
-
-def compute_needs_match(
-    user_aggregate: AggregatedRadarResult | None,
-    meaning_tags_combined: dict[str, int],
-    config: SuitabilityConfig = DEFAULT_CONFIG,
-) -> float:
-    """Compute needs_match score.
-
-    Args:
-        user_aggregate: From UserRadarAggregate.get_aggregate()
-        meaning_tags_combined: Combined tags from both players (already normalized)
-        config: Scoring configuration
-
-    Returns:
-        0.0 if: no user data, no weak axes, or total_occurrences < min_tag_occurrences
-        Otherwise: matching_occurrences / total_occurrences (0.0-1.0)
-
-    Denominator semantics:
-        - total_occurrences = sum of all tag counts (e.g., {"a":2, "b":3} = 5)
-        - matching_occurrences = sum of counts for tags related to weak axes
-        - This uses OCCURRENCE COUNT, not distinct tag count
-        - min_tag_occurrences threshold also uses occurrence count
-
-    Supported axes:
-        Only iterates over SUPPORTED_AXES (the 5 axes defined in AXIS_TO_MEANING_TAGS).
-        This prevents breakage if RadarAxis enum gains new members in the future.
-    """
-    if user_aggregate is None:
-        return 0.0
-
-    # Get weak axes - only iterate SUPPORTED_AXES
-    weak_axes = [axis for axis in SUPPORTED_AXES if user_aggregate.is_weak_axis(axis)]
-    if not weak_axes:
-        return 0.0
-
-    # Collect related tags for weak axes
-    related_tags: set[str] = set()
-    for axis in weak_axes:
-        related_tags.update(AXIS_TO_MEANING_TAGS[axis])  # KeyError impossible
-
-    # Calculate occurrences
-    total_occurrences = sum(meaning_tags_combined.values())
-    if total_occurrences < config.min_tag_occurrences:
-        return 0.0
-
-    matching_occurrences = sum(count for tag, count in meaning_tags_combined.items() if tag in related_tags)
-
-    return matching_occurrences / total_occurrences
 
 
 # =============================================================================
@@ -358,7 +302,6 @@ def compute_batch_percentiles(
 
 
 def score_game_suitability(
-    user_aggregate: AggregatedRadarResult | None,
     game: Game,
     game_stats: dict[str, Any],
     config: SuitabilityConfig = DEFAULT_CONFIG,
@@ -366,7 +309,6 @@ def score_game_suitability(
     """Score a single game's suitability.
 
     Args:
-        user_aggregate: User's aggregated radar (can be None)
         game: Game object (required for stability calculation)
         game_stats: Stats dict with meaning_tags_by_player
         config: Scoring configuration
@@ -383,18 +325,13 @@ def score_game_suitability(
     meaning_tags_combined = _combine_meaning_tags(meaning_tags_by_player)
 
     # Calculate components
-    needs_match = compute_needs_match(user_aggregate, meaning_tags_combined, config)
+    needs_match = 0.0  # Phase 137: Radar axes deprecated
     stability = compute_stability(game, config)
     total = _compute_total(needs_match, stability, config)
 
     # Build debug info
     debug_dict: dict[str, Any] = {
         "meaning_tags_combined": meaning_tags_combined,
-        "weak_axes": (
-            [axis.value for axis in SUPPORTED_AXES if user_aggregate is not None and user_aggregate.is_weak_axis(axis)]
-            if user_aggregate is not None
-            else []
-        ),
     }
 
     return SuitabilityScore(
@@ -407,14 +344,12 @@ def score_game_suitability(
 
 
 def score_batch_suitability(
-    user_aggregate: AggregatedRadarResult | None,
     games_and_stats: list[tuple[Game, dict[str, Any]]],
     config: SuitabilityConfig = DEFAULT_CONFIG,
 ) -> list[SuitabilityScore]:
     """Score multiple games and compute batch-relative percentiles.
 
     Args:
-        user_aggregate: User's aggregated radar (can be None)
         games_and_stats: List of (Game, game_stats) tuples
         config: Scoring configuration
 
@@ -422,7 +357,7 @@ def score_batch_suitability(
         List of SuitabilityScore with percentiles computed (ECDF-style)
     """
     # Score each game
-    scores = [score_game_suitability(user_aggregate, game, stats, config) for game, stats in games_and_stats]
+    scores = [score_game_suitability(game, stats, config) for game, stats in games_and_stats]
 
     # Compute percentiles
     return compute_batch_percentiles(scores)

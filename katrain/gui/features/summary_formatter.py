@@ -778,9 +778,9 @@ def _append_reason_tags(
         estimation = eval_metrics.estimate_skill_level_from_tags(reason_tags_totals, total_important)
 
         level_labels = {
-            "beginner": "初級〜中級（G0-G1相当）",
-            "standard": "有段者（G2-G3相当）",
-            "advanced": "高段者（G4相当）",
+            "beginner": "初級〜中級",
+            "standard": "有段者",
+            "advanced": "高段者",
             "unknown": "不明",
         }
 
