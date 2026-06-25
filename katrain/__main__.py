@@ -260,8 +260,7 @@ class KaTrainGui(Screen, KaTrainBase):
         # Phase 97: Active Review Controller - REMOVED
         # self._active_review_controller = ...
 
-        # Phase 98: Quiz Manager - REMOVED
-        # self._quiz_manager = ...
+        # Phase 98: Quiz Manager - REMOVED → Phase 138-D で完全削除 (no production caller)
 
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events: list[Any] = []
@@ -730,6 +729,11 @@ class KaTrainGui(Screen, KaTrainBase):
                 )
 
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Central dispatcher for menu actions triggered from .kv or shortcuts.
+
+        Note: All _do_* methods below are dispatcher targets invoked by this method.
+        They cannot be removed without breaking the .kv menu bindings.
+        """
         if self.game:
             if message.endswith("popup"):  # gui code needs to run in main kivy thread.
                 fn = getattr(self, f"_do_{message.replace('-', '_')}")
@@ -1012,11 +1016,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to SummaryManager (Phase 96)."""
         self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
-    def _do_quiz_popup(self) -> None:
-        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
-        # self._quiz_manager.do_quiz_popup()
-        pass
-
     def _do_mykatrain_settings_popup(self) -> None:
         """Delegates to settings_popup.do_mykatrain_settings_popup()."""
         do_mykatrain_settings_popup(self)
@@ -1024,16 +1023,6 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_batch_analyze_popup(self) -> None:
         """Delegates to BatchAnalysisController (Phase 133)."""
         self._batch_analysis_controller.open_batch_analyze_popup()
-
-    def _format_points_loss(self, loss: float | None) -> str:
-        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
-        # return self._quiz_manager.format_points_loss(loss)
-        return f"{loss:.1f}" if loss is not None else ""
-
-    def _start_quiz_session(self, quiz_items: list[eval_metrics.QuizItem]) -> None:
-        """Delegates to QuizManager (Phase 98) - REMOVED (Stubbed)."""
-        # self._quiz_manager.start_quiz_session(quiz_items)
-        pass
 
     def _do_diagnostics_popup(self) -> None:
         """Show diagnostics popup for bug report generation."""

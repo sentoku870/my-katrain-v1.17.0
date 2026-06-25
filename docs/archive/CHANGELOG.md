@@ -5,6 +5,29 @@
 
 ---
 
+- 2026-06-25: Phase 138-D 完了（アーキテクチャ改善・死コード削除）
+  - **目的**: 静的解析で判明した死コード削除・カバレッジ測定導入・KaTrainGui ディスパッチャ文書化
+  - **削除**:
+    - `core/yose_analyzer.py` (84行) - production 呼出なし
+    - `core/reports/section_registry.py` + `insertion.py` (281行) - get_section_registry 等の API 全て production 呼出なし
+    - `gui/managers/quiz_manager.py` + `gui/features/quiz_popup.py` + `quiz_session.py` (532行) - QuizManager は `__main__.py` で `self._quiz_manager = ...` がコメントアウトされたまま
+    - `gui/kivyutils.py` の 3 未使用クラス: `BackgroundLabel`, `LightLabel`, `IMETextField` (47行)
+    - `gui/features/smart_kifu_*.py` (2169行) + `core/smart_kifu/` (1660行) + 関連テスト (1400行) - UI エントリなし・.kv 参照なし
+    - 関連テスト 2 ファイル: `test_section_registry.py`, `test_quiz_manager.py` (543行)
+  - **追加**:
+    - `pyproject.toml` に `pytest-cov` 依存追加・coverage 設定
+    - `.github/workflows/test_and_build.yaml` に `coverage` ジョブ追加（50% 初期ゲート）
+  - **改善**:
+    - `KaTrainGui.__call__` ディスパッチャ機構の docstring 明示（`_do_*` メソッドが dispatcher target であり、.kv バインディング互換性のため保持が必要である旨）
+  - **テスト**:
+    - 2,057 PASS / 10 skipped / 1 xfailed
+    - mypy strict: 190 ファイル成功（削除前 197 ファイル）
+  - **コード変更量**: -6,764 行（削除のみ、+182 行 = 設定・ドキュメント追加）
+  - **影響**: 既存ユーザーへの機能影響なし、UI・設定・SGF 互換性維持
+  - **ブランチ**: `feature/2026-06-25-refactor-dead-code-and-katraingui`
+  - **コミット数**: 9 個
+  - **保存されたアーキテクチャレポート**: `docs/archive/architecture-review-2026-06.md`
+
 - 2026-02-04: Phase 117 完了（Top Moves カラー回帰修正）
   - **目的**: Phase 116D で発生した evaluation_class() ロジック反転バグを修正し、Top Moves 多色グラデーション表示を復旧
   - **根本原因**: 降順閾値 `[12, 6, 3, 1.5, 0.5, 0]` に対して `<` 条件を使用していたため、損失値 < 12 の全て（優秀～良好な手）が index 0（紫）として返される問題

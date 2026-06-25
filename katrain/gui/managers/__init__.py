@@ -6,7 +6,7 @@ Phase 75: PopupManager抽出
 Phase 76: GameStateManager抽出
 Phase 96: SummaryManager抽出
 Phase 97: ActiveReviewController抽出
-Phase 98: QuizManager抽出
+Phase 98: QuizManager抽出 → Phase 138-D で削除 (no production caller)
 
 Note: PEP 562 lazy imports を使用。
 各マネージャーは初めてアクセスされた時のみインポートされる。
@@ -25,7 +25,6 @@ __all__ = [
     "GameStateManager",
     "SummaryManager",
     "ActiveReviewController",
-    "QuizManager",
 ]
 
 if TYPE_CHECKING:
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
     from katrain.gui.managers.popup_manager import PopupManager as PopupManager
     from katrain.gui.managers.summary_manager import SummaryManager as SummaryManager
     from katrain.gui.managers.active_review_controller import ActiveReviewController as ActiveReviewController
-    from katrain.gui.managers.quiz_manager import QuizManager as QuizManager
 
 
 def __getattr__(name: str) -> Any:
@@ -64,8 +62,4 @@ def __getattr__(name: str) -> Any:
         from katrain.gui.managers.active_review_controller import ActiveReviewController
 
         return ActiveReviewController
-    if name == "QuizManager":
-        from katrain.gui.managers.quiz_manager import QuizManager
-
-        return QuizManager
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
