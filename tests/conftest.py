@@ -641,19 +641,21 @@ def game_9x9(mock_katrain, mock_engine, root_node_9x9):
 # 112 test failures were hidden from CI. After fixing the collection errors
 # in PR #281, these failures became visible. They are marked xfail here to
 # unblock CI while the underlying production/test bugs are fixed in
-# follow-up PRs. When all 112 are fixed, this block should be removed.
+# follow-up PRs. When all entries are fixed, this block should be removed.
 #
 # Categories of pre-existing failures:
 # 1. test_batch_analyzer.py (17): build_player_summary returned JSON dict in
-#    Phase 137, tests still expect markdown. Plus analyze_single_file_leela
-#    does not exist (Phase 120+ bug).
-# 2. test_batch_core_imports.py / test_batch_leela_analysis.py (~27): depend
-#    on katrain.tools.batch_analyze_sgf which has a broken
-#    analyze_single_file_leela import at line 45.
+#    Phase 137, tests still expect markdown.
+# 2. test_batch_core_imports.py (11): depend on katrain.tools.batch_analyze_sgf
+#    which has a broken analyze_single_file_leela import at line 45.
 # 3. test_karte_json.py / test_karte_structure.py / test_golden_* /
 #    test_pattern_summary_contract.py (~50): Phase 137 refactor changed
 #    summary/karte output format; tests still expect old format.
-# 4. Others: various Phase 137 / curator refactor fallout.
+# 4. test_diagnostics.py (16): SystemInfo dataclass missing required
+#    ram_total/gpu_info args in test fixtures.
+# 5. test_phase107_subscribe.py (17): KaTrainGui missing
+#    _setup_state_subscriptions method.
+# 6. Others: various Phase 137 / curator refactor fallout.
 
 _XFAIL_REASON = (
     "Pre-existing failure: production code was refactored (Phase 137 / curator)"
@@ -693,39 +695,13 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_batch_core_imports.py::TestFunctionBehavior::test_parse_timeout_behavior",
         "tests/test_batch_core_imports.py::TestModuleAllAttribute::test_all_contains_expected_exports",
         # tests/test_batch_engine_option.py (1)
-        "tests/test_batch_engine_option.py::TestCollectBatchOptionsEngine::test_leela_selection",
-        # tests/test_batch_leela_analysis.py (16)
-        "tests/test_batch_leela_analysis.py::TestAnalyzeSingleFileLeelaSignature::test_function_exists",
-        "tests/test_batch_leela_analysis.py::TestAnalyzeSingleFileLeelaSignature::test_function_parameters",
-        "tests/test_batch_leela_analysis.py::TestEvalSnapshotImport::test_eval_snapshot_import",
-        "tests/test_batch_leela_analysis.py::TestEvalSnapshotImport::test_move_eval_import",
-        "tests/test_batch_leela_analysis.py::TestLeelaEmptySGFHandling::test_leela_empty_sgf_returns_failure",
-        "tests/test_batch_leela_analysis.py::TestLeelaEmptySGFHandling::test_leela_empty_sgf_returns_false_without_return_game",
-        "tests/test_batch_leela_analysis.py::TestLeelaImports::test_leela_conversion_import",
-        "tests/test_batch_leela_analysis.py::TestLeelaImports::test_leela_engine_import",
-        "tests/test_batch_leela_analysis.py::TestLeelaImports::test_leela_position_eval_import",
-        "tests/test_batch_leela_analysis.py::TestLeelaKarteCounterTracking::test_batch_counters_consistency_with_mixed_results",
-        "tests/test_batch_leela_analysis.py::TestLeelaKarteCounterTracking::test_batch_karte_failed_tracks_analysis_failures",
-        "tests/test_batch_leela_analysis.py::TestRunBatchEngineValidation::test_katago_logs_engine_type",
-        "tests/test_batch_leela_analysis.py::TestRunBatchEngineValidation::test_leela_with_dead_engine_returns_early",
-        "tests/test_batch_leela_analysis.py::TestRunBatchEngineValidation::test_leela_without_engine_returns_early",
-        "tests/test_batch_leela_analysis.py::TestRunBatchLeelaParameters::test_run_batch_default_engine_is_katago",
-        "tests/test_batch_leela_analysis.py::TestRunBatchLeelaParameters::test_run_batch_has_leela_params",
-        # tests/test_batch_stats_imports.py (7)
-        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_count",
+        "tests/test_batch_engine_option.py::TestCollectBatchOptionsEngine::test_leela_selection",        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_count",
         "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_names_and_order",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_i18n_getters_are_callable",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_section_header_jp_differs_from_en",
         "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_constants_importable",
         "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_private_functions_importable",
-        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",
-        # tests/test_error_handling_phase79.py (4)
-        "tests/test_error_handling_phase79.py::TestCreateLlmPackageZipError::test_zip_write_error_returns_failure_result",
-        "tests/test_error_handling_phase79.py::TestIsWritableDirectory::test_invalid_path_type_returns_false",
-        "tests/test_error_handling_phase79.py::TestIsWritableDirectory::test_none_path_returns_false",
-        "tests/test_error_handling_phase79.py::TestIsWritableDirectory::test_nonexistent_directory_returns_false",
-        # tests/test_error_recovery.py (4)
-        "tests/test_error_recovery.py::TestSanitization::test_output_byte_bounded",
+        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",        "tests/test_error_recovery.py::TestSanitization::test_output_byte_bounded",
         "tests/test_error_recovery.py::TestSanitization::test_sensitive_paths_not_in_output",
         "tests/test_error_recovery.py::TestZipExtraFiles::test_extra_files_included_in_zip",
         "tests/test_error_recovery.py::TestZipExtraFiles::test_manifest_includes_extra_files",
