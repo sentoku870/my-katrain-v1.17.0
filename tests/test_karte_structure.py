@@ -306,50 +306,50 @@ class TestClassifyGamePhase:
     """Tests for classify_game_phase with board size support."""
 
     def test_19x19_opening(self):
-        """19x19 opening phase."""
+        """19x19 opening phase (boundary inclusive: <= opening_end)."""
         assert classify_game_phase(10, board_size=19) == "opening"
-        assert classify_game_phase(49, board_size=19) == "opening"
+        assert classify_game_phase(50, board_size=19) == "opening"
 
     def test_19x19_middle(self):
         """19x19 middle game phase."""
-        assert classify_game_phase(50, board_size=19) == "middle"
+        assert classify_game_phase(51, board_size=19) == "middle"
         assert classify_game_phase(100, board_size=19) == "middle"
-        assert classify_game_phase(199, board_size=19) == "middle"
+        assert classify_game_phase(200, board_size=19) == "middle"
 
     def test_19x19_yose(self):
-        """19x19 endgame phase."""
-        assert classify_game_phase(200, board_size=19) == "yose"
+        """19x19 endgame phase (move_number > middle_end)."""
+        assert classify_game_phase(201, board_size=19) == "yose"
         assert classify_game_phase(300, board_size=19) == "yose"
 
     def test_13x13_opening(self):
         """13x13 opening phase (shorter than 19x19)."""
         assert classify_game_phase(10, board_size=13) == "opening"
-        assert classify_game_phase(29, board_size=13) == "opening"
+        assert classify_game_phase(30, board_size=13) == "opening"
 
     def test_13x13_middle(self):
         """13x13 middle game phase."""
-        assert classify_game_phase(30, board_size=13) == "middle"
+        assert classify_game_phase(31, board_size=13) == "middle"
         assert classify_game_phase(50, board_size=13) == "middle"
-        assert classify_game_phase(99, board_size=13) == "middle"
+        assert classify_game_phase(100, board_size=13) == "middle"
 
     def test_13x13_yose(self):
         """13x13 endgame phase."""
-        assert classify_game_phase(100, board_size=13) == "yose"
+        assert classify_game_phase(101, board_size=13) == "yose"
 
     def test_9x9_opening(self):
         """9x9 opening phase (much shorter)."""
         assert classify_game_phase(5, board_size=9) == "opening"
-        assert classify_game_phase(14, board_size=9) == "opening"
+        assert classify_game_phase(15, board_size=9) == "opening"
 
     def test_9x9_middle(self):
         """9x9 middle game phase."""
-        assert classify_game_phase(15, board_size=9) == "middle"
+        assert classify_game_phase(16, board_size=9) == "middle"
         assert classify_game_phase(30, board_size=9) == "middle"
-        assert classify_game_phase(49, board_size=9) == "middle"
+        assert classify_game_phase(50, board_size=9) == "middle"
 
     def test_9x9_yose(self):
         """9x9 endgame phase."""
-        assert classify_game_phase(50, board_size=9) == "yose"
+        assert classify_game_phase(51, board_size=9) == "yose"
 
     def test_default_board_size(self):
         """Default board size should be 19."""

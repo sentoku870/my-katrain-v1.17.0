@@ -42,7 +42,6 @@ from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     ENCODINGS_TO_TRY,
     analyze_single_file,
-    analyze_single_file_leela,
     choose_visits_for_sgf,
     collect_sgf_files,
     collect_sgf_files_recursive,
@@ -105,7 +104,6 @@ __all__ = [
     "ENCODINGS_TO_TRY",
     # Functions
     "analyze_single_file",
-    "analyze_single_file_leela",
     "choose_visits_for_sgf",
     "collect_sgf_files",
     "collect_sgf_files_recursive",

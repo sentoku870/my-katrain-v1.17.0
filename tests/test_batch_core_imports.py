@@ -137,13 +137,11 @@ class TestCoreImports:
         """Heavy functions available via lazy __getattr__."""
         from katrain.core.batch import (
             analyze_single_file,
-            analyze_single_file_leela,
             run_batch,
         )
 
         assert callable(run_batch)
         assert callable(analyze_single_file)
-        assert callable(analyze_single_file_leela)
 
     def test_lazy_stats_exports(self):
         """Stats functions available via lazy __getattr__."""
@@ -161,10 +159,7 @@ class TestCoreImports:
 
     def test_explicit_submodule_import(self):
         """Direct submodule import works."""
-        from katrain.core.batch.analysis import (
-            analyze_single_file,
-            analyze_single_file_leela,
-        )
+        from katrain.core.batch.analysis import analyze_single_file
         from katrain.core.batch.orchestration import run_batch
         from katrain.core.batch.stats import (
             build_batch_summary,
@@ -173,7 +168,6 @@ class TestCoreImports:
 
         assert callable(run_batch)
         assert callable(analyze_single_file)
-        assert callable(analyze_single_file_leela)
         assert callable(extract_game_stats)
         assert callable(build_batch_summary)
 
@@ -265,7 +259,6 @@ class TestModuleAllAttribute:
             # Lazy exports
             "run_batch",
             "analyze_single_file",
-            "analyze_single_file_leela",
             "extract_game_stats",
             "build_player_summary",
         ]
