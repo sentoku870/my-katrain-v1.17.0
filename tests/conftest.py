@@ -734,14 +734,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_karte_leela_integration.py::TestKarteLeelaWorstMove::test_worst_move_selected_from_leela_data",
         "tests/test_karte_leela_integration.py::TestKarteLeelaWorstMove::test_worst_move_shows_estimated_suffix",
         # tests/test_karte_structure.py (8)
-        "tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_raises_exception_when_requested",
-        "tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_returns_error_markdown_on_failure",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_13x13_middle",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_13x13_yose",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_19x19_middle",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_19x19_yose",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_9x9_middle",
-        "tests/test_karte_structure.py::TestClassifyGamePhase::test_9x9_yose",
 
         # tests/test_karte_json.py partial (6 of 16 - schema-mismatched assertions)
         # 10 of 16 pass with Phase 137 schema; remaining 6 expect stale keys (units,
@@ -752,6 +744,12 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_karte_json.py::TestBuildKarteJson::test_points_lost_nonnegative",
         "tests/test_karte_json.py::TestBuildKarteJson::test_reason_tags_is_list",
         "tests/test_karte_json.py::TestBuildKarteJson::test_units_description",
+
+        # tests/test_karte_structure.py partial (2 of 8 - error handling behavior change)
+        # Phase 137 refactor changed build_karte_report error semantics
+        # from "return error markdown" to "raise KarteGenerationError".
+"tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_returns_error_markdown_on_failure",
+"tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_raises_exception_when_requested",
         # tests/test_pattern_summary_contract.py (4)
         "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_corrupt_data",
         "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_invalid_gtp_format",
