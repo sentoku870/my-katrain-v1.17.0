@@ -26,6 +26,7 @@ from katrain.core.reports.definitions import (
     PHASE_ALIASES,
     PRIMARY_TAGS,
     REASON_CODES,
+    CATEGORY_ALIASES,
     REASON_CODE_ALIASES,
     IMPORTANCE_DEF,
 )
@@ -82,6 +83,7 @@ def build_summary_json(
         "difficulty_levels": DIFFICULTY_LEVELS,
         "phases": PHASES,
         "phase_aliases": PHASE_ALIASES,
+        "category_aliases": CATEGORY_ALIASES,
         "reason_code_aliases": REASON_CODE_ALIASES,
         "primary_tags": PRIMARY_TAGS,
         "reason_codes": REASON_CODES,
@@ -169,10 +171,10 @@ def build_summary_json(
             }
 
         # Reason Tags Statistics (v6: Normalized Aggregation)
-        reason_tags_dist = {}
+        reason_tags_dist: dict[str, dict[str, Any]] = {}
         if stats.tag_occurrences_total > 0:
             # Map raw tags to normalized tags
-            normalized_counts = {}
+            normalized_counts: dict[str, int] = {}
             for tag, count in stats.reason_tags_counts.items():
                 norm_tag = REASON_CODE_ALIASES.get(tag, tag)
                 normalized_counts[norm_tag] = normalized_counts.get(norm_tag, 0) + count

@@ -21,6 +21,7 @@ from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
+from katrain.core.reports.schema import KarteReport
 
 
 # Callable APIs: lazy import to avoid circular dependencies
@@ -31,7 +32,7 @@ def build_karte_report(*args: Any, **kwargs: Any) -> str:
     return _impl(*args, **kwargs)
 
 
-def build_karte_json(*args: Any, **kwargs: Any) -> dict[str, Any]:
+def build_karte_json(*args: Any, **kwargs: Any) -> KarteReport:
     """Generate JSON karte data. See json_export.build_karte_json for details."""
     from katrain.core.reports.karte.json_export import build_karte_json as _impl
 

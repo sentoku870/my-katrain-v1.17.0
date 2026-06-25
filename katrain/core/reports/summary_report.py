@@ -9,7 +9,34 @@ All functions in this module:
 - Do not import from katrain.gui (core layer only)
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 from katrain.core.eval_metrics import GameSummaryData
+
+
+def _convert_sgf_to_gtp_coord(coord: str, board_size: int) -> str:
+    """Convert SGF coordinate (e.g. 'pd') to GTP coordinate (e.g. 'D16').
+
+    Stub implementation: returns the input unchanged. Kept as a stable
+    import point for legacy callers in summary_formatter.py.
+    """
+    return coord
+
+
+def _detect_urgent_miss_sequences(
+    moves: list[Any],
+    threshold_loss: float,
+    min_consecutive: int,
+) -> tuple[list[dict[str, Any]], list[Any]]:
+    """Detect sequences of consecutive urgent mistakes.
+
+    Stub implementation: returns no sequences and the input moves
+    unchanged. Kept as a stable import point for legacy callers in
+    summary_formatter.py.
+    """
+    return [], list(moves)
 
 
 def build_summary_report(

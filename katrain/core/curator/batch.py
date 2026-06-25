@@ -19,6 +19,7 @@ from .scoring import score_batch_suitability
 
 if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase
+    from katrain.core.game import Game
 
 
 # =============================================================================
@@ -152,6 +153,7 @@ def generate_curator_outputs(
     games_and_stats: list[tuple[Game, dict[str, Any]]],
     curator_dir: str,
     batch_timestamp: str,
+    user_aggregate: Any = None,
     lang: str = "jp",
     log_cb: Callable[[str], None] | None = None,
 ) -> CuratorBatchResult:

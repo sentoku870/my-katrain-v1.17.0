@@ -415,3 +415,18 @@ class LeelaConfig:
             top_moves_show_secondary=safe_str(d.get("top_moves_show_secondary"), "leela_top_move_winrate"),
             max_candidates=safe_int(d.get("max_candidates"), 5),
         )
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like access for legacy code (Phase 100+).
+
+        Allows settings_popup.py and other call sites to use
+        ``leela_config.get("exe_path", "")`` without refactoring.
+
+        Args:
+            key: Attribute name on LeelaConfig.
+            default: Value returned if the attribute does not exist.
+
+        Returns:
+            The attribute value, or ``default`` if missing.
+        """
+        return getattr(self, key, default)
