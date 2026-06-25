@@ -48,6 +48,142 @@ def do_redo(ctx: KaTrainGui, n_times: int = 1) -> None:
         ctx.game.redo(n_times)
 
 
+def do_rotate(ctx: KaTrainGui) -> None:
+    """Rotate the board view 90 degrees.
+
+    Args:
+        ctx: KaTrainGui instance
+    """
+    ctx.board_gui.rotate_gridpos()
+
+
+def do_find_mistake(ctx: KaTrainGui, fn: str = "redo") -> None:
+    """Advance to the next mistake in the game tree.
+
+    Args:
+        ctx: KaTrainGui instance
+        fn: Game method to call (typically 'redo' or 'undo')
+    """
+    ctx.board_gui.animating_pv = None
+    threshold = ctx.config("trainer/eval_thresholds")[-4]
+    getattr(ctx.game, fn)(9999, stop_on_mistake=threshold)
+
+
+def do_switch_branch(ctx: KaTrainGui, *args: Any) -> None:
+    """Switch to a different SGF branch (variation).
+
+    Args:
+        ctx: KaTrainGui instance
+        *args: Forwarded to MoveTree.switch_branch
+    """
+    ctx.board_gui.animating_pv = None
+    ctx.controls.move_tree.switch_branch(*args)
+
+
+def do_selfplay_setup(
+    ctx: KaTrainGui,
+    until_move: int | float,
+    target_b_advantage: float | None = None,
+) -> None:
+    """Configure the game for self-play mode.
+
+    Args:
+        ctx: KaTrainGui instance
+        until_move: Stop self-play after this many moves
+        target_b_advantage: Target score advantage for black
+    """
+    if target_b_advantage is None:
+        target_b_advantage = 0  # default to even
+    ctx.engine.selfplay_until = until_move
+    ctx.engine.target_b_advantage = target_b_advantage
+
+
+def do_ai_move(ctx: KaTrainGui, node: Any = None) -> None:
+    """Generate and play an AI move using the next player's strategy.
+
+    Args:
+        ctx: KaTrainGui instance
+        node: Optional specific node to play from; defaults to current_node
+    """
+    from katrain.core.ai import generate_ai_move
+    from katrain.core.constants import OUTPUT_ERROR
+
+    if not ctx.game or (node is None or ctx.game.current_node == node):
+        mode = ctx.next_player_info.strategy
+        settings = ctx.config(f"ai/{mode}")
+        if settings is not None:
+            try:
+                if ctx.game:
+                    generate_ai_move(ctx.game, mode, settings)
+            except Exception as e:
+                ctx.log(str(e), OUTPUT_ERROR)
+                ctx.controls.set_status(str(e))
+        else:
+            ctx.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
+
+
+def do_play(ctx: KaTrainGui, coords: Any) -> None:
+    """Play a stone at the given coordinates.
+
+    Args:
+        ctx: KaTrainGui instance
+        coords: Board coordinates (tuple) or None for pass
+    """
+    from katrain.core.game import IllegalMoveException
+    from katrain.core.lang import i18n
+    from katrain.core.sgf_parser import Move
+    from katrain.core.constants import STATUS_ERROR
+    from katrain.core.sound import play_sound
+    from katrain.gui.theme import Theme
+
+    ctx.board_gui.animating_pv = None
+    if not ctx.game:
+        return
+    try:
+        old_prisoner_count = ctx.game.prisoner_count["W"] + ctx.game.prisoner_count["B"]
+        ctx.game.play(Move(coords, player=ctx.next_player_info.player))
+        if old_prisoner_count < ctx.game.prisoner_count["W"] + ctx.game.prisoner_count["B"]:
+            play_sound(Theme.CAPTURING_SOUND)
+        elif ctx.game and not ctx.game.current_node.is_pass:
+            ctx._play_stone_sound()
+    except IllegalMoveException as e:
+        ctx.controls.set_status(f"Illegal Move: {i18n._(str(e))}", STATUS_ERROR)
+
+
+def do_tsumego_frame(ctx: KaTrainGui, ko: bool, margin: int) -> None:
+    """Open a tsumego (life-and-death) frame for the current game.
+
+    Args:
+        ctx: KaTrainGui instance
+        ko: Whether the tsumego allows ko
+        margin: Margin around the tsumego
+    """
+    from katrain.core.constants import MODE_PLAY
+    from katrain.core.tsumego_frame import tsumego_frame_from_katrain_game
+
+    if not ctx.game or not ctx.game.stones:
+        return
+
+    black_to_play_p = ctx.next_player_info.player == "B"
+    node, analysis_region = tsumego_frame_from_katrain_game(
+        ctx.game, ctx.game.komi, black_to_play_p, ko_p=ko, margin=margin
+    )
+    ctx.game.set_current_node(node)
+    if ctx.play_mode.mode == MODE_PLAY:
+        ctx.play_mode.switch_ui_mode()  # go to analysis mode
+    if analysis_region:
+        flattened_region = [
+            analysis_region[0][1],
+            analysis_region[0][0],
+            analysis_region[1][1],
+            analysis_region[1][0],
+        ]
+        ctx.game.set_region_of_interest(tuple(flattened_region))  # type: ignore[arg-type]
+    if ctx.game:
+        node.analyze(ctx.game.engines[node.next_player])
+    ctx.update_state(redraw_board=True)
+
+
 def do_new_game(
     ctx: KaTrainGui,
     move_tree: SGFNode | None = None,

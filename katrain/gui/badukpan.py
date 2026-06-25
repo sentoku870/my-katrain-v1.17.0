@@ -19,6 +19,18 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
+from katrain.core.board_geometry import (
+    compute_board_with_margins,
+    compute_extra_px_margins,
+    compute_grid_size,
+    compute_grid_spaces,
+    compute_initial_gridpos,
+    compute_stone_size,
+    eval_color as _eval_color,
+    format_loss,
+    x_coordinate_text,
+    y_coordinate_text,
+)
 from katrain.core.beginner.hints import (
     get_beginner_hint_cached,
     is_coords_valid,
@@ -373,11 +385,7 @@ class BadukPanWidget(Widget):
         # Use defaults if trainer_config not fully initialized
         eval_thresholds = self.trainer_config.get("eval_thresholds", [12.0, 6.0, 3.0, 1.5, 0.5, 0.0])
         theme = self.trainer_config.get("theme", "theme:normal")
-        i = evaluation_class(points_lost, eval_thresholds)
-        colors = Theme.EVAL_COLORS[theme]
-        if show_dots_for_class is None or show_dots_for_class[i]:
-            return colors[i]
-        return None
+        return _eval_color(points_lost, eval_thresholds, Theme.EVAL_COLORS[theme], show_dots_for_class)
 
     def draw_board(self, *_args: Any) -> None:
         if not (self.katrain and self.katrain.game):
@@ -473,34 +481,23 @@ class BadukPanWidget(Widget):
     def calculate_grid_spaces(
         self, board_size_x: int, board_size_y: int, grid_spaces_margin_x: list[float], grid_spaces_margin_y: list[float]
     ) -> tuple[float, float]:
-        x_grid_spaces = board_size_x - 1 + sum(grid_spaces_margin_x)
-        y_grid_spaces = board_size_y - 1 + sum(grid_spaces_margin_y)
-
-        return x_grid_spaces, y_grid_spaces
+        return compute_grid_spaces(board_size_x, board_size_y, grid_spaces_margin_x, grid_spaces_margin_y)
 
     def calculate_grid_size(self, width: float, height: float, x_grid_spaces: float, y_grid_spaces: float) -> int:
-        # grid size is rounded to an integer to avoid rounding errors that
-        # produce tiny gaps between shaded grid squares
-        return math.floor(min(width / x_grid_spaces, height / y_grid_spaces) + 0.1)
+        return compute_grid_size(width, height, x_grid_spaces, y_grid_spaces)
 
     def calculate_board_margins(
         self, x_grid_spaces: float, y_grid_spaces: float, grid_size: float
     ) -> tuple[float, float]:
-        board_width_with_margins = x_grid_spaces * grid_size
-        board_height_with_margins = y_grid_spaces * grid_size
-
-        return board_width_with_margins, board_height_with_margins
+        return compute_board_with_margins(x_grid_spaces, y_grid_spaces, grid_size)
 
     def calculate_extra_px_margins(
         self, width: float, height: float, board_width_with_margins: float, board_height_with_margins: float
     ) -> tuple[float, float]:
-        extra_px_margin_x = round((width - board_width_with_margins) / 2, 4)
-        extra_px_margin_y = round((height - board_height_with_margins) / 2, 4)
-
-        return extra_px_margin_x, extra_px_margin_y
+        return compute_extra_px_margins(width, height, board_width_with_margins, board_height_with_margins)
 
     def calculate_stone_size(self, grid_size: float) -> float:
-        return grid_size * Theme.STONE_SIZE
+        return compute_stone_size(grid_size, Theme.STONE_SIZE)
 
     def initialize_gridpos(self) -> None:
         self.gridpos = [[None for x in range(len(self.initial_gridpos_x))] for y in range(len(self.initial_gridpos_y))]
@@ -519,16 +516,16 @@ class BadukPanWidget(Widget):
         extra_px_margin_y: float,
         grid_size: float,
     ) -> tuple[list[float], list[float]]:
-        gridpos_x: list[float] = [
-            round(self.pos[0] + extra_px_margin_x + math.floor((grid_spaces_margin_x[0] + i) * grid_size + 0.5), 4)
-            for i in range(board_size_x)
-        ]
-        gridpos_y: list[float] = [
-            round(self.pos[1] + extra_px_margin_y + math.floor((grid_spaces_margin_y[0] + i) * grid_size + 0.5), 4)
-            for i in range(board_size_y)
-        ]
-
-        return gridpos_x, gridpos_y
+        return compute_initial_gridpos(
+            self.pos,
+            board_size_x,
+            board_size_y,
+            grid_spaces_margin_x,
+            grid_spaces_margin_y,
+            extra_px_margin_x,
+            extra_px_margin_y,
+            grid_size,
+        )
 
     def calculate_rotated_gridpos(self) -> tuple[list[float], list[float]]:
         board_size_y, board_size_x = self.katrain.game.board_size
@@ -648,24 +645,10 @@ class BadukPanWidget(Widget):
                 )
 
     def get_x_coordinate_text(self, i: int, board_size_x: int) -> str:
-        x_text = Move.GTP_COORD[i]
-        if self.rotation_degree == 90:
-            x_text = str(i + 1)
-        elif self.rotation_degree == 180:
-            x_text = Move.GTP_COORD[board_size_x - i - 1]
-        elif self.rotation_degree == 270:
-            x_text = str(board_size_x - i)
-        return x_text
+        return x_coordinate_text(i, board_size_x, self.rotation_degree, Move.GTP_COORD)
 
     def get_y_coordinate_text(self, i: int, board_size_y: int) -> str:
-        y_text = str(i + 1)
-        if self.rotation_degree == 90:
-            y_text = Move.GTP_COORD[board_size_y - i - 1]
-        elif self.rotation_degree == 180:
-            y_text = str(board_size_y - i)
-        elif self.rotation_degree == 270:
-            y_text = Move.GTP_COORD[i]
-        return y_text
+        return y_coordinate_text(i, board_size_y, self.rotation_degree, Move.GTP_COORD)
 
     def draw_board_contents(self, *_args: Any) -> None:
         if not (self.katrain and self.katrain.game):
@@ -1003,14 +986,7 @@ class BadukPanWidget(Widget):
         )
 
     def format_loss(self, x: float) -> str:
-        if self.trainer_config.get("extra_precision"):
-            if abs(x) < 0.005:
-                return "0.0"
-            if 0 < x <= 0.995:
-                return "+" + f"{x:.2f}"[1:]
-            elif -0.995 <= x < 0:
-                return "-" + f"{x:.2f}"[2:]
-        return f"{x:+.1f}"
+        return format_loss(x, extra_precision=bool(self.trainer_config.get("extra_precision")))
 
     def _format_leela_stat(self, candidate: Any, stat_type: str) -> str:
         """Format a single Leela stat for display.
