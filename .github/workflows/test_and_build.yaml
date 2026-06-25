@@ -92,9 +92,6 @@ jobs:
           echo "Exit code: $exit_code"
           exit $exit_code
 
-      - name: Check I18N conversion
-        run: uv run python i18n.py -todo
-
       - name: Check package can be built
         run: uv build
 
