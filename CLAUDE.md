@@ -29,6 +29,12 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - テスト: 56 新規テスト追加、3832 全テスト PASS、0 型エラー
   - PR #278 main マージ完了
   - 成果: Top Moves が多色グラデーション表示に復旧（紫→赤→オレンジ→黄→緑）
+- **完了**: Phase 138-D（アーキテクチャ改善・死コード削除）
+  - 削除: 18 ファイル / 6,764 行（yose_analyzer / section_registry / QuizManager trio / Smart Kifu / kivyutils 未使用 3 クラス / 関連テスト）
+  - 追加: pytest-cov 導入（line coverage 測定）、CI coverage ジョブ（50% ゲート）
+  - 改善: KaTrainGui.__call__ ディスパッチャのドキュメント化
+  - テスト: 2,057 PASS / 10 skipped / 1 xfailed、mypy strict 190 ファイル成功
+  - 影響: 既存ユーザーへの機能影響なし、UI・設定・SGF 互換性維持
 - **次**: TBD（計画中）
 
 詳細は `docs/01-roadmap.md` を参照。
@@ -476,4 +482,4 @@ docs/
 - Phase 92 完了（Beginner Hints Extension: MeaningTagマッピング6カテゴリ、信頼度フィルタ、盤上ハイライト、i18n 30キー、CI修正）
 - Phase 91 完了（Beginner Hints MVP: 4カテゴリ検出、モードゲーティング、ノードキャッシュ）
 - Phase 90 完了（Error Recovery & Diagnostics: 復旧ボタン4つ、LLM用コピー、diagnostics自動ダンプ）
-- テスト総数: 3776件（Phase 116 eval_color回帰テスト10個含む）
+- テスト総数: 約 3,200件（Phase 138-D で死コードテスト削除後、2,057 PASS + 残 KataGo 依存テスト）
