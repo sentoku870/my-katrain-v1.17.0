@@ -92,7 +92,6 @@ from katrain.core.constants import (
 )
 from katrain.core.engine import KataGoEngine
 from katrain.core.errors import EngineError
-from katrain.core.game import IllegalMoveException
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.leela.engine import LeelaEngine
 from katrain.core.sgf_parser import Move
@@ -791,19 +790,7 @@ class KaTrainGui(Screen, KaTrainBase):
         play_sound(random.choice(Theme.STONE_SOUNDS))
 
     def _do_play(self, coords: Any) -> None:
-        self.board_gui.animating_pv = None
-        if not self.game:
-            return
-        try:
-            old_prisoner_count = self.game.prisoner_count["W"] + self.game.prisoner_count["B"]
-            self.game.play(Move(coords, player=self.next_player_info.player))
-            if old_prisoner_count < self.game.prisoner_count["W"] + self.game.prisoner_count["B"]:
-                play_sound(Theme.CAPTURING_SOUND)
-            elif self.game and not self.game.current_node.is_pass:
-                self._play_stone_sound()
-
-        except IllegalMoveException as e:
-            self.controls.set_status(f"Illegal Move: {str(e)}", STATUS_ERROR)
+        game_commands.do_play(self, coords)
 
     # =========================================================================
     # Phase 97: Active Review Mode (delegated to ActiveReviewController)
@@ -859,29 +846,7 @@ class KaTrainGui(Screen, KaTrainBase):
         popup_commands.do_engine_recovery_popup(self, error_message, code)
 
     def _do_tsumego_frame(self, ko: bool, margin: int) -> None:
-        from katrain.core.tsumego_frame import tsumego_frame_from_katrain_game
-
-        if not self.game or not self.game.stones:
-            return
-
-        black_to_play_p = self.next_player_info.player == "B"
-        node, analysis_region = tsumego_frame_from_katrain_game(
-            self.game, self.game.komi, black_to_play_p, ko_p=ko, margin=margin
-        )
-        self.game.set_current_node(node)
-        if self.play_mode.mode == MODE_PLAY:
-            self.play_mode.switch_ui_mode()  # go to analysis mode
-        if analysis_region:
-            flattened_region = [
-                analysis_region[0][1],
-                analysis_region[0][0],
-                analysis_region[1][1],
-                analysis_region[1][0],
-            ]
-            self.game.set_region_of_interest(tuple(flattened_region))  # type: ignore[arg-type]
-        if self.game:
-            node.analyze(self.game.engines[node.next_player])
-        self.update_state(redraw_board=True)
+        game_commands.do_tsumego_frame(self, ko, margin)
 
     def play_mistake_sound(self, node: Any) -> None:
         if self.config("timer/sound") and node.played_mistake_sound is None and Theme.MISTAKE_SOUNDS:
