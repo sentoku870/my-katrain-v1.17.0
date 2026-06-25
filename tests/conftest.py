@@ -17,6 +17,7 @@ import pytest
 from katrain.core.eval_metrics import (
     MoveEval,
 )
+from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
 from katrain.core.game import Game
 from katrain.core.game_node import GameNode
 
@@ -421,6 +422,15 @@ class MockKaTrainStub:
             "game/handicap": 0,
             "game/rules": "japanese",
         }
+        self.players_info = {
+            "B": MagicMock(name="B_player", player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL),
+            "W": MagicMock(name="W_player", player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL),
+        }
+        # State notifier is optional; tests that need it should set it explicitly
+
+    def update_state(self, *args, **kwargs):
+        """No-op update_state for tests that don't need state propagation."""
+        pass
 
     def config(self, key, default=None):
         return self._config.get(key, default)
@@ -468,6 +478,10 @@ class MockEngine:
 
     def has_query_capacity(self, headroom: int = 10) -> bool:
         """Mock always has capacity (no throttling in tests)."""
+        return True
+
+    def check_alive(self, *args, **kwargs):
+        """Mock engine is always alive (used by AI strategies)."""
         return True
 
     def reset_tracking(self):
@@ -634,6 +648,165 @@ def game_9x9(mock_katrain, mock_engine, root_node_9x9):
     g = Game(mock_katrain, mock_engine, move_tree=root_node_9x9)
     mock_engine.reset_tracking()
     return g
+
+
+# ---------------------------------------------------------------------------
+# AI Strategy Test Helpers (Phase 139: core coverage)
+# ---------------------------------------------------------------------------
+
+
+class MockKaTrainWithAI(MockKaTrainStub):
+    """MockKaTrainStub with AI/game/trainer config keys.
+
+    Provides the config keys needed by AI strategies without requiring
+    a real KaTrainBase instance.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._config.update(
+            {
+                "ai/ai/default": {
+                    "weaken_fac": 1.0,
+                },
+                "ai/ai/handicap": {
+                    "pda": 0.0,
+                    "automatic": False,
+                },
+                "ai/ai/antimirror": {},
+                "ai/ai/jigo": {
+                    "target_score": 0.5,
+                },
+                "ai/ai/scoreloss": {
+                    "strength": 5.0,
+                },
+                "ai/ai/simple_ownership": {
+                    "max_points_lost": 2.0,
+                },
+                "ai/ai/settle_stones": {
+                    "max_points_lost": 2.0,
+                    "min_visits": 1,
+                    "settledness_threshold": 0.5,
+                },
+                "ai/ai/policy": {
+                    "lower_bound": 0.0,
+                    "weaken_fac": 1.0,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/weighted": {
+                    "weaken_fac": 1.0,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/pick": {
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/rank": {
+                    "kyu_rank": 5,
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/influence": {
+                    "threshold": 4,
+                    "line_weight": 0.5,
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/territory": {
+                    "threshold": 3,
+                    "line_weight": 0.5,
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/local": {
+                    "stddev": 3.0,
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/tenuki": {
+                    "stddev": 3.0,
+                    "pick_frac": 0.5,
+                    "pick_n": 3,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/ai/human": {
+                    "human_kyu_rank": 5,
+                    "lower_bound": 0.0,
+                    "weaken_fac": 1.0,
+                    "override": 0.0,
+                    "overridetwo": 1.0,
+                },
+                "ai/strength": {
+                    "ai_default": 9.0,
+                    "ai_antimirror": 5.0,
+                    "ai_simple_ownership": 4.0,
+                    "ai_policy": 6.0,
+                },
+                "trainer/eval_thresholds": [0, 0.5, 1.0, 2.0, 5.0],
+            }
+        )
+
+
+@pytest.fixture
+def mock_katrain_ai():
+    """MockKaTrain with full AI config (Phase 139)."""
+    return MockKaTrainWithAI()
+
+
+def make_candidate_move(gtp: str, *, order: int = 0, score_lead: float = 0.0, points_lost: float = 0.0,
+                        visits: int = 100, winrate: float = 0.5, ownership: list[float] | None = None,
+                        prior: float = 0.5, pv: list[str] | None = None) -> dict:
+    """Build a KataGo candidate move dict (Phase 139)."""
+    d = {
+        "move": gtp,
+        "order": order,
+        "scoreLead": score_lead,
+        "pointsLost": points_lost,
+        "visits": visits,
+        "winrate": winrate,
+        "prior": prior,
+    }
+    if ownership is not None:
+        d["ownership"] = ownership
+    if pv is not None:
+        d["pv"] = pv
+    return d
+
+
+def install_node_analysis(node, *, root: dict, moves: list[dict] | None = None,
+                           completed: bool = True, policy: list[float] | None = None,
+                           ownership: list[float] | None = None) -> None:
+    """Install a complete analysis dict on a GameNode (Phase 139).
+
+    Sets both ``node.analysis`` and ``node.analysis_from_sgf`` so the
+    ``analysis_exists``/``analysis_complete`` properties return True.
+    """
+    node.analysis["root"] = root
+    if moves is not None:
+        # candidate_moves reads from node.analysis["moves"].values()
+        # It uses order/pointsLost/scoreLead/winrate keys (KataGo format).
+        node.analysis["moves"] = {m["move"]: m for m in moves}
+    else:
+        node.analysis["moves"] = {}
+    node.analysis["completed"] = completed
+    if policy is not None:
+        node.analysis["policy"] = policy
+    if ownership is not None:
+        node.analysis["ownership"] = ownership
+    node.analysis_from_sgf = True
 
 
 # ---------------------------------------------------------------------------
