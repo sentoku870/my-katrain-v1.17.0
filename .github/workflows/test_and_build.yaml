@@ -92,6 +92,35 @@ jobs:
           echo "Exit code: $exit_code"
           exit $exit_code
 
+  # Phase 138-D: Coverage measurement (initial gate: 50%, raise over time)
+  coverage:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python and uv
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          sync-groups: dev
+
+      - name: Measure coverage and enforce gate
+        env:
+          KIVY_NO_FILELOG: 1
+          KIVY_NO_CONSOLELOG: 1
+          KIVY_NO_ENV_CONFIG: 1
+          KIVY_GL_BACKEND: mock
+          SDL_VIDEODRIVER: dummy
+          DISPLAY: ":0"
+          PYTHONUNBUFFERED: 1
+        run: |
+          # Phase 138-D: Initial coverage gate at 50% (raise to 60/70 over time)
+          uv run python -m pytest tests --cov=katrain --cov-fail-under=50 --tb=short 2>&1
+          echo "Exit code: $?"
+
       - name: Check package can be built
         run: uv build
 
