@@ -1,6 +1,11 @@
+---
+name: architecture
+description: Load when adding new code, refactoring modules, or reviewing import structure in myKatrain. Use ONLY for architecture concerns: layer dependencies, Kivy isolation, core/gui/common boundaries, or import restrictions. Triggers on "import", "dependency", "Kivy", "core/gui", "refactor module", or "architecture".
+---
+
 # アーキテクチャルール（Architecture Rules）
 
-> このファイルは myKatrain のアーキテクチャ制約を定義します。
+> myKatrain のアーキテクチャ制約を定義します。
 > Phase 20 で確立された依存方向ルールを強制するためのガイドラインです。
 
 ---
@@ -27,10 +32,10 @@ myKatrain は以下のレイヤー構造を持ちます:
 
 | From | To | 許可 |
 |------|-----|:----:|
-| gui/ | core/ | ✅ |
-| gui/ | common/ | ✅ |
-| core/ | common/ | ✅ |
-| common/ | (標準ライブラリのみ) | ✅ |
+| gui/ | core/ | OK |
+| gui/ | common/ | OK |
+| core/ | common/ | OK |
+| common/ | (標準ライブラリのみ) | OK |
 
 ### 2.2 禁止される依存
 
@@ -178,3 +183,4 @@ uv run pytest tests/test_architecture.py -v
 ## 7. 変更履歴
 
 - 2026-01-16: v1.0 作成（Phase 20完了）
+- 2026-06-26: opencode スキル化（旧 `.claude/rules/05-architecture.md` から移行）

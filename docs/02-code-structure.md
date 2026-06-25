@@ -348,7 +348,9 @@ uv run python i18n.py -todo
 
 ## 7. 変更履歴
 
-> 詳細な変更履歴は `CLAUDE.md` セクション10を参照。
+> 詳細な変更履歴は `AGENTS.md` セクション10を参照。
+>
+> 注: 2026-06-26 までは `CLAUDE.md` を使用していた。opencode 移行により `AGENTS.md` に変更。
 
 - 2026-01-30: Phase 88 完了（KataGo Settings UI Reorg + human-like Toggle）
   - **common/model_labels.py**: モデル強度分類（classify_model_strength()）

@@ -1,7 +1,12 @@
+---
+name: git-workflow
+description: Load when about to commit, push, create a PR, switch branches, or run any git/gh command in the myKatrain repository. Use ONLY for git operations and GitHub PR workflow. Triggers on "commit", "push", "PR", "branch", "merge", or any version control action.
+---
+
 # Git ワークフロー（Git Workflow）
 
-> このファイルは myKatrain での Git/GitHub 運用ルールを定義します。
-> Claude Code はコミットまで実行可。push/PR作成はユーザー確認後に実行。
+> myKatrain での Git/GitHub 運用ルール。
+> opencode はコミットまで実行可。push/PR作成はユーザー確認後に実行。
 
 ---
 
@@ -38,8 +43,8 @@ git pull origin main
 # 3) 作業ブランチを作成
 git switch -c feature/2025-12-30-<short-desc>
 
-# 4) Claude Code で修正を実行
-#    （Claude Code が直接ファイルを編集）
+# 4) opencode で修正を実行
+#    （opencode が直接ファイルを編集）
 
 # 5) 差分確認
 git status
@@ -159,9 +164,9 @@ git stash pop           # 変更を戻す
 
 ---
 
-## 6. Claude Code の役割
+## 6. opencode の役割
 
-### Claude Code がやること
+### opencode がやること
 - ファイルの編集
 - `git add` / `git commit`（コミットまで実行可）
 - 差分の説明
@@ -173,7 +178,7 @@ git stash pop           # 変更を戻す
 
 → push/PR作成は「pushしていい？」等の確認後に実行。
 
-### Claude Code がやらないこと（禁止）
+### opencode がやらないこと（禁止）
 - `git push --force`（明示的な指示がない限り）
 - `git reset --hard`（明示的な指示がない限り）
 - main ブランチへの直接 push（code-change の場合）
@@ -182,5 +187,6 @@ git stash pop           # 変更を戻す
 
 ## 7. 変更履歴
 
-- 2026-01-25: v1.1 Claude Codeのコミット実行を許可、push/PRは確認後に変更
+- 2026-01-25: v1.1 opencodeのコミット実行を許可、push/PRは確認後に変更
 - 2025-12-30: v1.0 作成（Claude Code移行対応、Codex CLI から移行）
+- 2026-06-26: opencode スキル化（旧 `.claude/rules/02-git-workflow.md` から移行）

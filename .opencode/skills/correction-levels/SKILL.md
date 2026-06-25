@@ -1,7 +1,12 @@
+---
+name: correction-levels
+description: Load when about to make any code or documentation change in myKatrain. Use ONLY to classify the change size (Lv0-Lv5) and pick the correct workflow before editing. Triggers on phrases like "modify", "fix", "change", "add feature", "refactor", or any code-related request.
+---
+
 # 修正レベル定義（Correction Levels）
 
-> このファイルは修正規模の判定基準を定義します。
-> Claude Code は修正前に必ずレベルを判定し、適切なフローを選択してください。
+> opencode は修正前に必ずレベルを判定し、適切なフローを選択してください。
+> スキルは on-demand 読み込み。必要時に呼び出し、終われば忘れて OK。
 
 ---
 
@@ -102,3 +107,4 @@
 ## 5. 変更履歴
 
 - 2025-12-30: v1.0 作成（Claude Code移行対応）
+- 2026-06-26: opencode スキル化（旧 `.claude/rules/01-correction-levels.md` から移行）

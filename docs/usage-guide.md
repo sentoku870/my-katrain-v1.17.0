@@ -200,7 +200,8 @@ myKatrain は2種類のカルテを出力できます。
 
 - `docs/design/phase6-karte-spec.md`: カルテの設計仕様
 - `docs/01-roadmap.md`: ロードマップ
-- `CLAUDE.md`: プロジェクト全体の概要
+- `AGENTS.md`: プロジェクト全体の概要（opencode 開発ガイド）
+- `.opencode/skills/*/SKILL.md`: 細目ルール（on-demand 読み込み）
 
 ---
 

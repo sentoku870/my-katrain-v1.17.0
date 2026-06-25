@@ -1,7 +1,12 @@
+---
+name: go-domain
+description: Load when working on features that involve Go (igo/baduk) skill levels, KataGo analysis output, karte (diagnostic report) generation, or any go-domain terminology. Use ONLY for go-related functionality and domain knowledge. Triggers on "karte", "kifu", "tesuji", "joseki", "KataGo", "winrate", "scoreLead", or skill level labels G0-G4 / A-D.
+---
+
 # 囲碁ドメイン（Go Domain）
 
-> このファイルは囲碁に関する機能開発時の参照ガイドです。
-> 棋力レベル定義、解説レベル定義、KataGo用語を含みます。
+> 囲碁に関する機能開発時の参照ガイド。
+> 棋力レベル定義、解説レベル定義、KataGo用語を含む。
 
 ---
 
@@ -145,3 +150,4 @@
 ## 6. 変更履歴
 
 - 2025-12-30: v1.0 作成（Claude Code移行対応）
+- 2026-06-26: opencode スキル化（旧 `.claude/rules/04-go-domain.md` から移行）

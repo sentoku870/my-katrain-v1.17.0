@@ -1,6 +1,11 @@
+---
+name: debug-workflow
+description: Load when investigating a bug, error, crash, or unexpected behavior in myKatrain. Use ONLY for debugging tasks: symptom reporting, reproduction, root cause analysis, and fix verification. Triggers on "bug", "error", "crash", "doesn't work", "regression", or "traceback".
+---
+
 # デバッグワークフロー（Debug Workflow）
 
-> このファイルはバグ報告・デバッグ作業の進め方を定義します。
+> バグ報告・デバッグ作業の進め方を定義します。
 > 再現→原因特定→修正→確認のサイクルを標準化します。
 
 ---
@@ -13,7 +18,7 @@
 - エラーメッセージ/ログのコピペ
 - 動作確認
 
-### Claude Code
+### opencode
 - 症状の整理と仮説立て
 - 再現手順の設計
 - 必要な情報の指示
@@ -62,7 +67,7 @@ Git フロー: feature/YYYY-MM-DD-fix-xxx → PR
 ```
 
 ### Step 6: 修正と確認
-1. Claude Code が修正を実行
+1. opencode が修正を実行
 2. ユーザーが再現手順で確認
 3. 必要なら追加確認
 
@@ -157,11 +162,11 @@ python -m katrain 2>&1
 ### 5.1 追加時のルール
 
 ```python
-# ✅ 良い例: [DEBUG] prefix を付ける
+# 良い例: [DEBUG] prefix を付ける
 print(f"[DEBUG] radar data: {radar_data}")
 Logger.log(f"[DEBUG] mesh vertices: {len(vertices)}", "DEBUG")
 
-# ❌ 悪い例: prefix なし（本番コードと区別できない）
+# 悪い例: prefix なし（本番コードと区別できない）
 print(f"radar data: {radar_data}")
 ```
 
@@ -174,7 +179,7 @@ print(f"radar data: {radar_data}")
 Select-String -Path "katrain/**/*.py" -Pattern "\[DEBUG\]" -Recurse
 ```
 
-または Claude Code が Grep で確認:
+または opencode が Grep で確認:
 ```
 Grep(pattern="\[DEBUG\]", path="katrain", type="py")
 ```
@@ -191,3 +196,4 @@ Grep(pattern="\[DEBUG\]", path="katrain", type="py")
 
 - 2026-01-25: v1.1 一時デバッグログのルールを追加
 - 2025-12-30: v1.0 作成（Claude Code移行対応）
+- 2026-06-26: opencode スキル化（旧 `.claude/rules/03-debug-workflow.md` から移行）
