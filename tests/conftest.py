@@ -99,6 +99,8 @@ def normalize_output(text: str) -> str:
     result = re.sub(r"\d{2}:\d{2}:\d{2}", "[TIME]", result)
     # Time format: 12 34 56 (space-separated, as in game_id from filename)
     result = re.sub(r"\d{2} \d{2} \d{2}", "[TIME]", result)
+    # Run ID: run_<unix_timestamp>_<8 hex chars> — varies every run
+    result = re.sub(r'"run_id":\s*"run_\d+_[0-9a-f]{8}"', '"run_id": "[RUN_ID]"', result)
 
     # 3. Normalize absolute paths (Windows and Unix)
     # Windows: D:\github\... or C:\Users\...
@@ -680,84 +682,56 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
     {
         # tests/test_batch_analyzer.py (17)
         # tests/test_batch_core_imports.py (11)
-        # tests/test_batch_engine_option.py (1)
-        "tests/test_batch_engine_option.py::TestCollectBatchOptionsEngine::test_leela_selection",        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_count",
+        # tests/test_batch_engine_option.py: Phase 138 — test_leela_selection removed
+        # (engine is hardcoded to katago in batch_core).
+        # tests/test_batch_stats_imports.py: Phase 138 — 7 stale Skill Radar tests removed
+        # (TIER_LABELS, AXIS_LABELS, AXIS_PRACTICE_HINTS, _build_radar_json_section,
+        # _build_skill_profile_section, and the field-count/order/hasattr tests that
+        # referenced the now-deleted 6-field EvidenceMove shape). The remaining 14 tests
+        # verify the surviving public API and are green.
+        # tests/test_golden_karte.py: Phase 138 — 4 golden tests now PASS
+        # (test_karte_from_sgf_matches_golden[fox/alphago/panda] passed after
+        # normalizing the time-based run_id field in both the production output
+        # and the golden files). xfail no longer needed.
 
-        # tests/test_batch_stats_imports.py partial (1 of 7 - Phase 137 deleted symbols)
-        # Tests that Skill Radar symbols (TIER_LABELS, AXIS_LABELS, etc.) still
-        # exist - they were removed when Phase 137 deleted Skill Radar.
-        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",
-
-        # tests/test_batch_analyzer.py (17)
-        # 1. test_import: depends on analyze_single_file_leela which doesn't exist.
-        # 16. test_*_summary_*: build_player_summary now returns JSON-wrapped
-        # markdown (Phase 137), but tests expect plain markdown content.
-        # Tests would need a markdown-only fixture/parser to pass.
-        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_names_and_order",
-        "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_i18n_getters_are_callable",
-        "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_section_header_jp_differs_from_en",
-        "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_constants_importable",
-        "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_private_functions_importable",
-        # tests/test_golden_karte.py (4)
-        "tests/test_golden_karte.py::TestKarteFromLeelaSnapshot::test_leela_karte_contains_estimated_suffix",
-        "tests/test_golden_karte.py::TestKarteFromLeelaSnapshot::test_leela_karte_has_important_moves_section",
-        "tests/test_golden_karte.py::TestKarteFromLeelaSnapshot::test_leela_karte_matches_golden",
-        "tests/test_golden_karte.py::TestKarteFromSGF::test_karte_from_sgf_matches_golden",
-
-        # tests/test_golden_karte.py partial (1 of 4 - test isolation issue)
-        # The [fox/alphago/panda] parametrized test fails when run with other tests
-        # but passes in isolation. Likely a global state pollution issue.
-        "tests/test_golden_karte.py::TestKarteFromSGF::test_karte_output_is_deterministic",
+        # tests/test_golden_karte.py partial: test_karte_output_is_deterministic now PASSES
+        # (Phase 137 fix: deterministic mock analysis injection). xfail no longer needed.
         # tests/test_golden_summary.py (3)
         # tests/test_golden_summary.py additional (12)
         # tests/test_karte_json.py (16)
-        # tests/test_karte_leela_integration.py (5)
-        "tests/test_karte_leela_integration.py::TestKarteKataGoUnchanged::test_katago_loss_format_unchanged",
-        "tests/test_karte_leela_integration.py::TestKarteKataGoUnchanged::test_katago_no_suffix",
-        "tests/test_karte_leela_integration.py::TestKarteLeelaImportantMoves::test_table_loss_column_has_suffix",
-        "tests/test_karte_leela_integration.py::TestKarteLeelaWorstMove::test_worst_move_selected_from_leela_data",
-        "tests/test_karte_leela_integration.py::TestKarteLeelaWorstMove::test_worst_move_shows_estimated_suffix",
+        # tests/test_karte_leela_integration.py: Phase 138 — 5 Leela/KataGo suffix tests removed
+        # (the (推定) suffix and per-row worst-move/important-moves table no longer carry
+        # engine-specific annotations). 16 surviving tests (has_loss_data,
+        # format_loss_with_engine_suffix, mixed engine) are all green.
         # tests/test_karte_structure.py (8)
 
-        # tests/test_karte_json.py partial (6 of 16 - schema-mismatched assertions)
-        # 10 of 16 pass with Phase 137 schema; remaining 6 expect stale keys (units,
-        # reason_tags, players.black, etc). Tracked separately.
-        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_section_present",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_values",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_important_moves_structure",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_points_lost_nonnegative",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_reason_tags_is_list",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_units_description",
+        # tests/test_karte_json.py: Phase 138 — all 6 schema-mismatched tests now PASS
+        # (updated assertions for the new schema: loss_unit, loss_clamped, reason_codes,
+        # game_id, plus the mock fixture gained explicit date/result/player_black/etc.
+        # attributes so MetaExtractor returns real values). xfail no longer needed.
 
-        # tests/test_karte_structure.py partial (2 of 8 - error handling behavior change)
-        # Phase 137 refactor changed build_karte_report error semantics
-        # from "return error markdown" to "raise KarteGenerationError".
-"tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_returns_error_markdown_on_failure",
-"tests/test_karte_structure.py::TestBuildKarteReportErrorHandling::test_raises_exception_when_requested",
-        # tests/test_pattern_summary_contract.py (4)
-        "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_corrupt_data",
-        "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_invalid_gtp_format",
-        "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_handles_list_board_size",
-        "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_handles_none_meaning_tag_id",
-        # tests/test_quiz_manager.py (2)
-        "tests/test_quiz_manager.py::TestQuizManagerLazyImport::test_managers_package_import_in_headless_context",
-        "tests/test_quiz_manager.py::TestQuizManagerLazyImport::test_managers_package_lazy_import",
-        # tests/test_report_invariants.py (4)
-        "tests/test_report_invariants.py::TestEvidenceSelection::test_deterministic_selection",
-        "tests/test_report_invariants.py::TestEvidenceSelection::test_evidence_formatting_markdown_safe",
-        "tests/test_report_invariants.py::TestEvidenceSelection::test_game_deduplication",
-        "tests/test_report_invariants.py::TestEvidenceSelection::test_sort_by_loss_descending",
-        # tests/test_summary_snapshot.py (3)
-        "tests/test_summary_snapshot.py::TestSummarySnapshot::test_summary_output_structure",
-        "tests/test_summary_snapshot.py::TestSummarySnapshot::test_summary_output_unchanged",
-        "tests/test_summary_snapshot.py::TestSummarySnapshot::test_summary_with_focus_player",
-        # tests/test_typed_config_migration.py (2)
-        "tests/test_typed_config_migration.py::TestDiagnosticsCopyTypedConfig::test_diagnostics_handles_none_paths",
-        "tests/test_typed_config_migration.py::TestDiagnosticsCopyTypedConfig::test_diagnostics_includes_engine_paths",
-        # tests/test_v6_refinements.py (1)
-        "tests/test_v6_refinements.py::test_v6_refinements",
-        # tests/test_phase107_subscribe.py (17) - KaTrainGui missing _setup_state_subscriptions        # tests/test_i18n.py (1) - pre-existing: .mo file older than .po file
-        "tests/test_i18n.py::TestBatchAnalyzeI18n::test_mo_files_are_up_to_date",
+        # tests/test_karte_structure.py::TestBuildKarteReportErrorHandling: Phase 138 — both tests now PASS
+        # (build_karte_report now wraps build_eval_snapshot() and the impl in try/except
+        # and returns error markdown or raises KarteGenerationError per raise_on_error).
+        # xfail no longer needed.
+        # tests/test_pattern_summary_contract.py: Phase 138 — all 4 tests now PASS
+        # (production safety validation was implemented). xfail no longer needed.
+        # tests/test_quiz_manager.py::TestQuizManagerLazyImport: Phase 138 — both tests now PASS
+        # (QuizManager was added to katrain.gui.managers.__init__). xfail no longer needed.
+        # tests/test_report_invariants.py::TestEvidenceSelection: Phase 138 — all 4 tests now PASS
+        # (_select_evidence_moves and _format_evidence_with_links re-exported from
+        # katrain.core.batch.stats). xfail no longer needed.
+        # tests/test_summary_snapshot.py: Phase 138 — all 3 tests now PASS
+        # (snapshot fixtures regenerated for the JSON-based summary). xfail no longer needed.
+        # tests/test_typed_config_migration.py: Phase 138 — TestDiagnosticsCopyTypedConfig
+        # removed (auto_mode_popup._copy_diagnostics was deleted). 2 surviving tests
+        # in TestTypedConfigSemantics are green.
+        # tests/test_v6_refinements.py: Phase 138 — test now PASSES
+        # (importance scale expectation updated to "0.0 to unbounded (logarithmic)").
+        # xfail no longer needed.
+        # tests/test_i18n.py::test_mo_files_are_up_to_date: Phase 138 — test now PASSES
+        # (regenerated .mo files with `pybabel compile -d katrain/i18n/locales -D katrain`).
+        # xfail no longer needed.
         # tests/test_diagnostics.py (16) - setup error: SystemInfo missing ram_total/gpu_info
     }
 )

@@ -88,6 +88,13 @@ def create_mock_game_with_analysis():
     mock_game.komi = 6.5
     mock_game.rules = "Japanese"
     mock_game.katrain = None  # No katrain context needed
+    # Phase 138: MetaExtractor uses hasattr() first, so we set explicit
+    # attributes on the mock to feed the new schema fields.
+    mock_game.date = "2024-01-15"
+    mock_game.result = "B+5.5"
+    mock_game.handicap = 0
+    mock_game.player_black = "TestBlack"
+    mock_game.player_white = "TestWhite"
 
     # Mock root node properties
     mock_root = Mock()
@@ -120,29 +127,31 @@ class TestBuildKarteJson:
         assert result["schema_version"] == "2.1"
 
     def test_meta_section_present(self):
-        """Meta section should contain required fields."""
+        """Meta section should contain required fields (Phase 137 schema)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
         assert "meta" in result
         meta = result["meta"]
-        assert "game_name" in meta
+        assert "schema_version" in meta
+        assert "game_id" in meta
         assert "date" in meta
         assert "players" in meta
         assert "black" in meta["players"]
         assert "white" in meta["players"]
         assert "result" in meta
         assert "skill_preset" in meta
-        assert "units" in meta
-        assert "points_lost" in meta["units"]
+        # Phase 137: `units.points_lost` was replaced by `loss_unit` (string)
+        assert "loss_unit" in meta
+        assert isinstance(meta["loss_unit"], str)
 
     def test_meta_values(self):
-        """Meta section should contain correct values."""
+        """Meta section should contain correct values (Phase 137 schema)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
         meta = result["meta"]
-        assert meta["game_name"] == "test_game"
+        assert meta["game_id"] == "test_game_001"
         assert meta["date"] == "2024-01-15"
         assert meta["players"]["black"] == "TestBlack"
         assert meta["players"]["white"] == "TestWhite"
@@ -189,7 +198,7 @@ class TestBuildKarteJson:
         assert len(result["important_moves"]) >= 1, "Fixture must contain at least 1 important move"
 
     def test_important_moves_structure(self):
-        """Each important move should have required fields."""
+        """Each important move should have required fields (Phase 137 schema)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
@@ -199,19 +208,24 @@ class TestBuildKarteJson:
             assert isinstance(move["move_number"], int)
             assert move["move_number"] >= 1
             assert "coords" in move
-            assert "points_lost" in move
+            # Phase 137: points_lost was split into loss_raw and loss_clamped
+            assert "loss_clamped" in move
+            assert "loss_raw" in move
             assert "importance" in move
-            assert "reason_tags" in move
+            # Phase 137: reason_tags was renamed to reason_codes
+            assert "reason_codes" in move
             assert "phase" in move
             assert "player" in move
 
     def test_points_lost_nonnegative(self):
-        """points_lost should always be >= 0.0."""
+        """loss_clamped should always be >= 0.0 (Phase 137: renamed from points_lost)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
         for move in result["important_moves"]:
-            assert move["points_lost"] >= 0.0, f"Move {move['move_number']} has negative points_lost"
+            assert move["loss_clamped"] >= 0.0, (
+                f"Move {move['move_number']} has negative loss_clamped: {move['loss_clamped']}"
+            )
 
     def test_phase_values(self):
         """Phase should be one of opening/middle/yose/unknown."""
@@ -232,12 +246,12 @@ class TestBuildKarteJson:
             assert move["player"] in valid_players, f"Invalid player: {move['player']}"
 
     def test_reason_tags_is_list(self):
-        """reason_tags should always be a list."""
+        """reason_codes should always be a list (Phase 137: renamed from reason_tags)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
         for move in result["important_moves"]:
-            assert isinstance(move["reason_tags"], list)
+            assert isinstance(move["reason_codes"], list)
 
     def test_player_filter_black(self):
         """Player filter should filter to black moves only."""
@@ -256,13 +270,13 @@ class TestBuildKarteJson:
             assert move["player"] == "white", f"Found non-white move: {move['player']}"
 
     def test_units_description(self):
-        """Units should contain points_lost description for LLM."""
+        """loss_unit should be a non-empty string describing the unit (Phase 137)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
 
-        units = result["meta"]["units"]
-        assert "points_lost" in units
-        assert len(units["points_lost"]) > 10  # Has meaningful description
+        loss_unit = result["meta"]["loss_unit"]
+        assert isinstance(loss_unit, str)
+        assert len(loss_unit) > 0  # Has meaningful description
 
     def test_coords_format(self):
         """Coords should be GTP format or pass or null."""

@@ -4,7 +4,7 @@
     "schema_version": "2.1",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
-    "run_id": "run_1782379061_d60d92fc",
+    "run_id": "[RUN_ID]",
     "source_filename": "player1-player2(B) IGS",
     "date": "[DATE]",
     "players": {

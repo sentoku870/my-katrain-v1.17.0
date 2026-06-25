@@ -130,8 +130,20 @@ def build_karte_report(
 
     # 1. Compute snapshot once (avoid double computation)
     # Phase 87.5: Use provided snapshot or build from game
+    # Phase 138: Wrap build_eval_snapshot() in try/except so the function honors
+    # its documented contract of returning error markdown (or raising KarteGenerationError)
+    # even when snapshot construction itself fails.
     if snapshot is None:
-        snapshot = game.build_eval_snapshot()
+        try:
+            snapshot = game.build_eval_snapshot()
+        except Exception as e:
+            error_msg = (
+                f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
+                f"Snapshot construction failed: {type(e).__name__}: {e}"
+            )
+            if raise_on_error:
+                raise KarteGenerationError(error_msg, game_id=game_id) from e
+            return _build_error_karte(game_id, player_filter, error_msg)
 
     # 2. Mixed-engine check (Phase 37: enforcement point)
     if not is_single_engine_snapshot(snapshot):
@@ -156,15 +168,13 @@ def build_karte_report(
             lang=lang,
         )
     except Exception as e:
-        import traceback
-        # Hardcoded debug path for guaranteed visibility
-        debug_log_path = "d:/github/katrain-1.17.0/debug_error.log"
-        try:
-            with open(debug_log_path, "a", encoding="utf-8") as f:
-                f.write(f"Error for {game_id}: {e}\n{traceback.format_exc()}\n")
-        except:
-            pass # Ignore logging failure
-        raise
+        error_msg = (
+            f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
+            f"{type(e).__name__}: {e}"
+        )
+        if raise_on_error:
+            raise KarteGenerationError(error_msg, game_id=game_id) from e
+        return _build_error_karte(game_id, player_filter, error_msg)
 
 
 def _build_error_karte(
