@@ -24,6 +24,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.textfield import MDTextField
 
+from katrain.common.humanlike_config import normalize_humanlike_config
 from katrain.common.model_labels import classify_model_strength, get_model_basename
 from katrain.core.ai import ai_rank_estimation, game_report
 from katrain.core.constants import (
@@ -927,16 +928,15 @@ class ConfigPopup(BaseConfigPopup):
         # Phase 88: Normalize humanlike config before saving
         # Simplify: Treat non-empty path as enabled
         model_path = self.humanlike_model_path.text
+        last_path = self.katrain.config("engine/humanlike_model_last", "")
+        # Phase 140: use shared normalizer (single source of truth, tested in
+        # tests/test_humanlike_config.py).
+        model, last, effective_on = normalize_humanlike_config(
+            bool(model_path),  # toggle_on: ON iff user picked a path
+            model_path,
+            last_path,
+        )
         enabled = bool(model_path)
-
-        if enabled:
-            model = model_path
-            last = model_path
-            effective_on = True
-        else:
-            model = ""
-            last = self.katrain.config("engine/humanlike_model_last", "")
-            effective_on = False
         # Update humanlike_model_path to normalized value before parent saves
         self.humanlike_model_path.text = model
         # Store last path in config (will be saved by parent)
