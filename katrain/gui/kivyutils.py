@@ -56,10 +56,6 @@ class BackgroundMixin(Widget):  # -- mixins
     outline_width = NumericProperty(1)
 
 
-class BackgroundLabel(BackgroundMixin, Label):
-    pass
-
-
 class TableCellLabel(Label):
     background_color = ListProperty([0, 0, 0, 0])
     line_width = NumericProperty(0)
@@ -182,10 +178,6 @@ class PauseButton(CircularRippleBehavior, LeftButtonBehavior, Widget):
 
 
 # -- basic styles
-class LightLabel(Label):
-    pass
-
-
 class StatsLabel(MDBoxLayout):
     text = StringProperty("")
     label = StringProperty("")
@@ -216,45 +208,6 @@ class BGBoxLayout(BoxLayout, BackgroundMixin):
 
 
 # --  gui elements
-
-
-class IMETextField(MDTextField):
-    _imo_composition = StringProperty("")
-    _imo_cursor = ListProperty(None, allownone=True)
-
-    def _bind_keyboard(self) -> None:
-        super()._bind_keyboard()
-        Window.bind(on_textedit=self.window_on_textedit)
-
-    def _unbind_keyboard(self) -> None:
-        super()._unbind_keyboard()
-        Window.unbind(on_textedit=self.window_on_textedit)
-
-    def do_backspace(self, from_undo: bool = False, mode: str = "bkspc") -> Any:
-        if self._imo_composition == "":  # IMO handles sub-character backspaces
-            return super().do_backspace(from_undo, mode)
-
-    def window_on_textedit(self, window: Any, imo_input: str) -> None:
-        text_lines = self._lines
-        if self._imo_composition:
-            pcc, pcr = self._imo_cursor
-            text = text_lines[pcr]
-            if text[pcc - len(self._imo_composition) : pcc] == self._imo_composition:  # should always be true
-                remove_old_imo_text = text[: pcc - len(self._imo_composition)] + text[pcc:]
-                ci = self.cursor_index()
-                self._refresh_text_from_property("insert", *self._get_line_from_cursor(pcr, remove_old_imo_text))
-                self.cursor = self.get_cursor_from_index(ci - len(self._imo_composition))
-
-        if imo_input:
-            if self._selection:
-                self.delete_selection()
-            cc, cr = self.cursor
-            text = text_lines[cr]
-            new_text = text[:cc] + imo_input + text[cc:]
-            self._refresh_text_from_property("insert", *self._get_line_from_cursor(cr, new_text))
-            self.cursor = self.get_cursor_from_index(self.cursor_index() + len(imo_input))
-        self._imo_composition = imo_input
-        self._imo_cursor = self.cursor
 
 
 class KeyValueSpinner(Spinner):
