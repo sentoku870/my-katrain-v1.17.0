@@ -729,6 +729,11 @@ class KaTrainGui(Screen, KaTrainBase):
                 )
 
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
+        """Central dispatcher for menu actions triggered from .kv or shortcuts.
+
+        Note: All _do_* methods below are dispatcher targets invoked by this method.
+        They cannot be removed without breaking the .kv menu bindings.
+        """
         if self.game:
             if message.endswith("popup"):  # gui code needs to run in main kivy thread.
                 fn = getattr(self, f"_do_{message.replace('-', '_')}")
