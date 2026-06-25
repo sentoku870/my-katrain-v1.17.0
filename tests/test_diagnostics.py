@@ -69,6 +69,8 @@ def sample_bundle() -> DiagnosticsBundle:
             python_bits="64-bit",
             machine="AMD64",
             processor="Intel64 Family 6 Model 158",
+            ram_total="16 GB",
+            gpu_info="NVIDIA GeForce RTX 3060",
         ),
         katago_info=KataGoInfo(
             exe_path=f"{TEST_APP_DIR}\\katago.exe",

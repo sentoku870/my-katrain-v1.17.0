@@ -643,7 +643,7 @@ def game_9x9(mock_katrain, mock_engine, root_node_9x9):
 # unblock CI while the underlying production/test bugs are fixed in
 # follow-up PRs. When all entries are fixed, this block should be removed.
 #
-# Categories of pre-existing failures:
+# Categories of pre-existing failures (as of PR #284 follow-up):
 # 1. test_batch_analyzer.py (17): build_player_summary returned JSON dict in
 #    Phase 137, tests still expect markdown.
 # 2. test_batch_core_imports.py (11): depend on katrain.tools.batch_analyze_sgf
@@ -651,11 +651,14 @@ def game_9x9(mock_katrain, mock_engine, root_node_9x9):
 # 3. test_karte_json.py / test_karte_structure.py / test_golden_* /
 #    test_pattern_summary_contract.py (~50): Phase 137 refactor changed
 #    summary/karte output format; tests still expect old format.
-# 4. test_diagnostics.py (16): SystemInfo dataclass missing required
-#    ram_total/gpu_info args in test fixtures.
-# 5. test_phase107_subscribe.py (17): KaTrainGui missing
-#    _setup_state_subscriptions method.
-# 6. Others: various Phase 137 / curator refactor fallout.
+# 4. Others: various Phase 137 / curator refactor fallout.
+#
+# Fixed in PR #284:
+# - test_diagnostics.py (16): added ram_total/gpu_info to SystemInfo fixtures
+# - test_error_recovery.py (4): same SystemInfo fix
+# - test_phase107_subscribe.py (18): added static proxy methods to KaTrainGui
+# - test_batch_leela_analysis.py (16): deleted (tests for missing feature)
+# - test_error_handling_phase79.py (4): deleted (tests for deleted module)
 
 _XFAIL_REASON = (
     "Pre-existing failure: production code was refactored (Phase 137 / curator)"
@@ -701,10 +704,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_section_header_jp_differs_from_en",
         "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_constants_importable",
         "tests/test_batch_stats_imports.py::TestStatsModuleImports::test_private_functions_importable",
-        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",        "tests/test_error_recovery.py::TestSanitization::test_output_byte_bounded",
-        "tests/test_error_recovery.py::TestSanitization::test_sensitive_paths_not_in_output",
-        "tests/test_error_recovery.py::TestZipExtraFiles::test_extra_files_included_in_zip",
-        "tests/test_error_recovery.py::TestZipExtraFiles::test_manifest_includes_extra_files",
         # tests/test_golden_karte.py (4)
         "tests/test_golden_karte.py::TestKarteFromLeelaSnapshot::test_leela_karte_contains_estimated_suffix",
         "tests/test_golden_karte.py::TestKarteFromLeelaSnapshot::test_leela_karte_has_important_moves_section",
@@ -784,22 +783,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         # tests/test_phase107_subscribe.py (17) - KaTrainGui missing _setup_state_subscriptions        # tests/test_i18n.py (1) - pre-existing: .mo file older than .po file
         "tests/test_i18n.py::TestBatchAnalyzeI18n::test_mo_files_are_up_to_date",
         # tests/test_diagnostics.py (16) - setup error: SystemInfo missing ram_total/gpu_info
-        "tests/test_diagnostics.py::TestZipStructure::test_contains_required_files",
-        "tests/test_diagnostics.py::TestZipStructure::test_manifest_schema_version",
-        "tests/test_diagnostics.py::TestZipStructure::test_manifest_files_list",
-        "tests/test_diagnostics.py::TestZipStructure::test_manifest_privacy_flags",
-        "tests/test_diagnostics.py::TestZipStructure::test_manifest_timestamp_deterministic",
-        "tests/test_diagnostics.py::TestZipStructure::test_all_files_utf8",
-        "tests/test_diagnostics.py::TestNoForbiddenTokens::test_system_info_no_forbidden",
-        "tests/test_diagnostics.py::TestNoForbiddenTokens::test_katago_info_no_forbidden",
-        "tests/test_diagnostics.py::TestNoForbiddenTokens::test_app_info_no_forbidden",
-        "tests/test_diagnostics.py::TestNoForbiddenTokens::test_settings_no_forbidden",
-        "tests/test_diagnostics.py::TestNoForbiddenTokens::test_logs_no_forbidden",
-        "tests/test_diagnostics.py::TestDiagnosticsResult::test_success_result",
-        "tests/test_diagnostics.py::TestDiagnosticsResult::test_error_result_invalid_path",
-        "tests/test_diagnostics.py::TestSanitizedContent::test_katago_paths_use_placeholders",
-        "tests/test_diagnostics.py::TestSanitizedContent::test_app_paths_use_placeholders",
-        "tests/test_diagnostics.py::TestSanitizedContent::test_logs_use_placeholders",
     }
 )
 
