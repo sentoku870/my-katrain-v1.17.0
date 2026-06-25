@@ -668,6 +668,20 @@ _XFAIL_REASON = (
 _XFAIL_TESTS: frozenset[str] = frozenset(
     {
         # tests/test_batch_analyzer.py (17)
+        # tests/test_batch_core_imports.py (11)
+        # tests/test_batch_engine_option.py (1)
+        "tests/test_batch_engine_option.py::TestCollectBatchOptionsEngine::test_leela_selection",        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_count",
+
+        # tests/test_batch_stats_imports.py partial (1 of 7 - Phase 137 deleted symbols)
+        # Tests that Skill Radar symbols (TIER_LABELS, AXIS_LABELS, etc.) still
+        # exist - they were removed when Phase 137 deleted Skill Radar.
+        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",
+
+        # tests/test_batch_analyzer.py (17)
+        # 1. test_import: depends on analyze_single_file_leela which doesn't exist.
+        # 16. test_*_summary_*: build_player_summary now returns JSON-wrapped
+        # markdown (Phase 137), but tests expect plain markdown content.
+        # Tests would need a markdown-only fixture/parser to pass.
         "tests/test_batch_analyzer.py::TestAnalysisSettingsSection::test_analysis_settings_present",
         "tests/test_batch_analyzer.py::TestAnalysisSettingsSection::test_analysis_settings_variable_visits_on",
         "tests/test_batch_analyzer.py::TestBatchAnalyzerCLI::test_import",
@@ -685,25 +699,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_reason_tags_counted_in_stats",
         "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_reason_tags_ordering_is_deterministic",
         "tests/test_batch_analyzer.py::TestReasonTagsFromImportantMoves::test_summary_with_nonempty_reason_tags",
-        # tests/test_batch_core_imports.py (11)
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_constants_are_exported",
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_dataclass_imports_are_same_class",
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_function_imports_are_callable",
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_leela_re_exports_work",
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_private_aliases_work",
-        "tests/test_batch_core_imports.py::TestBackwardCompatImports::test_stats_private_aliases_work",
-        "tests/test_batch_core_imports.py::TestCoreImports::test_explicit_submodule_import",
-        "tests/test_batch_core_imports.py::TestCoreImports::test_lazy_exports_via_getattr",
-        "tests/test_batch_core_imports.py::TestFunctionBehavior::test_get_canonical_loss_behavior",
-        "tests/test_batch_core_imports.py::TestFunctionBehavior::test_parse_timeout_behavior",
-        "tests/test_batch_core_imports.py::TestModuleAllAttribute::test_all_contains_expected_exports",
-        # tests/test_batch_engine_option.py (1)
-        "tests/test_batch_engine_option.py::TestCollectBatchOptionsEngine::test_leela_selection",        "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_count",
-
-        # tests/test_batch_stats_imports.py partial (1 of 7 - Phase 137 deleted symbols)
-        # Tests that Skill Radar symbols (TIER_LABELS, AXIS_LABELS, etc.) still
-        # exist - they were removed when Phase 137 deleted Skill Radar.
-        "tests/test_batch_stats_imports.py::TestSymbolsAvailableViaHasattr::test_all_required_symbols_accessible",
         "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_names_and_order",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_i18n_getters_are_callable",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_section_header_jp_differs_from_en",
