@@ -11,6 +11,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from katrain.__main__ import KaTrainGui
 
 
 class ErrorCategory(Enum):
@@ -165,15 +169,15 @@ def should_offer_restart(result: EngineTestResult) -> bool:
     return result.error_category == ErrorCategory.TIMEOUT
 
 
-def run_engine_test(katrain_app: "KaTrainGui", timeout: float = 15.0) -> EngineTestResult:
+def run_engine_test(katrain_app: KaTrainGui, timeout: float = 15.0) -> EngineTestResult:
     """Run an engine connectivity test.
-    
+
     Args:
         katrain_app: The KaTrain application instance.
         timeout: Timeout in seconds for the test.
-        
+
     Returns:
         EngineTestResult with success/failure status.
     """
-    # Note: Using Any for katrain_app type hint to avoid circular imports at runtime
+    # Note: Using forward reference (TYPE_CHECKING) to avoid circular imports at runtime
     return katrain_app._verify_engine_works(timeout)

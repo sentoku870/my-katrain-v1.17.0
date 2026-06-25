@@ -72,6 +72,7 @@ class BatchResult:
     curator_ranking_written: bool = False
     curator_guide_written: bool = False
     curator_games_scored: int = 0
+    curator_guides_generated: int = 0
     curator_written: bool = False
     curator_errors: list[str] = field(default_factory=list)
     # Circuit breaker fields (Phase 95C)

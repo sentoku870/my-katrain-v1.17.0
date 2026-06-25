@@ -1,12 +1,12 @@
 """Shared data extraction logic for KaTrain JSON reports.
 
 This module provides the 'Adapter' layer that converts internal KaTrain
-objects (GameNode, AnalysisResult, GameSummaryData) into the standardized
+objects (MoveEval, GameSummaryData) into the standardized
 dictionaries defined in `schema.py`.
 """
 from typing import Optional, List, Any, Dict
 
-from katrain.core.game_node import GameNode
+from katrain.core.analysis.models import MoveEval
 from katrain.core.eval_metrics import (
     MistakeCategory,
     PositionDifficulty,
@@ -23,26 +23,26 @@ from katrain.core.reports.schema import MistakeItem, GameMeta
 
 
 class MoveExtractor:
-    """Extracts standardized data from a GameNode."""
+    """Extracts standardized data from a MoveEval."""
 
     @staticmethod
     def extract(
-        node: GameNode, 
-        game_id: Optional[str] = None, 
+        move: MoveEval,
+        game_id: Optional[str] = None,
         game_name: str = "",
         board_size: int = 19
     ) -> MistakeItem:
-        """Convert a GameNode into a MistakeItem dict."""
-        
+        """Convert a MoveEval into a MistakeItem dict."""
+
         # 1. Basic Info
-        move_number = node.move_number
-        player = "black" if node.player == "B" else "white" if node.player == "W" else "unknown"
-        coords = node.gtp or "-"
-        
+        move_number = move.move_number
+        player = "black" if move.player == "B" else "white" if move.player == "W" else "unknown"
+        coords = move.gtp or "-"
+
         # 2. Loss & Score
-        loss = node.points_lost if node.points_lost is not None else node.score_loss
+        loss = move.points_lost if move.points_lost is not None else move.score_loss
         loss_clamped = max(0.0, loss) if loss is not None else 0.0
-        importance = node.importance_score or 0.0
+        importance = move.importance_score or 0.0
 
         # 3. Phase Normalization
         try:
@@ -50,28 +50,28 @@ class MoveExtractor:
             phase = PHASE_ALIASES.get(phase, phase)
         except Exception:
             phase = "unknown"
-        
+
         if phase not in PHASES and phase != "unknown":
              phase = "unknown"
 
         # 4. Difficulty
-        difficulty = node.position_difficulty.value.lower() if node.position_difficulty else "unknown"
+        difficulty = move.position_difficulty.value.lower() if move.position_difficulty else "unknown"
         if difficulty == "easy":
             difficulty = "simple"
         elif difficulty not in DIFFICULTY_LEVELS:
             difficulty = "unknown"
 
         # 5. Mistake Type
-        mistake_type = node.mistake_category.value.lower() if node.mistake_category else "unknown"
+        mistake_type = move.mistake_category.value.lower() if move.mistake_category else "unknown"
         # Optional: Map to short codes if needed, but schema uses full names usually.
         # category_short = CATEGORY_ALIASES.get(mistake_type, mistake_type)
 
         # 6. Reason Codes Normalization
-        raw_tags = list(node.reason_tags) if node.reason_tags else []
+        raw_tags = list(move.reason_tags) if move.reason_tags else []
         reason_codes = sorted(list(set(REASON_CODE_ALIASES.get(t, t) for t in raw_tags)))
 
         # 7. Primary Tag
-        primary_tag = node.meaning_tag_id
+        primary_tag = move.meaning_tag_id
 
         return {
             "game_name": game_name,
@@ -161,7 +161,7 @@ class MetaExtractor:
              moves_count = 0
              
         # Game ID
-        gid = game_id or getattr(game_data, 'game_id', "unknown_id")
+        gid: str = game_id or str(getattr(game_data, 'game_id', "unknown_id"))
         
         # Name
         # GameSummaryData has game_name, Game usually doesn't store a 'name' per se unless external

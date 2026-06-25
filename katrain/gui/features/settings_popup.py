@@ -36,6 +36,7 @@ from katrain.common.settings_export import (
     get_default_value,
     parse_exported_settings,
 )
+from katrain.common.typed_config import LeelaConfig
 from katrain.core import eval_metrics
 from katrain.core.auto_setup import should_show_auto_tab_first  # Phase 89
 from katrain.core.constants import (
@@ -941,7 +942,7 @@ def do_mykatrain_settings_popup(
 
     # Leela Enabled Checkbox - REMOVED (Phase 123)
     # Replaced by Analysis Engine selection logic.
-    leela_config = ctx.config("leela") or {}
+    # leela_config is already loaded at line 545 via ctx.get_leela_config()
     leela_path_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_path_label = Label(
         text=i18n._("mykatrain:settings:leela_exe_path"),
@@ -1178,9 +1179,9 @@ def do_mykatrain_settings_popup(
     }
 
     # Phase 87.5 + Phase 89: Switch to initial_tab if specified, or auto if conditions met
-    if initial_tab and initial_tab in tab_by_id:
-        from kivy.clock import Clock
+    from kivy.clock import Clock
 
+    if initial_tab and initial_tab in tab_by_id:
         target_tab = tab_by_id[initial_tab]
         Clock.schedule_once(lambda dt: tabbed_panel.switch_to(target_tab), 0.1)
     elif initial_tab == "leela":

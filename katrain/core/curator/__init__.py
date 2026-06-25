@@ -35,16 +35,13 @@ from .guide_extractor import (
     extract_replay_guide,
 )
 from .models import (
-    AXIS_TO_MEANING_TAGS,
     DEFAULT_CONFIG,
-    SUPPORTED_AXES,
     UNCERTAIN_TAG,
     SuitabilityConfig,
     SuitabilityScore,
 )
 from .scoring import (
     compute_batch_percentiles,
-    compute_needs_match,
     compute_stability,
     score_batch_suitability,
     score_game_suitability,
@@ -56,13 +53,10 @@ __all__ = [
     "SuitabilityConfig",
     "DEFAULT_CONFIG",
     # Constants (Phase 63)
-    "AXIS_TO_MEANING_TAGS",
-    "SUPPORTED_AXES",
     "UNCERTAIN_TAG",
     # Scoring Functions (Phase 63)
     "score_game_suitability",
     "score_batch_suitability",
-    "compute_needs_match",
     "compute_stability",
     "compute_batch_percentiles",
     # Batch Output (Phase 64)

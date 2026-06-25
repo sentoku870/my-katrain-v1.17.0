@@ -24,12 +24,14 @@ class Definitions(TypedDict):
     difficulty_levels: Dict[str, str]
     phases: List[str]
     phase_aliases: Dict[str, str]
+    category_aliases: Optional[Dict[str, str]]
     primary_tags: List[str]
     reason_codes: List[str]
     reason_code_aliases: Dict[str, str]
     importance: Dict[str, Any]
 
-class MetaData(TypedDict):
+
+class MetaData(TypedDict, total=False):
     schema_version: str
     run_id: str
     date_range: Optional[List[str]]
@@ -38,7 +40,15 @@ class MetaData(TypedDict):
     loss_unit: str
     skill_preset: Optional[str]
     definitions: Definitions
-    # Other fields allowed
+    # Karte-specific fields
+    generated_at: Optional[str]
+    source_filename: Optional[str]
+    date: Optional[str]
+    players: Optional[Any]  # PlayerGameInfo or similar nested TypedDict
+    result: Optional[str]
+    komi: Optional[float]
+    handicap: Optional[int]
+    board_size: Optional[List[int]]
 
 class PlayerGameInfo(TypedDict):
     black: str
