@@ -693,23 +693,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         # 16. test_*_summary_*: build_player_summary now returns JSON-wrapped
         # markdown (Phase 137), but tests expect plain markdown content.
         # Tests would need a markdown-only fixture/parser to pass.
-        "tests/test_batch_analyzer.py::TestAnalysisSettingsSection::test_analysis_settings_present",
-        "tests/test_batch_analyzer.py::TestAnalysisSettingsSection::test_analysis_settings_variable_visits_on",
-        "tests/test_batch_analyzer.py::TestBatchAnalyzerCLI::test_import",
-        "tests/test_batch_analyzer.py::TestDataQualitySection::test_data_quality_section_present",
-        "tests/test_batch_analyzer.py::TestDataQualitySection::test_low_reliability_warning_triggers",
-        "tests/test_batch_analyzer.py::TestDefinitionsSection::test_definitions_section_present_in_summary",
-        "tests/test_batch_analyzer.py::TestJPLabels::test_auto_hint_in_manual_mode",
-        "tests/test_batch_analyzer.py::TestJPLabels::test_summary_uses_jp_labels",
-        "tests/test_batch_analyzer.py::TestPR1DataQualityMaxVisits::test_data_quality_shows_max_visits",
-        "tests/test_batch_analyzer.py::TestPR1ReasonTagsClarity::test_reason_tags_shows_important_moves_count",
-        "tests/test_batch_analyzer.py::TestPerGameMetrics::test_per_game_metrics_calculated",
-        "tests/test_batch_analyzer.py::TestPerGameMetrics::test_per_game_metrics_zero_games",
-        "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_no_reason_tags_shows_message",
-        "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_reason_tags_aggregated_across_games",
-        "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_reason_tags_counted_in_stats",
-        "tests/test_batch_analyzer.py::TestPlayerSummaryReasonTags::test_reason_tags_ordering_is_deterministic",
-        "tests/test_batch_analyzer.py::TestReasonTagsFromImportantMoves::test_summary_with_nonempty_reason_tags",
         "tests/test_batch_stats_imports.py::TestEvidenceMoveDataclassShape::test_evidence_move_field_names_and_order",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_i18n_getters_are_callable",
         "tests/test_batch_stats_imports.py::TestI18nGettersSemanticBehavior::test_section_header_jp_differs_from_en",
