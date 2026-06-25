@@ -41,8 +41,7 @@ base_path = "../katrain"
 sep = "/"
 
 datas = [
-    (f"{base_path}/gui.kv", "katrain"),
-    (f"{base_path}/popups.kv", "katrain"),
+    (f"{base_path}/gui/kv", "katrain/gui/kv"),
     (f"{base_path}/config.json", "katrain"),
     (f"{base_path}/models", "katrain/models"),
     (f"{base_path}/sounds", "katrain/sounds"),
