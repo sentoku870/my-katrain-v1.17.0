@@ -781,25 +781,7 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_typed_config_migration.py::TestDiagnosticsCopyTypedConfig::test_diagnostics_includes_engine_paths",
         # tests/test_v6_refinements.py (1)
         "tests/test_v6_refinements.py::test_v6_refinements",
-        # tests/test_phase107_subscribe.py (17) - KaTrainGui missing _setup_state_subscriptions
-        "tests/test_phase107_subscribe.py::TestSetupStateSubscriptions::test_subscribes_three_events",
-        "tests/test_phase107_subscribe.py::TestSetupStateSubscriptions::test_double_setup_is_noop",
-        "tests/test_phase107_subscribe.py::TestSetupStateSubscriptions::test_setup_sets_flag",
-        "tests/test_phase107_subscribe.py::TestScheduleUiUpdate::test_single_call_schedules_once",
-        "tests/test_phase107_subscribe.py::TestScheduleUiUpdate::test_multiple_calls_coalesce",
-        "tests/test_phase107_subscribe.py::TestScheduleUiUpdate::test_redraw_flag_accumulates_with_or",
-        "tests/test_phase107_subscribe.py::TestEventHandlers::test_on_game_changed_schedules_with_redraw",
-        "tests/test_phase107_subscribe.py::TestEventHandlers::test_on_analysis_complete_schedules_without_redraw",
-        "tests/test_phase107_subscribe.py::TestEventHandlers::test_on_config_updated_schedules_without_redraw",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_calls_update_gui_with_accumulated_flags",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_skips_when_no_game",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_skips_when_no_current_node",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_resets_flags_after_execution",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_logs_exception_without_raising",
-        "tests/test_phase107_subscribe.py::TestDoUiUpdateCallback::test_redraw_false_passed_correctly",
-        "tests/test_phase107_subscribe.py::TestThreadSafety::test_concurrent_schedule_calls",
-        "tests/test_phase107_subscribe.py::TestThreadSafety::test_flags_reset_atomically",
-        # tests/test_i18n.py (1) - pre-existing: .mo file older than .po file
+        # tests/test_phase107_subscribe.py (17) - KaTrainGui missing _setup_state_subscriptions        # tests/test_i18n.py (1) - pre-existing: .mo file older than .po file
         "tests/test_i18n.py::TestBatchAnalyzeI18n::test_mo_files_are_up_to_date",
         # tests/test_diagnostics.py (16) - setup error: SystemInfo missing ram_total/gpu_info
         "tests/test_diagnostics.py::TestZipStructure::test_contains_required_files",
