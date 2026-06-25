@@ -54,17 +54,9 @@ class TestCollectBatchOptionsEngine:
         assert "analysis_engine" in options
         assert options["analysis_engine"] == "katago"
 
-    def test_leela_selection(self):
-        """Leela selected -> analysis_engine = 'leela'."""
-        from katrain.gui.features.batch_core import collect_batch_options
-
-        widgets = self._create_mock_widgets(engine_selection="leela")
-        get_player_filter = Mock(return_value=None)
-
-        options = collect_batch_options(widgets, get_player_filter)
-
-        assert "analysis_engine" in options
-        assert options["analysis_engine"] == "leela"
+    # Phase 138: test_leela_selection removed — batch_core hardcodes
+    # `analysis_engine = "katago"` per user request, so the engine widget
+    # selection no longer affects the option. Covered by test_katago_selection.
 
     def test_default_without_engine_widgets(self):
         """Without engine widgets -> defaults to 'katago'."""

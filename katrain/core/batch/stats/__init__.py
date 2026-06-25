@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 # Aggregation - includes i18n getters and helper functions
 from .aggregation import (
+    _format_evidence_with_links,
+    _select_evidence_moves,
     build_batch_summary,
     detect_color_bias,
     format_hint_line,

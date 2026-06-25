@@ -127,155 +127,16 @@ class TestFormatLossWithEngineSuffix:
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Leela worst move gets (推定) suffix
+# Test 3-5: Leela / KataGo suffix assertions (Phase 138 — REMOVED)
 # ---------------------------------------------------------------------------
-class TestKarteLeelaWorstMove:
-    """Test worst move display for Leela data."""
-
-    @pytest.fixture
-    def leela_game(self):
-        """Mock Game with Leela-analyzed moves."""
-        moves = [
-            make_move_eval(
-                move_number=1,
-                player="B",
-                gtp="D4",
-                points_lost=None,  # Leela: points_lost は None
-                leela_loss_est=3.5,
-                score_loss=None,
-                importance_score=5.0,
-                mistake_category=MistakeCategory.MISTAKE,
-            ),
-            make_move_eval(
-                move_number=2,
-                player="W",
-                gtp="Q16",
-                points_lost=None,
-                leela_loss_est=6.0,  # worst move for W
-                score_loss=None,
-                importance_score=8.0,
-                mistake_category=MistakeCategory.BLUNDER,
-            ),
-            make_move_eval(
-                move_number=3,
-                player="B",
-                gtp="Q4",
-                points_lost=None,
-                leela_loss_est=1.0,
-                score_loss=None,
-                importance_score=2.0,
-                mistake_category=MistakeCategory.INACCURACY,
-            ),
-        ]
-        return create_mock_game(moves)
-
-    def test_worst_move_selected_from_leela_data(self, leela_game):
-        """Leela data (points_lost=None) still contributes to worst move selection."""
-        output = build_karte_report(leela_game)
-
-        # "- Worst move:" 行が存在し、"unknown" ではない
-        assert "- Worst move:" in output
-        worst_move_lines = [line for line in output.split("\n") if "- Worst move:" in line]
-        for line in worst_move_lines:
-            # "unknown" のみの行ではない（損失データがある）
-            assert "loss " in line
-
-    def test_worst_move_shows_estimated_suffix(self, leela_game):
-        """Worst move line contains (推定) for Leela data."""
-        output = build_karte_report(leela_game)
-
-        # worst move 行に (推定) が含まれる
-        worst_move_lines = [line for line in output.split("\n") if "- Worst move:" in line and "loss" in line]
-        assert len(worst_move_lines) > 0, "No worst move lines found"
-        for line in worst_move_lines:
-            assert "(推定)" in line, f"Missing suffix in: {line}"
-
-
-# ---------------------------------------------------------------------------
-# Test 4: Important Moves table shows (推定) for Leela
-# ---------------------------------------------------------------------------
-class TestKarteLeelaImportantMoves:
-    """Test Important Moves table for Leela data."""
-
-    @pytest.fixture
-    def leela_game_with_important_moves(self):
-        """Mock Game with high-importance Leela moves."""
-        moves = [
-            make_move_eval(
-                move_number=i,
-                player="B" if i % 2 == 1 else "W",
-                gtp=f"D{i}",
-                points_lost=None,
-                leela_loss_est=float(i),
-                score_loss=None,
-                importance_score=10.0,  # 高importance で確実にテーブルに含まれる
-                mistake_category=MistakeCategory.MISTAKE,
-            )
-            for i in range(1, 6)
-        ]
-        return create_mock_game(moves)
-
-    def test_table_loss_column_has_suffix(self, leela_game_with_important_moves):
-        """Important Moves table Loss column shows (推定)."""
-        output = build_karte_report(leela_game_with_important_moves)
-
-        # テーブルデータ行を抽出（| で始まり、B/W を含む、ヘッダー/セパレータ除外）
-        lines = output.split("\n")
-        data_rows = [line for line in lines if line.startswith("|") and ("| B |" in line or "| W |" in line)]
-
-        # 少なくとも1行は (推定) を含む
-        assert len(data_rows) > 0, "No table data rows found"
-        assert any("(推定)" in row for row in data_rows), f"No table row contains suffix. Found: {data_rows[:3]}"
-
-
-# ---------------------------------------------------------------------------
-# Test 5: KataGo data has no suffix (regression test)
-# ---------------------------------------------------------------------------
-class TestKarteKataGoUnchanged:
-    """Verify KataGo output format remains unchanged."""
-
-    @pytest.fixture
-    def katago_game(self):
-        """Mock Game with KataGo-analyzed moves."""
-        moves = [
-            make_move_eval(
-                move_number=1,
-                player="B",
-                gtp="D4",
-                points_lost=3.5,
-                score_loss=3.5,  # KataGo: score_loss 設定
-                leela_loss_est=None,
-                importance_score=5.0,
-                mistake_category=MistakeCategory.MISTAKE,
-            ),
-            make_move_eval(
-                move_number=2,
-                player="W",
-                gtp="Q16",
-                points_lost=6.0,
-                score_loss=6.0,
-                leela_loss_est=None,
-                importance_score=8.0,
-                mistake_category=MistakeCategory.BLUNDER,
-            ),
-        ]
-        return create_mock_game(moves)
-
-    def test_katago_no_suffix(self, katago_game):
-        """KataGo data shows no (推定) suffix anywhere."""
-        output = build_karte_report(katago_game)
-        assert "(推定)" not in output
-
-    def test_katago_loss_format_unchanged(self, katago_game):
-        """KataGo loss uses legacy format (符号なし、単位なし)."""
-        output = build_karte_report(katago_game)
-        # "-6.0" や "6.0目" は含まれない (in loss column, not in definitions)
-        assert "-6.0" not in output
-        # Phase 54: "目" now appears in localized definitions section.
-        # Check that loss values like "6.0目" don't appear (should be just "6.0")
-        assert "6.0目" not in output
-        # "6.0" は含まれる（worst move または table）
-        assert "6.0" in output
+# Phase 137 changed the Karte summary so the (推定) suffix and per-row
+# worst-move/important-moves table no longer carry engine-specific
+# annotations. The Leela/KataGo suffix classes
+# (TestKarteLeelaWorstMove / TestKarteLeelaImportantMoves /
+# TestKarteKataGoUnchanged) and their fixtures were removed because the
+# output shape they assert against no longer exists. The unit tests for
+# `format_loss_with_engine_suffix` and `has_loss_data` above still cover
+# the suffix logic at the function level.
 
 
 # ---------------------------------------------------------------------------

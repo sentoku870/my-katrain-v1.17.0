@@ -60,7 +60,8 @@ def test_v6_refinements():
     imp_def = karte["meta"]["definitions"]["importance"]
     print(f"Importance Definition: {imp_def}")
     assert isinstance(imp_def, dict)
-    assert imp_def["scale"] == "0.0 to 10.0+"
+    # Phase 137: scale is now logarithmic (0.0 to unbounded)
+    assert imp_def["scale"] == "0.0 to unbounded (logarithmic)"
     
     # 3. Test Summary Reason Tag Aggregation
     gsd = GameSummaryData(
@@ -78,9 +79,11 @@ def test_v6_refinements():
     
     blk_tags = summary["players"]["Black"]["reason_tags"]
     print(f"Summary Reason Tags (Black): {blk_tags}")
-    assert "reading" in blk_tags
-    assert "shape" in blk_tags
-    assert blk_tags["reading"]["count"] == 1
+    # Phase 138: reason_tags is now a structured block with {status, data, stats}
+    blk_data = blk_tags["data"]
+    assert "reading" in blk_data
+    assert "shape" in blk_data
+    assert blk_data["reading"]["count"] == 1
     
     print("\n[SUCCESS] Phase v6 Refinements Verified.")
 
