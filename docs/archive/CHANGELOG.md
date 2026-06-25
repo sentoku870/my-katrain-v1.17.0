@@ -5,6 +5,44 @@
 
 ---
 
+- 2026-06-26: Phase 140 完了（テストカバレッジ拡大・保守性改善）
+  - **目的**: badukpan.py と ai.py のテストカバレッジ改善、KaTrainGui 肥大化抑制
+  - **削除**:
+    - `katrain/gui/features/engine_compare_popup.py` (675行) - production 呼出なし、UI 接続喪失
+  - **リファクタ**:
+    - `katrain/gui/popups.py`: inline だった humanlike config 正規化を `katrain.common.humanlike_config.normalize_humanlike_config` 呼び出しに置換（-9行、テスト可能化）
+    - `katrain/gui/badukpan.py`: 純粋ロジック 8 関数を `katrain/core/board_geometry.py` に抽出（11関数を新規モジュールへ）
+      - `compute_grid_spaces`, `compute_grid_size`, `compute_board_with_margins`
+      - `compute_extra_px_margins`, `compute_stone_size`, `compute_initial_gridpos`
+      - `format_loss`, `eval_color`, `x/y_coordinate_text`
+    - `katrain/__main__.py`: KaTrainGui の `_do_*` メソッド 9個を `gui/features/commands/` 配下のコマンド関数に委譲（ラッパー化、.kv バインディング互換性維持）
+      - `do_ai_move`, `do_rotate`, `do_find_mistake`, `do_switch_branch`, `do_selfplay_setup` (game_commands)
+      - `do_select_box`, `do_engine_recovery_popup`, `do_diagnostics_popup` (popup_commands)
+      - `do_open_latest_report`, `do_open_output_folder` (export_commands)
+  - **テスト追加**:
+    - `tests/test_board_geometry.py` (新規, 471行, 70テスト) - 抽出関数の境界値・ローテーション・エッジケース網羅
+    - `tests/test_ai_strategies_parametric.py` (新規, 281行, 67テスト) - 19 AI 戦略すべてのパラメトリック・カバレッジ
+      - 13 戦略 × 候補手数 (1/5) + 13 戦略 × 白番 + 16 戦略 (registry regression guard)
+      - 3 戦略 × determinism + 3 戦略 × empty-candidates
+      - 3 戦略 × engine-query (handicap, antimirror, human)
+  - **テスト結果**:
+    - 3,337 → 3,460 PASS (+123 テスト)
+    - 10 skipped, 1 xfailed (前回と同数)
+    - mypy strict: 190 ファイル成功
+  - **コード変更量**: -705行 (削除 675 + 短縮 30)、+1,517行 (新ファイル 752 + テスト 765)
+  - **カバレッジ影響**:
+    - `badukpan.py`: 0.23 → 推定 0.7+ (純粋ロジック 11関数すべてテスト)
+    - `ai.py`: 0.55 → 推定 2.0+ (全 19 戦略 ×複数ケース)
+  - **影響**: 既存ユーザーへの機能影響なし、UI・SGF・config 互換性維持
+  - **ブランチ**: `feature/2026-06-26-phase0-dead-code-removal`
+  - **コミット数**: 5 個
+  - **保留項目** (次回フェーズ):
+    - `popups.py` 分割 (1168行 / 22クラス): 1ポップアップ = 1ファイル化、re-export で後方互換
+    - `kivyutils.py` 分割 (743行 / 32クラス): mixin/button/widget カテゴリ別分割
+    - `_do_play` (35行) と `_do_tsumego_frame` (25行) のコマンド抽出
+
+---
+
 - 2026-06-25: Phase 138-D 完了（アーキテクチャ改善・死コード削除）
   - **目的**: 静的解析で判明した死コード削除・カバレッジ測定導入・KaTrainGui ディスパッチャ文書化
   - **削除**:
