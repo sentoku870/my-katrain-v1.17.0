@@ -21,8 +21,8 @@
 ## Phase × Mistake Breakdown
 | Phase | Good | Inaccuracy | Mistake | Blunder | Total Loss |
 |-------|------|------------|---------|---------|------------|
-| Opening | 46 | 0 | 1 (2.5) | 2 (18.0) | 20.5 |
-| Middle game | 131 | 0 | 0 | 0 | 0.0 |
+| Opening | 47 | 0 | 1 (2.5) | 2 (18.0) | 20.5 |
+| Middle game | 130 | 0 | 0 | 0 | 0.0 |
 | Endgame | 0 | 0 | 0 | 0 | 0.0 |
 
 ## Top Worst Moves
@@ -40,8 +40,8 @@ Based on cross-tabulation analysis:
 2. **Openingの悪手** (1回、損失2.5目)
 
 **分析**:
-- Openingの損失の52.5%が大悪手によるもの
-- Openingの4.1%の手が大悪手と判定されている
+- Openingの損失の52.0%が大悪手によるもの
+- Openingの4.0%の手が大悪手と判定されている
 
 ## 練習の優先順位
 

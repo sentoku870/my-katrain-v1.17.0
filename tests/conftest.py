@@ -715,22 +715,7 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         # but passes in isolation. Likely a global state pollution issue.
         "tests/test_golden_karte.py::TestKarteFromSGF::test_karte_output_is_deterministic",
         # tests/test_golden_summary.py (3)
-        "tests/test_golden_summary.py::TestSummaryFromSGF::test_single_sgf_summary_matches_golden",
-        "tests/test_golden_summary.py::TestSummaryFromSGF::test_summary_from_sgf_matches_golden",
-        "tests/test_golden_summary.py::TestSummaryFromSGF::test_summary_output_is_deterministic",
         # tests/test_golden_summary.py additional (12)
-        "tests/test_golden_summary.py::TestSummaryGolden::test_summary_output_matches_golden",
-        "tests/test_golden_summary.py::TestSummaryGolden::test_summary_without_focus_player",
-        "tests/test_golden_summary.py::TestSummaryGolden::test_summary_single_game",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_meta_section_content",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_overall_statistics_section",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_mistake_distribution_table",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_phase_mistake_breakdown_table",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_worst_moves_section",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_weakness_hypothesis_section",
-        "tests/test_golden_summary.py::TestSummaryStructure::test_practice_priorities_section",
-        "tests/test_golden_summary.py::TestSummaryReasonTags::test_reason_tags_section_present",
-        "tests/test_golden_summary.py::TestSummaryReasonTags::test_no_reason_tags_section_when_empty",
         # tests/test_karte_json.py (16)
         # tests/test_karte_leela_integration.py (5)
         "tests/test_karte_leela_integration.py::TestKarteKataGoUnchanged::test_katago_loss_format_unchanged",
