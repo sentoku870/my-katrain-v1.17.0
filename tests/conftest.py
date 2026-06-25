@@ -727,22 +727,6 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_golden_summary.py::TestSummaryReasonTags::test_reason_tags_section_present",
         "tests/test_golden_summary.py::TestSummaryReasonTags::test_no_reason_tags_section_when_empty",
         # tests/test_karte_json.py (16)
-        "tests/test_karte_json.py::TestBuildKarteJson::test_at_least_one_important_move",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_coords_format",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_important_moves_structure",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_json_schema_version",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_section_present",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_values",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_phase_values",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_player_filter_black",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_player_filter_white",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_player_values",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_points_lost_nonnegative",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_reason_tags_is_list",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_summary_mistake_distribution",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_summary_section_present",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_summary_total_moves",
-        "tests/test_karte_json.py::TestBuildKarteJson::test_units_description",
         # tests/test_karte_leela_integration.py (5)
         "tests/test_karte_leela_integration.py::TestKarteKataGoUnchanged::test_katago_loss_format_unchanged",
         "tests/test_karte_leela_integration.py::TestKarteKataGoUnchanged::test_katago_no_suffix",
@@ -758,6 +742,16 @@ _XFAIL_TESTS: frozenset[str] = frozenset(
         "tests/test_karte_structure.py::TestClassifyGamePhase::test_19x19_yose",
         "tests/test_karte_structure.py::TestClassifyGamePhase::test_9x9_middle",
         "tests/test_karte_structure.py::TestClassifyGamePhase::test_9x9_yose",
+
+        # tests/test_karte_json.py partial (6 of 16 - schema-mismatched assertions)
+        # 10 of 16 pass with Phase 137 schema; remaining 6 expect stale keys (units,
+        # reason_tags, players.black, etc). Tracked separately.
+        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_section_present",
+        "tests/test_karte_json.py::TestBuildKarteJson::test_meta_values",
+        "tests/test_karte_json.py::TestBuildKarteJson::test_important_moves_structure",
+        "tests/test_karte_json.py::TestBuildKarteJson::test_points_lost_nonnegative",
+        "tests/test_karte_json.py::TestBuildKarteJson::test_reason_tags_is_list",
+        "tests/test_karte_json.py::TestBuildKarteJson::test_units_description",
         # tests/test_pattern_summary_contract.py (4)
         "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_corrupt_data",
         "tests/test_pattern_summary_contract.py::TestProductionSafety::test_summary_does_not_crash_on_invalid_gtp_format",

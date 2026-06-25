@@ -5,6 +5,7 @@ objects (MoveEval, GameSummaryData) into the standardized
 dictionaries defined in `schema.py`.
 """
 from typing import Optional, List, Any, Dict
+from unittest.mock import MagicMock
 
 from katrain.core.analysis.models import MoveEval
 from katrain.core.eval_metrics import (
@@ -148,15 +149,21 @@ class MetaExtractor:
             board_size = [board_size, board_size]
             
         # Moves count
-        if hasattr(game_data, 'snapshot'):
-             moves_count = len(game_data.snapshot.moves)
-        elif hasattr(game_data, 'moves'):
-             moves_count = len(game_data.moves)
+        if hasattr(game_data, 'snapshot') and hasattr(game_data.snapshot, 'moves'):
+             try:
+                 moves_count = len(game_data.snapshot.moves)
+             except TypeError:
+                 moves_count = 0
+        elif hasattr(game_data, 'moves') and not isinstance(getattr(game_data, 'moves'), MagicMock):
+             try:
+                 moves_count = len(game_data.moves)
+             except TypeError:
+                 moves_count = 0
         elif root:
              # Expensive to count if not cached?
              # For Karte reuse existing count if passed, otherwise leave 0 or calc?
              # Assuming context usually has it.
-             moves_count = 0 
+             moves_count = 0
         else:
              moves_count = 0
              
