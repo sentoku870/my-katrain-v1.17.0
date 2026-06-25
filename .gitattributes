@@ -1,0 +1,50 @@
+# Line ending normalization for myKatrain
+# All text files use LF; binary files are explicitly marked.
+* text=auto eol=lf
+
+# Force LF for source/config files
+*.py    text eol=lf
+*.kv    text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.po    text eol=lf
+*.mo    binary
+*.po~   text eol=lf
+*.spec  text eol=lf
+
+# Shell / build scripts
+*.sh    text eol=lf
+*.ps1   text eol=lf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Explicit binary types (no conversion)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.svg   text eol=lf
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tar   binary
+*.exe   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.bin   binary
+*.onnx  binary
+*.pt    binary
+*.pb    binary
+*.tflite binary
+*.gguf  binary
+*.bin.gz binary
