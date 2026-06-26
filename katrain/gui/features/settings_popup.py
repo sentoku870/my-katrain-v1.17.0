@@ -430,29 +430,7 @@ def do_mykatrain_settings_popup(
     # Main layout: Search + TabbedPanel + Buttons
     main_layout = BoxLayout(orientation="vertical", spacing=dp(8))
 
-    # Search bar
-    search_layout = BoxLayout(orientation="horizontal", spacing=dp(8), size_hint_y=None, height=dp(40))
-    search_input = TextInput(
-        hint_text=i18n._("mykatrain:settings:search_placeholder"),
-        multiline=False,
-        size_hint_x=0.85,
-        height=dp(40),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        foreground_color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    search_clear_btn = Button(
-        text=i18n._("mykatrain:settings:search_clear"),
-        size_hint_x=0.15,
-        height=dp(40),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    search_layout.add_widget(search_input)
-    search_layout.add_widget(search_clear_btn)
-
-    # Searchable widgets list (populated after widget creation)
+    # Phase 145-D: Searchable widgets list (populated after widget creation)
     searchable_widgets: list[dict[str, Any]] = []
 
     def register_searchable(label_text: str, *widgets: Any) -> None:
@@ -460,25 +438,8 @@ def do_mykatrain_settings_popup(
         for widget in widgets:
             searchable_widgets.append({"label_text": label_text, "widget": widget})
 
-    def on_search_text_change(instance: Any, value: str) -> None:
-        """検索テキスト変更時のフィルタ処理"""
-        query = value.strip().lower()
-        for item in searchable_widgets:
-            label_text = item.get("label_text", "").lower()
-            widget = item.get("widget")
-            if widget is None:
-                continue
-            if query and query not in label_text:
-                widget.opacity = 0.3
-            else:
-                widget.opacity = 1.0
-
-    def on_search_clear(*_args: Any) -> None:
-        """検索をクリア"""
-        search_input.text = ""
-
-    search_input.bind(text=on_search_text_change)
-    search_clear_btn.bind(on_release=on_search_clear)
+    # Search bar (Phase 145-D: extracted helper)
+    search_layout, search_input = _build_search_bar(searchable_widgets, register_searchable)
 
     # TabbedPanel with 3 tabs
     tabbed_panel = TabbedPanel(
@@ -1123,40 +1084,8 @@ def do_mykatrain_settings_popup(
 
 
 
-    # Buttons (outside TabbedPanel)
-    buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
-    export_button = Button(
-        text=i18n._("mykatrain:settings:export"),
-        size_hint_x=0.25,
-        height=dp(48),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    import_button = Button(
-        text=i18n._("mykatrain:settings:import"),
-        size_hint_x=0.25,
-        height=dp(48),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    save_button = Button(
-        text=i18n._("Save"),
-        size_hint_x=0.25,
-        height=dp(48),
-        background_color=Theme.BOX_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    cancel_button = Button(
-        text=i18n._("Cancel"),
-        size_hint_x=0.25,
-        height=dp(48),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    buttons_layout.add_widget(export_button)
-    buttons_layout.add_widget(import_button)
-    buttons_layout.add_widget(save_button)
-    buttons_layout.add_widget(cancel_button)
+    # Buttons (outside TabbedPanel) - Phase 145-D: extracted helper
+    buttons_layout, export_button, import_button, save_button, cancel_button = _build_button_row()
 
     # Assemble tabs
     tab1_scroll.add_widget(tab1_inner)
@@ -1423,3 +1352,110 @@ def do_mykatrain_settings_popup(
     tab3_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "leela", popup, reopen_popup))
 
     popup.open()
+
+
+# =============================================================================
+# Phase 145-D: Extracted helpers from do_mykatrain_settings_popup
+# =============================================================================
+
+
+def _build_search_bar(
+    searchable_widgets: list[dict[str, Any]],
+    register_searchable: Callable[[str, Any], None],
+) -> tuple[BoxLayout, TextInput]:
+    """Build the search bar (text input + clear button) and wire search callbacks.
+
+    Args:
+        searchable_widgets: Mutable list that the on_text callback will iterate
+            over to filter visible widgets.
+        register_searchable: Closure to register a widget as searchable.
+
+    Returns:
+        (search_layout, search_input) tuple. The layout is ready to be added to
+        a parent; search_input is returned so the caller can clear its text.
+    """
+
+    def on_search_text_change(instance: Any, value: str) -> None:
+        """検索テキスト変更時のフィルタ処理"""
+        query = value.strip().lower()
+        for item in searchable_widgets:
+            label_text = item.get("label_text", "").lower()
+            widget = item.get("widget")
+            if widget is None:
+                continue
+            if query and query not in label_text:
+                widget.opacity = 0.3
+            else:
+                widget.opacity = 1.0
+
+    search_layout = BoxLayout(orientation="horizontal", spacing=dp(8), size_hint_y=None, height=dp(40))
+    search_input = TextInput(
+        hint_text=i18n._("mykatrain:settings:search_placeholder"),
+        multiline=False,
+        size_hint_x=0.85,
+        height=dp(40),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        foreground_color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    search_clear_btn = Button(
+        text=i18n._("mykatrain:settings:search_clear"),
+        size_hint_x=0.15,
+        height=dp(40),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    search_layout.add_widget(search_input)
+    search_layout.add_widget(search_clear_btn)
+
+    def on_search_clear(*_args: Any) -> None:
+        """検索をクリア"""
+        search_input.text = ""
+
+    search_input.bind(text=on_search_text_change)
+    search_clear_btn.bind(on_release=on_search_clear)
+
+    return search_layout, search_input
+
+
+def _build_button_row() -> tuple[BoxLayout, Button, Button, Button, Button]:
+    """Build the bottom button row (Export / Import / Save / Cancel).
+
+    Returns:
+        (buttons_layout, export_button, import_button, save_button, cancel_button)
+    """
+    buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
+    export_button = Button(
+        text=i18n._("mykatrain:settings:export"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    import_button = Button(
+        text=i18n._("mykatrain:settings:import"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    save_button = Button(
+        text=i18n._("Save"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.BOX_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    cancel_button = Button(
+        text=i18n._("Cancel"),
+        size_hint_x=0.25,
+        height=dp(48),
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+    buttons_layout.add_widget(export_button)
+    buttons_layout.add_widget(import_button)
+    buttons_layout.add_widget(save_button)
+    buttons_layout.add_widget(cancel_button)
+    return buttons_layout, export_button, import_button, save_button, cancel_button

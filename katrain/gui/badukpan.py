@@ -1136,6 +1136,16 @@ class BadukPanWidget(Widget):
         return top_move_coords
 
     def draw_hover_contents(self, *_args: Any) -> None:
+        """Orchestrator: draw all hover overlays on the board (Phase 145 split).
+
+        Phase 145: Split the previous 239-line function into focused sub-methods:
+        - _prepare_hint_moves: collect + filter candidate moves
+        - _draw_leela_or_kata_hints: dispatch to Leela candidates or KataGo hint markers
+        - _draw_kata_hint_marker: per-move drawing of hint marker + text
+        - _draw_children_markers: show child node markers
+        - _draw_hover_overlay: ROI selection / ghost stone / PV animation
+        - _draw_pass_circle: pass / game ended circle
+        """
         ghost_alpha = Theme.GHOST_ALPHA
         katrain = self.katrain
         game_ended = katrain.game.end_result
@@ -1148,232 +1158,299 @@ class BadukPanWidget(Widget):
 
         with self.canvas.after:
             self.canvas.after.clear()
-
             self.active_pv_moves = []
-            # hints or PV
-            hint_moves = []
-            if (
-                katrain.analysis_controls.hints.active
-                and not katrain.analysis_controls.policy.active
-                and not game_ended
-                and not katrain.is_fog_active()  # Phase 93: Fog of War
-            ):
-                hint_moves = current_node.candidate_moves
-            elif katrain.controls.status_state[1] == STATUS_TEACHING:  # show score hint for teaching  undo
-                hint_moves = [
-                    m
-                    for m in current_node.candidate_moves
-                    for c in current_node.children
-                    if c.move and c.auto_undo and c.move.gtp() == m["move"]
-                ]
 
-            # Apply PV filter to hint_moves (Phase 11)
-            if hint_moves:
-                pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
-                skill_preset = katrain.config("general/skill_preset")
-                pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
-                if pv_filter_config is not None:
-                    hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
-
-            top_move_coords = None
-            child_moves = {c.move.gtp() for c in current_node.children if c.move}
-
-            # Phase 100: Cache typed config for this draw call (no persistent cache)
-            leela_cfg = katrain.get_leela_config()
-            trainer_cfg = katrain.get_trainer_config()
-
-            # Check if Leela mode is active and has analysis
-            leela_enabled = leela_cfg.enabled
-            leela_analysis = current_node.leela_analysis if leela_enabled else None
-
-            # Phase 121: Prioritize Leela candidates. If Leela is enabled, suppress KataGo hints.
-            if leela_enabled:
-                hint_moves = []
-
-            # Phase 93: Fog of War hides Leela candidates too
-            if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
-                # Draw Leela candidate markers
-                low_visits_threshold = trainer_cfg.low_visits
-                top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
-            elif hint_moves:
-                low_visits_threshold = trainer_cfg.low_visits
-                top_moves_show = [
-                    opt
-                    for opt in [
-                        katrain.config("trainer/top_moves_show"),
-                        katrain.config("trainer/top_moves_show_secondary"),
-                    ]
-                    if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
-                ]
-                for move_dict in hint_moves:
-                    move = Move.from_gtp(move_dict["move"])
-                    if move.coords is not None:
-                        engine_best_move = move_dict.get("order", 99) == 0
-                        scale = Theme.HINT_SCALE
-                        text_on = True
-                        alpha = Theme.HINTS_ALPHA
-                        if (
-                            move_dict["visits"] < low_visits_threshold
-                            and not engine_best_move
-                            and move_dict["move"] not in child_moves
-                        ):
-                            scale = Theme.UNCERTAIN_HINT_SCALE
-                            text_on = False
-                            alpha = Theme.HINTS_LO_ALPHA
-
-                        if scale <= 0:  # if theme turns hints off, do not draw them
-                            continue
-
-                        if "pv" in move_dict:
-                            self.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
-                        else:
-                            katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
-                        evalsize = self.stone_size * scale
-                        evalcol = self.eval_color(move_dict["pointsLost"])
-                        if text_on and top_moves_show:  # remove grid lines using a board colored circle
-                            draw_circle(
-                                (
-                                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                                ),
-                                self.stone_size * scale * 0.98,
-                                Theme.APPROX_BOARD_COLOR,
-                            )
-
-                        if evalcol:
-                            Color(*evalcol[:3], alpha)
-                        else:
-                            continue
-                        Rectangle(
-                            pos=(
-                                self.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
-                                self.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
-                            ),
-                            size=(2 * evalsize, 2 * evalsize),
-                            texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
-                        )
-                        if text_on and top_moves_show:  # TODO: faster if not sized?
-                            keys: dict[str, Any] = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
-                            player_sign = current_node.player_sign(next_player)
-                            if len(top_moves_show) == 1:
-                                fmt = "[size={size:.0f}]{" + top_moves_show[0] + "}[/size]"
-                            else:
-                                fmt = (
-                                    "[size={size:.0f}]{"
-                                    + top_moves_show[0]
-                                    + "}[/size]\n[size={smallsize:.0f}]{"
-                                    + top_moves_show[1]
-                                    + "}[/size]"
-                                )
-
-                            keys[TOP_MOVE_DELTA_SCORE] = self.format_loss(-move_dict["pointsLost"])
-                            #                           def fmt_maybe_missing(arg,sign,digits=1):
-                            #                               return str(round(sign*arg,digits)) if arg is not None else "N/A"
-
-                            keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict['scoreLead']:.1f}"
-                            winrate = move_dict["winrate"] if player_sign == 1 else 1 - move_dict["winrate"]
-                            keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
-                            keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict['winrateLost']:+.1%}"
-                            keys[TOP_MOVE_VISITS] = format_visits(move_dict["visits"])
-
-                            Color(*Theme.HINT_TEXT_COLOR)
-                            draw_text(
-                                pos=(
-                                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                                ),
-                                text=fmt.format(**keys),
-                                font_name="Roboto",
-                                markup=True,
-                                line_height=0.85,
-                                halign="center",
-                            )
-
-                        if engine_best_move:
-                            top_move_coords = move.coords
-                            # Use the same color as the move marker for consistency
-                            if evalcol:
-                                Color(*evalcol)
-                            else:
-                                Color(*Theme.TOP_MOVE_BORDER_COLOR)
-                            Line(
-                                circle=(
-                                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                                    self.stone_size - dp(1.2),
-                                ),
-                                width=dp(1.2),
-                            )
-
-            # children of current moves in undo / review
-            # Phase 93: Fog of War hides child markers (could reveal next move)
-            if katrain.analysis_controls.show_children.active and not katrain.is_fog_active():
-                for child_node in current_node.children:
-                    move = child_node.move
-                    if move and move.coords is not None:
-                        if child_node.analysis_exists:
-                            self.active_pv_moves.append(
-                                (move.coords, [move.gtp()] + child_node.candidate_moves[0]["pv"], current_node)
-                            )
-
-                        if move.coords != top_move_coords:  # for contrast
-                            dashed_width = 18
-                            Color(*Theme.NEXT_MOVE_DASH_CONTRAST_COLORS[child_node.player])
-                            Line(
-                                circle=(
-                                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                                    self.stone_size - dp(1.2),
-                                ),
-                                width=dp(1.2),
-                            )
-                        else:
-                            dashed_width = 10
-                        Color(*Theme.STONE_COLORS[child_node.player])
-                        for s in range(0, 360, 30):
-                            Line(
-                                circle=(
-                                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                                    self.stone_size - dp(1.2),
-                                    s,
-                                    s + dashed_width,
-                                ),
-                                width=dp(1.2),
-                            )
+            hint_moves = self._prepare_hint_moves(current_node, game_ended)
+            top_move_coords = self._draw_leela_or_kata_hints(current_node, hint_moves, next_player)
+            self._draw_children_markers(current_node, top_move_coords)
 
             if self.selecting_region_of_interest and len(self.region_of_interest) == 4:
                 self.draw_roi_box(self.region_of_interest, width=dp(2))
             else:
-                # hover next move ghost stone
-                if self.ghost_stone:
-                    self.draw_stone(*self.ghost_stone, next_player, alpha=ghost_alpha)
+                self._draw_hover_overlay(ghost_alpha, next_player)
 
-                animating_pv = self.animating_pv
-                if animating_pv:
-                    pv, node, start_time, _ = animating_pv
-                    up_to_move = self.get_animate_pv_index()
-                    self.draw_pv(pv, node, up_to_move)
-
-                if getattr(self.katrain.game, "region_of_interest", None):
-                    self.draw_roi_box(self.katrain.game.region_of_interest, width=dp(1.25))
-
-            # pass circle
-            if current_node.is_pass or game_ended:
-                if game_ended:
-                    text = game_ended
-                    katrain.controls.timer.paused = True
-                else:
-                    text = i18n._("board-pass")
-                Color(*Theme.PASS_CIRCLE_COLOR)
-                center = (self.initial_gridpos_x[int(board_size_x / 2)], self.initial_gridpos_y[int(board_size_y / 2)])
-                size = min(self.width, self.height) * 0.227
-                Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
-                Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
-                draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
+            self._draw_pass_circle(current_node, game_ended, board_size_x, board_size_y)
 
         # Update PV animation state after canvas block
         self._update_pv_animation_state()
+
+    def _prepare_hint_moves(self, current_node: Any, game_ended: Any) -> list[dict[str, Any]]:
+        """Collect and filter candidate moves for hover hints.
+
+        Returns:
+            List of candidate move dicts (possibly empty).
+        """
+        katrain = self.katrain
+        hint_moves: list[dict[str, Any]] = []
+        if (
+            katrain.analysis_controls.hints.active
+            and not katrain.analysis_controls.policy.active
+            and not game_ended
+            and not katrain.is_fog_active()  # Phase 93: Fog of War
+        ):
+            hint_moves = current_node.candidate_moves
+        elif katrain.controls.status_state[1] == STATUS_TEACHING:  # show score hint for teaching  undo
+            hint_moves = [
+                m
+                for m in current_node.candidate_moves
+                for c in current_node.children
+                if c.move and c.auto_undo and c.move.gtp() == m["move"]
+            ]
+
+        # Apply PV filter to hint_moves (Phase 11)
+        if hint_moves:
+            pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
+            skill_preset = katrain.config("general/skill_preset")
+            pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
+            if pv_filter_config is not None:
+                hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
+
+        return hint_moves
+
+    def _draw_leela_or_kata_hints(
+        self, current_node: Any, hint_moves: list[dict[str, Any]], next_player: str
+    ) -> Any:
+        """Dispatch to Leela candidate drawing or KataGo hint drawing.
+
+        Returns:
+            top_move_coords: coords of the engine's best move (for contrast in child markers)
+        """
+        katrain = self.katrain
+        # Phase 100: Cache typed config for this draw call (no persistent cache)
+        leela_cfg = katrain.get_leela_config()
+        trainer_cfg = katrain.get_trainer_config()
+
+        leela_enabled = leela_cfg.enabled
+        leela_analysis = current_node.leela_analysis if leela_enabled else None
+
+        # Phase 121: Prioritize Leela candidates. If Leela is enabled, suppress KataGo hints.
+        if leela_enabled:
+            hint_moves = []
+
+        top_move_coords = None
+        # Phase 93: Fog of War hides Leela candidates too
+        if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
+            low_visits_threshold = trainer_cfg.low_visits
+            top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
+        elif hint_moves:
+            top_move_coords = self._draw_kata_hint_moves(current_node, hint_moves, next_player, trainer_cfg.low_visits)
+        return top_move_coords
+
+    def _draw_kata_hint_moves(
+        self,
+        current_node: Any,
+        hint_moves: list[dict[str, Any]],
+        next_player: str,
+        low_visits_threshold: int,
+    ) -> Any:
+        """Draw KataGo hint markers for each candidate move.
+
+        Returns:
+            top_move_coords: coords of the engine's best move (or None).
+        """
+        katrain = self.katrain
+        child_moves = {c.move.gtp() for c in current_node.children if c.move}
+        top_moves_show = [
+            opt
+            for opt in [
+                katrain.config("trainer/top_moves_show"),
+                katrain.config("trainer/top_moves_show_secondary"),
+            ]
+            if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
+        ]
+        top_move_coords = None
+        for move_dict in hint_moves:
+            top_move_coords = self._draw_kata_hint_marker(
+                current_node, next_player, move_dict, child_moves, top_moves_show, low_visits_threshold, top_move_coords
+            )
+        return top_move_coords
+
+    def _draw_kata_hint_marker(
+        self,
+        current_node: Any,
+        next_player: str,
+        move_dict: dict[str, Any],
+        child_moves: set[str],
+        top_moves_show: list[str],
+        low_visits_threshold: int,
+        top_move_coords: Any,
+    ) -> Any:
+        """Draw a single KataGo hint marker at the move's coordinates.
+
+        Returns:
+            Updated top_move_coords (may be the new coords if this is the best move).
+        """
+        katrain = self.katrain
+        move = Move.from_gtp(move_dict["move"])
+        if move.coords is None:
+            return top_move_coords
+
+        engine_best_move = move_dict.get("order", 99) == 0
+        scale = Theme.HINT_SCALE
+        text_on = True
+        alpha = Theme.HINTS_ALPHA
+        if (
+            move_dict["visits"] < low_visits_threshold
+            and not engine_best_move
+            and move_dict["move"] not in child_moves
+        ):
+            scale = Theme.UNCERTAIN_HINT_SCALE
+            text_on = False
+            alpha = Theme.HINTS_LO_ALPHA
+
+        if scale <= 0:  # if theme turns hints off, do not draw them
+            return top_move_coords
+
+        if "pv" in move_dict:
+            self.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
+        else:
+            katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
+        evalsize = self.stone_size * scale
+        evalcol = self.eval_color(move_dict["pointsLost"])
+        if text_on and top_moves_show:  # remove grid lines using a board colored circle
+            draw_circle(
+                (
+                    self.gridpos[move.coords[1]][move.coords[0]][0],
+                    self.gridpos[move.coords[1]][move.coords[0]][1],
+                ),
+                self.stone_size * scale * 0.98,
+                Theme.APPROX_BOARD_COLOR,
+            )
+
+        if evalcol:
+            Color(*evalcol[:3], alpha)
+        else:
+            return top_move_coords
+        Rectangle(
+            pos=(
+                self.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
+                self.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
+            ),
+            size=(2 * evalsize, 2 * evalsize),
+            texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
+        )
+        if text_on and top_moves_show:  # TODO: faster if not sized?
+            keys: dict[str, Any] = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
+            player_sign = current_node.player_sign(next_player)
+            if len(top_moves_show) == 1:
+                fmt = "[size={size:.0f}]{" + top_moves_show[0] + "}[/size]"
+            else:
+                fmt = (
+                    "[size={size:.0f}]{"
+                    + top_moves_show[0]
+                    + "}[/size]\n[size={smallsize:.0f}]{"
+                    + top_moves_show[1]
+                    + "}[/size]"
+                )
+
+            keys[TOP_MOVE_DELTA_SCORE] = self.format_loss(-move_dict["pointsLost"])
+            keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict['scoreLead']:.1f}"
+            winrate = move_dict["winrate"] if player_sign == 1 else 1 - move_dict["winrate"]
+            keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
+            keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict['winrateLost']:+.1%}"
+            keys[TOP_MOVE_VISITS] = format_visits(move_dict["visits"])
+
+            Color(*Theme.HINT_TEXT_COLOR)
+            draw_text(
+                pos=(
+                    self.gridpos[move.coords[1]][move.coords[0]][0],
+                    self.gridpos[move.coords[1]][move.coords[0]][1],
+                ),
+                text=fmt.format(**keys),
+                font_name="Roboto",
+                markup=True,
+                line_height=0.85,
+                halign="center",
+            )
+
+        if engine_best_move:
+            top_move_coords = move.coords
+            # Use the same color as the move marker for consistency
+            if evalcol:
+                Color(*evalcol)
+            else:
+                Color(*Theme.TOP_MOVE_BORDER_COLOR)
+            Line(
+                circle=(
+                    self.gridpos[move.coords[1]][move.coords[0]][0],
+                    self.gridpos[move.coords[1]][move.coords[0]][1],
+                    self.stone_size - dp(1.2),
+                ),
+                width=dp(1.2),
+            )
+        return top_move_coords
+
+    def _draw_children_markers(self, current_node: Any, top_move_coords: Any) -> None:
+        """Show child node markers (next possible moves in undo/review)."""
+        katrain = self.katrain
+        # Phase 93: Fog of War hides child markers (could reveal next move)
+        if not (katrain.analysis_controls.show_children.active and not katrain.is_fog_active()):
+            return
+        for child_node in current_node.children:
+            move = child_node.move
+            if move and move.coords is not None:
+                if child_node.analysis_exists:
+                    self.active_pv_moves.append(
+                        (move.coords, [move.gtp()] + child_node.candidate_moves[0]["pv"], current_node)
+                    )
+
+                if move.coords != top_move_coords:  # for contrast
+                    dashed_width = 18
+                    Color(*Theme.NEXT_MOVE_DASH_CONTRAST_COLORS[child_node.player])
+                    Line(
+                        circle=(
+                            self.gridpos[move.coords[1]][move.coords[0]][0],
+                            self.gridpos[move.coords[1]][move.coords[0]][1],
+                            self.stone_size - dp(1.2),
+                        ),
+                        width=dp(1.2),
+                    )
+                else:
+                    dashed_width = 10
+                Color(*Theme.STONE_COLORS[child_node.player])
+                for s in range(0, 360, 30):
+                    Line(
+                        circle=(
+                            self.gridpos[move.coords[1]][move.coords[0]][0],
+                            self.gridpos[move.coords[1]][move.coords[0]][1],
+                            self.stone_size - dp(1.2),
+                            s,
+                            s + dashed_width,
+                        ),
+                        width=dp(1.2),
+                    )
+
+    def _draw_hover_overlay(self, ghost_alpha: float, next_player: str) -> None:
+        """Draw hover overlay elements: ghost stone, PV animation, region-of-interest box."""
+        # hover next move ghost stone
+        if self.ghost_stone:
+            self.draw_stone(*self.ghost_stone, next_player, alpha=ghost_alpha)
+
+        animating_pv = self.animating_pv
+        if animating_pv:
+            pv, node, start_time, _ = animating_pv
+            up_to_move = self.get_animate_pv_index()
+            self.draw_pv(pv, node, up_to_move)
+
+        if getattr(self.katrain.game, "region_of_interest", None):
+            self.draw_roi_box(self.katrain.game.region_of_interest, width=dp(1.25))
+
+    def _draw_pass_circle(self, current_node: Any, game_ended: Any, board_size_x: int, board_size_y: int) -> None:
+        """Draw the pass / game-ended circle in the center of the board."""
+        if not (current_node.is_pass or game_ended):
+            return
+        katrain = self.katrain
+        if game_ended:
+            text = game_ended
+            katrain.controls.timer.paused = True
+        else:
+            text = i18n._("board-pass")
+        Color(*Theme.PASS_CIRCLE_COLOR)
+        center = (self.initial_gridpos_x[int(board_size_x / 2)], self.initial_gridpos_y[int(board_size_y / 2)])
+        size = min(self.width, self.height) * 0.227
+        Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
+        Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
+        draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
 
     def animate_pv(self, _dt: Any) -> None:
         if self.animating_pv:

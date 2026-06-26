@@ -444,7 +444,7 @@ class TestModuleStructure:
 "logic.py",
 "logic_loss.py",
 "logic_importance.py",
-"models.py",
+"models",  # Phase 144-B: サブパッケージ化
 "presentation.py",
         ]
 
@@ -593,6 +593,40 @@ class TestDependencyDirection:
             "core/batch/ must not import kivy/gui:\n"
             + "\n".join(f"  - {v}" for v in violations)
             + "\n\nNote: TYPE_CHECKING imports are allowed and not flagged."
+        )
+
+    def test_gui_does_not_import_main_at_runtime(self):
+        """gui/ 層が __main__ をランタイムインポートしないことを検証（Phase 143-B）
+
+        gui/ → __main__ の static 依存（TYPE_CHECKING 内の型ヒント）は
+        許容されるが、ランタイムインポートは循環依存の原因となるため禁止。
+
+        Note: TYPE_CHECKING ブロック内の import は _collect_runtime_imports
+        によりスキップされる。
+        """
+        violations = []
+        gui_dir = _PROJECT_ROOT / "katrain" / "gui"
+
+        if not gui_dir.exists():
+            pytest.skip("gui/ directory not found")
+
+        for py_file in gui_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+
+            rel_path = str(py_file.relative_to(_PROJECT_ROOT / "katrain")).replace("\\", "/")
+            module_pkg = _get_module_package(py_file, _PROJECT_ROOT)
+            source = py_file.read_text(encoding="utf-8")
+            runtime_imports = _collect_runtime_imports(source, module_pkg)
+
+            for module in runtime_imports:
+                if module == "katrain.__main__" or module.startswith("katrain.__main__."):
+                    violations.append(f"{rel_path}: imports {module}")
+
+        assert not violations, (
+            "gui/ must not import __main__ at runtime (Phase 143-B):\n"
+            + "\n".join(f"  - {v}" for v in violations)
+            + "\n\nTo fix: Move the import inside `if TYPE_CHECKING:` block, or use FeatureContext Protocol."
         )
 
 
@@ -777,11 +811,7 @@ from kivy.utils import platform  # should be detected
 
 
 # 許可リストの既知エントリ（削除のみ許可、追加禁止）
-KNOWN_ALLOWLIST_ENTRIES = frozenset(
-    {
-        "core/base_katrain.py|kivy",
-    }
-)
+KNOWN_ALLOWLIST_ENTRIES = frozenset()
 
 
 def _check_import_exists_in_file(file_path: Path, import_prefix: str) -> bool:

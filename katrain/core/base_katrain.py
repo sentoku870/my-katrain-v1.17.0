@@ -4,8 +4,6 @@ import os
 import shutil
 import sys
 
-from kivy import Config
-
 from katrain.common.config_store import JsonFileConfigStore
 from katrain.common.typed_config import (
     EngineConfig,
@@ -137,10 +135,14 @@ class KaTrainBase:
         self.config_file = self._load_config(force_package_config=force_package_config)
         self.debug_level = self.config("general/debug_level", OUTPUT_INFO) if debug_level is None else debug_level
 
-        Config.set("kivy", "log_level", "warning")
-        if self.debug_level >= OUTPUT_DEBUG:
-            Config.set("kivy", "log_enable", 1)
-            Config.set("kivy", "log_level", "debug")
+        # Kivy log configuration is delegated to the GUI layer to keep
+        # core/ Kivy-free (Phase 143-A). Using importlib to avoid a static
+        # `from katrain.gui...` import, which would be flagged by
+        # AllImportCollector in tests/test_architecture.py.
+        import importlib
+
+        app_config = importlib.import_module("katrain.gui.kivyutils.app_config")
+        app_config.apply_kivy_log_config(self.debug_level)
         #        if self.debug_level >= OUTPUT_EXTRA_DEBUG:
         #            Config.set("kivy", "log_level", "trace")
         self.players_info = {"B": Player("B"), "W": Player("W")}

@@ -13,8 +13,8 @@ focused package of 4 submodules:
   SizedRectangleButton, AutoSizedRectangleButton, SizedToggleButton,
   SizedRectangleToggleButton, AutoSizedRectangleToggleButton,
   TransparentIconButton, PauseButton)
-- widgets.py: ~20 widget classes (labels, layouts, spinners, panels,
-  menu items, clickables, scrollable, etc.)
+- _labels.py / _spinners.py / _player.py / _timer.py / _panels.py /
+  _clickables.py: 23 widget classes split by concern (Phase 144-A).
 
 This __init__.py re-exports all public names for backward compatibility
 with existing `from katrain.gui.kivyutils import X` imports.
@@ -33,6 +33,41 @@ from katrain.gui.kivyutils._base import (
     draw_circle,
     draw_text,
 )
+from katrain.gui.kivyutils._clickables import (
+    CircleWithText,
+    ClickableCircle,
+    ClickableLabel,
+)
+from katrain.gui.kivyutils._labels import (
+    StatsBox,
+    StatsLabel,
+    TableCellLabel,
+    TableHeaderLabel,
+    TableStatLabel,
+)
+from katrain.gui.kivyutils._panels import (
+    AnalysisToggle,
+    BGBoxLayout,
+    CollapsablePanel,
+    CollapsablePanelHeader,
+    CollapsablePanelTab,
+    MenuItem,
+    MyNavigationDrawer,
+    ScrollableLabel,
+)
+from katrain.gui.kivyutils._player import (
+    PlayerInfo,
+    PlayerSetup,
+    PlayerSetupBlock,
+)
+from katrain.gui.kivyutils._spinners import (
+    I18NSpinner,
+    KeyValueSpinner,
+)
+from katrain.gui.kivyutils._timer import (
+    Timer,
+    TimerOrMoveTree,
+)
 from katrain.gui.kivyutils.buttons import (
     AutoSizedButton,
     AutoSizedRectangleButton,
@@ -48,31 +83,6 @@ from katrain.gui.kivyutils.mixins import (
     BackgroundMixin,
     LeftButtonBehavior,
     ToggleButtonMixin,
-)
-from katrain.gui.kivyutils.widgets import (
-    AnalysisToggle,
-    BGBoxLayout,
-    CircleWithText,
-    ClickableCircle,
-    ClickableLabel,
-    CollapsablePanel,
-    CollapsablePanelHeader,
-    CollapsablePanelTab,
-    I18NSpinner,
-    KeyValueSpinner,
-    MenuItem,
-    MyNavigationDrawer,
-    PlayerInfo,
-    PlayerSetup,
-    PlayerSetupBlock,
-    ScrollableLabel,
-    StatsBox,
-    StatsLabel,
-    TableCellLabel,
-    TableHeaderLabel,
-    TableStatLabel,
-    Timer,
-    TimerOrMoveTree,
 )
 
 __all__ = [
@@ -101,28 +111,33 @@ __all__ = [
     "SizedRectangleToggleButton",
     "SizedToggleButton",
     "TransparentIconButton",
-    # Widgets
-    "AnalysisToggle",
-    "BGBoxLayout",
-    "CircleWithText",
-    "ClickableCircle",
-    "ClickableLabel",
-    "CollapsablePanel",
-    "CollapsablePanelHeader",
-    "CollapsablePanelTab",
-    "I18NSpinner",
+    # Widgets - Labels
+    "TableCellLabel",
+    "TableStatLabel",
+    "TableHeaderLabel",
+    "StatsLabel",
+    "StatsBox",
+    # Widgets - Spinners
     "KeyValueSpinner",
-    "MenuItem",
-    "MyNavigationDrawer",
-    "PlayerInfo",
+    "I18NSpinner",
+    # Widgets - Player
     "PlayerSetup",
     "PlayerSetupBlock",
-    "ScrollableLabel",
-    "StatsBox",
-    "StatsLabel",
-    "TableCellLabel",
-    "TableHeaderLabel",
-    "TableStatLabel",
-    "Timer",
+    "PlayerInfo",
+    # Widgets - Timer
     "TimerOrMoveTree",
+    "Timer",
+    # Widgets - Panels / Layouts
+    "MenuItem",
+    "CollapsablePanelHeader",
+    "CollapsablePanelTab",
+    "CollapsablePanel",
+    "MyNavigationDrawer",
+    "AnalysisToggle",
+    "BGBoxLayout",
+    "ScrollableLabel",
+    # Widgets - Clickables
+    "CircleWithText",
+    "ClickableLabel",
+    "ClickableCircle",
 ]
