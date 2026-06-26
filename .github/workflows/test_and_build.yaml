@@ -77,7 +77,6 @@ jobs:
           KIVY_NO_CONSOLELOG: 1
           KIVY_NO_ENV_CONFIG: 1
           KIVY_HEADLESS: 1
-          KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
@@ -115,7 +114,6 @@ jobs:
           KIVY_NO_CONSOLELOG: 1
           KIVY_NO_ENV_CONFIG: 1
           KIVY_HEADLESS: 1
-          KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
