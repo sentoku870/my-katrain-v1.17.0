@@ -145,7 +145,7 @@
 | **146** | Kivy ヘッドレステスト基盤 | `KivyUnitTest` モックレイヤー | 📋 Planned |
 | **147** | テスト追加 | orchestration, curator 等 | 📋 Planned |
 | **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2/3 ビルダー + 状態管理 | 📋 Planned |
-| **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | 📋 Planned |
+| **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | ✅ (2026-06-26) |
 
 **P3 クリーンアップ詳細** (architecture review より):
 - `gui/badukpan.py:1572` の `class MyKatrainDropDown(DropDown): pass` 削除（KV ファイルが名前参照中なので 1 行 alias 置換で対応）
