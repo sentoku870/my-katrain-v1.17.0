@@ -1646,10 +1646,15 @@ class AnalysisControls(MDBoxLayout):
         self.mykatrain_dropdown.bind(on_dismiss=self.close_mykatrain_dropdown)
 
 
-# Phase P3 cleanup: was `class MyKatrainDropDown(DropDown): pass` (dead empty class).
-# Replaced with a direct alias so KV files referencing this name continue to work
-# without maintaining a separate empty subclass.
-MyKatrainDropDown = DropDown
+class MyKatrainDropDown(DropDown):
+    """myKatrain dropdown menu.
+
+    Kept as an explicit (empty) subclass of DropDown so that the
+    ``<MyKatrainDropDown>`` rule in katrain/gui/kv/menu.kv is applied
+    via Kivy's class-name-based rule matching. Using a direct alias
+    (``MyKatrainDropDown = DropDown``) breaks rule application because
+    the instance's ``__name__`` would be ``"DropDown"``.
+    """
 
 
 class BadukPanControls(MDFloatLayout):
