@@ -64,6 +64,7 @@ line-ending = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests that initialize KaTrainBase (may be slow)",
+    "kivy_headless: marks tests using KivyUnitTest headless infrastructure (Phase 146)",
 ]
 
 [tool.coverage.run]

@@ -82,6 +82,15 @@ class TestGetAnalysisEngineWarnings:
     # Logger name for filtering (matches models.py's _log)
     LOGGER_NAME = "katrain.core.analysis.models"
 
+    def _relevant_records(self, caplog):
+        """Filter caplog records to the analysis.models logger hierarchy.
+
+        The actual warning is emitted from the child logger
+        ``katrain.core.analysis.models.enums``, so we must match either the
+        exact logger name or any descendant (``models.*``).
+        """
+        return [r for r in caplog.records if r.name == self.LOGGER_NAME or r.name.startswith(self.LOGGER_NAME + ".")]
+
     @pytest.mark.parametrize(
         "invalid_value",
         [
@@ -101,8 +110,7 @@ class TestGetAnalysisEngineWarnings:
         with caplog.at_level(logging.WARNING, logger=self.LOGGER_NAME):
             result = get_analysis_engine({"analysis_engine": invalid_value})
         assert result == "katago"
-        # Filter by logger name to avoid false positives from other warnings
-        relevant_records = [r for r in caplog.records if r.name == self.LOGGER_NAME]
+        relevant_records = self._relevant_records(caplog)
         # Use getMessage() for standard logging compatibility (handles lazy formatting)
         assert any(
             "Invalid analysis_engine" in r.getMessage() and "falling back" in r.getMessage() for r in relevant_records
@@ -114,7 +122,7 @@ class TestGetAnalysisEngineWarnings:
         with caplog.at_level(logging.WARNING, logger=self.LOGGER_NAME):
             get_analysis_engine({"analysis_engine": "katago"})
             get_analysis_engine({"analysis_engine": "leela"})
-        relevant_records = [r for r in caplog.records if r.name == self.LOGGER_NAME]
+        relevant_records = self._relevant_records(caplog)
         # Use getMessage() for standard logging compatibility
         assert not any("Invalid analysis_engine" in r.getMessage() for r in relevant_records)
 

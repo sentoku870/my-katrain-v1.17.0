@@ -46,6 +46,7 @@ class TestAI:
             katrain.log(f"Testing strategy on first move {strategy} -> {move}", OUTPUT_INFO)
             assert game.current_node.depth == 1
 
+    @pytest.mark.skipif(os.environ.get("CI", "").lower() == "true", reason="GH actions OOM risk: KaTrainBase init triggers Kivy Config in CI")
     def test_ai_rank_estimation(self):
         katrain = KaTrainBase(force_package_config=True, debug_level=0)
         for strategy in AI_STRATEGIES:

@@ -923,3 +923,64 @@ class TestKivyIsolation:
             + "\n".join(f"  - {e}" for e in stale_entries)
             + "\n\nPlease remove these entries from kivy_import_allowlist.json"
         )
+
+
+class TestKivyHeadlessIsolation:
+    """Phase 146: ヘッドレステスト基盤が production code を侵食していないことを検証
+
+    検証内容:
+    1. tests/ 配下の Kivy テスト基盤が katrain/ 配下から import されていない
+    2. KivyUnitTest ベースクラスと kivy_stubs モジュールが存在する
+    3. kivy_import_allowlist.json は Phase 143-A の完了状態（entries: {}）を維持
+    """
+
+    def test_production_code_does_not_import_tests(self):
+        """katrain/ 配下から tests/ への逆方向 import が発生していないこと"""
+        katrain_dir = _PROJECT_ROOT / "katrain"
+        violations: list[str] = []
+        for py_file in katrain_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            try:
+                source = py_file.read_text(encoding="utf-8")
+                tree = ast.parse(source)
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+            for node in ast.walk(tree):
+                module_name: str | None = None
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    module_name = node.module
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.startswith("tests."):
+                            module_name = alias.name
+                if module_name and module_name.startswith("tests."):
+                    rel = py_file.relative_to(_PROJECT_ROOT / "katrain")
+                    violations.append(f"{rel}:{node.lineno}: imports {module_name}")
+        assert not violations, (
+            "production code should not import from tests/:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_kivy_unit_test_base_exists(self):
+        """KivyUnitTest ベースクラスファイルが存在する"""
+        base_path = _TEST_DIR / "kivy_test_base.py"
+        assert base_path.exists(), f"missing {base_path}"
+
+    def test_kivy_stubs_module_exists(self):
+        """kivy_stubs モジュールが存在する"""
+        stubs_path = _TEST_DIR / "kivy_stubs.py"
+        assert stubs_path.exists(), f"missing {stubs_path}"
+
+    def test_allowlist_remains_empty(self):
+        """Phase 143-A の完了状態 (kivy_import_allowlist.json: entries={}) を維持"""
+        fixture_path = _TEST_DIR / "fixtures" / "kivy_import_allowlist.json"
+        if not fixture_path.exists():
+            return
+        with open(fixture_path, encoding="utf-8") as f:
+            data = json.load(f)
+        entries = data.get("entries", {})
+        assert entries == {}, (
+            f"kivy_import_allowlist.json should remain empty after Phase 143-A, "
+            f"but found: {list(entries.keys())}"
+        )
