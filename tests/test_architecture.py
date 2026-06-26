@@ -444,7 +444,7 @@ class TestModuleStructure:
 "logic.py",
 "logic_loss.py",
 "logic_importance.py",
-"models.py",
+"models",  # Phase 144-B: サブパッケージ化
 "presentation.py",
         ]
 
