@@ -92,6 +92,24 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 ### 3.5 混合エンジン検出（Phase 37）
 1手でも KataGo と Leela が混在する場合 `MixedEngineSnapshotError`。エンフォースは `build_karte_report()` 冒頭のみ。
 
+### 3.6 シェル権限ルール（opencode.jsonc）
+`opencode.jsonc` の bash 権限パターン。**設定変更後は opencode の再起動が必要**（起動時 1 回のみ読み込み）。
+
+| 区分 | 自動許可（例） | 確認ダイアログ（ask） |
+|------|--------------|---------------------|
+| 開発 | `git *`, `gh *`, `uv *`, `python*`, `pip*`, `timeout*` | — |
+| 読み取り | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `findstr*`, `wc*`, `tree*`, `sort*`, `cut*`, `tr*`, `diff*`, `awk*`, `sed*`, `rg*`, `ag*`, `ack*`, `xargs*` | — |
+| 診断 | `stat*`, `file*`, `which*`, `where*`, `date*`, `pwd*`, `env*`, `printenv*`, `du*`, `df*`, `uname*`, `whoami*`, `id*` | — |
+| ファイル操作（可逆） | `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `ln*`, `tar*`, `unzip*`, `zip*`, `gzip*`, `gunzip*` | `rm*`, `chown*` |
+| Bash ビルトイン | `cd*`, `set*`, `unset*`, `export*`, `source*`, `eval*`, `type*`, `command*`, `hash*`, `true*`, `false*`, `test*`, `echo*` | — |
+| ネットワーク | — | `curl*`, `wget*` |
+| PowerShell | `Get-*`, `Select-*`, `Sort-Object*`, `Group-Object*`, `Measure-Object*`, `ForEach-Object*`, `Out-String*`, `Test-Path*`, `Where-Object*`, `Format-Table*`, `Format-List*`, `ConvertTo-Json*`, `ConvertFrom-Json*`, `Set-Location*`, `Push-Location*`, `Pop-Location*`, `Resolve-Path*`, `Write-Host*`, `Clear-Host*` | `Invoke-*`, `Start-Process*`, `Stop-Process*`, `Remove-Item*`, `Restart-Computer*` |
+
+**運用注意**:
+- 自動許可は開発効率のため。**破壊的操作（`rm`）/ 外部送信（`curl`/`wget`）/ 任意コード実行（`Invoke-*`）は確認を維持**
+- 新しいパターンを追加する場合は `opencode.jsonc` 編集 → opencode 再起動
+- 緊急時は `OPENCODE_DISABLE_PROJECT_CONFIG=1` で設定無効化可能
+
 ---
 
 ## 4. コード構造（概要）
