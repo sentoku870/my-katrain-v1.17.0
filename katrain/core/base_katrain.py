@@ -139,10 +139,36 @@ class KaTrainBase:
         # core/ Kivy-free (Phase 143-A). Using importlib to avoid a static
         # `from katrain.gui...` import, which would be flagged by
         # AllImportCollector in tests/test_architecture.py.
-        import importlib
+        #
+        # Phase 147: Load ``katrain.gui.kivyutils.app_config`` via
+        # ``spec_from_file_location`` so the package's ``__init__`` is NOT
+        # executed. ``__init__`` eagerly imports the full Kivy/KivyMD stack
+        # (~110 MB, 412 modules), which is the root cause of exit code 102
+        # (OOM) at ``tests/test_board.py::TestBoard::test_merge`` on 16 GB
+        # CI runners in PR #291.
+        import importlib.util
+        import os as _os
 
-        app_config = importlib.import_module("katrain.gui.kivyutils.app_config")
-        app_config.apply_kivy_log_config(self.debug_level)
+        # __file__ is .../katrain/core/base_katrain.py
+        # app_config.py is at .../katrain/gui/kivyutils/app_config.py
+        _katrain_pkg_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+        _app_config_path = _os.path.join(
+            _katrain_pkg_dir, "gui", "kivyutils", "app_config.py"
+        )
+        _spec = importlib.util.spec_from_file_location(
+            "_katrain_kivy_app_config_phase147", _app_config_path
+        )
+        if _spec is None or _spec.loader is None:
+            # Fallback: cannot load module spec; treat as skip to avoid hard
+            # failure in test/CI environments (Phase 147 OOM workaround).
+            pass
+        else:
+            _app_config = importlib.util.module_from_spec(_spec)
+            _spec.loader.exec_module(_app_config)
+            if _app_config._should_skip_kivy_log_config():
+                pass  # No-op in test/CI: Kivy runtime is not active.
+            else:
+                _app_config.apply_kivy_log_config(self.debug_level)
         #        if self.debug_level >= OUTPUT_EXTRA_DEBUG:
         #            Config.set("kivy", "log_level", "trace")
         self.players_info = {"B": Player("B"), "W": Player("W")}
