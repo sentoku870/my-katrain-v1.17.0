@@ -80,16 +80,6 @@ class ConfigReader(Protocol):
         ...
 
 
-# PR #119 で追加予定
-# class GameAnalysisProvider(GameMetadataProvider, Protocol):
-#     """解析データを含むプロバイダ（karte_report用）"""
-#     def build_eval_snapshot(self) -> "EvalSnapshot": ...
-#     @property
-#     def current_node(self) -> "GameNode": ...
-#     @property
-#     def root(self) -> "GameNode": ...
-
-
 # Protocol が要求する属性リスト（テスト用）
 GAME_METADATA_REQUIRED_ATTRS = [
     "board_size",

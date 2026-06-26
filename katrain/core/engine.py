@@ -924,10 +924,13 @@ class KataGoEngine(BaseEngine):
         include_policy: bool = True,
         report_every: float | None = None,
     ) -> None:
-        # Check for unsupported AE commands
+        # Check for unsupported AE commands (clear_placements is intentionally
+        # detected and skipped - we don't send these to KataGo as the engine
+        # doesn't have a "clear" placement concept; setup moves are supported
+        # via startgame analysis elsewhere).
         nodes = analysis_node.nodes_from_root
         clear_placements = [m for node in nodes for m in node.clear_placements]
-        if clear_placements:  # TODO: support these
+        if clear_placements:
             self.katrain.log(f"Not analyzing node {analysis_node} as there are AE commands in the path", OUTPUT_DEBUG)
             return
 

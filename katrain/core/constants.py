@@ -81,7 +81,7 @@ AI_STRATEGIES_RECOMMENDED_ORDER = [
     AI_INFLUENCE,
 ]
 
-AI_STRENGTH = {  # dan ranks, backup if model is missing. TODO: remove some?
+AI_STRENGTH = {  # dan ranks, backup if model is missing.
     AI_DEFAULT: 9,
     AI_ANTIMIRROR: 9,
     AI_POLICY: 5,

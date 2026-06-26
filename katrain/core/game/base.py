@@ -62,7 +62,7 @@ class BaseGame:
         move_tree: GameNode | None = None,
         game_properties: dict[str, Any | None] | None = None,
         sgf_filename: str | None = None,
-        bypass_config: bool = False,  # TODO: refactor?
+        bypass_config: bool = False,  # if True, skip config-driven defaults (e.g. auto-undo)
     ) -> None:
         self.katrain = katrain
         self._lock = threading.RLock()  # RLock for set_current_node → _calculate_groups reentry

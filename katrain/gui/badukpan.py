@@ -1329,7 +1329,7 @@ class BadukPanWidget(Widget):
             size=(2 * evalsize, 2 * evalsize),
             texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
         )
-        if text_on and top_moves_show:  # TODO: faster if not sized?
+        if text_on and top_moves_show:
             keys: dict[str, Any] = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
             player_sign = current_node.player_sign(next_player)
             if len(top_moves_show) == 1:
@@ -1646,10 +1646,10 @@ class AnalysisControls(MDBoxLayout):
         self.mykatrain_dropdown.bind(on_dismiss=self.close_mykatrain_dropdown)
 
 
-class MyKatrainDropDown(DropDown):
-    """Dropdown menu for myKatrain extension features"""
-
-    pass
+# Phase P3 cleanup: was `class MyKatrainDropDown(DropDown): pass` (dead empty class).
+# Replaced with a direct alias so KV files referencing this name continue to work
+# without maintaining a separate empty subclass.
+MyKatrainDropDown = DropDown
 
 
 class BadukPanControls(MDFloatLayout):

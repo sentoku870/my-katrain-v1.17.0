@@ -409,7 +409,7 @@ class SGFNode:
             return "W"
         elif "W" in self.properties:
             return "B"
-        else:  # only placements, find a parent node with a real move. TODO: better placement support
+        else:  # only placements (AB/AW/PL) — fall back to parent's next player.
             assert self.parent is not None
             return self.parent.next_player
 
