@@ -1,9 +1,10 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-26(Phase 145-D完了)
+> 最終更新: 2026-06-26(Phase 148 計画追加)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
+> Phase 148 計画: 本ファイル「Phase 148」セクション参照。
 
 ---
 
@@ -146,11 +147,86 @@
 | **147** | テスト追加 | orchestration, curator 等 | 📋 Planned |
 | **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2/3 ビルダー + 状態管理 | 📋 Planned |
 | **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | ✅ (2026-06-26) |
+| **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | 📋 Planned |
 
 **P3 クリーンアップ詳細** (architecture review より):
 - `gui/badukpan.py:1572` の `class MyKatrainDropDown(DropDown): pass` 削除（KV ファイルが名前参照中なので 1 行 alias 置換で対応）
 - `core/reports/types.py:84-90` の 7 行コメントアウトコード削除
 - 5 件の TODO コメント解消: `core/constants.py:84`, `core/engine.py:930`, `core/game/base.py:65`, `core/sgf_parser.py:412`, `gui/badukpan.py:1255`
+
+### Phase 148: Karte / Summary 品質改善
+
+> 起票日: 2026-06-26
+> 着手: 未定（ユーザー指示待ち）
+> 想定PR数: 4
+
+#### 背景
+ユーザーが AI 向け出力（Karte / Summary）の品質懸念 7 項目を 2026-06-26 に調査依頼。
+READ-ONLY 調査で複数の回帰と設計上の問題を確認。LLM 受け渡しのため出力の正確性・整合性を優先して改修する。
+
+| 重大度 | 懸念 | 主な発見 |
+|:------:|------|----------|
+| 必須 | ① only 判定の扱い | `classify_mistake()` は `position_difficulty` を参照しない → ONLY_MOVE の BLUNDER が混入 |
+| 必須 | ② プリセット挙動差 | `logic_snapshot.py:104-107` で `score_thresholds` 未渡し → snapshot 凍結後 relaxed の閾値が反映されない |
+| 重要 | ③ importance 閾値 | フォールバックが `raw_score > 0.0` で軽微損失を全件拾う、`IMPORTANCE_DEF` と実装の閾値が乖離 |
+| 重要 | ④ primary_tag 精度 | `critical_moves.py:382-383` が `ClassificationContext` に policy/distance 未渡し → 3 タグ発動不可 |
+| 中程度 | ⑤ 連続 forced 損失重複 | worst_moves / pattern_miner で連続 ONLY_MOVE が各手カウント |
+| 中程度 | ⑥ メタ情報 | `orchestration.py:620-626` で skill_preset 未渡し → サマリーが常に "unknown" |
+| 軽微 | ⑦ 用語・拡張子 | `"easy"`/`"simple"` 揺れ、GUI は `.md` / Batch は `.json` で Navigator 両対応なし |
+
+#### 計画: 4 サブフェーズ = 4 PR
+
+| Sub | 内容 | 修正Lv | 主要ファイル |
+|:---:|------|:------:|--------------|
+| **A1** | ② skill_preset 伝達修正（1行） | Lv1 | `core/batch/orchestration.py:620-626` |
+| **A2** | ③ `IMPORTANCE_DEF.thresholds` を実装値（0.3/0.5/1.0）に整合 | Lv1 | `core/reports/definitions.py:80-88` |
+| **B1** | ① `assess_position_difficulty_from_parent` に visits ガード | Lv2 | `core/analysis/logic_difficulty.py:100-163` + `logic_reliability.py:66` |
+| **B2** | ③ フォールバックに `MIN_LOSS_DISPLAY=0.3` 導入 | Lv2 | `core/analysis/logic_importance.py:213-225` + `models/quiz.py` 新規定数 |
+| **B3** | ④ `ClassificationContext` に policy/distance 追加（3 タグ復活） | Lv2 | `core/analysis/critical_moves.py:382-383` |
+| **C1** | ① pattern_miner / extraction で ONLY_MOVE の BLUNDER を severity 集計から除外 | Lv2 | `core/batch/stats/extraction.py:189-194` + `pattern_miner.py:130-143` |
+| **C2** | ② `SummaryAnalyzer` で `skill_preset` を使った再分類 | Lv2 | `core/reports/summary_logic.py:82-85` + `core/batch/stats/formatting.py:30` |
+| **C3** | ④ standard preset の `heavy_loss` 15→5, `reading_failure` 20→8（standard のみ） | Lv2 | `core/analysis/models/skill.py:278` |
+| **C4** | ⑤ 連続 ONLY_MOVE 集約 + worst_moves から forced 除外 | Lv2 | `core/batch/stats/pattern_miner.py` + `core/reports/summary_logic.py:103-104` |
+| **C5** | ⑦ difficulty を `"easy"` に統一（definitions / extractors 変換削除） | Lv1 | `core/reports/definitions.py:62-68` + `core/reports/extractors.py:60-61` |
+| **D1** | ⑦ 拡張子 `.md` → `.json` 統一（完全移行、既存 `.md` は Navigator 対象外） | Lv2 | `gui/features/karte_export.py:158-182` + `summary_io.py:93,186,247` + `report_navigator.py:17-21` |
+| **D2** | テスト追加・ゴールデン再生成（`test_eval_metrics.py` / `test_summary_stats.py` / `test_preset_thresholds.py` 新規 / `test_report_navigator.py` 新規） | Lv2 | `tests/` 5 ファイル想定 |
+
+#### 実行順序
+
+```
+PR 1 (Phase A): A1, A2
+PR 2 (Phase B): B1, B2, B3
+PR 3 (Phase C): C1, C2, C3, C4, C5
+PR 4 (Phase D): D1, D2
+```
+
+#### リスク評価
+
+| リスク | 影響 | 対策 |
+|--------|------|------|
+| C2 再分類で summary 数値が変わる | 中 | 既存テストで regression、ゴールデン再生成 |
+| B1 visits ガードで ONLY_MOVE が UNKNOWN 化 | 低（誤判定抑制、目的に合致） | 既存 only テストで許容範囲確認 |
+| C3 standard 閾値変更で既存 Karte 結果が変わる | 中 | `tests/fixtures/golden/` 更新 |
+| D1 拡張子変更で既存 `.md` ファイルが Navigator から消える | 中（ユーザー承認済み） | リリースノートに明記 |
+
+#### 関連定数・参照
+
+- 閾値定数: `core/analysis/models/difficulty.py:123` `DIFFICULTY_MIN_VISITS=500`
+- 既存テスト: `tests/test_eval_metrics.py:2178-2316` (importance), `test_summary_stats.py:279` (preset=standard 固定), `test_karte_structure.py:1271-1410` (urgent_miss)
+- ゴールデン: `tests/fixtures/golden/karte_sgf_panda.golden:21`
+
+#### 着手時の手順
+
+1. `feature/phase-148-a-skill-preset-and-importance-docs` ブランチ作成
+2. A1, A2 実装 → `uv run pytest tests/ -k "summary or importance or preset"` 実行
+3. ゴールデン差分確認 → 必要なら再生成
+4. PR 作成 → レビュー・マージ
+5. B → C → D の順で同様
+
+#### 残オープン項目
+
+- C2 採用時、Leela 経路（`core/leela/conversion.py:244-270`）も同じ `classify_mistake(score_loss=None, ...)` パターンのため、再分類が必要か判断
+- D1 完全移行後、既存 `.md` ファイルを救済する CLI ツール（マイグレーション）を別 Phase で用意するか
 
 ---
 
