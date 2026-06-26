@@ -777,11 +777,7 @@ from kivy.utils import platform  # should be detected
 
 
 # 許可リストの既知エントリ（削除のみ許可、追加禁止）
-KNOWN_ALLOWLIST_ENTRIES = frozenset(
-    {
-        "core/base_katrain.py|kivy",
-    }
-)
+KNOWN_ALLOWLIST_ENTRIES = frozenset()
 
 
 def _check_import_exists_in_file(file_path: Path, import_prefix: str) -> bool:
