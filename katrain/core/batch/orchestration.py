@@ -16,6 +16,7 @@ import os
 import re
 import traceback
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -160,30 +161,161 @@ def run_batch(
         if log_cb:
             log_cb(msg)
 
-    # Validate input directory
+    # Setup: validate inputs, create output dirs, collect SGF files
+    setup = _setup_batch(
+        result=result,
+        katrain=katrain,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        save_analyzed_sgf=save_analyzed_sgf,
+        generate_karte=generate_karte,
+        generate_summary=generate_summary,
+        generate_curator=generate_curator,
+        skip_analyzed=skip_analyzed,
+        log_cb=log_cb,
+    )
+    if setup is None:
+        return result
+    output_dir, sgf_files, total, batch_timestamp, game_stats_list, games_for_curator, selected_visits_list, karte_path_map, tracker = (
+        setup
+    )
+
+    # Process each file
+    for i, (abs_path, rel_path) in enumerate(sgf_files):
+        if cancel_flag and cancel_flag[0]:
+            log("Cancelled by user")
+            result.cancelled = True
+            break
+
+        if progress_cb:
+            progress_cb(i + 1, total, rel_path)
+
+        _process_single_file(
+            ctx=_BatchFileContext(
+                katrain=katrain,
+                engine=engine,
+                result=result,
+                i=i,
+                total=total,
+                abs_path=abs_path,
+                rel_path=rel_path,
+                output_dir=output_dir,
+                visits=visits,
+                effective_visits=None,  # computed inside
+                timeout=timeout,
+                cancel_flag=cancel_flag,
+                log_cb=log_cb,
+                save_analyzed_sgf=save_analyzed_sgf,
+                generate_karte=generate_karte,
+                generate_summary=generate_summary,
+                generate_curator=generate_curator,
+                karte_player_filter=karte_player_filter,
+                tracker=tracker,
+                game_stats_list=game_stats_list,
+                games_for_curator=games_for_curator,
+                karte_path_map=karte_path_map,
+                selected_visits_list=selected_visits_list,
+                variable_visits=variable_visits,
+                jitter_pct=jitter_pct,
+                deterministic=deterministic,
+                batch_timestamp=batch_timestamp,
+            ),
+            log=log,
+        )
+
+    # Generate per-player summaries
+    if generate_summary and game_stats_list and not result.cancelled:
+        _generate_summaries(
+            ctx=_BatchSummaryContext(
+                result=result,
+                output_dir=output_dir,
+                game_stats_list=game_stats_list,
+                min_games_per_player=min_games_per_player,
+                visits=visits,
+                variable_visits=variable_visits,
+                jitter_pct=jitter_pct,
+                deterministic=deterministic,
+                timeout=timeout,
+                selected_visits_list=selected_visits_list,
+                skill_preset=skill_preset,
+                karte_path_map=karte_path_map,
+                batch_timestamp=batch_timestamp,
+                lang=lang,
+                log_cb=log_cb,
+                log=log,
+            )
+        )
+    elif generate_summary and not game_stats_list and not result.cancelled:
+        result.summary_error = "No valid game statistics available"
+        log("WARNING: Summary generation requested but no valid game statistics available")
+
+    # Generate curator outputs (Phase 64)
+    if generate_curator and games_for_curator and not result.cancelled:
+        _generate_curator_outputs(
+            ctx=_BatchCuratorContext(
+                result=result,
+                output_dir=output_dir,
+                games_for_curator=games_for_curator,
+                batch_timestamp=batch_timestamp,
+                user_aggregate=user_aggregate,
+                lang=lang,
+                log_cb=log_cb,
+                log=log,
+            )
+        )
+    elif generate_curator and not games_for_curator and not result.cancelled:
+        log("WARNING: Curator generation requested but no valid games available")
+        result.curator_errors.append("No valid games available for curator")
+
+    return result
+
+
+# =============================================================================
+# Phase 145-C: run_batch split into setup / per-file / summaries / curator
+# =============================================================================
+
+
+def _setup_batch(
+    result: BatchResult,
+    katrain: KaTrainBase,
+    input_dir: str,
+    output_dir: str | None,
+    save_analyzed_sgf: bool,
+    generate_karte: bool,
+    generate_summary: bool,
+    generate_curator: bool,
+    skip_analyzed: bool,
+    log_cb: Callable[[str], None] | None,
+) -> tuple[Any, Any, int, str, Any, Any, list[int], dict[str, str], EngineFailureTracker] | None:
+    """Validate input, create output subdirs, collect SGF files, init trackers.
+
+    Returns:
+        Tuple of (output_dir, sgf_files, total, batch_timestamp, game_stats_list,
+                  games_for_curator, selected_visits_list, karte_path_map, tracker)
+        or None if validation failed.
+    """
+
+    def log(msg: str) -> None:
+        if log_cb:
+            log_cb(msg)
+
     if not os.path.isdir(input_dir):
         log(f"Error: Input directory does not exist: {input_dir}")
-        return result
+        return None
 
     log("Using KataGo for analysis")
 
-    # Set output directory
     output_dir = output_dir if output_dir else input_dir
     result.output_dir = output_dir
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create output subdirectories if needed
     if save_analyzed_sgf:
-        analyzed_dir = os.path.join(output_dir, "analyzed")
-        os.makedirs(analyzed_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "analyzed"), exist_ok=True)
     if generate_karte:
-        karte_dir = os.path.join(output_dir, "reports", "karte")
-        os.makedirs(karte_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "reports", "karte"), exist_ok=True)
     if generate_summary:
-        summary_dir = os.path.join(output_dir, "reports", "summary")
-        os.makedirs(summary_dir, exist_ok=True)
+        os.makedirs(os.path.join(output_dir, "reports", "summary"), exist_ok=True)
 
-    # Log enabled options
     enabled_outputs = []
     if save_analyzed_sgf:
         enabled_outputs.append("Analyzed SGF")
@@ -196,12 +328,10 @@ def run_batch(
     if enabled_outputs:
         log(f"Enabled outputs: {', '.join(enabled_outputs)}")
 
-    # Collect SGF files recursively (with relative path preservation)
     log(f"Scanning for SGF files in: {input_dir}")
 
-    # First pass: count files and check for skips
     all_files = collect_sgf_files_recursive(input_dir, skip_analyzed=False, log_cb=None)
-    sgf_files = []
+    sgf_files: list[tuple[str, str]] = []
     skip_count = 0
 
     for abs_path, rel_path in all_files:
@@ -215,7 +345,7 @@ def run_batch(
 
     if not sgf_files:
         log(f"No SGF files to analyze in {input_dir}")
-        return result
+        return None
 
     log(f"Found {len(sgf_files)} SGF file(s) to analyze")
     if skip_count > 0:
@@ -223,399 +353,484 @@ def run_batch(
         log("  (Note: Skip checks KT property only, not visits/engine settings)")
     total = len(sgf_files)
 
-    # For summary generation, collect game stats
     game_stats_list: list[dict[str, Any]] | None = [] if generate_summary else None
-
-    # Track (game, stats) tuples for curator output (Phase 64)
     games_for_curator: list[tuple[Game, dict[str, Any]]] | None = [] if generate_curator else None
-
-    # Track actual effective visits used per successful analysis (for variable visits stats)
     selected_visits_list: list[int] = []
-
-    # Timestamp for filenames (includes seconds to reduce collision risk)
     batch_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-
-    # Phase 53: Map rel_path -> full karte file path for summary links
     karte_path_map: dict[str, str] = {}
-
-    # Phase 95C: Circuit breaker for consecutive engine failures
     tracker = EngineFailureTracker(max_failures=3)
 
-    # Process each file
-    for i, (abs_path, rel_path) in enumerate(sgf_files):
-        # Check for cancellation
-        if cancel_flag and cancel_flag[0]:
-            log("Cancelled by user")
-            result.cancelled = True
-            break
+    return (
+        output_dir,
+        sgf_files,
+        total,
+        batch_timestamp,
+        game_stats_list,
+        games_for_curator,
+        selected_visits_list,
+        karte_path_map,
+        tracker,
+    )
 
-        # Progress callback
-        if progress_cb:
-            progress_cb(i + 1, total, rel_path)
 
-        log(f"[{i + 1}/{total}] Analyzing: {rel_path}")
+def _process_single_file(ctx: "_BatchFileContext", log: Callable[[str], None]) -> None:
+    """Analyze one SGF file and (optionally) generate its karte + stats.
 
-        # Determine base name for output files
-        base_name = os.path.splitext(os.path.basename(rel_path))[0]
-        # Sanitize filename
-        base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)[:50]
+    Modifies ctx.result in place. May set ctx.result.cancelled/aborted on
+    cancellation or circuit-breaker trip.
+    """
+    # Import here to avoid circular imports
+    from katrain.core.batch.analysis import analyze_single_file
+    # Determine base name for output files
+    base_name = os.path.splitext(os.path.basename(ctx.rel_path))[0]
+    base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)[:50]
 
-        # Determine SGF output path (preserve relative path structure)
-        output_rel_path = rel_path
-        if output_rel_path.lower().endswith((".gib", ".ngf")):
-            output_rel_path = output_rel_path[:-4] + ".sgf"
+    # Determine SGF output path (preserve relative path structure)
+    output_rel_path = ctx.rel_path
+    if output_rel_path.lower().endswith((".gib", ".ngf")):
+        output_rel_path = output_rel_path[:-4] + ".sgf"
+    sgf_output_path = (
+        os.path.join(ctx.output_dir, "analyzed", output_rel_path) if ctx.save_analyzed_sgf else None
+    )
 
-        sgf_output_path = None
-        if save_analyzed_sgf:
-            sgf_output_path = os.path.join(output_dir, "analyzed", output_rel_path)
+    # We need the Game object if generating karte or summary
+    need_game = ctx.generate_karte or ctx.generate_summary or ctx.generate_curator
 
-        # Analyze the file
-        # We need the Game object if generating karte or summary
-        need_game = generate_karte or generate_summary or generate_curator
+    # Calculate effective visits (with optional jitter)
+    effective_visits = ctx.visits
+    if ctx.variable_visits and ctx.visits is not None:
+        effective_visits = choose_visits_for_sgf(
+            ctx.abs_path,
+            ctx.visits,
+            jitter_pct=ctx.jitter_pct,
+            deterministic=ctx.deterministic,
+        )
+        if effective_visits != ctx.visits:
+            log(f"  Variable visits: {ctx.visits} -> {effective_visits}")
 
-        # Calculate effective visits (with optional jitter)
-        effective_visits = visits
-        if variable_visits and visits is not None:
-            effective_visits = choose_visits_for_sgf(
-                abs_path,
-                visits,
-                jitter_pct=jitter_pct,
-                deterministic=deterministic,
-            )
-            if effective_visits != visits:
-                log(f"  Variable visits: {visits} -> {effective_visits}")
+    log(f"[{ctx.i + 1}/{ctx.total}] Analyzing: {ctx.rel_path}")
 
-        # Analyze the file
-        # We need the Game object if generating karte or summary
-        need_game = generate_karte or generate_summary or generate_curator
+    # KataGo analysis (Phase 95C: wrapped in try/except for circuit breaker)
+    game = None
+    success = False
+    try:
+        katago_result = analyze_single_file(
+            katrain=ctx.katrain,
+            engine=ctx.engine,
+            sgf_path=ctx.abs_path,
+            output_path=sgf_output_path,
+            visits=effective_visits,
+            timeout=ctx.timeout,
+            cancel_flag=ctx.cancel_flag,
+            log_cb=ctx.log_cb,
+            save_sgf=ctx.save_analyzed_sgf,
+            return_game=need_game,
+        )
 
-        # Calculate effective visits (with optional jitter)
-        effective_visits = visits
-        if variable_visits and visits is not None:
-            effective_visits = choose_visits_for_sgf(
-                abs_path,
-                visits,
-                jitter_pct=jitter_pct,
-                deterministic=deterministic,
-            )
-            if effective_visits != visits:
-                log(f"  Variable visits: {visits} -> {effective_visits}")
-
-        # KataGo analysis (default)
-        # Phase 95C: Wrap in try/except for circuit breaker
-        game = None
-        success = False
-        try:
-            katago_result = analyze_single_file(
-                katrain=katrain,
-                engine=engine,
-                sgf_path=abs_path,
-                output_path=sgf_output_path,
-                visits=effective_visits,
-                timeout=timeout,
-                cancel_flag=cancel_flag,
-                log_cb=log_cb,
-                save_sgf=save_analyzed_sgf,
-                return_game=need_game,
-            )
-
-            # Handle result based on return type
-            if need_game:
-                # When return_game=True, result is Game | None
-                if isinstance(katago_result, bool):
-                    # Shouldn't happen, but handle gracefully
-                    game = None
-                    success = katago_result
-                else:
-                    game = katago_result
-                    success = game is not None
-            else:
-                # When return_game=False, result is bool
-                success = bool(katago_result)
+        if need_game:
+            if isinstance(katago_result, bool):
                 game = None
-
-        except AnalysisTimeoutError as e:
-            # Phase 95C: Timeout = engine failure
-            result.engine_failure_count += 1
-            log(f"  TIMEOUT ({rel_path}): {e}")
-            if tracker.record_engine_failure(rel_path, str(e)):
-                log(tracker.get_abort_message())
-                result.aborted = True
-                result.abort_reason = tracker.get_abort_message()
-                break
-
-        except EngineError as e:
-            # Phase 95C: Other engine errors
-            result.engine_failure_count += 1
-            log(f"  ENGINE ERROR ({rel_path}): {e}")
-            if tracker.record_engine_failure(rel_path, str(e)):
-                log(tracker.get_abort_message())
-                result.aborted = True
-                result.abort_reason = tracker.get_abort_message()
-                break
-
-        except (SGFError, OSError, UnicodeDecodeError) as e:
-            # File-related errors - do not count toward circuit breaker
-            result.file_error_count += 1
-            tracker.record_file_error()
-            log(f"  FILE ERROR ({rel_path}): {e}")
-
-        except Exception as e:
-            # Unexpected error - treat as file error (safer)
-            result.file_error_count += 1
-            tracker.record_file_error()
-            log(f"  UNEXPECTED ({rel_path}): {e}")
-            log(f"    {traceback.format_exc()}")
-
-        # Track success for circuit breaker
-        if success:
-            tracker.record_success()
-            result.success_count += 1
-
-            # Record effective visits used (only numeric, for variable visits stats)
-            if effective_visits is not None:
-                selected_visits_list.append(effective_visits)
-
-            if save_analyzed_sgf and sgf_output_path:
-                result.analyzed_sgf_written += 1
-                log(f"  Saved SGF: {sgf_output_path}")
-
-            # Generate karte if requested
-            # Phase 87.5: Leela karte now supported via snapshot parameter
-            # Phase 44: Pass target_visits for consistent reliability threshold in karte
-            if generate_karte and game is not None:
-                try:
-                    karte_text = build_karte_report(
-                        game,
-                        player_filter=karte_player_filter,
-                        target_visits=visits,
-                    )
-                    # Include path hash to avoid filename collisions for files with same basename
-                    path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
-                    karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.json"
-                    karte_path = os.path.join(output_dir, "reports", "karte", karte_filename)
-
-                    # Use safe write with error handling (A3)
-                    write_error = safe_write_file(
-                        path=karte_path,
-                        content=karte_text,
-                        file_kind="karte",
-                        sgf_id=rel_path,
-                        log_cb=log_cb,
-                    )
-                    if write_error:
-                        result.karte_failed += 1
-                        result.write_errors.append(write_error)
-                    else:
-                        result.karte_written += 1
-                        log(f"  Saved Karte: {karte_filename}")
-                        # Phase 53: Store mapping for summary link generation
-                        karte_path_map[rel_path] = karte_path
-
-                except (KarteGenerationError, MixedEngineSnapshotError) as e:
-                    # Expected: Karte generation domain error
-                    result.karte_failed += 1
-                    log(f"  Karte generation error ({rel_path}): {e}")
-                    result.write_errors.append(
-                        WriteError(
-                            file_kind="karte",
-                            sgf_id=rel_path,
-                            target_path="(generation failed)",
-                            exception_type=type(e).__name__,
-                            message=f"[generation] {e}",
-                        )
-                    )
-                except OSError as e:
-                    # Expected: File write I/O error
-                    result.karte_failed += 1
-                    log(f"  Karte write error ({rel_path}): {e}")
-                    result.write_errors.append(
-                        WriteError(
-                            file_kind="karte",
-                            sgf_id=rel_path,
-                            target_path=str(karte_path) if "karte_path" in dir() else "(path unknown)",
-                            exception_type=type(e).__name__,
-                            message=f"[write] {e}",
-                        )
-                    )
-                except Exception as e:
-                    # Unexpected: Internal bug - traceback required
-                    result.karte_failed += 1
-                    log(f"  Unexpected karte error ({rel_path}): {e}")
-                    log(f"    {traceback.format_exc()}")
-                    result.write_errors.append(
-                        WriteError(
-                            file_kind="karte",
-                            sgf_id=rel_path,
-                            target_path="(generation failed)",
-                            exception_type=type(e).__name__,
-                            message=f"[unexpected] {e}",
-                        )
-                    )
-
-            # Collect stats for summary and/or curator
-            # Phase 44: Pass target_visits for consistent reliability threshold
-            # Phase 85: Pass source_index for deterministic sorting
-            # Phase 87.5: Pass leela_snapshot for Leela analysis
-            if (generate_summary or generate_curator) and game is not None:
-                try:
-                    stats = extract_game_stats(
-                        game,
-                        rel_path,
-                        log_cb=log_cb,  # Phase 87.6: Wire logging callback
-                        target_visits=visits,
-                        source_index=i,
-                    )
-                    if stats:
-                        if generate_summary and game_stats_list is not None:
-                            game_stats_list.append(stats)
-                        # Phase 64: Collect (game, stats) for curator
-                        if generate_curator and games_for_curator is not None and game is not None:
-                            games_for_curator.append((game, stats))
-                except (KeyError, ValueError) as e:
-                    # Expected: External SGF data structure issue
-                    log(f"  Stats extraction error ({rel_path}): {e}")
-                except Exception as e:
-                    # Unexpected: Internal bug - traceback required
-                    log(f"  Unexpected stats error ({rel_path}): {e}")
-                    log(f"    {traceback.format_exc()}")
-
-        else:
-            if cancel_flag and cancel_flag[0]:
-                log("Cancelled by user")
-                result.cancelled = True
-                break
-            result.fail_count += 1
-            # Phase 87.6: Track karte_failed for files that couldn't be analyzed
-            # This ensures karte_total reflects input count, not just successful analyses
-            if generate_karte:
-                result.karte_failed += 1
-
-    # Generate per-player summaries if requested and not cancelled
-    if generate_summary and game_stats_list and not result.cancelled:
-        try:
-            log("Generating per-player summaries...")
-
-            # Extract and group by player
-            player_groups = extract_players_from_stats(game_stats_list, min_games=min_games_per_player)
-
-            if player_groups:
-                summary_count = 0
-                summary_failed = 0
-                for player_name, player_games in player_groups.items():
-                    # Sanitize filename
-                    safe_name = sanitize_filename(player_name)
-                    base_path = os.path.join(output_dir, "reports", "summary", f"summary_{safe_name}_{batch_timestamp}")
-                    summary_path = get_unique_filename(base_path, ".json")
-                    summary_filename = os.path.basename(summary_path)
-
-                    # Build analysis_settings for the summary
-                    # Compute selected visits stats if variable visits enabled and have data
-                    selected_visits_stats = None
-                    if variable_visits and selected_visits_list:
-                        selected_visits_stats = {
-                            "min": min(selected_visits_list),
-                            "avg": sum(selected_visits_list) / len(selected_visits_list),
-                            "max": max(selected_visits_list),
-                        }
-
-                    analysis_settings = {
-                        "config_visits": visits,
-                        "variable_visits": variable_visits,
-                        "jitter_pct": jitter_pct if variable_visits else None,
-                        "deterministic": deterministic if variable_visits else None,
-                        "timeout": timeout,
-                        "selected_visits_stats": selected_visits_stats,
-                    }
-                    summary_text = build_player_summary(
-                        player_name,
-                        player_games,
-                        skill_preset=skill_preset,
-                        analysis_settings=analysis_settings,
-                        # Phase 53: Pass karte mapping for link generation
-                        karte_path_map=karte_path_map,
-                        summary_dir=os.path.dirname(summary_path),
-                        # Phase 54: Output language
-                        lang=lang,
-                    )
-
-                    # Use safe write with error handling (A3)
-                    write_error = safe_write_file(
-                        path=summary_path,
-                        content=summary_text,
-                        file_kind="summary",
-                        sgf_id=player_name,
-                        log_cb=log_cb,
-                    )
-                    if write_error:
-                        summary_failed += 1
-                        result.write_errors.append(write_error)
-                    else:
-                        log(f"  [{player_name}] {len(player_games)} games -> {summary_filename}")
-                        summary_count += 1
-
-                if summary_count > 0:
-                    result.summary_written = True
-                    log(f"Generated {summary_count} player summaries")
-                if summary_failed > 0:
-                    log(f"WARNING: {summary_failed} summary file(s) failed to write")
+                success = katago_result
             else:
-                log(f"No players with >= {min_games_per_player} games found")
-                result.summary_error = f"No players with >= {min_games_per_player} games"
+                game = katago_result
+                success = game is not None
+        else:
+            success = bool(katago_result)
+            game = None
 
-        except (OSError, KeyError, ValueError) as e:
-            # Expected: File I/O or stats structure issue
-            result.summary_error = str(e)
-            log(f"Summary generation error: {e}")
-        except Exception as e:
-            # Unexpected: Internal bug - traceback required
-            result.summary_error = str(e)
-            log(f"Unexpected summary error: {e}")
-            log(f"  {traceback.format_exc()}")
-    elif generate_summary and not game_stats_list and not result.cancelled:
-        # No games were successfully analyzed for summary
-        result.summary_error = "No valid game statistics available"
-        log("WARNING: Summary generation requested but no valid game statistics available")
+    except AnalysisTimeoutError as e:
+        ctx.result.engine_failure_count += 1
+        log(f"  TIMEOUT ({ctx.rel_path}): {e}")
+        if ctx.tracker.record_engine_failure(ctx.rel_path, str(e)):
+            log(ctx.tracker.get_abort_message())
+            ctx.result.aborted = True
+            ctx.result.abort_reason = ctx.tracker.get_abort_message()
+            return
 
-    # Phase 64: Generate curator outputs if requested
-    if generate_curator and games_for_curator and not result.cancelled:
-        try:
-            from katrain.core.curator import generate_curator_outputs
+    except EngineError as e:
+        ctx.result.engine_failure_count += 1
+        log(f"  ENGINE ERROR ({ctx.rel_path}): {e}")
+        if ctx.tracker.record_engine_failure(ctx.rel_path, str(e)):
+            log(ctx.tracker.get_abort_message())
+            ctx.result.aborted = True
+            ctx.result.abort_reason = ctx.tracker.get_abort_message()
+            return
 
-            curator_dir = os.path.join(output_dir, "reports", "curator")
-            log("Generating curator outputs...")
+    except (SGFError, OSError, UnicodeDecodeError) as e:
+        ctx.result.file_error_count += 1
+        ctx.tracker.record_file_error()
+        log(f"  FILE ERROR ({ctx.rel_path}): {e}")
 
-            curator_result = generate_curator_outputs(
-                games_and_stats=games_for_curator,
-                curator_dir=curator_dir,
-                batch_timestamp=batch_timestamp,
-                user_aggregate=user_aggregate,
-                lang=lang,
-                log_cb=log_cb,
+    except Exception as e:
+        ctx.result.file_error_count += 1
+        ctx.tracker.record_file_error()
+        log(f"  UNEXPECTED ({ctx.rel_path}): {e}")
+        log(f"    {traceback.format_exc()}")
+
+    if success:
+        ctx.tracker.record_success()
+        ctx.result.success_count += 1
+
+        if effective_visits is not None:
+            ctx.selected_visits_list.append(effective_visits)
+
+        if ctx.save_analyzed_sgf and sgf_output_path:
+            ctx.result.analyzed_sgf_written += 1
+            log(f"  Saved SGF: {sgf_output_path}")
+
+        # Generate karte if requested
+        if ctx.generate_karte and game is not None:
+            _generate_karte_for_file(
+                game=game,
+                abs_path=ctx.abs_path,
+                rel_path=ctx.rel_path,
+                base_name=base_name,
+                output_dir=ctx.output_dir,
+                player_filter=ctx.karte_player_filter,
+                visits=ctx.visits,
+                batch_timestamp=ctx.batch_timestamp,
+                result=ctx.result,
+                karte_path_map=ctx.karte_path_map,
+                log=log,
+                log_cb=ctx.log_cb,
             )
 
-            # Update BatchResult with curator results
-            result.curator_ranking_written = curator_result.ranking_path is not None
-            result.curator_guide_written = curator_result.guide_path is not None
-            result.curator_games_scored = curator_result.games_scored
-            result.curator_guides_generated = curator_result.guides_generated
-            result.curator_errors.extend(curator_result.errors)
+        # Collect stats for summary and/or curator
+        if (ctx.generate_summary or ctx.generate_curator) and game is not None:
+            _collect_stats_for_file(
+                game=game,
+                rel_path=ctx.rel_path,
+                source_index=ctx.i,
+                visits=ctx.visits,
+                log_cb=ctx.log_cb,
+                generate_summary=ctx.generate_summary,
+                generate_curator=ctx.generate_curator,
+                game_stats_list=ctx.game_stats_list,
+                games_for_curator=ctx.games_for_curator,
+                log=log,
+            )
+    else:
+        if ctx.cancel_flag and ctx.cancel_flag[0]:
+            log("Cancelled by user")
+            ctx.result.cancelled = True
+            return
+        ctx.result.fail_count += 1
+        if ctx.generate_karte:
+            ctx.result.karte_failed += 1
 
-            if curator_result.errors:
-                log(f"WARNING: {len(curator_result.errors)} curator error(s)")
 
-        except (OSError, json.JSONDecodeError) as e:
-            # Expected: File I/O or JSON processing error
-            result.curator_errors.append(f"Curator I/O error: {e}")
-            log(f"Curator I/O error: {e}")
+def _generate_karte_for_file(
+    game: Game,
+    abs_path: str,
+    rel_path: str,
+    base_name: str,
+    output_dir: str,
+    player_filter: str | None,
+    visits: int | None,
+    batch_timestamp: str,
+    result: BatchResult,
+    karte_path_map: dict[str, str],
+    log: Callable[[str], None],
+    log_cb: Callable[[str], None] | None,
+) -> None:
+    """Generate and write a single karte file. Updates result in place."""
+    try:
+        karte_text = build_karte_report(
+            game,
+            player_filter=player_filter,
+            target_visits=visits,
+        )
+        # Include path hash to avoid filename collisions for files with same basename
+        path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
+        karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.json"
+        karte_path = os.path.join(output_dir, "reports", "karte", karte_filename)
+
+        write_error = safe_write_file(
+            path=karte_path,
+            content=karte_text,
+            file_kind="karte",
+            sgf_id=rel_path,
+            log_cb=log_cb,
+        )
+        if write_error:
+            result.karte_failed += 1
+            result.write_errors.append(write_error)
+        else:
+            result.karte_written += 1
+            log(f"  Saved Karte: {karte_filename}")
+            # Phase 53: Store mapping for summary link generation
+            karte_path_map[rel_path] = karte_path
+
+    except (KarteGenerationError, MixedEngineSnapshotError) as e:
+        result.karte_failed += 1
+        log(f"  Karte generation error ({rel_path}): {e}")
+        result.write_errors.append(
+            WriteError(
+                file_kind="karte",
+                sgf_id=rel_path,
+                target_path="(generation failed)",
+                exception_type=type(e).__name__,
+                message=f"[generation] {e}",
+            )
+        )
+    except OSError as e:
+        result.karte_failed += 1
+        log(f"  Karte write error ({rel_path}): {e}")
+        result.write_errors.append(
+            WriteError(
+                file_kind="karte",
+                sgf_id=rel_path,
+                target_path="(path unknown)",
+                exception_type=type(e).__name__,
+                message=f"[write] {e}",
+            )
+        )
+    except Exception as e:
+        result.karte_failed += 1
+        log(f"  Unexpected karte error ({rel_path}): {e}")
+        log(f"    {traceback.format_exc()}")
+        result.write_errors.append(
+            WriteError(
+                file_kind="karte",
+                sgf_id=rel_path,
+                target_path="(generation failed)",
+                exception_type=type(e).__name__,
+                message=f"[unexpected] {e}",
+            )
+        )
+
+
+def _collect_stats_for_file(
+    game: Game,
+    rel_path: str,
+    source_index: int,
+    visits: int | None,
+    log_cb: Callable[[str], None] | None,
+    generate_summary: bool,
+    generate_curator: bool,
+    game_stats_list: list[dict[str, Any]] | None,
+    games_for_curator: list[tuple[Game, dict[str, Any]]] | None,
+    log: Callable[[str], None],
+) -> None:
+    """Extract per-game stats for summary and/or curator output."""
+    # Import here to avoid circular imports
+    from katrain.core.batch.stats import extract_game_stats
+
+    try:
+        stats = extract_game_stats(
+            game,
+            rel_path,
+            log_cb=log_cb,
+            target_visits=visits,
+            source_index=source_index,
+        )
+        if stats:
+            if generate_summary and game_stats_list is not None:
+                game_stats_list.append(stats)
+            if generate_curator and games_for_curator is not None and game is not None:
+                games_for_curator.append((game, stats))
+    except (KeyError, ValueError) as e:
+        log(f"  Stats extraction error ({rel_path}): {e}")
+    except Exception as e:
+        log(f"  Unexpected stats error ({rel_path}): {e}")
+        log(f"    {traceback.format_exc()}")
+
+
+def _generate_summaries(ctx: "_BatchSummaryContext") -> None:
+    """Generate per-player summary markdown files."""
+    # Import here to avoid circular imports
+    from katrain.core.batch.stats import extract_players_from_stats, build_player_summary
+
+    log = ctx.log
+    log("Generating per-player summaries...")
+
+    try:
+        player_groups = extract_players_from_stats(ctx.game_stats_list, min_games=ctx.min_games_per_player)
+    except (OSError, KeyError, ValueError) as e:
+        ctx.result.summary_error = str(e)
+        log(f"Summary generation error: {e}")
+        return
+    except Exception as e:
+        ctx.result.summary_error = str(e)
+        log(f"Unexpected summary error: {e}")
+        log(f"  {traceback.format_exc()}")
+        return
+
+    if not player_groups:
+        log(f"No players with >= {ctx.min_games_per_player} games found")
+        ctx.result.summary_error = f"No players with >= {ctx.min_games_per_player} games"
+        return
+
+    summary_count = 0
+    summary_failed = 0
+    for player_name, player_games in player_groups.items():
+        safe_name = sanitize_filename(player_name)
+        base_path = os.path.join(
+            ctx.output_dir, "reports", "summary", f"summary_{safe_name}_{ctx.batch_timestamp}"
+        )
+        summary_path = get_unique_filename(base_path, ".json")
+        summary_filename = os.path.basename(summary_path)
+
+        # Compute selected visits stats if variable visits enabled and have data
+        selected_visits_stats = None
+        if ctx.variable_visits and ctx.selected_visits_list:
+            selected_visits_stats = {
+                "min": min(ctx.selected_visits_list),
+                "avg": sum(ctx.selected_visits_list) / len(ctx.selected_visits_list),
+                "max": max(ctx.selected_visits_list),
+            }
+
+        analysis_settings = {
+            "config_visits": ctx.visits,
+            "variable_visits": ctx.variable_visits,
+            "jitter_pct": ctx.jitter_pct if ctx.variable_visits else None,
+            "deterministic": ctx.deterministic if ctx.variable_visits else None,
+            "timeout": ctx.timeout,
+            "selected_visits_stats": selected_visits_stats,
+        }
+        try:
+            summary_text = build_player_summary(
+                player_name,
+                player_games,
+                skill_preset=ctx.skill_preset,
+                analysis_settings=analysis_settings,
+                karte_path_map=ctx.karte_path_map,
+                summary_dir=os.path.dirname(summary_path),
+                lang=ctx.lang,
+            )
+        except (OSError, KeyError, ValueError) as e:
+            log(f"  Summary build error ({player_name}): {e}")
+            summary_failed += 1
+            continue
         except Exception as e:
-            # Unexpected: Internal bug - traceback required
-            result.curator_errors.append(f"Curator unexpected error: {e}")
-            log(f"Unexpected curator error: {e}")
-            log(f"  {traceback.format_exc()}")
+            log(f"  Unexpected summary build error ({player_name}): {e}")
+            log(f"    {traceback.format_exc()}")
+            summary_failed += 1
+            continue
 
-    elif generate_curator and not games_for_curator and not result.cancelled:
-        log("WARNING: Curator generation requested but no valid games available")
-        result.curator_errors.append("No valid games available for curator")
+        write_error = safe_write_file(
+            path=summary_path,
+            content=summary_text,
+            file_kind="summary",
+            sgf_id=player_name,
+            log_cb=ctx.log_cb,
+        )
+        if write_error:
+            summary_failed += 1
+            ctx.result.write_errors.append(write_error)
+        else:
+            log(f"  [{player_name}] {len(player_games)} games -> {summary_filename}")
+            summary_count += 1
 
-    return result
+    if summary_count > 0:
+        ctx.result.summary_written = True
+        log(f"Generated {summary_count} player summaries")
+    if summary_failed > 0:
+        log(f"WARNING: {summary_failed} summary file(s) failed to write")
+
+
+def _generate_curator_outputs(ctx: "_BatchCuratorContext") -> None:
+    """Generate curator ranking and guide outputs (Phase 64)."""
+    from katrain.core.curator import generate_curator_outputs
+
+    curator_dir = os.path.join(ctx.output_dir, "reports", "curator")
+    ctx.log("Generating curator outputs...")
+
+    try:
+        curator_result = generate_curator_outputs(
+            games_and_stats=ctx.games_for_curator,
+            curator_dir=curator_dir,
+            batch_timestamp=ctx.batch_timestamp,
+            user_aggregate=ctx.user_aggregate,
+            lang=ctx.lang,
+            log_cb=ctx.log_cb,
+        )
+
+        ctx.result.curator_ranking_written = curator_result.ranking_path is not None
+        ctx.result.curator_guide_written = curator_result.guide_path is not None
+        ctx.result.curator_games_scored = curator_result.games_scored
+        ctx.result.curator_guides_generated = curator_result.guides_generated
+        ctx.result.curator_errors.extend(curator_result.errors)
+
+        if curator_result.errors:
+            ctx.log(f"WARNING: {len(curator_result.errors)} curator error(s)")
+
+    except (OSError, json.JSONDecodeError) as e:
+        ctx.result.curator_errors.append(f"Curator I/O error: {e}")
+        ctx.log(f"Curator I/O error: {e}")
+    except Exception as e:
+        ctx.result.curator_errors.append(f"Curator unexpected error: {e}")
+        ctx.log(f"Unexpected curator error: {e}")
+        ctx.log(f"  {traceback.format_exc()}")
+
+
+# Context dataclasses for Phase 145-C split (avoids huge parameter lists)
+
+
+@dataclass
+class _BatchFileContext:
+    """Parameters needed to process a single batch file."""
+
+    katrain: KaTrainBase
+    engine: KataGoEngine
+    result: BatchResult
+    i: int
+    total: int
+    abs_path: str
+    rel_path: str
+    output_dir: str
+    visits: int | None
+    effective_visits: int | None
+    timeout: float
+    cancel_flag: list[bool] | None
+    log_cb: Callable[[str], None] | None
+    save_analyzed_sgf: bool
+    generate_karte: bool
+    generate_summary: bool
+    generate_curator: bool
+    karte_player_filter: str | None
+    tracker: EngineFailureTracker
+    game_stats_list: list[dict[str, Any]] | None
+    games_for_curator: list[tuple[Game, dict[str, Any]]] | None
+    karte_path_map: dict[str, str]
+    selected_visits_list: list[int]
+    variable_visits: bool
+    jitter_pct: float
+    deterministic: bool
+    batch_timestamp: str
+
+
+@dataclass
+class _BatchSummaryContext:
+    """Parameters needed for summary generation."""
+
+    result: BatchResult
+    output_dir: str
+    game_stats_list: list[dict[str, Any]]
+    min_games_per_player: int
+    visits: int | None
+    variable_visits: bool
+    jitter_pct: float
+    deterministic: bool
+    timeout: float
+    selected_visits_list: list[int]
+    skill_preset: str
+    karte_path_map: dict[str, str]
+    batch_timestamp: str
+    lang: str
+    log_cb: Callable[[str], None] | None
+    log: Callable[[str], None]
+
+
+@dataclass
+class _BatchCuratorContext:
+    """Parameters needed for curator generation."""
+
+    result: BatchResult
+    output_dir: str
+    games_for_curator: list[tuple[Game, dict[str, Any]]]
+    batch_timestamp: str
+    user_aggregate: Any
+    lang: str
+    log_cb: Callable[[str], None] | None
+    log: Callable[[str], None]
