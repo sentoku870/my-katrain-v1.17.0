@@ -16,6 +16,7 @@ import logging
 import os
 import shutil
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
@@ -1148,193 +1149,65 @@ def do_mykatrain_settings_popup(
 
     # Save callback
     def save_settings(*_args: Any) -> None:
-        # Save skill preset and pv_filter_level to general config
-        general = ctx.config("general") or {}
-        general["skill_preset"] = selected_skill_preset[0]
-        general["pv_filter_level"] = selected_pv_filter[0]
-        ctx.set_config_section("general", general)
-        ctx.save_config("general")
-
-        # Phase 91: Save beginner_hints enabled state
-        beginner_hints_config = ctx.config("beginner_hints") or {}
-        beginner_hints_config["enabled"] = selected_beginner_hints[0]
-        ctx.set_config_section("beginner_hints", beginner_hints_config)
-        ctx.save_config("beginner_hints")
-
-        # [Phase 34] Save analysis engine to engine config (MERGE pattern)
-        import logging
-
-        # from katrain.core.analysis import needs_leela_warning # Removed: impossible condition
-
+        """Save all settings sections. Orchestrator that delegates to focused
+        per-section helpers (Phase 145-D)."""
+        _save_general_settings(ctx, selected_skill_preset[0], selected_pv_filter[0])
+        _save_beginner_hints_settings(ctx, selected_beginner_hints[0])
         new_engine_value = selected_engine[0]
-
-        # Phase 123: Leela enabled state is strictly derived from engine selection
-        # "analysis engineで選ぶようにしてほしい" - User request
         leela_enabled = (new_engine_value == EngineType.LEELA.value)
-
-        # MERGE: preserve other engine keys (katago, model, etc.)
-        # Phase 102: Use typed config API
-        try:
-            ctx.update_engine_config(analysis_engine=new_engine_value)
-        except OSError as e:
-            # File write failure during engine config save
-            logging.error(f"Failed to save engine config (file error): {e}", exc_info=True)
-            ctx.controls.set_status(
-                i18n._("mykatrain:settings:engine_save_error"),
-                STATUS_ERROR,
-            )
-            # Continue with other saves (partial save is better than nothing)
-        except Exception as e:
-            # Boundary fallback: unexpected error (config structure issue, etc.)
-            logging.error(f"Failed to save engine config (unexpected): {e}", exc_info=True)
-            ctx.controls.set_status(
-                i18n._("mykatrain:settings:engine_save_error"),
-                STATUS_ERROR,
-            )
-            # Continue with other saves (partial save is better than nothing)
-
-        # Save mykatrain settings
-        mykatrain_settings = {
-            "default_user_name": user_input.text,
-            "karte_output_directory": output_input.text,
-            "batch_export_input_directory": input_input.text,
-            "karte_format": selected_format[0],
-            "opponent_info_mode": selected_opp_info[0],
-        }
-        ctx.set_config_section("mykatrain_settings", mykatrain_settings)
-        ctx.save_config("mykatrain_settings")
-        # Save engine config (Phase 3 Extension)
-        ctx.update_engine_config(disabled=selected_disable_katago[0])
-
-        # Save Leela settings (Phase 102: Use typed config API)
-        # TypedConfigWriter automatically preserves unknown keys (resign_hint_* etc.)
-        from katrain.common.typed_config import LeelaConfig
-        from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
-
-        # Get defaults from single source (no hardcoding)
-        _leela_defaults = LeelaConfig.from_dict({})
-
-        # Calculate values with validation
-        leela_exe_path = leela_path_input.text.strip()
-        leela_loss_scale = clamp_k(leela_k_slider.value)
-        leela_top_show = leela_top_moves_spinner.selected[1]
-        leela_top_show_2 = leela_top_moves_spinner_2.selected[1]
-
-        # max_visits: parse with validation
-        try:
-            computed_max_visits = max(100, min(100000, int(leela_visits_input.text)))
-        except ValueError:
-            computed_max_visits = _leela_defaults.max_visits
-
-        # fast_visits: parse with validation (Phase 30)
-        try:
-            fast_visits_raw = int(leela_fast_visits_input.text.strip())
-            # UI Validation:
-            # - 下限: LEELA_FAST_VISITS_MIN (50) または max_visits のうち小さい方
-            # - 上限: max_visits
-            # エッジケース: max_visits < 50 の場合、fast_visits も max_visits に制限
-            lower_bound = min(LEELA_FAST_VISITS_MIN, computed_max_visits)
-            computed_fast_visits = max(lower_bound, min(computed_max_visits, fast_visits_raw))
-        except ValueError:
-            computed_fast_visits = _leela_defaults.fast_visits
-
-        # play_visits: fixed default (Phase 123: removed from UI)
-        computed_play_visits = _leela_defaults.play_visits
-
-        # Convert "auto" to -1 (unlimited)
-        max_cand_value = leela_cand_spinner.selected[1]
-        if str(max_cand_value).lower() == "auto":
-            max_cand_int = -1
-        else:
-            max_cand_int = int(max_cand_value)
-        
-        # Update via typed config API (handles MERGE and persistence)
-        ctx.update_leela_config(
-            enabled=leela_enabled,
-            exe_path=leela_exe_path,
-            loss_scale_k=leela_loss_scale,
-            max_visits=computed_max_visits,
-            top_moves_show=leela_top_show,
-            top_moves_show_secondary=leela_top_show_2,
-            fast_visits=computed_fast_visits,
-            play_visits=computed_play_visits,
-            max_candidates=max_cand_int,
+        _save_engine_settings(ctx, new_engine_value)
+        _save_mykatrain_settings(
+            ctx,
+            user_input.text,
+            output_input.text,
+            input_input.text,
+            selected_format[0],
+            selected_opp_info[0],
+            selected_disable_katago[0],
+        )
+        _save_leela_settings(
+            ctx,
+            leela_enabled=leela_enabled,
+            leela_path=leela_path_input.text.strip(),
+            leela_k_value=leela_k_slider.value,
+            leela_top_show=leela_top_moves_spinner.selected[1],
+            leela_top_show_2=leela_top_moves_spinner_2.selected[1],
+            leela_visits_text=leela_visits_input.text,
+            leela_fast_visits_text=leela_fast_visits_input.text.strip(),
+            leela_cand_value=leela_cand_spinner.selected[1],
         )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
 
-    # Directory browse callbacks
+    # Directory browse callbacks (Phase 145-D: extracted to _open_browse_dialog)
     def browse_output(*_args: Any) -> None:
-        from katrain.gui.popups import LoadSGFPopup
-
-        browse_popup_content = LoadSGFPopup(ctx)
-        browse_popup_content.filesel.dirselect = True
-        browse_popup_content.filesel.select_string = "Select This Folder"
-        if output_input.text and os.path.isdir(output_input.text):
-            browse_popup_content.filesel.path = os.path.abspath(output_input.text)
-
-        browse_popup = Popup(
+        _open_browse_dialog(
+            ctx=ctx,
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
-            title_font=Theme.DEFAULT_FONT,
-            size_hint=(0.8, 0.8),
-            content=browse_popup_content,
-        ).__self__
-
-        def on_select(*_args: Any) -> None:
-            output_input.text = browse_popup_content.filesel.file_text.text
-            browse_popup.dismiss()
-
-        browse_popup_content.filesel.bind(on_success=on_select)
-        browse_popup.open()
+            initial_path=output_input.text,
+            target_text_input=output_input,
+            dirselect=True,
+        )
 
     def browse_input(*_args: Any) -> None:
-        from katrain.gui.popups import LoadSGFPopup
-
-        browse_popup_content = LoadSGFPopup(ctx)
-        browse_popup_content.filesel.dirselect = True
-        browse_popup_content.filesel.select_string = "Select This Folder"
-        if input_input.text and os.path.isdir(input_input.text):
-            browse_popup_content.filesel.path = os.path.abspath(input_input.text)
-
-        browse_popup = Popup(
+        _open_browse_dialog(
+            ctx=ctx,
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
-            title_font=Theme.DEFAULT_FONT,
-            size_hint=(0.8, 0.8),
-            content=browse_popup_content,
-        ).__self__
-
-        def on_select(*_args: Any) -> None:
-            input_input.text = browse_popup_content.filesel.file_text.text
-            browse_popup.dismiss()
-
-        browse_popup_content.filesel.bind(on_success=on_select)
-        browse_popup.open()
+            initial_path=input_input.text,
+            target_text_input=input_input,
+            dirselect=True,
+        )
 
     def browse_leela_exe(*_args: Any) -> None:
-        from katrain.gui.popups import LoadSGFPopup
-
-        browse_popup_content = LoadSGFPopup(ctx)
-        browse_popup_content.filesel.dirselect = False  # File selection
-        browse_popup_content.filesel.filters = ["*.exe"]  # Windows exe
-        browse_popup_content.filesel.select_string = "Select"
-        if leela_path_input.text and os.path.isfile(leela_path_input.text):
-            browse_popup_content.filesel.path = os.path.dirname(os.path.abspath(leela_path_input.text))
-
-        browse_popup = Popup(
+        _open_browse_dialog(
+            ctx=ctx,
             title="Select Leela Zero executable",
-            title_font=Theme.DEFAULT_FONT,
-            size_hint=(0.8, 0.8),
-            content=browse_popup_content,
-        ).__self__
-
-        def on_select(*_args: Any) -> None:
-            selected = browse_popup_content.filesel.file_text.text
-            if selected and os.path.isfile(selected):
-                leela_path_input.text = selected
-            browse_popup.dismiss()
-
-        browse_popup_content.filesel.bind(on_success=on_select)
-        browse_popup.open()
+            initial_path=leela_path_input.text,
+            target_text_input=leela_path_input,
+            dirselect=False,
+            file_filter=["*.exe"],
+            select_string="Select",
+        )
 
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
@@ -1459,3 +1332,188 @@ def _build_button_row() -> tuple[BoxLayout, Button, Button, Button, Button]:
     buttons_layout.add_widget(save_button)
     buttons_layout.add_widget(cancel_button)
     return buttons_layout, export_button, import_button, save_button, cancel_button
+
+
+def _open_browse_dialog(
+    ctx: FeatureContext,
+    title: str,
+    initial_path: str,
+    target_text_input: Any,
+    dirselect: bool = True,
+    file_filter: list[str] | None = None,
+    select_string: str = "Select This Folder",
+) -> None:
+    """Open a file/directory browse dialog and update the target text input on selection.
+
+    Phase 145-D: Unified the 3 nearly-identical browse_output / browse_input /
+    browse_leela_exe callbacks into a single helper. The original behavior is
+    preserved exactly.
+
+    Args:
+        ctx: FeatureContext (kept for API symmetry; not used directly).
+        title: Popup title text.
+        initial_path: Current value of the target text input (used to seed
+            the dialog's initial directory if it exists).
+        target_text_input: The TextInput whose text will be updated on selection.
+        dirselect: True to select a directory, False to select a file.
+        file_filter: Optional list of file filters (e.g. ["*.exe"]) for file mode.
+        select_string: Label of the "select" button in the dialog.
+    """
+    from katrain.gui.popups import LoadSGFPopup
+
+    browse_popup_content = LoadSGFPopup(ctx)
+    browse_popup_content.filesel.dirselect = dirselect
+    browse_popup_content.filesel.select_string = select_string
+    if file_filter:
+        browse_popup_content.filesel.filters = file_filter
+    # Seed initial path: directory mode requires a directory; file mode requires
+    # an existing file (in which case we open its parent directory).
+    if initial_path:
+        abs_path = os.path.abspath(initial_path)
+        if dirselect and os.path.isdir(abs_path):
+            browse_popup_content.filesel.path = abs_path
+        elif not dirselect and os.path.isfile(abs_path):
+            browse_popup_content.filesel.path = os.path.dirname(abs_path)
+
+    browse_popup = Popup(
+        title=title,
+        title_font=Theme.DEFAULT_FONT,
+        size_hint=(0.8, 0.8),
+        content=browse_popup_content,
+    ).__self__
+
+    def on_select(*_args: Any) -> None:
+        selected = browse_popup_content.filesel.file_text.text
+        if selected:
+            if dirselect and os.path.isdir(selected):
+                target_text_input.text = selected
+            elif not dirselect and os.path.isfile(selected):
+                target_text_input.text = selected
+        browse_popup.dismiss()
+
+    browse_popup_content.filesel.bind(on_success=on_select)
+    browse_popup.open()
+
+
+# =============================================================================
+# Phase 145-D: Per-section save helpers (extracted from save_settings closure)
+# =============================================================================
+
+
+def _save_general_settings(ctx: FeatureContext, skill_preset: str, pv_filter_level: str) -> None:
+    """Save general config (skill_preset, pv_filter_level)."""
+    general = ctx.config("general") or {}
+    general["skill_preset"] = skill_preset
+    general["pv_filter_level"] = pv_filter_level
+    ctx.set_config_section("general", general)
+    ctx.save_config("general")
+
+
+def _save_beginner_hints_settings(ctx: FeatureContext, enabled: bool) -> None:
+    """Save beginner_hints enabled state (Phase 91)."""
+    beginner_hints_config = ctx.config("beginner_hints") or {}
+    beginner_hints_config["enabled"] = enabled
+    ctx.set_config_section("beginner_hints", beginner_hints_config)
+    ctx.save_config("beginner_hints")
+
+
+def _save_engine_settings(ctx: FeatureContext, new_engine_value: str) -> None:
+    """Save analysis engine selection with error handling (Phase 34, Phase 102)."""
+    try:
+        ctx.update_engine_config(analysis_engine=new_engine_value)
+    except OSError as e:
+        # File write failure during engine config save
+        logging.error(f"Failed to save engine config (file error): {e}", exc_info=True)
+        ctx.controls.set_status(
+            i18n._("mykatrain:settings:engine_save_error"),
+            STATUS_ERROR,
+        )
+    except Exception as e:
+        # Boundary fallback: unexpected error (config structure issue, etc.)
+        logging.error(f"Failed to save engine config (unexpected): {e}", exc_info=True)
+        ctx.controls.set_status(
+            i18n._("mykatrain:settings:engine_save_error"),
+            STATUS_ERROR,
+        )
+
+
+def _save_mykatrain_settings(
+    ctx: FeatureContext,
+    default_user_name: str,
+    karte_output_directory: str,
+    batch_export_input_directory: str,
+    karte_format: str,
+    opponent_info_mode: str,
+    disabled_katago: bool,
+) -> None:
+    """Save mykatrain_settings section + engine disabled flag (Phase 27)."""
+    mykatrain_settings = {
+        "default_user_name": default_user_name,
+        "karte_output_directory": karte_output_directory,
+        "batch_export_input_directory": batch_export_input_directory,
+        "karte_format": karte_format,
+        "opponent_info_mode": opponent_info_mode,
+    }
+    ctx.set_config_section("mykatrain_settings", mykatrain_settings)
+    ctx.save_config("mykatrain_settings")
+    # Save engine config (Phase 3 Extension)
+    ctx.update_engine_config(disabled=disabled_katago)
+
+
+def _save_leela_settings(
+    ctx: FeatureContext,
+    *,
+    leela_enabled: bool,
+    leela_path: str,
+    leela_k_value: float,
+    leela_top_show: str,
+    leela_top_show_2: str,
+    leela_visits_text: str,
+    leela_fast_visits_text: str,
+    leela_cand_value: Any,
+) -> None:
+    """Save Leela Zero settings via typed config API (Phase 102, Phase 30, Phase 123)."""
+    from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
+
+    # Get defaults from single source (no hardcoding)
+    _leela_defaults = LeelaConfig.from_dict({})
+
+    # max_visits: parse with validation
+    try:
+        computed_max_visits = max(100, min(100000, int(leela_visits_text)))
+    except ValueError:
+        computed_max_visits = _leela_defaults.max_visits
+
+    # fast_visits: parse with validation
+    try:
+        fast_visits_raw = int(leela_fast_visits_text)
+        # UI Validation:
+        # - 下限: LEELA_FAST_VISITS_MIN (50) または max_visits のうち小さい方
+        # - 上限: max_visits
+        # エッジケース: max_visits < 50 の場合、fast_visits も max_visits に制限
+        lower_bound = min(LEELA_FAST_VISITS_MIN, computed_max_visits)
+        computed_fast_visits = max(lower_bound, min(computed_max_visits, fast_visits_raw))
+    except ValueError:
+        computed_fast_visits = _leela_defaults.fast_visits
+
+    # play_visits: fixed default (Phase 123: removed from UI)
+    computed_play_visits = _leela_defaults.play_visits
+
+    # Convert "auto" to -1 (unlimited)
+    if str(leela_cand_value).lower() == "auto":
+        max_cand_int = -1
+    else:
+        max_cand_int = int(leela_cand_value)
+
+    # Update via typed config API (handles MERGE and persistence)
+    ctx.update_leela_config(
+        enabled=leela_enabled,
+        exe_path=leela_path,
+        loss_scale_k=clamp_k(leela_k_value),
+        max_visits=computed_max_visits,
+        top_moves_show=leela_top_show,
+        top_moves_show_secondary=leela_top_show_2,
+        fast_visits=computed_fast_visits,
+        play_visits=computed_play_visits,
+        max_candidates=max_cand_int,
+    )
