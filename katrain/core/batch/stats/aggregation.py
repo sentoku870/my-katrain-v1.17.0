@@ -159,35 +159,70 @@ def _format_evidence_with_links(
 def build_batch_summary(
     game_stats_list: list[dict[str, Any]],
     focus_player: str | None = None,
+    lang: str = "jp",
 ) -> str:
     """Build a multi-game summary markdown from collected stats.
 
     Args:
         game_stats_list: List of game stats dictionaries
         focus_player: Optional player name to focus on
+        lang: Language code ("jp"/"ja" for Japanese, "en" for English).
+            Affects markdown headers and labels only. JSON block is
+            language-agnostic.
 
     Returns:
         Markdown string with the summary
     """
+    from katrain.common.locale_utils import normalize_lang_code
+
+    normalized_lang = normalize_lang_code(lang)
+
     if not game_stats_list:
+        if normalized_lang == "jp":
+            return "# 複数局サマリー\n\n処理対象の対局がありません。"
         return "# Multi-Game Summary\n\nNo games processed."
 
-    lines = ["# Multi-Game Summary\n"]
-    lines.append(f"**Games analyzed**: {len(game_stats_list)}\n")
-    lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+    if normalized_lang == "jp":
+        title = "# 複数局サマリー"
+        label_games = "**対象局数**: "
+        label_generated = "**生成日時**: "
+        section_overview = "## 概要"
+        label_total_moves = "- 総手数: "
+        label_total_loss = "- 総損失目数: "
+        label_avg_loss = "- 1手あたり平均損失: "
+        section_phase = "## フェーズ×ミス 内訳"
+        section_worst = "## 全対局ワースト10手"
+        header_phase = "| フェーズ | ミス | 回数 | 総損失 |"
+        header_worst = "| 対局 | 手数 | プレイヤー | 位置 | 損失 | 分類 |"
+    else:
+        title = "# Multi-Game Summary"
+        label_games = "**Games analyzed**: "
+        label_generated = "**Generated**: "
+        section_overview = "## Overview"
+        label_total_moves = "- Total moves: "
+        label_total_loss = "- Total points lost: "
+        label_avg_loss = "- Average loss per move: "
+        section_phase = "## Phase x Mistake Breakdown"
+        section_worst = "## Top 10 Worst Moves (All Games)"
+        header_phase = "| Phase | Mistake | Count | Total Loss |"
+        header_worst = "| Game | Move | Player | Position | Loss | Category |"
+
+    lines = [f"{title}\n"]
+    lines.append(f"{label_games}{len(game_stats_list)}\n")
+    lines.append(f"{label_generated}{datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
 
     # Aggregate stats
     total_moves = sum(s["total_moves"] for s in game_stats_list)
     total_loss = sum(s["total_points_lost"] for s in game_stats_list)
 
-    lines.append("\n## Overview\n")
-    lines.append(f"- Total moves: {total_moves}")
-    lines.append(f"- Total points lost: {total_loss:.1f}")
+    lines.append(f"\n{section_overview}\n")
+    lines.append(f"{label_total_moves}{total_moves}")
+    lines.append(f"{label_total_loss}{total_loss:.1f}")
     if total_moves > 0:
-        lines.append(f"- Average loss per move: {total_loss / total_moves:.2f}")
+        lines.append(f"{label_avg_loss}{total_loss / total_moves:.2f}")
 
     # Phase x Mistake breakdown
-    lines.append("\n## Phase x Mistake Breakdown\n")
+    lines.append(f"\n{section_phase}\n")
 
     phase_mistake_counts: dict[tuple[str, str], int] = {}
     phase_mistake_loss: dict[tuple[str, str], float] = {}
@@ -198,8 +233,11 @@ def build_batch_summary(
             phase_mistake_loss[key] = phase_mistake_loss.get(key, 0.0) + loss
 
     if phase_mistake_counts:
-        lines.append("| Phase | Mistake | Count | Total Loss |")
-        lines.append("|-------|---------|------:|----------:|")
+        lines.append(header_phase)
+        if normalized_lang == "jp":
+            lines.append("|---|---|---:|---:|")
+        else:
+            lines.append("|-------|---------|------:|----------:|")
         for key in sorted(phase_mistake_counts.keys(), key=lambda x: phase_mistake_loss.get(x, 0), reverse=True):
             phase, category = key
             count = phase_mistake_counts[key]
@@ -207,7 +245,7 @@ def build_batch_summary(
             lines.append(f"| {phase} | {category} | {count} | {loss:.1f} |")
 
     # Worst moves across all games
-    lines.append("\n## Top 10 Worst Moves (All Games)\n")
+    lines.append(f"\n{section_worst}\n")
     all_worst: list[tuple[str, int, str, str, float, MistakeCategory | None]] = []
     for stats in game_stats_list:
         game_name = stats["game_name"]
@@ -218,8 +256,11 @@ def build_batch_summary(
     all_worst = all_worst[:10]
 
     if all_worst:
-        lines.append("| Game | Move | Player | Position | Loss | Category |")
-        lines.append("|------|-----:|:------:|----------|-----:|----------|")
+        lines.append(header_worst)
+        if normalized_lang == "jp":
+            lines.append("|---|---:|:---:|---|---:|---|")
+        else:
+            lines.append("|------|-----:|:------:|----------|-----:|----------|")
         for game_name, move_num, player, gtp, loss, cat in all_worst:
             cat_name = cat.name if cat else "—"
             display_name = escape_markdown_table_cell(truncate_game_name(game_name))
@@ -246,7 +287,7 @@ def build_batch_summary(
 
     # Get the JSON-wrapped report (focus_player=None for entire batch)
     json_report = build_summary_report(game_data_list, focus_player=None)
-    
+
     # Append the JSON report to the markdown lines
     lines.append("\n" + json_report)
 

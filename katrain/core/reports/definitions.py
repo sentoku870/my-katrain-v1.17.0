@@ -23,14 +23,19 @@ REPORT_SCHEMA_VERSION: Final[str] = "2.1"
 
 
 # --- Thresholds ---
-# Derived from 'auto' preset for consistency with practical classification
-_auto_preset = get_skill_preset("auto")
-_score_thresholds = _auto_preset.score_thresholds
-
+# MISTAKE_THRESHOLDS are the canonical mistake-classification boundaries used
+# by Karte/Summary JSON definitions. These values are pinned (Phase 149 B-3)
+# rather than dynamically derived from `get_skill_preset("auto").score_thresholds`
+# so that downstream consumers (LLMs, dashboards, golden tests) observe a
+# stable contract. If the auto preset is changed in the future, update these
+# values intentionally and regenerate any affected golden files.
+#
+# Source: matches standard preset (1.0/2.5/5.0) as the canonical practical
+# classification used throughout the report pipeline.
 MISTAKE_THRESHOLDS: Final[Dict[str, float]] = {
-    "inaccuracy": _score_thresholds[0], # ~0.5
-    "mistake": _score_thresholds[1],    # ~2.0
-    "blunder": _score_thresholds[2],    # ~5.0
+    "inaccuracy": 1.0,
+    "mistake": 2.5,
+    "blunder": 5.0,
 }
 
 # Thresholds for specific filtering features
