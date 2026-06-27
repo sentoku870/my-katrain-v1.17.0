@@ -1523,6 +1523,9 @@ msgstr ""
 "'{default_user}' の手番を判定できませんでした。\n"
 "両方のプレイヤーのカルテを出力します。"
 
+msgid "Failed to save karte:\n{error}"
+msgstr "カルテの保存に失敗しました:\n{error}"
+
 msgid ""
 "Default user '{default_user}' not found in SGF files.\n"
 "Please select players manually."

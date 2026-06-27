@@ -118,7 +118,8 @@ class MetaExtractor:
         elif root:
             try:
                 komi = float(root.get_property("KM", 0.0))
-            except:
+            except ValueError:
+                # KM property is non-numeric; fall back to 0.0 (Phase 149 A-6)
                 komi = 0.0
         else:
             komi = 0.0

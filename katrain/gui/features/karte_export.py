@@ -172,7 +172,9 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 title=i18n._("Warning"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
-                    text=i18n._(f"Could not determine color for '{default_user}'.\nExporting both players."),
+                    text=i18n._("Could not determine color for '{default_user}'.\nExporting both players.").format(
+                        default_user=default_user
+                    ),
                     halign="center",
                     valign="middle",
                     font_name=Theme.DEFAULT_FONT,
@@ -198,7 +200,10 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 title=i18n._("Error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
-                    text=f"Failed to save karte:\n{exc}", halign="center", valign="middle", font_name=Theme.DEFAULT_FONT
+                    text=i18n._("Failed to save karte:\n{error}").format(error=exc),
+                    halign="center",
+                    valign="middle",
+                    font_name=Theme.DEFAULT_FONT,
                 ),
                 size_hint=(0.5, 0.3),
             ).open()

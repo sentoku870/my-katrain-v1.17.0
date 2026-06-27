@@ -3,6 +3,10 @@
 This module contains constants used in report generation, including
 thresholds for mistake classification, urgent miss detection, and
 confidence levels.
+
+Note: RELIABILITY_VISITS_THRESHOLD was moved to
+katrain.core.analysis.models.reliability (single source of truth,
+Phase 149 A-4).
 """
 
 from typing import Final
@@ -14,12 +18,6 @@ URGENT_MISS_MIN_CONSECUTIVE: Final[int] = 3
 # --- Mistake Classification ---
 # Loss threshold for considering a move as a "bad" move worthy of reporting
 BAD_MOVE_LOSS_THRESHOLD: Final[float] = 0.5
-
-# --- Confidence Levels ---
-# Visits threshold for considering analysis reliable
-# Note: This might be redundant if eval_metrics has similar constants,
-# but keeping report-specific thresholds here is good for isolation.
-RELIABILITY_VISITS_THRESHOLD: Final[int] = 200
 
 # --- Report Types ---
 REPORT_TYPE_KARTE: Final[str] = "karte"
