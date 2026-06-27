@@ -100,16 +100,25 @@ def _assess_difficulty_from_policy(
 def assess_position_difficulty_from_parent(
     node: GameNode,
     *,
+    root_visits: int = 0,
     good_rel_threshold: float = 1.0,
     near_rel_threshold: float = 2.0,
     use_policy_fallback: bool = True,
 ) -> tuple[PositionDifficulty | None, float | None]:
     """
     親ノードの candidate_moves から局面難易度をざっくり評価する。
+
+    Phase 148-B1: root_visits ガード追加。探索が浅い（< DIFFICULTY_MIN_VISITS）
+    場合は候補手の relativePointsLost が信頼できず、ONLY_MOVE の誤判定
+    （実質的に1手しか読んでいないだけ）を招くため UNKNOWN を返す。
     """
     parent = getattr(node, "parent", None)
     if parent is None:
         return None, None
+
+    # B1: visits ガード（root_visits=0 は未指定扱いでスキップ＝後方互換）
+    if root_visits and root_visits < DIFFICULTY_MIN_VISITS:
+        return PositionDifficulty.UNKNOWN, None
 
     # 1. candidate_moves からの判定
     candidate_moves = getattr(parent, "candidate_moves", None)
