@@ -97,16 +97,22 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 | 区分 | 自動許可（例） | 確認ダイアログ（ask） |
 |------|--------------|---------------------|
-| 開発 | `git *`, `gh *`, `uv *`, `python*`, `pip*`, `timeout*` | — |
-| 読み取り | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `findstr*`, `wc*`, `tree*`, `sort*`, `cut*`, `tr*`, `diff*`, `awk*`, `sed*`, `rg*`, `ag*`, `ack*`, `xargs*` | — |
-| 診断 | `stat*`, `file*`, `which*`, `where*`, `date*`, `pwd*`, `env*`, `printenv*`, `du*`, `df*`, `uname*`, `whoami*`, `id*` | — |
+| Python 開発 | `uv *`, `python*`, `python3*`, `pip*`, `pytest*`, `ruff*`, `mypy*`, `coverage*`, `pre-commit*`, `timeout*` | — |
+| バージョン管理 | `git *`, `gh *` | — |
+| Node/JS | `node*`, `npm*`, `npx*`, `pnpm*`, `yarn*`, `bun*`, `deno*` | — |
+| ビルド/コンテナ | `make*`, `cmake*`, `ninja*`, `gcc*`, `g++*`, `docker*`, `docker-compose*`, `podman*` | — |
+| 読み取り/加工 | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `wc*`, `tree*`, `diff*`, `awk*`, `sed*`, `rg*`, `xargs*`, `jq*`, `yq*`, `less*`, `more*`, `xxd*`, `base64*` | — |
+| プロセス/システム | `ps*`, `top*`, `htop*`, `kill*`, `clear*` | — |
+| 診断 | `stat*`, `file*`, `which*`, `pwd*`, `env*`, `uname*`, `whoami*`, `id*` | — |
+| ネットワーク | `ssh*`, `scp*`, `rsync*`, `ping*`, `ip*`, `netstat*` | `curl*`, `wget*` |
 | ファイル操作（可逆） | `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `ln*`, `tar*`, `unzip*`, `zip*`, `gzip*`, `gunzip*` | `rm*`, `chown*` |
 | Bash ビルトイン | `cd*`, `set*`, `unset*`, `export*`, `source*`, `eval*`, `type*`, `command*`, `hash*`, `true*`, `false*`, `test*`, `echo*` | — |
-| ネットワーク | — | `curl*`, `wget*` |
-| PowerShell | `Get-*`, `Select-*`, `Sort-Object*`, `Group-Object*`, `Measure-Object*`, `ForEach-Object*`, `Out-String*`, `Test-Path*`, `Where-Object*`, `Format-Table*`, `Format-List*`, `ConvertTo-Json*`, `ConvertFrom-Json*`, `Set-Location*`, `Push-Location*`, `Pop-Location*`, `Resolve-Path*`, `Write-Host*`, `Clear-Host*` | `Invoke-*`, `Start-Process*`, `Stop-Process*`, `Remove-Item*`, `Restart-Computer*` |
+
+> **環境注意**: 本プロジェクトは Linux 環境前提のため PowerShell 系の許可は含めていません。Windows 環境が必要な場合は `opencode.jsonc` に PowerShell パターンを再追加してください。
 
 **運用注意**:
-- 自動許可は開発効率のため。**破壊的操作（`rm`）/ 外部送信（`curl`/`wget`）/ 任意コード実行（`Invoke-*`）は確認を維持**
+- 自動許可は開発効率のため。**破壊的操作（`rm`/`chown`）/ 外部送信（`curl`/`wget`）は確認を維持**
+- 任意コード実行リスクのある `python*`（`-c` 経由）/ `eval*` / `source*` は allow だが使い方に注意
 - 新しいパターンを追加する場合は `opencode.jsonc` 編集 → opencode 再起動
 - 緊急時は `OPENCODE_DISABLE_PROJECT_CONFIG=1` で設定無効化可能
 

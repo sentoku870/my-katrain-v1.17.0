@@ -10,36 +10,65 @@
     "list": "allow",
     "skill": "allow",
     "bash": {
-      "git *": "allow",
-      "gh *": "allow",
+      // ============================================================
+      // Python 開発（uv / python / pip / pytest / lint / 型）
+      // ============================================================
       "uv *": "allow",
       "python*": "allow",
-      "timeout*": "allow",
+      "python3*": "allow",
+      "py.test*": "allow",
       "pip*": "allow",
+      "pip3*": "allow",
+      "pytest*": "allow",
+      "ruff*": "allow",
+      "mypy*": "allow",
+      "coverage*": "allow",
+      "pre-commit*": "allow",
+      "timeout*": "allow",
+
+      // ============================================================
+      // バージョン管理 / GitHub
+      // ============================================================
+      "git *": "allow",
+      "gh *": "allow",
+
+      // ============================================================
+      // Node / JS（.opencode/ の package.json 対応）
+      // ============================================================
+      "node*": "allow",
+      "npm*": "allow",
+      "npx*": "allow",
+      "pnpm*": "allow",
+      "yarn*": "allow",
+      "bun*": "allow",
+      "deno*": "allow",
+
+      // ============================================================
+      // ビルド / コンテナ
+      // ============================================================
+      "make*": "allow",
+      "cmake*": "allow",
+      "ninja*": "allow",
+      "meson*": "allow",
+      "gcc*": "allow",
+      "g++*": "allow",
+      "docker*": "allow",
+      "docker-compose*": "allow",
+      "podman*": "allow",
+
+      // ============================================================
+      // 読み取り / 検索 / データ加工
+      // ============================================================
       "cat*": "allow",
       "ls*": "allow",
-      "grep*": "allow",
-      "cd*": "allow",
       "dir*": "allow",
-      "echo*": "allow",
+      "head*": "allow",
+      "tail*": "allow",
+      "grep*": "allow",
       "find*": "allow",
       "findstr*": "allow",
       "wc*": "allow",
       "tree*": "allow",
-      "set*": "allow",
-      "$env*": "allow",
-      "PYTHONUTF8*": "allow",
-      "Select-*": "allow",
-      "Get-*": "allow",
-      "ForEach-Object*": "allow",
-      "Sort-Object*": "allow",
-      "Group-Object*": "allow",
-      "Measure-Object*": "allow",
-      "Out-String*": "allow",
-      "powershell*": "allow",
-
-      "head*": "allow",
-      "tail*": "allow",
       "sort*": "allow",
       "cut*": "allow",
       "tr*": "allow",
@@ -63,7 +92,47 @@
       "rg*": "allow",
       "ag*": "allow",
       "ack*": "allow",
+      "jq*": "allow",
+      "yq*": "allow",
+      "xxd*": "allow",
+      "od*": "allow",
+      "base64*": "allow",
+      "less*": "allow",
+      "more*": "allow",
+      "tee*": "allow",
+      "yes*": "allow",
+      "sleep*": "allow",
+      "wait*": "allow",
+      "clear*": "allow",
 
+      // ============================================================
+      // プロセス / システム管理
+      // ============================================================
+      "ps*": "allow",
+      "top*": "allow",
+      "htop*": "allow",
+      "kill*": "allow",
+      "killall*": "allow",
+      "pkill*": "allow",
+      "pidof*": "allow",
+
+      // ============================================================
+      // ネットワーク / リモート操作
+      // ============================================================
+      "ssh*": "allow",
+      "scp*": "allow",
+      "rsync*": "allow",
+      "ping*": "allow",
+      "host*": "allow",
+      "nslookup*": "allow",
+      "ip*": "allow",
+      "ifconfig*": "allow",
+      "netstat*": "allow",
+      "ss*": "allow",
+
+      // ============================================================
+      // ファイル操作（可逆）
+      // ============================================================
       "mkdir*": "allow",
       "touch*": "allow",
       "cp*": "allow",
@@ -76,57 +145,36 @@
       "gzip*": "allow",
       "gunzip*": "allow",
 
+      // ============================================================
+      // Bash ビルトイン / 環境変数
+      // ============================================================
+      "cd*": "allow",
+      "set*": "allow",
       "unset*": "allow",
       "export*": "allow",
       "source*": "allow",
       "eval*": "allow",
+      "echo*": "allow",
       "type*": "allow",
       "command*": "allow",
       "hash*": "allow",
       "true*": "allow",
       "false*": "allow",
       "test*": "allow",
+      "$env*": "allow",
+      "PYTHONUTF8*": "allow",
 
-      "Get-Content*": "allow",
-      "Get-Item*": "allow",
-      "Get-ChildItem*": "allow",
-      "Get-Location*": "allow",
-      "Get-Variable*": "allow",
-      "Get-Process*": "allow",
-      "Test-Path*": "allow",
-      "Test-Connection*": "allow",
-      "Where-Object*": "allow",
-      "Format-Table*": "allow",
-      "Format-List*": "allow",
-      "Format-Wide*": "allow",
-      "ConvertTo-Json*": "allow",
-      "ConvertFrom-Json*": "allow",
-      "ConvertTo-Csv*": "allow",
-      "ConvertFrom-Csv*": "allow",
-      "Clear-Host*": "allow",
-      "Set-Location*": "allow",
-      "Set-Variable*": "allow",
-      "Set-Content*": "allow",
-      "Write-Output*": "allow",
-      "Write-Host*": "allow",
-      "Out-File*": "allow",
-      "Out-Null*": "allow",
-      "Push-Location*": "allow",
-      "Pop-Location*": "allow",
-      "Resolve-Path*": "allow",
-      "Split-Path*": "allow",
-      "Join-Path*": "allow",
-
+      // ============================================================
+      // ask（明示的に確認）
+      // ============================================================
       "rm*": "ask",
+      "chown*": "ask",
       "curl*": "ask",
       "wget*": "ask",
-      "chown*": "ask",
-      "Invoke-*": "ask",
-      "Start-Process*": "ask",
-      "Stop-Process*": "ask",
-      "Remove-Item*": "ask",
-      "Restart-Computer*": "ask",
 
+      // ============================================================
+      // フォールバック（未指定のコマンドは全て確認）
+      // ============================================================
       "*": "ask"
     }
   }
