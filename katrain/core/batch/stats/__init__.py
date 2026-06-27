@@ -5,24 +5,9 @@ Public API is eagerly exported; formatting module uses lazy loading.
 
 from typing import TYPE_CHECKING, Any
 
-# Aggregation - includes i18n getters and helper functions
+# Aggregation - build_batch_summary is the main public function (Phase 149 B-2)
 from .aggregation import (
-    _format_evidence_with_links,
-    _select_evidence_moves,
     build_batch_summary,
-    detect_color_bias,
-    format_hint_line,
-    get_color_bias_note,
-    get_dominant_tags,
-    get_mtag_practice_hint,
-    get_notes_header,
-    get_percentage_note,
-    get_phase_label_localized,
-    # i18n getters
-    get_phase_priority_text,
-    get_practice_intro_text,
-    get_rtag_practice_hint,
-    get_section_header,
 )
 
 # Extraction - medium weight, frequently used
@@ -36,7 +21,7 @@ from .extraction import (
 # =============================================================================
 # Models - small dataclass and constants
 from .models import (
-     EvidenceMove,
+    EvidenceMove,
     SKIP_PLAYER_NAMES,
 )
 
@@ -60,7 +45,7 @@ from .pattern_miner import (
 )
 
 # =============================================================================
-# Lazy Exports (heavy formatting module - ~680 lines)
+# Lazy Exports (heavy formatting module - ~50 lines)
 # =============================================================================
 
 _LAZY_IMPORTS = {
@@ -102,7 +87,6 @@ def __getattr__(name: str) -> Any:
 
 def __dir__() -> list[str]:
     """Return list of public attributes for introspection."""
-    # Return only __all__ symbols for clean dir() output
     return list(__all__)
 
 
@@ -135,27 +119,11 @@ __all__ = [
     "MAX_GAME_REFS_PER_CLUSTER",
     # Constants (tests)
     "SKIP_PLAYER_NAMES",
-    # i18n getters
     # Backward compat aliases
     "_extract_game_stats",
     "_build_batch_summary",
     "_extract_players_from_stats",
     "_build_player_summary",
-    # i18n getters
-    "get_phase_priority_text",
-    "get_phase_label_localized",
-    "get_section_header",
-    "get_practice_intro_text",
-    "get_notes_header",
-    "get_mtag_practice_hint",
-    "get_rtag_practice_hint",
-    "format_hint_line",
-    "get_percentage_note",
-    "get_color_bias_note",
-    # Helper functions
-    "detect_color_bias",
-    "get_dominant_tags",
-    "build_tag_based_hints",
 ]
 
 # =============================================================================

@@ -50,18 +50,26 @@ def build_karte_json(
     player_filter: str | None = None,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     lang: str = "ja",
-) -> KarteReport:
+    target_visits: int | None = None,
+) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
-    
+
+    Phase 149 C-3: Extended to include the revived sections (weaknesses,
+    practice_priorities, mistake_streaks, urgent_misses, critical_3,
+    data_quality, common_difficult_positions, reason_tags_distribution).
+    Schema bumped from 2.1 → 3.0.
+
     Args:
         game: Game object providing game state and analysis data
         level: Important move level setting
         player_filter: Filter by player ("B", "W", or None for both)
         skill_preset: Skill preset for strictness
-        lang: Language code for localized labels ("ja" or "en"), defaults to "ja".
+        lang: Language code (JSON output is language-agnostic; preserved
+            for downstream helpers that may localize)
+        target_visits: Target visits for effective reliability threshold.
 
     Returns:
-        KarteReport dict
+        KarteReport dict (v3.0) with extended sections.
     """
     snapshot = game.build_eval_snapshot()
     moves = list(snapshot.moves)
@@ -73,7 +81,7 @@ def build_karte_json(
         focus_moves = moves
         auto_rec = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
         effective_preset = auto_rec.recommended_preset
-    
+
     preset = eval_metrics.get_skill_preset(effective_preset)
     score_thresholds = preset.score_thresholds
 
@@ -84,7 +92,7 @@ def build_karte_json(
 
     # Identifiers
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    game_uid = game.game_id or "unknown" 
+    game_uid = game.game_id or "unknown"
     game_filename = os.path.basename(game.sgf_filename or "")
     if not game_filename:
         game_filename = get_property("GN") or "unknown_game.sgf"
@@ -93,9 +101,8 @@ def build_karte_json(
     ts = int(time.time())
     run_hash = hashlib.md5(f"{ts}{game_uid}".encode()).hexdigest()[:8]
     run_id = f"run_{ts}_{run_hash}"
-    
+
     # Definitions (using centralized constants where possible)
-    # Note: Karte has some specific requirements like category_aliases
     definitions: Definitions = {
         "thresholds": REPORT_THRESHOLDS,
         "mistake_types": MISTAKE_TYPES,
@@ -110,11 +117,10 @@ def build_karte_json(
     }
 
     # Meta
-    # Use MetaExtractor for common fields, then extend
     common_meta = MetaExtractor.extract_game_meta(game, game_id=game_uid)
-    
+
     meta: MetaData = {
-        "schema_version": REPORT_SCHEMA_VERSION,
+        "schema_version": "3.0",  # Phase 149 C-3: bumped from 2.1
         "game_id": game_uid,
         "generated_at": generated_at,
         "run_id": run_id,
@@ -128,15 +134,14 @@ def build_karte_json(
         "skill_preset": effective_preset,
         "loss_unit": "territory_points",
         "definitions": definitions,
-        "date_range": None # Not applicable for single game karte
+        "date_range": None,
     }
 
-    # Summary section (Unchanged logic, kept local as it's specific aggregation)
+    # Summary section (kept local as it's specific aggregation)
     def compute_summary_for(player: str) -> tuple[float, dict[str, int]]:
         player_moves = [m for m in moves if m.player == player]
         total_lost = sum(max(0.0, m.points_lost) for m in player_moves if m.points_lost is not None)
 
-        # Count by mistake category
         counts: dict[str, int] = {cat.value.lower(): 0 for cat in eval_metrics.MistakeCategory}
         for m in player_moves:
             loss = get_canonical_loss_from_move(m)
@@ -165,16 +170,14 @@ def build_karte_json(
     # Important moves section
     important_move_evals = game.get_important_move_evals(level=level)
 
-    # Apply player filter if specified
     if player_filter in ("B", "W"):
         important_move_evals = [m for m in important_move_evals if m.player == player_filter]
 
-    # Classify meaning tags (Phase 148-B'1: per-move context with distance/scoreStdev)
+    # Classify meaning tags (Phase 148-B'1)
     total_moves_for_ctx = len(moves)
     try:
         node_map = _build_node_map(game)
     except (TypeError, AttributeError):
-        # Incomplete/mock game without traversable children -> degrade gracefully
         node_map = {}
     for mv in important_move_evals:
         if mv.meaning_tag_id is None:
@@ -185,15 +188,102 @@ def build_karte_json(
             meaning_tag = classify_meaning_tag(mv, context=classification_context)
             mv.meaning_tag_id = meaning_tag.id.value
 
-    # Use MoveExtractor for consistent output
     important_moves_list: list[MistakeItem] = []
     for mv in important_move_evals:
         item = MoveExtractor.extract(mv, game_id=game_uid, game_name=common_meta["name"], board_size=board_x)
         important_moves_list.append(item)
 
-    return {
-        "schema_version": REPORT_SCHEMA_VERSION,
+    # Phase 149 C-3: Compute confidence level once for all extended sections
+    confidence_level = eval_metrics.compute_confidence_level(snapshot.moves)
+
+    # Phase 149 C-3: Build KarteContext for revived section generators
+    from katrain.core.reports.karte.sections.context import KarteContext
+
+    pb_name = common_meta["players"]["black"]
+    pw_name = common_meta["players"]["white"]
+    focus_color: str | None = None
+    if player_filter in ("B", "W"):
+        focus_color = player_filter
+
+    ctx = KarteContext(
+        snapshot=snapshot,
+        game=game,
+        thresholds=[],
+        effective_thresholds=score_thresholds,
+        effective_preset=effective_preset,
+        auto_recommendation=None,
+        confidence_level=confidence_level,
+        pacing_map=None,
+        histogram=None,
+        board_x=board_x,
+        board_y=board_y,
+        pb=pb_name,
+        pw=pw_name,
+        focus_color=focus_color,
+        important_moves=important_move_evals,
+        total_moves=len(moves),
+        settings=eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            level,
+            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+        ),
+        skill_preset=effective_preset,
+        target_visits=target_visits,
+        lang=lang,
+    )
+
+    # Phase 149 C-3: Invoke revived sections
+    from katrain.core.reports.karte.sections.diagnosis import (
+        mistake_streaks_for,
+        practice_priorities_for,
+        urgent_miss_section_for,
+        weakness_hypothesis_for,
+    )
+    from katrain.core.reports.karte.sections.important_moves import (
+        critical_3_section_for,
+        reason_tags_distribution_for,
+    )
+    from katrain.core.reports.karte.sections.metadata import data_quality_section
+    from katrain.core.reports.karte.sections.summary import common_difficult_positions
+
+    weaknesses = {
+        "black": weakness_hypothesis_for(ctx, "B"),
+        "white": weakness_hypothesis_for(ctx, "W"),
+    }
+    practice_priorities = {
+        "black": practice_priorities_for(ctx, "B"),
+        "white": practice_priorities_for(ctx, "W"),
+    }
+    mistake_streaks = {
+        "black": mistake_streaks_for(ctx, "B"),
+        "white": mistake_streaks_for(ctx, "W"),
+    }
+    urgent_misses = {
+        "black": urgent_miss_section_for(ctx, "B"),
+        "white": urgent_miss_section_for(ctx, "W"),
+    }
+    critical_3 = {
+        "black": critical_3_section_for(ctx, "B", level),
+        "white": critical_3_section_for(ctx, "W", level),
+    }
+    data_quality = data_quality_section(ctx)
+    common_difficult = common_difficult_positions(ctx)
+    reason_tags_dist = {
+        "black": reason_tags_distribution_for(ctx, "B"),
+        "white": reason_tags_distribution_for(ctx, "W"),
+    }
+
+    result: dict[str, Any] = {
+        "schema_version": "3.0",
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,
+        "weaknesses": weaknesses,
+        "practice_priorities": practice_priorities,
+        "mistake_streaks": mistake_streaks,
+        "urgent_misses": urgent_misses,
+        "critical_3": critical_3,
+        "data_quality": data_quality,
+        "common_difficult_positions": common_difficult,
+        "reason_tags_distribution": reason_tags_dist,
     }
+    return result

@@ -233,13 +233,11 @@ class TestMTagClassification:
         assert result.id == MeaningTagId.CONNECTION_MISS
 
 
-class TestEvidenceSelection:
-    """Issue B: Evidence selection invariants.
+class TestEvidenceMoveDataclass:
+    """Phase 149 C-4: EvidenceMove dataclass invariants only.
 
-    Tests the actual functions:
-    - EvidenceMove dataclass
-    - _select_evidence_moves() - selection logic
-    - _format_evidence_with_links() - Markdown safety
+    _select_evidence_moves and _format_evidence_with_links were removed
+    in Phase 149 C-4 (dead code). EvidenceMove dataclass itself remains.
     """
 
     def test_evidence_move_dataclass_creation(self):
@@ -258,67 +256,3 @@ class TestEvidenceSelection:
         assert ev.game_name == "test.sgf"
         assert ev.move_number == 42
         assert ev.points_lost == 5.2
-
-    def test_deterministic_selection(self):
-        """Same input should produce same output."""
-        from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.batch.stats import EvidenceMove, _select_evidence_moves
-
-        candidates = [
-            EvidenceMove(f"game{i}.sgf", i, "B", f"D{i}", float(10 - i), MistakeCategory.BLUNDER) for i in range(1, 6)
-        ]
-
-        result1 = _select_evidence_moves(candidates, max_count=3)
-        result2 = _select_evidence_moves(candidates, max_count=3)
-
-        assert result1 == result2
-
-    def test_game_deduplication(self):
-        """Same game should not appear twice in evidence."""
-        from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.batch.stats import EvidenceMove, _select_evidence_moves
-
-        candidates = [
-            EvidenceMove("game1.sgf", 10, "B", "D4", 8.0, MistakeCategory.BLUNDER),
-            EvidenceMove("game1.sgf", 20, "B", "Q16", 6.0, MistakeCategory.BLUNDER),  # Same game
-            EvidenceMove("game2.sgf", 15, "B", "C3", 5.0, MistakeCategory.MISTAKE),
-        ]
-
-        result = _select_evidence_moves(candidates, max_count=3)
-
-        game_names = [e.game_name for e in result]
-        assert len(game_names) == len(set(game_names)), "Duplicate game in results"
-
-    def test_sort_by_loss_descending(self):
-        """Evidence should be sorted by loss descending."""
-        from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.batch.stats import EvidenceMove, _select_evidence_moves
-
-        candidates = [
-            EvidenceMove("game1.sgf", 10, "B", "D4", 3.0, MistakeCategory.MISTAKE),
-            EvidenceMove("game2.sgf", 20, "B", "Q16", 8.0, MistakeCategory.BLUNDER),
-            EvidenceMove("game3.sgf", 15, "B", "C3", 5.0, MistakeCategory.BLUNDER),
-        ]
-
-        result = _select_evidence_moves(candidates, max_count=3)
-
-        losses = [e.points_lost for e in result]
-        assert losses == sorted(losses, reverse=True), "Not sorted by loss descending"
-
-    def test_evidence_formatting_markdown_safe(self):
-        """Evidence formatting should be Markdown-safe even with brackets in names."""
-        from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.batch.stats import EvidenceMove, _format_evidence_with_links
-
-        evidence = [
-            EvidenceMove("[Player1]vs[Player2].sgf", 42, "B", "D4", 5.0, MistakeCategory.BLUNDER),
-        ]
-
-        # No karte links for simplicity
-        result = _format_evidence_with_links(evidence, None, None, "jp")
-
-        # Should use backticks, not bracket wrappers
-        assert "`" in result, f"Expected backticks in: {result}"
-        # Should not have nested/broken bracket structure
-        # The display name is in backticks so Markdown won't interpret brackets
-        assert "例:" in result or "e.g.:" in result

@@ -100,10 +100,115 @@ class SummaryReport(TypedDict):
     games: List[GameMeta]
     players: Dict[str, SummaryPlayerStats]
 
-# --- Karte Specific ---
+
+# --- Phase 149 C-1: Extended Karte sections (revived from dead code) ---
+
+
+class MoveEvidence(TypedDict):
+    """Representative move used as evidence for a weakness/priority/streak."""
+
+    move_number: int
+    gtp: str
+    loss: float  # canonical loss (>= 0)
+    category: str  # INACCURACY / MISTAKE / BLUNDER
+
+
+class WeaknessItem(TypedDict):
+    """One phase × category weakness identified by aggregation."""
+
+    phase: str  # opening / middle / endgame
+    category: str  # INACCURACY / MISTAKE / BLUNDER
+    count: int
+    total_loss: float
+    avg_loss: float
+    confidence: str  # low / medium / high (overall karte confidence)
+    evidence: List[MoveEvidence]
+
+
+class PriorityItem(TypedDict):
+    """A practice priority suggestion."""
+
+    priority_id: str  # e.g. "phase_middle_blunder_focus"
+    phase: str  # opening / middle / endgame
+    category: str  # INACCURACY / MISTAKE / BLUNDER
+    anchor_move: Optional[MoveEvidence]  # worst move in this priority
+
+
+class StreakItem(TypedDict):
+    """A run of consecutive mistake moves (mistake_streak / urgent_miss)."""
+
+    start_move: int
+    end_move: int
+    move_count: int
+    total_loss: float
+    avg_loss: float
+    moves: List[MoveEvidence]
+
+
+class CriticalMoveItem(TypedDict):
+    """A single Critical 3 entry for focused review."""
+
+    move_number: int
+    gtp_coord: str
+    player: str  # "B" / "W"
+    score_loss: float
+    meaning_tag_id: Optional[str]
+    game_phase: str
+    position_difficulty: str
+    area: Optional[str]
+    reason_tags: List[str]
+    complexity_discounted: bool
+
+
+class DataQualityStats(TypedDict):
+    """Reliability / confidence statistics for the analysis run."""
+
+    confidence_level: str  # high / medium / low
+    total_moves: int
+    moves_with_visits: int
+    coverage_pct: float
+    reliable_count: int
+    reliability_pct: float
+    low_confidence_count: int
+    low_confidence_pct: float
+    avg_visits: int
+    max_visits: int
+    effective_threshold: int
+    is_low_reliability: bool
+
+
+class CommonDifficultItem(TypedDict):
+    """A pair of consecutive moves where both players lost significant points."""
+
+    move_range: List[int]  # [start, end]
+    black_loss: float
+    white_loss: float
+    total_loss: float
+
+
+# --- Karte Specific (Phase 149 C-3: v3.0 with extended sections) ---
+
 
 class KarteReport(TypedDict):
+    """Karte JSON v3.0 (Phase 149 C-3).
+
+    Schema 2.1 → 3.0: Added extended sections for revived dead code
+    (weaknesses, practice_priorities, mistake_streaks, urgent_misses,
+    critical_3, data_quality, common_difficult_positions,
+    reason_tags_distribution). All fields except schema_version, meta,
+    summary, important_moves are new in v3.0.
+    """
+
     schema_version: str
     meta: MetaData
-    summary: Dict[str, Any] # Loose for now, mirrors SummaryPlayerStats but per game
+    summary: Dict[str, Any]
     important_moves: List[MistakeItem]
+    weaknesses: Optional[Dict[str, List[WeaknessItem]]]
+    practice_priorities: Optional[Dict[str, List[PriorityItem]]]
+    mistake_streaks: Optional[Dict[str, List[StreakItem]]]
+    urgent_misses: Optional[Dict[str, List[StreakItem]]]
+    critical_3: Optional[Dict[str, List[CriticalMoveItem]]]
+    data_quality: Optional[DataQualityStats]
+    common_difficult_positions: Optional[List[CommonDifficultItem]]
+    reason_tags_distribution: Optional[Dict[str, Dict[str, int]]]
+

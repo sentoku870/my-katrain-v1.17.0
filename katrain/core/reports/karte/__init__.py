@@ -32,8 +32,13 @@ def build_karte_report(*args: Any, **kwargs: Any) -> str:
     return _impl(*args, **kwargs)
 
 
-def build_karte_json(*args: Any, **kwargs: Any) -> KarteReport:
-    """Generate JSON karte data. See json_export.build_karte_json for details."""
+def build_karte_json(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Generate JSON karte data. See json_export.build_karte_json for details.
+
+    Phase 149 C-3: Returns dict[str, Any] (KarteReport v3.0 structure).
+    Previously typed as KarteReport TypedDict, but the wrapper returns the
+    underlying dict for JSON serialization compatibility.
+    """
     from katrain.core.reports.karte.json_export import build_karte_json as _impl
 
     return _impl(*args, **kwargs)
