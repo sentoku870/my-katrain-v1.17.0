@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 # --- Constants ---
 
 REPORT_PATTERNS = {
-    "karte": "karte_*.md",
-    "summary": "summary_*.md",
+    "karte": "karte_*.json",
+    "summary": "summary_*.json",
     "package": "llm_package_*.zip",
 }
 
