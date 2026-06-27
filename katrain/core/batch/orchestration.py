@@ -494,6 +494,7 @@ def _process_single_file(ctx: "_BatchFileContext", log: Callable[[str], None]) -
                 karte_path_map=ctx.karte_path_map,
                 log=log,
                 log_cb=ctx.log_cb,
+                skill_preset=ctx.skill_preset,
             )
 
         # Collect stats for summary and/or curator
@@ -534,13 +535,16 @@ def _generate_karte_for_file(
     karte_path_map: dict[str, str],
     log: Callable[[str], None],
     log_cb: Callable[[str], None] | None,
+    skill_preset: str | None = None,
 ) -> None:
     """Generate and write a single karte file. Updates result in place."""
     try:
+        # Phase 149 A-1: pass skill_preset (may be None -> uses default in build_karte_report)
         karte_text = build_karte_report(
             game,
             player_filter=player_filter,
             target_visits=visits,
+            skill_preset=skill_preset or DEFAULT_SKILL_PRESET,
         )
         # Include path hash to avoid filename collisions for files with same basename
         path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]

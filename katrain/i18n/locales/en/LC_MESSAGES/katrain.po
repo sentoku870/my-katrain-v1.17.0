@@ -1573,6 +1573,9 @@ msgstr ""
 "Could not determine color for '{default_user}'.\n"
 "Exporting both players."
 
+msgid "Failed to save karte:\n{error}"
+msgstr "Failed to save karte:\n{error}"
+
 msgid ""
 "Default user '{default_user}' not found in SGF files.\n"
 "Please select players manually."

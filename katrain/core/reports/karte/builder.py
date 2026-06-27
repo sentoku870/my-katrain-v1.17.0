@@ -260,29 +260,21 @@ def _build_karte_report_impl(
         snapshot is now passed as an argument rather than computed here.
         This avoids double computation since build_karte_report() already
         computes the snapshot for mixed-engine validation.
+
+        This wrapper delegates entirely to build_karte_json (Phase 149 A-8:
+        removed unused local vars; markdown section code is being revived
+        as JSON data in Sub-phase C).
     """
-    thresholds = game.katrain.config("trainer/eval_thresholds") if game.katrain else []
-
-    # Compute confidence level for section gating
-    confidence_level = eval_metrics.compute_confidence_level(snapshot.moves)
-    settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
-        level,
-        eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
-    )
-
-    # Phase 60: Build pacing map for Time column
-    # (Pacing map is not currently used in JSON export, but could be added later)
-    
     from katrain.core.reports.karte.json_export import build_karte_json
     import json
-    
+
     json_data = build_karte_json(
         game=game,
         level=level,
         player_filter=player_filter,
         skill_preset=skill_preset,
-        lang=lang
+        lang=lang,
     )
-    
+
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
     return json_str

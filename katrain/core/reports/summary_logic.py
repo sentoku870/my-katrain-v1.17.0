@@ -151,10 +151,11 @@ class SummaryAnalyzer:
             if stats.total_moves > 0:
                 stats.avg_points_lost_per_move = stats.total_points_lost / stats.total_moves
 
-            # 最悪手をソートする
+            # 最悪手をソートして上位のみ保持（Phase 149 A-5: メモリ削減）
             stats.worst_moves.sort(
                 key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True
             )
+            stats.worst_moves = stats.worst_moves[:10]
 
     def get_player_stats(self, player_name: str) -> SummaryStats | None:
         return self.player_stats.get(player_name)
