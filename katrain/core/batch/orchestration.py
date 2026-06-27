@@ -219,6 +219,7 @@ def run_batch(
                 jitter_pct=jitter_pct,
                 deterministic=deterministic,
                 batch_timestamp=batch_timestamp,
+                skill_preset=skill_preset,
             ),
             log=log,
         )
@@ -507,6 +508,7 @@ def _process_single_file(ctx: "_BatchFileContext", log: Callable[[str], None]) -
                 generate_curator=ctx.generate_curator,
                 game_stats_list=ctx.game_stats_list,
                 games_for_curator=ctx.games_for_curator,
+                skill_preset=ctx.skill_preset,
                 log=log,
             )
     else:
@@ -611,6 +613,7 @@ def _collect_stats_for_file(
     game_stats_list: list[dict[str, Any]] | None,
     games_for_curator: list[tuple[Game, dict[str, Any]]] | None,
     log: Callable[[str], None],
+    skill_preset: str | None = None,
 ) -> None:
     """Extract per-game stats for summary and/or curator output."""
     # Import here to avoid circular imports
@@ -623,6 +626,7 @@ def _collect_stats_for_file(
             log_cb=log_cb,
             target_visits=visits,
             source_index=source_index,
+            skill_preset=skill_preset,
         )
         if stats:
             if generate_summary and game_stats_list is not None:
@@ -798,6 +802,7 @@ class _BatchFileContext:
     jitter_pct: float
     deterministic: bool
     batch_timestamp: str
+    skill_preset: str
 
 
 @dataclass

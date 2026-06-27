@@ -77,13 +77,14 @@ PHASE_ALIASES: Final[Dict[str, str]] = {"yose": "endgame"}
 # --- Reasoning & Attributes ---
 
 # Fix 3: Importance Scale Definition
+# Thresholds aligned with IMPORTANT_MOVE_SETTINGS_BY_LEVEL (easy=1.0, normal=0.5, strict=0.3).
 IMPORTANCE_DEF: Final[Dict[str, Any]] = {
     "scale": "0.0 to unbounded (logarithmic)",
     "description": "Combined score of loss and semantic interest",
     "thresholds": {
-        "interesting": 1.0,
-        "important": 3.0,
-        "critical": 6.0
+        "interesting": 0.3,
+        "important": 0.5,
+        "critical": 1.0
     }
 }
 
