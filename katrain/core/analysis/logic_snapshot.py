@@ -125,9 +125,18 @@ def iter_main_branch_nodes(game: Any) -> Iterable[GameNode]:
     if root is None:
         return
 
+    # Phase 148-B'1: 本物の GameNode ツリーでない（Mock 等）場合は処理しない。
+    # MagicMock の children は反復可能に見えるが実態と異なり、アクセスのたびに
+    # 新しい Mock を生成して極端に重くなる/ハングするため list/tuple でなければ早期リターン。
+    root_children = getattr(root, "children", None)
+    if not isinstance(root_children, (list, tuple)):
+        return
+
     node = root
 
-    while True:
+    # Phase 148-B'1: 安全上限。循環参照や不完全なゲームオブジェクト（Mock 等）に
+    # よる無限ループを防ぐ。Go の1局は実質数百手だが余裕を見て 2000 とする。
+    for _ in range(2000):
         if getattr(node, "move", None) is not None:
             yield node
 
