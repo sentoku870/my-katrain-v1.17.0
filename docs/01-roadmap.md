@@ -4,7 +4,7 @@
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
-> Phase 148 計画: 本ファイル「Phase 148」セクション参照。
+> Phase 148 (2026-06-27 完了): 4 PR (#293 / #294 / #295 / #296)。詳細下記。
 
 ---
 
@@ -41,6 +41,7 @@
 | **145-B** | batch_ui.py build_batch_popup_widgets 分割 | 375 行を 1 オーケストレータ + 15 ヘルパーに分割 | ✅ |
 | **145-C** | orchestration.py run_batch 分割 | 462 行を 5 関数 + 3 context dataclass に分割 | ✅ |
 | **145-D** | settings_popup.py 部分抽出 | 703 行の関数から search / buttons / save / browse を抽出 | ✅ (部分的) |
+| **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | ✅ (2026-06-27) |
 
 ### 直近の更新詳細
 
@@ -126,6 +127,12 @@
   - `save_settings` 自身は 6 行のオーケストレータに
 - **未完了**: 3 つのタブコンテンツ (Tab 1: Analysis, Tab 2: Export, Tab 3: Leela) の抽出はクロージャ依存が深く別セッションで再設計が必要。
 
+**Phase 148**: ✅ Karte/Summary 品質改善（2026-06-27 完了）。
+- **A + B + B'-1 (PR #293)**: skill_preset 伝達、IMPORTANCE_DEF 整合、visits ガード、importance フォールバック閾値、context_builder 経路整備（distance/scoreStdev 供給）、Mock game ハング修正（iter_main_branch_nodes に isinstance ガード + range(2000) 安全上限）。
+- **B'-2 (PR #294)**: context_builder に best_move_policy / actual_move_policy を追加（moveInfos の "prior"）、3タグ完全復活。
+- **C (PR #295)**: ONLY_MOVE BLUNDER を severity 集計から除外、SummaryAnalyzer の skill_preset 再分類、standard preset heavy_loss 15→5 / reading_failure 20→8、連続 forced 集約（consecutive_forced）、difficulty を "easy" に統一。
+- **D (PR #296)**: karte/summary の出力拡張子を `.md` → `.json` に完全移行（Navigator 既存パターン更新）、Navigator/preset テスト追加（test_report_navigator.py, test_preset_thresholds.py）。
+
 ### 累積検証結果
 
 | 検証 | 結果 |
@@ -147,18 +154,17 @@
 | **147** | テスト追加 | orchestration, curator 等 | 📋 Planned |
 | **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2/3 ビルダー + 状態管理 | 📋 Planned |
 | **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | ✅ (2026-06-26) |
-| **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | 📋 Planned |
 
 **P3 クリーンアップ詳細** (architecture review より):
 - `gui/badukpan.py:1572` の `class MyKatrainDropDown(DropDown): pass` 削除（KV ファイルが名前参照中なので 1 行 alias 置換で対応）
 - `core/reports/types.py:84-90` の 7 行コメントアウトコード削除
 - 5 件の TODO コメント解消: `core/constants.py:84`, `core/engine.py:930`, `core/game/base.py:65`, `core/sgf_parser.py:412`, `gui/badukpan.py:1255`
 
-### Phase 148: Karte / Summary 品質改善
+### Phase 148: Karte / Summary 品質改善（2026-06-27 完了）
 
 > 起票日: 2026-06-26
-> 着手: 未定（ユーザー指示待ち）
-> 想定PR数: 4
+> 完了: 2026-06-27
+> PR: 4 (#293 A+B+B'-1, #294 B'-2, #295 C, #296 D)
 
 #### 背景
 ユーザーが AI 向け出力（Karte / Summary）の品質懸念 7 項目を 2026-06-26 に調査依頼。
