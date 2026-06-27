@@ -55,11 +55,9 @@ class MoveExtractor:
         if phase not in PHASES and phase != "unknown":
              phase = "unknown"
 
-        # 4. Difficulty
+        # 4. Difficulty (Phase 148-C5: unified to "easy"; no simple/easy conversion)
         difficulty = move.position_difficulty.value.lower() if move.position_difficulty else "unknown"
-        if difficulty == "easy":
-            difficulty = "simple"
-        elif difficulty not in DIFFICULTY_LEVELS:
+        if difficulty not in DIFFICULTY_LEVELS:
             difficulty = "unknown"
 
         # 5. Mistake Type

@@ -96,7 +96,7 @@ class TestMistakeSignature:
             severity="blunder",
             player="W",
         )
-        assert sig.sort_key() == ("middle", "edge", "life_death", "blunder", "W")
+        assert sig.sort_key() == ("middle", "edge", "life_death", "blunder", "W", False)
 
     def test_equality(self):
         """Two signatures with same values should be equal."""

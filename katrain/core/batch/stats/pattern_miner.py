@@ -24,7 +24,7 @@ from katrain.core.analysis.meaning_tags import (
     get_loss_value,
     is_endgame,
 )
-from katrain.core.analysis.models import MistakeCategory
+from katrain.core.analysis.models import MistakeCategory, PositionDifficulty
 from katrain.core.sgf_parser import Move
 
 # =============================================================================
@@ -62,12 +62,19 @@ MAX_GAME_REFS_PER_CLUSTER = 10
 class MistakeSignature:
     """Frozen signature representing a mistake pattern.
 
+    Phase 148-C4: consecutive_forced marks a mistake on a forced move
+    preceded by another forced move of the same player. These are
+    aggregated into a single pattern so consecutive forced mistakes do
+    not fragment the pattern counts.
+
     Attributes:
         phase: Game phase ("opening", "middle", "endgame")
         area: Board area ("corner", "edge", "center")
         primary_tag: MeaningTagId value (e.g., "overplay", "uncertain")
         severity: Mistake severity ("mistake", "blunder")
         player: Player color ("B" or "W")
+        consecutive_forced: True when this mistake followed another forced
+            mistake of the same player in the immediately previous move
     """
 
     phase: str
@@ -75,10 +82,11 @@ class MistakeSignature:
     primary_tag: str
     severity: str
     player: str
+    consecutive_forced: bool = False
 
-    def sort_key(self) -> tuple[str, str, str, str, str]:
+    def sort_key(self) -> tuple[str, str, str, str, str, bool]:
         """Return deterministic sort key for stable ordering."""
-        return (self.phase, self.area, self.primary_tag, self.severity, self.player)
+        return (self.phase, self.area, self.primary_tag, self.severity, self.player, self.consecutive_forced)
 
 
 @dataclass(frozen=True)
@@ -127,15 +135,26 @@ class PatternCluster:
 # =============================================================================
 
 
-def get_severity(mistake_category: MistakeCategory) -> str | None:
+def get_severity(
+    mistake_category: MistakeCategory,
+    position_difficulty: PositionDifficulty | None = None,
+) -> str | None:
     """Convert MistakeCategory to severity string.
+
+    Phase 148-C1: BLUNDER on ONLY_MOVE (forced) positions is excluded from
+    severity aggregation — a forced move has no real choice, so a "blunder"
+    there has low learning value and inflates severity metrics.
 
     Args:
         mistake_category: The mistake category enum value
+        position_difficulty: Position difficulty (when known)
 
     Returns:
         "mistake" or "blunder" for significant mistakes, None for others
     """
+    if position_difficulty == PositionDifficulty.ONLY_MOVE:
+        if mistake_category == MistakeCategory.BLUNDER:
+            return None
     if mistake_category == MistakeCategory.MISTAKE:
         return "mistake"
     if mistake_category == MistakeCategory.BLUNDER:
@@ -263,13 +282,21 @@ def create_signature(
     move_eval: Any,  # MoveEval or duck-typed object
     total_moves: int | None,
     board_size: int = 19,
+    *,
+    consecutive_forced: bool = False,
 ) -> MistakeSignature | None:
     """Create a mistake signature from a move evaluation.
+
+    Phase 148-C4: ``consecutive_forced`` marks mistakes that followed another
+    forced (ONLY_MOVE) significant mistake of the same player, so they
+    aggregate into a single pattern instead of fragmenting counts.
 
     Args:
         move_eval: MoveEval object (or duck-typed with required attributes)
         total_moves: Total moves in the game
         board_size: Board size
+        consecutive_forced: True when the previous move by the same player
+            was a forced (ONLY_MOVE) significant mistake.
 
     Returns:
         MistakeSignature if this is a significant mistake, None otherwise
@@ -279,8 +306,8 @@ def create_signature(
     if loss is None or loss < LOSS_THRESHOLD:
         return None
 
-    # Check severity (only MISTAKE/BLUNDER)
-    severity = get_severity(move_eval.mistake_category)
+    # Check severity (only MISTAKE/BLUNDER; Phase 148-C1: forced BLUNDER excluded)
+    severity = get_severity(move_eval.mistake_category, getattr(move_eval, "position_difficulty", None))
     if severity is None:
         return None
 
@@ -306,6 +333,7 @@ def create_signature(
         primary_tag=primary_tag,
         severity=severity,
         player=norm_player,
+        consecutive_forced=consecutive_forced,
     )
 
 
@@ -334,11 +362,26 @@ def mine_patterns(
 
     for game_name, snapshot in games:
         total_moves = len(snapshot.moves)
+        # Phase 148-C4: track whether the previous move by each player was a
+        # forced (ONLY_MOVE) significant mistake, to mark the current move
+        # as consecutive_forced if it also qualifies.
+        prev_forced: dict[str, bool] = {}
 
         for move_eval in snapshot.moves:
-            sig = create_signature(move_eval, total_moves, board_size)
+            player = getattr(move_eval, "player", None) or "?"
+            consecutive_forced = prev_forced.get(player, False)
+            sig = create_signature(
+                move_eval,
+                total_moves,
+                board_size,
+                consecutive_forced=consecutive_forced,
+            )
             if sig is None:
                 continue
+
+            # Track forced state for the next move by this player
+            is_forced = getattr(move_eval, "position_difficulty", None) == PositionDifficulty.ONLY_MOVE
+            prev_forced[player] = is_forced and sig.severity in ("mistake", "blunder")
 
             # Get loss for aggregation
             loss = get_loss_value(move_eval)

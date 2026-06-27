@@ -79,10 +79,24 @@ class SummaryAnalyzer:
                         stats.total_points_lost += loss
 
                     # ミス分類を集計
-                    if move.mistake_category:
-                        stats.mistake_counts[move.mistake_category] += 1
+                    # Phase 148-C2: re-classify using game_data.skill_preset
+                    # (preset-based score_thresholds, fallback to move.mistake_category)
+                    cat = move.mistake_category
+                    if game_data.skill_preset:
+                        preset = eval_metrics.get_skill_preset(game_data.skill_preset)
+                        thresholds = preset.score_thresholds
+                        if loss >= thresholds[2]:
+                            cat = MistakeCategory.BLUNDER
+                        elif loss >= thresholds[1]:
+                            cat = MistakeCategory.MISTAKE
+                        elif loss >= thresholds[0]:
+                            cat = MistakeCategory.INACCURACY
+                        else:
+                            cat = MistakeCategory.GOOD
+                    if cat:
+                        stats.mistake_counts[cat] += 1
                         if loss > 0:
-                            stats.mistake_total_loss[move.mistake_category] += loss
+                            stats.mistake_total_loss[cat] += loss
 
                     # Freedom（手の自由度）を集計
                     if move.position_difficulty:
@@ -95,8 +109,8 @@ class SummaryAnalyzer:
                         stats.phase_loss[phase] = stats.phase_loss.get(phase, 0.0) + loss
 
                     # Phase × MistakeCategory クロス集計
-                    if move.mistake_category:
-                        key = (phase, move.mistake_category)
+                    if cat:
+                        key = (phase, cat)
                         stats.phase_mistake_counts[key] = stats.phase_mistake_counts.get(key, 0) + 1
                         if loss > 0:
                             stats.phase_mistake_loss[key] = (
@@ -104,7 +118,8 @@ class SummaryAnalyzer:
                             )
 
                     # 最悪手を記録（Top 10を保持）
-                    if loss > BAD_MOVE_LOSS_THRESHOLD:
+                    # Phase 148-C4: exclude forced (ONLY_MOVE) moves - low learning value
+                    if loss > BAD_MOVE_LOSS_THRESHOLD and getattr(move, "position_difficulty", None) != PositionDifficulty.ONLY_MOVE:
                         stats.worst_moves.append((game_data.game_name, move))
 
                     # Reason Tags Aggregation (v6)
