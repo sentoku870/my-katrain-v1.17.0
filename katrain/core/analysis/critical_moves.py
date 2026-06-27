@@ -365,28 +365,36 @@ def _get_score_stdev_for_move(
 def _classify_meaning_tags(
     moves: list[Any],  # list[MoveEval]
     snapshot: Any,  # EvalSnapshot
+    node_map: dict[int, Any] | None = None,
 ) -> dict[int, str]:
     """Build local meaning_tag_id mapping (non-mutating).
 
     If move already has meaning_tag_id set, uses that.
     Otherwise classifies via classify_meaning_tag().
 
+    Phase 148-B'1: When node_map is provided, build a per-move
+    ClassificationContext from the GameNode so move_distance and scoreStdev
+    are supplied (distance/stdev-dependent tags can fire).
+
     Returns:
         {move_number: meaning_tag_id} mapping
     """
     from katrain.core.analysis.meaning_tags import (
-        ClassificationContext,
+        build_classification_context_from_node,
         classify_meaning_tag,
     )
 
     total_moves = len(snapshot.moves)
-    ctx = ClassificationContext(total_moves=total_moves)
     result: dict[int, str] = {}
 
     for move in moves:
         if move.meaning_tag_id is not None:
             result[move.move_number] = move.meaning_tag_id
         else:
+            node = node_map.get(move.move_number) if node_map else None
+            ctx = build_classification_context_from_node(
+                node, move.gtp, total_moves=total_moves
+            )
             tag = classify_meaning_tag(move, context=ctx)
             result[move.move_number] = tag.id.value
 
@@ -436,11 +444,11 @@ def select_critical_moves(
     if not important_moves:
         return []
 
-    # Step 2: Classify meaning tags (non-mutating)
-    meaning_tag_map = _classify_meaning_tags(important_moves, snapshot)
-
-    # Step 3: Build node map for scoreStdev lookup
+    # Step 2: Build node map (used for meaning tag context + scoreStdev lookup)
     node_map = _build_node_map(game)
+
+    # Step 3: Classify meaning tags (non-mutating)
+    meaning_tag_map = _classify_meaning_tags(important_moves, snapshot, node_map=node_map)
 
     # Step 4: Get board size for game phase classification
     board_size = 19

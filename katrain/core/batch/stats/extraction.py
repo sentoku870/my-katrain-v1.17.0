@@ -53,9 +53,10 @@ def extract_game_stats(
     """
     try:
         from katrain.core import eval_metrics
+        from katrain.core.analysis import _build_node_map
         from katrain.core.analysis.meaning_tags import (
-            ClassificationContext,
             MeaningTagId,
+            build_classification_context_from_node,
             classify_meaning_tag,
         )
         from katrain.core.eval_metrics import compute_effective_threshold
@@ -268,10 +269,13 @@ def extract_game_stats(
 
             important_moves = game.get_important_move_evals(compute_reason_tags=True)
 
-            # Phase 47: Create context once with total_moves
-            # Other context fields (policy, distance, etc.) are not available here
+            # Phase 148-B'1: Build per-move context with distance/scoreStdev
             total_moves = stats["total_moves"]
-            classification_context = ClassificationContext(total_moves=total_moves)
+            try:
+                node_map = _build_node_map(game)
+            except (TypeError, AttributeError):
+                # Incomplete/mock game without traversable children -> degrade gracefully
+                node_map = {}
 
             for move in important_moves:
                 player = move.player
@@ -290,6 +294,10 @@ def extract_game_stats(
 
                     # Phase 47: Classify meaning tag if not already done
                     if move.meaning_tag_id is None:
+                        node = node_map.get(move.move_number)
+                        classification_context = build_classification_context_from_node(
+                            node, move.gtp, total_moves=total_moves
+                        )
                         meaning_tag = classify_meaning_tag(move, context=classification_context)
                         move.meaning_tag_id = meaning_tag.id.value
 

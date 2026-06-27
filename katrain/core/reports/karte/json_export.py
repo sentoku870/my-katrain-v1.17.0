@@ -13,8 +13,9 @@ from datetime import datetime
 from typing import Any
 
 from katrain.core import eval_metrics
+from katrain.core.analysis import _build_node_map
 from katrain.core.analysis.meaning_tags import (
-    ClassificationContext,
+    build_classification_context_from_node,
     classify_meaning_tag,
 )
 from katrain.core.eval_metrics import (
@@ -168,11 +169,19 @@ def build_karte_json(
     if player_filter in ("B", "W"):
         important_move_evals = [m for m in important_move_evals if m.player == player_filter]
 
-    # Classify meaning tags
+    # Classify meaning tags (Phase 148-B'1: per-move context with distance/scoreStdev)
     total_moves_for_ctx = len(moves)
-    classification_context = ClassificationContext(total_moves=total_moves_for_ctx)
+    try:
+        node_map = _build_node_map(game)
+    except (TypeError, AttributeError):
+        # Incomplete/mock game without traversable children -> degrade gracefully
+        node_map = {}
     for mv in important_move_evals:
         if mv.meaning_tag_id is None:
+            node = node_map.get(mv.move_number)
+            classification_context = build_classification_context_from_node(
+                node, mv.gtp, total_moves=total_moves_for_ctx
+            )
             meaning_tag = classify_meaning_tag(mv, context=classification_context)
             mv.meaning_tag_id = meaning_tag.id.value
 
