@@ -90,7 +90,7 @@ def save_summaries_per_player(
                 label = category_labels[category]
                 # プレイヤー名のサニタイズ
                 safe_player_name = re.sub(r'[<>:"/\\|?*]', "_", player_name)[:30]
-                filename = f"summary_{safe_player_name}_{label}_{timestamp}.md"
+                filename = f"summary_{safe_player_name}_{label}_{timestamp}.json"
                 full_path = os.path.join(output_dir, filename)
 
                 with open(full_path, "w", encoding="utf-8") as f:
@@ -144,7 +144,7 @@ def save_categorized_summaries_from_stats(
     ctx: FeatureContext,
     build_summary_fn: Callable[[list[dict[str, Any]], str | None], str],
 ) -> None:
-    """カテゴリごとにsummary.mdを保存
+    """カテゴリごとにsummary.jsonを保存
 
     Args:
         categorized_games: カテゴリ別に分類されたゲームリスト
@@ -183,7 +183,7 @@ def save_categorized_summaries_from_stats(
 
             # ファイル名
             label = category_labels[category]
-            filename = f"summary_{label}_{timestamp}.md"
+            filename = f"summary_{label}_{timestamp}.json"
             full_path = os.path.join(output_dir, filename)
 
             # 保存
@@ -244,7 +244,7 @@ def save_summary_file(
     progress_popup.dismiss()
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M")
-    filename = f"summary_{player_name or 'all'}_{timestamp}.md"
+    filename = f"summary_{player_name or 'all'}_{timestamp}.json"
 
     # reports/ ディレクトリに保存
     default_path = os.path.join(os.path.expanduser(ctx.config("general/sgf_save") or "."), "reports")

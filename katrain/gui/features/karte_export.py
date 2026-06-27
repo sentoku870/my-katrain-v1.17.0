@@ -155,17 +155,17 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
 
     if karte_format == "both":
         # Both players in one file (player_filter=None)
-        exports = [(None, f"karte_{base_name}_{timestamp}.md")]
+        exports = [(None, f"karte_{base_name}_{timestamp}.json")]
     elif karte_format == "black_only":
-        exports = [("B", f"karte_{base_name}_black_{timestamp}.md")]
+        exports = [("B", f"karte_{base_name}_black_{timestamp}.json")]
     elif karte_format == "white_only":
-        exports = [("W", f"karte_{base_name}_white_{timestamp}.md")]
+        exports = [("W", f"karte_{base_name}_white_{timestamp}.json")]
     elif karte_format == "default_user_only":
         # Determine user's color
         player_color = determine_user_color(ctx.game, default_user)
         if player_color:
             color_label = "black" if player_color == "B" else "white"
-            exports = [(player_color, f"karte_{base_name}_{color_label}_{timestamp}.md")]
+            exports = [(player_color, f"karte_{base_name}_{color_label}_{timestamp}.json")]
         else:
             # Fallback to both in one file
             Popup(
@@ -179,7 +179,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 ),
                 size_hint=(0.5, 0.3),
             ).open()
-            exports = [(None, f"karte_{base_name}_{timestamp}.md")]
+            exports = [(None, f"karte_{base_name}_{timestamp}.json")]
 
     # Generate and save karte(s)
     skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
