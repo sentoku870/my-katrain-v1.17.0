@@ -45,7 +45,6 @@ from katrain.core.reports.karte.sections.diagnosis import (
 )
 from katrain.core.reports.karte.sections.important_moves import (
     critical_3_section_for,
-    important_lines_for,
     reason_tags_distribution_for,
 )
 from katrain.core.reports.karte.sections.metadata import (
@@ -55,9 +54,6 @@ from katrain.core.reports.karte.sections.metadata import (
 )
 from katrain.core.reports.karte.sections.summary import (
     common_difficult_positions,
-    distribution_lines_for,
-    opponent_summary_for,
-    summary_lines_for,
 )
 
 logger = logging.getLogger(__name__)

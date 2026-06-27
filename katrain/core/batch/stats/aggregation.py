@@ -1,13 +1,16 @@
-"""Aggregation functions and i18n helpers for batch statistics.
+"""Aggregation functions for batch statistics.
 
-This module contains:
-- build_batch_summary()
-- Evidence support functions
-- i18n getter functions
-- Helper functions for formatting
+Phase 149 C-4: Dead-code removal. Removed:
+- _select_evidence_moves / _format_evidence_with_links (Phase 66, unused)
+- build_tag_based_hints / detect_color_bias / get_dominant_tags
+- All localized helper getters (get_phase_priority_text etc.)
+- Associated i18n constants in models.py
 
-Dependencies:
-- models.py (constants only)
+Survivors:
+- build_batch_summary: Main entry, with lang parameter (Phase 149 B-2)
+- Localized PHASE labels: handled directly via lang switch (not via getters)
+
+This module is now purely about producing the batch summary markdown.
 """
 
 from __future__ import annotations
@@ -16,139 +19,16 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from katrain.common.locale_utils import normalize_lang_code
-
-# Import types for type hints
-from katrain.core.analysis.models import MoveEval, SummaryStats
 from katrain.core.batch.helpers import (
     escape_markdown_table_cell,
-    format_game_display_label,
-    format_game_link_target,
     truncate_game_name,
 )
-from katrain.core.eval_metrics import (
-    MistakeCategory,
-    get_reason_tag_label,
-)
-
-from .models import (
-    COLOR_BIAS_NOTES,
-    HINT_LINE_FORMATS,
-    MTAG_PRACTICE_HINTS,
-    NOTES_HEADERS,
-    PERCENTAGE_NOTES,
-    PHASE_LABELS_LOCALIZED,
-    PHASE_PRIORITY_TEXTS,
-    PRACTICE_INTRO_TEXTS,
-    RTAG_PRACTICE_HINTS,
-    SECTION_HEADERS,
-    EvidenceMove,
-)
+from katrain.core.eval_metrics import MistakeCategory
 
 _logger = logging.getLogger("katrain.core.batch.stats")
 
 if TYPE_CHECKING:
     pass
-
-
-# =============================================================================
-# Evidence Support (Phase 66)
-# =============================================================================
-
-
-def _select_evidence_moves(
-    candidates: list[EvidenceMove],
-    max_count: int = 2,
-) -> list[EvidenceMove]:
-    """Select representative evidence moves with game deduplication.
-
-    Args:
-        candidates: List of EvidenceMove objects
-        max_count: Maximum moves to return
-
-    Returns:
-        Selected moves, deduplicated by game, sorted by loss descending
-
-    Selection criteria:
-        - Only MISTAKE or BLUNDER categories (already filtered by caller)
-        - points_lost is not None (already guaranteed by worst_moves source)
-        - Stable sort: loss desc, move_number asc, game_name asc
-    """
-    # Sort: loss desc, move_number asc, game_name asc (deterministic)
-    sorted_candidates = sorted(
-        candidates,
-        key=lambda e: (-e.points_lost, e.move_number, e.game_name),
-    )
-
-    # Dedupe by game_name
-    seen_games: set[str] = set()
-    selected = []
-    for ev in sorted_candidates:
-        if ev.game_name not in seen_games:
-            selected.append(ev)
-            seen_games.add(ev.game_name)
-        if len(selected) >= max_count:
-            break
-
-    return selected
-
-
-def _format_evidence_with_links(
-    evidence: list[EvidenceMove],
-    karte_path_map: dict[str, str] | None,
-    summary_dir: str | None,
-    lang: str = "jp",
-) -> str:
-    """Format evidence moves with karte links (Markdown-safe).
-
-    Args:
-        evidence: List of EvidenceMove objects
-        karte_path_map: Mapping from game_name to karte file path
-        summary_dir: Directory containing the summary file (for relative links)
-        lang: Language code
-
-    Returns:
-        Formatted string like "例: `Game1` #12 Q16 (-8.5目) [カルテ](link), ..."
-        or "(該当する代表例なし)" if empty
-
-    Note:
-        - Game name wrapped in backticks (`) to avoid bracket issues in Markdown
-        - Uses format_game_link_target() for consistent URL encoding
-    """
-    import os
-
-    if not evidence:
-        return "(該当する代表例なし)" if lang == "jp" else "(no representative examples)"
-
-    prefix = "例: " if lang == "jp" else "e.g.: "
-    parts = []
-
-    for ev in evidence:
-        # Format loss as points (already in points unit from worst_moves)
-        loss_label = f"-{ev.points_lost:.1f}目" if lang == "jp" else f"-{ev.points_lost:.1f}pt"
-
-        # Build display label (short) - NO escaping needed, will be wrapped in backticks
-        display = format_game_display_label(ev.game_name, max_len=20, escape_mode="none")
-
-        # Build link if available
-        karte_path = karte_path_map.get(ev.game_name) if karte_path_map else None
-        if karte_path and summary_dir:
-            # Make relative to summary_dir
-            try:
-                rel_path = os.path.relpath(karte_path, summary_dir)
-            except ValueError:
-                # Cross-drive on Windows
-                rel_path = os.path.basename(karte_path)
-            rel_path = rel_path.replace("\\", "/")
-            link_target = format_game_link_target(rel_path, preserve_path=True)
-
-            link_text = "カルテ" if lang == "jp" else "karte"
-            # Wrap display in backticks for Markdown safety
-            parts.append(f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label}) [{link_text}]({link_target})")
-        else:
-            parts.append(f"`{display}` #{ev.move_number} {ev.gtp or '-'} ({loss_label})")
-
-    return prefix + ", ".join(parts)
 
 
 # =============================================================================
@@ -293,209 +173,3 @@ def build_batch_summary(
 
     return "\n".join(lines)
 
-
-# =============================================================================
-# i18n Getter Functions
-# =============================================================================
-
-
-def get_phase_priority_text(key: str, lang: str = "jp", **kwargs: Any) -> str:
-    """Get localized phase priority text with optional formatting."""
-    normalized = normalize_lang_code(lang)
-    texts = PHASE_PRIORITY_TEXTS.get(normalized, PHASE_PRIORITY_TEXTS["en"])
-    template = texts.get(key, "")
-    if kwargs:
-        return template.format(**kwargs)
-    return template
-
-
-def get_phase_label_localized(phase: str, lang: str = "jp") -> str:
-    """Get localized phase label."""
-    normalized = normalize_lang_code(lang)
-    labels = PHASE_LABELS_LOCALIZED.get(normalized, PHASE_LABELS_LOCALIZED["en"])
-    return labels.get(phase, phase)
-
-
-def get_section_header(key: str, lang: str = "jp") -> str:
-    """Get localized section header."""
-    normalized = normalize_lang_code(lang)
-    headers = SECTION_HEADERS.get(normalized, SECTION_HEADERS["en"])
-    return headers.get(key, key)
-
-
-def get_practice_intro_text(lang: str = "jp") -> str:
-    """Get localized practice intro text."""
-    normalized = normalize_lang_code(lang)
-    return PRACTICE_INTRO_TEXTS.get(normalized, PRACTICE_INTRO_TEXTS["en"])
-
-
-def get_notes_header(lang: str = "jp") -> str:
-    """Get localized notes header."""
-    normalized = normalize_lang_code(lang)
-    return NOTES_HEADERS.get(normalized, NOTES_HEADERS["en"])
-
-
-
-
-def get_mtag_practice_hint(tag_id: str, lang: str = "jp") -> str | None:
-    """Get localized practice hint for a meaning tag ID.
-
-    Args:
-        tag_id: Meaning tag ID (lowercase snake_case, e.g., "connection_miss")
-        lang: Language code ("jp", "en", "ja")
-
-    Returns:
-        Hint text or None if tag not found
-    """
-    normalized = normalize_lang_code(lang)
-    hints = MTAG_PRACTICE_HINTS.get(normalized, MTAG_PRACTICE_HINTS["en"])
-    return hints.get(tag_id.lower())
-
-
-def get_rtag_practice_hint(tag: str, lang: str = "jp") -> str | None:
-    """Get localized practice hint for a reason tag.
-
-    Args:
-        tag: Reason tag (lowercase snake_case, e.g., "need_connect")
-        lang: Language code ("jp", "en", "ja")
-
-    Returns:
-        Hint text or None if tag not found
-    """
-    normalized = normalize_lang_code(lang)
-    hints = RTAG_PRACTICE_HINTS.get(normalized, RTAG_PRACTICE_HINTS["en"])
-    return hints.get(tag.lower())
-
-
-def format_hint_line(label: str, count: int, hint: str, lang: str = "jp") -> str:
-    """Format a practice hint line with localized format.
-
-    Args:
-        label: Tag label (localized)
-        count: Occurrence count
-        hint: Practice hint text
-        lang: Language code
-
-    Returns:
-        Formatted hint line (JP: "**label**（N回）→ hint", EN: "**label** (Nx) -> hint")
-    """
-    normalized = normalize_lang_code(lang)
-    fmt = HINT_LINE_FORMATS.get(normalized, HINT_LINE_FORMATS["en"])
-    return fmt.format(label=label, count=count, hint=hint)
-
-
-def get_percentage_note(lang: str = "jp") -> str:
-    """Get localized percentage explanation note."""
-    normalized = normalize_lang_code(lang)
-    return PERCENTAGE_NOTES.get(normalized, PERCENTAGE_NOTES["en"])
-
-
-def get_color_bias_note(bias: str, lang: str = "jp") -> str:
-    """Get localized color bias note.
-
-    Args:
-        bias: "B" for all-Black, "W" for all-White
-        lang: Language code
-
-    Returns:
-        Localized note text
-    """
-    normalized = normalize_lang_code(lang)
-    notes = COLOR_BIAS_NOTES.get(normalized, COLOR_BIAS_NOTES["en"])
-    return notes.get(bias, "")
-
-
-# =============================================================================
-# Helper Functions
-# =============================================================================
-
-
-def detect_color_bias(player_games: list[tuple[dict[str, Any], str]]) -> str | None:
-    """Detect if all games are played as one color.
-
-    Args:
-        player_games: List of (stats, role) tuples
-
-    Returns:
-        "B" if all Black, "W" if all White, None if mixed
-    """
-    if not player_games:
-        return None
-    b_games = sum(1 for _, role in player_games if role == "B")
-    w_games = sum(1 for _, role in player_games if role == "W")
-    if b_games > 0 and w_games == 0:
-        return "B"
-    elif w_games > 0 and b_games == 0:
-        return "W"
-    return None
-
-
-def get_dominant_tags(
-    tag_counts: dict[str, int],
-    min_count: int = 3,
-    max_tags: int = 3,
-) -> list[tuple[str, int]]:
-    """Get dominant tags sorted by count.
-
-    Args:
-        tag_counts: Dict of tag -> count
-        min_count: Minimum count to include
-        max_tags: Maximum number of tags to return
-
-    Returns:
-        List of (tag, count) tuples, sorted by count descending
-    """
-    qualified = [(tag, count) for tag, count in tag_counts.items() if count >= min_count]
-    qualified.sort(key=lambda x: -x[1])
-    return qualified[:max_tags]
-
-
-def build_tag_based_hints(
-    mtag_counts: dict[str, int],
-    rtag_counts: dict[str, int],
-    lang: str = "jp",
-    min_count: int = 3,
-    max_hints: int = 4,
-) -> list[str]:
-    """Build practice hint lines based on dominant meaning/reason tags.
-
-    Args:
-        mtag_counts: Meaning tag ID -> count
-        rtag_counts: Reason tag -> count
-        lang: Language code
-        min_count: Minimum occurrences to include
-        max_hints: Maximum total hints to generate
-
-    Returns:
-        List of formatted hint lines (empty if no qualified tags with hints)
-    """
-    from katrain.common.locale_utils import to_iso_lang_code
-    from katrain.core.analysis.meaning_tags.integration import get_meaning_tag_label_safe
-
-    hints = []
-
-    # Get dominant meaning tags
-    top_mtags = get_dominant_tags(mtag_counts, min_count, max_hints)
-    for tag_id, count in top_mtags:
-        hint = get_mtag_practice_hint(tag_id, lang)
-        if hint:
-            # Get localized label for meaning tag (needs ISO code for lookup)
-            iso_lang = to_iso_lang_code(lang)
-            label = get_meaning_tag_label_safe(tag_id, iso_lang)
-            if label:
-                hints.append(format_hint_line(label, count, hint, lang))
-
-    # Get dominant reason tags if we have room
-    remaining = max_hints - len(hints)
-    if remaining > 0:
-        top_rtags = get_dominant_tags(rtag_counts, min_count, remaining)
-        for tag, count in top_rtags:
-            hint = get_rtag_practice_hint(tag, lang)
-            if hint:
-                label = get_reason_tag_label(tag, fallback_to_raw=True)
-                hints.append(format_hint_line(label, count, hint, lang))
-
-    return hints
-
-
-# End of aggregation.py

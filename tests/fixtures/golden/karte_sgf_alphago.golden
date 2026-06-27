@@ -1,7 +1,7 @@
 {
-  "schema_version": "2.1",
+  "schema_version": "3.0",
   "meta": {
-    "schema_version": "2.1",
+    "schema_version": "3.0",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -195,5 +195,140 @@
       ],
       "primary_tag": "reading_failure"
     }
-  ]
+  ],
+  "weaknesses": {
+    "black": [
+      {
+        "phase": "opening",
+        "category": "BLUNDER",
+        "count": 1,
+        "total_loss": 6.0,
+        "avg_loss": 6.0,
+        "confidence": "high",
+        "evidence": []
+      },
+      {
+        "phase": "opening",
+        "category": "MISTAKE",
+        "count": 1,
+        "total_loss": 2.5,
+        "avg_loss": 2.5,
+        "confidence": "high",
+        "evidence": []
+      }
+    ],
+    "white": [
+      {
+        "phase": "opening",
+        "category": "BLUNDER",
+        "count": 1,
+        "total_loss": 12.0,
+        "avg_loss": 12.0,
+        "confidence": "high",
+        "evidence": []
+      }
+    ]
+  },
+  "practice_priorities": {
+    "black": [
+      {
+        "priority_id": "phase_middle_mistake_focus",
+        "phase": "middle",
+        "category": "MISTAKE",
+        "anchor_move": null
+      },
+      {
+        "priority_id": "phase_middle_mistake_focus",
+        "phase": "middle",
+        "category": "MISTAKE",
+        "anchor_move": null
+      }
+    ],
+    "white": [
+      {
+        "priority_id": "phase_middle_mistake_focus",
+        "phase": "middle",
+        "category": "MISTAKE",
+        "anchor_move": null
+      }
+    ]
+  },
+  "mistake_streaks": {
+    "black": [],
+    "white": []
+  },
+  "urgent_misses": {
+    "black": [],
+    "white": []
+  },
+  "critical_3": {
+    "black": [
+      {
+        "move_number": 17,
+        "gtp_coord": "E16",
+        "player": "B",
+        "score_loss": 6.0,
+        "meaning_tag_id": "territorial_loss",
+        "meaning_tag_label": "地の損失",
+        "game_phase": "opening",
+        "position_difficulty": "only",
+        "area": null,
+        "reason_tags": [],
+        "complexity_discounted": false
+      },
+      {
+        "move_number": 5,
+        "gtp_coord": "P4",
+        "player": "B",
+        "score_loss": 2.5,
+        "meaning_tag_id": "territorial_loss",
+        "meaning_tag_label": "地の損失",
+        "game_phase": "opening",
+        "position_difficulty": "only",
+        "area": null,
+        "reason_tags": [],
+        "complexity_discounted": false
+      }
+    ],
+    "white": [
+      {
+        "move_number": 34,
+        "gtp_coord": "B10",
+        "player": "W",
+        "score_loss": 12.0,
+        "meaning_tag_id": "territorial_loss",
+        "meaning_tag_label": "地の損失",
+        "game_phase": "opening",
+        "position_difficulty": "only",
+        "area": null,
+        "reason_tags": [],
+        "complexity_discounted": false
+      }
+    ]
+  },
+  "data_quality": {
+    "confidence_level": "high",
+    "total_moves": 180,
+    "moves_with_visits": 180,
+    "coverage_pct": 100.0,
+    "reliable_count": 180,
+    "reliability_pct": 100.0,
+    "low_confidence_count": 0,
+    "low_confidence_pct": 0.0,
+    "avg_visits": 500,
+    "max_visits": 500,
+    "effective_threshold": 200,
+    "is_low_reliability": false
+  },
+  "common_difficult_positions": [],
+  "reason_tags_distribution": {
+    "black": {
+      "unknown": 1,
+      "heavy_loss": 1
+    },
+    "white": {
+      "low_liberties": 1,
+      "heavy_loss": 1
+    }
+  }
 }

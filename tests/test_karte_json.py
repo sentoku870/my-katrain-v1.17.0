@@ -121,10 +121,10 @@ class TestBuildKarteJson:
     """Tests for build_karte_json function."""
 
     def test_json_schema_version(self):
-        """Schema version should be 2.1."""
+        """Schema version should be 3.0 (Phase 149 C-3: bumped from 2.1)."""
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
-        assert result["schema_version"] == "2.1"
+        assert result["schema_version"] == "3.0"
 
     def test_meta_section_present(self):
         """Meta section should contain required fields (Phase 137 schema)."""
