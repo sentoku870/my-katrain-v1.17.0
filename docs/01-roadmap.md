@@ -1,10 +1,11 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-26(Phase 148 計画追加)
+> 最終更新: 2026-06-27(Phase 149 完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
 > Phase 148 (2026-06-27 完了): 4 PR (#293 / #294 / #295 / #296)。詳細下記。
+> Phase 149 (2026-06-27 完了): Karte/Summary 残存問題点の発見と対応。詳細下記。
 
 ---
 
@@ -42,6 +43,7 @@
 | **145-C** | orchestration.py run_batch 分割 | 462 行を 5 関数 + 3 context dataclass に分割 | ✅ |
 | **145-D** | settings_popup.py 部分抽出 | 703 行の関数から search / buttons / save / browse を抽出 | ✅ (部分的) |
 | **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | ✅ (2026-06-27) |
+| **149** | Karte/Summary 残存問題対応 + Dead Code Revival | 4 PR (A: bug fixes / B: summary quality / C: JSON revival / D: docs) | ✅ (2026-06-27) |
 
 ### 直近の更新詳細
 
@@ -233,6 +235,62 @@ PR 4 (Phase D): D1, D2
 
 - C2 採用時、Leela 経路（`core/leela/conversion.py:244-270`）も同じ `classify_mistake(score_loss=None, ...)` パターンのため、再分類が必要か判断
 - D1 完全移行後、既存 `.md` ファイルを救済する CLI ツール（マイグレーション）を別 Phase で用意するか
+
+### Phase 149: Karte/Summary 残存問題対応 + Dead Code Revival (2026-06-27 完了)
+
+> 起票日: 2026-06-26
+> 完了: 2026-06-27
+> PR: 4 (A: bug fixes / B: summary quality / C: JSON revival / D: docs)
+
+#### 背景
+
+ユーザーが AI 向け出力（Karte / Summary）の品質懸念を 2026-06-26 に調査依頼。
+READ-ONLY 調査で Phase 148 では触れられなかった 5 件のバグ、6 件のデッドコード、
+3 件の設計上の問題を確認。LLM 受け渡しのため出力の正確性・整合性を優先して改修。
+
+#### 計画: 4 サブフェーズ = 4 PR
+
+| Sub | 内容 | 修正Lv | 主要ファイル |
+|:---:|------|:------:|--------------|
+| **A** | Critical Bug Fixes (Lv1 のみ, 8 項目) | Lv1 | `core/batch/orchestration.py` (skill_preset渡し) / `gui/features/karte_export.py` (i18n) / 他 |
+| **B** | Summary Quality (Lv2): SummaryAnalyzer 専用テスト + build_batch_summary i18n + MISTAKE_THRESHOLDS 明示値化 | Lv2 | `tests/test_summary_analyzer.py` (新規, 21 tests) / `core/batch/stats/aggregation.py` / `core/reports/definitions.py` |
+| **C** | Dead Code Revival as JSON (Lv3): セクションジェネレーターを JSON データとして復活 + Karte JSON v2.1→v3.0 + D-2 dead code 削除 | Lv3 | `core/reports/karte/sections/*.py` (4 files refactored) / `core/reports/schema.py` (TypedDict 追加) / `core/reports/karte/json_export.py` (v3.0 拡張) |
+| **D** | Docs & Validation (このドキュメント更新 + 全体検証) | Lv0 | `docs/01-roadmap.md` |
+
+#### 主な発見・対応
+
+**A. Critical Bugs**
+- A-1: `_generate_karte_for_file` で `skill_preset` が渡されておらず常に DEFAULT を使用
+- A-2/A-3: 動的 i18n キー構築（`i18n._(f"...{user}...")`）で翻訳が効かない
+- A-4: `RELIABILITY_VISITS_THRESHOLD` が `reports/constants.py` と `analysis/models/reliability.py` で重複定義
+- A-5: `SummaryAnalyzer.worst_moves` が top 10 に切られていない（メモリ効率）
+- A-6: `extractors.py:121` の bare `except:` を `except ValueError:` に
+- A-8: `_build_karte_report_impl` の未使用ローカル変数を削除
+
+**B. Summary Quality**
+- B-1: `tests/test_summary_analyzer.py` 新規（21 tests: skill_preset 再分類 / worst_moves forced 除外 / mistake_streak / focus_player / multi-game / reason_tags）
+- B-2: `build_batch_summary(lang=...)` 追加（jp/en 両対応）
+- B-3: `MISTAKE_THRESHOLDS` を auto preset 依存から明示値 (1.0/2.5/5.0) に固定
+
+**C. Dead Code Revival as JSON**
+- C-1: スキーマ v2.1 → v3.0。9 セクション追加 (weaknesses / practice_priorities / mistake_streaks / urgent_misses / critical_3 / data_quality / common_difficult_positions / reason_tags_distribution)
+- C-2: 4 セクションファイル (~1,300 行) を `list[str]` (markdown) → `list[TypedDict]` (JSON) に refactor
+- C-3: `build_karte_json` で KarteContext 経由で全セクションを呼び出し、v3.0 JSON として出力
+- C-4: 死蔵コード ~385 行を削除 (`_select_evidence_moves` / `_format_evidence_with_links` / `detect_color_bias` / `build_tag_based_hints` / 9 i18n getters / 10 i18n constants)
+- C-5: ゴールデン karte 3 種を v3.0 で再生成 + 16 新規テスト
+
+**D. Docs & Validation**
+- D-1: 本セクション追加
+- D-2: 全テスト 403 passed / mypy strict clean / architecture 40/40
+
+#### リスク評価
+
+| リスク | 影響 | 対策 |
+|--------|------|------|
+| スキーマ v3.0 で下流 LLM 連携が壊れる | 中 | additive 変更のみ。既存フィールド削除なし。release notes に明記 |
+| セクション refactor で値が変わる | 中 | 既存ゴールデン 3 種 + 新セクション単体テスト |
+| `build_batch_summary` マークダウン i18n 化で文字列が変わる | 低 | 既存ゴールデン summary 系は JSON 部分のみで影響なし |
+| Dead code 削除で誰かが import していた | 低 | 削除前に grep で事前確認、テストは削除に合わせて更新 |
 
 ---
 
