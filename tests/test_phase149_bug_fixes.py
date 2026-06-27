@@ -219,3 +219,139 @@ class TestA8BuilderImplNoUnusedLocals:
 
         src = inspect.getsource(builder._build_karte_report_impl)
         assert "build_karte_json" in src
+
+
+class TestB2BuildBatchSummaryLang:
+    """B-2: build_batch_summary should accept and respect lang parameter."""
+
+    def test_lang_en_returns_english_headers(self):
+        from katrain.core.batch import build_batch_summary
+        from katrain.core.eval_metrics import MistakeCategory
+
+        game_stats = [
+            {
+                "game_name": "g1.sgf",
+                "player_black": "P1",
+                "player_white": "P2",
+                "handicap": 0,
+                "date": "2025-01-03",
+                "board_size": (19, 19),
+                "total_moves": 100,
+                "total_points_lost": 15.5,
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 8.0, "W": 7.5},
+                "mistake_counts": {MistakeCategory.MISTAKE: 2},
+                "mistake_total_loss": {MistakeCategory.MISTAKE: 6.0},
+                "freedom_counts": {},
+                "phase_moves": {"opening": 50, "middle": 40, "yose": 10},
+                "phase_loss": {"opening": 3.0, "middle": 10.0, "yose": 2.5},
+                "phase_mistake_counts": {("middle", "MISTAKE"): 2},
+                "phase_mistake_loss": {("middle", "MISTAKE"): 6.0},
+                "worst_moves": [(45, "B", "Q10", 3.5, MistakeCategory.MISTAKE)],
+            }
+        ]
+
+        result = build_batch_summary(game_stats, lang="en")
+        assert "# Multi-Game Summary" in result
+        assert "Games analyzed" in result
+        assert "Overview" in result
+        # Japanese should not appear in English output
+        assert "複数局サマリー" not in result
+
+    def test_lang_jp_returns_japanese_headers(self):
+        from katrain.core.batch import build_batch_summary
+        from katrain.core.eval_metrics import MistakeCategory
+
+        game_stats = [
+            {
+                "game_name": "g1.sgf",
+                "player_black": "P1",
+                "player_white": "P2",
+                "handicap": 0,
+                "date": "2025-01-03",
+                "board_size": (19, 19),
+                "total_moves": 100,
+                "total_points_lost": 15.5,
+                "moves_by_player": {"B": 50, "W": 50},
+                "loss_by_player": {"B": 8.0, "W": 7.5},
+                "mistake_counts": {MistakeCategory.MISTAKE: 2},
+                "mistake_total_loss": {MistakeCategory.MISTAKE: 6.0},
+                "freedom_counts": {},
+                "phase_moves": {"opening": 50, "middle": 40, "yose": 10},
+                "phase_loss": {"opening": 3.0, "middle": 10.0, "yose": 2.5},
+                "phase_mistake_counts": {("middle", "MISTAKE"): 2},
+                "phase_mistake_loss": {("middle", "MISTAKE"): 6.0},
+                "worst_moves": [(45, "B", "Q10", 3.5, MistakeCategory.MISTAKE)],
+            }
+        ]
+
+        result = build_batch_summary(game_stats, lang="jp")
+        assert "複数局サマリー" in result
+        assert "対象局数" in result
+        assert "概要" in result
+
+    def test_lang_ja_alias_treated_as_jp(self):
+        """ISO 'ja' should be normalized to internal 'jp'."""
+        from katrain.core.batch import build_batch_summary
+        from katrain.core.eval_metrics import MistakeCategory
+
+        game_stats = [
+            {
+                "game_name": "g1.sgf",
+                "player_black": "P1",
+                "player_white": "P2",
+                "handicap": 0,
+                "date": "2025-01-03",
+                "board_size": (19, 19),
+                "total_moves": 50,
+                "total_points_lost": 5.0,
+                "moves_by_player": {"B": 25, "W": 25},
+                "loss_by_player": {"B": 2.5, "W": 2.5},
+                "mistake_counts": {},
+                "mistake_total_loss": {},
+                "freedom_counts": {},
+                "phase_moves": {"opening": 50, "middle": 0, "yose": 0},
+                "phase_loss": {"opening": 5.0, "middle": 0.0, "yose": 0.0},
+                "phase_mistake_counts": {},
+                "phase_mistake_loss": {},
+                "worst_moves": [],
+            }
+        ]
+
+        result = build_batch_summary(game_stats, lang="ja")
+        assert "複数局サマリー" in result
+
+    def test_empty_stats_lang_en(self):
+        from katrain.core.batch import build_batch_summary
+
+        result = build_batch_summary([], lang="en")
+        assert "# Multi-Game Summary" in result
+        assert "No games processed" in result
+
+    def test_empty_stats_lang_jp(self):
+        from katrain.core.batch import build_batch_summary
+
+        result = build_batch_summary([], lang="jp")
+        assert "複数局サマリー" in result
+        assert "処理対象" in result
+
+
+class TestB3MistakeThresholdsExplicit:
+    """B-3: MISTAKE_THRESHOLDS should be pinned to canonical values."""
+
+    def test_mistake_thresholds_values(self):
+        from katrain.core.reports.definitions import MISTAKE_THRESHOLDS
+
+        assert MISTAKE_THRESHOLDS["inaccuracy"] == 1.0
+        assert MISTAKE_THRESHOLDS["mistake"] == 2.5
+        assert MISTAKE_THRESHOLDS["blunder"] == 5.0
+
+    def test_mistake_thresholds_not_derived_from_auto(self):
+        """Even if auto preset changes, MISTAKE_THRESHOLDS should stay stable."""
+        from katrain.core.reports import definitions
+
+        src = inspect.getsource(definitions)
+        # The dict should be defined as a literal, not by reading auto preset
+        assert '"inaccuracy": 1.0' in src
+        assert '"mistake": 2.5' in src
+        assert '"blunder": 5.0' in src

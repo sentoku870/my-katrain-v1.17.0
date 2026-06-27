@@ -613,9 +613,9 @@ class TestBatchOutputBehavior:
         ]
 
         # Build summary from in-memory stats
-        summary = build_batch_summary(game_stats)
+        summary = build_batch_summary(game_stats, lang="en")
 
-        # Verify summary content
+        # Verify summary content (English output)
         assert "# Multi-Game Summary" in summary
         assert "test_game.sgf" in summary
         assert "100" in summary  # total moves
