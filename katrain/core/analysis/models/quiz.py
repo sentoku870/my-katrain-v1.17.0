@@ -99,3 +99,10 @@ IMPORTANT_MOVE_SETTINGS_BY_LEVEL = {
 }
 
 DEFAULT_IMPORTANT_MOVE_LEVEL = "normal"
+
+
+# Phase 148-B2: importance フォールバックの最小損失閾値。
+# pick_important_moves で importance_score が閾値を超える手が1つもない場合、
+# raw_score（score + winrate + loss）でフォールバックするが、従来 raw_score > 0.0
+# により軽微損失を全件拾っていた（懸念③）のを防ぐための下限。
+MIN_LOSS_DISPLAY: float = 0.3

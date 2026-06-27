@@ -76,6 +76,7 @@ from .classifier import (
     is_endgame,
     resolve_lexicon_anchor,
 )
+from .context_builder import build_classification_context_from_node
 from .integration import (
     MAX_DESCRIPTION_LENGTH,
     format_meaning_tag_with_definition,
@@ -106,6 +107,8 @@ __all__ = [
     "ClassificationContext",
     "classify_meaning_tag",
     "resolve_lexicon_anchor",
+    # Context builder (Phase 148-B'1)
+    "build_classification_context_from_node",
     # Helper functions (PR-2)
     "get_loss_value",
     "classify_gtp_move",

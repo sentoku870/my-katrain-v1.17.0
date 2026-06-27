@@ -23,6 +23,7 @@ from katrain.core.analysis.models import (
     EvalSnapshot,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     ImportantMoveSettings,
+    MIN_LOSS_DISPLAY,
     MoveEval,
     PositionDifficulty,
     RELIABILITY_SCALE_THRESHOLDS,
@@ -221,7 +222,8 @@ def pick_important_moves(
 
         for move in moves:
             raw_sc = raw_score(move)
-            if raw_sc > 0.0:
+            # Phase 148-B2: フォールバックの最小損失閾値（軽微損失の全件 pickup を防ぐ）
+            if raw_sc >= MIN_LOSS_DISPLAY:
                 candidates.append((raw_sc, move.move_number, move))
 
     # Sort and pick top

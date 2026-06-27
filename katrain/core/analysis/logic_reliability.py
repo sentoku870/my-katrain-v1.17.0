@@ -63,7 +63,8 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     root_visits = getattr(node, "root_visits", 0) or 0
 
     # Position difficulty 計算（親ノードの候補手から判定）
-    difficulty, difficulty_score = assess_position_difficulty_from_parent(node)
+    # Phase 148-B1: root_visits を渡して探索浅の ONLY_MOVE 誤判定を抑制
+    difficulty, difficulty_score = assess_position_difficulty_from_parent(node, root_visits=root_visits)
 
     # move_number の取得
     _move_number = getattr(node, "depth", None)

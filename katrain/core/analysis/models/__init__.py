@@ -62,6 +62,7 @@ from katrain.core.analysis.models.quiz import (
     DEFAULT_QUIZ_LOSS_THRESHOLD,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     ImportantMoveSettings,
+    MIN_LOSS_DISPLAY,
     QuizChoice,
     QuizConfig,
     QuizItem,
@@ -164,6 +165,7 @@ __all__ = [
     "ImportantMoveSettings",
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
+    "MIN_LOSS_DISPLAY",
     # Summary
     "GameSummaryData",
     "SummaryStats",
