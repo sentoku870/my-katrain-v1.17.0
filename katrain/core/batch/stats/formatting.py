@@ -27,7 +27,10 @@ def build_player_summary(
     Args:
         player_name: Display name of the player
         player_games: List of (game_stats, role) tuples where role is "B" or "W"
-        skill_preset: Skill preset for strictness (unused in current JSON logic, preserved for API)
+        skill_preset: Skill preset for strictness. Each game_data's own
+            skill_preset (from GameSummaryData, supplied via the batch pipeline)
+            is used inside build_summary_report for re-classification; this
+            top-level argument is preserved for the public API.
         analysis_settings: Optional dict with configured analysis settings (preserved for API)
         karte_path_map: Optional mapping from rel_path to absolute karte file path
         summary_dir: Directory where the summary file is being written

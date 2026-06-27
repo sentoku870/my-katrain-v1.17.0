@@ -270,12 +270,13 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=30.0, reading_failure=40.0),
         quiz=QuizConfig(loss_threshold=5.0, limit=10),
     ),
-    # Standard (Lv3): matches existing behavior (backward-compatible).
+    # Standard (Lv3): Phase 148-C3 - reason_tag thresholds tightened for more
+    # sensitive detection of heavy_loss (5) and reading_failure (8).
     # t3=5.0, t2=2.5, t1=1.0 (unchanged)
     "standard": SkillPreset(
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
-        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=15.0, reading_failure=20.0),
+        reason_tag_thresholds=ReasonTagThresholds(heavy_loss=5.0, reading_failure=8.0),
         quiz=QuizConfig(loss_threshold=2.5, limit=10),
     ),
     # Advanced (Lv4): more sensitive to small errors (unchanged).

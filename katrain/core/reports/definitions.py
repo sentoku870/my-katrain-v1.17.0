@@ -60,7 +60,7 @@ MISTAKE_TYPES: Final[List[str]] = [cat.value.lower() for cat in MistakeCategory]
 
 # Fix 5: Clarify Difficulty Definitions
 DIFFICULTY_LEVELS: Final[Dict[str, str]] = {
-    "simple": "One clear best move / Obvious",
+    "easy": "One clear best move / Obvious",
     "normal": "Standard complexity",
     "hard": "Complex pattern / Many candidates",
     "only": "Forced move / Single valid candidate",

@@ -187,7 +187,13 @@ def extract_game_stats(
                 )
 
             # Mistake category
-            if move.mistake_category:
+            # Phase 148-C1: Exclude BLUNDER on ONLY_MOVE (forced) from severity aggregation
+            # (a forced move has no real choice, so a "blunder" there has low learning value)
+            is_forced_blunder = (
+                move.mistake_category == eval_metrics.MistakeCategory.BLUNDER
+                and getattr(move, "position_difficulty", None) == eval_metrics.PositionDifficulty.ONLY_MOVE
+            )
+            if move.mistake_category and not is_forced_blunder:
                 stats["mistake_counts"][move.mistake_category] = (
                     stats["mistake_counts"].get(move.mistake_category, 0) + 1
                 )

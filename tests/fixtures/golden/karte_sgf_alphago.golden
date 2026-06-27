@@ -45,7 +45,7 @@
         "blunder"
       ],
       "difficulty_levels": {
-        "simple": "One clear best move / Obvious",
+        "easy": "One clear best move / Obvious",
         "normal": "Standard complexity",
         "hard": "Complex pattern / Many candidates",
         "only": "Forced move / Single valid candidate",
@@ -173,7 +173,7 @@
       "importance": 5.5,
       "mistake_type": "blunder",
       "reason_codes": [
-        "unknown"
+        "heavy"
       ],
       "primary_tag": "territorial_loss"
     },
@@ -190,6 +190,7 @@
       "importance": 17.5,
       "mistake_type": "blunder",
       "reason_codes": [
+        "heavy",
         "liberties"
       ],
       "primary_tag": "reading_failure"
