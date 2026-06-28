@@ -123,6 +123,11 @@ from katrain.core.analysis.logic import (
     assess_position_difficulty_from_parent,
     classify_game_phase,
     classify_mistake,
+    classify_phases_dynamic,  # Phase 156-A
+    apply_dynamic_phases,  # Phase 156-D
+    it_consistent_with_static,  # Phase 156-A
+    ENDGAME_SCORE_STDEV_THRESHOLD,  # Phase 156-A
+    ENDGAME_DETECTION_WINDOW,  # Phase 156-A
     compute_canonical_loss,
     # Confidence level
     compute_confidence_level,
@@ -465,6 +470,11 @@ __all__ = [
     # Phase functions
     "get_phase_thresholds",
     "classify_game_phase",
+    "classify_phases_dynamic",  # Phase 156-A
+    "apply_dynamic_phases",  # Phase 156-D
+    "it_consistent_with_static",  # Phase 156-A
+    "ENDGAME_SCORE_STDEV_THRESHOLD",  # Phase 156-A
+    "ENDGAME_DETECTION_WINDOW",  # Phase 156-A
     # Position difficulty
     "_assess_difficulty_from_policy",
     "assess_position_difficulty_from_parent",

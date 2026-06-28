@@ -96,6 +96,15 @@ class MoveEval:
     - 最大値: LEELA_LOSS_EST_MAX（50.0）
     """
 
+    score_stdev: float | None = None
+    """KataGo root の scoreStdev（手数終盤判定の指標、Phase 156）。
+
+    Note:
+    - None: Leela経路 / 未解析の手
+    - 値が小さい = 形勢が読み切れている（終盤の特徴）
+    - Phase 156-A: classify_game_phase_dynamic() が使用
+    """
+
     meaning_tag_id: str | None = None
     """意味タグID（Phase 47: Meaning Tags Integration）。
 

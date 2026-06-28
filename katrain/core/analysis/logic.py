@@ -47,6 +47,13 @@ from katrain.core.analysis.logic_phase import (
     classify_game_phase,
     get_phase_thresholds,
 )
+from katrain.core.analysis.logic_phase_dynamic import (
+    ENDGAME_DETECTION_WINDOW,
+    ENDGAME_SCORE_STDEV_THRESHOLD,
+    apply_dynamic_phases,
+    classify_phases_dynamic,
+    it_consistent_with_static,
+)
 from katrain.core.analysis.logic_pv import (
     filter_candidates_by_pv_complexity,
     get_pv_filter_config,
@@ -96,6 +103,11 @@ __all__ = [
     # Phase functions
     "get_phase_thresholds",
     "classify_game_phase",
+    "classify_phases_dynamic",
+    "apply_dynamic_phases",
+    "it_consistent_with_static",
+    "ENDGAME_SCORE_STDEV_THRESHOLD",
+    "ENDGAME_DETECTION_WINDOW",
     # Position difficulty
     "_assess_difficulty_from_policy",
     "assess_position_difficulty_from_parent",
