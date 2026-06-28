@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-28(Phase 151 完了)
+> 最終更新: 2026-06-28(Phase 152 完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -8,6 +8,7 @@
 > Phase 149 (2026-06-27 完了): Karte/Summary 残存問題点の発見と対応。詳細下記。
 > Phase 150 (2026-06-28 完了): mykatrain 設定バグ修正 + CI クリーンアップ。詳細下記。
 > Phase 151 (2026-06-28 完了): エンジン起動時の UnboundLocalError 修正 + KataGo バイナリ復元。詳細下記。
+> Phase 152 (2026-06-28 完了): Linux 環境での起動時ランタイムエラー修正。詳細下記。
 
 ---
 
@@ -48,6 +49,7 @@
 | **149** | Karte/Summary 残存問題対応 + Dead Code Revival | 4 PR (A: bug fixes / B: summary quality / C: JSON revival / D: docs) | ✅ (2026-06-27) |
 | **150** | mykatrain 設定バグ修正 + CI クリーンアップ | LeelaConfig.get() None デフォルト修正 / CI から macOS ビルド削除 / dead import 削除 | ✅ (2026-06-28) |
 | **151** | エンジン起動エラー処理 + KataGo バイナリ復元 | `query_found` UnboundLocalError 修正 / KataGo eigen 版への復元 / `.gitignore` 拡張 | ✅ (2026-06-28) |
+| **152** | Linux ランタイムエラー修正 | `Window.top/left` None ガード / `resolve_output_directory` に mkdir + フォールバック追加 | ✅ (2026-06-28) |
 
 ### 直近の更新詳細
 
@@ -148,6 +150,12 @@
 - **PR #303**: `_analysis_read_thread` で `query_found = False` を `try: json.loads(line)` ブロックの直前に移動。KataGo が非JSON出力（AppImage マウント失敗、FUSE エラー、エンジンクラッシュ stderr）を行った際の `UnboundLocalError` を解消。
 - 環境復元: `katago_eigen_backup` (37MB) を `katago` にリネームし、AppImage 版 (944KB) は `katago_appimage.broken` に退避。Linux 環境で KataGo eigen 版が正常起動することを確認。
 - `.gitignore` 拡張: `katago_eigen_backup`, `katago_appimage*`, `katago-osx`, `katago-cpu`, `katago-eigen` を除外対象に追加し、誤コミットを防止。
+
+**Phase 152**: ✅ Linux ランタイムエラー修正（2026-06-28 完了）。
+- **PR #304**: `on_request_close` で `Window.top` / `Window.left` の None ガードを追加し、アプリ終了時の `'NoneType' object is not subscriptable` クラッシュを修正。
+- `resolve_output_directory` で候補ディレクトリを `mkdir(parents=True, exist_ok=True)` で自動作成し、`~/Downloads` 不存在時の `FileNotFoundError: '/home/mono_/Downloads'`（Kivy filechooser の listdir 失敗）を解消。
+- フォールバックチェーン: 設定ディレクトリ → 候補（Windows: CSIDL_DOWNLOADS、Linux: `~/Downloads`） → `~/katrain_reports` → `cwd`。
+- 別タスクとして保留: SGF skip "Too few analyzed moves (0)"（KataGo解析データ scoreLead が無いファイルは集計対象外＝仕様通り）、Topmoves ホバー変化図再生、`padding_x` 廃止警告。
 
 ### 累積検証結果
 
@@ -359,7 +367,64 @@ READ-ONLY 調査で Phase 148 では触れられなかった 5 件のバグ、6 
 - `katrain/KataGo/katago_eigen_backup` という untracked な巨大バックアップファイルが残存（ユーザー指示により放置）
 - `spec/KaTrain.spec` の macOS 分岐は macOS サポート再開時に備えて温存中
 
-### Phase 151: エンジン起動エラー処理 + KataGo バイナリ復元 (2026-06-28 完了)
+### Phase 152: Linux ランタイムエラー修正 (2026-06-28 完了)
+
+> 起票日: 2026-06-28
+> 完了: 2026-06-28
+> PR: 1 (#304)
+
+#### 背景
+
+ユーザーが KataGo を含む myKatrain を Linux（WSL を含む）で起動・操作した際に複数のランタイムエラーが発生。READ-ONLY 調査で2つの致命的なバグを特定し修正。残り3つは別タスクとして保留。
+
+#### 主な発見・対応
+
+**Bug #1: アプリ終了時の TypeError クラッシュ**
+- **症状**: `AttributeError: 'NoneType' object is not subscriptable` at `__main__.py:1143`
+- **根本原因**: 一部バックエンド（pygame/sdl2）で `Window.top` / `Window.left` がウィンドウ終了時に `None` を返す。`ui_state["top"] = Window.top` で `None` がそのまま設定され、次回起動時に `dict.get("top")[1]` のような添字アクセスでクラッシュ。
+- **修正**: ローカル変数に取得してから None ガード → `if window_top is not None: ui_state["top"] = window_top`
+- **影響**: `__main__.py:1140-1145` のみ、+6/-2行
+
+**Bug #2: Kivy filechooser の FileNotFoundError**
+- **症状**: `[ERROR] Unable to open directory </home/mono_/Downloads>` + `FileNotFoundError: '/home/mono_/Downloads'` at `kivy/uix/filechooser.py:170`
+- **根本原因**: `resolve_output_directory` が `~/Downloads` を返すが、Linux環境で `~/Downloads` が存在しない場合（WSL、ミニマル環境など）Kivy の filechooser が `listdir` で失敗。diagnostics / open output folder / save SGF など複数のポップアップで発火。
+- **修正**: `resolve_output_directory` で候補ディレクトリを `mkdir(parents=True, exist_ok=True)` で自動作成。失敗時は `~/katrain_reports` → `cwd` の順でフォールバック。
+- **影響**: `utils.py:128-167` のみ、+34/-11行
+
+#### 別タスク保留（3件）
+
+| 問題 | 種別 | 状態 |
+|------|------|------|
+| SGF skip "Too few analyzed moves (0)" | データ側の問題 | ユーザーのSGFがKataGo解析データ（`KT` プロパティ / `scoreLead`）を含まず、Leela Zero 解析（`LZ` プロパティ）のみ。KataGo で再解析が必要 |
+| Topmoves ホバー時の変化図再生 | 既存バグ | `badukpan.py:on_mouse_pos` / `active_pv_moves` 関連、詳細調査が必要 |
+| `padding_x` 廃止警告 | 将来削除予定 | `kivy/uix/label.py` の `padding_x` プロパティが Kivy 2.3+ で deprecated、即時動作影響なし |
+
+#### 影響範囲
+
+| 項目 | 影響 |
+|------|------|
+| `Window.top` / `Window.left` の None ガード | アプリ終了時のクラッシュを完全防止。次回起動時の ui_state 復元も None を保持するため安全 |
+| `resolve_output_directory` の自動 mkdir | 初回呼び出し時にディレクトリ作成（既存ディレクトリは touch のみ）。`OSError` 時は2段階のフォールバック |
+| 既存テスト | 全件 pass（engine 系 252件 / typed config 107件） |
+
+#### 検証結果
+
+| 検証 | 結果 |
+|------|------|
+| 既存テスト | 359+ 件パス（engine 252 / typed config 107 / 関連テスト） |
+| `resolve_output_directory('')` | `/home/mono_/Downloads` を自動作成して返す |
+| `resolve_output_directory(None)` | 同上 |
+| `resolve_output_directory('/tmp/existing')` | 既存ディレクトリを返す（作成しない） |
+| CI build-windows | pass（PR #304 run） |
+| 実機動作確認 | 未実施（マージ後にユーザー側で確認） |
+
+#### 残オープン項目
+
+- SGF skip の根本原因（データ問題）はユーザー側でSGFのKataGo再解析が必要
+- Topmoves ホバー変化図の調査（推定30-60分の詳細デバッグ）
+- `padding_x` 廃止警告の解消（`buttons.py:37` の `NumericProperty` 削除 + `widgets.kv:78` の `padding` 直接指定）
+
+---
 
 > 起票日: 2026-06-28
 > 完了: 2026-06-28
