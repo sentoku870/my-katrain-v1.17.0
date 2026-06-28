@@ -98,6 +98,9 @@ class Game(BaseGame):
         priority: int | None = None,
         analyze_fast: bool = False,
         even_if_present: bool = True,
+        *,
+        throttle_max_attempts: int = 50,
+        throttle_poll_interval: float = 0.1,
     ) -> None:
         from katrain.core.constants import PRIORITY_GAME_ANALYSIS
 
@@ -107,6 +110,8 @@ class Game(BaseGame):
             priority=priority,
             analyze_fast=analyze_fast,
             even_if_present=even_if_present,
+            throttle_max_attempts=throttle_max_attempts,
+            throttle_poll_interval=throttle_poll_interval,
         )
 
     def analyze_extra(self, mode: str | AnalysisMode, **kwargs: Any) -> None:
@@ -146,8 +151,17 @@ class Game(BaseGame):
     ) -> None:
         return self.analysis._handle_sweep_equalize_modes(cn, engine, mode, stones)
 
-    def _wait_for_engine_capacity(self, engine: KataGoEngine, headroom: int = 10) -> bool:
-        return self.analysis._wait_for_engine_capacity(engine, headroom)
+    def _wait_for_engine_capacity(
+        self,
+        engine: KataGoEngine,
+        headroom: int = 10,
+        *,
+        max_attempts: int = 100,
+        poll_interval: float = 0.1,
+    ) -> bool:
+        return self.analysis._wait_for_engine_capacity(
+            engine, headroom, max_attempts=max_attempts, poll_interval=poll_interval
+        )
 
     def build_eval_snapshot(self) -> EvalSnapshot:
         """

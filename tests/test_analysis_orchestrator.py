@@ -114,8 +114,10 @@ def test_wait_for_engine_capacity_returns_false_on_timeout(game_with_mock_engine
     """エンジンが常に満杯なら False (タイムアウト)"""
     game = game_with_mock_engine
     mock_engine.has_query_capacity = lambda headroom=10: False
-    # max_wait_attempts=100 × 0.1s = 10s かかるので実際のテストではタイムアウトする
-    result = game.analysis._wait_for_engine_capacity(mock_engine, headroom=10)
+    # テスト高速化: 短い max_attempts / poll_interval でタイムアウト検証
+    result = game.analysis._wait_for_engine_capacity(
+        mock_engine, headroom=10, max_attempts=3, poll_interval=0.001
+    )
     assert result is False
 
 

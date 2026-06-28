@@ -361,7 +361,12 @@ class TestAnalyzeAllNodes:
         """When engine.has_query_capacity returns False, node is skipped after timeout."""
         # Mock engine to always return False for capacity
         game_9x9.engines["B"].has_query_capacity = MagicMock(return_value=False)
-        game_9x9.analyze_all_nodes(even_if_present=False)
+        # テスト高速化: throttle パラメータで短いタイムアウト値を使用
+        game_9x9.analyze_all_nodes(
+            even_if_present=False,
+            throttle_max_attempts=2,
+            throttle_poll_interval=0.001,
+        )
         # No crash means the timeout was handled
 
 

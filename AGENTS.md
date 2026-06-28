@@ -63,7 +63,9 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 
 ### 3.1 基本動作確認
 - **起動確認**: `python -m katrain`
-- **テスト（全体）**: `uv run pytest tests`
+- **テスト（全体・逐次）**: `uv run pytest tests`
+- **テスト（全体・並列）**: `uv run pytest tests -n auto`（pytest-xdist）
+- **テスト（時間上位表示）**: `uv run pytest tests --durations=20 --durations-min=0.1`
 - **アーキテクチャテスト**: `uv run pytest tests/test_architecture.py -v`
 - **UTF-8強制**（PowerShell）: `$env:PYTHONUTF8 = "1"`
 
