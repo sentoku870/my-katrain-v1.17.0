@@ -39,31 +39,32 @@ class SummaryAnalyzer:
     def _aggregate_stats(self) -> None:
         """Aggregate stats for each player across all games."""
         for game_data in self.game_data_list:
+            # --- Phase 150: Resolve auto preset per-game using ALL moves ---
+            # karte 側 (karte/json_export.py:78-86) と完全一致させる:
+            #   karte は auto を「全手（両プレイヤー）」で解決し、解決後の preset を
+            #   B/W 両方の分類に適用する。Phase 150 初版は per-player で片方の手のみを
+            #   使って解決していたため、karte と summary で recommend_auto_strictness
+            #   の入力が異なり、結果として effective_preset が食い違っていた。
+            # 修正後: ゲーム単位で 1 回だけ解決し、その preset を両プレイヤーの分類に使う。
+            effective_preset = game_data.skill_preset
+            if effective_preset == "auto":
+                all_moves = list(game_data.snapshot.moves)
+                if all_moves:
+                    auto_rec = eval_metrics.recommend_auto_strictness(
+                        all_moves,
+                        game_count=1,
+                    )
+                    effective_preset = auto_rec.recommended_preset
+                else:
+                    effective_preset = eval_metrics.DEFAULT_SKILL_PRESET
+            # ------------------------------------------------------------------
+
             for player_color in ["B", "W"]:
                 player_name = game_data.player_black if player_color == "B" else game_data.player_white
 
                 # focus_player指定がある場合、それ以外はスキップ
                 if self.focus_player and player_name != self.focus_player:
                     continue
-
-                # --- Phase 150: Resolve auto preset per-game × per-player ---
-                # karte 側 (karte/json_export.py:78-86) と同じ recommend_auto_strictness
-                # ロジックを使い、auto を実 preset に解決する。これにより summary の
-                # mistake 分類が karte の分類と完全一致する。
-                effective_preset = game_data.skill_preset
-                if effective_preset == "auto":
-                    player_moves_for_resolution = [
-                        m for m in game_data.snapshot.moves if m.player == player_color
-                    ]
-                    if player_moves_for_resolution:
-                        auto_rec = eval_metrics.recommend_auto_strictness(
-                            player_moves_for_resolution,
-                            game_count=1,
-                        )
-                        effective_preset = auto_rec.recommended_preset
-                    else:
-                        effective_preset = eval_metrics.DEFAULT_SKILL_PRESET
-                # --------------------------------------------------------------
 
                 # プレイヤー統計を初期化
                 if player_name not in self.player_stats:
