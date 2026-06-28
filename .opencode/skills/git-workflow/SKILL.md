@@ -178,11 +178,6 @@ git stash pop           # 変更を戻す
 
 → push/PR作成は「pushしていい？」等の確認後に実行。
 
-### opencode がやらないこと（禁止）
-- `git push --force`（明示的な指示がない限り）
-- `git reset --hard`（明示的な指示がない限り）
-- main ブランチへの直接 push（code-change の場合）
-
 ---
 
 ## 7. 変更履歴

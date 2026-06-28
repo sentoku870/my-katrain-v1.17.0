@@ -27,10 +27,54 @@
       "timeout*": "allow",
 
       // ============================================================
-      // バージョン管理 / GitHub
+      // バージョン管理 / GitHub（git/gh サブコマンド別にも明示 allow）
       // ============================================================
+      // git 包括許可 + 主要サブコマンド明示
       "git *": "allow",
+      // git 状態確認（読み取り）
+      "git status*": "allow",
+      "git log*": "allow",
+      "git diff*": "allow",
+      "git show*": "allow",
+      "git branch*": "allow",
+      "git remote*": "allow",
+      "git tag*": "allow",
+      "git rev-parse*": "allow",
+      "git rev-list*": "allow",
+      "git config*": "allow",
+      // git 変更系
+      "git add*": "allow",
+      "git commit*": "allow",
+      "git restore*": "allow",
+      "git reset*": "allow",
+      "git stash*": "allow",
+      "git rebase*": "allow",
+      "git merge*": "allow",
+      "git cherry-pick*": "allow",
+      "git revert*": "allow",
+      "git checkout*": "allow",
+      "git switch*": "allow",
+      "git clean*": "allow",
+      // git リモート
+      "git clone*": "allow",
+      "git fetch*": "allow",
+      "git pull*": "allow",
+      "git push*": "allow",
+      // git 拡張
+      "git worktree*": "allow",
+      "git submodule*": "allow",
+      "git gc*": "allow",
+      // gh 包括許可 + 主要サブコマンド明示
       "gh *": "allow",
+      "gh pr*": "allow",
+      "gh issue*": "allow",
+      "gh release*": "allow",
+      "gh repo*": "allow",
+      "gh run*": "allow",
+      "gh workflow*": "allow",
+      "gh auth*": "allow",
+      "gh api*": "allow",
+      "gh status*": "allow",
 
       // ============================================================
       // Node / JS（.opencode/ の package.json 対応）
