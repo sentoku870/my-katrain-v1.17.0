@@ -95,23 +95,52 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
 ### 3.6 シェル権限ルール（opencode.jsonc）
 `opencode.jsonc` の bash 権限パターン。**設定変更後は opencode の再起動が必要**（起動時 1 回のみ読み込み）。
 
-| 区分 | 自動許可（例） | 確認ダイアログ（ask） |
-|------|--------------|---------------------|
-| Python 開発 | `uv *`, `python*`, `python3*`, `pip*`, `pytest*`, `ruff*`, `mypy*`, `coverage*`, `pre-commit*`, `timeout*` | — |
-| バージョン管理 | `git *`, `gh *` | — |
-| Node/JS | `node*`, `npm*`, `npx*`, `pnpm*`, `yarn*`, `bun*`, `deno*` | — |
-| ビルド/コンテナ | `make*`, `cmake*`, `ninja*`, `gcc*`, `g++*`, `docker*`, `docker-compose*`, `podman*` | — |
-| 読み取り/加工 | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `wc*`, `tree*`, `diff*`, `awk*`, `sed*`, `rg*`, `xargs*`, `jq*`, `yq*`, `less*`, `more*`, `xxd*`, `base64*` | — |
-| プロセス/システム | `ps*`, `top*`, `htop*`, `kill*`, `clear*` | — |
-| 診断 | `stat*`, `file*`, `which*`, `pwd*`, `env*`, `uname*`, `whoami*`, `id*` | — |
-| ネットワーク | `ssh*`, `scp*`, `rsync*`, `ping*`, `ip*`, `netstat*` | `curl*`, `wget*` |
-| ファイル操作（可逆） | `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `ln*`, `tar*`, `unzip*`, `zip*`, `gzip*`, `gunzip*` | `rm*`, `chown*` |
-| Bash ビルトイン | `cd*`, `set*`, `unset*`, `export*`, `source*`, `eval*`, `type*`, `command*`, `hash*`, `true*`, `false*`, `test*`, `echo*` | — |
+**運用方針**: 開発に必要なコマンドはほぼ無確認で通し、システム破壊系のみ明示ブロックする **B案（中庸）**。確認ダイアログ（ask）は 0 件、危険コマンドは明示 deny、未指定コマンドは `*: allow` で通過。
+
+#### 自動許可（allow）
+
+| 区分 | パターン例 |
+|------|----------|
+| Python 開発 | `uv *`, `python*`, `python3*`, `pip*`, `pytest*`, `ruff*`, `mypy*`, `coverage*`, `pre-commit*`, `timeout*` |
+| バージョン管理 | `git *`, `gh *` |
+| Node/JS | `node*`, `npm*`, `npx*`, `pnpm*`, `yarn*`, `bun*`, `deno*` |
+| ビルド/コンテナ | `make*`, `cmake*`, `ninja*`, `meson*`, `gcc*`, `g++*`, `docker*`, `docker-compose*`, `podman*` |
+| 読み取り/加工 | `cat*`, `head*`, `tail*`, `ls*`, `grep*`, `find*`, `wc*`, `tree*`, `diff*`, `awk*`, `sed*`, `rg*`, `xargs*`, `jq*`, `yq*`, `xxd*`, `base64*`, `less*`, `more*`, `tee*` |
+| 診断 | `stat*`, `file*`, `which*`, `pwd*`, `env*`, `uname*`, `whoami*`, `id*`, `date*`, `du*`, `df*` |
+| プロセス/システム | `ps*`, `top*`, `htop*`, `kill*`, `killall*`, `pkill*`, `pidof*`, `clear*`, `sleep*` |
+| ネットワーク | `ssh*`, `scp*`, `rsync*`, `ping*`, `ip*`, `netstat*`, `ss*`, `curl*`, `wget*` |
+| ファイル操作（可逆・破壊的）| `mkdir*`, `touch*`, `cp*`, `mv*`, `chmod*`, `chown*`, `ln*`, `rm*`, `tar*`, `unzip*`, `zip*`, `gzip*`, `gunzip*` |
+| Bash ビルトイン | `cd*`, `set*`, `unset*`, `export*`, `source*`, `eval*`, `echo*`, `type*`, `command*`, `hash*`, `true*`, `false*`, `test*` |
+
+#### 確認ダイアログ（ask）
+なし。すべてのコマンドは allow または deny のいずれかに分類される。
+
+#### 拒否（deny）— 危険コマンドの明示ブロック
+
+| カテゴリ | 拒否対象 |
+|---------|---------|
+| 権限昇格 | `sudo *`, `su *`, `doas *` |
+| 電源操作 | `shutdown *`, `reboot *`, `halt *`, `poweroff *`, `init *` |
+| ディスク破壊 | `mkfs*`, `fdisk*`, `parted*`, `dd *` |
+| サービス管理 | `systemctl*`, `service *` |
+| 認証情報 | `passwd*`, `chpasswd*`, `visudo*` |
+| ユーザー管理 | `useradd*`, `userdel*`, `usermod*`, `groupadd*`, `groupdel*`, `groupmod*` |
+| ファイアウォール | `iptables*`, `ip6tables*`, `firewalld*`, `ufw *`, `nft *` |
+| マウント | `mount*`, `umount*` |
+| スケジュール | `crontab*`, `at *` |
+| ルーティング | `route *` |
+
+#### フォールバック
+`"*": "allow"` — 未指定のコマンドは許可。**ただし上記 deny に該当するパターンは遮断される**。
 
 > **環境注意**: 本プロジェクトは Linux 環境前提のため PowerShell 系の許可は含めていません。Windows 環境が必要な場合は `opencode.jsonc` に PowerShell パターンを再追加してください。
 
-**運用注意**:
-- 自動許可は開発効率のため。**破壊的操作（`rm`/`chown`）/ 外部送信（`curl`/`wget`）は確認を維持**
+**運用注意（B案採用により追加）**:
+- `rm*` を allow 化したため、削除操作は自己責任。重要なファイル削除（特に `rm -rf` 系）は事前に確認推奨
+- `chown*` を allow 化したため、オーナー書き換えは慎重に行う
+- `curl*` / `wget*` を allow 化したため、外部送信は意図しないデータ流出に注意。プロキシ・認証情報の取り扱いに注意
+- `*: allow` 化により未指定のコマンドも基本的に通る。deny に該当しない限り許可される
+- deny リスト該当操作は opencode が完全拒否。どうしても必要な場合はターミナルで直接実行
 - 任意コード実行リスクのある `python*`（`-c` 経由）/ `eval*` / `source*` は allow だが使い方に注意
 - 新しいパターンを追加する場合は `opencode.jsonc` 編集 → opencode 再起動
 - 緊急時は `OPENCODE_DISABLE_PROJECT_CONFIG=1` で設定無効化可能

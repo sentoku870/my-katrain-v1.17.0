@@ -117,7 +117,7 @@
       "pidof*": "allow",
 
       // ============================================================
-      // ネットワーク / リモート操作
+      // ネットワーク / リモート操作（curl/wget も allow 化）
       // ============================================================
       "ssh*": "allow",
       "scp*": "allow",
@@ -129,21 +129,25 @@
       "ifconfig*": "allow",
       "netstat*": "allow",
       "ss*": "allow",
+      "curl*": "allow",
+      "wget*": "allow",
 
       // ============================================================
-      // ファイル操作（可逆）
+      // ファイル操作（可逆・破壊的操作も自己責任で許可）
       // ============================================================
       "mkdir*": "allow",
       "touch*": "allow",
       "cp*": "allow",
       "mv*": "allow",
       "chmod*": "allow",
+      "chown*": "allow",
       "ln*": "allow",
       "tar*": "allow",
       "unzip*": "allow",
       "zip*": "allow",
       "gzip*": "allow",
       "gunzip*": "allow",
+      "rm*": "allow",
 
       // ============================================================
       // Bash ビルトイン / 環境変数
@@ -165,17 +169,56 @@
       "PYTHONUTF8*": "allow",
 
       // ============================================================
-      // ask（明示的に確認）
+      // deny（危険コマンドの明示ブロック）
       // ============================================================
-      "rm*": "ask",
-      "chown*": "ask",
-      "curl*": "ask",
-      "wget*": "ask",
+      // 権限昇格
+      "sudo *": "deny",
+      "su *": "deny",
+      "doas *": "deny",
+      // 電源操作
+      "shutdown *": "deny",
+      "reboot *": "deny",
+      "halt *": "deny",
+      "poweroff *": "deny",
+      "init *": "deny",
+      // ディスク破壊
+      "mkfs*": "deny",
+      "fdisk*": "deny",
+      "parted*": "deny",
+      "dd *": "deny",
+      // サービス管理
+      "systemctl*": "deny",
+      "service *": "deny",
+      // 認証情報
+      "passwd*": "deny",
+      "chpasswd*": "deny",
+      "visudo*": "deny",
+      // ユーザー管理
+      "useradd*": "deny",
+      "userdel*": "deny",
+      "usermod*": "deny",
+      "groupadd*": "deny",
+      "groupdel*": "deny",
+      "groupmod*": "deny",
+      // ファイアウォール
+      "iptables*": "deny",
+      "ip6tables*": "deny",
+      "firewalld*": "deny",
+      "ufw *": "deny",
+      "nft *": "deny",
+      // マウント
+      "mount*": "deny",
+      "umount*": "deny",
+      // スケジュール
+      "crontab*": "deny",
+      "at *": "deny",
+      // ルーティング
+      "route *": "deny",
 
       // ============================================================
-      // フォールバック（未指定のコマンドは全て確認）
+      // フォールバック（未指定のコマンドは許可、deny は例外）
       // ============================================================
-      "*": "ask"
+      "*": "allow"
     }
   }
 }
