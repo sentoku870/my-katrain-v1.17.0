@@ -65,7 +65,6 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivymd.app import MDApp
 
-from katrain.core import eval_metrics
 from katrain.core.analysis_result import (
     EngineTestResult as TestAnalysisResult,
 )
@@ -486,8 +485,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
         try:
-            if hasattr(self.engine, "config") and isinstance(self.engine.config, dict):
-                self.engine.config["analysis_focus"] = None
+            self.engine.set_analysis_focus(None)
         except Exception:
             pass
 
@@ -799,14 +797,6 @@ class KaTrainGui(Screen, KaTrainBase):
     def is_fog_active(self) -> bool:
         """Active Review removed (Phase 130). Always returns False."""
         return False
-
-    def _disable_active_review_if_needed(self) -> None:
-        """Active Review removed (Phase 130). No-op."""
-        pass
-
-    def toggle_active_review(self) -> None:
-        """Active Review removed (Phase 130). No-op."""
-        pass
 
     def _on_active_review_mode_change(self, instance: Any, value: Any) -> None:
         """Delegates to ActiveReviewController (Phase 97)."""

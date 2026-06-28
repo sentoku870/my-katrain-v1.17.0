@@ -1702,7 +1702,7 @@ class BadukPanControls(MDFloatLayout):
 
         # Update engine status dot
         engine = gui.engine
-        if not engine or not engine.katago_process or engine.katago_process.poll() is not None:
+        if not engine or not engine.is_alive():
             self.engine_status_col = Theme.ENGINE_DOWN_COLOR
         elif engine.is_idle():
             self.engine_status_col = Theme.ENGINE_READY_COLOR

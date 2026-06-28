@@ -94,9 +94,6 @@ class PlayAnalyzeSelect(MDFloatLayout):
         if self.mode == new_mode:
             return
         self.save_ui_state()
-        # Phase 93: Disable Active Review when entering PLAY mode
-        if new_mode == MODE_PLAY:
-            self.katrain._disable_active_review_if_needed()
         self.mode = new_mode
         self.katrain.controls.timer_or_movetree.mode = self.mode
         self.load_ui_state()
