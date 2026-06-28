@@ -1094,8 +1094,18 @@ class KaTrainApp(MDApp):
             and win_top is not None
             and self.is_valid_window_position(int(win_left), int(win_top), int(win_size[0]), int(win_size[1]))
         ):
-            Window.left = int(win_left)
-            Window.top = int(win_top)
+            # Some window providers (e.g. pygame) don't implement
+            # `_get_window_pos`/`_set_window_pos`, so setting Window.left/top
+            # raises TypeError. Guard with try/except to stay portable.
+            try:
+                Window.left = int(win_left)
+                Window.top = int(win_top)
+            except TypeError:
+                self.gui.log(
+                    f"Window provider does not support setting position; "
+                    f"skipping left/top assignment",
+                    OUTPUT_DEBUG,
+                )
 
         return self.gui  # type: ignore[return-value, no-any-return]
 
