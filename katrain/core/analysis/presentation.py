@@ -435,6 +435,17 @@ def format_difficulty_metrics(metrics: DifficultyMetrics) -> list[str]:
         f"  迷い={metrics.policy_difficulty:.2f} 崩れ={metrics.transition_difficulty:.2f}",
     ]
 
+    # Phase 154: KataGo error / LCB 系の補助指標（取得できた場合のみ表示）
+    error_pressure = getattr(metrics, "error_pressure", None)
+    lcb_gap = getattr(metrics, "lcb_gap", None)
+    extra_parts: list[str] = []
+    if error_pressure is not None:
+        extra_parts.append(f"error={error_pressure:.2f}")
+    if lcb_gap is not None:
+        extra_parts.append(f"LCB差={lcb_gap:.2f}")
+    if extra_parts:
+        lines.append("  " + " ".join(extra_parts))
+
     if not metrics.is_reliable:
         lines[-1] += " [信頼度低]"
 

@@ -105,6 +105,51 @@ class MoveEval:
     - Phase 156-A: classify_game_phase_dynamic() が使用
     """
 
+    shortterm_score_error: float | None = None
+    """KataGo root の shorttermScoreError（短期地合誤差、Phase 154）。
+
+    Note:
+    - None: 未解析 / KataGo の旧バージョン
+    - 値が大きい = 一手で形勢が読み切れない（KataGo も迷う局面）
+    - コーチング指標: error_pressure（迷い）の補強因子
+    """
+
+    shortterm_winloss_error: float | None = None
+    """KataGo root の shorttermWinlossError（短期勝率誤差、Phase 154）。
+
+    Note:
+    - None: 未解析
+    - 値が大きい = 短期での勝率読みが不安定
+    - コーチング指標: 局面の読み切り度
+    """
+
+    raw_stdev: float | None = None
+    """KataGo root の rawStdev（生の形勢偏差、Phase 154）。
+
+    Note:
+    - None: 未解析
+    - scoreStdev より短期変動に敏感（1手での形勢振れ幅）
+    - コーチング指標: 一手での迷い
+    """
+
+    top_move_lcb: float | None = None
+    """KataGo 最善手（order=0）の lcb（信頼区間下限、Phase 154）。
+
+    Note:
+    - None: 未解析
+    - KataGoが「この手より悪い確率がX%以下」とする下限
+    - lcb が高い = 最善手の信頼度が高い
+    - コーチング指標: is_reliable の精緻化
+    """
+
+    top_move_utility_lcb: float | None = None
+    """KataGo 最善手（order=0）の utilityLcb（効用 LCB、Phase 154）。
+
+    Note:
+    - None: 未解析
+    - 効用の信頼区間下限
+    """
+
     meaning_tag_id: str | None = None
     """意味タグID（Phase 47: Meaning Tags Integration）。
 
