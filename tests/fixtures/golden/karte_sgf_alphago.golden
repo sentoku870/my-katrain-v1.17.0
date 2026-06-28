@@ -1,5 +1,5 @@
 {
-  "schema_version": "3.2",
+  "schema_version": "3.3",
   "meta": {
     "schema_version": "3.2",
     "game_id": "[DATE] [TIME]",
@@ -375,5 +375,67 @@
       "avg_loss": 0.3,
       "mistake_count": 0
     }
-  ]
+  ],
+  "opponent_strength_loss_correlation": {
+    "black": {
+      "by_bucket": {
+        "kyu": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "dan": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "high_dan": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "unknown": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        }
+      },
+      "sample_count": 0,
+      "status": "no_opponent_info"
+    },
+    "white": {
+      "by_bucket": {
+        "kyu": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "dan": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "high_dan": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        },
+        "unknown": {
+          "games": 0,
+          "total_loss": 0.0,
+          "avg_loss": 0.0,
+          "mistake_count": 0
+        }
+      },
+      "sample_count": 0,
+      "status": "no_opponent_info"
+    }
+  }
 }

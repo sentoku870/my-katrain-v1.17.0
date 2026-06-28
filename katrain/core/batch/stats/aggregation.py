@@ -163,6 +163,9 @@ def build_batch_summary(
                 snapshot=stats["snapshot"],
                 board_size=stats.get("board_size", (19, 19)),
                 date=stats.get("date"),
+                # Phase 155-C: surface SGF rank tags from the stats dict.
+                rank_black=stats.get("rank_black"),
+                rank_white=stats.get("rank_white"),
             ))
 
     # Get the JSON-wrapped report (focus_player=None for entire batch)

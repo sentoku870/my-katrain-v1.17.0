@@ -48,6 +48,11 @@ class GameSummaryData:
     # Phase 154-C: Pre-parsed game outcome (cached to avoid re-parsing).
     # If None, downstream code re-parses ``result`` via :func:`parse_result`.
     outcome: "GameOutcome | None" = None  # TYPE_CHECKING-only type to avoid cycle
+    # Phase 155-B: SGF BR / WR rank strings (raw; downstream code parses via
+    # :func:`classify_rank_to_bucket`). ``None`` when the SGF did not carry
+    # a rank tag for that player.
+    rank_black: str | None = None
+    rank_white: str | None = None
 
     @property
     def player_outcome_black(self) -> str:

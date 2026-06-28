@@ -57,7 +57,7 @@ def test_batch_json_stages_1_to_4():
         
     # 2. Verify Schema Version (Stage 3)
     print(f"Schema Version: {data.get('schema_version')}")
-    assert data.get("schema_version") == "3.2", "Schema version should be 3.2 (Phase 154-D: bumped from 3.1)"
+    assert data.get("schema_version") == "3.3", "Schema version should be 3.3 (Phase 155-D: bumped from 3.2)"
     
     # 3. Verify Games List (Stage 2)
     games = data.get("games", [])

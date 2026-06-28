@@ -93,6 +93,8 @@ class SummaryPlayerStats(TypedDict):
     top_mistakes: List[MistakeItem]
     # Phase 154-D: per-player win/loss aggregation (typed loosely for forward compat)
     win_loss_analysis: NotRequired[Dict[str, Any]]
+    # Phase 155-D: opponent-strength loss correlation
+    opponent_strength_loss_correlation: NotRequired[Dict[str, Any]]
 
 class SummaryReport(TypedDict):
     schema_version: str
@@ -190,10 +192,10 @@ class DataQualityStats(TypedDict):
 
 
 class KarteReport(TypedDict):
-    """Karte JSON v3.2 (Phase 153-A/B/C + Phase 154-D).
+    """Karte JSON v3.3 (Phase 153-A/B/C + Phase 154-D + Phase 155-D).
 
-    Schema 3.1 → 3.2: Added ``win_loss_analysis`` and ``loss_progression``
-    sections for coaching-oriented statistics.
+    Schema 3.2 → 3.3: Added ``opponent_strength_loss_correlation`` section
+    for per-player opponent-rank correlation.
 
     The remaining fields are stable since 3.0 (weaknesses, mistake_streaks,
     critical_3, data_quality, reason_tags_distribution).
@@ -211,4 +213,6 @@ class KarteReport(TypedDict):
     # Phase 154-D: per-game win/loss analysis + per-game loss progression.
     win_loss_analysis: Optional[Dict[str, Any]]
     loss_progression: Optional[List[Dict[str, Any]]]
+    # Phase 155-D: opponent-strength loss correlation (per-player).
+    opponent_strength_loss_correlation: Optional[Dict[str, Dict[str, Any]]]
 

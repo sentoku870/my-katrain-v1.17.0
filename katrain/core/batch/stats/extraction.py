@@ -80,7 +80,7 @@ def extract_game_stats(
             board_size = int(board_size_prop)
         except (ValueError, TypeError):
             board_size = 19
-            
+
         # Phase 6.5: Metadata extraction
         komi_prop = root.get_property("KM", "6.5")
         try:
@@ -88,12 +88,17 @@ def extract_game_stats(
         except (ValueError, TypeError):
             komi = 6.5
         result = root.get_property("RE", None)
+        # Phase 155-C: SGF rank tags for opponent-strength correlation.
+        rank_black = root.get_property("BR", None)
+        rank_white = root.get_property("WR", None)
 
         # Calculate stats from snapshot
         stats = {
             "game_name": rel_path,
             "player_black": player_black,
             "player_white": player_white,
+            "rank_black": rank_black,  # Phase 155-C
+            "rank_white": rank_white,  # Phase 155-C
             "handicap": handicap,
             "date": date,
             "board_size": (board_size, board_size),
@@ -375,6 +380,9 @@ def extract_game_stats(
             handicap=handicap,
             komi=komi,
             skill_preset=skill_preset,
+            # Phase 155-C: surface SGF BR/WR tags for opponent-strength analysis.
+            rank_black=rank_black,
+            rank_white=rank_white,
         )
         stats["summary_data"] = summary_data
 
