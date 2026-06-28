@@ -28,8 +28,12 @@ from katrain.core.analysis.models import (
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
     DIFFICULTY_UNKNOWN,
+    ERROR_PRESSURE_WEIGHT,
+    LCB_GAP_MAX,
+    LCB_GAP_WEIGHT,
     POLICY_GAP_MAX,
     PositionDifficulty,
+    SHORTTERM_SCORE_ERROR_MAX,
     TRANSITION_DROP_MAX,
     DifficultyMetrics,
 )
@@ -415,10 +419,123 @@ def _compute_state_difficulty(
     return 0.0, debug
 
 
+# =============================================================================
+# Phase 154: KataGo error / LCB 系の追加指標
+# =============================================================================
+
+
+def _compute_error_pressure(
+    candidates: list[dict[str, Any]],
+    root_info: dict[str, Any] | None = None,
+    include_debug: bool = False,
+) -> tuple[float | None, dict[str, Any] | None]:
+    """KataGo 自身の短期 error から error_pressure を計算。
+
+    shorttermScoreError を SHORTTERM_SCORE_ERROR_MAX で正規化。
+    KataGo も読み切れない局面 = ユーザーも迷うはず、という仮説に基づく。
+
+    Args:
+        candidates: 正規化済み候補手リスト（order順）
+        root_info: KataGo rootInfo（shorttermScoreError, rawStdev などを含む）
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (error_pressure, debug_info) タプル。
+        error_pressure: 0-1、値が大きいほど KataGo も読み切れない。
+                        shorttermScoreError 欠損時は None。
+    """
+    if not candidates:
+        return None, {"reason": "no_candidates"} if include_debug else None
+
+    ste: Any = None
+    if isinstance(root_info, dict):
+        ste = root_info.get("shorttermScoreError")
+
+    if ste is None:
+        return None, {"reason": "missing_shorttermScoreError"} if include_debug else None
+
+    try:
+        ste_val = float(ste)
+    except (TypeError, ValueError):
+        return None, {"reason": "invalid_shorttermScoreError"} if include_debug else None
+
+    error_pressure = max(0.0, min(1.0, abs(ste_val) / SHORTTERM_SCORE_ERROR_MAX))
+
+    debug = (
+        {
+            "shorttermScoreError": ste_val,
+            "normalized": error_pressure,
+        }
+        if include_debug
+        else None
+    )
+
+    return error_pressure, debug
+
+
+def _compute_lcb_gap(
+    candidates: list[dict[str, Any]],
+    include_debug: bool = False,
+) -> tuple[float | None, dict[str, Any] | None]:
+    """最善手と次善手の LCB 差から lcb_gap を計算。
+
+    lcb_gap が大きい = 最善手が他より明確に信頼できる（KataGo の自信）。
+    小さい = 候補手が拮抗していてKataGoも自信がない。
+
+    注: 現状は「KataGoの候補手信頼度差」として利用。
+    絶対値が大きいほど「KataGoは明確に読み切っている」と解釈可能。
+
+    Args:
+        candidates: 正規化済み候補手リスト（order順）
+        include_debug: デバッグ情報を含めるか
+
+    Returns:
+        (lcb_gap, debug_info) タプル。
+        lcb_gap: 0-1、値が大きいほどKataGoの候補手信頼度差が大きい。
+                 lcb 欠損時は None。
+    """
+    if len(candidates) < 2:
+        return None, {"reason": "insufficient_candidates"} if include_debug else None
+
+    top1 = candidates[0]
+    top2 = candidates[1]
+    if not isinstance(top1, dict) or not isinstance(top2, dict):
+        return None, {"reason": "invalid_candidate_format"} if include_debug else None
+
+    top1_lcb = top1.get("lcb")
+    top2_lcb = top2.get("lcb")
+
+    if top1_lcb is None or top2_lcb is None:
+        return None, {"reason": "missing_lcb"} if include_debug else None
+
+    try:
+        top1_val = float(top1_lcb)
+        top2_val = float(top2_lcb)
+    except (TypeError, ValueError):
+        return None, {"reason": "invalid_lcb"} if include_debug else None
+
+    lcb_diff = abs(top1_val - top2_val)
+    lcb_gap = max(0.0, min(1.0, lcb_diff / LCB_GAP_MAX))
+
+    debug = (
+        {
+            "top1_lcb": top1_val,
+            "top2_lcb": top2_val,
+            "diff": lcb_diff,
+            "normalized": lcb_gap,
+        }
+        if include_debug
+        else None
+    )
+
+    return lcb_gap, debug
+
+
 def compute_difficulty_metrics(
     candidates: list[dict[str, Any]],
     root_visits: int | None = None,
     include_debug: bool = False,
+    root_info: dict[str, Any] | None = None,
 ) -> DifficultyMetrics:
     """局面の難易度メトリクスを計算。
 
@@ -429,6 +546,7 @@ def compute_difficulty_metrics(
         root_visits: ルートの探索数（信頼性判定用）。
                      None の場合は unreliable 扱い。
         include_debug: デバッグ情報を含めるか（デフォルト False）
+        root_info: KataGo rootInfo（Phase 154: shorttermScoreError などの error 系）
 
     Returns:
         DifficultyMetrics インスタンス。
@@ -452,6 +570,10 @@ def compute_difficulty_metrics(
     transition, transition_debug = _compute_transition_difficulty(normalized, include_debug)
     state, state_debug = _compute_state_difficulty(normalized, include_debug)
 
+    # Phase 154: KataGo error / LCB 系の追加指標
+    error_pressure, error_pressure_debug = _compute_error_pressure(normalized, root_info, include_debug)
+    lcb_gap, lcb_gap_debug = _compute_lcb_gap(normalized, include_debug)
+
     # scoreLead 欠損時は UNKNOWN（policy/transition が None の場合）
     if policy is None or transition is None:
         return DIFFICULTY_UNKNOWN
@@ -463,6 +585,13 @@ def compute_difficulty_metrics(
     reliability_scale = 1.0 if is_reliable else 0.7
     overall *= reliability_scale
 
+    # Phase 154: KataGo error / LCB 系の加成（KataGo の不確実性を難易度に加味）
+    if error_pressure is not None:
+        overall += ERROR_PRESSURE_WEIGHT * error_pressure
+    if lcb_gap is not None:
+        overall += LCB_GAP_WEIGHT * lcb_gap
+    overall = max(0.0, min(1.0, overall))
+
     # デバッグ情報の集約
     debug_factors = None
     if include_debug:
@@ -470,6 +599,8 @@ def compute_difficulty_metrics(
             "policy": policy_debug,
             "transition": transition_debug,
             "state": state_debug,
+            "error_pressure": error_pressure_debug,
+            "lcb_gap": lcb_gap_debug,
             "reliability": {
                 "root_visits": root_visits,
                 "candidate_count": len(normalized),
@@ -477,7 +608,11 @@ def compute_difficulty_metrics(
                 "reason": reliability_reason,
                 "scale": reliability_scale,
             },
-            "overall_method": "max(policy, transition)",
+            "overall_method": (
+                "max(policy, transition) * reliability_scale"
+                " + ERROR_PRESSURE_WEIGHT * error_pressure"
+                " + LCB_GAP_WEIGHT * lcb_gap"
+            ),
         }
 
     return DifficultyMetrics(
@@ -485,14 +620,18 @@ def compute_difficulty_metrics(
         transition_difficulty=transition,
         state_difficulty=state,
         overall_difficulty=overall,
+        error_pressure=error_pressure,
+        lcb_gap=lcb_gap,
         is_reliable=is_reliable,
         is_unknown=False,
         debug_factors=debug_factors,
     )
 
 
-def _get_candidates_from_node(node: GameNode) -> tuple[list[dict[str, Any]], int | None]:
-    """GameNode から候補手リストと root_visits を取得。
+def _get_candidates_from_node(
+    node: GameNode,
+) -> tuple[list[dict[str, Any]], int | None, dict[str, Any] | None]:
+    """GameNode から候補手リストと root_visits と rootInfo を取得。
 
     _get_root_visits() を使用して複数キーに対応。
 
@@ -500,8 +639,8 @@ def _get_candidates_from_node(node: GameNode) -> tuple[list[dict[str, Any]], int
         node: 解析済み GameNode
 
     Returns:
-        (candidates, root_visits) タプル。
-        解析データがない場合は ([], None)。
+        (candidates, root_visits, root_info) タプル。
+        解析データがない場合は ([], None, None)。
 
     Note:
         candidate_moves プロパティは既にソート済み・拡張済みを返すが、
@@ -509,7 +648,7 @@ def _get_candidates_from_node(node: GameNode) -> tuple[list[dict[str, Any]], int
         二重ソートになる。ただし order フィールドがあれば同じ結果になるので問題なし。
     """
     if not node.analysis_exists:
-        return [], None
+        return [], None, None
 
     # candidate_moves プロパティはソート済み・拡張済みを返す
     candidates = node.candidate_moves
@@ -517,7 +656,13 @@ def _get_candidates_from_node(node: GameNode) -> tuple[list[dict[str, Any]], int
     # _get_root_visits() で複数キーに対応
     root_visits = _get_root_visits(node.analysis)
 
-    return candidates, root_visits
+    # Phase 154: rootInfo も渡す（error 系指標の計算用）
+    analysis = getattr(node, "analysis", None) or {}
+    root_info = analysis.get("rootInfo") if isinstance(analysis, dict) else None
+    if root_info is not None and not isinstance(root_info, dict):
+        root_info = None
+
+    return candidates, root_visits, root_info
 
 
 def extract_difficult_positions(
@@ -552,8 +697,8 @@ def extract_difficult_positions(
         if move_number < min_move_number:
             continue
 
-        candidates, root_visits = _get_candidates_from_node(node)
-        metrics = compute_difficulty_metrics(candidates, root_visits, include_debug)
+        candidates, root_visits, root_info = _get_candidates_from_node(node)
+        metrics = compute_difficulty_metrics(candidates, root_visits, include_debug, root_info)
 
         # is_unknown フラグで判定（`is` 比較より堅牢）
         if metrics.is_unknown:
@@ -592,7 +737,7 @@ def difficulty_metrics_from_node(node: GameNode) -> DifficultyMetrics:
     Returns:
         DifficultyMetrics。解析なしの場合は DIFFICULTY_UNKNOWN。
     """
-    candidates, root_visits = _get_candidates_from_node(node)
+    candidates, root_visits, root_info = _get_candidates_from_node(node)
     if not candidates:
         return DIFFICULTY_UNKNOWN
-    return compute_difficulty_metrics(candidates, root_visits)
+    return compute_difficulty_metrics(candidates, root_visits, root_info=root_info)

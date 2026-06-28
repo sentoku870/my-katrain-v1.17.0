@@ -87,6 +87,8 @@ class DifficultyMetrics:
         transition_difficulty: 崩れやすさ（一手のミスが致命傷）。0-1、高いほど難。
         state_difficulty: 盤面の複雑さ。v1は常に0（将来用）。
         overall_difficulty: 合成値（抽出・表示の優先度用）。0-1。
+        error_pressure: KataGo の短期 error 指標（Phase 154）。KataGo も読み切れない度合い。0-1。
+        lcb_gap: 最善手と次善手の LCB 差（Phase 154）。KataGo の候補手信頼度差。0-1。
         is_reliable: 信頼性フラグ（visits/候補数が十分か）。
         is_unknown: UNKNOWN状態フラグ。欠損/計算不可を示す。
         debug_factors: 計算の内訳（デバッグ用、オプション）。
@@ -94,13 +96,16 @@ class DifficultyMetrics:
     Note:
         欠損時は DIFFICULTY_UNKNOWN（モジュールレベル定数）を使用。
         is_unknown フラグで判定（`is` 比較より堅牢）。
+        error_pressure / lcb_gap は KataGo 生データの欠損時は None。
     """
 
     policy_difficulty: float
     transition_difficulty: float
     state_difficulty: float  # v1: always 0.0
     overall_difficulty: float
-    is_reliable: bool
+    error_pressure: float | None = None  # Phase 154
+    lcb_gap: float | None = None  # Phase 154
+    is_reliable: bool = False
     is_unknown: bool = False
     debug_factors: dict[str, Any] | None = None
 
@@ -111,6 +116,8 @@ DIFFICULTY_UNKNOWN = DifficultyMetrics(
     transition_difficulty=0.0,
     state_difficulty=0.0,
     overall_difficulty=0.0,
+    error_pressure=None,
+    lcb_gap=None,
     is_reliable=False,
     is_unknown=True,
     debug_factors={"reason": "unknown"},
@@ -128,6 +135,18 @@ POLICY_GAP_MAX: float = 5.0  # この差（目数）以上は「迷いなし」(
 
 # Transition難易度の正規化パラメータ
 TRANSITION_DROP_MAX: float = 8.0  # Top1→Top2の落差がこれ以上で最大難易度
+
+# === Phase 154: KataGo error / LCB 系の正規化パラメータ ===
+
+# 短期 error 系の最大値（KataGo 標準の shorttermScoreError のおおよその上限）
+SHORTTERM_SCORE_ERROR_MAX: float = 5.0  # これ以上で error_pressure=1.0
+
+# LCB 差の最大値（最善手と次善手の LCB 差がこの値で lcb_gap=1.0）
+LCB_GAP_MAX: float = 2.0  # LCB は utility スケール（通常 0-2 程度）
+
+# overall 合成時の重み（KataGo の不確実性を加成）
+ERROR_PRESSURE_WEIGHT: float = 0.15
+LCB_GAP_WEIGHT: float = 0.15
 
 # 難所抽出のデフォルト設定
 DEFAULT_DIFFICULT_POSITIONS_LIMIT: int = 10

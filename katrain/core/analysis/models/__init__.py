@@ -29,9 +29,13 @@ from katrain.core.analysis.models.difficulty import (
     DIFFICULTY_MIN_VISITS,
     DIFFICULTY_UNKNOWN,
     DifficultyMetrics,
+    ERROR_PRESSURE_WEIGHT,
+    LCB_GAP_MAX,
+    LCB_GAP_WEIGHT,
     POLICY_GAP_MAX,
     PV_FILTER_CONFIGS,
     PVFilterConfig,
+    SHORTTERM_SCORE_ERROR_MAX,
     SKILL_TO_PV_FILTER,
     TRANSITION_DROP_MAX,
 )
@@ -213,6 +217,11 @@ __all__ = [
     "TRANSITION_DROP_MAX",
     "DEFAULT_DIFFICULT_POSITIONS_LIMIT",
     "DEFAULT_MIN_MOVE_NUMBER",
+    # Phase 154: KataGo error / LCB
+    "SHORTTERM_SCORE_ERROR_MAX",
+    "LCB_GAP_MAX",
+    "ERROR_PRESSURE_WEIGHT",
+    "LCB_GAP_WEIGHT",
     # Labels (lazy)
     "REASON_TAG_LABELS",
     "VALID_REASON_TAGS",

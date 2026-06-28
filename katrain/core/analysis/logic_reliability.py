@@ -71,6 +71,42 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
     if _move_number is None:
         _move_number = getattr(node, "move_number", 0) or 0
 
+    # Phase 154: KataGo 生データ（error / LCB 系）を MoveEval にコピー
+    shortterm_score_error = None
+    shortterm_winloss_error = None
+    raw_stdev = None
+    top_move_lcb = None
+    top_move_utility_lcb = None
+
+    analysis = getattr(node, "analysis", None)
+    if isinstance(analysis, dict):
+        root_info = analysis.get("rootInfo") or {}
+        if isinstance(root_info, dict):
+            ste = root_info.get("shorttermScoreError")
+            if ste is not None:
+                shortterm_score_error = float(ste)
+            swle = root_info.get("shorttermWinlossError")
+            if swle is not None:
+                shortterm_winloss_error = float(swle)
+            rstdev = root_info.get("rawStdev")
+            if rstdev is not None:
+                raw_stdev = float(rstdev)
+
+        # 最善手（order=0）の LCB
+        moves_dict = analysis.get("moves") or {}
+        top_move = None
+        for move_data in moves_dict.values():
+            if isinstance(move_data, dict) and move_data.get("order") == 0:
+                top_move = move_data
+                break
+        if top_move is not None:
+            lcb_val = top_move.get("lcb")
+            if lcb_val is not None:
+                top_move_lcb = float(lcb_val)
+            ulcb_val = top_move.get("utilityLcb")
+            if ulcb_val is not None:
+                top_move_utility_lcb = float(ulcb_val)
+
     return MoveEval(
         move_number=_move_number,
         player=player,
@@ -86,6 +122,11 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
         root_visits=int(root_visits),
         position_difficulty=difficulty,
         position_difficulty_score=difficulty_score,
+        shortterm_score_error=shortterm_score_error,
+        shortterm_winloss_error=shortterm_winloss_error,
+        raw_stdev=raw_stdev,
+        top_move_lcb=top_move_lcb,
+        top_move_utility_lcb=top_move_utility_lcb,
     )
 
 

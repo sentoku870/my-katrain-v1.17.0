@@ -668,3 +668,206 @@ class TestDifficultyFormatting:
         assert len(lines) == 2
         assert "⚠" in lines[0]
         assert "[信頼度低]" in lines[1]
+
+
+# =============================================================================
+# Phase 154: KataGo error / LCB 系のテスト
+# =============================================================================
+
+
+class TestPhase154ErrorPressure:
+    """Phase 154: error_pressure（KataGo 短期 error 由来）のテスト"""
+
+    def test_no_root_info_returns_none(self):
+        """root_info=None のとき error_pressure は None"""
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000)
+        assert metrics.error_pressure is None
+
+    def test_error_pressure_from_shortterm_score_error(self):
+        """shorttermScoreError から error_pressure を計算"""
+        root_info = {"shorttermScoreError": 2.5}  # /SHORTTERM_SCORE_ERROR_MAX(5.0) = 0.5
+        metrics = compute_difficulty_metrics(
+            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
+        )
+        assert metrics.error_pressure == pytest.approx(0.5, abs=0.01)
+
+    def test_error_pressure_clamped_to_one(self):
+        """error_pressure は最大 1.0 にクランプ"""
+        root_info = {"shorttermScoreError": 100.0}  # 大きすぎ
+        metrics = compute_difficulty_metrics(
+            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
+        )
+        assert metrics.error_pressure == 1.0
+
+    def test_error_pressure_missing_returns_none(self):
+        """shorttermScoreError 欠損時は None"""
+        root_info = {}  # shorttermScoreError なし
+        metrics = compute_difficulty_metrics(
+            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
+        )
+        assert metrics.error_pressure is None
+
+
+class TestPhase154LcbGap:
+    """Phase 154: lcb_gap（LCB 差由来）のテスト"""
+
+    def test_no_lcb_returns_none(self):
+        """候補手に lcb がない場合は None"""
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000)
+        assert metrics.lcb_gap is None
+
+    def test_lcb_gap_from_candidates(self):
+        """lcb_gap が計算される"""
+        candidates = [
+            {"order": 0, "scoreLead": 2.0, "lcb": 1.5},
+            {"order": 1, "scoreLead": 1.0, "lcb": 0.5},  # diff=1.0
+        ]
+        metrics = compute_difficulty_metrics(candidates, root_visits=1000)
+        # diff=1.0 / LCB_GAP_MAX(2.0) = 0.5
+        assert metrics.lcb_gap == pytest.approx(0.5, abs=0.01)
+
+    def test_lcb_gap_clamped_to_one(self):
+        """lcb_gap は最大 1.0 にクランプ"""
+        candidates = [
+            {"order": 0, "scoreLead": 2.0, "lcb": 5.0},
+            {"order": 1, "scoreLead": 1.0, "lcb": -10.0},  # diff=15.0
+        ]
+        metrics = compute_difficulty_metrics(candidates, root_visits=1000)
+        assert metrics.lcb_gap == 1.0
+
+    def test_lcb_gap_only_top1_returns_none(self):
+        """top2 に lcb がない場合は None"""
+        candidates = [
+            {"order": 0, "scoreLead": 2.0, "lcb": 1.0},
+            {"order": 1, "scoreLead": 1.0},  # lcb なし
+        ]
+        metrics = compute_difficulty_metrics(candidates, root_visits=1000)
+        assert metrics.lcb_gap is None
+
+
+class TestPhase154OverallAggregation:
+    """Phase 154: overall への加成テスト"""
+
+    def test_overall_with_only_error_pressure(self):
+        """error_pressure のみで加成"""
+        root_info = {"shorttermScoreError": 5.0}  # error_pressure=1.0
+        metrics = compute_difficulty_metrics(
+            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
+        )
+        # 既存: overall = max(0.96, 0.025) = 0.96
+        # 加成: 0.96 + 0.15 * 1.0 = 1.11 → クランプで 1.0
+        assert metrics.overall_difficulty == pytest.approx(1.0, abs=0.01)
+
+    def test_overall_with_only_lcb_gap(self):
+        """lcb_gap のみで加成"""
+        candidates = [
+            {"order": 0, "scoreLead": 5.0, "lcb": 2.0},
+            {"order": 1, "scoreLead": 5.0, "lcb": 0.0},  # diff=2.0 → lcb_gap=1.0
+        ]
+        metrics = compute_difficulty_metrics(candidates, root_visits=1000)
+        # 既存: gap=0 → policy=1.0, transition=0.0 → overall=1.0
+        # 加成: 1.0 + 0.15 * 1.0 = 1.15 → クランプで 1.0
+        assert metrics.overall_difficulty == pytest.approx(1.0, abs=0.01)
+
+    def test_overall_with_both_factors(self):
+        """error_pressure と lcb_gap 両方で加成"""
+        root_info = {"shorttermScoreError": 2.5}  # error_pressure=0.5
+        candidates = [
+            {"order": 0, "scoreLead": 2.0, "lcb": 1.0},
+            {"order": 1, "scoreLead": 1.8, "lcb": 0.0},  # diff=1.0 → lcb_gap=0.5
+        ]
+        metrics = compute_difficulty_metrics(candidates, root_visits=1000, root_info=root_info)
+        # gap=0.2 → policy=0.96, transition=0.025 → overall=0.96
+        # 加成: 0.96 + 0.15*0.5 + 0.15*0.5 = 0.96 + 0.075 + 0.075 = 1.11 → 1.0
+        assert metrics.overall_difficulty == pytest.approx(1.0, abs=0.01)
+
+    def test_overall_backward_compatible_without_error_and_lcb(self):
+        """error/lcb データなしの場合は従来と同じ結果"""
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000)
+        # 既存と完全に同じ: 0.96
+        assert metrics.overall_difficulty == pytest.approx(0.96, abs=0.01)
+
+    def test_overall_clamped_after_aggregation(self):
+        """overall は集約後にクランプされる"""
+        root_info = {"shorttermScoreError": 10.0}  # error_pressure=1.0
+        metrics = compute_difficulty_metrics(
+            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
+        )
+        # error_pressure 加成で 1.0 を超えるがクランプ
+        assert metrics.overall_difficulty <= 1.0
+
+
+class TestPhase154Formatting:
+    """Phase 154: フォーマット拡張のテスト"""
+
+    def test_format_includes_error_pressure(self):
+        """error_pressure がある場合、表示に含める"""
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.5,
+            transition_difficulty=0.5,
+            state_difficulty=0.0,
+            overall_difficulty=0.5,
+            error_pressure=0.3,
+            lcb_gap=None,
+            is_reliable=True,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        # 3行: 局面難易度, 迷い/崩れ, error/LCB
+        assert len(lines) == 3
+        assert any("error=0.30" in line for line in lines)
+
+    def test_format_includes_lcb_gap(self):
+        """lcb_gap がある場合、表示に含める"""
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.5,
+            transition_difficulty=0.5,
+            state_difficulty=0.0,
+            overall_difficulty=0.5,
+            error_pressure=None,
+            lcb_gap=0.4,
+            is_reliable=True,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        assert any("LCB差=0.40" in line for line in lines)
+
+    def test_format_includes_both(self):
+        """error_pressure と lcb_gap 両方ある場合"""
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.5,
+            transition_difficulty=0.5,
+            state_difficulty=0.0,
+            overall_difficulty=0.5,
+            error_pressure=0.3,
+            lcb_gap=0.4,
+            is_reliable=True,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        last_line = lines[-1]
+        assert "error=0.30" in last_line
+        assert "LCB差=0.40" in last_line
+
+    def test_format_no_extra_line_when_both_none(self):
+        """error_pressure と lcb_gap 両方 None の場合は従来通り2行"""
+        from katrain.core.analysis import DifficultyMetrics, format_difficulty_metrics
+
+        metrics = DifficultyMetrics(
+            policy_difficulty=0.5,
+            transition_difficulty=0.5,
+            state_difficulty=0.0,
+            overall_difficulty=0.5,
+            error_pressure=None,
+            lcb_gap=None,
+            is_reliable=True,
+            is_unknown=False,
+        )
+        lines = format_difficulty_metrics(metrics)
+        assert len(lines) == 2
