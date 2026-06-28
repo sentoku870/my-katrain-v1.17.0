@@ -300,6 +300,12 @@ def build_summary_json(
             "unknown_games": unknown_games,
         }
 
+        # Phase 155-D: Opponent-strength loss correlation
+        from katrain.core.reports.sections import build_opponent_strength_loss_correlation
+        opponent_correlation = build_opponent_strength_loss_correlation(
+            game_data_list, player_name
+        )
+
         players_data[player_name] = {
             "overall": overall,
             "mistakes": mistake_dist,
@@ -311,6 +317,7 @@ def build_summary_json(
             },
             "top_mistakes": top_mistakes,
             "win_loss_analysis": win_loss_analysis,
+            "opponent_strength_loss_correlation": opponent_correlation,
         }
 
     # Phase 154-D: Aggregated loss progression across all games

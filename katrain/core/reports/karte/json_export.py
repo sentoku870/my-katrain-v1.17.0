@@ -294,8 +294,29 @@ def build_karte_json(
         for b in loss_buckets
     ]
 
+    # Phase 155-D: Opponent-strength loss correlation (per-game).
+    # Karte emits this for each player (B and W) using the in-game BR/WR.
+    from katrain.core.reports.sections import build_opponent_strength_loss_correlation
+    from katrain.core.analysis.models import GameSummaryData
+
+    rank_black_str = get_property("BR")
+    rank_white_str = get_property("WR")
+    single_game = GameSummaryData(
+        game_name=game_filename,
+        player_black=common_meta["players"]["black"],
+        player_white=common_meta["players"]["white"],
+        snapshot=snapshot,
+        board_size=(board_x, board_y),
+        rank_black=rank_black_str,
+        rank_white=rank_white_str,
+    )
+    opponent_correlation = {
+        "black": build_opponent_strength_loss_correlation([single_game], common_meta["players"]["black"]),
+        "white": build_opponent_strength_loss_correlation([single_game], common_meta["players"]["white"]),
+    }
+
     result: dict[str, Any] = {
-        "schema_version": "3.2",
+        "schema_version": "3.3",
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,
@@ -306,5 +327,6 @@ def build_karte_json(
         "reason_tags_distribution": reason_tags_dist,
         "win_loss_analysis": win_loss,
         "loss_progression": loss_progression,
+        "opponent_strength_loss_correlation": opponent_correlation,
     }
     return result
