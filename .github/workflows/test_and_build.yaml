@@ -170,82 +170,6 @@ jobs:
           name: KaTrainWindows-${{ env.KATRAIN_VERSION }}
           path: windows_exe
 
-  build-macos:
-    needs: [prepare, test, typecheck]
-    runs-on: macos-latest
-    timeout-minutes: 90
-    env:
-      KATRAIN_VERSION: ${{ needs.prepare.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python, uv, and PyInstaller
-        uses: ./.github/actions/setup-python-uv
-        with:
-          install-pyinstaller: "true"
-
-      - name: Cache Homebrew packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            /opt/homebrew/Cellar
-          key: ${{ runner.os }}-brew-${{ hashFiles('.github/workflows/test_and_build.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-brew-
-
-      - name: Install macOS dependencies
-        run: |
-          brew update
-          brew install libzip
-          # Use pre-built bottles when possible to speed up installation
-          brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer || \
-          brew install --build-from-source sdl2 sdl2_image sdl2_ttf sdl2_mixer
-
-      - name: Build KataGo
-        run: |
-          rm -f katrain/KataGo/katago katrain/KataGo/*.dll katrain/KataGo/katago.exe
-          git clone --depth 1 --branch stable https://github.com/lightvector/KataGo.git ../KataGo
-          pushd ../KataGo/cpp
-          cmake . -DUSE_BACKEND=OPENCL -DBUILD_DISTRIBUTED=1
-          make -j$(sysctl -n hw.ncpu)
-          mkdir -p "$GITHUB_WORKSPACE/katrain/KataGo"
-          cp katago "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
-          chmod +x "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
-          ls -la "$GITHUB_WORKSPACE/katrain/KataGo/katago-osx"
-
-          popd
-
-      - name: Build app with PyInstaller
-        env:
-          KIVY_HEADLESS: 1
-          KIVY_NO_WINDOW: 1
-          KIVY_GL_BACKEND: mock
-        run: uv run pyinstaller spec/katrain.spec --clean --noconfirm
-
-      - name: Sign the app (ad-hoc)
-        run: codesign --force --deep --sign - dist/KaTrain.app
-
-      - name: Create DMG
-        run: |
-          mkdir -p dmg_temp
-          cp -R dist/KaTrain.app dmg_temp/
-          ln -s /Applications dmg_temp/Applications
-          hdiutil create -volname "KaTrain ${{ env.KATRAIN_VERSION }}" \
-                         -srcfolder dmg_temp \
-                         -ov \
-                         -format UDZO \
-                         "KaTrain-${{ env.KATRAIN_VERSION }}.dmg"
-          mkdir -p osx_app
-          mv "KaTrain-${{ env.KATRAIN_VERSION }}.dmg" osx_app/
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: KaTrainMacOS-${{ env.KATRAIN_VERSION }}
-          path: osx_app
-
   # This job publishes the package to PyPI.
   publish-pypi:
     needs: test
@@ -273,7 +197,7 @@ jobs:
 
   # This job creates a draft release on GitHub.
   create-release:
-    needs: [prepare, build-windows, build-macos]
+    needs: [prepare, build-windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
@@ -298,7 +222,6 @@ jobs:
 
             ### Downloads
             - **Windows**: Download the `.exe` files or `.zip` folders.
-            - **macOS**: Download the `.dmg` file.
           files: ./artifacts/*
           draft: true
           prerelease: false
