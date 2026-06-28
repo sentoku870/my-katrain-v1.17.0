@@ -893,7 +893,8 @@ class TestEntropyNormalization:
 
     def test_uniform_distribution_all_sizes(self):
         """Uniform distribution should be EASY on all board sizes."""
-        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
+        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
         for size in [9, 13, 19]:
             n = size * size
@@ -903,7 +904,8 @@ class TestEntropyNormalization:
 
     def test_concentrated_distribution_all_sizes(self):
         """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
-        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
+        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
         for size in [9, 13, 19]:
             n = size * size
@@ -917,7 +919,8 @@ class TestEntropyNormalization:
 
     def test_board_size_as_tuple(self):
         """Should handle board_size as tuple (x, y)."""
-        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
+        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
         uniform = [1.0 / 361] * 361
         diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
@@ -925,7 +928,7 @@ class TestEntropyNormalization:
 
     def test_invalid_board_size_fallback(self):
         """Invalid board size should fallback to 19x19."""
-        from katrain.core.eval_metrics import _assess_difficulty_from_policy
+        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
         uniform = [1.0 / 361] * 361
         # Should not crash, uses 19x19 fallback
@@ -936,7 +939,8 @@ class TestEntropyNormalization:
 
     def test_empty_policy(self):
         """Empty policy should return UNKNOWN."""
-        from katrain.core.eval_metrics import PositionDifficulty, _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
+        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
         diff, score = _assess_difficulty_from_policy([])
         assert diff == PositionDifficulty.UNKNOWN
