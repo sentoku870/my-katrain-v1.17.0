@@ -18,7 +18,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.1"  # Phase 153-A: difficulty 削除
+REPORT_SCHEMA_VERSION: Final[str] = "3.2"  # Phase 154-D: win_loss_analysis + loss_progression 追加
 
 
 # --- Thresholds ---

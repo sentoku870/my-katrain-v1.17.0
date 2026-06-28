@@ -42,6 +42,29 @@ class GameSummaryData:
     handicap: int = 0
     komi: float = 6.5
     skill_preset: str | None = None
+    # Phase 154-C: Pre-parsed game outcome (cached to avoid re-parsing).
+    # If None, downstream code re-parses ``result`` via :func:`parse_result`.
+    outcome: Any | None = None  # GameOutcome (lazy import to avoid cycle)
+
+    @property
+    def player_outcome_black(self) -> str:
+        """Outcome for the black player as a string (``"win"``/``"loss"``/``"draw"``/``"unknown"``).
+
+        Uses the cached ``outcome`` if set, otherwise ``"unknown"``. Avoids
+        importing the parser at module-load time (circular-import safe).
+        """
+        if self.outcome is None:
+            return "unknown"
+        black = self.outcome.black
+        return getattr(black, "value", black)
+
+    @property
+    def player_outcome_white(self) -> str:
+        """Outcome for the white player as a string."""
+        if self.outcome is None:
+            return "unknown"
+        white = self.outcome.white
+        return getattr(white, "value", white)
 
 
 @dataclass

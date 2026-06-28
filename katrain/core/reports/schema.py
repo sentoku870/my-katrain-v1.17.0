@@ -4,6 +4,7 @@ This logic ensures that the JSON output structure is strictly defined
 and type-checked, preventing missing fields or inconsistent types.
 """
 from typing import TypedDict, List, Dict, Any, Optional, Union
+from typing_extensions import NotRequired
 
 # --- Common Sub-structures ---
 
@@ -90,12 +91,18 @@ class SummaryPlayerStats(TypedDict):
     reason_tags: Dict[str, Any]
     mistake_sequences: Dict[str, Any]
     top_mistakes: List[MistakeItem]
+    # Phase 154-D: per-player win/loss aggregation (typed loosely for forward compat)
+    win_loss_analysis: NotRequired[Dict[str, Any]]
 
 class SummaryReport(TypedDict):
     schema_version: str
     meta: MetaData
     games: List[GameMeta]
     players: Dict[str, SummaryPlayerStats]
+    # Phase 154-D: aggregated win/loss analysis across all games in the run.
+    win_loss_analysis: Optional[Dict[str, Any]]
+    # Phase 154-B: per-game loss progression (bucketed by move-number window).
+    loss_progression: Optional[List[Dict[str, Any]]]
 
 
 # --- Phase 149 C-1: Extended Karte sections (revived from dead code) ---
@@ -183,14 +190,10 @@ class DataQualityStats(TypedDict):
 
 
 class KarteReport(TypedDict):
-    """Karte JSON v3.1 (Phase 153-A/B/C).
+    """Karte JSON v3.2 (Phase 153-A/B/C + Phase 154-D).
 
-    Schema 3.0 → 3.1:
-      - Phase 153-A: Removed `difficulty` from MistakeItem.
-      - Phase 153-B: Removed `practice_priorities` and
-        `common_difficult_positions` sections.
-      - Phase 153-C: Removed `urgent_misses` section (merged into
-        `mistake_streaks`).
+    Schema 3.1 → 3.2: Added ``win_loss_analysis`` and ``loss_progression``
+    sections for coaching-oriented statistics.
 
     The remaining fields are stable since 3.0 (weaknesses, mistake_streaks,
     critical_3, data_quality, reason_tags_distribution).
@@ -205,4 +208,7 @@ class KarteReport(TypedDict):
     critical_3: Optional[Dict[str, List[CriticalMoveItem]]]
     data_quality: Optional[DataQualityStats]
     reason_tags_distribution: Optional[Dict[str, Dict[str, int]]]
+    # Phase 154-D: per-game win/loss analysis + per-game loss progression.
+    win_loss_analysis: Optional[Dict[str, Any]]
+    loss_progression: Optional[List[Dict[str, Any]]]
 
