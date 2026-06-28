@@ -43,6 +43,7 @@ def build_summary_json(
     game_data_list: list[GameSummaryData],
     focus_player: str | None = None,
     include_definitions: bool = False,
+    dynamic_phase_detection: bool = False,
 ) -> SummaryReport:
     """Build a JSON-serializable summary structure for LLM consumption.
 
@@ -55,8 +56,20 @@ def build_summary_json(
     Phase 153-D: `include_definitions` defaults to False. The `definitions`
     block is opt-in to keep the summary compact for LLM consumption; pass
     `include_definitions=True` when the consumer needs label mappings.
+
+    Phase 156: `dynamic_phase_detection` defaults to False. When True,
+    each game's move tags are rewritten using the scoreStdev-based
+    detector.
     """
-    
+
+    # Phase 156: opt-in dynamic phase detection (rewrites move.tag)
+    if dynamic_phase_detection:
+        from katrain.core.analysis import apply_dynamic_phases
+
+        for gd in game_data_list:
+            board_size = gd.board_size[0] if isinstance(gd.board_size, tuple) else int(gd.board_size or 19)
+            apply_dynamic_phases(list(gd.snapshot.moves), board_size=board_size)
+
     # Initialize Logic Analyzer
     analyzer = SummaryAnalyzer(game_data_list, focus_player)
     player_stats = analyzer.get_all_player_stats()

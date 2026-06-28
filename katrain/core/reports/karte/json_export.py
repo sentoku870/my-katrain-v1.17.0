@@ -51,6 +51,7 @@ def build_karte_json(
     lang: str = "ja",
     target_visits: int | None = None,
     include_definitions: bool = False,
+    dynamic_phase_detection: bool = False,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -67,6 +68,10 @@ def build_karte_json(
     block is opt-in to keep the report compact for LLM consumption; pass
     `include_definitions=True` when the consumer needs label mappings.
 
+    Phase 156: `dynamic_phase_detection` defaults to False. When True,
+    the move-by-move ``tag`` is rewritten using the scoreStdev-based
+    detector (see :func:`katrain.core.analysis.apply_dynamic_phases`).
+
     Args:
         game: Game object providing game state and analysis data
         level: Important move level setting
@@ -77,6 +82,9 @@ def build_karte_json(
         target_visits: Target visits for effective reliability threshold.
         include_definitions: If True, embed the `definitions` block in
             `meta.definitions`. Default False for compact output.
+        dynamic_phase_detection: If True, rewrite move tags using the
+            scoreStdev-based dynamic phase classifier (Phase 156).
+            Default False (legacy fixed thresholds).
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
@@ -84,6 +92,12 @@ def build_karte_json(
     snapshot = game.build_eval_snapshot()
     moves = list(snapshot.moves)
     board_x, board_y = game.board_size
+
+    # Phase 156: Opt-in dynamic phase detection (overrides move.tag)
+    if dynamic_phase_detection:
+        from katrain.core.analysis import apply_dynamic_phases
+
+        apply_dynamic_phases(moves, board_size=board_x)
 
     # Get effective preset and thresholds
     effective_preset = skill_preset
