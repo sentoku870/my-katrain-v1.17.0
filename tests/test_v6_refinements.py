@@ -18,6 +18,11 @@ def test_v6_refinements():
     game.komi = 6.5
     game.root.get_property.side_effect = lambda p, d=None: {"PB": "Black", "PW": "White", "DT": "2024-01-01"}.get(p, d)
     game.root.handicap = 0
+    # Phase 154: MetaExtractor pulls result/komi/etc. from these attrs
+    # when present; the MagicMock default would leak into parse_result().
+    game.result = None
+    game.komi = 6.5
+    game.handicap = 0
     
     # 1. Test game_id stability (Unit test for BaseGame logic would be better but let's check what Karte uses)
     # Actually build_karte_json uses game.game_id
