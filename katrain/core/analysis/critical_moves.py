@@ -251,7 +251,7 @@ def _compute_critical_score(
     return float(quantized)
 
 
-def _sort_key(move_number: int, score: float) -> tuple[float, int]:
+def sort_key(move_number: int, score: float) -> tuple[float, int]:
     """Deterministic sort key for candidate selection.
 
     Primary: critical_score descending (negated for ascending sort)
@@ -288,7 +288,7 @@ def _log_complexity_filter_stats(stats: ComplexityFilterStats) -> None:
 # =============================================================================
 
 
-def _build_node_map(game: "Game") -> dict[int, "GameNode"]:
+def build_node_map(game: "Game") -> dict[int, "GameNode"]:
     """Build move_number -> GameNode mapping for main branch.
 
     Note:
@@ -345,7 +345,7 @@ def _get_score_stdev_for_move(
     """Get scoreStdev for a move number.
 
     Args:
-        node_map: Result from _build_node_map()
+        node_map: Result from build_node_map()
         move_number: Target move number (1-indexed)
 
     Returns:
@@ -445,7 +445,7 @@ def select_critical_moves(
         return []
 
     # Step 2: Build node map (used for meaning tag context + scoreStdev lookup)
-    node_map = _build_node_map(game)
+    node_map = build_node_map(game)
 
     # Step 3: Classify meaning tags (non-mutating)
     meaning_tag_map = _classify_meaning_tags(important_moves, snapshot, node_map=node_map)
@@ -500,7 +500,7 @@ def select_critical_moves(
             )
 
         # Sort by (critical_score DESC, move_number ASC)
-        candidates.sort(key=lambda m: _sort_key(m.move_number, scores[m.move_number]))
+        candidates.sort(key=lambda m: sort_key(m.move_number, scores[m.move_number]))
 
         # Select best candidate
         best = candidates.pop(0)
@@ -568,8 +568,8 @@ __all__ = [
     "_compute_diversity_penalty",
     "_compute_complexity_discount",  # Phase 83
     "_compute_critical_score",
-    "_sort_key",
-    "_build_node_map",
+    "sort_key",
+    "build_node_map",
     "_get_score_stdev_from_node",
     "_get_score_stdev_for_move",
     "_classify_meaning_tags",

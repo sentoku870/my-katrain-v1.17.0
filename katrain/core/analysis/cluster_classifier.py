@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from katrain.core.compatibility import StrEnum
 from typing import (
     TYPE_CHECKING,
     cast,
@@ -31,6 +30,7 @@ from katrain.core.analysis.ownership_cluster import (
     OwnershipCluster,
     extract_clusters_from_nodes,
 )
+from katrain.core.compatibility import StrEnum
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -721,7 +721,7 @@ def build_classification_context(
 # =====================================================================
 
 
-def _get_cluster_context_for_move(
+def get_cluster_context_for_move(
     game: Game,
     move_number: int,
     lang: str | None,
@@ -863,7 +863,7 @@ __all__ = [
     "get_ownership_context_pair",
     "build_classification_context",
     # Karte integration
-    "_get_cluster_context_for_move",
+    "get_cluster_context_for_move",
     # Internal (for testing)
     "_detect_group_death",
     "_detect_territory_loss",

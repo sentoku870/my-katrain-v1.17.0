@@ -18,17 +18,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
+from katrain.common.locale_utils import to_iso_lang_code
 from katrain.core.analysis.cluster_classifier import (
     StoneCache,
-    _get_cluster_context_for_move,
 )
 from katrain.core.analysis.critical_moves import select_critical_moves
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
 from katrain.core.batch.stats import get_area_from_gtp
 from katrain.core.constants import OUTPUT_DEBUG
-from katrain.core.eval_metrics import classify_mistake, get_canonical_loss_from_move
-from katrain.common.locale_utils import to_iso_lang_code
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval
@@ -128,7 +125,7 @@ def get_context_info_for_move(game: Any, move_eval: MoveEval) -> dict[str, Any]:
 
 
 def reason_tags_distribution_for(
-    ctx: "KarteContext",
+    ctx: KarteContext,
     player: str,
 ) -> dict[str, int]:
     """Generate reason tags distribution for a player's important moves.
@@ -156,7 +153,7 @@ def reason_tags_distribution_for(
 
 
 def critical_3_section_for(
-    ctx: "KarteContext",
+    ctx: KarteContext,
     player: str,
     level: str,
 ) -> list[dict[str, Any]]:

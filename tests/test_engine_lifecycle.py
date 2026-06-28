@@ -17,8 +17,6 @@ Covers previously untested paths in katrain/core/engine.py:
 
 import queue
 import subprocess
-import threading
-import time
 from unittest.mock import MagicMock, patch
 
 from tests.fakes import FakePopen, MinimalKatrain
@@ -466,11 +464,13 @@ class TestKataGoEngineHandleTimeout:
         # In a real environment, this would surface a popup; in tests we accept the TypeError
         # OR we patch on_error to swallow it. The point is that shutdown() is called.
         # Patch on_error to verify the call sequence
+        # (Note: _fire_engine_error now wraps the call and forwards positionally)
         with patch.object(engine, "on_error") as mock_on_error:
             engine._handle_engine_timeout()
             mock_on_error.assert_called_once()
-            args, kwargs = mock_on_error.call_args
-            assert kwargs.get("code") == "timeout"
+            args, _kwargs = mock_on_error.call_args
+            # args = (message, code, allow_popup)
+            assert args[1] == "timeout"
         assert engine.katago_process is None
 
 

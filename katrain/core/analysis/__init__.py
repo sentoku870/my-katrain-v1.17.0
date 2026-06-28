@@ -53,14 +53,14 @@ from katrain.core.analysis.cluster_classifier import (
     # Type aliases (exported for annotation)
     StonePosition,
     StoneSet,
-    # Karte integration (private but exported for testing)
-    _get_cluster_context_for_move,
     build_classification_context,
     # Classification
     classify_cluster,
     compute_cluster_ownership_avg,
     # Stone reconstruction
     compute_stones_at_node,
+    # Karte integration (private but exported for testing)
+    get_cluster_context_for_move,
     # Context building
     get_ownership_context_pair,
     get_semantics_label,
@@ -88,46 +88,25 @@ from katrain.core.analysis.critical_moves import (
     ComplexityFilterStats,  # Phase 83
     # Dataclass
     CriticalMove,
-    _build_node_map,
-    _classify_meaning_tags,
-    _compute_complexity_discount,  # Phase 83
-    _compute_critical_score,
-    _compute_diversity_penalty,
-    # Internal functions (exported for testing)
-    _get_meaning_tag_weight,
-    _get_score_stdev_for_move,
-    _get_score_stdev_from_node,
-    _sort_key,
+    build_node_map,
     # Main function
     select_critical_moves,
+    sort_key,
 )
 
 # =============================================================================
 # Explicit imports from logic.py
 # =============================================================================
 from katrain.core.analysis.logic import (
-    # Position difficulty
-    _assess_difficulty_from_policy,
-    _compute_policy_difficulty,
-    _compute_state_difficulty,
-    _compute_transition_difficulty,
-    _determine_reliability,
-    # Auto-strictness
-    _distance_from_range,
-    _get_candidates_from_node,
-    _get_root_visits,
-    # Difficulty Metrics (Phase 12)
-    _normalize_candidates,
+    ENDGAME_DETECTION_WINDOW,  # Phase 156-A
+    ENDGAME_SCORE_STDEV_THRESHOLD,  # Phase 156-A
     # Phase mistake stats
     aggregate_phase_mistake_stats,
+    apply_dynamic_phases,  # Phase 156-D
     assess_position_difficulty_from_parent,
     classify_game_phase,
     classify_mistake,
     classify_phases_dynamic,  # Phase 156-A
-    apply_dynamic_phases,  # Phase 156-D
-    it_consistent_with_static,  # Phase 156-A
-    ENDGAME_SCORE_STDEV_THRESHOLD,  # Phase 156-A
-    ENDGAME_DETECTION_WINDOW,  # Phase 156-A
     compute_canonical_loss,
     # Confidence level
     compute_confidence_level,
@@ -157,6 +136,7 @@ from katrain.core.analysis.logic import (
     get_skill_preset,
     get_urgent_miss_config,
     is_reliable_from_visits,
+    it_consistent_with_static,  # Phase 156-A
     iter_main_branch_nodes,
     # GameNode bridge
     move_eval_from_node,
@@ -170,6 +150,13 @@ from katrain.core.analysis.logic import (
 )
 
 # =============================================================================
+# Explicit imports from logic_loss.py (Phase B split)
+# =============================================================================
+from katrain.core.analysis.logic_loss import (
+    detect_engine_type,
+)
+
+# =============================================================================
 # Explicit imports from logic_quiz.py (Phase 98)
 # =============================================================================
 from katrain.core.analysis.logic_quiz import (
@@ -179,17 +166,9 @@ from katrain.core.analysis.logic_quiz import (
 )
 
 # =============================================================================
-# Explicit imports from logic_loss.py (Phase B split)
-# =============================================================================
-from katrain.core.analysis.logic_loss import (
-    detect_engine_type,
-)
-
-# =============================================================================
 # Explicit imports from models.py
 # =============================================================================
 from katrain.core.analysis.models import (
-    _CONFIDENCE_THRESHOLDS,
     DEFAULT_ANALYSIS_ENGINE,
     DEFAULT_DIFFICULT_POSITIONS_LIMIT,
     DEFAULT_IMPORTANT_MOVE_LEVEL,
@@ -248,9 +227,9 @@ from katrain.core.analysis.models import (
     PositionDifficulty,
     PVFilterConfig,
     PVFilterLevel,
+    QuizChoice,
     QuizConfig,
     QuizItem,
-    QuizChoice,
     QuizQuestion,
     ReasonTagThresholds,
     ReliabilityStats,
@@ -325,8 +304,6 @@ from katrain.core.analysis.reason_generator import (
     generate_reason_safe,
 )
 
-
-
 # =============================================================================
 # Phase 92: Public Wrapper Functions
 # =============================================================================
@@ -335,8 +312,9 @@ from katrain.core.analysis.reason_generator import (
 def get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     """Get root visits from analysis dict (public API).
 
-    This is the public wrapper for _get_root_visits().
-    Use this function instead of _get_root_visits() in external modules.
+    This is the public wrapper for the internal `_get_root_visits()`.
+    External modules should use this function rather than reaching into
+    private helpers.
 
     Supports multiple formats:
     - rootInfo.visits (KataGo standard)
@@ -349,6 +327,8 @@ def get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     Returns:
         Number of visits, or None if analysis is None or visits not found.
     """
+    from katrain.core.analysis.logic_difficulty import _get_root_visits
+
     return _get_root_visits(analysis)
 
 
@@ -428,7 +408,6 @@ __all__ = [
     "SCORE_THRESHOLDS",
     "WINRATE_THRESHOLDS",
     "MIN_COVERAGE_MOVES",
-    "_CONFIDENCE_THRESHOLDS",
     # Helper function
     "get_canonical_loss_from_move",
     # === logic.py ===
@@ -436,7 +415,6 @@ __all__ = [
     "get_skill_preset",
     "get_urgent_miss_config",
     # Auto-strictness
-    "_distance_from_range",
     "recommend_auto_strictness",
     # Reason tag validation
     "validate_reason_tag",
@@ -463,7 +441,6 @@ __all__ = [
     "ENDGAME_SCORE_STDEV_THRESHOLD",  # Phase 156-A
     "ENDGAME_DETECTION_WINDOW",  # Phase 156-A
     # Position difficulty
-    "_assess_difficulty_from_policy",
     "assess_position_difficulty_from_parent",
     # Loss calculation
     "compute_loss_from_delta",
@@ -487,15 +464,8 @@ __all__ = [
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
     # Difficulty Metrics (Phase 12)
-    "_normalize_candidates",
-    "_get_root_visits",
     "get_root_visits",  # Phase 92: Public wrapper
-    "_determine_reliability",
-    "_compute_policy_difficulty",
-    "_compute_transition_difficulty",
-    "_compute_state_difficulty",
     "compute_difficulty_metrics",
-    "_get_candidates_from_node",
     "extract_difficult_positions",
     # Difficulty Metrics Public API (Phase 12.5)
     "difficulty_metrics_from_node",
@@ -535,15 +505,8 @@ __all__ = [
     "THRESHOLD_SCORE_STDEV_CHAOS",
     "COMPLEXITY_DISCOUNT_FACTOR",
     # Internal functions (exported for testing)
-    "_get_meaning_tag_weight",
-    "_compute_diversity_penalty",
-    "_compute_complexity_discount",  # Phase 83
-    "_compute_critical_score",
-    "_sort_key",
-    "_build_node_map",
-    "_get_score_stdev_from_node",
-    "_get_score_stdev_for_move",
-    "_classify_meaning_tags",
+    "sort_key",
+    "build_node_map",
     # === board_context.py (Phase 80) ===
     # Enums
     "BoardArea",
@@ -593,7 +556,7 @@ __all__ = [
     "get_ownership_context_pair",
     "build_classification_context",
     # Karte integration
-    "_get_cluster_context_for_move",
+    "get_cluster_context_for_move",
     # === reason_generator.py (Phase 86) ===
     # Dataclass
     "ReasonTemplate",

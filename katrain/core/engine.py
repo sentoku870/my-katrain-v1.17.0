@@ -46,6 +46,15 @@ def _ensure_str(line: bytes | str | None) -> str:
     return str(line)
 
 
+def _identity_scheduler(fn: Callable[..., None], *args: Any, **kwargs: Any) -> None:
+    """Default scheduler: invoke the callable inline (used in headless/test).
+
+    Accepts arbitrary positional/keyword args because real Kivy Clock.schedule_once
+    passes a `_dt` argument that we must tolerate.
+    """
+    fn(*args, **kwargs)
+
+
 class BaseEngine:
     RULESETS_ABBR = [
         ("jp", "japanese"),
@@ -58,9 +67,21 @@ class BaseEngine:
     ]
     RULESETS = {fromkey: name for abbr, name in RULESETS_ABBR for fromkey in [abbr, name]}
 
-    def __init__(self, katrain: Any, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        katrain: Any,
+        config: dict[str, Any],
+        error_callback: Callable[[str, str | None, bool], None] | None = None,
+        main_thread_scheduler: Callable[[Callable[[], None]], None] | None = None,
+    ) -> None:
         self.katrain = katrain
         self.config = config
+        self._error_callback = error_callback
+        # Default scheduler: identity (call inline). Used for UI-thread dispatch.
+        # GUI layer injects kivy.clock.Clock.schedule_once to make callbacks main-thread-safe.
+        # The scheduler takes a zero-arg callable; it may invoke it with any extra args
+        # (e.g. Kivy's Clock passes _dt), so our wrappers below use *args/**kwargs.
+        self._main_thread_scheduler: Callable[..., None] = main_thread_scheduler or _identity_scheduler
 
     @staticmethod
     def get_rules(ruleset: str | dict[str, Any]) -> str | dict[str, Any]:
@@ -92,13 +113,13 @@ class BaseEngine:
         exepath, exename = os.path.split(exe)
 
         if exepath and not os.path.isfile(exe):
-            self.on_error(i18n._("Kata exe not found").format(exe=exe), "KATAGO-EXE", True)
+            self._fire_engine_error(i18n._("Kata exe not found").format(exe=exe), "KATAGO-EXE", True)
             return None
         elif not exepath:
             paths = os.getenv("PATH", ".").split(os.pathsep) + ["/opt/homebrew/bin/"]
             exe_with_paths = [os.path.join(path, exe) for path in paths if os.path.isfile(os.path.join(path, exe))]
             if not exe_with_paths:
-                self.on_error(i18n._("Kata exe not found in path").format(exe=exe), "KATAGO-EXE", True)
+                self._fire_engine_error(i18n._("Kata exe not found in path").format(exe=exe), "KATAGO-EXE", True)
                 return None
             exe = exe_with_paths[0]
         return exe
@@ -106,6 +127,14 @@ class BaseEngine:
     def on_error(self, message: str, code: str, allow_popup: bool = True) -> None:
         # Subclasses should override to implement proper logging
         pass
+
+    def _fire_engine_error(self, message: str, code: str | None = None, allow_popup: bool = True) -> None:
+        """Dispatch an engine-level error.
+
+        BaseEngine default: forward to on_error() (which is also a no-op by default).
+        KataGoEngine overrides to use the injected error_callback or fall back to on_error.
+        """
+        self.on_error(message, code, allow_popup)
 
     def is_alive(self) -> bool:
         """Lightweight health check for UI layer; does not raise or open popups.
@@ -140,8 +169,10 @@ class KataGoEngine(BaseEngine):
         katrain: Any,
         config: dict[str, Any],
         status_callback: Callable[[str, str], None] | None = None,
+        error_callback: Callable[[str, str | None, bool], None] | None = None,
+        main_thread_scheduler: Callable[[Callable[[], None]], None] | None = None,
     ) -> None:
-        super().__init__(katrain, config)
+        super().__init__(katrain, config, error_callback, main_thread_scheduler)
         self.status_callback = status_callback
 
         self.allow_recovery = self.config.get("allow_recovery", True)  # if false, don't give popups
@@ -207,6 +238,32 @@ class KataGoEngine(BaseEngine):
         if self.allow_recovery and allow_popup:
             self.katrain("engine_recovery_popup", message, code)
 
+    def _fire_engine_error(self, message: str, code: str | None = None, allow_popup: bool = True) -> None:
+        """Dispatch an engine-level error through the configured callback chain.
+
+        Resolution order:
+        1. If error_callback was injected via constructor -> schedule on main thread
+        2. Else fall back to self.on_error method (backward-compat: tests may monkey-patch)
+
+        The main_thread_scheduler is the same one used by per-query error callbacks
+        (_invoke_error_callback), injected by the GUI layer to make callbacks
+        UI-thread-safe without coupling core to Kivy.
+        """
+        if self._error_callback is not None:
+            try:
+                # *args/**kwargs so the wrapper tolerates schedulers that pass _dt (Kivy)
+                self._main_thread_scheduler(
+                    lambda *_a, **_kw: self._error_callback(message, code, allow_popup)
+                )
+            except Exception as e:  # noqa: BLE001 - last-resort error path
+                self.katrain.log(f"Error in engine error_callback: {e}", OUTPUT_ERROR)
+            return
+        # Backward-compat path: delegate to on_error (may be monkey-patched by tests)
+        try:
+            self.on_error(message, code, allow_popup)
+        except Exception as e:  # noqa: BLE001 - last-resort error path
+            self.katrain.log(f"Error in on_error handler: {e}", OUTPUT_ERROR)
+
     def start(self) -> None:
         with self.thread_lock:
             # Recreate queues and shutdown event for clean restart
@@ -233,7 +290,7 @@ class KataGoEngine(BaseEngine):
                     shell=self.shell,
                 )
             except (FileNotFoundError, PermissionError, OSError) as e:
-                self.on_error(i18n._("Starting Kata failed").format(command=self.command, error=e), code="c")
+                self._fire_engine_error(i18n._("Starting Kata failed").format(command=self.command, error=e), code="c")
                 return  # don't start
             # Pipe reader threads (blocking I/O isolated here)
             self.stdout_reader_thread = threading.Thread(
@@ -333,7 +390,7 @@ class KataGoEngine(BaseEngine):
                 else:
                     died_msg = i18n._("Engine died unexpectedly").format(error=f"{os_error} status {code}")
                 if code != 1:  # deliberate exit
-                    self.on_error(died_msg, str(code) if code is not None else None, allow_popup=maybe_open_recovery)
+                    self._fire_engine_error(died_msg, str(code) if code is not None else None, allow_popup=maybe_open_recovery)
                 self.katago_process = None  # return from threads
             else:
                 self.katrain.log(i18n._("Engine died unexpectedly").format(error=os_error), OUTPUT_DEBUG)
@@ -563,7 +620,7 @@ class KataGoEngine(BaseEngine):
                 if line:
                     if "Uncaught exception" in line or "what()" in line:  # linux=what
                         msg = f"KataGo Engine Failed: {line[9:].strip()}"
-                        self.on_error(msg, KATAGO_EXCEPTION)
+                        self._fire_engine_error(msg, KATAGO_EXCEPTION)
                         return
                     try:
                         self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
@@ -627,7 +684,7 @@ class KataGoEngine(BaseEngine):
 
             if "Uncaught exception" in line:
                 msg = f"KataGo Engine Failed: {line}"
-                self.on_error(msg, KATAGO_EXCEPTION)
+                self._fire_engine_error(msg, KATAGO_EXCEPTION)
                 return
             if not line:
                 continue
@@ -734,7 +791,7 @@ class KataGoEngine(BaseEngine):
         self.shutdown(finish=False)
         # Show recovery popup via katrain callback (handles UI threading internally)
         if self.allow_recovery:
-            self.on_error("Engine timeout", code="timeout", allow_popup=True)
+            self._fire_engine_error("Engine timeout", code="timeout", allow_popup=True)
 
     def _write_stdin_thread(self) -> None:
         """Write queries to KataGo stdin (TOCTOU-safe).
@@ -813,40 +870,22 @@ class KataGoEngine(BaseEngine):
                 self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
 
     def _invoke_error_callback(self, error_callback: Callable[..., None] | None, error_msg: dict[str, Any]) -> None:
-        """Invoke error callback, handling headless/test environments.
+        """Invoke per-query error callback on the main thread.
 
-        Strategy:
-        1. Try to schedule on Kivy main thread (preferred for UI safety)
-        2. If Kivy unavailable (ImportError) -> sync fallback (headless/test only)
-        3. If schedule fails at runtime -> log only, do NOT call callback off-thread
+        The main_thread_scheduler is injected by the engine owner (e.g. the GUI
+        layer passes kivy.clock.Clock.schedule_once). In headless/test contexts
+        the default identity scheduler calls the callback inline.
 
         Thread safety rule: UI-touching callbacks MUST run on main thread.
-        Sync fallback is only safe in headless environments (no UI to corrupt).
+        Scheduling failures are logged but do not invoke the callback off-thread
+        (which could corrupt UI state).
         """
         if error_callback is None:
             return
-
-        # Try Kivy Clock scheduling if Kivy is available (loaded by GUI layer)
-        # Use sys.modules check to avoid importing Kivy in core layer (architecture rule)
-        import sys
-
-        clock_module = sys.modules.get("kivy.clock")
-        if clock_module is not None:
-            try:
-                Clock = getattr(clock_module, "Clock", None)
-                if Clock is not None:
-                    Clock.schedule_once(lambda _dt: error_callback(error_msg), 0)
-                    return
-            except Exception as e:
-                # schedule_once failed at runtime (Kivy exists but broken state)
-                # Do NOT call callback - could corrupt UI from wrong thread
-                self.katrain.log(f"Failed to schedule error_callback: {e}. Error: {error_msg}", OUTPUT_ERROR)
-                return
-
-        # Sync fallback: Kivy not loaded (headless/test - no UI exists)
         try:
-            error_callback(error_msg)
-        except Exception as e:
+            # *args/**kwargs so the wrapper tolerates schedulers that pass _dt (Kivy)
+            self._main_thread_scheduler(lambda *_a, **_kw: error_callback(error_msg))
+        except Exception as e:  # noqa: BLE001 - last-resort error path
             self.katrain.log(f"Error in error_callback: {e}", OUTPUT_ERROR)
 
     def _decrement_pending_count(self) -> None:
