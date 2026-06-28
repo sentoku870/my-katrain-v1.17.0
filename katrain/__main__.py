@@ -8,6 +8,7 @@ from __future__ import annotations
 # first, logging level lower
 import os
 import sys
+from collections.abc import Callable
 
 os.environ["KCFG_KIVY_LOG_LEVEL"] = os.environ.get("KCFG_KIVY_LOG_LEVEL", "warning")
 
@@ -68,11 +69,6 @@ from kivymd.app import MDApp
 from katrain.core.analysis_result import (
     EngineTestResult as TestAnalysisResult,
 )
-from katrain.core.analysis_result import (  # Phase 89 (Renamed from test_analysis)
-    ErrorCategory,
-    classify_engine_error,
-)
-from katrain.core.auto_setup import find_cpu_katago  # Phase 89
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
     DATA_FOLDER,
@@ -93,11 +89,13 @@ from katrain.core.engine import KataGoEngine
 from katrain.core.errors import EngineError
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
 from katrain.core.leela.engine import LeelaEngine
-from katrain.core.sgf_parser import Move
 from katrain.core.state import EventType  # Phase 107
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
+from katrain.gui.controllers.analysis_controller import AnalysisController
+from katrain.gui.controllers.batch_analysis_controller import BatchAnalysisController
 from katrain.gui.controlspanel import ControlsPanel  # noqa F401
 from katrain.gui.error_handler import ErrorHandler
+
 # Batch analysis related imports removed; handled by BatchAnalysisController
 from katrain.gui.features.commands import (
     analyze_commands,
@@ -106,7 +104,6 @@ from katrain.gui.features.commands import (
     popup_commands,
 )
 from katrain.gui.features.karte_export import determine_user_color
-from katrain.gui.features.report_navigator import open_latest_report, open_output_folder
 from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
     do_mykatrain_settings_popup,
@@ -118,16 +115,14 @@ from katrain.gui.kivyutils import (
     PlayerSetupBlock,
 )  # noqa: F401
 from katrain.gui.leela_manager import LeelaManager
+from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
 from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.managers.summary_manager import SummaryManager
-from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.ui_update_manager import UIUpdateManager
-from katrain.gui.controllers.analysis_controller import AnalysisController
-from katrain.gui.controllers.batch_analysis_controller import BatchAnalysisController
 
 # deleted imports
 from katrain.gui.sgf_manager import SGFManager
@@ -267,7 +262,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self._pending_ui_update = None  # Clock event for coalescing
         self._pending_redraw_board = False  # Accumulated redraw flag
         self._state_subscriptions_setup = False
-        
+
         # New Managers & Controllers (Phase 133)
         self._ui_update_manager = UIUpdateManager(self, clock=Clock)
         self._auto_setup_controller = AutoSetupController(self)
@@ -311,7 +306,6 @@ class KaTrainGui(Screen, KaTrainBase):
         notifier = getattr(gui, "_state_notifier", None) or getattr(gui, "state_notifier", None)
         if notifier is None:
             return
-        from katrain.core.state import EventType
 
         notifier.subscribe(EventType.GAME_CHANGED, lambda evt: KaTrainGui._on_game_changed(gui, evt))
         notifier.subscribe(
@@ -456,8 +450,6 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.board_gui.trainer_config = self.config("trainer")
-        self.engine = KataGoEngine(self, self.config("engine"), status_callback=self._on_engine_status)
-
         # Set up engine error handler with rich context
         def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
             """Handle engine errors with rich context.
@@ -481,7 +473,20 @@ class KaTrainGui(Screen, KaTrainBase):
                 notify_user=allow_popup,
             )
 
-        self.engine.on_error = _handle_engine_error
+        # Inject scheduler so engine callbacks (per-query errors, engine errors)
+        # run on the Kivy main thread without core knowing about Kivy.
+        def _schedule_on_main_thread(fn: Callable[[], None]) -> None:
+            from kivy.clock import Clock
+
+            Clock.schedule_once(lambda _dt: fn(), 0)
+
+        self.engine = KataGoEngine(
+            self,
+            self.config("engine"),
+            status_callback=self._on_engine_status,
+            error_callback=_handle_engine_error,
+            main_thread_scheduler=_schedule_on_main_thread,
+        )
 
         # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
         try:
@@ -1092,8 +1097,8 @@ class KaTrainApp(MDApp):
                 Window.top = int(win_top)
             except TypeError:
                 self.gui.log(
-                    f"Window provider does not support setting position; "
-                    f"skipping left/top assignment",
+                    "Window provider does not support setting position; "
+                    "skipping left/top assignment",
                     OUTPUT_DEBUG,
                 )
 

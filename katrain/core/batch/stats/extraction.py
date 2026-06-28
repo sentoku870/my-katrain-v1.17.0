@@ -53,7 +53,7 @@ def extract_game_stats(
     """
     try:
         from katrain.core import eval_metrics
-        from katrain.core.analysis import _build_node_map
+        from katrain.core.analysis import build_node_map
         from katrain.core.analysis.meaning_tags import (
             MeaningTagId,
             build_classification_context_from_node,
@@ -283,7 +283,7 @@ def extract_game_stats(
             # Phase 148-B'1: Build per-move context with distance/scoreStdev
             total_moves = stats["total_moves"]
             try:
-                node_map = _build_node_map(game)
+                node_map = build_node_map(game)
             except (TypeError, AttributeError):
                 # Incomplete/mock game without traversable children -> degrade gracefully
                 node_map = {}

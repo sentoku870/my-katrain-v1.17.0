@@ -2,7 +2,7 @@
 
 import queue
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -23,6 +23,11 @@ def minimal_engine():
     engine.write_queue = queue.Queue()
     engine.katrain = MagicMock()
     engine.thread_lock = threading.Lock()
+    # Default scheduler: identity (sync, headless/test). Tests that need
+    # main-thread scheduling behavior should override this attribute.
+    engine._main_thread_scheduler = lambda fn: fn()
+    # No error_callback by default; engine falls back to on_error method.
+    engine._error_callback = None
 
     return engine, MAX_PENDING_QUERIES
 
@@ -42,15 +47,14 @@ class TestSendQuerySafety:
 
         error_received = []
 
-        # Patch sys.modules to make Kivy Clock execute callback immediately
+        # Use mock scheduler that runs callback immediately (headless-style).
         mock_clock = MagicMock()
         mock_clock.schedule_once = mock_schedule_once
-        mock_clock_module = MagicMock()
-        mock_clock_module.Clock = mock_clock
-        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
-            result = engine.send_query(
-                {"id": "test"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
-            )
+        engine._main_thread_scheduler = mock_clock.schedule_once
+
+        result = engine.send_query(
+            {"id": "test"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
+        )
 
         assert result is False
         assert len(error_received) == 1
@@ -63,15 +67,13 @@ class TestSendQuerySafety:
 
         error_received = []
 
-        # Patch sys.modules to make Kivy Clock execute callback immediately
         mock_clock = MagicMock()
         mock_clock.schedule_once = mock_schedule_once
-        mock_clock_module = MagicMock()
-        mock_clock_module.Clock = mock_clock
-        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
-            result = engine.send_query(
-                {"id": "overflow"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
-            )
+        engine._main_thread_scheduler = mock_clock.schedule_once
+
+        result = engine.send_query(
+            {"id": "overflow"}, callback=MagicMock(), error_callback=lambda e: error_received.append(e)
+        )
 
         assert result is False
         assert len(error_received) == 1
@@ -103,28 +105,15 @@ class TestSendQuerySafety:
 
 
 class TestInvokeErrorCallback:
-    """Test _invoke_error_callback headless handling (v5: ImportError only fallback)."""
+    """Test _invoke_error_callback uses the injected main_thread_scheduler."""
 
-    def test_sync_fallback_when_kivy_not_loaded(self, minimal_engine):
-        """Falls back to sync call when Kivy is not loaded in sys.modules."""
+    def test_sync_fallback_when_scheduler_is_identity(self, minimal_engine):
+        """Default identity scheduler calls callback inline (headless/test)."""
         engine, _ = minimal_engine
 
         callback_received = []
 
-        # Simulate Kivy not loaded by removing it from sys.modules
-        import sys
-
-        original_kivy_clock = sys.modules.get("kivy.clock")
-        try:
-            # Remove kivy.clock from sys.modules if present
-            if "kivy.clock" in sys.modules:
-                del sys.modules["kivy.clock"]
-
-            engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
-        finally:
-            # Restore original state
-            if original_kivy_clock is not None:
-                sys.modules["kivy.clock"] = original_kivy_clock
+        engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
 
         assert len(callback_received) == 1
         assert callback_received[0]["error"] == "test"
@@ -136,21 +125,22 @@ class TestInvokeErrorCallback:
         # Should not raise
         engine._invoke_error_callback(None, {"error": "test"})
 
-    def test_schedules_on_kivy_clock_when_available(self, minimal_engine):
-        """When Kivy is available, callback is scheduled via Clock."""
+    def test_schedules_via_injected_scheduler(self, minimal_engine):
+        """Callback is dispatched via the injected main_thread_scheduler."""
         engine, _ = minimal_engine
 
         callback_received = []
-        mock_clock = MagicMock()
-        mock_clock_module = MagicMock()
-        mock_clock_module.Clock = mock_clock
+        scheduler_mock = MagicMock()
+        # When the scheduler is invoked, simulate it calling the function later
+        scheduler_mock.side_effect = lambda fn: fn()  # call inline for assertion
 
-        # Patch sys.modules to make it look like Kivy is loaded
-        with patch.dict("sys.modules", {"kivy.clock": mock_clock_module}):
-            engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
+        engine._main_thread_scheduler = scheduler_mock
+        engine._invoke_error_callback(lambda msg: callback_received.append(msg), {"error": "test"})
 
-        # Should have called schedule_once
-        mock_clock.schedule_once.assert_called_once()
+        # Scheduler was used (not direct call)
+        scheduler_mock.assert_called_once()
+        # Callback still ran
+        assert len(callback_received) == 1
 
 
 class TestDecrementPendingCount:

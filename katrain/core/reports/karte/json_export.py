@@ -6,14 +6,14 @@ Contains:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import time
-import hashlib
 from datetime import datetime
 from typing import Any
 
 from katrain.core import eval_metrics
-from katrain.core.analysis import _build_node_map
+from katrain.core.analysis import build_node_map
 from katrain.core.analysis.meaning_tags import (
     build_classification_context_from_node,
     classify_meaning_tag,
@@ -23,24 +23,22 @@ from katrain.core.eval_metrics import (
     get_canonical_loss_from_move,
 )
 from katrain.core.reports.definitions import (
-    REPORT_SCHEMA_VERSION,
-    REPORT_THRESHOLDS,
-    MISTAKE_TYPES,
-    PHASES,
-    PHASE_ALIASES,
-    PRIMARY_TAGS,
-    REASON_CODES,
-    REASON_CODE_ALIASES,
-    IMPORTANCE_DEF,
     CATEGORY_ALIASES,
+    IMPORTANCE_DEF,
+    MISTAKE_TYPES,
+    PHASE_ALIASES,
+    PHASES,
+    PRIMARY_TAGS,
+    REASON_CODE_ALIASES,
+    REASON_CODES,
+    REPORT_THRESHOLDS,
 )
+from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
 from katrain.core.reports.schema import (
-    KarteReport,
     Definitions,
     MetaData,
     MistakeItem,
 )
-from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
 
 
 def build_karte_json(
@@ -199,7 +197,7 @@ def build_karte_json(
     # Classify meaning tags (Phase 148-B'1)
     total_moves_for_ctx = len(moves)
     try:
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
     except (TypeError, AttributeError):
         node_map = {}
     for mv in important_move_evals:
@@ -285,8 +283,8 @@ def build_karte_json(
 
     # Phase 154-D: Win/loss analysis + loss progression
     from katrain.core.reports.sections import build_win_loss_analysis
-    from katrain.core.reports.utils.result_parser import parse_result
     from katrain.core.reports.utils.loss_progression import compute_loss_progression
+    from katrain.core.reports.utils.result_parser import parse_result
 
     game_outcome = parse_result(common_meta.get("result"))
     win_loss = build_win_loss_analysis(
@@ -310,8 +308,8 @@ def build_karte_json(
 
     # Phase 155-D: Opponent-strength loss correlation (per-game).
     # Karte emits this for each player (B and W) using the in-game BR/WR.
-    from katrain.core.reports.sections import build_opponent_strength_loss_correlation
     from katrain.core.analysis.models import GameSummaryData
+    from katrain.core.reports.sections import build_opponent_strength_loss_correlation
 
     rank_black_str = get_property("BR")
     rank_white_str = get_property("WR")

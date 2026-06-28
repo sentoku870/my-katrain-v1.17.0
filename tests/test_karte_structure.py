@@ -15,13 +15,15 @@ from katrain.core.eval_metrics import (
     MoveEval,
     PhaseMistakeStats,
     PositionDifficulty,
-    _assess_difficulty_from_policy,
     aggregate_phase_mistake_stats,
     classify_game_phase,
     detect_mistake_streaks,
     get_practice_priorities_from_stats,
     snapshot_from_nodes,
 )
+
+# Internal helper (accessed directly to avoid public API surface)
+from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
 
 class TestPhaseMistakeStats:

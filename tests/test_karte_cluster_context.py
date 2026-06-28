@@ -14,7 +14,7 @@ from katrain.core.analysis.board_context import OwnershipContext
 from katrain.core.analysis.cluster_classifier import (
     ClusterSemantics,
     StoneCache,
-    _get_cluster_context_for_move,
+    get_cluster_context_for_move,
 )
 
 # =====================================================================
@@ -89,7 +89,7 @@ def create_mock_game(
 
 
 # =====================================================================
-# Test _get_cluster_context_for_move
+# Test get_cluster_context_for_move
 # =====================================================================
 
 
@@ -101,7 +101,7 @@ class TestGetClusterContextForMove:
         root = create_mock_node(board_size=(5, 5))
         game = create_mock_game(root)
 
-        result = _get_cluster_context_for_move(game, 0, "en")
+        result = get_cluster_context_for_move(game, 0, "en")
         assert result is None
 
     def test_returns_none_when_mainline_resolution_fails(self):
@@ -118,7 +118,7 @@ class TestGetClusterContextForMove:
         game = create_mock_game(root)
 
         # Only 1 move exists, asking for move 10
-        result = _get_cluster_context_for_move(game, 10, "en")
+        result = get_cluster_context_for_move(game, 10, "en")
         assert result is None
 
     def test_returns_none_when_child_node_has_no_move(self):
@@ -135,7 +135,7 @@ class TestGetClusterContextForMove:
 
         game = create_mock_game(root)
 
-        result = _get_cluster_context_for_move(game, 1, "en")
+        result = get_cluster_context_for_move(game, 1, "en")
         assert result is None
 
     def test_returns_none_when_no_clusters(self):
@@ -156,7 +156,7 @@ class TestGetClusterContextForMove:
             "katrain.core.analysis.cluster_classifier.extract_clusters_from_nodes",
             return_value=None,
         ):
-            result = _get_cluster_context_for_move(game, 1, "en")
+            result = get_cluster_context_for_move(game, 1, "en")
             assert result is None
 
     def test_returns_none_when_ownership_missing(self):
@@ -183,7 +183,7 @@ class TestGetClusterContextForMove:
                 score_stdev=5.0,
                 board_size=(5, 5),
             )
-            result = _get_cluster_context_for_move(game, 1, "en")
+            result = get_cluster_context_for_move(game, 1, "en")
             assert result is None
 
     def test_catches_exceptions_returns_none(self):
@@ -204,7 +204,7 @@ class TestGetClusterContextForMove:
             "katrain.core.analysis.cluster_classifier.extract_clusters_from_nodes",
             side_effect=RuntimeError("Test exception"),
         ):
-            result = _get_cluster_context_for_move(game, 1, "en")
+            result = get_cluster_context_for_move(game, 1, "en")
             assert result is None
 
 

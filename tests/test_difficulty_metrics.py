@@ -27,14 +27,18 @@ from katrain.core.analysis import (
     POLICY_GAP_MAX,
     TRANSITION_DROP_MAX,
     DifficultyMetrics,
+    compute_difficulty_metrics,
+)
+
+# Internal helpers (accessed directly to avoid public API surface)
+from katrain.core.analysis.logic_difficulty import (
     _compute_policy_difficulty,
     _compute_state_difficulty,
     _compute_transition_difficulty,
     _determine_reliability,
-    _get_root_visits,
     _normalize_candidates,
-    compute_difficulty_metrics,
 )
+from katrain.core.analysis.logic_difficulty import _get_root_visits
 
 # =============================================================================
 # Fixtures

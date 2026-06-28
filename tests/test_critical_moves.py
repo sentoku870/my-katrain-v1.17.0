@@ -26,15 +26,18 @@ from katrain.core.analysis import (
     CriticalMove,
     EvalSnapshot,
     # Other imports
-    _build_node_map,
+    build_node_map,
+    sort_key,
+)
+
+# Internal helpers (intentionally accessed directly to avoid public API surface)
+from katrain.core.analysis.critical_moves import (
     _classify_meaning_tags,
     _compute_critical_score,
     _compute_diversity_penalty,
-    # Internal functions
     _get_meaning_tag_weight,
     _get_score_stdev_for_move,
     _get_score_stdev_from_node,
-    _sort_key,
     # Main function
     select_critical_moves,
 )
@@ -238,7 +241,7 @@ class TestNodeMapAndScoreStdev:
                 ("B", (3, 15), 1.0, {"root": {"scoreStdev": 4.0}}),
             ]
         )
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
 
         for move_no, node in node_map.items():
             assert node.depth == move_no, f"node_map[{move_no}] has depth {node.depth}"
@@ -251,7 +254,7 @@ class TestNodeMapAndScoreStdev:
                 ("W", (15, 15), -1.0, {"root": {"scoreStdev": 5.0}}),
             ]
         )
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
 
         # Root (depth=0) should not be in map
         assert 0 not in node_map
@@ -268,7 +271,7 @@ class TestNodeMapAndScoreStdev:
     def test_node_map_empty_game(self):
         """Empty game (root only) produces empty node_map."""
         game = build_stub_game_with_analysis([])
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
         assert len(node_map) == 0
 
     def test_score_stdev_from_node_exists(self):
@@ -339,7 +342,7 @@ class TestNodeMapAndScoreStdev:
                 ("W", (15, 15), -1.0, {"root": {"scoreStdev": 7.5}}),
             ]
         )
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
 
         stdev = _get_score_stdev_for_move(node_map, 2)
         assert stdev == 7.5
@@ -351,7 +354,7 @@ class TestNodeMapAndScoreStdev:
                 ("B", (3, 3), 0.5, {"root": {"scoreStdev": 3.0}}),
             ]
         )
-        node_map = _build_node_map(game)
+        node_map = build_node_map(game)
 
         stdev = _get_score_stdev_for_move(node_map, 99)
         assert stdev is None
@@ -436,31 +439,31 @@ class TestSortKeyAndDeterminism:
 
     def test_sort_key_tiebreak_by_move_number(self):
         """When scores are equal, earlier move_number wins."""
-        from katrain.core.analysis.critical_moves import _sort_key
+        from katrain.core.analysis.critical_moves import sort_key
 
         # Same score, different move numbers
-        key1 = _sort_key(move_number=10, score=5.0)
-        key2 = _sort_key(move_number=20, score=5.0)
+        key1 = sort_key(move_number=10, score=5.0)
+        key2 = sort_key(move_number=20, score=5.0)
 
         # Earlier move should sort first (smaller key)
         assert key1 < key2
 
     def test_sort_key_score_descending(self):
         """Higher score should sort first (smaller key due to negation)."""
-        from katrain.core.analysis.critical_moves import _sort_key
+        from katrain.core.analysis.critical_moves import sort_key
 
-        key_high = _sort_key(move_number=10, score=10.0)
-        key_low = _sort_key(move_number=10, score=5.0)
+        key_high = sort_key(move_number=10, score=10.0)
+        key_low = sort_key(move_number=10, score=5.0)
 
         # Higher score should sort first
         assert key_high < key_low
 
     def test_sort_key_score_primary(self):
         """Score takes priority over move_number."""
-        from katrain.core.analysis.critical_moves import _sort_key
+        from katrain.core.analysis.critical_moves import sort_key
 
-        key1 = _sort_key(move_number=100, score=10.0)  # Late move, high score
-        key2 = _sort_key(move_number=1, score=5.0)  # Early move, low score
+        key1 = sort_key(move_number=100, score=10.0)  # Late move, high score
+        key2 = sort_key(move_number=1, score=5.0)  # Early move, low score
 
         # Higher score should still win
         assert key1 < key2
@@ -860,20 +863,20 @@ class TestSortingOrderInvariant:
     """Test that sorting order is correct (highest score at index 0)."""
 
     def test_sort_key_puts_highest_score_first(self):
-        """Verify _sort_key produces correct ordering for pop(0)."""
+        """Verify sort_key produces correct ordering for pop(0)."""
         candidates = [
             (1, 5.0),
             (2, 15.0),
             (3, 10.0),
         ]
 
-        sorted_candidates = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
+        sorted_candidates = sorted(candidates, key=lambda x: sort_key(x[0], x[1]))
 
         assert sorted_candidates[0] == (2, 15.0), "Highest score should be first"
         assert sorted_candidates[1] == (3, 10.0)
         assert sorted_candidates[2] == (1, 5.0), "Lowest score should be last"
 
-    def test_sort_key_tiebreaker_is_move_number(self):
+    def testsort_key_tiebreaker_is_move_number(self):
         """Equal scores -> earlier move_number wins."""
         candidates = [
             (5, 10.0),
@@ -881,7 +884,7 @@ class TestSortingOrderInvariant:
             (8, 10.0),
         ]
 
-        sorted_candidates = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
+        sorted_candidates = sorted(candidates, key=lambda x: sort_key(x[0], x[1]))
 
         assert sorted_candidates[0] == (2, 10.0)
         assert sorted_candidates[1] == (5, 10.0)
@@ -891,7 +894,7 @@ class TestSortingOrderInvariant:
         """Sanity check: inverted key would produce wrong order."""
         candidates = [(1, 5.0), (2, 15.0)]
 
-        correct_order = sorted(candidates, key=lambda x: _sort_key(x[0], x[1]))
+        correct_order = sorted(candidates, key=lambda x: sort_key(x[0], x[1]))
         assert correct_order[0][1] == 15.0
 
         wrong_order = sorted(candidates, key=lambda x: (x[1], x[0]))

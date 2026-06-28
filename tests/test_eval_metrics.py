@@ -1440,7 +1440,7 @@ class TestAutoStrictness:
 
     def test_distance_from_range_within(self):
         """Value within range should return 0."""
-        from katrain.core.eval_metrics import _distance_from_range
+        from katrain.core.analysis.logic_skill import _distance_from_range
 
         assert _distance_from_range(5, (3, 10)) == 0
         assert _distance_from_range(3, (3, 10)) == 0  # Boundary
@@ -1448,14 +1448,14 @@ class TestAutoStrictness:
 
     def test_distance_from_range_below(self):
         """Value below range should return distance to lower bound."""
-        from katrain.core.eval_metrics import _distance_from_range
+        from katrain.core.analysis.logic_skill import _distance_from_range
 
         assert _distance_from_range(1, (3, 10)) == 2
         assert _distance_from_range(0, (3, 10)) == 3
 
     def test_distance_from_range_above(self):
         """Value above range should return distance to upper bound."""
-        from katrain.core.eval_metrics import _distance_from_range
+        from katrain.core.analysis.logic_skill import _distance_from_range
 
         assert _distance_from_range(15, (3, 10)) == 5
         assert _distance_from_range(20, (3, 10)) == 10
