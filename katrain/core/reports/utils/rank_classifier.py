@@ -1,4 +1,4 @@
-"""Rank classifier (Phase 155-A).
+"""Rank classifier (Phase 155-A, Phase 157-B).
 
 Maps an SGF ``BR``/``WR`` rank string into one of four coarse buckets:
 
@@ -7,11 +7,17 @@ Maps an SGF ``BR``/``WR`` rank string into one of four coarse buckets:
 - ``high_dan`` — high dan ranks (7d+, including pro)
 - ``unknown`` — empty / unparseable input
 
+Phase 157-B added Chinese-script rank tokens (``段`` = dan, ``级`` = kyu)
+so platforms like foxwq / QQ Go that emit ``BR[4段]`` / ``BR[15级]`` are
+classified correctly. The English / Latin ``k`` / ``K`` / ``d`` / ``D``
+tokens remain unchanged.
+
 Why this exists:
     SGF rank strings are noisy. Common formats include ``"5k"``, ``"3d"``,
-    ``"7d"``, ``"?"``, ``"30k"``, ``""`` (KGS / Fox / Tygem conventions
-    differ). The summary JSON exposes only the bucket, so downstream
-    consumers (LLMs, dashboards) do not have to re-parse.
+    ``"7d"``, ``"?"``, ``"30k"``, ``""``, ``"15级"``, ``"4段"`` (KGS /
+    Fox / Tygem / foxwq / QQ Go conventions differ). The summary JSON
+    exposes only the bucket, so downstream consumers (LLMs, dashboards)
+    do not have to re-parse.
 
 Examples:
     >>> classify_rank_to_bucket("5k")
@@ -20,6 +26,10 @@ Examples:
     <RankBucket.DAN: 'dan'>
     >>> classify_rank_to_bucket("7d")
     <RankBucket.HIGH_DAN: 'high_dan'>
+    >>> classify_rank_to_bucket("15级")
+    <RankBucket.KYU: 'kyu'>
+    >>> classify_rank_to_bucket("4段")
+    <RankBucket.DAN: 'dan'>
     >>> classify_rank_to_bucket("")
     <RankBucket.UNKNOWN: 'unknown'>
 """
@@ -40,8 +50,10 @@ class RankBucket(str, enum.Enum):
     UNKNOWN = "unknown"
 
 
-# "5k", "30K", "1d", "7D", with optional whitespace
-_RE_RANK: Final[re.Pattern[str]] = re.compile(r"^\s*(\d{1,2})\s*([kKdD])\s*$")
+# Phase 157-B: accept English k/d plus Chinese 段 (dan) / 级 (kyu).
+# Match: optional whitespace, 1-2 digits, optional whitespace, single rank
+# token (case-insensitive English letter OR one of the Chinese characters).
+_RE_RANK: Final[re.Pattern[str]] = re.compile(r"^\s*(\d{1,2})\s*([kKdD段级])\s*$")
 
 
 @dataclass(frozen=True)
@@ -52,7 +64,8 @@ class RankInfo:
         bucket: Coarse bucket (kyu / dan / high_dan / unknown).
         numeric: Numeric portion of the rank (e.g. ``5`` for ``"5k"``).
             ``None`` when the rank could not be parsed.
-        is_dan: ``True`` when the original token was a dan rank.
+        is_dan: ``True`` when the original token was a dan rank (English
+            ``d``/``D`` or Chinese ``段``).
         is_pro: ``True`` when the rank is at or above the pro threshold
             (default 7d; configurable via :func:`classify_rank_to_bucket`).
     """
@@ -92,11 +105,14 @@ def classify_rank_to_bucket(
         return RankInfo(bucket=RankBucket.UNKNOWN, numeric=None, is_dan=False, is_pro=False)
 
     numeric = int(m.group(1))
-    letter = m.group(2).lower()
+    letter = m.group(2)
+    letter_lower = letter.lower()
 
-    if letter == "k":
+    # Phase 157-B: map Chinese characters explicitly.
+    # ``段`` (U+6BB5) = dan, ``级`` (U+7EA7) = kyu.
+    if letter_lower in ("k", "级"):
         return RankInfo(bucket=RankBucket.KYU, numeric=numeric, is_dan=False, is_pro=False)
-    # letter == "d"
+    # letter is one of: d, D, 段
     is_pro = numeric >= pro_threshold
     bucket = RankBucket.HIGH_DAN if is_pro else RankBucket.DAN
     return RankInfo(bucket=bucket, numeric=numeric, is_dan=True, is_pro=is_pro)

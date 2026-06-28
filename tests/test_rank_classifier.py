@@ -59,13 +59,69 @@ class TestClassifyHighDan:
 class TestClassifyUnknown:
     """Empty / unparseable inputs return UNKNOWN."""
 
-    @pytest.mark.parametrize("rank_str", [None, "", "  ", "?", "pro", "P", "5段", "5"])
+    @pytest.mark.parametrize("rank_str", [None, "", "  ", "?", "pro", "P", "5"])
     def test_unknown(self, rank_str: str | None):
         info = classify_rank_to_bucket(rank_str)
         assert info.bucket == RankBucket.UNKNOWN
         assert info.numeric is None
         assert info.is_dan is False
         assert info.is_pro is False
+
+
+class TestClassifyChineseKyu:
+    """Phase 157-B: ``级`` (Chinese kyu) parses as KYU."""
+
+    @pytest.mark.parametrize(
+        "rank_str,numeric",
+        [("5级", 5), ("15级", 15), ("30级", 30), ("1级", 1), (" 10级 ", 10)],
+    )
+    def test_chinese_kyu_parses(self, rank_str: str, numeric: int):
+        info = classify_rank_to_bucket(rank_str)
+        assert info.bucket == RankBucket.KYU
+        assert info.numeric == numeric
+        assert info.is_dan is False
+        assert info.is_pro is False
+
+
+class TestClassifyChineseDan:
+    """Phase 157-B: ``段`` (Chinese dan) parses as DAN / HIGH_DAN."""
+
+    @pytest.mark.parametrize(
+        "rank_str,numeric",
+        [("1段", 1), ("3段", 3), ("6段", 6), (" 4段 ", 4)],
+    )
+    def test_chinese_dan_parses(self, rank_str: str, numeric: int):
+        info = classify_rank_to_bucket(rank_str)
+        assert info.bucket == RankBucket.DAN
+        assert info.numeric == numeric
+        assert info.is_dan is True
+        assert info.is_pro is False
+
+    @pytest.mark.parametrize(
+        "rank_str,numeric",
+        [("7段", 7), ("9段", 9), ("10段", 10)],
+    )
+    def test_chinese_high_dan(self, rank_str: str, numeric: int):
+        info = classify_rank_to_bucket(rank_str)
+        assert info.bucket == RankBucket.HIGH_DAN
+        assert info.numeric == numeric
+        assert info.is_dan is True
+        assert info.is_pro is True
+
+
+class TestBucketForPlayerChinese:
+    """Phase 157-B: ``bucket_for_player`` works with Chinese rank tokens."""
+
+    def test_white_player_chinese_dan(self):
+        assert bucket_for_player(None, "4段", "B") == RankBucket.DAN
+
+    def test_black_player_chinese_kyu(self):
+        assert bucket_for_player("15级", None, "W") == RankBucket.KYU
+
+    def test_mixed_english_and_chinese(self):
+        # B is English "5k", W is Chinese "4段".
+        assert bucket_for_player("5k", "4段", "B") == RankBucket.DAN
+        assert bucket_for_player("5k", "4段", "W") == RankBucket.KYU
 
 
 class TestProThreshold:
