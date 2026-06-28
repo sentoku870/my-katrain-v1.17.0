@@ -16,7 +16,6 @@ from katrain.core.eval_metrics import (
 from katrain.core.reports.definitions import (
     PHASES,
     PHASE_ALIASES,
-    DIFFICULTY_LEVELS,
     REASON_CODE_ALIASES,
     CATEGORY_ALIASES,
 )
@@ -55,21 +54,16 @@ class MoveExtractor:
         if phase not in PHASES and phase != "unknown":
              phase = "unknown"
 
-        # 4. Difficulty (Phase 148-C5: unified to "easy"; no simple/easy conversion)
-        difficulty = move.position_difficulty.value.lower() if move.position_difficulty else "unknown"
-        if difficulty not in DIFFICULTY_LEVELS:
-            difficulty = "unknown"
-
-        # 5. Mistake Type
+        # 4. Mistake Type
         mistake_type = move.mistake_category.value.lower() if move.mistake_category else "unknown"
         # Optional: Map to short codes if needed, but schema uses full names usually.
         # category_short = CATEGORY_ALIASES.get(mistake_type, mistake_type)
 
-        # 6. Reason Codes Normalization
+        # 5. Reason Codes Normalization
         raw_tags = list(move.reason_tags) if move.reason_tags else []
         reason_codes = sorted(list(set(REASON_CODE_ALIASES.get(t, t) for t in raw_tags)))
 
-        # 7. Primary Tag
+        # 6. Primary Tag
         primary_tag = move.meaning_tag_id
 
         return {
@@ -79,7 +73,6 @@ class MoveExtractor:
             "player": player,
             "coords": coords,
             "phase": phase,
-            "difficulty": difficulty,
             "loss_clamped": round(loss_clamped, 2),
             "loss_raw": round(loss, 2) if loss is not None else None,
             "importance": round(importance, 2),

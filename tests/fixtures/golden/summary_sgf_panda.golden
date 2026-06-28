@@ -42,10 +42,3 @@ Based on cross-tabulation analysis:
 **分析**:
 - Openingの損失の52.0%が大悪手によるもの
 - Openingの4.0%の手が大悪手と判定されている
-
-## 練習の優先順位
-
-Based on the data above, consider focusing on:
-
-- 1. **Openingの大悪手** (2回、損失18.0目)
-- 2. **Openingの悪手** (1回、損失2.5目)

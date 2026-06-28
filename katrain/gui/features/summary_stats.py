@@ -187,10 +187,6 @@ def extract_sgf_statistics(
                 stats["mistake_counts"][category] += 1
                 stats["mistake_total_loss"][category] += canonical_loss
 
-                # Freedom（未実装の場合はUNKNOWN）
-                freedom = eval_metrics.PositionDifficulty.UNKNOWN
-                stats["freedom_counts"][freedom] += 1
-
                 # Phase（簡易版：手数ベース）
                 move_number = i
                 phase = eval_metrics.classify_game_phase(move_number)

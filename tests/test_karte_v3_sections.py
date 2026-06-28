@@ -1,39 +1,39 @@
-"""Tests for Phase 149 C-3 Karte JSON v3.0 extended sections.
+"""Tests for Phase 149 C-3 Karte JSON v3.0 + Phase 153 (3.1) extended sections.
 
-Covers:
+Phase 153: Removed the following sections from v3.1 output:
+- difficulty (per-MistakeItem field)
+- practice_priorities
+- common_difficult_positions
+- urgent_misses (merged into mistake_streaks)
+- meta.definitions (now opt-in via include_definitions=True)
+
+Covers (Phase 149 C-3 originals, minus removed sections):
 - weaknesses section structure
-- practice_priorities section structure
 - mistake_streaks section structure
-- urgent_misses section structure
 - critical_3 section structure
 - data_quality section structure
-- common_difficult_positions section structure
 - reason_tags_distribution section structure
-- Schema version bumped to 3.0
+- Schema version bumped to 3.1
 """
 
 from __future__ import annotations
 
 
 class TestKarteV3SchemaVersion:
-    """Schema version should be 3.0 in v3.0 JSON output."""
+    """Schema version should be 3.1 in v3.1 JSON output (Phase 153)."""
 
-    def test_schema_version_is_3_0(self):
-        from katrain.core.reports.karte_report import build_karte_report
-
-        # Verify build_karte_json produces 3.0
+    def test_schema_version_is_3_1(self):
         from katrain.core.reports.karte import build_karte_json
 
-        # Use the existing test helper
         from tests.test_karte_json import create_mock_game_with_analysis
 
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
-        assert result["schema_version"] == "3.0"
+        assert result["schema_version"] == "3.1"
 
 
 class TestKarteV3ExtendedSectionsPresent:
-    """All v3.0 extended sections should be present in build_karte_json output."""
+    """All v3.1 extended sections should be present in build_karte_json output."""
 
     def _get_karte_v3(self):
         from katrain.core.reports.karte import build_karte_json
@@ -49,25 +49,11 @@ class TestKarteV3ExtendedSectionsPresent:
         assert isinstance(result["weaknesses"]["black"], list)
         assert isinstance(result["weaknesses"]["white"], list)
 
-    def test_practice_priorities_section(self):
-        result = self._get_karte_v3()
-        assert "practice_priorities" in result
-        assert "black" in result["practice_priorities"]
-        assert "white" in result["practice_priorities"]
-        assert isinstance(result["practice_priorities"]["black"], list)
-        assert isinstance(result["practice_priorities"]["white"], list)
-
     def test_mistake_streaks_section(self):
         result = self._get_karte_v3()
         assert "mistake_streaks" in result
         assert "black" in result["mistake_streaks"]
         assert "white" in result["mistake_streaks"]
-
-    def test_urgent_misses_section(self):
-        result = self._get_karte_v3()
-        assert "urgent_misses" in result
-        assert "black" in result["urgent_misses"]
-        assert "white" in result["urgent_misses"]
 
     def test_critical_3_section(self):
         result = self._get_karte_v3()
@@ -98,16 +84,27 @@ class TestKarteV3ExtendedSectionsPresent:
             f"Missing keys: {required_keys - set(dq.keys())}"
         )
 
-    def test_common_difficult_positions_section(self):
-        result = self._get_karte_v3()
-        assert "common_difficult_positions" in result
-        assert isinstance(result["common_difficult_positions"], list)
-
     def test_reason_tags_distribution_section(self):
         result = self._get_karte_v3()
         assert "reason_tags_distribution" in result
         assert "black" in result["reason_tags_distribution"]
         assert "white" in result["reason_tags_distribution"]
+
+    # --- Phase 153-B/C: removed sections should NOT be present ---
+    def test_practice_priorities_removed(self):
+        """Phase 153-B: practice_priorities removed from output."""
+        result = self._get_karte_v3()
+        assert "practice_priorities" not in result
+
+    def test_common_difficult_positions_removed(self):
+        """Phase 153-B: common_difficult_positions removed from output."""
+        result = self._get_karte_v3()
+        assert "common_difficult_positions" not in result
+
+    def test_urgent_misses_removed(self):
+        """Phase 153-C: urgent_misses merged into mistake_streaks."""
+        result = self._get_karte_v3()
+        assert "urgent_misses" not in result
 
 
 class TestKarteV3WeaknessItemShape:
@@ -186,26 +183,8 @@ class TestKarteV3StreakItemShape:
                 assert s["end_move"] >= s["start_move"]
 
 
-class TestKarteV3CommonDifficultShape:
-    """Validate CommonDifficultItem shape (Phase 149 C-3)."""
-
-    def test_common_difficult_item_fields(self):
-        from katrain.core.reports.karte import build_karte_json
-        from tests.test_karte_json import create_mock_game_with_analysis
-
-        result = build_karte_json(create_mock_game_with_analysis())
-
-        items = result["common_difficult_positions"]
-        for item in items:
-            assert "move_range" in item
-            assert "black_loss" in item
-            assert "white_loss" in item
-            assert "total_loss" in item
-            assert len(item["move_range"]) == 2
-
-
 class TestKarteV3BackwardsCompatibility:
-    """v3.0 should still include v2.1 fields (additive change)."""
+    """v3.1 should still include v2.1 fields (additive change)."""
 
     def test_v21_fields_still_present(self):
         from katrain.core.reports.karte import build_karte_json
@@ -234,7 +213,7 @@ class TestKarteV3BackwardsCompatibility:
 
 
 class TestKarteV3LangAgnostic:
-    """v3.0 JSON output should be language-agnostic (no localized strings)."""
+    """v3.1 JSON output should be language-agnostic (no localized strings)."""
 
     def test_weaknesses_use_ids_only(self):
         """WeaknessItem should not contain localized strings."""
@@ -263,3 +242,38 @@ class TestKarteV3LangAgnostic:
                 assert "meaning_tag_id" in cm
                 # meaning_tag_label is informational (may be None)
                 assert "meaning_tag_label" in cm
+
+
+class TestKarteV31DefinitionsOptIn:
+    """Phase 153-D: `definitions` is opt-in via include_definitions=True."""
+
+    def test_definitions_absent_by_default(self):
+        from katrain.core.reports.karte import build_karte_json
+        from tests.test_karte_json import create_mock_game_with_analysis
+
+        result = build_karte_json(create_mock_game_with_analysis())
+        assert result["meta"].get("definitions") is None
+
+    def test_definitions_present_when_requested(self):
+        from katrain.core.reports.karte import build_karte_json
+        from tests.test_karte_json import create_mock_game_with_analysis
+
+        result = build_karte_json(create_mock_game_with_analysis(), include_definitions=True)
+        definitions = result["meta"].get("definitions")
+        assert definitions is not None
+        assert "thresholds" in definitions
+        assert "phases" in definitions
+        # Phase 153-A: difficulty_levels should NOT be present (removed)
+        assert "difficulty_levels" not in definitions
+
+
+class TestKarteV31MistakeItemNoDifficulty:
+    """Phase 153-A: MistakeItem no longer carries `difficulty` field."""
+
+    def test_important_moves_no_difficulty_field(self):
+        from katrain.core.reports.karte import build_karte_json
+        from tests.test_karte_json import create_mock_game_with_analysis
+
+        result = build_karte_json(create_mock_game_with_analysis())
+        for mv in result["important_moves"]:
+            assert "difficulty" not in mv, f"MistakeItem should not carry 'difficulty': {mv}"

@@ -21,10 +21,9 @@ class ThresholdsDefinition(TypedDict):
 class Definitions(TypedDict):
     thresholds: Dict[str, Any]
     mistake_types: List[str]
-    difficulty_levels: Dict[str, str]
     phases: List[str]
     phase_aliases: Dict[str, str]
-    category_aliases: Optional[Dict[str, str]]
+    category_aliases: Optional[Dict[str, Any]]
     primary_tags: List[str]
     reason_codes: List[str]
     reason_code_aliases: Dict[str, str]
@@ -39,7 +38,7 @@ class MetaData(TypedDict, total=False):
     game_id: Optional[str]        # Karte only
     loss_unit: str
     skill_preset: Optional[str]
-    definitions: Definitions
+    definitions: Optional[Definitions]
     # Karte-specific fields
     generated_at: Optional[str]
     source_filename: Optional[str]
@@ -72,7 +71,6 @@ class MistakeItem(TypedDict):
     player: str # "black" | "white"
     coords: str
     phase: str
-    difficulty: str
     loss_clamped: float
     loss_raw: Optional[float]
     importance: float
@@ -88,7 +86,6 @@ class TopMistakes(TypedDict):
 class SummaryPlayerStats(TypedDict):
     overall: Dict[str, Any]
     mistakes: Dict[str, Any]
-    difficulty: Dict[str, Any]
     phases: Dict[str, Any]
     reason_tags: Dict[str, Any]
     mistake_sequences: Dict[str, Any]
@@ -126,12 +123,17 @@ class WeaknessItem(TypedDict):
 
 
 class PriorityItem(TypedDict):
-    """A practice priority suggestion."""
+    """Reserved for future practice-priority section (Phase 153-B: removed from output).
 
-    priority_id: str  # e.g. "phase_middle_blunder_focus"
-    phase: str  # opening / middle / endgame
-    category: str  # INACCURACY / MISTAKE / BLUNDER
-    anchor_move: Optional[MoveEvidence]  # worst move in this priority
+    Kept as TypedDict so existing callers of the type system do not break at
+    static analysis time, but the corresponding KarteReport field has been
+    deleted and no JSON section is emitted anymore.
+    """
+
+    priority_id: str
+    phase: str
+    category: str
+    anchor_move: Optional[MoveEvidence]
 
 
 class StreakItem(TypedDict):
@@ -177,26 +179,21 @@ class DataQualityStats(TypedDict):
     is_low_reliability: bool
 
 
-class CommonDifficultItem(TypedDict):
-    """A pair of consecutive moves where both players lost significant points."""
-
-    move_range: List[int]  # [start, end]
-    black_loss: float
-    white_loss: float
-    total_loss: float
-
-
 # --- Karte Specific (Phase 149 C-3: v3.0 with extended sections) ---
 
 
 class KarteReport(TypedDict):
-    """Karte JSON v3.0 (Phase 149 C-3).
+    """Karte JSON v3.1 (Phase 153-A/B/C).
 
-    Schema 2.1 → 3.0: Added extended sections for revived dead code
-    (weaknesses, practice_priorities, mistake_streaks, urgent_misses,
-    critical_3, data_quality, common_difficult_positions,
-    reason_tags_distribution). All fields except schema_version, meta,
-    summary, important_moves are new in v3.0.
+    Schema 3.0 → 3.1:
+      - Phase 153-A: Removed `difficulty` from MistakeItem.
+      - Phase 153-B: Removed `practice_priorities` and
+        `common_difficult_positions` sections.
+      - Phase 153-C: Removed `urgent_misses` section (merged into
+        `mistake_streaks`).
+
+    The remaining fields are stable since 3.0 (weaknesses, mistake_streaks,
+    critical_3, data_quality, reason_tags_distribution).
     """
 
     schema_version: str
@@ -204,11 +201,8 @@ class KarteReport(TypedDict):
     summary: Dict[str, Any]
     important_moves: List[MistakeItem]
     weaknesses: Optional[Dict[str, List[WeaknessItem]]]
-    practice_priorities: Optional[Dict[str, List[PriorityItem]]]
     mistake_streaks: Optional[Dict[str, List[StreakItem]]]
-    urgent_misses: Optional[Dict[str, List[StreakItem]]]
     critical_3: Optional[Dict[str, List[CriticalMoveItem]]]
     data_quality: Optional[DataQualityStats]
-    common_difficult_positions: Optional[List[CommonDifficultItem]]
     reason_tags_distribution: Optional[Dict[str, Dict[str, int]]]
 

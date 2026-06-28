@@ -3,9 +3,12 @@
 Phase 149 C-2: Refactored from markdown-line generators (list[str]) to JSON
 data builders.
 
+Phase 153-B: Removed `common_difficult_positions()` (section removed from
+output). Kept as a stub returning [] to avoid breaking callers.
+
 Functions:
 - worst_move_for(): Find worst move for a player (helper, unchanged)
-- common_difficult_positions(): Returns list[CommonDifficultItem]
+- common_difficult_positions(): Stub returning [] (section removed in 153-B)
 
 Removed in Phase 149 C-2 (no JSON equivalent needed):
 - summary_lines_for(): redundant with build_karte_json's `summary` block
@@ -44,45 +47,17 @@ def worst_move_for(ctx: "KarteContext", player: str) -> "MoveEval | None":
 
 
 def common_difficult_positions(ctx: "KarteContext") -> list[dict[str, Any]]:
-    """Detect positions where both players made significant errors (>= 2 points).
+    """Stub returning [].
+
+    Phase 153-B: The `common_difficult_positions` section has been removed
+    from the Karte JSON output (redundant with critical_3 / important_moves).
+    Kept as a stub so existing imports do not break; will be removed in a
+    follow-up cleanup pass.
 
     Args:
-        ctx: Karte context
+        ctx: Karte context (unused)
 
     Returns:
-        List of CommonDifficultItem dicts, sorted by total_loss desc.
-        Empty list when no qualifying positions found.
+        Empty list.
     """
-    difficult: list[tuple[int, float, float, float]] = []
-    moves_list = list(ctx.snapshot.moves)
-    for i in range(len(moves_list) - 1):
-        mv = moves_list[i]
-        next_mv = moves_list[i + 1]
-        if (
-            mv.points_lost is not None
-            and mv.points_lost >= 2.0
-            and next_mv.points_lost is not None
-            and next_mv.points_lost >= 2.0
-        ):
-            if mv.player != next_mv.player:
-                total = mv.points_lost + next_mv.points_lost
-                if mv.player == "B":
-                    b_loss, w_loss = mv.points_lost, next_mv.points_lost
-                else:
-                    b_loss, w_loss = next_mv.points_lost, mv.points_lost
-                difficult.append((mv.move_number, b_loss, w_loss, total))
-
-    if not difficult:
-        return []
-
-    difficult.sort(key=lambda x: x[3], reverse=True)
-
-    return [
-        {
-            "move_range": [move_num, move_num + 1],
-            "black_loss": round(b_loss, 2),
-            "white_loss": round(w_loss, 2),
-            "total_loss": round(total, 2),
-        }
-        for move_num, b_loss, w_loss, total in difficult[:5]
-    ]
+    return []

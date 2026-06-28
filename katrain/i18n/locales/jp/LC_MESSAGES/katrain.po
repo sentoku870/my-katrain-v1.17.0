@@ -2345,9 +2345,6 @@ msgstr "戦いの傾向"
 msgid "summary:hypothesis"
 msgstr "弱点仮説"
 
-msgid "summary:practice"
-msgstr "練習の優先順位"
-
 msgid "summary:footer"
 msgstr "フッター"
 
@@ -2443,15 +2440,6 @@ msgstr "明確な弱点パターンは検出されませんでした。"
 
 msgid "summary:warning:low_visits"
 msgstr "解析訪問数が少ないため、visits増で再解析を推奨します。"
-
-msgid "summary:practice:low_data_msg"
-msgstr "※ データ不足のため練習優先度は保留。visits増で再解析を推奨します。"
-
-msgid "summary:practice:intro"
-msgstr "データ分析に基づき、以下の点への着目が推奨されます:"
-
-msgid "summary:practice:none"
-msgstr "特筆すべき改善点は見つかりませんでした。Good job!"
 
 msgid "diagnosis:streaks"
 msgstr "ミスの連鎖"

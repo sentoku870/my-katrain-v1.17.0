@@ -15,12 +15,10 @@ from katrain.core.reports.summary_logic import SummaryAnalyzer
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
-    PositionDifficulty,
 )
 from katrain.core.reports.definitions import (
     REPORT_SCHEMA_VERSION,
     REPORT_THRESHOLDS,
-    DIFFICULTY_LEVELS,
     MISTAKE_TYPES,
     PHASES,
     PHASE_ALIASES,
@@ -43,15 +41,20 @@ from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
 
 def build_summary_json(
     game_data_list: list[GameSummaryData],
-    focus_player: str | None = None
+    focus_player: str | None = None,
+    include_definitions: bool = False,
 ) -> SummaryReport:
     """Build a JSON-serializable summary structure for LLM consumption.
-    
+
     Adheres to "Pure Data" requirements:
     - No instructional text
     - Explicit units
     - Raw numeric values
     - Full IDs
+
+    Phase 153-D: `include_definitions` defaults to False. The `definitions`
+    block is opt-in to keep the summary compact for LLM consumption; pass
+    `include_definitions=True` when the consumer needs label mappings.
     """
     
     # Initialize Logic Analyzer
@@ -80,7 +83,6 @@ def build_summary_json(
     definitions: Definitions = {
         "thresholds": REPORT_THRESHOLDS,
         "mistake_types": MISTAKE_TYPES,
-        "difficulty_levels": DIFFICULTY_LEVELS,
         "phases": PHASES,
         "phase_aliases": PHASE_ALIASES,
         "category_aliases": CATEGORY_ALIASES,
@@ -111,7 +113,7 @@ def build_summary_json(
         "date_range": [min(dates), max(dates)] if dates else None,
         "loss_unit": "territory_points",
         "skill_preset": skill_preset_meta,
-        "definitions": definitions,
+        "definitions": definitions if include_definitions else None,
         "game_id": None # Not applicable for summary
     }
 
@@ -142,17 +144,6 @@ def build_summary_json(
                 "pct": round(stats.get_mistake_percentage(cat), 1),
                 "denominator": stats.total_moves, # Explicit denominator
                 "avg_loss": round(avg_loss, 2),
-            }
-
-        # Freedom (Difficulty) Distribution
-        difficulty_dist = {}
-        for diff in PositionDifficulty:
-            key = diff.value.lower()
-            count = stats.freedom_counts.get(diff, 0)
-            difficulty_dist[key] = {
-                "count": count,
-                "pct": round(stats.get_freedom_percentage(diff), 1),
-                "denominator": stats.total_moves, # Explicit denominator
             }
 
         # Phase Stats
@@ -249,7 +240,6 @@ def build_summary_json(
         players_data[player_name] = {
             "overall": overall,
             "mistakes": mistake_dist,
-            "difficulty": difficulty_dist,
             "phases": phase_stats,
             "reason_tags": reason_tags_stats_block,
             "mistake_sequences": {

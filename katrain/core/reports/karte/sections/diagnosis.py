@@ -1,15 +1,17 @@
 """Diagnosis section data builders for karte report (JSON output).
 
 Phase 149 C-2: Refactored from markdown-line generators (list[str]) to JSON
-data builders (list[WeaknessItem] / list[PriorityItem] / list[StreakItem]).
+data builders (list[WeaknessItem] / list[StreakItem]).
 The compiled markdown is no longer produced — JSON is the canonical output
 for LLM consumption and downstream tooling.
 
+Phase 153-B: Removed `practice_priorities_for` (redundant with weaknesses).
+Phase 153-C: Removed `urgent_miss_section_for` (merged into
+`mistake_streaks_for`; both used the same threshold).
+
 Functions:
 - weakness_hypothesis_for(): Returns WeaknessItem list for one player
-- practice_priorities_for(): Returns PriorityItem list for one player
 - mistake_streaks_for(): Returns StreakItem list (consecutive mistakes)
-- urgent_miss_section_for(): Returns StreakItem list (urgent threshold)
 """
 
 from __future__ import annotations
@@ -21,7 +23,6 @@ from katrain.core.eval_metrics import (
     aggregate_phase_mistake_stats,
     detect_mistake_streaks,
     get_canonical_loss_from_move,
-    get_practice_priorities_from_stats,
 )
 
 if TYPE_CHECKING:
@@ -129,80 +130,18 @@ def practice_priorities_for(
 ) -> list[dict[str, Any]]:
     """Generate practice priorities data for a player.
 
+    Phase 153-B: Returns empty list (section removed from output).
+    Kept as a stub to avoid breaking callers that still import it; the
+    function is scheduled for full removal in a follow-up cleanup pass.
+
     Args:
-        ctx: Karte context
-        player: "B" or "W"
+        ctx: Karte context (unused)
+        player: "B" or "W" (unused)
 
     Returns:
-        List of PriorityItem dicts (max 1 for MEDIUM, max 2 otherwise).
-        Empty list when confidence is LOW or no priorities identified.
+        Empty list.
     """
-    if ctx.confidence_level == eval_metrics.ConfidenceLevel.LOW:
-        return []
-
-    player_moves = [mv for mv in ctx.snapshot.moves if mv.player == player]
-    if not player_moves:
-        return []
-
-    board_x = ctx.board_x
-    preset = eval_metrics.get_skill_preset(ctx.skill_preset)
-    score_thresholds = preset.score_thresholds
-
-    stats = aggregate_phase_mistake_stats(
-        player_moves,
-        score_thresholds=score_thresholds,
-        board_size=board_x,
-    )
-
-    max_priorities = 1 if ctx.confidence_level == eval_metrics.ConfidenceLevel.MEDIUM else 2
-    priorities = get_practice_priorities_from_stats(stats, max_priorities=max_priorities)
-
-    result: list[dict[str, Any]] = []
-    for priority_text in priorities:
-        phase_key = None
-        for phase_candidate in ("opening", "middle", "yose"):
-            if phase_candidate in priority_text.lower():
-                phase_key = phase_candidate
-                break
-
-        # Default to "middle" if no phase matched
-        if phase_key is None:
-            phase_key = "middle"
-
-        category = "MISTAKE"
-        # Try to extract category from priority text
-        for cat_name in ("BLUNDER", "MISTAKE", "INACCURACY"):
-            if cat_name.lower() in priority_text.lower():
-                category = cat_name
-                break
-
-        priority_id = f"phase_{phase_key}_{category.lower()}_focus"
-
-        # Find anchor move: worst move in this phase
-        anchor_evidence: dict[str, Any] | None = None
-        phase_moves = [
-            mv for mv in player_moves
-            if (mv.tag or "unknown") == phase_key and mv.score_loss is not None
-        ]
-        if phase_moves:
-            anchor_move = max(
-                phase_moves,
-                key=lambda m: (m.score_loss or 0, -m.move_number),
-            )
-            anchor_loss = get_canonical_loss_from_move(anchor_move)
-            if anchor_loss > 0.0:
-                anchor_evidence = _move_to_evidence(anchor_move)
-
-        result.append(
-            {
-                "priority_id": priority_id,
-                "phase": phase_key,
-                "category": category,
-                "anchor_move": anchor_evidence,
-            }
-        )
-
-    return result
+    return []
 
 
 def mistake_streaks_for(
@@ -230,22 +169,3 @@ def mistake_streaks_for(
     )
 
     return [_streak_to_item(s) for s in streaks]
-
-
-def urgent_miss_section_for(
-    ctx: "KarteContext",
-    player: str,
-) -> list[dict[str, Any]]:
-    """Return urgent miss data (alias for mistake_streaks_for with urgent thresholds).
-
-    Phase 149 C-2: Currently uses the same threshold as mistake_streaks; kept
-    as separate API for future tuning.
-
-    Args:
-        ctx: Karte context
-        player: "B" or "W"
-
-    Returns:
-        List of StreakItem dicts (empty if no urgent misses)
-    """
-    return mistake_streaks_for(ctx, player)

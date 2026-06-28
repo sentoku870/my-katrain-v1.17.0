@@ -1,7 +1,7 @@
 {
-  "schema_version": "3.0",
+  "schema_version": "3.1",
   "meta": {
-    "schema_version": "3.0",
+    "schema_version": "3.1",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -20,105 +20,7 @@
     ],
     "skill_preset": "standard",
     "loss_unit": "territory_points",
-    "definitions": {
-      "thresholds": {
-        "bad_move_loss": 0.5,
-        "urgent_miss": {
-          "loss": 20.0,
-          "min_consecutive": 3
-        },
-        "phase": {
-          "opening_max": 50,
-          "middle_max": 200,
-          "endgame_min": 201
-        },
-        "loss": {
-          "inaccuracy": 1.0,
-          "mistake": 2.5,
-          "blunder": 5.0
-        }
-      },
-      "mistake_types": [
-        "good",
-        "inaccuracy",
-        "mistake",
-        "blunder"
-      ],
-      "difficulty_levels": {
-        "easy": "One clear best move / Obvious",
-        "normal": "Standard complexity",
-        "hard": "Complex pattern / Many candidates",
-        "only": "Forced move / Single valid candidate",
-        "unknown": "Difficulty could not be determined"
-      },
-      "phases": [
-        "opening",
-        "middle",
-        "endgame"
-      ],
-      "phase_aliases": {
-        "yose": "endgame"
-      },
-      "category_aliases": {
-        "inaccuracy": "inc",
-        "mistake": "bad",
-        "blunder": "vbd"
-      },
-      "reason_code_aliases": {
-        "low_liberties": "liberties",
-        "need_connect": "connection",
-        "heavy_loss": "heavy",
-        "reading_failure": "reading",
-        "shape_mistake": "shape",
-        "endgame_slip": "endgame_hint",
-        "cut_risk": "cut_risk",
-        "thin": "thin",
-        "chase_mode": "chase_mode",
-        "connection_mistake": "connection",
-        "liberties_mistake": "liberties",
-        "joseki_mistake": "joseki"
-      },
-      "primary_tags": [
-        "missed_tesuji",
-        "overplay",
-        "slow_move",
-        "direction_error",
-        "shape_mistake",
-        "reading_failure",
-        "endgame_slip",
-        "connection_miss",
-        "capture_race_loss",
-        "life_death_error",
-        "territorial_loss",
-        "uncertain"
-      ],
-      "reason_codes": [
-        "shape",
-        "atari",
-        "clump",
-        "heavy",
-        "overconcentrated",
-        "liberties",
-        "endgame_hint",
-        "connection",
-        "urgent",
-        "tenuki",
-        "cut_risk",
-        "thin",
-        "chase_mode",
-        "reading",
-        "joseki"
-      ],
-      "importance": {
-        "scale": "0.0 to unbounded (logarithmic)",
-        "description": "Combined score of loss and semantic interest",
-        "thresholds": {
-          "interesting": 0.3,
-          "important": 0.5,
-          "critical": 1.0
-        }
-      }
-    },
+    "definitions": null,
     "date_range": null
   },
   "summary": {
@@ -150,7 +52,6 @@
       "player": "white",
       "coords": "D15",
       "phase": "opening",
-      "difficulty": "only",
       "loss_clamped": 2.5,
       "loss_raw": 2.5,
       "importance": 3.2,
@@ -167,7 +68,6 @@
       "player": "white",
       "coords": "F4",
       "phase": "opening",
-      "difficulty": "only",
       "loss_clamped": 6.0,
       "loss_raw": 6.0,
       "importance": 5.5,
@@ -184,7 +84,6 @@
       "player": "black",
       "coords": "P3",
       "phase": "opening",
-      "difficulty": "only",
       "loss_clamped": 12.0,
       "loss_raw": 12.0,
       "importance": 17.5,
@@ -228,35 +127,7 @@
       }
     ]
   },
-  "practice_priorities": {
-    "black": [
-      {
-        "priority_id": "phase_middle_mistake_focus",
-        "phase": "middle",
-        "category": "MISTAKE",
-        "anchor_move": null
-      }
-    ],
-    "white": [
-      {
-        "priority_id": "phase_middle_mistake_focus",
-        "phase": "middle",
-        "category": "MISTAKE",
-        "anchor_move": null
-      },
-      {
-        "priority_id": "phase_middle_mistake_focus",
-        "phase": "middle",
-        "category": "MISTAKE",
-        "anchor_move": null
-      }
-    ]
-  },
   "mistake_streaks": {
-    "black": [],
-    "white": []
-  },
-  "urgent_misses": {
     "black": [],
     "white": []
   },
@@ -319,7 +190,6 @@
     "effective_threshold": 200,
     "is_low_reliability": false
   },
-  "common_difficult_positions": [],
   "reason_tags_distribution": {
     "black": {
       "heavy_loss": 1
