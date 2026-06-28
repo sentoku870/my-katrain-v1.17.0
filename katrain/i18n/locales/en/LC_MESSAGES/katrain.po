@@ -2465,9 +2465,6 @@ msgstr "Fighting Spirit"
 msgid "summary:hypothesis"
 msgstr "Weakness Hypothesis"
 
-msgid "summary:practice"
-msgstr "Practice Priorities"
-
 msgid "summary:footer"
 msgstr "Footer"
 
@@ -2563,15 +2560,6 @@ msgstr "No specific weakness pattern detected."
 
 msgid "summary:warning:low_visits"
 msgstr "Visits are low, recommendation is to increase visits and re-analyze."
-
-msgid "summary:practice:low_data_msg"
-msgstr "Data insufficient. Practice priorities pending. Re-analysis with higher visits recommended."
-
-msgid "summary:practice:intro"
-msgstr "Based on the data above, consider focusing on:"
-
-msgid "summary:practice:none"
-msgstr "No specific priorities identified. Keep up the good work!"
 
 msgid "diagnosis:streaks"
 msgstr "Mistake Streaks"

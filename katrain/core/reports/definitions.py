@@ -7,7 +7,6 @@ from typing import Final, Dict, List, Any
 
 from katrain.core.eval_metrics import (
     MistakeCategory,
-    PositionDifficulty,
     get_skill_preset,
 )
 from katrain.core.analysis.meaning_tags import MeaningTagId
@@ -19,7 +18,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.0"  # Phase 150: bump from 2.1 to align with karte v3.0
+REPORT_SCHEMA_VERSION: Final[str] = "3.1"  # Phase 153-A: difficulty 削除
 
 
 # --- Thresholds ---
@@ -62,15 +61,6 @@ REPORT_THRESHOLDS: Final[Dict[str, Any]] = {
 # --- Classifications & Enums ---
 
 MISTAKE_TYPES: Final[List[str]] = [cat.value.lower() for cat in MistakeCategory]
-
-# Fix 5: Clarify Difficulty Definitions
-DIFFICULTY_LEVELS: Final[Dict[str, str]] = {
-    "easy": "One clear best move / Obvious",
-    "normal": "Standard complexity",
-    "hard": "Complex pattern / Many candidates",
-    "only": "Forced move / Single valid candidate",
-    "unknown": "Difficulty could not be determined"
-}
 
 # Fix 2: Sync with MeaningTagId
 PRIMARY_TAGS: Final[List[str]] = [tag.value for tag in MeaningTagId]

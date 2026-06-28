@@ -83,10 +83,3 @@ The following patterns were detected multiple times (by impact):
 
 2. **Endgame / Corner / Mistake (life_death) [Black]**: 3 times, total loss 10.5 pts
    - game_1.sgf #45(B), game_2.sgf #45(B), game_3.sgf #45(B)
-
-## 練習の優先順位 (TestPlayer)
-
-Based on the data above, consider focusing on:
-
-- 1. **Middle gameの大悪手** (3回、損失15.0目)
-- 2. **Middle gameの軽微なミス** (7回、損失7.5目)

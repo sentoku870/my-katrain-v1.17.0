@@ -46,7 +46,7 @@ def test_v6_refinements():
     game.build_eval_snapshot.return_value = snapshot
     game.get_important_move_evals.return_value = [move]
     
-    karte = build_karte_json(game)
+    karte = build_karte_json(game, include_definitions=True)
     
     # Check Normalized codes
     mv = karte["important_moves"][0]

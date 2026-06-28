@@ -612,11 +612,6 @@ def build_summary_from_stats(
             except Exception as e:
                 _logger.warning("Pattern mining failed: %s", e)
 
-    # Practice Priorities
-    _append_practice_priorities(
-        lines, sorted_combos, phase_mistake_counts_total, phase_loss_total, total_moves, focus_player
-    )
-
     return "\n".join(lines)
 
 
@@ -1160,44 +1155,3 @@ def _format_time_management(
 
     lines.append("")
     return "\n".join(lines)
-
-
-def _append_practice_priorities(
-    lines: list[str],
-    sorted_combos: list[tuple[PhaseMistakeKey, float]],
-    phase_mistake_counts_total: dict[PhaseMistakeKey, int],
-    phase_loss_total: dict[str, float],
-    total_moves: int,
-    focus_player: str | None,
-) -> None:
-    """Practice Prioritiesセクション."""
-    phase_names = {"opening": "Opening", "middle": "Middle game", "yose": "Endgame", "unknown": "Unknown"}
-    cat_names_ja = {
-        eval_metrics.MistakeCategory.BLUNDER: "大悪手",
-        eval_metrics.MistakeCategory.MISTAKE: "悪手",
-        eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
-    }
-
-    lines.append("## 練習の優先順位" + (f" ({focus_player})" if focus_player else ""))
-    lines.append("\nBased on the data above, consider focusing on:\n")
-
-    priorities = []
-
-    # 弱点仮説から上位2つを抽出
-    for i, (key, loss) in enumerate(sorted_combos[:2]):
-        phase, category = key
-        count = phase_mistake_counts_total.get(key, 0)
-        priorities.append(
-            f"- {i + 1}. **{phase_names.get(phase, phase)}の{cat_names_ja[category]}** ({count}回、損失{loss:.1f}目)"
-        )
-
-    # フォールバック
-    if not priorities and total_moves > 0:
-        worst_phase = max(phase_loss_total.items(), key=lambda x: x[1])
-        if worst_phase[1] > 0:
-            priorities.append(f"- Improve {phase_names[worst_phase[0]]} play ({worst_phase[1]:.1f} points lost)")
-
-    if priorities:
-        lines.extend(priorities)
-    else:
-        lines.append("- No specific priorities identified. Keep up the good work!")

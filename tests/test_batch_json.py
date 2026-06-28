@@ -57,7 +57,7 @@ def test_batch_json_stages_1_to_4():
         
     # 2. Verify Schema Version (Stage 3)
     print(f"Schema Version: {data.get('schema_version')}")
-    assert data.get("schema_version") == "3.0", "Schema version should be 3.0 (Phase 150: bumped from 2.1)"
+    assert data.get("schema_version") == "3.1", "Schema version should be 3.1 (Phase 153-B/C: bumped from 3.0)"
     
     # 3. Verify Games List (Stage 2)
     games = data.get("games", [])
@@ -76,18 +76,18 @@ def test_batch_json_stages_1_to_4():
     if top_mistakes:
         mistake = top_mistakes[0]
         print(f"Top Mistake: {mistake}")
-        
+
         # Stage 1: Player field
         assert "player" in mistake, "Mistake should have player field"
         assert mistake["player"] == "black"
-        
+
         # Stage 2: Extended details
         assert "phase" in mistake, "Mistake should have phase"
         assert mistake["phase"] == "opening"
-        
-        assert "difficulty" in mistake, "Mistake should have difficulty"
-        assert mistake["difficulty"] == "normal"
-        
+
+        # Phase 153-A: `difficulty` field removed from MistakeItem
+        assert "difficulty" not in mistake, "Mistake should NOT have difficulty (removed in Phase 153-A)"
+
         assert "reason_codes" in mistake, "Mistake should have reason_codes"
         # Check normalization
         assert "reading" in mistake["reason_codes"]

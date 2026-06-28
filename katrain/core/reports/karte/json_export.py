@@ -26,7 +26,6 @@ from katrain.core.reports.definitions import (
     REPORT_SCHEMA_VERSION,
     REPORT_THRESHOLDS,
     MISTAKE_TYPES,
-    DIFFICULTY_LEVELS,
     PHASES,
     PHASE_ALIASES,
     PRIMARY_TAGS,
@@ -51,6 +50,7 @@ def build_karte_json(
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     lang: str = "ja",
     target_visits: int | None = None,
+    include_definitions: bool = False,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -58,6 +58,14 @@ def build_karte_json(
     practice_priorities, mistake_streaks, urgent_misses, critical_3,
     data_quality, common_difficult_positions, reason_tags_distribution).
     Schema bumped from 2.1 → 3.0.
+
+    Phase 153-B: Removed `practice_priorities` and
+    `common_difficult_positions` sections (redundant with weaknesses and
+    critical_3). Schema bumped to 3.1.
+
+    Phase 153-D: `include_definitions` defaults to False. The `definitions`
+    block is opt-in to keep the report compact for LLM consumption; pass
+    `include_definitions=True` when the consumer needs label mappings.
 
     Args:
         game: Game object providing game state and analysis data
@@ -67,9 +75,11 @@ def build_karte_json(
         lang: Language code (JSON output is language-agnostic; preserved
             for downstream helpers that may localize)
         target_visits: Target visits for effective reliability threshold.
+        include_definitions: If True, embed the `definitions` block in
+            `meta.definitions`. Default False for compact output.
 
     Returns:
-        KarteReport dict (v3.0) with extended sections.
+        KarteReport dict (v3.1) with extended sections.
     """
     snapshot = game.build_eval_snapshot()
     moves = list(snapshot.moves)
@@ -106,7 +116,6 @@ def build_karte_json(
     definitions: Definitions = {
         "thresholds": REPORT_THRESHOLDS,
         "mistake_types": MISTAKE_TYPES,
-        "difficulty_levels": DIFFICULTY_LEVELS,
         "phases": PHASES,
         "phase_aliases": PHASE_ALIASES,
         "category_aliases": CATEGORY_ALIASES,
@@ -120,7 +129,7 @@ def build_karte_json(
     common_meta = MetaExtractor.extract_game_meta(game, game_id=game_uid)
 
     meta: MetaData = {
-        "schema_version": "3.0",  # Phase 149 C-3: bumped from 2.1
+        "schema_version": "3.1",  # Phase 153-B: bumped from 3.0
         "game_id": game_uid,
         "generated_at": generated_at,
         "run_id": run_id,
@@ -133,7 +142,7 @@ def build_karte_json(
         "board_size": common_meta["board_size"],
         "skill_preset": effective_preset,
         "loss_unit": "territory_points",
-        "definitions": definitions,
+        "definitions": definitions if include_definitions else None,
         "date_range": None,
     }
 
@@ -234,8 +243,6 @@ def build_karte_json(
     # Phase 149 C-3: Invoke revived sections
     from katrain.core.reports.karte.sections.diagnosis import (
         mistake_streaks_for,
-        practice_priorities_for,
-        urgent_miss_section_for,
         weakness_hypothesis_for,
     )
     from katrain.core.reports.karte.sections.important_moves import (
@@ -243,47 +250,34 @@ def build_karte_json(
         reason_tags_distribution_for,
     )
     from katrain.core.reports.karte.sections.metadata import data_quality_section
-    from katrain.core.reports.karte.sections.summary import common_difficult_positions
 
     weaknesses = {
         "black": weakness_hypothesis_for(ctx, "B"),
         "white": weakness_hypothesis_for(ctx, "W"),
     }
-    practice_priorities = {
-        "black": practice_priorities_for(ctx, "B"),
-        "white": practice_priorities_for(ctx, "W"),
-    }
     mistake_streaks = {
         "black": mistake_streaks_for(ctx, "B"),
         "white": mistake_streaks_for(ctx, "W"),
-    }
-    urgent_misses = {
-        "black": urgent_miss_section_for(ctx, "B"),
-        "white": urgent_miss_section_for(ctx, "W"),
     }
     critical_3 = {
         "black": critical_3_section_for(ctx, "B", level),
         "white": critical_3_section_for(ctx, "W", level),
     }
     data_quality = data_quality_section(ctx)
-    common_difficult = common_difficult_positions(ctx)
     reason_tags_dist = {
         "black": reason_tags_distribution_for(ctx, "B"),
         "white": reason_tags_distribution_for(ctx, "W"),
     }
 
     result: dict[str, Any] = {
-        "schema_version": "3.0",
+        "schema_version": "3.1",
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,
         "weaknesses": weaknesses,
-        "practice_priorities": practice_priorities,
         "mistake_streaks": mistake_streaks,
-        "urgent_misses": urgent_misses,
         "critical_3": critical_3,
         "data_quality": data_quality,
-        "common_difficult_positions": common_difficult,
         "reason_tags_distribution": reason_tags_dist,
     }
     return result

@@ -138,8 +138,8 @@ class TestSummarySnapshot:
         assert "## Mistake Distribution" in output
         assert "## Phase × Mistake Breakdown" in output
         assert "## Weakness Hypothesis" in output
-        # Phase 54: Japanese header for practice priorities
-        assert "## 練習の優先順位" in output
+        # Phase 153-B: practice_priorities section removed from summary output
+        assert "## 練習の優先順位" not in output
 
     def test_summary_output_unchanged(self):
         """Summary output should match snapshot after type hint changes.

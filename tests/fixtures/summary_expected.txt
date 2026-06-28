@@ -42,10 +42,3 @@ Based on cross-tabulation analysis:
 **分析**:
 - Middle gameの損失の66.7%が大悪手によるもの
 - Middle gameの6.7%の手が大悪手と判定されている
-
-## 練習の優先順位
-
-Based on the data above, consider focusing on:
-
-- 1. **Middle gameの大悪手** (1回、損失4.0目)
-- 2. **Openingの悪手** (1回、損失1.5目)

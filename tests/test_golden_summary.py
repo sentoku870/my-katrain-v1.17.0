@@ -400,15 +400,14 @@ class TestSummaryStructure:
 
         assert "## Weakness Hypothesis" in output
 
-    def test_practice_priorities_section(self):
-        """Practice Priorities section should be present (Japanese header)."""
+    def test_practice_priorities_removed(self):
+        """Phase 153-B: Practice Priorities section should be removed."""
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
         output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
-        # Phase 53: Japanese header "練習の優先順位"
-        assert "## 練習の優先順位" in output
+        assert "## 練習の優先順位" not in output
 
 
 # ---------------------------------------------------------------------------

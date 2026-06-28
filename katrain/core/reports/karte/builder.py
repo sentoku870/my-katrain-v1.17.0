@@ -39,8 +39,6 @@ from katrain.core.reports.karte.models import (
 from katrain.core.reports.karte.sections.context import KarteContext
 from katrain.core.reports.karte.sections.diagnosis import (
     mistake_streaks_for,
-    practice_priorities_for,
-    urgent_miss_section_for,
     weakness_hypothesis_for,
 )
 from katrain.core.reports.karte.sections.important_moves import (
@@ -51,9 +49,6 @@ from katrain.core.reports.karte.sections.metadata import (
     data_quality_section,
     definitions_section,
 
-)
-from katrain.core.reports.karte.sections.summary import (
-    common_difficult_positions,
 )
 
 logger = logging.getLogger(__name__)
