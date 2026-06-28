@@ -1140,8 +1140,12 @@ class KaTrainApp(MDApp):
             self.gui.play_mode.save_ui_state()
             ui_state = dict(self.gui.config("ui_state") or {})
             ui_state["size"] = list(Window._size)
-            ui_state["top"] = Window.top
-            ui_state["left"] = Window.left
+            window_top = Window.top
+            window_left = Window.left
+            if window_top is not None:
+                ui_state["top"] = window_top
+            if window_left is not None:
+                ui_state["left"] = window_left
             self.gui.set_config_section("ui_state", ui_state)
             self.gui.save_config("ui_state")
             if self.gui.engine:
