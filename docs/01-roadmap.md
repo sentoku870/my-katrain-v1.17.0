@@ -1,12 +1,13 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-28(Phase 150 完了)
+> 最終更新: 2026-06-28(Phase 151 完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
 > Phase 148 (2026-06-27 完了): 4 PR (#293 / #294 / #295 / #296)。詳細下記。
 > Phase 149 (2026-06-27 完了): Karte/Summary 残存問題点の発見と対応。詳細下記。
 > Phase 150 (2026-06-28 完了): mykatrain 設定バグ修正 + CI クリーンアップ。詳細下記。
+> Phase 151 (2026-06-28 完了): エンジン起動時の UnboundLocalError 修正 + KataGo バイナリ復元。詳細下記。
 
 ---
 
@@ -46,6 +47,7 @@
 | **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | ✅ (2026-06-27) |
 | **149** | Karte/Summary 残存問題対応 + Dead Code Revival | 4 PR (A: bug fixes / B: summary quality / C: JSON revival / D: docs) | ✅ (2026-06-27) |
 | **150** | mykatrain 設定バグ修正 + CI クリーンアップ | LeelaConfig.get() None デフォルト修正 / CI から macOS ビルド削除 / dead import 削除 | ✅ (2026-06-28) |
+| **151** | エンジン起動エラー処理 + KataGo バイナリ復元 | `query_found` UnboundLocalError 修正 / KataGo eigen 版への復元 / `.gitignore` 拡張 | ✅ (2026-06-28) |
 
 ### 直近の更新詳細
 
@@ -141,6 +143,11 @@
 - **PR #301**: `LeelaConfig.get()` の dict 互換セマンティクス修正。`exe_path` が `None` の場合に `default` を返すよう変更し、`TextInput(text=None)` クラッシュを解消。
 - **PR #302**: CI から `build-macos` ジョブ削除（macOS 非サポート方針）。`spec/KaTrain.spec` と `__main__.py` の macOS 分岐は手動ビルド向けに温存。
 - 付随: `batch_analysis_controller.py:53` の未使用 import `do_mykatrain_settings_popup` を削除。
+
+**Phase 151**: ✅ エンジン起動時の UnboundLocalError 修正 + KataGo バイナリ復元（2026-06-28 完了）。
+- **PR #303**: `_analysis_read_thread` で `query_found = False` を `try: json.loads(line)` ブロックの直前に移動。KataGo が非JSON出力（AppImage マウント失敗、FUSE エラー、エンジンクラッシュ stderr）を行った際の `UnboundLocalError` を解消。
+- 環境復元: `katago_eigen_backup` (37MB) を `katago` にリネームし、AppImage 版 (944KB) は `katago_appimage.broken` に退避。Linux 環境で KataGo eigen 版が正常起動することを確認。
+- `.gitignore` 拡張: `katago_eigen_backup`, `katago_appimage*`, `katago-osx`, `katago-cpu`, `katago-eigen` を除外対象に追加し、誤コミットを防止。
 
 ### 累積検証結果
 
@@ -351,6 +358,62 @@ READ-ONLY 調査で Phase 148 では触れられなかった 5 件のバグ、6 
 
 - `katrain/KataGo/katago_eigen_backup` という untracked な巨大バックアップファイルが残存（ユーザー指示により放置）
 - `spec/KaTrain.spec` の macOS 分岐は macOS サポート再開時に備えて温存中
+
+### Phase 151: エンジン起動エラー処理 + KataGo バイナリ復元 (2026-06-28 完了)
+
+> 起票日: 2026-06-28
+> 完了: 2026-06-28
+> PR: 1 (#303)
+
+#### 背景
+
+KataGo を含む myKatrain 起動時に、解析スレッドで以下の2段階エラーが発生：
+
+1. **第1段階**: KataGo バイナリが AppImage（944KB）に置き換わっており、FUSE が無い Linux 環境で起動失敗。stderr に「Cannot mount AppImage, please check your FUSE setup.」を出力。
+2. **第2段階**: 起動失敗時の非JSON出力が engine.py の `json.loads(line)` で `JSONDecodeError` を引き起こし、except ハンドラが `query_found` を参照しようとして `UnboundLocalError` を発生。元のエラーをマスクして解析スレッドがクラッシュ。
+
+#### 主な発見・対応
+
+**Bug: 解析スレッドの UnboundLocalError**
+- **症状**: `Expecting value: line 1 column 1 (char 0)` の直後に `UnboundLocalError: cannot access local variable 'query_found' where it is not associated with a value` が発生
+- **根本原因**: `engine.py:619` の `query_found = False` 宣言が `try: analysis = json.loads(line)` ブロックの **内側** にあった。`json.loads` が失敗すると `query_found` に到達せず、except ハンドラが未初期化変数を参照してクラッシュ
+- **修正**: `query_found = False` を `try` ブロックの **直前**（line 606 直後）に移動（+1/-1行）
+
+**KataGo バイナリ復元**
+- `katrain/KataGo/katago` (944KB, AppImage) を `katago_appimage.broken` に退避
+- `katrain/KataGo/katago_eigen_backup` (37MB, ELF eigen版) を `katago` にリネーム
+- `./katrain/KataGo/katago` 直接実行で KataGo の usage メッセージが表示されることを確認
+
+**`.gitignore` 拡張**
+- ローカルKataGoバイナリの誤コミット防止のため以下を追加：
+  - `katago_eigen_backup`
+  - `katago_appimage*`
+  - `katago-osx`
+  - `katago-cpu`
+  - `katago-eigen`
+- 既存の `katago` および `katago.exe` はリポジトリに保持（fresh clone で動作するように）
+
+#### 影響範囲
+
+| 項目 | 影響 |
+|------|------|
+| `query_found` の宣言位置変更 | `_analysis_read_thread` 内のスコープが拡張。except ハンドラが常に `query_found` にアクセス可能 |
+| KataGo バイナリ差分 | リポジトリには反映されない（`.gitignore` で除外）。ユーザー環境のみで復元 |
+| 既存テスト | 全件 pass（engine 系 252件 / typed config 107件） |
+
+#### 検証結果
+
+| 検証 | 結果 |
+|------|------|
+| 既存テスト | 359+ 件パス（engine 252 / typed config 107 / 関連テスト） |
+| 構造確認 | `query_found = False` が try ブロック前にあることを inspect で検証 |
+| CI build-windows | pass（PR #303 run） |
+| KataGo eigen版 動作 | 直接実行で正常な usage メッセージを表示 |
+
+#### 残オープン項目
+
+- `katago_appimage.broken` (944KB) はユーザー環境のみに残存（リポジトリには影響なし）
+- macOS環境でも AppImage ではなく eigen版を使う運用が望ましい（ユーザー判断）
 
 ---
 
