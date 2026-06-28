@@ -1,14 +1,20 @@
-"""Loss progression analysis (Phase 154-B).
+"""Loss progression analysis (Phase 154-B, Phase 157-A).
 
 Buckets a game's move-by-move loss into fixed-width move-number windows
 and emits per-window aggregates. Used by the Karte/Summary "loss
 progression" section to surface concentration-of-errors patterns
 (e.g. mid-game focus drop).
 
-Window convention: window ``i`` covers ``[start_move, end_move)`` where
-``start_move = i * bucket_size + 1`` and ``end_move = min(start_move + bucket_size,
-last_move + 1)``. The final window may be smaller when ``total_moves`` is
-not a multiple of ``bucket_size``.
+Window convention: window ``i`` covers ``[start_move, end_move]`` where
+``start_move = i * bucket_size + 1`` and ``end_move = start_move + bucket_size - 1``.
+By default the final window's ``end_move`` is truncated to the last actual move
+number in that bucket so a single Karte JSON cleanly reflects the game's
+real length (Phase 154-B behaviour).
+
+When ``truncate_end_move=False`` (Phase 157-A, used by cross-game summary
+aggregation) ``end_move`` is kept at the canonical value
+(``start_move + bucket_size - 1``) so identical windows from games of
+different lengths merge under the same ``(start_move, end_move)`` key.
 """
 from __future__ import annotations
 
@@ -24,8 +30,12 @@ class LossBucket:
 
     Attributes:
         start_move: First move number (1-indexed, inclusive).
-        end_move: Last move number (1-indexed, inclusive). May be smaller
-            than ``start_move + bucket_size - 1`` for the final bucket.
+        end_move: Last move number (1-indexed, inclusive). When
+            ``truncate_end_move=True`` was used (Karte / per-game
+            default) this may be smaller than
+            ``start_move + bucket_size - 1`` for the final bucket.
+            When ``truncate_end_move=False`` was used (Summary /
+            cross-game) it is always ``start_move + bucket_size - 1``.
         move_count: Number of moves in this window.
         total_loss: Sum of canonical loss (>= 0.0).
         avg_loss: ``total_loss / move_count`` (0.0 when empty).
@@ -51,6 +61,7 @@ def compute_loss_progression(
     moves: list[MoveEval],
     *,
     bucket_size: int = 10,
+    truncate_end_move: bool = True,
 ) -> list[LossBucket]:
     """Compute per-window loss aggregates over the mainline.
 
@@ -59,6 +70,13 @@ def compute_loss_progression(
             carry ``points_lost`` / ``score_loss``; the canonical loss is
             used (``max(points_lost, score_loss, 0)``).
         bucket_size: Window width in move numbers. Default 10.
+        truncate_end_move: When ``True`` (default, Karte behaviour) the
+            final bucket's ``end_move`` is clamped to the last move that
+            actually occurred in that bucket. When ``False`` (Phase 157-A,
+            used by the Summary cross-game aggregation) the bucket's
+            ``end_move`` stays at the canonical ``start + bucket_size - 1``
+            value so identical windows from games of different lengths
+            share the same ``(start_move, end_move)`` key.
 
     Returns:
         List of :class:`LossBucket` ordered by ``start_move``. Empty when
@@ -89,10 +107,14 @@ def compute_loss_progression(
         mistake_count = sum(
             1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD
         )
+        if truncate_end_move:
+            final_end_move = min(end, max(mv.move_number for mv in bucket_moves))
+        else:
+            final_end_move = end
         out.append(
             LossBucket(
                 start_move=start,
-                end_move=min(end, max(mv.move_number for mv in bucket_moves)),
+                end_move=final_end_move,
                 move_count=count,
                 total_loss=round(total_loss, 2),
                 avg_loss=round(total_loss / count, 3) if count else 0.0,

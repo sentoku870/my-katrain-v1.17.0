@@ -49,6 +49,10 @@ class MetaData(TypedDict, total=False):
     komi: Optional[float]
     handicap: Optional[int]
     board_size: Optional[List[int]]
+    # Phase 157-C: Summary-only. Counts of games by ``GameType``
+    # (``"even"`` / ``"handicapped"`` / ``"unknown"``). Empty / absent
+    # on Karte output.
+    games_by_type: Optional[Dict[str, int]]
 
 class PlayerGameInfo(TypedDict):
     black: str
@@ -95,16 +99,34 @@ class SummaryPlayerStats(TypedDict):
     win_loss_analysis: NotRequired[Dict[str, Any]]
     # Phase 155-D: opponent-strength loss correlation
     opponent_strength_loss_correlation: NotRequired[Dict[str, Any]]
+    # Phase 157-C: per-game-type sub-stats (even / handicapped). Each
+    # sub-stat block mirrors the top-level layout (``overall`` /
+    # ``win_loss_analysis``) so LLM consumers can drill down into a
+    # specific regime without re-running the whole pipeline.
+    even: NotRequired[Dict[str, Any]]
+    handicapped: NotRequired[Dict[str, Any]]
+
+
+# Phase 157-C: ``SummaryReport.loss_progression`` is now a dict keyed by
+# ``"all"`` / ``"even"`` / ``"handicapped"``. ``"all"`` is always present
+# (cross-game aggregate); the others are only emitted when at least one
+# game of that type exists in the run.
+LossProgressionByType = Dict[str, List[Dict[str, Any]]]
+
 
 class SummaryReport(TypedDict):
     schema_version: str
     meta: MetaData
     games: List[GameMeta]
     players: Dict[str, SummaryPlayerStats]
-    # Phase 154-D: aggregated win/loss analysis across all games in the run.
-    win_loss_analysis: Optional[Dict[str, Any]]
-    # Phase 154-B: per-game loss progression (bucketed by move-number window).
-    loss_progression: Optional[List[Dict[str, Any]]]
+    # Phase 157-D: top-level ``win_loss_analysis`` field was removed
+    # (was hardcoded as ``None`` in Phase 154-D). Per-player win/loss
+    # aggregation is still available under
+    # ``players[...].win_loss_analysis``.
+    # Phase 154-B / Phase 157-C: per-game loss progression (bucketed by
+    # move-number window). Phase 157-C: dict of per-type lists
+    # (``{"all": [...], "even": [...], "handicapped": [...]}``).
+    loss_progression: Optional[LossProgressionByType]
 
 
 # --- Phase 149 C-1: Extended Karte sections (revived from dead code) ---

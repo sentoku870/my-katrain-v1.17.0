@@ -223,3 +223,62 @@ class TestPlayerFiltering:
         kyu = result["by_bucket"]["kyu"]
         # Alice is black; only her moves count: 5.0 + 0.3 = 5.3 per game
         assert kyu["total_loss"] == pytest.approx(5.3 * MIN_SAMPLE_SIZE, rel=1e-3)
+
+
+class TestChineseRanksComputed:
+    """Phase 157-B: Chinese-script rank tokens (``段`` / ``级``) are now
+    parsed correctly. With ``MIN_SAMPLE_SIZE`` games carrying Chinese rank
+    strings, the builder must return ``status="computed"`` and bucket the
+    losses under ``dan`` / ``kyu`` rather than ``no_opponent_info``.
+    """
+
+    def test_chinese_dan_ranking_yields_computed(self):
+        games = [
+            make_summary(
+                f"g{i}", "Alice", "Bob",
+                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                rank_white="4段",
+            )
+            for i in range(MIN_SAMPLE_SIZE)
+        ]
+        result = build_opponent_strength_loss_correlation(games, "Alice")
+        assert result["status"] == "computed"
+        assert result["sample_count"] == MIN_SAMPLE_SIZE
+        assert result["by_bucket"]["dan"]["games"] == MIN_SAMPLE_SIZE
+
+    def test_chinese_kyu_ranking_yields_computed(self):
+        games = [
+            make_summary(
+                f"g{i}", "Alice", "Bob",
+                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                rank_white="15级",
+            )
+            for i in range(MIN_SAMPLE_SIZE)
+        ]
+        result = build_opponent_strength_loss_correlation(games, "Alice")
+        assert result["status"] == "computed"
+        assert result["sample_count"] == MIN_SAMPLE_SIZE
+        assert result["by_bucket"]["kyu"]["games"] == MIN_SAMPLE_SIZE
+
+    def test_mixed_english_and_chinese(self):
+        """One bucket uses English ``k``, another uses Chinese ``段``."""
+        games_kyu = [
+            make_summary(
+                f"g{i}", "Alice", "Bob",
+                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                rank_white="5k",
+            )
+            for i in range(MIN_SAMPLE_SIZE)
+        ]
+        games_dan = [
+            make_summary(
+                f"g{MIN_SAMPLE_SIZE + i}", "Alice", "Bob",
+                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                rank_white="4段",
+            )
+            for i in range(MIN_SAMPLE_SIZE)
+        ]
+        result = build_opponent_strength_loss_correlation(games_kyu + games_dan, "Alice")
+        assert result["status"] == "computed"
+        assert result["by_bucket"]["kyu"]["games"] == MIN_SAMPLE_SIZE
+        assert result["by_bucket"]["dan"]["games"] == MIN_SAMPLE_SIZE

@@ -110,3 +110,63 @@ class TestLossProgressionShape:
         assert isinstance(buckets[0], LossBucket)
         for field in ("start_move", "end_move", "move_count", "total_loss", "avg_loss", "mistake_count"):
             assert hasattr(buckets[0], field)
+
+
+class TestLossProgressionTruncateEndMove:
+    """Phase 157-A: ``truncate_end_move`` flag controls final-bucket clamping.
+
+    The flag exists to support cross-game Summary aggregation: identical
+    windows from games of different lengths must share the same
+    ``(start_move, end_move)`` key, so the Karte / per-game default
+    ``True`` (clamp to last move) is replaced by ``False`` at the Summary
+    call site.
+    """
+
+    def test_truncate_true_clamps_to_last_move(self):
+        """Default (Karte) behaviour: final bucket ends at the actual last move."""
+        moves = [make_move(i, 0.5) for i in range(1, 26)]  # 25 moves
+        buckets = compute_loss_progression(moves, bucket_size=10, truncate_end_move=True)
+        assert buckets[-1].start_move == 21
+        assert buckets[-1].end_move == 25  # clamped from 30 down to 25
+        assert buckets[-1].move_count == 5
+
+    def test_truncate_false_keeps_canonical_end(self):
+        """Phase 157-A / Summary behaviour: final bucket ends at start + size - 1."""
+        moves = [make_move(i, 0.5) for i in range(1, 26)]  # 25 moves
+        buckets = compute_loss_progression(moves, bucket_size=10, truncate_end_move=False)
+        assert buckets[-1].start_move == 21
+        assert buckets[-1].end_move == 30  # canonical (21 + 10 - 1), NOT clamped
+        assert buckets[-1].move_count == 5
+
+    def test_truncate_false_no_clamp_on_full_buckets(self):
+        """When total_moves is a multiple of bucket_size, both modes agree."""
+        moves = [make_move(i, 0.5) for i in range(1, 21)]  # 20 moves
+        for flag in (True, False):
+            buckets = compute_loss_progression(moves, bucket_size=10, truncate_end_move=flag)
+            assert [b.end_move for b in buckets] == [10, 20]
+
+    def test_truncate_false_keys_match_across_game_lengths(self):
+        """The Phase 157-A bug: identical windows must share the same key."""
+        # Two games of different lengths whose 91-100 window would otherwise
+        # be reported under (91, 100) and (91, 95) respectively.
+        game_a = [make_move(i, 0.5) for i in range(1, 96)]   # 95 moves
+        game_b = [make_move(i, 0.5) for i in range(1, 101)]  # 100 moves
+
+        buckets_a = compute_loss_progression(game_a, bucket_size=10, truncate_end_move=False)
+        buckets_b = compute_loss_progression(game_b, bucket_size=10, truncate_end_move=False)
+
+        # Both games' 91-100 buckets share the (91, 100) key.
+        assert buckets_a[-1].start_move == 91 and buckets_a[-1].end_move == 100
+        assert buckets_b[-1].start_move == 91 and buckets_b[-1].end_move == 100
+
+    def test_truncate_true_keys_differ_across_game_lengths(self):
+        """The Phase 154-B behaviour: truncated end causes key divergence."""
+        game_a = [make_move(i, 0.5) for i in range(1, 96)]   # 95 moves
+        game_b = [make_move(i, 0.5) for i in range(1, 101)]  # 100 moves
+
+        buckets_a = compute_loss_progression(game_a, bucket_size=10, truncate_end_move=True)
+        buckets_b = compute_loss_progression(game_b, bucket_size=10, truncate_end_move=True)
+
+        # With truncation, the keys diverge: (91, 95) vs (91, 100).
+        assert buckets_a[-1].end_move == 95
+        assert buckets_b[-1].end_move == 100

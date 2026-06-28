@@ -18,7 +18,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.3"  # Phase 155-D: opponent_strength_loss_correlation 追加
+REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 157-A/B: bug fixes.
 
 
 # --- Thresholds ---

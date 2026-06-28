@@ -314,10 +314,10 @@
     "black": {
       "by_bucket": {
         "kyu": {
-          "games": 0,
-          "total_loss": 0.0,
+          "games": 1,
+          "total_loss": 21.7,
           "avg_loss": 0.0,
-          "mistake_count": 0
+          "mistake_count": 2
         },
         "dan": {
           "games": 0,
@@ -338,16 +338,16 @@
           "mistake_count": 0
         }
       },
-      "sample_count": 0,
-      "status": "no_opponent_info"
+      "sample_count": 1,
+      "status": "insufficient_data"
     },
     "white": {
       "by_bucket": {
         "kyu": {
-          "games": 0,
-          "total_loss": 0.0,
+          "games": 1,
+          "total_loss": 25.5,
           "avg_loss": 0.0,
-          "mistake_count": 0
+          "mistake_count": 1
         },
         "dan": {
           "games": 0,
@@ -368,8 +368,8 @@
           "mistake_count": 0
         }
       },
-      "sample_count": 0,
-      "status": "no_opponent_info"
+      "sample_count": 1,
+      "status": "insufficient_data"
     }
   }
 }
