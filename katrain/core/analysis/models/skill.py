@@ -14,11 +14,14 @@ Contains:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.analysis.models.enums import AutoConfidence, MistakeCategory, PositionDifficulty
 from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
 from katrain.core.analysis.models.quiz import QuizConfig
+
+if TYPE_CHECKING:
+    from katrain.core.reports.utils.result_parser import GameOutcome
 
 
 # =============================================================================
@@ -44,7 +47,7 @@ class GameSummaryData:
     skill_preset: str | None = None
     # Phase 154-C: Pre-parsed game outcome (cached to avoid re-parsing).
     # If None, downstream code re-parses ``result`` via :func:`parse_result`.
-    outcome: Any | None = None  # GameOutcome (lazy import to avoid cycle)
+    outcome: "GameOutcome | None" = None  # TYPE_CHECKING-only type to avoid cycle
 
     @property
     def player_outcome_black(self) -> str:
@@ -56,7 +59,10 @@ class GameSummaryData:
         if self.outcome is None:
             return "unknown"
         black = self.outcome.black
-        return getattr(black, "value", black)
+        # GameOutcome.black is a PlayerOutcome enum; defensively fall back
+        # to str() if a non-enum slips in (e.g. test mocks).
+        result: str = getattr(black, "value", str(black))
+        return result
 
     @property
     def player_outcome_white(self) -> str:
@@ -64,7 +70,8 @@ class GameSummaryData:
         if self.outcome is None:
             return "unknown"
         white = self.outcome.white
-        return getattr(white, "value", white)
+        result: str = getattr(white, "value", str(white))
+        return result
 
 
 @dataclass
