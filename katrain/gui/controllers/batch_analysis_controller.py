@@ -50,7 +50,6 @@ class BatchAnalysisController:
             create_on_close_callback,
             create_on_start_callback,
         )
-        from katrain.gui.features.settings_popup import do_mykatrain_settings_popup
         from kivy.clock import Clock
 
         # 1. 保存されたオプションのロード
