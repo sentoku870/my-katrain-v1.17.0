@@ -422,11 +422,16 @@ class LeelaConfig:
         Allows settings_popup.py and other call sites to use
         ``leela_config.get("exe_path", "")`` without refactoring.
 
+        Note: ``dict.get(k, default)`` returns ``default`` when the value is
+        ``None``. We mirror that semantics so callers (e.g. ``TextInput(text=...)``)
+        can rely on receiving the default instead of ``None``.
+
         Args:
             key: Attribute name on LeelaConfig.
-            default: Value returned if the attribute does not exist.
+            default: Value returned if the attribute is missing or ``None``.
 
         Returns:
-            The attribute value, or ``default`` if missing.
+            The attribute value, or ``default`` if missing or ``None``.
         """
-        return getattr(self, key, default)
+        val = getattr(self, key, default)
+        return default if val is None else val

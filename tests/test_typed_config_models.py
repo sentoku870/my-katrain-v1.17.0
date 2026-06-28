@@ -478,3 +478,25 @@ class TestLeelaConfigFromDict:
         cfg = LeelaConfig.from_dict({})
         with pytest.raises(FrozenInstanceError):
             cfg.enabled = True  # type: ignore
+
+    def test_get_returns_default_when_value_is_none(self):
+        """Phase 148+: get(k, default) returns default when value is None.
+
+        Mirrors dict.get() semantics. Without this, TextInput(text=cfg.get("exe_path", ""))
+        in settings_popup.py would receive None and crash on Kivy's _set_text.
+        """
+        cfg = LeelaConfig.from_dict({})  # exe_path defaults to None
+        assert cfg.exe_path is None
+        assert cfg.get("exe_path", "") == ""
+        assert cfg.get("exe_path", "fallback") == "fallback"
+
+    def test_get_returns_value_when_not_none(self):
+        """Phase 148+: get returns the actual value when not None (non-regression)."""
+        cfg = LeelaConfig.from_dict({"exe_path": "C:\\leela.exe", "loss_scale_k": 0.75})
+        assert cfg.get("exe_path", "") == "C:\\leela.exe"
+        assert cfg.get("loss_scale_k", 0.5) == 0.75
+
+    def test_get_returns_default_when_key_missing(self):
+        """Phase 148+: get returns default when the attribute does not exist."""
+        cfg = LeelaConfig.from_dict({})
+        assert cfg.get("nonexistent_key", "default_value") == "default_value"
