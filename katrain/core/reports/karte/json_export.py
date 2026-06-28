@@ -129,7 +129,7 @@ def build_karte_json(
     common_meta = MetaExtractor.extract_game_meta(game, game_id=game_uid)
 
     meta: MetaData = {
-        "schema_version": "3.1",  # Phase 153-B: bumped from 3.0
+        "schema_version": "3.2",  # Phase 154-D: bumped from 3.1
         "game_id": game_uid,
         "generated_at": generated_at,
         "run_id": run_id,
@@ -269,8 +269,33 @@ def build_karte_json(
         "white": reason_tags_distribution_for(ctx, "W"),
     }
 
+    # Phase 154-D: Win/loss analysis + loss progression
+    from katrain.core.reports.sections import build_win_loss_analysis
+    from katrain.core.reports.utils.result_parser import parse_result
+    from katrain.core.reports.utils.loss_progression import compute_loss_progression
+
+    game_outcome = parse_result(common_meta.get("result"))
+    win_loss = build_win_loss_analysis(
+        game_summary=None,
+        snapshot_moves=list(snapshot.moves),
+        outcome=game_outcome,
+    )
+
+    loss_buckets = compute_loss_progression(list(snapshot.moves), bucket_size=10)
+    loss_progression = [
+        {
+            "start_move": b.start_move,
+            "end_move": b.end_move,
+            "move_count": b.move_count,
+            "total_loss": b.total_loss,
+            "avg_loss": b.avg_loss,
+            "mistake_count": b.mistake_count,
+        }
+        for b in loss_buckets
+    ]
+
     result: dict[str, Any] = {
-        "schema_version": "3.1",
+        "schema_version": "3.2",
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,
@@ -279,5 +304,7 @@ def build_karte_json(
         "critical_3": critical_3,
         "data_quality": data_quality,
         "reason_tags_distribution": reason_tags_dist,
+        "win_loss_analysis": win_loss,
+        "loss_progression": loss_progression,
     }
     return result

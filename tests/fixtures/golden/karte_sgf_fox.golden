@@ -1,7 +1,7 @@
 {
-  "schema_version": "3.1",
+  "schema_version": "3.2",
   "meta": {
-    "schema_version": "3.1",
+    "schema_version": "3.2",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -198,5 +198,116 @@
     "white": {
       "heavy_loss": 1
     }
-  }
+  },
+  "win_loss_analysis": {
+    "game_outcome": {
+      "black": "win",
+      "white": "loss",
+      "score_diff": null,
+      "raw": "B+R"
+    },
+    "by_outcome": {
+      "win": {
+        "count": 46,
+        "total_loss": 21.7,
+        "avg_loss": 0.5,
+        "mistake_count": 2
+      },
+      "loss": {
+        "count": 46,
+        "total_loss": 25.5,
+        "avg_loss": 0.6,
+        "mistake_count": 1
+      },
+      "draw": {
+        "count": 0,
+        "total_loss": 0.0,
+        "avg_loss": 0.0,
+        "mistake_count": 0
+      }
+    },
+    "status": "computed"
+  },
+  "loss_progression": [
+    {
+      "start_move": 1,
+      "end_move": 10,
+      "move_count": 10,
+      "total_loss": 5.2,
+      "avg_loss": 0.5,
+      "mistake_count": 1
+    },
+    {
+      "start_move": 11,
+      "end_move": 20,
+      "move_count": 10,
+      "total_loss": 8.7,
+      "avg_loss": 0.9,
+      "mistake_count": 1
+    },
+    {
+      "start_move": 21,
+      "end_move": 30,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 31,
+      "end_move": 40,
+      "move_count": 10,
+      "total_loss": 14.7,
+      "avg_loss": 1.5,
+      "mistake_count": 1
+    },
+    {
+      "start_move": 41,
+      "end_move": 50,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 51,
+      "end_move": 60,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 61,
+      "end_move": 70,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 71,
+      "end_move": 80,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 81,
+      "end_move": 90,
+      "move_count": 10,
+      "total_loss": 3.0,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    },
+    {
+      "start_move": 91,
+      "end_move": 92,
+      "move_count": 2,
+      "total_loss": 0.6,
+      "avg_loss": 0.3,
+      "mistake_count": 0
+    }
+  ]
 }

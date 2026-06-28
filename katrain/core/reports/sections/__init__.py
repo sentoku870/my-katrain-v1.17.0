@@ -1,16 +1,9 @@
-"""Report sections package.
+"""Reports sections package (Phase 154-D).
 
-Phase 60: Time Management section for Summary/Karte reports.
+Currently exposes:
+- :mod:`katrain.core.reports.sections.win_loss`: per-game win/loss breakdown.
 """
 
-from .time_section import (
-    TimeStatsData,
-    format_tilt_episode,
-    format_time_stats,
-)
+from katrain.core.reports.sections.win_loss import build_win_loss_analysis
 
-__all__ = [
-    "format_time_stats",
-    "format_tilt_episode",
-    "TimeStatsData",
-]
+__all__ = ["build_win_loss_analysis"]

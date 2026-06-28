@@ -20,16 +20,16 @@ from __future__ import annotations
 
 
 class TestKarteV3SchemaVersion:
-    """Schema version should be 3.1 in v3.1 JSON output (Phase 153)."""
+    """Schema version should be 3.2 in v3.2 JSON output (Phase 154-D)."""
 
-    def test_schema_version_is_3_1(self):
+    def test_schema_version_is_3_2(self):
         from katrain.core.reports.karte import build_karte_json
 
         from tests.test_karte_json import create_mock_game_with_analysis
 
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
-        assert result["schema_version"] == "3.1"
+        assert result["schema_version"] == "3.2"
 
 
 class TestKarteV3ExtendedSectionsPresent:

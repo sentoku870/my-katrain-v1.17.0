@@ -237,6 +237,69 @@ def build_summary_json(
 
         seq_status = "computed" if mistake_sequences else "computed_empty"
 
+        # Phase 154-D: Win/Loss analysis (per player)
+        from katrain.core.reports.utils.result_parser import (
+            GameOutcome,
+            PlayerOutcome,
+            parse_result,
+        )
+
+        win_games = loss_games = draw_games = unknown_games = 0
+        win_total_loss = loss_total_loss = draw_total_loss = 0.0
+        win_count_loss = loss_count_loss = draw_count_loss = 0
+        for gd in game_data_list:
+            outcome = gd.outcome if gd.outcome is not None else (
+                parse_result(gd.result) if gd.result else None
+            )
+            if outcome is None:
+                unknown_games += 1
+                continue
+            player_outcome = (
+                outcome.black if player_name == gd.player_black else outcome.white
+            )
+            if player_outcome == PlayerOutcome.WIN:
+                win_games += 1
+                for m in gd.snapshot.moves:
+                    if m.player == ("B" if player_name == gd.player_black else "W"):
+                        loss_v = m.points_lost or m.score_loss or 0.0
+                        win_total_loss += max(0.0, loss_v)
+                        win_count_loss += 1
+            elif player_outcome == PlayerOutcome.LOSS:
+                loss_games += 1
+                for m in gd.snapshot.moves:
+                    if m.player == ("B" if player_name == gd.player_black else "W"):
+                        loss_v = m.points_lost or m.score_loss or 0.0
+                        loss_total_loss += max(0.0, loss_v)
+                        loss_count_loss += 1
+            elif player_outcome == PlayerOutcome.DRAW:
+                draw_games += 1
+                for m in gd.snapshot.moves:
+                    if m.player == ("B" if player_name == gd.player_black else "W"):
+                        loss_v = m.points_lost or m.score_loss or 0.0
+                        draw_total_loss += max(0.0, loss_v)
+                        draw_count_loss += 1
+            else:
+                unknown_games += 1
+
+        win_loss_analysis = {
+            "win": {
+                "games": win_games,
+                "total_loss": round(win_total_loss, 2),
+                "avg_loss": round(win_total_loss / win_count_loss, 3) if win_count_loss else 0.0,
+            },
+            "loss": {
+                "games": loss_games,
+                "total_loss": round(loss_total_loss, 2),
+                "avg_loss": round(loss_total_loss / loss_count_loss, 3) if loss_count_loss else 0.0,
+            },
+            "draw": {
+                "games": draw_games,
+                "total_loss": round(draw_total_loss, 2),
+                "avg_loss": round(draw_total_loss / draw_count_loss, 3) if draw_count_loss else 0.0,
+            },
+            "unknown_games": unknown_games,
+        }
+
         players_data[player_name] = {
             "overall": overall,
             "mistakes": mistake_dist,
@@ -247,11 +310,43 @@ def build_summary_json(
                 "data": mistake_sequences
             },
             "top_mistakes": top_mistakes,
+            "win_loss_analysis": win_loss_analysis,
         }
-        
+
+    # Phase 154-D: Aggregated loss progression across all games
+    from katrain.core.reports.utils.loss_progression import compute_loss_progression
+
+    aggregated_buckets: dict[tuple[int, int], dict[str, float | int]] = {}
+    for gd in game_data_list:
+        for b in compute_loss_progression(list(gd.snapshot.moves), bucket_size=10):
+            bucket_key: tuple[int, int] = (b.start_move, b.end_move)
+            if bucket_key not in aggregated_buckets:
+                aggregated_buckets[bucket_key] = {
+                    "start_move": b.start_move,
+                    "end_move": b.end_move,
+                    "move_count": 0,
+                    "total_loss": 0.0,
+                    "avg_loss": 0.0,
+                    "mistake_count": 0,
+                }
+            agg: dict[str, float | int] = aggregated_buckets[bucket_key]
+            agg["move_count"] = int(agg["move_count"]) + b.move_count
+            agg["total_loss"] = float(agg["total_loss"]) + b.total_loss
+            agg["mistake_count"] = int(agg["mistake_count"]) + b.mistake_count
+
+    loss_progression: list[dict[str, float | int]] = []
+    for bk in sorted(aggregated_buckets):
+        agg = aggregated_buckets[bk]
+        mc = agg["move_count"]
+        agg["total_loss"] = round(agg["total_loss"], 2)
+        agg["avg_loss"] = round(agg["total_loss"] / mc, 3) if mc else 0.0
+        loss_progression.append(agg)
+
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "meta": meta,
         "games": games_meta,
         "players": players_data,
+        "loss_progression": loss_progression,
+        "win_loss_analysis": None,
     }
