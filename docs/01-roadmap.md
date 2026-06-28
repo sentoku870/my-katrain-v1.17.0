@@ -1,11 +1,12 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-27(Phase 149 完了)
+> 最終更新: 2026-06-28(Phase 150 完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
 > Phase 148 (2026-06-27 完了): 4 PR (#293 / #294 / #295 / #296)。詳細下記。
 > Phase 149 (2026-06-27 完了): Karte/Summary 残存問題点の発見と対応。詳細下記。
+> Phase 150 (2026-06-28 完了): mykatrain 設定バグ修正 + CI クリーンアップ。詳細下記。
 
 ---
 
@@ -44,6 +45,7 @@
 | **145-D** | settings_popup.py 部分抽出 | 703 行の関数から search / buttons / save / browse を抽出 | ✅ (部分的) |
 | **148** | Karte/Summary 品質改善 | only判定 / preset差 / importance / primary_tag / 連続forced / メタ情報 / 用語・拡張子 | ✅ (2026-06-27) |
 | **149** | Karte/Summary 残存問題対応 + Dead Code Revival | 4 PR (A: bug fixes / B: summary quality / C: JSON revival / D: docs) | ✅ (2026-06-27) |
+| **150** | mykatrain 設定バグ修正 + CI クリーンアップ | LeelaConfig.get() None デフォルト修正 / CI から macOS ビルド削除 / dead import 削除 | ✅ (2026-06-28) |
 
 ### 直近の更新詳細
 
@@ -134,6 +136,11 @@
 - **B'-2 (PR #294)**: context_builder に best_move_policy / actual_move_policy を追加（moveInfos の "prior"）、3タグ完全復活。
 - **C (PR #295)**: ONLY_MOVE BLUNDER を severity 集計から除外、SummaryAnalyzer の skill_preset 再分類、standard preset heavy_loss 15→5 / reading_failure 20→8、連続 forced 集約（consecutive_forced）、difficulty を "easy" に統一。
 - **D (PR #296)**: karte/summary の出力拡張子を `.md` → `.json` に完全移行（Navigator 既存パターン更新）、Navigator/preset テスト追加（test_report_navigator.py, test_preset_thresholds.py）。
+
+**Phase 150**: ✅ mykatrain 設定バグ修正 + CI クリーンアップ（2026-06-28 完了）。
+- **PR #301**: `LeelaConfig.get()` の dict 互換セマンティクス修正。`exe_path` が `None` の場合に `default` を返すよう変更し、`TextInput(text=None)` クラッシュを解消。
+- **PR #302**: CI から `build-macos` ジョブ削除（macOS 非サポート方針）。`spec/KaTrain.spec` と `__main__.py` の macOS 分岐は手動ビルド向けに温存。
+- 付随: `batch_analysis_controller.py:53` の未使用 import `do_mykatrain_settings_popup` を削除。
 
 ### 累積検証結果
 
@@ -291,6 +298,59 @@ READ-ONLY 調査で Phase 148 では触れられなかった 5 件のバグ、6 
 | セクション refactor で値が変わる | 中 | 既存ゴールデン 3 種 + 新セクション単体テスト |
 | `build_batch_summary` マークダウン i18n 化で文字列が変わる | 低 | 既存ゴールデン summary 系は JSON 部分のみで影響なし |
 | Dead code 削除で誰かが import していた | 低 | 削除前に grep で事前確認、テストは削除に合わせて更新 |
+
+### Phase 150: mykatrain 設定バグ修正 + CI クリーンアップ (2026-06-28 完了)
+
+> 起票日: 2026-06-28
+> 完了: 2026-06-28
+> PR: 2 (#301, #302)
+
+#### 背景
+
+ユーザーが myKatrain メニュー 5 機能（open latest report / open output folder / batch analyze folder / mykatrain settings / diagnostics）の動作確認を依頼したところ、mykatrain settings 起動時にクラッシュ。READ-ONLY 調査で残 4 機能は正常動作を確認。
+
+#### 主な発見・対応
+
+**Bug #1 (CRITICAL): mykatrain settings 起動時 AttributeError**
+- **症状**: ポップアップを開くと `'NoneType' object has no attribute 'replace'` で停止
+- **根本原因**: `LeelaConfig.exe_path: str | None = None` で属性値が `None` のデフォルト。一方 `LeelaConfig.get()` は `getattr(self, key, default)` で実装されており、属性値が存在すると default ではなく actual value（=None）が返る。`settings_popup.py:919` の `TextInput(text=None)` で Kivy の `_set_text` がクラッシュ
+- **修正**: `LeelaConfig.get()` を dict 互換セマンティクスに変更（属性が **存在しない** または **値が None** のときに default を返す）
+- **回帰テスト**: 3 件追加（None / present / missing key の各ケース）
+
+**CI クリーンアップ: macOS ビルド削除**
+- **背景**: macOS はサポート対象外方針。`build-macos` ジョブは 2 つの理由で fail
+  1. `setup-python-uv` アクションに存在しない `install-pyinstaller` 入力を渡していた
+  2. KataGo `BUILD_DISTRIBUTED=1` ビルドで libzip がリンク失敗
+- **対応**: `build-macos` ジョブ全体を削除。`create-release.needs` から `build-macos` を削除。release notes から macOS 行を削除
+- **温存**: `spec/KaTrain.spec` と `katrain/__main__.py` の macOS 分岐は手動ビルド用に意図的に残置
+
+**Cleanup: dead import 削除**
+- `gui/controllers/batch_analysis_controller.py:53` の未使用 import `do_mykatrain_settings_popup` を削除（バッチ解析フローでは参照されていない）
+
+#### 影響範囲
+
+| 項目 | 影響 |
+|------|------|
+| `LeelaConfig.get()` 利用箇所 7 箇所 | `exe_path` のみが `str | None` 型のため挙動変化、他 6 箇所は non-None デフォルトで変化なし |
+| 既存テスト `test_exe_path_empty_becomes_none` | 維持（`from_dict()` 挙動不変、`get()` のみ修正） |
+| Windows ビルド | 影響なし（PR #301 で build-windows pass 済み） |
+| 手動 macOS ビルド | 引き続き可能（spec/`__main__.py` の分岐を温存） |
+
+#### 検証結果
+
+| 検証 | 結果 |
+|------|------|
+| 既存テスト | 373 件パス + 2 件 skip |
+| 新規回帰テスト | 3 件追加（None / present / missing） |
+| mypy strict | エラー 0 |
+| Architecture テスト | 40/40 パス |
+| build-windows CI | pass（PR #302 CI run） |
+| CI 実行時間 | 約 2-3 分短縮（macOS ジョブ削除効果） |
+
+#### 残オープン項目
+
+- `katrain/KataGo/katago_eigen_backup` という untracked な巨大バックアップファイルが残存（ユーザー指示により放置）
+- `spec/KaTrain.spec` の macOS 分岐は macOS サポート再開時に備えて温存中
 
 ---
 
