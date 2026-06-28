@@ -46,6 +46,25 @@ class SummaryAnalyzer:
                 if self.focus_player and player_name != self.focus_player:
                     continue
 
+                # --- Phase 150: Resolve auto preset per-game × per-player ---
+                # karte 側 (karte/json_export.py:78-86) と同じ recommend_auto_strictness
+                # ロジックを使い、auto を実 preset に解決する。これにより summary の
+                # mistake 分類が karte の分類と完全一致する。
+                effective_preset = game_data.skill_preset
+                if effective_preset == "auto":
+                    player_moves_for_resolution = [
+                        m for m in game_data.snapshot.moves if m.player == player_color
+                    ]
+                    if player_moves_for_resolution:
+                        auto_rec = eval_metrics.recommend_auto_strictness(
+                            player_moves_for_resolution,
+                            game_count=1,
+                        )
+                        effective_preset = auto_rec.recommended_preset
+                    else:
+                        effective_preset = eval_metrics.DEFAULT_SKILL_PRESET
+                # --------------------------------------------------------------
+
                 # プレイヤー統計を初期化
                 if player_name not in self.player_stats:
                     self.player_stats[player_name] = SummaryStats(
@@ -79,11 +98,11 @@ class SummaryAnalyzer:
                         stats.total_points_lost += loss
 
                     # ミス分類を集計
-                    # Phase 148-C2: re-classify using game_data.skill_preset
+                    # Phase 148-C2: re-classify using effective_preset (resolved from auto)
                     # (preset-based score_thresholds, fallback to move.mistake_category)
                     cat = move.mistake_category
-                    if game_data.skill_preset:
-                        preset = eval_metrics.get_skill_preset(game_data.skill_preset)
+                    if effective_preset:
+                        preset = eval_metrics.get_skill_preset(effective_preset)
                         thresholds = preset.score_thresholds
                         if loss >= thresholds[2]:
                             cat = MistakeCategory.BLUNDER

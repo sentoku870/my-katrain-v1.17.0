@@ -544,3 +544,263 @@ class TestSummaryStatsMethods:
         assert computed is not None
         # 10.0 / 1 = 10.0
         assert computed.avg_points_lost_per_move == 10.0
+
+
+# =============================================================================
+# Phase 150: auto preset resolution (matches karte behavior)
+# =============================================================================
+
+
+class TestSummaryAnalyzerAutoPreset:
+    """Verify that skill_preset='auto' is resolved per-game × per-player
+    using the same `recommend_auto_strictness` helper as karte (json_export.py:78-86).
+
+    Background: prior to Phase 150, SummaryAnalyzer passed skill_preset='auto'
+    directly to get_skill_preset(), which fell back to "standard" because
+    "auto" is not a key in SKILL_PRESETS. This caused karte (which resolves
+    auto) and summary (which fell back to standard) to produce different
+    mistake counts for the same data. Phase 150 aligns summary with karte.
+    """
+
+    def test_auto_calls_recommend_auto_strictness(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """skill_preset='auto' must invoke recommend_auto_strictness exactly
+        once per (game, player) pair with that player's move list."""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        call_log: list[tuple[str, list[int]]] = []
+
+        def fake_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            call_log.append((moves[0].player if moves else "?", [m.move_number for m in moves]))
+            return AutoRecommendation(
+                recommended_preset="beginner",
+                confidence=AutoConfidence.LOW,
+                blunder_count=0,
+                important_count=0,
+                score=0,
+                reason="test",
+            )
+
+        # Patch the reference held by eval_metrics (summary_logic uses that)
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fake_recommend,
+        )
+
+        moves = [
+            _blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD),
+            _blunder(2, "W", loss=3.0, category=MistakeCategory.GOOD),
+            _blunder(3, "B", loss=3.0, category=MistakeCategory.GOOD),
+            _blunder(4, "W", loss=3.0, category=MistakeCategory.GOOD),
+        ]
+        gd = _make_game("g1.sgf", moves, skill_preset="auto")
+        SummaryAnalyzer([gd])
+
+        # Should be called twice (once for B, once for W)
+        assert len(call_log) == 2
+        player_list = sorted(call[0] for call in call_log)
+        assert player_list == ["B", "W"]
+        # Each player should see only their own moves
+        for _player, move_nums in call_log:
+            assert len(move_nums) == 2
+
+    def test_auto_uses_resolved_preset_thresholds(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Resolved preset's thresholds must drive classification.
+        Forcing beginner recommendation with loss=3.0 → INACCURACY
+        (beginner thresholds (2.0, 5.0, 10.0)) rather than MISTAKE
+        (standard thresholds (1.0, 2.5, 5.0))."""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        def fixed_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            return AutoRecommendation(
+                recommended_preset="beginner",
+                confidence=AutoConfidence.HIGH,
+                blunder_count=0,
+                important_count=1,
+                score=0,
+                reason="test",
+            )
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fixed_recommend,
+        )
+
+        moves = [_blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD)]
+        gd = _make_game("g1.sgf", moves, skill_preset="auto")
+        analyzer = SummaryAnalyzer([gd])
+
+        stats = analyzer.get_player_stats("Alice")
+        assert stats is not None
+        # beginner: 3.0 loss → INACCURACY (>=2.0, <5.0)
+        assert stats.mistake_counts.get(MistakeCategory.INACCURACY, 0) == 1
+        assert stats.mistake_counts.get(MistakeCategory.MISTAKE, 0) == 0
+
+    def test_auto_pro_recommendation_uses_pro_thresholds(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """If auto resolves to 'pro', pro thresholds (0.2, 0.5, 1.0) apply.
+        loss=3.0 → BLUNDER (>=1.0)."""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        def fixed_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            return AutoRecommendation(
+                recommended_preset="pro",
+                confidence=AutoConfidence.HIGH,
+                blunder_count=1,
+                important_count=1,
+                score=0,
+                reason="test",
+            )
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fixed_recommend,
+        )
+
+        moves = [_blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD)]
+        gd = _make_game("g1.sgf", moves, skill_preset="auto")
+        analyzer = SummaryAnalyzer([gd])
+
+        stats = analyzer.get_player_stats("Alice")
+        assert stats is not None
+        # pro: 3.0 loss → BLUNDER (>=1.0)
+        assert stats.mistake_counts.get(MistakeCategory.BLUNDER, 0) == 1
+
+    def test_auto_per_game_independent_resolution(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Two games with different move profiles must resolve independently.
+        Game1 recommends beginner → 3.0 loss = INACCURACY
+        Game2 recommends standard → 3.0 loss = MISTAKE"""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        def fake_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            # Decide based on game identifier embedded in move gtp
+            # (we encode via the moves' first gtp value)
+            gtp = moves[0].gtp if moves else ""
+            if gtp == "BEGINNER":
+                preset = "beginner"
+            elif gtp == "STANDARD":
+                preset = "standard"
+            else:
+                preset = "beginner"
+            return AutoRecommendation(
+                recommended_preset=preset,
+                confidence=AutoConfidence.HIGH,
+                blunder_count=0,
+                important_count=1,
+                score=0,
+                reason="test",
+            )
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fake_recommend,
+        )
+
+        # Game 1: beginner recommended (loss 3.0 → INACCURACY)
+        moves1 = [
+            _MockMove(
+                move_number=1, player="B", gtp="BEGINNER",
+                points_lost=3.0, score_loss=3.0,
+                mistake_category=MistakeCategory.GOOD,
+                position_difficulty=PositionDifficulty.NORMAL,
+            )
+        ]
+        gd1 = _make_game("g1.sgf", moves1, skill_preset="auto")
+
+        # Game 2: standard recommended (loss 3.0 → MISTAKE)
+        moves2 = [
+            _MockMove(
+                move_number=1, player="B", gtp="STANDARD",
+                points_lost=3.0, score_loss=3.0,
+                mistake_category=MistakeCategory.GOOD,
+                position_difficulty=PositionDifficulty.NORMAL,
+            )
+        ]
+        gd2 = _make_game("g2.sgf", moves2, skill_preset="auto")
+
+        analyzer = SummaryAnalyzer([gd1, gd2])
+        stats = analyzer.get_player_stats("Alice")
+        assert stats is not None
+        # Per-game resolution: game1=beginner(INACCURACY), game2=standard(MISTAKE)
+        assert stats.mistake_counts.get(MistakeCategory.INACCURACY, 0) == 1
+        assert stats.mistake_counts.get(MistakeCategory.MISTAKE, 0) == 1
+        assert stats.mistake_counts.get(MistakeCategory.BLUNDER, 0) == 0
+
+    def test_auto_fallback_when_no_moves_for_player(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """If a player has no moves in a game, auto resolution must fall back
+        to DEFAULT_SKILL_PRESET (standard), not crash."""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        call_count = {"n": 0}
+
+        def fake_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            call_count["n"] += 1
+            return AutoRecommendation(
+                recommended_preset="beginner",
+                confidence=AutoConfidence.HIGH,
+                blunder_count=0,
+                important_count=0,
+                score=0,
+                reason="test",
+            )
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fake_recommend,
+        )
+
+        # Only black moves; white has nothing → resolution for white should not call recommend
+        moves = [_blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD)]
+        gd = _make_game("g1.sgf", moves, skill_preset="auto")
+        SummaryAnalyzer([gd])
+        # Only B has moves → recommend called only once (for B)
+        assert call_count["n"] == 1
+
+    def test_explicit_preset_bypasses_auto_resolution(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Explicit preset names (standard/beginner/pro/advanced/relaxed) must
+        NOT call recommend_auto_strictness — they use the preset directly."""
+        def fake_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            raise AssertionError("recommend_auto_strictness should not be called for explicit presets")
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fake_recommend,
+        )
+
+        # Use explicit "pro" with loss=3.0 → should be BLUNDER via pro thresholds
+        moves = [_blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD)]
+        gd = _make_game("g1.sgf", moves, skill_preset="pro")
+        analyzer = SummaryAnalyzer([gd])
+
+        stats = analyzer.get_player_stats("Alice")
+        assert stats is not None
+        assert stats.mistake_counts.get(MistakeCategory.BLUNDER, 0) == 1
+
+    def test_auto_with_low_reliability_forces_standard(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When reliability is low (<20%), recommend_auto_strictness returns
+        'standard' with LOW confidence. Verify summary uses standard thresholds
+        in that case (loss=3.0 → MISTAKE)."""
+        from katrain.core.analysis.models.skill import AutoConfidence, AutoRecommendation
+
+        def fixed_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
+            return AutoRecommendation(
+                recommended_preset="standard",  # forced by reliability gate
+                confidence=AutoConfidence.LOW,
+                blunder_count=0,
+                important_count=1,
+                score=0,
+                reason="Low reliability (5.0%)",
+            )
+
+        monkeypatch.setattr(
+            "katrain.core.eval_metrics.recommend_auto_strictness",
+            fixed_recommend,
+        )
+
+        moves = [_blunder(1, "B", loss=3.0, category=MistakeCategory.GOOD)]
+        gd = _make_game("g1.sgf", moves, skill_preset="auto")
+        analyzer = SummaryAnalyzer([gd])
+
+        stats = analyzer.get_player_stats("Alice")
+        assert stats is not None
+        # standard: 3.0 loss → MISTAKE (>=2.5, <5.0)
+        assert stats.mistake_counts.get(MistakeCategory.MISTAKE, 0) == 1
+        assert stats.mistake_counts.get(MistakeCategory.INACCURACY, 0) == 0

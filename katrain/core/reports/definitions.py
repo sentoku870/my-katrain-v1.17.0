@@ -19,7 +19,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "2.1"
+REPORT_SCHEMA_VERSION: Final[str] = "3.0"  # Phase 150: bump from 2.1 to align with karte v3.0
 
 
 # --- Thresholds ---
