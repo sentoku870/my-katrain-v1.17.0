@@ -19,34 +19,13 @@ from typing import Any
 # =============================================================================
 # Explicit imports from helpers.py
 # =============================================================================
-from katrain.core.batch.helpers import (
-    # Constants
-    DEFAULT_TIMEOUT_SECONDS,
-    ENCODINGS_TO_TRY,
-    # Variable visits
-    choose_visits_for_sgf,
-    collect_sgf_files,
-    # File discovery
-    collect_sgf_files_recursive,
-    # Loss calculation
-    get_canonical_loss,
-    get_unique_filename,
-    has_analysis,
-    needs_leela_karte_warning,
-    normalize_player_name,
-    parse_sgf_with_fallback,
-    # Timeout parsing
-    parse_timeout_input,
-    read_sgf_with_fallback,
-    # UI validation
-    safe_int,
-    # File I/O
-    safe_write_file,
-    # Filename sanitization
-    sanitize_filename,
-    # Engine polling
-    wait_for_analysis,
-)
+from katrain.core.batch.discovery import collect_sgf_files, collect_sgf_files_recursive
+from katrain.core.batch.engine_polling import wait_for_analysis
+from katrain.core.batch.filenames import get_unique_filename, normalize_player_name, sanitize_filename
+from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS, parse_timeout_input, safe_int
+from katrain.core.batch.io_safe import safe_write_file
+from katrain.core.batch.leela_gate import needs_leela_karte_warning
+from katrain.core.batch.loss import get_canonical_loss
 
 # =============================================================================
 # Explicit imports from models.py
@@ -55,6 +34,13 @@ from katrain.core.batch.models import (
     BatchResult,
     WriteError,
 )
+from katrain.core.batch.sgf_io import (
+    ENCODINGS_TO_TRY,
+    has_analysis,
+    parse_sgf_with_fallback,
+    read_sgf_with_fallback,
+)
+from katrain.core.batch.visits import choose_visits_for_sgf
 
 # =============================================================================
 # Public API
