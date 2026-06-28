@@ -107,6 +107,26 @@ class BaseEngine:
         # Subclasses should override to implement proper logging
         pass
 
+    def is_alive(self) -> bool:
+        """Lightweight health check for UI layer; does not raise or open popups.
+
+        Subclasses with a subprocess (e.g. KataGoEngine) override this to check
+        the actual process state. Default returns False (no process).
+        """
+        return False
+
+    def set_analysis_focus(self, focus: list[int | None] | None) -> None:
+        """Set or clear the analysis focus region.
+
+        Args:
+            focus: Rectangle [x1, y1, x2, y2] to restrict analysis, or None to clear
+                   (the engine will analyze the whole board).
+        """
+        if focus is None:
+            self.config.pop("analysis_focus", None)
+        else:
+            self.config["analysis_focus"] = focus
+
 
 class KataGoEngine(BaseEngine):
     """Starts and communicates with the KataGO analysis engine"""
@@ -496,6 +516,14 @@ class KataGoEngine(BaseEngine):
         # This function is advisory; don't use for precise control flow.
         with self.thread_lock:
             return not self.queries and self.write_queue.empty()
+
+    def is_alive(self) -> bool:
+        """Lightweight health check; thin wrapper over check_alive().
+
+        Does not raise, does not open popups, does not modify state.
+        Safe for UI layer to call frequently (e.g. on every status update).
+        """
+        return self.check_alive()
 
     def queries_remaining(self) -> int:
         with self.thread_lock:
