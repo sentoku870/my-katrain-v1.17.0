@@ -33,6 +33,16 @@ outdated_log.txt
 # too big
 models/*.bin.gz
 
+# Local KataGo binaries (user-replaced or backup variants)
+# The default katago/katago.exe binaries remain tracked so fresh clones
+# can run out of the box on Windows, but platform-specific replacements
+# and backups should never be committed.
+katrain/KataGo/katago_eigen_backup
+katrain/KataGo/katago_appimage*
+katrain/KataGo/katago-osx
+katrain/KataGo/katago-cpu
+katrain/KataGo/katago-eigen
+
 # standard python ignore
 # Byte-compiled / optimized / DLL files
 __pycache__/

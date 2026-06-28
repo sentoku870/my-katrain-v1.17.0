@@ -603,6 +603,7 @@ class KataGoEngine(BaseEngine):
                 return
             if not line:
                 continue
+            query_found = False
             try:
                 analysis = json.loads(line)
                 if "id" not in analysis:
@@ -616,7 +617,6 @@ class KataGoEngine(BaseEngine):
                 error_callback = None
                 start_time = None
                 next_move = None
-                query_found = False
 
                 with self.thread_lock:
                     if query_id not in self.queries:
