@@ -133,7 +133,7 @@ def do_play(ctx: KaTrainGui, coords: Any) -> None:
     from katrain.core.lang import i18n
     from katrain.core.sgf_parser import Move
     from katrain.core.constants import STATUS_ERROR
-    from katrain.core.sound import play_sound
+    from katrain.gui.sound import play_sound
     from katrain.gui.theme import Theme
 
     ctx.board_gui.animating_pv = None
