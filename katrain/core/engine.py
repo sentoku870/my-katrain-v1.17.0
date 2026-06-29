@@ -1,4 +1,10 @@
 # mypy: ignore-errors
+#
+# Phase 158+: This module's class is now a thin skeleton. I/O thread
+# functions have been extracted to ``katrain.core.engine_io`` and query
+# lifecycle methods have been extracted to ``katrain.core.engine_query``.
+# Both helpers are imported lazily inside the wrapper methods to avoid
+# runtime circular imports between the three modules.
 # Note: This module contains Windows-specific code paths (subprocess.STARTF_USESHOWWINDOW).
 # On Linux CI, mypy cannot resolve Windows API calls, but these are guarded by platform checks.
 from __future__ import annotations
@@ -12,26 +18,20 @@ import shlex
 import subprocess
 import threading
 import time
-import traceback
 from collections.abc import Callable
 from typing import Any
 
 from katrain.common.platform import get_platform
 from katrain.core.constants import (
     DATA_FOLDER,
-    KATAGO_EXCEPTION,
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_EXTRA_DEBUG,
-    OUTPUT_KATAGO_STDERR,
-    PONDERING_REPORT_DT,
 )
-from katrain.core.engine_query import build_analysis_query
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
-from katrain.core.notify_helpers import maybe_notify_analysis_complete
 from katrain.core.sgf_parser import Move
-from katrain.core.utils import find_package_resource, json_truncate_arrays
+from katrain.core.utils import find_package_resource
 
 # Maximum pending queries before rejecting new ones
 MAX_PENDING_QUERIES = 100
@@ -158,7 +158,15 @@ class BaseEngine:
 
 
 class KataGoEngine(BaseEngine):
-    """Starts and communicates with the KataGO analysis engine"""
+    """Starts and communicates with the KataGo analysis engine.
+
+    Phase 158+: The thread functions (pipe_reader, stderr, write_stdin,
+    analysis_read) have been extracted to ``engine_io.py``, and the query
+    lifecycle methods (send_query, request_analysis, terminate_query, etc.)
+    have been extracted to ``engine_query.py``. This class retains the
+    process lifecycle (start/shutdown/init) and provides thin wrappers that
+    delegate to the helper modules. The public API is preserved.
+    """
 
     PONDER_KEY = "_kt_continuous"
     # Timeout for Queue.get() in consumer threads (seconds)
@@ -334,40 +342,24 @@ class KataGoEngine(BaseEngine):
                 self._pending_query_count = 0
 
     def terminate_queries(self, only_for_node: GameNode | None = None, lock: bool = True) -> None:
-        if lock:
-            with self.thread_lock:
-                return self.terminate_queries(only_for_node=only_for_node, lock=False)
-        for query_id, (_, _, _, _, node) in list(self.queries.items()):
-            if only_for_node is None or only_for_node is node:
-                self.terminate_query(query_id)
+        from katrain.core.engine_query import terminate_queries as _terminate_queries
+
+        _terminate_queries(self, only_for_node=only_for_node, lock=lock)
 
     def stop_pondering(self) -> None:
-        """Stop pondering (public API, acquires lock)."""
-        with self.thread_lock:
-            pq = self._stop_pondering_unlocked()
-        if pq:
-            self.terminate_query(pq["id"], ignore_further_results=False)
+        from katrain.core.engine_query import stop_pondering as _stop
+
+        _stop(self)
 
     def _stop_pondering_unlocked(self) -> dict[str, Any] | None:
-        """Stop pondering without acquiring lock (caller must hold thread_lock)."""
-        pq = self.ponder_query
-        self.ponder_query = None
-        return pq
+        from katrain.core.engine_query import stop_pondering_unlocked as _stop
+
+        return _stop(self)
 
     def terminate_query(self, query_id: str, ignore_further_results: bool = True) -> None:
-        """Terminate a query (thread-safe).
+        from katrain.core.engine_query import terminate_query as _terminate
 
-        Args:
-            query_id: The query ID to terminate
-            ignore_further_results: If True, remove from queries dict (ignore any future results)
-        """
-        self.katrain.log(f"Terminating query {query_id}", OUTPUT_DEBUG)
-
-        if query_id is not None:
-            self.send_query({"action": "terminate", "terminateId": query_id}, None, None)
-            if ignore_further_results:
-                with self.thread_lock:
-                    self.queries.pop(query_id, None)
+        _terminate(self, query_id, ignore_further_results=ignore_further_results)
 
     def restart(self) -> None:
         with self.thread_lock:
@@ -479,11 +471,7 @@ class KataGoEngine(BaseEngine):
         self.katrain.log("Engine shutdown complete", OUTPUT_DEBUG)
 
     def _safe_queue_put(self, q: queue.Queue[Any], item: Any, context: str) -> None:
-        """Put item to queue with timeout to prevent deadlock.
-
-        Uses put_nowait() first, falls back to put(timeout=1.0) if full.
-        Never blocks indefinitely.
-        """
+        """Put item to queue with timeout to prevent deadlock."""
         try:
             q.put_nowait(item)
         except queue.Full:
@@ -586,194 +574,104 @@ class KataGoEngine(BaseEngine):
         with self.thread_lock:
             return len(self.queries) + int(not self.write_queue.empty())
 
+    # =================================================================
+    # I/O threads (delegated to engine_io)
+    # =================================================================
+
     def _pipe_reader_thread(self, pipe: Any, output_queue: queue.Queue[bytes | None], name: str) -> None:
-        """Read from pipe and put lines into queue (blocking I/O isolated here).
+        from katrain.core.engine_io import pipe_reader_thread as _impl
 
-        This thread performs blocking readline() calls. When the process terminates
-        or pipes are closed, readline() returns empty bytes (EOF).
-
-        Args:
-            pipe: File-like object (process.stdout or process.stderr)
-            output_queue: Queue to put read lines into
-            name: Thread name for logging
-        """
-        while not self._shutdown_event.is_set():
-            try:
-                line = pipe.readline()
-                if not line:
-                    break  # EOF or process terminated
-                output_queue.put(line)
-            except (OSError, ValueError):
-                break  # Pipe closed or error
-        # Signal consumer thread that this reader is done
-        output_queue.put(None)
-        self.katrain.log(f"Pipe reader {name} finished", OUTPUT_DEBUG)
+        _impl(self, pipe, output_queue, name)
 
     def _read_stderr_thread(self) -> None:
-        """Process stderr lines from queue (non-blocking with timeout)."""
-        while not self._shutdown_event.is_set():
-            try:
-                raw_line = self._stderr_queue.get(timeout=self.IO_TIMEOUT)
-                if raw_line is None:
-                    return  # Termination signal from reader thread
-                line = _ensure_str(raw_line)
-                if line:
-                    if "Uncaught exception" in line or "what()" in line:  # linux=what
-                        msg = f"KataGo Engine Failed: {line[9:].strip()}"
-                        self._fire_engine_error(msg, KATAGO_EXCEPTION)
-                        return
-                    try:
-                        self.katrain.log(line.strip(), OUTPUT_KATAGO_STDERR)
-                        # Phase 120: Status callback for UI updates
-                        if self.status_callback:
-                            lower_line = line.lower()
-                            if "starting" in lower_line:
-                                self.status_callback("starting", line)
-                            elif line.startswith("Tuning"):
-                                self.status_callback("tuning", line)
-                            elif "ready" in lower_line:
-                                self.status_callback("ready", line)
-                    except Exception as e:  # noqa: BLE001 - thread exception, must log and continue
-                        self.katrain.log(
-                            f"Error processing stderr: {line!r}: {e}\n{traceback.format_exc()}",
-                            OUTPUT_ERROR,
-                        )
-            except queue.Empty:
-                # Timeout - check if we should continue
-                if self._shutdown_event.is_set():
-                    return
-                # No stderr activity is normal during idle periods
-                continue
-            except Exception as e:  # noqa: BLE001 - thread exception, must log and exit gracefully
-                self.katrain.log(
-                    f"Exception in stderr thread: {e}\n{traceback.format_exc()}",
-                    OUTPUT_ERROR,
-                )
-                return
+        from katrain.core.engine_io import read_stderr_thread as _impl
+
+        _impl(self)
 
     def _analysis_read_thread(self) -> None:
-        """Process analysis results from queue (non-blocking with timeout)."""
-        while not self._shutdown_event.is_set():
-            try:
-                raw_line = self._stdout_queue.get(timeout=self.IO_TIMEOUT)
-                if raw_line is None:
-                    return  # Termination signal from reader thread
-                line = _ensure_str(raw_line).strip()
-            except queue.Empty:
-                # Timeout - check if we should continue or handle timeout
-                if self._shutdown_event.is_set():
-                    return
-                # Check if there are pending queries and process is dead
-                with self.thread_lock:
-                    has_pending_queries = bool(self.queries)
-                if has_pending_queries and not self.check_alive():
-                    self._handle_engine_timeout()
-                    return
-                # No pending queries or process alive - continue waiting
-                continue
-            except Exception as e:  # noqa: BLE001 - thread exception, must log and exit gracefully
-                self.katrain.log(
-                    f"Exception in analysis thread: {e}\n{traceback.format_exc()}",
-                    OUTPUT_ERROR,
-                )
-                self.check_alive(os_error=str(e), exception_if_dead=True, maybe_open_recovery=True)
-                return
+        from katrain.core.engine_io import analysis_read_thread as _impl
 
-            if not line:
-                continue
+        _impl(self)
 
-            if "Uncaught exception" in line:
-                msg = f"KataGo Engine Failed: {line}"
-                self._fire_engine_error(msg, KATAGO_EXCEPTION)
-                return
-            if not line:
-                continue
-            query_found = False
-            try:
-                analysis = json.loads(line)
-                if "id" not in analysis:
-                    self.katrain.log(f"Error without ID {analysis} received from KataGo", OUTPUT_ERROR)
-                    continue
-                query_id = analysis["id"]
+    def _write_stdin_thread(self) -> None:
+        from katrain.core.engine_io import write_stdin_thread as _impl
 
-                # Retrieve query data under lock to prevent race conditions
-                # Callbacks are executed outside the lock to avoid deadlocks
-                callback = None
-                error_callback = None
-                start_time = None
-                next_move = None
+        _impl(self)
 
-                with self.thread_lock:
-                    if query_id not in self.queries:
-                        # Query was already removed by terminate_queries() or on_new_game()
-                        # This is a normal case when switching games or canceling analysis
-                        if analysis.get("action") != "terminate":
-                            self.katrain.log(
-                                f"Query result {query_id} discarded -- recent new game or node reset?", OUTPUT_DEBUG
-                            )
-                        # Phase 98 fix: Decrement pending count even for discarded queries
-                        self._decrement_pending_count()
-                        continue
-                    query_found = True
-                    callback, error_callback, start_time, next_move, _ = self.queries[query_id]
-                    if "error" in analysis:
-                        del self.queries[query_id]
-                    elif "warning" in analysis or "terminateId" in analysis:
-                        pass  # No deletion needed for warnings/terminate confirmations
-                    else:
-                        partial_result = analysis.get("isDuringSearch", False)
-                        if not partial_result:
-                            del self.queries[query_id]
+    # =================================================================
+    # Query lifecycle (delegated to engine_query)
+    # =================================================================
 
-                # Process results outside the lock
-                if "error" in analysis:
-                    if error_callback:
-                        self._invoke_error_callback(error_callback, analysis)
-                    elif not (next_move and "Illegal move" in analysis["error"]):  # sweep
-                        self.katrain.log(f"{analysis} received from KataGo", OUTPUT_ERROR)
-                    # Decrement pending count on error completion
-                    self._decrement_pending_count()
-                elif "warning" in analysis or "terminateId" in analysis:
-                    self.katrain.log(f"{analysis} received from KataGo", OUTPUT_DEBUG)
-                else:
-                    partial_result = analysis.get("isDuringSearch", False)
-                    time_taken = time.time() - start_time
-                    results_exist = not analysis.get("noResults", False)
-                    self.katrain.log(
-                        f"[{time_taken:.1f}][{query_id}][{'....' if partial_result else 'done'}] KataGo analysis received: {len(analysis.get('moveInfos', []))} candidate moves, {analysis['rootInfo']['visits'] if results_exist else 'n/a'} visits",
-                        OUTPUT_DEBUG,
-                    )
-                    self.katrain.log(json_truncate_arrays(analysis), OUTPUT_EXTRA_DEBUG)
-                    try:
-                        if callback and results_exist:
-                            callback(analysis, partial_result)
-                    except Exception as e:  # noqa: BLE001 - callback exception, must log and continue
-                        self.katrain.log(
-                            f"Error in engine callback for query {query_id}: {e}\n{traceback.format_exc()}",
-                            OUTPUT_ERROR,
-                        )
-                    # Decrement pending count on success completion (non-partial only)
-                    if not partial_result:
-                        self._decrement_pending_count()
+    def _invoke_error_callback(self, error_callback: Callable[..., None] | None, error_msg: dict[str, Any]) -> None:
+        from katrain.core.engine_query import invoke_error_callback as _impl
 
-                    # Phase 105: ANALYSIS_COMPLETE通知（キーワード引数必須）
-                    maybe_notify_analysis_complete(
-                        katrain=self.katrain,
-                        partial_result=partial_result,
-                        results_exist=results_exist,
-                        query_id=query_id,
-                    )
+        _impl(self, error_callback, error_msg)
 
-                if getattr(self.katrain, "update_state", None):  # easier mocking etc
-                    self.katrain.update_state()
-            except Exception as e:  # noqa: BLE001 - thread exception, must log and continue processing
-                self.katrain.log(
-                    f"Unexpected exception {e} while processing KataGo output {line}\n{traceback.format_exc()}",
-                    OUTPUT_ERROR,
-                )
-                # Decrement pending count if query was found but processing failed
-                if query_found:
-                    self._decrement_pending_count()
+    def _decrement_pending_count(self) -> None:
+        from katrain.core.engine_query import decrement_pending_count as _impl
+
+        _impl(self)
+
+    def get_pending_count(self) -> int:
+        from katrain.core.engine_query import get_pending_count as _impl
+
+        return _impl(self)
+
+    def has_query_capacity(self, headroom: int = 10) -> bool:
+        from katrain.core.engine_query import has_query_capacity as _impl
+
+        return _impl(self, headroom)
+
+    def send_query(
+        self,
+        query: dict[str, Any],
+        callback: Callable[..., None] | None,
+        error_callback: Callable[..., None] | None,
+        next_move: Move | None = None,
+        node: GameNode | None = None,
+    ) -> bool:
+        from katrain.core.engine_query import send_query as _impl
+
+        return _impl(self, query, callback, error_callback, next_move, node)
+
+    def request_analysis(
+        self,
+        analysis_node: GameNode,
+        callback: Callable[..., None],
+        error_callback: Callable[..., None] | None = None,
+        visits: int | None = None,
+        analyze_fast: bool = False,
+        time_limit: bool = True,
+        find_alternatives: bool = False,
+        region_of_interest: list[int] | None = None,
+        priority: int = 0,
+        ponder: bool = False,
+        ownership: bool | None = None,
+        next_move: Move | None = None,
+        extra_settings: dict[str, Any] | None = None,
+        include_policy: bool = True,
+        report_every: float | None = None,
+    ) -> None:
+        from katrain.core.engine_query import request_analysis as _impl
+
+        _impl(
+            self,
+            analysis_node,
+            callback,
+            error_callback,
+            visits,
+            analyze_fast,
+            time_limit,
+            find_alternatives,
+            region_of_interest,
+            priority,
+            ponder,
+            ownership,
+            next_move,
+            extra_settings,
+            include_policy,
+            report_every,
+        )
 
     def _handle_engine_timeout(self) -> None:
         """Handle engine timeout (called from background thread).
@@ -793,263 +691,9 @@ class KataGoEngine(BaseEngine):
         if self.allow_recovery:
             self._fire_engine_error("Engine timeout", code="timeout", allow_popup=True)
 
-    def _write_stdin_thread(self) -> None:
-        """Write queries to KataGo stdin (TOCTOU-safe).
-
-        Flush only in a thread since it returns only when the other program reads.
-        """
-        while not self._shutdown_event.is_set():
-            # Local capture pattern for TOCTOU safety
-            process = self.katago_process
-            if process is None:
-                return
-            try:
-                item = self.write_queue.get(block=True, timeout=0.1)
-            except queue.Empty:
-                continue
-            # Check for termination signal (None)
-            if item is None:
-                return
-            query: dict[str, Any]
-            callback: Callable[..., None] | None
-            error_callback: Callable[..., None] | None
-            next_move: Move | None
-            node: GameNode | None
-            query, callback, error_callback, next_move, node = item
-            old_ponder_query: dict[str, Any] | None = None  # To call terminate_query outside of lock
-            with self.thread_lock:
-                if "id" not in query:
-                    self.query_counter += 1
-                    query["id"] = f"QUERY:{str(self.query_counter)}"
-
-                ponder = query.pop(self.PONDER_KEY, False)
-                if ponder:  # handle pondering in here to be in lock and such
-                    pq: dict[str, Any] = self.ponder_query or {}
-                    # basically we handle pondering by just asking for these queries a lot and ignoring duplicates
-                    # when a different ponder query comes in, e.g. due to selecting a roi or different node, switch
-                    differences = {
-                        k: (pq.get(k), query.get(k))
-                        for k in (query.keys() | pq.keys()) - {"id", "maxVisits", "reportDuringSearchEvery"}
-                        if pq.get(k) != query.get(k)
-                    }
-                    if differences:
-                        old_ponder_query = self._stop_pondering_unlocked()
-                        query["maxVisits"] = 10_000_000
-                        query["reportDuringSearchEvery"] = PONDERING_REPORT_DT
-                        self.ponder_query = query
-                    else:
-                        # Duplicate ponder query - discard without sending
-                        # Must decrement counter since send_query already incremented it
-                        self._decrement_pending_count()
-                        continue
-
-                terminate = query.get("action") == "terminate"
-                if not terminate:
-                    self.queries[query["id"]] = (callback, error_callback, time.time(), next_move, node)
-                tag = "ponder " if ponder else ("terminate " if terminate else "")
-                self.katrain.log(f"Sending {tag}query {query['id']}: {json.dumps(query)}", OUTPUT_DEBUG)
-
-            # Write to stdin outside lock (I/O should not be under lock)
-            # Re-capture process reference after lock release
-            process = self.katago_process
-            if process is None:
-                return
-            try:
-                if process.stdin is None:
-                    return
-                process.stdin.write((json.dumps(query) + "\n").encode())
-                process.stdin.flush()
-            except (OSError, AttributeError, ValueError, BrokenPipeError) as e:
-                self.katrain.log(f"Exception in writing to katago: {e}", OUTPUT_DEBUG)
-                # Decrement pending count for non-terminate queries that failed to send
-                if not terminate:
-                    self._decrement_pending_count()
-                return  # some other thread will take care of this
-            # Terminate old ponder query outside of lock to avoid deadlock
-            if old_ponder_query:
-                self.terminate_query(old_ponder_query["id"], ignore_further_results=False)
-
-    def _invoke_error_callback(self, error_callback: Callable[..., None] | None, error_msg: dict[str, Any]) -> None:
-        """Invoke per-query error callback on the main thread.
-
-        The main_thread_scheduler is injected by the engine owner (e.g. the GUI
-        layer passes kivy.clock.Clock.schedule_once). In headless/test contexts
-        the default identity scheduler calls the callback inline.
-
-        Thread safety rule: UI-touching callbacks MUST run on main thread.
-        Scheduling failures are logged but do not invoke the callback off-thread
-        (which could corrupt UI state).
-        """
-        if error_callback is None:
-            return
-        try:
-            # *args/**kwargs so the wrapper tolerates schedulers that pass _dt (Kivy)
-            self._main_thread_scheduler(lambda *_a, **_kw: error_callback(error_msg))
-        except Exception as e:  # noqa: BLE001 - last-resort error path
-            self.katrain.log(f"Error in error_callback: {e}", OUTPUT_ERROR)
-
-    def _decrement_pending_count(self) -> None:
-        """Decrement pending counter. Called on query completion/error."""
-        with self._pending_query_lock:
-            self._pending_query_count = max(0, self._pending_query_count - 1)
-
-    def get_pending_count(self) -> int:
-        """Get current pending query count (thread-safe).
-
-        Returns:
-            Current number of pending queries.
-        """
-        with self._pending_query_lock:
-            return self._pending_query_count
-
-    def has_query_capacity(self, headroom: int = 10) -> bool:
-        """Check if engine has capacity for more queries.
-
-        Args:
-            headroom: Minimum free slots required (default: 10)
-
-        Returns:
-            True if pending_count <= MAX_PENDING_QUERIES - headroom
-        """
-        with self._pending_query_lock:
-            return self._pending_query_count <= MAX_PENDING_QUERIES - headroom
-
-    def send_query(
-        self,
-        query: dict[str, Any],
-        callback: Callable[..., None] | None,
-        error_callback: Callable[..., None] | None,
-        next_move: Move | None = None,
-        node: GameNode | None = None,
-    ) -> bool:
-        """Send query to engine with safety checks.
-
-        Threading contract:
-            - callback: Called from engine read thread. MUST NOT touch Kivy UI directly.
-                       Use Clock.schedule_once() if UI update needed.
-            - error_callback: Scheduled on Kivy main thread via _invoke_error_callback().
-                             Safe to touch UI.
-
-        Args:
-            query: Query dict to send to engine.
-            callback: Function(analysis_dict, is_partial) for successful results.
-                     Called from background thread - must be thread-safe.
-            error_callback: Function(error_dict) for errors.
-                           Will be scheduled on main thread.
-            next_move: Optional next move node.
-            node: Optional analysis node.
-
-        Returns:
-            True if query was accepted and queued.
-            False if query was rejected (engine dead, pending limit).
-        """
-        # Safety 1: Engine alive check
-        if not self.check_alive():
-            error_msg = {"error": "Engine not alive", "id": query.get("id", "unknown")}
-            self._invoke_error_callback(error_callback, error_msg)
-            return False
-
-        # Safety 2: Pending query limit check
-        with self._pending_query_lock:
-            if self._pending_query_count >= MAX_PENDING_QUERIES:
-                error_msg = {"error": "Too many pending queries", "id": query.get("id", "unknown")}
-                self._invoke_error_callback(error_callback, error_msg)
-                self.katrain.log(
-                    f"Query rejected: {self._pending_query_count} pending (limit: {MAX_PENDING_QUERIES})", OUTPUT_ERROR
-                )
-                return False
-            self._pending_query_count += 1
-
-        # Queue the query (decrement on completion/error in _analysis_read_thread)
-        try:
-            self.write_queue.put((query, callback, error_callback, next_move, node))
-            return True
-        except Exception as e:
-            # Queue insertion failed (should not happen, but safety net)
-            with self._pending_query_lock:
-                self._pending_query_count = max(0, self._pending_query_count - 1)
-            self.katrain.log(f"Failed to queue query: {e}", OUTPUT_ERROR)
-            error_msg = {"error": f"Queue error: {e}", "id": query.get("id", "unknown")}
-            self._invoke_error_callback(error_callback, error_msg)
-            return False
-
-    def request_analysis(
-        self,
-        analysis_node: GameNode,
-        callback: Callable[..., None],
-        error_callback: Callable[..., None] | None = None,
-        visits: int | None = None,
-        analyze_fast: bool = False,
-        time_limit: bool = True,
-        find_alternatives: bool = False,
-        region_of_interest: list[int] | None = None,
-        priority: int = 0,
-        ponder: bool = False,  # infinite visits, cancellable
-        ownership: bool | None = None,
-        next_move: Move | None = None,
-        extra_settings: dict[str, Any] | None = None,
-        include_policy: bool = True,
-        report_every: float | None = None,
-    ) -> None:
-        # Check for unsupported AE commands (clear_placements is intentionally
-        # detected and skipped - we don't send these to KataGo as the engine
-        # doesn't have a "clear" placement concept; setup moves are supported
-        # via startgame analysis elsewhere).
-        nodes = analysis_node.nodes_from_root
-        clear_placements = [m for node in nodes for m in node.clear_placements]
-        if clear_placements:
-            self.katrain.log(f"Not analyzing node {analysis_node} as there are AE commands in the path", OUTPUT_DEBUG)
-            return
-
-        # Resolve ownership
-        if ownership is None:
-            ownership = self.config["_enable_ownership"] and not next_move
-
-        # Resolve visits with analysis_focus and analyze_fast
-        if visits is None:
-            visits = self.config["max_visits"]
-
-            # analysis_focus に基づいて visits を調整
-            focus = self.config.get("analysis_focus")
-            if focus:
-                # 優先しない色のターンの場合、fast_visits を使用
-                if (
-                    (focus == "black" and analysis_node.next_player == "W")
-                    or (focus == "white" and analysis_node.next_player == "B")
-                ) and self.config.get("fast_visits"):
-                    visits = self.config["fast_visits"]
-            elif analyze_fast and self.config.get("fast_visits"):
-                # analysis_focus がない場合のデフォルト処理（analyze_fast時）
-                visits = self.config["fast_visits"]
-
-        # Build query using engine_query module (Phase 68)
-        query = build_analysis_query(
-            analysis_node=analysis_node,
-            visits=visits,
-            ponder=ponder,
-            ownership=ownership,
-            rules=self.get_rules(analysis_node.ruleset),
-            base_priority=self.base_priority,
-            priority=priority,
-            override_settings=self.override_settings,
-            wide_root_noise=self.config["wide_root_noise"],
-            max_time=self.config.get("max_time"),
-            time_limit=time_limit,
-            next_move=next_move,
-            find_alternatives=find_alternatives,
-            region_of_interest=region_of_interest,
-            extra_settings=extra_settings,
-            include_policy=include_policy,
-            report_every=report_every,
-            ponder_key=self.PONDER_KEY,
-        )
-
-        self.send_query(query, callback, error_callback, next_move, analysis_node)
-        analysis_node.analysis_visits_requested = max(analysis_node.analysis_visits_requested, visits)
-
-    # =========================================================================
-    # Phase 89: Auto Mode Support
-    # =========================================================================
+    # =================================================================
+    # Backend / query utilities (kept inline - small)
+    # =================================================================
 
     def get_backend_type(self) -> str:
         """Get backend type for display (best-effort heuristic).
@@ -1103,3 +747,5 @@ class KataGoEngine(BaseEngine):
             "includeOwnership": False,
             "includePolicy": False,
         }
+
+
