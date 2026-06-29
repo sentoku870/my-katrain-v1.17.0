@@ -21,14 +21,12 @@ from katrain.core import eval_metrics
 from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     BatchResult,
-    needs_leela_karte_warning,  # noqa: F401
     parse_timeout_input,
     run_batch,
 )
 from katrain.core.batch import (
     safe_int as _safe_int,
 )
-from katrain.core.constants import STATUS_ERROR  # noqa: F401
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
 
@@ -315,6 +313,4 @@ def run_batch_in_thread(
 # ---------------------------------------------------------------------------
 # Pure helper functions (testable without UI)
 # ---------------------------------------------------------------------------
-
-# NOTE: needs_leela_karte_warning is now imported from katrain.core.batch (Phase 42-A)
 

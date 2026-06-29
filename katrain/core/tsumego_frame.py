@@ -90,8 +90,8 @@ def tsumego_frame_stones(stones: StonesGrid, komi: float, black_to_play_p: bool,
     right = min_by(ijs, "j", -1)
     imin = snap0(top["i"])
     jmin = snap0(left["j"])
-    imax = snapS(bottom["i"], isize)
-    jmax = snapS(right["j"], jsize)
+    imax = snap_s(bottom["i"], isize)
+    jmax = snap_s(right["j"], jsize)
     # flip/rotate for standard position
     # don't mix flip and swap (FF = SS = identity, but SFSF != identity)
     flip_spec = (
@@ -124,7 +124,7 @@ def snap0(k: int) -> int:
     return snap(k, 0)
 
 
-def snapS(k: int, size: int) -> int:
+def snap_s(k: int, size: int) -> int:
     return snap(k, size - 1)
 
 
