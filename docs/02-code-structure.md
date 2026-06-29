@@ -93,7 +93,10 @@ katrain/
 │       ├── quiz_session.py      # クイズセッション
 │       ├── batch_core.py        # バッチ解析コア
 │       ├── batch_ui.py          # バッチ解析UI
-│       ├── settings_popup.py    # 設定ポップアップ
+│       ├── settings_popup.py    # 設定ポップアップ（オーケストレータ）
+│       ├── settings_popup_state.py    # _SettingsPopupContext（Phase 158-E 抽出）
+│       ├── settings_popup_helpers.py  # _add_searchable_label（Phase 158-E 抽出）
+│       ├── settings_popup_tabs/__init__.py  # _build_leela_tab（Phase 158-E 抽出）
 │       ├── skill_radar_popup.py # スキルレーダーポップアップ（Phase 51）
 │       └── auto_mode_popup.py   # 自動セットアップUI（Phase 89）
 │
@@ -295,7 +298,10 @@ self.save_config("section")
 | `quiz_session.py` | クイズセッション | ~220 |
 | `batch_core.py` | バッチ解析コア | ~270 |
 | `batch_ui.py` | バッチ解析UI | ~580 |
-| `settings_popup.py` | 設定ポップアップ | ~400 |
+| `settings_popup.py` | 設定ポップアップ（オーケストレータ） | ~400 |
+| `settings_popup_state.py` | `_SettingsPopupContext`（タブ間共有状態） | ~80 |
+| `settings_popup_helpers.py` | Kivy ヘルパー（`_add_searchable_label`） | ~60 |
+| `settings_popup_tabs/__init__.py` | タブビルダー（Leela） | ~220 |
 
 ### 4.5 Gameクラスへの追加（game.py）
 

@@ -165,14 +165,51 @@
 - フォールバックチェーン: 設定ディレクトリ → 候補（Windows: CSIDL_DOWNLOADS、Linux: `~/Downloads`） → `~/katrain_reports` → `cwd`。
 - 別タスクとして保留: SGF skip "Too few analyzed moves (0)"（KataGo解析データ scoreLead が無いファイルは集計対象外＝仕様通り）、Topmoves ホバー変化図再生、`padding_x` 廃止警告。
 
+**Phase 158-D**: ✅ KaTrainGui 4分割（2026-06-29 完了）。
+- KaTrainGui から 4 つの Manager を `gui/managers/` に抽出:
+  - A: **KeyboardManager** — キーボードショートカット管理（104 行）
+  - B: **ConfigManager** — 設定 I/O（280 行）
+  - C: **PopupManager** — ポップアップ表示管理（150 行）
+  - D: **GameStateManager** — ゲーム状態同期（260 行）
+- `FeatureContext` Protocol を導入し、機能モジュールが具象 KaTrainGui に依存しない構造に
+- KaTrainGui メソッド数 102 → 50 前後に縮小（god class 解消）
+- 4 PR で段階的にマージ（PR #317, #318, #319, #320）
+
+**Phase 158-E**: ✅ Curator Test Coverage + Settings Popup Split + Dead Code Cleanup（2026-06-29 完了, PR #321）。
+- アーキテクチャレビュー（2026-06-29）で提案された改善提案 P0-P1 を統合的に実施。
+- **Curator テスト追加**（4 ファイル・148 件）:
+  - `tests/test_curator_models.py`（25）: dataclass・frozen・hash
+  - `tests/test_curator_scoring.py`（61）: 純ヘルパー・stability・percentile・Game ツリーベース
+  - `tests/test_curator_guide_extractor.py`（21）: HighlightMoment/ReplayGuide・extract_replay_guide
+  - `tests/test_curator_batch.py`（41）: JSON I/O・ランキング・ガイド生成
+  - curator/ カバレッジ **0% → 92%**（models/guide_extractor/scoring 100%、batch 81%）
+- **Settings Popup 分割**（3 新規ファイル）:
+  - `settings_popup_state.py`: `_SettingsPopupContext` dataclass を単独化（循環 import 抑止）
+  - `settings_popup_helpers.py`: `_add_searchable_label` helper 抽出
+  - `settings_popup_tabs/__init__.py`: `_build_leela_tab`（181 行）を独立ファイル化
+  - settings_popup.py: **1,511 → 1,268 行（-243 行）**
+  - 公開 API（`do_mykatrain_settings_popup`）シグネチャ完全互換維持
+- **Phase A デッドコード削除**（5 ファイル・-85 行）:
+  - `__main__.py:599-605`: 4 行の到達不能コード削除（`cpu_katago` 未定義参照リスク除去）
+  - `settings_popup.py`: 未参照ラッパー関数3件削除（`load_export_settings`, `save_export_settings`, `save_batch_options`）
+  - `batch_core.py`: 未使用 import 2件削除（`# noqa: F401` 解消）
+  - `tsumego_frame.py`: `snapS` → `snap_s` リネーム（snake_case 一貫性）
+  - `summary_formatter.py`: `_format_time_management` の DRY 違反解消（`_aggregate_stats` の `focus_player` 引数対応で共通化、-30 行）
+- **検証**:
+  - pytest tests: **3,868 passed**（既存 i18n.MO タイムスタンプ不整合 1件は対象外）
+  - Ruff エラー: 7 → 2（refactor 自動クリーンアップ）
+  - 公開 API 互換性維持により `__main__.py` の呼び出しは無変更
+- 残オープン項目: `_build_analysis_tab`, `_build_export_tab` の分割（次回セッションで同じ手順で実施可能）
+
 ### 累積検証結果
 
 | 検証 | 結果 |
 |---|---|
 | mypy strict | エラー 0（222 ファイル） |
 | Architecture テスト | 36/36 パス |
-| 関連ユニットテスト | 全パス（累計 700+ 件） |
+| 関連ユニットテスト | 全パス（累計 3,868 件 / Phase 158-E 時点） |
 | Kivy 隔離違反 | 1 → 0 |
+| **カバレッジ（行）** | **61%**（curator/ 92% / mean_tags 92.4% / analysis/ 86.2%） |
 
 ---
 
