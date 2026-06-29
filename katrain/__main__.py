@@ -595,15 +595,6 @@ class KaTrainGui(Screen, KaTrainBase):
             fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
         )
 
-        # Verify with minimal analysis
-        result = self._verify_engine_works()
-        if result.success:
-            # Persist only on success
-            self._save_engine_katago_path(cpu_katago)
-            self.engine_unhealthy = False
-
-        return result.success, result
-
     def restart_engine(self) -> bool:
         """Delegates to AutoSetupController (Phase 133)."""
         return self._auto_setup_controller.restart_engine(

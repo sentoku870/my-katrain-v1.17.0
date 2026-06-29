@@ -1107,43 +1107,25 @@ def _format_time_management(
         return section_lines
 
     if focus_player:
-        # Aggregate across all games where focus_player appears (as B or W)
-        total_blitz = 0
-        total_blitz_mistake = 0
-        total_long_think = 0
-        total_long_think_mistake = 0
-        tilt_episodes = []
-
-        for stats in stats_list:
-            pacing = stats.get("pacing_stats", {})
-            if not pacing.get("has_time_data", False):
-                continue
-
-            if stats.get("player_black") == focus_player:
-                player_color = "B"
-            elif stats.get("player_white") == focus_player:
-                player_color = "W"
-            else:
-                continue
-
-            ps = pacing.get("player_stats", {}).get(player_color, {})
-            total_blitz += ps.get("blitz_count", 0)
-            total_blitz_mistake += ps.get("blitz_mistake_count", 0)
-            total_long_think += ps.get("long_think_count", 0)
-            total_long_think_mistake += ps.get("long_think_mistake_count", 0)
-
-            for ep in pacing.get("tilt_episodes", []):
-                if ep.get("player") == player_color:
-                    ep_copy = ep.copy()
-                    ep_copy["game_name"] = stats.get("game_name", "")
-                    tilt_episodes.append(ep_copy)
-
+        # Aggregate across all games where focus_player appears (as B or W).
+        # Reuse _aggregate_stats for both colors to keep logic DRY.
         stats_data = TimeStatsData(
-            blitz_count=total_blitz,
-            blitz_mistake_count=total_blitz_mistake,
-            long_think_count=total_long_think,
-            long_think_mistake_count=total_long_think_mistake,
+            blitz_count=0,
+            blitz_mistake_count=0,
+            long_think_count=0,
+            long_think_mistake_count=0,
         )
+        tilt_episodes: list[dict[str, Any]] = []
+        for color in ["B", "W"]:
+            color_data, color_episodes = _aggregate_stats(stats_list, color, focus_player)
+            stats_data = TimeStatsData(
+                blitz_count=stats_data.blitz_count + color_data.blitz_count,
+                blitz_mistake_count=stats_data.blitz_mistake_count + color_data.blitz_mistake_count,
+                long_think_count=stats_data.long_think_count + color_data.long_think_count,
+                long_think_mistake_count=stats_data.long_think_mistake_count
+                + color_data.long_think_mistake_count,
+            )
+            tilt_episodes.extend(color_episodes)
         lines.extend(_format_player_section(focus_player, stats_data, tilt_episodes))
 
     else:
