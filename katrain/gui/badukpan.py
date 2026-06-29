@@ -1,15 +1,10 @@
 from __future__ import annotations
 
 import copy
-import math
-import time
 from typing import Any
 
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.graphics.context_instructions import Color, PopMatrix, PushMatrix, Rotate, Translate
-from kivy.graphics.texture import Texture
-from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty
 from kivy.uix.dropdown import DropDown
@@ -18,7 +13,6 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
-from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
 from katrain.core.board_geometry import (
     compute_board_with_margins,
     compute_extra_px_margins,
@@ -26,50 +20,31 @@ from katrain.core.board_geometry import (
     compute_grid_spaces,
     compute_initial_gridpos,
     compute_stone_size,
-    eval_color as _eval_color,
-    format_loss,
-    x_coordinate_text,
-    y_coordinate_text,
-)
-from katrain.core.beginner.hints import (
-    get_beginner_hint_cached,
-    is_coords_valid,
-    should_draw_board_highlight,
 )
 from katrain.core.constants import (
-    LEELA_COLOR_BEST,
-    LEELA_TOP_MOVE_LOSS,
-    LEELA_TOP_MOVE_VISITS,
-    LEELA_TOP_MOVE_WINRATE,
     MODE_PLAY,
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
     STATUS_TEACHING,
-    TOP_MOVE_DELTA_SCORE,
-    TOP_MOVE_DELTA_WINRATE,
-    TOP_MOVE_NOTHING,
-    TOP_MOVE_OPTIONS,
-    TOP_MOVE_SCORE,
-    TOP_MOVE_VISITS,
-    TOP_MOVE_WINRATE,
 )
 from katrain.core.game import Move
 from katrain.core.lang import i18n
-from katrain.core.leela.presentation import (
-    format_loss_est,
-    format_winrate_pct,
-    loss_to_color,
-)
-from katrain.core.leela.presentation import (
-    format_visits as format_leela_visits,
-)
-from katrain.core.utils import evaluation_class, format_visits, json_truncate_arrays, var_to_grid
-from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
+from katrain.core.utils import json_truncate_arrays
 from katrain.gui.popups import GameReportPopup, I18NPopup, ReAnalyzeGamePopup, TsumegoFramePopup
 from katrain.gui.theme import Theme
 
 
 class BadukPanWidget(Widget):
+    """Go board display widget.
+
+    Phase 158+: The implementation of most methods has been extracted to
+    sibling modules (badukpan_drawing, badukpan_hints, badukpan_pv) so the
+    class itself remains a thin orchestration layer. Each public method is
+    a one-line wrapper that delegates to a module-level helper, which
+    preserves compatibility with KV files (``<BadukPanWidget>`` rules),
+    ``__main__.py`` imports, and tests that instantiate this class directly.
+    """
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.trainer_config: dict[str, Any] = {}
@@ -94,35 +69,29 @@ class BadukPanWidget(Widget):
         self.redraw_trigger = Clock.create_trigger(self.redraw, 0.05)
         self.redraw_hover_contents_trigger = Clock.create_trigger(self.draw_hover_contents, 0.01)
         self.bind(size=self.redraw_trigger, pos=self.redraw_trigger)
-        # Removed: Clock.schedule_interval(self.animate_pv, 0.1)
-        # PV animation is now started/stopped on demand via _update_pv_animation_state()
+
+    # =================================================================
+    # PV animation lifecycle (delegated to badukpan_pv)
+    # =================================================================
 
     def _start_pv_animation(self) -> None:
-        """Start PV animation interval (idempotent).
+        from katrain.gui.badukpan_pv import start_pv_animation
 
-        Note: Does nothing if already started (prevents double scheduling).
-        """
-        if self._animate_interval is None:
-            self._animate_interval = Clock.schedule_interval(self.animate_pv, 0.1)
+        start_pv_animation(self)
 
     def _stop_pv_animation(self) -> None:
-        """Stop PV animation interval (idempotent).
+        from katrain.gui.badukpan_pv import stop_pv_animation
 
-        Note: After cancel(), reset to None to allow restart.
-        """
-        if self._animate_interval is not None:
-            self._animate_interval.cancel()
-            self._animate_interval = None
+        stop_pv_animation(self)
 
     def _update_pv_animation_state(self) -> None:
-        """Update animation state based on active_pv_moves.
+        from katrain.gui.badukpan_pv import update_pv_animation_state
 
-        Call this after updating active_pv_animation to start/stop animation.
-        """
-        if self.active_pv_moves:
-            self._start_pv_animation()
-        else:
-            self._stop_pv_animation()
+        update_pv_animation_state(self)
+
+    # =================================================================
+    # Rotation / coordinates toggle (small helpers stay inline)
+    # =================================================================
 
     def reset_rotation(self) -> None:
         while self.rotation_degree:
@@ -136,7 +105,10 @@ class BadukPanWidget(Widget):
     def get_enable_coordinates(self) -> bool:
         return self.draw_coords_enabled
 
-    # stone placement functions
+    # =================================================================
+    # Stone placement / touch input (stays inline - tightly coupled)
+    # =================================================================
+
     def _find_closest(self, pos_x: float, pos_y: float) -> tuple[float, int, float, int]:
         if self.gridpos is None:
             return (0.0, 0, 0.0, 0)
@@ -285,7 +257,10 @@ class BadukPanWidget(Widget):
         self.ghost_stone = None
         self.redraw_hover_contents_trigger()  # remove ghost
 
-    # drawing functions
+    # =================================================================
+    # Drawing primitives (delegated to badukpan_drawing)
+    # =================================================================
+
     def redraw(self, *_args: Any) -> None:
         self.draw_board()
         self.draw_board_contents()
@@ -304,170 +279,19 @@ class BadukPanWidget(Widget):
         loss: float | None = None,
         depth: int | None = None,
     ) -> None:
-        stone_size = self.stone_size * scale
-        if ownership is not None:
-            (owner, other) = ("B", "W") if ownership > 0 else ("W", "B")
-            if Theme.TERRITORY_DISPLAY != "marks":
-                if player == owner:
-                    alpha = Theme.STONE_MIN_ALPHA + (1.0 - Theme.STONE_MIN_ALPHA) * abs(ownership)
-                else:
-                    alpha = Theme.STONE_MIN_ALPHA
-        else:
-            (owner, other) = ("B", "W")  # prevent errors in unused unset vars
-        Color(1, 1, 1, alpha)
-        Rectangle(
-            pos=(self.gridpos[y][x][0] - stone_size, self.gridpos[y][x][1] - stone_size),
-            size=(2 * stone_size, 2 * stone_size),
-            texture=cached_texture(Theme.STONE_TEXTURE[player]),
-        )
-        # Draw ownership marks on stones; the mark is a square with an outline.
-        if (ownership is not None or loss is not None) and (
-            Theme.STONE_MARKS == "all" or (Theme.STONE_MARKS == "weak" and player != owner)
-        ):
-            if ownership is not None:
-                mark_color = *Theme.STONE_COLORS[owner][:3], 1.0
-                other_color = *Theme.STONE_COLORS[other][:3], 1.0
-                outline_color = tuple(
-                    map(lambda y: sum(y) / float(len(y)), zip(*(mark_color, other_color), strict=False))
-                )
-                mark_value = ownership
-            else:
-                assert loss is not None
-                mark_color = *Theme.EVAL_COLORS[self.trainer_config["theme"]][1][:3], 1
-                outline_color = mark_color
-                mark_value = min(1.0, loss)
+        from katrain.gui.badukpan_drawing import draw_stone as _draw_stone
 
-            mark_size = Theme.MARK_SIZE * abs(mark_value) * self.stone_size * 2.0
-            Color(*mark_color)
-            Rectangle(
-                pos=(
-                    self.gridpos[y][x][0] - mark_size / 2,
-                    self.gridpos[y][x][1] - mark_size / 2,
-                ),
-                size=(mark_size, mark_size),
-            )
-            Color(*outline_color)
-            Line(
-                rectangle=(
-                    self.gridpos[y][x][0] - mark_size / 2,
-                    self.gridpos[y][x][1] - mark_size / 2,
-                    mark_size,
-                    mark_size,
-                ),
-                width=1.0,
-            )
-        if evalcol:
-            eval_radius = math.sqrt(evalscale)  # scale area by evalscale
-            evalsize = self.stone_size * (
-                Theme.EVAL_DOT_MIN_SIZE + eval_radius * (Theme.EVAL_DOT_MAX_SIZE - Theme.EVAL_DOT_MIN_SIZE)
-            )
-            Color(*evalcol)
-            Rectangle(
-                pos=(self.gridpos[y][x][0] - evalsize, self.gridpos[y][x][1] - evalsize),
-                size=(2 * evalsize, 2 * evalsize),
-                texture=cached_texture(Theme.EVAL_DOT_TEXTURE),
-            )
-        if innercol:
-            Color(*innercol)
-            inner_size = stone_size * 0.8
-            Rectangle(
-                pos=(self.gridpos[y][x][0] - inner_size, self.gridpos[y][x][1] - inner_size),
-                size=(2 * inner_size, 2 * inner_size),
-                texture=cached_texture(Theme.LAST_MOVE_TEXTURE),
-            )
-
-        if depth:
-            text = str(depth)
-            Color(*Theme.NUMBER_COLOR)
-            draw_text(pos=self.gridpos[y][x], text=text, font_size=self.stone_size * 0.9, font_name="Roboto")
+        _draw_stone(self, x, y, player, alpha, innercol, evalcol, evalscale, scale, ownership, loss, depth)
 
     def eval_color(self, points_lost: float, show_dots_for_class: list[bool] | None = None) -> list[float] | None:
-        # Use defaults if trainer_config not fully initialized
-        eval_thresholds = self.trainer_config.get("eval_thresholds", [12.0, 6.0, 3.0, 1.5, 0.5, 0.0])
-        theme = self.trainer_config.get("theme", "theme:normal")
-        return _eval_color(points_lost, eval_thresholds, Theme.EVAL_COLORS[theme], show_dots_for_class)
+        from katrain.gui.badukpan_drawing import eval_color as _eval_color
+
+        return _eval_color(self, points_lost, show_dots_for_class)
 
     def draw_board(self, *_args: Any) -> None:
-        if not (self.katrain and self.katrain.game):
-            return
-        katrain = self.katrain
-        board_size_x, board_size_y = katrain.game.board_size
+        from katrain.gui.badukpan_drawing import draw_board as _draw_board
 
-        with self.canvas.before:
-            self.canvas.before.clear()
-
-            grid_spaces_margin_x, grid_spaces_margin_y = self.get_grid_spaces_margins()
-            h = round(self.height, 4)
-            w = round(self.width, 4)
-            x_grid_spaces, y_grid_spaces = self.calculate_grid_spaces(
-                board_size_x, board_size_y, grid_spaces_margin_x, grid_spaces_margin_y
-            )
-            self.grid_size = self.calculate_grid_size(w, h, x_grid_spaces, y_grid_spaces)
-            board_width_with_margins, board_height_with_margins = self.calculate_board_margins(
-                x_grid_spaces, y_grid_spaces, self.grid_size
-            )
-            extra_px_margin_x, extra_px_margin_y = self.calculate_extra_px_margins(
-                w, h, board_width_with_margins, board_height_with_margins
-            )
-            self.stone_size = self.calculate_stone_size(self.grid_size)
-            # if not initiated or if changed
-            if (
-                self.gridpos is None
-                or abs(
-                    self.pos[0]
-                    + extra_px_margin_x
-                    + math.floor(grid_spaces_margin_x[0] * self.grid_size + 0.5)
-                    - self.initial_gridpos_x[0]
-                )
-                > 0.001
-            ):
-                self.initial_gridpos_x, self.initial_gridpos_y = self.initialize_gridpos_x_y(
-                    board_size_x,
-                    board_size_y,
-                    grid_spaces_margin_x,
-                    grid_spaces_margin_y,
-                    extra_px_margin_x,
-                    extra_px_margin_y,
-                    self.grid_size,
-                )
-                if self.rotation_degree == 0:
-                    self.initialize_gridpos()
-
-            if (self.rotation_degree == 90 or self.rotation_degree == 270) and board_size_x != board_size_y:
-                # Note that we use the board_size_y, board_size_x order for this rotation.
-                x_grid_spaces, y_grid_spaces = self.calculate_grid_spaces(
-                    board_size_y, board_size_x, grid_spaces_margin_x, grid_spaces_margin_y
-                )
-                self.grid_size = self.calculate_grid_size(w, h, x_grid_spaces, y_grid_spaces)
-                self.stone_size = self.calculate_stone_size(self.grid_size)
-                current_gridpos_x, current_gridpos_y = self.calculate_rotated_gridpos()
-            else:
-                current_gridpos_x = self.initial_gridpos_x[:]
-                current_gridpos_y = self.initial_gridpos_y[:]
-
-            # if window size got changed
-            if (
-                self.gridpos[0][0][0] not in current_gridpos_x
-                or self.gridpos[0][0][1] not in current_gridpos_y
-                or (
-                    self.gridpos[len(self.gridpos) - 1][len(self.gridpos[0]) - 1][0] in current_gridpos_x
-                    or self.gridpos[len(self.gridpos) - 1][len(self.gridpos[0]) - 1][1] in current_gridpos_y
-                )
-            ):
-                self.resize_board()
-
-            self.draw_board_background(
-                katrain,
-                current_gridpos_x,
-                current_gridpos_y,
-                x_grid_spaces,
-                y_grid_spaces,
-                grid_spaces_margin_x,
-                grid_spaces_margin_y,
-            )
-            self.draw_lines(current_gridpos_x, current_gridpos_y)
-            self.draw_star_points(board_size_x, board_size_y)
-            self.draw_coordinates(current_gridpos_x, current_gridpos_y)
+        _draw_board(self, *_args)
 
     def get_grid_spaces_margins(self) -> tuple[list[float], list[float]]:
         if self.draw_coords_enabled:
@@ -501,7 +325,6 @@ class BadukPanWidget(Widget):
 
     def initialize_gridpos(self) -> None:
         self.gridpos = [[None for x in range(len(self.initial_gridpos_x))] for y in range(len(self.initial_gridpos_y))]
-        # [[None]*len(self.initial_gridpos_x)]*len(self.initial_gridpos_y)
         for y in range(len(self.initial_gridpos_y)):
             for x in range(len(self.initial_gridpos_x)):
                 self.gridpos[y][x] = [self.initial_gridpos_x[x], self.initial_gridpos_y[y]]
@@ -588,653 +411,109 @@ class BadukPanWidget(Widget):
         grid_spaces_margin_x: list[float],
         grid_spaces_margin_y: list[float],
     ) -> None:
-        if katrain.game.insert_mode:
-            Color(*Theme.INSERT_BOARD_COLOR_TINT)  # dreamy
-        else:
-            Color(*Theme.BOARD_COLOR_TINT)  # image is a bit too light
-        Rectangle(
-            pos=(
-                gridpos_x[0] - self.grid_size * grid_spaces_margin_x[0],
-                gridpos_y[0] - self.grid_size * grid_spaces_margin_y[0],
-            ),
-            size=(self.grid_size * x_grid_spaces, self.grid_size * y_grid_spaces),
-            texture=cached_texture(Theme.BOARD_TEXTURE),
-        )
+        from katrain.gui.badukpan_drawing import draw_board_background as _draw_bg
+
+        _draw_bg(self, katrain, gridpos_x, gridpos_y, x_grid_spaces, y_grid_spaces, grid_spaces_margin_x, grid_spaces_margin_y)
 
     def draw_lines(self, gridpos_x: list[float], gridpos_y: list[float]) -> None:
-        Color(*Theme.LINE_COLOR)
-        for i in range(len(gridpos_x)):
-            Line(points=[(gridpos_x[i], gridpos_y[0]), (gridpos_x[i], gridpos_y[-1])])
-        for i in range(len(gridpos_y)):
-            Line(points=[(gridpos_x[0], gridpos_y[i]), (gridpos_x[-1], gridpos_y[i])])
+        from katrain.gui.badukpan_drawing import draw_lines as _draw_lines
+
+        _draw_lines(self, gridpos_x, gridpos_y)
 
     def draw_star_points(self, board_size_x: int, board_size_y: int) -> None:
-        def star_point_coords(size: int) -> list[int]:
-            star_point_pos = 3 if size <= 11 else 4
-            if size < 7:
-                return []
-            return [star_point_pos - 1, size - star_point_pos] + ([int(size / 2)] if size % 2 == 1 and size > 7 else [])
+        from katrain.gui.badukpan_drawing import draw_star_points as _draw_stars
 
-        starpt_size = self.grid_size * Theme.STARPOINT_SIZE
-        for x in star_point_coords(board_size_x):
-            for y in star_point_coords(board_size_y):
-                draw_circle((self.gridpos[y][x][0], self.gridpos[y][x][1]), starpt_size, Theme.LINE_COLOR)
+        _draw_stars(self, board_size_x, board_size_y)
 
     def draw_coordinates(self, gridpos_x: list[float], gridpos_y: list[float]) -> None:
-        if self.draw_coords_enabled:
-            board_size_x, board_size_y = self.katrain.game.board_size
-            Color(0.25, 0.25, 0.25)
-            coord_offset = round(self.grid_size * 1.5 / 2, 12)
+        from katrain.gui.badukpan_drawing import draw_coordinates as _draw_coords
 
-            if (self.rotation_degree == 90 or self.rotation_degree == 270) and board_size_x != board_size_y:
-                board_size_y, board_size_x = self.katrain.game.board_size
-
-            for i in range(board_size_x):
-                draw_text(
-                    pos=(gridpos_x[i], gridpos_y[0] - coord_offset),
-                    text=self.get_x_coordinate_text(i, board_size_x),
-                    font_size=self.grid_size / 1.5,
-                    font_name="Roboto",
-                )
-            for i in range(board_size_y):
-                draw_text(
-                    pos=(gridpos_x[0] - coord_offset, gridpos_y[i]),
-                    text=self.get_y_coordinate_text(i, board_size_y),
-                    font_size=self.grid_size / 1.5,
-                    font_name="Roboto",
-                )
+        _draw_coords(self, gridpos_x, gridpos_y)
 
     def get_x_coordinate_text(self, i: int, board_size_x: int) -> str:
-        return x_coordinate_text(i, board_size_x, self.rotation_degree, Move.GTP_COORD)
+        from katrain.gui.badukpan_drawing import get_x_coordinate_text as _get_x
+
+        return _get_x(self, i, board_size_x)
 
     def get_y_coordinate_text(self, i: int, board_size_y: int) -> str:
-        return y_coordinate_text(i, board_size_y, self.rotation_degree, Move.GTP_COORD)
+        from katrain.gui.badukpan_drawing import get_y_coordinate_text as _get_y
+
+        return _get_y(self, i, board_size_y)
 
     def draw_board_contents(self, *_args: Any) -> None:
-        if not (self.katrain and self.katrain.game):
-            return
-        katrain = self.katrain
-        board_size_x, board_size_y = katrain.game.board_size
-        if self.gridpos is None or len(self.gridpos) < board_size_y or len(self.gridpos[0]) < board_size_x:
-            return  # race condition
-        show_n_eval = self.trainer_config.get("eval_on_show_last", 3)
-        ownership_grid = None
-        loss_grid = None
+        from katrain.gui.badukpan_drawing import draw_board_contents as _draw_contents
 
-        with self.canvas:
-            self.canvas.clear()
-            current_node = katrain.game.current_node
-
-            # ownership - allow one move out of date for smooth animation,
-            # drawn first so the board is shaded underneath all other elements.
-            ownership = current_node.ownership or (current_node.parent and current_node.parent.ownership)
-            if katrain.analysis_controls.ownership.active and ownership and not katrain.is_fog_active():
-                if (
-                    current_node.children
-                    and katrain.controls.status_state[1] == STATUS_TEACHING
-                    and current_node.children[-1].auto_undo
-                    and current_node.children[-1].ownership
-                ):  # loss
-                    loss_grid = var_to_grid(
-                        [a - b for a, b in zip(current_node.children[-1].ownership, ownership, strict=False)],
-                        (board_size_x, board_size_y),
-                    )
-                    for y in range(board_size_y - 1, -1, -1):
-                        for x in range(board_size_x):
-                            loss_grid[y][x] = max(
-                                0, (-1 if current_node.children[-1].move.player == "B" else 1) * loss_grid[y][x]
-                            )
-                    self.draw_territory(loss_grid, Theme.EVAL_COLORS[self.trainer_config["theme"]][1][:3])
-                else:
-                    ownership_grid = var_to_grid(ownership, (board_size_x, board_size_y))
-                    self.draw_territory(ownership_grid)
-            # stones
-            # Phase 93: Fog of War also disables eval dots
-            all_dots_off = not katrain.analysis_controls.eval.active or katrain.is_fog_active()
-            has_stone: dict[Any, Any] = {}
-            drawn_stone: dict[Any, Any] = {}
-            for m in katrain.game.stones:
-                has_stone[m.coords] = m.player
-
-            show_dots_for = {
-                p: self.trainer_config["eval_show_ai"] or katrain.players_info[p].human for p in Move.PLAYERS
-            }
-            show_dots_for_class = self.trainer_config["show_dots"]
-            nodes = katrain.game.current_node.nodes_from_root
-            realized_points_lost = None
-
-            for i, node in enumerate(nodes[::-1]):  # reverse order!
-                points_lost = node.points_lost
-                evalscale = 1
-                if points_lost and realized_points_lost:
-                    if points_lost <= 0.5 and realized_points_lost <= 1.5:
-                        evalscale = 0
-                    else:
-                        evalscale = min(1, max(0, realized_points_lost / points_lost))
-                placements = node.placements
-                for m in node.moves + placements:
-                    new_move = (
-                        current_node.move and m.coords == current_node.move.coords
-                    ) and not current_node.ownership
-                    if has_stone.get(m.coords) and not drawn_stone.get(m.coords):  # skip captures, last only for
-                        move_eval_on = not all_dots_off and show_dots_for.get(m.player) and i < show_n_eval
-                        if move_eval_on and points_lost is not None:
-                            evalcol = self.eval_color(points_lost, show_dots_for_class)
-                        else:
-                            evalcol = None
-                        inner = Theme.STONE_COLORS[m.opponent] if i == 0 and m not in placements else None
-                        drawn_stone[m.coords] = m.player
-                        self.draw_stone(
-                            x=m.coords[0],
-                            y=m.coords[1],
-                            player=m.player,
-                            innercol=inner,
-                            evalcol=evalcol,
-                            evalscale=evalscale,
-                            ownership=(
-                                ownership_grid[m.coords[1]][m.coords[0]]
-                                if ownership_grid and not loss_grid and not new_move
-                                else None
-                            ),
-                            loss=loss_grid[m.coords[1]][m.coords[0]] if loss_grid else None,
-                            depth=node.depth if katrain.show_move_num else None,
-                        )
-                realized_points_lost = node.parent_realized_points_lost
-
-            if katrain.game.current_node.is_root and katrain.debug_level >= 3:  # secret ;)
-                for y in range(0, board_size_y):
-                    evalcol = self.eval_color(16 * y / board_size_y)
-                    self.draw_stone(0, y, "B", evalcol=evalcol, evalscale=y / (board_size_y - 1))
-                    self.draw_stone(1, y, "B", innercol=Theme.STONE_COLORS["W"], evalcol=evalcol)
-                    self.draw_stone(2, y, "W", evalcol=evalcol, evalscale=y / (board_size_y - 1))
-                    self.draw_stone(3, y, "W", innercol=Theme.STONE_COLORS["B"], evalcol=evalcol)
-
-            # Phase 92c: Draw beginner hint highlight
-            self.draw_beginner_hint_highlight()
-
-            policy = current_node.policy
-            if (
-                not policy
-                and current_node.parent
-                and current_node.parent.policy
-                and katrain.last_player_info.ai
-                and katrain.next_player_info.ai
-            ):
-                policy = (
-                    current_node.parent.policy
-                )  # in the case of AI self-play we allow the policy to be one step out of date
-
-            # Guard pass_btn access - may be missing during initialization
-            board_controls = getattr(katrain, "board_controls", None)
-            pass_btn = getattr(board_controls, "pass_btn", None) if board_controls else None
-            if pass_btn:
-                pass_btn.canvas.after.clear()
-            if katrain.analysis_controls.policy.active and policy and not katrain.is_fog_active():
-                policy_grid = var_to_grid(policy, (board_size_x, board_size_y))
-                best_move_policy = max(*policy)
-                colors = Theme.EVAL_COLORS[self.trainer_config["theme"]]
-                text_lb = 0.01 * 0.01
-                for y in range(board_size_y - 1, -1, -1):
-                    for x in range(board_size_x):
-                        move_policy = policy_grid[y][x]
-                        if move_policy < 0:
-                            continue
-                        pol_order = max(0, 5 + int(math.log10(max(1e-9, move_policy - 1e-9))))
-                        if move_policy > text_lb:
-                            draw_circle(
-                                (self.gridpos[y][x][0], self.gridpos[y][x][1]),
-                                self.stone_size * Theme.HINT_SCALE * 0.98,
-                                Theme.APPROX_BOARD_COLOR,
-                            )
-                            scale = 0.95
-                        else:
-                            scale = 0.5
-                        draw_circle(
-                            (self.gridpos[y][x][0], self.gridpos[y][x][1]),
-                            Theme.HINT_SCALE * self.stone_size * scale,
-                            (*colors[pol_order][:3], Theme.POLICY_ALPHA),
-                        )
-                        if move_policy > text_lb:
-                            Color(*Theme.HINT_TEXT_COLOR)
-                            draw_text(
-                                pos=(self.gridpos[y][x][0], self.gridpos[y][x][1]),
-                                text=f"{100 * move_policy:.2f}"[:4] + "%",
-                                font_name="Roboto",
-                                font_size=self.grid_size / 4,
-                                halign="center",
-                            )
-                        if move_policy == best_move_policy:
-                            Color(*Theme.TOP_MOVE_BORDER_COLOR[:3], Theme.POLICY_ALPHA)
-                            Line(
-                                circle=(
-                                    self.gridpos[y][x][0],
-                                    self.gridpos[y][x][1],
-                                    self.stone_size - dp(1.2),
-                                ),
-                                width=dp(2),
-                            )
-
-                if pass_btn:
-                    with pass_btn.canvas.after:
-                        move_policy = policy[-1]
-                        pol_order = 5 - int(-math.log10(max(1e-9, move_policy - 1e-9)))
-                        if pol_order >= 0:
-                            draw_circle(
-                                (pass_btn.pos[0] + pass_btn.width / 2, pass_btn.pos[1] + pass_btn.height / 2),
-                                pass_btn.height / 2,
-                                (*colors[pol_order][:3], Theme.GHOST_ALPHA),
-                            )
-
-        self.redraw_hover_contents_trigger()
-
-    # =========================================================================
-    # Phase 92c: Beginner Hint Highlight
-    # =========================================================================
-
-    def _should_draw_beginner_highlight(self) -> bool:
-        """Check if beginner hint highlight should be drawn (Phase 92c)."""
-        katrain = self.katrain
-        if not katrain:
-            return False
-        return should_draw_board_highlight(
-            enabled=katrain.config("beginner_hints/enabled", False),
-            mode=katrain.play_analyze_mode,
-            board_highlight=katrain.config("beginner_hints/board_highlight", True),
-        )
-
-    def draw_beginner_hint_highlight(self) -> None:
-        """Draw highlight circle at beginner hint coordinate (Phase 92c).
-
-        Draws a semi-transparent circle behind the stone to indicate
-        a beginner-relevant mistake or warning.
-        """
-        if not self._should_draw_beginner_highlight():
-            return
-
-        katrain = self.katrain
-        node = katrain.game.current_node
-        require_reliable = katrain.config("beginner_hints/require_reliable", True)
-        hint = get_beginner_hint_cached(katrain.game, node, require_reliable=require_reliable)
-
-        if hint is None or hint.coords is None:
-            return
-
-        board_size = katrain.game.board_size
-        if not is_coords_valid(hint.coords, board_size):
-            return
-
-        x, y = hint.coords
-        # gridpos[y][x] - note: y is first index
-        pos = (self.gridpos[y][x][0], self.gridpos[y][x][1])
-        draw_circle(pos, self.stone_size * 1.1, Theme.BEGINNER_HINT_COLOR)
+        _draw_contents(self, *_args)
 
     def draw_territory(self, grid: Any, loss_color: Any = None) -> None:
-        if Theme.TERRITORY_DISPLAY == "marks":
-            self.draw_territory_marks(grid, loss_color)
-        else:
-            self.draw_territory_color(grid, loss_color)
+        from katrain.gui.badukpan_drawing import draw_territory as _draw_terr
+
+        _draw_terr(self, grid, loss_color)
 
     def draw_territory_marks(self, grid: Any, loss_color: Any = None) -> None:
-        board_size_x, board_size_y = self.katrain.game.board_size
-        for y in range(board_size_y - 1, -1, -1):
-            for x in range(board_size_x):
-                if abs(grid[y][x]) < 0.01:
-                    continue
-                (ix_owner, other) = ("B", "W") if grid[y][x] > 0 else ("W", "B")
-                if loss_color is None:
-                    Color(*Theme.STONE_COLORS[ix_owner][:3], 1.0)
-                else:
-                    Color(*loss_color[:3], 1.0)
-                rect_size = Theme.MARK_SIZE * min(1.0, abs(grid[y][x])) * self.stone_size * 2.0
-                Rectangle(
-                    pos=(
-                        self.gridpos[y][x][0] - rect_size / 2,
-                        self.gridpos[y][x][1] - rect_size / 2,
-                    ),
-                    # radius=[rect_size / 4],
-                    size=(rect_size, rect_size),
-                )
+        from katrain.gui.badukpan_drawing import draw_territory_marks as _draw_marks
+
+        _draw_marks(self, grid, loss_color)
 
     def draw_territory_color(self, grid: Any, loss_color: Any = None) -> None:
-        # This draws the expected black and white territories, or the loss during a teching game.
-        # We draw a blended territory by creating a small texture of size 19x19 (more precisely board_size)
-        # and painting it over the whole board. This causes Kivy to produce a smooth texture.
+        from katrain.gui.badukpan_drawing import draw_territory_color as _draw_color
 
-        # We add extra rows and columns (so the texture for a 19x19 board is actually 21x21)
-        # in order to ensure smooth rolloff of the painted area at the edges. The alpha in the
-        # extra rows is 0.
-
-        board_size_x, board_size_y = self.katrain.game.board_size
-        texture = Texture.create(size=(board_size_x + 2, board_size_y + 2), colorfmt="rgba")
-        bytes = bytearray(4 * (board_size_y + 2) * (board_size_x + 2))
-        for y in range(board_size_y + 2):
-            for x in range(board_size_x + 2):
-                x_coord = x - 1
-                y_coord = y - 1
-
-                if x_coord < 0 or x_coord > board_size_x - 1 or y_coord < 0 or y_coord > board_size_y - 1:
-                    # We're in the extra rows/columns outside the board
-                    alpha = 0
-                else:
-                    alpha = abs(grid[y_coord][x_coord])
-                    if alpha > 1:
-                        alpha = 1
-                    if Theme.TERRITORY_DISPLAY == "blocks":
-                        alpha = 1 if alpha > Theme.BLOCKS_THRESHOLD else 0
-                alpha = alpha ** (1.0 / Theme.OWNERSHIP_GAMMA)
-
-                x_coord = max(0, min(x_coord, board_size_x - 1))
-                y_coord = max(0, min(y_coord, board_size_y - 1))
-
-                ix_owner = "B" if grid[y_coord][x_coord] > 0 else "W"
-                if loss_color is None:
-                    pixel_list = list(Theme.OWNERSHIP_COLORS[ix_owner][:4])
-                    pixel_list[3] *= alpha
-                    pixel = tuple(pixel_list)
-                else:
-                    pixel = (*loss_color, Theme.HINTS_ALPHA * alpha)
-                pixel_bytes = tuple(map(lambda p: int(p * 255), pixel))
-                idx = 4 * y * (board_size_x + 2) + x * 4
-                bytes[idx : idx + 4] = pixel_bytes
-
-        if Theme.TERRITORY_DISPLAY == "blocks" or Theme.TERRITORY_DISPLAY == "shaded":
-            texture.mag_filter = "nearest"
-        texture.blit_buffer(bytes, colorfmt="rgba", bufferfmt="ubyte")
-        Color(1, 1, 1, 1)
-        lx = board_size_x - 1
-        ly = board_size_y - 1
-        left = min(self.gridpos[0][0][1], self.gridpos[ly][lx][1])
-        bottom = min(self.gridpos[0][0][0], self.gridpos[ly][lx][0])
-
-        # Our texture is 3 squares larger than the grid of lines: we added 2 rows/columns
-        # for the edge blending, and the additional 1 is because the grid of
-        # intersections is 1 smaller than the board state. We will shift the texture by 3/2 square
-        # to align it.
-        left = left - self.grid_size * 3 / 2
-        bottom = bottom - self.grid_size * 3 / 2
-
-        PushMatrix()
-
-        Rotate(origin=(bottom, left), axis=(0, 0, 1), angle=-self.rotation_degree)
-        if self.rotation_degree in (90, 180):
-            Translate(-self.grid_size * (board_size_x + 2), 0, 0)
-        if self.rotation_degree in (180, 270):
-            Translate(0, -self.grid_size * (board_size_y + 2), 0)
-
-        Rectangle(
-            pos=(bottom, left),
-            size=(self.grid_size * (board_size_x + 2), self.grid_size * (board_size_y + 2)),
-            texture=texture,
-        )
-
-        PopMatrix()
+        _draw_color(self, grid, loss_color)
 
     def draw_roi_box(self, region_of_interest: Any, width: float = 2) -> None:
-        x1, x2, y1, y2 = region_of_interest
-        x_start, y_start = self.gridpos[y1][x1]
-        x_end, y_end = self.gridpos[y2][x2]
+        from katrain.gui.badukpan_drawing import draw_roi_box as _draw_roi
 
-        Color(*Theme.REGION_BORDER_COLOR)
-        Line(
-            rectangle=(
-                min(x_start, x_end) - self.grid_size / 3,
-                min(y_start, y_end) - self.grid_size / 3,
-                abs(x_start - x_end) + (2 / 3) * self.grid_size,
-                abs(y_start - y_end) + (2 / 3) * self.grid_size,
-            ),
-            width=width,
-        )
+        _draw_roi(self, region_of_interest, width)
 
     def format_loss(self, x: float) -> str:
-        return format_loss(x, extra_precision=bool(self.trainer_config.get("extra_precision")))
+        from katrain.gui.badukpan_drawing import format_loss_str as _format_loss
+
+        return _format_loss(self, x)
+
+    # =================================================================
+    # Beginner hint highlight (delegated to badukpan_hints)
+    # =================================================================
+
+    def _should_draw_beginner_highlight(self) -> bool:
+        from katrain.gui.badukpan_hints import should_draw_beginner_highlight as _should
+
+        return _should(self)
+
+    def draw_beginner_hint_highlight(self) -> None:
+        from katrain.gui.badukpan_hints import draw_beginner_hint_highlight as _draw_hl
+
+        _draw_hl(self)
+
+    # =================================================================
+    # Hint markers / hover overlay (delegated to badukpan_hints)
+    # =================================================================
 
     def _format_leela_stat(self, candidate: Any, stat_type: str) -> str:
-        """Format a single Leela stat for display.
+        from katrain.gui.badukpan_hints import format_leela_stat as _format
 
-        Args:
-            candidate: LeelaCandidate instance
-            stat_type: One of LEELA_TOP_MOVE_* constants
-
-        Returns:
-            Formatted string, or "" for NOTHING
-        """
-        if stat_type == LEELA_TOP_MOVE_LOSS:
-            return format_loss_est(candidate.loss_est)
-        elif stat_type == LEELA_TOP_MOVE_WINRATE:
-            if candidate.winrate is None:
-                return "--"
-            return format_winrate_pct(candidate.winrate)
-        elif stat_type == LEELA_TOP_MOVE_VISITS:
-            if candidate.visits is None:
-                return "--"
-            return format_leela_visits(candidate.visits)
-        return ""  # NOTHING or unknown
+        return _format(self, candidate, stat_type)
 
     def draw_leela_candidates(self, leela_analysis: Any, low_visits_threshold: int = 25) -> tuple[Any, ...] | None:
-        """Draw Leela candidate move markers with loss-based coloring.
+        from katrain.gui.badukpan_hints import draw_leela_candidates as _draw_leela
 
-        Args:
-            leela_analysis: LeelaPositionEval from current_node.leela_analysis
-            low_visits_threshold: Minimum visits for full-size marker
-
-        Returns:
-            Coordinates of the best move (top_move_coords), or None
-        """
-        if not leela_analysis or not leela_analysis.is_valid:
-            return None
-
-        top_move_coords = None
-        candidates = leela_analysis.candidates
-        current_node = self.katrain.game.current_node  # Phase 16: for PV registration
-
-        # Cache config outside loop for performance (Phase 17, Phase 100: typed config)
-        katrain = self.katrain
-        leela_cfg = katrain.get_leela_config()
-        top_show = leela_cfg.top_moves_show
-        top_show_2 = leela_cfg.top_moves_show_secondary
-
-        # Find max visits for scaling
-        max((c.visits for c in candidates), default=1)
-
-        # Debug: Print top 5 Leela candidate moves for color distribution analysis
-        for idx, cand in enumerate(candidates[:5]):
-            loss_val = cand.loss_est if cand.loss_est is not None else 0.0
-            katrain.log(f"[DEBUG Leela] #{idx}: {cand.move:3s} Loss: {loss_val:6.2f}", OUTPUT_EXTRA_DEBUG)
-
-        for i, candidate in enumerate(candidates):
-            move = Move.from_gtp(candidate.move)
-            if move.coords is None:
-                continue
-
-            # Phase 16: Register PV for hover display (same pattern as KataGo)
-            # candidate.pv is List[str], same type as KataGo's move_dict["pv"]
-            if candidate.pv:
-                self.active_pv_moves.append((move.coords, candidate.pv, current_node))
-
-            is_best = i == 0
-            scale = Theme.HINT_SCALE
-            text_on = True
-            alpha = Theme.HINTS_ALPHA
-
-            # Scale down low-visit candidates
-            if candidate.visits < low_visits_threshold and not is_best:
-                scale = Theme.UNCERTAIN_HINT_SCALE
-                text_on = False
-                alpha = Theme.HINTS_LO_ALPHA
-
-            if scale <= 0:
-                continue
-
-            # Calculate marker size
-            evalsize = self.stone_size * scale
-
-            # Get color based on loss_est
-            evalcol = loss_to_color(candidate.loss_est) if candidate.loss_est is not None else LEELA_COLOR_BEST
-
-            # Draw board-colored circle to cover grid lines
-            if text_on:
-                draw_circle(
-                    (
-                        self.gridpos[move.coords[1]][move.coords[0]][0],
-                        self.gridpos[move.coords[1]][move.coords[0]][1],
-                    ),
-                    self.stone_size * scale * 0.98,
-                    Theme.APPROX_BOARD_COLOR,
-                )
-
-            # Draw colored marker
-            Color(*evalcol[:3], alpha)
-            Rectangle(
-                pos=(
-                    self.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
-                    self.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
-                ),
-                size=(2 * evalsize, 2 * evalsize),
-                texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
-            )
-
-            # Draw text label
-            if text_on:
-                keys = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
-
-                # Phase 17: Dynamic stat selection
-                line1 = self._format_leela_stat(candidate, top_show)
-                line2 = self._format_leela_stat(candidate, top_show_2)
-
-                # 2行目が空なら改行なし
-                if line2:
-                    fmt = "[size={size:.0f}]{line1}[/size]\n[size={smallsize:.0f}]{line2}[/size]"
-                else:
-                    fmt = "[size={size:.0f}]{line1}[/size]"
-
-                Color(*Theme.HINT_TEXT_COLOR)
-                draw_text(
-                    pos=(
-                        self.gridpos[move.coords[1]][move.coords[0]][0],
-                        self.gridpos[move.coords[1]][move.coords[0]][1],
-                    ),
-                    text=fmt.format(line1=line1, line2=line2, **keys),
-                    font_name="Roboto",
-                    markup=True,
-                    line_height=0.85,
-                    halign="center",
-                )
-
-            # Mark best move with border
-            if is_best:
-                top_move_coords = move.coords
-                Color(*Theme.TOP_MOVE_BORDER_COLOR)
-                Line(
-                    circle=(
-                        self.gridpos[move.coords[1]][move.coords[0]][0],
-                        self.gridpos[move.coords[1]][move.coords[0]][1],
-                        self.stone_size - dp(1.2),
-                    ),
-                    width=dp(1.2),
-                )
-
-        return top_move_coords
+        return _draw_leela(self, leela_analysis, low_visits_threshold)
 
     def draw_hover_contents(self, *_args: Any) -> None:
-        """Orchestrator: draw all hover overlays on the board (Phase 145 split).
+        from katrain.gui.badukpan_hints import draw_hover_contents as _draw_hover
 
-        Phase 145: Split the previous 239-line function into focused sub-methods:
-        - _prepare_hint_moves: collect + filter candidate moves
-        - _draw_leela_or_kata_hints: dispatch to Leela candidates or KataGo hint markers
-        - _draw_kata_hint_marker: per-move drawing of hint marker + text
-        - _draw_children_markers: show child node markers
-        - _draw_hover_overlay: ROI selection / ghost stone / PV animation
-        - _draw_pass_circle: pass / game ended circle
-        """
-        ghost_alpha = Theme.GHOST_ALPHA
-        katrain = self.katrain
-        game_ended = katrain.game.end_result
-        current_node = katrain.game.current_node
-        next_player = current_node.next_player
-
-        board_size_x, board_size_y = katrain.game.board_size
-        if len(self.gridpos[0]) < board_size_x or len(self.gridpos) < board_size_y:
-            return  # race condition
-
-        with self.canvas.after:
-            self.canvas.after.clear()
-            self.active_pv_moves = []
-
-            hint_moves = self._prepare_hint_moves(current_node, game_ended)
-            top_move_coords = self._draw_leela_or_kata_hints(current_node, hint_moves, next_player)
-            self._draw_children_markers(current_node, top_move_coords)
-
-            if self.selecting_region_of_interest and len(self.region_of_interest) == 4:
-                self.draw_roi_box(self.region_of_interest, width=dp(2))
-            else:
-                self._draw_hover_overlay(ghost_alpha, next_player)
-
-            self._draw_pass_circle(current_node, game_ended, board_size_x, board_size_y)
-
-        # Update PV animation state after canvas block
-        self._update_pv_animation_state()
+        _draw_hover(self, *_args)
 
     def _prepare_hint_moves(self, current_node: Any, game_ended: Any) -> list[dict[str, Any]]:
-        """Collect and filter candidate moves for hover hints.
+        from katrain.gui.badukpan_hints import prepare_hint_moves as _prepare
 
-        Returns:
-            List of candidate move dicts (possibly empty).
-        """
-        katrain = self.katrain
-        hint_moves: list[dict[str, Any]] = []
-        if (
-            katrain.analysis_controls.hints.active
-            and not katrain.analysis_controls.policy.active
-            and not game_ended
-            and not katrain.is_fog_active()  # Phase 93: Fog of War
-        ):
-            hint_moves = current_node.candidate_moves
-        elif katrain.controls.status_state[1] == STATUS_TEACHING:  # show score hint for teaching  undo
-            hint_moves = [
-                m
-                for m in current_node.candidate_moves
-                for c in current_node.children
-                if c.move and c.auto_undo and c.move.gtp() == m["move"]
-            ]
-
-        # Apply PV filter to hint_moves (Phase 11)
-        if hint_moves:
-            pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
-            skill_preset = katrain.config("general/skill_preset")
-            pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
-            if pv_filter_config is not None:
-                hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
-
-        return hint_moves
+        return _prepare(self, current_node, game_ended)
 
     def _draw_leela_or_kata_hints(
         self, current_node: Any, hint_moves: list[dict[str, Any]], next_player: str
     ) -> Any:
-        """Dispatch to Leela candidate drawing or KataGo hint drawing.
+        from katrain.gui.badukpan_hints import draw_leela_or_kata_hints as _draw
 
-        Returns:
-            top_move_coords: coords of the engine's best move (for contrast in child markers)
-        """
-        katrain = self.katrain
-        # Phase 100: Cache typed config for this draw call (no persistent cache)
-        leela_cfg = katrain.get_leela_config()
-        trainer_cfg = katrain.get_trainer_config()
-
-        leela_enabled = leela_cfg.enabled
-        leela_analysis = current_node.leela_analysis if leela_enabled else None
-
-        # Phase 121: Prioritize Leela candidates. If Leela is enabled, suppress KataGo hints.
-        if leela_enabled:
-            hint_moves = []
-
-        top_move_coords = None
-        # Phase 93: Fog of War hides Leela candidates too
-        if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
-            low_visits_threshold = trainer_cfg.low_visits
-            top_move_coords = self.draw_leela_candidates(leela_analysis, low_visits_threshold)
-        elif hint_moves:
-            top_move_coords = self._draw_kata_hint_moves(current_node, hint_moves, next_player, trainer_cfg.low_visits)
-        return top_move_coords
+        return _draw(self, current_node, hint_moves, next_player)
 
     def _draw_kata_hint_moves(
         self,
@@ -1243,27 +522,9 @@ class BadukPanWidget(Widget):
         next_player: str,
         low_visits_threshold: int,
     ) -> Any:
-        """Draw KataGo hint markers for each candidate move.
+        from katrain.gui.badukpan_hints import draw_kata_hint_moves as _draw
 
-        Returns:
-            top_move_coords: coords of the engine's best move (or None).
-        """
-        katrain = self.katrain
-        child_moves = {c.move.gtp() for c in current_node.children if c.move}
-        top_moves_show = [
-            opt
-            for opt in [
-                katrain.config("trainer/top_moves_show"),
-                katrain.config("trainer/top_moves_show_secondary"),
-            ]
-            if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
-        ]
-        top_move_coords = None
-        for move_dict in hint_moves:
-            top_move_coords = self._draw_kata_hint_marker(
-                current_node, next_player, move_dict, child_moves, top_moves_show, low_visits_threshold, top_move_coords
-            )
-        return top_move_coords
+        return _draw(self, current_node, hint_moves, next_player, low_visits_threshold)
 
     def _draw_kata_hint_marker(
         self,
@@ -1275,254 +536,53 @@ class BadukPanWidget(Widget):
         low_visits_threshold: int,
         top_move_coords: Any,
     ) -> Any:
-        """Draw a single KataGo hint marker at the move's coordinates.
+        from katrain.gui.badukpan_hints import draw_kata_hint_marker as _draw
 
-        Returns:
-            Updated top_move_coords (may be the new coords if this is the best move).
-        """
-        katrain = self.katrain
-        move = Move.from_gtp(move_dict["move"])
-        if move.coords is None:
-            return top_move_coords
-
-        engine_best_move = move_dict.get("order", 99) == 0
-        scale = Theme.HINT_SCALE
-        text_on = True
-        alpha = Theme.HINTS_ALPHA
-        if (
-            move_dict["visits"] < low_visits_threshold
-            and not engine_best_move
-            and move_dict["move"] not in child_moves
-        ):
-            scale = Theme.UNCERTAIN_HINT_SCALE
-            text_on = False
-            alpha = Theme.HINTS_LO_ALPHA
-
-        if scale <= 0:  # if theme turns hints off, do not draw them
-            return top_move_coords
-
-        if "pv" in move_dict:
-            self.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
-        else:
-            katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
-        evalsize = self.stone_size * scale
-        evalcol = self.eval_color(move_dict["pointsLost"])
-        if text_on and top_moves_show:  # remove grid lines using a board colored circle
-            draw_circle(
-                (
-                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                ),
-                self.stone_size * scale * 0.98,
-                Theme.APPROX_BOARD_COLOR,
-            )
-
-        if evalcol:
-            Color(*evalcol[:3], alpha)
-        else:
-            return top_move_coords
-        Rectangle(
-            pos=(
-                self.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
-                self.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
-            ),
-            size=(2 * evalsize, 2 * evalsize),
-            texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
-        )
-        if text_on and top_moves_show:
-            keys: dict[str, Any] = {"size": self.grid_size / 3, "smallsize": self.grid_size / 3.33}
-            player_sign = current_node.player_sign(next_player)
-            if len(top_moves_show) == 1:
-                fmt = "[size={size:.0f}]{" + top_moves_show[0] + "}[/size]"
-            else:
-                fmt = (
-                    "[size={size:.0f}]{"
-                    + top_moves_show[0]
-                    + "}[/size]\n[size={smallsize:.0f}]{"
-                    + top_moves_show[1]
-                    + "}[/size]"
-                )
-
-            keys[TOP_MOVE_DELTA_SCORE] = self.format_loss(-move_dict["pointsLost"])
-            keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict['scoreLead']:.1f}"
-            winrate = move_dict["winrate"] if player_sign == 1 else 1 - move_dict["winrate"]
-            keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
-            keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict['winrateLost']:+.1%}"
-            keys[TOP_MOVE_VISITS] = format_visits(move_dict["visits"])
-
-            Color(*Theme.HINT_TEXT_COLOR)
-            draw_text(
-                pos=(
-                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                ),
-                text=fmt.format(**keys),
-                font_name="Roboto",
-                markup=True,
-                line_height=0.85,
-                halign="center",
-            )
-
-        if engine_best_move:
-            top_move_coords = move.coords
-            # Use the same color as the move marker for consistency
-            if evalcol:
-                Color(*evalcol)
-            else:
-                Color(*Theme.TOP_MOVE_BORDER_COLOR)
-            Line(
-                circle=(
-                    self.gridpos[move.coords[1]][move.coords[0]][0],
-                    self.gridpos[move.coords[1]][move.coords[0]][1],
-                    self.stone_size - dp(1.2),
-                ),
-                width=dp(1.2),
-            )
-        return top_move_coords
+        return _draw(self, current_node, next_player, move_dict, child_moves, top_moves_show, low_visits_threshold, top_move_coords)
 
     def _draw_children_markers(self, current_node: Any, top_move_coords: Any) -> None:
-        """Show child node markers (next possible moves in undo/review)."""
-        katrain = self.katrain
-        # Phase 93: Fog of War hides child markers (could reveal next move)
-        if not (katrain.analysis_controls.show_children.active and not katrain.is_fog_active()):
-            return
-        for child_node in current_node.children:
-            move = child_node.move
-            if move and move.coords is not None:
-                if child_node.analysis_exists:
-                    self.active_pv_moves.append(
-                        (move.coords, [move.gtp()] + child_node.candidate_moves[0]["pv"], current_node)
-                    )
+        from katrain.gui.badukpan_hints import draw_children_markers as _draw
 
-                if move.coords != top_move_coords:  # for contrast
-                    dashed_width = 18
-                    Color(*Theme.NEXT_MOVE_DASH_CONTRAST_COLORS[child_node.player])
-                    Line(
-                        circle=(
-                            self.gridpos[move.coords[1]][move.coords[0]][0],
-                            self.gridpos[move.coords[1]][move.coords[0]][1],
-                            self.stone_size - dp(1.2),
-                        ),
-                        width=dp(1.2),
-                    )
-                else:
-                    dashed_width = 10
-                Color(*Theme.STONE_COLORS[child_node.player])
-                for s in range(0, 360, 30):
-                    Line(
-                        circle=(
-                            self.gridpos[move.coords[1]][move.coords[0]][0],
-                            self.gridpos[move.coords[1]][move.coords[0]][1],
-                            self.stone_size - dp(1.2),
-                            s,
-                            s + dashed_width,
-                        ),
-                        width=dp(1.2),
-                    )
+        _draw(self, current_node, top_move_coords)
 
     def _draw_hover_overlay(self, ghost_alpha: float, next_player: str) -> None:
-        """Draw hover overlay elements: ghost stone, PV animation, region-of-interest box."""
-        # hover next move ghost stone
-        if self.ghost_stone:
-            self.draw_stone(*self.ghost_stone, next_player, alpha=ghost_alpha)
+        from katrain.gui.badukpan_hints import draw_hover_overlay as _draw
 
-        animating_pv = self.animating_pv
-        if animating_pv:
-            pv, node, start_time, _ = animating_pv
-            up_to_move = self.get_animate_pv_index()
-            self.draw_pv(pv, node, up_to_move)
-
-        if getattr(self.katrain.game, "region_of_interest", None):
-            self.draw_roi_box(self.katrain.game.region_of_interest, width=dp(1.25))
+        _draw(self, ghost_alpha, next_player)
 
     def _draw_pass_circle(self, current_node: Any, game_ended: Any, board_size_x: int, board_size_y: int) -> None:
-        """Draw the pass / game-ended circle in the center of the board."""
-        if not (current_node.is_pass or game_ended):
-            return
-        katrain = self.katrain
-        if game_ended:
-            text = game_ended
-            katrain.controls.timer.paused = True
-        else:
-            text = i18n._("board-pass")
-        Color(*Theme.PASS_CIRCLE_COLOR)
-        center = (self.initial_gridpos_x[int(board_size_x / 2)], self.initial_gridpos_y[int(board_size_y / 2)])
-        size = min(self.width, self.height) * 0.227
-        Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
-        Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
-        draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
+        from katrain.gui.badukpan_hints import draw_pass_circle as _draw
+
+        _draw(self, current_node, game_ended, board_size_x, board_size_y)
+
+    # =================================================================
+    # PV animation (delegated to badukpan_pv)
+    # =================================================================
 
     def animate_pv(self, _dt: Any) -> None:
-        if self.animating_pv:
-            self.redraw_hover_contents_trigger()
+        from katrain.gui.badukpan_pv import animate_pv as _animate
+
+        _animate(self, _dt)
 
     def draw_pv(self, pv: Any, node: Any, up_to_move: Any) -> None:
-        katrain = self.katrain
-        next_last_player = [node.next_player, Move.opponent_player(node.next_player)]
-        cn = katrain.game.current_node
-        if node != cn and node.parent != cn:
-            hide_node = cn
-            while hide_node and hide_node.move and hide_node != node:
-                if not hide_node.move.is_pass:
-                    pos = (
-                        self.gridpos[hide_node.move.coords[1]][hide_node.move.coords[0]][0],
-                        self.gridpos[hide_node.move.coords[1]][hide_node.move.coords[0]][1],
-                    )
-                    draw_circle(pos, self.stone_size, [0.85, 0.68, 0.40, 0.8])
-                hide_node = hide_node.parent
-        for i, gtpmove in enumerate(pv):
-            if i > up_to_move:
-                return
-            move_player = next_last_player[i % 2]
-            coords = Move.from_gtp(gtpmove).coords
-            if coords is None:  # tee-hee
-                board_controls = getattr(katrain, "board_controls", None)
-                pass_btn = getattr(board_controls, "pass_btn", None) if board_controls else None
-                if pass_btn:
-                    sizefac = pass_btn.size[1] / 2 / self.stone_size
-                    board_coords = (
-                        pass_btn.pos[0] + pass_btn.size[0] + self.stone_size * sizefac,
-                        pass_btn.pos[1] + pass_btn.size[1] / 2,
-                    )
-                else:
-                    continue  # skip this move if pass_btn unavailable
-            else:
-                board_coords = (self.gridpos[coords[1]][coords[0]][0], self.gridpos[coords[1]][coords[0]][1])
-                sizefac = 1
+        from katrain.gui.badukpan_pv import draw_pv as _draw_pv
 
-            stone_size = self.stone_size * sizefac
-            Color(1, 1, 1, 1)
-            Rectangle(  # not sure why the -1 here, but seems to center better
-                pos=(board_coords[0] - stone_size - 1, board_coords[1] - stone_size),
-                size=(2 * stone_size + 1, 2 * stone_size + 1),
-                texture=cached_texture(Theme.STONE_TEXTURE[move_player]),
-            )
-            Color(*Theme.PV_TEXT_COLORS[move_player])
-            draw_text(pos=board_coords, text=str(i + 1), font_size=self.grid_size * sizefac / 1.45, font_name="Roboto")
+        _draw_pv(self, pv, node, up_to_move)
 
     def set_animating_pv(self, pv: Any, node: Any) -> None:
-        self.animating_pv_index = None
-        if pv is None:
-            self.animating_pv = None
-        elif node is not None and (
-            not self.animating_pv or not (self.animating_pv[0] == pv and self.animating_pv[1] == node)
-        ):
-            self.animating_pv = (pv, node, time.time(), self.last_mouse_pos)
-        self.redraw_hover_contents_trigger()
+        from katrain.gui.badukpan_pv import set_animating_pv as _set
+
+        _set(self, pv, node)
 
     def adjust_animate_pv_index(self, delta: int = 1) -> None:
-        self.animating_pv_index = max(0, self.get_animate_pv_index() + delta)
+        from katrain.gui.badukpan_pv import adjust_animate_pv_index as _adj
+
+        _adj(self, delta)
 
     def get_animate_pv_index(self) -> float:
-        if self.animating_pv_index is None:
-            if self.animating_pv:
-                pv, node, start_time, _ = self.animating_pv
-                delay = self.katrain.config("general/anim_pv_time", 0.5)
-                return float(min(len(pv), (time.time() - start_time) / max(delay, 0.1)))
-            else:
-                return 0.0
+        from katrain.gui.badukpan_pv import get_animate_pv_index as _get
 
-        return float(self.animating_pv_index)
+        return _get(self)
 
     def rotate_gridpos(self) -> None:
         board_size_x, board_size_y = self.katrain.game.board_size
@@ -1567,7 +627,12 @@ class BadukPanWidget(Widget):
         Clock.schedule_once(self.redraw)
 
     def show_pv_from_comments(self, pv_str: str) -> None:
-        self.set_animating_pv(pv_str[1:].split(" "), self.katrain.controls.active_comment_node.parent)
+        from katrain.gui.badukpan_pv import show_pv_from_comments as _show
+
+        _show(self, pv_str)
+
+
+
 
 
 class AnalysisDropDown(DropDown):
