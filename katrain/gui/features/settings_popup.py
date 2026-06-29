@@ -416,122 +416,144 @@ def save_batch_options(ctx: FeatureContext, options: dict[str, Any]) -> None:
     ctx.save_config("mykatrain_settings")
 
 
-def do_mykatrain_settings_popup(
-    ctx: FeatureContext,
-    initial_tab: str | None = None,  # Phase 87.5: "analysis", "export", "leela"
-) -> None:
-    """myKatrain設定ポップアップを表示
+# =============================================================================
+# Phase 145-D+: Shared state container for tab builders
+# =============================================================================
 
-    Args:
-        ctx: FeatureContext providing config, save_config, controls
-        initial_tab: Optional tab to select on open ("analysis", "export", "leela")
+
+@dataclass
+class _SettingsPopupContext:
+    """Mutable state shared across the 3 tab builders and the popup orchestrator.
+
+    Phase 145-D+: Replaces the deep closure nesting that previously lived
+    inside ``do_mykatrain_settings_popup``. Checkbox callbacks in each tab
+    mutate the ``selected_*`` lists which are later read by ``save_settings``.
+
+    Attributes:
+        ctx: FeatureContext providing config, save_config, controls.
+        current_settings: ``mykatrain_settings`` section dict (or empty).
+        engine_config: ``engine`` section dict (or empty).
+        current_engine: Resolved engine id via ``get_analysis_engine``.
+        leela_config: Typed LeelaConfig via ``ctx.get_leela_config()``.
+        selected_engine: [engine_id] - mutated by engine radio buttons.
+        selected_disable_katago: [bool] - mutated by disable-katago checkbox.
+        selected_skill_preset: [str] - mutated by skill preset radio buttons.
+        selected_pv_filter: [str] - mutated by PV filter radio buttons.
+        selected_beginner_hints: [bool] - mutated by beginner hints checkbox.
+        selected_format: [str] - mutated by karte_format radio buttons.
+        selected_opp_info: [str] - mutated by opponent_info_mode radio buttons.
+        searchable_widgets: Items appended by ``register_searchable``.
+        register_searchable: Closure set by the orchestrator (initially None).
+        reopen_popup: Closure set by the orchestrator (initially None).
+        popup: Popup reference, set by the orchestrator after creation.
     """
-    current_settings = ctx.config("mykatrain_settings") or {}
 
-    # Main layout: Search + TabbedPanel + Buttons
-    main_layout = BoxLayout(orientation="vertical", spacing=dp(8))
+    ctx: FeatureContext
+    current_settings: dict[str, Any]
+    engine_config: dict[str, Any]
+    current_engine: str
+    leela_config: Any  # LeelaConfig
+    selected_engine: list[str]
+    selected_disable_katago: list[bool]
+    selected_skill_preset: list[str]
+    selected_pv_filter: list[str]
+    selected_beginner_hints: list[bool]
+    selected_format: list[str]
+    selected_opp_info: list[str]
+    searchable_widgets: list[dict[str, Any]] = field(default_factory=list)
+    register_searchable: Callable[[str, Any], None] | None = None
+    reopen_popup: Callable[[], None] | None = None
+    popup: Any = None
 
-    # Phase 145-D: Searchable widgets list (populated after widget creation)
-    searchable_widgets: list[dict[str, Any]] = []
 
-    def register_searchable(label_text: str, *widgets: Any) -> None:
-        """検索対象としてウィジェットを登録"""
-        for widget in widgets:
-            searchable_widgets.append({"label_text": label_text, "widget": widget})
+# =============================================================================
+# Phase 145-D+: Tab builders (extracted from do_mykatrain_settings_popup)
+# =============================================================================
 
-    # Search bar (Phase 145-D: extracted helper)
-    search_layout, search_input = _build_search_bar(searchable_widgets, register_searchable)
 
-    # TabbedPanel with 3 tabs
-    tabbed_panel = TabbedPanel(
-        do_default_tab=False,
-        tab_width=dp(120),
-        tab_height=dp(40),
-        size_hint_y=0.9,
-    )
+def _add_searchable_label(
+    container: BoxLayout,
+    text_key: str,
+    state: _SettingsPopupContext,
+    height: int = 25,
+    size_hint_x: float | None = None,
+) -> Label:
+    """Helper: add a labelled section header that registers as searchable.
 
-    # popup 変数を先に宣言（リセット用のコールバックで使用）
-    popup = None
-
-    def reopen_popup() -> None:
-        """ポップアップをリロードして再表示"""
-        from kivy.clock import Clock
-
-        Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(ctx), 0.1)
-
-    # === Tab 1: 解析設定 (Analysis) ===
-    tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
-    tab1_scroll = ScrollView(do_scroll_x=False)
-    tab1_inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
-    tab1_inner.bind(minimum_height=tab1_inner.setter("height"))
-
-    # === Tab 2: 出力設定 (Export) ===
-    tab2 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_export"))
-    tab2_scroll = ScrollView(do_scroll_x=False)
-    tab2_inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
-    tab2_inner.bind(minimum_height=tab2_inner.setter("height"))
-
-    # === Tab 3: Leela Zero ===
-    tab3 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_leela"))
-    tab3_scroll = ScrollView(do_scroll_x=False)
-    tab3_inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
-    tab3_inner.bind(minimum_height=tab3_inner.setter("height"))
-
-    # === Analysis Engine Selection (Phase 34) ===
-    from katrain.core.analysis import EngineType, get_analysis_engine
-
-    engine_label = Label(
-        text=i18n._("mykatrain:settings:analysis_engine"),
+    Centralizes the repeated pattern of creating a Label with theme defaults
+    and registering it for the search bar.
+    """
+    label = Label(
+        text=i18n._(text_key),
         size_hint_y=None,
-        height=dp(25),
+        height=dp(height),
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
         font_name=Theme.DEFAULT_FONT,
     )
-    engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab1_inner.add_widget(engine_label)
+    if size_hint_x is not None:
+        label.size_hint_x = size_hint_x
+    label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    container.add_widget(label)
+    if state.register_searchable is not None:
+        state.register_searchable(text_key, label)
+    return label
 
-    # Get current value via Phase 33 function (with fallback)
-    engine_config = ctx.config("engine") or {}
-    current_engine = get_analysis_engine(engine_config)
-    selected_engine = [current_engine]
 
-    # Radio button options (use EngineType constants for name consistency)
+def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button]:
+    """Build the Analysis tab content (Tab 1).
+
+    Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
+
+    Args:
+        state: Shared mutable state. Mutates selected_engine,
+            selected_disable_katago, selected_skill_preset, selected_pv_filter,
+            selected_beginner_hints via checkbox callbacks.
+
+    Returns:
+        (inner_layout, reset_button): ``inner_layout`` is a BoxLayout ready
+        to be wrapped in a ScrollView and added to a TabbedPanelItem. The
+        reset button should be bound by the orchestrator to
+        ``_reset_tab_settings(ctx, "analysis", popup, reopen_popup)``.
+    """
+    from katrain.core.analysis import EngineType  # Phase 34
+
+    inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
+    inner.bind(minimum_height=inner.setter("height"))
+
+    # --- Analysis Engine Selection (Phase 34) ---
+    _add_searchable_label(inner, "mykatrain:settings:analysis_engine", state)
+
     engine_options = [
         (EngineType.KATAGO.value, i18n._("mykatrain:settings:engine_katago")),
         (EngineType.LEELA.value, i18n._("mykatrain:settings:engine_leela")),
     ]
 
     # Phase 87.5: Check if Leela is configured for gating
-    leela_config = ctx.get_leela_config()
-    leela_enabled_for_gating = leela_config.enabled or bool(leela_config.exe_path or "")
+    leela_enabled_for_gating = state.leela_config.enabled or bool(state.leela_config.exe_path or "")
 
     engine_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
     for engine_value, engine_label_text in engine_options:
-        # Phase 87.5: Disable Leela checkbox if not configured
         is_leela_option = engine_value == EngineType.LEELA.value
         should_disable = is_leela_option and not leela_enabled_for_gating
-
+        is_active = engine_value == state.current_engine
         # If Leela not configured and currently selected, force to KataGo
-        is_active = engine_value == current_engine
         if is_leela_option and not leela_enabled_for_gating and is_active:
             is_active = False
-            # Force KataGo to be selected
-            if engine_value == EngineType.KATAGO.value:
-                pass  # Will be handled by the katago iteration
-            else:
-                selected_engine[0] = EngineType.KATAGO.value
+            state.selected_engine[0] = EngineType.KATAGO.value
 
         checkbox = CheckBox(
             group="analysis_engine_setting",
             active=is_active,
             size_hint_x=None,
             width=dp(30),
-            disabled=should_disable,  # Phase 87.5
+            disabled=should_disable,
         )
         checkbox.bind(
-            active=lambda chk, active, val=engine_value: selected_engine.__setitem__(0, val) if active else None
+            active=lambda chk, active, val=engine_value: state.selected_engine.__setitem__(0, val)
+            if active
+            else None
         )
         label = Label(
             text=engine_label_text,
@@ -544,54 +566,30 @@ def do_mykatrain_settings_popup(
         label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         engine_layout.add_widget(checkbox)
         engine_layout.add_widget(label)
+    inner.add_widget(engine_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:analysis_engine", engine_layout)
 
-    tab1_inner.add_widget(engine_layout)
-    register_searchable(i18n._("mykatrain:settings:analysis_engine"), engine_label, engine_layout)
-
-    # Disable KataGo Checkbox (Phase 3 Extension)
-    disable_katago_label = Label(
-        text=i18n._("mykatrain:settings:disable_katago"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    disable_katago_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab1_inner.add_widget(disable_katago_label)
-
-    current_disable_katago = ctx.config("engine/disabled", False)
-    selected_disable_katago = [current_disable_katago]
+    # --- Disable KataGo Checkbox (Phase 3 Extension) ---
+    _add_searchable_label(inner, "mykatrain:settings:disable_katago", state)
 
     disable_katago_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
     disable_katago_checkbox = CheckBox(
-        active=current_disable_katago,
+        active=state.selected_disable_katago[0],
         size_hint_x=None,
         width=dp(30),
     )
-    disable_katago_checkbox.bind(active=lambda chk, active: selected_disable_katago.__setitem__(0, active))
+    disable_katago_checkbox.bind(
+        active=lambda chk, active: state.selected_disable_katago.__setitem__(0, active)
+    )
     disable_katago_layout.add_widget(disable_katago_checkbox)
     disable_katago_layout.add_widget(Label())  # Spacer
-    tab1_inner.add_widget(disable_katago_layout)
-    register_searchable(i18n._("mykatrain:settings:disable_katago"), disable_katago_label, disable_katago_layout)
+    inner.add_widget(disable_katago_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:disable_katago", disable_katago_layout)
 
-    # Skill Preset (Radio buttons)
-    skill_label = Label(
-        text=i18n._("mykatrain:settings:skill_preset"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    skill_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab1_inner.add_widget(skill_label)
-    # Register for search (will register skill_layout after creation)
-
-    current_skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
-    selected_skill_preset = [current_skill_preset]
+    # --- Skill Preset (Radio buttons) ---
+    _add_searchable_label(inner, "mykatrain:settings:skill_preset", state)
 
     skill_options = [
         ("auto", i18n._("mykatrain:settings:skill_auto")),
@@ -606,12 +604,14 @@ def do_mykatrain_settings_popup(
     for skill_value, skill_label_text in skill_options:
         checkbox = CheckBox(
             group="skill_preset_setting",
-            active=(skill_value == current_skill_preset),
+            active=(skill_value == state.selected_skill_preset[0]),
             size_hint_x=None,
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=skill_value: selected_skill_preset.__setitem__(0, val) if active else None
+            active=lambda chk, active, val=skill_value: state.selected_skill_preset.__setitem__(0, val)
+            if active
+            else None
         )
         label = Label(
             text=skill_label_text,
@@ -625,24 +625,12 @@ def do_mykatrain_settings_popup(
         label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         skill_layout.add_widget(checkbox)
         skill_layout.add_widget(label)
-    tab1_inner.add_widget(skill_layout)
-    register_searchable(i18n._("mykatrain:settings:skill_preset"), skill_label, skill_layout)
+    inner.add_widget(skill_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:skill_preset", skill_layout)
 
-    # PV Filter Level (Radio buttons)
-    pv_filter_label = Label(
-        text=i18n._("mykatrain:settings:pv_filter_level"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    pv_filter_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab1_inner.add_widget(pv_filter_label)
-
-    current_pv_filter = ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL
-    selected_pv_filter = [current_pv_filter]
+    # --- PV Filter Level (Radio buttons) ---
+    _add_searchable_label(inner, "mykatrain:settings:pv_filter_level", state)
 
     pv_filter_options = [
         ("auto", i18n._("mykatrain:settings:pv_filter_auto")),
@@ -656,12 +644,14 @@ def do_mykatrain_settings_popup(
     for pv_value, pv_label_text in pv_filter_options:
         checkbox = CheckBox(
             group="pv_filter_setting",
-            active=(pv_value == current_pv_filter),
+            active=(pv_value == state.selected_pv_filter[0]),
             size_hint_x=None,
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=pv_value: selected_pv_filter.__setitem__(0, val) if active else None
+            active=lambda chk, active, val=pv_value: state.selected_pv_filter.__setitem__(0, val)
+            if active
+            else None
         )
         label = Label(
             text=pv_label_text,
@@ -675,32 +665,22 @@ def do_mykatrain_settings_popup(
         label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
         pv_filter_layout.add_widget(checkbox)
         pv_filter_layout.add_widget(label)
-    tab1_inner.add_widget(pv_filter_layout)
-    register_searchable(i18n._("mykatrain:settings:pv_filter_level"), pv_filter_label, pv_filter_layout)
+    inner.add_widget(pv_filter_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:pv_filter_level", pv_filter_layout)
 
-    # Phase 91: Beginner Hints toggle
-    beginner_hints_label = Label(
-        text=i18n._("mykatrain:settings:beginner_hints"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    beginner_hints_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab1_inner.add_widget(beginner_hints_label)
-
-    current_beginner_hints = ctx.config("beginner_hints/enabled", False)
-    selected_beginner_hints = [current_beginner_hints]
+    # --- Beginner Hints toggle (Phase 91) ---
+    _add_searchable_label(inner, "mykatrain:settings:beginner_hints", state)
 
     beginner_hints_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
     beginner_hints_checkbox = CheckBox(
-        active=current_beginner_hints,
+        active=state.selected_beginner_hints[0],
         size_hint_x=None,
         width=dp(30),
     )
-    beginner_hints_checkbox.bind(active=lambda chk, active: selected_beginner_hints.__setitem__(0, active))
+    beginner_hints_checkbox.bind(
+        active=lambda chk, active: state.selected_beginner_hints.__setitem__(0, active)
+    )
     beginner_hints_desc = Label(
         text=i18n._("mykatrain:settings:beginner_hints_desc"),
         size_hint_x=0.9,
@@ -712,28 +692,51 @@ def do_mykatrain_settings_popup(
     beginner_hints_desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     beginner_hints_layout.add_widget(beginner_hints_checkbox)
     beginner_hints_layout.add_widget(beginner_hints_desc)
-    tab1_inner.add_widget(beginner_hints_layout)
-    register_searchable(i18n._("mykatrain:settings:beginner_hints"), beginner_hints_label, beginner_hints_layout)
+    inner.add_widget(beginner_hints_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:beginner_hints", beginner_hints_layout)
 
-    # Reset button for Analysis tab (Phase 27)
-    tab1_reset_btn = Button(
+    # --- Reset button ---
+    reset_btn = Button(
         text=i18n._("mykatrain:settings:reset"),
         size_hint_y=None,
         height=dp(36),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
-    tab1_inner.add_widget(tab1_reset_btn)
+    inner.add_widget(reset_btn)
 
-    # Default User Name
+    return inner, reset_btn
+
+
+def _build_export_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, dict[str, Any]]:
+    """Build the Export tab content (Tab 2).
+
+    Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
+
+    Args:
+        state: Shared mutable state. Mutates ``selected_format`` and
+            ``selected_opp_info`` via radio callbacks.
+
+    Returns:
+        (inner_layout, reset_button, widget_refs): widget_refs contains
+        ``user_input``, ``output_input``, ``input_input``, ``output_browse``,
+        ``input_browse``. The orchestrator uses these to wire save_settings
+        and browse callbacks.
+    """
+    inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
+    inner.bind(minimum_height=inner.setter("height"))
+
+    # --- Default User Name ---
     user_row, user_input, _ = create_text_input_row(
         label_text=i18n._("mykatrain:settings:default_user_name"),
-        initial_value=current_settings.get("default_user_name", ""),
+        initial_value=state.current_settings.get("default_user_name", ""),
     )
-    tab2_inner.add_widget(user_row)
-    register_searchable(i18n._("mykatrain:settings:default_user_name"), user_row)
+    inner.add_widget(user_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:default_user_name", user_row)
 
-    # Karte Output Directory
+    # --- Karte Output Directory ---
     output_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     output_label = Label(
         text=i18n._("mykatrain:settings:karte_output_directory"),
@@ -745,7 +748,7 @@ def do_mykatrain_settings_popup(
     )
     output_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     output_input = TextInput(
-        text=current_settings.get("karte_output_directory", ""),
+        text=state.current_settings.get("karte_output_directory", ""),
         multiline=False,
         size_hint_x=0.5,
         font_name=Theme.DEFAULT_FONT,
@@ -759,10 +762,11 @@ def do_mykatrain_settings_popup(
     output_row.add_widget(output_label)
     output_row.add_widget(output_input)
     output_row.add_widget(output_browse)
-    tab2_inner.add_widget(output_row)
-    register_searchable(i18n._("mykatrain:settings:karte_output_directory"), output_row)
+    inner.add_widget(output_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:karte_output_directory", output_row)
 
-    # Batch Export Input Directory
+    # --- Batch Export Input Directory ---
     input_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     input_label = Label(
         text=i18n._("mykatrain:settings:batch_export_input_directory"),
@@ -774,7 +778,7 @@ def do_mykatrain_settings_popup(
     )
     input_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     input_input = TextInput(
-        text=current_settings.get("batch_export_input_directory", ""),
+        text=state.current_settings.get("batch_export_input_directory", ""),
         multiline=False,
         size_hint_x=0.5,
         font_name=Theme.DEFAULT_FONT,
@@ -788,21 +792,12 @@ def do_mykatrain_settings_popup(
     input_row.add_widget(input_label)
     input_row.add_widget(input_input)
     input_row.add_widget(input_browse)
-    tab2_inner.add_widget(input_row)
-    register_searchable(i18n._("mykatrain:settings:batch_export_input"), input_row)
+    inner.add_widget(input_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:batch_export_input", input_row)
 
-    # Karte Format (Radio buttons - 2x2 grid)
-    format_label = Label(
-        text=i18n._("mykatrain:settings:karte_format"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    format_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab2_inner.add_widget(format_label)
+    # --- Karte Format (Radio buttons - 2x2 grid) ---
+    _add_searchable_label(inner, "mykatrain:settings:karte_format", state)
 
     format_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
     format_options = [
@@ -812,19 +807,18 @@ def do_mykatrain_settings_popup(
         ("default_user_only", i18n._("mykatrain:settings:format_default_user_only")),
     ]
 
-    current_format = current_settings.get("karte_format", "both")
-    selected_format = [current_format]
-
     for format_value, format_label_text in format_options:
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
         checkbox = CheckBox(
             group="karte_format",
-            active=(format_value == current_format),
+            active=(format_value == state.selected_format[0]),
             size_hint_x=None,
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=format_value: selected_format.__setitem__(0, val) if active else None
+            active=lambda chk, active, val=format_value: state.selected_format.__setitem__(0, val)
+            if active
+            else None
         )
         label = Label(
             text=format_label_text,
@@ -837,22 +831,12 @@ def do_mykatrain_settings_popup(
         row.add_widget(checkbox)
         row.add_widget(label)
         format_layout.add_widget(row)
+    inner.add_widget(format_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:karte_format", format_layout)
 
-    tab2_inner.add_widget(format_layout)
-    register_searchable(i18n._("mykatrain:settings:karte_format"), format_label, format_layout)
-
-    # Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4
-    opp_info_label = Label(
-        text=i18n._("mykatrain:settings:opponent_info_mode"),
-        size_hint_y=None,
-        height=dp(25),
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    opp_info_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    tab2_inner.add_widget(opp_info_label)
+    # --- Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4 ---
+    _add_searchable_label(inner, "mykatrain:settings:opponent_info_mode", state)
 
     opp_info_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
     opp_info_options = [
@@ -861,19 +845,18 @@ def do_mykatrain_settings_popup(
         ("always_aggregate", i18n._("mykatrain:settings:opponent_info_aggregate")),
     ]
 
-    current_opp_info = current_settings.get("opponent_info_mode", "auto")
-    selected_opp_info = [current_opp_info]
-
     for opp_value, opp_label_text in opp_info_options:
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
         checkbox = CheckBox(
             group="opponent_info_mode",
-            active=(opp_value == current_opp_info),
+            active=(opp_value == state.selected_opp_info[0]),
             size_hint_x=None,
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=opp_value: selected_opp_info.__setitem__(0, val) if active else None
+            active=lambda chk, active, val=opp_value: state.selected_opp_info.__setitem__(0, val)
+            if active
+            else None
         )
         label = Label(
             text=opp_label_text,
@@ -886,25 +869,52 @@ def do_mykatrain_settings_popup(
         row.add_widget(checkbox)
         row.add_widget(label)
         opp_info_layout.add_widget(row)
-    tab2_inner.add_widget(opp_info_layout)
-    register_searchable(i18n._("mykatrain:settings:opponent_info_mode"), opp_info_label, opp_info_layout)
+    inner.add_widget(opp_info_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:opponent_info_mode", opp_info_layout)
 
-    # Reset button for Export tab (Phase 27)
-    tab2_reset_btn = Button(
+    # --- Reset button ---
+    reset_btn = Button(
         text=i18n._("mykatrain:settings:reset"),
         size_hint_y=None,
         height=dp(36),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
-    tab2_inner.add_widget(tab2_reset_btn)
+    inner.add_widget(reset_btn)
 
-    # === Leela Zero Settings Section ===
-    # Note: Section label is no longer needed as it's now a separate tab
+    widget_refs = {
+        "user_input": user_input,
+        "output_input": output_input,
+        "input_input": input_input,
+        "output_browse": output_browse,
+        "input_browse": input_browse,
+    }
+    return inner, reset_btn, widget_refs
 
-    # Leela Enabled Checkbox - REMOVED (Phase 123)
-    # Replaced by Analysis Engine selection logic.
-    # leela_config is already loaded at line 545 via ctx.get_leela_config()
+
+def _build_leela_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, dict[str, Any]]:
+    """Build the Leela Zero tab content (Tab 3).
+
+    Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
+
+    Args:
+        state: Shared state. Reads ``state.leela_config`` for initial values.
+
+    Returns:
+        (inner_layout, reset_button, widget_refs): widget_refs contains
+        ``leela_path_input``, ``leela_path_browse``, ``leela_k_slider``,
+        ``leela_visits_input``, ``leela_fast_visits_input``, ``leela_cand_spinner``,
+        ``leela_top_moves_spinner``, ``leela_top_moves_spinner_2``.
+    """
+    leela = state.leela_config
+    inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
+    inner.bind(minimum_height=inner.setter("height"))
+
+    # Note: leela_enabled checkbox REMOVED in Phase 123, replaced by the
+    # Analysis Engine selection in the Analysis tab.
+
+    # --- Leela Executable Path ---
     leela_path_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_path_label = Label(
         text=i18n._("mykatrain:settings:leela_exe_path"),
@@ -916,7 +926,7 @@ def do_mykatrain_settings_popup(
     )
     leela_path_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     leela_path_input = TextInput(
-        text=leela_config.get("exe_path", ""),
+        text=leela.get("exe_path", ""),
         multiline=False,
         size_hint_x=0.55,
         font_name=Theme.DEFAULT_FONT,
@@ -930,10 +940,11 @@ def do_mykatrain_settings_popup(
     leela_path_row.add_widget(leela_path_label)
     leela_path_row.add_widget(leela_path_input)
     leela_path_row.add_widget(leela_path_browse)
-    tab3_inner.add_widget(leela_path_row)
-    register_searchable(i18n._("mykatrain:settings:leela_exe_path"), leela_path_row)
+    inner.add_widget(leela_path_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_exe_path", leela_path_row)
 
-    # Leela K Value Slider
+    # --- Leela K Value Slider ---
     leela_k_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_k_label = Label(
         text=i18n._("mykatrain:settings:leela_k_value"),
@@ -947,7 +958,7 @@ def do_mykatrain_settings_popup(
     leela_k_slider = Slider(
         min=0.1,  # Practical minimum
         max=1.0,  # Practical maximum (reduced from 2.0)
-        value=leela_config.get("loss_scale_k", LEELA_K_DEFAULT),
+        value=leela.get("loss_scale_k", LEELA_K_DEFAULT),
         step=0.05,  # Finer adjustment (changed from 0.1)
         size_hint_x=0.50,
     )
@@ -963,10 +974,11 @@ def do_mykatrain_settings_popup(
     leela_k_row.add_widget(leela_k_label)
     leela_k_row.add_widget(leela_k_slider)
     leela_k_row.add_widget(leela_k_value_label)
-    tab3_inner.add_widget(leela_k_row)
-    register_searchable(i18n._("mykatrain:settings:leela_k_value"), leela_k_row)
+    inner.add_widget(leela_k_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_k_value", leela_k_row)
 
-    # Leela Max Visits
+    # --- Leela Max Visits ---
     leela_visits_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_visits_label = Label(
         text=i18n._("mykatrain:settings:leela_max_visits"),
@@ -978,7 +990,7 @@ def do_mykatrain_settings_popup(
     )
     leela_visits_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     leela_visits_input = TextInput(
-        text=str(leela_config.get("max_visits", 1000)),
+        text=str(leela.get("max_visits", 1000)),
         multiline=False,
         input_filter="int",
         size_hint_x=0.70,
@@ -986,10 +998,11 @@ def do_mykatrain_settings_popup(
     )
     leela_visits_row.add_widget(leela_visits_label)
     leela_visits_row.add_widget(leela_visits_input)
-    tab3_inner.add_widget(leela_visits_row)
-    register_searchable(i18n._("mykatrain:settings:leela_max_visits"), leela_visits_row)
+    inner.add_widget(leela_visits_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_max_visits", leela_visits_row)
 
-    # Leela Max Candidates (Phase 3)
+    # --- Leela Max Candidates (Phase 3) ---
     leela_cand_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_cand_label = Label(
         text=i18n._("mykatrain:settings:leela_max_candidates"),
@@ -1006,7 +1019,7 @@ def do_mykatrain_settings_popup(
     )
     leela_cand_spinner.value_refs = ["3", "5", "7", "auto"]
     leela_cand_spinner.build_values()
-    current_val = leela_config.get("max_candidates", 5)
+    current_val = leela.get("max_candidates", 5)
     # Handle both integer and "auto" string values
     if current_val == -1 or str(current_val).lower() == "auto":
         leela_cand_spinner.select_key("auto")
@@ -1014,10 +1027,11 @@ def do_mykatrain_settings_popup(
         leela_cand_spinner.select_key(str(current_val))
     leela_cand_row.add_widget(leela_cand_label)
     leela_cand_row.add_widget(leela_cand_spinner)
-    tab3_inner.add_widget(leela_cand_row)
-    register_searchable(i18n._("mykatrain:settings:leela_max_candidates"), leela_cand_row)
+    inner.add_widget(leela_cand_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_max_candidates", leela_cand_row)
 
-    # Leela Fast Visits (Phase 30)
+    # --- Leela Fast Visits (Phase 30) ---
     leela_fast_visits_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_fast_visits_label = Label(
         text=i18n._("mykatrain:settings:leela_fast_visits"),
@@ -1029,7 +1043,7 @@ def do_mykatrain_settings_popup(
     )
     leela_fast_visits_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     leela_fast_visits_input = TextInput(
-        text=str(leela_config.get("fast_visits", 200)),
+        text=str(leela.get("fast_visits", 200)),
         multiline=False,
         input_filter="int",
         size_hint_x=0.70,
@@ -1037,12 +1051,12 @@ def do_mykatrain_settings_popup(
     )
     leela_fast_visits_row.add_widget(leela_fast_visits_label)
     leela_fast_visits_row.add_widget(leela_fast_visits_input)
-    tab3_inner.add_widget(leela_fast_visits_row)
-    register_searchable(i18n._("mykatrain:settings:leela_fast_visits"), leela_fast_visits_row)
+    inner.add_widget(leela_fast_visits_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_fast_visits", leela_fast_visits_row)
 
-    # Leela Play Visits - REMOVED (Phase 123)
-
-    # Leela Top Moves Display
+    # --- Leela Top Moves Display ---
+    # leela_play_visits REMOVED (Phase 123)
     leela_top_moves_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
     leela_top_moves_label = Label(
         text=i18n._("mykatrain:settings:leela_top_moves_show"),
@@ -1057,48 +1071,127 @@ def do_mykatrain_settings_popup(
     leela_top_moves_spinner = I18NSpinner(size_hint_x=0.35)
     leela_top_moves_spinner.value_refs = LEELA_TOP_MOVE_OPTIONS
     leela_top_moves_spinner.build_values()
-    leela_top_moves_spinner.select_key(leela_config.get("top_moves_show", "leela_top_move_loss"))
+    leela_top_moves_spinner.select_key(leela.get("top_moves_show", "leela_top_move_loss"))
 
     leela_top_moves_spinner_2 = I18NSpinner(size_hint_x=0.35)
     leela_top_moves_spinner_2.value_refs = LEELA_TOP_MOVE_OPTIONS_SECONDARY
     leela_top_moves_spinner_2.build_values()
-    leela_top_moves_spinner_2.select_key(leela_config.get("top_moves_show_secondary", "leela_top_move_winrate"))
+    leela_top_moves_spinner_2.select_key(leela.get("top_moves_show_secondary", "leela_top_move_winrate"))
 
     leela_top_moves_row.add_widget(leela_top_moves_label)
     leela_top_moves_row.add_widget(leela_top_moves_spinner)
     leela_top_moves_row.add_widget(leela_top_moves_spinner_2)
-    tab3_inner.add_widget(leela_top_moves_row)
-    register_searchable(i18n._("mykatrain:settings:leela_top_moves_show"), leela_top_moves_row)
+    inner.add_widget(leela_top_moves_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_top_moves_show", leela_top_moves_row)
 
-    # Reset button for Leela tab (Phase 27)
-    tab3_reset_btn = Button(
+    # --- Reset button ---
+    reset_btn = Button(
         text=i18n._("mykatrain:settings:reset"),
         size_hint_y=None,
         height=dp(36),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
-    tab3_inner.add_widget(tab3_reset_btn)
+    inner.add_widget(reset_btn)
 
-    # Get katrain instance from ctx (FeatureContext is actually KaTrainGui)
-    katrain_instance = ctx  # ctx IS the KaTrainGui instance
+    widget_refs = {
+        "leela_path_input": leela_path_input,
+        "leela_path_browse": leela_path_browse,
+        "leela_k_slider": leela_k_slider,
+        "leela_visits_input": leela_visits_input,
+        "leela_fast_visits_input": leela_fast_visits_input,
+        "leela_cand_spinner": leela_cand_spinner,
+        "leela_top_moves_spinner": leela_top_moves_spinner,
+        "leela_top_moves_spinner_2": leela_top_moves_spinner_2,
+    }
+    return inner, reset_btn, widget_refs
 
 
+def do_mykatrain_settings_popup(
+    ctx: FeatureContext,
+    initial_tab: str | None = None,  # Phase 87.5: "analysis", "export", "leela"
+) -> None:
+    """myKatrain設定ポップアップを表示
 
-    # Buttons (outside TabbedPanel) - Phase 145-D: extracted helper
-    buttons_layout, export_button, import_button, save_button, cancel_button = _build_button_row()
+    Phase 145-D+: Refactored from a 809-line closure into a thin orchestrator
+    that delegates tab content generation to ``_build_analysis_tab``,
+    ``_build_export_tab`` and ``_build_leela_tab``. Shared mutable state is
+    passed via ``_SettingsPopupContext``.
 
-    # Assemble tabs
+    Args:
+        ctx: FeatureContext providing config, save_config, controls
+        initial_tab: Optional tab to select on open ("analysis", "export", "leela")
+    """
+    from katrain.core.analysis import EngineType, get_analysis_engine
+
+    current_settings = ctx.config("mykatrain_settings") or {}
+    engine_config = ctx.config("engine") or {}
+    current_engine = get_analysis_engine(engine_config)
+    leela_config = ctx.get_leela_config()
+
+    # Phase 145-D+: Initialize shared state container
+    state = _SettingsPopupContext(
+        ctx=ctx,
+        current_settings=current_settings,
+        engine_config=engine_config,
+        current_engine=current_engine,
+        leela_config=leela_config,
+        selected_engine=[current_engine],
+        selected_disable_katago=[ctx.config("engine/disabled", False)],
+        selected_skill_preset=[ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET],
+        selected_pv_filter=[ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL],
+        selected_beginner_hints=[ctx.config("beginner_hints/enabled", False)],
+        selected_format=[current_settings.get("karte_format", "both")],
+        selected_opp_info=[current_settings.get("opponent_info_mode", "auto")],
+    )
+
+    def register_searchable(label_text: str, *widgets: Any) -> None:
+        """検索対象としてウィジェットを登録"""
+        for widget in widgets:
+            state.searchable_widgets.append({"label_text": label_text, "widget": widget})
+
+    def reopen_popup() -> None:
+        """ポップアップをリロードして再表示"""
+        from kivy.clock import Clock
+
+        Clock.schedule_once(lambda dt: do_mykatrain_settings_popup(ctx), 0.1)
+
+    state.register_searchable = register_searchable
+    state.reopen_popup = reopen_popup
+
+    # --- Build search bar ---
+    search_layout, search_input = _build_search_bar(state.searchable_widgets, register_searchable)
+
+    # --- Build 3 tabs ---
+    tab1_inner, tab1_reset_btn = _build_analysis_tab(state)
+    tab2_inner, tab2_reset_btn, export_widgets = _build_export_tab(state)
+    tab3_inner, tab3_reset_btn, leela_widgets = _build_leela_tab(state)
+    widget_refs = {**export_widgets, **leela_widgets}
+
+    tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
+    tab1_scroll = ScrollView(do_scroll_x=False)
     tab1_scroll.add_widget(tab1_inner)
     tab1.add_widget(tab1_scroll)
-    tabbed_panel.add_widget(tab1)
 
+    tab2 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_export"))
+    tab2_scroll = ScrollView(do_scroll_x=False)
     tab2_scroll.add_widget(tab2_inner)
     tab2.add_widget(tab2_scroll)
-    tabbed_panel.add_widget(tab2)
 
+    tab3 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_leela"))
+    tab3_scroll = ScrollView(do_scroll_x=False)
     tab3_scroll.add_widget(tab3_inner)
     tab3.add_widget(tab3_scroll)
+
+    tabbed_panel = TabbedPanel(
+        do_default_tab=False,
+        tab_width=dp(120),
+        tab_height=dp(40),
+        size_hint_y=0.9,
+    )
+    tabbed_panel.add_widget(tab1)
+    tabbed_panel.add_widget(tab2)
     tabbed_panel.add_widget(tab3)
 
     # Phase 87.5 + Phase 89: Tab lookup dictionary
@@ -1108,35 +1201,30 @@ def do_mykatrain_settings_popup(
         "leela": tab3,
     }
 
-    # Phase 87.5 + Phase 89: Switch to initial_tab if specified, or auto if conditions met
+    # Phase 87.5 + Phase 89: Switch to initial_tab if specified
     from kivy.clock import Clock
 
     if initial_tab and initial_tab in tab_by_id:
         target_tab = tab_by_id[initial_tab]
         Clock.schedule_once(lambda dt: tabbed_panel.switch_to(target_tab), 0.1)
-    elif initial_tab == "leela":
-        Clock.schedule_once(lambda dt: tabbed_panel.switch_to(tab3), 0.1)
 
-    # Set default tab to tab1 (Analysis) or tab4 (Auto) based on conditions
     tabbed_panel.default_tab = tab1
 
-    # Apply Japanese-capable font to tab headers (fix tofu rendering)
-    # TabbedPanelHeader may not have font_name directly accessible;
-    # schedule after construction to ensure widgets are ready.
-    from kivy.clock import Clock
-
     def _set_tab_fonts(dt: float) -> None:
+        """Apply Japanese-capable font to tab headers (tofu fix)."""
         for tab in tabbed_panel.tab_list:
-            # Try public font_name first (TabbedPanelHeader)
             if hasattr(tab, "font_name"):
                 tab.font_name = Theme.DEFAULT_FONT
-            # Guarded fallback for internal _label if present
             if hasattr(tab, "_label") and tab._label:
                 tab._label.font_name = Theme.DEFAULT_FONT
 
     Clock.schedule_once(_set_tab_fonts, 0)
 
-    # Assemble main layout
+    # --- Build button row ---
+    buttons_layout, export_button, import_button, save_button, cancel_button = _build_button_row()
+
+    # --- Assemble main layout ---
+    main_layout = BoxLayout(orientation="vertical", spacing=dp(8))
     main_layout.add_widget(search_layout)
     main_layout.add_widget(tabbed_panel)
     main_layout.add_widget(buttons_layout)
@@ -1146,46 +1234,46 @@ def do_mykatrain_settings_popup(
         size=[dp(900), dp(700)],
         content=main_layout,
     ).__self__
+    state.popup = popup
 
-    # Save callback
+    # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers) ---
     def save_settings(*_args: Any) -> None:
-        """Save all settings sections. Orchestrator that delegates to focused
-        per-section helpers (Phase 145-D)."""
-        _save_general_settings(ctx, selected_skill_preset[0], selected_pv_filter[0])
-        _save_beginner_hints_settings(ctx, selected_beginner_hints[0])
-        new_engine_value = selected_engine[0]
-        leela_enabled = (new_engine_value == EngineType.LEELA.value)
+        """Save all settings sections."""
+        _save_general_settings(ctx, state.selected_skill_preset[0], state.selected_pv_filter[0])
+        _save_beginner_hints_settings(ctx, state.selected_beginner_hints[0])
+        new_engine_value = state.selected_engine[0]
+        leela_enabled = new_engine_value == EngineType.LEELA.value
         _save_engine_settings(ctx, new_engine_value)
         _save_mykatrain_settings(
             ctx,
-            user_input.text,
-            output_input.text,
-            input_input.text,
-            selected_format[0],
-            selected_opp_info[0],
-            selected_disable_katago[0],
+            widget_refs["user_input"].text,
+            widget_refs["output_input"].text,
+            widget_refs["input_input"].text,
+            state.selected_format[0],
+            state.selected_opp_info[0],
+            state.selected_disable_katago[0],
         )
         _save_leela_settings(
             ctx,
             leela_enabled=leela_enabled,
-            leela_path=leela_path_input.text.strip(),
-            leela_k_value=leela_k_slider.value,
-            leela_top_show=leela_top_moves_spinner.selected[1],
-            leela_top_show_2=leela_top_moves_spinner_2.selected[1],
-            leela_visits_text=leela_visits_input.text,
-            leela_fast_visits_text=leela_fast_visits_input.text.strip(),
-            leela_cand_value=leela_cand_spinner.selected[1],
+            leela_path=widget_refs["leela_path_input"].text.strip(),
+            leela_k_value=widget_refs["leela_k_slider"].value,
+            leela_top_show=widget_refs["leela_top_moves_spinner"].selected[1],
+            leela_top_show_2=widget_refs["leela_top_moves_spinner_2"].selected[1],
+            leela_visits_text=widget_refs["leela_visits_input"].text,
+            leela_fast_visits_text=widget_refs["leela_fast_visits_input"].text.strip(),
+            leela_cand_value=widget_refs["leela_cand_spinner"].selected[1],
         )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
 
-    # Directory browse callbacks (Phase 145-D: extracted to _open_browse_dialog)
+    # --- Browse callbacks (Phase 145-D: delegated to _open_browse_dialog) ---
     def browse_output(*_args: Any) -> None:
         _open_browse_dialog(
             ctx=ctx,
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
-            initial_path=output_input.text,
-            target_text_input=output_input,
+            initial_path=widget_refs["output_input"].text,
+            target_text_input=widget_refs["output_input"],
             dirselect=True,
         )
 
@@ -1193,8 +1281,8 @@ def do_mykatrain_settings_popup(
         _open_browse_dialog(
             ctx=ctx,
             title="Select folder - Navigate into target folder, then click 'Select This Folder'",
-            initial_path=input_input.text,
-            target_text_input=input_input,
+            initial_path=widget_refs["input_input"].text,
+            target_text_input=widget_refs["input_input"],
             dirselect=True,
         )
 
@@ -1202,8 +1290,8 @@ def do_mykatrain_settings_popup(
         _open_browse_dialog(
             ctx=ctx,
             title="Select Leela Zero executable",
-            initial_path=leela_path_input.text,
-            target_text_input=leela_path_input,
+            initial_path=widget_refs["leela_path_input"].text,
+            target_text_input=widget_refs["leela_path_input"],
             dirselect=False,
             file_filter=["*.exe"],
             select_string="Select",
@@ -1211,15 +1299,13 @@ def do_mykatrain_settings_popup(
 
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
-    output_browse.bind(on_release=browse_output)
-    input_browse.bind(on_release=browse_input)
-    leela_path_browse.bind(on_release=browse_leela_exe)
+    widget_refs["output_browse"].bind(on_release=browse_output)
+    widget_refs["input_browse"].bind(on_release=browse_input)
+    widget_refs["leela_path_browse"].bind(on_release=browse_leela_exe)
 
-    # Export/Import button bindings (Phase 27)
     export_button.bind(on_release=lambda *_args: _do_export_settings(ctx, popup))
     import_button.bind(on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup))
 
-    # Reset button bindings (Phase 27)
     tab1_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "analysis", popup, reopen_popup))
     tab2_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "export", popup, reopen_popup))
     tab3_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "leela", popup, reopen_popup))
