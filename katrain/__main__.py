@@ -44,6 +44,7 @@ if getattr(sys, "frozen", False):
         os.environ["SSL_CERT_FILE"] = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
 
 
+import contextlib
 import glob
 import random
 import signal
@@ -77,11 +78,8 @@ from katrain.core.constants import (
     MODE_PLAY,
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
-    OUTPUT_EXTRA_DEBUG,
     OUTPUT_INFO,
-    OUTPUT_KATAGO_STDERR,
     SGF_INTERNAL_COMMENTS_MARKER,
-    STATUS_ERROR,
     STATUS_INFO,
     VERSION,
 )
@@ -119,8 +117,12 @@ from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
+from katrain.gui.managers.game_state_update_manager import GameStateUpdateManager
+from katrain.gui.managers.gui_refresh_manager import GUIRefreshManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
+from katrain.gui.managers.message_loop_manager import MessageLoopManager
 from katrain.gui.managers.popup_manager import PopupManager
+from katrain.gui.managers.scroll_handler import ScrollHandler
 from katrain.gui.managers.summary_manager import SummaryManager
 from katrain.gui.managers.ui_update_manager import UIUpdateManager
 
@@ -269,6 +271,54 @@ class KaTrainGui(Screen, KaTrainBase):
         self._analysis_controller = AnalysisController(self)
         self._batch_analysis_controller = BatchAnalysisController(self)
 
+        # Phase 158+: New managers for the remaining inline logic
+        self._gui_refresh_manager = GUIRefreshManager(
+            get_game=lambda: self.game,
+            get_board_gui=lambda: getattr(self, "board_gui", None),
+            get_board_controls=lambda: getattr(self, "board_controls", None),
+            get_controls=lambda: getattr(self, "controls", None),
+            set_status=lambda msg, level: self.controls.set_status(msg, level)
+            if getattr(self, "controls", None)
+            else None,
+        )
+        self._game_state_update_manager = GameStateUpdateManager(
+            get_game=lambda: self.game,
+            get_engine=lambda: self.engine,
+            get_play_analyze_mode=lambda: self.play_analyze_mode,
+            get_pondering=lambda: self.pondering,
+            set_pondering=lambda v: setattr(self, "pondering", v),
+            get_last_player_info=lambda: self.last_player_info,
+            get_next_player_info=lambda: self.next_player_info,
+            get_popups_open=lambda: self.popup_open,
+            get_nav_drawer_open=lambda: bool(self.nav_drawer.state == "open"),
+            get_leela_manager=lambda: self._leela_manager,
+            get_config=lambda key: self.config(key),
+            get_eval_thresholds=lambda: self.config("trainer/eval_thresholds"),
+            get_analysis_controls=lambda: getattr(self, "analysis_controls", None),
+            play_sound=self.play_mistake_sound,
+            ai_move=lambda cn: self._do_ai_move(cn),
+            stone_sound=self._play_stone_sound,
+            schedule_gui_update=lambda cn, rb: Clock.schedule_once(
+                lambda _dt: self.update_gui(cn, redraw_board=rb), -1
+            ),
+            clock=Clock,
+        )
+        self._message_loop_manager = MessageLoopManager(
+            get_message_queue=lambda: self.message_queue,
+            get_game_id=lambda: self.game.game_id if self.game else None,
+            get_gui=lambda: self,
+            log=self.log,
+            error_handler_handle=lambda exc, notify, msg: self.error_handler.handle(
+                exc, notify_user=notify, fallback_message=msg
+            ),
+        )
+        self._scroll_handler = ScrollHandler(
+            get_board_gui=lambda: getattr(self, "board_gui", None),
+            get_board_controls=lambda: getattr(self, "board_controls", None),
+            get_controls=lambda: getattr(self, "controls", None),
+            action_dispatcher=self.__call__,
+        )
+
         self._ui_update_manager.setup_state_subscriptions()
 
     def _load_export_settings(self) -> dict[str, Any]:
@@ -383,26 +433,13 @@ class KaTrainGui(Screen, KaTrainBase):
         self._config_manager.set_section(section, value)
 
     def _on_engine_status(self, event_type: str, message: str) -> None:
-        """Handle engine status updates (Phase 120: Decoupled logging)."""
-        if not getattr(self, "controls", None):
-            return
-
-        if event_type == "starting":
-            self.controls.set_status("KataGo engine starting...", STATUS_INFO)
-        elif event_type == "tuning":
-            self.controls.set_status("KataGo is tuning settings for first startup, please wait." + message, STATUS_INFO)
-        elif event_type == "ready":
-            self.controls.set_status("KataGo engine ready.", STATUS_INFO)
+        """Delegates to GUIRefreshManager (Phase 158+)."""
+        self._gui_refresh_manager.on_engine_status(event_type, message)
 
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
+        """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+)."""
         super().log(message, level)
-        # Phase 120: Removed fragile log parsing.
-        # Engine status updates are now handled by _on_engine_status via KataGoEngine callback.
-        if (
-            level == OUTPUT_ERROR
-            or (level == OUTPUT_KATAGO_STDERR and "error" in message.lower() and "tuning" not in message.lower())
-        ) and getattr(self, "controls", None):
-            self.controls.set_status(f"ERROR: {message}", STATUS_ERROR)
+        self._gui_refresh_manager.update_status_for_error(message, level)
 
     def handle_animations(self, *_args: Any) -> None:
         """Delegates to AnalysisController (Phase 133)."""
@@ -489,12 +526,10 @@ class KaTrainGui(Screen, KaTrainBase):
         )
 
         # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
-        try:
+        with contextlib.suppress(Exception):
             self.engine.set_analysis_focus(None)
-        except Exception:
-            pass
 
-        threading.Thread(target=self._message_loop_thread, daemon=True).start()
+        self._message_loop_manager.start()
         sgf_args = [
             f
             for f in sys.argv[1:]
@@ -531,23 +566,8 @@ class KaTrainGui(Screen, KaTrainBase):
         Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
 
     def update_gui(self, cn: Any, redraw_board: bool = False) -> None:
-        # Handle prisoners and next player display
-        if not self.game:
-            return
-
-        # Phase 120: Delegated UI updates to BadukPanControls
-        if self.board_controls:
-            self.board_controls.update_controls(self)
-
-        # redraw board/stones
-        if redraw_board:
-            self.board_gui.draw_board()
-        self.board_gui.redraw_board_contents_trigger()
-        self.controls.update_evaluation()
-        self.controls.update_timer(1)
-        # update move tree
-        if self.game:
-            self.controls.move_tree.current_node = self.game.current_node
+        """Delegates to GUIRefreshManager (Phase 158+)."""
+        self._gui_refresh_manager.update_gui(cn, redraw_board)
 
     # === Leela Engine Management (Phase 15, refactored in PR #121) ===
     # Delegation to LeelaManager for backward compatibility
@@ -621,10 +641,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
 
     def request_leela_analysis(self) -> None:
-        """Request Leela analysis for current node (with debounce and duplicate prevention)."""
-        if not self.game:
-            return
-        self._leela_manager.request_analysis(self.game.current_node, self)
+        """Delegates to GameStateUpdateManager (Phase 158+)."""
+        self._game_state_update_manager.request_leela_analysis()
 
     def update_state(self, redraw_board: bool = False) -> None:  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
@@ -632,54 +650,8 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_update_state(
         self, redraw_board: bool = False
     ) -> None:  # is called after every message and on receiving analyses and config changes
-        # AI and Trainer/auto-undo handlers
-        if not self.game or not self.game.current_node:
-            return
-        cn = self.game.current_node
-        last_player, next_player = self.players_info[cn.player], self.players_info[cn.next_player]
-        if self.play_analyze_mode == MODE_PLAY and self.nav_drawer.state != "open" and self.popup_open is None:
-            points_lost = cn.points_lost
-            if (
-                last_player.human
-                and cn.analysis_complete
-                and points_lost is not None
-                and points_lost > self.config("trainer/eval_thresholds")[-4]
-            ):
-                self.play_mistake_sound(cn)
-            teaching_undo = cn.player and last_player.being_taught and cn.parent
-            if (
-                teaching_undo
-                and cn.analysis_complete
-                and cn.parent is not None
-                and hasattr(cn.parent, "analysis_complete")
-                and cn.parent.analysis_complete  # type: ignore[attr-defined]
-                and not cn.children
-                and not self.game.end_result
-            ):
-                self.game.analyze_undo(cn)  # not via message loop
-            if (
-                cn.analysis_complete
-                and next_player.ai
-                and not cn.children
-                and not self.game.end_result
-                and not (teaching_undo and cn.auto_undo is None)
-            ):  # cn mismatch stops this if undo fired. avoid message loop here or fires repeatedly.
-                self._do_ai_move(cn)
-                Clock.schedule_once(self._play_stone_sound, 0.25)
-        if self.engine:
-            if self.pondering:
-                self.game.analyze_extra("ponder")
-            else:
-                self.engine.stop_pondering()
-        # Leela engine lifecycle management (Phase 15)
-        if not self.config("leela/enabled"):
-            # Shutdown if disabled
-            if self.leela_engine:
-                self.shutdown_leela_engine()
-        elif self.analysis_controls.hints.active:
-            # Request analysis if enabled and hints are on
-            self.request_leela_analysis()
-        Clock.schedule_once(lambda _dt: self.update_gui(cn, redraw_board=redraw_board), -1)  # trigger?
+        """Delegates to GameStateUpdateManager (Phase 158+)."""
+        self._game_state_update_manager.do_update_state(redraw_board=redraw_board)
 
     def update_player(self, bw: str, **kwargs: Any) -> None:
         super().update_player(bw, **kwargs)
@@ -705,29 +677,12 @@ class KaTrainGui(Screen, KaTrainBase):
 
     # The message loop is here to make sure moves happen in the right order, and slow operations don't hang the GUI
     def _message_loop_thread(self) -> None:
-        while True:
-            msg_name = "<unknown>"  # Safe fallback for error message
-            game, msg, args, kwargs = self.message_queue.get()
-            try:
-                msg_name = msg  # Capture for error handling
-                self.log(f"Message Loop Received {msg}: {args} for Game {game}", OUTPUT_EXTRA_DEBUG)
-                if not self.game or game != self.game.game_id:
-                    self.log(
-                        f"Message skipped as it is outdated (current game is {self.game.game_id if self.game else None}",
-                        OUTPUT_EXTRA_DEBUG,
-                    )
-                    continue
-                msg = msg.replace("-", "_")
-                fn = getattr(self, f"_do_{msg}")
-                fn(*args, **kwargs)
-                if msg != "update_state":
-                    self._do_update_state()
-            except Exception as exc:
-                self.error_handler.handle(
-                    exc,
-                    notify_user=True,
-                    fallback_message=f"Action '{msg_name}' failed",
-                )
+        """Delegates to MessageLoopManager (Phase 158+). Kept as thin wrapper for backward compat."""
+        self._message_loop_manager.start()
+
+    def _run_message_loop_once(self) -> None:  # Kept for tests that bypass the thread
+        """Run the message loop in the current thread (testing only)."""
+        self._message_loop_manager._run()
 
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Central dispatcher for menu actions triggered from .kv or shortcuts.
@@ -975,21 +930,10 @@ class KaTrainGui(Screen, KaTrainBase):
         self._sgf_manager.load_sgf_from_clipboard()
 
     def on_touch_up(self, touch: Any) -> bool:
-        if touch.is_mouse_scrolling:
-            touching_board = self.board_gui.collide_point(*touch.pos) or self.board_controls.collide_point(*touch.pos)
-            touching_control_nonscroll = self.controls.collide_point(
-                *touch.pos
-            ) and not self.controls.notes_panel.collide_point(*touch.pos)
-            if self.board_gui.animating_pv is not None and touching_board:
-                if touch.button == "scrollup":
-                    self.board_gui.adjust_animate_pv_index(1)
-                elif touch.button == "scrolldown":
-                    self.board_gui.adjust_animate_pv_index(-1)
-            elif touching_board or touching_control_nonscroll:  # scroll through moves
-                if touch.button == "scrollup":
-                    self("redo")
-                elif touch.button == "scrolldown":
-                    self("undo")
+        """Delegates scroll handling to ScrollHandler, defers to Kivy otherwise (Phase 158+)."""
+        handled = self._scroll_handler.handle_touch_up(touch)
+        if handled:
+            return True
         return super().on_touch_up(touch)  # type: ignore[no-any-return]
 
     @property
