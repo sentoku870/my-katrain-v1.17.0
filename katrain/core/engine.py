@@ -206,7 +206,13 @@ class KataGoEngine(BaseEngine):
         self._stderr_queue: queue.Queue[bytes | None] = queue.Queue()
         # Shutdown event (recreated on each start, not cleared)
         self._shutdown_event = threading.Event()
-        self.thread_lock = threading.Lock()
+        # Phase 159: RLock for safe reentrancy in terminate_queries()
+        # (terminate_queries() acquires thread_lock, then calls terminate_query()
+        # which also acquires thread_lock to pop from queries dict).
+        # RLock is the only correct choice given the current control flow; the
+        # alternative would be to restructure terminate_queries() to release
+        # the lock before calling terminate_query(), tracked separately.
+        self.thread_lock = threading.RLock()
         # Pending query counter for backlog protection (Phase 95B)
         self._pending_query_count = 0
         self._pending_query_lock = threading.Lock()

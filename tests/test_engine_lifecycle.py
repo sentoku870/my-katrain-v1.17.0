@@ -248,6 +248,44 @@ class TestKataGoEngineLifecycle:
         engine.shutdown()
 
     @patch(POPEN_PATCH_TARGET, FakePopen)
+    def test_terminate_queries_default_lock_does_not_deadlock(self):
+        """Phase 159: terminate_queries() with default lock=True must not deadlock.
+
+        Previously, terminate_queries() acquired thread_lock and then called
+        terminate_query(), which also acquired the same (non-reentrant) Lock.
+        After switching to RLock, the outer+inner acquisition must succeed.
+        """
+        import threading
+
+        from katrain.core.engine import KataGoEngine
+
+        katrain = MinimalKatrain()
+        engine = KataGoEngine(katrain, make_engine_config())
+        engine.start()
+
+        engine.queries["q1"] = (None, None, 0.0, None, None)
+        engine.queries["q2"] = (None, None, 0.0, None, None)
+
+        result: list[str] = []
+
+        def call_terminate():
+            try:
+                engine.terminate_queries()  # default lock=True
+                result.append("OK")
+            except Exception as e:
+                result.append(f"ERR: {e}")
+
+        t = threading.Thread(target=call_terminate, daemon=True)
+        t.start()
+        t.join(timeout=3.0)
+
+        assert not t.is_alive(), "terminate_queries() deadlocked (thread still alive after 3s)"
+        assert result == ["OK"], f"Unexpected result: {result}"
+
+        engine.katago_process.simulate_graceful_exit()
+        engine.shutdown()
+
+    @patch(POPEN_PATCH_TARGET, FakePopen)
     def test_stop_pondering_clears_ponder_query(self):
         from katrain.core.engine import KataGoEngine
 
