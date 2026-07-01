@@ -19,7 +19,6 @@ from katrain.core.analysis.models import (
     PRESET_ORDER,
     SKILL_PRESETS,
     URGENT_MISS_CONFIGS,
-    VALID_REASON_TAGS,
     AutoConfidence,
     AutoRecommendation,
     SkillEstimation,
@@ -27,6 +26,7 @@ from katrain.core.analysis.models import (
     UrgentMissConfig,
 )
 from katrain.core.analysis.models.move_eval import MoveEval
+from katrain.core.analysis.presentation import VALID_REASON_TAGS
 
 if TYPE_CHECKING:
     pass
