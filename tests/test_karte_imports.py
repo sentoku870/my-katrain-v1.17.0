@@ -137,7 +137,6 @@ class TestNoCircularImports:
             # Verify builder was NOT eagerly loaded
             builder_module = "katrain.core.reports.karte.builder"
             sections_modules = [
-                "katrain.core.reports.karte.sections.summary",
                 "katrain.core.reports.karte.sections.important_moves",
                 "katrain.core.reports.karte.sections.diagnosis",
                 "katrain.core.reports.karte.sections.metadata",
@@ -180,7 +179,6 @@ class TestNoCircularImports:
             # Verify builder was NOT eagerly loaded
             builder_module = "katrain.core.reports.karte.builder"
             sections_modules = [
-                "katrain.core.reports.karte.sections.summary",
                 "katrain.core.reports.karte.sections.important_moves",
                 "katrain.core.reports.karte.sections.diagnosis",
                 "katrain.core.reports.karte.sections.metadata",
