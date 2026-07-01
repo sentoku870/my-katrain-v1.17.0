@@ -69,6 +69,9 @@ def collect_sgf_files(input_dir: str, skip_analyzed: bool = False) -> list[str]:
     Returns:
         List of SGF file paths to process
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
     sgf_files = set()  # Use set to avoid duplicates on case-insensitive filesystems
     input_path = Path(input_dir)
 
@@ -76,7 +79,7 @@ def collect_sgf_files(input_dir: str, skip_analyzed: bool = False) -> list[str]:
     for sgf_file in input_path.glob("*.[sS][gG][fF]"):
         file_path = str(sgf_file)
         if skip_analyzed and has_analysis(file_path):
-            print(f"Skipping (already analyzed): {sgf_file.name}")
+            logger.info("Skipping (already analyzed): %s", sgf_file.name)
             continue
         sgf_files.add(file_path)
 

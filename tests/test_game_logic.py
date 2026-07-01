@@ -712,13 +712,15 @@ class TestGameReports:
         assert hasattr(snapshot, "moves")
         assert isinstance(snapshot.moves, list)
 
-    def test_log_mistake_summary_for_debug(self, game, capsys):
-        """log_mistake_summary prints a summary."""
+    def test_log_mistake_summary_for_debug(self, game, caplog):
+        """log_mistake_summary emits a logger.info() summary (Phase 164)."""
+        import logging
+
         game.play(Move.from_gtp("D4", player="B"))
-        game.log_mistake_summary_for_debug()
-        captured = capsys.readouterr()
-        assert "Mistake summary" in captured.out
-        assert "Total moves" in captured.out
+        with caplog.at_level(logging.INFO, logger="katrain.core.game.facade"):
+            game.log_mistake_summary_for_debug()
+        assert any("Mistake summary" in rec.message for rec in caplog.records)
+        assert any("Total moves" in rec.message for rec in caplog.records)
 
     def test_log_important_moves_for_debug_no_moves(self, game):
         """log_important_moves with no analyzed moves logs a no-moves message."""

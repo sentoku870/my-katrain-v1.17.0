@@ -10,6 +10,7 @@ v5設計:
 from __future__ import annotations
 
 import contextlib
+import logging
 import weakref
 from collections.abc import Callable
 from typing import Any
@@ -17,6 +18,8 @@ from typing import Any
 from kivy.event import EventDispatcher
 from kivy.properties import StringProperty
 from kivy.weakproxy import WeakProxy
+
+logger = logging.getLogger(__name__)
 
 from katrain.core.lang import DEFAULT_LANGUAGE
 from katrain.core.lang import i18n as core_i18n
@@ -126,7 +129,7 @@ class KivyLangBridge(EventDispatcher):
                 func(args[0], None, None)
                 self.set_widget_font(widget)
             except Exception as e:
-                print(f"Error in observer: {e}")
+                logger.exception("Error in observer: %s", e)
 
         self._observers = alive_observers
 

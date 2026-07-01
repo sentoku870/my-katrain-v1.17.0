@@ -8,12 +8,15 @@ GUI層でKivyブリッジが登録する。
 from __future__ import annotations
 
 import gettext
+import logging
 import os
 import sys
 from collections.abc import Callable
 
 from katrain.common import DEFAULT_FONT
 from katrain.common.resource_utils import find_package_resource
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_LANGUAGE = "en"
 
@@ -63,7 +66,7 @@ class Lang:
             try:
                 callback(self)
             except Exception as e:
-                print(f"Error in language change callback: {e}", file=sys.stderr)
+                logger.exception("Error in language change callback: %s", e)
 
 
 i18n = Lang(DEFAULT_LANGUAGE)
