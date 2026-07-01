@@ -15,7 +15,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.textfield import MDTextField
 
-from katrain.core.utils import find_package_resource
+from katrain.common.resource_utils import find_package_resource
 from katrain.gui.kivyutils import I18NSpinner
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Label, Popup

@@ -29,6 +29,8 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any, cast
 
+from katrain.common.resource_utils import find_package_resource
+
 SCHEMA_VERSION = "1.0"
 
 # --- Export exclusion settings ---
@@ -192,8 +194,6 @@ def get_package_defaults() -> dict[str, Any]:
     Returns:
         Default settings dictionary from katrain/config.json
     """
-    from katrain.core.utils import find_package_resource
-
     package_config = find_package_resource("katrain/config.json")
     with open(package_config, encoding="utf-8") as f:
         return cast(dict[str, Any], json.load(f))

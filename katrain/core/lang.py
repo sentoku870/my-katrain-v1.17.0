@@ -13,7 +13,7 @@ import sys
 from collections.abc import Callable
 
 from katrain.common import DEFAULT_FONT
-from katrain.core.utils import find_package_resource
+from katrain.common.resource_utils import find_package_resource
 
 DEFAULT_LANGUAGE = "en"
 

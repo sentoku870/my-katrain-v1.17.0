@@ -31,7 +31,7 @@ kivy.require("2.0.0")
 # next, icon
 from kivy.config import Config
 
-from katrain.core.utils import PATHS, find_package_resource
+from katrain.common.resource_utils import find_package_resource, get_package_path
 
 if kivy_platform == "macosx":
     ICON = find_package_resource("katrain/img/icon.icns")
@@ -979,9 +979,10 @@ class KaTrainApp(MDApp):
 
         # Phase 133: KV files are now loaded from katrain/gui/kv/ directory
 
-        resource_add_path(PATHS["PACKAGE"] + "/fonts")
-        resource_add_path(PATHS["PACKAGE"] + "/sounds")
-        resource_add_path(PATHS["PACKAGE"] + "/img")
+        package_path = get_package_path()
+        resource_add_path(package_path + "/fonts")
+        resource_add_path(package_path + "/sounds")
+        resource_add_path(package_path + "/img")
         resource_add_path(os.path.abspath(os.path.expanduser(DATA_FOLDER)))  # prefer resources in .katrain
 
         from katrain.gui.theme_loader import load_theme_overrides
@@ -1119,6 +1120,13 @@ def run_app() -> None:
             return ExceptionManager.PASS  # type: ignore[no-any-return]
 
     ExceptionManager.add_handler(CrashHandler())
+
+    # Phase 163: Apply Kivy log configuration AFTER Kivy is fully loaded
+    # (was previously called from core/base_katrain.py via dynamic spec loader).
+    from katrain.gui.kivyutils.app_config import apply_kivy_log_config
+
+    apply_kivy_log_config(0)  # default level; the GUI's settings may override
+
     app = KaTrainApp()
     signal.signal(signal.SIGINT, app.signal_handler)
     app.run()
