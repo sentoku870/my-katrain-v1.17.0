@@ -29,12 +29,20 @@
    - Example: `text: i18n._("menu:save")`
    - Dynamic binding: `lang_change_tracking: i18n._('')` triggers re-translation
 
-6. **i18n.py script auto-fixes missing translations**
-   - Run `python i18n.py -todo` to:
-     - Detect missing msgids in other locales
-     - Auto-add from `en` locale as fallback
-     - Compile all `.mo` files
-   - **Exit code 1** if changes were made (normal in CI)
+6. **Compile .mo files from .po**
+   - Use `pybabel`:
+     ```bash
+     pybabel compile -d katrain/i18n/locales -D katrain
+     ```
+   - Or use Python `polib`:
+     ```python
+     import polib
+     po = polib.pofile("katrain/i18n/locales/en/LC_MESSAGES/katrain.po")
+     po.save_as_mofile("katrain/i18n/locales/en/LC_MESSAGES/katrain.mo")
+     ```
+   - Or use Python's stdlib `msgfmt` (Windows-specific path documented below)
+   - The .mo file must be newer than the .po file, or `tests/test_i18n.py::test_mo_files_are_up_to_date` will fail
+   - **Phase 159 fix**: this test was failing because the .mo file was not being recompiled after .po edits
 
 7. **Windows: Force UTF-8 encoding**
    - PowerShell: `$env:PYTHONUTF8 = "1"`
