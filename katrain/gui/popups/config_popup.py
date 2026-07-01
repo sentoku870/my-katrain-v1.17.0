@@ -23,6 +23,7 @@ from kivymd.app import MDApp
 
 from katrain.common.humanlike_config import normalize_humanlike_config
 from katrain.common.model_labels import classify_model_strength, get_model_basename
+from katrain.common.resource_utils import get_package_path
 from katrain.core.constants import (
     DATA_FOLDER,
     OUTPUT_DEBUG,
@@ -32,7 +33,6 @@ from katrain.core.constants import (
 )
 from katrain.core.engine import KataGoEngine
 from katrain.core.lang import i18n
-from katrain.core.utils import PATHS
 from katrain.gui.popups.quick_config import QuickConfigGui
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Label
@@ -110,7 +110,7 @@ class BaseConfigPopup(QuickConfigGui):
         for path in self.paths + [self.model_path.text, self.humanlike_model_path.text, distributed_training_models]:
             path = (path or "").rstrip("/\\")
             if path.startswith("katrain"):
-                path = path.replace("katrain", PATHS["PACKAGE"].rstrip("/\\"), 1)
+                path = path.replace("katrain", get_package_path().rstrip("/\\"), 1)
             path = os.path.expanduser(path)
             if not os.path.isdir(path):
                 path, _file = os.path.split(path)
@@ -119,7 +119,7 @@ class BaseConfigPopup(QuickConfigGui):
                 continue
             done.add(slashpath)
             files = [
-                f.replace("/", os.path.sep).replace(PATHS["PACKAGE"], "katrain")
+                f.replace("/", os.path.sep).replace(get_package_path(), "katrain")
                 for ftype in ["*.bin.gz", "*.txt.gz"]
                 for f in glob.glob(slashpath + "/" + ftype)
                 if ".tmp." not in f
@@ -171,7 +171,7 @@ class BaseConfigPopup(QuickConfigGui):
         for path in self.katago_paths + [self.katago_path.text]:
             path = path.rstrip("/\\")
             if path.startswith("katrain"):
-                path = path.replace("katrain", PATHS["PACKAGE"].rstrip("/\\"), 1)
+                path = path.replace("katrain", get_package_path().rstrip("/\\"), 1)
             path = os.path.expanduser(path)
             if not os.path.isdir(path):
                 path, _file = os.path.split(path)
@@ -180,7 +180,7 @@ class BaseConfigPopup(QuickConfigGui):
                 continue
             done.add(slashpath)
             files = [
-                f.replace("/", os.path.sep).replace(PATHS["PACKAGE"], "katrain")
+                f.replace("/", os.path.sep).replace(get_package_path(), "katrain")
                 for ftype in ["katago*"]
                 for f in glob.glob(slashpath + "/" + ftype)
                 if os.path.isfile(f) and not f.endswith(".zip")

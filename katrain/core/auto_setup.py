@@ -17,12 +17,12 @@ import shutil
 from typing import Any
 
 from katrain.common.platform import get_platform
+from katrain.common.resource_utils import find_package_resource
 from katrain.core.analysis_result import (
     EngineTestResult,
     ErrorCategory,
 )
 from katrain.core.constants import DATA_FOLDER
-from katrain.core.utils import find_package_resource
 
 # =============================================================================
 # Constants

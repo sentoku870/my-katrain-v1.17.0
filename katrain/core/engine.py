@@ -22,6 +22,7 @@ from collections.abc import Callable
 from typing import Any
 
 from katrain.common.platform import get_platform
+from katrain.common.resource_utils import find_package_resource
 from katrain.core.constants import (
     DATA_FOLDER,
     OUTPUT_DEBUG,
@@ -31,7 +32,6 @@ from katrain.core.constants import (
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
 from katrain.core.sgf_parser import Move
-from katrain.core.utils import find_package_resource
 
 # Maximum pending queries before rejecting new ones
 MAX_PENDING_QUERIES = 100

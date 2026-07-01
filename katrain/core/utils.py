@@ -1,5 +1,4 @@
 import heapq
-import importlib.resources as pkg_resources
 import math
 import random
 import struct
@@ -30,7 +29,7 @@ def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]
 
     Args:
         points_lost: The loss value to evaluate (positive=bad, negative=good/gain)
-        eval_thresholds: Thresholds for each class. None entries are treated as infinity.
+        eval_thresholds: Sequence of threshold values.
 
     Returns:
         The class index (0-based), in range [0, len(eval_thresholds)-1]
@@ -49,35 +48,11 @@ def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]
 
 
 def check_thread(tb: bool = False) -> None:  # for checking if draws occur in correct thread
-    import threading
 
-    print("build in ", threading.current_thread().ident)
     if tb:
         import traceback
 
         traceback.print_stack()
-
-
-PATHS: dict[str, str] = {}
-
-
-def find_package_resource(path: str, silent_errors: bool = False) -> str:
-    global PATHS
-    if path.startswith("katrain"):
-        if not PATHS.get("PACKAGE"):
-            try:
-                files_ref = pkg_resources.files("katrain")
-                # Handle both Traversable and Path types
-                if hasattr(files_ref, "absolute"):
-                    PATHS["PACKAGE"] = str(files_ref.absolute())  # type: ignore[union-attr]
-                else:
-                    PATHS["PACKAGE"] = str(files_ref)
-            except (ModuleNotFoundError, FileNotFoundError, ValueError) as e:
-                print(f"Package path not found, installation possibly broken. Error: {e}", file=sys.stderr)
-                return f"FILENOTFOUND/{path}"
-        return str(Path(PATHS["PACKAGE"]) / path.replace("katrain\\", "katrain/").replace("katrain/", ""))
-    else:
-        return str(Path(path).expanduser().absolute())
 
 
 def pack_floats(float_list: list[float] | None) -> bytes:
@@ -166,3 +141,4 @@ def resolve_output_directory(config_dir: str) -> Path:
         return home_fallback
     except OSError:
         return Path.cwd()
+

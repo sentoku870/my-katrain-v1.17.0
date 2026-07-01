@@ -239,6 +239,47 @@ class TestLayerBoundaries:
 
         assert not violations, "common/ should not import core/ or gui/:\n" + "\n".join(f"  - {v}" for v in violations)
 
+    def test_common_has_no_lazy_core_or_gui_imports(self):
+        """common/が関数内でcore/やgui/を遅延インポートしていないことを検証（Phase 163）.
+
+        RuntimeImportCollector only catches top-level imports. This test
+        parses the entire AST and flags any import-from-katrain.core or
+        katrain.gui that appears inside a function body.
+        """
+        import ast as _ast
+
+        violations: list[str] = []
+        common_dir = _PROJECT_ROOT / "katrain" / "common"
+
+        if not common_dir.exists():
+            pytest.skip("common/ directory not found")
+
+        for py_file in common_dir.rglob("*.py"):
+            if "__pycache__" in str(py_file):
+                continue
+            rel_path = py_file.relative_to(_PROJECT_ROOT / "katrain")
+            try:
+                tree = _ast.parse(py_file.read_text(encoding="utf-8"))
+            except SyntaxError:
+                continue
+
+            for node in _ast.walk(tree):
+                if not isinstance(node, (_ast.Import, _ast.ImportFrom)):
+                    continue
+                if isinstance(node, _ast.Import):
+                    names = [alias.name for alias in node.names]
+                else:
+                    names = [node.module] if node.module else []
+                for name in names:
+                    if name and (name == "katrain.core" or name.startswith("katrain.core.")
+                                 or name == "katrain.gui" or name.startswith("katrain.gui.")):
+                        violations.append(f"{rel_path}: lazy/range import of {name}")
+
+        assert not violations, (
+            "common/ must not import katrain.core or katrain.gui (even lazily):\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
     def test_common_no_side_effects(self):
         """common/に副作用コードがないことを検証（v5強化: B対応）
 
@@ -425,11 +466,11 @@ class Lang:
     def test_module_level_import_collected(self):
         """モジュールレベルのインポートは収集される"""
         source = """
-from katrain.core.utils import find_package_resource
+from katrain.common.resource_utils import find_package_resource
 import os
 """
         imports = _collect_runtime_imports(source)
-        assert "katrain.core.utils" in imports
+        assert "katrain.common.resource_utils" in imports
         assert "os" in imports
 
 
