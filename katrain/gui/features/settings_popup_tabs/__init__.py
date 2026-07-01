@@ -11,7 +11,6 @@ from typing import Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button  # noqa: F401  (re-exported via Button in widgets)
 from kivy.uix.slider import Slider
 from kivy.uix.textinput import TextInput
 
@@ -21,7 +20,6 @@ from katrain.core.constants import (
     LEELA_TOP_MOVE_OPTIONS_SECONDARY,
 )
 from katrain.core.lang import i18n
-from katrain.gui.features.settings_popup_helpers import _add_searchable_label
 from katrain.gui.features.settings_popup_state import _SettingsPopupContext
 from katrain.gui.kivyutils import I18NSpinner
 from katrain.gui.theme import Theme

@@ -9,13 +9,13 @@ logic.pyから抽出された損失計算関連の関数。
 - detect_engine_type: MoveEvalからエンジン種別を推定（Phase 32）
 """
 
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from katrain.core.analysis.models import (
-    EngineType,
-    MistakeCategory,
     SCORE_THRESHOLDS,
     WINRATE_THRESHOLDS,
+    EngineType,
+    MistakeCategory,
 )
 
 if TYPE_CHECKING:

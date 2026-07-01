@@ -12,7 +12,6 @@ from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
-from typing import Any, TYPE_CHECKING
 from katrain.core.game_node import GameNode
 
 from .models import (

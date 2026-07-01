@@ -14,21 +14,13 @@ import threading
 from collections.abc import Iterator
 from typing import Any
 
+# eval_metrics は katrain.core 直下のパッケージ (このファイルが katrain.core.game 配下のため明示的に絶対 import)
+from katrain.core import eval_metrics
 from katrain.core.constants import (
     OUTPUT_INFO,
     AnalysisMode,
 )
 from katrain.core.engine import KataGoEngine
-from katrain.core.game.analysis_orchestrator import AnalysisOrchestrator
-from katrain.core.game.base import BaseGame
-from katrain.core.game.insert_mode import InsertModeController
-from katrain.core.game.navigation import GameNavigator
-from katrain.core.game_node import GameNode
-from katrain.core.reports.karte.models import KarteGenerationError  # re-exported for backward compatibility
-from katrain.core.sgf_parser import Move
-
-# eval_metrics は katrain.core 直下のパッケージ (このファイルが katrain.core.game 配下のため明示的に絶対 import)
-from katrain.core import eval_metrics
 from katrain.core.eval_metrics import (
     EvalSnapshot,
     GameSummaryData,
@@ -36,6 +28,13 @@ from katrain.core.eval_metrics import (
     MoveEval,
     snapshot_from_game,
 )
+from katrain.core.game.analysis_orchestrator import AnalysisOrchestrator
+from katrain.core.game.base import BaseGame, IllegalMoveException, KaTrainSGF
+from katrain.core.game.insert_mode import InsertModeController
+from katrain.core.game.navigation import GameNavigator
+from katrain.core.game_node import GameNode
+from katrain.core.reports.karte.models import KarteGenerationError  # re-exported for backward compatibility
+from katrain.core.sgf_parser import Move
 
 
 class Game(BaseGame):
@@ -480,7 +479,7 @@ class Game(BaseGame):
     # 重要局面ナビ用のヘルパー (Phase 1: GameNavigator に委譲)
     # ------------------------------------------------------------------
 
-    def _iter_main_branch_nodes(self) -> "Iterator[GameNode]":
+    def _iter_main_branch_nodes(self) -> Iterator[GameNode]:
         return self.navigator._iter_main_branch_nodes()
 
     def get_main_branch_node_before_move(self, move_number: int) -> GameNode | None:

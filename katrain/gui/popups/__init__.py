@@ -25,7 +25,7 @@ from katrain.gui.popups._base import (
     LabelledSelectionSlider,
     LabelledSpinner,
     LabelledTextInput,
-    _get_app_gui,
+    _get_app_gui,  # noqa: F401 - re-exported for backward compatibility
     wrap_anchor,
 )
 from katrain.gui.popups.config_popup import BaseConfigPopup, ConfigPopup

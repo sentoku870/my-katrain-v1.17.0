@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 def definitions_section(
-    ctx: "KarteContext",
-    auto_recommendation: "AutoRecommendation | None",
+    ctx: KarteContext,
+    auto_recommendation: AutoRecommendation | None,
 ) -> dict[str, Any]:
     """Return the definitions block (currently the existing definitions dict).
 
@@ -49,7 +49,7 @@ def definitions_section(
     return {}
 
 
-def data_quality_section(ctx: "KarteContext") -> dict[str, Any]:
+def data_quality_section(ctx: KarteContext) -> dict[str, Any]:
     """Generate data quality section as DataQualityStats dict.
 
     Args:

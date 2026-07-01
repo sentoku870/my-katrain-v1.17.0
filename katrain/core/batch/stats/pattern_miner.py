@@ -152,9 +152,8 @@ def get_severity(
     Returns:
         "mistake" or "blunder" for significant mistakes, None for others
     """
-    if position_difficulty == PositionDifficulty.ONLY_MOVE:
-        if mistake_category == MistakeCategory.BLUNDER:
-            return None
+    if position_difficulty == PositionDifficulty.ONLY_MOVE and mistake_category == MistakeCategory.BLUNDER:
+        return None
     if mistake_category == MistakeCategory.MISTAKE:
         return "mistake"
     if mistake_category == MistakeCategory.BLUNDER:

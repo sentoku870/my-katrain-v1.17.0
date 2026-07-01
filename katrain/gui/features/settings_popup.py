@@ -1124,9 +1124,8 @@ def _open_browse_dialog(
 
     def on_select(*_args: Any) -> None:
         selected = browse_popup_content.filesel.file_text.text
-        if selected:
-            if dirselect and os.path.isdir(selected) or not dirselect and os.path.isfile(selected):
-                target_text_input.text = selected
+        if selected and (dirselect and os.path.isdir(selected) or not dirselect and os.path.isfile(selected)):
+            target_text_input.text = selected
         browse_popup.dismiss()
 
     browse_popup_content.filesel.bind(on_success=on_select)
@@ -1238,10 +1237,7 @@ def _save_leela_settings(
     computed_play_visits = _leela_defaults.play_visits
 
     # Convert "auto" to -1 (unlimited)
-    if str(leela_cand_value).lower() == "auto":
-        max_cand_int = -1
-    else:
-        max_cand_int = int(leela_cand_value)
+    max_cand_int = -1 if str(leela_cand_value).lower() == "auto" else int(leela_cand_value)
 
     # Update via typed config API (handles MERGE and persistence)
     ctx.update_leela_config(

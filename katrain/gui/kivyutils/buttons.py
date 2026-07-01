@@ -15,9 +15,14 @@ Hierarchy:
 """
 from __future__ import annotations
 
-from typing import Any
-
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, OptionProperty, StringProperty
+from kivy.properties import (
+    BooleanProperty,
+    ListProperty,
+    NumericProperty,
+    ObjectProperty,
+    OptionProperty,
+    StringProperty,
+)
 from kivy.uix.widget import Widget
 from kivymd.uix.behaviors import CircularRippleBehavior, RectangularRippleBehavior
 from kivymd.uix.button import BaseFlatButton, BasePressedButton

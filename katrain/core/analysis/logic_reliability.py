@@ -12,28 +12,22 @@ Contains:
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from katrain.core.analysis.models import (
+    _CONFIDENCE_THRESHOLDS,
     MIN_COVERAGE_MOVES,
     RELIABILITY_RATIO,
     RELIABILITY_VISITS_THRESHOLD,
-    _CONFIDENCE_THRESHOLDS,
     ConfidenceLevel,
     MoveEval,
-    PositionDifficulty,
     ReliabilityStats,
 )
-from katrain.core.analysis.models.move_eval import get_canonical_loss_from_move
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
 
 # Re-export for backward compatibility
-from katrain.core.analysis.logic_importance import (  # noqa: E402
-    get_difficulty_modifier,
-    get_reliability_scale,
-)
 
 
 # =============================================================================

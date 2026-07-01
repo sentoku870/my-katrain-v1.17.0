@@ -28,29 +28,29 @@ from katrain.core.analysis.models.difficulty import (
     DIFFICULTY_MIN_CANDIDATES,
     DIFFICULTY_MIN_VISITS,
     DIFFICULTY_UNKNOWN,
-    DifficultyMetrics,
     ERROR_PRESSURE_WEIGHT,
     LCB_GAP_MAX,
     LCB_GAP_WEIGHT,
     POLICY_GAP_MAX,
     PV_FILTER_CONFIGS,
-    PVFilterConfig,
     SHORTTERM_SCORE_ERROR_MAX,
     SKILL_TO_PV_FILTER,
     TRANSITION_DROP_MAX,
+    DifficultyMetrics,
+    PVFilterConfig,
 )
 from katrain.core.analysis.models.enums import (
     DEFAULT_ANALYSIS_ENGINE,
     ENGINE_VISITS_DEFAULTS,
     LEELA_FAST_VISITS_MIN,
+    VALID_ANALYSIS_ENGINES,
     AnalysisStrength,
     AutoConfidence,
     ConfidenceLevel,
     EngineType,
     MistakeCategory,
-    PVFilterLevel,
     PositionDifficulty,
-    VALID_ANALYSIS_ENGINES,
+    PVFilterLevel,
     get_analysis_engine,
     needs_leela_warning,
     resolve_visits,
@@ -65,14 +65,15 @@ from katrain.core.analysis.models.quiz import (
     DEFAULT_QUIZ_ITEM_LIMIT,
     DEFAULT_QUIZ_LOSS_THRESHOLD,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
-    ImportantMoveSettings,
     MIN_LOSS_DISPLAY,
+    ImportantMoveSettings,
     QuizChoice,
     QuizConfig,
     QuizItem,
     QuizQuestion,
 )
 from katrain.core.analysis.models.reliability import (
+    _CONFIDENCE_THRESHOLDS,
     DIFFICULTY_MODIFIER_EASY,
     DIFFICULTY_MODIFIER_HARD,
     DIFFICULTY_MODIFIER_NORMAL,
@@ -83,13 +84,12 @@ from katrain.core.analysis.models.reliability import (
     RELIABILITY_RATIO,
     RELIABILITY_SCALE_THRESHOLDS,
     RELIABILITY_VISITS_THRESHOLD,
-    ReliabilityStats,
     STREAK_START_BONUS,
     SWING_MAGNITUDE_WEIGHT,
     SWING_SCORE_SIGN_BONUS,
     SWING_WINRATE_CROSS_BONUS,
     UNRELIABLE_IMPORTANCE_SCALE,
-    _CONFIDENCE_THRESHOLDS,
+    ReliabilityStats,
 )
 from katrain.core.analysis.models.skill import (
     DEFAULT_SKILL_PRESET,
@@ -108,7 +108,6 @@ from katrain.core.analysis.models.skill import (
     SummaryStats,
     UrgentMissConfig,
 )
-
 
 # =============================================================================
 # Lazy import for label constants from presentation module (backward compat)

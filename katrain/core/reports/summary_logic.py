@@ -24,7 +24,7 @@ from katrain.core.reports.constants import (
 )
 
 if TYPE_CHECKING:
-    from katrain.core.game_node import Move
+    pass
 
 
 class SummaryAnalyzer:
@@ -150,7 +150,7 @@ class SummaryAnalyzer:
                             stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + 1
 
                 # Aggregate Reason Tags from GameSummaryData (if available)
-                # Note: GameSummaryData has snapshot, but extraction.py typically 
+                # Note: GameSummaryData has snapshot, but extraction.py typically
                 # provides aggregated reason_tags_by_player in the raw stats dict.
                 # Here we assume GameSummaryData is enriched with these if possible,
                 # or we rely on what was extracted during batch processing.
@@ -159,7 +159,7 @@ class SummaryAnalyzer:
                     rt_counts = game_data.reason_tags_by_player[player_color]
                     for tag, count in rt_counts.items():
                         stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + count
-                
+
                 if hasattr(game_data, "important_moves_stats_by_player") and player_color in game_data.important_moves_stats_by_player:
                     im_stats = game_data.important_moves_stats_by_player[player_color]
                     stats.important_moves_count += im_stats.get("important_count", 0)

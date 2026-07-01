@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Final
 
 
-class PlayerOutcome(str, enum.Enum):
+class PlayerOutcome(enum.StrEnum):
     """Per-player outcome of a game."""
 
     WIN = "win"

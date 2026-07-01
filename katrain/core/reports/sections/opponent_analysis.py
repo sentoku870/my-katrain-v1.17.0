@@ -50,7 +50,7 @@ def _empty_bucket_dict() -> dict[str, float | int]:
 
 
 def _bucket_for_opponent(
-    gd: "GameSummaryData",
+    gd: GameSummaryData,
     player_name: str,
 ) -> RankBucket:
     """Return the opponent's rank bucket for the given player in this game."""
@@ -62,7 +62,7 @@ def _bucket_for_opponent(
 
 
 def build_opponent_strength_loss_correlation(
-    game_data_list: list["GameSummaryData"],
+    game_data_list: list[GameSummaryData],
     player_name: str,
 ) -> dict[str, Any]:
     """Build the per-player opponent-strength loss correlation block.

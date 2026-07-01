@@ -35,12 +35,12 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     任意の GameNode 群から EvalSnapshot を作成するユーティリティ。
     """
     # Lazy imports to avoid circular dependencies
+    from katrain.core.analysis.logic_importance import compute_importance_for_moves
     from katrain.core.analysis.logic_loss import classify_mistake, compute_canonical_loss
     from katrain.core.analysis.logic_reliability import (
         is_reliable_from_visits,
         move_eval_from_node,
     )
-    from katrain.core.analysis.logic_importance import compute_importance_for_moves
 
     # GameNode と MoveEval のペアを保持
     node_evals: list[tuple[GameNode, MoveEval]] = []

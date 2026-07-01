@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 from katrain.core.utils import evaluation_class
 
 if TYPE_CHECKING:
-    from katrain.core.sgf_parser import Move
+    pass
 
 __all__ = [
     "compute_board_with_margins",

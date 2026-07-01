@@ -41,33 +41,33 @@ from katrain.core.batch import (
     # === Constants ===
     DEFAULT_TIMEOUT_SECONDS,
     ENCODINGS_TO_TRY,
-    analyze_single_file,
-    choose_visits_for_sgf,
-    collect_sgf_files,
-    collect_sgf_files_recursive,
-    has_analysis,
-    parse_sgf_with_fallback,
-    parse_timeout_input,
-    read_sgf_with_fallback,
     # === Models ===
     BatchResult,
     WriteError,
-    # === Main ===
-    run_batch,
-    wait_for_analysis,
+    analyze_single_file,
     # === Stats ===
     build_batch_summary,
     build_player_summary,
+    choose_visits_for_sgf,
+    collect_sgf_files,
+    collect_sgf_files_recursive,
     extract_game_stats,
     extract_players_from_stats,
     # === Helpers ===
     get_canonical_loss,
     get_unique_filename,
+    has_analysis,
     needs_leela_karte_warning,
     normalize_player_name,
+    parse_sgf_with_fallback,
+    parse_timeout_input,
+    read_sgf_with_fallback,
+    # === Main ===
+    run_batch,
     safe_int,
     safe_write_file,
     sanitize_filename,
+    wait_for_analysis,
 )
 
 # Private name aliases (unchanged API for backward compatibility)

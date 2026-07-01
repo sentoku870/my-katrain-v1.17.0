@@ -541,27 +541,27 @@ class GameNode(SGFNode):
                 ],
                 key=lambda d: (d["order"], d["pointsLost"]),
             )
-        
+
         # Second priority: Leela analysis (when KataGo is disabled)
         if self.leela_analysis and self.leela_analysis.is_valid:
             leela_candidates = self.leela_analysis.candidates
             if not leela_candidates:
                 return []
-            
+
             # CRITICAL: Sort by winrate (descending), not by visits
             # Leela parser sorts by visits, but best move = highest winrate
             sorted_candidates = sorted(leela_candidates, key=lambda c: c.winrate, reverse=True)
-            
+
             # Get best candidate's winrate for comparison
             best_winrate = sorted_candidates[0].winrate
-            
+
             # Convert Leela candidates to KataGo format
             katago_format = []
             for i, cand in enumerate(sorted_candidates):
                 # Calculate relative losses
                 winrate_lost = best_winrate - cand.winrate
                 points_lost = cand.loss_est if cand.loss_est is not None else 0.0
-                
+
                 katago_format.append({
                     "move": cand.move,
                     "visits": cand.visits,
@@ -574,9 +574,9 @@ class GameNode(SGFNode):
                     "pv": cand.pv or [cand.move],
                     "prior": cand.prior,
                 })
-            
+
             return katago_format
-        
+
         # No analysis available
         return []
 

@@ -156,7 +156,7 @@ class BaseGame:
                         for m in stones:
                             self._validate_move_and_update_chains(m, True)
             except IllegalMoveException as e:
-                raise Exception(f"Unexpected illegal move ({str(e)})")
+                raise RuntimeError(f"Unexpected illegal move ({e})") from e
 
     def _validate_move_and_update_chains(self, move: Move, ignore_ko: bool) -> None:
         board_size_x, board_size_y = self.board_size

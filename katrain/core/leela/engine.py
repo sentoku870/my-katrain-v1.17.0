@@ -252,7 +252,7 @@ class LeelaEngine:
 
         # Find common prefix to avoid full replay
         common_count = 0
-        for m1, m2 in zip(self._moves, moves):
+        for m1, m2 in zip(self._moves, moves, strict=False):
             if m1 == m2:
                 common_count += 1
             else:

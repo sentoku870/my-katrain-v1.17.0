@@ -95,7 +95,7 @@ class AnalysisCommand(ABC):
         self.error = error
         self.status = "failed"
 
-    def on_cancel(self) -> None:
+    def on_cancel(self) -> None:  # noqa: B027 - intentional default no-op for ABC subclasses
         """Called when the command is cancelled.
 
         Override to perform cleanup. Default implementation does nothing.

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from katrain.core.constants import STATUS_ERROR, STATUS_INFO
 from katrain.core.game.base import IllegalMoveException
@@ -38,7 +38,7 @@ class InsertModeController:
         game: 操作対象の ``Game`` インスタンス。
     """
 
-    def __init__(self, game: "Game") -> None:
+    def __init__(self, game: Game) -> None:
         self._game = game
 
     # ------------------------------------------------------------------

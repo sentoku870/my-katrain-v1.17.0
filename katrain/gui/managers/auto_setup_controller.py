@@ -129,7 +129,7 @@ class AutoSetupController:
         if not engine.check_alive():
             error_text = ""
             if hasattr(engine, "stderr_queue"):
-                q = getattr(engine, "stderr_queue")
+                q = engine.stderr_queue
                 while not q.empty():
                     try:
                         error_text += q.get_nowait() + "\n"

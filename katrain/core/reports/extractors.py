@@ -4,22 +4,19 @@ This module provides the 'Adapter' layer that converts internal KaTrain
 objects (MoveEval, GameSummaryData) into the standardized
 dictionaries defined in `schema.py`.
 """
-from typing import Optional, List, Any, Dict
+from typing import Any
 from unittest.mock import MagicMock
 
 from katrain.core.analysis.models import MoveEval
 from katrain.core.eval_metrics import (
-    MistakeCategory,
-    PositionDifficulty,
     classify_game_phase,
 )
 from katrain.core.reports.definitions import (
-    PHASES,
     PHASE_ALIASES,
+    PHASES,
     REASON_CODE_ALIASES,
-    CATEGORY_ALIASES,
 )
-from katrain.core.reports.schema import MistakeItem, GameMeta
+from katrain.core.reports.schema import GameMeta, MistakeItem
 
 
 class MoveExtractor:
@@ -28,7 +25,7 @@ class MoveExtractor:
     @staticmethod
     def extract(
         move: MoveEval,
-        game_id: Optional[str] = None,
+        game_id: str | None = None,
         game_name: str = "",
         board_size: int = 19
     ) -> MistakeItem:
@@ -84,19 +81,19 @@ class MoveExtractor:
 
 class MetaExtractor:
     """Extracts standardized metadata."""
-    
+
     @staticmethod
     def extract_game_meta(
         game_data: Any, # Can be Game or GameSummaryData
-        game_id: Optional[str] = None
+        game_id: str | None = None
     ) -> GameMeta:
         """Extract metadata from Game or GameSummaryData object."""
-        
+
         # Duck typing to handle both Game and GameSummaryData
         # Game object has 'root', GameSummaryData has attributes directly or in snapshot
-        
+
         root = getattr(game_data, 'root', None)
-        
+
         # Result
         if hasattr(game_data, 'result'):
             result = game_data.result
@@ -104,7 +101,7 @@ class MetaExtractor:
             result = root.get_property("RE")
         else:
             result = None
-            
+
         # Komi
         if hasattr(game_data, 'komi'):
             komi = game_data.komi
@@ -116,7 +113,7 @@ class MetaExtractor:
                 komi = 0.0
         else:
             komi = 0.0
-            
+
         # Handicap
         if hasattr(game_data, 'handicap'):
             handicap = game_data.handicap
@@ -134,19 +131,19 @@ class MetaExtractor:
             pw = root.get_property("PW", "White")
         else:
             pb, pw = "Black", "White"
-            
+
         # Size
         board_size = getattr(game_data, 'board_size', [19, 19])
         if isinstance(board_size, int):
             board_size = [board_size, board_size]
-            
+
         # Moves count
         if hasattr(game_data, 'snapshot') and hasattr(game_data.snapshot, 'moves'):
              try:
                  moves_count = len(game_data.snapshot.moves)
              except TypeError:
                  moves_count = 0
-        elif hasattr(game_data, 'moves') and not isinstance(getattr(game_data, 'moves'), MagicMock):
+        elif hasattr(game_data, 'moves') and not isinstance(game_data.moves, MagicMock):
              try:
                  moves_count = len(game_data.moves)
              except TypeError:
@@ -158,14 +155,14 @@ class MetaExtractor:
              moves_count = 0
         else:
              moves_count = 0
-             
+
         # Game ID
         gid: str = game_id or str(getattr(game_data, 'game_id', "unknown_id"))
-        
+
         # Name
         # GameSummaryData has game_name, Game usually doesn't store a 'name' per se unless external
         name = getattr(game_data, 'game_name', f"Game {gid}")
-        
+
         # Date
         # GameSummaryData has date, Game has root date
         if hasattr(game_data, 'date'):

@@ -13,42 +13,21 @@ Also contains internal helpers used by tests:
 from __future__ import annotations
 
 import logging
-import os
 import re
 from collections import Counter
 from typing import Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.meaning_tags import (
-    ClassificationContext,
     MeaningTagId,
-    classify_meaning_tag,
 )
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
-from katrain.core.analysis.time import PacingMetrics, analyze_pacing, parse_time_data
-from katrain.core.constants import OUTPUT_DEBUG
-from katrain.core.lang import i18n
 from katrain.core.reports.karte.helpers import is_single_engine_snapshot
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
     KARTE_ERROR_CODE_MIXED_ENGINE,
-    STYLE_CONFIDENCE_THRESHOLD,
     KarteGenerationError,
     MixedEngineSnapshotError,
-)
-from katrain.core.reports.karte.sections.context import KarteContext
-from katrain.core.reports.karte.sections.diagnosis import (
-    mistake_streaks_for,
-    weakness_hypothesis_for,
-)
-from katrain.core.reports.karte.sections.important_moves import (
-    critical_3_section_for,
-    reason_tags_distribution_for,
-)
-from katrain.core.reports.karte.sections.metadata import (
-    data_quality_section,
-    definitions_section,
-
 )
 
 logger = logging.getLogger(__name__)
@@ -256,8 +235,9 @@ def _build_karte_report_impl(
         removed unused local vars; markdown section code is being revived
         as JSON data in Sub-phase C).
     """
-    from katrain.core.reports.karte.json_export import build_karte_json
     import json
+
+    from katrain.core.reports.karte.json_export import build_karte_json
 
     json_data = build_karte_json(
         game=game,

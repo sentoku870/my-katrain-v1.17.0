@@ -21,7 +21,6 @@ from katrain.core.reports.karte.models import (
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
-from katrain.core.reports.schema import KarteReport
 
 
 # Callable APIs: lazy import to avoid circular dependencies

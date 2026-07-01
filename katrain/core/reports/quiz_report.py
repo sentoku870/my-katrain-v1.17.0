@@ -9,7 +9,8 @@ game.pyから抽出されたクイズ関連機能。
 このモジュールはkatrain.guiをインポートしない（core層のみ）。
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
@@ -75,11 +76,11 @@ def build_quiz_questions(
         各局面の候補手情報（candidate_moves）を使用し、
         新たなエンジン解析は開始しない。
     """
-    questions: list["QuizQuestion"] = []
+    questions: list[QuizQuestion] = []
     for item in quiz_items:
         node_before = get_node_before_move(item.move_number)
-        choices: list["QuizChoice"] = []
-        best_move: Optional[str] = None
+        choices: list[QuizChoice] = []
+        best_move: str | None = None
 
         if node_before is not None and getattr(node_before, "analysis_exists", False):
             candidate_moves = node_before.candidate_moves

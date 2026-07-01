@@ -45,8 +45,8 @@ class Move:
         col_str, row_str = match.groups()
         try:
             col_idx = Move.GTP_COORD.index(col_str)
-        except ValueError:
-            raise ValueError(f"Invalid GTP column '{col_str}' in: {gtp_coords!r}")
+        except ValueError as e:
+            raise ValueError(f"Invalid GTP column '{col_str}' in: {gtp_coords!r}") from e
 
         row_num = int(row_str) - 1
         if row_num < 0:
@@ -518,8 +518,8 @@ class SGF:
         self.contents = contents
         try:
             self.ix = self.contents.index("(") + 1
-        except ValueError:
-            raise ParseError(f"Parse error: Expected '(' at start, found {self.contents[:50]}")
+        except ValueError as e:
+            raise ParseError(f"Parse error: Expected '(' at start, found {self.contents[:50]}") from e
         self.root = self._NODE_CLASS()
         self._parse_branch(self.root)
 

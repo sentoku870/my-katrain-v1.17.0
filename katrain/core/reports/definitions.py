@@ -3,17 +3,16 @@
 This module consolidates all constants, enums, and mapping dictionaries
 used in report generation to ensure consistency across different report types.
 """
-from typing import Final, Dict, List, Any
+from typing import Any, Final
 
+from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.eval_metrics import (
     MistakeCategory,
-    get_skill_preset,
 )
-from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.reports.constants import (
     BAD_MOVE_LOSS_THRESHOLD,
-    URGENT_MISS_THRESHOLD_LOSS,
     URGENT_MISS_MIN_CONSECUTIVE,
+    URGENT_MISS_THRESHOLD_LOSS,
 )
 
 # --- Schema Version ---
@@ -31,14 +30,14 @@ REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split
 #
 # Source: matches standard preset (1.0/2.5/5.0) as the canonical practical
 # classification used throughout the report pipeline.
-MISTAKE_THRESHOLDS: Final[Dict[str, float]] = {
+MISTAKE_THRESHOLDS: Final[dict[str, float]] = {
     "inaccuracy": 1.0,
     "mistake": 2.5,
     "blunder": 5.0,
 }
 
 # Thresholds for specific filtering features
-FILTERING_THRESHOLDS: Final[Dict[str, Any]] = {
+FILTERING_THRESHOLDS: Final[dict[str, Any]] = {
     "bad_move_loss": BAD_MOVE_LOSS_THRESHOLD,
     "urgent_miss": {
         "loss": URGENT_MISS_THRESHOLD_LOSS,
@@ -52,7 +51,7 @@ FILTERING_THRESHOLDS: Final[Dict[str, Any]] = {
 }
 
 # Combined thresholds for JSON reporting (merges loss thresholds and filtering thresholds)
-REPORT_THRESHOLDS: Final[Dict[str, Any]] = {
+REPORT_THRESHOLDS: Final[dict[str, Any]] = {
     **FILTERING_THRESHOLDS,
     "loss": MISTAKE_THRESHOLDS,
 }
@@ -60,20 +59,20 @@ REPORT_THRESHOLDS: Final[Dict[str, Any]] = {
 
 # --- Classifications & Enums ---
 
-MISTAKE_TYPES: Final[List[str]] = [cat.value.lower() for cat in MistakeCategory]
+MISTAKE_TYPES: Final[list[str]] = [cat.value.lower() for cat in MistakeCategory]
 
 # Fix 2: Sync with MeaningTagId
-PRIMARY_TAGS: Final[List[str]] = [tag.value for tag in MeaningTagId]
+PRIMARY_TAGS: Final[list[str]] = [tag.value for tag in MeaningTagId]
 
-PHASES: Final[List[str]] = ["opening", "middle", "endgame"]
-PHASE_ALIASES: Final[Dict[str, str]] = {"yose": "endgame"}
+PHASES: Final[list[str]] = ["opening", "middle", "endgame"]
+PHASE_ALIASES: Final[dict[str, str]] = {"yose": "endgame"}
 
 
 # --- Reasoning & Attributes ---
 
 # Fix 3: Importance Scale Definition
 # Thresholds aligned with IMPORTANT_MOVE_SETTINGS_BY_LEVEL (easy=1.0, normal=0.5, strict=0.3).
-IMPORTANCE_DEF: Final[Dict[str, Any]] = {
+IMPORTANCE_DEF: Final[dict[str, Any]] = {
     "scale": "0.0 to unbounded (logarithmic)",
     "description": "Combined score of loss and semantic interest",
     "thresholds": {
@@ -83,7 +82,7 @@ IMPORTANCE_DEF: Final[Dict[str, Any]] = {
     }
 }
 
-REASON_CODE_ALIASES: Final[Dict[str, str]] = {
+REASON_CODE_ALIASES: Final[dict[str, str]] = {
     "low_liberties": "liberties",
     "need_connect": "connection",
     "heavy_loss": "heavy",
@@ -98,13 +97,13 @@ REASON_CODE_ALIASES: Final[Dict[str, str]] = {
     "joseki_mistake": "joseki",         # New
 }
 
-REASON_CODES: Final[List[str]] = [
+REASON_CODES: Final[list[str]] = [
     "shape", "atari", "clump", "heavy", "overconcentrated", "liberties",
     "endgame_hint", "connection", "urgent", "tenuki", "cut_risk",
     "thin", "chase_mode", "reading", "joseki"
 ]
 
-CATEGORY_ALIASES: Final[Dict[str, str]] = {
+CATEGORY_ALIASES: Final[dict[str, str]] = {
     "inaccuracy": "inc",
     "mistake": "bad",
     "blunder": "vbd",

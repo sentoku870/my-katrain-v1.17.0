@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from katrain.core.reports.karte.sections.context import KarteContext
 
 
-def worst_move_for(ctx: "KarteContext", player: str) -> "MoveEval | None":
+def worst_move_for(ctx: KarteContext, player: str) -> MoveEval | None:
     """Find worst move for a player using canonical loss (KataGo/Leela compatible).
 
     Args:
@@ -46,7 +46,7 @@ def worst_move_for(ctx: "KarteContext", player: str) -> "MoveEval | None":
     return max(moves_with_data, key=get_canonical_loss_from_move)
 
 
-def common_difficult_positions(ctx: "KarteContext") -> list[dict[str, Any]]:
+def common_difficult_positions(ctx: KarteContext) -> list[dict[str, Any]]:
     """Stub returning [].
 
     Phase 153-B: The `common_difficult_positions` section has been removed

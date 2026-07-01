@@ -15,39 +15,9 @@ from kivy.core.text import Label as CoreLabel
 from kivy.core.text.markup import MarkupLabel as CoreMarkupLabel
 from kivy.graphics import Color, Ellipse, Rectangle
 from kivy.graphics.texture import Texture
-from kivy.properties import (
-    BooleanProperty,
-    ListProperty,
-    NumericProperty,
-    ObjectProperty,
-    OptionProperty,
-    StringProperty,
-)
 from kivy.resources import resource_find
-from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.spinner import Spinner
-from kivy.uix.widget import Widget
-from kivymd.app import MDApp
-from kivymd.uix.behaviors import CircularRippleBehavior, RectangularRippleBehavior
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import BaseFlatButton, BasePressedButton
-from kivymd.uix.navigationdrawer import MDNavigationDrawer
-from kivymd.uix.textfield import MDTextField
 
-from katrain.core.constants import (
-    AI_STRATEGIES_RECOMMENDED_ORDER,
-    GAME_TYPES,
-    MODE_PLAY,
-    PLAYER_AI,
-    PLAYER_HUMAN,
-    PLAYING_NORMAL,
-    PLAYING_TEACHING,
-)
 from katrain.core.lang import i18n
-from katrain.gui.theme import Theme
-from katrain.gui.widgets.factory import Button, Label
 
 _logger = logging.getLogger(__name__)
 

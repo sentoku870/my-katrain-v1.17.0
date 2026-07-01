@@ -14,18 +14,15 @@ import json
 import os
 import re
 import shutil
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from katrain.common.platform import get_platform
-from katrain.core.constants import DATA_FOLDER
-from katrain.core.utils import find_package_resource
-
 from katrain.core.analysis_result import (
     EngineTestResult,
     ErrorCategory,
-    run_engine_test,
-    should_offer_cpu_fallback,
 )
+from katrain.core.constants import DATA_FOLDER
+from katrain.core.utils import find_package_resource
 
 # =============================================================================
 # Constants

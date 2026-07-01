@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from katrain.core.analysis.models.move_eval import get_canonical_loss_from_move
 from katrain.core.analysis.models import MoveEval
+from katrain.core.analysis.models.move_eval import get_canonical_loss_from_move
 
 
 @dataclass(frozen=True)
@@ -107,10 +107,7 @@ def compute_loss_progression(
         mistake_count = sum(
             1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD
         )
-        if truncate_end_move:
-            final_end_move = min(end, max(mv.move_number for mv in bucket_moves))
-        else:
-            final_end_move = end
+        final_end_move = min(end, max(mv.move_number for mv in bucket_moves)) if truncate_end_move else end
         out.append(
             LossBucket(
                 start_move=start,

@@ -47,7 +47,7 @@ class GameSummaryData:
     skill_preset: str | None = None
     # Phase 154-C: Pre-parsed game outcome (cached to avoid re-parsing).
     # If None, downstream code re-parses ``result`` via :func:`parse_result`.
-    outcome: "GameOutcome | None" = None  # TYPE_CHECKING-only type to avoid cycle
+    outcome: GameOutcome | None = None  # TYPE_CHECKING-only type to avoid cycle
     # Phase 155-B: SGF BR / WR rank strings (raw; downstream code parses via
     # :func:`classify_rank_to_bucket`). ``None`` when the SGF did not carry
     # a rank tag for that player.

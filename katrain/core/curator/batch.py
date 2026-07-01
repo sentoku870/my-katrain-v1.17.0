@@ -18,7 +18,6 @@ from .models import UNCERTAIN_TAG, SuitabilityScore
 from .scoring import score_batch_suitability
 
 if TYPE_CHECKING:
-    from katrain.core.base_katrain import KaTrainBase
     from katrain.core.game import Game
 
 
