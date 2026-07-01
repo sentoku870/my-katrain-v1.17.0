@@ -157,7 +157,18 @@ def write_stdin_thread(widget: KataGoEngine) -> None:
         error_callback: Any
         next_move: Any
         node: Any
-        query, callback, error_callback, next_move, node = item
+        # Phase 159: Defensive unpacking. Production sends only valid 5-tuples
+        # (see engine_query.send_query), but a malformed item (e.g. a 5-char
+        # string from a buggy caller) would unpack into single characters and
+        # then crash on query["id"] = ..., silently killing the writer thread.
+        try:
+            query, callback, error_callback, next_move, node = item
+        except (TypeError, ValueError) as e:
+            widget.katrain.log(
+                f"Malformed write_queue item dropped: {type(item).__name__} ({e!r})",
+                OUTPUT_ERROR,
+            )
+            continue
         old_ponder_query: dict[str, Any] | None = None  # To call terminate_query outside of lock
         with widget.thread_lock:
             if "id" not in query:
