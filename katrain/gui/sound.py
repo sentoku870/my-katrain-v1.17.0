@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from kivy.clock import Clock
@@ -7,14 +8,16 @@ from kivy.core.audio import SoundLoader
 from kivy.utils import platform
 from kivymd.app import MDApp
 
+logger = logging.getLogger(__name__)
+
 cached_sounds: dict[str, Any] = {}
 
 # prefer ffpyplayer on linux, then others, avoid gst and avoid or ffpyplayer on windows
 ranking = [("ffplay", 98 if platform in ["win", "macosx"] else -2), ("sdl", -1), ("gst", 99), ("", 0)]
 try:
     SoundLoader._classes.sort(key=lambda cls: [v for k, v in ranking if k in cls.__name__.lower()][0])
-except Exception as e:
-    print("Exception sorting sound loaders: ", e)  # private vars, so could break with versions etc
+except Exception as e:  # private vars, so could break with versions etc
+    logger.warning("Exception sorting sound loaders: %s", e)
 
 
 def play_sound(file: str, volume: float = 1, cache: bool = True) -> None:

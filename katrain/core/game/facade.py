@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Iterator
 from typing import Any
@@ -35,6 +36,8 @@ from katrain.core.game.navigation import GameNavigator
 from katrain.core.game_node import GameNode
 from katrain.core.reports.karte.models import KarteGenerationError  # re-exported for backward compatibility
 from katrain.core.sgf_parser import Move
+
+logger = logging.getLogger(__name__)
 
 
 class Game(BaseGame):
@@ -185,13 +188,13 @@ class Game(BaseGame):
 
         total_moves = len(snapshot.moves)
 
-        print("=== Mistake summary (debug) ===")
-        print(f"Total moves: {total_moves}")
+        logger.info("=== Mistake summary (debug) ===")
+        logger.info("Total moves: %d", total_moves)
         # カテゴリ順に固定したい場合は MistakeCategory の順で回す
         for cat in MistakeCategory:
             n = counts.get(cat, 0)
             label = cat.value  # "BLUNDER" 等
-            print(f"{label:10s}: {n:3d}")
+            logger.info("%10s: %3d", label, n)
 
     # ------------------------------------------------------------------
     # 重要局面レポート / YoseAnalyzer 連携用のヘルパー
