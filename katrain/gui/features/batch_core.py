@@ -33,7 +33,7 @@ from katrain.gui.features.types import BatchOptions, BatchWidgets
 logger = logging.getLogger(__name__)
 
 
-# NOTE: _safe_int is now imported from katrain.core.batch.helpers (Phase 42-A)
+# NOTE: _safe_int is now imported from katrain.core.batch (the package, Phase 42-A)
 # Aliased as _safe_int to maintain existing local references
 
 

@@ -416,7 +416,7 @@ def extract_players_from_stats(
         - Generic names ("Black", "White", "黒", "白", etc.) are skipped
         - Players with < min_games are excluded
     """
-    from katrain.core.batch.helpers import normalize_player_name
+    from katrain.core.batch.filenames import normalize_player_name
 
     if skip_names is None:
         skip_names = SKIP_PLAYER_NAMES
