@@ -52,7 +52,7 @@ def _phase_static(move_number: int, board_size: int = 19) -> str:
 
 
 def classify_phases_dynamic(
-    moves: Sequence["MoveEval"],
+    moves: Sequence[MoveEval],
     *,
     board_size: int = 19,
     endgame_threshold: float = ENDGAME_SCORE_STDEV_THRESHOLD,
@@ -122,7 +122,7 @@ def it_consistent_with_static(
 
 
 def apply_dynamic_phases(
-    moves: Sequence["MoveEval"],
+    moves: Sequence[MoveEval],
     *,
     board_size: int = 19,
     endgame_threshold: float = ENDGAME_SCORE_STDEV_THRESHOLD,
@@ -152,5 +152,5 @@ def apply_dynamic_phases(
         endgame_threshold=endgame_threshold,
         endgame_window=endgame_window,
     )
-    for mv, phase in zip(moves, phases):
+    for mv, phase in zip(moves, phases, strict=False):
         mv.tag = phase

@@ -149,7 +149,7 @@ def collect_system_info() -> SystemInfo:
         SystemInfo with current system details.
     """
     import os
-    
+
     cpu_info = platform.processor()
     cpu_count = os.cpu_count()
     if cpu_count:

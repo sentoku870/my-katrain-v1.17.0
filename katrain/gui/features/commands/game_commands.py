@@ -129,10 +129,10 @@ def do_play(ctx: KaTrainGui, coords: Any) -> None:
         ctx: KaTrainGui instance
         coords: Board coordinates (tuple) or None for pass
     """
+    from katrain.core.constants import STATUS_ERROR
     from katrain.core.game import IllegalMoveException
     from katrain.core.lang import i18n
     from katrain.core.sgf_parser import Move
-    from katrain.core.constants import STATUS_ERROR
     from katrain.gui.sound import play_sound
     from katrain.gui.theme import Theme
 

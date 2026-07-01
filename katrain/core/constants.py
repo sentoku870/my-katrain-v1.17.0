@@ -338,6 +338,7 @@ LEELA_COLOR_LARGE = (0.957, 0.263, 0.212, 1.0)  # Red #F44336
 
 # --- Analysis Modes ---
 import logging
+
 from katrain.core.compatibility import StrEnum
 
 _logger = logging.getLogger(__name__)

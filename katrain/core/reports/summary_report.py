@@ -40,7 +40,7 @@ def _detect_urgent_miss_sequences(
 
 
 def build_summary_report(
-    game_data_list: list["GameSummaryData"], focus_player: str | None = None
+    game_data_list: list[GameSummaryData], focus_player: str | None = None
 ) -> str:
     """
     複数局から統計まとめを生成（JSON形式）
@@ -55,8 +55,9 @@ def build_summary_report(
     if not game_data_list:
         return '{"meta": {"games_analyzed": 0}}'
 
-    from katrain.core.reports.summary_json_export import build_summary_json
     import json
+
+    from katrain.core.reports.summary_json_export import build_summary_json
 
     json_data = build_summary_json(game_data_list, focus_player)
     return json.dumps(json_data, indent=2, ensure_ascii=False)

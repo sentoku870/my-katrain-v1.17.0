@@ -31,14 +31,14 @@ class GameNavigator:
               ``current_node`` / ``root`` / ``set_current_node`` を利用する。
     """
 
-    def __init__(self, game: "BaseGame") -> None:
+    def __init__(self, game: BaseGame) -> None:
         self._game = game
 
     # ------------------------------------------------------------------
     # 内部実装 (元 ``Game`` クラスの同名メソッド)
     # ------------------------------------------------------------------
 
-    def _iter_main_branch_nodes(self) -> "Iterator[GameNode]":
+    def _iter_main_branch_nodes(self) -> Iterator[GameNode]:
         """ルートからメイン分岐（ordered_children[0] を辿った一本の線）
         上のノードだけを順に返す。
         """

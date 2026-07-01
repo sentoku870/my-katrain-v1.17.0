@@ -156,7 +156,7 @@ class LeelaManager:
             return
         if not force and current_node == self._pending_node:
             return
-        
+
         # Note: When force=True, we don't clear existing analysis
         # This keeps candidates visible while waiting for new results
 

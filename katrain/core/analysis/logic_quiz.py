@@ -14,11 +14,11 @@ from typing import Any
 from katrain.core.analysis.models import (
     DEFAULT_QUIZ_ITEM_LIMIT,
     DEFAULT_QUIZ_LOSS_THRESHOLD,
+    DEFAULT_SKILL_PRESET,
+    SKILL_PRESETS,
     EvalSnapshot,
     QuizConfig,
     QuizItem,
-    SKILL_PRESETS,
-    DEFAULT_SKILL_PRESET,
     get_canonical_loss_from_move,
 )
 

@@ -58,7 +58,7 @@ def _streak_to_item(s: Any) -> dict[str, Any]:
 
 
 def weakness_hypothesis_for(
-    ctx: "KarteContext",
+    ctx: KarteContext,
     player: str,
 ) -> list[dict[str, Any]]:
     """Generate weakness hypothesis data for a player (skill_preset thresholds).
@@ -98,10 +98,10 @@ def weakness_hypothesis_for(
         phase, category = key
         count = stats.phase_mistake_counts.get(key, 0)
 
-        def phase_cat_filter(mv: Any) -> bool:
+        def phase_cat_filter(mv: Any, _phase: str = phase, _category: str = category) -> bool:
             mv_phase = mv.tag or "unknown"
             mv_cat = mv.mistake_category.name if mv.mistake_category else "GOOD"
-            return mv_phase == phase and mv_cat == category
+            return mv_phase == _phase and mv_cat == _category
 
         evidence_moves = eval_metrics.select_representative_moves(
             player_moves,
@@ -125,7 +125,7 @@ def weakness_hypothesis_for(
 
 
 def practice_priorities_for(
-    ctx: "KarteContext",
+    ctx: KarteContext,
     player: str,
 ) -> list[dict[str, Any]]:
     """Generate practice priorities data for a player.
@@ -145,7 +145,7 @@ def practice_priorities_for(
 
 
 def mistake_streaks_for(
-    ctx: "KarteContext",
+    ctx: KarteContext,
     player: str,
 ) -> list[dict[str, Any]]:
     """Detect and return consecutive mistake streaks for a player.

@@ -10,8 +10,6 @@ from kivy.properties import ListProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 from kivy.uix.widget import Widget
 
-from katrain.gui.theme import Theme
-
 
 class BackgroundMixin(Widget):  # -- mixins
     background_color = ListProperty([0, 0, 0, 0])

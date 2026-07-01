@@ -9,10 +9,14 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 os.environ["KCFG_KIVY_LOG_LEVEL"] = os.environ.get("KCFG_KIVY_LOG_LEVEL", "warning")
 
 from kivy.utils import platform as kivy_platform
+
+if TYPE_CHECKING:
+    from katrain.core.game import Game
 
 if kivy_platform == "win":
     from ctypes import c_int64, windll

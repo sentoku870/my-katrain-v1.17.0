@@ -11,10 +11,10 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from katrain.core.compatibility import StrEnum
 from typing import Any
 
 from katrain.core.analysis.models import MoveEval, get_canonical_loss_from_move
+from katrain.core.compatibility import StrEnum
 
 from .models import GameTimeData
 

@@ -587,7 +587,7 @@ def build_summary_from_stats(
     _append_worst_moves(lines, all_worst_moves, config_fn, focus_player)
 
     # Weakness Hypothesis
-    sorted_combos = _append_weakness_hypothesis(
+    _append_weakness_hypothesis(
         lines, phase_mistake_loss_total, phase_mistake_counts_total, phase_loss_total, phase_moves_total, focus_player
     )
 

@@ -94,7 +94,7 @@ def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
     # Bind buttons
     close_btn.bind(on_release=popup.dismiss)
     generate_btn.bind(on_release=lambda btn: _on_generate_zip(ctx, bundle, generate_btn, popup))
-    
+
     # Add Copy to Clipboard button (phase 2)
     copy_btn = Button(
         text=i18n._("Copy Info"),
@@ -102,7 +102,7 @@ def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
         size_hint=(0.5, 1),
     )
     copy_btn.bind(on_release=lambda btn: _on_copy_info(ctx, bundle, copy_btn))
-    
+
     # Re-assemble button box with Copy button in middle
     button_box.clear_widgets()
     button_box.add_widget(generate_btn)
@@ -297,24 +297,25 @@ def _on_copy_info(
 ) -> None:
     """Handle Copy Info button click."""
     from kivy.core.clipboard import Clipboard
+
     from katrain.core.diagnostics import format_llm_diagnostics_text
-    
+
     # Generate text format
     sanitization_ctx = get_sanitization_context(app_dir=str(Path.cwd()))
     text = format_llm_diagnostics_text(bundle, sanitization_ctx, max_log_lines=50)
-    
+
     # Copy to clipboard
     Clipboard.copy(text)
-    
+
     # Flash button text
     original_text = copy_btn.text
     copy_btn.text = i18n._("Copied!")
     copy_btn.disabled = True
-    
+
     def restore_btn(dt: float) -> None:
         copy_btn.text = original_text
         copy_btn.disabled = False
-        
+
     Clock.schedule_once(restore_btn, 1.5)
 
 

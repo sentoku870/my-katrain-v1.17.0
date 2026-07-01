@@ -148,12 +148,6 @@ def run_batch(
         BatchResult with success/fail/skip counts, output counts, and error information
     """
     # Import here to avoid circular imports
-    from katrain.core.batch.analysis import analyze_single_file
-    from katrain.core.batch.stats import (
-        build_player_summary,
-        extract_game_stats,
-        extract_players_from_stats,
-    )
 
     result = BatchResult()
 
@@ -374,7 +368,7 @@ def _setup_batch(
     )
 
 
-def _process_single_file(ctx: "_BatchFileContext", log: Callable[[str], None]) -> None:
+def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> None:
     """Analyze one SGF file and (optionally) generate its karte + stats.
 
     Modifies ctx.result in place. May set ctx.result.cancelled/aborted on
@@ -644,10 +638,10 @@ def _collect_stats_for_file(
         log(f"    {traceback.format_exc()}")
 
 
-def _generate_summaries(ctx: "_BatchSummaryContext") -> None:
+def _generate_summaries(ctx: _BatchSummaryContext) -> None:
     """Generate per-player summary markdown files."""
     # Import here to avoid circular imports
-    from katrain.core.batch.stats import extract_players_from_stats, build_player_summary
+    from katrain.core.batch.stats import build_player_summary, extract_players_from_stats
 
     log = ctx.log
     log("Generating per-player summaries...")
@@ -737,7 +731,7 @@ def _generate_summaries(ctx: "_BatchSummaryContext") -> None:
         log(f"WARNING: {summary_failed} summary file(s) failed to write")
 
 
-def _generate_curator_outputs(ctx: "_BatchCuratorContext") -> None:
+def _generate_curator_outputs(ctx: _BatchCuratorContext) -> None:
     """Generate curator ranking and guide outputs (Phase 64)."""
     from katrain.core.curator import generate_curator_outputs
 

@@ -7,7 +7,7 @@ def normalize_humanlike_config(
     toggle_on: bool, current_path: str, last_path: str
 ) -> tuple[str, str, bool]:
     """Normalize human-like configuration state.
-    
+
     Args:
         toggle_on: Whether the human-like toggle is requested ON.
         current_path: The currently selected human-like model path (or empty).

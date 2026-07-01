@@ -35,6 +35,7 @@ class BatchAnalysisController:
     def open_batch_analyze_popup(self) -> None:
         """バッチ解析フォルダー選択／実行ポップアップを表示する。"""
         # 遅延インポートによる依存関係の回避
+
         from katrain.gui.features.batch_core import (
             collect_batch_options,
             create_log_callback,
@@ -50,7 +51,6 @@ class BatchAnalysisController:
             create_on_close_callback,
             create_on_start_callback,
         )
-        from kivy.clock import Clock
 
         # 1. 保存されたオプションのロード
         mykatrain_settings = self._ctx.config("mykatrain_settings") or {}
@@ -78,7 +78,7 @@ class BatchAnalysisController:
 
         log_cb = create_log_callback(widgets["log_text"], widgets["log_scroll"])
         progress_cb = create_progress_callback(widgets["progress_label"])
-        
+
         def save_batch_options(options: dict[str, Any]) -> None:
             self._ctx.set_config_section("batch_options", options)
             self._ctx.save_config("batch_options")

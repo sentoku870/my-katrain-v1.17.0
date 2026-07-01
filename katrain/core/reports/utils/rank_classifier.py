@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from typing import Final
 
 
-class RankBucket(str, enum.Enum):
+class RankBucket(enum.StrEnum):
     """Coarse rank bucket for opponent-strength correlation (Phase 155-A)."""
 
     KYU = "kyu"

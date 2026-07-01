@@ -304,7 +304,7 @@ class ConfigAIPopup(QuickConfigGui):
                     widget.bind(active=self.estimate_rank_from_options)
                 else:
                     if isinstance(values[0], tuple):  # type: ignore[index]  # with descriptions, possibly language-specific
-                        fixed_values = [(v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), l)) for v, l in values]  # type: ignore[attr-defined]
+                        fixed_values = [(v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), label)) for v, label in values]  # type: ignore[attr-defined]
                     else:  # just numbers
                         fixed_values = [(v, str(v)) for v in values]  # type: ignore[attr-defined]
                     widget = LabelledSelectionSlider(

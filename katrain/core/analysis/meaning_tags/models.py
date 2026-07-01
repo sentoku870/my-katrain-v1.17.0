@@ -8,6 +8,7 @@ Part of Phase 46: Meaning Tags System Core.
 """
 
 from dataclasses import dataclass
+
 from katrain.core.compatibility import StrEnum
 
 

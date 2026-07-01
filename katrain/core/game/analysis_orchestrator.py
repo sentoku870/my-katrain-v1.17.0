@@ -62,7 +62,7 @@ class AnalysisOrchestrator:
               ``set_current_node`` などを利用する。
     """
 
-    def __init__(self, game: "Game") -> None:
+    def __init__(self, game: Game) -> None:
         self._game = game
 
     # ------------------------------------------------------------------

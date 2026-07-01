@@ -11,37 +11,36 @@ Contains:
 
 from __future__ import annotations
 
-from typing import Any
-import time
 import hashlib
+import time
+from typing import Any
 
 from katrain.core import eval_metrics
-from katrain.core.reports.summary_logic import SummaryAnalyzer
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
 )
 from katrain.core.reports.definitions import (
+    CATEGORY_ALIASES,
+    IMPORTANCE_DEF,
+    MISTAKE_TYPES,
+    PHASE_ALIASES,
+    PHASES,
+    PRIMARY_TAGS,
+    REASON_CODE_ALIASES,
+    REASON_CODES,
     REPORT_SCHEMA_VERSION,
     REPORT_THRESHOLDS,
-    MISTAKE_TYPES,
-    PHASES,
-    PHASE_ALIASES,
-    PRIMARY_TAGS,
-    REASON_CODES,
-    CATEGORY_ALIASES,
-    REASON_CODE_ALIASES,
-    IMPORTANCE_DEF,
-)
-from katrain.core.reports.schema import (
-    SummaryReport,
-    Definitions,
-    GameMeta,
-    SummaryPlayerStats,
-    MistakeItem,
-    MetaData,
 )
 from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
+from katrain.core.reports.schema import (
+    Definitions,
+    GameMeta,
+    MetaData,
+    MistakeItem,
+    SummaryReport,
+)
+from katrain.core.reports.summary_logic import SummaryAnalyzer
 
 
 def _compute_player_win_loss_analysis(
@@ -55,7 +54,6 @@ def _compute_player_win_loss_analysis(
     ``handicapped``).
     """
     from katrain.core.reports.utils.result_parser import (
-        GameOutcome,
         PlayerOutcome,
         parse_result,
     )

@@ -7,7 +7,8 @@ Provides:
 - show_guess_feedback(): Display feedback popup after user guess (Phase 93 + 94)
 """
 
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -60,7 +61,7 @@ def _format_score_loss(loss: float | None) -> str:
 
 
 def show_guess_feedback(
-    katrain: "KaTrainGui",
+    katrain: KaTrainGui,
     evaluation: GuessEvaluation,
     allow_retry: bool = False,
     on_retry: Callable[[], None] | None = None,

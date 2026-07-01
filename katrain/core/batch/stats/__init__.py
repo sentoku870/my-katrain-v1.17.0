@@ -21,8 +21,8 @@ from .extraction import (
 # =============================================================================
 # Models - small dataclass and constants
 from .models import (
-    EvidenceMove,
     SKIP_PLAYER_NAMES,
+    EvidenceMove,
 )
 
 # Pattern Mining - recurring mistake detection (Phase 84)

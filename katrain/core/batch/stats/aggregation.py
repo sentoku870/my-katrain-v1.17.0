@@ -147,8 +147,8 @@ def build_batch_summary(
             lines.append(f"| {display_name} | {move_num} | {player} | {gtp} | {loss:.1f} | {cat_name} |")
 
     # Phase 55: Add JSON block for AI readability using the unified SummaryAnalyzer
-    from katrain.core.reports.summary_report import build_summary_report
     from katrain.core.analysis.models import GameSummaryData
+    from katrain.core.reports.summary_report import build_summary_report
 
     # Extract GameSummaryData from the stats list
     game_data_list = []

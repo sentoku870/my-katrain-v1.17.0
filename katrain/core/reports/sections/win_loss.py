@@ -31,8 +31,7 @@ from katrain.core.reports.utils.result_parser import (
 )
 
 if TYPE_CHECKING:
-    from katrain.core.analysis.models import MoveEval, GameSummaryData
-    from katrain.core.reports.karte.sections.context import KarteContext
+    from katrain.core.analysis.models import GameSummaryData, MoveEval
 
 
 # Threshold for counting a move as a "mistake-or-worse" in the aggregate.
@@ -43,7 +42,7 @@ def _empty_bucket() -> dict[str, float | int]:
     return {"count": 0, "total_loss": 0.0, "avg_loss": 0.0, "mistake_count": 0}
 
 
-def _bucket_from_moves(moves: list["MoveEval"]) -> dict[str, float | int]:
+def _bucket_from_moves(moves: list[MoveEval]) -> dict[str, float | int]:
     if not moves:
         return _empty_bucket()
     losses = [get_canonical_loss_from_move(m) for m in moves]
@@ -58,10 +57,10 @@ def _bucket_from_moves(moves: list["MoveEval"]) -> dict[str, float | int]:
 
 
 def build_win_loss_analysis(
-    game_summary: "GameSummaryData | None",
-    snapshot_moves: list["MoveEval"] | None = None,
+    game_summary: GameSummaryData | None,
+    snapshot_moves: list[MoveEval] | None = None,
     *,
-    outcome: "GameOutcome | None" = None,
+    outcome: GameOutcome | None = None,
 ) -> dict[str, Any]:
     """Build the win/loss analysis section.
 
@@ -96,7 +95,7 @@ def build_win_loss_analysis(
 
     by_outcome: dict[str, dict[str, float | int]] = {}
     if snapshot_moves:
-        per_outcome: dict[str, list["MoveEval"]] = {"win": [], "loss": [], "draw": []}
+        per_outcome: dict[str, list[MoveEval]] = {"win": [], "loss": [], "draw": []}
         for mv in snapshot_moves:
             player_outcome = (
                 outcome.black if mv.player == "B" else outcome.white

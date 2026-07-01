@@ -32,10 +32,10 @@ from katrain.core.analysis.models import (
     LCB_GAP_MAX,
     LCB_GAP_WEIGHT,
     POLICY_GAP_MAX,
-    PositionDifficulty,
     SHORTTERM_SCORE_ERROR_MAX,
     TRANSITION_DROP_MAX,
     DifficultyMetrics,
+    PositionDifficulty,
 )
 
 if TYPE_CHECKING:

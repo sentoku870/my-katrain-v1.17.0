@@ -12,7 +12,6 @@ Part of Phase 94: Active Review Extension.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 from katrain.core.study.active_review import GuessEvaluation, GuessGrade
 
@@ -45,7 +44,7 @@ class GuessResult:
         return self.evaluation.grade
 
     @property
-    def score_loss(self) -> Optional[float]:
+    def score_loss(self) -> float | None:
         return self.evaluation.score_loss
 
     @property
@@ -90,10 +89,10 @@ class SessionSummary:
     game_move_match_rate: float  # matches_game_move==True percentage * 100
 
     # Loss statistics
-    average_score_loss: Optional[float]  # NOT_IN_CANDIDATES excluded
+    average_score_loss: float | None  # NOT_IN_CANDIDATES excluded
 
     # Worst 3 moves (score_loss descending, final answers only)
-    worst_misses: Tuple["GuessResult", ...]  # Tuple for immutability
+    worst_misses: tuple["GuessResult", ...]  # Tuple for immutability
 
     # Retry/Hint statistics
     total_retries: int
@@ -120,9 +119,9 @@ class ReviewSession:
             skill_preset: One of "beginner", "standard", "advanced", "pro"
         """
         self.skill_preset = skill_preset
-        self.results: List[GuessResult] = []
+        self.results: list[GuessResult] = []
         # Current position's pending state
-        self._pending_move_number: Optional[int] = None
+        self._pending_move_number: int | None = None
         self._pending_retry_count: int = 0
         self._pending_hint_used: bool = False
 

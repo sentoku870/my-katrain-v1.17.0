@@ -13,12 +13,10 @@ import time
 import traceback
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from katrain.core.batch.helpers import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
-from katrain.core.game_node import GameNode
-
 
 if TYPE_CHECKING:
     from katrain.core.base_katrain import KaTrainBase

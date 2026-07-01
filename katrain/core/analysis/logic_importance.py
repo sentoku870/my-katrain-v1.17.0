@@ -11,24 +11,25 @@ logic.pyから抽出された重要度計算関連の関数。
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from katrain.core.analysis.models import (
-    ConfidenceLevel,
     DEFAULT_IMPORTANT_MOVE_LEVEL,
     DIFFICULTY_MODIFIER_HARD,
     DIFFICULTY_MODIFIER_ONLY_MOVE,
     DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_BONUS,
     DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_THRESHOLD,
-    EvalSnapshot,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
-    ImportantMoveSettings,
     MIN_LOSS_DISPLAY,
-    MoveEval,
-    PositionDifficulty,
     RELIABILITY_SCALE_THRESHOLDS,
     STREAK_START_BONUS,
     SWING_MAGNITUDE_WEIGHT,
+    ConfidenceLevel,
+    EvalSnapshot,
+    ImportantMoveSettings,
+    MoveEval,
+    PositionDifficulty,
     get_canonical_loss_from_move,
 )
 

@@ -25,7 +25,7 @@ import logging
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any, cast
 
@@ -135,7 +135,7 @@ def export_settings(config: dict[str, Any], app_version: str) -> str:
     export_data = {
         "schema_version": SCHEMA_VERSION,
         "app_version": app_version,
-        "exported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "exported_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "sections": filtered,
     }
     return json.dumps(export_data, indent=2, ensure_ascii=False)
@@ -161,7 +161,7 @@ def parse_exported_settings(json_str: str) -> ExportedSettings:
     try:
         data = json.loads(json_str)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON: {e}")
+        raise ValueError(f"Invalid JSON: {e}") from e
 
     if not isinstance(data, dict):
         raise ValueError("Root must be an object")

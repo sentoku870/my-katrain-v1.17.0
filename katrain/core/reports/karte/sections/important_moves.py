@@ -195,7 +195,7 @@ def critical_3_section_for(
         return []
 
     # Phase 82: Create cache for stone positions (shared across Critical Moves)
-    stone_cache = StoneCache(ctx.game)
+    StoneCache(ctx.game)
 
     iso_lang = to_iso_lang_code(ctx.lang)
     result: list[dict[str, Any]] = []
