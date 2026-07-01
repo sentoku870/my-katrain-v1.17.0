@@ -251,7 +251,16 @@ class AIStrategy(ABC):
             extra_settings=extra_settings,
         )
         self.game.katrain.log(f"[{self.strategy_name}] Waiting for analysis to complete...", OUTPUT_DEBUG)
+        # Phase 165: Add timeout to prevent infinite loop if the engine
+        # silently dies or the writer thread is stuck (e.g. deadlocked
+        # by terminate_queries() before the Phase 159 RLock fix).
+        _wait_timeout_s = 120.0
+        _wait_start = time.time()
         while not (error or analysis):
+            if time.time() - _wait_start > _wait_timeout_s:
+                raise TimeoutError(
+                    f"[{self.strategy_name}] Timed out after {_wait_timeout_s}s waiting for analysis"
+                )
             time.sleep(0.01)
             engine.check_alive(exception_if_dead=True)
 

@@ -106,8 +106,16 @@ class HumanStyleStrategy(AIStrategy):
         self.game.katrain.log("[HumanStyleStrategy] Analysis request sent, waiting for results", OUTPUT_DEBUG)
 
         # Wait for analysis to complete
+        # Phase 165: Add timeout to prevent infinite loop if the engine
+        # silently dies or the writer thread is stuck.
+        _wait_timeout_s = 120.0
+        _wait_start = time.time()
         wait_count = 0
         while not (error or analysis):
+            if time.time() - _wait_start > _wait_timeout_s:
+                raise TimeoutError(
+                    f"[HumanStyleStrategy] Timed out after {_wait_timeout_s}s waiting for analysis"
+                )
             time.sleep(0.01)
             wait_count += 1
             if wait_count % 100 == 0:  # Log every 1 second
