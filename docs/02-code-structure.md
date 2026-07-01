@@ -1,132 +1,191 @@
 # myKatrain コード構造
 
-> 最終更新: 2026-01-30（Phase 89完了）
+> 最終更新: 2026-07-01（Phase 166）
+>
+> **⚠️ このドキュメントは古い記述を含んでいます。** 2026-01-30 (Phase 89) 以降の大規模リファクタリングが反映されていません。
+> 現在の構造は `docs/02-code-structure-addendum-2026-07.md` を参照するか、
+> `find katrain -name "*.py" | head -50` で実際のファイルを確認してください。
 
 ---
 
-## 1. ディレクトリ構造
+## 1. ディレクトリ構造（2026-01-30 時点の概要）
 
 ```
 katrain/
-├── __main__.py           # アプリ起動、KaTrainGuiクラス（~1200行）
+├── __main__.py           # アプリ起動、KaTrainGui クラス（2026-07 時点: 1,128 行）
 │
-├── common/               # 共有定数（循環依存解消用）
+├── common/               # 共有定数（循環依存解消用、Kivy非依存）
 │   ├── __init__.py       # DEFAULT_FONT など
 │   ├── theme_constants.py # INFO_PV_COLOR など
-│   ├── platform.py       # get_platform()（Phase 20、Kivy非依存OS判定）
-│   ├── config_store.py   # JsonFileConfigStore（Phase 20、Mapping実装）
-│   ├── locale_utils.py   # normalize_lang_code(), to_iso_lang_code()（Phase 52-A）
-│   ├── model_labels.py   # classify_model_strength(), get_model_basename()（Phase 88）
-│   ├── humanlike_config.py # normalize_humanlike_config()（Phase 88）
-│   └── lexicon/          # 囲碁用語辞書パッケージ（Phase 45）
-│       ├── models.py       # LexiconEntry, DiagramInfo, AIPerspective（frozen dataclass）
-│       ├── validation.py   # 2段階バリデーションパイプライン
-│       └── store.py        # LexiconStore（スレッドセーフ、アトミックスナップショット）
+│   ├── platform.py       # get_platform()（Kivy非依存OS判定）
+│   ├── config_store.py   # JsonFileConfigStore（Mapping実装）
+│   ├── locale_utils.py   # normalize_lang_code(), to_iso_lang_code()
+│   ├── model_labels.py   # classify_model_strength(), get_model_basename()
+│   ├── humanlike_config.py # normalize_humanlike_config()
+│   ├── settings_export.py  # settings エクスポート/インポート
+│   ├── sanitize.py       # ファイル名サニタイズ
+│   ├── resource_utils.py # find_package_resource()（Phase 163 で core から移動）
+│   ├── typed_config/     # 型付き設定読み書き（reader/writer/models）
+│   └── lexicon/          # 囲碁用語辞書パッケージ
 │
 ├── core/                 # コアロジック
-│   ├── game.py            # Game（対局状態管理）
-│   ├── game_node.py       # GameNode（手/解析結果）
-│   ├── engine.py          # KataGoEngine（解析プロセス）
-│   ├── errors.py          # KaTrainError例外階層（Phase 2で追加）
-│   ├── eval_metrics.py    # ファサード（後方互換、21行）
-│   ├── yose_analyzer.py   # ヨセ解析（myKatrain追加）
-│   ├── sgf_parser.py      # SGF読み込み
+│   ├── game_node.py      # GameNode（手/解析結果）
+│   ├── engine.py         # KataGoEngine（解析プロセス、Phase 158 で分割）
+│   ├── engine_io.py      # stdin/stdout reader threads
+│   ├── engine_query.py   # query 送信/終了/pondering
+│   ├── engine_cmd/       # AnalysisCommand パターン
+│   ├── sgf_parser.py     # SGF読み込み
+│   ├── game/             # Game クラス（Phase 141 で 4 分割）
+│   │   ├── base.py            # BaseGame, IllegalMoveException, KaTrainSGF
+│   │   ├── facade.py          # Game（合成クラス）
+│   │   ├── analysis_orchestrator.py # AnalysisOrchestrator
+│   │   ├── navigation.py      # GameNavigator
+│   │   └── insert_mode.py     # InsertModeController
 │   │
-│   ├── ai.py              # AI戦略実装（~1060行）
-│   ├── ai_strategies_base.py  # AI戦略基底クラス・ユーティリティ（~300行、Phase B5）
+│   ├── ai_strategies_base.py  # AI戦略基底クラス・register_strategy
+│   ├── ai_strategies/    # AI戦略実装（Phase 158 で分割: basic, pick, policy, score, human）
 │   │
-│   ├── analysis/          # 解析基盤パッケージ（Phase B4完了）
-│   │   ├── __init__.py      # 明示的再エクスポート（~500行）
-│   │   ├── models.py        # Enum, Dataclass, 定数（~835行）
-│   │   ├── logic.py         # 計算関数オーケストレーター（~1180行）
-│   │   ├── logic_loss.py    # 損失計算関数（~105行、Phase B4）
-│   │   ├── logic_importance.py # 重要度計算関数（~175行、Phase B4）
-│   │   ├── logic_quiz.py    # クイズヘルパー関数（~90行、Phase B4）
-│   │   ├── presentation.py  # 表示/フォーマット関数（~300行）
-│   │   ├── skill_radar.py   # 5軸レーダーモデル（~570行、Phase 48-49）
-│   │   ├── critical_moves.py # Critical 3選択（~455行、Phase 50）
-│   │   └── meaning_tags/    # 意味タグ分類（Phase 46-47）
-│   │       ├── models.py      # MeaningTagId, MeaningTag
-│   │       ├── registry.py    # MEANING_TAG_REGISTRY（12タグ定義）
-│   │       ├── classifier.py  # classify_meaning_tag()
-│   │       └── integration.py # normalize_lang(), get_meaning_tag_label_safe()
+│   ├── analysis/         # 解析基盤パッケージ
+│   │   ├── models/             # Enum, Dataclass, 定数（models/ パッケージに分割）
+│   │   ├── logic.py, logic_*.py # 損失/重要度/クイズ/difficulty/reliability/skill/
+│   │   │                       #   phase/phase_dynamic/pv/snapshot/quiz
+│   │   ├── presentation.py     # 表示/フォーマット関数
+│   │   ├── critical_moves.py   # Critical 3 選択
+│   │   ├── ownership_cluster.py # ownership クラスタ抽出
+│   │   ├── cluster_classifier.py
+│   │   ├── engine_compare.py   # KataGo vs Leela 比較
+│   │   ├── reason_generator.py
+│   │   ├── meaning_tags/       # 意味タグ分類
+│   │   └── time/               # 時刻・パシング解析
 │   │
-│   ├── batch/             # バッチ処理パッケージ（Phase 42、Kivy非依存）
-│   │   ├── models.py        # WriteError, BatchResult dataclass
-│   │   ├── helpers.py       # 純粋関数（choose_visits_for_sgf, safe_int等）
-│   │   ├── analysis.py      # analyze_single_file, analyze_single_file_leela
-│   │   ├── orchestration.py # run_batch() メインエントリ
-│   │   └── stats.py         # extract_game_stats, build_player_summary
+│   ├── batch/            # バッチ処理パッケージ（Phase 158-B で 10 モジュール分割）
+│   │   ├── analysis.py
+│   │   ├── discovery.py        # collect_sgf_files
+│   │   ├── engine_polling.py
+│   │   ├── filenames.py
+│   │   ├── helpers.py          # 後方互換シム（Phase 168 で削除予定）
+│   │   ├── inputs.py
+│   │   ├── io_safe.py
+│   │   ├── leela_gate.py
+│   │   ├── loss.py
+│   │   ├── markdown_fmt.py
+│   │   ├── models.py
+│   │   ├── orchestration.py    # run_batch()
+│   │   ├── sgf_io.py
+│   │   ├── visits.py
+│   │   └── stats/              # stats/ パッケージに分割
 │   │
-│   ├── auto_setup.py       # 自動セットアップロジック（Phase 89）
-│   ├── test_analysis.py    # エラー分類・テスト解析結果（Phase 89）
-│   │
-│   ├── leela/             # Leela Zero対応（Phase 31-36）
-│   │   └── conversion.py    # leela_position_to_move_eval(), leela_sequence_to_eval_snapshot()
-│   │
-│   └── reports/           # レポート生成（Phase 32-37）
-│       ├── types.py         # 型定義、Protocol
-│       └── karte_report.py  # build_karte_report(), build_critical_3_prompt()
+│   ├── auto_setup.py     # 自動セットアップロジック
+│   ├── auto_setup_controller.py  # AutoSetupController
+│   ├── analysis_result.py # エラー分類・テスト解析結果
+│   ├── board_analysis.py
+│   ├── board_geometry.py
+│   ├── beginner/         # 初級者向けヒント
+│   ├── compatibility.py  # Python 3.11+ StrEnum re-export
+│   ├── constants.py
+│   ├── curator/          # 棋譜適合度スコアリング
+│   ├── diagnostics.py
+│   ├── lang.py
+│   ├── leela/            # Leela Zero 対応
+│   ├── state/            # StateNotifier（Phase 104）
+│   ├── study/            # Active review, review session
+│   ├── tsumego_frame.py
+│   ├── utils.py
+│   └── reports/          # レポート生成（karte/ が中心）
+│       ├── karte/             # Karte report パッケージ
+│       │   ├── builder.py
+│       │   ├── json_export.py
+│       │   ├── helpers.py
+│       │   ├── models.py
+│       │   ├── sections/      # セクション別ビルダー
+│       │   └── ...
+│       ├── summary_*.py
+│       ├── quiz_report.py
+│       ├── sections/
+│       ├── utils/
+│       └── ...
 │
 ├── gui/                  # GUI（Kivy）
-│   ├── controlspanel.py   # 右パネル（ControlsPanel）
-│   ├── badukpan.py        # 盤面表示（BadukPanWidget）
-│   ├── error_handler.py   # ErrorHandler（Phase 2で追加）
-│   ├── lang_bridge.py     # KivyLangBridge（Phase 20、i18n Kivyブリッジ）
-│   ├── popups.py          # ポップアップダイアログ
-│   ├── widgets/
-│   │   ├── graph.py         # ScoreGraph（勝率グラフ）
-│   │   ├── movetree.py      # MoveTree（手順ツリー）
-│   │   ├── helpers.py       # UIヘルパー関数（PR #89で追加）
-│   │   ├── radar_geometry.py # レーダー幾何計算（Phase 51、Kivy非依存）
-│   │   └── radar_chart.py   # RadarChartWidget（Phase 51）
-│   │
-│   └── features/          # 機能モジュール（Phase 3で追加）
-│       ├── context.py           # FeatureContext Protocol
-│       ├── karte_export.py      # カルテエクスポート
-│       ├── summary_stats.py     # サマリ統計計算
-│       ├── summary_aggregator.py # サマリ集計
-│       ├── summary_formatter.py # サマリMarkdown生成
-│       ├── summary_ui.py        # サマリUI/ダイアログ
-│       ├── summary_io.py        # サマリファイル保存
-│       ├── quiz_popup.py        # クイズポップアップ
-│       ├── quiz_session.py      # クイズセッション
-│       ├── batch_core.py        # バッチ解析コア
-│       ├── batch_ui.py          # バッチ解析UI
-│       ├── settings_popup.py    # 設定ポップアップ（オーケストレータ）
-│       ├── settings_popup_state.py    # _SettingsPopupContext（Phase 158-E 抽出）
-│       ├── settings_popup_helpers.py  # _add_searchable_label（Phase 158-E 抽出）
-│       ├── settings_popup_tabs/__init__.py  # _build_leela_tab（Phase 158-E 抽出）
-│       ├── skill_radar_popup.py # スキルレーダーポップアップ（Phase 51）
-│       └── auto_mode_popup.py   # 自動セットアップUI（Phase 89）
+│   ├── controlspanel.py  # 右パネル
+│   ├── badukpan.py       # 盤面表示（Phase 158+ で分割）
+│   ├── sgf_manager.py
+│   ├── lang_bridge.py    # KivyLangBridge
+│   ├── theme.py
+│   ├── theme_loader.py
+│   ├── sound.py
+│   ├── leela_manager.py
+│   ├── error_handler.py
+│   ├── commands/         # コマンドパターン
+│   ├── kivyutils/        # Kivy ユーティリティ（app_config, mixins, buttons, _base）
+│   ├── managers/         # Manager パターン（Phase 158-D+）
+│   │   ├── active_review_controller.py
+│   │   ├── auto_setup_controller.py
+│   │   ├── config_manager.py
+│   │   ├── dialog_factory.py
+│   │   ├── game_state_manager.py
+│   │   ├── game_state_update_manager.py
+│   │   ├── gui_refresh_manager.py
+│   │   ├── keyboard_manager.py
+│   │   ├── message_loop_manager.py
+│   │   ├── popup_manager.py
+│   │   ├── scroll_handler.py
+│   │   ├── summary_manager.py
+│   │   └── ui_update_manager.py
+│   ├── popups/           # ポップアップダイアログ（パッケージ化）
+│   ├── widgets/          # カスタム Kivy ウィジェット
+│   │   ├── graph.py
+│   │   ├── movetree.py
+│   │   ├── selection_slider.py
+│   │   ├── progress_loader.py
+│   │   ├── filebrowser.py
+│   │   └── factory.py, helpers.py
+│   ├── controllers/      # コントローラ（batch_analysis_controller 等）
+│   └── features/         # 機能モジュール
+│       ├── settings_popup.py  # 設定ポップアップ（オーケストレータ）
+│       ├── settings_popup_state.py
+│       ├── settings_popup_helpers.py
+│       ├── settings_popup_tabs/  # Phase 162 で proper package 化
+│       │   └── leela_tab.py
+│       ├── karte_export.py
+│       ├── summary_*.py
+│       ├── batch_*.py
+│       ├── active_review_*.py
+│       ├── commands/
+│       ├── diagnostics_popup.py
+│       ├── recovery_actions.py
+│       ├── report_navigator.py
+│       ├── resign_hint_popup.py
+│       └── context.py, types.py
 │
-├── gui.kv                # Kivyレイアウト定義
-├── katrain.kv            # 追加レイアウト
-│
-└── i18n/                 # 国際化（JP+ENのみ、PR #91で簡素化）
-    ├── i18n.py            # 翻訳処理
-    └── locales/{en,jp}/   # 英語・日本語のみ
+├── i18n/                 # 国際化（JP+EN）
+│   ├── __init__.py
+│   └── locales/{en,jp}/LC_MESSAGES/katrain.{po,mo}
 ```
+
+> 注: 上記のツリーは要約です。完全なリストは `find katrain -name "*.py" | sort` を参照。
+> 大きな構造変更は `docs/01-roadmap.md` のフェーズ記録を確認してください。
 
 ---
 
 ## 2. 主要クラスの関係
 
 ```
-KaTrainGui (App)
-├── self.game      → Game（対局状態）
-├── self.engine    → KataGoEngine（解析エンジン）
+KaTrainGui (Screen, KaTrainBase)
+├── self.game      → Game（対局状態、Phase 141 で 4 分割）
+├── self.engines   → dict[str, KataGoEngine]（解析エンジン）
 ├── self.controls  → ControlsPanel（右パネル）
-├── self.board_gui → BadukPanWidget（盤面）
-└── self.analysis_controls → AnalysisControls（解析トグル）
+├── self.board_gui → BadukPanWidget（盤面、Phase 158+ で 4 分割）
+├── self.managers  → 13 個の Manager（active_review, config, game_state, keyboard, ...）
+└── self.popup_manager / self.summary_manager / ...
 ```
 
 ### 依存方向
 ```
 KaTrainGui → Game → GameNode
-          → KataGoEngine
+          → KataGoEngine (engine_io + engine_query + engine_cmd)
           → ControlsPanel → ScoreGraph
                          → various widgets
+          → Managers → 各機能（state, popup, dialog, ...）
 ```
 
 ---
@@ -136,16 +195,18 @@ KaTrainGui → Game → GameNode
 ### 3.1 解析データの流れ
 ```
 1. GameNode.analyze()
-     ↓ KataGoEngineに解析リクエスト
-2. KataGoEngine → KataGo (subprocess)
+     ↓ KataGoEngine に解析リクエスト
+2. KataGoEngine.send_query() → write_queue
+     ↓
+3. write_stdin_thread → KataGo (subprocess)
      ↓ JSON結果
-3. GameNode.set_analysis(result)
+4. analysis_read_thread → set_analysis(result)
      ↓ analysis dict に格納
-4. KaTrainGui.update_state()
+5. StateNotifier (Phase 104) → Manager 通知
      ↓
-5. ControlsPanel.update_evaluation()
+6. UI Update (gui_refresh_manager / ui_update_manager)
      ↓
-6. UI更新（グラフ、盤面、情報パネル）
+7. ControlsPanel.update_evaluation() → UI更新
 ```
 
 ### 3.2 UIイベントの流れ
@@ -154,99 +215,68 @@ KaTrainGui → Game → GameNode
      ↓
 2. Kivy → root.katrain("action", args)
      ↓
-3. KaTrainGui.__call__(message)
-     ↓ メッセージキュー
-4. KaTrainGui._do_<action>()
+3. KaTrainGui._do_<action>()（commands/ に委譲）
+     ↓
+4. 各 Manager が必要な処理を実行
 ```
 
 ---
 
-## 4. myKatrain で追加したファイル
+## 4. myKatrain で追加した主な機能
 
-### 4.1 analysis パッケージ（Phase B4完了）
+詳細は `docs/01-roadmap.md` のフェーズ記録を参照してください。
 
-`katrain/core/eval_metrics.py` は後方互換用ファサード。
-実体は `katrain/core/analysis/` パッケージに分離。
+### 4.1 解析基盤（analysis パッケージ）
+- 損失/重要度計算、難易度メトリクス、信頼度
+- 5 軸レーダーモデル（初期版は削除、現行は意味タグ分類で代替）
+- Critical 3 選択、Pattern Mining
+- Time/Pacing 分析
 
-#### models.py（データモデル）
-**Enum:**
-- `MistakeCategory`: GOOD/INACCURACY/MISTAKE/BLUNDER
-- `PositionDifficulty`: EASY/NORMAL/HARD/ONLY_MOVE
-- `ConfidenceLevel`: HIGH/MEDIUM/LOW
-- `PVFilterLevel`: MINIMAL/NORMAL/DETAILED/FULL（Phase 11追加）
+### 4.2 AI 戦略（ai_strategies）
+- basic, pick, policy, score, human の 5 系統
+- `register_strategy` デコレータで登録
+- Strategy レジストリ: `STRATEGY_REGISTRY`
 
-**Dataclass:**
-- `MoveEval`: 1手の評価データ
-- `EvalSnapshot`: 対局全体の評価スナップショット
-- `SkillPreset`: 棋力別プリセット設定
-- `ImportantMoveSettings`: 重要手判定の設定
-- `QuizItem`, `QuizConfig`: クイズ用データ
-- `DifficultyMetrics`: 難易度メトリクス（Phase 12追加）
+### 4.3 Karte レポート
+- ビルドフロー: `build_karte_report()` → `katrain/core/reports/karte/__init__.py`
+- セクション分割: `katrain/core/reports/karte/sections/`
+- 意味タグ分類: `katrain/core/analysis/meaning_tags/`
+- スタイル分類: `STYLE_CONFIDENCE_THRESHOLD`
 
-**定数:**
-- `SKILL_PRESETS`: relaxed/beginner/standard/advanced/pro
-- `SCORE_THRESHOLDS`, `WINRATE_THRESHOLDS`: ミス分類閾値
+### 4.4 バッチ解析
+- `katrain/core/batch/orchestration.py::run_batch()` がメインエントリ
+- Leela ガード: `katrain/core/batch/leela_gate.py`
+- 統計抽出: `katrain/core/batch/stats/` パッケージ
+- Markdown 出力: `katrain/core/batch/markdown_fmt.py`
 
-#### logic.py（オーケストレーター）
-Phase B4で以下のサブモジュールに分割。logic.pyは再エクスポートを担当。
+### 4.5 Manager パターン
+- 13 個の Manager クラスで UI 状態を管理
+- PEP 562 `__getattr__` で遅延 import
 
-**logic_loss.py（損失計算）:**
-- `compute_loss_from_delta()`: delta_score/delta_winrateから損失計算
-- `compute_canonical_loss()`: 正準的な損失量を計算
-- `classify_mistake()`: 損失からMistakeCategoryを決定
+---
 
-**logic_importance.py（重要度計算）:**
-- `get_difficulty_modifier()`: 難易度に応じた重要度修正値
-- `get_reliability_scale()`: 訪問数に基づく信頼度スケール
-- `compute_importance_for_moves()`: 各手の重要度スコアを計算
-- `pick_important_moves()`: 重要局面を抽出
+## 5. 削除済み/旧ファイル（参考）
 
-**logic_quiz.py（クイズヘルパー）:**
-- `quiz_items_from_snapshot()`: スナップショットからクイズアイテムを生成
-- `quiz_points_lost_from_candidate()`: 候補手から損失値を抽出
+以下は過去に存在したが現在削除されている:
+- `katrain/core/yose_analyzer.py`（Phase 100 付近で削除）
+- `katrain/core/analysis/skill_radar.py`（意味タグに統合）
+- `katrain/gui/features/radar_geometry.py`, `radar_chart.py`（同上）
+- `katrain/gui/features/skill_radar_popup.py`（同上）
+- `katrain/gui/features/auto_mode_popup.py`（auto_setup_controller.py に統合）
+- `katrain/gui/features/quiz_popup.py`, `quiz_session.py`（quiz_manager に統合）
+- `katrain/core/test_analysis.py`（`analysis_result.py` にリネーム）
+- `katrain/core/reports/karte/sections/summary.py`（Phase 161 で削除）
 
-**logic.py（直接定義の関数）:**
-- `snapshot_from_game(game)`: GameからEvalSnapshot生成
-- `compute_confidence_level(snapshot)`: 信頼度計算
-- `recommend_auto_strictness(snapshot)`: 自動プリセット推奨
-- `compute_difficulty_metrics()`: 難易度メトリクス計算（Phase 12）
+---
 
-#### presentation.py（表示関数）
-- `get_confidence_label(level, lang)`: 信頼度ラベル
-- `format_evidence_examples(moves, lang)`: 証拠フォーマット
-- `SKILL_PRESET_LABELS`: 日本語ラベル（激甘/甘口/標準/辛口/激辛）
-- `format_difficulty_metrics()`: 難易度メトリクスのフォーマット（Phase 12）
+## 6. アーカイブ
 
-### 4.2 ai_strategies_base.py（Phase B5追加）
+完了済みフェーズの詳細は `docs/archive/` を参照。
 
-AI戦略の基底クラスとユーティリティを提供。
+> ⚠️ このファイルは Phase 166 で部分的に更新されました。
+> 残りの旧記述は `docs/02-code-structure-addendum-2026-07.md` に
+> 移されるか、次のドキュメント更新サイクルで書き換えられる予定です。
 
-**クラス:**
-- `AIStrategy`: AI戦略の基底クラス（`generate_move()`を定義）
-
-**デコレータ:**
-- `@register_strategy(name)`: 戦略をSTRATEGY_REGISTRYに登録
-
-**ユーティリティ関数:**
-- `interp_ix()`, `interp1d()`, `interp2d()`: 補間関数
-- `policy_weighted_move()`: ポリシー重み付け手選択
-- `generate_influence_territory_weights()`: 影響力・地重み生成
-- `generate_local_tenuki_weights()`: ローカル/手抜き重み生成
-
-**使い方:**
-```python
-from katrain.core.ai_strategies_base import AIStrategy, register_strategy
-
-@register_strategy("custom")
-class CustomStrategy(AIStrategy):
-    def generate_move_with_board_and_stone(self, cn, board_size_x, board_size_y, player):
-        # カスタム戦略の実装
-        ...
-```
-
-### 4.3 yose_analyzer.py（Phase 2）
-
-**クラス:**
 - `YoseAnalyzer`: ヨセ解析のラッパー
 - `YoseImportantMovesReport`: レポート出力
 
