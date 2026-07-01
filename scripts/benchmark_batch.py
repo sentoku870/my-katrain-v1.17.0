@@ -114,7 +114,7 @@ def run_benchmark(
     # Import here to avoid slow startup
     from katrain.core.game import Game
     from katrain.core.batch.stats import extract_game_stats
-    from katrain.core.batch.helpers import parse_sgf_with_fallback
+    from katrain.core.batch.sgf_io import parse_sgf_with_fallback
 
     # Create minimal stubs
     katrain = MinimalKatrain()

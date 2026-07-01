@@ -31,28 +31,28 @@ class TestGameLabelInvariants:
 
     def test_ensure_balanced_brackets_removes_orphan_open(self):
         """_ensure_balanced_brackets removes orphan '[' at end."""
-        from katrain.core.batch.helpers import _ensure_balanced_brackets
+        from katrain.core.batch.markdown_fmt import _ensure_balanced_brackets
 
         result = _ensure_balanced_brackets("[Play...")
         assert _is_properly_nested(result), f"Not properly nested: {result!r}"
 
     def test_ensure_balanced_brackets_removes_orphan_close(self):
         """_ensure_balanced_brackets removes orphan ']' at start."""
-        from katrain.core.batch.helpers import _ensure_balanced_brackets
+        from katrain.core.batch.markdown_fmt import _ensure_balanced_brackets
 
         result = _ensure_balanced_brackets("...]Player")
         assert _is_properly_nested(result), f"Not properly nested: {result!r}"
 
     def test_ensure_balanced_brackets_fixes_reversed_brackets(self):
         """_ensure_balanced_brackets fixes '][' (count-equal but invalid)."""
-        from katrain.core.batch.helpers import _ensure_balanced_brackets
+        from katrain.core.batch.markdown_fmt import _ensure_balanced_brackets
 
         result = _ensure_balanced_brackets("][P1]")
         assert _is_properly_nested(result), f"Not properly nested: {result!r}"
 
     def test_ensure_balanced_brackets_preserves_balanced(self):
         """_ensure_balanced_brackets preserves already balanced strings."""
-        from katrain.core.batch.helpers import _ensure_balanced_brackets
+        from katrain.core.batch.markdown_fmt import _ensure_balanced_brackets
 
         input_str = "[P1]vs[P2]"
         result = _ensure_balanced_brackets(input_str)
@@ -76,7 +76,7 @@ class TestGameLabelInvariants:
     )
     def test_balanced_brackets_after_truncation_all_branches(self, name, max_len):
         """Brackets must be PROPERLY NESTED after truncation in ALL code paths."""
-        from katrain.core.batch.helpers import _smart_truncate
+        from katrain.core.batch.markdown_fmt import _smart_truncate
 
         result = _smart_truncate(name, max_len)
 
@@ -95,7 +95,7 @@ class TestGameLabelInvariants:
     )
     def test_length_never_exceeds_max_len(self, name, max_len):
         """Output length must never exceed max_len (clamped to 10 minimum)."""
-        from katrain.core.batch.helpers import _smart_truncate
+        from katrain.core.batch.markdown_fmt import _smart_truncate
 
         result = _smart_truncate(name, max_len)
         effective_max = max(10, max_len)  # Function clamps to 10
@@ -112,7 +112,7 @@ class TestGameLabelInvariants:
     )
     def test_display_label_does_not_crash(self, name, max_len, escape_mode):
         """format_game_display_label should not crash for any input."""
-        from katrain.core.batch.helpers import format_game_display_label
+        from katrain.core.batch.markdown_fmt import format_game_display_label
 
         result = format_game_display_label(name, max_len=max_len, escape_mode=escape_mode)
         assert isinstance(result, str)
@@ -120,7 +120,7 @@ class TestGameLabelInvariants:
 
     def test_path_preserved_in_link_target(self):
         """Relative paths should have / preserved."""
-        from katrain.core.batch.helpers import format_game_link_target
+        from katrain.core.batch.markdown_fmt import format_game_link_target
 
         name = "subdir/[P1]vs[P2].sgf"
         target = format_game_link_target(name, preserve_path=True)
@@ -130,7 +130,7 @@ class TestGameLabelInvariants:
 
     def test_link_with_path_and_brackets(self):
         """Links with both path separators and brackets should work."""
-        from katrain.core.batch.helpers import format_game_link_target
+        from katrain.core.batch.markdown_fmt import format_game_link_target
 
         name = "dir/sub/[Player1]vs[Player2].sgf"
         target = format_game_link_target(name, preserve_path=True)

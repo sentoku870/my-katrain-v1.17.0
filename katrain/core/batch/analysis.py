@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from katrain.core.batch.helpers import parse_sgf_with_fallback
+from katrain.core.batch.sgf_io import parse_sgf_with_fallback
 from katrain.core.errors import AnalysisTimeoutError, SGFError
 
 if TYPE_CHECKING:

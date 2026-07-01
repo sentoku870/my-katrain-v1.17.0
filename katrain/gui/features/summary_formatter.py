@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.reason_generator import generate_reason_safe
-from katrain.core.batch.helpers import truncate_game_name
+from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
 

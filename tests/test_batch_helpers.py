@@ -1,10 +1,10 @@
-"""Tests for batch helper functions (Phase 53)."""
+"""Tests for batch markdown formatting helpers (Phase 53, renamed in Phase 168)."""
 
 import os
 
 import pytest
 
-from katrain.core.batch.helpers import (
+from katrain.core.batch.markdown_fmt import (
     escape_markdown_table_cell,
     format_wr_gap,
     make_markdown_link_target,
