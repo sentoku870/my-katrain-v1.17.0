@@ -141,10 +141,11 @@ class SGFManager:
             self._set_status(f"Failed to import from clipboard: {exc}", int(STATUS_INFO))
             return
 
-        engine = self._get_engine()
-        if engine:
-            move_tree.nodes_in_tree[-1].analyze(engine, analyze_fast=False)  # type: ignore[attr-defined]
-
+        # Phase 165: Call _new_game() BEFORE analyze(). The previous order
+        # queued an analysis request on the old engine state, but
+        # _new_game() calls on_new_game() which clears the write_queue
+        # (engine.py:331-342). The queued analysis was silently discarded
+        # and a fresh analysis would be triggered naturally by _redo(9999).
         self._new_game(move_tree, True, None)
         self._redo(9999)
         self._log("Imported game from clipboard.", OUTPUT_INFO)

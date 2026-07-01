@@ -102,7 +102,13 @@ class GameNode(SGFNode):
             szx, szy = self.root.board_size
             board_squares = szx * szy
             version = self.root.get_property("KTV", ANALYSIS_FORMAT_VERSION)
-            if version > ANALYSIS_FORMAT_VERSION:
+            # Phase 165: Use numeric version comparison (parse_version) instead
+            # of lexicographic string compare. "1.10" > "1.2" lexicographically
+            # would be False, which would be a real bug once the version reaches
+            # 1.10 or beyond.
+            from katrain.core.base_katrain import parse_version
+
+            if parse_version(version) > parse_version(ANALYSIS_FORMAT_VERSION):
                 raise ValueError(f"Can not decode analysis data with version {version}, please update {PROGRAM_NAME}")
             ownership_data, policy_data, main_data, *_ = [
                 gzip.decompress(base64.standard_b64decode(data)) for data in self.analysis_from_sgf if data is not None
