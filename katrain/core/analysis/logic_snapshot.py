@@ -235,6 +235,14 @@ def detect_mistake_streaks(
 ) -> list[MistakeStreak]:
     """
     同一プレイヤーの連続ミスを検出する（Go-aware streak detection）
+
+    Phase 158-F: switched from ``m.points_lost`` (raw ``points_lost`` field,
+    may be None for some KataGo analysis) to
+    :func:`get_canonical_loss_from_move` (always defined, prefers
+    ``score_loss``). This makes streak detection symmetric with
+    ``weakness_hypothesis_for`` / ``select_critical_moves`` so the
+    ``mistake_streaks`` section surfaces the same set of mistakes the
+    rest of the report does.
     """
     if not moves:
         return []
@@ -247,7 +255,7 @@ def detect_mistake_streaks(
         if m.player in player_moves:
             player_moves[m.player].append(m)
 
-    streaks = []
+    streaks: list[MistakeStreak] = []
 
     for player, pmoves in player_moves.items():
         if not pmoves:
@@ -256,53 +264,29 @@ def detect_mistake_streaks(
         sorted_moves = sorted(pmoves, key=lambda m: m.move_number)
         current_streak: list[MoveEval] = []
 
-        for m in sorted_moves:
-            if m.points_lost is None:
-                if len(current_streak) >= min_consecutive:
-                    total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-                    streaks.append(
-                        MistakeStreak(
-                            player=player,
-                            start_move=current_streak[0].move_number,
-                            end_move=current_streak[-1].move_number,
-                            move_count=len(current_streak),
-                            total_loss=total_loss,
-                            moves=list(current_streak),
-                        )
+        def _flush_streak() -> None:
+            if len(current_streak) >= min_consecutive:
+                total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
+                streaks.append(
+                    MistakeStreak(
+                        player=player,
+                        start_move=current_streak[0].move_number,
+                        end_move=current_streak[-1].move_number,
+                        move_count=len(current_streak),
+                        total_loss=total_loss,
+                        moves=list(current_streak),
                     )
-                current_streak = []
-                continue
+                )
 
-            loss = max(0.0, m.points_lost)
+        for m in sorted_moves:
+            loss = get_canonical_loss_from_move(m)
             if loss >= loss_threshold:
                 current_streak.append(m)
             else:
-                if len(current_streak) >= min_consecutive:
-                    total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-                    streaks.append(
-                        MistakeStreak(
-                            player=player,
-                            start_move=current_streak[0].move_number,
-                            end_move=current_streak[-1].move_number,
-                            move_count=len(current_streak),
-                            total_loss=total_loss,
-                            moves=list(current_streak),
-                        )
-                    )
+                _flush_streak()
                 current_streak = []
 
-        if len(current_streak) >= min_consecutive:
-            total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-            streaks.append(
-                MistakeStreak(
-                    player=player,
-                    start_move=current_streak[0].move_number,
-                    end_move=current_streak[-1].move_number,
-                    move_count=len(current_streak),
-                    total_loss=total_loss,
-                    moves=list(current_streak),
-                )
-            )
+        _flush_streak()
 
     streaks.sort(key=lambda s: s.start_move)
     return streaks

@@ -20,16 +20,19 @@ from __future__ import annotations
 
 
 class TestKarteV3SchemaVersion:
-    """Schema version should be 3.3 in v3.3 JSON output (Phase 155-D)."""
+    """Schema version should follow REPORT_SCHEMA_VERSION (Phase 158-G)."""
 
     def test_schema_version_is_3_3(self):
+        from katrain.core.reports.definitions import REPORT_SCHEMA_VERSION
         from katrain.core.reports.karte import build_karte_json
 
         from tests.test_karte_json import create_mock_game_with_analysis
 
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
-        assert result["schema_version"] == "3.3"
+        # Phase 158-G: top-level and meta must agree on the constant.
+        assert result["schema_version"] == REPORT_SCHEMA_VERSION
+        assert result["meta"]["schema_version"] == REPORT_SCHEMA_VERSION
 
 
 class TestKarteV3ExtendedSectionsPresent:

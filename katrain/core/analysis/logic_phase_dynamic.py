@@ -39,11 +39,22 @@ if TYPE_CHECKING:
 
 
 #: scoreStdev at or below this value is considered "read out" (endgame signal).
-ENDGAME_SCORE_STDEV_THRESHOLD: float = 5.0
+#: Phase 158-G: raised from 5.0 → 8.0. The previous value only fired for
+#: positions where KataGo had effectively solved the whole board, which
+#: almost never happens before the game ends — even textbook yose often
+#: carries a 6-8 point scoreStdev. With 5.0 the dynamic detector surfaced
+#: endgame for ~3 of 388 player-moves (≤1%); 8.0 brings that back into a
+#: useful range while still excluding actively chaotic middle-game positions
+#: (which routinely sit above 15).
+ENDGAME_SCORE_STDEV_THRESHOLD: float = 8.0
 
 #: Number of consecutive moves the stdev must remain low to trigger
 #: endgame classification.
-ENDGAME_DETECTION_WINDOW: int = 5
+#: Phase 158-G: shortened from 5 → 3. A 5-move streak was rare enough
+#: that the dynamic detector underfired; 3 consecutive low-stdev moves
+#: is enough signal to lock in endgame given that the static threshold
+#: alone (``move > 200``) already misses short games.
+ENDGAME_DETECTION_WINDOW: int = 3
 
 
 def _phase_static(move_number: int, board_size: int = 19) -> str:
@@ -89,7 +100,11 @@ def classify_phases_dynamic(
             continue
         # Once endgame is locked in, stay there for the rest of the game.
         if endgame_active:
-            phases.append("endgame")
+            # Phase 158-G: emit ``"yose"`` (the legacy alias) instead of
+            # ``"endgame"`` so downstream aggregators keyed on the static
+            # label keep counting these moves. ``PHASE_ALIASES`` then maps
+            # ``yose`` -> ``endgame`` for the JSON consumers.
+            phases.append("yose")
             continue
         # Need a real (non-None) score_stdev value to advance the detector.
         if mv.score_stdev is None:
@@ -102,7 +117,7 @@ def classify_phases_dynamic(
             low_streak = 0
         if low_streak >= endgame_window:
             endgame_active = True
-            phases.append("endgame")
+            phases.append("yose")
             continue
         phases.append(_phase_static(mv.move_number, board_size))
 

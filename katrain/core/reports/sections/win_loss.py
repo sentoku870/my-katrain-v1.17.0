@@ -11,13 +11,25 @@ Output shape (Phase 154-D, ``KarteReport.win_loss_analysis``):
                           "score_diff": float | None,
                           "raw": str},
         "by_outcome": {  # aggregated over the game(s) when available
-            "win":  {"count": int, "total_loss": float,
+            "win":  {"move_count": int, "total_loss": float,
                       "avg_loss": float, "mistake_count": int},
             "loss": {...},
             "draw": {...}
         },
         "status": "computed" | "no_result"
     }
+
+Phase 158-F: renamed inner ``count`` key to ``move_count`` because the
+value counts moves (not games) and ``count`` was misleading for LLM
+consumers that map the field to game-level counts.
+
+Phase 158-H: ``mistake_count`` now uses the same threshold as the
+``summary.mistake_distribution`` inaccuracy bucket (taken from the
+caller's ``score_thresholds``). Previously a hard-coded ``1.0``
+threshold was used, which disagreed with the per-preset inaccuracy
+thresholds (beginner=2.0, relaxed=3.0, ...) and produced
+``mistake_count`` totals that did not match the sum of inaccuracy +
+mistake + blunder counts in the same report.
 """
 from __future__ import annotations
 
@@ -34,22 +46,31 @@ if TYPE_CHECKING:
     from katrain.core.analysis.models import GameSummaryData, MoveEval
 
 
-# Threshold for counting a move as a "mistake-or-worse" in the aggregate.
-MISTAKE_THRESHOLD: float = 1.0
+# Default threshold (Phase 158-H): used when the caller does not pass
+# ``score_thresholds``. Matches the canonical ``standard`` preset's
+# inaccuracy boundary so the default behaviour is consistent.
+DEFAULT_INACCURACY_THRESHOLD: float = 1.0
 
 
 def _empty_bucket() -> dict[str, float | int]:
-    return {"count": 0, "total_loss": 0.0, "avg_loss": 0.0, "mistake_count": 0}
+    return {"move_count": 0, "total_loss": 0.0, "avg_loss": 0.0, "mistake_count": 0}
 
 
-def _bucket_from_moves(moves: list[MoveEval]) -> dict[str, float | int]:
+def _bucket_from_moves(
+    moves: list["MoveEval"],
+    inaccuracy_threshold: float = DEFAULT_INACCURACY_THRESHOLD,
+) -> dict[str, float | int]:
     if not moves:
         return _empty_bucket()
     losses = [get_canonical_loss_from_move(m) for m in moves]
     total = sum(losses)
-    mistake_count = sum(1 for x in losses if x >= MISTAKE_THRESHOLD)
+    # Phase 158-H: count "mistake-or-worse" using the same threshold the
+    # ``summary.mistake_distribution`` would for the same preset, so the
+    # two fields stay in sync (and beginner / relaxed presets no longer
+    # over-count).
+    mistake_count = sum(1 for x in losses if x >= inaccuracy_threshold)
     return {
-        "count": len(losses),
+        "move_count": len(losses),
         "total_loss": round(total, 2),
         "avg_loss": round(total / len(losses), 3),
         "mistake_count": mistake_count,
@@ -57,10 +78,11 @@ def _bucket_from_moves(moves: list[MoveEval]) -> dict[str, float | int]:
 
 
 def build_win_loss_analysis(
-    game_summary: GameSummaryData | None,
-    snapshot_moves: list[MoveEval] | None = None,
+    game_summary: "GameSummaryData" | None,
+    snapshot_moves: list["MoveEval"] | None = None,
     *,
     outcome: GameOutcome | None = None,
+    inaccuracy_threshold: float = DEFAULT_INACCURACY_THRESHOLD,
 ) -> dict[str, Any]:
     """Build the win/loss analysis section.
 
@@ -75,6 +97,11 @@ def build_win_loss_analysis(
         outcome: Pre-parsed :class:`GameOutcome` (used by the Karte path
             where the outcome is derived from the ``RE`` property). When
             provided, takes precedence over ``game_summary``.
+        inaccuracy_threshold: Phase 158-H. Loss threshold above which a
+            move counts as a "mistake" in the per-outcome aggregate.
+            Pass the same value used by ``summary.mistake_distribution``
+            (typically the preset's inaccuracy boundary) so the two
+            counts stay in sync. Defaults to ``1.0`` (standard preset).
 
     Returns:
         Dict matching the schema documented at module top.
@@ -105,7 +132,10 @@ def build_win_loss_analysis(
             key = player_outcome.value
             if key in per_outcome:
                 per_outcome[key].append(mv)
-        by_outcome = {k: _bucket_from_moves(v) for k, v in per_outcome.items()}
+        by_outcome = {
+            k: _bucket_from_moves(v, inaccuracy_threshold=inaccuracy_threshold)
+            for k, v in per_outcome.items()
+        }
 
     status = "no_result" if outcome.black == PlayerOutcome.UNKNOWN else "computed"
 

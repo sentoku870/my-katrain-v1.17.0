@@ -122,25 +122,25 @@ class TestDiversityPenalty:
         assert penalty == 1.0
 
     def test_diversity_penalty_one_overlap(self):
-        """One overlap gives DIVERSITY_PENALTY_FACTOR^1 = 0.5."""
+        """One overlap gives DIVERSITY_PENALTY_FACTOR^1 (Phase 158-F: 0.85)."""
         selected = ("overplay",)
         penalty = _compute_diversity_penalty("overplay", selected)
         assert penalty == DIVERSITY_PENALTY_FACTOR
-        assert penalty == 0.5
+        assert penalty == 0.85
 
     def test_diversity_penalty_two_overlaps(self):
-        """Two overlaps give DIVERSITY_PENALTY_FACTOR^2 = 0.25."""
+        """Two overlaps give DIVERSITY_PENALTY_FACTOR^2 (Phase 158-F: ~0.7225)."""
         selected = ("overplay", "overplay")
         penalty = _compute_diversity_penalty("overplay", selected)
         assert penalty == DIVERSITY_PENALTY_FACTOR**2
-        assert penalty == 0.25
+        assert penalty == pytest.approx(0.7225)
 
     def test_diversity_penalty_three_overlaps(self):
-        """Three overlaps give DIVERSITY_PENALTY_FACTOR^3 = 0.125."""
+        """Three overlaps give DIVERSITY_PENALTY_FACTOR^3 (Phase 158-F: ~0.6141)."""
         selected = ("overplay", "overplay", "overplay")
         penalty = _compute_diversity_penalty("overplay", selected)
         assert penalty == DIVERSITY_PENALTY_FACTOR**3
-        assert penalty == 0.125
+        assert penalty == pytest.approx(0.6141, rel=1e-3)
 
     def test_diversity_penalty_empty_selected(self):
         """Empty selected tuple means no penalty."""
@@ -177,14 +177,14 @@ class TestCriticalScoreComputation:
         assert score == 15.0  # 10.0 * 1.5 * 1.0
 
     def test_critical_score_with_penalty(self):
-        """Score reflects diversity penalty."""
-        # One overlap -> penalty 0.5
+        """Score reflects diversity penalty (Phase 158-F: 0.85)."""
+        # One overlap -> penalty 0.85
         score = _compute_critical_score(
             importance=10.0,
             tag_id="overplay",
             selected_tag_ids=("overplay",),
         )
-        assert score == 5.0  # 10.0 * 1.0 * 0.5
+        assert score == 8.5  # 10.0 * 1.0 * 0.85
 
     def test_critical_score_rounding_half_up(self):
         """Score uses ROUND_HALF_UP for 0.5 cases.

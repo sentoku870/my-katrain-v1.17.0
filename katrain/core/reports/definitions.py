@@ -17,7 +17,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 157-A/B: bug fixes.
+REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 158-A/B: bug fixes.
 
 
 # --- Thresholds ---
@@ -102,6 +102,35 @@ REASON_CODES: Final[list[str]] = [
     "endgame_hint", "connection", "urgent", "tenuki", "cut_risk",
     "thin", "chase_mode", "reading", "joseki"
 ]
+
+
+# --- Schema Hash (Phase 158-I) ---
+# Defined last so it can include all the constants above. Short,
+# deterministic fingerprint of the *current* schema + the constants
+# that materially shape the JSON payload. LLMs that read
+# ``meta.schema_version`` can also compare ``meta.schema_hash`` against
+# a pinned reference (e.g. embedded in the prompt template) to detect
+# "stale schema" situations — when a Karte was generated under a
+# newer build than the consumer expects. The hash is intentionally
+# *not* a content hash of the JSON; it is a version identifier.
+#
+# Algorithm: SHA-1 of the canonical string
+#   ``f"{REPORT_SCHEMA_VERSION}|{REPORT_THRESHOLDS}|...|{REASON_CODES}"``
+# truncated to 8 hex chars. SHA-1 is used for short, opaque IDs (not
+# for security). 8 hex chars = 32 bits, which is enough to
+# disambiguate schema revisions in practice.
+import hashlib as _hashlib
+
+_REPORT_SCHEMA_HASH_INPUT: Final[str] = (
+    f"{REPORT_SCHEMA_VERSION}"
+    f"|{REPORT_THRESHOLDS}"
+    f"|{MISTAKE_TYPES}"
+    f"|{PRIMARY_TAGS}"
+    f"|{REASON_CODES}"
+)
+REPORT_SCHEMA_HASH: Final[str] = _hashlib.sha1(
+    _REPORT_SCHEMA_HASH_INPUT.encode("utf-8")
+).hexdigest()[:8]
 
 CATEGORY_ALIASES: Final[dict[str, str]] = {
     "inaccuracy": "inc",

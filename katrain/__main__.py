@@ -281,6 +281,7 @@ class KaTrainGui(Screen, KaTrainBase):
             get_board_gui=lambda: getattr(self, "board_gui", None),
             get_board_controls=lambda: getattr(self, "board_controls", None),
             get_controls=lambda: getattr(self, "controls", None),
+            get_gui=lambda: self,
             set_status=lambda msg, level: self.controls.set_status(msg, level)
             if getattr(self, "controls", None)
             else None,
@@ -441,9 +442,16 @@ class KaTrainGui(Screen, KaTrainBase):
         self._gui_refresh_manager.on_engine_status(event_type, message)
 
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
-        """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+)."""
+        """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+).
+
+        Note:
+            ``super().__init__()`` invokes ``_load_config`` which calls ``self.log()`` before
+            ``_gui_refresh_manager`` is initialized. Guard with ``getattr`` to keep early logs alive.
+        """
         super().log(message, level)
-        self._gui_refresh_manager.update_status_for_error(message, level)
+        gui_refresh_manager = getattr(self, "_gui_refresh_manager", None)
+        if gui_refresh_manager is not None:
+            gui_refresh_manager.update_status_for_error(message, level)
 
     def handle_animations(self, *_args: Any) -> None:
         """Delegates to AnalysisController (Phase 133)."""

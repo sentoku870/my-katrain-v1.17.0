@@ -61,7 +61,13 @@ MEANING_TAG_WEIGHTS: dict[str, float] = {
 
 DEFAULT_MEANING_TAG_WEIGHT = 0.7  # Fallback for unknown tags (future-proofing)
 
-DIVERSITY_PENALTY_FACTOR = 0.5  # Multiplier for repeated tags
+# Phase 158-F: relaxed from 0.5 → 0.85. The previous value dropped the
+# second occurrence of a repeated meaning_tag to 25% of its score, so
+# games where the same weakness (e.g. ``overplay``) fires 3+ times only
+# surfaced 1 critical move. 0.85 keeps the second/third picks at 72% /
+# 61% of the original score, which is enough diversity nudge without
+# emptying the section.
+DIVERSITY_PENALTY_FACTOR = 0.85  # Multiplier for repeated tags
 
 CRITICAL_SCORE_PRECISION = 4  # Decimal places for deterministic rounding
 
@@ -288,8 +294,12 @@ def _log_complexity_filter_stats(stats: ComplexityFilterStats) -> None:
 # =============================================================================
 
 
-def build_node_map(game: "Game") -> dict[int, "GameNode"]:
+def build_node_map(game: Any) -> dict[int, "GameNode"]:
     """Build move_number -> GameNode mapping for main branch.
+
+    Accepts any object that exposes ``iter_main_branch_nodes`` (the
+    canonical ``Game``) so summary-side call sites can pass a
+    :class:`GameSummaryData` wrapper when the actual Game is unavailable.
 
     Note:
     - iter_main_branch_nodes() yields only nodes with moves (root excluded)
@@ -412,6 +422,8 @@ def select_critical_moves(
     max_moves: int = 3,
     lang: str = "ja",
     level: str = "normal",
+    player_filter: str | None = None,
+    pre_classified_moves: list[Any] | None = None,
 ) -> list[CriticalMove]:
     """Select top critical moves for focused review.
 
@@ -425,6 +437,20 @@ def select_critical_moves(
         max_moves: Maximum moves to select (default: 3)
         lang: Label language ("ja" or "en")
         level: Important move level ("easy"/"normal"/"strict")
+        player_filter: Optional ``"B"`` / ``"W"`` to restrict the candidate
+            pool to a single player. Without this filter the greedy
+            selector picks the top ``max_moves`` across both players, so
+            a one-sided game could leave one player with zero Critical 3
+            entries even when they made several high-loss moves.
+        pre_classified_moves: Optional list of pre-classified MoveEval
+            objects (Phase 158-H). When provided, these moves (with
+            their already-attached ``meaning_tag_id`` / ``reason_tags``)
+            are used directly instead of rebuilding a fresh snapshot
+            and re-classifying. This keeps the Karte ``important_moves``
+            and ``critical_3`` sections in sync — without it, the
+            Critical 3 re-classifier fell back to ``"uncertain"`` while
+            ``important_moves`` had already settled on
+            ``"life_death_error"`` (etc.) for the same moves.
 
     Returns:
         list[CriticalMove] - Up to max_moves items, sorted by critical_score descending
@@ -439,10 +465,27 @@ def select_critical_moves(
 
     # Step 1: Build snapshot and get important moves
     snapshot = snapshot_from_game(game)
-    important_moves = pick_important_moves(snapshot, level=level, recompute=True)
+    if pre_classified_moves is not None:
+        # Phase 158-H: caller already built + classified the important
+        # moves (e.g. ``get_important_move_evals`` in the Karte path).
+        # Reusing them keeps ``important_moves`` and ``critical_3``
+        # in sync. We still pick a fresh snapshot so we can fall back
+        # to the static phase classifier if a move lacks ``tag``.
+        important_moves = list(pre_classified_moves)
+    else:
+        important_moves = pick_important_moves(snapshot, level=level, recompute=True)
 
     if not important_moves:
         return []
+
+    # Optional player filter (Phase 158-G): callers (e.g. Karte's per-player
+    # ``critical_3_section_for``) need at least one entry per player when
+    # both have meaningful mistakes. Restricting the candidate pool here
+    # is cleaner than picking globally and dropping entries downstream.
+    if player_filter is not None:
+        important_moves = [m for m in important_moves if m.player == player_filter]
+        if not important_moves:
+            return []
 
     # Step 2: Build node map (used for meaning tag context + scoreStdev lookup)
     node_map = build_node_map(game)

@@ -126,7 +126,12 @@ DIFFICULTY_UNKNOWN = DifficultyMetrics(
 # === Phase 12: 難易度計算の定数 ===
 
 # 信頼性ガードの閾値
-DIFFICULTY_MIN_VISITS: int = 500  # 最低探索数（root_visits が必要）
+# Phase 158-F: lowered from 500 → 300 so users running KataGo at the
+# default ``max_visits`` (~400) get a populated ``position_difficulty``
+# instead of ``UNKNOWN``. At 300 visits the relativePointsLost ranking
+# is stable enough for EASY / NORMAL / HARD classification; ONLY_MOVE
+# remains reliable because it requires ``n_good <= 1``.
+DIFFICULTY_MIN_VISITS: int = 300
 DIFFICULTY_MIN_CANDIDATES: int = 2  # 最低候補手数（計算可能な最小値）
 
 # Policy難易度の正規化パラメータ

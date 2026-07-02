@@ -53,6 +53,12 @@ class GameSummaryData:
     # a rank tag for that player.
     rank_black: str | None = None
     rank_white: str | None = None
+    # Phase 158-I: set of (move_number, player) tuples that were selected
+    # as ``important_moves`` for this game. Used by the Summary JSON to
+    # tag each ``top_mistakes`` entry with ``in_individual_karte`` so the
+    # LLM can tell which worst-moves were also surfaced in the
+    # individual Karte.
+    important_moves_keys: set[tuple[int, str]] = field(default_factory=set)
 
     @property
     def player_outcome_black(self) -> str:

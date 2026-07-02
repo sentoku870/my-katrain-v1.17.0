@@ -186,11 +186,11 @@ class TestDetermineReliability:
         assert "candidates_insufficient" in reason
 
     def test_boundary_visits(self):
-        """境界値: visits=500 は reliable"""
-        is_reliable, _ = _determine_reliability(500, 5)
+        """境界値: visits=DIFFICULTY_MIN_VISITS は reliable (Phase 158-F: 300)."""
+        is_reliable, _ = _determine_reliability(DIFFICULTY_MIN_VISITS, 5)
         assert is_reliable is True
 
-        is_reliable, _ = _determine_reliability(499, 5)
+        is_reliable, _ = _determine_reliability(DIFFICULTY_MIN_VISITS - 1, 5)
         assert is_reliable is False
 
     def test_boundary_candidates(self):
@@ -500,15 +500,15 @@ class TestBoundaryValues:
         assert metrics.is_unknown is False
 
     def test_reliability_boundary(self):
-        """信頼性閾値の境界値テスト"""
+        """信頼性閾値の境界値テスト (Phase 158-F: 300)."""
         candidates = FIXTURE_CANDIDATES_BALANCED
 
-        # visits=499 → unreliable
-        metrics = compute_difficulty_metrics(candidates, root_visits=499)
+        # visits=DIFFICULTY_MIN_VISITS-1 → unreliable
+        metrics = compute_difficulty_metrics(candidates, root_visits=DIFFICULTY_MIN_VISITS - 1)
         assert metrics.is_reliable is False
 
-        # visits=500 → reliable
-        metrics = compute_difficulty_metrics(candidates, root_visits=500)
+        # visits=DIFFICULTY_MIN_VISITS → reliable
+        metrics = compute_difficulty_metrics(candidates, root_visits=DIFFICULTY_MIN_VISITS)
         assert metrics.is_reliable is True
 
     def test_overall_uses_max(self):
@@ -532,8 +532,8 @@ class TestConstants:
     """定数の確認テスト"""
 
     def test_min_visits(self):
-        """DIFFICULTY_MIN_VISITS の値"""
-        assert DIFFICULTY_MIN_VISITS == 500
+        """DIFFICULTY_MIN_VISITS の値 (Phase 158-F: 300)."""
+        assert DIFFICULTY_MIN_VISITS == 300
 
     def test_min_candidates(self):
         """DIFFICULTY_MIN_CANDIDATES の値"""

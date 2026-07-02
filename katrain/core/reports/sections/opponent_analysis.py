@@ -112,24 +112,83 @@ def build_opponent_strength_loss_correlation(
             "by_bucket": by_bucket,
             "sample_count": 0,
             "status": "no_opponent_info",
+            "narrative": "No opponent rank information available.",
         }
+
+    # Finalize averages (rounded) for every bucket with at least one game.
+    # ``MIN_SAMPLE_SIZE`` gates only the ``status`` field (so consumers know
+    # whether the aggregate is statistically meaningful); the per-bucket
+    # averages are still populated so Karte (single-game) and small-sample
+    # Summary runs don't report ``avg_loss: 0.0`` alongside non-zero totals.
+    #
+    # Phase 158-H: round ``total_loss`` BEFORE dividing so the displayed
+    # ``avg_loss`` matches ``total_loss`` for the single-game Karte case
+    # (the previous order — divide then round each — could yield
+    # ``total_loss=99.58`` and ``avg_loss=99.579`` for the same 1-game
+    # bucket, which is mathematically inconsistent).
+    for bucket_dict in by_bucket.values():
+        games = int(bucket_dict["games"])
+        if games:
+            rounded_total = round(float(bucket_dict["total_loss"]), 2)
+            bucket_dict["total_loss"] = rounded_total
+            bucket_dict["avg_loss"] = round(rounded_total / games, 3)
+
     if sample_count < MIN_SAMPLE_SIZE:
         return {
             "by_bucket": by_bucket,
             "sample_count": sample_count,
             "status": "insufficient_data",
+            "narrative": _build_opponent_narrative(by_bucket, sample_count),
         }
-
-    # Finalize averages (rounded)
-    for bucket_dict in by_bucket.values():
-        games = int(bucket_dict["games"])
-        if games:
-            bucket_dict["avg_loss"] = round(
-                float(bucket_dict["total_loss"]) / games, 3
-            )
-            bucket_dict["total_loss"] = round(float(bucket_dict["total_loss"]), 2)
     return {
         "by_bucket": by_bucket,
         "sample_count": sample_count,
         "status": "computed",
+        "narrative": _build_opponent_narrative(by_bucket, sample_count),
     }
+
+
+def _build_opponent_narrative(
+    by_bucket: dict[str, dict[str, Any]],
+    sample_count: int,
+) -> str:
+    """Build a short natural-language summary of the opponent-strength
+    correlation (Phase 158-I).
+
+    The narrative lets an LLM consumer answer "what does the
+    correlation say about this player?" without re-parsing the
+    ``by_bucket`` numbers. The output is intentionally short (one or
+    two sentences) so it fits inside a system prompt without bloating
+    the JSON.
+
+    Examples:
+        - "3 games, all against dan opponents; avg_loss 4.42"
+        - "1 game against a high-dan opponent; avg_loss 9.58"
+        - "No opponent rank information available"
+    """
+    active_buckets = [
+        (name, data) for name, data in by_bucket.items() if int(data.get("games", 0)) > 0
+    ]
+    if not active_buckets:
+        return "No opponent rank information available."
+    bucket_labels = {
+        "kyu": "kyu",
+        "dan": "dan",
+        "high_dan": "high-dan",
+        "unknown": "unranked",
+    }
+    if len(active_buckets) == 1:
+        name, data = active_buckets[0]
+        label = bucket_labels.get(name, name)
+        plural = "" if sample_count == 1 else "s"
+        return (
+            f"{sample_count} game{plural} against {label} opponents; "
+            f"avg_loss {float(data['avg_loss']):.2f}"
+        )
+    parts = []
+    for name, data in active_buckets:
+        label = bucket_labels.get(name, name)
+        parts.append(
+            f"{int(data['games'])} vs {label} (avg {float(data['avg_loss']):.2f})"
+        )
+    return f"{sample_count} games; " + ", ".join(parts)
