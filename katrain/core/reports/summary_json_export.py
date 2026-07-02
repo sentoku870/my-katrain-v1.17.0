@@ -29,6 +29,7 @@ from katrain.core.reports.definitions import (
     PRIMARY_TAGS,
     REASON_CODE_ALIASES,
     REASON_CODES,
+    REPORT_SCHEMA_HASH,
     REPORT_SCHEMA_VERSION,
     REPORT_THRESHOLDS,
 )
@@ -41,6 +42,108 @@ from katrain.core.reports.schema import (
     SummaryReport,
 )
 from katrain.core.reports.summary_logic import SummaryAnalyzer
+
+
+def _ensure_tags_for_top_moves(
+    top_moves: list[tuple[str, Any]],
+    all_games_for_top_mistakes: list[GameSummaryData],
+) -> None:
+    """Back-fill ``reason_tags`` and ``meaning_tag_id`` for moves that
+    lack them.
+
+    Phase 158-G: ``SummaryAnalyzer`` records every move with
+    ``loss > BAD_MOVE_LOSS_THRESHOLD`` as a worst-moves candidate, but
+    only moves that pass through ``get_important_move_evals`` (Karte
+    path) have tags propagated onto the snapshot. When the JSON
+    ``top_mistakes`` section is built from a worst-moves candidate that
+    was never classified, the emitted ``reason_codes`` list ends up
+    empty and ``primary_tag`` ends up ``null``.
+
+    Back-fills two things, in order:
+
+    1. ``meaning_tag_id`` via :func:`classify_meaning_tag` (no board
+       re-analysis needed; classifier only needs the snapshot context).
+    2. ``reason_tags`` via the heuristic-only fields of
+       :func:`get_reason_tags_for_move`. We cannot re-run the full
+       board analyzer here (it would require ``BoardState`` for every
+       candidate), but a no-board variant emits ``heavy_loss`` /
+       ``endgame_hint`` based on the move's loss and move-number —
+       enough to give consumers a non-empty ``reason_codes`` list.
+
+    The reason_tags are normalized via ``REASON_CODE_ALIASES`` inside
+    :class:`MoveExtractor`, so we can keep the raw tag names here.
+    """
+    if not top_moves:
+        return
+
+    from katrain.core.analysis.meaning_tags import (
+        build_classification_context_from_node,
+        classify_meaning_tag,
+    )
+    from katrain.core.analysis import build_node_map
+    from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
+
+    # Build a game_name -> game lookup once
+    games_by_name = {g.game_name: g for g in all_games_for_top_mistakes}
+
+    for game_name, move in top_moves:
+        if move.meaning_tag_id is None:
+            game = games_by_name.get(game_name)
+            if game is not None:
+                try:
+                    node_map = build_node_map(game)
+                except (TypeError, AttributeError):
+                    node_map = {}
+                node = node_map.get(move.move_number)
+                context = build_classification_context_from_node(
+                    node,
+                    move.gtp,
+                    total_moves=len(game.snapshot.moves),
+                )
+                try:
+                    tag = classify_meaning_tag(move, context=context)
+                except Exception:
+                    tag = None
+                if tag is not None:
+                    move.meaning_tag_id = tag.id.value
+
+        # Phase 158-G: derive a minimum ``reason_tags`` set when the
+        # move was never board-analyzed. Without this, the LLM
+        # consumer would see ``reason_codes: []`` next to fully
+        # classified entries. The heuristic uses only the move's own
+        # ``points_lost`` / ``move_number`` — no board state required.
+        if not move.reason_tags:
+            move.reason_tags = _derive_basic_reason_tags(move)
+
+
+def _derive_basic_reason_tags(move: Any) -> list[str]:
+    """Heuristic-only reason-tag derivation for moves that were never
+    board-analyzed (Phase 158-G).
+
+    Used by :func:`_ensure_tags_for_top_moves` so ``top_mistakes`` entries
+    always carry *some* tactical signal — at minimum ``heavy_loss`` when
+    the move lost a lot of points and ``endgame_hint`` when the move
+    happened in the late game. Re-running the full
+    :func:`get_reason_tags_for_move` would require rebuilding
+    ``BoardState`` for every candidate, which is too expensive for a
+    worst-moves pass that may run after the Karte pipeline has already
+    pruned the original board analyses.
+    """
+    from katrain.core.analysis.logic_phase import classify_game_phase
+    from katrain.core.analysis.models import get_canonical_loss_from_move
+    from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
+
+    tags: list[str] = []
+    loss = get_canonical_loss_from_move(move)
+    # Use the same heuristic thresholds as ``get_reason_tags_for_move``
+    # so the LLM sees consistent tags whether the move came from the
+    # Karte path or the Summary worst-moves path.
+    if loss >= BAD_MOVE_LOSS_THRESHOLD * 4:  # >= 2.0 points
+        tags.append("heavy_loss")
+    phase = classify_game_phase(move.move_number or 0, 19)
+    if phase == "yose":
+        tags.append("endgame_hint")
+    return tags
 
 
 def _compute_player_win_loss_analysis(
@@ -157,7 +260,12 @@ def _build_player_stats_block(
                 "data": {},
                 "stats": {"tagged_moves_count": 0, "tag_occurrences_total": 0},
             },
-            "mistake_sequences": {"status": "computed_empty", "data": []},
+            # Phase 158-I: distinguish "no games" from "no streak" for
+            # the LLM. ``game_data_list`` is non-empty here (otherwise
+            # we would have taken the early return above), so
+            # ``not_applicable_no_games`` is reserved for the empty
+            # case.
+            "mistake_sequences": {"status": "no_streak_detected", "data": []},
             "top_mistakes": [],
             "win_loss_analysis": _compute_player_win_loss_analysis(game_data_list, player_name),
         }
@@ -194,8 +302,12 @@ def _build_player_stats_block(
         avg_loss = stats.get_phase_avg_loss(internal_phase)
         phase_stats[phase] = {
             "moves": count,
-            "total_loss": round(loss, 1),
-            "avg_loss": round(avg_loss, 2),
+            # Phase 158-H: round to 2 decimals to align with the rest of
+            # the Summary / Karte JSON (which uses 2 decimals for total
+            # loss fields). Previously ``phases.*.total_loss`` was the
+            # only field using 1 decimal.
+            "total_loss": round(loss, 2),
+            "avg_loss": round(avg_loss, 3),
         }
 
     reason_tags_dist: dict[str, dict[str, Any]] = {}
@@ -262,14 +374,45 @@ def _build_player_stats_block(
         key=lambda x: x[1].points_lost or x[1].score_loss or 0,
         reverse=True,
     )
+    # Phase 158-G: back-fill missing reason_tags / meaning_tag_id on
+    # candidate moves. ``worst_moves`` is computed from every move with
+    # loss > threshold (see ``summary_logic``), but only moves that
+    # passed the Karte ``get_important_move_evals`` path have reason
+    # tags propagated to the snapshot (see ``batch/stats/extraction``).
+    # Without this back-fill a single ``worst_moves`` candidate can show
+    # up in the JSON with ``reason_codes: []`` and ``primary_tag: null``
+    # next to fully classified entries.
+    _ensure_tags_for_top_moves(sorted_moves[:display_limit], all_games_for_top_mistakes)
     for game_name, move in sorted_moves[:display_limit]:
         game_ref = next((g for g in all_games_for_top_mistakes if g.game_name == game_name), None)
         game_id = game_ref.game_id if game_ref else None
         board_size = game_ref.board_size[0] if game_ref else 19
         item = MoveExtractor.extract(move, game_id, game_name, board_size=board_size)
+        # Phase 158-I: ``in_individual_karte`` flags worst-moves that
+        # were also surfaced in the corresponding individual Karte's
+        # ``important_moves`` block. Without this the LLM cannot tell
+        # whether a top-mistake has already been covered in detail by
+        # the per-game report, or only in the cross-game aggregate.
+        # The ``getattr`` defaults to an empty set so test fixtures
+        # built before Phase 158-I still work.
+        im_keys = getattr(game_ref, "important_moves_keys", set()) or set()
+        in_karte = (move.move_number, move.player) in im_keys
+        item["in_individual_karte"] = in_karte
         top_mistakes.append(item)
 
-    seq_status = "computed" if mistake_sequences else "computed_empty"
+    # Phase 158-I: refine the binary ``computed`` / ``computed_empty``
+    # status into four states so the LLM can tell *why* the sequence
+    # list is empty (no input data, no games for this player, or just
+    # no streak detected).
+    if not game_data_list:
+        seq_status = "not_applicable_no_games"
+    elif not mistake_sequences:
+        # ``detect_mistake_sequences`` only fires on runs of consecutive
+        # large-loss moves. An empty result on a non-empty input
+        # therefore means "no streak detected", not "missing data".
+        seq_status = "no_streak_detected"
+    else:
+        seq_status = "computed"
 
     from katrain.core.reports.sections import build_opponent_strength_loss_correlation
 
@@ -334,7 +477,7 @@ def build_summary_json(
     game_data_list: list[GameSummaryData],
     focus_player: str | None = None,
     include_definitions: bool = False,
-    dynamic_phase_detection: bool = False,
+    dynamic_phase_detection: bool = True,
 ) -> SummaryReport:
     """Build a JSON-serializable summary structure for LLM consumption.
 
@@ -348,9 +491,10 @@ def build_summary_json(
     block is opt-in to keep the summary compact for LLM consumption; pass
     `include_definitions=True` when the consumer needs label mappings.
 
-    Phase 156: `dynamic_phase_detection` defaults to False. When True,
-    each game's move tags are rewritten using the scoreStdev-based
-    detector.
+    Phase 156 / Phase 158-F: `dynamic_phase_detection` defaults to True.
+    When True, each game's move tags are rewritten using the
+    scoreStdev-based detector. Falls back to the static classifier
+    when scoreStdev is missing (Leela / unanalyzed).
 
     Phase 157-C: per-player blocks now include ``even`` and
     ``handicapped`` sub-stats (subset of the cross-game ``all`` block).
@@ -428,6 +572,9 @@ def build_summary_json(
 
     meta: MetaData = {
         "schema_version": REPORT_SCHEMA_VERSION,
+        # Phase 158-I: short fingerprint of the *exact* schema + constants
+        # that generated this Summary. See ``definitions.REPORT_SCHEMA_HASH``.
+        "schema_hash": REPORT_SCHEMA_HASH,
         "run_id": run_id,
         "games_analyzed": len(game_data_list),
         "date_range": [min(dates), max(dates)] if dates else None,
@@ -448,22 +595,29 @@ def build_summary_json(
     # the ``even`` and ``handicapped`` sub-stats stay consistent with the
     # ``all`` aggregate. ``all_games_for_top_mistakes`` keeps the
     # worst-moves list keyed on the cross-game pool.
+    #
+    # Phase 158-G: skip the per-game-type sub-block when only one
+    # game-type is present in the run (e.g. all-even, no handicapped).
+    # Without this guard the sub-block is a structural duplicate of
+    # ``overall`` and the Summary JSON roughly doubles in size without
+    # carrying any extra information. The split is only informative when
+    # both regimes exist; otherwise the meta ``games_by_type`` field is
+    # enough for downstream consumers to know which regime was used.
+    only_even = bool(buckets["even"]) and not buckets["handicapped"] and not buckets["unknown"]
+    only_handicapped = bool(buckets["handicapped"]) and not buckets["even"] and not buckets["unknown"]
     for player_name, _stats in player_stats.items():
         all_block = _build_player_stats_block(
             game_data_list, player_name, all_games_for_top_mistakes=game_data_list
         )
         block: dict[str, Any] = dict(all_block)  # shallow copy
 
-        # Only emit ``even`` / ``handicapped`` blocks when the player
-        # actually played at least one game of that type. Otherwise leave
-        # the field absent (NotRequired in the schema).
-        if buckets["even"]:
+        if buckets["even"] and not only_even:
             block["even"] = _build_player_stats_block(
                 buckets["even"],
                 player_name,
                 all_games_for_top_mistakes=game_data_list,
             )
-        if buckets["handicapped"]:
+        if buckets["handicapped"] and not only_handicapped:
             block["handicapped"] = _build_player_stats_block(
                 buckets["handicapped"],
                 player_name,
@@ -474,13 +628,18 @@ def build_summary_json(
 
     # Phase 157-C: ``loss_progression`` is now a dict keyed by game type.
     # The ``all`` key is always emitted; ``even`` / ``handicapped`` are
-    # emitted only when the corresponding bucket has at least one game.
+    # emitted only when *both* regimes are present (Phase 158-H). A
+    # single-type run (e.g. all-even) would emit a structural duplicate
+    # of ``all`` under ``even``, roughly doubling the report size
+    # without adding information.
     loss_progression: dict[str, list[dict[str, float | int]]] = {
         "all": _compute_loss_progression_block(game_data_list),
     }
-    if buckets["even"]:
+    only_even_lp = bool(buckets["even"]) and not buckets["handicapped"] and not buckets["unknown"]
+    only_handicapped_lp = bool(buckets["handicapped"]) and not buckets["even"] and not buckets["unknown"]
+    if buckets["even"] and not only_even_lp:
         loss_progression["even"] = _compute_loss_progression_block(buckets["even"])
-    if buckets["handicapped"]:
+    if buckets["handicapped"] and not only_handicapped_lp:
         loss_progression["handicapped"] = _compute_loss_progression_block(
             buckets["handicapped"]
         )

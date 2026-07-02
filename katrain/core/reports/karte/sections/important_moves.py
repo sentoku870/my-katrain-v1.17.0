@@ -134,6 +134,12 @@ def reason_tags_distribution_for(
     Aliases are normalized via REASON_CODE_ALIASES so that downstream
     consumers see consistent tag IDs.
 
+    Phase 158-F: applied ``REASON_CODE_ALIASES`` here too (Summary was
+    already doing this). Without it, Karte emitted long-form names
+    (``low_liberties``, ``need_connect``) while Summary used the short
+    form (``liberties``, ``connection``) for the same concept, breaking
+    downstream LLM tooling that joins the two datasets.
+
     Args:
         ctx: Karte context
         player: "B" or "W"
@@ -142,12 +148,15 @@ def reason_tags_distribution_for(
         Dict mapping tag_id -> count of occurrences across the player's
         important moves. Empty dict when no tags detected.
     """
+    from katrain.core.reports.definitions import REASON_CODE_ALIASES
+
     player_moves = [mv for mv in ctx.important_moves if mv.player == player]
 
     counts: dict[str, int] = {}
     for mv in player_moves:
         for tag in mv.reason_tags or []:
-            counts[tag] = counts.get(tag, 0) + 1
+            normalized = REASON_CODE_ALIASES.get(tag, tag)
+            counts[normalized] = counts.get(normalized, 0) + 1
 
     return counts
 
@@ -159,8 +168,20 @@ def critical_3_section_for(
 ) -> list[dict[str, Any]]:
     """Generate Critical 3 section data for focused review (Phase 50).
 
-    Selects top critical mistakes via select_critical_moves() and returns
-    them as JSON-serializable dicts.
+    Selects top critical mistakes via :func:`select_critical_moves` and
+    returns them as JSON-serializable dicts.
+
+    Phase 158-G: pass ``player_filter=player`` so the greedy selector
+    picks from this player's candidates only. The previous global pick
+    could allocate all 3 slots to the opponent if they had higher-loss
+    mistakes, leaving the requested player's section empty.
+
+    Phase 158-H: pass ``pre_classified_moves=ctx.important_moves`` so
+    the same MeaningTag / ReasonTag classification used by
+    ``important_moves`` is reused here. Without this, the Critical 3
+    re-classifier ran its own (board-less) classifier and frequently
+    reported ``"uncertain"`` while ``important_moves`` had already
+    attached ``"life_death_error"`` (etc.) for the same move.
 
     Args:
         ctx: Karte context
@@ -176,6 +197,8 @@ def critical_3_section_for(
             max_moves=3,
             lang=ctx.lang,
             level=level,
+            player_filter=player,
+            pre_classified_moves=ctx.important_moves,
         )
     except KeyError as exc:
         # Expected: Game data structure issue
@@ -197,11 +220,21 @@ def critical_3_section_for(
     # Phase 82: Create cache for stone positions (shared across Critical Moves)
     StoneCache(ctx.game)
 
+    # Phase 158-F: ``get_area_from_gtp`` expects an int board size, but
+    # ``ctx.game.board_size`` returns a ``(width, height)`` tuple. Pass
+    # the width explicitly so the function actually classifies the move
+    # instead of raising TypeError (which was silently swallowed).
+    game_board_size = ctx.game.board_size
+    if isinstance(game_board_size, (tuple, list)) and game_board_size:
+        area_board_size = game_board_size[0]
+    else:
+        area_board_size = int(game_board_size or 19)
+
     iso_lang = to_iso_lang_code(ctx.lang)
     result: list[dict[str, Any]] = []
     for cm in player_critical:
         try:
-            area = get_area_from_gtp(cm.gtp_coord, ctx.game.board_size)
+            area = get_area_from_gtp(cm.gtp_coord, area_board_size)
         except Exception:
             area = None
 

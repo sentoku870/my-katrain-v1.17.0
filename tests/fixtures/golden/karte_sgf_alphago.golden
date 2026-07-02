@@ -1,7 +1,8 @@
 {
-  "schema_version": "3.3",
+  "schema_version": "3.4",
   "meta": {
-    "schema_version": "3.2",
+    "schema_version": "3.4",
+    "schema_hash": "17051dec",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -104,7 +105,14 @@
         "total_loss": 6.0,
         "avg_loss": 6.0,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 17,
+            "gtp": "E16",
+            "loss": 6.0,
+            "category": "BLUNDER"
+          }
+        ]
       },
       {
         "phase": "opening",
@@ -113,7 +121,14 @@
         "total_loss": 2.5,
         "avg_loss": 2.5,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 5,
+            "gtp": "P4",
+            "loss": 2.5,
+            "category": "MISTAKE"
+          }
+        ]
       }
     ],
     "white": [
@@ -124,9 +139,34 @@
         "total_loss": 12.0,
         "avg_loss": 12.0,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 34,
+            "gtp": "B10",
+            "loss": 12.0,
+            "category": "BLUNDER"
+          }
+        ]
       }
     ]
+  },
+  "weaknesses_meta": {
+    "black": {
+      "covered_count": 2,
+      "total_count": 2,
+      "coverage_pct": 100.0,
+      "covered_loss": 8.5,
+      "total_loss": 8.5,
+      "loss_coverage_pct": 100.0
+    },
+    "white": {
+      "covered_count": 1,
+      "total_count": 1,
+      "coverage_pct": 100.0,
+      "covered_loss": 12.0,
+      "total_loss": 12.0,
+      "loss_coverage_pct": 100.0
+    }
   },
   "mistake_streaks": {
     "black": [],
@@ -143,8 +183,10 @@
         "meaning_tag_label": "地の損失",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "heavy_loss"
+        ],
         "complexity_discounted": false
       },
       {
@@ -156,8 +198,10 @@
         "meaning_tag_label": "地の損失",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "unknown"
+        ],
         "complexity_discounted": false
       }
     ],
@@ -167,12 +211,15 @@
         "gtp_coord": "B10",
         "player": "W",
         "score_loss": 12.0,
-        "meaning_tag_id": "territorial_loss",
-        "meaning_tag_label": "地の損失",
+        "meaning_tag_id": "reading_failure",
+        "meaning_tag_label": "読み抜け",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "low_liberties",
+          "heavy_loss"
+        ],
         "complexity_discounted": false
       }
     ]
@@ -189,16 +236,22 @@
     "avg_visits": 500,
     "max_visits": 500,
     "effective_threshold": 200,
-    "is_low_reliability": false
+    "is_low_reliability": false,
+    "visits": {
+      "min": 500,
+      "max": 500,
+      "avg": 500,
+      "stddev": 0.0
+    }
   },
   "reason_tags_distribution": {
     "black": {
       "unknown": 1,
-      "heavy_loss": 1
+      "heavy": 1
     },
     "white": {
-      "low_liberties": 1,
-      "heavy_loss": 1
+      "liberties": 1,
+      "heavy": 1
     }
   },
   "win_loss_analysis": {
@@ -210,19 +263,19 @@
     },
     "by_outcome": {
       "win": {
-        "count": 0,
+        "move_count": 0,
         "total_loss": 0.0,
         "avg_loss": 0.0,
         "mistake_count": 0
       },
       "loss": {
-        "count": 0,
+        "move_count": 0,
         "total_loss": 0.0,
         "avg_loss": 0.0,
         "mistake_count": 0
       },
       "draw": {
-        "count": 0,
+        "move_count": 0,
         "total_loss": 0.0,
         "avg_loss": 0.0,
         "mistake_count": 0
@@ -405,7 +458,8 @@
         }
       },
       "sample_count": 0,
-      "status": "no_opponent_info"
+      "status": "no_opponent_info",
+      "narrative": "No opponent rank information available."
     },
     "white": {
       "by_bucket": {
@@ -435,7 +489,8 @@
         }
       },
       "sample_count": 0,
-      "status": "no_opponent_info"
+      "status": "no_opponent_info",
+      "narrative": "No opponent rank information available."
     }
   }
 }

@@ -367,6 +367,17 @@ def extract_game_stats(
 
         # Phase 55: Create GameSummaryData for the new JSON-based SummaryAnalyzer
         from katrain.core.analysis.models import GameSummaryData
+        # Phase 158-I: capture which (move_number, player) pairs were
+        # selected as important_moves so the Summary's top_mistakes can
+        # flag entries that also appear in the individual Karte.
+        im_keys: set[tuple[int, str]] = set()
+        try:
+            for im in game.get_important_move_evals(compute_reason_tags=False):
+                if im.player and im.move_number:
+                    im_keys.add((im.move_number, im.player))
+        except Exception:
+            im_keys = set()
+
         summary_data = GameSummaryData(
             game_name=rel_path,
             player_black=player_black,
@@ -383,6 +394,8 @@ def extract_game_stats(
             # Phase 155-C: surface SGF BR/WR tags for opponent-strength analysis.
             rank_black=rank_black,
             rank_white=rank_white,
+            # Phase 158-I: see the matching field on the dataclass.
+            important_moves_keys=im_keys,
         )
         stats["summary_data"] = summary_data
 

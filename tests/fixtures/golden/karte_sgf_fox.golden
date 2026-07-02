@@ -1,7 +1,8 @@
 {
-  "schema_version": "3.3",
+  "schema_version": "3.4",
   "meta": {
-    "schema_version": "3.2",
+    "schema_version": "3.4",
+    "schema_hash": "17051dec",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -103,7 +104,14 @@
         "total_loss": 6.0,
         "avg_loss": 6.0,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 17,
+            "gtp": "R8",
+            "loss": 6.0,
+            "category": "BLUNDER"
+          }
+        ]
       },
       {
         "phase": "opening",
@@ -112,7 +120,14 @@
         "total_loss": 2.5,
         "avg_loss": 2.5,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 5,
+            "gtp": "F17",
+            "loss": 2.5,
+            "category": "MISTAKE"
+          }
+        ]
       }
     ],
     "white": [
@@ -123,9 +138,34 @@
         "total_loss": 12.0,
         "avg_loss": 12.0,
         "confidence": "high",
-        "evidence": []
+        "evidence": [
+          {
+            "move_number": 34,
+            "gtp": "B6",
+            "loss": 12.0,
+            "category": "BLUNDER"
+          }
+        ]
       }
     ]
+  },
+  "weaknesses_meta": {
+    "black": {
+      "covered_count": 2,
+      "total_count": 2,
+      "coverage_pct": 100.0,
+      "covered_loss": 8.5,
+      "total_loss": 8.5,
+      "loss_coverage_pct": 100.0
+    },
+    "white": {
+      "covered_count": 1,
+      "total_count": 1,
+      "coverage_pct": 100.0,
+      "covered_loss": 12.0,
+      "total_loss": 12.0,
+      "loss_coverage_pct": 100.0
+    }
   },
   "mistake_streaks": {
     "black": [],
@@ -142,8 +182,10 @@
         "meaning_tag_label": "地の損失",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "heavy_loss"
+        ],
         "complexity_discounted": false
       },
       {
@@ -155,8 +197,10 @@
         "meaning_tag_label": "地の損失",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "unknown"
+        ],
         "complexity_discounted": false
       }
     ],
@@ -170,8 +214,10 @@
         "meaning_tag_label": "地の損失",
         "game_phase": "opening",
         "position_difficulty": "only",
-        "area": null,
-        "reason_tags": [],
+        "area": "edge",
+        "reason_tags": [
+          "heavy_loss"
+        ],
         "complexity_discounted": false
       }
     ]
@@ -188,15 +234,21 @@
     "avg_visits": 500,
     "max_visits": 500,
     "effective_threshold": 200,
-    "is_low_reliability": false
+    "is_low_reliability": false,
+    "visits": {
+      "min": 500,
+      "max": 500,
+      "avg": 500,
+      "stddev": 0.0
+    }
   },
   "reason_tags_distribution": {
     "black": {
       "unknown": 1,
-      "heavy_loss": 1
+      "heavy": 1
     },
     "white": {
-      "heavy_loss": 1
+      "heavy": 1
     }
   },
   "win_loss_analysis": {
@@ -208,19 +260,19 @@
     },
     "by_outcome": {
       "win": {
-        "count": 46,
+        "move_count": 46,
         "total_loss": 21.7,
         "avg_loss": 0.5,
         "mistake_count": 2
       },
       "loss": {
-        "count": 46,
+        "move_count": 46,
         "total_loss": 25.5,
         "avg_loss": 0.6,
         "mistake_count": 1
       },
       "draw": {
-        "count": 0,
+        "move_count": 0,
         "total_loss": 0.0,
         "avg_loss": 0.0,
         "mistake_count": 0
@@ -316,7 +368,7 @@
         "kyu": {
           "games": 1,
           "total_loss": 21.7,
-          "avg_loss": 0.0,
+          "avg_loss": 21.7,
           "mistake_count": 2
         },
         "dan": {
@@ -339,14 +391,15 @@
         }
       },
       "sample_count": 1,
-      "status": "insufficient_data"
+      "status": "insufficient_data",
+      "narrative": "1 game against kyu opponents; avg_loss 21.7"
     },
     "white": {
       "by_bucket": {
         "kyu": {
           "games": 1,
           "total_loss": 25.5,
-          "avg_loss": 0.0,
+          "avg_loss": 25.5,
           "mistake_count": 1
         },
         "dan": {
@@ -369,7 +422,8 @@
         }
       },
       "sample_count": 1,
-      "status": "insufficient_data"
+      "status": "insufficient_data",
+      "narrative": "1 game against kyu opponents; avg_loss 25.5"
     }
   }
 }

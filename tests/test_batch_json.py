@@ -189,8 +189,11 @@ def test_batch_json_loss_progression_is_dict_by_type():
     lp = data["loss_progression"]
     assert isinstance(lp, dict), "loss_progression must be a dict (Phase 157-C)"
     assert "all" in lp
-    # Only ``even`` should be present (single even game).
-    assert "even" in lp
+    # Phase 158-H: when only one game-type is present, the per-type
+    # sub-block is omitted (it would be a structural duplicate of
+    # ``all``). The single even game in this test means only ``all``
+    # is emitted.
+    assert "even" not in lp
     assert "handicapped" not in lp
 
 
@@ -237,7 +240,13 @@ def test_batch_json_games_by_type_in_meta():
 
 
 def test_batch_json_even_handicapped_substats():
-    """Phase 157-C: per-player ``even`` / ``handicapped`` blocks are populated."""
+    """Phase 157-C + Phase 158-G: per-game-type sub-block emission rules.
+
+    Per Phase 158-G, when only one game-type is present in the run, the
+    corresponding sub-block is omitted (it would be a structural
+    duplicate of ``overall``). With both regimes present, both
+    sub-blocks are emitted.
+    """
     move = MoveEval(
         move_number=10,
         player="B",
@@ -264,12 +273,14 @@ def test_batch_json_even_handicapped_substats():
 
     data = json.loads(build_summary_report([hcap_g], focus_player="A"))
 
-    # Even block absent (no even games), handicapped block present.
+    # Only handicapped games present → only the ``even`` block is omitted.
+    # ``handicapped`` is omitted too because the run has only one
+    # game-type (Phase 158-G: the sub-block would just mirror ``overall``).
     player_block = data["players"]["A"]
     assert "even" not in player_block
-    assert "handicapped" in player_block
-    assert player_block["handicapped"]["overall"]["total_games"] == 1
-    assert player_block["handicapped"]["win_loss_analysis"]["win"]["games"] == 1
+    assert "handicapped" not in player_block
+    # ``overall`` carries the full stats instead.
+    assert player_block["overall"]["total_games"] == 1
 
 if __name__ == "__main__":
     test_batch_json_stages_1_to_4()

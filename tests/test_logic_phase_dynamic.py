@@ -51,49 +51,60 @@ class TestEndgameTrigger:
     """scoreStdev drops below threshold for N consecutive moves -> endgame."""
 
     def test_no_trigger_without_enough_low_stdev(self):
+        # Phase 158-G: window shortened to 3. With only 2 low-stdev moves
+        # in a row the detector never fires; endgame must come from the
+        # static classifier only (move_number > 200 -> yose).
         moves = [make_move(i, 30.0) for i in range(1, 251)]
-        # Only the last 3 moves have low stdev; not enough to trigger
-        # the dynamic detector — move 250 stays on the static "yose".
-        for i in range(247, 250):
+        # Only the last 2 moves have low stdev; not enough for window=3.
+        for i in range(248, 250):
             moves[i].score_stdev = 3.0
         phases = classify_phases_dynamic(moves)
+        # Static still labels move 250 as yose — dynamic detector never fired.
         assert phases[-1] == "yose"
         # Earlier moves (still middle) confirm the detector never fired.
         assert phases[100] == "middle"
 
     def test_trigger_after_window(self):
         moves = [make_move(i, 30.0) for i in range(1, 251)]
-        # Last 6 moves have low stdev (more than the window=5)
+        # Last 6 moves have low stdev (more than the window=3).
         for i in range(244, 250):
             moves[i].score_stdev = 3.0
         phases = classify_phases_dynamic(moves)
         # Once endgame triggers, it sticks. With 6 low-stdev moves starting
-        # at index 244 (move_number 245), the streak hits 5 at index 248
-        # and stays endgame through index 249 — that's 2 endgame moves.
-        endgame_count = sum(1 for p in phases if p == "endgame")
-        assert endgame_count >= 2  # at least the window-fill part
+        # at index 244 (move_number 245), the streak hits 3 at index 246
+        # and stays endgame through index 249 — that's 4 endgame moves.
+        # Phase 158-G: emitted as the legacy alias ``"yose"`` so the
+        # static-tag aggregator keeps counting these moves.
+        endgame_count = sum(1 for p in phases if p == "yose")
+        assert endgame_count >= 3  # at least the window-fill part
 
     def test_trigger_at_exact_window(self):
         moves = [make_move(i, 30.0) for i in range(1, 251)]
-        # Exactly 5 consecutive moves with stdev=3.0 (the default window)
-        for i in range(245, 250):
+        # Exactly 3 consecutive moves with stdev=3.0 (the default window).
+        for i in range(247, 250):
             moves[i].score_stdev = 3.0
         phases = classify_phases_dynamic(moves)
         # Endgame should kick in starting at move 249 (index 249).
-        assert phases[249] == "endgame"
+        # Phase 158-G: emitted as ``"yose"`` (legacy alias).
+        assert phases[249] == "yose"
 
 
 class TestStreakReset:
     """A high-stdev move resets the consecutive-low-streak counter."""
 
     def test_reset_on_high_stdev(self):
+        # Phase 158-G: with window=3 a single reset between two streaks
+        # of 2 low-stdev moves still leaves the detector unfired. Use a
+        # 2-and-2 layout (separated by a high move) so neither side
+        # reaches the window.
         moves = [make_move(i, 30.0) for i in range(1, 251)]
-        # 4 low then 1 high then 4 low -> still not enough to trigger.
-        for i in range(245, 250):
+        for i in range(246, 248):  # 2 lows
             moves[i].score_stdev = 3.0
-        moves[246].score_stdev = 30.0  # reset
+        moves[248].score_stdev = 30.0  # reset
+        for i in range(249, 250):  # 1 more low (only)
+            moves[i].score_stdev = 3.0
         phases = classify_phases_dynamic(moves)
-        # Static still labels move 250 as yose (move_number > 200)
+        # Static still labels move 250 as yose — dynamic detector never fired.
         assert phases[-1] == "yose"
 
 
@@ -136,10 +147,12 @@ class TestConstants:
     """Module constants are stable."""
 
     def test_default_threshold(self):
-        assert ENDGAME_SCORE_STDEV_THRESHOLD == 5.0
+        # Phase 158-G: raised from 5.0 → 8.0.
+        assert ENDGAME_SCORE_STDEV_THRESHOLD == 8.0
 
     def test_default_window(self):
-        assert ENDGAME_DETECTION_WINDOW == 5
+        # Phase 158-G: shortened from 5 → 3.
+        assert ENDGAME_DETECTION_WINDOW == 3
 
 
 class TestApplyDynamicPhases:
@@ -152,7 +165,9 @@ class TestApplyDynamicPhases:
         apply_dynamic_phases(moves)
         assert moves[0].tag == "opening"
         assert moves[50].tag == "middle"
-        assert moves[-1].tag == "endgame"
+        # Phase 158-G: window=3 triggers at index 246; tag uses the legacy
+        # ``"yose"`` alias so downstream static aggregators keep counting.
+        assert moves[-1].tag == "yose"
 
     def test_idempotent(self):
         """Calling twice produces the same result."""

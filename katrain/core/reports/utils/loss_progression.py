@@ -104,6 +104,7 @@ def compute_loss_progression(
         bucket_moves = buckets_dict[(start, end)]
         count = len(bucket_moves)
         total_loss = sum(get_canonical_loss_from_move(m) for m in bucket_moves)
+        rounded_total = round(total_loss, 2)
         mistake_count = sum(
             1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD
         )
@@ -113,8 +114,8 @@ def compute_loss_progression(
                 start_move=start,
                 end_move=final_end_move,
                 move_count=count,
-                total_loss=round(total_loss, 2),
-                avg_loss=round(total_loss / count, 3) if count else 0.0,
+                total_loss=rounded_total,
+                avg_loss=round(rounded_total / count, 3) if count else 0.0,
                 mistake_count=mistake_count,
             )
         )

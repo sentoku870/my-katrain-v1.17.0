@@ -121,10 +121,20 @@ class TestBuildKarteJson:
     """Tests for build_karte_json function."""
 
     def test_json_schema_version(self):
-        """Schema version should be 3.3 (Phase 155-D: bumped from 3.2)."""
+        """Schema version should follow REPORT_SCHEMA_VERSION (Phase 158-G).
+
+        Previously hard-coded to ``"3.3"`` (Phase 155-D) while ``meta``
+        was bumped to ``"3.2"``, then to ``"3.4"`` in Phase 157 — leaving
+        the two fields out of sync. The fix unifies both on
+        ``definitions.REPORT_SCHEMA_VERSION``.
+        """
+        from katrain.core.reports.definitions import REPORT_SCHEMA_VERSION
+
         game = create_mock_game_with_analysis()
         result = build_karte_json(game)
-        assert result["schema_version"] == "3.3"
+        assert result["schema_version"] == REPORT_SCHEMA_VERSION
+        # Top-level and meta must agree.
+        assert result["meta"]["schema_version"] == REPORT_SCHEMA_VERSION
 
     def test_meta_section_present(self):
         """Meta section should contain required fields (Phase 137 schema)."""

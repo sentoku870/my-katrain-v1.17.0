@@ -31,6 +31,8 @@ from katrain.core.reports.definitions import (
     PRIMARY_TAGS,
     REASON_CODE_ALIASES,
     REASON_CODES,
+    REPORT_SCHEMA_HASH,
+    REPORT_SCHEMA_VERSION,
     REPORT_THRESHOLDS,
 )
 from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
@@ -49,7 +51,7 @@ def build_karte_json(
     lang: str = "ja",
     target_visits: int | None = None,
     include_definitions: bool = False,
-    dynamic_phase_detection: bool = False,
+    dynamic_phase_detection: bool = True,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -66,9 +68,13 @@ def build_karte_json(
     block is opt-in to keep the report compact for LLM consumption; pass
     `include_definitions=True` when the consumer needs label mappings.
 
-    Phase 156: `dynamic_phase_detection` defaults to False. When True,
-    the move-by-move ``tag`` is rewritten using the scoreStdev-based
-    detector (see :func:`katrain.core.analysis.apply_dynamic_phases`).
+    Phase 156: `dynamic_phase_detection` defaults to True (Phase 158-F).
+    When True, the move-by-move ``tag`` is rewritten using the
+    scoreStdev-based detector (see
+    :func:`katrain.core.analysis.apply_dynamic_phases`). When scoreStdev
+    is unavailable (Leela / unanalyzed moves), the function falls back
+    to the static classifier, so enabling this flag never makes output
+    worse for non-KataGo analyses.
 
     Args:
         game: Game object providing game state and analysis data
@@ -80,9 +86,11 @@ def build_karte_json(
         target_visits: Target visits for effective reliability threshold.
         include_definitions: If True, embed the `definitions` block in
             `meta.definitions`. Default False for compact output.
-        dynamic_phase_detection: If True, rewrite move tags using the
-            scoreStdev-based dynamic phase classifier (Phase 156).
-            Default False (legacy fixed thresholds).
+        dynamic_phase_detection: If True (default), rewrite move tags
+            using the scoreStdev-based dynamic phase classifier
+            (Phase 156). Falls back to fixed thresholds when scoreStdev
+            is unavailable. Pass ``False`` to opt out and use the legacy
+            static split.
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
@@ -141,7 +149,13 @@ def build_karte_json(
     common_meta = MetaExtractor.extract_game_meta(game, game_id=game_uid)
 
     meta: MetaData = {
-        "schema_version": "3.2",  # Phase 154-D: bumped from 3.1
+        "schema_version": REPORT_SCHEMA_VERSION,
+        # Phase 158-I: short fingerprint of the *exact* schema + constants
+        # that generated this Karte. LLMs can compare against a pinned
+        # reference to detect stale-schema situations. Stable for any
+        # given build (changes only when REPORT_SCHEMA_VERSION or one
+        # of the REPORT_THRESHOLDS / *_TAGS constants changes).
+        "schema_hash": REPORT_SCHEMA_HASH,
         "game_id": game_uid,
         "generated_at": generated_at,
         "run_id": run_id,
@@ -179,8 +193,13 @@ def build_karte_json(
     summary = {
         "total_moves": len(moves),
         "total_points_lost": {
-            "black": round(black_lost, 1),
-            "white": round(white_lost, 1),
+            # Phase 158-H: round to 2 decimals so the value matches
+            # ``win_loss_analysis.by_outcome.*.total_loss`` (and the rest
+            # of the Karte JSON's loss fields). Previously this was
+            # rounded to 1 decimal which produced a 0.01-0.05 gap against
+            # the win/loss breakdown for the same player.
+            "black": round(black_lost, 2),
+            "white": round(white_lost, 2),
         },
         "mistake_distribution": {
             "black": black_counts,
@@ -267,6 +286,14 @@ def build_karte_json(
         "black": weakness_hypothesis_for(ctx, "B"),
         "white": weakness_hypothesis_for(ctx, "W"),
     }
+    # Phase 158-I: meta block summarising how much of each player's loss
+    # is captured by the weakness aggregation. Without this the LLM
+    # could read "weakness A: 18.5 points" and not know whether the
+    # 18.5 represents 50% or 5% of the player's total loss.
+    weaknesses_meta = {
+        "black": _weaknesses_meta_for(ctx, "B", weaknesses["black"]),
+        "white": _weaknesses_meta_for(ctx, "W", weaknesses["white"]),
+    }
     mistake_streaks = {
         "black": mistake_streaks_for(ctx, "B"),
         "white": mistake_streaks_for(ctx, "W"),
@@ -287,10 +314,16 @@ def build_karte_json(
     from katrain.core.reports.utils.result_parser import parse_result
 
     game_outcome = parse_result(common_meta.get("result"))
+    # Phase 158-H: pass the preset's inaccuracy threshold so the
+    # ``by_outcome.*.mistake_count`` count matches the
+    # ``summary.mistake_distribution`` (inaccuracy + mistake + blunder)
+    # total for the same player / preset.
+    inaccuracy_threshold = score_thresholds[0] if score_thresholds else 1.0
     win_loss = build_win_loss_analysis(
         game_summary=None,
         snapshot_moves=list(snapshot.moves),
         outcome=game_outcome,
+        inaccuracy_threshold=inaccuracy_threshold,
     )
 
     loss_buckets = compute_loss_progression(list(snapshot.moves), bucket_size=10)
@@ -328,11 +361,15 @@ def build_karte_json(
     }
 
     result: dict[str, Any] = {
-        "schema_version": "3.3",
+        "schema_version": REPORT_SCHEMA_VERSION,
         "meta": meta,
         "summary": summary,
         "important_moves": important_moves_list,
         "weaknesses": weaknesses,
+        # Phase 158-I: see ``_weaknesses_meta_for``. Lets the LLM read
+        # ``weaknesses_meta.black.coverage_pct`` and understand the
+        # scope of the weakness aggregation at a glance.
+        "weaknesses_meta": weaknesses_meta,
         "mistake_streaks": mistake_streaks,
         "critical_3": critical_3,
         "data_quality": data_quality,
@@ -342,3 +379,73 @@ def build_karte_json(
         "opponent_strength_loss_correlation": opponent_correlation,
     }
     return result
+
+
+def _weaknesses_meta_for(
+    ctx: Any,
+    player: str,
+    weakness_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Build the ``weaknesses_meta.<color>`` block (Phase 158-I).
+
+    Tells the LLM how much of the player's mistake loss is covered by
+    the ``weaknesses`` aggregation. ``covered_count`` is the number of
+    moves the aggregation attributed to a phase × category bucket;
+    ``total_count`` is every non-zero-loss move on the player's
+    branch. ``coverage_pct`` is the percentage of non-zero-loss moves
+    that landed in a weakness bucket.
+
+    ``total_loss`` / ``covered_loss`` make it easy to see *how much*
+    of the player's total loss is explained by the listed weaknesses
+    — a "weakness A: 18.5 points" line item is much more useful when
+    the LLM also sees ``covered_loss: 25.0 / 60.0`` (41.7%).
+    """
+    from katrain.core.eval_metrics import get_canonical_loss_from_move
+    from katrain.core.analysis import classify_game_phase
+    from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
+
+    player_moves = [m for m in ctx.snapshot.moves if m.player == player]
+    # Non-zero-loss moves (the "mistake-or-better" denominator).
+    loss_moves = [
+        m for m in player_moves if get_canonical_loss_from_move(m) > BAD_MOVE_LOSS_THRESHOLD
+    ]
+    total_count = len(loss_moves)
+    total_loss = sum(get_canonical_loss_from_move(m) for m in loss_moves)
+
+    # Covered: every move that appears as evidence in at least one
+    # weakness bucket. A move can only be covered if its phase
+    # category and mistake category match a weakness key; we
+    # re-derive both here without going back through the
+    # ``aggregate_phase_mistake_stats`` table.
+    covered_move_ids: set[int] = set()
+    covered_loss = 0.0
+    for w in weakness_items:
+        phase = w["phase"]
+        category = w["category"]
+        for m in loss_moves:
+            if covered_move_ids and id(m) in covered_move_ids:
+                continue
+            phase_label = classify_game_phase(m.move_number or 0, ctx.board_x)
+            cat_label = (
+                m.mistake_category.name if m.mistake_category else "GOOD"
+            )
+            if phase_label == phase and cat_label == category:
+                covered_move_ids.add(id(m))
+                covered_loss += get_canonical_loss_from_move(m)
+
+    covered_count = len(covered_move_ids)
+    coverage_pct = (
+        round(100.0 * covered_count / total_count, 1) if total_count else 0.0
+    )
+    loss_coverage_pct = (
+        round(100.0 * covered_loss / total_loss, 1) if total_loss > 0 else 0.0
+    )
+
+    return {
+        "covered_count": covered_count,
+        "total_count": total_count,
+        "coverage_pct": coverage_pct,
+        "covered_loss": round(covered_loss, 2),
+        "total_loss": round(total_loss, 2),
+        "loss_coverage_pct": loss_coverage_pct,
+    }

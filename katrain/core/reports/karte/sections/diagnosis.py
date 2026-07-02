@@ -9,6 +9,13 @@ Phase 153-B: Removed `practice_priorities_for` (redundant with weaknesses).
 Phase 153-C: Removed `urgent_miss_section_for` (merged into
 `mistake_streaks_for`; both used the same threshold).
 
+Phase 158-F: weakness evidence filter re-aligned with the phase
+classification used by ``aggregate_phase_mistake_stats``. Previously the
+filter compared ``mv.tag`` (only set when ``dynamic_phase_detection`` is
+on) against the phase key, so the ``evidence`` field was always ``[]``
+when the report was generated without dynamic phase detection (the
+default).
+
 Functions:
 - weakness_hypothesis_for(): Returns WeaknessItem list for one player
 - mistake_streaks_for(): Returns StreakItem list (consecutive mistakes)
@@ -23,6 +30,10 @@ from katrain.core.eval_metrics import (
     aggregate_phase_mistake_stats,
     detect_mistake_streaks,
     get_canonical_loss_from_move,
+)
+from katrain.core.reports.constants import (
+    MISTAKE_STREAK_MIN_CONSECUTIVE,
+    MISTAKE_STREAK_THRESHOLD_LOSS,
 )
 
 if TYPE_CHECKING:
@@ -55,6 +66,22 @@ def _streak_to_item(s: Any) -> dict[str, Any]:
         "avg_loss": round(s.avg_loss, 2),
         "moves": [_move_to_evidence(mv) for mv in s.moves],
     }
+
+
+def _move_phase(mv: MoveEval, board_size: int) -> str:
+    """Return the phase label for a move using the same classifier as
+    :func:`aggregate_phase_mistake_stats` (``classify_game_phase``).
+
+    Phase 158-F: ``aggregate_phase_mistake_stats`` writes phase keys from
+    :func:`katrain.core.analysis.logic_phase.classify_game_phase`, but the
+    evidence filter was reading ``mv.tag`` which is only populated when
+    ``apply_dynamic_phases`` has been run. Reading the phase through the
+    same classifier ensures the filter and the aggregation agree even
+    without dynamic phase detection enabled.
+    """
+    from katrain.core.analysis import classify_game_phase
+
+    return classify_game_phase(mv.move_number, board_size)
 
 
 def weakness_hypothesis_for(
@@ -98,10 +125,16 @@ def weakness_hypothesis_for(
         phase, category = key
         count = stats.phase_mistake_counts.get(key, 0)
 
-        def phase_cat_filter(mv: Any, _phase: str = phase, _category: str = category) -> bool:
-            mv_phase = mv.tag or "unknown"
-            mv_cat = mv.mistake_category.name if mv.mistake_category else "GOOD"
-            return mv_phase == _phase and mv_cat == _category
+        def phase_cat_filter(
+            mv: Any,
+            _phase: str = phase,
+            _category: str = category,
+            _board: int = board_x,
+        ) -> bool:
+            return (
+                _move_phase(mv, _board) == _phase
+                and (mv.mistake_category.name if mv.mistake_category else "GOOD") == _category
+            )
 
         evidence_moves = eval_metrics.select_representative_moves(
             player_moves,
@@ -150,6 +183,12 @@ def mistake_streaks_for(
 ) -> list[dict[str, Any]]:
     """Detect and return consecutive mistake streaks for a player.
 
+    Phase 158-F: use the mistake-level threshold
+    (``MISTAKE_STREAK_THRESHOLD_LOSS`` = 2.0 points, min 2 consecutive
+    moves) instead of the urgent-miss collapse threshold. The previous
+    configuration only fired for catastrophic 20+ point life-and-death
+    misses, which made the section effectively empty for sub-5-dan games.
+
     Args:
         ctx: Karte context
         player: "B" or "W"
@@ -161,11 +200,10 @@ def mistake_streaks_for(
     if not player_moves:
         return []
 
-    urgent_config = eval_metrics.get_urgent_miss_config(ctx.skill_preset)
     streaks = detect_mistake_streaks(
         player_moves,
-        loss_threshold=urgent_config.threshold_loss,
-        min_consecutive=urgent_config.min_consecutive,
+        loss_threshold=MISTAKE_STREAK_THRESHOLD_LOSS,
+        min_consecutive=MISTAKE_STREAK_MIN_CONSECUTIVE,
     )
 
     return [_streak_to_item(s) for s in streaks]

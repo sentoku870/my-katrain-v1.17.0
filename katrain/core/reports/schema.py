@@ -32,6 +32,10 @@ class Definitions(TypedDict):
 
 class MetaData(TypedDict, total=False):
     schema_version: str
+    # Phase 158-I: short fingerprint of the *current* schema + the
+    # constants that materially shape the JSON payload. See
+    # ``definitions.REPORT_SCHEMA_HASH``.
+    schema_hash: str
     run_id: str
     date_range: list[str] | None
     games_analyzed: int | None # Summary only
@@ -81,6 +85,11 @@ class MistakeItem(TypedDict):
     mistake_type: str
     reason_codes: list[str]
     primary_tag: str | None
+    # Phase 158-I: Summary-only. True when this entry was also
+    # surfaced in the corresponding individual Karte's
+    # ``important_moves`` block. ``None`` on Karte output (always
+    # implicit on Karte, since the Karte is the per-game report).
+    in_individual_karte: NotRequired[bool]
 
 class TopMistakes(TypedDict):
     top_mistakes: list[MistakeItem]
