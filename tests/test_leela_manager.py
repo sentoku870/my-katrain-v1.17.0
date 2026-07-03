@@ -190,100 +190,54 @@ class TestLeelaManagerStartForce:
 
 
 # ---------------------------------------------------------------------------
-# _save_leela_settings: linked play_enabled / enabled behavior
+# compute_leela_enabled: linked play_enabled / enabled behavior
 # ---------------------------------------------------------------------------
 
 
-class TestSaveLeelaSettingsLinkage:
-    """``_save_leela_settings`` couples ``play_enabled`` with ``enabled``.
+class TestComputeLeelaEnabled:
+    """``compute_leela_enabled`` couples ``play_enabled`` with ``enabled``.
 
-    Phase 160 enforces that a user who toggles 'Play against Leela'
-    ends up with ``LeelaConfig.enabled=True`` so the engine boots
-    automatically. Conversely, turning Play off forces
-    ``enabled=False`` so the running engine is stopped. The tests
-    pin both directions by patching the typed-config writer.
+    Phase 161 extracts the join into a pure helper so the four
+    combination patterns can be unit-tested without exercising the
+    Kivy-bound ``_save_leela_settings`` pipeline (which loads
+    ``settings_popup`` and pulls in widget factories).
 
-    The function uses two module-level names we monkey-patch here:
+    Rules:
+      * ``play_enabled=True`` → ``enabled=True`` (engine must boot
+        for Play).
+      * ``leela_enabled=True`` → ``enabled=True`` (analysis-only
+        still needs the engine running).
+      * Both off → ``enabled=False`` (engine stays cold until the
+        user toggles either flag on).
 
-    * ``clamp_k`` — re-exported from ``katrain.core.constants`` at the
-      top of ``settings_popup``.
-    * ``LeelaConfig.from_dict`` — used inline as the default source.
-      Since the ``_leela_defaults`` object is created by value (not by
-      referencing the module), we patch the class method itself.
+    This is the table the Settings > Leela tab enforces on save:
+      | leela_enabled | leela_play_enabled | enabled saved |
+      |      T        |        T            |      T        |
+      |      T        |        F            |      T        |
+      |      F        |        T            |      T        |
+      |      F        |        F            |      F        |
     """
 
     @staticmethod
-    def _run_save(
-        monkeypatch: pytest.MonkeyPatch,
-        *,
-        leela_enabled: bool,
-        leela_play_enabled: bool,
-    ) -> dict[str, object]:
-        captured: dict[str, object] = {}
+    def _compute(leela_enabled: bool, leela_play_enabled: bool) -> bool:
+        # Late import avoids loading settings_popup (and the full
+        # Kivy widget graph) for the pure-function tests below.
+        from katrain.gui.features.settings_popup import compute_leela_enabled
 
-        from katrain.gui.features import settings_popup as sp
+        return compute_leela_enabled(leela_enabled, leela_play_enabled)
 
-        # ``update_leela_config`` is invoked as ``ctx.update_leela_config``
-        # so we install a recorder on the mock context object instead
-        # of patching the symbol on the settings_popup module.
-        ctx = MagicMock()
+    def test_play_only_boots_engine(self) -> None:
+        """``leela_enabled=False`` + ``play_enabled=True`` → ``enabled=True``."""
+        assert self._compute(False, True) is True
 
-        def _capture(**_kwargs: object) -> object:
-            captured.update(_kwargs)
-            return type("_r", (), {})()
+    def test_no_play_stops_engine(self) -> None:
+        """``leela_enabled=False`` + ``play_enabled=False`` → ``enabled=False``."""
+        assert self._compute(False, False) is False
 
-        ctx.update_leela_config = _capture  # type: ignore[method-assign]
+    def test_analysis_only_keeps_engine_running(self) -> None:
+        """``leela_enabled=True`` + ``play_enabled=False`` → ``enabled=True``."""
+        assert self._compute(True, False) is True
 
-        # ``LeelaConfig.from_dict`` returns a real instance that has
-        # ``play_visits=500``. Patching it removes the dependency
-        # on the typed-config pipeline while keeping the same shape.
-        monkeypatch.setattr(
-            sp.LeelaConfig,
-            "from_dict",
-            staticmethod(lambda _d: type("_d", (), {"play_visits": 500})()),
-        )
-        monkeypatch.setattr(sp, "clamp_k", lambda v: v)
-
-        sp._save_leela_settings(
-            ctx,
-            leela_enabled=leela_enabled,
-            leela_path="/some/leela",
-            leela_k_value=0.5,
-            leela_top_show="leela_top_move_loss",
-            leela_top_show_2="leela_top_move_winrate",
-            leela_visits_text="1000",
-            leela_fast_visits_text="200",
-            leela_cand_value="5",
-            leela_play_enabled=leela_play_enabled,
-        )
-        return captured
-
-    def test_play_only_sets_enabled_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """``leela_enabled=False`` + ``play_enabled=True`` saves ``enabled=True``."""
-        captured = self._run_save(
-            monkeypatch,
-            leela_enabled=False,
-            leela_play_enabled=True,
-        )
-        assert captured["enabled"] is True
-        assert captured["play_enabled"] is True
-
-    def test_no_play_sets_enabled_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """``leela_enabled=False`` + ``play_enabled=False`` saves ``enabled=False``."""
-        captured = self._run_save(
-            monkeypatch,
-            leela_enabled=False,
-            leela_play_enabled=False,
-        )
-        assert captured["enabled"] is False
-        assert captured["play_enabled"] is False
-
-    def test_analysis_only_keeps_enabled_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """``leela_enabled=True`` + ``play_enabled=False`` saves ``enabled=True``."""
-        captured = self._run_save(
-            monkeypatch,
-            leela_enabled=True,
-            leela_play_enabled=False,
-        )
-        assert captured["enabled"] is True
-        assert captured["play_enabled"] is False
+    def test_both_on_keeps_engine_running(self) -> None:
+        """``leela_enabled=True`` + ``play_enabled=True`` → ``enabled=True``."""
+        assert self._compute(True, True) is True
