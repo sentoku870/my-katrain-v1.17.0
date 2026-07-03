@@ -25,7 +25,7 @@ from katrain.core.analysis.models import EvalSnapshot, MoveEval
 from katrain.core.reports.karte.helpers import is_single_engine_snapshot
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
-    KARTE_ERROR_CODE_MIXED_ENGINE,
+    KARTE_ERROR_CODE_NON_KATAGO,
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
@@ -115,12 +115,16 @@ def build_karte_report(
                 raise KarteGenerationError(error_msg, game_id=game_id) from e
             return _build_error_karte(game_id, player_filter, error_msg)
 
-    # 2. Mixed-engine check (Phase 37: enforcement point)
+    # 2. Mixed-engine check (Phase 37: enforcement point) -> Phase 159A: KataGo-only
     if not is_single_engine_snapshot(snapshot):
+        # Phase 159A: Leela data is now treated the same as mixed-engine
+        # (both are rejected). Emit a more descriptive error code that
+        # distinguishes the two for downstream consumers.
         error_msg = (
-            f"{KARTE_ERROR_CODE_MIXED_ENGINE}\n"
-            "Mixed-engine analysis detected. "
-            "KataGo and Leela data cannot be combined in a single karte."
+            f"{KARTE_ERROR_CODE_NON_KATAGO}\n"
+            "KataGo-only path required for Karte generation. "
+            "Leela or mixed-engine analysis detected. "
+            "Use KataGo analysis to generate karte."
         )
         if raise_on_error:
             raise MixedEngineSnapshotError(error_msg)

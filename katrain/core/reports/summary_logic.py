@@ -173,7 +173,7 @@ class SummaryAnalyzer:
 
             # 最悪手をソートして上位のみ保持（Phase 149 A-5: メモリ削減）
             stats.worst_moves.sort(
-                key=lambda x: x[1].points_lost or x[1].score_loss or 0, reverse=True
+                key=lambda x: get_canonical_loss_from_move(x[1]), reverse=True
             )
             stats.worst_moves = stats.worst_moves[:10]
 
@@ -212,7 +212,7 @@ def detect_urgent_miss_sequences(
     sorted_moves = sorted(worst_moves, key=lambda x: (x[0], x[1].move_number))
 
     for _i, (game_name, move) in enumerate(sorted_moves):
-        loss = move.points_lost if move.points_lost else move.score_loss or 0
+        loss = get_canonical_loss_from_move(move)
 
         if loss >= threshold_loss:
             if current_seq is None:

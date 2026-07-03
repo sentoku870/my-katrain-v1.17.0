@@ -45,15 +45,39 @@ def build_summary_report(
     """
     複数局から統計まとめを生成（JSON形式）
 
+    Phase 159A: KataGo-only path. Games that contain Leela analysis data
+    (any move with ``leela_loss_est is not None``) are rejected before
+    the JSON payload is built, because the per-section totals assume a
+    single loss unit (territory_points from KataGo). See
+    ``is_single_engine_snapshot`` in ``karte.helpers`` for the exact
+    predicate.
+
     Args:
         game_data_list: 各対局のデータリスト
         focus_player: 集計対象プレイヤー名（Noneなら全プレイヤー）
 
     Returns:
         JSON形式のまとめレポート
+
+    Raises:
+        ValueError: If any game contains Leela or mixed-engine data.
     """
     if not game_data_list:
         return '{"meta": {"games_analyzed": 0}}'
+
+    # Phase 159A: KataGo-only gate
+    from katrain.core.reports.karte.helpers import is_single_engine_snapshot
+
+    non_katago_games = [
+        gd for gd in game_data_list if not is_single_engine_snapshot(gd.snapshot)
+    ]
+    if non_katago_games:
+        names = ", ".join(gd.game_name for gd in non_katago_games)
+        raise ValueError(
+            f"KataGo-only path required for Summary generation. "
+            f"Non-KataGo games detected: {names}. "
+            f"Use KataGo analysis to generate summary."
+        )
 
     import json
 

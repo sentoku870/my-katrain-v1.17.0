@@ -917,6 +917,7 @@ def do_mykatrain_settings_popup(
             leela_visits_text=widget_refs["leela_visits_input"].text,
             leela_fast_visits_text=widget_refs["leela_fast_visits_input"].text.strip(),
             leela_cand_value=widget_refs["leela_cand_spinner"].selected[1],
+            leela_play_enabled=widget_refs["leela_play_enabled"].active,  # Phase 159B
         )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
@@ -1208,8 +1209,9 @@ def _save_leela_settings(
     leela_visits_text: str,
     leela_fast_visits_text: str,
     leela_cand_value: Any,
+    leela_play_enabled: bool = False,  # Phase 159B: human-vs-Leela play toggle
 ) -> None:
-    """Save Leela Zero settings via typed config API (Phase 102, Phase 30, Phase 123)."""
+    """Save Leela Zero settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 159B)."""
     from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
 
     # Get defaults from single source (no hardcoding)
@@ -1233,7 +1235,7 @@ def _save_leela_settings(
     except ValueError:
         computed_fast_visits = _leela_defaults.fast_visits
 
-    # play_visits: fixed default (Phase 123: removed from UI)
+    # play_visits: fixed default (Phase 123: removed from UI; Phase 159B: reused)
     computed_play_visits = _leela_defaults.play_visits
 
     # Convert "auto" to -1 (unlimited)
@@ -1242,6 +1244,9 @@ def _save_leela_settings(
     # Update via typed config API (handles MERGE and persistence)
     ctx.update_leela_config(
         enabled=leela_enabled,
+        # Phase 159B: play toggle, drives LeelaStrategy availability
+        # in the AI strategy dropdown.
+        play_enabled=leela_play_enabled,
         exe_path=leela_path,
         loss_scale_k=clamp_k(leela_k_value),
         max_visits=computed_max_visits,

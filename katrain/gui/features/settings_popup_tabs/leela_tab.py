@@ -12,6 +12,11 @@ from typing import Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
+
+# Phase 159B: factory.py exposes Label / Button / Popup but not CheckBox.
+# Import the Kivy CheckBox directly rather than extending the factory for
+# a single use site.
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.slider import Slider
 from kivy.uix.textinput import TextInput
 
@@ -195,6 +200,37 @@ def _build_leela_top_moves_section(
     return row, spinner_primary, spinner_secondary
 
 
+def _build_leela_play_section(
+    state: _SettingsPopupContext, leela: dict[str, Any]
+) -> tuple[BoxLayout, CheckBox]:
+    """Build the human-vs-Leela play toggle row (Phase 159B).
+
+    A single ``CheckBox`` (label + control) that drives
+    ``LeelaConfig.play_enabled``. When enabled, ``LeelaStrategy`` is
+    available in the AI strategy picker for live games against Leela
+    Zero. Disabling it does not affect the analysis pipeline (variation
+    display via ``LeelaManager`` keeps working as before).
+
+    Phase 123 removed the original checkbox; we restore it here as a
+    minimal dependency-free row.
+    """
+    row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
+    label = Label(
+        text=i18n._("mykatrain:settings:leela_play_enabled"),
+        size_hint_x=0.80,
+    )
+    _bind_text_size(label)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_play_enabled", label)
+    checkbox = CheckBox(
+        active=bool(leela.get("play_enabled", False)),
+        size_hint_x=0.20,
+    )
+    row.add_widget(label)
+    row.add_widget(checkbox)
+    return row, checkbox
+
+
 def _build_leela_reset_button() -> Button:
     """Build the Leela reset button."""
     return Button(
@@ -254,6 +290,10 @@ def _build_leela_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, d
     top_row, leela_top_moves_spinner, leela_top_moves_spinner_2 = _build_leela_top_moves_section(state, leela)
     inner.add_widget(top_row)
 
+    # --- Phase 159B: Play toggle (human-vs-Leela) ---
+    play_row, leela_play_enabled = _build_leela_play_section(state, leela)
+    inner.add_widget(play_row)
+
     # --- Reset button ---
     reset_btn = _build_leela_reset_button()
     inner.add_widget(reset_btn)
@@ -267,5 +307,7 @@ def _build_leela_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, d
         "leela_cand_spinner": leela_cand_spinner,
         "leela_top_moves_spinner": leela_top_moves_spinner,
         "leela_top_moves_spinner_2": leela_top_moves_spinner_2,
+        # Phase 159B
+        "leela_play_enabled": leela_play_enabled,
     }
     return inner, reset_btn, widget_refs

@@ -365,7 +365,8 @@ class LeelaConfig:
     """Leela Zero設定（leelaセクション）。
 
     Attributes:
-        enabled: Leela Zero有効化
+        enabled: Leela Zero有効化（解析用途、変化図表示）
+        play_enabled: Phase 159B: AI戦略として人間と対局するかどうか
         exe_path: 実行ファイルパス
         max_visits: 最大訪問回数
         fast_visits: 高速解析時の訪問回数
@@ -379,6 +380,10 @@ class LeelaConfig:
     """
 
     enabled: bool = False
+    # Phase 159B: human-vs-Leela play toggle. Independent of `enabled`
+    # (analysis) so users can disable play without losing the variation
+    # display. Defaults to False so existing configs are unaffected.
+    play_enabled: bool = False
     exe_path: str | None = None
     max_visits: int = 1000
     fast_visits: int = 200
@@ -403,6 +408,10 @@ class LeelaConfig:
         """
         return cls(
             enabled=safe_bool(d.get("enabled"), default=False),
+            # Phase 159B: Play toggle. Falls back to ``enabled`` so existing
+            # users who only had analysis on get analysis-only behaviour
+            # unchanged (they can opt in to play later via Settings > Leela).
+            play_enabled=safe_bool(d.get("play_enabled"), default=False),
             exe_path=normalize_path(d.get("exe_path")),
             max_visits=safe_int(d.get("max_visits"), 1000),
             fast_visits=safe_int(d.get("fast_visits"), 200),

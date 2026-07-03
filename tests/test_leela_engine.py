@@ -5,6 +5,7 @@ Note: Most tests require mocking as they depend on external process.
 
 import threading
 import time
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -264,6 +265,126 @@ class TestIntegrationMocked:
         assert result.is_valid
         assert len(result.candidates) == 1
         assert result.candidates[0].move == "D4"
+
+
+class TestPhase159BPlayMode:
+    """Phase 159B: human-vs-Leela play-mode wrappers (mocked).
+
+    These methods (``play_move``, ``request_move``) are the only new
+    surface added to ``LeelaEngine`` in Phase 159B. The unit tests below
+    exercise the GTP command construction logic without spinning up a
+    real engine.
+    """
+
+    def _engine_with_mock_proc(self) -> LeelaEngine:
+        """Construct a LeelaEngine whose ``process`` is a MagicMock."""
+        katrain = MockKatrain()
+        engine = LeelaEngine(katrain, {"exe_path": "/nonexistent/leela"})
+        engine.process = MagicMock()
+        engine.process.poll.return_value = None  # alive
+        engine.process.stdin = MagicMock()
+        engine.process.stdout = MagicMock()
+        engine._lock = threading.Lock()
+        # is_alive() reads ``self.process is not None and poll is None``.
+        # MagicMock with .poll.return_value=None satisfies the alive check.
+        return engine
+
+    def test_play_move_sends_play_command(self) -> None:
+        engine = self._engine_with_mock_proc()
+        ok = engine.play_move("B", "D4")
+        assert ok is True
+        engine.process.stdin.write.assert_called_once_with("play black D4\n")
+        engine.process.stdin.flush.assert_called_once()
+        # play_move appends to the internal move log.
+        assert ("B", "D4") in engine._moves
+
+    def test_play_white_player(self) -> None:
+        engine = self._engine_with_mock_proc()
+        ok = engine.play_move("W", "Q16")
+        assert ok is True
+        engine.process.stdin.write.assert_called_once_with("play white Q16\n")
+
+    def test_play_move_when_dead_returns_false_and_doesnt_write(self) -> None:
+        engine = self._engine_with_mock_proc()
+        engine.process.poll.return_value = 0  # dead
+        ok = engine.play_move("B", "D4")
+        assert ok is False
+        engine.process.stdin.write.assert_not_called()
+
+    def test_request_move_invokes_callback_with_coord(self) -> None:
+        engine = self._engine_with_mock_proc()
+        # Make the readline loop terminate after one successful payload.
+        engine.process.stdout.readline.return_value = "= D16\n"
+        captured: dict[str, Any] = {}
+
+        def _cb(coord: str) -> None:
+            captured["coord"] = coord
+
+        engine.request_move("B", _cb, visits=400)
+        # The first ``write`` call is the ``genmove black`` command.
+        write_calls = [c.args[0] for c in engine.process.stdin.write.call_args_list]
+        assert any("genmove black" in str(w) for w in write_calls)
+        assert captured.get("coord") == "D16"
+
+    def test_request_move_handles_resign(self) -> None:
+        engine = self._engine_with_mock_proc()
+        engine.process.stdout.readline.return_value = "= resign\n"
+        captured: dict[str, Any] = {}
+
+        def _cb(coord: str) -> None:
+            captured["coord"] = coord
+
+        engine.request_move("W", _cb, visits=400)
+        # Strategy is expected to handle ``"resign"`` literally, which
+        # is exactly what we observe here.
+        assert captured["coord"] == "resign"
+
+    def test_request_move_handles_failure_response(self) -> None:
+        engine = self._engine_with_mock_proc()
+        engine.process.stdout.readline.return_value = "? failure\n"
+        captured: dict[str, Any] = {}
+
+        engine.request_move("B", lambda coord: captured.setdefault("coord", coord))
+        # Empty string signals "no move" to ``LeelaStrategy``.
+        assert captured["coord"] == ""
+
+    def test_request_move_dispatches_async_when_block_false(self) -> None:
+        engine = self._engine_with_mock_proc()
+        engine.process.stdout.readline.return_value = "= D4\n"
+        captured: dict[str, Any] = {}
+
+        # ``block=False`` must dispatch on a background thread, but
+        # ``stdout.readline`` is still synchronous — wait briefly for
+        # the callback to fire.
+        import time as _time
+
+        engine.request_move(
+            "B",
+            lambda coord: captured.setdefault("coord", coord),
+            visits=400,
+            block=False,
+        )
+        for _ in range(20):
+            if "coord" in captured:
+                break
+            _time.sleep(0.05)
+        assert captured.get("coord") == "D4"
+
+    def test_request_move_returns_false_for_dead_engine(self) -> None:
+        engine = self._engine_with_mock_proc()
+        engine.process.poll.return_value = 0  # dead
+        result = engine.request_move("B", lambda c: None, visits=400)
+        assert result is False
+
+    def test_color_map_supports_short_and_long_tokens(self) -> None:
+        engine = self._engine_with_mock_proc()
+        # ``play_move`` accepts ``B``/``W`` short tokens (the engine
+        # maps them to ``black``/``white`` internally).
+        engine.play_move("BLACK", "D4")
+        engine.play_move("white", "Q16")
+        writes = [c.args[0] for c in engine.process.stdin.write.call_args_list]
+        assert "play black D4\n" in writes
+        assert "play white Q16\n" in writes
 
 
 # Skip real engine tests if Leela not available
