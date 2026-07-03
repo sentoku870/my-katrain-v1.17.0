@@ -101,18 +101,12 @@ def do_selfplay_setup(
 def do_ai_move(ctx: KaTrainGui, node: Any = None) -> None:
     """Generate and play an AI move using the next player's strategy.
 
-    Phase 159 fix: this dispatcher only kicks in for ``AI_LEELA``
-    (the only strategy that runs through the ``do_ai_move`` entry
-    point). KataGo picks its move via the engine's analysis poll, so
-    earlier code that branched on ``Player.strategy`` saw
-    ``"game:normal"`` (a value not registered with
-    ``STRATEGY_REGISTRY``) and surfaced a misleading *AI Mode ... not
-    found!* error.
-
-    When the next player's strategy is Leela, we look up the strategy
-    class directly in the registry. For everything else (KataGo
-    default / handicap / pro / rank / ...), the engine itself already
-    produces the next move and we intentionally do nothing here.
+    Phase 170: LeelaStrategy removed. The dispatcher now mirrors the
+    pre-Phase 159 behaviour: KataGo paths (``game:normal`` /
+    ``ai:default`` / ``ai:handicap`` / ``ai:pro`` / ``ai:rank`` / ...)
+    short-circuit because KataGoEngine.poll already produces the move
+    in its own loop, and only the policy/pick strategies registered in
+    ``STRATEGY_REGISTRY`` reach ``generate_ai_move``.
 
     Args:
         ctx: KaTrainGui instance
@@ -120,21 +114,17 @@ def do_ai_move(ctx: KaTrainGui, node: Any = None) -> None:
     """
     from katrain.core.ai import generate_ai_move
     from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
-    from katrain.core.constants import AI_LEELA, OUTPUT_ERROR
+    from katrain.core.constants import OUTPUT_ERROR
 
     if not ctx.game or (node is None or ctx.game.current_node == node):
         mode = ctx.next_player_info.strategy
 
-        # Phase 159 fix: KataGo strategies operate through KataGoEngine
-        # (genmove / query poll). They never register with
-        # ``STRATEGY_REGISTRY`` under their ``Player.strategy`` label
-        # (``"game:normal"``), so dispatching here would always raise
-        # KeyError. Skip them — KataGo already has the move queued.
-        if mode != AI_LEELA:
-            return
-
-        if AI_LEELA not in STRATEGY_REGISTRY:
-            ctx.log(f"AI Mode {mode} not found!", OUTPUT_ERROR)
+        # KataGo strategies (game:normal / ai:default / ai:handicap /
+        # ai:pro / ai:rank / ai:scoreloss / ai:jigo / ai:antimirror /
+        # ai:simple / ai:settle) operate through KataGoEngine.genmove
+        # and are *not* in STRATEGY_REGISTRY. The engine itself already
+        # has the move queued, so we intentionally do nothing here.
+        if mode not in STRATEGY_REGISTRY:
             return
 
         settings = ctx.config(f"ai/{mode}") or {}

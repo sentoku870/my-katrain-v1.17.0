@@ -468,11 +468,31 @@ class TestLeelaConfigFromDict:
         assert cfg.exe_path is None
         assert cfg.max_visits == 1000
         assert cfg.fast_visits == 200
-        assert cfg.play_visits == 500
         assert cfg.loss_scale_k == 0.5
         assert cfg.resign_hint_enabled is False
         assert cfg.resign_winrate_threshold == 5
         assert cfg.resign_consecutive_moves == 3
+
+    def test_legacy_play_keys_are_ignored(self):
+        """Phase 170 removed ``play_enabled`` / ``play_visits`` from
+        ``LeelaConfig`` but older user configs may still carry them.
+        ``from_dict`` must accept (and silently drop) those keys
+        without raising."""
+        cfg = LeelaConfig.from_dict(
+            {
+                "play_enabled": True,
+                "play_visits": 750,
+            }
+        )
+        assert cfg.enabled is False
+        # play_* fields are simply not on the dataclass; the call must
+        # not raise AttributeError or TypeError.
+
+    def test_play_attrs_no_longer_exist(self):
+        """Phase 170: ``play_enabled`` / ``play_visits`` removed from the dataclass."""
+        cfg = LeelaConfig.from_dict({})
+        assert not hasattr(cfg, "play_enabled")
+        assert not hasattr(cfg, "play_visits")
 
     def test_frozen_immutability(self):
         cfg = LeelaConfig.from_dict({})

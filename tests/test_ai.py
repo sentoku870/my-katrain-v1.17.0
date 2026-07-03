@@ -4,7 +4,6 @@ from katrain.core.ai import ai_rank_estimation
 from katrain.core.base_katrain import KaTrainBase
 from katrain.core.constants import (
     AI_HUMAN,
-    AI_LEELA,  # Phase 159B
     AI_PRO,
     AI_STRATEGIES,
     AI_STRATEGIES_RECOMMENDED_ORDER,
@@ -51,14 +50,11 @@ class TestAI:
 
     def test_ai_rank_estimation(self):
         katrain = KaTrainBase(force_package_config=True, debug_level=0)
-        # Phase 159B: AI_LEELA restored as a human-vs-Leela play strategy.
-        # Its strength depends on the user's installed Leela network /
-        # visit budget and is intentionally ``NaN`` in ``AI_STRENGTH``;
-        # rank estimation is meaningless for it, so we skip it here
-        # (same treatment as AI_HUMAN / AI_PRO which are also
-        # human-style entries).
+        # AI_HUMAN / AI_PRO are human-style entries whose strength is
+        # intentionally ``NaN`` in ``AI_STRENGTH``; rank estimation is
+        # meaningless for them so we skip them here.
         for strategy in AI_STRATEGIES:
-            if strategy in [AI_HUMAN, AI_PRO, AI_LEELA]:
+            if strategy in [AI_HUMAN, AI_PRO]:
                 continue
             settings = katrain.config(f"ai/{strategy}")
             rank = ai_rank_estimation(strategy, settings)

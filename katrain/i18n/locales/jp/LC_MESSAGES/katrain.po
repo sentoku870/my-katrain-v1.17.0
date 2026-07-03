@@ -1660,9 +1660,6 @@ msgstr "KataGo エンジンを無効にする (Leela の検証用)"
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (高速解析)"
 
-msgid "mykatrain:settings:leela_play_visits"
-msgstr "対局時Visits"
-
 msgid "leela:error:exe_not_found"
 msgstr "Leela実行ファイルが見つかりません: {}"
 
@@ -1689,23 +1686,6 @@ msgstr "推定損失"
 #. Leela dropdown option
 msgid "leela_top_move_winrate"
 msgstr "勝率"
-
-#. Phase 159B: human-vs-Leela play toggle (settings popup).
-msgid "mykatrain:settings:leela_play_enabled"
-msgstr "Leelaと対局する"
-
-#. Phase 159B: surfaced in LeelaManager warnings / popup when the user
-#. picks a strategy that requires Leela but the engine hasn't started.
-msgid "leela:play:error_not_ready"
-msgstr "Leelaエンジンが起動していません。設定タブからLeelaを有効化してください。"
-
-#. Phase 159B: surfaced when Leela returns ``= resign``.
-msgid "leela:play:resigned"
-msgstr "Leelaが投了しました。"
-
-#. Phase 159B: surfaced when Leela returns an empty / unexpected coord.
-msgid "leela:play:pass_fallback"
-msgstr "Leelaから有効な手が返らなかったためパスします。"
 
 #. Leela dropdown option
 msgid "leela_top_move_visits"
@@ -1940,13 +1920,6 @@ msgstr "閉じる"
 
 msgid "engine-compare:jumped-to"
 msgstr "手数{move}に移動しました"
-
-#. Phase 40: Leela Play Mode
-msgid "ai:leela"
-msgstr "Leela"
-
-msgid "aihelp:ai:leela"
-msgstr "Leelaエンジンで着手を生成"
 
 msgid "leela:error:start_failed"
 msgstr "Leelaを起動できません。設定 > Leelaを確認してください。"

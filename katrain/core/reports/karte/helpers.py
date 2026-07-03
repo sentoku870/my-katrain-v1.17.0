@@ -80,8 +80,7 @@ def is_single_engine_snapshot(snapshot: EvalSnapshot) -> bool:
 
     Leela remains fully supported for analysis functions
     (variation display via ``LeelaManager``); only the report generators
-    are gated. Phase 159B restores human-vs-Leela play via
-    ``LeelaStrategy`` without restoring Leela Karte output.
+    are gated. Human-vs-Leela play was removed in Phase 170.
 
     Allowed patterns:
         - All moves have score_loss (KataGo) -> OK

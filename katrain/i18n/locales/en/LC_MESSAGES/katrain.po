@@ -1710,9 +1710,6 @@ msgstr "Disable KataGo engine (for testing Leela)"
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (Quick Analysis)"
 
-msgid "mykatrain:settings:leela_play_visits"
-msgstr "Play Visits (for AI games)"
-
 msgid "leela:error:exe_not_found"
 msgstr "Leela executable not found: {}"
 
@@ -1741,23 +1738,6 @@ msgstr "Loss (est.)"
 #. Leela dropdown option
 msgid "leela_top_move_winrate"
 msgstr "Win rate"
-
-#. Phase 159B: human-vs-Leela play toggle (settings popup).
-msgid "mykatrain:settings:leela_play_enabled"
-msgstr "Play against Leela"
-
-#. Phase 159B: surfaced in LeelaManager warnings / popup when the user
-#. picks a strategy that requires Leela but the engine hasn't started.
-msgid "leela:play:error_not_ready"
-msgstr "Leela engine is not running. Open the Settings > Leela tab to start it."
-
-#. Phase 159B: surfaced when Leela returns ``= resign``.
-msgid "leela:play:resigned"
-msgstr "Leela resigned."
-
-#. Phase 159B: surfaced when Leela returns an empty / unexpected coord.
-msgid "leela:play:pass_fallback"
-msgstr "Leela returned no move. Passing."
 
 #. Leela dropdown option
 msgid "leela_top_move_visits"
@@ -1994,13 +1974,6 @@ msgstr "Close"
 
 msgid "engine-compare:jumped-to"
 msgstr "Jumped to move {move}"
-
-#. Phase 40: Leela Play Mode
-msgid "ai:leela"
-msgstr "Leela"
-
-msgid "aihelp:ai:leela"
-msgstr "Use Leela engine for move generation"
 
 msgid "leela:error:start_failed"
 msgstr "Leela could not be started. Check Settings > Leela."

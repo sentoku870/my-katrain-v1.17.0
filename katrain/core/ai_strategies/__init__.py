@@ -20,6 +20,9 @@ The registry is populated automatically when this package is imported
 Backward compatibility: ``katrain.core.ai`` re-exports all strategy classes
 so existing imports like ``from katrain.core.ai import DefaultStrategy``
 continue to work.
+
+Phase 170: LeelaStrategy removed. Leela is now analysis-only; human-vs-Leela
+play (Phase 159B) and the related Phase 160/161 workarounds are gone.
 """
 
 from __future__ import annotations
@@ -31,9 +34,6 @@ from katrain.core.ai_strategies.basic import (
     JigoStrategy,
 )
 from katrain.core.ai_strategies.human import HumanStyleStrategy
-
-# Phase 159B: LeelaStrategy restored (was removed in Phase 123 Leela Slimming).
-from katrain.core.ai_strategies.leela import LeelaStrategy
 from katrain.core.ai_strategies.pick import (
     InfluenceStrategy,
     LocalStrategy,
@@ -78,6 +78,4 @@ __all__ = [
     "TerritoryStrategy",
     # Human
     "HumanStyleStrategy",
-    # Phase 159B
-    "LeelaStrategy",
 ]
