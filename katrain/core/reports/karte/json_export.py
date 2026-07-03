@@ -36,6 +36,8 @@ from katrain.core.reports.definitions import (
     REPORT_THRESHOLDS,
 )
 from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
+from katrain.core.reports.karte.helpers import is_single_engine_snapshot
+from katrain.core.reports.karte.models import KARTE_ERROR_CODE_NON_KATAGO
 from katrain.core.reports.schema import (
     Definitions,
     MetaData,
@@ -94,8 +96,31 @@ def build_karte_json(
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
+
+        When the snapshot contains Leela or mixed-engine data (Phase 159A,
+        KataGo-only path), returns a minimal error Karte dict containing
+        ``"error": "KARTE_ERROR_CODE: NON_KATAGO_DATA"`` instead of the
+        normal sections. Callers can detect this with
+        ``"error" in result``. ``build_karte_report`` additionally wraps
+        this into a ``KarteGenerationError`` / error-markdown path.
     """
     snapshot = game.build_eval_snapshot()
+
+    # Phase 159A: KataGo-only path — refuse non-KataGo snapshots up front
+    # so consumers (LLMs, dashboards) never receive cross-unit loss totals.
+    if not is_single_engine_snapshot(snapshot):
+        game_id = game.game_id or game.sgf_filename or "unknown"
+        return {
+            "schema_version": eval_metrics.REPORT_SCHEMA_VERSION if hasattr(eval_metrics, "REPORT_SCHEMA_VERSION") else "3.4",
+            "error": KARTE_ERROR_CODE_NON_KATAGO,
+            "message": (
+                "KataGo-only path required for Karte generation. "
+                "Leela or mixed-engine analysis detected. "
+                "Use KataGo analysis to generate karte."
+            ),
+            "meta": {"game_id": game_id},
+        }
+
     moves = list(snapshot.moves)
     board_x, board_y = game.board_size
 

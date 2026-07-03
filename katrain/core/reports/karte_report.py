@@ -22,6 +22,7 @@ from katrain.core.reports.karte.models import (
     CRITICAL_3_PROMPT_TEMPLATE,
     KARTE_ERROR_CODE_GENERATION_FAILED,
     KARTE_ERROR_CODE_MIXED_ENGINE,
+    KARTE_ERROR_CODE_NON_KATAGO,
     STYLE_CONFIDENCE_THRESHOLD,
     KarteGenerationError,
     MixedEngineSnapshotError,
@@ -37,6 +38,7 @@ __all__ = [
     "MixedEngineSnapshotError",
     # Constants
     "KARTE_ERROR_CODE_MIXED_ENGINE",
+    "KARTE_ERROR_CODE_NON_KATAGO",
     "KARTE_ERROR_CODE_GENERATION_FAILED",
     "CRITICAL_3_PROMPT_TEMPLATE",
     "STYLE_CONFIDENCE_THRESHOLD",

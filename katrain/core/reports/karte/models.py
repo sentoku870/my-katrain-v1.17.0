@@ -55,6 +55,8 @@ class MixedEngineSnapshotError(ValueError):
 # Error code constants for stable test assertions
 KARTE_ERROR_CODE_MIXED_ENGINE = "KARTE_ERROR_CODE: MIXED_ENGINE"
 KARTE_ERROR_CODE_GENERATION_FAILED = "KARTE_ERROR_CODE: GENERATION_FAILED"
+# Phase 159A: emitted when snapshot contains Leela data (KataGo-only path).
+KARTE_ERROR_CODE_NON_KATAGO = "KARTE_ERROR_CODE: NON_KATAGO_DATA"
 
 # Style confidence threshold (Phase 66)
 # Below this threshold, style name is shown as "Unknown" and 勝負術 section is hidden

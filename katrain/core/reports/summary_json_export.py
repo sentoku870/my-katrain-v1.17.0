@@ -19,6 +19,7 @@ from katrain.core import eval_metrics
 from katrain.core.eval_metrics import (
     GameSummaryData,
     MistakeCategory,
+    get_canonical_loss_from_move,
 )
 from katrain.core.reports.definitions import (
     CATEGORY_ALIASES,
@@ -76,12 +77,11 @@ def _ensure_tags_for_top_moves(
     if not top_moves:
         return
 
+    from katrain.core.analysis import build_node_map
     from katrain.core.analysis.meaning_tags import (
         build_classification_context_from_node,
         classify_meaning_tag,
     )
-    from katrain.core.analysis import build_node_map
-    from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
 
     # Build a game_name -> game lookup once
     games_by_name = {g.game_name: g for g in all_games_for_top_mistakes}
@@ -178,22 +178,26 @@ def _compute_player_win_loss_analysis(
             win_games += 1
             for m in gd.snapshot.moves:
                 if m.player == ("B" if player_name == gd.player_black else "W"):
-                    loss_v = m.points_lost or m.score_loss or 0.0
-                    win_total_loss += max(0.0, loss_v)
+                    # Phase 159A: use canonical loss (matches rest of Summary JSON).
+                    # Previously used `m.points_lost or m.score_loss or 0.0` which
+                    # fell through to score_loss when points_lost was exactly 0.0,
+                    # potentially inflating totals for perfect moves.
+                    loss_v = get_canonical_loss_from_move(m)
+                    win_total_loss += loss_v
                     win_count_loss += 1
         elif player_outcome == PlayerOutcome.LOSS:
             loss_games += 1
             for m in gd.snapshot.moves:
                 if m.player == ("B" if player_name == gd.player_black else "W"):
-                    loss_v = m.points_lost or m.score_loss or 0.0
-                    loss_total_loss += max(0.0, loss_v)
+                    loss_v = get_canonical_loss_from_move(m)
+                    loss_total_loss += loss_v
                     loss_count_loss += 1
         elif player_outcome == PlayerOutcome.DRAW:
             draw_games += 1
             for m in gd.snapshot.moves:
                 if m.player == ("B" if player_name == gd.player_black else "W"):
-                    loss_v = m.points_lost or m.score_loss or 0.0
-                    draw_total_loss += max(0.0, loss_v)
+                    loss_v = get_canonical_loss_from_move(m)
+                    draw_total_loss += loss_v
                     draw_count_loss += 1
         else:
             unknown_games += 1
@@ -371,7 +375,10 @@ def _build_player_stats_block(
 
     sorted_moves = sorted(
         filtered_moves_for_top,
-        key=lambda x: x[1].points_lost or x[1].score_loss or 0,
+        # Phase 159A: use canonical loss for sort key (was Bug-4 from
+        # Phase 158-H/I report: `or` short-circuit mis-categorised
+        # moves with points_lost==0).
+        key=lambda x: get_canonical_loss_from_move(x[1]),
         reverse=True,
     )
     # Phase 158-G: back-fill missing reason_tags / meaning_tag_id on
