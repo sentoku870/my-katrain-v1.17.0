@@ -70,19 +70,22 @@ class LeelaManager:
         # Resign hint tracking (use node_key: str to avoid GC issues)
         self._resign_hint_shown_keys: set[str] = set()
 
-    def start_engine(self, katrain_for_engine: Any) -> bool:
+    def start_engine(self, katrain_for_engine: Any, force: bool = False) -> bool:
         """Start Leela engine (no-op if already running).
 
         Args:
             katrain_for_engine: KaTrainインスタンス（LeelaEngine初期化用）
                 Note: LeelaEngineはログ出力のためにkatrainを必要とする
+            force: ``enabled`` フラグを無視して起動を試みる。Play 用に
+                ``LeelaConfig.play_enabled=True`` で engine 未起動のケースを
+                補うためのルート（Phase 160 フォローアップ）。
 
         Returns:
             True if engine started successfully
         """
         if self.leela_engine and self.leela_engine.is_alive():
             return True
-        if not self._config("leela/enabled", False):
+        if not force and not self._config("leela/enabled", False):
             return False
 
         exe_path = self._config("leela/exe_path", "")

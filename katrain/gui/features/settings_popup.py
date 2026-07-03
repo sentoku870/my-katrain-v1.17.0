@@ -1213,6 +1213,7 @@ def _save_leela_settings(
 ) -> None:
     """Save Leela settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 159B)."""
     from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
+    from katrain.core.constants import compute_leela_enabled
 
     # Get defaults from single source (no hardcoding)
     _leela_defaults = LeelaConfig.from_dict({})
@@ -1241,9 +1242,15 @@ def _save_leela_settings(
     # Convert "auto" to -1 (unlimited)
     max_cand_int = -1 if str(leela_cand_value).lower() == "auto" else int(leela_cand_value)
 
+    # Phase 160: ``play_enabled`` で Leela engine を起動するため、ユーザーは
+    # 「Play against Leela」にチェックを入れるだけで自動的に ``enabled=True``
+    # になる。「Play off」のときは ``enabled=False`` も強制設定して engine が
+    # 動作し続けないようにする（明示的に Play を選んだときだけ起動する UX）。
+    effective_enabled = compute_leela_enabled(leela_enabled, leela_play_enabled)
+
     # Update via typed config API (handles MERGE and persistence)
     ctx.update_leela_config(
-        enabled=leela_enabled,
+        enabled=effective_enabled,
         # Phase 159B: play toggle, drives LeelaStrategy availability
         # in the AI strategy dropdown.
         play_enabled=leela_play_enabled,

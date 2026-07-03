@@ -228,6 +228,77 @@ class TestLeelaStrategyEngineUnavailable:
         assert move.gtp() == "pass"
         assert "engine not running" in thoughts.lower()
 
+    def test_force_starts_engine_when_manager_is_present(self) -> None:
+        """Phase 160: ``_resolve_leela_engine`` boots Leela via ``start_engine(force=True)``.
+
+        Verifies the new auto-start path: even if the manager's
+        leela_engine slot is empty (engine is down), the strategy
+        should call ``start_engine(katrain, force=True)`` and — once
+        the manager returns success — return the freshly-spawned
+        engine.
+        """
+        from katrain.core.ai_strategies.leela import LeelaStrategy as LS
+
+        # Build a Game whose Leela engine is None in both the manager
+        # and the direct property.
+        game = _FakeGame(leela_engine=None, next_player="B")
+        fresh_engine = MagicMock(name="fresh_leela_engine")
+        fresh_engine.is_alive.return_value = True
+        fresh_engine.set_position.return_value = True
+
+        start_calls: list[tuple[Any, bool]] = []
+
+        def _start_engine(katrain: Any, force: bool = False) -> bool:
+            start_calls.append((katrain, force))
+            # Simulate the manager wiring the engine back up.
+            game.katrain.leela_manager.leela_engine = fresh_engine
+            game.katrain.leela_engine = fresh_engine
+            return True
+
+        game.katrain.leela_manager.start_engine = _start_engine  # type: ignore[method-assign]
+
+        fresh_engine.request_move.side_effect = (
+            lambda color, cb, visits=None, **_k: (cb("D16") or True)
+        )
+
+        strategy = LS(game, ai_settings={})
+        move, _thoughts = strategy.generate_move()
+
+        # The dispatcher must have gone through the force-start branch.
+        assert start_calls, "start_engine should have been called"
+        _katrain, force = start_calls[0]
+        assert force is True
+
+        # And the new engine must have produced the move.
+        fresh_engine.set_position.assert_called_once()
+        fresh_engine.request_move.assert_called_once()
+        assert move.gtp() == "D16"
+
+    def test_returns_pass_when_force_start_fails(self) -> None:
+        """If force-start cannot boot Leela, strategy still falls back to pass.
+
+        The new branch should not raise; it should swallow the
+        manager's False return and behave identically to the
+        pre-Phase-160 'engine not running' fallback.
+        """
+        from katrain.core.ai_strategies.leela import LeelaStrategy as LS
+
+        game = _FakeGame(leela_engine=None, next_player="B")
+        start_calls: list[bool] = []
+
+        def _start_engine(katrain: Any, force: bool = False) -> bool:
+            start_calls.append(force)
+            return False  # Leela binary missing / subprocess error
+
+        game.katrain.leela_manager.start_engine = _start_engine  # type: ignore[method-assign]
+
+        strategy = LS(game, ai_settings={})
+        move, thoughts = strategy.generate_move()
+
+        assert start_calls == [True]
+        assert move.gtp() == "pass"
+        assert "engine not running" in thoughts.lower()
+
 
 # ---------------------------------------------------------------------------
 # generate_move: happy paths
