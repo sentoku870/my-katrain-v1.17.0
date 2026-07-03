@@ -944,7 +944,7 @@ def do_mykatrain_settings_popup(
     def browse_leela_exe(*_args: Any) -> None:
         _open_browse_dialog(
             ctx=ctx,
-            title="Select Leela Zero executable",
+            title="Select Leela executable",
             initial_path=widget_refs["leela_path_input"].text,
             target_text_input=widget_refs["leela_path_input"],
             dirselect=False,
@@ -1211,7 +1211,7 @@ def _save_leela_settings(
     leela_cand_value: Any,
     leela_play_enabled: bool = False,  # Phase 159B: human-vs-Leela play toggle
 ) -> None:
-    """Save Leela Zero settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 159B)."""
+    """Save Leela settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 159B)."""
     from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
 
     # Get defaults from single source (no hardcoding)

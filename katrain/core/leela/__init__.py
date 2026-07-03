@@ -1,10 +1,10 @@
-"""Leela Zero support package for myKatrain.
+"""Leela support package for myKatrain.
 
 This package provides:
 - Data models for Leela analysis results (LeelaCandidate, LeelaPositionEval)
 - Parser for lz-analyze output
 - Estimated loss calculation logic
-- Engine wrapper for Leela Zero
+- Engine wrapper for Leela
 
 Note: This is completely separate from KataGo functionality.
 """

@@ -202,16 +202,16 @@ msgid "mykatrain:batch:engine_katago"
 msgstr "KataGo"
 
 msgid "mykatrain:batch:engine_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:batch:leela_not_enabled_warning"
 msgstr "⚠ Leela not enabled"
 
 msgid "mykatrain:batch:error_leela_not_enabled"
-msgstr "Leela Zero is not enabled. Please enable it in Settings first."
+msgstr "Leela is not enabled. Please enable it in Settings first."
 
 msgid "mykatrain:batch:leela_start_failed"
-msgstr "Leela engine failed to start. Check Leela Zero settings."
+msgstr "Leela engine failed to start. Check Leela settings."
 
 msgid "mykatrain:batch:open_leela_settings"
 msgstr "Setup Leela"
@@ -1359,10 +1359,10 @@ msgid "mykatrain:settings:engine_katago"
 msgstr "KataGo"
 
 msgid "mykatrain:settings:engine_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:settings:engine_leela_not_enabled_warning"
-msgstr "Leela Zero selected but not enabled. Enable it in the Leela tab."
+msgstr "Leela selected but not enabled. Enable it in the Leela tab."
 
 msgid "mykatrain:settings:engine_save_error"
 msgstr "Failed to save analysis engine setting."
@@ -1613,7 +1613,7 @@ msgid "mykatrain:settings:tab_export"
 msgstr "Export"
 
 msgid "mykatrain:settings:tab_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "Auto Setup"
@@ -1685,12 +1685,12 @@ msgstr "CPU mode also failed"
 msgid "mykatrain:settings:cpu_fallback_verification_failed"
 msgstr "The CPU binary could not be verified to work"
 
-# Leela Zero Settings (Phase 15)
+# Leela Settings (Phase 15)
 msgid "mykatrain:settings:leela_section"
-msgstr "Leela Zero Settings"
+msgstr "Leela Settings"
 
 msgid "mykatrain:settings:leela_enabled"
-msgstr "Enable Leela Zero"
+msgstr "Enable Leela"
 
 msgid "mykatrain:settings:leela_exe_path"
 msgstr "Executable Path"
@@ -1705,7 +1705,7 @@ msgid "mykatrain:settings:leela_max_candidates"
 msgstr "Max Candidates (Leela)"
 
 msgid "mykatrain:settings:disable_katago"
-msgstr "Disable KataGo engine (for testing Leela Zero)"
+msgstr "Disable KataGo engine (for testing Leela)"
 
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (Quick Analysis)"
@@ -1744,7 +1744,7 @@ msgstr "Win rate"
 
 #. Phase 159B: human-vs-Leela play toggle (settings popup).
 msgid "mykatrain:settings:leela_play_enabled"
-msgstr "Play against Leela Zero"
+msgstr "Play against Leela"
 
 #. Phase 159B: surfaced in LeelaManager warnings / popup when the user
 #. picks a strategy that requires Leela but the engine hasn't started.
@@ -1997,16 +1997,16 @@ msgstr "Jumped to move {move}"
 
 #. Phase 40: Leela Play Mode
 msgid "ai:leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "aihelp:ai:leela"
-msgstr "Use Leela Zero engine for move generation"
+msgstr "Use Leela engine for move generation"
 
 msgid "leela:error:start_failed"
-msgstr "Leela Zero could not be started. Check Settings > Leela Zero."
+msgstr "Leela could not be started. Check Settings > Leela."
 
 msgid "leela:error:not_running"
-msgstr "Leela Zero is not running. Check Settings > Leela Zero."
+msgstr "Leela is not running. Check Settings > Leela."
 
 msgid "leela:error:request_failed"
 msgstr "Failed to start Leela analysis."

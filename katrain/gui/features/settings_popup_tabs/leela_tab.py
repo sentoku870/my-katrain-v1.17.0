@@ -1,4 +1,4 @@
-"""Leela Zero tab (Tab 3) for the myKatrain settings popup.
+"""Leela tab (Tab 3) for the myKatrain settings popup.
 
 Phase 145-D+: Extracted from settings_popup.py to enable per-tab file separation.
 Phase 165-b: Split _build_leela_tab into per-section builders.
@@ -243,7 +243,7 @@ def _build_leela_reset_button() -> Button:
 
 
 def _build_leela_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, dict[str, Any]]:
-    """Build the Leela Zero tab content (Tab 3).
+    """Build the Leela tab content (Tab 3).
 
     Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
     Phase 165-b: Split into per-section builders for readability.

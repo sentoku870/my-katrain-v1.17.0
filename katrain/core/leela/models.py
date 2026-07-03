@@ -1,4 +1,4 @@
-"""Data models for Leela Zero analysis results.
+"""Data models for Leela analysis results.
 
 These models are separate from KataGo's analysis structures.
 """

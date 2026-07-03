@@ -1,4 +1,4 @@
-"""Tests for Leela Zero engine wrapper.
+"""Tests for Leela engine wrapper.
 
 Note: Most tests require mocking as they depend on external process.
 """

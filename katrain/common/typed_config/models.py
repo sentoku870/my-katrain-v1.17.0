@@ -362,10 +362,10 @@ class TrainerConfig:
 
 @dataclass(frozen=True)
 class LeelaConfig:
-    """Leela Zero設定（leelaセクション）。
+    """Leela設定（leelaセクション）。
 
     Attributes:
-        enabled: Leela Zero有効化（解析用途、変化図表示）
+        enabled: Leela有効化（解析用途、変化図表示）
         play_enabled: Phase 159B: AI戦略として人間と対局するかどうか
         exe_path: 実行ファイルパス
         max_visits: 最大訪問回数

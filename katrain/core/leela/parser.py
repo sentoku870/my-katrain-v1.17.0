@@ -1,4 +1,4 @@
-"""Parser for Leela Zero lz-analyze output.
+"""Parser for Leela lz-analyze output.
 
 Parses the GTP extended output format from lz-analyze command.
 """

@@ -87,7 +87,7 @@ class MoveEval:
     """
 
     leela_loss_est: float | None = None
-    """Leela Zero による推定損失（0以上、Noneは非Leela解析）。
+    """Leela による推定損失（0以上、Noneは非Leela解析）。
 
     Note:
     - score_loss（目単位）とは異なるセマンティクス

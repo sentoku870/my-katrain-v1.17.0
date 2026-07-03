@@ -1185,16 +1185,16 @@ msgid "mykatrain:batch:engine_katago"
 msgstr "KataGo"
 
 msgid "mykatrain:batch:engine_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:batch:leela_not_enabled_warning"
 msgstr "⚠ Leelaが未有効"
 
 msgid "mykatrain:batch:error_leela_not_enabled"
-msgstr "Leela Zeroが有効になっていません。設定で有効にしてください。"
+msgstr "Leelaが有効になっていません。設定で有効にしてください。"
 
 msgid "mykatrain:batch:leela_start_failed"
-msgstr "Leelaエンジンの起動に失敗しました。Leela Zero設定を確認してください。"
+msgstr "Leelaエンジンの起動に失敗しました。Leela設定を確認してください。"
 
 msgid "mykatrain:batch:open_leela_settings"
 msgstr "Leela設定"
@@ -1311,10 +1311,10 @@ msgid "mykatrain:settings:engine_katago"
 msgstr "KataGo"
 
 msgid "mykatrain:settings:engine_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:settings:engine_leela_not_enabled_warning"
-msgstr "Leela Zeroが選択されていますが有効化されていません。Leelaタブで有効化してください。"
+msgstr "Leelaが選択されていますが有効化されていません。Leelaタブで有効化してください。"
 
 msgid "mykatrain:settings:engine_save_error"
 msgstr "解析エンジン設定の保存に失敗しました。"
@@ -1563,7 +1563,7 @@ msgid "mykatrain:settings:tab_export"
 msgstr "出力設定"
 
 msgid "mykatrain:settings:tab_leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "自動セットアップ"
@@ -1635,12 +1635,12 @@ msgstr "CPUモードでも失敗しました"
 msgid "mykatrain:settings:cpu_fallback_verification_failed"
 msgstr "CPUバイナリの動作確認に失敗しました"
 
-# Leela Zero Settings (Phase 15)
+# Leela Settings (Phase 15)
 msgid "mykatrain:settings:leela_section"
-msgstr "Leela Zero設定"
+msgstr "Leela設定"
 
 msgid "mykatrain:settings:leela_enabled"
-msgstr "Leela Zeroを有効化"
+msgstr "Leelaを有効化"
 
 msgid "mykatrain:settings:leela_exe_path"
 msgstr "実行ファイルパス"
@@ -1655,7 +1655,7 @@ msgid "mykatrain:settings:leela_max_candidates"
 msgstr "最大候補手数 (Leela)"
 
 msgid "mykatrain:settings:disable_katago"
-msgstr "KataGo エンジンを無効にする (Leela Zero の検証用)"
+msgstr "KataGo エンジンを無効にする (Leela の検証用)"
 
 msgid "mykatrain:settings:leela_fast_visits"
 msgstr "Fast Visits (高速解析)"
@@ -1692,7 +1692,7 @@ msgstr "勝率"
 
 #. Phase 159B: human-vs-Leela play toggle (settings popup).
 msgid "mykatrain:settings:leela_play_enabled"
-msgstr "Leela Zeroと対局する"
+msgstr "Leelaと対局する"
 
 #. Phase 159B: surfaced in LeelaManager warnings / popup when the user
 #. picks a strategy that requires Leela but the engine hasn't started.
@@ -1943,16 +1943,16 @@ msgstr "手数{move}に移動しました"
 
 #. Phase 40: Leela Play Mode
 msgid "ai:leela"
-msgstr "Leela Zero"
+msgstr "Leela"
 
 msgid "aihelp:ai:leela"
-msgstr "Leela Zeroエンジンで着手を生成"
+msgstr "Leelaエンジンで着手を生成"
 
 msgid "leela:error:start_failed"
-msgstr "Leela Zeroを起動できません。設定 > Leela Zeroを確認してください。"
+msgstr "Leelaを起動できません。設定 > Leelaを確認してください。"
 
 msgid "leela:error:not_running"
-msgstr "Leela Zeroが動作していません。設定 > Leela Zeroを確認してください。"
+msgstr "Leelaが動作していません。設定 > Leelaを確認してください。"
 
 msgid "leela:error:request_failed"
 msgstr "Leela解析を開始できませんでした。"

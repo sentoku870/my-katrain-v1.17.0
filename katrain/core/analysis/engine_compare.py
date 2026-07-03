@@ -1,7 +1,7 @@
 """
 katrain.core.analysis.engine_compare - エンジン比較ロジック
 
-Phase 39: KataGoとLeela Zeroの解析結果を比較するための機能。
+Phase 39: KataGoとLeelaの解析結果を比較するための機能。
 
 このモジュールはKivy非依存で、以下を提供:
 - MoveComparison: 1手分の両エンジン比較
