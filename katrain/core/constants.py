@@ -56,7 +56,7 @@ AI_HUMAN = "ai:human"
 AI_PRO = "ai:pro"
 # Phase 159B: AI_LEELA restored (was removed in Phase 123 Leela Slimming).
 # Drives the LeelaStrategy in core/ai_strategies/leela.py so a human can
-# play a game against Leela Zero via the LeelaEngine.
+# play a game against Leela via the LeelaEngine.
 AI_LEELA = "ai:leela"
 
 

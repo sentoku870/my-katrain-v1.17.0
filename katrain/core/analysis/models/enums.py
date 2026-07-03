@@ -109,7 +109,7 @@ class EngineType(Enum):
 
     MoveEvalから推定するために使用。
     - KATAGO: KataGo解析（score_loss設定あり）
-    - LEELA: Leela Zero解析（leela_loss_est設定あり）
+    - LEELA: Leela解析（leela_loss_est設定あり）
     - UNKNOWN: エンジン不明（両方None）
 
     Note:

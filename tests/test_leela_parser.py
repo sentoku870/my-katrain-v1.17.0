@@ -1,4 +1,4 @@
-"""Tests for Leela Zero lz-analyze parser."""
+"""Tests for Leela lz-analyze parser."""
 
 from pathlib import Path
 

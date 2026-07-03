@@ -65,7 +65,7 @@ TAB_RESET_KEYS: dict[str, list[tuple[str, str]]] = {
         ("mykatrain_settings", "karte_format"),
         ("mykatrain_settings", "opponent_info_mode"),
     ],
-    # Leela tab: Leela Zero integration settings
+    # Leela tab: Leela integration settings
     "leela": [
         ("leela", "enabled"),
         ("leela", "exe_path"),  # Path, but user-configurable via UI

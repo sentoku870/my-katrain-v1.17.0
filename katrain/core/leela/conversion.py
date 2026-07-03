@@ -1,6 +1,6 @@
 """Conversion module: Leela → MoveEval/EvalSnapshot.
 
-This module converts Leela Zero analysis results (LeelaPositionEval)
+This module converts Leela analysis results (LeelaPositionEval)
 to the standard MoveEval/EvalSnapshot pipeline used by Karte/Summary.
 
 Phase 31: Leela→MoveEval変換

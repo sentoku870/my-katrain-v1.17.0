@@ -3,7 +3,7 @@
 This package is structured for per-tab file separation. Each tab is its
 own submodule loaded lazily to defer Kivy initialization:
 
-- ``leela_tab``: Leela Zero engine tab (Tab 3)
+- ``leela_tab``: Leela engine tab (Tab 3)
 
 Callers should use the lazy ``__getattr__`` re-export (see below) so
 that importing the package itself does NOT eagerly load Kivy. This is

@@ -2,7 +2,7 @@
 
 Strategy was removed in Phase 123 (Leela Slimming). Phase 159B restores
 the human-vs-Leela path while keeping the report generators KataGo-only.
-These tests are mock-driven — they do not start a real Leela Zero process.
+These tests are mock-driven — they do not start a real Leela process.
 
 The strategy is intentionally simple: it depends on the Leela Engine
 exposing ``set_position(moves)`` and ``request_move(color, callback)`` and

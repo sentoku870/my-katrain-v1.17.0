@@ -1,9 +1,9 @@
-"""Leela Zero AI strategy (Phase 159B).
+"""Leela AI strategy (Phase 159B).
 
 Restored from the Phase 123 Leela Slimming, which dropped ``LeelaStrategy``
 and ``AI_LEELA`` in favour of limiting Leela to analysis-only roles.
 Phase 159B brings back a minimal ``AIStrategy`` so a human can play a
-game against Leela Zero via the LeelaEngine GTP wrapper.
+game against Leela via the LeelaEngine GTP wrapper.
 
 Design notes
 ------------

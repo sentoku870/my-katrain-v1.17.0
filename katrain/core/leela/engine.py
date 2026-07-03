@@ -1,6 +1,6 @@
-"""Leela Zero engine wrapper.
+"""Leela engine wrapper.
 
-This module provides a GTP-based engine wrapper for Leela Zero.
+This module provides a GTP-based engine wrapper for Leela.
 It is completely separate from KataGoEngine.
 
 Note: Contains Windows-specific code paths (subprocess.STARTF_USESHOWWINDOW).
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 class LeelaEngine:
-    """Leela Zero analysis engine wrapper.
+    """Leela analysis engine wrapper.
 
-    This engine communicates via GTP protocol with Leela Zero.
+    This engine communicates via GTP protocol with Leela.
     It supports the lz-analyze command for position analysis.
 
     Note: This is completely separate from KataGoEngine.
@@ -432,7 +432,7 @@ class LeelaEngine:
     # Phase 159B: Play-mode methods (human-vs-Leela)
     # =====================================================================
     #
-    # Leela Zero's GTP protocol supports two commands relevant for play:
+    # Leela's GTP protocol supports two commands relevant for play:
     #
     # - ``play <color> <coord>``: tell Leela that the opponent (human) played
     #   at ``<coord>``. Used to keep Leela's internal board state in sync
@@ -486,7 +486,7 @@ class LeelaEngine:
                 The callback is also invoked with the literal
                 ``"resign"`` when Leela resigns.
             visits: Play-out visit cap (default ``config.max_visits``,
-                1000 when unset). Leela Zero always plays with a fixed
+                1000 when unset). Leela always plays with a fixed
                 visit budget the same way KataGo does.
             block: When ``True`` (default) the call runs synchronously on
                 the calling thread. When ``False`` it dispatches to a
