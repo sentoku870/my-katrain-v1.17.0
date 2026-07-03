@@ -2,8 +2,9 @@
 
 This package evaluates how well professional game records match a user's
 learning needs by scoring:
+    - needs_match: How well the game's mistakes align with user's weak areas
     - stability: How stable the game is (suitable for learning vs chaotic)
-    - total: Equal to stability (stability-only scoring, Phase 137+)
+    - total: Weighted combination with batch-relative percentile
 
 And generates batch outputs (Phase 64):
     - curator_ranking.json: Game rankings with suitability scores
@@ -15,10 +16,10 @@ Example usage:
     from katrain.core.curator import generate_curator_outputs, CuratorBatchResult
 
     # Score a single game
-    score = score_game_suitability(game, game_stats)
+    score = score_game_suitability(user_aggregate, game, game_stats)
 
     # Score multiple games with percentiles
-    scores = score_batch_suitability([(game1, stats1), (game2, stats2)])
+    scores = score_batch_suitability(user_aggregate, [(game1, stats1), (game2, stats2)])
 
     # Generate batch outputs
     result = generate_curator_outputs(games_and_stats, curator_dir, batch_timestamp)
@@ -35,6 +36,7 @@ from .guide_extractor import (
 )
 from .models import (
     DEFAULT_CONFIG,
+    UNCERTAIN_TAG,
     SuitabilityConfig,
     SuitabilityScore,
 )
@@ -50,6 +52,8 @@ __all__ = [
     "SuitabilityScore",
     "SuitabilityConfig",
     "DEFAULT_CONFIG",
+    # Constants (Phase 63)
+    "UNCERTAIN_TAG",
     # Scoring Functions (Phase 63)
     "score_game_suitability",
     "score_batch_suitability",

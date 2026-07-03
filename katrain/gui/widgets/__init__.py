@@ -7,6 +7,7 @@ from typing import Any
 __all__ = ["ScoreGraph", "MoveTree", "I18NFileBrowser", "SelectionSlider"]
 
 # Lazy loading to avoid Kivy initialization when importing non-Kivy modules
+# like radar_geometry.py
 
 
 def __getattr__(name: str) -> Any:

@@ -56,6 +56,10 @@ class MixedEngineSnapshotError(ValueError):
 KARTE_ERROR_CODE_MIXED_ENGINE = "KARTE_ERROR_CODE: MIXED_ENGINE"
 KARTE_ERROR_CODE_GENERATION_FAILED = "KARTE_ERROR_CODE: GENERATION_FAILED"
 
+# Style confidence threshold (Phase 66)
+# Below this threshold, style name is shown as "Unknown" and 勝負術 section is hidden
+STYLE_CONFIDENCE_THRESHOLD = 0.2
+
 
 # Critical 3 LLM Prompt (Phase 50)
 CRITICAL_3_PROMPT_TEMPLATE = """# Go Game Review Request

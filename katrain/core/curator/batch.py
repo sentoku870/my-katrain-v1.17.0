@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .guide_extractor import extract_replay_guide
-from .models import SuitabilityScore
+from .models import UNCERTAIN_TAG, SuitabilityScore
 from .scoring import score_batch_suitability
 
 if TYPE_CHECKING:
@@ -96,6 +96,53 @@ def _build_game_title(stats: dict[str, Any]) -> str:
     return Path(game_name).stem
 
 
+def _extract_recommended_tags(
+    stats: dict[str, Any],
+    max_tags: int = 3,
+) -> list[str]:
+    """Extract recommended tags from game stats.
+
+    Tags are sorted by occurrence count (descending), then alphabetically for ties.
+    UNCERTAIN tags are excluded.
+
+    Args:
+        stats: Game stats dict with meaning_tags_by_player
+        max_tags: Maximum number of tags to return
+
+    Returns:
+        List of tag IDs, sorted by count desc then alphabetically
+    """
+    meaning_tags_by_player = stats.get("meaning_tags_by_player", {})
+
+    # Combine tags from both players
+    combined: dict[str, int] = {}
+    for player_tags in meaning_tags_by_player.values():
+        for tag, count in player_tags.items():
+            if tag == UNCERTAIN_TAG:
+                continue  # Skip UNCERTAIN
+            combined[tag] = combined.get(tag, 0) + count
+
+    if not combined:
+        return []
+
+    # Sort by count desc, then alphabetically for deterministic output
+    sorted_tags = sorted(
+        combined.items(),
+        key=lambda x: (-x[1], x[0]),
+    )
+
+    return [tag for tag, _ in sorted_tags[:max_tags]]
+
+
+def _get_user_weak_axes_sorted() -> list[str]:
+    """Get user's weak axes (Deprecated).
+
+    Returns:
+        Empty list (Radar axes are no longer supported).
+    """
+    return []
+
+
 # =============================================================================
 # Main Function
 # =============================================================================
@@ -126,7 +173,7 @@ def generate_curator_outputs(
         curator_dir is created if it doesn't exist (parents=True, exist_ok=True).
 
     Float Precision:
-        stability and total are rounded to 3 decimal places.
+        needs_match, stability, total are rounded to 3 decimal places.
         score_loss in highlight_moments is rounded to 2 decimal places.
 
     Percentile Handling:
@@ -160,8 +207,10 @@ def generate_curator_outputs(
                 "game_id": game_id,
                 "title": _build_game_title(stats),
                 "score_percentile": _normalize_percentile(score),
+                "needs_match": _round_float(score.needs_match),
                 "stability": _round_float(score.stability),
                 "total": _round_float(score.total),
+                "recommended_tags": _extract_recommended_tags(stats),
             }
         )
 
@@ -187,6 +236,7 @@ def generate_curator_outputs(
         "version": JSON_VERSION,
         "generated": generated_ts,
         "total_games": len(games_and_stats),
+        "user_weak_axes": [],  # Radar axes deprecated
         "rankings": sorted_rankings,
     }
 

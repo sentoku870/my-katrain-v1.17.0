@@ -222,10 +222,10 @@ class DataQualityStats(TypedDict):
 
 
 class KarteReport(TypedDict):
-    """Karte JSON v3.5 (Phase 153-A/B/C + Phase 154-D + Phase 155-D + Pacing).
+    """Karte JSON v3.3 (Phase 153-A/B/C + Phase 154-D + Phase 155-D).
 
-    Schema 3.4 → 3.5: Added ``pacing`` section for time-management analysis
-    (blitz/long-think patterns and tilt episodes).
+    Schema 3.2 → 3.3: Added ``opponent_strength_loss_correlation`` section
+    for per-player opponent-rank correlation.
 
     The remaining fields are stable since 3.0 (weaknesses, mistake_streaks,
     critical_3, data_quality, reason_tags_distribution).
@@ -245,6 +245,4 @@ class KarteReport(TypedDict):
     loss_progression: list[dict[str, Any]] | None
     # Phase 155-D: opponent-strength loss correlation (per-player).
     opponent_strength_loss_correlation: dict[str, dict[str, Any]] | None
-    # Phase 4: Pacing/Tilt analysis (time-management patterns).
-    pacing: dict[str, Any] | None
 

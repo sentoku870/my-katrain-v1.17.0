@@ -608,7 +608,7 @@ class TestBatchOutputBehavior:
                 "phase_loss": {"opening": 3.0, "middle": 10.0, "yose": 2.5},
                 "phase_mistake_counts": {("middle", "MISTAKE"): 2},
                 "phase_mistake_loss": {("middle", "MISTAKE"): 6.0},
-                "worst_moves": [(45, "B", "Q10", 3.5, 3.5, MistakeCategory.MISTAKE)],
+                "worst_moves": [(45, "B", "Q10", 3.5, MistakeCategory.MISTAKE)],
             }
         ]
 
