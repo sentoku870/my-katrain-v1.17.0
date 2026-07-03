@@ -86,7 +86,7 @@ katrain/
 │   ├── curator/          # 棋譜適合度スコアリング
 │   ├── diagnostics.py
 │   ├── lang.py
-│   ├── leela/            # Leela Zero 対応
+│   ├── leela/            # Leela 対応
 │   ├── state/            # StateNotifier（Phase 104）
 │   ├── study/            # Active review, review session
 │   ├── tsumego_frame.py
@@ -425,7 +425,7 @@ uv run python i18n.py -todo
   - **core/batch/**: バッチ処理パッケージ（Kivy非依存）
 - 2026-01-20: Phase 41 完了（コード品質リファクタリング）
   - AnalysisMode enum追加、コマンドハンドラ抽出
-- 2026-01-19: Phase 40 完了（Leela Zero対戦機能）
+- 2026-01-19: Phase 40 完了（Leela 対戦機能）
   - LeelaStrategy、AI_LEELA定数追加
 - 2026-01-19: Phase 39 完了（エンジン比較ビュー）
   - **core/analysis/engine_compare.py**: 手動Spearman相関、EngineComparisonResult

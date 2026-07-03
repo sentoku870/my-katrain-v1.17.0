@@ -33,7 +33,7 @@
 | Phase | ゴール | 主成果物 | 状態 |
 |------:|--------|----------|:----:|
 | 131 | JSONレポートの機能改善 | 難易度ラベル名寄せ、局面フェーズ計算 | ✅ |
-| 132 | Leela Zero UI改善 | 候補手表示修正、設定拡張 | ✅ |
+| 132 | Leela UI改善 | 候補手表示修正、設定拡張 | ✅ |
 | 133 | プロジェクトのスリム化 | 緊急バグ修正、最適化調査 | ✅ |
 | 134 | 10段階Skill Radar実装 | SkillTier拡張、軸別閾値設定 | ✅ |
 | 135 | Skill Radarバッチ出力 | GUI統合、テキスト形式出力 | ✅ |
@@ -440,7 +440,7 @@ READ-ONLY 調査で Phase 148 では触れられなかった 5 件のバグ、6 
 
 | 問題 | 種別 | 状態 |
 |------|------|------|
-| SGF skip "Too few analyzed moves (0)" | データ側の問題 | ユーザーのSGFがKataGo解析データ（`KT` プロパティ / `scoreLead`）を含まず、Leela Zero 解析（`LZ` プロパティ）のみ。KataGo で再解析が必要 |
+| SGF skip "Too few analyzed moves (0)" | データ側の問題 | ユーザーのSGFがKataGo解析データ（`KT` プロパティ / `scoreLead`）を含まず、Leela 解析（`LZ` プロパティ）のみ。KataGo で再解析が必要 |
 | Topmoves ホバー時の変化図再生 | 既存バグ | `badukpan.py:on_mouse_pos` / `active_pv_moves` 関連、詳細調査が必要 |
 | `padding_x` 廃止警告 | 将来削除予定 | `kivy/uix/label.py` の `padding_x` プロパティが Kivy 2.3+ で deprecated、即時動作影響なし |
 

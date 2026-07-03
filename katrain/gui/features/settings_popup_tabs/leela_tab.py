@@ -207,8 +207,8 @@ def _build_leela_play_section(
 
     A single ``CheckBox`` (label + control) that drives
     ``LeelaConfig.play_enabled``. When enabled, ``LeelaStrategy`` is
-    available in the AI strategy picker for live games against Leela
-    Zero. Disabling it does not affect the analysis pipeline (variation
+    available in the AI strategy picker for live games against Leela.
+    Disabling it does not affect the analysis pipeline (variation
     display via ``LeelaManager`` keeps working as before).
 
     Phase 123 removed the original checkbox; we restore it here as a

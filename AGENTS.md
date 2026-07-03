@@ -273,6 +273,9 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-03: Leela Zero 表記を Leela に統一（人間棋譜学習版との混同回避）
+  - docstring・コメント・docs の "Leela Zero" / "Leela 0.110" を "Leela" に統一（13 箇所）
+  - GTP プロトコル由来の `lz-analyze` / `LZ` プロパティ、内部識別子（`AI_LEELA`, `EngineType.LEELA` 等）は変更せず
 - 2026-06-29: Curator テスト追加 + settings_popup.py 分割 + Dead Code 削除（Phase 158-E / PR #321）
   - curator/ カバレッジ 0% → 92%、settings_popup.py -243 行、新規テスト 148 件
 - 2026-06-26: AGENTS.md として再構成（旧 CLAUDE.md から移行、スキルを on-demand 化）
