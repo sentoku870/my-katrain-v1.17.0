@@ -1,30 +1,34 @@
-"""Tests for ``game_commands.do_ai_move`` (Phase 159 fix).
+"""Tests for ``game_commands.do_ai_move`` (Phase 170).
 
 Background
 ----------
-Before Phase 159 the dispatcher used ``ctx.config(f"ai/{mode}")`` directly,
-which only worked when ``mode`` happened to be a top-level ``ai:<key>`` entry
-in ``config.json``. KataGo paths never hit the dispatcher because the engine
-itself produces the move via the analysis poll, so the bug stayed hidden.
-
-Phase 159 routes the dispatcher through STRATEGY_REGISTRY for the Leela
-strategy only (``AI_LEELA = "ai:leela"``). KataGo paths now skip the
-dispatcher entirely and rely on the engine.
+After Phase 170 the dispatcher uses ``STRATEGY_REGISTRY`` as the single
+source of truth: any ``Player.strategy`` value that *is* registered
+(``ai:default``, ``ai:handicap``, ``ai:pro``, the policy/pick families
+…) is forwarded to ``generate_ai_move``. Strategies that are NOT in
+the registry (notably ``"game:normal"`` and the bare KataGo engine
+strategy id) are skipped because ``KataGoEngine.poll`` already
+produces a move in its own loop.
 
 The tests below stub ``ctx`` enough to verify each branch:
 
-  * ``mode == "ai:leela"`` -> ``generate_ai_move`` is called with the
-    strategy id (and any settings). ``STRATEGY_REGISTRY`` is not consulted
-    by the dispatcher except for the ``KeyError``-equivalent lookup we
-    pre-validate before dispatch.
-  * ``mode == "game:normal"`` (KataGo default) -> ``generate_ai_move`` is
-    *not* called. No ``"AI Mode ... not found"`` log appears.
-  * Strategy present in registry but settings missing -> ``{}`` is
-    passed; the dispatcher survives the ``or {}`` fallback.
+  * Registered strategy (``ai:human``) -> ``generate_ai_move`` is
+    called with the strategy id and the settings dict.
+  * ``mode == "game:normal"`` -> ``generate_ai_move`` is *not* called
+    and no "AI Mode ... not found" log appears.
+  * Other KataGo-internal strategy ids (e.g. ``ai:rank``,
+    ``ai:scoreloss`` if the registry no longer holds them) -> also
+    skipped.
+  * Settings missing -> ``{}`` is passed; the dispatcher survives
+    the ``or {}`` fallback.
+  * Exception -> ``ctx.log`` + ``ctx.controls.set_status`` are
+    populated.
+  * ``node`` argument that does not match the current node -> abort
+    before any dispatch.
 
-We deliberately use ``unittest.mock.MagicMock`` for ``ctx`` so the test
-does not need to import the full ``KaTrainGui`` Kivy root (which would
-require a running Kivy app).
+We deliberately use ``unittest.mock.MagicMock`` for ``ctx`` so the
+test does not need to import the full ``KaTrainGui`` Kivy root
+(which would require a running Kivy app).
 """
 
 from __future__ import annotations
@@ -34,16 +38,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from katrain.core.constants import AI_LEELA
-
 
 @pytest.fixture
 def ctx_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Return a MagicMock ctx with a real ``config`` method.
+    """Return a stub ``ctx`` with a real ``config`` method.
 
-    We do not import ``KaTrainGui`` because it pulls in Kivy's event loop;
-    the dispatcher under test only touches ``ctx.config``, ``ctx.game``,
-    ``ctx.next_player_info``, ``ctx.controls`` and ``ctx.log``.
+    We do not import ``KaTrainGui`` because it pulls in Kivy's event
+    loop; the dispatcher under test only touches ``ctx.config``,
+    ``ctx.game``, ``ctx.next_player_info``, ``ctx.controls`` and
+    ``ctx.log``.
     """
 
     class _StubCtx:
@@ -56,9 +59,10 @@ def ctx_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
 
             self._config: dict[str, dict[str, Any]] = {
                 "ai": {
-                    "ai:leela": {},
+                    "ai:human": {"modern_style": False},
                 }
             }
+            self._next_player_strategy = "ai:human"
 
         def config(self, setting: str, default: Any = None) -> Any:
             if "/" in setting:
@@ -77,18 +81,18 @@ def ctx_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
         def next_player_info(self) -> Any:
             return MagicMock(strategy=self._next_player_strategy)
 
-    ctx = _StubCtx()
-    # Default to Leela strategy so the test starts in the interesting
-    # branch. Individual tests override ``next_player_info_setter``.
-    ctx.next_player_info_setter(AI_LEELA)
-    return ctx
+    return _StubCtx()
 
 
-def test_do_ai_move_routes_leela_to_generate_ai_move(
+def test_do_ai_move_routes_registered_strategy_to_generate_ai_move(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Leela strategy should be the only strategy that lands at ``generate_ai_move``."""
+    """A strategy present in ``STRATEGY_REGISTRY`` is forwarded to ``generate_ai_move``."""
+    from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
+
+    # Sanity: ai:human is registered, otherwise the test is meaningless.
+    assert "ai:human" in STRATEGY_REGISTRY
 
     called_with: dict[str, Any] = {}
 
@@ -98,26 +102,25 @@ def test_do_ai_move_routes_leela_to_generate_ai_move(
         called_with["ai_settings"] = ai_settings
         return (MagicMock(), MagicMock())
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _fake_generate,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _fake_generate)
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
     assert called_with == {
         "game": ctx_fixture.game,
-        "ai_mode": AI_LEELA,
-        "ai_settings": {},
+        "ai_mode": "ai:human",
+        "ai_settings": {"modern_style": False},
     }
 
 
-def test_do_ai_move_skips_katago_normal_mode(
+def test_do_ai_move_skips_game_normal_mode(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """KataGo ``game:normal`` is handled by the engine; the dispatcher must noop."""
+    from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
 
+    assert "game:normal" not in STRATEGY_REGISTRY
     ctx_fixture.next_player_info_setter("game:normal")
 
     called: dict[str, Any] = {}
@@ -125,10 +128,7 @@ def test_do_ai_move_skips_katago_normal_mode(
     def _should_not_call(*_args: Any, **_kwargs: Any) -> None:
         called["yes"] = True
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _should_not_call,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _should_not_call)
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
@@ -139,17 +139,17 @@ def test_do_ai_move_skips_katago_normal_mode(
     assert not hasattr(ctx_fixture, "last_log")
 
 
-def test_do_ai_move_skips_other_ai_modes(
+def test_do_ai_move_skips_unknown_modes(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Other KataGo strategies (rank / handicap / etc.) also skip the dispatcher.
+    """Strategies not in ``STRATEGY_REGISTRY`` are also skipped.
 
-    The registered KataGo strategies historically carried ``ai:`` keys
-    in config.json (e.g. ``ai:rank``, ``ai:handicap``). The dispatcher
-    never observed them because KataGo engine.poll already produced a
-    move; verifying the skip in code protects against future KataGo
-    strategies accidentally entering this branch.
+    This protects against future KataGo-internal ids
+    (e.g. ``ai:scoreloss`` if a refactor moves it out of the registry,
+    or hypothetical engine-specific ids) accidentally entering the
+    dispatcher branch.
     """
+    from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
 
     called: dict[str, Any] = {}
@@ -157,12 +157,18 @@ def test_do_ai_move_skips_other_ai_modes(
     def _should_not_call(*_args: Any, **_kwargs: Any) -> None:
         called["yes"] = True
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _should_not_call,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _should_not_call)
 
-    for strategy_id in ("ai:rank", "ai:default", "ai:handicap", "ai:pro"):
+    for strategy_id in ("game:normal", "game:teach", "ai:leela", "ai:unknown"):
+        # If ai:leela were ever re-registered the test would still pass
+        # because Phase 170 keeps it out of the registry; explicitly
+        # assert that here so the regression is visible.
+        if strategy_id == "ai:leela":
+            assert strategy_id not in STRATEGY_REGISTRY, (
+                "Phase 170 removed ai:leela from the registry; if you "
+                "re-added it, update the test and explain why Leela "
+                "play is back."
+            )
         ctx_fixture.next_player_info_setter(strategy_id)
         game_commands.do_ai_move(ctx_fixture, node=None)
         assert "yes" not in called, (
@@ -173,14 +179,10 @@ def test_do_ai_move_skips_other_ai_modes(
 def test_do_ai_move_surfaces_settings_when_present(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """When ``ai:leela`` settings are stored, the dispatcher forwards them.
-
-    ``ctx.config("ai/ai:leela")`` returns the registered dict, and the
-    dispatcher passes that dict (not a falsy value) to ``generate_ai_move``.
-    """
+    """When ``ai:human`` settings are stored, the dispatcher forwards them."""
     from katrain.gui.features.commands import game_commands
 
-    ctx_fixture._config["ai"]["ai:leela"] = {"play_visits": 750}
+    ctx_fixture._config["ai"]["ai:human"] = {"modern_style": True, "extra": 1}
 
     captured: dict[str, Any] = {}
 
@@ -188,37 +190,27 @@ def test_do_ai_move_surfaces_settings_when_present(
         captured["settings"] = ai_settings
         return (MagicMock(), MagicMock())
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _capture,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _capture)
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
-    assert captured["settings"] == {"play_visits": 750}
+    assert captured["settings"] == {"modern_style": True, "extra": 1}
 
 
-def test_do_ai_move_does_not_log_when_key_missing_but_registry_present(
+def test_do_ai_move_falls_back_to_empty_settings(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Missing settings branch falls back to {}; no 'AI Mode ... not found!' log.
+    """Missing settings branch falls back to ``{}``; no 'AI Mode ... not found!' log.
 
     The previous implementation emitted a misleading 'AI Mode ... not
     found!' even when the strategy existed in the registry; the new
     dispatcher uses ``STRATEGY_REGISTRY`` as the source of truth and
-    never raises the 'not found' message for Leela.
+    only logs when the strategy is actually missing.
     """
-    from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
 
-    # If a future cleanup removed AI_LEELA from the registry, the dispatcher
-    # *should* log; here we double-check that AI_LEELA is registered before
-    # running the no-op assertion (the dispatcher short-circuits only when
-    # the strategy is registered).
-    assert AI_LEELA in STRATEGY_REGISTRY
-
     # Strip the config so the dispatcher hits its ``or {}`` fallback.
-    ctx_fixture._config["ai"].pop("ai:leela", None)
+    ctx_fixture._config["ai"].pop("ai:human", None)
 
     captured: dict[str, Any] = {}
 
@@ -226,10 +218,7 @@ def test_do_ai_move_does_not_log_when_key_missing_but_registry_present(
         captured["settings"] = ai_settings
         return (MagicMock(), MagicMock())
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _capture,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _capture)
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
@@ -240,23 +229,20 @@ def test_do_ai_move_does_not_log_when_key_missing_but_registry_present(
 def test_do_ai_move_propagates_strategy_exceptions(
     ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Exceptions from ``generate_ai_move`` propagate to ctx.log + status."""
+    """Exceptions from ``generate_ai_move`` propagate to ``ctx.log`` + status."""
 
     from katrain.gui.features.commands import game_commands
 
     def _explode(*_args: Any, **_kwargs: Any) -> None:
-        raise RuntimeError("leela fixture down")
+        raise RuntimeError("strategy fixture down")
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _explode,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _explode)
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
     # ``_StubCtx.log`` set ``last_log`` when invoked.
-    assert getattr(ctx_fixture, "last_log", ("", None))[0] == "leela fixture down"
-    ctx_fixture.controls.set_status.assert_called_once_with("leela fixture down")
+    assert getattr(ctx_fixture, "last_log", ("", None))[0] == "strategy fixture down"
+    ctx_fixture.controls.set_status.assert_called_once_with("strategy fixture down")
 
 
 def test_do_ai_move_respects_node_pin(
@@ -270,10 +256,7 @@ def test_do_ai_move_respects_node_pin(
     def _should_not_call(*_args: Any, **_kwargs: Any) -> None:
         called["yes"] = True
 
-    monkeypatch.setattr(
-        "katrain.core.ai.generate_ai_move",
-        _should_not_call,
-    )
+    monkeypatch.setattr("katrain.core.ai.generate_ai_move", _should_not_call)
 
     other_node = object()
     assert other_node is not ctx_fixture.game.current_node

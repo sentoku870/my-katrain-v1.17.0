@@ -54,53 +54,17 @@ AI_SIMPLE_OWNERSHIP = "ai:simple"
 AI_SETTLE_STONES = "ai:settle"
 AI_HUMAN = "ai:human"
 AI_PRO = "ai:pro"
-# Phase 159B: AI_LEELA restored (was removed in Phase 123 Leela Slimming).
-# Drives the LeelaStrategy in core/ai_strategies/leela.py so a human can
-# play a game against Leela via the LeelaEngine.
-AI_LEELA = "ai:leela"
-
-
-def compute_leela_enabled(leela_enabled: bool, leela_play_enabled: bool) -> bool:
-    """Phase 161: pick ``enabled`` based on toggles set in the Leela tab.
-
-    The Settings > Leela tab surfaces two independent flags —
-    ``leela/enabled`` (analysis) and ``leela/play_enabled`` (Play).
-    When the user enables Play without separately flipping analysis on,
-    the engine must still boot; conversely, turning Play off must stop
-    the engine even if analysis was on. We join them with ``or``: Play
-    on starts the engine, analysis alone keeps it running, and only
-    when both are off does the engine drop back to ``False``.
-
-    Pure helper — lives in ``katrain.core.constants`` so unit tests
-    can import it without pulling in the Kivy widget tree that the
-    settings popup depends on.
-
-    Truth table
-    -----------
-
-    +-------------------+----------------------+-----------------+
-    | leela_enabled      | leela_play_enabled   | effective       |
-    +===================+======================+=================+
-    | False              | False                | False           |
-    | False              | True                 | True            |
-    | True               | False                | True            |
-    | True               | True                 | True            |
-    +-------------------+----------------------+-----------------+
-    """
-    return leela_enabled or leela_play_enabled
-
 
 AI_CONFIG_DEFAULT = AI_RANK
 
 AI_STRATEGIES_ENGINE = [AI_DEFAULT, AI_HANDICAP, AI_SCORELOSS, AI_SIMPLE_OWNERSHIP, AI_JIGO, AI_ANTIMIRROR]
 AI_STRATEGIES_PICK = [AI_PICK, AI_LOCAL, AI_TENUKI, AI_INFLUENCE, AI_TERRITORY, AI_RANK]
 AI_STRATEGIES_POLICY = [AI_WEIGHTED, AI_POLICY] + AI_STRATEGIES_PICK
-AI_STRATEGIES = AI_STRATEGIES_ENGINE + AI_STRATEGIES_POLICY + [AI_HUMAN, AI_PRO, AI_LEELA]
+AI_STRATEGIES = AI_STRATEGIES_ENGINE + AI_STRATEGIES_POLICY + [AI_HUMAN, AI_PRO]
 AI_STRATEGIES_RECOMMENDED_ORDER = [
     AI_DEFAULT,
     AI_HUMAN,
     AI_PRO,
-    AI_LEELA,
     AI_RANK,
     AI_HANDICAP,
     AI_SIMPLE_OWNERSHIP,
@@ -133,10 +97,6 @@ AI_STRENGTH = {  # dan ranks, backup if model is missing.
     AI_SETTLE_STONES: 2,
     AI_HUMAN: float("nan"),
     AI_PRO: float("nan"),
-    # Phase 159B: Leela's strength depends on the user's installed network +
-    # visit budget. Without a calibrated mapping we leave it as NaN so the
-    # UI can render "auto" rather than fabricating a value.
-    AI_LEELA: float("nan"),
 }
 
 # --- AI Statistics Constants ---

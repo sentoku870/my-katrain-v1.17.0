@@ -273,6 +273,11 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-03: Leela 対局機能の再廃止（Phase 170）
+  - 人間 vs Leela 対局を Phase 123 以来の "解析のみ" 状態に戻す
+  - 削除: `AI_LEELA` 定数、`compute_leela_enabled()`、`LeelaStrategy` クラス、`LeelaConfig.play_enabled` / `play_visits`、`LeelaEngine.play_move` / `request_move`、Settings の "Leelaと対局する" チェックボックス、関連 i18n 文字列（`leela:play:*` / `ai:leela` / `aihelp:ai:leela`）、`LeelaManager.start_engine(force=...)` の `force` 引数
+  - 保持: Leela 解析機能（変化図・loss 推定・カルテ等）、`EngineType.LEELA` enum、`lz-analyze` / `LZ` プロパティ（GTP プロトコル由来）
+  - 既存ユーザ設定の `play_enabled` / `play_visits` は `LeelaConfig.from_dict` で無視（後方互換）
 - 2026-07-03: Leela Zero 表記を Leela に統一（人間棋譜学習版との混同回避）
   - docstring・コメント・docs の "Leela Zero" / "Leela 0.110" を "Leela" に統一（13 箇所）
   - GTP プロトコル由来の `lz-analyze` / `LZ` プロパティ、内部識別子（`AI_LEELA`, `EngineType.LEELA` 等）は変更せず

@@ -364,13 +364,16 @@ class TrainerConfig:
 class LeelaConfig:
     """Leela設定（leelaセクション）。
 
+    Phase 170: human-vs-Leela play support was removed. ``play_enabled``
+    and ``play_visits`` are no longer surfaced in the Settings UI;
+    existing config keys are simply ignored on load so older configs
+    keep parsing without errors.
+
     Attributes:
         enabled: Leela有効化（解析用途、変化図表示）
-        play_enabled: Phase 159B: AI戦略として人間と対局するかどうか
         exe_path: 実行ファイルパス
         max_visits: 最大訪問回数
         fast_visits: 高速解析時の訪問回数
-        play_visits: プレイ時の訪問回数
         loss_scale_k: 損失スケール係数
         resign_hint_enabled: 投了ヒント有効化
         resign_winrate_threshold: 投了勝率閾値（パーセント）
@@ -380,14 +383,9 @@ class LeelaConfig:
     """
 
     enabled: bool = False
-    # Phase 159B: human-vs-Leela play toggle. Independent of `enabled`
-    # (analysis) so users can disable play without losing the variation
-    # display. Defaults to False so existing configs are unaffected.
-    play_enabled: bool = False
     exe_path: str | None = None
     max_visits: int = 1000
     fast_visits: int = 200
-    play_visits: int = 500
     loss_scale_k: float = 0.5
     resign_hint_enabled: bool = False
     resign_winrate_threshold: int = 5
@@ -405,17 +403,17 @@ class LeelaConfig:
 
         Returns:
             LeelaConfigインスタンス
+
+        Note:
+            ``play_enabled`` / ``play_visits`` are accepted but ignored
+            (Phase 170) so older configs keep loading. Migrate by
+            removing these keys when the user next saves the Leela tab.
         """
         return cls(
             enabled=safe_bool(d.get("enabled"), default=False),
-            # Phase 159B: Play toggle. Falls back to ``enabled`` so existing
-            # users who only had analysis on get analysis-only behaviour
-            # unchanged (they can opt in to play later via Settings > Leela).
-            play_enabled=safe_bool(d.get("play_enabled"), default=False),
             exe_path=normalize_path(d.get("exe_path")),
             max_visits=safe_int(d.get("max_visits"), 1000),
             fast_visits=safe_int(d.get("fast_visits"), 200),
-            play_visits=safe_int(d.get("play_visits"), 500),
             loss_scale_k=safe_float(d.get("loss_scale_k"), 0.5),
             resign_hint_enabled=safe_bool(d.get("resign_hint_enabled"), default=False),
             resign_winrate_threshold=safe_int(d.get("resign_winrate_threshold"), 5),
