@@ -140,36 +140,6 @@ class TestGameLabelInvariants:
         assert "%5B" in target or "[" in target  # Brackets may or may not be encoded
 
 
-class TestStyleConfidenceGating:
-    """Issue C: Style confidence gating invariants.
-
-    Uses pure helper function to avoid dependency on full StyleResult construction.
-    """
-
-    def test_confidence_threshold_constant_exists(self):
-        """STYLE_CONFIDENCE_THRESHOLD should be defined as 0.2."""
-        from katrain.core.reports.karte_report import STYLE_CONFIDENCE_THRESHOLD
-
-        assert STYLE_CONFIDENCE_THRESHOLD == 0.2
-
-    @pytest.mark.parametrize(
-        "confidence,should_show_style",
-        [
-            (0.0, False),
-            (0.1, False),
-            (0.19, False),
-            (0.2, True),
-            (0.5, True),
-            (1.0, True),
-        ],
-    )
-    def test_confidence_threshold_boundary(self, confidence, should_show_style):
-        """Verify threshold behavior at 20% using constant directly."""
-        from katrain.core.reports.karte_report import STYLE_CONFIDENCE_THRESHOLD
-
-        assert (confidence >= STYLE_CONFIDENCE_THRESHOLD) == should_show_style
-
-
 class TestMTagClassification:
     """Issue D: MTag classification invariants.
 

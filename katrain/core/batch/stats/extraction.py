@@ -263,8 +263,9 @@ def extract_game_stats(
 
             # Track worst moves
             if move.points_lost and move.points_lost >= 2.0:
+                importance = max(0.0, move.points_lost)
                 stats["worst_moves"].append(
-                    (move.move_number, player, move.gtp, move.points_lost, move.mistake_category)
+                    (move.move_number, player, move.gtp, move.points_lost, importance, move.mistake_category)
                 )
 
         # Sort worst moves by loss

@@ -17,7 +17,7 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 158-A/B: bug fixes.
+REPORT_SCHEMA_VERSION: Final[str] = "3.5"  # Phase 4: Pacing/Tilt integration (pacing section added to karte JSON).
 
 
 # --- Thresholds ---

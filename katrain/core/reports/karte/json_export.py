@@ -52,6 +52,7 @@ def build_karte_json(
     target_visits: int | None = None,
     include_definitions: bool = False,
     dynamic_phase_detection: bool = True,
+    snapshot: Any | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -91,13 +92,35 @@ def build_karte_json(
             (Phase 156). Falls back to fixed thresholds when scoreStdev
             is unavailable. Pass ``False`` to opt out and use the legacy
             static split.
+        snapshot: Optional pre-built EvalSnapshot. If provided, uses this
+            instead of calling ``game.build_eval_snapshot()``. Avoids
+            double computation when the caller already has a snapshot.
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
     """
-    snapshot = game.build_eval_snapshot()
+    if snapshot is None:
+        snapshot = game.build_eval_snapshot()
     moves = list(snapshot.moves)
     board_x, board_y = game.board_size
+
+    # Phase 4: Pacing/Tilt analysis for karte
+    pacing_section: dict[str, Any] = {"has_time_data": False}
+    pacing_map: dict[int, Any] | None = None
+    try:
+        from katrain.core.analysis.time import (
+            analyze_pacing,
+            extract_pacing_stats_for_summary,
+            parse_time_data,
+        )
+
+        time_data = parse_time_data(game.root)
+        if time_data.has_time_data:
+            pacing_result = analyze_pacing(time_data, moves)
+            pacing_section = extract_pacing_stats_for_summary(pacing_result)
+            pacing_map = {m.move_number: m for m in pacing_result.pacing_metrics}
+    except Exception:
+        pass  # Pacing analysis failure is non-fatal
 
     # Phase 156: Opt-in dynamic phase detection (overrides move.tag)
     if dynamic_phase_detection:
@@ -253,7 +276,7 @@ def build_karte_json(
         effective_preset=effective_preset,
         auto_recommendation=None,
         confidence_level=confidence_level,
-        pacing_map=None,
+        pacing_map=pacing_map,
         histogram=None,
         board_x=board_x,
         board_y=board_y,
@@ -377,6 +400,7 @@ def build_karte_json(
         "win_loss_analysis": win_loss,
         "loss_progression": loss_progression,
         "opponent_strength_loss_correlation": opponent_correlation,
+        "pacing": pacing_section,
     }
     return result
 
@@ -423,7 +447,7 @@ def _weaknesses_meta_for(
         phase = w["phase"]
         category = w["category"]
         for m in loss_moves:
-            if covered_move_ids and id(m) in covered_move_ids:
+            if id(m) in covered_move_ids:
                 continue
             phase_label = classify_game_phase(m.move_number or 0, ctx.board_x)
             cat_label = (

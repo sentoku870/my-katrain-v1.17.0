@@ -1,10 +1,12 @@
 """Tests for katrain.core.curator.scoring (Phase 63).
 
+Phase 137+: Curator simplified to stability-only scoring. Radar axes
+(needs_match) and meaning-tag-based helpers have been removed.
+
 Tests cover:
-- Pure helper functions (_normalize_meaning_tag_key, _combine_meaning_tags,
-  _round_half_up, _wrap_debug_info)
+- _round_half_up (half-up rounding)
+- _wrap_debug_info (MappingProxyType wrapping)
 - _compute_volatility (population stdev)
-- _compute_total (weighted total with normalization)
 - compute_batch_percentiles (ECDF-style)
 - _collect_score_leads (GameNode traversal)
 - compute_stability (volatility-driven score)
@@ -20,19 +22,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.curator.models import (
     DEFAULT_CONFIG,
-    UNCERTAIN_TAG,
     SuitabilityConfig,
     SuitabilityScore,
 )
 from katrain.core.curator.scoring import (
     _collect_score_leads,
-    _combine_meaning_tags,
-    _compute_total,
     _compute_volatility,
-    _normalize_meaning_tag_key,
     _round_half_up,
     _wrap_debug_info,
     compute_batch_percentiles,
@@ -41,70 +38,6 @@ from katrain.core.curator.scoring import (
     score_game_suitability,
 )
 from katrain.core.game_node import GameNode
-
-# =============================================================================
-# _normalize_meaning_tag_key
-# =============================================================================
-
-
-class TestNormalizeMeaningTagKey:
-    """Tests for MeaningTagId/str normalization."""
-
-    def test_string_passthrough(self):
-        """Plain strings are returned as-is."""
-        assert _normalize_meaning_tag_key("overplay") == "overplay"
-
-    def test_enum_uses_value_not_str(self):
-        """Enum uses .value (avoids "MeaningTagId.OVERPLAY" string drift)."""
-        assert _normalize_meaning_tag_key(MeaningTagId.OVERPLAY) == "overplay"
-        assert _normalize_meaning_tag_key(MeaningTagId.UNCERTAIN) == UNCERTAIN_TAG
-
-    def test_string_passthrough_with_uncertain(self):
-        """'uncertain' string is preserved (case-sensitive)."""
-        assert _normalize_meaning_tag_key("uncertain") == "uncertain"
-
-
-# =============================================================================
-# _combine_meaning_tags
-# =============================================================================
-
-
-class TestCombineMeaningTags:
-    """Tests for combining tag counts across players."""
-
-    def test_combines_b_and_w(self):
-        """Tags from both players are summed."""
-        tags = {
-            "B": {"overplay": 3, "missed_kill": 1},
-            "W": {"overplay": 2, "territory_loss": 4},
-        }
-        combined = _combine_meaning_tags(tags)
-        assert combined["overplay"] == 5
-        assert combined["missed_kill"] == 1
-        assert combined["territory_loss"] == 4
-
-    def test_excludes_uncertain(self):
-        """UNCERTAIN tag is filtered out."""
-        tags = {
-            "B": {"overplay": 3, UNCERTAIN_TAG: 10},
-            "W": {"missed_kill": 2},
-        }
-        combined = _combine_meaning_tags(tags)
-        assert UNCERTAIN_TAG not in combined
-        assert combined == {"overplay": 3, "missed_kill": 2}
-
-    def test_empty_input_returns_empty(self):
-        """Empty tags dict returns empty combined."""
-        assert _combine_meaning_tags({}) == {}
-
-    def test_normalizes_enum_keys(self):
-        """MeaningTagId enum keys are normalized to strings."""
-        tags = {
-            "B": {MeaningTagId.OVERPLAY: 2, MeaningTagId.MISSED_TESUJI: 1},
-        }
-        combined = _combine_meaning_tags(tags)
-        assert combined == {"overplay": 2, "missed_tesuji": 1}
-
 
 # =============================================================================
 # _round_half_up
@@ -205,49 +138,6 @@ class TestComputeVolatility:
 
 
 # =============================================================================
-# _compute_total
-# =============================================================================
-
-
-class TestComputeTotal:
-    """Tests for weighted total computation."""
-
-    def test_equal_weights_50_50(self):
-        """Equal weights give simple average."""
-        cfg = SuitabilityConfig(needs_match_weight=0.5, stability_weight=0.5)
-        # (0.4 * 0.5 + 0.6 * 0.5) / 1.0 = 0.5
-        assert _compute_total(0.4, 0.6, cfg) == pytest.approx(0.5)
-
-    def test_unnormalized_weights_normalized(self):
-        """Weights are normalized at computation time."""
-        # Sum=1.5 (unusual), but normalization handles it
-        cfg = SuitabilityConfig(needs_match_weight=0.6, stability_weight=0.9)  # sum=1.5
-        # w_n = 0.6/1.5 = 0.4, w_s = 0.9/1.5 = 0.6
-        # 0.5 * 0.4 + 0.7 * 0.6 = 0.2 + 0.42 = 0.62
-        assert _compute_total(0.5, 0.7, cfg) == pytest.approx(0.62)
-
-    def test_zero_weights_returns_zero(self):
-        """If weight_sum <= 0, returns 0.0."""
-        cfg = SuitabilityConfig(needs_match_weight=0.0, stability_weight=0.0)
-        assert _compute_total(0.5, 0.7, cfg) == 0.0
-
-    def test_negative_weights_treated_as_zero(self):
-        """Negative weights still normalize (sum <= 0 returns 0)."""
-        cfg = SuitabilityConfig(needs_match_weight=-1.0, stability_weight=0.5)  # sum = -0.5
-        assert _compute_total(0.5, 0.7, cfg) == 0.0
-
-    def test_full_needs_match_weight(self):
-        """When only needs_match is weighted, total = needs_match."""
-        cfg = SuitabilityConfig(needs_match_weight=1.0, stability_weight=0.0)
-        assert _compute_total(0.4, 0.9, cfg) == pytest.approx(0.4)
-
-    def test_full_stability_weight(self):
-        """When only stability is weighted, total = stability."""
-        cfg = SuitabilityConfig(needs_match_weight=0.0, stability_weight=1.0)
-        assert _compute_total(0.4, 0.9, cfg) == pytest.approx(0.9)
-
-
-# =============================================================================
 # compute_batch_percentiles (ECDF-style)
 # =============================================================================
 
@@ -261,7 +151,7 @@ class TestComputeBatchPercentiles:
 
     def test_single_score_gets_percentile_100(self):
         """Single game gets percentile=100."""
-        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5)
+        score = SuitabilityScore(stability=0.5, total=0.5)
         result = compute_batch_percentiles([score])
         assert len(result) == 1
         assert result[0].percentile == 100
@@ -269,9 +159,9 @@ class TestComputeBatchPercentiles:
     def test_all_same_total_all_get_100(self):
         """All games tied at top: all get percentile=100."""
         scores = [
-            SuitabilityScore(needs_match=0.5, stability=0.5, total=1.0),
-            SuitabilityScore(needs_match=0.5, stability=0.5, total=1.0),
-            SuitabilityScore(needs_match=0.5, stability=0.5, total=1.0),
+            SuitabilityScore(stability=0.5, total=1.0),
+            SuitabilityScore(stability=0.5, total=1.0),
+            SuitabilityScore(stability=0.5, total=1.0),
         ]
         result = compute_batch_percentiles(scores)
         for r in result:
@@ -280,9 +170,9 @@ class TestComputeBatchPercentiles:
     def test_unique_totals_strictly_ranked(self):
         """Each game gets a percentile based on its rank."""
         scores = [
-            SuitabilityScore(needs_match=0.0, stability=0.0, total=0.0),  # worst
-            SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5),  # middle
-            SuitabilityScore(needs_match=1.0, stability=1.0, total=1.0),  # best
+            SuitabilityScore(stability=0.0, total=0.0),  # worst
+            SuitabilityScore(stability=0.5, total=0.5),  # middle
+            SuitabilityScore(stability=1.0, total=1.0),  # best
         ]
         result = compute_batch_percentiles(scores)
         # count_le for total=0.0: 1/3 → 33%
@@ -296,9 +186,9 @@ class TestComputeBatchPercentiles:
     def test_top_tied_get_100(self):
         """Top tied items always get percentile=100 (ECDF property)."""
         scores = [
-            SuitabilityScore(needs_match=0.3, stability=0.3, total=0.3),
-            SuitabilityScore(needs_match=1.0, stability=1.0, total=1.0),
-            SuitabilityScore(needs_match=1.0, stability=1.0, total=1.0),
+            SuitabilityScore(stability=0.3, total=0.3),
+            SuitabilityScore(stability=1.0, total=1.0),
+            SuitabilityScore(stability=1.0, total=1.0),
         ]
         result = compute_batch_percentiles(scores)
         assert result[0].percentile == 33  # 1/3 → 33
@@ -308,10 +198,9 @@ class TestComputeBatchPercentiles:
     def test_preserves_original_fields(self):
         """Percentile calculation preserves other fields."""
         score = SuitabilityScore(
-            needs_match=0.5, stability=0.5, total=1.0, percentile=None
+            stability=0.5, total=1.0, percentile=None
         )
         result = compute_batch_percentiles([score])
-        assert result[0].needs_match == 0.5
         assert result[0].stability == 0.5
         assert result[0].total == 1.0
 
@@ -527,14 +416,6 @@ class TestScoreGameSuitability:
         score = score_game_suitability(game, stats)  # type: ignore[arg-type]
         assert isinstance(score, SuitabilityScore)
 
-    def test_needs_match_is_zero(self):
-        """Phase 137: needs_match is always 0.0 (Radar deprecated)."""
-        root = _build_mainline_nodes([5.0, 10.0])
-        game = _make_game_with_root(root)
-        stats = {"meaning_tags_by_player": {"B": {"overplay": 3}, "W": {"missed_kill": 1}}}
-        score = score_game_suitability(game, stats)  # type: ignore[arg-type]
-        assert score.needs_match == 0.0
-
     def test_percentile_not_set_yet(self):
         """Single-game scoring leaves percentile=None."""
         root = _build_mainline_nodes([5.0, 10.0])
@@ -543,29 +424,14 @@ class TestScoreGameSuitability:
         score = score_game_suitability(game, stats)  # type: ignore[arg-type]
         assert score.percentile is None
 
-    def test_debug_info_contains_combined_tags(self):
-        """debug_info["meaning_tags_combined"] has B+W combined counts."""
-        root = _build_mainline_nodes([5.0, 10.0])
-        game = _make_game_with_root(root)
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 3, "missed_kill": 1},
-                "W": {"overplay": 2},
-            }
-        }
-        score = score_game_suitability(game, stats)  # type: ignore[arg-type]
-        assert score.debug_info is not None
-        combined = score.debug_info["meaning_tags_combined"]  # type: ignore[index]
-        assert combined["overplay"] == 5  # 3+2
-        assert combined["missed_kill"] == 1
-
     def test_empty_stats_does_not_crash(self):
         """Empty game_stats dict works (no meaning_tags)."""
         root = _build_mainline_nodes([5.0, 10.0])
         game = _make_game_with_root(root)
         score = score_game_suitability(game, {})  # type: ignore[arg-type]
         assert isinstance(score, SuitabilityScore)
-        assert score.debug_info is not None
+        # Phase 137+: stability-only scoring, debug_info is None
+        assert score.debug_info is None
 
     def test_uses_default_config(self):
         """No config argument uses DEFAULT_CONFIG."""

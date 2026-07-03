@@ -17,7 +17,6 @@ from typing import Any
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
     KARTE_ERROR_CODE_MIXED_ENGINE,
-    STYLE_CONFIDENCE_THRESHOLD,
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
@@ -58,5 +57,4 @@ __all__ = [
     "MixedEngineSnapshotError",
     "KARTE_ERROR_CODE_MIXED_ENGINE",
     "KARTE_ERROR_CODE_GENERATION_FAILED",
-    "STYLE_CONFIDENCE_THRESHOLD",
 ]

@@ -4,24 +4,15 @@ This module contains the main entry functions for karte report generation:
 - build_karte_report(): Main entry point (with error handling)
 - _build_karte_report_impl(): Implementation
 - _build_error_karte(): Error fallback
-
-Also contains internal helpers used by tests:
-- _build_tag_counts_from_moves(): Build MeaningTag counts
-- _compute_style_safe(): Compute style with graceful fallback
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from collections import Counter
 from typing import Any
 
 from katrain.core import eval_metrics
-from katrain.core.analysis.meaning_tags import (
-    MeaningTagId,
-)
-from katrain.core.analysis.models import EvalSnapshot, MoveEval
 from katrain.core.reports.karte.helpers import is_single_engine_snapshot
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
@@ -31,28 +22,6 @@ from katrain.core.reports.karte.models import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Style Archetype helpers (Phase 57)
-# ---------------------------------------------------------------------------
-
-
-def _build_tag_counts_from_moves(
-    moves: list[MoveEval],
-    player: str | None,
-) -> dict[MeaningTagId, int]:
-    """Build MeaningTagId counts from cached meaning_tag_id field."""
-    filtered = [m for m in moves if player is None or m.player == player]
-    tag_ids = [m.meaning_tag_id for m in filtered if m.meaning_tag_id is not None]
-
-    valid_tags: list[MeaningTagId] = []
-    for tid in tag_ids:
-        try:
-            valid_tags.append(MeaningTagId(tid))
-        except ValueError:
-            continue
-    return dict(Counter(valid_tags))
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +56,7 @@ def build_karte_report(
             the snapshot is returned separately from the Game object.
 
     Returns:
-        Markdown-formatted karte report.
+        JSON-formatted karte report string.
         On error with raise_on_error=False, returns a report with ERROR section.
 
     Raises:
@@ -245,6 +214,8 @@ def _build_karte_report_impl(
         player_filter=player_filter,
         skill_preset=skill_preset,
         lang=lang,
+        target_visits=target_visits,
+        snapshot=snapshot,
     )
 
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)

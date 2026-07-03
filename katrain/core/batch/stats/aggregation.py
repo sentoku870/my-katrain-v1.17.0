@@ -126,7 +126,7 @@ def build_batch_summary(
     all_worst: list[tuple[str, int, str, str, float, MistakeCategory | None]] = []
     for stats in game_stats_list:
         game_name = stats["game_name"]
-        for move_num, player, gtp, loss, cat in stats.get("worst_moves", []):
+        for move_num, player, gtp, loss, _importance, cat in stats.get("worst_moves", []):
             all_worst.append((game_name, move_num, player, gtp, loss, cat))
 
     all_worst.sort(key=lambda x: x[4], reverse=True)

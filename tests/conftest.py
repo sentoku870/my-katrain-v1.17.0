@@ -7,6 +7,7 @@ This module provides:
 - Test configuration
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -147,93 +148,8 @@ def update_golden_if_requested(name: str, content: str, request: pytest.FixtureR
 
 
 # ---------------------------------------------------------------------------
-# Radar Normalization for Golden Tests (Phase 52-B)
+# Golden JSON utilities
 # ---------------------------------------------------------------------------
-
-# Imports for Radar normalization (local to avoid polluting module namespace)
-import json
-from decimal import ROUND_HALF_UP, Decimal
-from enum import Enum
-from typing import Any
-
-# Top-level only schema fill. Nested values are data-dependent.
-# This matches RadarMetrics.to_dict() output structure.
-RADAR_SCHEMA_DEFAULTS = {
-    "scores": {},
-    "tiers": {},
-    "overall_tier": None,
-    "valid_move_counts": {},
-}
-
-
-def round_half_up(value: float, decimals: int = 2) -> float:
-    """
-    Round using ROUND_HALF_UP (not banker's rounding).
-
-    For decimals=2:
-    - round_half_up(2.545) = 2.55 (banker's would give 2.54)
-    - round_half_up(3.145) = 3.15 (banker's would give 3.14)
-
-    Args:
-        value: The float value to round
-        decimals: Number of decimal places (default 2)
-
-    Returns:
-        Rounded float, or None if input is None
-    """
-    if value is None:
-        return None
-    d = Decimal(str(value))
-    return float(d.quantize(Decimal(10) ** -decimals, rounding=ROUND_HALF_UP))
-
-
-def _stabilize_float(v: float) -> float:
-    """
-    Re-parse via JSON to ensure stable repr (e.g., 2.55 not 2.5500...003).
-
-    This handles floating point representation issues by round-tripping
-    through JSON serialization with fixed decimal formatting.
-    """
-    return json.loads(f"{v:.2f}")
-
-
-def normalize_radar_output(radar_dict: dict) -> str:
-    """
-    Normalize radar output for deterministic golden comparison.
-
-    This function:
-    1. Fills missing top-level keys with schema defaults
-    2. Normalizes floats using ROUND_HALF_UP to 2 decimal places
-    3. Stabilizes float representation via JSON round-trip
-    4. Converts Enum values to their string representation
-    5. Sorts dict keys alphabetically
-    6. Preserves list order (semantically meaningful)
-
-    Args:
-        radar_dict: A dict from RadarMetrics.to_dict() or similar
-
-    Returns:
-        Deterministic JSON string with sorted keys and 2-space indent
-    """
-    # Top-level schema fill only
-    filled = {**RADAR_SCHEMA_DEFAULTS, **radar_dict}
-
-    def normalize(obj: Any) -> Any:
-        if obj is None:
-            return None
-        if isinstance(obj, Enum):  # Check Enum before str (for str, Enum classes)
-            return obj.value
-        if isinstance(obj, float):
-            return _stabilize_float(round_half_up(obj, 2))
-        if isinstance(obj, dict):
-            return {k: normalize(v) for k, v in sorted(obj.items())}
-        if isinstance(obj, list):
-            # No sorting - list order is semantically meaningful
-            return [normalize(x) for x in obj]
-        return obj
-
-    normalized = normalize(filled)
-    return json.dumps(normalized, indent=2, sort_keys=True, ensure_ascii=False)
 
 
 def load_golden_json(name: str) -> dict:
