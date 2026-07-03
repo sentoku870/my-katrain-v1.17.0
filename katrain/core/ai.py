@@ -199,6 +199,7 @@ from katrain.core.ai_strategies import (  # noqa: F401  (registry side-effect)
     HumanStyleStrategy,
     InfluenceStrategy,
     JigoStrategy,
+    LeelaStrategy,  # Phase 159B: restored (Phase 123 had dropped it)
     LocalStrategy,
     OwnershipBaseStrategy,
     PickBasedStrategy,

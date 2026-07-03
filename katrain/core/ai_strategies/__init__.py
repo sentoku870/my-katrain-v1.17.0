@@ -31,6 +31,9 @@ from katrain.core.ai_strategies.basic import (
     JigoStrategy,
 )
 from katrain.core.ai_strategies.human import HumanStyleStrategy
+
+# Phase 159B: LeelaStrategy restored (was removed in Phase 123 Leela Slimming).
+from katrain.core.ai_strategies.leela import LeelaStrategy
 from katrain.core.ai_strategies.pick import (
     InfluenceStrategy,
     LocalStrategy,
@@ -75,4 +78,6 @@ __all__ = [
     "TerritoryStrategy",
     # Human
     "HumanStyleStrategy",
+    # Phase 159B
+    "LeelaStrategy",
 ]

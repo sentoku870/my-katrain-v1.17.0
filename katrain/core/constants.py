@@ -54,6 +54,10 @@ AI_SIMPLE_OWNERSHIP = "ai:simple"
 AI_SETTLE_STONES = "ai:settle"
 AI_HUMAN = "ai:human"
 AI_PRO = "ai:pro"
+# Phase 159B: AI_LEELA restored (was removed in Phase 123 Leela Slimming).
+# Drives the LeelaStrategy in core/ai_strategies/leela.py so a human can
+# play a game against Leela Zero via the LeelaEngine.
+AI_LEELA = "ai:leela"
 
 
 AI_CONFIG_DEFAULT = AI_RANK
@@ -61,11 +65,12 @@ AI_CONFIG_DEFAULT = AI_RANK
 AI_STRATEGIES_ENGINE = [AI_DEFAULT, AI_HANDICAP, AI_SCORELOSS, AI_SIMPLE_OWNERSHIP, AI_JIGO, AI_ANTIMIRROR]
 AI_STRATEGIES_PICK = [AI_PICK, AI_LOCAL, AI_TENUKI, AI_INFLUENCE, AI_TERRITORY, AI_RANK]
 AI_STRATEGIES_POLICY = [AI_WEIGHTED, AI_POLICY] + AI_STRATEGIES_PICK
-AI_STRATEGIES = AI_STRATEGIES_ENGINE + AI_STRATEGIES_POLICY + [AI_HUMAN, AI_PRO]
+AI_STRATEGIES = AI_STRATEGIES_ENGINE + AI_STRATEGIES_POLICY + [AI_HUMAN, AI_PRO, AI_LEELA]
 AI_STRATEGIES_RECOMMENDED_ORDER = [
     AI_DEFAULT,
     AI_HUMAN,
     AI_PRO,
+    AI_LEELA,
     AI_RANK,
     AI_HANDICAP,
     AI_SIMPLE_OWNERSHIP,
@@ -98,6 +103,10 @@ AI_STRENGTH = {  # dan ranks, backup if model is missing.
     AI_SETTLE_STONES: 2,
     AI_HUMAN: float("nan"),
     AI_PRO: float("nan"),
+    # Phase 159B: Leela's strength depends on the user's installed network +
+    # visit budget. Without a calibrated mapping we leave it as NaN so the
+    # UI can render "auto" rather than fabricating a value.
+    AI_LEELA: float("nan"),
 }
 
 # --- AI Statistics Constants ---

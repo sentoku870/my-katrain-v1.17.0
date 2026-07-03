@@ -1690,6 +1690,23 @@ msgstr "推定損失"
 msgid "leela_top_move_winrate"
 msgstr "勝率"
 
+#. Phase 159B: human-vs-Leela play toggle (settings popup).
+msgid "mykatrain:settings:leela_play_enabled"
+msgstr "Leela Zeroと対局する"
+
+#. Phase 159B: surfaced in LeelaManager warnings / popup when the user
+#. picks a strategy that requires Leela but the engine hasn't started.
+msgid "leela:play:error_not_ready"
+msgstr "Leelaエンジンが起動していません。設定タブからLeelaを有効化してください。"
+
+#. Phase 159B: surfaced when Leela returns ``= resign``.
+msgid "leela:play:resigned"
+msgstr "Leelaが投了しました。"
+
+#. Phase 159B: surfaced when Leela returns an empty / unexpected coord.
+msgid "leela:play:pass_fallback"
+msgstr "Leelaから有効な手が返らなかったためパスします。"
+
 #. Leela dropdown option
 msgid "leela_top_move_visits"
 msgstr "訪問数"
