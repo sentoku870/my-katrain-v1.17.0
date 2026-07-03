@@ -220,7 +220,8 @@ def _build_leela_play_section(
         size_hint_x=0.80,
     )
     _bind_text_size(label)
-    state.register_searchable("mykatrain:settings:leela_play_enabled", label)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:leela_play_enabled", label)
     checkbox = CheckBox(
         active=bool(leela.get("play_enabled", False)),
         size_hint_x=0.20,
