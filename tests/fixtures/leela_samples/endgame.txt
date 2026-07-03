@@ -1,4 +1,4 @@
-# Leela 0.110 lz-analyze output sample
+# Leela lz-analyze output sample
 # Condition: Even game, midgame/endgame (28 moves)
 # Command: lz-analyze 300
 

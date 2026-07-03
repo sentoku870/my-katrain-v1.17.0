@@ -1,4 +1,4 @@
-# Leela 0.110 lz-analyze output sample
+# Leela lz-analyze output sample
 # Condition: Even game, empty board (opening)
 # Command: lz-analyze 500
 

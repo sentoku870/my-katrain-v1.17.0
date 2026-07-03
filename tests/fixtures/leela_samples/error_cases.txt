@@ -1,4 +1,4 @@
-# Leela 0.110 error case samples
+# Leela error case samples
 # These are synthetic test cases for parser error handling
 
 # Case 1: Empty response (no candidates)

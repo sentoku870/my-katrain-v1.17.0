@@ -1,4 +1,4 @@
-# Leela 0.110 lz-analyze output sample
+# Leela lz-analyze output sample
 # Condition: 3-stone handicap, white to play
 # Handicap stones: Q16 D4 Q4, komi 0.5
 # Command: lz-analyze 500

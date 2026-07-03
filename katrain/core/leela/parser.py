@@ -29,7 +29,7 @@ def normalize_winrate_from_raw(raw: float) -> float:
     """Normalize raw winrate value to 0.0-1.0 range.
 
     Handles different output formats:
-    - raw > 100: Assume 0-10000 scale (Leela 0.110), divide by 10000
+    - raw > 100: Assume 0-10000 scale (Leela ≥0.110), divide by 10000
     - raw > 1.0: Assume 0-100 scale, divide by 100
     - raw <= 1.0: Already 0-1 scale, use as-is
     - Out of range: Clamp to 0.0-1.0
@@ -41,7 +41,7 @@ def normalize_winrate_from_raw(raw: float) -> float:
         Normalized winrate in 0.0-1.0 range
     """
     if raw > 100:
-        # Leela 0.110 format: 0-10000
+        # Leela (0.110+) format: 0-10000
         raw = raw / 10000.0
     elif raw > 1.0:
         # Percentage format: 0-100

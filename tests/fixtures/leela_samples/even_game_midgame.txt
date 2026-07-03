@@ -1,4 +1,4 @@
-# Leela 0.110 lz-analyze output sample
+# Leela lz-analyze output sample
 # Condition: Even game, midgame (8 moves played)
 # Moves: Q16 D4 C16 Q4 R6 R10 D10 O17
 # Command: lz-analyze 500
