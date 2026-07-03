@@ -71,17 +71,44 @@ class LeelaStrategy(AIStrategy):
         * ``self.game.katrain.leela_manager.leela_engine`` — manager
           indirection (current ``gui/leela_manager.py``).
 
-        Returns ``None`` if neither is available or Leela is not
-        currently running — ``generate_move`` then falls back to a
-        pass with a user-visible warning.
+        Phase 160: when the strategy is selected via Play and the
+        engine is not running, try to start it on-demand through
+        ``LeelaManager.start_engine(force=True)``. The ``force``
+        bypass lets us boot Leela even when ``LeelaConfig.enabled``
+        is ``False`` (typical 'only enabled for play' state). If
+        start-up still fails, the strategy falls back to a pass with
+        a user-visible warning.
+
+        Returns ``None`` if neither path yields a live engine; the
+        caller (``generate_move``) then logs and returns a pass.
         """
         katrain = self.game.katrain
         engine = getattr(katrain, "leela_engine", None)
-        if engine is not None:
+        if engine is not None and getattr(engine, "is_alive", lambda: False)():
             return engine
+
         manager = getattr(katrain, "leela_manager", None)
-        if manager is not None:
-            return getattr(manager, "leela_engine", None)
+        if manager is None:
+            return None
+
+        # Recheck the manager-held engine (the katrain property may
+        # not be wired up on all installs).
+        engine = getattr(manager, "leela_engine", None)
+        if engine is not None and getattr(engine, "is_alive", lambda: False)():
+            return engine
+
+        # Engine still missing: start it via the manager. ``force=True``
+        # bypasses the ``leela/enabled`` flag so a user who only flipped
+        # ``play_enabled`` (without manually enabling analysis) still
+        # gets a usable engine for Play.
+        try:
+            if manager.start_engine(katrain, force=True):
+                return getattr(manager, "leela_engine", None) or getattr(
+                    katrain, "leela_engine", None
+                )
+        except Exception:  # noqa: BLE001 - best-effort startup
+            pass
+
         return None
 
     def _current_leela_visits(self) -> int:
