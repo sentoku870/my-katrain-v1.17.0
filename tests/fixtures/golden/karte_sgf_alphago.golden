@@ -1,8 +1,8 @@
 {
-  "schema_version": "3.4",
+  "schema_version": "3.5",
   "meta": {
-    "schema_version": "3.4",
-    "schema_hash": "17051dec",
+    "schema_version": "3.5",
+    "schema_hash": "c2c31dd8",
     "game_id": "[DATE] [TIME]",
     "generated_at": "[DATE] [TIME]",
     "run_id": "[RUN_ID]",
@@ -492,5 +492,8 @@
       "status": "no_opponent_info",
       "narrative": "No opponent rank information available."
     }
+  },
+  "pacing": {
+    "has_time_data": false
   }
 }

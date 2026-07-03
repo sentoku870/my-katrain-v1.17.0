@@ -58,6 +58,18 @@ PLAYER_KEYS = {
 MAX_DISPLAY_REFS = 3
 
 
+class _TempMove:
+    """Lightweight move wrapper for urgent miss sequence detection."""
+
+    def __init__(self, move_num: int, player: str, gtp: str, loss: float, importance: float) -> None:
+        self.move_number = move_num
+        self.player = player
+        self.gtp = gtp
+        self.points_lost = loss
+        self.score_loss = loss
+        self.importance = importance
+
+
 # =============================================================================
 # Phase 85: Pattern Mining Integration
 # =============================================================================
@@ -815,18 +827,9 @@ def _append_worst_moves(
         lines.append("")
         return
 
-    # TempMoveクラス
-    class TempMove:
-        def __init__(self, move_num: int, player: str, gtp: str, loss: float, importance: float) -> None:
-            self.move_number = move_num
-            self.player = player
-            self.gtp = gtp
-            self.points_lost = loss
-            self.score_loss = loss
-            self.importance = importance
-
+    # Build move wrappers for sequence detection
     moves_for_detection = [
-        (game_name, TempMove(move_num, player, gtp, loss, importance))
+        (game_name, _TempMove(move_num, player, gtp, loss, importance))
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 
@@ -971,17 +974,8 @@ def _append_urgent_miss_in_weakness(
 
     from katrain.core.reports.summary_report import _detect_urgent_miss_sequences
 
-    class TempMove:
-        def __init__(self, move_num: int, player: str, gtp: str, loss: float, importance: float) -> None:
-            self.move_number = move_num
-            self.player = player
-            self.gtp = gtp
-            self.points_lost = loss
-            self.score_loss = loss
-            self.importance = importance
-
     moves_for_detection = [
-        (game_name, TempMove(move_num, player, gtp, loss, importance))
+        (game_name, _TempMove(move_num, player, gtp, loss, importance))
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 

@@ -40,13 +40,11 @@ class TestBackwardCompatibleImports:
             CRITICAL_3_PROMPT_TEMPLATE,
             KARTE_ERROR_CODE_GENERATION_FAILED,
             KARTE_ERROR_CODE_MIXED_ENGINE,
-            STYLE_CONFIDENCE_THRESHOLD,
         )
 
         assert isinstance(KARTE_ERROR_CODE_MIXED_ENGINE, str)
         assert isinstance(KARTE_ERROR_CODE_GENERATION_FAILED, str)
         assert isinstance(CRITICAL_3_PROMPT_TEMPLATE, str)
-        assert isinstance(STYLE_CONFIDENCE_THRESHOLD, float)
 
     def test_import_helpers_from_old_path(self):
         from katrain.core.reports.karte_report import (
@@ -128,7 +126,6 @@ class TestNoCircularImports:
             # Verify exceptions/constants are available (direct import in karte/__init__.py)
             assert hasattr(karte, 'KarteGenerationError')
             assert hasattr(karte, 'MixedEngineSnapshotError')
-            assert hasattr(karte, 'STYLE_CONFIDENCE_THRESHOLD')
 
             # Verify callable APIs are available (lazy wrappers)
             assert hasattr(karte, 'build_karte_report')

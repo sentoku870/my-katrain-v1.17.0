@@ -1,11 +1,13 @@
 """Tests for katrain.core.curator.batch (Phase 64).
 
+Phase 137+: Curator simplified to stability-only scoring. Radar axes and
+meaning-tag-based helpers (_extract_recommended_tags, _get_user_weak_axes_sorted)
+have been removed.
+
 Tests cover:
 - _round_float (float rounding to FLOAT_PRECISION)
 - _normalize_percentile (Optional[int] → int)
 - _build_game_title (player B/W vs fallback)
-- _extract_recommended_tags (top tags sorted, UNCERTAIN excluded)
-- _get_user_weak_axes_sorted (deprecated)
 - CuratorBatchResult (dataclass defaults)
 - generate_curator_outputs (integration test with tmp_path,
   mocked dependencies for select_critical_moves and labels)
@@ -27,14 +29,12 @@ from katrain.core.curator.batch import (
     FLOAT_PRECISION,
     CuratorBatchResult,
     _build_game_title,
-    _extract_recommended_tags,
     _get_iso_generated_timestamp,
-    _get_user_weak_axes_sorted,
     _normalize_percentile,
     _round_float,
     generate_curator_outputs,
 )
-from katrain.core.curator.models import UNCERTAIN_TAG, SuitabilityScore
+from katrain.core.curator.models import SuitabilityScore
 from katrain.core.game_node import GameNode
 
 # =============================================================================
@@ -85,22 +85,22 @@ class TestNormalizePercentile:
 
     def test_none_becomes_zero(self):
         """None percentile (should not happen in batch context) becomes 0."""
-        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5, percentile=None)
+        score = SuitabilityScore(stability=0.5, total=0.5, percentile=None)
         assert _normalize_percentile(score) == 0
 
     def test_value_preserved(self):
         """Non-None percentile is preserved as int."""
-        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=0.5, percentile=75)
+        score = SuitabilityScore(stability=0.5, total=0.5, percentile=75)
         assert _normalize_percentile(score) == 75
 
     def test_zero_preserved(self):
         """Percentile=0 stays 0."""
-        score = SuitabilityScore(needs_match=0.0, stability=0.0, total=0.0, percentile=0)
+        score = SuitabilityScore(stability=0.0, total=0.0, percentile=0)
         assert _normalize_percentile(score) == 0
 
     def test_hundred_preserved(self):
         """Percentile=100 stays 100."""
-        score = SuitabilityScore(needs_match=1.0, stability=1.0, total=1.0, percentile=100)
+        score = SuitabilityScore(stability=1.0, total=1.0, percentile=100)
         assert _normalize_percentile(score) == 100
 
 
@@ -163,105 +163,6 @@ class TestBuildGameTitle:
         """Path-based game_name strips directory and extension."""
         stats = {"player_b": "", "player_w": "", "game_name": "/abs/path/foo.sgf"}
         assert _build_game_title(stats) == "foo"
-
-
-# =============================================================================
-# _extract_recommended_tags
-# =============================================================================
-
-
-class TestExtractRecommendedTags:
-    """Tests for recommended tag extraction."""
-
-    def test_empty_combined_returns_empty(self):
-        """No tags → empty list."""
-        assert _extract_recommended_tags({}) == []
-
-    def test_single_player_tags(self):
-        """Tags from one player."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 5, "missed_tesuji": 2},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert result == ["overplay", "missed_tesuji"]
-
-    def test_combines_b_and_w(self):
-        """Tag counts from B and W are combined."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 3},
-                "W": {"overplay": 2},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert result == ["overplay"]
-
-    def test_sorted_by_count_desc(self):
-        """Higher counts come first."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 1, "missed_tesuji": 5, "slow_move": 3},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert result == ["missed_tesuji", "slow_move", "overplay"]
-
-    def test_alphabetical_for_ties(self):
-        """Ties broken alphabetically."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 3, "missed_tesuji": 3, "slow_move": 3},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert result == ["missed_tesuji", "overplay", "slow_move"]
-
-    def test_excludes_uncertain(self):
-        """UNCERTAIN tag is filtered out."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"overplay": 3, UNCERTAIN_TAG: 10},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert UNCERTAIN_TAG not in result
-        assert result == ["overplay"]
-
-    def test_max_tags_limit(self):
-        """max_tags limits output count."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5},
-            }
-        }
-        result = _extract_recommended_tags(stats, max_tags=2)
-        assert len(result) == 2
-        assert result == ["e", "d"]  # top 2 by count
-
-    def test_default_max_tags_three(self):
-        """Default max_tags is 3."""
-        stats = {
-            "meaning_tags_by_player": {
-                "B": {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5},
-            }
-        }
-        result = _extract_recommended_tags(stats)
-        assert len(result) == 3
-
-
-# =============================================================================
-# _get_user_weak_axes_sorted (deprecated)
-# =============================================================================
-
-
-class TestGetUserWeakAxesSorted:
-    """Tests for deprecated weak axes getter."""
-
-    def test_returns_empty_list(self):
-        """Radar axes deprecated → empty list."""
-        assert _get_user_weak_axes_sorted() == []
 
 
 # =============================================================================
@@ -507,13 +408,11 @@ class TestGenerateCuratorOutputs:
         assert "generated" in data
         assert "total_games" in data
         assert data["total_games"] == 1
-        assert "user_weak_axes" in data
-        assert data["user_weak_axes"] == []  # deprecated
         assert "rankings" in data
         assert len(data["rankings"]) == 1
 
     def test_ranking_has_all_fields(self, tmp_path: Path):
-        """Each ranking entry has all expected fields."""
+        """Each ranking entry has all expected fields (Phase 137+: stability-only)."""
         with (
             patch(
                 "katrain.core.analysis.select_critical_moves",
@@ -536,13 +435,12 @@ class TestGenerateCuratorOutputs:
         data = json.loads(Path(result.ranking_path).read_text())  # type: ignore[arg-type]
         ranking = data["rankings"][0]
         expected_keys = {
-            "game_id", "title", "score_percentile", "needs_match",
-            "stability", "total", "recommended_tags", "rank",
+            "game_id", "title", "score_percentile",
+            "stability", "total", "rank",
         }
         assert set(ranking.keys()) == expected_keys
         assert ranking["game_id"] == "game_X.sgf"
         assert ranking["title"] == "Alice vs Bob"
-        assert ranking["recommended_tags"] == ["overplay"]
 
     def test_rankings_sorted_with_assigned_rank(self, tmp_path: Path):
         """Rankings are sorted and have rank field assigned."""

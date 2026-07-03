@@ -327,7 +327,7 @@ class Game(BaseGame):
         skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
         target_visits: int | None = None,
     ) -> str:
-        """Build a compact, markdown-friendly report for the current game.
+        """Build a JSON-formatted karte report for the current game.
 
         Args:
             level: Important move level setting
@@ -340,7 +340,7 @@ class Game(BaseGame):
                 If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
         Returns:
-            Markdown-formatted karte report.
+            JSON-formatted karte report string.
             On error with raise_on_error=False, returns a report with ERROR section.
 
         Raises:

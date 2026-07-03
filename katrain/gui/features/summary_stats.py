@@ -130,7 +130,7 @@ def extract_sgf_statistics(
             "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
             "phase_mistake_counts": {},  # {(phase, category): count}
             "phase_mistake_loss": {},  # {(phase, category): loss}
-            "worst_moves": [],  # (move_number, player, gtp, points_lost, category)
+            "worst_moves": [],  # (move_number, player, gtp, points_lost, importance, category)
         }
 
         prev_score = None
@@ -216,6 +216,7 @@ def extract_sgf_statistics(
 
         # Extract reason_tags counts from important moves (Phase 10-B)
         reason_tags_counts: dict[str, int] = {}
+        temp_game = None
         try:
             # Create a temporary Game object to compute reason_tags
             from katrain.core.game import Game
@@ -268,7 +269,7 @@ def extract_sgf_statistics(
             time_data = parse_time_data(move_tree)
             if time_data.has_time_data:
                 # Reuse temp_game from reason_tags if available, otherwise create it
-                if "temp_game" not in dir():
+                if temp_game is None:
                     from katrain.core.game import Game
 
                     # Note: Game expects GameNode but SGFNode works at runtime

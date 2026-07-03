@@ -22,7 +22,6 @@ from katrain.core.reports.karte.models import (
     CRITICAL_3_PROMPT_TEMPLATE,
     KARTE_ERROR_CODE_GENERATION_FAILED,
     KARTE_ERROR_CODE_MIXED_ENGINE,
-    STYLE_CONFIDENCE_THRESHOLD,
     KarteGenerationError,
     MixedEngineSnapshotError,
 )
@@ -39,7 +38,6 @@ __all__ = [
     "KARTE_ERROR_CODE_MIXED_ENGINE",
     "KARTE_ERROR_CODE_GENERATION_FAILED",
     "CRITICAL_3_PROMPT_TEMPLATE",
-    "STYLE_CONFIDENCE_THRESHOLD",
     # Helper functions
     "format_loss_with_engine_suffix",
     "has_loss_data",

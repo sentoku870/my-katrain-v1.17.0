@@ -1,14 +1,14 @@
 """Scoring logic for Curator (Phase 63).
 
-This module implements suitability scoring for game records,
-evaluating how well they match a user's learning needs.
+This module implements suitability scoring for game records based on
+stability (scoreLead volatility). Phase 137+: Radar axes and meaning-tag-
+based needs_match scoring have been removed; Curator is stability-only.
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
@@ -16,62 +16,17 @@ from katrain.core.game_node import GameNode
 
 from .models import (
     DEFAULT_CONFIG,
-    UNCERTAIN_TAG,
     SuitabilityConfig,
     SuitabilityScore,
 )
 
 if TYPE_CHECKING:
-    from katrain.core.analysis.meaning_tags.models import MeaningTagId
     from katrain.core.game import Game
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
-
-
-def _normalize_meaning_tag_key(key: str | MeaningTagId) -> str:
-    """Normalize MeaningTagId or string to string key.
-
-    Args:
-        key: Either a string like "overplay" or MeaningTagId.OVERPLAY
-
-    Returns:
-        String value (e.g., "overplay")
-
-    Note:
-        Uses .value for Enum/MeaningTagId, not str(enum).
-        str(MeaningTagId.OVERPLAY) = "MeaningTagId.OVERPLAY" (wrong)
-        MeaningTagId.OVERPLAY.value = "overplay" (correct)
-    """
-    if isinstance(key, Enum):
-        return str(key.value)
-    return str(key)
-
-
-def _combine_meaning_tags(
-    meaning_tags_by_player: dict[str, dict[str, int]],
-) -> dict[str, int]:
-    """Combine meaning tags from both players (B + W).
-
-    Args:
-        meaning_tags_by_player: {"B": {"tag": count}, "W": {"tag": count}}
-
-    Returns:
-        Combined dict {"tag": total_count}, excluding UNCERTAIN
-
-    Note:
-        Uses UNCERTAIN_TAG = MeaningTagId.UNCERTAIN.value for filtering.
-    """
-    combined: dict[str, int] = {}
-    for player_tags in meaning_tags_by_player.values():
-        for key, count in player_tags.items():
-            normalized = _normalize_meaning_tag_key(key)
-            if normalized == UNCERTAIN_TAG:
-                continue  # Skip UNCERTAIN
-            combined[normalized] = combined.get(normalized, 0) + count
-    return combined
 
 
 def _round_half_up(value: float) -> int:
@@ -222,31 +177,6 @@ def compute_stability(
 
 
 # =============================================================================
-# Total Calculation
-# =============================================================================
-
-
-def _compute_total(
-    needs_match: float,
-    stability: float,
-    config: SuitabilityConfig,
-) -> float:
-    """Compute weighted total with normalized weights.
-
-    Weights are normalized: w_n + w_s = 1.0
-    total = needs_match * (w_n / sum) + stability * (w_s / sum)
-
-    If weight_sum <= 0, returns 0.0.
-    """
-    weight_sum = config.needs_match_weight + config.stability_weight
-    if weight_sum <= 0:
-        return 0.0
-    w_n = config.needs_match_weight / weight_sum
-    w_s = config.stability_weight / weight_sum
-    return needs_match * w_n + stability * w_s
-
-
-# =============================================================================
 # Percentile Calculation (ECDF-style)
 # =============================================================================
 
@@ -284,7 +214,6 @@ def compute_batch_percentiles(
         percentile = _round_half_up((count_le / n) * 100)
         result.append(
             SuitabilityScore(
-                needs_match=score.needs_match,
                 stability=score.stability,
                 total=score.total,
                 percentile=percentile,
@@ -305,40 +234,26 @@ def score_game_suitability(
     game_stats: dict[str, Any],
     config: SuitabilityConfig = DEFAULT_CONFIG,
 ) -> SuitabilityScore:
-    """Score a single game's suitability.
+    """Score a single game's suitability based on stability.
+
+    Phase 137+: Simplified to stability-only scoring.
+    Radar axes and meaning-tag-based needs_match have been removed.
 
     Args:
         game: Game object (required for stability calculation)
-        game_stats: Stats dict with meaning_tags_by_player
+        game_stats: Stats dict (retained for API compatibility)
         config: Scoring configuration
 
     Returns:
         SuitabilityScore with percentile=None (set later by batch)
-
-    Note:
-        debug_info is wrapped via _wrap_debug_info() which copies the dict
-        before wrapping in MappingProxyType, ensuring true immutability.
     """
-    # Get meaning tags from stats
-    meaning_tags_by_player = game_stats.get("meaning_tags_by_player", {})
-    meaning_tags_combined = _combine_meaning_tags(meaning_tags_by_player)
-
-    # Calculate components
-    needs_match = 0.0  # Phase 137: Radar axes deprecated
     stability = compute_stability(game, config)
-    total = _compute_total(needs_match, stability, config)
-
-    # Build debug info
-    debug_dict: dict[str, Any] = {
-        "meaning_tags_combined": meaning_tags_combined,
-    }
+    total = stability  # Stability-only scoring
 
     return SuitabilityScore(
-        needs_match=needs_match,
         stability=stability,
         total=total,
         percentile=None,  # Set later by batch
-        debug_info=_wrap_debug_info(debug_dict),
     )
 
 

@@ -2,6 +2,9 @@
 
 This module defines the data structures for suitability scoring,
 which evaluates how well a professional game record matches a user's learning needs.
+
+Phase 137+: Curator simplified to stability-only scoring. Radar axes (needs_match)
+and meaning-tag-based scoring have been removed.
 """
 
 from __future__ import annotations
@@ -10,14 +13,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from katrain.core.analysis.meaning_tags.models import MeaningTagId
-
-# =============================================================================
-# Constants
-# =============================================================================
-
-# Use MeaningTagId.UNCERTAIN.value to avoid string drift
-UNCERTAIN_TAG: str = MeaningTagId.UNCERTAIN.value
 
 # =============================================================================
 # Data Classes
@@ -29,20 +24,10 @@ class SuitabilityConfig:
     """Configuration for suitability scoring.
 
     Attributes:
-        needs_match_weight: Weight for needs_match in total calculation (default: 0.6)
-        stability_weight: Weight for stability in total calculation (default: 0.4)
-        min_tag_occurrences: Minimum total tag occurrences for needs_match (default: 3)
         max_volatility: Maximum volatility for stability=0.0 (default: 15.0)
         stability_insufficient_data: Stability value when < 2 valid scores (default: 0.0)
-
-    Note:
-        Weights are normalized at computation time.
-        If needs_match_weight + stability_weight != 1.0, they are normalized.
     """
 
-    needs_match_weight: float = 0.0
-    stability_weight: float = 1.0
-    min_tag_occurrences: int = 3
     max_volatility: float = 15.0
     stability_insufficient_data: float = 0.0
 
@@ -53,19 +38,17 @@ DEFAULT_CONFIG: SuitabilityConfig = SuitabilityConfig()
 
 @dataclass(frozen=True)
 class SuitabilityScore:
-    """Suitability score for a game relative to user's learning needs.
+    """Suitability score for a game.
 
     All fields are immutable. debug_info uses MappingProxyType over a copied dict.
 
     Attributes:
-        needs_match: 0.0-1.0, how well game's MeaningTags align with user's weak axes
         stability: 0.0-1.0, game stability (higher = more stable = better for learning)
-        total: 0.0-1.0, weighted combination of needs_match and stability
+        total: 0.0-1.0, equal to stability (stability-only scoring)
         percentile: 0-100, batch-relative ranking (ECDF-style, None if not yet computed)
         debug_info: Optional immutable dict for transparency/debugging
     """
 
-    needs_match: float
     stability: float
     total: float
     percentile: int | None = None
