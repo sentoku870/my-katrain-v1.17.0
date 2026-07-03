@@ -56,8 +56,38 @@ AI_HUMAN = "ai:human"
 AI_PRO = "ai:pro"
 # Phase 159B: AI_LEELA restored (was removed in Phase 123 Leela Slimming).
 # Drives the LeelaStrategy in core/ai_strategies/leela.py so a human can
-# play a game against Leela via the LeelaEngine.
+# play a game against Leela Zero via the LeelaEngine.
 AI_LEELA = "ai:leela"
+
+
+def compute_leela_enabled(leela_enabled: bool, leela_play_enabled: bool) -> bool:
+    """Phase 161: pick ``enabled`` based on toggles set in the Leela tab.
+
+    The Settings > Leela tab surfaces two independent flags —
+    ``leela/enabled`` (analysis) and ``leela/play_enabled`` (Play).
+    When the user enables Play without separately flipping analysis on,
+    the engine must still boot; conversely, turning Play off must stop
+    the engine even if analysis was on. We join them with ``or``: Play
+    on starts the engine, analysis alone keeps it running, and only
+    when both are off does the engine drop back to ``False``.
+
+    Pure helper — lives in ``katrain.core.constants`` so unit tests
+    can import it without pulling in the Kivy widget tree that the
+    settings popup depends on.
+
+    Truth table
+    -----------
+
+    +-------------------+----------------------+-----------------+
+    | leela_enabled      | leela_play_enabled   | effective       |
+    +===================+======================+=================+
+    | False              | False                | False           |
+    | False              | True                 | True            |
+    | True               | False                | True            |
+    | True               | True                 | True            |
+    +-------------------+----------------------+-----------------+
+    """
+    return leela_enabled or leela_play_enabled
 
 
 AI_CONFIG_DEFAULT = AI_RANK

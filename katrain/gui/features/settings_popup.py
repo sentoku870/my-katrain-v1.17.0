@@ -1198,20 +1198,6 @@ def _save_mykatrain_settings(
     ctx.update_engine_config(disabled=disabled_katago)
 
 
-def compute_leela_enabled(leela_enabled: bool, leela_play_enabled: bool) -> bool:
-    """Phase 161: pick ``enabled`` based on ``leela_enabled`` and ``play_enabled``.
-
-    The Settings > Leela tab surfaces two toggles — analysis
-    (``leela_enabled``) and Play (``leela_play_enabled``). When the user
-    flips Play on without separately enabling analysis, the engine
-    must still start; conversely, flipping Play off must stop the
-    engine. We join them with ``or``: Play on starts the engine,
-    analysis alone keeps it running, and only when both are off does
-    the engine drop back to ``False``.
-    """
-    return leela_enabled or leela_play_enabled
-
-
 def _save_leela_settings(
     ctx: FeatureContext,
     *,
@@ -1227,6 +1213,7 @@ def _save_leela_settings(
 ) -> None:
     """Save Leela settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 159B)."""
     from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
+    from katrain.core.constants import compute_leela_enabled
 
     # Get defaults from single source (no hardcoding)
     _leela_defaults = LeelaConfig.from_dict({})

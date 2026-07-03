@@ -220,9 +220,12 @@ class TestComputeLeelaEnabled:
 
     @staticmethod
     def _compute(leela_enabled: bool, leela_play_enabled: bool) -> bool:
-        # Late import avoids loading settings_popup (and the full
-        # Kivy widget graph) for the pure-function tests below.
-        from katrain.gui.features.settings_popup import compute_leela_enabled
+        # Imported from ``katrain.core.constants`` rather than from
+        # ``katrain.gui.features.settings_popup`` so the test does
+        # not load the Kivy widget graph. A previous attempt that
+        # imported ``compute_leela_enabled`` from settings_popup
+        # hung in CI (exit code 102).
+        from katrain.core.constants import compute_leela_enabled
 
         return compute_leela_enabled(leela_enabled, leela_play_enabled)
 
