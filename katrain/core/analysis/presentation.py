@@ -279,28 +279,25 @@ def format_loss_label(
     Examples:
         KataGo JA: "-3.5目", "0.0目"
         KataGo EN: "-3.5 pts", "0.0 pts"
-        Leela JA:  "-3.5目(推定)", "0.0目(推定)"
-        Leela EN:  "-3.5 pts(est.)", "0.0 pts(est.)"
 
     Note:
         - loss <= 0.0 の場合はマイナス符号なし（"0.0目"）
         - 正の損失のみマイナス符号付き（"-3.5目"）
         - UNKNOWN は KataGo と同じフォーマット
+        - Phase 171 で Leela 専用サフィックスを削除（KataGo 専用化）
     """
-    # 単位とサフィックスを言語別に定義
+    # 単位を言語別に定義（Phase 171: KataGo 専用化、Leela サフィックスは廃止）
     if lang == "ja":
         unit = "目"
-        suffix = "(推定)" if engine_type == EngineType.LEELA else ""
     else:
         unit = " pts"
-        suffix = "(est.)" if engine_type == EngineType.LEELA else ""
 
     # ゼロ以下は符号なし
     if loss <= 0.0:
-        return f"0.0{unit}{suffix}"
+        return f"0.0{unit}"
 
     # 正の損失は符号付き
-    return f"-{loss:.1f}{unit}{suffix}"
+    return f"-{loss:.1f}{unit}"
 
 
 def format_evidence_examples(
@@ -317,10 +314,10 @@ def format_evidence_examples(
     Returns:
         Formatted string like "例: #12 Q16 (-8.5目), #45 R4 (-4.2目)"
         or "e.g.: #12 Q16 (-8.5 pts), #45 R4 (-4.2 pts)"
-        For Leela: "例: #12 Q16 (-8.5目(推定)), #45 R4 (-4.2目(推定))"
 
     Note:
         Phase 32: Updated to use format_loss_label() for engine-aware formatting.
+        Phase 171: Leela サフィックスは廃止（KataGo 専用化）。
     """
     if not moves:
         return ""

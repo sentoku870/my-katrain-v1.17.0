@@ -1184,21 +1184,6 @@ msgstr "解析エンジン:"
 msgid "mykatrain:batch:engine_katago"
 msgstr "KataGo"
 
-msgid "mykatrain:batch:engine_leela"
-msgstr "Leela"
-
-msgid "mykatrain:batch:leela_not_enabled_warning"
-msgstr "⚠ Leelaが未有効"
-
-msgid "mykatrain:batch:error_leela_not_enabled"
-msgstr "Leelaが有効になっていません。設定で有効にしてください。"
-
-msgid "mykatrain:batch:leela_start_failed"
-msgstr "Leelaエンジンの起動に失敗しました。Leela設定を確認してください。"
-
-msgid "mykatrain:batch:open_leela_settings"
-msgstr "Leela設定"
-
 msgid "mykatrain:recovery:reset_to_auto"
 msgstr "自動モードに戻す（推奨）"
 
@@ -1309,12 +1294,6 @@ msgstr "解析エンジン:"
 
 msgid "mykatrain:settings:engine_katago"
 msgstr "KataGo"
-
-msgid "mykatrain:settings:engine_leela"
-msgstr "Leela"
-
-msgid "mykatrain:settings:engine_leela_not_enabled_warning"
-msgstr "Leelaが選択されていますが有効化されていません。Leelaタブで有効化してください。"
 
 msgid "mykatrain:settings:engine_save_error"
 msgstr "解析エンジン設定の保存に失敗しました。"
@@ -1562,9 +1541,6 @@ msgstr "解析設定"
 msgid "mykatrain:settings:tab_export"
 msgstr "出力設定"
 
-msgid "mykatrain:settings:tab_leela"
-msgstr "Leela"
-
 msgid "mykatrain:settings:tab_auto"
 msgstr "自動セットアップ"
 
@@ -1635,65 +1611,8 @@ msgstr "CPUモードでも失敗しました"
 msgid "mykatrain:settings:cpu_fallback_verification_failed"
 msgstr "CPUバイナリの動作確認に失敗しました"
 
-# Leela Settings (Phase 15)
-msgid "mykatrain:settings:leela_section"
-msgstr "Leela設定"
-
-msgid "mykatrain:settings:leela_enabled"
-msgstr "Leelaを有効化"
-
-msgid "mykatrain:settings:leela_exe_path"
-msgstr "実行ファイルパス"
-
-msgid "mykatrain:settings:leela_k_value"
-msgstr "損失スケール (K)"
-
-msgid "mykatrain:settings:leela_max_visits"
-msgstr "最大訪問数"
-
-msgid "mykatrain:settings:leela_max_candidates"
-msgstr "最大候補手数 (Leela)"
-
 msgid "mykatrain:settings:disable_katago"
 msgstr "KataGo エンジンを無効にする (Leela の検証用)"
-
-msgid "mykatrain:settings:leela_fast_visits"
-msgstr "Fast Visits (高速解析)"
-
-msgid "leela:error:exe_not_found"
-msgstr "Leela実行ファイルが見つかりません: {}"
-
-msgid "leela:status:started"
-msgstr "Leelaエンジンを起動しました"
-
-msgid "leela:resign_hint:title"
-msgstr "投了目安"
-
-msgid "leela:resign_hint:message"
-msgstr "勝率が{winrate_pct}%以下の状態が{moves}手続いています。投了を検討してください。"
-
-msgid "leela:resign_hint:ok"
-msgstr "OK"
-
-#. Leela top move stats label
-msgid "mykatrain:settings:leela_top_moves_show"
-msgstr "候補手の表示内容"
-
-#. Leela dropdown option
-msgid "leela_top_move_loss"
-msgstr "推定損失"
-
-#. Leela dropdown option
-msgid "leela_top_move_winrate"
-msgstr "勝率"
-
-#. Leela dropdown option
-msgid "leela_top_move_visits"
-msgstr "訪問数"
-
-#. Leela dropdown option
-msgid "leela_top_move_nothing"
-msgstr "（なし）"
 
 #. LLM Package Export
 msgid "No game loaded"
@@ -1834,9 +1753,6 @@ msgstr "解析データがありません"
 msgid "engine-compare:katago-only"
 msgstr "KataGo解析のみ（Leela未実行）"
 
-msgid "engine-compare:leela-only"
-msgstr "Leela解析のみ（KataGo未実行）"
-
 msgid "engine-compare:partial-overlap"
 msgstr "一部の手のみ両エンジン解析あり（{pct}%）"
 
@@ -1866,9 +1782,6 @@ msgstr "座標"
 
 msgid "engine-compare:col-katago"
 msgstr "KataGo"
-
-msgid "engine-compare:col-leela"
-msgstr "Leela"
 
 msgid "engine-compare:col-diff"
 msgstr "差分"
@@ -1906,9 +1819,6 @@ msgstr "データ不足"
 msgid "engine-compare:trend-katago-strict"
 msgstr "KataGoの方が厳しい評価"
 
-msgid "engine-compare:trend-leela-strict"
-msgstr "Leelaの方が厳しい評価"
-
 msgid "engine-compare:trend-similar"
 msgstr "両エンジン同程度"
 
@@ -1920,28 +1830,6 @@ msgstr "閉じる"
 
 msgid "engine-compare:jumped-to"
 msgstr "手数{move}に移動しました"
-
-msgid "leela:error:start_failed"
-msgstr "Leelaを起動できません。設定 > Leelaを確認してください。"
-
-msgid "leela:error:not_running"
-msgstr "Leelaが動作していません。設定 > Leelaを確認してください。"
-
-msgid "leela:error:request_failed"
-msgstr "Leela解析を開始できませんでした。"
-
-msgid "leela:error:engine_died"
-msgstr "Leelaエンジンが予期せず停止しました。"
-
-msgid "leela:error:timeout"
-msgstr "Leela解析がタイムアウトしました。"
-
-msgid "leela:error:analysis_failed"
-msgstr "Leela解析に失敗しました。詳細はログを確認してください。"
-
-msgid "leela:error:no_candidates"
-msgstr "Leelaが候補手を返しませんでした。"
-
 
 #. Phase 57: Style Archetype (name only, summary deferred)
 msgid "style:kiai_fighter:name"

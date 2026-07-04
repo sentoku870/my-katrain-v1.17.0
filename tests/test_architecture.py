@@ -519,7 +519,7 @@ class TestModuleStructure:
         gui_dir = _PROJECT_ROOT / "katrain" / "gui"
 
         expected_files = [
-            "leela_manager.py",
+            # Phase 171: leela_manager.py は KataGo 専用化により削除。
             "sgf_manager.py",
         ]
 

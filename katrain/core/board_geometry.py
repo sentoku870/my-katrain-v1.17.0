@@ -28,12 +28,10 @@ __all__ = [
     "compute_stone_size",
     "eval_color",
     "find_closest_grid_point",
-    "format_leela_stat",
     "format_loss",
     "x_coordinate_text",
     "y_coordinate_text",
 ]
-
 
 def compute_grid_spaces(
     board_size_x: int, board_size_y: int, margin_x: list[float], margin_y: list[float]
@@ -48,7 +46,6 @@ def compute_grid_spaces(
         board_size_y - 1 + sum(margin_y),
     )
 
-
 def compute_grid_size(
     width: float, height: float, x_grid_spaces: float, y_grid_spaces: float
 ) -> int:
@@ -59,13 +56,11 @@ def compute_grid_size(
     """
     return math.floor(min(width / x_grid_spaces, height / y_grid_spaces) + 0.1)
 
-
 def compute_board_with_margins(
     x_grid_spaces: float, y_grid_spaces: float, grid_size: float
 ) -> tuple[float, float]:
     """Compute the actual board width/height after applying grid_size."""
     return (x_grid_spaces * grid_size, y_grid_spaces * grid_size)
-
 
 def compute_extra_px_margins(
     width: float, height: float, board_width: float, board_height: float
@@ -76,11 +71,9 @@ def compute_extra_px_margins(
         round((height - board_height) / 2, 4),
     )
 
-
 def compute_stone_size(grid_size: float, stone_size_factor: float) -> float:
     """Compute the stone size from the grid size and a scaling factor."""
     return grid_size * stone_size_factor
-
 
 def compute_initial_gridpos(
     pos_xy: tuple[float, float],
@@ -113,7 +106,6 @@ def compute_initial_gridpos(
     ]
     return gridpos_x, gridpos_y
 
-
 def format_loss(x: float, extra_precision: bool = False) -> str:
     """Format a score-loss value for display.
 
@@ -128,7 +120,6 @@ def format_loss(x: float, extra_precision: bool = False) -> str:
         if -0.995 <= x < 0:
             return "-" + f"{x:.2f}"[2:]
     return f"{x:+.1f}"
-
 
 def eval_color(
     points_lost: float,
@@ -150,7 +141,6 @@ def eval_color(
         return eval_colors[i]
     return None
 
-
 def x_coordinate_text(i: int, board_size_x: int, rotation_degree: int, gtp_coord: list[str]) -> str:
     """Return the label text for an x coordinate given the rotation."""
     if rotation_degree == 90:
@@ -161,7 +151,6 @@ def x_coordinate_text(i: int, board_size_x: int, rotation_degree: int, gtp_coord
         return str(board_size_x - i)
     return gtp_coord[i]
 
-
 def y_coordinate_text(i: int, board_size_y: int, rotation_degree: int, gtp_coord: list[str]) -> str:
     """Return the label text for a y coordinate given the rotation."""
     if rotation_degree == 90:
@@ -171,7 +160,6 @@ def y_coordinate_text(i: int, board_size_y: int, rotation_degree: int, gtp_coord
     if rotation_degree == 270:
         return gtp_coord[i]
     return str(i + 1)
-
 
 def find_closest_grid_point(
     pos_x: float,
@@ -191,29 +179,3 @@ def find_closest_grid_point(
     cy = min(gridpos_y, key=lambda v: abs(v - pos_y))
     return (cx, gridpos_x.index(cx), cy, gridpos_y.index(cy))
 
-
-def format_leela_stat(candidate: Any, stat_type: str) -> str:
-    """Format a single Leela stat (e.g. visits, winrate, score) for display.
-
-    Args:
-        candidate: A LeelaCandidate-like object exposing a ``stats`` dict
-            (or any object whose ``stats[stat_type]`` returns the value).
-        stat_type: Stat key, one of the LEELA_TOP_MOVE_* constants.
-
-    Returns:
-        Formatted string, or "" when the value is None.
-    """
-    NOTHING = ""
-    val = candidate.stats.get(stat_type)
-    if val is None:
-        return NOTHING
-    if stat_type in ("LEELA_TOP_MOVE_VISITS", "LEELA_TOP_MOVE_RAW_VISITS"):
-        return f"{int(val):d}"
-    if stat_type in (
-        "LEELA_TOP_MOVE_WINRATE",
-        "LEELA_TOP_MOVE_RELATIVE_WINRATE",
-    ):
-        return f"{val * 100:.1f}%"
-    if stat_type == "LEELA_TOP_MOVE_SCORE":
-        return f"{val:+.1f}"
-    return str(val)

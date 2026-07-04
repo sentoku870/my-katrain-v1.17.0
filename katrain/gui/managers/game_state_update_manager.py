@@ -1,8 +1,10 @@
 """Game state update manager (Phase 158+: extracted from KaTrainGui).
 
 Phase 158+: Manages the per-tick ``_do_update_state`` logic that drives AI
-moves, teaching undo, mistake sounds, pondering, and Leela analysis requests.
+moves, teaching undo, mistake sounds, and pondering.
 This was previously inline in ``KaTrainGui._do_update_state`` (~50 lines).
+
+Phase 171: KataGo 専用化により Leela 解析リクエスト／エンジン管理を削除。
 
 Dependencies are injected via constructor (DI pattern) to keep this module
 testable without instantiating KaTrainGui.
@@ -30,8 +32,7 @@ class GameStateUpdateManager:
     1. Plays mistake sounds and triggers teaching undo in PLAY mode.
     2. Triggers AI moves when analysis is complete and it's the AI's turn.
     3. Manages pondering state (KataGo continual analysis).
-    4. Manages Leela engine lifecycle based on config + UI hints.
-    5. Schedules a follow-up GUI refresh.
+    4. Schedules a follow-up GUI refresh.
     """
 
     def __init__(
@@ -47,17 +48,14 @@ class GameStateUpdateManager:
         get_next_player_info: Callable[[], Any],
         get_popups_open: Callable[[], Any],
         get_nav_drawer_open: Callable[[], bool],
-        get_leela_manager: Callable[[], Any],
-        get_config: Callable[[str], Any],  # GUI's config getter (for leela/enabled check)
         get_eval_thresholds: Callable[[], list[float]],
-        get_analysis_controls: Callable[[], Any],
         # Callbacks (Kivy-side concerns)
         play_sound: Callable[[Any], None],
         ai_move: Callable[[Any], None],
         stone_sound: Callable[[Any], None],
         schedule_gui_update: Callable[[Any, bool], None],
         clock: Clock,
-    ) -> None:
+    ):
         self._get_game = get_game
         self._get_engine = get_engine
         self._get_play_analyze_mode = get_play_analyze_mode
@@ -67,10 +65,7 @@ class GameStateUpdateManager:
         self._get_next_player_info = get_next_player_info
         self._get_popups_open = get_popups_open
         self._get_nav_drawer_open = get_nav_drawer_open
-        self._get_leela_manager = get_leela_manager
-        self._get_config = get_config
         self._get_eval_thresholds = get_eval_thresholds
-        self._get_analysis_controls = get_analysis_controls
         self._play_sound = play_sound
         self._ai_move = ai_move
         self._stone_sound = stone_sound
@@ -78,7 +73,7 @@ class GameStateUpdateManager:
         self._clock = clock
 
     def do_update_state(self, redraw_board: bool = False) -> None:
-        """Run one update tick: teach undo, AI moves, pondering, Leela."""
+        """Run one update tick: teach undo, AI moves, pondering."""
         game = self._get_game()
         if not game or not game.current_node:
             return
@@ -135,25 +130,8 @@ class GameStateUpdateManager:
             else:
                 engine.stop_pondering()
 
-        # Leela engine lifecycle
-        leela = self._get_leela_manager()
-        if not self._get_config("leela/enabled"):
-            if leela.leela_engine:
-                leela.shutdown_engine()
-        else:
-            analysis_controls = self._get_analysis_controls()
-            if analysis_controls and analysis_controls.hints.active:
-                leela.request_analysis(game.current_node, None)
-
         # GUI refresh
         self._schedule_gui_update(cn, redraw_board)
-
-    def request_leela_analysis(self) -> None:
-        """Request Leela analysis for the current node."""
-        game = self._get_game()
-        if not game:
-            return
-        self._get_leela_manager().request_analysis(game.current_node, None)
 
     def set_pondering(self, value: bool) -> None:
         """Convenience setter for pondering state (used by other modules)."""

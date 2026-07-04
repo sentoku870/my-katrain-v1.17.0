@@ -31,7 +31,7 @@ def extract_game_stats(
     log_cb: Callable[[str], None] | None = None,
     target_visits: int | None = None,
     source_index: int = 0,
-    snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+    snapshot: Any | None = None,
     skill_preset: str | None = None, # Phase 126
 ) -> dict[str, Any] | None:
     """Extract statistics from a Game object for summary generation.
@@ -45,8 +45,8 @@ def extract_game_stats(
         source_index: Index for deterministic sorting (Phase 85).
             Used as tie-breaker when game_name, date, total_moves are identical.
         snapshot: Optional pre-built EvalSnapshot. If provided, uses this instead of
-            calling game.build_eval_snapshot(). Used for Leela analysis where
-            the snapshot is returned separately from the Game object.
+            calling game.build_eval_snapshot(). Phase 171 で Leela 専用利用を廃止し、
+            KataGo 共通の前処理オプションとして残している（実際は使われない）。
 
     Returns:
         Dictionary with game statistics, or None if extraction failed
@@ -174,7 +174,7 @@ def extract_game_stats(
 
         for move in snapshot.moves:
             player = move.player
-            canonical_loss = get_canonical_loss_from_move(move)  # Phase 87.5: Handles both KataGo and Leela
+            canonical_loss = get_canonical_loss_from_move(move)
             stats["moves_by_player"][player] = stats["moves_by_player"].get(player, 0) + 1
             stats["loss_by_player"][player] = stats["loss_by_player"].get(player, 0.0) + canonical_loss
 
@@ -347,7 +347,7 @@ def extract_game_stats(
                 continue
 
             # Skip if ALL loss fields are None
-            has_loss = move.score_loss is not None or move.leela_loss_est is not None or move.points_lost is not None
+            has_loss = move.score_loss is not None or move.points_lost is not None
             if not has_loss:
                 continue
 
@@ -357,7 +357,6 @@ def extract_game_stats(
                     "player": move.player,
                     "gtp": move.gtp,
                     "score_loss": move.score_loss,
-                    "leela_loss_est": move.leela_loss_est,
                     "points_lost": move.points_lost,
                     "mistake_category": move.mistake_category.name,
                     "meaning_tag_id": move.meaning_tag_id,

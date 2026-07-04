@@ -240,7 +240,6 @@ from katrain.core.analysis.models import (
     get_analysis_engine,
     # Helper function
     get_canonical_loss_from_move,
-    needs_leela_warning,  # Phase 34
 )
 
 # =============================================================================
@@ -345,11 +344,10 @@ __all__ = [
     "ConfidenceLevel",
     "PVFilterLevel",
     "EngineType",
-    # Analysis Engine Selection (Phase 33-34)
+    # Analysis Engine Selection (Phase 33-34, Phase 171 KataGo-only)
     "VALID_ANALYSIS_ENGINES",
     "DEFAULT_ANALYSIS_ENGINE",
     "get_analysis_engine",
-    "needs_leela_warning",  # Phase 34
     # Dataclasses
     "MoveEval",
     "EvalSnapshot",

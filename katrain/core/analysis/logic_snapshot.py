@@ -101,7 +101,7 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
         m.winrate_loss = winrate_loss
 
         # Phase 156-C: surface KataGo scoreStdev for the dynamic phase
-        # detector. Leela / unanalyzed moves leave ``score_stdev`` as None.
+        # detector. Unanalyzed moves leave ``score_stdev`` as None.
         if m.score_stdev is None:
             from katrain.core.analysis.critical_moves import _get_score_stdev_from_node
 

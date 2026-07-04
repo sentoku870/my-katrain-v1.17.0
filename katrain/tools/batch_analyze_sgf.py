@@ -57,7 +57,6 @@ from katrain.core.batch import (
     get_canonical_loss,
     get_unique_filename,
     has_analysis,
-    needs_leela_karte_warning,
     normalize_player_name,
     parse_sgf_with_fallback,
     parse_timeout_input,
@@ -90,13 +89,9 @@ _extract_game_stats = extract_game_stats
 _extract_players_from_stats = extract_players_from_stats
 
 # =============================================================================
-# Additional backward-compat re-exports for Leela support
+# Phase 171: Leela 用の re-export を削除
 # =============================================================================
-# These were previously imported directly in this module and used by tests.
 from katrain.core.eval_metrics import EvalSnapshot, MoveEval
-from katrain.core.leela.conversion import leela_position_to_move_eval
-from katrain.core.leela.engine import LeelaEngine
-from katrain.core.leela.models import LeelaPositionEval
 
 __all__ = [
     # Constants
@@ -119,7 +114,6 @@ __all__ = [
     "extract_players_from_stats",
     "get_canonical_loss",
     "get_unique_filename",
-    "needs_leela_karte_warning",
     "normalize_player_name",
     "safe_int",
     "safe_write_file",
@@ -129,9 +123,6 @@ __all__ = [
     "WriteError",
     "EvalSnapshot",
     "MoveEval",
-    "LeelaEngine",
-    "LeelaPositionEval",
-    "leela_position_to_move_eval",
     # Private aliases
     "_get_canonical_loss",
     "_get_unique_filename",

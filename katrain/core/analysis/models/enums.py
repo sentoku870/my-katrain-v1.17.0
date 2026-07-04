@@ -1,12 +1,16 @@
-"""katrain.core.analysis.models.enums - Enum definitions and engine configuration.
+"""katrain.core.analysis.models.enums - Enum definitions.
 
-Phase 144-B: Extracted from models.py (1230 lines → 6 focused modules).
+Phase 144-B: Extracted from models.py (1230 lines -> 6 focused modules).
+Phase 171: KataGo-only path. ``EngineType.LEELA`` removed; only
+``KATAGO`` and ``UNKNOWN`` survive. ``get_analysis_engine`` returns
+``"katago"`` unconditionally, and the ``needs_leela_warning`` /
+``LEELA_FAST_VISITS_MIN`` plumbing is removed.
 
 Contains:
-- 7 enum types (MistakeCategory, PVFilterLevel, PositionDifficulty,
+- 6 enum types (MistakeCategory, PVFilterLevel, PositionDifficulty,
   AutoConfidence, ConfidenceLevel, AnalysisStrength, EngineType)
-- Analysis engine selection helpers (get_analysis_engine, needs_leela_warning)
 - Engine visit resolution (resolve_visits) + constants
+- KataGo-only analysis_engine helper
 """
 from __future__ import annotations
 
@@ -108,16 +112,14 @@ class EngineType(Enum):
     """解析エンジン種別。
 
     MoveEvalから推定するために使用。
-    - KATAGO: KataGo解析（score_loss設定あり）
-    - LEELA: Leela解析（leela_loss_est設定あり）
-    - UNKNOWN: エンジン不明（両方None）
+    - KATAGO: KataGo解析（score_loss設定あり、Phase 171 以降は事実上これだけ）
+    - UNKNOWN: エンジン不明
 
     Note:
-        Phase 32で追加。損失ラベルの区別表示に使用。
+        Phase 32で追加。Phase 171 で ``LEELA`` を廃止し、KataGo 専用化。
     """
 
     KATAGO = "katago"
-    LEELA = "leela"
     UNKNOWN = "unknown"
 
 
@@ -125,13 +127,8 @@ class EngineType(Enum):
 # Analysis Engine Selection (Phase 33)
 # =============================================================================
 
-# Derive from EngineType to prevent drift (EngineType.UNKNOWN excluded)
-VALID_ANALYSIS_ENGINES: frozenset[str] = frozenset(
-    {
-        EngineType.KATAGO.value,
-        EngineType.LEELA.value,
-    }
-)
+# Phase 171: KataGo-only. Previously a frozenset of {"katago", "leela"}.
+VALID_ANALYSIS_ENGINES: frozenset[str] = frozenset({EngineType.KATAGO.value})
 DEFAULT_ANALYSIS_ENGINE: str = EngineType.KATAGO.value
 
 
@@ -142,43 +139,21 @@ def get_analysis_engine(engine_config: dict[str, Any]) -> str:
         engine_config: engine セクションの設定dict
 
     Returns:
-        str: "katago" or "leela"（無効値/未設定は "katago" にフォールバック）
-
-    Behavior:
-        - キーなし: DEFAULT_ANALYSIS_ENGINE を返す
-        - 無効値（大文字、typo、None、非文字列等）: warning log + フォールバック
-        - 大文字小文字は厳格（"LEELA" は無効）
+        str: 常に ``"katago"``（後方互換のため dict 受領シグネチャは維持）
 
     Note:
-        Phase 33で追加。Phase 34でUI連携・エンジン起動ロジックに使用予定。
-        leela/enabled との整合性チェックは Phase 34 の責務。
+        Phase 171 で KataGo 専用化。``analysis_engine`` 設定値は
+        読み込むが無視して ``"katago"`` を返す。古い設定に
+        ``"leela"`` があっても自動的に KataGo にフォールバックする。
     """
     value = engine_config.get("analysis_engine", DEFAULT_ANALYSIS_ENGINE)
-    # Type guard: unhashable types (list, dict) would crash `in frozenset`
     if not isinstance(value, str) or value not in VALID_ANALYSIS_ENGINES:
         _log.warning(
             "Invalid analysis_engine %r, falling back to %r",
             value,
             DEFAULT_ANALYSIS_ENGINE,
         )
-        return DEFAULT_ANALYSIS_ENGINE
-    return value
-
-
-def needs_leela_warning(selected_engine: str, leela_enabled: bool) -> bool:
-    """Leela選択時にLeela未有効の警告が必要かどうかを判定する。
-
-    Args:
-        selected_engine: 選択されたエンジン ("katago" or "leela")
-        leela_enabled: Leelaが有効かどうか
-
-    Returns:
-        True if warning should be shown (Leela selected but not enabled)
-
-    Note:
-        Phase 34で追加。UIとテストで共有するための純粋関数。
-    """
-    return selected_engine == EngineType.LEELA.value and not leela_enabled
+    return DEFAULT_ANALYSIS_ENGINE
 
 
 # Engine-specific default visits values.
@@ -186,11 +161,7 @@ def needs_leela_warning(selected_engine: str, leela_enabled: bool) -> bool:
 # User-facing defaults should be set in config.json itself.
 ENGINE_VISITS_DEFAULTS: dict[str, dict[str, int]] = {
     "katago": {"max_visits": 500, "fast_visits": 25},
-    "leela": {"max_visits": 1000, "fast_visits": 200},
 }
-
-# UI minimum for leela fast_visits (practical lower bound for meaningful analysis)
-LEELA_FAST_VISITS_MIN = 50
 
 
 def resolve_visits(
@@ -203,24 +174,20 @@ def resolve_visits(
     Args:
         strength: 解析強度（QUICK/DEEP）
         engine_config: エンジン設定dict（max_visits, fast_visitsを含む可能性）
-        engine_type: エンジン種別 ("katago" or "leela")
+        engine_type: エンジン種別（常に ``"katago"``。後方互換のため受領する）
 
     Returns:
         int: visits数（1以上保証）
 
     Behavior:
         - engine_configにキーが存在しない場合はデフォルト値を使用
-        - 不明なengine_typeの場合はkatagoのデフォルトにフォールバック（warning log出力）
         - 不正な値（文字列、None等）の場合もデフォルトにフォールバック（防御的）
         - 文字列の場合はstrip()後にint変換を試行
 
     Note:
         この関数はconfig.jsonからの値読み取り用。単一の強度に対する値解決のみ行う。
         fast_visits <= max_visits の整合性チェックは呼び出し側の責務。
-        UIでのユーザー入力バリデーション（例: Leelaは50以上）も呼び出し側の責務。
     """
-    if engine_type not in ENGINE_VISITS_DEFAULTS:
-        _log.warning("Unknown engine_type '%s', falling back to katago defaults", engine_type)
     defaults = ENGINE_VISITS_DEFAULTS.get(engine_type, ENGINE_VISITS_DEFAULTS["katago"])
     key = "fast_visits" if strength == AnalysisStrength.QUICK else "max_visits"
 
@@ -229,13 +196,11 @@ def resolve_visits(
         return defaults[key]
 
     try:
-        # 文字列の場合はstrip()してから変換
         if isinstance(raw_value, str):
             raw_value = raw_value.strip()
-            if not raw_value:  # 空文字列
+            if not raw_value:
                 return defaults[key]
         visits = int(raw_value)
         return max(1, visits)
     except (ValueError, TypeError):
-        # 不正な値の場合はデフォルトにフォールバック
         return defaults[key]

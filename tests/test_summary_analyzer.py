@@ -51,7 +51,6 @@ class _MockMove:
     gtp: str = "D4"
     points_lost: float | None = None
     score_loss: float | None = None
-    leela_loss_est: float | None = None
     mistake_category: MistakeCategory | None = None
     reason_tags: list[str] = field(default_factory=list)
     tag: str = "middle"
@@ -523,7 +522,6 @@ class TestSummaryStatsMethods:
             gtp: str = "D4"
             points_lost: float = 10.0
             score_loss: float = 10.0
-            leela_loss_est: float | None = None
             mistake_category: MistakeCategory | None = MistakeCategory.MISTAKE
             reason_tags: list[str] = field(default_factory=list)
             tag: str = "middle"

@@ -9,7 +9,6 @@ import pytest
 
 from katrain.common.typed_config.models import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
     normalize_path,
     safe_bool,
@@ -323,6 +322,7 @@ class TestSafeBoolTuple:
 
 class TestEngineConfigFromDict:
     def test_all_fields_populated(self):
+        # Phase 171: "leela" は無効値。KataGo にフォールバックされる。
         cfg = EngineConfig.from_dict(
             {
                 "analysis_engine": "leela",
@@ -330,7 +330,7 @@ class TestEngineConfigFromDict:
                 "max_time": 10.0,
             }
         )
-        assert cfg.analysis_engine == "leela"
+        assert cfg.analysis_engine == "katago"
         assert cfg.max_visits == 1000
         assert cfg.max_time == 10.0
 
@@ -440,83 +440,3 @@ class TestTrainerConfigFromDict:
             cfg.theme = "other"  # type: ignore
 
 
-# =============================================================================
-# LeelaConfig tests
-# =============================================================================
-
-
-class TestLeelaConfigFromDict:
-    def test_enabled_false_by_default(self):
-        cfg = LeelaConfig.from_dict({})
-        assert cfg.enabled is False
-
-    def test_enabled_true(self):
-        cfg = LeelaConfig.from_dict({"enabled": True})
-        assert cfg.enabled is True
-
-    def test_exe_path_empty_becomes_none(self):
-        cfg = LeelaConfig.from_dict({"exe_path": ""})
-        assert cfg.exe_path is None
-
-    def test_exe_path_valid(self):
-        cfg = LeelaConfig.from_dict({"exe_path": "C:\\leela.exe"})
-        assert cfg.exe_path == "C:\\leela.exe"
-
-    def test_all_defaults(self):
-        cfg = LeelaConfig.from_dict({})
-        assert cfg.enabled is False
-        assert cfg.exe_path is None
-        assert cfg.max_visits == 1000
-        assert cfg.fast_visits == 200
-        assert cfg.loss_scale_k == 0.5
-        assert cfg.resign_hint_enabled is False
-        assert cfg.resign_winrate_threshold == 5
-        assert cfg.resign_consecutive_moves == 3
-
-    def test_legacy_play_keys_are_ignored(self):
-        """Phase 170 removed ``play_enabled`` / ``play_visits`` from
-        ``LeelaConfig`` but older user configs may still carry them.
-        ``from_dict`` must accept (and silently drop) those keys
-        without raising."""
-        cfg = LeelaConfig.from_dict(
-            {
-                "play_enabled": True,
-                "play_visits": 750,
-            }
-        )
-        assert cfg.enabled is False
-        # play_* fields are simply not on the dataclass; the call must
-        # not raise AttributeError or TypeError.
-
-    def test_play_attrs_no_longer_exist(self):
-        """Phase 170: ``play_enabled`` / ``play_visits`` removed from the dataclass."""
-        cfg = LeelaConfig.from_dict({})
-        assert not hasattr(cfg, "play_enabled")
-        assert not hasattr(cfg, "play_visits")
-
-    def test_frozen_immutability(self):
-        cfg = LeelaConfig.from_dict({})
-        with pytest.raises(FrozenInstanceError):
-            cfg.enabled = True  # type: ignore
-
-    def test_get_returns_default_when_value_is_none(self):
-        """Phase 148+: get(k, default) returns default when value is None.
-
-        Mirrors dict.get() semantics. Without this, TextInput(text=cfg.get("exe_path", ""))
-        in settings_popup.py would receive None and crash on Kivy's _set_text.
-        """
-        cfg = LeelaConfig.from_dict({})  # exe_path defaults to None
-        assert cfg.exe_path is None
-        assert cfg.get("exe_path", "") == ""
-        assert cfg.get("exe_path", "fallback") == "fallback"
-
-    def test_get_returns_value_when_not_none(self):
-        """Phase 148+: get returns the actual value when not None (non-regression)."""
-        cfg = LeelaConfig.from_dict({"exe_path": "C:\\leela.exe", "loss_scale_k": 0.75})
-        assert cfg.get("exe_path", "") == "C:\\leela.exe"
-        assert cfg.get("loss_scale_k", 0.5) == 0.75
-
-    def test_get_returns_default_when_key_missing(self):
-        """Phase 148+: get returns default when the attribute does not exist."""
-        cfg = LeelaConfig.from_dict({})
-        assert cfg.get("nonexistent_key", "default_value") == "default_value"

@@ -488,16 +488,6 @@ class BadukPanWidget(Widget):
     # Hint markers / hover overlay (delegated to badukpan_hints)
     # =================================================================
 
-    def _format_leela_stat(self, candidate: Any, stat_type: str) -> str:
-        from katrain.gui.badukpan_hints import format_leela_stat as _format
-
-        return _format(self, candidate, stat_type)
-
-    def draw_leela_candidates(self, leela_analysis: Any, low_visits_threshold: int = 25) -> tuple[Any, ...] | None:
-        from katrain.gui.badukpan_hints import draw_leela_candidates as _draw_leela
-
-        return _draw_leela(self, leela_analysis, low_visits_threshold)
-
     def draw_hover_contents(self, *_args: Any) -> None:
         from katrain.gui.badukpan_hints import draw_hover_contents as _draw_hover
 
@@ -507,13 +497,6 @@ class BadukPanWidget(Widget):
         from katrain.gui.badukpan_hints import prepare_hint_moves as _prepare
 
         return _prepare(self, current_node, game_ended)
-
-    def _draw_leela_or_kata_hints(
-        self, current_node: Any, hint_moves: list[dict[str, Any]], next_player: str
-    ) -> Any:
-        from katrain.gui.badukpan_hints import draw_leela_or_kata_hints as _draw
-
-        return _draw(self, current_node, hint_moves, next_player)
 
     def _draw_kata_hint_moves(
         self,

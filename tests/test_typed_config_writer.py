@@ -12,7 +12,6 @@ import pytest
 
 from katrain.common.typed_config import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
     TypedConfigWriter,
     UnknownFieldError,
@@ -28,12 +27,6 @@ from katrain.common.typed_config.writer import _to_json_safe
 def engine_defaults():
     """EngineConfigのデフォルト値。"""
     return EngineConfig.from_dict({})
-
-
-@pytest.fixture
-def leela_defaults():
-    """LeelaConfigのデフォルト値。"""
-    return LeelaConfig.from_dict({})
 
 
 @pytest.fixture
@@ -73,16 +66,6 @@ class TestBasicFunctionality:
         assert result.fast_visits == 50
         assert config["engine"]["max_visits"] == 1000
         assert config["engine"]["fast_visits"] == 50
-
-    def test_update_leela(self):
-        """Leelaセクションの更新"""
-        config = {"leela": {"enabled": False}}
-        writer = TypedConfigWriter(config, lambda s: None)
-
-        result = writer.update_leela(enabled=True, exe_path="/path")
-
-        assert result.enabled is True
-        assert result.exe_path == "/path"
 
     def test_update_trainer(self):
         """Trainerセクションの更新"""
@@ -151,21 +134,6 @@ class TestMergeSemantics:
         assert isinstance(config["engine"], dict)
         assert config["engine"]["max_visits"] == 1000
 
-    def test_leela_preserves_unknown_keys(self):
-        """leelaセクションでも未知キーが保持される（AC6 - Phase 102）"""
-        config = {
-            "leela": {
-                "enabled": False,
-                "resign_hint_dummy": "should_be_preserved",  # 未知キー
-            }
-        }
-        writer = TypedConfigWriter(config, lambda s: None)
-
-        writer.update_leela(enabled=True)
-
-        assert config["leela"]["enabled"] is True
-        assert config["leela"]["resign_hint_dummy"] == "should_be_preserved"
-
 
 # =============================================================================
 # Field Validation (AC4)
@@ -208,13 +176,13 @@ class TestFieldValidation:
 
     def test_error_message_includes_class_name(self):
         """エラーメッセージにクラス名を含む"""
-        config = {"leela": {}}
+        config = {"engine": {}}
         writer = TypedConfigWriter(config, lambda s: None)
 
         with pytest.raises(UnknownFieldError) as exc:
-            writer.update_leela(bad_field="x")
+            writer.update_engine(bad_field="x")
 
-        assert "LeelaConfig" in str(exc.value)
+        assert "EngineConfig" in str(exc.value)
 
     def test_valid_and_invalid_fields_mixed(self):
         """有効なフィールドと無効なフィールドが混在"""
@@ -352,14 +320,14 @@ class TestInvalidValueHandling:
 
     def test_empty_string_to_none_no_warning(self, caplog):
         """空文字->None変換は警告なし"""
-        config = {"leela": {}}
+        config = {"engine": {}}
         writer = TypedConfigWriter(config, lambda s: None)
 
         with caplog.at_level(logging.WARNING, logger="katrain"):
-            result = writer.update_leela(exe_path="")
+            result = writer.update_engine(katago="")
 
-        assert result.exe_path is None
-        assert config["leela"]["exe_path"] is None
+        assert result.katago is None
+        assert config["engine"]["katago"] is None
         assert "normalized" not in caplog.text
 
     def test_list_to_tuple_no_warning(self, caplog):
@@ -439,10 +407,9 @@ class TestIntegrationPattern:
         writer = TypedConfigWriter(config, lambda s: received_sections.append(s))
 
         writer.update_engine(max_visits=1000)
-        writer.update_leela(enabled=True)
         writer.update_trainer(low_visits=50)
 
-        assert received_sections == ["engine", "leela", "trainer"]
+        assert received_sections == ["engine", "trainer"]
 
 
 # =============================================================================
@@ -451,41 +418,41 @@ class TestIntegrationPattern:
 
 
 class TestValueNormalization:
-    """値の正規化テスト（AC7）
+    """値の正規化テスト（AC7, Phase 171 で Leela 部分を削除）
 
     設計上の動作:
     - 無効な値（None, 不正な型）は from_dict() でデフォルトに正規化される
-    - Optional[str]フィールド（exe_path等）のNoneはそのまま永続化される
+    - Optional[str]フィールドのNoneはそのまま永続化される
     - 呼び出し側はNoneを渡さない方が望ましい（意図を明確にするため）
     """
 
     def test_none_for_optional_str_is_persisted(self):
         """Optional[str]フィールドのNoneはそのまま永続化される（by design）"""
-        config = {"leela": {"exe_path": "/existing/path"}}
+        config = {"engine": {"katago": "/existing/path"}}
         writer = TypedConfigWriter(config, lambda s: None)
 
-        writer.update_leela(exe_path=None)
+        writer.update_engine(katago=None)
 
-        # exe_pathはOptional[str]なのでNoneがそのまま永続化される
-        assert config["leela"]["exe_path"] is None
+        # katago は Optional[str] なので None がそのまま永続化される
+        assert config["engine"]["katago"] is None
 
-    def test_none_for_int_field_uses_default(self, leela_defaults):
+    def test_none_for_int_field_uses_default(self, engine_defaults):
         """intフィールドのNoneはデフォルト値に正規化される（by design）"""
-        config = {"leela": {"max_visits": 2000}}
+        config = {"engine": {"max_visits": 2000}}
         writer = TypedConfigWriter(config, lambda s: None)
 
-        writer.update_leela(max_visits=None)
+        writer.update_engine(max_visits=None)
 
-        # NoneはLeelaConfig.from_dict()でデフォルト値に正規化
-        assert config["leela"]["max_visits"] == leela_defaults.max_visits
+        # NoneはEngineConfig.from_dict()でデフォルト値に正規化
+        assert config["engine"]["max_visits"] == engine_defaults.max_visits
 
-    def test_invalid_string_for_int_uses_default(self, leela_defaults):
+    def test_invalid_string_for_int_uses_default(self, engine_defaults):
         """intフィールドへの無効文字列はデフォルト値に正規化される（by design）"""
-        config = {"leela": {"max_visits": 2000}}
+        config = {"engine": {"max_visits": 2000}}
         writer = TypedConfigWriter(config, lambda s: None)
 
         # 無効な文字列を渡す
-        writer.update_leela(max_visits="invalid")
+        writer.update_engine(max_visits="invalid")
 
         # safe_int("invalid", default)でデフォルト値に正規化（例外は発生しない）
-        assert config["leela"]["max_visits"] == leela_defaults.max_visits
+        assert config["engine"]["max_visits"] == engine_defaults.max_visits

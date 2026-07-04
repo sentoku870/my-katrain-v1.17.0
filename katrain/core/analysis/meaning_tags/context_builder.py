@@ -29,7 +29,7 @@ def _get_score_stdev_from_node(node: GameNode) -> float | None:
     """Extract scoreStdev from node analysis.
 
     KataGo: node.analysis["root"]["scoreStdev"]
-    Leela / unanalyzed: None
+    Unanalyzed: None
     """
     if not getattr(node, "analysis_exists", False):
         return None

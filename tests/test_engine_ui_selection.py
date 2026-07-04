@@ -1,7 +1,10 @@
-"""Tests for analysis engine UI selection (Phase 34).
+"""Tests for analysis engine UI selection (Phase 34, Phase 171 KataGo-only).
 
 CI-friendly: no Kivy event loop required.
 Tests production code directly where possible.
+
+Phase 171: Leela 削除に伴い ``needs_leela_warning`` /
+``EngineType.LEELA`` 関連のテストを KataGo-only に整理。
 """
 
 import pytest
@@ -12,30 +15,7 @@ from katrain.core.analysis import (
     VALID_ANALYSIS_ENGINES,
     EngineType,
     get_analysis_engine,
-    needs_leela_warning,
 )
-
-
-class TestNeedsLeelaWarning:
-    """Production helper: needs_leela_warning()"""
-
-    @pytest.mark.parametrize(
-        "selected,leela_enabled,expected",
-        [
-            (EngineType.LEELA.value, False, True),  # Leela selected, disabled -> warn
-            (EngineType.LEELA.value, True, False),  # Leela selected, enabled -> no warn
-            (EngineType.KATAGO.value, False, False),  # KataGo selected -> no warn
-            (EngineType.KATAGO.value, True, False),  # KataGo selected -> no warn
-        ],
-    )
-    def test_warning_conditions(self, selected, leela_enabled, expected):
-        """Production function with EngineType values"""
-        assert needs_leela_warning(selected, leela_enabled) == expected
-
-    def test_case_sensitive(self):
-        """Uppercase does not match (EngineType.LEELA.value is lowercase)"""
-        assert needs_leela_warning("LEELA", False) is False
-        assert needs_leela_warning("Leela", False) is False
 
 
 class TestTABResetKeysEngineEntry:
@@ -54,6 +34,10 @@ class TestTABResetKeysEngineEntry:
             ("general", "pv_filter_level"),
         }
         assert expected.issubset(set(analysis_keys))
+
+    def test_no_leela_tab_after_phase_171(self):
+        """Phase 171: leela タブは廃止。"""
+        assert "leela" not in TAB_RESET_KEYS
 
 
 class TestResetDefaultValue:
@@ -84,7 +68,8 @@ class TestEngineMergePattern:
             "model": "model.bin.gz",
             "analysis_engine": EngineType.KATAGO.value,
         }
-        new_value = EngineType.LEELA.value
+        # Phase 171: KataGo 固定。以前は LEELA.value を入れていた。
+        new_value = EngineType.KATAGO.value
 
         # Implementation pattern: {**existing, "analysis_engine": new_value}
         updated = {**existing, "analysis_engine": new_value}
@@ -96,17 +81,20 @@ class TestEngineMergePattern:
     def test_merge_with_empty_existing(self):
         """Should work with empty existing config"""
         existing = {}
-        updated = {**existing, "analysis_engine": EngineType.LEELA.value}
-        assert updated == {"analysis_engine": EngineType.LEELA.value}
+        updated = {**existing, "analysis_engine": EngineType.KATAGO.value}
+        assert updated == {"analysis_engine": EngineType.KATAGO.value}
 
 
 class TestEngineValueConsistency:
-    """Engine value name consistency tests"""
+    """Engine value name consistency tests (Phase 171 KataGo-only)"""
 
-    def test_engine_type_values_in_valid_engines(self):
-        """EngineType values should be in VALID_ANALYSIS_ENGINES"""
+    def test_katago_in_valid_engines(self):
+        """EngineType.KATAGO.value should be in VALID_ANALYSIS_ENGINES"""
         assert EngineType.KATAGO.value in VALID_ANALYSIS_ENGINES
-        assert EngineType.LEELA.value in VALID_ANALYSIS_ENGINES
+
+    def test_leela_no_longer_in_engine_type(self):
+        """Phase 171: EngineType.LEELA は削除された。"""
+        assert not hasattr(EngineType, "LEELA")
 
     def test_unknown_not_in_valid_engines(self):
         """UNKNOWN should not be in valid engines"""
@@ -116,50 +104,29 @@ class TestEngineValueConsistency:
         """Default engine should be in valid engines"""
         assert DEFAULT_ANALYSIS_ENGINE in VALID_ANALYSIS_ENGINES
 
-    def test_get_analysis_engine_returns_valid(self):
-        """get_analysis_engine should always return a valid engine"""
+    def test_get_analysis_engine_always_returns_valid(self):
+        """get_analysis_engine should always return a valid engine (KataGo)"""
         # Empty config -> default
-        assert get_analysis_engine({}) in VALID_ANALYSIS_ENGINES
-        # Valid config
-        assert get_analysis_engine({"analysis_engine": "leela"}) in VALID_ANALYSIS_ENGINES
+        assert get_analysis_engine({}) == EngineType.KATAGO.value
+        # Phase 171: leela 設定は KataGo にフォールバック
+        assert get_analysis_engine({"analysis_engine": "leela"}) == EngineType.KATAGO.value
         # Invalid config -> fallback to default
-        assert get_analysis_engine({"analysis_engine": "invalid"}) in VALID_ANALYSIS_ENGINES
+        assert get_analysis_engine({"analysis_engine": "invalid"}) == EngineType.KATAGO.value
 
 
 class TestAnalysisModuleExports:
-    """analysis module public interface check"""
+    """analysis module public interface check (Phase 171 KataGo-only)"""
 
-    def test_needs_leela_warning_is_exported(self):
-        """needs_leela_warning should be importable from analysis package"""
-        from katrain.core.analysis import needs_leela_warning
+    def test_needs_leela_warning_no_longer_exported(self):
+        """Phase 171: needs_leela_warning は削除された。"""
+        from katrain.core import analysis as analysis_module
 
-        assert callable(needs_leela_warning)
+        assert not hasattr(analysis_module, "needs_leela_warning")
 
     def test_engine_type_is_exported(self):
         """EngineType should be importable from analysis package"""
         from katrain.core.analysis import EngineType
 
         assert hasattr(EngineType, "KATAGO")
-        assert hasattr(EngineType, "LEELA")
-
-
-class TestNeedsLeelaWarningEdgeCases:
-    """Edge cases for needs_leela_warning() - CI-stable"""
-
-    def test_empty_string_engine(self):
-        """Empty string should not trigger warning (doesn't match LEELA)"""
-        assert needs_leela_warning("", False) is False
-
-    def test_none_leela_enabled_behavior(self):
-        """leela_enabled=None behavior check (TypeError or False)
-
-        Python `not None` is True, so Leela + None -> True.
-        This documents the expected behavior.
-        """
-        result = needs_leela_warning(EngineType.LEELA.value, None)
-        assert result is True  # `not None` == True
-
-    def test_whitespace_engine(self):
-        """Whitespace should not match LEELA"""
-        assert needs_leela_warning(" leela ", False) is False
-        assert needs_leela_warning("leela ", False) is False
+        assert hasattr(EngineType, "UNKNOWN")
+        assert not hasattr(EngineType, "LEELA")

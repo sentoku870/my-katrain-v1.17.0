@@ -86,21 +86,11 @@ class MoveEval:
     盤面の戦術的状況に基づいて board_analysis モジュールで計算される。
     """
 
-    leela_loss_est: float | None = None
-    """Leela による推定損失（0以上、Noneは非Leela解析）。
-
-    Note:
-    - score_loss（目単位）とは異なるセマンティクス
-    - K係数でスケール変換済み（デフォルト K=0.5）
-    - 0.0 = 最善手、正の値 = 損失
-    - 最大値: LEELA_LOSS_EST_MAX（50.0）
-    """
-
     score_stdev: float | None = None
     """KataGo root の scoreStdev（手数終盤判定の指標、Phase 156）。
 
     Note:
-    - None: Leela経路 / 未解析の手
+    - None: 未解析の手
     - 値が小さい = 形勢が読み切れている（終盤の特徴）
     - Phase 156-A: classify_game_phase_dynamic() が使用
     """
@@ -174,22 +164,17 @@ def get_canonical_loss_from_move(m: MoveEval) -> float:
 
     優先順位:
       1) score_loss が設定されていればそれを使用（KataGo）
-      2) leela_loss_est が設定されていればそれを使用（Leela）
-      3) points_lost があれば使用
-      4) どちらもなければ 0.0
+      2) points_lost があれば使用
+      3) どちらもなければ 0.0
 
     Returns:
         float: 常に >= 0 の損失値（負の値は 0 にクランプ）
 
     Note:
-        - Phase 32 で leela_loss_est を追加
-        - データ層で一貫してクランプすることで、
-          将来の他UI/エクスポートでも安全に利用可能。
+        Phase 171 で Leela 経路を削除（KataGo 専用化）。
     """
     if m.score_loss is not None:
         return max(0.0, m.score_loss)
-    if m.leela_loss_est is not None:
-        return max(0.0, m.leela_loss_est)
     if m.points_lost is not None:
         return max(0.0, m.points_lost)
     return 0.0

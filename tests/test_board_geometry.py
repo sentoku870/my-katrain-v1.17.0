@@ -16,7 +16,6 @@ from katrain.core.board_geometry import (
     compute_stone_size,
     eval_color,
     find_closest_grid_point,
-    format_leela_stat,
     format_loss,
     x_coordinate_text,
     y_coordinate_text,
@@ -419,53 +418,3 @@ class TestFindClosestGridPoint:
         assert result == (0.0, 0, 3.0, 2)
 
 
-# =============================================================================
-# format_leela_stat
-# =============================================================================
-
-
-@dataclass
-class FakeLeelaCandidate:
-    stats: dict[str, Any] = field(default_factory=dict)
-
-
-class TestFormatLeelaStat:
-    def test_visits_int(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_VISITS": 1500})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_VISITS") == "1500"
-
-    def test_visits_float_truncated(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_VISITS": 1500.7})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_VISITS") == "1500"
-
-    def test_winrate(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_WINRATE": 0.523})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_WINRATE") == "52.3%"
-
-    def test_relative_winrate(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_RELATIVE_WINRATE": 0.05})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_RELATIVE_WINRATE") == "5.0%"
-
-    def test_score(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_SCORE": 2.3})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_SCORE") == "+2.3"
-
-    def test_score_negative(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_SCORE": -1.5})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_SCORE") == "-1.5"
-
-    def test_none_returns_empty(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_VISITS": None})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_VISITS") == ""
-
-    def test_missing_key_returns_empty(self):
-        c = FakeLeelaCandidate(stats={})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_VISITS") == ""
-
-    def test_unknown_stat_returns_str(self):
-        c = FakeLeelaCandidate(stats={"UNKNOWN_KEY": 42})
-        assert format_leela_stat(c, "UNKNOWN_KEY") == "42"
-
-    def test_unknown_stat_with_text(self):
-        c = FakeLeelaCandidate(stats={"LEELA_TOP_MOVE_ORDER": "best"})
-        assert format_leela_stat(c, "LEELA_TOP_MOVE_ORDER") == "best"

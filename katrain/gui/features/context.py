@@ -21,7 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from katrain.common.typed_config import EngineConfig, LeelaConfig, TrainerConfig
+    from katrain.common.typed_config import EngineConfig, TrainerConfig
     from katrain.core.game import Game
     from katrain.core.state import StateNotifier
     from katrain.gui.controlspanel import ControlsPanel
@@ -51,15 +51,14 @@ class FeatureContext(Protocol):
         restart_engine: エンジンを再起動
         get_engine_config: 型付きエンジン設定を取得（Phase 99）
         get_trainer_config: 型付きトレーナー設定を取得（Phase 99）
-        get_leela_config: 型付きLeela設定を取得（Phase 99）
         update_engine_config: 型付きエンジン設定を更新（Phase 101）
         update_trainer_config: 型付きトレーナー設定を更新（Phase 101）
-        update_leela_config: 型付きLeela設定を更新（Phase 101）
         state_notifier: 状態変更通知システム（Phase 104）
 
     Implementation Notes:
         KaTrainGui と BaseKaTrain がこの Protocol を満たす。
         各メソッドは既存実装を参照（Grep で "def <method>" で検索可能）。
+        Phase 171 で ``get_leela_config`` / ``update_leela_config`` を削除。
     """
 
     game: Game | None
@@ -152,14 +151,6 @@ class FeatureContext(Protocol):
         """
         ...
 
-    def get_leela_config(self) -> LeelaConfig:
-        """型付きLeela設定を取得する（Phase 99追加）。
-
-        Returns:
-            LeelaConfigインスタンス（frozen）
-        """
-        ...
-
     def update_engine_config(self, **kwargs: Any) -> EngineConfig:
         """engineセクションを部分更新する（Phase 101追加）。
 
@@ -182,20 +173,6 @@ class FeatureContext(Protocol):
 
         Returns:
             更新後のTrainerConfigインスタンス（frozen）
-
-        Raises:
-            UnknownFieldError: 存在しないフィールド名が指定された場合
-        """
-        ...
-
-    def update_leela_config(self, **kwargs: Any) -> LeelaConfig:
-        """leelaセクションを部分更新する（Phase 101追加）。
-
-        Args:
-            **kwargs: 更新するフィールドと値
-
-        Returns:
-            更新後のLeelaConfigインスタンス（frozen）
 
         Raises:
             UnknownFieldError: 存在しないフィールド名が指定された場合

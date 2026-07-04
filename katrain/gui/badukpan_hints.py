@@ -4,11 +4,13 @@
 #
 # Handles all overlay / hint / marker rendering on top of the board:
 # - Beginner hint highlight (Phase 92c)
-# - Leela candidate markers
 # - KataGo hint markers
 # - Child node markers
 # - Hover overlay (ghost stone + ROI)
 # - Pass / game-ended circle
+#
+# Phase 171: Leela 経路（format_leela_stat, draw_leela_candidates,
+# draw_leela_or_kata_hints）を削除し、KataGo 専用に整理。
 
 from __future__ import annotations
 
@@ -19,18 +21,14 @@ from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 
 from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
+from katrain.core.game import Move
 from katrain.core.beginner.hints import (
     get_beginner_hint_cached,
     is_coords_valid,
     should_draw_board_highlight,
 )
 from katrain.core.constants import (
-    LEELA_COLOR_BEST,
-    LEELA_TOP_MOVE_LOSS,
-    LEELA_TOP_MOVE_VISITS,
-    LEELA_TOP_MOVE_WINRATE,
     OUTPUT_DEBUG,
-    OUTPUT_EXTRA_DEBUG,
     STATUS_TEACHING,
     TOP_MOVE_DELTA_SCORE,
     TOP_MOVE_DELTA_WINRATE,
@@ -40,16 +38,7 @@ from katrain.core.constants import (
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
 )
-from katrain.core.game import Move
 from katrain.core.lang import i18n
-from katrain.core.leela.presentation import (
-    format_loss_est,
-    format_winrate_pct,
-    loss_to_color,
-)
-from katrain.core.leela.presentation import (
-    format_visits as format_leela_visits,
-)
 from katrain.core.utils import format_visits
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
 from katrain.gui.theme import Theme
@@ -99,150 +88,6 @@ def draw_beginner_hint_highlight(widget: BadukPanWidget) -> None:
 
 
 # =============================================================================
-# Leela candidate markers
-# =============================================================================
-
-
-def format_leela_stat(widget: BadukPanWidget, candidate: Any, stat_type: str) -> str:
-    """Format a single Leela stat for display."""
-    if stat_type == LEELA_TOP_MOVE_LOSS:
-        return format_loss_est(candidate.loss_est)
-    elif stat_type == LEELA_TOP_MOVE_WINRATE:
-        if candidate.winrate is None:
-            return "--"
-        return format_winrate_pct(candidate.winrate)
-    elif stat_type == LEELA_TOP_MOVE_VISITS:
-        if candidate.visits is None:
-            return "--"
-        return format_leela_visits(candidate.visits)
-    return ""  # NOTHING or unknown
-
-
-def draw_leela_candidates(
-    widget: BadukPanWidget, leela_analysis: Any, low_visits_threshold: int = 25
-) -> tuple[Any, ...] | None:
-    """Draw Leela candidate move markers with loss-based coloring.
-
-    Returns:
-        Coordinates of the best move, or None
-    """
-    if not leela_analysis or not leela_analysis.is_valid:
-        return None
-
-    top_move_coords = None
-    candidates = leela_analysis.candidates
-    current_node = widget.katrain.game.current_node  # Phase 16: for PV registration
-
-    # Cache config outside loop for performance (Phase 17, Phase 100: typed config)
-    katrain = widget.katrain
-    leela_cfg = katrain.get_leela_config()
-    top_show = leela_cfg.top_moves_show
-    top_show_2 = leela_cfg.top_moves_show_secondary
-
-    # Find max visits for scaling
-    max((c.visits for c in candidates), default=1)
-
-    # Debug: Print top 5 Leela candidate moves for color distribution analysis
-    for idx, cand in enumerate(candidates[:5]):
-        loss_val = cand.loss_est if cand.loss_est is not None else 0.0
-        katrain.log(f"[DEBUG Leela] #{idx}: {cand.move:3s} Loss: {loss_val:6.2f}", OUTPUT_EXTRA_DEBUG)
-
-    for i, candidate in enumerate(candidates):
-        move = Move.from_gtp(candidate.move)
-        if move.coords is None:
-            continue
-
-        # Phase 16: Register PV for hover display (same pattern as KataGo)
-        # candidate.pv is List[str], same type as KataGo's move_dict["pv"]
-        if candidate.pv:
-            widget.active_pv_moves.append((move.coords, candidate.pv, current_node))
-
-        is_best = i == 0
-        scale = Theme.HINT_SCALE
-        text_on = True
-        alpha = Theme.HINTS_ALPHA
-
-        # Scale down low-visit candidates
-        if candidate.visits < low_visits_threshold and not is_best:
-            scale = Theme.UNCERTAIN_HINT_SCALE
-            text_on = False
-            alpha = Theme.HINTS_LO_ALPHA
-
-        if scale <= 0:
-            continue
-
-        # Calculate marker size
-        evalsize = widget.stone_size * scale
-
-        # Get color based on loss_est
-        evalcol = loss_to_color(candidate.loss_est) if candidate.loss_est is not None else LEELA_COLOR_BEST
-
-        # Draw board-colored circle to cover grid lines
-        if text_on:
-            draw_circle(
-                (
-                    widget.gridpos[move.coords[1]][move.coords[0]][0],
-                    widget.gridpos[move.coords[1]][move.coords[0]][1],
-                ),
-                widget.stone_size * scale * 0.98,
-                Theme.APPROX_BOARD_COLOR,
-            )
-
-        # Draw colored marker
-        Color(*evalcol[:3], alpha)
-        Rectangle(
-            pos=(
-                widget.gridpos[move.coords[1]][move.coords[0]][0] - evalsize,
-                widget.gridpos[move.coords[1]][move.coords[0]][1] - evalsize,
-            ),
-            size=(2 * evalsize, 2 * evalsize),
-            texture=cached_texture(Theme.TOP_MOVE_TEXTURE),
-        )
-
-        # Draw text label
-        if text_on:
-            keys = {"size": widget.grid_size / 3, "smallsize": widget.grid_size / 3.33}
-
-            # Phase 17: Dynamic stat selection
-            line1 = format_leela_stat(widget, candidate, top_show)
-            line2 = format_leela_stat(widget, candidate, top_show_2)
-
-            # 2行目が空なら改行なし
-            if line2:
-                fmt = "[size={size:.0f}]{line1}[/size]\n[size={smallsize:.0f}]{line2}[/size]"
-            else:
-                fmt = "[size={size:.0f}]{line1}[/size]"
-
-            Color(*Theme.HINT_TEXT_COLOR)
-            draw_text(
-                pos=(
-                    widget.gridpos[move.coords[1]][move.coords[0]][0],
-                    widget.gridpos[move.coords[1]][move.coords[0]][1],
-                ),
-                text=fmt.format(line1=line1, line2=line2, **keys),
-                font_name="Roboto",
-                markup=True,
-                line_height=0.85,
-                halign="center",
-            )
-
-        # Mark best move with border
-        if is_best:
-            top_move_coords = move.coords
-            Color(*Theme.TOP_MOVE_BORDER_COLOR)
-            Line(
-                circle=(
-                    widget.gridpos[move.coords[1]][move.coords[0]][0],
-                    widget.gridpos[move.coords[1]][move.coords[0]][1],
-                    widget.stone_size - dp(1.2),
-                ),
-                width=dp(1.2),
-            )
-
-    return top_move_coords
-
-
-# =============================================================================
 # Hover overlay orchestration
 # =============================================================================
 
@@ -252,6 +97,7 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
 
     Phase 158+: This was previously a single 239-line method on BadukPanWidget.
     Now delegates to focused helpers in this module and badukpan_pv.
+    Phase 171: Leela 分岐を削除。常に KataGo のヒントを描画する。
     """
     ghost_alpha = Theme.GHOST_ALPHA
     katrain = widget.katrain
@@ -268,7 +114,9 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
         widget.active_pv_moves = []
 
         hint_moves = prepare_hint_moves(widget, current_node, game_ended)
-        top_move_coords = draw_leela_or_kata_hints(widget, current_node, hint_moves, next_player)
+        top_move_coords = draw_kata_hint_moves(
+            widget, current_node, hint_moves, next_player, katrain.get_trainer_config().low_visits
+        )
         draw_children_markers(widget, current_node, top_move_coords)
 
         if widget.selecting_region_of_interest and len(widget.region_of_interest) == 4:
@@ -314,38 +162,6 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
 
     return hint_moves
-
-
-def draw_leela_or_kata_hints(
-    widget: BadukPanWidget, current_node: Any, hint_moves: list[dict[str, Any]], next_player: str
-) -> Any:
-    """Dispatch to Leela candidate drawing or KataGo hint drawing.
-
-    Returns:
-        top_move_coords: coords of the engine's best move (for contrast in child markers)
-    """
-    katrain = widget.katrain
-    # Phase 100: Cache typed config for this draw call (no persistent cache)
-    leela_cfg = katrain.get_leela_config()
-    trainer_cfg = katrain.get_trainer_config()
-
-    leela_enabled = leela_cfg.enabled
-    leela_analysis = current_node.leela_analysis if leela_enabled else None
-
-    # Phase 121: Prioritize Leela candidates. If Leela is enabled, suppress KataGo hints.
-    if leela_enabled:
-        hint_moves = []
-
-    top_move_coords = None
-    # Phase 93: Fog of War hides Leela candidates too
-    if leela_analysis and leela_analysis.is_valid and not katrain.is_fog_active():
-        low_visits_threshold = trainer_cfg.low_visits
-        top_move_coords = draw_leela_candidates(widget, leela_analysis, low_visits_threshold)
-    elif hint_moves:
-        top_move_coords = draw_kata_hint_moves(
-            widget, current_node, hint_moves, next_player, trainer_cfg.low_visits
-        )
-    return top_move_coords
 
 
 def draw_kata_hint_moves(

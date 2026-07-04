@@ -13,7 +13,7 @@ Rationale:
 
 Algorithm:
     1. Walk the moves chronologically with their ``score_stdev`` value
-       (may be None for Leela / unanalyzed moves).
+       (may be None for unanalyzed moves).
     2. Skip moves whose ``score_stdev`` is missing (they remain
        "middle" until proven otherwise).
     3. Once ``score_stdev`` has been ``<= ENDGAME_SCORE_STDEV_THRESHOLD``

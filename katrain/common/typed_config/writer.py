@@ -14,7 +14,6 @@ from typing import Any, cast
 
 from katrain.common.typed_config.models import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
 )
 
@@ -124,31 +123,16 @@ class TypedConfigWriter:
         """
         return cast(TrainerConfig, self._update_section("trainer", TrainerConfig, kwargs))
 
-    def update_leela(self, **kwargs: Any) -> LeelaConfig:
-        """leelaセクションを部分更新。
-
-        Args:
-            **kwargs: 更新するフィールドと値
-
-        Returns:
-            更新後のLeelaConfig（frozen）
-
-        Raises:
-            UnknownFieldError: 存在しないフィールド名が指定された場合
-            TypeError: config_clsがdataclassでない場合
-        """
-        return cast(LeelaConfig, self._update_section("leela", LeelaConfig, kwargs))
-
     def _update_section(
         self,
         section: str,
-        config_cls: type[EngineConfig] | type[TrainerConfig] | type[LeelaConfig],
+        config_cls: type[EngineConfig] | type[TrainerConfig],
         updates: dict[str, Any],
-    ) -> EngineConfig | TrainerConfig | LeelaConfig:
+    ) -> EngineConfig | TrainerConfig:
         """セクションを部分更新（内部実装）。
 
         Args:
-            section: セクション名（"engine", "trainer", "leela"）
+            section: セクション名（"engine", "trainer"）
             config_cls: dataclassモデル
             updates: 更新するフィールドと値
 

@@ -64,7 +64,6 @@ def make_move_eval(
     move_number: int,
     player: str = "B",
     score_loss: float | None = None,
-    leela_loss_est: float | None = None,
     points_lost: float | None = None,
 ) -> MoveEval:
     """Create a MoveEval instance for testing."""
@@ -82,7 +81,6 @@ def make_move_eval(
         realized_points_lost=None,
         root_visits=500,
         score_loss=score_loss,
-        leela_loss_est=leela_loss_est,
     )
 
 
@@ -390,7 +388,7 @@ class TestTiltEpisodeDetection:
 
 
 class TestMixedEngineDetection:
-    """Test loss source detection."""
+    """Test loss source detection (Phase 171: KataGo-only, Leela 経路削除)。"""
 
     def test_single_source_score(self):
         """All score_loss -> loss_source=SCORE."""
@@ -399,19 +397,19 @@ class TestMixedEngineDetection:
         assert source == LossSource.SCORE
         assert mixed is False
 
-    def test_single_source_leela(self):
-        """All leela_loss_est -> loss_source=LEELA."""
-        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", leela_loss_est=2.0) for i in range(1, 11)]
+    def test_single_source_points(self):
+        """Phase 171: all points_lost -> loss_source=POINTS。"""
+        moves = [make_move_eval(i, "B" if i % 2 == 1 else "W", points_lost=1.0) for i in range(1, 11)]
         source, mixed = _detect_loss_sources(moves)
-        assert source == LossSource.LEELA
+        assert source == LossSource.POINTS
         assert mixed is False
 
     def test_mixed_sources_detected(self, caplog):
-        """Mix of score_loss and leela_loss_est detected."""
+        """Mix of score_loss and points_lost detected."""
         time_data = make_time_data(move_numbers=list(range(1, 11)))
         moves = [
             make_move_eval(1, "B", score_loss=1.0),
-            make_move_eval(2, "W", leela_loss_est=2.0),
+            make_move_eval(2, "W", points_lost=1.0),
         ]
         for i in range(3, 11):
             moves.append(make_move_eval(i, "B" if i % 2 == 1 else "W", score_loss=1.0))

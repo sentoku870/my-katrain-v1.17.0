@@ -56,7 +56,6 @@ class GameNode(SGFNode):
     analysis_from_sgf: list[str | None] | None
     analysis: dict[str, Any]
     analysis_visits_requested: int
-    _leela_analysis: Any
 
     def __init__(
         self,
@@ -141,32 +140,6 @@ class GameNode(SGFNode):
     def clear_analysis(self) -> None:
         self.analysis_visits_requested = 0
         self.analysis = {"moves": {}, "root": None, "ownership": None, "policy": None, "completed": False}
-        # Leela analysis (separate from KataGo)
-        self._leela_analysis = None
-
-    # Leela analysis support (Phase 14)
-    @property
-    def leela_analysis(self) -> Any:
-        """Leela analysis result (separate from KataGo's analysis).
-
-        Returns:
-            LeelaPositionEval or None if not analyzed.
-        """
-        return getattr(self, "_leela_analysis", None)
-
-    def set_leela_analysis(self, eval_result: Any) -> None:
-        """Set Leela analysis result.
-
-        Args:
-            eval_result: LeelaPositionEval from Leela engine.
-
-        Note: Call from UI thread.
-        """
-        self._leela_analysis = eval_result
-
-    def clear_leela_analysis(self) -> None:
-        """Clear Leela analysis result."""
-        self._leela_analysis = None
 
     def sgf_properties(  # type: ignore[override]
         self,
@@ -418,11 +391,7 @@ class GameNode(SGFNode):
                 text += i18n._("Info:score").format(score=self.format_score(score)) + "\n"
                 text += i18n._("Info:winrate").format(winrate=self.format_winrate()) + "\n"
             if details:
-                leela_visits = self.leela_analysis.root_visits if self.leela_analysis else 0
-                if leela_visits > 0:
-                    text += f"Visits: {self.root_visits} (K) / {leela_visits} (L)\n"
-                else:
-                    text += f"Visits: {self.root_visits}\n"
+                text += f"Visits: {self.root_visits}\n"
             parent = self.parent
             if parent and isinstance(parent, GameNode) and parent.analysis_exists:
                 parent_candidates = parent.candidate_moves
@@ -548,43 +517,12 @@ class GameNode(SGFNode):
                 key=lambda d: (d["order"], d["pointsLost"]),
             )
 
-        # Second priority: Leela analysis (when KataGo is disabled)
-        if self.leela_analysis and self.leela_analysis.is_valid:
-            leela_candidates = self.leela_analysis.candidates
-            if not leela_candidates:
-                return []
-
-            # CRITICAL: Sort by winrate (descending), not by visits
-            # Leela parser sorts by visits, but best move = highest winrate
-            sorted_candidates = sorted(leela_candidates, key=lambda c: c.winrate, reverse=True)
-
-            # Get best candidate's winrate for comparison
-            best_winrate = sorted_candidates[0].winrate
-
-            # Convert Leela candidates to KataGo format
-            katago_format = []
-            for i, cand in enumerate(sorted_candidates):
-                # Calculate relative losses
-                winrate_lost = best_winrate - cand.winrate
-                points_lost = cand.loss_est if cand.loss_est is not None else 0.0
-
-                katago_format.append({
-                    "move": cand.move,
-                    "visits": cand.visits,
-                    "winrate": cand.winrate,
-                    "scoreLead": 0.0,  # Leela doesn't provide score
-                    "pointsLost": points_lost,
-                    "relativePointsLost": points_lost,
-                    "winrateLost": winrate_lost,
-                    "order": i,  # Now correctly ordered by winrate
-                    "pv": cand.pv or [cand.move],
-                    "prior": cand.prior,
-                })
-
-            return katago_format
-
-        # No analysis available
+        # No analysis available (Phase 171: Leela 経路を削除)
         return []
+
+
+
+
 
     @property
     def policy_ranking(self) -> list[tuple[float, Move | None]]:  # return moves from highest policy value to lowest

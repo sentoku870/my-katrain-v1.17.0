@@ -155,7 +155,6 @@ def create_single_game_stats(
                 "player": "B",
                 "gtp": "D4",
                 "score_loss": 5.0,
-                "leela_loss_est": None,
                 "points_lost": 5.0,
                 "mistake_category": "BLUNDER",
                 "meaning_tag_id": "overplay",
@@ -165,7 +164,6 @@ def create_single_game_stats(
                 "player": "B",
                 "gtp": "Q16",
                 "score_loss": 3.5,
-                "leela_loss_est": None,
                 "points_lost": 3.5,
                 "mistake_category": "MISTAKE",
                 "meaning_tag_id": "life_death",
@@ -182,7 +180,7 @@ class TestPatternDataContract:
     def test_required_fields_present(self):
         """pattern_data must contain all required fields."""
         required = {"move_number", "player", "gtp", "mistake_category"}
-        loss_fields = {"score_loss", "leela_loss_est", "points_lost"}
+        loss_fields = {"score_loss", "points_lost"}
 
         stats = create_single_game_stats()
 

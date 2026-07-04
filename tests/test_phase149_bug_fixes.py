@@ -119,7 +119,6 @@ class TestA5SummaryAnalyzerWorstMovesTruncation:
             gtp: str
             points_lost: float
             score_loss: float | None = None
-            leela_loss_est: float | None = None
             mistake_category: MistakeCategory = MistakeCategory.MISTAKE
             reason_tags: list[str] = field(default_factory=list)
             tag: str = "middle"

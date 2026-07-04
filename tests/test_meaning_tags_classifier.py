@@ -51,7 +51,6 @@ class MockMoveEval:
     player: str | None = "B"
     gtp: str | None = "D4"
     score_loss: float | None = None
-    leela_loss_est: float | None = None
     points_lost: float | None = None
     is_reliable: bool = True
     reason_tags: list[str] = field(default_factory=list)
@@ -163,22 +162,17 @@ class TestGetLossValue:
 
     def test_score_loss_priority(self) -> None:
         """score_loss takes priority."""
-        move = MockMoveEval(score_loss=3.0, leela_loss_est=4.0, points_lost=5.0)
+        move = MockMoveEval(score_loss=3.0, points_lost=5.0)
         assert get_loss_value(move) == 3.0
 
-    def test_leela_loss_fallback(self) -> None:
-        """leela_loss_est used when score_loss is None."""
-        move = MockMoveEval(score_loss=None, leela_loss_est=4.0, points_lost=5.0)
-        assert get_loss_value(move) == 4.0
-
-    def test_points_lost_fallback(self) -> None:
-        """points_lost used as last resort."""
-        move = MockMoveEval(score_loss=None, leela_loss_est=None, points_lost=5.0)
+    def test_points_lost_fallback_when_no_score_loss(self) -> None:
+        """points_lost used when score_loss is None (Phase 171: Leela 経路削除)。"""
+        move = MockMoveEval(score_loss=None, points_lost=5.0)
         assert get_loss_value(move) == 5.0
 
     def test_all_none(self) -> None:
         """Returns None when all loss values are None."""
-        move = MockMoveEval(score_loss=None, leela_loss_est=None, points_lost=None)
+        move = MockMoveEval(score_loss=None, points_lost=None)
         assert get_loss_value(move) is None
 
     def test_zero_is_valid(self) -> None:
@@ -464,7 +458,7 @@ class TestClassifyMeaningTagEarlyReturn:
 
     def test_no_loss_data_returns_uncertain(self) -> None:
         """All loss values None returns UNCERTAIN."""
-        move = MockMoveEval(score_loss=None, leela_loss_est=None, points_lost=None)
+        move = MockMoveEval(score_loss=None, points_lost=None)
         tag = classify_meaning_tag(move)
         assert tag.id == MeaningTagId.UNCERTAIN
         assert tag.debug_reason == "loss_data_missing"

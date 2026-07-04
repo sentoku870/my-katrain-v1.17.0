@@ -4,21 +4,12 @@
 #
 # These tests verify that migrated code correctly uses typed config accessors
 # and maintains semantic equivalence with the original dict-based access.
+#
+# Phase 171: Leela 関連クラスを削除。
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from unittest.mock import MagicMock
-
-
-@dataclass(frozen=True)
-class MockLeelaConfig:
-    """Mock LeelaConfig for testing."""
-
-    enabled: bool = False
-    exe_path: str | None = None
-    top_moves_show: str = "leela_top_move_loss"
-    top_moves_show_secondary: str = "leela_top_move_winrate"
 
 
 @dataclass(frozen=True)
@@ -29,25 +20,23 @@ class MockEngineConfig:
     model: str | None = None
 
 
-# TestIsLeelaConfiguredTypedConfig removed as is_leela_configured was deleted.
+# TestIsLeelaConfiguredTypedConfig removed as is_leela_configured was deleted (Phase 171).
 # TestDiagnosticsCopyTypedConfig removed in Phase 138 — auto_mode_popup._copy_diagnostics
 # was deleted and replaced with the new diagnostics copy flow.
+# LeelaConfig semantically テストは Phase 171 で完全削除。
 
 
-class TestTypedConfigSemantics:
-    """Test typed config semantic equivalence."""
+class TestEngineConfigSemantics:
+    def test_engine_config_katago_field(self):
+        mock_config = MockEngineConfig(katago="/usr/bin/katago")
+        assert mock_config.katago == "/usr/bin/katago"
 
-    def test_leela_config_enabled_field_access(self):
-        """Verify LeelaConfig.enabled is accessed correctly."""
-        # This is a structural test - verify the typed config pattern
-        mock_config = MockLeelaConfig(enabled=True)
-        assert mock_config.enabled is True
+        mock_config_empty = MockEngineConfig()
+        assert mock_config_empty.katago is None
 
-        mock_config_disabled = MockLeelaConfig(enabled=False)
-        assert mock_config_disabled.enabled is False
+    def test_engine_config_model_field(self):
+        mock_config = MockEngineConfig(model="kata1-b18.bin.gz")
+        assert mock_config.model == "kata1-b18.bin.gz"
 
-    def test_leela_config_default_enabled_is_false(self):
-        """Verify default enabled value is False (semantic equivalence)."""
-        # This matches the original: leela_config.get("enabled", False)
-        mock_config = MockLeelaConfig()
-        assert mock_config.enabled is False
+        mock_config_empty = MockEngineConfig()
+        assert mock_config_empty.model is None

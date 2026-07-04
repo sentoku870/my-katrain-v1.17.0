@@ -8,7 +8,6 @@ from katrain.common.config_store import JsonFileConfigStore
 from katrain.common.resource_utils import find_package_resource
 from katrain.common.typed_config import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
     TypedConfigReader,
     TypedConfigWriter,
@@ -279,14 +278,6 @@ class KaTrainBase:
         """
         return self._typed_config.get_trainer()
 
-    def get_leela_config(self) -> LeelaConfig:
-        """型付きLeela設定を取得。
-
-        Returns:
-            LeelaConfigインスタンス（frozen）
-        """
-        return self._typed_config.get_leela()
-
     def update_engine_config(self, **kwargs: Any) -> EngineConfig:
         """engineセクションを部分更新。自動保存。
 
@@ -314,20 +305,6 @@ class KaTrainBase:
             UnknownFieldError: 存在しないフィールド名が指定された場合
         """
         return self._typed_config_writer.update_trainer(**kwargs)
-
-    def update_leela_config(self, **kwargs: Any) -> LeelaConfig:
-        """leelaセクションを部分更新。自動保存。
-
-        Args:
-            **kwargs: 更新するフィールドと値
-
-        Returns:
-            更新後のLeelaConfig（frozen）
-
-        Raises:
-            UnknownFieldError: 存在しないフィールド名が指定された場合
-        """
-        return self._typed_config_writer.update_leela(**kwargs)
 
     def update_player(self, bw: str, **kwargs: Any) -> None:
         self.players_info[bw].update(**kwargs)

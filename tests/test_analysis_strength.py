@@ -1,4 +1,7 @@
-"""Tests for AnalysisStrength enum and resolve_visits() (Phase 30)."""
+"""Tests for AnalysisStrength enum and resolve_visits() (Phase 30, Phase 171 KataGo-only).
+
+Phase 171 で Leela 経路を削除したため、resolve_visits() は KataGo 専用。
+"""
 
 from katrain.core.analysis.logic import (
     compute_effective_threshold,
@@ -6,7 +9,6 @@ from katrain.core.analysis.logic import (
 )
 from katrain.core.analysis.models import (
     ENGINE_VISITS_DEFAULTS,
-    LEELA_FAST_VISITS_MIN,
     RELIABILITY_RATIO,
     RELIABILITY_VISITS_THRESHOLD,
     AnalysisStrength,
@@ -38,7 +40,7 @@ class TestAnalysisStrength:
 
 
 class TestResolveVisits:
-    """resolve_visits() function tests."""
+    """resolve_visits() function tests (Phase 171: KataGo-only)."""
 
     # --- Contract: Config values are respected ---
     def test_katago_quick_with_config(self):
@@ -51,26 +53,11 @@ class TestResolveVisits:
         config = {"fast_visits": 30, "max_visits": 600}
         assert resolve_visits(AnalysisStrength.DEEP, config, "katago") == 600
 
-    def test_leela_quick_with_config(self):
-        """Contract: uses fast_visits from config for QUICK (leela)"""
-        config = {"fast_visits": 150, "max_visits": 2000}
-        assert resolve_visits(AnalysisStrength.QUICK, config, "leela") == 150
-
-    def test_leela_deep_with_config(self):
-        """Contract: uses max_visits from config for DEEP (leela)"""
-        config = {"fast_visits": 150, "max_visits": 2000}
-        assert resolve_visits(AnalysisStrength.DEEP, config, "leela") == 2000
-
     # --- Contract: Defaults when config is empty (backward compatibility) ---
     def test_katago_defaults_when_config_empty(self):
         """Contract: falls back to ENGINE_VISITS_DEFAULTS when config is empty"""
         assert resolve_visits(AnalysisStrength.QUICK, {}, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
         assert resolve_visits(AnalysisStrength.DEEP, {}, "katago") == ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
-
-    def test_leela_defaults_when_config_empty(self):
-        """Contract: falls back to ENGINE_VISITS_DEFAULTS when config is empty (leela)"""
-        assert resolve_visits(AnalysisStrength.QUICK, {}, "leela") == ENGINE_VISITS_DEFAULTS["leela"]["fast_visits"]
-        assert resolve_visits(AnalysisStrength.DEEP, {}, "leela") == ENGINE_VISITS_DEFAULTS["leela"]["max_visits"]
 
     def test_partial_config_missing_key_uses_default(self):
         """Contract: missing key falls back to default, present key is used"""
@@ -119,13 +106,13 @@ class TestResolveVisits:
     def test_zero_value_clamped_to_one(self):
         """Contract: zero is clamped to 1"""
         config = {"max_visits": 0}
-        assert resolve_visits(AnalysisStrength.DEEP, config, "leela") >= 1
+        assert resolve_visits(AnalysisStrength.DEEP, config, "katago") >= 1
 
     # --- Contract: Valid string is parsed ---
     def test_numeric_string_parsed(self):
         """Contract: valid numeric string is converted to int"""
         config = {"max_visits": "1000"}
-        assert resolve_visits(AnalysisStrength.DEEP, config, "leela") == 1000
+        assert resolve_visits(AnalysisStrength.DEEP, config, "katago") == 1000
 
     def test_string_with_whitespace_parsed(self):
         """Contract: whitespace is stripped before parsing"""
@@ -138,7 +125,7 @@ class TestResolveVisits:
         config = {"fast_visits": 25.9}
         result = resolve_visits(AnalysisStrength.QUICK, config, "katago")
         assert isinstance(result, int)
-        assert result > 0  # flexible: just ensure it's valid
+        assert result > 0
 
     def test_extremely_large_value_preserved(self):
         """Implementation detail: no upper bound enforcement"""
@@ -149,11 +136,11 @@ class TestResolveVisits:
         """Implementation detail: whitespace-only string behavior"""
         config = {"fast_visits": "   "}
         result = resolve_visits(AnalysisStrength.QUICK, config, "katago")
-        assert result > 0  # flexible: just ensure it's valid
+        assert result > 0
 
 
 class TestEngineVisitsDefaults:
-    """ENGINE_VISITS_DEFAULTS constant tests."""
+    """ENGINE_VISITS_DEFAULTS constant tests (Phase 171: KataGo-only)."""
 
     def test_katago_defaults_exist(self):
         """Contract: katago defaults are defined"""
@@ -161,11 +148,9 @@ class TestEngineVisitsDefaults:
         assert "max_visits" in ENGINE_VISITS_DEFAULTS["katago"]
         assert "fast_visits" in ENGINE_VISITS_DEFAULTS["katago"]
 
-    def test_leela_defaults_exist(self):
-        """Contract: leela defaults are defined"""
-        assert "leela" in ENGINE_VISITS_DEFAULTS
-        assert "max_visits" in ENGINE_VISITS_DEFAULTS["leela"]
-        assert "fast_visits" in ENGINE_VISITS_DEFAULTS["leela"]
+    def test_leela_no_longer_in_defaults(self):
+        """Phase 171: ENGINE_VISITS_DEFAULTS から leela が削除されたこと。"""
+        assert "leela" not in ENGINE_VISITS_DEFAULTS
 
     def test_fast_visits_less_than_max_visits(self):
         """Contract: fast_visits < max_visits for all engines"""
@@ -177,18 +162,6 @@ class TestEngineVisitsDefaults:
         for _engine, defaults in ENGINE_VISITS_DEFAULTS.items():
             assert defaults["max_visits"] > 0
             assert defaults["fast_visits"] > 0
-
-
-class TestLeelaFastVisitsMin:
-    """LEELA_FAST_VISITS_MIN constant tests."""
-
-    def test_leela_fast_visits_min_is_positive(self):
-        """Contract: LEELA_FAST_VISITS_MIN is positive"""
-        assert LEELA_FAST_VISITS_MIN > 0
-
-    def test_leela_fast_visits_min_is_reasonable(self):
-        """Contract: LEELA_FAST_VISITS_MIN is within reasonable range"""
-        assert 10 <= LEELA_FAST_VISITS_MIN <= 200
 
 
 # =============================================================================
@@ -245,12 +218,10 @@ class TestComputeEffectiveThreshold:
 
     def test_custom_ratio(self):
         """Custom ratio is respected"""
-        # target=100, ratio=0.5 -> 50
         assert compute_effective_threshold(100, ratio=0.5) == 50
 
     def test_default_ratio_is_reliability_ratio(self):
         """Default ratio should be RELIABILITY_RATIO (0.9)"""
-        # target=100 with default ratio of 0.9 should give 90
         expected = max(1, round(100 * RELIABILITY_RATIO))
         assert compute_effective_threshold(100) == expected
 
@@ -274,7 +245,7 @@ class TestReliabilityStatsWithTargetVisits:
     def test_unreliable_with_default_threshold(self):
         """95 visits is NOT reliable with default threshold (200)."""
         moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95)]
-        stats = compute_reliability_stats(moves)  # No target_visits
+        stats = compute_reliability_stats(moves)
         assert stats.reliable_count == 0
         assert stats.low_confidence_count == 1
 
@@ -295,9 +266,9 @@ class TestReliabilityStatsWithTargetVisits:
     def test_mixed_visits_with_target(self):
         """Mixed visits are classified correctly with target_visits."""
         moves = [
-            make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95),  # reliable (>=90)
-            make_move_eval(move_number=2, player="W", gtp="Q16", root_visits=85),  # low-conf (<90)
-            make_move_eval(move_number=3, player="B", gtp="C3", root_visits=100),  # reliable (>=90)
+            make_move_eval(move_number=1, player="B", gtp="D4", root_visits=95),
+            make_move_eval(move_number=2, player="W", gtp="Q16", root_visits=85),
+            make_move_eval(move_number=3, player="B", gtp="C3", root_visits=100),
         ]
         stats = compute_reliability_stats(moves, target_visits=100)
         assert stats.reliable_count == 2
@@ -308,9 +279,8 @@ class TestReliabilityStatsWithTargetVisits:
         """High target_visits uses capped threshold (200)."""
         moves = [make_move_eval(move_number=1, player="B", gtp="D4", root_visits=199)]
         stats = compute_reliability_stats(moves, target_visits=500)
-        # threshold = min(200, round(500*0.9)) = 200
         assert stats.effective_threshold == 200
-        assert stats.reliable_count == 0  # 199 < 200
+        assert stats.reliable_count == 0
         assert stats.low_confidence_count == 1
 
 
@@ -320,14 +290,7 @@ class TestReliabilityStatsWithTargetVisits:
 
 
 class TestResolveVisitsContract:
-    """Contract-based tests for resolve_visits() (Phase 37 T3).
-
-    These tests verify the function's contract without hardcoding specific
-    default values, making them resilient to future default value changes.
-
-    Note: Key names are shared between KataGo/Leela (fast_visits/max_visits).
-    Only default values differ per engine (see ENGINE_VISITS_DEFAULTS).
-    """
+    """Contract-based tests for resolve_visits() (Phase 171 KataGo-only)."""
 
     def test_returns_positive_integer(self):
         """Contract: return value is always a positive integer."""
@@ -336,20 +299,14 @@ class TestResolveVisitsContract:
         assert result >= 1
 
     def test_respects_config_value_when_valid(self):
-        """Contract: valid config values are respected (both engines share key names)."""
-        # KataGo
+        """Contract: valid config values are respected (KataGo 専用)。"""
         assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 500}, "katago") == 500
-        # Leela - same key name
-        assert resolve_visits(AnalysisStrength.QUICK, {"fast_visits": 500}, "leela") == 500
 
     def test_missing_key_uses_engine_specific_default(self):
-        """Contract: missing key uses engine-specific default (no hardcoding)."""
-        # Get expected values from the constant (avoid hardcoding 25/200)
+        """Contract: missing key uses engine-specific default."""
         katago_default = ENGINE_VISITS_DEFAULTS["katago"]["fast_visits"]
-        leela_default = ENGINE_VISITS_DEFAULTS["leela"]["fast_visits"]
 
         assert resolve_visits(AnalysisStrength.QUICK, {}, "katago") == katago_default
-        assert resolve_visits(AnalysisStrength.QUICK, {}, "leela") == leela_default
 
     def test_negative_or_zero_becomes_positive(self):
         """Contract: non-positive values become positive (clamped to >= 1)."""
@@ -362,18 +319,15 @@ class TestResolveVisitsContract:
         assert isinstance(result, int)
 
     def test_deep_uses_max_visits_key(self):
-        """Contract: DEEP strength uses max_visits key (no hardcoding)."""
+        """Contract: DEEP strength uses max_visits key."""
         katago_max = ENGINE_VISITS_DEFAULTS["katago"]["max_visits"]
-        leela_max = ENGINE_VISITS_DEFAULTS["leela"]["max_visits"]
 
         assert resolve_visits(AnalysisStrength.DEEP, {}, "katago") == katago_max
-        assert resolve_visits(AnalysisStrength.DEEP, {}, "leela") == leela_max
 
     def test_quick_and_deep_return_different_values_for_same_engine(self):
         """Contract: QUICK and DEEP return different values (fast vs max)."""
         quick_visits = resolve_visits(AnalysisStrength.QUICK, {}, "katago")
         deep_visits = resolve_visits(AnalysisStrength.DEEP, {}, "katago")
-        # fast_visits should be less than max_visits by design
         assert quick_visits < deep_visits
 
     def test_unknown_engine_uses_katago_defaults(self):
@@ -399,7 +353,7 @@ class TestExtractGameStatsTargetVisits:
 
         sig = inspect.signature(extract_game_stats)
         params = list(sig.parameters.keys())
-        assert "target_visits" in params, "target_visits parameter not found"
+        assert "target_visits" in params
 
     def test_extract_game_stats_target_visits_defaults_to_none(self):
         """Contract: target_visits defaults to None."""
@@ -409,7 +363,7 @@ class TestExtractGameStatsTargetVisits:
 
         sig = inspect.signature(extract_game_stats)
         param = sig.parameters["target_visits"]
-        assert param.default is None, "target_visits default should be None"
+        assert param.default is None
 
 
 class TestBuildKarteReportTargetVisits:
@@ -423,7 +377,7 @@ class TestBuildKarteReportTargetVisits:
 
         sig = inspect.signature(build_karte_report)
         params = list(sig.parameters.keys())
-        assert "target_visits" in params, "target_visits parameter not found"
+        assert "target_visits" in params
 
     def test_build_karte_report_target_visits_defaults_to_none(self):
         """Contract: target_visits defaults to None."""
@@ -433,7 +387,7 @@ class TestBuildKarteReportTargetVisits:
 
         sig = inspect.signature(build_karte_report)
         param = sig.parameters["target_visits"]
-        assert param.default is None, "target_visits default should be None"
+        assert param.default is None
 
     def test_game_build_karte_report_accepts_target_visits(self):
         """Contract: Game.build_karte_report accepts target_visits parameter."""
@@ -443,4 +397,4 @@ class TestBuildKarteReportTargetVisits:
 
         sig = inspect.signature(Game.build_karte_report)
         params = list(sig.parameters.keys())
-        assert "target_visits" in params, "target_visits parameter not found in Game.build_karte_report"
+        assert "target_visits" in params

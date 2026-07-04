@@ -36,10 +36,6 @@ def mock_package_defaults():
             "default_user_name": "",
             "karte_format": "both",
         },
-        "leela": {
-            "enabled": False,
-            "loss_scale_k": 0.5,
-        },
     }
     with patch("katrain.common.settings_export.get_package_defaults", return_value=defaults):
         yield defaults
@@ -111,11 +107,9 @@ class TestExportSettings:
         """User settings sections should be included."""
         config = {
             "mykatrain_settings": {"default_user_name": "test"},
-            "leela": {"enabled": False},
         }
         result = json.loads(export_settings(config, "1.17.0"))
-        assert "mykatrain_settings" in result["sections"]
-        assert "leela" in result["sections"]
+        assert "mykatrain_settings" in result["sections"] 
 
     def test_schema_version_included(self):
         """Schema version should be included in export."""
@@ -329,7 +323,7 @@ class TestTabResetKeys:
         """All expected tabs should be defined."""
         assert "analysis" in TAB_RESET_KEYS
         assert "export" in TAB_RESET_KEYS
-        assert "leela" in TAB_RESET_KEYS
+        # Phase 171: "leela" タブは削除されたため存在しない。
 
     def test_keys_are_tuples(self):
         """All keys should be (section, key) tuples."""

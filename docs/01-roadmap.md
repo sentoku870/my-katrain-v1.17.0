@@ -58,6 +58,10 @@
 | **154** | 勝敗別損失統計 + 手数帯別推移 | RE パース / `win_loss_analysis` / `loss_progression` セクション追加 / schema 3.2 | ✅ (2026-06-28) |
 | **155** | 相手の棋力との相関 | BR/WR → バケット変換 / `opponent_strength_loss_correlation` セクション追加 / schema 3.3 | ✅ (2026-06-28) |
 | **156** | 動的フェーズ分割（scoreStdev ベース） | `classify_phases_dynamic()` / `apply_dynamic_phases()` / `dynamic_phase_detection` オプトイン | ✅ (2026-06-28) |
+| **158+** | リファクタリング | AI strategies・engine・badukpan 分割 | ✅ (2026-06-29) |
+| **159A** | Karte/Summary の KataGo-only 化 | `is_single_engine_snapshot()` gate / Leela 分岐はレポート生成時のみ弾く | ✅ (2026-06-29) |
+| **170** | 人間 vs Leela 対局機能の再廃止 | `AI_LEELA` / `LeelaStrategy` / `play_enabled` 削除。Leela は解析専用 | ✅ (2026-07-03) |
+| **171** | **Leela エンジン完全削除** | `core/leela/` (1459行) / `LeelaManager` / `LeelaConfig` / `leela_tab` / `resign_hint_popup` / `leela_gate` / `engine_compare` / `EngineType.LEELA` / `leela_loss_est` / `MixedEngineSnapshotError` を削除し、KataGo 専用に整理。i18n 132 msgid 削除、テスト 25 ファイル削除、設定 UI leela タブ削除 | ✅ (2026-07-04) |
 
 ### 直近の更新詳細
 

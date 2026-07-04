@@ -22,12 +22,9 @@ from katrain.core.analysis.meaning_tags import (
     MeaningTagId,
 )
 from katrain.core.analysis.models import EvalSnapshot, MoveEval
-from katrain.core.reports.karte.helpers import is_single_engine_snapshot
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
-    KARTE_ERROR_CODE_NON_KATAGO,
     KarteGenerationError,
-    MixedEngineSnapshotError,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +64,7 @@ def build_karte_report(
     raise_on_error: bool = False,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
-    snapshot: Any | None = None,  # Phase 87.5: Accept pre-built snapshot (for Leela)
+    snapshot: Any | None = None,
     lang: str = "ja",
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
@@ -82,24 +79,18 @@ def build_karte_report(
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
-        snapshot: Optional pre-built EvalSnapshot. If provided, uses this instead of
-            calling game.build_eval_snapshot(). Used for Leela analysis where
-            the snapshot is returned separately from the Game object.
+        snapshot: Optional pre-built EvalSnapshot. Phase 171 で Leela 専用利用を廃止。
 
     Returns:
         Markdown-formatted karte report.
         On error with raise_on_error=False, returns a report with ERROR section.
 
     Raises:
-        MixedEngineSnapshotError: If raise_on_error=True and snapshot contains
-            both KataGo and Leela analysis data.
-        KarteGenerationError: If raise_on_error=True and generation fails
-            for other reasons.
+        KarteGenerationError: If raise_on_error=True and generation fails.
     """
     game_id = game.game_id or game.sgf_filename or "unknown"
 
     # 1. Compute snapshot once (avoid double computation)
-    # Phase 87.5: Use provided snapshot or build from game
     # Phase 138: Wrap build_eval_snapshot() in try/except so the function honors
     # its documented contract of returning error markdown (or raising KarteGenerationError)
     # even when snapshot construction itself fails.
@@ -115,20 +106,9 @@ def build_karte_report(
                 raise KarteGenerationError(error_msg, game_id=game_id) from e
             return _build_error_karte(game_id, player_filter, error_msg)
 
-    # 2. Mixed-engine check (Phase 37: enforcement point) -> Phase 159A: KataGo-only
-    if not is_single_engine_snapshot(snapshot):
-        # Phase 159A: Leela data is now treated the same as mixed-engine
-        # (both are rejected). Emit a more descriptive error code that
-        # distinguishes the two for downstream consumers.
-        error_msg = (
-            f"{KARTE_ERROR_CODE_NON_KATAGO}\n"
-            "KataGo-only path required for Karte generation. "
-            "Leela or mixed-engine analysis detected. "
-            "Use KataGo analysis to generate karte."
-        )
-        if raise_on_error:
-            raise MixedEngineSnapshotError(error_msg)
-        return _build_error_karte(game_id, player_filter, error_msg)
+    # 2. Phase 171: KataGo 専用化により mixed-engine check を削除。
+    # 以前は is_single_engine_snapshot() で Leela データを弾いていたが、
+    # Leela 自体が廃止されたため不要。
 
     # 3. Pass snapshot as argument
     try:

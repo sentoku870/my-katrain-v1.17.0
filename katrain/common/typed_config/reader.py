@@ -1,13 +1,12 @@
 # katrain/common/typed_config/reader.py
 #
 # TypedConfigReader - 型付き設定リーダー。
-# Phase 99で追加。
+# Phase 99で追加。Phase 171 で Leela 関連 API を削除。
 
 from typing import Any
 
 from katrain.common.typed_config.models import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
 )
 
@@ -29,7 +28,6 @@ class TypedConfigReader:
         reader = TypedConfigReader(config_dict)
         engine = reader.get_engine()  # EngineConfig
         trainer = reader.get_trainer()  # TrainerConfig
-        leela = reader.get_leela()  # LeelaConfig
     """
 
     def __init__(self, config_dict: dict[str, Any]) -> None:
@@ -59,13 +57,3 @@ class TypedConfigReader:
         raw = self._config.get("trainer")
         snapshot = dict(raw) if isinstance(raw, dict) else {}
         return TrainerConfig.from_dict(snapshot)
-
-    def get_leela(self) -> LeelaConfig:
-        """Leela設定を取得。
-
-        Returns:
-            LeelaConfigインスタンス（frozen）
-        """
-        raw = self._config.get("leela")
-        snapshot = dict(raw) if isinstance(raw, dict) else {}
-        return LeelaConfig.from_dict(snapshot)

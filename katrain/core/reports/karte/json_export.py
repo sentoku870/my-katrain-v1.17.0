@@ -36,8 +36,7 @@ from katrain.core.reports.definitions import (
     REPORT_THRESHOLDS,
 )
 from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
-from katrain.core.reports.karte.helpers import is_single_engine_snapshot
-from katrain.core.reports.karte.models import KARTE_ERROR_CODE_NON_KATAGO
+from katrain.core.reports.karte.models import KARTE_ERROR_CODE_GENERATION_FAILED
 from katrain.core.reports.schema import (
     Definitions,
     MetaData,
@@ -73,10 +72,9 @@ def build_karte_json(
     Phase 156: `dynamic_phase_detection` defaults to True (Phase 158-F).
     When True, the move-by-move ``tag`` is rewritten using the
     scoreStdev-based detector (see
-    :func:`katrain.core.analysis.apply_dynamic_phases`). When scoreStdev
-    is unavailable (Leela / unanalyzed moves), the function falls back
-    to the static classifier, so enabling this flag never makes output
-    worse for non-KataGo analyses.
+    :func:`katrain.core.analysis.apply_dynamic_phases`). Phase 171 で
+    Leela が廃止されたため、scoreStdev 未取得の手は未解析の手のみとなり、
+    静的分類器に自然にフォールバックする。
 
     Args:
         game: Game object providing game state and analysis data
@@ -96,30 +94,10 @@ def build_karte_json(
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
-
-        When the snapshot contains Leela or mixed-engine data (Phase 159A,
-        KataGo-only path), returns a minimal error Karte dict containing
-        ``"error": "KARTE_ERROR_CODE: NON_KATAGO_DATA"`` instead of the
-        normal sections. Callers can detect this with
-        ``"error" in result``. ``build_karte_report`` additionally wraps
-        this into a ``KarteGenerationError`` / error-markdown path.
     """
     snapshot = game.build_eval_snapshot()
 
-    # Phase 159A: KataGo-only path — refuse non-KataGo snapshots up front
-    # so consumers (LLMs, dashboards) never receive cross-unit loss totals.
-    if not is_single_engine_snapshot(snapshot):
-        game_id = game.game_id or game.sgf_filename or "unknown"
-        return {
-            "schema_version": eval_metrics.REPORT_SCHEMA_VERSION if hasattr(eval_metrics, "REPORT_SCHEMA_VERSION") else "3.4",
-            "error": KARTE_ERROR_CODE_NON_KATAGO,
-            "message": (
-                "KataGo-only path required for Karte generation. "
-                "Leela or mixed-engine analysis detected. "
-                "Use KataGo analysis to generate karte."
-            ),
-            "meta": {"game_id": game_id},
-        }
+    # Phase 171: KataGo 専用化により mixed-engine / non-KataGo gate を削除。
 
     moves = list(snapshot.moves)
     board_x, board_y = game.board_size

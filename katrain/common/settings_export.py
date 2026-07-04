@@ -65,15 +65,7 @@ TAB_RESET_KEYS: dict[str, list[tuple[str, str]]] = {
         ("mykatrain_settings", "karte_format"),
         ("mykatrain_settings", "opponent_info_mode"),
     ],
-    # Leela tab: Leela integration settings
-    "leela": [
-        ("leela", "enabled"),
-        ("leela", "exe_path"),  # Path, but user-configurable via UI
-        ("leela", "loss_scale_k"),
-        ("leela", "max_visits"),
-        ("leela", "top_moves_show"),
-        ("leela", "top_moves_show_secondary"),
-    ],
+    # Phase 171: "leela" タブは Leela 廃止に伴い削除。
 }
 
 

@@ -18,19 +18,22 @@ if TYPE_CHECKING:
 
 @dataclass
 class _SettingsPopupContext:
-    """Mutable state shared across the 3 tab builders and the popup orchestrator.
+    """Mutable state shared across the 2 tab builders and the popup orchestrator.
 
     Phase 145-D+: Replaces the deep closure nesting that previously lived
     inside ``do_mykatrain_settings_popup``. Checkbox callbacks in each tab
     mutate the ``selected_*`` lists which are later read by ``save_settings``.
+
+    Phase 171: Leela タブ削除のため tab 数は 3 → 2 に。
+    ``leela_config`` フィールドも削除。
 
     Attributes:
         ctx: FeatureContext providing config, save_config, controls.
         current_settings: ``mykatrain_settings`` section dict (or empty).
         engine_config: ``engine`` section dict (or empty).
         current_engine: Resolved engine id via ``get_analysis_engine``.
-        leela_config: Typed LeelaConfig via ``ctx.get_leela_config()``.
-        selected_engine: [engine_id] - mutated by engine radio buttons.
+            Phase 171 からは常に ``"katago"``。
+        selected_engine: [engine_id] - 後方互換のため維持。常に ``"katago"``。
         selected_disable_katago: [bool] - mutated by disable-katago checkbox.
         selected_skill_preset: [str] - mutated by skill preset radio buttons.
         selected_pv_filter: [str] - mutated by PV filter radio buttons.
@@ -47,7 +50,6 @@ class _SettingsPopupContext:
     current_settings: dict[str, Any]
     engine_config: dict[str, Any]
     current_engine: str
-    leela_config: Any
     selected_engine: list[str]
     selected_disable_katago: list[bool]
     selected_skill_preset: list[str]

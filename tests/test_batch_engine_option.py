@@ -151,45 +151,42 @@ class TestBatchEngineConfigPersistence:
 
 
 # ---------------------------------------------------------------------------
-# Test: needs_leela_warning integration
+# Test: KataGo-only batch validation (Phase 171)
 # ---------------------------------------------------------------------------
 
 
-class TestNeedsLeelaWarningBatchIntegration:
-    """Test needs_leela_warning() for batch validation."""
+class TestKataGoOnlyBatchValidation:
+    """Phase 171: KataGo 専用化に伴うバッチバリデーションのテスト。
 
-    def test_needs_leela_warning_signature(self):
-        """Verify needs_leela_warning function signature."""
-        from katrain.core.analysis import needs_leela_warning
+    Leela 廃止のため ``needs_leela_warning`` は削除され、エンジン種別は
+    常に ``"katago"`` となる。
+    """
 
-        # Test with valid inputs
-        assert needs_leela_warning("katago", False) is False
-        assert needs_leela_warning("katago", True) is False
-        assert needs_leela_warning("leela", True) is False
-        assert needs_leela_warning("leela", False) is True
+    def test_needs_leela_warning_removed(self):
+        """needs_leela_warning は削除された。"""
+        import pytest
 
-    def test_batch_validation_pattern(self):
-        """Test expected batch validation pattern."""
-        from katrain.core.analysis import needs_leela_warning
+        with pytest.raises(ImportError):
+            from katrain.core.analysis import needs_leela_warning  # noqa: F401
 
-        def validate_batch_start(options, leela_enabled):
+    def test_batch_validation_kataonly(self):
+        """バッチバリデーションは KataGo 選択を前提とする。"""
+
+        def validate_batch_start(options):
             engine_type = options.get("analysis_engine", "katago")
-            if needs_leela_warning(engine_type, leela_enabled):
-                return False, "Leela not enabled"
+            # Phase 171: Leela 廃止。KataGo のみ許可。
+            if engine_type != "katago":
+                return False, "Only KataGo is supported"
             return True, None
 
         # KataGo always works
-        valid, err = validate_batch_start({"analysis_engine": "katago"}, False)
+        valid, err = validate_batch_start({"analysis_engine": "katago"})
         assert valid is True
 
-        # Leela with enabled works
-        valid, err = validate_batch_start({"analysis_engine": "leela"}, True)
-        assert valid is True
-
-        # Leela without enabled fails
-        valid, err = validate_batch_start({"analysis_engine": "leela"}, False)
+        # Leela also routes to KataGo (legacy), should be allowed
+        valid, err = validate_batch_start({"analysis_engine": "leela"})
         assert valid is False
-        assert err == "Leela not enabled"
+        assert "KataGo" in err
 
 
 # ---------------------------------------------------------------------------

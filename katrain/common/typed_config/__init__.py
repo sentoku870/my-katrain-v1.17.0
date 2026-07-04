@@ -8,7 +8,6 @@
 
 from katrain.common.typed_config.models import (
     EngineConfig,
-    LeelaConfig,
     TrainerConfig,
     normalize_path,
     safe_bool,
@@ -28,7 +27,6 @@ from katrain.common.typed_config.writer import (
 __all__ = [
     # Dataclasses
     "EngineConfig",
-    "LeelaConfig",
     "TrainerConfig",
     # Reader
     "TypedConfigReader",
