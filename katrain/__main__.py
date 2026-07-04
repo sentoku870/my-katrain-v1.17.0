@@ -285,9 +285,9 @@ class KaTrainGui(Screen, KaTrainBase):
             get_next_player_info=lambda: self.next_player_info,
             get_popups_open=lambda: self.popup_open,
             get_nav_drawer_open=lambda: bool(self.nav_drawer.state == "open"),
-            get_config=lambda key: self.config(key),
             get_eval_thresholds=lambda: self.config("trainer/eval_thresholds"),
-            get_analysis_controls=lambda: getattr(self, "analysis_controls", None),
+            # Phase 171 で削除: get_leela_manager, get_config (leela/enabled 用),
+            # get_analysis_controls (Leela hint 起動用)
             play_sound=self.play_mistake_sound,
             ai_move=lambda cn: self._do_ai_move(cn),
             stone_sound=self._play_stone_sound,
