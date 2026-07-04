@@ -389,8 +389,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self._analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
 
     def toggle_move_num(self) -> None:
-        self.show_move_num = not self.show_move_num
-        self.update_state()
+        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
+        self._analysis_controller.toggle_move_num()
 
     def set_analysis_focus_toggle(self, focus: str) -> None:
         """Delegates to AnalysisController (Phase 133)."""
@@ -401,17 +401,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self._analysis_controller.re_analyze_from_current_node()
 
     def restore_last_mode(self) -> None:
-        """前回終了時のモードを復元する。"""
-        try:
-            last_mode = self.config("ui_state/last_mode", MODE_PLAY)
-            if last_mode == MODE_ANALYZE and self.play_mode.mode == MODE_PLAY:
-                # Analyzeモードを復元
-                self.play_mode.analyze.trigger_action(duration=0)
-            elif last_mode == MODE_PLAY and self.play_mode.mode == MODE_ANALYZE:
-                # Playモードを復元
-                self.play_mode.play.trigger_action(duration=0)
-        except Exception as e:
-            self.log(f"restore_last_mode() failed: {e}", OUTPUT_DEBUG)
+        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
+        self._analysis_controller.restore_last_mode()
 
     def update_focus_button_states(self) -> None:
         """Delegates to AnalysisController (Phase 133)."""

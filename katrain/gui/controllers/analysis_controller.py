@@ -1,4 +1,4 @@
-"""解析設定制御コントローラー（Phase 133）
+"""解析設定制御コントローラー（Phase 133, Phase 173 P0-①-B）
 
 解析フォーカス（黒／白優先）の切り替え、継続解析（思考）のON/OFF、
 および思考中アニメーションのアップデートを担当。
@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 from typing import Any, Protocol
+
+from katrain.core.constants import OUTPUT_DEBUG
 
 
 class AnalysisContext(Protocol):
@@ -18,9 +20,12 @@ class AnalysisContext(Protocol):
     analysis_controls: Any
     controls: Any
     pondering: bool
+    play_mode: Any
+    show_move_num: bool
 
     def log(self, message: str, level: int) -> None: ...
     def update_state(self) -> None: ...
+    def config(self, key: str, default: Any = None) -> Any: ...
 
 
 class AnalysisController:
@@ -106,3 +111,24 @@ class AnalysisController:
 
         self._ctx.pondering = not self._ctx.pondering
         self._ctx.update_state()
+
+    def toggle_move_num(self) -> None:
+        """棋譜手数表示（move number overlay）の ON/OFF を切り替える。"""
+        self._ctx.show_move_num = not self._ctx.show_move_num
+        self._ctx.update_state()
+
+    def restore_last_mode(self) -> None:
+        """前回終了時のモード（play / analyze）を復元する。"""
+        from katrain.core.constants import MODE_ANALYZE, MODE_PLAY
+
+        try:
+            last_mode = self._ctx.config("ui_state/last_mode", MODE_PLAY)
+            current_mode = getattr(self._ctx.play_mode, "mode", None) if self._ctx.play_mode else None
+            if last_mode == MODE_ANALYZE and current_mode == MODE_PLAY:
+                # Analyze モードを復元
+                self._ctx.play_mode.analyze.trigger_action(duration=0)
+            elif last_mode == MODE_PLAY and current_mode == MODE_ANALYZE:
+                # Play モードを復元
+                self._ctx.play_mode.play.trigger_action(duration=0)
+        except Exception as e:
+            self._ctx.log(f"restore_last_mode() failed: {e}", OUTPUT_DEBUG)
