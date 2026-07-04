@@ -1,10 +1,13 @@
 # katrain/gui/features/settings_popup.py
 #
-# 設定ポップアップ機能モジュール
+# 設定ポップアップ機能モジュール（オーケストレーター）
 #
-# __main__.py から抽出した設定関連の関数を配置します。
-# - do_mykatrain_settings_popup: myKatrain設定ポップアップの表示
-# - _reset_tab_settings: タブ別設定リセット (Phase 27)
+# Phase 175: タブビルダーは settings_popup_tabs/ パッケージへ、
+# _save_* ヘルパーは settings_popup_savers.py へ分離済み。
+# 本モジュールは popup オーケストレーター + I/O ヘルパー（reset /
+# export / import）のみを保持する。
+#
+# 公開API: do_mykatrain_settings_popup, _SettingsPopupContext
 
 from __future__ import annotations
 
@@ -17,8 +20,6 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.checkbox import CheckBox
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
@@ -38,10 +39,16 @@ from katrain.core.constants import (
     STATUS_INFO,
 )
 from katrain.core.lang import i18n
+from katrain.gui.features.settings_popup_savers import (  # noqa: F401 (re-export for backward compat)
+    _save_beginner_hints_settings,
+    _save_engine_settings,
+    _save_general_settings,
+    _save_mykatrain_settings,
+)
+from katrain.gui.features.settings_popup_state import _SettingsPopupContext
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Button, Label, Popup
-from katrain.gui.widgets.helpers import create_text_input_row
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
@@ -352,388 +359,12 @@ def _do_import_settings(
 
 
 # =============================================================================
-# Phase 145-D+: Shared state container for tab builders
+# Phase 175: tab builders now live in settings_popup_tabs/ package.
+# They are imported lazily inside do_mykatrain_settings_popup() to keep
+# Kivy initialization deferred (required by tests/test_import_resolution.py).
 # =============================================================================
 
-from katrain.gui.features.settings_popup_helpers import _add_searchable_label
-from katrain.gui.features.settings_popup_state import _SettingsPopupContext
-
-# Re-export for backward compatibility (Phase 145-D+)
 __all__ = ["do_mykatrain_settings_popup", "_SettingsPopupContext"]
-
-
-# =============================================================================
-# Phase 145-D+: Tab builders (extracted from do_mykatrain_settings_popup)
-# =============================================================================
-
-
-def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button]:
-    """Build the Analysis tab content (Tab 1).
-
-    Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
-
-    Args:
-        state: Shared mutable state. Mutates selected_engine,
-            selected_disable_katago, selected_skill_preset, selected_pv_filter,
-            selected_beginner_hints via checkbox callbacks.
-
-    Returns:
-        (inner_layout, reset_button): ``inner_layout`` is a BoxLayout ready
-        to be wrapped in a ScrollView and added to a TabbedPanelItem. The
-        reset button should be bound by the orchestrator to
-        ``_reset_tab_settings(ctx, "analysis", popup, reopen_popup)``.
-    """
-    from katrain.core.analysis import EngineType  # Phase 34
-
-    inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
-    inner.bind(minimum_height=inner.setter("height"))
-
-    # --- Analysis Engine Selection (Phase 34, simplified in Phase 171) ---
-    # Phase 171 で Leela を廃止したため、KataGo 固定の表示に整理。
-    # selected_engine は呼び出し側の初期化互換のため残しているが、
-    # 値は常に "katago" が入る。
-    _add_searchable_label(inner, "mykatrain:settings:analysis_engine", state)
-
-    engine_label = Label(
-        text=i18n._("mykatrain:settings:engine_katago"),
-        size_hint_x=0.4,  # Flexible width for i18n (Issue 16)
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-
-    engine_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    engine_layout.add_widget(Label(size_hint_x=None, width=dp(30)))  # spacer (no checkbox needed)
-    engine_layout.add_widget(engine_label)
-    inner.add_widget(engine_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:analysis_engine", engine_layout)
-    # Phase 171: KataGo 固定（後方互換のため EngineType は参照だけ残す）
-    _ = EngineType.KATAGO
-
-    # --- Disable KataGo Checkbox (Phase 3 Extension) ---
-    _add_searchable_label(inner, "mykatrain:settings:disable_katago", state)
-
-    disable_katago_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
-    disable_katago_checkbox = CheckBox(
-        active=state.selected_disable_katago[0],
-        size_hint_x=None,
-        width=dp(30),
-    )
-    disable_katago_checkbox.bind(
-        active=lambda chk, active: state.selected_disable_katago.__setitem__(0, active)
-    )
-    disable_katago_layout.add_widget(disable_katago_checkbox)
-    disable_katago_layout.add_widget(Label())  # Spacer
-    inner.add_widget(disable_katago_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:disable_katago", disable_katago_layout)
-
-    # --- Skill Preset (Radio buttons) ---
-    _add_searchable_label(inner, "mykatrain:settings:skill_preset", state)
-
-    skill_options = [
-        ("auto", i18n._("mykatrain:settings:skill_auto")),
-        ("relaxed", i18n._("mykatrain:settings:skill_relaxed")),
-        ("beginner", i18n._("mykatrain:settings:skill_beginner")),
-        ("standard", i18n._("mykatrain:settings:skill_standard")),
-        ("advanced", i18n._("mykatrain:settings:skill_advanced")),
-        ("pro", i18n._("mykatrain:settings:skill_pro")),
-    ]
-
-    skill_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    for skill_value, skill_label_text in skill_options:
-        checkbox = CheckBox(
-            group="skill_preset_setting",
-            active=(skill_value == state.selected_skill_preset[0]),
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(
-            active=lambda chk, active, val=skill_value: state.selected_skill_preset.__setitem__(0, val)
-            if active
-            else None
-        )
-        label = Label(
-            text=skill_label_text,
-            size_hint_x=None,
-            width=dp(60),
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        skill_layout.add_widget(checkbox)
-        skill_layout.add_widget(label)
-    inner.add_widget(skill_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:skill_preset", skill_layout)
-
-    # --- PV Filter Level (Radio buttons) ---
-    _add_searchable_label(inner, "mykatrain:settings:pv_filter_level", state)
-
-    pv_filter_options = [
-        ("auto", i18n._("mykatrain:settings:pv_filter_auto")),
-        ("off", i18n._("mykatrain:settings:pv_filter_off")),
-        ("weak", i18n._("mykatrain:settings:pv_filter_weak")),
-        ("medium", i18n._("mykatrain:settings:pv_filter_medium")),
-        ("strong", i18n._("mykatrain:settings:pv_filter_strong")),
-    ]
-
-    pv_filter_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    for pv_value, pv_label_text in pv_filter_options:
-        checkbox = CheckBox(
-            group="pv_filter_setting",
-            active=(pv_value == state.selected_pv_filter[0]),
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(
-            active=lambda chk, active, val=pv_value: state.selected_pv_filter.__setitem__(0, val)
-            if active
-            else None
-        )
-        label = Label(
-            text=pv_label_text,
-            size_hint_x=None,
-            width=dp(70),
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        pv_filter_layout.add_widget(checkbox)
-        pv_filter_layout.add_widget(label)
-    inner.add_widget(pv_filter_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:pv_filter_level", pv_filter_layout)
-
-    # --- Beginner Hints toggle (Phase 91) ---
-    _add_searchable_label(inner, "mykatrain:settings:beginner_hints", state)
-
-    beginner_hints_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
-    beginner_hints_checkbox = CheckBox(
-        active=state.selected_beginner_hints[0],
-        size_hint_x=None,
-        width=dp(30),
-    )
-    beginner_hints_checkbox.bind(
-        active=lambda chk, active: state.selected_beginner_hints.__setitem__(0, active)
-    )
-    beginner_hints_desc = Label(
-        text=i18n._("mykatrain:settings:beginner_hints_desc"),
-        size_hint_x=0.9,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    beginner_hints_desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    beginner_hints_layout.add_widget(beginner_hints_checkbox)
-    beginner_hints_layout.add_widget(beginner_hints_desc)
-    inner.add_widget(beginner_hints_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:beginner_hints", beginner_hints_layout)
-
-    # --- Reset button ---
-    reset_btn = Button(
-        text=i18n._("mykatrain:settings:reset"),
-        size_hint_y=None,
-        height=dp(36),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    inner.add_widget(reset_btn)
-
-    return inner, reset_btn
-
-
-def _build_export_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, dict[str, Any]]:
-    """Build the Export tab content (Tab 2).
-
-    Phase 145-D+: Extracted from ``do_mykatrain_settings_popup``.
-
-    Args:
-        state: Shared mutable state. Mutates ``selected_format`` and
-            ``selected_opp_info`` via radio callbacks.
-
-    Returns:
-        (inner_layout, reset_button, widget_refs): widget_refs contains
-        ``user_input``, ``output_input``, ``input_input``, ``output_browse``,
-        ``input_browse``. The orchestrator uses these to wire save_settings
-        and browse callbacks.
-    """
-    inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
-    inner.bind(minimum_height=inner.setter("height"))
-
-    # --- Default User Name ---
-    user_row, user_input, _ = create_text_input_row(
-        label_text=i18n._("mykatrain:settings:default_user_name"),
-        initial_value=state.current_settings.get("default_user_name", ""),
-    )
-    inner.add_widget(user_row)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:default_user_name", user_row)
-
-    # --- Karte Output Directory ---
-    output_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-    output_label = Label(
-        text=i18n._("mykatrain:settings:karte_output_directory"),
-        size_hint_x=0.35,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    output_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    output_input = TextInput(
-        text=state.current_settings.get("karte_output_directory", ""),
-        multiline=False,
-        size_hint_x=0.5,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    output_browse = Button(
-        text=i18n._("Browse..."),
-        size_hint_x=0.15,
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    output_row.add_widget(output_label)
-    output_row.add_widget(output_input)
-    output_row.add_widget(output_browse)
-    inner.add_widget(output_row)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:karte_output_directory", output_row)
-
-    # --- Batch Export Input Directory ---
-    input_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-    input_label = Label(
-        text=i18n._("mykatrain:settings:batch_export_input_directory"),
-        size_hint_x=0.35,
-        halign="left",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    input_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    input_input = TextInput(
-        text=state.current_settings.get("batch_export_input_directory", ""),
-        multiline=False,
-        size_hint_x=0.5,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    input_browse = Button(
-        text=i18n._("Browse..."),
-        size_hint_x=0.15,
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    input_row.add_widget(input_label)
-    input_row.add_widget(input_input)
-    input_row.add_widget(input_browse)
-    inner.add_widget(input_row)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:batch_export_input", input_row)
-
-    # --- Karte Format (Radio buttons - 2x2 grid) ---
-    _add_searchable_label(inner, "mykatrain:settings:karte_format", state)
-
-    format_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
-    format_options = [
-        ("both", i18n._("mykatrain:settings:format_both")),
-        ("black_only", i18n._("mykatrain:settings:format_black_only")),
-        ("white_only", i18n._("mykatrain:settings:format_white_only")),
-        ("default_user_only", i18n._("mykatrain:settings:format_default_user_only")),
-    ]
-
-    for format_value, format_label_text in format_options:
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
-        checkbox = CheckBox(
-            group="karte_format",
-            active=(format_value == state.selected_format[0]),
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(
-            active=lambda chk, active, val=format_value: state.selected_format.__setitem__(0, val)
-            if active
-            else None
-        )
-        label = Label(
-            text=format_label_text,
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        row.add_widget(checkbox)
-        row.add_widget(label)
-        format_layout.add_widget(row)
-    inner.add_widget(format_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:karte_format", format_layout)
-
-    # --- Opponent Info Mode (Radio buttons - 2x2 grid) - Phase 4 ---
-    _add_searchable_label(inner, "mykatrain:settings:opponent_info_mode", state)
-
-    opp_info_layout = GridLayout(cols=2, spacing=dp(5), size_hint_y=None, height=dp(80))
-    opp_info_options = [
-        ("auto", i18n._("mykatrain:settings:opponent_info_auto")),
-        ("always_detailed", i18n._("mykatrain:settings:opponent_info_detailed")),
-        ("always_aggregate", i18n._("mykatrain:settings:opponent_info_aggregate")),
-    ]
-
-    for opp_value, opp_label_text in opp_info_options:
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36))
-        checkbox = CheckBox(
-            group="opponent_info_mode",
-            active=(opp_value == state.selected_opp_info[0]),
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(
-            active=lambda chk, active, val=opp_value: state.selected_opp_info.__setitem__(0, val)
-            if active
-            else None
-        )
-        label = Label(
-            text=opp_label_text,
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        row.add_widget(checkbox)
-        row.add_widget(label)
-        opp_info_layout.add_widget(row)
-    inner.add_widget(opp_info_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:opponent_info_mode", opp_info_layout)
-
-    # --- Reset button ---
-    reset_btn = Button(
-        text=i18n._("mykatrain:settings:reset"),
-        size_hint_y=None,
-        height=dp(36),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    inner.add_widget(reset_btn)
-
-    widget_refs = {
-        "user_input": user_input,
-        "output_input": output_input,
-        "input_input": input_input,
-        "output_browse": output_browse,
-        "input_browse": input_browse,
-    }
-    return inner, reset_btn, widget_refs
 
 
 def do_mykatrain_settings_popup(
@@ -748,6 +379,7 @@ def do_mykatrain_settings_popup(
     ``_SettingsPopupContext``.
 
     Phase 171: Leela タブを削除し、KataGo 専用（Tab 1 / Tab 2）に整理。
+    Phase 175: タブビルダーを settings_popup_tabs/ パッケージへ分離。
 
     Args:
         ctx: FeatureContext providing config, save_config, controls
@@ -791,7 +423,9 @@ def do_mykatrain_settings_popup(
     # --- Build search bar ---
     search_layout, search_input = _build_search_bar(state.searchable_widgets, register_searchable)
 
-    # --- Build 2 tabs (Phase 171: Leela タブ削除) ---
+    # --- Build 2 tabs (Phase 171: Leela タブ削除; Phase 175: tab builders split into package) ---
+    from katrain.gui.features.settings_popup_tabs import _build_analysis_tab, _build_export_tab
+
     tab1_inner, tab1_reset_btn = _build_analysis_tab(state)
     tab2_inner, tab2_reset_btn, export_widgets = _build_export_tab(state)
     widget_refs = {**export_widgets}
@@ -1071,70 +705,3 @@ def _open_browse_dialog(
 
     browse_popup_content.filesel.bind(on_success=on_select)
     browse_popup.open()
-
-
-# =============================================================================
-# Phase 145-D: Per-section save helpers (extracted from save_settings closure)
-# =============================================================================
-
-
-def _save_general_settings(ctx: FeatureContext, skill_preset: str, pv_filter_level: str) -> None:
-    """Save general config (skill_preset, pv_filter_level)."""
-    general = ctx.config("general") or {}
-    general["skill_preset"] = skill_preset
-    general["pv_filter_level"] = pv_filter_level
-    ctx.set_config_section("general", general)
-    ctx.save_config("general")
-
-
-def _save_beginner_hints_settings(ctx: FeatureContext, enabled: bool) -> None:
-    """Save beginner_hints enabled state (Phase 91)."""
-    beginner_hints_config = ctx.config("beginner_hints") or {}
-    beginner_hints_config["enabled"] = enabled
-    ctx.set_config_section("beginner_hints", beginner_hints_config)
-    ctx.save_config("beginner_hints")
-
-
-def _save_engine_settings(ctx: FeatureContext, new_engine_value: str) -> None:
-    """Save analysis engine selection with error handling (Phase 34, Phase 102)."""
-    try:
-        ctx.update_engine_config(analysis_engine=new_engine_value)
-    except OSError as e:
-        # File write failure during engine config save
-        logging.error(f"Failed to save engine config (file error): {e}", exc_info=True)
-        ctx.controls.set_status(
-            i18n._("mykatrain:settings:engine_save_error"),
-            STATUS_ERROR,
-        )
-    except Exception as e:
-        # Boundary fallback: unexpected error (config structure issue, etc.)
-        logging.error(f"Failed to save engine config (unexpected): {e}", exc_info=True)
-        ctx.controls.set_status(
-            i18n._("mykatrain:settings:engine_save_error"),
-            STATUS_ERROR,
-        )
-
-
-def _save_mykatrain_settings(
-    ctx: FeatureContext,
-    default_user_name: str,
-    karte_output_directory: str,
-    batch_export_input_directory: str,
-    karte_format: str,
-    opponent_info_mode: str,
-    disabled_katago: bool,
-) -> None:
-    """Save mykatrain_settings section + engine disabled flag (Phase 27)."""
-    mykatrain_settings = {
-        "default_user_name": default_user_name,
-        "karte_output_directory": karte_output_directory,
-        "batch_export_input_directory": batch_export_input_directory,
-        "karte_format": karte_format,
-        "opponent_info_mode": opponent_info_mode,
-    }
-    ctx.set_config_section("mykatrain_settings", mykatrain_settings)
-    ctx.save_config("mykatrain_settings")
-    # Save engine config (Phase 3 Extension)
-    ctx.update_engine_config(disabled=disabled_katago)
-
-
