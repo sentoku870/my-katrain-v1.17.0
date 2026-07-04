@@ -321,10 +321,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ConfigManager.save_export_settings() (Phase 74)."""
         self._config_manager.save_export_settings(sgf_directory, selected_players)
 
-    def _save_batch_options(self, options: dict[str, Any]) -> None:
-        """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
-        self._config_manager.save_batch_options(options)
-
     # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
     # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
     # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
@@ -395,10 +391,6 @@ class KaTrainGui(Screen, KaTrainBase):
     def set_analysis_focus_toggle(self, focus: str) -> None:
         """Delegates to AnalysisController (Phase 133)."""
         self._analysis_controller.set_analysis_focus_toggle(focus)
-
-    def _re_analyze_from_current_node(self) -> None:
-        """Delegates to AnalysisController (Phase 133)."""
-        self._analysis_controller.re_analyze_from_current_node()
 
     def restore_last_mode(self) -> None:
         """Delegates to AnalysisController (Phase 173 P0-①-B)."""
@@ -491,14 +483,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to AutoSetupController (Phase 133)."""
         self._auto_setup_controller.save_auto_setup_result(success)
 
-    def _verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
-        """Delegates to AutoSetupController (Phase 133)."""
-        return self._auto_setup_controller.verify_engine_works(timeout_seconds)
-
-    def _save_engine_katago_path(self, katago_path: str) -> None:
-        """Delegates to AutoSetupController (Phase 133)."""
-        self._auto_setup_controller.save_engine_katago_path(katago_path)
-
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
 
@@ -547,15 +531,6 @@ class KaTrainGui(Screen, KaTrainBase):
         elif self.game and self.game.current_node:
             # Fallback: direct assignment during early UI construction
             self.game.current_node.note = note
-
-    # The message loop is here to make sure moves happen in the right order, and slow operations don't hang the GUI
-    def _message_loop_thread(self) -> None:
-        """Delegates to MessageLoopManager (Phase 158+). Kept as thin wrapper for backward compat."""
-        self._message_loop_manager.start()
-
-    def _run_message_loop_once(self) -> None:  # Kept for tests that bypass the thread
-        """Run the message loop in the current thread (testing only)."""
-        self._message_loop_manager._run()
 
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Central dispatcher for menu actions triggered from .kv or shortcuts.
@@ -624,20 +599,17 @@ class KaTrainGui(Screen, KaTrainBase):
         game_commands.do_play(self, coords)
 
     # =========================================================================
-    # Phase 97: Active Review Mode (delegated to ActiveReviewController)
+    # Phase 130: Active Review Mode removed (stub is_fog_active kept for KV)
     # =========================================================================
 
     def is_fog_active(self) -> bool:
-        """Active Review removed (Phase 130). Always returns False."""
+        """Active Review removed (Phase 130). Always returns False.
+
+        This stub is retained because KV / drawing code references it from
+        multiple sites. Production callers should treat the return value as
+        a constant False.
+        """
         return False
-
-    def _on_active_review_mode_change(self, instance: Any, value: Any) -> None:
-        """Delegates to ActiveReviewController (Phase 97)."""
-        self._active_review_controller.on_mode_change(value)
-
-    def _do_active_review_guess(self, coords: Any) -> None:
-        """Delegates to ActiveReviewController (Phase 97)."""
-        self._active_review_controller.handle_guess(coords)
 
     def _do_analyze_extra(self, mode: str, **kwargs: Any) -> None:
         analyze_commands.do_analyze_extra(self, mode, **kwargs)

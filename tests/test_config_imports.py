@@ -134,7 +134,6 @@ class TestKaTrainGuiDelegationExists:
             "set_config_section",
             "_load_export_settings",
             "_save_export_settings",
-            "_save_batch_options",
         ]
         for method in required_methods:
             assert method in method_names, f"KaTrainGui.{method} not found"
