@@ -240,6 +240,7 @@ from katrain.core.analysis.models import (
     get_analysis_engine,
     # Helper function
     get_canonical_loss_from_move,
+    resolve_visits,
 )
 
 # =============================================================================
