@@ -23,6 +23,7 @@ from typing import Any
 
 from katrain.core import eval_metrics
 from katrain.core.analysis.reason_generator import generate_reason_safe
+from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster
 
 # Pattern-mining constants moved verbatim from summary_formatter.
@@ -181,10 +182,9 @@ def _stable_sort_key(stats: StatsDict) -> tuple[str, str, int, int]:
 # Aggregators
 # =============================================================================
 
-
 def _filter_by_board_size(stats_list: list[StatsDict]) -> tuple[list[StatsDict], int | None]:
     """Filter to games with a consistent square board size."""
-    size_counts: Counter = Counter()
+    size_counts: Counter[tuple[int, int]] = Counter()
     non_square_games: list[str] = []
     invalid_games: list[str] = []
 
@@ -305,12 +305,18 @@ def _mine_patterns_safe(
     min_count: int,
     top_n: int,
 ) -> list[PatternCluster]:
-    """Lazy wrapper for the heavy pattern miner."""
+    """Lazy wrapper for the heavy pattern miner.
+
+    The ``_FakeSnapshot`` here is a duck-typed ``EvalSnapshot``; we cast
+    the list to the producer's expected element type so mypy is happy.
+    """
     from katrain.core.batch.stats.pattern_miner import mine_patterns
 
-    return mine_patterns(  # type: ignore[arg-type]
-        games, board_size=board_size, min_count=min_count, top_n=top_n
-    )
+    typed_games: list[tuple[str, EvalSnapshot]] = [
+        (name, snapshot)  # type: ignore[misc]
+        for name, snapshot in games
+    ]
+    return mine_patterns(typed_games, board_size=board_size, min_count=min_count, top_n=top_n)
 
 
 def _format_game_refs(game_refs: list[GameRef], max_display: int = 3) -> str:
