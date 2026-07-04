@@ -158,6 +158,7 @@
     Label:
         size_hint: 0.6,1
         id: desc
+        color: Theme.TEXT_COLOR
         font_size: self.height * 0.7
         font_name: root.font_name
         text_size: self.size
@@ -272,18 +273,21 @@
             spacing: Theme.CP_SPACING
             Timer:
                 id: timer
-                size_hint_x: 0.65
+                size_hint_x: 0.55
             MDBoxLayout:
                 orientation: 'vertical'
+                size_hint_x: 0.45
                 padding: 2*Theme.CP_PADDING,Theme.CP_PADDING
                 spacing: Theme.CP_SPACING
                 SizedRoundedRectangleButton:
                     text: i18n._('undo-button-text')
                     size_hint: 1, 0.5
+                    font_size: sp(Theme.DESC_FONT_SIZE)
                     on_left_release: root.katrain("undo","smart")
                 SizedRoundedRectangleButton:
                     text: i18n._('resign')
                     size_hint: 1, 0.5
+                    font_size: sp(Theme.DESC_FONT_SIZE)
                     on_left_release: root.katrain("resign")
         MoveTree:
             id: move_tree
