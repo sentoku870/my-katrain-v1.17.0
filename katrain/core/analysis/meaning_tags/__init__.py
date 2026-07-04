@@ -19,7 +19,6 @@ Public API (PR-1 - Models & Registry):
 Public API (PR-2 - Classifier Core):
     - ClassificationContext: Additional context for classification
     - classify_meaning_tag(): Main classification function
-    - resolve_lexicon_anchor(): Lexicon anchor resolution
     - Helper functions: get_loss_value, classify_gtp_move, is_classifiable_move,
                        compute_move_distance, is_endgame
 
@@ -74,7 +73,6 @@ from .classifier import (
     get_loss_value,
     is_classifiable_move,
     is_endgame,
-    resolve_lexicon_anchor,
 )
 from .context_builder import build_classification_context_from_node
 from .integration import (
@@ -106,7 +104,6 @@ __all__ = [
     # Classifier (PR-2)
     "ClassificationContext",
     "classify_meaning_tag",
-    "resolve_lexicon_anchor",
     # Context builder (Phase 148-B'1)
     "build_classification_context_from_node",
     # Helper functions (PR-2)

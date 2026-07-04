@@ -17,18 +17,13 @@ from .models import MeaningTagId
 class MeaningTagDefinition:
     """Static definition of a meaning tag.
 
-    Contains metadata for display and Lexicon integration:
+    Contains metadata for display:
     - id: The tag identifier
     - ja_label: Japanese display label
     - en_label: English display label
     - ja_description: Japanese description for LLM prompts
     - en_description: English description for LLM prompts
-    - default_lexicon_anchor: Lexicon entry ID (None if no mapping exists)
     - related_reason_tags: MoveEval.reason_tags that trigger this tag
-
-    Note:
-        Lexicon anchor IDs were validated against the actual YAML file.
-        Only 6 tags have valid anchors; others are set to None.
     """
 
     id: MeaningTagId
@@ -36,26 +31,8 @@ class MeaningTagDefinition:
     en_label: str
     ja_description: str
     en_description: str
-    default_lexicon_anchor: str | None = None
     related_reason_tags: tuple[str, ...] = ()
 
-
-# =============================================================================
-# MEANING_TAG_REGISTRY
-# =============================================================================
-# All 12 tags with validated Lexicon anchor IDs.
-#
-# Anchors with valid Lexicon entries (verified in go_lexicon_master_last.yaml):
-#   - tesuji (line 1536)
-#   - direction_of_play (line 4671)
-#   - yose (line 2820)
-#   - connection (line 868)
-#   - semeai (line 2782)
-#   - territory (line 86)
-#
-# Anchors set to None (ID does not exist in Lexicon):
-#   - overplay, slow-move, shape, reading, life-death
-# =============================================================================
 
 MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
     MeaningTagId.MISSED_TESUJI: MeaningTagDefinition(
@@ -64,7 +41,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Missed Tesuji",
         ja_description="明らかな好手（手筋）を見逃しました。最善手のpolicyが高く、実戦手のpolicyが低い場合に検出されます。",
         en_description="You missed an obvious good move (tesuji). Detected when the best move has high policy but your actual move had low policy.",
-        default_lexicon_anchor="tesuji",
         related_reason_tags=(),
     ),
     MeaningTagId.OVERPLAY: MeaningTagDefinition(
@@ -73,7 +49,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Overplay",
         ja_description="リスクの高い無理な手でした。局面が複雑（scoreStdevが高い）な状況で大きな損失が発生しました。",
         en_description="This was a risky overplay. A large loss occurred in a complex position (high score stdev).",
-        default_lexicon_anchor=None,
         related_reason_tags=("heavy_loss",),
     ),
     MeaningTagId.SLOW_MOVE: MeaningTagDefinition(
@@ -82,7 +57,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Slow Move",
         ja_description="緊急性のない場所で、最善手に近い場所に打ちましたが、小さな損失がありました。",
         en_description="You played near the best move in a non-urgent area, but there was a small loss.",
-        default_lexicon_anchor=None,
         related_reason_tags=(),
     ),
     MeaningTagId.DIRECTION_ERROR: MeaningTagDefinition(
@@ -91,7 +65,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Direction Error",
         ja_description="序盤で大局観を外しました。最善手と実戦手が盤上で大きく離れています。",
         en_description="Your global sense was off in the opening. The best move and your actual move were far apart on the board.",
-        default_lexicon_anchor=None,  # direction_of_play is in concepts section, not entries
         related_reason_tags=(),
     ),
     MeaningTagId.SHAPE_MISTAKE: MeaningTagDefinition(
@@ -100,7 +73,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Bad Shape",
         ja_description="AIがほとんど考慮しない「形の悪い手」でした。policyが極めて低い手です。",
         en_description="This was a 'bad shape' move that AI barely considered. The policy was extremely low.",
-        default_lexicon_anchor=None,
         related_reason_tags=(),
     ),
     MeaningTagId.READING_FAILURE: MeaningTagDefinition(
@@ -109,7 +81,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Reading Failure",
         ja_description="読みの失敗です。AIも有力と考えた手でしたが、結果的に大きな損失につながりました。",
         en_description="A reading failure. AI also considered this move promising, but it led to a large loss.",
-        default_lexicon_anchor=None,
         related_reason_tags=("reading_failure",),
     ),
     MeaningTagId.ENDGAME_SLIP: MeaningTagDefinition(
@@ -118,7 +89,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Endgame Slip",
         ja_description="終盤でのヨセの計算ミスです。小〜中程度の損失が発生しました。",
         en_description="An endgame calculation error. A small to medium loss occurred.",
-        default_lexicon_anchor="yose",
         related_reason_tags=("endgame_hint",),
     ),
     MeaningTagId.CONNECTION_MISS: MeaningTagDefinition(
@@ -127,7 +97,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Connection Miss",
         ja_description="石の連絡に関するミスです。切断のリスクがあったか、連絡が必要な場面でした。",
         en_description="A mistake related to stone connection. There was a cutting risk or a need to connect.",
-        default_lexicon_anchor="connection",
         related_reason_tags=("need_connect", "cut_risk"),
     ),
     MeaningTagId.CAPTURE_RACE_LOSS: MeaningTagDefinition(
@@ -136,7 +105,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Capture Race Loss",
         ja_description="攻め合い（セメアイ）に負けました。アタリと呼吸点の両方が関係する大きな損失です。",
         en_description="You lost a capture race (semeai). A large loss involving both atari and low liberties.",
-        default_lexicon_anchor="semeai",
         related_reason_tags=("atari", "low_liberties"),
     ),
     MeaningTagId.LIFE_DEATH_ERROR: MeaningTagDefinition(
@@ -145,7 +113,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Life/Death Error",
         ja_description="石の生死に関わる重大なミスです。ownership（所有権）の大きな変動、または壊滅的な損失が発生しました。",
         en_description="A critical mistake involving the life or death of stones. Large ownership flux or catastrophic loss.",
-        default_lexicon_anchor=None,
         related_reason_tags=("atari", "low_liberties"),
     ),
     MeaningTagId.TERRITORIAL_LOSS: MeaningTagDefinition(
@@ -154,7 +121,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Territorial Loss",
         ja_description="地の損失です。戦術的なタグがなく、終盤でもない状況での中程度以上の損失です。",
         en_description="A territorial loss. A medium or larger loss without tactical tags and not in the endgame.",
-        default_lexicon_anchor="territory",
         related_reason_tags=(),
     ),
     MeaningTagId.UNCERTAIN: MeaningTagDefinition(
@@ -163,7 +129,6 @@ MEANING_TAG_REGISTRY: dict[MeaningTagId, MeaningTagDefinition] = {
         en_label="Uncertain",
         ja_description="どのカテゴリにも明確に分類できませんでした。",
         en_description="Could not be clearly classified into any category.",
-        default_lexicon_anchor=None,
         related_reason_tags=(),
     ),
 }

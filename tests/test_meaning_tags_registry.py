@@ -48,83 +48,6 @@ class TestMeaningTagRegistry:
 
 
 # =============================================================================
-# Lexicon Anchor Tests
-# =============================================================================
-
-
-class TestLexiconAnchors:
-    """Tests for Lexicon anchor configuration."""
-
-    # Tags with valid Lexicon anchors (5 tags)
-    # Note: direction_of_play is in concepts section of YAML, not entries,
-    # so it's not available in LexiconStore
-    TAGS_WITH_ANCHORS = {
-        MeaningTagId.MISSED_TESUJI: "tesuji",
-        MeaningTagId.ENDGAME_SLIP: "yose",
-        MeaningTagId.CONNECTION_MISS: "connection",
-        MeaningTagId.CAPTURE_RACE_LOSS: "semeai",
-        MeaningTagId.TERRITORIAL_LOSS: "territory",
-    }
-
-    # Tags without Lexicon anchors (7 tags)
-    TAGS_WITHOUT_ANCHORS = {
-        MeaningTagId.OVERPLAY,
-        MeaningTagId.SLOW_MOVE,
-        MeaningTagId.DIRECTION_ERROR,  # direction_of_play not in entries
-        MeaningTagId.SHAPE_MISTAKE,
-        MeaningTagId.READING_FAILURE,
-        MeaningTagId.LIFE_DEATH_ERROR,
-        MeaningTagId.UNCERTAIN,
-    }
-
-    def test_five_tags_have_anchors(self) -> None:
-        """Exactly 5 tags should have Lexicon anchors."""
-        tags_with_anchors = {
-            tag_id for tag_id, defn in MEANING_TAG_REGISTRY.items() if defn.default_lexicon_anchor is not None
-        }
-        assert tags_with_anchors == set(self.TAGS_WITH_ANCHORS.keys())
-
-    def test_seven_tags_have_no_anchors(self) -> None:
-        """Exactly 7 tags should have no Lexicon anchors."""
-        tags_without_anchors = {
-            tag_id for tag_id, defn in MEANING_TAG_REGISTRY.items() if defn.default_lexicon_anchor is None
-        }
-        assert tags_without_anchors == self.TAGS_WITHOUT_ANCHORS
-
-    @pytest.mark.parametrize(
-        "tag_id,expected_anchor",
-        [
-            (MeaningTagId.MISSED_TESUJI, "tesuji"),
-            (MeaningTagId.ENDGAME_SLIP, "yose"),
-            (MeaningTagId.CONNECTION_MISS, "connection"),
-            (MeaningTagId.CAPTURE_RACE_LOSS, "semeai"),
-            (MeaningTagId.TERRITORIAL_LOSS, "territory"),
-        ],
-    )
-    def test_specific_anchor_values(self, tag_id: MeaningTagId, expected_anchor: str) -> None:
-        """Verify specific anchor IDs match the plan."""
-        definition = MEANING_TAG_REGISTRY[tag_id]
-        assert definition.default_lexicon_anchor == expected_anchor
-
-    @pytest.mark.parametrize(
-        "tag_id",
-        [
-            MeaningTagId.OVERPLAY,
-            MeaningTagId.SLOW_MOVE,
-            MeaningTagId.DIRECTION_ERROR,  # direction_of_play not in entries
-            MeaningTagId.SHAPE_MISTAKE,
-            MeaningTagId.READING_FAILURE,
-            MeaningTagId.LIFE_DEATH_ERROR,
-            MeaningTagId.UNCERTAIN,
-        ],
-    )
-    def test_tags_without_anchor_are_none(self, tag_id: MeaningTagId) -> None:
-        """Tags without valid Lexicon entries should have None anchor."""
-        definition = MEANING_TAG_REGISTRY[tag_id]
-        assert definition.default_lexicon_anchor is None
-
-
-# =============================================================================
 # Related Reason Tags Tests
 # =============================================================================
 
@@ -279,18 +202,6 @@ class TestMeaningTagDefinition:
         definition = MEANING_TAG_REGISTRY[MeaningTagId.UNCERTAIN]
         with pytest.raises(AttributeError):
             definition.ja_label = "changed"  # type: ignore
-
-    def test_default_lexicon_anchor_is_none(self) -> None:
-        """Default lexicon anchor should be None."""
-        # Create a minimal definition
-        defn = MeaningTagDefinition(
-            id=MeaningTagId.UNCERTAIN,
-            ja_label="test",
-            en_label="test",
-            ja_description="test",
-            en_description="test",
-        )
-        assert defn.default_lexicon_anchor is None
 
     def test_default_reason_tags_is_empty_tuple(self) -> None:
         """Default related_reason_tags should be empty tuple."""

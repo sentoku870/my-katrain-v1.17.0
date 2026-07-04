@@ -35,7 +35,6 @@ from katrain.core.analysis.meaning_tags import (
     get_loss_value,
     is_classifiable_move,
     is_endgame,
-    resolve_lexicon_anchor,
 )
 
 # =============================================================================
@@ -54,23 +53,6 @@ class MockMoveEval:
     points_lost: float | None = None
     is_reliable: bool = True
     reason_tags: list[str] = field(default_factory=list)
-
-
-class MockLexiconEntry:
-    """Mock LexiconEntry for testing."""
-
-    def __init__(self, entry_id: str):
-        self.id = entry_id
-
-
-class MockLexiconStore:
-    """Mock LexiconStore for testing."""
-
-    def __init__(self, entries: dict[str, MockLexiconEntry] | None = None):
-        self._entries = entries or {}
-
-    def get(self, entry_id: str) -> MockLexiconEntry | None:
-        return self._entries.get(entry_id)
 
 
 # =============================================================================
@@ -360,50 +342,6 @@ class TestIsEndgame:
         total = 200
         early_move = int(total * THRESHOLD_ENDGAME_RATIO) - 10
         assert is_endgame(early_move, total, False) is False
-
-
-# =============================================================================
-# resolve_lexicon_anchor Tests
-# =============================================================================
-
-
-class TestResolveLexiconAnchor:
-    """Tests for resolve_lexicon_anchor function."""
-
-    def test_no_default_anchor(self) -> None:
-        """Tags without default anchor return None."""
-        store = MockLexiconStore()
-        # UNCERTAIN has no default anchor
-        result = resolve_lexicon_anchor(MeaningTagId.UNCERTAIN, store, True)
-        assert result is None
-
-    def test_validate_true_anchor_exists(self) -> None:
-        """validate=True with existing anchor returns anchor."""
-        store = MockLexiconStore({"tesuji": MockLexiconEntry("tesuji")})
-        result = resolve_lexicon_anchor(MeaningTagId.MISSED_TESUJI, store, True)
-        assert result == "tesuji"
-
-    def test_validate_true_anchor_missing(self) -> None:
-        """validate=True with missing anchor returns None."""
-        store = MockLexiconStore({})  # Empty store
-        result = resolve_lexicon_anchor(MeaningTagId.MISSED_TESUJI, store, True)
-        assert result is None
-
-    def test_validate_false_returns_default(self) -> None:
-        """validate=False returns default anchor without checking."""
-        store = MockLexiconStore({})  # Empty store
-        result = resolve_lexicon_anchor(MeaningTagId.MISSED_TESUJI, store, False)
-        assert result == "tesuji"  # Default anchor, not validated
-
-    def test_store_none_validate_true(self) -> None:
-        """lexicon_store=None with validate=True returns None."""
-        result = resolve_lexicon_anchor(MeaningTagId.MISSED_TESUJI, None, True)
-        assert result is None
-
-    def test_store_none_validate_false(self) -> None:
-        """lexicon_store=None with validate=False returns default."""
-        result = resolve_lexicon_anchor(MeaningTagId.MISSED_TESUJI, None, False)
-        assert result == "tesuji"
 
 
 # =============================================================================
@@ -805,147 +743,5 @@ class TestClassifyMeaningTagNoContext:
 
 
 # =============================================================================
-# Lexicon Anchor Integration Tests (Unit level with Mock)
+# End of classifier tests
 # =============================================================================
-
-
-class TestClassifyMeaningTagLexiconAnchor:
-    """Tests for lexicon anchor in classification results."""
-
-    def test_anchor_included_when_valid(self) -> None:
-        """Anchor is included when store has the entry."""
-        store = MockLexiconStore({"tesuji": MockLexiconEntry("tesuji")})
-        move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
-        ctx = ClassificationContext(
-            best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
-            actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
-        )
-        tag = classify_meaning_tag(move, context=ctx, lexicon_store=store)
-        assert tag.id == MeaningTagId.MISSED_TESUJI
-        assert tag.lexicon_anchor_id == "tesuji"
-
-    def test_anchor_none_when_not_valid(self) -> None:
-        """Anchor is None when store doesn't have the entry."""
-        store = MockLexiconStore({})  # Empty
-        move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
-        ctx = ClassificationContext(
-            best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
-            actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
-        )
-        tag = classify_meaning_tag(move, context=ctx, lexicon_store=store)
-        assert tag.id == MeaningTagId.MISSED_TESUJI
-        assert tag.lexicon_anchor_id is None
-
-    def test_validate_false_uses_default(self) -> None:
-        """validate_anchor=False uses default anchor."""
-        store = MockLexiconStore({})  # Empty
-        move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
-        ctx = ClassificationContext(
-            best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
-            actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
-        )
-        tag = classify_meaning_tag(move, context=ctx, lexicon_store=store, validate_anchor=False)
-        assert tag.id == MeaningTagId.MISSED_TESUJI
-        assert tag.lexicon_anchor_id == "tesuji"  # Default, not validated
-
-    def test_uncertain_never_has_anchor(self) -> None:
-        """UNCERTAIN tag never has an anchor."""
-        store = MockLexiconStore({"tesuji": MockLexiconEntry("tesuji")})
-        move = MockMoveEval(gtp="pass")  # Forces UNCERTAIN
-        tag = classify_meaning_tag(move, lexicon_store=store)
-        assert tag.id == MeaningTagId.UNCERTAIN
-        assert tag.lexicon_anchor_id is None
-
-
-# =============================================================================
-# Lexicon Integration Tests (PR-3)
-# =============================================================================
-
-
-@pytest.mark.slow
-class TestLexiconIntegration:
-    """Integration tests with real LexiconStore.
-
-    These tests verify that the 5 tags with Lexicon anchors actually have
-    valid entries in the Lexicon YAML file. Marked as 'slow' since they
-    load the full Lexicon data.
-
-    Note: direction_of_play is in the 'concepts' section of the YAML (Level 3),
-    not the 'entries' section, so it's not available in LexiconStore.
-    """
-
-    @pytest.fixture
-    def real_lexicon_store(self):
-        """Load the real LexiconStore from YAML."""
-        from katrain.common.lexicon import LexiconStore, get_default_lexicon_path
-
-        path = get_default_lexicon_path()
-        if not path.exists():
-            pytest.skip("Lexicon YAML not available")
-        store = LexiconStore(path)
-        store.load()
-        return store
-
-    def test_tesuji_anchor_exists(self, real_lexicon_store) -> None:
-        """MISSED_TESUJI anchor 'tesuji' exists in Lexicon."""
-        entry = real_lexicon_store.get("tesuji")
-        assert entry is not None
-        assert entry.id == "tesuji"
-
-    def test_yose_anchor_exists(self, real_lexicon_store) -> None:
-        """ENDGAME_SLIP anchor 'yose' exists in Lexicon."""
-        entry = real_lexicon_store.get("yose")
-        assert entry is not None
-        assert entry.id == "yose"
-
-    def test_connection_anchor_exists(self, real_lexicon_store) -> None:
-        """CONNECTION_MISS anchor 'connection' exists in Lexicon."""
-        entry = real_lexicon_store.get("connection")
-        assert entry is not None
-        assert entry.id == "connection"
-
-    def test_semeai_anchor_exists(self, real_lexicon_store) -> None:
-        """CAPTURE_RACE_LOSS anchor 'semeai' exists in Lexicon."""
-        entry = real_lexicon_store.get("semeai")
-        assert entry is not None
-        assert entry.id == "semeai"
-
-    def test_territory_anchor_exists(self, real_lexicon_store) -> None:
-        """TERRITORIAL_LOSS anchor 'territory' exists in Lexicon."""
-        entry = real_lexicon_store.get("territory")
-        assert entry is not None
-        assert entry.id == "territory"
-
-    def test_all_anchors_can_be_resolved(self, real_lexicon_store) -> None:
-        """All 5 tags with anchors can resolve their anchors."""
-        from katrain.core.analysis.meaning_tags import (
-            MEANING_TAG_REGISTRY,
-            MeaningTagId,
-            resolve_lexicon_anchor,
-        )
-
-        # 5 tags have valid anchors (direction_of_play not in entries)
-        tags_with_anchors = [
-            MeaningTagId.MISSED_TESUJI,
-            MeaningTagId.ENDGAME_SLIP,
-            MeaningTagId.CONNECTION_MISS,
-            MeaningTagId.CAPTURE_RACE_LOSS,
-            MeaningTagId.TERRITORIAL_LOSS,
-        ]
-
-        for tag_id in tags_with_anchors:
-            anchor = resolve_lexicon_anchor(tag_id, real_lexicon_store, validate_anchor=True)
-            expected = MEANING_TAG_REGISTRY[tag_id].default_lexicon_anchor
-            assert anchor == expected, f"{tag_id} should resolve to {expected}"
-
-    def test_classify_with_real_store(self, real_lexicon_store) -> None:
-        """classify_meaning_tag works with real LexiconStore."""
-        # Create a move that will be classified as MISSED_TESUJI
-        move = MockMoveEval(score_loss=THRESHOLD_LOSS_MEDIUM)
-        ctx = ClassificationContext(
-            best_move_policy=THRESHOLD_POLICY_BEST_HIGH,
-            actual_move_policy=THRESHOLD_POLICY_ACTUAL_LOW / 2,
-        )
-        tag = classify_meaning_tag(move, context=ctx, lexicon_store=real_lexicon_store)
-        assert tag.id == MeaningTagId.MISSED_TESUJI
-        assert tag.lexicon_anchor_id == "tesuji"

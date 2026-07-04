@@ -46,7 +46,6 @@ class MeaningTag:
     This is an immutable dataclass representing the semantic classification
     of a mistake. It contains:
     - id: The tag identifier (required)
-    - lexicon_anchor_id: Optional reference to a Lexicon entry
     - confidence: Reserved for future ML-based classification (always 1.0 now)
     - debug_reason: Explains why this tag was assigned (for debugging/testing)
 
@@ -68,7 +67,6 @@ class MeaningTag:
     """
 
     id: MeaningTagId
-    lexicon_anchor_id: str | None = None
     confidence: float = 1.0
     debug_reason: str | None = None
 

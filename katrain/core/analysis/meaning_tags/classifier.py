@@ -8,13 +8,12 @@ Part of Phase 46: Meaning Tags System Core - PR-2.
 Public API:
     - ClassificationContext: Additional context for classification
     - classify_meaning_tag(): Main classification function
-    - resolve_lexicon_anchor(): Lexicon anchor resolution
     - Helper functions: get_loss_value, classify_gtp_move, is_classifiable_move,
                        compute_move_distance, is_endgame
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from .models import MeaningTag, MeaningTagId
 from .registry import MEANING_TAG_REGISTRY
@@ -88,19 +87,6 @@ class ClassificationContext:
     ownership_flux: float | None = None
     score_stdev: float | None = None
     total_moves: int | None = None
-
-
-# =============================================================================
-# LexiconStore Protocol (for type hints without importing)
-# =============================================================================
-
-
-class LexiconStoreLike(Protocol):
-    """Protocol for LexiconStore-like objects."""
-
-    def get(self, entry_id: str) -> object | None:
-        """Get an entry by ID."""
-        ...
 
 
 # =============================================================================
@@ -239,42 +225,6 @@ def is_endgame(move_number: int, total_moves: int | None, has_endgame_hint: bool
 
 
 # =============================================================================
-# Lexicon Anchor Resolution
-# =============================================================================
-
-
-def resolve_lexicon_anchor(
-    tag_id: MeaningTagId,
-    lexicon_store: LexiconStoreLike | None,
-    validate_anchor: bool,
-) -> str | None:
-    """Resolve lexicon_anchor_id for a tag.
-
-    Args:
-        tag_id: The meaning tag ID
-        lexicon_store: LexiconStore instance for validation (optional)
-        validate_anchor: If True, validate anchors exist; if False, use defaults
-
-    Returns:
-        The anchor ID if valid, or None
-    """
-    definition = MEANING_TAG_REGISTRY[tag_id]
-    default_anchor = definition.default_lexicon_anchor
-
-    if default_anchor is None:
-        return None
-
-    if not validate_anchor:
-        return default_anchor
-
-    if lexicon_store is None:
-        return None
-
-    entry = lexicon_store.get(default_anchor)
-    return default_anchor if entry is not None else None
-
-
-# =============================================================================
 # Main Classification Function
 # =============================================================================
 
@@ -283,8 +233,6 @@ def classify_meaning_tag(
     move_eval: "MoveEval",
     *,
     context: ClassificationContext | None = None,
-    lexicon_store: LexiconStoreLike | None = None,
-    validate_anchor: bool = True,
 ) -> MeaningTag:
     """Classify a MoveEval into a meaning tag (deterministic).
 
@@ -295,8 +243,6 @@ def classify_meaning_tag(
     Args:
         move_eval: The MoveEval to classify (required)
         context: Additional context (optional, MoveEval-only classification if omitted)
-        lexicon_store: Lexicon store for anchor validation (optional)
-        validate_anchor: If True, validate anchors; if False, use defaults as-is
 
     Returns:
         MeaningTag: Classification result (never None, UNCERTAIN as fallback)
@@ -366,19 +312,14 @@ def classify_meaning_tag(
     has_tactical_tags = has_atari or has_low_liberties or has_cut_risk or has_need_connect or has_chase_mode
     has_semeai_pattern = has_atari and has_low_liberties
 
-    # =========================================================================
+# =========================================================================
     # Priority-based Classification
     # Design principle: More specific tags take priority
     # =========================================================================
 
-    def _make_tag(tag_id: MeaningTagId) -> MeaningTag:
-        """Create a MeaningTag with optional lexicon anchor."""
-        anchor = resolve_lexicon_anchor(tag_id, lexicon_store, validate_anchor)
-        return MeaningTag(id=tag_id, lexicon_anchor_id=anchor)
-
     # Priority 1: CAPTURE_RACE_LOSS (semeai pattern - most specific)
     if loss >= THRESHOLD_LOSS_LARGE and has_semeai_pattern:
-        return _make_tag(MeaningTagId.CAPTURE_RACE_LOSS)
+        return MeaningTag(id=MeaningTagId.CAPTURE_RACE_LOSS)
 
     # Priority 2: LIFE_DEATH_ERROR
     # Condition A: Huge loss + large ownership flux
@@ -388,22 +329,22 @@ def classify_meaning_tag(
         and context.ownership_flux is not None
         and context.ownership_flux >= THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH
     ):
-        return _make_tag(MeaningTagId.LIFE_DEATH_ERROR)
+        return MeaningTag(id=MeaningTagId.LIFE_DEATH_ERROR)
 
     # Condition B: Catastrophic loss + (atari OR low_liberties) BUT NOT both
     if loss >= THRESHOLD_LOSS_CATASTROPHIC and (has_atari or has_low_liberties) and not has_semeai_pattern:
-        return _make_tag(MeaningTagId.LIFE_DEATH_ERROR)
+        return MeaningTag(id=MeaningTagId.LIFE_DEATH_ERROR)
 
     # Priority 3: CONNECTION_MISS
     if has_need_connect and loss >= THRESHOLD_LOSS_MEDIUM:
-        return _make_tag(MeaningTagId.CONNECTION_MISS)
+        return MeaningTag(id=MeaningTagId.CONNECTION_MISS)
 
     if has_cut_risk and loss >= THRESHOLD_LOSS_CUT_RISK:
-        return _make_tag(MeaningTagId.CONNECTION_MISS)
+        return MeaningTag(id=MeaningTagId.CONNECTION_MISS)
 
     # Priority 4: READING_FAILURE
     if has_reading_failure:
-        return _make_tag(MeaningTagId.READING_FAILURE)
+        return MeaningTag(id=MeaningTagId.READING_FAILURE)
 
     if (
         context is not None
@@ -411,7 +352,7 @@ def classify_meaning_tag(
         and context.actual_move_policy >= THRESHOLD_POLICY_TRAP
         and loss >= THRESHOLD_LOSS_LARGE
     ):
-        return _make_tag(MeaningTagId.READING_FAILURE)
+        return MeaningTag(id=MeaningTagId.READING_FAILURE)
 
     # Priority 5: SHAPE_MISTAKE
     if (
@@ -420,7 +361,7 @@ def classify_meaning_tag(
         and context.actual_move_policy < THRESHOLD_POLICY_VERY_LOW
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
-        return _make_tag(MeaningTagId.SHAPE_MISTAKE)
+        return MeaningTag(id=MeaningTagId.SHAPE_MISTAKE)
 
     # Priority 6: DIRECTION_ERROR
     if (
@@ -432,7 +373,7 @@ def classify_meaning_tag(
         and context.actual_move_policy >= THRESHOLD_POLICY_LOW
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
-        return _make_tag(MeaningTagId.DIRECTION_ERROR)
+        return MeaningTag(id=MeaningTagId.DIRECTION_ERROR)
 
     # Priority 7: OVERPLAY
     if (
@@ -441,10 +382,10 @@ def classify_meaning_tag(
         and loss >= THRESHOLD_LOSS_LARGE
         and context.score_stdev >= THRESHOLD_SCORE_STDEV_HIGH
     ):
-        return _make_tag(MeaningTagId.OVERPLAY)
+        return MeaningTag(id=MeaningTagId.OVERPLAY)
 
     if has_heavy_loss and has_chase_mode:
-        return _make_tag(MeaningTagId.OVERPLAY)
+        return MeaningTag(id=MeaningTagId.OVERPLAY)
 
     # Priority 8: ENDGAME_SLIP
     _is_endgame = is_endgame(
@@ -453,7 +394,7 @@ def classify_meaning_tag(
         has_endgame_hint,
     )
     if _is_endgame and THRESHOLD_LOSS_SMALL < loss < THRESHOLD_LOSS_HUGE:
-        return _make_tag(MeaningTagId.ENDGAME_SLIP)
+        return MeaningTag(id=MeaningTagId.ENDGAME_SLIP)
 
     # Priority 9: SLOW_MOVE
     if (
@@ -463,7 +404,7 @@ def classify_meaning_tag(
         and context.move_distance < THRESHOLD_DISTANCE_CLOSE
         and not is_urgent
     ):
-        return _make_tag(MeaningTagId.SLOW_MOVE)
+        return MeaningTag(id=MeaningTagId.SLOW_MOVE)
 
     # Priority 10: MISSED_TESUJI
     if (
@@ -474,12 +415,12 @@ def classify_meaning_tag(
         and context.actual_move_policy < THRESHOLD_POLICY_ACTUAL_LOW
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
-        return _make_tag(MeaningTagId.MISSED_TESUJI)
+        return MeaningTag(id=MeaningTagId.MISSED_TESUJI)
 
     # Priority 11: TERRITORIAL_LOSS
     # Re-compute _is_endgame with latest context (already done above)
     if loss >= THRESHOLD_LOSS_MEDIUM and not has_tactical_tags and not _is_endgame:
-        return _make_tag(MeaningTagId.TERRITORIAL_LOSS)
+        return MeaningTag(id=MeaningTagId.TERRITORIAL_LOSS)
 
     # Priority 11b: Single-tag fallbacks (Phase 66)
     # These catch tactical tags that didn't match higher-priority combination rules.
@@ -490,15 +431,16 @@ def classify_meaning_tag(
     # - CAPTURE_RACE_LOSS: single atari implies missed atari awareness.
     # - ENDGAME_SLIP: single endgame_hint in non-endgame-detected positions.
     #
+
     # Loss thresholds: KataGo (points) 単位。Phase 171 で Leela 経路を削除。
     if loss >= THRESHOLD_LOSS_MEDIUM:  # 2.0
         # Single low_liberties (no need_connect, no atari, no cut_risk)
         if has_low_liberties and not has_need_connect and not has_atari and not has_cut_risk:
-            return _make_tag(MeaningTagId.READING_FAILURE)
+            return MeaningTag(id=MeaningTagId.READING_FAILURE)
 
         # Single atari (no low_liberties, no need_connect, no cut_risk)
         if has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk:
-            return _make_tag(MeaningTagId.CAPTURE_RACE_LOSS)
+            return MeaningTag(id=MeaningTagId.CAPTURE_RACE_LOSS)
 
     # Single endgame_hint (lower threshold, only if not already detected as endgame)
     if (
@@ -510,7 +452,7 @@ def classify_meaning_tag(
         and not has_cut_risk
         and not _is_endgame
     ):
-        return _make_tag(MeaningTagId.ENDGAME_SLIP)
+        return MeaningTag(id=MeaningTagId.ENDGAME_SLIP)
 
     # Priority 12: UNCERTAIN (fallback)
     return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_match")

@@ -82,7 +82,6 @@ class TestMeaningTag:
         """Create tag with only required field."""
         tag = MeaningTag(id=MeaningTagId.UNCERTAIN)
         assert tag.id == MeaningTagId.UNCERTAIN
-        assert tag.lexicon_anchor_id is None
         assert tag.confidence == 1.0
         assert tag.debug_reason is None
 
@@ -90,12 +89,10 @@ class TestMeaningTag:
         """Create tag with all fields."""
         tag = MeaningTag(
             id=MeaningTagId.MISSED_TESUJI,
-            lexicon_anchor_id="tesuji",
             confidence=0.95,
             debug_reason="policy_gap",
         )
         assert tag.id == MeaningTagId.MISSED_TESUJI
-        assert tag.lexicon_anchor_id == "tesuji"
         assert tag.confidence == 0.95
         assert tag.debug_reason == "policy_gap"
 
@@ -125,12 +122,6 @@ class TestMeaningTag:
         """Different IDs should not be equal."""
         tag1 = MeaningTag(id=MeaningTagId.OVERPLAY)
         tag2 = MeaningTag(id=MeaningTagId.UNCERTAIN)
-        assert tag1 != tag2
-
-    def test_inequality_different_anchor(self) -> None:
-        """Different anchors should not be equal."""
-        tag1 = MeaningTag(id=MeaningTagId.MISSED_TESUJI, lexicon_anchor_id="tesuji")
-        tag2 = MeaningTag(id=MeaningTagId.MISSED_TESUJI, lexicon_anchor_id=None)
         assert tag1 != tag2
 
     def test_default_confidence_is_one(self) -> None:
@@ -194,14 +185,12 @@ class TestMeaningTagSerialization:
 
         tag = MeaningTag(
             id=MeaningTagId.ENDGAME_SLIP,
-            lexicon_anchor_id="yose",
             confidence=1.0,
             debug_reason=None,
         )
         d = asdict(tag)
         # id is automatically converted to str via str inheritance
         assert d["id"] == "endgame_slip"
-        assert d["lexicon_anchor_id"] == "yose"
         assert d["confidence"] == 1.0
         assert d["debug_reason"] is None
 
@@ -211,7 +200,6 @@ class TestMeaningTagSerialization:
 
         original = MeaningTag(
             id=MeaningTagId.CONNECTION_MISS,
-            lexicon_anchor_id="connection",
             confidence=0.9,
             debug_reason="cut_risk",
         )
@@ -221,7 +209,6 @@ class TestMeaningTagSerialization:
         # Reconstruct (need to convert id back to enum)
         reconstructed = MeaningTag(
             id=MeaningTagId(loaded["id"]),
-            lexicon_anchor_id=loaded["lexicon_anchor_id"],
             confidence=loaded["confidence"],
             debug_reason=loaded["debug_reason"],
         )
