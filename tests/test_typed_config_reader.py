@@ -2,10 +2,12 @@
 #
 # Unit tests for katrain.common.typed_config.reader
 # Phase 99
+#
+# Phase 171: ``LeelaConfig`` / ``get_leela`` を削除
 
 
 from katrain.common.typed_config import TypedConfigReader
-from katrain.common.typed_config.models import EngineConfig, LeelaConfig, TrainerConfig
+from katrain.common.typed_config.models import EngineConfig, TrainerConfig
 
 
 class TestTypedConfigReader:
@@ -20,12 +22,6 @@ class TestTypedConfigReader:
         cfg = reader.get_trainer()
         assert isinstance(cfg, TrainerConfig)
         assert cfg.low_visits == 50
-
-    def test_get_leela_returns_leela_config(self):
-        reader = TypedConfigReader({"leela": {"enabled": True}})
-        cfg = reader.get_leela()
-        assert isinstance(cfg, LeelaConfig)
-        assert cfg.enabled is True
 
     def test_non_dict_section_returns_defaults(self):
         """セクションがdictでない場合はデフォルト値を返す"""
@@ -69,13 +65,11 @@ class TestTypedConfigReader:
         config = {
             "engine": {"max_visits": 1000},
             "trainer": {"low_visits": 50},
-            "leela": {"enabled": True},
         }
         reader = TypedConfigReader(config)
 
         assert reader.get_engine().max_visits == 1000
         assert reader.get_trainer().low_visits == 50
-        assert reader.get_leela().enabled is True
 
 
 class TestTypedConfigReaderSnapshot:
@@ -116,12 +110,10 @@ class TestTypedConfigReaderEdgeCases:
         reader = TypedConfigReader({})
         engine = reader.get_engine()
         trainer = reader.get_trainer()
-        leela = reader.get_leela()
 
         # すべてデフォルト値
         assert engine.max_visits == 500
         assert trainer.low_visits == 25
-        assert leela.enabled is False
 
     def test_partial_engine_config(self):
         """部分的なengineセクション"""

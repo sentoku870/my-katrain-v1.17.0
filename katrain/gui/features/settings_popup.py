@@ -32,14 +32,12 @@ from katrain.common.settings_export import (
     get_default_value,
     parse_exported_settings,
 )
-from katrain.common.typed_config import LeelaConfig
 from katrain.core import eval_metrics
 from katrain.core.constants import (
     STATUS_ERROR,
     STATUS_INFO,
 )
 from katrain.core.lang import i18n
-from katrain.core.leela.logic import clamp_k
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Button, Label, Popup
@@ -59,7 +57,7 @@ def _reset_tab_settings(
 
     Args:
         ctx: FeatureContext providing config, save_config, controls
-        tab_id: タブID ("analysis", "export", "leela")
+        tab_id: タブID ("analysis", "export")
         popup: 親ポップアップ（リセット後に閉じてリロード用）
         on_reset_complete: リセット完了後に呼ばれるコールバック
     """
@@ -359,7 +357,6 @@ def _do_import_settings(
 
 from katrain.gui.features.settings_popup_helpers import _add_searchable_label
 from katrain.gui.features.settings_popup_state import _SettingsPopupContext
-from katrain.gui.features.settings_popup_tabs import _build_leela_tab
 
 # Re-export for backward compatibility (Phase 145-D+)
 __all__ = ["do_mykatrain_settings_popup", "_SettingsPopupContext"]
@@ -391,53 +388,30 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
     inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
     inner.bind(minimum_height=inner.setter("height"))
 
-    # --- Analysis Engine Selection (Phase 34) ---
+    # --- Analysis Engine Selection (Phase 34, simplified in Phase 171) ---
+    # Phase 171 で Leela を廃止したため、KataGo 固定の表示に整理。
+    # selected_engine は呼び出し側の初期化互換のため残しているが、
+    # 値は常に "katago" が入る。
     _add_searchable_label(inner, "mykatrain:settings:analysis_engine", state)
 
-    engine_options = [
-        (EngineType.KATAGO.value, i18n._("mykatrain:settings:engine_katago")),
-        (EngineType.LEELA.value, i18n._("mykatrain:settings:engine_leela")),
-    ]
-
-    # Phase 87.5: Check if Leela is configured for gating
-    leela_enabled_for_gating = state.leela_config.enabled or bool(state.leela_config.exe_path or "")
+    engine_label = Label(
+        text=i18n._("mykatrain:settings:engine_katago"),
+        size_hint_x=0.4,  # Flexible width for i18n (Issue 16)
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     engine_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    for engine_value, engine_label_text in engine_options:
-        is_leela_option = engine_value == EngineType.LEELA.value
-        should_disable = is_leela_option and not leela_enabled_for_gating
-        is_active = engine_value == state.current_engine
-        # If Leela not configured and currently selected, force to KataGo
-        if is_leela_option and not leela_enabled_for_gating and is_active:
-            is_active = False
-            state.selected_engine[0] = EngineType.KATAGO.value
-
-        checkbox = CheckBox(
-            group="analysis_engine_setting",
-            active=is_active,
-            size_hint_x=None,
-            width=dp(30),
-            disabled=should_disable,
-        )
-        checkbox.bind(
-            active=lambda chk, active, val=engine_value: state.selected_engine.__setitem__(0, val)
-            if active
-            else None
-        )
-        label = Label(
-            text=engine_label_text,
-            size_hint_x=0.4,  # Flexible width for i18n (Issue 16)
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        engine_layout.add_widget(checkbox)
-        engine_layout.add_widget(label)
+    engine_layout.add_widget(Label(size_hint_x=None, width=dp(30)))  # spacer (no checkbox needed)
+    engine_layout.add_widget(engine_label)
     inner.add_widget(engine_layout)
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:analysis_engine", engine_layout)
+    # Phase 171: KataGo 固定（後方互換のため EngineType は参照だけ残す）
+    _ = EngineType.KATAGO
 
     # --- Disable KataGo Checkbox (Phase 3 Extension) ---
     _add_searchable_label(inner, "mykatrain:settings:disable_katago", state)
@@ -764,25 +738,26 @@ def _build_export_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, 
 
 def do_mykatrain_settings_popup(
     ctx: FeatureContext,
-    initial_tab: str | None = None,  # Phase 87.5: "analysis", "export", "leela"
+    initial_tab: str | None = None,  # Phase 87.5: "analysis", "export"; "leela" は Phase 171 で削除
 ) -> None:
     """myKatrain設定ポップアップを表示
 
     Phase 145-D+: Refactored from a 809-line closure into a thin orchestrator
-    that delegates tab content generation to ``_build_analysis_tab``,
-    ``_build_export_tab`` and ``_build_leela_tab``. Shared mutable state is
-    passed via ``_SettingsPopupContext``.
+    that delegates tab content generation to ``_build_analysis_tab`` and
+    ``_build_export_tab``. Shared mutable state is passed via
+    ``_SettingsPopupContext``.
+
+    Phase 171: Leela タブを削除し、KataGo 専用（Tab 1 / Tab 2）に整理。
 
     Args:
         ctx: FeatureContext providing config, save_config, controls
-        initial_tab: Optional tab to select on open ("analysis", "export", "leela")
+        initial_tab: Optional tab to select on open ("analysis", "export")
     """
-    from katrain.core.analysis import EngineType, get_analysis_engine
+    from katrain.core.analysis import get_analysis_engine
 
     current_settings = ctx.config("mykatrain_settings") or {}
     engine_config = ctx.config("engine") or {}
     current_engine = get_analysis_engine(engine_config)
-    leela_config = ctx.get_leela_config()
 
     # Phase 145-D+: Initialize shared state container
     state = _SettingsPopupContext(
@@ -790,7 +765,6 @@ def do_mykatrain_settings_popup(
         current_settings=current_settings,
         engine_config=engine_config,
         current_engine=current_engine,
-        leela_config=leela_config,
         selected_engine=[current_engine],
         selected_disable_katago=[ctx.config("engine/disabled", False)],
         selected_skill_preset=[ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET],
@@ -817,11 +791,10 @@ def do_mykatrain_settings_popup(
     # --- Build search bar ---
     search_layout, search_input = _build_search_bar(state.searchable_widgets, register_searchable)
 
-    # --- Build 3 tabs ---
+    # --- Build 2 tabs (Phase 171: Leela タブ削除) ---
     tab1_inner, tab1_reset_btn = _build_analysis_tab(state)
     tab2_inner, tab2_reset_btn, export_widgets = _build_export_tab(state)
-    tab3_inner, tab3_reset_btn, leela_widgets = _build_leela_tab(state)
-    widget_refs = {**export_widgets, **leela_widgets}
+    widget_refs = {**export_widgets}
 
     tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
     tab1_scroll = ScrollView(do_scroll_x=False)
@@ -833,11 +806,6 @@ def do_mykatrain_settings_popup(
     tab2_scroll.add_widget(tab2_inner)
     tab2.add_widget(tab2_scroll)
 
-    tab3 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_leela"))
-    tab3_scroll = ScrollView(do_scroll_x=False)
-    tab3_scroll.add_widget(tab3_inner)
-    tab3.add_widget(tab3_scroll)
-
     tabbed_panel = TabbedPanel(
         do_default_tab=False,
         tab_width=dp(120),
@@ -846,13 +814,11 @@ def do_mykatrain_settings_popup(
     )
     tabbed_panel.add_widget(tab1)
     tabbed_panel.add_widget(tab2)
-    tabbed_panel.add_widget(tab3)
 
-    # Phase 87.5 + Phase 89: Tab lookup dictionary
+    # Phase 87.5 + Phase 89: Tab lookup dictionary (Phase 171: "leela" 削除)
     tab_by_id = {
         "analysis": tab1,
         "export": tab2,
-        "leela": tab3,
     }
 
     # Phase 87.5 + Phase 89: Switch to initial_tab if specified
@@ -892,11 +858,10 @@ def do_mykatrain_settings_popup(
 
     # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers) ---
     def save_settings(*_args: Any) -> None:
-        """Save all settings sections."""
+        """Save all settings sections (Phase 171: Leela セクション削除)。"""
         _save_general_settings(ctx, state.selected_skill_preset[0], state.selected_pv_filter[0])
         _save_beginner_hints_settings(ctx, state.selected_beginner_hints[0])
         new_engine_value = state.selected_engine[0]
-        leela_enabled = new_engine_value == EngineType.LEELA.value
         _save_engine_settings(ctx, new_engine_value)
         _save_mykatrain_settings(
             ctx,
@@ -906,17 +871,6 @@ def do_mykatrain_settings_popup(
             state.selected_format[0],
             state.selected_opp_info[0],
             state.selected_disable_katago[0],
-        )
-        _save_leela_settings(
-            ctx,
-            leela_enabled=leela_enabled,
-            leela_path=widget_refs["leela_path_input"].text.strip(),
-            leela_k_value=widget_refs["leela_k_slider"].value,
-            leela_top_show=widget_refs["leela_top_moves_spinner"].selected[1],
-            leela_top_show_2=widget_refs["leela_top_moves_spinner_2"].selected[1],
-            leela_visits_text=widget_refs["leela_visits_input"].text,
-            leela_fast_visits_text=widget_refs["leela_fast_visits_input"].text.strip(),
-            leela_cand_value=widget_refs["leela_cand_spinner"].selected[1],
         )
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
@@ -940,29 +894,16 @@ def do_mykatrain_settings_popup(
             dirselect=True,
         )
 
-    def browse_leela_exe(*_args: Any) -> None:
-        _open_browse_dialog(
-            ctx=ctx,
-            title="Select Leela executable",
-            initial_path=widget_refs["leela_path_input"].text,
-            target_text_input=widget_refs["leela_path_input"],
-            dirselect=False,
-            file_filter=["*.exe"],
-            select_string="Select",
-        )
-
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
     widget_refs["output_browse"].bind(on_release=browse_output)
     widget_refs["input_browse"].bind(on_release=browse_input)
-    widget_refs["leela_path_browse"].bind(on_release=browse_leela_exe)
 
     export_button.bind(on_release=lambda *_args: _do_export_settings(ctx, popup))
     import_button.bind(on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup))
 
     tab1_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "analysis", popup, reopen_popup))
     tab2_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "export", popup, reopen_popup))
-    tab3_reset_btn.bind(on_release=lambda *_args: _reset_tab_settings(ctx, "leela", popup, reopen_popup))
 
     popup.open()
 
@@ -1085,9 +1026,9 @@ def _open_browse_dialog(
 ) -> None:
     """Open a file/directory browse dialog and update the target text input on selection.
 
-    Phase 145-D: Unified the 3 nearly-identical browse_output / browse_input /
-    browse_leela_exe callbacks into a single helper. The original behavior is
-    preserved exactly.
+    Phase 145-D: Unified the nearly-identical browse_output / browse_input
+    callbacks into a single helper. Phase 171 で ``browse_leela_exe`` 経路は
+    Leela 廃止に伴い削除されたため、現在は output / input の 2 用途。
 
     Args:
         ctx: FeatureContext (kept for API symmetry; not used directly).
@@ -1197,53 +1138,3 @@ def _save_mykatrain_settings(
     ctx.update_engine_config(disabled=disabled_katago)
 
 
-def _save_leela_settings(
-    ctx: FeatureContext,
-    *,
-    leela_enabled: bool,
-    leela_path: str,
-    leela_k_value: float,
-    leela_top_show: str,
-    leela_top_show_2: str,
-    leela_visits_text: str,
-    leela_fast_visits_text: str,
-    leela_cand_value: Any,
-) -> None:
-    """Save Leela settings via typed config API (Phase 102, Phase 30, Phase 123, Phase 170)."""
-    from katrain.core.analysis.models import LEELA_FAST_VISITS_MIN
-
-    # Get defaults from single source (no hardcoding)
-    _leela_defaults = LeelaConfig.from_dict({})
-
-    # max_visits: parse with validation
-    try:
-        computed_max_visits = max(100, min(100000, int(leela_visits_text)))
-    except ValueError:
-        computed_max_visits = _leela_defaults.max_visits
-
-    # fast_visits: parse with validation
-    try:
-        fast_visits_raw = int(leela_fast_visits_text)
-        # UI Validation:
-        # - 下限: LEELA_FAST_VISITS_MIN (50) または max_visits のうち小さい方
-        # - 上限: max_visits
-        # エッジケース: max_visits < 50 の場合、fast_visits も max_visits に制限
-        lower_bound = min(LEELA_FAST_VISITS_MIN, computed_max_visits)
-        computed_fast_visits = max(lower_bound, min(computed_max_visits, fast_visits_raw))
-    except ValueError:
-        computed_fast_visits = _leela_defaults.fast_visits
-
-    # Convert "auto" to -1 (unlimited)
-    max_cand_int = -1 if str(leela_cand_value).lower() == "auto" else int(leela_cand_value)
-
-    # Update via typed config API (handles MERGE and persistence)
-    ctx.update_leela_config(
-        enabled=leela_enabled,
-        exe_path=leela_path,
-        loss_scale_k=clamp_k(leela_k_value),
-        max_visits=computed_max_visits,
-        top_moves_show=leela_top_show,
-        top_moves_show_secondary=leela_top_show_2,
-        fast_visits=computed_fast_visits,
-        max_candidates=max_cand_int,
-    )

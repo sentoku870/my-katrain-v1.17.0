@@ -5,10 +5,12 @@ Public API:
 - build_karte_json(): Generate JSON karte data
 - build_critical_3_prompt(): Generate LLM prompt for critical 3 moves
 - KarteGenerationError: Exception for generation failures
-- MixedEngineSnapshotError: Exception for mixed-engine snapshots
 
 Implementation uses lazy imports for callable APIs to avoid circular dependencies.
 Exceptions and constants are imported directly (no side effects).
+
+Phase 171: ``MixedEngineSnapshotError`` / ``KARTE_ERROR_CODE_MIXED_ENGINE`` は
+KataGo 専用化により削除。
 """
 
 from typing import Any
@@ -16,10 +18,8 @@ from typing import Any
 # Exceptions and constants: direct import (no side effects, always needed)
 from katrain.core.reports.karte.models import (
     KARTE_ERROR_CODE_GENERATION_FAILED,
-    KARTE_ERROR_CODE_MIXED_ENGINE,
     STYLE_CONFIDENCE_THRESHOLD,
     KarteGenerationError,
-    MixedEngineSnapshotError,
 )
 
 
@@ -55,8 +55,6 @@ __all__ = [
     "build_karte_json",
     "build_critical_3_prompt",
     "KarteGenerationError",
-    "MixedEngineSnapshotError",
-    "KARTE_ERROR_CODE_MIXED_ENGINE",
     "KARTE_ERROR_CODE_GENERATION_FAILED",
     "STYLE_CONFIDENCE_THRESHOLD",
 ]

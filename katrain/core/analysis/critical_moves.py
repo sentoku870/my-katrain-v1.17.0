@@ -101,7 +101,7 @@ class CriticalMove:
         position_difficulty: PositionDifficulty.value ("easy"/"normal"/"hard"/"only"/"unknown")
         reason_tags: Immutable tuple of reason tags
 
-        score_stdev: KataGo analysis["root"]["scoreStdev"] (None for Leela/unanalyzed)
+        score_stdev: KataGo analysis["root"]["scoreStdev"] (None for unanalyzed)
         game_phase: classify_game_phase() result ("opening"/"middle"/"yose")
 
         importance_score: MoveEval.importance_score (after pick_important_moves)
@@ -210,10 +210,10 @@ def _compute_complexity_discount(score_stdev: float | None) -> float:
         score_stdev >  20.0: discounted (0.3)
 
     Args:
-        score_stdev: KataGo scoreStdev value (None for Leela/unanalyzed)
+        score_stdev: KataGo scoreStdev value (None for unanalyzed)
 
     Returns:
-        1.0: Normal (no discount, including Leela/unanalyzed)
+        1.0: Normal (no discount, including unanalyzed)
         COMPLEXITY_DISCOUNT_FACTOR: High complexity (discounted)
     """
     if score_stdev is None:
@@ -324,12 +324,11 @@ def _get_score_stdev_from_node(node: "GameNode") -> float | None:
     """Safely extract scoreStdev from a GameNode.
 
     KataGo: node.analysis["root"]["scoreStdev"]
-    Leela: No scoreStdev field -> None
     Unanalyzed: analysis_exists=False -> None
 
     Returns:
         float: scoreStdev value
-        None: No analysis, Leela, or missing field (no error raised)
+        None: No analysis or missing field (no error raised)
     """
     # Safe check via analysis_exists property (game_node.py:307)
     if not getattr(node, "analysis_exists", False):

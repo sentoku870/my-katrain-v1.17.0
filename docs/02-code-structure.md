@@ -53,7 +53,6 @@ katrain/
 │   │   ├── critical_moves.py   # Critical 3 選択
 │   │   ├── ownership_cluster.py # ownership クラスタ抽出
 │   │   ├── cluster_classifier.py
-│   │   ├── engine_compare.py   # KataGo vs Leela 比較
 │   │   ├── reason_generator.py
 │   │   ├── meaning_tags/       # 意味タグ分類
 │   │   └── time/               # 時刻・パシング解析
@@ -66,7 +65,6 @@ katrain/
 │   │   ├── helpers.py          # 後方互換シム（Phase 168 で削除予定）
 │   │   ├── inputs.py
 │   │   ├── io_safe.py
-│   │   ├── leela_gate.py
 │   │   ├── loss.py
 │   │   ├── markdown_fmt.py
 │   │   ├── models.py
@@ -86,7 +84,6 @@ katrain/
 │   ├── curator/          # 棋譜適合度スコアリング
 │   ├── diagnostics.py
 │   ├── lang.py
-│   ├── leela/            # Leela 対応
 │   ├── state/            # StateNotifier（Phase 104）
 │   ├── study/            # Active review, review session
 │   ├── tsumego_frame.py
@@ -113,7 +110,6 @@ katrain/
 │   ├── theme.py
 │   ├── theme_loader.py
 │   ├── sound.py
-│   ├── leela_manager.py
 │   ├── error_handler.py
 │   ├── commands/         # コマンドパターン
 │   ├── kivyutils/        # Kivy ユーティリティ（app_config, mixins, buttons, _base）
@@ -145,7 +141,7 @@ katrain/
 │       ├── settings_popup_state.py
 │       ├── settings_popup_helpers.py
 │       ├── settings_popup_tabs/  # Phase 162 で proper package 化
-│       │   └── leela_tab.py
+│       │                          # Phase 171 で leela_tab 削除済み
 │       ├── karte_export.py
 │       ├── summary_*.py
 │       ├── batch_*.py
@@ -245,7 +241,6 @@ KaTrainGui → Game → GameNode
 
 ### 4.4 バッチ解析
 - `katrain/core/batch/orchestration.py::run_batch()` がメインエントリ
-- Leela ガード: `katrain/core/batch/leela_gate.py`
 - 統計抽出: `katrain/core/batch/stats/` パッケージ
 - Markdown 出力: `katrain/core/batch/markdown_fmt.py`
 
@@ -331,7 +326,7 @@ self.save_config("section")
 | `settings_popup.py` | 設定ポップアップ（オーケストレータ） | ~400 |
 | `settings_popup_state.py` | `_SettingsPopupContext`（タブ間共有状態） | ~80 |
 | `settings_popup_helpers.py` | Kivy ヘルパー（`_add_searchable_label`） | ~60 |
-| `settings_popup_tabs/__init__.py` | タブビルダー（Leela） | ~220 |
+| `settings_popup_tabs/__init__.py` | （Phase 171 時に Leela タブ削除、プレースホルダ） | 0 |
 
 ### 4.5 Gameクラスへの追加（game.py）
 
@@ -425,6 +420,10 @@ uv run python i18n.py -todo
   - **core/batch/**: バッチ処理パッケージ（Kivy非依存）
 - 2026-01-20: Phase 41 完了（コード品質リファクタリング）
   - AnalysisMode enum追加、コマンドハンドラ抽出
+- 2026-07-04: Phase 171 完了（Leela エンジン完全削除）
+  - **core/leela/**, **gui/leela_manager.py**, **gui/features/settings_popup_tabs/leela_tab.py**, **gui/features/resign_hint_popup.py**, **core/batch/leela_gate.py**, **core/analysis/engine_compare.py** 削除
+  - **LeelaConfig** / **LeelaEngine** / **LeelaCandidate** / **LeelaPositionEval**、**EngineType.LEELA**、`leela_loss_est` フィールド、`is_single_engine_snapshot`/`MixedEngineSnapshotError`/`KARTE_ERROR_CODE_NON_KATAGO`、`LEELA_*` 定数（TOP_MOVE_*、COLOR_*、K_* 等）、`leela/enabled` 設定、Settings の Leela タブ・エンジン選択肢 すべて削除
+  - KataGo 解析・エンジン・UI は完全にそのまま動作
 - 2026-07-03: Phase 170 完了（Leela 対局機能の再廃止）
   - LeelaStrategy、`AI_LEELA` 定数、`play_enabled` / `play_visits` 削除
   - Leela は解析専用に戻し、LeelaEngine.play_move / request_move 削除

@@ -263,8 +263,12 @@ class EngineConfig:
         else:
             enable_ownership_val = True
 
+        # Phase 171: KataGo 専用化。analysis_engine は "katago" 固定。
+        # 古い設定 (e.g. "leela") があっても自動的に "katago" にフォールバック。
+        raw_engine = d.get("analysis_engine")
+        analysis_engine_val = "katago" if raw_engine != "katago" else "katago"
         return cls(
-            analysis_engine=safe_str(d.get("analysis_engine"), "katago"),
+            analysis_engine=analysis_engine_val,
             katago=normalize_path(d.get("katago")),
             altcommand=normalize_path(d.get("altcommand")),
             model=normalize_path(d.get("model")),
@@ -359,86 +363,3 @@ class TrainerConfig:
             lock_ai=safe_bool(d.get("lock_ai"), default=False),
         )
 
-
-@dataclass(frozen=True)
-class LeelaConfig:
-    """Leela設定（leelaセクション）。
-
-    Phase 170: human-vs-Leela play support was removed. ``play_enabled``
-    and ``play_visits`` are no longer surfaced in the Settings UI;
-    existing config keys are simply ignored on load so older configs
-    keep parsing without errors.
-
-    Attributes:
-        enabled: Leela有効化（解析用途、変化図表示）
-        exe_path: 実行ファイルパス
-        max_visits: 最大訪問回数
-        fast_visits: 高速解析時の訪問回数
-        loss_scale_k: 損失スケール係数
-        resign_hint_enabled: 投了ヒント有効化
-        resign_winrate_threshold: 投了勝率閾値（パーセント）
-        resign_consecutive_moves: 投了連続手数
-        top_moves_show: トップ手表示モード
-        top_moves_show_secondary: セカンダリトップ手表示モード
-    """
-
-    enabled: bool = False
-    exe_path: str | None = None
-    max_visits: int = 1000
-    fast_visits: int = 200
-    loss_scale_k: float = 0.5
-    resign_hint_enabled: bool = False
-    resign_winrate_threshold: int = 5
-    resign_consecutive_moves: int = 3
-    top_moves_show: str = "leela_top_move_loss"
-    top_moves_show_secondary: str = "leela_top_move_winrate"
-    max_candidates: int = 5
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> LeelaConfig:
-        """dictから生成。
-
-        Args:
-            d: 設定辞書（leelaセクション）
-
-        Returns:
-            LeelaConfigインスタンス
-
-        Note:
-            ``play_enabled`` / ``play_visits`` are accepted but ignored
-            (Phase 170) so older configs keep loading. Migrate by
-            removing these keys when the user next saves the Leela tab.
-        """
-        return cls(
-            enabled=safe_bool(d.get("enabled"), default=False),
-            exe_path=normalize_path(d.get("exe_path")),
-            max_visits=safe_int(d.get("max_visits"), 1000),
-            fast_visits=safe_int(d.get("fast_visits"), 200),
-            loss_scale_k=safe_float(d.get("loss_scale_k"), 0.5),
-            resign_hint_enabled=safe_bool(d.get("resign_hint_enabled"), default=False),
-            resign_winrate_threshold=safe_int(d.get("resign_winrate_threshold"), 5),
-            resign_consecutive_moves=safe_int(d.get("resign_consecutive_moves"), 3),
-            top_moves_show=safe_str(d.get("top_moves_show"), "leela_top_move_loss"),
-            top_moves_show_secondary=safe_str(d.get("top_moves_show_secondary"), "leela_top_move_winrate"),
-            max_candidates=safe_int(d.get("max_candidates"), 5),
-        )
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Dict-like access for legacy code (Phase 100+).
-
-        Allows settings_popup.py and other call sites to use
-        ``leela_config.get("exe_path", "")`` without refactoring.
-
-        Note: ``dict.get(k, default)`` returns ``default`` when the value is
-        ``None``. We mirror that semantics so callers (e.g. ``TextInput(text=...)``)
-        can rely on receiving the default instead of ``None``.
-
-        Args:
-            key: Attribute name on LeelaConfig.
-            default: Value returned if the attribute is missing or ``None``.
-
-        Returns:
-            The attribute value, or ``default`` if missing or ``None``.
-        """
-        val = getattr(self, key, default)
-        return default if val is None else val

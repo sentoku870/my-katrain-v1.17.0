@@ -140,7 +140,7 @@ class OwnershipContext:
     """盤面ownershipとscoreStdevのコンテキスト。
 
     ownership_grid: grid[row][col] 形式。row 0 = 盤面下辺(y=0)。
-    score_stdev: KataGoのscoreStdev（LeelaはNone）。
+    score_stdev: KataGoのscoreStdev（未解析の手はNone）。
     board_size: (width, height)。
     """
 

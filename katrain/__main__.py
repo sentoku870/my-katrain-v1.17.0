@@ -90,7 +90,6 @@ from katrain.core.constants import (
 from katrain.core.engine import KataGoEngine
 from katrain.core.errors import EngineError
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
-from katrain.core.leela.engine import LeelaEngine
 from katrain.core.state import EventType  # Phase 107
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
 from katrain.gui.controllers.analysis_controller import AnalysisController
@@ -106,7 +105,6 @@ from katrain.gui.features.commands import (
     popup_commands,
 )
 from katrain.gui.features.karte_export import determine_user_color
-from katrain.gui.features.resign_hint_popup import schedule_resign_hint_popup
 from katrain.gui.features.settings_popup import (
     do_mykatrain_settings_popup,
 )
@@ -116,7 +114,6 @@ from katrain.gui.features.settings_popup import (
 from katrain.gui.kivyutils import (
     PlayerSetupBlock,
 )  # noqa: F401
-from katrain.gui.leela_manager import LeelaManager
 from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
 from katrain.gui.managers.dialog_factory import DialogFactory
@@ -149,14 +146,6 @@ class KaTrainGui(Screen, KaTrainBase):
         self.error_handler = ErrorHandler(self)
         self.engine: Any = None
         self.engine_unhealthy = False  # Phase 89: For TIMEOUT recovery
-
-        # Leela engine management (Phase 15, refactored in PR #121)
-        self._leela_manager = LeelaManager(
-            config_getter=self.config,
-            logger=self.log,
-            update_state_callback=lambda: self.update_state() if self.game else None,
-            schedule_resign_popup=lambda result: schedule_resign_hint_popup(self, result),
-        )
 
         # SGF file management (refactored in PR #122)
         self._sgf_manager = SGFManager(
@@ -296,7 +285,6 @@ class KaTrainGui(Screen, KaTrainBase):
             get_next_player_info=lambda: self.next_player_info,
             get_popups_open=lambda: self.popup_open,
             get_nav_drawer_open=lambda: bool(self.nav_drawer.state == "open"),
-            get_leela_manager=lambda: self._leela_manager,
             get_config=lambda key: self.config(key),
             get_eval_thresholds=lambda: self.config("trainer/eval_thresholds"),
             get_analysis_controls=lambda: getattr(self, "analysis_controls", None),
@@ -581,22 +569,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to GUIRefreshManager (Phase 158+)."""
         self._gui_refresh_manager.update_gui(cn, redraw_board)
 
-    # === Leela Engine Management (Phase 15, refactored in PR #121) ===
-    # Delegation to LeelaManager for backward compatibility
-
-    @property
-    def leela_engine(self) -> LeelaEngine | None:
-        """Access to leela_engine for backward compatibility."""
-        return self._leela_manager.leela_engine
-
-    def start_leela_engine(self) -> bool:
-        """Start Leela engine (no-op if already running)."""
-        return self._leela_manager.start_engine(self)
-
-    def shutdown_leela_engine(self) -> None:
-        """Shutdown Leela engine."""
-        self._leela_manager.shutdown_engine()
-
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods
     # =========================================================================
@@ -642,10 +614,6 @@ class KaTrainGui(Screen, KaTrainBase):
             self.controls.cleanup()
 
         self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
-
-    def request_leela_analysis(self) -> None:
-        """Delegates to GameStateUpdateManager (Phase 158+)."""
-        self._game_state_update_manager.request_leela_analysis()
 
     def update_state(self, redraw_board: bool = False) -> None:  # redirect to message queue thread
         self("update_state", redraw_board=redraw_board)
@@ -1093,8 +1061,6 @@ class KaTrainApp(MDApp):
             self.gui.save_config("ui_state")
             if self.gui.engine:
                 self.gui.engine.shutdown(finish=None)
-            # Shutdown Leela engine (Phase 15)
-            self.gui.shutdown_leela_engine()
             # Phase 22: Clockイベントのクリーンアップ
             self.gui.cleanup()
         return None

@@ -185,7 +185,6 @@ class TestMTagClassification:
             player="B",
             gtp="D4",
             score_loss=score_loss,
-            leela_loss_est=None,
             points_lost=score_loss,
             is_reliable=True,
             reason_tags=reason_tags or [],

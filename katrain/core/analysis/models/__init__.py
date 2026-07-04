@@ -42,7 +42,6 @@ from katrain.core.analysis.models.difficulty import (
 from katrain.core.analysis.models.enums import (
     DEFAULT_ANALYSIS_ENGINE,
     ENGINE_VISITS_DEFAULTS,
-    LEELA_FAST_VISITS_MIN,
     VALID_ANALYSIS_ENGINES,
     AnalysisStrength,
     AutoConfidence,
@@ -52,7 +51,6 @@ from katrain.core.analysis.models.enums import (
     PositionDifficulty,
     PVFilterLevel,
     get_analysis_engine,
-    needs_leela_warning,
     resolve_visits,
 )
 from katrain.core.analysis.models.move_eval import (
@@ -148,12 +146,10 @@ __all__ = [
     "EngineType",
     # Engine config helpers
     "get_analysis_engine",
-    "needs_leela_warning",
     "resolve_visits",
     "VALID_ANALYSIS_ENGINES",
     "DEFAULT_ANALYSIS_ENGINE",
     "ENGINE_VISITS_DEFAULTS",
-    "LEELA_FAST_VISITS_MIN",
     # MoveEval and EvalSnapshot
     "MoveEval",
     "EvalSnapshot",

@@ -50,10 +50,9 @@ MIN_MOVES_FOR_STATS = 10
 
 
 class LossSource(StrEnum):
-    """Source of canonical loss values."""
+    """Source of canonical loss values (Phase 171: KataGo-only)."""
 
     SCORE = "score"  # KataGo score_loss
-    LEELA = "leela"  # Leela leela_loss_est
     POINTS = "points"  # Legacy points_lost
     NONE = "none"  # No loss data
 
@@ -267,8 +266,6 @@ def _detect_loss_sources(moves: list[MoveEval]) -> tuple[LossSource, bool]:
             continue
         if m.score_loss is not None:
             sources_used.add(LossSource.SCORE)
-        elif m.leela_loss_est is not None:
-            sources_used.add(LossSource.LEELA)
         elif m.points_lost is not None:
             sources_used.add(LossSource.POINTS)
 
@@ -281,8 +278,6 @@ def _detect_loss_sources(moves: list[MoveEval]) -> tuple[LossSource, bool]:
     # Mixed sources - SCORE takes priority
     if LossSource.SCORE in sources_used:
         return LossSource.SCORE, True
-    if LossSource.LEELA in sources_used:
-        return LossSource.LEELA, True
     return LossSource.POINTS, True
 
 
@@ -371,7 +366,7 @@ def _compute_game_stats(
     loss_source, has_mixed_sources = _detect_loss_sources(valid_moves)
 
     if has_mixed_sources:
-        _logger.warning("Mixed loss sources detected (KataGo + Leela); severity thresholds may be less accurate.")
+        _logger.warning("Mixed loss sources detected; severity thresholds may be less accurate.")
 
     return GamePacingStats(
         time_median_black=time_median_black,

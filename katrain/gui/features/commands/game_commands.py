@@ -218,8 +218,7 @@ def do_new_game(
     ctx.pondering = False
     # Phase 93: Disable Active Review on new game/SGF load - REMOVED (Slimming down)
     # ctx._disable_active_review_if_needed()
-    # Phase 16: Clear resign hint tracking on new game
-    ctx._leela_manager.clear_resign_hint_tracking()
+    # Phase 171: Leela は Phase 170/171 で完全廃止。投了ヒントの tracking も不要。
     mode = ctx.play_analyze_mode
     if not getattr(ctx, "_suppress_play_mode_switch", False) and (
         (move_tree is not None and mode == MODE_PLAY) or (move_tree is None and mode == MODE_ANALYZE)

@@ -13,18 +13,6 @@
         "wide_root_noise": 0.04,
         "_enable_ownership": true
     },
-    "leela": {
-        "enabled": false,
-        "exe_path": "",
-        "max_visits": 1000,
-        "fast_visits": 200,
-        "loss_scale_k": 0.5,
-        "resign_hint_enabled": false,
-        "resign_winrate_threshold": 5,
-        "resign_consecutive_moves": 3,
-        "top_moves_show": "leela_top_move_loss",
-        "top_moves_show_secondary": "leela_top_move_winrate"
-    },
     "general": {
         "sgf_load": "~/Downloads",
         "sgf_save": "./sgfout",

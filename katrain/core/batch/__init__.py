@@ -24,7 +24,6 @@ from katrain.core.batch.engine_polling import wait_for_analysis
 from katrain.core.batch.filenames import get_unique_filename, normalize_player_name, sanitize_filename
 from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS, parse_timeout_input, safe_int
 from katrain.core.batch.io_safe import safe_write_file
-from katrain.core.batch.leela_gate import needs_leela_karte_warning
 from katrain.core.batch.loss import get_canonical_loss
 
 # =============================================================================
@@ -76,7 +75,6 @@ __all__ = [
     "normalize_player_name",
     # UI validation
     "safe_int",
-    "needs_leela_karte_warning",
     # === Lazy exports (via __getattr__) ===
     # analysis.py
     "analyze_single_file",

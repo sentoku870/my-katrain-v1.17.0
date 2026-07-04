@@ -9,10 +9,11 @@
 #
 # 注意: このパッケージ内のモジュールは KaTrainGui のインスタンスに
 # 依存しますが、FeatureContext Protocol を介して疎結合を維持します。
+#
+# Phase 171: ``needs_leela_karte_warning`` (Leela gate) は Leela 廃止に伴い削除。
 
 from __future__ import annotations
 
-from katrain.core.batch.leela_gate import needs_leela_karte_warning
 from katrain.gui.features.context import FeatureContext
 
-__all__ = ["FeatureContext", "needs_leela_karte_warning"]
+__all__ = ["FeatureContext"]

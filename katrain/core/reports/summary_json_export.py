@@ -501,7 +501,7 @@ def build_summary_json(
     Phase 156 / Phase 158-F: `dynamic_phase_detection` defaults to True.
     When True, each game's move tags are rewritten using the
     scoreStdev-based detector. Falls back to the static classifier
-    when scoreStdev is missing (Leela / unanalyzed).
+    when scoreStdev is missing (unanalyzed).
 
     Phase 157-C: per-player blocks now include ``even`` and
     ``handicapped`` sub-stats (subset of the cross-game ``all`` block).

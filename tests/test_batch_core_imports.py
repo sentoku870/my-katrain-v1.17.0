@@ -70,22 +70,29 @@ class TestBackwardCompatImports:
         assert callable(_extract_players_from_stats)
         assert callable(_build_player_summary)
 
-    def test_leela_re_exports_work(self):
-        """Leela-related re-exports must work for existing tests."""
+    def test_leela_re_exports_removed(self):
+        """Phase 171: Leela 関連の re-export は削除済み。
+
+        旧テスト ``test_leela_re_exports_work`` で import していた
+        ``LeelaEngine`` / ``LeelaPositionEval`` / ``leela_position_to_move_eval``
+        は KataGo 専用化に伴い削除されたため、import できない。
+        """
+        import pytest
+
         from katrain.tools.batch_analyze_sgf import (
             EvalSnapshot,
-            LeelaEngine,
-            LeelaPositionEval,
             MoveEval,
-            leela_position_to_move_eval,
         )
 
-        # These should be classes/functions, not None
-        assert LeelaEngine is not None
-        assert LeelaPositionEval is not None
         assert EvalSnapshot is not None
         assert MoveEval is not None
-        assert callable(leela_position_to_move_eval)
+        # Phase 171: Leela クラスはこのモジュールから消えている。
+        with pytest.raises(ImportError):
+            from katrain.tools.batch_analyze_sgf import (  # noqa: F401
+                LeelaEngine,
+                LeelaPositionEval,
+                leela_position_to_move_eval,
+            )
 
     def test_constants_are_exported(self):
         """Constants must be available from old import path."""
@@ -110,7 +117,6 @@ class TestCoreImports:
             ENCODINGS_TO_TRY,
             get_unique_filename,
             has_analysis,
-            needs_leela_karte_warning,
             normalize_player_name,
             parse_timeout_input,
             safe_int,
@@ -131,7 +137,16 @@ class TestCoreImports:
         assert callable(get_unique_filename)
         assert callable(normalize_player_name)
         assert callable(safe_int)
-        assert callable(needs_leela_karte_warning)
+
+    def test_needs_leela_karte_warning_removed(self):
+        """Phase 171: needs_leela_karte_warning は削除済み。
+
+        Leela 廃止に伴い、この helper は不要となった。
+        """
+        import pytest
+
+        with pytest.raises(ImportError):
+            from katrain.core.batch import needs_leela_karte_warning  # noqa: F401
 
     def test_lazy_exports_via_getattr(self):
         """Heavy functions available via lazy __getattr__."""

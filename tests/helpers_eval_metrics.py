@@ -33,9 +33,8 @@ def make_move_eval(
     mistake_category: MistakeCategory = MistakeCategory.GOOD,
     position_difficulty: PositionDifficulty | None = None,
     importance_score: float | None = None,
-    leela_loss_est: float | None = None,  # Phase 32: Leela support
 ) -> MoveEval:
-    """Helper to create MoveEval with sensible defaults"""
+    """Helper to create MoveEval with sensible defaults (Phase 171: Leela 引数削除)"""
     m = MoveEval(
         move_number=move_number,
         player=player,
@@ -55,7 +54,6 @@ def make_move_eval(
     m.mistake_category = mistake_category
     m.position_difficulty = position_difficulty
     m.importance_score = importance_score
-    m.leela_loss_est = leela_loss_est  # Phase 32: Leela support
     return m
 
 

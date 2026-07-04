@@ -1,14 +1,14 @@
 # tests/test_typed_config_integration.py
 #
 # Integration tests for typed config system
-# Phase 99
+# Phase 99, Phase 171 (Leela 削除)
 #
 # These tests verify that typed config accessors work correctly with
 # the actual config loading flow.
 
 import pytest
 
-from katrain.common.typed_config import EngineConfig, LeelaConfig, TrainerConfig
+from katrain.common.typed_config import EngineConfig, TrainerConfig
 from katrain.core.base_katrain import KaTrainBase
 
 
@@ -36,11 +36,6 @@ class TestTypedConfigIntegration:
         """get_trainer_config()はTrainerConfigを返す"""
         cfg = katrain_base.get_trainer_config()
         assert isinstance(cfg, TrainerConfig)
-
-    def test_get_leela_config_returns_leela_config(self, katrain_base):
-        """get_leela_config()はLeelaConfigを返す"""
-        cfg = katrain_base.get_leela_config()
-        assert isinstance(cfg, LeelaConfig)
 
     def test_config_and_typed_config_consistent(self, katrain_base):
         """config()とget_*_config()の値が一致する。
@@ -137,15 +132,6 @@ class TestTypedConfigDefaults:
         assert default_cfg.eval_show_ai is True
         assert len(default_cfg.eval_thresholds) == 6
 
-    def test_leela_defaults_match_class_defaults(self):
-        """LeelaConfigのデフォルト値がクラス定義と一致"""
-        default_cfg = LeelaConfig()
-
-        assert default_cfg.enabled is False
-        assert default_cfg.exe_path is None
-        assert default_cfg.max_visits == 1000
-        assert default_cfg.fast_visits == 200
-
 
 class TestTypedConfigImmutability:
     """frozenの動作確認"""
@@ -161,12 +147,6 @@ class TestTypedConfigImmutability:
         cfg = katrain_base.get_trainer_config()
         with pytest.raises(Exception):
             cfg.low_visits = 9999  # type: ignore
-
-    def test_leela_config_is_frozen(self, katrain_base):
-        """LeelaConfigはfrozenで変更不可"""
-        cfg = katrain_base.get_leela_config()
-        with pytest.raises(Exception):
-            cfg.enabled = True  # type: ignore
 
 
 class TestTypedConfigMultipleCalls:

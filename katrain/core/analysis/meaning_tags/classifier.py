@@ -111,11 +111,10 @@ class LexiconStoreLike(Protocol):
 def get_loss_value(move_eval: "MoveEval") -> float | None:
     """Extract loss value from MoveEval.
 
-    Priority:
+    Priority (Phase 171: KataGo-only):
         1. score_loss (KataGo)
-        2. leela_loss_est (Leela)
-        3. points_lost (fallback)
-        4. None (no loss data)
+        2. points_lost (fallback)
+        3. None (no loss data)
 
     Args:
         move_eval: The MoveEval to extract loss from
@@ -125,8 +124,6 @@ def get_loss_value(move_eval: "MoveEval") -> float | None:
     """
     if move_eval.score_loss is not None:
         return move_eval.score_loss
-    if move_eval.leela_loss_est is not None:
-        return move_eval.leela_loss_est
     if move_eval.points_lost is not None:
         return move_eval.points_lost
     return None
@@ -493,7 +490,7 @@ def classify_meaning_tag(
     # - CAPTURE_RACE_LOSS: single atari implies missed atari awareness.
     # - ENDGAME_SLIP: single endgame_hint in non-endgame-detected positions.
     #
-    # Loss thresholds: Using same scale for KataGo (points) and Leela (K-scaled).
+    # Loss thresholds: KataGo (points) 単位。Phase 171 で Leela 経路を削除。
     if loss >= THRESHOLD_LOSS_MEDIUM:  # 2.0
         # Single low_liberties (no need_connect, no atari, no cut_risk)
         if has_low_liberties and not has_need_connect and not has_atari and not has_cut_risk:

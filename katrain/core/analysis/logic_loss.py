@@ -139,24 +139,22 @@ def classify_mistake(
 def detect_engine_type(m: "MoveEval") -> EngineType:
     """MoveEvalからエンジン種別を推定する。
 
+    Phase 171: KataGo 専用化。Leela 経路を削除。
+
     優先順位:
       1) score_loss is not None → KATAGO（正確な目数損失）
-      2) leela_loss_est is not None → LEELA（推定損失）
-      3) 両方 None → UNKNOWN
+      2) 両方 None → UNKNOWN
 
     Args:
         m: MoveEval インスタンス
 
     Returns:
-        EngineType: KATAGO, LEELA, UNKNOWN のいずれか
+        EngineType: KATAGO or UNKNOWN
 
     Note:
-        - score_loss と leela_loss_est が両方設定されている場合は KATAGO を返す
-          （単一エンジンレポート原則により、通常は混在しない）
-        - score_loss=0.0 や leela_loss_est=0.0 は有効値として扱う
+        Phase 32で追加。Phase 171 で Leela 分岐を削除し、KataGo 専用化。
+        score_loss=0.0 は有効値として扱う（完璧な手）。
     """
     if m.score_loss is not None:
         return EngineType.KATAGO
-    if m.leela_loss_est is not None:
-        return EngineType.LEELA
     return EngineType.UNKNOWN

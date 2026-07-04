@@ -32,7 +32,6 @@ from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
 from katrain.core.reports.karte.builder import build_karte_report
 from katrain.core.reports.karte.models import (
     KarteGenerationError,
-    MixedEngineSnapshotError,
 )
 
 if TYPE_CHECKING:
@@ -558,7 +557,7 @@ def _generate_karte_for_file(
             # Phase 53: Store mapping for summary link generation
             karte_path_map[rel_path] = karte_path
 
-    except (KarteGenerationError, MixedEngineSnapshotError) as e:
+    except KarteGenerationError as e:
         result.karte_failed += 1
         log(f"  Karte generation error ({rel_path}): {e}")
         result.write_errors.append(

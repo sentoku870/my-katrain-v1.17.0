@@ -74,7 +74,6 @@ class _PatternMoveEval:
         "player",
         "gtp",
         "score_loss",
-        "leela_loss_est",
         "points_lost",
         "mistake_category",
         "meaning_tag_id",
@@ -89,7 +88,6 @@ class _PatternMoveEval:
         self.player = data.get("player")
         self.gtp = data.get("gtp")
         self.score_loss = data.get("score_loss")
-        self.leela_loss_est = data.get("leela_loss_est")
         self.points_lost = data.get("points_lost")
         self.meaning_tag_id = data.get("meaning_tag_id")
 
