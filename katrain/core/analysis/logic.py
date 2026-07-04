@@ -11,7 +11,9 @@ Phase 144-C: 1494 行の単一ファイル logic.py を 6 つの焦点化モジ�
 既存の補助モジュール (Phase B4 で抽出済み):
 - logic_importance.py: 重要度計算
 - logic_loss.py: 損失計算
-- logic_quiz.py: クイズ生成
+
+Note: logic_quiz.py は Phase 138-D で Quiz 機能本体が削除された後、
+Phase 176 (PR 2) で完全に削除されました。
 
 この __init__.py (logic.py) は後方互換性のため全シンボルを再エクスポートする。
 """

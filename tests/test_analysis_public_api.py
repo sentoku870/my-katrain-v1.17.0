@@ -37,7 +37,6 @@ HIGH_TRAFFIC_SYMBOLS = [
     "SkillPreset",
     "AutoRecommendation",
     "PVFilterConfig",
-    "QuizConfig",
     "DifficultyMetrics",
     "ReliabilityStats",
     # Helpers

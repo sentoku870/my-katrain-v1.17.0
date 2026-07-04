@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any
 
 from katrain.core.analysis.models.enums import AutoConfidence, MistakeCategory, PositionDifficulty
 from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
-from katrain.core.analysis.models.quiz import QuizConfig
 
 if TYPE_CHECKING:
     from katrain.core.reports.utils.result_parser import GameOutcome
@@ -280,12 +279,11 @@ class ReasonTagThresholds:
 
 @dataclass(frozen=True)
 class SkillPreset:
-    """Skill presets for quiz extraction and mistake thresholds."""
+    """Skill presets for mistake thresholds."""
 
     score_thresholds: tuple[float, float, float]
     winrate_thresholds: tuple[float, float, float]
     reason_tag_thresholds: ReasonTagThresholds  # Phase 17
-    quiz: QuizConfig  # Phase 98
 
 
 # =============================================================================
@@ -300,7 +298,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(3.0, 7.5, 15.0),
         winrate_thresholds=(0.15, 0.30, 0.60),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=45.0, reading_failure=60.0),
-        quiz=QuizConfig(loss_threshold=7.5, limit=5),
     ),
     # Beginner (Lv2): focus on large swings only (conservative thresholds).
     # t3=10.0, t2=0.5*t3=5.0, t1=0.2*t3=2.0
@@ -309,7 +306,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(2.0, 5.0, 10.0),
         winrate_thresholds=(0.10, 0.20, 0.40),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=30.0, reading_failure=40.0),
-        quiz=QuizConfig(loss_threshold=5.0, limit=10),
     ),
     # Standard (Lv3): Phase 148-C3 - reason_tag thresholds tightened for more
     # sensitive detection of heavy_loss (5) and reading_failure (8).
@@ -318,7 +314,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(1.0, 2.5, 5.0),
         winrate_thresholds=(0.05, 0.10, 0.20),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=5.0, reading_failure=8.0),
-        quiz=QuizConfig(loss_threshold=2.5, limit=10),
     ),
     # Advanced (Lv4): more sensitive to small errors (unchanged).
     # t3=3.0, t2=1.5, t1=0.5 (preserved for backward compatibility)
@@ -326,7 +321,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(0.5, 1.5, 3.0),
         winrate_thresholds=(0.03, 0.07, 0.15),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=10.0, reading_failure=15.0),
-        quiz=QuizConfig(loss_threshold=1.5, limit=15),
     ),
     # Pro (Lv5): strictest thresholds for dan-level analysis.
     # t3=1.0, t2=0.5*t3=0.5, t1=0.2*t3=0.2
@@ -334,7 +328,6 @@ SKILL_PRESETS: dict[str, SkillPreset] = {
         score_thresholds=(0.2, 0.5, 1.0),
         winrate_thresholds=(0.01, 0.02, 0.04),
         reason_tag_thresholds=ReasonTagThresholds(heavy_loss=3.0, reading_failure=4.0),
-        quiz=QuizConfig(loss_threshold=0.5, limit=20),
     ),
 }
 

@@ -5,7 +5,7 @@
 #
 # PR #115: パッケージ骨格作成
 # PR #116: summary_report.py追加
-# PR #117: quiz_report.py追加
+# PR #117: quiz_report.py追加 → Phase 176 (PR 2) で削除 (Quiz 機能本体は Phase 138-D で削除済み)
 # PR #119: karte_report.py追加
 # PR #120: important_moves_report.py追加
 # PR #Phase55: section_registry.py, insertion.py追加 → Phase 138-D で削除 (no production caller)

@@ -3,7 +3,7 @@
 Phase 144-B: 1230 行の単一ファイル models.py を 6 つの焦点化モジュールに分割:
 - enums.py: 7 enum + engine 設定 helper + visits 解決
 - move_eval.py: MoveEval + EvalSnapshot + canonical_loss helper
-- quiz.py: QuizConfig/Item/Choice/Question + ImportantMove 設定
+- important_moves.py: ImportantMoveSettings + level presets
 - skill.py: GameSummaryData + SummaryStats + PhaseMistakeStats + SkillPreset
   + AutoRecommendation + UrgentMiss + MistakeStreak + SkillEstimation
 - reliability.py: ReliabilityStats + 信頼性定数
@@ -58,17 +58,11 @@ from katrain.core.analysis.models.move_eval import (
     MoveEval,
     get_canonical_loss_from_move,
 )
-from katrain.core.analysis.models.quiz import (
+from katrain.core.analysis.models.important_moves import (
     DEFAULT_IMPORTANT_MOVE_LEVEL,
-    DEFAULT_QUIZ_ITEM_LIMIT,
-    DEFAULT_QUIZ_LOSS_THRESHOLD,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     MIN_LOSS_DISPLAY,
     ImportantMoveSettings,
-    QuizChoice,
-    QuizConfig,
-    QuizItem,
-    QuizQuestion,
 )
 from katrain.core.analysis.models.reliability import (
     _CONFIDENCE_THRESHOLDS,
@@ -154,13 +148,7 @@ __all__ = [
     "MoveEval",
     "EvalSnapshot",
     "get_canonical_loss_from_move",
-    # Quiz
-    "QuizConfig",
-    "QuizItem",
-    "QuizChoice",
-    "QuizQuestion",
-    "DEFAULT_QUIZ_LOSS_THRESHOLD",
-    "DEFAULT_QUIZ_ITEM_LIMIT",
+    # Important moves
     "ImportantMoveSettings",
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",

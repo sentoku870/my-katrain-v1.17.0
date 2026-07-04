@@ -766,18 +766,6 @@ class TestKarteReport:
         result = game.build_karte_report(player_filter="B")
         assert isinstance(result, str)
 
-    def test_build_quiz_items(self, game):
-        game.play(Move.from_gtp("D4", player="B"))
-        items = game.get_quiz_items()
-        assert isinstance(items, list)
-
-    def test_build_quiz_questions(self, game):
-        game.play(Move.from_gtp("D4", player="B"))
-        items = game.get_quiz_items()
-        if items:
-            questions = game.build_quiz_questions(items)
-            assert isinstance(questions, list)
-
 
 # ---------------------------------------------------------------------------
 # Game - build_summary_report (static)

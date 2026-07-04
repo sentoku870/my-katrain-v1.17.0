@@ -1,70 +1,18 @@
-"""katrain.core.analysis.models.quiz - Quiz and important-move data structures.
+"""katrain.core.analysis.models.important_moves - Important-move data structures.
 
 Phase 144-B: Extracted from models.py (1230 lines → 6 focused modules).
 
 Contains:
-- QuizConfig, QuizItem, QuizChoice, QuizQuestion: Quiz generation
 - ImportantMoveSettings + IMPORTANT_MOVE_SETTINGS_BY_LEVEL: Important move extraction
-- DEFAULT_QUIZ_LOSS_THRESHOLD, DEFAULT_QUIZ_ITEM_LIMIT, DEFAULT_IMPORTANT_MOVE_LEVEL
+- DEFAULT_IMPORTANT_MOVE_LEVEL: Default importance level
+
+Note: QuizConfig/QuizItem/QuizChoice/QuizQuestion were removed in
+Phase 176 (PR 2 cleanup). Phase 138-D removed the Quiz feature from the
+GUI; this cleans up the residual data classes.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from katrain.core.game_node import GameNode
-else:
-    GameNode = Any
-
-
-# =============================================================================
-# Quiz Defaults (Phase 98)
-# =============================================================================
-
-DEFAULT_QUIZ_LOSS_THRESHOLD = 3.0
-DEFAULT_QUIZ_ITEM_LIMIT = 10
-
-
-# =============================================================================
-# Quiz dataclasses
-# =============================================================================
-
-
-@dataclass(frozen=True)
-class QuizConfig:
-    """Quiz generation configuration."""
-
-    loss_threshold: float
-    limit: int
-
-
-@dataclass
-class QuizItem:
-    """A generated quiz item."""
-
-    move_number: int
-    player: str | None
-    loss: float
-
-
-@dataclass
-class QuizChoice:
-    move: str
-    points_lost: float | None
-
-
-@dataclass
-class QuizQuestion:
-    item: QuizItem
-    choices: list[QuizChoice]
-    best_move: str | None
-    node_before_move: GameNode | None
-
-    @property
-    def has_analysis(self) -> bool:
-        return self.node_before_move is not None and getattr(self.node_before_move, "analysis_exists", False)
-
 
 # =============================================================================
 # Important Move settings
