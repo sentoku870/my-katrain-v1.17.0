@@ -6,13 +6,15 @@ Pure関数として実装（self を受け取らない）。
 
 Phase 23 PR #3: 型ヒント追加
 Phase 85: Pattern to Summary Integration
+Phase 174 P1-D: pattern-mining helpers extracted to summary_pattern.py.
+This file now re-exports the helpers so existing private-import paths
+(``from ...summary_formatter import _filter_by_board_size`` etc.) remain
+unbroken.
 """
 
 from __future__ import annotations
 
 import logging
-import re
-from collections import Counter
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -22,435 +24,42 @@ from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
 
+# Phase 174 P1-D: re-export pattern-mining helpers so existing callers/tests
+# can keep importing from summary_formatter.
+from katrain.gui.features.summary_pattern import (  # noqa: F401
+    PHASE_KEYS,  # noqa: F401
+    AREA_KEYS,  # noqa: F401
+    SEVERITY_KEYS,  # noqa: F401
+    PLAYER_KEYS,  # noqa: F401
+    MAX_DISPLAY_REFS,  # noqa: F401
+    _PatternMoveEval,  # noqa: F401
+    _FakeSnapshot,  # noqa: F401
+    _normalize_board_size,  # noqa: F401
+    _filter_by_board_size,  # noqa: F401
+    _stable_sort_key,  # noqa: F401
+    _is_valid_player,  # noqa: F401
+    _is_valid_gtp,  # noqa: F401
+    _is_valid_move_number,  # noqa: F401
+    _reconstruct_pattern_input,  # noqa: F401
+    _mine_patterns_safe,  # noqa: F401
+    _format_game_refs,  # noqa: F401
+    _append_recurring_patterns,  # noqa: F401
+)
+
 if TYPE_CHECKING:
     from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster
 
 _logger = logging.getLogger("katrain.gui.features.summary_formatter")
-
-# GTP coordinate pattern: letter (A-T, excluding I) + number (1-25)
-_GTP_COORD_PATTERN = re.compile(r"^[a-hj-t](?:[1-9]|1[0-9]|2[0-5])$", re.IGNORECASE)
 
 # Type aliases for clarity
 StatsDict = dict[str, Any]
 ConfigFn = Callable[[str], Any]
 PhaseMistakeKey = tuple[str, MistakeCategory]
 
-# Phase 85: i18n key mappings for pattern fields
-PHASE_KEYS = {
-    "opening": "pattern:phase-opening",
-    "middle": "pattern:phase-middle",
-    "endgame": "pattern:phase-endgame",
-}
-AREA_KEYS = {
-    "corner": "pattern:area-corner",
-    "edge": "pattern:area-edge",
-    "center": "pattern:area-center",
-}
-SEVERITY_KEYS = {
-    "mistake": "pattern:severity-mistake",
-    "blunder": "pattern:severity-blunder",
-}
-PLAYER_KEYS = {
-    "B": "pattern:player-black",
-    "W": "pattern:player-white",
-    "?": "pattern:player-unknown",
-}
-MAX_DISPLAY_REFS = 3
-
 
 # =============================================================================
 # Phase 85: Pattern Mining Integration
 # =============================================================================
-
-
-class _PatternMoveEval:
-    """Duck-typed MoveEval for pattern mining.
-
-    Safely handles invalid/missing data without raising exceptions.
-    """
-
-    __slots__ = (
-        "move_number",
-        "player",
-        "gtp",
-        "score_loss",
-        "points_lost",
-        "mistake_category",
-        "meaning_tag_id",
-    )
-
-    # Type annotations for __slots__ members (Phase 111)
-    mistake_category: MistakeCategory | None
-
-    def __init__(self, data: dict[str, Any]) -> None:
-        # Safe extraction with defaults
-        self.move_number = data.get("move_number", 0)
-        self.player = data.get("player")
-        self.gtp = data.get("gtp")
-        self.score_loss = data.get("score_loss")
-        self.points_lost = data.get("points_lost")
-        self.meaning_tag_id = data.get("meaning_tag_id")
-
-        # Safe mistake_category conversion
-        cat_name = data.get("mistake_category")
-        if cat_name:
-            try:
-                self.mistake_category = eval_metrics.MistakeCategory[cat_name]
-            except KeyError:
-                _logger.warning(
-                    "Invalid mistake_category '%s' at move %d; skipping.",
-                    cat_name,
-                    self.move_number,
-                )
-                self.mistake_category = None
-        else:
-            self.mistake_category = None
-
-
-class _FakeSnapshot:
-    """Duck-typed EvalSnapshot for pattern mining."""
-
-    __slots__ = ("moves",)
-
-    def __init__(self, moves: list[_PatternMoveEval]) -> None:
-        self.moves = moves
-
-
-def _normalize_board_size(bs: tuple[int, int] | list[int] | None) -> tuple[int, int] | None:
-    """Normalize board_size to (w, h) tuple.
-
-    Handles both tuple and list (from JSON deserialization).
-
-    Returns:
-        (w, h) tuple, or None if invalid.
-    """
-    if bs is None:
-        return None
-    if not isinstance(bs, (tuple, list)) or len(bs) < 2:
-        return None
-    try:
-        return (int(bs[0]), int(bs[1]))
-    except (ValueError, TypeError):
-        return None
-
-
-def _filter_by_board_size(
-    stats_list: list[StatsDict],
-) -> tuple[list[StatsDict], int | None]:
-    """Filter stats_list to games with consistent board size.
-
-    Only square boards (w == h) are supported for pattern mining.
-    Handles both tuple and list board_size formats.
-
-    Args:
-        stats_list: List of stats dictionaries
-
-    Returns:
-        Tuple of (filtered_stats_list, board_size as int).
-        If no valid games, returns ([], None).
-    """
-    # Count normalized (w, h) tuples
-    size_counts: Counter[tuple[int, int]] = Counter()
-    non_square_games: list[str] = []
-    invalid_games: list[str] = []
-
-    for stats in stats_list:
-        game_name = stats.get("game_name", "unknown")
-        bs_normalized = _normalize_board_size(stats.get("board_size"))
-
-        if bs_normalized is None:
-            invalid_games.append(game_name)
-            continue
-
-        w, h = bs_normalized
-        if w != h:
-            non_square_games.append(f"{game_name} ({w}x{h})")
-            continue
-
-        size_counts[bs_normalized] += 1
-
-    # Log invalid board_size
-    if invalid_games:
-        _logger.debug(
-            "Skipping %d game(s) with missing/invalid board_size: %s",
-            len(invalid_games),
-            ", ".join(invalid_games[:5]) + ("..." if len(invalid_games) > 5 else ""),
-        )
-
-    # Log non-square games
-    if non_square_games:
-        _logger.warning(
-            "Skipping %d non-square board game(s) for pattern mining: %s",
-            len(non_square_games),
-            ", ".join(non_square_games[:5]) + ("..." if len(non_square_games) > 5 else ""),
-        )
-
-    if not size_counts:
-        _logger.debug("No games have valid square board_size; skipping pattern mining.")
-        return [], None
-
-    # Find most common size
-    most_common_tuple = size_counts.most_common(1)[0][0]
-    most_common_size = most_common_tuple[0]  # w == h, so use either
-
-    # Check for mixed sizes
-    if len(size_counts) > 1:
-        skipped_count = sum(c for t, c in size_counts.items() if t != most_common_tuple)
-        _logger.warning(
-            "Mixed board sizes detected: %s. Using %dx%d for pattern mining; skipping %d game(s) with other sizes.",
-            {f"{t[0]}x{t[1]}": c for t, c in size_counts.items()},
-            most_common_size,
-            most_common_size,
-            skipped_count,
-        )
-
-    # Filter to only games with the most common size (using normalized comparison)
-    filtered = [s for s in stats_list if _normalize_board_size(s.get("board_size")) == most_common_tuple]
-
-    return filtered, most_common_size
-
-
-def _stable_sort_key(stats: StatsDict) -> tuple[str, str, int, int]:
-    """Generate fully stable sort key for stats dict.
-
-    Returns:
-        (game_name, date, total_moves, source_index) for deterministic ordering.
-        Uses empty string / 0 as defaults for missing values.
-    """
-    return (
-        stats.get("game_name", ""),
-        stats.get("date", "") or "",
-        stats.get("total_moves", 0),
-        stats.get("source_index", 0),  # Final tie-breaker
-    )
-
-
-def _is_valid_player(player: str | None) -> bool:
-    """Check if player is valid ("B" or "W")."""
-    return player in ("B", "W")
-
-
-def _is_valid_gtp(gtp: str | None, board_size: int = 19) -> bool:
-    """Check if gtp is a valid coordinate for the given board size.
-
-    Validates:
-    - Non-empty string
-    - Not pass/resign
-    - Matches GTP coordinate pattern (letter + number)
-    - Within board bounds
-
-    Args:
-        gtp: GTP coordinate string (e.g., "D4", "Q16")
-        board_size: Board size (default 19)
-
-    Returns:
-        True if valid coordinate, False otherwise
-    """
-    if not gtp or not isinstance(gtp, str):
-        return False
-
-    gtp_stripped = gtp.strip()
-    gtp_lower = gtp_stripped.lower()
-
-    # Reject pass/resign
-    if gtp_lower in ("pass", "resign"):
-        return False
-
-    # Validate format with regex
-    if not _GTP_COORD_PATTERN.match(gtp_stripped):
-        return False
-
-    # Validate within board bounds
-    try:
-        col_char = gtp_lower[0]
-        row_num = int(gtp_stripped[1:])
-
-        # GTP columns: A-H, J-T (I is skipped), max 19 for 19x19
-        col_index = ord(col_char) - ord("a")
-        if col_char >= "j":
-            col_index -= 1  # Adjust for skipped 'I'
-
-        if col_index < 0 or col_index >= board_size:
-            return False
-        return not (row_num < 1 or row_num > board_size)
-    except (ValueError, IndexError):
-        return False
-
-
-def _is_valid_move_number(move_number: Any) -> bool:
-    """Check if move_number is a positive integer."""
-    return isinstance(move_number, int) and move_number > 0
-
-
-def _reconstruct_pattern_input(
-    stats_list: list[StatsDict],
-    board_size: int,
-) -> list[tuple[str, _FakeSnapshot]]:
-    """Reconstruct pattern mining input from stats_list.
-
-    Returns games sorted by (game_name, date, total_moves, source_index),
-    with each game's moves sorted by (move_number, player, gtp).
-    Invalid moves are skipped with warning log.
-    """
-    games = []
-    skipped_moves_count = 0
-
-    # Sort by stable composite key
-    sorted_stats = sorted(stats_list, key=_stable_sort_key)
-
-    for stats in sorted_stats:
-        pattern_data = stats.get("pattern_data", [])
-        if not pattern_data:
-            continue
-
-        game_name = stats.get("game_name", "unknown")
-
-        # Sort moves deterministically within game
-        sorted_data = sorted(
-            pattern_data,
-            key=lambda d: (
-                d.get("move_number", 0),
-                d.get("player", ""),
-                d.get("gtp", ""),
-            ),
-        )
-
-        valid_moves = []
-        for d in sorted_data:
-            move_eval = _PatternMoveEval(d)
-
-            # Validate all required fields
-            if not _is_valid_move_number(move_eval.move_number):
-                _logger.debug("Skipping invalid move_number=%s in %s", d.get("move_number"), game_name)
-                skipped_moves_count += 1
-                continue
-
-            if not _is_valid_player(move_eval.player):
-                _logger.debug(
-                    "Skipping invalid player='%s' at move %d in %s", move_eval.player, move_eval.move_number, game_name
-                )
-                skipped_moves_count += 1
-                continue
-
-            if not _is_valid_gtp(move_eval.gtp, board_size):
-                _logger.debug(
-                    "Skipping invalid gtp='%s' at move %d in %s", move_eval.gtp, move_eval.move_number, game_name
-                )
-                skipped_moves_count += 1
-                continue
-
-            if move_eval.mistake_category is None:
-                # Already logged in _PatternMoveEval.__init__
-                skipped_moves_count += 1
-                continue
-
-            valid_moves.append(move_eval)
-
-        if valid_moves:
-            games.append((game_name, _FakeSnapshot(valid_moves)))
-
-    if skipped_moves_count > 0:
-        _logger.warning("Skipped %d invalid move(s) during pattern mining input reconstruction.", skipped_moves_count)
-
-    return games
-
-
-def _mine_patterns_safe(
-    games: list[tuple[str, _FakeSnapshot]],
-    board_size: int,
-    min_count: int,
-    top_n: int,
-) -> list[PatternCluster]:
-    """Wrapper for mine_patterns with lazy import."""
-    from katrain.core.batch.stats.pattern_miner import mine_patterns
-
-    return mine_patterns(games, board_size=board_size, min_count=min_count, top_n=top_n)  # type: ignore[arg-type]
-
-
-def _format_game_refs(game_refs: list[GameRef], max_display: int = 3) -> str:
-    """Format game refs with deterministic ordering."""
-    sorted_refs = sorted(game_refs, key=lambda r: (r.game_name, r.move_number, r.player))
-    display_refs = sorted_refs[:max_display]
-    return ", ".join(f"{r.game_name} #{r.move_number}({r.player})" for r in display_refs)
-
-
-def _append_recurring_patterns(
-    lines: list[str],
-    pattern_clusters: list[PatternCluster],
-    focus_player: str | None,
-) -> None:
-    """Append Recurring Patterns section to lines."""
-    from katrain.core.lang import i18n
-
-    if not pattern_clusters:
-        return
-
-    header = i18n._("pattern:section-header")
-    lines.append(f"## {header}" + (f" ({focus_player})" if focus_player else ""))
-    lines.append("")
-    lines.append(i18n._("pattern:intro"))
-    lines.append("")
-
-    # Track unknown values for logging (once per call, not per cluster)
-    unknown_phases: set[str] = set()
-    unknown_areas: set[str] = set()
-    unknown_severities: set[str] = set()
-    unknown_players: set[str] = set()
-
-    for idx, cluster in enumerate(pattern_clusters, 1):
-        sig = cluster.signature
-
-        # Check for unknown values and log
-        if sig.phase not in PHASE_KEYS:
-            unknown_phases.add(sig.phase)
-        if sig.area not in AREA_KEYS:
-            unknown_areas.add(sig.area)
-        if sig.severity not in SEVERITY_KEYS:
-            unknown_severities.add(sig.severity)
-        if sig.player not in PLAYER_KEYS:
-            unknown_players.add(sig.player)
-
-        phase_label = i18n._(PHASE_KEYS.get(sig.phase, "pattern:phase-middle"))
-        area_label = i18n._(AREA_KEYS.get(sig.area, "pattern:area-center"))
-        severity_label = i18n._(SEVERITY_KEYS.get(sig.severity, "pattern:severity-mistake"))
-        player_label = i18n._(PLAYER_KEYS.get(sig.player, "pattern:player-unknown"))
-
-        count_loss_text = i18n._("pattern:count-loss").format(
-            count=cluster.count,
-            loss=cluster.total_loss,
-        )
-
-        lines.append(
-            f"{idx}. **{phase_label} / {area_label} / {severity_label} "
-            f"({sig.primary_tag}) [{player_label}]**: {count_loss_text}"
-        )
-
-        refs_text = _format_game_refs(cluster.game_refs, MAX_DISPLAY_REFS)
-        lines.append(f"   - {refs_text}")
-
-        # Phase 86: Add reason line if available
-        # Phase 111: Safe fallback for lang attribute (current_lang was removed)
-        current_lang = getattr(i18n, "current_lang", None) or getattr(i18n, "lang", None) or "en"
-        reason = generate_reason_safe(
-            sig.primary_tag,
-            phase=sig.phase,
-            area=sig.area,
-            lang=current_lang,
-        )
-        if reason:
-            lines.append(f"   - {reason}")
-
-        lines.append("")
-
-    # Log unknown signature field values (once per call)
-    if unknown_phases:
-        _logger.debug("Unknown phase value(s) in pattern clusters: %s", unknown_phases)
-    if unknown_areas:
-        _logger.debug("Unknown area value(s) in pattern clusters: %s", unknown_areas)
-    if unknown_severities:
-        _logger.debug("Unknown severity value(s) in pattern clusters: %s", unknown_severities)
-    if unknown_players:
-        _logger.debug("Unknown player value(s) in pattern clusters: %s", unknown_players)
 
 
 def build_summary_from_stats(
