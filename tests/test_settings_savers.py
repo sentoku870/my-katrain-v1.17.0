@@ -1,35 +1,13 @@
-"""Tests for settings_popup save helpers (Phase 174 P1-F).
+"""Tests for settings_popup_savers helpers (Phase 174 P1-F / Phase 175).
 
-The settings_popup module is heavily Kivy-coupled, but its ``_save_*``
-helpers only need a ``FeatureContext`` Protocol to function. These tests
-drive the helpers through a stub context to lock down the
-config-mutation contract.
+Phase 175: The ``_save_*`` helpers were extracted into
+``settings_popup_savers.py``, which has NO dependency on Kivy widgets.
+These tests therefore run on CI without any display/headless workarounds.
 """
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-
-import pytest
-
-# Skip on CI: settings_popup imports Kivy widgets at module scope
-# and crashes the headless CI runner (see test_main_smoke hotfix 2).
-pytestmark = pytest.mark.skipif(
-    __import__("os").environ.get("CI", "").lower() == "true",
-    reason="settings_popup imports Kivy widgets at module scope; CI environment lacks display",
-)
-
-# Force Kivy into headless mode before importing settings_popup.
-import os
-
-os.environ.setdefault("KIVY_NO_ARGS", "1")
-os.environ.setdefault("KIVY_NO_FILELOG", "1")
-os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
-os.environ.setdefault("KIVY_NO_ENV_CONFIG", "1")
-os.environ.setdefault("KIVY_HEADLESS", "1")
-os.environ.setdefault("KIVY_NO_WINDOW", "1")
-os.environ.setdefault("KIVY_GL_BACKEND", "mock")
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
 def _make_ctx(initial: dict | None = None) -> MagicMock:
@@ -43,7 +21,7 @@ def _make_ctx(initial: dict | None = None) -> MagicMock:
 
 class TestSaveGeneralSettings:
     def test_writes_skill_preset_and_pv_filter(self):
-        from katrain.gui.features.settings_popup import _save_general_settings
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
 
         ctx = _make_ctx(initial={"general": {"lang": "en"}})
         _save_general_settings(ctx, skill_preset="advanced", pv_filter_level="medium")
@@ -60,7 +38,7 @@ class TestSaveGeneralSettings:
         ctx.save_config.assert_called_once_with("general")
 
     def test_initialises_when_general_missing(self):
-        from katrain.gui.features.settings_popup import _save_general_settings
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
 
         ctx = _make_ctx(initial={})
         _save_general_settings(ctx, "auto", "auto")
@@ -71,7 +49,7 @@ class TestSaveGeneralSettings:
 
 class TestSaveBeginnerHintsSettings:
     def test_sets_enabled_true(self):
-        from katrain.gui.features.settings_popup import _save_beginner_hints_settings
+        from katrain.gui.features.settings_popup_savers import _save_beginner_hints_settings
 
         ctx = _make_ctx(initial={"beginner_hints": {"other": "preserve"}})
         _save_beginner_hints_settings(ctx, enabled=True)
@@ -81,7 +59,7 @@ class TestSaveBeginnerHintsSettings:
         assert payload["other"] == "preserve"
 
     def test_sets_enabled_false(self):
-        from katrain.gui.features.settings_popup import _save_beginner_hints_settings
+        from katrain.gui.features.settings_popup_savers import _save_beginner_hints_settings
 
         ctx = _make_ctx(initial={})
         _save_beginner_hints_settings(ctx, enabled=False)
@@ -89,7 +67,7 @@ class TestSaveBeginnerHintsSettings:
         assert payload["enabled"] is False
 
     def test_creates_section_when_missing(self):
-        from katrain.gui.features.settings_popup import _save_beginner_hints_settings
+        from katrain.gui.features.settings_popup_savers import _save_beginner_hints_settings
 
         ctx = _make_ctx()  # no "beginner_hints" key at all
         _save_beginner_hints_settings(ctx, enabled=True)
@@ -98,15 +76,15 @@ class TestSaveBeginnerHintsSettings:
 
 class TestSaveEngineSettings:
     def test_calls_update_engine_config(self):
-        from katrain.gui.features.settings_popup import _save_engine_settings
+        from katrain.gui.features.settings_popup_savers import _save_engine_settings
 
         ctx = _make_ctx()
         _save_engine_settings(ctx, new_engine_value="katago")
         ctx.update_engine_config.assert_called_once_with(analysis_engine="katago")
 
     def test_oserror_sets_status(self):
-        from katrain.gui.features.settings_popup import _save_engine_settings
         from katrain.core.constants import STATUS_ERROR
+        from katrain.gui.features.settings_popup_savers import _save_engine_settings
 
         ctx = _make_ctx()
         ctx.update_engine_config.side_effect = OSError("disk full")
@@ -116,7 +94,7 @@ class TestSaveEngineSettings:
         assert args[1] == STATUS_ERROR
 
     def test_unexpected_exception_sets_status(self):
-        from katrain.gui.features.settings_popup import _save_engine_settings
+        from katrain.gui.features.settings_popup_savers import _save_engine_settings
 
         ctx = _make_ctx()
         ctx.update_engine_config.side_effect = RuntimeError("config broken")
@@ -126,7 +104,7 @@ class TestSaveEngineSettings:
 
 class TestSaveMyKatrainSettings:
     def test_writes_full_section(self):
-        from katrain.gui.features.settings_popup import _save_mykatrain_settings
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
         _save_mykatrain_settings(
@@ -152,7 +130,7 @@ class TestSaveMyKatrainSettings:
         ctx.save_config.assert_called_once_with("mykatrain_settings")
 
     def test_updates_engine_disabled_flag(self):
-        from katrain.gui.features.settings_popup import _save_mykatrain_settings
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
         _save_mykatrain_settings(
@@ -161,7 +139,7 @@ class TestSaveMyKatrainSettings:
         ctx.update_engine_config.assert_called_once_with(disabled=True)
 
     def test_disabled_false_passes_through(self):
-        from katrain.gui.features.settings_popup import _save_mykatrain_settings
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
         _save_mykatrain_settings(

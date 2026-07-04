@@ -215,6 +215,35 @@
 | Kivy 隔離違反 | 1 → 0 |
 | **カバレッジ（行）** | **61%**（curator/ 92% / mean_tags 92.4% / analysis/ 86.2%） |
 
+### Phase 175: settings_popup.py タブビルダー本格分割（2026-07-04 完了）
+
+> 起票日: 2026-07-04
+> 計画承認後、1 PR で実装
+
+#### 背景
+`gui/features/settings_popup.py`（1,140 行）のタブビルダーと savers を分離し、Kivy 非依存のテスト実行環境を改善。Phase 162/165-b で一度構築した `settings_popup_tabs/` パッケージ（Leela 削除で Phase 174 P1-A に空削除）を KataGo 専用に復活。
+
+#### 成果物（新規 4 ファイル + 変更 2 ファイル）
+- `settings_popup_tabs/__init__.py`（36 行）: PEP 562 `__getattr__` 遅延ローダー（Phase 162 パターン踏襲）
+- `settings_popup_tabs/analysis_tab.py`（235 行）: `_build_analysis_tab` + 6 セクションビルダー
+- `settings_popup_tabs/export_tab.py`（238 行）: `_build_export_tab` + 6 セクションビルダー
+- `settings_popup_savers.py`（79 行）: `_save_*` ヘルパー 4 件（**Kivy 非依存**）
+- `settings_popup.py`: **1,140 → 707 行（-433 行, -38%）**、オーケストレーター + I/O ヘルパーのみに
+- `tests/test_settings_savers.py`: import パス更新 + **CI skip 削除**（Kivy 非依存化により CI でも実行可能）
+
+#### 設計ポイント
+- **後方互換**: `settings_popup.py` に `_save_*` の re-export を残し、`__main__.py` は無変更
+- **遅延ロード**: タブビルダーは `do_mykatrain_settings_popup()` 内で lazy import（`test_import_resolution.py` 対応）
+- **セクション分割**: Phase 165-b パターンで各タブを 6 セクションビルダーに分割（可読性向上）
+- **CI 改善**: `settings_popup_savers.py` は Kivy を一切 import しないため、saver テストが CI で実行可能に
+
+#### 検証
+- pytest tests: **3,717 passed**, 7 skipped, 1 xfailed
+- test_settings_savers.py: 11 件すべて CI skip なしで緑
+- test_import_resolution.py: 3 件緑（新パッケージの遅延ロード確認）
+- test_architecture.py: 41/41 緑
+- ruff / mypy clean
+
 ---
 
 ## 2. 進行中・計画中のフェーズ
@@ -225,7 +254,7 @@
 | - | Active Review 拡張 | Retry/Hint、セッションサマリ | 📋 Planned |
 | **146** | Kivy ヘッドレステスト基盤 | `KivyUnitTest` モックレイヤー | 📋 Planned |
 | **147** | テスト追加 | orchestration, curator 等 | 📋 Planned |
-| **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2/3 ビルダー + 状態管理 | 📋 Planned |
+| **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2 ビルダー + 状態管理 | ✅ (Phase 175) |
 | **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | ✅ (2026-06-26) |
 
 **P3 クリーンアップ詳細** (architecture review より):
@@ -785,7 +814,7 @@ KataGo を含む myKatrain 起動時に、解析スレッドで以下の2段階�
 - [ ] Lexicon UI Browser: 用語ポップアップ
 - [ ] `core/ai.py` (1723 行, 18 戦略クラス) 戦略ファミリ別分割
 - [ ] `core/engine.py` (1035 行, 32 メソッド) I/O とロジック分離
-- [ ] `gui/features/settings_popup.py` (1519 行) タブコンテンツ抽出
+- [x] `gui/features/settings_popup.py` (旧1519行) タブコンテンツ抽出 → Phase 175 で完了 (1140→707行)
 - [ ] GUI テストカバレッジ 21% → 40-50% (Kivy mock 基盤)
 
 ### Phase 154-156 (計画中)
