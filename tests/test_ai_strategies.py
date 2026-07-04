@@ -7,7 +7,7 @@ Covers:
 - OwnershipBaseStrategy.is_attachment / settledness
 - PickBasedStrategy helpers
 - generate_ai_move() through the registry
-- AI base utility functions (interp1d, interp2d, policy_weighted_move)
+- AI base utility functions (interp1d, interp2d)
 """
 
 import os
@@ -48,7 +48,6 @@ from katrain.core.ai_strategies_base import (
     interp1d,
     interp2d,
     interp_ix,
-    policy_weighted_move,
     register_strategy,
 )
 from katrain.core.constants import (
@@ -819,38 +818,6 @@ class TestInterpolationUtils:
         # = 1*0.5*200 + 0*0.5*300 + 1*0.5*500 + 0*0.5*600 = 100 + 0 + 250 + 0 = 350
         result = interp2d(gridspec, 2.0, 15.0)
         assert result == 350.0
-
-
-class TestPolicyWeightedMove:
-    def test_policy_weighted_move_picks(self):
-        """policy_weighted_move returns a move from the candidates."""
-        moves = [
-            (0.5, Move.from_gtp("D4", player="B")),
-            (0.3, Move.from_gtp("Q16", player="B")),
-        ]
-        move, thoughts = policy_weighted_move(moves, 0.0, 1.0)
-        assert move.gtp() in ("D4", "Q16")
-
-    def test_policy_weighted_move_no_above_bound(self):
-        """When no moves are above lower_bound, return top policy move."""
-        moves = [
-            (0.01, Move.from_gtp("D4", player="B")),
-            (0.005, Move.from_gtp("Q16", player="B")),
-        ]
-        move, thoughts = policy_weighted_move(moves, 0.5, 1.0)
-        # No moves above 0.5 → top policy move (D4)
-        assert move.gtp() == "D4"
-
-    def test_policy_weighted_move_skips_pass(self):
-        """Pass moves are excluded from weighted selection."""
-        pass_move = Move(None, player="B")
-        moves = [
-            (0.5, pass_move),  # Pass at top
-            (0.3, Move.from_gtp("D4", player="B")),
-        ]
-        move, thoughts = policy_weighted_move(moves, 0.0, 1.0)
-        # Pass is filtered out → D4 is picked
-        assert move.gtp() == "D4"
 
 
 class TestGenerateWeights:

@@ -85,31 +85,6 @@ def fmt_moves(moves: list[tuple[float, Move]]) -> str:
     return ", ".join(f"{mv.gtp()} ({p:.2%})" for p, mv in moves)
 
 
-def policy_weighted_move(
-    policy_moves: list[tuple[float, Move]],
-    lower_bound: float,
-    weaken_fac: float,
-) -> tuple[Move, str]:
-    """Select a move weighted by policy, with weakening factor."""
-    from katrain.core.utils import weighted_selection_without_replacement
-
-    lower_bound, weaken_fac = max(0, lower_bound), max(0.01, weaken_fac)
-    weighted_coords = [
-        (pv, pv ** (1 / weaken_fac), move) for pv, move in policy_moves if pv > lower_bound and not move.is_pass
-    ]
-    if weighted_coords:
-        top = weighted_selection_without_replacement(weighted_coords, 1)[0]
-        move = top[2]
-        ai_thoughts = (
-            f"Playing policy-weighted random move {move.gtp()} ({top[0]:.1%}) "
-            f"from {len(weighted_coords)} moves above lower_bound of {lower_bound:.1%}."
-        )
-    else:
-        move = policy_moves[0][1]
-        ai_thoughts = f"Playing top policy move because no non-pass move > above lower_bound of {lower_bound:.1%}."
-    return move, ai_thoughts
-
-
 def generate_influence_territory_weights(
     ai_mode: str,
     ai_settings: dict[str, Any],

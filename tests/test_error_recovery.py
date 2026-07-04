@@ -17,11 +17,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
+from katrain.core import error_recovery
 from katrain.core.error_recovery import (
     LLM_TEXT_MAX_BYTES,
     DiagnosticsTrigger,
     RecoveryEvent,
-    reset_dedupe_state,
     should_auto_dump,
     truncate_to_bytes,
 )
@@ -79,8 +79,8 @@ class TestDedupeThreadSafety:
     """Test thread-safe deduplication."""
 
     def setup_method(self):
-        """Reset dedupe state before each test."""
-        reset_dedupe_state()
+        """Reset dedupe state before each test (private module attribute)."""
+        error_recovery._last_dump_event_id = None
 
     def test_first_event_triggers_dump(self):
         """First event should trigger dump."""

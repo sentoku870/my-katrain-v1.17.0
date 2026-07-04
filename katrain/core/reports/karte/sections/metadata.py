@@ -4,12 +4,7 @@ Phase 149 C-2: Refactored from markdown-line generators (list[str]) to JSON
 data builders.
 
 Functions:
-- definitions_section(): Extends meta.definitions with localized labels
 - data_quality_section(): Returns DataQualityStats dict
-
-Note: For Phase 149 C-2, definitions_section() returns the existing definitions
-block (no transformation needed since the JSON is language-neutral). The
-function is kept as a stable API for future extension.
 """
 
 from __future__ import annotations
@@ -20,33 +15,9 @@ from typing import TYPE_CHECKING, Any
 from katrain.core import eval_metrics
 
 if TYPE_CHECKING:
-    from katrain.core.analysis.models import AutoRecommendation
     from katrain.core.reports.karte.sections.context import KarteContext
 
 logger = logging.getLogger(__name__)
-
-
-def definitions_section(
-    ctx: KarteContext,
-    auto_recommendation: AutoRecommendation | None,
-) -> dict[str, Any]:
-    """Return the definitions block (currently the existing definitions dict).
-
-    Phase 149 C-2: This function previously produced markdown. The JSON
-    schema already carries the full definitions block via meta.definitions
-    (see build_karte_json), so we return it unchanged. Kept as stable API
-    for future extension (e.g., localized labels per skill_preset).
-
-    Args:
-        ctx: Karte context
-        auto_recommendation: Auto strictness recommendation (unused for now)
-
-    Returns:
-        Empty dict (definitions live in meta.definitions)
-    """
-    # Definitions are already in meta.definitions (Phase 149 C-2).
-    # This function is reserved for future extension.
-    return {}
 
 
 def data_quality_section(ctx: KarteContext) -> dict[str, Any]:

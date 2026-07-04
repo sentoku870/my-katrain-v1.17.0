@@ -6,7 +6,6 @@ CI-safe: No Kivy imports.
 from katrain.common.model_labels import (
     classify_model_strength,
     get_model_basename,
-    get_model_i18n_key,
 )
 
 
@@ -37,17 +36,6 @@ class TestClassifyModelStrength:
 
     def test_case_insensitive(self):
         assert classify_model_strength("KATA1-B18C384.BIN.GZ") == "standard"
-
-
-class TestGetModelI18nKey:
-    def test_light_key(self):
-        assert get_model_i18n_key("kata1-b10c128.bin.gz") == "model:light"
-
-    def test_unknown_key(self):
-        assert get_model_i18n_key("unknown.bin.gz") == "model:unknown"
-
-    def test_empty_path_key(self):
-        assert get_model_i18n_key("") == "model:unknown"
 
 
 class TestGetModelBasename:

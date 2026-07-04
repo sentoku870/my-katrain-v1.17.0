@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
-
-
-def to_hexcol(kivycol: Sequence[float]) -> str:
-    return "#" + "".join(f"{round(c * 255):02x}" for c in kivycol[:3])
 
 
 # basic colors

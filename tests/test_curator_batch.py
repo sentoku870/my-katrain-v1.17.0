@@ -5,7 +5,6 @@ Tests cover:
 - _normalize_percentile (Optional[int] → int)
 - _build_game_title (player B/W vs fallback)
 - _extract_recommended_tags (top tags sorted, UNCERTAIN excluded)
-- _get_user_weak_axes_sorted (deprecated)
 - CuratorBatchResult (dataclass defaults)
 - generate_curator_outputs (integration test with tmp_path,
   mocked dependencies for select_critical_moves and labels)
@@ -29,7 +28,6 @@ from katrain.core.curator.batch import (
     _build_game_title,
     _extract_recommended_tags,
     _get_iso_generated_timestamp,
-    _get_user_weak_axes_sorted,
     _normalize_percentile,
     _round_float,
     generate_curator_outputs,
@@ -249,19 +247,6 @@ class TestExtractRecommendedTags:
         }
         result = _extract_recommended_tags(stats)
         assert len(result) == 3
-
-
-# =============================================================================
-# _get_user_weak_axes_sorted (deprecated)
-# =============================================================================
-
-
-class TestGetUserWeakAxesSorted:
-    """Tests for deprecated weak axes getter."""
-
-    def test_returns_empty_list(self):
-        """Radar axes deprecated → empty list."""
-        assert _get_user_weak_axes_sorted() == []
 
 
 # =============================================================================

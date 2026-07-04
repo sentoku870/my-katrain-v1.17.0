@@ -59,13 +59,6 @@ def should_auto_dump(event: RecoveryEvent) -> bool:
         return True
 
 
-def reset_dedupe_state() -> None:
-    """Reset dedupe state (for testing only)."""
-    global _last_dump_event_id
-    with _dedupe_lock:
-        _last_dump_event_id = None
-
-
 # UTF-8 byte-bounded truncation
 LLM_TEXT_MAX_BYTES = 4096
 

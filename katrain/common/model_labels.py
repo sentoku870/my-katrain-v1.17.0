@@ -48,12 +48,6 @@ def classify_model_strength(model_path: str) -> StrengthCategory:
     return "unknown"
 
 
-def get_model_i18n_key(model_path: str) -> str:
-    """Get i18n key for model label."""
-    category = classify_model_strength(model_path)
-    return f"model:{category}"
-
-
 def get_model_basename(model_path: str) -> str:
     """Get basename for display when model is unknown.
 

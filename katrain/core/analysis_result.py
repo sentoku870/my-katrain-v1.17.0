@@ -3,7 +3,6 @@
 This module provides:
 - Error category classification for engine failures
 - EngineTestResult dataclass for unified error handling
-- Decision logic for CPU fallback and restart offers
 """
 
 from __future__ import annotations
@@ -11,10 +10,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from katrain.__main__ import KaTrainGui
 
 
 class ErrorCategory(Enum):
@@ -126,58 +121,3 @@ def classify_engine_error(error_text: str, is_timeout: bool = False) -> ErrorCat
         return ErrorCategory.BACKEND_ERROR
 
     return ErrorCategory.UNKNOWN
-
-
-def truncate_error_message(msg: str, max_len: int = 200) -> str:
-    """Truncate error message for display.
-
-    Args:
-        msg: Original message.
-        max_len: Maximum length (default 200).
-
-    Returns:
-        Truncated message with ellipsis if needed.
-    """
-    if len(msg) <= max_len:
-        return msg
-    return msg[: max_len - 3] + "..."
-
-
-# =============================================================================
-# Recovery Decision Logic
-# =============================================================================
-
-
-def should_offer_cpu_fallback(result: EngineTestResult) -> bool:
-    """Decide if we should suggest CPU fallback based on error."""
-    if result.success:
-        return False
-    return result.error_category == ErrorCategory.BACKEND_ERROR
-
-
-def should_offer_restart(result: EngineTestResult) -> bool:
-    """Decide if we should suggest restarting the engine (e.g. after timeout).
-
-    Args:
-        result: Test analysis result.
-
-    Returns:
-        True if restart button should be shown.
-    """
-    if result.success:
-        return False
-    return result.error_category == ErrorCategory.TIMEOUT
-
-
-def run_engine_test(katrain_app: KaTrainGui, timeout: float = 15.0) -> EngineTestResult:
-    """Run an engine connectivity test.
-
-    Args:
-        katrain_app: The KaTrain application instance.
-        timeout: Timeout in seconds for the test.
-
-    Returns:
-        EngineTestResult with success/failure status.
-    """
-    # Note: Using forward reference (TYPE_CHECKING) to avoid circular imports at runtime
-    return katrain_app._verify_engine_works(timeout)

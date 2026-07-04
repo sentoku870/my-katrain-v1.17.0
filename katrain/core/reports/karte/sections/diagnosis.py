@@ -157,26 +157,6 @@ def weakness_hypothesis_for(
     return result
 
 
-def practice_priorities_for(
-    ctx: KarteContext,
-    player: str,
-) -> list[dict[str, Any]]:
-    """Generate practice priorities data for a player.
-
-    Phase 153-B: Returns empty list (section removed from output).
-    Kept as a stub to avoid breaking callers that still import it; the
-    function is scheduled for full removal in a follow-up cleanup pass.
-
-    Args:
-        ctx: Karte context (unused)
-        player: "B" or "W" (unused)
-
-    Returns:
-        Empty list.
-    """
-    return []
-
-
 def mistake_streaks_for(
     ctx: KarteContext,
     player: str,

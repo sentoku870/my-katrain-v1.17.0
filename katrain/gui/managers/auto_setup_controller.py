@@ -29,7 +29,6 @@ class AutoSetupContext(Protocol):
     """AutoSetupControllerが動作するために必要な外部インターフェース"""
 
     engine: EngineProtocol | None
-    engine_unhealthy: bool
 
     def config(self, section: str, default: Any = None) -> Any: ...
     def save_config(self, section: str) -> None: ...
@@ -84,7 +83,6 @@ class AutoSetupController:
         result = self.verify_engine_works()
         if result.success:
             self.save_engine_katago_path(cpu_katago)
-            self._ctx.engine_unhealthy = False
 
         return result.success, result
 
@@ -97,7 +95,6 @@ class AutoSetupController:
         try:
             engine_config = self._ctx.config("engine")
             self._ctx.engine = engine_factory(engine_config)
-            self._ctx.engine_unhealthy = False
             return self._ctx.engine.check_alive()
         except Exception:
             return False

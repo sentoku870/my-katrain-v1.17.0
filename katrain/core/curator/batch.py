@@ -134,15 +134,6 @@ def _extract_recommended_tags(
     return [tag for tag, _ in sorted_tags[:max_tags]]
 
 
-def _get_user_weak_axes_sorted() -> list[str]:
-    """Get user's weak axes (Deprecated).
-
-    Returns:
-        Empty list (Radar axes are no longer supported).
-    """
-    return []
-
-
 # =============================================================================
 # Main Function
 # =============================================================================

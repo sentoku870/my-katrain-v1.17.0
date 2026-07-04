@@ -146,7 +146,6 @@ class KaTrainGui(Screen, KaTrainBase):
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
         self.engine: Any = None
-        self.engine_unhealthy = False  # Phase 89: For TIMEOUT recovery
 
         # SGF file management (refactored in PR #122)
         self._sgf_manager = SGFManager(
@@ -852,9 +851,6 @@ class KaTrainApp(MDApp):
         self.icon = ICON  # how you're supposed to set an icon
 
         self.title = f"KaTrain v{VERSION}"
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Gray"
-        self.theme_cls.primary_hue = "200"
 
         # Phase 133: KV files are now loaded from katrain/gui/kv/ directory
 
