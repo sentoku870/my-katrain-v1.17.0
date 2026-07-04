@@ -116,6 +116,7 @@ from katrain.gui.kivyutils import (
 )  # noqa: F401
 from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.engine_bootstrap import EngineBootstrap
 from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.game_state_update_manager import GameStateUpdateManager
@@ -252,13 +253,10 @@ class KaTrainGui(Screen, KaTrainBase):
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events: list[Any] = []
 
-        # Phase 107: StateNotifier購読（スレッドセーフ）
-        self._ui_update_lock = threading.Lock()  # フラグ保護用ロック
-        self._pending_ui_update = None  # Clock event for coalescing
-        self._pending_redraw_board = False  # Accumulated redraw flag
-        self._state_subscriptions_setup = False
-
         # New Managers & Controllers (Phase 133)
+        # Phase 173: UI update coalescing lives in UIUpdateManager; the
+        # legacy static-method helpers on this class (and the related
+        # __init__ flags) have been removed.
         self._ui_update_manager = UIUpdateManager(self, clock=Clock)
         self._auto_setup_controller = AutoSetupController(self)
         self._analysis_controller = AnalysisController(self)
@@ -328,76 +326,14 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
 
-    # ========== Phase 133: UI Update logic moved to UIUpdateManager ==========
-
-    def _schedule_ui_update(self, redraw_board: bool = False) -> None:
-        """Delegates to UIUpdateManager (Phase 133)."""
-        self._ui_update_manager.schedule_ui_update(redraw_board=redraw_board)
-
-    # ========== Phase 107: Class-level static proxies for testing ==========
-    # These allow tests to call ``KaTrainGui._method(gui, ...)`` as if
-    # they were unbound methods. The actual implementation lives on the
-    # instance (``self._method``); the static wrappers read attributes
-    # off the supplied ``gui`` so tests can drive them with MagicMock.
-
-    @staticmethod
-    def _setup_state_subscriptions(gui: KaTrainGui) -> None:
-        """Subscribe gui's event handlers to StateNotifier (idempotent)."""
-        if getattr(gui, "_state_subscriptions_setup", False):
-            return
-        gui._state_subscriptions_setup = True
-        notifier = getattr(gui, "_state_notifier", None) or getattr(gui, "state_notifier", None)
-        if notifier is None:
-            return
-
-        notifier.subscribe(EventType.GAME_CHANGED, lambda evt: KaTrainGui._on_game_changed(gui, evt))
-        notifier.subscribe(
-            EventType.ANALYSIS_COMPLETE, lambda evt: KaTrainGui._on_analysis_complete(gui, evt)
-        )
-        notifier.subscribe(
-            EventType.CONFIG_UPDATED, lambda evt: KaTrainGui._on_config_updated(gui, evt)
-        )
-
-    @staticmethod
-    def _schedule_ui_update(gui: KaTrainGui, redraw_board: bool = False) -> None:
-        """Schedule a coalesced UI update on the Kivy main thread."""
-        with gui._ui_update_lock:
-            gui._pending_redraw_board = gui._pending_redraw_board or redraw_board
-            if gui._pending_ui_update is not None:
-                return
-            from kivy.clock import Clock
-
-            gui._pending_ui_update = Clock.schedule_once(lambda dt: KaTrainGui._do_ui_update(gui, dt), 0)
-
-    @staticmethod
-    def _do_ui_update(gui: KaTrainGui, dt: float) -> None:
-        """UI update callback (runs on main thread)."""
-        with gui._ui_update_lock:
-            gui._pending_ui_update = None
-            redraw = gui._pending_redraw_board
-            gui._pending_redraw_board = False
-        game = gui.game
-        if game is None or not hasattr(game, "current_node") or game.current_node is None:
-            return
-        try:
-            gui.update_gui(game.current_node, redraw_board=redraw)
-        except Exception as e:
-            gui.log(f"update_gui failed: {e}", 5)
-
-    @staticmethod
-    def _on_game_changed(gui: KaTrainGui, event: Any) -> None:
-        """Handle GAME_CHANGED event: schedule UI update with redraw."""
-        gui._schedule_ui_update(redraw_board=True)
-
-    @staticmethod
-    def _on_analysis_complete(gui: KaTrainGui, event: Any) -> None:
-        """Handle ANALYSIS_COMPLETE event: schedule UI update without redraw."""
-        gui._schedule_ui_update(redraw_board=False)
-
-    @staticmethod
-    def _on_config_updated(gui: KaTrainGui, event: Any) -> None:
-        """Handle CONFIG_UPDATED event: schedule UI update without redraw."""
-        gui._schedule_ui_update(redraw_board=False)
+    # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
+    # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
+    # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
+    # and a thin instance delegate were duplicates of UIUpdateManager. The
+    # actual implementation moved to UIUpdateManager in Phase 133 (which only
+    # _schedule_ui_update above was referring to) — the static stubs were kept
+    # around for tests. Both layers are unused now that UIUpdateManager.setup_
+    # state_subscriptions() is the single source of truth.
 
     def get_game(self) -> Game:
         """現在のゲームオブジェクトを返す（Phase 133: UIUpdateManager用）。"""
@@ -454,8 +390,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self._analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
 
     def toggle_move_num(self) -> None:
-        self.show_move_num = not self.show_move_num
-        self.update_state()
+        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
+        self._analysis_controller.toggle_move_num()
 
     def set_analysis_focus_toggle(self, focus: str) -> None:
         """Delegates to AnalysisController (Phase 133)."""
@@ -466,17 +402,8 @@ class KaTrainGui(Screen, KaTrainBase):
         self._analysis_controller.re_analyze_from_current_node()
 
     def restore_last_mode(self) -> None:
-        """前回終了時のモードを復元する。"""
-        try:
-            last_mode = self.config("ui_state/last_mode", MODE_PLAY)
-            if last_mode == MODE_ANALYZE and self.play_mode.mode == MODE_PLAY:
-                # Analyzeモードを復元
-                self.play_mode.analyze.trigger_action(duration=0)
-            elif last_mode == MODE_PLAY and self.play_mode.mode == MODE_ANALYZE:
-                # Playモードを復元
-                self.play_mode.play.trigger_action(duration=0)
-        except Exception as e:
-            self.log(f"restore_last_mode() failed: {e}", OUTPUT_DEBUG)
+        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
+        self._analysis_controller.restore_last_mode()
 
     def update_focus_button_states(self) -> None:
         """Delegates to AnalysisController (Phase 133)."""
@@ -487,47 +414,23 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.board_gui.trainer_config = self.config("trainer")
-        # Set up engine error handler with rich context
-        def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
-            """Handle engine errors with rich context.
+        # Phase 173 P0-①-D: engine construction moved to EngineBootstrap so
+        # this method stays a thin orchestrator.
 
-            Args:
-                message: Error message string
-                code: Optional error code
-                allow_popup: Whether to show recovery popup (used by engine.py)
-            """
-            context = {
-                "original_error": repr(message),
-                "error_code": code,
-            }
-
-            self.error_handler.handle(
-                EngineError(
-                    str(message),
-                    user_message="Engine error occurred",
-                    context=context,
-                ),
-                notify_user=allow_popup,
-            )
-
-        # Inject scheduler so engine callbacks (per-query errors, engine errors)
-        # run on the Kivy main thread without core knowing about Kivy.
         def _schedule_on_main_thread(fn: Callable[[], None]) -> None:
             from kivy.clock import Clock
 
             Clock.schedule_once(lambda _dt: fn(), 0)
 
-        self.engine = KataGoEngine(
-            self,
-            self.config("engine"),
+        self._engine_bootstrap = EngineBootstrap(
+            ctx=self,
+            config_getter=self.config,
             status_callback=self._on_engine_status,
-            error_callback=_handle_engine_error,
+            error_handler=self.error_handler,
             main_thread_scheduler=_schedule_on_main_thread,
         )
-
-        # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
-        with contextlib.suppress(Exception):
-            self.engine.set_analysis_focus(None)
+        self.engine = self._engine_bootstrap.create()
+        EngineBootstrap.reset_initial_focus(self.engine)
 
         self._message_loop_manager.start()
         sgf_args = [
