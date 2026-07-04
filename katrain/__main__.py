@@ -252,13 +252,10 @@ class KaTrainGui(Screen, KaTrainBase):
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events: list[Any] = []
 
-        # Phase 107: StateNotifier購読（スレッドセーフ）
-        self._ui_update_lock = threading.Lock()  # フラグ保護用ロック
-        self._pending_ui_update = None  # Clock event for coalescing
-        self._pending_redraw_board = False  # Accumulated redraw flag
-        self._state_subscriptions_setup = False
-
         # New Managers & Controllers (Phase 133)
+        # Phase 173: UI update coalescing lives in UIUpdateManager; the
+        # legacy static-method helpers on this class (and the related
+        # __init__ flags) have been removed.
         self._ui_update_manager = UIUpdateManager(self, clock=Clock)
         self._auto_setup_controller = AutoSetupController(self)
         self._analysis_controller = AnalysisController(self)
@@ -328,76 +325,14 @@ class KaTrainGui(Screen, KaTrainBase):
         """Delegates to ConfigManager.save_batch_options() (Phase 74)."""
         self._config_manager.save_batch_options(options)
 
-    # ========== Phase 133: UI Update logic moved to UIUpdateManager ==========
-
-    def _schedule_ui_update(self, redraw_board: bool = False) -> None:
-        """Delegates to UIUpdateManager (Phase 133)."""
-        self._ui_update_manager.schedule_ui_update(redraw_board=redraw_board)
-
-    # ========== Phase 107: Class-level static proxies for testing ==========
-    # These allow tests to call ``KaTrainGui._method(gui, ...)`` as if
-    # they were unbound methods. The actual implementation lives on the
-    # instance (``self._method``); the static wrappers read attributes
-    # off the supplied ``gui`` so tests can drive them with MagicMock.
-
-    @staticmethod
-    def _setup_state_subscriptions(gui: KaTrainGui) -> None:
-        """Subscribe gui's event handlers to StateNotifier (idempotent)."""
-        if getattr(gui, "_state_subscriptions_setup", False):
-            return
-        gui._state_subscriptions_setup = True
-        notifier = getattr(gui, "_state_notifier", None) or getattr(gui, "state_notifier", None)
-        if notifier is None:
-            return
-
-        notifier.subscribe(EventType.GAME_CHANGED, lambda evt: KaTrainGui._on_game_changed(gui, evt))
-        notifier.subscribe(
-            EventType.ANALYSIS_COMPLETE, lambda evt: KaTrainGui._on_analysis_complete(gui, evt)
-        )
-        notifier.subscribe(
-            EventType.CONFIG_UPDATED, lambda evt: KaTrainGui._on_config_updated(gui, evt)
-        )
-
-    @staticmethod
-    def _schedule_ui_update(gui: KaTrainGui, redraw_board: bool = False) -> None:
-        """Schedule a coalesced UI update on the Kivy main thread."""
-        with gui._ui_update_lock:
-            gui._pending_redraw_board = gui._pending_redraw_board or redraw_board
-            if gui._pending_ui_update is not None:
-                return
-            from kivy.clock import Clock
-
-            gui._pending_ui_update = Clock.schedule_once(lambda dt: KaTrainGui._do_ui_update(gui, dt), 0)
-
-    @staticmethod
-    def _do_ui_update(gui: KaTrainGui, dt: float) -> None:
-        """UI update callback (runs on main thread)."""
-        with gui._ui_update_lock:
-            gui._pending_ui_update = None
-            redraw = gui._pending_redraw_board
-            gui._pending_redraw_board = False
-        game = gui.game
-        if game is None or not hasattr(game, "current_node") or game.current_node is None:
-            return
-        try:
-            gui.update_gui(game.current_node, redraw_board=redraw)
-        except Exception as e:
-            gui.log(f"update_gui failed: {e}", 5)
-
-    @staticmethod
-    def _on_game_changed(gui: KaTrainGui, event: Any) -> None:
-        """Handle GAME_CHANGED event: schedule UI update with redraw."""
-        gui._schedule_ui_update(redraw_board=True)
-
-    @staticmethod
-    def _on_analysis_complete(gui: KaTrainGui, event: Any) -> None:
-        """Handle ANALYSIS_COMPLETE event: schedule UI update without redraw."""
-        gui._schedule_ui_update(redraw_board=False)
-
-    @staticmethod
-    def _on_config_updated(gui: KaTrainGui, event: Any) -> None:
-        """Handle CONFIG_UPDATED event: schedule UI update without redraw."""
-        gui._schedule_ui_update(redraw_board=False)
+    # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
+    # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
+    # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
+    # and a thin instance delegate were duplicates of UIUpdateManager. The
+    # actual implementation moved to UIUpdateManager in Phase 133 (which only
+    # _schedule_ui_update above was referring to) — the static stubs were kept
+    # around for tests. Both layers are unused now that UIUpdateManager.setup_
+    # state_subscriptions() is the single source of truth.
 
     def get_game(self) -> Game:
         """現在のゲームオブジェクトを返す（Phase 133: UIUpdateManager用）。"""
