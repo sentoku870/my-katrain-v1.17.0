@@ -19,13 +19,20 @@ If more Kivy-free helpers emerge later in ``popups/*.py``, add them here.
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock
 
 import pytest
 
-# Force Kivy into headless mode before any popup module load.
-import os
+# katrain.gui.popups imports Kivy widgets at module top. On headless CI the
+# import crashes the runner, so we mirror test_golden_summary / test_main_smoke
+# and skip this file on CI. Local development still runs the suite.
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI", "").lower() == "true",
+    reason="katrain.gui.popups imports Kivy widgets at module scope; CI environment lacks display",
+)
 
+# Force Kivy into headless mode before any popup module load.
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 os.environ.setdefault("KIVY_NO_FILELOG", "1")
 os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
