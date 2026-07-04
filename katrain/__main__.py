@@ -116,6 +116,7 @@ from katrain.gui.kivyutils import (
 )  # noqa: F401
 from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
+from katrain.gui.managers.engine_bootstrap import EngineBootstrap
 from katrain.gui.managers.dialog_factory import DialogFactory
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.game_state_update_manager import GameStateUpdateManager
@@ -413,47 +414,23 @@ class KaTrainGui(Screen, KaTrainBase):
             return
         self.board_gui.trainer_config = self.config("trainer")
         self.board_gui.trainer_config = self.config("trainer")
-        # Set up engine error handler with rich context
-        def _handle_engine_error(message: str, code: Any = None, allow_popup: bool = True) -> None:
-            """Handle engine errors with rich context.
+        # Phase 173 P0-①-D: engine construction moved to EngineBootstrap so
+        # this method stays a thin orchestrator.
 
-            Args:
-                message: Error message string
-                code: Optional error code
-                allow_popup: Whether to show recovery popup (used by engine.py)
-            """
-            context = {
-                "original_error": repr(message),
-                "error_code": code,
-            }
-
-            self.error_handler.handle(
-                EngineError(
-                    str(message),
-                    user_message="Engine error occurred",
-                    context=context,
-                ),
-                notify_user=allow_popup,
-            )
-
-        # Inject scheduler so engine callbacks (per-query errors, engine errors)
-        # run on the Kivy main thread without core knowing about Kivy.
         def _schedule_on_main_thread(fn: Callable[[], None]) -> None:
             from kivy.clock import Clock
 
             Clock.schedule_once(lambda _dt: fn(), 0)
 
-        self.engine = KataGoEngine(
-            self,
-            self.config("engine"),
+        self._engine_bootstrap = EngineBootstrap(
+            ctx=self,
+            config_getter=self.config,
             status_callback=self._on_engine_status,
-            error_callback=_handle_engine_error,
+            error_handler=self.error_handler,
             main_thread_scheduler=_schedule_on_main_thread,
         )
-
-        # 起動時は常に「フォーカスなし」に戻す（本家と同じ初期状態）
-        with contextlib.suppress(Exception):
-            self.engine.set_analysis_focus(None)
+        self.engine = self._engine_bootstrap.create()
+        EngineBootstrap.reset_initial_focus(self.engine)
 
         self._message_loop_manager.start()
         sgf_args = [
