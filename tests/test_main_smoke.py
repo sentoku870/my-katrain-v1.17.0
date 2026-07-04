@@ -26,9 +26,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# katrain.__main__ imports kivy at module scope. CI on Python 3.11 sometimes
-# crashes on this import even with KIVY_HEADLESS=1.
-_CI_SKIP = pytest.mark.skipif(
+# katrain.__main__ imports kivy at module scope and crashes the runner on
+# headless CI even with the KIVY_* headless env vars set. Mirror the
+# test_golden_summary.py pattern: skip on CI, keep for local development.
+pytestmark = pytest.mark.skipif(
     os.environ.get("CI", "").lower() == "true",
     reason="katrain.__main__ imports kivy at module scope; CI environment lacks display",
 )
@@ -44,7 +45,6 @@ os.environ.setdefault("KIVY_GL_BACKEND", "mock")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
-@_CI_SKIP
 @pytest.mark.kivy_headless
 class TestMainModuleImport:
     """Verify that the module imports cleanly and re-exports its public API."""
