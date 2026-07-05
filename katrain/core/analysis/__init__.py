@@ -41,7 +41,7 @@ from katrain.core.analysis.board_context import (
 )
 
 # =============================================================================
-# Explicit imports from cluster_classifier.py (Phase 82)
+# Explicit imports from cluster_classifier.py (Phase 82, refined Phase 173)
 # =============================================================================
 from katrain.core.analysis.cluster_classifier import (
     # Dataclasses
@@ -49,7 +49,6 @@ from katrain.core.analysis.cluster_classifier import (
     ClusterClassificationContext,
     # Enums
     ClusterSemantics,
-    StoneCache,
     # Type aliases (exported for annotation)
     StonePosition,
     StoneSet,
@@ -72,6 +71,11 @@ from katrain.core.analysis.cluster_classifier import (
 from katrain.core.analysis.cluster_classifier import (
     compute_confidence as compute_cluster_confidence,
 )
+
+# Phase 173: ``StoneCache`` was moved to ``cluster_geometry``; import it
+# from the new home so ``__module__`` reflects the actual location. The
+# name remains re-exported from ``analysis`` for backward compatibility.
+from katrain.core.analysis.cluster_geometry import StoneCache
 
 # =============================================================================
 # Explicit imports from critical_moves.py (Phase 50)
