@@ -28,11 +28,9 @@ from typing import TYPE_CHECKING, cast
 from katrain.core.analysis.cluster_classifier import compute_stones_at_node
 
 if TYPE_CHECKING:
+    from katrain.core.analysis.cluster_classifier import StoneSet
     from katrain.core.game import Game
     from katrain.core.game_node import GameNode
-    from katrain.core.sgf_parser import SGFNode
-
-    from katrain.core.analysis.cluster_classifier import StoneSet
 
 
 # =====================================================================
@@ -94,12 +92,12 @@ def _has_liberty(
 class StoneCache:
     """Cache for stone positions during Karte generation (one game)."""
 
-    def __init__(self, game: "Game"):
+    def __init__(self, game: Game):
         self._game = game
         self._board_size = game.board_size
-        self._cache: dict[int, "StoneSet"] = {}  # move_number -> stones
+        self._cache: dict[int, StoneSet] = {}  # move_number -> stones
 
-    def get_stones_at_move(self, move_number: int) -> "StoneSet":
+    def get_stones_at_move(self, move_number: int) -> StoneSet:
         """Get stones at a move number (cached).
 
         Args:
@@ -119,7 +117,7 @@ class StoneCache:
         self._cache[move_number] = stones
         return stones
 
-    def _find_node_by_move_number(self, move_number: int) -> "GameNode | None":
+    def _find_node_by_move_number(self, move_number: int) -> GameNode | None:
         """Find node by move number on mainline.
 
         Uses ordered_children[0] for mainline traversal

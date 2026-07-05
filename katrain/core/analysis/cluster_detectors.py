@@ -43,7 +43,7 @@ SURVIVED_ADVANTAGE_THRESHOLD = 0.3
 DELTA_SCALING_FACTOR = 0.1
 
 
-def _get_base_confidence() -> dict["ClusterSemantics", float]:
+def _get_base_confidence() -> dict[ClusterSemantics, float]:
     """Lazily build & cache ``BASE_CONFIDENCE`` from ``ClusterSemantics``.
 
     Imported lazily to avoid an import cycle between
@@ -72,10 +72,10 @@ def _get_base_confidence() -> dict["ClusterSemantics", float]:
 
 
 def _detect_group_death(
-    cluster: "OwnershipCluster",
+    cluster: OwnershipCluster,
     actor: str,
-    parent_stones: "frozenset",  # StoneSet
-    child_stones: "frozenset",  # StoneSet
+    parent_stones: frozenset,  # StoneSet
+    child_stones: frozenset,  # StoneSet
 ) -> tuple[bool, tuple, str]:
     """Detect if actor's stones were captured in cluster.
 
@@ -109,10 +109,10 @@ def _detect_group_death(
 
 
 def _detect_territory_loss(
-    cluster: "OwnershipCluster",
+    cluster: OwnershipCluster,
     actor: str,
-    parent_stones: "frozenset",  # StoneSet
-    child_stones: "frozenset",  # StoneSet
+    parent_stones: frozenset,  # StoneSet
+    child_stones: frozenset,  # StoneSet
 ) -> tuple[bool, str]:
     """Detect if actor lost territory (no stone capture).
 
@@ -146,10 +146,10 @@ def _detect_territory_loss(
 
 
 def _detect_missed_kill(
-    cluster: "OwnershipCluster",
+    cluster: OwnershipCluster,
     actor: str,
-    parent_ownership_ctx: "OwnershipContext",
-    child_ownership_ctx: "OwnershipContext",
+    parent_ownership_ctx: OwnershipContext,
+    child_ownership_ctx: OwnershipContext,
 ) -> tuple[bool, str]:
     """Detect if actor failed to kill opponent's weak stones.
 
@@ -183,7 +183,7 @@ def _detect_missed_kill(
 
 
 def compute_confidence(
-    semantics: "ClusterSemantics",
+    semantics: ClusterSemantics,
     sum_delta: float,
     affected_stone_count: int,
 ) -> float:

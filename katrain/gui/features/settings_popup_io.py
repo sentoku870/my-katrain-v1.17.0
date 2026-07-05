@@ -21,7 +21,7 @@ import json
 import logging
 import shutil
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from katrain.common.settings_export import (
     EXCLUDED_SECTIONS,
@@ -39,8 +39,8 @@ if TYPE_CHECKING:
 
 
 def _do_export_settings(
-    ctx: "FeatureContext",
-    popup: "Popup",
+    ctx: FeatureContext,
+    popup: Popup,
 ) -> None:
     """設定をJSONファイルにエクスポート (Phase 27 / Phase 173 でファイル分割)
 
@@ -98,8 +98,8 @@ def _do_export_settings(
 
 
 def _do_import_settings(
-    ctx: "FeatureContext",
-    popup: "Popup",
+    ctx: FeatureContext,
+    popup: Popup,
     on_import_complete: Callable[[], None],
 ) -> None:
     """設定をJSONファイルからインポート (Phase 27 / Phase 173 でファイル分割)

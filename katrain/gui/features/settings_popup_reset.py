@@ -28,9 +28,9 @@ if TYPE_CHECKING:
 
 
 def _reset_tab_settings(
-    ctx: "FeatureContext",
+    ctx: FeatureContext,
     tab_id: str,
-    popup: "Popup",
+    popup: Popup,
     on_reset_complete: Callable[[], None],
 ) -> None:
     """タブの設定をデフォルトに戻す (Phase 27 / Phase 173 でファイル分割)
