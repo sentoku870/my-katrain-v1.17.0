@@ -545,34 +545,45 @@ class KaTrainGui(Screen, KaTrainBase):
             else:  # game related actions
                 self.message_queue.put([self.game.game_id, message, args, kwargs])
 
+    # ------------------------------------------------------------------
+    # Phase 173: command dispatcher targets.
+    #
+    # Each ``_do_*`` method is a thin wrapper around a function in
+    # ``katrain.gui.features.commands``. The wrappers exist ONLY so that:
+    # 1. ``self.__call__('new-game-popup', ...)`` (which is the .kv /
+    #    shortcut entry point) can ``getattr(self, '_do_new_game_popup')``
+    #    to route to the correct handler;
+    # 2. existing KaTrainGui-internal callers (and some Kv bindings)
+    #    keep working without further changes.
+    #
+    # Future phases can collapse these into a single ``__call__`` table
+    # mapped to ``commands.do_*`` functions; the safety net lives here
+    # so Kivy / shortcut callers see no behavioural change.
+    # ------------------------------------------------------------------
+
     def _do_new_game(self, move_tree: Any = None, analyze_fast: bool = False, sgf_filename: str | None = None) -> None:
         game_commands.do_new_game(self, move_tree, analyze_fast, sgf_filename)
 
     def _do_insert_mode(self, mode: str = "toggle") -> None:
-        self._game_state_manager.do_insert_mode(mode)
+        analyze_commands.do_insert_mode(self, mode)
 
     def _do_ai_move(self, node: Any = None) -> None:
         game_commands.do_ai_move(self, node)
 
     def _do_undo(self, n_times: int | str = 1) -> None:
-        # "smart" mode handling stays here (requires player_info access)
-        times: int = 1
-        if n_times == "smart":
-            times = 1
-            if self.play_analyze_mode == MODE_PLAY and self.last_player_info.ai and self.next_player_info.human:
-                times = 2
-        elif isinstance(n_times, int):
-            times = n_times
-        self._game_state_manager.do_undo(times)
+        # Phase 173: routed through ``do_undo`` which already handles
+        # ``"smart"`` n_times internally; avoids the duplicated smart-mode
+        # branch that used to live here.
+        game_commands.do_undo(self, n_times)
 
     def _do_reset_analysis(self) -> None:
-        self._game_state_manager.do_reset_analysis()
+        analyze_commands.do_reset_analysis(self)
 
     def _do_resign(self) -> None:
-        self._game_state_manager.do_resign()
+        analyze_commands.do_resign(self)
 
     def _do_redo(self, n_times: int = 1) -> None:
-        self._game_state_manager.do_redo(n_times)
+        analyze_commands.do_redo(self, n_times)
 
     def _do_rotate(self) -> None:
         game_commands.do_rotate(self)
@@ -580,14 +591,11 @@ class KaTrainGui(Screen, KaTrainBase):
     def _do_find_mistake(self, fn: str = "redo") -> None:
         game_commands.do_find_mistake(self, fn)
 
-    # ------------------------------------------------------------------
-    # 重要局面ナビゲーション
-    # ------------------------------------------------------------------
     def _do_prev_important(self) -> None:
-        self._game_state_manager.do_prev_important()
+        analyze_commands.do_prev_important(self)
 
     def _do_next_important(self) -> None:
-        self._game_state_manager.do_next_important()
+        analyze_commands.do_next_important(self)
 
     def _do_switch_branch(self, *args: Any) -> None:
         game_commands.do_switch_branch(self, *args)
@@ -615,27 +623,25 @@ class KaTrainGui(Screen, KaTrainBase):
         analyze_commands.do_analyze_extra(self, mode, **kwargs)
 
     def _do_selfplay_setup(self, until_move: int | float, target_b_advantage: float | None = None) -> None:
-        if not self.game:
-            return
-        self.game.selfplay(int(until_move) if isinstance(until_move, float) else until_move, target_b_advantage)
+        game_commands.do_start_selfplay(self, until_move, target_b_advantage)
 
     def _do_select_box(self) -> None:
         popup_commands.do_select_box(self)
 
     def _do_new_game_popup(self) -> None:
-        self._popup_manager.open_new_game_popup()
+        popup_commands.do_new_game_popup(self)
 
     def _do_timer_popup(self) -> None:
-        self._popup_manager.open_timer_popup()
+        popup_commands.do_timer_popup(self)
 
     def _do_teacher_popup(self) -> None:
-        self._popup_manager.open_teacher_popup()
+        popup_commands.do_teacher_popup(self)
 
     def _do_config_popup(self) -> None:
         popup_commands.do_config_popup(self)
 
     def _do_ai_popup(self) -> None:
-        self._popup_manager.open_ai_popup()
+        popup_commands.do_ai_popup(self)
 
     def _do_engine_recovery_popup(self, error_message: str, code: Any) -> None:
         popup_commands.do_engine_recovery_popup(self, error_message, code)
@@ -656,20 +662,20 @@ class KaTrainGui(Screen, KaTrainBase):
         self._sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
 
     def _do_analyze_sgf_popup(self) -> None:
-        """Open SGF analysis popup. Delegates to SGFManager."""
-        self._sgf_manager.do_analyze_sgf_popup(self)
+        """Phase 173: routed through commands/."""
+        popup_commands.do_analyze_sgf_popup(self)
 
     def _do_open_recent_sgf(self) -> None:
-        """Open recent SGF dropdown. Delegates to SGFManager."""
-        self._sgf_manager.open_recent_sgf()
+        """Phase 173: routed through commands/."""
+        popup_commands.do_open_recent_sgf(self)
 
     def _do_save_game(self, filename: str | None = None) -> None:
         """Save game. Delegates to export_commands."""
         export_commands.do_save_game(self, filename)
 
     def _do_save_game_as_popup(self) -> None:
-        """Open save-as popup. Delegates to SGFManager."""
-        self._sgf_manager.do_save_game_as_popup(self)
+        """Phase 173: routed through commands/."""
+        popup_commands.do_save_game_as_popup(self)
 
     def _do_export_karte(self, *args: Any, **kwargs: Any) -> None:
         """Export karte. Delegates to export_commands."""
@@ -692,12 +698,12 @@ class KaTrainGui(Screen, KaTrainBase):
         return determine_user_color(self.game, username)
 
     def _do_export_summary(self, *args: Any, **kwargs: Any) -> None:
-        """Delegates to SummaryManager.do_export_summary() (Phase 96)."""
-        self._summary_manager.do_export_summary(*args, **kwargs)
+        """Phase 173: routed through commands/."""
+        export_commands.do_export_summary(self, *args, **kwargs)
 
     def _do_export_summary_ui(self, *args: Any, **kwargs: Any) -> None:
-        """Delegates to SummaryManager.do_export_summary_ui() (Phase 96)."""
-        self._summary_manager.do_export_summary_ui(*args, **kwargs)
+        """Phase 173: routed through commands/."""
+        export_commands.do_export_summary_ui(self, *args, **kwargs)
 
     def _extract_analysis_from_sgf_node(self, node: Any) -> dict[str, Any]:
         """Delegates to SummaryManager (Phase 96)."""
@@ -760,12 +766,12 @@ class KaTrainGui(Screen, KaTrainBase):
         self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
 
     def _do_mykatrain_settings_popup(self) -> None:
-        """Delegates to settings_popup.do_mykatrain_settings_popup()."""
-        do_mykatrain_settings_popup(self)
+        """Phase 173: routed through commands/."""
+        popup_commands.do_mykatrain_settings_popup(self)
 
     def _do_batch_analyze_popup(self) -> None:
-        """Delegates to BatchAnalysisController (Phase 133)."""
-        self._batch_analysis_controller.open_batch_analyze_popup()
+        """Phase 173: routed through commands/."""
+        popup_commands.do_batch_analyze_popup(self)
 
     def _do_diagnostics_popup(self) -> None:
         popup_commands.do_diagnostics_popup(self)
