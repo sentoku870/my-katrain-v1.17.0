@@ -23,10 +23,10 @@ from katrain.core.analysis.board_context import (
     extract_ownership_context,
 )
 from katrain.core.analysis.cluster_detectors import (
-    compute_confidence,
     _detect_group_death,
     _detect_missed_kill,
     _detect_territory_loss,
+    compute_confidence,
 )
 from katrain.core.analysis.ownership_cluster import (
     OwnershipCluster,
@@ -204,7 +204,6 @@ def compute_stones_at_node(
             # ``_find_group`` / ``_has_liberty`` live in ``cluster_geometry``;
             # imported lazily here to keep ``cluster_classifier`` free of a
             # top-level dependency on it (avoids an import cycle).
-            from katrain.core.analysis.cluster_geometry import _find_group, _has_liberty
 
             opponent = "W" if player == "B" else "B"
             for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
@@ -510,7 +509,7 @@ def get_cluster_context_for_move(
     game: Game,
     move_number: int,
     lang: str | None,
-    cache: "StoneCache | None" = None,
+    cache: StoneCache | None = None,
 ) -> str | None:
     """Get cluster context string for a move.
 
