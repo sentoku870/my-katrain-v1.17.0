@@ -14,17 +14,19 @@ This module provides:
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    cast,
-)
+from typing import TYPE_CHECKING
 
 from katrain.common.locale_utils import normalize_lang_code
 from katrain.core.analysis.board_context import (
     OwnershipContext,
     extract_ownership_context,
+)
+from katrain.core.analysis.cluster_detectors import (
+    compute_confidence,
+    _detect_group_death,
+    _detect_missed_kill,
+    _detect_territory_loss,
 )
 from katrain.core.analysis.ownership_cluster import (
     OwnershipCluster,
@@ -198,7 +200,12 @@ def compute_stones_at_node(
             # Place the stone
             board[row][col] = player
 
-            # Capture opponent stones (check adjacent groups)
+            # Capture opponent stones (check adjacent groups).
+            # ``_find_group`` / ``_has_liberty`` live in ``cluster_geometry``;
+            # imported lazily here to keep ``cluster_classifier`` free of a
+            # top-level dependency on it (avoids an import cycle).
+            from katrain.core.analysis.cluster_geometry import _find_group, _has_liberty
+
             opponent = "W" if player == "B" else "B"
             for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nc, nr = col + dc, row + dr
@@ -232,100 +239,6 @@ def compute_stones_at_node(
                 stones.add((col, row, cell_player))
 
     return frozenset(stones)
-
-
-def _find_group(
-    board: list[list[str | None]],
-    start_col: int,
-    start_row: int,
-    width: int,
-    height: int,
-) -> set[tuple[int, int]]:
-    """Find connected stones of the same color using BFS (O(1) with deque)."""
-    player = board[start_row][start_col]
-    if player is None:
-        return set()
-
-    visited: set[tuple[int, int]] = set()
-    queue: deque[tuple[int, int]] = deque([(start_col, start_row)])
-
-    while queue:
-        col, row = queue.popleft()  # O(1) with deque
-        if (col, row) in visited:
-            continue
-        if not (0 <= col < width and 0 <= row < height):
-            continue
-        if board[row][col] != player:
-            continue
-
-        visited.add((col, row))
-        for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            queue.append((col + dc, row + dr))
-
-    return visited
-
-
-def _has_liberty(
-    board: list[list[str | None]],
-    group: set[tuple[int, int]],
-    width: int,
-    height: int,
-) -> bool:
-    """Check if a group has any liberties."""
-    for col, row in group:
-        for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            nc, nr = col + dc, row + dr
-            if 0 <= nc < width and 0 <= nr < height and board[nr][nc] is None:
-                return True
-    return False
-
-
-# =====================================================================
-# Stone Cache
-# =====================================================================
-
-
-class StoneCache:
-    """Cache for stone positions during Karte generation (one game)."""
-
-    def __init__(self, game: Game):
-        self._game = game
-        self._board_size = game.board_size
-        self._cache: dict[int, StoneSet] = {}  # move_number -> stones
-
-    def get_stones_at_move(self, move_number: int) -> StoneSet:
-        """Get stones at a move number (cached).
-
-        Args:
-            move_number: 1-indexed move number (0=root)
-
-        Returns:
-            FrozenSet of (col, row, player) tuples
-        """
-        if move_number in self._cache:
-            return self._cache[move_number]
-
-        node = self._find_node_by_move_number(move_number)
-        if node is None:
-            return frozenset()
-
-        stones = compute_stones_at_node(node, self._board_size)
-        self._cache[move_number] = stones
-        return stones
-
-    def _find_node_by_move_number(self, move_number: int) -> GameNode | None:
-        """Find node by move number on mainline.
-
-        Uses ordered_children[0] for mainline traversal
-        (KaTrain convention, game.py:841 pattern).
-        """
-        node = self._game.root
-        for _ in range(move_number):
-            if not node.children:
-                return None
-            # ordered_children[0] = mainline
-            node = cast("GameNode", node.ordered_children[0])
-        return node
 
 
 # =====================================================================
@@ -395,134 +308,6 @@ def compute_cluster_ownership_avg(
             valid_count += 1
 
     return total / valid_count if valid_count > 0 else 0.0
-
-
-def _detect_group_death(
-    cluster: OwnershipCluster,
-    actor: str,
-    parent_stones: StoneSet,
-    child_stones: StoneSet,
-) -> tuple[bool, tuple[StonePosition, ...], str]:
-    """Detect if actor's stones were captured in cluster.
-
-    Returns:
-        (is_group_death, affected_stones, debug_reason)
-    """
-    # Get actor's stones in cluster at parent
-    parent_actor_stones = get_stones_in_cluster(
-        cluster,
-        frozenset(s for s in parent_stones if s[2] == actor),
-    )
-
-    # Get actor's stones in cluster at child
-    child_actor_stones_set = frozenset((s[0], s[1]) for s in child_stones if s[2] == actor)
-
-    # Find stones that disappeared
-    disappeared = []
-    for stone in parent_actor_stones:
-        if (stone[0], stone[1]) not in child_actor_stones_set:
-            disappeared.append(stone)
-
-    if disappeared:
-        return (
-            True,
-            tuple(disappeared),
-            f"Actor {actor} lost {len(disappeared)} stone(s) in cluster",
-        )
-    return (False, (), "No actor stones captured")
-
-
-def _detect_territory_loss(
-    cluster: OwnershipCluster,
-    actor: str,
-    parent_stones: StoneSet,
-    child_stones: StoneSet,
-) -> tuple[bool, str]:
-    """Detect if actor lost territory (no stone capture).
-
-    Returns:
-        (is_territory_loss, debug_reason)
-    """
-    # Check minimum delta threshold
-    if abs(cluster.sum_delta) < TERRITORY_LOSS_MIN_DELTA:
-        return (False, f"sum_delta {cluster.sum_delta:.2f} < {TERRITORY_LOSS_MIN_DELTA}")
-
-    # Get all stones in cluster at parent
-    parent_cluster_stones = get_stones_in_cluster(cluster, parent_stones)
-    child_cluster_stones = get_stones_in_cluster(cluster, child_stones)
-
-    # Check if any stones were captured (would be GROUP_DEATH)
-    parent_coords = frozenset((s[0], s[1]) for s in parent_cluster_stones)
-    child_coords = frozenset((s[0], s[1]) for s in child_cluster_stones)
-    if parent_coords - child_coords:
-        return (False, "Stone capture detected, not territory loss")
-
-    # Check if opponent gained (actor lost)
-    if is_opponent_gain(cluster, actor):
-        return (
-            True,
-            f"Territory loss: sum_delta={cluster.sum_delta:.2f} (opponent gain)",
-        )
-
-    return (False, "Not opponent gain")
-
-
-def _detect_missed_kill(
-    cluster: OwnershipCluster,
-    actor: str,
-    parent_ownership_ctx: OwnershipContext,
-    child_ownership_ctx: OwnershipContext,
-) -> tuple[bool, str]:
-    """Detect if actor failed to kill opponent's weak stones.
-
-    Uses ownership averaging to determine if:
-    1. Actor had advantage in parent (could have killed)
-    2. Opponent now has advantage in child (survived)
-
-    Returns:
-        (is_missed_kill, debug_reason)
-    """
-    parent_avg = compute_cluster_ownership_avg(cluster, parent_ownership_ctx)
-    child_avg = compute_cluster_ownership_avg(cluster, child_ownership_ctx)
-
-    # Convert to actor perspective
-    if actor == "B":
-        actor_adv_parent = parent_avg
-        actor_adv_child = child_avg
-    else:
-        actor_adv_parent = -parent_avg
-        actor_adv_child = -child_avg
-
-    # Check thresholds
-    actor_was_advantaged = actor_adv_parent >= WEAK_ADVANTAGE_THRESHOLD
-    opponent_now_advantaged = actor_adv_child <= -SURVIVED_ADVANTAGE_THRESHOLD
-
-    if actor_was_advantaged and opponent_now_advantaged:
-        return (
-            True,
-            f"Missed kill: actor had {actor_adv_parent:.2f}, opponent now {-actor_adv_child:.2f}",
-        )
-
-    return (False, f"Not missed kill: parent={actor_adv_parent:.2f}, child={actor_adv_child:.2f}")
-
-
-def compute_confidence(
-    semantics: ClusterSemantics,
-    sum_delta: float,
-    affected_stone_count: int,
-) -> float:
-    """Compute classification confidence (0.0-1.0).
-
-    Formula:
-        confidence = base + |sum_delta| * DELTA_SCALING_FACTOR + stone_bonus
-        capped to [0.0, 1.0]
-    """
-    base = BASE_CONFIDENCE.get(semantics, 0.0)
-    delta_bonus = abs(sum_delta) * DELTA_SCALING_FACTOR
-    stone_bonus = min(0.2, affected_stone_count * 0.05) if affected_stone_count > 0 else 0.0
-
-    confidence = base + delta_bonus + stone_bonus
-    return max(0.0, min(1.0, confidence))
 
 
 def should_inject(classified: ClassifiedCluster) -> bool:
@@ -725,7 +510,7 @@ def get_cluster_context_for_move(
     game: Game,
     move_number: int,
     lang: str | None,
-    cache: StoneCache | None = None,
+    cache: "StoneCache | None" = None,
 ) -> str | None:
     """Get cluster context string for a move.
 
@@ -849,7 +634,6 @@ __all__ = [
     "ClusterClassificationContext",
     # Stone reconstruction
     "compute_stones_at_node",
-    "StoneCache",
     # Classification helpers
     "is_opponent_gain",
     "get_stones_in_cluster",
@@ -869,6 +653,14 @@ __all__ = [
     "_detect_territory_loss",
     "_detect_missed_kill",
     "_find_mainline_node",
-    "_find_group",
-    "_has_liberty",
 ]
+
+# Phase 173: ``StoneCache`` / ``_find_group`` / ``_has_liberty`` were moved
+# to ``katrain.core.analysis.cluster_geometry``. Re-export them below
+# ``__all__`` so this module has no module-level dependency on
+# ``cluster_geometry`` (avoids an import cycle).
+from katrain.core.analysis.cluster_geometry import (  # noqa: E402, F401
+    StoneCache,
+    _find_group,
+    _has_liberty,
+)
