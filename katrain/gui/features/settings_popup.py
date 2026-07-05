@@ -4,41 +4,30 @@
 #
 # Phase 175: タブビルダーは settings_popup_tabs/ パッケージへ、
 # _save_* ヘルパーは settings_popup_savers.py へ分離済み。
-# 本モジュールは popup オーケストレーター + I/O ヘルパー（reset /
-# export / import）のみを保持する。
+# Phase 173: I/O ヘルパー（export / import）は settings_popup_io.py へ、
+# リセットアクションは settings_popup_reset.py へ分離。
+# 本モジュールは popup オーケストレーターのみを保持する。
 #
 # 公開API: do_mykatrain_settings_popup, _SettingsPopupContext
 
 from __future__ import annotations
 
-import json
-import logging
-import os
-import shutil
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
-from katrain.common.settings_export import (
-    EXCLUDED_SECTIONS,
-    TAB_RESET_KEYS,
-    atomic_save_config,
-    create_backup_path,
-    export_settings,
-    get_default_value,
-    parse_exported_settings,
-)
 from katrain.core import eval_metrics
-from katrain.core.constants import (
-    STATUS_ERROR,
-    STATUS_INFO,
-)
 from katrain.core.lang import i18n
+from katrain.gui.features.settings_popup_io import (  # noqa: F401 (re-export for backward compat)
+    _do_export_settings,
+    _do_import_settings,
+)
+from katrain.gui.features.settings_popup_reset import (  # noqa: F401 (re-export for backward compat)
+    _reset_tab_settings,
+)
 from katrain.gui.features.settings_popup_savers import (  # noqa: F401 (re-export for backward compat)
     _save_beginner_hints_settings,
     _save_engine_settings,
@@ -52,310 +41,6 @@ from katrain.gui.widgets.factory import Button, Label, Popup
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
-
-
-def _reset_tab_settings(
-    ctx: FeatureContext,
-    tab_id: str,
-    popup: Popup,
-    on_reset_complete: Callable[[], None],
-) -> None:
-    """タブの設定をデフォルトに戻す (Phase 27)
-
-    Args:
-        ctx: FeatureContext providing config, save_config, controls
-        tab_id: タブID ("analysis", "export")
-        popup: 親ポップアップ（リセット後に閉じてリロード用）
-        on_reset_complete: リセット完了後に呼ばれるコールバック
-    """
-    from katrain.gui.popups import I18NPopup
-
-    keys = TAB_RESET_KEYS.get(tab_id, [])
-    if not keys:
-        return
-
-    # リセット対象のキー名を表示用に整形
-    target_names = [key for _, key in keys]
-    tab_display_name = i18n._(f"mykatrain:settings:tab_{tab_id}")
-
-    # 確認ダイアログ
-    confirm_layout = BoxLayout(orientation="vertical", spacing=dp(10), padding=dp(10))
-    message_label = Label(
-        text=i18n._("mykatrain:settings:reset_confirm_message").format(
-            tab=tab_display_name, targets=", ".join(target_names)
-        ),
-        halign="center",
-        valign="middle",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-    )
-    message_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width * 0.9, None)))
-    confirm_layout.add_widget(message_label)
-
-    buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(40))
-    confirm_btn = Button(
-        text=i18n._("OK"),
-        background_color=Theme.BOX_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    cancel_btn = Button(
-        text=i18n._("Cancel"),
-        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
-    )
-    buttons_layout.add_widget(confirm_btn)
-    buttons_layout.add_widget(cancel_btn)
-    confirm_layout.add_widget(buttons_layout)
-
-    confirm_popup = I18NPopup(
-        title_key="mykatrain:settings:reset_confirm_title",
-        size=[dp(450), dp(200)],
-        content=confirm_layout,
-    ).__self__
-
-    def do_reset(*_args: Any) -> None:
-        """実際のリセット処理"""
-        affected_sections: set[str] = set()
-
-        for section, key in keys:
-            default_val = get_default_value(section, key)
-            if default_val is not None:
-                # config section を取得または作成
-                section_config = ctx.config(section) or {}
-                section_config[key] = default_val
-                ctx.set_config_section(section, section_config)
-                affected_sections.add(section)
-
-        # 影響セクションのみ保存
-        for section in affected_sections:
-            ctx.save_config(section)
-
-        ctx.controls.set_status(
-            i18n._("mykatrain:settings:reset_success").format(tab=tab_display_name),
-            STATUS_INFO,
-        )
-        confirm_popup.dismiss()
-
-        # 設定ポップアップをリロード
-        popup.dismiss()
-        on_reset_complete()
-
-    confirm_btn.bind(on_release=do_reset)
-    cancel_btn.bind(on_release=lambda *_args: confirm_popup.dismiss())
-    confirm_popup.open()
-
-
-def _do_export_settings(
-    ctx: FeatureContext,
-    popup: Popup,
-) -> None:
-    """設定をJSONファイルにエクスポート (Phase 27)
-
-    Opens a file save dialog and exports current settings to a JSON file.
-    Uses the export_settings function from settings_export module.
-
-    Args:
-        ctx: FeatureContext providing config, controls
-        popup: 親ポップアップ（エクスポート後も開いたまま）
-    """
-    from tkinter import Tk, filedialog
-
-    # Create hidden Tk root for file dialog
-    root = Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-
-    try:
-        file_path = filedialog.asksaveasfilename(
-            title=i18n._("mykatrain:settings:export"),
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            initialfile="katrain_settings.json",
-        )
-    finally:
-        root.destroy()
-
-    if not file_path:
-        return  # User cancelled
-
-    try:
-        # Get current config and app version
-        config_dict = dict(ctx._config)  # type: ignore[attr-defined]
-        app_version = ctx.config("general", {}).get("version", "unknown")
-
-        # Export to JSON string
-        json_str = export_settings(config_dict, app_version)
-
-        # Write to file
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(json_str)
-
-        ctx.controls.set_status(
-            i18n._("mykatrain:settings:export_success").format(path=file_path),
-            STATUS_INFO,
-        )
-    except OSError as e:
-        # File write failure: permission denied, disk full, invalid path
-        logging.warning(f"Settings export failed to {file_path}: {e}", exc_info=True)
-        ctx.controls.set_status(f"Export failed: {e}", STATUS_ERROR)
-    except Exception as e:
-        # Boundary fallback: unexpected error during settings export
-        logging.error(f"Unexpected error exporting settings to {file_path}: {e}", exc_info=True)
-        ctx.controls.set_status(f"Export failed: {e}", STATUS_ERROR)
-
-
-def _do_import_settings(
-    ctx: FeatureContext,
-    popup: Popup,
-    on_import_complete: Callable[[], None],
-) -> None:
-    """設定をJSONファイルからインポート (Phase 27)
-
-    Opens a file selection dialog and imports settings from a JSON file.
-    Creates a backup before modifying config and uses atomic save.
-
-    Args:
-        ctx: FeatureContext providing config, config_file, controls, _config_store
-        popup: 親ポップアップ（インポート後に閉じてリロード用）
-        on_import_complete: インポート完了後に呼ばれるコールバック
-    """
-    from tkinter import Tk, filedialog
-
-    # Create hidden Tk root for file dialog
-    root = Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)
-
-    try:
-        file_path = filedialog.askopenfilename(
-            title=i18n._("mykatrain:settings:import_title"),
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-        )
-    finally:
-        root.destroy()
-
-    if not file_path:
-        return  # User cancelled
-
-    try:
-        # Read JSON file
-        with open(file_path, encoding="utf-8") as f:
-            json_str = f.read()
-
-        # Parse and validate
-        imported = parse_exported_settings(json_str)
-
-    except ValueError as e:
-        # JSON parse or validation error
-        logging.warning(f"Settings import validation failed: {e}")
-        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
-        return
-    except (OSError, UnicodeDecodeError) as e:
-        # File read failure: file not found, permission denied, encoding error
-        logging.warning(f"Settings import read failed from {file_path}: {e}", exc_info=True)
-        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
-        return
-    except Exception as e:
-        # Boundary fallback: unexpected error during settings import
-        logging.error(f"Unexpected error importing settings from {file_path}: {e}", exc_info=True)
-        ctx.controls.set_status(f"Import failed: {e}", STATUS_ERROR)
-        return
-
-    # Create backup
-    backup_path = create_backup_path(ctx.config_file)
-    try:
-        shutil.copy2(ctx.config_file, backup_path)
-    except OSError as e:
-        # Backup failure: permission denied, disk full
-        logging.warning(f"Settings import backup failed: {e}", exc_info=True)
-        ctx.controls.set_status(f"Backup failed: {e}", STATUS_ERROR)
-        return
-
-    # Save original config for rollback
-    # Note: Accessing private _config is intentional (Phase 111 scope-out)
-    original_config = {
-        k: dict(v) if isinstance(v, dict) else v
-        for k, v in ctx._config.items()  # type: ignore[attr-defined]
-    }
-
-    try:
-        # Update config in memory
-        for section, values in imported.sections.items():
-            if section in EXCLUDED_SECTIONS:
-                continue
-            if section not in ctx._config:  # type: ignore[attr-defined]
-                ctx._config[section] = {}  # type: ignore[attr-defined]
-            ctx._config[section].update(values)  # type: ignore[attr-defined]
-
-        # Atomic save
-        atomic_save_config(ctx._config, ctx.config_file)  # type: ignore[attr-defined]
-
-        # Reload store (reload-then-sync pattern)
-        ctx._config_store._load()  # type: ignore[attr-defined]
-        ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
-
-    except (OSError, json.JSONDecodeError) as e:
-        # Atomic save or reload failure
-        logging.error(f"Settings import save failed: {e}", exc_info=True)
-        # Rollback on failure
-        ctx._config = original_config  # type: ignore[attr-defined]
-        rollback_failed = False
-        try:
-            shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()  # type: ignore[attr-defined]
-            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
-        except Exception as rollback_err:
-            # Boundary fallback: rollback itself failed.
-            # At this point the config may be in an inconsistent state.
-            # We log but cannot recover - user must restart or manually fix.
-            logging.error(
-                f"CRITICAL: Settings rollback failed after import error. "
-                f"Config may be inconsistent. Error: {rollback_err}",
-                exc_info=True,
-            )
-            rollback_failed = True
-        if rollback_failed:
-            ctx.controls.set_status(
-                f"Import failed, restore may be incomplete. Restart recommended. Error: {e}",
-                STATUS_ERROR,
-            )
-        else:
-            ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
-        return
-    except Exception as e:
-        # Boundary fallback: unexpected error during save
-        logging.error(f"Unexpected error during settings save: {e}", exc_info=True)
-        # Rollback on failure
-        ctx._config = original_config  # type: ignore[attr-defined]
-        rollback_failed = False
-        try:
-            shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()  # type: ignore[attr-defined]
-            ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
-        except Exception as rollback_err:
-            logging.error(
-                f"CRITICAL: Settings rollback failed after import error. "
-                f"Config may be inconsistent. Error: {rollback_err}",
-                exc_info=True,
-            )
-            rollback_failed = True
-        if rollback_failed:
-            ctx.controls.set_status(
-                f"Import failed, restore may be incomplete. Restart recommended. Error: {e}",
-                STATUS_ERROR,
-            )
-        else:
-            ctx.controls.set_status(f"Import failed, restored: {e}", STATUS_ERROR)
-        return
-
-    ctx.controls.set_status(
-        i18n._("mykatrain:settings:import_success").format(backup=backup_path),
-        STATUS_INFO,
-    )
-
-    # Reload settings popup
-    popup.dismiss()
-    on_import_complete()
 
 
 # =============================================================================
