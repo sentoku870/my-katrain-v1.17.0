@@ -56,3 +56,26 @@ def do_open_output_folder(ctx: KaTrainGui, *args: Any, **kwargs: Any) -> None:
     from katrain.gui.features.report_navigator import open_output_folder
 
     open_output_folder(ctx)
+
+
+# ---------------------------------------------------------------------------
+# Phase 173: Summary export commands (delegated to SummaryManager).
+# ---------------------------------------------------------------------------
+
+
+def do_export_summary(ctx: KaTrainGui, *args: Any, **kwargs: Any) -> None:
+    """Export a multi-game summary (delegated to SummaryManager, Phase 96).
+
+    Args:
+        ctx: KaTrainGui instance
+    """
+    ctx._summary_manager.do_export_summary(*args, **kwargs)
+
+
+def do_export_summary_ui(ctx: KaTrainGui, *args: Any, **kwargs: Any) -> None:
+    """Export summary then open the latest report (delegated to SummaryManager, Phase 96).
+
+    Args:
+        ctx: KaTrainGui instance
+    """
+    ctx._summary_manager.do_export_summary_ui(*args, **kwargs)

@@ -98,6 +98,19 @@ def do_selfplay_setup(
     ctx.engine.target_b_advantage = target_b_advantage
 
 
+def do_start_selfplay(ctx: KaTrainGui, until_move: int | float, target_b_advantage: float | None = None) -> None:
+    """Enter self-play mode (delegates to ``Game.selfplay``).
+
+    Args:
+        ctx: KaTrainGui instance
+        until_move: Stop self-play after this many moves
+        target_b_advantage: Target score advantage for black
+    """
+    if not ctx.game:
+        return
+    ctx.game.selfplay(int(until_move) if isinstance(until_move, float) else until_move, target_b_advantage)
+
+
 def do_ai_move(ctx: KaTrainGui, node: Any = None) -> None:
     """Generate and play an AI move using the next player's strategy.
 
