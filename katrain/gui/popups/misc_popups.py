@@ -34,15 +34,40 @@ class GameReportPopup(BoxLayout):
     player_infos = DictProperty({})
     button = ObjectProperty(None)
 
+    MAX_REFRESH_ATTEMPTS = 30  # ~30 seconds at 1s polling; prevents infinite loops
+
     def __init__(self, katrain: Any, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.katrain = katrain
         self.depth_filter = None
+        self._refresh_event = None
+        self._disposed = False
+        self._refresh_attempts = 0
         Clock.schedule_once(self._refresh, 0)
 
     def set_depth_filter(self, filter: Any) -> None:
         self.depth_filter = filter
-        Clock.schedule_once(self._refresh, 0)
+        self._refresh_attempts = 0
+        self._schedule_next_refresh(0)
+
+    def cancel_refresh(self) -> None:
+        """Stop the polling loop. Safe to call multiple times.
+
+        Called by the wrapping popup's on_dismiss hook to prevent
+        the Clock schedule from leaking after the popup is closed.
+        """
+        self._disposed = True
+        if self._refresh_event is not None:
+            self._refresh_event.cancel()
+            self._refresh_event = None
+
+    def _schedule_next_refresh(self, delay: float) -> None:
+        """Schedule the next _refresh, replacing any previous schedule."""
+        if self._disposed:
+            return
+        if self._refresh_event is not None:
+            self._refresh_event.cancel()
+        self._refresh_event = Clock.schedule_once(self._refresh, delay)
 
     def _refresh(self, _dt: float = 0) -> None:
         game = self.katrain.game
@@ -125,6 +150,11 @@ class GameReportPopup(BoxLayout):
                 else rank_label(player_info.calculated_rank)
             )
 
-        # if not done analyzing, check again in 1s
-        if not self.katrain.engine.is_idle():
-            Clock.schedule_once(self._refresh, 1)
+        # if not done analyzing, check again in 1s (with max-attempts guard)
+        if not self.katrain.engine.is_idle() and self._refresh_attempts < self.MAX_REFRESH_ATTEMPTS:
+            self._refresh_attempts += 1
+            self._schedule_next_refresh(1)
+        else:
+            # Either the engine went idle (report is final) or we hit the
+            # max-attempts safety stop; reset for next open.
+            self._refresh_attempts = 0
