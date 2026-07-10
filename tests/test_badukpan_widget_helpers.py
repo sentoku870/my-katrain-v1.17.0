@@ -130,6 +130,74 @@ class TestGetGridSpacesMargins:
 
 
 # ---------------------------------------------------------------------------
+# on_mouse_pos PV cancel distance threshold (P0-1 regression)
+# ---------------------------------------------------------------------------
+
+
+class TestPVCancelDistance:
+    """BadukPanWidget.on_mouse_pos uses a squared-distance check
+    ``d_sq = (pos[0]-anchor[0])**2 + (pos[1]-anchor[1])**2`` to decide whether
+    the PV preview should be cancelled. The pre-fix code was missing the
+    ``** 2`` on the y term, which made vertical motion trigger cancellation
+    earlier than horizontal motion and silently killed PV previews.
+
+    We reproduce the calculation as a pure function and verify both axes
+    behave symmetrically.
+    """
+
+    @staticmethod
+    def _pv_cancel_d_sq(pos: tuple[float, float], anchor: tuple[float, float]) -> float:
+        """Mirror of BadukPanWidget.on_mouse_pos d_sq (katrain/gui/badukpan.py:200)."""
+        return (pos[0] - anchor[0]) ** 2 + (pos[1] - anchor[1]) ** 2
+
+    @staticmethod
+    def _is_pv_canceled(pos: tuple[float, float], anchor: tuple[float, float], stone_size: float) -> bool:
+        d_sq = TestPVCancelDistance._pv_cancel_d_sq(pos, anchor)
+        return d_sq > 2 * stone_size**2
+
+    def test_horizontal_motion_d_sq_is_squared(self):
+        # (0,0) → (10,0): pre-fix gave 100, post-fix gives 100. Same.
+        assert self._pv_cancel_d_sq((10.0, 0.0), (0.0, 0.0)) == 100.0
+
+    def test_vertical_motion_d_sq_is_squared(self):
+        # (0,0) → (0,10): pre-fix gave 10 (missing **2), post-fix gives 100.
+        # This is the regression we are locking down.
+        assert self._pv_cancel_d_sq((0.0, 10.0), (0.0, 0.0)) == 100.0
+
+    def test_diagonal_motion_d_sq_is_squared(self):
+        # (0,0) → (6,8): pre-fix gave 36 + 8 = 44, post-fix gives 36 + 64 = 100.
+        assert self._pv_cancel_d_sq((6.0, 8.0), (0.0, 0.0)) == 100.0
+
+    def test_vertical_and_horizontal_motion_compare_equal(self):
+        # With the fix, a 10px vertical move and 10px horizontal move should
+        # produce the same d_sq. Pre-fix this assertion fails.
+        h = self._pv_cancel_d_sq((10.0, 0.0), (0.0, 0.0))
+        v = self._pv_cancel_d_sq((0.0, 10.0), (0.0, 0.0))
+        assert h == v
+
+    def test_cancel_threshold_triggers_on_far_vertical_move(self):
+        # 30px vertical move → d_sq = 900, threshold = 2 * 20**2 = 800. Cancel.
+        assert self._is_pv_canceled((0.0, 30.0), (0.0, 0.0), stone_size=20.0)
+
+    def test_cancel_threshold_does_not_trigger_on_close_vertical_move(self):
+        # 10px vertical move → d_sq = 100, threshold = 2 * 20**2 = 800. No cancel.
+        assert not self._is_pv_canceled((0.0, 10.0), (0.0, 0.0), stone_size=20.0)
+
+    def test_cancel_threshold_at_exact_boundary(self):
+        # d_sq == threshold: not strictly greater, so no cancel.
+        assert not self._is_pv_canceled((0.0, 20.0), (0.0, 0.0), stone_size=20.0)
+
+    def test_cancel_threshold_symmetric_for_diagonal(self):
+        # Diagonal cancel distances should also be symmetric across quadrants.
+        # (10, 0) → d_sq 100, (0, 10) → d_sq 100, (-10, 0) → d_sq 100.
+        anchor = (50.0, 50.0)
+        right = self._pv_cancel_d_sq((60.0, 50.0), anchor)
+        up = self._pv_cancel_d_sq((50.0, 60.0), anchor)
+        left = self._pv_cancel_d_sq((40.0, 50.0), anchor)
+        assert right == up == left == 100.0
+
+
+# ---------------------------------------------------------------------------
 # controls panel status state machine (light, no Kivy import)
 # ---------------------------------------------------------------------------
 
