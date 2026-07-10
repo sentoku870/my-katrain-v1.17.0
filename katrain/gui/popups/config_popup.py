@@ -360,8 +360,29 @@ class ConfigPopup(BaseConfigPopup):
     def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
         Clock.schedule_once(self.check_katas)
-        MDApp.get_running_app().bind(language=self.check_models)
-        MDApp.get_running_app().bind(language=self.check_katas)
+        self._app = MDApp.get_running_app()
+        self._app.bind(language=self.check_models)
+        self._app.bind(language=self.check_katas)
+
+    def cleanup(self) -> None:
+        """Release the two language bindings before the popup is destroyed.
+
+        P2-A (H6): Without this, every ConfigPopup open/close cycle added
+        two more ``language`` callbacks on MDApp, causing visible slowdown
+        in heavy localization switching. Idempotent.
+        """
+        app = getattr(self, "_app", None)
+        if app is None:
+            return
+        try:
+            app.unbind(language=self.check_models)
+        except Exception:
+            pass
+        try:
+            app.unbind(language=self.check_katas)
+        except Exception:
+            pass
+        self._app = None
 
     def get_model_display_text(self, model_path: str) -> str:
         """Get localized display text for model.

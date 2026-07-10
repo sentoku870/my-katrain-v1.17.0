@@ -498,6 +498,15 @@ class KaTrainGui(Screen, KaTrainBase):
         if hasattr(self, "controls") and self.controls and hasattr(self.controls, "cleanup"):
             self.controls.cleanup()
 
+        # BadukPanWidget の Window.bind / ClockEvent / Texture cache を解放
+        # (P2-A: H1+H2+H4)
+        board_gui = getattr(self, "board_gui", None)
+        if board_gui is not None and hasattr(board_gui, "cleanup"):
+            try:
+                board_gui.cleanup()
+            except Exception:
+                pass
+
         self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
 
     def update_state(self, redraw_board: bool = False) -> None:  # redirect to message queue thread
