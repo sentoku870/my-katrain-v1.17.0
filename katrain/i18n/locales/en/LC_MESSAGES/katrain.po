@@ -2691,3 +2691,40 @@ msgstr "Cancel"
 
 msgid "dialog:title:error"
 msgstr "Error"
+
+# Phase G-2: Karte error template strings (user-facing, NOT LLM-facing).
+# These appear in the markdown error karte shown to the user when
+# generation fails (see katrain/core/reports/karte/builder.py).
+
+msgid "karte:error:title"
+msgstr "Karte (ERROR)"
+
+msgid "karte:error:meta_header"
+msgstr "## Meta"
+
+msgid "karte:error:game_label"
+msgstr "Game"
+
+msgid "karte:error:player_filter_label"
+msgstr "Player Filter"
+
+msgid "karte:error:player_filter_both"
+msgstr "both"
+
+msgid "karte:error:section_title"
+msgstr "## ERROR"
+
+msgid "karte:error:intro"
+msgstr "Karte generation failed with the following error:"
+
+msgid "karte:error:checklist_header"
+msgstr "Please check:"
+
+msgid "karte:error:check_analyzed"
+msgstr "The game has been analyzed (KT property present)"
+
+msgid "karte:error:check_sgf"
+msgstr "The SGF file is not corrupted"
+
+msgid "karte:error:check_katago"
+msgstr "KataGo engine is running correctly"

@@ -2572,3 +2572,38 @@ msgstr "キャンセル"
 
 msgid "dialog:title:error"
 msgstr "エラー"
+
+# Phase G-2: Karte error template strings (user-facing).
+
+msgid "karte:error:title"
+msgstr "カルテ (エラー)"
+
+msgid "karte:error:meta_header"
+msgstr "## メタ情報"
+
+msgid "karte:error:game_label"
+msgstr "対局"
+
+msgid "karte:error:player_filter_label"
+msgstr "プレイヤーフィルター"
+
+msgid "karte:error:player_filter_both"
+msgstr "両方"
+
+msgid "karte:error:section_title"
+msgstr "## エラー"
+
+msgid "karte:error:intro"
+msgstr "カルテ生成中に以下のエラーが発生しました:"
+
+msgid "karte:error:checklist_header"
+msgstr "以下を確認してください:"
+
+msgid "karte:error:check_analyzed"
+msgstr "対局が解析済みであるか (KT プロパティが存在するか)"
+
+msgid "karte:error:check_sgf"
+msgstr "SGF ファイルが破損していないか"
+
+msgid "karte:error:check_katago"
+msgstr "KataGo エンジンが正常に動作しているか"

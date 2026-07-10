@@ -133,26 +133,35 @@ def _build_error_karte(
     player_filter: str | None,
     error_msg: str,
 ) -> str:
-    """Build a minimal karte with ERROR section when generation fails."""
+    """Build a minimal karte with ERROR section when generation fails.
+
+    Phase G-2: the user-facing strings in this template go through
+    ``i18n._()`` so the Japanese locale gets a properly translated
+    error karte. The original strings remain as the default (English)
+    catalog entry in :mod:`katrain.i18n.locales` so a locale switch
+    failure (or running outside the GUI) does not break this path.
+    """
+    from katrain.core.lang import i18n
+
     sections = [
-        "# Karte (ERROR)",
+        f"# {i18n._('karte:error:title')}",
         "",
-        "## Meta",
-        f"- Game: {game_id}",
-        f"- Player Filter: {player_filter or 'both'}",
+        i18n._("karte:error:meta_header"),
+        f"- {i18n._('karte:error:game_label')}: {game_id}",
+        f"- {i18n._('karte:error:player_filter_label')}: {player_filter or i18n._('karte:error:player_filter_both')}",
         "",
-        "## ERROR",
+        i18n._("karte:error:section_title"),
         "",
-        "Karte generation failed with the following error:",
+        i18n._("karte:error:intro"),
         "",
         "```",
         error_msg,
         "```",
         "",
-        "Please check:",
-        "- The game has been analyzed (KT property present)",
-        "- The SGF file is not corrupted",
-        "- KataGo engine is running correctly",
+        i18n._("karte:error:checklist_header"),
+        f"- {i18n._('karte:error:check_analyzed')}",
+        f"- {i18n._('karte:error:check_sgf')}",
+        f"- {i18n._('karte:error:check_katago')}",
         "",
     ]
     return "\n".join(sections)
