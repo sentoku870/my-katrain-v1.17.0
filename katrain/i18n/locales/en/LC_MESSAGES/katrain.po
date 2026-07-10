@@ -2657,3 +2657,24 @@ msgstr "Single Option"
 msgid "diagnosis:note:chaos"
 msgstr "Complex Position (High Volatility)"
 
+
+msgid "focus:black"
+msgstr "Black Priority"
+
+msgid "focus:white"
+msgstr "White Priority"
+
+msgid "focus:black-active"
+msgstr "★ Black Priority"
+
+msgid "focus:white-active"
+msgstr "★ White Priority"
+
+msgid "prev-important-move"
+msgstr "Prev Important"
+
+msgid "next-important-move"
+msgstr "Next Important"
+
+msgid "important-line"
+msgstr "Important"

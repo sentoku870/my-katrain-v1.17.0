@@ -315,18 +315,18 @@
             height: dp(32)
             spacing: dp(4)
             Button:
-                text: '前の重要局面'
+                text: i18n._('prev-important-move')
                 size_hint_x: 0.4
                 font_size: sp(12)
                 on_release: root.katrain("prev_important")
             Button:
-                text: '次の重要局面'
+                text: i18n._('next-important-move')
                 size_hint_x: 0.4
                 font_size: sp(12)
                 on_release: root.katrain("next_important")
             ToggleButton:
                 id: important_line_toggle
-                text: '重要局面'
+                text: i18n._('important-line')
                 size_hint_x: 0.2
                 state: "down"
                 font_size: sp(12)
