@@ -165,8 +165,9 @@ def _collect_score_leads(game: Game) -> list[float]:
 def _compute_volatility(values: list[float]) -> float | None:
     """Compute volatility as population standard deviation.
 
-    Mirrors Phase 61 logic (katrain/core/analysis/risk/analyzer.py:178-195).
-    Copied here to avoid importing private function.
+    Standalone helper: kept local to avoid a dependency on the private
+    helper inside ``katrain/core/analysis/`` that would otherwise have
+    to be promoted to the public API just for this single call site.
 
     Args:
         values: List of scoreLead values (already validated)
@@ -175,8 +176,8 @@ def _compute_volatility(values: list[float]) -> float | None:
         Population standard deviation, or None if len(values) < 2
 
     Note:
-        Uses /n (population), not /n-1 (sample).
-        This matches Phase 61 thresholds.
+        Uses /n (population), not /n-1 (sample). This matches the
+        volatility convention used elsewhere in the analysis layer.
     """
     if len(values) < 2:
         return None

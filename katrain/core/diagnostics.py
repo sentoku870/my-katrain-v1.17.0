@@ -127,8 +127,11 @@ def _get_gpu_info() -> str:
         if sys.platform == "win32":
             import subprocess
 
-            cmd = "wmic path win32_videocontroller get name"
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+            process = subprocess.Popen(
+                ["wmic", "path", "win32_videocontroller", "get", "name"],
+                stdout=subprocess.PIPE,
+                shell=False,
+            )
             out, _ = process.communicate()
             output = out.decode("utf-8", errors="ignore").strip().split("\n")
             if len(output) > 1:
