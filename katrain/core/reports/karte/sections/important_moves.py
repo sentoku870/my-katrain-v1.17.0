@@ -242,9 +242,7 @@ def critical_3_section_for(
         # (LLMs can resolve IDs from meta.definitions.primary_tags).
         # We include it for backward compatibility with existing LLM
         # consumers but the ID is the canonical field.
-        meaning_tag_label = (
-            get_meaning_tag_label_safe(cm.meaning_tag_id, iso_lang) if cm.meaning_tag_id else None
-        )
+        meaning_tag_label = get_meaning_tag_label_safe(cm.meaning_tag_id, iso_lang) if cm.meaning_tag_id else None
         if not meaning_tag_label:
             meaning_tag_label = None
 

@@ -165,15 +165,11 @@ def _compute_player_win_loss_analysis(
     win_total_loss = loss_total_loss = draw_total_loss = 0.0
     win_count_loss = loss_count_loss = draw_count_loss = 0
     for gd in game_data_list:
-        outcome = gd.outcome if gd.outcome is not None else (
-            parse_result(gd.result) if gd.result else None
-        )
+        outcome = gd.outcome if gd.outcome is not None else (parse_result(gd.result) if gd.result else None)
         if outcome is None:
             unknown_games += 1
             continue
-        player_outcome = (
-            outcome.black if player_name == gd.player_black else outcome.white
-        )
+        player_outcome = outcome.black if player_name == gd.player_black else outcome.white
         if player_outcome == PlayerOutcome.WIN:
             win_games += 1
             for m in gd.snapshot.moves:
@@ -371,6 +367,7 @@ def _build_player_stats_block(
     top_mistakes: list[MistakeItem] = []
     max_count = eval_metrics.get_important_moves_limit(confidence_level)
     from katrain.core.reports.constants import SUMMARY_DEFAULT_MAX_WORST_MOVES
+
     display_limit = min(SUMMARY_DEFAULT_MAX_WORST_MOVES, max_count)
 
     sorted_moves = sorted(
@@ -423,9 +420,7 @@ def _build_player_stats_block(
 
     from katrain.core.reports.sections import build_opponent_strength_loss_correlation
 
-    opponent_correlation = build_opponent_strength_loss_correlation(
-        game_data_list, player_name
-    )
+    opponent_correlation = build_opponent_strength_loss_correlation(game_data_list, player_name)
 
     return {
         "overall": overall,
@@ -452,9 +447,7 @@ def _compute_loss_progression_block(
 
     aggregated_buckets: dict[tuple[int, int], dict[str, float | int]] = {}
     for gd in game_data_list:
-        for b in compute_loss_progression(
-            list(gd.snapshot.moves), bucket_size=10, truncate_end_move=False
-        ):
+        for b in compute_loss_progression(list(gd.snapshot.moves), bucket_size=10, truncate_end_move=False):
             bucket_key: tuple[int, int] = (b.start_move, b.end_move)
             if bucket_key not in aggregated_buckets:
                 aggregated_buckets[bucket_key] = {
@@ -613,9 +606,7 @@ def build_summary_json(
     only_even = bool(buckets["even"]) and not buckets["handicapped"] and not buckets["unknown"]
     only_handicapped = bool(buckets["handicapped"]) and not buckets["even"] and not buckets["unknown"]
     for player_name, _stats in player_stats.items():
-        all_block = _build_player_stats_block(
-            game_data_list, player_name, all_games_for_top_mistakes=game_data_list
-        )
+        all_block = _build_player_stats_block(game_data_list, player_name, all_games_for_top_mistakes=game_data_list)
         block: dict[str, Any] = dict(all_block)  # shallow copy
 
         if buckets["even"] and not only_even:
@@ -647,9 +638,7 @@ def build_summary_json(
     if buckets["even"] and not only_even_lp:
         loss_progression["even"] = _compute_loss_progression_block(buckets["even"])
     if buckets["handicapped"] and not only_handicapped_lp:
-        loss_progression["handicapped"] = _compute_loss_progression_block(
-            buckets["handicapped"]
-        )
+        loss_progression["handicapped"] = _compute_loss_progression_block(buckets["handicapped"])
 
     return {
         "schema_version": REPORT_SCHEMA_VERSION,

@@ -61,9 +61,8 @@ class TestImportResolution:
                     continue
                 failures.append((mod_name, type(e).__name__, str(e)))
 
-        assert not failures, (
-            "Modules failed to import (likely a broken dependency):\n"
-            + "\n".join(f"  - {m}: {t}: {msg}" for m, t, msg in failures)
+        assert not failures, "Modules failed to import (likely a broken dependency):\n" + "\n".join(
+            f"  - {m}: {t}: {msg}" for m, t, msg in failures
         )
 
     def test_module_walk_complete(self) -> None:
@@ -75,8 +74,7 @@ class TestImportResolution:
         """
         modules = list(_iter_katrain_modules())
         assert len(modules) >= 200, (
-            f"Only found {len(modules)} production modules; "
-            "expected ≥200. Check pkgutil.walk_packages setup."
+            f"Only found {len(modules)} production modules; expected ≥200. Check pkgutil.walk_packages setup."
         )
 
 

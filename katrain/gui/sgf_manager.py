@@ -328,9 +328,13 @@ class SGFManager:
                 popup_contents.update_config(False)
                 self._save_config("general")
                 # Check if 'fast' attribute exists (for backward compatibility)
-                fast_mode = getattr(popup_contents, 'fast', None)
-                fast_active = fast_mode.active if fast_mode is not None and hasattr(fast_mode, 'active') else False
-                rewind_active = popup_contents.rewind.active if hasattr(popup_contents, 'rewind') and hasattr(popup_contents.rewind, 'active') else True
+                fast_mode = getattr(popup_contents, "fast", None)
+                fast_active = fast_mode.active if fast_mode is not None and hasattr(fast_mode, "active") else False
+                rewind_active = (
+                    popup_contents.rewind.active
+                    if hasattr(popup_contents, "rewind") and hasattr(popup_contents.rewind, "active")
+                    else True
+                )
                 self.load_sgf_file(filename, fast_active, rewind_active)
 
             popup_contents.filesel.on_success = readfile

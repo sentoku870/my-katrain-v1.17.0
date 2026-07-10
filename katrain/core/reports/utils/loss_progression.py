@@ -16,6 +16,7 @@ aggregation) ``end_move`` is kept at the canonical value
 (``start_move + bucket_size - 1``) so identical windows from games of
 different lengths merge under the same ``(start_move, end_move)`` key.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -100,14 +101,12 @@ def compute_loss_progression(
         buckets_dict.setdefault((start, end), []).append(mv)
 
     out: list[LossBucket] = []
-    for (start, end) in sorted(buckets_dict):
+    for start, end in sorted(buckets_dict):
         bucket_moves = buckets_dict[(start, end)]
         count = len(bucket_moves)
         total_loss = sum(get_canonical_loss_from_move(m) for m in bucket_moves)
         rounded_total = round(total_loss, 2)
-        mistake_count = sum(
-            1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD
-        )
+        mistake_count = sum(1 for m in bucket_moves if get_canonical_loss_from_move(m) >= MISTAKE_THRESHOLD)
         final_end_move = min(end, max(mv.move_number for mv in bucket_moves)) if truncate_end_move else end
         out.append(
             LossBucket(

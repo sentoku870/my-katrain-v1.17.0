@@ -133,16 +133,12 @@ class TestSaveMyKatrainSettings:
         from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
-        _save_mykatrain_settings(
-            ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=True
-        )
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=True)
         ctx.update_engine_config.assert_called_once_with(disabled=True)
 
     def test_disabled_false_passes_through(self):
         from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
-        _save_mykatrain_settings(
-            ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=False
-        )
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=False)
         ctx.update_engine_config.assert_called_once_with(disabled=False)

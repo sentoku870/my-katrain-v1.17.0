@@ -21,7 +21,6 @@ from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 
 from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
-from katrain.core.game import Move
 from katrain.core.beginner.hints import (
     get_beginner_hint_cached,
     is_coords_valid,
@@ -38,6 +37,7 @@ from katrain.core.constants import (
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
 )
+from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.utils import format_visits
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
@@ -185,7 +185,13 @@ def draw_kata_hint_moves(
     top_move_coords = None
     for move_dict in hint_moves:
         top_move_coords = draw_kata_hint_marker(
-            widget, current_node, next_player, move_dict, child_moves, top_moves_show, low_visits_threshold,
+            widget,
+            current_node,
+            next_player,
+            move_dict,
+            child_moves,
+            top_moves_show,
+            low_visits_threshold,
             top_move_coords,
         )
     return top_move_coords
@@ -211,11 +217,7 @@ def draw_kata_hint_marker(
     scale = Theme.HINT_SCALE
     text_on = True
     alpha = Theme.HINTS_ALPHA
-    if (
-        move_dict["visits"] < low_visits_threshold
-        and not engine_best_move
-        and move_dict["move"] not in child_moves
-    ):
+    if move_dict["visits"] < low_visits_threshold and not engine_best_move and move_dict["move"] not in child_moves:
         scale = Theme.UNCERTAIN_HINT_SCALE
         text_on = False
         alpha = Theme.HINTS_LO_ALPHA

@@ -32,7 +32,7 @@ def extract_game_stats(
     target_visits: int | None = None,
     source_index: int = 0,
     snapshot: Any | None = None,
-    skill_preset: str | None = None, # Phase 126
+    skill_preset: str | None = None,  # Phase 126
 ) -> dict[str, Any] | None:
     """Extract statistics from a Game object for summary generation.
 
@@ -366,6 +366,7 @@ def extract_game_stats(
 
         # Phase 55: Create GameSummaryData for the new JSON-based SummaryAnalyzer
         from katrain.core.analysis.models import GameSummaryData
+
         # Phase 158-I: capture which (move_number, player) pairs were
         # selected as important_moves so the Summary's top_mistakes can
         # flag entries that also appear in the individual Karte.

@@ -3,6 +3,7 @@
 Phase 140 P2-2: Extracted from katrain/gui/kivyutils.py to enable focused
 maintenance of 32 widget/button/mixin classes.
 """
+
 from __future__ import annotations
 
 import logging

@@ -2,8 +2,6 @@
 
 Phase 140: Pure-geometry unit tests. No Kivy imports.
 """
-from dataclasses import dataclass, field
-from typing import Any
 
 import pytest
 
@@ -21,7 +19,6 @@ from katrain.core.board_geometry import (
     y_coordinate_text,
 )
 from katrain.core.utils import evaluation_class
-
 
 # =============================================================================
 # compute_grid_spaces
@@ -246,7 +243,9 @@ class TestFormatLoss:
 
     def test_extra_precision_boundary(self):
         # 0.995 boundary inclusive
-        assert format_loss(0.995, extra_precision=True) == "+.99"  # 0.995 -> "0.99" or "1.00" depending on banker's rounding
+        assert (
+            format_loss(0.995, extra_precision=True) == "+.99"
+        )  # 0.995 -> "0.99" or "1.00" depending on banker's rounding
         # 1.0 is over the threshold, falls to default
         assert format_loss(1.0, extra_precision=True) == "+1.0"
 
@@ -416,5 +415,3 @@ class TestFindClosestGridPoint:
         result = find_closest_grid_point(0.0, 2.6, [0.0], [1.0, 2.0, 3.0])
         # Closest y to 2.6 is 3.0 (index 2)
         assert result == (0.0, 0, 3.0, 2)
-
-

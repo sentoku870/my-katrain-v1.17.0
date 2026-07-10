@@ -17,6 +17,7 @@ Phase 176 (PR 2) で完全に削除されました。
 
 この __init__.py (logic.py) は後方互換性のため全シンボルを再エクスポートする。
 """
+
 from __future__ import annotations
 
 # Skill preset + auto-strictness + skill estimation

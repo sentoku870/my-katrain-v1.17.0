@@ -119,7 +119,7 @@ def resolve_output_directory(config_dir: str) -> Path:
         try:
             import ctypes.wintypes
 
-            CSIDL_DOWNLOADS = 0x000d
+            CSIDL_DOWNLOADS = 0x000D
             SHGFP_TYPE_CURRENT = 0
             buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
             ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_DOWNLOADS, None, SHGFP_TYPE_CURRENT, buf)
@@ -141,4 +141,3 @@ def resolve_output_directory(config_dir: str) -> Path:
         return home_fallback
     except OSError:
         return Path.cwd()
-

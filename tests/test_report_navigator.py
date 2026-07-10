@@ -3,6 +3,7 @@
 Ensures Navigator uses .json extension (Phase 148-D1: full migration) and
 ignores legacy .md files.
 """
+
 from __future__ import annotations
 
 import time

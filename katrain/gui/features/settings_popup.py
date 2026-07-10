@@ -13,7 +13,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -40,7 +41,7 @@ from katrain.gui.features.settings_popup_savers import (  # noqa: F401 (re-expor
 from katrain.gui.features.settings_popup_state import _SettingsPopupContext
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
-from katrain.gui.widgets.factory import Button, Label, Popup
+from katrain.gui.widgets.factory import Button, Popup
 
 if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext

@@ -1,20 +1,17 @@
-
 import json
-import os
-import shutil
-from unittest.mock import MagicMock
-from katrain.core.analysis.models import GameSummaryData, EvalSnapshot, MoveEval, MistakeCategory, PositionDifficulty
-from katrain.core.reports.summary_json_export import build_summary_json
+
+from katrain.core.analysis.models import EvalSnapshot, GameSummaryData, MistakeCategory, MoveEval, PositionDifficulty
 from katrain.core.reports.summary_report import build_summary_report
+
 
 def test_batch_json_stages_1_to_4():
     print("Testing JSON Summary Stages 1-4...")
-    
+
     # Setup mock game data
     move = MoveEval(
-        move_number=10, 
-        player="B", 
-        gtp="Q16", 
+        move_number=10,
+        player="B",
+        gtp="Q16",
         score_before=0.5,
         score_after=-2.5,
         delta_score=-3.0,
@@ -23,41 +20,43 @@ def test_batch_json_stages_1_to_4():
         delta_winrate=-0.1,
         points_lost=3.0,
         realized_points_lost=3.0,
-        root_visits=1000
+        root_visits=1000,
     )
     move.reason_tags = {"reading_failure", "shape_mistake"}
     move.importance_score = 5.0
     move.mistake_category = MistakeCategory.MISTAKE
     move.position_difficulty = PositionDifficulty.NORMAL
-    move.tag = "opening" # Phase
-    
+    move.tag = "opening"  # Phase
+
     snapshot = EvalSnapshot(moves=[move])
-    
+
     gsd = GameSummaryData(
         game_name="test_game.sgf",
         player_black="Black",
         player_white="White",
         snapshot=snapshot,
         board_size=(19, 19),
-        date="2024-01-01"
+        date="2024-01-01",
     )
-    
+
     # 1. Verify build_summary_report returns raw JSON string (Stage 1)
     report_output = build_summary_report([gsd], focus_player="Black")
     print(f"Report Output Start: {report_output[:50]}...")
-    
+
     assert report_output.strip().startswith("{"), "Report should start with JSON brace, not Markdown"
     assert "```json" not in report_output, "Report should not contain Markdown code blocks"
-    
+
     try:
         data = json.loads(report_output)
     except json.JSONDecodeError as e:
         print(f"FATAL: Output is not valid JSON: {e}")
         exit(1)
-        
+
     # 2. Verify Schema Version (Stage 3)
     print(f"Schema Version: {data.get('schema_version')}")
-    assert data.get("schema_version") == "3.4", "Schema version should be 3.4 (Phase 157: summary-side even/handicapped split + top-level win_loss_analysis removed)"
+    assert data.get("schema_version") == "3.4", (
+        "Schema version should be 3.4 (Phase 157: summary-side even/handicapped split + top-level win_loss_analysis removed)"
+    )
 
     # 3. Verify Games List (Stage 2)
     games = data.get("games", [])
@@ -218,14 +217,24 @@ def test_batch_json_games_by_type_in_meta():
     snapshot = EvalSnapshot(moves=[move])
 
     even_g = GameSummaryData(
-        game_name="even.sgf", player_black="A", player_white="B",
-        snapshot=snapshot, board_size=(19, 19),
-        handicap=0, komi=7.5, result="B+R",
+        game_name="even.sgf",
+        player_black="A",
+        player_white="B",
+        snapshot=snapshot,
+        board_size=(19, 19),
+        handicap=0,
+        komi=7.5,
+        result="B+R",
     )
     hcap_g = GameSummaryData(
-        game_name="hcap.sgf", player_black="A", player_white="B",
-        snapshot=snapshot, board_size=(19, 19),
-        handicap=2, komi=0.5, result="B+R",
+        game_name="hcap.sgf",
+        player_black="A",
+        player_white="B",
+        snapshot=snapshot,
+        board_size=(19, 19),
+        handicap=2,
+        komi=0.5,
+        result="B+R",
     )
 
     data = json.loads(build_summary_report([even_g, hcap_g], focus_player="A"))
@@ -266,9 +275,14 @@ def test_batch_json_even_handicapped_substats():
     snapshot = EvalSnapshot(moves=[move])
 
     hcap_g = GameSummaryData(
-        game_name="hcap.sgf", player_black="A", player_white="B",
-        snapshot=snapshot, board_size=(19, 19),
-        handicap=2, komi=0.5, result="B+R",
+        game_name="hcap.sgf",
+        player_black="A",
+        player_white="B",
+        snapshot=snapshot,
+        board_size=(19, 19),
+        handicap=2,
+        komi=0.5,
+        result="B+R",
     )
 
     data = json.loads(build_summary_report([hcap_g], focus_player="A"))
@@ -281,6 +295,7 @@ def test_batch_json_even_handicapped_substats():
     assert "handicapped" not in player_block
     # ``overall`` carries the full stats instead.
     assert player_block["overall"]["total_games"] == 1
+
 
 if __name__ == "__main__":
     test_batch_json_stages_1_to_4()

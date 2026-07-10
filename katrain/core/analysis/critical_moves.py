@@ -401,9 +401,7 @@ def _classify_meaning_tags(
             result[move.move_number] = move.meaning_tag_id
         else:
             node = node_map.get(move.move_number) if node_map else None
-            ctx = build_classification_context_from_node(
-                node, move.gtp, total_moves=total_moves
-            )
+            ctx = build_classification_context_from_node(node, move.gtp, total_moves=total_moves)
             tag = classify_meaning_tag(move, context=ctx)
             result[move.move_number] = tag.id.value
 

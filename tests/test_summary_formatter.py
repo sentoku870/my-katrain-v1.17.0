@@ -27,7 +27,6 @@ from katrain.core import eval_metrics
 from katrain.core.batch.stats.pattern_miner import GameRef
 from katrain.gui.features import summary_formatter as sf
 
-
 # ---------------------------------------------------------------------------
 # _normalize_board_size
 # ---------------------------------------------------------------------------
@@ -392,4 +391,3 @@ class TestFormatGameRefs:
         refs = [GameRef(f"g{i}", i, "B") for i in range(5)]
         out = sf._format_game_refs(refs, max_display=2)
         assert out == "g0 #0(B), g1 #1(B)"
-

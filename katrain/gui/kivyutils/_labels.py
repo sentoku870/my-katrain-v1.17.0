@@ -7,6 +7,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - StatsLabel: Text label box for statistics.
 - StatsBox: Box layout for winrate/score display.
 """
+
 from __future__ import annotations
 
 from typing import Any

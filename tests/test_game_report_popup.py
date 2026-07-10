@@ -101,9 +101,7 @@ class TestScheduleNextRefreshGuards:
         popup._refresh_event = old_event
 
         new_event = MagicMock()
-        with patch(
-            "katrain.gui.popups.misc_popups.Clock.schedule_once", return_value=new_event
-        ) as mock_sched:
+        with patch("katrain.gui.popups.misc_popups.Clock.schedule_once", return_value=new_event) as mock_sched:
             popup._schedule_next_refresh(1.0)
 
         old_event.cancel.assert_called_once()
@@ -118,9 +116,7 @@ class TestScheduleNextRefreshGuards:
         popup._refresh_event = None
         new_event = MagicMock()
 
-        with patch(
-            "katrain.gui.popups.misc_popups.Clock.schedule_once", return_value=new_event
-        ):
+        with patch("katrain.gui.popups.misc_popups.Clock.schedule_once", return_value=new_event):
             popup._schedule_next_refresh(0.25)
 
         assert popup._refresh_event is new_event
@@ -130,9 +126,7 @@ class TestRefreshAttemptsGuard:
     """The pure decision logic: 'should we schedule another refresh?'"""
 
     @staticmethod
-    def _should_schedule_more(
-        engine_is_idle: bool, attempts: int, max_attempts: int
-    ) -> bool:
+    def _should_schedule_more(engine_is_idle: bool, attempts: int, max_attempts: int) -> bool:
         """Mirror of the in-method guard at end of _refresh (P0-2 fix).
 
         Pre-fix code: ``if not self.katrain.engine.is_idle(): schedule``

@@ -521,8 +521,14 @@ class TestGenerateCuratorOutputs:
         data = json.loads(Path(result.ranking_path).read_text())  # type: ignore[arg-type]
         ranking = data["rankings"][0]
         expected_keys = {
-            "game_id", "title", "score_percentile", "needs_match",
-            "stability", "total", "recommended_tags", "rank",
+            "game_id",
+            "title",
+            "score_percentile",
+            "needs_match",
+            "stability",
+            "total",
+            "recommended_tags",
+            "rank",
         }
         assert set(ranking.keys()) == expected_keys
         assert ranking["game_id"] == "game_X.sgf"

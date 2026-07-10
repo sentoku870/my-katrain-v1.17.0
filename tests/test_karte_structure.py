@@ -9,6 +9,8 @@ from unittest.mock import Mock
 
 import pytest
 
+# Internal helper (accessed directly to avoid public API surface)
+from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 from katrain.core.eval_metrics import (
     EvalSnapshot,
     MistakeStreak,
@@ -21,9 +23,6 @@ from katrain.core.eval_metrics import (
     get_practice_priorities_from_stats,
     snapshot_from_nodes,
 )
-
-# Internal helper (accessed directly to avoid public API surface)
-from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
 
 
 class TestPhaseMistakeStats:

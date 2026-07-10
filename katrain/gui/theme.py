@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from katrain.common import DEFAULT_FONT as _DEFAULT_FONT
 
-
 # basic colors
 WHITE = [0.95, 0.95, 0.95, 1]
 BLACK = [0.05, 0.05, 0.05, 1]

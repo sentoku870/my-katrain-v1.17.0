@@ -520,10 +520,6 @@ class GameNode(SGFNode):
         # No analysis available (Phase 171: Leela 経路を削除)
         return []
 
-
-
-
-
     @property
     def policy_ranking(self) -> list[tuple[float, Move | None]]:  # return moves from highest policy value to lowest
         if self.policy:

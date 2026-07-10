@@ -76,11 +76,7 @@ class InsertModeController:
             return False
         # in insert mode, undo = delete
         cn = game.current_node
-        if (
-            game.insert_after is not None
-            and n_times == 1
-            and cn not in game.insert_after.nodes_from_root
-        ):
+        if game.insert_after is not None and n_times == 1 and cn not in game.insert_after.nodes_from_root:
             parent = cn.parent
             if parent is not None:
                 parent.children = [c for c in parent.children if c != cn]
@@ -174,9 +170,7 @@ class InsertModeController:
             except IllegalMoveException:
                 pass  # illegal move = stop
             game._calculate_groups()  # recalculate groups
-            game.katrain.controls.set_status(
-                i18n._("ending insert mode").format(num_copied=num_copied), STATUS_INFO
-            )
+            game.katrain.controls.set_status(i18n._("ending insert mode").format(num_copied=num_copied), STATUS_INFO)
             game.analyze_all_nodes(analyze_fast=True, even_if_present=False)
         else:
             game.katrain.controls.set_status("", STATUS_INFO)

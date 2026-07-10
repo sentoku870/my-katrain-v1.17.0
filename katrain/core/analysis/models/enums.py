@@ -12,6 +12,7 @@ Contains:
 - Engine visit resolution (resolve_visits) + constants
 - KataGo-only analysis_engine helper
 """
+
 from __future__ import annotations
 
 import logging

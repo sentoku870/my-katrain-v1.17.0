@@ -129,9 +129,7 @@ def _build_karte_format_section(inner: BoxLayoutType, state: _SettingsPopupConte
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=format_value: state.selected_format.__setitem__(0, val)
-            if active
-            else None
+            active=lambda chk, active, val=format_value: state.selected_format.__setitem__(0, val) if active else None
         )
         label = Label(
             text=format_label_text,
@@ -169,9 +167,7 @@ def _build_opp_info_section(inner: BoxLayoutType, state: _SettingsPopupContext) 
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=opp_value: state.selected_opp_info.__setitem__(0, val)
-            if active
-            else None
+            active=lambda chk, active, val=opp_value: state.selected_opp_info.__setitem__(0, val) if active else None
         )
         label = Label(
             text=opp_label_text,

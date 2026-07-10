@@ -2,6 +2,7 @@
 
 Phase 140 P2-2: Extracted from katrain/gui/kivyutils.py.
 """
+
 from __future__ import annotations
 
 from typing import Any

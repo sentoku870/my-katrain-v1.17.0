@@ -7,8 +7,6 @@ Phase 171: Leela 削除に伴い ``needs_leela_warning`` /
 ``EngineType.LEELA`` 関連のテストを KataGo-only に整理。
 """
 
-import pytest
-
 from katrain.common.settings_export import TAB_RESET_KEYS, get_default_value
 from katrain.core.analysis import (
     DEFAULT_ANALYSIS_ENGINE,

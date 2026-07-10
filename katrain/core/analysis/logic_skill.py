@@ -10,6 +10,7 @@ Contains:
 - validate_reason_tag: Reason tag validation
 - estimate_skill_level_from_tags: Skill estimation from reason tags
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

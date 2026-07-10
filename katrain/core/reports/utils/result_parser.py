@@ -11,6 +11,7 @@ Supported RE formats:
 - ``0`` / ``Draw`` / ``Jigo`` — draw / jigo (treated as non-loss for both)
 - ``?`` / empty / unknown — undetermined
 """
+
 from __future__ import annotations
 
 import enum

@@ -25,28 +25,20 @@ Covers previously untested paths:
 - Game.build_summary_report
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from katrain.core.constants import (
-    AI_DEFAULT,
-    PLAYER_AI,
     PLAYER_HUMAN,
     PLAYING_NORMAL,
     AnalysisMode,
-    PLAYING_TEACHING,
 )
 from katrain.core.game import (
-    BaseGame,
     Game,
     IllegalMoveException,
-    KaTrainSGF,
     Move,
 )
-from katrain.core.game_node import GameNode
-from katrain.core.sgf_parser import SGF
 
 # Fixtures used: game, game_9x9, mock_katrain, mock_engine, root_node, root_node_9x9
 # from conftest.py
@@ -289,10 +281,14 @@ class TestSGFOutput:
         string for the test to work properly.
         """
         from types import SimpleNamespace
-        from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
+
         mock_katrain.players_info = {
-            "B": SimpleNamespace(name=name_b, player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL, calculated_rank=None),
-            "W": SimpleNamespace(name=name_w, player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL, calculated_rank=None),
+            "B": SimpleNamespace(
+                name=name_b, player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL, calculated_rank=None
+            ),
+            "W": SimpleNamespace(
+                name=name_w, player_type=PLAYER_HUMAN, player_subtype=PLAYING_NORMAL, calculated_rank=None
+            ),
         }
 
     def test_generate_filename_uses_player_names(self, game, mock_katrain):
@@ -326,7 +322,7 @@ class TestSGFOutput:
             "save_marks": False,
             "eval_show_ai": True,
         }
-        result = game.write_sgf(str(filepath), trainer_config=trainer_config)
+        game.write_sgf(str(filepath), trainer_config=trainer_config)
         # i18n._("sgf written") is wrapped → the actual translation appears
         assert filepath.exists()
         content = filepath.read_text()
@@ -375,16 +371,17 @@ class TestAnalyzeAllNodes:
         P1-S8: a daemon thread that crashes silently leaves the user with
         partial analysis and no diagnostic. The wrapper logs and swallows.
         """
-        import logging
 
-        with patch.object(game_9x9, "analyze_all_nodes", side_effect=RuntimeError("boom")):
-            with patch("katrain.core.game.facade.logger") as mock_logger:
-                # Should not raise even though analyze_all_nodes raises.
-                game_9x9._run_initial_analysis_safely(analyze_fast=False)
-                mock_logger.exception.assert_called_once()
-                # Verify the error message includes the strategy name.
-                call_args = mock_logger.exception.call_args.args[0]
-                assert "initial analyze thread" in call_args
+        with (
+            patch.object(game_9x9, "analyze_all_nodes", side_effect=RuntimeError("boom")),
+            patch("katrain.core.game.facade.logger") as mock_logger,
+        ):
+            # Should not raise even though analyze_all_nodes raises.
+            game_9x9._run_initial_analysis_safely(analyze_fast=False)
+            mock_logger.exception.assert_called_once()
+            # Verify the error message includes the strategy name.
+            call_args = mock_logger.exception.call_args.args[0]
+            assert "initial analyze thread" in call_args
 
 
 # ---------------------------------------------------------------------------
@@ -791,13 +788,12 @@ class TestKarteReport:
 
 class TestBuildSummaryReport:
     def test_build_summary_report_empty(self):
-        from katrain.core.eval_metrics import GameSummaryData
 
         result = Game.build_summary_report([])
         assert isinstance(result, str)
 
     def test_build_summary_report_with_data(self):
-        from katrain.core.eval_metrics import GameSummaryData, EvalSnapshot
+        from katrain.core.eval_metrics import EvalSnapshot, GameSummaryData
 
         data = GameSummaryData(
             game_name="test_game",
@@ -812,7 +808,7 @@ class TestBuildSummaryReport:
         assert isinstance(result, str)
 
     def test_build_summary_report_with_focus_player(self):
-        from katrain.core.eval_metrics import GameSummaryData, EvalSnapshot
+        from katrain.core.eval_metrics import EvalSnapshot, GameSummaryData
 
         data = GameSummaryData(
             game_name="test_game",

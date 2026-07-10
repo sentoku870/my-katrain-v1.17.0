@@ -362,4 +362,3 @@ class TrainerConfig:
             eval_show_ai=safe_bool(d.get("eval_show_ai"), default=True),
             lock_ai=safe_bool(d.get("lock_ai"), default=False),
         )
-

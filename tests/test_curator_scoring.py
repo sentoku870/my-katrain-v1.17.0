@@ -307,9 +307,7 @@ class TestComputeBatchPercentiles:
 
     def test_preserves_original_fields(self):
         """Percentile calculation preserves other fields."""
-        score = SuitabilityScore(
-            needs_match=0.5, stability=0.5, total=1.0, percentile=None
-        )
+        score = SuitabilityScore(needs_match=0.5, stability=0.5, total=1.0, percentile=None)
         result = compute_batch_percentiles([score])
         assert result[0].needs_match == 0.5
         assert result[0].stability == 0.5
@@ -329,7 +327,7 @@ def _build_mainline_nodes(score_leads: list[float]) -> GameNode:
     root = GameNode(properties={"SZ": ["19"], "KM": ["6.5"], "RU": ["Japanese"]})
     root.analysis = None
     current = root
-    for i, lead in enumerate(score_leads):
+    for lead in score_leads:
         child = GameNode(parent=current, move=None, properties={})
         if lead is not None and math.isfinite(lead):
             child.analysis = {"root_info": {"scoreLead": lead}}

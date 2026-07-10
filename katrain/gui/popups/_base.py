@@ -3,6 +3,7 @@
 Phase 140 P2-1: Extracted from katrain/gui/popups.py to enable focused
 maintenance and faster incremental imports.
 """
+
 from __future__ import annotations
 
 import os

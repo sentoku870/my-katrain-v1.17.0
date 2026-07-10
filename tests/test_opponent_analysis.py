@@ -1,4 +1,5 @@
 """Tests for Phase 155-D opponent-strength loss correlation builder."""
+
 from __future__ import annotations
 
 import pytest
@@ -28,9 +29,7 @@ def make_move(move_number: int, loss: float, player: str = "B") -> MoveEval:
         root_visits=200,
     )
     move.score_loss = loss
-    move.mistake_category = (
-        MistakeCategory.MISTAKE if loss >= 1.0 else MistakeCategory.GOOD
-    )
+    move.mistake_category = MistakeCategory.MISTAKE if loss >= 1.0 else MistakeCategory.GOOD
     return move
 
 
@@ -78,8 +77,11 @@ class TestStatusInsufficientData:
     def test_below_threshold(self):
         games = [
             make_summary(
-                "g1", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g1",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             ),
         ]
@@ -91,8 +93,11 @@ class TestStatusInsufficientData:
         """At or above MIN_SAMPLE_SIZE returns computed."""
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -108,8 +113,11 @@ class TestBucketing:
     def test_kyu_bucket(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -124,8 +132,11 @@ class TestBucketing:
     def test_dan_bucket(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="3d",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -136,8 +147,11 @@ class TestBucketing:
     def test_high_dan_bucket(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="9d",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -148,33 +162,51 @@ class TestBucketing:
     def test_mixed_buckets(self):
         games = [
             make_summary(
-                "g1", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g1",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             ),
             make_summary(
-                "g2", "Alice", "Charlie",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g2",
+                "Alice",
+                "Charlie",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="3d",
             ),
             make_summary(
-                "g3", "Alice", "Dave",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g3",
+                "Alice",
+                "Dave",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             ),
             make_summary(
-                "g4", "Alice", "Eve",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g4",
+                "Alice",
+                "Eve",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="7d",
             ),
             make_summary(
-                "g5", "Alice", "Frank",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g5",
+                "Alice",
+                "Frank",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="3d",
             ),
             make_summary(
-                "g6", "Alice", "Gina",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                "g6",
+                "Alice",
+                "Gina",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             ),
         ]
@@ -193,7 +225,9 @@ class TestMistakeCount:
     def test_aggregates_mistakes(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
+                f"g{i}",
+                "Alice",
+                "Bob",
                 [make_move(1, 1.5, "B"), make_move(2, 0.3, "B"), make_move(3, 2.0, "B")],
                 [make_move(4, 0.5, "W")],
                 rank_white="5k",
@@ -212,7 +246,9 @@ class TestPlayerFiltering:
     def test_only_player_moves_count(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
+                f"g{i}",
+                "Alice",
+                "Bob",
                 [make_move(1, 5.0, "B"), make_move(2, 0.3, "B")],
                 [make_move(3, 5.0, "W"), make_move(4, 0.3, "W")],
                 rank_white="5k",
@@ -235,8 +271,11 @@ class TestChineseRanksComputed:
     def test_chinese_dan_ranking_yields_computed(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="4段",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -249,8 +288,11 @@ class TestChineseRanksComputed:
     def test_chinese_kyu_ranking_yields_computed(self):
         games = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="15级",
             )
             for i in range(MIN_SAMPLE_SIZE)
@@ -264,16 +306,22 @@ class TestChineseRanksComputed:
         """One bucket uses English ``k``, another uses Chinese ``段``."""
         games_kyu = [
             make_summary(
-                f"g{i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="5k",
             )
             for i in range(MIN_SAMPLE_SIZE)
         ]
         games_dan = [
             make_summary(
-                f"g{MIN_SAMPLE_SIZE + i}", "Alice", "Bob",
-                [make_move(1, 0.5, "B")], [make_move(2, 0.5, "W")],
+                f"g{MIN_SAMPLE_SIZE + i}",
+                "Alice",
+                "Bob",
+                [make_move(1, 0.5, "B")],
+                [make_move(2, 0.5, "W")],
                 rank_white="4段",
             )
             for i in range(MIN_SAMPLE_SIZE)

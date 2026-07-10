@@ -154,9 +154,8 @@ def _collect_score_leads(game: Game) -> list[float]:
             root_info = node.analysis.get("root_info")
             if root_info is not None:
                 score_lead = root_info.get("scoreLead")
-                if score_lead is not None and isinstance(score_lead, (int, float)):
-                    if math.isfinite(score_lead):
-                        values.append(float(score_lead))
+                if score_lead is not None and isinstance(score_lead, (int, float)) and math.isfinite(score_lead):
+                    values.append(float(score_lead))
         # Follow mainline only (cast to GameNode since game.root is GameNode)
         node = cast(GameNode, node.children[0]) if node.children else None
     return values

@@ -5,8 +5,10 @@ Phase 140 P2-1: Extracted from katrain/gui/popups.py.
 QuickConfigGui is a base class for simple configuration popups that read
 input widgets and save changes back to the katrain config.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 from typing import Any
@@ -238,10 +240,8 @@ class ConfigTeacherPopup(QuickConfigGui):
         """
         app = getattr(self, "_app", None)
         if app is not None:
-            try:
+            with contextlib.suppress(Exception):
                 app.unbind(language=self.build_and_set_properties)
-            except Exception:
-                pass
             self._app = None
 
     def add_option_widgets(self, widgets: list[Any]) -> None:
@@ -320,7 +320,10 @@ class ConfigAIPopup(QuickConfigGui):
                     widget.bind(active=self.estimate_rank_from_options)
                 else:
                     if isinstance(values[0], tuple):  # type: ignore[index]  # with descriptions, possibly language-specific
-                        fixed_values = [(v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), label)) for v, label in values]  # type: ignore[attr-defined]
+                        fixed_values = [
+                            (v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), str(label)))  # type: ignore[attr-defined]
+                            for v, label in values  # type: ignore[attr-defined]
+                        ]
                     else:  # just numbers
                         fixed_values = [(v, str(v)) for v in values]  # type: ignore[attr-defined]
                     widget = LabelledSelectionSlider(

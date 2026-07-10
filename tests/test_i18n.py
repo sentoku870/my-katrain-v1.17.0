@@ -126,7 +126,7 @@ class TestBatchAnalyzeI18n:
 
         for lang in locales_list:
             locale = gettext.translation("katrain", str(locale_dir), languages=[lang])
-            translated = locale.gettext(key)
+            assert locale.gettext(key)
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +145,9 @@ class TestHardcodedJapaneseI18n:
     @pytest.fixture
     def locale_dir(self):
         """Get the path to the locales directory."""
-        import katrain
         from pathlib import Path
+
+        import katrain
 
         katrain_dir = Path(katrain.__file__).parent
         return katrain_dir / "i18n" / "locales"
@@ -204,6 +205,5 @@ class TestHardcodedJapaneseI18n:
                 if literal in text:
                     offenders.append((kv_file, literal))
         assert not offenders, (
-            "Hardcoded Japanese literals reappeared in .kv files: "
-            f"{offenders}. Use i18n._(...) instead."
+            f"Hardcoded Japanese literals reappeared in .kv files: {offenders}. Use i18n._(...) instead."
         )

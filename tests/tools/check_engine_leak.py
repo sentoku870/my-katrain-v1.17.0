@@ -63,10 +63,9 @@ def count_engine_processes():
             count = 0
             for line in result.stdout.strip().split("\n"):
                 line_lower = line.lower()
-                if "katago" in line_lower or "leela" in line_lower:
+                if ("katago" in line_lower or "leela" in line_lower) and "check_engine_leak" not in line_lower:
                     # Exclude this script itself if it matches
-                    if "check_engine_leak" not in line_lower:
-                        count += 1
+                    count += 1
             return count
         except Exception as e:
             print(f"Warning: Could not count processes: {e}")

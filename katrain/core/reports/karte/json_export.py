@@ -36,7 +36,6 @@ from katrain.core.reports.definitions import (
     REPORT_THRESHOLDS,
 )
 from katrain.core.reports.extractors import MetaExtractor, MoveExtractor
-from katrain.core.reports.karte.models import KARTE_ERROR_CODE_GENERATION_FAILED
 from katrain.core.reports.schema import (
     Definitions,
     MetaData,
@@ -403,15 +402,13 @@ def _weaknesses_meta_for(
     — a "weakness A: 18.5 points" line item is much more useful when
     the LLM also sees ``covered_loss: 25.0 / 60.0`` (41.7%).
     """
-    from katrain.core.eval_metrics import get_canonical_loss_from_move
     from katrain.core.analysis import classify_game_phase
+    from katrain.core.eval_metrics import get_canonical_loss_from_move
     from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
 
     player_moves = [m for m in ctx.snapshot.moves if m.player == player]
     # Non-zero-loss moves (the "mistake-or-better" denominator).
-    loss_moves = [
-        m for m in player_moves if get_canonical_loss_from_move(m) > BAD_MOVE_LOSS_THRESHOLD
-    ]
+    loss_moves = [m for m in player_moves if get_canonical_loss_from_move(m) > BAD_MOVE_LOSS_THRESHOLD]
     total_count = len(loss_moves)
     total_loss = sum(get_canonical_loss_from_move(m) for m in loss_moves)
 
@@ -429,20 +426,14 @@ def _weaknesses_meta_for(
             if covered_move_ids and id(m) in covered_move_ids:
                 continue
             phase_label = classify_game_phase(m.move_number or 0, ctx.board_x)
-            cat_label = (
-                m.mistake_category.name if m.mistake_category else "GOOD"
-            )
+            cat_label = m.mistake_category.name if m.mistake_category else "GOOD"
             if phase_label == phase and cat_label == category:
                 covered_move_ids.add(id(m))
                 covered_loss += get_canonical_loss_from_move(m)
 
     covered_count = len(covered_move_ids)
-    coverage_pct = (
-        round(100.0 * covered_count / total_count, 1) if total_count else 0.0
-    )
-    loss_coverage_pct = (
-        round(100.0 * covered_loss / total_loss, 1) if total_loss > 0 else 0.0
-    )
+    coverage_pct = round(100.0 * covered_count / total_count, 1) if total_count else 0.0
+    loss_coverage_pct = round(100.0 * covered_loss / total_loss, 1) if total_loss > 0 else 0.0
 
     return {
         "covered_count": covered_count,

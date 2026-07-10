@@ -2,8 +2,10 @@
 
 Phase 140 P2-1: Extracted from katrain/gui/popups.py.
 """
+
 from __future__ import annotations
 
+import contextlib
 import glob
 import json
 import os
@@ -374,14 +376,10 @@ class ConfigPopup(BaseConfigPopup):
         app = getattr(self, "_app", None)
         if app is None:
             return
-        try:
+        with contextlib.suppress(Exception):
             app.unbind(language=self.check_models)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             app.unbind(language=self.check_katas)
-        except Exception:
-            pass
         self._app = None
 
     def get_model_display_text(self, model_path: str) -> str:

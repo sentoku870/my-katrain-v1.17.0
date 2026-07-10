@@ -23,6 +23,7 @@ and ``SummaryReport.players[...].opponent_strength_loss_correlation``):
 player; ``status="no_opponent_info"`` when none of the games carry a
 rank tag.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -82,9 +83,7 @@ def build_opponent_strength_loss_correlation(
           games have a parseable rank.
         - ``"computed"`` — at least ``MIN_SAMPLE_SIZE`` samples.
     """
-    by_bucket: dict[str, dict[str, float | int]] = {
-        b.value: _empty_bucket_dict() for b in RankBucket
-    }
+    by_bucket: dict[str, dict[str, float | int]] = {b.value: _empty_bucket_dict() for b in RankBucket}
     sample_count = 0
 
     for gd in game_data_list:
@@ -166,9 +165,7 @@ def _build_opponent_narrative(
         - "1 game against a high-dan opponent; avg_loss 9.58"
         - "No opponent rank information available"
     """
-    active_buckets = [
-        (name, data) for name, data in by_bucket.items() if int(data.get("games", 0)) > 0
-    ]
+    active_buckets = [(name, data) for name, data in by_bucket.items() if int(data.get("games", 0)) > 0]
     if not active_buckets:
         return "No opponent rank information available."
     bucket_labels = {
@@ -181,14 +178,9 @@ def _build_opponent_narrative(
         name, data = active_buckets[0]
         label = bucket_labels.get(name, name)
         plural = "" if sample_count == 1 else "s"
-        return (
-            f"{sample_count} game{plural} against {label} opponents; "
-            f"avg_loss {float(data['avg_loss']):.2f}"
-        )
+        return f"{sample_count} game{plural} against {label} opponents; avg_loss {float(data['avg_loss']):.2f}"
     parts = []
     for name, data in active_buckets:
         label = bucket_labels.get(name, name)
-        parts.append(
-            f"{int(data['games'])} vs {label} (avg {float(data['avg_loss']):.2f})"
-        )
+        parts.append(f"{int(data['games'])} vs {label} (avg {float(data['avg_loss']):.2f})")
     return f"{sample_count} games; " + ", ".join(parts)

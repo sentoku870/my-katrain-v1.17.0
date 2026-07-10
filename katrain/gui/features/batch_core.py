@@ -84,7 +84,6 @@ def collect_batch_options(
     deterministic = widgets["deterministic_checkbox"].active
     sound_on_finish = widgets["sound_checkbox"].active
 
-
     # Curator generation (Phase 126)
     curator_cb = widgets.get("curator_checkbox")
     generate_curator = curator_cb.active if curator_cb is not None else False
@@ -313,4 +312,3 @@ def run_batch_in_thread(
 # ---------------------------------------------------------------------------
 # Pure helper functions (testable without UI)
 # ---------------------------------------------------------------------------
-

@@ -4,6 +4,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - TimerOrMoveTree: Layout that switches between timer and move tree view.
 - Timer: BGBoxLayout-based timer display with state and timeout.
 """
+
 from __future__ import annotations
 
 from kivy.properties import BooleanProperty, ListProperty, StringProperty

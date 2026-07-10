@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 # first, logging level lower
+import contextlib
 import os
 import sys
 from collections.abc import Callable
@@ -48,11 +49,9 @@ if getattr(sys, "frozen", False):
         os.environ["SSL_CERT_FILE"] = os.path.join(sys._MEIPASS, "certifi", "cacert.pem")
 
 
-import contextlib
 import glob
 import random
 import signal
-import threading
 import time
 import traceback
 import webbrowser
@@ -79,7 +78,6 @@ from katrain.core.constants import (
     DATA_FOLDER,
     HOMEPAGE,
     MODE_ANALYZE,
-    MODE_PLAY,
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_INFO,
@@ -88,9 +86,7 @@ from katrain.core.constants import (
     VERSION,
 )
 from katrain.core.engine import KataGoEngine
-from katrain.core.errors import EngineError
 from katrain.core.lang import DEFAULT_LANGUAGE, i18n
-from katrain.core.state import EventType  # Phase 107
 from katrain.gui.badukpan import AnalysisControls, BadukPanControls, BadukPanWidget  # noqa F401
 from katrain.gui.controllers.analysis_controller import AnalysisController
 from katrain.gui.controllers.batch_analysis_controller import BatchAnalysisController
@@ -105,9 +101,6 @@ from katrain.gui.features.commands import (
     popup_commands,
 )
 from katrain.gui.features.karte_export import determine_user_color
-from katrain.gui.features.settings_popup import (
-    do_mykatrain_settings_popup,
-)
 
 # used in kv
 # used in kv
@@ -116,8 +109,8 @@ from katrain.gui.kivyutils import (
 )  # noqa: F401
 from katrain.gui.managers.auto_setup_controller import AutoSetupController
 from katrain.gui.managers.config_manager import ConfigManager
-from katrain.gui.managers.engine_bootstrap import EngineBootstrap
 from katrain.gui.managers.dialog_factory import DialogFactory
+from katrain.gui.managers.engine_bootstrap import EngineBootstrap
 from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.game_state_update_manager import GameStateUpdateManager
 from katrain.gui.managers.gui_refresh_manager import GUIRefreshManager
@@ -268,9 +261,9 @@ class KaTrainGui(Screen, KaTrainBase):
             get_board_controls=lambda: getattr(self, "board_controls", None),
             get_controls=lambda: getattr(self, "controls", None),
             get_gui=lambda: self,
-            set_status=lambda msg, level: self.controls.set_status(msg, level)
-            if getattr(self, "controls", None)
-            else None,
+            set_status=lambda msg, level: (
+                self.controls.set_status(msg, level) if getattr(self, "controls", None) else None
+            ),
         )
         self._game_state_update_manager = GameStateUpdateManager(
             get_game=lambda: self.game,
@@ -502,10 +495,8 @@ class KaTrainGui(Screen, KaTrainBase):
         # (P2-A: H1+H2+H4)
         board_gui = getattr(self, "board_gui", None)
         if board_gui is not None and hasattr(board_gui, "cleanup"):
-            try:
+            with contextlib.suppress(Exception):
                 board_gui.cleanup()
-            except Exception:
-                pass
 
         self.log("KaTrainGui cleanup completed", OUTPUT_DEBUG)
 
@@ -696,7 +687,6 @@ class KaTrainGui(Screen, KaTrainBase):
         """Export karte. Delegates to export_commands."""
         export_commands.do_export_karte(self, self._do_mykatrain_settings_popup)
 
-
     def _do_open_latest_report(self, *args: Any, **kwargs: Any) -> None:
         export_commands.do_open_latest_report(self, *args, **kwargs)
 
@@ -867,11 +857,9 @@ class KaTrainApp(MDApp):
         for file in sorted(kv_files, key=lambda x: ("widget" not in x.lower(), x)):
             Builder.load_file(file)
 
-
         Window.bind(on_request_close=self.on_request_close)
         Window.bind(on_dropfile=lambda win, file: self.gui.load_sgf_file(file.decode("utf8")))
         self.gui = KaTrainGui()
-
 
         win_left: int | None = None
         win_top: int | None = None
@@ -905,8 +893,7 @@ class KaTrainApp(MDApp):
                 Window.top = int(win_top)
             except TypeError:
                 self.gui.log(
-                    "Window provider does not support setting position; "
-                    "skipping left/top assignment",
+                    "Window provider does not support setting position; skipping left/top assignment",
                     OUTPUT_DEBUG,
                 )
 

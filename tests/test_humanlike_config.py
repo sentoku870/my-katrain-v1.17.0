@@ -2,7 +2,7 @@
 
 CI-safe: No Kivy imports, pure function testing.
 """
-import pytest
+
 from katrain.common.humanlike_config import normalize_humanlike_config
 
 
@@ -12,9 +12,7 @@ class TestNormalizeHumanlikeConfig:
     def test_toggle_on_with_valid_path(self):
         """ON + valid path -> keep ON, sync both paths."""
         model, last, effective_on = normalize_humanlike_config(
-            toggle_on=True,
-            current_path="/path/to/humanlike.bin.gz",
-            last_path=""
+            toggle_on=True, current_path="/path/to/humanlike.bin.gz", last_path=""
         )
         assert model == "/path/to/humanlike.bin.gz"
         assert last == "/path/to/humanlike.bin.gz"
@@ -23,9 +21,7 @@ class TestNormalizeHumanlikeConfig:
     def test_toggle_on_empty_path_forces_off(self):
         """ON + empty path -> force OFF (Option A behavior)."""
         model, last, effective_on = normalize_humanlike_config(
-            toggle_on=True,
-            current_path="",
-            last_path="/previous/path.bin.gz"
+            toggle_on=True, current_path="", last_path="/previous/path.bin.gz"
         )
         assert model == ""
         assert last == "/previous/path.bin.gz"
@@ -33,11 +29,7 @@ class TestNormalizeHumanlikeConfig:
 
     def test_toggle_on_empty_both_paths(self):
         """ON + both paths empty -> force OFF."""
-        model, last, effective_on = normalize_humanlike_config(
-            toggle_on=True,
-            current_path="",
-            last_path=""
-        )
+        model, last, effective_on = normalize_humanlike_config(toggle_on=True, current_path="", last_path="")
         assert model == ""
         assert last == ""
         assert effective_on is False
@@ -45,9 +37,7 @@ class TestNormalizeHumanlikeConfig:
     def test_toggle_off_with_current_path(self):
         """OFF + current path -> clear model, save to last."""
         model, last, effective_on = normalize_humanlike_config(
-            toggle_on=False,
-            current_path="/path/to/humanlike.bin.gz",
-            last_path=""
+            toggle_on=False, current_path="/path/to/humanlike.bin.gz", last_path=""
         )
         assert model == ""
         assert last == "/path/to/humanlike.bin.gz"
@@ -56,9 +46,7 @@ class TestNormalizeHumanlikeConfig:
     def test_toggle_off_preserves_last(self):
         """OFF + no current path -> preserve existing last."""
         model, last, effective_on = normalize_humanlike_config(
-            toggle_on=False,
-            current_path="",
-            last_path="/previous/path.bin.gz"
+            toggle_on=False, current_path="", last_path="/previous/path.bin.gz"
         )
         assert model == ""
         assert last == "/previous/path.bin.gz"
@@ -66,11 +54,7 @@ class TestNormalizeHumanlikeConfig:
 
     def test_toggle_off_both_empty(self):
         """OFF + both empty -> both stay empty."""
-        model, last, effective_on = normalize_humanlike_config(
-            toggle_on=False,
-            current_path="",
-            last_path=""
-        )
+        model, last, effective_on = normalize_humanlike_config(toggle_on=False, current_path="", last_path="")
         assert model == ""
         assert last == ""
         assert effective_on is False

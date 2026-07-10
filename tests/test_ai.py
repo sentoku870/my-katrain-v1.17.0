@@ -35,9 +35,7 @@ class TestAI:
         mock_node = MagicMock()
         mock_game = MagicMock()
 
-        with patch.object(
-            ai_module, "generate_ai_move", return_value=(mock_move, mock_node)
-        ) as mock_gen:
+        with patch.object(ai_module, "generate_ai_move", return_value=(mock_move, mock_node)) as mock_gen:
             for strategy in test_strategies:
                 settings = katrain.config(f"ai/{strategy}")
                 move, played_node = ai_module.generate_ai_move(mock_game, strategy, settings)

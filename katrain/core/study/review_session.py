@@ -192,10 +192,7 @@ class ReviewSession:
             This is a safeguard to detect event ordering issues.
         """
         if self._pending_move_number is None:
-            _log.warning(
-                "record_final_guess() called without begin_position() - "
-                "possible event ordering issue"
-            )
+            _log.warning("record_final_guess() called without begin_position() - possible event ordering issue")
             return False
 
         result = GuessResult(
@@ -221,15 +218,11 @@ class ReviewSession:
 
         # Grade counts
         perfect_count = sum(1 for r in self.results if r.grade == GuessGrade.PERFECT)
-        excellent_count = sum(
-            1 for r in self.results if r.grade == GuessGrade.EXCELLENT
-        )
+        excellent_count = sum(1 for r in self.results if r.grade == GuessGrade.EXCELLENT)
         good_count = sum(1 for r in self.results if r.grade == GuessGrade.GOOD)
         slack_count = sum(1 for r in self.results if r.grade == GuessGrade.SLACK)
         blunder_count = sum(1 for r in self.results if r.grade == GuessGrade.BLUNDER)
-        not_in_candidates_count = sum(
-            1 for r in self.results if r.grade == GuessGrade.NOT_IN_CANDIDATES
-        )
+        not_in_candidates_count = sum(1 for r in self.results if r.grade == GuessGrade.NOT_IN_CANDIDATES)
 
         # AI best match rate (PERFECT grade count)
         ai_best_match_rate = (perfect_count / total * 100) if total > 0 else 0.0
@@ -244,9 +237,7 @@ class ReviewSession:
 
         # Worst misses (top 3 by score_loss, exclude None)
         results_with_loss = [r for r in self.results if r.score_loss is not None]
-        sorted_by_loss = sorted(
-            results_with_loss, key=lambda r: r.score_loss or 0, reverse=True
-        )
+        sorted_by_loss = sorted(results_with_loss, key=lambda r: r.score_loss or 0, reverse=True)
         worst_misses = tuple(sorted_by_loss[:3])
 
         # Retry/Hint statistics

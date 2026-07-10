@@ -25,7 +25,6 @@ class TestKarteV3SchemaVersion:
     def test_schema_version_is_3_3(self):
         from katrain.core.reports.definitions import REPORT_SCHEMA_VERSION
         from katrain.core.reports.karte import build_karte_json
-
         from tests.test_karte_json import create_mock_game_with_analysis
 
         game = create_mock_game_with_analysis()
@@ -83,9 +82,7 @@ class TestKarteV3ExtendedSectionsPresent:
             "effective_threshold",
             "is_low_reliability",
         }
-        assert required_keys.issubset(set(dq.keys())), (
-            f"Missing keys: {required_keys - set(dq.keys())}"
-        )
+        assert required_keys.issubset(set(dq.keys())), f"Missing keys: {required_keys - set(dq.keys())}"
 
     def test_reason_tags_distribution_section(self):
         result = self._get_karte_v3()

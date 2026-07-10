@@ -14,10 +14,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
 from katrain.core.eval_metrics import (
     MoveEval,
 )
-from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
 from katrain.core.game import Game
 from katrain.core.game_node import GameNode
 
@@ -766,9 +766,18 @@ def mock_katrain_ai():
     return MockKaTrainWithAI()
 
 
-def make_candidate_move(gtp: str, *, order: int = 0, score_lead: float = 0.0, points_lost: float = 0.0,
-                        visits: int = 100, winrate: float = 0.5, ownership: list[float] | None = None,
-                        prior: float = 0.5, pv: list[str] | None = None) -> dict:
+def make_candidate_move(
+    gtp: str,
+    *,
+    order: int = 0,
+    score_lead: float = 0.0,
+    points_lost: float = 0.0,
+    visits: int = 100,
+    winrate: float = 0.5,
+    ownership: list[float] | None = None,
+    prior: float = 0.5,
+    pv: list[str] | None = None,
+) -> dict:
     """Build a KataGo candidate move dict (Phase 139)."""
     d = {
         "move": gtp,
@@ -786,9 +795,15 @@ def make_candidate_move(gtp: str, *, order: int = 0, score_lead: float = 0.0, po
     return d
 
 
-def install_node_analysis(node, *, root: dict, moves: list[dict] | None = None,
-                           completed: bool = True, policy: list[float] | None = None,
-                           ownership: list[float] | None = None) -> None:
+def install_node_analysis(
+    node,
+    *,
+    root: dict,
+    moves: list[dict] | None = None,
+    completed: bool = True,
+    policy: list[float] | None = None,
+    ownership: list[float] | None = None,
+) -> None:
     """Install a complete analysis dict on a GameNode (Phase 139).
 
     Sets both ``node.analysis`` and ``node.analysis_from_sgf`` so the

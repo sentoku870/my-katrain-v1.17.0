@@ -111,7 +111,6 @@ def __getattr__(name: str) -> Any:
         globals()["analyze_single_file"] = analyze_single_file
         return analyze_single_file
 
-
     # Orchestration
     if name == "run_batch":
         from katrain.core.batch.orchestration import run_batch

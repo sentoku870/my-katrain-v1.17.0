@@ -392,6 +392,7 @@ __all__ = [
     "MIN_COVERAGE_MOVES",
     # Helper function
     "get_canonical_loss_from_move",
+    "resolve_visits",
     # === logic.py ===
     # Skill preset helpers
     "get_skill_preset",

@@ -11,6 +11,7 @@ Contains:
 - POLICY_GAP_MAX, TRANSITION_DROP_MAX: normalization parameters
 - DEFAULT_DIFFICULT_POSITIONS_LIMIT, DEFAULT_MIN_MOVE_NUMBER
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

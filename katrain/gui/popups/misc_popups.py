@@ -2,6 +2,7 @@
 
 Phase 140 P2-1: Extracted from katrain/gui/popups.py.
 """
+
 from __future__ import annotations
 
 from typing import Any

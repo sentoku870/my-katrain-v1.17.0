@@ -6,10 +6,12 @@ Game インスタンスの解析オーケストレーション機能を Analysis
 
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from katrain.core.constants import AnalysisMode
-from katrain.core.game import AnalysisOrchestrator, Game
+from katrain.core.game import AnalysisOrchestrator
 
 
 @pytest.fixture
@@ -50,11 +52,9 @@ def test_analyze_extra_unknown_mode_does_not_raise(game_with_mock_engine):
     game = game_with_mock_engine
     # parse_analysis_mode("") はデフォルトの AnalysisMode を返す
     # ここではクラッシュしないことだけを確認
-    try:
-        game.analyze_extra("invalid_mode")
-    except (ValueError, KeyError):
+    with contextlib.suppress(ValueError, KeyError):
         # 未知のモードは ValueError になる可能性あり
-        pass
+        game.analyze_extra("invalid_mode")
 
 
 def test_reset_current_analysis_signature(game_with_mock_engine):
@@ -115,9 +115,7 @@ def test_wait_for_engine_capacity_returns_false_on_timeout(game_with_mock_engine
     game = game_with_mock_engine
     mock_engine.has_query_capacity = lambda headroom=10: False
     # テスト高速化: 短い max_attempts / poll_interval でタイムアウト検証
-    result = game.analysis._wait_for_engine_capacity(
-        mock_engine, headroom=10, max_attempts=3, poll_interval=0.001
-    )
+    result = game.analysis._wait_for_engine_capacity(mock_engine, headroom=10, max_attempts=3, poll_interval=0.001)
     assert result is False
 
 

@@ -26,7 +26,6 @@ import pytest
 from katrain.core.analysis.models import (
     EvalSnapshot,
     MistakeCategory,
-    MoveEval,
     PositionDifficulty,
 )
 from katrain.core.analysis.models.skill import GameSummaryData
@@ -35,7 +34,6 @@ from katrain.core.reports.summary_logic import (
     SummaryAnalyzer,
     detect_urgent_miss_sequences,
 )
-
 
 # =============================================================================
 # Test helpers
@@ -173,9 +171,7 @@ class TestSummaryAnalyzerWorstMoves:
 
         stats = analyzer.get_player_stats("Alice")
         assert stats is not None
-        assert len(stats.worst_moves) == 10, (
-            f"Expected truncation to 10, got {len(stats.worst_moves)}"
-        )
+        assert len(stats.worst_moves) == 10, f"Expected truncation to 10, got {len(stats.worst_moves)}"
         # Top loss is 20.0 (moves[0] in our list)
         assert stats.worst_moves[0][1].points_lost == 20.0
 
@@ -512,8 +508,8 @@ class TestSummaryStatsMethods:
         assert stats.avg_points_lost_per_move == 0.0  # default before aggregation
 
         # When wrapped in a SummaryAnalyzer, the value is computed
-        from katrain.core.analysis.models.skill import GameSummaryData
         from katrain.core.analysis.models import EvalSnapshot
+        from katrain.core.analysis.models.skill import GameSummaryData
 
         @dataclass
         class _StubMove:
@@ -735,8 +731,11 @@ class TestSummaryAnalyzerAutoPreset:
         # Game 1: beginner recommended (loss 3.0 → INACCURACY)
         moves1 = [
             _MockMove(
-                move_number=1, player="B", gtp="BEGINNER",
-                points_lost=3.0, score_loss=3.0,
+                move_number=1,
+                player="B",
+                gtp="BEGINNER",
+                points_lost=3.0,
+                score_loss=3.0,
                 mistake_category=MistakeCategory.GOOD,
                 position_difficulty=PositionDifficulty.NORMAL,
             )
@@ -746,8 +745,11 @@ class TestSummaryAnalyzerAutoPreset:
         # Game 2: standard recommended (loss 3.0 → MISTAKE)
         moves2 = [
             _MockMove(
-                move_number=1, player="B", gtp="STANDARD",
-                points_lost=3.0, score_loss=3.0,
+                move_number=1,
+                player="B",
+                gtp="STANDARD",
+                points_lost=3.0,
+                score_loss=3.0,
                 mistake_category=MistakeCategory.GOOD,
                 position_difficulty=PositionDifficulty.NORMAL,
             )
@@ -842,6 +844,7 @@ class TestSummaryAnalyzerAutoPreset:
     def test_explicit_preset_bypasses_auto_resolution(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Explicit preset names (standard/beginner/pro/advanced/relaxed) must
         NOT call recommend_auto_strictness — they use the preset directly."""
+
         def fake_recommend(moves, *, game_count=1, **kwargs):  # type: ignore[no-untyped-def]
             raise AssertionError("recommend_auto_strictness should not be called for explicit presets")
 
@@ -936,8 +939,11 @@ class TestSummaryAnalyzerAutoPreset:
         for i, (gtp_id, expected_loss) in enumerate([("G1", 2.0), ("G2", 2.0), ("G3", 2.0)]):
             moves = [
                 _MockMove(
-                    move_number=1, player="B", gtp=gtp_id,
-                    points_lost=expected_loss, score_loss=expected_loss,
+                    move_number=1,
+                    player="B",
+                    gtp=gtp_id,
+                    points_lost=expected_loss,
+                    score_loss=expected_loss,
                     mistake_category=MistakeCategory.GOOD,
                     position_difficulty=PositionDifficulty.NORMAL,
                 )

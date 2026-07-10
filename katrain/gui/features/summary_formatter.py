@@ -19,7 +19,6 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from katrain.core import eval_metrics
-from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
@@ -27,27 +26,27 @@ from katrain.gui.features.summary_aggregator import collect_rank_info
 # Phase 174 P1-D: re-export pattern-mining helpers so existing callers/tests
 # can keep importing from summary_formatter.
 from katrain.gui.features.summary_pattern import (  # noqa: F401
-    PHASE_KEYS,  # noqa: F401
     AREA_KEYS,  # noqa: F401
-    SEVERITY_KEYS,  # noqa: F401
-    PLAYER_KEYS,  # noqa: F401
     MAX_DISPLAY_REFS,  # noqa: F401
-    _PatternMoveEval,  # noqa: F401
+    PHASE_KEYS,  # noqa: F401
+    PLAYER_KEYS,  # noqa: F401
+    SEVERITY_KEYS,  # noqa: F401
+    _append_recurring_patterns,  # noqa: F401
     _FakeSnapshot,  # noqa: F401
-    _normalize_board_size,  # noqa: F401
     _filter_by_board_size,  # noqa: F401
-    _stable_sort_key,  # noqa: F401
-    _is_valid_player,  # noqa: F401
+    _format_game_refs,  # noqa: F401
     _is_valid_gtp,  # noqa: F401
     _is_valid_move_number,  # noqa: F401
-    _reconstruct_pattern_input,  # noqa: F401
+    _is_valid_player,  # noqa: F401
     _mine_patterns_safe,  # noqa: F401
-    _format_game_refs,  # noqa: F401
-    _append_recurring_patterns,  # noqa: F401
+    _normalize_board_size,  # noqa: F401
+    _PatternMoveEval,  # noqa: F401
+    _reconstruct_pattern_input,  # noqa: F401
+    _stable_sort_key,  # noqa: F401
 )
 
 if TYPE_CHECKING:
-    from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster
+    pass
 
 _logger = logging.getLogger("katrain.gui.features.summary_formatter")
 
@@ -729,8 +728,7 @@ def _format_time_management(
                 blitz_count=stats_data.blitz_count + color_data.blitz_count,
                 blitz_mistake_count=stats_data.blitz_mistake_count + color_data.blitz_mistake_count,
                 long_think_count=stats_data.long_think_count + color_data.long_think_count,
-                long_think_mistake_count=stats_data.long_think_mistake_count
-                + color_data.long_think_mistake_count,
+                long_think_mistake_count=stats_data.long_think_mistake_count + color_data.long_think_mistake_count,
             )
             tilt_episodes.extend(color_episodes)
         lines.extend(_format_player_section(focus_player, stats_data, tilt_episodes))

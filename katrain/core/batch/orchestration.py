@@ -24,9 +24,9 @@ from katrain.core.batch.discovery import collect_sgf_files_recursive
 from katrain.core.batch.filenames import get_unique_filename, sanitize_filename
 from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.batch.io_safe import safe_write_file
+from katrain.core.batch.models import BatchResult, WriteError
 from katrain.core.batch.sgf_io import has_analysis
 from katrain.core.batch.visits import choose_visits_for_sgf
-from katrain.core.batch.models import BatchResult, WriteError
 from katrain.core.errors import AnalysisTimeoutError, EngineError, SGFError
 from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
 from katrain.core.reports.karte.builder import build_karte_report
@@ -166,9 +166,17 @@ def run_batch(
     )
     if setup is None:
         return result
-    output_dir, sgf_files, total, batch_timestamp, game_stats_list, games_for_curator, selected_visits_list, karte_path_map, tracker = (
-        setup
-    )
+    (
+        output_dir,
+        sgf_files,
+        total,
+        batch_timestamp,
+        game_stats_list,
+        games_for_curator,
+        selected_visits_list,
+        karte_path_map,
+        tracker,
+    ) = setup
 
     # Process each file
     for i, (abs_path, rel_path) in enumerate(sgf_files):
@@ -372,6 +380,7 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
     """
     # Import here to avoid circular imports
     from katrain.core.batch.analysis import analyze_single_file
+
     # Determine base name for output files
     base_name = os.path.splitext(os.path.basename(ctx.rel_path))[0]
     base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)[:50]
@@ -380,9 +389,7 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
     output_rel_path = ctx.rel_path
     if output_rel_path.lower().endswith((".gib", ".ngf")):
         output_rel_path = output_rel_path[:-4] + ".sgf"
-    sgf_output_path = (
-        os.path.join(ctx.output_dir, "analyzed", output_rel_path) if ctx.save_analyzed_sgf else None
-    )
+    sgf_output_path = os.path.join(ctx.output_dir, "analyzed", output_rel_path) if ctx.save_analyzed_sgf else None
 
     # We need the Game object if generating karte or summary
     need_game = ctx.generate_karte or ctx.generate_summary or ctx.generate_curator
@@ -663,9 +670,7 @@ def _generate_summaries(ctx: _BatchSummaryContext) -> None:
     summary_failed = 0
     for player_name, player_games in player_groups.items():
         safe_name = sanitize_filename(player_name)
-        base_path = os.path.join(
-            ctx.output_dir, "reports", "summary", f"summary_{safe_name}_{ctx.batch_timestamp}"
-        )
+        base_path = os.path.join(ctx.output_dir, "reports", "summary", f"summary_{safe_name}_{ctx.batch_timestamp}")
         summary_path = get_unique_filename(base_path, ".json")
         summary_filename = os.path.basename(summary_path)
 

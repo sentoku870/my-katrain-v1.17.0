@@ -5,6 +5,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - ClickableLabel: Label with LeftButtonBehavior (clickable).
 - ClickableCircle: CircleWithText with LeftButtonBehavior (clickable).
 """
+
 from __future__ import annotations
 
 from kivy.properties import NumericProperty, OptionProperty, StringProperty

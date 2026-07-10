@@ -10,7 +10,6 @@ from __future__ import annotations
 import gettext
 import logging
 import os
-import sys
 from collections.abc import Callable
 
 from katrain.common import DEFAULT_FONT

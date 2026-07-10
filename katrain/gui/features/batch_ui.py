@@ -347,9 +347,7 @@ def _build_visits_timeout_row(widgets: BatchWidgets, batch_options: BatchOptions
 def _build_skip_row(widgets: BatchWidgets, batch_options: BatchOptions) -> BoxLayout:
     """Build the skip-analyzed checkbox row."""
     row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
-    widgets["skip_checkbox"] = CheckBox(
-        active=batch_options.get("skip_analyzed", True), size_hint_x=None, width=dp(30)
-    )
+    widgets["skip_checkbox"] = CheckBox(active=batch_options.get("skip_analyzed", True), size_hint_x=None, width=dp(30))
     row.add_widget(widgets["skip_checkbox"])
     row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:skip_analyzed"), 0.4))
     row.add_widget(Label(size_hint_x=0.5))  # spacer

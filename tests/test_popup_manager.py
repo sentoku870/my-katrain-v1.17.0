@@ -70,9 +70,12 @@ def create_manager(
     if log_calls is None:
         log_calls = []
     if get_popup_open is None:
+
         def get_popup_open():
             return None
+
     if is_engine_recovery_fn is None:
+
         def is_engine_recovery_fn(p):
             return False
 

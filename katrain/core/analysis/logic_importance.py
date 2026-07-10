@@ -131,9 +131,7 @@ def compute_importance_for_moves(
         swing_magnitude = 0.0
         if use_swing and m.score_before is not None and m.score_after is not None:
             score_sign_changed = (
-                (m.score_before > 0) != (m.score_after > 0)
-                or m.score_before == 0.0
-                or m.score_after == 0.0
+                (m.score_before > 0) != (m.score_after > 0) or m.score_before == 0.0 or m.score_after == 0.0
             )
             if score_sign_changed:
                 swing_magnitude = abs(m.score_before - m.score_after)
@@ -150,10 +148,7 @@ def compute_importance_for_moves(
 
         # Compute base importance
         base_importance = (
-            1.0 * canonical_loss +
-            SWING_MAGNITUDE_WEIGHT * swing_magnitude +
-            difficulty_modifier +
-            streak_bonus
+            1.0 * canonical_loss + SWING_MAGNITUDE_WEIGHT * swing_magnitude + difficulty_modifier + streak_bonus
         )
 
         # Apply reliability scale
@@ -213,6 +208,7 @@ def pick_important_moves(
 
     # 2) フォールバック
     if not candidates:
+
         def raw_score(m: MoveEval) -> float:
             score_term = abs(m.delta_score or 0.0)
             winrate_term = 50.0 * abs(m.delta_winrate or 0.0)

@@ -151,7 +151,9 @@ class TestSanitization:
         ]
 
         bundle = DiagnosticsBundle(
-            system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"),
+            system_info=SystemInfo(
+                "Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"
+            ),
             katago_info=KataGoInfo(
                 exe_path=sensitive_paths[0],
                 model_path=sensitive_paths[1],
@@ -196,7 +198,9 @@ class TestSanitization:
         long_logs = ["This is a very long log line " * 100] * 100
 
         bundle = DiagnosticsBundle(
-            system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"),
+            system_info=SystemInfo(
+                "Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"
+            ),
             katago_info=KataGoInfo("", "", "", False, None),
             app_info=AppInfo("1.0", "", ""),
             settings={},
@@ -256,7 +260,9 @@ class TestZipExtraFiles:
         )
 
         bundle = DiagnosticsBundle(
-            system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"),
+            system_info=SystemInfo(
+                "Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"
+            ),
             katago_info=KataGoInfo("", "", "", False, None),
             app_info=AppInfo("1.0", "", ""),
             settings={},
@@ -292,7 +298,9 @@ class TestZipExtraFiles:
         )
 
         bundle = DiagnosticsBundle(
-            system_info=SystemInfo("Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"),
+            system_info=SystemInfo(
+                "Windows", "10", "10.0", "3.11", "64-bit", "AMD64", "Intel", "16 GB", "NVIDIA GeForce RTX 3060"
+            ),
             katago_info=KataGoInfo("", "", "", False, None),
             app_info=AppInfo("1.0", "", ""),
             settings={},

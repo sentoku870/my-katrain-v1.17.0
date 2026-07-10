@@ -4,7 +4,7 @@ Tests that batch UI correctly collects and persists engine selection.
 CI-safe (no real engines, no Kivy UI).
 """
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 # ---------------------------------------------------------------------------
 # Test: collect_batch_options() includes analysis_engine

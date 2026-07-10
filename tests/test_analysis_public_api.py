@@ -18,9 +18,6 @@ of what the package used to expose (Phase B baseline).
 
 from __future__ import annotations
 
-import pytest
-
-
 # High-traffic symbols that external code imports most often. Listing
 # them explicitly makes the test fail loudly if any silently disappears.
 HIGH_TRAFFIC_SYMBOLS = [
@@ -90,17 +87,13 @@ class TestAnalysisPackageSurface:
 
         all_names = list(analysis.__all__)
         # Sanity: should be a meaningful number of names.
-        assert len(all_names) >= 80, (
-            f"__all__ has only {len(all_names)} names — expected ≥80."
-        )
+        assert len(all_names) >= 80, f"__all__ has only {len(all_names)} names — expected ≥80."
 
         missing: list[str] = []
         for name in all_names:
             if not hasattr(analysis, name):
                 missing.append(name)
-        assert not missing, (
-            f"__all__ lists names that don't exist on the package: {missing[:10]}..."
-        )
+        assert not missing, f"__all__ lists names that don't exist on the package: {missing[:10]}..."
 
     def test_from_star_yields_everything_in___all__(self):
         """``from katrain.core.analysis import *`` populates the local namespace."""

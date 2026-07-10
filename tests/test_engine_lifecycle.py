@@ -32,7 +32,6 @@ def make_engine_config(overrides: dict | None = None) -> dict:
         "config": "",
         "altcommand": "echo test",
         "threads": 1,
-        "max_visits": 1,
         "max_time": 1.0,
         "wide_root_noise": 0.0,
         "allow_recovery": False,

@@ -11,14 +11,9 @@ Covers previously untested paths in katrain/core/sgf_parser.py:
 - SGF.parse_ngf / parse_gib (happy path)
 """
 
-import os
-import tempfile
-from unittest.mock import patch
-
 import pytest
 
-from katrain.core.sgf_parser import Move, ParseError, SGF, SGFNode
-
+from katrain.core.sgf_parser import SGF, Move, ParseError, SGFNode
 
 # ---------------------------------------------------------------------------
 # Move.from_gtp
@@ -518,9 +513,7 @@ class TestSGFParseNGF:
         assert second_move.get_property("W") == "oo"  # NGF pp → SGF oo
 
     def test_ngf_no_moves_raises(self):
-        ngf_no_moves = (
-            "Title\n21\nW\nB\n\n0\n\n0.0\n20240115\n 0  0  0  0  0  0\n"
-        )
+        ngf_no_moves = "Title\n21\nW\nB\n\n0\n\n0.0\n20240115\n 0  0  0  0  0  0\n"
         with pytest.raises(ParseError, match="Found no moves"):
             SGF.parse_ngf(ngf_no_moves)
 
@@ -643,9 +636,7 @@ class TestSGFParseFile:
 
     def test_parse_file_ngf_extension(self, tmp_path):
         path = tmp_path / "test.ngf"
-        path.write_text(
-            "21\nWHITE_NAME\nBLACK_NAME\n0\n0\n0.0\n6.5\n20240115\n\n 0  0  0  0  0  0\nPM 1Bdd\n"
-        )
+        path.write_text("21\nWHITE_NAME\nBLACK_NAME\n0\n0\n0.0\n6.5\n20240115\n\n 0  0  0  0  0  0\nPM 1Bdd\n")
         root = SGF.parse_file(str(path))
         # NGF parsing → has moves
         assert root.children

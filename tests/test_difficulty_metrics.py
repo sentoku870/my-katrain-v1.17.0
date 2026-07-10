@@ -36,9 +36,9 @@ from katrain.core.analysis.logic_difficulty import (
     _compute_state_difficulty,
     _compute_transition_difficulty,
     _determine_reliability,
+    _get_root_visits,
     _normalize_candidates,
 )
-from katrain.core.analysis.logic_difficulty import _get_root_visits
 
 # =============================================================================
 # Fixtures
@@ -690,25 +690,19 @@ class TestPhase154ErrorPressure:
     def test_error_pressure_from_shortterm_score_error(self):
         """shorttermScoreError から error_pressure を計算"""
         root_info = {"shorttermScoreError": 2.5}  # /SHORTTERM_SCORE_ERROR_MAX(5.0) = 0.5
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info)
         assert metrics.error_pressure == pytest.approx(0.5, abs=0.01)
 
     def test_error_pressure_clamped_to_one(self):
         """error_pressure は最大 1.0 にクランプ"""
         root_info = {"shorttermScoreError": 100.0}  # 大きすぎ
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info)
         assert metrics.error_pressure == 1.0
 
     def test_error_pressure_missing_returns_none(self):
         """shorttermScoreError 欠損時は None"""
         root_info = {}  # shorttermScoreError なし
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info)
         assert metrics.error_pressure is None
 
 
@@ -755,9 +749,7 @@ class TestPhase154OverallAggregation:
     def test_overall_with_only_error_pressure(self):
         """error_pressure のみで加成"""
         root_info = {"shorttermScoreError": 5.0}  # error_pressure=1.0
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info)
         # 既存: overall = max(0.96, 0.025) = 0.96
         # 加成: 0.96 + 0.15 * 1.0 = 1.11 → クランプで 1.0
         assert metrics.overall_difficulty == pytest.approx(1.0, abs=0.01)
@@ -794,9 +786,7 @@ class TestPhase154OverallAggregation:
     def test_overall_clamped_after_aggregation(self):
         """overall は集約後にクランプされる"""
         root_info = {"shorttermScoreError": 10.0}  # error_pressure=1.0
-        metrics = compute_difficulty_metrics(
-            FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info
-        )
+        metrics = compute_difficulty_metrics(FIXTURE_CANDIDATES_BALANCED, root_visits=1000, root_info=root_info)
         # error_pressure 加成で 1.0 を超えるがクランプ
         assert metrics.overall_difficulty <= 1.0
 

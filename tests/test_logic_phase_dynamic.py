@@ -1,4 +1,5 @@
 """Tests for Phase 156-A dynamic phase classifier."""
+
 from __future__ import annotations
 
 import pytest

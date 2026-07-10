@@ -85,9 +85,7 @@ def draw_stone(
         if ownership is not None:
             mark_color = (*Theme.STONE_COLORS[owner][:3], 1.0)
             other_color = (*Theme.STONE_COLORS[other][:3], 1.0)
-            outline_color = tuple(
-                map(lambda y: sum(y) / float(len(y)), zip(*(mark_color, other_color), strict=False))
-            )
+            outline_color = tuple(map(lambda y: sum(y) / float(len(y)), zip(*(mark_color, other_color), strict=False)))
             mark_value = ownership
         else:
             assert loss is not None
@@ -226,10 +224,8 @@ def draw_board(widget: BadukPanWidget, *_args: Any) -> None:
             widget.gridpos[0][0][0] not in current_gridpos_x
             or widget.gridpos[0][0][1] not in current_gridpos_y
             or (
-                widget.gridpos[len(widget.gridpos) - 1][len(widget.gridpos[0]) - 1][0]
-                in current_gridpos_x
-                or widget.gridpos[len(widget.gridpos) - 1][len(widget.gridpos[0]) - 1][1]
-                in current_gridpos_y
+                widget.gridpos[len(widget.gridpos) - 1][len(widget.gridpos[0]) - 1][0] in current_gridpos_x
+                or widget.gridpos[len(widget.gridpos) - 1][len(widget.gridpos[0]) - 1][1] in current_gridpos_y
             )
         ):
             widget.resize_board()
@@ -291,9 +287,7 @@ def draw_star_points(widget: BadukPanWidget, board_size_x: int, board_size_y: in
         star_point_pos = 3 if size <= 11 else 4
         if size < 7:
             return []
-        return [star_point_pos - 1, size - star_point_pos] + (
-            [int(size / 2)] if size % 2 == 1 and size > 7 else []
-        )
+        return [star_point_pos - 1, size - star_point_pos] + ([int(size / 2)] if size % 2 == 1 and size > 7 else [])
 
     for x in star_point_coords(board_size_x):
         for y in star_point_coords(board_size_y):
@@ -624,7 +618,9 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
             and katrain.last_player_info.ai
             and katrain.next_player_info.ai
         ):
-            policy = current_node.parent.policy  # in the case of AI self-play we allow the policy to be one step out of date
+            policy = (
+                current_node.parent.policy
+            )  # in the case of AI self-play we allow the policy to be one step out of date
 
         # Guard pass_btn access - may be missing during initialization
         board_controls = getattr(katrain, "board_controls", None)

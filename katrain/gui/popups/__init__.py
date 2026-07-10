@@ -12,6 +12,7 @@ focused package of 5 submodules:
 This __init__.py re-exports all public names for backward compatibility with
 existing `from katrain.gui.popups import ...` imports.
 """
+
 from __future__ import annotations
 
 from katrain.gui.popups._base import (

@@ -47,15 +47,11 @@ class ScrollHandler:
         board_controls = self._get_board_controls()
         controls = self._get_controls()
 
-        touching_board = bool(
-            board_gui and board_gui.collide_point(*touch.pos)
-        ) or bool(
+        touching_board = bool(board_gui and board_gui.collide_point(*touch.pos)) or bool(
             board_controls and board_controls.collide_point(*touch.pos)
         )
         touching_control_nonscroll = bool(
-            controls
-            and controls.collide_point(*touch.pos)
-            and not controls.notes_panel.collide_point(*touch.pos)
+            controls and controls.collide_point(*touch.pos) and not controls.notes_panel.collide_point(*touch.pos)
         )
 
         # Scroll while PV is animating -> adjust animation index

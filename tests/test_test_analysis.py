@@ -9,10 +9,11 @@ import pytest
 
 from katrain.core.analysis_result import (
     EngineTestResult as AnalysisResult,
+)
+from katrain.core.analysis_result import (
     ErrorCategory,
     classify_engine_error,
 )
-
 
 # =============================================================================
 # TestErrorCategory

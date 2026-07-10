@@ -82,6 +82,7 @@ class TestBadukPanWidgetCleanup:
         from unittest.mock import patch
 
         from kivy.core.window import Window
+
         from katrain.gui.badukpan import BadukPanWidget
 
         widget = self._make_widget()
@@ -116,6 +117,7 @@ class TestBadukPanWidgetCleanup:
         from unittest.mock import patch
 
         from kivy.core.window import Window
+
         from katrain.gui.badukpan import BadukPanWidget
 
         widget = self._make_widget()

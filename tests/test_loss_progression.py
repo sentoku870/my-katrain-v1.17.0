@@ -1,4 +1,5 @@
 """Tests for Phase 154-B loss progression analyzer."""
+
 from __future__ import annotations
 
 import pytest
@@ -33,9 +34,7 @@ def make_move(
         root_visits=200,
     )
     move.score_loss = loss
-    move.mistake_category = (
-        MistakeCategory.MISTAKE if loss >= 1.0 else MistakeCategory.GOOD
-    )
+    move.mistake_category = MistakeCategory.MISTAKE if loss >= 1.0 else MistakeCategory.GOOD
     return move
 
 
@@ -149,7 +148,7 @@ class TestLossProgressionTruncateEndMove:
         """The Phase 157-A bug: identical windows must share the same key."""
         # Two games of different lengths whose 91-100 window would otherwise
         # be reported under (91, 100) and (91, 95) respectively.
-        game_a = [make_move(i, 0.5) for i in range(1, 96)]   # 95 moves
+        game_a = [make_move(i, 0.5) for i in range(1, 96)]  # 95 moves
         game_b = [make_move(i, 0.5) for i in range(1, 101)]  # 100 moves
 
         buckets_a = compute_loss_progression(game_a, bucket_size=10, truncate_end_move=False)
@@ -161,7 +160,7 @@ class TestLossProgressionTruncateEndMove:
 
     def test_truncate_true_keys_differ_across_game_lengths(self):
         """The Phase 154-B behaviour: truncated end causes key divergence."""
-        game_a = [make_move(i, 0.5) for i in range(1, 96)]   # 95 moves
+        game_a = [make_move(i, 0.5) for i in range(1, 96)]  # 95 moves
         game_b = [make_move(i, 0.5) for i in range(1, 101)]  # 100 moves
 
         buckets_a = compute_loss_progression(game_a, bucket_size=10, truncate_end_move=True)

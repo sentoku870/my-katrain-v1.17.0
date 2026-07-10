@@ -4,6 +4,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - KeyValueSpinner: Spinner with both display values and referenced key values.
 - I18NSpinner: KeyValueSpinner whose values are auto-localized via i18n.
 """
+
 from __future__ import annotations
 
 from typing import Any

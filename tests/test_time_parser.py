@@ -1,4 +1,5 @@
 """Tests for katrain/core/analysis/time/parser.py (Phase 167)."""
+
 from __future__ import annotations
 
 import pytest

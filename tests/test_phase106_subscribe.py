@@ -100,11 +100,13 @@ class TestControlsPanelSubscription:
         dummy = ControlsPanelDummy()
         ControlsPanel.on_katrain(dummy, None, mock_katrain)
 
-        with patch.object(notifier, "unsubscribe", wraps=notifier.unsubscribe) as spy_unsub:
-            with patch.object(notifier, "subscribe") as mock_sub:
-                ControlsPanel.on_katrain(dummy, None, None)
-                spy_unsub.assert_called_once()
-                mock_sub.assert_not_called()
+        with (
+            patch.object(notifier, "unsubscribe", wraps=notifier.unsubscribe) as spy_unsub,
+            patch.object(notifier, "subscribe") as mock_sub,
+        ):
+            ControlsPanel.on_katrain(dummy, None, None)
+            spy_unsub.assert_called_once()
+            mock_sub.assert_not_called()
 
         assert dummy._subscribed_notifier is None
 

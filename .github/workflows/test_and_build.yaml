@@ -53,6 +53,26 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy katrain
 
+  # Phase A-10: Lint with ruff (separate job for parallel execution)
+  lint:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python and uv
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          sync-groups: dev
+
+      - name: Lint and format check
+        run: |
+          uv run ruff check katrain tests
+          uv run ruff format --check katrain tests
+
   test:
     needs: prepare
     runs-on: ubuntu-latest
@@ -121,14 +141,15 @@ jobs:
         run: |
           # Phase 138-D: Initial coverage gate at 40% (baseline observed: 46.87%)
           # Phase 138-D follow-up: Raise to 50% / 60% / 70% incrementally
-          uv run python -m pytest tests --cov=katrain --cov-fail-under=40 --tb=short 2>&1
+          # Phase A-11: raise gate from 40% to 60% (observed coverage: 65%)
+          uv run python -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
           echo "Exit code: $?"
 
       - name: Check package can be built
         run: uv build
 
   build-windows:
-    needs: [prepare, test, typecheck]
+    needs: [prepare, test, typecheck, lint]
     runs-on: windows-latest
     timeout-minutes: 60
     env:

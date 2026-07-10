@@ -10,6 +10,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - BGBoxLayout: BoxLayout with BackgroundMixin (foundational for Timer etc.).
 - ScrollableLabel: ScrollView with label-like text and ref_press event.
 """
+
 from __future__ import annotations
 
 from typing import Any

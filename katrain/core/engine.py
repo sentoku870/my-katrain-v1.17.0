@@ -266,9 +266,7 @@ class KataGoEngine(BaseEngine):
         if self._error_callback is not None:
             try:
                 # *args/**kwargs so the wrapper tolerates schedulers that pass _dt (Kivy)
-                self._main_thread_scheduler(
-                    lambda *_a, **_kw: self._error_callback(message, code, allow_popup)
-                )
+                self._main_thread_scheduler(lambda *_a, **_kw: self._error_callback(message, code, allow_popup))
             except Exception as e:  # noqa: BLE001 - last-resort error path
                 self.katrain.log(f"Error in engine error_callback: {e}", OUTPUT_ERROR)
             return
@@ -388,7 +386,9 @@ class KataGoEngine(BaseEngine):
                 else:
                     died_msg = i18n._("Engine died unexpectedly").format(error=f"{os_error} status {code}")
                 if code != 1:  # deliberate exit
-                    self._fire_engine_error(died_msg, str(code) if code is not None else None, allow_popup=maybe_open_recovery)
+                    self._fire_engine_error(
+                        died_msg, str(code) if code is not None else None, allow_popup=maybe_open_recovery
+                    )
                 self.katago_process = None  # return from threads
             else:
                 self.katrain.log(i18n._("Engine died unexpectedly").format(error=os_error), OUTPUT_DEBUG)
@@ -753,5 +753,3 @@ class KataGoEngine(BaseEngine):
             "includeOwnership": False,
             "includePolicy": False,
         }
-
-

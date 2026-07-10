@@ -1,4 +1,5 @@
 """Phase 148-D2: Tests for skill preset reason_tag_thresholds (Phase 148-C3)."""
+
 from __future__ import annotations
 
 from katrain.core.eval_metrics import get_skill_preset
@@ -21,9 +22,5 @@ def test_other_presets_reason_tag_thresholds_unchanged():
     ]
     for name, expected_hl, expected_rf in expected:
         preset = get_skill_preset(name)
-        assert preset.reason_tag_thresholds.heavy_loss == expected_hl, (
-            f"{name} heavy_loss"
-        )
-        assert preset.reason_tag_thresholds.reading_failure == expected_rf, (
-            f"{name} reading_failure"
-        )
+        assert preset.reason_tag_thresholds.heavy_loss == expected_hl, f"{name} heavy_loss"
+        assert preset.reason_tag_thresholds.reading_failure == expected_rf, f"{name} reading_failure"

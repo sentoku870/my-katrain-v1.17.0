@@ -6,6 +6,7 @@ Contains:
 - get_pv_filter_config: Get PV filter config by level (with auto-mapping)
 - filter_candidates_by_pv_complexity: Filter candidates by PV length and loss
 """
+
 from __future__ import annotations
 
 from typing import Any
