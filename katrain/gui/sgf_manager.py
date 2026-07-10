@@ -86,6 +86,8 @@ def _safe_fetch_url(url: str, *, timeout: float = 10.0, max_bytes: int = _MAX_CL
     if len(data) > max_bytes:
         raise UnsafeClipboardURLError(f"response larger than {max_bytes} bytes")
     return data.decode("utf-8", errors="replace")
+
+
 from katrain.core.sgf_parser import ParseError
 from katrain.gui.kivyutils import MenuItem
 from katrain.gui.popups import I18NPopup, LoadSGFPopup, SaveSGFPopup
