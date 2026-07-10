@@ -19,7 +19,29 @@ spy that records ``schedule_once`` calls and provides a controllable
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+# katrain.gui.popups imports Kivy widgets at module top. On headless CI the
+# import + Kivy's heavy init can OOM the 16GB runner mid-suite (exit 102).
+# Mirror test_popups_helpers.py and skip this file on CI. Local development
+# still runs the suite.
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI", "").lower() == "true",
+    reason="katrain.gui.popups imports Kivy widgets at module scope; CI environment OOMs mid-suite",
+)
+
+# Force Kivy into headless mode before any popup module load.
+os.environ.setdefault("KIVY_NO_ARGS", "1")
+os.environ.setdefault("KIVY_NO_FILELOG", "1")
+os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
+os.environ.setdefault("KIVY_NO_ENV_CONFIG", "1")
+os.environ.setdefault("KIVY_HEADLESS", "1")
+os.environ.setdefault("KIVY_NO_WINDOW", "1")
+os.environ.setdefault("KIVY_GL_BACKEND", "mock")
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
 class TestCancelRefresh:
