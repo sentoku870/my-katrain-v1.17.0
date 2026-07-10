@@ -13,11 +13,13 @@ __main__.pyから抽出されたSGFファイル管理機能。
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import re
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlparse
 
 import urllib3
 from kivy.clock import Clock
@@ -28,6 +30,62 @@ from kivy.uix.dropdown import DropDown
 from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, OUTPUT_INFO, STATUS_ERROR, STATUS_INFO
 from katrain.core.game import KaTrainSGF
 from katrain.core.lang import i18n
+
+_MAX_CLIPBOARD_FETCH_BYTES = 5 * 1024 * 1024  # 5 MiB hard cap on URL fetches
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
+_DISALLOWED_HOST_LITERALS = frozenset({"localhost", "ip6-localhost", "ip6-loopback"})
+
+
+class UnsafeClipboardURLError(ValueError):
+    """Raised when a clipboard URL is rejected for safety (SSRF defense)."""
+
+
+def _safe_fetch_url(url: str, *, timeout: float = 10.0, max_bytes: int = _MAX_CLIPBOARD_FETCH_BYTES) -> str:
+    """Fetch ``url`` with SSRF-defensive guards.
+
+    The function only accepts ``http://`` or ``https://`` schemes and refuses
+    to talk to any host that resolves to a private, loopback, link-local,
+    or otherwise non-globally-routable IP range. Redirects are not followed
+    past the first hop and the response body is hard-capped at
+    ``max_bytes`` to bound memory use.
+
+    Args:
+        url: The URL to fetch.
+        timeout: Read timeout in seconds.
+        max_bytes: Hard cap on the response body size in bytes.
+
+    Returns:
+        The decoded (UTF-8) response body.
+
+    Raises:
+        UnsafeClipboardURLError: If the URL is unsafe (bad scheme,
+            private/loopback host, IPv6 loopback literal, etc.).
+        urllib3.exceptions.HTTPError: On network/protocol errors.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in _ALLOWED_URL_SCHEMES:
+        raise UnsafeClipboardURLError(f"scheme not allowed: {parsed.scheme!r}")
+    if not parsed.hostname:
+        raise UnsafeClipboardURLError("missing hostname")
+    host = parsed.hostname.lower()
+    if host in _DISALLOWED_HOST_LITERALS:
+        raise UnsafeClipboardURLError(f"host not allowed: {host!r}")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None and (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast):
+        raise UnsafeClipboardURLError(f"ip not routable: {host!r}")
+
+    http = urllib3.PoolManager(timeout=timeout, retries=urllib3.Retry(total=1, redirect=False))
+    response = http.request("GET", url, preload_content=False)
+    try:
+        data = response.read(max_bytes + 1)
+    finally:
+        response.release_conn()
+    if len(data) > max_bytes:
+        raise UnsafeClipboardURLError(f"response larger than {max_bytes} bytes")
+    return data.decode("utf-8", errors="replace")
 from katrain.core.sgf_parser import ParseError
 from katrain.gui.kivyutils import MenuItem
 from katrain.gui.popups import I18NPopup, LoadSGFPopup, SaveSGFPopup
@@ -117,9 +175,16 @@ class SGFManager:
         url_match = re.match(r"(?P<url>https?://[^\s]+)", clipboard)
         if url_match:
             self._log("Recognized url: " + url_match.group(), OUTPUT_INFO)
-            http = urllib3.PoolManager()
-            response = http.request("GET", url_match.group())
-            clipboard = response.data.decode("utf-8")
+            try:
+                clipboard = _safe_fetch_url(url_match.group())
+            except UnsafeClipboardURLError as exc:
+                self._log(f"Refusing to fetch clipboard URL ({exc})", OUTPUT_ERROR)
+                self._set_status(f"Refusing to fetch clipboard URL: {exc}", int(STATUS_INFO))
+                return
+            except urllib3.exceptions.HTTPError as exc:
+                self._log(f"Network error fetching clipboard URL: {exc}", OUTPUT_ERROR)
+                self._set_status(f"Network error: {exc}", int(STATUS_INFO))
+                return
 
         try:
             move_tree = KaTrainSGF.parse_sgf(clipboard)
