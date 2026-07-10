@@ -38,6 +38,15 @@ SPLIT_FILES: dict[str, tuple[str, ...]] = {
         "test_output.py",
         "test_helpers.py",
     ),
+    "tests/ai_strategies/": (
+        "__init__.py",
+        "_helpers.py",
+        "test_helpers.py",
+        "test_basic_strategies.py",
+        "test_ownership_strategies.py",
+        "test_select_strategies.py",
+        "test_special_strategies.py",
+    ),
 }
 
 # Original monolithic files that have been replaced by deprecation shims.
@@ -45,6 +54,7 @@ DEPRECATION_SHIMS = (
     "tests/test_eval_metrics.py",
     "tests/test_karte_structure.py",
     "tests/test_batch_analyzer.py",
+    "tests/test_ai_strategies.py",
 )
 
 

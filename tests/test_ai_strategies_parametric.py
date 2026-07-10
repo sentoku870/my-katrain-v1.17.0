@@ -50,7 +50,7 @@ from katrain.core.constants import (
     AI_WEIGHTED,
 )
 from katrain.core.game import Move
-from tests.test_ai_strategies import ai_test_context, make_settings
+from tests.ai_strategies._helpers import ai_test_context, make_settings
 
 # =============================================================================
 # Strategy registry
