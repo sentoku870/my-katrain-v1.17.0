@@ -2538,3 +2538,24 @@ msgstr "一本道"
 msgid "diagnosis:note:chaos"
 msgstr "乱戦局面（評価の変動大）"
 
+
+msgid "focus:black"
+msgstr "黒優先"
+
+msgid "focus:white"
+msgstr "白優先"
+
+msgid "focus:black-active"
+msgstr "★黒優先"
+
+msgid "focus:white-active"
+msgstr "★白優先"
+
+msgid "prev-important-move"
+msgstr "前の重要局面"
+
+msgid "next-important-move"
+msgstr "次の重要局面"
+
+msgid "important-line"
+msgstr "重要局面"

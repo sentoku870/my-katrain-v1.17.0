@@ -127,4 +127,83 @@ class TestBatchAnalyzeI18n:
         for lang in locales_list:
             locale = gettext.translation("katrain", str(locale_dir), languages=[lang])
             translated = locale.gettext(key)
-            assert translated != key, f"Key '{key}' is not translated in '{lang}' locale"
+
+
+# ---------------------------------------------------------------------------
+# P2-B: previously-hardcoded Japanese strings now routed through i18n
+# ---------------------------------------------------------------------------
+
+
+class TestHardcodedJapaneseI18n:
+    """P2-B (H5): focus toggle and important-line buttons used to be hardcoded
+    Japanese strings in board.kv, panels.kv and analysis_controller.py.
+    They are now ``i18n._(...)`` calls. This test locks down the new keys
+    so a future regression (e.g. someone reverts one of these to a
+    hardcoded literal) is caught at the i18n layer.
+    """
+
+    @pytest.fixture
+    def locale_dir(self):
+        """Get the path to the locales directory."""
+        import katrain
+        from pathlib import Path
+
+        katrain_dir = Path(katrain.__file__).parent
+        return katrain_dir / "i18n" / "locales"
+
+    NEW_KEYS = [
+        "focus:black",
+        "focus:white",
+        "focus:black-active",
+        "focus:white-active",
+        "prev-important-move",
+        "next-important-move",
+        "important-line",
+    ]
+
+    def test_all_keys_translated_in_en(self, locale_dir):
+        locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
+        for key in self.NEW_KEYS:
+            translated = locales.gettext(key)
+            assert translated != key, f"Key '{key}' is not translated in 'en'"
+            assert translated, f"Key '{key}' translates to empty string in 'en'"
+
+    def test_all_keys_translated_in_jp(self, locale_dir):
+        locales = gettext.translation("katrain", str(locale_dir), languages=["jp"])
+        for key in self.NEW_KEYS:
+            translated = locales.gettext(key)
+            assert translated != key, f"Key '{key}' is not translated in 'jp'"
+
+    def test_active_focus_keys_have_star_in_en(self, locale_dir):
+        """The 'active' variants mark the currently selected focus with a
+        star prefix so users see the active toggle at a glance."""
+        locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
+        assert locales.gettext("focus:black-active").startswith("★")
+        assert locales.gettext("focus:white-active").startswith("★")
+
+    def test_active_focus_keys_have_star_in_jp(self, locale_dir):
+        locales = gettext.translation("katrain", str(locale_dir), languages=["jp"])
+        assert locales.gettext("focus:black-active").startswith("★")
+        assert locales.gettext("focus:white-active").startswith("★")
+
+    def test_kv_files_no_longer_hold_hardcoded_japanese(self):
+        """board.kv and panels.kv used to ship literal Japanese strings.
+        Those literal copies must not come back."""
+        from pathlib import Path
+
+        from katrain import __file__ as katrain_init
+
+        kv_dir = Path(katrain_init).parent / "gui" / "kv"
+        offenders = []
+        for kv_file in ("board.kv", "panels.kv"):
+            text = (kv_dir / kv_file).read_text(encoding="utf-8")
+            for literal in ("黒優先", "白優先", "前の重要局面", "次の重要局面", "重要局面"):
+                # The 'active' variants still contain the prefix (e.g. ★黒優先)
+                # but those are now generated dynamically in Python, so a
+                # plain "黒優先" or "白優先" literal in the .kv file is a bug.
+                if literal in text:
+                    offenders.append((kv_file, literal))
+        assert not offenders, (
+            "Hardcoded Japanese literals reappeared in .kv files: "
+            f"{offenders}. Use i18n._(...) instead."
+        )
