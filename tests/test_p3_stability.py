@@ -109,40 +109,38 @@ class TestUpdateTimerTimeUsedGuard:
     node whose ``time_used`` is ``None`` would propagate ``None`` through
     arithmetic and raise ``TypeError`` on every tick.
 
-    The guard is extracted as ``_ensure_time_used_initialized`` so we
-    can test it without instantiating the full ControlsPanel.
+    The guard lives as a staticmethod on ControlsPanel so the regression
+    can be tested without instantiating the full Kivy widget.
     """
 
-    def test_coerce_none_to_zero(self):
-        from katrain.gui.controlspanel import _ensure_time_used_initialized
+    @staticmethod
+    def _guard(node):
+        from katrain.gui.controlspanel import ControlsPanel
 
+        return ControlsPanel._ensure_time_used_initialized(node)
+
+    def test_coerce_none_to_zero(self):
         node = MagicMock()
         node.time_used = None
-        _ensure_time_used_initialized(node)
+        self._guard(node)
         assert node.time_used == 0
 
     def test_leave_zero_alone(self):
-        from katrain.gui.controlspanel import _ensure_time_used_initialized
-
         node = MagicMock()
         node.time_used = 0
-        _ensure_time_used_initialized(node)
+        self._guard(node)
         assert node.time_used == 0
 
     def test_leave_positive_alone(self):
-        from katrain.gui.controlspanel import _ensure_time_used_initialized
-
         node = MagicMock()
         node.time_used = 42.5
-        _ensure_time_used_initialized(node)
+        self._guard(node)
         assert node.time_used == 42.5
 
     def test_missing_attr_initialised_to_zero(self):
         """A node without ``time_used`` at all should also be coerced."""
-        from katrain.gui.controlspanel import _ensure_time_used_initialized
-
         node = MagicMock(spec=[])  # spec=[] makes time_used raise AttributeError
-        _ensure_time_used_initialized(node)
+        self._guard(node)
         assert node.time_used == 0
 
 
