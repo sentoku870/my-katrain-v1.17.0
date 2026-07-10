@@ -369,6 +369,23 @@ class TestAnalyzeAllNodes:
         )
         # No crash means the timeout was handled
 
+    def test_run_initial_analysis_safely_logs_exception(self, game_9x9):
+        """_run_initial_analysis_safely must not propagate exceptions to the thread.
+
+        P1-S8: a daemon thread that crashes silently leaves the user with
+        partial analysis and no diagnostic. The wrapper logs and swallows.
+        """
+        import logging
+
+        with patch.object(game_9x9, "analyze_all_nodes", side_effect=RuntimeError("boom")):
+            with patch("katrain.core.game.facade.logger") as mock_logger:
+                # Should not raise even though analyze_all_nodes raises.
+                game_9x9._run_initial_analysis_safely(analyze_fast=False)
+                mock_logger.exception.assert_called_once()
+                # Verify the error message includes the strategy name.
+                call_args = mock_logger.exception.call_args.args[0]
+                assert "initial analyze thread" in call_args
+
 
 # ---------------------------------------------------------------------------
 # Game - important move navigation
@@ -884,6 +901,38 @@ class TestShortcuts:
         # (this is more of a smoke test)
         game.undo()
         assert game.current_node.move.coords == (3, 3)
+
+    def test_undo_breaks_on_shortcut_cycle(self, game):
+        """A cyclic shortcut_from chain must not hang undo (P1-S5 regression)."""
+        game.play(Move.from_gtp("D4", player="B"))
+        game.play(Move.from_gtp("Q16", player="W"))
+        # n1 = depth 1 (D4), n2 = depth 2 (Q16)
+        n2 = game.current_node
+        game.undo()
+        n1 = game.current_node
+        assert n1.move.coords == (3, 3)
+
+        # Force a cycle: n1 -> n2 -> n1 -> n2 ...
+        # This is what a hand-crafted malicious SGF could encode.
+        n1.shortcut_from = n2
+        n2.shortcut_from = n1
+
+        # undo() must terminate (not hang). Without the visited_nodes guard
+        # the loop would run 9999 iterations (branch mode ceiling).
+        game.set_current_node(n2)
+        # Use the explicit branch mode so effective_n_times is high.
+        game.undo("branch")
+        # We don't care where we ended up; we only care that the call returned.
+        assert game.current_node is not None
+
+    def test_undo_with_self_referential_shortcut_terminates(self, game):
+        """A node whose shortcut_from points to itself must not hang undo."""
+        game.play(Move.from_gtp("D4", player="B"))
+        n1 = game.current_node
+        n1.shortcut_from = n1  # self-cycle
+
+        game.undo("branch")
+        assert game.current_node is not None
 
 
 # ---------------------------------------------------------------------------

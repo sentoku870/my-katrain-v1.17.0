@@ -87,9 +87,23 @@ class Game(BaseGame):
                 e.stop_pondering()
 
         threading.Thread(
-            target=lambda: self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=True),
+            target=self._run_initial_analysis_safely,
+            args=(analyze_fast,),
             daemon=True,
         ).start()  # return faster, but bypass Kivy Clock
+
+    def _run_initial_analysis_safely(self, analyze_fast: bool) -> None:
+        """Run the initial analysis pass and log any unhandled exception.
+
+        The caller spawns a daemon thread so the UI can return immediately.
+        Without this wrapper an exception inside ``analyze_all_nodes`` would
+        be silently swallowed by the thread runtime, leaving the user with a
+        partial analysis and no diagnostic output.
+        """
+        try:
+            self.analyze_all_nodes(analyze_fast=analyze_fast, even_if_present=True)
+        except Exception:
+            logger.exception("Unhandled exception in initial analyze thread (analyze_fast=%s)", analyze_fast)
 
     # ------------------------------------------------------------------
     # 解析オーケストレーション (Phase 2: AnalysisOrchestrator に委譲)
