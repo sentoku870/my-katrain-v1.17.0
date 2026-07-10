@@ -567,6 +567,36 @@ class BadukPanWidget(Widget):
 
         return _get(self)
 
+    def cleanup(self) -> None:
+        """Release widget-level resources before app shutdown.
+
+        P2-A (H1+H2): BadukPanWidget used to leak two resources on close:
+
+        - ``Window.bind(mouse_pos=self.on_mouse_pos)`` had no matching
+          ``unbind``. The Window kept a strong ref to the widget via the
+          callback, so garbage collection was blocked until process exit.
+        - ``Clock.schedule_interval(widget.animate_pv, ...)`` was assigned
+          to ``self._animate_interval`` but never added to
+          ``KaTrainGui._clock_events`` and never cancelled on cleanup.
+
+        Both are now released here. Idempotent so callers can invoke
+        multiple times safely.
+        """
+        try:
+            Window.unbind(mouse_pos=self.on_mouse_pos)
+        except Exception:
+            pass
+        if self._animate_interval is not None:
+            try:
+                self._animate_interval.cancel()
+            except Exception:
+                pass
+            self._animate_interval = None
+        # Release cached territory textures (P2-A H4).
+        cache = getattr(self, "_territory_texture_cache", None)
+        if cache:
+            cache.clear()
+
     def rotate_gridpos(self) -> None:
         board_size_x, board_size_y = self.katrain.game.board_size
         if board_size_x != board_size_y:
