@@ -12,14 +12,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import os
+from typing import TYPE_CHECKING, Any, Callable
 
 from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
 from katrain.core import eval_metrics
+from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.features.settings_popup_io import (  # noqa: F401 (re-export for backward compat)
     _do_export_settings,

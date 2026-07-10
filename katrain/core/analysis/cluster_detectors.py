@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from katrain.core.analysis.board_context import OwnershipContext
-    from katrain.core.analysis.cluster_classifier import ClusterSemantics
+    from katrain.core.analysis.cluster_classifier import ClusterSemantics, StonePosition, StoneSet
     from katrain.core.analysis.ownership_cluster import OwnershipCluster
 
 
@@ -51,7 +51,7 @@ def _get_base_confidence() -> dict[ClusterSemantics, float]:
     :class:`ClusterSemantics`).
     """
     cache_key = "_BASE_CONFIDENCE_CACHE"
-    cached = globals().get(cache_key)
+    cached: dict[ClusterSemantics, float] | None = globals().get(cache_key)  # type: ignore[assignment]
     if cached is not None:
         return cached
     from katrain.core.analysis.cluster_classifier import ClusterSemantics
@@ -74,9 +74,9 @@ def _get_base_confidence() -> dict[ClusterSemantics, float]:
 def _detect_group_death(
     cluster: OwnershipCluster,
     actor: str,
-    parent_stones: frozenset,  # StoneSet
-    child_stones: frozenset,  # StoneSet
-) -> tuple[bool, tuple, str]:
+    parent_stones: StoneSet,
+    child_stones: StoneSet,
+) -> tuple[bool, tuple[StonePosition, ...], str]:
     """Detect if actor's stones were captured in cluster.
 
     Returns:
@@ -111,8 +111,8 @@ def _detect_group_death(
 def _detect_territory_loss(
     cluster: OwnershipCluster,
     actor: str,
-    parent_stones: frozenset,  # StoneSet
-    child_stones: frozenset,  # StoneSet
+    parent_stones: StoneSet,
+    child_stones: StoneSet,
 ) -> tuple[bool, str]:
     """Detect if actor lost territory (no stone capture).
 
