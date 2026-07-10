@@ -759,6 +759,60 @@ class TestHumanStyleStrategy:
 
 
 # ---------------------------------------------------------------------------
+# request_analysis timeout / engine-death handling (P1-S7)
+# ---------------------------------------------------------------------------
+
+
+class TestRequestAnalysisGuards:
+    """P1-S7: when the engine dies mid-wait, request_analysis must return None
+    instead of propagating the EngineError, and when the timeout elapses, the
+    TimeoutError must be re-raised after a log entry."""
+
+    def test_request_analysis_returns_none_when_engine_dies(self):
+        """If engine.check_alive raises, the wrapper logs and returns None."""
+        with ai_test_context() as (game, cn):
+            engine = game.engines[cn.player]
+            # Pretend the engine died on the first check_alive call.
+            engine.check_alive = MagicMock(side_effect=RuntimeError("engine dead"))
+
+            strategy = DefaultStrategy(game, make_settings(AI_DEFAULT))
+            result = strategy.request_analysis({})
+            assert result is None
+
+    def test_request_analysis_timeout_raises_after_log(self):
+        """If neither analysis nor error arrives within the timeout, raise.
+
+        We patch ``time.time`` so the very first iteration looks like the
+        wait has already exceeded the 120s ceiling, and we patch ``time.sleep``
+        so the loop does not actually block. This keeps the test fast and
+        deterministic.
+        """
+        with ai_test_context() as (game, cn):
+            engine = game.engines[cn.player]
+            engine.check_alive = MagicMock(return_value=True)
+            engine.request_analysis = MagicMock(return_value=None)
+
+            strategy = DefaultStrategy(game, make_settings(AI_DEFAULT))
+
+            # First time.time() call sets _wait_start; subsequent calls return
+            # a value well past the 120s budget so the loop sees timeout on
+            # the first iteration.
+            counter = {"n": 0}
+
+            def fake_time():
+                counter["n"] += 1
+                if counter["n"] == 1:
+                    return 1_000_000.0
+                return 1_000_000.0 + 1000.0
+
+            with patch("katrain.core.ai_strategies_base.time.time", fake_time), patch(
+                "katrain.core.ai_strategies_base.time.sleep", lambda _s: None
+            ):
+                with pytest.raises(TimeoutError):
+                    strategy.request_analysis({})
+
+
+# ---------------------------------------------------------------------------
 # generate_ai_move
 # ---------------------------------------------------------------------------
 

@@ -231,13 +231,27 @@ class AIStrategy(ABC):
         # by terminate_queries() before the Phase 159 RLock fix).
         _wait_timeout_s = 120.0
         _wait_start = time.time()
-        while not (error or analysis):
-            if time.time() - _wait_start > _wait_timeout_s:
-                raise TimeoutError(
-                    f"[{self.strategy_name}] Timed out after {_wait_timeout_s}s waiting for analysis"
-                )
-            time.sleep(0.01)
-            engine.check_alive(exception_if_dead=True)
+        try:
+            while not (error or analysis):
+                if time.time() - _wait_start > _wait_timeout_s:
+                    raise TimeoutError(
+                        f"[{self.strategy_name}] Timed out after {_wait_timeout_s}s waiting for analysis"
+                    )
+                time.sleep(0.01)
+                try:
+                    engine.check_alive(exception_if_dead=True)
+                except Exception:
+                    self.game.katrain.log(
+                        f"[{self.strategy_name}] Engine died while waiting for analysis",
+                        OUTPUT_ERROR,
+                    )
+                    return None
+        except TimeoutError:
+            self.game.katrain.log(
+                f"[{self.strategy_name}] Analysis wait timed out after {_wait_timeout_s}s",
+                OUTPUT_ERROR,
+            )
+            raise
 
         if analysis:
             self.game.katrain.log(f"[{self.strategy_name}] Analysis completed successfully", OUTPUT_DEBUG)
