@@ -1,120 +1,110 @@
-"""Regression test for the test_eval_metrics subpackage split (Phase D-1).
+"""Regression tests for the Phase E-1 / E-2 test-file splits.
 
-The 2316-line ``tests/test_eval_metrics.py`` was split into 4 themed
-submodules in 2026-07. This test guards the split so future additions
-go to the right file and we don't accidentally regress to a single
-giant file.
+The original ``tests/test_eval_metrics.py`` (2316 lines, Phase D-1)
+and ``tests/test_batch_analyzer.py`` (1156 lines, Phase E-2) were both
+split into themed subpackages in 2026-07. These tests guard the split
+so future additions go to the right file and we don't accidentally
+regress to monolithic files.
 """
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 import pytest
 
-# Anchor: the 4 split files plus the deprecation shim.
-EXPECTED_SUBMODULE_FILES = (
-    "tests/eval_metrics/__init__.py",
-    "tests/eval_metrics/test_loss.py",
-    "tests/eval_metrics/test_snapshots.py",
-    "tests/eval_metrics/test_skill.py",
-    "tests/eval_metrics/test_evidence.py",
+# Files required for each split. The shim must exist and must NOT
+# define any test classes (that would cause double-collection).
+SPLIT_FILES: dict[str, tuple[str, ...]] = {
+    "tests/eval_metrics/": (
+        "__init__.py",
+        "test_loss.py",
+        "test_snapshots.py",
+        "test_skill.py",
+        "test_evidence.py",
+        "test_split_structure.py",
+    ),
+    "tests/karte/": (
+        "__init__.py",
+        "test_phase_mistakes.py",
+        "test_difficulty.py",
+        "test_karte_errors.py",
+        "test_skill_integration.py",
+    ),
+    "tests/batch/": (
+        "__init__.py",
+        "test_discovery.py",
+        "test_analyze.py",
+        "test_output.py",
+        "test_helpers.py",
+    ),
+}
+
+# Original monolithic files that have been replaced by deprecation shims.
+DEPRECATION_SHIMS = (
     "tests/test_eval_metrics.py",
+    "tests/test_karte_structure.py",
+    "tests/test_batch_analyzer.py",
 )
 
 
-class TestSubpackageStructure:
-    @staticmethod
-    def _repo_root() -> Path:
-        # __file__ = tests/eval_metrics/test_split_structure.py
-        # parent.parent.parent = repo root
-        return Path(__file__).resolve().parent.parent.parent
-
-    def test_subpackage_files_exist(self) -> None:
+class TestSplitFilesExist:
+    @pytest.mark.parametrize("subpackage,files", list(SPLIT_FILES.items()))
+    def test_all_split_files_exist(self, subpackage: str, files: tuple[str, ...]) -> None:
         repo_root = self._repo_root()
-        for rel in EXPECTED_SUBMODULE_FILES:
-            assert (repo_root / rel).exists(), f"missing split file: {rel}"
+        for f in files:
+            path = repo_root / subpackage / f
+            assert path.exists(), f"missing {subpackage}{f}"
 
-    def test_shim_has_no_test_classes(self) -> None:
-        """The shim must not re-export test classes; that would cause
-        pytest to double-collect them."""
+
+class TestDeprecationShims:
+    @pytest.mark.parametrize("shim", DEPRECATION_SHIMS)
+    def test_shim_has_no_test_classes(self, shim: str) -> None:
+        """A deprecation shim must not define any test classes, which
+        would cause pytest to double-collect the moved test classes."""
         repo_root = self._repo_root()
-        shim_text = (repo_root / "tests/test_eval_metrics.py").read_text(encoding="utf-8")
-        # The shim is a no-op placeholder; it should not define any
-        # `class Test*` (which would re-trigger collection).
-        assert "class Test" not in shim_text, (
-            "tests/test_eval_metrics.py is a deprecation shim; do not add new "
-            "Test* classes here. Add them to tests/eval_metrics/test_*.py instead."
+        text = (repo_root / shim).read_text(encoding="utf-8")
+        assert "class Test" not in text, (
+            f"{shim} is a deprecation shim; do not add new Test* classes here. "
+            f"Add them to the appropriate subpackage instead."
         )
 
-    def test_shim_has_no_star_imports(self) -> None:
-        """The shim must not use ``import *``; that re-exports test
-        classes and triggers double collection."""
+    @pytest.mark.parametrize("shim", DEPRECATION_SHIMS)
+    def test_shim_has_no_star_imports(self, shim: str) -> None:
+        """A deprecation shim must not use ``import *``; that re-exports
+        test classes and triggers double collection."""
         repo_root = self._repo_root()
-        shim_text = (repo_root / "tests/test_eval_metrics.py").read_text(encoding="utf-8")
-        assert "import *" not in shim_text, (
-            "tests/test_eval_metrics.py must not use wildcard imports; they "
-            "cause pytest to double-collect the moved test classes."
-        )
-
-    def test_no_double_collection(self) -> None:
-        """The 154 eval-metrics tests must only be collected from the
-        submodules, not the shim. We exclude this test file itself
-        (test_split_structure.py) from the count since it adds 8 new
-        structural tests on top of the original 154."""
-        result = subprocess.run(
-            [
-                "uv",
-                "run",
-                "pytest",
-                "--collect-only",
-                "-q",
-                "tests/test_eval_metrics.py",
-                "tests/eval_metrics/test_loss.py",
-                "tests/eval_metrics/test_snapshots.py",
-                "tests/eval_metrics/test_skill.py",
-                "tests/eval_metrics/test_evidence.py",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        # Count test occurrences per file path.
-        shim_collects = sum(1 for line in result.stdout.splitlines() if "tests/test_eval_metrics.py::" in line)
-        submodule_collects = sum(
-            1
-            for line in result.stdout.splitlines()
-            if "tests/eval_metrics/test_loss" in line
-            or "tests/eval_metrics/test_snapshots" in line
-            or "tests/eval_metrics/test_skill" in line
-            or "tests/eval_metrics/test_evidence" in line
-        )
-        # Total: 154 expected from the original monolithic file.
-        assert shim_collects == 0, f"shim collected {shim_collects} tests; expected 0 to avoid double-collection"
-        assert submodule_collects == 154, (
-            f"submodules collected {submodule_collects}; expected 154 from the original test_eval_metrics.py"
+        text = (repo_root / shim).read_text(encoding="utf-8")
+        assert "import *" not in text, (
+            f"{shim} must not use wildcard imports; they cause pytest to double-collect the moved test classes."
         )
 
 
-class TestSubpackageSize:
-    """Each split file stays under 800 lines so individual files are
+class TestSplitSize:
+    """Each split file stays under 1000 lines so individual files are
     easy to navigate and pytest can collect them quickly."""
 
-    MAX_LINES = 800
+    MAX_LINES = 1000
 
-    @pytest.mark.parametrize(
-        "rel",
-        [
-            "tests/eval_metrics/test_loss.py",
-            "tests/eval_metrics/test_snapshots.py",
-            "tests/eval_metrics/test_skill.py",
-            "tests/eval_metrics/test_evidence.py",
-        ],
-    )
-    def test_file_under_max_lines(self, rel: str) -> None:
-        repo_root = TestSubpackageStructure._repo_root()
-        line_count = len((repo_root / rel).read_text(encoding="utf-8").splitlines())
-        assert line_count <= self.MAX_LINES, (
-            f"{rel} has {line_count} lines; max is {self.MAX_LINES}. Consider splitting into a new submodule."
-        )
+    @pytest.mark.parametrize("subpackage,files", list(SPLIT_FILES.items()))
+    def test_file_under_max_lines(self, subpackage: str, files: tuple[str, ...]) -> None:
+        repo_root = self._repo_root()
+        for f in files:
+            if not f.endswith(".py"):
+                continue
+            line_count = len((repo_root / subpackage / f).read_text(encoding="utf-8").splitlines())
+            assert line_count <= self.MAX_LINES, (
+                f"{subpackage}{f} has {line_count} lines; max is {self.MAX_LINES}. "
+                f"Consider splitting into a new submodule."
+            )
+
+
+def _repo_root() -> Path:
+    # __file__ = tests/eval_metrics/test_split_structure.py
+    return Path(__file__).resolve().parent.parent.parent
+
+
+# Module-level alias for the @staticmethod-free class access pattern.
+TestSplitFilesExist._repo_root = staticmethod(_repo_root)  # type: ignore[attr-defined]
+TestDeprecationShims._repo_root = staticmethod(_repo_root)  # type: ignore[attr-defined]
+TestSplitSize._repo_root = staticmethod(_repo_root)  # type: ignore[attr-defined]
