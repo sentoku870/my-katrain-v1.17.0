@@ -492,8 +492,10 @@ class TestGenerateCuratorOutputs:
         assert "generated" in data
         assert "total_games" in data
         assert data["total_games"] == 1
-        assert "user_weak_axes" in data
-        assert data["user_weak_axes"] == []  # deprecated
+        assert "user_weak_tags" in data
+        # Phase A-1: replaced deprecated user_weak_axes with user_weak_tags
+        # extracted via Jaccard logic. With no user_aggregate this stays empty.
+        assert data["user_weak_tags"] == []
         assert "rankings" in data
         assert len(data["rankings"]) == 1
 

@@ -74,6 +74,100 @@ def _combine_meaning_tags(
     return combined
 
 
+def _extract_user_weak_tags(
+    user_aggregate: Any,
+    min_occurrences: int,
+) -> set[str]:
+    """Extract the set of meaning tags the user is weak at.
+
+    Phase A-1: lightweight replacement for the deprecated radar-axis
+    approach. We accept the ``user_aggregate`` object produced by batch
+    processing and look for a meaningful-tag count map on it. The
+    supported shapes are:
+
+    - ``user_aggregate.weak_tags`` : set[str] / dict[str, int] (preferred)
+    - ``user_aggregate.meaning_tags`` : set[str] / dict[str, int] (alias)
+    - ``user_aggregate.meaning_tags_by_player`` : {"B": {...}, "W": {...}}
+
+    Anything else returns an empty set so that ``needs_match`` falls back
+    to the configured insufficient-data value rather than silently
+    applying a meaningless default.
+
+    Args:
+        user_aggregate: User aggregated profile or None.
+        min_occurrences: When the candidate is a count dict, tags must
+            appear at least this many times to count as a real weakness.
+
+    Returns:
+        Set of normalised tag names.
+    """
+    if user_aggregate is None:
+        return set()
+
+    weak_set: set[str] | None = None
+    counts: dict[str, int] | None = None
+    for attr in ("weak_tags", "meaning_tags"):
+        candidate = getattr(user_aggregate, attr, None)
+        if isinstance(candidate, set):
+            weak_set = {str(t) for t in candidate if t != UNCERTAIN_TAG}
+            break
+        if isinstance(candidate, dict):
+            counts = candidate  # type: ignore[assignment]
+            break
+    if weak_set is None and counts is None:
+        per_player = getattr(user_aggregate, "meaning_tags_by_player", None)
+        if isinstance(per_player, dict):
+            counts = {}
+            for player_tags in per_player.values():
+                if not isinstance(player_tags, dict):
+                    continue
+                for key, count in player_tags.items():
+                    if not isinstance(count, (int, float)):
+                        continue
+                    tag = _normalize_meaning_tag_key(key)
+                    if tag == UNCERTAIN_TAG:
+                        continue
+                    counts[tag] = counts.get(tag, 0) + int(count)
+
+    if weak_set is not None:
+        return {t for t in weak_set if t != UNCERTAIN_TAG}
+    if counts:
+        return {tag for tag, count in counts.items() if count >= min_occurrences and tag != UNCERTAIN_TAG}
+    return set()
+
+
+def _compute_jaccard_score(
+    user_weak_tags: set[str],
+    game_tags_combined: dict[str, int],
+    config: SuitabilityConfig,
+) -> float:
+    """Compute the Jaccard-style needs_match score.
+
+    Returns ``config.jaccard_insufficient_data`` when there is no overlap
+    to compare against (no user weak tags known, or the game has no
+    tags). Otherwise returns |A ∩ B| / |A ∪ B| ∈ [0, 1].
+
+    Args:
+        user_weak_tags: Set of tags the user struggles with.
+        game_tags_combined: Combined game tags {tag: count}, may be empty.
+        config: Suitability config (only ``min_tag_occurrences`` and
+            ``jaccard_insufficient_data`` are consulted).
+
+    Returns:
+        Jaccard score in [0, 1] or the configured insufficient-data value.
+    """
+    if not user_weak_tags or not game_tags_combined:
+        return config.jaccard_insufficient_data
+    game_tags = {tag for tag, count in game_tags_combined.items() if count >= config.min_tag_occurrences and tag != UNCERTAIN_TAG}
+    if not game_tags:
+        return config.jaccard_insufficient_data
+    intersection = user_weak_tags & game_tags
+    union = user_weak_tags | game_tags
+    if not union:
+        return config.jaccard_insufficient_data
+    return len(intersection) / len(union)
+
+
 def _round_half_up(value: float) -> int:
     """Round non-negative value to nearest integer using half-up rounding.
 
@@ -304,6 +398,7 @@ def score_game_suitability(
     game: Game,
     game_stats: dict[str, Any],
     config: SuitabilityConfig = DEFAULT_CONFIG,
+    user_aggregate: Any = None,
 ) -> SuitabilityScore:
     """Score a single game's suitability.
 
@@ -311,6 +406,10 @@ def score_game_suitability(
         game: Game object (required for stability calculation)
         game_stats: Stats dict with meaning_tags_by_player
         config: Scoring configuration
+        user_aggregate: User aggregated profile (optional). When supplied,
+            ``needs_match`` is computed via Jaccard similarity between the
+            user's weak meaning tags and the game's tags. Without it,
+            ``needs_match`` falls back to ``config.jaccard_insufficient_data``.
 
     Returns:
         SuitabilityScore with percentile=None (set later by batch)
@@ -323,14 +422,18 @@ def score_game_suitability(
     meaning_tags_by_player = game_stats.get("meaning_tags_by_player", {})
     meaning_tags_combined = _combine_meaning_tags(meaning_tags_by_player)
 
-    # Calculate components
-    needs_match = 0.0  # Phase 137: Radar axes deprecated
+    # Phase A-1: Jaccard-based needs_match replaces the deprecated Radar
+    # axes. We compute it from the user's weak tags and the game's
+    # combined tag counts.
+    user_weak_tags = _extract_user_weak_tags(user_aggregate, config.min_tag_occurrences)
+    needs_match = _compute_jaccard_score(user_weak_tags, meaning_tags_combined, config)
     stability = compute_stability(game, config)
     total = _compute_total(needs_match, stability, config)
 
     # Build debug info
     debug_dict: dict[str, Any] = {
         "meaning_tags_combined": meaning_tags_combined,
+        "user_weak_tags": sorted(user_weak_tags),
     }
 
     return SuitabilityScore(
@@ -345,18 +448,24 @@ def score_game_suitability(
 def score_batch_suitability(
     games_and_stats: list[tuple[Game, dict[str, Any]]],
     config: SuitabilityConfig = DEFAULT_CONFIG,
+    user_aggregate: Any = None,
 ) -> list[SuitabilityScore]:
     """Score multiple games and compute batch-relative percentiles.
 
     Args:
         games_and_stats: List of (Game, game_stats) tuples
         config: Scoring configuration
+        user_aggregate: Optional user profile forwarded to each
+            ``score_game_suitability`` call.
 
     Returns:
         List of SuitabilityScore with percentiles computed (ECDF-style)
     """
     # Score each game
-    scores = [score_game_suitability(game, stats, config) for game, stats in games_and_stats]
+    scores = [
+        score_game_suitability(game, stats, config, user_aggregate)
+        for game, stats in games_and_stats
+    ]
 
     # Compute percentiles
     return compute_batch_percentiles(scores)

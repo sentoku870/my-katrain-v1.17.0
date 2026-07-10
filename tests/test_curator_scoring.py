@@ -525,8 +525,14 @@ class TestScoreGameSuitability:
         score = score_game_suitability(game, stats)  # type: ignore[arg-type]
         assert isinstance(score, SuitabilityScore)
 
-    def test_needs_match_is_zero(self):
-        """Phase 137: needs_match is always 0.0 (Radar deprecated)."""
+    def test_needs_match_is_zero_without_user_aggregate(self):
+        """Without user_aggregate, needs_match falls back to insufficient_data.
+
+        Phase A-1 replaced the deprecated 0.0 constant with a Jaccard-based
+        computation. When no user_aggregate is supplied the function returns
+        the configured insufficient-data value (default 0.0) instead of
+        silently scoring against an empty user profile.
+        """
         root = _build_mainline_nodes([5.0, 10.0])
         game = _make_game_with_root(root)
         stats = {"meaning_tags_by_player": {"B": {"overplay": 3}, "W": {"missed_kill": 1}}}
@@ -573,6 +579,106 @@ class TestScoreGameSuitability:
         score_with_default = score_game_suitability(game, {}, DEFAULT_CONFIG)  # type: ignore[arg-type]
         # Same config → same values (modulo data independence)
         assert score_no_cfg.stability == score_with_default.stability
+
+    def test_needs_match_jaccard_with_user_weak_tags(self):
+        """Phase A-1: Jaccard similarity between user weak tags and game tags."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        # User is weak at "overplay"; game has overplay (4 occurrences) and
+        # missed_kill (5 occurrences). Both must clear min_tag_occurrences=3.
+        stats = {
+            "meaning_tags_by_player": {
+                "B": {"overplay": 4},
+                "W": {"missed_kill": 5},
+            }
+        }
+        user = SimpleNamespace(weak_tags={"overplay"})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        # user_weak = {overplay}, game_tags = {overplay, missed_kill}
+        # Jaccard = 1 / 2 = 0.5
+        assert score.needs_match == pytest.approx(0.5)
+
+    def test_needs_match_jaccard_with_meaning_tags_alias(self):
+        """``user_aggregate.meaning_tags`` is also accepted."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        stats = {
+            "meaning_tags_by_player": {
+                "B": {"overplay": 5},
+            }
+        }
+        user = SimpleNamespace(meaning_tags={"overplay": 5})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        assert score.needs_match == pytest.approx(1.0)
+
+    def test_needs_match_handles_empty_user_weak_tags(self):
+        """User with no weak tags → fallback to insufficient_data value."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        stats = {"meaning_tags_by_player": {"B": {"overplay": 5}}}
+        user = SimpleNamespace(weak_tags={})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        assert score.needs_match == 0.0
+
+    def test_needs_match_handles_empty_game_tags(self):
+        """Game with no tags meeting min_occurrences → fallback."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        stats = {"meaning_tags_by_player": {"B": {}}}
+        user = SimpleNamespace(weak_tags={"overplay"})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        assert score.needs_match == 0.0
+
+    def test_needs_match_filters_below_min_occurrences(self):
+        """Tags appearing fewer than min_tag_occurrences times are ignored."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        # "overplay" appears 1 time in the game (below min_tag_occurrences=3)
+        stats = {"meaning_tags_by_player": {"B": {"overplay": 1}}}
+        user = SimpleNamespace(weak_tags={"overplay"})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        # No game tags above threshold → fallback
+        assert score.needs_match == 0.0
+
+    def test_needs_match_debug_info_includes_user_weak_tags(self):
+        """debug_info surfaces the user weak tags set used for scoring."""
+        from types import SimpleNamespace
+
+        root = _build_mainline_nodes([5.0, 10.0])
+        game = _make_game_with_root(root)
+        stats = {"meaning_tags_by_player": {"B": {"overplay": 5}}}
+        user = SimpleNamespace(weak_tags={"overplay"})
+        score = score_game_suitability(game, stats, DEFAULT_CONFIG, user)  # type: ignore[arg-type]
+        assert score.debug_info is not None
+        assert "user_weak_tags" in score.debug_info  # type: ignore[operator]
+        assert score.debug_info["user_weak_tags"] == ["overplay"]  # type: ignore[index]
+
+    def test_batch_score_forwards_user_aggregate(self):
+        """score_batch_suitability passes user_aggregate to each call."""
+        from types import SimpleNamespace
+
+        root1 = _build_mainline_nodes([0.0, 5.0])
+        root2 = _build_mainline_nodes([0.0, 5.0])
+        user = SimpleNamespace(weak_tags={"overplay"})
+        games = [
+            (_make_game_with_root(root1), {"meaning_tags_by_player": {"B": {"overplay": 5}}}),  # type: ignore[arg-type]
+            (_make_game_with_root(root2), {"meaning_tags_by_player": {"B": {"missed_kill": 5}}}),  # type: ignore[arg-type]
+        ]
+        scores = score_batch_suitability(games, DEFAULT_CONFIG, user)
+        # Game 1 has the user weak tag → Jaccard 1.0
+        # Game 2 does not → 0.0
+        needs = sorted(s.needs_match for s in scores)
+        assert needs == [0.0, 1.0]
 
 
 # =============================================================================
