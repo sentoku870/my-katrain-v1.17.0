@@ -639,8 +639,8 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
             for y in range(board_size_y - 1, -1, -1):
                 for x in range(board_size_x):
                     move_policy = policy_grid[y][x]
-                    if move_policy < 0:
-                        continue
+                    if move_policy is None or move_policy < 0 or move_policy != move_policy:
+                        continue  # skip None / negative / NaN
                     pol_order = max(0, 5 + int(math.log10(max(1e-9, move_policy - 1e-9))))
                     if move_policy > text_lb:
                         draw_circle(
@@ -679,7 +679,12 @@ def draw_board_contents(widget: BadukPanWidget, *_args: Any) -> None:
             if pass_btn:
                 with pass_btn.canvas.after:
                     move_policy = policy[-1]
-                    pol_order = 5 - int(-math.log10(max(1e-9, move_policy - 1e-9)))
+                    # P3 (M12): None / NaN here would raise TypeError / propagate
+                    # NaN to log10, breaking the policy-arc redraw. Treat as zero.
+                    if move_policy is not None and move_policy == move_policy:
+                        pol_order = 5 - int(-math.log10(max(1e-9, move_policy - 1e-9)))
+                    else:
+                        pol_order = -1
                     if pol_order >= 0:
                         draw_circle(
                             (pass_btn.pos[0] + pass_btn.width / 2, pass_btn.pos[1] + pass_btn.height / 2),

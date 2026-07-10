@@ -438,10 +438,30 @@ class ControlsPanel(BoxLayout):
 
         return f"[Hint] {title}: {body}"
 
-    def update_timer(self, _dt: float) -> None:
+
+def _ensure_time_used_initialized(node: Any) -> None:
+    """Coerce ``node.time_used`` to 0 if it is None.
+
+    P3 (M14): a freshly-created GameNode may have ``time_used=None``
+    after undo/redo races or immediately after new-game setup. Without
+    this guard the downstream arithmetic in
+    ``ControlsPanel.update_timer`` would raise ``TypeError`` on the
+    next timer tick.
+
+    Extracted so the guard logic is unit-testable without booting Kivy.
+    """
+    if getattr(node, "time_used", None) is None:
+        node.time_used = 0
+
+
+    def update_timer(self, _dt: float) -> None:  # type: ignore[no-untyped-def]
         game = self.katrain and self.katrain.game
         current_node = game and self.katrain.game.current_node
         if current_node:
+            # P3 (M14): a freshly-created node may have time_used == None
+            # (e.g. immediately after undo/redo before update_state runs).
+            # Coerce to 0 so the next block does not raise TypeError.
+            _ensure_time_used_initialized(current_node)
             last_update_node, last_update_time, beeping = self.last_timer_update
             new_beeping = beeping
             now = time.time()
