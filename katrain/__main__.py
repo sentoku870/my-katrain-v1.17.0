@@ -404,7 +404,6 @@ class KaTrainGui(Screen, KaTrainBase):
         if self.engine:
             return
         self.board_gui.trainer_config = self.config("trainer")
-        self.board_gui.trainer_config = self.config("trainer")
         # Phase 173 P0-①-D: engine construction moved to EngineBootstrap so
         # this method stays a thin orchestrator.
 
