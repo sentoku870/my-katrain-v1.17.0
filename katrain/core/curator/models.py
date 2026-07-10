@@ -29,22 +29,27 @@ class SuitabilityConfig:
     """Configuration for suitability scoring.
 
     Attributes:
-        needs_match_weight: Weight for needs_match in total calculation (default: 0.6)
-        stability_weight: Weight for stability in total calculation (default: 0.4)
+        needs_match_weight: Weight for needs_match in total calculation.
+            Default 0.5 (Phase A-1 equal weighting).
+        stability_weight: Weight for stability in total calculation.
+            Default 0.5 (Phase A-1 equal weighting).
         min_tag_occurrences: Minimum total tag occurrences for needs_match (default: 3)
         max_volatility: Maximum volatility for stability=0.0 (default: 15.0)
         stability_insufficient_data: Stability value when < 2 valid scores (default: 0.0)
+        jaccard_insufficient_data: needs_match value when no overlap can be
+            computed (default: 0.0).
 
     Note:
         Weights are normalized at computation time.
         If needs_match_weight + stability_weight != 1.0, they are normalized.
     """
 
-    needs_match_weight: float = 0.0
-    stability_weight: float = 1.0
+    needs_match_weight: float = 0.5
+    stability_weight: float = 0.5
     min_tag_occurrences: int = 3
     max_volatility: float = 15.0
     stability_insufficient_data: float = 0.0
+    jaccard_insufficient_data: float = 0.0
 
 
 # Default configuration instance

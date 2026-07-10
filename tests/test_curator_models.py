@@ -57,10 +57,15 @@ class TestSuitabilityConfig:
     """Tests for SuitabilityConfig dataclass."""
 
     def test_default_values(self):
-        """Default config has expected values per Phase 63 docs."""
+        """Default config has expected values per Phase A-1 docs.
+
+        Phase A-1 (reviving ``needs_match``) switched defaults to equal
+        weighting (0.5/0.5) since the Jaccard-based axis is now a first-
+        class citizen alongside stability.
+        """
         cfg = SuitabilityConfig()
-        assert cfg.needs_match_weight == 0.0
-        assert cfg.stability_weight == 1.0
+        assert cfg.needs_match_weight == 0.5
+        assert cfg.stability_weight == 0.5
         assert cfg.min_tag_occurrences == 3
         assert cfg.max_volatility == 15.0
         assert cfg.stability_insufficient_data == 0.0

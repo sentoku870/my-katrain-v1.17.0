@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from .guide_extractor import extract_replay_guide
 from .models import UNCERTAIN_TAG, SuitabilityScore
-from .scoring import score_batch_suitability
+from .scoring import _extract_user_weak_tags, score_batch_suitability
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -185,8 +185,8 @@ def generate_curator_outputs(
 
     log(f"Generating curator outputs for {len(games_and_stats)} games...")
 
-    # Score all games
-    scores = score_batch_suitability(games_and_stats)
+    # Score all games (with optional user_aggregate for Jaccard needs_match)
+    scores = score_batch_suitability(games_and_stats, user_aggregate=user_aggregate)
     result.games_scored = len(scores)
 
     # Build rankings
@@ -222,12 +222,13 @@ def generate_curator_outputs(
     # Generate timestamp
     generated_ts = _get_iso_generated_timestamp()
 
-    # Build ranking JSON
+    # Build ranking JSON. user_weak_tags is the Phase A-1 Jaccard basis.
+    user_weak_tags = sorted(_extract_user_weak_tags(user_aggregate, min_occurrences=3))
     ranking_data = {
         "version": JSON_VERSION,
         "generated": generated_ts,
         "total_games": len(games_and_stats),
-        "user_weak_axes": [],  # Radar axes deprecated
+        "user_weak_tags": user_weak_tags,
         "rankings": sorted_rankings,
     }
 
