@@ -1,9 +1,9 @@
-"""Phase 106A: ControlsPanel購読テスト
+"""Phase 106A: ControlsPanel購読テスト.
 
-全テストはKivy依存。CI環境ではスキップ、ローカルでのみ実行。
+全テストはKivy依存。CI環境でも実行可能（Phase A-13）。
+Kivyヘッドレスインフラで動作する。
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,9 +12,12 @@ from katrain.core.state import Event, EventType, StateNotifier
 
 
 def _is_ci_environment():
-    """CI環境を検出（CI変数が設定されていればTrue）"""
-    ci_value = os.environ.get("CI", "")
-    return ci_value != ""
+    """Phase A-13: kept for backward compatibility but no longer used to
+    skip tests. Returns False so the existing @pytest.mark.skipif annotations
+    resolve to "do not skip". Tests now run in CI via the kivy headless
+    infra (KIVY_NO_WINDOW/KIVY_GL_BACKEND).
+    """
+    return False
 
 
 class ControlsPanelDummy:

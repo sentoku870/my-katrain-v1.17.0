@@ -24,20 +24,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# katrain.gui.popups imports Kivy widgets at module top. On headless CI the
-# import crashes the runner, so we mirror test_golden_summary / test_main_smoke
-# and skip this file on CI. Local development still runs the suite.
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="katrain.gui.popups imports Kivy widgets at module scope; CI environment lacks display",
-)
+# Phase A-13: run on CI. Kivy is mocked via KIVY_NO_WINDOW/KIVY_GL_BACKEND
+# below so the imports do not need a real display. Previously this file
+# was skipped on CI to dodge a brittle Kivy import that has since been
+# resolved by the kivy_test_base infra (Phase 146).
 
 # Force Kivy into headless mode before any popup module load.
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 os.environ.setdefault("KIVY_NO_FILELOG", "1")
 os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
 os.environ.setdefault("KIVY_NO_ENV_CONFIG", "1")
-os.environ.setdefault("KIVY_HEADLESS", "1")
 os.environ.setdefault("KIVY_NO_WINDOW", "1")
 os.environ.setdefault("KIVY_GL_BACKEND", "mock")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
