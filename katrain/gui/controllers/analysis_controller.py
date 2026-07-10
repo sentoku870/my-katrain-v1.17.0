@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.lang import i18n
 
 
 class AnalysisContext(Protocol):
@@ -87,9 +88,9 @@ class AnalysisController:
         white_btn = ids_map.get("white_focus_btn")
 
         if black_btn is not None:
-            black_btn.text = "★黒優先" if focus == "black" else "黒優先"
+            black_btn.text = i18n._("focus:black-active") if focus == "black" else i18n._("focus:black")
         if white_btn is not None:
-            white_btn.text = "★白優先" if focus == "white" else "白優先"
+            white_btn.text = i18n._("focus:white-active") if focus == "white" else i18n._("focus:white")
 
     def handle_animations(self) -> None:
         """思考中アニメーションの数値を更新する。"""
