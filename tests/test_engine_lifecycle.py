@@ -185,13 +185,43 @@ class TestBaseEngineDefaults:
 
 class TestKataGoEngineInit:
     @patch(POPEN_PATCH_TARGET, FakePopen)
-    def test_init_altcommand_uses_shell_mode(self):
+    def test_init_altcommand_uses_shlex_split_and_disables_shell(self):
         from katrain.core.engine import KataGoEngine
 
         katrain = MinimalKatrain()
         engine = KataGoEngine(katrain, make_engine_config({"altcommand": "echo test"}))
-        assert engine.shell is True
-        assert engine.command == "echo test"
+        # Phase A-7: altcommand is now split via shlex and run with
+        # shell=False so the platform shell cannot reinterpret it.
+        assert engine.shell is False
+        assert engine.command == ["echo", "test"]
+        engine.katago_process.simulate_graceful_exit()
+        engine.shutdown()
+
+    @patch(POPEN_PATCH_TARGET, FakePopen)
+    def test_init_altcommand_quoted_args_preserve_spaces(self):
+        from katrain.core.engine import KataGoEngine
+
+        katrain = MinimalKatrain()
+        engine = KataGoEngine(
+            katrain,
+            make_engine_config({"altcommand": 'my-katago --flag "hello world" --tail'}),
+        )
+        assert engine.shell is False
+        assert engine.command == ["my-katago", "--flag", "hello world", "--tail"]
+        engine.katago_process.simulate_graceful_exit()
+        engine.shutdown()
+
+    @patch(POPEN_PATCH_TARGET, FakePopen)
+    def test_init_altcommand_malformed_quoting_falls_back_to_single_argv(self):
+        """A malformed altcommand (unbalanced quotes) should not crash init."""
+        from katrain.core.engine import KataGoEngine
+
+        katrain = MinimalKatrain()
+        engine = KataGoEngine(katrain, make_engine_config({"altcommand": 'echo "unbalanced'}))
+        assert engine.shell is False
+        # shlex.split would raise; the fallback runs the raw string as a
+        # single argv. This is the safe behaviour because shell=False.
+        assert engine.command == ['echo "unbalanced']
         engine.katago_process.simulate_graceful_exit()
         engine.shutdown()
 

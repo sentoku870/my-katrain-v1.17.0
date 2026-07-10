@@ -184,7 +184,7 @@ def _do_import_settings(
         atomic_save_config(ctx._config, ctx.config_file)  # type: ignore[attr-defined]
 
         # Reload store (reload-then-sync pattern)
-        ctx._config_store._load()  # type: ignore[attr-defined]
+        ctx._config_store.reload()  # type: ignore[attr-defined]
         ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
 
     except (OSError, json.JSONDecodeError) as e:
@@ -195,7 +195,7 @@ def _do_import_settings(
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()  # type: ignore[attr-defined]
+            ctx._config_store.reload()  # type: ignore[attr-defined]
             ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
         except Exception as rollback_err:
             # Boundary fallback: rollback itself failed.
@@ -223,7 +223,7 @@ def _do_import_settings(
         rollback_failed = False
         try:
             shutil.copy2(backup_path, ctx.config_file)
-            ctx._config_store._load()  # type: ignore[attr-defined]
+            ctx._config_store.reload()  # type: ignore[attr-defined]
             ctx._config = dict(ctx._config_store)  # type: ignore[attr-defined]
         except Exception as rollback_err:
             logging.error(

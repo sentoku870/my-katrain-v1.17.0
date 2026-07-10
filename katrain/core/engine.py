@@ -28,6 +28,7 @@ from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_EXTRA_DEBUG,
+    OUTPUT_INFO,
 )
 from katrain.core.game_node import GameNode
 from katrain.core.lang import i18n
@@ -217,8 +218,28 @@ class KataGoEngine(BaseEngine):
         self._pending_query_count = 0
         self._pending_query_lock = threading.Lock()
         if config.get("altcommand", ""):
-            self.command = config["altcommand"]
-            self.shell = True
+            # Use shlex.split so we can disable shell=True; this eliminates
+            # the risk of the altcommand string being interpreted by the
+            # platform shell. The original command is preserved verbatim
+            # for error reporting.
+            raw_altcommand = config["altcommand"]
+            try:
+                self.command = shlex.split(raw_altcommand)
+            except ValueError as exc:
+                # Malformed quoting in altcommand: fall back to running the
+                # raw string as a single argv. This keeps the legacy "just
+                # run this string" behaviour while making the warning
+                # visible to the user.
+                self.katrain.log(f"altcommand could not be shlex-split ({exc}); running as single argv", OUTPUT_DEBUG)
+                self.command = [raw_altcommand]
+            self.shell = False
+            # Phase A-7: surface a warning so users know altcommand bypasses
+            # the normal KataGo resolution path and runs an arbitrary
+            # binary.
+            self.katrain.log(
+                f"altcommand in use: '{raw_altcommand}'. Only set this if you trust the SGF source or local environment.",
+                OUTPUT_INFO,
+            )
         else:
             model = find_package_resource(config["model"])
             cfg = find_package_resource(config["config"])

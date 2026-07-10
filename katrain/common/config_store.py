@@ -49,7 +49,11 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
         self._load()
 
     def _load(self) -> None:
-        """Load data from JSON file."""
+        """Load data from JSON file.
+
+        Caller must hold ``self._lock``. Use :meth:`reload` for the
+        thread-safe public entry point.
+        """
         if os.path.exists(self._filename):
             try:
                 with open(self._filename, encoding="utf-8") as f:
@@ -74,6 +78,17 @@ class JsonFileConfigStore(Mapping[str, dict[str, Any]]):
                 self._data = {}
         else:
             self._data = {}
+
+    def reload(self) -> None:
+        """Re-read the configuration file from disk under the lock.
+
+        Phase A-9: This is the public, thread-safe entry point that
+        external callers (e.g. ``settings_popup_io``) should use instead
+        of reaching into ``_load`` directly. Holding the lock prevents
+        a concurrent ``put`` / ``delete`` from racing with the reload.
+        """
+        with self._lock:
+            self._load()
 
     def _save(self) -> None:
         """Save data to JSON file atomically.

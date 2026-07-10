@@ -69,3 +69,60 @@ def test_atomic_save_with_relative_path(tmp_path, monkeypatch):
     with open(tmp_path / "config.json", encoding="utf-8") as f:
         data = json.load(f)
     assert data["test"]["value"] == 123
+
+
+# ---------------------------------------------------------------------------
+# Phase A-9: thread-safe reload
+# ---------------------------------------------------------------------------
+
+
+def test_reload_picks_up_external_changes(tmp_path):
+    """After rewriting the file out-of-band, reload() re-reads it."""
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps({"a": {"x": 1}}), encoding="utf-8")
+    store = JsonFileConfigStore(str(config_path))
+
+    assert store.get("a") == {"x": 1}
+
+    # Mutate the file from "outside" (simulating another process or
+    # settings_popup_io restoring a backup).
+    config_path.write_text(json.dumps({"a": {"x": 999}, "b": {"y": 2}}), encoding="utf-8")
+
+    store.reload()
+    assert store.get("a") == {"x": 999}
+    assert store.get("b") == {"y": 2}
+
+
+def test_reload_does_not_corrupt_state_when_called_concurrently_with_put(tmp_path):
+    """A concurrent reload() must not observe a half-written put()."""
+    import threading
+
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps({"init": {"v": 0}}), encoding="utf-8")
+    store = JsonFileConfigStore(str(config_path))
+
+    errors: list[str] = []
+
+    def writer() -> None:
+        try:
+            for i in range(50):
+                store.put("writer", value=i)
+        except Exception as e:  # pragma: no cover - test instrumentation
+            errors.append(f"writer: {e!r}")
+
+    def reloader() -> None:
+        try:
+            for _ in range(50):
+                store.reload()
+        except Exception as e:  # pragma: no cover - test instrumentation
+            errors.append(f"reloader: {e!r}")
+
+    threads = [threading.Thread(target=writer), threading.Thread(target=reloader)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"concurrent reload/put raised: {errors}"
+    # Final state must reflect the last put().
+    assert store.get("writer") == {"value": 49}
