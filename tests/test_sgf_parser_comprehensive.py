@@ -93,6 +93,34 @@ class TestMoveFromSGF:
         m = Move.from_sgf("tt", (25, 25), player="B")
         assert m.coords is not None
 
+    def test_empty_input_with_zero_board_size_raises(self):
+        with pytest.raises(ParseError, match="Invalid board size"):
+            Move.from_sgf("", (0, 0))
+
+    def test_empty_input_with_negative_board_size_raises(self):
+        with pytest.raises(ParseError, match="Invalid board size"):
+            Move.from_sgf("", (-1, 19))
+
+    def test_one_char_input_raises_parse_error(self):
+        with pytest.raises(ParseError, match="Invalid SGF coordinate"):
+            Move.from_sgf("a", (19, 19))
+
+    def test_invalid_char_input_raises_parse_error(self):
+        with pytest.raises(ParseError, match="Invalid SGF coordinate"):
+            Move.from_sgf("1a", (19, 19))
+
+    def test_invalid_second_char_input_raises_parse_error(self):
+        with pytest.raises(ParseError, match="Invalid SGF coordinate"):
+            Move.from_sgf("a1", (19, 19))
+
+    def test_non_string_input_raises_parse_error(self):
+        with pytest.raises(ParseError, match="Invalid SGF coordinate"):
+            Move.from_sgf(None, (19, 19))
+
+    def test_invalid_board_size_on_normal_coord_raises(self):
+        with pytest.raises(ParseError, match="Invalid board size"):
+            Move.from_sgf("dp", (0, 19))
+
 
 # ---------------------------------------------------------------------------
 # Move.gtp / sgf / is_pass / opponent*

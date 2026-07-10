@@ -57,14 +57,21 @@ class Move:
     @classmethod
     def from_sgf(cls, sgf_coords: str, board_size: tuple[int, int], player: str = "B") -> "Move":
         """Initialize a move from SGF coordinates and player"""
+        bx, by = board_size
+        if bx <= 0 or by <= 0:
+            raise ParseError(f"Invalid board size for SGF coordinate: {board_size}")
         if sgf_coords == "" or (
-            sgf_coords == "tt" and board_size[0] <= 19 and board_size[1] <= 19
+            sgf_coords == "tt" and bx <= 19 and by <= 19
         ):  # [tt] can be used as "pass" for <= 19x19 board
             return cls(coords=None, player=player)
-        return cls(
-            coords=(Move.SGF_COORD.index(sgf_coords[0]), board_size[1] - Move.SGF_COORD.index(sgf_coords[1]) - 1),
-            player=player,
-        )
+        if not isinstance(sgf_coords, str) or len(sgf_coords) < 2:
+            raise ParseError(f"Invalid SGF coordinate (expected non-empty 2-char string): {sgf_coords!r}")
+        try:
+            x = Move.SGF_COORD.index(sgf_coords[0])
+            y = Move.SGF_COORD.index(sgf_coords[1])
+        except ValueError as e:
+            raise ParseError(f"Invalid SGF coordinate characters in {sgf_coords!r}: {e}") from e
+        return cls(coords=(x, by - y - 1), player=player)
 
     def __init__(self, coords: tuple[int, int] | None = None, player: str = "B"):
         """Initialize a move from zero-based coordinates and player"""
