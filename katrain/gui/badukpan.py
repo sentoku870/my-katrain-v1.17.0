@@ -197,7 +197,7 @@ class BadukPanWidget(Widget):
                 elif self.animating_pv is not None:
                     self.set_animating_pv(None, None)  # any click kills PV from label/move
             if inside and self.animating_pv is not None:
-                d_sq = (pos[0] - self.animating_pv[3][0]) ** 2 + (pos[1] - self.animating_pv[3][1])
+                d_sq = (pos[0] - self.animating_pv[3][0]) ** 2 + (pos[1] - self.animating_pv[3][1]) ** 2
                 if d_sq > 2 * self.stone_size**2:  # move too far from where it was activated
                     self.set_animating_pv(None, None)  # any click kills PV from label/move
             self.last_mouse_pos = pos
@@ -627,12 +627,14 @@ class AnalysisDropDown(DropDown):
         analysis_popup.open()
 
     def open_report_popup(self, *_args: Any) -> None:
+        report_content = GameReportPopup(katrain=MDApp.get_running_app().gui)
         report_popup = I18NPopup(
             title_key="analysis:report",
             size=[dp(750), dp(750)],
-            content=GameReportPopup(katrain=MDApp.get_running_app().gui),
+            content=report_content,
         )
         report_popup.content.popup = report_popup
+        report_popup.bind(on_dismiss=lambda _instance: report_content.cancel_refresh())
         report_popup.open()
 
     def open_tsumego_frame_popup(self, *_args: Any) -> None:
