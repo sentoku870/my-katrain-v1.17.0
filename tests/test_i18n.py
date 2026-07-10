@@ -130,6 +130,78 @@ class TestBatchAnalyzeI18n:
 
 
 # ---------------------------------------------------------------------------
+# Phase B-1: semantic dialog keys (button:ok, button:close, ...)
+# ---------------------------------------------------------------------------
+
+
+class TestSemanticDialogKeys:
+    """Phase B-1: raw English msgids like ``i18n._("OK")`` are forbidden by
+    the i18n workflow (docs/i18n-workflow.md: "Never use raw English phrases
+    as msgid"). The codebase has been migrated to semantic keys; this test
+    locks the keys in and scans source for any regression.
+    """
+
+    SEMANTIC_KEYS = ["button:ok", "button:close", "button:cancel", "dialog:title:error"]
+
+    EXPECTED_TRANSLATIONS = {
+        "en": {
+            "button:ok": "OK",
+            "button:close": "Close",
+            "button:cancel": "Cancel",
+            "dialog:title:error": "Error",
+        },
+        "jp": {
+            "button:ok": "OK",
+            "button:close": "閉じる",
+            "button:cancel": "キャンセル",
+            "dialog:title:error": "エラー",
+        },
+    }
+
+    @pytest.fixture
+    def locale_dir(self):
+        from pathlib import Path
+
+        import katrain
+
+        return Path(katrain.__file__).parent / "i18n" / "locales"
+
+    def test_semantic_keys_translated(self, locale_dir):
+        """All semantic keys must be translated in both en and jp."""
+        for lang, expected_map in self.EXPECTED_TRANSLATIONS.items():
+            locale = gettext.translation("katrain", str(locale_dir), languages=[lang])
+            for key, expected in expected_map.items():
+                translated = locale.gettext(key)
+                assert translated != key, f"Key '{key}' missing in '{lang}'"
+                assert translated == expected, f"Key '{key}' in '{lang}': expected '{expected}', got '{translated}'"
+
+    def test_no_raw_english_msgid_regression(self):
+        """Scan Python and KV source for raw English msgids."""
+        from pathlib import Path
+
+        import katrain
+
+        root = Path(katrain.__file__).parent
+        forbidden = ('i18n._("OK")', 'i18n._("Close")', 'i18n._("Cancel")', 'i18n._("Error")')
+        offenders: list[tuple[str, str]] = []
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            if path.suffix not in (".py", ".kv"):
+                continue
+            if "i18n/locales" in str(path):  # exclude the .po definitions
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for needle in forbidden:
+                if needle in text:
+                    offenders.append((str(path.relative_to(root)), needle))
+        assert not offenders, f"Raw English msgids reappeared: {offenders}"
+
+
+# ---------------------------------------------------------------------------
 # P2-B: previously-hardcoded Japanese strings now routed through i18n
 # ---------------------------------------------------------------------------
 

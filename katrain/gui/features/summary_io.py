@@ -278,7 +278,7 @@ def save_summary_file(
         # Expected: File I/O error
         ctx.log(f"Failed to export Summary to {full_path}: {exc}", OUTPUT_ERROR)
         Popup(
-            title=i18n._("Error"),
+            title=i18n._("dialog:title:error"),
             title_font=Theme.DEFAULT_FONT,
             content=Label(text=f"Failed to save:\n{exc}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),
@@ -289,7 +289,7 @@ def save_summary_file(
 
         ctx.log(f"Unexpected error exporting Summary to {full_path}: {exc}\n{traceback.format_exc()}", OUTPUT_ERROR)
         Popup(
-            title=i18n._("Error"),
+            title=i18n._("dialog:title:error"),
             title_font=Theme.DEFAULT_FONT,
             content=Label(text=f"Unexpected error:\n{exc}", halign="center", valign="middle"),
             size_hint=(0.5, 0.3),

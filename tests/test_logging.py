@@ -1,11 +1,10 @@
 import os
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock
 
 # Ensure katrain is in path
 sys.path.insert(0, r"d:\github\katrain-1.17.0")
 
-from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.reports.karte.builder import build_karte_report
 
 
@@ -17,9 +16,6 @@ def test_logging():
     game.game_id = "logging_test_game"
     game.sgf_filename = "test.sgf"
 
-    # Pre-build snapshot to pass is_single_engine_snapshot check
-    snapshot = EvalSnapshot(moves=[])
-
     # We want _build_karte_report_impl to fail.
     # It calls build_karte_json(game, ...).
     # build_karte_json calls game.root.get_property(...).
@@ -27,7 +23,7 @@ def test_logging():
     type(game).root = PropertyMock(side_effect=RuntimeError("Intentional Crash"))
 
     try:
-        build_karte_report(game, snapshot=snapshot, raise_on_error=True)
+        build_karte_report(game, raise_on_error=True)
     except RuntimeError:
         print("Caught expected RuntimeError.")
     except Exception as e:
@@ -46,8 +42,6 @@ def test_logging():
     else:
         print("FAILURE: Log file not created.")
 
-
-from unittest.mock import PropertyMock
 
 if __name__ == "__main__":
     test_logging()

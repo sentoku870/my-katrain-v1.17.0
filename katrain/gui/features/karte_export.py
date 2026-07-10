@@ -108,7 +108,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
     # Validate output directory
     if not output_dir or not os.path.isdir(output_dir):
         Popup(
-            title=i18n._("Error"),
+            title=i18n._("dialog:title:error"),
             title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("mykatrain:error:output_dir_not_configured"),
@@ -138,7 +138,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
     snapshot = ctx.game.build_eval_snapshot()
     if not snapshot.moves:
         Popup(
-            title=i18n._("Error"),
+            title=i18n._("dialog:title:error"),
             title_font=Theme.DEFAULT_FONT,
             content=Label(
                 text=i18n._("mykatrain:error:no_analysis_data"),
@@ -197,7 +197,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         except Exception as exc:
             ctx.log(f"Failed to save karte: {exc}", OUTPUT_ERROR)
             Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=i18n._("Failed to save karte:\n{error}").format(error=exc),
@@ -224,7 +224,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
 
     btn_box = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(10))
     copy_btn = Button(text=i18n._("mykatrain:clipboard-copy"), font_name=Theme.DEFAULT_FONT)
-    close_btn = Button(text=i18n._("OK"), font_name=Theme.DEFAULT_FONT)
+    close_btn = Button(text=i18n._("button:ok"), font_name=Theme.DEFAULT_FONT)
 
     def copy_path(instance: Any) -> None:
         Clipboard.copy(files_text)
