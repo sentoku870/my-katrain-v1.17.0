@@ -73,12 +73,12 @@ def _reset_tab_settings(
 
     buttons_layout = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(40))
     confirm_btn = Button(
-        text=i18n._("OK"),
+        text=i18n._("button:ok"),
         background_color=Theme.BOX_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )
     cancel_btn = Button(
-        text=i18n._("Cancel"),
+        text=i18n._("button:cancel"),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
         color=Theme.TEXT_COLOR,
     )

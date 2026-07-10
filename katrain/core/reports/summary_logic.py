@@ -21,6 +21,7 @@ from katrain.core.reports.constants import (
     BAD_MOVE_LOSS_THRESHOLD,
     URGENT_MISS_MIN_CONSECUTIVE,
     URGENT_MISS_THRESHOLD_LOSS,
+    GamePhase,
 )
 
 if TYPE_CHECKING:
@@ -68,18 +69,16 @@ class SummaryAnalyzer:
 
                 # プレイヤー統計を初期化
                 if player_name not in self.player_stats:
+                    # Phase B-5: phase_moves/phase_loss keep string keys for
+                    # JSON round-trip compatibility; initialize from the
+                    # enum's .value so we never hard-code phase strings.
                     self.player_stats[player_name] = SummaryStats(
                         player_name=player_name,
                         mistake_counts={cat: 0 for cat in MistakeCategory},
                         mistake_total_loss={cat: 0.0 for cat in MistakeCategory},
                         freedom_counts={diff: 0 for diff in PositionDifficulty},
-                        phase_moves={"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
-                        phase_loss={
-                            "opening": 0.0,
-                            "middle": 0.0,
-                            "yose": 0.0,
-                            "unknown": 0.0,
-                        },
+                        phase_moves={p.value: 0 for p in GamePhase},
+                        phase_loss={p.value: 0.0 for p in GamePhase},
                     )
 
                 stats = self.player_stats[player_name]
@@ -122,15 +121,16 @@ class SummaryAnalyzer:
                     if move.position_difficulty:
                         stats.freedom_counts[move.position_difficulty] += 1
 
-                    # 局面タイプを集計
-                    phase = move.tag or "unknown"
-                    stats.phase_moves[phase] = stats.phase_moves.get(phase, 0) + 1
+                    # 局面タイプを集計 (Phase B-5: GamePhase enum)
+                    phase = GamePhase.from_tag(move.tag)
+                    phase_key = phase.value
+                    stats.phase_moves[phase_key] = stats.phase_moves.get(phase_key, 0) + 1
                     if loss > 0:
-                        stats.phase_loss[phase] = stats.phase_loss.get(phase, 0.0) + loss
+                        stats.phase_loss[phase_key] = stats.phase_loss.get(phase_key, 0.0) + loss
 
-                    # Phase × MistakeCategory クロス集計
+                    # Phase × MistakeCategory クロス集計 (Phase B-5: GamePhase enum)
                     if cat:
-                        key = (phase, cat)
+                        key = (phase_key, cat)
                         stats.phase_mistake_counts[key] = stats.phase_mistake_counts.get(key, 0) + 1
                         if loss > 0:
                             stats.phase_mistake_loss[key] = stats.phase_mistake_loss.get(key, 0.0) + loss

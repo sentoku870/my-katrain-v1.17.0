@@ -64,7 +64,6 @@ def build_karte_report(
     raise_on_error: bool = False,
     skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
-    snapshot: Any | None = None,
     lang: str = "ja",
 ) -> str:
     """Build a compact, markdown-friendly report for the current game.
@@ -79,7 +78,6 @@ def build_karte_report(
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
-        snapshot: Optional pre-built EvalSnapshot. Phase 171 で Leela 専用利用を廃止。
 
     Returns:
         Markdown-formatted karte report.
@@ -87,21 +85,26 @@ def build_karte_report(
 
     Raises:
         KarteGenerationError: If raise_on_error=True and generation fails.
+
+    Note:
+        Phase B-4: removed the previously-accepted ``snapshot`` parameter.
+        No production caller passed one, and the parameter was effectively
+        dead since the snapshot is now always built inside this function
+        (the only test that passed one — tests/test_logging.py — was
+        updated to omit the argument).
     """
     game_id = game.game_id or game.sgf_filename or "unknown"
 
-    # 1. Compute snapshot once (avoid double computation)
-    # Phase 138: Wrap build_eval_snapshot() in try/except so the function honors
-    # its documented contract of returning error markdown (or raising KarteGenerationError)
-    # even when snapshot construction itself fails.
-    if snapshot is None:
-        try:
-            snapshot = game.build_eval_snapshot()
-        except Exception as e:
-            error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\nSnapshot construction failed: {type(e).__name__}: {e}"
-            if raise_on_error:
-                raise KarteGenerationError(error_msg, game_id=game_id) from e
-            return _build_error_karte(game_id, player_filter, error_msg)
+    # 1. Build snapshot. Phase 138: wrap in try/except so this function
+    # honors its contract of returning error markdown (or raising
+    # KarteGenerationError) even when snapshot construction itself fails.
+    try:
+        snapshot = game.build_eval_snapshot()
+    except Exception as e:
+        error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\nSnapshot construction failed: {type(e).__name__}: {e}"
+        if raise_on_error:
+            raise KarteGenerationError(error_msg, game_id=game_id) from e
+        return _build_error_karte(game_id, player_filter, error_msg)
 
     # 2. Phase 171: KataGo 専用化により mixed-engine check を削除。
     # 以前は is_single_engine_snapshot() で Leela データを弾いていたが、

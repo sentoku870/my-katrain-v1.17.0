@@ -77,7 +77,7 @@ def do_export_summary_ui(
 
         if len(sgf_files) < 2:
             Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=f"Found only {len(sgf_files)} SGF file(s) in batch directory.\nNeed at least 2 games for summary.",
@@ -120,7 +120,7 @@ def do_export_summary_ui(
         if not selected_path or not os.path.isdir(selected_path):
             load_popup.dismiss()
             Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(text="Please select a valid directory.", halign="center", valign="middle"),
                 size_hint=(0.5, 0.3),
@@ -136,7 +136,7 @@ def do_export_summary_ui(
         if len(sgf_files) < 2:
             load_popup.dismiss()
             Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text=f"Found only {len(sgf_files)} SGF file(s).\nNeed at least 2 games for summary.",
@@ -214,7 +214,7 @@ def scan_and_show_player_selection(
     if not player_counts:
         Clock.schedule_once(
             lambda dt: Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(text="No player names found in SGF files.", halign="center", valign="middle"),
                 size_hint=(0.5, 0.3),
@@ -461,7 +461,7 @@ def process_and_export_summary(
         Clock.schedule_once(lambda dt: progress_popup.dismiss(), 0)
         Clock.schedule_once(
             lambda dt: Popup(
-                title=i18n._("Error"),
+                title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
                     text="No games could be processed.\nCheck that games have analysis data.",

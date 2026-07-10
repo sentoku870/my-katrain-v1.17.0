@@ -325,7 +325,7 @@ def _build_button_row() -> tuple[BoxLayout, Button, Button, Button, Button]:
         color=Theme.TEXT_COLOR,
     )
     cancel_button = Button(
-        text=i18n._("Cancel"),
+        text=i18n._("button:cancel"),
         size_hint_x=0.25,
         height=dp(48),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,

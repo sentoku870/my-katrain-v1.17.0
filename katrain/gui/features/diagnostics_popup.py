@@ -74,7 +74,7 @@ def _show_diagnostics_popup_impl(ctx: FeatureContext) -> None:
         size_hint=(0.5, 1),
     )
     close_btn = Button(
-        text=i18n._("Close"),
+        text=i18n._("button:close"),
         font_name=Theme.DEFAULT_FONT,
         size_hint=(0.5, 1),
     )
@@ -372,7 +372,7 @@ def _show_success_popup(output_path: Path) -> None:
         size_hint=(0.5, 1),
     )
     close_btn = Button(
-        text=i18n._("Close"),
+        text=i18n._("button:close"),
         font_name=Theme.DEFAULT_FONT,
         size_hint=(0.5, 1),
     )
@@ -404,7 +404,7 @@ def _show_error_popup(error_message: str) -> None:
     )
 
     popup = Popup(
-        title=i18n._("Error"),
+        title=i18n._("dialog:title:error"),
         title_font=Theme.DEFAULT_FONT,
         content=content,
         size_hint=(0.6, 0.3),

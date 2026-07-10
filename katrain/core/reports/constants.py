@@ -9,7 +9,57 @@ katrain.core.analysis.models.reliability (single source of truth,
 Phase 149 A-4).
 """
 
+from enum import Enum
 from typing import Final
+
+# --- Game Phases (Phase B-5) ---
+# Internal canonical phase keys. JSON serialization uses the
+# ``.value`` (string) for backward compatibility with existing
+# consumer code; new code should prefer the enum members directly.
+
+_GAME_PHASE_OPENING = "opening"
+_GAME_PHASE_MIDDLE = "middle"
+_GAME_PHASE_YOSE = "yose"  # alias for the public-facing "endgame" string
+_GAME_PHASE_UNKNOWN = "unknown"
+
+
+class GamePhase(Enum):
+    """Game phase buckets used for loss / move aggregation.
+
+    The string values are the canonical JSON keys (matching the
+    historical literals in ``summary_logic.phase_moves`` etc.) so
+    that ``phase_moves[GamePhase.OPENING]`` round-trips through
+    JSON without any transformation. UI code may translate the
+    values to user-visible labels via the i18n system; the value
+    itself is the public contract.
+    """
+
+    OPENING = _GAME_PHASE_OPENING
+    MIDDLE = _GAME_PHASE_MIDDLE
+    YOSE = _GAME_PHASE_YOSE
+    UNKNOWN = _GAME_PHASE_UNKNOWN
+
+    @classmethod
+    def from_tag(cls, tag: str | None) -> "GamePhase":
+        """Map a ``Move.tag`` string to a :class:`GamePhase`.
+
+        Unknown / empty tags fall back to :attr:`UNKNOWN`. The
+        ``"endgame"`` alias is normalised to :attr:`YOSE` so the
+        four buckets match what ``summary_logic.py`` aggregates.
+        """
+        if not tag:
+            return cls.UNKNOWN
+        normalized = tag.strip().lower()
+        # Treat both "yose" (internal) and "endgame" (PHASES constant)
+        # as the same bucket. Other phase values (e.g. "fuseki") fall
+        # through to UNKNOWN so the bucket count stays at 4.
+        if normalized in (_GAME_PHASE_YOSE, "endgame"):
+            return cls.YOSE
+        for member in cls:
+            if member.value == normalized:
+                return member
+        return cls.UNKNOWN
+
 
 # --- Urgent Miss Detection ---
 URGENT_MISS_THRESHOLD_LOSS: Final[float] = 20.0

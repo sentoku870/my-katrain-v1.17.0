@@ -100,9 +100,11 @@ def build_summary_from_stats(
         for diff, count in stats["freedom_counts"].items():
             freedom_totals[diff] += count
 
-    # Phase の集計
-    phase_moves_total = {"opening": 0, "middle": 0, "yose": 0, "unknown": 0}
-    phase_loss_total = {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0}
+    # Phase の集計 (Phase B-5: GamePhase enum)
+    from katrain.core.reports.constants import GamePhase
+
+    phase_moves_total: dict[str, int] = {p.value: 0 for p in GamePhase}
+    phase_loss_total: dict[str, float] = {p.value: 0.0 for p in GamePhase}
     for stats in stats_list:
         for phase in phase_moves_total:
             phase_moves_total[phase] += stats["phase_moves"][phase]

@@ -533,7 +533,7 @@ def _build_buttons_row(widgets: BatchWidgets) -> BoxLayout:
         color=Theme.TEXT_COLOR,
     )
     widgets["close_button"] = Button(
-        text=i18n._("Close"),
+        text=i18n._("button:close"),
         size_hint_x=0.5,
         height=dp(48),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,

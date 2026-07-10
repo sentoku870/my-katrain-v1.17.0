@@ -2559,3 +2559,16 @@ msgstr "次の重要局面"
 
 msgid "important-line"
 msgstr "重要局面"
+
+# Phase B-1: semantic keys to replace raw English msgids like i18n._("OK")
+msgid "button:ok"
+msgstr "OK"
+
+msgid "button:close"
+msgstr "閉じる"
+
+msgid "button:cancel"
+msgstr "キャンセル"
+
+msgid "dialog:title:error"
+msgstr "エラー"

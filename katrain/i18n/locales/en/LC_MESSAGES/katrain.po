@@ -2678,3 +2678,16 @@ msgstr "Next Important"
 
 msgid "important-line"
 msgstr "Important"
+
+# Phase B-1: semantic keys to replace raw English msgids like i18n._("OK")
+msgid "button:ok"
+msgstr "OK"
+
+msgid "button:close"
+msgstr "Close"
+
+msgid "button:cancel"
+msgstr "Cancel"
+
+msgid "dialog:title:error"
+msgstr "Error"
