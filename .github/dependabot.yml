@@ -1,0 +1,59 @@
+# Phase C-4: Dependabot configuration.
+#
+# The project uses uv for dependency management (see pyproject.toml +
+# uv.lock) and GitHub Actions for CI. Dependabot will:
+# - bump Python deps (uv.lock) on Mondays
+# - bump GitHub Actions versions on Tuesdays
+#
+# Group minor/patch updates so we get a single weekly PR instead of
+# one per dependency; security updates stay as individual PRs so they
+# can be merged quickly.
+
+version: 2
+
+updates:
+  # Python dependencies (managed via uv.lock)
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      python-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # No version updates for now; uv resolves the lockfile on push
+    # anyway, and Dependabot's open-pull-request limit keeps noise
+    # manageable.
+    open-pull-requests-limit: 5
+    # Skip dormant/inactive ecosystems
+    # (none currently; this is a forward-looking project)
+
+  # GitHub Actions versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    open-pull-requests-limit: 5

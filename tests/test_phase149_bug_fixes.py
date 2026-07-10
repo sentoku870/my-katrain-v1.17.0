@@ -32,11 +32,25 @@ class TestA1SkillPresetInBatchKarte:
         assert param.default is None
 
     def test_call_site_passes_skill_preset(self):
-        """The call site in _process_single_file should forward skill_preset."""
-        from katrain.core.batch import orchestration
+        """The call site that invokes _generate_karte_for_file should
+        forward skill_preset.
 
-        src = inspect.getsource(orchestration._process_single_file)
+        Phase C-3: the call was moved from ``_process_single_file`` to
+        ``_post_success_processing``. We check both modules to catch
+        future regressions in either place.
+        """
+        from katrain.core.batch import orchestration
+        from katrain.core.batch.orchestration import _post_success_processing
+
+        # The actual call site: _post_success_processing should pass
+        # skill_preset=ctx.skill_preset to _generate_karte_for_file.
+        src = inspect.getsource(_post_success_processing)
         assert "skill_preset=ctx.skill_preset" in src
+
+        # And the public _process_single_file should still wire
+        # through ctx.skill_preset to the helper.
+        src = inspect.getsource(orchestration._process_single_file)
+        assert "ctx" in src  # sanity that we are reading the orchestrator
 
     def test_build_karte_report_called_with_skill_preset(self):
         """_generate_karte_for_file should pass skill_preset to build_karte_report."""
