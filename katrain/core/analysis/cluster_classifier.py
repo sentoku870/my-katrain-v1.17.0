@@ -15,7 +15,7 @@ This module provides:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from katrain.common.locale_utils import normalize_lang_code
 from katrain.core.analysis.board_context import (
