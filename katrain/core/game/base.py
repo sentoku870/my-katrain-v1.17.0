@@ -281,6 +281,11 @@ class BaseGame:
             else:
                 assert isinstance(n_times, int)
                 effective_n_times = n_times
+            # Safety: detect shortcut cycles / pathological SGFs that would
+            # cause an infinite undo loop. The reachable node set is bounded
+            # by the number of nodes actually in the tree, so a revisiting
+            # node id implies a cycle in shortcut_from or parent links.
+            visited_nodes: set[int] = {id(cn)}
             for _move in range(effective_n_times):
                 if (
                     stop_on_mistake is not None
@@ -307,6 +312,11 @@ class BaseGame:
                     break
                 elif break_on_main_branch and cn.ordered_children[0] != previous_cn:  # implies > 1 child
                     last_branching_node = cn
+                # Cycle guard: if we revisit a node, the shortcut_from chain
+                # has a loop. Stop here rather than spin forever.
+                if id(cn) in visited_nodes:
+                    break
+                visited_nodes.add(id(cn))
             if break_on_main_branch:
                 cn = last_branching_node
             if cn is not self.current_node:
