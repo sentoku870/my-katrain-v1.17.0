@@ -226,7 +226,23 @@ class NewGamePopup(QuickConfigGui):
 class ConfigTeacherPopup(QuickConfigGui):
     def __init__(self, katrain: Any) -> None:
         super().__init__(katrain)
-        MDApp.get_running_app().bind(language=self.build_and_set_properties)
+        self._app = MDApp.get_running_app()
+        self._app.bind(language=self.build_and_set_properties)
+
+    def cleanup(self) -> None:
+        """Release language binding before the popup is destroyed.
+
+        P2-A (H3): Without this, every ConfigTeacherPopup open/close cycle
+        adds another ``language`` callback on MDApp, accumulating over time.
+        Idempotent.
+        """
+        app = getattr(self, "_app", None)
+        if app is not None:
+            try:
+                app.unbind(language=self.build_and_set_properties)
+            except Exception:
+                pass
+            self._app = None
 
     def add_option_widgets(self, widgets: list[Any]) -> None:
         for widget in widgets:

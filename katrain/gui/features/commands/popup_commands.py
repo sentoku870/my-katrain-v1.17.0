@@ -60,9 +60,14 @@ def do_config_popup(ctx: KaTrainGui) -> None:
 
     ctx.controls.timer.paused = True
     if not ctx.config_popup:
-        ctx.config_popup = I18NPopup(
-            title_key="general settings title", size=[dp(1200), dp(950)], content=ConfigPopup(ctx)
+        content = ConfigPopup(ctx)
+        new_popup = I18NPopup(
+            title_key="general settings title", size=[dp(1200), dp(950)], content=content
         ).__self__
+        # P2-A (H6): release the two language bindings on dismiss so
+        # repeated open/close cycles don't accumulate callbacks.
+        new_popup.bind(on_dismiss=lambda _instance: content.cleanup())
+        ctx.config_popup = new_popup
 
     assert ctx.config_popup is not None
     ctx.config_popup.content.popup = ctx.config_popup

@@ -49,13 +49,16 @@ class DialogFactory:
 
     def create_teacher_popup(self) -> Any:
         """Create TeacherPopup."""
+        content = ConfigTeacherPopup(self.gui)
         raw = I18NPopup(
             title_key="teacher settings",
             size=[dp(800), dp(825)],
-            content=ConfigTeacherPopup(self.gui),
+            content=content,
         )
         popup: Any = getattr(raw, "__self__", raw)
         popup.content.popup = popup
+        # P2-A (H3): release the language binding on dismiss to prevent leak.
+        popup.bind(on_dismiss=lambda _instance: content.cleanup())
         return popup
 
     def create_ai_popup(self) -> Any:
