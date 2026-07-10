@@ -396,6 +396,11 @@ def extract_game_stats(
             rank_white=rank_white,
             # Phase 158-I: see the matching field on the dataclass.
             important_moves_keys=im_keys,
+            # Phase H-2: lift the per-player reason-tag / important-move
+            # aggregates from the raw stats dict so SummaryAnalyzer can
+            # read them without a ``hasattr`` guard.
+            reason_tags_by_player=dict(stats.get("reason_tags_by_player", {})),
+            important_moves_stats_by_player=dict(stats.get("important_moves_stats_by_player", {})),
         )
         stats["summary_data"] = summary_data
 

@@ -59,6 +59,14 @@ class GameSummaryData:
     # LLM can tell which worst-moves were also surfaced in the
     # individual Karte.
     important_moves_keys: set[tuple[int, str]] = field(default_factory=set)
+    # Phase H-2: reason tags + important-move stats per player, lifted
+    # from the raw stats dict in :mod:`katrain.core.batch.stats.extraction`
+    # so :class:`SummaryAnalyzer` can use them without a defensive
+    # ``hasattr`` guard. Keys are ``"B"`` / ``"W"``. Empty dicts are
+    # the safe default when the batch path did not aggregate them
+    # (e.g. a single-game ``build_summary_json`` call).
+    reason_tags_by_player: dict[str, dict[str, int]] = field(default_factory=dict)
+    important_moves_stats_by_player: dict[str, dict[str, int]] = field(default_factory=dict)
 
     @property
     def player_outcome_black(self) -> str:

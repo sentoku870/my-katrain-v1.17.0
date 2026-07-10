@@ -11,10 +11,10 @@ Contains:
 
 from __future__ import annotations
 
-import hashlib
 import time
 from typing import Any
 
+from katrain.common.short_hash import short_hash
 from katrain.core import eval_metrics
 from katrain.core.eval_metrics import (
     GameSummaryData,
@@ -43,6 +43,33 @@ from katrain.core.reports.schema import (
     SummaryReport,
 )
 from katrain.core.reports.summary_logic import SummaryAnalyzer
+
+# Phase H-4: minimum sample count below which per-player aggregates
+# are too noisy to be meaningful. Matches the threshold already used
+# by ``opponent_strength_loss_correlation``.
+_MIN_GAMES_FOR_COMPUTED = 2
+
+# 3-state data status values for the ``meta.data_status`` field. The
+# names mirror the curator ``score_status`` (Phase H-1) so the LLM
+# sees a consistent vocabulary across reports.
+_DATA_STATUS_NO_GAMES = "not_applicable_no_games"
+_DATA_STATUS_INSUFFICIENT = "insufficient_data"
+_DATA_STATUS_COMPUTED = "computed"
+
+
+def _data_status_for(games_count: int) -> str:
+    """Return the 3-state ``data_status`` for a Summary run.
+
+    - ``"not_applicable_no_games"`` -- the batch was empty.
+    - ``"insufficient_data"`` -- only one game (need >= 2 for
+      meaningful per-player aggregates).
+    - ``"computed"`` -- the normal 2+ game case.
+    """
+    if games_count == 0:
+        return _DATA_STATUS_NO_GAMES
+    if games_count < _MIN_GAMES_FOR_COMPUTED:
+        return _DATA_STATUS_INSUFFICIENT
+    return _DATA_STATUS_COMPUTED
 
 
 def _ensure_tags_for_top_moves(
@@ -632,7 +659,8 @@ def build_summary_json(
     # Meta - Add run_id
     ts = int(time.time())
     game_ids_str = "".join(sorted([g.game_id or "" for g in game_data_list]))
-    run_hash = hashlib.md5(f"{ts}{game_ids_str}".encode()).hexdigest()[:8]
+    # Phase H-3: switched from MD5 to blake2b for non-cryptographic IDs.
+    run_hash = short_hash(f"{ts}{game_ids_str}", 8)
     run_id = f"summary_run_{ts}_{run_hash}"
 
     # Resolve skill_preset for meta
@@ -655,6 +683,14 @@ def build_summary_json(
         "schema_hash": REPORT_SCHEMA_HASH,
         "run_id": run_id,
         "games_analyzed": len(game_data_list),
+        # Phase H-4: surface *why* the run is what it is. The 3-state
+        # value mirrors the one used for ``opponent_strength_loss_correlation``
+        # and the curator ``score_status`` (Phase H-1):
+        #   - "not_applicable_no_games" -- the batch was empty
+        #   - "insufficient_data"        -- a single game (need >= 2 for
+        #                                   meaningful per-player aggregates)
+        #   - "computed"                 -- the normal 2+ game case
+        "data_status": _data_status_for(len(game_data_list)),
         "date_range": [min(dates), max(dates)] if dates else None,
         "loss_unit": "territory_points",
         "skill_preset": skill_preset_meta,

@@ -6,12 +6,12 @@ Contains:
 
 from __future__ import annotations
 
-import hashlib
 import os
 import time
 from datetime import datetime
 from typing import Any
 
+from katrain.common.short_hash import short_hash
 from katrain.core import eval_metrics
 from katrain.core.analysis import build_node_map
 from katrain.core.analysis.meaning_tags import (
@@ -131,7 +131,8 @@ def build_karte_json(
 
     # Run ID
     ts = int(time.time())
-    run_hash = hashlib.md5(f"{ts}{game_uid}".encode()).hexdigest()[:8]
+    # Phase H-3: switched from MD5 to blake2b for non-cryptographic IDs.
+    run_hash = short_hash(f"{ts}{game_uid}", 8)
     run_id = f"run_{ts}_{run_hash}"
 
     # Definitions (using centralized constants where possible)

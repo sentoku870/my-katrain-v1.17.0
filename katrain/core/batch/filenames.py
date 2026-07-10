@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import re
 import unicodedata
+
+from katrain.common.short_hash import short_hash
 
 # Windows reserved filenames
 _WINDOWS_RESERVED = {
@@ -104,7 +105,7 @@ def get_unique_filename(base_path: str, extension: str = ".md") -> str:
             return path
         counter += 1
         if counter > 100:  # Safety limit
-            hash_suffix = hashlib.md5(base_path.encode()).hexdigest()[:6]
+            hash_suffix = short_hash(base_path, 6)
             return f"{base_path}_{hash_suffix}{extension}"
 
 

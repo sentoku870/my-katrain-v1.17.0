@@ -150,25 +150,21 @@ class SummaryAnalyzer:
                         for tag in move.reason_tags:
                             stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + 1
 
-                # Aggregate Reason Tags from GameSummaryData (if available)
-                # Note: GameSummaryData has snapshot, but extraction.py typically
-                # provides aggregated reason_tags_by_player in the raw stats dict.
-                # Here we assume GameSummaryData is enriched with these if possible,
-                # or we rely on what was extracted during batch processing.
-                # In build_summary_json context, we might need to ensure these are passed.
-                if hasattr(game_data, "reason_tags_by_player") and player_color in game_data.reason_tags_by_player:
-                    rt_counts = game_data.reason_tags_by_player[player_color]
-                    for tag, count in rt_counts.items():
-                        stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + count
+                # Aggregate Reason Tags from GameSummaryData
+                # Phase H-2: GameSummaryData now carries these fields as
+                # first-class dataclass attributes (populated by
+                # extraction.py from the raw stats dict). The
+                # previously defensive ``hasattr`` check was hiding a
+                # dead-code path because the field was never set; the
+                # direct attribute access now connects the data.
+                rt_counts = game_data.reason_tags_by_player.get(player_color, {})
+                for tag, count in rt_counts.items():
+                    stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + count
 
-                if (
-                    hasattr(game_data, "important_moves_stats_by_player")
-                    and player_color in game_data.important_moves_stats_by_player
-                ):
-                    im_stats = game_data.important_moves_stats_by_player[player_color]
-                    stats.important_moves_count += im_stats.get("important_count", 0)
-                    stats.tagged_moves_count += im_stats.get("tagged_count", 0)
-                    stats.tag_occurrences_total += im_stats.get("tag_occurrences", 0)
+                im_stats = game_data.important_moves_stats_by_player.get(player_color, {})
+                stats.important_moves_count += im_stats.get("important_count", 0)
+                stats.tagged_moves_count += im_stats.get("tagged_count", 0)
+                stats.tag_occurrences_total += im_stats.get("tag_occurrences", 0)
 
         # 各プレイヤーの統計を完成させる
         for stats in self.player_stats.values():
