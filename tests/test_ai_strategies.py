@@ -10,14 +10,13 @@ Covers:
 - AI base utility functions (interp1d, interp2d)
 """
 
-import os
 from contextlib import contextmanager
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from katrain.core.ai import (
+    STRATEGY_REGISTRY,
     AntimirrorStrategy,
     DefaultStrategy,
     HandicapStrategy,
@@ -25,7 +24,6 @@ from katrain.core.ai import (
     InfluenceStrategy,
     JigoStrategy,
     LocalStrategy,
-    OwnershipBaseStrategy,
     PickBasedStrategy,
     PickStrategy,
     PolicyStrategy,
@@ -33,7 +31,6 @@ from katrain.core.ai import (
     ScoreLossStrategy,
     SettleStonesStrategy,
     SimpleOwnershipStrategy,
-    STRATEGY_REGISTRY,
     TenukiStrategy,
     TerritoryStrategy,
     WeightedStrategy,
@@ -72,7 +69,6 @@ from katrain.core.constants import (
 )
 from katrain.core.game import Game, Move
 from katrain.core.game_node import GameNode
-
 
 # ---------------------------------------------------------------------------
 # Test fixture: MockedCn wraps a Game + mocked current_node
@@ -168,9 +164,7 @@ class MockedCn:
             return []
         szx, szy = self.board_size
         moves = [
-            (self.policy[y * szx + x], Move((x, y), player=self.next_player))
-            for x in range(szx)
-            for y in range(szy)
+            (self.policy[y * szx + x], Move((x, y), player=self.next_player)) for x in range(szx) for y in range(szy)
         ]
         moves.append((self.policy[-1], Move(None, player=self.next_player)))
         return sorted(moves, key=lambda pm: -pm[0])
@@ -245,14 +239,12 @@ def ai_test_context(
     )
 
     # Patch game's current_node and the strategy's cn
-    with patch.object(game, "current_node", new=cn):
-        # Make wait_for_analysis a no-op
-        with patch.object(AIStrategy, "wait_for_analysis", lambda self: None):
-            if stones is not None:
-                with patch.object(game, "stones", new=stones):
-                    yield game, cn
-            else:
+    with patch.object(game, "current_node", new=cn), patch.object(AIStrategy, "wait_for_analysis", lambda self: None):
+        if stones is not None:
+            with patch.object(game, "stones", new=stones):
                 yield game, cn
+        else:
+            yield game, cn
 
 
 def make_settings(strategy_name: str) -> dict:
@@ -264,24 +256,52 @@ def make_settings(strategy_name: str) -> dict:
         AI_JIGO: {"target_score": 0.5},
         AI_SCORELOSS: {"strength": 5.0},
         AI_SIMPLE_OWNERSHIP: {
-            "max_points_lost": 2.0, "min_visits": 1,
-            "attach_penalty": 0.0, "tenuki_penalty": 0.0,
-            "settled_weight": 0.5, "opponent_fac": 0.5,
+            "max_points_lost": 2.0,
+            "min_visits": 1,
+            "attach_penalty": 0.0,
+            "tenuki_penalty": 0.0,
+            "settled_weight": 0.5,
+            "opponent_fac": 0.5,
         },
         AI_SETTLE_STONES: {
-            "max_points_lost": 2.0, "min_visits": 1, "settledness_threshold": 0.5,
-            "attach_penalty": 0.0, "tenuki_penalty": 0.0,
-            "settled_weight": 0.5, "opponent_fac": 0.5,
+            "max_points_lost": 2.0,
+            "min_visits": 1,
+            "settledness_threshold": 0.5,
+            "attach_penalty": 0.0,
+            "tenuki_penalty": 0.0,
+            "settled_weight": 0.5,
+            "opponent_fac": 0.5,
         },
         AI_POLICY: {"lower_bound": 0.0, "weaken_fac": 1.0, "override": 0.0, "overridetwo": 1.0, "opening_moves": 0},
         AI_WEIGHTED: {"lower_bound": 0.0, "weaken_fac": 1.0, "override": 0.0, "overridetwo": 1.0},
         AI_PICK: {"pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
         AI_RANK: {"kyu_rank": 5, "pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
-        AI_INFLUENCE: {"threshold": 4, "line_weight": 0.5, "pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
-        AI_TERRITORY: {"threshold": 3, "line_weight": 0.5, "pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
+        AI_INFLUENCE: {
+            "threshold": 4,
+            "line_weight": 0.5,
+            "pick_frac": 0.5,
+            "pick_n": 3,
+            "override": 0.0,
+            "overridetwo": 1.0,
+        },
+        AI_TERRITORY: {
+            "threshold": 3,
+            "line_weight": 0.5,
+            "pick_frac": 0.5,
+            "pick_n": 3,
+            "override": 0.0,
+            "overridetwo": 1.0,
+        },
         AI_LOCAL: {"stddev": 3.0, "pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
         AI_TENUKI: {"stddev": 3.0, "pick_frac": 0.5, "pick_n": 3, "override": 0.0, "overridetwo": 1.0},
-        AI_HUMAN: {"human_kyu_rank": 5, "lower_bound": 0.0, "weaken_fac": 1.0, "override": 0.0, "overridetwo": 1.0, "modern_style": False},
+        AI_HUMAN: {
+            "human_kyu_rank": 5,
+            "lower_bound": 0.0,
+            "weaken_fac": 1.0,
+            "override": 0.0,
+            "overridetwo": 1.0,
+            "modern_style": False,
+        },
     }
     return defaults.get(strategy_name, {})
 
@@ -375,8 +395,24 @@ class TestDefaultStrategy:
     def test_default_with_candidates(self):
         """DefaultStrategy plays the top candidate."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 5.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.6, "prior": 0.5},
-            {"move": "Q16", "order": 1, "scoreLead": -1.0, "pointsLost": 6.0, "visits": 80, "winrate": 0.4, "prior": 0.3},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 5.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.6,
+                "prior": 0.5,
+            },
+            {
+                "move": "Q16",
+                "order": 1,
+                "scoreLead": -1.0,
+                "pointsLost": 6.0,
+                "visits": 80,
+                "winrate": 0.4,
+                "prior": 0.3,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             strategy = DefaultStrategy(game, make_settings(AI_DEFAULT))
@@ -393,9 +429,18 @@ class TestHandicapStrategy:
     def test_handicap_manual_pda(self):
         """HandicapStrategy with manual PDA uses the given value."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
+
             def fake_request(*args, **kwargs):
                 callback = kwargs.get("callback")
                 if callback:
@@ -422,9 +467,18 @@ class TestAntimirrorStrategy:
     def test_antimirror_with_analysis(self):
         """AntimirrorStrategy uses antimirror analysis to pick top move."""
         candidates = [
-            {"move": "E5", "order": 0, "scoreLead": 2.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.55, "prior": 0.5},
+            {
+                "move": "E5",
+                "order": 0,
+                "scoreLead": 2.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.55,
+                "prior": 0.5,
+            },
         ]
         with ai_test_context() as (game, cn):
+
             def fake_request(*args, **kwargs):
                 callback = kwargs.get("callback")
                 if callback:
@@ -451,9 +505,33 @@ class TestJigoStrategy:
     def test_jigo_picks_closest_to_target(self):
         """JigoStrategy picks the move closest to target_score."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 5.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5},
-            {"move": "Q16", "order": 1, "scoreLead": 0.5, "pointsLost": 4.5, "visits": 80, "winrate": 0.5, "prior": 0.3},
-            {"move": "D16", "order": 2, "scoreLead": 10.0, "pointsLost": 5.0, "visits": 60, "winrate": 0.5, "prior": 0.2},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 5.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+            },
+            {
+                "move": "Q16",
+                "order": 1,
+                "scoreLead": 0.5,
+                "pointsLost": 4.5,
+                "visits": 80,
+                "winrate": 0.5,
+                "prior": 0.3,
+            },
+            {
+                "move": "D16",
+                "order": 2,
+                "scoreLead": 10.0,
+                "pointsLost": 5.0,
+                "visits": 60,
+                "winrate": 0.5,
+                "prior": 0.2,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             # target_score=0.5, B player perspective → Q16 (scoreLead 0.5) closest
@@ -471,7 +549,15 @@ class TestScoreLossStrategy:
     def test_scoreloss_picks_top_when_pass(self):
         """When top move is pass, pass regardless of strategy."""
         candidates = [
-            {"move": "pass", "order": 0, "scoreLead": 0.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5},
+            {
+                "move": "pass",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             strategy = ScoreLossStrategy(game, make_settings(AI_SCORELOSS))
@@ -520,7 +606,16 @@ class TestSimpleOwnershipStrategy:
     def test_simple_ownership_runs_with_moves(self):
         """SimpleOwnershipStrategy runs without crashing when moves are available."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.5, "visits": 100, "winrate": 0.5, "prior": 0.5, "ownership": [0.1] * 361},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.5,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+                "ownership": [0.1] * 361,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             strategy = SimpleOwnershipStrategy(game, make_settings(AI_SIMPLE_OWNERSHIP))
@@ -532,7 +627,16 @@ class TestSettleStonesStrategy:
     def test_settle_stones_runs_with_moves(self):
         """SettleStonesStrategy runs without crashing when moves are available."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.5, "visits": 100, "winrate": 0.5, "prior": 0.5, "ownership": [0.1] * 361},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.5,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+                "ownership": [0.1] * 361,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             strategy = SettleStonesStrategy(game, make_settings(AI_SETTLE_STONES))
@@ -550,7 +654,15 @@ class TestPolicyStrategy:
         """PolicyStrategy with no policy falls back to DefaultStrategy."""
         with ai_test_context(policy=None) as (game, cn):
             cn.analysis["moves"] = {
-                "D4": {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5}
+                "D4": {
+                    "move": "D4",
+                    "order": 0,
+                    "scoreLead": 0.0,
+                    "pointsLost": 0.0,
+                    "visits": 100,
+                    "winrate": 0.5,
+                    "prior": 0.5,
+                }
             }
             strategy = PolicyStrategy(game, make_settings(AI_POLICY))
             move, thoughts = strategy.generate_move()
@@ -736,7 +848,15 @@ class TestHumanStyleStrategy:
     def test_human_style_runs(self):
         """HumanStyleStrategy.generate_move returns a move."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+            },
         ]
         with ai_test_context(candidate_moves=candidates) as (game, cn):
             # Mock request_analysis to immediately call the callback
@@ -805,11 +925,12 @@ class TestRequestAnalysisGuards:
                     return 1_000_000.0
                 return 1_000_000.0 + 1000.0
 
-            with patch("katrain.core.ai_strategies_base.time.time", fake_time), patch(
-                "katrain.core.ai_strategies_base.time.sleep", lambda _s: None
+            with (
+                patch("katrain.core.ai_strategies_base.time.time", fake_time),
+                patch("katrain.core.ai_strategies_base.time.sleep", lambda _s: None),
+                pytest.raises(TimeoutError),
             ):
-                with pytest.raises(TimeoutError):
-                    strategy.request_analysis({})
+                strategy.request_analysis({})
 
 
 # ---------------------------------------------------------------------------
@@ -820,28 +941,49 @@ class TestRequestAnalysisGuards:
 class TestGenerateAiMove:
     def test_registry_has_all_strategies(self):
         """All known strategies are in the registry."""
-        for name in [AI_DEFAULT, AI_HANDICAP, AI_ANTIMIRROR, AI_JIGO, AI_SCORELOSS,
-                     AI_SIMPLE_OWNERSHIP, AI_SETTLE_STONES, AI_POLICY, AI_WEIGHTED,
-                     AI_PICK, AI_RANK, AI_INFLUENCE, AI_TERRITORY, AI_LOCAL,
-                     AI_TENUKI, AI_HUMAN, AI_PRO]:
+        for name in [
+            AI_DEFAULT,
+            AI_HANDICAP,
+            AI_ANTIMIRROR,
+            AI_JIGO,
+            AI_SCORELOSS,
+            AI_SIMPLE_OWNERSHIP,
+            AI_SETTLE_STONES,
+            AI_POLICY,
+            AI_WEIGHTED,
+            AI_PICK,
+            AI_RANK,
+            AI_INFLUENCE,
+            AI_TERRITORY,
+            AI_LOCAL,
+            AI_TENUKI,
+            AI_HUMAN,
+            AI_PRO,
+        ]:
             assert name in STRATEGY_REGISTRY, f"{name} not in registry"
 
     def test_generate_ai_move_default(self):
         """generate_ai_move creates the right strategy and plays a move."""
         candidates = [
-            {"move": "D4", "order": 0, "scoreLead": 0.0, "pointsLost": 0.0, "visits": 100, "winrate": 0.5, "prior": 0.5},
+            {
+                "move": "D4",
+                "order": 0,
+                "scoreLead": 0.0,
+                "pointsLost": 0.0,
+                "visits": 100,
+                "winrate": 0.5,
+                "prior": 0.5,
+            },
         ]
-        with ai_test_context(candidate_moves=candidates) as (game, cn):
-            # Patch game.play so we don't actually mutate state
-            with patch.object(game, "play") as mock_play:
-                mock_node = MagicMock()
-                mock_node.ai_thoughts = None
-                mock_play.return_value = mock_node
-                move, played_node = generate_ai_move(game, AI_DEFAULT, make_settings(AI_DEFAULT))
-                assert move.gtp() == "D4"
-                assert played_node is mock_node
-                # generate_ai_move sets ai_thoughts on the played_node
-                assert "Default strategy" in mock_node.ai_thoughts
+        with ai_test_context(candidate_moves=candidates) as (game, cn), patch.object(game, "play") as mock_play:
+            mock_node = MagicMock()
+            mock_node.ai_thoughts = None
+            mock_play.return_value = mock_node
+            move, played_node = generate_ai_move(game, AI_DEFAULT, make_settings(AI_DEFAULT))
+            assert move.gtp() == "D4"
+            assert played_node is mock_node
+            # generate_ai_move sets ai_thoughts on the played_node
+            assert "Default strategy" in mock_node.ai_thoughts
 
 
 # ---------------------------------------------------------------------------
@@ -896,9 +1038,7 @@ class TestGenerateWeights:
         grid = [[0.5, 0.3, 0.1], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
         prev_move = Move.from_gtp("A19", player="B")
         with ai_test_context(move=prev_move) as (game, cn):
-            coords, thoughts = generate_local_tenuki_weights(
-                AI_LOCAL, {"stddev": 2.0}, grid, cn, (3, 3)
-            )
+            coords, thoughts = generate_local_tenuki_weights(AI_LOCAL, {"stddev": 2.0}, grid, cn, (3, 3))
             assert len(coords) >= 1
 
 

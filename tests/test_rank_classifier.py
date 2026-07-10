@@ -1,4 +1,5 @@
 """Tests for Phase 155-A rank classifier."""
+
 from __future__ import annotations
 
 import pytest

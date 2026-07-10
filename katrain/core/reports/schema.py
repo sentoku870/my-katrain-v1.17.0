@@ -3,20 +3,24 @@
 This logic ensures that the JSON output structure is strictly defined
 and type-checked, preventing missing fields or inconsistent types.
 """
+
 from typing import Any, NotRequired, TypedDict
 
 # --- Common Sub-structures ---
+
 
 class ThresholdsLoss(TypedDict):
     inaccuracy: float
     mistake: float
     blunder: float
 
+
 class ThresholdsDefinition(TypedDict):
     loss: ThresholdsLoss
     bad_move_loss: float
     # Other specific thresholds can be added here loosely or strictly
     # adhering to the structure in definitions.py
+
 
 class Definitions(TypedDict):
     thresholds: dict[str, Any]
@@ -38,8 +42,8 @@ class MetaData(TypedDict, total=False):
     schema_hash: str
     run_id: str
     date_range: list[str] | None
-    games_analyzed: int | None # Summary only
-    game_id: str | None        # Karte only
+    games_analyzed: int | None  # Summary only
+    game_id: str | None  # Karte only
     loss_unit: str
     skill_preset: str | None
     definitions: Definitions | None
@@ -57,9 +61,11 @@ class MetaData(TypedDict, total=False):
     # on Karte output.
     games_by_type: dict[str, int] | None
 
+
 class PlayerGameInfo(TypedDict):
     black: str
     white: str
+
 
 class GameMeta(TypedDict):
     name: str
@@ -69,14 +75,15 @@ class GameMeta(TypedDict):
     result: str | None
     handicap: int
     komi: float
-    board_size: list[int] # [19, 19]
+    board_size: list[int]  # [19, 19]
     players: PlayerGameInfo
+
 
 class MistakeItem(TypedDict):
     game_name: str
     game_id: str | None
     move_number: int
-    player: str # "black" | "white"
+    player: str  # "black" | "white"
     coords: str
     phase: str
     loss_clamped: float
@@ -91,10 +98,13 @@ class MistakeItem(TypedDict):
     # implicit on Karte, since the Karte is the per-game report).
     in_individual_karte: NotRequired[bool]
 
+
 class TopMistakes(TypedDict):
     top_mistakes: list[MistakeItem]
 
+
 # --- Summary Specific ---
+
 
 class SummaryPlayerStats(TypedDict):
     overall: dict[str, Any]
@@ -245,4 +255,3 @@ class KarteReport(TypedDict):
     loss_progression: list[dict[str, Any]] | None
     # Phase 155-D: opponent-strength loss correlation (per-player).
     opponent_strength_loss_correlation: dict[str, dict[str, Any]] | None
-

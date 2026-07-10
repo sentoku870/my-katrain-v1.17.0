@@ -79,7 +79,6 @@ class TestMainModuleImport:
             "run_app",
             "HOMEPAGE",
             "MODE_ANALYZE",
-            "MODE_PLAY",
             "STATUS_INFO",
             "OUTPUT_INFO",
             "OUTPUT_DEBUG",

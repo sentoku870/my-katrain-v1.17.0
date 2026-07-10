@@ -27,6 +27,7 @@ Algorithm:
 This module is intentionally decoupled from any I/O: callers feed a
 sequence of moves and receive a per-move phase label.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence

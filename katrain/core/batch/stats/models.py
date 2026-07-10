@@ -48,4 +48,3 @@ class EvidenceMove:
     points_lost: float
     mistake_category: MistakeCategory
     analysis_errors: list[str] = field(default_factory=list)
-

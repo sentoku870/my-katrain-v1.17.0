@@ -4,6 +4,7 @@ This module provides the 'Adapter' layer that converts internal KaTrain
 objects (MoveEval, GameSummaryData) into the standardized
 dictionaries defined in `schema.py`.
 """
+
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -23,12 +24,7 @@ class MoveExtractor:
     """Extracts standardized data from a MoveEval."""
 
     @staticmethod
-    def extract(
-        move: MoveEval,
-        game_id: str | None = None,
-        game_name: str = "",
-        board_size: int = 19
-    ) -> MistakeItem:
+    def extract(move: MoveEval, game_id: str | None = None, game_name: str = "", board_size: int = 19) -> MistakeItem:
         """Convert a MoveEval into a MistakeItem dict."""
 
         # 1. Basic Info
@@ -49,7 +45,7 @@ class MoveExtractor:
             phase = "unknown"
 
         if phase not in PHASES and phase != "unknown":
-             phase = "unknown"
+            phase = "unknown"
 
         # 4. Mistake Type
         mistake_type = move.mistake_category.value.lower() if move.mistake_category else "unknown"
@@ -84,18 +80,18 @@ class MetaExtractor:
 
     @staticmethod
     def extract_game_meta(
-        game_data: Any, # Can be Game or GameSummaryData
-        game_id: str | None = None
+        game_data: Any,  # Can be Game or GameSummaryData
+        game_id: str | None = None,
     ) -> GameMeta:
         """Extract metadata from Game or GameSummaryData object."""
 
         # Duck typing to handle both Game and GameSummaryData
         # Game object has 'root', GameSummaryData has attributes directly or in snapshot
 
-        root = getattr(game_data, 'root', None)
+        root = getattr(game_data, "root", None)
 
         # Result
-        if hasattr(game_data, 'result'):
+        if hasattr(game_data, "result"):
             result = game_data.result
         elif root:
             result = root.get_property("RE")
@@ -103,7 +99,7 @@ class MetaExtractor:
             result = None
 
         # Komi
-        if hasattr(game_data, 'komi'):
+        if hasattr(game_data, "komi"):
             komi = game_data.komi
         elif root:
             try:
@@ -115,7 +111,7 @@ class MetaExtractor:
             komi = 0.0
 
         # Handicap
-        if hasattr(game_data, 'handicap'):
+        if hasattr(game_data, "handicap"):
             handicap = game_data.handicap
         elif root:
             handicap = int(root.get_property("HA", 0))
@@ -123,7 +119,7 @@ class MetaExtractor:
             handicap = 0
 
         # Names
-        if hasattr(game_data, 'player_black'):
+        if hasattr(game_data, "player_black"):
             pb = game_data.player_black
             pw = game_data.player_white
         elif root:
@@ -133,39 +129,39 @@ class MetaExtractor:
             pb, pw = "Black", "White"
 
         # Size
-        board_size = getattr(game_data, 'board_size', [19, 19])
+        board_size = getattr(game_data, "board_size", [19, 19])
         if isinstance(board_size, int):
             board_size = [board_size, board_size]
 
         # Moves count
-        if hasattr(game_data, 'snapshot') and hasattr(game_data.snapshot, 'moves'):
-             try:
-                 moves_count = len(game_data.snapshot.moves)
-             except TypeError:
-                 moves_count = 0
-        elif hasattr(game_data, 'moves') and not isinstance(game_data.moves, MagicMock):
-             try:
-                 moves_count = len(game_data.moves)
-             except TypeError:
-                 moves_count = 0
+        if hasattr(game_data, "snapshot") and hasattr(game_data.snapshot, "moves"):
+            try:
+                moves_count = len(game_data.snapshot.moves)
+            except TypeError:
+                moves_count = 0
+        elif hasattr(game_data, "moves") and not isinstance(game_data.moves, MagicMock):
+            try:
+                moves_count = len(game_data.moves)
+            except TypeError:
+                moves_count = 0
         elif root:
-             # Expensive to count if not cached?
-             # For Karte reuse existing count if passed, otherwise leave 0 or calc?
-             # Assuming context usually has it.
-             moves_count = 0
+            # Expensive to count if not cached?
+            # For Karte reuse existing count if passed, otherwise leave 0 or calc?
+            # Assuming context usually has it.
+            moves_count = 0
         else:
-             moves_count = 0
+            moves_count = 0
 
         # Game ID
-        gid: str = game_id or str(getattr(game_data, 'game_id', "unknown_id"))
+        gid: str = game_id or str(getattr(game_data, "game_id", "unknown_id"))
 
         # Name
         # GameSummaryData has game_name, Game usually doesn't store a 'name' per se unless external
-        name = getattr(game_data, 'game_name', f"Game {gid}")
+        name = getattr(game_data, "game_name", f"Game {gid}")
 
         # Date
         # GameSummaryData has date, Game has root date
-        if hasattr(game_data, 'date'):
+        if hasattr(game_data, "date"):
             date = game_data.date
         elif root:
             date = root.get_property("DT", "")
@@ -181,8 +177,5 @@ class MetaExtractor:
             "handicap": handicap,
             "komi": komi,
             "board_size": board_size,
-            "players": {
-                "black": pb,
-                "white": pw
-            }
+            "players": {"black": pb, "white": pw},
         }

@@ -210,9 +210,8 @@ class TestLayerBoundaries:
             runtime_imports = _collect_runtime_imports(source, module_pkg)
 
             for module in runtime_imports:
-                if module.startswith("katrain.gui"):
-                    if str(rel_path) not in self.ALLOWED_CORE_GUI_IMPORTS:
-                        violations.append(f"{rel_path}: imports {module}")
+                if module.startswith("katrain.gui") and str(rel_path) not in self.ALLOWED_CORE_GUI_IMPORTS:
+                    violations.append(f"{rel_path}: imports {module}")
 
         assert not violations, "Core→GUI runtime import violations:\n" + "\n".join(f"  - {v}" for v in violations)
 
@@ -271,13 +270,16 @@ class TestLayerBoundaries:
                 else:
                     names = [node.module] if node.module else []
                 for name in names:
-                    if name and (name == "katrain.core" or name.startswith("katrain.core.")
-                                 or name == "katrain.gui" or name.startswith("katrain.gui.")):
+                    if name and (
+                        name == "katrain.core"
+                        or name.startswith("katrain.core.")
+                        or name == "katrain.gui"
+                        or name.startswith("katrain.gui.")
+                    ):
                         violations.append(f"{rel_path}: lazy/range import of {name}")
 
-        assert not violations, (
-            "common/ must not import katrain.core or katrain.gui (even lazily):\n"
-            + "\n".join(f"  - {v}" for v in violations)
+        assert not violations, "common/ must not import katrain.core or katrain.gui (even lazily):\n" + "\n".join(
+            f"  - {v}" for v in violations
         )
 
     def test_common_no_side_effects(self):
@@ -482,11 +484,11 @@ class TestModuleStructure:
         analysis_dir = _PROJECT_ROOT / "katrain" / "core" / "analysis"
 
         expected_files = [
-"logic.py",
-"logic_loss.py",
-"logic_importance.py",
-"models",  # Phase 144-B: サブパッケージ化
-"presentation.py",
+            "logic.py",
+            "logic_loss.py",
+            "logic_importance.py",
+            "models",  # Phase 144-B: サブパッケージ化
+            "presentation.py",
         ]
 
         for filename in expected_files:
@@ -503,11 +505,11 @@ class TestModuleStructure:
         reports_dir = _PROJECT_ROOT / "katrain" / "core" / "reports"
 
         expected_files = [
-"__init__.py",
-"types.py",
-"summary_report.py",
-"karte_report.py",
-"important_moves_report.py",
+            "__init__.py",
+            "types.py",
+            "summary_report.py",
+            "karte_report.py",
+            "important_moves_report.py",
         ]
 
         for filename in expected_files:
@@ -762,10 +764,7 @@ class AllImportCollector(ast.NodeVisitor):
         # level=1: 現在のパッケージ（全パーツを保持）
         # level=2: 1つ上のパッケージ（最後の1つを削除）
         # level=N: N-1個上のパッケージ
-        if level == 1:
-            base_parts = parts  # 同じパッケージ
-        else:
-            base_parts = parts[: -(level - 1)]  # level-1個削除
+        base_parts = parts if level == 1 else parts[: -(level - 1)]
         base = ".".join(base_parts)
         return f"{base}.{module}" if module else base
 
@@ -926,10 +925,9 @@ class TestKivyIsolation:
                     if "|" not in allowlist_key:
                         continue
                     key_file, key_module = allowlist_key.split("|", 1)
-                    if key_file == rel_path:
-                        if module == key_module or module.startswith(f"{key_module}."):
-                            is_allowed = True
-                            break
+                    if key_file == rel_path and (module == key_module or module.startswith(f"{key_module}.")):
+                        is_allowed = True
+                        break
 
                 if not is_allowed:
                     violations.append(f"{rel_path}:{lineno}: imports {module}")
@@ -998,9 +996,8 @@ class TestKivyHeadlessIsolation:
                 if module_name and module_name.startswith("tests."):
                     rel = py_file.relative_to(_PROJECT_ROOT / "katrain")
                     violations.append(f"{rel}:{node.lineno}: imports {module_name}")
-        assert not violations, (
-            "production code should not import from tests/:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+        assert not violations, "production code should not import from tests/:\n" + "\n".join(
+            f"  - {v}" for v in violations
         )
 
     def test_kivy_unit_test_base_exists(self):
@@ -1022,6 +1019,5 @@ class TestKivyHeadlessIsolation:
             data = json.load(f)
         entries = data.get("entries", {})
         assert entries == {}, (
-            f"kivy_import_allowlist.json should remain empty after Phase 143-A, "
-            f"but found: {list(entries.keys())}"
+            f"kivy_import_allowlist.json should remain empty after Phase 143-A, but found: {list(entries.keys())}"
         )

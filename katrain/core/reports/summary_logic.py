@@ -133,13 +133,14 @@ class SummaryAnalyzer:
                         key = (phase, cat)
                         stats.phase_mistake_counts[key] = stats.phase_mistake_counts.get(key, 0) + 1
                         if loss > 0:
-                            stats.phase_mistake_loss[key] = (
-                                stats.phase_mistake_loss.get(key, 0.0) + loss
-                            )
+                            stats.phase_mistake_loss[key] = stats.phase_mistake_loss.get(key, 0.0) + loss
 
                     # 最悪手を記録（Top 10を保持）
                     # Phase 148-C4: exclude forced (ONLY_MOVE) moves - low learning value
-                    if loss > BAD_MOVE_LOSS_THRESHOLD and getattr(move, "position_difficulty", None) != PositionDifficulty.ONLY_MOVE:
+                    if (
+                        loss > BAD_MOVE_LOSS_THRESHOLD
+                        and getattr(move, "position_difficulty", None) != PositionDifficulty.ONLY_MOVE
+                    ):
                         stats.worst_moves.append((game_data.game_name, move))
 
                     # Reason Tags Aggregation (v6)
@@ -160,7 +161,10 @@ class SummaryAnalyzer:
                     for tag, count in rt_counts.items():
                         stats.reason_tags_counts[tag] = stats.reason_tags_counts.get(tag, 0) + count
 
-                if hasattr(game_data, "important_moves_stats_by_player") and player_color in game_data.important_moves_stats_by_player:
+                if (
+                    hasattr(game_data, "important_moves_stats_by_player")
+                    and player_color in game_data.important_moves_stats_by_player
+                ):
                     im_stats = game_data.important_moves_stats_by_player[player_color]
                     stats.important_moves_count += im_stats.get("important_count", 0)
                     stats.tagged_moves_count += im_stats.get("tagged_count", 0)
@@ -172,9 +176,7 @@ class SummaryAnalyzer:
                 stats.avg_points_lost_per_move = stats.total_points_lost / stats.total_moves
 
             # 最悪手をソートして上位のみ保持（Phase 149 A-5: メモリ削減）
-            stats.worst_moves.sort(
-                key=lambda x: get_canonical_loss_from_move(x[1]), reverse=True
-            )
+            stats.worst_moves.sort(key=lambda x: get_canonical_loss_from_move(x[1]), reverse=True)
             stats.worst_moves = stats.worst_moves[:10]
 
     def get_player_stats(self, player_name: str) -> SummaryStats | None:
@@ -194,6 +196,7 @@ class SummaryAnalyzer:
             URGENT_MISS_THRESHOLD_LOSS,
             URGENT_MISS_MIN_CONSECUTIVE,
         )
+
 
 def detect_urgent_miss_sequences(
     worst_moves: list[tuple[str, Any]],
@@ -225,10 +228,7 @@ def detect_urgent_miss_sequences(
                     "total_loss": loss,
                     "count": 1,
                 }
-            elif (
-                current_seq["game"] == game_name
-                and move.move_number <= current_seq["end"] + 2
-            ):
+            elif current_seq["game"] == game_name and move.move_number <= current_seq["end"] + 2:
                 # 連続している（1手スキップまで許容）
                 current_seq["end"] = move.move_number
                 current_seq["moves"].append((game_name, move))

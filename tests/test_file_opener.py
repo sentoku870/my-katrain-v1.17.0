@@ -51,12 +51,14 @@ class TestOpenFolder:
 
     def test_windows_uses_startfile(self, tmp_path):
         """Windows: os.startfile is used."""
-        with patch.object(file_opener, "get_platform", return_value="win"):
+        with (
+            patch.object(file_opener, "get_platform", return_value="win"),
+            patch.object(os, "startfile", create=True) as mock_startfile,
+        ):
             # create=True allows mocking os.startfile on non-Windows
-            with patch.object(os, "startfile", create=True) as mock_startfile:
-                result = open_folder(tmp_path)
-                assert result.success
-                mock_startfile.assert_called_once_with(str(tmp_path))
+            result = open_folder(tmp_path)
+            assert result.success
+            mock_startfile.assert_called_once_with(str(tmp_path))
 
     @patch("subprocess.run")
     def test_macos_uses_open(self, mock_run, tmp_path):
@@ -79,11 +81,13 @@ class TestOpenFolder:
 
     def test_handles_command_not_found(self, tmp_path):
         """Returns error when command is not found."""
-        with patch.object(file_opener, "get_platform", return_value="linux"):
-            with patch("subprocess.run", side_effect=FileNotFoundError("xdg-open")):
-                result = open_folder(tmp_path)
-                assert not result.success
-                assert result.error_message == "command-not-found"
+        with (
+            patch.object(file_opener, "get_platform", return_value="linux"),
+            patch("subprocess.run", side_effect=FileNotFoundError("xdg-open")),
+        ):
+            result = open_folder(tmp_path)
+            assert not result.success
+            assert result.error_message == "command-not-found"
 
 
 class TestOpenFile:
@@ -104,11 +108,13 @@ class TestOpenFile:
         """Windows: os.startfile is used for files."""
         f = tmp_path / "test.md"
         f.write_text("test")
-        with patch.object(file_opener, "get_platform", return_value="win"):
-            with patch.object(os, "startfile", create=True) as mock_startfile:
-                result = open_file(f)
-                assert result.success
-                mock_startfile.assert_called_once_with(str(f))
+        with (
+            patch.object(file_opener, "get_platform", return_value="win"),
+            patch.object(os, "startfile", create=True) as mock_startfile,
+        ):
+            result = open_file(f)
+            assert result.success
+            mock_startfile.assert_called_once_with(str(f))
 
     @patch("subprocess.run")
     def test_macos_uses_open(self, mock_run, tmp_path):

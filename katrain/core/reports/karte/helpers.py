@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from katrain.core.analysis.models import EvalSnapshot, MoveEval
+    from katrain.core.analysis.models import MoveEval
 
 
 def has_loss_data(mv: MoveEval) -> bool:
@@ -29,4 +29,3 @@ def has_loss_data(mv: MoveEval) -> bool:
         Phase 171 で ``leela_loss_est`` を削除（KataGo 専用化）。
     """
     return mv.score_loss is not None or mv.points_lost is not None
-

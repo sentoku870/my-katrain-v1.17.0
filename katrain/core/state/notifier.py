@@ -22,6 +22,7 @@ Logger Injection (Phase 104):
 - If logger is None or fails, fallback to stderr
 """
 
+import contextlib
 import sys
 import threading
 import traceback
@@ -89,10 +90,8 @@ class StateNotifier:
         """
         with self._lock:
             if event_type in self._subscribers:
-                try:
+                with contextlib.suppress(ValueError):
                     self._subscribers[event_type].remove(callback)
-                except ValueError:
-                    pass  # Callback not found, ignore
 
     def notify(self, event: Event) -> None:
         """Notify all subscribers of an event.

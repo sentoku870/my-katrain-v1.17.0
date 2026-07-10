@@ -7,6 +7,7 @@ Contains:
 - EvalSnapshot: Game-wide evaluation snapshot (dataclass with derived properties)
 - get_canonical_loss_from_move: Helper to extract canonical loss from a MoveEval
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

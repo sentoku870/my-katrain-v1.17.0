@@ -5,6 +5,7 @@ Extracted from katrain/gui/kivyutils/widgets.py:
 - PlayerSetupBlock: Block layout containing both B and W PlayerSetup widgets.
 - PlayerInfo: Display-only box showing player captures, name, rank, etc.
 """
+
 from __future__ import annotations
 
 from typing import Any

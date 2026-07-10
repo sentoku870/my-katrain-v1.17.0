@@ -3,6 +3,7 @@
 This module consolidates all constants, enums, and mapping dictionaries
 used in report generation to ensure consistency across different report types.
 """
+
 from typing import Any, Final
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
@@ -17,7 +18,9 @@ from katrain.core.reports.constants import (
 
 # --- Schema Version ---
 # Bump this whenever the JSON structure or definitions change.
-REPORT_SCHEMA_VERSION: Final[str] = "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 158-A/B: bug fixes.
+REPORT_SCHEMA_VERSION: Final[str] = (
+    "3.4"  # Phase 157-C: even/handicapped split + loss_progression dict; Phase 157-D: top-level win_loss_analysis removed; Phase 158-A/B: bug fixes.
+)
 
 
 # --- Thresholds ---
@@ -47,7 +50,7 @@ FILTERING_THRESHOLDS: Final[dict[str, Any]] = {
         "opening_max": 50,
         "middle_max": 200,
         "endgame_min": 201,
-    }
+    },
 }
 
 # Combined thresholds for JSON reporting (merges loss thresholds and filtering thresholds)
@@ -75,11 +78,7 @@ PHASE_ALIASES: Final[dict[str, str]] = {"yose": "endgame"}
 IMPORTANCE_DEF: Final[dict[str, Any]] = {
     "scale": "0.0 to unbounded (logarithmic)",
     "description": "Combined score of loss and semantic interest",
-    "thresholds": {
-        "interesting": 0.3,
-        "important": 0.5,
-        "critical": 1.0
-    }
+    "thresholds": {"interesting": 0.3, "important": 0.5, "critical": 1.0},
 }
 
 REASON_CODE_ALIASES: Final[dict[str, str]] = {
@@ -92,15 +91,27 @@ REASON_CODE_ALIASES: Final[dict[str, str]] = {
     "cut_risk": "cut_risk",
     "thin": "thin",
     "chase_mode": "chase_mode",
-    "connection_mistake": "connection", # Map meaning tag to reason code
-    "liberties_mistake": "liberties",   # Map meaning tag to reason code
-    "joseki_mistake": "joseki",         # New
+    "connection_mistake": "connection",  # Map meaning tag to reason code
+    "liberties_mistake": "liberties",  # Map meaning tag to reason code
+    "joseki_mistake": "joseki",  # New
 }
 
 REASON_CODES: Final[list[str]] = [
-    "shape", "atari", "clump", "heavy", "overconcentrated", "liberties",
-    "endgame_hint", "connection", "urgent", "tenuki", "cut_risk",
-    "thin", "chase_mode", "reading", "joseki"
+    "shape",
+    "atari",
+    "clump",
+    "heavy",
+    "overconcentrated",
+    "liberties",
+    "endgame_hint",
+    "connection",
+    "urgent",
+    "tenuki",
+    "cut_risk",
+    "thin",
+    "chase_mode",
+    "reading",
+    "joseki",
 ]
 
 
@@ -122,15 +133,9 @@ REASON_CODES: Final[list[str]] = [
 import hashlib as _hashlib
 
 _REPORT_SCHEMA_HASH_INPUT: Final[str] = (
-    f"{REPORT_SCHEMA_VERSION}"
-    f"|{REPORT_THRESHOLDS}"
-    f"|{MISTAKE_TYPES}"
-    f"|{PRIMARY_TAGS}"
-    f"|{REASON_CODES}"
+    f"{REPORT_SCHEMA_VERSION}|{REPORT_THRESHOLDS}|{MISTAKE_TYPES}|{PRIMARY_TAGS}|{REASON_CODES}"
 )
-REPORT_SCHEMA_HASH: Final[str] = _hashlib.sha1(
-    _REPORT_SCHEMA_HASH_INPUT.encode("utf-8")
-).hexdigest()[:8]
+REPORT_SCHEMA_HASH: Final[str] = _hashlib.sha1(_REPORT_SCHEMA_HASH_INPUT.encode("utf-8")).hexdigest()[:8]
 
 CATEGORY_ALIASES: Final[dict[str, str]] = {
     "inaccuracy": "inc",

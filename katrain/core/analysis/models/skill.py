@@ -11,6 +11,7 @@ Contains:
 - AutoRecommendation, UrgentMissConfig + URGENT_MISS_CONFIGS: Recommendation
 - SCORE_THRESHOLDS, WINRATE_THRESHOLDS: Default skill thresholds
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

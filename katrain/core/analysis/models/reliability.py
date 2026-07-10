@@ -10,6 +10,7 @@ Contains:
 - MIN_COVERAGE_MOVES, _CONFIDENCE_THRESHOLDS: Confidence level computation
 - RELIABILITY_SCALE_THRESHOLDS: Visit count to weight mapping
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

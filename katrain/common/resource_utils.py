@@ -4,6 +4,7 @@ Moved from ``katrain.core.utils`` so that ``common/`` does not need to
 import from ``core/``. The function is a simple wrapper around
 ``importlib.resources`` with no Kivy, GUI, or engine dependencies.
 """
+
 from __future__ import annotations
 
 import sys

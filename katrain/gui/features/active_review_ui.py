@@ -100,9 +100,7 @@ def show_guess_feedback(
     details_layout.bind(minimum_height=details_layout.setter("height"))
 
     # Your move
-    your_move_text = i18n._("active_review:feedback:your_move").format(
-        move=evaluation.user_move
-    )
+    your_move_text = i18n._("active_review:feedback:your_move").format(move=evaluation.user_move)
     your_move_label = Label(
         text=your_move_text,
         color=Theme.TEXT_COLOR,
@@ -114,9 +112,7 @@ def show_guess_feedback(
     details_layout.add_widget(your_move_label)
 
     # AI best
-    ai_best_text = i18n._("active_review:feedback:ai_best").format(
-        move=evaluation.ai_best_move
-    )
+    ai_best_text = i18n._("active_review:feedback:ai_best").format(move=evaluation.ai_best_move)
     ai_best_label = Label(
         text=ai_best_text,
         color=Theme.TEXT_COLOR,

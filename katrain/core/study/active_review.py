@@ -146,9 +146,7 @@ class ActiveReviewer:
         Args:
             skill_preset: One of "beginner", "standard", "advanced", "pro"
         """
-        self.thresholds = GRADE_THRESHOLDS.get(
-            skill_preset, GRADE_THRESHOLDS["standard"]
-        )
+        self.thresholds = GRADE_THRESHOLDS.get(skill_preset, GRADE_THRESHOLDS["standard"])
 
     def evaluate_guess(
         self,
@@ -359,10 +357,8 @@ def _get_hint_key_from_analysis(node: "GameNode") -> str | None:
 
     # Check for life/death situations based on ownership uncertainty
     ownership = root_info.get("ownership", [])
-    if ownership:
-        # High ownership variance suggests tactical fighting
-        if any(abs(o) < 0.3 for o in ownership[:50]):  # Early cells
-            return "active_review:hint:fighting"
+    if ownership and any(abs(o) < 0.3 for o in ownership[:50]):  # Early cells
+        return "active_review:hint:fighting"
 
     # Default: no specific hint available
     return None

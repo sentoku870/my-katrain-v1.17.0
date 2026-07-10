@@ -113,9 +113,7 @@ def test_do_ai_move_routes_registered_strategy_to_generate_ai_move(
     }
 
 
-def test_do_ai_move_skips_game_normal_mode(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_skips_game_normal_mode(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """KataGo ``game:normal`` is handled by the engine; the dispatcher must noop."""
     from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
@@ -139,9 +137,7 @@ def test_do_ai_move_skips_game_normal_mode(
     assert not hasattr(ctx_fixture, "last_log")
 
 
-def test_do_ai_move_skips_unknown_modes(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_skips_unknown_modes(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Strategies not in ``STRATEGY_REGISTRY`` are also skipped.
 
     This protects against future KataGo-internal ids
@@ -171,14 +167,10 @@ def test_do_ai_move_skips_unknown_modes(
             )
         ctx_fixture.next_player_info_setter(strategy_id)
         game_commands.do_ai_move(ctx_fixture, node=None)
-        assert "yes" not in called, (
-            f"generate_ai_move was unexpectedly called for {strategy_id}"
-        )
+        assert "yes" not in called, f"generate_ai_move was unexpectedly called for {strategy_id}"
 
 
-def test_do_ai_move_surfaces_settings_when_present(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_surfaces_settings_when_present(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """When ``ai:human`` settings are stored, the dispatcher forwards them."""
     from katrain.gui.features.commands import game_commands
 
@@ -197,9 +189,7 @@ def test_do_ai_move_surfaces_settings_when_present(
     assert captured["settings"] == {"modern_style": True, "extra": 1}
 
 
-def test_do_ai_move_falls_back_to_empty_settings(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_falls_back_to_empty_settings(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing settings branch falls back to ``{}``; no 'AI Mode ... not found!' log.
 
     The previous implementation emitted a misleading 'AI Mode ... not
@@ -226,9 +216,7 @@ def test_do_ai_move_falls_back_to_empty_settings(
     assert not hasattr(ctx_fixture, "last_log")
 
 
-def test_do_ai_move_propagates_strategy_exceptions(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_propagates_strategy_exceptions(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Exceptions from ``generate_ai_move`` propagate to ``ctx.log`` + status."""
 
     from katrain.gui.features.commands import game_commands
@@ -245,9 +233,7 @@ def test_do_ai_move_propagates_strategy_exceptions(
     ctx_fixture.controls.set_status.assert_called_once_with("strategy fixture down")
 
 
-def test_do_ai_move_respects_node_pin(
-    ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_do_ai_move_respects_node_pin(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """When the caller's ``node`` does not match the current node, the dispatcher aborts."""
     from katrain.gui.features.commands import game_commands
 

@@ -44,13 +44,13 @@ from katrain.core.ai_strategies.basic import (
     JigoStrategy,
 )
 from katrain.core.ai_strategies.human import HumanStyleStrategy
-from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies.pick import PickStrategy
-from katrain.core.ai_strategies.pick_rank import RankStrategy
+from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies.pick_influence import InfluenceStrategy
-from katrain.core.ai_strategies.pick_territory import TerritoryStrategy
 from katrain.core.ai_strategies.pick_local import LocalStrategy
+from katrain.core.ai_strategies.pick_rank import RankStrategy
 from katrain.core.ai_strategies.pick_tenuki import TenukiStrategy
+from katrain.core.ai_strategies.pick_territory import TerritoryStrategy
 from katrain.core.ai_strategies.policy import (
     PolicyStrategy,
     WeightedStrategy,

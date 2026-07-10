@@ -159,10 +159,7 @@ class MoveTreeCanvas(Widget):
         children[root] = [*stack]
         while stack:
             move = stack.pop()
-            if move.shortcut_from and move.shortcut_from in self.move_pos:  # ignore broken shortcuts
-                parent = move.shortcut_from
-            else:
-                parent = move.parent
+            parent = move.shortcut_from if move.shortcut_from and move.shortcut_from in self.move_pos else move.parent
 
             x = self.move_pos[parent][0] + 1 if parent else 0
             y = max(next_y_pos[x], self.move_pos[parent][1])

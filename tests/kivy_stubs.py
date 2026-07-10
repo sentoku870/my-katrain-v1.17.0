@@ -21,9 +21,8 @@ gui/ 層のテストで実 Kivy インスタンスを生成する代わりに使
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import MagicMock
-
 
 KA_TRAIN_GUI_ATTRS: tuple[str, ...] = (
     "engine",

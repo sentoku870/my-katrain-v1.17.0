@@ -6,6 +6,7 @@ Contains:
 - get_phase_thresholds: Get phase boundaries for a given board size
 - classify_game_phase: Classify a move number into opening/middle/yose
 """
+
 from __future__ import annotations
 
 # =============================================================================

@@ -109,7 +109,7 @@ class TestExportSettings:
             "mykatrain_settings": {"default_user_name": "test"},
         }
         result = json.loads(export_settings(config, "1.17.0"))
-        assert "mykatrain_settings" in result["sections"] 
+        assert "mykatrain_settings" in result["sections"]
 
     def test_schema_version_included(self):
         """Schema version should be included in export."""

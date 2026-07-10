@@ -56,9 +56,7 @@ def _ensure_str(line: bytes | str | None) -> str:
 # =============================================================================
 
 
-def pipe_reader_thread(
-    widget: KataGoEngine, pipe: Any, output_queue: queue.Queue[bytes | None], name: str
-) -> None:
+def pipe_reader_thread(widget: KataGoEngine, pipe: Any, output_queue: queue.Queue[bytes | None], name: str) -> None:
     """Read from pipe and put lines into queue (blocking I/O isolated here).
 
     This thread performs blocking readline() calls. When the process terminates

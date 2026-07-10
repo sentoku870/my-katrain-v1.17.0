@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 from typing import Any
 
@@ -413,7 +414,16 @@ class BadukPanWidget(Widget):
     ) -> None:
         from katrain.gui.badukpan_drawing import draw_board_background as _draw_bg
 
-        _draw_bg(self, katrain, gridpos_x, gridpos_y, x_grid_spaces, y_grid_spaces, grid_spaces_margin_x, grid_spaces_margin_y)
+        _draw_bg(
+            self,
+            katrain,
+            gridpos_x,
+            gridpos_y,
+            x_grid_spaces,
+            y_grid_spaces,
+            grid_spaces_margin_x,
+            grid_spaces_margin_y,
+        )
 
     def draw_lines(self, gridpos_x: list[float], gridpos_y: list[float]) -> None:
         from katrain.gui.badukpan_drawing import draw_lines as _draw_lines
@@ -521,7 +531,16 @@ class BadukPanWidget(Widget):
     ) -> Any:
         from katrain.gui.badukpan_hints import draw_kata_hint_marker as _draw
 
-        return _draw(self, current_node, next_player, move_dict, child_moves, top_moves_show, low_visits_threshold, top_move_coords)
+        return _draw(
+            self,
+            current_node,
+            next_player,
+            move_dict,
+            child_moves,
+            top_moves_show,
+            low_visits_threshold,
+            top_move_coords,
+        )
 
     def _draw_children_markers(self, current_node: Any, top_move_coords: Any) -> None:
         from katrain.gui.badukpan_hints import draw_children_markers as _draw
@@ -582,15 +601,11 @@ class BadukPanWidget(Widget):
         Both are now released here. Idempotent so callers can invoke
         multiple times safely.
         """
-        try:
+        with contextlib.suppress(Exception):
             Window.unbind(mouse_pos=self.on_mouse_pos)
-        except Exception:
-            pass
         if self._animate_interval is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self._animate_interval.cancel()
-            except Exception:
-                pass
             self._animate_interval = None
         # Release cached territory textures (P2-A H4).
         cache = getattr(self, "_territory_texture_cache", None)
@@ -643,9 +658,6 @@ class BadukPanWidget(Widget):
         from katrain.gui.badukpan_pv import show_pv_from_comments as _show
 
         _show(self, pv_str)
-
-
-
 
 
 class AnalysisDropDown(DropDown):

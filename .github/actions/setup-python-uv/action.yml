@@ -4,7 +4,7 @@ inputs:
   python-version:
     description: 'Python version to set up'
     required: false
-    default: '3.11'
+    default: "3.11"
   sync-groups:
     description: 'uv sync groups'
     required: false
@@ -14,7 +14,19 @@ runs:
   using: 'composite'
   steps:
     - uses: actions/checkout@v4
-    
+
+    # Phase A-12: cache uv download and project virtualenv between runs to
+    # avoid reinstalling the full dev toolchain on every job.
+    - name: Cache uv
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:

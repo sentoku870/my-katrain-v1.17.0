@@ -21,6 +21,7 @@ Classification rules:
       downstream code can detect it explicitly instead of silently
       dropping the game.
 """
+
 from __future__ import annotations
 
 from typing import Final, Literal

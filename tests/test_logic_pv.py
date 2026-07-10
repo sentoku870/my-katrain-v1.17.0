@@ -1,4 +1,5 @@
 """Tests for katrain/core/analysis/logic_pv.py (Phase 167)."""
+
 from __future__ import annotations
 
 from katrain.core.analysis.logic_pv import filter_candidates_by_pv_complexity, get_pv_filter_config

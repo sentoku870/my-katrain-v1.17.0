@@ -69,9 +69,7 @@ def _grid(grid_size: float = 10.0, board_size: int = 5) -> list[list[list[float]
 
     Each ``gridpos[y][x]`` is ``[x_pos, y_pos]``.
     """
-    return [
-        [[float(x) * grid_size, float(y) * grid_size] for x in range(board_size)] for y in range(board_size)
-    ]
+    return [[[float(x) * grid_size, float(y) * grid_size] for x in range(board_size)] for y in range(board_size)]
 
 
 # ---------------------------------------------------------------------------
@@ -219,12 +217,7 @@ class TestStatusStateMachineLogic:
         check_level: bool = True,
     ) -> bool:
         prev_msg, prev_level, prev_node = prev_state
-        if (
-            new_at_node != prev_node
-            or not check_level
-            or int(new_level) >= int(prev_level)
-            or new_msg == ""
-        ):
+        if new_at_node != prev_node or not check_level or int(new_level) >= int(prev_level) or new_msg == "":
             return new_msg != prev_msg or new_level != prev_level or new_at_node != prev_node
         return False
 

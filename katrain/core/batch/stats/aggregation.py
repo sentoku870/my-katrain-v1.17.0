@@ -152,18 +152,20 @@ def build_batch_summary(
     for stats in game_stats_list:
         if "summary_data" in stats:
             game_data_list.append(stats["summary_data"])
-        elif "snapshot" in stats: # Fallback if only snapshot is present
-            game_data_list.append(GameSummaryData(
-                game_name=stats.get("game_name", "unknown"),
-                player_black=stats.get("player_black", "Black"),
-                player_white=stats.get("player_white", "White"),
-                snapshot=stats["snapshot"],
-                board_size=stats.get("board_size", (19, 19)),
-                date=stats.get("date"),
-                # Phase 155-C: surface SGF rank tags from the stats dict.
-                rank_black=stats.get("rank_black"),
-                rank_white=stats.get("rank_white"),
-            ))
+        elif "snapshot" in stats:  # Fallback if only snapshot is present
+            game_data_list.append(
+                GameSummaryData(
+                    game_name=stats.get("game_name", "unknown"),
+                    player_black=stats.get("player_black", "Black"),
+                    player_white=stats.get("player_white", "White"),
+                    snapshot=stats["snapshot"],
+                    board_size=stats.get("board_size", (19, 19)),
+                    date=stats.get("date"),
+                    # Phase 155-C: surface SGF rank tags from the stats dict.
+                    rank_black=stats.get("rank_black"),
+                    rank_white=stats.get("rank_white"),
+                )
+            )
 
     # Get the JSON-wrapped report (focus_player=None for entire batch)
     json_report = build_summary_report(game_data_list, focus_player=None)
@@ -172,4 +174,3 @@ def build_batch_summary(
     lines.append("\n" + json_report)
 
     return "\n".join(lines)
-

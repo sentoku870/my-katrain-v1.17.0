@@ -220,9 +220,7 @@ class TestReplayGuide:
 
     def test_frozen_dataclass(self):
         """ReplayGuide is frozen."""
-        rg = ReplayGuide(
-            game_id="g", game_title="T", total_moves=0, highlight_moments=[]
-        )
+        rg = ReplayGuide(game_id="g", game_title="T", total_moves=0, highlight_moments=[])
         with pytest.raises((AttributeError, Exception)):
             rg.game_id = "other"  # type: ignore[misc]
 
@@ -308,9 +306,7 @@ class TestExtractReplayGuide:
             extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=10, max_highlights=3)
             mock_sel.assert_called_once()
             args, kwargs = mock_sel.call_args
-            assert kwargs.get("max_moves") == 3 or (
-                len(args) >= 2 and args[1] == 3
-            )
+            assert kwargs.get("max_moves") == 3 or (len(args) >= 2 and args[1] == 3)
 
     def test_level_passed_through(self):
         """level parameter is passed to select_critical_moves."""
@@ -329,9 +325,7 @@ class TestExtractReplayGuide:
                 return_value="ja",
             ),
         ):
-            extract_replay_guide(
-                game=game, game_id="g", game_title="T", total_moves=10, level="hard"
-            )
+            extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=10, level="hard")
             args, kwargs = mock_sel.call_args
             assert kwargs.get("level") == "hard" or (len(args) >= 3 and args[2] == "hard")
 
@@ -352,9 +346,7 @@ class TestExtractReplayGuide:
                 return_value="en",
             ) as mock_iso,
         ):
-            extract_replay_guide(
-                game=game, game_id="g", game_title="T", total_moves=10, lang="en"
-            )
+            extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=10, lang="en")
             # to_iso_lang_code called
             mock_iso.assert_called_once_with("en")
             # select_critical_moves received the ISO code
@@ -368,7 +360,9 @@ class TestExtractReplayGuide:
         """Each CriticalMove → HighlightMoment with proper fields."""
         game = MagicMock()
         cm = _make_critical_move(
-            move_number=42, player="W", gtp_coord="Q16",
+            move_number=42,
+            player="W",
+            gtp_coord="Q16",
             meaning_tag_id="reading_failure",
             meaning_tag_label="Reading Failure",
             score_loss=2.789,
@@ -388,9 +382,7 @@ class TestExtractReplayGuide:
                 return_value="ja",
             ),
         ):
-            guide = extract_replay_guide(
-                game=game, game_id="g", game_title="T", total_moves=200
-            )
+            guide = extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=200)
         assert len(guide.highlight_moments) == 1
         hm = guide.highlight_moments[0]
         assert hm.move_number == 42
@@ -420,9 +412,7 @@ class TestExtractReplayGuide:
                 return_value="ja",
             ),
         ):
-            extract_replay_guide(
-                game=game, game_id="g", game_title="T", total_moves=200, lang="jp"
-            )
+            extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=200, lang="jp")
         # Called twice (once per CriticalMove)
         assert mock_label.call_count == 2
 
@@ -443,9 +433,7 @@ class TestExtractReplayGuide:
                 return_value="ja",
             ),
         ):
-            guide = extract_replay_guide(
-                game=game, game_id="g", game_title="T", total_moves=10
-            )
+            guide = extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=10)
         assert guide.highlight_moments == []
 
     def test_default_max_highlights(self):
@@ -467,9 +455,7 @@ class TestExtractReplayGuide:
         ):
             extract_replay_guide(game=game, game_id="g", game_title="T", total_moves=10)
             args, kwargs = mock_sel.call_args
-            assert kwargs.get("max_moves") == 5 or (
-                len(args) >= 2 and args[1] == 5
-            )
+            assert kwargs.get("max_moves") == 5 or (len(args) >= 2 and args[1] == 5)
 
     def test_default_lang_jp(self):
         """Default lang='jp' is passed to to_iso_lang_code."""

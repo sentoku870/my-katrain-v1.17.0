@@ -438,5 +438,3 @@ class TestTrainerConfigFromDict:
         cfg = TrainerConfig.from_dict({})
         with pytest.raises(FrozenInstanceError):
             cfg.theme = "other"  # type: ignore
-
-

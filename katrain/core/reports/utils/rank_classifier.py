@@ -33,6 +33,7 @@ Examples:
     >>> classify_rank_to_bucket("")
     <RankBucket.UNKNOWN: 'unknown'>
 """
+
 from __future__ import annotations
 
 import enum

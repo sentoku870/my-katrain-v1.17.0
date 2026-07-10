@@ -1,9 +1,8 @@
 """Tests for Phase 157-C game-type classifier."""
+
 from __future__ import annotations
 
-import pytest
-
-from katrain.core.analysis.models import EvalSnapshot, MoveEval, MistakeCategory
+from katrain.core.analysis.models import EvalSnapshot, MistakeCategory, MoveEval
 from katrain.core.analysis.models.skill import GameSummaryData
 from katrain.core.reports.utils.game_classifier import (
     EVEN_KOMI_FLOOR,
@@ -14,22 +13,24 @@ from katrain.core.reports.utils.game_classifier import (
 
 def _make_gd(name: str, handicap: int = 0, komi: float = 6.5) -> GameSummaryData:
     """Build a minimal GameSummaryData with the given handicap / komi."""
-    snapshot = EvalSnapshot(moves=[
-        MoveEval(
-            move_number=1,
-            player="B",
-            gtp="D4",
-            score_before=0.0,
-            score_after=0.0,
-            delta_score=0.0,
-            winrate_before=0.5,
-            winrate_after=0.5,
-            delta_winrate=0.0,
-            points_lost=0.0,
-            realized_points_lost=None,
-            root_visits=200,
-        )
-    ])
+    snapshot = EvalSnapshot(
+        moves=[
+            MoveEval(
+                move_number=1,
+                player="B",
+                gtp="D4",
+                score_before=0.0,
+                score_after=0.0,
+                delta_score=0.0,
+                winrate_before=0.5,
+                winrate_after=0.5,
+                delta_winrate=0.0,
+                points_lost=0.0,
+                realized_points_lost=None,
+                root_visits=200,
+            )
+        ]
+    )
     move = snapshot.moves[0]
     move.score_loss = 0.0
     move.mistake_category = MistakeCategory.GOOD

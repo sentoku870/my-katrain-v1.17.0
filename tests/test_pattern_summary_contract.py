@@ -120,8 +120,8 @@ def create_single_game_stats(
             "W": {cat: c // 2 for cat, c in mistake_counts.items()},
         },
         "mistake_total_loss_by_player": {
-            "B": {cat: l / 2 for cat, l in mistake_total_loss.items()},
-            "W": {cat: l / 2 for cat, l in mistake_total_loss.items()},
+            "B": {cat: total / 2 for cat, total in mistake_total_loss.items()},
+            "W": {cat: total / 2 for cat, total in mistake_total_loss.items()},
         },
         "freedom_counts_by_player": {
             "B": {diff: c // 2 for diff, c in freedom_counts.items()},

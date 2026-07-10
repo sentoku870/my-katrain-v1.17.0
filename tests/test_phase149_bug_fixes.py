@@ -13,10 +13,6 @@ Covers:
 from __future__ import annotations
 
 import inspect
-import json
-from unittest.mock import MagicMock
-
-import pytest
 
 
 class TestA1SkillPresetInBatchKarte:
@@ -58,7 +54,7 @@ class TestA2KarteExportColorWarningI18n:
 
         src = inspect.getsource(karte_export)
         # Old buggy pattern: i18n._(f"...'{default_user}'...")
-        assert "i18n._(f\"Could not determine color" not in src
+        assert 'i18n._(f"Could not determine color' not in src
         # New correct pattern uses .format() with default_user=
         assert "default_user=default_user" in src
 
@@ -109,7 +105,7 @@ class TestA5SummaryAnalyzerWorstMovesTruncation:
         from typing import Any
 
         from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.eval_metrics import GameSummaryData, PositionDifficulty, SummaryStats
+        from katrain.core.eval_metrics import GameSummaryData, PositionDifficulty
         from katrain.core.reports.summary_logic import SummaryAnalyzer
 
         @dataclass
@@ -159,9 +155,7 @@ class TestA5SummaryAnalyzerWorstMovesTruncation:
         stats = analyzer.get_player_stats("P1")
         assert stats is not None
         # Should be truncated to 10
-        assert len(stats.worst_moves) == 10, (
-            f"Expected worst_moves to be truncated to 10, got {len(stats.worst_moves)}"
-        )
+        assert len(stats.worst_moves) == 10, f"Expected worst_moves to be truncated to 10, got {len(stats.worst_moves)}"
         # Top loss should be 19.0 (loss 20-1)
         top_move = stats.worst_moves[0][1]
         assert top_move.points_lost == 19.0
@@ -179,8 +173,7 @@ class TestA6ExtractorsKomiBareExcept:
 
         bare_excepts = re.findall(r"except\s*:", src)
         assert len(bare_excepts) == 0, (
-            f"Found bare except in extractors.py: {bare_excepts}. "
-            "Use 'except ValueError:' instead."
+            f"Found bare except in extractors.py: {bare_excepts}. Use 'except ValueError:' instead."
         )
 
     def test_komi_fallback_uses_value_error(self):
@@ -292,7 +285,6 @@ class TestB2BuildBatchSummaryLang:
     def test_lang_ja_alias_treated_as_jp(self):
         """ISO 'ja' should be normalized to internal 'jp'."""
         from katrain.core.batch import build_batch_summary
-        from katrain.core.eval_metrics import MistakeCategory
 
         game_stats = [
             {

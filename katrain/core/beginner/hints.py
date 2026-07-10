@@ -270,11 +270,8 @@ def compute_beginner_hint(
         hint = _get_meaning_tag_hint(node, move.coords)
 
         # Phase 92: Apply reliability filter for non-detector hints
-        if hint and require_reliable:
-            # Detector hints use board state (always reliable)
-            # MeaningTag hints need analysis reliability check
-            if hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
-                return None
+        if hint and require_reliable and hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+            return None
 
         return hint
 

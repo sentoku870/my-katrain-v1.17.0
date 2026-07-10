@@ -10,17 +10,13 @@ Tests cover:
 """
 
 import logging
-import pytest
 from datetime import datetime
-from unittest.mock import patch
 
 from katrain.core.study.active_review import GuessEvaluation, GuessGrade
 from katrain.core.study.review_session import (
     GuessResult,
     ReviewSession,
-    SessionSummary,
 )
-
 
 # =============================================================================
 # Test Fixtures

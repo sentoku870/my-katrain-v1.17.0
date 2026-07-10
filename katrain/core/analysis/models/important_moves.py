@@ -10,6 +10,7 @@ Note: QuizConfig/QuizItem/QuizChoice/QuizQuestion were removed in
 Phase 176 (PR 2 cleanup). Phase 138-D removed the Quiz feature from the
 GUI; this cleans up the residual data classes.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

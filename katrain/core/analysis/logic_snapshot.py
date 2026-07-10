@@ -9,6 +9,7 @@ Contains:
 - aggregate_phase_mistake_stats: Phase × Mistake cross-tabulation
 - detect_mistake_streaks: Go-aware consecutive mistake detection
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -50,19 +51,25 @@ def snapshot_from_nodes(nodes: Iterable[GameNode]) -> EvalSnapshot:
     loaded_nodes: set[int] = set()
     for node in node_list:
         node_id = id(node)
-        if node_id not in loaded_nodes:
-            if hasattr(node, "analysis_from_sgf") and node.analysis_from_sgf:
-                if hasattr(node, "load_analysis"):
-                    node.load_analysis()
-            loaded_nodes.add(node_id)
+        if (
+            node_id not in loaded_nodes
+            and hasattr(node, "analysis_from_sgf")
+            and node.analysis_from_sgf
+            and hasattr(node, "load_analysis")
+        ):
+            node.load_analysis()
+        loaded_nodes.add(node_id)
         parent = getattr(node, "parent", None)
         if parent is not None:
             parent_id = id(parent)
-            if parent_id not in loaded_nodes:
-                if hasattr(parent, "analysis_from_sgf") and parent.analysis_from_sgf:
-                    if hasattr(parent, "load_analysis"):
-                        parent.load_analysis()
-                loaded_nodes.add(parent_id)
+            if (
+                parent_id not in loaded_nodes
+                and hasattr(parent, "analysis_from_sgf")
+                and parent.analysis_from_sgf
+                and hasattr(parent, "load_analysis")
+            ):
+                parent.load_analysis()
+            loaded_nodes.add(parent_id)
 
     for node in node_list:
         if getattr(node, "move", None) is None:
@@ -257,6 +264,20 @@ def detect_mistake_streaks(
 
     streaks: list[MistakeStreak] = []
 
+    def _flush_streak(player: str, current_streak: list[MoveEval]) -> None:
+        if len(current_streak) >= min_consecutive:
+            total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
+            streaks.append(
+                MistakeStreak(
+                    player=player,
+                    start_move=current_streak[0].move_number,
+                    end_move=current_streak[-1].move_number,
+                    move_count=len(current_streak),
+                    total_loss=total_loss,
+                    moves=list(current_streak),
+                )
+            )
+
     for player, pmoves in player_moves.items():
         if not pmoves:
             continue
@@ -264,29 +285,15 @@ def detect_mistake_streaks(
         sorted_moves = sorted(pmoves, key=lambda m: m.move_number)
         current_streak: list[MoveEval] = []
 
-        def _flush_streak() -> None:
-            if len(current_streak) >= min_consecutive:
-                total_loss = sum(get_canonical_loss_from_move(mv) for mv in current_streak)
-                streaks.append(
-                    MistakeStreak(
-                        player=player,
-                        start_move=current_streak[0].move_number,
-                        end_move=current_streak[-1].move_number,
-                        move_count=len(current_streak),
-                        total_loss=total_loss,
-                        moves=list(current_streak),
-                    )
-                )
-
         for m in sorted_moves:
             loss = get_canonical_loss_from_move(m)
             if loss >= loss_threshold:
                 current_streak.append(m)
             else:
-                _flush_streak()
+                _flush_streak(player, current_streak)
                 current_streak = []
 
-        _flush_streak()
+        _flush_streak(player, current_streak)
 
     streaks.sort(key=lambda s: s.start_move)
     return streaks

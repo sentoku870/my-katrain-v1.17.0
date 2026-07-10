@@ -16,6 +16,7 @@ Contains:
 - extract_difficult_positions: Find difficult positions in a move list
 - difficulty_metrics_from_node: Public API for GUI to compute difficulty
 """
+
 from __future__ import annotations
 
 import logging

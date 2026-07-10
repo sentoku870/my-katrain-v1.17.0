@@ -153,9 +153,13 @@ def extract_groups_from_game(game: Game) -> list[Group]:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < board_size_x and 0 <= ny < board_size_y:
                     neighbor_id = board[ny][nx]
-                    if neighbor_id >= 0 and neighbor_id < len(chains) and chains[neighbor_id]:
-                        if chains[neighbor_id][0].player != color:
-                            adjacent_enemy_groups.add(neighbor_id)
+                    if (
+                        neighbor_id >= 0
+                        and neighbor_id < len(chains)
+                        and chains[neighbor_id]
+                        and chains[neighbor_id][0].player != color
+                    ):
+                        adjacent_enemy_groups.add(neighbor_id)
 
         groups.append(
             Group(

@@ -75,9 +75,7 @@ def _detect_urgent_miss_sequences(
     return detect_urgent_miss_sequences(moves, threshold_loss, min_consecutive)
 
 
-def build_summary_report(
-    game_data_list: list[GameSummaryData], focus_player: str | None = None
-) -> str:
+def build_summary_report(game_data_list: list[GameSummaryData], focus_player: str | None = None) -> str:
     """
     複数局から統計まとめを生成（JSON形式）
 
@@ -99,4 +97,3 @@ def build_summary_report(
 
     json_data = build_summary_json(game_data_list, focus_player)
     return json.dumps(json_data, indent=2, ensure_ascii=False)
-

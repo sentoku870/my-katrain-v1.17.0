@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from .models import MeaningTag, MeaningTagId
-from .registry import MEANING_TAG_REGISTRY
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval
@@ -312,7 +311,7 @@ def classify_meaning_tag(
     has_tactical_tags = has_atari or has_low_liberties or has_cut_risk or has_need_connect or has_chase_mode
     has_semeai_pattern = has_atari and has_low_liberties
 
-# =========================================================================
+    # =========================================================================
     # Priority-based Classification
     # Design principle: More specific tags take priority
     # =========================================================================

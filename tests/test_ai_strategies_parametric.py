@@ -10,6 +10,7 @@ Complements test_ai_strategies.py with broad coverage:
 Each strategy is exercised with a consistent set of inputs so regressions
 in one strategy are immediately visible in test output.
 """
+
 import pytest
 
 from katrain.core.ai import (
@@ -49,9 +50,7 @@ from katrain.core.constants import (
     AI_WEIGHTED,
 )
 from katrain.core.game import Move
-
 from tests.test_ai_strategies import ai_test_context, make_settings
-
 
 # =============================================================================
 # Strategy registry
@@ -184,9 +183,7 @@ def test_simple_strategy_white_turn(strategy_name):
     needs_ownership = strategy_name in OWNERSHIP_STRATEGIES
     candidates = make_candidates(5, with_ownership=needs_ownership)
     ownership = make_ownership(next_player="W") if needs_ownership else None
-    with ai_test_context(
-        candidate_moves=candidates, next_player="W", player="W", ownership=ownership
-    ) as (game, _cn):
+    with ai_test_context(candidate_moves=candidates, next_player="W", player="W", ownership=ownership) as (game, _cn):
         StrategyClass = STRATEGY_REGISTRY[strategy_name]
         strategy = StrategyClass(game, make_settings(strategy_name))
         move, _thoughts = strategy.generate_move()
@@ -220,13 +217,15 @@ def test_engine_query_strategy_returns_move(strategy_name, n_candidates):
                 False,
             )
 
-    with ai_test_context(candidate_moves=candidates) as (game, cn):
-        with patch.object(game.engines[cn.player], "request_analysis", side_effect=fake_request):
-            StrategyClass = STRATEGY_REGISTRY[strategy_name]
-            strategy = StrategyClass(game, make_settings(strategy_name))
-            move, thoughts = strategy.generate_move()
-            assert isinstance(move, Move)
-            assert isinstance(thoughts, str)
+    with (
+        ai_test_context(candidate_moves=candidates) as (game, cn),
+        patch.object(game.engines[cn.player], "request_analysis", side_effect=fake_request),
+    ):
+        StrategyClass = STRATEGY_REGISTRY[strategy_name]
+        strategy = StrategyClass(game, make_settings(strategy_name))
+        move, thoughts = strategy.generate_move()
+        assert isinstance(move, Move)
+        assert isinstance(thoughts, str)
 
 
 # =============================================================================

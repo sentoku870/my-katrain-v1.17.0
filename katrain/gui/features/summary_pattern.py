@@ -22,8 +22,8 @@ from collections import Counter
 from typing import Any
 
 from katrain.core import eval_metrics
-from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.analysis.models import EvalSnapshot
+from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster
 
 # Pattern-mining constants moved verbatim from summary_formatter.
@@ -47,9 +47,7 @@ PLAYER_KEYS: dict[str, str] = {
     "?": "pattern:player-unknown",
 }
 MAX_DISPLAY_REFS = 3
-_GTP_COORD_PATTERN = __import__("re").compile(
-    r"^[a-hj-t](?:[1-9]|1[0-9]|2[0-5])$", __import__("re").IGNORECASE
-)
+_GTP_COORD_PATTERN = __import__("re").compile(r"^[a-hj-t](?:[1-9]|1[0-9]|2[0-5])$", __import__("re").IGNORECASE)
 
 _logger = logging.getLogger("katrain.gui.features.summary_pattern")
 
@@ -182,6 +180,7 @@ def _stable_sort_key(stats: StatsDict) -> tuple[str, str, int, int]:
 # Aggregators
 # =============================================================================
 
+
 def _filter_by_board_size(stats_list: list[StatsDict]) -> tuple[list[StatsDict], int | None]:
     """Filter to games with a consistent square board size."""
     size_counts: Counter[tuple[int, int]] = Counter()
@@ -234,18 +233,12 @@ def _filter_by_board_size(stats_list: list[StatsDict]) -> tuple[list[StatsDict],
             skipped_count,
         )
 
-    filtered = [
-        s
-        for s in stats_list
-        if _normalize_board_size(s.get("board_size")) == most_common_tuple
-    ]
+    filtered = [s for s in stats_list if _normalize_board_size(s.get("board_size")) == most_common_tuple]
 
     return filtered, most_common_size
 
 
-def _reconstruct_pattern_input(
-    stats_list: list[StatsDict], board_size: int
-) -> list[tuple[str, _FakeSnapshot]]:
+def _reconstruct_pattern_input(stats_list: list[StatsDict], board_size: int) -> list[tuple[str, _FakeSnapshot]]:
     """Reconstruct (game_name, FakeSnapshot) pairs sorted deterministically."""
     games: list[tuple[str, _FakeSnapshot]] = []
     skipped_moves_count = 0
@@ -348,6 +341,7 @@ __all__ = [
     "MAX_DISPLAY_REFS",
 ]
 
+
 def _append_recurring_patterns(
     lines: list[str],
     pattern_clusters: list[PatternCluster],
@@ -420,4 +414,3 @@ def _append_recurring_patterns(
         _logger.debug("Unknown severity value(s) in pattern clusters: %s", unknown_severities)
     if unknown_players:
         _logger.debug("Unknown player value(s) in pattern clusters: %s", unknown_players)
-

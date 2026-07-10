@@ -263,10 +263,7 @@ def format_loss_label(
         - Phase 171 で Leela 専用サフィックスを削除（KataGo 専用化）
     """
     # 単位を言語別に定義（Phase 171: KataGo 専用化、Leela サフィックスは廃止）
-    if lang == "ja":
-        unit = "目"
-    else:
-        unit = " pts"
+    unit = "目" if lang == "ja" else " pts"
 
     # ゼロ以下は符号なし
     if loss <= 0.0:

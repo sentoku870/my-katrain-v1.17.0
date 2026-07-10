@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from katrain.core.game import Game, InsertModeController
-from katrain.core.game_node import GameNode
+from katrain.core.game import InsertModeController
 from katrain.core.sgf_parser import Move
 
 

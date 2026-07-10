@@ -277,16 +277,10 @@ def find_cpu_katago() -> str | None:
 
     for candidate in candidates:
         path: str | None
-        if candidate.startswith("katrain"):
-            path = find_package_resource(candidate)
-        else:
-            # Search in PATH
-            path = shutil.which(candidate)
+        path = find_package_resource(candidate) if candidate.startswith("katrain") else shutil.which(candidate)
 
-        if path and os.path.isfile(path):
-            # Skip if likely OpenCL binary (filename-based heuristic)
-            if not _is_likely_opencl_binary(path):
-                return path
+        if path and os.path.isfile(path) and not _is_likely_opencl_binary(path):
+            return path
 
     return None
 

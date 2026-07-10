@@ -31,6 +31,7 @@ thresholds (beginner=2.0, relaxed=3.0, ...) and produced
 ``mistake_count`` totals that did not match the sum of inaccuracy +
 mistake + blunder counts in the same report.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -57,7 +58,7 @@ def _empty_bucket() -> dict[str, float | int]:
 
 
 def _bucket_from_moves(
-    moves: list["MoveEval"],
+    moves: list[MoveEval],
     inaccuracy_threshold: float = DEFAULT_INACCURACY_THRESHOLD,
 ) -> dict[str, float | int]:
     if not moves:
@@ -78,8 +79,8 @@ def _bucket_from_moves(
 
 
 def build_win_loss_analysis(
-    game_summary: "GameSummaryData" | None,
-    snapshot_moves: list["MoveEval"] | None = None,
+    game_summary: GameSummaryData | None,
+    snapshot_moves: list[MoveEval] | None = None,
     *,
     outcome: GameOutcome | None = None,
     inaccuracy_threshold: float = DEFAULT_INACCURACY_THRESHOLD,
@@ -124,17 +125,14 @@ def build_win_loss_analysis(
     if snapshot_moves:
         per_outcome: dict[str, list[MoveEval]] = {"win": [], "loss": [], "draw": []}
         for mv in snapshot_moves:
-            player_outcome = (
-                outcome.black if mv.player == "B" else outcome.white
-            )
+            player_outcome = outcome.black if mv.player == "B" else outcome.white
             if player_outcome == PlayerOutcome.UNKNOWN:
                 continue
             key = player_outcome.value
             if key in per_outcome:
                 per_outcome[key].append(mv)
         by_outcome = {
-            k: _bucket_from_moves(v, inaccuracy_threshold=inaccuracy_threshold)
-            for k, v in per_outcome.items()
+            k: _bucket_from_moves(v, inaccuracy_threshold=inaccuracy_threshold) for k, v in per_outcome.items()
         }
 
     status = "no_result" if outcome.black == PlayerOutcome.UNKNOWN else "computed"

@@ -17,6 +17,7 @@ Phase 144-B: 1230 行の単一ファイル models.py を 6 つの焦点化モジ
 Note: EvalSnapshot.worst_canonical_move などは logic.py の関数を使用するため、
       一部のメソッドはプロパティ内でインポートを遅延実行しています。
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -53,16 +54,16 @@ from katrain.core.analysis.models.enums import (
     get_analysis_engine,
     resolve_visits,
 )
-from katrain.core.analysis.models.move_eval import (
-    EvalSnapshot,
-    MoveEval,
-    get_canonical_loss_from_move,
-)
 from katrain.core.analysis.models.important_moves import (
     DEFAULT_IMPORTANT_MOVE_LEVEL,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     MIN_LOSS_DISPLAY,
     ImportantMoveSettings,
+)
+from katrain.core.analysis.models.move_eval import (
+    EvalSnapshot,
+    MoveEval,
+    get_canonical_loss_from_move,
 )
 from katrain.core.analysis.models.reliability import (
     _CONFIDENCE_THRESHOLDS,

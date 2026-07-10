@@ -93,24 +93,28 @@ class BatchAnalysisController:
 
         def run_batch_thread() -> None:
             options = collect_batch_options(widgets, get_player_filter)
-            run_batch_in_thread(self._ctx, options, cancel_flag, progress_cb, log_cb, summary_cb, save_batch_options) # type: ignore[arg-type]
+            run_batch_in_thread(self._ctx, options, cancel_flag, progress_cb, log_cb, summary_cb, save_batch_options)  # type: ignore[arg-type]
 
         def start_batch_thread() -> None:
             threading.Thread(target=run_batch_thread, daemon=True).start()
 
         # 6. イベントバインド
         on_start = create_on_start_callback(
-            self._ctx, widgets, is_running, cancel_flag, get_player_filter, start_batch_thread # type: ignore[arg-type]
+            self._ctx,  # type: ignore[arg-type]
+            widgets,
+            is_running,
+            cancel_flag,
+            get_player_filter,
+            start_batch_thread,
         )
         on_close = create_on_close_callback(popup, is_running)
-        browse_input = create_browse_callback(widgets["input_input"], "Select input folder", self._ctx) # type: ignore[arg-type]
-        browse_output = create_browse_callback(widgets["output_input"], "Select output folder", self._ctx) # type: ignore[arg-type]
+        browse_input = create_browse_callback(widgets["input_input"], "Select input folder", self._ctx)  # type: ignore[arg-type]
+        browse_output = create_browse_callback(widgets["output_input"], "Select output folder", self._ctx)  # type: ignore[arg-type]
 
         widgets["start_button"].bind(on_release=on_start)
         widgets["close_button"].bind(on_release=on_close)
         widgets["input_browse"].bind(on_release=browse_input)
         widgets["output_browse"].bind(on_release=browse_output)
-
 
         # 7. 表示
         popup.open()

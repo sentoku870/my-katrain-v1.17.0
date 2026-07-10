@@ -98,10 +98,7 @@ def build_karte_report(
         try:
             snapshot = game.build_eval_snapshot()
         except Exception as e:
-            error_msg = (
-                f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
-                f"Snapshot construction failed: {type(e).__name__}: {e}"
-            )
+            error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\nSnapshot construction failed: {type(e).__name__}: {e}"
             if raise_on_error:
                 raise KarteGenerationError(error_msg, game_id=game_id) from e
             return _build_error_karte(game_id, player_filter, error_msg)
@@ -122,10 +119,7 @@ def build_karte_report(
             lang=lang,
         )
     except Exception as e:
-        error_msg = (
-            f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n"
-            f"{type(e).__name__}: {e}"
-        )
+        error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n{type(e).__name__}: {e}"
         if raise_on_error:
             raise KarteGenerationError(error_msg, game_id=game_id) from e
         return _build_error_karte(game_id, player_filter, error_msg)

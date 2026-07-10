@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 
-def normalize_humanlike_config(
-    toggle_on: bool, current_path: str, last_path: str
-) -> tuple[str, str, bool]:
+def normalize_humanlike_config(toggle_on: bool, current_path: str, last_path: str) -> tuple[str, str, bool]:
     """Normalize human-like configuration state.
 
     Args:

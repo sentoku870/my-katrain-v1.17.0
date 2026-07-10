@@ -130,7 +130,9 @@ def _collect_diagnostics(ctx: FeatureContext) -> DiagnosticsBundle:
         katago_info = collect_katago_info(
             exe_path=getattr(engine, "katago", ""),
             model_path=getattr(engine, "model", ""),
-            config_path=engine.config.get("config", "") if hasattr(engine, "config") and isinstance(engine.config, dict) else "",
+            config_path=engine.config.get("config", "")
+            if hasattr(engine, "config") and isinstance(engine.config, dict)
+            else "",
             is_running=getattr(engine, "katago_process", None) is not None,
             version=None,  # Version retrieval not implemented yet
         )

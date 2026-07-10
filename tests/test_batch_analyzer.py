@@ -7,16 +7,11 @@ without requiring KataGo to be running.
 
 import os
 
-import pytest
-
 from katrain.core.batch import (
-    DEFAULT_TIMEOUT_SECONDS,
-    choose_visits_for_sgf,
     collect_sgf_files,
     collect_sgf_files_recursive,
     has_analysis,
     parse_sgf_with_fallback,
-    parse_timeout_input,
     read_sgf_with_fallback,
 )
 from katrain.core.game import KaTrainSGF
@@ -585,8 +580,8 @@ class TestBatchOutputBehavior:
     def test_summary_generation_without_sgf_save(self, tmp_path):
         """Summary should be generated even when save_analyzed_sgf is OFF."""
         # This test verifies the code path doesn't depend on saved SGFs
-        from katrain.core.eval_metrics import MistakeCategory
         from katrain.core.batch import build_batch_summary
+        from katrain.core.eval_metrics import MistakeCategory
 
         # Create mock game stats (as if extracted from in-memory Game objects)
         game_stats = [
@@ -893,8 +888,8 @@ class TestEntropyNormalization:
 
     def test_uniform_distribution_all_sizes(self):
         """Uniform distribution should be EASY on all board sizes."""
-        from katrain.core.eval_metrics import PositionDifficulty
         from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
 
         for size in [9, 13, 19]:
             n = size * size
@@ -904,8 +899,8 @@ class TestEntropyNormalization:
 
     def test_concentrated_distribution_all_sizes(self):
         """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
-        from katrain.core.eval_metrics import PositionDifficulty
         from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
 
         for size in [9, 13, 19]:
             n = size * size
@@ -919,8 +914,8 @@ class TestEntropyNormalization:
 
     def test_board_size_as_tuple(self):
         """Should handle board_size as tuple (x, y)."""
-        from katrain.core.eval_metrics import PositionDifficulty
         from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
 
         uniform = [1.0 / 361] * 361
         diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
@@ -939,8 +934,8 @@ class TestEntropyNormalization:
 
     def test_empty_policy(self):
         """Empty policy should return UNKNOWN."""
-        from katrain.core.eval_metrics import PositionDifficulty
         from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
+        from katrain.core.eval_metrics import PositionDifficulty
 
         diff, score = _assess_difficulty_from_policy([])
         assert diff == PositionDifficulty.UNKNOWN
@@ -1159,4 +1154,3 @@ class TestSanitizeFilenameTrailingChars:
 
 
 # ---------------------------------------------------------------------------
-

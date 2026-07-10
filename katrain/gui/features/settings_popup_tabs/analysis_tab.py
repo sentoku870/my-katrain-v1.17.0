@@ -68,9 +68,7 @@ def _build_disable_katago_section(inner: BoxLayoutType, state: _SettingsPopupCon
         size_hint_x=None,
         width=dp(30),
     )
-    disable_katago_checkbox.bind(
-        active=lambda chk, active: state.selected_disable_katago.__setitem__(0, active)
-    )
+    disable_katago_checkbox.bind(active=lambda chk, active: state.selected_disable_katago.__setitem__(0, active))
     disable_katago_layout.add_widget(disable_katago_checkbox)
     disable_katago_layout.add_widget(Label())  # Spacer
     inner.add_widget(disable_katago_layout)
@@ -100,9 +98,9 @@ def _build_skill_preset_section(inner: BoxLayoutType, state: _SettingsPopupConte
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=skill_value: state.selected_skill_preset.__setitem__(0, val)
-            if active
-            else None
+            active=lambda chk, active, val=skill_value: (
+                state.selected_skill_preset.__setitem__(0, val) if active else None
+            )
         )
         label = Label(
             text=skill_label_text,
@@ -142,9 +140,7 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
             width=dp(30),
         )
         checkbox.bind(
-            active=lambda chk, active, val=pv_value: state.selected_pv_filter.__setitem__(0, val)
-            if active
-            else None
+            active=lambda chk, active, val=pv_value: state.selected_pv_filter.__setitem__(0, val) if active else None
         )
         label = Label(
             text=pv_label_text,
@@ -173,9 +169,7 @@ def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupCon
         size_hint_x=None,
         width=dp(30),
     )
-    beginner_hints_checkbox.bind(
-        active=lambda chk, active: state.selected_beginner_hints.__setitem__(0, active)
-    )
+    beginner_hints_checkbox.bind(active=lambda chk, active: state.selected_beginner_hints.__setitem__(0, active))
     beginner_hints_desc = Label(
         text=i18n._("mykatrain:settings:beginner_hints_desc"),
         size_hint_x=0.9,

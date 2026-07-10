@@ -121,7 +121,7 @@ def test_compute_important_moves_with_synthetic_analysis(mock_katrain_and_engine
     # node.points_lost は parent.score - self.score から計算される (player_sign 考慮)
     # → parent_score を 5.0, self_score を 0.0 にすると points_lost = 5.0 になる
     nodes = list(nav._iter_main_branch_nodes())
-    for i, node in enumerate(nodes):
+    for node in nodes:
         node.analysis = {
             "completed": True,
             "root": {"scoreLead": 0.0, "visits": 100},

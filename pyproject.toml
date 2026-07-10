@@ -55,6 +55,13 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 ignore = ["E402", "E501"] # Ignore module level import not at top of file, and line too long (formatter handles it)
 
+[tool.ruff.lint.per-file-ignores]
+# B017 (blind assertRaises(Exception)) is a deliberate pattern in tests
+# that probe exception safety / graceful-degradation paths.
+"tests/test_beginner_hints.py" = ["B017"]
+"tests/test_typed_config_integration.py" = ["B017"]
+"tests/test_utils_pack_floats.py" = ["B017"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

@@ -79,9 +79,8 @@ class GUIRefreshManager:
 
         if self._set_status is None:
             return
-        if (
-            level == OUTPUT_ERROR
-            or (level == OUTPUT_KATAGO_STDERR and "error" in message.lower() and "tuning" not in message.lower())
+        if level == OUTPUT_ERROR or (
+            level == OUTPUT_KATAGO_STDERR and "error" in message.lower() and "tuning" not in message.lower()
         ):
             self._set_status(f"ERROR: {message}", STATUS_ERROR)  # type: ignore[arg-type]
 
@@ -95,7 +94,8 @@ class GUIRefreshManager:
             self._set_status("KataGo engine starting...", STATUS_INFO)  # type: ignore[arg-type]
         elif event_type == "tuning":
             self._set_status(
-                f"KataGo is tuning settings for first startup, please wait.{message}", STATUS_INFO  # type: ignore[arg-type]
+                f"KataGo is tuning settings for first startup, please wait.{message}",
+                STATUS_INFO,  # type: ignore[arg-type]
             )
         elif event_type == "ready":
             self._set_status("KataGo engine ready.", STATUS_INFO)  # type: ignore[arg-type]

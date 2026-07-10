@@ -7,12 +7,12 @@ Covers:
 - Unknown / empty / None inputs
 - outcome_for_player helper
 """
+
 from __future__ import annotations
 
 import pytest
 
 from katrain.core.reports.utils.result_parser import (
-    GameOutcome,
     PlayerOutcome,
     outcome_for_player,
     parse_result,

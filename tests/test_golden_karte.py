@@ -26,7 +26,7 @@ from katrain.core.eval_metrics import (
     compute_confidence_level,
     compute_importance_for_moves,
 )
-from tests.conftest import GOLDEN_DIR, load_golden, normalize_output, save_golden
+from tests.conftest import load_golden, normalize_output
 
 # ---------------------------------------------------------------------------
 # Helper to create comprehensive test moves
@@ -647,5 +647,3 @@ class TestKarteFromSGF:
         assert output1 == output2, (
             f"Karte output for {sgf_key} is not deterministic.\nFirst run differs from second run."
         )
-
-

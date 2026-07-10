@@ -318,9 +318,11 @@ def should_inject(classified: ClassifiedCluster) -> bool:
     threshold = INJECTION_THRESHOLD.get(classified.semantics, 1.0)
 
     # TERRITORY_LOSS has additional requirement
-    if classified.semantics == ClusterSemantics.TERRITORY_LOSS:
-        if abs(classified.cluster.sum_delta) < TERRITORY_LOSS_MIN_DELTA:
-            return False
+    if (
+        classified.semantics == ClusterSemantics.TERRITORY_LOSS
+        and abs(classified.cluster.sum_delta) < TERRITORY_LOSS_MIN_DELTA
+    ):
+        return False
 
     return classified.confidence >= threshold
 
@@ -531,11 +533,7 @@ def get_cluster_context_for_move(
             return None
 
         # Find nodes
-        if cache:
-            child_node = cache._find_node_by_move_number(move_number)
-        else:
-            # Direct traversal using mainline
-            child_node = _find_mainline_node(game, move_number)
+        child_node = cache._find_node_by_move_number(move_number) if cache else _find_mainline_node(game, move_number)
 
         if child_node is None:
             return None  # Mainline resolution failed

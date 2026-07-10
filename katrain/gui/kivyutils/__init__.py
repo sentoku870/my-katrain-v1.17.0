@@ -19,6 +19,7 @@ focused package of 4 submodules:
 This __init__.py re-exports all public names for backward compatibility
 with existing `from katrain.gui.kivyutils import X` imports.
 """
+
 from __future__ import annotations
 
 from katrain.gui.kivyutils._base import (

@@ -9,10 +9,11 @@ parameters and return values without side effects or hidden state.
 The wrapper methods in BadukPanWidget continue to work as before but
 delegate to these functions. Tests should target this module directly.
 """
+
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from katrain.core.utils import evaluation_class
 
@@ -33,6 +34,7 @@ __all__ = [
     "y_coordinate_text",
 ]
 
+
 def compute_grid_spaces(
     board_size_x: int, board_size_y: int, margin_x: list[float], margin_y: list[float]
 ) -> tuple[float, float]:
@@ -46,9 +48,8 @@ def compute_grid_spaces(
         board_size_y - 1 + sum(margin_y),
     )
 
-def compute_grid_size(
-    width: float, height: float, x_grid_spaces: float, y_grid_spaces: float
-) -> int:
+
+def compute_grid_size(width: float, height: float, x_grid_spaces: float, y_grid_spaces: float) -> int:
     """Compute integer grid size that fits the available area.
 
     The +0.1 floor is intentional: it prevents rounding errors that would
@@ -56,11 +57,11 @@ def compute_grid_size(
     """
     return math.floor(min(width / x_grid_spaces, height / y_grid_spaces) + 0.1)
 
-def compute_board_with_margins(
-    x_grid_spaces: float, y_grid_spaces: float, grid_size: float
-) -> tuple[float, float]:
+
+def compute_board_with_margins(x_grid_spaces: float, y_grid_spaces: float, grid_size: float) -> tuple[float, float]:
     """Compute the actual board width/height after applying grid_size."""
     return (x_grid_spaces * grid_size, y_grid_spaces * grid_size)
+
 
 def compute_extra_px_margins(
     width: float, height: float, board_width: float, board_height: float
@@ -71,9 +72,11 @@ def compute_extra_px_margins(
         round((height - board_height) / 2, 4),
     )
 
+
 def compute_stone_size(grid_size: float, stone_size_factor: float) -> float:
     """Compute the stone size from the grid size and a scaling factor."""
     return grid_size * stone_size_factor
+
 
 def compute_initial_gridpos(
     pos_xy: tuple[float, float],
@@ -106,6 +109,7 @@ def compute_initial_gridpos(
     ]
     return gridpos_x, gridpos_y
 
+
 def format_loss(x: float, extra_precision: bool = False) -> str:
     """Format a score-loss value for display.
 
@@ -120,6 +124,7 @@ def format_loss(x: float, extra_precision: bool = False) -> str:
         if -0.995 <= x < 0:
             return "-" + f"{x:.2f}"[2:]
     return f"{x:+.1f}"
+
 
 def eval_color(
     points_lost: float,
@@ -141,6 +146,7 @@ def eval_color(
         return eval_colors[i]
     return None
 
+
 def x_coordinate_text(i: int, board_size_x: int, rotation_degree: int, gtp_coord: list[str]) -> str:
     """Return the label text for an x coordinate given the rotation."""
     if rotation_degree == 90:
@@ -151,6 +157,7 @@ def x_coordinate_text(i: int, board_size_x: int, rotation_degree: int, gtp_coord
         return str(board_size_x - i)
     return gtp_coord[i]
 
+
 def y_coordinate_text(i: int, board_size_y: int, rotation_degree: int, gtp_coord: list[str]) -> str:
     """Return the label text for a y coordinate given the rotation."""
     if rotation_degree == 90:
@@ -160,6 +167,7 @@ def y_coordinate_text(i: int, board_size_y: int, rotation_degree: int, gtp_coord
     if rotation_degree == 270:
         return gtp_coord[i]
     return str(i + 1)
+
 
 def find_closest_grid_point(
     pos_x: float,
@@ -178,4 +186,3 @@ def find_closest_grid_point(
     cx = min(gridpos_x, key=lambda v: abs(v - pos_x))
     cy = min(gridpos_y, key=lambda v: abs(v - pos_y))
     return (cx, gridpos_x.index(cx), cy, gridpos_y.index(cy))
-
