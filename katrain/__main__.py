@@ -658,9 +658,16 @@ class KaTrainGui(Screen, KaTrainBase):
         game_commands.do_tsumego_frame(self, ko, margin)
 
     def play_mistake_sound(self, node: Any) -> None:
-        if self.config("timer/sound") and node.played_mistake_sound is None and Theme.MISTAKE_SOUNDS:
+        if self.config("timer/sound") and node.played_mistake_sound is None:
             node.played_mistake_sound = True
-            play_sound(random.choice(Theme.MISTAKE_SOUNDS))
+            if Theme.MISTAKE_SOUNDS:
+                play_sound(random.choice(Theme.MISTAKE_SOUNDS))
+            else:
+                # P3 (M16): Theme ships with an empty MISTAKE_SOUNDS list, so
+                # the previous guard short-circuited silently. Now we still
+                # mark the node as played but flash a one-line status so the
+                # user knows the mistake chime is intentionally muted.
+                self.controls.set_status(i18n._("Mistake played (sound disabled)"), STATUS_INFO)
 
     # === SGF File Management (refactored in PR #122) ===
     # Delegation to SGFManager for backward compatibility
@@ -944,8 +951,14 @@ class KaTrainApp(MDApp):
                 ui_state["left"] = window_left
             self.gui.set_config_section("ui_state", ui_state)
             self.gui.save_config("ui_state")
-            if self.gui.engine:
-                self.gui.engine.shutdown(finish=None)
+            # P3 (M8): engine.shutdown() and config persistence can raise.
+            # Wrap them in try/finally so cleanup() still runs and releases
+            # the Window/ClockEvent bindings accumulated during the session.
+            try:
+                if self.gui.engine:
+                    self.gui.engine.shutdown(finish=None)
+            except Exception:
+                pass
             # Phase 22: Clockイベントのクリーンアップ
             self.gui.cleanup()
         return None
