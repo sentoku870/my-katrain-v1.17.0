@@ -375,6 +375,31 @@ def draw_territory_marks(widget: BadukPanWidget, grid: Any, loss_color: Any = No
             )
 
 
+def get_or_create_territory_texture(
+    widget: BadukPanWidget, board_size_x: int, board_size_y: int, loss_color: Any = None
+) -> Texture:
+    """Return a cached territory Texture, creating it on the first call.
+
+    P2-A (H4): the original draw_territory_color allocated a new Texture
+    on every redraw, ballooning memory in Ownership mode. We cache one
+    Texture per (board_size, has_loss_color) on the widget and clear it
+    in ``BadukPanWidget.cleanup()``.
+
+    Extracted so the cache policy is unit-testable without booting the
+    Kivy graphics pipeline.
+    """
+    cache: dict[Any, Texture] | None = getattr(widget, "_territory_texture_cache", None)
+    if cache is None:
+        cache = {}
+        widget._territory_texture_cache = cache
+    cache_key = (board_size_x, board_size_y, bool(loss_color is not None))
+    texture = cache.get(cache_key)
+    if texture is None:
+        texture = Texture.create(size=(board_size_x + 2, board_size_y + 2), colorfmt="rgba")
+        cache[cache_key] = texture
+    return texture
+
+
 def draw_territory_color(widget: BadukPanWidget, grid: Any, loss_color: Any = None) -> None:
     """Draw a blended territory texture over the whole board."""
     # This draws the expected black and white territories, or the loss during a teaching game.
@@ -382,11 +407,11 @@ def draw_territory_color(widget: BadukPanWidget, grid: Any, loss_color: Any = No
     # and painting it over the whole board. This causes Kivy to produce a smooth texture.
 
     # We add extra rows and columns (so the texture for a 19x19 board is actually 21x21)
-    # in order to ensure smooth rolloff of the painted area at the edges. The alpha in the
-    # extra rows is 0.
+    # in order to ensure smooth rolloff of the painted area at the edges. The alpha in
+    # the extra rows is 0.
 
     board_size_x, board_size_y = widget.katrain.game.board_size
-    texture = Texture.create(size=(board_size_x + 2, board_size_y + 2), colorfmt="rgba")
+    texture = get_or_create_territory_texture(widget, board_size_x, board_size_y, loss_color)
     bytes_ = bytearray(4 * (board_size_y + 2) * (board_size_x + 2))
     for y in range(board_size_y + 2):
         for x in range(board_size_x + 2):
