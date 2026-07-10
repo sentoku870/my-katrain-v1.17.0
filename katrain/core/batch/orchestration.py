@@ -10,7 +10,6 @@ should wrap these with Clock.schedule_once() for thread safety.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -20,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from katrain.common.short_hash import short_hash
 from katrain.core.batch.discovery import collect_sgf_files_recursive
 from katrain.core.batch.filenames import get_unique_filename, sanitize_filename
 from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS
@@ -631,7 +631,7 @@ def _generate_karte_for_file(
             skill_preset=skill_preset or DEFAULT_SKILL_PRESET,
         )
         # Include path hash to avoid filename collisions for files with same basename
-        path_hash = hashlib.md5(rel_path.encode()).hexdigest()[:6]
+        path_hash = short_hash(rel_path, 6)
         karte_filename = f"karte_{base_name}_{path_hash}_{batch_timestamp}.json"
         karte_path = os.path.join(output_dir, "reports", "karte", karte_filename)
 

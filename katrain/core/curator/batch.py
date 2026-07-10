@@ -71,6 +71,39 @@ def _normalize_percentile(score: SuitabilityScore) -> int:
     return score.percentile if score.percentile is not None else 0
 
 
+# Phase H-1: explicit percentile-status field so the LLM can tell apart
+# "ranked 0 because percentile is 0" from "ranked 0 because the input
+# was empty / unfit for scoring". The four-state ``insufficient_data`` /
+# ``no_streak_detected`` / ``computed`` / ``not_applicable_*`` pattern
+# mirrors the one already used for ``mistake_sequences`` in
+# :mod:`katrain.core.reports.summary_json_export`.
+_PERCENTILE_STATUS_OK = "computed"
+_PERCENTILE_STATUS_NO_DATA = "not_applicable_no_games"
+_PERCENTILE_STATUS_INSUFFICIENT = "insufficient_data"
+
+
+def _percentile_status(score: SuitabilityScore, total_games: int) -> str:
+    """Return the 3-state status for a single game entry.
+
+    - ``"computed"`` -- score has a usable percentile (this is the
+      common case for a batch of well-analyzed games).
+    - ``"insufficient_data"`` -- the game was produced but its
+      percentile came back as ``None`` (e.g. a single-game batch where
+      the ranking cannot be computed).
+    - ``"not_applicable_no_games"`` -- the batch was empty, so no
+      ranking exists at all.
+
+    The status is emitted alongside ``score_percentile`` in the
+    ranking JSON so downstream LLM tooling can distinguish a real
+    zero-rank from a missing-data signal.
+    """
+    if total_games == 0:
+        return _PERCENTILE_STATUS_NO_DATA
+    if score.percentile is None:
+        return _PERCENTILE_STATUS_INSUFFICIENT
+    return _PERCENTILE_STATUS_OK
+
+
 def _get_iso_generated_timestamp() -> str:
     """Get timezone-aware ISO timestamp for JSON.
 
@@ -198,6 +231,9 @@ def generate_curator_outputs(
                 "game_id": game_id,
                 "title": _build_game_title(stats),
                 "score_percentile": _normalize_percentile(score),
+                # Phase H-1: surface why a percentile is what it is so the
+                # LLM can distinguish "real zero rank" from "no data".
+                "score_status": _percentile_status(score, len(games_and_stats)),
                 "needs_match": _round_float(score.needs_match),
                 "stability": _round_float(score.stability),
                 "total": _round_float(score.total),

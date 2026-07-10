@@ -526,6 +526,7 @@ class TestGenerateCuratorOutputs:
             "game_id",
             "title",
             "score_percentile",
+            "score_status",  # Phase H-1
             "needs_match",
             "stability",
             "total",

@@ -68,9 +68,11 @@ class BaseGame:
         self._lock = threading.RLock()  # RLock for set_current_node → _calculate_groups reentry
         self.sgf_filename = sgf_filename
         if self.sgf_filename:
-            import hashlib
+            # Phase H-3: switch from MD5 to blake2b for non-cryptographic
+            # ID generation. Same 12-hex output length.
+            from katrain.common.short_hash import short_hash
 
-            self.game_id = f"sgf_{hashlib.md5(self.sgf_filename.encode()).hexdigest()[:12]}"
+            self.game_id = f"sgf_{short_hash(self.sgf_filename, 12)}"
         else:
             self.game_id = datetime.strftime(datetime.now(), "%Y-%m-%d %H %M %S")
 

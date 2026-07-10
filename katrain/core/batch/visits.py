@@ -39,12 +39,14 @@ def choose_visits_for_sgf(
     max_jitter = base_visits * (jitter_pct / 100.0)
 
     if deterministic:
-        # Use md5 hash of normalized path for reproducibility
+        # Use blake2b hash of normalized path for reproducibility
+        # (Phase H-3: was MD5; switched to the modern stdlib default.)
         # Normalize path: resolve, convert to forward slashes, lowercase
         normalized = os.path.normpath(os.path.abspath(sgf_path))
         normalized = normalized.replace("\\", "/").lower()
-        hash_bytes = hashlib.md5(normalized.encode("utf-8")).digest()
-        # Use first 4 bytes as unsigned int
+        # digest_size=4 gives 32 bits of entropy, which maps cleanly
+        # onto the 0xFFFFFFFF range below.
+        hash_bytes = hashlib.blake2b(normalized.encode("utf-8"), digest_size=4).digest()
         hash_val = int.from_bytes(hash_bytes[:4], byteorder="big")
         # Map to [-max_jitter, +max_jitter]
         jitter = (hash_val / 0xFFFFFFFF) * 2 * max_jitter - max_jitter

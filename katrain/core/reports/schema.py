@@ -43,6 +43,10 @@ class MetaData(TypedDict, total=False):
     run_id: str
     date_range: list[str] | None
     games_analyzed: int | None  # Summary only
+    # Phase H-4: 3-state "computed" / "insufficient_data" /
+    # "not_applicable_no_games" so the LLM can tell apart empty runs
+    # from single-game runs from normal multi-game runs.
+    data_status: str | None  # Summary only
     game_id: str | None  # Karte only
     loss_unit: str
     skill_preset: str | None
