@@ -22,6 +22,69 @@ if TYPE_CHECKING:
 
 
 # =============================================================================
+# Phase C-2: Pre-computed flags (Phase 66 follow-up) extracted to a frozen
+# dataclass so the 11-priority chain in :func:`classify_meaning_tag` can
+# read pre-computed booleans instead of repeating the same
+# ``"foo" in reason_tags`` checks at every priority.
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class ClassificationFlags:
+    """Boolean flags derived from :attr:`MoveEval.reason_tags`.
+
+    Pre-computed once per call to :func:`classify_meaning_tag` and
+    threaded through the priority rules. The composite flags
+    (``is_urgent``, ``has_tactical_tags``, ``has_semeai_pattern``) are
+    derived from the individual ones so the priority rules only need
+    to know the composite.
+    """
+
+    has_atari: bool
+    has_low_liberties: bool
+    has_need_connect: bool
+    has_cut_risk: bool
+    has_reading_failure: bool
+    has_endgame_hint: bool
+    has_heavy_loss: bool
+    has_chase_mode: bool
+    is_urgent: bool
+    has_tactical_tags: bool
+    has_semeai_pattern: bool
+
+
+def _extract_classification_flags(reason_tags: list[str] | None) -> ClassificationFlags:
+    """Build a :class:`ClassificationFlags` from a reason_tags list.
+
+    The composite flags are derived here so the priority rules do
+    not repeat the boolean algebra at every step.
+    """
+    tags = set(reason_tags) if reason_tags else set()
+    has_atari = "atari" in tags
+    has_low_liberties = "low_liberties" in tags
+    has_need_connect = "need_connect" in tags
+    has_cut_risk = "cut_risk" in tags
+    has_reading_failure = "reading_failure" in tags
+    has_endgame_hint = "endgame_hint" in tags
+    has_heavy_loss = "heavy_loss" in tags
+    has_chase_mode = "chase_mode" in tags
+
+    return ClassificationFlags(
+        has_atari=has_atari,
+        has_low_liberties=has_low_liberties,
+        has_need_connect=has_need_connect,
+        has_cut_risk=has_cut_risk,
+        has_reading_failure=has_reading_failure,
+        has_endgame_hint=has_endgame_hint,
+        has_heavy_loss=has_heavy_loss,
+        has_chase_mode=has_chase_mode,
+        is_urgent=has_atari or has_low_liberties or has_cut_risk,
+        has_tactical_tags=has_atari or has_low_liberties or has_cut_risk or has_need_connect or has_chase_mode,
+        has_semeai_pattern=has_atari and has_low_liberties,
+    )
+
+
+# =============================================================================
 # Classification Thresholds
 # NOTE: These thresholds are provisional and may be tuned in later phases.
 #       Keep determinism: do not use random or time-based values.
@@ -239,6 +302,13 @@ def classify_meaning_tag(
     the most appropriate semantic tag for a move. The classification is
     completely deterministic: the same inputs always produce the same output.
 
+    Phase C-2: refactored into a 3-step pipeline. The early-return
+    gate (``_classify_early_uncertains``), the pre-computed flags
+    (``_extract_classification_flags``), and the priority chain
+    (``_classify_by_priority``) are now independently testable. Each
+    priority rule is a small standalone function returning
+    ``Optional[MeaningTag]``.
+
     Args:
         move_eval: The MoveEval to classify (required)
         context: Additional context (optional, MoveEval-only classification if omitted)
@@ -255,73 +325,115 @@ def classify_meaning_tag(
         >>> tag.id
         <MeaningTagId.CAPTURE_RACE_LOSS: 'capture_race_loss'>
     """
-    # =========================================================================
-    # Early Return Conditions
-    # =========================================================================
+    early = _classify_early_uncertains(move_eval)
+    if early is not None:
+        return early
 
-    # 1. GTP classification
+    loss = get_loss_value(move_eval)
+    assert loss is not None  # _classify_early_uncertains verified loss >= significant
+    flags = _extract_classification_flags(move_eval.reason_tags)
+    endgame_position = is_endgame(
+        move_eval.move_number,
+        context.total_moves if context else None,
+        flags.has_endgame_hint,
+    )
+
+    return _classify_by_priority(
+        move_eval=move_eval,
+        context=context,
+        flags=flags,
+        loss=loss,
+        is_endgame=endgame_position,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase C-2: helpers extracted from the original 227-line classify_meaning_tag.
+# ---------------------------------------------------------------------------
+
+
+def _classify_early_uncertains(move_eval: "MoveEval") -> MeaningTag | None:
+    """Return a UNCERTAIN tag if the move should skip the priority chain.
+
+    Five early-out conditions: missing/empty/pass/resign GTP,
+    unreliable analysis, missing loss, and insignificant loss.
+    Returns ``None`` when the priority chain should run.
+    """
     gtp_class = classify_gtp_move(move_eval.gtp)
-
-    # 1a. Data missing → UNCERTAIN
     if gtp_class == "missing":
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="gtp_missing")
-
-    # 1b. Empty string → UNCERTAIN
     if gtp_class == "empty":
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="gtp_empty")
-
-    # 1c. Pass move → UNCERTAIN
     if gtp_class == "pass":
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="pass_move")
-
-    # 1d. Resign → UNCERTAIN
     if gtp_class == "resign":
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="resign_move")
 
-    # 2. Unreliable → UNCERTAIN
     if not move_eval.is_reliable:
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="unreliable_visits")
 
-    # 3. No loss data → UNCERTAIN
     loss = get_loss_value(move_eval)
     if loss is None:
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="loss_data_missing")
-
-    # 4. Insignificant loss → UNCERTAIN
     if loss < THRESHOLD_LOSS_SIGNIFICANT:
         return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_significant_loss")
+    return None
 
-    # =========================================================================
-    # Derive Boolean Flags from reason_tags
-    # =========================================================================
 
-    reason_tags = set(move_eval.reason_tags) if move_eval.reason_tags else set()
+def _classify_by_priority(
+    *,
+    move_eval: "MoveEval",
+    context: ClassificationContext | None,
+    flags: ClassificationFlags,
+    loss: float,
+    is_endgame: bool,
+) -> MeaningTag:
+    """Run the 11-priority chain. First match wins; falls back to UNCERTAIN.
 
-    has_atari = "atari" in reason_tags
-    has_low_liberties = "low_liberties" in reason_tags
-    has_need_connect = "need_connect" in reason_tags
-    has_cut_risk = "cut_risk" in reason_tags
-    has_reading_failure = "reading_failure" in reason_tags
-    has_endgame_hint = "endgame_hint" in reason_tags
-    has_heavy_loss = "heavy_loss" in reason_tags
-    has_chase_mode = "chase_mode" in reason_tags
+    Each priority is a small function that returns ``Optional[MeaningTag]``.
+    The list is the canonical ordering (most specific to least).
+    """
+    rules = (
+        lambda: _pri_capture_race_loss(loss, flags),
+        lambda: _pri_life_death_error(loss, flags, context),
+        lambda: _pri_connection_miss(loss, flags),
+        lambda: _pri_reading_failure(flags, context, loss),
+        lambda: _pri_shape_mistake(context, loss),
+        lambda: _pri_direction_error(move_eval, context, loss),
+        lambda: _pri_overplay(flags, context, loss),
+        lambda: _pri_endgame_slip(is_endgame, loss),
+        lambda: _pri_slow_move(context, loss, flags),
+        lambda: _pri_missed_tesuji(context, loss),
+        lambda: _pri_territorial_loss(loss, flags, is_endgame),
+        lambda: _pri_single_tag_fallbacks(loss, flags, is_endgame),
+    )
+    for rule in rules:
+        result = rule()
+        if result is not None:
+            return result
+    return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_match")
 
-    # Composite conditions
-    is_urgent = has_atari or has_low_liberties or has_cut_risk
-    has_tactical_tags = has_atari or has_low_liberties or has_cut_risk or has_need_connect or has_chase_mode
-    has_semeai_pattern = has_atari and has_low_liberties
 
-    # =========================================================================
-    # Priority-based Classification
-    # Design principle: More specific tags take priority
-    # =========================================================================
+# Priority rules (1..11b). Each returns ``Optional[MeaningTag]``; the
+# first non-None result is selected by ``_classify_by_priority``.
+# Parameter ``in_endgame`` (renamed from ``is_endgame``) avoids shadowing
+# the imported :func:`is_endgame` helper.
 
-    # Priority 1: CAPTURE_RACE_LOSS (semeai pattern - most specific)
-    if loss >= THRESHOLD_LOSS_LARGE and has_semeai_pattern:
+
+def _pri_capture_race_loss(loss: float, flags: ClassificationFlags) -> MeaningTag | None:
+    """Priority 1: semeai pattern (atari + low_liberties) + large loss."""
+    if loss >= THRESHOLD_LOSS_LARGE and flags.has_semeai_pattern:
         return MeaningTag(id=MeaningTagId.CAPTURE_RACE_LOSS)
+    return None
 
-    # Priority 2: LIFE_DEATH_ERROR
-    # Condition A: Huge loss + large ownership flux
+
+def _pri_life_death_error(
+    loss: float,
+    flags: ClassificationFlags,
+    context: ClassificationContext | None,
+) -> MeaningTag | None:
+    """Priority 2: huge loss with ownership flux, or catastrophic loss
+    with tactical pressure (but not the semeai pattern)."""
     if (
         loss >= THRESHOLD_LOSS_HUGE
         and context is not None
@@ -329,22 +441,32 @@ def classify_meaning_tag(
         and context.ownership_flux >= THRESHOLD_OWNERSHIP_FLUX_LIFE_DEATH
     ):
         return MeaningTag(id=MeaningTagId.LIFE_DEATH_ERROR)
-
-    # Condition B: Catastrophic loss + (atari OR low_liberties) BUT NOT both
-    if loss >= THRESHOLD_LOSS_CATASTROPHIC and (has_atari or has_low_liberties) and not has_semeai_pattern:
+    if (
+        loss >= THRESHOLD_LOSS_CATASTROPHIC
+        and (flags.has_atari or flags.has_low_liberties)
+        and not flags.has_semeai_pattern
+    ):
         return MeaningTag(id=MeaningTagId.LIFE_DEATH_ERROR)
+    return None
 
-    # Priority 3: CONNECTION_MISS
-    if has_need_connect and loss >= THRESHOLD_LOSS_MEDIUM:
+
+def _pri_connection_miss(loss: float, flags: ClassificationFlags) -> MeaningTag | None:
+    """Priority 3: need_connect or cut_risk with sufficient loss."""
+    if flags.has_need_connect and loss >= THRESHOLD_LOSS_MEDIUM:
         return MeaningTag(id=MeaningTagId.CONNECTION_MISS)
-
-    if has_cut_risk and loss >= THRESHOLD_LOSS_CUT_RISK:
+    if flags.has_cut_risk and loss >= THRESHOLD_LOSS_CUT_RISK:
         return MeaningTag(id=MeaningTagId.CONNECTION_MISS)
+    return None
 
-    # Priority 4: READING_FAILURE
-    if has_reading_failure:
+
+def _pri_reading_failure(
+    flags: ClassificationFlags,
+    context: ClassificationContext | None,
+    loss: float,
+) -> MeaningTag | None:
+    """Priority 4: explicit reading_failure, or a high-policy trap move."""
+    if flags.has_reading_failure:
         return MeaningTag(id=MeaningTagId.READING_FAILURE)
-
     if (
         context is not None
         and context.actual_move_policy is not None
@@ -352,8 +474,11 @@ def classify_meaning_tag(
         and loss >= THRESHOLD_LOSS_LARGE
     ):
         return MeaningTag(id=MeaningTagId.READING_FAILURE)
+    return None
 
-    # Priority 5: SHAPE_MISTAKE
+
+def _pri_shape_mistake(context: ClassificationContext | None, loss: float) -> MeaningTag | None:
+    """Priority 5: very-low actual-move policy implies KataGo hated the shape."""
     if (
         context is not None
         and context.actual_move_policy is not None
@@ -361,8 +486,15 @@ def classify_meaning_tag(
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
         return MeaningTag(id=MeaningTagId.SHAPE_MISTAKE)
+    return None
 
-    # Priority 6: DIRECTION_ERROR
+
+def _pri_direction_error(
+    move_eval: "MoveEval",
+    context: ClassificationContext | None,
+    loss: float,
+) -> MeaningTag | None:
+    """Priority 6: early-game far move with low policy and a meaningful loss."""
     if (
         context is not None
         and context.move_distance is not None
@@ -373,8 +505,15 @@ def classify_meaning_tag(
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
         return MeaningTag(id=MeaningTagId.DIRECTION_ERROR)
+    return None
 
-    # Priority 7: OVERPLAY
+
+def _pri_overplay(
+    flags: ClassificationFlags,
+    context: ClassificationContext | None,
+    loss: float,
+) -> MeaningTag | None:
+    """Priority 7: high score_stdev + large loss, or heavy_loss + chase_mode."""
     if (
         context is not None
         and context.score_stdev is not None
@@ -382,30 +521,38 @@ def classify_meaning_tag(
         and context.score_stdev >= THRESHOLD_SCORE_STDEV_HIGH
     ):
         return MeaningTag(id=MeaningTagId.OVERPLAY)
-
-    if has_heavy_loss and has_chase_mode:
+    if flags.has_heavy_loss and flags.has_chase_mode:
         return MeaningTag(id=MeaningTagId.OVERPLAY)
+    return None
 
-    # Priority 8: ENDGAME_SLIP
-    _is_endgame = is_endgame(
-        move_eval.move_number,
-        context.total_moves if context else None,
-        has_endgame_hint,
-    )
-    if _is_endgame and THRESHOLD_LOSS_SMALL < loss < THRESHOLD_LOSS_HUGE:
+
+def _pri_endgame_slip(in_endgame: bool, loss: float) -> MeaningTag | None:
+    """Priority 8: end-position slip with moderate (not huge) loss."""
+    if in_endgame and THRESHOLD_LOSS_SMALL < loss < THRESHOLD_LOSS_HUGE:
         return MeaningTag(id=MeaningTagId.ENDGAME_SLIP)
+    return None
 
-    # Priority 9: SLOW_MOVE
+
+def _pri_slow_move(
+    context: ClassificationContext | None,
+    loss: float,
+    flags: ClassificationFlags,
+) -> MeaningTag | None:
+    """Priority 9: small/medium loss on a position close to a previous
+    move (no urgent tactical pressure)."""
     if (
         context is not None
         and context.move_distance is not None
         and THRESHOLD_LOSS_SMALL <= loss < THRESHOLD_LOSS_LARGE
         and context.move_distance < THRESHOLD_DISTANCE_CLOSE
-        and not is_urgent
+        and not flags.is_urgent
     ):
         return MeaningTag(id=MeaningTagId.SLOW_MOVE)
+    return None
 
-    # Priority 10: MISSED_TESUJI
+
+def _pri_missed_tesuji(context: ClassificationContext | None, loss: float) -> MeaningTag | None:
+    """Priority 10: best move was obvious and KataGo didn't pick it."""
     if (
         context is not None
         and context.best_move_policy is not None
@@ -415,43 +562,47 @@ def classify_meaning_tag(
         and loss >= THRESHOLD_LOSS_MEDIUM
     ):
         return MeaningTag(id=MeaningTagId.MISSED_TESUJI)
+    return None
 
-    # Priority 11: TERRITORIAL_LOSS
-    # Re-compute _is_endgame with latest context (already done above)
-    if loss >= THRESHOLD_LOSS_MEDIUM and not has_tactical_tags and not _is_endgame:
+
+def _pri_territorial_loss(
+    loss: float,
+    flags: ClassificationFlags,
+    in_endgame: bool,
+) -> MeaningTag | None:
+    """Priority 11: medium+ loss without tactical / endgame markers."""
+    if loss >= THRESHOLD_LOSS_MEDIUM and not flags.has_tactical_tags and not in_endgame:
         return MeaningTag(id=MeaningTagId.TERRITORIAL_LOSS)
+    return None
 
-    # Priority 11b: Single-tag fallbacks (Phase 66)
-    # These catch tactical tags that didn't match higher-priority combination rules.
-    #
-    # Semantic notes:
-    # - READING_FAILURE: single low_liberties implies the player didn't read
-    #   the liberty situation correctly.
-    # - CAPTURE_RACE_LOSS: single atari implies missed atari awareness.
-    # - ENDGAME_SLIP: single endgame_hint in non-endgame-detected positions.
-    #
 
-    # Loss thresholds: KataGo (points) 単位。Phase 171 で Leela 経路を削除。
-    if loss >= THRESHOLD_LOSS_MEDIUM:  # 2.0
-        # Single low_liberties (no need_connect, no atari, no cut_risk)
-        if has_low_liberties and not has_need_connect and not has_atari and not has_cut_risk:
+def _pri_single_tag_fallbacks(
+    loss: float,
+    flags: ClassificationFlags,
+    in_endgame: bool,
+) -> MeaningTag | None:
+    """Priority 11b: catch tactical tags that didn't match higher priorities.
+
+    Semantic notes:
+    - READING_FAILURE: single low_liberties implies the player didn't
+      read the liberty situation correctly.
+    - CAPTURE_RACE_LOSS: single atari implies missed atari awareness.
+    - ENDGAME_SLIP: single endgame_hint in non-endgame-detected positions.
+    """
+    if loss >= THRESHOLD_LOSS_MEDIUM:
+        if flags.has_low_liberties and not flags.has_need_connect and not flags.has_atari and not flags.has_cut_risk:
             return MeaningTag(id=MeaningTagId.READING_FAILURE)
-
-        # Single atari (no low_liberties, no need_connect, no cut_risk)
-        if has_atari and not has_low_liberties and not has_need_connect and not has_cut_risk:
+        if flags.has_atari and not flags.has_low_liberties and not flags.has_need_connect and not flags.has_cut_risk:
             return MeaningTag(id=MeaningTagId.CAPTURE_RACE_LOSS)
 
-    # Single endgame_hint (lower threshold, only if not already detected as endgame)
     if (
-        has_endgame_hint
+        flags.has_endgame_hint
         and loss >= THRESHOLD_LOSS_SMALL
-        and not has_atari
-        and not has_low_liberties
-        and not has_need_connect
-        and not has_cut_risk
-        and not _is_endgame
+        and not flags.has_atari
+        and not flags.has_low_liberties
+        and not flags.has_need_connect
+        and not flags.has_cut_risk
+        and not in_endgame
     ):
         return MeaningTag(id=MeaningTagId.ENDGAME_SLIP)
-
-    # Priority 12: UNCERTAIN (fallback)
-    return MeaningTag(id=MeaningTagId.UNCERTAIN, debug_reason="no_match")
+    return None

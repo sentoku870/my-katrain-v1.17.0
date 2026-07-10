@@ -377,24 +377,72 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
 
     Modifies ctx.result in place. May set ctx.result.cancelled/aborted on
     cancellation or circuit-breaker trip.
-    """
-    # Import here to avoid circular imports
-    from katrain.core.batch.analysis import analyze_single_file
 
-    # Determine base name for output files
+    Phase C-3: split into 4 focused helpers. The orchestrator below
+    reads as the 4 lifecycle steps; the helpers are independently
+    testable and each is small enough to read top-to-bottom.
+    """
+    base_name, sgf_output_path, effective_visits, need_game = _prepare_file_processing(ctx, log)
+
+    try:
+        success, game = _run_analysis_with_circuit_breaker(ctx, sgf_output_path, effective_visits, need_game, log)
+    except _AnalysisAborted:
+        # Circuit breaker tripped; ctx.result is already updated.
+        return
+
+    if not success:
+        _handle_analysis_failure(ctx, log)
+        return
+
+    _post_success_processing(
+        ctx=ctx,
+        game=game,
+        base_name=base_name,
+        sgf_output_path=sgf_output_path,
+        effective_visits=effective_visits,
+        log=log,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase C-3: helpers extracted from the original 146-line
+# _process_single_file. Each is small (≤ 40 lines) and independently
+# testable. ``_AnalysisAborted`` is an internal sentinel so the
+# orchestrator can short-circuit on circuit-breaker trip without
+# duplicating the abort-path bookkeeping in every call site.
+# ---------------------------------------------------------------------------
+
+
+class _AnalysisAborted(Exception):
+    """Internal sentinel raised when the engine circuit breaker trips."""
+
+
+def _prepare_file_processing(
+    ctx: _BatchFileContext, log: Callable[[str], None]
+) -> tuple[str, str | None, int | None, bool]:
+    """Compute output paths, base name, and effective visits.
+
+    Returns a 4-tuple ``(base_name, sgf_output_path, effective_visits,
+    need_game)`` that the rest of the pipeline consumes. Logs the
+    file-index banner and any variable-visits adjustment.
+
+    Phase 95B: variable visits is a per-file hash-based jitter used to
+    smooth the analysis load when many files share the same batch.
+    """
+    # Determine base name for output files (sanitize for cross-platform).
     base_name = os.path.splitext(os.path.basename(ctx.rel_path))[0]
     base_name = re.sub(r'[<>:"/\\|?*]', "_", base_name)[:50]
 
-    # Determine SGF output path (preserve relative path structure)
+    # Determine SGF output path (preserve relative path structure).
     output_rel_path = ctx.rel_path
     if output_rel_path.lower().endswith((".gib", ".ngf")):
         output_rel_path = output_rel_path[:-4] + ".sgf"
     sgf_output_path = os.path.join(ctx.output_dir, "analyzed", output_rel_path) if ctx.save_analyzed_sgf else None
 
-    # We need the Game object if generating karte or summary
+    # We need the Game object if generating karte or summary.
     need_game = ctx.generate_karte or ctx.generate_summary or ctx.generate_curator
 
-    # Calculate effective visits (with optional jitter)
+    # Calculate effective visits (with optional jitter).
     effective_visits = ctx.visits
     if ctx.variable_visits and ctx.visits is not None:
         effective_visits = choose_visits_for_sgf(
@@ -407,9 +455,27 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
             log(f"  Variable visits: {ctx.visits} -> {effective_visits}")
 
     log(f"[{ctx.i + 1}/{ctx.total}] Analyzing: {ctx.rel_path}")
+    return base_name, sgf_output_path, effective_visits, need_game
 
-    # KataGo analysis (Phase 95C: wrapped in try/except for circuit breaker)
-    game = None
+
+def _run_analysis_with_circuit_breaker(
+    ctx: _BatchFileContext,
+    sgf_output_path: str | None,
+    effective_visits: int | None,
+    need_game: bool,
+    log: Callable[[str], None],
+) -> tuple[bool, Any]:
+    """Run KataGo analysis and route engine / file errors to the
+    circuit breaker.
+
+    Returns ``(success, game)``. Raises :class:`_AnalysisAborted` if
+    the engine circuit breaker trips (caller should treat that as a
+    batch-level abort, not a per-file failure).
+    """
+    # Import here to avoid circular imports
+    from katrain.core.batch.analysis import analyze_single_file
+
+    game: Any = None
     success = False
     try:
         katago_result = analyze_single_file(
@@ -437,86 +503,107 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
             game = None
 
     except AnalysisTimeoutError as e:
-        ctx.result.engine_failure_count += 1
-        log(f"  TIMEOUT ({ctx.rel_path}): {e}")
-        if ctx.tracker.record_engine_failure(ctx.rel_path, str(e)):
-            log(ctx.tracker.get_abort_message())
-            ctx.result.aborted = True
-            ctx.result.abort_reason = ctx.tracker.get_abort_message()
-            return
-
+        _record_engine_failure_and_maybe_abort(ctx, log, f"TIMEOUT ({ctx.rel_path}): {e}")
     except EngineError as e:
-        ctx.result.engine_failure_count += 1
-        log(f"  ENGINE ERROR ({ctx.rel_path}): {e}")
-        if ctx.tracker.record_engine_failure(ctx.rel_path, str(e)):
-            log(ctx.tracker.get_abort_message())
-            ctx.result.aborted = True
-            ctx.result.abort_reason = ctx.tracker.get_abort_message()
-            return
-
+        _record_engine_failure_and_maybe_abort(ctx, log, f"ENGINE ERROR ({ctx.rel_path}): {e}")
     except (SGFError, OSError, UnicodeDecodeError) as e:
         ctx.result.file_error_count += 1
         ctx.tracker.record_file_error()
         log(f"  FILE ERROR ({ctx.rel_path}): {e}")
-
     except Exception as e:
         ctx.result.file_error_count += 1
         ctx.tracker.record_file_error()
         log(f"  UNEXPECTED ({ctx.rel_path}): {e}")
         log(f"    {traceback.format_exc()}")
 
-    if success:
-        ctx.tracker.record_success()
-        ctx.result.success_count += 1
+    if ctx.result.aborted:
+        raise _AnalysisAborted
+    return success, game
 
-        if effective_visits is not None:
-            ctx.selected_visits_list.append(effective_visits)
 
-        if ctx.save_analyzed_sgf and sgf_output_path:
-            ctx.result.analyzed_sgf_written += 1
-            log(f"  Saved SGF: {sgf_output_path}")
+def _record_engine_failure_and_maybe_abort(ctx: _BatchFileContext, log: Callable[[str], None], message: str) -> None:
+    """Record an engine failure; trip circuit breaker if threshold reached.
 
-        # Generate karte if requested
-        if ctx.generate_karte and game is not None:
-            _generate_karte_for_file(
-                game=game,
-                abs_path=ctx.abs_path,
-                rel_path=ctx.rel_path,
-                base_name=base_name,
-                output_dir=ctx.output_dir,
-                player_filter=ctx.karte_player_filter,
-                visits=ctx.visits,
-                batch_timestamp=ctx.batch_timestamp,
-                result=ctx.result,
-                karte_path_map=ctx.karte_path_map,
-                log=log,
-                log_cb=ctx.log_cb,
-                skill_preset=ctx.skill_preset,
-            )
+    Used by both the timeout and engine-error paths in
+    :func:`_run_analysis_with_circuit_breaker`. The
+    ``ctx.result.aborted`` flag is set here when the breaker trips;
+    the caller inspects it and raises :class:`_AnalysisAborted`.
+    """
+    ctx.result.engine_failure_count += 1
+    log(message)
+    if ctx.tracker.record_engine_failure(ctx.rel_path, message):
+        log(ctx.tracker.get_abort_message())
+        ctx.result.aborted = True
+        ctx.result.abort_reason = ctx.tracker.get_abort_message()
 
-        # Collect stats for summary and/or curator
-        if (ctx.generate_summary or ctx.generate_curator) and game is not None:
-            _collect_stats_for_file(
-                game=game,
-                rel_path=ctx.rel_path,
-                source_index=ctx.i,
-                visits=ctx.visits,
-                log_cb=ctx.log_cb,
-                generate_summary=ctx.generate_summary,
-                generate_curator=ctx.generate_curator,
-                game_stats_list=ctx.game_stats_list,
-                games_for_curator=ctx.games_for_curator,
-                skill_preset=ctx.skill_preset,
-                log=log,
-            )
-    else:
-        if ctx.cancel_flag and ctx.cancel_flag[0]:
-            log("Cancelled by user")
-            ctx.result.cancelled = True
-            return
-        ctx.result.fail_count += 1
-        if ctx.generate_karte:
-            ctx.result.karte_failed += 1
+
+def _post_success_processing(
+    ctx: _BatchFileContext,
+    game: Any,
+    base_name: str,
+    sgf_output_path: str | None,
+    effective_visits: int | None,
+    log: Callable[[str], None],
+) -> None:
+    """Generate karte and/or collect stats for a successful analysis.
+
+    The success metrics (``success_count``, ``analyzed_sgf_written``,
+    ``selected_visits_list``) are bumped here before the optional karte
+    and summary paths run, so a failure inside them doesn't lose the
+    success counter.
+    """
+    ctx.tracker.record_success()
+    ctx.result.success_count += 1
+
+    if effective_visits is not None:
+        ctx.selected_visits_list.append(effective_visits)
+
+    if ctx.save_analyzed_sgf and sgf_output_path:
+        ctx.result.analyzed_sgf_written += 1
+        log(f"  Saved SGF: {sgf_output_path}")
+
+    if ctx.generate_karte and game is not None:
+        _generate_karte_for_file(
+            game=game,
+            abs_path=ctx.abs_path,
+            rel_path=ctx.rel_path,
+            base_name=base_name,
+            output_dir=ctx.output_dir,
+            player_filter=ctx.karte_player_filter,
+            visits=ctx.visits,
+            batch_timestamp=ctx.batch_timestamp,
+            result=ctx.result,
+            karte_path_map=ctx.karte_path_map,
+            log=log,
+            log_cb=ctx.log_cb,
+            skill_preset=ctx.skill_preset,
+        )
+
+    if (ctx.generate_summary or ctx.generate_curator) and game is not None:
+        _collect_stats_for_file(
+            game=game,
+            rel_path=ctx.rel_path,
+            source_index=ctx.i,
+            visits=ctx.visits,
+            log_cb=ctx.log_cb,
+            generate_summary=ctx.generate_summary,
+            generate_curator=ctx.generate_curator,
+            game_stats_list=ctx.game_stats_list,
+            games_for_curator=ctx.games_for_curator,
+            skill_preset=ctx.skill_preset,
+            log=log,
+        )
+
+
+def _handle_analysis_failure(ctx: _BatchFileContext, log: Callable[[str], None]) -> None:
+    """Record a non-aborting failure (analysis returned False)."""
+    if ctx.cancel_flag and ctx.cancel_flag[0]:
+        log("Cancelled by user")
+        ctx.result.cancelled = True
+        return
+    ctx.result.fail_count += 1
+    if ctx.generate_karte:
+        ctx.result.karte_failed += 1
 
 
 def _generate_karte_for_file(

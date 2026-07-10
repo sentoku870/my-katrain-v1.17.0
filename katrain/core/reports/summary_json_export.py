@@ -231,6 +231,12 @@ def _build_player_stats_block(
     on cross-game data so the displayed moves don't shrink as the
     subset narrows.
 
+    Phase C-1: split into focused helpers (``_build_overall_block``,
+    ``_build_mistake_distribution``, ``_build_phase_distribution``,
+    ``_build_reason_tags_block``, ``_build_mistake_sequences_block``,
+    ``_build_top_mistakes_block``) so the orchestrator stays
+    declarative and each section is independently testable.
+
     Returns a plain ``dict`` (not a ``SummaryPlayerStats`` TypedDict
     instance) so it can be safely embedded under the ``even`` /
     ``handicapped`` keys of the outer block without mypy flagging the
@@ -245,35 +251,86 @@ def _build_player_stats_block(
     if stats is None:
         # Player never appears in this subset (e.g. only ever played
         # ``even`` games so the ``handicapped`` block is empty).
-        return {
-            "overall": {
-                "total_games": 0,
-                "total_moves": 0,
-                "total_loss": 0.0,
-                "avg_loss": 0.0,
-                "confidence": "low",
-            },
-            "mistakes": {},
-            "phases": {},
-            "reason_tags": {
-                "status": "computed_empty",
-                "data": {},
-                "stats": {"tagged_moves_count": 0, "tag_occurrences_total": 0},
-            },
-            # Phase 158-I: distinguish "no games" from "no streak" for
-            # the LLM. ``game_data_list`` is non-empty here (otherwise
-            # we would have taken the early return above), so
-            # ``not_applicable_no_games`` is reserved for the empty
-            # case.
-            "mistake_sequences": {"status": "no_streak_detected", "data": []},
-            "top_mistakes": [],
-            "win_loss_analysis": _compute_player_win_loss_analysis(game_data_list, player_name),
-        }
+        return _build_empty_player_stats_block(game_data_list, player_name)
 
     confidence_level = eval_metrics.compute_confidence_level(stats.all_moves)
     confidence_val = confidence_level.name.lower()  # high, medium, low
 
-    overall = {
+    # Phase 158-I: mistake sequences and top mistakes continue to draw
+    # from the cross-game pool (``all_games_for_top_mistakes``) so the
+    # displayed moves are stable across ``all`` / ``even`` / ``handicapped``
+    # views. Sequence detection is rerun on the subset.
+    sequences, filtered_moves = sub_analyzer.detect_mistake_sequences(player_name)
+    full_analyzer = SummaryAnalyzer(all_games_for_top_mistakes)
+    _full_sequences, full_filtered = full_analyzer.detect_mistake_sequences(player_name)
+    filtered_moves_for_top = full_filtered if all_games_for_top_mistakes else filtered_moves
+
+    return {
+        "overall": _build_overall_block(stats, confidence_val),
+        "mistakes": _build_mistake_distribution(stats),
+        "phases": _build_phase_distribution(stats),
+        "reason_tags": _build_reason_tags_block(stats),
+        "mistake_sequences": _build_mistake_sequences_block(
+            sequences=sequences,
+            game_data_list=game_data_list,
+        ),
+        "top_mistakes": _build_top_mistakes_block(
+            filtered_moves_for_top=filtered_moves_for_top,
+            all_games_for_top_mistakes=all_games_for_top_mistakes,
+            confidence_level=confidence_level,
+        ),
+        "win_loss_analysis": _compute_player_win_loss_analysis(game_data_list, player_name),
+        "opponent_strength_loss_correlation": _build_opponent_correlation_block(game_data_list, player_name),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase C-1: per-section helpers extracted from _build_player_stats_block.
+# Each is small (≤ 30 lines) and independently testable; the orchestrator
+# above stays declarative.
+# ---------------------------------------------------------------------------
+
+
+def _build_empty_player_stats_block(
+    game_data_list: list[GameSummaryData],
+    player_name: str,
+) -> dict[str, Any]:
+    """Empty player block when the player has no games in the subset.
+
+    Phase 157-C: the ``handicapped`` block is empty for players who
+    only ever played even games. We still produce a structurally-valid
+    block so the JSON consumer does not have to special-case missing
+    keys.
+    """
+    return {
+        "overall": {
+            "total_games": 0,
+            "total_moves": 0,
+            "total_loss": 0.0,
+            "avg_loss": 0.0,
+            "confidence": "low",
+        },
+        "mistakes": {},
+        "phases": {},
+        "reason_tags": {
+            "status": "computed_empty",
+            "data": {},
+            "stats": {"tagged_moves_count": 0, "tag_occurrences_total": 0},
+        },
+        # Phase 158-I: distinguish "no games" from "no streak" for
+        # the LLM. ``game_data_list`` is non-empty here (otherwise
+        # we would have taken the early return above), so
+        # ``not_applicable_no_games`` is reserved for the empty
+        # case.
+        "mistake_sequences": {"status": "no_streak_detected", "data": []},
+        "top_mistakes": [],
+        "win_loss_analysis": _compute_player_win_loss_analysis(game_data_list, player_name),
+    }
+
+
+def _build_overall_block(stats: Any, confidence_val: str) -> dict[str, Any]:
+    """Build the ``overall`` sub-block (5 fields, 1-decimal loss)."""
+    return {
         "total_games": stats.total_games,
         "total_moves": stats.total_moves,
         "total_loss": round(stats.total_points_lost, 1),
@@ -281,35 +338,43 @@ def _build_player_stats_block(
         "confidence": confidence_val,
     }
 
-    mistake_dist: dict[str, dict[str, Any]] = {}
+
+def _build_mistake_distribution(stats: Any) -> dict[str, dict[str, Any]]:
+    """Per-category mistake distribution (count, pct, avg_loss)."""
+    out: dict[str, dict[str, Any]] = {}
     for cat in MistakeCategory:
         key = cat.value.lower()
-        count = stats.mistake_counts.get(cat, 0)
-        avg_loss = stats.get_mistake_avg_loss(cat)
-        mistake_dist[key] = {
-            "count": count,
+        out[key] = {
+            "count": stats.mistake_counts.get(cat, 0),
             "pct": round(stats.get_mistake_percentage(cat), 1),
             "denominator": stats.total_moves,
-            "avg_loss": round(avg_loss, 2),
+            "avg_loss": round(stats.get_mistake_avg_loss(cat), 2),
         }
+    return out
 
-    phase_stats: dict[str, dict[str, Any]] = {}
-    phases_to_report = ["opening", "middle", "endgame", "unknown"]
-    for phase in phases_to_report:
+
+def _build_phase_distribution(stats: Any) -> dict[str, dict[str, Any]]:
+    """Per-phase loss distribution. Reports under the public-facing
+    ``opening/middle/endgame/unknown`` keys; the internal ``yose`` key
+    is mapped to ``endgame`` for downstream consumers."""
+    out: dict[str, dict[str, Any]] = {}
+    for phase in PHASES:
         internal_phase = "yose" if phase == "endgame" else phase
-        count = stats.phase_moves.get(internal_phase, 0)
         loss = stats.phase_loss.get(internal_phase, 0.0)
-        avg_loss = stats.get_phase_avg_loss(internal_phase)
-        phase_stats[phase] = {
-            "moves": count,
+        out[phase] = {
+            "moves": stats.phase_moves.get(internal_phase, 0),
             # Phase 158-H: round to 2 decimals to align with the rest of
             # the Summary / Karte JSON (which uses 2 decimals for total
             # loss fields). Previously ``phases.*.total_loss`` was the
             # only field using 1 decimal.
             "total_loss": round(loss, 2),
-            "avg_loss": round(avg_loss, 3),
+            "avg_loss": round(stats.get_phase_avg_loss(internal_phase), 3),
         }
+    return out
 
+
+def _build_reason_tags_block(stats: Any) -> dict[str, Any]:
+    """Reason tags block with 4-state status (Phase 158-I)."""
     reason_tags_dist: dict[str, dict[str, Any]] = {}
     if stats.tag_occurrences_total > 0:
         normalized_counts: dict[str, int] = {}
@@ -324,7 +389,7 @@ def _build_player_stats_block(
                 "denominator_type": "tag_occurrences",
                 "total_tag_occurrences": stats.tag_occurrences_total,
             }
-        reason_tags_stats_block = {
+        return {
             "status": "computed" if reason_tags_dist else "computed_empty",
             "data": reason_tags_dist,
             "stats": {
@@ -332,29 +397,28 @@ def _build_player_stats_block(
                 "tag_occurrences_total": stats.tag_occurrences_total,
             },
         }
-    else:
-        reason_tags_stats_block = {
-            "status": "computed_empty",
-            "data": {},
-            "stats": {"tagged_moves_count": 0, "tag_occurrences_total": 0},
-        }
+    return {
+        "status": "computed_empty",
+        "data": {},
+        "stats": {"tagged_moves_count": 0, "tag_occurrences_total": 0},
+    }
 
-    # Phase 157-C: mistake sequences and top mistakes continue to draw
-    # from the cross-game pool (``all_games_for_top_mistakes``) so the
-    # displayed moves are stable across ``all`` / ``even`` / ``handicapped``
-    # views. Sequence detection is rerun on the subset.
-    sequences, filtered_moves = sub_analyzer.detect_mistake_sequences(player_name)
 
-    # Re-derive ``filtered_moves`` from the cross-game analyzer for the
-    # top-mistakes display so we don't truncate the visible mistakes when
-    # the subset is narrow.
-    full_analyzer = SummaryAnalyzer(all_games_for_top_mistakes)
-    _full_sequences, full_filtered = full_analyzer.detect_mistake_sequences(player_name)
-    filtered_moves_for_top = full_filtered if all_games_for_top_mistakes else filtered_moves
+def _build_mistake_sequences_block(
+    sequences: list[dict[str, Any]],
+    game_data_list: list[GameSummaryData],
+) -> dict[str, Any]:
+    """Mistake sequences with 3-state status (Phase 158-I).
 
-    mistake_sequences: list[dict[str, Any]] = []
+    Status values:
+    - ``not_applicable_no_games`` when ``game_data_list`` is empty
+    - ``no_streak_detected`` when no runs of consecutive large losses
+      were found in a non-empty input
+    - ``computed`` otherwise
+    """
+    formatted: list[dict[str, Any]] = []
     for seq in sequences:
-        mistake_sequences.append(
+        formatted.append(
             {
                 "game_name": seq["game"],
                 "move_range": [seq["start"], seq["end"]],
@@ -364,10 +428,35 @@ def _build_player_stats_block(
             }
         )
 
-    top_mistakes: list[MistakeItem] = []
-    max_count = eval_metrics.get_important_moves_limit(confidence_level)
+    if not game_data_list:
+        status = "not_applicable_no_games"
+    elif not formatted:
+        # ``detect_mistake_sequences`` only fires on runs of
+        # consecutive large-loss moves. An empty result on a
+        # non-empty input therefore means "no streak detected", not
+        # "missing data".
+        status = "no_streak_detected"
+    else:
+        status = "computed"
+
+    return {"status": status, "data": formatted}
+
+
+def _build_top_mistakes_block(
+    filtered_moves_for_top: list[tuple[str, Any]],
+    all_games_for_top_mistakes: list[GameSummaryData],
+    confidence_level: Any,
+) -> list[MistakeItem]:
+    """Top-mistakes display list.
+
+    Sorts by canonical loss, back-fills tags via
+    :func:`_ensure_tags_for_top_moves` (Phase 158-G), and stamps
+    ``in_individual_karte`` so the LLM knows which moves are already
+    covered in the per-game report (Phase 158-I).
+    """
     from katrain.core.reports.constants import SUMMARY_DEFAULT_MAX_WORST_MOVES
 
+    max_count = eval_metrics.get_important_moves_limit(confidence_level)
     display_limit = min(SUMMARY_DEFAULT_MAX_WORST_MOVES, max_count)
 
     sorted_moves = sorted(
@@ -386,52 +475,41 @@ def _build_player_stats_block(
     # Without this back-fill a single ``worst_moves`` candidate can show
     # up in the JSON with ``reason_codes: []`` and ``primary_tag: null``
     # next to fully classified entries.
-    _ensure_tags_for_top_moves(sorted_moves[:display_limit], all_games_for_top_mistakes)
-    for game_name, move in sorted_moves[:display_limit]:
-        game_ref = next((g for g in all_games_for_top_mistakes if g.game_name == game_name), None)
-        game_id = game_ref.game_id if game_ref else None
-        board_size = game_ref.board_size[0] if game_ref else 19
-        item = MoveExtractor.extract(move, game_id, game_name, board_size=board_size)
-        # Phase 158-I: ``in_individual_karte`` flags worst-moves that
-        # were also surfaced in the corresponding individual Karte's
-        # ``important_moves`` block. Without this the LLM cannot tell
-        # whether a top-mistake has already been covered in detail by
-        # the per-game report, or only in the cross-game aggregate.
-        # The ``getattr`` defaults to an empty set so test fixtures
-        # built before Phase 158-I still work.
-        im_keys = getattr(game_ref, "important_moves_keys", set()) or set()
-        in_karte = (move.move_number, move.player) in im_keys
-        item["in_individual_karte"] = in_karte
-        top_mistakes.append(item)
+    top_candidates = sorted_moves[:display_limit]
+    _ensure_tags_for_top_moves(top_candidates, all_games_for_top_mistakes)
+    return [_format_top_mistake_item(game_name, move, all_games_for_top_mistakes) for game_name, move in top_candidates]
 
-    # Phase 158-I: refine the binary ``computed`` / ``computed_empty``
-    # status into four states so the LLM can tell *why* the sequence
-    # list is empty (no input data, no games for this player, or just
-    # no streak detected).
-    if not game_data_list:
-        seq_status = "not_applicable_no_games"
-    elif not mistake_sequences:
-        # ``detect_mistake_sequences`` only fires on runs of consecutive
-        # large-loss moves. An empty result on a non-empty input
-        # therefore means "no streak detected", not "missing data".
-        seq_status = "no_streak_detected"
-    else:
-        seq_status = "computed"
 
+def _format_top_mistake_item(
+    game_name: str,
+    move: Any,
+    all_games_for_top_mistakes: list[GameSummaryData],
+) -> MistakeItem:
+    """Format a single top-mistake item with the Karte cross-ref flag."""
+    game_ref = next((g for g in all_games_for_top_mistakes if g.game_name == game_name), None)
+    game_id = game_ref.game_id if game_ref else None
+    board_size = game_ref.board_size[0] if game_ref else 19
+    item = MoveExtractor.extract(move, game_id, game_name, board_size=board_size)
+    # Phase 158-I: ``in_individual_karte`` flags worst-moves that
+    # were also surfaced in the corresponding individual Karte's
+    # ``important_moves`` block. Without this the LLM cannot tell
+    # whether a top-mistake has already been covered in detail by
+    # the per-game report, or only in the cross-game aggregate.
+    # The ``getattr`` defaults to an empty set so test fixtures
+    # built before Phase 158-I still work.
+    im_keys = getattr(game_ref, "important_moves_keys", set()) or set()
+    item["in_individual_karte"] = (move.move_number, move.player) in im_keys
+    return item
+
+
+def _build_opponent_correlation_block(
+    game_data_list: list[GameSummaryData],
+    player_name: str,
+) -> Any:
+    """Compute the opponent-strength loss correlation sub-block."""
     from katrain.core.reports.sections import build_opponent_strength_loss_correlation
 
-    opponent_correlation = build_opponent_strength_loss_correlation(game_data_list, player_name)
-
-    return {
-        "overall": overall,
-        "mistakes": mistake_dist,
-        "phases": phase_stats,
-        "reason_tags": reason_tags_stats_block,
-        "mistake_sequences": {"status": seq_status, "data": mistake_sequences},
-        "top_mistakes": top_mistakes,
-        "win_loss_analysis": _compute_player_win_loss_analysis(game_data_list, player_name),
-        "opponent_strength_loss_correlation": opponent_correlation,
-    }
+    return build_opponent_strength_loss_correlation(game_data_list, player_name)
 
 
 def _compute_loss_progression_block(
