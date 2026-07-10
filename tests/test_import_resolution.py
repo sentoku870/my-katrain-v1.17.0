@@ -20,18 +20,12 @@ This file provides two regression tests:
 from __future__ import annotations
 
 import importlib
-import os
 import pkgutil
 
-import pytest
-
-# The walk_packages-driven test triggers kivy imports on some platforms.
-# Mirror test_main_smoke / test_popups_helpers / test_settings_savers
-# pattern: skip on CI where kivy import is brittle.
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="pkgutil.walk_packages across katrain/ triggers kivy imports that crash on headless CI",
-)
+# Phase A-13: run on CI. Kivy is mocked via KIVY_NO_WINDOW/KIVY_GL_BACKEND
+# set by the test_and_build.yaml workflow. Previously this file was
+# skipped on CI to dodge a brittle Kivy import that is now handled by the
+# same headless infra as test_popups_helpers.py.
 
 
 def _iter_katrain_modules():

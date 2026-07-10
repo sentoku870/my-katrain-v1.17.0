@@ -158,7 +158,9 @@ def _compute_jaccard_score(
     """
     if not user_weak_tags or not game_tags_combined:
         return config.jaccard_insufficient_data
-    game_tags = {tag for tag, count in game_tags_combined.items() if count >= config.min_tag_occurrences and tag != UNCERTAIN_TAG}
+    game_tags = {
+        tag for tag, count in game_tags_combined.items() if count >= config.min_tag_occurrences and tag != UNCERTAIN_TAG
+    }
     if not game_tags:
         return config.jaccard_insufficient_data
     intersection = user_weak_tags & game_tags
@@ -462,10 +464,7 @@ def score_batch_suitability(
         List of SuitabilityScore with percentiles computed (ECDF-style)
     """
     # Score each game
-    scores = [
-        score_game_suitability(game, stats, config, user_aggregate)
-        for game, stats in games_and_stats
-    ]
+    scores = [score_game_suitability(game, stats, config, user_aggregate) for game, stats in games_and_stats]
 
     # Compute percentiles
     return compute_batch_percentiles(scores)

@@ -24,11 +24,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# katrain.gui imports Kivy widgets at module top. Skip on CI to avoid OOM.
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="katrain.gui imports Kivy widgets at module scope; CI environment OOMs mid-suite",
-)
+# Phase A-13: run on CI. The Kivy headless infra (KIVY_NO_WINDOW/
+# KIVY_GL_BACKEND set by the test_and_build.yaml workflow) plus
+# tests/kivy_stubs.py isolates GUI resources so that stability checks
+# can be exercised without a real display server.
 
 os.environ.setdefault("KIVY_NO_ARGS", "1")
 os.environ.setdefault("KIVY_NO_FILELOG", "1")

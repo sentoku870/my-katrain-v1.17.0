@@ -19,16 +19,11 @@ from __future__ import annotations
 import os
 from unittest.mock import MagicMock
 
-import pytest
-
-# katrain.gui.popups imports Kivy widgets at module top. On headless CI the
-# import + Kivy's heavy init can OOM the 16GB runner mid-suite (exit 102).
-# Mirror test_popups_helpers.py and skip this file on CI. Local development
-# still runs the suite.
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="katrain.gui imports Kivy widgets at module scope; CI environment OOMs mid-suite",
-)
+# Phase A-13: run on CI. The Kivy headless infra (KIVY_NO_WINDOW/
+# KIVY_GL_BACKEND set by the test_and_build.yaml workflow) plus
+# tests/kivy_stubs.py isolates GUI resources so that resource leak
+# detection does not require the Kivy display server. Previously this
+# file was skipped on CI to avoid mid-suite OOMs.
 
 # Force Kivy into headless mode before any popup module load.
 os.environ.setdefault("KIVY_NO_ARGS", "1")
