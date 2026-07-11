@@ -48,9 +48,7 @@ def _func_is_registered(func_name: str) -> bool:
     key = func_name[len("do_"):]
     if key in _DISPATCH_KEYS:
         return True
-    if func_name in _KEY_TO_FUNC_NAME.values():
-        return True
-    return False
+    return func_name in _KEY_TO_FUNC_NAME.values()
 
 
 def _all_do_funcs():
@@ -285,9 +283,11 @@ class TestRemovedWrappers:
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == "KaTrainGui":
                 for item in ast.iter_child_nodes(node):
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if item.name == "_do_update_state":
-                            has_do_update = True
+                    if (
+                        isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and item.name == "_do_update_state"
+                    ):
+                        has_do_update = True
         assert has_do_update, (
             "_do_update_state was removed but message_loop_manager still needs it"
         )

@@ -98,7 +98,7 @@ def _resolve(key: str) -> Callable[..., None] | None:
     """
     func_name = _KEY_TO_FUNC_NAME.get(key, f"do_{key}")
     for module in _DISPATCH_MODULES:
-        fn = getattr(module, func_name, None)
+        fn: Callable[..., None] | None = getattr(module, func_name, None)
         if fn is not None and callable(fn):
             return fn
     return None
