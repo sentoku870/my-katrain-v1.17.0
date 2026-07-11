@@ -273,6 +273,17 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-11: KaTrainGui ラッパーメソッド全削除（Phase 172）
+  - `commands/DISPATCH_TABLE`（35エントリ）への明示的ディスパッチ移行
+  - 動的 `getattr(self, f"_do_{...}")` を `_resolve()` ベースに変更し、`message_loop_manager._run()` のメッセージ解決も統一
+  - 削除: `KaTrainGui._do_*` メソッド 34個（合計 -117行、`__main__.py` 995→878行）
+  - 置換: `__call__()` が `endswith("popup")` のみ判定 → popup側 `Clock.schedule_once` で `dispatch()` 経由 / 非 popup側は従来通り message_queue（`message_loop_manager._run()` も `dispatch()` + `_do_update_state()` 直接呼び出し）
+  - 維持: `_do_update_state`（特殊用途、再キュー回避のため直接呼び出し）、`is_fog_active`（KV互換）、`_play_stone_sound`（lambda参照）
+  - 内部呼び出し元修正: `SGFManager.new_game_callback`/`GameStateUpdateManager.ai_move`/`start()` の3箇所を `game_commands.do_*` 直接呼出しに変更
+  - 呼び出し元修正: `kv/game_popups.kv:301,331` を `root.katrain("analyze-extra", ...)` / `root.katrain("tsumego-frame", ...)` 形式に変更、`popups/quick_config.py:203,222` を `self.katrain("new-game")` に変更
+  - 削除 import: `analyze_commands`, `export_commands`, `popup_commands`（`__main__.py` では不要、`dispatch` + `game_commands` のみ残存）
+  - 不規則な key→関数対応: `selfplay_setup` → `do_start_selfplay` を `_KEY_TO_FUNC_NAME` で吸収
+  - テスト: `tests/test_dispatch_table.py` 新設（14件）— カバレッジ/重複キー/unknown KeyError/dash正規化/ラッパー削除検証
 - 2026-07-04: Leela エンジン完全削除（Phase 171）
   - コード、設定、UI、i18n、テスト、ドキュメントを KataGo 専用に整理
   - 削除: `core/leela/` ディレクトリ（1459 行）、`gui/leela_manager.py`、`gui/features/settings_popup_tabs/leela_tab.py`、`gui/features/resign_hint_popup.py`、`core/batch/leela_gate.py`、`core/analysis/engine_compare.py`、`EngineType.LEELA`、`LeelaConfig` / `get_leela_config()` / `update_leela_config()`、`LeelaEngine` / `LeelaCandidate` / `LeelaPositionEval` / `parse_lz_analyze`、`leela_loss_est` フィールド、`is_single_engine_snapshot` / `MixedEngineSnapshotError` / `KARTE_ERROR_CODE_NON_KATAGO`、`needs_leela_warning` / `needs_leela_karte_warning`、`LEELA_*` 定数（TOP_MOVE_*、COLOR_*、K_* 等）、`leela/enabled` 設定、Settings の Leela タブ・エンジン選択肢
