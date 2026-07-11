@@ -318,9 +318,7 @@ class TestCommandsDoNotImportKivyAtLoad:
         def fake_mkdir(*args, **kwargs):
             path = args[0] if args else kwargs.get("name")
             if isinstance(path, str) and "/.kivy" in path:
-                raise AssertionError(
-                    f"Kivy mkdir fired during commands import: {path!r}"
-                )
+                raise AssertionError(f"Kivy mkdir fired during commands import: {path!r}")
             return real_mkdir(*args, **kwargs)
 
         os.mkdir = fake_mkdir
@@ -350,14 +348,12 @@ class TestCommandsDoNotImportKivyAtLoad:
 
         module_level_kivy_imports: list[str] = []
         for stmt in tree.body:
-            # Only consider module-scope statements (indentation level 0).
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
                     if alias.name.startswith("kivy"):
                         module_level_kivy_imports.append(alias.name)
-            elif isinstance(stmt, ast.ImportFrom):
-                if stmt.module and stmt.module.startswith("kivy"):
-                    module_level_kivy_imports.append(stmt.module)
+            elif isinstance(stmt, ast.ImportFrom) and stmt.module and stmt.module.startswith("kivy"):
+                module_level_kivy_imports.append(stmt.module)
         assert module_level_kivy_imports == [], (
             f"game_commands.py imports Kivy at module level: "
             f"{module_level_kivy_imports}; this triggers mkdir('~/.kivy') "
