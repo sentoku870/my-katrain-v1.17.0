@@ -101,26 +101,29 @@ jobs:
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
-          # Phase 173: disable pytest plugin auto-loading (see long-form
-          # commit message). The test job does not use --cov or -n, so
-          # pytest-cov and pytest-xdist are loaded as registered
-          # entry-points but sit idle during collection. On the
-          # GitHub-hosted Ubuntu runner image (~2026-07-10 image bump)
-          # their collection hooks emit exit code 102. Disabling
-          # auto-load removes that hook chain; ``tests/conftest.py``
-          # still loads because pytest always loads the rootdir conftest.
+          # Phase 173: disable pytest plugin auto-loading. The test job
+          # does not use --cov or -n, so pytest-cov and pytest-xdist
+          # are loaded as registered entry-points but sit idle during
+          # collection. They hook into collection-time events and have
+          # been observed to crash with exit code 102 on the GitHub
+          # runner image (linux kernel + glibc combo) since the Ubuntu
+          # runner image was bumped around 2026-07-10. Disabling
+          # auto-load removes that hook chain; the project's own
+          # ``tests/conftest.py`` still loads correctly.
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
-          # Show memory info before tests
           echo "=== Memory before tests ==="
           free -m || true
-          # Phase 173: explicit -p no:cacheprovider stops pytest from
-          # reading/writing .pytest_cache on the runner. On the GHA
-          # Ubuntu image around 2026-07-10 the cache-provider plugin
-          # combined with pytest-xdist hanging hooks resulted in the
-          # process being killed at exit code 102 during collection.
-          # Real run
-          echo "=== Running tests ==="
+          # Phase 173: split into a small smoke test and a full run
+          # so failure modes are diagnosable in CI logs.
+          echo "=== Smoke: collect-only a single small test file ==="
+          if uv run python -m pytest -p no:cacheprovider \
+              tests/test_version.py --collect-only -q 2>&1 | tail -3; then
+            echo "Smoke OK; proceeding to full run"
+          else
+            echo "Smoke test failed; running full suite anyway to gather data"
+          fi
+          echo "=== Running full test suite ==="
           uv run python -m pytest -p no:cacheprovider tests -v --tb=short 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
