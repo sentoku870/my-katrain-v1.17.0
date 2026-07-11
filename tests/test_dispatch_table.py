@@ -310,7 +310,7 @@ class TestCommandsDoNotImportKivyAtLoad:
     functions where needed.
     """
 
-    def _import_commands_with_mkdir_prohibited(self) -> None:
+    def _import_with_mkdir_prohibited(self, import_callable) -> None:
         import os
 
         real_mkdir = os.mkdir
@@ -318,18 +318,12 @@ class TestCommandsDoNotImportKivyAtLoad:
         def fake_mkdir(*args, **kwargs):
             path = args[0] if args else kwargs.get("name")
             if isinstance(path, str) and "/.kivy" in path:
-                raise AssertionError(f"Kivy mkdir fired during commands import: {path!r}")
+                raise AssertionError(f"Kivy mkdir fired during import: {path!r}")
             return real_mkdir(*args, **kwargs)
 
         os.mkdir = fake_mkdir
         try:
-            from katrain.gui.features.commands import (  # noqa: F401
-                DISPATCH_TABLE,
-                analyze_commands,
-                export_commands,
-                game_commands,
-                popup_commands,
-            )
+            import_callable()
         finally:
             os.mkdir = real_mkdir
 
@@ -361,11 +355,61 @@ class TestCommandsDoNotImportKivyAtLoad:
             f"job hits a runner with ~/.kivy already populated."
         )
 
+    def test_karte_export_module_does_not_import_kivy(self) -> None:
+        """Phase 173 sibling fix: ``karte_export`` previously imported
+        seven Kivy primitives at module level (``Clock``, ``Clipboard``,
+        ``dp``, ``BoxLayout``, ``Button``, ``Label``, ``Popup``). The
+        same root cause as ``game_commands.py`` — both trigger
+        ``os.mkdir('~/.kivy')`` and ``os.mkdir('~/.kivy/mods')``.
+        """
+        import ast
+        from pathlib import Path
+
+        from katrain.gui.features import karte_export
+
+        ke_path = Path(karte_export.__file__)
+        source = ke_path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+
+        module_level_kivy_imports: list[str] = []
+        for stmt in tree.body:
+            if isinstance(stmt, ast.Import):
+                for alias in stmt.names:
+                    if alias.name.startswith("kivy"):
+                        module_level_kivy_imports.append(alias.name)
+            elif isinstance(stmt, ast.ImportFrom) and stmt.module and stmt.module.startswith("kivy"):
+                module_level_kivy_imports.append(stmt.module)
+        assert module_level_kivy_imports == [], (
+            f"karte_export.py imports Kivy at module level: "
+            f"{module_level_kivy_imports}; same root cause as game_commands.py."
+        )
+
     def test_commands_modules_import_without_kivy_mkdir(self) -> None:
         """End-to-end: importing the four command submodules plus the
         DISPATCH_TABLE itself must not trigger Kivy's lazy mkdir of
         ``~/.kivy/mods``. Without this fix pytest collection dies with
         ``FileExistsError`` on the GitHub Actions Ubuntu-24.04 runner.
         """
-        # The fixture monkey-patches os.mkdir to raise if Kivy fires.
-        self._import_commands_with_mkdir_prohibited()
+
+        def _import():
+            from katrain.gui.features.commands import (  # noqa: F401
+                DISPATCH_TABLE,
+                analyze_commands,
+                export_commands,
+                game_commands,
+                popup_commands,
+            )
+
+        self._import_with_mkdir_prohibited(_import)
+
+    def test_karte_export_imports_without_kivy_mkdir(self) -> None:
+        """Same regression test for ``katrain.gui.features.karte_export``
+        which is also imported by ``tests/test_karte_export.py`` and
+        other tests using the karte_export module for refactoring
+        assertions.
+        """
+
+        def _import():
+            from katrain.gui.features import karte_export  # noqa: F401
+
+        self._import_with_mkdir_prohibited(_import)

@@ -13,20 +13,20 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from kivy.clock import Clock
-from kivy.core.clipboard import Clipboard
-from kivy.metrics import dp
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
-
 from katrain.core import eval_metrics
 from katrain.core.constants import OUTPUT_ERROR, STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
+    from kivy.clock import Clock  # noqa: F401
+    from kivy.core.clipboard import Clipboard  # noqa: F401
+    from kivy.metrics import dp  # noqa: F401
+    from kivy.uix.boxlayout import BoxLayout  # noqa: F401
+    from kivy.uix.button import Button  # noqa: F401
+    from kivy.uix.label import Label  # noqa: F401
+    from kivy.uix.popup import Popup  # noqa: F401
+
     from katrain.core.game import Game
     from katrain.gui.features.context import FeatureContext
 
@@ -86,6 +86,11 @@ def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """
     # export_karte is executed from _message_loop_thread (NOT the main Kivy thread).
     # Any Kivy UI creation must happen on the main thread.
+    # Phase 173: lazy-import kivy here so importing karte_export does
+    # not pull in kivy at module load time (the kivy __init__ mkdir's
+    # ~/.kivy, which causes FileExistsError on a reused GHA runner).
+    from kivy.clock import Clock
+
     Clock.schedule_once(lambda dt: do_export_karte_ui(ctx, open_settings_callback), 0)
 
 
@@ -96,6 +101,14 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         ctx: FeatureContext providing game, config, controls, log
         open_settings_callback: Callback to open settings dialog if needed
     """
+    # Phase 173: lazy-import kivy UI primitives — see do_export_karte.
+    from kivy.core.clipboard import Clipboard
+    from kivy.metrics import dp
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
+    from kivy.uix.popup import Popup
+
     if not ctx.game:
         return
 
