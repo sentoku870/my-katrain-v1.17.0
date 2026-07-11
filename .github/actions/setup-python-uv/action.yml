@@ -15,28 +15,15 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    # Phase 173: cache ONLY `~/.cache/uv` (portable package downloads).
-    #
-    # The previous configuration also cached `.venv`, which contains
-    # Python interpreter binaries, compiled extension modules, and
-    # `.pyc` bytecode tied to a specific (OS, Python build, package set)
-    # combination. Restoring it via `restore-keys` partial match — or
-    # even via the exact key when pyproject.toml had drifted — could
-    # leave the venv in a state where `uv sync` would not fully
-    # reconcile it. Pytest then crashed during collection with
-    # exit code 102 (an internal error emitted when subprocess
-    # interpretation dies). Forcing a fresh `uv sync` per job is
-    # the only safe option; rebuilding from `~/.cache/uv` is fast
-    # enough (typically 10-15s) that the loss of caching the venv
-    # itself is acceptable.
-    - name: Cache uv download cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/uv
-        key: ${{ runner.os }}-uv-cache-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-uv-cache-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-
-
+    # Phase 173: Disable all uv caching layers (both our actions/cache
+    # and ``astral-sh/setup-uv``'s built-in cache). With caching fully
+    # off, ``uv sync`` re-downloads packages from PyPI every job but
+    # makes the venv state 100% deterministic — eliminating the
+    # risk of pytest dying with exit code 102 during collection when
+    # a stale cached package set is restored after the GitHub Ubuntu
+    # runner image was bumped around 2026-07-10. Package reinstall
+    # takes ~15s on the GHA network and is acceptable for our
+    # 30-minute timeout.
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -46,6 +33,7 @@ runs:
       uses: astral-sh/setup-uv@v5
       with:
         version: "0.7.8"
+        enable-cache: "false"
 
     - name: Install dependencies
       shell: bash
