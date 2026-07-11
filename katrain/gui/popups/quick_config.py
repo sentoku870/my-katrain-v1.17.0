@@ -200,7 +200,7 @@ class NewGamePopup(QuickConfigGui):
             if self.restart.active:
                 self.katrain.log("Restarting Engine", OUTPUT_DEBUG)
                 self.katrain.engine.restart()
-            self.katrain._do_new_game()
+            self.katrain("new-game")
         elif self.mode == "editgame":
             root = self.katrain.game.root
             changed = False
@@ -219,7 +219,7 @@ class NewGamePopup(QuickConfigGui):
                 self.katrain.engine.on_new_game()
                 self.katrain.game.analyze_all_nodes(analyze_fast=True)
         else:  # setup position
-            self.katrain._do_new_game()
+            self.katrain("new-game")
             self.katrain("selfplay-setup", props["game/setup_move"], props["game/setup_advantage"])
         self.update_playerinfo()  # name
         return set()
