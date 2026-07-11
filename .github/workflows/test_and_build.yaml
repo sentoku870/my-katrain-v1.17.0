@@ -101,6 +101,16 @@ jobs:
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
+          # Phase 173: disable pytest plugin auto-loading. The test job
+          # does not use `--cov` or `-n`, so pytest-cov and pytest-xdist
+          # are loaded as registered entry-points but sit idle during
+          # collection. They hook into collection-time events and have
+          # been observed to crash with exit code 102 on the GitHub
+          # runner image (linux kernel + glibc combo) since the Ubuntu
+          # runner image was bumped around 2026-07-10. Disabling
+          # auto-load removes that hook chain; the project's own
+          # ``tests/conftest.py`` still loads correctly.
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
           # Show memory info before tests
           echo "=== Memory before tests ==="
@@ -138,11 +148,17 @@ jobs:
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
+          # Phase 173: same auto-load disable as the test job, but we do
+          # explicitly enable pytest-cov because that is the only plugin
+          # that should be active in this command (the coverage gate is
+          # the whole point of this job).
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
           # Phase 138-D: Initial coverage gate at 40% (baseline observed: 46.87%)
           # Phase 138-D follow-up: Raise to 50% / 60% / 70% incrementally
           # Phase A-11: raise gate from 40% to 60% (observed coverage: 65%)
-          uv run python -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
+          # Phase 173: explicit -p pytest_cov since auto-load is disabled
+          uv run python -m pytest -p pytest_cov tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
           echo "Exit code: $?"
 
       - name: Check package can be built
