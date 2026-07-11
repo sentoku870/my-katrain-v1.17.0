@@ -536,9 +536,7 @@ class KaTrainGui(Screen, KaTrainBase):
         """
         if self.game:
             if message.endswith("popup"):  # gui code needs to run in main kivy thread.
-                Clock.schedule_once(
-                    lambda _dt: dispatch(self, message, *args, **kwargs), -1
-                )
+                Clock.schedule_once(lambda _dt: dispatch(self, message, *args, **kwargs), -1)
             else:  # game related actions
                 self.message_queue.put([self.game.game_id, message, args, kwargs])
 
