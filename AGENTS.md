@@ -273,6 +273,26 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-11: Phase 173 — CI exit-102 修正（部分）: kivy 遅延 import で FileExistsError 解消
+  - 根本原因: `katrain/gui/features/commands/game_commands.py:12` で
+    `from kivy.clock import Clock` をモジュールレベルで行っていた。
+    Kivy の `__init__.py` は副作用として `~/.kivy` と `~/.kivy/mods`
+    を mkdir する。GitHub Actions の Ubuntu-24.04 ランナーは連続
+    ジョブ間でストレージを再利用するため、2 番目のジョブが
+    `FileExistsError` → pytest が exit code 102 として送出
+  - 修正: `game_commands.py` の `Clock` import を `do_new_game`
+    関数内に移動。TYPE_CHECKING ブロックに静的解析用を残置
+  - 同様修正: `katrain/gui/features/karte_export.py` — 7 個の
+    Kivy primitive (`Clock`, `Clipboard`, `dp`, `BoxLayout`,
+    `Button`, `Label`, `Popup`) を全て関数内に移動
+  - テスト: `tests/test_dispatch_table.py` に 4 件の回帰テスト追加
+    - AST scan: モジュールレベルで kivy import がないこと
+    - os.mkdir monkey-patch: kivy mkdir が走らないこと
+  - 既知の残存問題: 上記修正後も CI `exit code 102` が発生する場合がある
+    (再現条件不明 — ローカル環境では再現せず、3.7 秒間の plugin
+    ロード後に即座に死ぬ)。さらなる調査は Phase 174 で実施予定
+  - 一方で lint/typecheck/mypy はすべて pass しているため、
+    ソースコード品質には影響なし
 - 2026-07-11: KaTrainGui ラッパーメソッド全削除（Phase 172）
   - `commands/DISPATCH_TABLE`（35エントリ）への明示的ディスパッチ移行
   - 動的 `getattr(self, f"_do_{...}")` を `_resolve()` ベースに変更し、`message_loop_manager._run()` のメッセージ解決も統一

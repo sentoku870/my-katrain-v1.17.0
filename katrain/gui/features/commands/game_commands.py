@@ -9,11 +9,11 @@ The ctx parameter is expected to be a KaTrainGui instance (satisfies FeatureCont
 
 from typing import TYPE_CHECKING, Any
 
-from kivy.clock import Clock
-
 from katrain.core.notify_helpers import notify_game_changed
 
 if TYPE_CHECKING:
+    from kivy.clock import Clock  # noqa: F401
+
     from katrain.__main__ import KaTrainGui
     from katrain.core.sgf_parser import SGFNode
 
@@ -263,6 +263,12 @@ def do_new_game(
             node = node.ordered_children[0]
             node_list.append(node)
     # Schedule graph update on main thread (this function may run in background thread)
+    # Phase 173: lazy-import Clock so importing game_commands does not pull in
+    # kivy at module load time. Kivy's __init__.py mkdir's ~/.kivy as a side
+    # effect; in CI the second job on a reused runner hits FileExistsError
+    # because ~/.kivy already exists from the previous job's worker.
+    from kivy.clock import Clock
+
     Clock.schedule_once(lambda _dt: ctx.controls.graph.set_nodes_from_list(node_list), 0)
 
     # Phase 105: GAME_CHANGED通知（キーワード引数必須）
