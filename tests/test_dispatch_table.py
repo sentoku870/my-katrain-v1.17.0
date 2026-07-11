@@ -1,4 +1,4 @@
-"""Phase 172: Tests for the command DISPATCH_TABLE.
+"""Phase 172/173: Tests for the command DISPATCH_TABLE.
 
 These tests guarantee:
 1. Every ``do_*`` function exported from ``katrain.gui.features.commands.*``
@@ -283,3 +283,93 @@ class TestRemovedWrappers:
                     if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == "_do_update_state":
                         has_do_update = True
         assert has_do_update, "_do_update_state was removed but message_loop_manager still needs it"
+
+
+class TestCommandsDoNotImportKivyAtLoad:
+    """Phase 173: regression test for CI exit-102.
+
+    The CI runner image's ``/home/runner/.kivy`` directory is created
+    the first time Kivy's ``__init__.py`` runs, and reused on
+    subsequent jobs. When pytest-xdist (or any other sequential
+    layer, including the smoke-test-then-full-run workflow)
+    triggers two simultaneous imports of ``katrain.gui.features.commands``
+    in different processes, the second one hits ``FileExistsError``
+    on ``os.mkdir('/home/runner/.kivy')`` and pytest's controller
+    surfaces that as exit code 102 mid-collection.
+
+    Root cause was ``from kivy.clock import Clock`` at module level
+    inside ``katrain/gui/features/commands/game_commands.py``. Every
+    command-dispatching path (``__call__``, ``message_loop_manager``,
+    xdist workers, test collection that imports commands for
+    refactoring assertions) loads this module, which in turn loaded
+    Kivy.
+
+    These tests assert that ``commands`` package modules can be
+    imported without Kivy's lazy ``os.mkdir`` of user dirs firing.
+    Kivy can still be imported lazily inside individual ``do_*``
+    functions where needed.
+    """
+
+    def _import_commands_with_mkdir_prohibited(self) -> None:
+        import os
+
+        real_mkdir = os.mkdir
+
+        def fake_mkdir(*args, **kwargs):
+            path = args[0] if args else kwargs.get("name")
+            if isinstance(path, str) and "/.kivy" in path:
+                raise AssertionError(
+                    f"Kivy mkdir fired during commands import: {path!r}"
+                )
+            return real_mkdir(*args, **kwargs)
+
+        os.mkdir = fake_mkdir
+        try:
+            from katrain.gui.features.commands import (  # noqa: F401
+                DISPATCH_TABLE,
+                analyze_commands,
+                export_commands,
+                game_commands,
+                popup_commands,
+            )
+        finally:
+            os.mkdir = real_mkdir
+
+    def test_game_commands_module_does_not_import_kivy(self) -> None:
+        """Phase 173 root-cause fix: ``game_commands`` previously did
+        ``from kivy.clock import Clock`` at module level. Verify the
+        import statement has been moved out of module scope so pytest
+        collection does not pull in Kivy as a side effect.
+        """
+        import ast
+        from pathlib import Path
+
+        gc_path = Path(game_commands.__file__)
+        source = gc_path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+
+        module_level_kivy_imports: list[str] = []
+        for stmt in tree.body:
+            # Only consider module-scope statements (indentation level 0).
+            if isinstance(stmt, ast.Import):
+                for alias in stmt.names:
+                    if alias.name.startswith("kivy"):
+                        module_level_kivy_imports.append(alias.name)
+            elif isinstance(stmt, ast.ImportFrom):
+                if stmt.module and stmt.module.startswith("kivy"):
+                    module_level_kivy_imports.append(stmt.module)
+        assert module_level_kivy_imports == [], (
+            f"game_commands.py imports Kivy at module level: "
+            f"{module_level_kivy_imports}; this triggers mkdir('~/.kivy') "
+            f"as a side effect and causes exit 102 in CI when the second "
+            f"job hits a runner with ~/.kivy already populated."
+        )
+
+    def test_commands_modules_import_without_kivy_mkdir(self) -> None:
+        """End-to-end: importing the four command submodules plus the
+        DISPATCH_TABLE itself must not trigger Kivy's lazy mkdir of
+        ``~/.kivy/mods``. Without this fix pytest collection dies with
+        ``FileExistsError`` on the GitHub Actions Ubuntu-24.04 runner.
+        """
+        # The fixture monkey-patches os.mkdir to raise if Kivy fires.
+        self._import_commands_with_mkdir_prohibited()
