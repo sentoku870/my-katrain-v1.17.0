@@ -35,6 +35,17 @@ runs:
         version: "0.7.8"
         enable-cache: "false"
 
+    # Phase 173: wipe any leftover .venv from a previous failed job.
+    # Some GHA runners reuse storage between jobs even though each
+    # run is supposed to be fresh; .venv from a prior abort could be
+    # picked up by ``uv sync`` and trigger an internal state
+    # mismatch that pytest then trips on during collection.
+    - name: Wipe stale .venv
+      shell: bash
+      run: |
+        rm -rf .venv
+        echo "Cleared .venv"
+
     - name: Install dependencies
       shell: bash
       run: |
