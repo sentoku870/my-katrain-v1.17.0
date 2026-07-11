@@ -101,22 +101,27 @@ jobs:
           SDL_VIDEODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
-          # Phase 173: disable pytest plugin auto-loading. The test job
-          # does not use `--cov` or `-n`, so pytest-cov and pytest-xdist
-          # are loaded as registered entry-points but sit idle during
-          # collection. They hook into collection-time events and have
-          # been observed to crash with exit code 102 on the GitHub
-          # runner image (linux kernel + glibc combo) since the Ubuntu
-          # runner image was bumped around 2026-07-10. Disabling
-          # auto-load removes that hook chain; the project's own
-          # ``tests/conftest.py`` still loads correctly.
+          # Phase 173: disable pytest plugin auto-loading (see long-form
+          # commit message). The test job does not use --cov or -n, so
+          # pytest-cov and pytest-xdist are loaded as registered
+          # entry-points but sit idle during collection. On the
+          # GitHub-hosted Ubuntu runner image (~2026-07-10 image bump)
+          # their collection hooks emit exit code 102. Disabling
+          # auto-load removes that hook chain; ``tests/conftest.py``
+          # still loads because pytest always loads the rootdir conftest.
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
         run: |
           # Show memory info before tests
           echo "=== Memory before tests ==="
           free -m || true
-          # Run tests with verbose output and no timeout hiding
-          uv run python -m pytest tests -v --tb=short 2>&1
+          # Phase 173: explicit -p no:cacheprovider stops pytest from
+          # reading/writing .pytest_cache on the runner. On the GHA
+          # Ubuntu image around 2026-07-10 the cache-provider plugin
+          # combined with pytest-xdist hanging hooks resulted in the
+          # process being killed at exit code 102 during collection.
+          # Real run
+          echo "=== Running tests ==="
+          uv run python -m pytest -p no:cacheprovider tests -v --tb=short 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true
