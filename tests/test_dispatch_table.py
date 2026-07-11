@@ -43,9 +43,10 @@ def _func_is_registered(func_name: str) -> bool:
         _DISPATCH_KEYS,
         _KEY_TO_FUNC_NAME,
     )
+
     if not func_name.startswith("do_"):
         return False
-    key = func_name[len("do_"):]
+    key = func_name[len("do_") :]
     if key in _DISPATCH_KEYS:
         return True
     return func_name in _KEY_TO_FUNC_NAME.values()
@@ -82,9 +83,7 @@ class TestDispatchTableCoverage:
         If you intentionally remove a command, update both this number
         and the command's tests/usage together.
         """
-        assert len(DISPATCH_TABLE) >= 35, (
-            f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
-        )
+        assert len(DISPATCH_TABLE) >= 35, f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
 
 
 class TestDispatchFunction:
@@ -264,9 +263,7 @@ class TestRemovedWrappers:
                         found_in_class.add(item.name)
 
         survivors = self.EXPECTED_ABSENT_WRAPPERS & found_in_class
-        assert not survivors, (
-            f"_do_* wrappers still present in KaTrainGui: {sorted(survivors)}"
-        )
+        assert not survivors, f"_do_* wrappers still present in KaTrainGui: {sorted(survivors)}"
 
     def test_do_update_state_is_kept(self) -> None:
         """``_do_update_state`` is intentionally retained (called by
@@ -283,11 +280,6 @@ class TestRemovedWrappers:
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef) and node.name == "KaTrainGui":
                 for item in ast.iter_child_nodes(node):
-                    if (
-                        isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-                        and item.name == "_do_update_state"
-                    ):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == "_do_update_state":
                         has_do_update = True
-        assert has_do_update, (
-            "_do_update_state was removed but message_loop_manager still needs it"
-        )
+        assert has_do_update, "_do_update_state was removed but message_loop_manager still needs it"
