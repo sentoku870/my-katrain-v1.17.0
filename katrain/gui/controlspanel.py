@@ -8,7 +8,8 @@ from kivy.properties import ObjectProperty, OptionProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
-from katrain.core.beginner import HintCategory, get_beginner_hint_cached
+from katrain.core.beginner import get_beginner_hint_cached, get_summary_hint_cached
+from katrain.core.beginner.detector_freedom import count_freedom_candidates
 from katrain.core.constants import (
     MODE_ANALYZE,
     MODE_PLAY,
@@ -283,52 +284,30 @@ class ControlsPanel(BoxLayout):
         # 2) 局面難易度（親ノードの candidate_moves からざっくり評価）
         parent = getattr(self.active_comment_node, "parent", None)
         candidate_moves = getattr(parent, "candidate_moves", None) if parent is not None else None
-        if candidate_moves:
-            good_rel_threshold = 1.0
-            near_rel_threshold = 2.0
+        # Phase 179.2: delegate counting to the shared helper so this numerical
+        # row and the ``FREEDOM_*`` hint cannot disagree on which candidates
+        # qualify as "good" / "near".
+        n_good, n_near = count_freedom_candidates(candidate_moves)
 
-            good_moves = []
-            near_moves = []
+        if n_good or n_near:
+            if n_good <= 1 and n_near <= 2:
+                difficulty_label = "一択"
+                difficulty_score = 1.0
+            elif n_good <= 2:
+                difficulty_label = "狭い"
+                difficulty_score = 0.8
+            elif n_good >= 4 or n_near >= 6:
+                difficulty_label = "広い"
+                difficulty_score = 0.2
+            else:
+                difficulty_label = "普通"
+                difficulty_score = 0.5
 
-            for mv in candidate_moves:
-                rel = mv.get("relativePointsLost")
-                if rel is None:
-                    rel = mv.get("pointsLost")
-                if rel is None:
-                    continue
-
-                rel_f = float(rel)
-                if rel_f <= good_rel_threshold:
-                    good_moves.append(rel_f)
-                if rel_f <= near_rel_threshold:
-                    near_moves.append(rel_f)
-
-            difficulty_label = None
-            difficulty_score = None
-
-            if good_moves or near_moves:
-                n_good = len(good_moves)
-                n_near = len(near_moves)
-
-                if n_good <= 1 and n_near <= 2:
-                    difficulty_label = "一択"
-                    difficulty_score = 1.0
-                elif n_good <= 2:
-                    difficulty_label = "狭い"
-                    difficulty_score = 0.8
-                elif n_good >= 4 or n_near >= 6:
-                    difficulty_label = "広い"
-                    difficulty_score = 0.2
-                else:
-                    difficulty_label = "普通"
-                    difficulty_score = 0.5
-
-            if difficulty_label:
-                heading = "手の自由度"
-                if difficulty_score is not None:
-                    detail_lines.append(f"{heading}: {difficulty_label}（{difficulty_score:.2f}）")
-                else:
-                    detail_lines.append(f"{heading}: {difficulty_label}")
+            heading = "手の自由度"
+            if difficulty_score is not None:
+                detail_lines.append(f"{heading}: {difficulty_label}（{difficulty_score:.2f}）")
+            else:
+                detail_lines.append(f"{heading}: {difficulty_label}")
 
         # 3) 局面難易度（Phase 12.5）
         # active_comment_node 自体の難易度を表示（既存ミス分類と同じノード）
@@ -350,6 +329,21 @@ class ControlsPanel(BoxLayout):
                 hint_text = self._format_beginner_hint(hint)
                 if hint_text:
                     detail_lines.append(hint_text)
+
+        # 4b) Summary Hint (Phase 179)
+        # Mistake / Freedom / Difficulty / KataGo summary hint derived
+        # from the existing numerical rows. Independent per-category
+        # toggles (default ON).
+        if self._should_show_summary_hints():
+            summary_flags = self._summary_hint_flags()
+            summary_hint = get_summary_hint_cached(
+                self.active_comment_node,
+                summary_flags=summary_flags,
+            )
+            if summary_hint:
+                summary_text = self._format_beginner_hint(summary_hint)
+                if summary_text:
+                    detail_lines.append(summary_text)
 
         # 5) info テキストの末尾に追記
         if detail_lines:
@@ -383,8 +377,37 @@ class ControlsPanel(BoxLayout):
         # Disable in PLAY mode (avoid cheating)
         return bool(katrain.play_analyze_mode != MODE_PLAY)
 
+    def _should_show_summary_hints(self) -> bool:
+        """Phase 179: gate for the summary hint layer.
+
+        Summary hints share the master ``beginner_hints/enabled`` switch
+        with structural hints so users can turn the whole feature off in
+        one place, but each category group has its own per-toggle.
+        """
+        return self._should_show_beginner_hints()
+
+    def _summary_hint_flags(self) -> dict[str, bool]:
+        """Phase 179 + 182 + 186: per-category-group flags for summary hint generation."""
+        katrain = self.katrain
+        if not katrain:
+            return {}
+        return {
+            "summary_mistake": bool(katrain.config("beginner_hints/summary_mistake", True)),
+            "summary_freedom": bool(katrain.config("beginner_hints/summary_freedom", True)),
+            "summary_difficulty": bool(katrain.config("beginner_hints/summary_difficulty", True)),
+            "katago_uncertain": bool(katrain.config("beginner_hints/katago_uncertain", True)),
+            "summary_ownership": bool(katrain.config("beginner_hints/summary_ownership", True)),
+            "summary_policy": bool(katrain.config("beginner_hints/summary_policy", True)),
+            "curator_hint": bool(katrain.config("beginner_hints/curator_hint", True)),
+        }
+
     def _format_beginner_hint(self, hint: Any) -> str:
-        """Format a BeginnerHint for display (Phase 91-92)
+        """Format a BeginnerHint for display (Phase 91-92 + Phase 179).
+
+        Phase 179.1: the previous 62-line ``category_keys`` + ``fallbacks``
+        double dict is replaced by ``HintCategory.i18n_namespace``,
+        ``fallback_title``, and ``fallback_body`` properties defined
+        alongside the enum (see ``core/beginner/models.py``).
 
         Args:
             hint: BeginnerHint instance
@@ -394,47 +417,16 @@ class ControlsPanel(BoxLayout):
         """
         from katrain.core.lang import i18n
 
-        # Map category to i18n key (Phase 91: 4 detectors, Phase 92: 6 MeaningTag)
-        category_keys = {
-            # Phase 91: Priority detectors
-            HintCategory.SELF_ATARI: "beginner_hint:self_atari",
-            HintCategory.IGNORE_ATARI: "beginner_hint:ignore_atari",
-            HintCategory.MISSED_CAPTURE: "beginner_hint:missed_capture",
-            HintCategory.CUT_RISK: "beginner_hint:cut_risk",
-            # Phase 92: MeaningTag fallbacks
-            HintCategory.LOW_LIBERTIES: "beginner_hint:low_liberties",
-            HintCategory.SELF_CAPTURE_LIKE: "beginner_hint:self_capture_like",
-            HintCategory.BAD_SHAPE: "beginner_hint:bad_shape",
-            HintCategory.HEAVY_GROUP: "beginner_hint:heavy_group",
-            HintCategory.MISSED_DEFENSE: "beginner_hint:missed_defense",
-            HintCategory.URGENT_VS_BIG: "beginner_hint:urgent_vs_big",
-        }
+        category = hint.category
+        namespace = category.i18n_namespace
 
-        key = category_keys.get(hint.category)
-        if not key:
-            return ""
+        title = i18n._(f"{namespace}:title")
+        body = i18n._(f"{namespace}:body")
 
-        # Get localized title
-        title = i18n._(f"{key}:title")
-        body = i18n._(f"{key}:body")
-
-        # If i18n key is not found (returns key), use fallback
+        # If i18n key is not found (returns key), use English fallback
         if title.startswith("beginner_hint:"):
-            fallbacks = {
-                # Phase 91: Priority detectors
-                HintCategory.SELF_ATARI: ("Dangerous Move", "Playing here puts your group in atari."),
-                HintCategory.IGNORE_ATARI: ("Atari Ignored", "Your group is still in atari."),
-                HintCategory.MISSED_CAPTURE: ("Missed Capture", "You could have captured opponent's stones."),
-                HintCategory.CUT_RISK: ("Cut Risk", "Your groups could be cut apart here."),
-                # Phase 92: MeaningTag fallbacks
-                HintCategory.LOW_LIBERTIES: ("Low Liberties", "This group has few liberties and is in danger."),
-                HintCategory.SELF_CAPTURE_LIKE: ("Life and Death", "This position involves life and death of stones."),
-                HintCategory.BAD_SHAPE: ("Bad Shape", "This is an inefficient shape."),
-                HintCategory.HEAVY_GROUP: ("Heavy Stones", "Your stones have become heavy."),
-                HintCategory.MISSED_DEFENSE: ("Weak Connection", "Your stones' connection is weak."),
-                HintCategory.URGENT_VS_BIG: ("Slow Move", "There are bigger moves elsewhere."),
-            }
-            title, body = fallbacks.get(hint.category, ("Hint", ""))
+            title = category.fallback_title
+            body = category.fallback_body
 
         return f"[Hint] {title}: {body}"
 

@@ -22,6 +22,8 @@ my
 logs
 callgrind.*
 profile*
+!katrain/core/curator/profile.py
+!katrain/core/curator/__pycache__/
 cpp/out
 .vs
 dist_sgf

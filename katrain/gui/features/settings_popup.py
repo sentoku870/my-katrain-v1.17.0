@@ -92,6 +92,13 @@ def do_mykatrain_settings_popup(
         selected_skill_preset=[ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET],
         selected_pv_filter=[ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL],
         selected_beginner_hints=[ctx.config("beginner_hints/enabled", False)],
+        selected_summary_mistake=[ctx.config("beginner_hints/summary_mistake", True)],
+        selected_summary_freedom=[ctx.config("beginner_hints/summary_freedom", True)],
+        selected_summary_difficulty=[ctx.config("beginner_hints/summary_difficulty", True)],
+        selected_katago_uncertain=[ctx.config("beginner_hints/katago_uncertain", True)],
+        selected_summary_ownership=[ctx.config("beginner_hints/summary_ownership", True)],
+        selected_summary_policy=[ctx.config("beginner_hints/summary_policy", True)],
+        selected_curator_hint=[ctx.config("beginner_hints/curator_hint", True)],
         selected_format=[current_settings.get("karte_format", "both")],
         selected_opp_info=[current_settings.get("opponent_info_mode", "auto")],
     )
@@ -204,7 +211,17 @@ def do_mykatrain_settings_popup(
     def save_settings(*_args: Any) -> None:
         """Save all settings sections (Phase 171: Leela セクション削除)。"""
         _save_general_settings(ctx, state.selected_skill_preset[0], state.selected_pv_filter[0])
-        _save_beginner_hints_settings(ctx, state.selected_beginner_hints[0])
+        _save_beginner_hints_settings(
+            ctx,
+            state.selected_beginner_hints[0],
+            summary_mistake=state.selected_summary_mistake[0],
+            summary_freedom=state.selected_summary_freedom[0],
+            summary_difficulty=state.selected_summary_difficulty[0],
+            katago_uncertain=state.selected_katago_uncertain[0],
+            summary_ownership=state.selected_summary_ownership[0],
+            summary_policy=state.selected_summary_policy[0],
+            curator_hint=state.selected_curator_hint[0],
+        )
         new_engine_value = state.selected_engine[0]
         _save_engine_settings(ctx, new_engine_value)
         _save_mykatrain_settings(

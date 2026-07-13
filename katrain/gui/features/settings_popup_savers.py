@@ -28,10 +28,36 @@ def _save_general_settings(ctx: FeatureContext, skill_preset: str, pv_filter_lev
     ctx.save_config("general")
 
 
-def _save_beginner_hints_settings(ctx: FeatureContext, enabled: bool) -> None:
-    """Save beginner_hints enabled state (Phase 91)."""
+def _save_beginner_hints_settings(
+    ctx: FeatureContext,
+    enabled: bool,
+    *,
+    summary_mistake: bool = True,
+    summary_freedom: bool = True,
+    summary_difficulty: bool = True,
+    katago_uncertain: bool = True,
+    summary_ownership: bool = True,
+    summary_policy: bool = True,
+    curator_hint: bool = True,
+) -> None:
+    """Save beginner_hints section (Phase 91 + Phase 179 + Phase 182 + 186).
+
+    Phase 179: 4 per-category-group toggles persisted alongside master.
+    Phase 182: 2 additional toggles (``summary_ownership``,
+    ``summary_policy``).
+    Phase 186: ``curator_hint`` toggle for CURATOR_WEAK_AXIS.
+
+    All default to True; missing keys keep their previous value.
+    """
     beginner_hints_config = ctx.config("beginner_hints") or {}
     beginner_hints_config["enabled"] = enabled
+    beginner_hints_config["summary_mistake"] = bool(summary_mistake)
+    beginner_hints_config["summary_freedom"] = bool(summary_freedom)
+    beginner_hints_config["summary_difficulty"] = bool(summary_difficulty)
+    beginner_hints_config["katago_uncertain"] = bool(katago_uncertain)
+    beginner_hints_config["summary_ownership"] = bool(summary_ownership)
+    beginner_hints_config["summary_policy"] = bool(summary_policy)
+    beginner_hints_config["curator_hint"] = bool(curator_hint)
     ctx.set_config_section("beginner_hints", beginner_hints_config)
     ctx.save_config("beginner_hints")
 

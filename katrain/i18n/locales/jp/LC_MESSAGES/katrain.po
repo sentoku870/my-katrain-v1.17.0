@@ -1406,7 +1406,7 @@ msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 
 msgid "mykatrain:settings:beginner_hints_desc"
-msgstr "自アタリ、アタリ放置、取り逃し、切断リスクの警告を表示（レビューモードのみ）"
+msgstr "初心者向けヒントを表示（レビューモードのみ）。自アタリ・アタリ放置・取り逃し・切断リスクの警告に加え、ミス分類・手の自由度・局面難易度・KataGo不確実性のサマリーを 1 行で示します。"
 
 msgid "beginner_hint:self_atari:title"
 msgstr "あぶない手"
@@ -1497,6 +1497,165 @@ msgstr "もっと大きな場所があります。"
 
 msgid "beginner_hint:urgent_vs_big:why"
 msgstr "大場より急場を優先しましょう。"
+
+msgid "beginner_hint:mistake_blunder:title"
+msgstr "致命的なミス"
+
+msgid "beginner_hint:mistake_blunder:body"
+msgstr "形勢が大きく傾く一手でした。別の候補手も検討しましょう。"
+
+msgid "beginner_hint:mistake_blunder:why"
+msgstr "大悪手は形勢を決定づけることが多く、勝敗に直結します。"
+
+msgid "beginner_hint:mistake_mistake:title"
+msgstr "損な手"
+
+msgid "beginner_hint:mistake_mistake:body"
+msgstr "より良い候補手がありました。"
+
+msgid "beginner_hint:mistake_mistake:why"
+msgstr "小さな損でも繰り返すと形勢に影響します。"
+
+msgid "beginner_hint:mistake_good:title"
+msgstr "良い手"
+
+msgid "beginner_hint:mistake_good:body"
+msgstr "終盤で的確な一手です。この調子を維持しましょう。"
+
+msgid "beginner_hint:mistake_good:why"
+msgstr "ヨセでの精度が勝敗を分けます。"
+
+msgid "beginner_hint:freedom_only_move:title"
+msgstr "一択"
+
+msgid "beginner_hint:freedom_only_move:body"
+msgstr "ここに打つ手がほぼ唯一の正解でした。"
+
+msgid "beginner_hint:freedom_only_move:why"
+msgstr "候補手が一つのときは大きく踏み込むべきです。"
+
+msgid "beginner_hint:freedom_narrow:title"
+msgstr "選択肢が狭い"
+
+msgid "beginner_hint:freedom_narrow:body"
+msgstr "有力な手が 2〜3 個に絞られる場面でした。"
+
+msgid "beginner_hint:freedom_narrow:why"
+msgstr "選択肢が絞られているときは比較検討が重要です。"
+
+msgid "beginner_hint:freedom_wide:title"
+msgstr "選択肢が多い"
+
+msgid "beginner_hint:freedom_wide:body"
+msgstr "複数の有力手があり、判断の難しい場面でした。"
+
+msgid "beginner_hint:freedom_wide:why"
+msgstr "有力手が多いときは大局観で方向を決めます。"
+
+msgid "beginner_hint:difficulty_tricky:title"
+msgstr "難しい局面"
+
+msgid "beginner_hint:difficulty_tricky:body"
+msgstr "KataGo も読みが分かれる難しい一手でした。慎重に。"
+
+msgid "beginner_hint:difficulty_tricky:why"
+msgstr "難しい局面は一手ミスが致命的になりやすいです。"
+
+msgid "beginner_hint:difficulty_calm:title"
+msgstr "穏やかな局面"
+
+msgid "beginner_hint:difficulty_calm:body"
+msgstr "KataGo から見ても読みやすい局面でした。"
+
+msgid "beginner_hint:difficulty_calm:why"
+msgstr "易しい局面こそ着実に手を重ねましょう。"
+
+msgid "beginner_hint:katago_uncertain:title"
+msgstr "KataGo も読みにくい局面"
+
+msgid "beginner_hint:katago_uncertain:body"
+msgstr "形勢の振れ幅が大きい複雑な場面です。"
+
+msgid "beginner_hint:katago_uncertain:why"
+msgstr "AI も読み切れない局面では、形の安定を優先しましょう。"
+
+msgid "beginner_hint:ownership_dominant:title"
+msgstr "片側の territory が優勢"
+
+msgid "beginner_hint:ownership_dominant:body"
+msgstr "KataGo の予想 territory はほぼ片側に偏っています。"
+
+msgid "beginner_hint:ownership_dominant:why"
+msgstr "形勢が読み切れているときは無理をせず、着実に手を重ねましょう。"
+
+msgid "beginner_hint:policy_conflict:title"
+msgstr "KataGo も迷い中"
+
+msgid "beginner_hint:policy_conflict:body"
+msgstr "最有力の手の確信度が低く、複数の候補が拮抗しています。"
+
+msgid "beginner_hint:policy_conflict:why"
+msgstr "複数の候補が並ぶときは大局観で方向を決めると判断が楽になります。"
+
+msgid "beginner_hint:policy_confident:title"
+msgstr "KataGo は自信あり"
+
+msgid "beginner_hint:policy_confident:body"
+msgstr "KataGo の最有力手がはっきりしており、自信を持って推めています。"
+
+msgid "beginner_hint:policy_confident:why"
+msgstr "AI の推奨が明確なときは、その手を軸に考えると無駄がありません。"
+
+msgid "beginner_hint:curator_weak_axis:title"
+msgstr "あなたの弱点"
+
+msgid "beginner_hint:curator_weak_axis:body"
+msgstr "この手のミス類型はあなたの棋譜全体で頻出しています。"
+
+msgid "beginner_hint:curator_weak_axis:why"
+msgstr "繰り返し現れるミスパターンは集中的に改善すると効果が出やすい弱点です。"
+
+msgid "mykatrain:settings:curator_hint"
+msgstr "Curator 弱点ヒント:"
+
+msgid "mykatrain:settings:curator_hint_desc"
+msgstr "バッチ解析の結果から、あなたの棋譜全体で頻出するミスパターンを 1 行で指摘"
+
+msgid "mykatrain:settings:summary_ownership"
+msgstr "territory 予想ヒント:"
+
+msgid "mykatrain:settings:summary_ownership_desc"
+msgstr "KataGo の予想 territory が片側に偏る (85% 以上) とき 1 行で指摘"
+
+msgid "mykatrain:settings:summary_policy"
+msgstr "KataGo policy ヒント:"
+
+msgid "mykatrain:settings:summary_policy_desc"
+msgstr "KataGo 最有力手の確信度に応じて「迷い中」「自信あり」を 1 行で指摘"
+
+msgid "mykatrain:settings:summary_mistake"
+msgstr "ミス分類のヒント:"
+
+msgid "mykatrain:settings:summary_mistake_desc"
+msgstr "点数ロスに応じて「致命的なミス」「損な手」「良い手」を 1 行で指摘"
+
+msgid "mykatrain:settings:summary_freedom"
+msgstr "手の自由度のヒント:"
+
+msgid "mykatrain:settings:summary_freedom_desc"
+msgstr "候補手数に応じて「一択」「狭い」「多い」を 1 行で指摘"
+
+msgid "mykatrain:settings:summary_difficulty"
+msgstr "局面難易度のヒント:"
+
+msgid "mykatrain:settings:summary_difficulty_desc"
+msgstr "KataGo の難易度指標に応じて「難しい局面」「穏やかな局面」を 1 行で指摘"
+
+msgid "mykatrain:settings:katago_uncertain"
+msgstr "KataGo 不確実性ヒント:"
+
+msgid "mykatrain:settings:katago_uncertain_desc"
+msgstr "KataGo の scoreStdev が高いとき「KataGo も読みにくい局面」を指摘"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"

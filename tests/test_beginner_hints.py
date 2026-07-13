@@ -364,9 +364,23 @@ class TestPhase92HintCategories:
         assert HintCategory.MISSED_DEFENSE.value == "missed_defense"
         assert HintCategory.URGENT_VS_BIG.value == "urgent_vs_big"
 
-    def test_total_hint_categories_is_ten(self):
-        """Should have 10 total hint categories (4 Phase 91 + 6 Phase 92)"""
-        assert len(HintCategory) == 10
+    def test_total_hint_categories_is_twenty_three(self):
+        """Should have 23 total hint categories.
+
+        Composition:
+        - 4 Phase 91 structural detectors (SELF_ATARI, IGNORE_ATARI,
+          MISSED_CAPTURE, CUT_RISK)
+        - 6 Phase 92 MeaningTag fallbacks (LOW_LIBERTIES,
+          SELF_CAPTURE_LIKE, BAD_SHAPE, HEAVY_GROUP, MISSED_DEFENSE,
+          URGENT_VS_BIG)
+        - 9 Phase 179 summary hints (MISTAKE_BLUNDER/MISTAKE/GOOD,
+          FREEDOM_ONLY_MOVE/NARROW/WIDE, DIFFICULTY_TRICKY/CALM,
+          KATAGO_UNCERTAIN)
+        - 3 Phase 182 summary hints (OWNERSHIP_DOMINANT,
+          POLICY_CONFLICT, POLICY_CONFIDENT)
+        - 1 Phase 186 summary hint (CURATOR_WEAK_AXIS)
+        """
+        assert len(HintCategory) == 23
 
 
 class TestMeaningTagHintFallback:

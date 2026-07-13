@@ -233,14 +233,26 @@ def _get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     if not analysis:
         return None
 
+    # Phase 186 followup: defensive coercion. ``analysis.get("root", {})``
+    # only returns the default when the key is absent; if the key is
+    # present but its value is explicitly ``None`` (which happens during
+    # the very first KataGo query before the analysis payload is
+    # populated, or on a node that was created but never queried),
+    # ``"visits" in root`` raises ``TypeError: argument of type
+    # 'NoneType' is not iterable``. The ``or {}`` makes both "missing"
+    # and "present-but-null" behave as an empty mapping. The error was
+    # observed in the wild during initial KataGo startup before
+    # ``analyze`` finished, surfacing through Beginner Hints's
+    # ``_compute_summary_context``.
+
     # KataGo 標準: rootInfo.visits
-    root_info = analysis.get("rootInfo", {})
+    root_info = analysis.get("rootInfo") or {}
     if "visits" in root_info:
         visits_value = root_info.get("visits")
         return int(visits_value) if visits_value is not None else None
 
     # KaTrain 内部フォーマット: root.visits
-    root = analysis.get("root", {})
+    root = analysis.get("root") or {}
     if "visits" in root:
         visits_value = root.get("visits")
         return int(visits_value) if visits_value is not None else None
