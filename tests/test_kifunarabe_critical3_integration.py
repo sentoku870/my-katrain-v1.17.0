@@ -1,15 +1,12 @@
-"""Phase 179-B1 / B-2 / D: integration tests for Critical 3 + important-only mode.
+"""Phase 179-B1 / B-2: integration tests for Critical 3.
 
-The tests cover three groups:
+The tests cover two groups:
 
 * **Critical 3 aggregation** (B-2): a session configured with a
   ``critical_3_set`` correctly accumulates
   ``critical_3_correct/wrong/skipped`` counters.
 * **Critical 3 hit-rate summary** (B-2): ``KifunarabeSummary`` exposes
   ``critical_3_hit_rate`` derived from those counters.
-* **Important-only config** (D): ``KifunarabeConfig`` validates the
-  new ``critical_only_threshold`` field and the walker is a no-op
-  when threshold == 0.
 
 These tests intentionally do **not** exercise the GUI (Kivy popup,
 spinner wiring). The popup is unit-tested by importing its module to
@@ -20,178 +17,6 @@ from __future__ import annotations
 
 import unittest
 from typing import Any
-
-
-class TestKifunarabeConfigCriticalThreshold(unittest.TestCase):
-    def test_default_is_zero(self) -> None:
-        from katrain.core.study.kifunarabe import KifunarabeConfig
-
-        cfg = KifunarabeConfig()
-        self.assertEqual(cfg.critical_only_threshold, 0.0)
-
-    def test_invalid_threshold_rejected(self) -> None:
-        from katrain.core.study.kifunarabe import KifunarabeConfig
-
-        with self.assertRaises(ValueError):
-            KifunarabeConfig(critical_only_threshold=0.3)  # not in VALID_CRITICAL_THRESHOLDS
-
-    def test_all_valid_thresholds_accepted(self) -> None:
-        from katrain.core.study.kifunarabe import (
-            VALID_CRITICAL_THRESHOLDS,
-            KifunarabeConfig,
-        )
-
-        for t in VALID_CRITICAL_THRESHOLDS:
-            cfg = KifunarabeConfig(critical_only_threshold=t)
-            self.assertEqual(cfg.critical_only_threshold, t)
-
-
-class TestCollectImportantMoves(unittest.TestCase):
-    def test_threshold_zero_returns_empty(self) -> None:
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        self.assertEqual(collect_important_moves(object(), 0.0), [])
-
-    def test_negative_threshold_returns_empty(self) -> None:
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        self.assertEqual(collect_important_moves(object(), -1.0), [])
-
-    def test_none_game_returns_empty(self) -> None:
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        self.assertEqual(collect_important_moves(None, 1.0), [])
-
-    def test_walks_mainline_and_collects_important_moves(self) -> None:
-        """Phase 182-A: the walker must traverse the mainline.
-
-        Previously ``node.next(only_mainline=True)`` returned ``None``
-        because ``GameNode`` has no ``next`` method, so the walker
-        always exited immediately. This test feeds the walker a
-        synthetic tree with known ``score_lead`` deltas and verifies
-        that the returned move_numbers match the threshold.
-        """
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        class _Analysis:
-            def __init__(self, score_lead: float) -> None:
-                self.score_lead = score_lead
-
-        class _Node:
-            def __init__(
-                self,
-                move_number: int,
-                score_lead: float,
-                first_child: _Node | None = None,
-                parent: _Node | None = None,
-            ) -> None:
-                self.move_number = move_number
-                self.analysis = _Analysis(score_lead)
-                self._first_child = first_child
-                self.parent = parent
-
-            @property
-            def ordered_children(self) -> list:
-                return [self._first_child] if self._first_child is not None else []
-
-        # Build a mainline of 5 nodes; score_lead values chosen so each
-        # threshold produces a distinct expected output:
-        #   root   : 0.0   (move_number=0, filtered out)
-        #   node 1 : 0.0   (delta 0.0 from root - flat)
-        #   node 2 : 0.6   (delta 0.6 - exceeds 0.5 only)
-        #   node 3 : 1.0   (delta 0.4 - flat-ish)
-        #   node 4 : 1.0   (delta 0.0 - flat)
-        #   node 5 : 2.3   (delta 1.3 - exceeds both 0.5 and 1.0)
-        n5 = _Node(5, 2.3)
-        n4 = _Node(4, 1.0, first_child=n5)
-        n3 = _Node(3, 1.0, first_child=n4)
-        n2 = _Node(2, 0.6, first_child=n3)
-        n1 = _Node(1, 0.0, first_child=n2)
-        root = _Node(0, 0.0, first_child=n1)
-        for n, p in [(n1, root), (n2, n1), (n3, n2), (n4, n3), (n5, n4)]:
-            n.parent = p
-
-        class _Game:
-            current_node = root
-
-        # Threshold 0.5 → nodes 2 and 5 qualify.
-        self.assertEqual(collect_important_moves(_Game(), 0.5), [2, 5])
-
-        # Threshold 1.0 → only node 5 qualifies (delta 1.3).
-        self.assertEqual(collect_important_moves(_Game(), 1.0), [5])
-
-        # Threshold 0.0 (off) → empty regardless of tree.
-        self.assertEqual(collect_important_moves(_Game(), 0.0), [])
-
-        # Threshold 5.0 → nothing qualifies.
-        self.assertEqual(collect_important_moves(_Game(), 5.0), [])
-
-    def test_walker_stops_at_end_of_mainline(self) -> None:
-        """Walker terminates cleanly when there are no more children."""
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        class _Analysis:
-            score_lead = 1.0
-
-        class _Leaf:
-            move_number = 1
-            analysis = _Analysis()
-            parent = None
-
-            @property
-            def ordered_children(self) -> list:
-                return []
-
-        class _Game:
-            current_node = _Leaf()
-
-        # No mainline continuation → walker stops after one step.
-        self.assertEqual(collect_important_moves(_Game(), 0.5), [])
-
-    def test_walker_skips_nodes_without_analysis(self) -> None:
-        """Nodes without ``analysis`` or ``score_lead`` are skipped silently."""
-        from katrain.core.study.kifunarabe import collect_important_moves
-
-        class _Analysis:
-            def __init__(self, score_lead: float | None = None) -> None:
-                self.score_lead = score_lead
-
-        class _Node:
-            def __init__(
-                self,
-                move_number: int,
-                score_lead: float | None,
-                first_child: _Node | None = None,
-                parent: _Node | None = None,
-            ) -> None:
-                self.move_number = move_number
-                self.analysis = (
-                    _Analysis(score_lead) if score_lead is not None else None
-                )
-                self._first_child = first_child
-                self.parent = parent
-
-            @property
-            def ordered_children(self) -> list:
-                return [self._first_child] if self._first_child is not None else []
-
-        # Walk: root(0.0) -> n1(0.7, qualifies) -> n2(None, skipped)
-        # -> n3(2.5, delta vs n2 unknown, skipped) -> n4(3.0, delta 0.5 not > 0.5)
-        n4 = _Node(4, 3.0)
-        n3 = _Node(3, 2.5, first_child=n4)
-        n2 = _Node(2, None, first_child=n3)
-        n1 = _Node(1, 0.7, first_child=n2)
-        root = _Node(0, 0.0, first_child=n1)
-        for n, p in [(n1, root), (n2, n1), (n3, n2), (n4, n3)]:
-            n.parent = p
-
-        class _Game:
-            current_node = root
-
-        # Only n1 has a measurable delta vs root (0.7 > 0.5).
-        # The walker continues past n2/n3 (which lack parent scores) and
-        # reaches n4 cleanly - no exceptions raised.
-        self.assertEqual(collect_important_moves(_Game(), 0.5), [1])
 
 
 class TestGetCritical3MoveNumbers(unittest.TestCase):

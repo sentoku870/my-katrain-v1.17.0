@@ -8,7 +8,6 @@ Holds:
 - Three display toggles (digits / actual border / uniform colour) for
   the choice markers on the board. All three default to "minimal" so
   the choice set looks like a clean multiple-choice puzzle.
-- Phase 179-D: critical-only threshold (5 options + off).
 
 Phase 177: Initial implementation.
 Phase 177-E: Added digit/colour/border toggles.
@@ -38,17 +37,6 @@ from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Button
 from katrain.gui.widgets.helpers import create_text_input_row
-
-# Phase 179-D: labels match the i18n keys for the setup-popup critical_only
-# spinner. The first label is "off" (== default). The rest mirror
-# ``VALID_CRITICAL_THRESHOLDS`` minus the leading 0.0 entry.
-_CRITICAL_THRESHOLD_LABELS: list[str] = [
-    "kifunarabe:setup:critical_off",
-    "kifunarabe:setup:critical_0_5",
-    "kifunarabe:setup:critical_1_0",
-    "kifunarabe:setup:critical_2_0",
-    "kifunarabe:setup:critical_5_0",
-]
 
 if TYPE_CHECKING:
     pass
@@ -148,8 +136,8 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     Returns:
         (inner_layout, widget_refs): ``widget_refs`` carries
         ``sgf_load_input``, ``sgf_load_browse``, ``show_digits_cb``,
-        ``show_actual_border_cb``, ``uniform_color_cb``, ``critical_only_spinner``
-        so the orchestrator can wire save_settings and the folder browser.
+        ``show_actual_border_cb``, ``uniform_color_cb`` so the
+        orchestrator can wire save_settings and the folder browser.
     """
     inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
     inner.bind(minimum_height=inner.setter("height"))
@@ -189,9 +177,6 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         searchable_label="mykatrain:settings:kifunarabe_auto_toggle_markers",
     )
 
-    # Phase 179-D: critical-only threshold spinner (off + 4 thresholds).
-    critical_only_spinner = _build_critical_only_spinner(inner, state)
-
     _build_help_section(inner, state)
 
     widget_refs = {
@@ -201,7 +186,6 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "show_actual_border_cb": show_actual_border_cb,
         "uniform_color_cb": uniform_color_cb,
         "auto_toggle_cb": auto_toggle_cb,
-        "critical_only_spinner": critical_only_spinner,
     }
     # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
     # additions (history list, longer help text, etc.) don't overflow.
@@ -216,34 +200,3 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
 
 
 
-
-# Phase 179-D: critical-only threshold spinner.
-def _build_critical_only_spinner(inner: Any, state: Any) -> Any:
-    """Phase 179-D: default-threshold spinner shown in the kifunarabe tab.
-
-    Selection index maps to ``VALID_CRITICAL_THRESHOLDS`` (see
-    ``katrain.core.study.kifunarabe``). Index 0 == off (default). The
-    spinner shares the styling used by the setup popup.
-    """
-    from katrain.core.study.kifunarabe import VALID_CRITICAL_THRESHOLDS
-    from katrain.gui.popups._base import LabelledSpinner
-
-    default_index = 0
-    if state.ctx is not None:
-        kif_section = state.ctx.config("kifunarabe") or {}
-        if isinstance(kif_section, dict):
-            stored = kif_section.get("critical_only_threshold", 0.0)
-            try:
-                default_index = list(VALID_CRITICAL_THRESHOLDS).index(float(stored))
-            except (ValueError, TypeError):
-                default_index = 0
-
-    spinner = LabelledSpinner(
-        input_property="critical_only",
-        value_refs=_CRITICAL_THRESHOLD_LABELS,
-        selected_index=default_index,
-    )
-    inner.add_widget(spinner)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:kifunarabe_critical_only_threshold", spinner)
-    return spinner

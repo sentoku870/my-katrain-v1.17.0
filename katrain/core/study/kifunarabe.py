@@ -48,10 +48,6 @@ VALID_HINT_COUNTS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)
 #: 0 = play through the entire mainline, otherwise capped at this many moves.
 VALID_MAX_MOVES: tuple[int, ...] = (0, 50, 100, 150)
 
-#: Phase 179-D: thresholds (in score-lead loss, 目差) for the
-#: "important moments only" mode. 0.0 = disabled (play all moves).
-VALID_CRITICAL_THRESHOLDS: tuple[float, ...] = (0.0, 0.5, 1.0, 2.0, 5.0)
-
 #: Phase 179-B1: maximum number of Critical 3 entries per player (B and W).
 CRITICAL_3_PER_PLAYER = 3
 
@@ -92,16 +88,11 @@ class KifunarabeConfig:
         turn: One of "both" (both sides), "B" (black only), "W" (white only).
         max_hints: Number of candidate moves shown as hints (0..5).
         max_moves: Maximum number of moves to play through (0 = entire mainline).
-        critical_only_threshold: Phase 179-D. When > 0, the controller will
-            pre-compute the set of "important moments" (mainline nodes whose
-            parent→child score-lead loss exceeds this threshold) and use that
-            count as the effective ``max_moves``. 0.0 = disabled (all moves).
     """
 
     turn: str = SIDE_BOTH
     max_hints: int = 3
     max_moves: int = 0
-    critical_only_threshold: float = 0.0
 
     def __post_init__(self) -> None:
         if self.turn not in VALID_TURNS:
@@ -110,11 +101,6 @@ class KifunarabeConfig:
             raise ValueError(f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}")
         if self.max_moves not in VALID_MAX_MOVES:
             raise ValueError(f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}")
-        if self.critical_only_threshold not in VALID_CRITICAL_THRESHOLDS:
-            raise ValueError(
-                f"Invalid critical_only_threshold: {self.critical_only_threshold}; "
-                f"expected one of {VALID_CRITICAL_THRESHOLDS}"
-            )
 
 
 @dataclass
@@ -686,58 +672,5 @@ def get_critical_3_move_numbers(
     return sorted(moves)
 
 
-# =============================================================================
-# Phase 179-D: Important-moments collector
-# =============================================================================
-
-
-def collect_important_moves(game: Any, threshold: float) -> list[int]:
-    """Walk the mainline and return move numbers whose score-lead loss exceeds ``threshold``.
-
-    Phase 179-D: powers the "important moments only" mode. Only nodes that
-    have both their own and their parent's ``analysis.score_lead`` populated
-    are considered (KataGo-analyzed nodes only). Returns ``[]`` when
-    ``threshold <= 0`` or the game has no current node.
-
-    Phase 182-A: previous version tried ``node.next(only_mainline=True)``
-    but ``GameNode`` exposes no ``next`` method, so the walker silently
-    fell back to a lambda that returned ``None``. Result: the loop ended
-    immediately, ``important`` stayed empty, and the controller kept the
-    user's original ``max_moves`` selection (e.g. 50) → the session
-    played the first 50 moves instead of starting at the first important
-    position. The walker now uses ``node.ordered_children[0]`` (the mainline
-    continuation), which is the same source the existing
-    ``GameNode.ordered_children`` property provides.
-
-    The walker is intentionally tolerant of partial analysis: nodes that
-    lack ``score_lead`` are skipped silently rather than raising.
-    """
-    if game is None or threshold <= 0:
-        return []
-    important: list[int] = []
-    try:
-        node = game.current_node
-        while node is not None:
-            analysis = getattr(node, "analysis", None)
-            score = getattr(analysis, "score_lead", None) if analysis is not None else None
-            if score is not None:
-                parent = getattr(node, "parent", None)
-                parent_analysis = getattr(parent, "analysis", None) if parent else None
-                parent_score = (
-                    getattr(parent_analysis, "score_lead", None)
-                    if parent_analysis is not None
-                    else None
-                )
-                if parent_score is not None and abs(score - parent_score) > threshold:
-                    important.append(getattr(node, "move_number", 0))
-            # Phase 182-A: follow the mainline via ordered_children[0]
-            # (the first child is the mainline continuation by SGF order).
-            ordered = getattr(node, "ordered_children", None)
-            next_node = ordered[0] if ordered else None
-            # Cycle guard: if next_node is somehow ``node`` itself, stop.
-            node = next_node if next_node is not node else None
-    except Exception:
-        pass
-    return [m for m in important if m > 0]
 
 

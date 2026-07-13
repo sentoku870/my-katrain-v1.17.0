@@ -551,22 +551,6 @@ msgstr "Abort Kifu Narabe"
 msgid "kifunarabe:summary:critical3"
 msgstr "Critical 3: {correct} of {total} ({rate})"
 
-# Phase 179-D
-msgid "kifunarabe:setup:critical_off"
-msgstr "All positions"
-
-msgid "kifunarabe:setup:critical_0_5"
-msgstr "Important only (loss >= 0.5)"
-
-msgid "kifunarabe:setup:critical_1_0"
-msgstr "Important only (loss >= 1.0)"
-
-msgid "kifunarabe:setup:critical_2_0"
-msgstr "Important only (loss >= 2.0)"
-
-msgid "kifunarabe:setup:critical_5_0"
-msgstr "Important only (loss >= 5.0)"
-
 # Phase 179-B1
 msgid "kifunarabe:critical3_badge_title"
 msgstr "Critical 3"
@@ -1689,10 +1673,6 @@ msgstr "Draw all markers in a single colour (no KataGo colour gradient)"
 
 msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "Auto-toggle 'next moves' and 'dots' during kifunarabe"
-
-# Phase 179-D
-msgid "mykatrain:settings:kifunarabe_critical_only_threshold"
-msgstr "Important-only threshold (in score-lead loss)"
 
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr "When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\nSet it to the directory that holds the pro game records you want to study.\nLeave it empty to fall back to the regular SGF load folder.\n\nBy default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."

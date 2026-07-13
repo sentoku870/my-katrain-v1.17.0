@@ -253,22 +253,6 @@ msgstr "中断して棋譜並べ終了"
 msgid "kifunarabe:summary:critical3"
 msgstr "Critical 3: {correct}/{total} ({rate})"
 
-# Phase 179-D
-msgid "kifunarabe:setup:critical_off"
-msgstr "全局面"
-
-msgid "kifunarabe:setup:critical_0_5"
-msgstr "重要局面のみ (0.5目以上)"
-
-msgid "kifunarabe:setup:critical_1_0"
-msgstr "重要局面のみ (1.0目以上)"
-
-msgid "kifunarabe:setup:critical_2_0"
-msgstr "重要局面のみ (2.0目以上)"
-
-msgid "kifunarabe:setup:critical_5_0"
-msgstr "重要局面のみ (5.0目以上)"
-
 # Phase 179-B1
 msgid "kifunarabe:critical3_badge_title"
 msgstr "Critical 3"
@@ -1639,10 +1623,6 @@ msgstr "全マーカーを同色で表示する（KataGoの色グラデーショ
 
 msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "棋譜並べ中、「次の着手」と「ドット表示」を自動的に切り替える"
-
-# Phase 179-D
-msgid "mykatrain:settings:kifunarabe_critical_only_threshold"
-msgstr "重要局面のみモードの閾値 (目差)"
 
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr "「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n並べるプロの棋譜を保存しているフォルダを指定してください。\n空欄の場合、通常のSGF読込フォルダにフォールバックします。\n\nデフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"

@@ -219,22 +219,13 @@ def do_mykatrain_settings_popup(
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.
         # Phase 177-H: persist the auto-toggle-markers preference.
-        # Phase 179-D: persist the critical-only threshold.
         with contextlib.suppress(Exception):
-            from katrain.core.study.kifunarabe import VALID_CRITICAL_THRESHOLDS
-
             kif = dict(ctx.config("kifunarabe", {}) or {})
             kif["sgf_load"] = widget_refs["sgf_load_input"].text
             kif["show_digits"] = bool(widget_refs["show_digits_cb"].active)
             kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
             kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)
             kif["auto_toggle_markers"] = bool(widget_refs["auto_toggle_cb"].active)
-            # Phase 179-D: critical_only_threshold (selected_index -> float)
-            critical_spinner = widget_refs.get("critical_only_spinner")
-            if critical_spinner is not None:
-                idx = getattr(critical_spinner, "selected_index", 0) or 0
-                idx = max(0, min(idx, len(VALID_CRITICAL_THRESHOLDS) - 1))
-                kif["critical_only_threshold"] = VALID_CRITICAL_THRESHOLDS[idx]
             ctx.set_config_section("kifunarabe", kif)
             ctx.save_config("kifunarabe")
         # Phase 177-F: if kifunarabe is active, the user just toggled

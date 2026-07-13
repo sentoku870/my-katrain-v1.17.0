@@ -21,7 +21,6 @@ from katrain.core.constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
 )
 from katrain.core.study.kifunarabe import (
-    collect_important_moves,
     get_critical_3_move_numbers,
 )
 
@@ -270,11 +269,6 @@ class KifunarabeController:
         - Phase 179-B1: fetches the Critical 3 move numbers from the current
           game and stores them on the new session so per-position
           highlights and the summary hit-rate can use them.
-        - Phase 179-D: when ``config.critical_only_threshold > 0``, scans
-          the mainline for important moments and overrides
-          ``config.max_moves`` to ``len(important_moves)`` so the session
-          ends naturally after the user has visited every important
-          position.
         - Ensures the on-board ``Top Moves`` (hints) toggle reflects
           ``config.max_hints > 0`` so candidates are visible on the board.
         - Schedules a board redraw on the main thread so the candidate
@@ -283,32 +277,11 @@ class KifunarabeController:
         Args:
             config: A ``KifunarabeConfig`` instance.
         """
-        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+        from katrain.core.study.kifunarabe import KifunarabeSession
 
         # B3: clear any lingering session/state first. ``disable_if_needed``
         # restores any saved toggle state from a previous session.
         self.disable_if_needed()
-
-        # Phase 179-D: if the user asked for "important only", rewrite
-        # ``max_moves`` to the number of mainline positions whose
-        # score-lead loss exceeds the threshold. Empty list -> keep the
-        # original config (effectively "all moves").
-        effective_config = config
-        if config.critical_only_threshold > 0:
-            game = self._get_game()
-            important = collect_important_moves(game, config.critical_only_threshold) if game else []
-            if important:
-                effective_config = KifunarabeConfig(
-                    turn=config.turn,
-                    max_hints=config.max_hints,
-                    max_moves=len(important),
-                    critical_only_threshold=config.critical_only_threshold,
-                )
-                with contextlib.suppress(Exception):
-                    self._logger(
-                        f"kifunarabe: critical-only mode -> {len(important)} important moves",
-                        level=1,
-                    )
 
         # Phase 179-B1: fetch the Critical 3 set (max 6 entries: B/W each 3).
         critical_3: list[int] = []
@@ -320,7 +293,7 @@ class KifunarabeController:
                 critical_3 = []
 
         self._session = KifunarabeSession(
-            effective_config,
+            config,
             critical_3_move_numbers=critical_3,
         )
         # Reset the highlight guard so each critical 3 position fires its badge.
