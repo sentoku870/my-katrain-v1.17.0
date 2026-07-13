@@ -431,9 +431,7 @@ def _compute_summary_context(
         visits_int = 0
 
     score_stdev_raw = get_score_stdev(node)
-    score_stdev: float | None = (
-        float(score_stdev_raw) if score_stdev_raw is not None else None
-    )
+    score_stdev: float | None = float(score_stdev_raw) if score_stdev_raw is not None else None
 
     move_number = 0
     if node.move is not None:
@@ -733,16 +731,8 @@ def get_summary_hint_cached(
         BeginnerHint or None.
     """
     cache_attr = "_summary_hint_cache"
-    flags_key = (
-        None
-        if not summary_flags
-        else tuple(sorted((k, bool(v)) for k, v in summary_flags.items()))
-    )
-    curator_key = (
-        None
-        if not user_weak_tags
-        else tuple(sorted((k, int(v)) for k, v in user_weak_tags.items()))
-    )
+    flags_key = None if not summary_flags else tuple(sorted((k, bool(v)) for k, v in summary_flags.items()))
+    curator_key = None if not user_weak_tags else tuple(sorted((k, int(v)) for k, v in user_weak_tags.items()))
     cache_key = (flags_key, bool(require_reliable), curator_key, int(curator_min_occurrences))
     cached = getattr(node, cache_attr, _NOT_COMPUTED)
     if cached is not _NOT_COMPUTED and isinstance(cached, tuple) and len(cached) == 2:

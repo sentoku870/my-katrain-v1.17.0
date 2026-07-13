@@ -602,10 +602,7 @@ class TestPhase1791Regressions:
         # Initial state: strict should reject (75 < 100).
         assert get_summary_hint_cached(node, require_reliable=True) is None
         # Loose should accept.
-        assert (
-            get_summary_hint_cached(node, require_reliable=False)
-            is not None
-        )
+        assert get_summary_hint_cached(node, require_reliable=False) is not None
         # Toggle back: must re-reject.
         assert get_summary_hint_cached(node, require_reliable=True) is None
 
@@ -948,6 +945,7 @@ class TestModuleExports:
         )
 
         assert callable(d1) and callable(d2) and callable(d3) and callable(d4)
+
 
 def test_beginner_hint_imports_unchanged():
     # Backward compat: previous tests / external imports
