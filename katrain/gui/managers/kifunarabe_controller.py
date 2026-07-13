@@ -749,7 +749,6 @@ class KifunarabeController:
         self._set_mode(False)
 
 
-
 def disable_kifunarabe_if_active(katrain: Any) -> None:
     """Phase 178: centralised helper to disable kifunarabe from any exit path.
 

@@ -197,6 +197,3 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, bar_width=dp(8))
     scroll.add_widget(inner)
     return scroll, widget_refs
-
-
-

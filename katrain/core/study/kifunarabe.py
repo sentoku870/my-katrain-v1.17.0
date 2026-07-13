@@ -442,10 +442,7 @@ class KifunarabeSession:
             return False
         if self.config.max_moves <= 0:
             return False
-        actionable = sum(
-            1 for r in self.results
-            if r.outcome in (GuessOutcome.CORRECT, GuessOutcome.AUTO_ADVANCE)
-        )
+        actionable = sum(1 for r in self.results if r.outcome in (GuessOutcome.CORRECT, GuessOutcome.AUTO_ADVANCE))
         return actionable >= self.config.max_moves
 
     def _finalize_at_limit(self) -> None:
@@ -670,7 +667,3 @@ def get_critical_3_move_numbers(
             if isinstance(n, int):
                 moves.add(n)
     return sorted(moves)
-
-
-
-
