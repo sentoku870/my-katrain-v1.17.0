@@ -2,6 +2,10 @@
 
 This module provides the CommandExecutor class that manages the lifecycle
 of analysis commands, including submission, result delivery, and cancellation.
+
+Phase B1: forward reference to ``KataGoEngine`` is imported via
+:mod:`katrain.core._engine_types` (TYPE_CHECKING-only) to break the
+historical direct cycle between this module and ``engine.py``.
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from katrain.core.engine_cmd.commands import AnalysisCommand
 
 if TYPE_CHECKING:
-    from katrain.core.engine import KataGoEngine
+    from katrain.core._engine_types import KataGoEngine
 
 
 class CommandExecutor:
