@@ -402,6 +402,12 @@ class SGFManager:
                     if hasattr(popup_contents, "rewind") and hasattr(popup_contents.rewind, "active")
                     else True
                 )
+                # Phase 177: regular "棋譜読込" path - clear any kifunarabe
+                # mode so the freshly loaded SGF is not interpreted as
+                # the start of a kifunarabe session.
+                _kif = getattr(katrain, "_kifunarabe_controller", None)
+                if _kif is not None:
+                    _kif.disable_if_needed()
                 self.load_sgf_file(filename, fast_active, rewind_active)
 
             popup_contents.filesel.on_success = readfile

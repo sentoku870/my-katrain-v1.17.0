@@ -149,6 +149,10 @@ class Theme:
     CHILD_SCALE = 0.95
     HINT_SCALE = 0.98
     UNCERTAIN_HINT_SCALE = 0.7
+    # Phase 177-F: kifunarabe choice markers share one subdued colour
+    # (RGB + alpha). The translucent black is intentionally faint so
+    # the markers sit on the board without overpowering the stones.
+    KIFUNARABE_MARKER_FILL = [0.0, 0.0, 0.0, 0.45]  # thin black @ 45%
 
     # ponder light
     ENGINE_DOWN_COLOR = EVAL_COLORS["theme:normal"][1]

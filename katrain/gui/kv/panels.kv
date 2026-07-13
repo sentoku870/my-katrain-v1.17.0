@@ -474,3 +474,16 @@
                     width: self.height/2
                     source: 'menu.png'
                     mipmap: True
+            MDFloatLayout:
+                width: kifunarabe_abort_button.width
+                size_hint: None, 1
+                opacity: 1 if (app.gui and app.gui.kifunarabe_mode) else 0
+                disabled: not (app.gui and app.gui.kifunarabe_mode)
+                size_hint_x: self.width if (app.gui and app.gui.kifunarabe_mode) else 1e-9
+                AutoSizedRectangleButton:
+                    background_color: Theme.BOX_BACKGROUND_COLOR
+                    size_hint_y: 0.55
+                    pos_hint: {'center_y': 0.5, 'x': 0}
+                    id: kifunarabe_abort_button
+                    on_release: root.katrain("kifunarabe-abort")
+                    text: '   ' + i18n._("btn:AbortKifunarabe")
