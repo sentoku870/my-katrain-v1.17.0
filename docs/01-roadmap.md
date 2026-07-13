@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-13(Phase 178 完了)
+> 最終更新: 2026-07-16（Phase 192 + Documentation cleanup 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -13,7 +13,8 @@
 > Phase 154 (2026-06-28 完了): 勝敗別損失統計 + 手数帯別推移（schema 3.2）。詳細下記。
 > Phase 155 (2026-06-28 完了): 相手の棋力との相関（schema 3.3）。詳細下記。
 > Phase 156 (2026-06-28 完了): 動的フェーズ分割（scoreStdev ベース）。詳細下記。
-> Phase 178 (2026-07-13 完了): 棋譜並べ機能のドキュメント整備 + Root 解析堅牢化 + 終了経路統一。詳細下記。
+> Phase 171 (2026-07-04 完了): **Leela エンジン完全削除**。KataGo 専用化。詳細下記。
+> Phase 172-192 (2026-07-11〜16): CI 安定化、KaTrainGui ラッパー削除、kifunarabe、Hints 拡張、Curator 統合、Architecture Review Follow-up。各スペックは [./archive/specs-implemented/phase*.md](./archive/specs-implemented/) 参照。
 
 ---
 
@@ -63,6 +64,20 @@
 | **159A** | Karte/Summary の KataGo-only 化 | `is_single_engine_snapshot()` gate / Leela 分岐はレポート生成時のみ弾く | ✅ (2026-06-29) |
 | **170** | 人間 vs Leela 対局機能の再廃止 | `AI_LEELA` / `LeelaStrategy` / `play_enabled` 削除。Leela は解析専用 | ✅ (2026-07-03) |
 | **171** | **Leela エンジン完全削除** | `core/leela/` (1459行) / `LeelaManager` / `LeelaConfig` / `leela_tab` / `resign_hint_popup` / `leela_gate` / `engine_compare` / `EngineType.LEELA` / `leela_loss_est` / `MixedEngineSnapshotError` を削除し、KataGo 専用に整理。i18n 132 msgid 削除、テスト 25 ファイル削除、設定 UI leela タブ削除 | ✅ (2026-07-04) |
+| **172** | KaTrainGui ラッパーメソッド全削除 | `commands/DISPATCH_TABLE`（35エントリ）への明示的ディスパッチ移行。`_do_*` メソッド 34個削除（`__main__.py` 995→878行） | ✅ (2026-07-11) |
+| **173** | CI exit-102 修正（部分） | `game_commands.py` / `karte_export.py` で kivy import を関数内に移動し、GitHub Actions の連続ジョブ間 `FileExistsError` を解消。残存問題あり | ✅ (2026-07-11) |
+| **177** | 棋譜並べ（kifunarabe）機能 | 棋譜からユーザが次の一手を予想する学習モード。`gui/managers/kifunarabe_controller.py` 800行（Phase 188 で mixin 分割） | ✅ (2026-07-12) |
+| **178** | kifunarabe ドキュメント整備 + Root 解析堅牢化 + 終了経路統一 | `_kick_root_analysis` を 5 回リトライ化、`disable_kifunarabe_if_active()` 司令塔ヘルパー追加、`docs/archive/specs-implemented/phase177-kifunarabe.md` 新設 | ✅ (2026-07-13) |
+| **179 + 179.1 + 179.2** | Beginner Hints Summary Extension | `HintCategory` に 9 enum 追加（ミス・自由度・難易度・KataGo 不確実性）。`SummaryHintContext` 新設、3 層 priority chain 化、C1/C2 監査修正、M1-M4 改善 | ✅ (2026-07-14) |
+| **182** | Ownership / Policy 派生ヒント | `HintCategory` に 3 enum 追加（OWNERSHIP_DOMINANT / POLICY_CONFLICT / POLICY_CONFIDENT）。KataGo の predicted territory と policy 分布を活用 | ✅ (2026-07-14) |
+| **186** | Curator 集約統合 | `HintCategory.CURATOR_WEAK_AXIS` 追加（22 → 23 カテゴリ）。`core/curator/profile.py` / `core/beginner/detector_curator.py` 新設、priority chain 最下層に統合 | ✅ (2026-07-14) |
+| **186.1** | KataGo 起動直後の TypeError 修正 | `get_root_visits` の None-safety（`analysis.get("root") or {}`）修正。`tests/test_get_root_visits_none_safety.py` 新設 20 件 | ✅ (2026-07-14) |
+| **187** | Beginner Hints Main Pipeline カバレッジ | `core/beginner/hints.py` 16.5% → 97%。`tests/test_beginner_hints_main.py` 新設 137 件 / 876 行 | ✅ (2026-07-14) |
+| **188** | Kifunarabe Controller God Class 分割 | 800行 単一クラスを 4 mixin + 1 facade に再編（facade 180行）。`tests/test_kifunarabe_mixins.py` 新設 24 件 | ✅ (2026-07-14) |
+| **189** | Auto Setup Module カバレッジ | `core/auto_setup.py` 9.8% → 97%。`tests/test_auto_setup_coverage.py` 新設 53 件 / 490 行 | ✅ (2026-07-15) |
+| **190** | core/engine.py カバレッジ | 48.3% → 83%。`tests/test_engine_coverage.py` 新設 59 件 / 374 行。KataGoEngine のサブプロセス非依存経路を網羅 | ✅ (2026-07-15) |
+| **191** | Engine Subsystem TYPE_CHECKING 循環解消 | `core/_engine_types.py`（42 行、TYPE_CHECKING 専用）に集約。`engine_io.py` / `engine_query.py` / `engine_cmd/executor.py` から参照 | ✅ (2026-07-15) |
+| **192** | Position Difficulty サブパッケージ化 | `core/analysis/logic_difficulty.py`（756 行）を `analysis/difficulty/` サブパッケージ 6 モジュールに再編。後方互換シム維持 | ✅ (2026-07-16) |
 
 ### 直近の更新詳細
 
@@ -958,9 +973,27 @@ KataGo を含む myKatrain 起動時に、解析スレッドで以下の2段階�
 
 ---
 
-### Phase 158 以降の候補
+### Phase 172-192 詳細（2026-07-11〜16）
 
-Phase 157 で達成された「summary のデータ品質向上」に加え、今後は以下の拡張が考えられます：
+Phase 172-192 の詳細は [`docs/archive/specs-implemented/phase*.md`](./archive/specs-implemented/) にスペックとして格納しています。要点のみ：
+
+- **Phase 172 (2026-07-11)**: `commands/DISPATCH_TABLE` への明示的ディスパッチ移行。`KaTrainGui._do_*` メソッド 34個削除（合計 -117行）
+- **Phase 173 (2026-07-11)**: kivy import をモジュールレベルから関数内に移動し、CI の連続ジョブ間 `FileExistsError` を解消
+- **Phase 177-178 (2026-07-12〜13)**: 棋譜並べ（kifunarabe）機能。Phase 178 でドキュメント整備 + Root 解析 5 回リトライ化 + 終了経路統一
+- **Phase 179 + 179.1 + 179.2 (2026-07-14)**: Beginner Hints Summary Extension（ミス・自由度・難易度・KataGo 不確実性、9 カテゴリ + 監査改善）
+- **Phase 182 (2026-07-14)**: Ownership / Policy 派生ヒント（KataGo の `ownership` / `policy` データ活用、3 カテゴリ追加）
+- **Phase 186 + 186.1 (2026-07-14)**: Curator 集約統合（棋譜全体の弱点パターンを Hint に統合）+ KataGo 起動直後の None-safety 修正
+- **Phase 187-192 (2026-07-14〜16)**: Architecture Review Follow-up
+  - A1 (Phase 187): `core/beginner/hints.py` カバレッジ 16.5% → 97%
+  - A2 (Phase 189): `core/auto_setup.py` カバレッジ 9.8% → 97%
+  - A3 (Phase 188): Kifunarabe Controller 800行 → 4 mixin + facade（180行）
+  - A4 (Phase 190): `core/engine.py` カバレッジ 48.3% → 83%
+  - B1 (Phase 191): Engine Subsystem TYPE_CHECKING 循環を `core/_engine_types.py` に集約
+  - B2 (Phase 192): Position Difficulty サブパッケージ化（`core/analysis/difficulty/` 6 モジュール化）
+
+### Phase 193+ 候補
+
+Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
 
 - [ ] GUI 設定画面での `dynamic_phase_detection` トグル追加（Phase 156 残オープン項目）
 - [ ] `loss_progression` の bucket_size を Config 経由で可変化（Phase 154 残オープン項目）
@@ -971,3 +1004,6 @@ Phase 157 で達成された「summary のデータ品質向上」に加え、�
 - [ ] KataGo の `scoreStdev` 以外の動的判定指標（`ownership` エントロピー等）の研究
 - [ ] **時間プレッシャー分析**（Phase 157-E からの申し送り、[`docs/ideas/time_pressure_analysis.md`](ideas/time_pressure_analysis.md) 参照）
 - [ ] **GUI での even/handicapped 切替**（Phase 157-C の Config 化）
+- [ ] **Hint Popup 化 / H キー手動表示 / 候補手単位 Hint**（Phase 179-186 からの申し送り）
+- [ ] **CI exit-102 残存問題の根本解決**（Phase 173 部分修正、残存問題あり）
+- [ ] **`hints.py` 753 行のサブパッケージ化**（Phase 187 でカバレッジ充填、次の分割は Lv4 案件）
