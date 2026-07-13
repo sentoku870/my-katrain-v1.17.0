@@ -1652,6 +1652,19 @@ msgstr "重要局面のみモードの閾値 (目差)"
 msgid "mykatrain:settings:clear_kifunarabe_history"
 msgstr "棋譜並べ履歴をクリア"
 
+# Phase 180-D: 履歴一覧セクション
+msgid "mykatrain:settings:kifunarabe_history_list_header"
+msgstr "保存された履歴（直近 5 件）"
+
+msgid "mykatrain:settings:kifunarabe_history_empty"
+msgstr "（保存された履歴はまだありません）"
+
+msgid "mykatrain:settings:kifunarabe_history_item"
+msgstr "{sgf}: {correct}/{total} ({rate:.1f}%)"
+
+msgid "mykatrain:settings:open_kifunarabe_history_folder"
+msgstr "履歴フォルダを開く"
+
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr "「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n並べるプロの棋譜を保存しているフォルダを指定してください。\n空欄の場合、通常のSGF読込フォルダにフォールバックします。\n\nデフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"
 

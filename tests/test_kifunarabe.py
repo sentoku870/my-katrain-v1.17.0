@@ -382,19 +382,83 @@ class TestSessionLifecycle:
         assert sess.get_summary().max_moves_reached is True
 
     def test_max_moves_limit_counts_each_outcome(self) -> None:
-        """The cap applies to the total count, not only wrong/correct."""
+        """The cap applies to CORRECT + AUTO_ADVANCE only (Phase 180-A).
+
+        Phase 180-A: ``_max_moves_exceeded`` was changed to count only
+        user-actionable visits (CORRECT + AUTO_ADVANCE). WRONG_GUESS is
+        still recorded in ``self.results`` for accurate summary stats but
+        does not contribute to the cap.
+        """
         from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
 
-        sess = KifunarabeSession(KifunarabeConfig(max_moves=100))
-        for i in range(1, 101):
+        sess = KifunarabeSession(KifunarabeConfig(max_moves=50))
+        for i in range(1, 151):
+            if sess.max_moves_reached:
+                break  # stop recording once cap was reached
             if i % 3 == 0:
                 sess.record_auto_advance(i)
             elif i % 2 == 0:
                 sess.record_guess(i, f"D{i}", f"R{i}")  # wrong
             else:
                 sess.record_guess(i, f"D{i}", f"D{i}")  # correct
+        # Session is ended and cap was hit.
+        assert sess.max_moves_reached is True
+        summary = sess.get_summary()
+        # The cap is reached on the 50th CORRECT + AUTO_ADVANCE call.
+        assert summary.correct_count + summary.auto_advance_count == 50
+        # Wrong guesses that occurred before the cap are in the summary.
+        assert summary.wrong_count > 0
+
+    # Phase 180-A: new tests pinning the corrected max_moves semantics.
+    def test_wrong_clicks_alone_do_not_end_session(self) -> None:
+        """50 wrong clicks on the same point must NOT end the session.
+
+        This is the user-reported regression: previously ``len(results)``
+        counted every click, so 50 wrong clicks would hit the cap without
+        the user having made any game progress.
+        """
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig(max_moves=50))
+        for _ in range(50):
+            sess.record_guess(move_number=1, expected_gtp="D4", guessed_gtp="R4")  # wrong
+        # Session is still active: wrong clicks don't move the counter.
+        assert sess.is_active
+        assert sess.max_moves_reached is False
+        summary = sess.get_summary()
+        assert summary.wrong_count == 50
+        assert summary.correct_count == 0
+
+    def test_correct_clicks_end_session_at_cap(self) -> None:
+        """The cap is reached on the ``max_moves``-th CORRECT call."""
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig(max_moves=50))
+        # Loop 49 times staying active, then the 50th hits the cap.
+        for i in range(1, 50):
+            sess.record_guess(move_number=i, expected_gtp="D4", guessed_gtp="D4")
+            assert sess.is_active
+        sess.record_guess(move_number=50, expected_gtp="D4", guessed_gtp="D4")
         assert not sess.is_active
         assert sess.max_moves_reached is True
+
+    def test_mixed_wrong_and_correct_ends_at_correct_count(self) -> None:
+        """Interleaved wrong + correct; cap hit on ``max_moves``-th correct."""
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig(max_moves=50))
+        # 49 wrong clicks, then 50 correct.
+        for _ in range(49):
+            sess.record_guess(move_number=1, expected_gtp="D4", guessed_gtp="R4")
+        assert sess.is_active  # wrongs don't end it
+        for i in range(1, 51):
+            sess.record_guess(move_number=i, expected_gtp=f"D{i}", guessed_gtp=f"D{i}")
+            if i < 50:
+                assert sess.is_active
+        assert not sess.is_active
+        assert sess.max_moves_reached is True
+        # All 49 wrongs are recorded in the summary for stats.
+        assert sess.get_summary().wrong_count == 49
 
     def test_summary_max_moves_reached_propagates(self) -> None:
         from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession

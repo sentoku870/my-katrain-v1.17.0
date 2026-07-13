@@ -189,7 +189,12 @@ def do_mykatrain_settings_popup(
 
     popup = I18NPopup(
         title_key="mykatrain:settings",
-        size=[dp(900), dp(700)],
+        # Phase 180-C: enlarged from dp(700) -> dp(850) so the kifunarabe
+        # tab (which now includes the saved-history list section) fits
+        # without truncating the help text. The kifunarabe tab also wraps
+        # its inner BoxLayout in a ScrollView as a safety net for future
+        # additions.
+        size=[dp(900), dp(850)],
         content=main_layout,
     ).__self__
     state.popup = popup
@@ -289,11 +294,26 @@ def do_mykatrain_settings_popup(
             dirselect=True,
         )
 
+    # Phase 180-B: history directory browse callback.
+    # Phase 179-A added the FolderPath input + browse button to the
+    # kifunarabe tab but the orchestrator never bound a click handler, so
+    # clicking the button did nothing. Restores parity with the existing
+    # ``browse_kifunarabe`` above.
+    def browse_history_dir(*_args: Any) -> None:
+        _open_browse_dialog(
+            ctx=ctx,
+            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            initial_path=widget_refs["history_dir_input"].text,
+            target_text_input=widget_refs["history_dir_input"],
+            dirselect=True,
+        )
+
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
     widget_refs["output_browse"].bind(on_release=browse_output)
     widget_refs["input_browse"].bind(on_release=browse_input)
     widget_refs["sgf_load_browse"].bind(on_release=browse_kifunarabe)
+    widget_refs["history_dir_browse"].bind(on_release=browse_history_dir)
 
     export_button.bind(on_release=lambda *_args: _do_export_settings(ctx, popup))
     import_button.bind(on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup))

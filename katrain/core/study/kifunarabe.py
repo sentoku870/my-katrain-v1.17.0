@@ -468,16 +468,27 @@ class KifunarabeSession:
     # -- recording ------------------------------------------------------------
 
     def _max_moves_exceeded(self) -> bool:
-        """Whether ``config.max_moves`` has been reached.
+        """Whether ``config.max_moves`` user-actionable visits have been reached.
 
-        Returns False when ``max_moves == 0`` (no limit) or when a session
-        is not active.
+        Phase 180-A: counts only ``CORRECT`` and ``AUTO_ADVANCE`` outcomes.
+        The previous ``len(self.results) >= max_moves`` counted every
+        click, which meant 50 wrong clicks on the same empty point could
+        end the session without the user having visited 50 game
+        positions. WRONG_GUESS is still recorded in ``self.results`` for
+        accurate summary stats but does not contribute to the cap.
+
+        Returns False when ``max_moves == 0`` (no limit) or when the
+        session is not active.
         """
         if self.config is None:
             return False
         if self.config.max_moves <= 0:
             return False
-        return len(self.results) >= self.config.max_moves
+        actionable = sum(
+            1 for r in self.results
+            if r.outcome in (GuessOutcome.CORRECT, GuessOutcome.AUTO_ADVANCE)
+        )
+        return actionable >= self.config.max_moves
 
     def _finalize_at_limit(self) -> None:
         """End the session via ``end()`` only when the move cap was hit.

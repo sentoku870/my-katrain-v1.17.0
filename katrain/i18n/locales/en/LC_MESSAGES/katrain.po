@@ -1702,6 +1702,19 @@ msgstr "Important-only threshold (in score-lead loss)"
 msgid "mykatrain:settings:clear_kifunarabe_history"
 msgstr "Clear Kifu Narabe history"
 
+# Phase 180-D: history list section
+msgid "mykatrain:settings:kifunarabe_history_list_header"
+msgstr "Saved history (recent 5)"
+
+msgid "mykatrain:settings:kifunarabe_history_empty"
+msgstr "(no saved history yet)"
+
+msgid "mykatrain:settings:kifunarabe_history_item"
+msgstr "{sgf}: {correct}/{total} ({rate:.1f}%)"
+
+msgid "mykatrain:settings:open_kifunarabe_history_folder"
+msgstr "Open history folder"
+
 msgid "mykatrain:settings:kifunarabe_help"
 msgstr "When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\nSet it to the directory that holds the pro game records you want to study.\nLeave it empty to fall back to the regular SGF load folder.\n\nBy default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."
 

@@ -18,6 +18,7 @@ Phase 177-E: Added digit/colour/border toggles.
 from __future__ import annotations
 
 import contextlib
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
@@ -201,6 +202,11 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     # Phase 179-D: critical-only threshold spinner (off + 4 thresholds).
     critical_only_spinner = _build_critical_only_spinner(inner, state)
 
+    # Phase 180-D: saved-history list section (placed before the help
+    # text so users see the latest results right above the explanatory
+    # paragraph).
+    _build_history_list_section(inner, state)
+
     _build_help_section(inner, state)
 
     widget_refs = {
@@ -215,7 +221,121 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "clear_history_btn": clear_history_btn,
         "critical_only_spinner": critical_only_spinner,
     }
-    return inner, widget_refs
+    # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
+    # additions (history list, longer help text, etc.) don't overflow.
+    # The ScrollView occupies the full tab area; the inner BoxLayout
+    # retains its size_hint_y=None + minimum_height binding so it grows
+    # to fit its children and the ScrollView scrolls vertically.
+    from kivy.uix.scrollview import ScrollView
+
+    scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, bar_width=dp(8))
+    scroll.add_widget(inner)
+    return scroll, widget_refs
+
+
+# Phase 180-D: saved-history list section.
+def _build_history_list_section(inner: Any, state: Any) -> None:
+    """Phase 180-D: show the latest 5 saved sessions + 'Open folder' button.
+
+    Reads ``*.json`` files from the resolved history directory in mtime
+    descending order. For each file the summary block (Phase 179-A's
+    ``to_dict()`` output) is rendered as a single line. All steps are
+    best-effort: directory missing / JSON corrupt / file unreadable all
+    fall back to a graceful label rather than raising.
+    """
+    import json as _json
+
+    from katrain.core.study.kifunarabe import _resolve_history_dir
+
+    inner.add_widget(
+        Label(
+            text=i18n._("mykatrain:settings:kifunarabe_history_list_header"),
+            size_hint_y=None,
+            height=dp(28),
+            font_name=Theme.DEFAULT_FONT,
+            color=Theme.TEXT_COLOR,
+        )
+    )
+
+    try:
+        history_dir = _resolve_history_dir(state.ctx)
+        files = sorted(
+            history_dir.glob("*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:5]
+    except Exception:
+        files = []
+
+    if not files:
+        inner.add_widget(
+            Label(
+                text=i18n._("mykatrain:settings:kifunarabe_history_empty"),
+                size_hint_y=None,
+                height=dp(24),
+                font_name=Theme.DEFAULT_FONT,
+                color=Theme.TEXT_COLOR,
+                font_size=dp(11),
+                opacity=0.7,
+            )
+        )
+        return
+
+    for path in files:
+        try:
+            data = _json.loads(path.read_text(encoding="utf-8"))
+            summary = data.get("summary", {})
+            sgf_name = Path(data.get("sgf_path", path.stem)).name
+            line = i18n._("mykatrain:settings:kifunarabe_history_item").format(
+                sgf=sgf_name,
+                correct=summary.get("correct_count", 0),
+                total=summary.get("total_positions", 0),
+                rate=summary.get("correct_rate", 0.0),
+            )
+        except Exception:
+            line = path.name
+        inner.add_widget(
+            Label(
+                text=line,
+                size_hint_y=None,
+                height=dp(22),
+                font_name=Theme.DEFAULT_FONT,
+                font_size=dp(11),
+                color=Theme.TEXT_COLOR,
+                opacity=0.7,
+            )
+        )
+
+    # "Open history folder" button. Launches the OS file manager
+    # (explorer / open / xdg-open) on the resolved history directory.
+    try:
+        history_dir_for_open = _resolve_history_dir(state.ctx)
+    except Exception:
+        history_dir_for_open = None
+
+    open_btn = Button(
+        text=i18n._("mykatrain:settings:open_kifunarabe_history_folder"),
+        size_hint_y=None,
+        height=dp(32),
+        font_name=Theme.DEFAULT_FONT,
+    )
+
+    def _open_folder(_b: Button) -> None:
+        import subprocess
+        import sys
+
+        if history_dir_for_open is None:
+            return
+        with contextlib.suppress(Exception):
+            if sys.platform == "win32":
+                subprocess.Popen(["explorer", str(history_dir_for_open)])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(history_dir_for_open)])
+            else:
+                subprocess.Popen(["xdg-open", str(history_dir_for_open)])
+
+    open_btn.bind(on_release=_open_folder)
+    inner.add_widget(open_btn)
 
 
 # Phase 179-A: history directory row + clear button.
