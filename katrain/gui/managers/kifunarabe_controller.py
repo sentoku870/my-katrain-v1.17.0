@@ -639,6 +639,26 @@ class KifunarabeController:
         self._set_mode(False)
 
 
+def disable_kifunarabe_if_active(katrain: Any) -> None:
+    """Phase 178: centralised helper to disable kifunarabe from any exit path.
+
+    Looks up the kifunarabe controller on ``katrain`` and calls
+    ``disable_if_needed()``. Errors are swallowed because this helper
+    is used from "cleanup" call sites (regular SGF load, future
+    popup-manager dismissals, save-game-as-after-kifunarabe, etc.)
+    where a kifunarabe failure must never block the main flow.
+
+    Callers should use this function instead of repeating the
+    ``getattr(katrain, "_kifunarabe_controller", None)`` lookup + nested
+    ``if`` + try/except dance.
+    """
+    controller = getattr(katrain, "_kifunarabe_controller", None)
+    if controller is None:
+        return
+    with contextlib.suppress(Exception):
+        controller.disable_if_needed()
+
+
 def node_move_gtp(coords: tuple[int, int], player: str) -> str | None:
     """Return the GTP representation of a (coords, player) click.
 
