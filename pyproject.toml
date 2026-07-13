@@ -92,11 +92,12 @@ markers = [
     "integration: marks tests that initialize KaTrainBase (may be slow)",
     "kivy_headless: marks tests using KivyUnitTest headless infrastructure (Phase 146)",
 ]
-# Phase 177-I: xdist's worker collection can segfault when the kivy fixture
-# graph gets large, surfacing as exit code 102 mid-``collecting ...``.
-# The tests don't actually need parallelism (run time is dominated by
-# startup), so disable the xdist plugin at the config level.
-addopts = ["-p", "no:xdist"]
+# NOTE: pytest-xdist is intentionally left enabled. CI never passes ``-n``,
+# so xdist never spawns workers there (a prior "exit code 102" was misdiagnosed
+# as an xdist-worker segfault; xdist cannot segfault workers it never starts).
+# Keeping the plugin enabled preserves the documented local parallel workflow
+# ``uv run pytest tests -n auto``. If collection crashes recur, see the
+# SDL_AUDIODRIVER / faulthandler hardening in the workflow.
 
 [tool.coverage.run]
 source = ["katrain"]

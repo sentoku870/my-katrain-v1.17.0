@@ -98,15 +98,30 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
-          SDL_VIDEODRIVER: dummy
-          DISPLAY: ":0"
+          # GHA runners have no audio device. Without an explicit null
+          # driver, SDL2's audio probe can abort hard (C-level, no Python
+          # traceback) during collection when kivy/ffpyplayer load.
+          SDL_AUDIODRIVER: dummy
           PYTHONUNBUFFERED: 1
+          # Surface C-level fatal errors as a readable traceback instead of
+          # the silent exit-102 we have been seeing.
+          PYTEST_FAULTHANDLER: 1
         run: |
           # Show memory info before tests
           echo "=== Memory before tests ==="
           free -m || true
-          # Run tests with verbose output and no timeout hiding
-          uv run python -m pytest tests -v --tb=short 2>&1
+          # Run under Xvfb (virtual X server). This is the fix for the
+          # long-standing exit-102 collection crash:
+          #   - SDL_VIDEODRIVER=dummy (previously set here) makes kivy's
+          #     window init abort with "Couldn't connect to X server".
+          #   - Even with SDL_VIDEODRIVER unset, kivymd.material_resources
+          #     calls dp(400) at module load -> EventLoop.ensure_window()
+          #     -> sys.exit(1) when no display is available.
+          # No combination of env vars avoids both; a real (virtual) X
+          # server is required. Xvfb is preinstalled on ubuntu-latest.
+          # SDL_VIDEODRIVER and DISPLAY are intentionally NOT set here:
+          # xvfb-run -a provides a real display and manages DISPLAY itself.
+          xvfb-run -a uv run python -X faulthandler -m pytest tests -v --tb=short 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true
@@ -135,14 +150,17 @@ jobs:
           KIVY_NO_ENV_CONFIG: 1
           KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
-          SDL_VIDEODRIVER: dummy
-          DISPLAY: ":0"
+          SDL_AUDIODRIVER: dummy
           PYTHONUNBUFFERED: 1
+          PYTEST_FAULTHANDLER: 1
         run: |
           # Phase 138-D: Initial coverage gate at 40% (baseline observed: 46.87%)
           # Phase 138-D follow-up: Raise to 50% / 60% / 70% incrementally
           # Phase A-11: raise gate from 40% to 60% (observed coverage: 65%)
-          uv run python -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
+          # Run under Xvfb (virtual X server) for the same reason as the
+          # test job: SDL_VIDEODRIVER=dummy + kivymd's module-level dp()
+          # require a real (virtual) display on headless GHA runners.
+          xvfb-run -a uv run python -X faulthandler -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
           echo "Exit code: $?"
 
       - name: Check package can be built
