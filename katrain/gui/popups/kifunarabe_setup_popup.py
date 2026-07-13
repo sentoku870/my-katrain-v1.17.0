@@ -50,6 +50,17 @@ _REF_TO_MAX_MOVES: dict[str, int] = {
     "kifunarabe:setup:moves_all": 0,
 }
 
+# Phase 179-D: Map from i18n-key (ref) to KifunarabeConfig.critical_only_threshold
+# value. Order matches the spinner in _open_setup_popup and the
+# ``VALID_CRITICAL_THRESHOLDS`` tuple. Index 0 == off (no important-only mode).
+_REF_TO_CRITICAL_THRESHOLD: dict[str, float] = {
+    "kifunarabe:setup:critical_off": 0.0,
+    "kifunarabe:setup:critical_0_5": 0.5,
+    "kifunarabe:setup:critical_1_0": 1.0,
+    "kifunarabe:setup:critical_2_0": 2.0,
+    "kifunarabe:setup:critical_5_0": 5.0,
+}
+
 
 class KifunarabeSetupContent(BoxLayout):
     """Body widget of the kifunarabe setup popup."""
@@ -58,10 +69,16 @@ class KifunarabeSetupContent(BoxLayout):
     side_spinner = ObjectProperty(None)  # type: ignore[assignment]
     hints_spinner = ObjectProperty(None)  # type: ignore[assignment]
     max_moves_spinner = ObjectProperty(None)  # type: ignore[assignment]
+    critical_spinner = ObjectProperty(None)  # type: ignore[assignment]
 
     def on_submit(self) -> None:
         """User clicked OK: validate inputs and propagate to controller."""
-        from katrain.core.study.kifunarabe import VALID_HINT_COUNTS, VALID_MAX_MOVES, KifunarabeConfig
+        from katrain.core.study.kifunarabe import (
+            VALID_CRITICAL_THRESHOLDS,
+            VALID_HINT_COUNTS,
+            VALID_MAX_MOVES,
+            KifunarabeConfig,
+        )
 
         try:
             turn_key = self.side_spinner.input_value
@@ -74,10 +91,20 @@ class KifunarabeSetupContent(BoxLayout):
             max_moves = _REF_TO_MAX_MOVES.get(moves_key, 0)
             if max_moves not in VALID_MAX_MOVES:
                 raise ValueError(f"max_moves must be one of {VALID_MAX_MOVES}")
+            # Phase 179-D: optional critical-only threshold (index 0 -> off).
+            critical_key = (
+                self.critical_spinner.input_value
+                if self.critical_spinner is not None
+                else "kifunarabe:setup:critical_off"
+            )
+            critical_only_threshold = _REF_TO_CRITICAL_THRESHOLD.get(critical_key, 0.0)
+            if critical_only_threshold not in VALID_CRITICAL_THRESHOLDS:
+                critical_only_threshold = 0.0
             config: KifunarabeConfig = KifunarabeConfig(
                 turn=turn,
                 max_hints=max_hints,
                 max_moves=max_moves,
+                critical_only_threshold=critical_only_threshold,
             )
         except (ValueError, TypeError):
             # Fall back to defaults on invalid input (do not block)
@@ -153,6 +180,21 @@ def _open_setup_popup(gui: Any) -> None:
     content.add_widget(max_moves_spinner)
     content.max_moves_spinner = max_moves_spinner
 
+    # Phase 179-D: critical-only threshold spinner (off + 0.5/1.0/2.0/5.0).
+    critical_spinner = LabelledSpinner(
+        input_property="critical_only",
+        value_refs=[
+            "kifunarabe:setup:critical_off",
+            "kifunarabe:setup:critical_0_5",
+            "kifunarabe:setup:critical_1_0",
+            "kifunarabe:setup:critical_2_0",
+            "kifunarabe:setup:critical_5_0",
+        ],
+        selected_index=0,  # default: off
+    )
+    content.add_widget(critical_spinner)
+    content.critical_spinner = critical_spinner
+
     submit_btn = Button(
         text=i18n._("kifunarabe:setup:start"),
         size_hint_y=None,
@@ -164,7 +206,7 @@ def _open_setup_popup(gui: Any) -> None:
 
     popup = I18NPopup(
         title_key="kifunarabe:setup:title",
-        size=[dp(360), dp(320)],
+        size=[dp(360), dp(380)],
         content=content,
     ).__self__
     popup.size_hint = (None, None)

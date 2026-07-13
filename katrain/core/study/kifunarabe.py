@@ -14,11 +14,15 @@ type hints (TYPE_CHECKING) so that tests can run without the GUI.
 """
 
 import contextlib
+import hashlib
+import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -47,6 +51,13 @@ VALID_HINT_COUNTS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)
 #: Allowed values for KifunarabeConfig.max_moves.
 #: 0 = play through the entire mainline, otherwise capped at this many moves.
 VALID_MAX_MOVES: tuple[int, ...] = (0, 50, 100, 150)
+
+#: Phase 179-D: thresholds (in score-lead loss, 目差) for the
+#: "important moments only" mode. 0.0 = disabled (play all moves).
+VALID_CRITICAL_THRESHOLDS: tuple[float, ...] = (0.0, 0.5, 1.0, 2.0, 5.0)
+
+#: Phase 179-B1: maximum number of Critical 3 entries per player (B and W).
+CRITICAL_3_PER_PLAYER = 3
 
 
 # =============================================================================
@@ -85,11 +96,16 @@ class KifunarabeConfig:
         turn: One of "both" (both sides), "B" (black only), "W" (white only).
         max_hints: Number of candidate moves shown as hints (0..5).
         max_moves: Maximum number of moves to play through (0 = entire mainline).
+        critical_only_threshold: Phase 179-D. When > 0, the controller will
+            pre-compute the set of "important moments" (mainline nodes whose
+            parent→child score-lead loss exceeds this threshold) and use that
+            count as the effective ``max_moves``. 0.0 = disabled (all moves).
     """
 
     turn: str = SIDE_BOTH
     max_hints: int = 3
     max_moves: int = 0
+    critical_only_threshold: float = 0.0
 
     def __post_init__(self) -> None:
         if self.turn not in VALID_TURNS:
@@ -98,6 +114,11 @@ class KifunarabeConfig:
             raise ValueError(f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}")
         if self.max_moves not in VALID_MAX_MOVES:
             raise ValueError(f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}")
+        if self.critical_only_threshold not in VALID_CRITICAL_THRESHOLDS:
+            raise ValueError(
+                f"Invalid critical_only_threshold: {self.critical_only_threshold}; "
+                f"expected one of {VALID_CRITICAL_THRESHOLDS}"
+            )
 
 
 @dataclass
@@ -126,6 +147,10 @@ class KifunarabeSummary:
     """Aggregate statistics for a finished (or aborted) session.
 
     All counts are 0 when total_positions == 0.
+
+    Phase 179-B2: the ``critical_3_*`` fields track performance on the
+    Critical 3 review positions selected at session start. They stay at
+    0 when no Critical 3 set was supplied.
     """
 
     total_positions: int
@@ -134,6 +159,11 @@ class KifunarabeSummary:
     auto_advance_count: int
     skipped_count: int
     max_moves_reached: bool = False
+    # Phase 179-B2: Critical 3 hit-rate breakdown.
+    critical_3_total: int = 0
+    critical_3_correct: int = 0
+    critical_3_wrong: int = 0
+    critical_3_skipped: int = 0
 
     @property
     def attempted_count(self) -> int:
@@ -171,6 +201,40 @@ class KifunarabeSummary:
         if self.total_positions <= 0:
             return 0.0
         return (self.correct_count + self.auto_advance_count) / self.total_positions * 100.0
+
+    @property
+    def critical_3_hit_rate(self) -> float:
+        """Phase 179-B2: percentage of Critical 3 positions guessed correctly.
+
+        Returns 0.0 when no Critical 3 set was supplied (total == 0).
+        """
+        if self.critical_3_total <= 0:
+            return 0.0
+        return self.critical_3_correct / self.critical_3_total * 100.0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Phase 179-A: JSON-serialisable representation for history save.
+
+        Includes every numeric / boolean field plus the derived rates so
+        that downstream consumers (LLM coaching, future analytics) do not
+        have to re-implement the rate computations.
+        """
+        return {
+            "total_positions": self.total_positions,
+            "correct_count": self.correct_count,
+            "wrong_count": self.wrong_count,
+            "auto_advance_count": self.auto_advance_count,
+            "skipped_count": self.skipped_count,
+            "max_moves_reached": self.max_moves_reached,
+            "critical_3_total": self.critical_3_total,
+            "critical_3_correct": self.critical_3_correct,
+            "critical_3_wrong": self.critical_3_wrong,
+            "critical_3_skipped": self.critical_3_skipped,
+            "correct_rate": self.correct_rate,
+            "wrong_rate": self.wrong_rate,
+            "overall_rate": self.overall_rate,
+            "critical_3_hit_rate": self.critical_3_hit_rate,
+        }
 
 
 # =============================================================================
@@ -339,17 +403,37 @@ class KifunarabeSession:
     invoking :meth:`record_guess` (correct) or :meth:`record_auto_advance`.
     """
 
-    def __init__(self, config: KifunarabeConfig | None = None):
+    def __init__(
+        self,
+        config: KifunarabeConfig | None = None,
+        critical_3_move_numbers: list[int] | None = None,
+    ):
         """Initialize a session.
 
         Args:
             config: User-selected configuration. Defaults to a fresh
                 ``KifunarabeConfig()``.
+            critical_3_move_numbers: Phase 179-B1. Move numbers that are
+                part of the Critical 3 set for this game. Used to track
+                ``critical_3_correct/wrong/skipped`` counters so the
+                summary popup and the history JSON can report hit rate.
+                ``None`` or empty list = no Critical 3 tracking.
         """
         self.config: KifunarabeConfig = config or KifunarabeConfig()
         self.results: list[KifunarabeGuessResult] = []
         self.started_at: datetime = datetime.now()
         self.ended_at: datetime | None = None
+        # Phase 179-B1/B2
+        self.critical_3_set: set[int] = set(critical_3_move_numbers or [])
+        self.critical_3_correct: int = 0
+        self.critical_3_wrong: int = 0
+        self.critical_3_skipped: int = 0
+
+    # -- critical_3 helper ----------------------------------------------------
+
+    def _is_critical_3(self, move_number: int) -> bool:
+        """Phase 179-B2: True if ``move_number`` is part of the Critical 3 set."""
+        return move_number in self.critical_3_set
 
     # -- state ----------------------------------------------------------------
 
@@ -455,6 +539,14 @@ class KifunarabeSession:
             hints_shown,
             result.outcome.value,
         )
+        # Phase 179-B2: aggregate Critical 3 counters when applicable.
+        if self._is_critical_3(move_number):
+            if outcome == GuessOutcome.CORRECT:
+                self.critical_3_correct += 1
+            elif outcome == GuessOutcome.WRONG_GUESS:
+                self.critical_3_wrong += 1
+            else:
+                self.critical_3_skipped += 1
         self._finalize_at_limit()
         return result
 
@@ -474,6 +566,10 @@ class KifunarabeSession:
             outcome=GuessOutcome.AUTO_ADVANCE,
         )
         self.results.append(result)
+        # Phase 179-B2: auto-advance counts as "skipped" against the
+        # Critical 3 set because the user did not actively guess.
+        if self._is_critical_3(move_number):
+            self.critical_3_skipped += 1
         self._finalize_at_limit()
         return result
 
@@ -493,12 +589,19 @@ class KifunarabeSession:
             outcome=GuessOutcome.SKIPPED,
         )
         self.results.append(result)
+        # Phase 179-B2: end-of-tree skip counts as skipped against Critical 3.
+        if self._is_critical_3(move_number):
+            self.critical_3_skipped += 1
         return result
 
     # -- summary --------------------------------------------------------------
 
     def get_summary(self) -> KifunarabeSummary:
-        """Aggregate the recorded results into a :class:`KifunarabeSummary`."""
+        """Aggregate the recorded results into a :class:`KifunarabeSummary`.
+
+        Phase 179-B2: also forwards the Critical 3 counters so the summary
+        popup and history JSON can report the Critical 3 hit rate.
+        """
         total = len(self.results)
         correct = sum(1 for r in self.results if r.outcome == GuessOutcome.CORRECT)
         wrong = sum(1 for r in self.results if r.outcome == GuessOutcome.WRONG_GUESS)
@@ -511,6 +614,10 @@ class KifunarabeSession:
             auto_advance_count=auto,
             skipped_count=skipped,
             max_moves_reached=self.max_moves_reached,
+            critical_3_total=len(self.critical_3_set),
+            critical_3_correct=self.critical_3_correct,
+            critical_3_wrong=self.critical_3_wrong,
+            critical_3_skipped=self.critical_3_skipped,
         )
 
     def clear(self) -> None:
@@ -519,6 +626,10 @@ class KifunarabeSession:
         self.started_at = datetime.now()
         self.ended_at = None
         self._max_moves_reached_flag = False
+        # Phase 179-B2: counters reset along with results.
+        self.critical_3_correct = 0
+        self.critical_3_wrong = 0
+        self.critical_3_skipped = 0
 
 
 # =============================================================================
@@ -546,3 +657,232 @@ def evaluate_guess(coords: tuple[int, int], node: "GameNode") -> bool | None:
     if expected is None:
         return None
     return _coords_equal_gtp(coords, expected, node)
+
+
+# =============================================================================
+# Phase 179-B1: Critical 3 helper
+# =============================================================================
+
+
+def get_critical_3_move_numbers(
+    game: Any,
+    level: str = "normal",
+) -> list[int]:
+    """Return the union of move numbers in the Critical 3 set for both players.
+
+    Phase 179-B1: avoids building a full ``KarteContext`` by calling
+    ``select_critical_moves`` directly with ``player_filter="B"`` and
+    ``player_filter="W"`` and merging the two ``max_moves=3`` lists.
+
+    Returns:
+        Sorted list of unique move numbers (max 6 entries: 3 per player).
+        Returns ``[]`` if the game lacks analysis or any exception occurs.
+    """
+    if game is None or getattr(game, "current_node", None) is None:
+        return []
+    try:
+        from katrain.core.analysis.critical_moves import select_critical_moves
+    except ImportError:
+        return []
+    moves: set[int] = set()
+    for player in (SIDE_BLACK, SIDE_WHITE):
+        try:
+            critical = select_critical_moves(
+                game,
+                max_moves=CRITICAL_3_PER_PLAYER,
+                lang="ja",
+                level=level,
+                player_filter=player,
+            )
+        except Exception:
+            continue
+        for cm in critical:
+            n = getattr(cm, "move_number", None)
+            if isinstance(n, int):
+                moves.add(n)
+    return sorted(moves)
+
+
+# =============================================================================
+# Phase 179-D: Important-moments collector
+# =============================================================================
+
+
+def collect_important_moves(game: Any, threshold: float) -> list[int]:
+    """Walk the mainline and return move numbers whose score-lead loss exceeds ``threshold``.
+
+    Phase 179-D: powers the "important moments only" mode. Only nodes that
+    have both their own and their parent's ``analysis.score_lead`` populated
+    are considered (KataGo-analyzed nodes only). Returns ``[]`` when
+    ``threshold <= 0`` or the game has no current node.
+
+    The walker is intentionally tolerant of partial analysis: nodes that
+    lack ``score_lead`` are skipped silently rather than raising.
+    """
+    if game is None or threshold <= 0:
+        return []
+    important: list[int] = []
+    try:
+        node = game.current_node
+        while node is not None:
+            analysis = getattr(node, "analysis", None)
+            score = getattr(analysis, "score_lead", None) if analysis is not None else None
+            if score is not None:
+                parent = getattr(node, "parent", None)
+                parent_analysis = getattr(parent, "analysis", None) if parent else None
+                parent_score = (
+                    getattr(parent_analysis, "score_lead", None)
+                    if parent_analysis is not None
+                    else None
+                )
+                if parent_score is not None and abs(score - parent_score) > threshold:
+                    important.append(getattr(node, "move_number", 0))
+            # Follow the mainline only (variation branches are not included).
+            next_node = getattr(node, "next", lambda **_: None)(only_mainline=True)
+            node = next_node if next_node is not node else None
+    except Exception:
+        pass
+    return [m for m in important if m > 0]
+
+
+# =============================================================================
+# Phase 179-A: Session-history persistence
+# =============================================================================
+
+
+def _default_history_dir() -> Path:
+    """Return ``~/.katrain/kifunarabe_history/`` (and create it if missing)."""
+    p = Path.home() / ".katrain" / "kifunarabe_history"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _resolve_history_dir(katrain: Any | None = None) -> Path:
+    """Resolve the active history directory.
+
+    Order of resolution:
+    1. ``katrain.config("kifunarabe/history_dir")`` if non-empty.
+    2. ``KIFUNARABE_HISTORY_DIR_DEFAULT`` (typically empty).
+    3. Built-in fallback: ``~/.katrain/kifunarabe_history/``.
+
+    Any directory that fails ``mkdir`` falls back to the built-in default
+    so that history saving never blocks the main flow.
+    """
+    from katrain.core.constants import (
+        KIFUNARABE_HISTORY_DIR_DEFAULT,
+        KIFUNARABE_HISTORY_DIR_KEY,
+    )
+
+    configured: str | None = None
+    if katrain is not None:
+        try:
+            configured = katrain.config(KIFUNARABE_HISTORY_DIR_KEY, None)
+        except Exception:
+            configured = None
+    if not configured:
+        configured = KIFUNARABE_HISTORY_DIR_DEFAULT
+    if not configured:
+        return _default_history_dir()
+    try:
+        p = Path(os.path.expanduser(configured))
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    except OSError:
+        return _default_history_dir()
+
+
+def sgf_history_key(sgf_path: str) -> str:
+    """Stable SHA-256[:16] key for an SGF file.
+
+    Falls back to hashing the path string itself when the file cannot be
+    read so the function never raises.
+    """
+    try:
+        content = Path(sgf_path).read_bytes()
+        return hashlib.sha256(content).hexdigest()[:16]
+    except OSError:
+        return hashlib.sha256(sgf_path.encode("utf-8")).hexdigest()[:16]
+
+
+def save_session_history(
+    sgf_path: str,
+    config: KifunarabeConfig,
+    summary: KifunarabeSummary,
+    katrain: Any | None = None,
+) -> Path | None:
+    """Phase 179-A: persist a finished session to ``<history_dir>/<hash>.json``.
+
+    Returns the path on success and ``None`` on any failure. The JSON
+    contains ``sgf_path``, ``saved_at`` (ISO), the config (turn/hints/
+    max_moves/critical_only_threshold) and ``summary.to_dict()``.
+    """
+    try:
+        key = sgf_history_key(sgf_path)
+        out = _resolve_history_dir(katrain) / f"{key}.json"
+        payload = {
+            "sgf_path": sgf_path,
+            "saved_at": datetime.now().isoformat(),
+            "config": {
+                "turn": config.turn,
+                "max_hints": config.max_hints,
+                "max_moves": config.max_moves,
+                "critical_only_threshold": config.critical_only_threshold,
+            },
+            "summary": summary.to_dict(),
+        }
+        out.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return out
+    except Exception:
+        return None
+
+
+def load_session_history(
+    sgf_path: str,
+    katrain: Any | None = None,
+) -> dict[str, Any] | None:
+    """Phase 179-A: load the most recent saved session for ``sgf_path``.
+
+    Returns ``None`` if no file exists or it cannot be parsed.
+    """
+    try:
+        key = sgf_history_key(sgf_path)
+        path = _resolve_history_dir(katrain) / f"{key}.json"
+        if not path.exists():
+            return None
+        result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        return result
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def clear_all_history(katrain: Any | None = None) -> int:
+    """Phase 179-A: delete every ``*.json`` under the resolved history dir.
+
+    Returns the number of files actually removed. Errors during individual
+    ``unlink()`` calls are swallowed (counted as 0) so a partial cleanup
+    still produces a useful return value.
+    """
+    count = 0
+    try:
+        for p in _resolve_history_dir(katrain).glob("*.json"):
+            try:
+                p.unlink()
+                count += 1
+            except OSError:
+                pass
+    except Exception:
+        pass
+    return count
+
+
+def get_history_summary(katrain: Any | None = None) -> dict[str, Any]:
+    """Phase 179-A: settings-popup helper. Returns ``{count, latest_mtime}``."""
+    try:
+        files = list(_resolve_history_dir(katrain).glob("*.json"))
+        latest = max((p.stat().st_mtime for p in files), default=0.0)
+        return {"count": len(files), "latest_mtime": latest}
+    except Exception:
+        return {"count": 0, "latest_mtime": 0.0}

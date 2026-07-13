@@ -139,6 +139,16 @@ def show_kifunarabe_summary(ctx: Any, summary: KifunarabeSummary) -> None:
         correct_rate=correct_rate,
         wrong_rate=wrong_rate,
     )
+    # Phase 179-B2: append Critical 3 hit-rate line when a Critical 3 set
+    # was supplied to the session. We never show 0/0 because the user
+    # would see "0.0% / 0" which is just confusing.
+    if summary.critical_3_total > 0:
+        crit_text = i18n._("kifunarabe:summary:critical3").format(
+            correct=summary.critical_3_correct,
+            total=summary.critical_3_total,
+            rate=_format_rate(summary.critical_3_hit_rate),
+        )
+        body_text += "\n" + crit_text
     body = Label(
         text=body_text,
         size_hint_y=None,

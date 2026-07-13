@@ -20,6 +20,11 @@ from katrain.core.constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
 )
+from katrain.core.study.kifunarabe import (
+    collect_important_moves,
+    get_critical_3_move_numbers,
+    save_session_history,
+)
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -227,6 +232,14 @@ class KifunarabeController:
 
         Behaviour:
         - Clears any existing kifunarabe session first (``disable_if_needed``).
+        - Phase 179-B1: fetches the Critical 3 move numbers from the current
+          game and stores them on the new session so per-position
+          highlights and the summary hit-rate can use them.
+        - Phase 179-D: when ``config.critical_only_threshold > 0``, scans
+          the mainline for important moments and overrides
+          ``config.max_moves`` to ``len(important_moves)`` so the session
+          ends naturally after the user has visited every important
+          position.
         - Ensures the on-board ``Top Moves`` (hints) toggle reflects
           ``config.max_hints > 0`` so candidates are visible on the board.
         - Schedules a board redraw on the main thread so the candidate
@@ -235,13 +248,48 @@ class KifunarabeController:
         Args:
             config: A ``KifunarabeConfig`` instance.
         """
-        from katrain.core.study.kifunarabe import KifunarabeSession
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
 
         # B3: clear any lingering session/state first. ``disable_if_needed``
         # restores any saved toggle state from a previous session.
         self.disable_if_needed()
 
-        self._session = KifunarabeSession(config)
+        # Phase 179-D: if the user asked for "important only", rewrite
+        # ``max_moves`` to the number of mainline positions whose
+        # score-lead loss exceeds the threshold. Empty list -> keep the
+        # original config (effectively "all moves").
+        effective_config = config
+        if config.critical_only_threshold > 0:
+            game = self._get_game()
+            important = collect_important_moves(game, config.critical_only_threshold) if game else []
+            if important:
+                effective_config = KifunarabeConfig(
+                    turn=config.turn,
+                    max_hints=config.max_hints,
+                    max_moves=len(important),
+                    critical_only_threshold=config.critical_only_threshold,
+                )
+                with contextlib.suppress(Exception):
+                    self._logger(
+                        f"kifunarabe: critical-only mode -> {len(important)} important moves",
+                        level=1,
+                    )
+
+        # Phase 179-B1: fetch the Critical 3 set (max 6 entries: B/W each 3).
+        critical_3: list[int] = []
+        game_for_c3 = self._get_game()
+        if game_for_c3 is not None:
+            try:
+                critical_3 = get_critical_3_move_numbers(game_for_c3)
+            except Exception:
+                critical_3 = []
+
+        self._session = KifunarabeSession(
+            effective_config,
+            critical_3_move_numbers=critical_3,
+        )
+        # Reset the highlight guard so each critical 3 position fires its badge.
+        self._last_critical_3_highlight = 0
         self._set_mode(True)
 
         # Phase 177-H: save then mask ``show_children`` / ``eval`` so the
@@ -413,9 +461,47 @@ class KifunarabeController:
             # Spec: 間違えなら何も起こりません (no move played).
             self._notify_guess(coords, node, correct=False)
 
+        # Phase 179-B1: if the user has just landed on a Critical 3
+        # position, surface a small "Critical 3" badge popup.
+        self._highlight_critical_3_if_reached(node)
+
         # Phase 177-G: surface the summary popup if the move cap or end of
         # mainline just closed the session. Mode property is preserved.
         self._check_session_ended()
+
+    # -- Phase 179-B1: Critical 3 badge hook ----------------------------------
+
+    def _highlight_critical_3_if_reached(self, node: Any) -> None:
+        """Show a short Critical 3 toast when the user lands on a tracked node.
+
+        Phase 179-B1: the session stores ``critical_3_set`` (Phase 179-B1)
+        and a ``_last_critical_3_highlight`` move-number guard to ensure
+        each position fires its badge at most once.
+        """
+        if self._session is None:
+            return
+        critical_3_set = getattr(self._session, "critical_3_set", None)
+        if not critical_3_set:
+            return
+        move_number = getattr(node, "move_number", None)
+        if not isinstance(move_number, int) or move_number not in critical_3_set:
+            return
+        if move_number == getattr(self, "_last_critical_3_highlight", None):
+            return
+        self._last_critical_3_highlight = move_number
+        ctx = self._get_ctx()
+        if ctx is None:
+            return
+        from kivy.clock import Clock
+
+        from katrain.gui.popups.kifunarabe_critical3_popup import (
+            show_critical_3_badge,
+        )
+
+        try:
+            Clock.schedule_once(lambda _dt: show_critical_3_badge(ctx, move_number), 0)
+        except Exception:
+            self._logger("kifunarabe: failed to schedule critical_3 badge", level=0)
 
     def _record_wrong_guess(self, coords: tuple[int, int], node: Any) -> None:
         """Phase 177-F (fix): persist a non-matching click as WRONG_GUESS.
@@ -576,12 +662,18 @@ class KifunarabeController:
         """
         if not self._get_mode():
             return
+        summary_data: KifunarabeSummary | None = None
         if show_summary and self._session and self._session.results:
-            summary = self._session.get_summary()
+            summary_data = self._session.get_summary()
             try:
-                self._get_show_summary()(self._get_ctx(), summary)
+                self._get_show_summary()(self._get_ctx(), summary_data)
             except Exception:
                 self._logger("kifunarabe: show_summary callback raised", level=0)
+        # Phase 179-A: persist the finished session to JSON before clearing
+        # the in-memory reference. Failures are logged at debug level only.
+        if summary_data is None and self._session and self._session.results:
+            summary_data = self._session.get_summary()
+        self._save_history(summary_data)
         # Phase 177-H: every "end" path must put the user's analysis
         # toggles back where they were before kifunarabe started.
         self._restore_analysis_toggles()
@@ -628,15 +720,45 @@ class KifunarabeController:
         """
         if not self._get_mode():
             return
+        summary_data: KifunarabeSummary | None = None
         if self._session and self._session.results:
+            summary_data = self._session.get_summary()
             with contextlib.suppress(Exception):
-                summary = self._session.get_summary()
-                self._get_show_summary()(self._get_ctx(), summary)
+                self._get_show_summary()(self._get_ctx(), summary_data)
+        # Phase 179-A: persist before tearing down.
+        self._save_history(summary_data)
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
+
+    # -- Phase 179-A: history persistence --------------------------------------
+
+    def _save_history(self, summary: KifunarabeSummary | None) -> None:
+        """Phase 179-A: best-effort JSON persistence of a finished session.
+
+        Silently no-ops when ``summary`` is ``None`` (no recorded results),
+        when the game has no resolvable ``sgf_filename``, or when the
+        underlying :func:`save_session_history` raises. This is intentional:
+        history saving is a convenience for the user and must never break
+        the main flow.
+        """
+        if summary is None or self._session is None:
+            return
+        game = self._get_game()
+        sgf_path = getattr(game, "sgf_filename", None) if game else None
+        if not sgf_path:
+            return
+        try:
+            save_session_history(
+                sgf_path,
+                self._session.config,
+                summary,
+                katrain=self._get_ctx(),
+            )
+        except Exception:
+            self._logger("kifunarabe: save_session_history failed", level=0)
 
 
 def disable_kifunarabe_if_active(katrain: Any) -> None:
