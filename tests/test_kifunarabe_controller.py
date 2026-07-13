@@ -71,9 +71,7 @@ class _MockGame:
             # No matching child - append a placeholder child so the chain
             # ends and auto-advance can stop.
 
-            cur_children.append(
-                _MockChild(move.coords, Move.opponent_player(move.player))
-            )
+            cur_children.append(_MockChild(move.coords, Move.opponent_player(move.player)))
         # Switch next player
         new_player = Move.opponent_player(move.player)
         self.current_node = _MockNode(
@@ -278,9 +276,7 @@ class TestSessionEndDetection(unittest.TestCase):
 class TestCorrectGuess(unittest.TestCase):
     def test_correct_guess_plays_move_and_advances(self) -> None:
         # Build a chain of 2 moves: B at D4, then W at Q16, then nothing.
-        game = _MockGame(
-            _MockNode(children=[_MockChild((3, 3), "B")])
-        )
+        game = _MockGame(_MockNode(children=[_MockChild((3, 3), "B")]))
         # user clicks D4 (3,3) which is the recorded B move -> correct
         game.current_node = _MockNode(children=[_MockChild((3, 3), "B")], player="W")
         controller, refs = make_controller(game=game)
@@ -320,12 +316,8 @@ class TestWrongGuessIsRecorded(unittest.TestCase):
 
     def _setup(self, game=None):
         if game is None:
-            game = _MockGame(
-                _MockNode(children=[_MockChild((3, 3), "B")])
-            )
-        game.current_node = _MockNode(
-            children=[_MockChild((3, 3), "B")], player="W"
-        )
+            game = _MockGame(_MockNode(children=[_MockChild((3, 3), "B")]))
+        game.current_node = _MockNode(children=[_MockChild((3, 3), "B")], player="W")
         return game
 
     def test_off_marker_click_records_wrong_guess(self) -> None:
@@ -336,9 +328,7 @@ class TestWrongGuessIsRecorded(unittest.TestCase):
 
         game = self._setup()
         controller, refs = make_controller(game=game)
-        controller.start_session(
-            KifunarabeConfig(turn="both", max_hints=0)
-        )
+        controller.start_session(KifunarabeConfig(turn="both", max_hints=0))
         # Click far away from the actual move (no marker shown there).
         controller.handle_guess((10, 10))
         summary = controller.session.get_summary()
@@ -396,9 +386,7 @@ class TestWrongGuessIsRecorded(unittest.TestCase):
 
         game = _MockGame(_TwoChildNode())
         controller, refs = make_controller(game=game)
-        controller.start_session(
-            KifunarabeConfig(turn="both", max_hints=0)
-        )
+        controller.start_session(KifunarabeConfig(turn="both", max_hints=0))
         # User clicks E5 - which IS a marker (not off-board), but not the
         # actual move. This MUST count as a failure.
         controller.handle_guess((4, 4))
@@ -418,9 +406,7 @@ class TestWrongGuessIsRecorded(unittest.TestCase):
 
         game = self._setup()
         controller, refs = make_controller(game=game)
-        controller.start_session(
-            KifunarabeConfig(turn="both", max_hints=0)
-        )
+        controller.start_session(KifunarabeConfig(turn="both", max_hints=0))
         # 3 wrong guesses, then verify the count.
         controller.handle_guess((4, 4))
         controller.handle_guess((5, 5))

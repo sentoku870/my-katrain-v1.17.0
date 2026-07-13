@@ -64,6 +64,7 @@ def _build_sgf_load_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
     inner.add_widget(row)
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:kifunarabe_sgf_load", row)
+    assert browse_button is not None  # with_browse=True guarantees this
     return input_widget, browse_button
 
 

@@ -196,9 +196,10 @@ def _kifunarabe_options_to_hint_moves(current_node: Any, option_gtps: list[str])
         return []
 
     # Build a lookup keyed by GTP for fast enrichment from KataGo results.
-    candidates = []
+    candidates: list[dict[str, Any]] = []
     if getattr(current_node, "analysis_exists", False):
-        candidates = getattr(current_node, "candidate_moves", []) or []
+        raw = getattr(current_node, "candidate_moves", []) or []
+        candidates = [c for c in raw if isinstance(c, dict)]
     by_gtp = {c.get("move"): c for c in candidates if c.get("move")}
 
     hint_moves: list[dict[str, Any]] = []
@@ -314,9 +315,7 @@ def draw_kata_hint_marker(
     # the user explicitly opted back in via ``show_actual_border``.
     is_kifu_marker = move_dict.get("_kifunarabe_actual") is not None
     if is_kifu_marker:
-        uniform_color = bool(
-            katrain.config(KIFUNARABE_UNIFORM_COLOR_KEY, KIFUNARABE_UNIFORM_COLOR_DEFAULT)
-        )
+        uniform_color = bool(katrain.config(KIFUNARABE_UNIFORM_COLOR_KEY, KIFUNARABE_UNIFORM_COLOR_DEFAULT))
         show_actual_border = bool(
             katrain.config(KIFUNARABE_SHOW_ACTUAL_BORDER_KEY, KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT)
         )
@@ -361,9 +360,10 @@ def draw_kata_hint_marker(
         # downstream alpha (``alpha`` below) is also taken from the same
         # fill. Collapse two redundancies to keep behaviour consistent.
         evalcol: tuple[float, ...] = tuple(fill_rgba)
-        alpha = fill_rgba[3]
+        alpha = float(fill_rgba[3]) if len(fill_rgba) > 3 else 1.0
     else:
-        evalcol = _eval_color_helper(widget, move_dict.get("pointsLost", 0.0))
+        ec = _eval_color_helper(widget, move_dict.get("pointsLost", 0.0))
+        evalcol = tuple(ec) if ec is not None else (0.0, 0.0, 0.0, 1.0)
     if text_on and top_moves_show:  # remove grid lines using a board colored circle
         draw_circle(
             (

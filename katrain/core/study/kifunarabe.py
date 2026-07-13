@@ -93,17 +93,11 @@ class KifunarabeConfig:
 
     def __post_init__(self) -> None:
         if self.turn not in VALID_TURNS:
-            raise ValueError(
-                f"Invalid turn: {self.turn!r}; expected one of {VALID_TURNS}"
-            )
+            raise ValueError(f"Invalid turn: {self.turn!r}; expected one of {VALID_TURNS}")
         if self.max_hints not in VALID_HINT_COUNTS:
-            raise ValueError(
-                f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}"
-            )
+            raise ValueError(f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}")
         if self.max_moves not in VALID_MAX_MOVES:
-            raise ValueError(
-                f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}"
-            )
+            raise ValueError(f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}")
 
 
 @dataclass
@@ -435,11 +429,7 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
-        correct = (
-            expected_gtp is not None
-            and guessed_gtp is not None
-            and expected_gtp.upper() == guessed_gtp.upper()
-        )
+        correct = expected_gtp is not None and guessed_gtp is not None and expected_gtp.upper() == guessed_gtp.upper()
         # A guessed-but-wrong click is a "failure" distinct from "skip":
         # the user did participate. ``SKIPPED`` is reserved for positions
         # that were neither guessed nor auto-advanced (end of tree, etc.).

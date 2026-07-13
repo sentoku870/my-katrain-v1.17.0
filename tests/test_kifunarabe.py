@@ -277,10 +277,10 @@ class TestSessionRecording:
         )
 
         sess = KifunarabeSession(KifunarabeConfig())
-        sess.record_guess(1, "D4", "D4")          # correct
-        sess.record_guess(2, "Q16", "R4")         # wrong
-        sess.record_guess(3, "R10", "R10")        # correct
-        sess.record_skipped_no_move(4)             # skipped (end of tree)
+        sess.record_guess(1, "D4", "D4")  # correct
+        sess.record_guess(2, "Q16", "R4")  # wrong
+        sess.record_guess(3, "R10", "R10")  # correct
+        sess.record_skipped_no_move(4)  # skipped (end of tree)
         s = sess.get_summary()
         assert s.correct_count == 2
         assert s.wrong_count == 1
@@ -676,9 +676,15 @@ class TestKifunarabeMarkerGuards:
         )
         out = _kifunarabe_options_to_hint_moves(node, ["D4", "Q16"])
         required = {
-            "move", "order", "scoreLead", "winrate",
-            "pointsLost", "relativePointsLost", "winrateLost",
-            "visits", "pv",
+            "move",
+            "order",
+            "scoreLead",
+            "winrate",
+            "pointsLost",
+            "relativePointsLost",
+            "winrateLost",
+            "visits",
+            "pv",
         }
         for marker in out:
             missing = required - marker.keys()

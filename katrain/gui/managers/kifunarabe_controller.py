@@ -259,13 +259,11 @@ class KifunarabeController:
         # first schedule, retry on a slightly later main-thread tick.
         from kivy.clock import Clock
 
-        Clock.schedule_once(
-            lambda _dt: (
-                self._apply_hint_toggle(max_hints=config.max_hints),
-                self._schedule_redraw(),
-            ),
-            0.15,
-        )
+        def _resync(_dt: float) -> None:
+            self._apply_hint_toggle(max_hints=config.max_hints)
+            self._schedule_redraw()
+
+        Clock.schedule_once(_resync, 0.15)
 
         self._auto_advance_until_user_turn()
 
@@ -448,6 +446,7 @@ class KifunarabeController:
         """
         from katrain.core.sgf_parser import Move
 
+        assert self._session is not None  # guarded by handle_guess()
         expected_gtp = self._expected_gtp_from_node(node)
         self._session.record_guess(
             move_number=node.move_number,
@@ -496,9 +495,11 @@ class KifunarabeController:
             # Auto-play: pick the recorded move
             child = ordered[0]
             child_move = child.move
+            assert child_move is not None
             coords = child_move.coords
             player = child_move.player
 
+            assert self._session is not None  # guard set by handle_guess
             self._session.record_auto_advance(node.move_number)
             self._play_move(coords, player)
 
@@ -517,9 +518,14 @@ class KifunarabeController:
         if not ordered:
             return None
         child = ordered[0]
-        if not child.move:
+        child_move = getattr(child, "move", None)
+        if child_move is None:
             return None
-        return child.move.gtp()
+        gtp = getattr(child_move, "gtp", None)
+        if callable(gtp):
+            result = gtp()
+            return result if isinstance(result, str) else None
+        return None
 
     def _play_move(self, coords: tuple[int, int] | None, player: str) -> None:
         """Invoke ``game.play(Move(...))`` without triggering analysis.
