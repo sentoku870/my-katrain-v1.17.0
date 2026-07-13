@@ -563,5 +563,84 @@ class TestAutoToggleMarkers(unittest.TestCase):
         self.assertTrue(refs["ctx"].analysis_controls.show_children.active)
 
 
+# Phase 181-B: panel "Abort" button must dismiss a visible summary popup
+# even when mode is already False (the natural-end-after-cap scenario).
+class TestSummaryPopupDismissal(unittest.TestCase):
+    def _make_popup_stub(self) -> Any:
+        dismissed: list[bool] = []
+
+        class _PopupStub:
+            def dismiss(self) -> None:
+                dismissed.append(True)
+
+        return _PopupStub(), dismissed
+
+    def test_abort_session_dismisses_summary_popup_when_mode_off(self) -> None:
+        """Phase 181-B: a single abort press closes the popup after natural end."""
+        controller, refs = make_controller(mode_on=False)
+        popup, dismissed = self._make_popup_stub()
+        # Simulate the state after a max_moves-cap natural end: session
+        # cleared, mode off, but the summary popup is still on screen.
+        controller._session = None
+        controller._summary_popup = popup
+
+        controller.abort_session()
+
+        # The popup must be dismissed on the very first call.
+        self.assertEqual(dismissed, [True])
+        # And the controller's tracking must be cleared.
+        self.assertIsNone(controller._summary_popup)
+        # show_summary_fn must NOT have been invoked (mode is False).
+        self.assertEqual(refs["show_summary_calls"], [])
+
+    def test_abort_session_noop_when_no_popup_and_mode_off(self) -> None:
+        """No popup and mode off → abort is a clean no-op."""
+        controller, refs = make_controller(mode_on=False)
+        # No _summary_popup, no _session.
+        controller.abort_session()
+        # Nothing to dismiss, nothing to show.
+        self.assertEqual(refs["show_summary_calls"], [])
+
+    def test_abort_session_full_flow_with_active_session(self) -> None:
+        """Active session + popup → both dismissed + state cleared."""
+        from katrain.core.study.kifunarabe import (
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
+
+        controller, refs = make_controller(mode_on=False)
+        popup, dismissed = self._make_popup_stub()
+
+        cfg = KifunarabeConfig(turn="both", max_hints=0, max_moves=50)
+        sess = KifunarabeSession(cfg)
+        # Record at least one result so the summary popup fires.
+        sess.record_guess(move_number=1, expected_gtp="D4", guessed_gtp="D4")
+        controller._session = sess
+        # Mode is True so abort_session does the full flow.
+        refs["mode_state"]["value"] = True
+        controller._summary_popup = popup
+
+        controller.abort_session()
+
+        # The popup was dismissed (Phase 181-B), and mode was reset.
+        self.assertEqual(dismissed, [True])
+        self.assertFalse(refs["mode_state"]["value"])
+        self.assertIsNone(controller._session)
+        self.assertIsNone(controller._summary_popup)
+        # show_summary_fn was called with the session summary.
+        self.assertEqual(len(refs["show_summary_calls"]), 1)
+
+    def test_disable_if_needed_dismisses_summary_popup(self) -> None:
+        """Switching to PLAY mode or loading SGF also clears any popup."""
+        controller, refs = make_controller(mode_on=True)
+        popup, dismissed = self._make_popup_stub()
+        controller._summary_popup = popup
+
+        controller.disable_if_needed()
+
+        self.assertEqual(dismissed, [True])
+        self.assertIsNone(controller._summary_popup)
+
+
 if __name__ == "__main__":
     unittest.main()

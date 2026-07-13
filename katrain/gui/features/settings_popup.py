@@ -189,7 +189,12 @@ def do_mykatrain_settings_popup(
 
     popup = I18NPopup(
         title_key="mykatrain:settings",
-        size=[dp(900), dp(700)],
+        # Phase 180-C: enlarged from dp(700) -> dp(850) so the kifunarabe
+        # tab (which now includes the saved-history list section) fits
+        # without truncating the help text. The kifunarabe tab also wraps
+        # its inner BoxLayout in a ScrollView as a safety net for future
+        # additions.
+        size=[dp(900), dp(850)],
         content=main_layout,
     ).__self__
     state.popup = popup

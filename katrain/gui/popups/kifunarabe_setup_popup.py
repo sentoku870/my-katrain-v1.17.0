@@ -61,7 +61,11 @@ class KifunarabeSetupContent(BoxLayout):
 
     def on_submit(self) -> None:
         """User clicked OK: validate inputs and propagate to controller."""
-        from katrain.core.study.kifunarabe import VALID_HINT_COUNTS, VALID_MAX_MOVES, KifunarabeConfig
+        from katrain.core.study.kifunarabe import (
+            VALID_HINT_COUNTS,
+            VALID_MAX_MOVES,
+            KifunarabeConfig,
+        )
 
         try:
             turn_key = self.side_spinner.input_value
@@ -233,34 +237,71 @@ def _load_sgf_into_new_game(gui: Any, filename: str) -> bool:
 def _kick_root_analysis(gui: Any) -> None:
     """Submit the current node for analysis on the main thread.
 
-    The analysis request may come from a worker thread (we just pushed
-    ``new-game`` on the message queue) but the KataGo engine scheduler
-    tolerates that. We look up the engine from ``gui.game`` which the
-    worker thread has already populated.
+    Phase 178-A: the previous 0.2s single-shot delay sometimes left the
+    root node without analysis by the time the setup popup was
+    dismissed, so the choice-marker layer had no candidates to render.
+
+    We now:
+    - Initial delay so the worker thread that handles ``new-game`` has
+      populated ``gui.game`` (unchanged).
+    - Bail out early if ``node.analysis_exists`` is already True.
+    - On a failed ``node.analyze()`` call, log at level=1 so the user
+      can see the cause without a stack trace.
+    - Schedule a verification tick that retries up to ``MAX_ATTEMPTS``
+      total kicks, each separated by ``RETRY_DELAY`` seconds.
+
+    The kivy.clock import is kept inside the function (Phase 173
+    pattern) so that ``import katrain.gui.popups.kifunarabe_setup_popup``
+    in test environments never touches the kivy ``__init__`` side
+    effects (which mkdir ``~/.kivy`` and would race in CI).
     """
     import contextlib
 
-    def _do_kick() -> None:
+    MAX_ATTEMPTS = 5
+    RETRY_DELAY = 0.5  # seconds
+
+    def _resolve_engine(game: Any, node: Any) -> Any:
+        engines = getattr(game, "engines", {}) or {}
+        engine = engines.get(node.next_player)
+        if engine is not None:
+            return engine
+        # Fall back: any registered engine.
+        for v in engines.values():
+            return v
+        return None
+
+    def _do_kick(attempt: int = 1) -> None:
         game = getattr(gui, "game", None)
         if game is None:
             return
         node = getattr(game, "current_node", None)
         if node is None:
             return
-        engines = getattr(game, "engines", {}) or {}
-        engine = engines.get(node.next_player)
-        if engine is None:
-            # Fall back: any registered engine.
-            for v in engines.values():
-                engine = v
-                break
+        if getattr(node, "analysis_exists", False):
+            return  # already analysed - nothing to do
+
+        engine = _resolve_engine(game, node)
         if engine is None:
             return
-        with contextlib.suppress(Exception):
-            node.analyze(engine)
 
-    # Delay slightly so the worker thread that handles ``new-game`` has
-    # populated ``gui.game`` before we try to read it.
+        try:
+            node.analyze(engine)
+        except Exception as e:
+            with contextlib.suppress(Exception):
+                gui.log(f"kifunarabe: root analysis attempt {attempt} failed: {e}", 1)
+            return
+
+        # Verify the analysis landed; if not, schedule another kick.
+        from kivy.clock import Clock
+
+        def _verify(_dt: float) -> None:
+            if getattr(node, "analysis_exists", False):
+                return
+            if attempt < MAX_ATTEMPTS:
+                Clock.schedule_once(lambda _d: _do_kick(attempt + 1), RETRY_DELAY)
+
+        Clock.schedule_once(_verify, RETRY_DELAY)
+
     from kivy.clock import Clock
 
     Clock.schedule_once(lambda _dt: _do_kick(), 0.2)

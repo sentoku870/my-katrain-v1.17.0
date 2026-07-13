@@ -20,6 +20,9 @@ from katrain.core.constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
 )
+from katrain.core.study.kifunarabe import (
+    get_critical_3_move_numbers,
+)
 
 if TYPE_CHECKING:
     from katrain.core.game import Game
@@ -100,6 +103,12 @@ class KifunarabeController:
         self._on_guess_resolved_fn = on_guess_resolved_fn
 
         self._session: KifunarabeSession | None = None
+        # Phase 181-B: tracks the currently-visible summary popup so the
+        # panel "Abort" button can dismiss it even after the natural end
+        # has already cleared ``_session`` and toggled mode off. Without
+        # this, the user has to click the popup's own "abort" button to
+        # dismiss it after a max_moves cap run.
+        self._summary_popup: Any = None
 
     # -- accessors ------------------------------------------------------------
 
@@ -198,9 +207,36 @@ class KifunarabeController:
         """Get summary UI function (lazy import if not injected)."""
         if self._show_summary_fn is not None:
             return self._show_summary_fn
-        from katrain.gui.features.kifunarabe_summary import show_kifunarabe_summary
 
-        return show_kifunarabe_summary
+        # Phase 181-B: wrap the default impl so the controller can track
+        # the popup instance for later dismissal from the panel button.
+        def _tracked_show_summary(ctx: Any, summary: Any) -> None:
+            from katrain.gui.features.kifunarabe_summary import (
+                show_kifunarabe_summary as _impl,
+            )
+
+            _impl(
+                ctx,
+                summary,
+                on_popup_opened=lambda p: setattr(self, "_summary_popup", p),
+            )
+
+        return _tracked_show_summary
+
+    def _dismiss_summary_popup_if_open(self) -> None:
+        """Phase 181-B: dismiss any visible summary popup and clear tracking.
+
+        Called from ``abort_session`` so that a single panel-button press
+        closes the popup regardless of whether the session is still
+        active. Also called from ``disable_if_needed`` to keep the
+        controller's state consistent.
+        """
+        popup = self._summary_popup
+        if popup is None:
+            return
+        with contextlib.suppress(Exception):
+            popup.dismiss()
+        self._summary_popup = None
 
     def _get_on_guess_resolved(self) -> OnGuessResolvedFn:
         """Get guess-resolved UI function (lazy import if not injected)."""
@@ -216,6 +252,9 @@ class KifunarabeController:
         Called when switching to PLAY mode, loading SGF, or other interrupting
         transitions.
         """
+        # Phase 181-B: also dismiss any visible summary popup so the user
+        # does not get stranded with a popup and no exit path.
+        self._dismiss_summary_popup_if_open()
         # Phase 177-H: whenever the session is interrupted (SGF load,
         # mode switch, manual disable), the saved toggle mask must come
         # off so the user's analysis settings come back.
@@ -227,6 +266,9 @@ class KifunarabeController:
 
         Behaviour:
         - Clears any existing kifunarabe session first (``disable_if_needed``).
+        - Phase 179-B1: fetches the Critical 3 move numbers from the current
+          game and stores them on the new session so per-position
+          highlights and the summary hit-rate can use them.
         - Ensures the on-board ``Top Moves`` (hints) toggle reflects
           ``config.max_hints > 0`` so candidates are visible on the board.
         - Schedules a board redraw on the main thread so the candidate
@@ -241,7 +283,21 @@ class KifunarabeController:
         # restores any saved toggle state from a previous session.
         self.disable_if_needed()
 
-        self._session = KifunarabeSession(config)
+        # Phase 179-B1: fetch the Critical 3 set (max 6 entries: B/W each 3).
+        critical_3: list[int] = []
+        game_for_c3 = self._get_game()
+        if game_for_c3 is not None:
+            try:
+                critical_3 = get_critical_3_move_numbers(game_for_c3)
+            except Exception:
+                critical_3 = []
+
+        self._session = KifunarabeSession(
+            config,
+            critical_3_move_numbers=critical_3,
+        )
+        # Reset the highlight guard so each critical 3 position fires its badge.
+        self._last_critical_3_highlight = 0
         self._set_mode(True)
 
         # Phase 177-H: save then mask ``show_children`` / ``eval`` so the
@@ -413,9 +469,47 @@ class KifunarabeController:
             # Spec: 間違えなら何も起こりません (no move played).
             self._notify_guess(coords, node, correct=False)
 
+        # Phase 179-B1: if the user has just landed on a Critical 3
+        # position, surface a small "Critical 3" badge popup.
+        self._highlight_critical_3_if_reached(node)
+
         # Phase 177-G: surface the summary popup if the move cap or end of
         # mainline just closed the session. Mode property is preserved.
         self._check_session_ended()
+
+    # -- Phase 179-B1: Critical 3 badge hook ----------------------------------
+
+    def _highlight_critical_3_if_reached(self, node: Any) -> None:
+        """Show a short Critical 3 toast when the user lands on a tracked node.
+
+        Phase 179-B1: the session stores ``critical_3_set`` (Phase 179-B1)
+        and a ``_last_critical_3_highlight`` move-number guard to ensure
+        each position fires its badge at most once.
+        """
+        if self._session is None:
+            return
+        critical_3_set = getattr(self._session, "critical_3_set", None)
+        if not critical_3_set:
+            return
+        move_number = getattr(node, "move_number", None)
+        if not isinstance(move_number, int) or move_number not in critical_3_set:
+            return
+        if move_number == getattr(self, "_last_critical_3_highlight", None):
+            return
+        self._last_critical_3_highlight = move_number
+        ctx = self._get_ctx()
+        if ctx is None:
+            return
+        from kivy.clock import Clock
+
+        from katrain.gui.popups.kifunarabe_critical3_popup import (
+            show_critical_3_badge,
+        )
+
+        try:
+            Clock.schedule_once(lambda _dt: show_critical_3_badge(ctx, move_number), 0)
+        except Exception:
+            self._logger("kifunarabe: failed to schedule critical_3 badge", level=0)
 
     def _record_wrong_guess(self, coords: tuple[int, int], node: Any) -> None:
         """Phase 177-F (fix): persist a non-matching click as WRONG_GUESS.
@@ -576,10 +670,11 @@ class KifunarabeController:
         """
         if not self._get_mode():
             return
+        summary_data: KifunarabeSummary | None = None
         if show_summary and self._session and self._session.results:
-            summary = self._session.get_summary()
+            summary_data = self._session.get_summary()
             try:
-                self._get_show_summary()(self._get_ctx(), summary)
+                self._get_show_summary()(self._get_ctx(), summary_data)
             except Exception:
                 self._logger("kifunarabe: show_summary callback raised", level=0)
         # Phase 177-H: every "end" path must put the user's analysis
@@ -587,6 +682,9 @@ class KifunarabeController:
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
+        # Phase 181-B: clear the source path so the next session does
+        # not accidentally inherit a stale value.
+        self._source_sgf_path = None
 
     # Phase 177-G: split the previous "end session + mode off" path into
     # two so the max_moves-cap flow can show the summary popup while
@@ -625,18 +723,50 @@ class KifunarabeController:
 
         Ends the session cleanly, shows the summary popup if there were
         results, and returns ``kifunarabe_mode`` to False.
+
+        Phase 181-B: also dismisses any visible summary popup regardless
+        of mode. Previously, after a natural session end (e.g. max_moves
+        cap), the panel "Abort" button would call ``abort_session``,
+        bail out at the ``if not self._get_mode(): return`` guard, and
+        leave the user staring at the popup. Now the popup is dismissed
+        first so a single button press is enough to fully exit.
         """
+        # Phase 181-B: dismiss any visible summary popup first. This is
+        # a no-op when no popup is open, and runs even when mode is
+        # already False (which is the common case after a natural end).
+        self._dismiss_summary_popup_if_open()
         if not self._get_mode():
             return
+        summary_data: KifunarabeSummary | None = None
         if self._session and self._session.results:
+            summary_data = self._session.get_summary()
             with contextlib.suppress(Exception):
-                summary = self._session.get_summary()
-                self._get_show_summary()(self._get_ctx(), summary)
+                self._get_show_summary()(self._get_ctx(), summary_data)
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
+
+
+def disable_kifunarabe_if_active(katrain: Any) -> None:
+    """Phase 178: centralised helper to disable kifunarabe from any exit path.
+
+    Looks up the kifunarabe controller on ``katrain`` and calls
+    ``disable_if_needed()``. Errors are swallowed because this helper
+    is used from "cleanup" call sites (regular SGF load, future
+    popup-manager dismissals, save-game-as-after-kifunarabe, etc.)
+    where a kifunarabe failure must never block the main flow.
+
+    Callers should use this function instead of repeating the
+    ``getattr(katrain, "_kifunarabe_controller", None)`` lookup + nested
+    ``if`` + try/except dance.
+    """
+    controller = getattr(katrain, "_kifunarabe_controller", None)
+    if controller is None:
+        return
+    with contextlib.suppress(Exception):
+        controller.disable_if_needed()
 
 
 def node_move_gtp(coords: tuple[int, int], player: str) -> str | None:

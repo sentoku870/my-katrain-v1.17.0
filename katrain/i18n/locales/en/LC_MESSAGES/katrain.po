@@ -547,6 +547,17 @@ msgstr "Next game"
 msgid "kifunarabe:summary:abort"
 msgstr "Abort Kifu Narabe"
 
+# Phase 179-B2
+msgid "kifunarabe:summary:critical3"
+msgstr "Critical 3: {correct} of {total} ({rate})"
+
+# Phase 179-B1
+msgid "kifunarabe:critical3_badge_title"
+msgstr "Critical 3"
+
+msgid "kifunarabe:critical3_badge"
+msgstr "Move #{move} - Critical 3"
+
 msgid "stats:winrate"
 msgstr "Win Rate"
 

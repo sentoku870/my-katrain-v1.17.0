@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-06-28(Phase 156 完了)
+> 最終更新: 2026-07-13(Phase 178 完了)
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -13,6 +13,7 @@
 > Phase 154 (2026-06-28 完了): 勝敗別損失統計 + 手数帯別推移（schema 3.2）。詳細下記。
 > Phase 155 (2026-06-28 完了): 相手の棋力との相関（schema 3.3）。詳細下記。
 > Phase 156 (2026-06-28 完了): 動的フェーズ分割（scoreStdev ベース）。詳細下記。
+> Phase 178 (2026-07-13 完了): 棋譜並べ機能のドキュメント整備 + Root 解析堅牢化 + 終了経路統一。詳細下記。
 
 ---
 
@@ -243,6 +244,61 @@
 - test_import_resolution.py: 3 件緑（新パッケージの遅延ロード確認）
 - test_architecture.py: 41/41 緑
 - ruff / mypy clean
+
+---
+
+### Phase 178: 棋譜並べ機能のドキュメント整備 + Root解析堅牢化 + 終了経路統一（2026-07-13 完了）
+
+> 起票日: 2026-07-13
+> PR: 1 (Phase 178 統合)
+> 関連ドキュメント: [phase177-kifunarabe.md](./archive/specs-implemented/phase177-kifunarabe.md)
+
+#### 背景
+Phase 177（複数サブフェーズ A1〜H）で実装された棋譜並べ（Kifu Narabe）機能について、
+2026-07-13 の調査で以下の3点を改善対象として確認:
+
+1. **ドキュメント未整備**: 仕様書・roadmap・AGENTS.md に Phase 177 の記載が無い
+2. **`_kick_root_analysis` のタイミング依存**: 単発 0.2秒遅延で失敗検知なし、Root 解析が空のまま残る可能性
+3. **`disable_if_needed()` の呼び出しが1箇所のみ**: 将来 exit-path 追加時の不整合リスク
+
+#### 成果物
+
+**ドキュメント（Lv1）**:
+- `docs/01-roadmap.md`: 本セクションを追加
+- `docs/archive/specs-implemented/phase177-kifunarabe.md`: Phase 177 仕様書（新規）
+- `AGENTS.md`: フェーズ一覧に Phase 178 追記
+
+**コード（Lv2）**:
+- `katrain/gui/popups/kifunarabe_setup_popup.py:_kick_root_analysis` を堅牢化
+  - `Clock.schedule_once(..., 0.2)` の単発遅延を、最大 5 回 × 0.5秒のリトライに変更
+  - `node.analysis_exists` で早期リターン
+  - 失敗時は `gui.log(..., level=1)` で可視化
+- `katrain/gui/managers/kifunarabe_controller.py:disable_kifunarabe_if_active()` を新規公開
+  - 司令塔ヘルパー: `katrain._kifunarabe_controller` を探して `disable_if_needed()` を呼ぶ
+  - 例外は握りつぶし（cleanup 経路なので main flow を壊さない）
+- `katrain/gui/sgf_manager.py:408-410` の 3 行を 1 行のヘルパー呼び出しに置換
+
+**テスト（Lv2）**:
+- `tests/test_kifunarabe_disable_helper.py`（新規 3 件）:
+  - `test_disable_helper_calls_controller`
+  - `test_disable_helper_noop_when_no_controller`
+  - `test_disable_helper_swallows_exceptions`
+
+#### 設計判断
+
+| 論点 | 採用案 | 理由 |
+|------|--------|------|
+| Phase 1 の i18n 編集 | 実施しない | 既存 EN 翻訳を確認した結果、ギャップは僅かだったため |
+| 司令塔の場所 | `kifunarabe_controller.py` 内 | 既に同クラスが controller の責務を持つ、関連性が高い |
+| Phase 番号 | **Phase 178** | 別 PR として切り出すに十分な独立性を確保 |
+| PR 分割 | **1 PR 統合** | 関連3点の改善で相互参照あり、分割すると履歴追跡が煩雑 |
+
+#### 検証
+- pytest `tests/test_kifunarabe*.py`: 既存 70 件 + 新規 3 件 = 73 件全パス
+- `pytest tests/test_architecture.py`: 全パス
+- ruff check: クリーン
+- mypy: クリーン
+- 起動: `python -m katrain` で棋譜並べメニュー（Ctrl-R）動作確認
 
 ---
 

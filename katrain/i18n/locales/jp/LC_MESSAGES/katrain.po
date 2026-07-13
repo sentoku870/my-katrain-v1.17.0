@@ -249,6 +249,17 @@ msgstr "次の棋譜"
 msgid "kifunarabe:summary:abort"
 msgstr "中断して棋譜並べ終了"
 
+# Phase 179-B2
+msgid "kifunarabe:summary:critical3"
+msgstr "Critical 3: {correct}/{total} ({rate})"
+
+# Phase 179-B1
+msgid "kifunarabe:critical3_badge_title"
+msgstr "Critical 3"
+
+msgid "kifunarabe:critical3_badge"
+msgstr "{move}手目 - Critical 3"
+
 msgid "stats:winrate"
 msgstr "勝率"
 

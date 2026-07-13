@@ -187,4 +187,13 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "uniform_color_cb": uniform_color_cb,
         "auto_toggle_cb": auto_toggle_cb,
     }
-    return inner, widget_refs
+    # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
+    # additions (history list, longer help text, etc.) don't overflow.
+    # The ScrollView occupies the full tab area; the inner BoxLayout
+    # retains its size_hint_y=None + minimum_height binding so it grows
+    # to fit its children and the ScrollView scrolls vertically.
+    from kivy.uix.scrollview import ScrollView
+
+    scroll = ScrollView(size_hint=(1, 1), do_scroll_x=False, bar_width=dp(8))
+    scroll.add_widget(inner)
+    return scroll, widget_refs

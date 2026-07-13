@@ -402,12 +402,16 @@ class SGFManager:
                     if hasattr(popup_contents, "rewind") and hasattr(popup_contents.rewind, "active")
                     else True
                 )
-                # Phase 177: regular "棋譜読込" path - clear any kifunarabe
-                # mode so the freshly loaded SGF is not interpreted as
-                # the start of a kifunarabe session.
-                _kif = getattr(katrain, "_kifunarabe_controller", None)
-                if _kif is not None:
-                    _kif.disable_if_needed()
+                # Phase 178: use the centralised helper so all exit paths
+                # stay in sync. Previously the inline getattr + disable
+                # dance lived only here; new exit paths (popup manager,
+                # save-game flow, etc.) should call the helper instead of
+                # duplicating this block.
+                from katrain.gui.managers.kifunarabe_controller import (
+                    disable_kifunarabe_if_active,
+                )
+
+                disable_kifunarabe_if_active(katrain)
                 self.load_sgf_file(filename, fast_active, rewind_active)
 
             popup_contents.filesel.on_success = readfile

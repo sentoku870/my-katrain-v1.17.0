@@ -18,7 +18,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -47,6 +47,9 @@ VALID_HINT_COUNTS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)
 #: Allowed values for KifunarabeConfig.max_moves.
 #: 0 = play through the entire mainline, otherwise capped at this many moves.
 VALID_MAX_MOVES: tuple[int, ...] = (0, 50, 100, 150)
+
+#: Phase 179-B1: maximum number of Critical 3 entries per player (B and W).
+CRITICAL_3_PER_PLAYER = 3
 
 
 # =============================================================================
@@ -126,6 +129,10 @@ class KifunarabeSummary:
     """Aggregate statistics for a finished (or aborted) session.
 
     All counts are 0 when total_positions == 0.
+
+    Phase 179-B2: the ``critical_3_*`` fields track performance on the
+    Critical 3 review positions selected at session start. They stay at
+    0 when no Critical 3 set was supplied.
     """
 
     total_positions: int
@@ -134,6 +141,11 @@ class KifunarabeSummary:
     auto_advance_count: int
     skipped_count: int
     max_moves_reached: bool = False
+    # Phase 179-B2: Critical 3 hit-rate breakdown.
+    critical_3_total: int = 0
+    critical_3_correct: int = 0
+    critical_3_wrong: int = 0
+    critical_3_skipped: int = 0
 
     @property
     def attempted_count(self) -> int:
@@ -171,6 +183,16 @@ class KifunarabeSummary:
         if self.total_positions <= 0:
             return 0.0
         return (self.correct_count + self.auto_advance_count) / self.total_positions * 100.0
+
+    @property
+    def critical_3_hit_rate(self) -> float:
+        """Phase 179-B2: percentage of Critical 3 positions guessed correctly.
+
+        Returns 0.0 when no Critical 3 set was supplied (total == 0).
+        """
+        if self.critical_3_total <= 0:
+            return 0.0
+        return self.critical_3_correct / self.critical_3_total * 100.0
 
 
 # =============================================================================
@@ -339,17 +361,37 @@ class KifunarabeSession:
     invoking :meth:`record_guess` (correct) or :meth:`record_auto_advance`.
     """
 
-    def __init__(self, config: KifunarabeConfig | None = None):
+    def __init__(
+        self,
+        config: KifunarabeConfig | None = None,
+        critical_3_move_numbers: list[int] | None = None,
+    ):
         """Initialize a session.
 
         Args:
             config: User-selected configuration. Defaults to a fresh
                 ``KifunarabeConfig()``.
+            critical_3_move_numbers: Phase 179-B1. Move numbers that are
+                part of the Critical 3 set for this game. Used to track
+                ``critical_3_correct/wrong/skipped`` counters so the
+                summary popup and the history JSON can report hit rate.
+                ``None`` or empty list = no Critical 3 tracking.
         """
         self.config: KifunarabeConfig = config or KifunarabeConfig()
         self.results: list[KifunarabeGuessResult] = []
         self.started_at: datetime = datetime.now()
         self.ended_at: datetime | None = None
+        # Phase 179-B1/B2
+        self.critical_3_set: set[int] = set(critical_3_move_numbers or [])
+        self.critical_3_correct: int = 0
+        self.critical_3_wrong: int = 0
+        self.critical_3_skipped: int = 0
+
+    # -- critical_3 helper ----------------------------------------------------
+
+    def _is_critical_3(self, move_number: int) -> bool:
+        """Phase 179-B2: True if ``move_number`` is part of the Critical 3 set."""
+        return move_number in self.critical_3_set
 
     # -- state ----------------------------------------------------------------
 
@@ -384,16 +426,24 @@ class KifunarabeSession:
     # -- recording ------------------------------------------------------------
 
     def _max_moves_exceeded(self) -> bool:
-        """Whether ``config.max_moves`` has been reached.
+        """Whether ``config.max_moves`` user-actionable visits have been reached.
 
-        Returns False when ``max_moves == 0`` (no limit) or when a session
-        is not active.
+        Phase 180-A: counts only ``CORRECT`` and ``AUTO_ADVANCE`` outcomes.
+        The previous ``len(self.results) >= max_moves`` counted every
+        click, which meant 50 wrong clicks on the same empty point could
+        end the session without the user having visited 50 game
+        positions. WRONG_GUESS is still recorded in ``self.results`` for
+        accurate summary stats but does not contribute to the cap.
+
+        Returns False when ``max_moves == 0`` (no limit) or when the
+        session is not active.
         """
         if self.config is None:
             return False
         if self.config.max_moves <= 0:
             return False
-        return len(self.results) >= self.config.max_moves
+        actionable = sum(1 for r in self.results if r.outcome in (GuessOutcome.CORRECT, GuessOutcome.AUTO_ADVANCE))
+        return actionable >= self.config.max_moves
 
     def _finalize_at_limit(self) -> None:
         """End the session via ``end()`` only when the move cap was hit.
@@ -455,6 +505,14 @@ class KifunarabeSession:
             hints_shown,
             result.outcome.value,
         )
+        # Phase 179-B2: aggregate Critical 3 counters when applicable.
+        if self._is_critical_3(move_number):
+            if outcome == GuessOutcome.CORRECT:
+                self.critical_3_correct += 1
+            elif outcome == GuessOutcome.WRONG_GUESS:
+                self.critical_3_wrong += 1
+            else:
+                self.critical_3_skipped += 1
         self._finalize_at_limit()
         return result
 
@@ -474,6 +532,10 @@ class KifunarabeSession:
             outcome=GuessOutcome.AUTO_ADVANCE,
         )
         self.results.append(result)
+        # Phase 179-B2: auto-advance counts as "skipped" against the
+        # Critical 3 set because the user did not actively guess.
+        if self._is_critical_3(move_number):
+            self.critical_3_skipped += 1
         self._finalize_at_limit()
         return result
 
@@ -493,12 +555,19 @@ class KifunarabeSession:
             outcome=GuessOutcome.SKIPPED,
         )
         self.results.append(result)
+        # Phase 179-B2: end-of-tree skip counts as skipped against Critical 3.
+        if self._is_critical_3(move_number):
+            self.critical_3_skipped += 1
         return result
 
     # -- summary --------------------------------------------------------------
 
     def get_summary(self) -> KifunarabeSummary:
-        """Aggregate the recorded results into a :class:`KifunarabeSummary`."""
+        """Aggregate the recorded results into a :class:`KifunarabeSummary`.
+
+        Phase 179-B2: also forwards the Critical 3 counters so the summary
+        popup and history JSON can report the Critical 3 hit rate.
+        """
         total = len(self.results)
         correct = sum(1 for r in self.results if r.outcome == GuessOutcome.CORRECT)
         wrong = sum(1 for r in self.results if r.outcome == GuessOutcome.WRONG_GUESS)
@@ -511,6 +580,10 @@ class KifunarabeSession:
             auto_advance_count=auto,
             skipped_count=skipped,
             max_moves_reached=self.max_moves_reached,
+            critical_3_total=len(self.critical_3_set),
+            critical_3_correct=self.critical_3_correct,
+            critical_3_wrong=self.critical_3_wrong,
+            critical_3_skipped=self.critical_3_skipped,
         )
 
     def clear(self) -> None:
@@ -519,6 +592,10 @@ class KifunarabeSession:
         self.started_at = datetime.now()
         self.ended_at = None
         self._max_moves_reached_flag = False
+        # Phase 179-B2: counters reset along with results.
+        self.critical_3_correct = 0
+        self.critical_3_wrong = 0
+        self.critical_3_skipped = 0
 
 
 # =============================================================================
@@ -546,3 +623,47 @@ def evaluate_guess(coords: tuple[int, int], node: "GameNode") -> bool | None:
     if expected is None:
         return None
     return _coords_equal_gtp(coords, expected, node)
+
+
+# =============================================================================
+# Phase 179-B1: Critical 3 helper
+# =============================================================================
+
+
+def get_critical_3_move_numbers(
+    game: Any,
+    level: str = "normal",
+) -> list[int]:
+    """Return the union of move numbers in the Critical 3 set for both players.
+
+    Phase 179-B1: avoids building a full ``KarteContext`` by calling
+    ``select_critical_moves`` directly with ``player_filter="B"`` and
+    ``player_filter="W"`` and merging the two ``max_moves=3`` lists.
+
+    Returns:
+        Sorted list of unique move numbers (max 6 entries: 3 per player).
+        Returns ``[]`` if the game lacks analysis or any exception occurs.
+    """
+    if game is None or getattr(game, "current_node", None) is None:
+        return []
+    try:
+        from katrain.core.analysis.critical_moves import select_critical_moves
+    except ImportError:
+        return []
+    moves: set[int] = set()
+    for player in (SIDE_BLACK, SIDE_WHITE):
+        try:
+            critical = select_critical_moves(
+                game,
+                max_moves=CRITICAL_3_PER_PLAYER,
+                lang="ja",
+                level=level,
+                player_filter=player,
+            )
+        except Exception:
+            continue
+        for cm in critical:
+            n = getattr(cm, "move_number", None)
+            if isinstance(n, int):
+                moves.add(n)
+    return sorted(moves)
