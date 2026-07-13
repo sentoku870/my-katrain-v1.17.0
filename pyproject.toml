@@ -92,6 +92,11 @@ markers = [
     "integration: marks tests that initialize KaTrainBase (may be slow)",
     "kivy_headless: marks tests using KivyUnitTest headless infrastructure (Phase 146)",
 ]
+# Phase 177-I: xdist's worker collection can segfault when the kivy fixture
+# graph gets large, surfacing as exit code 102 mid-``collecting ...``.
+# The tests don't actually need parallelism (run time is dominated by
+# startup), so disable the xdist plugin at the config level.
+addopts = ["-p", "no:xdist"]
 
 [tool.coverage.run]
 source = ["katrain"]
