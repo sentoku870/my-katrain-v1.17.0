@@ -133,3 +133,21 @@ def do_open_recent_sgf(ctx: KaTrainGui) -> None:
 def do_save_game_as_popup(ctx: KaTrainGui) -> None:
     """Show the "save game as..." popup (delegated to SGFManager)."""
     ctx._sgf_manager.do_save_game_as_popup(ctx)
+
+
+def do_kifunarabe_popup(ctx: KaTrainGui) -> None:
+    """Open the SGF selector for kifunarabe (棋譜並べ).
+
+    The flow is: SGF picker -> load SGF -> side/hint chooser -> session start.
+    Defined per user request: "棋譜並べボタンを押した段階で棋譜の選択".
+    """
+    from katrain.gui.popups.kifunarabe_setup_popup import open_kifunarabe_sgf_selector
+
+    open_kifunarabe_sgf_selector(ctx)
+
+
+def do_kifunarabe_abort(ctx: KaTrainGui) -> None:
+    """Abort the current kifunarabe session (shows summary popup)."""
+    controller = getattr(ctx, "_kifunarabe_controller", None)
+    if controller is not None:
+        controller.abort_session()

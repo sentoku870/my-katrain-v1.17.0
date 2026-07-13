@@ -232,6 +232,12 @@ def do_new_game(
     # Phase 93: Disable Active Review on new game/SGF load - REMOVED (Slimming down)
     # ctx._disable_active_review_if_needed()
     # Phase 171: Leela は Phase 170/171 で完全廃止。投了ヒントの tracking も不要。
+    # NOTE: Kifunarabe (棋譜並べ) mode disabling on regular new-game is now
+    # handled at the explicit call sites (SGFManager.do_analyze_sgf_popup
+    # for the "棋譜読込" menu, etc.) NOT here. ``do_new_game`` itself runs
+    # on a worker thread for the kifunarabe setup flow, and disabling the
+    # mode here would race with ``KifunarabeController.start_session``
+    # happening *after* this call returns on the main thread.
     mode = ctx.play_analyze_mode
     if not getattr(ctx, "_suppress_play_mode_switch", False) and (
         (move_tree is not None and mode == MODE_PLAY) or (move_tree is None and mode == MODE_ANALYZE)
