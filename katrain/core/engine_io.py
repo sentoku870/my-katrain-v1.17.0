@@ -13,7 +13,10 @@
 # - write_stdin_thread: serialize write_queue -> KataGo stdin
 # - analysis_read_thread: parse JSON, dispatch callbacks, update pending count
 #
-# Imports of KataGoEngine are TYPE_CHECKING-only to avoid runtime cycles.
+# Phase B1: forward reference to KataGoEngine is imported via
+# :mod:`katrain.core._engine_types` (TYPE_CHECKING-only). This breaks the
+# historical direct TYPE_CHECKING cycle between ``engine_io.py`` and
+# ``engine.py``.
 
 from __future__ import annotations
 
@@ -34,7 +37,7 @@ from katrain.core.constants import (
 from katrain.core.utils import json_truncate_arrays
 
 if TYPE_CHECKING:
-    from katrain.core.engine import KataGoEngine
+    from katrain.core._engine_types import KataGoEngine
 
 
 # =============================================================================

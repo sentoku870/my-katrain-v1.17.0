@@ -3,6 +3,10 @@
 This module provides standalone functions for building queries and managing
 the query lifecycle to keep engine.py focused on process lifecycle. The split
 avoids circular imports between engine.py and engine_cmd/commands.py.
+
+Phase B1: forward references to ``KataGoEngine`` and ``GameNode`` are
+imported via :mod:`katrain.core._engine_types` (TYPE_CHECKING-only) to
+break the historical cycle between ``engine.py`` and this module.
 """
 
 import copy
@@ -13,8 +17,7 @@ from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR
 from katrain.core.sgf_parser import Move
 
 if TYPE_CHECKING:
-    from katrain.core.engine import KataGoEngine
-    from katrain.core.game_node import GameNode
+    from katrain.core._engine_types import GameNode, KataGoEngine
 
 
 # Maximum pending queries before rejecting new ones
