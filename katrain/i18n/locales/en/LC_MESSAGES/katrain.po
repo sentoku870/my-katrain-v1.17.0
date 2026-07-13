@@ -19,6 +19,9 @@ msgstr "Player Setup"
 msgid "menu:newgame"
 msgstr "New Game/Change Rules"
 
+msgid "menu:kifunarabe"
+msgstr "Kifu Narabe (Guess the Next Move)"
+
 msgid "menu:save"
 msgstr "Save Game"
 
@@ -492,6 +495,57 @@ msgstr "Analysis"
 
 msgid "btn:Analyze"
 msgstr "Analysis Options"
+
+msgid "btn:AbortKifunarabe"
+msgstr "Abort Kifu Narabe"
+
+msgid "kifunarabe:setup:title"
+msgstr "Kifu Narabe - Setup"
+
+msgid "kifunarabe:setup:body"
+msgstr "Choose which side to play for and how many hints to show."
+
+msgid "kifunarabe:setup:side_both"
+msgstr "Both sides"
+
+msgid "kifunarabe:setup:side_black"
+msgstr "Black only"
+
+msgid "kifunarabe:setup:side_white"
+msgstr "White only"
+
+msgid "kifunarabe:setup:start"
+msgstr "Start"
+
+msgid "kifunarabe:setup:moves_50"
+msgstr "50 moves"
+
+msgid "kifunarabe:setup:moves_100"
+msgstr "100 moves"
+
+msgid "kifunarabe:setup:moves_150"
+msgstr "150 moves"
+
+msgid "kifunarabe:setup:moves_all"
+msgstr "All moves"
+
+msgid "kifunarabe:summary:title"
+msgstr "Kifu Narabe - Results"
+
+msgid "kifunarabe:summary:headline"
+msgstr "Result: {correct} of {total} positions guessed correctly\n({attempted} of your guesses hit the actual move)"
+
+msgid "kifunarabe:summary:body"
+msgstr "Correct: {correct}\nWrong: {wrong}\nAuto-advanced: {auto}\nSkipped: {skipped}\nCorrect rate: {correct_rate}\nWrong rate: {wrong_rate}"
+
+msgid "kifunarabe:summary:limit_reached"
+msgstr "Stopped at the configured move limit."
+
+msgid "kifunarabe:summary:next_sgf"
+msgstr "Next game"
+
+msgid "kifunarabe:summary:abort"
+msgstr "Abort Kifu Narabe"
 
 msgid "stats:winrate"
 msgstr "Win Rate"
@@ -1590,6 +1644,27 @@ msgstr "Analysis"
 
 msgid "mykatrain:settings:tab_export"
 msgstr "Export"
+
+msgid "mykatrain:settings:tab_kifunarabe"
+msgstr "Kifu Narabe"
+
+msgid "mykatrain:settings:kifunarabe_sgf_load"
+msgstr "Pro-game SGF folder (Kifu Narabe)"
+
+msgid "mykatrain:settings:kifunarabe_show_digits"
+msgstr "Show digit labels (winrate / score / visits) on markers"
+
+msgid "mykatrain:settings:kifunarabe_show_actual_border"
+msgstr "Highlight the actual (game-recorded) move with a border"
+
+msgid "mykatrain:settings:kifunarabe_uniform_color"
+msgstr "Draw all markers in a single colour (no KataGo colour gradient)"
+
+msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
+msgstr "Auto-toggle 'next moves' and 'dots' during kifunarabe"
+
+msgid "mykatrain:settings:kifunarabe_help"
+msgstr "When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\nSet it to the directory that holds the pro game records you want to study.\nLeave it empty to fall back to the regular SGF load folder.\n\nBy default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "Auto Setup"
