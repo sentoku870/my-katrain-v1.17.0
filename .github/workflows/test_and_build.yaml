@@ -112,14 +112,20 @@ jobs:
           # Show memory info before tests
           echo "=== Memory before tests ==="
           free -m || true
-          # Fast collection-only smoke check: isolates collection-time
-          # import crashes from test-execution crashes. Runs with output
-          # visible and uses ``||`` so the CI shell's ``set -e`` does not
-          # abort the whole step before we can report the exit code.
+          # Diagnostic: isolate which stage exits 102. Each command prints
+          # its own exit code so we can see exactly where the process dies.
+          run() { echo "--- $* ---"; "$@"; echo "rc=$?"; }
+          run uv run python -c "import sys; print('python', sys.version[:5])"
+          run uv run python -X faulthandler -c "import kivy; print('kivy', kivy.__version__)"
+          run uv run python -X faulthandler -c "import katrain.core.game; print('katrain.core ok')"
+          run uv run python -X faulthandler -c "import katrain.gui.sgf_manager; print('katrain.gui ok')"
+          run uv run python -m pytest --version
+          # Collection smoke check (set -e safe): if this crashes, the
+          # diagnostics above will show which import stage is at fault.
           collect_rc=0
           uv run python -X faulthandler -m pytest tests --collect-only -q || collect_rc=$?
           if [ "$collect_rc" -ne 0 ]; then
-            echo "::error::Collection crashed (rc=$collect_rc). See faulthandler traceback above."
+            echo "::error::Collection crashed (rc=$collect_rc). See diagnostics above."
             exit "$collect_rc"
           fi
           # Run tests with verbose output and no timeout hiding
