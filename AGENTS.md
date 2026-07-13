@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-170（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe、mypy導入、core/state strict + 型エラー修正、core型エラー修正第1弾、gui/features型エラー修正、mypy strict全体・CIブロック、Python 3.11 modern syntax migration、Forward Reference + i18n + Semantic Type Fixes、Pre-existing型エラー修正＋Top Moves色回帰修正、Phase 138-D アーキテクチャ改善、Game 4分割、kivyutils分割、popups分割、commands/委譲、Phase 158+ AI strategies・engine・badukpan 分割、Phase 159A Karte/Summary の KataGo-only 化、Phase 170 人間 vs Leela 対局機能の再廃止）、**Phase 171（Leela エンジン完全削除）**、**Phase 178（棋譜並べ機能ドキュメント整備 + Root解析堅牢化 + 終了経路統一）**、**Phase 179 + 179.1 + 179.2（Beginner Hints Summary Extension — ミス・自由度・難易度の Hint 統合 + 監査発見の品質改善）**、**Phase 182（Ownership / Policy 派生ヒント追加 — 3 カテゴリ）**、**Phase 186（Curator 集約統合 — 棋譜全体の弱点パターンを Hint に統合）**、**Phase 187（Architecture Review Follow-up A1 — `core/beginner/hints.py` カバレッジ 16.5% → 97%）**
+- **完了**: Phase 1-170（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe、mypy導入、core/state strict + 型エラー修正、core型エラー修正第1弾、gui/features型エラー修正、mypy strict全体・CIブロック、Python 3.11 modern syntax migration、Forward Reference + i18n + Semantic Type Fixes、Pre-existing型エラー修正＋Top Moves色回帰修正、Phase 138-D アーキテクチャ改善、Game 4分割、kivyutils分割、popups分割、commands/委譲、Phase 158+ AI strategies・engine・badukpan 分割、Phase 159A Karte/Summary の KataGo-only 化、Phase 170 人間 vs Leela 対局機能の再廃止）、**Phase 171（Leela エンジン完全削除）**、**Phase 178（棋譜並べ機能ドキュメント整備 + Root解析堅牢化 + 終了経路統一）**、**Phase 179 + 179.1 + 179.2（Beginner Hints Summary Extension — ミス・自由度・難易度の Hint 統合 + 監査発見の品質改善）**、**Phase 182（Ownership / Policy 派生ヒント追加 — 3 カテゴリ）**、**Phase 186（Curator 集約統合 — 棋譜全体の弱点パターンを Hint に統合）**、**Phase 187（Architecture Review Follow-up A1 — `core/beginner/hints.py` カバレッジ 16.5% → 97%）**、**Phase 188（Architecture Review Follow-up A3 — `KifunarabeController` God Class 分割 4 mixin + facade）**
 - **次**: TBD（計画中）
 
 詳細は `docs/01-roadmap.md` を参照。
@@ -273,6 +273,35 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-14: Kifunarabe Controller God Class 分割 — Phase 188（Architecture Review Follow-up A3）
+  - **背景**: 2026-07-14 アーキテクチャレビューで `katrain/gui/managers/kifunarabe_controller.py` が **800行・32メソッド** の単一 God Class と判定。リリース前から test_kifunarabe_controller.py 568行で網羅済みだが、責務単一性 (SRP) 違反で可読性・テスト容易性が低い
+  - **分割**: 単一クラスを **4 mixin + 1 facade** 構成に再編。合計はむしろ +140 行（mixin ヘッダ・型注釈コスト）だが、**facade 単体**は -620 行 (800→180)
+    - `KifunarabeSessionMixin` (~200 行) — ライフサイクル: `start_session` / `_end_session` / `disable_if_needed` / `abort_session` / `_finish_position` / `_check_session_ended`
+    - `KifunarabeToggleMixin` (~150 行) — Auto toggle save/restore + Hint toggle: `_save_analysis_toggles` / `_apply_kifu_toggle_mask` / `_apply_hint_toggle` / `_do_apply_hint_toggle` / `_schedule_redraw` / `_safe_redraw_board`
+    - `KifunarabeGuessMixin` (~280 行) — Guess progression: `handle_guess` / `_record_wrong_guess` / `_play_guessed` / `_auto_advance_until_user_turn` / `_play_move` / `_highlight_critical_3_if_reached`
+    - `KifunarabeSummaryMixin` (~130 行) — Summary popup + callback 解決: `_get_show_summary` / `_dismiss_summary_popup_if_open` / `_show_session_summary` / `_get_on_guess_resolved`
+    - `KifunarabeController` (facade, ~180 行) — `__init__` + `session` プロパティ + `is_active` / `is_fog_active` + 公開ヘルパー
+  - **新規ファイル**: `kifunarabe_state.py` (mypy 用の型注釈集約)
+  - **設計判断**:
+    - 4 mixin はすべて `object` 派生でスーパークラスゼロ → `super().__init__()` 不要
+    - MRO 順序: `Session → Guess → Summary → Toggle` (依存方向に従う)
+    - Facade は属性初期化を `__init__` に集約 — 各 mixin は `_session: "KifunarabeSession | None"` の class body 注釈で型と所有権を明示
+    - Kivy import は **各 mixin の関数内に遅延 import** のまま維持（Phase 173 教訓遵守）
+  - **後方互換**:
+    - `from katrain.gui.managers.kifunarabe_controller import KifunarabeController, disable_kifunarabe_if_active, node_move_gtp` の既存 import 全て無修正で動作
+    - `KifunarabeController` の公開 API (`start_session` / `disable_if_needed` / `abort_session` / `on_mode_change` / `handle_guess` / `session` / `is_active` / `is_fog_active`) 全て維持
+    - 既存 test_kifunarabe_controller.py (568 行 / 10 クラス) 無修正で PASS
+    - 7 + 5 件のテスト失敗は **Kivy 未インストールのローカル環境制約**（CI で Kivy ありのため通過確認済 — main で同じテストが落ちることを stash 比較で確認）
+  - **新規テスト**: `tests/test_kifunarabe_mixins.py` (24 件 / 5 セクション)
+    - Section 1: `_safe_redraw_board` の優先順位カスケード + エラーハンドリング (5 件)
+    - Section 2: `_expected_gtp_from_node` の None / edge ケース (5 件)
+    - Section 3: `node_move_gtp` モジュールヘルパー (4 件)
+    - Section 4: facade MRO + 公開 API surface + state デフォルト初期化 (5 件)
+    - Section 5: 各 mixin のメソッド所有権と facade-only メソッド保証 (5 件)
+  - **lint/mypy**: ruff pass, mypy pass（6 + 1 = 7 files）
+  - **テスト合計**: 395 → 419 PASS（既存不変 + 新規 24）
+  - **スペック**: `docs/archive/specs-implemented/phase188-kifunarabe-controller-split.md` 新設
+  - **効果**: God Class 解消 → 認知負荷減、mixin 単体テスト可能、将来の Phase 190+ リファクタ（個別 mixin 差し替え等）の弾み
 - 2026-07-14: Beginner Hints Main Pipeline Coverage — Phase 187（Architecture Review Follow-up A1）
   - **背景**: アーキテクチャレビュー（2026-07-14）で `core/beginner/hints.py` のカバレッジが **16.5%**（124/753 行）と全コア層中最低値であることを特定。Hint priority chain は初心者向け UX の核で、リグレッションリスクが高い
   - **追加**: `tests/test_beginner_hints_main.py`（**137 件** の新規テスト、876 行）
