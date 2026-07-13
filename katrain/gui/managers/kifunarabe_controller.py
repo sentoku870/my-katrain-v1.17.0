@@ -23,7 +23,6 @@ from katrain.core.constants import (
 from katrain.core.study.kifunarabe import (
     collect_important_moves,
     get_critical_3_move_numbers,
-    save_session_history,
 )
 
 if TYPE_CHECKING:
@@ -111,12 +110,6 @@ class KifunarabeController:
         # this, the user has to click the popup's own "abort" button to
         # dismiss it after a max_moves cap run.
         self._summary_popup: Any = None
-        # Phase 181-A: path of the SGF that was loaded into the session.
-        # Set by ``_load_sgf_into_new_game`` in the setup popup. ``game.
-        # sgf_filename`` is None during kifunarabe (intentional, to avoid
-        # overwriting the source), so we need our own pointer for the
-        # history-save key.
-        self._source_sgf_path: str | None = None
 
     # -- accessors ------------------------------------------------------------
 
@@ -711,11 +704,6 @@ class KifunarabeController:
                 self._get_show_summary()(self._get_ctx(), summary_data)
             except Exception:
                 self._logger("kifunarabe: show_summary callback raised", level=0)
-        # Phase 179-A: persist the finished session to JSON before clearing
-        # the in-memory reference. Failures are logged at debug level only.
-        if summary_data is None and self._session and self._session.results:
-            summary_data = self._session.get_summary()
-        self._save_history(summary_data)
         # Phase 177-H: every "end" path must put the user's analysis
         # toggles back where they were before kifunarabe started.
         self._restore_analysis_toggles()
@@ -781,58 +769,12 @@ class KifunarabeController:
             summary_data = self._session.get_summary()
             with contextlib.suppress(Exception):
                 self._get_show_summary()(self._get_ctx(), summary_data)
-        # Phase 179-A: persist before tearing down.
-        self._save_history(summary_data)
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
-        # Phase 181-B: clear the source path so the next session does
-        # not accidentally inherit a stale value if the user picks a
-        # different SGF via the normal flow.
-        self._source_sgf_path = None
 
-    # -- Phase 179-A: history persistence --------------------------------------
-
-    def _save_history(self, summary: KifunarabeSummary | None) -> None:
-        """Phase 179-A: best-effort JSON persistence of a finished session.
-
-        Phase 181-A: the kifunarabe setup explicitly passes
-        ``sgf_filename=None`` to ``do_new_game`` so a future "Save Game"
-        cannot overwrite the source SGF. That means ``game.sgf_filename``
-        is ``None`` throughout the session, which previously caused this
-        method to always no-op.
-
-        The fix is to remember the source path at session start
-        (set by ``_load_sgf_into_new_game`` in the setup popup) and use
-        it here as the primary key. ``game.sgf_filename`` is kept as a
-        fallback for any future entry path that does pass it through.
-
-        Silently no-ops when ``summary`` is ``None``, when neither
-        ``_source_sgf_path`` nor ``game.sgf_filename`` is resolvable, or
-        when the underlying :func:`save_session_history` raises.
-        """
-        if summary is None or self._session is None:
-            return
-        # Phase 181-A: prefer the source SGF path remembered at session
-        # start, fall back to game.sgf_filename for any non-kifunarabe
-        # entry path that might pass it through.
-        source = getattr(self, "_source_sgf_path", None)
-        if not source:
-            game = self._get_game()
-            source = getattr(game, "sgf_filename", None) if game else None
-        if not source:
-            return
-        try:
-            save_session_history(
-                source,
-                self._session.config,
-                summary,
-                katrain=self._get_ctx(),
-            )
-        except Exception:
-            self._logger("kifunarabe: save_session_history failed", level=0)
 
 
 def disable_kifunarabe_if_active(katrain: Any) -> None:

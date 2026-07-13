@@ -313,11 +313,6 @@ KIFUNARABE_UNIFORM_COLOR_DEFAULT = True
 KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY = "kifunarabe/auto_toggle_markers"
 KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT = True
 
-# Phase 179-A: directory where finished-session history JSONs are stored.
-# Empty string means "use the built-in default" (~/.katrain/kifunarabe_history/).
-KIFUNARABE_HISTORY_DIR_KEY = "kifunarabe/history_dir"
-KIFUNARABE_HISTORY_DIR_DEFAULT = ""
-
 
 # --- Analysis Modes ---
 import logging

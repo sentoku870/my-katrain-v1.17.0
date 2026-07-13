@@ -219,7 +219,6 @@ def do_mykatrain_settings_popup(
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.
         # Phase 177-H: persist the auto-toggle-markers preference.
-        # Phase 179-A: persist the history directory.
         # Phase 179-D: persist the critical-only threshold.
         with contextlib.suppress(Exception):
             from katrain.core.study.kifunarabe import VALID_CRITICAL_THRESHOLDS
@@ -230,10 +229,6 @@ def do_mykatrain_settings_popup(
             kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
             kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)
             kif["auto_toggle_markers"] = bool(widget_refs["auto_toggle_cb"].active)
-            # Phase 179-A: history_dir
-            history_input = widget_refs.get("history_dir_input")
-            if history_input is not None:
-                kif["history_dir"] = history_input.text or ""
             # Phase 179-D: critical_only_threshold (selected_index -> float)
             critical_spinner = widget_refs.get("critical_only_spinner")
             if critical_spinner is not None:
@@ -294,26 +289,11 @@ def do_mykatrain_settings_popup(
             dirselect=True,
         )
 
-    # Phase 180-B: history directory browse callback.
-    # Phase 179-A added the FolderPath input + browse button to the
-    # kifunarabe tab but the orchestrator never bound a click handler, so
-    # clicking the button did nothing. Restores parity with the existing
-    # ``browse_kifunarabe`` above.
-    def browse_history_dir(*_args: Any) -> None:
-        _open_browse_dialog(
-            ctx=ctx,
-            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
-            initial_path=widget_refs["history_dir_input"].text,
-            target_text_input=widget_refs["history_dir_input"],
-            dirselect=True,
-        )
-
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
     widget_refs["output_browse"].bind(on_release=browse_output)
     widget_refs["input_browse"].bind(on_release=browse_input)
     widget_refs["sgf_load_browse"].bind(on_release=browse_kifunarabe)
-    widget_refs["history_dir_browse"].bind(on_release=browse_history_dir)
 
     export_button.bind(on_release=lambda *_args: _do_export_settings(ctx, popup))
     import_button.bind(on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup))

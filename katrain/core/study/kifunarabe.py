@@ -14,14 +14,10 @@ type hints (TYPE_CHECKING) so that tests can run without the GUI.
 """
 
 import contextlib
-import hashlib
-import json
 import logging
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -211,30 +207,6 @@ class KifunarabeSummary:
         if self.critical_3_total <= 0:
             return 0.0
         return self.critical_3_correct / self.critical_3_total * 100.0
-
-    def to_dict(self) -> dict[str, Any]:
-        """Phase 179-A: JSON-serialisable representation for history save.
-
-        Includes every numeric / boolean field plus the derived rates so
-        that downstream consumers (LLM coaching, future analytics) do not
-        have to re-implement the rate computations.
-        """
-        return {
-            "total_positions": self.total_positions,
-            "correct_count": self.correct_count,
-            "wrong_count": self.wrong_count,
-            "auto_advance_count": self.auto_advance_count,
-            "skipped_count": self.skipped_count,
-            "max_moves_reached": self.max_moves_reached,
-            "critical_3_total": self.critical_3_total,
-            "critical_3_correct": self.critical_3_correct,
-            "critical_3_wrong": self.critical_3_wrong,
-            "critical_3_skipped": self.critical_3_skipped,
-            "correct_rate": self.correct_rate,
-            "wrong_rate": self.wrong_rate,
-            "overall_rate": self.overall_rate,
-            "critical_3_hit_rate": self.critical_3_hit_rate,
-        }
 
 
 # =============================================================================
@@ -727,6 +699,16 @@ def collect_important_moves(game: Any, threshold: float) -> list[int]:
     are considered (KataGo-analyzed nodes only). Returns ``[]`` when
     ``threshold <= 0`` or the game has no current node.
 
+    Phase 182-A: previous version tried ``node.next(only_mainline=True)``
+    but ``GameNode`` exposes no ``next`` method, so the walker silently
+    fell back to a lambda that returned ``None``. Result: the loop ended
+    immediately, ``important`` stayed empty, and the controller kept the
+    user's original ``max_moves`` selection (e.g. 50) → the session
+    played the first 50 moves instead of starting at the first important
+    position. The walker now uses ``node.ordered_children[0]`` (the mainline
+    continuation), which is the same source the existing
+    ``GameNode.ordered_children`` property provides.
+
     The walker is intentionally tolerant of partial analysis: nodes that
     lack ``score_lead`` are skipped silently rather than raising.
     """
@@ -748,152 +730,14 @@ def collect_important_moves(game: Any, threshold: float) -> list[int]:
                 )
                 if parent_score is not None and abs(score - parent_score) > threshold:
                     important.append(getattr(node, "move_number", 0))
-            # Follow the mainline only (variation branches are not included).
-            next_node = getattr(node, "next", lambda **_: None)(only_mainline=True)
+            # Phase 182-A: follow the mainline via ordered_children[0]
+            # (the first child is the mainline continuation by SGF order).
+            ordered = getattr(node, "ordered_children", None)
+            next_node = ordered[0] if ordered else None
+            # Cycle guard: if next_node is somehow ``node`` itself, stop.
             node = next_node if next_node is not node else None
     except Exception:
         pass
     return [m for m in important if m > 0]
 
 
-# =============================================================================
-# Phase 179-A: Session-history persistence
-# =============================================================================
-
-
-def _default_history_dir() -> Path:
-    """Return ``~/.katrain/kifunarabe_history/`` (and create it if missing)."""
-    p = Path.home() / ".katrain" / "kifunarabe_history"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def _resolve_history_dir(katrain: Any | None = None) -> Path:
-    """Resolve the active history directory.
-
-    Order of resolution:
-    1. ``katrain.config("kifunarabe/history_dir")`` if non-empty.
-    2. ``KIFUNARABE_HISTORY_DIR_DEFAULT`` (typically empty).
-    3. Built-in fallback: ``~/.katrain/kifunarabe_history/``.
-
-    Any directory that fails ``mkdir`` falls back to the built-in default
-    so that history saving never blocks the main flow.
-    """
-    from katrain.core.constants import (
-        KIFUNARABE_HISTORY_DIR_DEFAULT,
-        KIFUNARABE_HISTORY_DIR_KEY,
-    )
-
-    configured: str | None = None
-    if katrain is not None:
-        try:
-            configured = katrain.config(KIFUNARABE_HISTORY_DIR_KEY, None)
-        except Exception:
-            configured = None
-    if not configured:
-        configured = KIFUNARABE_HISTORY_DIR_DEFAULT
-    if not configured:
-        return _default_history_dir()
-    try:
-        p = Path(os.path.expanduser(configured))
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-    except OSError:
-        return _default_history_dir()
-
-
-def sgf_history_key(sgf_path: str) -> str:
-    """Stable SHA-256[:16] key for an SGF file.
-
-    Falls back to hashing the path string itself when the file cannot be
-    read so the function never raises.
-    """
-    try:
-        content = Path(sgf_path).read_bytes()
-        return hashlib.sha256(content).hexdigest()[:16]
-    except OSError:
-        return hashlib.sha256(sgf_path.encode("utf-8")).hexdigest()[:16]
-
-
-def save_session_history(
-    sgf_path: str,
-    config: KifunarabeConfig,
-    summary: KifunarabeSummary,
-    katrain: Any | None = None,
-) -> Path | None:
-    """Phase 179-A: persist a finished session to ``<history_dir>/<hash>.json``.
-
-    Returns the path on success and ``None`` on any failure. The JSON
-    contains ``sgf_path``, ``saved_at`` (ISO), the config (turn/hints/
-    max_moves/critical_only_threshold) and ``summary.to_dict()``.
-    """
-    try:
-        key = sgf_history_key(sgf_path)
-        out = _resolve_history_dir(katrain) / f"{key}.json"
-        payload = {
-            "sgf_path": sgf_path,
-            "saved_at": datetime.now().isoformat(),
-            "config": {
-                "turn": config.turn,
-                "max_hints": config.max_hints,
-                "max_moves": config.max_moves,
-                "critical_only_threshold": config.critical_only_threshold,
-            },
-            "summary": summary.to_dict(),
-        }
-        out.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        return out
-    except Exception:
-        return None
-
-
-def load_session_history(
-    sgf_path: str,
-    katrain: Any | None = None,
-) -> dict[str, Any] | None:
-    """Phase 179-A: load the most recent saved session for ``sgf_path``.
-
-    Returns ``None`` if no file exists or it cannot be parsed.
-    """
-    try:
-        key = sgf_history_key(sgf_path)
-        path = _resolve_history_dir(katrain) / f"{key}.json"
-        if not path.exists():
-            return None
-        result: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
-        return result
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def clear_all_history(katrain: Any | None = None) -> int:
-    """Phase 179-A: delete every ``*.json`` under the resolved history dir.
-
-    Returns the number of files actually removed. Errors during individual
-    ``unlink()`` calls are swallowed (counted as 0) so a partial cleanup
-    still produces a useful return value.
-    """
-    count = 0
-    try:
-        for p in _resolve_history_dir(katrain).glob("*.json"):
-            try:
-                p.unlink()
-                count += 1
-            except OSError:
-                pass
-    except Exception:
-        pass
-    return count
-
-
-def get_history_summary(katrain: Any | None = None) -> dict[str, Any]:
-    """Phase 179-A: settings-popup helper. Returns ``{count, latest_mtime}``."""
-    try:
-        files = list(_resolve_history_dir(katrain).glob("*.json"))
-        latest = max((p.stat().st_mtime for p in files), default=0.0)
-        return {"count": len(files), "latest_mtime": latest}
-    except Exception:
-        return {"count": 0, "latest_mtime": 0.0}

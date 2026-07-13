@@ -259,15 +259,6 @@ def _load_sgf_into_new_game(gui: Any, filename: str) -> bool:
             gui.log(f"kifunarabe: failed to load SGF {filename}: {e}", int(OUTPUT_ERROR))
         return False
 
-    # Phase 181-A: remember the original SGF path on the controller so
-    # ``_save_history`` can use it as the history key. ``game.sgf_filename``
-    # is intentionally set to ``None`` below to decouple the session from
-    # the source file, which would otherwise make history saving a no-op.
-    controller = getattr(gui, "_kifunarabe_controller", None)
-    if controller is not None:
-        with contextlib.suppress(Exception):
-            controller._source_sgf_path = str(os.path.abspath(filename))
-
     # ``sgf_filename=None`` is the key bit: the original file is decoupled
     # from the session, so any future "Save Game" treats this as a brand
     # new game and never overwrites the source.

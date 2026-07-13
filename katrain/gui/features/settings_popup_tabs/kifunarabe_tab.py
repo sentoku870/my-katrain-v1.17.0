@@ -8,7 +8,6 @@ Holds:
 - Three display toggles (digits / actual border / uniform colour) for
   the choice markers on the board. All three default to "minimal" so
   the choice set looks like a clean multiple-choice puzzle.
-- Phase 179-A: history directory + "Clear history" button.
 - Phase 179-D: critical-only threshold (5 options + off).
 
 Phase 177: Initial implementation.
@@ -17,8 +16,6 @@ Phase 177-E: Added digit/colour/border toggles.
 
 from __future__ import annotations
 
-import contextlib
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
@@ -30,7 +27,6 @@ from kivy.uix.textinput import TextInput
 from katrain.core.constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
-    KIFUNARABE_HISTORY_DIR_DEFAULT,
     KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
     KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
     KIFUNARABE_SHOW_DIGITS_DEFAULT,
@@ -152,10 +148,8 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     Returns:
         (inner_layout, widget_refs): ``widget_refs`` carries
         ``sgf_load_input``, ``sgf_load_browse``, ``show_digits_cb``,
-        ``show_actual_border_cb``, ``uniform_color_cb``,
-        ``history_dir_input``, ``history_dir_browse``, ``clear_history_btn``,
-        ``critical_only_spinner`` so the orchestrator can wire
-        save_settings and the folder browser.
+        ``show_actual_border_cb``, ``uniform_color_cb``, ``critical_only_spinner``
+        so the orchestrator can wire save_settings and the folder browser.
     """
     inner = BoxLayout(orientation="vertical", spacing=dp(8), padding=dp(12), size_hint_y=None)
     inner.bind(minimum_height=inner.setter("height"))
@@ -195,17 +189,8 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         searchable_label="mykatrain:settings:kifunarabe_auto_toggle_markers",
     )
 
-    # Phase 179-A: history directory + clear button.
-    history_dir_input, history_dir_browse = _build_history_dir_row(inner, state)
-    clear_history_btn = _build_clear_history_button(inner, state)
-
     # Phase 179-D: critical-only threshold spinner (off + 4 thresholds).
     critical_only_spinner = _build_critical_only_spinner(inner, state)
-
-    # Phase 180-D: saved-history list section (placed before the help
-    # text so users see the latest results right above the explanatory
-    # paragraph).
-    _build_history_list_section(inner, state)
 
     _build_help_section(inner, state)
 
@@ -216,9 +201,6 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "show_actual_border_cb": show_actual_border_cb,
         "uniform_color_cb": uniform_color_cb,
         "auto_toggle_cb": auto_toggle_cb,
-        "history_dir_input": history_dir_input,
-        "history_dir_browse": history_dir_browse,
-        "clear_history_btn": clear_history_btn,
         "critical_only_spinner": critical_only_spinner,
     }
     # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
@@ -233,165 +215,6 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     return scroll, widget_refs
 
 
-# Phase 180-D: saved-history list section.
-def _build_history_list_section(inner: Any, state: Any) -> None:
-    """Phase 180-D: show the latest 5 saved sessions + 'Open folder' button.
-
-    Reads ``*.json`` files from the resolved history directory in mtime
-    descending order. For each file the summary block (Phase 179-A's
-    ``to_dict()`` output) is rendered as a single line. All steps are
-    best-effort: directory missing / JSON corrupt / file unreadable all
-    fall back to a graceful label rather than raising.
-    """
-    import json as _json
-
-    from katrain.core.study.kifunarabe import _resolve_history_dir
-
-    inner.add_widget(
-        Label(
-            text=i18n._("mykatrain:settings:kifunarabe_history_list_header"),
-            size_hint_y=None,
-            height=dp(28),
-            font_name=Theme.DEFAULT_FONT,
-            color=Theme.TEXT_COLOR,
-        )
-    )
-
-    try:
-        history_dir = _resolve_history_dir(state.ctx)
-        files = sorted(
-            history_dir.glob("*.json"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )[:5]
-    except Exception:
-        files = []
-
-    if not files:
-        inner.add_widget(
-            Label(
-                text=i18n._("mykatrain:settings:kifunarabe_history_empty"),
-                size_hint_y=None,
-                height=dp(24),
-                font_name=Theme.DEFAULT_FONT,
-                color=Theme.TEXT_COLOR,
-                font_size=dp(11),
-                opacity=0.7,
-            )
-        )
-        return
-
-    for path in files:
-        try:
-            data = _json.loads(path.read_text(encoding="utf-8"))
-            summary = data.get("summary", {})
-            sgf_name = Path(data.get("sgf_path", path.stem)).name
-            line = i18n._("mykatrain:settings:kifunarabe_history_item").format(
-                sgf=sgf_name,
-                correct=summary.get("correct_count", 0),
-                total=summary.get("total_positions", 0),
-                rate=summary.get("correct_rate", 0.0),
-            )
-        except Exception:
-            line = path.name
-        inner.add_widget(
-            Label(
-                text=line,
-                size_hint_y=None,
-                height=dp(22),
-                font_name=Theme.DEFAULT_FONT,
-                font_size=dp(11),
-                color=Theme.TEXT_COLOR,
-                opacity=0.7,
-            )
-        )
-
-    # "Open history folder" button. Launches the OS file manager
-    # (explorer / open / xdg-open) on the resolved history directory.
-    try:
-        history_dir_for_open = _resolve_history_dir(state.ctx)
-    except Exception:
-        history_dir_for_open = None
-
-    open_btn = Button(
-        text=i18n._("mykatrain:settings:open_kifunarabe_history_folder"),
-        size_hint_y=None,
-        height=dp(32),
-        font_name=Theme.DEFAULT_FONT,
-    )
-
-    def _open_folder(_b: Button) -> None:
-        import subprocess
-        import sys
-
-        if history_dir_for_open is None:
-            return
-        with contextlib.suppress(Exception):
-            if sys.platform == "win32":
-                subprocess.Popen(["explorer", str(history_dir_for_open)])
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", str(history_dir_for_open)])
-            else:
-                subprocess.Popen(["xdg-open", str(history_dir_for_open)])
-
-    open_btn.bind(on_release=_open_folder)
-    inner.add_widget(open_btn)
-
-
-# Phase 179-A: history directory row + clear button.
-def _build_history_dir_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
-    """Phase 179-A: FolderPath input for the kifunarabe history directory.
-
-    Defaults to ``~/.katrain/kifunarabe_history/`` when the stored value
-    is empty.
-    """
-    current = ""
-    if state.ctx is not None:
-        kif_section = state.ctx.config("kifunarabe") or {}
-        if isinstance(kif_section, dict):
-            current = kif_section.get("history_dir", KIFUNARABE_HISTORY_DIR_DEFAULT) or ""
-
-    row, input_widget, browse_button = create_text_input_row(
-        label_text=i18n._("mykatrain:settings:kifunarabe_history_dir"),
-        initial_value=current or "",
-        with_browse=True,
-    )
-    inner.add_widget(row)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:kifunarabe_history_dir", row)
-    assert browse_button is not None  # with_browse=True guarantees this
-    return input_widget, browse_button
-
-
-def _build_clear_history_button(inner: Any, state: Any) -> Button:
-    """Phase 179-A: clear-history button.
-
-    Calls :func:`katrain.core.study.kifunarabe.clear_all_history` directly
-    so the user can wipe the directory without having to save settings
-    first. The actual deletion is logged to ``ctx.log`` at level 1.
-    """
-    btn = Button(
-        text=i18n._("mykatrain:settings:clear_kifunarabe_history"),
-        size_hint_y=None,
-        height=dp(36),
-        font_name=Theme.DEFAULT_FONT,
-    )
-
-    def _on_release(_b: Button) -> None:
-        from katrain.core.study.kifunarabe import clear_all_history
-
-        ctx = state.ctx
-        if ctx is None:
-            return
-        count = clear_all_history(katrain=ctx)
-        with contextlib.suppress(Exception):
-            ctx.log(f"kifunarabe: cleared {count} history files", level=1)
-
-    btn.bind(on_release=_on_release)
-    inner.add_widget(btn)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:clear_kifunarabe_history", btn)
-    return btn
 
 
 # Phase 179-D: critical-only threshold spinner.
