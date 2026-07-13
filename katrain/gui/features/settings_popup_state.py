@@ -58,6 +58,16 @@ class _SettingsPopupContext:
     selected_beginner_hints: list[bool]
     selected_format: list[str]
     selected_opp_info: list[str]
+    # Phase 179: per-category summary hint toggles (all default True).
+    selected_summary_mistake: list[bool]
+    selected_summary_freedom: list[bool]
+    selected_summary_difficulty: list[bool]
+    selected_katago_uncertain: list[bool]
+    # Phase 182: ownership / policy toggles.
+    selected_summary_ownership: list[bool]
+    selected_summary_policy: list[bool]
+    # Phase 186: curator weak-axis hint toggle.
+    selected_curator_hint: list[bool]
     searchable_widgets: list[dict[str, Any]] = field(default_factory=list)
     register_searchable: Callable[[str, Any], None] | None = None
     reopen_popup: Callable[[], None] | None = None

@@ -86,7 +86,14 @@
     "beginner_hints": {
         "enabled": false,
         "board_highlight": true,
-        "require_reliable": true
+        "require_reliable": true,
+        "summary_mistake": true,
+        "summary_freedom": true,
+        "summary_difficulty": true,
+        "katago_uncertain": true,
+        "summary_ownership": true,
+        "summary_policy": true,
+        "curator_hint": true
     },
     "ai": {
         "ai:default": {},

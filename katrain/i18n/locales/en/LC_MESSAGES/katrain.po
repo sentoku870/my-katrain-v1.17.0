@@ -1455,8 +1455,9 @@ msgstr "Beginner Hints:"
 
 msgid "mykatrain:settings:beginner_hints_desc"
 msgstr ""
-"Show safety hints for self-atari, ignored atari, missed captures, and cut "
-"risks (Review mode only)"
+"Show beginner safety hints (Review mode only). Covers self-atari, ignored "
+"atari, missed captures, and cut risks plus one-line summaries for mistake "
+"severity, move freedom, position difficulty, and KataGo uncertainty."
 
 msgid "beginner_hint:self_atari:title"
 msgstr "Dangerous Move"
@@ -1547,6 +1548,165 @@ msgstr "There are bigger moves elsewhere."
 
 msgid "beginner_hint:urgent_vs_big:why"
 msgstr "Urgent moves should come before big moves."
+
+msgid "beginner_hint:mistake_blunder:title"
+msgstr "Blunder"
+
+msgid "beginner_hint:mistake_blunder:body"
+msgstr "This move shifted the balance of the game — try the alternatives."
+
+msgid "beginner_hint:mistake_blunder:why"
+msgstr "Blunders decide the outcome more often than smaller mistakes."
+
+msgid "beginner_hint:mistake_mistake:title"
+msgstr "Mistake"
+
+msgid "beginner_hint:mistake_mistake:body"
+msgstr "A better candidate was available here."
+
+msgid "beginner_hint:mistake_mistake:why"
+msgstr "Small losses accumulate over the course of a game."
+
+msgid "beginner_hint:mistake_good:title"
+msgstr "Good Move"
+
+msgid "beginner_hint:mistake_good:body"
+msgstr "Solid endgame move — keep this level of accuracy."
+
+msgid "beginner_hint:mistake_good:why"
+msgstr "Endgame precision decides close games."
+
+msgid "beginner_hint:freedom_only_move:title"
+msgstr "Only Move"
+
+msgid "beginner_hint:freedom_only_move:body"
+msgstr "There was basically one good move here."
+
+msgid "beginner_hint:freedom_only_move:why"
+msgstr "When only one candidate stands out, commit to it confidently."
+
+msgid "beginner_hint:freedom_narrow:title"
+msgstr "Narrow Choice"
+
+msgid "beginner_hint:freedom_narrow:body"
+msgstr "Only 2–3 moves were worth considering here."
+
+msgid "beginner_hint:freedom_narrow:why"
+msgstr "When choices are limited, compare them carefully before deciding."
+
+msgid "beginner_hint:freedom_wide:title"
+msgstr "Many Choices"
+
+msgid "beginner_hint:freedom_wide:body"
+msgstr "Several moves were equally strong — a hard judgement call."
+
+msgid "beginner_hint:freedom_wide:why"
+msgstr "When candidates are plentiful, anchor on a strategic direction."
+
+msgid "beginner_hint:difficulty_tricky:title"
+msgstr "Tricky Position"
+
+msgid "beginner_hint:difficulty_tricky:body"
+msgstr "KataGo rates this as a hard move — think twice."
+
+msgid "beginner_hint:difficulty_tricky:why"
+msgstr "In tricky positions a single mistake can be fatal."
+
+msgid "beginner_hint:difficulty_calm:title"
+msgstr "Calm Position"
+
+msgid "beginner_hint:difficulty_calm:body"
+msgstr "KataGo sees this as an easy-to-read position."
+
+msgid "beginner_hint:difficulty_calm:why"
+msgstr "Use calm positions to build steady, consistent play."
+
+msgid "beginner_hint:katago_uncertain:title"
+msgstr "Even KataGo Is Unsure"
+
+msgid "beginner_hint:katago_uncertain:body"
+msgstr "The score is volatile here, even for KataGo."
+
+msgid "beginner_hint:katago_uncertain:why"
+msgstr "When AI is unsure, prioritise solid shape over ambitious cuts."
+
+msgid "beginner_hint:ownership_dominant:title"
+msgstr "One-Sided Territory"
+
+msgid "beginner_hint:ownership_dominant:body"
+msgstr "KataGo expects one side to control most of the board."
+
+msgid "beginner_hint:ownership_dominant:why"
+msgstr "When the game is essentially decided, play steadily rather than forcing fights."
+
+msgid "beginner_hint:policy_conflict:title"
+msgstr "KataGo Is Unsure"
+
+msgid "beginner_hint:policy_conflict:body"
+msgstr "KataGo's top move has low confidence — multiple candidates compete."
+
+msgid "beginner_hint:policy_conflict:why"
+msgstr "When several moves are equally strong, anchor on a strategic direction to simplify the choice."
+
+msgid "beginner_hint:policy_confident:title"
+msgstr "KataGo Is Confident"
+
+msgid "beginner_hint:policy_confident:body"
+msgstr "KataGo has a clear top move here."
+
+msgid "beginner_hint:policy_confident:why"
+msgstr "When AI is decisive, anchor on its recommendation to save thinking time."
+
+msgid "beginner_hint:curator_weak_axis:title"
+msgstr "Your Weak Pattern"
+
+msgid "beginner_hint:curator_weak_axis:body"
+msgstr "This kind of mistake appears frequently across your analysed games."
+
+msgid "beginner_hint:curator_weak_axis:why"
+msgstr "Recurring mistake patterns are good targets for focused practice."
+
+msgid "mykatrain:settings:curator_hint"
+msgstr "Curator weak-axis hint:"
+
+msgid "mykatrain:settings:curator_hint_desc"
+msgstr "Show a one-line summary when the current move matches a mistake pattern that recurs across your analysed games"
+
+msgid "mykatrain:settings:summary_ownership"
+msgstr "Territory-prediction hint:"
+
+msgid "mykatrain:settings:summary_ownership_desc"
+msgstr "Show a one-line summary when KataGo's predicted territory is one-sided (>= 85%)"
+
+msgid "mykatrain:settings:summary_policy"
+msgstr "KataGo policy hint:"
+
+msgid "mykatrain:settings:summary_policy_desc"
+msgstr "Show a one-line summary of KataGo's top-move confidence (unsure / confident)"
+
+msgid "mykatrain:settings:summary_mistake"
+msgstr "Mistake summary hints:"
+
+msgid "mykatrain:settings:summary_mistake_desc"
+msgstr "Show a one-line summary of blunder / mistake / good move based on points lost"
+
+msgid "mykatrain:settings:summary_freedom"
+msgstr "Move-freedom summary hints:"
+
+msgid "mykatrain:settings:summary_freedom_desc"
+msgstr "Show a one-line summary based on candidate count (only / narrow / many)"
+
+msgid "mykatrain:settings:summary_difficulty"
+msgstr "Position-difficulty summary hints:"
+
+msgid "mykatrain:settings:summary_difficulty_desc"
+msgstr "Show a one-line summary based on KataGo's difficulty metric (tricky / calm)"
+
+msgid "mykatrain:settings:katago_uncertain"
+msgstr "KataGo uncertainty hint:"
+
+msgid "mykatrain:settings:katago_uncertain_desc"
+msgstr "Show a hint when KataGo's scoreStdev is high (even KataGo is unsure)"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"

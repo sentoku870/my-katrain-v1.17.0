@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-170（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe、mypy導入、core/state strict + 型エラー修正、core型エラー修正第1弾、gui/features型エラー修正、mypy strict全体・CIブロック、Python 3.11 modern syntax migration、Forward Reference + i18n + Semantic Type Fixes、Pre-existing型エラー修正＋Top Moves色回帰修正、Phase 138-D アーキテクチャ改善、Game 4分割、kivyutils分割、popups分割、commands/委譲、Phase 158+ AI strategies・engine・badukpan 分割、Phase 159A Karte/Summary の KataGo-only 化、Phase 170 人間 vs Leela 対局機能の再廃止）、**Phase 171（Leela エンジン完全削除）**、**Phase 178（棋譜並べ機能ドキュメント整備 + Root解析堅牢化 + 終了経路統一）**
+- **完了**: Phase 1-170（解析基盤、カルテ、リファクタリング、Guardrails、SGF E2Eテスト、LLM Package Export、レポート導線改善、Settings UI拡張、Smart Kifu運用強化、Diagnostics、解析強度抽象化、Leela→MoveEval変換、レポートLeela対応、エンジン選択設定、UIエンジン切替、Leelaカルテ統合、Leelaバッチ解析、テスト強化、安定化、エンジン比較ビュー、PLAYモード、コード品質リファクタリング、Batch Core Package完成、Stability Audit、Batch Analysis Fixes、Lexicon Core Infrastructure、Meaning Tags System Core、Meaning Tags Integration、5-Axis Radar Data Model、Radar Aggregation & Summary Integration、Critical 3 Focused Review Mode、Radar UI Widget、Tofu Fix + Language Code Consistency、Stabilization、Batch Report Quality、Report Quality Improvements、Report Foundation + User Aggregation、Style Archetype Core、Style Karte Integration、Time Data Parser、Pacing & Tilt Core、Pacing/Tilt Integration、Risk Context Core、Risk統合、Curator Scoring、Curator出力、Post-54統合テスト、Post-54品質強化、Engine Stability、Command Pattern、Parser/Base Test Enhancement、Complex Function Refactoring、batch/stats.py分割、karte_report.py分割、KaTrainGui分割A-KeyboardManager、KaTrainGui分割B-ConfigManager、KaTrainGui分割C-PopupManager、KaTrainGui分割D-GameStateManager、エラーハンドリング監査、エラーハンドリングB、エラーハンドリングC、共通基盤、Ownershipクラスタ抽出、Cluster Classifier、Complexity Filter、Recurring Pattern Mining、Pattern to Summary Integration、Reason Generator、Signature Player Axis、Batch UI Consistency、Leela Batch Output Fix、KataGo Settings UI Reorg + humanlike Toggle、Auto Setup Mode、Error Recovery & Diagnostics、Beginner Hints MVP、Beginner Hints Extension、Active Review MVP、Active Review Extension、Stability Improvements、SummaryManager抽出、ActiveReviewController抽出、QuizManager抽出、ConfigStore基盤、Read-side Config Migration、TypedConfigWriter更新API、update_*_config()移行、StateNotifier基盤、Notifier統合、Notifier発火ポイント追加、UI Subscribe MVP、KaTrainGui Subscribe、mypy導入、core/state strict + 型エラー修正、core型エラー修正第1弾、gui/features型エラー修正、mypy strict全体・CIブロック、Python 3.11 modern syntax migration、Forward Reference + i18n + Semantic Type Fixes、Pre-existing型エラー修正＋Top Moves色回帰修正、Phase 138-D アーキテクチャ改善、Game 4分割、kivyutils分割、popups分割、commands/委譲、Phase 158+ AI strategies・engine・badukpan 分割、Phase 159A Karte/Summary の KataGo-only 化、Phase 170 人間 vs Leela 対局機能の再廃止）、**Phase 171（Leela エンジン完全削除）**、**Phase 178（棋譜並べ機能ドキュメント整備 + Root解析堅牢化 + 終了経路統一）**、**Phase 179 + 179.1 + 179.2（Beginner Hints Summary Extension — ミス・自由度・難易度の Hint 統合 + 監査発見の品質改善）**、**Phase 182（Ownership / Policy 派生ヒント追加 — 3 カテゴリ）**、**Phase 186（Curator 集約統合 — 棋譜全体の弱点パターンを Hint に統合）**
 - **次**: TBD（計画中）
 
 詳細は `docs/01-roadmap.md` を参照。
@@ -273,6 +273,64 @@ docs/
 
 ## 10. 変更履歴
 
+- 2026-07-14: None-safety 修正 — Phase 186.1（KataGo 起動直後の TypeError 修正 / ユーザーログ起因）
+  - **症状**: KataGo 起動直後（analyze 完了前）に `node.analysis = {"root": None}` な状態が発生し、`get_root_visits` が `if "visits" in root:` で `TypeError: argument of type 'NoneType' is not iterable` を投げていた。Phase 179.1 C2 で自前 `analysis.get(...)` から公開 API `get_root_visits` に切り替えたことが露出原因
+  - **修正**: `katrain/core/analysis/logic_difficulty.py:243` の `analysis.get("root", {})` を `analysis.get("root") or {}` に置換。同じく `rootInfo` 側 (`:237`) も同様に修正。None と {} の両方を安全に扱う
+  - **回帰テスト**: `tests/test_get_root_visits_none_safety.py` 新設 20 件（None / empty dict / root=None / rootInfo=None など 9 パラメタライズ + 正常系 + SummaryHintContext + compute_summary_hint）
+  - **テスト合計**: 519 → **539 PASS**
+  - **lint/mypy**: pass
+- 2026-07-14: Curator 集約統合 — Phase 186（棋譜全体の弱点パターンを Hint に統合）
+  - **背景**: Phase 179 audit で保留した「Curator 集約統合」を実装。バッチ解析で蓄積されたユーザーの弱点プロファイルを Beginner Hint として表示
+  - **追加**: `HintCategory` に 1 enum（`CURATOR_WEAK_AXIS`）。総計 22 → 23 カテゴリ
+  - **新規ファイル**: `core/curator/profile.py`（`CuratorProfile` dataclass + `load_curator_profile()` ローダー）、`core/beginner/detector_curator.py`（pure detector）
+  - **既存拡張**: `compute_summary_hint` / `get_summary_hint_cached` に `user_weak_tags` / `curator_min_occurrences` パラメータ追加。priority chain の最下層に統合
+  - **キャッシュキー**: `user_weak_tags` と `curator_min_occurrences` を含めて、Curator プロファイル切り替え時に必ずキャッシュ invalidate
+  - **設定**: `beginner_hints: {curator_hint}` 1 トグル追加（デフォルト ON）
+  - **Settings UI**: Analysis タブに 1 チェックボックス追加（master の下に indent 配置）
+  - **i18n**: jp/en 各 5 キー追加（3 hint × 1 suffix + 2 settings）。`.mo` 再生成済
+  - **テスト**: `tests/test_beginner_hints_summary.py` に 33 件追加。合計 217 件 PASS
+  - **アーキテクチャ**: core 層 Kivy 非依存維持。`test_architecture.py` pass。`mypy katrain/core/{beginner,curator}/` pass
+  - **GUI 統合の余地**: `controlspanel.py` の `_summary_hint_flags` は `curator_hint` フラグを渡せるが、`user_weak_tags` の GUI 側読み込み（CuratorProfile のキャッシュ機構）は別タスク。Phase 186 ではコア層のみ実装
+- 2026-07-14: Ownership / Policy 派生ヒント — Phase 182（KataGo `ownership` / `policy` データから 3 カテゴリ追加）
+  - **背景**: Phase 179 audit で保留した OWNERSHIP_INFLUENCE / POLICY_CONFLICT を実装。KataGo の predicted territory と policy 分布を活用した初心者の状況把握を強化
+  - **追加**: `HintCategory` に 3 enum（`OWNERSHIP_DOMINANT` / `POLICY_CONFLICT` / `POLICY_CONFIDENT`）。総計 19 → 22 カテゴリ
+  - **新規ファイル**: `core/beginner/detector_ownership.py`, `detector_policy.py`（各 Kivy 非依存の pure detector）
+  - **既存拡張**: `SummaryHintContext` に `predicted_territory` / `best_policy` / 関連閾値フィールド追加、`_compute_summary_context` で抽出ヘルパー `_extract_predicted_territory` / `_extract_best_policy` を追加
+  - **priority chain**: 最下層に追加（既存 Specific / Summary hint より後）。POLICY_CONFIDENT (severity 0) > POLICY_CONFLICT (severity 1) の順序
+  - **設定**: `beginner_hints: {summary_ownership, summary_policy}` 2 トグル追加（デフォルト ON）
+  - **Settings UI**: Analysis タブに 2 チェックボックス追加（master の下に indent 配置）
+  - **i18n**: jp/en 各 13 キー追加（9 hint × 3 suffix + 4 settings）。`.mo` 再生成済
+  - **テスト**: `tests/test_beginner_hints_summary.py` に 42 件追加（3 detector × 5-7 テスト + extract helper + priority chain + i18n）。合計 184 件 PASS
+  - **アーキテクチャ**: core 層 Kivy 非依存維持。`test_architecture.py` pass。`mypy katrain/core/beginner/` pass
+  - **次回検討**: Hint Popup 化 / H キー手動表示 / Curator 集約統合
+- 2026-07-14: Beginner Hints Summary Extension — Phase 179 + Phase 179.1 + Phase 179.2（ミス・自由度・難易度の Hint 統合 + KataGo 未使用データ派生 9 カテゴリ + 監査発見の品質改善）
+  - **Phase 179.1（Critical + Minor まとめ）**:
+    - **C1 修正**: `get_summary_hint_cached` のキャッシュキーに `require_reliable` を含める（信頼性ゲート切替時の誤ヒットバグ修正）
+    - **C2 修正**: `analysis.get("rootInfo")` / `analysis.get("root")` 自前実装を `get_score_stdev` / `get_root_visits` 公開 API 経由に置換
+    - **m1**: テスト名 `test_total_hint_categories_is_ten` → `is_nineteen` リネーム + docstring 強化
+    - **m2**: `detector_mistake.py` の未使用 `_ensure_typed_dict` / `typing.Any` 削除
+    - **m3**: `controlspanel.py` の `category_keys` / `fallbacks` 二重 dict（62 行）を `HintCategory.i18n_namespace` / `fallback_title` / `fallback_body` の 3 property に集約（-45 行）
+  - **Phase 179.2（Medium 改善）**:
+    - **M1**: `_is_endgame_position` を `scoreStdev <= 8.0`（`ENDGAME_SCORE_STDEV_THRESHOLD`）ベースの動的判定に変更。`move_number >= 200` はフォールバック。中盤の持久戦での MISTAKE_GOOD 誤発火を排除
+    - **M2**: `controlspanel.py` と `detector_freedom.py` の二重 candidate counting を `count_freedom_candidates` ヘルパーに統合（-30 行 / +20 行）。閾値定数 `GOOD_REL_THRESHOLD` / `NEAR_REL_THRESHOLD` を `detector_freedom.py` に昇格
+    - **M3**: KATAGO_UNCERTAIN の内部 visits gate を 200 → 300 に引き上げ（Monte-Carlo ノイズによる誤検知抑制）。外側 MIN_SUMMARY_VISITS=100 は維持（2 tier gate）
+    - **M4**: `mykatrain:settings:beginner_hints_desc` (jp/en) に Phase 179 拡張（mistake / freedom / difficulty / katago 不確実性）の説明を追加
+  - **テスト**: `tests/test_beginner_hints_summary.py` に 13 件追加（C1/C2/m3 + M1/M2/M3 regression）。合計 142 件 PASS
+  - **アーキテクチャ**: core 層 Kivy 非依存維持。`test_architecture.py` pass。`mypy katrain/core/beginner/` pass
+  - **i18n**: `.po` / `.mo` 更新済
+  - **背景**: ユーザー要望「右下のミス・手の自由度・局面難易度の数値から初心者向けヒントみたいなテンプレート機能」
+  - **追加**: `HintCategory` に 9 enum（`MISTAKE_BLUNDER/MISTAKE/GOOD`, `FREEDOM_ONLY_MOVE/NARROW/WIDE`, `DIFFICULTY_TRICKY/CALM`, `KATAGO_UNCERTAIN`）
+  - **新規ファイル**: `core/beginner/detector_mistake.py`, `detector_freedom.py`, `detector_difficulty.py`, `detector_katago.py`（各 +50〜80 行、Kivy 非依存の pure detector）
+  - **既存拡張**: `HintCategory.is_structural/is_meaning_tag/is_summary/config_key` プロパティ追加、`SummaryHintContext` dataclass 新設
+  - **優先度チェーン**: 3 層化（Specific → Summary、Layer 内 priority chain）。既存 10 カテゴリ完全不変
+  - **設定**: `beginner_hints: {summary_mistake, summary_freedom, summary_difficulty, katago_uncertain}` 4 トグル追加（デフォルト ON）
+  - **Settings UI**: Analysis タブに 4 チェックボックス追加（master の下に indent 配置）
+  - **i18n**: jp/en 各 35 キー追加（27 hint × 3 suffix + 8 settings）。`.mo` 再生成済
+  - **表示形式**: 既存数値行（`ミス: 悪（N点損）` 等）は保持、Hint 行を 1 行追加で併記
+  - **テスト**: `tests/test_beginner_hints_summary.py` 新規（680 行 / 65 テスト）。既存 `tests/test_beginner_hints.py`（64 件）は全件 PASS のまま拡張（HintCategory total=19 に更新のみ）
+  - **アーキテクチャ**: core 層 Kivy 非依存維持。`test_architecture.py` 通過。`mypy katrain/core/beginner/` 通過
+  - **仕様書**: `docs/archive/specs-implemented/phase179-hints-summary-extension.md` 新規
+  - **次回検討**: Hint Popup 化 / H キー手動表示 / 候補手単位 Hint / Curator 集約統合
 - 2026-07-11: Phase 173 — CI exit-102 修正（部分）: kivy 遅延 import で FileExistsError 解消
   - 根本原因: `katrain/gui/features/commands/game_commands.py:12` で
     `from kivy.clock import Clock` をモジュールレベルで行っていた。

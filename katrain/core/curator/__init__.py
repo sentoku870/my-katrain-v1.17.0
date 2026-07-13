@@ -40,6 +40,13 @@ from .models import (
     SuitabilityConfig,
     SuitabilityScore,
 )
+from .profile import (
+    DEFAULT_MIN_GAMES,
+    DEFAULT_MIN_TAG_OCCURRENCES,
+    CuratorProfile,
+    curator_profile_from_payload,
+    load_curator_profile,
+)
 from .scoring import (
     compute_batch_percentiles,
     compute_stability,
@@ -66,4 +73,10 @@ __all__ = [
     "HighlightMoment",
     "ReplayGuide",
     "extract_replay_guide",
+    # Profile loader (Phase 186)
+    "CuratorProfile",
+    "DEFAULT_MIN_GAMES",
+    "DEFAULT_MIN_TAG_OCCURRENCES",
+    "load_curator_profile",
+    "curator_profile_from_payload",
 ]
