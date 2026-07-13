@@ -113,14 +113,14 @@ jobs:
           echo "=== Memory before tests ==="
           free -m || true
           # Fast collection-only smoke check: isolates collection-time
-          # import crashes from test-execution crashes and fails with a
-          # clear signal if an import aborts.
-          uv run python -X faulthandler -m pytest tests --collect-only -q >/dev/null 2>&1
-          collect_rc=$?
-          if [ $collect_rc -ne 0 ]; then
-            echo "::error::Collection failed (rc=$collect_rc). Re-running with full output to capture the crash:"
-            uv run python -X faulthandler -m pytest tests --collect-only -q
-            exit $collect_rc
+          # import crashes from test-execution crashes. Runs with output
+          # visible and uses ``||`` so the CI shell's ``set -e`` does not
+          # abort the whole step before we can report the exit code.
+          collect_rc=0
+          uv run python -X faulthandler -m pytest tests --collect-only -q || collect_rc=$?
+          if [ "$collect_rc" -ne 0 ]; then
+            echo "::error::Collection crashed (rc=$collect_rc). See faulthandler traceback above."
+            exit "$collect_rc"
           fi
           # Run tests with verbose output and no timeout hiding
           uv run python -X faulthandler -m pytest tests -v --tb=short 2>&1
