@@ -21,7 +21,7 @@ dependencies = [
     "pyyaml>=6.0.0,<7",
     "urllib3>=2.2.2",
     "kivy>=2.3.1",
-    "kivymd==0.104.1",
+    "kivymd==1.2.0",
 ]
 
 [project.urls]

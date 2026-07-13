@@ -279,7 +279,7 @@ requires-dist = [
     { name = "docutils", specifier = ">=0.21.2" },
     { name = "ffpyplayer", specifier = ">=4.5.1" },
     { name = "kivy", specifier = ">=2.3.1" },
-    { name = "kivymd", specifier = "==0.104.1" },
+    { name = "kivymd", specifier = "==1.2.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7" },
     { name = "screeninfo", marker = "sys_platform != 'darwin'", specifier = ">=0.8.1,<0.9" },
     { name = "urllib3", specifier = ">=2.2.2" },
@@ -376,17 +376,13 @@ wheels = [
 
 [[package]]
 name = "kivymd"
-version = "0.104.1"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kivy" },
     { name = "pillow" },
-    { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/a1/460313db291c9cd4a128d4f58f08faf2bf3e4c9dc5ca935b489e06efd7f4/kivymd-0.104.1.tar.gz", hash = "sha256:9dcbc2cb8affde9c82572198fddb32c814cdd57254a0e4b00c53882db2c8d6a6", size = 2347484, upload-time = "2020-04-27T20:04:28.274Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/4e/f33085dab6420009fefc214cb3f8fc88ecd9d9e766976aa14f93b033a53a/kivymd-0.104.1-py3-none-any.whl", hash = "sha256:a9d3e14950ae616bf13f0a9ebccc761ec84e2ba36e671d0102045eaa63dbc2b0", size = 2391952, upload-time = "2020-04-27T20:04:26.748Z" },
-]
+sdist = { url = "https://files.pythonhosted.org/packages/20/81/0b1154f5e581d5910702d9fadb3217f56cb186f72c8b36de0271e7ff9b5c/kivymd-1.2.0.tar.gz", hash = "sha256:2d33e2c59259998e93aee55acde647a4a20e5a0f962469db24ee4c9ec586962e", size = 2160842, upload-time = "2024-01-21T10:49:26.401Z" }
 
 [[package]]
 name = "librt"
