@@ -183,9 +183,7 @@ class KifunarabeToggleMixin:
                     hints.active = target_active
         except Exception as e:  # noqa: BLE001
             with contextlib.suppress(Exception):
-                self._logger(
-                    f"kifunarabe: failed to set hints={target_active}: {e}", level=0
-                )
+                self._logger(f"kifunarabe: failed to set hints={target_active}: {e}", level=0)
 
     def _schedule_redraw(self: Any) -> None:
         """Trigger a board redraw on the main thread.

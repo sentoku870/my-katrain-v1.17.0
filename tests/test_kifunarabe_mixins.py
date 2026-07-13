@@ -112,9 +112,7 @@ class _MockChild:
         self.move = MagicMock()
         self.move.coords = coords
         self.move.player = player
-        self.move.gtp = lambda: (
-            Move(coords, player=player).gtp() if coords is not None else "pass"
-        )
+        self.move.gtp = lambda: Move(coords, player=player).gtp() if coords is not None else "pass"
 
 
 class _MockChildNoMove:
@@ -231,9 +229,7 @@ class TestFacadeStructure:
         # Session is listed FIRST in the MRO (it depends on all the
         # others), Toggle is listed LAST (it has no cross-mixin
         # dependencies). The two book-end the four-mixin chain.
-        assert names.index("KifunarabeSessionMixin") < names.index(
-            "KifunarabeToggleMixin"
-        )
+        assert names.index("KifunarabeSessionMixin") < names.index("KifunarabeToggleMixin")
 
     def test_init_sets_default_state_attributes(self) -> None:
         ctrl = _make_controller()
@@ -330,9 +326,5 @@ class TestMixinSlots:
     def test_facade_only_owns_constructor_and_public_accessors(self) -> None:
         # ``KifunarabeController.__dict__`` should contain exactly these
         # non-dunder methods (mixin methods live on the parents).
-        implemented = {
-            name
-            for name, value in KifunarabeController.__dict__.items()
-            if callable(value)
-        }
+        implemented = {name for name, value in KifunarabeController.__dict__.items() if callable(value)}
         assert implemented == {"__init__", "is_active", "is_fog_active"}
