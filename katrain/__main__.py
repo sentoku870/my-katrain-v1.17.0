@@ -64,7 +64,7 @@ from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.lang import Builder
-from kivy.properties import NumericProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.resources import resource_add_path, resource_find
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
@@ -110,6 +110,7 @@ from katrain.gui.managers.game_state_manager import GameStateManager
 from katrain.gui.managers.game_state_update_manager import GameStateUpdateManager
 from katrain.gui.managers.gui_refresh_manager import GUIRefreshManager
 from katrain.gui.managers.keyboard_manager import KeyboardManager
+from katrain.gui.managers.kifunarabe_controller import KifunarabeController
 from katrain.gui.managers.message_loop_manager import MessageLoopManager
 from katrain.gui.managers.popup_manager import PopupManager
 from katrain.gui.managers.scroll_handler import ScrollHandler
@@ -129,6 +130,24 @@ class KaTrainGui(Screen, KaTrainBase):
     zen = NumericProperty(0)
     controls = ObjectProperty(None)
     # active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode - REMOVED
+    #: Kifunarabe (棋譜並べ) mode flag. Toggled by the menu / abort button.
+    kifunarabe_mode = BooleanProperty(False)
+
+    def on_kifunarabe_mode(self, _instance: Any, value: bool) -> None:
+        """Bridge Kivy property changes to KifunarabeController.
+
+        Previously this happened implicitly through the lambda injected as
+        ``set_mode`` on the controller, but several KV bindings
+        (``opacity: 1 if (app.gui and app.gui.kifunarabe_mode) else 0``) re-
+        evaluate here, and we want a single, debuggable notification path
+        so any failure is visible.
+        """
+        controller = getattr(self, "_kifunarabe_controller", None)
+        if controller is not None:
+            try:
+                controller.on_mode_change(value)
+            except Exception as e:  # noqa: BLE001
+                self.log(f"kifunarabe: on_mode_change({value}) raised: {e}", 0)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -295,6 +314,16 @@ class KaTrainGui(Screen, KaTrainBase):
             get_board_controls=lambda: getattr(self, "board_controls", None),
             get_controls=lambda: getattr(self, "controls", None),
             action_dispatcher=self.__call__,
+        )
+
+        self._kifunarabe_controller = KifunarabeController(
+            get_ctx=lambda: self,
+            get_config=self.config,
+            get_game=lambda: self.game,
+            get_controls=lambda: getattr(self, "controls", None),
+            get_mode=lambda: self.kifunarabe_mode,
+            set_mode=lambda v: setattr(self, "kifunarabe_mode", v),
+            logger=self.log,
         )
 
         self._ui_update_manager.setup_state_subscriptions()

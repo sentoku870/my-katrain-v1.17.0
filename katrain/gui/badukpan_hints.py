@@ -27,6 +27,12 @@ from katrain.core.beginner.hints import (
     should_draw_board_highlight,
 )
 from katrain.core.constants import (
+    KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
+    KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
+    KIFUNARABE_SHOW_DIGITS_DEFAULT,
+    KIFUNARABE_SHOW_DIGITS_KEY,
+    KIFUNARABE_UNIFORM_COLOR_DEFAULT,
+    KIFUNARABE_UNIFORM_COLOR_KEY,
     OUTPUT_DEBUG,
     STATUS_TEACHING,
     TOP_MOVE_DELTA_SCORE,
@@ -39,6 +45,7 @@ from katrain.core.constants import (
 )
 from katrain.core.game import Move
 from katrain.core.lang import i18n
+from katrain.core.study.kifunarabe import build_kifunarabe_options
 from katrain.core.utils import format_visits
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
 from katrain.gui.theme import Theme
@@ -138,7 +145,17 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
     """Collect and filter candidate moves for hover hints."""
     katrain = widget.katrain
     hint_moves: list[dict[str, Any]] = []
-    if (
+
+    # Phase 177: kifunarabe (棋譜並べ) mode drives its own choice set:
+    # the recorded (actual) move plus (max_hints-1) KataGo top candidates.
+    # Independent of the regular "Top Moves" toggle so the existing UX
+    # stays exactly as before.
+    kifu_max_hints = _kifunarabe_max_hints(katrain)
+    in_kifu = bool(getattr(katrain, "kifunarabe_mode", False))
+    if in_kifu and kifu_max_hints > 0 and not game_ended and not katrain.is_fog_active():
+        option_gtps = build_kifunarabe_options(current_node, kifu_max_hints)
+        hint_moves = _kifunarabe_options_to_hint_moves(current_node, option_gtps)
+    elif (
         katrain.analysis_controls.hints.active
         and not katrain.analysis_controls.policy.active
         and not game_ended
@@ -153,8 +170,10 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
             if c.move and c.auto_undo and c.move.gtp() == m["move"]
         ]
 
-    # Apply PV filter to hint_moves (Phase 11)
-    if hint_moves:
+    # Phase 177-G: kifu-mode markers are the user's *choice set*. Skip the
+    # PV-complexity filter so the user always sees ``max_hints`` options,
+    # not a filtered subset.
+    if hint_moves and not in_kifu:
         pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
         skill_preset = katrain.config("general/skill_preset")
         pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
@@ -162,6 +181,59 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
 
     return hint_moves
+
+
+def _kifunarabe_options_to_hint_moves(current_node: Any, option_gtps: list[str]) -> list[dict[str, Any]]:
+    """Convert a list of option GTPs into the marker-dict shape.
+
+    Each output dict matches the schema that ``draw_kata_hint_marker``
+    expects (``move``, ``order``, ``scoreLead``, ``winrate``,
+    ``pointsLost``, ``relativePointsLost``, ``winrateLost``, ``visits``,
+    ``pv``). When KataGo analysis is missing for an option we still emit a
+    minimal dict so the marker draws.
+    """
+    if not option_gtps:
+        return []
+
+    # Build a lookup keyed by GTP for fast enrichment from KataGo results.
+    candidates = []
+    if getattr(current_node, "analysis_exists", False):
+        candidates = getattr(current_node, "candidate_moves", []) or []
+    by_gtp = {c.get("move"): c for c in candidates if c.get("move")}
+
+    hint_moves: list[dict[str, Any]] = []
+    for i, gtp in enumerate(option_gtps):
+        cand = by_gtp.get(gtp, {})
+        hint_moves.append(
+            {
+                "move": gtp,
+                "order": i,
+                "scoreLead": cand.get("scoreLead", 0),
+                "winrate": cand.get("winrate", 0.5),
+                "pointsLost": cand.get("pointsLost", 0.0),
+                "relativePointsLost": cand.get("relativePointsLost", 0.0),
+                "winrateLost": cand.get("winrateLost", 0.0),
+                "visits": cand.get("visits", 0),
+                "pv": cand.get("pv", []),
+                "_kifunarabe_actual": (i == 0),
+            }
+        )
+    return hint_moves
+
+
+def _kifunarabe_max_hints(katrain: Any) -> int:
+    """Return the active kifunarabe session's ``max_hints`` (0 if no session).
+
+    Used by :func:`prepare_hint_moves` to decide whether to force candidate
+    markers on regardless of the user's "Top Moves" toggle.
+    """
+    controller = getattr(katrain, "_kifunarabe_controller", None)
+    if controller is None:
+        return 0
+    session = getattr(controller, "session", None)
+    if session is None:
+        return 0
+    return int(getattr(getattr(session, "config", None), "max_hints", 0) or 0)
 
 
 def draw_kata_hint_moves(
@@ -174,14 +246,35 @@ def draw_kata_hint_moves(
     """Draw KataGo hint markers for each candidate move."""
     katrain = widget.katrain
     child_moves = {c.move.gtp() for c in current_node.children if c.move}
-    top_moves_show = [
-        opt
-        for opt in [
-            katrain.config("trainer/top_moves_show"),
-            katrain.config("trainer/top_moves_show_secondary"),
+
+    # Phase 177-E: kifunarabe mode overrides text display / special border
+    # so the choice set looks like a clean multiple-choice puzzle.
+    in_kifu = any(m.get("_kifunarabe_actual") is not None for m in hint_moves)
+    if in_kifu:
+        show_digits = bool(katrain.config(KIFUNARABE_SHOW_DIGITS_KEY, KIFUNARABE_SHOW_DIGITS_DEFAULT))
+        if show_digits:
+            # Inherit the user's regular "trainer/top_moves_show" settings
+            # so that flipping kifu digits ON renders the same numbers as
+            # the regular KataGo hint path.
+            top_moves_show: list[str] = [
+                opt
+                for opt in [
+                    katrain.config("trainer/top_moves_show"),
+                    katrain.config("trainer/top_moves_show_secondary"),
+                ]
+                if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
+            ]
+        else:
+            top_moves_show = []
+    else:
+        top_moves_show = [
+            opt
+            for opt in [
+                katrain.config("trainer/top_moves_show"),
+                katrain.config("trainer/top_moves_show_secondary"),
+            ]
+            if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
         ]
-        if opt in TOP_MOVE_OPTIONS and opt != TOP_MOVE_NOTHING
-    ]
     top_move_coords = None
     for move_dict in hint_moves:
         top_move_coords = draw_kata_hint_marker(
@@ -209,15 +302,42 @@ def draw_kata_hint_marker(
 ) -> Any:
     """Draw a single KataGo hint marker at the move's coordinates."""
     katrain = widget.katrain
-    move = Move.from_gtp(move_dict["move"])
+    move_gtp = move_dict.get("move")
+    if not move_gtp:
+        return top_move_coords
+    move = Move.from_gtp(move_gtp)
     if move.coords is None:
         return top_move_coords
 
-    engine_best_move = move_dict.get("order", 99) == 0
+    # Phase 177-E: kifunarabe marker overrides -- the choice set must NOT
+    # reveal the actual move, so ``engine_best_move`` is suppressed unless
+    # the user explicitly opted back in via ``show_actual_border``.
+    is_kifu_marker = move_dict.get("_kifunarabe_actual") is not None
+    if is_kifu_marker:
+        uniform_color = bool(
+            katrain.config(KIFUNARABE_UNIFORM_COLOR_KEY, KIFUNARABE_UNIFORM_COLOR_DEFAULT)
+        )
+        show_actual_border = bool(
+            katrain.config(KIFUNARABE_SHOW_ACTUAL_BORDER_KEY, KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT)
+        )
+    else:
+        uniform_color = False
+        show_actual_border = True
+
+    is_order_zero = move_dict.get("order", 99) == 0
+    engine_best_move = is_order_zero and (not is_kifu_marker or show_actual_border)
     scale = Theme.HINT_SCALE
     text_on = True
     alpha = Theme.HINTS_ALPHA
-    if move_dict["visits"] < low_visits_threshold and not engine_best_move and move_dict["move"] not in child_moves:
+    # Phase 177-G: kifu-mode markers must all render at the same scale.
+    # Skip the visits-based size shrink so the choice set is uniform and
+    # the "actual" move no longer stands out by being a touch larger.
+    if (
+        not is_kifu_marker
+        and move_dict.get("visits", 0) < low_visits_threshold
+        and not engine_best_move
+        and move_gtp not in child_moves
+    ):
         scale = Theme.UNCERTAIN_HINT_SCALE
         text_on = False
         alpha = Theme.HINTS_LO_ALPHA
@@ -225,14 +345,25 @@ def draw_kata_hint_marker(
     if scale <= 0:  # if theme turns hints off, do not draw them
         return top_move_coords
 
-    if "pv" in move_dict:
+    if "pv" in move_dict and not is_kifu_marker:
         widget.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
-    else:
+    elif "pv" not in move_dict and not is_kifu_marker:
         katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
     evalsize = widget.stone_size * scale
     from katrain.gui.badukpan_drawing import eval_color as _eval_color_helper
 
-    evalcol = _eval_color_helper(widget, move_dict["pointsLost"])
+    if uniform_color:
+        # Phase 177-F: kifunarabe markers use a uniform translucent-black
+        # colour so they read as "choice markers" without revealing any
+        # KataGo ranking information.
+        fill_rgba = Theme.KIFUNARABE_MARKER_FILL
+        # The Kivy ``Color`` instruction wants rgb+alpha, and our
+        # downstream alpha (``alpha`` below) is also taken from the same
+        # fill. Collapse two redundancies to keep behaviour consistent.
+        evalcol: tuple[float, ...] = tuple(fill_rgba)
+        alpha = fill_rgba[3]
+    else:
+        evalcol = _eval_color_helper(widget, move_dict.get("pointsLost", 0.0))
     if text_on and top_moves_show:  # remove grid lines using a board colored circle
         draw_circle(
             (
@@ -271,12 +402,12 @@ def draw_kata_hint_marker(
 
         from katrain.gui.badukpan_drawing import format_loss_str
 
-        keys[TOP_MOVE_DELTA_SCORE] = format_loss_str(widget, -move_dict["pointsLost"])
-        keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict['scoreLead']:.1f}"
-        winrate = move_dict["winrate"] if player_sign == 1 else 1 - move_dict["winrate"]
+        keys[TOP_MOVE_DELTA_SCORE] = format_loss_str(widget, -move_dict.get("pointsLost", 0.0))
+        keys[TOP_MOVE_SCORE] = f"{player_sign * move_dict.get('scoreLead', 0):.1f}"
+        winrate = move_dict.get("winrate", 0.5) if player_sign == 1 else 1 - move_dict.get("winrate", 0.5)
         keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
-        keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict['winrateLost']:+.1%}"
-        keys[TOP_MOVE_VISITS] = format_visits(move_dict["visits"])
+        keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict.get('winrateLost', 0.0):+.1%}"
+        keys[TOP_MOVE_VISITS] = format_visits(move_dict.get("visits", 0))
 
         Color(*Theme.HINT_TEXT_COLOR)
         draw_text(
