@@ -632,12 +632,12 @@ class TestComputeBeginnerHintNodeRestoration:
         original_node._label = "original"
         target_node._label = "target"
 
-        with patch(
-            "katrain.core.beginner.hints.extract_groups_from_game", return_value=[]
-        ), patch("katrain.core.beginner.hints.detect_self_atari", return_value=None), patch(
-            "katrain.core.beginner.hints.detect_ignore_atari", return_value=None
-        ), patch("katrain.core.beginner.hints.detect_missed_capture", return_value=None), patch(
-            "katrain.core.beginner.hints.detect_cut_risk", return_value=None
+        with (
+            patch("katrain.core.beginner.hints.extract_groups_from_game", return_value=[]),
+            patch("katrain.core.beginner.hints.detect_self_atari", return_value=None),
+            patch("katrain.core.beginner.hints.detect_ignore_atari", return_value=None),
+            patch("katrain.core.beginner.hints.detect_missed_capture", return_value=None),
+            patch("katrain.core.beginner.hints.detect_cut_risk", return_value=None),
         ):
             compute_beginner_hint(game, target_node)
 
@@ -663,12 +663,12 @@ class TestComputeBeginnerHintNodeRestoration:
 
         game.set_current_node.side_effect = fake_set_current_node
 
-        with patch(
-            "katrain.core.beginner.hints.extract_groups_from_game", return_value=[]
-        ), patch("katrain.core.beginner.hints.detect_self_atari", return_value=None), patch(
-            "katrain.core.beginner.hints.detect_ignore_atari", return_value=None
-        ), patch("katrain.core.beginner.hints.detect_missed_capture", return_value=None), patch(
-            "katrain.core.beginner.hints.detect_cut_risk", return_value=None
+        with (
+            patch("katrain.core.beginner.hints.extract_groups_from_game", return_value=[]),
+            patch("katrain.core.beginner.hints.detect_self_atari", return_value=None),
+            patch("katrain.core.beginner.hints.detect_ignore_atari", return_value=None),
+            patch("katrain.core.beginner.hints.detect_missed_capture", return_value=None),
+            patch("katrain.core.beginner.hints.detect_cut_risk", return_value=None),
         ):
             compute_beginner_hint(game, target_node)
 
@@ -707,8 +707,9 @@ class TestComputeSummaryHintPriorityChain:
         node = self._node_with_visits()
         mistake_hint = BeginnerHint(category=HintCategory.MISTAKE_BLUNDER, coords=(0, 0), severity=2)
         freedom_hint = BeginnerHint(category=HintCategory.FREEDOM_NARROW, coords=(0, 0), severity=1)
-        with patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=mistake_hint), patch(
-            "katrain.core.beginner.hints.detect_freedom_summary", return_value=freedom_hint
+        with (
+            patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=mistake_hint),
+            patch("katrain.core.beginner.hints.detect_freedom_summary", return_value=freedom_hint),
         ):
             hint = compute_summary_hint(node)
         assert hint is mistake_hint
@@ -717,9 +718,11 @@ class TestComputeSummaryHintPriorityChain:
         node = self._node_with_visits()
         freedom_hint = BeginnerHint(category=HintCategory.FREEDOM_NARROW, coords=(0, 0), severity=1)
         difficulty_hint = BeginnerHint(category=HintCategory.DIFFICULTY_TRICKY, coords=(0, 0), severity=1)
-        with patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=None), patch(
-            "katrain.core.beginner.hints.detect_freedom_summary", return_value=freedom_hint
-        ), patch("katrain.core.beginner.hints.detect_difficulty_summary", return_value=difficulty_hint):
+        with (
+            patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=None),
+            patch("katrain.core.beginner.hints.detect_freedom_summary", return_value=freedom_hint),
+            patch("katrain.core.beginner.hints.detect_difficulty_summary", return_value=difficulty_hint),
+        ):
             hint = compute_summary_hint(node)
         assert hint is freedom_hint
 
@@ -727,8 +730,9 @@ class TestComputeSummaryHintPriorityChain:
         node = self._node_with_visits()
         confident = BeginnerHint(category=HintCategory.POLICY_CONFIDENT, coords=(0, 0), severity=0)
         conflict = BeginnerHint(category=HintCategory.POLICY_CONFLICT, coords=(0, 0), severity=1)
-        with patch("katrain.core.beginner.hints.detect_policy_confident", return_value=confident), patch(
-            "katrain.core.beginner.hints.detect_policy_conflict", return_value=conflict
+        with (
+            patch("katrain.core.beginner.hints.detect_policy_confident", return_value=confident),
+            patch("katrain.core.beginner.hints.detect_policy_conflict", return_value=conflict),
         ):
             hint = compute_summary_hint(node)
         assert hint is confident
@@ -744,13 +748,15 @@ class TestComputeSummaryHintPriorityChain:
     def test_flags_none_defaults_all_true(self) -> None:
         # Pass flags=None: every detector should be called exactly once.
         node = self._node_with_visits()
-        with patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=None) as m, patch(
-            "katrain.core.beginner.hints.detect_freedom_summary", return_value=None
-        ) as f, patch("katrain.core.beginner.hints.detect_difficulty_summary", return_value=None) as d, patch(
-            "katrain.core.beginner.hints.detect_katago_uncertain", return_value=None
-        ) as k, patch("katrain.core.beginner.hints.detect_ownership_dominant", return_value=None) as o, patch(
-            "katrain.core.beginner.hints.detect_policy_confident", return_value=None
-        ) as pc, patch("katrain.core.beginner.hints.detect_policy_conflict", return_value=None) as px:
+        with (
+            patch("katrain.core.beginner.hints.detect_mistake_summary", return_value=None) as m,
+            patch("katrain.core.beginner.hints.detect_freedom_summary", return_value=None) as f,
+            patch("katrain.core.beginner.hints.detect_difficulty_summary", return_value=None) as d,
+            patch("katrain.core.beginner.hints.detect_katago_uncertain", return_value=None) as k,
+            patch("katrain.core.beginner.hints.detect_ownership_dominant", return_value=None) as o,
+            patch("katrain.core.beginner.hints.detect_policy_confident", return_value=None) as pc,
+            patch("katrain.core.beginner.hints.detect_policy_conflict", return_value=None) as px,
+        ):
             hint = compute_summary_hint(node, summary_flags=None)
         assert hint is None
         assert m.call_count == 1
@@ -799,9 +805,7 @@ class TestComputeSummaryHintPriorityChain:
     def test_curator_flag_off_skips_detector(self) -> None:
         node = self._node_with_visits()
         curator_hint = BeginnerHint(category=HintCategory.CURATOR_WEAK_AXIS, coords=(0, 0), severity=1)
-        with patch(
-            "katrain.core.beginner.hints.detect_curator_weak_axis", return_value=curator_hint
-        ) as mock:
+        with patch("katrain.core.beginner.hints.detect_curator_weak_axis", return_value=curator_hint) as mock:
             hint = compute_summary_hint(
                 node,
                 user_weak_tags={"low_liberties": 5},
