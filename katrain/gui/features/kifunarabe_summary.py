@@ -14,6 +14,7 @@ Phase 177-G: provides two follow-up actions after the summary:
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
@@ -80,13 +81,22 @@ def _format_rate(value: float) -> str:
     return f"{value:.1f}%"
 
 
-def show_kifunarabe_summary(ctx: Any, summary: KifunarabeSummary) -> None:
+def show_kifunarabe_summary(
+    ctx: Any,
+    summary: KifunarabeSummary,
+    on_popup_opened: Any = None,
+) -> None:
     """Display the kifunarabe summary popup.
 
     Args:
         ctx: KaTrainGui instance (used to look up the controller and to
             re-open the SGF selector after the user picks 'Next game').
         summary: :class:`KifunarabeSummary` with the session totals.
+        on_popup_opened: Phase 181-B. Optional callable invoked with the
+            ``popup`` instance right after ``popup.open()``. The controller
+            uses this to track the popup for later dismissal from the
+            panel "Abort" button. Exceptions raised by the callback are
+            swallowed so a tracking bug never blocks the UI.
     """
     from kivy.uix.label import Label
 
@@ -204,3 +214,9 @@ def show_kifunarabe_summary(ctx: Any, summary: KifunarabeSummary) -> None:
     popup.pos_hint = {"center_x": 0.5, "center_y": 0.5}
     content.popup = popup
     popup.open()
+    # Phase 181-B: notify the controller that the popup is now visible.
+    # Used by the panel "Abort" button to dismiss it on a single click
+    # even after the natural end has already cleared the session.
+    if on_popup_opened is not None:
+        with contextlib.suppress(Exception):
+            on_popup_opened(popup)

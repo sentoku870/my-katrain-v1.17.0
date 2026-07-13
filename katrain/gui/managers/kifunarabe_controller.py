@@ -105,6 +105,18 @@ class KifunarabeController:
         self._on_guess_resolved_fn = on_guess_resolved_fn
 
         self._session: KifunarabeSession | None = None
+        # Phase 181-B: tracks the currently-visible summary popup so the
+        # panel "Abort" button can dismiss it even after the natural end
+        # has already cleared ``_session`` and toggled mode off. Without
+        # this, the user has to click the popup's own "abort" button to
+        # dismiss it after a max_moves cap run.
+        self._summary_popup: Any = None
+        # Phase 181-A: path of the SGF that was loaded into the session.
+        # Set by ``_load_sgf_into_new_game`` in the setup popup. ``game.
+        # sgf_filename`` is None during kifunarabe (intentional, to avoid
+        # overwriting the source), so we need our own pointer for the
+        # history-save key.
+        self._source_sgf_path: str | None = None
 
     # -- accessors ------------------------------------------------------------
 
@@ -203,9 +215,36 @@ class KifunarabeController:
         """Get summary UI function (lazy import if not injected)."""
         if self._show_summary_fn is not None:
             return self._show_summary_fn
-        from katrain.gui.features.kifunarabe_summary import show_kifunarabe_summary
 
-        return show_kifunarabe_summary
+        # Phase 181-B: wrap the default impl so the controller can track
+        # the popup instance for later dismissal from the panel button.
+        def _tracked_show_summary(ctx: Any, summary: Any) -> None:
+            from katrain.gui.features.kifunarabe_summary import (
+                show_kifunarabe_summary as _impl,
+            )
+
+            _impl(
+                ctx,
+                summary,
+                on_popup_opened=lambda p: setattr(self, "_summary_popup", p),
+            )
+
+        return _tracked_show_summary
+
+    def _dismiss_summary_popup_if_open(self) -> None:
+        """Phase 181-B: dismiss any visible summary popup and clear tracking.
+
+        Called from ``abort_session`` so that a single panel-button press
+        closes the popup regardless of whether the session is still
+        active. Also called from ``disable_if_needed`` to keep the
+        controller's state consistent.
+        """
+        popup = self._summary_popup
+        if popup is None:
+            return
+        with contextlib.suppress(Exception):
+            popup.dismiss()
+        self._summary_popup = None
 
     def _get_on_guess_resolved(self) -> OnGuessResolvedFn:
         """Get guess-resolved UI function (lazy import if not injected)."""
@@ -221,6 +260,9 @@ class KifunarabeController:
         Called when switching to PLAY mode, loading SGF, or other interrupting
         transitions.
         """
+        # Phase 181-B: also dismiss any visible summary popup so the user
+        # does not get stranded with a popup and no exit path.
+        self._dismiss_summary_popup_if_open()
         # Phase 177-H: whenever the session is interrupted (SGF load,
         # mode switch, manual disable), the saved toggle mask must come
         # off so the user's analysis settings come back.
@@ -679,6 +721,9 @@ class KifunarabeController:
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
+        # Phase 181-B: clear the source path so the next session does
+        # not accidentally inherit a stale value.
+        self._source_sgf_path = None
 
     # Phase 177-G: split the previous "end session + mode off" path into
     # two so the max_moves-cap flow can show the summary popup while
@@ -717,7 +762,18 @@ class KifunarabeController:
 
         Ends the session cleanly, shows the summary popup if there were
         results, and returns ``kifunarabe_mode`` to False.
+
+        Phase 181-B: also dismisses any visible summary popup regardless
+        of mode. Previously, after a natural session end (e.g. max_moves
+        cap), the panel "Abort" button would call ``abort_session``,
+        bail out at the ``if not self._get_mode(): return`` guard, and
+        leave the user staring at the popup. Now the popup is dismissed
+        first so a single button press is enough to fully exit.
         """
+        # Phase 181-B: dismiss any visible summary popup first. This is
+        # a no-op when no popup is open, and runs even when mode is
+        # already False (which is the common case after a natural end).
+        self._dismiss_summary_popup_if_open()
         if not self._get_mode():
             return
         summary_data: KifunarabeSummary | None = None
@@ -732,27 +788,45 @@ class KifunarabeController:
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
+        # Phase 181-B: clear the source path so the next session does
+        # not accidentally inherit a stale value if the user picks a
+        # different SGF via the normal flow.
+        self._source_sgf_path = None
 
     # -- Phase 179-A: history persistence --------------------------------------
 
     def _save_history(self, summary: KifunarabeSummary | None) -> None:
         """Phase 179-A: best-effort JSON persistence of a finished session.
 
-        Silently no-ops when ``summary`` is ``None`` (no recorded results),
-        when the game has no resolvable ``sgf_filename``, or when the
-        underlying :func:`save_session_history` raises. This is intentional:
-        history saving is a convenience for the user and must never break
-        the main flow.
+        Phase 181-A: the kifunarabe setup explicitly passes
+        ``sgf_filename=None`` to ``do_new_game`` so a future "Save Game"
+        cannot overwrite the source SGF. That means ``game.sgf_filename``
+        is ``None`` throughout the session, which previously caused this
+        method to always no-op.
+
+        The fix is to remember the source path at session start
+        (set by ``_load_sgf_into_new_game`` in the setup popup) and use
+        it here as the primary key. ``game.sgf_filename`` is kept as a
+        fallback for any future entry path that does pass it through.
+
+        Silently no-ops when ``summary`` is ``None``, when neither
+        ``_source_sgf_path`` nor ``game.sgf_filename`` is resolvable, or
+        when the underlying :func:`save_session_history` raises.
         """
         if summary is None or self._session is None:
             return
-        game = self._get_game()
-        sgf_path = getattr(game, "sgf_filename", None) if game else None
-        if not sgf_path:
+        # Phase 181-A: prefer the source SGF path remembered at session
+        # start, fall back to game.sgf_filename for any non-kifunarabe
+        # entry path that might pass it through.
+        source = getattr(self, "_source_sgf_path", None)
+        if not source:
+            game = self._get_game()
+            source = getattr(game, "sgf_filename", None) if game else None
+        if not source:
             return
         try:
             save_session_history(
-                sgf_path,
+                source,
                 self._session.config,
                 summary,
                 katrain=self._get_ctx(),

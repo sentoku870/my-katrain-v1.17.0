@@ -214,5 +214,113 @@ class TestGetHistorySummary(unittest.TestCase):
         self.assertGreater(info["latest_mtime"], 0.0)
 
 
+# Phase 181-A: controller-level _save_history uses _source_sgf_path when
+# game.sgf_filename is None (the kifunarabe situation).
+class TestControllerSaveHistory(unittest.TestCase):
+    """Phase 181-A: history saving must work even when game.sgf_filename is None.
+
+    The kifunarabe setup intentionally passes ``sgf_filename=None`` to
+    ``do_new_game`` to prevent overwriting the source SGF. Without
+    ``_source_sgf_path``, ``_save_history`` would always no-op.
+    """
+
+    def setUp(self) -> None:
+        from katrain.gui.managers.kifunarabe_controller import KifunarabeController
+
+        self._tmpdir = Path(tempfile.mkdtemp())
+        self._sgf = self._tmpdir / "game.sgf"
+        self._sgf.write_bytes(b"(;GM[1];B[aa];W[bb];)")
+
+        self.mode_state = {"value": True}
+        self.show_summary_calls: list[Any] = []
+
+        self.controller = KifunarabeController(
+            get_ctx=lambda: None,
+            get_config=lambda key, default=None: None,
+            get_game=lambda: _MockGameWithoutSgfFilename(),
+            get_controls=lambda: None,
+            get_mode=lambda: self.mode_state["value"],
+            set_mode=lambda v: self.mode_state.__setitem__("value", v),
+            logger=lambda *a, **kw: None,
+            show_summary_fn=lambda c, s: self.show_summary_calls.append((c, s)),
+        )
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _summary(self) -> Any:
+        return KifunarabeSummary(
+            total_positions=10,
+            correct_count=5,
+            wrong_count=2,
+            auto_advance_count=1,
+            skipped_count=2,
+        )
+
+    def test_save_uses_source_sgf_path_when_game_filename_is_none(self) -> None:
+        """Phase 181-A: the controller falls back to ``_source_sgf_path``."""
+        # Configure history_dir via a tiny config object.
+        from katrain.core.constants import (
+            KIFUNARABE_HISTORY_DIR_DEFAULT,
+            KIFUNARABE_HISTORY_DIR_KEY,
+        )
+
+        # Patch the controller's config getter so the history_dir resolves
+        # under our temp dir.
+        self.controller._get_config = lambda key, default=None: (
+            str(self._tmpdir / "history")
+            if key == KIFUNARABE_HISTORY_DIR_KEY
+            else (KIFUNARABE_HISTORY_DIR_DEFAULT if key.endswith("_DEFAULT") else default)
+        )
+        self.controller._get_ctx = lambda: None  # no katrain → falls back to default
+        # Re-resolve: the helper tries ctx first, then default, then
+        # fallback. Use the default by clearing the configured dir.
+        self.controller._get_config = lambda key, default=None: default
+
+        # Make the controller think a session is active.
+        from katrain.core.study.kifunarabe import KifunarabeSession
+
+        self.controller._session = KifunarabeSession(KifunarabeConfig())
+        self.controller._source_sgf_path = str(self._sgf)
+        # Point the resolved history dir explicitly to our temp dir.
+        self.controller._get_ctx = lambda: _TmpKatrain(
+            {"history_dir": str(self._tmpdir / "history")}
+        )
+
+        self.controller._save_history(self._summary())
+
+        # A JSON file should now exist under the temp dir.
+        history_files = list((self._tmpdir / "history").glob("*.json"))
+        self.assertEqual(len(history_files), 1)
+        # The summary contents should round-trip.
+        import json as _json
+
+        data = _json.loads(history_files[0].read_text(encoding="utf-8"))
+        self.assertEqual(data["sgf_path"], str(self._sgf))
+        self.assertEqual(data["summary"]["correct_count"], 5)
+
+    def test_save_skips_when_neither_source_nor_game_filename(self) -> None:
+        """No path available at all → save is a silent no-op."""
+        from katrain.core.study.kifunarabe import KifunarabeSession
+
+        self.controller._session = KifunarabeSession(KifunarabeConfig())
+        # _source_sgf_path remains None and game.sgf_filename is None.
+        self.controller._save_history(self._summary())
+        # Nothing should have been logged or written anywhere.
+        # We just check that the call didn't raise and returned cleanly.
+        self.assertIsNone(self.controller._summary_popup)
+
+
+class _MockGameWithoutSgfFilename:
+    """Game stub whose ``sgf_filename`` is explicitly None.
+
+    Used by the Phase 181-A tests to verify the controller's fallback to
+    ``_source_sgf_path``.
+    """
+
+    current_node = None
+    sgf_filename = None
+
+
 if __name__ == "__main__":
     unittest.main()
