@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class _SettingsPopupContext:
-    """Mutable state shared across the 2 tab builders and the popup orchestrator.
+    """Mutable state shared across the tab builders and the popup orchestrator.
 
     Phase 145-D+: Replaces the deep closure nesting that previously lived
     inside ``do_mykatrain_settings_popup``. Checkbox callbacks in each tab
@@ -26,6 +26,7 @@ class _SettingsPopupContext:
 
     Phase 171: Leela タブ削除のため tab 数は 3 → 2 に。
     ``leela_config`` フィールドも削除。
+    Phase 177: Kifunarabe タブ追加のため tab 数は 2 → 3 に。
 
     Attributes:
         ctx: FeatureContext providing config, save_config, controls.

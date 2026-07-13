@@ -13,6 +13,9 @@ msgstr "対局者設定"
 msgid "menu:newgame"
 msgstr "新規対局・ルール変更"
 
+msgid "menu:kifunarabe"
+msgstr "棋譜並べ"
+
 msgid "menu:save"
 msgstr "棋譜保存"
 
@@ -194,6 +197,57 @@ msgstr "分析"
 
 msgid "btn:Analyze"
 msgstr "分析オプション"
+
+msgid "btn:AbortKifunarabe"
+msgstr "棋譜並べ中断"
+
+msgid "kifunarabe:setup:title"
+msgstr "棋譜並べ - 設定"
+
+msgid "kifunarabe:setup:body"
+msgstr "予想する手番とヒント数を選択してください。"
+
+msgid "kifunarabe:setup:side_both"
+msgstr "両方"
+
+msgid "kifunarabe:setup:side_black"
+msgstr "黒番のみ"
+
+msgid "kifunarabe:setup:side_white"
+msgstr "白番のみ"
+
+msgid "kifunarabe:setup:start"
+msgstr "開始"
+
+msgid "kifunarabe:setup:moves_50"
+msgstr "50手"
+
+msgid "kifunarabe:setup:moves_100"
+msgstr "100手"
+
+msgid "kifunarabe:setup:moves_150"
+msgstr "150手"
+
+msgid "kifunarabe:setup:moves_all"
+msgstr "全部"
+
+msgid "kifunarabe:summary:title"
+msgstr "棋譜並べ - 結果"
+
+msgid "kifunarabe:summary:headline"
+msgstr "結果: {total}問中 {correct}問正解\n（{attempted}回のうち実戦の手と一致した数）"
+
+msgid "kifunarabe:summary:body"
+msgstr "正解: {correct}\n失敗: {wrong}\n自動進行: {auto}\n終局スキップ: {skipped}\n正解率: {correct_rate}\n失敗率: {wrong_rate}"
+
+msgid "kifunarabe:summary:limit_reached"
+msgstr "指定手数で打ち切りました。"
+
+msgid "kifunarabe:summary:next_sgf"
+msgstr "次の棋譜"
+
+msgid "kifunarabe:summary:abort"
+msgstr "中断して棋譜並べ終了"
 
 msgid "stats:winrate"
 msgstr "勝率"
@@ -1540,6 +1594,27 @@ msgstr "解析設定"
 
 msgid "mykatrain:settings:tab_export"
 msgstr "出力設定"
+
+msgid "mykatrain:settings:tab_kifunarabe"
+msgstr "棋譜並べ"
+
+msgid "mykatrain:settings:kifunarabe_sgf_load"
+msgstr "プロの棋譜フォルダ（棋譜並べ用）"
+
+msgid "mykatrain:settings:kifunarabe_show_digits"
+msgstr "マーカーに数字（勝率・スコア・探索数）を表示する"
+
+msgid "mykatrain:settings:kifunarabe_show_actual_border"
+msgstr "実戦の手を枠線で強調表示する"
+
+msgid "mykatrain:settings:kifunarabe_uniform_color"
+msgstr "全マーカーを同色で表示する（KataGoの色グラデーションなし）"
+
+msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
+msgstr "棋譜並べ中、「次の着手」と「ドット表示」を自動的に切り替える"
+
+msgid "mykatrain:settings:kifunarabe_help"
+msgstr "「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n並べるプロの棋譜を保存しているフォルダを指定してください。\n空欄の場合、通常のSGF読込フォルダにフォールバックします。\n\nデフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "自動セットアップ"

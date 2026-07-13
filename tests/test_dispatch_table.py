@@ -83,7 +83,7 @@ class TestDispatchTableCoverage:
         If you intentionally remove a command, update both this number
         and the command's tests/usage together.
         """
-        assert len(DISPATCH_TABLE) >= 35, f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
+        assert len(DISPATCH_TABLE) >= 37, f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
 
 
 class TestDispatchFunction:
@@ -169,6 +169,9 @@ class TestMessageWireFormats:
         "export_karte",
         "export_summary",
         "export_summary_ui",
+        # kifunarabe (棋譜並べ) - menu.kv + panels.kv
+        "kifunarabe_popup",
+        "kifunarabe_abort",
     }
 
     def test_expected_message_keys_present(self) -> None:

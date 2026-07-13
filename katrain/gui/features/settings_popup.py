@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -112,12 +113,18 @@ def do_mykatrain_settings_popup(
     # --- Build search bar ---
     search_layout, search_input = _build_search_bar(state.searchable_widgets, register_searchable)
 
-    # --- Build 2 tabs (Phase 171: Leela タブ削除; Phase 175: tab builders split into package) ---
-    from katrain.gui.features.settings_popup_tabs import _build_analysis_tab, _build_export_tab
+    # --- Build 3 tabs (Phase 171: Leela タブ削除; Phase 175: tab builders split into package;
+    #                 Phase 177: Kifunarabe タブ追加) ---
+    from katrain.gui.features.settings_popup_tabs import (
+        _build_analysis_tab,
+        _build_export_tab,
+        _build_kifunarabe_tab,
+    )
 
     tab1_inner, tab1_reset_btn = _build_analysis_tab(state)
     tab2_inner, tab2_reset_btn, export_widgets = _build_export_tab(state)
-    widget_refs = {**export_widgets}
+    tab3_inner, kif_widgets = _build_kifunarabe_tab(state)
+    widget_refs = {**export_widgets, **kif_widgets}
 
     tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
     tab1_scroll = ScrollView(do_scroll_x=False)
@@ -129,6 +136,11 @@ def do_mykatrain_settings_popup(
     tab2_scroll.add_widget(tab2_inner)
     tab2.add_widget(tab2_scroll)
 
+    tab3 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_kifunarabe"))
+    tab3_scroll = ScrollView(do_scroll_x=False)
+    tab3_scroll.add_widget(tab3_inner)
+    tab3.add_widget(tab3_scroll)
+
     tabbed_panel = TabbedPanel(
         do_default_tab=False,
         tab_width=dp(120),
@@ -137,11 +149,14 @@ def do_mykatrain_settings_popup(
     )
     tabbed_panel.add_widget(tab1)
     tabbed_panel.add_widget(tab2)
+    tabbed_panel.add_widget(tab3)
 
-    # Phase 87.5 + Phase 89: Tab lookup dictionary (Phase 171: "leela" 削除)
+    # Phase 87.5 + Phase 89: Tab lookup dictionary (Phase 171: "leela" 削除;
+    #                         Phase 177: "kifunarabe" 追加)
     tab_by_id = {
         "analysis": tab1,
         "export": tab2,
+        "kifunarabe": tab3,
     }
 
     # Phase 87.5 + Phase 89: Switch to initial_tab if specified
@@ -179,7 +194,8 @@ def do_mykatrain_settings_popup(
     ).__self__
     state.popup = popup
 
-    # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers) ---
+    # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers;
+    #                    Phase 177: kifunarabe.sgf_load 永続化) ---
     def save_settings(*_args: Any) -> None:
         """Save all settings sections (Phase 171: Leela セクション削除)。"""
         _save_general_settings(ctx, state.selected_skill_preset[0], state.selected_pv_filter[0])
@@ -195,6 +211,38 @@ def do_mykatrain_settings_popup(
             state.selected_opp_info[0],
             state.selected_disable_katago[0],
         )
+        # Phase 177: persist kifunarabe-specific SGF browse folder
+        # Phase 177-E: persist the three display toggles.
+        # Phase 177-H: persist the auto-toggle-markers preference.
+        with contextlib.suppress(Exception):
+            kif = dict(ctx.config("kifunarabe", {}) or {})
+            kif["sgf_load"] = widget_refs["sgf_load_input"].text
+            kif["show_digits"] = bool(widget_refs["show_digits_cb"].active)
+            kif["show_actual_border"] = bool(widget_refs["show_actual_border_cb"].active)
+            kif["uniform_color"] = bool(widget_refs["uniform_color_cb"].active)
+            kif["auto_toggle_markers"] = bool(widget_refs["auto_toggle_cb"].active)
+            ctx.set_config_section("kifunarabe", kif)
+            ctx.save_config("kifunarabe")
+        # Phase 177-F: if kifunarabe is active, the user just toggled
+        # ``show_digits`` / ``show_actual_border`` / ``uniform_color`` in
+        # this same popup. Redraw the board immediately so the new value
+        # is reflected without requiring the user to restart the session.
+        with contextlib.suppress(Exception):
+            controller = getattr(ctx, "_kifunarabe_controller", None)
+            if controller is not None and controller.is_active():
+                from kivy.clock import Clock
+
+                # Schedule a redraw on the main thread: the candidate-marker
+                # cache lives on ``widget.canvas`` so all we need is an
+                # ``ask_update()`` to flush fresh config values on the next
+                # frame.
+                def _redraw_board_gui(_dt: float) -> None:
+                    board_gui = getattr(ctx, "board_gui", None)
+                    if board_gui is not None:
+                        with contextlib.suppress(Exception):
+                            board_gui.canvas.ask_update()
+
+                Clock.schedule_once(_redraw_board_gui, 0)
         ctx.controls.set_status(i18n._("Settings saved"), STATUS_INFO)
         popup.dismiss()
 
@@ -217,10 +265,21 @@ def do_mykatrain_settings_popup(
             dirselect=True,
         )
 
+    # Phase 177: kifunarabe folder browse
+    def browse_kifunarabe(*_args: Any) -> None:
+        _open_browse_dialog(
+            ctx=ctx,
+            title="Select folder - Navigate into target folder, then click 'Select This Folder'",
+            initial_path=widget_refs["sgf_load_input"].text,
+            target_text_input=widget_refs["sgf_load_input"],
+            dirselect=True,
+        )
+
     save_button.bind(on_release=save_settings)
     cancel_button.bind(on_release=lambda *_args: popup.dismiss())
     widget_refs["output_browse"].bind(on_release=browse_output)
     widget_refs["input_browse"].bind(on_release=browse_input)
+    widget_refs["sgf_load_browse"].bind(on_release=browse_kifunarabe)
 
     export_button.bind(on_release=lambda *_args: _do_export_settings(ctx, popup))
     import_button.bind(on_release=lambda *_args: _do_import_settings(ctx, popup, reopen_popup))

@@ -228,6 +228,18 @@ class AnalysisToggle(MDBoxLayout):
     def active(self) -> bool:
         return bool(self.checkbox.active)
 
+    @active.setter
+    def active(self, value: bool) -> None:
+        """Setter so that ``widget.active = ...`` from Kivy code works.
+
+        Previously this property only had a getter, so e.g. the kifunarabe
+        mode bootstrap could not programmatically toggle it on and
+        candidate-marker hints stayed invisible.
+        """
+        new_value = bool(value)
+        if self.checkbox.active != new_value:
+            self.checkbox.active = new_value
+
 
 class BGBoxLayout(BoxLayout, BackgroundMixin):
     pass

@@ -207,6 +207,17 @@ class BadukPanWidget(Widget):
         if ("button" in touch.profile and touch.button != "left") or not self.initial_gridpos_x:
             return
         katrain = self.katrain
+
+        if getattr(katrain, "kifunarabe_mode", False):
+            xd, xp, yd, yp = self._find_closest(touch.x, touch.y)
+            if max(yd, xd) < self.grid_size / 2:
+                controller = getattr(katrain, "_kifunarabe_controller", None)
+                if controller is not None:
+                    controller.handle_guess((xp, yp))
+            self.ghost_stone = None
+            self.redraw_hover_contents_trigger()
+            return True
+
         if self.selecting_region_of_interest:
             if len(self.region_of_interest) == 4:
                 self.katrain.game.set_region_of_interest(self.region_of_interest)

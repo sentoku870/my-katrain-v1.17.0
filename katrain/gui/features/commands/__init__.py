@@ -76,6 +76,9 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         "mykatrain_settings_popup",
         "batch_analyze_popup",
         "diagnostics_popup",
+        # ---- kifunarabe (棋譜並べ) ----
+        "kifunarabe_popup",
+        "kifunarabe_abort",
     }
 )
 
