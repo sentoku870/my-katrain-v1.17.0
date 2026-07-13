@@ -2,6 +2,9 @@
 
 このフォルダにはmyKaTrainの機能設計仕様書を格納しています。
 
+> **最終更新**: 2026-07-16（Phase 192 + Documentation cleanup）
+> Phase 171 で Leela エンジン / 関連スペックを完全削除。KataGo 専用の構成に整理。
+
 ---
 
 ## Phase 45–52 関連仕様書
@@ -23,15 +26,44 @@
 | [idea3-ownership-overlay-DEFERRED.md](idea3-ownership-overlay-DEFERRED.md) | Ownership Volatility Overlay（危険度可視化） |
 | [idea5-style-quiz-DEFERRED.md](idea5-style-quiz-DEFERRED.md) | Style Matching Quiz（スタイル一致クイズ） |
 
-## その他の仕様書
+## その他の初期仕様書
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
 | [muzero-difficulty.md](muzero-difficulty.md) | Phase 12 | MuZero 3分解難易度 |
 | [smart-kifu-learning.md](smart-kifu-learning.md) | Phase 13, 28 | Smart Kifu Learning |
-| [leela-estimated-loss.md](leela-estimated-loss.md) | Phase 14, 31 | Leela推定損失 |
-| [leela-output-format.md](leela-output-format.md) | Phase 14 | Leela出力フォーマット |
 | [human-move-filter.md](human-move-filter.md) | Phase 11 | Human Move Filter |
+
+## Phase 83-94 完了済みスペック
+
+| ファイル | 対応Phase | 内容 |
+|----------|-----------|------|
+| [phase83-complexity-filter.md](phase83-complexity-filter.md) | Phase 83 | Complexity Filter（局面複雑度フィルタ） |
+| [phase84-85-pattern-mining.md](phase84-85-pattern-mining.md) | Phase 84-85 | Recurring Pattern Mining（反復パターン抽出） |
+| [phase86-reason-generator.md](phase86-reason-generator.md) | Phase 86 | Reason Generator（理由生成器） |
+| [phase88-90-katago-setup-rescue.md](phase88-90-katago-setup-rescue.md) | Phase 88-90 | KataGo Setup Rescue（自動セットアップ救済） |
+| [phase91-92-beginner-hints.md](phase91-92-beginner-hints.md) | Phase 91-92 | Beginner Hints MVP（初心者向けヒント） |
+| [phase93-94-active-review.md](phase93-94-active-review.md) | Phase 93-94 | Active Review MVP（能動的レビュー） |
+
+## Phase 177-192 完了済みスペック（2026-07）
+
+| ファイル | 対応Phase | 内容 |
+|----------|-----------|------|
+| [phase177-kifunarabe.md](phase177-kifunarabe.md) | Phase 177-178 | 棋譜並べ（kifunarabe）機能 |
+| [phase179-hints-summary-extension.md](phase179-hints-summary-extension.md) | Phase 179 + 179.1 + 179.2 | Beginner Hints Summary Extension（ミス・自由度・難易度） |
+| [phase187-hint-main-coverage.md](phase187-hint-main-coverage.md) | Phase 187 | Beginner Hints Main Pipeline カバレッジ 16.5% → 97% |
+| [phase188-kifunarabe-controller-split.md](phase188-kifunarabe-controller-split.md) | Phase 188 | Kifunarabe Controller God Class 分割（4 mixin + facade） |
+| [phase189-auto-setup-coverage.md](phase189-auto-setup-coverage.md) | Phase 189 | Auto Setup Module カバレッジ 9.8% → 97% |
+| [phase190-engine-coverage.md](phase190-engine-coverage.md) | Phase 190 | `core/engine.py` カバレッジ 48.3% → 83% |
+| [phase191-engine-type-cycle-cleanup.md](phase191-engine-type-cycle-cleanup.md) | Phase 191 | Engine Subsystem TYPE_CHECKING 循環解消 |
+| [phase192-logic-difficulty-subpackage.md](phase192-logic-difficulty-subpackage.md) | Phase 192 | Position Difficulty サブパッケージ化 |
+
+## Phase 171 で削除されたスペック
+
+以下のスペックは Phase 171（Leela エンジン完全削除）で実装と共に削除されました。git log で参照可能：
+
+- `leela-estimated-loss.md`（Phase 14.0-14.7）— Leela推定損失
+- `leela-output-format.md`（Phase 14.0）— Leela Zero lz-analyze 出力フォーマット
 
 ---
 
@@ -47,4 +79,4 @@
 | **MeaningTag↔Lexicon** | `lexicon_anchor_id: Optional[str]` でYAML参照 |
 | **Critical 3コンテキスト** | 構造化フィールドのみ（盤面シリアライズなし） |
 
-詳細は [docs/01-roadmap.md](../01-roadmap.md) の「Phase 45–52 詳細」セクションを参照。
+詳細は [docs/01-roadmap.md](../../01-roadmap.md) の「Phase 45–52 詳細」セクションを参照。
