@@ -99,14 +99,31 @@ jobs:
           KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
           SDL_VIDEODRIVER: dummy
+          # GHA runners have no audio device. Without an explicit null
+          # driver, SDL2's audio probe can abort hard (C-level, no Python
+          # traceback) during collection when kivy/ffpyplayer load.
+          SDL_AUDIODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
+          # Surface C-level fatal errors as a readable traceback instead of
+          # the silent exit-102 we have been seeing.
+          PYTEST_FAULTHANDLER: 1
         run: |
           # Show memory info before tests
           echo "=== Memory before tests ==="
           free -m || true
+          # Fast collection-only smoke check: isolates collection-time
+          # import crashes from test-execution crashes and fails with a
+          # clear signal if an import aborts.
+          uv run python -X faulthandler -m pytest tests --collect-only -q >/dev/null 2>&1
+          collect_rc=$?
+          if [ $collect_rc -ne 0 ]; then
+            echo "::error::Collection failed (rc=$collect_rc). Re-running with full output to capture the crash:"
+            uv run python -X faulthandler -m pytest tests --collect-only -q
+            exit $collect_rc
+          fi
           # Run tests with verbose output and no timeout hiding
-          uv run python -m pytest tests -v --tb=short 2>&1
+          uv run python -X faulthandler -m pytest tests -v --tb=short 2>&1
           exit_code=$?
           echo "=== Memory after tests ==="
           free -m || true
@@ -136,13 +153,15 @@ jobs:
           KIVY_NO_WINDOW: 1
           KIVY_GL_BACKEND: mock
           SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
           DISPLAY: ":0"
           PYTHONUNBUFFERED: 1
+          PYTEST_FAULTHANDLER: 1
         run: |
           # Phase 138-D: Initial coverage gate at 40% (baseline observed: 46.87%)
           # Phase 138-D follow-up: Raise to 50% / 60% / 70% incrementally
           # Phase A-11: raise gate from 40% to 60% (observed coverage: 65%)
-          uv run python -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
+          uv run python -X faulthandler -m pytest tests --cov=katrain --cov-fail-under=60 --tb=short 2>&1
           echo "Exit code: $?"
 
       - name: Check package can be built

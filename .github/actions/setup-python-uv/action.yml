@@ -15,14 +15,19 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
-    # Phase A-12: cache uv download and project virtualenv between runs to
-    # avoid reinstalling the full dev toolchain on every job.
+    # Cache uv's wheel download cache ONLY (not the .venv itself).
+    # Caching the .venv (which contains compiled kivy/SDL/ffpyplayer .so
+    # files linked against specific glibc/symbol versions) across runs is
+    # fragile: a cache saved under one runner image state and restored on
+    # another can leave stale native modules that segfault on import,
+    # surfacing as a silent exit code 102 during pytest collection.
+    # uv sync rebuilds the .venv from the cached wheels in seconds, so we
+    # trade a small per-job cost for reliable native-module loading.
     - name: Cache uv
       uses: actions/cache@v4
       with:
         path: |
           ~/.cache/uv
-          .venv
         key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-
