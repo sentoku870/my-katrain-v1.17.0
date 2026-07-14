@@ -15,6 +15,15 @@ Note: シンボルの __module__ パスが変更されています。
 """
 
 # Re-export everything from the analysis package
+
+import warnings
+
+warnings.warn(
+    'katrain.core.eval_metrics is a deprecated compatibility shim (Phase 195-C); import directly from katrain.core.analysis instead. This module is scheduled for removal in a future release.',
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from katrain.core.analysis import *  # noqa: F401, F403
 
 # Import __all__ from analysis package

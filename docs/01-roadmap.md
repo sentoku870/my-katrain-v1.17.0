@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-16（Phase 192 + Documentation cleanup 完了）
+> 最終更新: 2026-07-14（Phase 194-198 + Phase 202 + Phase 195-B + LOCAL crash fix 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -323,8 +323,8 @@ Phase 177（複数サブフェーズ A1〜H）で実装された棋譜並べ（K
 |------:|--------|----------|:----:|
 | - | Beginner Hint 拡張 | 翻訳テンプレ、盤上ハイライト | 📋 Planned |
 | - | Active Review 拡張 | Retry/Hint、セッションサマリ | 📋 Planned |
-| **146** | Kivy ヘッドレステスト基盤 | `KivyUnitTest` モックレイヤー | 📋 Planned |
-| **147** | テスト追加 | orchestration, curator 等 | 📋 Planned |
+| **146** | Kivy ヘッドレステスト基盤 | `KivyUnitTest` モックレイヤー | ✅ Implemented |
+| **147** | テスト追加 | orchestration, curator 等 | ✅ Implemented |
 | **145-D 残り** | settings_popup.py タブコンテンツ抽出 | Tab 1/2 ビルダー + 状態管理 | ✅ (Phase 175) |
 | **P3 クリーンアップ** | 軽量リファクタ | `MyKatrainDropDown` 削除、TODO 解消、コメントアウト削除 | ✅ (2026-06-26) |
 
@@ -1006,4 +1006,88 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
 - [ ] **GUI での even/handicapped 切替**（Phase 157-C の Config 化）
 - [ ] **Hint Popup 化 / H キー手動表示 / 候補手単位 Hint**（Phase 179-186 からの申し送り）
 - [ ] **CI exit-102 残存問題の根本解決**（Phase 173 部分修正、残存問題あり）
-- [ ] **`hints.py` 753 行のサブパッケージ化**（Phase 187 でカバレッジ充填、次の分割は Lv4 案件）
+- [x] **`hints.py` 753 行のサブパッケージ化**（Phase 196 で 6 ファイル分割完了）
+
+
+
+---
+
+## 4. 直近フェーズの補足（Phase 193 以降）
+
+### Phase 193: ドキュメントクリーンアップ（2026-07-16 完了）
+
+- `docs/02-code-structure.md` 全面再構成（Phase 171-192 の構造反映、Leela 言及全削除）
+- `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧）
+- `AGENTS.md §3.4 / §3.5`（Phase 36/37 Leela フォールバック等）削除
+
+### Phase 194: `MagicMock` 汚染除去（2026-07-17 完了）
+
+- `katrain/core/reports/extractors.py` から `unittest.mock.MagicMock` の production import を排除（`try/except TypeError` で代替）
+- テスト層のみで MagicMock を継続利用
+- 新規 `tests/test_extractors.py` 26 テスト追加（MoveExtractor / MetaExtractor の直接テスト + production hygiene チェック）
+
+### Phase 195-A: 互換シム棚卸し（2026-07-17 完了、Phase 195-C で完全削除予定）
+
+- `tests/test_architecture.py` に `TestDeprecatedShimIsolation` 追加（logic_difficulty, karte_report の production 参照を禁止、3 テスト）
+- 内部 production 4 箇所を新パス参照に置換:
+  - `logic.py:24-37` (12 symbols) → `katrain.core.analysis.difficulty`
+  - `logic_reliability.py:48` → `katrain.core.analysis.difficulty.api`
+  - `__init__.py:319-321` → `katrain.core.analysis.difficulty._io`
+  - `game/facade.py:366-368` → `katrain.core.reports.karte.builder`
+
+### Phase 195-B: 互換シム `DeprecationWarning` 付与（2026-07-17 完了）
+
+- 4 シム（`eval_metrics`, `logic_difficulty`, `karte_report`, `batch_analyze_sgf`）に `warnings.warn(DeprecationWarning)` を追加
+- テスト実行では conftest.py 経由で 1 warning が出るが、`-W error::DeprecationWarning` で有効化可能
+
+### Phase 196: `beginner/hints.py` サブパッケージ化（2026-07-17 完了）
+
+- 753 行の monolith を 6 ファイル（`_gate`/`_extract`/`_dispatch`/`_cache`/`api`/`__init__`）に分割
+- 旧 `hints.py` は 100 行の `re-export` シムに縮退
+- テスト互換性確保: detector 13 個 + `extract_groups_from_game` を `__init__.py` で再エクスポート
+- `_dispatch.py` / `_cache.py` は `_hints_pkg.detect_*` 経由で detector にアクセス → `patch("katrain.core.beginner.hints.X")` パターンが機能
+- 354 tests pass
+
+### Phase 197: `batch/orchestration.py` サブパッケージ化（2026-07-17 完了）
+
+- 927 行の monolith を 7 ファイル（`_context`/`_setup`/`_process`/`_handle`/`_summary`/`_curator`/`__init__`）に分割
+- 旧 `orchestration.py` は 57 行の `re-export` シムに縮退
+- god context の `_BatchFileContext` 28 フィールドを `_context.py` に集約
+- `tests/test_phase149_bug_fixes.py` の文字列マッチ / `tests/test_short_hash.py` のソース検証を維持
+
+### Phase 198 (Stage 1): KaTrainGui AppContext 集約基盤（2026-07-17 完了）
+
+- `katrain/gui/app_context.py` 新規（19 Manager/Controller を集約する dataclass）
+- `KaTrainGui.__init__` 末尾で全 Manager を AppContext に束ねて `self.ctx` 属性を設定
+- legacy の `self._<name>` 属性は維持（後方互換）
+- Stage 2-4（delegation ラッパ 33 件削除）は次回以降
+
+### Phase 202: 到達不能コード削除（2026-07-17 完了）
+
+- `gui/managers/keyboard_manager.py:258-268`: F10 yappi profiler 分岐（`Theme.KEY_TSUMEGO_FRAME = "f10"` が先にマッチして到達不能）
+- `core/board_analysis.py:449-453`: `too_many_choices` タグ実装（コメントアウト）
+- `core/constants.py`: `TOP_MOVE_UTILITY / UTILITYLCB / SCORE_STDDEV` 旧選択肢
+- `__main__.py`: 削除済み `active_review_mode` property / `Quiz Manager` の残骸コメント
+
+### LOCAL 解析クラッシュ修正（2026-07-17 完了）
+
+- `core/game/analysis_orchestrator.py:337`: `if not cn.analysis["moves"]: return` ガードで `ValueError` を防止
+- strict xfail `test_local_with_empty_moves_crashes` → 通常テスト `test_local_with_empty_moves_returns_early` に昇格
+- 0 xfailed 達成
+
+### Phase 200: `except Exception` 整理（部分完了、2026-07-17）
+
+- 純粋計算系の silent swallow 9 箇所に `logger.debug(..., exc_info=True)` を追加
+- 6 ファイルに `import logging` + `logger = logging.getLogger(__name__)` 追加
+- 維持対象（13 箇所）は `# noqa: BLE001` 付き、または `# last-resort error path` コメント付き
+
+---
+
+## 累計サマリ
+
+| 指標 | 値 |
+|---|---:|
+| テスト合格 | 4307 passed, 5 skipped, 0 xfailed |
+| 累積コード削減 | 約 1,500 行 |
+| 新ファイル | 4 (orchestration/, hints/, app_context.py, test_extractors.py) |
+| 追加テスト | 29 件 (26 test_extractors + 3 TestDeprecatedShimIsolation) |

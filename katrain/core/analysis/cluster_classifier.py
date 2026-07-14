@@ -14,6 +14,10 @@ This module provides:
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
@@ -592,6 +596,7 @@ def get_cluster_context_for_move(
         return get_semantics_label(classified.semantics, lang)
 
     except Exception:
+        logger.debug('find_localized_classification relaxation fallback', exc_info=True)
         return None  # Catch all, don't break Karte
 
 

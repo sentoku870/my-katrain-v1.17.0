@@ -29,6 +29,7 @@ import sys
 
 # KaTrain imports for CLI entry point
 import traceback
+import warnings
 
 from katrain.core.base_katrain import KaTrainBase
 
@@ -142,6 +143,17 @@ __all__ = [
 
 
 def main() -> None:
+    # Phase 195-B: surface deprecation when invoked as a CLI tool. The
+    # compatibility re-exports below remain in place for legacy scripts.
+    warnings.warn(
+        "katrain.tools.batch_analyze_sgf is a deprecated CLI tool "
+        "(Phase 195-C); prefer running batch analysis via the GUI "
+        "('Analysis' -> 'Batch analyze ...') or by importing "
+        "katrain.core.batch programmatically. This entrypoint will "
+        "be removed in a future release.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     parser = argparse.ArgumentParser(
         description="Batch analyze SGF files using KaTrain/KataGo",
         formatter_class=argparse.RawDescriptionHelpFormatter,

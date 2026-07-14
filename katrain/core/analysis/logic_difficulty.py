@@ -19,6 +19,15 @@ History:
 
 from __future__ import annotations
 
+import warnings
+
+warnings.warn(
+    'katrain.core.analysis.logic_difficulty is a deprecated compatibility shim (Phase 195-C); import from katrain.core.analysis.difficulty instead. This module is scheduled for removal in a future release.',
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+
 # Transition / state / error-pressure / lcb-gap
 from katrain.core.analysis.difficulty._error_pressure import compute_error_pressure
 

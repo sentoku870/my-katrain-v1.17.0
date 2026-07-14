@@ -236,6 +236,7 @@ def critical_3_section_for(
         try:
             area = get_area_from_gtp(cm.gtp_coord, area_board_size)
         except Exception:
+            logger.debug('get_area_from_gtp label extraction', exc_info=True)
             area = None
 
         # Phase 149 C-2: Meaning tag label is informational only

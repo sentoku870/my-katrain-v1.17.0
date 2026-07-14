@@ -5,9 +5,12 @@ Area判定、ownership/scoreStdev抽出ヘルパを提供。
 Karte/Summaryの出力仕様は変更せず、後続Phase 81-87の土台として使用。
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from katrain.core.game_node import GameNode
@@ -114,6 +117,7 @@ def _safe_get_ownership(node: "GameNode") -> list[float] | None:
                 return list(ownership)
             return None
     except Exception:
+        logger.debug('node.ownership property fallback', exc_info=True)
         pass
 
     # Fallback to analysis dict
@@ -125,6 +129,7 @@ def _safe_get_ownership(node: "GameNode") -> list[float] | None:
                 return list(result)
             return None
     except Exception:
+        logger.debug("node.analysis['ownership'] grid fallback", exc_info=True)
         pass
 
     return None
