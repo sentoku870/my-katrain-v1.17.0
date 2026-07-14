@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,14 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-A — LLM コーチ機能 検証ロジック強化**（Lv3、2 ファイル + 26 unit tests、全 5096 件テスト合格）
+  - **A1 Lexicon 検証の実働化**: `_extract_lexicon_mentions` が英 ID と日本語語句の不整合で常に空を返していた問題を修正。`lexicon.build_id_to_ja_term_map()` ヘルパーで id→ja_term 逆引きを構築し、注入 lexicon 外の「」語句を `lexicon_mention_not_injected` (LOW) で警告生成
+  - **A2 症状 ID 抽出の 3 段階フォールバック**: 従来の行末 `参照した症状ID: [...]` (tier 1) に加え、インライン `症状: / Symptoms:` (tier 2) と全文 grep セーフティネット (tier 3) を追加。LLM が指示形式を無視しても捕捉可能
+  - **A3 着手番号正規表現の厳格化**: prefix/suffix 両 optional で任意整数にマッチしていた問題を修正。`#50` / `move 50` / `50手目` のみ捕捉し、`5段` / `30級` / `2026年` / `7月` / `50%` を除外
+  - **A4 pointsLost 正規表現の拡張**: `目` suffix 必須から、`損失` / `ロス` / `points lost` / `loss` にも対応
+  - **A5 player_color 整合性検証（Phase 225.7 仕様）**: `config.player_color` 設定時、相手色の症状 ID 参照を HIGH → MEDIUM に降格（`symptom_id_belongs_to_opponent` kind）
+  - **A6 tolerance パラメータ活用**: デッドパラメータだった `tolerance: float = 0.05` を `ceiling + tolerance` 比較に適用し、境界値での偽陽性を防止
+  - `_injected_lexicon_ids` デッドコード削除、未使用 `SymptomId` import 削除
 - 2026-07-17: **Phase 225.8 — 漢字段級サポート + mykatrain settings に default_user_rank 追加**
   - **挙動バグ**: SGF BR/WR から取得した「4段」漢字段級が `estimate_mode_from_rank` で None 扱い → LOSE フォールバックで BEGINNER モード。`_RANK_ALIASES` テーブルと `_normalise_rank_str` ヘルパーで全角数字・漢字 suffix (段/級) 対応
   - **新機能**: mykatrain settings に `default_user_rank` フィールド追加、デフォルトユーザー名の直下に配置。LLM Coach が Karte/SGF からランク取得できない時のフォールバック

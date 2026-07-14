@@ -30,14 +30,14 @@ Usage::
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 # YAML parser: PyYAML is already a project dependency (ai/constants etc.)
 import yaml
-
 
 DEFAULT_LEXICON_PATH = (
     Path(__file__).resolve().parent.parent.parent.parent
@@ -400,6 +400,50 @@ def all_ids() -> tuple[str, ...]:
     return tuple(sorted(ids))
 
 
+def build_id_to_ja_term_map(entry_ids: Iterable[str] | None = None) -> dict[str, str]:
+    """Build a mapping ``{id: ja_term}`` for the requested entry ids.
+
+    Phase 226-A: provides the reverse-lookup bridge between the
+    English-style lexicon ids (e.g. ``"liberty"``) and the Japanese
+    ``ja_term`` strings (e.g. ``"呼吸点"``) that appear in the injected
+    prompt block and — by extension — in the LLM's response text.
+
+    The LLM validator (Phase 212 / Phase 226-A) needs this to detect
+    "hallucinated" ja_terms that were *not* part of the injection
+    block but were still written inside 「」 brackets.
+
+    Args:
+        entry_ids: Iterable of ids to look up. ``None`` means *all* ids.
+
+    Returns:
+        A dict containing only the ids that were actually found in the
+        cached bundle. Unknown ids are silently skipped — the caller can
+        compare the returned length against ``len(tuple(entry_ids))`` to
+        detect missing entries.
+    """
+    bundle = _load_default_cached()
+    by_id = bundle.entry_by_id
+    if entry_ids is None:
+        return {eid: entry.ja_term for eid, entry in by_id.items()}
+    out: dict[str, str] = {}
+    for eid in entry_ids:
+        entry = by_id.get(eid)
+        if entry is not None:
+            out[eid] = entry.ja_term
+    return out
+
+
+def all_ja_terms() -> tuple[str, ...]:
+    """Convenience: every known ``ja_term`` (entries only), sorted.
+
+    Phase 226-A: provides the full inventory of Japanese terms that
+    the LLM is *allowed* to use inside 「」 brackets. Used by the
+    validator to detect off-injection terms.
+    """
+    bundle = _load_default_cached()
+    return tuple(sorted({e.ja_term for e in bundle.entries}))
+
+
 __all__ = [
     "LexiconEntry",
     "LexiconConcept",
@@ -413,4 +457,6 @@ __all__ = [
     "validate_references",
     "inject_lexicon_for_prompt",
     "all_ids",
-] 
+    "build_id_to_ja_term_map",
+    "all_ja_terms",
+]

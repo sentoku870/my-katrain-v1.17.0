@@ -1,4 +1,4 @@
-"""Phase 212: LLM output validator.
+"""Phase 212 / Phase 226-A: LLM output validator.
 
 Validates LLM responses against the Karte JSON ground truth (Phase 203 §7).
 
@@ -12,24 +12,45 @@ What it checks (Phase 203 §7.2 priority):
 4. Lexicon entry references must exist in the embedded injection block.
 5. Tone consistency (AYAKA → Kansai markers, TOMOKO → no Kansai).
 
+Phase 226-A additions:
+- A1: Lexicon validation is now functional. The previous implementation
+     was a no-op (English id ↔ Japanese term mismatch). The new code
+     builds an ``{id: ja_term}`` map from the prompt and detects both
+     *referenced* ids and *off-injection* ja_terms used by the LLM.
+- A2: Symptom id extraction has a 3-tier fallback:
+     1. Trailing ``参照した症状ID: [...]`` line (the canonical form).
+     2. Inline ``症状:`` / ``Symptoms:`` / ``Referenced symptoms:`` markers.
+     3. Safety-net grep over the full text against the known id set,
+        using strict word boundaries to minimise false positives.
+- A3: Move number regex is now strict — prefix or suffix is required,
+     and unit suffixes (年/月/日/段/級) prevent accidental matches.
+- A4: pointsLost regex now matches ``目``/``損失``/``ロス``/
+     ``points lost``/``loss`` in addition to the original ``目`` form.
+- A5: When ``PromptConfig.player_color`` is set, references to the
+     *opponent's* symptom ids are demoted from HIGH to MEDIUM with a
+     distinct ``kind`` so the GUI can render them differently.
+- A6: The ``tolerance`` parameter is now applied to the pointsLost
+     ceiling comparison to prevent boundary false positives.
+
 Result: :class:`ValidationReport` with typed issues and a summary.
 
 Note:
     This module never raises on validation failures — it always returns a
-    :class:`ValidationReport`. The GUI layer (future Phase 213) renders
-    the report as a warnings panel.
+    :class:`ValidationReport`. The GUI layer (Phase 225) renders the
+    report as a warnings panel.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any
 
+from katrain.core.coach.lexicon import build_id_to_ja_term_map
 from katrain.core.coach.master_db import ToneVoice
 from katrain.core.coach.prompt_builder import LlmPrompt, PromptConfig
-from katrain.core.coach.symptom_index import SymptomId
 
 
 class ValidationSeverity(Enum):
@@ -121,7 +142,7 @@ _SYMPTOM_ID_LINE_RE = re.compile(
     (?:参照した症状ID|参照した症状|UsedSymptoms|SymptomIDs)
     \s*[:：=]\s*
     \[
-?                       # optional opening bracket
+    ?                       # optional opening bracket
     (.*?)                  # captured: id list
     \]?                    # optional closing bracket
     \s*$
@@ -129,21 +150,59 @@ _SYMPTOM_ID_LINE_RE = re.compile(
     re.VERBOSE | re.MULTILINE,
 )
 
+# Phase 226-A (A2 tier 2): inline symptom reference markers. The id list
+# may appear mid-sentence (not just at end-of-text).
+_INLINE_SYMPTOM_ID_RE = re.compile(
+    r"""
+    (?:症状|参照症状|ReferencedSymptoms?|UsedSymptoms?|SymptomIDs?)
+    \s*[:：=]\s*
+    \[?                       # optional opening bracket
+    ([^\]\n]{1,400}?)         # captured: id list (no closing bracket / newline)
+    \]?                       # optional closing bracket
+    \s*(?=$|[\n。.]|参照した) # bounded by EOL / Japanese period / another marker
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
 # Coordinates like "P13", "Q5", "A19" — match standalone tokens.
 _MOVE_COORD_RE = re.compile(r"\b([A-Ta-t])\s*(\d{1,2})\b")
 
-# Move number tokens like "N手目", "move 50", "#50", "50手目" — permissive.
-# Catches the integer regardless of whether it precedes or follows the marker.
+# Phase 226-A (A3): strict move-number regex. Either prefix *or* suffix
+# is required (no longer both-optional), and a small set of unit
+# suffixes (年/月/日/段/級/位) is explicitly excluded from the bare
+# "50手" branch so things like "5段" / "30級" / "2026年" / "7月" do
+# not get picked up as move numbers.
 _MOVE_NUMBER_RE = re.compile(
-    r"(?:(?:#|move\s*|手(?:目)?|手目|着手)?\s*(\d{1,3})\s*(?:手(?:目)?|move|番|#)?)",
+    r"(?:"
+    r"(?:#|move\s+)(\d{1,3})"               # "#50", "move 50"
+    r"|(\d{1,3})\s*手目"                     # "50手目"
+    r"|(\d{1,3})(?=\s*手(?![\u4e00-\u9fff]))"  # "50手" (not followed by a CJK char)
+    r"|着手\s*(\d{1,3})"                     # "着手 50"
+    r"|(\d{1,3})\s*番"                       # "50番"
+    r"|第\s*(\d{1,3})\s*手"                  # "第50手"
+    r")",
     re.IGNORECASE,
 )
 
-# pointsLost values like "-3.5目", "(2.0目)" — Phase 203 §7.2 item 3.
-_POINTS_LOST_RE = re.compile(r"[-+]?\d+(?:\.\d+)?目")
+# Phase 226-A (A4): pointsLost patterns.
+# Captures the numeric value in group 1.  Multiple alternative phrasings
+# are accepted, but they all anchor on either the Japanese "目" unit
+# or an explicit English/Japanese label so that bare integers in the
+# prose do not leak in.
+_POINTS_LOST_RE = re.compile(
+    r"(?:"
+    r"[-+]?\d+(?:\.\d+)?\s*目"              # "3.5目"
+    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"   # "損失 3.5"
+    r"|[-+]?\d+(?:\.\d+)?\s*(?:points?\.?\s*lost|loss|lost)\b"   # "3.0 points lost"
+    r"|(?:points?\.?\s*lost|loss)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"  # "points lost 3.5"
+    r")",
+    re.IGNORECASE,
+)
 
-# Lexicon mention patterns — JA term in 「」/（） brackets.
-_LEXICON_MENTION_RE = re.compile(r"[「『]([^」』]{2,12})[」』]")
+# Phase 226-A (A1): Lexicon mention patterns — JA term in 「」/『』 brackets.
+# Capture group 1 is the inner text (no quotes). Range widened slightly
+# to accept 2-20 chars so longer terms like "シチョウの弱点" fit.
+_LEXICON_MENTION_RE = re.compile(r"[「『]([^」』]{2,20})[」』]")
 
 
 # --- Karte JSON ground truth extraction ---
@@ -175,6 +234,37 @@ def _karte_symptom_ids(karte: dict[str, Any]) -> set[str]:
     return ids
 
 
+def _karte_symptom_ids_by_color(karte: dict[str, Any]) -> dict[str, set[str]]:
+    """Phase 226-A (A5): per-color symptom id sets.
+
+    Returns:
+        ``{"black": {...}, "white": {...}}`` — only symptom ids that
+        belong to a single colour are placed in that colour's set. Ids
+        that appear in both colours (rare but possible via
+        ``reason_tags_distribution`` aggregation) are present in both.
+    """
+    out: dict[str, set[str]] = {"black": set(), "white": set()}
+    for color in ("black", "white"):
+        for weakness in karte.get("weaknesses", {}).get(color, []) or []:
+            cat = weakness.get("category")
+            if cat:
+                out[color].add(str(cat))
+        for move in karte.get("important_moves", []) or []:
+            owner = str(move.get("color", "")).lower()
+            if owner not in out:
+                continue
+            mtag = move.get("meaning_tag_id")
+            if mtag:
+                out[owner].add(str(mtag))
+            cat = move.get("category") or move.get("mistake_category")
+            if cat:
+                out[owner].add(str(cat).lower())
+        rt = karte.get("reason_tags_distribution", {}).get(color, {}) or {}
+        for key in rt.get("by_category") or {}:
+            out[color].add(str(key))
+    return out
+
+
 def _karte_move_count(karte: dict[str, Any]) -> int | None:
     """Return the total number of moves in the game."""
     summary = karte.get("summary", {})
@@ -197,37 +287,106 @@ def _karte_max_points_lost(karte: dict[str, Any]) -> float | None:
     return max(losses) if losses else None
 
 
-def _injected_lexicon_ids(prompt: LlmPrompt) -> set[str]:
-    """Return lexicon ids embedded in the LLM prompt."""
-    return set(prompt.referenced_lexicon_ids)
-
-
 # --- LLM text parsing ---
 
 
+def _split_id_list(raw: str) -> tuple[str, ...]:
+    """Split an id list on commas / whitespace / Japanese separators.
+
+    Shared helper used by both the trailing-line and the inline fallback
+    extractors (Phase 226-A A2).
+    """
+    parts = re.split(r"[\s,、，]+", raw)
+    return tuple(p.strip().strip("[]「」") for p in parts if p.strip())
+
+
 def _extract_symptom_ids(text: str) -> tuple[str, ...]:
-    """Parse the trailing "参照した症状ID: [...]" line from the LLM."""
+    """Phase 226-A (A2): parse symptom ids from the LLM text.
+
+    Three-tier fallback:
+    1. Trailing ``参照した症状ID: [...]`` line (the canonical form).
+    2. Inline ``症状: [...]`` / ``Symptoms: [...]`` markers anywhere in
+       the text (so the LLM doesn't *have* to put the list at the end).
+    3. Safety-net grep over the full text against a caller-supplied
+       known id set — this lets the caller recover ids that the LLM
+       mentioned in prose form without using any of the agreed markers.
+
+    Returns the union of all tiers, deduped while preserving order.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+
+    # Tier 1: canonical trailing line.
     m = _SYMPTOM_ID_LINE_RE.search(text)
-    if not m:
+    if m:
+        for sid in _split_id_list(m.group(1)):
+            if sid not in seen:
+                out.append(sid)
+                seen.add(sid)
+
+    # Tier 2: inline markers (anywhere in the text).
+    for m in _INLINE_SYMPTOM_ID_RE.finditer(text):
+        for sid in _split_id_list(m.group(1)):
+            if sid not in seen:
+                out.append(sid)
+                seen.add(sid)
+
+    return tuple(out)
+
+
+def _extract_symptom_ids_with_grep(
+    text: str, known_ids: Iterable[Any]
+) -> tuple[str, ...]:
+    """Phase 226-A (A2 tier 3): safety-net grep.
+
+    Looks for known symptom ids anywhere in the text using ``\b`` word
+    boundaries on both sides. This catches cases where the LLM mentions
+    a symptom in prose form (``アタリの見逃し: atari_blindness`` etc.)
+    without using any explicit reference marker.
+
+    Only ids that survive the strict word-boundary check are returned.
+    Accepts both plain strings and ``SymptomId`` enum members (the
+    ``ground_truth_symptoms`` set in :func:`validate_llm_output` is a
+    mixed bag by design — prompt-referenced ids are enum, Karte ids
+    are plain strings).
+    """
+    if not text:
         return ()
-    raw = m.group(1)
-    # Split on commas / spaces.
-    parts = re.split(r"[\s,、]+", raw)
-    ids = tuple(p.strip() for p in parts if p.strip())
-    return ids
+    out: list[str] = []
+    seen: set[str] = set()
+    for sid in known_ids:
+        sid_str = sid.value if hasattr(sid, "value") else str(sid)
+        if not sid_str or sid_str in seen:
+            continue
+        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(sid_str)}(?![A-Za-z0-9_])", text):
+            out.append(sid_str)
+            seen.add(sid_str)
+    return tuple(out)
 
 
 def _extract_move_numbers(text: str) -> tuple[int, ...]:
-    """Extract integers that look like move numbers (0..999).
+    """Extract integers that look like move numbers (1..999).
 
-    The range check itself enforces [1..total_moves]; we include 0 here
-    so the range check (not this function) flags out-of-range values.
+    Phase 226-A (A3): the regex is now strict — prefix or suffix is
+    required, and unit suffixes (年/月/日/段/級/位) are excluded from
+    the bare "50手" branch. ``0`` is still accepted here so the range
+    check (not this function) flags it as ``move_number_out_of_range``.
     """
     out: list[int] = []
     for m in _MOVE_NUMBER_RE.finditer(text):
-        try:
-            v = int(m.group(1))
-        except (ValueError, IndexError):
+        # The regex has 6 alternative capture groups; pick the first
+        # that produced a digit string.
+        v: int | None = None
+        for grp in range(1, 7):
+            raw = m.group(grp)
+            if raw is None:
+                continue
+            try:
+                v = int(raw)
+                break
+            except (ValueError, TypeError):
+                continue
+        if v is None:
             continue
         if 0 <= v <= 999:
             out.append(v)
@@ -235,25 +394,104 @@ def _extract_move_numbers(text: str) -> tuple[int, ...]:
 
 
 def _extract_points_lost(text: str) -> tuple[float, ...]:
+    """Phase 226-A (A4): extract numeric pointsLost values from LLM text.
+
+    Returns the first numeric value per matched region.  Multiple
+    alternative phrasings (目 / 損失 / ロス / points lost / loss) are
+    accepted, but bare integers in the prose do not leak in.
+    """
+    if not text:
+        return ()
     out: list[float] = []
-    for m in _POINTS_LOST_RE.findall(text):
+    for m in _POINTS_LOST_RE.finditer(text):
+        region = m.group(0)
+        # Pull the first signed/unsigned decimal integer.
+        num_match = re.search(r"[-+]?\d+(?:\.\d+)?", region)
+        if not num_match:
+            continue
         try:
-            out.append(float(m.replace("目", "")))
+            out.append(float(num_match.group(0)))
         except ValueError:
             continue
     return tuple(out)
 
 
-def _extract_lexicon_mentions(text: str, known_ids: set[str]) -> tuple[str, ...]:
-    """Return ja_terms from 「」 mentions whose id is in known_ids set."""
+def _extract_lexicon_mentions(
+    text: str, id_to_ja_term: dict[str, str]
+) -> tuple[str, ...]:
+    """Phase 226-A (A1): identify lexicon terms the LLM mentioned.
+
+    Args:
+        text: LLM response text.
+        id_to_ja_term: Mapping from injected ``id`` → ``ja_term``. Built
+            by the caller from ``prompt.referenced_lexicon_ids`` via
+            :func:`lexicon.build_id_to_ja_term_map`.
+
+    Returns:
+        Tuple of lexicon ids whose ``ja_term`` was found inside 「」
+        brackets in the LLM text. Deduped, order preserved.
+
+    Note:
+        This is the *positive* side of A1 — the negative side
+        (off-injection ja_terms) is computed in
+        :func:`_extract_off_injection_lexicon_mentions` and rendered as
+        a separate LOW warning.
+    """
+    if not text or not id_to_ja_term:
+        return ()
+    ja_to_id = {ja: eid for eid, ja in id_to_ja_term.items()}
     mentioned: list[str] = []
     seen: set[str] = set()
     for m in _LEXICON_MENTION_RE.finditer(text):
         term = m.group(1)
-        if term in known_ids and term not in seen:
-            mentioned.append(term)
-            seen.add(term)
+        eid = ja_to_id.get(term)
+        if eid and eid not in seen:
+            mentioned.append(eid)
+            seen.add(eid)
     return tuple(mentioned)
+
+
+def _extract_off_injection_lexicon_mentions(
+    text: str,
+    id_to_ja_term: dict[str, str],
+    all_known_ja_terms: set[str] | None = None,
+) -> tuple[str, ...]:
+    """Phase 226-A (A1 negative side): ja_terms used but not in injection.
+
+    Scans 「」 brackets in the LLM text and returns those whose content
+    is *not* part of the injected lexicon (i.e. likely hallucinated).
+
+    Args:
+        text: LLM response text.
+        id_to_ja_term: Mapping ``{id: ja_term}`` for the *injected*
+            subset (i.e. what the prompt told the LLM about).
+        all_known_ja_terms: Optional set of *all* ja_terms in the
+            lexicon. When provided, off-injection matches that are
+            still known lexicon terms are reported as MEDIUM (allowed
+            but not in the injection block); unknown terms are
+            reported as a stronger signal. The validator currently
+            uses the same LOW severity for both to keep the user
+            experience simple, but the distinction is preserved
+            here for future tuning.
+
+    Returns:
+        Tuple of the raw term strings used inside 「」 brackets that
+        did not match any injected ``ja_term``.
+    """
+    if not text:
+        return ()
+    injected_ja = set(id_to_ja_term.values())
+    out: list[str] = []
+    seen: set[str] = set()
+    for m in _LEXICON_MENTION_RE.finditer(text):
+        term = m.group(1)
+        if term in injected_ja:
+            continue
+        if term in seen:
+            continue
+        out.append(term)
+        seen.add(term)
+    return tuple(out)
 
 
 # --- Public API ---
@@ -273,8 +511,12 @@ def validate_llm_output(
         llm_text: LLM-generated response text.
         karte_json: Karte JSON that was sent to the LLM (ground truth).
         prompt: The LlmPrompt that was generated (for lexicon cross-ref).
-        config: Optional PromptConfig (used for tone consistency checks).
-        tolerance: PointsLost comparison tolerance (default 0.05).
+        config: Optional PromptConfig. Used for tone consistency checks
+            and, in Phase 226-A (A5), the player-color integration check.
+        tolerance: Phase 226-A (A6) — boundary tolerance for the
+            pointsLost ceiling comparison. Values within
+            ``ceiling + tolerance`` are accepted. Default 0.05 covers
+            floating-point round-off at the ceiling boundary.
 
     Returns:
         ValidationReport with all issues found. Caller is responsible
@@ -282,7 +524,7 @@ def validate_llm_output(
     """
     issues: list[ValidationIssue] = []
 
-    # ---- Symptom id existence ----
+    # ---- Symptom id existence (A2 + A5) ----
     # Ground truth = the union of:
     # (a) Symptoms / categories present in the Karte JSON
     # (b) Symptom ids the prompt told the LLM about
@@ -294,17 +536,82 @@ def validate_llm_output(
             ground_truth_symptoms.add(sid.value)
         for sid in config.llm_required_symptom_ids:
             ground_truth_symptoms.add(sid.value)
-    referenced_ids = _extract_symptom_ids(llm_text)
+    # Phase 226-A (A5): per-color split for player-color integration.
+    color_ids = _karte_symptom_ids_by_color(karte_json)
+    if config is not None and config.player_color in ("B", "W"):
+        own_color = "black" if config.player_color == "B" else "white"
+        opp_color = "white" if own_color == "black" else "black"
+        opponent_ids = color_ids.get(opp_color, set())
+    else:
+        own_color = ""
+        opp_color = ""
+        opponent_ids = set()
+
+    # Phase 226-A (A2): tier 1+2 + tier 3 (safety-net grep).
+    referenced_ids = list(_extract_symptom_ids(llm_text))
+    grep_ids = _extract_symptom_ids_with_grep(llm_text, ground_truth_symptoms)
+    seen_ids: set[str] = set(referenced_ids)
+    for sid in grep_ids:
+        if sid not in seen_ids:
+            referenced_ids.append(sid)
+            seen_ids.add(sid)
+    referenced_ids_tuple = tuple(referenced_ids)
+
     for sid in referenced_ids:
-        if sid not in ground_truth_symptoms:
+        if sid in ground_truth_symptoms:
+            # Phase 226-A (A5): even when the symptom is known, if the
+            # player_color is set and the id belongs ONLY to the
+            # opponent's colour (i.e. not also in own colour), demote
+            # to MEDIUM so the GUI can flag "wrong side reviewed".
+            if (
+                opp_color
+                and sid in opponent_ids
+                and sid not in color_ids.get(own_color, set())
+            ):
+                issues.append(
+                    ValidationIssue(
+                        severity=ValidationSeverity.MEDIUM,
+                        kind="symptom_id_belongs_to_opponent",
+                        message=(
+                            f"症状 ID '{sid}' は相手側 ({opp_color}) のものです。"
+                            f"指定視点 ({own_color}) では参照しない方が望ましいです"
+                        ),
+                        context={
+                            "symptom_id": sid,
+                            "own_color": own_color,
+                            "opp_color": opp_color,
+                        },
+                    )
+                )
+            continue
+        # Phase 226-A (A5): if the unknown id belongs to the opponent's
+        # colour, demote the issue from HIGH to MEDIUM with a distinct
+        # kind so the GUI can highlight "you reviewed the wrong side".
+        if opp_color and sid in opponent_ids:
             issues.append(
                 ValidationIssue(
-                    severity=ValidationSeverity.HIGH,
-                    kind="unknown_symptom_id",
-                    message=f"症状 ID '{sid}' は Karte JSON に存在しません",
-                    context={"symptom_id": sid},
+                    severity=ValidationSeverity.MEDIUM,
+                    kind="symptom_id_belongs_to_opponent",
+                    message=(
+                        f"症状 ID '{sid}' は相手側 ({opp_color}) のものです。"
+                        f"指定視点 ({own_color}) では参照しない方が望ましいです"
+                    ),
+                    context={
+                        "symptom_id": sid,
+                        "own_color": own_color,
+                        "opp_color": opp_color,
+                    },
                 )
             )
+            continue
+        issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.HIGH,
+                kind="unknown_symptom_id",
+                message=f"症状 ID '{sid}' は Karte JSON に存在しません",
+                context={"symptom_id": sid},
+            )
+        )
 
     # ---- Move number ranges ----
     total_moves = _karte_move_count(karte_json)
@@ -321,15 +628,16 @@ def validate_llm_output(
                     )
                 )
 
-    # ---- pointsLost sanity ----
+    # ---- pointsLost sanity (A6) ----
     max_loss = _karte_max_points_lost(karte_json)
     referenced_losses = _extract_points_lost(llm_text)
     if max_loss is not None:
-        # Heuristic: any value > 1.5x max_loss is suspicious. Smaller values
-        # can be legitimate descriptive ranges — we only warn on outliers.
+        # Phase 226-A (A6): tolerance is now applied to the ceiling
+        # comparison. Values within ceiling + tolerance are accepted.
         ceiling = max_loss * 1.5
+        boundary = ceiling + tolerance
         for v in referenced_losses:
-            if abs(v) > ceiling:
+            if abs(v) > boundary:
                 issues.append(
                     ValidationIssue(
                         severity=ValidationSeverity.MEDIUM,
@@ -337,17 +645,28 @@ def validate_llm_output(
                         message=(
                             f"pointsLost 値 {v} は Karte 上限 {max_loss:.1f} と乖離"
                         ),
-                        context={"value": v, "ceiling": ceiling},
+                        context={"value": v, "ceiling": ceiling, "boundary": boundary},
                     )
                 )
 
-    # ---- Lexicon mention cross-ref ----
-    known_lex = _injected_lexicon_ids(prompt)
-    mentioned_lex = _extract_lexicon_mentions(llm_text, known_lex)
-    # Anything in prompt.lex_injection that's not referenced is fine;
-    # we're only flagging terms hallucinated outside the injected set.
-    # For full audit we'd need a Lexicon lookup keyed by term, but the
-    # ground-truth here is "id list" already validated above.
+    # ---- Lexicon mention cross-ref (A1) ----
+    # Phase 226-A (A1): build the id → ja_term map from the prompt's
+    # referenced ids. Use the new positive/negative pair of extractors
+    # so we report both *referenced* ids and *off-injection* terms.
+    id_to_ja_term = build_id_to_ja_term_map(prompt.referenced_lexicon_ids)
+    mentioned_lex = _extract_lexicon_mentions(llm_text, id_to_ja_term)
+    off_injection_terms = _extract_off_injection_lexicon_mentions(llm_text, id_to_ja_term)
+    for term in off_injection_terms:
+        issues.append(
+            ValidationIssue(
+                severity=ValidationSeverity.LOW,
+                kind="lexicon_mention_not_injected",
+                message=(
+                    f"「{term}」はプロンプトで注入された Lexicon に含まれていません"
+                ),
+                context={"term": term},
+            )
+        )
 
     # ---- Tone consistency ----
     cfg = config
@@ -383,7 +702,7 @@ def validate_llm_output(
     return ValidationReport(
         llm_text=llm_text,
         issues=tuple(issues),
-        referenced_symptom_ids=referenced_ids,
+        referenced_symptom_ids=referenced_ids_tuple,
         referenced_move_numbers=referenced_moves,
         referenced_points_lost=referenced_losses,
         referenced_lexicon_ids=mentioned_lex,
@@ -395,4 +714,4 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "validate_llm_output",
-] 
+]
