@@ -30,7 +30,7 @@ from katrain.core.diagnostics import (
     generate_diagnostics_filename,
 )
 from katrain.core.lang import i18n
-from katrain.core.utils import resolve_output_directory
+from katrain.common.platform import resolve_output_directory
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:

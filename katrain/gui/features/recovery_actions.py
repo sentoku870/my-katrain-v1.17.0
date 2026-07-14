@@ -34,7 +34,7 @@ from katrain.core.error_recovery import (
     RecoveryEvent,
     should_auto_dump,
 )
-from katrain.core.utils import resolve_output_directory
+from katrain.common.platform import resolve_output_directory
 
 if TYPE_CHECKING:
     from katrain.core.diagnostics import DiagnosticsBundle
