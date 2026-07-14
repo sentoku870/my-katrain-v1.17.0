@@ -38,6 +38,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 218（2026-07-17）: Calibration fixtures（39 unit tests、golden test cases）
   - Phase 219（2026-07-17）: Calibrate CLI command（5 unit tests）
   - Phase 220（2026-07-17）: Trace CLI command（6 unit tests）
+  - Phase 221（2026-07-17）: Multi-game summary support（`json_type.py`、18 unit tests + 2 CLI tests）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
@@ -292,6 +293,11 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 221 — Multi-game summary support**（Lv2）
+  - `katrain/core/coach/json_type.py`: `detect_json_type()` で karte/summary 自動判別
+  - `normalize_summary_to_karte_shape()`: summary JSON を karte shape に投影
+  - CLI コマンドが summary を自動検出して処理
+  - 18 件単体テスト + 2 件 CLI 統合テスト、累計 4855 件テスト合格
 - 2026-07-17: **Phase 220 — Trace CLI command**（Lv1）
   - CLI `trace <karte.json>` 新コマンド（検出器パイプラインをソース別に可視化）
   - per_move / weakness_category / streak / aggregate の 4 系列を表示

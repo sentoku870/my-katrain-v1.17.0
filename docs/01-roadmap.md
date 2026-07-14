@@ -1061,6 +1061,11 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - 検出器パイプラインをソース別（per_move / weakness_category / streak / aggregate）に可視化
   - 各 SymptomId がどの source で発火したかを表示
   - 6 件新規テスト合格
+- [x] **Phase 221: Multi-game summary support**（Lv2、2026-07-14 完了）
+  - `katrain/core/coach/json_type.py`: `detect_json_type()` で karte/summary 自動判別
+  - `normalize_summary_to_karte_shape()`: summary JSON を karte shape に投影
+  - `_load_karte` 統合: CLI コマンドが summary を自動検出して処理
+  - 18 件単体テスト + 2 件 CLI 統合テスト合格
 - [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---
