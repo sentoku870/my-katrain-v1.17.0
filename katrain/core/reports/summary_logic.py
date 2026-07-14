@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
-from katrain.core.eval_metrics import (
+from katrain.core import analysis as eval_metrics
+from katrain.core.analysis import (
     GameSummaryData,
     MistakeCategory,
     PositionDifficulty,

@@ -12,13 +12,13 @@ from datetime import datetime
 from typing import Any
 
 from katrain.common.short_hash import short_hash
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.analysis import build_node_map
 from katrain.core.analysis.meaning_tags import (
     build_classification_context_from_node,
     classify_meaning_tag,
 )
-from katrain.core.eval_metrics import (
+from katrain.core.analysis import (
     classify_mistake,
     get_canonical_loss_from_move,
 )
@@ -404,7 +404,7 @@ def _weaknesses_meta_for(
     the LLM also sees ``covered_loss: 25.0 / 60.0`` (41.7%).
     """
     from katrain.core.analysis import classify_game_phase
-    from katrain.core.eval_metrics import get_canonical_loss_from_move
+    from katrain.core.analysis import get_canonical_loss_from_move
     from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
 
     player_moves = [m for m in ctx.snapshot.moves if m.player == player]

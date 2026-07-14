@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
+from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.reports.summary_report import build_summary_report
 
 

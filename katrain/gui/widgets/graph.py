@@ -10,7 +10,7 @@ from kivy.properties import BooleanProperty, Clock, ListProperty, NumericPropert
 from kivy.uix.widget import Widget
 from kivymd.app import MDApp
 
-from katrain.core.eval_metrics import MistakeCategory, classify_mistake
+from katrain.core.analysis import MistakeCategory, classify_mistake
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:

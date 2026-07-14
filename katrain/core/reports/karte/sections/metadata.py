@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 
 if TYPE_CHECKING:
     from katrain.core.reports.karte.sections.context import KarteContext

@@ -16,7 +16,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.game import KaTrainSGF
 from katrain.gui.features.types import LogFunction
 

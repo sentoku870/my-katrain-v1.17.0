@@ -92,7 +92,7 @@ _extract_players_from_stats = extract_players_from_stats
 # =============================================================================
 # Phase 171: Leela 用の re-export を削除
 # =============================================================================
-from katrain.core.eval_metrics import EvalSnapshot, MoveEval
+from katrain.core.analysis import EvalSnapshot, MoveEval
 
 __all__ = [
     # Constants

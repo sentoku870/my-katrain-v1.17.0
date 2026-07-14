@@ -52,14 +52,14 @@ def extract_game_stats(
         Dictionary with game statistics, or None if extraction failed
     """
     try:
-        from katrain.core import eval_metrics
+        from katrain.core import analysis as eval_metrics
         from katrain.core.analysis import build_node_map
         from katrain.core.analysis.meaning_tags import (
             MeaningTagId,
             build_classification_context_from_node,
             classify_meaning_tag,
         )
-        from katrain.core.eval_metrics import compute_effective_threshold
+        from katrain.core.analysis import compute_effective_threshold
 
         # Phase 87.5: Use provided snapshot or build from game
         if snapshot is None:
@@ -276,7 +276,7 @@ def extract_game_stats(
         # PR1-1: Also track important_moves_count and tagged_moves_count for clarity
         # Phase 47: Also classify meaning tags for Top 3 Mistake Types
         try:
-            from katrain.core.eval_metrics import validate_reason_tag
+            from katrain.core.analysis import validate_reason_tag
 
             important_moves = game.get_important_move_evals(compute_reason_tags=True)
 

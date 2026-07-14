@@ -13,7 +13,7 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.constants import OUTPUT_ERROR, STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme

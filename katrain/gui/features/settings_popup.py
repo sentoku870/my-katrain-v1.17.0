@@ -23,7 +23,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.features.settings_popup_io import (  # noqa: F401 (re-export for backward compat)

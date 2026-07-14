@@ -19,7 +19,7 @@ from katrain.core.constants import (
     STATUS_ERROR,
 )
 from katrain.core.errors import UIStateError
-from katrain.core.eval_metrics import classify_mistake
+from katrain.core.analysis import classify_mistake
 from katrain.core.lang import rank_label
 from katrain.core.state import EventType
 from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel

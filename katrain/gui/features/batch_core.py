@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     BatchResult,

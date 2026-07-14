@@ -19,8 +19,8 @@ import time
 from typing import Any
 
 from katrain.common.short_hash import short_hash
-from katrain.core import eval_metrics
-from katrain.core.eval_metrics import (
+from katrain.core import analysis as eval_metrics
+from katrain.core.analysis import (
     GameSummaryData,
     MistakeCategory,
     get_canonical_loss_from_move,

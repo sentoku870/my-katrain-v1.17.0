@@ -11,7 +11,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 from katrain.core.analysis.models import MoveEval
-from katrain.core.eval_metrics import (
+from katrain.core.analysis import (
     classify_game_phase,
 )
 from katrain.core.reports.definitions import (

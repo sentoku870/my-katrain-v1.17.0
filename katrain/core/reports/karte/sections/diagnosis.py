@@ -25,8 +25,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import eval_metrics
-from katrain.core.eval_metrics import (
+from katrain.core import analysis as eval_metrics
+from katrain.core.analysis import (
     aggregate_phase_mistake_stats,
     detect_mistake_streaks,
     get_canonical_loss_from_move,

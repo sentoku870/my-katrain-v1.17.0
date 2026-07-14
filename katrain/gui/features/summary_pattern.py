@@ -21,7 +21,7 @@ import logging
 from collections import Counter
 from typing import Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster

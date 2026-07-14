@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from katrain.core.eval_metrics import GameSummaryData
+from katrain.core.analysis import GameSummaryData
 from katrain.core.reports.summary_logic import detect_urgent_miss_sequences
 from katrain.core.sgf_parser import Move
 

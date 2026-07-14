@@ -584,7 +584,7 @@ class TestSummaryAnalyzerAutoPreset:
 
         # Patch the reference held by eval_metrics (summary_logic uses that)
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 
@@ -622,7 +622,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 
@@ -653,7 +653,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fixed_recommend,
         )
 
@@ -683,7 +683,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fixed_recommend,
         )
 
@@ -724,7 +724,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 
@@ -781,7 +781,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fixed_recommend,
         )
 
@@ -823,7 +823,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 
@@ -849,7 +849,7 @@ class TestSummaryAnalyzerAutoPreset:
             raise AssertionError("recommend_auto_strictness should not be called for explicit presets")
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 
@@ -879,7 +879,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fixed_recommend,
         )
 
@@ -930,7 +930,7 @@ class TestSummaryAnalyzerAutoPreset:
             )
 
         monkeypatch.setattr(
-            "katrain.core.eval_metrics.recommend_auto_strictness",
+            "katrain.core.analysis.recommend_auto_strictness",
             fake_recommend,
         )
 

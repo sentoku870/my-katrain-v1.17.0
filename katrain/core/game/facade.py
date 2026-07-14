@@ -16,13 +16,13 @@ from collections.abc import Iterator
 from typing import Any
 
 # eval_metrics は katrain.core 直下のパッケージ (このファイルが katrain.core.game 配下のため明示的に絶対 import)
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.constants import (
     OUTPUT_INFO,
     AnalysisMode,
 )
 from katrain.core.engine import KataGoEngine
-from katrain.core.eval_metrics import (
+from katrain.core.analysis import (
     EvalSnapshot,
     GameSummaryData,
     MistakeCategory,

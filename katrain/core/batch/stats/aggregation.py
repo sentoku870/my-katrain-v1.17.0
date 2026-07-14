@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.batch.markdown_fmt import escape_markdown_table_cell, truncate_game_name
-from katrain.core.eval_metrics import MistakeCategory
+from katrain.core.analysis import MistakeCategory
 
 _logger = logging.getLogger("katrain.core.batch.stats")
 

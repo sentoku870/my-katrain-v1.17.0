@@ -17,7 +17,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.analysis.meaning_tags import (
     MeaningTagId,
 )

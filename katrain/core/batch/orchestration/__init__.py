@@ -46,7 +46,7 @@ from katrain.core.batch.orchestration._process import (
 )
 from katrain.core.batch.orchestration._setup import _setup_batch
 from katrain.core.batch.orchestration._summary import _generate_summaries
-from katrain.core.eval_metrics import DEFAULT_SKILL_PRESET
+from katrain.core.analysis import DEFAULT_SKILL_PRESET
 
 
 def run_batch(

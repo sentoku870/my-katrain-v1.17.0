@@ -10,7 +10,7 @@ game.pyから抽出された重要手レポート生成機能。
 
 from typing import Any
 
-from katrain.core import eval_metrics
+from katrain.core import analysis as eval_metrics
 from katrain.core.analysis.models import (
     MistakeCategory,
     MoveEval,
