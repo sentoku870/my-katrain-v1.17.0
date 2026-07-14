@@ -14,6 +14,19 @@ Layout:
 All modules are core-layer (Kivy-free).
 """
 
+from katrain.core.coach.karte_detector import (
+    build_symptom_context_from_karte,
+    detect_symptoms_from_karte,
+    extract_avg_points_lost,
+    extract_avg_winrate_lost,
+    extract_critical_move_count,
+    extract_game_count,
+    extract_good_move_count,
+    extract_max_overall_difficulty,
+    extract_max_score_stdev,
+    extract_max_winrate_drop,
+    extract_weakness_concentration,
+)
 from katrain.core.coach.lexicon import (
     DEFAULT_LEXICON_PATH,
     LexiconBundle,
@@ -130,4 +143,16 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "validate_llm_output",
+    # karte_detector (Phase 215)
+    "build_symptom_context_from_karte",
+    "detect_symptoms_from_karte",
+    "extract_avg_points_lost",
+    "extract_avg_winrate_lost",
+    "extract_max_winrate_drop",
+    "extract_max_score_stdev",
+    "extract_max_overall_difficulty",
+    "extract_good_move_count",
+    "extract_critical_move_count",
+    "extract_weakness_concentration",
+    "extract_game_count",
 ] 

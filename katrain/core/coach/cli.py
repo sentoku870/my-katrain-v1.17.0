@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from katrain.core.coach.karte_detector import detect_symptoms_from_karte
 from katrain.core.coach.lexicon import get_entry
 from katrain.core.coach.llm_validator import validate_llm_output
 from katrain.core.coach.master_db import CoachMode
@@ -39,7 +40,6 @@ from katrain.core.coach.prompt_builder import (
 )
 from katrain.core.coach.symptom_index import (
     SymptomId,
-    detect_auto_symptoms,
     list_llm_required_symptoms,
     lookup_symptom,
 )
@@ -67,41 +67,6 @@ def _load_karte(path: Path) -> dict[str, Any]:
     return data
 
 
-def _auto_detect(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
-    """Run auto-detection against an aggregate SymptomContext derived from Karte JSON.
-
-    The detector logic operates per-move, but a Karte JSON gives aggregate
-    info. We pick the worst-signalled symptoms heuristically:
-
-    - If weaknesses is populated, use the first category as a detected hint
-    - Use any meaning_tag_id from important_moves[*] as a detected hint
-    - Always include the "Endgame Precision" baseline if is_endgame implied
-    """
-    detected: list[SymptomId] = []
-    seen: set[SymptomId] = set()
-
-    # 1. From weaknesses[*].category
-    for color in ("black", "white"):
-        for w in karte.get("weaknesses", {}).get(color, []) or []:
-            cat = str(w.get("category", "")).lower()
-            # Best-effort mapping
-            for sid in SymptomId:
-                if sid.value == cat and sid not in seen:
-                    detected.append(sid)
-                    seen.add(sid)
-
-    # 2. From important_moves[*].meaning_tag_id
-    for move in karte.get("important_moves", []) or []:
-        mtag = str(move.get("meaning_tag_id", "")).lower()
-        for sid in SymptomId:
-            if sid.value == mtag and sid not in seen:
-                detected.append(sid)
-                seen.add(sid)
-
-    # 3. Cap to avoid token bloat (Phase 203 §15 recommendation: 5-7 max).
-    return tuple(detected[:7])
-
-
 def build_prompt(
     karte: dict[str, Any],
     *,
@@ -115,22 +80,21 @@ def build_prompt(
 
     Returns the LlmPrompt produced by ``build_translation_prompt``.
     Caller decides what to do with ``prompt.full_markdown``.
+
+    Detection:
+        When ``detected_ids`` is None, uses Phase 215's
+        ``detect_symptoms_from_karte`` for proper Karte-aware detection
+        (weakness categories + per-move SymptomContext).
     """
     voice = select_voice(rank, avg_points_lost=avg_points_lost)
-    # Map voice -> mode via simple lookup
     from katrain.core.coach.tones import modes_for_voice
 
     modes = modes_for_voice(voice)
-    if modes:
-        mode = modes[0]
-    else:
-        mode = CoachMode.INTERMEDIATE
+    mode = modes[0] if modes else CoachMode.INTERMEDIATE
 
     if detected_ids is None:
-        detected_ids = _auto_detect(karte)
+        detected_ids = detect_symptoms_from_karte(karte)
     if llm_required_ids is None:
-        # Default: include a small set of LLM-required symptoms the user
-        # should consider. They become "candidate" hints in the prompt.
         llm_required_ids = _DEFAULT_LLM_REQUIRED
 
     cfg = PromptConfig(
