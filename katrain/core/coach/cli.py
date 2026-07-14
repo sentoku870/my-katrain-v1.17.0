@@ -228,6 +228,85 @@ def cmd_lexicon(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Sub-command: run the golden fixture suite and report detector calibration.
+
+    Iterates over ``calibration_fixtures.ALL_FIXTURES`` and reports for
+    each: name, expected symptom ids, actually-fired symptom ids, and
+    pass/fail. The current implementation does NOT mutate detector
+    thresholds — it's a read-only verifier that doubles as the user's
+    diagnostic command.
+
+    Exit code:
+    - 0 when all fixtures pass
+    - 1 when any fixture fails
+    """
+    from katrain.core.coach.calibration_fixtures import (
+        ALL_FIXTURES,
+        list_fixture_names,
+    )
+    from katrain.core.coach.karte_detector import detect_symptoms_from_karte
+
+    if args.fixture:
+        names = [args.fixture]
+    else:
+        names = list_fixture_names()
+
+    lines: list[str] = ["# Coach Detector Calibration", ""]
+    fail_count = 0
+    pass_count = 0
+
+    for name in names:
+        if name not in ALL_FIXTURES:
+            lines.append(f"⚠️ Unknown fixture: {name}")
+            fail_count += 1
+            continue
+        fix = ALL_FIXTURES[name]
+        fired = set(detect_symptoms_from_karte(fix.karte))
+        expected = set(fix.expected_symptom_ids)
+        ok = fired == expected
+
+        marker = "✅" if ok else "❌"
+        lines.append(f"## {marker} {fix.name}")
+        lines.append(fix.description)
+        lines.append("")
+        lines.append(
+            f"- expected: {[s.value for s in sorted(expected, key=lambda x: x.value)]}"
+        )
+        lines.append(
+            f"- fired:    {[s.value for s in sorted(fired, key=lambda x: x.value)]}"
+        )
+        if not ok:
+            missing = expected - fired
+            extra = fired - expected
+            if missing:
+                lines.append(f"- MISSING:  {[s.value for s in missing]}")
+            if extra:
+                lines.append(f"- EXTRA:    {[s.value for s in extra]}")
+            fail_count += 1
+        else:
+            pass_count += 1
+        if fix.tolerance_notes:
+            lines.append(f"- notes: {fix.tolerance_notes}")
+        lines.append("")
+
+    lines.extend([
+        "## Summary",
+        f"- passed: {pass_count}",
+        f"- failed: {fail_count}",
+        f"- total:  {pass_count + fail_count}",
+    ])
+
+    output = "\n".join(lines) + "\n"
+    if args.out:
+        Path(args.out).write_text(output, encoding="utf-8")
+        print(f"✅ Wrote calibration report to {args.out}")
+    else:
+        sys.stdout.write(output)
+
+    return 0 if fail_count == 0 else 1
+
+
 def cmd_analyze(args: argparse.Namespace) -> int:
     """Sub-command: detailed overview of a Karte JSON.
 
@@ -425,6 +504,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Write analysis to this file (default: stdout)",
     )
     p_an.set_defaults(func=cmd_analyze)
+
+    # calibrate (Phase 219)
+    p_cal = sub.add_parser(
+        "calibrate",
+        help="Run golden-fixture calibration suite (Phase 218/219)",
+    )
+    p_cal.add_argument(
+        "--fixture",
+        help="Run a single fixture by name (default: all fixtures)",
+    )
+    p_cal.add_argument(
+        "--out",
+        help="Write calibration report to file (default: stdout)",
+    )
+    p_cal.set_defaults(func=cmd_calibrate)
 
     return parser
 

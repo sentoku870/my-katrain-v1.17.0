@@ -331,3 +331,59 @@ class TestAnalyzeCommand:
                 "analyze",
                 str(tmp_path / "nonexistent.json"),
             ])
+
+
+# --- calibrate sub-command (Phase 219) ---
+
+
+class TestCalibrateCommand:
+    def test_calibrate_all_pass_returns_0(self, capsys):
+        rc = cli.main(["calibrate"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        # All 8 fixtures should pass
+        assert "passed: 8" in out
+        assert "failed: 0" in out
+        assert "# Coach Detector Calibration" in out
+
+    def test_calibrate_to_file(self, tmp_path: Path):
+        out_path = tmp_path / "calibration.md"
+        rc = cli.main(["calibrate", "--out", str(out_path)])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "# Coach Detector Calibration" in content
+        assert "## Summary" in content
+
+    def test_calibrate_single_fixture(self, capsys):
+        rc = cli.main(["calibrate", "--fixture", "perfect_game"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Only the perfect_game section should appear
+        assert "## ✅ perfect_game" in out
+        # No other fixture names should appear as section headers
+        assert "## ✅ single_atari_mistake" not in out
+        # Summary should reflect 1 total
+        assert "total:  1" in out
+
+    def test_calibrate_unknown_fixture_returns_1(self, capsys):
+        rc = cli.main(["calibrate", "--fixture", "this_does_not_exist"])
+        assert rc == 1
+        out = capsys.readouterr().out
+        assert "Unknown fixture" in out
+
+    def test_calibrate_lists_all_fixture_sections(self, capsys):
+        cli.main(["calibrate"])
+        out = capsys.readouterr().out
+        # All 8 fixture names should appear
+        for name in [
+            "perfect_game",
+            "single_atari_mistake",
+            "reckless_overplay",
+            "long_mistake_streak",
+            "many_small_streaks",
+            "tilt_chain_disaster",
+            "tilt_discouragement",
+            "strong_correlation",
+        ]:
+            assert f"## ✅ {name}" in out, f"Missing section: {name}"
