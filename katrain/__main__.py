@@ -429,7 +429,7 @@ class KaTrainGui(Screen, KaTrainBase):
             if os.path.isfile(f) and any(f.lower().endswith(ext) for ext in ["sgf", "ngf", "gib"])
         ]
         if sgf_args:
-            self.load_sgf_file(sgf_args[0], fast=True, rewind=True)
+            self.ctx.sgf_manager.load_sgf_file(sgf_args[0], fast=True, rewind=True)
         else:
             # game_commands.do_new_game 内の自動 Play/Analyze 切り替えを一時的に無効化
             self._suppress_play_mode_switch = True
@@ -579,11 +579,6 @@ class KaTrainGui(Screen, KaTrainBase):
                 self.controls.set_status(i18n._("Mistake played (sound disabled)"), STATUS_INFO)
 
     # === SGF File Management (refactored in PR #122) ===
-    # Delegation to SGFManager for backward compatibility
-
-    def load_sgf_file(self, file: str, fast: bool = False, rewind: bool = True) -> None:
-        """Load SGF file. Delegates to SGFManager."""
-        self.ctx.sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
     def load_sgf_from_clipboard(self) -> None:
         """Load SGF from clipboard. Delegates to SGFManager."""
         self.ctx.sgf_manager.load_sgf_from_clipboard()
@@ -661,7 +656,7 @@ class KaTrainApp(MDApp):
             Builder.load_file(file)
 
         Window.bind(on_request_close=self.on_request_close)
-        Window.bind(on_dropfile=lambda win, file: self.gui.load_sgf_file(file.decode("utf8")))
+        Window.bind(on_dropfile=lambda win, file: self.gui.ctx.sgf_manager.load_sgf_file(file.decode("utf8")))
         self.gui = KaTrainGui()
 
         win_left: int | None = None
