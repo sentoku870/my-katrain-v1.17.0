@@ -1200,8 +1200,14 @@ msgstr "応答をクリアしました"
 msgid "mykatrain:llm-coach:validation-clean"
 msgstr "✅ 検証クリア — 警告なし"
 
+msgid "mykatrain:llm-coach:validation-clean-with-notes"
+msgstr "✅ 検証クリア（注記 {count} 件、下を確認）"
+
 msgid "mykatrain:llm-coach:validation-issues"
 msgstr "⚠️ 警告あり（詳細は下）"
+
+msgid "mykatrain:llm-coach:validation-issues-with-count"
+msgstr "⚠️ 警告 {total} 件 (高:{high} 中:{medium} 低:{low}) — 詳細は下を確認"
 
 msgid "mykatrain:llm-coach:status"
 msgstr "ステータス"

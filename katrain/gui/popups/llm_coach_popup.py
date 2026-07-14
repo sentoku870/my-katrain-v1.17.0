@@ -102,31 +102,30 @@ class LLMCcoachPopupContent(BoxLayout):
         ``on_submit`` (which only fires on double-click). The user
         reported the OK button did nothing because the double-click
         handler was the only listener attached.
+
+        Phase 225.5: always call ``picker.dismiss()`` on every event
+        path so the dialog closes even when the user opens it with no
+        selection. The chosen path is written via ``self._set_widget_text``
+        (ids-first) to dodge the same stale-reference class of bugs.
         """
         from kivy.metrics import dp
 
-        def _on_success(instance: Any, *_args: Any) -> None:
-            # I18NFileBrowser exposes the chosen path via its
-            # ``filename`` StringProperty (set when ``button_clicked``
-            # fires ``on_success``). Fall back to ``selection`` if the
-            # caller double-clicked a row instead.
-            chosen = instance.filename or (
+        def _on_pick(instance: Any, *_args: Any) -> None:
+            # ``filename`` is set when the user picks via OK; ``selection``
+            # is set when the user picks via double-click.
+            chosen = (instance.filename or "").strip() or (
                 instance.selection[0] if instance.selection else ""
             )
-            if not chosen:
-                return
-            if self.karte_path_input is not None:
-                self.karte_path_input.text = str(chosen)
+            if chosen:
+                self._set_widget_text("karte_path_input", str(chosen))
+            # Always close the picker so the user isn't stuck on it.
             picker.dismiss()
 
         browser = I18NFileBrowser(
             filters=["*.json", "*.JSON"],
             select_string=i18n._("button:ok"),
         )
-        # Both events: OK button (on_success) and double-click (on_submit).
-        # See ``I18NFileBrowser.button_clicked`` and the I18NFileChooserListView
-        # ``on_submit`` binding inside ``filebrowser.py``.
-        browser.bind(on_success=_on_success, on_submit=_on_success)
+        browser.bind(on_success=_on_pick, on_submit=_on_pick)
 
         picker = I18NPopup(
             title_key="mykatrain:llm-coach:browse-title",
@@ -177,7 +176,12 @@ class LLMCcoachPopupContent(BoxLayout):
         self._set_status(i18n._("mykatrain:llm-coach:response-cleared"))
 
     def on_validate(self) -> None:
-        """Validate the user-pasted LLM response and show the report."""
+        """Validate the user-pasted LLM response and show the report.
+
+        Phase 225.5: write the full Markdown report to ``result_label``
+        (the ScrollView) AND a one-line summary to ``status_label`` so
+        the user immediately sees the issue counts without scrolling.
+        """
         from katrain.gui.features.llm_coach import validate_llm_response
 
         karte_path = self._read_text("karte_path_input")
@@ -195,18 +199,48 @@ class LLMCcoachPopupContent(BoxLayout):
             response_text,
             rank=rank,
         )
-        if is_clean:
-            self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
-        else:
-            self._set_status(i18n._("mykatrain:llm-coach:validation-issues"))
+        # Always render the full report into the ScrollView first.
         self._set_result(markdown)
 
+        # Count issues so the status line can summarise without scrolling.
+        high = markdown.count("[HIGH]")
+        medium = markdown.count("[MEDIUM]")
+        low = markdown.count("[LOW]")
+        total = high + medium + low
+        if is_clean:
+            if total == 0:
+                self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
+            else:
+                # Validator says clean but report still has markers
+                # (e.g. referenced symptom IDs that couldn't be matched).
+                self._set_status(
+                    i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(
+                        count=total
+                    )
+                )
+        else:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
+                    high=high, medium=medium, low=low, total=total
+                )
+            )
+
     def on_copy_result(self) -> None:
-        if self.result_label is None or not self.result_label.text:
+        """Copy the validation Markdown to the clipboard.
+
+        Phase 225.5: read via ``self._read_text("result_label")`` so we
+        always see the latest text the validator wrote, even if the
+        ``self.result_label`` ObjectProperty happens to be a stale
+        reference (the case that previously made the button report
+        "コピーできる検証結果がありません" right after a successful
+        validation).
+        """
+        result_text = self._read_text("result_label")
+        if not result_text:
             self._set_status(i18n._("mykatrain:llm-coach:no-result"), error=True)
             return
         try:
-            Clipboard.copy(self.result_label.text)
+            Clipboard.copy(result_text)
         except Exception as exc:  # noqa: BLE001
             self._set_status(
                 i18n._("mykatrain:llm-coach:copy-failed").format(error=str(exc)),
@@ -217,19 +251,23 @@ class LLMCcoachPopupContent(BoxLayout):
 
     # ---- Internal helpers ---------------------------------------------
 
-    def _read_text(self, widget_id: str) -> str:
-        """Safely read the ``text`` of a child widget by its KV ``id``.
+    def _get_widget(self, widget_id: str) -> Any:
+        """Resolve a child widget by KV ``id`` via ``self.ids``.
 
-        Phase 225.3: the ObjectProperty references (e.g.
-        ``self.karte_path_input``) occasionally lag behind the actual
-        KV-bound widget, especially when widgets are recreated during
-        popup open. Going through ``self.ids`` always hits the live
-        tree. Returns the stripped string or ``""`` if missing.
+        Phase 225.5: the ObjectProperty reference (e.g.
+        ``self.karte_path_input``) can lag behind the actual KV-bound
+        widget when the popup re-creates the tree mid-frame. Going
+        through ``self.ids`` always hits the live widget. Returns the
+        widget instance, or ``None`` if missing.
         """
         widget = self.ids.get(widget_id) if hasattr(self, "ids") else None
         if widget is None:
-            # Fall back to the property in case ids isn't populated yet
             widget = getattr(self, widget_id, None)
+        return widget
+
+    def _read_text(self, widget_id: str) -> str:
+        """Safely read the stripped ``text`` of a child widget by id."""
+        widget = self._get_widget(widget_id)
         if widget is None:
             return ""
         try:
@@ -238,24 +276,30 @@ class LLMCcoachPopupContent(BoxLayout):
             return ""
 
     def _set_widget_text(self, widget_id: str, text: str) -> None:
-        """Set the ``text`` of a child widget by its KV ``id``."""
-        widget = self.ids.get(widget_id) if hasattr(self, "ids") else None
-        if widget is None:
-            widget = getattr(self, widget_id, None)
+        """Set the ``text`` of a child widget by id."""
+        widget = self._get_widget(widget_id)
         if widget is not None:
             widget.text = text
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.status_text = text
-        if self.status_label is not None:
-            self.status_label.text = text
-            self.status_label.color = (
-                Theme.ERROR_COLOR if error else Theme.TEXT_COLOR
-            ) if hasattr(Theme, "ERROR_COLOR") else (1, 0.3, 0.3, 1) if error else Theme.TEXT_COLOR
+        # Phase 225.5: ids-first to dodge stale ObjectProperty references
+        status_label = self._get_widget("status_label")
+        if status_label is not None:
+            status_label.text = text
+            error_color = (
+                getattr(Theme, "ERROR_COLOR", (1.0, 0.3, 0.3, 1.0))
+                if error
+                else getattr(Theme, "TEXT_COLOR", (0.9, 0.9, 0.9, 1.0))
+            )
+            status_label.color = error_color
 
     def _set_result(self, text: str) -> None:
-        if self.result_label is not None:
-            self.result_label.text = text
+        # Phase 225.5: ids-first so the Markdown actually lands in the
+        # ScrollView even when ``self.result_label`` is stale.
+        result_label = self._get_widget("result_label")
+        if result_label is not None:
+            result_label.text = text
 
 
 def open_llm_coach_popup(ctx: Any) -> Any:

@@ -128,7 +128,6 @@ class TestOnBrowseKarte:
         bind_args = mock_browser.bind.call_args_list
         bound_events = set()
         for call in bind_args:
-            # bind(event=callback) or bind(**{event: callback})
             for key in call.kwargs:
                 bound_events.add(key)
         assert "on_success" in bound_events, (
@@ -138,7 +137,7 @@ class TestOnBrowseKarte:
 
     def test_on_success_writes_path_to_karte_input(self) -> None:
         """Simulate the OK button firing: the chosen file path must be
-        written back to the karte_path_input."""
+        written back to the karte_path_input via ids."""
         from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
         content = _make_content()
@@ -149,19 +148,40 @@ class TestOnBrowseKarte:
             mock_picker = MagicMock()
             mock_popup_cls.return_value = mock_picker
             mock_browser = MagicMock()
-            # The browser exposes the chosen path via ``filename`` when OK fires.
             mock_browser.filename = "C:/reports/karte_x.json"
             mock_browser.selection = []
             mock_browser_cls.return_value = mock_browser
             content.on_browse_karte()
-            # Find the bound on_success callback and invoke it.
             for call in mock_browser.bind.call_args_list:
                 if "on_success" in call.kwargs:
                     captured["cb"] = call.kwargs["on_success"]
                     break
         assert "cb" in captured, "on_success callback not bound"
         captured["cb"](mock_browser)
-        assert content.karte_path_input.text == "C:/reports/karte_x.json"
+        assert content.ids["karte_path_input"].text == "C:/reports/karte_x.json"
+        mock_picker.dismiss.assert_called_once()
+
+    def test_always_dismisses_picker(self) -> None:
+        """Phase 225.5: even when no selection was made, the picker
+        must close so the user isn't stuck behind a non-responsive
+        dialog."""
+        content = _make_content()
+        captured: dict[str, Any] = {}
+        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
+             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+            mock_picker = MagicMock()
+            mock_popup_cls.return_value = mock_picker
+            mock_browser = MagicMock()
+            mock_browser.filename = ""
+            mock_browser.selection = []
+            mock_browser_cls.return_value = mock_browser
+            content.on_browse_karte()
+            for call in mock_browser.bind.call_args_list:
+                if "on_success" in call.kwargs:
+                    captured["cb"] = call.kwargs["on_success"]
+                    break
+        captured["cb"](mock_browser)
+        # dismiss must be called even when chosen is empty
         mock_picker.dismiss.assert_called_once()
 
 
@@ -273,9 +293,11 @@ class TestOnValidate:
         assert (
             "validation-issues" in content.status_label.text
             or "Issues" in content.status_label.text
+            or "issues" in content.status_label.text.lower()
             or "警告" in content.status_label.text
+            or "⚠" in content.status_label.text
         )
-        assert "[HIGH]" in content.result_label.text
+        assert "[HIGH]" in content.ids["result_label"].text
 
 
 # ---- on_copy_result ----------------------------------------------------
@@ -397,6 +419,95 @@ class TestSetWidgetText:
         content.karte_path_input = None
         # Must not raise
         content._set_widget_text("karte_path_input", "x")
+
+
+class TestSetStatusAndResultViaIds:
+    """Phase 225.5: ``_set_status`` / ``_set_result`` must go through
+    ``self.ids`` so they don't write into a stale ObjectProperty ref."""
+
+    def test_set_status_writes_to_ids_label(self) -> None:
+        content = _make_content()
+        from unittest.mock import MagicMock as _MM
+        stale = _MM()
+        content.status_label = stale  # stale ObjectProperty ref
+        content._set_status("hello")
+        # The ids-bound status_label wins
+        assert content.ids["status_label"].text == "hello"
+
+    def test_set_result_writes_to_ids_label(self) -> None:
+        content = _make_content()
+        from unittest.mock import MagicMock as _MM
+        stale = _MM()
+        content.result_label = stale
+        content._set_result("report text")
+        assert content.ids["result_label"].text == "report text"
+
+
+class TestPhase2255OnCopyResult:
+    """Phase 225.5: ``on_copy_result`` reads via ``_read_text`` so the
+    'no result' error doesn't fire after a successful validation."""
+
+    def test_copies_when_ids_have_text_but_property_is_stale(self) -> None:
+        content = _make_content()
+        # Property is stale (empty), but ids has the validation report
+        from unittest.mock import MagicMock as _MM
+        stale = _MM()
+        stale.text = ""
+        content.result_label = stale
+        content.ids["result_label"].text = "[HIGH] **STYLE**: bad"
+        with patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip:
+            content.on_copy_result()
+        mock_clip.copy.assert_called_once_with("[HIGH] **STYLE**: bad")
+
+    def test_still_shows_no_result_when_both_empty(self) -> None:
+        content = _make_content()
+        # Empty ids; the "no result" status must still fire.
+        content.ids["result_label"].text = ""
+        content.result_label.text = ""
+        content.on_copy_result()
+        assert (
+            "no-result" in content.status_label.text
+            or "no result" in content.status_label.text.lower()
+            or "No validation" in content.status_label.text
+        )
+
+
+class TestPhase2255OnValidateIssueCounts:
+    """Phase 225.5: ``on_validate`` writes the full Markdown to
+    ``result_label`` AND a one-line summary to ``status_label``."""
+
+    def test_status_includes_issue_counts_for_dirty_report(self) -> None:
+        content = _make_content()
+        content.karte_path_input.text = "/karte.json"
+        content.response_input.text = "x"
+        markdown = (
+            "**HIGH**: 1 · **MEDIUM**: 2 · **LOW**: 3\n"
+            "- [HIGH] **A**: a\n- [MEDIUM] **B**: b\n- [MEDIUM] **C**: c\n"
+            "- [LOW] **D**: d\n- [LOW] **E**: e\n- [LOW] **F**: f\n"
+        )
+        with patch(
+            "katrain.gui.features.llm_coach.validate_llm_response",
+            return_value=(False, markdown),
+        ):
+            content.on_validate()
+        # Full report lands in result_label (ScrollView content)
+        assert content.ids["result_label"].text == markdown
+        # Status shows the per-severity counts so the user can see at a glance
+        status = content.status_label.text
+        assert "1" in status and "2" in status and "3" in status
+
+    def test_status_clean_when_no_issues(self) -> None:
+        content = _make_content()
+        content.karte_path_input.text = "/karte.json"
+        content.response_input.text = "x"
+        with patch(
+            "katrain.gui.features.llm_coach.validate_llm_response",
+            return_value=(True, "**HIGH**: 0 · **MEDIUM**: 0 · **LOW**: 0\n"),
+        ):
+            content.on_validate()
+        # Status shows clean (or clean-with-notes), result has full report
+        assert content.ids["result_label"].text.startswith("**HIGH**")
+        assert "Clean" in content.status_label.text or "クリア" in content.status_label.text
 
 
 class TestPhase2253OnGenerateUsesIds:

@@ -153,8 +153,14 @@ msgstr "Response cleared"
 msgid "mykatrain:llm-coach:validation-clean"
 msgstr "✅ Clean — no warnings"
 
+msgid "mykatrain:llm-coach:validation-clean-with-notes"
+msgstr "✅ Clean ({count} notes, see below)"
+
 msgid "mykatrain:llm-coach:validation-issues"
 msgstr "⚠️ Issues found (see below)"
+
+msgid "mykatrain:llm-coach:validation-issues-with-count"
+msgstr "⚠️ {total} issues (HIGH:{high} MED:{medium} LOW:{low}) — see details below"
 
 msgid "mykatrain:llm-coach:status"
 msgstr "Status"
