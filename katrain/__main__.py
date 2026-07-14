@@ -147,6 +147,17 @@ class KaTrainGui(Screen, KaTrainBase):
             except Exception as e:  # noqa: BLE001
                 self.log(f"kifunarabe: on_mode_change({value}) raised: {e}", 0)
 
+    def _init_simple_state(self) -> None:
+        """Initialize simple instance attributes with no manager dependencies.
+
+        These attributes can be set before any managers are constructed.
+        """
+        self.pondering = False
+        self.show_move_num = False
+        self.message_queue: Queue[Any] = Queue()
+        # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
+        self._clock_events: list[Any] = []
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
@@ -244,13 +255,7 @@ class KaTrainGui(Screen, KaTrainBase):
             clear_animating_pv=lambda: setattr(self.board_gui, "animating_pv", None) if self.board_gui else None,
         )
 
-        self.pondering = False
-        self.show_move_num = False
-
-        self.message_queue: Queue[Any] = Queue()
-
-        # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
-        self._clock_events: list[Any] = []
+        self._init_simple_state()
 
         # New Managers & Controllers (Phase 133)
         # Phase 173: UI update coalescing lives in UIUpdateManager; the
