@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,10 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.3 — LLM Coach ボタン整列 + ids 経由テキスト読み出し**
+  - **UI バグ**: `AutoSizedRoundedRectangleButton` がテキスト幅で自動サイズ調整されボタンが不揃い → KV レイアウト再設計（75/25, 50/50 比率、`size_hint_x: 0.5` 統一）+ 結果ラベルを `ScrollView` 化
+  - **クリック無反応バグ**: `self.karte_path_input.text` が KivyMD の ObjectProperty バインド遅延で空文字を返す稀ケース → `_read_text(widget_id)` ヘルパーで `self.ids` 経由の堅牢な参照に変更
+  - 16 件回帰テスト追加（KV 静的解析 + ids fallback）、累計 4958 件テスト合格
 - 2026-07-17: **Phase 225.2 — `karte_export.copy_path` Clock NameError + LLM Coach 「参照」ボタン修正**
   - **既存バグ**: Phase 173 の `do_export_karte_ui` lazy-import から `Clock` が漏れていたため、エクスポート成功 popup の「コピー」ボタンクリックで `NameError: 'Clock' is not defined`
   - **Phase 225 自バグ**: LLM Coach の「参照」ボタンのハンドラが `I18NFileBrowser` の `on_submit`（ダブルクリックイベント）にしかバインドされておらず、OK ボタンを押しても反応しなかった
