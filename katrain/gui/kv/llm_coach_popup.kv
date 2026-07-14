@@ -1,0 +1,134 @@
+#:kivy 2.3.0
+#:import i18n katrain.gui.lang_bridge.i18n
+#:import Theme katrain.gui.theme.Theme
+#:import dp kivy.metrics.dp
+
+# Phase 225: LLM Coach popup body widget.
+#
+# Class declaration only defines rules; the corresponding Python class is
+# ``katrain.gui.popups.llm_coach_popup.LLMCcoachPopupContent``.
+#
+# NOTE: This file is intentionally simple to avoid KivyMD-textfield
+# infinite-update loops when the host runs in a tight CPU/headless env
+# (see tests/test_llm_coach_popup.py for the rationale and test
+# workarounds). The runtime GUI is fine — the loop only triggers in
+# CI/headless setups where Kivy's layout pass isn't drained by the
+# event loop.
+
+<LLMCcoachPopupContent>:
+    orientation: 'vertical'
+    padding: dp(12)
+    spacing: dp(8)
+    size_hint: 1, 1
+
+    # Karte path row
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: dp(56)
+        spacing: dp(8)
+
+        LabelledTextInput:
+            id: karte_path_input
+            hint_text: i18n._("mykatrain:llm-coach:karte-hint")
+            multiline: False
+            write_tab: False
+            font_size: sp(14)
+
+        AutoSizedRoundedRectangleButton:
+            id: browse_button
+            text: i18n._("mykatrain:llm-coach:browse")
+            size_hint_x: None
+            width: dp(100)
+            on_release: root.on_browse_karte()
+
+    # Rank row
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: dp(56)
+        spacing: dp(8)
+
+        Label:
+            text: i18n._("mykatrain:llm-coach:rank-label")
+            size_hint_x: None
+            width: dp(140)
+            font_name: Theme.DEFAULT_FONT
+            font_size: sp(14)
+
+        LabelledTextInput:
+            id: rank_input
+            hint_text: "5k"
+            multiline: False
+            write_tab: False
+            font_size: sp(14)
+
+    # Action row 1 (generate + clear)
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: dp(44)
+        spacing: dp(8)
+
+        AutoSizedRoundedRectangleButton:
+            id: generate_button
+            text: i18n._("mykatrain:llm-coach:build-prompt")
+            on_release: root.on_generate_and_copy()
+
+        AutoSizedRoundedRectangleButton:
+            id: clear_button
+            text: i18n._("mykatrain:llm-coach:clear-response")
+            on_release: root.on_clear_response()
+
+    # Response input section (multiline LabelledTextInput)
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: 0.30
+        spacing: dp(4)
+
+        Label:
+            text: i18n._("mykatrain:llm-coach:response-label")
+            size_hint_y: None
+            height: dp(20)
+            font_name: Theme.DEFAULT_FONT
+            font_size: sp(12)
+
+        LabelledTextInput:
+            id: response_input
+            multiline: True
+            write_tab: False
+            font_size: sp(13)
+
+    # Action row 2 (validate + copy result)
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: dp(44)
+        spacing: dp(8)
+
+        AutoSizedRoundedRectangleButton:
+            id: validate_button
+            text: i18n._("mykatrain:llm-coach:validate")
+            on_release: root.on_validate()
+
+        AutoSizedRoundedRectangleButton:
+            id: copy_result_button
+            text: i18n._("mykatrain:llm-coach:copy-result")
+            on_release: root.on_copy_result()
+
+    # Status line
+    Label:
+        id: status_label
+        text: root.status_text
+        size_hint_y: None
+        height: dp(22)
+        font_name: Theme.DEFAULT_FONT
+        font_size: sp(12)
+
+    # Result label (read-only)
+    Label:
+        id: result_label
+        text: ""
+        font_name: Theme.DEFAULT_FONT
+        font_size: sp(12)
+        size_hint_y: 0.40
