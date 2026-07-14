@@ -14,6 +14,12 @@ Layout:
 All modules are core-layer (Kivy-free).
 """
 
+from katrain.core.coach.calibration_fixtures import (
+    ALL_FIXTURES,
+    GoldenFixture,
+    get_fixture,
+    list_fixture_names,
+)
 from katrain.core.coach.karte_detector import (
     build_symptom_context_from_karte,
     detect_symptoms_from_karte,
@@ -31,6 +37,8 @@ from katrain.core.coach.karte_detector import (
     extract_streak_count,
     extract_total_streak_loss,
     extract_weakness_concentration,
+    extract_winrate_scorelead_correlation,
+    extract_winrate_scorelead_pairs,
 )
 from katrain.core.coach.lexicon import (
     DEFAULT_LEXICON_PATH,
@@ -165,4 +173,11 @@ __all__ = [
     "extract_streak_count",
     "extract_total_streak_loss",
     "extract_weakness_concentration",
+    "extract_winrate_scorelead_correlation",
+    "extract_winrate_scorelead_pairs",
+    # calibration_fixtures (Phase 218)
+    "GoldenFixture",
+    "ALL_FIXTURES",
+    "get_fixture",
+    "list_fixture_names",
 ] 
