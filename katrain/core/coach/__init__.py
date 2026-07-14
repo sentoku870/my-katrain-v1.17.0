@@ -1,4 +1,4 @@
-"""Phase 207-209: Coach module — Master coaching database + Lexicon + Symptom index.
+"""Phase 207-210: Coach module — Master coaching database + Lexicon + Symptom index + Tones.
 
 This subpackage hosts the LLM "translation" pipeline data and helpers
 documented in `docs/archive/specs-planned/phase203-llm-translator.md`.
@@ -51,6 +51,16 @@ from katrain.core.coach.symptom_index import (
     list_llm_required_symptoms,
     lookup_symptom,
 )
+from katrain.core.coach.tones import (
+    apply_kansai_normalisation,
+    check_prohibited,
+    greeting_for_mode,
+    greeting_for_voice,
+    has_kansai_markers,
+    modes_for_voice,
+    select_voice,
+    voice_summary,
+)
 
 __all__ = [
     # master_db (Phase 207)
@@ -87,4 +97,13 @@ __all__ = [
     "list_auto_detected_symptoms",
     "list_llm_required_symptoms",
     "detect_auto_symptoms",
+    # tones (Phase 210)
+    "select_voice",
+    "greeting_for_mode",
+    "greeting_for_voice",
+    "has_kansai_markers",
+    "apply_kansai_normalisation",
+    "check_prohibited",
+    "voice_summary",
+    "modes_for_voice",
 ] 
