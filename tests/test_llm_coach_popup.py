@@ -16,6 +16,7 @@ We mock:
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -50,18 +51,30 @@ def _make_content() -> Any:
     Phase 225.3: also wire up an ``ids`` dict so ``_read_text`` /
     ``_set_widget_text`` can resolve widget references via the same
     lookup path the live popup uses.
+
+    Phase 225.6: include rank_auto_label, perspective_select, and
+    perspective_auto_label so the auto-detect helpers can be tested.
     """
     from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
     content = LLMCcoachPopupContent.__new__(LLMCcoachPopupContent)
     content.katrain = None
     content.popup = None
+    content.perspective_value = "auto"
+    content.detected_rank = None
+    content.detected_player_color = None
 
     # Per-widget MagicMocks
     karte_path_input = MagicMock()
     karte_path_input.text = ""
     rank_input = MagicMock()
     rank_input.text = ""
+    rank_auto_label = MagicMock()
+    rank_auto_label.text = ""
+    perspective_select = MagicMock()
+    perspective_select.text = ""
+    perspective_auto_label = MagicMock()
+    perspective_auto_label.text = ""
     response_input = MagicMock()
     response_input.text = ""
     status_label = MagicMock()
@@ -74,6 +87,9 @@ def _make_content() -> Any:
     # Bind on the class as ObjectProperty
     content.karte_path_input = karte_path_input
     content.rank_input = rank_input
+    content.rank_auto_label = rank_auto_label
+    content.perspective_select = perspective_select
+    content.perspective_auto_label = perspective_auto_label
     content.response_input = response_input
     content.status_label = status_label
     content.result_label = result_label
@@ -85,6 +101,9 @@ def _make_content() -> Any:
     content.ids = {
         "karte_path_input": karte_path_input,
         "rank_input": rank_input,
+        "rank_auto_label": rank_auto_label,
+        "perspective_select": perspective_select,
+        "perspective_auto_label": perspective_auto_label,
         "response_input": response_input,
         "status_label": status_label,
         "result_label": result_label,
@@ -531,6 +550,151 @@ class TestPhase2253OnGenerateUsesIds:
 
 
 # ---- open_llm_coach_popup ---------------------------------------------
+
+
+class TestPhase2256RankAutoFill:
+    """Phase 225.6: Karte/SGF から rank を自動取得し input に反映"""
+
+    def test_populate_rank_and_perspective_sets_rank_when_empty(self, tmp_path):
+        content = _make_content()
+        # Simulate karte with player_info
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "4d"},
+                            "white": {"name": "P2", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        assert content.ids["rank_input"].text == "4d"  # black first in auto
+        assert content.detected_rank == "4d"
+        assert "rank-auto" in content.ids["rank_auto_label"].text or "auto" in content.ids["rank_auto_label"].text.lower()
+
+    def test_does_not_overwrite_user_typed_rank(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "4d"},
+                            "white": {"name": "P2", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.ids["karte_path_input"].text = str(karte)
+        content.ids["rank_input"].text = "5k"  # user already typed
+        content._populate_rank_and_perspective()
+        # User input is preserved
+        assert content.ids["rank_input"].text == "5k"
+
+    def test_perspective_auto_label_uses_detected_color(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "4d"},
+                            "white": {"name": "P2", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        assert content.detected_player_color == "B"
+
+
+class TestPhase2256PlayerColorPassthrough:
+    """Phase 225.6: on_generate_and_copy が player_color を build_llm_prompt に渡す"""
+
+    def test_player_color_passed_through_on_generate(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
+        content.ids["karte_path_input"].text = str(karte)
+        content.ids["rank_input"].text = "5k"
+        content.detected_player_color = "B"
+        content.perspective_value = "B"
+        fake_prompt = MagicMock()
+        fake_prompt.full_markdown = "# PROMPT"
+        with patch(
+            "katrain.gui.features.llm_coach.build_llm_prompt",
+            return_value=(True, "# PROMPT"),
+        ) as spy, patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+            content.on_generate_and_copy()
+        assert spy.call_args.kwargs.get("player_color") == "B"
+
+    def test_player_color_none_when_auto_no_detection(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(json.dumps({"meta": {}}), encoding="utf-8")
+        content.ids["karte_path_input"].text = str(karte)
+        content.ids["rank_input"].text = "5k"
+        content.perspective_value = "auto"
+        content.detected_player_color = None
+        with patch(
+            "katrain.gui.features.llm_coach.build_llm_prompt",
+            return_value=(True, "# PROMPT"),
+        ) as spy, patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+            content.on_generate_and_copy()
+        assert spy.call_args.kwargs.get("player_color") is None
+
+
+class TestPhase2256Helpers:
+    """Phase 225.6: module-level helpers _pick_detected_rank, _resolve_player_color."""
+
+    def test_pick_detected_rank_auto_prefers_black(self):
+        from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+        info = {
+            "black": {"rank": "4d"},
+            "white": {"rank": "3d"},
+        }
+        assert _pick_detected_rank(info, "auto") == "4d"
+
+    def test_pick_detected_rank_white(self):
+        from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+        info = {
+            "black": {"rank": "4d"},
+            "white": {"rank": "3d"},
+        }
+        assert _pick_detected_rank(info, "W") == "3d"
+
+    def test_pick_detected_rank_returns_none_when_missing(self):
+        from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+        info = {"black": {"rank": None}, "white": {"rank": None}}
+        assert _pick_detected_rank(info, "auto") is None
+
+    def test_resolve_player_color_explicit_B(self):
+        from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+        assert _resolve_player_color("B", "W") == "B"
+        assert _resolve_player_color("黒 (B)", None) == "B"
+
+    def test_resolve_player_color_auto_with_detection(self):
+        from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+        assert _resolve_player_color("auto", "W") == "W"
+
+    def test_resolve_player_color_auto_no_detection(self):
+        from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+        assert _resolve_player_color("auto", None) is None
 
 
 class TestOpenLlmCoachPopup:

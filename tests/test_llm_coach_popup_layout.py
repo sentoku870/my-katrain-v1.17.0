@@ -192,3 +192,28 @@ class TestPhase2254SizedButtonMigration:
         assert "mykatrain:llm-coach:workflow-hint" in kv, (
             "Popup must include the workflow-hint i18n key"
         )
+
+
+class TestPhase2256PerspectiveSpinner:
+    """Phase 225.6: rank auto-hint label and perspective selector."""
+
+    def test_perspective_spinner_present(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "perspective_select")
+        assert "Spinner" in block
+
+    def test_perspective_values_include_auto_black_white(self) -> None:
+        kv = _read_kv()
+        assert "mykatrain:llm-coach:perspective-auto" in kv
+        assert "mykatrain:llm-coach:perspective-black" in kv
+        assert "mykatrain:llm-coach:perspective-white" in kv
+
+    def test_rank_auto_hint_label_present(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "rank_auto_label")
+        assert block, "rank_auto_label widget must exist in the KV"
+
+    def test_perspective_auto_label_present(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "perspective_auto_label")
+        assert block, "perspective_auto_label widget must exist in the KV"

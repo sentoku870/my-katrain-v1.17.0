@@ -60,6 +60,9 @@ class LLMCcoachPopupContent(BoxLayout):
 
     karte_path_input = ObjectProperty(None, allownone=True)
     rank_input = ObjectProperty(None, allownone=True)
+    rank_auto_label = ObjectProperty(None, allownone=True)
+    perspective_select = ObjectProperty(None, allownone=True)
+    perspective_auto_label = ObjectProperty(None, allownone=True)
     response_input = ObjectProperty(None, allownone=True)
     status_label = ObjectProperty(None, allownone=True)
     result_label = ObjectProperty(None, allownone=True)
@@ -67,6 +70,14 @@ class LLMCcoachPopupContent(BoxLayout):
     validate_button = ObjectProperty(None, allownone=True)
 
     status_text = StringProperty("")
+    # Phase 225.6: which side the user actually plays. ``"auto"`` (default)
+    # asks ``detect_player_color_for_user`` to figure it out from the
+    # user's mykatrain setting; explicit ``"B"`` / ``"W"`` overrides.
+    perspective_value = StringProperty("auto")
+    # The detected rank from the Karte/SGF, used to display a small
+    # "(auto-detected: ...)" hint next to the manual rank input.
+    detected_rank: str | None = None
+    detected_player_color: str | None = None
 
     # ---- Lifecycle -----------------------------------------------------
 
@@ -77,6 +88,7 @@ class LLMCcoachPopupContent(BoxLayout):
         filesystem walk doesn't block startup.
         """
         Clock.schedule_once(lambda _dt: self._populate_initial_karte_path(), 0)
+        Clock.schedule_once(lambda _dt: self._populate_rank_and_perspective(), 0)
 
     def _populate_initial_karte_path(self) -> None:
         if self.karte_path_input is None:
@@ -91,6 +103,84 @@ class LLMCcoachPopupContent(BoxLayout):
             latest = None
         if latest is not None:
             self.karte_path_input.text = str(latest)
+
+    def _populate_rank_and_perspective(self) -> None:
+        """Phase 225.6: detect rank + player color from Karte/SGF.
+
+        Reads the karte meta's ``player_info`` block (or falls back to
+        the source SGF) to fill the rank input field and the
+        perspective select. Auto-detected values are shown alongside
+        the manual controls so the user can override.
+        """
+        karte_path = self._read_text("karte_path_input")
+        if not karte_path:
+            return
+        try:
+            from katrain.gui.features.llm_coach import (
+                detect_player_color_for_user,
+                detect_player_info,
+            )
+
+            info = detect_player_info(self.katrain, karte_path)
+        except Exception:
+            return
+
+        # ---- Rank auto-fill ----
+        detected = _pick_detected_rank(info, self.perspective_value)
+        if detected:
+            self.detected_rank = detected
+            # Only overwrite the visible input if the user hasn't typed
+            # their own rank yet.
+            current = self._read_text("rank_input")
+            if not current:
+                self._set_widget_text("rank_input", detected)
+            self._refresh_rank_hint()
+
+        # ---- Player color auto-fill ----
+        try:
+            color, _ = detect_player_color_for_user(self.katrain, karte_path)
+        except Exception:
+            color = None
+        if color in ("B", "W"):
+            self.detected_player_color = color
+        self._refresh_perspective_hint()
+
+    def _refresh_rank_hint(self) -> None:
+        label = self._get_widget("rank_auto_label")
+        if label is None:
+            return
+        if self.detected_rank:
+            label.text = i18n._("mykatrain:llm-coach:rank-auto").format(
+                rank=self.detected_rank
+            )
+        else:
+            label.text = ""
+
+    def _refresh_perspective_hint(self) -> None:
+        label = self._get_widget("perspective_auto_label")
+        if label is None:
+            return
+        detected = self.detected_player_color
+        if detected == "B":
+            text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(
+                color=i18n._("mykatrain:llm-coach:perspective-black")
+            )
+        elif detected == "W":
+            text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(
+                color=i18n._("mykatrain:llm-coach:perspective-white")
+            )
+        else:
+            text = i18n._("mykatrain:llm-coach:perspective-auto-fallback")
+        label.text = text
+
+    def on_perspective_changed(self, *_args: Any) -> None:
+        """KV-side callback: spinner selection changed -> re-detect rank."""
+        # Read the spinner value via ids (defensive against stale ref).
+        spinner = self._get_widget("perspective_select")
+        if spinner is None:
+            return
+        self.perspective_value = getattr(spinner, "text", "auto")
+        self._populate_rank_and_perspective()
 
     # ---- Button handlers ----------------------------------------------
 
@@ -141,6 +231,9 @@ class LLMCcoachPopupContent(BoxLayout):
         touch the actual Kivy widget reference (avoids the rare case
         where a stale ``self.karte_path_input`` reads back empty even
         though the field visibly contains text).
+
+        Phase 225.6: also pass ``player_color`` resolved from the
+        perspective spinner + the auto-detected Karte/SGF colour.
         """
         from katrain.gui.features.llm_coach import build_llm_prompt
 
@@ -149,10 +242,14 @@ class LLMCcoachPopupContent(BoxLayout):
         if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
             return
+        player_color = _resolve_player_color(
+            self.perspective_value, self.detected_player_color
+        )
         ok, content = build_llm_prompt(
             self.katrain,
             karte_path,
             rank=rank,
+            player_color=player_color,
         )
         if not ok:
             self._set_status(content, error=True)
@@ -318,3 +415,32 @@ def open_llm_coach_popup(ctx: Any) -> Any:
     content.popup = popup
     popup.open()
     return popup
+
+
+# --- Helper (kept at module scope so tests can import) -----------------
+
+
+def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
+    """Pick the rank to show for the active perspective.
+
+    Phase 225.6: the rank hint shows the player's own rank when the
+    perspective is Auto / B / W. Returns ``None`` when nothing is known.
+    """
+    black = (info.get("black") or {}).get("rank") or None
+    white = (info.get("white") or {}).get("rank") or None
+    if perspective_value == "B" or perspective_value.lower().startswith("黒"):
+        return black
+    if perspective_value == "W" or perspective_value.lower().startswith("白"):
+        return white
+    return black or white
+
+
+def _resolve_player_color(perspective_value: str, detected: str | None) -> str | None:
+    """Resolve the user's perspective spinner selection to a "B"/"W"/None."""
+    val = perspective_value or "auto"
+    if val == "B" or val.startswith("黒"):
+        return "B"
+    if val == "W" or val.startswith("白"):
+        return "W"
+    # auto: prefer detected, else None
+    return detected
