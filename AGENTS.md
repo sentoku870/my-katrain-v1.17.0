@@ -33,6 +33,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 207-213（2026-07-17）: `core/coach/` パッケージ完全実装（master_db / lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、合計 243 unit tests、全 4752 件テスト合格）
   - Phase 214-A（2026-07-17）: LLM coach CLI tool（`core/coach/cli.py`、17 unit tests）
   - Phase 215（2026-07-17）: Karte-aware symptom detection（`core/coach/karte_detector.py`、30 unit tests）
+  - Phase 216（2026-07-17）: Streak-based symptom detection（`karte_detector.py` 拡張、17 unit tests）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
@@ -287,6 +288,11 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 216 — Streak-based symptom detection**（Lv2）
+  - `katrain/core/coach/karte_detector.py` 拡張: 5 個の streak aggregator helper
+  - `detect_symptoms_from_karte` を 3 系統統合に拡張（per-move + weakness + streak）
+  - 4 つの「新規」症状（OVERFIGHT / SMALL_MOVE_ADDICTION / TILT_CHAIN / TILT_DISCOURAGEMENT）を自動検出可能化
+  - 17 件ユニットテスト追加、全 4816 件テスト合格
 - 2026-07-17: **Phase 215 — Karte-aware symptom detection**（Lv2）
   - `katrain/core/coach/karte_detector.py`: Karte JSON → SymptomContext 自動構築
   - 11 個の aggregator helper（avg_points_lost, max_score_stdev, weakness_concentration 等）

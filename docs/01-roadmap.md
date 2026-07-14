@@ -1033,6 +1033,11 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - `detect_symptoms_from_karte` — SymptomContext + weakness カテゴリの統合検出
   - 11 個の aggregator helper
   - 30 件ユニットテスト合格
+- [x] **Phase 216: Streak-based symptom detection** — `karte_detector.py` 拡張（Lv2、2026-07-14 完了）
+  - 5 個の streak aggregator helper（longest_streak, total_streak_loss, ...）
+  - `detect_symptoms_from_karte` を per-move + weakness + **streak** の 3 系統統合に拡張
+  - 4 つの「新規」症状（OVERFIGHT / SMALL_MOVE_ADDICTION / TILT_CHAIN / TILT_DISCOURAGEMENT）を自動検出可能化
+  - 17 件新規ユニットテスト合格
 - [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---
