@@ -1,7 +1,7 @@
 """Difficulty-assessment tests (Phase E-1).
 
 Extracted from tests/test_karte_structure.py. Covers
-:func:`_assess_difficulty_from_policy` and the EvalSnapshot
+:func:`assess_difficulty_from_policy` and the EvalSnapshot
 difficulty-stats fields populated by the karte pipeline.
 """
 
@@ -9,13 +9,10 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-from katrain.core.eval_metrics import (
-    EvalSnapshot,
-    MoveEval,
-    PositionDifficulty,
-    snapshot_from_nodes,
-)
+from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
+from katrain.core.analysis.models.enums import PositionDifficulty
+from katrain.core.analysis import snapshot_from_nodes
 
 
 class TestPolicyBasedDifficulty:
@@ -23,7 +20,7 @@ class TestPolicyBasedDifficulty:
 
     def test_empty_policy(self):
         """Empty policy should return UNKNOWN."""
-        difficulty, score = _assess_difficulty_from_policy([])
+        difficulty, score = assess_difficulty_from_policy([])
         assert difficulty == PositionDifficulty.UNKNOWN
         assert score == 0.5
 
@@ -31,7 +28,7 @@ class TestPolicyBasedDifficulty:
         """High entropy policy (distributed) should be EASY."""
         # Create a policy with many moves having similar probability
         policy = [0.05] * 19 + [0.05]  # 20 moves with 5% each
-        difficulty, score = _assess_difficulty_from_policy(
+        difficulty, score = assess_difficulty_from_policy(
             policy,
             entropy_easy_threshold=2.0,  # Lower threshold for test
             top5_easy_threshold=0.4,
@@ -43,7 +40,7 @@ class TestPolicyBasedDifficulty:
         """Low entropy policy (concentrated) should be HARD or ONLY_MOVE."""
         # Create a policy with one dominant move
         policy = [0.9] + [0.01] * 10
-        difficulty, score = _assess_difficulty_from_policy(policy)
+        difficulty, score = assess_difficulty_from_policy(policy)
         assert difficulty in (PositionDifficulty.HARD, PositionDifficulty.ONLY_MOVE)
         assert score >= 0.8
 
@@ -51,7 +48,7 @@ class TestPolicyBasedDifficulty:
         """Policy with single dominant move should be ONLY_MOVE."""
         # Create a policy where top move has >80% probability
         policy = [0.85] + [0.015] * 10
-        difficulty, score = _assess_difficulty_from_policy(policy)
+        difficulty, score = assess_difficulty_from_policy(policy)
         assert difficulty == PositionDifficulty.ONLY_MOVE
         assert score == 1.0
 
@@ -59,7 +56,7 @@ class TestPolicyBasedDifficulty:
         """Moderate entropy policy should be NORMAL."""
         # Create a balanced policy
         policy = [0.3, 0.25, 0.2, 0.15, 0.1]
-        difficulty, score = _assess_difficulty_from_policy(policy)
+        difficulty, score = assess_difficulty_from_policy(policy)
         # Should be somewhere in the middle
         assert difficulty in (
             PositionDifficulty.EASY,

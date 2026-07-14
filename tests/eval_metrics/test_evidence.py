@@ -11,14 +11,9 @@ from __future__ import annotations
 import pytest
 
 from katrain.core.analysis.models import ConfidenceLevel
-from katrain.core.eval_metrics import (
-    MistakeCategory,
-    PositionDifficulty,
-    compute_importance_for_moves,
-    format_evidence_examples,
-    get_evidence_count,
-    select_representative_moves,
-)
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
+from katrain.core.analysis import compute_importance_for_moves, select_representative_moves
+from katrain.core.analysis.presentation import format_evidence_examples, get_evidence_count
 from tests.helpers_eval_metrics import make_move_eval
 
 
@@ -145,13 +140,8 @@ class TestEvidenceAttachments:
 # Test: Important Move Ranking Redesign (PR#4)
 # ---------------------------------------------------------------------------
 
-from katrain.core.eval_metrics import (
-    DIFFICULTY_MODIFIER_HARD,
-    DIFFICULTY_MODIFIER_ONLY_MOVE,
-    STREAK_START_BONUS,
-    get_difficulty_modifier,
-    get_reliability_scale,
-)
+from katrain.core.analysis.logic_importance import DIFFICULTY_MODIFIER_HARD, DIFFICULTY_MODIFIER_ONLY_MOVE, STREAK_START_BONUS
+from katrain.core.analysis import get_difficulty_modifier, get_reliability_scale
 
 
 class TestImportanceRankingRedesign:

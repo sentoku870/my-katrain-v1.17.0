@@ -7,15 +7,10 @@ Extracted from tests/test_karte_structure.py. Covers
 
 from __future__ import annotations
 
-from katrain.core.eval_metrics import (
-    MistakeStreak,
-    MoveEval,
-    PhaseMistakeStats,
-    aggregate_phase_mistake_stats,
-    classify_game_phase,
-    detect_mistake_streaks,
-    get_practice_priorities_from_stats,
-)
+from katrain.core.analysis.models.skill import MistakeStreak, PhaseMistakeStats
+from katrain.core.analysis.models.move_eval import MoveEval
+from katrain.core.analysis import aggregate_phase_mistake_stats, classify_game_phase, detect_mistake_streaks
+from katrain.core.analysis.presentation import get_practice_priorities_from_stats
 
 
 class TestPhaseMistakeStats:

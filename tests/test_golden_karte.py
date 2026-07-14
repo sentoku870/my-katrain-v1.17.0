@@ -16,16 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from katrain.core.eval_metrics import (
-    ConfidenceLevel,
-    EvalSnapshot,
-    MistakeCategory,
-    MoveEval,
-    PositionDifficulty,
-    classify_mistake,
-    compute_confidence_level,
-    compute_importance_for_moves,
-)
+from katrain.core.analysis.models.enums import ConfidenceLevel, MistakeCategory, PositionDifficulty
+from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
+from katrain.core.analysis import classify_mistake, compute_confidence_level, compute_importance_for_moves
 from tests.conftest import load_golden, normalize_output
 
 # ---------------------------------------------------------------------------
@@ -506,8 +499,7 @@ class TestDeterministicSorting:
 
     def test_evidence_tiebreak_by_move_number(self):
         """Evidence with same score_loss should be sorted by move_number ascending."""
-        from katrain.core.eval_metrics import select_representative_moves
-
+        from katrain.core.analysis import select_representative_moves
         moves = []
         for i in [15, 5, 10]:  # Out of order
             move = MoveEval(
@@ -605,7 +597,7 @@ class TestKarteFromSGF:
 
         Uses mock analysis injection to ensure deterministic output.
         """
-        from katrain.core.reports.karte_report import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_report
         from tests.conftest import update_golden_if_requested
 
         game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
@@ -635,8 +627,7 @@ class TestKarteFromSGF:
 
         Running the same input twice should produce identical output.
         """
-        from katrain.core.reports.karte_report import build_karte_report
-
+        from katrain.core.reports.karte.builder import build_karte_report
         # Generate twice
         game1 = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
         output1 = normalize_output(build_karte_report(game1))

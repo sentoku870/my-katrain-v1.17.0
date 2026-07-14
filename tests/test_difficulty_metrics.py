@@ -2,12 +2,12 @@
 Phase 12: 難易度分解（Difficulty Metrics）のユニットテスト
 
 テストカテゴリ:
-- 正規化（_normalize_candidates）
-- root_visits取得（_get_root_visits）
-- 信頼性判定（_determine_reliability）
-- Policy難易度（_compute_policy_difficulty）
-- Transition難易度（_compute_transition_difficulty）
-- State難易度（_compute_state_difficulty）
+- 正規化（normalize_candidates）
+- root_visits取得（get_root_visits）
+- 信頼性判定（determine_reliability）
+- Policy難易度（compute_policy_difficulty）
+- Transition難易度（compute_transition_difficulty）
+- State難易度（compute_state_difficulty）
 - 統合関数（compute_difficulty_metrics）
 - UNKNOWN判定（is_unknownフラグ）
 - 符号処理（負のscoreLead）
@@ -31,14 +31,7 @@ from katrain.core.analysis import (
 )
 
 # Internal helpers (accessed directly to avoid public API surface)
-from katrain.core.analysis.logic_difficulty import (
-    _compute_policy_difficulty,
-    _compute_state_difficulty,
-    _compute_transition_difficulty,
-    _determine_reliability,
-    _get_root_visits,
-    _normalize_candidates,
-)
+from katrain.core.analysis.difficulty import compute_policy_difficulty, compute_state_difficulty, compute_transition_difficulty, determine_reliability, get_root_visits, normalize_candidates
 
 # =============================================================================
 # Fixtures
@@ -81,11 +74,11 @@ FIXTURE_CANDIDATES_WHITE_ADVANTAGE = [
 
 
 class TestNormalizeCandidates:
-    """_normalize_candidates のテスト"""
+    """normalize_candidates のテスト"""
 
     def test_sorted_candidates(self):
         """既にソート済みの候補をそのまま返す"""
-        result = _normalize_candidates(FIXTURE_CANDIDATES_BALANCED)
+        result = normalize_candidates(FIXTURE_CANDIDATES_BALANCED)
         assert result is not None
         assert len(result) == 3
         assert result[0]["order"] == 0
@@ -93,7 +86,7 @@ class TestNormalizeCandidates:
 
     def test_unsorted_candidates(self):
         """未ソートの候補をソートする"""
-        result = _normalize_candidates(FIXTURE_CANDIDATES_UNSORTED)
+        result = normalize_candidates(FIXTURE_CANDIDATES_UNSORTED)
         assert result is not None
         assert result[0]["order"] == 0
         assert result[1]["order"] == 1
@@ -101,12 +94,12 @@ class TestNormalizeCandidates:
 
     def test_no_order_returns_none(self):
         """order がない場合は None を返す"""
-        result = _normalize_candidates(FIXTURE_CANDIDATES_NO_ORDER)
+        result = normalize_candidates(FIXTURE_CANDIDATES_NO_ORDER)
         assert result is None
 
     def test_empty_list(self):
         """空リストは空リストを返す"""
-        result = _normalize_candidates([])
+        result = normalize_candidates([])
         assert result == []
 
 
@@ -116,22 +109,22 @@ class TestNormalizeCandidates:
 
 
 class TestGetRootVisits:
-    """_get_root_visits のテスト"""
+    """get_root_visits のテスト"""
 
     def test_from_rootInfo(self):
         """KataGo 標準フォーマット: rootInfo.visits"""
         analysis = {"rootInfo": {"visits": 1000}}
-        assert _get_root_visits(analysis) == 1000
+        assert get_root_visits(analysis) == 1000
 
     def test_from_root(self):
         """KaTrain 内部フォーマット: root.visits"""
         analysis = {"root": {"visits": 800}}
-        assert _get_root_visits(analysis) == 800
+        assert get_root_visits(analysis) == 800
 
     def test_direct_visits(self):
         """直接参照: visits"""
         analysis = {"visits": 600}
-        assert _get_root_visits(analysis) == 600
+        assert get_root_visits(analysis) == 600
 
     def test_priority_order(self):
         """優先順位: rootInfo > root > visits"""
@@ -140,17 +133,17 @@ class TestGetRootVisits:
             "root": {"visits": 800},
             "visits": 600,
         }
-        assert _get_root_visits(analysis) == 1000
+        assert get_root_visits(analysis) == 1000
 
     def test_missing_returns_none(self):
         """どのキーもない場合は None"""
         analysis = {"moveInfos": []}
-        assert _get_root_visits(analysis) is None
+        assert get_root_visits(analysis) is None
 
     def test_empty_analysis(self):
         """空の analysis は None"""
-        assert _get_root_visits({}) is None
-        assert _get_root_visits(None) is None
+        assert get_root_visits({}) is None
+        assert get_root_visits(None) is None
 
 
 # =============================================================================
@@ -159,46 +152,46 @@ class TestGetRootVisits:
 
 
 class TestDetermineReliability:
-    """_determine_reliability のテスト"""
+    """determine_reliability のテスト"""
 
     def test_reliable(self):
         """十分な visits と候補数で reliable"""
-        is_reliable, reason = _determine_reliability(1000, 5)
+        is_reliable, reason = determine_reliability(1000, 5)
         assert is_reliable is True
         assert reason == "reliable"
 
     def test_root_visits_none(self):
         """root_visits=None は unreliable"""
-        is_reliable, reason = _determine_reliability(None, 5)
+        is_reliable, reason = determine_reliability(None, 5)
         assert is_reliable is False
         assert "root_visits_missing" in reason
 
     def test_visits_insufficient(self):
         """visits 不足は unreliable"""
-        is_reliable, reason = _determine_reliability(100, 5)
+        is_reliable, reason = determine_reliability(100, 5)
         assert is_reliable is False
         assert "visits_insufficient" in reason
 
     def test_candidates_insufficient(self):
         """候補不足は unreliable"""
-        is_reliable, reason = _determine_reliability(1000, 1)
+        is_reliable, reason = determine_reliability(1000, 1)
         assert is_reliable is False
         assert "candidates_insufficient" in reason
 
     def test_boundary_visits(self):
         """境界値: visits=DIFFICULTY_MIN_VISITS は reliable (Phase 158-F: 300)."""
-        is_reliable, _ = _determine_reliability(DIFFICULTY_MIN_VISITS, 5)
+        is_reliable, _ = determine_reliability(DIFFICULTY_MIN_VISITS, 5)
         assert is_reliable is True
 
-        is_reliable, _ = _determine_reliability(DIFFICULTY_MIN_VISITS - 1, 5)
+        is_reliable, _ = determine_reliability(DIFFICULTY_MIN_VISITS - 1, 5)
         assert is_reliable is False
 
     def test_boundary_candidates(self):
         """境界値: 候補2件は reliable (MIN_CANDIDATES=2)"""
-        is_reliable, _ = _determine_reliability(1000, 2)
+        is_reliable, _ = determine_reliability(1000, 2)
         assert is_reliable is True
 
-        is_reliable, _ = _determine_reliability(1000, 1)
+        is_reliable, _ = determine_reliability(1000, 1)
         assert is_reliable is False
 
 
@@ -208,7 +201,7 @@ class TestDetermineReliability:
 
 
 class TestComputePolicyDifficulty:
-    """_compute_policy_difficulty のテスト"""
+    """compute_policy_difficulty のテスト"""
 
     def test_gap_zero_returns_one(self):
         """gap=0 は difficulty=1.0"""
@@ -216,7 +209,7 @@ class TestComputePolicyDifficulty:
             {"order": 0, "scoreLead": 2.0},
             {"order": 1, "scoreLead": 2.0},
         ]
-        difficulty, _ = _compute_policy_difficulty(candidates)
+        difficulty, _ = compute_policy_difficulty(candidates)
         assert difficulty == 1.0
 
     def test_gap_max_returns_zero(self):
@@ -225,7 +218,7 @@ class TestComputePolicyDifficulty:
             {"order": 0, "scoreLead": 10.0},
             {"order": 1, "scoreLead": 5.0},  # gap=5.0
         ]
-        difficulty, _ = _compute_policy_difficulty(candidates)
+        difficulty, _ = compute_policy_difficulty(candidates)
         assert difficulty == 0.0
 
     def test_gap_intermediate(self):
@@ -235,13 +228,13 @@ class TestComputePolicyDifficulty:
             {"order": 0, "scoreLead": 5.0},
             {"order": 1, "scoreLead": 2.5},
         ]
-        difficulty, _ = _compute_policy_difficulty(candidates)
+        difficulty, _ = compute_policy_difficulty(candidates)
         assert difficulty == pytest.approx(0.5, abs=0.01)
 
     def test_insufficient_candidates(self):
         """候補1件は difficulty=0.0"""
         candidates = [{"order": 0, "scoreLead": 2.0}]
-        difficulty, _ = _compute_policy_difficulty(candidates)
+        difficulty, _ = compute_policy_difficulty(candidates)
         assert difficulty == 0.0
 
     def test_missing_scorelead_returns_none(self):
@@ -250,14 +243,14 @@ class TestComputePolicyDifficulty:
             {"order": 0, "move": "D4"},
             {"order": 1, "move": "E5"},
         ]
-        difficulty, debug = _compute_policy_difficulty(candidates, include_debug=True)
+        difficulty, debug = compute_policy_difficulty(candidates, include_debug=True)
         assert difficulty is None
         assert debug["reason"] == "missing_scoreLead"
 
     def test_debug_info(self):
         """デバッグ情報の確認"""
         candidates = FIXTURE_CANDIDATES_BALANCED
-        difficulty, debug = _compute_policy_difficulty(candidates, include_debug=True)
+        difficulty, debug = compute_policy_difficulty(candidates, include_debug=True)
         assert debug is not None
         assert "top1_score" in debug
         assert "top2_score" in debug
@@ -270,7 +263,7 @@ class TestComputePolicyDifficulty:
 
 
 class TestComputeTransitionDifficulty:
-    """_compute_transition_difficulty のテスト"""
+    """compute_transition_difficulty のテスト"""
 
     def test_drop_zero_returns_zero(self):
         """drop=0 は difficulty=0.0"""
@@ -278,7 +271,7 @@ class TestComputeTransitionDifficulty:
             {"order": 0, "scoreLead": 2.0},
             {"order": 1, "scoreLead": 2.0},
         ]
-        difficulty, _ = _compute_transition_difficulty(candidates)
+        difficulty, _ = compute_transition_difficulty(candidates)
         assert difficulty == 0.0
 
     def test_drop_max_returns_one(self):
@@ -287,7 +280,7 @@ class TestComputeTransitionDifficulty:
             {"order": 0, "scoreLead": 10.0},
             {"order": 1, "scoreLead": 2.0},  # drop=8.0
         ]
-        difficulty, _ = _compute_transition_difficulty(candidates)
+        difficulty, _ = compute_transition_difficulty(candidates)
         assert difficulty == 1.0
 
     def test_drop_intermediate(self):
@@ -297,13 +290,13 @@ class TestComputeTransitionDifficulty:
             {"order": 0, "scoreLead": 6.0},
             {"order": 1, "scoreLead": 2.0},
         ]
-        difficulty, _ = _compute_transition_difficulty(candidates)
+        difficulty, _ = compute_transition_difficulty(candidates)
         assert difficulty == pytest.approx(0.5, abs=0.01)
 
     def test_insufficient_candidates(self):
         """候補1件は difficulty=0.0"""
         candidates = [{"order": 0, "scoreLead": 2.0}]
-        difficulty, _ = _compute_transition_difficulty(candidates)
+        difficulty, _ = compute_transition_difficulty(candidates)
         assert difficulty == 0.0
 
     def test_missing_scorelead_returns_none(self):
@@ -312,7 +305,7 @@ class TestComputeTransitionDifficulty:
             {"order": 0, "move": "D4"},
             {"order": 1, "move": "E5"},
         ]
-        difficulty, debug = _compute_transition_difficulty(candidates, include_debug=True)
+        difficulty, debug = compute_transition_difficulty(candidates, include_debug=True)
         assert difficulty is None
         assert debug["reason"] == "missing_scoreLead"
 
@@ -323,18 +316,18 @@ class TestComputeTransitionDifficulty:
 
 
 class TestComputeStateDifficulty:
-    """_compute_state_difficulty のテスト"""
+    """compute_state_difficulty のテスト"""
 
     def test_always_zero(self):
         """v1 では常に 0.0"""
         candidates = FIXTURE_CANDIDATES_BALANCED
-        difficulty, _ = _compute_state_difficulty(candidates)
+        difficulty, _ = compute_state_difficulty(candidates)
         assert difficulty == 0.0
 
     def test_debug_info(self):
         """デバッグ情報の確認"""
         candidates = FIXTURE_CANDIDATES_BALANCED
-        difficulty, debug = _compute_state_difficulty(candidates, include_debug=True)
+        difficulty, debug = compute_state_difficulty(candidates, include_debug=True)
         assert debug is not None
         assert "v1_note" in debug
         assert "candidate_count" in debug
@@ -568,9 +561,9 @@ class TestPolicyVsTransition:
         """gap が小さい場合: Policy 高、Transition 低"""
         # gap=0.2
         candidates = FIXTURE_CANDIDATES_BALANCED
-        normalized = _normalize_candidates(candidates)
-        policy, _ = _compute_policy_difficulty(normalized)
-        transition, _ = _compute_transition_difficulty(normalized)
+        normalized = normalize_candidates(candidates)
+        policy, _ = compute_policy_difficulty(normalized)
+        transition, _ = compute_transition_difficulty(normalized)
         # 候補が拮抗 → 迷いやすいが崩れにくい
         assert policy > 0.9  # 高い
         assert transition < 0.1  # 低い
@@ -579,9 +572,9 @@ class TestPolicyVsTransition:
         """gap が大きい場合: Policy 低、Transition 高"""
         # gap=8.0
         candidates = FIXTURE_CANDIDATES_CLEAR_BEST
-        normalized = _normalize_candidates(candidates)
-        policy, _ = _compute_policy_difficulty(normalized)
-        transition, _ = _compute_transition_difficulty(normalized)
+        normalized = normalize_candidates(candidates)
+        policy, _ = compute_policy_difficulty(normalized)
+        transition, _ = compute_transition_difficulty(normalized)
         # 最善が突出 → 迷わないが崩れやすい
         assert policy == 0.0  # 低い
         assert transition == 1.0  # 高い

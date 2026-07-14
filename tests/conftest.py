@@ -15,9 +15,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
-from katrain.core.eval_metrics import (
-    MoveEval,
-)
+from katrain.core.analysis.models.move_eval import MoveEval
 from katrain.core.game import Game
 from katrain.core.game_node import GameNode
 

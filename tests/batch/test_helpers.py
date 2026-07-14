@@ -73,56 +73,51 @@ class TestEntropyNormalization:
 
     def test_uniform_distribution_all_sizes(self):
         """Uniform distribution should be EASY on all board sizes."""
-        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-        from katrain.core.eval_metrics import PositionDifficulty
-
+        from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+        from katrain.core.analysis.models.enums import PositionDifficulty
         for size in [9, 13, 19]:
             n = size * size
             uniform = [1.0 / n] * n
-            diff, _ = _assess_difficulty_from_policy(uniform, board_size=size)
+            diff, _ = assess_difficulty_from_policy(uniform, board_size=size)
             assert diff == PositionDifficulty.EASY, f"Uniform distribution on {size}x{size} should be EASY"
 
     def test_concentrated_distribution_all_sizes(self):
         """Single dominant move should be ONLY_MOVE or HARD on all board sizes."""
-        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-        from katrain.core.eval_metrics import PositionDifficulty
-
+        from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+        from katrain.core.analysis.models.enums import PositionDifficulty
         for size in [9, 13, 19]:
             n = size * size
             concentrated = [0.0] * n
             concentrated[0] = 0.95
             concentrated[1] = 0.05
-            diff, _ = _assess_difficulty_from_policy(concentrated, board_size=size)
+            diff, _ = assess_difficulty_from_policy(concentrated, board_size=size)
             assert diff in (PositionDifficulty.ONLY_MOVE, PositionDifficulty.HARD), (
                 f"Concentrated distribution on {size}x{size} should be ONLY_MOVE or HARD"
             )
 
     def test_board_size_as_tuple(self):
         """Should handle board_size as tuple (x, y)."""
-        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-        from katrain.core.eval_metrics import PositionDifficulty
-
+        from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+        from katrain.core.analysis.models.enums import PositionDifficulty
         uniform = [1.0 / 361] * 361
-        diff, _ = _assess_difficulty_from_policy(uniform, board_size=(19, 19))
+        diff, _ = assess_difficulty_from_policy(uniform, board_size=(19, 19))
         assert diff == PositionDifficulty.EASY
 
     def test_invalid_board_size_fallback(self):
         """Invalid board size should fallback to 19x19."""
-        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-
+        from katrain.core.analysis.difficulty import assess_difficulty_from_policy
         uniform = [1.0 / 361] * 361
         # Should not crash, uses 19x19 fallback
-        diff1, _ = _assess_difficulty_from_policy(uniform, board_size=0)
-        diff2, _ = _assess_difficulty_from_policy(uniform, board_size=-5)
+        diff1, _ = assess_difficulty_from_policy(uniform, board_size=0)
+        diff2, _ = assess_difficulty_from_policy(uniform, board_size=-5)
         assert diff1 is not None
         assert diff2 is not None
 
     def test_empty_policy(self):
         """Empty policy should return UNKNOWN."""
-        from katrain.core.analysis.logic_difficulty import _assess_difficulty_from_policy
-        from katrain.core.eval_metrics import PositionDifficulty
-
-        diff, score = _assess_difficulty_from_policy([])
+        from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+        from katrain.core.analysis.models.enums import PositionDifficulty
+        diff, score = assess_difficulty_from_policy([])
         assert diff == PositionDifficulty.UNKNOWN
         assert score == 0.5
 

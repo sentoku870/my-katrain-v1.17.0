@@ -10,39 +10,30 @@ class TestBackwardCompatibleImports:
     """Verify old import paths still work (shim functionality, Phase 171 削除後)。"""
 
     def test_import_build_karte_report_from_old_path(self):
-        from katrain.core.reports.karte_report import build_karte_report
-
+        from katrain.core.reports.karte.builder import build_karte_report
         assert callable(build_karte_report)
 
     def test_import_build_karte_json_from_old_path(self):
-        from katrain.core.reports.karte_report import build_karte_json
-
+        from katrain.core.reports.karte.json_export import build_karte_json
         assert callable(build_karte_json)
 
     def test_import_build_critical_3_prompt_from_old_path(self):
-        from katrain.core.reports.karte_report import build_critical_3_prompt
-
+        from katrain.core.reports.karte.llm_prompt import build_critical_3_prompt
         assert callable(build_critical_3_prompt)
 
     def test_import_exceptions_from_old_path(self):
-        from katrain.core.reports.karte_report import KarteGenerationError
-
+        from katrain.core.reports.karte.models import KarteGenerationError
         assert issubclass(KarteGenerationError, Exception)
 
     def test_import_constants_from_old_path(self):
-        from katrain.core.reports.karte_report import (
-            CRITICAL_3_PROMPT_TEMPLATE,
-            KARTE_ERROR_CODE_GENERATION_FAILED,
-            STYLE_CONFIDENCE_THRESHOLD,
-        )
+        from katrain.core.reports.karte.models import CRITICAL_3_PROMPT_TEMPLATE, KARTE_ERROR_CODE_GENERATION_FAILED, STYLE_CONFIDENCE_THRESHOLD
 
         assert isinstance(KARTE_ERROR_CODE_GENERATION_FAILED, str)
         assert isinstance(CRITICAL_3_PROMPT_TEMPLATE, str)
         assert isinstance(STYLE_CONFIDENCE_THRESHOLD, float)
 
     def test_import_helpers_from_old_path(self):
-        from katrain.core.reports.karte_report import has_loss_data
-
+        from katrain.core.reports.karte.helpers import has_loss_data
         assert callable(has_loss_data)
 
     def test_leela_helpers_removed(self):

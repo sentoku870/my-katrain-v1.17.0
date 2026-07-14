@@ -119,7 +119,8 @@ class TestA5SummaryAnalyzerWorstMovesTruncation:
         from typing import Any
 
         from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.eval_metrics import GameSummaryData, PositionDifficulty
+        from katrain.core.analysis.models.skill import GameSummaryData
+        from katrain.core.analysis.models.enums import PositionDifficulty
         from katrain.core.reports.summary_logic import SummaryAnalyzer
 
         @dataclass
@@ -232,8 +233,7 @@ class TestB2BuildBatchSummaryLang:
 
     def test_lang_en_returns_english_headers(self):
         from katrain.core.batch import build_batch_summary
-        from katrain.core.eval_metrics import MistakeCategory
-
+        from katrain.core.analysis.models.enums import MistakeCategory
         game_stats = [
             {
                 "game_name": "g1.sgf",
@@ -266,8 +266,7 @@ class TestB2BuildBatchSummaryLang:
 
     def test_lang_jp_returns_japanese_headers(self):
         from katrain.core.batch import build_batch_summary
-        from katrain.core.eval_metrics import MistakeCategory
-
+        from katrain.core.analysis.models.enums import MistakeCategory
         game_stats = [
             {
                 "game_name": "g1.sgf",

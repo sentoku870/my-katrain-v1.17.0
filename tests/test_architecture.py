@@ -1088,7 +1088,7 @@ class TestDeprecatedShimIsolation:
         )
 
     def test_karte_report_alias_not_used_in_production(self) -> None:
-        """``from katrain.core.reports import karte_report`` reaches the shim
+        """``# Phase 195-C: karte_report shim is gone; import from canonical submodules.`` reaches the shim
         via the package ``__init__``; block this alias explicitly so that
         the canonical path ``katrain.core.reports.karte.builder`` is the
         only supported route from production code."""
