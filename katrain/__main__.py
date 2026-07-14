@@ -208,8 +208,8 @@ class KaTrainGui(Screen, KaTrainBase):
             get_play_mode=lambda: self.play_mode,
             # State modifiers
             get_set_zen=lambda: (self.zen, lambda v: setattr(self, "zen", v)),
-            toggle_continuous_analysis=self.toggle_continuous_analysis,
-            toggle_move_num=self.toggle_move_num,
+            toggle_continuous_analysis=lambda *a, **kw: self.ctx.analysis_controller.toggle_continuous_analysis(*a, clock=Clock, **kw),
+            toggle_move_num=self.ctx.analysis_controller.toggle_move_num,
             load_from_clipboard=self.ctx.sgf_manager.load_sgf_from_clipboard,
             # Utilities
             logger=self.log,
@@ -289,7 +289,7 @@ class KaTrainGui(Screen, KaTrainBase):
             ai_move=lambda cn: game_commands.do_ai_move(self, cn),
             stone_sound=self._play_stone_sound,
             schedule_gui_update=lambda cn, rb: Clock.schedule_once(
-                lambda _dt: self.update_gui(cn, redraw_board=rb), -1
+                lambda _dt: self.ctx.gui_refresh_manager.update_gui(cn, redraw_board=rb), -1
             ),
             clock=Clock,
         )
@@ -397,35 +397,9 @@ class KaTrainGui(Screen, KaTrainBase):
         gui_refresh_manager = getattr(self, "_gui_refresh_manager", None)
         if gui_refresh_manager is not None:
             gui_refresh_manager.update_status_for_error(message, level)
-
-    def handle_animations(self, *_args: Any) -> None:
-        """Delegates to AnalysisController (Phase 133)."""
-        self.ctx.analysis_controller.handle_animations()
-
     @property
     def play_analyze_mode(self) -> str:
         return self.play_mode.mode  # type: ignore[no-any-return]
-
-    def toggle_continuous_analysis(self, quiet: bool = False) -> None:
-        """Delegates to AnalysisController (Phase 133)."""
-        self.ctx.analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
-
-    def toggle_move_num(self) -> None:
-        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
-        self.ctx.analysis_controller.toggle_move_num()
-
-    def set_analysis_focus_toggle(self, focus: str) -> None:
-        """Delegates to AnalysisController (Phase 133)."""
-        self.ctx.analysis_controller.set_analysis_focus_toggle(focus)
-
-    def restore_last_mode(self) -> None:
-        """Delegates to AnalysisController (Phase 173 P0-①-B)."""
-        self.ctx.analysis_controller.restore_last_mode()
-
-    def update_focus_button_states(self) -> None:
-        """Delegates to AnalysisController (Phase 133)."""
-        self.ctx.analysis_controller.update_focus_button_states()
-
     def start(self) -> None:
         if self.engine:
             return
@@ -483,11 +457,6 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Initialize focus button states on startup
         Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
-
-    def update_gui(self, cn: Any, redraw_board: bool = False) -> None:
-        """Delegates to GUIRefreshManager (Phase 158+)."""
-        self.ctx.gui_refresh_manager.update_gui(cn, redraw_board)
-
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods
     # =========================================================================
@@ -555,15 +524,6 @@ class KaTrainGui(Screen, KaTrainBase):
             self.update_state()
         for player_setup_block in PlayerSetupBlock.INSTANCES:
             player_setup_block.update_player_info(bw, self.players_info[bw])
-
-    def set_note(self, note: str) -> None:
-        # Guard: kv on_text may fire before _game_state_manager is initialized
-        if hasattr(self, "_game_state_manager"):
-            self.ctx.game_state_manager.set_note(note)
-        elif self.game and self.game.current_node:
-            # Fallback: direct assignment during early UI construction
-            self.game.current_node.note = note
-
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Central dispatcher for menu actions triggered from .kv or shortcuts.
 

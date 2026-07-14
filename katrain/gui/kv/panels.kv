@@ -359,7 +359,7 @@
             info.opacity =  int(args[1]['info'] or info.detailed)
             notebox.size_hint_y = int(args[1]['notes'])*0.66+1e-9
             notebox.opacity = int(args[1]['notes'])
-            app.gui.update_state()
+            app.gui.update_state()  # Phase 198: keep; UIUpdateManager delegates
         options_height: root.tab_option_height
         BGBoxLayout:
             background_color: Theme.BOX_BACKGROUND_COLOR
@@ -387,7 +387,7 @@
                     id: note
                     font_size: Theme.NOTES_FONT_SIZE
                     multiline: True
-                    on_text: root.katrain.set_note(self.text)
+                    on_text: app.gui.ctx.game_state_manager.set_note(self.text)
                     hint_text: i18n._('SGF Notes Hint')
                     color_mode: 'custom'
                     line_color_focus: Theme.TEXT_COLOR
