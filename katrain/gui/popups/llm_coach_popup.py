@@ -136,16 +136,23 @@ class LLMCcoachPopupContent(BoxLayout):
         picker.open()
 
     def on_generate_and_copy(self) -> None:
-        """Build the LLM prompt and copy the Markdown to the clipboard."""
+        """Build the LLM prompt and copy the Markdown to the clipboard.
+
+        Phase 225.3: read the karte path via ``self.ids`` so we always
+        touch the actual Kivy widget reference (avoids the rare case
+        where a stale ``self.karte_path_input`` reads back empty even
+        though the field visibly contains text).
+        """
         from katrain.gui.features.llm_coach import build_llm_prompt
 
-        if self.karte_path_input is None or not self.karte_path_input.text.strip():
+        karte_path = self._read_text("karte_path_input")
+        rank = self._read_text("rank_input") or None
+        if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
             return
-        rank = (self.rank_input.text or "").strip() or None if self.rank_input is not None else None
         ok, content = build_llm_prompt(
             self.katrain,
-            self.karte_path_input.text.strip(),
+            karte_path,
             rank=rank,
         )
         if not ok:
@@ -166,25 +173,26 @@ class LLMCcoachPopupContent(BoxLayout):
         self._set_result(content)
 
     def on_clear_response(self) -> None:
-        if self.response_input is not None:
-            self.response_input.text = ""
+        self._set_widget_text("response_input", "")
         self._set_status(i18n._("mykatrain:llm-coach:response-cleared"))
 
     def on_validate(self) -> None:
         """Validate the user-pasted LLM response and show the report."""
         from katrain.gui.features.llm_coach import validate_llm_response
 
-        if self.karte_path_input is None or not self.karte_path_input.text.strip():
+        karte_path = self._read_text("karte_path_input")
+        rank = self._read_text("rank_input") or None
+        response_text = self._read_text("response_input")
+        if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
             return
-        if self.response_input is None or not self.response_input.text.strip():
+        if not response_text:
             self._set_status(i18n._("mykatrain:llm-coach:no-response"), error=True)
             return
-        rank = (self.rank_input.text or "").strip() or None if self.rank_input is not None else None
         is_clean, markdown = validate_llm_response(
             self.katrain,
-            self.karte_path_input.text.strip(),
-            self.response_input.text,
+            karte_path,
+            response_text,
             rank=rank,
         )
         if is_clean:
@@ -208,6 +216,34 @@ class LLMCcoachPopupContent(BoxLayout):
         self._set_status(i18n._("mykatrain:llm-coach:result-copied"))
 
     # ---- Internal helpers ---------------------------------------------
+
+    def _read_text(self, widget_id: str) -> str:
+        """Safely read the ``text`` of a child widget by its KV ``id``.
+
+        Phase 225.3: the ObjectProperty references (e.g.
+        ``self.karte_path_input``) occasionally lag behind the actual
+        KV-bound widget, especially when widgets are recreated during
+        popup open. Going through ``self.ids`` always hits the live
+        tree. Returns the stripped string or ``""`` if missing.
+        """
+        widget = self.ids.get(widget_id) if hasattr(self, "ids") else None
+        if widget is None:
+            # Fall back to the property in case ids isn't populated yet
+            widget = getattr(self, widget_id, None)
+        if widget is None:
+            return ""
+        try:
+            return str(widget.text or "").strip()
+        except AttributeError:
+            return ""
+
+    def _set_widget_text(self, widget_id: str, text: str) -> None:
+        """Set the ``text`` of a child widget by its KV ``id``."""
+        widget = self.ids.get(widget_id) if hasattr(self, "ids") else None
+        if widget is None:
+            widget = getattr(self, widget_id, None)
+        if widget is not None:
+            widget.text = text
 
     def _set_status(self, text: str, *, error: bool = False) -> None:
         self.status_text = text

@@ -46,25 +46,51 @@ def _make_content() -> Any:
     We only inject the widget-tree attributes the methods read; the Kivy
     property bindings don't need to fire because we never add the widget
     to a parent tree.
+
+    Phase 225.3: also wire up an ``ids`` dict so ``_read_text`` /
+    ``_set_widget_text`` can resolve widget references via the same
+    lookup path the live popup uses.
     """
     from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
     content = LLMCcoachPopupContent.__new__(LLMCcoachPopupContent)
     content.katrain = None
     content.popup = None
-    # Fake widget references — MagicMock lets us assert .text setters.
-    content.karte_path_input = MagicMock()
-    content.karte_path_input.text = ""
-    content.rank_input = MagicMock()
-    content.rank_input.text = ""
-    content.response_input = MagicMock()
-    content.response_input.text = ""
-    content.status_label = MagicMock()
-    content.status_label.text = ""
-    content.result_label = MagicMock()
-    content.result_label.text = ""
-    content.generate_button = MagicMock()
-    content.validate_button = MagicMock()
+
+    # Per-widget MagicMocks
+    karte_path_input = MagicMock()
+    karte_path_input.text = ""
+    rank_input = MagicMock()
+    rank_input.text = ""
+    response_input = MagicMock()
+    response_input.text = ""
+    status_label = MagicMock()
+    status_label.text = ""
+    result_label = MagicMock()
+    result_label.text = ""
+    generate_button = MagicMock()
+    validate_button = MagicMock()
+
+    # Bind on the class as ObjectProperty
+    content.karte_path_input = karte_path_input
+    content.rank_input = rank_input
+    content.response_input = response_input
+    content.status_label = status_label
+    content.result_label = result_label
+    content.generate_button = generate_button
+    content.validate_button = validate_button
+
+    # Phase 225.3: also build an ids dict so the helper methods work the
+    # same way they would against a live popup.
+    content.ids = {
+        "karte_path_input": karte_path_input,
+        "rank_input": rank_input,
+        "response_input": response_input,
+        "status_label": status_label,
+        "result_label": result_label,
+        "generate_button": generate_button,
+        "validate_button": validate_button,
+    }
     return content
 
 
@@ -323,6 +349,74 @@ class TestPopulateInitialKartePath:
         with patch("katrain.gui.features.llm_coach.find_latest_karte", return_value=None):
             content._populate_initial_karte_path()
         assert content.karte_path_input.text == ""
+
+
+# ---- _read_text / _set_widget_text (Phase 225.3) ---------------------
+
+
+class TestReadText:
+    def test_reads_via_ids_first(self) -> None:
+        content = _make_content()
+        # The class-level ObjectProperty may be stale; ids wins.
+        # Use two distinct MagicMocks so we can verify the resolution path.
+        from unittest.mock import MagicMock as _MM
+
+        stale_property_mock = _MM()
+        stale_property_mock.text = "/from/property.json"
+        content.karte_path_input = stale_property_mock
+        content.ids["karte_path_input"].text = "/from/ids.json"
+        assert content._read_text("karte_path_input") == "/from/ids.json"
+
+    def test_strips_whitespace(self) -> None:
+        content = _make_content()
+        content.ids["karte_path_input"].text = "  /x.json  \n"
+        assert content._read_text("karte_path_input") == "/x.json"
+
+    def test_returns_empty_when_widget_missing(self) -> None:
+        content = _make_content()
+        # Drop the widget from ids AND from the property
+        content.ids.pop("karte_path_input", None)
+        content.karte_path_input = None
+        assert content._read_text("karte_path_input") == ""
+
+    def test_returns_empty_when_text_is_none(self) -> None:
+        content = _make_content()
+        content.ids["karte_path_input"].text = None
+        assert content._read_text("karte_path_input") == ""
+
+
+class TestSetWidgetText:
+    def test_setter_uses_ids(self) -> None:
+        content = _make_content()
+        content._set_widget_text("karte_path_input", "hello")
+        assert content.ids["karte_path_input"].text == "hello"
+
+    def test_setter_noop_when_missing(self) -> None:
+        content = _make_content()
+        content.ids.pop("karte_path_input", None)
+        content.karte_path_input = None
+        # Must not raise
+        content._set_widget_text("karte_path_input", "x")
+
+
+class TestPhase2253OnGenerateUsesIds:
+    """The 225.3 refactor must read the karte path via ``_read_text``."""
+
+    def test_generate_uses_ids_when_property_is_stale(self) -> None:
+        content = _make_content()
+        # Property is stale (empty) but ids has the real path
+        content.karte_path_input.text = ""
+        content.ids["karte_path_input"].text = "/real/path.json"
+        fake_prompt = MagicMock()
+        fake_prompt.full_markdown = "# PROMPT"
+        with patch(
+            "katrain.gui.features.llm_coach.build_llm_prompt",
+            return_value=(True, "# PROMPT"),
+        ) as spy, \
+             patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+            content.on_generate_and_copy()
+        # The path passed to the helper must come from ids, not the stale property.
+        assert spy.call_args.args[1] == "/real/path.json"
 
 
 # ---- open_llm_coach_popup ---------------------------------------------
