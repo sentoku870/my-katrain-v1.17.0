@@ -387,3 +387,58 @@ class TestCalibrateCommand:
             "strong_correlation",
         ]:
             assert f"## ✅ {name}" in out, f"Missing section: {name}"
+
+
+# --- trace sub-command (Phase 220) ---
+
+
+class TestTraceCommand:
+    def test_trace_to_stdout(self, sample_karte_path: Path, capsys):
+        rc = cli.main(["trace", str(sample_karte_path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Required sections
+        assert "# Detection Pipeline Trace (Phase 220)" in out
+        assert "## Sources" in out
+        assert "## Per-Symptom Sources" in out
+        assert "## SymptomContext Snapshot" in out
+
+    def test_trace_to_file(self, sample_karte_path: Path, tmp_path: Path):
+        out_path = tmp_path / "trace.md"
+        rc = cli.main(["trace", str(sample_karte_path), "--out", str(out_path)])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "# Detection Pipeline Trace (Phase 220)" in content
+
+    def test_trace_sources_listed(self, sample_karte_path: Path, capsys):
+        cli.main(["trace", str(sample_karte_path)])
+        out = capsys.readouterr().out
+        # All 4 source names should appear
+        assert "per_move:" in out
+        assert "weakness_category:" in out
+        assert "streak:" in out
+        assert "aggregate:" in out
+        assert "**union**:" in out
+
+    def test_trace_attributes_symptoms_to_sources(self, sample_karte_path: Path, capsys):
+        cli.main(["trace", str(sample_karte_path)])
+        out = capsys.readouterr().out
+        # atari_blindness is in weakness, should be tagged with weakness_category
+        assert "atari_blindness`: weakness_category" in out
+
+    def test_trace_context_snapshot_present(self, sample_karte_path: Path, capsys):
+        cli.main(["trace", str(sample_karte_path)])
+        out = capsys.readouterr().out
+        # SymptomContext snapshot section
+        assert "avg_points_lost:" in out
+        assert "is_endgame:" in out
+        assert "weakness_concentration:" in out
+        assert "meaning_tags:" in out
+
+    def test_trace_missing_file_exits_nonzero(self, tmp_path: Path):
+        with pytest.raises(FileNotFoundError):
+            cli.main([
+                "trace",
+                str(tmp_path / "nonexistent.json"),
+            ])

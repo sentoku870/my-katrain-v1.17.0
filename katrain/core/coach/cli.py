@@ -438,6 +438,84 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_trace(args: argparse.Namespace) -> int:
+    """Sub-command: trace the detection pipeline step-by-step (Phase 220).
+
+    Shows which detection source fired each symptom, useful for debugging
+    threshold tuning. Sources are:
+    - per_move: SymptomContext-based detectors
+    - weakness: weakness[*].category → SymptomId mapping
+    - streak: Phase 216 streak / loss_run aggregators
+    - aggregate: Phase 217 placeholder (currently no symptoms fired here)
+    """
+    from katrain.core.coach.karte_detector import (
+        build_symptom_context_from_karte,
+        detect_symptoms_from_karte,
+    )
+    from katrain.core.coach.symptom_index import detect_auto_symptoms
+    from katrain.core.coach.karte_detector import (
+        _symptom_ids_from_aggregate_patterns,
+        _symptom_ids_from_streaks,
+        _symptom_ids_from_weakness_categories,
+    )
+
+    karte = _load_karte(Path(args.karte_json))
+
+    # Per-source detection
+    ctx = build_symptom_context_from_karte(karte)
+    per_move = set(detect_auto_symptoms(ctx))
+    from_categories = set(_symptom_ids_from_weakness_categories(karte))
+    from_streaks = set(_symptom_ids_from_streaks(karte))
+    from_aggregate = set(_symptom_ids_from_aggregate_patterns(karte))
+    combined = per_move | from_categories | from_streaks | from_aggregate
+
+    # Build sets with sources
+    sources: dict[Any, list[str]] = {}
+    for sid in per_move:
+        sources.setdefault(sid, []).append("per_move")
+    for sid in from_categories:
+        sources.setdefault(sid, []).append("weakness_category")
+    for sid in from_streaks:
+        sources.setdefault(sid, []).append("streak")
+    for sid in from_aggregate:
+        sources.setdefault(sid, []).append("aggregate")
+
+    lines: list[str] = ["# Detection Pipeline Trace (Phase 220)", ""]
+    lines.append("## Sources")
+    lines.append(f"- per_move:          {[s.value for s in sorted(per_move, key=lambda x: x.value)]}")
+    lines.append(f"- weakness_category: {[s.value for s in sorted(from_categories, key=lambda x: x.value)]}")
+    lines.append(f"- streak:           {[s.value for s in sorted(from_streaks, key=lambda x: x.value)]}")
+    lines.append(f"- aggregate:        {[s.value for s in sorted(from_aggregate, key=lambda x: x.value)]}")
+    lines.append(f"- **union**:          {[s.value for s in sorted(combined, key=lambda x: x.value)]}")
+    lines.append("")
+
+    lines.append("## Per-Symptom Sources")
+    for sid in sorted(combined, key=lambda x: x.value):
+        srcs = sources.get(sid, [])
+        lines.append(f"- `{sid.value}`: {', '.join(srcs)}")
+    lines.append("")
+
+    lines.append("## SymptomContext Snapshot")
+    lines.append(f"- avg_points_lost:    {ctx.avg_points_lost}")
+    lines.append(f"- score_stdev:        {ctx.score_stdev}")
+    lines.append(f"- overall_difficulty: {ctx.overall_difficulty}")
+    lines.append(f"- is_endgame:         {ctx.is_endgame}")
+    lines.append(f"- good_move_count:    {ctx.good_move_count}")
+    lines.append(f"- weakness_concentration: {ctx.weakness_concentration}")
+    lines.append(f"- game_count:         {ctx.game_count}")
+    lines.append(f"- meaning_tags:       {[m.value for m in ctx.meaning_tag_ids]}")
+    lines.append(f"- hint_categories:    {[h.value for h in ctx.hint_categories]}")
+    lines.append("")
+
+    output = "\n".join(lines) + "\n"
+    if args.out:
+        Path(args.out).write_text(output, encoding="utf-8")
+        print(f"✅ Wrote trace to {args.out}")
+    else:
+        sys.stdout.write(output)
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="katrain.core.coach.cli",
@@ -519,6 +597,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Write calibration report to file (default: stdout)",
     )
     p_cal.set_defaults(func=cmd_calibrate)
+
+    # trace (Phase 220)
+    p_tr = sub.add_parser(
+        "trace",
+        help="Trace detection pipeline: which source fired each symptom",
+    )
+    p_tr.add_argument("karte_json", help="Path to Karte JSON file")
+    p_tr.add_argument(
+        "--out",
+        help="Write trace to file (default: stdout)",
+    )
+    p_tr.set_defaults(func=cmd_trace)
 
     return parser
 
