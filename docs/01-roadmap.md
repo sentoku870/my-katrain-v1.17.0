@@ -1015,12 +1015,15 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - ハルシネーション抑制 3 層防御（構造化メタデータ / Lexicon 注入 / HTML コメント式 System Instruction）
   - レベル判定（KataGo BR/WR + 負け基準自動補正）
   - LLM 出力検証（警告表示のみ、ブロックしない）
-- [x] **Phase 207: `core/coach/master_db.py`** — 統合マスター §0 + §1 を `katrain/core/coach/master_db.py` に構造化（Lv2、2026-07-14 完了）
-  - `CoachMode` enum（5 モード）+ `ToneVoice` enum（3 ボイス）
-  - `ModeConfig` / `ToneConfig` データクラス（frozen dataclass）
-  - `estimate_mode_from_rank` / `estimate_mode_from_loss`（負け基準補正）
-  - 41 件ユニットテスト合格
-- [ ] **Phase 208+**: Phase 203 ドキュメントに基づく実装の残り（lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、Lv3 = Phase 211-E のみ）
+- [x] **Phase 207-213: `core/coach/` パッケージ完全実装**（Lv2 + Lv3、2026-07-14 完了、合計 4752 件テスト合格）
+  - Phase 207 `master_db.py`: `CoachMode` 5 + `ToneVoice` 3 + 41 unit tests
+  - Phase 208 `lexicon.py`: 116 entries + 23 concepts YAML loader + 31 tests
+  - Phase 209 `symptom_index.py`: 40 symptoms, 21 auto / 19 LLM-required + 116 tests
+  - Phase 210 `tones.py`: select_voice / greeting / Kansai normalisation + 44 tests
+  - Phase 211 `prompt_builder.py`: HTML-comment SystemInstruction + Karte + Lexicon injection + 23 tests (**Lv3**)
+  - Phase 212 `llm_validator.py`: validate_llm_output (5 check types) + 20 tests
+  - Phase 213 `test_coach_e2e.py`: 9 end-to-end mock-LLM scenarios
+- [ ] **Phase 214+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」、Phase 211.5 スキーマバンプ）、将来課題
 
 ---
 
