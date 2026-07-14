@@ -283,8 +283,11 @@ _MODE_BY_KEY: dict[CoachMode, ModeConfig] = {m.mode: m for m in _MODE_TABLE}
 _TONE_BY_KEY: dict[ToneVoice, ToneConfig] = {t.voice: t for t in _TONE_TABLE}
 
 # Rank ordering for comparison (smaller index = weaker player)
+#
+# Phase 225.8: extended with CJK / full-width notation aliases so
+# ``estimate_mode_from_rank("4段")`` works the same as ``"4d"``.
 _RANK_ORDER: dict[str, int] = {
-    # Kyu (weaker)
+    # Kyu (weaker) — ASCII
     "30k": 0,
     "25k": 1,
     "20k": 2,
@@ -300,7 +303,7 @@ _RANK_ORDER: dict[str, int] = {
     "3k": 12,
     "2k": 13,
     "1k": 14,
-    # Dan (stronger)
+    # Dan (stronger) — ASCII
     "1d": 15,
     "2d": 16,
     "3d": 17,
@@ -312,6 +315,92 @@ _RANK_ORDER: dict[str, int] = {
     "9d": 23,
     "99d": 99,
 }
+
+# Kanji / full-width aliases for the same ranks.  Each alias points at
+# the same integer value as its ASCII counterpart; we don't add new
+# ranks, just new spellings.  Users from 野狐 / KGS often have these
+# notations in their SGF BR/WR properties.
+_RANK_ALIASES: dict[str, str] = {
+    # Kanji 級 (kyu)
+    "30級": "30k",
+    "25級": "25k",
+    "20級": "20k",
+    "15級": "15k",
+    "11級": "11k",
+    "10級": "10k",
+    "9級": "9k",
+    "8級": "8k",
+    "7級": "7k",
+    "6級": "6k",
+    "5級": "5k",
+    "4級": "4k",
+    "3級": "3k",
+    "2級": "2k",
+    "1級": "1k",
+    # Kanji 段 (dan)
+    "初段": "1d",
+    "1段": "1d",
+    "2段": "2d",
+    "3段": "3d",
+    "4段": "4d",
+    "5段": "5d",
+    "6段": "6d",
+    "7段": "7d",
+    "8段": "8d",
+    "9段": "9d",
+    "10段": "9d",
+}
+
+
+def _normalise_rank_str(rank_str: str) -> str:
+    """Normalise a rank string to the canonical ``_RANK_ORDER`` key.
+
+    Handles:
+    - whitespace + case (``"4D"`` → ``"4d"``)
+    - full-width digits (``"４段"`` → ``"4段"``)
+    - kanji suffix (``"4段"`` → ``"4d"``, ``"5級"`` → ``"5k"``)
+    - ASCII suffix synonyms (``"4kyu"`` → ``"4k"``, ``"5dan"`` → ``"5d"``)
+    - ``"初段"`` (shodan) as an alias for ``"1段"``
+    - trailing decoration (``"4d ?"`` → ``"4d"``)
+    """
+    if not rank_str:
+        return ""
+    s = rank_str.strip().lower().replace(" ", "")
+    # Full-width ASCII digit folding (０-９ → 0-9).
+    fullwidth = str.maketrans("０１２３４５６７８９", "0123456789")
+    s = s.translate(fullwidth)
+    # Special-case: 初段 (shodan) is rank 1d, not "0d".
+    if s == "初段":
+        return "1d"
+    # Resolve kanji suffix to ASCII suffix.
+    if s.endswith("段"):
+        s = s[:-1] + "d"
+    elif s.endswith("級"):
+        s = s[:-1] + "k"
+    elif s.endswith("kyu"):
+        s = s[:-3] + "k"
+    elif s.endswith("dan"):
+        s = s[:-3] + "d"
+    # Drop trailing punctuation (e.g. "4d?" or "4d.")
+    s = s.rstrip("?.!#")
+    return s
+
+
+def _canonical_rank_key(rank_str: str) -> str:
+    """Resolve ``rank_str`` to the canonical key in ``_RANK_ORDER``.
+
+    Falls through ``_RANK_ALIASES`` first (kanji / full-width), then
+    directly hits ``_RANK_ORDER``. Returns ``""`` when no match.
+    """
+    normalised = _normalise_rank_str(rank_str)
+    if not normalised:
+        return ""
+    # Try alias first so '4段' → '4d'.
+    if normalised in _RANK_ALIASES:
+        return _RANK_ALIASES[normalised]
+    if normalised in _RANK_ORDER:
+        return normalised
+    return ""
 
 
 # --- Public API ---
@@ -338,10 +427,16 @@ def all_tones() -> tuple[ToneConfig, ...]:
 
 
 def estimate_mode_from_rank(rank_str: str | None) -> CoachMode | None:
-    """Estimate CoachMode from a rank string (e.g. "10k", "3d").
+    """Estimate CoachMode from a rank string (e.g. "10k", "3d", "4段").
+
+    Phase 225.8: also accepts CJK kanji notation (``"X段"`` / ``"X級"``)
+    and full-width digits (``"４段"``) by routing through
+    :func:`_canonical_rank_key`. Native ASCII entries continue to map
+    to the same CoachMode as before.
 
     Args:
-        rank_str: Rank in kyu/dan notation. Returns None for unrecognised input.
+        rank_str: Rank in any supported notation. Returns None for
+            unrecognised input (including ``None`` / empty).
 
     Returns:
         Matching CoachMode, or None if rank cannot be mapped.
@@ -351,17 +446,19 @@ def estimate_mode_from_rank(rank_str: str | None) -> CoachMode | None:
         'INTERMEDIATE'
         >>> estimate_mode_from_rank("7d")
         <CoachMode.EXPERT: 'expert'>
+        >>> estimate_mode_from_rank("4段")
+        <CoachMode.ADVANCED: 'advanced'>
         >>> estimate_mode_from_rank(None) is None
         True
     """
     if not rank_str:
         return None
 
-    normalised = rank_str.strip().lower().replace(" ", "")
-    if normalised not in _RANK_ORDER:
+    canonical = _canonical_rank_key(rank_str)
+    if not canonical or canonical not in _RANK_ORDER:
         return None
 
-    rank_value = _RANK_ORDER[normalised]
+    rank_value = _RANK_ORDER[canonical]
 
     for mode_cfg in _MODE_TABLE:
         lo = _RANK_ORDER[mode_cfg.rank_range.min_rank]
@@ -436,4 +533,6 @@ __all__ = [
     "all_tones",
     "estimate_mode_from_rank",
     "estimate_mode_from_loss",
+    "_normalise_rank_str",
+    "_canonical_rank_key",
 ]
