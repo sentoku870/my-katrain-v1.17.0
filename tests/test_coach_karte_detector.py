@@ -17,13 +17,18 @@ from katrain.core.coach.karte_detector import (
     build_symptom_context_from_karte,
     detect_symptoms_from_karte,
     extract_avg_points_lost,
+    extract_avg_streak_loss,
     extract_avg_winrate_lost,
+    extract_consecutive_loss_run,
     extract_critical_move_count,
     extract_game_count,
     extract_good_move_count,
+    extract_longest_streak,
     extract_max_overall_difficulty,
     extract_max_score_stdev,
     extract_max_winrate_drop,
+    extract_streak_count,
+    extract_total_streak_loss,
     extract_weakness_concentration,
 )
 from katrain.core.coach.symptom_index import (
@@ -282,3 +287,170 @@ class TestCliIntegration:
         # from weaknesses categories by the karte_detector
         assert "atari_blindness" in ids
         assert "big_point_blindness" in ids
+
+
+# --- Phase 216: streak aggregators ---
+
+
+class TestStreakAggregators:
+    def test_longest_streak_single(self):
+        karte = {"mistake_streaks": {"black": [{"move_count": 3}]}}
+        assert extract_longest_streak(karte) == 3
+
+    def test_longest_streak_max(self):
+        karte = {
+            "mistake_streaks": {
+                "black": [
+                    {"move_count": 2},
+                    {"move_count": 5},
+                    {"move_count": 3},
+                ],
+                "white": [{"move_count": 4}],
+            }
+        }
+        assert extract_longest_streak(karte) == 5
+
+    def test_longest_streak_empty(self):
+        assert extract_longest_streak({}) == 0
+        assert extract_longest_streak({"mistake_streaks": {}}) == 0
+
+    def test_total_streak_loss(self):
+        karte = {
+            "mistake_streaks": {
+                "black": [
+                    {"total_loss": 5.0},
+                    {"total_loss": 3.5},
+                ],
+                "white": [{"total_loss": 2.0}],
+            }
+        }
+        assert extract_total_streak_loss(karte) == 10.5
+
+    def test_total_streak_loss_empty(self):
+        assert extract_total_streak_loss({}) == 0.0
+
+    def test_streak_count(self):
+        karte = {
+            "mistake_streaks": {
+                "black": [{}, {}, {}],
+                "white": [{}],
+            }
+        }
+        assert extract_streak_count(karte) == 4
+
+    def test_consecutive_loss_run(self):
+        karte = {
+            "loss_progression": [
+                {"mistake_count": 2},
+                {"mistake_count": 1},
+                {"mistake_count": 3},
+                {"mistake_count": 0},
+                {"mistake_count": 2},
+                {"mistake_count": 1},
+                {"mistake_count": 2},
+            ]
+        }
+        # First run = 3 (positions 0,1,2), second = 3 (positions 4,5,6)
+        assert extract_consecutive_loss_run(karte) == 3
+
+    def test_consecutive_loss_run_empty(self):
+        assert extract_consecutive_loss_run({}) == 0
+
+    def test_consecutive_loss_run_all_wins(self):
+        karte = {
+            "loss_progression": [
+                {"mistake_count": 0},
+                {"mistake_count": 0},
+                {"mistake_count": 0},
+            ]
+        }
+        assert extract_consecutive_loss_run(karte) == 0
+
+    def test_avg_streak_loss(self):
+        karte = {
+            "mistake_streaks": {
+                "black": [{"total_loss": 4.0}, {"total_loss": 6.0}],
+            }
+        }
+        assert extract_avg_streak_loss(karte) == 5.0
+
+    def test_avg_streak_loss_empty(self):
+        assert extract_avg_streak_loss({}) == 0.0
+
+
+# --- Phase 216: streak-based symptom detection ---
+
+
+class TestStreakSymptoms:
+    def test_overfight_fires(self):
+        karte = {
+            "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 10.0}]},
+        }
+        fired = detect_symptoms_from_karte(karte)
+        assert SymptomId.OVERFIGHT in fired
+
+    def test_small_move_addiction_fires(self):
+        karte = {
+            "mistake_streaks": {
+                "black": [
+                    {"move_count": 2, "total_loss": 4.0},
+                    {"move_count": 2, "total_loss": 5.0},
+                    {"move_count": 2, "total_loss": 3.0},
+                    {"move_count": 2, "total_loss": 4.0},
+                    {"move_count": 2, "total_loss": 3.0},
+                ],
+            },
+        }
+        fired = detect_symptoms_from_karte(karte)
+        assert SymptomId.SMALL_MOVE_ADDICTION in fired
+
+    def test_tilt_chain_fires(self):
+        karte = {
+            "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 20.0}]},
+            "loss_progression": [
+                {"mistake_count": 2}, {"mistake_count": 1},
+                {"mistake_count": 3}, {"mistake_count": 2},
+            ],
+        }
+        fired = detect_symptoms_from_karte(karte)
+        assert SymptomId.TILT_CHAIN in fired
+
+    def test_tilt_discouragement_fires(self):
+        karte = {
+            "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 12.0}]},
+            "loss_progression": [
+                {"mistake_count": 2}, {"mistake_count": 1},
+                {"mistake_count": 3}, {"mistake_count": 2},
+                {"mistake_count": 1},
+            ],
+        }
+        fired = detect_symptoms_from_karte(karte)
+        assert SymptomId.TILT_DISCOURAGEMENT in fired
+
+    def test_streak_symptoms_no_false_positive(self):
+        # No streaks + perfect game → no streak-based symptoms
+        karte = {
+            "mistake_streaks": {"black": [], "white": []},
+            "loss_progression": [
+                {"mistake_count": 0}, {"mistake_count": 0},
+            ],
+        }
+        fired = detect_symptoms_from_karte(karte)
+        streak_only = {
+            SymptomId.OVERFIGHT,
+            SymptomId.SMALL_MOVE_ADDICTION,
+            SymptomId.TILT_CHAIN,
+            SymptomId.TILT_DISCOURAGEMENT,
+        }
+        # None of the streak-only symptoms should fire
+        assert fired == ()
+
+    def test_streak_combined_with_weakness(self):
+        # Weakness category + streak both contribute
+        karte = {
+            "weaknesses": {"black": [{"category": "atari_blindness"}], "white": []},
+            "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 10.0}]},
+        }
+        fired = detect_symptoms_from_karte(karte)
+        assert SymptomId.ATARI_BLINDNESS in fired
+        assert SymptomId.OVERFIGHT in fired

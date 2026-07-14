@@ -115,6 +115,96 @@ def extract_good_move_count(karte: dict[str, Any]) -> int:
     return max(counts) if counts else 0
 
 
+# --- Phase 216: streak / loss-run aggregators ---
+
+
+def _all_streaks(karte: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten mistake_streaks into a single list (both colours)."""
+    out: list[dict[str, Any]] = []
+    streaks = karte.get("mistake_streaks", {}) or {}
+    for color in ("black", "white"):
+        for s in streaks.get(color, []) or []:
+            if isinstance(s, dict):
+                out.append(s)
+    return out
+
+
+def extract_longest_streak(karte: dict[str, Any]) -> int:
+    """Return the longest consecutive-mistake streak (in moves) across all colours.
+
+    A streak is a sequence of consecutive mistakes for the same player.
+    Used by OVERFIGHT detection (Phase 209 §4.1 row 18, 34).
+
+    Returns 0 when no streaks present.
+    """
+    counts: list[int] = []
+    for s in _all_streaks(karte):
+        v = s.get("move_count")
+        if isinstance(v, int):
+            counts.append(v)
+    return max(counts) if counts else 0
+
+
+def extract_total_streak_loss(karte: dict[str, Any]) -> float:
+    """Sum of total_loss across all mistake streaks.
+
+    Used by TILT_CHAIN detection — large accumulated streak loss indicates
+    increasing mistakes within a losing pattern.
+    """
+    total = 0.0
+    for s in _all_streaks(karte):
+        v = s.get("total_loss")
+        if isinstance(v, (int, float)):
+            total += float(v)
+    return total
+
+
+def extract_streak_count(karte: dict[str, Any]) -> int:
+    """Return the total number of mistake streaks detected.
+
+    Used by SMALL_MOVE_ADDICTION (Phase 209 §4.1 row 11) — many small streaks
+    suggest a player is leaking points throughout the midgame.
+    """
+    return len(_all_streaks(karte))
+
+
+def extract_consecutive_loss_run(karte: dict[str, Any]) -> int:
+    """Return the longest run of consecutive-loss buckets from loss_progression.
+
+    Phase 149 introduced ``loss_progression`` with bucket_size=10. We treat
+    a bucket as "consecutive loss" if ``mistake_count > 0``. The longest
+    such run is a coarse proxy for "連敗" (losing streak).
+
+    Returns 0 when no loss_progression data is present.
+    """
+    progression = karte.get("loss_progression", []) or []
+    if not progression:
+        return 0
+    longest = 0
+    current = 0
+    for bucket in progression:
+        mc = bucket.get("mistake_count")
+        if isinstance(mc, int) and mc > 0:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def extract_avg_streak_loss(karte: dict[str, Any]) -> float:
+    """Average total_loss across all streaks.
+
+    Returns 0.0 when no streaks present.
+    """
+    losses = [
+        s.get("total_loss")
+        for s in _all_streaks(karte)
+        if isinstance(s.get("total_loss"), (int, float))
+    ]
+    return sum(losses) / len(losses) if losses else 0.0
+
+
 def extract_critical_move_count(karte: dict[str, Any]) -> int:
     """Count critical / blunder moves in the karte.
 
@@ -318,6 +408,48 @@ def _symptom_ids_from_weakness_categories(
     return tuple(out)
 
 
+def _symptom_ids_from_streaks(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
+    """Phase 216: detect streak-based symptoms from karte.mistake_streaks
+    and loss_progression.
+
+    Targets the four "新規" symptoms from Phase 209 §4.1 that need
+    consecutive-pattern detection:
+
+    - SMALL_MOVE_ADDICTION: many small streaks → midgame leakage
+    - OVERFIGHT: longest streak >= 3 → 連続攻撃でミスを重ねる
+    - TILT_DISCOURAGEMENT: long consecutive-loss bucket run + streak loss
+    - TILT_CHAIN: large total_streak_loss within a short window
+
+    Each detection is heuristic — actual thresholds are tentative and
+    should be calibrated against golden games (Phase 217 future work).
+    """
+    longest = extract_longest_streak(karte)
+    total_loss = extract_total_streak_loss(karte)
+    streak_count = extract_streak_count(karte)
+    loss_run = extract_consecutive_loss_run(karte)
+    avg_streak = extract_avg_streak_loss(karte)
+
+    fired: list[SymptomId] = []
+
+    # OVERFIGHT: 3手以上連続の MISTAKE / BLUNDER (Phase 209 §4.1 row 18)
+    if longest >= 3:
+        fired.append(SymptomId.OVERFIGHT)
+
+    # SMALL_MOVE_ADDICTION: midgame で streak が 5 個以上 (Phase 209 §4.1 row 11)
+    if streak_count >= 5:
+        fired.append(SymptomId.SMALL_MOVE_ADDICTION)
+
+    # TILT_CHAIN: total_streak_loss が 15 目以上 + loss_run が 4 bucket 以上
+    if total_loss >= 15.0 and loss_run >= 4:
+        fired.append(SymptomId.TILT_CHAIN)
+
+    # TILT_DISCOURAGEMENT: loss_run 5 bucket (50手相当) 連続 + 平均 streak_loss 高い
+    if loss_run >= 5 and avg_streak >= 3.0:
+        fired.append(SymptomId.TILT_DISCOURAGEMENT)
+
+    return tuple(fired)
+
+
 def detect_symptoms_from_karte(
     karte: dict[str, Any],
 ) -> tuple[SymptomId, ...]:
@@ -326,13 +458,15 @@ def detect_symptoms_from_karte(
     Returns the union of:
     (a) Symptoms fired by SymptomContext-based detectors (per-move heuristics)
     (b) Symptoms directly extracted from weakness[*].category
+    (c) Streak-based symptoms from mistake_streaks + loss_progression (Phase 216)
 
     Order is the symptom-table order, which is stable across calls.
     """
     ctx = build_symptom_context_from_karte(karte)
     per_move = set(detect_auto_symptoms(ctx))
     from_categories = set(_symptom_ids_from_weakness_categories(karte))
-    combined = per_move | from_categories
+    from_streaks = set(_symptom_ids_from_streaks(karte))
+    combined = per_move | from_categories | from_streaks
     # Stable ordering by table order
     table_order = list(SymptomId)
     combined_sorted = tuple(sid for sid in table_order if sid in combined)
