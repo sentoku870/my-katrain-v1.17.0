@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,12 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.5 — LLM Coach status/result stale ref 修正 + 検証サマリ件数表示 + 参照ダイアログ必ず閉じる**
+  - **挙動バグ**: Phase 225.3 で `_read_text` を ids 経由に変更したが `_set_status` / `_set_result` は旧 `self.status_label` / `self.result_label` を直接参照 → Kivy ObjectProperty の stale reference で ScrollView 内の result_label.text が反映されず「検証結果コピー」ボタンが常に「コピーできる検証結果がありません」になる
+  - **挙動バグ**: `_on_success` で chosen 空のとき `picker.dismiss()` を呼ばず早期 return → ユーザーがブラウザ選択なしで OK を押すとダイアログが閉じず「押しても反応しない」
+  - **UX 改善**: 検証実行時に status_label に **件数サマリ**を表示（スクロール不要で高/中/低 件数を把握）
+  - 修正: 全 setter を `self.ids` 経由に統一 / picker.dismiss() を全パスで呼ぶ
+  - 7 件テスト追加（stale property での ids 上書き / dismiss 確実性 / 件数カウント）、累計 4968 件テスト合格
 - 2026-07-17: **Phase 225.4 — LLM Coach ボタン幅完全固定 + 使い方ヒント表示**
   - **UI バグ (Phase 225.3 対策不完全)**: `AutoSizedRoundedRectangleButton` の `width: root.label.texture_size[0]` バインディングが size_hint_x を上書き → `SizedRoundedRectangleButton` (Auto なし) に変更で完全固定
   - **UX 改善**: 「検証実行」「検証結果をコピー」の使い方を説明する workflow-hint Label を Popup 上部に追加（jp/en）
