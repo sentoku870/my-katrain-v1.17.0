@@ -1066,7 +1066,14 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - `normalize_summary_to_karte_shape()`: summary JSON を karte shape に投影
   - `_load_karte` 統合: CLI コマンドが summary を自動検出して処理
   - 18 件単体テスト + 2 件 CLI 統合テスト合格
-- [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
+- [x] **Phase 225: LLM Coach GUI 統合（手動貼付ワークフロー）**（Lv3、2026-07-17 完了）
+  - `katrain/gui/features/llm_coach.py`: Kivy 非依存の 3 関数ラッパー（`build_llm_prompt` / `validate_llm_response` / `find_latest_karte`）+ core/coach/cli を再利用する薄いラッパー
+  - `katrain/gui/popups/llm_coach_popup.py` + `katrain/gui/kv/llm_coach_popup.kv`: 5 ボタン (browse/generate+copy/clear/validate/copy-result) の Popup
+  - `popup_commands.do_llm_coach_popup` 追加、`DISPATCH_TABLE` に `llm_coach_popup` 登録、`menu.kv` にメニュー項目追加
+  - i18n: `mykatrain:llm-coach:*` 28 キー (jp/en) + .mo 再コンパイル
+  - 16 件ロジック + 18 件 GUI テスト追加、累計 4882 件テスト合格
+  - **API 連携なし**: クリップボードへ手動コピー → 外部 LLM 貼付 → 回答貼付 → 検証
+- [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---
 

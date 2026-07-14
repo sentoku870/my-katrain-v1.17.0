@@ -1,7 +1,8 @@
 # myKatrain コード構造
 
-> **最終更新**: 2026-07-16（Phase 192 + Documentation cleanup）
+> **最終更新**: 2026-07-17（Phase 225: LLM Coach GUI 統合）
 > Phase 171 で Leela エンジン完全削除。Phase 187-192 で Architecture Review Follow-up 完了。
+> Phase 225 で MyKatrain メニューに LLM コーチ（手動貼付）を追加。
 > 完了 Phase の詳細は [`docs/archive/specs-implemented/phase*.md`](./archive/specs-implemented/) を参照。
 
 ---
@@ -166,6 +167,7 @@ katrain/
 │       ├── settings_popup_helpers.py
 │       ├── settings_popup_tabs/  # KataGo 専用タブ（Phase 171 で leela_tab 削除）
 │       ├── karte_export.py
+│       ├── llm_coach.py            # Phase 225 LLM コーチ（Kivy 非依存ロジックラッパー）
 │       ├── summary_*.py
 │       ├── batch_*.py
 │       ├── active_review_*.py

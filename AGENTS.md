@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-192
+- **完了**: Phase 1-225
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -39,9 +39,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 219（2026-07-17）: Calibrate CLI command（5 unit tests）
   - Phase 220（2026-07-17）: Trace CLI command（6 unit tests）
   - Phase 221（2026-07-17）: Multi-game summary support（`json_type.py`、18 unit tests + 2 CLI tests）
+  - Phase 225（2026-07-17）: **LLM Coach GUI 統合（手動貼付ワークフロー）**（Lv3、9 ファイル + 34 unit tests、全 4882 件テスト合格）
+    - `katrain/gui/features/llm_coach.py`: `build_llm_prompt` / `validate_llm_response` / `find_latest_karte` の薄いラッパー
+    - `katrain/gui/popups/llm_coach_popup.py` + `katrain/gui/kv/llm_coach_popup.kv`: MyKatrain メニュー「LLM コーチ（手動貼付）」から開く Popup
+    - DISPATCH_TABLE に `llm_coach_popup` 追加、menu.kv にメニュー項目追加
+    - i18n: `mykatrain:llm-coach:*` 28 個のキー（jp/en .po + .mo 更新済み）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
-- **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
+- **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
 
 全体ロードマップは `docs/01-roadmap.md` を参照。
 
