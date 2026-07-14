@@ -151,3 +151,16 @@ def do_kifunarabe_abort(ctx: KaTrainGui) -> None:
     controller = getattr(ctx, "_kifunarabe_controller", None)
     if controller is not None:
         controller.abort_session()
+
+
+def do_llm_coach_popup(ctx: KaTrainGui) -> None:
+    """Open the LLM Coach popup (Phase 225).
+
+    The popup lets the user build an LLM prompt from a Karte JSON, copy it
+    to the clipboard, paste the LLM response back, and run validation.
+    No API integration — manual paste only. See ``docs/archive/specs-planned/phase203-llm-translator.md``
+    for the underlying translation-specialisation design.
+    """
+    from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
+
+    open_llm_coach_popup(ctx)
