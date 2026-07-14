@@ -1038,6 +1038,12 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - `detect_symptoms_from_karte` を per-move + weakness + **streak** の 3 系統統合に拡張
   - 4 つの「新規」症状（OVERFIGHT / SMALL_MOVE_ADDICTION / TILT_CHAIN / TILT_DISCOURAGEMENT）を自動検出可能化
   - 17 件新規ユニットテスト合格
+- [x] **Phase 217: Aggregate helpers + CLI analyze**（Lv2、2026-07-14 完了）
+  - `extract_winrate_scorelead_correlation(karte)` — Pearson r ヘルパー
+  - `extract_winrate_scorelead_pairs(karte)` — 生データ（w, p）抽出
+  - CLI `analyze <karte.json>` 新コマンド（Meta / Metrics / Streak / Correlation / Symptoms を出力）
+  - POSITION_EVALUATION 自動検出は閾値不安定のため placeholder に（要ゴールデン棋譜検証）
+  - 6 件新規 CLI テスト合格
 - [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---

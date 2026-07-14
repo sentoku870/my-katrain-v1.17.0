@@ -34,6 +34,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 214-A（2026-07-17）: LLM coach CLI tool（`core/coach/cli.py`、17 unit tests）
   - Phase 215（2026-07-17）: Karte-aware symptom detection（`core/coach/karte_detector.py`、30 unit tests）
   - Phase 216（2026-07-17）: Streak-based symptom detection（`karte_detector.py` 拡張、17 unit tests）
+  - Phase 217（2026-07-17）: Aggregate helpers + CLI `analyze` command（6 unit tests）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
@@ -288,6 +289,12 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 217 — Aggregate helpers + CLI analyze**（Lv2）
+  - `extract_winrate_scorelead_correlation(karte)` — Pearson r ヘルパー
+  - `extract_winrate_scorelead_pairs(karte)` — 生 (w, p) ペア抽出
+  - CLI `analyze <karte.json>` 新コマンド追加（Meta / Metrics / Streak / Correlation / Symptoms を出力）
+  - POSITION_EVALUATION 自動検出は相関閾値不安定のため placeholder（ゴールデン棋譜検証を要する）
+  - 6 件 CLI テスト追加、累計 4822 件テスト合格
 - 2026-07-17: **Phase 216 — Streak-based symptom detection**（Lv2）
   - `katrain/core/coach/karte_detector.py` 拡張: 5 個の streak aggregator helper
   - `detect_symptoms_from_karte` を 3 系統統合に拡張（per-move + weakness + streak）
