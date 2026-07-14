@@ -31,9 +31,10 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 197-202（2026-07-17）: 各種サブパッケージ化 + AppContext + リファクタリング
   - Phase 203（2026-07-17）: LLM「翻訳特化」導入 調査ドキュメント（D 案: ドキュメント整備のみ）
   - Phase 207-213（2026-07-17）: `core/coach/` パッケージ完全実装（master_db / lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、合計 243 unit tests、全 4752 件テスト合格）
+  - Phase 214-A（2026-07-17）: LLM coach CLI tool（`core/coach/cli.py`、17 unit tests）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
-- **次**: TBD（Phase 211.5 スキーマバンプ / Phase 214 GUI 統合 は将来課題）
+- **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
 
 全体ロードマップは `docs/01-roadmap.md` を参照。
 
@@ -285,6 +286,10 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 214-A — LLM coach CLI tool**（Lv2）
+  - `katrain/core/coach/cli.py`: 4 サブコマンド（build / validate / symptoms / lexicon）
+  - 17 件ユニットテスト、Kivy 非依存（ターミナルから直接起動可能）
+  - ワークフロー: GUI で Karte JSON 書き出し → CLI で LLM プロンプト生成 → LLM に貼付 → CLI で検証
 - 2026-07-17: **Phase 213 — LLM「翻訳特化」導入 完全実装**
   - Phase 207 `master_db.py` + Phase 208 `lexicon.py` + Phase 209 `symptom_index.py` + Phase 210 `tones.py` + Phase 211 `prompt_builder.py` (Lv3) + Phase 212 `llm_validator.py` を `katrain/core/coach/` に完全実装
   - Phase 213 `test_coach_e2e.py`: 6 モジュールを end-to-end で結線する mock LLM テスト 9 件

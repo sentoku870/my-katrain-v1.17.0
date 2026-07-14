@@ -1023,7 +1023,12 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - Phase 211 `prompt_builder.py`: HTML-comment SystemInstruction + Karte + Lexicon injection + 23 tests (**Lv3**)
   - Phase 212 `llm_validator.py`: validate_llm_output (5 check types) + 20 tests
   - Phase 213 `test_coach_e2e.py`: 9 end-to-end mock-LLM scenarios
-- [ ] **Phase 214+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」、Phase 211.5 スキーマバンプ）、将来課題
+- [x] **Phase 214-A: LLM coach CLI tool** — `katrain/core/coach/cli.py`（Lv2、2026-07-14 完了）
+  - `python -m katrain.core.coach.cli build <karte.json>` で LLM プロンプト生成（ファイル/stdout）
+  - `python -m katrain.core.coach.cli validate <karte.json> <llm.txt>` で検証レポート（exit 0/1）
+  - `symptoms` / `lexicon <id>` デバッグコマンド
+  - 17 件ユニットテスト合格
+- [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---
 
