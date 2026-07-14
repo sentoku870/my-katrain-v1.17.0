@@ -1008,7 +1008,19 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
 - [ ] **CI exit-102 残存問題の根本解決**（Phase 173 部分修正、残存問題あり）
 - [x] **`hints.py` 753 行のサブパッケージ化**（Phase 196 で 6 ファイル分割完了）
 
+### Phase 203+ 計画中
 
+- [x] **Phase 203: LLM「翻訳特化」導入** — KataGo 出力を Ground Truth とし、LLM には判断ではなく翻訳のみを担わせる設計の[**調査ドキュメント**](archive/specs-planned/phase203-llm-translator.md)（2026-07-14 完了、D 案: ドキュメント整備のみ）
+  - 統合マスター §2-0（30 症状）の Python マッピング案
+  - ハルシネーション抑制 3 層防御（構造化メタデータ / Lexicon 注入 / HTML コメント式 System Instruction）
+  - レベル判定（KataGo BR/WR + 負け基準自動補正）
+  - LLM 出力検証（警告表示のみ、ブロックしない）
+- [x] **Phase 207: `core/coach/master_db.py`** — 統合マスター §0 + §1 を `katrain/core/coach/master_db.py` に構造化（Lv2、2026-07-14 完了）
+  - `CoachMode` enum（5 モード）+ `ToneVoice` enum（3 ボイス）
+  - `ModeConfig` / `ToneConfig` データクラス（frozen dataclass）
+  - `estimate_mode_from_rank` / `estimate_mode_from_loss`（負け基準補正）
+  - 41 件ユニットテスト合格
+- [ ] **Phase 208+**: Phase 203 ドキュメントに基づく実装の残り（lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、Lv3 = Phase 211-E のみ）
 
 ---
 
