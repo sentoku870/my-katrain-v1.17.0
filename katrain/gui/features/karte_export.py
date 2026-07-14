@@ -102,6 +102,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         open_settings_callback: Callback to open settings dialog if needed
     """
     # Phase 173: lazy-import kivy UI primitives — see do_export_karte.
+    from kivy.clock import Clock  # Phase 225.2 fix: used by copy_path closure
     from kivy.core.clipboard import Clipboard
     from kivy.metrics import dp
     from kivy.uix.boxlayout import BoxLayout

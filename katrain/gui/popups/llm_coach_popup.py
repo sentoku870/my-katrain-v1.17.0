@@ -98,14 +98,23 @@ class LLMCcoachPopupContent(BoxLayout):
         """Open an I18NFileBrowser dialog filtered to ``*.json``.
 
         The selected path is written back to ``karte_path_input``.
+        Phase 225.2: bind to ``on_success`` (the OK button event), not
+        ``on_submit`` (which only fires on double-click). The user
+        reported the OK button did nothing because the double-click
+        handler was the only listener attached.
         """
         from kivy.metrics import dp
 
-        def _on_select(instance: Any, *_args: Any) -> None:
-            selection = list(instance.selection or [])
-            if not selection:
+        def _on_success(instance: Any, *_args: Any) -> None:
+            # I18NFileBrowser exposes the chosen path via its
+            # ``filename`` StringProperty (set when ``button_clicked``
+            # fires ``on_success``). Fall back to ``selection`` if the
+            # caller double-clicked a row instead.
+            chosen = instance.filename or (
+                instance.selection[0] if instance.selection else ""
+            )
+            if not chosen:
                 return
-            chosen = selection[0]
             if self.karte_path_input is not None:
                 self.karte_path_input.text = str(chosen)
             picker.dismiss()
@@ -114,7 +123,10 @@ class LLMCcoachPopupContent(BoxLayout):
             filters=["*.json", "*.JSON"],
             select_string=i18n._("button:ok"),
         )
-        browser.bind(on_submit=_on_select)
+        # Both events: OK button (on_success) and double-click (on_submit).
+        # See ``I18NFileBrowser.button_clicked`` and the I18NFileChooserListView
+        # ``on_submit`` binding inside ``filebrowser.py``.
+        browser.bind(on_success=_on_success, on_submit=_on_success)
 
         picker = I18NPopup(
             title_key="mykatrain:llm-coach:browse-title",

@@ -87,6 +87,57 @@ class TestOnBrowseKarte:
         # Popup opened
         mock_popup_instance.open.assert_called_once()
 
+    def test_binds_both_on_success_and_on_submit(self) -> None:
+        """Phase 225.2 regression: OK-button click previously did nothing
+        because we only bound ``on_submit`` (double-click event)."""
+        from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
+
+        content = _make_content()
+        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup"), \
+             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+            mock_browser = MagicMock()
+            mock_browser_cls.return_value = mock_browser
+            content.on_browse_karte()
+        # Both events must be bound so OK and double-click both work
+        bind_args = mock_browser.bind.call_args_list
+        bound_events = set()
+        for call in bind_args:
+            # bind(event=callback) or bind(**{event: callback})
+            for key in call.kwargs:
+                bound_events.add(key)
+        assert "on_success" in bound_events, (
+            "OK-button (on_success) handler missing — Phase 225.2 regression"
+        )
+        assert "on_submit" in bound_events, "double-click handler must stay bound"
+
+    def test_on_success_writes_path_to_karte_input(self) -> None:
+        """Simulate the OK button firing: the chosen file path must be
+        written back to the karte_path_input."""
+        from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
+
+        content = _make_content()
+        content.karte_path_input.text = ""
+        captured: dict[str, Any] = {}
+        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
+             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+            mock_picker = MagicMock()
+            mock_popup_cls.return_value = mock_picker
+            mock_browser = MagicMock()
+            # The browser exposes the chosen path via ``filename`` when OK fires.
+            mock_browser.filename = "C:/reports/karte_x.json"
+            mock_browser.selection = []
+            mock_browser_cls.return_value = mock_browser
+            content.on_browse_karte()
+            # Find the bound on_success callback and invoke it.
+            for call in mock_browser.bind.call_args_list:
+                if "on_success" in call.kwargs:
+                    captured["cb"] = call.kwargs["on_success"]
+                    break
+        assert "cb" in captured, "on_success callback not bound"
+        captured["cb"](mock_browser)
+        assert content.karte_path_input.text == "C:/reports/karte_x.json"
+        mock_picker.dismiss.assert_called_once()
+
 
 # ---- on_generate_and_copy ---------------------------------------------
 
