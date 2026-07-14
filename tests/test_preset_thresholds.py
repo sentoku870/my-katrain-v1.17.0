@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from katrain.core.eval_metrics import get_skill_preset
-
-
+from katrain.core.analysis import get_skill_preset
 def test_standard_preset_reason_tag_thresholds_tightened():
     """Phase 148-C3: standard preset tightened (heavy_loss 15→5, reading_failure 20→8)."""
     standard = get_skill_preset("standard")

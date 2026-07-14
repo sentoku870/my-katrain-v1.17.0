@@ -793,8 +793,8 @@ class TestBuildSummaryReport:
         assert isinstance(result, str)
 
     def test_build_summary_report_with_data(self):
-        from katrain.core.eval_metrics import EvalSnapshot, GameSummaryData
-
+        from katrain.core.analysis.models.move_eval import EvalSnapshot
+        from katrain.core.analysis.models.skill import GameSummaryData
         data = GameSummaryData(
             game_name="test_game",
             player_black="Alice",
@@ -808,8 +808,8 @@ class TestBuildSummaryReport:
         assert isinstance(result, str)
 
     def test_build_summary_report_with_focus_player(self):
-        from katrain.core.eval_metrics import EvalSnapshot, GameSummaryData
-
+        from katrain.core.analysis.models.move_eval import EvalSnapshot
+        from katrain.core.analysis.models.skill import GameSummaryData
         data = GameSummaryData(
             game_name="test_game",
             player_black="Alice",

@@ -21,9 +21,11 @@ Scope (Kivy-free, fully testable without side effects):
 
 from __future__ import annotations
 
+from katrain.core.analysis.models.enums import MistakeCategory
+
+
 import pytest
 
-from katrain.core import eval_metrics
 from katrain.core.batch.stats.pattern_miner import GameRef
 from katrain.gui.features import summary_formatter as sf
 
@@ -181,7 +183,7 @@ class TestPatternMoveEval:
 
     def test_valid_mistake_category_mapped(self):
         mv = sf._PatternMoveEval({"mistake_category": "MISTAKE"})
-        assert mv.mistake_category == eval_metrics.MistakeCategory.MISTAKE
+        assert mv.mistake_category == MistakeCategory.MISTAKE
 
     def test_invalid_mistake_category_logs_and_skips(self, caplog):
         import logging
@@ -210,7 +212,7 @@ class TestPatternMoveEval:
         assert mv.score_loss == 1.5
         assert mv.points_lost == 2.0
         assert mv.meaning_tag_id == "urgent_miss"
-        assert mv.mistake_category == eval_metrics.MistakeCategory.BLUNDER
+        assert mv.mistake_category == MistakeCategory.BLUNDER
 
 
 # ---------------------------------------------------------------------------

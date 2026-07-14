@@ -1,3 +1,5 @@
+from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+
 """Snapshot test for summary_formatter.py (Phase 23 PR #3).
 
 Tests that type hint additions don't change output behavior.
@@ -10,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-from katrain.core import eval_metrics
 from katrain.gui.features.summary_formatter import build_summary_from_stats
 
 # Test fixture path
@@ -53,63 +54,63 @@ def create_test_summary_stats() -> list:
         "loss_by_player": {"B": 5.0, "W": 5.0},
         # Mistake counts
         "mistake_counts": {
-            eval_metrics.MistakeCategory.GOOD: 20,
-            eval_metrics.MistakeCategory.INACCURACY: 5,
-            eval_metrics.MistakeCategory.MISTAKE: 3,
-            eval_metrics.MistakeCategory.BLUNDER: 2,
+            MistakeCategory.GOOD: 20,
+            MistakeCategory.INACCURACY: 5,
+            MistakeCategory.MISTAKE: 3,
+            MistakeCategory.BLUNDER: 2,
         },
         "mistake_total_loss": {
-            eval_metrics.MistakeCategory.GOOD: 0.0,
-            eval_metrics.MistakeCategory.INACCURACY: 2.0,
-            eval_metrics.MistakeCategory.MISTAKE: 3.0,
-            eval_metrics.MistakeCategory.BLUNDER: 5.0,
+            MistakeCategory.GOOD: 0.0,
+            MistakeCategory.INACCURACY: 2.0,
+            MistakeCategory.MISTAKE: 3.0,
+            MistakeCategory.BLUNDER: 5.0,
         },
         # Freedom counts (all UNKNOWN)
         "freedom_counts": {
-            eval_metrics.PositionDifficulty.EASY: 0,
-            eval_metrics.PositionDifficulty.NORMAL: 0,
-            eval_metrics.PositionDifficulty.HARD: 0,
-            eval_metrics.PositionDifficulty.ONLY_MOVE: 0,
-            eval_metrics.PositionDifficulty.UNKNOWN: 30,
+            PositionDifficulty.EASY: 0,
+            PositionDifficulty.NORMAL: 0,
+            PositionDifficulty.HARD: 0,
+            PositionDifficulty.ONLY_MOVE: 0,
+            PositionDifficulty.UNKNOWN: 30,
         },
         # Phase data
         "phase_moves": {"opening": 10, "middle": 15, "yose": 5, "unknown": 0},
         "phase_loss": {"opening": 2.0, "middle": 6.0, "yose": 2.0, "unknown": 0.0},
         # Phase × Mistake cross-tabulation
         "phase_mistake_counts": {
-            ("opening", eval_metrics.MistakeCategory.GOOD): 8,
-            ("opening", eval_metrics.MistakeCategory.INACCURACY): 1,
-            ("opening", eval_metrics.MistakeCategory.MISTAKE): 1,
-            ("opening", eval_metrics.MistakeCategory.BLUNDER): 0,
-            ("middle", eval_metrics.MistakeCategory.GOOD): 10,
-            ("middle", eval_metrics.MistakeCategory.INACCURACY): 3,
-            ("middle", eval_metrics.MistakeCategory.MISTAKE): 1,
-            ("middle", eval_metrics.MistakeCategory.BLUNDER): 1,
-            ("yose", eval_metrics.MistakeCategory.GOOD): 2,
-            ("yose", eval_metrics.MistakeCategory.INACCURACY): 1,
-            ("yose", eval_metrics.MistakeCategory.MISTAKE): 1,
-            ("yose", eval_metrics.MistakeCategory.BLUNDER): 1,
+            ("opening", MistakeCategory.GOOD): 8,
+            ("opening", MistakeCategory.INACCURACY): 1,
+            ("opening", MistakeCategory.MISTAKE): 1,
+            ("opening", MistakeCategory.BLUNDER): 0,
+            ("middle", MistakeCategory.GOOD): 10,
+            ("middle", MistakeCategory.INACCURACY): 3,
+            ("middle", MistakeCategory.MISTAKE): 1,
+            ("middle", MistakeCategory.BLUNDER): 1,
+            ("yose", MistakeCategory.GOOD): 2,
+            ("yose", MistakeCategory.INACCURACY): 1,
+            ("yose", MistakeCategory.MISTAKE): 1,
+            ("yose", MistakeCategory.BLUNDER): 1,
         },
         "phase_mistake_loss": {
-            ("opening", eval_metrics.MistakeCategory.GOOD): 0.0,
-            ("opening", eval_metrics.MistakeCategory.INACCURACY): 0.5,
-            ("opening", eval_metrics.MistakeCategory.MISTAKE): 1.5,
-            ("opening", eval_metrics.MistakeCategory.BLUNDER): 0.0,
-            ("middle", eval_metrics.MistakeCategory.GOOD): 0.0,
-            ("middle", eval_metrics.MistakeCategory.INACCURACY): 1.0,
-            ("middle", eval_metrics.MistakeCategory.MISTAKE): 1.0,
-            ("middle", eval_metrics.MistakeCategory.BLUNDER): 4.0,
-            ("yose", eval_metrics.MistakeCategory.GOOD): 0.0,
-            ("yose", eval_metrics.MistakeCategory.INACCURACY): 0.5,
-            ("yose", eval_metrics.MistakeCategory.MISTAKE): 0.5,
-            ("yose", eval_metrics.MistakeCategory.BLUNDER): 1.0,
+            ("opening", MistakeCategory.GOOD): 0.0,
+            ("opening", MistakeCategory.INACCURACY): 0.5,
+            ("opening", MistakeCategory.MISTAKE): 1.5,
+            ("opening", MistakeCategory.BLUNDER): 0.0,
+            ("middle", MistakeCategory.GOOD): 0.0,
+            ("middle", MistakeCategory.INACCURACY): 1.0,
+            ("middle", MistakeCategory.MISTAKE): 1.0,
+            ("middle", MistakeCategory.BLUNDER): 4.0,
+            ("yose", MistakeCategory.GOOD): 0.0,
+            ("yose", MistakeCategory.INACCURACY): 0.5,
+            ("yose", MistakeCategory.MISTAKE): 0.5,
+            ("yose", MistakeCategory.BLUNDER): 1.0,
         },
         # Reason tags
         "reason_tags_counts": {},
         # Worst moves
         "worst_moves": [
-            (10, "B", "Q10", 4.0, 5.0, eval_metrics.MistakeCategory.BLUNDER),
-            (25, "W", "D16", 3.0, 3.5, eval_metrics.MistakeCategory.MISTAKE),
+            (10, "B", "Q10", 4.0, 5.0, MistakeCategory.BLUNDER),
+            (25, "W", "D16", 3.0, 3.5, MistakeCategory.MISTAKE),
         ],
     }
     return [stats]

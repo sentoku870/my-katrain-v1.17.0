@@ -127,8 +127,7 @@ def create_test_snapshot(
         ...     {"move_number": 2, "player": "W", "gtp": "Q16", "score_loss": 3.0},
         ... ])
     """
-    from katrain.core.eval_metrics import MistakeCategory, PositionDifficulty
-
+    from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
     moves: list[MoveEval] = []
 
     for data in move_data:

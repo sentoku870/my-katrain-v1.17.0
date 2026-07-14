@@ -1,3 +1,5 @@
+from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+
 """
 Tests for katrain/gui/features/summary_stats.py
 
@@ -19,7 +21,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from katrain.core import eval_metrics
 from katrain.gui.features.summary_stats import (
     extract_analysis_from_sgf_node,
     extract_sgf_statistics,
@@ -653,12 +654,12 @@ class TestExtractSgfStatistics:
         assert "W" in result["loss_by_player"]
 
         # Verify MistakeCategory keys
-        for cat in eval_metrics.MistakeCategory:
+        for cat in MistakeCategory:
             assert cat in result["mistake_counts"]
             assert cat in result["mistake_total_loss"]
 
         # Verify PositionDifficulty keys
-        for diff in eval_metrics.PositionDifficulty:
+        for diff in PositionDifficulty:
             assert diff in result["freedom_counts"]
 
         # Verify phase keys

@@ -105,7 +105,7 @@ class TestAnalysisPackageSurface:
         missing = [n for n in analysis.__all__ if n not in ns]
         assert not missing, f"Wildcard import skipped: {missing[:10]}..."
 
-    def test_get_root_visits_wrapper(self):
+    def testget_root_visits_wrapper(self):
         """Phase 92 wrapper remains available."""
         from katrain.core.analysis import get_root_visits
 

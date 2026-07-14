@@ -10,10 +10,11 @@ extract_sgf_statistics() which reads KT properties from SGF files.
 
 from __future__ import annotations
 
+from katrain.core.analysis import classify_mistake, classify_game_phase
+from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+
+
 from typing import Any
-
-from katrain.core import eval_metrics
-
 
 def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
     """
@@ -59,9 +60,9 @@ def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
         # Statistics fields
         "total_moves": 0,
         "total_points_lost": 0.0,
-        "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
-        "mistake_total_loss": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
-        "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+        "mistake_counts": {cat: 0 for cat in MistakeCategory},
+        "mistake_total_loss": {cat: 0.0 for cat in MistakeCategory},
+        "freedom_counts": {diff: 0 for diff in PositionDifficulty},
         "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
         "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
         "phase_mistake_counts": {},
@@ -102,16 +103,16 @@ def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
 
                 # Classify mistake
                 canonical_loss = max(0.0, points_lost)
-                category = eval_metrics.classify_mistake(canonical_loss, None)
+                category = classify_mistake(canonical_loss, None)
                 stats["mistake_counts"][category] += 1
                 stats["mistake_total_loss"][category] += canonical_loss
 
                 # Freedom (unknown since we don't have real analysis)
-                freedom = eval_metrics.PositionDifficulty.UNKNOWN
+                freedom = PositionDifficulty.UNKNOWN
                 stats["freedom_counts"][freedom] += 1
 
                 # Phase classification
-                phase = eval_metrics.classify_game_phase(move_num)
+                phase = classify_game_phase(move_num)
                 stats["phase_moves"][phase] += 1
                 if canonical_loss > 0:
                     stats["phase_loss"][phase] += canonical_loss

@@ -10,9 +10,11 @@ This module tests:
 
 from __future__ import annotations
 
+from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+
+
 import logging
 
-from katrain.core import eval_metrics
 from katrain.gui.features.summary_formatter import (
     AREA_KEYS,
     PHASE_KEYS,
@@ -60,22 +62,22 @@ def create_single_game_stats(
 
     # Create mistake counts distribution
     mistake_counts = {
-        eval_metrics.MistakeCategory.GOOD: int(total_moves * 0.6),
-        eval_metrics.MistakeCategory.INACCURACY: int(total_moves * 0.2),
-        eval_metrics.MistakeCategory.MISTAKE: int(total_moves * 0.15),
-        eval_metrics.MistakeCategory.BLUNDER: int(total_moves * 0.05),
+        MistakeCategory.GOOD: int(total_moves * 0.6),
+        MistakeCategory.INACCURACY: int(total_moves * 0.2),
+        MistakeCategory.MISTAKE: int(total_moves * 0.15),
+        MistakeCategory.BLUNDER: int(total_moves * 0.05),
     }
 
     mistake_total_loss = {
-        eval_metrics.MistakeCategory.GOOD: 0.0,
-        eval_metrics.MistakeCategory.INACCURACY: total_points_lost * 0.15,
-        eval_metrics.MistakeCategory.MISTAKE: total_points_lost * 0.35,
-        eval_metrics.MistakeCategory.BLUNDER: total_points_lost * 0.50,
+        MistakeCategory.GOOD: 0.0,
+        MistakeCategory.INACCURACY: total_points_lost * 0.15,
+        MistakeCategory.MISTAKE: total_points_lost * 0.35,
+        MistakeCategory.BLUNDER: total_points_lost * 0.50,
     }
 
     # Freedom counts (all UNKNOWN for simplicity)
-    freedom_counts = {diff: 0 for diff in eval_metrics.PositionDifficulty}
-    freedom_counts[eval_metrics.PositionDifficulty.UNKNOWN] = total_moves
+    freedom_counts = {diff: 0 for diff in PositionDifficulty}
+    freedom_counts[PositionDifficulty.UNKNOWN] = total_moves
 
     # Phase moves and loss
     phase_moves = {
@@ -200,7 +202,7 @@ class TestPatternDataContract:
 
         move_eval = _PatternMoveEval(data)
 
-        assert move_eval.mistake_category == eval_metrics.MistakeCategory.BLUNDER
+        assert move_eval.mistake_category == MistakeCategory.BLUNDER
 
     def test_invalid_mistake_category_sets_none_and_logs_warning(self, caplog):
         """Invalid mistake_category should set None and log warning."""

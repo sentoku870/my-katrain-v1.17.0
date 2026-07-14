@@ -10,15 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from katrain.core.eval_metrics import (
-    SCORE_THRESHOLDS,
-    WINRATE_THRESHOLDS,
-    MistakeCategory,
-    PositionDifficulty,
-    classify_mistake,
-    compute_canonical_loss,
-    compute_loss_from_delta,
-)
+from katrain.core.analysis.models.skill import SCORE_THRESHOLDS, WINRATE_THRESHOLDS
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
+from katrain.core.analysis import classify_mistake, compute_canonical_loss, compute_loss_from_delta
 from tests.helpers_eval_metrics import StubGameNode, StubMove, make_move_eval
 
 

@@ -1,3 +1,5 @@
+from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+
 """
 Golden tests for Multi-Game Summary output.
 
@@ -15,8 +17,6 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
-
-from katrain.core import eval_metrics
 
 # Skip tests that require KaTrainGui import on CI (no display available)
 _CI_SKIP = pytest.mark.skipif(
@@ -56,22 +56,22 @@ def create_single_game_stats(
 
     # Create mistake counts distribution
     mistake_counts = {
-        eval_metrics.MistakeCategory.GOOD: int(total_moves * 0.6),
-        eval_metrics.MistakeCategory.INACCURACY: int(total_moves * 0.2),
-        eval_metrics.MistakeCategory.MISTAKE: int(total_moves * 0.15),
-        eval_metrics.MistakeCategory.BLUNDER: int(total_moves * 0.05),
+        MistakeCategory.GOOD: int(total_moves * 0.6),
+        MistakeCategory.INACCURACY: int(total_moves * 0.2),
+        MistakeCategory.MISTAKE: int(total_moves * 0.15),
+        MistakeCategory.BLUNDER: int(total_moves * 0.05),
     }
 
     mistake_total_loss = {
-        eval_metrics.MistakeCategory.GOOD: 0.0,
-        eval_metrics.MistakeCategory.INACCURACY: total_points_lost * 0.15,
-        eval_metrics.MistakeCategory.MISTAKE: total_points_lost * 0.35,
-        eval_metrics.MistakeCategory.BLUNDER: total_points_lost * 0.50,
+        MistakeCategory.GOOD: 0.0,
+        MistakeCategory.INACCURACY: total_points_lost * 0.15,
+        MistakeCategory.MISTAKE: total_points_lost * 0.35,
+        MistakeCategory.BLUNDER: total_points_lost * 0.50,
     }
 
     # Freedom counts (all UNKNOWN for simplicity)
-    freedom_counts = {diff: 0 for diff in eval_metrics.PositionDifficulty}
-    freedom_counts[eval_metrics.PositionDifficulty.UNKNOWN] = total_moves
+    freedom_counts = {diff: 0 for diff in PositionDifficulty}
+    freedom_counts[PositionDifficulty.UNKNOWN] = total_moves
 
     # Phase moves and loss
     phase_moves = {
@@ -91,12 +91,12 @@ def create_single_game_stats(
     phase_mistake_counts = {}
     phase_mistake_loss = {}
     for phase in ["opening", "middle", "yose"]:
-        for cat in eval_metrics.MistakeCategory:
+        for cat in MistakeCategory:
             key = (phase, cat)
-            if cat == eval_metrics.MistakeCategory.GOOD:
+            if cat == MistakeCategory.GOOD:
                 phase_mistake_counts[key] = phase_moves[phase] // 2
                 phase_mistake_loss[key] = 0.0
-            elif cat == eval_metrics.MistakeCategory.BLUNDER:
+            elif cat == MistakeCategory.BLUNDER:
                 phase_mistake_counts[key] = 1 if phase == "middle" else 0
                 phase_mistake_loss[key] = 5.0 if phase == "middle" else 0.0
             else:
@@ -105,9 +105,9 @@ def create_single_game_stats(
 
     # Worst moves
     worst_moves = [
-        (15, "B", "D4", 5.0, 6.0, eval_metrics.MistakeCategory.BLUNDER),
-        (28, "W", "Q10", 3.5, 4.0, eval_metrics.MistakeCategory.MISTAKE),
-        (42, "B", "R5", 2.5, 3.0, eval_metrics.MistakeCategory.MISTAKE),
+        (15, "B", "D4", 5.0, 6.0, MistakeCategory.BLUNDER),
+        (28, "W", "Q10", 3.5, 4.0, MistakeCategory.MISTAKE),
+        (42, "B", "R5", 2.5, 3.0, MistakeCategory.MISTAKE),
     ]
 
     # Player-specific stats

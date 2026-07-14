@@ -4,11 +4,8 @@ Shared test fixtures and stubs for eval_metrics tests.
 
 from dataclasses import dataclass
 
-from katrain.core.eval_metrics import (
-    MistakeCategory,
-    MoveEval,
-    PositionDifficulty,
-)
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
+from katrain.core.analysis.models.move_eval import MoveEval
 
 # ---------------------------------------------------------------------------
 # Helper function to create MoveEval with defaults
