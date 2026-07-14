@@ -3,7 +3,7 @@
 
 import json
 
-from katrain.core.constants import AnalysisMode, parse_analysis_mode
+from katrain.core.analysis.modes import AnalysisMode, parse_analysis_mode
 
 
 class TestAnalysisModeEnumInterop:

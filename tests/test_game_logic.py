@@ -29,11 +29,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from katrain.core.constants import (
-    PLAYER_HUMAN,
-    PLAYING_NORMAL,
-    AnalysisMode,
-)
+from katrain.core.analysis.modes import AnalysisMode
+from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
 from katrain.core.game import (
     Game,
     IllegalMoveException,

@@ -17,10 +17,8 @@ from typing import Any
 
 # eval_metrics は katrain.core 直下のパッケージ (このファイルが katrain.core.game 配下のため明示的に絶対 import)
 from katrain.core import analysis
-from katrain.core.constants import (
-    OUTPUT_INFO,
-    AnalysisMode,
-)
+from katrain.core.analysis.modes import AnalysisMode
+from katrain.core.constants import OUTPUT_INFO
 from katrain.core.engine import KataGoEngine
 from katrain.core.analysis import (
     EvalSnapshot,

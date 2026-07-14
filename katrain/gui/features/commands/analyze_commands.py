@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.__main__ import KaTrainGui
-    from katrain.core.constants import AnalysisMode
+    from katrain.core.analysis.modes import AnalysisMode
 
 
 def do_analyze_extra(ctx: KaTrainGui, mode: str | AnalysisMode, **kwargs: Any) -> None:

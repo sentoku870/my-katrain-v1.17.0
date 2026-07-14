@@ -5,7 +5,7 @@ Uses shared fixtures from conftest.py.
 """
 
 
-from katrain.core.constants import AnalysisMode
+from katrain.core.analysis.modes import AnalysisMode
 from katrain.core.game import Move
 from katrain.core.game_node import GameNode
 

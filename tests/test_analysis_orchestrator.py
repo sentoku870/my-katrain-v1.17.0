@@ -10,7 +10,7 @@ import contextlib
 
 import pytest
 
-from katrain.core.constants import AnalysisMode
+from katrain.core.analysis.modes import AnalysisMode
 from katrain.core.game import AnalysisOrchestrator
 
 

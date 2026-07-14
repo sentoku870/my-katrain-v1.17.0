@@ -23,6 +23,7 @@ import math
 import time
 from typing import TYPE_CHECKING, Any
 
+from katrain.core.analysis.modes import AnalysisMode, parse_analysis_mode
 from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_EXTRA_DEBUG,
@@ -36,8 +37,6 @@ from katrain.core.constants import (
     STATUS_ANALYSIS,
     STATUS_INFO,
     STATUS_TEACHING,
-    AnalysisMode,
-    parse_analysis_mode,
 )
 from katrain.core.engine import KataGoEngine
 from katrain.core.game_node import GameNode
