@@ -35,6 +35,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 215（2026-07-17）: Karte-aware symptom detection（`core/coach/karte_detector.py`、30 unit tests）
   - Phase 216（2026-07-17）: Streak-based symptom detection（`karte_detector.py` 拡張、17 unit tests）
   - Phase 217（2026-07-17）: Aggregate helpers + CLI `analyze` command（6 unit tests）
+  - Phase 218（2026-07-17）: Calibration fixtures（39 unit tests、golden test cases）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
@@ -289,6 +290,11 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 218 — Calibration fixtures**（Lv2）
+  - `katrain/core/coach/calibration_fixtures.py`: 8 個の GoldenFixture
+  - 各 fixture は 1 症状のみ発火するよう独立化（テスト安定性）
+  - 39 件新規テスト、検出器挙動を pin する regression suite
+  - Phase 219+ での閾値チューニングの基礎
 - 2026-07-17: **Phase 217 — Aggregate helpers + CLI analyze**（Lv2）
   - `extract_winrate_scorelead_correlation(karte)` — Pearson r ヘルパー
   - `extract_winrate_scorelead_pairs(karte)` — 生 (w, p) ペア抽出

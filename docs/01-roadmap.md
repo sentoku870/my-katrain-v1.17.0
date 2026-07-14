@@ -1044,6 +1044,13 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - CLI `analyze <karte.json>` 新コマンド（Meta / Metrics / Streak / Correlation / Symptoms を出力）
   - POSITION_EVALUATION 自動検出は閾値不安定のため placeholder に（要ゴールデン棋譜検証）
   - 6 件新規 CLI テスト合格
+- [x] **Phase 218: Calibration fixtures**（Lv2、2026-07-14 完了）
+  - `katrain/core/coach/calibration_fixtures.py`: 8 個の GoldenFixture
+    - perfect_game / single_atari_mistake / reckless_overplay /
+      long_mistake_streak / many_small_streaks / tilt_chain_disaster /
+      tilt_discouragement / strong_correlation
+  - 各 fixture は 1 症状のみ発火するよう独立化（テスト安定性）
+  - 39 件新規テスト合格、検出器挙動を pin する regression suite
 - [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---
