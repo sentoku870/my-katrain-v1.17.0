@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,10 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.8 — 漢字段級サポート + mykatrain settings に default_user_rank 追加**
+  - **挙動バグ**: SGF BR/WR から取得した「4段」漢字段級が `estimate_mode_from_rank` で None 扱い → LOSE フォールバックで BEGINNER モード。`_RANK_ALIASES` テーブルと `_normalise_rank_str` ヘルパーで全角数字・漢字 suffix (段/級) 対応
+  - **新機能**: mykatrain settings に `default_user_rank` フィールド追加、デフォルトユーザー名の直下に配置。LLM Coach が Karte/SGF からランク取得できない時のフォールバック
+  - 49 件回帰テスト追加（rank aliases 44 件 + default_user_rank 4 件 + settings savers 1 件）、累計 5070 件テスト合格
 - 2026-07-17: **Phase 225.7 — Popup 幅拡大 + 自動判定タイミング修正 + LLM 応答はみ出し修正**
   - **UI バグ (Phase 225.6 対策不完全)**: `_populate_rank_and_perspective` が Clock.schedule_once(0) で karte_path 設定前に走っていた → 0.2s 遅延 + karte_path 空時のリトライ機構
   - **UI バグ**: ポップアップ幅が狭く LLM 応答がはみ出す / ボタンと重なる → 900x720 に拡大 + response_input を ScrollView で囲み、折り返しではなくスクロール
