@@ -44,8 +44,8 @@ def move_eval_from_node(node: GameNode) -> MoveEval:
       数値的な評価値だけを見るようにする。
     - before/after/delta は snapshot_from_nodes 側で埋める。
     """
-    # Lazy import to avoid circular dependency with logic_difficulty
-    from katrain.core.analysis.logic_difficulty import assess_position_difficulty_from_parent
+    # Lazy import to avoid circular dependency with difficulty subpackage
+    from katrain.core.analysis.difficulty.api import assess_position_difficulty_from_parent
 
     move = getattr(node, "move", None)
     player = getattr(move, "player", None)

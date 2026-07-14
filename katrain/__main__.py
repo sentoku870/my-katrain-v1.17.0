@@ -129,7 +129,6 @@ class KaTrainGui(Screen, KaTrainBase):
 
     zen = NumericProperty(0)
     controls = ObjectProperty(None)
-    # active_review_mode = BooleanProperty(False)  # Phase 93: Active Review Mode - REMOVED
     #: Kifunarabe (棋譜並べ) mode flag. Toggled by the menu / abort button.
     kifunarabe_mode = BooleanProperty(False)
 
@@ -251,11 +250,6 @@ class KaTrainGui(Screen, KaTrainBase):
 
         self.message_queue: Queue[Any] = Queue()
 
-        # Phase 97: Active Review Controller - REMOVED
-        # self._active_review_controller = ...
-
-        # Phase 98: Quiz Manager - REMOVED → Phase 138-D で完全削除 (no production caller)
-
         # Phase 22: Clock.schedule_interval イベントを追跡（cleanup用）
         self._clock_events: list[Any] = []
 
@@ -325,6 +319,45 @@ class KaTrainGui(Screen, KaTrainBase):
             set_mode=lambda v: setattr(self, "kifunarabe_mode", v),
             logger=self.log,
         )
+
+        self._engine_bootstrap: EngineBootstrap | None = None  # populated in start()
+
+        # Phase 198: aggregate every manager into a single AppContext so that
+        # downstream code can reach them through ``self.ctx.<name>`` without
+        # walking the GUI. The legacy ``self._<name>`` accessors remain for
+        # backwards compatibility — see gui/app_context.py.
+        try:
+            from katrain.gui.app_context import AppContext
+        except ImportError:
+            AppContext = None  # type: ignore[assignment,misc]
+        if AppContext is not None:
+            self.ctx: Any = AppContext(
+                error_handler=self.error_handler,
+                sgf_manager=self._sgf_manager,
+                config_manager=self._config_manager,
+                summary_manager=self._summary_manager,
+                keyboard_manager=self._keyboard_manager,
+                dialog_factory=self.dialog_factory,
+                popup_manager=self._popup_manager,
+                game_state_manager=self._game_state_manager,
+                ui_update_manager=self._ui_update_manager,
+                auto_setup_controller=self._auto_setup_controller,
+                analysis_controller=self._analysis_controller,
+                batch_analysis_controller=self._batch_analysis_controller,
+                gui_refresh_manager=self._gui_refresh_manager,
+                game_state_update_manager=self._game_state_update_manager,
+                message_loop_manager=self._message_loop_manager,
+                scroll_handler=self._scroll_handler,
+                kifunarabe_controller=self._kifunarabe_controller,
+                engine_bootstrap=self._engine_bootstrap,
+                engine=self.engine,
+                pondering=self.pondering,
+                show_move_num=self.show_move_num,
+                message_queue=self.message_queue,
+                cancel_flag=None,
+            )
+        else:
+            self.ctx = None
 
         self._ui_update_manager.setup_state_subscriptions()
 

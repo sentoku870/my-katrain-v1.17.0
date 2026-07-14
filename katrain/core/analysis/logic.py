@@ -15,21 +15,30 @@ Phase 144-C: 1494 行の単一ファイル logic.py を 6 つの焦点化モジ�
 Note: logic_quiz.py は Phase 138-D で Quiz 機能本体が削除された後、
 Phase 176 (PR 2) で完全に削除されました。
 
+Phase 195-A: logic_difficulty のシム (deprecated) への参照を解消し、
+Phase 192 で確立された difficulty/ サブパッケージの新 canonical 名を
+直接 re-export するように変更。
+
 この __init__.py (logic.py) は後方互換性のため全シンボルを再エクスポートする。
 """
 
 from __future__ import annotations
 
-# Skill preset + auto-strictness + skill estimation
-from katrain.core.analysis.logic_difficulty import (
-    _assess_difficulty_from_policy,
-    _compute_policy_difficulty,
-    _compute_state_difficulty,
-    _compute_transition_difficulty,
-    _determine_reliability,
-    _get_candidates_from_node,
-    _get_root_visits,
-    _normalize_candidates,
+from katrain.core.analysis.difficulty._io import (
+    determine_reliability,
+    get_candidates_from_node,
+    get_root_visits,
+    normalize_candidates,
+)
+from katrain.core.analysis.difficulty._policy import (
+    assess_difficulty_from_policy,
+    compute_policy_difficulty,
+)
+from katrain.core.analysis.difficulty._state import compute_state_difficulty
+from katrain.core.analysis.difficulty._transition import compute_transition_difficulty
+
+# Position difficulty (canonical names from the Phase 192 subpackage)
+from katrain.core.analysis.difficulty.api import (
     assess_position_difficulty_from_parent,
     compute_difficulty_metrics,
     difficulty_metrics_from_node,
@@ -111,9 +120,16 @@ __all__ = [
     "it_consistent_with_static",
     "ENDGAME_SCORE_STDEV_THRESHOLD",
     "ENDGAME_DETECTION_WINDOW",
-    # Position difficulty
-    "_assess_difficulty_from_policy",
+    # Position difficulty (Phase 192 canonical names)
+    "assess_difficulty_from_policy",
     "assess_position_difficulty_from_parent",
+    "compute_policy_difficulty",
+    "compute_state_difficulty",
+    "compute_transition_difficulty",
+    "determine_reliability",
+    "get_candidates_from_node",
+    "get_root_visits",
+    "normalize_candidates",
     # Loss calculation
     "compute_loss_from_delta",
     "compute_canonical_loss",
@@ -134,15 +150,8 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
-    # Difficulty Metrics (Phase 12)
-    "_normalize_candidates",
-    "_get_root_visits",
-    "_determine_reliability",
-    "_compute_policy_difficulty",
-    "_compute_transition_difficulty",
-    "_compute_state_difficulty",
+    # Difficulty Metrics (Phase 12 / Phase 192 canonical names)
     "compute_difficulty_metrics",
-    "_get_candidates_from_node",
-    "extract_difficult_positions",
     "difficulty_metrics_from_node",
-]
+    "extract_difficult_positions",
+]  # noqa: E501

@@ -334,6 +334,11 @@ class AnalysisOrchestrator:
                 cn.analyze(engine, priority=PRIORITY_ALTERNATIVES, time_limit=False, find_alternatives=True)
                 visits = engine.config["fast_visits"]
             else:  # equalize or local
+                # Phase 199: bail out gracefully when there are no candidates
+                # to refine (otherwise ``max()`` over an empty sequence raised
+                # ``ValueError`` and crashed the LOCAL refinement loop).
+                if not cn.analysis["moves"]:
+                    return
                 visits = max(d["visits"] for d in cn.analysis["moves"].values())
                 game.katrain.controls.set_status(i18n._("equalizing analysis").format(visits=visits), STATUS_ANALYSIS)
             priority = PRIORITY_EQUALIZE

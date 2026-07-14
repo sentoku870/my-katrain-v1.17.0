@@ -1021,3 +1021,96 @@ class TestKivyHeadlessIsolation:
         assert entries == {}, (
             f"kivy_import_allowlist.json should remain empty after Phase 143-A, but found: {list(entries.keys())}"
         )
+
+
+# =============================================================================
+# Phase 195-A: Deprecated backward-compat shims must not be used by
+# production code. Tests under ``tests/`` are out of scope; the shim
+# modules themselves remain as drop-in facades for ``tests/`` and external
+# users until they are deleted in a later phase (Phase 195-C).
+# =============================================================================
+
+
+_PHASE_195A_SHIM_MODULES: tuple[str, ...] = (
+    "katrain.core.analysis.logic_difficulty",
+    "katrain.core.reports.karte_report",
+)
+
+
+def _scan_python_files_under(roots: list[Path], exclude: list[Path]) -> list[Path]:
+    files: list[Path] = []
+    for root in roots:
+        for py_file in root.rglob("*.py"):
+            if any(ex in py_file.parents or py_file == ex for ex in exclude):
+                continue
+            files.append(py_file)
+    return files
+
+
+class TestDeprecatedShimIsolation:
+    """Production code (anything under ``katrain/``) must not depend on a
+    deprecated backward-compatibility shim. Phase 195-A moved ``logic_difficulty``
+    and ``karte_report`` to the new ``difficulty/`` subpackage and
+    ``karte.builder`` respectively; both old paths remain as thin shims for
+    external callers and tests only.
+    """
+
+    @pytest.mark.parametrize(
+        "shim_module",
+        list(_PHASE_195A_SHIM_MODULES),
+        ids=lambda m: m.rsplit(".", 1)[-1],
+    )
+    def test_production_does_not_import_shim(self, shim_module: str) -> None:
+        shim_rel = shim_module.replace(".", "/") + ".py"
+        shim_path = _PROJECT_ROOT / shim_rel
+        katrain_root = _PROJECT_ROOT / "katrain"
+        violations: list[str] = []
+        for py_file in _scan_python_files_under([katrain_root], exclude=[shim_path]):
+            try:
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+            for node in ast.walk(tree):
+                bad = False
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    bad = node.module == shim_module or node.module.startswith(shim_module + ".")
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name == shim_module or alias.name.startswith(shim_module + "."):
+                            bad = True
+                            break
+                if bad:
+                    rel = py_file.relative_to(_PROJECT_ROOT)
+                    violations.append(f"{rel}:{node.lineno}: imports {shim_module}")
+        assert not violations, (
+            f"production code must not import deprecated shim {shim_module!r}:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )
+
+    def test_karte_report_alias_not_used_in_production(self) -> None:
+        """``from katrain.core.reports import karte_report`` reaches the shim
+        via the package ``__init__``; block this alias explicitly so that
+        the canonical path ``katrain.core.reports.karte.builder`` is the
+        only supported route from production code."""
+        shim_path = _PROJECT_ROOT / "katrain" / "core" / "reports" / "karte_report.py"
+        katrain_root = _PROJECT_ROOT / "katrain"
+        violations: list[str] = []
+        for py_file in _scan_python_files_under([katrain_root], exclude=[shim_path]):
+            try:
+                tree = ast.parse(py_file.read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ImportFrom):
+                    continue
+                if node.module == "katrain.core.reports":
+                    for alias in node.names:
+                        if alias.name == "karte_report":
+                            rel = py_file.relative_to(_PROJECT_ROOT)
+                            violations.append(
+                                f"{rel}:{node.lineno}: imports {node.module}.{alias.name}"
+                            )
+        assert not violations, (
+            "production code must not import the karte_report shim alias:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )

@@ -268,9 +268,6 @@ TOP_MOVE_SCORE = "top_move_score"
 TOP_MOVE_DELTA_WINRATE = "top_move_delta_winrate"
 TOP_MOVE_WINRATE = "top_move_winrate"
 TOP_MOVE_VISITS = "top_move_visits"
-# TOP_MOVE_UTILITY = "top_move_utility"
-# TOP_MOVE_UTILITYLCB = "top_move_utiltiy_lcb"
-# TOP_MOVE_SCORE_STDDEV = "top_move_score_stddev"
 TOP_MOVE_NOTHING = "top_move_nothing"
 
 
@@ -281,9 +278,6 @@ TOP_MOVE_OPTIONS = [
     TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_VISITS,
     TOP_MOVE_NOTHING,
-    # TOP_MOVE_SCORE_STDDEV,
-    # TOP_MOVE_UTILITY,
-    # TOP_MOVE_UTILTYLCB
 ]
 
 REPORT_DT = 1

@@ -4,7 +4,6 @@ Tests for Game.analyze_extra() and Game._compute_important_moves().
 Uses shared fixtures from conftest.py.
 """
 
-import pytest
 
 from katrain.core.constants import AnalysisMode
 from katrain.core.game import Move
@@ -262,36 +261,22 @@ class TestAnalyzeExtraLocalMode:
         game.analyze_extra(AnalysisMode.LOCAL)
         assert len(mock_engine.request_analysis_calls) > 0
 
-    @pytest.mark.xfail(
-        reason="Known bug: LOCAL mode crashes with empty moves at game.py:1187. Out of scope for Phase 70.",
-        strict=True,
-        raises=ValueError,
-    )
-    def test_local_with_empty_moves_crashes(self, game):
-        """Document known bug: LOCAL mode crashes when analysis["moves"] is empty.
+    def test_local_with_empty_moves_returns_early(self, game):
+        """Phase 199: LOCAL mode must return gracefully when there are no
+        candidates to equalize / refine instead of crashing with
+        ``ValueError: max() arg is an empty sequence``.
 
-        EXACT FAILING LINE (v6 anchor):
-        game.py line 1187:
-            visits = max(d["visits"] for d in cn.analysis["moves"].values())
-
-        Exception: ValueError: max() arg is an empty sequence
-
-        Code path (game.py):
-        1. Line 1178: elif mode in (..., LOCAL): ← enters branch
-        2. Line 1179: if not cn.analysis_complete and mode != LOCAL: ← skipped (LOCAL exempted)
-        3. Line 1182: if mode == ALTERNATIVE: ← not taken
-        4. Line 1186: else:  # equalize ← LOCAL enters here (comment is misleading)
-        5. Line 1187: visits = max(...) ← ValueError when moves is empty
-
-        Verification command:
-            Select-String -Path katrain/core/game.py -Pattern 'max\\(d\\["visits"\\]' -Context 2,0
+        Previously this case was a strict xfail (the bug fired reliably).
+        Phase 199 added the empty-moves guard in
+        ``analysis_orchestrator._handle_sweep_equalize_modes`` so the
+        refinement loop now exits cleanly when ``analysis["moves"]`` is empty.
         """
-        # Use make_analysis factory for explicit state
         game.current_node.analysis = make_analysis(
-            root_present=False,  # analysis_complete will be False
+            root_present=False,
             completed=False,
-            moves={},  # Empty moves triggers the bug
+            moves={},
         )
+        # Must not raise; returns early.
         game.analyze_extra(AnalysisMode.LOCAL)
 
 
