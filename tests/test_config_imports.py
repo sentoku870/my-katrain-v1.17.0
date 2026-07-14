@@ -130,13 +130,27 @@ class TestKaTrainGuiDelegationExists:
         ]
 
         # 必須メソッドの存在確認
+        # Phase 198 Stage 2: ``_load_export_settings`` / ``_save_export_settings``
+        # were removed from KaTrainGui (delegation shrank through
+        # ``self.ctx.config_manager``). Only ``set_config_section`` remains
+        # as the live public API.
         required_methods = [
             "set_config_section",
-            "_load_export_settings",
-            "_save_export_settings",
         ]
         for method in required_methods:
             assert method in method_names, f"KaTrainGui.{method} not found"
+
+        # Phase 198 Stage 2 follow-up: ensure the legacy shim names are gone
+        # (no resurrection via inheritance / redefinition). If they ever come
+        # back they should be re-introduced only via AppContext.
+        legacy_removed_methods = [
+            "_load_export_settings",
+            "_save_export_settings",
+        ]
+        for method in legacy_removed_methods:
+            assert method not in method_names, (
+                f"KaTrainGui.{method} should have been removed in Phase 198 Stage 2"
+            )
 
     def test_katrain_gui_has_config_manager_init(self):
         """KaTrainGui.__init__でConfigManagerが初期化されている"""

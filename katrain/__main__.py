@@ -360,17 +360,6 @@ class KaTrainGui(Screen, KaTrainBase):
             self.ctx = None
 
         self._ui_update_manager.setup_state_subscriptions()
-
-    def _load_export_settings(self) -> dict[str, Any]:
-        """Delegates to ConfigManager.load_export_settings() (Phase 74)."""
-        return self._config_manager.load_export_settings()
-
-    def _save_export_settings(
-        self, sgf_directory: str | None = None, selected_players: list[Any] | None = None
-    ) -> None:
-        """Delegates to ConfigManager.save_export_settings() (Phase 74)."""
-        self._config_manager.save_export_settings(sgf_directory, selected_players)
-
     # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
     # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
     # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
@@ -385,13 +374,6 @@ class KaTrainGui(Screen, KaTrainBase):
         return self.game
 
     # ========== PopupManager support methods (Phase 75) ==========
-
-    def _safe_pause_timer(self) -> None:
-        """タイマーを安全に一時停止（controls/timer未初期化時はスキップ）"""
-        timer = getattr(getattr(self, "controls", None), "timer", None)
-        if timer:
-            timer.paused = True
-
     # ========== PopupManager support methods (Factories moved to DialogFactory) ==========
 
     def set_config_section(self, section: str, value: dict[str, Any]) -> None:
@@ -405,11 +387,6 @@ class KaTrainGui(Screen, KaTrainBase):
             保存は別途 save_config(section) を呼ぶ必要がある。
         """
         self._config_manager.set_section(section, value)
-
-    def _on_engine_status(self, event_type: str, message: str) -> None:
-        """Delegates to GUIRefreshManager (Phase 158+)."""
-        self._gui_refresh_manager.on_engine_status(event_type, message)
-
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+).
 
@@ -648,76 +625,6 @@ class KaTrainGui(Screen, KaTrainBase):
     def load_sgf_file(self, file: str, fast: bool = False, rewind: bool = True) -> None:
         """Load SGF file. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
-
-    def _determine_user_color(self, username: str) -> str | None:
-        """Determine user's color based on player names in SGF.
-
-        Delegates to katrain.gui.features.karte_export.determine_user_color().
-        """
-        if not self.game:
-            return None
-        return determine_user_color(self.game, username)
-
-    def _extract_analysis_from_sgf_node(self, node: Any) -> dict[str, Any]:
-        """Delegates to SummaryManager (Phase 96)."""
-        result = self._summary_manager.extract_analysis_from_sgf_node(node)
-        return result if result is not None else {}
-
-    def _extract_sgf_statistics(self, path: str) -> dict[str, Any] | None:
-        """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.extract_sgf_statistics(path)
-
-    def _scan_player_names(self, sgf_files: list[Any]) -> dict[str, Any]:
-        """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.scan_player_names(sgf_files)
-
-    def _scan_and_show_player_selection(self, sgf_files: list[Any]) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.scan_and_show_player_selection(sgf_files)
-
-    def _process_summary_with_selected_players(self, sgf_files: list[Any], selected_players: list[Any]) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.process_summary_with_selected_players(sgf_files, selected_players)
-
-    def _show_player_selection_dialog(self, sorted_players: list[Any], sgf_files: list[Any]) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.show_player_selection_dialog(sorted_players, sgf_files)
-
-    def _process_and_export_summary(
-        self, sgf_paths: list[Any], progress_popup: Any, selected_players: list[Any] | None = None
-    ) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.process_and_export_summary(sgf_paths, progress_popup, selected_players)
-
-    def _categorize_games_by_stats(self, game_stats_list: list[Any], focus_player: str) -> dict[str, Any]:
-        """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.categorize_games_by_stats(game_stats_list, focus_player)
-
-    def _collect_rank_info(self, stats_list: list[Any], focus_player: str) -> str:
-        """Delegates to SummaryManager (Phase 96)."""
-        result = self._summary_manager.collect_rank_info(stats_list, focus_player)
-        return result if result is not None else ""
-
-    def _build_summary_from_stats(self, stats_list: list[Any], focus_player: str | None = None) -> str:
-        """Delegates to SummaryManager (Phase 96)."""
-        return self._summary_manager.build_summary_from_stats(stats_list, focus_player)
-
-    def _save_summaries_per_player(
-        self, game_stats_list: list[Any], selected_players: list[Any], progress_popup: Any
-    ) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.save_summaries_per_player(game_stats_list, selected_players, progress_popup)
-
-    def _save_categorized_summaries_from_stats(
-        self, categorized_games: dict[str, Any], player_name: str, progress_popup: Any
-    ) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.save_categorized_summaries_from_stats(categorized_games, player_name, progress_popup)
-
-    def _save_summary_file(self, summary_text: str, player_name: str, progress_popup: Any) -> None:
-        """Delegates to SummaryManager (Phase 96)."""
-        self._summary_manager.save_summary_file(summary_text, player_name, progress_popup)
-
     def load_sgf_from_clipboard(self) -> None:
         """Load SGF from clipboard. Delegates to SGFManager."""
         self._sgf_manager.load_sgf_from_clipboard()

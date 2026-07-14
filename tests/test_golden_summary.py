@@ -218,24 +218,16 @@ def create_mock_katrain_gui():
     from katrain.gui.features.summary_aggregator import collect_rank_info
     from katrain.gui.features.summary_formatter import build_summary_from_stats
 
-    # Set up _summary_manager mock with actual function delegates (Phase 96)
+    # Set up _summary_manager mock with actual function delegates (Phase 96).
+    # Phase 198 Stage 2: callers now invoke ``mock_gui._summary_manager.X``
+    # directly (KaTrainGui no longer carries the thin ``_build_summary_from_stats``
+    # / ``_collect_rank_info`` shims), so we don't bind the legacy attributes.
     mock_summary_manager = MagicMock()
     mock_summary_manager.build_summary_from_stats = lambda stats_list, focus_player=None: build_summary_from_stats(
         stats_list, focus_player, mock_config
     )
     mock_summary_manager.collect_rank_info = collect_rank_info
     mock_gui._summary_manager = mock_summary_manager
-
-    # Import the actual method for testing
-    from katrain.__main__ import KaTrainGui
-
-    # Bind the actual method to the mock (now uses _summary_manager)
-    mock_gui._build_summary_from_stats = lambda stats_list, focus_player=None: KaTrainGui._build_summary_from_stats(
-        mock_gui, stats_list, focus_player
-    )
-    mock_gui._collect_rank_info = lambda stats_list, focus_player: KaTrainGui._collect_rank_info(
-        mock_gui, stats_list, focus_player
-    )
 
     return mock_gui
 
@@ -258,7 +250,7 @@ class TestSummaryGolden:
 
         # 2. Create mock GUI and call _build_summary_from_stats
         mock_gui = create_mock_katrain_gui()
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         # 3. Normalize output
         normalized = normalize_output(output)
@@ -289,7 +281,7 @@ class TestSummaryGolden:
         mock_gui = create_mock_katrain_gui()
 
         # Call without focus_player
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player=None)
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player=None)
 
         # Should contain basic sections
         assert "# Multi-Game Summary" in output
@@ -301,7 +293,7 @@ class TestSummaryGolden:
         """Empty stats_list should return minimal output."""
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats([], focus_player=None)
+        output = mock_gui._summary_manager.build_summary_from_stats([], focus_player=None)
 
         assert "# Multi-Game Summary" in output
         assert "No games provided" in output
@@ -311,7 +303,7 @@ class TestSummaryGolden:
         stats_list = [create_single_game_stats()]
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="PlayerB")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="PlayerB")
 
         # Should contain all main sections
         assert "# Multi-Game Summary" in output
@@ -334,7 +326,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=3)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Meta" in output
         assert "Games analyzed: 3" in output
@@ -346,7 +338,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Overall Statistics" in output
         assert "Total games:" in output
@@ -359,7 +351,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Mistake Distribution" in output
         assert "| Category | Count | Percentage | Avg Loss |" in output
@@ -373,7 +365,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Phase × Mistake Breakdown" in output
         assert "Opening" in output
@@ -385,7 +377,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Top Worst Moves" in output
 
@@ -394,7 +386,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## Weakness Hypothesis" in output
 
@@ -403,7 +395,7 @@ class TestSummaryStructure:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         assert "## 練習の優先順位" not in output
 
@@ -422,7 +414,7 @@ class TestSummaryReasonTags:
         stats_list = create_multi_game_stats_list(num_games=2)
         mock_gui = create_mock_katrain_gui()
 
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="TestPlayer")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="TestPlayer")
 
         # The section title is in Japanese
         assert "ミス理由タグ分布" in output
@@ -434,7 +426,7 @@ class TestSummaryReasonTags:
         stats_list = [stats]
 
         mock_gui = create_mock_katrain_gui()
-        output = mock_gui._build_summary_from_stats(stats_list, focus_player="PlayerB")
+        output = mock_gui._summary_manager.build_summary_from_stats(stats_list, focus_player="PlayerB")
 
         # Section should not appear
         assert "ミス理由タグ分布" not in output
