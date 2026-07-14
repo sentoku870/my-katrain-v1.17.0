@@ -1073,6 +1073,14 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - i18n: `mykatrain:llm-coach:*` 28 キー (jp/en) + .mo 再コンパイル
   - 16 件ロジック + 18 件 GUI テスト追加、累計 4882 件テスト合格
   - **API 連携なし**: クリップボードへ手動コピー → 外部 LLM 貼付 → 回答貼付 → 検証
+- [x] **Phase 225.6: 視点自動判定 + SGF 棋力自動取得**（Lv3、2026-07-17 完了）
+  - `katrain/core/coach/sgf_player_info.py` 新規（17 テスト）
+  - Karte JSON meta に `player_info.{black,white}.{name,rank}` 追加（golden 3 件更新）
+  - `PromptConfig.player_color` 追加、`build_translation_prompt` が `PlayerColor: black/white/unknown` を出力（10 テスト）
+  - LLM Coach GUI に視点スピナー（Auto/黒/白）+ 棋力自動表示（18 テスト）
+  - `default_user_name` からプレイヤー色自動判定
+  - i18n 7 キー追加 (jp/en)
+  - 累計 5017 passed (4968 baseline + 49 件新規)
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---

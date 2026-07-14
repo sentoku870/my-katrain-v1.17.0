@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,14 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.6 — LLM Coach 視点自動判定 + SGF 棋力自動取得**
+  - **新機能**: SGF BR/WR を抽出する `sgf_player_info.py` 追加（17 テスト）
+  - **新機能**: Karte JSON meta に `player_info.{black,white}.{name,rank}` 追加（schema 後方互換、golden 3 件更新）
+  - **新機能**: `PromptConfig.player_color` 追加、`build_translation_prompt` が SystemInstruction に `PlayerColor: black/white/unknown` を出力（10 テスト）
+  - **新機能**: LLM Coach GUI に視点スピナー（Auto/黒/白）+ 棋力自動表示（18 テスト）
+  - **新機能**: `default_user_name` からプレイヤー色を自動判定する `detect_player_color_for_user` ヘルパー
+  - i18n 7 キー追加 (jp/en): rank-auto、perspective-{label,auto,black,white,auto-detected,auto-fallback}
+  - 累計 5017 passed (4968 baseline + 49 件新規)
 - 2026-07-17: **Phase 225.5 — LLM Coach status/result stale ref 修正 + 検証サマリ件数表示 + 参照ダイアログ必ず閉じる**
   - **挙動バグ**: Phase 225.3 で `_read_text` を ids 経由に変更したが `_set_status` / `_set_result` は旧 `self.status_label` / `self.result_label` を直接参照 → Kivy ObjectProperty の stale reference で ScrollView 内の result_label.text が反映されず「検証結果コピー」ボタンが常に「コピーできる検証結果がありません」になる
   - **挙動バグ**: `_on_success` で chosen 空のとき `picker.dismiss()` を呼ばず早期 return → ユーザーがブラウザ選択なしで OK を押すとダイアログが閉じず「押しても反応しない」
