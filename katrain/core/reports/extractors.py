@@ -121,15 +121,21 @@ class MetaExtractor:
         else:
             handicap = 0
 
-        # Names
+        # Names + ranks (Phase 225.6: also extract BR/WR so the LLM
+        # coach can auto-fill the rank input).
         if hasattr(game_data, "player_black"):
             pb = game_data.player_black
             pw = game_data.player_white
+            pb_rank = getattr(game_data, "player_black_rank", None)
+            pw_rank = getattr(game_data, "player_white_rank", None)
         elif root:
             pb = root.get_property("PB", "Black")
             pw = root.get_property("PW", "White")
+            pb_rank = root.get_property("BR") or None
+            pw_rank = root.get_property("WR") or None
         else:
             pb, pw = "Black", "White"
+            pb_rank = pw_rank = None
 
         # Size
         board_size = getattr(game_data, "board_size", [19, 19])
@@ -181,4 +187,8 @@ class MetaExtractor:
             "komi": komi,
             "board_size": board_size,
             "players": {"black": pb, "white": pw},
+            # Phase 225.6: rank info from SGF BR/WR (or whatever the
+            # game object exposes). Phase 225.6 LLM Coach uses these to
+            # auto-fill the rank input field.
+            "ranks": {"black": pb_rank, "white": pw_rank},
         }

@@ -12,6 +12,16 @@
       "black": "whatiskale",
       "white": "注号用名"
     },
+    "player_info": {
+      "black": {
+        "name": "whatiskale",
+        "rank": "15级"
+      },
+      "white": {
+        "name": "注号用名",
+        "rank": "15级"
+      }
+    },
     "result": "B+R",
     "komi": 6.5,
     "handicap": 0,

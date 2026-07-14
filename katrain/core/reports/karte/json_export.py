@@ -165,6 +165,18 @@ def build_karte_json(
         "source_filename": game_filename,
         "date": common_meta["date"],
         "players": common_meta["players"],
+        # Phase 225.6: SGF-derived BR/WR info so the LLM Coach popup
+        # can auto-fill the rank input from the same Karte file.
+        "player_info": {
+            "black": {
+                "name": common_meta["players"]["black"],
+                "rank": (common_meta.get("ranks") or {}).get("black"),
+            },
+            "white": {
+                "name": common_meta["players"]["white"],
+                "rank": (common_meta.get("ranks") or {}).get("white"),
+            },
+        },
         "result": common_meta["result"],
         "komi": common_meta["komi"],
         "handicap": common_meta["handicap"],
