@@ -32,6 +32,7 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 203（2026-07-17）: LLM「翻訳特化」導入 調査ドキュメント（D 案: ドキュメント整備のみ）
   - Phase 207-213（2026-07-17）: `core/coach/` パッケージ完全実装（master_db / lexicon / symptom_index / tones / prompt_builder / validator / e2e tests、合計 243 unit tests、全 4752 件テスト合格）
   - Phase 214-A（2026-07-17）: LLM coach CLI tool（`core/coach/cli.py`、17 unit tests）
+  - Phase 215（2026-07-17）: Karte-aware symptom detection（`core/coach/karte_detector.py`、30 unit tests）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 214-B+ GUI 統合は将来課題）
@@ -286,6 +287,11 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 215 — Karte-aware symptom detection**（Lv2）
+  - `katrain/core/coach/karte_detector.py`: Karte JSON → SymptomContext 自動構築
+  - 11 個の aggregator helper（avg_points_lost, max_score_stdev, weakness_concentration 等）
+  - `detect_symptoms_from_karte`: SymptomContext 検出 + weakness カテゴリ union
+  - 30 件ユニットテスト合格、CLI プロンプト品質向上
 - 2026-07-17: **Phase 214-A — LLM coach CLI tool**（Lv2）
   - `katrain/core/coach/cli.py`: 4 サブコマンド（build / validate / symptoms / lexicon）
   - 17 件ユニットテスト、Kivy 非依存（ターミナルから直接起動可能）
