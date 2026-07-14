@@ -1,4 +1,4 @@
-"""Phase 207-211: Coach module — Master coaching database + Lexicon + Symptom index + Tones + Prompt builder.
+"""Phase 207-212: Coach module — Master coaching database + Lexicon + Symptom index + Tones + Prompt builder + Validator.
 
 This subpackage hosts the LLM "translation" pipeline data and helpers
 documented in `docs/archive/specs-planned/phase203-llm-translator.md`.
@@ -27,6 +27,12 @@ from katrain.core.coach.lexicon import (
     inject_lexicon_for_prompt,
     load_lexicon,
     validate_references,
+)
+from katrain.core.coach.llm_validator import (
+    ValidationIssue,
+    ValidationReport,
+    ValidationSeverity,
+    validate_llm_output,
 )
 from katrain.core.coach.master_db import (
     CoachMode,
@@ -119,4 +125,9 @@ __all__ = [
     "build_translation_prompt",
     "append_llm_prompt_block",
     "render_markdown",
+    # llm_validator (Phase 212)
+    "ValidationSeverity",
+    "ValidationIssue",
+    "ValidationReport",
+    "validate_llm_output",
 ] 
