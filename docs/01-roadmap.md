@@ -1056,6 +1056,11 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - Phase 218 fixtures を実行して pass/fail レポート
   - exit code: 全件 pass=0 / 失敗 1 件以上=1（CI 親和）
   - 5 件新規テスト合格
+- [x] **Phase 220: Trace CLI command**（Lv1、2026-07-14 完了）
+  - CLI `trace <karte.json>` 新コマンド
+  - 検出器パイプラインをソース別（per_move / weakness_category / streak / aggregate）に可視化
+  - 各 SymptomId がどの source で発火したかを表示
+  - 6 件新規テスト合格
 - [ ] **Phase 214-B+**: GUI 統合（Phase 203 §7.3「Karte JSON ビューア内警告 UI」）、将来課題
 
 ---
