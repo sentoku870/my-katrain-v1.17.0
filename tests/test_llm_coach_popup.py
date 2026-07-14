@@ -193,7 +193,11 @@ class TestOnValidate:
             return_value=(False, "[HIGH] **STYLE**: bad"),
         ):
             content.on_validate()
-        assert "validation-issues" in content.status_label.text or "warning" in content.status_label.text.lower() or "HIGH" in content.status_label.text or "警告" in content.status_label.text
+        assert (
+            "validation-issues" in content.status_label.text
+            or "Issues" in content.status_label.text
+            or "警告" in content.status_label.text
+        )
         assert "[HIGH]" in content.result_label.text
 
 
@@ -205,7 +209,12 @@ class TestOnCopyResult:
         content = _make_content()
         content.result_label.text = ""
         content.on_copy_result()
-        assert "no-result" in content.status_label.text
+        # Either the i18n key (when .mo not loaded) or the localised string.
+        assert (
+            "no-result" in content.status_label.text
+            or "no validation" in content.status_label.text.lower()
+            or "コピーできる検証結果" in content.status_label.text
+        )
 
     def test_copies_existing_result(self) -> None:
         content = _make_content()
@@ -222,7 +231,11 @@ class TestOnCopyResult:
             side_effect=RuntimeError("fail"),
         ):
             content.on_copy_result()
-        assert "copy-failed" in content.status_label.text
+        assert (
+            "copy-failed" in content.status_label.text
+            or "clipboard" in content.status_label.text.lower()
+            or "クリップボード" in content.status_label.text
+        )
 
 
 # ---- _populate_initial_karte_path -------------------------------------

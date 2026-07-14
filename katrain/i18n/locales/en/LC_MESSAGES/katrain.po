@@ -76,6 +76,97 @@ msgstr "Could not open: {error}"
 msgid "mykatrain:export-summary"
 msgstr "Export Multi-Game Summary"
 
+# Phase 225: LLM Coach popup (manual paste workflow)
+msgid "mykatrain:llm-coach"
+msgstr "LLM Coach (manual paste)"
+
+msgid "mykatrain:llm-coach:title"
+msgstr "LLM Coach — translate KataGo output via LLM"
+
+msgid "mykatrain:llm-coach:karte-hint"
+msgstr "Path to Karte JSON"
+
+msgid "mykatrain:llm-coach:rank-label"
+msgstr "Rank (e.g. 5k)"
+
+msgid "mykatrain:llm-coach:response-label"
+msgstr "LLM Response (paste here)"
+
+msgid "mykatrain:llm-coach:result-label"
+msgstr "Validation Result"
+
+msgid "mykatrain:llm-coach:browse"
+msgstr "Browse"
+
+msgid "mykatrain:llm-coach:browse-title"
+msgstr "Select Karte JSON"
+
+msgid "mykatrain:llm-coach:build-prompt"
+msgstr "Generate & Copy Prompt"
+
+msgid "mykatrain:llm-coach:clear-response"
+msgstr "Clear Response"
+
+msgid "mykatrain:llm-coach:validate"
+msgstr "Validate"
+
+msgid "mykatrain:llm-coach:copy-result"
+msgstr "Copy Result"
+
+msgid "mykatrain:llm-coach:file-not-found"
+msgstr "File not found: {path}"
+
+msgid "mykatrain:llm-coach:invalid-karte"
+msgstr "Invalid Karte JSON: {error}"
+
+msgid "mykatrain:llm-coach:no-karte"
+msgstr "Please specify a Karte JSON"
+
+msgid "mykatrain:llm-coach:no-response"
+msgstr "Please paste the LLM response first"
+
+msgid "mykatrain:llm-coach:no-result"
+msgstr "No validation result to copy"
+
+msgid "mykatrain:llm-coach:copy-success"
+msgstr "✅ Prompt copied ({chars} chars)"
+
+msgid "mykatrain:llm-coach:copy-failed"
+msgstr "❌ Failed to copy to clipboard: {error}"
+
+msgid "mykatrain:llm-coach:result-copied"
+msgstr "✅ Result copied to clipboard"
+
+msgid "mykatrain:llm-coach:response-cleared"
+msgstr "Response cleared"
+
+msgid "mykatrain:llm-coach:validation-clean"
+msgstr "✅ Clean — no warnings"
+
+msgid "mykatrain:llm-coach:validation-issues"
+msgstr "⚠️ Issues found (see below)"
+
+msgid "mykatrain:llm-coach:status"
+msgstr "Status"
+
+msgid "mykatrain:llm-coach:referenced-symptoms"
+msgstr "Referenced symptom IDs"
+
+msgid "mykatrain:llm-coach:referenced-moves"
+msgstr "Referenced move numbers"
+
+msgid "mykatrain:llm-coach:referenced-points-lost"
+msgstr "Referenced pointsLost"
+
+msgid "mykatrain:llm-coach:referenced-lexicon"
+msgstr "Referenced Lexicon IDs"
+
+msgid "mykatrain:llm-coach:issues"
+msgstr "Detected Issues"
+
+msgid "mykatrain:llm-coach:truncated"
+msgstr "\n\n...(truncated)"
+
 msgid "mykatrain:batch-analyze"
 msgstr "Batch Analyze Folder..."
 

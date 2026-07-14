@@ -1123,6 +1123,97 @@ msgstr "開けませんでした: {error}"
 msgid "mykatrain:export-summary"
 msgstr "複数局まとめ"
 
+# Phase 225: LLM Coach popup (manual paste workflow)
+msgid "mykatrain:llm-coach"
+msgstr "LLM コーチ（手動貼付）"
+
+msgid "mykatrain:llm-coach:title"
+msgstr "LLM コーチ — KataGo 出力を LLM に翻訳"
+
+msgid "mykatrain:llm-coach:karte-hint"
+msgstr "Karte JSON のパス"
+
+msgid "mykatrain:llm-coach:rank-label"
+msgstr "棋力 (例: 5k)"
+
+msgid "mykatrain:llm-coach:response-label"
+msgstr "LLM 応答（ここに貼り付け）"
+
+msgid "mykatrain:llm-coach:result-label"
+msgstr "検証結果"
+
+msgid "mykatrain:llm-coach:browse"
+msgstr "参照"
+
+msgid "mykatrain:llm-coach:browse-title"
+msgstr "Karte JSON を選択"
+
+msgid "mykatrain:llm-coach:build-prompt"
+msgstr "プロンプト生成 & コピー"
+
+msgid "mykatrain:llm-coach:clear-response"
+msgstr "応答をクリア"
+
+msgid "mykatrain:llm-coach:validate"
+msgstr "検証実行"
+
+msgid "mykatrain:llm-coach:copy-result"
+msgstr "検証結果をコピー"
+
+msgid "mykatrain:llm-coach:file-not-found"
+msgstr "ファイルが見つかりません: {path}"
+
+msgid "mykatrain:llm-coach:invalid-karte"
+msgstr "Karte JSON が不正です: {error}"
+
+msgid "mykatrain:llm-coach:no-karte"
+msgstr "Karte JSON を指定してください"
+
+msgid "mykatrain:llm-coach:no-response"
+msgstr "LLM 応答を貼り付けてください"
+
+msgid "mykatrain:llm-coach:no-result"
+msgstr "コピーできる検証結果がありません"
+
+msgid "mykatrain:llm-coach:copy-success"
+msgstr "✅ プロンプトをコピーしました（{chars} 文字）"
+
+msgid "mykatrain:llm-coach:copy-failed"
+msgstr "❌ クリップボードへのコピーに失敗: {error}"
+
+msgid "mykatrain:llm-coach:result-copied"
+msgstr "✅ 検証結果をコピーしました"
+
+msgid "mykatrain:llm-coach:response-cleared"
+msgstr "応答をクリアしました"
+
+msgid "mykatrain:llm-coach:validation-clean"
+msgstr "✅ 検証クリア — 警告なし"
+
+msgid "mykatrain:llm-coach:validation-issues"
+msgstr "⚠️ 警告あり（詳細は下）"
+
+msgid "mykatrain:llm-coach:status"
+msgstr "ステータス"
+
+msgid "mykatrain:llm-coach:referenced-symptoms"
+msgstr "参照した症状ID"
+
+msgid "mykatrain:llm-coach:referenced-moves"
+msgstr "参照した着手番号"
+
+msgid "mykatrain:llm-coach:referenced-points-lost"
+msgstr "参照した pointsLost"
+
+msgid "mykatrain:llm-coach:referenced-lexicon"
+msgstr "参照した Lexicon ID"
+
+msgid "mykatrain:llm-coach:issues"
+msgstr "検出された警告"
+
+msgid "mykatrain:llm-coach:truncated"
+msgstr "\n\n…(以降省略されました)"
+
 msgid "mykatrain:batch-analyze"
 msgstr "フォルダ一括解析..."
 
