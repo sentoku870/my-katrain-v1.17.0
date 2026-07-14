@@ -122,11 +122,30 @@ class TestSaveMyKatrainSettings:
         assert section_name == "mykatrain_settings"
         assert payload == {
             "default_user_name": "alice",
+            "default_user_rank": "",
             "karte_output_directory": "/tmp/out",
             "batch_export_input_directory": "/tmp/in",
             "karte_format": "standard",
             "opponent_info_mode": "auto",
         }
+
+    def test_writes_rank_when_provided(self):
+        """Phase 225.8: default_user_rank is persisted when set."""
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(
+            ctx,
+            default_user_name="alice",
+            karte_output_directory="/tmp/out",
+            batch_export_input_directory="/tmp/in",
+            karte_format="standard",
+            opponent_info_mode="auto",
+            disabled_katago=False,
+            default_user_rank="4段",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["default_user_rank"] == "4段"
         ctx.save_config.assert_called_once_with("mykatrain_settings")
 
     def test_updates_engine_disabled_flag(self):

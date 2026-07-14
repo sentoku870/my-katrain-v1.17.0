@@ -1794,6 +1794,9 @@ msgstr "KataGo の scoreStdev が高いとき「KataGo も読みにくい局面�
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 
+msgid "mykatrain:settings:default_user_rank"
+msgstr "ユーザー棋力 (任意):"
+
 msgid "mykatrain:settings:karte_output_directory"
 msgstr "カルテ出力先ディレクトリ:"
 

@@ -90,10 +90,15 @@ def _save_mykatrain_settings(
     karte_format: str,
     opponent_info_mode: str,
     disabled_katago: bool,
+    default_user_rank: str = "",  # Phase 225.8
 ) -> None:
     """Save mykatrain_settings section + engine disabled flag (Phase 27)."""
     mykatrain_settings = {
         "default_user_name": default_user_name,
+        # Phase 225.8: optional default user rank (e.g. "4段" / "5k").
+        # The LLM Coach uses this as a fallback when no Karte is loaded
+        # or the Karte has no BR/WR info.
+        "default_user_rank": default_user_rank,
         "karte_output_directory": karte_output_directory,
         "batch_export_input_directory": batch_export_input_directory,
         "karte_format": karte_format,

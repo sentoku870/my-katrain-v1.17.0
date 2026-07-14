@@ -60,6 +60,7 @@ TAB_RESET_KEYS: dict[str, list[tuple[str, str]]] = {
     # Export tab: karte output settings
     "export": [
         ("mykatrain_settings", "default_user_name"),
+        ("mykatrain_settings", "default_user_rank"),  # Phase 225.8
         ("mykatrain_settings", "karte_output_directory"),
         ("mykatrain_settings", "batch_export_input_directory"),
         ("mykatrain_settings", "karte_format"),

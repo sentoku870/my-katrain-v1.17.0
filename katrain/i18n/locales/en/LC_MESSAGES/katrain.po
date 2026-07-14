@@ -1845,6 +1845,9 @@ msgstr "Show a hint when KataGo's scoreStdev is high (even KataGo is unsure)"
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 
+msgid "mykatrain:settings:default_user_rank"
+msgstr "User Rank (optional):"
+
 msgid "mykatrain:settings:karte_output_directory"
 msgstr "Karte Output Directory:"
 
