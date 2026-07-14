@@ -1,6 +1,6 @@
 """Phase A1: Beginner Hint Main Pipeline Coverage Tests
 
-Architecture Review follow-up: lift ``core/beginner/hints.py`` line
+Architecture Review follow-up: lift ``core/beginner/hints`` package
 coverage from 16.5% to a target of ~50% by exercising the main
 pipeline entry points and the internal helpers that the existing
 test files don't cover in depth.
@@ -28,7 +28,7 @@ What this file adds beyond the two existing test files
 
 Kivy imports are deliberately avoided at module level to comply with
 Phase 173 (kivy mkdir side effect → CI exit-102). The module under
-test (``hints.py``) is core-layer and Kivy-free.
+test (``hints`` package) is core-layer and Kivy-free.
 """
 
 from __future__ import annotations
@@ -357,7 +357,7 @@ class TestComputeSummaryContext:
     def test_metrics_exception_returns_none_and_unreliable(self) -> None:
         # difficulty_metrics_from_node raises -> overall_difficulty=None,
         # is_reliable=False. Patch at the ``katrain.core.analysis`` import
-        # location (this is where hints.py binds the symbol).
+        # location (this is where the hints package binds the symbol).
         node = _MockNode(points_lost=1.0)
         with patch(
             "katrain.core.analysis.difficulty_metrics_from_node",

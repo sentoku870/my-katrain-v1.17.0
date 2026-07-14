@@ -47,14 +47,6 @@ def evaluation_class(points_lost: float, eval_thresholds: Sequence[float | None]
     return i
 
 
-def check_thread(tb: bool = False) -> None:  # for checking if draws occur in correct thread
-
-    if tb:
-        import traceback
-
-        traceback.print_stack()
-
-
 def pack_floats(float_list: list[float] | None) -> bytes:
     if float_list is None:
         return b""
