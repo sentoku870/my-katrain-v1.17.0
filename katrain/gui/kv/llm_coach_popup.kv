@@ -3,18 +3,27 @@
 #:import Theme katrain.gui.theme.Theme
 #:import dp kivy.metrics.dp
 
-# Phase 225.3: LLM Coach popup body widget.
+# Phase 225.4: LLM Coach popup body widget.
 #
-# Layout rules:
-# - All action buttons share equal width via size_hint_x: 0.5 in two-column
-#   BoxLayouts. This avoids the AutoSizedRoundedRectangleButton text-width
-#   drift that made "プロンプト生成 & コピー" wrap awkwardly in Phase 225.0.
-# - The response input uses a multiline LabelledTextInput with size_hint_y
-#   to occupy the middle band; result label sits below in a ScrollView so
-#   long Markdown reports stay scrollable without growing the popup.
-# - The popup itself remains a single BoxLayout column; everything is
-#   `size_hint_y: None` for the fixed rows and `size_hint_y: <fraction>`
-#   for the elastic ones.
+# Layout contract (verified by tests/test_llm_coach_popup_layout.py):
+#
+# 1. ALL action buttons must use ``SizedRoundedRectangleButton`` (not the
+#    "Auto" variant). ``AutoSizedButton`` binds ``width`` to the label's
+#    rendered texture size, which overrides any ``size_hint_x`` setting
+#    and made the Phase 225.3 popup overflow when the longest button
+#    label grew past the popup width.
+#
+# 2. The two action rows use ``size_hint_x: 0.5`` each so the two
+#    buttons share the row width evenly regardless of label length.
+#
+# 3. The Karte path row uses a 75/25 split (text field / 参照 button).
+#
+# 4. The result label is inside a ScrollView so long Markdown reports
+#    stay scrollable instead of growing the popup.
+#
+# 5. A workflow hint at the top of the popup explains the four-step
+#    manual paste flow so users know what "検証実行" / "検証結果を
+#    コピー" actually do.
 
 <LLMCcoachPopupContent>:
     orientation: 'vertical'
@@ -22,7 +31,29 @@
     spacing: dp(6)
     size_hint: 1, 1
 
-    # Row 1: Karte JSON path + Browse button (75 / 25 split)
+    # Workflow hint at the top
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: None
+        height: dp(64)
+        padding: (dp(8), dp(6))
+        canvas.before:
+            Color:
+                rgba: Theme.BOX_BACKGROUND_COLOR
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: i18n._("mykatrain:llm-coach:workflow-hint")
+            font_name: Theme.DEFAULT_FONT
+            font_size: sp(11)
+            halign: 'left'
+            valign: 'top'
+            text_size: self.size
+            color: Theme.TEXT_COLOR
+            shorten: False
+
+    # Row 1: Karte JSON path + Browse button (75/25 split)
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
@@ -37,13 +68,14 @@
             font_size: sp(14)
             size_hint_x: 0.75
 
-        AutoSizedRoundedRectangleButton:
+        SizedRoundedRectangleButton:
             id: browse_button
             text: i18n._("mykatrain:llm-coach:browse")
             size_hint_x: 0.25
+            height: dp(40)
             on_release: root.on_browse_karte()
 
-    # Row 2: Rank input
+    # Row 2: Rank input (110dp label + remainder input)
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
@@ -71,25 +103,27 @@
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
-        height: dp(40)
+        height: dp(44)
         spacing: dp(6)
 
-        AutoSizedRoundedRectangleButton:
+        SizedRoundedRectangleButton:
             id: generate_button
             text: i18n._("mykatrain:llm-coach:build-prompt")
             size_hint_x: 0.5
+            height: dp(40)
             on_release: root.on_generate_and_copy()
 
-        AutoSizedRoundedRectangleButton:
+        SizedRoundedRectangleButton:
             id: clear_button
             text: i18n._("mykatrain:llm-coach:clear-response")
             size_hint_x: 0.5
+            height: dp(40)
             on_release: root.on_clear_response()
 
     # Row 4: Response input (multiline, fixed band)
     BoxLayout:
         orientation: 'vertical'
-        size_hint_y: 0.32
+        size_hint_y: 0.30
         spacing: dp(4)
 
         Label:
@@ -111,19 +145,21 @@
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
-        height: dp(40)
+        height: dp(44)
         spacing: dp(6)
 
-        AutoSizedRoundedRectangleButton:
+        SizedRoundedRectangleButton:
             id: validate_button
             text: i18n._("mykatrain:llm-coach:validate")
             size_hint_x: 0.5
+            height: dp(40)
             on_release: root.on_validate()
 
-        AutoSizedRoundedRectangleButton:
+        SizedRoundedRectangleButton:
             id: copy_result_button
             text: i18n._("mykatrain:llm-coach:copy-result")
             size_hint_x: 0.5
+            height: dp(40)
             on_release: root.on_copy_result()
 
     # Row 6: Status line (single line)
@@ -150,7 +186,7 @@
 
     # Row 8: Result label scrollable area
     ScrollView:
-        size_hint_y: 0.68
+        size_hint_y: 0.66
         do_scroll_x: False
         do_scroll_y: True
         bar_width: dp(6)

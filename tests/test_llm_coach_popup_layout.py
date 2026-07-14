@@ -1,4 +1,4 @@
-"""Phase 225.3 layout regression: ensure button widths are uniform.
+"""Phase 225.4 layout regression: ensure button widths are uniform.
 
 The Phase 225.0 / 225.1 / 225.2 popup had ``AutoSizedRoundedRectangleButton``
 siblings with no explicit width, so each button auto-sized to its own
@@ -6,9 +6,13 @@ text content ("プロンプト生成 & コピー" rendered much wider than
 "応答をクリア" / "検証実行", causing awkward wrapping and oversized
 buttons that overflowed the popup).
 
-The fix in ``katrain/gui/kv/llm_coach_popup.kv`` sets ``size_hint_x: 0.5``
-on every action button in the two two-column BoxLayout rows, plus
-explicit ``size_hint_x`` values on the karte-path row.
+Phase 225.3 added ``size_hint_x: 0.5`` to each button — but the
+``AutoSizedButton`` rule in widgets.kv binds ``width`` to
+``label.texture_size[0]``, which overrides the size_hint and the
+buttons still overflowed.
+
+Phase 225.4 switches all action buttons to ``SizedRoundedRectangleButton``
+(no "Auto"), which honours the parent's size_hint.
 
 These tests verify the layout contract by static analysis of the KV file
 (so they don't need a live Kivy window and stay headless-CI friendly).
@@ -28,14 +32,14 @@ def _read_kv() -> str:
 
 
 def _find_button_blocks(kv: str, *, rule_pattern: str | None = None) -> list[str]:
-    """Return each ``AutoSizedRoundedRectangleButton:`` block.
+    """Return each ``SizedRoundedRectangleButton:`` block (no Auto).
 
     Optional ``rule_pattern`` restricts to blocks whose first non-empty
     line matches the regex (e.g. ``r"id:\\s*generate_button"``).
     """
     blocks: list[str] = []
     for m in re.finditer(
-        r"AutoSizedRoundedRectangleButton:.*?(?=\n\s*(?:AutoSizedRoundedRectangleButton:|<|\Z))",
+        r"SizedRoundedRectangleButton:.*?(?=\n\s*(?:SizedRoundedRectangleButton:|<|\Z))",
         kv,
         re.DOTALL,
     ):
@@ -155,4 +159,36 @@ class TestPopupCompactness:
         idx_result_label = kv.find("id: result_label")
         assert idx_scroll < idx_result_label, (
             "ScrollView must contain result_label, not the other way around"
+        )
+
+
+class TestPhase2254SizedButtonMigration:
+    """Phase 225.4: switch from ``AutoSizedRoundedRectangleButton`` to
+    ``SizedRoundedRectangleButton`` so ``size_hint_x`` is honoured.
+    The ``AutoSized*`` family has a ``width: root.label.texture_size[0]``
+    binding in ``widgets.kv`` that overrides size_hint_x."""
+
+    def test_no_auto_sized_buttons_remain(self) -> None:
+        kv = _read_kv()
+        assert "AutoSizedRoundedRectangleButton" not in kv, (
+            "Phase 225.4 must NOT use AutoSizedRoundedRectangleButton — the "
+            "AutoSizedButton rule binds width to label texture size and "
+            "overrides size_hint_x, causing the popup overflow."
+        )
+
+    def test_all_action_buttons_use_sized_variant(self) -> None:
+        kv = _read_kv()
+        for wid in ("generate_button", "clear_button", "validate_button",
+                    "copy_result_button", "browse_button"):
+            block = _find_block_with_id(kv, wid)
+            assert "SizedRoundedRectangleButton" in block, (
+                f"{wid} must use SizedRoundedRectangleButton, got: {block[:80]}"
+            )
+
+    def test_workflow_hint_label_present(self) -> None:
+        """Phase 225.4 added a workflow-hint label so users know how to
+        use the validate / copy-result buttons."""
+        kv = _read_kv()
+        assert "mykatrain:llm-coach:workflow-hint" in kv, (
+            "Popup must include the workflow-hint i18n key"
         )

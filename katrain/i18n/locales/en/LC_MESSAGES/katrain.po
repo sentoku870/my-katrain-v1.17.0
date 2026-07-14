@@ -83,6 +83,16 @@ msgstr "LLM Coach (manual paste)"
 msgid "mykatrain:llm-coach:title"
 msgstr "LLM Coach — translate KataGo output via LLM"
 
+msgid "mykatrain:llm-coach:workflow-hint"
+msgstr ""
+"[Workflow]\n"
+"1. Confirm the Karte JSON path in the text field above.\n"
+"2. Click 'Generate & Copy Prompt' — the Markdown prompt goes to the clipboard.\n"
+"3. Paste it manually into Claude / ChatGPT / Gemini.\n"
+"4. Paste the LLM's reply into the response text area below.\n"
+"5. Click 'Validate' to check symptom IDs and move numbers.\n"
+"6. Optionally click 'Copy Result' to share the report."
+
 msgid "mykatrain:llm-coach:karte-hint"
 msgstr "Path to Karte JSON"
 

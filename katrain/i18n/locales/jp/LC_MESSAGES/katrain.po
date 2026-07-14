@@ -1130,6 +1130,16 @@ msgstr "LLM コーチ（手動貼付）"
 msgid "mykatrain:llm-coach:title"
 msgstr "LLM コーチ — KataGo 出力を LLM に翻訳"
 
+msgid "mykatrain:llm-coach:workflow-hint"
+msgstr ""
+"【使い方】\n"
+"1. 上のテキストフィールドに Karte JSON のパスを確認\n"
+"2. 「プロンプト生成 & コピー」で Markdown をクリップボードへ\n"
+"3. Claude / ChatGPT / Gemini に手動で貼り付け\n"
+"4. LLM の回答を下のテキスト欄に貼り付け\n"
+"5. 「検証実行」で症状IDや着手番号の整合性チェック\n"
+"6. 必要なら「検証結果をコピー」でレポートを共有"
+
 msgid "mykatrain:llm-coach:karte-hint"
 msgstr "Karte JSON のパス"
 
