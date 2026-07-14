@@ -2,7 +2,7 @@
 
 このフォルダにはmyKaTrainの機能設計仕様書を格納しています。
 
-> **最終更新**: 2026-07-16（Phase 192 + Documentation cleanup）
+> **最終更新**: 2026-07-14（Phase 201: ドキュメント整合）
 > Phase 171 で Leela エンジン / 関連スペックを完全削除。KataGo 専用の構成に整理。
 
 ---
@@ -34,10 +34,11 @@
 | [smart-kifu-learning.md](smart-kifu-learning.md) | Phase 13, 28 | Smart Kifu Learning |
 | [human-move-filter.md](human-move-filter.md) | Phase 11 | Human Move Filter |
 
-## Phase 83-94 完了済みスペック
+## Phase 80-94 完了済みスペック
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
+| [phase80-82-ownership-consequence.md](phase80-82-ownership-consequence.md) | Phase 80-82 | Ownership Consequence: Ownership 変動による死に石 / 地損 / 仕留め損ないの自動分類 |
 | [phase83-complexity-filter.md](phase83-complexity-filter.md) | Phase 83 | Complexity Filter（局面複雑度フィルタ） |
 | [phase84-85-pattern-mining.md](phase84-85-pattern-mining.md) | Phase 84-85 | Recurring Pattern Mining（反復パターン抽出） |
 | [phase86-reason-generator.md](phase86-reason-generator.md) | Phase 86 | Reason Generator（理由生成器） |
@@ -45,7 +46,11 @@
 | [phase91-92-beginner-hints.md](phase91-92-beginner-hints.md) | Phase 91-92 | Beginner Hints MVP（初心者向けヒント） |
 | [phase93-94-active-review.md](phase93-94-active-review.md) | Phase 93-94 | Active Review MVP（能動的レビュー） |
 
-## Phase 177-192 完了済みスペック（2026-07）
+### Phase 80-94 で部分実装のみ（Future 参照）
+
+- **Phase 82**: `docs/future/phase82-context-filler.md` — Critical 3 コンテキスト自動生成（`situation_type` 分類器の GUI 統合が残作業）
+
+## Phase 177-195-A 完了済みスペック（2026-07）
 
 | ファイル | 対応Phase | 内容 |
 |----------|-----------|------|
@@ -57,6 +62,11 @@
 | [phase190-engine-coverage.md](phase190-engine-coverage.md) | Phase 190 | `core/engine.py` カバレッジ 48.3% → 83% |
 | [phase191-engine-type-cycle-cleanup.md](phase191-engine-type-cycle-cleanup.md) | Phase 191 | Engine Subsystem TYPE_CHECKING 循環解消 |
 | [phase192-logic-difficulty-subpackage.md](phase192-logic-difficulty-subpackage.md) | Phase 192 | Position Difficulty サブパッケージ化 |
+
+### Phase 194 / 195-A（直近）
+
+- **Phase 194**（MagicMock 汚染除去）: `katrain/core/reports/extractors.py` から `unittest.mock.MagicMock` の production import を排除、`tests/test_extractors.py` を新規 26 件追加。コミット前に仕様書ファイルは未作成（本表も Phase 201 で更新）。
+- **Phase 195-A**（互換シム棚卸し）: `logic_difficulty.py` / `karte_report.py` の deprecated シム参照を production code から脱却。Architecture テスト `TestDeprecatedShimIsolation` を 3 件追加。eval_metrics / batch_analyze_sgf シムは Phase 195-C まで保持。
 
 ## Phase 171 で削除されたスペック
 
@@ -78,5 +88,6 @@
 | **Tier名** | Tier 1-5（入門/初級/中級/上級/高段） |
 | **MeaningTag↔Lexicon** | `lexicon_anchor_id: Optional[str]` でYAML参照 |
 | **Critical 3コンテキスト** | 構造化フィールドのみ（盤面シリアライズなし） |
+| **Karte 出力形式** | `.json`（Phase 148 で `.md` → `.json` に完全移行） |
 
-詳細は [docs/01-roadmap.md](../../01-roadmap.md) の「Phase 45–52 詳細」セクションを参照。
+詳細は [docs/01-roadmap.md](../../01-roadmap.md) を参照。

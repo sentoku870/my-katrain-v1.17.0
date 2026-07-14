@@ -11,14 +11,14 @@
 ### カルテの種類
 
 - **デイリーコーチ（単局カルテ）**: 1局の振り返り用
-  - 出力: `reports/karte/karte_YYYYMMDD-HHMM.md` (**JSON形式**)
+  - 出力: `reports/karte/karte_YYYYMMDD-HHMM.json`（Phase 148 で `.md` から `.json` に完全移行）
   - 操作: KaTrain の「Export Karte」ボタン
   - 特徴: LLM入力用に最適化された構造化データ（JSON）。人間が読む用ではありません。
 
 - **ウィークリーコーチ（複数局サマリー）**: 直近N局の傾向分析用
-  - 出力: `reports/summary_互先_YYYYMMDD-HHMM.md`
+  - 出力: `reports/summary_互先_YYYYMMDD-HHMM.json`
   - 操作: KaTrain の「Multi-game summary」メニュー
-  - 特徴: Phase × Mistake クロス集計、弱点仮説の自動生成
+  - 特徴: Phase × Mistake クロス集計、Weakness Hypothesis の自動生成
 
 ### LLMへの入力方法（4ルート）
 
@@ -72,12 +72,11 @@ Phase 9 の核心は、以下の5ステップを **測定可能な形で回す**
 2. 直近10局のSGFファイルを選択（KataGo解析済み）
 3. 自分のプレイヤー名を選択
 4. 「Generate Summary」をクリック
-5. `reports/summary_互先_YYYYMMDD-HHMM.md` を確認
+5. `reports/summary_互先_YYYYMMDD-HHMM.json` を確認
 
 **確認ポイント**:
 - [ ] Phase × Mistake Breakdown テーブルが表示される
 - [ ] Weakness Hypothesis で上位3つの弱点が抽出されている
-- [ ] Practice Priorities が1-2個に絞られている
 
 #### 1-B: 継続診断（デイリーコーチ）
 
@@ -86,8 +85,8 @@ Phase 9 の核心は、以下の5ステップを **測定可能な形で回す**
 **手順**:
 1. KaTrain で対局を開く（または検討中の対局）
 2. 「Export Karte」ボタンをクリック
-3. `reports/karte/karte_YYYYMMDD-HHMM.md` をテキストエディタで開く
-   - **重要**: 拡張子は `.md` ですが、中身は **JSONデータ** です。
+3. `reports/karte/karte_YYYYMMDD-HHMM.json` をテキストエディタで開く
+   - **重要**: 中身は **JSONデータ** です（Phase 148 で `.md` から `.json` に完全移行済み）。
 
 **確認ポイント**:
 - [ ] テキストエディタで開き、JSONデータが含まれていることを確認

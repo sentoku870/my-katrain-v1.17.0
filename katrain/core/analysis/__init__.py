@@ -316,9 +316,9 @@ def get_root_visits(analysis: dict[str, Any] | None) -> int | None:
     Returns:
         Number of visits, or None if analysis is None or visits not found.
     """
-    from katrain.core.analysis.logic_difficulty import _get_root_visits
+    from katrain.core.analysis.difficulty._io import get_root_visits
 
-    return _get_root_visits(analysis)
+    return get_root_visits(analysis)
 
 
 # =============================================================================

@@ -255,17 +255,6 @@ class KeyboardManager:
             analysis_controls = self._get_analysis_controls()
             if analysis_controls:
                 analysis_controls.dropdown.open_report_popup()
-        elif keycode[1] == "f10":
-            if self._get_debug_level is not None:
-                debug_level = self._get_debug_level()
-                if debug_level is not None and debug_level >= 4:
-                    # OUTPUT_EXTRA_DEBUG = 4
-                    # Dead code: KEY_TSUMEGO_FRAME = "f10" matches first
-                    import yappi
-
-                    yappi.set_clock_type("cpu")
-                    yappi.start()
-                    self._log("starting profiler", 1)  # OUTPUT_ERROR = 1
         elif keycode[1] == "f11":
             if self._get_debug_level is not None:
                 debug_level = self._get_debug_level()

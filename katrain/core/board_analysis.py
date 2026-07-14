@@ -446,13 +446,7 @@ def get_reason_tags_for_move(
     if max_enemy_danger >= TAG_CHASE_MODE_ENEMY_DANGER and max_my_danger < TAG_CHASE_MODE_MY_DANGER_MAX:
         tags.append("chase_mode")
 
-    # タグ 7: too_many_choices（無効化 - 候補手数は探索パラメータに依存し不安定）
-    # 理由: wideRootNoise等の影響で同じ局面でも変動する
-    # LLMはpoints_lostやimportanceから「正解が難しい状況」を推測可能
-    # if len(candidates) >= 10:
-    #     tags.append("too_many_choices")
-
-    # タグ 8: endgame_hint（条件緩和: yoseタグまたは後半70%以降）
+    # タグ 7: endgame_hint（条件緩和: yoseタグまたは後半70%以降）
     is_endgame = False
     if (
         hasattr(move_eval, "tag")

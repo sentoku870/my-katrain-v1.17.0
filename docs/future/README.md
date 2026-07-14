@@ -1,43 +1,32 @@
 # Future（将来の機能）
 
-このフォルダには、将来実装予定の機能仕様書が格納されています。
+このフォルダには、将来実装予定の機能仕様書（**まだ実装されていないもの**）が格納されています。
+
+> **最終更新**: 2026-07-14（Phase 201: ドキュメント整合）
+
+## ステータス定義
+
+| ステータス | 意味 |
+|-----------|------|
+| `partial` | 一部のみ実装済み（GUI 部分のみ未実装等） |
+| `deferred` | 構想段階、後回し |
+| `idea` | 概要レベル、正式仕様未着手 |
 
 ## 収録ファイル
 
-### Phase 80-94 仕様書（Planned - 2026-01-29 追加）
+### Partial（一部未実装）
 
-#### Analysis Intelligence（Phase 80-87）
+| ファイル | 概要 | 残作業 |
+|----------|------|--------|
+| [`phase82-context-filler.md`](phase82-context-filler.md) | Critical 3 コンテキスト自動生成 | `situation_type` 分類器と owner-context 拡張の GUI 統合 |
 
-| ファイル | 概要 | Phase |
-|----------|------|-------|
-| `phase80-82-ownership-consequence.md` | Ownership変動によるConsequence（結末）判定 | 80-82 |
-| `phase82-context-filler.md` | Critical 3コンテキスト自動生成 | 82 |
-| `phase83-complexity-filter.md` | 難解度（Complexity）フィルタによるノイズ除去 | 83 |
-| `phase84-85-pattern-mining.md` | 再発パターン特定（Recurring Pattern Mining） | 84-85 |
-| `phase86-reason-generator.md` | 自然言語理由生成エンジン（Reason Generator） | 86 |
-
-#### Beginner Experience（Phase 88-94）
-
-| ファイル | 概要 | Phase |
-|----------|------|-------|
-| `phase88-90-katago-setup-rescue.md` | KataGoセットアップ救済（初心者向け） | 88-90 |
-| `phase91-92-beginner-hints.md` | 初心者向けヒント（Safety Net） | 91-92 |
-| `phase93-94-active-review.md` | Active Review Mode（次の一手予測） | 93-94 |
-
-### Future Ideas（延期）
+### Deferred（延期）
 
 | ファイル | 概要 | 優先度 |
 |----------|------|--------|
-| `idea3-ownership-overlay.md` | Ownership Volatility Overlay | 中 |
-| `idea5-style-quiz.md` | Style Matching Quiz | 低 |
+| [`idea3-ownership-overlay.md`](idea3-ownership-overlay-DEFERRED.md) | Ownership Volatility Overlay（係争地 / 死に石 / 過剰防衛の盤上可視化） | 中 |
+| [`idea5-style-quiz.md`](idea5-style-quiz-DEFERRED.md) | Style Matching Quiz（Human-SL + 標準 KataGo loss 比較クイズ） | 低 |
 
-## ステータス
+## 実装済みへの移動先（参考）
 
-これらの機能は Phase 52 時点で延期（DEFERRED）とされました。
-リリース準備完了後、優先度に応じて実装を検討します。
-
-## 実装時の手順
-
-1. このフォルダから仕様書を `docs/` 直下にコピー
-2. 仕様を最新化
-3. 実装後、仕様書を `docs/archive/specs-implemented/` に移動
+実装完了した仕様書は [`docs/archive/specs-implemented/`](../archive/specs-implemented/) に移管済みです。Phase 80-94 系の機能（Ownership クラスタ、Pattern Mining、Reason Generator、KataGo Setup Rescue、Beginner Hints MVP、Active Review MVP）もすべて実装完了しました。

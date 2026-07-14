@@ -361,11 +361,11 @@ class Game(BaseGame):
             KarteGenerationError: If raise_on_error=True and generation fails.
 
         Note:
-            PR #119: Moved implementation to katrain.core.reports.karte_report
+            PR #119: Moved implementation to katrain.core.reports.karte.builder
         """
-        from katrain.core.reports import karte_report
+        from katrain.core.reports.karte.builder import build_karte_report
 
-        return karte_report.build_karte_report(
+        return build_karte_report(
             self,
             level=level,
             player_filter=player_filter,

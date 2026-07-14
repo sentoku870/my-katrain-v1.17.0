@@ -1,16 +1,19 @@
-"""DEPRECATED backwards-compat shim for ``katrain.core.beginner.hints``.
+"""Public entry point for the beginner hints subpackage.
 
-Phase 196: The 753-line ``hints.py`` module has moved to the
-``katrain.core.beginner.hints`` subpackage (see :mod:`katrain.core.beginner.hints`)
-split into ``_gate`` / ``_extract`` / ``_dispatch`` / ``_cache`` / ``api``
-+ ``__init__``. This module remains so existing imports like
-``from katrain.core.beginner.hints import compute_beginner_hint`` keep
-working unchanged, but **new code should import from the new subpackage**.
+Phase 196: the previous monolithic ``katrain.core.beginner.hints`` is now
+this package. Implementation is split across:
 
-Both public symbols and private helpers are re-exported here so test
-files that reach into e.g. ``_compute_summary_context``,
-``_extract_predicted_territory`` or that ``patch("katrain.core.beginner.hints.detect_*")``
-keep working through the legacy namespace.
+* :mod:`._gate`    — pure gating functions (should_show_*, is_coords_valid)
+* :mod:`._extract` — node attribute extractors (ownership / policy / endgame)
+* :mod:`._dispatch`— detector chains + SummaryHintContext builder
+* :mod:`._cache`   — sentinel + cached public entry points
+* :mod:`.api`      — flat facade re-exporting everything for legacy callers
+
+Importing from this package's ``__init__`` is the preferred path for
+new code. Symbols re-exported here keep the legacy
+``katrain.core.beginner.hints`` namespace working for tests and
+downstream callers (``patch("katrain.core.beginner.hints.detect_*")``
+etc.).
 """
 
 from __future__ import annotations
@@ -53,7 +56,7 @@ from katrain.core.beginner.hints.api import (
 from katrain.core.board_analysis import extract_groups_from_game
 
 __all__ = [
-    # Public API
+    # Public entry points
     "compute_beginner_hint",
     "compute_summary_hint",
     "get_beginner_hint_cached",
@@ -64,7 +67,7 @@ __all__ = [
     "should_show_summary_hint",
     "MIN_RELIABLE_VISITS",
     "MIN_SUMMARY_VISITS",
-    # Private helpers retained for compatibility
+    # Private helpers exposed for tests + downstream callers
     "_NOT_COMPUTED",
     "_DETECTOR_CATEGORIES",
     "_compute_summary_context",

@@ -6,7 +6,6 @@ dictionaries defined in `schema.py`.
 """
 
 from typing import Any
-from unittest.mock import MagicMock
 
 from katrain.core.analysis.models import MoveEval
 from katrain.core.eval_metrics import (
@@ -139,7 +138,7 @@ class MetaExtractor:
                 moves_count = len(game_data.snapshot.moves)
             except TypeError:
                 moves_count = 0
-        elif hasattr(game_data, "moves") and not isinstance(game_data.moves, MagicMock):
+        elif hasattr(game_data, "moves"):
             try:
                 moves_count = len(game_data.moves)
             except TypeError:
