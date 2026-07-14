@@ -19,6 +19,10 @@ the tests to know about the new private module layout.
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from typing import Any
 
 from katrain.core.beginner import hints as _hints_pkg
@@ -171,6 +175,7 @@ def _compute_summary_context(
             overall_difficulty = float(metrics.overall_difficulty)
             is_reliable = bool(metrics.is_reliable)
     except Exception:
+        logger.debug('difficulty_metrics_from_node fallback during summary context build', exc_info=True)
         overall_difficulty = None
         is_reliable = False
 

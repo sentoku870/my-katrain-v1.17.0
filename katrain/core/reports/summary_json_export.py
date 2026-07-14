@@ -11,6 +11,10 @@ Contains:
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import time
 from typing import Any
 
@@ -130,6 +134,7 @@ def _ensure_tags_for_top_moves(
                 try:
                     tag = classify_meaning_tag(move, context=context)
                 except Exception:
+                    logger.debug('classify_meaning_tag during karte summary build', exc_info=True)
                     tag = None
                 if tag is not None:
                     move.meaning_tag_id = tag.id.value

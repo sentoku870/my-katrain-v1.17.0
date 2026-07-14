@@ -10,8 +10,8 @@ package ``__init__`` re-exports the same names).
 from __future__ import annotations
 
 from katrain.core.beginner.hints._cache import (
-    MIN_SUMMARY_VISITS,
     _NOT_COMPUTED,
+    MIN_SUMMARY_VISITS,
     get_beginner_hint_cached,
     get_summary_hint_cached,
 )
