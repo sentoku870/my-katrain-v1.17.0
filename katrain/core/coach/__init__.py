@@ -1,13 +1,13 @@
-"""Phase 207-208: Coach module — Master coaching database + Lexicon.
+"""Phase 207-209: Coach module — Master coaching database + Lexicon + Symptom index.
 
 This subpackage hosts the LLM "translation" pipeline data and helpers
 documented in `docs/archive/specs-planned/phase203-llm-translator.md`.
 
 Layout:
-- master_db.py   (Phase 207): §0 / §1 — mode classification + tone config
-- lexicon.py     (Phase 208): go_lexicon YAML loader
+- master_db.py     (Phase 207): §0 / §1 — mode classification + tone config
+- lexicon.py       (Phase 208): go_lexicon YAML loader
 - symptom_index.py (Phase 209): §2-0 symptom → KataGo metric mapping
-- tones.py       (Phase 210): tone selector helpers (delegates to master_db)
+- tones.py         (Phase 210): tone selector helpers (delegates to master_db)
 - prompt_builder.py (Phase 211): HTML-comment-style SystemInstruction generator
 - llm_validator.py (Phase 212): post-hoc output validation
 
@@ -41,6 +41,16 @@ from katrain.core.coach.master_db import (
     get_mode_config,
     get_tone_config,
 )
+from katrain.core.coach.symptom_index import (
+    Symptom,
+    SymptomContext,
+    SymptomId,
+    detect_auto_symptoms,
+    list_all_symptoms,
+    list_auto_detected_symptoms,
+    list_llm_required_symptoms,
+    lookup_symptom,
+)
 
 __all__ = [
     # master_db (Phase 207)
@@ -68,4 +78,13 @@ __all__ = [
     "validate_references",
     "inject_lexicon_for_prompt",
     "all_ids",
+    # symptom_index (Phase 209)
+    "SymptomId",
+    "SymptomContext",
+    "Symptom",
+    "list_all_symptoms",
+    "lookup_symptom",
+    "list_auto_detected_symptoms",
+    "list_llm_required_symptoms",
+    "detect_auto_symptoms",
 ] 
