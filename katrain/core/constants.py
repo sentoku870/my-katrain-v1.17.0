@@ -287,25 +287,8 @@ SGF_INTERNAL_COMMENTS_MARKER = "\u3164\u200b"
 SGF_SEPARATOR_MARKER = "\u3164\u3164"
 
 
-# --- Kifunarabe (棋譜並べ) display options (Phase 177-E) ---
-# All three default to "minimal" so the choice set looks like a clean
-# multiple-choice puzzle: same colour, no digit text, no special border
-# around the actual move. Users can flip them ON in
-# mykatrain_settings > 棋譜並べ if they want KataGo-readable hints.
-KIFUNARABE_SHOW_DIGITS_KEY = "kifunarabe/show_digits"
-KIFUNARABE_SHOW_ACTUAL_BORDER_KEY = "kifunarabe/show_actual_border"
-KIFUNARABE_UNIFORM_COLOR_KEY = "kifunarabe/uniform_color"
-KIFUNARABE_SHOW_DIGITS_DEFAULT = False
-KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT = False
-KIFUNARABE_UNIFORM_COLOR_DEFAULT = True
-
-# Phase 177-H: when the user enters kifunarabe mode the board-level
-# "next moves" and "dots" overlays would reveal the actual move
-# (they highlight the correct answer), so we mask them off while the
-# session is active and restore the user's settings when it ends.
-# Users can opt out of this behaviour from mykatrain settings.
-KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY = "kifunarabe/auto_toggle_markers"
-KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT = True
+# Kifunarabe (棋譜並べ) display option constants were moved to
+# katrain.core.study.kifunarabe_constants in Phase 202.
 
 
 # --- Analysis Modes ---

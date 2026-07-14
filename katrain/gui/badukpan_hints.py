@@ -27,12 +27,6 @@ from katrain.core.beginner.hints import (
     should_draw_board_highlight,
 )
 from katrain.core.constants import (
-    KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
-    KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
-    KIFUNARABE_SHOW_DIGITS_DEFAULT,
-    KIFUNARABE_SHOW_DIGITS_KEY,
-    KIFUNARABE_UNIFORM_COLOR_DEFAULT,
-    KIFUNARABE_UNIFORM_COLOR_KEY,
     OUTPUT_DEBUG,
     STATUS_TEACHING,
     TOP_MOVE_DELTA_SCORE,
@@ -46,6 +40,14 @@ from katrain.core.constants import (
 from katrain.core.game import Move
 from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe import build_kifunarabe_options
+from katrain.core.study.kifunarabe_constants import (
+    KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
+    KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
+    KIFUNARABE_SHOW_DIGITS_DEFAULT,
+    KIFUNARABE_SHOW_DIGITS_KEY,
+    KIFUNARABE_UNIFORM_COLOR_DEFAULT,
+    KIFUNARABE_UNIFORM_COLOR_KEY,
+)
 from katrain.core.utils import format_visits
 from katrain.gui.kivyutils import cached_texture, draw_circle, draw_text
 from katrain.gui.theme import Theme

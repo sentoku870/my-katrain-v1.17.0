@@ -681,10 +681,10 @@ class TestKifunarabeOptionsHintMoves:
 
 
 class TestKifunarabeDisplayConstants:
-    """Phase 177-E display-toggle constants exported from core.constants."""
+    """Phase 177-E display-toggle constants exported from kifunarabe_constants (Phase 202)."""
 
     def test_keys_are_namespaced(self) -> None:
-        from katrain.core.constants import (
+        from katrain.core.study.kifunarabe_constants import (
             KIFUNARABE_SHOW_ACTUAL_BORDER_KEY,
             KIFUNARABE_SHOW_DIGITS_KEY,
             KIFUNARABE_UNIFORM_COLOR_KEY,
@@ -699,7 +699,7 @@ class TestKifunarabeDisplayConstants:
             assert key.endswith(("show_digits", "show_actual_border", "uniform_color"))
 
     def test_defaults_make_marker_minimal(self) -> None:
-        from katrain.core.constants import (
+        from katrain.core.study.kifunarabe_constants import (
             KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
             KIFUNARABE_SHOW_DIGITS_DEFAULT,
             KIFUNARABE_UNIFORM_COLOR_DEFAULT,

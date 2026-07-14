@@ -23,7 +23,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 
-from katrain.core.constants import (
+from katrain.core.study.kifunarabe_constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
     KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,

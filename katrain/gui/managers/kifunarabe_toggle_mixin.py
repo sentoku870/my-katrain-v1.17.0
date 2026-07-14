@@ -41,7 +41,7 @@ class KifunarabeToggleMixin:
         Reads ``kifunarabe/auto_toggle_markers`` from the gui config and
         defaults to True (Phase 177-H default behaviour).
         """
-        from katrain.core.constants import (
+        from katrain.core.study.kifunarabe_constants import (
             KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
             KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
         )
