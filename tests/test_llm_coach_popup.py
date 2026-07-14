@@ -23,11 +23,23 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Same skip as test_game_report_popup.py — Kivy + KivyMD heavy init OOMs
-# on the 16 GB GitHub Actions runner mid-suite.
+# Phase 226-D (D1): skip the popup logic tests only when Kivy itself
+# is unimportable. Previously the file was gated on the ``CI``
+# environment variable, which silently skipped ~50 tests on every CI
+# runner regardless of whether Kivy was actually installed. Now the
+# skip is data-driven: if Kivy is present, the tests run (the heavy
+# init is harmless on a developer machine and CI runners that have
+# Kivy in the venv).
+try:
+    import kivy  # noqa: F401
+
+    _KIVY_AVAILABLE = True
+except ImportError:
+    _KIVY_AVAILABLE = False
+
 pytestmark = pytest.mark.skipif(
-    os.environ.get("CI", "").lower() == "true",
-    reason="KivyMD popup import is heavy; CI environment OOMs mid-suite",
+    not _KIVY_AVAILABLE,
+    reason="Kivy is not installed in this environment",
 )
 
 # Force headless mode before any Kivy import.

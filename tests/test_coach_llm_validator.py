@@ -153,6 +153,31 @@ class TestMoveNumberCheck:
         kinds = [i.kind for i in report.issues]
         assert "move_number_out_of_range" in kinds
 
+    def test_total_moves_boundary_accepted(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        # Phase 226-D (D2): ``total_moves == 200`` in the fixture.
+        # The exact boundary value should NOT be flagged.
+        text = "考察: 200手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
+        assert move_issues == []
+        assert 200 in report.referenced_move_numbers
+
+    def test_total_moves_boundary_plus_one_flagged(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        # Phase 226-D (D2): 201手目 = total_moves + 1 → flagged.
+        text = "考察: 201手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
+        assert len(move_issues) == 1
+        assert move_issues[0].context["move_number"] == 201
+
 
 # --- pointsLost outlier check ---
 
@@ -171,6 +196,31 @@ class TestPointsLostCheck:
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert len(loss_issues) == 1
         assert loss_issues[0].context["value"] == 50.0
+
+    def test_ceiling_boundary_with_default_tolerance(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        # Phase 226-D (D2): max_loss=5.0, ceiling=7.5, boundary=7.55
+        # (default tolerance 0.05). The exact boundary value 7.55
+        # should be accepted (tolerance exactly covers the ceiling).
+        text = "考察: 7.55目 損した。\n参照した症状ID: [atari_blindness]\n"
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
+        assert loss_issues == []
+
+    def test_ceiling_boundary_just_above_with_default_tolerance(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        # Phase 226-D (D2): 7.6 > boundary(7.55) → flagged.
+        text = "考察: 7.6目 損した。\n参照した症状ID: [atari_blindness]\n"
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
+        assert len(loss_issues) == 1
+        assert loss_issues[0].context["value"] == 7.6
 
     def test_no_summary_skips_check(self, beginner_config, beginner_prompt):
         # Karte JSON without summary.total_moves or important_moves.points_lost

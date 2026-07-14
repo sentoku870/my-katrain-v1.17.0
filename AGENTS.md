@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,10 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-D — テスト強化・CI 整備**（Lv2、3 ファイル + 6 unit tests、全 5116 件テスト合格）
+  - **D1 CI skip 解消**: `test_llm_coach_popup.py` の `pytestmark` を CI 環境変数ベースから「Kivy import 可否」に変更。Kivy がある環境では popup ロジックテスト ~50 件が CI でも実行可能に
+  - **D2 validator 境界値テスト追加**: `total_moves` 境界（200 OK / 201 NG）、`ceiling` 境界（7.55 OK / 7.6 NG）の境界値テストを追加
+  - **D3 settings_export フィクスチャ更新**: `mock_package_defaults` に `default_user_rank: ""` を追加、`TestTabResetKeys` に `default_user_rank` が export タブに含まれることを検証するテストを追加
 - 2026-07-15: **Phase 226-C — LLM コーチ データ・設定不整合の解消**（Lv3、4 ファイル + 6 unit tests、全 5110 件テスト合格）
   - **C1 `_RANK_ALIASES` デッドコード解消**: `_canonical_rank_key` が `_normalise_rank_str` 適用前に alias lookup するようルート変更。`"10段"` が `"10d"` → 存在しない → `None` だった経路を、`"10段"` → alias → `"9d"` → EXPERT で救済
   - **C2 `config.json` に `default_user_rank` 追加**: `mykatrain_settings` のデフォルト値に `default_user_rank: ""` を追加。新規インストール時の一貫性確保

@@ -34,6 +34,7 @@ def mock_package_defaults():
         },
         "mykatrain_settings": {
             "default_user_name": "",
+            "default_user_rank": "",
             "karte_format": "both",
         },
     }
@@ -334,3 +335,16 @@ class TestTabResetKeys:
                 section, key = item
                 assert isinstance(section, str), f"Section in {tab} is not a string"
                 assert isinstance(key, str), f"Key in {tab} is not a string"
+
+    def test_default_user_rank_in_export_tab(self):
+        """Phase 226-D (D3): the export tab must include
+        ``default_user_rank`` so the Settings → Export "reset" button
+        clears it. The Phase 225.8 add to ``settings_export.py`` was
+        not pinned by any test until now."""
+        export_keys = TAB_RESET_KEYS["export"]
+        assert ("mykatrain_settings", "default_user_rank") in export_keys
+
+    def test_default_user_name_in_export_tab(self):
+        """Regression: keep ``default_user_name`` in the export tab."""
+        export_keys = TAB_RESET_KEYS["export"]
+        assert ("mykatrain_settings", "default_user_name") in export_keys
