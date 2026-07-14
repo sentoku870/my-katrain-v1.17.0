@@ -220,8 +220,8 @@ class KaTrainGui(Screen, KaTrainBase):
             # State modifiers
             get_set_zen=lambda: (self.zen, lambda v: setattr(self, "zen", v)),
             toggle_continuous_analysis=lambda *a, **kw: self.ctx.analysis_controller.toggle_continuous_analysis(*a, clock=Clock, **kw),
-            toggle_move_num=self.ctx.analysis_controller.toggle_move_num,
-            load_from_clipboard=self.ctx.sgf_manager.load_sgf_from_clipboard,
+            toggle_move_num=lambda: self.ctx.analysis_controller.toggle_move_num(),
+            load_from_clipboard=lambda: self.ctx.sgf_manager.load_sgf_from_clipboard(),
             # Utilities
             logger=self.log,
             status_setter=lambda msg, level: self.controls.set_status(msg, level) if self.controls else None,
@@ -238,7 +238,11 @@ class KaTrainGui(Screen, KaTrainBase):
             create_engine_recovery_popup=self.dialog_factory.create_engine_recovery_popup,
             get_popup_open=lambda: self.popup_open,
             is_engine_recovery_popup=self.dialog_factory.is_engine_recovery_popup,
-            pause_timer=self._safe_pause_timer,
+            pause_timer=lambda: (
+                setattr(timer, "paused", True)
+                if (timer := getattr(getattr(self, "controls", None), "timer", None))
+                else None
+            ),
             on_new_game_opened=lambda p: p.content.update_from_current_game(),
             logger=self.log,
             log_level_debug=OUTPUT_DEBUG,
@@ -420,7 +424,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self._engine_bootstrap = EngineBootstrap(
             ctx=self,
             config_getter=self.config,
-            status_callback=self._on_engine_status,
+            status_callback=self._gui_refresh_manager.on_engine_status,
             error_handler=self.error_handler,
             main_thread_scheduler=_schedule_on_main_thread,
         )
@@ -444,7 +448,7 @@ class KaTrainGui(Screen, KaTrainBase):
                 self._suppress_play_mode_switch = False
 
         # Phase 22: Clockイベントを追跡（cleanup用）
-        animation_event = Clock.schedule_interval(self.handle_animations, 0.1)
+        animation_event = Clock.schedule_interval(lambda dt: self.ctx.analysis_controller.handle_animations(), 0.1)
         self._clock_events.append(animation_event)
 
         Window.request_keyboard(None, self, "").bind(
@@ -458,10 +462,10 @@ class KaTrainGui(Screen, KaTrainBase):
         MDApp.get_running_app().root_window.bind(focus=set_focus_event)
 
         # 前回終了時のモードを復元
-        Clock.schedule_once(lambda dt: self.restore_last_mode(), 0.3)
+        Clock.schedule_once(lambda dt: self.ctx.analysis_controller.restore_last_mode(), 0.3)
 
         # Initialize focus button states on startup
-        Clock.schedule_once(lambda dt: self.update_focus_button_states(), 0.5)
+        Clock.schedule_once(lambda dt: self.ctx.analysis_controller.update_focus_button_states(), 0.5)
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods
     # =========================================================================
@@ -469,13 +473,13 @@ class KaTrainGui(Screen, KaTrainBase):
     def restart_engine_with_fallback(self, fallback_type: str) -> tuple[bool, TestAnalysisResult]:
         """Delegates to AutoSetupController (Phase 133)."""
         return self.ctx.auto_setup_controller.restart_engine_with_fallback(
-            fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
+            fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._gui_refresh_manager.on_engine_status)
         )
 
     def restart_engine(self) -> bool:
         """Delegates to AutoSetupController (Phase 133)."""
         return self.ctx.auto_setup_controller.restart_engine(
-            lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
+            lambda cfg: KataGoEngine(self, cfg, status_callback=self._gui_refresh_manager.on_engine_status)
         )
 
     def save_auto_setup_result(self, success: bool) -> None:
