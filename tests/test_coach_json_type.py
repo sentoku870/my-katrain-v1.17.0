@@ -14,7 +14,6 @@ from katrain.core.coach.json_type import (
     normalize_summary_to_karte_shape,
 )
 
-
 # --- Fixtures ---
 
 
@@ -105,6 +104,41 @@ class TestDetectJsonType:
     def test_summary_via_players_only(self):
         data = {"players": {"P1": {}}}
         assert detect_json_type(data) == "summary"
+
+    def test_single_game_karte_not_misread_as_summary(self):
+        # Phase 226-C (C4): a karte with ``meta.game_count: 1`` and
+        # empty weaknesses must NOT be misread as a summary. The
+        # pre-Phase-226-C implementation would short-circuit on the
+        # presence of game_count even when the rest of the document is
+        # karte-shaped.
+        data = {
+            "schema_version": "3.4",
+            "meta": {"game_count": 1, "player_info": {}},
+            "weaknesses": {"black": [], "white": []},
+            "important_moves": [
+                {"meaning_tag_id": "atari_blindness", "points_lost": 1.5},
+            ],
+        }
+        assert detect_json_type(data) == "karte"
+
+    def test_summary_with_game_count_above_one(self):
+        data = {
+            "schema_version": "3.4",
+            "meta": {"game_count": 5},
+            "phase_x_mistake": {"middle:blunder": 5},
+        }
+        assert detect_json_type(data) == "summary"
+
+    def test_karte_with_important_moves_wins_over_players(self):
+        # Phase 226-C (C4): karte-shaped (weaknesses + important_moves)
+        # is checked BEFORE any summary marker, even when ``players``
+        # is present.
+        data = {
+            "weaknesses": {"black": [], "white": []},
+            "important_moves": [{"points_lost": 1.0}],
+            "players": {"P1": {}},  # would otherwise trigger summary
+        }
+        assert detect_json_type(data) == "karte"
 
 
 # --- Summary extractors ---

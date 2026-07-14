@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,13 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-C — LLM コーチ データ・設定不整合の解消**（Lv3、4 ファイル + 6 unit tests、全 5110 件テスト合格）
+  - **C1 `_RANK_ALIASES` デッドコード解消**: `_canonical_rank_key` が `_normalise_rank_str` 適用前に alias lookup するようルート変更。`"10段"` が `"10d"` → 存在しない → `None` だった経路を、`"10段"` → alias → `"9d"` → EXPERT で救済
+  - **C2 `config.json` に `default_user_rank` 追加**: `mykatrain_settings` のデフォルト値に `default_user_rank: ""` を追加。新規インストール時の一貫性確保
+  - **C3 `estimate_mode_from_loss` docstring 修正**: シグナル全不在でも `INTERMEDIATE` を返す実装と、docstring の "None if no signal available" の不一致を解消
+  - **C4 `detect_json_type` の精緻化**: karte-shaped 判定（`weaknesses` + 非空 `important_moves`）を summary 判定より優先。`meta.game_count: 1` の single-game karte が誤って summary 判定される問題を修正
+  - **C5 `json_type.py` docstring 更新**: C4 の新しい判定順序を反映、3段階ロジック（karte優先 → game_count/games_analyzed → players → phase_x_mistake フォールバック）を明記
+  - 累計 6 件回帰テスト追加（rank aliases +2, json_type +4）、合計 5110 件テスト合格
 - 2026-07-15: **Phase 226-B — LLM コーチ GUI 堅牢性・バグ修正**（Lv3、3 ファイル + 8 unit tests、全 5104 件テスト合格）
   - **B1 無限再試行ループの解消**: `_populate_rank_and_perspective` が karte_path 空時に `Clock.schedule_once` で無限再試行していた問題を修正。最大再試行回数（5回）を追加し、`on_dismiss` で保留中 Clock イベントをキャンセルする `cancel_pending_clocks` 機構を導入
   - **B2 ハードコード日本語の i18n 化**: `auto-detect-summary` メッセージ内の `"黒 (B)" / "白 (W)"` を i18n キー（`perspective-black` / `perspective-white`）に置き換え。en ロケールで日本語が混入する問題を解消

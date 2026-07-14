@@ -69,6 +69,17 @@ class TestCanonicalRankKey:
     def test_unknown_returns_empty(self):
         assert _canonical_rank_key("foobar") == ""
 
+    def test_ten_dan_aliases_to_nine_dan(self):
+        # Phase 226-C (C1): ``10段`` was previously dead-code in
+        # _RANK_ALIASES because _normalise_rank_str collapsed it to
+        # ``10d`` first. Now it routes through the pre-normalisation
+        # alias lookup and resolves to ``9d``.
+        assert _canonical_rank_key("10段") == "9d"
+
+    def test_aliases_with_whitespace(self):
+        # Pre-normalisation lookup strips whitespace.
+        assert _canonical_rank_key(" 4段 ") == "4d"
+
 
 class TestEstimateModeFromRank:
     """End-to-end: the previously-broken kanji notations now resolve."""
@@ -114,3 +125,8 @@ class TestEstimateModeFromRank:
 
     def test_garbage_returns_none(self):
         assert estimate_mode_from_rank("xyzzy") is None
+
+    def test_ten_dan_kanji_resolves_to_expert(self):
+        # Phase 226-C (C1): ``10段`` routes through _RANK_ALIASES
+        # (now a *pre*-normalisation lookup) to ``9d`` → EXPERT.
+        assert estimate_mode_from_rank("10段") == CoachMode.EXPERT

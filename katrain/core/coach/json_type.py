@@ -31,27 +31,51 @@ def detect_json_type(data: dict[str, Any]) -> JsonType:
         - ``"summary"`` if it's a multi-game Summary
         - ``"unknown"`` if neither pattern matches (caller should warn)
 
-    Heuristics:
-    - summary has ``meta.games_analyzed`` OR top-level ``players`` block
-    - karte has top-level ``weaknesses`` keyed by color AND ``important_moves``
+    Heuristics (Phase 226-C C4 — karte is checked first to avoid the
+    false-positive where a single-game karte with ``meta.game_count: 1``
+    was misidentified as a summary):
+
+    1. karte: top-level ``weaknesses`` keyed by color AND non-empty
+       ``important_moves`` list.
+    2. summary: ``meta.games_analyzed`` / ``meta.game_count`` /
+       ``meta.game_count > 1`` OR top-level ``players`` block.
+    3. summary (fallback): ``phase_x_mistake`` block (Phase 149 C-3).
     """
     if not isinstance(data, dict):
         return "unknown"
 
+    # Phase 226-C (C4): karte-shaped check FIRST. Previously the
+    # ``meta.games_analyzed`` / ``meta.game_count`` short-circuit
+    # fired before the karte check, so a single-game karte with
+    # ``meta.game_count: 1`` (set by ``normalize_summary_to_karte_shape``
+    # round-trips or by Phase 218 calibration fixtures) was wrongly
+    # classified as ``"summary"``.
+    if (
+        isinstance(data.get("weaknesses"), dict)
+        and isinstance(data.get("important_moves"), list)
+        and len(data["important_moves"]) > 0
+    ):
+        return "karte"
+
     meta = data.get("meta", {}) or {}
-    if isinstance(meta, dict) and ("games_analyzed" in meta or "game_count" in meta):
-        return "summary"
+    if isinstance(meta, dict):
+        # ``games_analyzed`` is the canonical summary marker.
+        if "games_analyzed" in meta:
+            return "summary"
+        # ``game_count`` only counts as summary when it's > 1 — single
+        # game is just a karte.
+        game_count = meta.get("game_count")
+        if isinstance(game_count, int) and game_count > 1:
+            return "summary"
 
     if isinstance(data.get("players"), dict):
         return "summary"
 
-    if isinstance(data.get("weaknesses"), dict) and isinstance(
+    # Fallback heuristic: summary has ``phase_x_mistake`` but no
+    # important_moves (the karte marker checked above).
+    if isinstance(data.get("phase_x_mistake"), dict) and not isinstance(
         data.get("important_moves"), list
     ):
-        return "karte"
-
-    # Fallback heuristic: summary has ``phase_x_mistake``
-    if isinstance(data.get("phase_x_mistake"), dict):
         return "summary"
 
     return "unknown"
@@ -170,4 +194,4 @@ __all__ = [
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
     "normalize_summary_to_karte_shape",
-] 
+]

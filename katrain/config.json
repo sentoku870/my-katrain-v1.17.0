@@ -172,6 +172,7 @@
     },
     "mykatrain_settings": {
         "default_user_name": "",
+        "default_user_rank": "",
         "karte_output_directory": "",
         "batch_export_input_directory": "",
         "karte_format": "both"

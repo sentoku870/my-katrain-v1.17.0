@@ -23,7 +23,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-
 # --- Enums ---
 
 
@@ -386,16 +385,31 @@ def _normalise_rank_str(rank_str: str) -> str:
     return s
 
 
-def _canonical_rank_key(rank_str: str) -> str:
+def _canonical_rank_key(rank_str: str | None) -> str:
     """Resolve ``rank_str`` to the canonical key in ``_RANK_ORDER``.
 
-    Falls through ``_RANK_ALIASES`` first (kanji / full-width), then
-    directly hits ``_RANK_ORDER``. Returns ``""`` when no match.
+    Lookup order (Phase 226-C C1):
+    1. ``_RANK_ALIASES`` against the *trimmed* raw input — this catches
+       kanji and full-width notations whose ASCII normalisation would
+       otherwise produce a key that does not exist in ``_RANK_ORDER``
+       (e.g. ``"10段"`` → ``"10d"`` → not present → ``"9d"`` alias).
+    2. ``_RANK_ALIASES`` against the *normalised* input — kept for
+       symmetry and future aliases that survive normalisation.
+    3. ``_RANK_ORDER`` against the normalised input.
+
+    Returns ``""`` when no match.
     """
+    if not rank_str:
+        return ""
+    # Phase 226-C (C1): pre-normalisation alias lookup. Without this,
+    # ``_RANK_ALIASES`` was effectively dead code because every kanji
+    # key normalises to an ASCII form that hits ``_RANK_ORDER`` first.
+    stripped = rank_str.strip()
+    if stripped in _RANK_ALIASES:
+        return _RANK_ALIASES[stripped]
     normalised = _normalise_rank_str(rank_str)
     if not normalised:
         return ""
-    # Try alias first so '4段' → '4d'.
     if normalised in _RANK_ALIASES:
         return _RANK_ALIASES[normalised]
     if normalised in _RANK_ORDER:
@@ -489,7 +503,13 @@ def estimate_mode_from_loss(
             None means unknown.
 
     Returns:
-        Effective CoachMode estimate, or None if no signal available.
+        Effective CoachMode estimate. The function **never returns
+        ``None``** — when no signal is available it falls back to
+        ``INTERMEDIATE`` (the safe default). This was previously the
+        docstring promise ("None if no signal available") but the
+        implementation always anchored on ``estimate_mode_from_rank("10k")``
+        which is ``INTERMEDIATE``. Phase 226-C (C3) reconciles the
+        docstring with the implementation.
 
     Note:
         Loss thresholds (8.0 / 15.0 / 20%) are tentative — Phase 209 (golden
