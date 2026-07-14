@@ -18,7 +18,13 @@
         create_engine_recovery_popup=self._create_engine_recovery_popup,
         get_popup_open=lambda: self.popup_open,
         is_engine_recovery_popup=lambda p: isinstance(getattr(p, "content", None), EngineRecoveryPopup),
-        pause_timer=self._safe_pause_timer,
+        # Phase 198 Stage 2: inline the timer-pause logic so we don't depend
+        # on a KaTrainGui ``_safe_pause_timer`` shim.
+        pause_timer=lambda: (
+            setattr(timer, "paused", True)
+            if (timer := getattr(getattr(self, "controls", None), "timer", None))
+            else None
+        ),
         on_new_game_opened=lambda p: p.content.update_from_current_game(),
         logger=self.log,
         log_level_debug=OUTPUT_DEBUG,

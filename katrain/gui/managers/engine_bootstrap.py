@@ -20,7 +20,7 @@ Usage::
     bootstrap = EngineBootstrap(
         ctx=gui,
         config_getter=gui.config,
-        status_callback=gui._on_engine_status,
+        status_callback=lambda event_type, message: gui._gui_refresh_manager.on_engine_status(event_type, message),  # noqa: E501
         error_handler=gui.error_handler,
         main_thread_scheduler=lambda fn: Clock.schedule_once(lambda _dt: fn(), 0),
     )
