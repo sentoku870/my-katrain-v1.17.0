@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.batch import (
     DEFAULT_TIMEOUT_SECONDS,
     BatchResult,
@@ -266,7 +266,7 @@ def run_batch_in_thread(
     )
 
     # Get skill preset for karte/summary generation
-    skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+    skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
 
     engine = getattr(ctx, "engine", None)
 

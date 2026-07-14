@@ -19,7 +19,7 @@ import time
 from typing import Any
 
 from katrain.common.short_hash import short_hash
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis import (
     GameSummaryData,
     MistakeCategory,
@@ -285,7 +285,7 @@ def _build_player_stats_block(
         # ``even`` games so the ``handicapped`` block is empty).
         return _build_empty_player_stats_block(game_data_list, player_name)
 
-    confidence_level = eval_metrics.compute_confidence_level(stats.all_moves)
+    confidence_level = analysis.compute_confidence_level(stats.all_moves)
     confidence_val = confidence_level.name.lower()  # high, medium, low
 
     # Phase 158-I: mistake sequences and top mistakes continue to draw
@@ -488,7 +488,7 @@ def _build_top_mistakes_block(
     """
     from katrain.core.reports.constants import SUMMARY_DEFAULT_MAX_WORST_MOVES
 
-    max_count = eval_metrics.get_important_moves_limit(confidence_level)
+    max_count = analysis.get_important_moves_limit(confidence_level)
     display_limit = min(SUMMARY_DEFAULT_MAX_WORST_MOVES, max_count)
 
     sorted_moves = sorted(

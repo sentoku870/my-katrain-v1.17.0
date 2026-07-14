@@ -18,7 +18,7 @@ import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.core.analysis import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_aggregator import collect_rank_info
@@ -86,8 +86,8 @@ def build_summary_from_stats(
     avg_loss = total_loss / total_moves if total_moves > 0 else 0.0
 
     # ミス分類の集計
-    mistake_totals = {cat: 0 for cat in eval_metrics.MistakeCategory}
-    mistake_loss_totals = {cat: 0.0 for cat in eval_metrics.MistakeCategory}
+    mistake_totals = {cat: 0 for cat in analysis.MistakeCategory}
+    mistake_loss_totals = {cat: 0.0 for cat in analysis.MistakeCategory}
     for stats in stats_list:
         for cat, count in stats["mistake_counts"].items():
             mistake_totals[cat] += count
@@ -95,7 +95,7 @@ def build_summary_from_stats(
             mistake_loss_totals[cat] += loss
 
     # Freedom の集計
-    freedom_totals = {diff: 0 for diff in eval_metrics.PositionDifficulty}
+    freedom_totals = {diff: 0 for diff in analysis.PositionDifficulty}
     for stats in stats_list:
         for diff, count in stats["freedom_counts"].items():
             freedom_totals[diff] += count
@@ -291,7 +291,7 @@ def _append_mistake_distribution(
     lines.append("| Category | Count | Percentage | Avg Loss |")
     lines.append("|----------|-------|------------|----------|")
     cat_names = {"GOOD": "Good", "INACCURACY": "Inaccuracy", "MISTAKE": "Mistake", "BLUNDER": "Blunder"}
-    for cat in eval_metrics.MistakeCategory:
+    for cat in analysis.MistakeCategory:
         count = mistake_totals[cat]
         pct = (count / total_moves * 100) if total_moves > 0 else 0
         cat_loss = mistake_loss_totals.get(cat, 0.0)
@@ -308,7 +308,7 @@ def _append_freedom_distribution(
 ) -> None:
     """Freedom Distribution（非UNKNOWNがある場合のみ）."""
     has_real_freedom_data = any(
-        count > 0 for diff, count in freedom_totals.items() if diff != eval_metrics.PositionDifficulty.UNKNOWN
+        count > 0 for diff, count in freedom_totals.items() if diff != analysis.PositionDifficulty.UNKNOWN
     )
 
     if has_real_freedom_data:
@@ -316,8 +316,8 @@ def _append_freedom_distribution(
         lines.append("| Difficulty | Count | Percentage |")
         lines.append("|------------|-------|------------|")
         diff_names = {"EASY": "Easy (wide)", "NORMAL": "Normal", "HARD": "Hard (narrow)", "ONLY_MOVE": "Only move"}
-        for diff in eval_metrics.PositionDifficulty:
-            if diff == eval_metrics.PositionDifficulty.UNKNOWN:
+        for diff in analysis.PositionDifficulty:
+            if diff == analysis.PositionDifficulty.UNKNOWN:
                 continue
             count = freedom_totals[diff]
             pct = (count / total_moves * 100) if total_moves > 0 else 0
@@ -339,11 +339,11 @@ def _append_phase_mistake_breakdown(
     for phase in ["opening", "middle", "yose"]:
         row = [phase_names[phase]]
         total_phase_loss = 0.0
-        for cat in eval_metrics.MistakeCategory:
+        for cat in analysis.MistakeCategory:
             key = (phase, cat)
             count = phase_mistake_counts_total.get(key, 0)
             loss = phase_mistake_loss_total.get(key, 0.0)
-            if count > 0 and cat != eval_metrics.MistakeCategory.GOOD:
+            if count > 0 and cat != analysis.MistakeCategory.GOOD:
                 total_phase_loss += loss
                 row.append(f"{count} ({loss:.1f})")
             else:
@@ -370,7 +370,7 @@ def _append_reason_tags(
     sorted_tags = sorted(reason_tags_totals.items(), key=lambda x: x[1], reverse=True)
 
     for tag, count in sorted_tags:
-        label = eval_metrics.REASON_TAG_LABELS.get(tag, tag)
+        label = analysis.REASON_TAG_LABELS.get(tag, tag)
         lines.append(f"- {label}: {count} 回")
 
     lines.append("")
@@ -378,7 +378,7 @@ def _append_reason_tags(
     # 棋力推定
     total_important = sum(sum(stats.get("reason_tags_counts", {}).values()) for stats in stats_list)
     if total_important >= 5:
-        estimation = eval_metrics.estimate_skill_level_from_tags(reason_tags_totals, total_important)
+        estimation = analysis.estimate_skill_level_from_tags(reason_tags_totals, total_important)
 
         level_labels = {
             "beginner": "初級〜中級",
@@ -438,8 +438,8 @@ def _append_worst_moves(
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 
-    skill_preset = config_fn("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
-    urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+    skill_preset = config_fn("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    urgent_config = analysis.get_urgent_miss_config(skill_preset)
 
     sequences, filtered_moves = _detect_urgent_miss_sequences(
         moves_for_detection, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive
@@ -517,9 +517,9 @@ def _append_weakness_hypothesis(
 
     hypotheses = []
     cat_names_ja = {
-        eval_metrics.MistakeCategory.BLUNDER: "大悪手",
-        eval_metrics.MistakeCategory.MISTAKE: "悪手",
-        eval_metrics.MistakeCategory.INACCURACY: "軽微なミス",
+        analysis.MistakeCategory.BLUNDER: "大悪手",
+        analysis.MistakeCategory.MISTAKE: "悪手",
+        analysis.MistakeCategory.INACCURACY: "軽微なミス",
     }
 
     sorted_combos: list[tuple[tuple[str, MistakeCategory], float]] = []
@@ -593,8 +593,8 @@ def _append_urgent_miss_in_weakness(
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 
-    skill_preset = config_fn("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
-    urgent_config = eval_metrics.get_urgent_miss_config(skill_preset)
+    skill_preset = config_fn("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    urgent_config = analysis.get_urgent_miss_config(skill_preset)
 
     sequences, _ = _detect_urgent_miss_sequences(
         moves_for_detection, threshold_loss=urgent_config.threshold_loss, min_consecutive=urgent_config.min_consecutive

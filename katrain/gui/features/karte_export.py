@@ -13,7 +13,7 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.constants import OUTPUT_ERROR, STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
@@ -197,7 +197,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
             exports = [(None, f"karte_{base_name}_{timestamp}.json")]
 
     # Generate and save karte(s)
-    skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+    skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)

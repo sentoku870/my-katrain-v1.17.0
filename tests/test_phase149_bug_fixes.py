@@ -213,13 +213,13 @@ class TestA8BuilderImplNoUnusedLocals:
         from katrain.core.reports.karte import builder
 
         src = inspect.getsource(builder._build_karte_report_impl)
-        assert "confidence_level = eval_metrics.compute_confidence_level" not in src
+        assert "confidence_level = analysis.compute_confidence_level" not in src
 
     def test_no_settings_local_var(self):
         from katrain.core.reports.karte import builder
 
         src = inspect.getsource(builder._build_karte_report_impl)
-        assert "settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL" not in src
+        assert "settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL" not in src
 
     def test_still_calls_build_karte_json(self):
         from katrain.core.reports.karte import builder

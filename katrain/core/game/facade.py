@@ -16,7 +16,7 @@ from collections.abc import Iterator
 from typing import Any
 
 # eval_metrics は katrain.core 直下のパッケージ (このファイルが katrain.core.game 配下のため明示的に絶対 import)
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.constants import (
     OUTPUT_INFO,
     AnalysisMode,
@@ -223,7 +223,7 @@ class Game(BaseGame):
         Returns:
             GameNode | None: 見つかったノード、または None
         """
-        for node in eval_metrics.iter_main_branch_nodes(self):
+        for node in analysis.iter_main_branch_nodes(self):
             node_move_no = len(node.nodes_from_root) - 1
             if node_move_no == move_number:
                 return node
@@ -232,7 +232,7 @@ class Game(BaseGame):
     def get_important_move_evals(
         self,
         *,
-        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
         compute_reason_tags: bool = True,
     ) -> list[MoveEval]:
         """
@@ -248,7 +248,7 @@ class Game(BaseGame):
         if not snapshot.moves:
             return []
 
-        important_moves = eval_metrics.pick_important_moves(
+        important_moves = analysis.pick_important_moves(
             snapshot,
             level=level,
             recompute=True,
@@ -302,7 +302,7 @@ class Game(BaseGame):
     def build_important_moves_report(
         self,
         *,
-        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
         max_lines: int | None = None,
     ) -> str:
         """
@@ -310,7 +310,7 @@ class Game(BaseGame):
         「重要度スコアが大きい手」をテキストレポートとして返す。
 
         - 手数 / 手番 / 着手 / 損失(目) / ミス分類 / 難易度 / 形勢差Δ / 勝率Δ
-        - eval_metrics.pick_important_moves の結果に基づく
+        - analysis.pick_important_moves の結果に基づく
 
         Args:
             level:
@@ -335,10 +335,10 @@ class Game(BaseGame):
 
     def build_karte_report(
         self,
-        level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+        level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
         player_filter: str | None = None,
         raise_on_error: bool = False,
-        skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+        skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
         target_visits: int | None = None,
     ) -> str:
         """Build a compact, markdown-friendly report for the current game.
@@ -415,9 +415,9 @@ class Game(BaseGame):
         important_moves = self.get_important_move_evals(level=level)
 
         if not important_moves:
-            settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+            settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
                 level,
-                eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+                analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[analysis.DEFAULT_IMPORTANT_MOVE_LEVEL],
             )
             self.katrain.log(
                 f"[Eval] No moves with importance > {settings.importance_threshold}",
@@ -426,9 +426,9 @@ class Game(BaseGame):
             return
 
         # ヘッダ行
-        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+        settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
             level,
-            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+            analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[analysis.DEFAULT_IMPORTANT_MOVE_LEVEL],
         )
         self.katrain.log(
             f"[Eval] Important moves (level={level}, "

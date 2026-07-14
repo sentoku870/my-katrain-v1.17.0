@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis import (
     GameSummaryData,
     MistakeCategory,
@@ -51,13 +51,13 @@ class SummaryAnalyzer:
             if effective_preset == "auto":
                 all_moves = list(game_data.snapshot.moves)
                 if all_moves:
-                    auto_rec = eval_metrics.recommend_auto_strictness(
+                    auto_rec = analysis.recommend_auto_strictness(
                         all_moves,
                         game_count=1,
                     )
                     effective_preset = auto_rec.recommended_preset
                 else:
-                    effective_preset = eval_metrics.DEFAULT_SKILL_PRESET
+                    effective_preset = analysis.DEFAULT_SKILL_PRESET
             # ------------------------------------------------------------------
 
             for player_color in ["B", "W"]:
@@ -102,7 +102,7 @@ class SummaryAnalyzer:
                     # (preset-based score_thresholds, fallback to move.mistake_category)
                     cat = move.mistake_category
                     if effective_preset:
-                        preset = eval_metrics.get_skill_preset(effective_preset)
+                        preset = analysis.get_skill_preset(effective_preset)
                         thresholds = preset.score_thresholds
                         if loss >= thresholds[2]:
                             cat = MistakeCategory.BLUNDER

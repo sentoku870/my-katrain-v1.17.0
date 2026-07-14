@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from katrain.common.short_hash import short_hash
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis import build_node_map
 from katrain.core.analysis.meaning_tags import (
     build_classification_context_from_node,
@@ -45,9 +45,9 @@ from katrain.core.reports.schema import (
 
 def build_karte_json(
     game: Any,  # Game object (Protocol in future)
-    level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+    level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
     player_filter: str | None = None,
-    skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
     lang: str = "ja",
     target_visits: int | None = None,
     include_definitions: bool = False,
@@ -111,10 +111,10 @@ def build_karte_json(
     effective_preset = skill_preset
     if skill_preset == "auto":
         focus_moves = moves
-        auto_rec = eval_metrics.recommend_auto_strictness(focus_moves, game_count=1)
+        auto_rec = analysis.recommend_auto_strictness(focus_moves, game_count=1)
         effective_preset = auto_rec.recommended_preset
 
-    preset = eval_metrics.get_skill_preset(effective_preset)
+    preset = analysis.get_skill_preset(effective_preset)
     score_thresholds = preset.score_thresholds
 
     # Helper to get safe properties
@@ -180,7 +180,7 @@ def build_karte_json(
         player_moves = [m for m in moves if m.player == player]
         total_lost = sum(max(0.0, m.points_lost) for m in player_moves if m.points_lost is not None)
 
-        counts: dict[str, int] = {cat.value.lower(): 0 for cat in eval_metrics.MistakeCategory}
+        counts: dict[str, int] = {cat.value.lower(): 0 for cat in analysis.MistakeCategory}
         for m in player_moves:
             loss = get_canonical_loss_from_move(m)
             cat = classify_mistake(score_loss=loss, winrate_loss=None, score_thresholds=score_thresholds)
@@ -237,7 +237,7 @@ def build_karte_json(
         important_moves_list.append(item)
 
     # Phase 149 C-3: Compute confidence level once for all extended sections
-    confidence_level = eval_metrics.compute_confidence_level(snapshot.moves)
+    confidence_level = analysis.compute_confidence_level(snapshot.moves)
 
     # Phase 149 C-3: Build KarteContext for revived section generators
     from katrain.core.reports.karte.sections.context import KarteContext
@@ -265,9 +265,9 @@ def build_karte_json(
         focus_color=focus_color,
         important_moves=important_move_evals,
         total_moves=len(moves),
-        settings=eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+        settings=analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
             level,
-            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+            analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[analysis.DEFAULT_IMPORTANT_MOVE_LEVEL],
         ),
         skill_preset=effective_preset,
         target_visits=target_visits,

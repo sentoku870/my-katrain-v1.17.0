@@ -460,22 +460,22 @@ def get_reason_tags_for_move(
         tags.append("endgame_hint")
 
     # タグ 9: heavy_loss（大損失: プリセット別閾値 - Phase 17, Option 0-B 一元化）
-    # 閾値は eval_metrics.SKILL_PRESETS から取得
+    # 閾値は analysis.SKILL_PRESETS から取得
     if hasattr(move_eval, "points_lost") and move_eval.points_lost is not None:
-        from katrain.core import analysis as eval_metrics
+        from katrain.core import analysis
 
-        preset = eval_metrics.get_skill_preset(skill_preset)
+        preset = analysis.get_skill_preset(skill_preset)
         if move_eval.points_lost >= preset.reason_tag_thresholds.heavy_loss:
             tags.append("heavy_loss")
 
     # タグ 10: reading_failure（読み抜け: プリセット別閾値 - Phase 17, Option 0-B 一元化）
-    # 閾値は eval_metrics.SKILL_PRESETS から取得
+    # 閾値は analysis.SKILL_PRESETS から取得
     # 注: 急場見逃しパターン全体の検出は __main__.py で実施済み
     # ここでは簡易版として、大損失 + 危険度高い場合を検出
     if hasattr(move_eval, "points_lost") and move_eval.points_lost is not None:
-        from katrain.core import analysis as eval_metrics
+        from katrain.core import analysis
 
-        preset = eval_metrics.get_skill_preset(skill_preset)
+        preset = analysis.get_skill_preset(skill_preset)
         if (
             move_eval.points_lost >= preset.reason_tag_thresholds.reading_failure
             and max_my_danger >= TAG_READING_FAILURE_DANGER

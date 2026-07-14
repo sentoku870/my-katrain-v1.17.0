@@ -17,7 +17,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis.meaning_tags import (
     MeaningTagId,
 )
@@ -59,10 +59,10 @@ def _build_tag_counts_from_moves(
 
 def build_karte_report(
     game: Any,  # Game object (Protocol in future)
-    level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+    level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
     player_filter: str | None = None,
     raise_on_error: bool = False,
-    skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
     lang: str = "ja",
 ) -> str:
@@ -200,7 +200,7 @@ def _build_karte_report_impl(
     snapshot: EvalSnapshot,  # Pre-computed snapshot (avoid double computation)
     level: str,
     player_filter: str | None,
-    skill_preset: str = eval_metrics.DEFAULT_SKILL_PRESET,
+    skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
     lang: str = "ja",
 ) -> str:

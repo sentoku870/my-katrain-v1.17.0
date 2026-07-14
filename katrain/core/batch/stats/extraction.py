@@ -52,7 +52,7 @@ def extract_game_stats(
         Dictionary with game statistics, or None if extraction failed
     """
     try:
-        from katrain.core import analysis as eval_metrics
+        from katrain.core import analysis
         from katrain.core.analysis import build_node_map
         from katrain.core.analysis.meaning_tags import (
             MeaningTagId,
@@ -107,9 +107,9 @@ def extract_game_stats(
             "total_points_lost": snapshot.total_points_lost,
             "moves_by_player": {"B": 0, "W": 0},
             "loss_by_player": {"B": 0.0, "W": 0.0},
-            "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
-            "mistake_total_loss": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
-            "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+            "mistake_counts": {cat: 0 for cat in analysis.MistakeCategory},
+            "mistake_total_loss": {cat: 0.0 for cat in analysis.MistakeCategory},
+            "freedom_counts": {diff: 0 for diff in analysis.PositionDifficulty},
             "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
             "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
             "phase_mistake_counts": {},
@@ -117,16 +117,16 @@ def extract_game_stats(
             "worst_moves": [],
             # Per-player stats for player summary
             "mistake_counts_by_player": {
-                "B": {cat: 0 for cat in eval_metrics.MistakeCategory},
-                "W": {cat: 0 for cat in eval_metrics.MistakeCategory},
+                "B": {cat: 0 for cat in analysis.MistakeCategory},
+                "W": {cat: 0 for cat in analysis.MistakeCategory},
             },
             "mistake_total_loss_by_player": {
-                "B": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
-                "W": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
+                "B": {cat: 0.0 for cat in analysis.MistakeCategory},
+                "W": {cat: 0.0 for cat in analysis.MistakeCategory},
             },
             "freedom_counts_by_player": {
-                "B": {diff: 0 for diff in eval_metrics.PositionDifficulty},
-                "W": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+                "B": {diff: 0 for diff in analysis.PositionDifficulty},
+                "W": {diff: 0 for diff in analysis.PositionDifficulty},
             },
             "phase_moves_by_player": {
                 "B": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
@@ -179,7 +179,7 @@ def extract_game_stats(
             stats["loss_by_player"][player] = stats["loss_by_player"].get(player, 0.0) + canonical_loss
 
             # Phase classification
-            phase = eval_metrics.classify_game_phase(move.move_number, board_size=board_size)
+            phase = analysis.classify_game_phase(move.move_number, board_size=board_size)
             move.tag = phase  # Ensure move carries the tag for downstream aggregators
             stats["phase_moves"][phase] = stats["phase_moves"].get(phase, 0) + 1
             stats["phase_loss"][phase] = stats["phase_loss"].get(phase, 0.0) + canonical_loss
@@ -195,8 +195,8 @@ def extract_game_stats(
             # Phase 148-C1: Exclude BLUNDER on ONLY_MOVE (forced) from severity aggregation
             # (a forced move has no real choice, so a "blunder" there has low learning value)
             is_forced_blunder = (
-                move.mistake_category == eval_metrics.MistakeCategory.BLUNDER
-                and getattr(move, "position_difficulty", None) == eval_metrics.PositionDifficulty.ONLY_MOVE
+                move.mistake_category == analysis.MistakeCategory.BLUNDER
+                and getattr(move, "position_difficulty", None) == analysis.PositionDifficulty.ONLY_MOVE
             )
             if move.mistake_category and not is_forced_blunder:
                 stats["mistake_counts"][move.mistake_category] = (
@@ -341,8 +341,8 @@ def extract_game_stats(
         for move in snapshot.moves:
             # Only MISTAKE or BLUNDER
             if move.mistake_category not in (
-                eval_metrics.MistakeCategory.MISTAKE,
-                eval_metrics.MistakeCategory.BLUNDER,
+                analysis.MistakeCategory.MISTAKE,
+                analysis.MistakeCategory.BLUNDER,
             ):
                 continue
 

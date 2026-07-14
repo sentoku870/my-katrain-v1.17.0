@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis import (
     aggregate_phase_mistake_stats,
     detect_mistake_streaks,
@@ -102,7 +102,7 @@ def weakness_hypothesis_for(
         return []
 
     board_x = ctx.board_x
-    preset = eval_metrics.get_skill_preset(ctx.skill_preset)
+    preset = analysis.get_skill_preset(ctx.skill_preset)
     score_thresholds = preset.score_thresholds
 
     stats = aggregate_phase_mistake_stats(
@@ -117,7 +117,7 @@ def weakness_hypothesis_for(
         reverse=True,
     )
 
-    evidence_count = eval_metrics.get_evidence_count(ctx.confidence_level)
+    evidence_count = analysis.get_evidence_count(ctx.confidence_level)
     confidence_str = ctx.confidence_level.name.lower()
 
     result: list[dict[str, Any]] = []
@@ -136,7 +136,7 @@ def weakness_hypothesis_for(
                 and (mv.mistake_category.name if mv.mistake_category else "GOOD") == _category
             )
 
-        evidence_moves = eval_metrics.select_representative_moves(
+        evidence_moves = analysis.select_representative_moves(
             player_moves,
             max_count=evidence_count,
             category_filter=phase_cat_filter,

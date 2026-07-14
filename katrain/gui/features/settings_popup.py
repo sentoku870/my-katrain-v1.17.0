@@ -23,7 +23,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 from kivy.uix.textinput import TextInput
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.constants import STATUS_INFO
 from katrain.core.lang import i18n
 from katrain.gui.features.settings_popup_io import (  # noqa: F401 (re-export for backward compat)
@@ -89,8 +89,8 @@ def do_mykatrain_settings_popup(
         current_engine=current_engine,
         selected_engine=[current_engine],
         selected_disable_katago=[ctx.config("engine/disabled", False)],
-        selected_skill_preset=[ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET],
-        selected_pv_filter=[ctx.config("general/pv_filter_level") or eval_metrics.DEFAULT_PV_FILTER_LEVEL],
+        selected_skill_preset=[ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET],
+        selected_pv_filter=[ctx.config("general/pv_filter_level") or analysis.DEFAULT_PV_FILTER_LEVEL],
         selected_beginner_hints=[ctx.config("beginner_hints/enabled", False)],
         selected_summary_mistake=[ctx.config("beginner_hints/summary_mistake", True)],
         selected_summary_freedom=[ctx.config("beginner_hints/summary_freedom", True)],

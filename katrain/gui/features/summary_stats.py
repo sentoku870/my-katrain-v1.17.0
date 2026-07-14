@@ -16,7 +16,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.game import KaTrainSGF
 from katrain.gui.features.types import LogFunction
 
@@ -54,11 +54,11 @@ def extract_analysis_from_sgf_node(node: Any) -> dict[str, Any] | None:
         # KaTrain SGF format: [ownership_data, policy_data, main_data]
         # Only main_data is JSON, ownership and policy are binary floats
         main_data = gzip.decompress(base64.standard_b64decode(kt_data[2]))
-        analysis = json.loads(main_data)
+        parsed_analysis = json.loads(main_data)
 
-        # analysis already contains {"root": {...}, "moves": {...}}
+        # parsed_analysis already contains {"root": {...}, "moves": {...}}
         # Cast is safe: json.loads returns dict for valid JSON object
-        return analysis  # type: ignore[no-any-return]
+        return parsed_analysis  # type: ignore[no-any-return]
 
     except (gzip.BadGzipFile, binascii.Error, json.JSONDecodeError, KeyError, IndexError) as e:
         logger.debug("Failed to extract analysis from SGF node: %s", type(e).__name__)
@@ -123,9 +123,9 @@ def extract_sgf_statistics(
             # Phase 4: プレイヤー別の統計
             "moves_by_player": {"B": 0, "W": 0},
             "loss_by_player": {"B": 0.0, "W": 0.0},
-            "mistake_counts": {cat: 0 for cat in eval_metrics.MistakeCategory},
-            "mistake_total_loss": {cat: 0.0 for cat in eval_metrics.MistakeCategory},
-            "freedom_counts": {diff: 0 for diff in eval_metrics.PositionDifficulty},
+            "mistake_counts": {cat: 0 for cat in analysis.MistakeCategory},
+            "mistake_total_loss": {cat: 0.0 for cat in analysis.MistakeCategory},
+            "freedom_counts": {diff: 0 for diff in analysis.PositionDifficulty},
             "phase_moves": {"opening": 0, "middle": 0, "yose": 0, "unknown": 0},
             "phase_loss": {"opening": 0.0, "middle": 0.0, "yose": 0.0, "unknown": 0.0},
             "phase_mistake_counts": {},  # {(phase, category): count}
@@ -148,14 +148,14 @@ def extract_sgf_statistics(
             gtp = move_prop
 
             # KTプロパティから解析データを取得
-            analysis = extract_analysis_from_sgf_node(node)
-            if analysis:
+            node_analysis = extract_analysis_from_sgf_node(node)
+            if node_analysis:
                 moves_with_kt += 1
-            if not analysis or "root" not in analysis or not analysis["root"]:
+            if not node_analysis or "root" not in node_analysis or not node_analysis["root"]:
                 continue
             moves_with_analysis += 1
 
-            score = analysis["root"].get("scoreLead")
+            score = node_analysis["root"].get("scoreLead")
             if score is None:
                 prev_score = None
                 continue
@@ -183,13 +183,13 @@ def extract_sgf_statistics(
                 # ミス分類（負の損失は"良い手"としてカウント）
                 # canonical loss: 常に >= 0
                 canonical_loss = max(0.0, points_lost)
-                category = eval_metrics.classify_mistake(canonical_loss, None)
+                category = analysis.classify_mistake(canonical_loss, None)
                 stats["mistake_counts"][category] += 1
                 stats["mistake_total_loss"][category] += canonical_loss
 
                 # Phase（簡易版：手数ベース）
                 move_number = i
-                phase = eval_metrics.classify_game_phase(move_number)
+                phase = analysis.classify_game_phase(move_number)
 
                 stats["phase_moves"][phase] += 1
                 if canonical_loss > 0:
@@ -229,13 +229,13 @@ def extract_sgf_statistics(
 
             for sgf_node, game_node in zip(sgf_nodes, game_nodes, strict=False):
                 # Extract analysis from SGF node
-                analysis = extract_analysis_from_sgf_node(sgf_node)
-                if analysis:
+                node_analysis = extract_analysis_from_sgf_node(sgf_node)
+                if node_analysis:
                     # Directly set analysis dict (already in correct format)
-                    game_node.analysis = analysis  # type: ignore[attr-defined]
+                    game_node.analysis = node_analysis  # type: ignore[attr-defined]
 
             # Get skill preset for tag threshold calculation (Option 0-B: Problem 3 fix)
-            skill_preset = ctx.config("general/skill_preset") or eval_metrics.DEFAULT_SKILL_PRESET
+            skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
 
             # Get important moves with reason_tags
             important_moves = temp_game.get_important_move_evals(level=skill_preset, compute_reason_tags=True)
@@ -277,9 +277,9 @@ def extract_sgf_statistics(
                     sgf_nodes = list(move_tree.nodes_in_tree)
                     game_nodes = list(temp_game.root.nodes_in_tree)
                     for sgf_node, game_node in zip(sgf_nodes, game_nodes, strict=False):
-                        analysis = extract_analysis_from_sgf_node(sgf_node)
-                        if analysis:
-                            game_node.analysis = analysis  # type: ignore[attr-defined]
+                        node_analysis = extract_analysis_from_sgf_node(sgf_node)
+                        if node_analysis:
+                            game_node.analysis = node_analysis  # type: ignore[attr-defined]
 
                 snapshot = snapshot_from_game(temp_game)
                 pacing_result = analyze_pacing(time_data, list(snapshot.moves))

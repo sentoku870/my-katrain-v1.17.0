@@ -10,7 +10,7 @@ game.pyから抽出された重要手レポート生成機能。
 
 from typing import Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis.models import (
     MistakeCategory,
     MoveEval,
@@ -20,14 +20,14 @@ from katrain.core.analysis.models import (
 def build_important_moves_report(
     important_moves: list["MoveEval"],
     *,
-    level: str = eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL,
+    level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
     max_lines: int | None = None,
 ) -> str:
     """
     重要局面をテキストレポートとして返す。
 
     - 手数 / 手番 / 着手 / 損失(目) / ミス分類 / 難易度 / 形勢差Δ / 勝率Δ
-    - eval_metrics.pick_important_moves の結果に基づく
+    - analysis.pick_important_moves の結果に基づく
 
     Args:
         important_moves: get_important_move_evals() の結果
@@ -43,9 +43,9 @@ def build_important_moves_report(
         重要局面のテキストレポート
     """
     if not important_moves:
-        settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+        settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
             level,
-            eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+            analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[analysis.DEFAULT_IMPORTANT_MOVE_LEVEL],
         )
         return (
             f"重要局面候補 (level={level}, "
@@ -104,9 +104,9 @@ def build_important_moves_report(
         return mapping.get(value, "-")
 
     # 見出し行
-    settings = eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
+    settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get(
         level,
-        eval_metrics.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[eval_metrics.DEFAULT_IMPORTANT_MOVE_LEVEL],
+        analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL[analysis.DEFAULT_IMPORTANT_MOVE_LEVEL],
     )
     lines: list[str] = []
     lines.append(

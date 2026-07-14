@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 
 if TYPE_CHECKING:
     from katrain.core.reports.karte.sections.context import KarteContext
@@ -30,7 +30,7 @@ def data_quality_section(ctx: KarteContext) -> dict[str, Any]:
         DataQualityStats dict (TypedDict-compatible) with reliability
         statistics. Always returns a populated dict (never None).
     """
-    rel_stats = eval_metrics.compute_reliability_stats(ctx.snapshot.moves, target_visits=ctx.target_visits)
+    rel_stats = analysis.compute_reliability_stats(ctx.snapshot.moves, target_visits=ctx.target_visits)
 
     confidence_level = ctx.confidence_level
     confidence_str = confidence_level.name.lower()  # high / medium / low

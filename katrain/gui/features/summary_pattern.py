@@ -21,7 +21,7 @@ import logging
 from collections import Counter
 from typing import Any
 
-from katrain.core import analysis as eval_metrics
+from katrain.core import analysis
 from katrain.core.analysis.models import EvalSnapshot
 from katrain.core.analysis.reason_generator import generate_reason_safe
 from katrain.core.batch.stats.pattern_miner import GameRef, PatternCluster
@@ -52,7 +52,7 @@ _GTP_COORD_PATTERN = __import__("re").compile(r"^[a-hj-t](?:[1-9]|1[0-9]|2[0-5])
 _logger = logging.getLogger("katrain.gui.features.summary_pattern")
 
 StatsDict = dict[str, Any]
-PhaseMistakeKey = tuple[str, eval_metrics.MistakeCategory]
+PhaseMistakeKey = tuple[str, analysis.MistakeCategory]
 
 
 # =============================================================================
@@ -76,7 +76,7 @@ class _PatternMoveEval:
         "meaning_tag_id",
     )
 
-    mistake_category: eval_metrics.MistakeCategory | None
+    mistake_category: analysis.MistakeCategory | None
 
     def __init__(self, data: dict[str, Any]) -> None:
         self.move_number = data.get("move_number", 0)
@@ -89,7 +89,7 @@ class _PatternMoveEval:
         cat_name = data.get("mistake_category")
         if cat_name:
             try:
-                self.mistake_category = eval_metrics.MistakeCategory[cat_name]
+                self.mistake_category = analysis.MistakeCategory[cat_name]
             except KeyError:
                 _logger.warning(
                     "Invalid mistake_category '%s' at move %d; skipping.",
