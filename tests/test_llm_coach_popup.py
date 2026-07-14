@@ -787,6 +787,80 @@ class TestPhase2257AutoDetectDefersWhenKartePathEmpty:
         )
 
 
+class TestPhase2258DefaultUserRankFallback:
+    """Phase 225.8: when Karte/SGF has no rank info, the popup falls back
+    to the mykatrain setting ``default_user_rank`` so the user doesn't
+    have to enter their rank on every prompt generation."""
+
+    def test_default_user_rank_used_when_karte_has_no_rank(self, tmp_path):
+        """Karte has player names but no ranks → default_user_rank fills."""
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": None},
+                            "white": {"name": "P2", "rank": None},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_rank": "4段"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # The rank input was filled with the default_user_rank
+        assert content.ids["rank_input"].text == "4段"
+
+    def test_existing_karte_rank_wins_over_default(self, tmp_path):
+        """If Karte has rank info, default_user_rank must NOT overwrite."""
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "5k"},
+                            "white": {"name": "P2", "rank": "5k"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_rank": "4段"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # Karte rank "5k" wins over default_user_rank "4段"
+        assert content.ids["rank_input"].text == "5k"
+
+    def test_no_rank_no_default_leaves_input_empty(self, tmp_path):
+        """No rank anywhere → rank input stays empty."""
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps({"meta": {"player_info": {}}}), encoding="utf-8"
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        assert content.ids["rank_input"].text == ""
+
+    def test_kanji_default_user_rank_resolves_correctly(self):
+        """``4段`` passed through default_user_rank triggers the ADVANCED
+        mode in estimate_mode_from_rank."""
+        from katrain.core.coach.master_db import estimate_mode_from_rank
+        assert estimate_mode_from_rank("4段") is not None
+        assert estimate_mode_from_rank("4段").name == "ADVANCED"
+
+
 class TestOpenLlmCoachPopup:
     def test_returns_popup_and_opens(self) -> None:
         from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup

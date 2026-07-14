@@ -111,12 +111,13 @@ class LLMCcoachPopupContent(BoxLayout):
             self.karte_path_input.text = str(latest)
 
     def _populate_rank_and_perspective(self) -> None:
-        """Phase 225.6/225.7: detect rank + player color from Karte/SGF.
+        """Phase 225.6/225.7/225.8: detect rank + player color.
 
-        Reads the karte meta's ``player_info`` block (or falls back to
-        the source SGF) to fill the rank input field and the
-        perspective select. Auto-detected values are shown alongside
-        the manual controls so the user can override.
+        Detection priority:
+        1. Karte JSON's ``meta.player_info`` block (or source SGF)
+        2. **Phase 225.8**: mykatrain settings ``default_user_rank``
+           when no Karte/SGF info is available
+        3. Manual input by the user (always wins)
 
         Phase 225.7: schedule this AFTER karte path has been written.
         The ``on_kv_post`` handler triggers us at clock +0.2s.
@@ -131,10 +132,12 @@ class LLMCcoachPopupContent(BoxLayout):
 
         # Default user lookup (so we can debug why it picked a side).
         default_user = None
+        default_user_rank = None
         if self.katrain is not None:
-            default_user = (self.katrain.config("mykatrain_settings") or {}).get(
-                "default_user_name", ""
-            )
+            settings = self.katrain.config("mykatrain_settings") or {}
+            default_user = settings.get("default_user_name", "")
+            # Phase 225.8: default_user_rank fallback
+            default_user_rank = settings.get("default_user_rank", "")
 
         try:
             from katrain.gui.features.llm_coach import (
@@ -154,6 +157,11 @@ class LLMCcoachPopupContent(BoxLayout):
 
         # ---- Rank auto-fill ----
         detected = _pick_detected_rank(info, self.perspective_value)
+        # Phase 225.8: fall back to default_user_rank when Karte/SGF
+        # has no rank info. The user's setting is persisted in
+        # mykatrain_settings so they don't have to type it each time.
+        if not detected and default_user_rank:
+            detected = default_user_rank
         if detected:
             self.detected_rank = detected
             current = self._read_text("rank_input")
@@ -174,8 +182,7 @@ class LLMCcoachPopupContent(BoxLayout):
 
         # Phase 225.7: surface the resolved default_user in the status
         # line so the user can confirm what name was matched against
-        # the Karte/SGF. This is the fix for the user's "auto default
-        # user isn't working" report.
+        # the Karte/SGF.
         if default_user:
             black_name = (info.get("black") or {}).get("name") or "?"
             white_name = (info.get("white") or {}).get("name") or "?"
