@@ -100,7 +100,7 @@ msgid "mykatrain:llm-coach:rank-label"
 msgstr "Rank (e.g. 5k)"
 
 msgid "mykatrain:llm-coach:rank-auto"
-msgstr "(auto-detected from SGF: {rank})"
+msgstr "(auto-detected from Karte / SGF / settings: {rank})"
 
 msgid "mykatrain:llm-coach:perspective-label"
 msgstr "Side"

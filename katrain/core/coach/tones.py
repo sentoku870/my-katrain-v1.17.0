@@ -13,17 +13,32 @@ Public helpers:
 - ``voice_summary(voice)`` → 1-line description for UI
 
 All helpers are pure / Kivy-free.
+
+Phase 226-E (E4): three related AYAKA-only data structures live in
+this codebase and must be kept in sync:
+
+- ``master_db._KANSAI_DICTIONARY`` — user-facing mapping table
+  (``標準語 → 関西弁``) shown via ``ModeConfig.kansai_dictionary``.
+- ``tones._KANSAI_NORMALISATION_PAIRS`` — the actual regex pairs that
+  ``apply_kansai_normalisation`` runs over to rewrite text. Slightly
+  richer than the dictionary (catches ``だめ`` in addition to ``ダメ``).
+- ``tones._AYAKA_MARKERS`` — the marker set ``has_kansai_markers``
+  uses to detect AYAKA-style output.
+
+Full unification into a single source of truth was judged out of
+scope for Phase 226 (it would require either a generator script or
+relaxing the dictionary semantics). The pragmatic contract is: any
+new AYAKA term added to ``_KANSAI_DICTIONARY`` must also be added to
+``_KANSAI_NORMALISATION_PAIRS`` (so it can be substituted) and
+``_AYAKA_MARKERS`` (so its output can be detected).
 """
 
 from __future__ import annotations
 
 import re
-from typing import Iterable
 
 from katrain.core.coach.master_db import (
     CoachMode,
-    ModeConfig,
-    ToneConfig,
     ToneVoice,
     all_modes,
     estimate_mode_from_loss,
@@ -31,7 +46,6 @@ from katrain.core.coach.master_db import (
     get_mode_config,
     get_tone_config,
 )
-
 
 # --- Master doc §0-2 confirmation templates ---
 

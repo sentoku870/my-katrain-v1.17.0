@@ -1,4 +1,4 @@
-"""Tests for :class:`katrain.gui.popups.llm_coach_popup.LLMCcoachPopupContent`.
+"""Tests for :class:`katrain.gui.popups.llm_coach_popup.LLMCoachPopupContent`.
 
 Phase 225 popup logic tests. We test the **method bodies** directly by
 bypassing ``__init__`` (because KivyMD ``MDTextField`` hangs in our
@@ -61,7 +61,7 @@ def _resolve_i18n(key: str) -> str:
 
 
 def _make_content() -> Any:
-    """Build a ``LLMCcoachPopupContent`` instance bypassing ``__init__``.
+    """Build a ``LLMCoachPopupContent`` instance bypassing ``__init__``.
 
     We only inject the widget-tree attributes the methods read; the Kivy
     property bindings don't need to fire because we never add the widget
@@ -74,9 +74,9 @@ def _make_content() -> Any:
     Phase 225.6: include rank_auto_label, perspective_select, and
     perspective_auto_label so the auto-detect helpers can be tested.
     """
-    from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
+    from katrain.gui.popups.llm_coach_popup import LLMCoachPopupContent
 
-    content = LLMCcoachPopupContent.__new__(LLMCcoachPopupContent)
+    content = LLMCoachPopupContent.__new__(LLMCoachPopupContent)
     content.katrain = None
     content.popup = None
     content.perspective_value = "auto"

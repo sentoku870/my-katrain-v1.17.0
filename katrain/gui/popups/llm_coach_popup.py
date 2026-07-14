@@ -52,7 +52,7 @@ _MAX_RANK_DETECT_RETRIES = 5
 _RETRY_INTERVAL = 0.2
 
 
-class LLMCcoachPopupContent(BoxLayout):
+class LLMCoachPopupContent(BoxLayout):
     """Body widget of the LLM Coach popup (Phase 225).
 
     All widget IDs referenced here (``karte_path_input``, ``rank_input``,
@@ -369,6 +369,14 @@ class LLMCcoachPopupContent(BoxLayout):
 
         Phase 225.6: also pass ``player_color`` resolved from the
         perspective spinner + the auto-detected Karte/SGF colour.
+
+        Phase 226-E (E3): ``avg_points_lost`` is intentionally omitted
+        from the GUI. The popup relies on the Karte's own
+        ``summary.avg_points_lost`` value (read by
+        ``core.coach.cli.build_prompt``). The CLI exposes the
+        override knob but the GUI does not — adding a numeric input
+        was judged outside the Phase 225/226 scope (would require
+        validation, error handling, and a new i18n key set).
         """
         from katrain.gui.features.llm_coach import build_llm_prompt
 
@@ -546,7 +554,7 @@ def open_llm_coach_popup(ctx: Any) -> Any:
     """
     from kivy.metrics import dp
 
-    content = LLMCcoachPopupContent(katrain=ctx)
+    content = LLMCoachPopupContent(katrain=ctx)
     # Phase 225.7: wider popup so the LLM response input doesn't
     # overflow and the action buttons don't overlap.
     popup = I18NPopup(

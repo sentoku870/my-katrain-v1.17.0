@@ -1147,7 +1147,7 @@ msgid "mykatrain:llm-coach:rank-label"
 msgstr "棋力 (例: 5k)"
 
 msgid "mykatrain:llm-coach:rank-auto"
-msgstr "（SGF から自動取得: {rank}）"
+msgstr "（Karte / SGF / 設定から自動取得: {rank}）"
 
 msgid "mykatrain:llm-coach:perspective-label"
 msgstr "視点"

@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,13 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-E — 軽微な品質改善**（Lv2、6 ファイル + 0 unit tests、全 5116 件テスト合格）
+  - **E1 クラス名タイポ修正**: `LLMCcoachPopupContent` → `LLMCoachPopupContent`（3 ファイル 7 箇所: popup.py / KV / test_llm_coach_popup.py）
+  - **E2 デッドコード削除**: `_COPY_FEEDBACK_SECONDS` は Phase 226-B 内で既に削除済み（本 Phase で再確認・スキップ）
+  - **E3 avg_points_lost 意図省略の明示**: GUI 入力欄は Phase 226 スコープ外（CLI の override ノブはある）。`on_generate_and_copy` の docstring に「Karte の summary.avg_points_lost に委譲」と明記
+  - **E4 関西弁定義の同期契約**: 3 系統の AYAKA データ構造（`master_db._KANSAI_DICTIONARY` / `tones._KANSAI_NORMALISATION_PAIRS` / `tones._AYAKA_MARKERS`）間の同期契約を `tones.py` の docstring に明記
+  - **E5 rank-auto msgstr 更新**: Phase 225.6 で「SGF から自動取得」だったのを Phase 225.8 で Karte/SGF/設定の 3 ソースに対応した msgstr に更新（jp/en .po + .mo）
+  - **E6 仕様書整備**: `docs/archive/specs-implemented/phase225-master.md` 新規作成。Phase 225.1〜225.8 + 226-A〜E の索引として機能
 - 2026-07-15: **Phase 226-D — テスト強化・CI 整備**（Lv2、3 ファイル + 6 unit tests、全 5116 件テスト合格）
   - **D1 CI skip 解消**: `test_llm_coach_popup.py` の `pytestmark` を CI 環境変数ベースから「Kivy import 可否」に変更。Kivy がある環境では popup ロジックテスト ~50 件が CI でも実行可能に
   - **D2 validator 境界値テスト追加**: `total_moves` 境界（200 OK / 201 NG）、`ceiling` 境界（7.55 OK / 7.6 NG）の境界値テストを追加
