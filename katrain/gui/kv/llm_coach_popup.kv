@@ -3,8 +3,18 @@
 #:import Theme katrain.gui.theme.Theme
 #:import dp kivy.metrics.dp
 
-# Phase 225.4: LLM Coach popup body widget.
-# Phase 225.6: added rank auto-hint label and perspective selector.
+# Phase 225.7: LLM Coach popup body widget.
+#
+# Layout fixes vs Phase 225.6:
+#   1. Rank input + Perspective spinner in the SAME row (50/50 split)
+#      so the popup is shorter and wider.
+#   2. Response input is now inside a ScrollView so long pasted text
+#      scrolls instead of overflowing the popup.
+#   3. Action buttons have explicit ``height`` and the response area
+#      has a hard ``min_height`` so the buttons never overlap the label.
+#   4. All auto-detection hints are stacked under their respective
+#      input field, not floating in space.
+#   5. Wider popup (900dp) per user feedback.
 
 <LLMCcoachPopupContent>:
     orientation: 'vertical'
@@ -16,8 +26,8 @@
     BoxLayout:
         orientation: 'vertical'
         size_hint_y: None
-        height: dp(64)
-        padding: (dp(8), dp(6))
+        height: dp(56)
+        padding: (dp(8), dp(4))
         canvas.before:
             Color:
                 rgba: Theme.BOX_BACKGROUND_COLOR
@@ -46,45 +56,50 @@
             hint_text: i18n._("mykatrain:llm-coach:karte-hint")
             multiline: False
             write_tab: False
-            font_size: sp(14)
-            size_hint_x: 0.75
+            font_size: sp(13)
+            size_hint_x: 0.78
 
         SizedRoundedRectangleButton:
             id: browse_button
             text: i18n._("mykatrain:llm-coach:browse")
-            size_hint_x: 0.25
+            size_hint_x: 0.22
             height: dp(40)
             on_release: root.on_browse_karte()
 
-    # Row 2: Rank input + auto-detected hint label
+    # Row 2: Rank + Perspective in one row (50/50 split)
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
-        height: dp(48)
+        height: dp(64)
         spacing: dp(6)
-
-        Label:
-            text: i18n._("mykatrain:llm-coach:rank-label")
-            size_hint_x: None
-            width: dp(80)
-            font_name: Theme.DEFAULT_FONT
-            font_size: sp(13)
-            halign: 'left'
-            text_size: self.size
 
         BoxLayout:
             orientation: 'vertical'
-            size_hint_x: 1
+            size_hint_x: 0.5
             spacing: dp(0)
 
-            LabelledTextInput:
-                id: rank_input
-                hint_text: "5k"
-                multiline: False
-                write_tab: False
-                font_size: sp(13)
+            BoxLayout:
+                orientation: 'horizontal'
                 size_hint_y: None
                 height: dp(34)
+                spacing: dp(4)
+
+                Label:
+                    text: i18n._("mykatrain:llm-coach:rank-label")
+                    size_hint_x: None
+                    width: dp(60)
+                    font_name: Theme.DEFAULT_FONT
+                    font_size: sp(12)
+                    halign: 'left'
+                    text_size: self.size
+
+                LabelledTextInput:
+                    id: rank_input
+                    hint_text: "5k"
+                    multiline: False
+                    write_tab: False
+                    font_size: sp(13)
+                    size_hint_x: 1
 
             Label:
                 id: rank_auto_label
@@ -94,51 +109,56 @@
                 halign: 'left'
                 text_size: self.size
                 color: Theme.TEXT_COLOR
+                size_hint_y: None
+                height: dp(22)
 
-    # Row 3: Perspective selector (Auto / Black / White)
-    BoxLayout:
-        orientation: 'horizontal'
-        size_hint_y: None
-        height: dp(48)
-        spacing: dp(6)
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_x: 0.5
+            spacing: dp(0)
 
-        Label:
-            text: i18n._("mykatrain:llm-coach:perspective-label")
-            size_hint_x: None
-            width: dp(80)
-            font_name: Theme.DEFAULT_FONT
-            font_size: sp(13)
-            halign: 'left'
-            text_size: self.size
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: dp(34)
+                spacing: dp(4)
 
-        Spinner:
-            id: perspective_select
-            text: i18n._("mykatrain:llm-coach:perspective-auto")
-            values:
-                [
-                i18n._("mykatrain:llm-coach:perspective-auto"),
-                i18n._("mykatrain:llm-coach:perspective-black"),
-                i18n._("mykatrain:llm-coach:perspective-white"),
-                ]
-            size_hint_x: 1
-            height: dp(36)
-            font_name: Theme.DEFAULT_FONT
-            font_size: sp(13)
-            on_text: root.on_perspective_changed()
+                Label:
+                    text: i18n._("mykatrain:llm-coach:perspective-label")
+                    size_hint_x: None
+                    width: dp(60)
+                    font_name: Theme.DEFAULT_FONT
+                    font_size: sp(12)
+                    halign: 'left'
+                    text_size: self.size
 
-    # Auto-detected perspective hint
-    Label:
-        id: perspective_auto_label
-        text: ""
-        size_hint_y: None
-        height: dp(16)
-        font_name: Theme.DEFAULT_FONT
-        font_size: sp(9)
-        halign: 'left'
-        text_size: self.size
-        color: Theme.TEXT_COLOR
+                Spinner:
+                    id: perspective_select
+                    text: i18n._("mykatrain:llm-coach:perspective-auto")
+                    values:
+                        [
+                        i18n._("mykatrain:llm-coach:perspective-auto"),
+                        i18n._("mykatrain:llm-coach:perspective-black"),
+                        i18n._("mykatrain:llm-coach:perspective-white"),
+                        ]
+                    size_hint_x: 1
+                    height: dp(34)
+                    font_name: Theme.DEFAULT_FONT
+                    font_size: sp(12)
+                    on_text: root.on_perspective_changed()
 
-    # Row 4: Action 1 — generate / clear (50/50)
+            Label:
+                id: perspective_auto_label
+                text: ""
+                font_name: Theme.DEFAULT_FONT
+                font_size: sp(9)
+                halign: 'left'
+                text_size: self.size
+                color: Theme.TEXT_COLOR
+                size_hint_y: None
+                height: dp(22)
+
+    # Row 3: Action 1 — generate / clear (50/50)
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
@@ -159,28 +179,38 @@
             height: dp(40)
             on_release: root.on_clear_response()
 
-    # Row 5: Response input (multiline, fixed band)
+    # Row 4: Response input — label + ScrollView wrapping a multiline
+    # LabelledTextInput so long pasted text scrolls inside a fixed box.
     BoxLayout:
         orientation: 'vertical'
-        size_hint_y: 0.30
-        spacing: dp(4)
+        size_hint_y: None
+        height: dp(180)
+        spacing: dp(2)
 
         Label:
             text: i18n._("mykatrain:llm-coach:response-label")
             size_hint_y: None
-            height: dp(18)
+            height: dp(20)
             font_name: Theme.DEFAULT_FONT
             font_size: sp(11)
             halign: 'left'
             text_size: self.size
 
-        LabelledTextInput:
-            id: response_input
-            multiline: True
-            write_tab: False
-            font_size: sp(12)
+        ScrollView:
+            size_hint_y: 1
+            do_scroll_x: False
+            do_scroll_y: True
+            bar_width: dp(6)
 
-    # Row 6: Action 2 — validate / copy result (50/50)
+            LabelledTextInput:
+                id: response_input
+                multiline: True
+                write_tab: False
+                font_size: sp(12)
+                size_hint_y: None
+                height: dp(154)
+
+    # Row 5: Action 2 — validate / copy result (50/50)
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
@@ -201,31 +231,31 @@
             height: dp(40)
             on_release: root.on_copy_result()
 
-    # Row 7: Status line (single line)
+    # Row 6: Status line (single line)
     Label:
         id: status_label
         text: root.status_text
         size_hint_y: None
-        height: dp(20)
+        height: dp(22)
         font_name: Theme.DEFAULT_FONT
         font_size: sp(11)
         halign: 'left'
         text_size: self.size
         shorten: True
 
-    # Row 8: Result label header
+    # Row 7: Result label header
     Label:
         text: i18n._("mykatrain:llm-coach:result-label")
         size_hint_y: None
-        height: dp(18)
+        height: dp(20)
         font_name: Theme.DEFAULT_FONT
         font_size: sp(11)
         halign: 'left'
         text_size: self.size
 
-    # Row 9: Result label scrollable area
+    # Row 8: Result label scrollable area
     ScrollView:
-        size_hint_y: 0.66
+        size_hint_y: 1
         do_scroll_x: False
         do_scroll_y: True
         bar_width: dp(6)

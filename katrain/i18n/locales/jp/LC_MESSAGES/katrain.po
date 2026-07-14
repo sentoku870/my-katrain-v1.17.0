@@ -1167,6 +1167,12 @@ msgstr "（SGF から自動判定: {color}）"
 msgid "mykatrain:llm-coach:perspective-auto-fallback"
 msgstr "（判定不可。手動で黒/白を選択してください）"
 
+msgid "mykatrain:llm-coach:auto-detect-summary"
+msgstr "デフォルトユーザー「{user}」/ 黒:{black} 白:{white} → {color}"
+
+msgid "mykatrain:llm-coach:auto-detect-failed"
+msgstr "自動判定エラー: {error}"
+
 msgid "mykatrain:llm-coach:response-label"
 msgstr "LLM 応答（ここに貼り付け）"
 

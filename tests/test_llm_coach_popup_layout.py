@@ -111,11 +111,12 @@ class TestActionButtonWidths:
         )
 
     def test_browse_button_size_hint(self) -> None:
-        """Browse button sits in a 75/25 row with the karte path input."""
+        """Browse button sits in a ~78/22 row with the karte path input."""
         kv = _read_kv()
         blocks = _find_button_blocks(kv, rule_pattern=r"id:\s*browse_button")
         assert len(blocks) == 1
-        assert "size_hint_x: 0.25" in blocks[0]
+        # Phase 225.7: widened the path input column so we use a 0.78/0.22 split.
+        assert "size_hint_x: 0.22" in blocks[0]
 
 
 class TestRowProportions:

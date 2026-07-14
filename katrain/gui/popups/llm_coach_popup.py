@@ -84,11 +84,17 @@ class LLMCcoachPopupContent(BoxLayout):
     def on_kv_post(self, *_args: Any) -> None:
         """Auto-fill the karte path once the KV tree is attached.
 
-        Runs on the Kivy main thread (``Clock.schedule_once``) so the
-        filesystem walk doesn't block startup.
+        Phase 225.7: chain the two populators so rank/perspective
+        detection runs AFTER the karte path has been auto-filled. Each
+        step uses a slightly later clock tick to guarantee ordering.
         """
         Clock.schedule_once(lambda _dt: self._populate_initial_karte_path(), 0)
-        Clock.schedule_once(lambda _dt: self._populate_rank_and_perspective(), 0)
+        # Defer the second pass so we read the karte path AFTER it has
+        # been written by the first pass. Without this, _read_text
+        # could see an empty field on slow hardware.
+        Clock.schedule_once(
+            lambda _dt: self._populate_rank_and_perspective(), 0.2
+        )
 
     def _populate_initial_karte_path(self) -> None:
         if self.karte_path_input is None:
@@ -105,16 +111,31 @@ class LLMCcoachPopupContent(BoxLayout):
             self.karte_path_input.text = str(latest)
 
     def _populate_rank_and_perspective(self) -> None:
-        """Phase 225.6: detect rank + player color from Karte/SGF.
+        """Phase 225.6/225.7: detect rank + player color from Karte/SGF.
 
         Reads the karte meta's ``player_info`` block (or falls back to
         the source SGF) to fill the rank input field and the
         perspective select. Auto-detected values are shown alongside
         the manual controls so the user can override.
+
+        Phase 225.7: schedule this AFTER karte path has been written.
+        The ``on_kv_post`` handler triggers us at clock +0.2s.
         """
         karte_path = self._read_text("karte_path_input")
         if not karte_path:
+            # Try again shortly in case the path hasn't been set yet.
+            Clock.schedule_once(
+                lambda _dt: self._populate_rank_and_perspective(), 0.2
+            )
             return
+
+        # Default user lookup (so we can debug why it picked a side).
+        default_user = None
+        if self.katrain is not None:
+            default_user = (self.katrain.config("mykatrain_settings") or {}).get(
+                "default_user_name", ""
+            )
+
         try:
             from katrain.gui.features.llm_coach import (
                 detect_player_color_for_user,
@@ -122,18 +143,24 @@ class LLMCcoachPopupContent(BoxLayout):
             )
 
             info = detect_player_info(self.katrain, karte_path)
-        except Exception:
+        except Exception as exc:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
+                    error=str(exc)
+                ),
+                error=True,
+            )
             return
 
         # ---- Rank auto-fill ----
         detected = _pick_detected_rank(info, self.perspective_value)
         if detected:
             self.detected_rank = detected
-            # Only overwrite the visible input if the user hasn't typed
-            # their own rank yet.
             current = self._read_text("rank_input")
             if not current:
                 self._set_widget_text("rank_input", detected)
+            self._refresh_rank_hint()
+        else:
             self._refresh_rank_hint()
 
         # ---- Player color auto-fill ----
@@ -144,6 +171,29 @@ class LLMCcoachPopupContent(BoxLayout):
         if color in ("B", "W"):
             self.detected_player_color = color
         self._refresh_perspective_hint()
+
+        # Phase 225.7: surface the resolved default_user in the status
+        # line so the user can confirm what name was matched against
+        # the Karte/SGF. This is the fix for the user's "auto default
+        # user isn't working" report.
+        if default_user:
+            black_name = (info.get("black") or {}).get("name") or "?"
+            white_name = (info.get("white") or {}).get("name") or "?"
+            color_label = (
+                "黒 (B)"
+                if color == "B"
+                else "白 (W)"
+                if color == "W"
+                else "?"
+            )
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-summary").format(
+                    user=default_user,
+                    black=black_name,
+                    white=white_name,
+                    color=color_label,
+                )
+            )
 
     def _refresh_rank_hint(self) -> None:
         label = self._get_widget("rank_auto_label")
@@ -407,9 +457,11 @@ def open_llm_coach_popup(ctx: Any) -> Any:
     from kivy.metrics import dp
 
     content = LLMCcoachPopupContent(katrain=ctx)
+    # Phase 225.7: wider popup so the LLM response input doesn't
+    # overflow and the action buttons don't overlap.
     popup = I18NPopup(
         title_key="mykatrain:llm-coach:title",
-        size=[dp(700), dp(620)],
+        size=[dp(900), dp(720)],
         content=content,
     ).__self__
     content.popup = popup

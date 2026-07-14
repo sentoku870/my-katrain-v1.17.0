@@ -697,6 +697,96 @@ class TestPhase2256Helpers:
         assert _resolve_player_color("auto", None) is None
 
 
+class TestPhase2257PopupSize:
+    """Phase 225.7: popup is now wider so LLM response input doesn't
+    overflow and action buttons don't overlap."""
+
+    def test_popup_size_is_at_least_900dp_wide(self):
+        from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
+        from kivy.metrics import dp
+
+        ctx = MagicMock()
+        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls:
+            mock_picker = MagicMock()
+            mock_popup_cls.return_value.__self__ = mock_picker
+            open_llm_coach_popup(ctx)
+        size_arg = mock_popup_cls.call_args.kwargs["size"]
+        assert size_arg[0] >= dp(900), (
+            f"popup width must be >= 900dp, got {size_arg[0]} (raw={size_arg})"
+        )
+        # Height must also have grown so the LLM response + result fit
+        assert size_arg[1] >= dp(680)
+
+
+class TestPhase2257LayoutNoOverlap:
+    """Phase 225.7: rank + perspective in the same row, response input
+    wrapped in ScrollView, fixed heights on action rows."""
+
+    def test_kv_has_scroll_view_for_response_input(self):
+        from pathlib import Path
+        kv = (Path(__file__).resolve().parents[1] / "katrain" / "gui" / "kv" / "llm_coach_popup.kv").read_text()
+        # Find the response_input block
+        idx = kv.find("id: response_input")
+        assert idx > 0
+        # The surrounding ScrollView must enclose the response_input
+        # (look backward from response_input for the most recent ScrollView)
+        chunk = kv[:idx]
+        last_scroll = chunk.rfind("ScrollView:")
+        assert last_scroll > 0, "response_input must be wrapped in a ScrollView"
+        # And there must be exactly one ScrollView immediately surrounding
+        # the response_input (no nested ones cancelling out).
+        next_scroll = kv.find("ScrollView:", idx)
+        # We're inside the *first* ScrollView block; the next one starts later
+        assert next_scroll > idx, "ScrollView for response_input should close before next one"
+
+
+class TestPhase2257AutoDetectSummary:
+    """Phase 225.7: status_label surfaces what was matched so the user
+    can confirm the default user name resolved correctly."""
+
+    def test_summary_status_set_on_success(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "4d"},
+                            "white": {"name": "P2", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_name": "P2"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # status_label.text contains a debug summary of what was matched
+        status = content.ids["status_label"].text
+        assert "P2" in status or "P1" in status  # at least one player name visible
+        # Default user name must be mentioned somewhere in the summary
+        assert "P2" in status or "default_user_name" in status or "デフォルト" in status or "Default" in status
+
+
+class TestPhase2257AutoDetectDefersWhenKartePathEmpty:
+    """Phase 225.7: when karte_path is empty (no auto-fill yet),
+    _populate_rank_and_perspective must schedule a retry instead of
+    silently doing nothing."""
+
+    def test_retry_scheduled_when_karte_path_empty(self):
+        content = _make_content()
+        content.ids["karte_path_input"].text = ""
+        with patch("katrain.gui.popups.llm_coach_popup.Clock") as mock_clock:
+            content._populate_rank_and_perspective()
+        # A retry schedule_once call must have been issued
+        assert mock_clock.schedule_once.called, (
+            "Empty karte_path must schedule a retry, not return silently"
+        )
+
+
 class TestOpenLlmCoachPopup:
     def test_returns_popup_and_opens(self) -> None:
         from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup

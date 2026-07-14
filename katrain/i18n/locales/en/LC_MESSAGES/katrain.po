@@ -120,6 +120,12 @@ msgstr "(auto-detected from SGF: {color})"
 msgid "mykatrain:llm-coach:perspective-auto-fallback"
 msgstr "(could not auto-detect — pick Black/White manually)"
 
+msgid "mykatrain:llm-coach:auto-detect-summary"
+msgstr "Default user '{user}' / B:{black} W:{white} → {color}"
+
+msgid "mykatrain:llm-coach:auto-detect-failed"
+msgstr "Auto-detect error: {error}"
+
 msgid "mykatrain:llm-coach:response-label"
 msgstr "LLM Response (paste here)"
 
