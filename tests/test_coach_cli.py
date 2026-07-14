@@ -442,3 +442,55 @@ class TestTraceCommand:
                 "trace",
                 str(tmp_path / "nonexistent.json"),
             ])
+
+
+# --- summary JSON support (Phase 221) ---
+
+
+class TestSummaryCli:
+    def test_analyze_with_summary(self, tmp_path: Path, capsys):
+        """Phase 221: CLI should auto-detect summary and analyze."""
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3, "games_by_type": {"even": 3}},
+            "summary": {"total_games": 3},
+            "phase_x_mistake": {"middle:blunder": 5},
+            "players": {"P1": {}},
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "total_loss": 20.0},
+                ],
+                "white": [],
+            },
+            "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 12.0}]},
+            "loss_progression": {"all": [{"mistake_count": 2}]},
+            "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
+        }
+        path = tmp_path / "summary.json"
+        path.write_text(json.dumps(summary), encoding="utf-8")
+        rc = cli.main(["analyze", str(path)])
+        assert rc == 0
+        captured = capsys.readouterr()
+        # Analysis output goes to stdout
+        assert "# Karte Analysis" in captured.out
+        # Detection works on projected summary (overfight from 4-streak)
+        assert "overfight" in captured.out
+        # Info message about summary detection goes to stderr
+        assert "ℹ" in captured.err
+
+    def test_trace_with_summary(self, tmp_path: Path, capsys):
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 2},
+            "players": {"P1": {}},
+            "weaknesses": {"black": [{"category": "atari_blindness"}], "white": []},
+            "loss_progression": {"all": []},
+        }
+        path = tmp_path / "summary.json"
+        path.write_text(json.dumps(summary), encoding="utf-8")
+        rc = cli.main(["trace", str(path)])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "# Detection Pipeline Trace" in out
+        # atari_blindness should be detected from the projected weaknesses
+        assert "atari_blindness" in out

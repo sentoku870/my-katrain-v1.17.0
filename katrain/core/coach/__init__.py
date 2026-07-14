@@ -20,6 +20,16 @@ from katrain.core.coach.calibration_fixtures import (
     get_fixture,
     list_fixture_names,
 )
+from katrain.core.coach.json_type import (
+    JsonType,
+    detect_json_type,
+    extract_summary_game_count,
+    extract_summary_mistake_buckets,
+    extract_summary_total_loss,
+    is_karte,
+    is_summary,
+    normalize_summary_to_karte_shape,
+)
 from katrain.core.coach.karte_detector import (
     build_symptom_context_from_karte,
     detect_symptoms_from_karte,
@@ -180,4 +190,13 @@ __all__ = [
     "ALL_FIXTURES",
     "get_fixture",
     "list_fixture_names",
+    # json_type (Phase 221)
+    "JsonType",
+    "detect_json_type",
+    "is_karte",
+    "is_summary",
+    "normalize_summary_to_karte_shape",
+    "extract_summary_game_count",
+    "extract_summary_total_loss",
+    "extract_summary_mistake_buckets",
 ] 

@@ -54,16 +54,47 @@ _DEFAULT_LLM_REQUIRED = (
 
 
 def _load_karte(path: Path) -> dict[str, Any]:
-    """Load and lightly validate a Karte JSON file."""
+    """Load and lightly validate a Karte / Summary JSON file.
+
+    Auto-detects whether the file is a single-game Karte or a
+    multi-game Summary (Phase 221). Summary JSONs are projected into
+    a Karte-shaped view via ``normalize_summary_to_karte_shape`` so
+    the downstream pipeline can consume them uniformly.
+
+    Returns the (possibly projected) dict.
+    """
+    from katrain.core.coach.json_type import (
+        detect_json_type,
+        normalize_summary_to_karte_shape,
+    )
+
     if not path.exists():
         raise FileNotFoundError(f"Karte JSON not found: {path}")
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
         raise ValueError(f"{path}: expected JSON object, got {type(data).__name__}")
+
+    jtype = detect_json_type(data)
+    if jtype == "unknown":
+        print(
+            f"⚠️ {path}: unrecognised JSON shape; treating as karte.",
+            file=sys.stderr,
+        )
+        return data
+    if jtype == "summary":
+        print(
+            f"ℹ️  {path}: detected multi-game Summary; projecting to karte shape.",
+            file=sys.stderr,
+        )
+        return normalize_summary_to_karte_shape(data)
+    # karte
     if "summary" not in data:
         # Phase 203 §9 — older Karte JSONs may lack summary; warn but continue.
-        print(f"⚠️ {path}: no 'summary' field; LLM validation features limited.", file=sys.stderr)
+        print(
+            f"⚠️ {path}: no 'summary' field; LLM validation features limited.",
+            file=sys.stderr,
+        )
     return data
 
 
