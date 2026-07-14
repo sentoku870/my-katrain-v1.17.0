@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,11 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.7 — Popup 幅拡大 + 自動判定タイミング修正 + LLM 応答はみ出し修正**
+  - **UI バグ (Phase 225.6 対策不完全)**: `_populate_rank_and_perspective` が Clock.schedule_once(0) で karte_path 設定前に走っていた → 0.2s 遅延 + karte_path 空時のリトライ機構
+  - **UI バグ**: ポップアップ幅が狭く LLM 応答がはみ出す / ボタンと重なる → 900x720 に拡大 + response_input を ScrollView で囲み、折り返しではなくスクロール
+  - **UX 改善**: status_label に「デフォルトユーザー '{user}' / 黒:{black} 白:{white} → {color}」サマリ表示 → 自動判定がどちらの色にマッチしたか可視化
+  - 4 件回帰テスト追加、累計 5021 件テスト合格
 - 2026-07-17: **Phase 225.6 — LLM Coach 視点自動判定 + SGF 棋力自動取得**
   - **新機能**: SGF BR/WR を抽出する `sgf_player_info.py` 追加（17 テスト）
   - **新機能**: Karte JSON meta に `player_info.{black,white}.{name,rank}` 追加（schema 後方互換、golden 3 件更新）
