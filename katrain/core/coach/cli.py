@@ -106,6 +106,7 @@ def build_prompt(
     include_expanded: bool = True,
     detected_ids: tuple[SymptomId, ...] | None = None,
     llm_required_ids: tuple[SymptomId, ...] | None = None,
+    player_color: str | None = None,
 ) -> Any:
     """Build an LlmPrompt from a Karte JSON dict (CLI helper).
 
@@ -116,6 +117,10 @@ def build_prompt(
         When ``detected_ids`` is None, uses Phase 215's
         ``detect_symptoms_from_karte`` for proper Karte-aware detection
         (weakness categories + per-move SymptomContext).
+
+    Phase 225.6: ``player_color`` (``"B"`` / ``"W"`` / ``None``) is
+    forwarded to :class:`PromptConfig` so the SystemInstruction tells
+    the LLM which side to focus on.
     """
     voice = select_voice(rank, avg_points_lost=avg_points_lost)
     from katrain.core.coach.tones import modes_for_voice
@@ -137,6 +142,7 @@ def build_prompt(
         schema_version=str(karte.get("schema_version", "unknown")),
         player_rank_str=rank,
         average_points_lost=avg_points_lost,
+        player_color=player_color,
     )
     return build_translation_prompt(karte, cfg)
 

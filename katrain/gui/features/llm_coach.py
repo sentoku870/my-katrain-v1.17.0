@@ -47,6 +47,7 @@ def build_llm_prompt(
     *,
     rank: str | None = None,
     avg_points_lost: float | None = None,
+    player_color: str | None = None,
 ) -> tuple[bool, str]:
     """Build an LLM-ready Markdown prompt from a Karte JSON file.
 
@@ -59,6 +60,9 @@ def build_llm_prompt(
         rank: Optional rank string (e.g. ``"5k"``).
         avg_points_lost: Optional average points lost (overrides Karte's
             own average).
+        player_color: Phase 225.6. ``"B"`` / ``"W"`` / ``None``. When
+            ``None``, the SystemInstruction is told "PlayerColor:
+            unknown" so the LLM doesn't bias its review.
 
     Returns:
         (success, content). On success ``content`` is the full prompt
@@ -72,6 +76,7 @@ def build_llm_prompt(
             karte,
             rank=rank,
             avg_points_lost=avg_points_lost,
+            player_color=player_color,
         )
     except FileNotFoundError:
         msg = i18n._("mykatrain:llm-coach:file-not-found").format(path=str(karte_path))
@@ -197,3 +202,110 @@ def find_latest_karte(ctx: "FeatureContext") -> Path | None:
     if report is None or report.report_type != "karte":
         return None
     return report.path
+
+
+def detect_player_info(
+    ctx: "FeatureContext | None",
+    karte_path: str | Path,
+) -> dict[str, Any]:
+    """Phase 225.6: extract black/white player info from a Karte JSON.
+
+    Looks at ``meta.player_info`` first (the field Phase 225.6 added
+    to the Karte schema), then falls back to the SGF file referenced
+    by ``source_filename`` in meta (in case the Karte was built from a
+    legacy export without the player_info block).
+
+    Returns a dict shaped like::
+
+        {
+            "black": {"name": str | None, "rank": str | None},
+            "white": {"name": str | None, "rank": str | None},
+            "source": "karte_meta" | "sgf_file" | "missing",
+        }
+    """
+    path = Path(karte_path)
+    if not path.exists():
+        return _empty_player_info("missing")
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            karte = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return _empty_player_info("missing")
+
+    info = (karte.get("meta") or {}).get("player_info")
+    if (
+        info
+        and isinstance(info, dict)
+        and isinstance(info.get("black"), dict)
+        and isinstance(info.get("white"), dict)
+    ):
+        return {
+            "black": dict(info["black"]),
+            "white": dict(info["white"]),
+            "source": "karte_meta",
+        }
+
+    # Fallback: parse the source SGF (if any).
+    source_filename = (karte.get("meta") or {}).get("source_filename")
+    if source_filename:
+        from katrain.core.coach.sgf_player_info import (
+            extract_player_info_from_sgf,
+        )
+        try:
+            sgf_info = extract_player_info_from_sgf(source_filename)
+        except (OSError, ValueError):
+            sgf_info = None
+        if sgf_info is not None:
+            return {
+                "black": {"name": sgf_info.black.name, "rank": sgf_info.black.rank},
+                "white": {"name": sgf_info.white.name, "rank": sgf_info.white.rank},
+                "source": "sgf_file",
+            }
+
+    return _empty_player_info("missing")
+
+
+def _empty_player_info(source: str) -> dict[str, Any]:
+    return {
+        "black": {"name": None, "rank": None},
+        "white": {"name": None, "rank": None},
+        "source": source,
+    }
+
+
+def detect_player_color_for_user(
+    ctx: "FeatureContext | None",
+    karte_path: str | Path,
+) -> tuple[str | None, str | None]:
+    """Phase 225.6: determine which side the configured default user
+    plays and return ``(color, rank)``.
+
+    ``color`` is ``"B"`` / ``"W"`` / ``None``; ``rank`` is the matching
+    rank string from the Karte / SGF. ``None`` is returned when the
+    user setting is empty or no match is found.
+    """
+    if ctx is None:
+        return None, None
+    default_user = (ctx.config("mykatrain_settings") or {}).get(
+        "default_user_name", ""
+    )
+    if not default_user:
+        return None, None
+    info = detect_player_info(ctx, karte_path)
+    from katrain.core.coach.sgf_player_info import extract_player_info_for_user
+
+    pseudo = _SgfInfoLike(info["black"], info["white"])
+    return extract_player_info_for_user(pseudo, default_user)
+
+
+class _SgfInfoLike:
+    """Bridge: convert our ``detect_player_info`` dict shape into
+    the :class:`SgfPlayerInfo` interface that
+    :func:`extract_player_info_for_user` expects."""
+
+    def __init__(self, black: dict[str, Any], white: dict[str, Any]) -> None:
+        from katrain.core.coach.sgf_player_info import PlayerInfo
+
+        self.black = PlayerInfo(name=black.get("name"), rank=black.get("rank"))
+        self.white = PlayerInfo(name=white.get("name"), rank=white.get("rank"))

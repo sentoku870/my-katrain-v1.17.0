@@ -64,6 +64,11 @@ class PromptConfig:
         schema_version: Karte JSON schema version (informational).
         player_rank_str: User's rank string (e.g. "5k"). Optional.
         average_points_lost: Game-level avg pointsLost. Optional.
+        player_color: Phase 225.6. "B" / "W" / None.
+            When ``None``, the LLM is told "Unknown" so it doesn't
+            assume the user's perspective. ``"B"`` / ``"W"`` are
+            forwarded to the SystemInstruction so the LLM only
+            references that side's weaknesses.
     """
 
     voice: ToneVoice
@@ -75,6 +80,7 @@ class PromptConfig:
     schema_version: str = "3.4"
     player_rank_str: str | None = None
     average_points_lost: float | None = None
+    player_color: str | None = None
 
 
 # --- LlmPrompt container ---
@@ -114,13 +120,16 @@ Mode: {voice_summary}
 Level: {mode_label} ({mode_description})
 DetectedSymptoms: {detected_ids}
 CandidateSymptoms: {candidate_ids}
+PlayerColor: {player_color_label}   <!-- Phase 225.6: 'black' / 'white' / 'unknown' -->
 
 [STRICT RULES — DO NOT VIOLATE]
 1. DO NOT analyze the board independently. Use ONLY the data in the JSON.
 2. DO NOT invent move numbers, coordinates, or scores. Every number must
    match the JSON.
 3. Every symptom_id you mention MUST exist in the Karte JSON's
-   ``weaknesses`` or ``important_moves[*].meaning_tag_id`` field.
+   ``weaknesses[<player_color>]`` or ``important_moves[*].meaning_tag_id``
+   field. When ``PlayerColor`` is set, focus your review on that side's
+   weaknesses only.
 4. Use the Lexicon definitions injected below verbatim for terminology.
 5. End your response with the line
    ``参照した症状ID: [<id1>, <id2>, ...]``
@@ -183,6 +192,18 @@ def _candidate_hints(llm_required_ids: tuple[SymptomId, ...]) -> str:
             continue
         lines.append(f"- ``{sid.value}`` ({symptom.ja_label}): {symptom.context_hint or '(no hint)'}")
     return "\n".join(lines) if lines else "(none)"
+
+
+_PLAYER_COLOR_LABELS: dict[str | None, str] = {
+    "B": "black",
+    "W": "white",
+    None: "unknown",
+}
+
+
+def _player_color_label(color: str | None) -> str:
+    """Render the player_color for the SystemInstruction block."""
+    return _PLAYER_COLOR_LABELS.get(color, "unknown")
 
 
 def _select_lexicon_entry_ids(
@@ -248,6 +269,7 @@ def build_translation_prompt(
         detected_ids=_format_symptom_id_list(detected_ids),
         candidate_ids=_format_symptom_id_list(candidate_ids),
         candidate_hints=_candidate_hints(candidate_ids),
+        player_color_label=_player_color_label(config.player_color),
     )
 
     # 2. Lexicon injection (HTML comment with verbatim entries).

@@ -285,3 +285,95 @@ class TestFindLatestKarte:
     def test_returns_none_when_no_reports(self, tmp_path: Path) -> None:
         ctx = _fake_ctx(tmp_path)
         assert llm_coach.find_latest_karte(ctx) is None
+
+
+# ---- detect_player_info / detect_player_color_for_user (Phase 225.6) --
+
+
+class TestDetectPlayerInfo:
+    """Phase 225.6: read black/white player info from Karte meta."""
+
+    def test_reads_player_info_from_karte_meta(self, tmp_path):
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "醉舞", "rank": "4d"},
+                            "white": {"name": "仙得", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        from katrain.gui.features.llm_coach import detect_player_info
+
+        info = detect_player_info(None, karte)
+        assert info["source"] == "karte_meta"
+        assert info["black"]["name"] == "醉舞"
+        assert info["black"]["rank"] == "4d"
+        assert info["white"]["name"] == "仙得"
+        assert info["white"]["rank"] == "3d"
+
+    def test_missing_file_yields_missing_source(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info
+
+        info = detect_player_info(None, tmp_path / "nope.json")
+        assert info["source"] == "missing"
+        assert info["black"]["name"] is None
+        assert info["white"]["rank"] is None
+
+    def test_no_player_info_no_sgf_yields_missing(self, tmp_path):
+        karte = tmp_path / "k.json"
+        karte.write_text(json.dumps({"meta": {}}), encoding="utf-8")
+        from katrain.gui.features.llm_coach import detect_player_info
+
+        info = detect_player_info(None, karte)
+        assert info["source"] == "missing"
+
+
+class TestDetectPlayerColorForUser:
+    def test_returns_color_when_default_user_matches(self, tmp_path):
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "sentoku", "rank": "5k"},
+                            "white": {"name": "opponent", "rank": "6k"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        ctx = MagicMock()
+        ctx.config.return_value = {"default_user_name": "sentoku"}
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        color, rank = detect_player_color_for_user(ctx, karte)
+        assert color == "B"
+        assert rank == "5k"
+
+    def test_returns_none_for_empty_default_user(self, tmp_path):
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps({"meta": {"player_info": {}}}), encoding="utf-8"
+        )
+        ctx = MagicMock()
+        ctx.config.return_value = {"default_user_name": ""}
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        color, rank = detect_player_color_for_user(ctx, karte)
+        assert color is None
+        assert rank is None
+
+    def test_returns_none_when_ctx_is_none(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        color, rank = detect_player_color_for_user(None, tmp_path / "k.json")
+        assert color is None
+        assert rank is None
