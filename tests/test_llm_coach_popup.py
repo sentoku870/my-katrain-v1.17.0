@@ -41,6 +41,13 @@ os.environ.setdefault("KIVY_GL_BACKEND", "mock")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
+def _resolve_i18n(key: str) -> str:
+    """Helper: resolve an i18n key via the same Lang instance the popup uses."""
+    from katrain.core.lang import i18n
+
+    return i18n._(key)
+
+
 def _make_content() -> Any:
     """Build a ``LLMCcoachPopupContent`` instance bypassing ``__init__``.
 
@@ -63,6 +70,10 @@ def _make_content() -> Any:
     content.perspective_value = "auto"
     content.detected_rank = None
     content.detected_player_color = None
+    # Phase 226-B (B1): init the Clock-tracking attributes that the
+    # production ``__init__`` would normally set up.
+    content._pending_clock_events = []
+    content._rank_detect_retries = 0
 
     # Per-widget MagicMocks
     karte_path_input = MagicMock()
@@ -118,7 +129,6 @@ def _make_content() -> Any:
 
 class TestOnBrowseKarte:
     def test_opens_i18n_file_browser_popup(self) -> None:
-        from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
         content = _make_content()
         with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
@@ -135,7 +145,6 @@ class TestOnBrowseKarte:
     def test_binds_both_on_success_and_on_submit(self) -> None:
         """Phase 225.2 regression: OK-button click previously did nothing
         because we only bound ``on_submit`` (double-click event)."""
-        from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
         content = _make_content()
         with patch("katrain.gui.popups.llm_coach_popup.I18NPopup"), \
@@ -157,7 +166,6 @@ class TestOnBrowseKarte:
     def test_on_success_writes_path_to_karte_input(self) -> None:
         """Simulate the OK button firing: the chosen file path must be
         written back to the karte_path_input via ids."""
-        from katrain.gui.popups.llm_coach_popup import LLMCcoachPopupContent
 
         content = _make_content()
         content.karte_path_input.text = ""
@@ -685,8 +693,15 @@ class TestPhase2256Helpers:
 
     def test_resolve_player_color_explicit_B(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+        # Phase 226-B (B3): perspective_value is now the stable internal
+        # value ("B"/"W"/"auto"), not the localised spinner label.
         assert _resolve_player_color("B", "W") == "B"
-        assert _resolve_player_color("黒 (B)", None) == "B"
+        assert _resolve_player_color("B", None) == "B"
+
+    def test_resolve_player_color_explicit_W(self):
+        from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+        assert _resolve_player_color("W", "B") == "W"
+        assert _resolve_player_color("W", None) == "W"
 
     def test_resolve_player_color_auto_with_detection(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
@@ -697,13 +712,42 @@ class TestPhase2256Helpers:
         assert _resolve_player_color("auto", None) is None
 
 
+class TestPhase226BSpinnerTextToInternal:
+    """Phase 226-B (B3): ``_spinner_text_to_internal`` reverse-maps the
+    localised spinner label to a stable internal value."""
+
+    def test_auto_label_maps_to_auto(self):
+        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+        auto_label = _resolve_i18n("mykatrain:llm-coach:perspective-auto")
+        assert _spinner_text_to_internal(auto_label) == "auto"
+
+    def test_black_label_maps_to_B(self):
+        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+        black_label = _resolve_i18n("mykatrain:llm-coach:perspective-black")
+        assert _spinner_text_to_internal(black_label) == "B"
+
+    def test_white_label_maps_to_W(self):
+        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+        white_label = _resolve_i18n("mykatrain:llm-coach:perspective-white")
+        assert _spinner_text_to_internal(white_label) == "W"
+
+    def test_empty_string_falls_back_to_auto(self):
+        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+        assert _spinner_text_to_internal("") == "auto"
+
+    def test_unknown_string_falls_back_to_auto(self):
+        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+        assert _spinner_text_to_internal("nonsense") == "auto"
+
+
 class TestPhase2257PopupSize:
     """Phase 225.7: popup is now wider so LLM response input doesn't
     overflow and action buttons don't overlap."""
 
     def test_popup_size_is_at_least_900dp_wide(self):
-        from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
         from kivy.metrics import dp
+
+        from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
 
         ctx = MagicMock()
         with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls:

@@ -27,6 +27,7 @@ is Phase 224 (deferred).
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from kivy.clock import Clock
@@ -43,8 +44,12 @@ if TYPE_CHECKING:
     pass
 
 
-# How long the "コピー済み" / "コピー失敗" label sticks before reverting.
-_COPY_FEEDBACK_SECONDS = 2.0
+# Phase 226-B (B1): cap how many times ``_populate_rank_and_perspective``
+# re-schedules itself when the karte path is still empty. Without this
+# cap the popup would re-schedule forever (and keep referencing widgets
+# of a popup the user has already dismissed).
+_MAX_RANK_DETECT_RETRIES = 5
+_RETRY_INTERVAL = 0.2
 
 
 class LLMCcoachPopupContent(BoxLayout):
@@ -70,14 +75,33 @@ class LLMCcoachPopupContent(BoxLayout):
     validate_button = ObjectProperty(None, allownone=True)
 
     status_text = StringProperty("")
-    # Phase 225.6: which side the user actually plays. ``"auto"`` (default)
-    # asks ``detect_player_color_for_user`` to figure it out from the
-    # user's mykatrain setting; explicit ``"B"`` / ``"W"`` overrides.
+    # Phase 225.6 / Phase 226-B (B3): the *internal* perspective value
+    # is always one of ``"auto"`` / ``"B"`` / ``"W"`` regardless of the
+    # localised spinner text. Previously the code read back the
+    # localised spinner ``text`` and matched with ``startswith("黒")``,
+    # which broke if the localised label ever changed. The spinner's
+    # ``text`` is now treated as display-only.
     perspective_value = StringProperty("auto")
     # The detected rank from the Karte/SGF, used to display a small
     # "(auto-detected: ...)" hint next to the manual rank input.
     detected_rank: str | None = None
     detected_player_color: str | None = None
+
+    # Phase 226-B (B1): pending Clock events and retry counter. The
+    # popup binds ``on_dismiss`` (via the wrapping I18NPopup) to
+    # ``cancel_pending_clocks`` so we stop touching dismissed widgets.
+    # These are class-level type hints only — actual mutable state is
+    # initialised per-instance in ``__init__`` to avoid sharing across
+    # popup instances.
+    _pending_clock_events: list
+    _rank_detect_retries: int
+
+    def __init__(self, **kwargs: Any) -> None:
+        # Each instance gets its own mutable lists so multiple popups
+        # don't share state.
+        super().__init__(**kwargs)
+        self._pending_clock_events: list = []
+        self._rank_detect_retries: int = 0
 
     # ---- Lifecycle -----------------------------------------------------
 
@@ -87,14 +111,34 @@ class LLMCcoachPopupContent(BoxLayout):
         Phase 225.7: chain the two populators so rank/perspective
         detection runs AFTER the karte path has been auto-filled. Each
         step uses a slightly later clock tick to guarantee ordering.
+
+        Phase 226-B (B1): every scheduled event is tracked in
+        ``_pending_clock_events`` so ``cancel_pending_clocks`` can
+        unschedule them when the popup is dismissed.
         """
-        Clock.schedule_once(lambda _dt: self._populate_initial_karte_path(), 0)
+        self._schedule_once(self._populate_initial_karte_path, 0)
         # Defer the second pass so we read the karte path AFTER it has
         # been written by the first pass. Without this, _read_text
         # could see an empty field on slow hardware.
-        Clock.schedule_once(
-            lambda _dt: self._populate_rank_and_perspective(), 0.2
-        )
+        self._schedule_once(self._populate_rank_and_perspective, 0.2)
+
+    def cancel_pending_clocks(self, *_args: Any) -> None:
+        """Phase 226-B (B1): unschedule any pending Clock events.
+
+        Safe to call multiple times. Should be wired to the wrapping
+        popup's ``on_dismiss`` handler so the popup stops touching
+        widgets once the user closes it.
+        """
+        for ev in self._pending_clock_events:
+            with contextlib.suppress(Exception):
+                Clock.unschedule(ev)
+        self._pending_clock_events = []
+
+    def _schedule_once(self, callback: Any, timeout: float) -> None:
+        """Phase 226-B (B1): ``Clock.schedule_once`` with tracking."""
+        ev = Clock.schedule_once(callback, timeout)
+        self._pending_clock_events.append(ev)
+        return ev
 
     def _populate_initial_karte_path(self) -> None:
         if self.karte_path_input is None:
@@ -110,8 +154,8 @@ class LLMCcoachPopupContent(BoxLayout):
         if latest is not None:
             self.karte_path_input.text = str(latest)
 
-    def _populate_rank_and_perspective(self) -> None:
-        """Phase 225.6/225.7/225.8: detect rank + player color.
+    def _populate_rank_and_perspective(self, *_args: Any) -> None:
+        """Phase 225.6/225.7/225.8/226-B: detect rank + player color.
 
         Detection priority:
         1. Karte JSON's ``meta.player_info`` block (or source SGF)
@@ -121,13 +165,24 @@ class LLMCcoachPopupContent(BoxLayout):
 
         Phase 225.7: schedule this AFTER karte path has been written.
         The ``on_kv_post`` handler triggers us at clock +0.2s.
+
+        Phase 226-B (B1): retry at most ``_MAX_RANK_DETECT_RETRIES``
+        times when the karte path is still empty; give up after that
+        so we don't loop forever.
+
+        Phase 226-B (B4): ``detect_player_info`` is called once and the
+        result is passed to ``detect_player_color_for_user`` instead of
+        letting the latter re-read & re-parse the same JSON.
         """
         karte_path = self._read_text("karte_path_input")
         if not karte_path:
-            # Try again shortly in case the path hasn't been set yet.
-            Clock.schedule_once(
-                lambda _dt: self._populate_rank_and_perspective(), 0.2
-            )
+            # Phase 226-B (B1): cap retries so we don't loop forever
+            # when the karte path never gets filled in.
+            if self._rank_detect_retries < _MAX_RANK_DETECT_RETRIES:
+                self._rank_detect_retries += 1
+                self._schedule_once(
+                    self._populate_rank_and_perspective, _RETRY_INTERVAL
+                )
             return
 
         # Default user lookup (so we can debug why it picked a side).
@@ -172,9 +227,22 @@ class LLMCcoachPopupContent(BoxLayout):
             self._refresh_rank_hint()
 
         # ---- Player color auto-fill ----
+        # Phase 226-B (B4 + B5): pass the already-loaded ``info`` into
+        # ``detect_player_color_for_user`` so we don't re-read the JSON
+        # a second time. Surface any exception via the same
+        # ``auto-detect-failed`` status as the info loader (previously
+        # the colour detector silently swallowed errors).
         try:
-            color, _ = detect_player_color_for_user(self.katrain, karte_path)
-        except Exception:
+            color, _ = detect_player_color_for_user(
+                self.katrain, karte_path, player_info=info
+            )
+        except Exception as exc:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
+                    error=str(exc)
+                ),
+                error=True,
+            )
             color = None
         if color in ("B", "W"):
             self.detected_player_color = color
@@ -186,13 +254,15 @@ class LLMCcoachPopupContent(BoxLayout):
         if default_user:
             black_name = (info.get("black") or {}).get("name") or "?"
             white_name = (info.get("white") or {}).get("name") or "?"
-            color_label = (
-                "黒 (B)"
-                if color == "B"
-                else "白 (W)"
-                if color == "W"
-                else "?"
-            )
+            # Phase 226-B (B2): use i18n keys for the colour label
+            # instead of hard-coded Japanese strings. Previously the
+            # English locale still showed "黒 (B)" here.
+            if color == "B":
+                color_label = i18n._("mykatrain:llm-coach:perspective-black")
+            elif color == "W":
+                color_label = i18n._("mykatrain:llm-coach:perspective-white")
+            else:
+                color_label = "?"
             self._set_status(
                 i18n._("mykatrain:llm-coach:auto-detect-summary").format(
                     user=default_user,
@@ -231,12 +301,20 @@ class LLMCcoachPopupContent(BoxLayout):
         label.text = text
 
     def on_perspective_changed(self, *_args: Any) -> None:
-        """KV-side callback: spinner selection changed -> re-detect rank."""
+        """KV-side callback: spinner selection changed -> re-detect rank.
+
+        Phase 226-B (B3): the spinner's ``text`` is the localised label
+        (e.g. ``"黒 (B)"`` / ``"白 (W)"`` / ``"自動"``) and depends on
+        the active language. We reverse-map it to the stable internal
+        value ``"B"`` / ``"W"`` / ``"auto"`` so the rest of the code
+        never has to ``startswith("黒")`` again.
+        """
         # Read the spinner value via ids (defensive against stale ref).
         spinner = self._get_widget("perspective_select")
         if spinner is None:
             return
-        self.perspective_value = getattr(spinner, "text", "auto")
+        raw = getattr(spinner, "text", "") or ""
+        self.perspective_value = _spinner_text_to_internal(raw)
         self._populate_rank_and_perspective()
 
     # ---- Button handlers ----------------------------------------------
@@ -460,6 +538,11 @@ def open_llm_coach_popup(ctx: Any) -> Any:
     """Open the LLM Coach popup anchored to the given KaTrainGui context.
 
     Returns the popup instance so tests can inspect it.
+
+    Phase 226-B (B1): wire ``cancel_pending_clocks`` to ``on_dismiss``
+    so any pending Clock events (rank/perspective retry loop) are
+    unscheduled when the popup closes. Without this, a slow retry loop
+    could keep referencing widgets of a dismissed popup.
     """
     from kivy.metrics import dp
 
@@ -472,6 +555,8 @@ def open_llm_coach_popup(ctx: Any) -> Any:
         content=content,
     ).__self__
     content.popup = popup
+    # Phase 226-B (B1): clean up pending Clock events on dismiss.
+    popup.bind(on_dismiss=content.cancel_pending_clocks)
     popup.open()
     return popup
 
@@ -479,27 +564,53 @@ def open_llm_coach_popup(ctx: Any) -> Any:
 # --- Helper (kept at module scope so tests can import) -----------------
 
 
+# Phase 226-B (B3): mapping from the localised spinner label back to the
+# stable internal value. We look up the i18n keys at call time so the
+# mapping stays correct even if the user switches languages at runtime.
+def _spinner_text_to_internal(text: str) -> str:
+    """Reverse-map a localised spinner label to ``"auto"``/``"B"``/``"W"``.
+
+    Falls back to ``"auto"`` when the text doesn't match any of the
+    three known labels (e.g. on partial matches or future i18n edits).
+    """
+    if not text:
+        return "auto"
+    if text == i18n._("mykatrain:llm-coach:perspective-black"):
+        return "B"
+    if text == i18n._("mykatrain:llm-coach:perspective-white"):
+        return "W"
+    return "auto"
+
+
 def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
     """Pick the rank to show for the active perspective.
 
     Phase 225.6: the rank hint shows the player's own rank when the
     perspective is Auto / B / W. Returns ``None`` when nothing is known.
+
+    Phase 226-B (B3): ``perspective_value`` is now always one of
+    ``"auto"`` / ``"B"`` / ``"W"`` (the spinner's internal value), so
+    we no longer need ``startswith("黒")`` heuristics.
     """
     black = (info.get("black") or {}).get("rank") or None
     white = (info.get("white") or {}).get("rank") or None
-    if perspective_value == "B" or perspective_value.lower().startswith("黒"):
+    if perspective_value == "B":
         return black
-    if perspective_value == "W" or perspective_value.lower().startswith("白"):
+    if perspective_value == "W":
         return white
     return black or white
 
 
 def _resolve_player_color(perspective_value: str, detected: str | None) -> str | None:
-    """Resolve the user's perspective spinner selection to a "B"/"W"/None."""
+    """Resolve the user's perspective spinner selection to a "B"/"W"/None.
+
+    Phase 226-B (B3): ``perspective_value`` is the stable internal value
+    (``"auto"`` / ``"B"`` / ``"W"``), not the localised label.
+    """
     val = perspective_value or "auto"
-    if val == "B" or val.startswith("黒"):
+    if val == "B":
         return "B"
-    if val == "W" or val.startswith("白"):
+    if val == "W":
         return "W"
     # auto: prefer detected, else None
     return detected

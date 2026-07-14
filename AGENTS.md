@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,13 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-B — LLM コーチ GUI 堅牢性・バグ修正**（Lv3、3 ファイル + 8 unit tests、全 5104 件テスト合格）
+  - **B1 無限再試行ループの解消**: `_populate_rank_and_perspective` が karte_path 空時に `Clock.schedule_once` で無限再試行していた問題を修正。最大再試行回数（5回）を追加し、`on_dismiss` で保留中 Clock イベントをキャンセルする `cancel_pending_clocks` 機構を導入
+  - **B2 ハードコード日本語の i18n 化**: `auto-detect-summary` メッセージ内の `"黒 (B)" / "白 (W)"` を i18n キー（`perspective-black` / `perspective-white`）に置き換え。en ロケールで日本語が混入する問題を解消
+  - **B3 Spinner 安定内部値の導入**: Spinner の `text`（ローカライズ文字列）を表示専用とし、内部値（`"auto"/"B"/"W"`）を `perspective_value` で保持。`startswith("黒")` 判定を廃止し、`_spinner_text_to_internal` ヘルパーで逆マッピング
+  - **B4 detect_player_info のキャッシュ化**: `detect_player_color_for_user` が `player_info` 引数を受け取り、同一 JSON の2回読み込みを解消
+  - **B5 例外表示の統一**: `detect_player_color_for_user` の例外を黙殺せず、`auto-detect-failed` ステータスで表示するよう統一
+  - デッドコード `_COPY_FEEDBACK_SECONDS` 削除
 - 2026-07-15: **Phase 226-A — LLM コーチ機能 検証ロジック強化**（Lv3、2 ファイル + 26 unit tests、全 5096 件テスト合格）
   - **A1 Lexicon 検証の実働化**: `_extract_lexicon_mentions` が英 ID と日本語語句の不整合で常に空を返していた問題を修正。`lexicon.build_id_to_ja_term_map()` ヘルパーで id→ja_term 逆引きを構築し、注入 lexicon 外の「」語句を `lexicon_mention_not_injected` (LOW) で警告生成
   - **A2 症状 ID 抽出の 3 段階フォールバック**: 従来の行末 `参照した症状ID: [...]` (tier 1) に加え、インライン `症状: / Symptoms:` (tier 2) と全文 grep セーフティネット (tier 3) を追加。LLM が指示形式を無視しても捕捉可能

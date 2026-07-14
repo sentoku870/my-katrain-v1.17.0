@@ -32,7 +32,6 @@ from katrain.core.coach import cli as coach_cli
 from katrain.core.coach import llm_validator as coach_validator
 from katrain.gui.features import llm_coach
 
-
 # --- Helpers -----------------------------------------------------------
 
 
@@ -377,3 +376,69 @@ class TestDetectPlayerColorForUser:
         color, rank = detect_player_color_for_user(None, tmp_path / "k.json")
         assert color is None
         assert rank is None
+
+
+# --- Phase 226-B (B4): detect_player_color_for_user with player_info --
+
+
+class TestDetectPlayerColorForUserWithPlayerInfo:
+    """Phase 226-B (B4): the caller can pass an already-loaded
+    ``player_info`` dict to avoid re-reading the Karte JSON."""
+
+    def test_uses_supplied_player_info_without_reading_file(self, tmp_path):
+        # Pass a player_info dict directly. The karte_path is set to a
+        # non-existent file to prove we don't fall through to reading it.
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        ctx = MagicMock()
+        ctx.config.return_value = {"default_user_name": "sentoku"}
+        info = {
+            "black": {"name": "sentoku", "rank": "5k"},
+            "white": {"name": "opponent", "rank": "6k"},
+            "source": "karte_meta",
+        }
+        color, rank = detect_player_color_for_user(
+            ctx, tmp_path / "does-not-exist.json", player_info=info
+        )
+        assert color == "B"
+        assert rank == "5k"
+
+    def test_player_info_none_falls_back_to_file_read(self, tmp_path):
+        # When player_info is None, the function reads the file itself.
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "sentoku", "rank": "5k"},
+                            "white": {"name": "opponent", "rank": "6k"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        ctx = MagicMock()
+        ctx.config.return_value = {"default_user_name": "sentoku"}
+        color, rank = detect_player_color_for_user(ctx, karte, player_info=None)
+        assert color == "B"
+        assert rank == "5k"
+
+    def test_player_info_white_user(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_color_for_user
+
+        ctx = MagicMock()
+        ctx.config.return_value = {"default_user_name": "opponent"}
+        info = {
+            "black": {"name": "sentoku", "rank": "5k"},
+            "white": {"name": "opponent", "rank": "6k"},
+            "source": "karte_meta",
+        }
+        color, rank = detect_player_color_for_user(
+            ctx, tmp_path / "k.json", player_info=info
+        )
+        assert color == "W"
+        assert rank == "6k"

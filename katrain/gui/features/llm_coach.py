@@ -42,7 +42,7 @@ def _read_karte(karte_path: str | Path) -> dict[str, Any]:
 
 
 def build_llm_prompt(
-    ctx: "FeatureContext | None",
+    ctx: FeatureContext | None,
     karte_path: str | Path,
     *,
     rank: str | None = None,
@@ -92,7 +92,7 @@ def build_llm_prompt(
 
 
 def validate_llm_response(
-    ctx: "FeatureContext | None",
+    ctx: FeatureContext | None,
     karte_path: str | Path,
     llm_text: str,
     *,
@@ -181,7 +181,7 @@ def _render_validation_report(report: Any) -> str:
     return "\n".join(lines) + "\n"
 
 
-def find_latest_karte(ctx: "FeatureContext") -> Path | None:
+def find_latest_karte(ctx: FeatureContext) -> Path | None:
     """Locate the most recent ``karte_*.json`` in the configured output dir.
 
     Returns ``None`` if the directory does not exist or no karte report is
@@ -205,7 +205,7 @@ def find_latest_karte(ctx: "FeatureContext") -> Path | None:
 
 
 def detect_player_info(
-    ctx: "FeatureContext | None",
+    ctx: FeatureContext | None,
     karte_path: str | Path,
 ) -> dict[str, Any]:
     """Phase 225.6: extract black/white player info from a Karte JSON.
@@ -275,15 +275,23 @@ def _empty_player_info(source: str) -> dict[str, Any]:
 
 
 def detect_player_color_for_user(
-    ctx: "FeatureContext | None",
+    ctx: FeatureContext | None,
     karte_path: str | Path,
+    *,
+    player_info: dict[str, Any] | None = None,
 ) -> tuple[str | None, str | None]:
-    """Phase 225.6: determine which side the configured default user
-    plays and return ``(color, rank)``.
+    """Phase 225.6 / Phase 226-B (B4): determine which side the
+    configured default user plays and return ``(color, rank)``.
 
     ``color`` is ``"B"`` / ``"W"`` / ``None``; ``rank`` is the matching
     rank string from the Karte / SGF. ``None`` is returned when the
     user setting is empty or no match is found.
+
+    Phase 226-B (B4): the caller may pass an already-loaded
+    ``player_info`` dict (as returned by :func:`detect_player_info`) to
+    avoid reading & parsing the same JSON a second time. When
+    ``player_info`` is ``None`` we fall back to the previous behaviour
+    of reading the file ourselves.
     """
     if ctx is None:
         return None, None
@@ -292,7 +300,7 @@ def detect_player_color_for_user(
     )
     if not default_user:
         return None, None
-    info = detect_player_info(ctx, karte_path)
+    info = player_info if player_info is not None else detect_player_info(ctx, karte_path)
     from katrain.core.coach.sgf_player_info import extract_player_info_for_user
 
     pseudo = _SgfInfoLike(info["black"], info["white"])
