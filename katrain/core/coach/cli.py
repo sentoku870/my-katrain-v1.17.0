@@ -228,6 +228,137 @@ def cmd_lexicon(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_analyze(args: argparse.Namespace) -> int:
+    """Sub-command: detailed overview of a Karte JSON.
+
+    Renders a Markdown report with:
+    - Schema version + meta summary
+    - Aggregate metrics (avg points_lost, winrate/scoreLead correlation,
+      longest streak, total streak loss, weakness concentration, etc.)
+    - All auto-detected symptoms (per-move + weakness + streak)
+    - Winrate/scoreLead pairs (count + first/last)
+
+    Phase 217: this is the "diagnose your karte" CLI helper that the
+    LLM-coach pipeline uses internally as a debugging view.
+    """
+    from katrain.core.coach.karte_detector import (
+        detect_symptoms_from_karte,
+        extract_avg_points_lost,
+        extract_avg_streak_loss,
+        extract_avg_winrate_lost,
+        extract_consecutive_loss_run,
+        extract_critical_move_count,
+        extract_game_count,
+        extract_longest_streak,
+        extract_max_overall_difficulty,
+        extract_max_score_stdev,
+        extract_max_winrate_drop,
+        extract_streak_count,
+        extract_total_streak_loss,
+        extract_weakness_concentration,
+        extract_winrate_scorelead_correlation,
+        extract_winrate_scorelead_pairs,
+    )
+    from katrain.core.coach.master_db import CoachMode, ToneVoice
+    from katrain.core.coach.tones import modes_for_voice, select_voice
+
+    karte = _load_karte(Path(args.karte_json))
+
+    lines: list[str] = ["# Karte Analysis", ""]
+
+    # Meta
+    meta = karte.get("meta", {}) or {}
+    lines.append("## Meta")
+    lines.append(f"- schema_version: `{karte.get('schema_version', 'unknown')}`")
+    lines.append(f"- game_id: `{meta.get('game_id', 'unknown')}`")
+    lines.append(f"- players: {meta.get('players', {})}")
+    lines.append(f"- board_size: {meta.get('board_size', '?')}")
+    lines.append(f"- result: `{meta.get('result', '?')}`")
+    lines.append("")
+
+    # Aggregate metrics
+    lines.append("## Aggregate Metrics")
+    avg_loss = extract_avg_points_lost(karte)
+    if avg_loss is not None:
+        lines.append(f"- avg_points_lost: {avg_loss:.2f}")
+    avg_wr = extract_avg_winrate_lost(karte)
+    if avg_wr is not None:
+        lines.append(f"- avg_winrate_lost: {avg_wr:.4f}")
+    max_wr = extract_max_winrate_drop(karte)
+    if max_wr is not None:
+        lines.append(f"- max_winrate_drop: {max_wr:.4f}")
+    max_std = extract_max_score_stdev(karte)
+    if max_std is not None:
+        lines.append(f"- max_score_stdev: {max_std:.2f}")
+    max_diff = extract_max_overall_difficulty(karte)
+    if max_diff is not None:
+        lines.append(f"- max_overall_difficulty: {max_diff:.2f}")
+    crit = extract_critical_move_count(karte)
+    if crit:
+        lines.append(f"- critical_move_count: {crit}")
+    wc = extract_weakness_concentration(karte)
+    if wc is not None:
+        lines.append(f"- weakness_concentration: {wc:.2%}")
+    gc = extract_game_count(karte)
+    if gc is not None:
+        lines.append(f"- game_count: {gc}")
+    lines.append("")
+
+    # Streak metrics
+    lines.append("## Streak Metrics")
+    longest = extract_longest_streak(karte)
+    total = extract_total_streak_loss(karte)
+    sc = extract_streak_count(karte)
+    lr = extract_consecutive_loss_run(karte)
+    avg_s = extract_avg_streak_loss(karte)
+    lines.append(f"- longest_streak: {longest}")
+    lines.append(f"- total_streak_loss: {total:.2f}")
+    lines.append(f"- streak_count: {sc}")
+    lines.append(f"- consecutive_loss_run: {lr}")
+    lines.append(f"- avg_streak_loss: {avg_s:.2f}")
+    lines.append("")
+
+    # Correlation
+    corr = extract_winrate_scorelead_correlation(karte)
+    pairs = extract_winrate_scorelead_pairs(karte)
+    lines.append("## Correlation")
+    if corr is None:
+        lines.append("- winrate / scoreLead correlation: (insufficient data)")
+    else:
+        lines.append(f"- winrate / scoreLead correlation: **{corr:+.3f}**")
+    lines.append(f"- numeric pairs: {len(pairs)}")
+    lines.append("")
+
+    # Voice (would-be-prompt configuration)
+    voice = select_voice(args.rank)
+    modes = modes_for_voice(voice)
+    lines.append("## Would-be Coach Configuration")
+    lines.append(f"- rank_arg: `{args.rank or '(default)'}`")
+    lines.append(f"- voice: `{voice.value}` ({voice.name})")
+    if modes:
+        lines.append(f"- modes: {[m.name for m in modes]}")
+    lines.append("")
+
+    # Detected symptoms
+    fired = detect_symptoms_from_karte(karte)
+    lines.append("## Detected Symptoms")
+    lines.append(f"- count: {len(fired)}")
+    if fired:
+        lines.append("")
+        for sid in fired:
+            lines.append(f"  - `{sid.value}`")
+    lines.append("")
+
+    output = "\n".join(lines) + "\n"
+
+    if args.out:
+        Path(args.out).write_text(output, encoding="utf-8")
+        print(f"✅ Wrote analysis to {args.out}")
+    else:
+        sys.stdout.write(output)
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="katrain.core.coach.cli",
@@ -278,6 +409,22 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lex = sub.add_parser("lexicon", help="Print a Lexicon entry by id")
     p_lex.add_argument("entry_id", help="Lexicon entry id (e.g. 'liberty')")
     p_lex.set_defaults(func=cmd_lexicon)
+
+    # analyze (Phase 217)
+    p_an = sub.add_parser(
+        "analyze",
+        help="Print a structured Karte analysis (meta + metrics + symptoms)",
+    )
+    p_an.add_argument("karte_json", help="Path to Karte JSON file")
+    p_an.add_argument(
+        "--rank",
+        help="Player rank (would-be prompt configuration)",
+    )
+    p_an.add_argument(
+        "--out",
+        help="Write analysis to this file (default: stdout)",
+    )
+    p_an.set_defaults(func=cmd_analyze)
 
     return parser
 

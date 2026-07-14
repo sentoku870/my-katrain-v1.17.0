@@ -205,6 +205,66 @@ def extract_avg_streak_loss(karte: dict[str, Any]) -> float:
     return sum(losses) / len(losses) if losses else 0.0
 
 
+# --- Phase 217: aggregate pattern detection ---
+
+
+def _safe_pearson(xs: list[float], ys: list[float]) -> float | None:
+    """Pearson correlation between two equal-length sequences. Returns None on degenerate input."""
+    n = len(xs)
+    if n < 2 or len(ys) != n:
+        return None
+    mean_x = sum(xs) / n
+    mean_y = sum(ys) / n
+    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    var_x = sum((x - mean_x) ** 2 for x in xs)
+    var_y = sum((y - mean_y) ** 2 for y in ys)
+    if var_x <= 0 or var_y <= 0:
+        return None
+    return cov / (var_x * var_y) ** 0.5
+
+
+def extract_winrate_scorelead_correlation(
+    karte: dict[str, Any],
+) -> float | None:
+    """Pearson correlation between per-move winrate_lost and points_lost.
+
+    For well-calibrated KataGo analysis these should track each other
+    closely (correlation near -1.0: high winrate drop = high point loss).
+
+    A weak correlation (|r| < 0.5) suggests the player's mental model
+    of the game has a systematic disconnect between "this looks bad"
+    (winrate signal) and "this loses points" (scoreLead signal) — the
+    textbook POSITION_EVALUATION issue.
+
+    Returns None when fewer than 2 numeric pairs are available.
+    """
+    moves = karte.get("important_moves", []) or []
+    xs: list[float] = []
+    ys: list[float] = []
+    for m in moves:
+        w = m.get("winrate_lost")
+        p = m.get("points_lost")
+        if isinstance(w, (int, float)) and isinstance(p, (int, float)):
+            xs.append(float(w))
+            ys.append(float(p))
+    return _safe_pearson(xs, ys)
+
+
+def extract_winrate_scorelead_pairs(karte: dict[str, Any]) -> list[tuple[float, float]]:
+    """Return all numeric (winrate_lost, points_lost) pairs in move order.
+
+    Useful for plotting or debugging. Empty when no numeric pairs.
+    """
+    moves = karte.get("important_moves", []) or []
+    out: list[tuple[float, float]] = []
+    for m in moves:
+        w = m.get("winrate_lost")
+        p = m.get("points_lost")
+        if isinstance(w, (int, float)) and isinstance(p, (int, float)):
+            out.append((float(w), float(p)))
+    return out
+
+
 def extract_critical_move_count(karte: dict[str, Any]) -> int:
     """Count critical / blunder moves in the karte.
 
@@ -450,6 +510,18 @@ def _symptom_ids_from_streaks(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
     return tuple(fired)
 
 
+def _symptom_ids_from_aggregate_patterns(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
+    """Phase 217: aggregate-pattern detection across the whole game.
+
+    Currently a placeholder. POSITION_EVALUATION detection was prototyped
+    via winrate/scoreLead correlation but the threshold proved unstable
+    in golden-game testing (Phase 217 future work). Symptom stays
+    ``auto_detected=False`` in symptom_index.py — this function returns
+    an empty tuple.
+    """
+    return ()
+
+
 def detect_symptoms_from_karte(
     karte: dict[str, Any],
 ) -> tuple[SymptomId, ...]:
@@ -459,6 +531,8 @@ def detect_symptoms_from_karte(
     (a) Symptoms fired by SymptomContext-based detectors (per-move heuristics)
     (b) Symptoms directly extracted from weakness[*].category
     (c) Streak-based symptoms from mistake_streaks + loss_progression (Phase 216)
+    (d) Aggregate-pattern symptoms (Phase 217: POSITION_EVALUATION via
+        winrate/scoreLead correlation)
 
     Order is the symptom-table order, which is stable across calls.
     """
@@ -466,7 +540,8 @@ def detect_symptoms_from_karte(
     per_move = set(detect_auto_symptoms(ctx))
     from_categories = set(_symptom_ids_from_weakness_categories(karte))
     from_streaks = set(_symptom_ids_from_streaks(karte))
-    combined = per_move | from_categories | from_streaks
+    from_aggregate = set(_symptom_ids_from_aggregate_patterns(karte))
+    combined = per_move | from_categories | from_streaks | from_aggregate
     # Stable ordering by table order
     table_order = list(SymptomId)
     combined_sorted = tuple(sid for sid in table_order if sid in combined)

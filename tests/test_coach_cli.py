@@ -259,3 +259,75 @@ class TestExports:
         prompt = cli.build_prompt(karte)  # no rank
         # Default to AYAKA per select_voice fallback
         assert prompt.config.voice.value == "ayaka"
+
+
+# --- analyze sub-command (Phase 217) ---
+
+
+class TestAnalyzeCommand:
+    def test_analyze_to_stdout(self, sample_karte_path: Path, capsys):
+        rc = cli.main([
+            "analyze",
+            str(sample_karte_path),
+            "--rank", "5k",
+        ])
+        assert rc == 0
+        out = capsys.readouterr().out
+        # Required sections
+        assert "# Karte Analysis" in out
+        assert "## Meta" in out
+        assert "## Aggregate Metrics" in out
+        assert "## Streak Metrics" in out
+        assert "## Correlation" in out
+        assert "## Would-be Coach Configuration" in out
+        assert "## Detected Symptoms" in out
+
+    def test_analyze_to_file(self, sample_karte_path: Path, tmp_path: Path):
+        out_path = tmp_path / "analysis.md"
+        rc = cli.main([
+            "analyze",
+            str(sample_karte_path),
+            "--rank", "5k",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "# Karte Analysis" in content
+
+    def test_analyze_detects_symptoms(self, sample_karte_path: Path, capsys):
+        cli.main([
+            "analyze",
+            str(sample_karte_path),
+            "--rank", "5k",
+        ])
+        out = capsys.readouterr().out
+        # sample_karte has atari_blindness + big_point_blindness weaknesses
+        assert "atari_blindness" in out
+        assert "big_point_blindness" in out
+
+    def test_analyze_streak_metrics(self, sample_karte_path: Path, capsys):
+        cli.main([
+            "analyze",
+            str(sample_karte_path),
+        ])
+        out = capsys.readouterr().out
+        # Streak Metrics block should exist (data may or may not be populated)
+        assert "longest_streak:" in out
+        assert "total_streak_loss:" in out
+
+    def test_analyze_correlation_section(self, sample_karte_path: Path, capsys):
+        cli.main([
+            "analyze",
+            str(sample_karte_path),
+        ])
+        out = capsys.readouterr().out
+        assert "## Correlation" in out
+        assert "winrate / scoreLead correlation:" in out
+
+    def test_analyze_missing_file_exits_nonzero(self, tmp_path: Path):
+        with pytest.raises(FileNotFoundError):
+            cli.main([
+                "analyze",
+                str(tmp_path / "nonexistent.json"),
+            ])
