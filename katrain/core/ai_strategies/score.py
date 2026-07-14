@@ -14,15 +14,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from katrain.core.ai.constants import AI_PASS_LOSS_THRESHOLD, AI_SCORELOSS, AI_SETTLE_STONES, AI_SIMPLE_OWNERSHIP
 from katrain.core.ai_strategies_base import AIStrategy, register_strategy
-from katrain.core.constants import (
-    AI_PASS_LOSS_THRESHOLD,
-    AI_SCORELOSS,
-    AI_SETTLE_STONES,
-    AI_SIMPLE_OWNERSHIP,
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-)
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR
 from katrain.core.game import Move
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement
 

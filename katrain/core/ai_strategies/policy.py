@@ -11,13 +11,10 @@ Strategies:
 
 from __future__ import annotations
 
+from katrain.core.ai.constants import AI_POLICY, AI_WEIGHTED
 from katrain.core.ai_strategies.basic import DefaultStrategy
 from katrain.core.ai_strategies_base import AIStrategy, register_strategy
-from katrain.core.constants import (
-    AI_POLICY,
-    AI_WEIGHTED,
-    OUTPUT_DEBUG,
-)
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 from katrain.core.utils import weighted_selection_without_replacement
 

@@ -15,7 +15,7 @@ from katrain.core.ai import (
     RankStrategy,
     WeightedStrategy,
 )
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_PICK,
     AI_POLICY,
     AI_RANK,

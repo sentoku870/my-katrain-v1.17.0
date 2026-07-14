@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import math
 
+from katrain.core.ai.constants import AI_RANK
 from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies_base import register_strategy
-from katrain.core.constants import AI_RANK, OUTPUT_DEBUG
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 
 

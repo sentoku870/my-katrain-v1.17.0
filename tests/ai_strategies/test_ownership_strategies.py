@@ -11,7 +11,7 @@ from katrain.core.ai import (
     SettleStonesStrategy,
     SimpleOwnershipStrategy,
 )
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_SETTLE_STONES,
     AI_SIMPLE_OWNERSHIP,
 )

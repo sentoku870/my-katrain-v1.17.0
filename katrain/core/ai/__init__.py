@@ -35,8 +35,7 @@ from katrain.core.ai_strategies_base import (
     interp1d,
     interp2d,
 )
-from katrain.core.constants import (
-    ADDITIONAL_MOVE_ORDER,
+from katrain.core.ai.constants import (
     AI_ACCURACY_DECAY_BASE,
     AI_DEFAULT,
     AI_HANDICAP,
@@ -60,8 +59,8 @@ from katrain.core.constants import (
     AI_WEIGHTED,
     AI_WEIGHTED_ELO,
     CALIBRATED_RANK_ELO,
-    OUTPUT_DEBUG,
 )
+from katrain.core.constants import ADDITIONAL_MOVE_ORDER, OUTPUT_DEBUG
 from katrain.core.game import Game, GameNode, Move
 from katrain.core.utils import evaluation_class
 

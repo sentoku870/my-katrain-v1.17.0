@@ -31,7 +31,7 @@ from katrain.core.ai import (
     TerritoryStrategy,
     WeightedStrategy,
 )
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_ANTIMIRROR,
     AI_DEFAULT,
     AI_HANDICAP,

@@ -13,8 +13,8 @@ from katrain.common.typed_config import (
     TypedConfigWriter,
 )
 from katrain.core.ai import ai_rank_estimation
+from katrain.core.ai.constants import AI_DEFAULT
 from katrain.core.constants import (
-    AI_DEFAULT,
     CONFIG_MIN_VERSION,
     DATA_FOLDER,
     OUTPUT_DEBUG,

@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import heapq
 
+from katrain.core.ai.constants import AI_INFLUENCE
 from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies_base import generate_influence_territory_weights, register_strategy
-from katrain.core.constants import AI_INFLUENCE, OUTPUT_DEBUG
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 
 

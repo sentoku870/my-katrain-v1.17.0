@@ -7,9 +7,10 @@ on the base-class pipeline without overriding the endgame or weighting logic.
 
 from __future__ import annotations
 
+from katrain.core.ai.constants import AI_PICK
 from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies_base import register_strategy
-from katrain.core.constants import AI_PICK, OUTPUT_DEBUG
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 
 

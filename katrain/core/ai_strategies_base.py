@@ -92,7 +92,7 @@ def generate_influence_territory_weights(
     size: tuple[int, int],
 ) -> tuple[list[tuple[float, float, int, int]], str]:
     """Generate position weights for influence/territory strategies."""
-    from katrain.core.constants import AI_INFLUENCE
+    from katrain.core.ai.constants import AI_INFLUENCE
 
     thr_line = ai_settings["threshold"] - 1  # zero-based
     if ai_mode == AI_INFLUENCE:
@@ -130,7 +130,7 @@ def generate_local_tenuki_weights(
     size: tuple[int, int],
 ) -> tuple[list[tuple[float, float, int, int]], str]:
     """Generate position weights for local/tenuki strategies."""
-    from katrain.core.constants import AI_TENUKI
+    from katrain.core.ai.constants import AI_TENUKI
 
     var = ai_settings["stddev"] ** 2
     assert cn.move is not None and cn.move.coords is not None

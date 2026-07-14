@@ -20,12 +20,14 @@ from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 
 from katrain.core.ai import ai_rank_estimation
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_CONFIG_DEFAULT,
     AI_DEFAULT,
     AI_KEY_PROPERTIES,
     AI_OPTION_VALUES,
     AI_STRATEGIES_RECOMMENDED_ORDER,
+)
+from katrain.core.constants import (
     OUTPUT_DEBUG,
     OUTPUT_ERROR,
     OUTPUT_INFO,

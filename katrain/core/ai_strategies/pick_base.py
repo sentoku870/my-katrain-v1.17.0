@@ -9,12 +9,10 @@ from __future__ import annotations
 
 import heapq
 
+from katrain.core.ai.constants import AI_ENDGAME_FILL_RATIO_DEFAULT
 from katrain.core.ai_strategies.basic import DefaultStrategy
 from katrain.core.ai_strategies_base import AIStrategy, fmt_moves
-from katrain.core.constants import (
-    AI_ENDGAME_FILL_RATIO_DEFAULT,
-    OUTPUT_DEBUG,
-)
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 from katrain.core.utils import var_to_grid, weighted_selection_without_replacement
 

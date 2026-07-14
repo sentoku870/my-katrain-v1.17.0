@@ -13,14 +13,9 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from katrain.core.ai.constants import AI_HUMAN, AI_PRO
 from katrain.core.ai_strategies_base import AIStrategy, register_strategy
-from katrain.core.constants import (
-    AI_HUMAN,
-    AI_PRO,
-    OUTPUT_DEBUG,
-    OUTPUT_ERROR,
-    PRIORITY_EXTRA_AI_QUERY,
-)
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_ERROR, PRIORITY_EXTRA_AI_QUERY
 from katrain.core.game import Game, Move
 from katrain.core.utils import weighted_selection_without_replacement
 

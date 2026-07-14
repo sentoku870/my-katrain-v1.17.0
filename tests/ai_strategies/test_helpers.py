@@ -23,7 +23,7 @@ from katrain.core.ai_strategies_base import (
     interp_ix,
     register_strategy,
 )
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_DEFAULT,
     AI_HANDICAP,
     AI_HUMAN,

@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import heapq
 
+from katrain.core.ai.constants import AI_TENUKI
 from katrain.core.ai_strategies.pick_base import PickBasedStrategy
 from katrain.core.ai_strategies.policy import WeightedStrategy
 from katrain.core.ai_strategies_base import generate_local_tenuki_weights, register_strategy
-from katrain.core.constants import AI_TENUKI, OUTPUT_DEBUG
+from katrain.core.constants import OUTPUT_DEBUG
 from katrain.core.game import Move
 
 

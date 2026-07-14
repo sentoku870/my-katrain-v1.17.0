@@ -16,7 +16,7 @@ from katrain.core.ai import (
     TenukiStrategy,
     TerritoryStrategy,
 )
-from katrain.core.constants import (
+from katrain.core.ai.constants import (
     AI_HUMAN,
     AI_INFLUENCE,
     AI_LOCAL,
