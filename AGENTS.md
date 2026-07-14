@@ -26,9 +26,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
   - Phase 182（2026-07-14）: Ownership / Policy 派生ヒント
   - Phase 186（2026-07-14）: Curator 集約統合（棋譜全体の弱点パターンを Hint 化）
   - Phase 187-192（2026-07-14〜16）: Architecture Review Follow-up（A1-A4 / B1-B2）
+  - Phase 193（2026-07-16）: ドキュメントクリーンアップ
+  - Phase 194-196（2026-07-17）: MagicMock 汚染除去 + 互換シム棚卸し + hints.py サブパッケージ化
+  - Phase 197-202（2026-07-17）: 各種サブパッケージ化 + AppContext + リファクタリング
+  - Phase 203（2026-07-17）: LLM「翻訳特化」導入 調査ドキュメント（D 案: ドキュメント整備のみ）
+  - Phase 207（2026-07-17）: `core/coach/master_db.py` 実装（Lv2、Phase 208 以降は計画中）
 
-  各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` を参照。
-- **次**: TBD（計画中）
+  各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
+- **次**: TBD（Phase 207 完了、Phase 208+ 実装は計画中、着手時期未定）
 
 全体ロードマップは `docs/01-roadmap.md` を参照。
 
@@ -280,6 +285,16 @@ docs/
   - `docs/01-roadmap.md` に Phase 171-192 章追加、最終更新日を 2026-07-16 に修正
   - `docs/02-code-structure.md` 全面再構成（addendum マージ、Phase 171-192 の構造反映、Leela 系コード言及全削除）
   - `docs/archive/specs-implemented/README.md` を最新化（Phase 83-192 一覧追加）
+- 2026-07-17: **Phase 203 — LLM「翻訳特化」導入 調査ドキュメント**
+  - `docs/archive/specs-planned/` を新設（計画中スペック用ディレクトリ、初エントリ）
+  - `docs/archive/specs-planned/phase203-llm-translator.md` 作成（約 600 行、D 案: ドキュメント整備のみ）
+  - 30 症状（master doc §2-0）× KataGo 数値マッピング表、自動検出可能 22 / LLM 委ね 11 の分類を提示
+  - ハルシネーション抑制 3 層防御設計、レベル判定（BR/WR + 負け基準補正）、LLM 出力検証（警告表示のみ）設計
+- 2026-07-17: **Phase 207 — `core/coach/master_db.py`**（Lv2）
+  - 統合マスター §0 + §1 を `katrain/core/coach/master_db.py` に構造化
+  - `CoachMode` 5 モード + `ToneVoice` 3 ボイス、`estimate_mode_from_rank` / `estimate_mode_from_loss` 実装
+  - 41 件ユニットテスト合格、4509 件テスト全体グリーン
+  - Phase 208 以降（lexicon / symptom_index / tones / prompt_builder / validator）は未着手
 - 2026-07-16: Phase 192 — Position Difficulty サブパッケージ化（`core/analysis/difficulty/` 6 モジュール化、後方互換シム維持）
 - 2026-07-15: Phase 191 — Engine Subsystem TYPE_CHECKING 循環解消（`core/_engine_types.py` に集約）
 - 2026-07-15: Phase 190 — `core/engine.py` カバレッジ 48.3% → 83%（59 件追加）
