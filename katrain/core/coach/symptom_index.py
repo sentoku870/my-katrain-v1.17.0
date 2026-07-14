@@ -130,6 +130,14 @@ class SymptomContext:
         game_count: Total games played so far (None if unknown).
         weakness_concentration: Top weakness's share of total loss (None if unknown).
         board_size: Board size (19 / 13 / 9).
+        current_phase: Phase 226-F (F-A) — the dominant phase this
+            context belongs to (``"opening"`` / ``"middle"`` /
+            ``"endgame"`` / ``"unknown"``). Populated from
+            ``important_moves`` move_number median when available,
+            so karte-derived contexts can fire phase-gated detectors
+            (FIRST_MOVE_CONFUSION, TOO_MANY_CHOICES, OVERCONCENTRATION,
+            POST_JOSEKI_DIRECTION, ATTACK_WITH_PURPOSE) which were
+            previously dead because per-move ``move_number`` is unknown.
     """
 
     points_lost: float | None = None
@@ -146,28 +154,36 @@ class SymptomContext:
     game_count: int | None = None
     weakness_concentration: float | None = None
     board_size: int = 19
+    current_phase: str = "unknown"
 
     def is_phase(self, phase: str) -> bool:
-        """Return True if ``move_number`` is in the given phase.
+        """Return True if the current move is in the given phase.
 
         Phases:
         - ``"opening"``: move_number <= 50 (19x19 approx)
         - ``"middle"``: 50 < move_number <= 200
         - ``"endgame"``: move_number > 200
+
+        Phase 226-F (F-A): when ``move_number`` is unknown (the karte
+        case), fall back to the ``current_phase`` field which the karte
+        builder populates from the dominant ``important_moves`` move
+        range. Without this fallback the phase-gated detectors never
+        fired for karte contexts.
         """
-        if self.move_number is None:
+        if self.move_number is not None:
+            # Scale thresholds roughly for smaller boards
+            scale = self.board_size / 19 if self.board_size else 1.0
+            opening_max = max(15, int(50 * scale))
+            middle_max = max(60, int(200 * scale))
+            if phase == "opening":
+                return self.move_number <= opening_max
+            if phase == "middle":
+                return opening_max < self.move_number <= middle_max
+            if phase == "endgame":
+                return self.move_number > middle_max
             return False
-        # Scale thresholds roughly for smaller boards
-        scale = self.board_size / 19 if self.board_size else 1.0
-        opening_max = max(15, int(50 * scale))
-        middle_max = max(60, int(200 * scale))
-        if phase == "opening":
-            return self.move_number <= opening_max
-        if phase == "middle":
-            return opening_max < self.move_number <= middle_max
-        if phase == "endgame":
-            return self.move_number > middle_max
-        return False
+        # Fallback: trust current_phase (populated by the karte builder)
+        return self.current_phase == phase
 
 
 # --- Symptom dataclass ---

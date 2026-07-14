@@ -225,6 +225,98 @@ class TestBuildSymptomContext:
         ctx = build_symptom_context_from_karte(empty_karte)
         assert ctx.board_size == 19
 
+    # --- Phase 226-F (F-A): current_phase field ---
+
+    def test_current_phase_opening_when_most_mistakes_are_opening(self):
+        karte = {
+            "schema_version": "3.4",
+            "summary": {"total_moves": 60},
+            "important_moves": [
+                {"move_number": 10, "points_lost": 3.0},
+                {"move_number": 20, "points_lost": 4.0},
+                {"move_number": 30, "points_lost": 5.0},
+                {"move_number": 80, "points_lost": 2.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        # 3 of 4 mistakes are in the opening range → "opening"
+        assert ctx.current_phase == "opening"
+
+    def test_current_phase_middle_when_range_spans_middle(self):
+        karte = {
+            "schema_version": "3.4",
+            "summary": {"total_moves": 200},
+            "important_moves": [
+                {"move_number": 60, "points_lost": 3.0},
+                {"move_number": 100, "points_lost": 4.0},
+                {"move_number": 150, "points_lost": 5.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        # No high concentration of opening / endgame → "middle"
+        assert ctx.current_phase == "middle"
+
+    def test_current_phase_endgame_when_mistakes_concentrated_endgame(self):
+        karte = {
+            "schema_version": "3.4",
+            "summary": {"total_moves": 250},
+            "important_moves": [
+                {"move_number": 210, "points_lost": 3.0},
+                {"move_number": 220, "points_lost": 4.0},
+                {"move_number": 240, "points_lost": 5.0},
+                {"move_number": 50, "points_lost": 2.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        # 3 of 4 mistakes in endgame range → "endgame"
+        assert ctx.current_phase == "endgame"
+
+    def test_current_phase_unknown_when_no_move_numbers(self):
+        karte = {
+            "schema_version": "3.4",
+            "important_moves": [
+                {"points_lost": 3.0},
+                {"points_lost": 4.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        assert ctx.current_phase == "unknown"
+
+    def test_current_phase_scales_with_board_size(self):
+        # On a 9x9 board the opening range is much shorter.
+        karte = {
+            "schema_version": "3.4",
+            "meta": {"board_size": 9},
+            "summary": {"total_moves": 60},
+            "important_moves": [
+                {"move_number": 5, "points_lost": 3.0},
+                {"move_number": 8, "points_lost": 4.0},
+                {"move_number": 10, "points_lost": 5.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        # On 9x9, opening_max = max(15, int(50 * 9/19)) = 23
+        # All 3 moves are in the opening range on a 9x9 board.
+        assert ctx.current_phase == "opening"
+
+    def test_is_phase_uses_current_phase_when_move_number_unknown(self):
+        # Phase 226-F (F-A): when move_number is None, is_phase()
+        # falls back to current_phase so phase-gated detectors fire.
+        karte = {
+            "schema_version": "3.4",
+            "summary": {"total_moves": 60},
+            "important_moves": [
+                {"move_number": 10, "points_lost": 3.0},
+                {"move_number": 20, "points_lost": 4.0},
+                {"move_number": 30, "points_lost": 5.0},
+            ],
+        }
+        ctx = build_symptom_context_from_karte(karte)
+        assert ctx.move_number is None  # karte context
+        assert ctx.current_phase == "opening"
+        assert ctx.is_phase("opening") is True
+        assert ctx.is_phase("middle") is False
+
 
 # --- detect_symptoms_from_karte ---
 

@@ -400,6 +400,81 @@ def _is_endgame_karte(karte: dict[str, Any]) -> bool:
     return False
 
 
+def _move_number_range(karte: dict[str, Any]) -> tuple[int | None, int | None]:
+    """Return ``(min, max)`` move numbers across important_moves.
+
+    Used by :func:`_infer_current_phase` to pick a dominant phase even
+    when the per-move ``move_number`` of the aggregate context is
+    unknown.
+    """
+    moves = karte.get("important_moves", []) or []
+    nums: list[int] = []
+    for m in moves:
+        n = m.get("move_number")
+        if isinstance(n, int) and n > 0:
+            nums.append(n)
+    if not nums:
+        return (None, None)
+    return (min(nums), max(nums))
+
+
+def _infer_current_phase(
+    karte: dict[str, Any], board_size: int = 19
+) -> str:
+    """Phase 226-F (F-A): infer the dominant phase from important_moves.
+
+    Karte contexts don't have a single ``move_number`` to feed into
+    :meth:`SymptomContext.is_phase`. Instead we use the *range* of
+    move numbers seen in the karte's important_moves:
+
+    - **opening-dominant**: any move_number ≤ 50, and at least 30 % of
+      the mistakes are in the opening range.
+    - **middle-dominant**: dominant range is 50 < n ≤ 200 (or roughly
+      midgame for smaller boards).
+    - **endgame-dominant**: at least one move > 200, and at least
+      30 % of mistakes are past the middle/end boundary.
+    - **unknown**: no move numbers available.
+
+    The thresholds scale linearly with ``board_size`` for non-19 boards
+    so the phase boundary stays at roughly the same fraction of the
+    total game length.
+    """
+    lo, hi = _move_number_range(karte)
+    if lo is None or hi is None:
+        return "unknown"
+
+    scale = board_size / 19 if board_size else 1.0
+    opening_max = max(15, int(50 * scale))
+    middle_max = max(60, int(200 * scale))
+
+    moves = karte.get("important_moves", []) or []
+    nums = [m.get("move_number") for m in moves]
+    nums = [n for n in nums if isinstance(n, int) and n > 0]
+    if not nums:
+        return "unknown"
+
+    opening_n = sum(1 for n in nums if n <= opening_max)
+    endgame_n = sum(1 for n in nums if n > middle_max)
+    total = len(nums)
+
+    opening_share = opening_n / total
+    endgame_share = endgame_n / total
+
+    # Prefer the *most concentrated* phase to avoid the all-opening
+    # case where a single early mistake dominates.
+    if endgame_share >= 0.3:
+        return "endgame"
+    if opening_share >= 0.3 and hi <= opening_max:
+        return "opening"
+    if opening_share >= 0.5:
+        return "opening"
+    if lo > middle_max:
+        return "endgame"
+    # Default: if the mistakes span the middle, that's a middle-dominant
+    # karte.
+    return "middle"
+
+
 def _board_size(karte: dict[str, Any]) -> int:
     """Return board size from karte meta (default 19)."""
     meta = karte.get("meta", {}) or {}
@@ -425,7 +500,14 @@ def build_symptom_context_from_karte(
     Most fields are populated from aggregate karte data; per-move
     detail is intentionally approximated since one SymptomContext is
     shared across all moves for prompt-generation purposes.
+
+    Phase 226-F (F-A): ``current_phase`` is derived from the move
+    number range of ``important_moves`` so the phase-gated detectors
+    (FIRST_MOVE_CONFUSION, TOO_MANY_CHOICES, OVERCONCENTRATION,
+    POST_JOSEKI_DIRECTION, ATTACK_WITH_PURPOSE) can fire against
+    karte contexts.
     """
+    board_size = _board_size(karte)
     return SymptomContext(
         points_lost=extract_avg_points_lost(karte),
         winrate_lost=extract_avg_winrate_lost(karte),
@@ -441,7 +523,8 @@ def build_symptom_context_from_karte(
         avg_points_lost=extract_avg_points_lost(karte),
         game_count=extract_game_count(karte),
         weakness_concentration=extract_weakness_concentration(karte),
-        board_size=_board_size(karte),
+        board_size=board_size,
+        current_phase=_infer_current_phase(karte, board_size=board_size),
     )
 
 

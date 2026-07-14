@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A)
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,11 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-F (F-A) — SymptomContext に current_phase フィールド追加**（Lv3、2 ファイル + 11 unit tests）
+  - **問題**: `build_symptom_context_from_karte` が `move_number=None` をハードコード → 5つの phase-gated 症状（FIRST_MOVE_CONFUSION / TOO_MANY_CHOICES / OVERCONCENTRATION / POST_JOSEKI_DIRECTION / ATTACK_WITH_PURPOSE）の `ctx_is_phase()` が常に False → karte 経由で**絶対発火しない**
+  - **修正**: `SymptomContext` に `current_phase` フィールド（デフォルト `"unknown"`）を追加、`_infer_current_phase()` ヘルパーで karte の important_moves の move_number 分布から dominant phase を導出、`is_phase()` が `move_number=None` の場合に `current_phase` にフォールバック
+  - **影響範囲**: 5症状の detector が karte 経由でも発火可能になる「前提条件」を整える。detector 個別の閾値調整は F-B（Phase 226-G として分離予定）
+  - 11 件テスト追加（opening/middle/endgame 推定、board_size スケーリング、`is_phase()` フォールバック、move_number 優先順位）
 - 2026-07-15: **Phase 226-E — 軽微な品質改善**（Lv2、6 ファイル + 0 unit tests、全 5116 件テスト合格）
   - **E1 クラス名タイポ修正**: `LLMCcoachPopupContent` → `LLMCoachPopupContent`（3 ファイル 7 箇所: popup.py / KV / test_llm_coach_popup.py）
   - **E2 デッドコード削除**: `_COPY_FEEDBACK_SECONDS` は Phase 226-B 内で既に削除済み（本 Phase で再確認・スキップ）

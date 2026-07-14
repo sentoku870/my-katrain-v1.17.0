@@ -187,6 +187,38 @@ class TestSymptomContextPhase:
         ctx = SymptomContext(move_number=15, board_size=13)
         assert ctx.is_phase("opening") is True
 
+    # --- Phase 226-F (F-A): current_phase fallback ---
+
+    def test_current_phase_fallback_when_move_number_unknown(self):
+        # When move_number is None the karte builder populates
+        # current_phase instead; is_phase() must consult it.
+        ctx = SymptomContext(move_number=None, current_phase="opening")
+        assert ctx.is_phase("opening") is True
+        assert ctx.is_phase("middle") is False
+        assert ctx.is_phase("endgame") is False
+
+    def test_current_phase_fallback_middle(self):
+        ctx = SymptomContext(move_number=None, current_phase="middle")
+        assert ctx.is_phase("opening") is False
+        assert ctx.is_phase("middle") is True
+
+    def test_current_phase_fallback_endgame(self):
+        ctx = SymptomContext(move_number=None, current_phase="endgame")
+        assert ctx.is_phase("middle") is False
+        assert ctx.is_phase("endgame") is True
+
+    def test_current_phase_fallback_unknown(self):
+        ctx = SymptomContext(move_number=None, current_phase="unknown")
+        for phase in ("opening", "middle", "endgame"):
+            assert ctx.is_phase(phase) is False
+
+    def test_move_number_takes_precedence_over_current_phase(self):
+        # Per-move contexts have a real move_number; the karte fallback
+        # must not override the explicit value.
+        ctx = SymptomContext(move_number=300, current_phase="opening")
+        assert ctx.is_phase("opening") is False
+        assert ctx.is_phase("endgame") is True
+
 
 # --- detect_auto_symptoms: positive/negative ---
 
