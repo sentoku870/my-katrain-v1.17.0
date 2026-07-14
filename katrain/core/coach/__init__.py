@@ -1,9 +1,9 @@
-"""Phase 207: Coach module — Master coaching database (mode/tone).
+"""Phase 207-208: Coach module — Master coaching database + Lexicon.
 
 This subpackage hosts the LLM "translation" pipeline data and helpers
 documented in `docs/archive/specs-planned/phase203-llm-translator.md`.
 
-Layout (planned):
+Layout:
 - master_db.py   (Phase 207): §0 / §1 — mode classification + tone config
 - lexicon.py     (Phase 208): go_lexicon YAML loader
 - symptom_index.py (Phase 209): §2-0 symptom → KataGo metric mapping
@@ -14,6 +14,20 @@ Layout (planned):
 All modules are core-layer (Kivy-free).
 """
 
+from katrain.core.coach.lexicon import (
+    DEFAULT_LEXICON_PATH,
+    LexiconBundle,
+    LexiconConcept,
+    LexiconEntry,
+    all_ids,
+    entries_by_category,
+    entries_by_level,
+    get_concept,
+    get_entry,
+    inject_lexicon_for_prompt,
+    load_lexicon,
+    validate_references,
+)
 from katrain.core.coach.master_db import (
     CoachMode,
     ModeConfig,
@@ -29,6 +43,7 @@ from katrain.core.coach.master_db import (
 )
 
 __all__ = [
+    # master_db (Phase 207)
     "CoachMode",
     "ToneVoice",
     "RankRange",
@@ -40,4 +55,17 @@ __all__ = [
     "all_tones",
     "estimate_mode_from_rank",
     "estimate_mode_from_loss",
-]
+    # lexicon (Phase 208)
+    "LexiconEntry",
+    "LexiconConcept",
+    "LexiconBundle",
+    "DEFAULT_LEXICON_PATH",
+    "load_lexicon",
+    "get_entry",
+    "get_concept",
+    "entries_by_level",
+    "entries_by_category",
+    "validate_references",
+    "inject_lexicon_for_prompt",
+    "all_ids",
+] 
