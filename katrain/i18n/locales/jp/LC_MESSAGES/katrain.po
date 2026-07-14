@@ -1146,6 +1146,27 @@ msgstr "Karte JSON のパス"
 msgid "mykatrain:llm-coach:rank-label"
 msgstr "棋力 (例: 5k)"
 
+msgid "mykatrain:llm-coach:rank-auto"
+msgstr "（SGF から自動取得: {rank}）"
+
+msgid "mykatrain:llm-coach:perspective-label"
+msgstr "視点"
+
+msgid "mykatrain:llm-coach:perspective-auto"
+msgstr "自動 (default user)"
+
+msgid "mykatrain:llm-coach:perspective-black"
+msgstr "黒 (B)"
+
+msgid "mykatrain:llm-coach:perspective-white"
+msgstr "白 (W)"
+
+msgid "mykatrain:llm-coach:perspective-auto-detected"
+msgstr "（SGF から自動判定: {color}）"
+
+msgid "mykatrain:llm-coach:perspective-auto-fallback"
+msgstr "（判定不可。手動で黒/白を選択してください）"
+
 msgid "mykatrain:llm-coach:response-label"
 msgstr "LLM 応答（ここに貼り付け）"
 

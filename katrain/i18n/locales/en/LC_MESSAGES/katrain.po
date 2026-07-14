@@ -99,6 +99,27 @@ msgstr "Path to Karte JSON"
 msgid "mykatrain:llm-coach:rank-label"
 msgstr "Rank (e.g. 5k)"
 
+msgid "mykatrain:llm-coach:rank-auto"
+msgstr "(auto-detected from SGF: {rank})"
+
+msgid "mykatrain:llm-coach:perspective-label"
+msgstr "Side"
+
+msgid "mykatrain:llm-coach:perspective-auto"
+msgstr "Auto (default user)"
+
+msgid "mykatrain:llm-coach:perspective-black"
+msgstr "Black (B)"
+
+msgid "mykatrain:llm-coach:perspective-white"
+msgstr "White (W)"
+
+msgid "mykatrain:llm-coach:perspective-auto-detected"
+msgstr "(auto-detected from SGF: {color})"
+
+msgid "mykatrain:llm-coach:perspective-auto-fallback"
+msgstr "(could not auto-detect — pick Black/White manually)"
+
 msgid "mykatrain:llm-coach:response-label"
 msgstr "LLM Response (paste here)"
 
