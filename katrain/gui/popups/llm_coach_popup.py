@@ -98,10 +98,16 @@ class LLMCoachPopupContent(BoxLayout):
 
     def __init__(self, **kwargs: Any) -> None:
         # Each instance gets its own mutable lists so multiple popups
-        # don't share state.
-        super().__init__(**kwargs)
+        # don't share state. These MUST be initialised BEFORE
+        # ``super().__init__`` because Kivy's ``Widget.__init__`` calls
+        # ``dispatch('on_kv_post', self)`` internally, and ``on_kv_post``
+        # immediately calls ``_schedule_once`` which touches
+        # ``self._pending_clock_events``. Without this ordering we get
+        # ``AttributeError: 'LLMCoachPopupContent' object has no
+        # attribute '_pending_clock_events'`` on popup open.
         self._pending_clock_events: list = []
         self._rank_detect_retries: int = 0
+        super().__init__(**kwargs)
 
     # ---- Lifecycle -----------------------------------------------------
 
@@ -140,7 +146,7 @@ class LLMCoachPopupContent(BoxLayout):
         self._pending_clock_events.append(ev)
         return ev
 
-    def _populate_initial_karte_path(self) -> None:
+    def _populate_initial_karte_path(self, *_args: Any) -> None:
         if self.karte_path_input is None:
             return
         if self.karte_path_input.text:
