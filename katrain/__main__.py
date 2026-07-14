@@ -95,7 +95,6 @@ from katrain.gui.error_handler import ErrorHandler
 
 # Batch analysis related imports removed; handled by BatchAnalysisController
 from katrain.gui.features.commands import dispatch, game_commands
-from katrain.gui.features.karte_export import determine_user_color
 
 # used in kv
 # used in kv
@@ -211,7 +210,7 @@ class KaTrainGui(Screen, KaTrainBase):
             get_set_zen=lambda: (self.zen, lambda v: setattr(self, "zen", v)),
             toggle_continuous_analysis=self.toggle_continuous_analysis,
             toggle_move_num=self.toggle_move_num,
-            load_from_clipboard=self._sgf_manager.load_sgf_from_clipboard,
+            load_from_clipboard=self.ctx.sgf_manager.load_sgf_from_clipboard,
             # Utilities
             logger=self.log,
             status_setter=lambda msg, level: self.controls.set_status(msg, level) if self.controls else None,
@@ -359,7 +358,7 @@ class KaTrainGui(Screen, KaTrainBase):
         else:
             self.ctx = None
 
-        self._ui_update_manager.setup_state_subscriptions()
+        self.ctx.ui_update_manager.setup_state_subscriptions()
     # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
     # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
     # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
@@ -386,7 +385,7 @@ class KaTrainGui(Screen, KaTrainBase):
         Note:
             保存は別途 save_config(section) を呼ぶ必要がある。
         """
-        self._config_manager.set_section(section, value)
+        self.ctx.config_manager.set_section(section, value)
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+).
 
@@ -401,7 +400,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def handle_animations(self, *_args: Any) -> None:
         """Delegates to AnalysisController (Phase 133)."""
-        self._analysis_controller.handle_animations()
+        self.ctx.analysis_controller.handle_animations()
 
     @property
     def play_analyze_mode(self) -> str:
@@ -409,23 +408,23 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def toggle_continuous_analysis(self, quiet: bool = False) -> None:
         """Delegates to AnalysisController (Phase 133)."""
-        self._analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
+        self.ctx.analysis_controller.toggle_continuous_analysis(quiet=quiet, clock=Clock)
 
     def toggle_move_num(self) -> None:
         """Delegates to AnalysisController (Phase 173 P0-①-B)."""
-        self._analysis_controller.toggle_move_num()
+        self.ctx.analysis_controller.toggle_move_num()
 
     def set_analysis_focus_toggle(self, focus: str) -> None:
         """Delegates to AnalysisController (Phase 133)."""
-        self._analysis_controller.set_analysis_focus_toggle(focus)
+        self.ctx.analysis_controller.set_analysis_focus_toggle(focus)
 
     def restore_last_mode(self) -> None:
         """Delegates to AnalysisController (Phase 173 P0-①-B)."""
-        self._analysis_controller.restore_last_mode()
+        self.ctx.analysis_controller.restore_last_mode()
 
     def update_focus_button_states(self) -> None:
         """Delegates to AnalysisController (Phase 133)."""
-        self._analysis_controller.update_focus_button_states()
+        self.ctx.analysis_controller.update_focus_button_states()
 
     def start(self) -> None:
         if self.engine:
@@ -449,7 +448,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self.engine = self._engine_bootstrap.create()
         EngineBootstrap.reset_initial_focus(self.engine)
 
-        self._message_loop_manager.start()
+        self.ctx.message_loop_manager.start()
         sgf_args = [
             f
             for f in sys.argv[1:]
@@ -470,12 +469,12 @@ class KaTrainGui(Screen, KaTrainBase):
         self._clock_events.append(animation_event)
 
         Window.request_keyboard(None, self, "").bind(
-            on_key_down=self._keyboard_manager.on_keyboard_down,
-            on_key_up=self._keyboard_manager.on_keyboard_up,
+            on_key_down=self.ctx.keyboard_manager.on_keyboard_down,
+            on_key_up=self.ctx.keyboard_manager.on_keyboard_up,
         )
 
         def set_focus_event(*args: Any) -> None:
-            self._keyboard_manager.last_focus_event = time.time()
+            self.ctx.keyboard_manager.last_focus_event = time.time()
 
         MDApp.get_running_app().root_window.bind(focus=set_focus_event)
 
@@ -487,7 +486,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def update_gui(self, cn: Any, redraw_board: bool = False) -> None:
         """Delegates to GUIRefreshManager (Phase 158+)."""
-        self._gui_refresh_manager.update_gui(cn, redraw_board)
+        self.ctx.gui_refresh_manager.update_gui(cn, redraw_board)
 
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods
@@ -495,19 +494,19 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def restart_engine_with_fallback(self, fallback_type: str) -> tuple[bool, TestAnalysisResult]:
         """Delegates to AutoSetupController (Phase 133)."""
-        return self._auto_setup_controller.restart_engine_with_fallback(
+        return self.ctx.auto_setup_controller.restart_engine_with_fallback(
             fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
         )
 
     def restart_engine(self) -> bool:
         """Delegates to AutoSetupController (Phase 133)."""
-        return self._auto_setup_controller.restart_engine(
+        return self.ctx.auto_setup_controller.restart_engine(
             lambda cfg: KataGoEngine(self, cfg, status_callback=self._on_engine_status)
         )
 
     def save_auto_setup_result(self, success: bool) -> None:
         """Delegates to AutoSetupController (Phase 133)."""
-        self._auto_setup_controller.save_auto_setup_result(success)
+        self.ctx.auto_setup_controller.save_auto_setup_result(success)
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
@@ -541,7 +540,7 @@ class KaTrainGui(Screen, KaTrainBase):
         self, redraw_board: bool = False
     ) -> None:  # is called after every message and on receiving analyses and config changes
         """Delegates to GameStateUpdateManager (Phase 158+)."""
-        self._game_state_update_manager.do_update_state(redraw_board=redraw_board)
+        self.ctx.game_state_update_manager.do_update_state(redraw_board=redraw_board)
 
     def update_player(self, bw: str, **kwargs: Any) -> None:
         super().update_player(bw, **kwargs)
@@ -560,7 +559,7 @@ class KaTrainGui(Screen, KaTrainBase):
     def set_note(self, note: str) -> None:
         # Guard: kv on_text may fire before _game_state_manager is initialized
         if hasattr(self, "_game_state_manager"):
-            self._game_state_manager.set_note(note)
+            self.ctx.game_state_manager.set_note(note)
         elif self.game and self.game.current_node:
             # Fallback: direct assignment during early UI construction
             self.game.current_node.note = note
@@ -624,14 +623,14 @@ class KaTrainGui(Screen, KaTrainBase):
 
     def load_sgf_file(self, file: str, fast: bool = False, rewind: bool = True) -> None:
         """Load SGF file. Delegates to SGFManager."""
-        self._sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
+        self.ctx.sgf_manager.load_sgf_file(file, fast=fast, rewind=rewind)
     def load_sgf_from_clipboard(self) -> None:
         """Load SGF from clipboard. Delegates to SGFManager."""
-        self._sgf_manager.load_sgf_from_clipboard()
+        self.ctx.sgf_manager.load_sgf_from_clipboard()
 
     def on_touch_up(self, touch: Any) -> bool:
         """Delegates scroll handling to ScrollHandler, defers to Kivy otherwise (Phase 158+)."""
-        handled = self._scroll_handler.handle_touch_up(touch)
+        handled = self.ctx.scroll_handler.handle_touch_up(touch)
         if handled:
             return True
         return super().on_touch_up(touch)  # type: ignore[no-any-return]
@@ -639,7 +638,7 @@ class KaTrainGui(Screen, KaTrainBase):
     @property
     def shortcuts(self) -> dict[str, Any]:
         """Delegate to KeyboardManager for backward compatibility."""
-        return self._keyboard_manager.shortcuts
+        return self.ctx.keyboard_manager.shortcuts
 
     @property
     def popup_open(self) -> Popup | None:
