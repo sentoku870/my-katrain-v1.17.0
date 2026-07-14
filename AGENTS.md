@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1
+- **完了**: Phase 1-225 + 225.1 + 225.2
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,10 +291,12 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-17: **Phase 225.2 — `karte_export.copy_path` Clock NameError + LLM Coach 「参照」ボタン修正**
+  - **既存バグ**: Phase 173 の `do_export_karte_ui` lazy-import から `Clock` が漏れていたため、エクスポート成功 popup の「コピー」ボタンクリックで `NameError: 'Clock' is not defined`
+  - **Phase 225 自バグ**: LLM Coach の「参照」ボタンのハンドラが `I18NFileBrowser` の `on_submit`（ダブルクリックイベント）にしかバインドされておらず、OK ボタンを押しても反応しなかった
+  - 修正: lazy-import に `Clock` 追加 / `on_success` と `on_submit` の両方にハンドラをバインド
+  - 5 件回帰テスト追加（Clock 検証 + browse ボタン両イベント bind + OK 経由のパス反映）、累計 4942 件テスト合格
 - 2026-07-17: **Phase 225.1 — `do_export_karte` Phase 172 引数抜け TypeError 修正**
-  - メニュー「LLM コーチ（手動貼付）」動作確認中にユーザーが遭遇した既存バグ
-  - `commands/export_commands.py:do_export_karte` を `*args, **kwargs` 化、未指定時は `do_mykatrain_settings_popup` をデフォルト callback に
-  - 11 件回帰テスト追加（メニュー経路 / DISPATCH_TABLE 経由 / 他 export コマンド parity）、累計 4937 件テスト合格
 - 2026-07-17: **Phase 225 — LLM Coach GUI 統合（手動貼付ワークフロー）**（Lv3、9 ファイル + 34 unit tests、累計 4882 件テスト合格）
 - 2026-07-16: **Phase 193 — Documentation cleanup**
   - Leela 関連スペック 2 ファイル削除（`leela-estimated-loss.md` / `leela-output-format.md`、Phase 171 で実装削除済）
