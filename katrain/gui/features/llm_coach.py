@@ -187,6 +187,10 @@ def find_latest_karte(ctx: FeatureContext) -> Path | None:
     Returns ``None`` if the directory does not exist or no karte report is
     present (in which case the popup will leave the path empty for the user
     to fill in manually).
+
+    Phase 227-C: this function is preserved for backward compatibility
+    (karte-only use cases). New code should prefer
+    :func:`find_latest_llm_input` which also accepts ``summary_*.json``.
     """
     from katrain.common.platform import resolve_output_directory
     from katrain.gui.features.report_navigator import get_latest_report
@@ -202,6 +206,171 @@ def find_latest_karte(ctx: FeatureContext) -> Path | None:
     if report is None or report.report_type != "karte":
         return None
     return report.path
+
+
+def find_latest_llm_input_for_ctx(ctx: FeatureContext) -> Path | None:
+    """Phase 227-C: locate the most recent karte/summary for the LLM Coach.
+
+    Thin wrapper around :func:`katrain.gui.features.report_navigator.find_latest_llm_input`
+    that resolves the configured output directory first. Returns
+    ``None`` when no LLM-input JSON exists. The caller is responsible
+    for re-detecting the type (via :func:`katrain.core.coach.is_karte`
+    / :func:`katrain.core.coach.is_summary`) to pick the right
+    downstream handler.
+
+    This is the multi-game-aware replacement for
+    :func:`find_latest_karte` and is what the popup (Phase 227-D) calls.
+    """
+    from katrain.common.platform import resolve_output_directory
+    from katrain.gui.features.report_navigator import find_latest_llm_input
+
+    mykatrain_settings = ctx.config("mykatrain_settings") or {}
+    config_dir = mykatrain_settings.get("karte_output_directory", "")
+    output_dir = resolve_output_directory(config_dir)
+
+    if not output_dir.is_dir():
+        return None
+    report = find_latest_llm_input(output_dir)
+    return report.path if report is not None else None
+
+
+def detect_player_info_for_summary(
+    summary_path: str | Path,
+    *,
+    default_user_name: str | None = None,
+) -> dict[str, Any]:
+    """Phase 227-C: extract player info from a multi-game Summary JSON.
+
+    The summary JSON shape differs from a karte: the ``players`` block
+    is keyed by **player name** (e.g. ``players["sentoku870"]``), and
+    per-player aggregate stats live under ``players[<name>].overall``.
+    The Karte's ``meta.player_info.{black,white}`` block does not
+    exist.
+
+    Selection priority:
+    1. ``default_user_name`` if it matches a key in ``players``.
+    2. The first player key in ``players`` (alphabetical order for
+       determinism when multiple players exist and no default_user is
+       configured).
+
+    Args:
+        summary_path: Path to the summary JSON file.
+        default_user_name: Optional name to look up in ``players``. When
+            omitted (e.g. in tests where no settings are available),
+            the first player is picked.
+
+    Returns:
+        Dict shaped like::
+
+            {
+                "matched_player": {
+                    "name": str | None,
+                    "rank": str | None,
+                },
+                "all_players": [
+                    {"name": str, "rank": str | None},
+                    ...
+                ],
+                "default_user_matched": bool,
+                "source": "summary_meta" | "missing",
+            }
+
+        - ``matched_player`` is the player we'll focus on (default_user
+          match or first available). Used by the GUI to auto-fill the
+          rank input.
+        - ``all_players`` is the full list, used to populate the
+          perspective selector (Phase 227-D).
+        - ``default_user_matched`` distinguishes "we picked someone
+          because the default matched" from "we fell back to the
+          first player because no default was configured".
+        - ``source`` mirrors the karte variant: ``"summary_meta"`` when
+          a ``players`` block was found, ``"missing"`` otherwise.
+    """
+    path = Path(summary_path)
+    if not path.exists():
+        return _empty_summary_player_info("missing")
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return _empty_summary_player_info("missing")
+
+    players = data.get("players", {}) or {}
+    if not isinstance(players, dict) or not players:
+        return _empty_summary_player_info("missing")
+
+    # Build a stable list of all players (alphabetical by name for
+    # determinism — the test fixtures rely on this).
+    all_players: list[dict[str, str | None]] = []
+    for name in sorted(players.keys()):
+        block = players.get(name) or {}
+        if not isinstance(block, dict):
+            block = {}
+        rank = _extract_player_rank(block)
+        all_players.append({"name": str(name), "rank": rank})
+
+    # Selection: default_user first, then first player.
+    matched_name: str | None = None
+    default_user_matched = False
+    if default_user_name and default_user_name in players:
+        matched_name = default_user_name
+        default_user_matched = True
+    elif all_players:
+        matched_name = all_players[0]["name"]
+    else:
+        return _empty_summary_player_info("missing")
+
+    # Re-resolve the matched player's rank from the original dict
+    # (we want the canonical form, not the post-sort snapshot).
+    matched_block = players.get(matched_name) or {}
+    matched_rank = _extract_player_rank(matched_block) if isinstance(matched_block, dict) else None
+
+    return {
+        "matched_player": {"name": matched_name, "rank": matched_rank},
+        "all_players": all_players,
+        "default_user_matched": default_user_matched,
+        "source": "summary_meta",
+    }
+
+
+def _extract_player_rank(player_block: dict[str, Any]) -> str | None:
+    """Phase 227-C: extract rank from ``players[<name>]`` block.
+
+    The summary export stores rank under several possible keys
+    depending on schema version. We try them in priority order:
+
+    1. ``player_block["rank"]`` (flat, used in newer exports)
+    2. ``player_block["overall"]["rank"]`` (Phase 158+ nested form)
+    3. ``player_block["stats"]["rank"]`` (legacy form)
+
+    Returns ``None`` when none of these are populated.
+    """
+    if not isinstance(player_block, dict):
+        return None
+    direct = player_block.get("rank")
+    if isinstance(direct, str) and direct:
+        return direct
+    overall = player_block.get("overall")
+    if isinstance(overall, dict):
+        r = overall.get("rank")
+        if isinstance(r, str) and r:
+            return r
+    stats = player_block.get("stats")
+    if isinstance(stats, dict):
+        r = stats.get("rank")
+        if isinstance(r, str) and r:
+            return r
+    return None
+
+
+def _empty_summary_player_info(source: str) -> dict[str, Any]:
+    return {
+        "matched_player": {"name": None, "rank": None},
+        "all_players": [],
+        "default_user_matched": False,
+        "source": source,
+    }
 
 
 def detect_player_info(

@@ -442,3 +442,246 @@ class TestDetectPlayerColorForUserWithPlayerInfo:
         )
         assert color == "W"
         assert rank == "6k"
+
+
+# --- Phase 227-C: detect_player_info_for_summary + find_latest_llm_input_for_ctx ---
+
+
+class TestDetectPlayerInfoForSummary:
+    """Phase 227-C: extract player info from a multi-game Summary JSON.
+
+    Summary shape is different from karte — the ``players`` block is
+    keyed by player name, not by color. ``default_user_name`` is the
+    primary selection key; when absent, we fall back to the first
+    player (alphabetical order for determinism).
+    """
+
+    def _write_summary(self, tmp_path: Path, players: dict) -> Path:
+        p = tmp_path / "summary.json"
+        p.write_text(
+            json.dumps({"meta": {"games_analyzed": 5}, "players": players}),
+            encoding="utf-8",
+        )
+        return p
+
+    def test_default_user_match_picks_named_player(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d", "win_rate": 0.4},
+                "Opponent1": {"rank": "3d", "win_rate": 0.6},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["source"] == "summary_meta"
+        assert info["default_user_matched"] is True
+        assert info["matched_player"]["name"] == "sentoku870"
+        assert info["matched_player"]["rank"] == "4d"
+
+    def test_no_default_user_picks_first_alphabetical(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Alice": {"rank": "5d"},
+                "Bob": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path)
+        assert info["default_user_matched"] is False
+        assert info["matched_player"]["name"] == "Alice"
+
+    def test_default_user_mismatch_falls_back(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Opponent1": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="NonExistent")
+        assert info["default_user_matched"] is False
+        # Falls back to first alphabetical
+        assert info["matched_player"]["name"] == "Opponent1"
+
+    def test_default_user_none_explicit(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {"sentoku870": {"rank": "4d"}},
+        )
+        info = detect_player_info_for_summary(path, default_user_name=None)
+        assert info["default_user_matched"] is False
+        assert info["matched_player"]["name"] == "sentoku870"
+
+    def test_nested_overall_rank_extraction(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Phase 158+ format: rank lives under ``overall``
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {
+                    "overall": {"rank": "5k", "total_games": 10},
+                    "win_rate": 0.5,
+                },
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "5k"
+
+    def test_legacy_stats_rank_extraction(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Legacy form: rank under ``stats``
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"stats": {"rank": "3d"}},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "3d"
+
+    def test_missing_file_returns_missing_source(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        info = detect_player_info_for_summary(tmp_path / "nope.json")
+        assert info["source"] == "missing"
+        assert info["matched_player"]["name"] is None
+        assert info["all_players"] == []
+
+    def test_no_players_block_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text(json.dumps({"meta": {"games_analyzed": 1}}), encoding="utf-8")
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_empty_players_block_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text(
+            json.dumps({"meta": {"games_analyzed": 1}, "players": {}}),
+            encoding="utf-8",
+        )
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_malformed_json_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text("not json", encoding="utf-8")
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_all_players_listed(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Alice": {"rank": "5d"},
+                "Bob": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path)
+        # Alphabetical order, regardless of which is matched
+        assert [p["name"] for p in info["all_players"]] == [
+            "Alice",
+            "Bob",
+            "sentoku870",
+        ]
+
+    def test_player_block_with_non_dict_value(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Edge case: a player key has a non-dict value
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "BadEntry": "not a dict",
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        # Should not crash; BadEntry shows up as a player with rank=None
+        names = [p["name"] for p in info["all_players"]]
+        assert "BadEntry" in names
+        bad = next(p for p in info["all_players"] if p["name"] == "BadEntry")
+        assert bad["rank"] is None
+
+    def test_rank_priority_direct_beats_nested(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # When both direct ``rank`` and ``overall.rank`` exist, direct wins
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {
+                    "rank": "5k",  # direct
+                    "overall": {"rank": "4d"},  # would be wrong
+                },
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "5k"
+
+
+class TestFindLatestLlmInputForCtx:
+    """Phase 227-C: ctx-aware wrapper around ``find_latest_llm_input``."""
+
+    def test_returns_none_when_output_dir_missing(self, tmp_path):
+        ctx = MagicMock()
+        ctx.config.return_value = {
+            "karte_output_directory": str(tmp_path / "no-such-dir")
+        }
+        assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None
+
+    def test_returns_latest_karte(self, tmp_path):
+        (tmp_path / "karte_old.json").write_text("{}")
+        (tmp_path / "karte_new.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "karte_old.json", (1000, 1000))
+        os.utime(tmp_path / "karte_new.json", (2000, 2000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "karte_new.json"
+
+    def test_returns_latest_summary(self, tmp_path):
+        (tmp_path / "summary_x.json").write_text("{}")
+        (tmp_path / "summary_y.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "summary_x.json", (1000, 1000))
+        os.utime(tmp_path / "summary_y.json", (2000, 2000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "summary_y.json"
+
+    def test_returns_mixed_latest(self, tmp_path):
+        (tmp_path / "karte_a.json").write_text("{}")
+        (tmp_path / "summary_b.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "karte_a.json", (1000, 1000))
+        os.utime(tmp_path / "summary_b.json", (5000, 5000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "summary_b.json"
+
+    def test_no_reports_returns_none(self, tmp_path):
+        ctx = _fake_ctx(tmp_path)
+        assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None

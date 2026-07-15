@@ -78,6 +78,46 @@ def get_latest_report(output_dir: Path) -> ReportInfo | None:
     return reports[0] if reports else None
 
 
+# Phase 227-C: types accepted as LLM Coach input. The popup auto-fills
+# whichever was generated most recently. ``karte`` and ``summary`` are
+# the two valid JSON report types; ``package`` is a zipped bundle not
+# directly usable as an LLM prompt input.
+_LLM_INPUT_TYPES: frozenset[str] = frozenset({"karte", "summary"})
+
+
+def find_latest_llm_input(output_dir: Path) -> ReportInfo | None:
+    """Phase 227-C: locate the most recent karte/summary report.
+
+    Same as :func:`get_latest_report` but restricted to the two JSON
+    types the LLM Coach popup can consume (``karte`` and ``summary``).
+    ``package`` (.zip) bundles are skipped — the popup needs a raw JSON
+    file to read.
+
+    Args:
+        output_dir: Directory to search in.
+
+    Returns:
+        The most recent :class:`ReportInfo` whose ``report_type`` is
+        ``"karte"`` or ``"summary"``, or ``None`` when no such file
+        exists. The caller is expected to dispatch on
+        ``report_info.report_type`` to pick the right validator /
+        prompt builder.
+    """
+    if not output_dir.is_dir():
+        return None
+    # limit=10 is a safety cap — we just need the most recent, but
+    # this matches the existing ``find_recent_reports`` contract.
+    reports = [
+        r for r in find_recent_reports(output_dir, limit=10)
+        if r.report_type in _LLM_INPUT_TYPES
+    ]
+    if not reports:
+        return None
+    # ``find_recent_reports`` already returns mtime-desc sorted, so
+    # the first match is the most recent.
+    return reports[0]
+
+
 # --- UI Functions (Kivy-dependent via lazy import) ---
 
 if TYPE_CHECKING:
