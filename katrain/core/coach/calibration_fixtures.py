@@ -103,7 +103,9 @@ _OVERPLAY_FIXTURE = GoldenFixture(
     name="reckless_overplay",
     description=(
         "OVERPLAY tag + score_stdev > 1.5 → OVERPLAY_RECKLESS_ATTACK "
-        "should fire via per-move SymptomContext detector."
+        "should fire via per-move SymptomContext detector. Phase 226-F "
+        "(F-A) added ``current_phase`` so OVERCONCENTRATION also fires "
+        "(middle phase + overplay tag)."
     ),
     karte={
         "schema_version": "3.4",
@@ -125,8 +127,15 @@ _OVERPLAY_FIXTURE = GoldenFixture(
         "mistake_streaks": {"black": [], "white": []},
         "loss_progression": [{"mistake_count": 1}, {"mistake_count": 0}],
     },
-    expected_symptom_ids=(SymptomId.OVERPLAY_RECKLESS_ATTACK,),
-    tolerance_notes="OVERPLAY + score_stdev > 1.5 triggers per-move detector.",
+    expected_symptom_ids=(
+        SymptomId.OVERPLAY_RECKLESS_ATTACK,
+        SymptomId.OVERCONCENTRATION,
+    ),
+    tolerance_notes=(
+        "OVERPLAY + score_stdev > 1.5 triggers per-move detector. "
+        "OVERPLAY in middle phase also triggers OVERCONCENTRATION "
+        "(Phase 226-F F-A)."
+    ),
 )
 
 

@@ -65,7 +65,7 @@ class TestFixturesSanity:
     [
         ("perfect_game", set()),
         ("single_atari_mistake", {SymptomId.ATARI_BLINDNESS}),
-        ("reckless_overplay", {SymptomId.OVERPLAY_RECKLESS_ATTACK}),
+        ("reckless_overplay", {SymptomId.OVERPLAY_RECKLESS_ATTACK, SymptomId.OVERCONCENTRATION}),
         ("long_mistake_streak", {SymptomId.OVERFIGHT}),
         ("many_small_streaks", {SymptomId.SMALL_MOVE_ADDICTION}),
         ("tilt_chain_disaster", {SymptomId.TILT_CHAIN}),
