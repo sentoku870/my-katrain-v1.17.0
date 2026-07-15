@@ -1,4 +1,7 @@
-"""Phase 221: Tests for json_type detection + summary projection."""
+"""Phase 221: Tests for json_type detection + summary projection.
+
+Phase 227-A: extended with ``extract_summary_weakness_patterns`` tests.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +12,7 @@ from katrain.core.coach.json_type import (
     extract_summary_game_count,
     extract_summary_mistake_buckets,
     extract_summary_total_loss,
+    extract_summary_weakness_patterns,
     is_karte,
     is_summary,
     normalize_summary_to_karte_shape,
@@ -225,5 +229,119 @@ class TestExports:
             "extract_summary_game_count",
             "extract_summary_total_loss",
             "extract_summary_mistake_buckets",
+            "extract_summary_weakness_patterns",  # Phase 227-A
         ]:
             assert hasattr(pkg, name), f"__init__ missing {name}"
+
+
+# --- Weakness patterns (Phase 227-A) ---
+
+
+class TestExtractWeaknessPatterns:
+    def test_aggregates_across_colors(self, sample_summary):
+        # sample_summary fixture: 2 black entries, 0 white entries
+        patterns = extract_summary_weakness_patterns(sample_summary)
+        assert len(patterns) == 2
+
+    def test_sorted_by_total_loss_desc(self, sample_summary):
+        patterns = extract_summary_weakness_patterns(sample_summary)
+        losses = [p["total_loss"] for p in patterns]
+        assert losses == sorted(losses, reverse=True)
+        # Top entry: black/middle/blunder/30.0
+        top = patterns[0]
+        assert top["color"] == "black"
+        assert top["phase"] == "middle"
+        assert top["category"] == "blunder"
+        assert top["total_loss"] == 30.0
+
+    def test_frequency_ratio(self, sample_summary):
+        # games_analyzed = 5
+        # black/blunder: 5/5 = 1.0
+        # black/mistake: 4/5 = 0.8
+        patterns = extract_summary_weakness_patterns(sample_summary)
+        assert patterns[0]["frequency_ratio"] == 1.0
+        assert patterns[1]["frequency_ratio"] == 0.8
+
+    def test_top_n_cap(self, sample_summary):
+        patterns = extract_summary_weakness_patterns(sample_summary, top_n=1)
+        assert len(patterns) == 1
+        assert patterns[0]["total_loss"] == 30.0
+
+    def test_empty_weaknesses(self):
+        data = {"meta": {"games_analyzed": 5}}
+        assert extract_summary_weakness_patterns(data) == []
+
+    def test_no_games_analyzed_degrades_to_zero_freq(self):
+        # No games_analyzed / game_count: frequency_ratio = 0.0 but
+        # entries are still returned
+        data = {
+            "weaknesses": {
+                "black": [{"phase": "middle", "category": "blunder", "count": 3, "total_loss": 10.0}],
+            },
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        assert len(patterns) == 1
+        assert patterns[0]["frequency_ratio"] == 0.0
+
+    def test_skips_entries_without_signal(self):
+        # Entries with neither count nor total_loss are skipped
+        data = {
+            "meta": {"games_analyzed": 5},
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder"},  # no count/loss
+                    {"phase": "opening", "category": "mistake", "count": 2, "total_loss": 5.0},
+                ],
+            },
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        assert len(patterns) == 1
+        assert patterns[0]["category"] == "mistake"
+
+    def test_pattern_dict_keys(self, sample_summary):
+        patterns = extract_summary_weakness_patterns(sample_summary)
+        for p in patterns:
+            assert set(p.keys()) == {
+                "color", "phase", "category", "count",
+                "total_loss", "frequency_ratio",
+            }
+
+    def test_non_dict_weaknesses_returns_empty(self):
+        data = {"weaknesses": "not a dict", "meta": {"games_analyzed": 5}}
+        assert extract_summary_weakness_patterns(data) == []
+
+    def test_non_list_items_skipped(self):
+        data = {
+            "weaknesses": {"black": "not a list"},
+            "meta": {"games_analyzed": 5},
+        }
+        assert extract_summary_weakness_patterns(data) == []
+
+    def test_missing_phase_defaults_to_unknown(self):
+        data = {
+            "meta": {"games_analyzed": 5},
+            "weaknesses": {
+                "black": [{"category": "blunder", "count": 2, "total_loss": 5.0}],
+            },
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        assert patterns[0]["phase"] == "unknown"
+
+    def test_stable_tiebreaker(self):
+        # Two entries with same total_loss: should be sorted by count desc,
+        # then category asc for deterministic ordering
+        data = {
+            "meta": {"games_analyzed": 5},
+            "weaknesses": {
+                "black": [
+                    {"phase": "m", "category": "z_category", "count": 1, "total_loss": 10.0},
+                    {"phase": "m", "category": "a_category", "count": 1, "total_loss": 10.0},
+                    {"phase": "m", "category": "m_category", "count": 5, "total_loss": 10.0},
+                ],
+            },
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        cats = [p["category"] for p in patterns]
+        # Same total_loss=10.0; sorted by count desc then category asc
+        # count=5 first, then count=1 by category asc
+        assert cats == ["m_category", "a_category", "z_category"]

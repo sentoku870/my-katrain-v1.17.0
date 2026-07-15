@@ -10,6 +10,7 @@ Layout:
 - tones.py         (Phase 210): tone selector helpers (delegates to master_db)
 - prompt_builder.py (Phase 211): HTML-comment-style SystemInstruction generator
 - llm_validator.py (Phase 212): post-hoc output validation
+- summary_prompt_builder.py (Phase 227-A): multi-game summary prompt generator
 
 All modules are core-layer (Kivy-free).
 """
@@ -26,6 +27,7 @@ from katrain.core.coach.json_type import (
     extract_summary_game_count,
     extract_summary_mistake_buckets,
     extract_summary_total_loss,
+    extract_summary_weakness_patterns,
     is_karte,
     is_summary,
     normalize_summary_to_karte_shape,
@@ -90,6 +92,10 @@ from katrain.core.coach.prompt_builder import (
     build_translation_prompt,
     render_markdown,
     validate_prompt_config,
+)
+from katrain.core.coach.summary_prompt_builder import (  # Phase 227-A
+    SummaryPromptConfig,
+    build_summary_weakness_prompt,
 )
 from katrain.core.coach.symptom_index import (
     Symptom,
@@ -201,4 +207,8 @@ __all__ = [
     "extract_summary_game_count",
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
+    "extract_summary_weakness_patterns",  # Phase 227-A
+    # summary_prompt_builder (Phase 227-A)
+    "SummaryPromptConfig",
+    "build_summary_weakness_prompt",
 ]

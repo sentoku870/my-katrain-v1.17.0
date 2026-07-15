@@ -148,7 +148,20 @@ def build_prompt(
 
 
 def cmd_build(args: argparse.Namespace) -> int:
-    """Sub-command: build an LLM prompt and write to file or stdout."""
+    """Sub-command: build an LLM prompt and write to file or stdout.
+
+    Phase 227-A: when ``--summary-mode`` is set, uses the multi-game
+    summary prompt builder (:func:`build_summary_weakness_prompt`)
+    instead of the single-game Karte prompt. The file MUST be a summary
+    JSON; otherwise the command errors out.
+    """
+    raw_data = _load_raw_json(Path(args.karte_json))
+
+    if args.summary_mode:
+        return _cmd_build_summary(raw_data, args)
+
+    # Default path: existing Karte-aware behaviour. ``_load_karte``
+    # already auto-projects summaries into karte shape.
     karte = _load_karte(Path(args.karte_json))
     prompt = build_prompt(
         karte,
@@ -172,6 +185,79 @@ def cmd_build(args: argparse.Namespace) -> int:
             f"{voice_summary(prompt.config.voice)}; "
             f"{len(prompt.referenced_symptom_ids)} symptoms; "
             f"{len(prompt.referenced_lexicon_ids)} lex entries",
+            file=sys.stderr,
+        )
+        sys.stdout.write(output)
+    return 0
+
+
+def _load_raw_json(path: Path) -> dict[str, Any]:
+    """Phase 227-A: load a JSON file without any projection.
+
+    Used by ``--summary-mode`` to inspect the original shape before
+    deciding which prompt builder to invoke.
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"JSON file not found: {path}")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: expected JSON object, got {type(data).__name__}")
+    return data
+
+
+def _cmd_build_summary(raw_data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Phase 227-A: ``--summary-mode`` path.
+
+    Uses :func:`build_summary_weakness_prompt` to generate a multi-game
+    pattern-extraction prompt. Errors if the file is not a summary.
+    """
+    from katrain.core.coach.json_type import detect_json_type
+    from katrain.core.coach.summary_prompt_builder import (
+        SummaryPromptConfig,
+        build_summary_weakness_prompt,
+    )
+    from katrain.core.coach.tones import modes_for_voice, select_voice
+
+    jtype = detect_json_type(raw_data)
+    if jtype != "summary":
+        print(
+            f"❌ --summary-mode requires a multi-game Summary JSON, "
+            f"but detection returned '{jtype}'. "
+            f"Remove --summary-mode to use the single-game Karte path.",
+            file=sys.stderr,
+        )
+        return 2
+
+    voice = select_voice(args.rank)
+    modes = modes_for_voice(voice)
+    mode = modes[0] if modes else CoachMode.INTERMEDIATE
+
+    cfg = SummaryPromptConfig(
+        voice=voice,
+        mode=mode,
+        games_analyzed=raw_data.get("meta", {}).get("games_analyzed", 0) or 0,
+        player_name=args.player or None,
+        player_rank=args.rank,
+        schema_version=str(raw_data.get("schema_version", "unknown")),
+    )
+    prompt = build_summary_weakness_prompt(raw_data, cfg)
+    output = prompt.full_markdown
+    if args.out:
+        out_path = Path(args.out)
+        out_path.write_text(output, encoding="utf-8")
+        print(
+            f"✅ Wrote summary prompt to {out_path} ({len(output)} chars, "
+            f"{len(prompt.referenced_patterns)} patterns, "
+            f"{cfg.games_analyzed} games)"
+        )
+    else:
+        print(
+            f"# summary-mode voice={args.rank or 'default'} → "
+            f"{voice_summary(voice)}; "
+            f"{len(prompt.referenced_patterns)} patterns; "
+            f"{cfg.games_analyzed} games; "
+            f"focus={args.player or '全体俯瞰'}",
             file=sys.stderr,
         )
         sys.stdout.write(output)
@@ -580,6 +666,23 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build.add_argument(
         "--out",
         help="Write prompt to this file (default: stdout)",
+    )
+    # Phase 227-A: multi-game summary mode
+    p_build.add_argument(
+        "--summary-mode",
+        action="store_true",
+        help=(
+            "Build a multi-game Summary prompt (pattern extraction) "
+            "instead of a single-game Karte prompt. Requires the input "
+            "to be a multi-game Summary JSON."
+        ),
+    )
+    p_build.add_argument(
+        "--player",
+        help=(
+            "Player name to focus on in summary-mode (default: bird's-eye "
+            "view across all players). Only meaningful with --summary-mode."
+        ),
     )
     p_build.set_defaults(func=cmd_build)
 

@@ -126,6 +126,131 @@ class TestBuildCommand:
             cli.main(["build", str(bad), "--rank", "5k"])
 
 
+# --- build --summary-mode (Phase 227-A) ---
+
+
+class TestBuildSummaryMode:
+    @pytest.fixture
+    def sample_summary_path(self, tmp_path: Path) -> Path:
+        summary = {
+            "schema_version": "3.4",
+            "meta": {
+                "games_analyzed": 5,
+                "games_by_type": {"even": 5, "handicapped": 0, "unknown": 0},
+            },
+            "summary": {"total_games": 5, "win_rate": 0.4, "total_moves": 1200},
+            "phase_x_mistake": {
+                "opening:mistake": 5,
+                "middle:blunder": 8,
+            },
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                    {"phase": "opening", "category": "mistake", "count": 4, "total_loss": 12.0},
+                ],
+                "white": [],
+            },
+            "players": {"sentoku870": {"win_rate": 0.4}, "Opponent": {"win_rate": 0.6}},
+        }
+        p = tmp_path / "summary.json"
+        p.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
+        return p
+
+    def test_summary_mode_writes_to_file(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        out_path = tmp_path / "summary_prompt.md"
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--rank", "4d",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "MULTI-GAME SUMMARY MODE" in content
+        assert "**5 局**" in content
+        assert "全体俯瞰" in content  # default player_name=None
+
+    def test_summary_mode_writes_to_stdout(
+        self, sample_summary_path: Path, capsys
+    ):
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--rank", "4d",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "summary-mode" in captured.err
+        assert "patterns" in captured.err
+        assert "MULTI-GAME SUMMARY MODE" in captured.out
+
+    def test_summary_mode_with_player_flag(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        out_path = tmp_path / "p.md"
+        cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--player", "sentoku870",
+            "--out", str(out_path),
+        ])
+        content = out_path.read_text(encoding="utf-8")
+        assert "Focus: プレイヤー 'sentoku870'" in content
+
+    def test_summary_mode_rejects_karte(
+        self, sample_karte_path: Path, capsys
+    ):
+        rc = cli.main([
+            "build",
+            str(sample_karte_path),
+            "--summary-mode",
+        ])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "❌" in captured.err
+        assert "Summary JSON" in captured.err
+
+    def test_no_summary_mode_karte_still_works(
+        self, sample_karte_path: Path, tmp_path: Path
+    ):
+        # Regression: default path (no --summary-mode) on karte file
+        out_path = tmp_path / "karte_prompt.md"
+        rc = cli.main([
+            "build",
+            str(sample_karte_path),
+            "--rank", "5k",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        content = out_path.read_text(encoding="utf-8")
+        assert "[SYSTEM INSTRUCTION FOR LLM]" in content
+        assert "MULTI-GAME SUMMARY MODE" not in content
+
+    def test_no_summary_mode_summary_falls_back_to_karte_projection(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        # Default path auto-projects summary to karte shape (existing
+        # Phase 221 behaviour). Should NOT error and should produce a
+        # karte-style prompt.
+        out_path = tmp_path / "fallback.md"
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--rank", "5k",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        content = out_path.read_text(encoding="utf-8")
+        # Existing Karte prompt path
+        assert "[SYSTEM INSTRUCTION FOR LLM]" in content
+
+
 # --- validate sub-command ---
 
 
