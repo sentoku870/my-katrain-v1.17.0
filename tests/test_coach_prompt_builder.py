@@ -26,9 +26,9 @@ from katrain.core.coach.prompt_builder import (
     append_llm_prompt_block,
     build_translation_prompt,
     render_markdown,
+    validate_prompt_config,
 )
 from katrain.core.coach.symptom_index import SymptomId
-
 
 # --- Fixtures ---
 
@@ -288,6 +288,97 @@ class TestRenderMarkdown:
     def test_returns_full_markdown(self, sample_karte, beginner_config):
         prompt = build_translation_prompt(sample_karte, beginner_config)
         assert render_markdown(prompt) == prompt.full_markdown
+
+
+# --- Phase 226-J (J.1): validate_prompt_config ---
+
+
+class TestValidatePromptConfig:
+    """Phase 226-J: voice / mode / symptom consistency."""
+
+    def _config(
+        self,
+        voice=ToneVoice.TOMOKO,
+        mode=CoachMode.DAN,
+        detected=(),
+    ):
+        return PromptConfig(
+            voice=voice,
+            mode=mode,
+            detected_symptom_ids=detected,
+        )
+
+    def test_consistent_config_returns_no_warnings(self):
+        # TOMOKO serves DAN — both line up.
+
+        warnings = validate_prompt_config(
+            self._config(voice=ToneVoice.TOMOKO, mode=CoachMode.DAN)
+        )
+        assert warnings == []
+
+    def test_voice_mode_mismatch_warns(self):
+        # AYAKA is Kansai-dialect only and serves BEGINNER/INTERMEDIATE.
+        # DAN is not in AYAKA's allowed modes → mismatch warning.
+
+        warnings = validate_prompt_config(
+            self._config(voice=ToneVoice.AYAKA, mode=CoachMode.DAN)
+        )
+        assert any("ayaka" in w and "DAN" in w for w in warnings), (
+            f"Expected voice/mode mismatch warning, got: {warnings}"
+        )
+
+    def test_symptom_outside_difficulty_range_warns(self):
+        # OVERFIGHT is INTERMEDIATE..EXPERT — BEGINNER is out of range.
+        # AYAKA can serve BEGINNER, so the voice/mode check passes,
+        # but the symptom/range check should still fire.
+
+        warnings = validate_prompt_config(
+            self._config(
+                voice=ToneVoice.AYAKA,
+                mode=CoachMode.BEGINNER,
+                detected=(SymptomId.OVERFIGHT,),
+            )
+        )
+        assert any("overfight" in w and "BEGINNER" in w for w in warnings), (
+            f"Expected symptom/range warning, got: {warnings}"
+        )
+
+    def test_symptom_in_range_no_warning(self):
+        # OVERFIGHT for DAN with TOMOKO voice — both consistent.
+
+        warnings = validate_prompt_config(
+            self._config(
+                voice=ToneVoice.TOMOKO,
+                mode=CoachMode.DAN,
+                detected=(SymptomId.OVERFIGHT,),
+            )
+        )
+        assert warnings == []
+
+    def test_unknown_symptom_id_ignored(self):
+        # A bogus SymptomId should not crash the validator.
+
+        warnings = validate_prompt_config(
+            self._config(
+                voice=ToneVoice.TOMOKO,
+                mode=CoachMode.DAN,
+                detected=(),
+            )
+        )
+        assert warnings == []
+
+    def test_multiple_symptoms_each_warned(self):
+
+        warnings = validate_prompt_config(
+            self._config(
+                voice=ToneVoice.AYAKA,
+                mode=CoachMode.BEGINNER,
+                detected=(SymptomId.OVERFIGHT, SymptomId.POST_JOSEKI_DIRECTION),
+            )
+        )
+        # Both symptoms are out of BEGINNER range → at least 2 warnings
+        symptom_warnings = [w for w in warnings if "範囲外" in w]
+        assert len(symptom_warnings) >= 2
 
 
 # --- Public API ---

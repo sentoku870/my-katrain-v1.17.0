@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -295,6 +295,19 @@ docs/
   - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
   - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
   - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
+- 2026-07-15: **Phase 226-J — voice-symptoms 整合性 + Symptom ↔ Lexicon 関連付け**（Lv3、3 ファイル + 17 unit tests）
+  - **J.1 voice-symptoms 整合性チェック**: `validate_prompt_config(config)` を新規追加。`PromptConfig.voice` と `mode` の組み合わせが `modes_for_voice` に含まれない場合、または各 detected_symptom が `difficulty_range` の外側にある場合、日本語の警告文字列リストを返す。`build_translation_prompt` 内では `_LOG.warning` でログのみ（abort しない）。GUI / CLI 呼び出し側は `validate_prompt_config` を直接呼んで警告をユーザーに表示可能
+  - **J.2 Symptom ↔ Lexicon 関連付けの充実**: `auto_detected=True` だが `related_lexicon_ids=()` の Symptom 5 件（TOO_MANY_CHOICES / ENDGAME_PRECISION / SAME_MISTAKE_LOOP / STAGNATION_LOOP / LOCAL_OPTIMUM）に Lexicon ID を割り当て
+    - TOO_MANY_CHOICES: priority, triage_priority
+    - ENDGAME_PRECISION: yose, counting, endgame_sente_value
+    - SAME_MISTAKE_LOOP: urgent_vs_big, direction_of_play, priority
+    - STAGNATION_LOOP: whole_board_balance, counting, urgent_vs_big
+    - LOCAL_OPTIMUM: urgent_vs_big, direction_of_play, whole_board_balance
+  - **今回スコープ外**:
+    - **Lexicon YAML 拡張**（AGENTS.md マーカーで「owned by 外部資料」と明記されているため、慎重を要する。TILT 系など YAML にマッチしない用語は将来タスクとして残す）
+    - `voice_summary` のロジック変更
+  - **新規 export**: `validate_prompt_config` を `katrain.core.coach.__init__` に追加
+  - 17 件 unit tests 追加（validate_prompt_config 6 件 + Symptom-Lexicon 関連 11 件）
 - 2026-07-15: **Phase 226-I — LLM コーチ prompt 品質改善（GUI 自動取得フィードバック）**（Lv2、3 ファイル + 4 unit tests）
   - **問題**: ユーザーが LLM Coach popup で「棋力が手動入力」「白黒自動判定が機能しない」と報告。`detect_player_color_for_user` が silent に失敗し、ユーザーに状況を伝える仕組みがない
   - **原因**: `_populate_rank_and_perspective` で `default_user_name` が空の場合、何の警告も出さずに silent 通過。視点も `color=None` で確定せず、perspective_hint にフォールバック表示のみ

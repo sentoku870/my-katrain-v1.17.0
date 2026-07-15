@@ -27,7 +27,6 @@ from katrain.core.coach.symptom_index import (
     lookup_symptom,
 )
 
-
 # --- Enum completeness ---
 
 
@@ -320,6 +319,60 @@ class TestDetectorRobustness:
         )
         fired = detect_auto_symptoms(ctx)
         assert isinstance(fired, list)
+
+
+# --- Phase 226-J (J.2): Symptom ↔ Lexicon related_ids coverage ---
+
+
+class TestSymptomLexiconCoverage:
+    """Phase 226-J: auto-detected symptoms must have at least one
+    related_lexicon_ids entry so the LLM prompt can reference the
+    terminology. LLM-required symptoms may still have an empty tuple
+    if no relevant Lexicon entry exists (these become YAML extension
+    candidates).
+    """
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            SymptomId.TOO_MANY_CHOICES,
+            SymptomId.ENDGAME_PRECISION,
+            SymptomId.SAME_MISTAKE_LOOP,
+            SymptomId.STAGNATION_LOOP,
+            SymptomId.LOCAL_OPTIMUM,
+        ],
+    )
+    def test_auto_detected_symptom_has_lexicon_links(self, sid):
+        symptom = lookup_symptom(sid)
+        assert symptom is not None
+        assert symptom.related_lexicon_ids, (
+            f"{sid.value} must list at least one Lexicon id"
+        )
+
+    def test_too_many_choices_links_priority(self):
+        symptom = lookup_symptom(SymptomId.TOO_MANY_CHOICES)
+        assert "priority" in symptom.related_lexicon_ids
+        assert "triage_priority" in symptom.related_lexicon_ids
+
+    def test_endgame_precision_links_yose(self):
+        symptom = lookup_symptom(SymptomId.ENDGAME_PRECISION)
+        assert "yose" in symptom.related_lexicon_ids
+        assert "counting" in symptom.related_lexicon_ids
+        assert "endgame_sente_value" in symptom.related_lexicon_ids
+
+    def test_same_mistake_loop_links_directions(self):
+        symptom = lookup_symptom(SymptomId.SAME_MISTAKE_LOOP)
+        assert "urgent_vs_big" in symptom.related_lexicon_ids
+        assert "direction_of_play" in symptom.related_lexicon_ids
+
+    def test_stagnation_loop_links_balance(self):
+        symptom = lookup_symptom(SymptomId.STAGNATION_LOOP)
+        assert "whole_board_balance" in symptom.related_lexicon_ids
+
+    def test_local_optimum_links_directions(self):
+        symptom = lookup_symptom(SymptomId.LOCAL_OPTIMUM)
+        assert "urgent_vs_big" in symptom.related_lexicon_ids
+        assert "whole_board_balance" in symptom.related_lexicon_ids
 
 
 # --- Public API ---

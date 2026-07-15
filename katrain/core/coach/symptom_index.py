@@ -30,15 +30,13 @@ No Kivy — pure core layer.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
 
 from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.beginner.models import HintCategory
-
 from katrain.core.coach.master_db import CoachMode
-
 
 # --- Symptom ID enum ---
 
@@ -361,7 +359,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         ja_label="候補が多すぎる",
         en_label="Too Many Choices",
         description_jp="良い候補手が多すぎて選べず、無難手で時間を浪費。",
-        related_lexicon_ids=(),
+        related_lexicon_ids=("priority", "triage_priority"),
         related_hint_category=HintCategory.FREEDOM_WIDE,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
@@ -525,7 +523,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         ja_label="ヨセ精度不足",
         en_label="Endgame Precision",
         description_jp="ヨセ段階で致命的なミスを連発する。",
-        related_lexicon_ids=(),
+        related_lexicon_ids=("yose", "counting", "endgame_sente_value"),
         related_hint_category=HintCategory.MISTAKE_BLUNDER,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.EXPERT),
         auto_detected=True,
@@ -537,7 +535,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         ja_label="同パターン反復",
         en_label="Same Mistake Loop",
         description_jp="同じ局面で同じミスを繰り返す。",
-        related_lexicon_ids=(),
+        related_lexicon_ids=("urgent_vs_big", "direction_of_play", "priority"),
         related_hint_category=HintCategory.CURATOR_WEAK_AXIS,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.EXPERT),
         auto_detected=True,
@@ -560,7 +558,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         ja_label="停滞ループ",
         en_label="Stagnation Loop",
         description_jp="弱点上位が改善せず、何局も同じパターンが続く。",
-        related_lexicon_ids=(),
+        related_lexicon_ids=("whole_board_balance", "counting", "urgent_vs_big"),
         related_hint_category=None,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.EXPERT),
         auto_detected=True,
@@ -576,7 +574,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         ja_label="局所最適",
         en_label="Local Optimum",
         description_jp="慎重に打つが、局面が動かずチャンスを逃す。",
-        related_lexicon_ids=(),
+        related_lexicon_ids=("urgent_vs_big", "direction_of_play", "whole_board_balance"),
         related_hint_category=HintCategory.FREEDOM_NARROW,
         difficulty_range=(CoachMode.DAN, CoachMode.EXPERT),
         auto_detected=False,

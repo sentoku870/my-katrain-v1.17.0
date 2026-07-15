@@ -89,6 +89,7 @@ from katrain.core.coach.prompt_builder import (
     append_llm_prompt_block,
     build_translation_prompt,
     render_markdown,
+    validate_prompt_config,
 )
 from katrain.core.coach.symptom_index import (
     Symptom,
@@ -161,6 +162,7 @@ __all__ = [
     "build_translation_prompt",
     "append_llm_prompt_block",
     "render_markdown",
+    "validate_prompt_config",  # Phase 226-J
     # llm_validator (Phase 212)
     "ValidationSeverity",
     "ValidationIssue",
@@ -199,4 +201,4 @@ __all__ = [
     "extract_summary_game_count",
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
-] 
+]

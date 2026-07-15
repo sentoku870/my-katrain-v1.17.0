@@ -30,18 +30,20 @@ Schema impact:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from typing import Any, Iterable
+import logging
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Any
 
 from katrain.core.coach.lexicon import inject_lexicon_for_prompt
 from katrain.core.coach.master_db import CoachMode, ToneVoice
 from katrain.core.coach.symptom_index import (
-    Symptom,
     SymptomId,
-    list_all_symptoms,
     lookup_symptom,
 )
-from katrain.core.coach.tones import voice_summary
+from katrain.core.coach.tones import modes_for_voice, voice_summary
+
+_LOG = logging.getLogger(__name__)
 
 
 # --- Configuration dataclass ---
@@ -233,6 +235,64 @@ def _select_lexicon_entry_ids(
     return tuple(seen)
 
 
+# --- Validation (Phase 226-J) ---
+
+
+def validate_prompt_config(config: PromptConfig) -> list[str]:
+    """Sanity-check ``PromptConfig`` consistency.
+
+    Phase 226-J: the LLM Coach popup can produce a ``PromptConfig``
+    whose ``voice`` / ``mode`` / ``detected_symptom_ids`` are internally
+    inconsistent (e.g. ``voice=TOMOKO`` against ``mode=BEGINNER``, which
+    is AYAKA-only). Instead of silently feeding the LLM a broken
+    instruction, we surface the inconsistencies as a list of human-readable
+    warnings so the caller can log / display them.
+
+    Returns:
+        List of warning strings (Japanese). Empty list = no issues.
+
+    Note:
+        This function never raises. The validator is advisory — the
+        caller may still proceed with a sub-optimal config (e.g. when
+        the user has explicitly chosen ``mode=BEGINNER`` but the karte
+        contains an EXPERT symptom).
+    """
+    warnings: list[str] = []
+    # 1) voice / mode consistency: every mode served by the voice must
+    #    include ``config.mode``. Otherwise the LLM is being asked to
+    #    speak in TOMOKO's strict voice while the prompt was prepared
+    #    for BEGINNER kids — the §1-3 Kansai dictionary will be wrong.
+    allowed_modes = modes_for_voice(config.voice)
+    if allowed_modes and config.mode not in allowed_modes:
+        warnings.append(
+            f"voice={config.voice.value} は mode={config.mode.name} を担当しません。"
+            f"想定モード: {', '.join(m.name for m in allowed_modes)}"
+        )
+
+    # 2) symptom / mode consistency: each detected symptom has a
+    #    ``difficulty_range`` (min_mode, max_mode). If ``config.mode``
+    #    is outside the range, the symptom is technically out of scope
+    #    for the configured coach level.
+    mode_order = list(CoachMode)
+    try:
+        mode_idx = mode_order.index(config.mode)
+    except ValueError:
+        mode_idx = -1
+
+    for sid in config.detected_symptom_ids:
+        symptom = lookup_symptom(sid)
+        if symptom is None:
+            continue
+        lo = mode_order.index(symptom.difficulty_range[0])
+        hi = mode_order.index(symptom.difficulty_range[1])
+        if mode_idx < 0 or mode_idx < lo or mode_idx > hi:
+            warnings.append(
+                f"症状 '{sid.value}' は mode={config.mode.name} の範囲外です。"
+                f"想定範囲: {symptom.difficulty_range[0].name}〜{symptom.difficulty_range[1].name}"
+            )
+    return warnings
+
+
 # --- Public API ---
 
 
@@ -246,6 +306,12 @@ def build_translation_prompt(
     its raw structure). The system instruction and lexicon injection are
     placed in HTML comments above and below the body.
 
+    Phase 226-J: runs ``validate_prompt_config`` first and logs any
+    warnings at WARNING level. The warnings are intentionally advisory
+    — the LLM still receives a (potentially sub-optimal) prompt. Callers
+    that want to surface these to the user should call
+    ``validate_prompt_config`` directly and display the result.
+
     Args:
         karte_json: Output of :func:`katrain.core.reports.karte.json_export.build_karte_json`.
         config: PromptConfig with voice / mode / symptoms / preferences.
@@ -253,6 +319,11 @@ def build_translation_prompt(
     Returns:
         LlmPrompt with full_markdown ready for clipboard copy.
     """
+    # Phase 226-J: log voice / mode / symptom consistency warnings
+    # without aborting. The popup / CLI caller can also call
+    # ``validate_prompt_config`` to surface these to the user.
+    for warning in validate_prompt_config(config):
+        _LOG.warning("PromptConfig inconsistency: %s", warning)
     detected_ids = tuple(config.detected_symptom_ids)
     candidate_ids = tuple(config.llm_required_symptom_ids)
 
@@ -359,4 +430,5 @@ __all__ = [
     "append_llm_prompt_block",
     "render_markdown",
     "lookup_mode_description",
-] 
+    "validate_prompt_config",  # Phase 226-J
+]
