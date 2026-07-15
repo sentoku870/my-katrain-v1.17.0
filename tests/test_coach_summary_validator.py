@@ -562,6 +562,52 @@ class TestMoveNumberExtractor:
     def test_empty(self):
         assert _extract_move_numbers("") == ()
 
+    # --- Phase 229: count patterns must NOT be flagged ---
+    # The previous regex matched bare "X手" which produced false
+    # positives on every statistical phrase like "全388手中51手（13.1%）".
+    # The summary validator now drops the bare alternative; these tests
+    # pin that behaviour.
+
+    def test_count_in_全N手中M手_not_flagged(self):
+        # "全388手中51手" — 51 is the COUNT of moves, not a move number
+        assert _extract_move_numbers("全388手中51手（13.1%）") == ()
+
+    def test_count_in_X手_N_percent_not_flagged(self):
+        # "22手（5.7%）" at the start of a bullet (no preceding context)
+        assert _extract_move_numbers("22手（5.7%）が mistake です") == ()
+
+    def test_count_in_X手_N_percent_no_preceding_text(self):
+        # Pure statistical phrase
+        assert _extract_move_numbers("5手（1.3%）") == ()
+
+    def test_count_patterns_combined_realistic_llm_output(self):
+        # Verbatim copy of the LLM prose section that triggered the
+        # original false positive report.
+        text = (
+            "### 1. inaccuracy（軽度の判断ミス）\n"
+            "- 全388手中51手（13.1%）\n"
+            "### 2. mistake（明らかなミス）\n"
+            "- 22手（5.7%）\n"
+            "### 3. blunder（大失着）\n"
+            "- 5手（1.3%）\n"
+        )
+        assert _extract_move_numbers(text) == ()
+
+    def test_5段_not_flagged_in_summary_mode(self):
+        # Sanity check: rank suffixes remain excluded (covered by
+        # the karte regex too — making sure the summary regex is at
+        # least as strict).
+        assert _extract_move_numbers("4段プレイヤー、30級、2026年") == ()
+
+    def test_real_move_refs_still_flagged_after_phase229(self):
+        # All unambiguous move references must still be detected.
+        assert _extract_move_numbers("第50手でのミス") == (50,)
+        assert _extract_move_numbers("#50 が悪い") == (50,)
+        assert _extract_move_numbers("move 50 で失敗") == (50,)
+        assert _extract_move_numbers("着手 50 が悪い") == (50,)
+        assert _extract_move_numbers("50手目で失敗") == (50,)
+        assert _extract_move_numbers("50番") == (50,)
+
 
 class TestGameIdExtractor:
     def test_g1(self):
@@ -683,6 +729,43 @@ class TestValidationMoveNumber:
         )
         report = validate_summary_llm_output(text, sample_summary, prompt)
         assert not any(i.kind == "forbidden_move_number" for i in report.issues)
+
+    # --- Phase 229: statistical count patterns must NOT trigger
+    # forbidden_move_number at the validation-report level ---
+    def test_count_patterns_not_flagged_at_report_level(
+        self, sample_summary, tomoko_config
+    ):
+        # Verbatim copy of the LLM output that triggered the original
+        # bug report (3 false-positive HIGH findings on counts 51/22/5).
+        # Categories are chosen to match the sample_summary fixture
+        # (mistake/blunder/endgame_slip) so we isolate the count-pattern
+        # behaviour from category validation.
+        text = (
+            "## 抽出した弱点パターン（深刻度順）\n"
+            "### 1. **endgame_slip（軽度の判断ミス）**\n"
+            "- 全388手中51手（13.1%）\n"
+            "### 2. **mistake（明らかなミス）**\n"
+            "- 22手（5.7%）\n"
+            "### 3. **blunder（大失着）**\n"
+            "- 5手（1.3%）\n"
+            "抽出した弱点パターン: [endgame_slip, mistake, blunder]\n"
+            "参照したphase: [middle]\n"
+        )
+        prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
+        report = validate_summary_llm_output(text, sample_summary, prompt)
+        # No HIGH forbidden_move_number issues — counts are legitimate
+        # in summary mode.
+        forbidden = [
+            i for i in report.issues if i.kind == "forbidden_move_number"
+        ]
+        assert forbidden == [], (
+            f"Expected no false-positive forbidden_move_number issues, "
+            f"got: {[i.message for i in forbidden]}"
+        )
+        # The report's referenced_move_numbers must be empty.
+        assert report.referenced_move_numbers == ()
+        # No HIGH issues at all for this clean response.
+        assert report.high_count == 0
 
 
 class TestValidationPatternCount:

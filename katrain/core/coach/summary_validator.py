@@ -90,20 +90,42 @@ _PHASE_LIST_LINE_RE = re.compile(
     re.VERBOSE | re.IGNORECASE | re.MULTILINE,
 )
 
-# Phase 227-B: per-game move number patterns. The same regex as the
-# Karte validator; here any match is a HIGH severity finding because
-# the summary has no per-move data.
-_MOVE_NUMBER_RE = re.compile(
+# Phase 229: per-game move number patterns for SUMMARY mode.
+# Tighter than the Karte validator's regex (which intentionally allows
+# bare "X手"). The Karte validator wants to catch any per-move reference
+# even when written as bare "30手", but in summary mode the same pattern
+# is ambiguous: "全388手中51手（13.1%）" is a *count* of moves, not a
+# reference to move #51. Catching every "X手" produces false positives
+# on every statistical phrase the LLM writes.
+#
+# The summary validator therefore restricts the regex to patterns that
+# are unambiguous move references in Japanese:
+#   - "#50" / "move 50"   (English-style)
+#   - "50手目"            (move #50 with explicit 目 suffix)
+#   - "着手 50"           (move #50)
+#   - "50番"              (move #50, less common)
+#   - "第50手"            (move #50 with 第 prefix)
+#
+# Bare "X手" is intentionally excluded. In summary mode the LLM is
+# instructed to write phase+category only, so any genuine per-move
+# reference should use one of the explicit markers above. The Karte
+# validator keeps the bare "X手" alternative because Karte output
+# naturally references specific moves.
+_SUMMARY_MOVE_NUMBER_RE = re.compile(
     r"(?:"
     r"(?:#|move\s+)(\d{1,3})"               # "#50", "move 50"
     r"|(\d{1,3})\s*手目"                     # "50手目"
-    r"|(\d{1,3})(?=\s*手(?![\u4e00-\u9fff]))"  # "50手" (not followed by a CJK char)
     r"|着手\s*(\d{1,3})"                     # "着手 50"
     r"|(\d{1,3})\s*番"                       # "50番"
     r"|第\s*(\d{1,3})\s*手"                  # "第50手"
     r")",
     re.IGNORECASE,
 )
+
+# Backwards-compatibility alias — keeps the original name in case any
+# downstream introspection still references it. New code should use
+# ``_SUMMARY_MOVE_NUMBER_RE`` directly.
+_MOVE_NUMBER_RE = _SUMMARY_MOVE_NUMBER_RE
 
 # Phase 227-B: detect specific game ID references. Game IDs in
 # summary JSON take the form ``g1``, ``g2`` (or ``game_1``). When
@@ -280,9 +302,18 @@ def _extract_move_numbers(text: str) -> tuple[int, ...]:
 
     For summary mode, ANY match is a HIGH severity finding because
     the summary has no per-move data — the LLM is fabricating.
+
+    Phase 229: switched from the Karte regex (``_MOVE_NUMBER_RE``) to
+    the summary-only ``_SUMMARY_MOVE_NUMBER_RE``. The Karte regex
+    intentionally matches bare ``"50手"`` as a move reference, but in
+    summary mode the same string is ambiguous with the *count* pattern
+    ``"全388手中51手（13.1%）"``. The summary regex drops the bare "X手"
+    alternative and accepts only explicit move markers (第/手目/#/move/
+    着手/番). The loop still iterates groups 1–6 for safety (5 of 6
+    are populated after the change; remaining slots are simply ``None``).
     """
     out: list[int] = []
-    for m in _MOVE_NUMBER_RE.finditer(text):
+    for m in _SUMMARY_MOVE_NUMBER_RE.finditer(text):
         for grp in range(1, 7):
             raw = m.group(grp)
             if raw is None:
