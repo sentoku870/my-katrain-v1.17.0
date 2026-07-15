@@ -1260,6 +1260,52 @@ msgstr "検出された警告"
 msgid "mykatrain:llm-coach:truncated"
 msgstr "\n\n…(以降省略されました)"
 
+# Phase 227-D: multi-game summary mode
+msgid "mykatrain:llm-coach:type-label-single"
+msgstr "単局カルテ"
+
+msgid "mykatrain:llm-coach:type-label-multi"
+msgstr "複数局サマリ ({games}局)"
+
+msgid "mykatrain:llm-coach:type-label-unknown"
+msgstr "(未確定)"
+
+msgid "mykatrain:llm-coach:type-detection-failed"
+msgstr "JSON タイプ判定失敗: {error}"
+
+msgid "mykatrain:llm-coach:summary-perspective-label"
+msgstr "プレイヤー"
+
+msgid "mykatrain:llm-coach:summary-perspective-birdseye"
+msgstr "全体俯瞰"
+
+msgid "mykatrain:llm-coach:summary-build-button"
+msgstr "集約サマリプロンプト"
+
+msgid "mykatrain:llm-coach:summary-build-failed"
+msgstr "集約サマリプロンプト生成失敗: {error}"
+
+msgid "mykatrain:llm-coach:summary-copy-success"
+msgstr "✅ 集約サマリプロンプトをコピーしました ({chars}文字, {games}局, {patterns}パターン)"
+
+msgid "mykatrain:llm-coach:summary-report-meta"
+msgstr "対象: {games}局 / 視点: {focus}"
+
+msgid "mykatrain:llm-coach:summary-referenced-categories"
+msgstr "参照した弱点パターン"
+
+msgid "mykatrain:llm-coach:summary-referenced-phases"
+msgstr "参照したphase"
+
+msgid "mykatrain:llm-coach:summary-referenced-moves"
+msgstr "検出された着手番号（サマリでは禁止）"
+
+msgid "mykatrain:llm-coach:summary-referenced-game-ids"
+msgstr "検出された特定ゲームID"
+
+msgid "mykatrain:llm-coach:summary-perspective-summary"
+msgstr "デフォルトユーザー「{user}」/ 対象プレイヤー「{player}」/ {games}局"
+
 msgid "mykatrain:batch-analyze"
 msgstr "フォルダ一括解析..."
 

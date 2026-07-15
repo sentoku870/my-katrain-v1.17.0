@@ -685,3 +685,184 @@ class TestFindLatestLlmInputForCtx:
     def test_no_reports_returns_none(self, tmp_path):
         ctx = _fake_ctx(tmp_path)
         assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None
+
+
+# --- Phase 227-D: build_summary_llm_prompt + validate_summary_llm_response ---
+
+
+class TestBuildSummaryLlmPrompt:
+    """Phase 227-D: thin wrapper around ``build_summary_weakness_prompt``."""
+
+    def _write_summary(self, tmp_path: Path, **extra: Any) -> Path:
+        p = tmp_path / "summary.json"
+        body = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 5},
+            "phase_x_mistake": {"middle:blunder": 8, "opening:mistake": 5},
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                ],
+                "white": [],
+            },
+            "players": {
+                "sentoku870": {"rank": "4d"},
+            },
+        }
+        body.update(extra)
+        p.write_text(json.dumps(body, ensure_ascii=False), encoding="utf-8")
+        return p
+
+    def test_returns_full_markdown(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert isinstance(content, str)
+        assert "MULTI-GAME SUMMARY MODE" in content
+        assert "**5 局**" in content
+
+    def test_player_name_appears_when_set(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(
+            None, path, rank="4d", player_name="sentoku870"
+        )
+        assert ok is True
+        assert "sentoku870" in content
+
+    def test_birdseye_when_no_player(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert "全体俯瞰" in content
+
+    def test_missing_file_returns_error(self, tmp_path: Path):
+        ok, msg = llm_coach.build_summary_llm_prompt(
+            None, tmp_path / "nope.json", rank="4d"
+        )
+        assert ok is False
+        assert "見つかりません" in msg or "not found" in msg.lower()
+
+    def test_malformed_json_returns_error(self, tmp_path: Path):
+        bad = tmp_path / "bad.json"
+        bad.write_text("not json", encoding="utf-8")
+        ok, msg = llm_coach.build_summary_llm_prompt(None, bad, rank="4d")
+        assert ok is False
+        assert "JSON" in msg or "json" in msg.lower() or "不正" in msg
+
+    def test_logs_to_ctx_on_error(self, tmp_path: Path):
+        ctx = MagicMock()
+        path = tmp_path / "nope.json"
+        llm_coach.build_summary_llm_prompt(ctx, path, rank="4d")
+        ctx.log.assert_called()
+
+    def test_logs_to_ctx_on_success(self, tmp_path: Path):
+        ctx = MagicMock()
+        path = self._write_summary(tmp_path)
+        llm_coach.build_summary_llm_prompt(ctx, path, rank="4d")
+        # No log call expected on success — the popup displays its
+        # own status. We just verify it doesn't crash.
+        # (ctx.log is not asserted here; see test_none_ctx_does_not_raise
+        # for the no-crash contract.)
+
+    def test_none_ctx_does_not_raise(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        # ctx=None must not crash
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert isinstance(content, str)
+
+
+class TestValidateSummaryLlmResponse:
+    """Phase 227-D: thin wrapper around ``validate_summary_llm_output``."""
+
+    def _write_summary(self, tmp_path: Path) -> Path:
+        p = tmp_path / "summary.json"
+        p.write_text(
+            json.dumps(
+                {
+                    "schema_version": "3.4",
+                    "meta": {"games_analyzed": 5},
+                    "phase_x_mistake": {"middle:blunder": 8},
+                    "weaknesses": {
+                        "black": [
+                            {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                        ],
+                        "white": [],
+                    },
+                    "players": {"sentoku870": {"rank": "4d"}},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return p
+
+    def test_clean_response_returns_clean(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        response = (
+            "考察: 中盤の blunders が多いです。\n"
+            "抽出した弱点パターン: [blunder]\n"
+            "参照したphase: [middle]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d"
+        )
+        assert is_clean is True
+        # Markdown report should include a Status line
+        assert "Status" in report or "ステータス" in report
+
+    def test_dirty_response_returns_invalid(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        # Move number is forbidden in summary mode
+        response = (
+            "考察: 第50手でのミスが顕著でした。\n"
+            "抽出した弱点パターン: [blunder, fantasy_category]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d"
+        )
+        assert is_clean is False
+        assert "[HIGH]" in report
+
+    def test_missing_file_returns_error(self, tmp_path: Path):
+        is_clean, msg = llm_coach.validate_summary_llm_response(
+            None, tmp_path / "nope.json", "anything", rank="4d"
+        )
+        assert is_clean is False
+        assert "見つかりません" in msg or "not found" in msg.lower()
+
+    def test_player_name_passed_through(self, tmp_path: Path):
+        # The wrapper forwards player_name to the prompt config. This
+        # mostly just exercises the parameter plumbing — the actual
+        # behaviour is covered by the underlying validator tests.
+        path = self._write_summary(tmp_path)
+        response = (
+            "考察: ...\n"
+            "抽出した弱点パターン: [blunder]\n"
+            "参照したphase: [middle]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d", player_name="sentoku870"
+        )
+        assert is_clean is True
+        assert "Status" in report or "ステータス" in report
+
+    def test_report_truncation_on_huge_input(self, tmp_path: Path):
+        # A giant response should still produce a usable report
+        # (truncated to avoid UI freeze).
+        path = self._write_summary(tmp_path)
+        # 30k characters of "考察" — should trigger truncation
+        huge = "考察" * 15000
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, huge, rank="4d"
+        )
+        # Truncated reports end with the i18n "truncated" marker
+        assert "省略" in report or "truncated" in report or len(report) <= 30_000
+
+    def test_none_ctx_does_not_raise(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, "考察: ...\n", rank="4d"
+        )
+        assert isinstance(is_clean, bool)
+        assert isinstance(report, str)

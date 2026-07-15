@@ -23,7 +23,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
 KV_PATH = Path(__file__).resolve().parents[1] / "katrain" / "gui" / "kv" / "llm_coach_popup.kv"
 
 
@@ -218,3 +217,80 @@ class TestPhase2256PerspectiveSpinner:
         kv = _read_kv()
         block = _find_block_with_id(kv, "perspective_auto_label")
         assert block, "perspective_auto_label widget must exist in the KV"
+
+
+# --- Phase 227-D: Multi-game summary layout additions ---
+
+
+class TestPhase227DTypeLabel:
+    """Phase 227-D: a type label shows the detected JSON type."""
+
+    def test_type_label_widget_present(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "type_label")
+        assert block, "type_label widget must exist in the KV"
+
+    def test_type_label_has_i18n_key(self) -> None:
+        # The label should reference at least one of the type i18n keys
+        # so it can be updated dynamically.
+        # The type_label widget doesn't directly reference the i18n
+        # key (the text is set from Python), so we check the popup
+        # source for the key reference.
+        popup_src = (
+            Path(__file__).resolve().parents[1]
+            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
+        )
+        src = popup_src.read_text(encoding="utf-8")
+        assert "mykatrain:llm-coach:type-label" in src, (
+            "popup.py must reference a mykatrain:llm-coach:type-label-* i18n key"
+        )
+
+
+class TestPhase227DPathInputOnTextValidate:
+    """Phase 227-D: pressing Enter in the path input should trigger
+    re-detection via the ``on_text_validate`` binding."""
+
+    def test_karte_path_input_has_on_text_validate(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "karte_path_input")
+        assert "on_text_validate" in block, (
+            "karte_path_input must bind on_text_validate so pressing Enter "
+            "re-runs type detection and rank/perspective population."
+        )
+        assert "root.on_path_changed" in block, (
+            "on_text_validate must call root.on_path_changed"
+        )
+
+
+class TestPhase227DGenerateButton:
+    """Phase 227-D: the generate button text changes based on type."""
+
+    def test_generate_button_default_text_karte(self) -> None:
+        kv = _read_kv()
+        block = _find_block_with_id(kv, "generate_button")
+        # The default text is the karte prompt label; the runtime
+        # changes it to summary-build-button when the path is a summary.
+        assert "mykatrain:llm-coach:build-prompt" in block
+
+
+class TestPhase227DSummaryI18nKeys:
+    """Phase 227-D: new i18n keys for the summary mode are referenced."""
+
+    def test_summary_perspective_birdseye_key(self) -> None:
+        # The birdseye option is built dynamically in Python, so we
+        # check the popup source rather than the KV.
+        popup_src = (
+            Path(__file__).resolve().parents[1]
+            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
+        )
+        src = popup_src.read_text(encoding="utf-8")
+        assert "summary-perspective-birdseye" in src
+
+    def test_summary_build_button_key_in_source(self) -> None:
+        popup_src = (
+            Path(__file__).resolve().parents[1]
+            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
+        )
+        src = popup_src.read_text(encoding="utf-8")
+        assert "summary-build-button" in src
+        assert "summary-copy-success" in src
