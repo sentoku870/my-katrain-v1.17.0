@@ -265,7 +265,27 @@ def _cmd_build_summary(raw_data: dict[str, Any], args: argparse.Namespace) -> in
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
-    """Sub-command: validate an LLM response against the Karte JSON."""
+    """Sub-command: validate an LLM response against a Karte / Summary JSON.
+
+    Phase 227-B: when ``--summary-mode`` is set, uses the multi-game
+    summary validator (:func:`validate_summary_llm_output`) instead of
+    the per-move Karte validator. The file MUST be a summary JSON;
+    otherwise the command errors out.
+
+    Default behaviour (no flag) auto-detects the JSON type and routes
+    to the appropriate validator.
+    """
+    raw_data = _load_raw_json(Path(args.karte_json))
+
+    if args.summary_mode:
+        return _cmd_validate_summary(raw_data, args)
+
+    # Default: existing Karte-aware behaviour. The summary branch
+    # below is auto-detected when the file is actually a summary.
+    jtype = _detect_jtype(raw_data)
+    if jtype == "summary":
+        return _cmd_validate_summary(raw_data, args)
+
     karte = _load_karte(Path(args.karte_json))
     llm_text = Path(args.llm_response).read_text(encoding="utf-8")
 
@@ -312,6 +332,86 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if args.out:
         Path(args.out).write_text(output, encoding="utf-8")
         print(f"✅ Wrote validation report to {args.out}")
+    else:
+        sys.stdout.write(output)
+    return 0 if report.is_clean else 1
+
+
+def _detect_jtype(data: dict[str, Any]) -> str:
+    """Thin wrapper around :func:`detect_json_type` for cli internals."""
+    from katrain.core.coach.json_type import detect_json_type
+    return detect_json_type(data)
+
+
+def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) -> int:
+    """Phase 227-B: summary-mode validate path.
+
+    Uses :func:`validate_summary_llm_output` to validate a multi-game
+    pattern-extraction LLM response. Errors if the file is not a
+    summary.
+    """
+    from katrain.core.coach.summary_prompt_builder import (
+        SummaryPromptConfig,
+        build_summary_weakness_prompt,
+    )
+    from katrain.core.coach.summary_validator import validate_summary_llm_output
+    from katrain.core.coach.tones import modes_for_voice, select_voice
+
+    jtype = _detect_jtype(raw_data)
+    if jtype != "summary":
+        print(
+            f"❌ --summary-mode requires a multi-game Summary JSON, "
+            f"but detection returned '{jtype}'.",
+            file=sys.stderr,
+        )
+        return 2
+
+    voice = select_voice(args.rank)
+    modes = modes_for_voice(voice)
+    mode = modes[0] if modes else CoachMode.INTERMEDIATE
+
+    cfg = SummaryPromptConfig(
+        voice=voice,
+        mode=mode,
+        games_analyzed=raw_data.get("meta", {}).get("games_analyzed", 0) or 0,
+        player_name=getattr(args, "player", None) or None,
+        player_rank=args.rank,
+        schema_version=str(raw_data.get("schema_version", "unknown")),
+    )
+    prompt = build_summary_weakness_prompt(raw_data, cfg)
+    llm_text = Path(args.llm_response).read_text(encoding="utf-8")
+    report = validate_summary_llm_output(llm_text, raw_data, prompt)
+
+    # Render report as Markdown
+    lines = [
+        f"# LLM Output Validation Report (Summary Mode)",
+        f"",
+        f"**Status**: {report.summary_line()}",
+        f"",
+        f"**High**: {report.high_count} · **Medium**: {report.medium_count} · **Low**: {report.low_count}",
+        f"",
+    ]
+    if report.referenced_categories:
+        lines.append(f"**Referenced patterns**: {', '.join(report.referenced_categories)}")
+    if report.referenced_phases:
+        lines.append(f"**Referenced phases**: {', '.join(report.referenced_phases)}")
+    if report.referenced_move_numbers:
+        lines.append(f"**Forbidden move refs**: {report.referenced_move_numbers}")
+    if report.referenced_game_ids:
+        lines.append(f"**Specific game IDs**: {', '.join(report.referenced_game_ids)}")
+    if report.issues:
+        lines.append("")
+        lines.append("## Issues")
+        lines.append("")
+        for issue in report.issues:
+            lines.append(
+                f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}"
+            )
+    output = "\n".join(lines) + "\n"
+
+    if args.out:
+        Path(args.out).write_text(output, encoding="utf-8")
+        print(f"✅ Wrote summary validation report to {args.out}")
     else:
         sys.stdout.write(output)
     return 0 if report.is_clean else 1
@@ -696,6 +796,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_val.add_argument("--avg-loss", type=float)
     p_val.add_argument("--no-expanded", action="store_true")
     p_val.add_argument("--out", help="Write report to file (default: stdout)")
+    # Phase 227-B: multi-game summary mode (auto-detected by default)
+    p_val.add_argument(
+        "--summary-mode",
+        action="store_true",
+        help=(
+            "Force the multi-game Summary validator. "
+            "Auto-detected by default; explicit only for clarity."
+        ),
+    )
     p_val.set_defaults(func=cmd_validate)
 
     # symptoms (debugging)

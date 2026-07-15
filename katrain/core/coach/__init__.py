@@ -11,6 +11,7 @@ Layout:
 - prompt_builder.py (Phase 211): HTML-comment-style SystemInstruction generator
 - llm_validator.py (Phase 212): post-hoc output validation
 - summary_prompt_builder.py (Phase 227-A): multi-game summary prompt generator
+- summary_validator.py (Phase 227-B): multi-game summary output validator
 
 All modules are core-layer (Kivy-free).
 """
@@ -96,6 +97,10 @@ from katrain.core.coach.prompt_builder import (
 from katrain.core.coach.summary_prompt_builder import (  # Phase 227-A
     SummaryPromptConfig,
     build_summary_weakness_prompt,
+)
+from katrain.core.coach.summary_validator import (  # Phase 227-B
+    SummaryValidationReport,
+    validate_summary_llm_output,
 )
 from katrain.core.coach.symptom_index import (
     Symptom,
@@ -211,4 +216,7 @@ __all__ = [
     # summary_prompt_builder (Phase 227-A)
     "SummaryPromptConfig",
     "build_summary_weakness_prompt",
+    # summary_validator (Phase 227-B)
+    "SummaryValidationReport",
+    "validate_summary_llm_output",
 ]
