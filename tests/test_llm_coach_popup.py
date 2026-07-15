@@ -724,6 +724,126 @@ class TestPhase2256Helpers:
         assert _resolve_player_color("auto", None) is None
 
 
+# --- Phase 226-I: auto-detect feedback when default_user_name is empty ---
+
+
+class TestPhase226IGuiAutoDetectFeedback:
+    """Phase 226-I: when ``default_user_name`` is empty, the auto detector
+    has no signal to pick a side. Surface this to the user via the
+    status label so they know why their perspective spinner keeps
+    falling back to "auto (no detection)" instead of silently failing."""
+
+    def test_default_user_empty_status_warns(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        # Karte has player info but the mykatrain setting is empty.
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "AnyUser", "rank": "4d"},
+                            "white": {"name": "Opponent", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_name": ""}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        status = content.ids["status_label"].text
+        # The status must clearly say default_user_name is empty.
+        assert (
+            "default_user" in status
+            or "デフォルト" in status
+            or "user_name" in status
+        ), f"status should warn about empty default_user_name, got: {status!r}"
+
+    def test_default_user_present_status_summary(self, tmp_path):
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "4d"},
+                            "white": {"name": "P2", "rank": "3d"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        status = content.ids["status_label"].text
+        # Should contain the matched user name (P1) + at least one of
+        # the player names.
+        assert "P1" in status
+
+    def test_rank_source_traced_from_karte(self, tmp_path):
+        # When Karte has rank info, the status text (via _refresh_rank_hint)
+        # should display the rank — the rank field is filled even if the
+        # status line itself doesn't change.
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": "5k"},
+                            "white": {"name": "P2", "rank": "6k"},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # Rank auto-fill: the input should have been filled with 5k
+        # (P1's rank) since the perspective defaults to "auto" and
+        # both colours are equal.
+        assert content.ids["rank_input"].text in ("5k", "6k")
+
+    def test_rank_fallback_to_default_user_rank(self, tmp_path):
+        # When Karte has no rank info, the default_user_rank setting
+        # should be used (Phase 225.8 fallback).
+        content = _make_content()
+        karte = tmp_path / "k.json"
+        karte.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "player_info": {
+                            "black": {"name": "P1", "rank": None},
+                            "white": {"name": "P2", "rank": None},
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        content.katrain = MagicMock()
+        content.katrain.config.return_value = {
+            "default_user_name": "P1",
+            "default_user_rank": "4段",
+        }
+        content.ids["karte_path_input"].text = str(karte)
+        content._populate_rank_and_perspective()
+        # rank_input should have been filled with "4段" as fallback
+        assert content.ids["rank_input"].text == "4段"
+
+
 class TestPhase226BSpinnerTextToInternal:
     """Phase 226-B (B3): ``_spinner_text_to_internal`` reverse-maps the
     localised spinner label to a stable internal value."""

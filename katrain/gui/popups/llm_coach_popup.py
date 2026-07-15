@@ -277,6 +277,15 @@ class LLMCoachPopupContent(BoxLayout):
                     color=color_label,
                 )
             )
+        else:
+            # Phase 226-I: without ``default_user_name`` the auto
+            # detector can never pick a side. Surface the reason in
+            # the status line so the user knows why their perspective
+            # spinner keeps falling back to "auto (no detection)".
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-no-default-user"),
+                error=True,
+            )
 
     def _refresh_rank_hint(self) -> None:
         label = self._get_widget("rank_auto_label")

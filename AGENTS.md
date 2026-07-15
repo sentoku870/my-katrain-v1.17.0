@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -295,6 +295,17 @@ docs/
   - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
   - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
   - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
+- 2026-07-15: **Phase 226-I — LLM コーチ prompt 品質改善（GUI 自動取得フィードバック）**（Lv2、3 ファイル + 4 unit tests）
+  - **問題**: ユーザーが LLM Coach popup で「棋力が手動入力」「白黒自動判定が機能しない」と報告。`detect_player_color_for_user` が silent に失敗し、ユーザーに状況を伝える仕組みがない
+  - **原因**: `_populate_rank_and_perspective` で `default_user_name` が空の場合、何の警告も出さずに silent 通過。視点も `color=None` で確定せず、perspective_hint にフォールバック表示のみ
+  - **修正**: 
+    - `default_user_name` が空の場合、status label に「視点自動判定不可: mykatrain 設定の『デフォルトユーザー名』が未設定です」と明示（`auto-detect-no-default-user` i18nキー追加）
+    - 既存の `auto-detect-summary` 経路（`default_user_name` 有り）はそのまま動作
+  - **今回スコープ外**: 
+    - Lexicon YAML 拡張（AGENTS.md マーカーにより慎重に扱うべき、別タスク）
+    - voice-summary / symptoms のレベル整合性強化（Phase 226-J として分離予定）
+    - Symptom-Lexicon 関連の更なる充実（auto_detected=False の Symptom は現状関連付けのみ、注入経路には乗らない）
+  - 4 件 unit tests 追加（default_user 空時警告、有り時サマリ、rank 自動取得ソース、default_user_rank フォールバック）
 - 2026-07-15: **Phase 226-H — MeaningTagId を symptom_id ground truth に追加**（Lv2、2 ファイル + 10 unit tests）
   - **問題**: ユーザー報告で LLM 出力の HIGH 警告が誤検知。`life_death_error`, `reading_failure`, `connection_miss`, `overplay`, `endgame_slip` が SymptomId に存在しないという警告だが、これらは **MeaningTagId enum の値**で Karte JSON に正しく書かれている
   - **原因**: validator は SymptomId (30 種類) のみを ground truth としており、MeaningTagId (12 種類) を受け付けなかった。LLM は SymptomId と MeaningTagId を区別せず両方使うので誤検知が頻発
