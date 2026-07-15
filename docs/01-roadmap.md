@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-14（Phase 194-198 + Phase 202 + Phase 195-B + LOCAL crash fix 完了）
+> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -1081,6 +1081,25 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - `default_user_name` からプレイヤー色自動判定
   - i18n 7 キー追加 (jp/en)
   - 累計 5017 passed (4968 baseline + 49 件新規)
+- [x] **Phase 226: LLM コーチ品質改善**（Lv3、2026-07-15 完了）
+  - 226-A: 検証ロジック強化 (Lexicon 検証、症状 ID 3 段階フォールバック、着手番号/pointsLost 正規表現厳格化、player_color 整合性、tolerance 活用)
+  - 226-B: GUI 堅牢性 (Clock キャンセル、ハードコード日本語 i18n 化、Spinner 安定内部値、detect_player_info キャッシュ、例外表示統一)
+  - 226-C: データ・設定不整合解消 (`_RANK_ALIASES` デッドコード解消、`config.json` に `default_user_rank`、`detect_json_type` 精緻化)
+  - 226-D: テスト強化・CI 整備 (CI skip 解消、validator 境界値テスト、settings_export フィクスチャ更新)
+  - 226-E: 軽微な品質改善 (クラス名タイポ修正、avg_points_lost 意図省略、関西弁定義同期契約、rank-auto msgstr 更新)
+  - 226-F: SymptomContext.current_phase フィールド追加
+  - 226-H: MeaningTagId を symptom_id ground truth に追加
+  - 226-I: GUI 自動取得フィードバック強化
+  - 226-J: voice-symptoms 整合性 + Symptom ↔ Lexicon 関連付け
+  - 累計 5116 件テスト合格
+- [x] **Phase 227: LLM コーチ複数局対応（B案フル実装）**（Lv3、2026-07-15 完了）
+  - 227-A: `core/coach/summary_prompt_builder.py` 新規 + CLI `--summary-mode` フラグ (47 tests)
+  - 227-B: `core/coach/summary_validator.py` 新規 + CLI validate 拡張 (63 tests)
+  - 227-C: `find_latest_llm_input` (karte/summary 両対応) + `detect_player_info_for_summary` (30 tests)
+  - 227-D: popup タブ化 + 視点セレクタ（全体俯瞰 + 各プレイヤー）+ 集約サマリボタン (47 tests)
+  - 227-E: i18n 15 キー追加 + summary calibration fixtures 4 個 + マスター仕様書 (16 tests)
+  - 詳細: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md`
+  - 累計 5,319 件テスト合格 (Phase 226 終了時 5,116 件 + 203 件新規)
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---

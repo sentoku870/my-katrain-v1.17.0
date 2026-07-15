@@ -2,7 +2,7 @@
 
 このフォルダにはmyKaTrainの機能設計仕様書を格納しています。
 
-> **最終更新**: 2026-07-14（Phase 201: ドキュメント整合）
+> **最終更新**: 2026-07-15（Phase 226 + Phase 227 完了）
 > Phase 171 で Leela エンジン / 関連スペックを完全削除。KataGo 専用の構成に整理。
 
 ---
@@ -67,6 +67,14 @@
 
 - **Phase 194**（MagicMock 汚染除去）: `katrain/core/reports/extractors.py` から `unittest.mock.MagicMock` の production import を排除、`tests/test_extractors.py` を新規 26 件追加。コミット前に仕様書ファイルは未作成（本表も Phase 201 で更新）。
 - **Phase 195-A**（互換シム棚卸し）: `logic_difficulty.py` / `karte_report.py` の deprecated シム参照を production code から脱却。Architecture テスト `TestDeprecatedShimIsolation` を 3 件追加。eval_metrics / batch_analyze_sgf シムは Phase 195-C まで保持。
+
+## Phase 225-227 完了済みスペック（2026-07）
+
+| ファイル | 対応Phase | 内容 |
+|----------|-----------|------|
+| [phase225-llm-coach-gui.md](phase225-llm-coach-gui.md) | Phase 225 | LLM Coach GUI 統合（手動貼付ワークフロー） |
+| [phase225-master.md](phase225-master.md) | Phase 225 + 225.1-225.8 | LLM Coach 統合マスター索引 |
+| [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
 
 ## Phase 171 で削除されたスペック
 

@@ -600,8 +600,11 @@ class TestCalibrateCommand:
         rc = cli.main(["calibrate"])
         assert rc == 0
         out = capsys.readouterr().out
-        # All 8 fixtures should pass
-        assert "passed: 8" in out
+        # Phase 227-E: 12 fixtures total (8 karte + 4 summary).
+        # Karte fixtures count as "passed", summary fixtures are
+        # marked ⏭️ (skipped for symptom detection, but counted as
+        # passed because the per-move detector isn't applicable).
+        assert "passed: 12" in out
         assert "failed: 0" in out
         assert "# Coach Detector Calibration" in out
 

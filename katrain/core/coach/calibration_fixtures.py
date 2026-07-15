@@ -19,7 +19,7 @@ Usage::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from katrain.core.coach.symptom_index import SymptomId
@@ -318,6 +318,175 @@ _CORRELATION_FIXTURE = GoldenFixture(
 )
 
 
+# --- Phase 227-E: Summary fixtures ---
+#
+# Summary JSONs don't have per-move data, so the per-game detectors
+# (Phases 215-217) don't apply. Instead, these fixtures pin:
+# - ``extract_summary_weakness_patterns`` output (Phase 227-A)
+# - ``validate_summary_llm_output`` behaviour (Phase 227-B)
+# - ``build_summary_weakness_prompt`` rendering (Phase 227-A)
+#
+# The ``karte`` field here holds a multi-game Summary JSON (the field
+# name is preserved for backward compatibility — historically
+# fixtures were Karte-shaped).
+
+
+_SUMMARY_CLEAN = GoldenFixture(
+    name="summary_clean",
+    description=(
+        "Multi-game summary with 2 players and minimal weaknesses. "
+        "No symptoms should fire — validates that summary detection "
+        "doesn't false-positive on minimal input. The pattern extractor "
+        "should return exactly 2 patterns (one per color)."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 3,
+            "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0},
+            "date_range": ["2026-07-10", "2026-07-12"],
+        },
+        "summary": {"total_games": 3, "win_rate": 0.5, "total_moves": 600},
+        "phase_x_mistake": {
+            "middle:mistake": 2,
+        },
+        "weaknesses": {
+            "black": [
+                {"phase": "middle", "category": "mistake", "count": 2, "total_loss": 4.0},
+            ],
+            "white": [
+                {"phase": "middle", "category": "mistake", "count": 1, "total_loss": 2.0},
+            ],
+        },
+        "mistake_streaks": {"black": [], "white": []},
+        "loss_progression": {"all": [{"mistake_count": 0}] * 3},
+        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
+        "players": {"sentoku870": {"rank": "4d", "win_rate": 0.5}, "Opponent1": {"rank": "3d", "win_rate": 0.5}},
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Both colors have only 1 weakness entry each. "
+        "Pattern extractor should return 2 patterns (one per color). "
+        "Symptom detectors that need per-move data won't fire."
+    ),
+)
+
+
+_SUMMARY_BLUNDER_DOMINANT = GoldenFixture(
+    name="summary_blunder_dominant",
+    description=(
+        "Summary where one player (black) has 100% blunder rate across "
+        "all games. Validates that summary prompts render the "
+        "weakness patterns correctly and that the validator flags "
+        "an LLM response that references nonexistent categories."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 5,
+            "games_by_type": {"even": 5, "handicapped": 0, "unknown": 0},
+        },
+        "summary": {"total_games": 5, "win_rate": 0.2, "total_moves": 1000},
+        "phase_x_mistake": {
+            "middle:blunder": 25,
+            "opening:mistake": 8,
+            "endgame:mistake": 3,
+        },
+        "weaknesses": {
+            "black": [
+                {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 50.0},
+                {"phase": "opening", "category": "mistake", "count": 4, "total_loss": 12.0},
+                {"phase": "endgame", "category": "endgame_slip", "count": 2, "total_loss": 6.0},
+            ],
+            "white": [
+                {"phase": "middle", "category": "mistake", "count": 3, "total_loss": 9.0},
+            ],
+        },
+        "mistake_streaks": {"black": [{"move_count": 3, "total_loss": 20.0}], "white": []},
+        "loss_progression": {"all": [{"mistake_count": 3}, {"mistake_count": 5}, {"mistake_count": 4}, {"mistake_count": 6}, {"mistake_count": 3}]},
+        "players": {"sentoku870": {"rank": "4d", "win_rate": 0.2}, "Opponent1": {"rank": "3d", "win_rate": 0.8}},
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Blunder dominates (50.0 total_loss vs 12+6+9 for others). "
+        "Top pattern is 'blunder' at 100% frequency (5/5 games). "
+        "Loss progression shows non-zero mistake counts in every game."
+    ),
+)
+
+
+_SUMMARY_EMPTY_WEAKNESSES = GoldenFixture(
+    name="summary_empty_weaknesses",
+    description=(
+        "Summary with 0 weaknesses entries. The pattern extractor "
+        "should return an empty list, and the prompt body should "
+        "show the placeholder text. Validates the empty-weaknesses "
+        "branch of build_summary_weakness_prompt."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 1,
+            "games_by_type": {"even": 1, "handicapped": 0, "unknown": 0},
+        },
+        "summary": {"total_games": 1, "win_rate": 1.0, "total_moves": 200},
+        "phase_x_mistake": {},
+        "weaknesses": {"black": [], "white": []},
+        "mistake_streaks": {"black": [], "white": []},
+        "loss_progression": {"all": [{"mistake_count": 0}]},
+        "players": {"sentoku870": {"rank": "5k", "win_rate": 1.0}},
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "No weaknesses data — pattern extractor returns []. "
+        "Prompt body shows the (weakness データが見つかりません) placeholder."
+    ),
+)
+
+
+_SUMMARY_HANDICAPPED = GoldenFixture(
+    name="summary_handicapped_mix",
+    description=(
+        "Mixed-regime summary (even + handicapped games). Validates "
+        "that the pattern extractor handles both regimes when both "
+        "are present in games_by_type. The popup doesn't show "
+        "per-regime stats in the prompt (Phase 227-A renders only "
+        "the 'all' aggregate), but the per-game counts should still "
+        "sum to games_analyzed."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 6,
+            "games_by_type": {"even": 4, "handicapped": 2, "unknown": 0},
+        },
+        "summary": {"total_games": 6, "win_rate": 0.5, "total_moves": 1500},
+        "phase_x_mistake": {
+            "opening:mistake": 6,
+            "middle:blunder": 12,
+        },
+        "weaknesses": {
+            "black": [
+                {"phase": "middle", "category": "blunder", "count": 6, "total_loss": 36.0},
+                {"phase": "opening", "category": "mistake", "count": 4, "total_loss": 12.0},
+            ],
+            "white": [
+                {"phase": "middle", "category": "blunder", "count": 3, "total_loss": 18.0},
+            ],
+        },
+        "mistake_streaks": {"black": [], "white": []},
+        "loss_progression": {"all": [{"mistake_count": 3}] * 6},
+        "players": {"sentoku870": {"rank": "4d", "win_rate": 0.5}, "Opponent1": {"rank": "4d", "win_rate": 0.5}},
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Mixed regime (4 even + 2 handicapped). "
+        "Total pattern count = 3 (2 black + 1 white). "
+        "Top pattern: black/middle/blunder at 100% (6/6 games)."
+    ),
+)
+
+
 # --- Public API ---
 
 
@@ -332,6 +501,11 @@ ALL_FIXTURES: dict[str, GoldenFixture] = {
         _TILT_CHAIN_FIXTURE,
         _TILT_DISCOURAGEMENT_FIXTURE,
         _CORRELATION_FIXTURE,
+        # Phase 227-E: Summary fixtures
+        _SUMMARY_CLEAN,
+        _SUMMARY_BLUNDER_DOMINANT,
+        _SUMMARY_EMPTY_WEAKNESSES,
+        _SUMMARY_HANDICAPPED,
     )
 }
 
@@ -351,4 +525,4 @@ __all__ = [
     "ALL_FIXTURES",
     "get_fixture",
     "list_fixture_names",
-] 
+]
