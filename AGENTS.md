@@ -52,6 +52,12 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 227-D: popup 型検出 + 視点セレクタ + 集約サマリボタン
     - 227-E: i18n 15 キー追加 + summary calibration fixtures 4 個 + マスター仕様書
     - 詳細: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md`
+  - Phase 228（2026-07-15）: **LLM コーチ複数局対応 - 実シェーマ適応**（Lv3、4 ファイル + 99 unit tests、合計 5,418 件テスト合格）
+    - 228-A: extractor 拡張（`extract_summary_player_mistakes` / `extract_summary_player_phase_losses` 新規、`extract_summary_weakness_patterns` を実シェーマ対応に）
+    - 228-B: prompt builder で Player Mistake Distribution / Player Phase Loss Distribution セクションを描画、system instruction 更新
+    - 228-C: validator で標準 4 カテゴリ + 3 phase を valid reference 化
+    - 228-D: real_shape calibration fixtures 3 個 + E2E 統合テスト + マスター仕様書
+    - 詳細: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md`
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -303,6 +309,33 @@ docs/
   - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
   - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
   - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
+- 2026-07-15: **Phase 228-D — LLM コーチ複数局対応 - 実シェーマ適応 (real_shape calibration fixtures + E2E 統合テスト + ドキュメント)**（Lv2、3 ファイル + 26 unit tests、全 5418 件テスト合格）
+  - **real_shape calibration fixtures**: `real_summary_blunder_focused` / `real_summary_good_player` / `real_summary_multi_player` の 3 フィクスチャ追加。実 `summary_json_export.py` の出力シェーマ (`players.<name>.mistakes` + `players.<name>.phases`) を使用。合計 15 fixture (8 karte + 4 Shape A summary + 3 Shape B summary)。
+  - **E2E 統合テスト**: `TestRealShapeFixturePatterns` / `TestRealShapeFixturePromptRendering` / `TestRealShapeFixtureValidatorE2E` の 3 テストクラス追加。build → render → validate の全フローを実シェーマで検証 (Player Mistake Distribution / Player Phase Loss Distribution が populated される、validator が standard 4 カテゴリを受け入れる、hallucinated category は依然フラグ)。
+  - **ドキュメント**: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md` 新規作成（サブフェーズ索引 + Shape A/B 比較 + アーキテクチャ図 + E2E 動作例 + テスト数推移）。
+  - **AGENTS.md / 01-roadmap.md / specs README 更新**: Phase 228 マイルストーンを §1.3 に追加、Phase 228 をチェックリストに記録。
+- 2026-07-15: **Phase 228-C — LLM コーチ複数局対応 - 実シェーマ適応 (validator を実シェーマに対応)**（Lv3、2 ファイル + 19 unit tests、全 5212 件テスト合格）
+  - **問題**: Phase 228-B で prompt body が実 JSON シェーマを描画するようになったが、validator は Shape A (top-level weaknesses) のみを想定していた。LLM が「blunder」「mistake」等の標準カテゴリを書くと誤って HIGH 警告が出ていた。
+  - **修正**: `summary_validator.py` の `_summary_available_categories` / `_summary_available_phases` を Shape B 対応に拡張。`_STANDARD_MISTAKE_CATEGORIES` (good/inaccuracy/mistake/blunder の 4 つ) と `_STANDARD_PHASE_LABELS` (opening/middle/endgame の 3 つ) を新モジュールの定数として定義。Shape B 使用時に自動追加。
+  - **設計判断**: 標準カテゴリ/phase は Shape B の一部として常に valid とする (Phase 228-B の Player Mistake Distribution / Phase Loss Distribution ブロックが常にこれらのラベルを使うため)。LLM が hallucinated category (例: fantasy_category) を書けば依然 HIGH 警告が出る。
+  - **E2E 動作確認**: 実 JSON + LLM 回答 `[blunder, mistake, inaccuracy]` で `is_clean = True` (HIGH 0 / MEDIUM 0 / LOW 0) で通過。
+- 2026-07-15: **Phase 228-B — LLM コーチ複数局対応 - 実シェーマ適応 (prompt builder を実シェーマに対応)**（Lv3、4 ファイル + 24 unit tests、全 5193 件テスト合格）
+  - **問題**: Phase 228-A で extractor は実 JSON シェーマ (`players.<name>.mistakes` / `phases`) に対応したが、prompt body は依然として空ブロックを生成していた (LLM に「データなし」と嘘をついていた状態)。
+  - **修正**: `summary_prompt_builder.py` に 3 つのヘルパー追加 + テンプレート拡張。
+    - `_resolve_focused_player`: configured_player が players にマッチすればその名前、None/不一致 → None (全体俯瞰用)。
+    - `_format_player_mistakes_block`: focused 時は 4 カテゴリを severity 順、birdseye 時は各プレイヤーの top カテゴリのみ。
+    - `_format_player_phases_block`: focused 時は 3 phase を total_loss 降順 (worst first)、birdseye 時は各プレイヤーの worst phase のみ。
+  - **テンプレート**: Player Mistake Distribution / Player Phase Loss Distribution セクションを追加。focused_player or 全体俯瞰 ラベル付き。
+  - **副作用修正**: `_format_patterns_block` で Shape B パターンの `frequency_ratio` は misleading (count は per-move、games で割ると無意味) なので、代わりに `pct` フィールドを「全体に占める割合=X.X%」として表示。
+  - **system instruction 更新**: weakness pattern のソースに Player Mistake Distribution ブロック (good/inaccuracy/mistake/blunder の 4 カテゴリ) を追加。
+  - **設計変更**: `_resolve_focused_player` の auto-pick 動作を削除 (LLM を誤解させるため)。`None` を返して birdseye 表示を促す。
+- 2026-07-15: **Phase 228-A — LLM コーチ複数局対応 - 実シェーマ適応 (extractors を実シェーマに対応)**（Lv3、3 ファイル + 30 unit tests、全 5169 件テスト合格）
+  - **問題**: Phase 227-A が想定した summary シェーマ (top-level `weaknesses` / `phase_x_mistake`) は `summary_json_export.py` が実際に出力するシェーマ (`players.<name>.mistakes` / `players.<name>.phases`) とズレていた。prompt body が空ブロックになる問題。
+  - **修正**: `json_type.py` に新規 extractor 2 つ追加。
+    - `extract_summary_player_mistakes(data)` → `{player_name: [{category, count, pct, avg_loss, total_loss, denominator}, ...], ...}`。severity 順 (blunder → mistake → inaccuracy → good) で返す。`total_loss` が JSON に無い場合は `avg_loss * count` で再構成。
+    - `extract_summary_player_phase_losses(data)` → `{player_name: {phase: {moves, total_loss, avg_loss}, ...}, ...}`。時系列順 (opening → middle → endgame) で返す。
+  - **`extract_summary_weakness_patterns` 拡張**: top-level `weaknesses` がない場合、`players.<name>.mistakes` から (player, mistake_category) 単位のパターンを合成。Shape A がある場合は Shape A を優先 (より精密な total_loss)。
+  - **新定数**: `_PLAYER_MISTAKE_CATEGORIES` (severity 順) と `_PLAYER_PHASE_LABELS` (時系列順)。`_format_patterns_block` などのレンダラーが順序を保証。
 - 2026-07-15: **Phase 227-E — LLM コーチ複数局対応 (i18n 完了 + summary calibration fixtures + ドキュメント)**（Lv2、5 ファイル + 16 unit tests、全 5319 件テスト合格）
   - **summary calibration fixtures**: `summary_clean` / `summary_blunder_dominant` / `summary_empty_weaknesses` / `summary_handicapped_mix` の 4 フィクスチャ追加。`karte` フィールドは multi-game Summary JSON を保持。CLI `calibrate` は summary フィクスチャを `⏭️ skip` として扱い、per-move 症状検出器の代わりにパターン抽出を実行
   - **CLI calibrate 拡張**: `if detect_json_type(fix.karte) == "summary" → skip + extract_summary_weakness_patterns` 分岐追加。symptom-level テストは karte 投影後の誤動作を避けるため summary では skip

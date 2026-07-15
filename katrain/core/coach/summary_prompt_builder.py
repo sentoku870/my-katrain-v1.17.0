@@ -1,4 +1,4 @@
-"""Phase 227-A: LLM prompt builder for multi-game Summary JSON.
+"""Phase 227-A + 228-B: LLM prompt builder for multi-game Summary JSON.
 
 Companion to :mod:`katrain.core.coach.prompt_builder`, specialised for
 the **multi-game summary** use-case. Whereas the Karte prompt builder
@@ -13,6 +13,15 @@ Why a separate module (vs. reusing ``prompt_builder``):
 - The LLM task differs: pattern mining vs. single-game review.
 - A separate template keeps the existing Karte prompt stable and lets
   the summary prompt evolve independently.
+
+Phase 228-B additions:
+- Renders **Player Mistake Distribution** (count / pct / avg_loss per
+  blunder / mistake / inaccuracy / good) for the focused player when
+  ``players.<name>.mistakes`` is available.
+- Renders **Player Phase Loss Distribution** (moves / total_loss /
+  avg_loss per opening / middle / endgame) for the focused player.
+- System instruction updated to acknowledge the new sections as
+  valid reference sources.
 
 Public API:
 - :class:`SummaryPromptConfig` — frozen config dataclass
@@ -31,6 +40,8 @@ from typing import Any
 from katrain.core.coach.json_type import (
     extract_summary_game_count,
     extract_summary_mistake_buckets,
+    extract_summary_player_mistakes,
+    extract_summary_player_phase_losses,
     extract_summary_total_loss,
     extract_summary_weakness_patterns,
 )
@@ -112,9 +123,13 @@ Rank: {rank_label}
    in the Summary JSON. There is no per-move information available.
 2. DO NOT invent specific move numbers, coordinates, or game IDs.
    Reference patterns by phase (opening/middle/endgame) + category.
-3. Every weakness pattern you cite MUST come from the injected
-   ``weakness_patterns`` list or the ``weaknesses[<color>]`` block in
-   the JSON. Do not invent new categories.
+3. Every weakness pattern you cite MUST come from one of these
+   sources in the Summary JSON:
+   - the ``weakness_patterns`` list (Phase 227-A format)
+   - the ``weaknesses[<color>]`` block (Phase 227-A format)
+   - the ``Player Mistake Distribution`` block (Phase 228-B format,
+     categories: good / inaccuracy / mistake / blunder)
+   Do not invent new categories.
 4. For each pattern, state:
    - 弱点名 (category)
    - 該当phase (opening/middle/endgame)
@@ -169,6 +184,14 @@ _BODY_HEADER_TEMPLATE = """# myKatrain 複数局サマリ (LLM-ready)
 {summary_json}
 ```
 
+### Player Mistake Distribution{player_mistakes_focus}
+
+{player_mistakes_block}
+
+### Player Phase Loss Distribution{player_phases_focus}
+
+{player_phases_block}
+
 ### Weakness Patterns (pre-computed, top {patterns_count})
 
 {patterns_block}
@@ -205,16 +228,39 @@ def _rank_label(rank: str | None) -> str:
 
 
 def _format_patterns_block(patterns: list[dict[str, Any]]) -> str:
-    """Render the weakness patterns as a numbered Markdown list."""
+    """Render the weakness patterns as a numbered Markdown list.
+
+    Phase 228-B: distinguishes between Shape A (Phase 227-A fixture
+    style — top-level ``weaknesses`` with per-color phase/category
+    tuples) and Shape B (Phase 228-A real export style — per-player
+    mistakes). For Shape B patterns the ``frequency_ratio`` field is
+    not meaningful (count is per-move, not per-game) so we surface the
+    per-move ``pct`` field instead when available.
+    """
     if not patterns:
         return "(weakness データが見つかりませんでした。Summary JSON の ``weaknesses`` ブロックを確認してください。)"
     lines: list[str] = []
     for i, p in enumerate(patterns, start=1):
         freq_pct = p.get("frequency_ratio", 0.0) * 100.0
+        # Phase 228-B: Shape B patterns carry a ``pct`` field
+        # (per-move percentage) that is more informative than the
+        # (intentionally 0) ``frequency_ratio``. When pct is present,
+        # use it for the frequency label so the LLM gets a usable
+        # number instead of misleading "0.0%".
+        if "pct" in p and p["frequency_ratio"] == 0.0:
+            freq_str = f"全体に占める割合={p['pct']:.1f}%"
+        else:
+            freq_str = f"頻度={freq_pct:.1f}%"
+        # The player key (if present, Shape B) takes precedence over
+        # the generic ``color`` label so the LLM knows which player
+        # this pattern came from.
+        source_label = (
+            f"player=`{p['player']}`" if "player" in p else f"color=`{p['color']}`"
+        )
         lines.append(
             f"{i}. **{p['category']}** / phase=`{p['phase']}` / "
-            f"color=`{p['color']}` / count={p['count']} / "
-            f"頻度={freq_pct:.1f}% / 総損失={p['total_loss']:.1f}"
+            f"{source_label} / count={p['count']} / "
+            f"{freq_str} / 総損失={p['total_loss']:.1f}"
         )
     return "\n".join(lines)
 
@@ -227,6 +273,154 @@ def _format_buckets_block(buckets: dict[str, int]) -> str:
     for key in sorted(buckets.keys()):
         lines.append(f"- `{key}`: {buckets[key]}")
     return "\n".join(lines)
+
+
+def _resolve_focused_player(
+    summary_json: dict[str, Any],
+    configured_player: str | None,
+) -> str | None:
+    """Phase 228-B: pick which player to show per-player stats for.
+
+    Selection priority:
+    1. ``configured_player`` if it matches a key in ``players``
+    2. ``None`` when no player was configured (bird's-eye mode — the
+       section header should display "全体俯瞰" rather than auto-
+       picking a player, which would be misleading to the LLM).
+    3. ``None`` when no players block exists.
+
+    Returns the resolved player name or ``None``. The returned
+    ``None`` is intentional: callers render an aggregate "全体俯瞰"
+    view in that case.
+    """
+    players = summary_json.get("players", {}) or {}
+    if not isinstance(players, dict) or not players:
+        return None
+    if configured_player and configured_player in players:
+        return configured_player
+    # Birdseye: leave as None so the section header can render
+    # "全体俯瞰" and the body shows a per-player overview.
+    return None
+
+
+def _format_player_mistakes_block(
+    player_mistakes: dict[str, list[dict[str, Any]]],
+    focused_player: str | None,
+) -> str:
+    """Phase 228-B: render the Player Mistake Distribution block.
+
+    Renders the focused player's mistake breakdown. When
+    ``focused_player`` is ``None`` (bird's-eye) or no data is available,
+    a placeholder is shown so the LLM doesn't see "no data" silently.
+
+    Args:
+        player_mistakes: Output of
+            :func:`extract_summary_player_mistakes` —
+            ``{player_name: [{category, count, pct, avg_loss, total_loss,
+            denominator}, ...], ...}``
+        focused_player: The player whose stats to show. Falls back to
+            "bird's-eye" label if ``None``.
+
+    Returns:
+        Markdown block content (without the section header).
+    """
+    if not player_mistakes:
+        return (
+            "(players.<name>.mistakes データがありません。"
+            "Summary JSON に ``mistakes`` ブロックが無い場合はこのセクションは空です。)"
+        )
+    if focused_player is None or focused_player not in player_mistakes:
+        # Bird's-eye or unknown player: show all players
+        # (top entry per player — the most severe category).
+        lines: list[str] = []
+        for player_name in sorted(player_mistakes.keys()):
+            entries = player_mistakes[player_name]
+            if not entries:
+                continue
+            # Top entry is blunder (severity order from extractor)
+            top = entries[0]
+            pct = top.get("pct", 0.0)
+            avg = top.get("avg_loss", 0.0)
+            cnt = top.get("count", 0)
+            denom = top.get("denominator", 0)
+            lines.append(
+                f"- **{player_name}**: "
+                f"top={top['category']} ({cnt}/{denom}, {pct:.1f}%, avg_loss {avg:.2f})"
+            )
+        return "\n".join(lines) if lines else "(データがありません)"
+
+    entries = player_mistakes[focused_player]
+    if not entries:
+        return f"({focused_player} の mistakes データが空です)"
+
+    lines = []
+    for m in entries:
+        denom = m["denominator"]
+        cnt = m["count"]
+        pct = m["pct"]
+        avg = m["avg_loss"]
+        lines.append(
+            f"- **{m['category']}**: "
+            f"{cnt}/{denom} ({pct:.1f}%) - avg_loss {avg:.2f}"
+        )
+    return "\n".join(lines)
+
+
+def _format_player_phases_block(
+    player_phases: dict[str, dict[str, dict[str, Any]]],
+    focused_player: str | None,
+) -> str:
+    """Phase 228-B: render the Player Phase Loss Distribution block.
+
+    Renders the focused player's per-phase loss breakdown. Sort phases
+    by ``total_loss`` descending so the LLM sees the worst phase first
+    (the bottleneck). When ``focused_player`` is ``None`` (bird's-eye),
+    shows the worst phase per player.
+
+    Args:
+        player_phases: Output of
+            :func:`extract_summary_player_phase_losses` —
+            ``{player_name: {phase: {moves, total_loss, avg_loss}, ...}, ...}``
+        focused_player: The player whose stats to show.
+
+    Returns:
+        Markdown block content (without the section header).
+    """
+    if not player_phases:
+        return (
+            "(players.<name>.phases データがありません。"
+            "Summary JSON に ``phases`` ブロックが無い場合はこのセクションは空です。)"
+        )
+
+    def _format_phase_line(label: str, data: dict[str, Any]) -> str:
+        return (
+            f"- **{label}**: "
+            f"{data['moves']}手 / {data['total_loss']:.2f}損失 "
+            f"(avg {data['avg_loss']:.3f})"
+        )
+
+    if focused_player is None or focused_player not in player_phases:
+        # Bird's-eye: show the worst phase per player
+        lines = []
+        for player_name in sorted(player_phases.keys()):
+            phases = player_phases[player_name]
+            if not phases:
+                continue
+            worst_phase = max(phases.items(), key=lambda kv: kv[1]["total_loss"])
+            data = worst_phase[1]
+            lines.append(
+                f"- **{player_name}** (worst phase): "
+                f"phase=`{worst_phase[0]}` / "
+                f"{data['moves']}手 / {data['total_loss']:.2f}損失"
+            )
+        return "\n".join(lines) if lines else "(データがありません)"
+
+    phases = player_phases[focused_player]
+    if not phases:
+        return f"({focused_player} の phases データが空です)"
+
+    # Sort by total_loss desc so the bottleneck is first
+    sorted_phases = sorted(phases.items(), key=lambda kv: -kv[1]["total_loss"])
+    return "\n".join(_format_phase_line(name, data) for name, data in sorted_phases)
 
 
 # --- Public API ---
@@ -260,6 +454,15 @@ def build_summary_weakness_prompt(
     buckets = extract_summary_mistake_buckets(summary_json)
     total_loss = extract_summary_total_loss(summary_json)
 
+    # Phase 228-B: per-player stats (Player Mistake Distribution +
+    # Player Phase Loss Distribution). Resolve focus player first so
+    # the helper blocks know which row to highlight.
+    player_mistakes_all = extract_summary_player_mistakes(summary_json)
+    player_phases_all = extract_summary_player_phase_losses(summary_json)
+    focused_player = _resolve_focused_player(
+        summary_json, config.player_name
+    )
+
     focus = _focus_label(config.player_name)
     rank_lbl = _rank_label(config.player_rank)
     vsummary = voice_summary(config.voice)
@@ -286,6 +489,18 @@ def build_summary_weakness_prompt(
         patterns_count=len(patterns_capped),
         patterns_block=_format_patterns_block(patterns_capped),
         buckets_block=_format_buckets_block(buckets),
+        player_mistakes_block=_format_player_mistakes_block(
+            player_mistakes_all, focused_player
+        ),
+        player_phases_block=_format_player_phases_block(
+            player_phases_all, focused_player
+        ),
+        player_mistakes_focus=(
+            f" ({focused_player})" if focused_player else " (全体俯瞰)"
+        ),
+        player_phases_focus=(
+            f" ({focused_player})" if focused_player else " (全体俯瞰)"
+        ),
     )
 
     # Optional total_loss annotation appended to body when available

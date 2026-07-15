@@ -145,16 +145,32 @@ def extract_summary_weakness_patterns(
     *,
     top_n: int = 0,
 ) -> list[dict[str, Any]]:
-    """Phase 227-A: aggregate per-color weaknesses into frequency-ranked patterns.
+    """Phase 227-A + 228-A: aggregate summary weaknesses into frequency-ranked patterns.
 
-    Each summary weakness entry typically looks like::
+    Supports two summary JSON shapes (auto-detected):
 
-        {"phase": "middle", "category": "blunder",
-         "count": 5, "total_loss": 30.0}
+    **Shape A** (Phase 227-A / fixture-style): top-level ``weaknesses``::
 
-    This helper flattens ``weaknesses[<color>]`` lists across both colors
-    and returns one record per (color, phase, category) combination with
-    an added ``frequency_ratio`` field (``count / games_analyzed``).
+        {"weaknesses": {"black": [{"phase": "middle", "category": "blunder",
+                                   "count": 5, "total_loss": 30.0}, ...],
+                        "white": [...]}}
+
+    **Shape B** (Phase 228-A / real ``summary_json_export.py`` output):
+    per-player ``players.<name>.mistakes``::
+
+        {"players": {"sentoku870": {"mistakes": {"blunder": {"count": 5,
+                                                              "pct": 1.3,
+                                                              "avg_loss": 19.04},
+                                                   "mistake": {...}, ...}}}}}
+
+    When Shape B is detected, each ``(player, mistake_category)`` becomes
+    one pattern. ``total_loss`` is reconstructed as ``avg_loss * count``
+    (preserves the magnitude signal the LLM needs to rank severity),
+    and ``frequency_ratio`` is ``count / games_analyzed``.
+
+    Shape A wins when both are present (because Shape A's
+    ``weaknesses[*].total_loss`` is more precise than the reconstructed
+    value from Shape B).
 
     Args:
         data: Summary JSON dict.
@@ -167,41 +183,70 @@ def extract_summary_weakness_patterns(
             [
               {"color": "black", "phase": "middle",
                "category": "blunder", "count": 5,
-               "total_loss": 30.0, "frequency_ratio": 1.0},
+               "total_loss": 30.0, "frequency_ratio": 1.0,
+               "player": "sentoku870"},
               ...
             ]
 
-        Returns an empty list when the summary has no ``weaknesses`` block
-        or when ``games_analyzed`` cannot be determined (frequency_ratio
-        degrades to 0.0 in that case but entries are still returned).
+        ``player`` is only populated for Shape B patterns; Shape A
+        patterns omit the field (callers default to the colour label).
+
+        Returns an empty list when no recognisable weakness data exists.
     """
     weaknesses = data.get("weaknesses", {}) or {}
-    if not isinstance(weaknesses, dict):
-        return []
-
     games = extract_summary_game_count(data) or 0
 
     patterns: list[dict[str, Any]] = []
-    for color, items in weaknesses.items():
-        if not isinstance(items, list):
-            continue
-        for w in items:
-            if not isinstance(w, dict):
+
+    # ---- Shape A: top-level weaknesses[*] (Phase 227-A legacy) ----
+    if isinstance(weaknesses, dict) and weaknesses:
+        for color, items in weaknesses.items():
+            if not isinstance(items, list):
                 continue
-            count = w.get("count")
-            total_loss = w.get("total_loss")
-            if count is None and total_loss is None:
-                # Skip entries that carry no quantitative signal.
-                continue
-            freq = (float(count) / games) if (games and isinstance(count, (int, float))) else 0.0
-            patterns.append({
-                "color": str(color),
-                "phase": str(w.get("phase", "unknown")),
-                "category": str(w.get("category", "unknown")),
-                "count": int(count) if isinstance(count, (int, float)) else 0,
-                "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
-                "frequency_ratio": freq,
-            })
+            for w in items:
+                if not isinstance(w, dict):
+                    continue
+                count = w.get("count")
+                total_loss = w.get("total_loss")
+                if count is None and total_loss is None:
+                    continue
+                freq = (float(count) / games) if (games and isinstance(count, (int, float))) else 0.0
+                patterns.append({
+                    "color": str(color),
+                    "phase": str(w.get("phase", "unknown")),
+                    "category": str(w.get("category", "unknown")),
+                    "count": int(count) if isinstance(count, (int, float)) else 0,
+                    "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
+                    "frequency_ratio": freq,
+                })
+
+    # ---- Shape B: players.<name>.mistakes[*] (Phase 228-A real shape) ----
+    # Only synthesise Shape B patterns when Shape A returned nothing
+    # (avoids duplicate signals when both shapes coexist).
+    if not patterns:
+        for player_name, mistakes in extract_summary_player_mistakes(data).items():
+            for m in mistakes:
+                cat = m["category"]
+                count = m["count"]
+                total_loss = m["total_loss"]
+                # Shape B's ``count`` is per-move (e.g. 5 blunder moves
+                # out of 388 total moves), NOT per-game. So
+                # ``count / games_analyzed`` would be misleading
+                # (e.g. 5/3 ≈ 1.67). We surface the per-move
+                # ``pct`` field instead and leave ``frequency_ratio``
+                # at 0.0. The prompt renderer (Phase 228-B) detects
+                # this and prefers ``pct``.
+                freq = 0.0
+                patterns.append({
+                    "color": player_name,  # player name doubles as "color" for Shape B
+                    "player": player_name,
+                    "phase": "all",  # Shape B has no per-phase breakdown per mistake category
+                    "category": cat,
+                    "count": count,
+                    "total_loss": total_loss,
+                    "frequency_ratio": freq,
+                    "pct": float(m.get("pct", 0.0) or 0.0),
+                })
 
     # Sort by total_loss desc, then count desc, then category asc for stability.
     patterns.sort(key=lambda p: (-p["total_loss"], -p["count"], p["category"]))
@@ -209,6 +254,149 @@ def extract_summary_weakness_patterns(
     if top_n > 0:
         return patterns[:top_n]
     return patterns
+
+
+# Phase 228-A: New extractors for the real summary_json_export.py shape.
+
+
+# Known mistake categories in the players.<name>.mistakes block. Order
+# matches the standard KataGo mistake ladder (good → inaccuracy → mistake
+# → blunder) so the rendered prompt reads top-down by severity.
+_PLAYER_MISTAKE_CATEGORIES: tuple[str, ...] = (
+    "blunder",
+    "mistake",
+    "inaccuracy",
+    "good",
+)
+
+
+def extract_summary_player_mistakes(
+    data: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Phase 228-A: extract per-player mistake distribution.
+
+    The real ``summary_json_export.py`` writes per-player mistake stats
+    under ``players.<name>.mistakes`` rather than at the top level::
+
+        "mistakes": {
+            "good":       {"count": 310, "pct": 79.9,
+                           "denominator": 388, "avg_loss": 0.28},
+            "inaccuracy": {"count": 51,  "pct": 13.1,
+                           "denominator": 388, "avg_loss": 3.11},
+            "mistake":    {"count": 22,  "pct": 5.7,
+                           "denominator": 388, "avg_loss": 5.69},
+            "blunder":    {"count": 5,   "pct": 1.3,
+                           "denominator": 388, "avg_loss": 19.04},
+        }
+
+    Returns:
+        ``{player_name: [{"category", "count", "pct", "avg_loss",
+                            "total_loss", "denominator"}, ...], ...}``
+
+        Categories are emitted in ``_PLAYER_MISTAKE_CATEGORIES`` order
+        (blunder first) so callers can render top-down by severity.
+
+        Returns ``{}`` when no ``players`` block exists or when no
+        player carries a ``mistakes`` sub-block. Empty sub-blocks
+        (no categories) are skipped.
+    """
+    players = data.get("players", {}) or {}
+    if not isinstance(players, dict):
+        return {}
+
+    out: dict[str, list[dict[str, Any]]] = {}
+    for player_name, block in players.items():
+        if not isinstance(block, dict):
+            continue
+        mistakes = block.get("mistakes")
+        if not isinstance(mistakes, dict) or not mistakes:
+            continue
+        entries: list[dict[str, Any]] = []
+        # Emit in severity order so callers don't have to re-sort.
+        for category in _PLAYER_MISTAKE_CATEGORIES:
+            if category not in mistakes:
+                continue
+            m = mistakes[category]
+            if not isinstance(m, dict):
+                continue
+            count = m.get("count", 0) or 0
+            avg_loss = m.get("avg_loss", 0.0) or 0.0
+            total_loss = m.get("total_loss")
+            if total_loss is None and isinstance(count, (int, float)) and isinstance(avg_loss, (int, float)):
+                # Reconstruct total_loss when the export omitted it
+                # (the field was added in a later schema revision).
+                total_loss = float(avg_loss) * float(count)
+            entries.append({
+                "category": category,
+                "count": int(count) if isinstance(count, (int, float)) else 0,
+                "pct": float(m.get("pct", 0.0) or 0.0),
+                "avg_loss": float(avg_loss) if isinstance(avg_loss, (int, float)) else 0.0,
+                "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
+                "denominator": int(m.get("denominator", 0) or 0),
+            })
+        if entries:
+            out[str(player_name)] = entries
+    return out
+
+
+# Standard phase labels in the players.<name>.phases block.
+_PLAYER_PHASE_LABELS: tuple[str, ...] = (
+    "opening",
+    "middle",
+    "endgame",
+)
+
+
+def extract_summary_player_phase_losses(
+    data: dict[str, Any],
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Phase 228-A: extract per-player per-phase loss breakdown.
+
+    The real ``summary_json_export.py`` writes per-player per-phase
+    stats under ``players.<name>.phases``::
+
+        "phases": {
+            "opening": {"moves": 75,  "total_loss": 47.01, "avg_loss": 0.627},
+            "middle":  {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
+            "endgame": {"moves": 140, "total_loss": 48.6,  "avg_loss": 0.347},
+        }
+
+    Returns:
+        ``{player_name: {phase: {"moves", "total_loss", "avg_loss"}, ...}, ...}``
+
+        Phases are emitted in ``_PLAYER_PHASE_LABELS`` order
+        (opening → middle → endgame) so callers can render the
+        standard temporal progression.
+
+        Returns ``{}`` when no ``players`` block exists or when no
+        player carries a ``phases`` sub-block.
+    """
+    players = data.get("players", {}) or {}
+    if not isinstance(players, dict):
+        return {}
+
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for player_name, block in players.items():
+        if not isinstance(block, dict):
+            continue
+        phases = block.get("phases")
+        if not isinstance(phases, dict) or not phases:
+            continue
+        per_player: dict[str, dict[str, Any]] = {}
+        for phase in _PLAYER_PHASE_LABELS:
+            if phase not in phases:
+                continue
+            p = phases[phase]
+            if not isinstance(p, dict):
+                continue
+            per_player[phase] = {
+                "moves": int(p.get("moves", 0) or 0),
+                "total_loss": float(p.get("total_loss", 0.0) or 0.0),
+                "avg_loss": float(p.get("avg_loss", 0.0) or 0.0),
+            }
+        if per_player:
+            out[str(player_name)] = per_player
+    return out
 
 
 def normalize_summary_to_karte_shape(data: dict[str, Any]) -> dict[str, Any]:
@@ -264,6 +452,8 @@ __all__ = [
     "extract_summary_game_count",
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
-    "extract_summary_weakness_patterns",  # Phase 227-A
+    "extract_summary_weakness_patterns",  # Phase 227-A + 228-A
+    "extract_summary_player_mistakes",  # Phase 228-A
+    "extract_summary_player_phase_losses",  # Phase 228-A
     "normalize_summary_to_karte_shape",
 ]

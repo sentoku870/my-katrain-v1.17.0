@@ -11,6 +11,8 @@ from katrain.core.coach.json_type import (
     detect_json_type,
     extract_summary_game_count,
     extract_summary_mistake_buckets,
+    extract_summary_player_mistakes,
+    extract_summary_player_phase_losses,
     extract_summary_total_loss,
     extract_summary_weakness_patterns,
     is_karte,
@@ -229,7 +231,9 @@ class TestExports:
             "extract_summary_game_count",
             "extract_summary_total_loss",
             "extract_summary_mistake_buckets",
-            "extract_summary_weakness_patterns",  # Phase 227-A
+            "extract_summary_weakness_patterns",  # Phase 227-A + 228-A
+            "extract_summary_player_mistakes",  # Phase 228-A
+            "extract_summary_player_phase_losses",  # Phase 228-A
         ]:
             assert hasattr(pkg, name), f"__init__ missing {name}"
 
@@ -345,3 +349,341 @@ class TestExtractWeaknessPatterns:
         # Same total_loss=10.0; sorted by count desc then category asc
         # count=5 first, then count=1 by category asc
         assert cats == ["m_category", "a_category", "z_category"]
+
+
+# --- Phase 228-A: Real-shape extractors (players.<name>.mistakes / phases) ---
+
+
+def _real_shape_summary() -> dict:
+    """A realistic summary JSON shaped like what ``summary_json_export.py``
+    actually produces (no top-level ``weaknesses`` or ``phase_x_mistake``).
+    """
+    return {
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 3,
+            "date_range": ["2025-10-31", "2025-11-06"],
+            "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0},
+        },
+        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
+        "players": {
+            "sentoku870": {
+                "mistakes": {
+                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
+                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
+                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
+                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
+                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
+                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
+                },
+            },
+            "opponent1": {
+                "mistakes": {
+                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
+                    "inaccuracy": {"count": 28, "pct": 7.2, "denominator": 388, "avg_loss": 2.95},
+                    "mistake": {"count": 8, "pct": 2.1, "denominator": 388, "avg_loss": 5.5},
+                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
+                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
+                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
+                },
+            },
+        },
+        "loss_progression": {"all": [{"mistake_count": 5}] * 3},
+    }
+
+
+class TestExtractPlayerMistakes:
+    """Phase 228-A: ``extract_summary_player_mistakes`` for the real
+    ``summary_json_export.py`` shape."""
+
+    def test_extracts_two_players(self):
+        data = _real_shape_summary()
+        result = extract_summary_player_mistakes(data)
+        assert set(result.keys()) == {"sentoku870", "opponent1"}
+
+    def test_severity_order_blunder_first(self):
+        # Categories emitted in severity order: blunder → mistake →
+        # inaccuracy → good (descending severity).
+        data = _real_shape_summary()
+        categories = [m["category"] for m in extract_summary_player_mistakes(data)["sentoku870"]]
+        assert categories == ["blunder", "mistake", "inaccuracy", "good"]
+
+    def test_total_loss_reconstructed_from_avg_times_count(self):
+        data = _real_shape_summary()
+        sentoku = {m["category"]: m for m in extract_summary_player_mistakes(data)["sentoku870"]}
+        # blunder: 5 * 19.04 = 95.20
+        assert abs(sentoku["blunder"]["total_loss"] - 95.20) < 1e-9
+        # mistake: 22 * 5.69 = 125.18
+        assert abs(sentoku["mistake"]["total_loss"] - 125.18) < 1e-9
+        # good: 310 * 0.28 = 86.80
+        assert abs(sentoku["good"]["total_loss"] - 86.80) < 1e-9
+
+    def test_entry_dict_keys(self):
+        data = _real_shape_summary()
+        entries = extract_summary_player_mistakes(data)["sentoku870"]
+        for m in entries:
+            assert set(m.keys()) == {
+                "category",
+                "count",
+                "pct",
+                "avg_loss",
+                "total_loss",
+                "denominator",
+            }
+
+    def test_no_players_block(self):
+        assert extract_summary_player_mistakes({}) == {}
+
+    def test_players_block_without_mistakes(self):
+        # Players exist but no ``mistakes`` sub-block
+        data = {"players": {"alice": {"phases": {}}}}
+        assert extract_summary_player_mistakes(data) == {}
+
+    def test_empty_mistakes_block_skipped(self):
+        data = {"players": {"alice": {"mistakes": {}}}}
+        assert extract_summary_player_mistakes(data) == {}
+
+    def test_partial_mistakes_block(self):
+        # Only "good" and "blunder" present — both should be returned
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 100, "pct": 90.0, "denominator": 111, "avg_loss": 0.1},
+                        "blunder": {"count": 2, "pct": 1.8, "denominator": 111, "avg_loss": 10.0},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_mistakes(data)
+        assert len(result["alice"]) == 2
+        # Severity order preserved
+        assert result["alice"][0]["category"] == "blunder"
+        assert result["alice"][1]["category"] == "good"
+
+    def test_non_dict_player_block_skipped(self):
+        data = {"players": {"alice": "not a dict"}}
+        assert extract_summary_player_mistakes(data) == {}
+
+    def test_non_dict_mistakes_block_skipped(self):
+        data = {"players": {"alice": {"mistakes": "not a dict"}}}
+        assert extract_summary_player_mistakes(data) == {}
+
+    def test_non_dict_category_entry_skipped(self):
+        # One category is malformed (not a dict) — should be skipped, others kept
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "blunder": "not a dict",  # malformed
+                        "good": {"count": 100, "pct": 90.0, "denominator": 111, "avg_loss": 0.1},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_mistakes(data)
+        assert len(result["alice"]) == 1
+        assert result["alice"][0]["category"] == "good"
+
+    def test_total_loss_field_in_json_takes_precedence(self):
+        # When total_loss is explicitly in the JSON, don't overwrite it
+        # with avg_loss * count.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "blunder": {
+                            "count": 5,
+                            "pct": 1.0,
+                            "denominator": 500,
+                            "avg_loss": 10.0,
+                            "total_loss": 999.99,  # explicit
+                        }
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_mistakes(data)
+        assert result["alice"][0]["total_loss"] == 999.99
+
+    def test_zero_count_does_not_crash(self):
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "blunder": {"count": 0, "pct": 0.0, "denominator": 100, "avg_loss": 0.0},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_mistakes(data)
+        assert result["alice"][0]["count"] == 0
+        assert result["alice"][0]["total_loss"] == 0.0
+
+
+class TestExtractPlayerPhaseLosses:
+    """Phase 228-A: ``extract_summary_player_phase_losses`` for the real
+    ``summary_json_export.py`` shape."""
+
+    def test_extracts_three_phases_per_player(self):
+        data = _real_shape_summary()
+        result = extract_summary_player_phase_losses(data)
+        assert set(result["sentoku870"].keys()) == {"opening", "middle", "endgame"}
+        assert set(result["opponent1"].keys()) == {"opening", "middle", "endgame"}
+
+    def test_temporal_order(self):
+        # opening → middle → endgame
+        data = _real_shape_summary()
+        phases = list(extract_summary_player_phase_losses(data)["sentoku870"].keys())
+        assert phases == ["opening", "middle", "endgame"]
+
+    def test_phase_entry_keys(self):
+        data = _real_shape_summary()
+        phases = extract_summary_player_phase_losses(data)["sentoku870"]
+        for phase_data in phases.values():
+            assert set(phase_data.keys()) == {"moves", "total_loss", "avg_loss"}
+
+    def test_phase_values_preserved(self):
+        data = _real_shape_summary()
+        middle = extract_summary_player_phase_losses(data)["sentoku870"]["middle"]
+        assert middle["moves"] == 173
+        assert middle["total_loss"] == 370.78
+        assert abs(middle["avg_loss"] - 2.143) < 1e-9
+
+    def test_no_players_block(self):
+        assert extract_summary_player_phase_losses({}) == {}
+
+    def test_no_phases_block(self):
+        data = {"players": {"alice": {"mistakes": {}}}}
+        assert extract_summary_player_phase_losses(data) == {}
+
+    def test_partial_phases_block(self):
+        # Only opening and endgame present
+        data = {
+            "players": {
+                "alice": {
+                    "phases": {
+                        "opening": {"moves": 50, "total_loss": 10.0, "avg_loss": 0.2},
+                        "endgame": {"moves": 80, "total_loss": 25.0, "avg_loss": 0.3},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_phase_losses(data)
+        assert set(result["alice"].keys()) == {"opening", "endgame"}
+
+    def test_non_dict_phase_entry_skipped(self):
+        data = {
+            "players": {
+                "alice": {
+                    "phases": {
+                        "opening": "not a dict",
+                        "middle": {"moves": 100, "total_loss": 50.0, "avg_loss": 0.5},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_phase_losses(data)
+        assert set(result["alice"].keys()) == {"middle"}
+
+
+class TestExtractWeaknessPatternsShapeB:
+    """Phase 228-A: ``extract_summary_weakness_patterns`` accepts the
+    real ``players.<name>.mistakes`` shape when Shape A (top-level
+    ``weaknesses``) is absent."""
+
+    def test_synthesizes_patterns_from_player_mistakes(self):
+        data = _real_shape_summary()
+        # No top-level weaknesses → Shape B kicks in
+        patterns = extract_summary_weakness_patterns(data)
+        # 4 categories × 2 players = 8 patterns
+        assert len(patterns) == 8
+
+    def test_patterns_sorted_by_total_loss_desc(self):
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        losses = [p["total_loss"] for p in patterns]
+        assert losses == sorted(losses, reverse=True)
+
+    def test_player_field_present(self):
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        for p in patterns:
+            assert "player" in p
+            assert p["player"] in {"sentoku870", "opponent1"}
+
+    def test_phase_is_all_for_shape_b(self):
+        # Shape B doesn't carry phase info per mistake category
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        for p in patterns:
+            assert p["phase"] == "all"
+
+    def test_color_field_is_player_name(self):
+        # For Shape B, the ``color`` field carries the player name
+        # (matches Shape A's "color" semantics for compatibility)
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        for p in patterns:
+            assert p["color"] == p["player"]
+
+    def test_frequency_ratio_zero_for_shape_b_with_pct_alternative(self):
+        # Phase 228-B: Shape B's ``count`` is per-move (e.g. 5 blunder
+        # moves out of 388), so ``count / games_analyzed`` is
+        # meaningless. The extractor surfaces the per-move ``pct``
+        # field instead and leaves ``frequency_ratio`` at 0.0.
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        sentoku_blunder = next(
+            p for p in patterns
+            if p["player"] == "sentoku870" and p["category"] == "blunder"
+        )
+        assert sentoku_blunder["frequency_ratio"] == 0.0
+        # pct field carries the per-move percentage
+        assert abs(sentoku_blunder["pct"] - 1.3) < 1e-9
+
+    def test_top_n_cap(self):
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data, top_n=3)
+        assert len(patterns) == 3
+
+    def test_no_games_analyzed_degrades_to_zero_freq(self):
+        # No games_analyzed: frequency_ratio = 0.0 for all entries
+        data = {"players": {"alice": {"mistakes": {
+            "blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}
+        }}}}
+        patterns = extract_summary_weakness_patterns(data)
+        assert patterns[0]["frequency_ratio"] == 0.0
+        assert patterns[0]["total_loss"] == 50.0
+
+    def test_shape_a_wins_when_both_present(self):
+        # When both shapes exist, Shape A takes priority (more precise
+        # total_loss values)
+        data = {
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {
+                "black": [{"phase": "middle", "category": "blunder",
+                            "count": 5, "total_loss": 100.0}]
+            },
+            "players": {"alice": {"mistakes": {
+                "blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}
+            }}},
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        assert len(patterns) == 1
+        # Shape A pattern has total_loss=100.0 (not the reconstructed 50.0)
+        assert patterns[0]["total_loss"] == 100.0
+        # Shape A patterns don't have the "player" field
+        assert "player" not in patterns[0]
+        # Shape A pattern has the literal "color"="black"
+        assert patterns[0]["color"] == "black"
+
+    def test_empty_when_no_recognisable_data(self):
+        # No weaknesses and no players → empty
+        assert extract_summary_weakness_patterns({}) == []

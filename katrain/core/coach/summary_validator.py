@@ -119,37 +119,134 @@ _GAME_ID_RE = re.compile(
 # --- Summary JSON ground truth extraction ---
 
 
+# Phase 228-C: standard mistake categories that appear in
+# ``players.<name>.mistakes``. The validator accepts these as valid
+# weakness pattern categories when the summary uses Shape B
+# (``summary_json_export.py``-style per-player mistakes block).
+_STANDARD_MISTAKE_CATEGORIES: frozenset[str] = frozenset({
+    "good",
+    "inaccuracy",
+    "mistake",
+    "blunder",
+})
+
+
 def _summary_available_categories(summary_json: dict[str, Any]) -> set[str]:
-    """Return the set of ``category`` values that exist in any weakness."""
+    """Return the set of valid ``category`` values for the summary.
+
+    Phase 227-B: looked only at ``weaknesses[*].category`` (Shape A).
+
+    Phase 228-C: also recognises the Shape B export where each player
+    has a ``players.<name>.mistakes`` block with the standard 4
+    categories (``good`` / ``inaccuracy`` / ``mistake`` / ``blunder``).
+    When the summary uses Shape B we add those 4 categories to the
+    valid set so the LLM can reference them without triggering
+    ``unknown_pattern_category`` warnings.
+
+    Note:
+        The 4 standard categories are added unconditionally for
+        Shape B because every Shape B summary has them by
+        construction. Adding categories that don't actually
+        appear in the JSON would still be wrong, so we only do this
+        when at least one ``players.<name>.mistakes`` block exists.
+    """
     out: set[str] = set()
+
+    # Shape A: top-level weaknesses[*].category
     weaknesses = summary_json.get("weaknesses", {}) or {}
-    if not isinstance(weaknesses, dict):
-        return out
-    for color_list in weaknesses.values():
-        if not isinstance(color_list, list):
-            continue
-        for w in color_list:
-            if isinstance(w, dict):
-                cat = w.get("category")
-                if cat:
-                    out.add(str(cat))
+    if isinstance(weaknesses, dict):
+        for color_list in weaknesses.values():
+            if not isinstance(color_list, list):
+                continue
+            for w in color_list:
+                if isinstance(w, dict):
+                    cat = w.get("category")
+                    if cat:
+                        out.add(str(cat))
+
+    # Shape B: players.<name>.mistakes.{good,inaccuracy,mistake,blunder}
+    players = summary_json.get("players", {}) or {}
+    shape_b_has_mistakes = False
+    if isinstance(players, dict):
+        for player_block in players.values():
+            if not isinstance(player_block, dict):
+                continue
+            mistakes = player_block.get("mistakes")
+            if isinstance(mistakes, dict) and mistakes:
+                shape_b_has_mistakes = True
+                # Include any explicit categories that were actually
+                # present (defensive — the 4 standard ones are added
+                # below, but custom categorisations should also count).
+                for cat in mistakes:
+                    if isinstance(cat, str) and cat:
+                        out.add(cat)
+
+    # When Shape B is in use, the 4 standard mistake categories are
+    # always valid (the summary's mistake distribution always uses
+    # these keys, even if a specific player's count for that
+    # category is 0).
+    if shape_b_has_mistakes:
+        out |= _STANDARD_MISTAKE_CATEGORIES
+
     return out
 
 
+# Phase 228-C: standard phase labels that appear in
+# ``players.<name>.phases``. The validator accepts these as valid
+# when the summary uses Shape B.
+_STANDARD_PHASE_LABELS: frozenset[str] = frozenset({
+    "opening",
+    "middle",
+    "endgame",
+})
+
+
 def _summary_available_phases(summary_json: dict[str, Any]) -> set[str]:
-    """Return the set of ``phase`` values that exist in any weakness."""
+    """Return the set of valid ``phase`` values for the summary.
+
+    Phase 227-B: looked only at ``weaknesses[*].phase`` (Shape A).
+
+    Phase 228-C: also recognises the Shape B export where each player
+    has a ``players.<name>.phases`` block with the standard 3 phase
+    labels (``opening`` / ``middle`` / ``endgame``). When Shape B is
+    in use those 3 phase labels are always added to the valid set
+    (the phases block is part of the Shape B schema by construction,
+    so the LLM can reference any of the 3 standard labels without
+    triggering ``phase_label_out_of_set`` warnings).
+    """
     out: set[str] = set()
+
+    # Shape A: top-level weaknesses[*].phase
     weaknesses = summary_json.get("weaknesses", {}) or {}
-    if not isinstance(weaknesses, dict):
-        return out
-    for color_list in weaknesses.values():
-        if not isinstance(color_list, list):
-            continue
-        for w in color_list:
-            if isinstance(w, dict):
-                ph = w.get("phase")
-                if ph:
-                    out.add(str(ph).lower())
+    if isinstance(weaknesses, dict):
+        for color_list in weaknesses.values():
+            if not isinstance(color_list, list):
+                continue
+            for w in color_list:
+                if isinstance(w, dict):
+                    ph = w.get("phase")
+                    if ph:
+                        out.add(str(ph).lower())
+
+    # Shape B: players.<name>.phases.{opening,middle,endgame}
+    # The 3 standard phase labels are added when any player has
+    # a non-empty phases block. The Phase 228-B prompt renders
+    # the Player Phase Loss Distribution section for any
+    # player that has the block, so the LLM is justified in
+    # citing any of the 3 standard labels.
+    players = summary_json.get("players", {}) or {}
+    shape_b_has_phases = False
+    if isinstance(players, dict):
+        for player_block in players.values():
+            if not isinstance(player_block, dict):
+                continue
+            phases = player_block.get("phases")
+            if isinstance(phases, dict) and phases:
+                shape_b_has_phases = True
+
+    if shape_b_has_phases:
+        out |= _STANDARD_PHASE_LABELS
+
     return out
 
 

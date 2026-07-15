@@ -102,6 +102,386 @@ class TestSummaryAvailableFields:
         assert _summary_available_phases({}) == set()
 
 
+# --- Phase 228-C: Shape B (players.<name>.mistakes / phases) ---
+
+
+def _real_shape_summary() -> dict:
+    """A summary JSON shaped like the real ``summary_json_export.py`` output."""
+    return {
+        "schema_version": "3.4",
+        "meta": {"games_analyzed": 3},
+        "games": [{"game_id": "g1"}, {"game_id": "g2"}, {"game_id": "g3"}],
+        "players": {
+            "sentoku870": {
+                "mistakes": {
+                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
+                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
+                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
+                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
+                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
+                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
+                },
+            },
+            "opponent1": {
+                "mistakes": {
+                    "good": {"count": 350, "pct": 90.2, "denominator": 388, "avg_loss": 0.22},
+                    "blunder": {"count": 2, "pct": 0.5, "denominator": 388, "avg_loss": 18.0},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 30.0, "avg_loss": 0.4},
+                    "middle": {"moves": 173, "total_loss": 150.0, "avg_loss": 0.87},
+                    "endgame": {"moves": 140, "total_loss": 25.0, "avg_loss": 0.18},
+                },
+            },
+        },
+    }
+
+
+class TestSummaryAvailableFieldsShapeB:
+    """Phase 228-C: ``_summary_available_categories`` and
+    ``_summary_available_phases`` accept the standard 4 mistake
+    categories and 3 phase labels when the summary uses the real
+    ``summary_json_export.py`` shape."""
+
+    def test_shape_b_categories_includes_4_standard(self):
+        data = _real_shape_summary()
+        cats = _summary_available_categories(data)
+        # The 4 standard categories must be present
+        for cat in ("blunder", "mistake", "inaccuracy", "good"):
+            assert cat in cats
+
+    def test_shape_b_phases_includes_3_standard(self):
+        data = _real_shape_summary()
+        phases = _summary_available_phases(data)
+        for ph in ("opening", "middle", "endgame"):
+            assert ph in phases
+
+    def test_shape_b_categories_includes_explicit_only(self):
+        # When a player has only some of the standard categories
+        # (e.g. opponent1 only has good and blunder), the missing
+        # ones should still appear in the valid set because the
+        # mistakes block exists.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 0.1},
+                        "blunder": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 5.0},
+                    }
+                }
+            }
+        }
+        cats = _summary_available_categories(data)
+        # Both standard categories included via Shape B
+        assert "good" in cats
+        assert "blunder" in cats
+        # The 4 standard set is added when any mistakes block exists
+        for cat in ("blunder", "mistake", "inaccuracy", "good"):
+            assert cat in cats
+
+    def test_no_mistakes_block_no_standard_categories(self):
+        # Players exist but no ``mistakes`` sub-block — standard
+        # categories should NOT be auto-added.
+        data = {
+            "players": {
+                "alice": {
+                    "phases": {
+                        "middle": {"moves": 100, "total_loss": 50.0, "avg_loss": 0.5},
+                    }
+                }
+            }
+        }
+        cats = _summary_available_categories(data)
+        # 4 standard categories NOT included
+        assert "blunder" not in cats
+        assert "good" not in cats
+
+    def test_empty_mistakes_block_treated_as_missing(self):
+        # A mistakes block that exists but is empty should not
+        # trigger Shape B mode.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {},
+                }
+            }
+        }
+        cats = _summary_available_categories(data)
+        assert "blunder" not in cats
+
+    def test_explicit_custom_categories_added(self):
+        # A player with a custom category (e.g. "endgame_slip") in
+        # their mistakes block should add that to the valid set.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 0.1},
+                        "endgame_slip": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 5.0},
+                    }
+                }
+            }
+        }
+        cats = _summary_available_categories(data)
+        assert "endgame_slip" in cats
+        # Standard categories also present (Shape B)
+        assert "blunder" in cats
+
+    def test_phases_includes_3_standard_when_shape_b(self):
+        # Phase 228-C: when at least one player has a phases block,
+        # all 3 standard phase labels are accepted (the LLM is
+        # justified in citing any of them because the Player Phase
+        # Loss Distribution block always uses these labels).
+        data = {
+            "players": {
+                "alice": {
+                    "phases": {
+                        "middle": {"moves": 100, "total_loss": 50.0, "avg_loss": 0.5},
+                    }
+                }
+            }
+        }
+        phases = _summary_available_phases(data)
+        for ph in ("opening", "middle", "endgame"):
+            assert ph in phases
+
+    def test_phases_union_across_players(self):
+        # Phases are unioned across all players.
+        data = {
+            "players": {
+                "alice": {
+                    "phases": {
+                        "middle": {"moves": 100, "total_loss": 50.0, "avg_loss": 0.5},
+                    }
+                },
+                "bob": {
+                    "phases": {
+                        "opening": {"moves": 50, "total_loss": 10.0, "avg_loss": 0.2},
+                        "endgame": {"moves": 80, "total_loss": 15.0, "avg_loss": 0.19},
+                    }
+                },
+            }
+        }
+        phases = _summary_available_phases(data)
+        assert phases == {"middle", "opening", "endgame"}
+
+    def test_shape_a_still_works(self):
+        # Phase 227-A legacy shape: top-level weaknesses still work
+        data = {
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                ],
+            },
+        }
+        cats = _summary_available_categories(data)
+        assert cats == {"blunder"}
+        # No Shape B, so standard categories NOT added
+        assert "good" not in cats
+        assert "inaccuracy" not in cats
+
+    def test_both_shapes_present_both_included(self):
+        # When both shapes exist, categories from Shape A AND the
+        # 4 standard Shape B categories are all accepted. The
+        # validator treats Shape A's explicit categories as additive
+        # (not exclusive) — both schema sets can co-exist.
+        data = {
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "weird_old_category", "count": 1, "total_loss": 1.0},
+                ],
+            },
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 0.1},
+                    }
+                }
+            }
+        }
+        cats = _summary_available_categories(data)
+        # Shape A category present
+        assert "weird_old_category" in cats
+        # Shape B standard categories also present
+        for cat in ("blunder", "mistake", "inaccuracy", "good"):
+            assert cat in cats
+
+    def test_non_dict_players_block_ignored(self):
+        data = {"players": "not a dict"}
+        assert _summary_available_categories(data) == set()
+        assert _summary_available_phases(data) == set()
+
+    def test_non_dict_player_block_skipped(self):
+        data = {"players": {"alice": "bad"}}
+        assert _summary_available_categories(data) == set()
+        assert _summary_available_phases(data) == set()
+
+    def test_non_dict_mistakes_block_skipped(self):
+        data = {"players": {"alice": {"mistakes": "bad"}}}
+        assert _summary_available_categories(data) == set()
+
+    def test_non_dict_phases_block_skipped(self):
+        data = {"players": {"alice": {"phases": "bad"}}}
+        assert _summary_available_phases(data) == set()
+
+    def test_partial_shape_b_only_one_player_has_data(self):
+        # One player has mistakes + phases, another doesn't.
+        # Should still add the standard categories.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "blunder": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 5.0},
+                    },
+                    "phases": {
+                        "middle": {"moves": 50, "total_loss": 25.0, "avg_loss": 0.5},
+                    }
+                },
+                "bob": {},  # no mistakes, no phases
+            }
+        }
+        cats = _summary_available_categories(data)
+        for cat in ("blunder", "mistake", "inaccuracy", "good"):
+            assert cat in cats
+        phases = _summary_available_phases(data)
+        assert "middle" in phases
+
+
+class TestValidatorAcceptsShapeBCategories:
+    """Phase 228-C: end-to-end test that the validator returns clean
+    when LLM cites the standard 4 mistake categories from a
+    Shape B summary."""
+
+    def test_blunder_mistake_inaccuracy_good_all_clean(self):
+        from katrain.core.coach.master_db import CoachMode, ToneVoice
+        from katrain.core.coach.summary_prompt_builder import (
+            SummaryPromptConfig,
+            build_summary_weakness_prompt,
+        )
+
+        data = _real_shape_summary()
+        response = (
+            "考察: 中盤の blunder が最多です。\n"
+            "抽出した弱点パターン: [blunder, mistake, inaccuracy]\n"
+            "参照したphase: [middle, opening]\n"
+        )
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(data, cfg)
+        report = validate_summary_llm_output(response, data, prompt)
+        assert report.is_clean
+        assert report.high_count == 0
+        assert report.medium_count == 0
+        assert report.low_count == 0
+        assert "blunder" in report.referenced_categories
+        assert "mistake" in report.referenced_categories
+        assert "inaccuracy" in report.referenced_categories
+        assert "middle" in report.referenced_phases
+        assert "opening" in report.referenced_phases
+
+    def test_fantasy_category_still_flagged_for_shape_b(self):
+        from katrain.core.coach.master_db import CoachMode, ToneVoice
+        from katrain.core.coach.summary_prompt_builder import (
+            SummaryPromptConfig,
+            build_summary_weakness_prompt,
+        )
+
+        data = _real_shape_summary()
+        # Cite a real category plus a hallucinated one
+        response = (
+            "考察: ...\n"
+            "抽出した弱点パターン: [blunder, fantasy_category]\n"
+            "参照したphase: [middle]\n"
+        )
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(data, cfg)
+        report = validate_summary_llm_output(response, data, prompt)
+        # fantasy_category is NOT a standard mistake category and
+        # not in the summary — should be flagged HIGH.
+        assert not report.is_clean
+        assert report.high_count == 1
+        kinds = [i.kind for i in report.issues]
+        assert "unknown_pattern_category" in kinds
+
+    def test_standard_phases_accepted_for_shape_b(self):
+        from katrain.core.coach.master_db import CoachMode, ToneVoice
+        from katrain.core.coach.summary_prompt_builder import (
+            SummaryPromptConfig,
+            build_summary_weakness_prompt,
+        )
+
+        # Summary with only "middle" in phases block — but the
+        # 3 standard phase labels are still accepted because the
+        # Player Phase Loss Distribution block always uses them.
+        data = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "blunder": {"count": 1, "pct": 100.0, "denominator": 1, "avg_loss": 5.0},
+                    },
+                    "phases": {
+                        "middle": {"moves": 50, "total_loss": 25.0, "avg_loss": 0.5},
+                    }
+                }
+            }
+        }
+        response = (
+            "考察: ...\n"
+            "抽出した弱点パターン: [blunder]\n"
+            "参照したphase: [middle, opening, endgame]\n"  # all 3 accepted
+        )
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(data, cfg)
+        report = validate_summary_llm_output(response, data, prompt)
+        # All 3 standard phases accepted, no warnings
+        phase_kinds = [
+            i.kind for i in report.issues
+            if i.kind == "phase_label_out_of_set"
+        ]
+        assert phase_kinds == []
+
+    def test_good_category_citation_clean(self):
+        from katrain.core.coach.master_db import CoachMode, ToneVoice
+        from katrain.core.coach.summary_prompt_builder import (
+            SummaryPromptConfig,
+            build_summary_weakness_prompt,
+        )
+
+        data = _real_shape_summary()
+        # LLM might mention "good" as a positive observation
+        response = (
+            "考察: 良い手も 79.9% あります。\n"
+            "抽出した弱点パターン: [blunder, good]\n"
+            "参照したphase: [middle]\n"
+        )
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(data, cfg)
+        report = validate_summary_llm_output(response, data, prompt)
+        # "good" is a valid Shape B standard category — no HIGH warning
+        high_kinds = [i.kind for i in report.issues if i.severity.value == "high"]
+        assert "unknown_pattern_category" not in high_kinds
+
+
 # --- LLM text extractors ---
 
 

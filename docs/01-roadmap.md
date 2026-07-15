@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E 完了）
+> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -1100,6 +1100,13 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - 227-E: i18n 15 キー追加 + summary calibration fixtures 4 個 + マスター仕様書 (16 tests)
   - 詳細: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md`
   - 累計 5,319 件テスト合格 (Phase 226 終了時 5,116 件 + 203 件新規)
+- [x] **Phase 228: LLM コーチ複数局対応 - 実シェーマ適応**（Lv3、2026-07-15 完了）
+  - 228-A: extractor 拡張（`extract_summary_player_mistakes` / `extract_summary_player_phase_losses` 新規、`extract_summary_weakness_patterns` を実シェーマ対応に）(30 tests)
+  - 228-B: prompt builder で Player Mistake Distribution / Player Phase Loss Distribution セクションを描画、system instruction 更新 (24 tests)
+  - 228-C: validator で標準 4 カテゴリ (good/inaccuracy/mistake/blunder) + 3 phase (opening/middle/endgame) を valid reference 化 (19 tests)
+  - 228-D: real_shape calibration fixtures 3 個 + E2E 統合テスト + マスター仕様書 (26 tests)
+  - 詳細: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md`
+  - 累計 5,418 件テスト合格 (Phase 227-E 終了時 5,319 件 + 99 件新規)
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---
