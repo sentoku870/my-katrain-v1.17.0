@@ -27,6 +27,8 @@ from katrain.core.coach.json_type import (
     detect_json_type,
     extract_summary_game_count,
     extract_summary_mistake_buckets,
+    extract_summary_player_mistakes,  # Phase 228-A
+    extract_summary_player_phase_losses,  # Phase 228-A
     extract_summary_total_loss,
     extract_summary_weakness_patterns,
     is_karte,
@@ -212,7 +214,9 @@ __all__ = [
     "extract_summary_game_count",
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
-    "extract_summary_weakness_patterns",  # Phase 227-A
+    "extract_summary_weakness_patterns",  # Phase 227-A + 228-A
+    "extract_summary_player_mistakes",  # Phase 228-A
+    "extract_summary_player_phase_losses",  # Phase 228-A
     # summary_prompt_builder (Phase 227-A)
     "SummaryPromptConfig",
     "build_summary_weakness_prompt",
