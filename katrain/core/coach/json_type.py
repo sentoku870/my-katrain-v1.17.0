@@ -140,6 +140,77 @@ def extract_summary_mistake_buckets(data: dict[str, Any]) -> dict[str, int]:
     }
 
 
+def extract_summary_weakness_patterns(
+    data: dict[str, Any],
+    *,
+    top_n: int = 0,
+) -> list[dict[str, Any]]:
+    """Phase 227-A: aggregate per-color weaknesses into frequency-ranked patterns.
+
+    Each summary weakness entry typically looks like::
+
+        {"phase": "middle", "category": "blunder",
+         "count": 5, "total_loss": 30.0}
+
+    This helper flattens ``weaknesses[<color>]`` lists across both colors
+    and returns one record per (color, phase, category) combination with
+    an added ``frequency_ratio`` field (``count / games_analyzed``).
+
+    Args:
+        data: Summary JSON dict.
+        top_n: If > 0, return only the top-N patterns by total_loss.
+            If 0 (default), return all patterns.
+
+    Returns:
+        Sorted list of pattern dicts (highest total_loss first), e.g.::
+
+            [
+              {"color": "black", "phase": "middle",
+               "category": "blunder", "count": 5,
+               "total_loss": 30.0, "frequency_ratio": 1.0},
+              ...
+            ]
+
+        Returns an empty list when the summary has no ``weaknesses`` block
+        or when ``games_analyzed`` cannot be determined (frequency_ratio
+        degrades to 0.0 in that case but entries are still returned).
+    """
+    weaknesses = data.get("weaknesses", {}) or {}
+    if not isinstance(weaknesses, dict):
+        return []
+
+    games = extract_summary_game_count(data) or 0
+
+    patterns: list[dict[str, Any]] = []
+    for color, items in weaknesses.items():
+        if not isinstance(items, list):
+            continue
+        for w in items:
+            if not isinstance(w, dict):
+                continue
+            count = w.get("count")
+            total_loss = w.get("total_loss")
+            if count is None and total_loss is None:
+                # Skip entries that carry no quantitative signal.
+                continue
+            freq = (float(count) / games) if (games and isinstance(count, (int, float))) else 0.0
+            patterns.append({
+                "color": str(color),
+                "phase": str(w.get("phase", "unknown")),
+                "category": str(w.get("category", "unknown")),
+                "count": int(count) if isinstance(count, (int, float)) else 0,
+                "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
+                "frequency_ratio": freq,
+            })
+
+    # Sort by total_loss desc, then count desc, then category asc for stability.
+    patterns.sort(key=lambda p: (-p["total_loss"], -p["count"], p["category"]))
+
+    if top_n > 0:
+        return patterns[:top_n]
+    return patterns
+
+
 def normalize_summary_to_karte_shape(data: dict[str, Any]) -> dict[str, Any]:
     """Project a summary JSON into a Karte-shaped view for downstream consumers.
 
@@ -193,5 +264,6 @@ __all__ = [
     "extract_summary_game_count",
     "extract_summary_total_loss",
     "extract_summary_mistake_buckets",
+    "extract_summary_weakness_patterns",  # Phase 227-A
     "normalize_summary_to_karte_shape",
 ]

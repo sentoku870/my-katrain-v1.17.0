@@ -44,6 +44,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - `katrain/gui/popups/llm_coach_popup.py` + `katrain/gui/kv/llm_coach_popup.kv`: MyKatrain メニュー「LLM コーチ（手動貼付）」から開く Popup
     - DISPATCH_TABLE に `llm_coach_popup` 追加、menu.kv にメニュー項目追加
     - i18n: `mykatrain:llm-coach:*` 28 個のキー（jp/en .po + .mo 更新済み）
+  - Phase 226-A〜J（2026-07-15）: LLM Coach 品質改善（検証ロジック / GUI 堅牢性 / データ整合 / テスト強化 / 軽微改善）
+  - Phase 227（2026-07-15）: **LLM コーチ複数局対応（B案フル実装）**（Lv3、17 ファイル + 203 unit tests、合計 5,319 件テスト合格）
+    - 227-A: `core/coach/summary_prompt_builder.py` 新規 + CLI `--summary-mode` フラグ
+    - 227-B: `core/coach/summary_validator.py` 新規 + CLI validate 拡張
+    - 227-C: `find_latest_llm_input` (karte/summary 両対応) + `detect_player_info_for_summary`
+    - 227-D: popup 型検出 + 視点セレクタ + 集約サマリボタン
+    - 227-E: i18n 15 キー追加 + summary calibration fixtures 4 個 + マスター仕様書
+    - 詳細: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md`
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -295,6 +303,30 @@ docs/
   - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
   - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
   - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
+- 2026-07-15: **Phase 227-E — LLM コーチ複数局対応 (i18n 完了 + summary calibration fixtures + ドキュメント)**（Lv2、5 ファイル + 16 unit tests、全 5319 件テスト合格）
+  - **summary calibration fixtures**: `summary_clean` / `summary_blunder_dominant` / `summary_empty_weaknesses` / `summary_handicapped_mix` の 4 フィクスチャ追加。`karte` フィールドは multi-game Summary JSON を保持。CLI `calibrate` は summary フィクスチャを `⏭️ skip` として扱い、per-move 症状検出器の代わりにパターン抽出を実行
+  - **CLI calibrate 拡張**: `if detect_json_type(fix.karte) == "summary" → skip + extract_summary_weakness_patterns` 分岐追加。symptom-level テストは karte 投影後の誤動作を避けるため summary では skip
+  - **i18n 完了**: 15 個の新規キーが jp/en .po + .mo に同期。`polib` で .mo 再コンパイル
+  - **ドキュメント**: `docs/archive/specs-implemented/phase227-llm-coach-multi-game.md` 新規作成（サブフェーズ索引 + アーキテクチャ図 + UX フロー + 検証ルール表 + Calibration fixture 一覧 + テスト数推移）
+- 2026-07-15: **Phase 227-D — LLM コーチ複数局対応 (popup タブ化 + 集約サマリボタン + 視点セレクタ)**（Lv3、4 ファイル + 47 unit tests、合計 5286 件テスト合格）
+  - **popup 型検出 + ディスパッチ**: `_detect_path_type(path)` が `core.coach.detect_json_type()` を呼び出し `self.path_type` を更新。`on_generate_and_copy()` / `on_validate()` が path_type に応じて karte / summary ビルダーに振り分け
+  - **集約サマリプロンプトボタン**: generate ボタンのテキストが「集約サマリプロンプト」に動的変化（karte モードでは既存表示）。`_on_generate_summary()` が `build_summary_llm_prompt` を呼び出し、player_name を spinner index から解決
+  - **summary 視点セレクタ**: `_populate_summary_perspective()` が spinner を「全体俯瞰 (idx 0) + 各プレイヤー (idx 1..N)」で再構築。default_user マッチなら該当プレイヤーを default 選択
+  - **KV レイアウト拡張**: `type_label` ウィジェット追加（path の下）、「単局カルテ」/「複数局サマリ (N局)」/「(未確定)」表示。`karte_path_input.on_text_validate` バインディングで Enter 押下時の再検出
+  - **i18n 14 個の新規キー**: type-label-single/multi/unknown, summary-perspective-label/birdseye/summary, summary-build-button, summary-build-failed, summary-copy-success, summary-report-meta, summary-referenced-{categories,phases,moves,game-ids}
+  - **新ヘルパー関数**: `_summary_index_to_internal(idx, players)` (spinner index → player name / None)
+- 2026-07-15: **Phase 227-C — LLM コーチ複数局対応 (find_latest_llm_input + detect_player_info_for_summary)**（Lv2、2 ファイル + 30 unit tests、合計 5239 件テスト合格）
+  - **`find_latest_llm_input(output_dir)`**: `get_latest_report` のラッパー。`llm_package_*.zip` 等の非JSON bundle を除外して karte/summary のみ返す。latest mtime 優先
+  - **`find_latest_llm_input_for_ctx(ctx)`**: 設定ディレクトリ解決の薄いラッパー
+  - **`detect_player_info_for_summary(summary_path, default_user_name)`**: summary JSON の `players.<name>.overall.rank` ブロックからプレイヤー情報抽出。selection priority は default_user → アルファベット順先頭。rank 抽出は direct / overall / stats の 3 系統フォールバック
+- 2026-07-15: **Phase 227-B — LLM コーチ複数局対応 (summary validator + CLI --summary-mode)**（Lv3、2 ファイル + 63 unit tests、合計 5209 件テスト合格）
+  - **`core/coach/summary_validator.py` 新規**: `SummaryValidationReport` + `validate_summary_llm_output()` 関数。6 種類の検証ルール (HIGH: unknown_pattern_category / forbidden_move_number、MEDIUM: too_many_patterns / phase_label_out_of_set、LOW: specific_game_id_referenced / tone_inconsistency)
+  - **新規 regex**: `_PATTERN_LIST_LINE_RE` (抽出した弱点パターン: [...]) / `_PHASE_LIST_LINE_RE` / `_GAME_ID_RE` (g1, game_3 等) / `_extract_phases_from_prose` (テキスト順抽出)
+  - **CLI validate 拡張**: `--summary-mode` フラグ追加。デフォルトで `detect_json_type` 自動振り分け。`--summary-mode` 明示時に karte を渡すと exit 2 で拒否
+- 2026-07-15: **Phase 227-A — LLM コーチ複数局対応 (summary prompt builder + CLI --summary-mode)**（Lv3、4 ファイル + 47 unit tests、合計 5146 件テスト合格）
+  - **`core/coach/summary_prompt_builder.py` 新規**: `SummaryPromptConfig` + `SummaryPrompt` + `build_summary_weakness_prompt()` 関数。「N局の弱点パターン抽出」ユースケース向け system instruction と body
+  - **`json_type.py` 拡張**: `extract_summary_weakness_patterns(data, top_n=0)` 追加。summary の weaknesses を (color, phase, category) ごとに集計、total_loss desc / count desc / category asc でソート。frequency_ratio (count/games_analyzed) 自動計算
+  - **CLI build 拡張**: `--summary-mode` / `--player` フラグ追加。`detect_json_type` で summary 以外なら exit 2
 - 2026-07-15: **Phase 226-J — voice-symptoms 整合性 + Symptom ↔ Lexicon 関連付け**（Lv3、3 ファイル + 17 unit tests）
   - **J.1 voice-symptoms 整合性チェック**: `validate_prompt_config(config)` を新規追加。`PromptConfig.voice` と `mode` の組み合わせが `modes_for_voice` に含まれない場合、または各 detected_symptom が `difficulty_range` の外側にある場合、日本語の警告文字列リストを返す。`build_translation_prompt` 内では `_LOG.warning` でログのみ（abort しない）。GUI / CLI 呼び出し側は `validate_prompt_config` を直接呼んで警告をユーザーに表示可能
   - **J.2 Symptom ↔ Lexicon 関連付けの充実**: `auto_detected=True` だが `related_lexicon_ids=()` の Symptom 5 件（TOO_MANY_CHOICES / ENDGAME_PRECISION / SAME_MISTAKE_LOOP / STAGNATION_LOOP / LOCAL_OPTIMUM）に Lexicon ID を割り当て

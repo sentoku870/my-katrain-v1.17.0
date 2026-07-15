@@ -107,6 +107,18 @@ class LLMCoachPopupContent(BoxLayout):
         # attribute '_pending_clock_events'`` on popup open.
         self._pending_clock_events: list = []
         self._rank_detect_retries: int = 0
+        # Phase 227-D: detected path type. ``"karte"`` / ``"summary"``
+        # / ``"unknown"``. Drives the type_label, generate button text
+        # and dispatcher in ``on_generate_and_copy``.
+        self.path_type: str = "unknown"
+        # Phase 227-D: cached list of (name, rank) tuples for the
+        # summary perspective selector. Populated from
+        # ``detect_player_info_for_summary`` when the path is a summary.
+        self.summary_players: list[tuple[str, str | None]] = []
+        # Phase 227-D: index of the currently selected player in
+        # ``summary_players`` (0 = bird's-eye "全体俯瞰"). Drives the
+        # ``player_name`` argument to ``build_summary_llm_prompt``.
+        self.summary_perspective_index: int = 0
         super().__init__(**kwargs)
 
     # ---- Lifecycle -----------------------------------------------------
@@ -121,12 +133,19 @@ class LLMCoachPopupContent(BoxLayout):
         Phase 226-B (B1): every scheduled event is tracked in
         ``_pending_clock_events`` so ``cancel_pending_clocks`` can
         unschedule them when the popup is dismissed.
+
+        Phase 227-D: chain a third pass that runs type detection and
+        UI adaptation (type label + button text) once the karte path
+        is known.
         """
         self._schedule_once(self._populate_initial_karte_path, 0)
         # Defer the second pass so we read the karte path AFTER it has
         # been written by the first pass. Without this, _read_text
         # could see an empty field on slow hardware.
         self._schedule_once(self._populate_rank_and_perspective, 0.2)
+        # Phase 227-D: type detection runs AFTER the path is filled so
+        # we know what to render in the type label / button.
+        self._schedule_once(self._refresh_type_label, 0.4)
 
     def cancel_pending_clocks(self, *_args: Any) -> None:
         """Phase 226-B (B1): unschedule any pending Clock events.
@@ -161,24 +180,30 @@ class LLMCoachPopupContent(BoxLayout):
             self.karte_path_input.text = str(latest)
 
     def _populate_rank_and_perspective(self, *_args: Any) -> None:
-        """Phase 225.6/225.7/225.8/226-B: detect rank + player color.
+        """Phase 225.6/225.7/225.8/226-B + Phase 227-D: detect rank + perspective.
 
-        Detection priority:
+        Dispatches on the detected path type:
+
+        - **karte**: original Phase 225.6 logic. Reads black/white
+          player info from ``meta.player_info`` (or SGF fallback),
+          resolves the perspective to a ``"B"``/``"W"`` spinner value,
+          and surfaces the matched player in the status line.
+        - **summary**: Phase 227-D. Reads the player list from
+          ``players.<name>`` and populates the perspective selector
+          with one entry per player (plus "全体俯瞰" as default).
+          Rank is taken from the matched player.
+
+        Detection priority (karte):
         1. Karte JSON's ``meta.player_info`` block (or source SGF)
         2. **Phase 225.8**: mykatrain settings ``default_user_rank``
            when no Karte/SGF info is available
         3. Manual input by the user (always wins)
 
         Phase 225.7: schedule this AFTER karte path has been written.
-        The ``on_kv_post`` handler triggers us at clock +0.2s.
-
-        Phase 226-B (B1): retry at most ``_MAX_RANK_DETECT_RETRIES``
-        times when the karte path is still empty; give up after that
-        so we don't loop forever.
-
+        Phase 226-B (B1): retry at most ``_MAX_RANK_DETECT_RETRIES`` times.
         Phase 226-B (B4): ``detect_player_info`` is called once and the
-        result is passed to ``detect_player_color_for_user`` instead of
-        letting the latter re-read & re-parse the same JSON.
+        result is passed to ``detect_player_color_for_user``.
+        Phase 227-D: dispatch on path_type and adapt perspective widget.
         """
         karte_path = self._read_text("karte_path_input")
         if not karte_path:
@@ -200,6 +225,17 @@ class LLMCoachPopupContent(BoxLayout):
             # Phase 225.8: default_user_rank fallback
             default_user_rank = settings.get("default_user_rank", "")
 
+        # Phase 227-D: ensure the type detection has run before we
+        # try to dispatch. If the path is unreadable, fall back to
+        # karte behaviour.
+        self._detect_path_type(karte_path)
+        if self.path_type == "summary":
+            self._populate_summary_perspective(
+                karte_path, default_user, default_user_rank
+            )
+            return
+
+        # Default path: karte
         try:
             from katrain.gui.features.llm_coach import (
                 detect_player_color_for_user,
@@ -323,13 +359,258 @@ class LLMCoachPopupContent(BoxLayout):
         the active language. We reverse-map it to the stable internal
         value ``"B"`` / ``"W"`` / ``"auto"`` so the rest of the code
         never has to ``startswith("黒")`` again.
+
+        Phase 227-D: for summary mode, the spinner shows player
+        names (or "全体俯瞰"). We don't reverse-map the text — we use
+        the spinner's index directly via :meth:`on_summary_perspective_changed`.
         """
+        if self.path_type == "summary":
+            # The summary selector has its own callback; this branch
+            # is a defensive fallback in case Kivy fires on_text
+            # before the dedicated handler is wired.
+            self.on_summary_perspective_changed()
+            return
         # Read the spinner value via ids (defensive against stale ref).
         spinner = self._get_widget("perspective_select")
         if spinner is None:
             return
         raw = getattr(spinner, "text", "") or ""
         self.perspective_value = _spinner_text_to_internal(raw)
+        self._populate_rank_and_perspective()
+
+    # ---- Phase 227-D: Summary mode helpers -----------------------------
+
+    def _detect_path_type(self, path: str) -> str:
+        """Detect whether ``path`` is a karte or summary JSON.
+
+        Sets ``self.path_type`` and returns the same value. Errors
+        during detection (file missing, malformed JSON) are mapped to
+        ``"unknown"`` so the UI can fall back to karte behaviour.
+        """
+        from katrain.core.coach import detect_json_type
+
+        if not path:
+            self.path_type = "unknown"
+            return self.path_type
+        try:
+            import json
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                self.path_type = "unknown"
+                return self.path_type
+            self.path_type = detect_json_type(data)
+        except (OSError, ValueError):
+            self.path_type = "unknown"
+        except Exception:  # noqa: BLE001 — defensive
+            self.path_type = "unknown"
+        return self.path_type
+
+    def _populate_summary_perspective(
+        self,
+        summary_path: str,
+        default_user: str | None,
+        default_user_rank: str | None,
+    ) -> None:
+        """Phase 227-D: load summary players and rebuild the perspective spinner.
+
+        Reads the player list from the summary JSON, populates
+        ``self.summary_players`` and updates the spinner's
+        ``values`` list. The default selection is the matched player
+        (default_user → first alphabetical), with index 0 reserved
+        for the bird's-eye "全体俯瞰" option.
+        """
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        try:
+            info = detect_player_info_for_summary(
+                summary_path, default_user_name=default_user or None
+            )
+        except Exception as exc:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
+                    error=str(exc)
+                ),
+                error=True,
+            )
+            return
+
+        # Build the perspective selector values:
+        #   index 0          → "全体俯瞰" (bird's-eye)
+        #   index 1..N       → each player (name + optional rank)
+        players = info.get("all_players", []) or []
+        self.summary_players = [(p["name"], p.get("rank")) for p in players]
+        birdseye = i18n._("mykatrain:llm-coach:summary-perspective-birdseye")
+        values: list[str] = [birdseye]
+        for name, rank in self.summary_players:
+            label = f"{name} ({rank})" if rank else name
+            values.append(label)
+
+        spinner = self._get_widget("perspective_select")
+        if spinner is not None:
+            spinner.values = values
+            # Default selection: matched player (if any) or bird's-eye
+            if info.get("default_user_matched") and self.summary_players:
+                # Matched player is at index 1 (after birdseye)
+                matched = info.get("matched_player", {}) or {}
+                matched_name = matched.get("name")
+                if matched_name:
+                    for i, (name, _) in enumerate(self.summary_players, start=1):
+                        if name == matched_name:
+                            self.summary_perspective_index = i
+                            break
+                    else:
+                        self.summary_perspective_index = 0
+                else:
+                    self.summary_perspective_index = 0
+            else:
+                self.summary_perspective_index = 0
+            try:
+                spinner.text = values[self.summary_perspective_index]
+            except (IndexError, AttributeError):
+                spinner.text = values[0]
+            self.perspective_value = _summary_index_to_internal(
+                self.summary_perspective_index, self.summary_players
+            )
+
+        # ---- Rank auto-fill from matched player ----
+        matched = info.get("matched_player", {}) or {}
+        detected_rank = matched.get("rank")
+        if not detected_rank and default_user_rank:
+            detected_rank = default_user_rank
+        if detected_rank:
+            self.detected_rank = detected_rank
+            current = self._read_text("rank_input")
+            if not current:
+                self._set_widget_text("rank_input", detected_rank)
+            self._refresh_rank_hint()
+        else:
+            self.detected_rank = None
+            self._refresh_rank_hint()
+
+        # Update the perspective hint to the matched player name
+        self._refresh_summary_perspective_hint(matched.get("name"))
+
+        # Update the status line for summary
+        games = 0
+        try:
+            import json
+            with open(summary_path, encoding="utf-8") as f:
+                data = json.load(f)
+            games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
+        except Exception:  # noqa: BLE001
+            pass
+        if default_user and matched.get("name"):
+            self._set_status(
+                i18n._("mykatrain:llm-coach:summary-perspective-summary").format(
+                    user=default_user,
+                    player=matched.get("name"),
+                    games=games,
+                )
+            )
+        else:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:auto-detect-no-default-user"),
+                error=not bool(matched.get("name")),
+            )
+
+    def on_summary_perspective_changed(self, *_args: Any) -> None:
+        """KV-side callback: summary perspective spinner selection changed.
+
+        Maps the spinner's currently-displayed text back to the index
+        in ``self.summary_players`` (or 0 for bird's-eye) and stores
+        it in ``self.summary_perspective_index``.
+        """
+        spinner = self._get_widget("perspective_select")
+        if spinner is None:
+            return
+        values = getattr(spinner, "values", []) or []
+        raw = getattr(spinner, "text", "") or ""
+        try:
+            idx = values.index(raw)
+        except ValueError:
+            idx = 0
+        self.summary_perspective_index = idx
+        self.perspective_value = _summary_index_to_internal(
+            self.summary_perspective_index, self.summary_players
+        )
+        # Update the rank hint if the user picks a different player
+        if 0 < idx <= len(self.summary_players):
+            _, rank = self.summary_players[idx - 1]
+            if rank:
+                self.detected_rank = rank
+                current = self._read_text("rank_input")
+                if not current:
+                    self._set_widget_text("rank_input", rank)
+                self._refresh_rank_hint()
+
+    def _refresh_summary_perspective_hint(self, player_name: str | None) -> None:
+        """Phase 227-D: update the small hint under the perspective spinner."""
+        label = self._get_widget("perspective_auto_label")
+        if label is None:
+            return
+        if player_name:
+            label.text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(
+                color=player_name
+            )
+        else:
+            label.text = i18n._("mykatrain:llm-coach:perspective-auto-fallback")
+
+    def _refresh_type_label(self, *_args: Any) -> None:
+        """Phase 227-D: update the type label and generate button text.
+
+        Called on every path change. Reads the karte path, runs type
+        detection, and updates:
+
+        - ``type_label.text`` (single karte / multi-game summary / unknown)
+        - ``generate_button.text`` (changes for summary mode)
+
+        Does NOT re-populate the rank/perspective selectors — that
+        happens in :meth:`_populate_rank_and_perspective`.
+        """
+        karte_path = self._read_text("karte_path_input")
+        type_label = self._get_widget("type_label")
+        gen_button = self._get_widget("generate_button")
+        if not karte_path:
+            if type_label is not None:
+                type_label.text = ""
+            if gen_button is not None:
+                gen_button.text = i18n._("mykatrain:llm-coach:build-prompt")
+            return
+        self._detect_path_type(karte_path)
+        games = 0
+        if self.path_type == "summary":
+            try:
+                import json
+                with open(karte_path, encoding="utf-8") as f:
+                    data = json.load(f)
+                games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
+            except Exception:  # noqa: BLE001
+                pass
+        if type_label is not None:
+            if self.path_type == "karte":
+                type_label.text = i18n._("mykatrain:llm-coach:type-label-single")
+            elif self.path_type == "summary":
+                type_label.text = i18n._("mykatrain:llm-coach:type-label-multi").format(
+                    games=games
+                )
+            else:
+                type_label.text = i18n._("mykatrain:llm-coach:type-label-unknown")
+        if gen_button is not None:
+            if self.path_type == "summary":
+                gen_button.text = i18n._("mykatrain:llm-coach:summary-build-button")
+            else:
+                gen_button.text = i18n._("mykatrain:llm-coach:build-prompt")
+
+    def on_path_changed(self, *_args: Any) -> None:
+        """KV-side callback: user pressed Enter in the path input field.
+
+        Phase 227-D: re-run type detection + rank/perspective
+        population. The path may have changed since the initial auto-fill.
+        """
+        self._refresh_type_label()
+        # Reset the retry counter so we get a fresh chance to populate
+        self._rank_detect_retries = 0
         self._populate_rank_and_perspective()
 
     # ---- Button handlers ----------------------------------------------
@@ -392,14 +673,30 @@ class LLMCoachPopupContent(BoxLayout):
         override knob but the GUI does not — adding a numeric input
         was judged outside the Phase 225/226 scope (would require
         validation, error handling, and a new i18n key set).
-        """
-        from katrain.gui.features.llm_coach import build_llm_prompt
 
+        Phase 227-D: dispatch on the detected path type. For karte
+        the existing flow runs. For summary, the multi-game
+        :func:`build_summary_llm_prompt` is invoked with the player
+        name resolved from the perspective selector.
+        """
         karte_path = self._read_text("karte_path_input")
         rank = self._read_text("rank_input") or None
         if not karte_path:
             self._set_status(i18n._("mykatrain:llm-coach:no-karte"), error=True)
             return
+
+        # Phase 227-D: re-detect type if it has not been set yet
+        # (e.g. user typed the path manually without on_text_validate)
+        if self.path_type not in ("karte", "summary"):
+            self._detect_path_type(karte_path)
+
+        if self.path_type == "summary":
+            self._on_generate_summary(karte_path, rank)
+            return
+
+        # Default: karte path (Phase 225.6)
+        from katrain.gui.features.llm_coach import build_llm_prompt
+
         player_color = _resolve_player_color(
             self.perspective_value, self.detected_player_color
         )
@@ -426,6 +723,57 @@ class LLMCoachPopupContent(BoxLayout):
         )
         self._set_result(content)
 
+    def _on_generate_summary(self, karte_path: str, rank: str | None) -> None:
+        """Phase 227-D: summary-mode handler for the generate button.
+
+        Resolves the player name from the perspective selector and
+        delegates to :func:`build_summary_llm_prompt`. The success
+        status message includes games/patterns counts so the user
+        can confirm the prompt covers the expected scope.
+        """
+        from katrain.gui.features.llm_coach import build_summary_llm_prompt
+
+        # Resolve player name from spinner index
+        player_name: str | None = None
+        idx = self.summary_perspective_index
+        if 0 < idx <= len(self.summary_players):
+            player_name = self.summary_players[idx - 1][0]
+        ok, content = build_summary_llm_prompt(
+            self.katrain,
+            karte_path,
+            rank=rank,
+            player_name=player_name,
+        )
+        if not ok:
+            self._set_status(content, error=True)
+            self._set_result(content)
+            return
+        try:
+            Clipboard.copy(content)
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(
+                i18n._("mykatrain:llm-coach:copy-failed").format(error=str(exc)),
+                error=True,
+            )
+            return
+        # Count games/patterns from the rendered prompt so we can show
+        # a richer status line. The regex is intentionally lenient —
+        # exact numbers are not critical for UX.
+        import re
+
+        games_match = re.search(r"\*\*(\d+)\s*局\*\*", content)
+        games = int(games_match.group(1)) if games_match else 0
+        patterns_match = re.search(r"top\s+(\d+)", content)
+        patterns = int(patterns_match.group(1)) if patterns_match else 0
+        self._set_status(
+            i18n._("mykatrain:llm-coach:summary-copy-success").format(
+                chars=len(content),
+                games=games,
+                patterns=patterns,
+            )
+        )
+        self._set_result(content)
+
     def on_clear_response(self) -> None:
         self._set_widget_text("response_input", "")
         self._set_status(i18n._("mykatrain:llm-coach:response-cleared"))
@@ -436,9 +784,12 @@ class LLMCoachPopupContent(BoxLayout):
         Phase 225.5: write the full Markdown report to ``result_label``
         (the ScrollView) AND a one-line summary to ``status_label`` so
         the user immediately sees the issue counts without scrolling.
-        """
-        from katrain.gui.features.llm_coach import validate_llm_response
 
+        Phase 227-D: dispatch on path type. Summary files use
+        :func:`validate_summary_llm_response` which checks pattern
+        categories, phase labels, and game-ID references instead of
+        per-move numbers.
+        """
         karte_path = self._read_text("karte_path_input")
         rank = self._read_text("rank_input") or None
         response_text = self._read_text("response_input")
@@ -448,6 +799,15 @@ class LLMCoachPopupContent(BoxLayout):
         if not response_text:
             self._set_status(i18n._("mykatrain:llm-coach:no-response"), error=True)
             return
+
+        if self.path_type not in ("karte", "summary"):
+            self._detect_path_type(karte_path)
+        if self.path_type == "summary":
+            self._on_validate_summary(karte_path, response_text, rank)
+            return
+
+        from katrain.gui.features.llm_coach import validate_llm_response
+
         is_clean, markdown = validate_llm_response(
             self.katrain,
             karte_path,
@@ -468,6 +828,51 @@ class LLMCoachPopupContent(BoxLayout):
             else:
                 # Validator says clean but report still has markers
                 # (e.g. referenced symptom IDs that couldn't be matched).
+                self._set_status(
+                    i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(
+                        count=total
+                    )
+                )
+        else:
+            self._set_status(
+                i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
+                    high=high, medium=medium, low=low, total=total
+                )
+            )
+
+    def _on_validate_summary(
+        self, karte_path: str, response_text: str, rank: str | None
+    ) -> None:
+        """Phase 227-D: summary-mode validation handler.
+
+        Delegates to :func:`validate_summary_llm_response` and surfaces
+        the report Markdown in the result label / status line.
+        """
+        from katrain.gui.features.llm_coach import validate_summary_llm_response
+
+        # Resolve player name from spinner index (must match the value
+        # used in ``_on_generate_summary`` so the validator sees the
+        # same prompt config).
+        player_name: str | None = None
+        idx = self.summary_perspective_index
+        if 0 < idx <= len(self.summary_players):
+            player_name = self.summary_players[idx - 1][0]
+        is_clean, markdown = validate_summary_llm_response(
+            self.katrain,
+            karte_path,
+            response_text,
+            rank=rank,
+            player_name=player_name,
+        )
+        self._set_result(markdown)
+        high = markdown.count("[HIGH]")
+        medium = markdown.count("[MEDIUM]")
+        low = markdown.count("[LOW]")
+        total = high + medium + low
+        if is_clean:
+            if total == 0:
+                self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
+            else:
                 self._set_status(
                     i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(
                         count=total
@@ -603,6 +1008,26 @@ def _spinner_text_to_internal(text: str) -> str:
     if text == i18n._("mykatrain:llm-coach:perspective-white"):
         return "W"
     return "auto"
+
+
+# Phase 227-D: helper that maps the summary-perspective spinner index
+# to a stable internal value. Index 0 = bird's-eye, 1..N = players.
+# Returns the player name (string) for the focused player, or
+# ``None`` for bird's-eye. Mirrors the ``_spinner_text_to_internal``
+# pattern for karte mode but uses the index instead of localised text.
+def _summary_index_to_internal(
+    index: int, players: list[tuple[str, str | None]]
+) -> str | None:
+    """Map summary perspective spinner index to a player name or ``None``.
+
+    Returns:
+        - ``None`` when index == 0 (bird's-eye view)
+        - The player's ``name`` when 0 < index <= len(players)
+        - ``None`` when the index is out of range (defensive fallback)
+    """
+    if index <= 0 or index > len(players):
+        return None
+    return players[index - 1][0]
 
 
 def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:

@@ -213,6 +213,52 @@ msgstr "Detected Issues"
 msgid "mykatrain:llm-coach:truncated"
 msgstr "\n\n...(truncated)"
 
+# Phase 227-D: multi-game summary mode
+msgid "mykatrain:llm-coach:type-label-single"
+msgstr "Single-game Karte"
+
+msgid "mykatrain:llm-coach:type-label-multi"
+msgstr "Multi-game Summary ({games} games)"
+
+msgid "mykatrain:llm-coach:type-label-unknown"
+msgstr "(unresolved)"
+
+msgid "mykatrain:llm-coach:type-detection-failed"
+msgstr "JSON type detection failed: {error}"
+
+msgid "mykatrain:llm-coach:summary-perspective-label"
+msgstr "Player"
+
+msgid "mykatrain:llm-coach:summary-perspective-birdseye"
+msgstr "Bird's-eye view"
+
+msgid "mykatrain:llm-coach:summary-build-button"
+msgstr "Summary Pattern Prompt"
+
+msgid "mykatrain:llm-coach:summary-build-failed"
+msgstr "Summary prompt build failed: {error}"
+
+msgid "mykatrain:llm-coach:summary-copy-success"
+msgstr "✅ Summary pattern prompt copied ({chars} chars, {games} games, {patterns} patterns)"
+
+msgid "mykatrain:llm-coach:summary-report-meta"
+msgstr "Scope: {games} games / Focus: {focus}"
+
+msgid "mykatrain:llm-coach:summary-referenced-categories"
+msgstr "Referenced patterns"
+
+msgid "mykatrain:llm-coach:summary-referenced-phases"
+msgstr "Referenced phases"
+
+msgid "mykatrain:llm-coach:summary-referenced-moves"
+msgstr "Detected move numbers (forbidden in summary mode)"
+
+msgid "mykatrain:llm-coach:summary-referenced-game-ids"
+msgstr "Detected specific game IDs"
+
+msgid "mykatrain:llm-coach:summary-perspective-summary"
+msgstr "Default user \"{user}\" / Focus player \"{player}\" / {games} games"
+
 msgid "mykatrain:batch-analyze"
 msgstr "Batch Analyze Folder..."
 

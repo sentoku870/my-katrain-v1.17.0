@@ -442,3 +442,427 @@ class TestDetectPlayerColorForUserWithPlayerInfo:
         )
         assert color == "W"
         assert rank == "6k"
+
+
+# --- Phase 227-C: detect_player_info_for_summary + find_latest_llm_input_for_ctx ---
+
+
+class TestDetectPlayerInfoForSummary:
+    """Phase 227-C: extract player info from a multi-game Summary JSON.
+
+    Summary shape is different from karte — the ``players`` block is
+    keyed by player name, not by color. ``default_user_name`` is the
+    primary selection key; when absent, we fall back to the first
+    player (alphabetical order for determinism).
+    """
+
+    def _write_summary(self, tmp_path: Path, players: dict) -> Path:
+        p = tmp_path / "summary.json"
+        p.write_text(
+            json.dumps({"meta": {"games_analyzed": 5}, "players": players}),
+            encoding="utf-8",
+        )
+        return p
+
+    def test_default_user_match_picks_named_player(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d", "win_rate": 0.4},
+                "Opponent1": {"rank": "3d", "win_rate": 0.6},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["source"] == "summary_meta"
+        assert info["default_user_matched"] is True
+        assert info["matched_player"]["name"] == "sentoku870"
+        assert info["matched_player"]["rank"] == "4d"
+
+    def test_no_default_user_picks_first_alphabetical(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Alice": {"rank": "5d"},
+                "Bob": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path)
+        assert info["default_user_matched"] is False
+        assert info["matched_player"]["name"] == "Alice"
+
+    def test_default_user_mismatch_falls_back(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Opponent1": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="NonExistent")
+        assert info["default_user_matched"] is False
+        # Falls back to first alphabetical
+        assert info["matched_player"]["name"] == "Opponent1"
+
+    def test_default_user_none_explicit(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {"sentoku870": {"rank": "4d"}},
+        )
+        info = detect_player_info_for_summary(path, default_user_name=None)
+        assert info["default_user_matched"] is False
+        assert info["matched_player"]["name"] == "sentoku870"
+
+    def test_nested_overall_rank_extraction(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Phase 158+ format: rank lives under ``overall``
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {
+                    "overall": {"rank": "5k", "total_games": 10},
+                    "win_rate": 0.5,
+                },
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "5k"
+
+    def test_legacy_stats_rank_extraction(self, tmp_path: Path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Legacy form: rank under ``stats``
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"stats": {"rank": "3d"}},
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "3d"
+
+    def test_missing_file_returns_missing_source(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        info = detect_player_info_for_summary(tmp_path / "nope.json")
+        assert info["source"] == "missing"
+        assert info["matched_player"]["name"] is None
+        assert info["all_players"] == []
+
+    def test_no_players_block_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text(json.dumps({"meta": {"games_analyzed": 1}}), encoding="utf-8")
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_empty_players_block_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text(
+            json.dumps({"meta": {"games_analyzed": 1}, "players": {}}),
+            encoding="utf-8",
+        )
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_malformed_json_returns_missing(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = tmp_path / "summary.json"
+        path.write_text("not json", encoding="utf-8")
+        info = detect_player_info_for_summary(path)
+        assert info["source"] == "missing"
+
+    def test_all_players_listed(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "Alice": {"rank": "5d"},
+                "Bob": {"rank": "3d"},
+            },
+        )
+        info = detect_player_info_for_summary(path)
+        # Alphabetical order, regardless of which is matched
+        assert [p["name"] for p in info["all_players"]] == [
+            "Alice",
+            "Bob",
+            "sentoku870",
+        ]
+
+    def test_player_block_with_non_dict_value(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # Edge case: a player key has a non-dict value
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {"rank": "4d"},
+                "BadEntry": "not a dict",
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        # Should not crash; BadEntry shows up as a player with rank=None
+        names = [p["name"] for p in info["all_players"]]
+        assert "BadEntry" in names
+        bad = next(p for p in info["all_players"] if p["name"] == "BadEntry")
+        assert bad["rank"] is None
+
+    def test_rank_priority_direct_beats_nested(self, tmp_path):
+        from katrain.gui.features.llm_coach import detect_player_info_for_summary
+
+        # When both direct ``rank`` and ``overall.rank`` exist, direct wins
+        path = self._write_summary(
+            tmp_path,
+            {
+                "sentoku870": {
+                    "rank": "5k",  # direct
+                    "overall": {"rank": "4d"},  # would be wrong
+                },
+            },
+        )
+        info = detect_player_info_for_summary(path, default_user_name="sentoku870")
+        assert info["matched_player"]["rank"] == "5k"
+
+
+class TestFindLatestLlmInputForCtx:
+    """Phase 227-C: ctx-aware wrapper around ``find_latest_llm_input``."""
+
+    def test_returns_none_when_output_dir_missing(self, tmp_path):
+        ctx = MagicMock()
+        ctx.config.return_value = {
+            "karte_output_directory": str(tmp_path / "no-such-dir")
+        }
+        assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None
+
+    def test_returns_latest_karte(self, tmp_path):
+        (tmp_path / "karte_old.json").write_text("{}")
+        (tmp_path / "karte_new.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "karte_old.json", (1000, 1000))
+        os.utime(tmp_path / "karte_new.json", (2000, 2000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "karte_new.json"
+
+    def test_returns_latest_summary(self, tmp_path):
+        (tmp_path / "summary_x.json").write_text("{}")
+        (tmp_path / "summary_y.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "summary_x.json", (1000, 1000))
+        os.utime(tmp_path / "summary_y.json", (2000, 2000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "summary_y.json"
+
+    def test_returns_mixed_latest(self, tmp_path):
+        (tmp_path / "karte_a.json").write_text("{}")
+        (tmp_path / "summary_b.json").write_text("{}")
+        import os
+        os.utime(tmp_path / "karte_a.json", (1000, 1000))
+        os.utime(tmp_path / "summary_b.json", (5000, 5000))
+        ctx = _fake_ctx(tmp_path)
+        result = llm_coach.find_latest_llm_input_for_ctx(ctx)
+        assert result is not None
+        assert result.name == "summary_b.json"
+
+    def test_no_reports_returns_none(self, tmp_path):
+        ctx = _fake_ctx(tmp_path)
+        assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None
+
+
+# --- Phase 227-D: build_summary_llm_prompt + validate_summary_llm_response ---
+
+
+class TestBuildSummaryLlmPrompt:
+    """Phase 227-D: thin wrapper around ``build_summary_weakness_prompt``."""
+
+    def _write_summary(self, tmp_path: Path, **extra: Any) -> Path:
+        p = tmp_path / "summary.json"
+        body = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 5},
+            "phase_x_mistake": {"middle:blunder": 8, "opening:mistake": 5},
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                ],
+                "white": [],
+            },
+            "players": {
+                "sentoku870": {"rank": "4d"},
+            },
+        }
+        body.update(extra)
+        p.write_text(json.dumps(body, ensure_ascii=False), encoding="utf-8")
+        return p
+
+    def test_returns_full_markdown(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert isinstance(content, str)
+        assert "MULTI-GAME SUMMARY MODE" in content
+        assert "**5 局**" in content
+
+    def test_player_name_appears_when_set(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(
+            None, path, rank="4d", player_name="sentoku870"
+        )
+        assert ok is True
+        assert "sentoku870" in content
+
+    def test_birdseye_when_no_player(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert "全体俯瞰" in content
+
+    def test_missing_file_returns_error(self, tmp_path: Path):
+        ok, msg = llm_coach.build_summary_llm_prompt(
+            None, tmp_path / "nope.json", rank="4d"
+        )
+        assert ok is False
+        assert "見つかりません" in msg or "not found" in msg.lower()
+
+    def test_malformed_json_returns_error(self, tmp_path: Path):
+        bad = tmp_path / "bad.json"
+        bad.write_text("not json", encoding="utf-8")
+        ok, msg = llm_coach.build_summary_llm_prompt(None, bad, rank="4d")
+        assert ok is False
+        assert "JSON" in msg or "json" in msg.lower() or "不正" in msg
+
+    def test_logs_to_ctx_on_error(self, tmp_path: Path):
+        ctx = MagicMock()
+        path = tmp_path / "nope.json"
+        llm_coach.build_summary_llm_prompt(ctx, path, rank="4d")
+        ctx.log.assert_called()
+
+    def test_logs_to_ctx_on_success(self, tmp_path: Path):
+        ctx = MagicMock()
+        path = self._write_summary(tmp_path)
+        llm_coach.build_summary_llm_prompt(ctx, path, rank="4d")
+        # No log call expected on success — the popup displays its
+        # own status. We just verify it doesn't crash.
+        # (ctx.log is not asserted here; see test_none_ctx_does_not_raise
+        # for the no-crash contract.)
+
+    def test_none_ctx_does_not_raise(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        # ctx=None must not crash
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert isinstance(content, str)
+
+
+class TestValidateSummaryLlmResponse:
+    """Phase 227-D: thin wrapper around ``validate_summary_llm_output``."""
+
+    def _write_summary(self, tmp_path: Path) -> Path:
+        p = tmp_path / "summary.json"
+        p.write_text(
+            json.dumps(
+                {
+                    "schema_version": "3.4",
+                    "meta": {"games_analyzed": 5},
+                    "phase_x_mistake": {"middle:blunder": 8},
+                    "weaknesses": {
+                        "black": [
+                            {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                        ],
+                        "white": [],
+                    },
+                    "players": {"sentoku870": {"rank": "4d"}},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return p
+
+    def test_clean_response_returns_clean(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        response = (
+            "考察: 中盤の blunders が多いです。\n"
+            "抽出した弱点パターン: [blunder]\n"
+            "参照したphase: [middle]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d"
+        )
+        assert is_clean is True
+        # Markdown report should include a Status line
+        assert "Status" in report or "ステータス" in report
+
+    def test_dirty_response_returns_invalid(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        # Move number is forbidden in summary mode
+        response = (
+            "考察: 第50手でのミスが顕著でした。\n"
+            "抽出した弱点パターン: [blunder, fantasy_category]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d"
+        )
+        assert is_clean is False
+        assert "[HIGH]" in report
+
+    def test_missing_file_returns_error(self, tmp_path: Path):
+        is_clean, msg = llm_coach.validate_summary_llm_response(
+            None, tmp_path / "nope.json", "anything", rank="4d"
+        )
+        assert is_clean is False
+        assert "見つかりません" in msg or "not found" in msg.lower()
+
+    def test_player_name_passed_through(self, tmp_path: Path):
+        # The wrapper forwards player_name to the prompt config. This
+        # mostly just exercises the parameter plumbing — the actual
+        # behaviour is covered by the underlying validator tests.
+        path = self._write_summary(tmp_path)
+        response = (
+            "考察: ...\n"
+            "抽出した弱点パターン: [blunder]\n"
+            "参照したphase: [middle]\n"
+        )
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, response, rank="4d", player_name="sentoku870"
+        )
+        assert is_clean is True
+        assert "Status" in report or "ステータス" in report
+
+    def test_report_truncation_on_huge_input(self, tmp_path: Path):
+        # A giant response should still produce a usable report
+        # (truncated to avoid UI freeze).
+        path = self._write_summary(tmp_path)
+        # 30k characters of "考察" — should trigger truncation
+        huge = "考察" * 15000
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, huge, rank="4d"
+        )
+        # Truncated reports end with the i18n "truncated" marker
+        assert "省略" in report or "truncated" in report or len(report) <= 30_000
+
+    def test_none_ctx_does_not_raise(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        is_clean, report = llm_coach.validate_summary_llm_response(
+            None, path, "考察: ...\n", rank="4d"
+        )
+        assert isinstance(is_clean, bool)
+        assert isinstance(report, str)

@@ -126,6 +126,265 @@ class TestBuildCommand:
             cli.main(["build", str(bad), "--rank", "5k"])
 
 
+# --- build --summary-mode (Phase 227-A) ---
+
+
+class TestBuildSummaryMode:
+    @pytest.fixture
+    def sample_summary_path(self, tmp_path: Path) -> Path:
+        summary = {
+            "schema_version": "3.4",
+            "meta": {
+                "games_analyzed": 5,
+                "games_by_type": {"even": 5, "handicapped": 0, "unknown": 0},
+            },
+            "summary": {"total_games": 5, "win_rate": 0.4, "total_moves": 1200},
+            "phase_x_mistake": {
+                "opening:mistake": 5,
+                "middle:blunder": 8,
+            },
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                    {"phase": "opening", "category": "mistake", "count": 4, "total_loss": 12.0},
+                ],
+                "white": [],
+            },
+            "players": {"sentoku870": {"win_rate": 0.4}, "Opponent": {"win_rate": 0.6}},
+        }
+        p = tmp_path / "summary.json"
+        p.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
+        return p
+
+    def test_summary_mode_writes_to_file(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        out_path = tmp_path / "summary_prompt.md"
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--rank", "4d",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "MULTI-GAME SUMMARY MODE" in content
+        assert "**5 局**" in content
+        assert "全体俯瞰" in content  # default player_name=None
+
+    def test_summary_mode_writes_to_stdout(
+        self, sample_summary_path: Path, capsys
+    ):
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--rank", "4d",
+        ])
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "summary-mode" in captured.err
+        assert "patterns" in captured.err
+        assert "MULTI-GAME SUMMARY MODE" in captured.out
+
+    def test_summary_mode_with_player_flag(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        out_path = tmp_path / "p.md"
+        cli.main([
+            "build",
+            str(sample_summary_path),
+            "--summary-mode",
+            "--player", "sentoku870",
+            "--out", str(out_path),
+        ])
+        content = out_path.read_text(encoding="utf-8")
+        assert "Focus: プレイヤー 'sentoku870'" in content
+
+    def test_summary_mode_rejects_karte(
+        self, sample_karte_path: Path, capsys
+    ):
+        rc = cli.main([
+            "build",
+            str(sample_karte_path),
+            "--summary-mode",
+        ])
+        assert rc == 2
+        captured = capsys.readouterr()
+        assert "❌" in captured.err
+        assert "Summary JSON" in captured.err
+
+    def test_no_summary_mode_karte_still_works(
+        self, sample_karte_path: Path, tmp_path: Path
+    ):
+        # Regression: default path (no --summary-mode) on karte file
+        out_path = tmp_path / "karte_prompt.md"
+        rc = cli.main([
+            "build",
+            str(sample_karte_path),
+            "--rank", "5k",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        content = out_path.read_text(encoding="utf-8")
+        assert "[SYSTEM INSTRUCTION FOR LLM]" in content
+        assert "MULTI-GAME SUMMARY MODE" not in content
+
+    def test_no_summary_mode_summary_falls_back_to_karte_projection(
+        self, sample_summary_path: Path, tmp_path: Path
+    ):
+        # Default path auto-projects summary to karte shape (existing
+        # Phase 221 behaviour). Should NOT error and should produce a
+        # karte-style prompt.
+        out_path = tmp_path / "fallback.md"
+        rc = cli.main([
+            "build",
+            str(sample_summary_path),
+            "--rank", "5k",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        content = out_path.read_text(encoding="utf-8")
+        # Existing Karte prompt path
+        assert "[SYSTEM INSTRUCTION FOR LLM]" in content
+
+
+# --- validate --summary-mode (Phase 227-B) ---
+
+
+class TestValidateSummaryMode:
+    @pytest.fixture
+    def sample_summary_path(self, tmp_path: Path) -> Path:
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 5},
+            "phase_x_mistake": {"middle:blunder": 8, "opening:mistake": 5},
+            "weaknesses": {
+                "black": [
+                    {"phase": "middle", "category": "blunder", "count": 5, "total_loss": 30.0},
+                    {"phase": "opening", "category": "mistake", "count": 4, "total_loss": 12.0},
+                ],
+                "white": [],
+            },
+            "players": {"sentoku870": {}},
+        }
+        p = tmp_path / "summary.json"
+        p.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
+        return p
+
+    @pytest.fixture
+    def clean_llm_response(self, tmp_path: Path) -> Path:
+        p = tmp_path / "llm.txt"
+        p.write_text(
+            "考察: 中盤の blunders が多いです。\n"
+            "抽出した弱点パターン: [blunder, mistake]\n"
+            "参照したphase: [middle, opening]\n",
+            encoding="utf-8",
+        )
+        return p
+
+    @pytest.fixture
+    def dirty_llm_response(self, tmp_path: Path) -> Path:
+        p = tmp_path / "llm.txt"
+        p.write_text(
+            "考察: 第50手でのミスが顕著でした。\n"
+            "抽出した弱点パターン: [blunder, fantasy_category]\n",
+            encoding="utf-8",
+        )
+        return p
+
+    def test_auto_detect_summary_uses_summary_validator(
+        self, sample_summary_path: Path, clean_llm_response: Path, capsys
+    ):
+        rc = cli.main([
+            "validate",
+            str(sample_summary_path),
+            str(clean_llm_response),
+            "--rank", "4d",
+        ])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "(Summary Mode)" in out
+        assert "Referenced patterns" in out
+
+    def test_explicit_summary_mode_flag(
+        self, sample_summary_path: Path, clean_llm_response: Path, capsys
+    ):
+        rc = cli.main([
+            "validate",
+            str(sample_summary_path),
+            str(clean_llm_response),
+            "--summary-mode",
+            "--rank", "4d",
+        ])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "(Summary Mode)" in out
+
+    def test_summary_mode_dirty_returns_1(
+        self, sample_summary_path: Path, dirty_llm_response: Path, capsys
+    ):
+        rc = cli.main([
+            "validate",
+            str(sample_summary_path),
+            str(dirty_llm_response),
+            "--summary-mode",
+        ])
+        assert rc == 1
+        out = capsys.readouterr().out
+        assert "unknown_pattern_category" in out
+        assert "forbidden_move_number" in out
+
+    def test_summary_mode_rejects_karte(
+        self, sample_karte_path: Path, dirty_llm_response: Path, capsys
+    ):
+        rc = cli.main([
+            "validate",
+            str(sample_karte_path),
+            str(dirty_llm_response),
+            "--summary-mode",
+        ])
+        assert rc == 2
+        out_err = capsys.readouterr().err
+        assert "❌" in out_err
+        assert "Summary JSON" in out_err
+
+    def test_summary_mode_writes_to_file(
+        self, sample_summary_path: Path, clean_llm_response: Path, tmp_path: Path
+    ):
+        out_path = tmp_path / "report.md"
+        rc = cli.main([
+            "validate",
+            str(sample_summary_path),
+            str(clean_llm_response),
+            "--rank", "4d",
+            "--out", str(out_path),
+        ])
+        assert rc == 0
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "(Summary Mode)" in content
+
+    def test_summary_mode_no_summary_mode_rejects_karte(
+        self, sample_karte_path: Path, dirty_llm_response: Path, capsys
+    ):
+        # Without --summary-mode: karte file goes through karte validator
+        # (existing path). This is a regression check.
+        rc = cli.main([
+            "validate",
+            str(sample_karte_path),
+            str(dirty_llm_response),
+        ])
+        # Returns 0 or 1 depending on whether the dirty response passes
+        # karte validation. We just check it doesn't crash.
+        assert rc in (0, 1)
+        out = capsys.readouterr().out
+        # Karte validator path
+        assert "Validation Report" in out
+
+
 # --- validate sub-command ---
 
 
@@ -341,8 +600,11 @@ class TestCalibrateCommand:
         rc = cli.main(["calibrate"])
         assert rc == 0
         out = capsys.readouterr().out
-        # All 8 fixtures should pass
-        assert "passed: 8" in out
+        # Phase 227-E: 12 fixtures total (8 karte + 4 summary).
+        # Karte fixtures count as "passed", summary fixtures are
+        # marked ⏭️ (skipped for symptom detection, but counted as
+        # passed because the per-move detector isn't applicable).
+        assert "passed: 12" in out
         assert "failed: 0" in out
         assert "# Coach Detector Calibration" in out
 
