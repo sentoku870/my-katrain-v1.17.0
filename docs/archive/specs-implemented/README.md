@@ -2,7 +2,7 @@
 
 このフォルダにはmyKaTrainの機能設計仕様書を格納しています。
 
-> **最終更新**: 2026-07-15（Phase 226 + Phase 227 完了）
+> **最終更新**: 2026-07-15（Phase 226 + Phase 227 + Phase 228 完了）
 > Phase 171 で Leela エンジン / 関連スペックを完全削除。KataGo 専用の構成に整理。
 
 ---
@@ -75,6 +75,7 @@
 | [phase225-llm-coach-gui.md](phase225-llm-coach-gui.md) | Phase 225 | LLM Coach GUI 統合（手動貼付ワークフロー） |
 | [phase225-master.md](phase225-master.md) | Phase 225 + 225.1-225.8 | LLM Coach 統合マスター索引 |
 | [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
+| [phase228-summary-schema-adapt.md](phase228-summary-schema-adapt.md) | Phase 228-A〜D | LLM コーチ複数局対応 - 実シェーマ適応（extractors / prompt builder / validator / real_shape fixtures） |
 
 ## Phase 171 で削除されたスペック
 

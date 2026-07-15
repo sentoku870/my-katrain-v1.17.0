@@ -487,6 +487,191 @@ _SUMMARY_HANDICAPPED = GoldenFixture(
 )
 
 
+# --- Phase 228-D: Real-shape (summary_json_export.py) fixtures ---
+#
+# These fixtures use the same shape that the actual
+# ``summary_json_export.py`` produces: per-player ``mistakes`` and
+# ``phases`` blocks under ``players.<name>``, no top-level
+# ``weaknesses``. They validate the Phase 228-A/B/C pipeline
+# (extractor → prompt builder → validator) end-to-end.
+
+
+_REAL_SUMMARY_BLUNDER_FOCUSED = GoldenFixture(
+    name="real_summary_blunder_focused",
+    description=(
+        "Real-shape summary with one player whose blunder rate is 5.7% "
+        "in 388 moves across 3 games. Middle phase dominates the loss "
+        "(370.78 / 466.39 total). Validates that the prompt body "
+        "populates all three sections (Player Mistake Distribution, "
+        "Player Phase Loss Distribution, Weakness Patterns) when "
+        "given the actual summary export format."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 3,
+            "date_range": ["2025-10-31", "2025-11-06"],
+            "games_by_type": {"even": 3, "handicapped": 0, "unknown": 0},
+        },
+        "games": [
+            {"game_id": "g1", "result": "B+R", "moves": 250},
+            {"game_id": "g2", "result": "W+0.5", "moves": 200},
+            {"game_id": "g3", "result": "B+R", "moves": 180},
+        ],
+        "players": {
+            "sentoku870": {
+                "mistakes": {
+                    "good": {"count": 310, "pct": 79.9, "denominator": 388, "avg_loss": 0.28},
+                    "inaccuracy": {"count": 51, "pct": 13.1, "denominator": 388, "avg_loss": 3.11},
+                    "mistake": {"count": 22, "pct": 5.7, "denominator": 388, "avg_loss": 5.69},
+                    "blunder": {"count": 5, "pct": 1.3, "denominator": 388, "avg_loss": 19.04},
+                },
+                "phases": {
+                    "opening": {"moves": 75, "total_loss": 47.01, "avg_loss": 0.627},
+                    "middle": {"moves": 173, "total_loss": 370.78, "avg_loss": 2.143},
+                    "endgame": {"moves": 140, "total_loss": 48.6, "avg_loss": 0.347},
+                },
+                "win_loss_analysis": {
+                    "win": {"games": 2, "total_loss": 280.0, "avg_loss": 1.0},
+                    "loss": {"games": 1, "total_loss": 186.0, "avg_loss": 1.4},
+                    "draw": {"games": 0, "total_loss": 0.0, "avg_loss": 0.0},
+                },
+            }
+        },
+        "loss_progression": {
+            "all": [
+                {"start_move": 1, "end_move": 30, "total_loss": 30.0, "mistake_count": 5},
+                {"start_move": 31, "end_move": 60, "total_loss": 80.0, "mistake_count": 15},
+                {"start_move": 61, "end_move": 90, "total_loss": 120.0, "mistake_count": 20},
+                {"start_move": 91, "end_move": 120, "total_loss": 200.0, "mistake_count": 30},
+                {"start_move": 121, "end_move": 150, "total_loss": 35.0, "mistake_count": 8},
+            ]
+        },
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Phase 228-D: Shape B (real export). Pattern extractor should return "
+        "4 entries (good / inaccuracy / mistake / blunder). "
+        "Top 3 by total_loss: inaccuracy (158.6), mistake (125.2), "
+        "blunder (95.2). Phase extractor should return 3 phases. "
+        "Middle phase has the highest total_loss (370.78). "
+        "Validator accepts all 4 standard mistake categories + 3 standard "
+        "phases as valid references."
+    ),
+)
+
+
+_REAL_SUMMARY_GOOD_PLAYER = GoldenFixture(
+    name="real_summary_good_player",
+    description=(
+        "Real-shape summary with a strong player (95% good moves). "
+        "Validates that the prompt body still works when the mistake "
+        "distribution is heavily skewed toward 'good', and that the "
+        "extractor produces sensible patterns even when blunder count "
+        "is zero."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 5,
+            "date_range": ["2026-01-01", "2026-01-15"],
+            "games_by_type": {"even": 5, "handicapped": 0, "unknown": 0},
+        },
+        "games": [{"game_id": f"g{i}"} for i in range(1, 6)],
+        "players": {
+            "strong_player": {
+                "mistakes": {
+                    "good": {"count": 540, "pct": 95.0, "denominator": 568, "avg_loss": 0.15},
+                    "inaccuracy": {"count": 22, "pct": 3.9, "denominator": 568, "avg_loss": 2.8},
+                    "mistake": {"count": 5, "pct": 0.9, "denominator": 568, "avg_loss": 5.2},
+                    "blunder": {"count": 1, "pct": 0.2, "denominator": 568, "avg_loss": 12.0},
+                },
+                "phases": {
+                    "opening": {"moves": 110, "total_loss": 12.0, "avg_loss": 0.109},
+                    "middle": {"moves": 280, "total_loss": 35.0, "avg_loss": 0.125},
+                    "endgame": {"moves": 178, "total_loss": 8.0, "avg_loss": 0.045},
+                },
+            }
+        },
+        "loss_progression": {
+            "all": [
+                {"start_move": 1, "end_move": 30, "total_loss": 5.0, "mistake_count": 2},
+            ]
+        },
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Phase 228-D: Strong player — 'good' dominates (95%). "
+        "Pattern extractor should still return 4 entries, but the "
+        "top by total_loss is inaccuracy (61.6) not good (81.0). "
+        "Phase middle has the highest total_loss (35.0)."
+    ),
+)
+
+
+_REAL_SUMMARY_MULTI_PLAYER = GoldenFixture(
+    name="real_summary_multi_player",
+    description=(
+        "Real-shape summary with two players (a strong and a weak "
+        "player). Validates the birdseye view (player_name=None) "
+        "renders per-player overviews in both Player Mistake and "
+        "Player Phase sections, and that weakness patterns are "
+        "synthesised for both players."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {
+            "games_analyzed": 4,
+            "date_range": ["2026-03-01", "2026-03-31"],
+            "games_by_type": {"even": 4, "handicapped": 0, "unknown": 0},
+        },
+        "games": [{"game_id": f"g{i}"} for i in range(1, 5)],
+        "players": {
+            "strong_player": {
+                "mistakes": {
+                    "good": {"count": 400, "pct": 90.0, "denominator": 444, "avg_loss": 0.20},
+                    "inaccuracy": {"count": 30, "pct": 6.8, "denominator": 444, "avg_loss": 2.5},
+                    "mistake": {"count": 12, "pct": 2.7, "denominator": 444, "avg_loss": 4.8},
+                    "blunder": {"count": 2, "pct": 0.5, "denominator": 444, "avg_loss": 10.0},
+                },
+                "phases": {
+                    "opening": {"moves": 90, "total_loss": 15.0, "avg_loss": 0.167},
+                    "middle": {"moves": 220, "total_loss": 50.0, "avg_loss": 0.227},
+                    "endgame": {"moves": 134, "total_loss": 10.0, "avg_loss": 0.075},
+                },
+            },
+            "weak_player": {
+                "mistakes": {
+                    "good": {"count": 250, "pct": 56.3, "denominator": 444, "avg_loss": 0.35},
+                    "inaccuracy": {"count": 100, "pct": 22.5, "denominator": 444, "avg_loss": 3.5},
+                    "mistake": {"count": 70, "pct": 15.8, "denominator": 444, "avg_loss": 6.2},
+                    "blunder": {"count": 24, "pct": 5.4, "denominator": 444, "avg_loss": 18.5},
+                },
+                "phases": {
+                    "opening": {"moves": 90, "total_loss": 60.0, "avg_loss": 0.667},
+                    "middle": {"moves": 220, "total_loss": 320.0, "avg_loss": 1.455},
+                    "endgame": {"moves": 134, "total_loss": 75.0, "avg_loss": 0.560},
+                },
+            },
+        },
+        "loss_progression": {
+            "all": [
+                {"start_move": 1, "end_move": 30, "total_loss": 25.0, "mistake_count": 8},
+            ]
+        },
+    },
+    expected_symptom_ids=(),
+    tolerance_notes=(
+        "Phase 228-D: Multi-player birdseye. Pattern extractor should "
+        "return 8 patterns (4 categories × 2 players). The weak_player "
+        "patterns dominate by total_loss: blunder (444.0) > mistake "
+        "(434.0) > inaccuracy (350.0) > good (87.5). Validator "
+        "accepts standard 4 categories × 2 players + 3 standard "
+        "phases."
+    ),
+)
+
+
 # --- Public API ---
 
 
@@ -501,11 +686,17 @@ ALL_FIXTURES: dict[str, GoldenFixture] = {
         _TILT_CHAIN_FIXTURE,
         _TILT_DISCOURAGEMENT_FIXTURE,
         _CORRELATION_FIXTURE,
-        # Phase 227-E: Summary fixtures
+        # Phase 227-E: Summary fixtures (Shape A — top-level weaknesses)
         _SUMMARY_CLEAN,
         _SUMMARY_BLUNDER_DOMINANT,
         _SUMMARY_EMPTY_WEAKNESSES,
         _SUMMARY_HANDICAPPED,
+        # Phase 228-D: Real-shape summary fixtures
+        # (Shape B — players.<name>.mistakes / phases, like the
+        #  actual summary_json_export.py output)
+        _REAL_SUMMARY_BLUNDER_FOCUSED,
+        _REAL_SUMMARY_GOOD_PLAYER,
+        _REAL_SUMMARY_MULTI_PLAYER,
     )
 }
 
