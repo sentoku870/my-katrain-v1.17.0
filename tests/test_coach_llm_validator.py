@@ -15,12 +15,18 @@ Phase 226-A additions:
 - A4: Extended pointsLost regex (損失 / ロス / points lost)
 - A5: player_color integration (opponent's symptom ids → MEDIUM demotion)
 - A6: tolerance parameter applied to ceiling comparison
+
+Phase 226-H additions:
+- H1: MeaningTagId values are accepted as valid symptom references.
+  LLMs often confuse SymptomId (30 user-facing diagnoses) with
+  MeaningTagId (12 technical KataGo-output tags).
 """
 
 from __future__ import annotations
 
 import pytest
 
+from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.coach.llm_validator import (
     ValidationReport,
     ValidationSeverity,
@@ -128,6 +134,90 @@ class TestSymptomIdCheck:
         assert "id_b" in bad
         assert "atari_blindness" not in bad
         assert "capture_race_loss" not in bad
+
+
+# --- Phase 226-H (H1): MeaningTagId accepted as valid reference ---
+
+
+class TestMeaningTagIdAccepted:
+    """Phase 226-H (H1): MeaningTagId values are valid symptom references.
+
+    SymptomId and MeaningTagId are two distinct vocabularies:
+
+    - SymptomId (30): user-facing diagnoses (e.g. ``life_death_misjudgment``)
+    - MeaningTagId (12): KataGo-output technical tags (e.g. ``life_death_error``)
+
+    The two share semantics but not names. LLMs frequently reference
+    MeaningTagId values when writing ``参照した症状ID: [...]``. We accept
+    both vocabularies so the validator stops flagging legitimate
+    references as ``unknown_symptom_id``.
+    """
+
+    @pytest.mark.parametrize(
+        "meaning_tag_value",
+        [
+            "life_death_error",
+            "reading_failure",
+            "connection_miss",
+            "overplay",
+            "endgame_slip",
+            "slow_move",
+            "shape_mistake",
+            "direction_error",
+        ],
+    )
+    def test_meaning_tag_id_accepted_as_symptom_reference(
+        self, sample_karte, beginner_config, beginner_prompt, meaning_tag_value
+    ):
+        text = (
+            "考察: ここが致命的や。\n"
+            f"参照した症状ID: [{meaning_tag_value}]\n"
+        )
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        unknown = [
+            i for i in report.issues if i.kind == "unknown_symptom_id"
+        ]
+        assert unknown == [], (
+            f"{meaning_tag_value!r} should be accepted (it's a MeaningTagId)"
+        )
+
+    def test_truly_unknown_id_still_flagged(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        text = (
+            "考察: ここが致命的や。\n"
+            "参照した症状ID: [completely_made_up_id_xyz]\n"
+        )
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        unknown = [
+            i for i in report.issues if i.kind == "unknown_symptom_id"
+        ]
+        assert len(unknown) == 1
+        assert unknown[0].context["symptom_id"] == "completely_made_up_id_xyz"
+
+    def test_all_meaning_tag_id_values_accepted(
+        self, sample_karte, beginner_config, beginner_prompt
+    ):
+        # Reference every MeaningTagId enum value in one LLM response
+        # — none should be flagged as unknown.
+        ids = ", ".join(tag.value for tag in MeaningTagId)
+        text = (
+            "考察: 全部あかん。\n"
+            f"参照した症状ID: [{ids}]\n"
+        )
+        report = validate_llm_output(
+            text, sample_karte, beginner_prompt, config=beginner_config
+        )
+        unknown = [
+            i for i in report.issues if i.kind == "unknown_symptom_id"
+        ]
+        assert unknown == [], (
+            f"All MeaningTagId values should be accepted: {unknown}"
+        )
 
 
 # --- Move number range ---

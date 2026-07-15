@@ -48,6 +48,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.coach.lexicon import build_id_to_ja_term_map
 from katrain.core.coach.master_db import ToneVoice
 from katrain.core.coach.prompt_builder import LlmPrompt, PromptConfig
@@ -209,8 +210,19 @@ _LEXICON_MENTION_RE = re.compile(r"[「『]([^」』]{2,20})[」』]")
 
 
 def _karte_symptom_ids(karte: dict[str, Any]) -> set[str]:
-    """Extract every symptom id present in the Karte JSON."""
+    """Extract every symptom id present in the Karte JSON.
+
+    Phase 226-H: also include all ``MeaningTagId`` enum values as
+    ground truth. LLMs often confuse SymptomId (30 user-facing
+    diagnoses) with MeaningTagId (12 technical KataGo-output tags)
+    — e.g. writing ``life_death_error`` (a MeaningTagId) instead of
+    ``life_death_misjudgment`` (the matching SymptomId). Both are
+    valid references from the LLM's perspective, so we accept both.
+    """
     ids: set[str] = set()
+    # All MeaningTagId values are valid symptom references (Phase 226-H)
+    for tag in MeaningTagId:
+        ids.add(tag.value)
     # weaknesses — keys include "phase" + "category", plus evidence
     for color in ("black", "white"):
         for weakness in karte.get("weaknesses", {}).get(color, []) or []:
@@ -229,7 +241,7 @@ def _karte_symptom_ids(karte: dict[str, Any]) -> set[str]:
     # reason_tags_distribution (Phase 149 C-3)
     for color in ("black", "white"):
         rt = karte.get("reason_tags_distribution", {}).get(color, {}) or {}
-        for key in (rt.get("by_category") or {}).keys():
+        for key in rt.get("by_category") or {}:
             ids.add(str(key))
     return ids
 

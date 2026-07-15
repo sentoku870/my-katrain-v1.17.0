@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A)
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -291,6 +291,12 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 226-H — MeaningTagId を symptom_id ground truth に追加**（Lv2、2 ファイル + 10 unit tests）
+  - **問題**: ユーザー報告で LLM 出力の HIGH 警告が誤検知。`life_death_error`, `reading_failure`, `connection_miss`, `overplay`, `endgame_slip` が SymptomId に存在しないという警告だが、これらは **MeaningTagId enum の値**で Karte JSON に正しく書かれている
+  - **原因**: validator は SymptomId (30 種類) のみを ground truth としており、MeaningTagId (12 種類) を受け付けなかった。LLM は SymptomId と MeaningTagId を区別せず両方使うので誤検知が頻発
+  - **修正**: `_karte_symptom_ids()` で MeaningTagId enum の全値を ground truth に追加。今後 LLM が MeaningTagId 値を書いても HIGH 警告は出ない
+  - **注**: LOW 警告（Lexicon 言及）は Lexicon YAML に存在しない用語を書いた場合の挙動として妥当。Lexicon 拡充は別タスク（`docs/resources/go_lexicon_master_last.yaml` の更新）
+  - 10 件テスト追加（8 値の parametrize + all-values + 真正 unknown 検証）
 - 2026-07-15: **Phase 226-F (F-A) — SymptomContext に current_phase フィールド追加**（Lv3、2 ファイル + 11 unit tests）
   - **問題**: `build_symptom_context_from_karte` が `move_number=None` をハードコード → 5つの phase-gated 症状（FIRST_MOVE_CONFUSION / TOO_MANY_CHOICES / OVERCONCENTRATION / POST_JOSEKI_DIRECTION / ATTACK_WITH_PURPOSE）の `ctx_is_phase()` が常に False → karte 経由で**絶対発火しない**
   - **修正**: `SymptomContext` に `current_phase` フィールド（デフォルト `"unknown"`）を追加、`_infer_current_phase()` ヘルパーで karte の important_moves の move_number 分布から dominant phase を導出、`is_phase()` が `move_number=None` の場合に `current_phase` にフォールバック
