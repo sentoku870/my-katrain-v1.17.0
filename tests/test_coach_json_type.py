@@ -633,16 +633,20 @@ class TestExtractWeaknessPatternsShapeB:
         for p in patterns:
             assert p["color"] == p["player"]
 
-    def test_frequency_ratio_from_games_analyzed(self):
+    def test_frequency_ratio_zero_for_shape_b_with_pct_alternative(self):
+        # Phase 228-B: Shape B's ``count`` is per-move (e.g. 5 blunder
+        # moves out of 388), so ``count / games_analyzed`` is
+        # meaningless. The extractor surfaces the per-move ``pct``
+        # field instead and leaves ``frequency_ratio`` at 0.0.
         data = _real_shape_summary()
-        # games_analyzed = 3
-        # sentoku870 blunder: 5/3 ≈ 1.667
         patterns = extract_summary_weakness_patterns(data)
         sentoku_blunder = next(
             p for p in patterns
             if p["player"] == "sentoku870" and p["category"] == "blunder"
         )
-        assert abs(sentoku_blunder["frequency_ratio"] - (5 / 3)) < 1e-9
+        assert sentoku_blunder["frequency_ratio"] == 0.0
+        # pct field carries the per-move percentage
+        assert abs(sentoku_blunder["pct"] - 1.3) < 1e-9
 
     def test_top_n_cap(self):
         data = _real_shape_summary()

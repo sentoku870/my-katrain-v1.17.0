@@ -229,10 +229,14 @@ def extract_summary_weakness_patterns(
                 cat = m["category"]
                 count = m["count"]
                 total_loss = m["total_loss"]
-                # frequency_ratio: count / games_analyzed
-                # When count==0 we still emit the entry so the LLM
-                # sees the player has no blunders of this category.
-                freq = (float(count) / games) if (games and count) else 0.0
+                # Shape B's ``count`` is per-move (e.g. 5 blunder moves
+                # out of 388 total moves), NOT per-game. So
+                # ``count / games_analyzed`` would be misleading
+                # (e.g. 5/3 ≈ 1.67). We surface the per-move
+                # ``pct`` field instead and leave ``frequency_ratio``
+                # at 0.0. The prompt renderer (Phase 228-B) detects
+                # this and prefers ``pct``.
+                freq = 0.0
                 patterns.append({
                     "color": player_name,  # player name doubles as "color" for Shape B
                     "player": player_name,
@@ -241,6 +245,7 @@ def extract_summary_weakness_patterns(
                     "count": count,
                     "total_loss": total_loss,
                     "frequency_ratio": freq,
+                    "pct": float(m.get("pct", 0.0) or 0.0),
                 })
 
     # Sort by total_loss desc, then count desc, then category asc for stability.
