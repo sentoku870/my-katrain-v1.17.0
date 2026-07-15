@@ -291,6 +291,10 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **fix: settings_popup.py の `MagicMock` NameError を修正**
+  - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
+  - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）
+  - **修正**: `MagicMock` の代わりに `type("X", (), {"text": ""})()` の空っぽオブジェクトでフォールバック。`rank_input` が存在しない場合は空文字を返す
 - 2026-07-15: **Phase 226-H — MeaningTagId を symptom_id ground truth に追加**（Lv2、2 ファイル + 10 unit tests）
   - **問題**: ユーザー報告で LLM 出力の HIGH 警告が誤検知。`life_death_error`, `reading_failure`, `connection_miss`, `overplay`, `endgame_slip` が SymptomId に存在しないという警告だが、これらは **MeaningTagId enum の値**で Karte JSON に正しく書かれている
   - **原因**: validator は SymptomId (30 種類) のみを ground truth としており、MeaningTagId (12 種類) を受け付けなかった。LLM は SymptomId と MeaningTagId を区別せず両方使うので誤検知が頻発

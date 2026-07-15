@@ -232,7 +232,11 @@ def do_mykatrain_settings_popup(
             state.selected_format[0],
             state.selected_opp_info[0],
             state.selected_disable_katago[0],
-            widget_refs.get("rank_input", MagicMock(text="")).text,
+            # Phase 225.8: rank_input is optional — empty string when absent
+            # so the saver treats it as "unset" rather than crashing on
+            # a missing key. Previously used ``MagicMock(text="")`` which
+            # raised ``NameError`` at runtime (MagicMock was never imported).
+            widget_refs.get("rank_input", type("X", (), {"text": ""})()).text,
         )
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.
