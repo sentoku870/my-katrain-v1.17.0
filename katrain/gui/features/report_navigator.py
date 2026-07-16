@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 # --- Constants ---
 
@@ -123,6 +122,6 @@ def find_latest_llm_input(output_dir: Path) -> ReportInfo | None:
 # メニューからのみ呼ばれており完全削除。LLM Coach が使う
 # ``find_latest_llm_input`` / ``get_latest_report`` / ``ReportInfo``
 # は温存。
-
-if TYPE_CHECKING:
-    from katrain.gui.features.context import FeatureContext
+#
+# Phase 230-A.2 完了後は UI 関数自体がなくなり、FeatureContext の
+# TYPE_CHECKING import も不要になったため削除。

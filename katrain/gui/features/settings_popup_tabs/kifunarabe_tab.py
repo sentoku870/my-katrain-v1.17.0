@@ -23,6 +23,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 
+from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe_constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
@@ -33,7 +34,6 @@ from katrain.core.study.kifunarabe_constants import (
     KIFUNARABE_UNIFORM_COLOR_DEFAULT,
     KIFUNARABE_UNIFORM_COLOR_KEY,
 )
-from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Button
 from katrain.gui.widgets.helpers import create_text_input_row

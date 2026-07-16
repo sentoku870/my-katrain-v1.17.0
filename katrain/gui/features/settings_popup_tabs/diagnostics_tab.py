@@ -12,7 +12,7 @@ ZIP 生成・コピー処理も同じく既存の ``_on_generate_zip`` /
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
