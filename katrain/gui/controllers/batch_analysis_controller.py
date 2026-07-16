@@ -20,6 +20,27 @@ class BatchAnalysisContext(Protocol):
     def set_config_section(self, section: str, value: Any) -> None: ...
 
 
+def _persist_batch_options(ctx: BatchAnalysisContext, options: dict[str, Any]) -> None:
+    """Save batch options as a nested sub-dict under mykatrain_settings.
+
+    Phase 231: The read path (in ``open_batch_analyze_popup``) reads
+    ``mykatrain_settings.batch_options``. This helper mirrors that path so
+    the saved values are visible on the next popup open. The previous
+    implementation wrote to the top-level ``batch_options`` key, which the
+    read path never looked at — so the user's last input/output dirs and
+    checkboxes were silently lost between sessions.
+
+    Other sub-dicts of ``mykatrain_settings`` (``default_user_name``,
+    ``karte_output_directory``, etc.) are preserved by reading the current
+    section, mutating only ``batch_options``, then writing the whole section
+    back via ``set_config_section``.
+    """
+    current = ctx.config("mykatrain_settings") or {}
+    current["batch_options"] = options
+    ctx.set_config_section("mykatrain_settings", current)
+    ctx.save_config("mykatrain_settings")
+
+
 class BatchAnalysisController:
     """バッチ解析UIとプロセスの制御。
 
@@ -80,8 +101,7 @@ class BatchAnalysisController:
         progress_cb = create_progress_callback(widgets["progress_label"])
 
         def save_batch_options(options: dict[str, Any]) -> None:
-            self._ctx.set_config_section("batch_options", options)
-            self._ctx.save_config("batch_options")
+            _persist_batch_options(self._ctx, options)
 
         summary_cb = create_summary_callback(
             is_running,
