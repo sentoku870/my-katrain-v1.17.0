@@ -1615,6 +1615,20 @@ msgstr "Pro"
 msgid "mykatrain:settings:skill_auto"
 msgstr "Auto"
 
+# Phase 229: replaced the skill_preset radio group with a single rank
+# input.  The auto-derived preset name is shown as a label below it.
+msgid "mykatrain:settings:player_rank"
+msgstr "Rank:"
+
+msgid "mykatrain:settings:player_rank_example"
+msgstr "e.g. 5k / 4d / 4段 / 5級 / 初段"
+
+msgid "mykatrain:settings:player_rank_inferred"
+msgstr "Currently: {preset} (auto-derived from {rank})"
+
+msgid "mykatrain:settings:player_rank_default"
+msgstr "Currently: {preset} (default; no rank set)"
+
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "Candidate Filter (excl. best):"
 

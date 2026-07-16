@@ -399,3 +399,37 @@ URGENT_MISS_CONFIGS: dict[str, UrgentMissConfig] = {
 
 SCORE_THRESHOLDS: tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].score_thresholds
 WINRATE_THRESHOLDS: tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRESET].winrate_thresholds
+
+
+# --- Phase 229: Rank -> skill preset mapping -----------------------------
+
+
+# Rank -> skill preset mapping used by ``rank_to_skill_preset`` in
+# :mod:`katrain.core.analysis.logic_skill`.
+#
+# Mapping rationale (Phase 229 design):
+#
+#   BEGINNER   (30k-11k, index 0..4)   -> "relaxed"
+#   INTERMEDIATE (10k-5k, index 5..10) -> "beginner"
+#   DAN        (4k-1d, index 11..15)   -> "standard"
+#   ADVANCED   (2d-5d, index 16..19)   -> "advanced"
+#   EXPERT     (6d+, index 20..23, 99) -> "pro"
+#
+# Note: this differs subtly from master_db CoachMode boundaries (DAN
+# extends to 1d, ADVANCED starts at 2d). The mapping reflects what users
+# historically associated with each severity preset, not the LLM Coach
+# mode range; see ``docs/archive/specs-implemented/phase229-*.md``.
+RANK_TO_PRESET_DEFAULT: dict[int, str] = {
+    # BEGINNER band -> relaxed
+    0: "relaxed", 1: "relaxed", 2: "relaxed", 3: "relaxed", 4: "relaxed",
+    # INTERMEDIATE band -> beginner
+    5: "beginner", 6: "beginner", 7: "beginner", 8: "beginner",
+    9: "beginner", 10: "beginner",
+    # DAN band -> standard
+    11: "standard", 12: "standard", 13: "standard", 14: "standard",
+    15: "standard",
+    # ADVANCED band -> advanced
+    16: "advanced", 17: "advanced", 18: "advanced", 19: "advanced",
+    # EXPERT band -> pro
+    20: "pro", 21: "pro", 22: "pro", 23: "pro", 99: "pro",
+}

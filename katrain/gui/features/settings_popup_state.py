@@ -53,7 +53,14 @@ class _SettingsPopupContext:
     current_engine: str
     selected_engine: list[str]
     selected_disable_katago: list[bool]
+    # Phase 229: the analysis tab no longer exposes skill_preset as a
+    # radio button group.  Instead, the user types ``player_rank`` (e.g.
+    # ``5k`` / ``4段``) and the preset is auto-derived.  The selected_*
+    # fields below are kept so existing save logic continues to work;
+    # ``selected_skill_preset`` is now populated from
+    # :func:`resolve_skill_preset` for display purposes only.
     selected_skill_preset: list[str]
+    selected_player_rank: list[str]
     selected_pv_filter: list[str]
     selected_beginner_hints: list[bool]
     selected_format: list[str]

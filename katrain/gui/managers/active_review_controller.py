@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from katrain.core.analysis import resolve_skill_preset
+
 if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.study.active_review import GuessEvaluation
@@ -169,7 +171,11 @@ class ActiveReviewController:
         if value:  # ON
             # Idempotent: only create session if not already exists
             if self._session is None:
-                skill_preset = self._get_config("general/skill_preset", "standard") or "standard"
+                # Phase 229: derive skill preset from override + player_rank.
+                skill_preset = resolve_skill_preset(
+                    self._get_config("general/skill_preset", "standard"),
+                    self._get_config("general/player_rank", ""),
+                )
                 self._session = ReviewSession(skill_preset)
         else:  # OFF
             # Clear session only - do NOT call _end_review() (recursion risk)
@@ -231,7 +237,11 @@ class ActiveReviewController:
             self._session.begin_position(node.move_number)
 
         # Evaluate the guess
-        skill_preset = self._get_config("general/skill_preset", "standard") or "standard"
+        # Phase 229: derive skill preset from override + player_rank.
+        skill_preset = resolve_skill_preset(
+            self._get_config("general/skill_preset", "standard"),
+            self._get_config("general/player_rank", ""),
+        )
         reviewer = ActiveReviewer(skill_preset)
         evaluation = reviewer.evaluate_guess(coords, node)
 

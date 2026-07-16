@@ -15,9 +15,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from katrain.common.rank import Rank, canonical_rank_key
 from katrain.core.analysis.models import (
     DEFAULT_SKILL_PRESET,
     PRESET_ORDER,
+    RANK_TO_PRESET_DEFAULT,
     SKILL_PRESETS,
     URGENT_MISS_CONFIGS,
     AutoConfidence,
@@ -46,6 +48,83 @@ def get_skill_preset(name: str) -> SkillPreset:
 def get_urgent_miss_config(skill_preset: str) -> UrgentMissConfig:
     """Return urgent miss detection config for the given skill preset."""
     return URGENT_MISS_CONFIGS.get(skill_preset, URGENT_MISS_CONFIGS[DEFAULT_SKILL_PRESET])
+
+
+# =============================================================================
+# Phase 229: Rank -> skill preset bridge
+# =============================================================================
+
+
+def rank_to_skill_preset(rank: Rank | str | None) -> str:
+    """Map a :py:class:`~katrain.common.rank.Rank` (or its raw string) to a skill preset.
+
+    Accepts either a parsed ``Rank`` instance or a raw rank string in any
+    notation supported by :func:`katrain.common.rank.canonical_rank_key`
+    (ASCII ``"5k"`` / ``"7d"``, kanji ``"4段"`` / ``"5級"``, full-width
+    digits, ``"4kyu"`` / ``"5dan"`` synonyms, etc.).
+
+    Returns ``DEFAULT_SKILL_PRESET`` (``"standard"``) when the input is
+    ``None`` / empty / unrecognised, so callers can chain without an
+    explicit default.
+
+    This is the bridge between the user-facing ``general/player_rank``
+    setting (added in Phase 229) and the analysis-side ``skill_preset``
+    thresholds: ``resolve_skill_preset()`` consults this function when
+    the user has set ``player_rank`` but not an explicit preset override.
+    """
+    if rank is None:
+        return DEFAULT_SKILL_PRESET
+    if isinstance(rank, str):
+        key = canonical_rank_key(rank)
+        if not key:
+            return DEFAULT_SKILL_PRESET
+        from katrain.common.rank import _RANK_ORDER
+
+        return RANK_TO_PRESET_DEFAULT.get(_RANK_ORDER[key], DEFAULT_SKILL_PRESET)
+    return RANK_TO_PRESET_DEFAULT.get(rank.kyu_dan, DEFAULT_SKILL_PRESET)
+
+
+def resolve_skill_preset(
+    preset_override: str | None,
+    player_rank: str | None,
+    *,
+    default: str | None = None,
+) -> str:
+    """Resolve the effective skill preset name (Phase 229 unification).
+
+    Priority chain:
+
+    1. ``preset_override`` if set and not ``"auto"`` (power user override).
+    2. ``player_rank`` if set (auto-derive via :func:`rank_to_skill_preset`).
+    3. ``default`` (defaults to :data:`DEFAULT_SKILL_PRESET` = ``"standard"``).
+
+    Args:
+        preset_override: Value of ``general/skill_preset``. ``None`` /
+            empty / ``"auto"`` are all treated as "no override".
+        player_rank: Value of ``general/player_rank``.  Any notation
+            accepted by :func:`katrain.common.rank.canonical_rank_key`.
+        default: Fallback when both override and rank are missing or
+            unrecognised.  Defaults to ``DEFAULT_SKILL_PRESET``.
+
+    Returns:
+        A key in :data:`SKILL_PRESETS`.  Always returns a known preset
+        name (never raises).
+
+    Note:
+        The ``"auto"`` value is *kept* here for backward compatibility
+        with existing config files (Phase 226-J validation uses it), but
+        Phase 229-C removes it from the UI.  All callers should treat
+        ``"auto"`` the same as ``None`` from this point on.
+    """
+    fallback = default if default is not None else DEFAULT_SKILL_PRESET
+    if preset_override and preset_override != "auto" and preset_override in SKILL_PRESETS:
+        # Validate: if the override is not in SKILL_PRESETS, fall through.
+        return preset_override
+    if player_rank:
+        derived = rank_to_skill_preset(player_rank)
+        if derived and derived in SKILL_PRESETS:
+            return derived
+    return fallback
 
 
 # =============================================================================

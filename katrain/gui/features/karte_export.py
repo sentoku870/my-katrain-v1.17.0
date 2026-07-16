@@ -198,7 +198,11 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
             exports = [(None, f"karte_{base_name}_{timestamp}.json")]
 
     # Generate and save karte(s)
-    skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    # Phase 229: derive from override + player_rank via resolve_skill_preset.
+    skill_preset = analysis.resolve_skill_preset(
+        ctx.config("general/skill_preset"),
+        ctx.config("general/player_rank"),
+    )
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)

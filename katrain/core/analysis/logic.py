@@ -82,7 +82,9 @@ from katrain.core.analysis.logic_skill import (
     estimate_skill_level_from_tags,
     get_skill_preset,
     get_urgent_miss_config,
+    rank_to_skill_preset,
     recommend_auto_strictness,
+    resolve_skill_preset,
     validate_reason_tag,
 )
 from katrain.core.analysis.logic_snapshot import (
@@ -97,6 +99,9 @@ __all__ = [
     # Skill preset helpers
     "get_skill_preset",
     "get_urgent_miss_config",
+    # Phase 229: rank -> preset bridge
+    "rank_to_skill_preset",
+    "resolve_skill_preset",
     # Auto-strictness
     "_distance_from_range",
     "recommend_auto_strictness",

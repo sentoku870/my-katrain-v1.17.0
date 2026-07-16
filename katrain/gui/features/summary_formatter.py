@@ -438,7 +438,11 @@ def _append_worst_moves(
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 
-    skill_preset = config_fn("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    # Phase 229: derive from override + player_rank via resolve_skill_preset.
+    skill_preset = analysis.resolve_skill_preset(
+        config_fn("general/skill_preset"),
+        config_fn("general/player_rank"),
+    )
     urgent_config = analysis.get_urgent_miss_config(skill_preset)
 
     sequences, filtered_moves = _detect_urgent_miss_sequences(
@@ -593,7 +597,11 @@ def _append_urgent_miss_in_weakness(
         for game_name, move_num, player, gtp, loss, importance, cat in all_worst_moves
     ]
 
-    skill_preset = config_fn("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    # Phase 229: derive from override + player_rank via resolve_skill_preset.
+    skill_preset = analysis.resolve_skill_preset(
+        config_fn("general/skill_preset"),
+        config_fn("general/player_rank"),
+    )
     urgent_config = analysis.get_urgent_miss_config(skill_preset)
 
     sequences, _ = _detect_urgent_miss_sequences(

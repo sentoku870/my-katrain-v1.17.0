@@ -139,6 +139,9 @@ from katrain.core.analysis.logic import (
     # Skill preset helpers
     get_skill_preset,
     get_urgent_miss_config,
+    # Phase 229: rank -> preset bridge
+    rank_to_skill_preset,
+    resolve_skill_preset,
     is_reliable_from_visits,
     it_consistent_with_static,  # Phase 156-A
     iter_main_branch_nodes,
@@ -177,6 +180,8 @@ from katrain.core.analysis.models import (
     DIFFICULTY_MODIFIER_NORMAL,
     DIFFICULTY_MODIFIER_ONLY_MOVE,
     DIFFICULTY_UNKNOWN,
+    # Phase 229: rank -> preset mapping
+    RANK_TO_PRESET_DEFAULT,
     # Settings dictionaries
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     MIN_COVERAGE_MOVES,
@@ -397,6 +402,9 @@ __all__ = [
     # Skill preset helpers
     "get_skill_preset",
     "get_urgent_miss_config",
+    # Phase 229: rank -> preset bridge
+    "rank_to_skill_preset",
+    "resolve_skill_preset",
     # Auto-strictness
     "recommend_auto_strictness",
     # Reason tag validation

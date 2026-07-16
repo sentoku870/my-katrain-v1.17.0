@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -58,6 +58,13 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 228-C: validator で標準 4 カテゴリ + 3 phase を valid reference 化
     - 228-D: real_shape calibration fixtures 3 個 + E2E 統合テスト + マスター仕様書
     - 詳細: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md`
+  - Phase 229（2026-07-15）: **棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
+    - 229-A: `katrain/common/rank.py` 新設（共有 `Rank` 型 + `rank_to_skill_preset` 配置、master_db は互換シム化）+ 94 tests
+    - 229-B: `resolve_skill_preset()` 統合（GUI 6 callsite 置換）+ 39 tests
+    - 229-C: 設定 UI 刷新（radio group 廃止 → rank TextInput + 自動推定ラベル表示）+ 4 tests
+    - 229-D: LLM Coach fallback chain に `general/player_rank` 追加 + 17 tests
+    - 229-E: ドキュメント（マスター仕様書、AGENTS / roadmap 更新）
+    - 詳細: `docs/archive/specs-implemented/phase229-rank-preset-unification.md`
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -305,6 +312,15 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-15: **Phase 229 — 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
+  - **問題**: myKatrain には解析側 `skill_preset` と LLM 側 `CoachMode` の 2 つの棋力管理体系があり、同じ rank 文字列を二重管理していた
+  - **解決策**: `general/player_rank` を 1 つの入力として集約、両システムへ自動反映
+  - **229-A**: `katrain/common/rank.py` 新設（`Rank` dataclass + parse logic + `RANK_TO_PRESET_DEFAULT` テーブル）+ `master_db.py` 互換シム化 + 94 unit tests
+  - **229-B**: `resolve_skill_preset()` ヘルパー新設、GUI 6 callsite 置換（board_analysis / karte_export / batch_core / summary_formatter / summary_stats / active_review_controller）+ 39 tests
+  - **229-C**: 設定 UI から skill_preset ラジオグループを撤去、rank TextInput + 自動推定ラベル表示に置換 + i18n 4 キー追加 + 4 tests
+  - **229-D**: LLM Coach の fallback chain に `general/player_rank` 追加（Karte/SGF → player_rank → default_user_rank の順）+ `resolve_rank_fallback_chain` ヘルパー + 17 tests
+  - **229-E**: ドキュメント整備（`docs/archive/specs-implemented/phase229-rank-preset-unification.md`）
+  - **後方互換**: 既存 `skill_preset` config はそのまま動作、`auto` 文字列も config レベルで読み込み継続（UI からのみ消滅）
 - 2026-07-15: **fix: settings_popup.py の `MagicMock` NameError を修正**
   - **問題**: ユーザーが設定ポップアップを保存すると `NameError: name 'MagicMock' is not defined` でクラッシュ
   - **原因**: `katrain/gui/features/settings_popup.py:235` で `MagicMock(text="")` がインポートなしに使われていた（テスト用ヘルパが本番コードに混入）

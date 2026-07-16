@@ -23,6 +23,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+# Phase 229: rank parsing / canonicalisation moved to ``katrain.common.rank``
+# as the single source of truth shared with the analysis subsystem.  The
+# ``_RANK_ORDER`` and ``_RANK_ALIASES`` tables are re-imported here so that
+# ``estimate_mode_from_rank`` can continue to map canonical keys to numeric
+# indices without an extra hop.  The two legacy helpers are preserved as
+# thin re-export shims for backward compatibility (they are imported by
+# ``tests/test_master_db_rank_aliases.py`` and downstream tests).
+from katrain.common.rank import (  # noqa: F401  (re-exported below)
+    _RANK_ALIASES,
+    _RANK_ORDER,
+    Rank,
+    canonical_rank_key,
+    normalise_rank_str,
+)
+
 # --- Enums ---
 
 
@@ -233,8 +248,7 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
             "・感情よりも事実と因果関係にフォーカスする。"
         ),
         praise_sample_jp=(
-            "この場面で大場に回ったのは良い判断ですね。"
-            "局所の戦いに引きずられず、全局を見る習慣ができてきています。"
+            "この場面で大場に回ったのは良い判断ですね。局所の戦いに引きずられず、全局を見る習慣ができてきています。"
         ),
         critique_sample_jp=(
             "この場面、読みの入り口で相手の最強応手を外していますね。気持ちは分かります。"
@@ -245,9 +259,7 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
             "伸び悩みを感じているとのことですが、課題を言語化できている時点で、"
             "すでに次のステップに入っています。焦らず、一つずつ潰していきましょう。"
         ),
-        excuse_handling_jp=(
-            "その理屈も一理あります。ただ、事実として結果を見ると、別の解釈も成り立ちますね。"
-        ),
+        excuse_handling_jp=("その理屈も一理あります。ただ、事実として結果を見ると、別の解釈も成り立ちますね。"),
         prohibited=_COMMON_PROHIBITED,
     ),
     ToneConfig(
@@ -262,13 +274,12 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
         ),
         praise_sample_jp=None,
         critique_sample_jp=(
-            "率直に言います。この手は\"楽観バイアス\"そのものです。"
-            "相手が最善を打ったらどうなるか、本当に読みましたか？"
+            '率直に言います。この手は"楽観バイアス"そのものです。相手が最善を打ったらどうなるか、本当に読みましたか？'
         ),
         encourage_sample_jp=None,
         excuse_handling_jp=(
-            "その説明は聞きました。ただ、それは\"なぜミスしたか\"の説明であって、"
-            "\"ミスしなかった場合の変化\"ではありません。問題の構造を分けて考えましょう。"
+            'その説明は聞きました。ただ、それは"なぜミスしたか"の説明であって、'
+            '"ミスしなかった場合の変化"ではありません。問題の構造を分けて考えましょう。'
         ),
         prohibited=_COMMON_PROHIBITED,
     ),
@@ -283,138 +294,24 @@ _TONE_BY_KEY: dict[ToneVoice, ToneConfig] = {t.voice: t for t in _TONE_TABLE}
 
 # Rank ordering for comparison (smaller index = weaker player)
 #
-# Phase 225.8: extended with CJK / full-width notation aliases so
-# ``estimate_mode_from_rank("4段")`` works the same as ``"4d"``.
-_RANK_ORDER: dict[str, int] = {
-    # Kyu (weaker) — ASCII
-    "30k": 0,
-    "25k": 1,
-    "20k": 2,
-    "15k": 3,
-    "11k": 4,
-    "10k": 5,
-    "9k": 6,
-    "8k": 7,
-    "7k": 8,
-    "6k": 9,
-    "5k": 10,
-    "4k": 11,
-    "3k": 12,
-    "2k": 13,
-    "1k": 14,
-    # Dan (stronger) — ASCII
-    "1d": 15,
-    "2d": 16,
-    "3d": 17,
-    "4d": 18,
-    "5d": 19,
-    "6d": 20,
-    "7d": 21,
-    "8d": 22,
-    "9d": 23,
-    "99d": 99,
-}
-
-# Kanji / full-width aliases for the same ranks.  Each alias points at
-# the same integer value as its ASCII counterpart; we don't add new
-# ranks, just new spellings.  Users from 野狐 / KGS often have these
-# notations in their SGF BR/WR properties.
-_RANK_ALIASES: dict[str, str] = {
-    # Kanji 級 (kyu)
-    "30級": "30k",
-    "25級": "25k",
-    "20級": "20k",
-    "15級": "15k",
-    "11級": "11k",
-    "10級": "10k",
-    "9級": "9k",
-    "8級": "8k",
-    "7級": "7k",
-    "6級": "6k",
-    "5級": "5k",
-    "4級": "4k",
-    "3級": "3k",
-    "2級": "2k",
-    "1級": "1k",
-    # Kanji 段 (dan)
-    "初段": "1d",
-    "1段": "1d",
-    "2段": "2d",
-    "3段": "3d",
-    "4段": "4d",
-    "5段": "5d",
-    "6段": "6d",
-    "7段": "7d",
-    "8段": "8d",
-    "9段": "9d",
-    "10段": "9d",
-}
+# Phase 229: the actual tables and parsing helpers now live in
+# ``katrain.common.rank`` as the single source of truth shared with the
+# analysis subsystem.  ``_RANK_ORDER`` / ``_RANK_ALIASES`` are re-imported
+# here so ``estimate_mode_from_rank`` can map canonical keys to numeric
+# indices without an extra hop, and ``_normalise_rank_str`` /
+# ``_canonical_rank_key`` are preserved as thin re-export shims for
+# backward compatibility (the original test suite and a few legacy
+# callers still import them by name).
 
 
 def _normalise_rank_str(rank_str: str) -> str:
-    """Normalise a rank string to the canonical ``_RANK_ORDER`` key.
-
-    Handles:
-    - whitespace + case (``"4D"`` → ``"4d"``)
-    - full-width digits (``"４段"`` → ``"4段"``)
-    - kanji suffix (``"4段"`` → ``"4d"``, ``"5級"`` → ``"5k"``)
-    - ASCII suffix synonyms (``"4kyu"`` → ``"4k"``, ``"5dan"`` → ``"5d"``)
-    - ``"初段"`` (shodan) as an alias for ``"1段"``
-    - trailing decoration (``"4d ?"`` → ``"4d"``)
-    """
-    if not rank_str:
-        return ""
-    s = rank_str.strip().lower().replace(" ", "")
-    # Full-width ASCII digit folding (０-９ → 0-9).
-    fullwidth = str.maketrans("０１２３４５６７８９", "0123456789")
-    s = s.translate(fullwidth)
-    # Special-case: 初段 (shodan) is rank 1d, not "0d".
-    if s == "初段":
-        return "1d"
-    # Resolve kanji suffix to ASCII suffix.
-    if s.endswith("段"):
-        s = s[:-1] + "d"
-    elif s.endswith("級"):
-        s = s[:-1] + "k"
-    elif s.endswith("kyu"):
-        s = s[:-3] + "k"
-    elif s.endswith("dan"):
-        s = s[:-3] + "d"
-    # Drop trailing punctuation (e.g. "4d?" or "4d.")
-    s = s.rstrip("?.!#")
-    return s
+    """Backward-compat shim.  See :func:`katrain.common.rank.normalise_rank_str`."""
+    return normalise_rank_str(rank_str)
 
 
 def _canonical_rank_key(rank_str: str | None) -> str:
-    """Resolve ``rank_str`` to the canonical key in ``_RANK_ORDER``.
-
-    Lookup order (Phase 226-C C1):
-    1. ``_RANK_ALIASES`` against the *trimmed* raw input — this catches
-       kanji and full-width notations whose ASCII normalisation would
-       otherwise produce a key that does not exist in ``_RANK_ORDER``
-       (e.g. ``"10段"`` → ``"10d"`` → not present → ``"9d"`` alias).
-    2. ``_RANK_ALIASES`` against the *normalised* input — kept for
-       symmetry and future aliases that survive normalisation.
-    3. ``_RANK_ORDER`` against the normalised input.
-
-    Returns ``""`` when no match.
-    """
-    if not rank_str:
-        return ""
-    # Phase 226-C (C1): pre-normalisation alias lookup. Without this,
-    # ``_RANK_ALIASES`` was effectively dead code because every kanji
-    # key normalises to an ASCII form that hits ``_RANK_ORDER`` first.
-    stripped = rank_str.strip()
-    if stripped in _RANK_ALIASES:
-        return _RANK_ALIASES[stripped]
-    normalised = _normalise_rank_str(rank_str)
-    if not normalised:
-        return ""
-    if normalised in _RANK_ALIASES:
-        return _RANK_ALIASES[normalised]
-    if normalised in _RANK_ORDER:
-        return normalised
-    return ""
+    """Backward-compat shim.  See :func:`katrain.common.rank.canonical_rank_key`."""
+    return canonical_rank_key(rank_str)
 
 
 # --- Public API ---
@@ -553,6 +450,11 @@ __all__ = [
     "all_tones",
     "estimate_mode_from_rank",
     "estimate_mode_from_loss",
+    # Phase 229: legacy rank helpers retained as re-export shims.
     "_normalise_rank_str",
     "_canonical_rank_key",
+    # Phase 229: re-export the shared Rank type so downstream callers can
+    # use either ``katrain.common.rank.Rank`` or
+    # ``katrain.core.coach.master_db.Rank`` interchangeably.
+    "Rank",
 ]

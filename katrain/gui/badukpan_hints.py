@@ -20,7 +20,7 @@ from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 
-from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config
+from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config, resolve_skill_preset
 from katrain.core.beginner.hints import (
     get_beginner_hint_cached,
     is_coords_valid,
@@ -177,7 +177,11 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
     # not a filtered subset.
     if hint_moves and not in_kifu:
         pv_filter_level = katrain.config("general/pv_filter_level") or DEFAULT_PV_FILTER_LEVEL
-        skill_preset = katrain.config("general/skill_preset")
+        # Phase 229: derive skill preset from override + player_rank.
+        skill_preset = resolve_skill_preset(
+            katrain.config("general/skill_preset"),
+            katrain.config("general/player_rank"),
+        )
         pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
         if pv_filter_config is not None:
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
