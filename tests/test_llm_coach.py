@@ -140,11 +140,7 @@ class TestBuildLlmPrompt:
         assert ok is False
         # The error path-key "invalid-karte" must appear if translations
         # aren't loaded; otherwise the localised error includes "JSON" or "invalid".
-        assert (
-            "invalid-karte" in content
-            or "invalid" in content.lower()
-            or "JSON" in content
-        )
+        assert "invalid-karte" in content or "invalid" in content.lower() or "JSON" in content
         ctx.log.assert_called_once()
 
     def test_none_ctx_does_not_raise(self, tmp_path: Path) -> None:
@@ -203,11 +199,7 @@ class TestValidateLlmResponse:
         missing = tmp_path / "missing.json"
         ok, content = llm_coach.validate_llm_response(None, missing, "x")
         assert ok is False
-        assert (
-            "missing.json" in content
-            or "not found" in content.lower()
-            or "file-not-found" in content
-        )
+        assert "missing.json" in content or "not found" in content.lower() or "file-not-found" in content
 
     def test_invalid_json_returns_error(self, tmp_path: Path) -> None:
         path = tmp_path / "broken.json"
@@ -219,9 +211,11 @@ class TestValidateLlmResponse:
         path = _write_karte(tmp_path)
         long_markdown = "x" * (llm_coach._MAX_REPORT_CHARS + 500)
         report = _FakeReport(llm_text="")
-        with patch.object(coach_cli, "build_prompt", return_value=_FakePrompt("ignored")), \
-             patch.object(coach_validator, "validate_llm_output", return_value=report), \
-             patch.object(llm_coach, "_render_validation_report", return_value=long_markdown):
+        with (
+            patch.object(coach_cli, "build_prompt", return_value=_FakePrompt("ignored")),
+            patch.object(coach_validator, "validate_llm_output", return_value=report),
+            patch.object(llm_coach, "_render_validation_report", return_value=long_markdown),
+        ):
             _, markdown = llm_coach.validate_llm_response(None, path, "")
         assert len(markdown) <= llm_coach._MAX_REPORT_CHARS + 200
 
@@ -359,9 +353,7 @@ class TestDetectPlayerColorForUser:
 
     def test_returns_none_for_empty_default_user(self, tmp_path):
         karte = tmp_path / "k.json"
-        karte.write_text(
-            json.dumps({"meta": {"player_info": {}}}), encoding="utf-8"
-        )
+        karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         ctx = MagicMock()
         ctx.config.return_value = {"default_user_name": ""}
         from katrain.gui.features.llm_coach import detect_player_color_for_user
@@ -397,9 +389,7 @@ class TestDetectPlayerColorForUserWithPlayerInfo:
             "white": {"name": "opponent", "rank": "6k"},
             "source": "karte_meta",
         }
-        color, rank = detect_player_color_for_user(
-            ctx, tmp_path / "does-not-exist.json", player_info=info
-        )
+        color, rank = detect_player_color_for_user(ctx, tmp_path / "does-not-exist.json", player_info=info)
         assert color == "B"
         assert rank == "5k"
 
@@ -437,9 +427,7 @@ class TestDetectPlayerColorForUserWithPlayerInfo:
             "white": {"name": "opponent", "rank": "6k"},
             "source": "karte_meta",
         }
-        color, rank = detect_player_color_for_user(
-            ctx, tmp_path / "k.json", player_info=info
-        )
+        color, rank = detect_player_color_for_user(ctx, tmp_path / "k.json", player_info=info)
         assert color == "W"
         assert rank == "6k"
 
@@ -644,15 +632,14 @@ class TestFindLatestLlmInputForCtx:
 
     def test_returns_none_when_output_dir_missing(self, tmp_path):
         ctx = MagicMock()
-        ctx.config.return_value = {
-            "karte_output_directory": str(tmp_path / "no-such-dir")
-        }
+        ctx.config.return_value = {"karte_output_directory": str(tmp_path / "no-such-dir")}
         assert llm_coach.find_latest_llm_input_for_ctx(ctx) is None
 
     def test_returns_latest_karte(self, tmp_path):
         (tmp_path / "karte_old.json").write_text("{}")
         (tmp_path / "karte_new.json").write_text("{}")
         import os
+
         os.utime(tmp_path / "karte_old.json", (1000, 1000))
         os.utime(tmp_path / "karte_new.json", (2000, 2000))
         ctx = _fake_ctx(tmp_path)
@@ -664,6 +651,7 @@ class TestFindLatestLlmInputForCtx:
         (tmp_path / "summary_x.json").write_text("{}")
         (tmp_path / "summary_y.json").write_text("{}")
         import os
+
         os.utime(tmp_path / "summary_x.json", (1000, 1000))
         os.utime(tmp_path / "summary_y.json", (2000, 2000))
         ctx = _fake_ctx(tmp_path)
@@ -675,6 +663,7 @@ class TestFindLatestLlmInputForCtx:
         (tmp_path / "karte_a.json").write_text("{}")
         (tmp_path / "summary_b.json").write_text("{}")
         import os
+
         os.utime(tmp_path / "karte_a.json", (1000, 1000))
         os.utime(tmp_path / "summary_b.json", (5000, 5000))
         ctx = _fake_ctx(tmp_path)
@@ -723,9 +712,7 @@ class TestBuildSummaryLlmPrompt:
 
     def test_player_name_appears_when_set(self, tmp_path: Path):
         path = self._write_summary(tmp_path)
-        ok, content = llm_coach.build_summary_llm_prompt(
-            None, path, rank="4d", player_name="sentoku870"
-        )
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d", player_name="sentoku870")
         assert ok is True
         assert "sentoku870" in content
 
@@ -736,9 +723,7 @@ class TestBuildSummaryLlmPrompt:
         assert "全体俯瞰" in content
 
     def test_missing_file_returns_error(self, tmp_path: Path):
-        ok, msg = llm_coach.build_summary_llm_prompt(
-            None, tmp_path / "nope.json", rank="4d"
-        )
+        ok, msg = llm_coach.build_summary_llm_prompt(None, tmp_path / "nope.json", rank="4d")
         assert ok is False
         assert "見つかりません" in msg or "not found" in msg.lower()
 
@@ -799,14 +784,8 @@ class TestValidateSummaryLlmResponse:
 
     def test_clean_response_returns_clean(self, tmp_path: Path):
         path = self._write_summary(tmp_path)
-        response = (
-            "考察: 中盤の blunders が多いです。\n"
-            "抽出した弱点パターン: [blunder]\n"
-            "参照したphase: [middle]\n"
-        )
-        is_clean, report = llm_coach.validate_summary_llm_response(
-            None, path, response, rank="4d"
-        )
+        response = "考察: 中盤の blunders が多いです。\n抽出した弱点パターン: [blunder]\n参照したphase: [middle]\n"
+        is_clean, report = llm_coach.validate_summary_llm_response(None, path, response, rank="4d")
         assert is_clean is True
         # Markdown report should include a Status line
         assert "Status" in report or "ステータス" in report
@@ -814,20 +793,13 @@ class TestValidateSummaryLlmResponse:
     def test_dirty_response_returns_invalid(self, tmp_path: Path):
         path = self._write_summary(tmp_path)
         # Move number is forbidden in summary mode
-        response = (
-            "考察: 第50手でのミスが顕著でした。\n"
-            "抽出した弱点パターン: [blunder, fantasy_category]\n"
-        )
-        is_clean, report = llm_coach.validate_summary_llm_response(
-            None, path, response, rank="4d"
-        )
+        response = "考察: 第50手でのミスが顕著でした。\n抽出した弱点パターン: [blunder, fantasy_category]\n"
+        is_clean, report = llm_coach.validate_summary_llm_response(None, path, response, rank="4d")
         assert is_clean is False
         assert "[HIGH]" in report
 
     def test_missing_file_returns_error(self, tmp_path: Path):
-        is_clean, msg = llm_coach.validate_summary_llm_response(
-            None, tmp_path / "nope.json", "anything", rank="4d"
-        )
+        is_clean, msg = llm_coach.validate_summary_llm_response(None, tmp_path / "nope.json", "anything", rank="4d")
         assert is_clean is False
         assert "見つかりません" in msg or "not found" in msg.lower()
 
@@ -836,11 +808,7 @@ class TestValidateSummaryLlmResponse:
         # mostly just exercises the parameter plumbing — the actual
         # behaviour is covered by the underlying validator tests.
         path = self._write_summary(tmp_path)
-        response = (
-            "考察: ...\n"
-            "抽出した弱点パターン: [blunder]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: ...\n抽出した弱点パターン: [blunder]\n参照したphase: [middle]\n"
         is_clean, report = llm_coach.validate_summary_llm_response(
             None, path, response, rank="4d", player_name="sentoku870"
         )
@@ -853,16 +821,12 @@ class TestValidateSummaryLlmResponse:
         path = self._write_summary(tmp_path)
         # 30k characters of "考察" — should trigger truncation
         huge = "考察" * 15000
-        is_clean, report = llm_coach.validate_summary_llm_response(
-            None, path, huge, rank="4d"
-        )
+        is_clean, report = llm_coach.validate_summary_llm_response(None, path, huge, rank="4d")
         # Truncated reports end with the i18n "truncated" marker
         assert "省略" in report or "truncated" in report or len(report) <= 30_000
 
     def test_none_ctx_does_not_raise(self, tmp_path: Path):
         path = self._write_summary(tmp_path)
-        is_clean, report = llm_coach.validate_summary_llm_response(
-            None, path, "考察: ...\n", rank="4d"
-        )
+        is_clean, report = llm_coach.validate_summary_llm_response(None, path, "考察: ...\n", rank="4d")
         assert isinstance(is_clean, bool)
         assert isinstance(report, str)

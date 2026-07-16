@@ -88,7 +88,9 @@ _ATARI_FIXTURE = GoldenFixture(
         },
         "mistake_streaks": {"black": [], "white": []},
         "loss_progression": [
-            {"mistake_count": 0}, {"mistake_count": 0}, {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
         ],
     },
     expected_symptom_ids=(SymptomId.ATARI_BLINDNESS,),
@@ -168,7 +170,9 @@ _OVERFIGHT_FIXTURE = GoldenFixture(
             "white": [],
         },
         "loss_progression": [
-            {"mistake_count": 0}, {"mistake_count": 0}, {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
         ],
     },
     expected_symptom_ids=(SymptomId.OVERFIGHT,),
@@ -205,14 +209,16 @@ _SMALL_MOVE_ADDICTION_FIXTURE = GoldenFixture(
             "white": [],
         },
         "loss_progression": [
-            {"mistake_count": 0}, {"mistake_count": 0}, {"mistake_count": 0},
-            {"mistake_count": 0}, {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
         ],
     },
     expected_symptom_ids=(SymptomId.SMALL_MOVE_ADDICTION,),
     tolerance_notes=(
-        "streak_count >= 5 → SMALL_MOVE_ADDICTION. "
-        "TILT_* disabled by low total_streak_loss and zero loss_run."
+        "streak_count >= 5 → SMALL_MOVE_ADDICTION. TILT_* disabled by low total_streak_loss and zero loss_run."
     ),
 )
 
@@ -222,10 +228,7 @@ _SMALL_MOVE_ADDICTION_FIXTURE = GoldenFixture(
 
 _TILT_CHAIN_FIXTURE = GoldenFixture(
     name="tilt_chain_disaster",
-    description=(
-        "Many consecutive loss buckets + large total streak loss. "
-        "TILT_CHAIN should fire (Phase 216)."
-    ),
+    description=("Many consecutive loss buckets + large total streak loss. TILT_CHAIN should fire (Phase 216)."),
     karte={
         "schema_version": "3.4",
         "meta": {"board_size": 19, "game_count": 1},
@@ -242,8 +245,12 @@ _TILT_CHAIN_FIXTURE = GoldenFixture(
         },
         "loss_progression": [
             # 4 consecutive loss buckets → loss_run = 4
-            {"mistake_count": 2}, {"mistake_count": 1}, {"mistake_count": 3},
-            {"mistake_count": 2}, {"mistake_count": 0}, {"mistake_count": 0},
+            {"mistake_count": 2},
+            {"mistake_count": 1},
+            {"mistake_count": 3},
+            {"mistake_count": 2},
+            {"mistake_count": 0},
+            {"mistake_count": 0},
         ],
     },
     expected_symptom_ids=(SymptomId.TILT_CHAIN,),
@@ -256,10 +263,7 @@ _TILT_CHAIN_FIXTURE = GoldenFixture(
 
 _TILT_DISCOURAGEMENT_FIXTURE = GoldenFixture(
     name="tilt_discouragement",
-    description=(
-        "Long consecutive loss run + high avg streak loss. "
-        "TILT_DISCOURAGEMENT should fire (Phase 216)."
-    ),
+    description=("Long consecutive loss run + high avg streak loss. TILT_DISCOURAGEMENT should fire (Phase 216)."),
     karte={
         "schema_version": "3.4",
         "meta": {"board_size": 19, "game_count": 1},
@@ -277,8 +281,11 @@ _TILT_DISCOURAGEMENT_FIXTURE = GoldenFixture(
         },
         "loss_progression": [
             # 5 consecutive loss buckets → loss_run = 5
-            {"mistake_count": 2}, {"mistake_count": 1}, {"mistake_count": 3},
-            {"mistake_count": 2}, {"mistake_count": 1},
+            {"mistake_count": 2},
+            {"mistake_count": 1},
+            {"mistake_count": 3},
+            {"mistake_count": 2},
+            {"mistake_count": 1},
         ],
     },
     expected_symptom_ids=(SymptomId.TILT_DISCOURAGEMENT,),
@@ -312,8 +319,7 @@ _CORRELATION_FIXTURE = GoldenFixture(
     },
     expected_symptom_ids=(),
     tolerance_notes=(
-        "Strong positive correlation → no POSITION_EVALUATION. "
-        "Used to validate Phase 217 placeholder stays quiet."
+        "Strong positive correlation → no POSITION_EVALUATION. Used to validate Phase 217 placeholder stays quiet."
     ),
 )
 
@@ -403,7 +409,15 @@ _SUMMARY_BLUNDER_DOMINANT = GoldenFixture(
             ],
         },
         "mistake_streaks": {"black": [{"move_count": 3, "total_loss": 20.0}], "white": []},
-        "loss_progression": {"all": [{"mistake_count": 3}, {"mistake_count": 5}, {"mistake_count": 4}, {"mistake_count": 6}, {"mistake_count": 3}]},
+        "loss_progression": {
+            "all": [
+                {"mistake_count": 3},
+                {"mistake_count": 5},
+                {"mistake_count": 4},
+                {"mistake_count": 6},
+                {"mistake_count": 3},
+            ]
+        },
         "players": {"sentoku870": {"rank": "4d", "win_rate": 0.2}, "Opponent1": {"rank": "3d", "win_rate": 0.8}},
     },
     expected_symptom_ids=(),

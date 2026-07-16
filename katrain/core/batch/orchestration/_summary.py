@@ -21,9 +21,7 @@ def _generate_summaries(ctx: _BatchSummaryContext) -> None:
     log("Generating per-player summaries...")
 
     try:
-        player_groups = extract_players_from_stats(
-            ctx.game_stats_list, min_games=ctx.min_games_per_player
-        )
+        player_groups = extract_players_from_stats(ctx.game_stats_list, min_games=ctx.min_games_per_player)
     except (OSError, KeyError, ValueError) as e:
         ctx.result.summary_error = str(e)
         log(f"Summary generation error: {e}")
@@ -36,18 +34,14 @@ def _generate_summaries(ctx: _BatchSummaryContext) -> None:
 
     if not player_groups:
         log(f"No players with >= {ctx.min_games_per_player} games found")
-        ctx.result.summary_error = (
-            f"No players with >= {ctx.min_games_per_player} games"
-        )
+        ctx.result.summary_error = f"No players with >= {ctx.min_games_per_player} games"
         return
 
     summary_count = 0
     summary_failed = 0
     for player_name, player_games in player_groups.items():
         safe_name = sanitize_filename(player_name)
-        base_path = os.path.join(
-            ctx.output_dir, "reports", "summary", f"summary_{safe_name}_{ctx.batch_timestamp}"
-        )
+        base_path = os.path.join(ctx.output_dir, "reports", "summary", f"summary_{safe_name}_{ctx.batch_timestamp}")
         summary_path = get_unique_filename(base_path, ".json")
         summary_filename = os.path.basename(summary_path)
 

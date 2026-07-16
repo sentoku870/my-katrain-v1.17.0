@@ -1082,9 +1082,8 @@ class TestDeprecatedShimIsolation:
                 if bad:
                     rel = py_file.relative_to(_PROJECT_ROOT)
                     violations.append(f"{rel}:{node.lineno}: imports {shim_module}")
-        assert not violations, (
-            f"production code must not import deprecated shim {shim_module!r}:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+        assert not violations, f"production code must not import deprecated shim {shim_module!r}:\n" + "\n".join(
+            f"  - {v}" for v in violations
         )
 
     def test_karte_report_alias_not_used_in_production(self) -> None:
@@ -1107,10 +1106,7 @@ class TestDeprecatedShimIsolation:
                     for alias in node.names:
                         if alias.name == "karte_report":
                             rel = py_file.relative_to(_PROJECT_ROOT)
-                            violations.append(
-                                f"{rel}:{node.lineno}: imports {node.module}.{alias.name}"
-                            )
-        assert not violations, (
-            "production code must not import the karte_report shim alias:\n"
-            + "\n".join(f"  - {v}" for v in violations)
+                            violations.append(f"{rel}:{node.lineno}: imports {node.module}.{alias.name}")
+        assert not violations, "production code must not import the karte_report shim alias:\n" + "\n".join(
+            f"  - {v}" for v in violations
         )

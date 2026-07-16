@@ -116,9 +116,7 @@ class TestFixturesSanity:
 def test_fixture_detects_expected(fixture_name, expected_ids):
     fix = ALL_FIXTURES[fixture_name]
     fired = set(detect_symptoms_from_karte(fix.karte))
-    assert fired == expected_ids, (
-        f"Fixture '{fixture_name}': expected {expected_ids}, got {fired}"
-    )
+    assert fired == expected_ids, f"Fixture '{fixture_name}': expected {expected_ids}, got {fired}"
 
 
 class TestFixtureDocumentation:
@@ -153,17 +151,13 @@ class TestSummaryFixturesPatterns:
 
     def test_summary_clean_yields_two_patterns(self):
         # 1 black + 1 white weakness entry
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["summary_clean"].karte
-        )
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["summary_clean"].karte)
         assert len(patterns) == 2
 
     def test_summary_clean_frequency_ratio(self):
         # games_analyzed = 3, black has count=2, white has count=1
         # → black freq=2/3, white freq=1/3
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["summary_clean"].karte
-        )
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["summary_clean"].karte)
         # Sort by color for stable assertion
         by_color = {p["color"]: p for p in patterns}
         assert abs(by_color["black"]["frequency_ratio"] - (2 / 3)) < 1e-9
@@ -171,9 +165,7 @@ class TestSummaryFixturesPatterns:
 
     def test_summary_blunder_dominant_top_pattern(self):
         # Top pattern by total_loss is black/middle/blunder (50.0)
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["summary_blunder_dominant"].karte
-        )
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["summary_blunder_dominant"].karte)
         assert len(patterns) == 4  # 3 black + 1 white
         top = patterns[0]
         assert top["color"] == "black"
@@ -183,16 +175,12 @@ class TestSummaryFixturesPatterns:
         assert top["frequency_ratio"] == 1.0
 
     def test_summary_empty_weaknesses_yields_no_patterns(self):
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["summary_empty_weaknesses"].karte
-        )
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["summary_empty_weaknesses"].karte)
         assert patterns == []
 
     def test_summary_handicapped_mix_pattern_count(self):
         # 2 black + 1 white = 3 patterns
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["summary_handicapped_mix"].karte
-        )
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["summary_handicapped_mix"].karte)
         assert len(patterns) == 3
         # Top is black/middle/blunder at 100% (6/6 games)
         top = patterns[0]
@@ -218,18 +206,14 @@ class TestSummaryFixturesPromptRendering:
             mode=CoachMode.DAN,
             games_analyzed=3,
         )
-        prompt = build_summary_weakness_prompt(
-            ALL_FIXTURES["summary_clean"].karte, cfg
-        )
+        prompt = build_summary_weakness_prompt(ALL_FIXTURES["summary_clean"].karte, cfg)
         # Pattern block has exactly 2 numbered lines (count=2/1)
         patterns_block_marker = "### Weakness Patterns (pre-computed, top 2)\n"
         if patterns_block_marker in prompt.body_markdown:
             block = prompt.body_markdown.split(patterns_block_marker, 1)[1]
             # Block continues to the next section
             block = block.split("### Phase × Mistake Buckets", 1)[0]
-            numbered = [
-                line for line in block.splitlines() if line.startswith(("1. **", "2. **", "3. **"))
-            ]
+            numbered = [line for line in block.splitlines() if line.startswith(("1. **", "2. **", "3. **"))]
             assert len(numbered) == 2
         # referenced_patterns is a tuple
         assert len(prompt.referenced_patterns) == 2
@@ -246,9 +230,7 @@ class TestSummaryFixturesPromptRendering:
             mode=CoachMode.DAN,
             games_analyzed=5,
         )
-        prompt = build_summary_weakness_prompt(
-            ALL_FIXTURES["summary_blunder_dominant"].karte, cfg
-        )
+        prompt = build_summary_weakness_prompt(ALL_FIXTURES["summary_blunder_dominant"].karte, cfg)
         assert len(prompt.referenced_patterns) == 4
 
     def test_summary_empty_weaknesses_renders_placeholder(self):
@@ -263,9 +245,7 @@ class TestSummaryFixturesPromptRendering:
             mode=CoachMode.DAN,
             games_analyzed=1,
         )
-        prompt = build_summary_weakness_prompt(
-            ALL_FIXTURES["summary_empty_weaknesses"].karte, cfg
-        )
+        prompt = build_summary_weakness_prompt(ALL_FIXTURES["summary_empty_weaknesses"].karte, cfg)
         # Placeholder text is shown in the patterns block
         assert "weakness データが見つかりません" in prompt.body_markdown
         # No patterns injected
@@ -300,11 +280,7 @@ class TestSummaryFixturesValidator:
         )
 
         fix, prompt = self._build_prompt("summary_clean")
-        response = (
-            "考察: 中盤の mistakes が多いです。\n"
-            "抽出した弱点パターン: [mistake]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: 中盤の mistakes が多いです。\n抽出した弱点パターン: [mistake]\n参照したphase: [middle]\n"
         report = validate_summary_llm_output(response, fix.karte, prompt)
         # Both colors have "mistake" category → no unknown
         assert report.is_clean
@@ -331,10 +307,7 @@ class TestSummaryFixturesValidator:
         )
 
         fix, prompt = self._build_prompt("summary_blunder_dominant")
-        response = (
-            "考察: ...\n"
-            "抽出した弱点パターン: [blunder, fantasy_category]\n"
-        )
+        response = "考察: ...\n抽出した弱点パターン: [blunder, fantasy_category]\n"
         report = validate_summary_llm_output(response, fix.karte, prompt)
         assert not report.is_clean
         kinds = [i.kind for i in report.issues]
@@ -347,10 +320,7 @@ class TestSummaryFixturesValidator:
 
         fix, prompt = self._build_prompt("summary_blunder_dominant")
         # 第50手 is forbidden in summary mode
-        response = (
-            "考察: 第50手でのミスが顕著でした。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        response = "考察: 第50手でのミスが顕著でした。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(response, fix.karte, prompt)
         kinds = [i.kind for i in report.issues]
         assert "forbidden_move_number" in kinds
@@ -371,6 +341,7 @@ class TestRealShapeFixtureSanity:
         # Each real-shape fixture should be detected as "summary" by
         # the JSON type detector (no top-level weaknesses block).
         from katrain.core.coach.json_type import is_summary
+
         for name in (
             "real_summary_blunder_focused",
             "real_summary_good_player",
@@ -428,9 +399,8 @@ class TestRealShapeFixturePatterns:
         from katrain.core.coach.json_type import (
             extract_summary_weakness_patterns,
         )
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["real_summary_blunder_focused"].karte
-        )
+
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_blunder_focused"].karte)
         # 4 categories × 1 player = 4 patterns
         assert len(patterns) == 4
         categories = {p["category"] for p in patterns}
@@ -440,9 +410,8 @@ class TestRealShapeFixturePatterns:
         from katrain.core.coach.json_type import (
             extract_summary_weakness_patterns,
         )
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["real_summary_good_player"].karte
-        )
+
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_good_player"].karte)
         losses = [p["total_loss"] for p in patterns]
         assert losses == sorted(losses, reverse=True)
         # For the good-player fixture: good=540*0.15=81.0,
@@ -457,9 +426,8 @@ class TestRealShapeFixturePatterns:
         from katrain.core.coach.json_type import (
             extract_summary_weakness_patterns,
         )
-        patterns = extract_summary_weakness_patterns(
-            ALL_FIXTURES["real_summary_multi_player"].karte
-        )
+
+        patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_multi_player"].karte)
         # 4 categories × 2 players = 8 patterns
         assert len(patterns) == 8
         players = {p["player"] for p in patterns}
@@ -489,9 +457,7 @@ class TestRealShapeFixturePromptRendering:
         return fix, build_summary_weakness_prompt(fix.karte, cfg)
 
     def test_blunder_focused_player_mistakes_section_populated(self):
-        fix, prompt = self._build_prompt(
-            "real_summary_blunder_focused", player_name="sentoku870"
-        )
+        fix, prompt = self._build_prompt("real_summary_blunder_focused", player_name="sentoku870")
         # Section header includes the player name
         assert "### Player Mistake Distribution (sentoku870)" in prompt.body_markdown
         # All 4 categories rendered with their values
@@ -501,9 +467,7 @@ class TestRealShapeFixturePromptRendering:
         assert "**good**: 310/388 (79.9%) - avg_loss 0.28" in prompt.body_markdown
 
     def test_blunder_focused_player_phases_section_populated(self):
-        fix, prompt = self._build_prompt(
-            "real_summary_blunder_focused", player_name="sentoku870"
-        )
+        fix, prompt = self._build_prompt("real_summary_blunder_focused", player_name="sentoku870")
         assert "### Player Phase Loss Distribution (sentoku870)" in prompt.body_markdown
         # Middle phase should be first (highest total_loss = 370.78)
         body = prompt.body_markdown
@@ -519,9 +483,7 @@ class TestRealShapeFixturePromptRendering:
         assert "370.78" in phase_block
 
     def test_blunder_focused_weakness_patterns_uses_pct(self):
-        fix, prompt = self._build_prompt(
-            "real_summary_blunder_focused", player_name="sentoku870"
-        )
+        fix, prompt = self._build_prompt("real_summary_blunder_focused", player_name="sentoku870")
         # Shape B patterns use 全体に占める割合 not 頻度
         assert "全体に占める割合" in prompt.body_markdown
         assert "13.1%" in prompt.body_markdown  # inaccuracy pct
@@ -529,9 +491,7 @@ class TestRealShapeFixturePromptRendering:
         assert "1700.0%" not in prompt.body_markdown
 
     def test_good_player_player_name_section_label(self):
-        fix, prompt = self._build_prompt(
-            "real_summary_good_player", player_name="strong_player"
-        )
+        fix, prompt = self._build_prompt("real_summary_good_player", player_name="strong_player")
         assert "### Player Mistake Distribution (strong_player)" in prompt.body_markdown
         assert "### Player Phase Loss Distribution (strong_player)" in prompt.body_markdown
 
@@ -578,6 +538,7 @@ class TestRealShapeFixtureValidatorE2E:
         from katrain.core.coach.summary_validator import (
             validate_summary_llm_output,
         )
+
         report = validate_summary_llm_output(response, fix.karte, prompt)
         # All 4 standard categories accepted (Phase 228-C)
         # No move numbers, no game IDs, no hallucinated categories
@@ -610,9 +571,7 @@ class TestRealShapeFixtureValidatorE2E:
         )
         prompt = build_summary_weakness_prompt(fix.karte, cfg)
         response = (
-            "考察: good が多いです。\n"
-            "抽出した弱点パターン: [good, inaccuracy]\n"
-            "参照したphase: [middle, opening]\n"
+            "考察: good が多いです。\n抽出した弱点パターン: [good, inaccuracy]\n参照したphase: [middle, opening]\n"
         )
         report = validate_summary_llm_output(response, fix.karte, prompt)
         assert report.is_clean
@@ -639,11 +598,7 @@ class TestRealShapeFixtureValidatorE2E:
             player_name="sentoku870",
         )
         prompt = build_summary_weakness_prompt(fix.karte, cfg)
-        response = (
-            "考察: ...\n"
-            "抽出した弱点パターン: [blunder, fantasy_category]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: ...\n抽出した弱点パターン: [blunder, fantasy_category]\n参照したphase: [middle]\n"
         report = validate_summary_llm_output(response, fix.karte, prompt)
         assert not report.is_clean
         kinds = [i.kind for i in report.issues]
@@ -667,11 +622,7 @@ class TestRealShapeFixtureValidatorE2E:
             player_name="sentoku870",
         )
         prompt = build_summary_weakness_prompt(fix.karte, cfg)
-        response = (
-            "考察: 第50手でのミスが顕著でした。\n"
-            "抽出した弱点パターン: [blunder]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: 第50手でのミスが顕著でした。\n抽出した弱点パターン: [blunder]\n参照したphase: [middle]\n"
         report = validate_summary_llm_output(response, fix.karte, prompt)
         kinds = [i.kind for i in report.issues]
         assert "forbidden_move_number" in kinds

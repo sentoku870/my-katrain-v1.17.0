@@ -119,8 +119,8 @@ class TestA5SummaryAnalyzerWorstMovesTruncation:
         from typing import Any
 
         from katrain.core.analysis.models import MistakeCategory
-        from katrain.core.analysis.models.skill import GameSummaryData
         from katrain.core.analysis.models.enums import PositionDifficulty
+        from katrain.core.analysis.models.skill import GameSummaryData
         from katrain.core.reports.summary_logic import SummaryAnalyzer
 
         @dataclass
@@ -232,8 +232,9 @@ class TestB2BuildBatchSummaryLang:
     """B-2: build_batch_summary should accept and respect lang parameter."""
 
     def test_lang_en_returns_english_headers(self):
-        from katrain.core.batch import build_batch_summary
         from katrain.core.analysis.models.enums import MistakeCategory
+        from katrain.core.batch import build_batch_summary
+
         game_stats = [
             {
                 "game_name": "g1.sgf",
@@ -265,8 +266,9 @@ class TestB2BuildBatchSummaryLang:
         assert "複数局サマリー" not in result
 
     def test_lang_jp_returns_japanese_headers(self):
-        from katrain.core.batch import build_batch_summary
         from katrain.core.analysis.models.enums import MistakeCategory
+        from katrain.core.batch import build_batch_summary
+
         game_stats = [
             {
                 "game_name": "g1.sgf",

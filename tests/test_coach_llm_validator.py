@@ -90,10 +90,7 @@ def beginner_prompt(sample_karte, beginner_config):
 
 class TestSymptomIdCheck:
     def test_unknown_id_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = (
-            "考察:\nあかん、ここは致命的やな。\n"
-            "参照した症状ID: [fake_hallucination_id]\n"
-        )
+        text = "考察:\nあかん、ここは致命的やな。\n参照した症状ID: [fake_hallucination_id]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         assert not report.is_clean
         kinds = [i.kind for i in report.issues]
@@ -122,10 +119,7 @@ class TestSymptomIdCheck:
         assert sym_issues == []
 
     def test_multiple_unknown_ids_each_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = (
-            "考察:\n"
-            "参照した症状ID: [id_a, atari_blindness, id_b, capture_race_loss]\n"
-        )
+        text = "考察:\n参照した症状ID: [id_a, atari_blindness, id_b, capture_race_loss]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         kinds = [i for i in report.issues if i.kind == "unknown_symptom_id"]
         # id_a, id_b should be flagged; atari_blindness / capture_race_loss are valid
@@ -169,55 +163,26 @@ class TestMeaningTagIdAccepted:
     def test_meaning_tag_id_accepted_as_symptom_reference(
         self, sample_karte, beginner_config, beginner_prompt, meaning_tag_value
     ):
-        text = (
-            "考察: ここが致命的や。\n"
-            f"参照した症状ID: [{meaning_tag_value}]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
-        unknown = [
-            i for i in report.issues if i.kind == "unknown_symptom_id"
-        ]
-        assert unknown == [], (
-            f"{meaning_tag_value!r} should be accepted (it's a MeaningTagId)"
-        )
+        text = f"考察: ここが致命的や。\n参照した症状ID: [{meaning_tag_value}]\n"
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
+        unknown = [i for i in report.issues if i.kind == "unknown_symptom_id"]
+        assert unknown == [], f"{meaning_tag_value!r} should be accepted (it's a MeaningTagId)"
 
-    def test_truly_unknown_id_still_flagged(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
-        text = (
-            "考察: ここが致命的や。\n"
-            "参照した症状ID: [completely_made_up_id_xyz]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
-        unknown = [
-            i for i in report.issues if i.kind == "unknown_symptom_id"
-        ]
+    def test_truly_unknown_id_still_flagged(self, sample_karte, beginner_config, beginner_prompt):
+        text = "考察: ここが致命的や。\n参照した症状ID: [completely_made_up_id_xyz]\n"
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
+        unknown = [i for i in report.issues if i.kind == "unknown_symptom_id"]
         assert len(unknown) == 1
         assert unknown[0].context["symptom_id"] == "completely_made_up_id_xyz"
 
-    def test_all_meaning_tag_id_values_accepted(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_all_meaning_tag_id_values_accepted(self, sample_karte, beginner_config, beginner_prompt):
         # Reference every MeaningTagId enum value in one LLM response
         # — none should be flagged as unknown.
         ids = ", ".join(tag.value for tag in MeaningTagId)
-        text = (
-            "考察: 全部あかん。\n"
-            f"参照した症状ID: [{ids}]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
-        unknown = [
-            i for i in report.issues if i.kind == "unknown_symptom_id"
-        ]
-        assert unknown == [], (
-            f"All MeaningTagId values should be accepted: {unknown}"
-        )
+        text = f"考察: 全部あかん。\n参照した症状ID: [{ids}]\n"
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
+        unknown = [i for i in report.issues if i.kind == "unknown_symptom_id"]
+        assert unknown == [], f"All MeaningTagId values should be accepted: {unknown}"
 
 
 # --- Move number range ---
@@ -225,45 +190,37 @@ class TestMeaningTagIdAccepted:
 
 class TestMoveNumberCheck:
     def test_in_range_accepted(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: 50手目 が悪い。\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 50手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
         assert move_issues == []
 
     def test_out_of_range_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: 999手目 が悪い。\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 999手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
         assert len(move_issues) == 1
         assert move_issues[0].context["move_number"] == 999
 
     def test_move_zero_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: 0手目 が悪い。\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 0手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         kinds = [i.kind for i in report.issues]
         assert "move_number_out_of_range" in kinds
 
-    def test_total_moves_boundary_accepted(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_total_moves_boundary_accepted(self, sample_karte, beginner_config, beginner_prompt):
         # Phase 226-D (D2): ``total_moves == 200`` in the fixture.
         # The exact boundary value should NOT be flagged.
         text = "考察: 200手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
         assert move_issues == []
         assert 200 in report.referenced_move_numbers
 
-    def test_total_moves_boundary_plus_one_flagged(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_total_moves_boundary_plus_one_flagged(self, sample_karte, beginner_config, beginner_prompt):
         # Phase 226-D (D2): 201手目 = total_moves + 1 → flagged.
         text = "考察: 201手目 が悪い。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         move_issues = [i for i in report.issues if i.kind == "move_number_out_of_range"]
         assert len(move_issues) == 1
         assert move_issues[0].context["move_number"] == 201
@@ -274,40 +231,32 @@ class TestMoveNumberCheck:
 
 class TestPointsLostCheck:
     def test_reasonable_value_not_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: 3.0目 損しています。\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 3.0目 損しています。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert loss_issues == []
 
     def test_extreme_value_flagged(self, sample_karte, beginner_config, beginner_prompt):
         # max_loss in fixture = 5.0, ceiling = 7.5. 50.0 should trip it.
-        text = "考察: 50.0目 損している！？\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 50.0目 損している！？\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert len(loss_issues) == 1
         assert loss_issues[0].context["value"] == 50.0
 
-    def test_ceiling_boundary_with_default_tolerance(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_ceiling_boundary_with_default_tolerance(self, sample_karte, beginner_config, beginner_prompt):
         # Phase 226-D (D2): max_loss=5.0, ceiling=7.5, boundary=7.55
         # (default tolerance 0.05). The exact boundary value 7.55
         # should be accepted (tolerance exactly covers the ceiling).
         text = "考察: 7.55目 損した。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert loss_issues == []
 
-    def test_ceiling_boundary_just_above_with_default_tolerance(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_ceiling_boundary_just_above_with_default_tolerance(self, sample_karte, beginner_config, beginner_prompt):
         # Phase 226-D (D2): 7.6 > boundary(7.55) → flagged.
         text = "考察: 7.6目 損した。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert len(loss_issues) == 1
         assert loss_issues[0].context["value"] == 7.6
@@ -316,7 +265,7 @@ class TestPointsLostCheck:
         # Karte JSON without summary.total_moves or important_moves.points_lost
         # should not crash the validator.
         empty_karte = {"schema_version": "3.4"}
-        text = "考察: 3.0目 損しています。\n" "参照した症状ID: [atari_blindness]\n"
+        text = "考察: 3.0目 損しています。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, empty_karte, beginner_prompt, config=beginner_config)
         # No pointsLost issue should be raised since we can't determine max
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
@@ -327,26 +276,20 @@ class TestPointsLostCheck:
 
 
 class TestToneConsistency:
-    def test_ayaka_with_short_text_not_flagged(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_ayaka_with_short_text_not_flagged(self, sample_karte, beginner_config, beginner_prompt):
         text = "短い考察: ウチが見た。参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_ayaka"]
         assert tone_issues == []
 
-    def test_ayaka_long_text_no_kansai_flagged(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_ayaka_long_text_no_kansai_flagged(self, sample_karte, beginner_config, beginner_prompt):
         # Long formal-style text with no Kansai markers — flagged
         text = "考察:" + "これは標準語で記述された長い考察です。" * 20 + "\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_ayaka"]
         assert len(tone_issues) == 1
 
-    def test_tomoko_with_kansai_flagged(
-        self, sample_karte, expert_strict_config
-    ):
+    def test_tomoko_with_kansai_flagged(self, sample_karte, expert_strict_config):
         # TOMOKO_STRICT but Kansai markers present
         prompt = build_translation_prompt(sample_karte, expert_strict_config)
         text = "考察:" + "ウチが見た。あかん。" * 5 + "\n参照した症状ID: []\n"
@@ -360,13 +303,16 @@ class TestToneConsistency:
 
 class TestSummaryLine:
     def test_clean_summary(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: ウチが見た。あかん、ここは端的に言うと致命的や。\n" "参照した症状ID: [atari_blindness, capture_race_loss]\n"
+        text = (
+            "考察: ウチが見た。あかん、ここは端的に言うと致命的や。\n"
+            "参照した症状ID: [atari_blindness, capture_race_loss]\n"
+        )
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         assert report.is_clean
         assert "✅" in report.summary_line()
 
     def test_warning_summary(self, sample_karte, beginner_config, beginner_prompt):
-        text = "考察: あかん。\n" "参照した症状ID: [fake_id]\n"
+        text = "考察: あかん。\n参照した症状ID: [fake_id]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         assert not report.is_clean
         line = report.summary_line()
@@ -398,10 +344,7 @@ class TestRobustness:
 
     def test_extreme_values(self, sample_karte, beginner_config, beginner_prompt):
         # Move numbers far out of range + extreme values
-        text = (
-            "考察: 9999手目で 999.9目 損。\n"
-            "参照した症状ID: [atari_blindness, fake_id]\n"
-        )
+        text = "考察: 9999手目で 999.9目 損。\n参照した症状ID: [atari_blindness, fake_id]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         # Should not raise; may or may not detect issues depending on regex behaviour
         assert isinstance(report, ValidationReport)
@@ -424,10 +367,7 @@ class TestLexiconValidation:
         # ``liberty`` and ``atari`` are injected; their ja_terms are
         # 「呼吸点」 and 「アタリ」. We only need to check that the
         # referenced_lexicon_ids field surfaces them.
-        text = (
-            "考察: 「呼吸点」が足りない局面。\n"
-            "参照した症状ID: [atari_blindness]\n"
-        )
+        text = "考察: 「呼吸点」が足りない局面。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         # No off-injection warnings (the term was injected).
         off = [i for i in report.issues if i.kind == "lexicon_mention_not_injected"]
@@ -451,10 +391,7 @@ class TestLexiconValidation:
         )
         if candidate is None:
             pytest.skip("No off-injection candidate available in the bundle")
-        text = (
-            f"考察: 「{candidate}」が鍵。\n"
-            "参照した症状ID: [atari_blindness]\n"
-        )
+        text = f"考察: 「{candidate}」が鍵。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         off = [i for i in report.issues if i.kind == "lexicon_mention_not_injected"]
         assert len(off) == 1
@@ -462,10 +399,7 @@ class TestLexiconValidation:
         assert off[0].severity == ValidationSeverity.LOW
 
     def test_injected_term_does_not_warn(self, sample_karte, beginner_config, beginner_prompt):
-        text = (
-            "考察: 「呼吸点」「アタリ」が重要。\n"
-            "参照した症状ID: [atari_blindness]\n"
-        )
+        text = "考察: 「呼吸点」「アタリ」が重要。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         off = [i for i in report.issues if i.kind == "lexicon_mention_not_injected"]
         assert off == []
@@ -478,10 +412,7 @@ class TestSymptomIdExtractionFallbacks:
     """Phase 226-A A2: 3-tier symptom id extraction."""
 
     def test_tier1_trailing_line(self, sample_karte, beginner_config, beginner_prompt):
-        text = (
-            "考察: atari_blindness がひどい。\n"
-            "参照した症状ID: [atari_blindness]\n"
-        )
+        text = "考察: atari_blindness がひどい。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         assert "atari_blindness" in report.referenced_symptom_ids
 
@@ -546,16 +477,11 @@ class TestMoveNumberStrictness:
     def test_rank_excluded(self, sample_karte, beginner_config, beginner_prompt):
         # "5段" / "30級" / "2026年" / "7月" should NOT be treated as
         # move numbers.
-        text = (
-            "考察: 5段の相手に 30級で対局。2026年7月の対局。\n"
-            "参照した症状ID: [atari_blindness]\n"
-        )
+        text = "考察: 5段の相手に 30級で対局。2026年7月の対局。\n参照した症状ID: [atari_blindness]\n"
         report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         # None of the rank/year values should leak in.
         for forbidden in (5, 30, 2026, 7):
-            assert forbidden not in report.referenced_move_numbers, (
-                f"value {forbidden} leaked into move numbers"
-            )
+            assert forbidden not in report.referenced_move_numbers, f"value {forbidden} leaked into move numbers"
 
     def test_percentage_excluded(self, sample_karte, beginner_config, beginner_prompt):
         # "勝率50%" should not contribute 50 to move numbers.
@@ -615,63 +541,37 @@ class TestPlayerColorIntegration:
     def black_prompt(self, sample_karte, black_view_config):
         return build_translation_prompt(sample_karte, black_view_config)
 
-    def test_opponent_symptom_demoted_to_medium(
-        self, sample_karte, black_view_config, black_prompt
-    ):
+    def test_opponent_symptom_demoted_to_medium(self, sample_karte, black_view_config, black_prompt):
         # Add a white-only symptom to the karte so that under player_color=B
         # (own=black), referencing sente_gote_confusion should demote
         # the issue from HIGH to MEDIUM with a distinct kind.
         sample_karte["weaknesses"]["white"] = [{"category": "sente_gote_confusion"}]
-        text = (
-            "考察: sente_gote_confusion は白だけ。\n"
-            "参照した症状ID: [sente_gote_confusion]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, black_prompt, config=black_view_config
-        )
+        text = "考察: sente_gote_confusion は白だけ。\n参照した症状ID: [sente_gote_confusion]\n"
+        report = validate_llm_output(text, sample_karte, black_prompt, config=black_view_config)
         # The symptom is in white's weaknesses but not in black's, so
         # under player_color=B it should be demoted to MEDIUM.
-        demoted = [
-            i for i in report.issues if i.kind == "symptom_id_belongs_to_opponent"
-        ]
+        demoted = [i for i in report.issues if i.kind == "symptom_id_belongs_to_opponent"]
         assert len(demoted) == 1
         assert demoted[0].severity == ValidationSeverity.MEDIUM
         assert demoted[0].context["symptom_id"] == "sente_gote_confusion"
         assert demoted[0].context["own_color"] == "black"
         assert demoted[0].context["opp_color"] == "white"
 
-    def test_own_symptom_no_issue(
-        self, sample_karte, black_view_config, black_prompt
-    ):
+    def test_own_symptom_no_issue(self, sample_karte, black_view_config, black_prompt):
         # blunder is in black's weaknesses. Own colour → no demotion.
-        text = (
-            "考察: blunder が深刻。\n"
-            "参照した症状ID: [blunder]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, black_prompt, config=black_view_config
-        )
-        demoted = [
-            i for i in report.issues if i.kind == "symptom_id_belongs_to_opponent"
-        ]
+        text = "考察: blunder が深刻。\n参照した症状ID: [blunder]\n"
+        report = validate_llm_output(text, sample_karte, black_prompt, config=black_view_config)
+        demoted = [i for i in report.issues if i.kind == "symptom_id_belongs_to_opponent"]
         assert demoted == []
 
-    def test_no_player_color_keeps_high(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_no_player_color_keeps_high(self, sample_karte, beginner_config, beginner_prompt):
         # No player_color set → no demotion logic kicks in. The symptom
         # still goes through the normal HIGH unknown-id path (which is
         # fine because the id is also not in karte).
-        text = (
-            "考察: nonsense_id in prose.\n"
-            "参照した症状ID: [nonsense_id]\n"
-        )
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        text = "考察: nonsense_id in prose.\n参照した症状ID: [nonsense_id]\n"
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         high_unknown = [
-            i for i in report.issues
-            if i.kind == "unknown_symptom_id" and i.severity == ValidationSeverity.HIGH
+            i for i in report.issues if i.kind == "unknown_symptom_id" and i.severity == ValidationSeverity.HIGH
         ]
         assert len(high_unknown) == 1
         assert high_unknown[0].context["symptom_id"] == "nonsense_id"
@@ -686,33 +586,25 @@ class TestToleranceParameter:
     def test_at_ceiling_accepted(self, sample_karte, beginner_config, beginner_prompt):
         # max_loss=5.0, ceiling=7.5, boundary=7.55 (default tolerance).
         text = "考察: 7.5目 損した。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert loss_issues == []
 
     def test_just_above_ceiling_flagged(self, sample_karte, beginner_config, beginner_prompt):
         # 7.6目 > boundary(7.55) → flagged
         text = "考察: 7.6目 損した。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert len(loss_issues) == 1
 
     def test_well_above_ceiling_flagged(self, sample_karte, beginner_config, beginner_prompt):
         # 50.0目 > boundary(7.55) → flagged
         text = "考察: 50.0目 損した。\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(
-            text, sample_karte, beginner_prompt, config=beginner_config
-        )
+        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
         loss_issues = [i for i in report.issues if i.kind == "points_lost_outlier"]
         assert len(loss_issues) == 1
 
-    def test_higher_tolerance_relaxes_check(
-        self, sample_karte, beginner_config, beginner_prompt
-    ):
+    def test_higher_tolerance_relaxes_check(self, sample_karte, beginner_config, beginner_prompt):
         # With tolerance=2.0, boundary becomes 9.5. So 8.0 is now within
         # the boundary.
         text = "考察: 8.0目 損した。\n参照した症状ID: [atari_blindness]\n"

@@ -374,6 +374,7 @@ class TestBuildKarteReportTargetVisits:
         import inspect
 
         from katrain.core.reports.karte.builder import build_karte_report
+
         sig = inspect.signature(build_karte_report)
         params = list(sig.parameters.keys())
         assert "target_visits" in params
@@ -383,6 +384,7 @@ class TestBuildKarteReportTargetVisits:
         import inspect
 
         from katrain.core.reports.karte.builder import build_karte_report
+
         sig = inspect.signature(build_karte_report)
         param = sig.parameters["target_visits"]
         assert param.default is None

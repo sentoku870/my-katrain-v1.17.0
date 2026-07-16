@@ -100,9 +100,7 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
         )
         # Update the inferred label without rebuilding the layout.
         if hasattr(state, "_rank_inferred_label"):
-            state._rank_inferred_label.text = _format_rank_inferred_label(
-                new_value, state.selected_skill_preset[0]
-            )
+            state._rank_inferred_label.text = _format_rank_inferred_label(new_value, state.selected_skill_preset[0])
 
     rank_input.bind(text=_on_rank_text)
     rank_layout.add_widget(rank_input)
@@ -128,9 +126,7 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
         font_name=Theme.DEFAULT_FONT,
         font_size="13sp",
     )
-    inferred_label.bind(
-        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
-    )
+    inferred_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
     # Phase 229: stash the label on state so the text callback above
     # can refresh it without rebuilding the layout (avoids focus loss).
     state._rank_inferred_label = inferred_label
@@ -161,9 +157,7 @@ def _format_rank_inferred_label(rank_str: str, resolved_preset: str) -> str:
 
     preset_label = SKILL_PRESET_LABELS.get(resolved_preset, resolved_preset)
     if rank_str:
-        return i18n._("mykatrain:settings:player_rank_inferred").format(
-            rank=rank_str, preset=preset_label
-        )
+        return i18n._("mykatrain:settings:player_rank_inferred").format(rank=rank_str, preset=preset_label)
     return i18n._("mykatrain:settings:player_rank_default").format(preset=preset_label)
 
 

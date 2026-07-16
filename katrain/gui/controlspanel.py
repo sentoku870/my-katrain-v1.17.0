@@ -8,6 +8,7 @@ from kivy.properties import ObjectProperty, OptionProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.floatlayout import MDFloatLayout
 
+from katrain.core.analysis import classify_mistake
 from katrain.core.beginner import get_beginner_hint_cached, get_summary_hint_cached
 from katrain.core.beginner.detector_freedom import count_freedom_candidates
 from katrain.core.constants import (
@@ -19,7 +20,6 @@ from katrain.core.constants import (
     STATUS_ERROR,
 )
 from katrain.core.errors import UIStateError
-from katrain.core.analysis import classify_mistake
 from katrain.core.lang import rank_label
 from katrain.core.state import EventType
 from katrain.gui.kivyutils import AnalysisToggle, CollapsablePanel

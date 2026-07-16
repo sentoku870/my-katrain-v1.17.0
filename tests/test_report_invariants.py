@@ -149,6 +149,7 @@ class TestStyleConfidenceGating:
     def test_confidence_threshold_constant_exists(self):
         """STYLE_CONFIDENCE_THRESHOLD should be defined as 0.2."""
         from katrain.core.reports.karte.models import STYLE_CONFIDENCE_THRESHOLD
+
         assert STYLE_CONFIDENCE_THRESHOLD == 0.2
 
     @pytest.mark.parametrize(
@@ -165,6 +166,7 @@ class TestStyleConfidenceGating:
     def test_confidence_threshold_boundary(self, confidence, should_show_style):
         """Verify threshold behavior at 20% using constant directly."""
         from katrain.core.reports.karte.models import STYLE_CONFIDENCE_THRESHOLD
+
         assert (confidence >= STYLE_CONFIDENCE_THRESHOLD) == should_show_style
 
 

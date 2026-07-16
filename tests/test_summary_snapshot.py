@@ -1,4 +1,4 @@
-from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
 
 """Snapshot test for summary_formatter.py (Phase 23 PR #3).
 

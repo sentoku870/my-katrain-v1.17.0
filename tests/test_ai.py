@@ -1,13 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 from katrain.core.ai import ai_rank_estimation
-from katrain.core.base_katrain import KaTrainBase
 from katrain.core.ai.constants import (
     AI_HUMAN,
     AI_PRO,
     AI_STRATEGIES,
     AI_STRATEGIES_RECOMMENDED_ORDER,
 )
+from katrain.core.base_katrain import KaTrainBase
 
 
 class TestAI:

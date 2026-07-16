@@ -28,7 +28,6 @@ from katrain.core.coach.master_db import (
     get_tone_config,
 )
 
-
 # --- Enum completeness ---
 
 
@@ -111,9 +110,7 @@ class TestToneConfig:
         # §1-4: "内部タグ（facet等）をユーザーへの出力に含めること" prohibited
         for voice in ToneVoice:
             cfg = get_tone_config(voice)
-            assert any("facet" in p for p in cfg.prohibited), (
-                f"{voice.value} missing 'facet' prohibition"
-            )
+            assert any("facet" in p for p in cfg.prohibited), f"{voice.value} missing 'facet' prohibition"
 
 
 # --- estimate_mode_from_rank ---

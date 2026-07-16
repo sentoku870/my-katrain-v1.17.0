@@ -109,8 +109,6 @@ class TestBuildTranslationPrompt:
         assert "## Karte JSON" in prompt.body_markdown
         # Body renders the JSON in a code block
         assert "```json" in prompt.body_markdown
-        # The structure is preserved
-        dumped = json.dumps(sample_karte, ensure_ascii=False, indent=2)
         # At least one key from the input should appear
         assert '"test-game"' in prompt.body_markdown
 
@@ -122,10 +120,14 @@ class TestBuildTranslationPrompt:
 
     def test_voice_summary_appears(self, sample_karte):
         cfg_ayaka = PromptConfig(
-            voice=ToneVoice.AYAKA, mode=CoachMode.BEGINNER, detected_symptom_ids=(),
+            voice=ToneVoice.AYAKA,
+            mode=CoachMode.BEGINNER,
+            detected_symptom_ids=(),
         )
         cfg_strict = PromptConfig(
-            voice=ToneVoice.TOMOKO_STRICT, mode=CoachMode.EXPERT, detected_symptom_ids=(),
+            voice=ToneVoice.TOMOKO_STRICT,
+            mode=CoachMode.EXPERT,
+            detected_symptom_ids=(),
         )
         p1 = build_translation_prompt(sample_karte, cfg_ayaka)
         p2 = build_translation_prompt(sample_karte, cfg_strict)
@@ -146,9 +148,7 @@ class TestBuildTranslationPrompt:
 
     def test_referenced_symptoms_match_input(self, sample_karte, beginner_config):
         prompt = build_translation_prompt(sample_karte, beginner_config)
-        assert set(prompt.referenced_symptom_ids) == set(
-            beginner_config.detected_symptom_ids
-        )
+        assert set(prompt.referenced_symptom_ids) == set(beginner_config.detected_symptom_ids)
 
     def test_full_markdown_combines_all(self, sample_karte, beginner_config):
         prompt = build_translation_prompt(sample_karte, beginner_config)
@@ -199,22 +199,33 @@ class TestLexiconSelection:
         assert prompt.referenced_lexicon_ids.count("liberty") <= 1
 
     def test_max_lexicon_entries_cap(self, sample_karte):
-        cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
-            mode=CoachMode.BEGINNER,
-            detected_symptom_ids=(),
-            llm_required_symptom_ids=(),
-            max_lexicon_entries=2,
+        # Phase 226-A (A1): build the prompt and verify the
+        # ``max_lexicon_entries`` cap is honoured.
+        prompt = build_translation_prompt(
+            sample_karte,
+            PromptConfig(
+                voice=ToneVoice.AYAKA,
+                mode=CoachMode.BEGINNER,
+                detected_symptom_ids=(),
+                llm_required_symptom_ids=(),
+                max_lexicon_entries=2,
+            ),
         )
+        # At least one entry should be embedded; the cap is enforced
+        # by the builder. The exact count varies with detected symptoms,
+        # so we only assert that the cap is respected in the upper bound.
+        assert prompt.lex_injection.count("-->") <= 2
         # Big-point blindness has urgent_vs_big related
-        cfg2 = PromptConfig(
-            voice=ToneVoice.AYAKA,
-            mode=CoachMode.BEGINNER,
-            detected_symptom_ids=(SymptomId.BIG_POINT_BLINDNESS,),
-            max_lexicon_entries=2,
+        prompt2 = build_translation_prompt(
+            sample_karte,
+            PromptConfig(
+                voice=ToneVoice.AYAKA,
+                mode=CoachMode.BEGINNER,
+                detected_symptom_ids=(SymptomId.BIG_POINT_BLINDNESS,),
+                max_lexicon_entries=2,
+            ),
         )
-        prompt = build_translation_prompt(sample_karte, cfg2)
-        assert len(prompt.referenced_lexicon_ids) <= 2
+        assert len(prompt2.referenced_lexicon_ids) <= 2
 
     def test_no_detected_symptoms_empty_lexicon(self, sample_karte):
         cfg = PromptConfig(
@@ -311,18 +322,14 @@ class TestValidatePromptConfig:
     def test_consistent_config_returns_no_warnings(self):
         # TOMOKO serves DAN — both line up.
 
-        warnings = validate_prompt_config(
-            self._config(voice=ToneVoice.TOMOKO, mode=CoachMode.DAN)
-        )
+        warnings = validate_prompt_config(self._config(voice=ToneVoice.TOMOKO, mode=CoachMode.DAN))
         assert warnings == []
 
     def test_voice_mode_mismatch_warns(self):
         # AYAKA is Kansai-dialect only and serves BEGINNER/INTERMEDIATE.
         # DAN is not in AYAKA's allowed modes → mismatch warning.
 
-        warnings = validate_prompt_config(
-            self._config(voice=ToneVoice.AYAKA, mode=CoachMode.DAN)
-        )
+        warnings = validate_prompt_config(self._config(voice=ToneVoice.AYAKA, mode=CoachMode.DAN))
         assert any("ayaka" in w and "DAN" in w for w in warnings), (
             f"Expected voice/mode mismatch warning, got: {warnings}"
         )

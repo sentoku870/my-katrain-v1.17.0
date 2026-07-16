@@ -25,16 +25,6 @@ Usage:
 import math
 from typing import Any, cast
 
-# =============================================================================
-# Base classes and utilities (extracted to ai_strategies_base.py, re-exported)
-# =============================================================================
-from katrain.core.ai_strategies_base import (
-    # Registry
-    STRATEGY_REGISTRY,
-    # Base class
-    interp1d,
-    interp2d,
-)
 from katrain.core.ai.constants import (
     AI_ACCURACY_DECAY_BASE,
     AI_DEFAULT,
@@ -59,6 +49,17 @@ from katrain.core.ai.constants import (
     AI_WEIGHTED,
     AI_WEIGHTED_ELO,
     CALIBRATED_RANK_ELO,
+)
+
+# =============================================================================
+# Base classes and utilities (extracted to ai_strategies_base.py, re-exported)
+# =============================================================================
+from katrain.core.ai_strategies_base import (
+    # Registry
+    STRATEGY_REGISTRY,
+    # Base class
+    interp1d,
+    interp2d,
 )
 from katrain.core.constants import ADDITIONAL_MOVE_ORDER, OUTPUT_DEBUG
 from katrain.core.game import Game, GameNode, Move

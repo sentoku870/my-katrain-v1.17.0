@@ -86,8 +86,7 @@ _CONFIRMATION_TEMPLATES: dict[CoachMode, str] = {
         "  ・県代表クラス以上 → 強豪"
     ),
     CoachMode.EXPERT: (
-        "より的確なアドバイスのために、棋力を教えていただけますか？\n"
-        "  例：県代表クラス以上、六段以上など"
+        "より的確なアドバイスのために、棋力を教えていただけますか？\n  例：県代表クラス以上、六段以上など"
     ),
 }
 
@@ -287,14 +286,13 @@ def check_prohibited(text: str, voice: ToneVoice) -> list[str]:
             violations.append("AYAKA 文体に敬語/丁寧語が混入")
 
     # 3. TOMOKO_STRICT specific check: should be direct.
-    if voice == ToneVoice.TOMOKO_STRICT:
-        if re.search(r"〜してみてね|〜してみてね！", text):
-            violations.append("TOMOKO_STRICT 文体に優しい誘導表現が混入")
+    if voice == ToneVoice.TOMOKO_STRICT and re.search(r"〜してみてね|〜してみてね！", text):
+        violations.append("TOMOKO_STRICT 文体に優しい誘導表現が混入")
 
     # 4. Configured prohibitions (currently all share _COMMON_PROHIBITED).
-    for prohibition in cfg.prohibited:
-        # We can only check surface markers — the master doc prohibitions
-        # are not programmatic. Skip silently.
+    # The master doc prohibitions are not programmatic; the loop is kept
+    # so a future call site can plug in checks per ``cfg.prohibited`` entry.
+    for _prohibition in cfg.prohibited:
         pass
 
     return violations

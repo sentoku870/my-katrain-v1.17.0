@@ -39,10 +39,7 @@ def generate_chime(
 
         # Envelope: quick attack (0.02s), smooth exponential decay
         attack_time = 0.02
-        if t < attack_time:
-            envelope = t / attack_time
-        else:
-            envelope = math.exp(-5 * (t - attack_time))
+        envelope = t / attack_time if t < attack_time else math.exp(-5 * (t - attack_time))
 
         # Mix frequencies with slight detuning for warmth
         sample = 0.0

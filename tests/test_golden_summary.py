@@ -1,4 +1,4 @@
-from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
 
 """
 Golden tests for Multi-Game Summary output.

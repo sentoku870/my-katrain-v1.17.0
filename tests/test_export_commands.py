@@ -16,7 +16,6 @@ default-callback fallback that mirrors the pre-Phase 172 behaviour.
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,9 +34,7 @@ class TestDoExportKarteSignature:
         from katrain.gui.features.commands.export_commands import do_export_karte
 
         ctx = MagicMock()
-        with patch(
-            "katrain.gui.features.karte_export.do_export_karte"
-        ) as mock_inner:
+        with patch("katrain.gui.features.karte_export.do_export_karte") as mock_inner:
             # MUST NOT raise TypeError — the whole point of this fix.
             do_export_karte(ctx)
         assert mock_inner.called, "Inner do_export_karte should be invoked"
@@ -47,9 +44,7 @@ class TestDoExportKarteSignature:
         from katrain.gui.features.commands.export_commands import do_export_karte
 
         ctx = MagicMock()
-        with patch(
-            "katrain.gui.features.karte_export.do_export_karte"
-        ) as mock_inner:
+        with patch("katrain.gui.features.karte_export.do_export_karte") as mock_inner:
             do_export_karte(ctx)
         args, _ = mock_inner.call_args
         # Position 0 = ctx, position 1 = callback (default injected).
@@ -62,9 +57,7 @@ class TestDoExportKarteSignature:
 
         ctx = MagicMock()
         callback = MagicMock()
-        with patch(
-            "katrain.gui.features.karte_export.do_export_karte"
-        ) as mock_inner:
+        with patch("katrain.gui.features.karte_export.do_export_karte") as mock_inner:
             do_export_karte(ctx, callback)
         args, _ = mock_inner.call_args
         assert args[1] is callback, "Caller-supplied callback must be passed through"
@@ -76,8 +69,10 @@ class TestDoExportKarteSignature:
         from katrain.gui.features.commands.export_commands import do_export_karte
 
         ctx = MagicMock()
-        with patch("katrain.gui.features.settings_popup.do_mykatrain_settings_popup") as mock_open, \
-             patch("katrain.gui.features.karte_export.do_export_karte") as mock_inner:
+        with (
+            patch("katrain.gui.features.settings_popup.do_mykatrain_settings_popup") as mock_open,
+            patch("katrain.gui.features.karte_export.do_export_karte") as mock_inner,
+        ):
             do_export_karte(ctx)
         # Grab the default callback and invoke it
         default_callback = mock_inner.call_args[0][1]
@@ -89,7 +84,7 @@ class TestDoExportKarteDispatchIntegration:
     """Confirm the wrapper is reachable via the DISPATCH_TABLE."""
 
     def test_registered_in_dispatch_table(self) -> None:
-        from katrain.gui.features.commands import DISPATCH_TABLE, _DISPATCH_KEYS
+        from katrain.gui.features.commands import _DISPATCH_KEYS, DISPATCH_TABLE
 
         assert "export_karte" in _DISPATCH_KEYS
         assert "export_karte" in DISPATCH_TABLE

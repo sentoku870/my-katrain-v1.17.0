@@ -6,10 +6,12 @@ Uses mock game objects following the pattern established in test_golden_karte.py
 
 from unittest.mock import Mock
 
-from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
-from katrain.core.analysis.models.enums import PositionDifficulty
 from katrain.core.analysis import classify_mistake
+from katrain.core.analysis.models.enums import PositionDifficulty
+from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
 from katrain.core.reports.karte.json_export import build_karte_json
+
+
 def create_mock_game_with_analysis():
     """Create a mock game object with analysis data.
 

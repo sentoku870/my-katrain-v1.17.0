@@ -19,7 +19,6 @@ from katrain.common.rank import Rank, canonical_rank_key
 from katrain.core.analysis.models import (
     DEFAULT_SKILL_PRESET,
     PRESET_ORDER,
-    RANK_TO_PRESET_DEFAULT,
     SKILL_PRESETS,
     URGENT_MISS_CONFIGS,
     AutoConfidence,
@@ -29,6 +28,7 @@ from katrain.core.analysis.models import (
     UrgentMissConfig,
 )
 from katrain.core.analysis.models.move_eval import MoveEval
+from katrain.core.analysis.models.skill import RANK_TO_PRESET_DEFAULT
 from katrain.core.analysis.presentation import VALID_REASON_TAGS
 
 if TYPE_CHECKING:
@@ -80,8 +80,10 @@ def rank_to_skill_preset(rank: Rank | str | None) -> str:
             return DEFAULT_SKILL_PRESET
         from katrain.common.rank import _RANK_ORDER
 
-        return RANK_TO_PRESET_DEFAULT.get(_RANK_ORDER[key], DEFAULT_SKILL_PRESET)
-    return RANK_TO_PRESET_DEFAULT.get(rank.kyu_dan, DEFAULT_SKILL_PRESET)
+        preset: str = RANK_TO_PRESET_DEFAULT.get(_RANK_ORDER[key], DEFAULT_SKILL_PRESET)
+        return preset
+    preset = RANK_TO_PRESET_DEFAULT.get(rank.kyu_dan, DEFAULT_SKILL_PRESET)
+    return preset
 
 
 def resolve_skill_preset(

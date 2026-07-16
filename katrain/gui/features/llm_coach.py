@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from katrain.core.constants import OUTPUT_ERROR
 from katrain.core.lang import i18n
@@ -38,7 +38,7 @@ def _read_karte(karte_path: str | Path) -> dict[str, Any]:
     """Load a Karte JSON file. Raises on missing / malformed input."""
     p = Path(karte_path)
     with open(p, encoding="utf-8") as f:
-        return json.load(f)
+        return cast("dict[str, Any]", json.load(f))
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ def _read_karte(karte_path: str | Path) -> dict[str, Any]:
 
 
 def resolve_rank_fallback_chain(
-    info: dict | None,
+    info: dict[str, Any] | None,
     perspective_value: str,
     *,
     general_player_rank: str | None = None,
@@ -87,7 +87,7 @@ def resolve_rank_fallback_chain(
     return None
 
 
-def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
+def _pick_detected_rank(info: dict[str, Any], perspective_value: str) -> str | None:
     """Pick the rank to show for the active perspective.
 
     Phase 225.6: the rank hint shows the player's own rank when the
@@ -212,30 +212,22 @@ def _render_validation_report(report: Any) -> str:
     """Render a :class:`ValidationReport` as a multi-line Markdown string."""
     lines: list[str] = [
         f"**{i18n._('mykatrain:llm-coach:status')}**: {report.summary_line()}",
-        f"**HIGH**: {report.high_count} · "
-        f"**MEDIUM**: {report.medium_count} · "
-        f"**LOW**: {report.low_count}",
+        f"**HIGH**: {report.high_count} · **MEDIUM**: {report.medium_count} · **LOW**: {report.low_count}",
         "",
     ]
     if report.referenced_symptom_ids:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-symptoms')}**: "
-            f"{', '.join(report.referenced_symptom_ids)}"
+            f"**{i18n._('mykatrain:llm-coach:referenced-symptoms')}**: {', '.join(report.referenced_symptom_ids)}"
         )
     if report.referenced_move_numbers:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-moves')}**: "
-            f"{list(report.referenced_move_numbers)}"
-        )
+        lines.append(f"**{i18n._('mykatrain:llm-coach:referenced-moves')}**: {list(report.referenced_move_numbers)}")
     if report.referenced_points_lost:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-points-lost')}**: "
-            f"{list(report.referenced_points_lost)}"
+            f"**{i18n._('mykatrain:llm-coach:referenced-points-lost')}**: {list(report.referenced_points_lost)}"
         )
     if report.referenced_lexicon_ids:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-lexicon')}**: "
-            f"{', '.join(report.referenced_lexicon_ids)}"
+            f"**{i18n._('mykatrain:llm-coach:referenced-lexicon')}**: {', '.join(report.referenced_lexicon_ids)}"
         )
     if report.issues:
         lines.append("")
@@ -335,6 +327,7 @@ def build_summary_llm_prompt(
     if mode is None:
         # Fallback when select_voice returns a voice with no modes
         from katrain.core.coach.master_db import CoachMode
+
         mode = CoachMode.INTERMEDIATE
 
     games = summary.get("meta", {}).get("games_analyzed", 0) or 0
@@ -412,6 +405,7 @@ def validate_summary_llm_response(
     mode = modes[0] if modes else None
     if mode is None:
         from katrain.core.coach.master_db import CoachMode
+
         mode = CoachMode.INTERMEDIATE
 
     games = summary.get("meta", {}).get("games_analyzed", 0) or 0
@@ -441,7 +435,7 @@ def validate_summary_llm_response(
 def _render_summary_validation_report(
     report: Any,
     cfg: Any,
-    summary: dict,
+    summary: dict[str, Any],
 ) -> str:
     """Phase 227-D: render a :class:`SummaryValidationReport` as Markdown.
 
@@ -452,9 +446,7 @@ def _render_summary_validation_report(
     focus = cfg.player_name or "全体俯瞰"
     lines: list[str] = [
         f"**{i18n._('mykatrain:llm-coach:status')}**: {report.summary_line()}",
-        f"**HIGH**: {report.high_count} · "
-        f"**MEDIUM**: {report.medium_count} · "
-        f"**LOW**: {report.low_count}",
+        f"**HIGH**: {report.high_count} · **MEDIUM**: {report.medium_count} · **LOW**: {report.low_count}",
         "",
         f"_{i18n._('mykatrain:llm-coach:summary-report-meta').format(games=games, focus=focus)}_",
         "",
@@ -466,18 +458,15 @@ def _render_summary_validation_report(
         )
     if report.referenced_phases:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-phases')}**: "
-            f"{', '.join(report.referenced_phases)}"
+            f"**{i18n._('mykatrain:llm-coach:summary-referenced-phases')}**: {', '.join(report.referenced_phases)}"
         )
     if report.referenced_move_numbers:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-moves')}**: "
-            f"{list(report.referenced_move_numbers)}"
+            f"**{i18n._('mykatrain:llm-coach:summary-referenced-moves')}**: {list(report.referenced_move_numbers)}"
         )
     if report.referenced_game_ids:
         lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-game-ids')}**: "
-            f"{', '.join(report.referenced_game_ids)}"
+            f"**{i18n._('mykatrain:llm-coach:summary-referenced-game-ids')}**: {', '.join(report.referenced_game_ids)}"
         )
     if report.issues:
         lines.append("")
@@ -683,12 +672,7 @@ def detect_player_info(
         return _empty_player_info("missing")
 
     info = (karte.get("meta") or {}).get("player_info")
-    if (
-        info
-        and isinstance(info, dict)
-        and isinstance(info.get("black"), dict)
-        and isinstance(info.get("white"), dict)
-    ):
+    if info and isinstance(info, dict) and isinstance(info.get("black"), dict) and isinstance(info.get("white"), dict):
         return {
             "black": dict(info["black"]),
             "white": dict(info["white"]),
@@ -701,6 +685,7 @@ def detect_player_info(
         from katrain.core.coach.sgf_player_info import (
             extract_player_info_from_sgf,
         )
+
         try:
             sgf_info = extract_player_info_from_sgf(source_filename)
         except (OSError, ValueError):
@@ -744,16 +729,16 @@ def detect_player_color_for_user(
     """
     if ctx is None:
         return None, None
-    default_user = (ctx.config("mykatrain_settings") or {}).get(
-        "default_user_name", ""
-    )
+    default_user = (ctx.config("mykatrain_settings") or {}).get("default_user_name", "")
     if not default_user:
         return None, None
     info = player_info if player_info is not None else detect_player_info(ctx, karte_path)
     from katrain.core.coach.sgf_player_info import extract_player_info_for_user
 
     pseudo = _SgfInfoLike(info["black"], info["white"])
-    return extract_player_info_for_user(pseudo, default_user)
+    from katrain.core.coach.sgf_player_info import SgfPlayerInfo
+
+    return extract_player_info_for_user(cast(SgfPlayerInfo, pseudo), default_user)
 
 
 class _SgfInfoLike:

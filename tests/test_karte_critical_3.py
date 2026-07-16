@@ -13,8 +13,8 @@ All tests are engine-free (no KataGo/Leela required).
 import pytest
 
 from katrain.core.analysis import CriticalMove
-from katrain.core.reports.karte.models import CRITICAL_3_PROMPT_TEMPLATE
 from katrain.core.reports.karte.llm_prompt import build_critical_3_prompt
+from katrain.core.reports.karte.models import CRITICAL_3_PROMPT_TEMPLATE
 
 # =============================================================================
 # Test Fixtures

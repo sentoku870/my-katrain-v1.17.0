@@ -22,6 +22,7 @@ from collections.abc import Callable
 from typing import Any
 
 from katrain.common.short_hash import short_hash
+from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.batch.models import BatchResult
 from katrain.core.batch.orchestration._context import (
@@ -46,7 +47,6 @@ from katrain.core.batch.orchestration._process import (
 )
 from katrain.core.batch.orchestration._setup import _setup_batch
 from katrain.core.batch.orchestration._summary import _generate_summaries
-from katrain.core.analysis import DEFAULT_SKILL_PRESET
 
 
 def run_batch(

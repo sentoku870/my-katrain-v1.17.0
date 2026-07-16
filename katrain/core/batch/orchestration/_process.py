@@ -27,9 +27,7 @@ def _process_single_file(ctx: _BatchFileContext, log: Callable[[str], None]) -> 
     base_name, sgf_output_path, effective_visits, need_game = _prepare_file_processing(ctx, log)
 
     try:
-        success, game = _run_analysis_with_circuit_breaker(
-            ctx, sgf_output_path, effective_visits, need_game, log
-        )
+        success, game = _run_analysis_with_circuit_breaker(ctx, sgf_output_path, effective_visits, need_game, log)
     except _AnalysisAborted:
         return
 
@@ -57,11 +55,7 @@ def _prepare_file_processing(
     output_rel_path = ctx.rel_path
     if output_rel_path.lower().endswith((".gib", ".ngf")):
         output_rel_path = output_rel_path[:-4] + ".sgf"
-    sgf_output_path = (
-        os.path.join(ctx.output_dir, "analyzed", output_rel_path)
-        if ctx.save_analyzed_sgf
-        else None
-    )
+    sgf_output_path = os.path.join(ctx.output_dir, "analyzed", output_rel_path) if ctx.save_analyzed_sgf else None
 
     need_game = ctx.generate_karte or ctx.generate_summary or ctx.generate_curator
 
@@ -136,9 +130,7 @@ def _run_analysis_with_circuit_breaker(
     return success, game
 
 
-def _record_engine_failure_and_maybe_abort(
-    ctx: _BatchFileContext, log: Callable[[str], None], message: str
-) -> None:
+def _record_engine_failure_and_maybe_abort(ctx: _BatchFileContext, log: Callable[[str], None], message: str) -> None:
     """Record an engine failure; trip circuit breaker if threshold reached."""
     ctx.result.engine_failure_count += 1
     log(message)

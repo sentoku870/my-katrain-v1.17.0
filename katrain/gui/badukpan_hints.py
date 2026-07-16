@@ -20,7 +20,12 @@ from kivy.graphics.context_instructions import Color
 from kivy.graphics.vertex_instructions import Ellipse, Line, Rectangle
 from kivy.metrics import dp
 
-from katrain.core.analysis import DEFAULT_PV_FILTER_LEVEL, filter_candidates_by_pv_complexity, get_pv_filter_config, resolve_skill_preset
+from katrain.core.analysis import (
+    DEFAULT_PV_FILTER_LEVEL,
+    filter_candidates_by_pv_complexity,
+    get_pv_filter_config,
+    resolve_skill_preset,
+)
 from katrain.core.beginner.hints import (
     get_beginner_hint_cached,
     is_coords_valid,

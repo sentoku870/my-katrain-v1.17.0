@@ -84,12 +84,7 @@ _PROP_LINE_RE = re.compile(
 def _strip_sgf_escapes(value: str) -> str:
     """Undo SGF property escape sequences (``\\]`` → ``]``, etc.)."""
     # Order matters: process the longer escapes first.
-    return (
-        value.replace("\\\\", "\x00")
-        .replace("\\]", "]")
-        .replace("\\[", "[")
-        .replace("\x00", "\\")
-    )
+    return value.replace("\\\\", "\x00").replace("\\]", "]").replace("\\[", "[").replace("\x00", "\\")
 
 
 def _parse_properties(text: str) -> dict[str, str]:

@@ -14,15 +14,6 @@ from katrain.core.ai import (
     ai_rank_estimation,
     game_report,
 )
-from katrain.core.ai_strategies_base import (
-    AIStrategy,
-    generate_influence_territory_weights,
-    generate_local_tenuki_weights,
-    interp1d,
-    interp2d,
-    interp_ix,
-    register_strategy,
-)
 from katrain.core.ai.constants import (
     AI_DEFAULT,
     AI_HANDICAP,
@@ -38,6 +29,15 @@ from katrain.core.ai.constants import (
     AI_TENUKI,
     AI_TERRITORY,
     AI_WEIGHTED,
+)
+from katrain.core.ai_strategies_base import (
+    AIStrategy,
+    generate_influence_territory_weights,
+    generate_local_tenuki_weights,
+    interp1d,
+    interp2d,
+    interp_ix,
+    register_strategy,
 )
 from katrain.core.game import Move
 from tests.ai_strategies._helpers import (

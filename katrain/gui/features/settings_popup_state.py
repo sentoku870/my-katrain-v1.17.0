@@ -79,3 +79,9 @@ class _SettingsPopupContext:
     register_searchable: Callable[[str, Any], None] | None = None
     reopen_popup: Callable[[], None] | None = None
     popup: Any = None
+    # Phase 229: stash a reference to the inferred-rank label so the
+    # text callback can refresh it in-place without rebuilding the
+    # layout (avoids focus loss). The label is created by the analysis
+    # tab builder, so we hold a typed ``Any`` to keep the dataclass
+    # Kivy-free.
+    _rank_inferred_label: Any = None

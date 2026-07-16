@@ -10,10 +10,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from katrain.core.analysis.models import MoveEval
 from katrain.core.analysis import (
     classify_game_phase,
 )
+from katrain.core.analysis.models import MoveEval
 from katrain.core.reports.definitions import (
     PHASE_ALIASES,
     PHASES,
@@ -44,7 +44,7 @@ class MoveExtractor:
             phase = classify_game_phase(move_number, board_size)
             phase = PHASE_ALIASES.get(phase, phase)
         except Exception:
-            logger.debug('classify_game_phase in MoveExtractor', exc_info=True)
+            logger.debug("classify_game_phase in MoveExtractor", exc_info=True)
             phase = "unknown"
 
         if phase not in PHASES and phase != "unknown":

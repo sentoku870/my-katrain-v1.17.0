@@ -19,8 +19,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from katrain.core import analysis
-from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.core.analysis import MistakeCategory, PositionDifficulty
+from katrain.core.batch.markdown_fmt import truncate_game_name
 from katrain.gui.features.summary_aggregator import collect_rank_info
 
 # Phase 174 P1-D: re-export pattern-mining helpers so existing callers/tests

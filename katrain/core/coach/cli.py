@@ -27,8 +27,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from katrain.core.coach.karte_detector import detect_symptoms_from_karte
 from katrain.core.coach.lexicon import get_entry
@@ -40,11 +41,8 @@ from katrain.core.coach.prompt_builder import (
 )
 from katrain.core.coach.symptom_index import (
     SymptomId,
-    list_llm_required_symptoms,
-    lookup_symptom,
 )
 from katrain.core.coach.tones import select_voice, voice_summary
-
 
 _DEFAULT_LLM_REQUIRED = (
     SymptomId.TIME_PRESSURE_LOSS,
@@ -306,12 +304,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     # Render report as Markdown
     lines = [
-        f"# LLM Output Validation Report",
-        f"",
+        "# LLM Output Validation Report",
+        "",
         f"**Status**: {report.summary_line()}",
-        f"",
+        "",
         f"**High**: {report.high_count} · **Medium**: {report.medium_count} · **Low**: {report.low_count}",
-        f"",
+        "",
     ]
     if report.referenced_symptom_ids:
         lines.append(f"**Referenced symptom ids**: {', '.join(report.referenced_symptom_ids)}")
@@ -324,9 +322,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         lines.append("## Issues")
         lines.append("")
         for issue in report.issues:
-            lines.append(
-                f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}"
-            )
+            lines.append(f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}")
     output = "\n".join(lines) + "\n"
 
     if args.out:
@@ -340,6 +336,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 def _detect_jtype(data: dict[str, Any]) -> str:
     """Thin wrapper around :func:`detect_json_type` for cli internals."""
     from katrain.core.coach.json_type import detect_json_type
+
     return detect_json_type(data)
 
 
@@ -360,8 +357,7 @@ def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) ->
     jtype = _detect_jtype(raw_data)
     if jtype != "summary":
         print(
-            f"❌ --summary-mode requires a multi-game Summary JSON, "
-            f"but detection returned '{jtype}'.",
+            f"❌ --summary-mode requires a multi-game Summary JSON, but detection returned '{jtype}'.",
             file=sys.stderr,
         )
         return 2
@@ -384,12 +380,12 @@ def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) ->
 
     # Render report as Markdown
     lines = [
-        f"# LLM Output Validation Report (Summary Mode)",
-        f"",
+        "# LLM Output Validation Report (Summary Mode)",
+        "",
         f"**Status**: {report.summary_line()}",
-        f"",
+        "",
         f"**High**: {report.high_count} · **Medium**: {report.medium_count} · **Low**: {report.low_count}",
-        f"",
+        "",
     ]
     if report.referenced_categories:
         lines.append(f"**Referenced patterns**: {', '.join(report.referenced_categories)}")
@@ -404,9 +400,7 @@ def _cmd_validate_summary(raw_data: dict[str, Any], args: argparse.Namespace) ->
         lines.append("## Issues")
         lines.append("")
         for issue in report.issues:
-            lines.append(
-                f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}"
-            )
+            lines.append(f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}")
     output = "\n".join(lines) + "\n"
 
     if args.out:
@@ -424,11 +418,7 @@ def cmd_symptoms(args: argparse.Namespace) -> int:
     for symptom in list_all_symptoms():
         marker = "🟢" if symptom.auto_detected else "🟡"
         lex = ", ".join(symptom.related_lexicon_ids) or "(none)"
-        line = (
-            f"{marker} {symptom.id.value:36s} | "
-            f"{symptom.ja_label:24s} | "
-            f"lex=[{lex}]"
-        )
+        line = f"{marker} {symptom.id.value:36s} | {symptom.ja_label:24s} | lex=[{lex}]"
         print(line)
     return 0
 
@@ -470,14 +460,13 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     )
     from katrain.core.coach.json_type import (
         detect_json_type,
-        normalize_summary_to_karte_shape,
     )
     from katrain.core.coach.karte_detector import detect_symptoms_from_karte
 
     if args.fixture:
-        names = [args.fixture]
+        names: list[str] | tuple[str, ...] = [args.fixture]
     else:
-        names = list_fixture_names()
+        names = list(list_fixture_names())
 
     lines: list[str] = ["# Coach Detector Calibration", ""]
     fail_count = 0
@@ -502,13 +491,14 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
             from katrain.core.coach.json_type import (
                 extract_summary_weakness_patterns,
             )
+
             lines.append(f"## ⏭️  {fix.name} (summary, skipped symptom detection)")
             lines.append(fix.description)
             lines.append("")
             lines.append("(summary fixtures pin pattern extraction, not per-move symptoms)")
             patterns = extract_summary_weakness_patterns(fix.karte)
             lines.append(f"- extracted patterns: {len(patterns)}")
-            lines.append(f"- expected_symptom_ids: {{}} (n/a for summaries)")
+            lines.append("- expected_symptom_ids: {} (n/a for summaries)")
             lines.append(f"- notes: {fix.tolerance_notes}")
             lines.append("")
             pass_count += 1
@@ -521,12 +511,8 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
         lines.append(f"## {marker} {fix.name}")
         lines.append(fix.description)
         lines.append("")
-        lines.append(
-            f"- expected: {[s.value for s in sorted(expected, key=lambda x: x.value)]}"
-        )
-        lines.append(
-            f"- fired:    {[s.value for s in sorted(fired, key=lambda x: x.value)]}"
-        )
+        lines.append(f"- expected: {[s.value for s in sorted(expected, key=lambda x: x.value)]}")
+        lines.append(f"- fired:    {[s.value for s in sorted(fired, key=lambda x: x.value)]}")
         if not ok:
             missing = expected - fired
             extra = fired - expected
@@ -541,12 +527,14 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
             lines.append(f"- notes: {fix.tolerance_notes}")
         lines.append("")
 
-    lines.extend([
-        "## Summary",
-        f"- passed: {pass_count}",
-        f"- failed: {fail_count}",
-        f"- total:  {pass_count + fail_count}",
-    ])
+    lines.extend(
+        [
+            "## Summary",
+            f"- passed: {pass_count}",
+            f"- failed: {fail_count}",
+            f"- total:  {pass_count + fail_count}",
+        ]
+    )
 
     output = "\n".join(lines) + "\n"
     if args.out:
@@ -589,7 +577,6 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         extract_winrate_scorelead_correlation,
         extract_winrate_scorelead_pairs,
     )
-    from katrain.core.coach.master_db import CoachMode, ToneVoice
     from katrain.core.coach.tones import modes_for_voice, select_voice
 
     karte = _load_karte(Path(args.karte_json))
@@ -700,15 +687,12 @@ def cmd_trace(args: argparse.Namespace) -> int:
     - aggregate: Phase 217 placeholder (currently no symptoms fired here)
     """
     from katrain.core.coach.karte_detector import (
-        build_symptom_context_from_karte,
-        detect_symptoms_from_karte,
-    )
-    from katrain.core.coach.symptom_index import detect_auto_symptoms
-    from katrain.core.coach.karte_detector import (
         _symptom_ids_from_aggregate_patterns,
         _symptom_ids_from_streaks,
         _symptom_ids_from_weakness_categories,
+        build_symptom_context_from_karte,
     )
+    from katrain.core.coach.symptom_index import detect_auto_symptoms
 
     karte = _load_karte(Path(args.karte_json))
 
@@ -815,9 +799,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build.set_defaults(func=cmd_build)
 
     # validate
-    p_val = sub.add_parser(
-        "validate", help="Validate an LLM response against the Karte JSON"
-    )
+    p_val = sub.add_parser("validate", help="Validate an LLM response against the Karte JSON")
     p_val.add_argument("karte_json", help="Path to Karte JSON file")
     p_val.add_argument("llm_response", help="Path to LLM-generated text")
     p_val.add_argument("--rank", help="Player rank (must match build)")
@@ -828,10 +810,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_val.add_argument(
         "--summary-mode",
         action="store_true",
-        help=(
-            "Force the multi-game Summary validator. "
-            "Auto-detected by default; explicit only for clarity."
-        ),
+        help=("Force the multi-game Summary validator. Auto-detected by default; explicit only for clarity."),
     )
     p_val.set_defaults(func=cmd_validate)
 
@@ -894,7 +873,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Entry point. Returns process exit code (0 success, non-zero failure)."""
     parser = _build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    ret: int = args.func(args)
+    return ret
 
 
 if __name__ == "__main__":  # pragma: no cover

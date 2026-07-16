@@ -66,7 +66,9 @@ def sample_summary() -> dict:
         },
         "loss_progression": {
             "all": [
-                {"mistake_count": 2}, {"mistake_count": 1}, {"mistake_count": 3},
+                {"mistake_count": 2},
+                {"mistake_count": 1},
+                {"mistake_count": 3},
             ],
             "even": [{"mistake_count": 1}, {"mistake_count": 0}],
         },
@@ -222,6 +224,7 @@ class TestNormalizeSummary:
 class TestExports:
     def test_json_type_exports(self):
         import katrain.core.coach as pkg
+
         for name in [
             "JsonType",
             "detect_json_type",
@@ -306,8 +309,12 @@ class TestExtractWeaknessPatterns:
         patterns = extract_summary_weakness_patterns(sample_summary)
         for p in patterns:
             assert set(p.keys()) == {
-                "color", "phase", "category", "count",
-                "total_loss", "frequency_ratio",
+                "color",
+                "phase",
+                "category",
+                "count",
+                "total_loss",
+                "frequency_ratio",
             }
 
     def test_non_dict_weaknesses_returns_empty(self):
@@ -640,10 +647,7 @@ class TestExtractWeaknessPatternsShapeB:
         # field instead and leaves ``frequency_ratio`` at 0.0.
         data = _real_shape_summary()
         patterns = extract_summary_weakness_patterns(data)
-        sentoku_blunder = next(
-            p for p in patterns
-            if p["player"] == "sentoku870" and p["category"] == "blunder"
-        )
+        sentoku_blunder = next(p for p in patterns if p["player"] == "sentoku870" and p["category"] == "blunder")
         assert sentoku_blunder["frequency_ratio"] == 0.0
         # pct field carries the per-move percentage
         assert abs(sentoku_blunder["pct"] - 1.3) < 1e-9
@@ -655,9 +659,11 @@ class TestExtractWeaknessPatternsShapeB:
 
     def test_no_games_analyzed_degrades_to_zero_freq(self):
         # No games_analyzed: frequency_ratio = 0.0 for all entries
-        data = {"players": {"alice": {"mistakes": {
-            "blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}
-        }}}}
+        data = {
+            "players": {
+                "alice": {"mistakes": {"blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}}}
+            }
+        }
         patterns = extract_summary_weakness_patterns(data)
         assert patterns[0]["frequency_ratio"] == 0.0
         assert patterns[0]["total_loss"] == 50.0
@@ -667,13 +673,10 @@ class TestExtractWeaknessPatternsShapeB:
         # total_loss values)
         data = {
             "meta": {"games_analyzed": 3},
-            "weaknesses": {
-                "black": [{"phase": "middle", "category": "blunder",
-                            "count": 5, "total_loss": 100.0}]
+            "weaknesses": {"black": [{"phase": "middle", "category": "blunder", "count": 5, "total_loss": 100.0}]},
+            "players": {
+                "alice": {"mistakes": {"blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}}}
             },
-            "players": {"alice": {"mistakes": {
-                "blunder": {"count": 5, "pct": 1.0, "denominator": 500, "avg_loss": 10.0}
-            }}},
         }
         patterns = extract_summary_weakness_patterns(data)
         assert len(patterns) == 1

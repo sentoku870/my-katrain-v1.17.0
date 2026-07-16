@@ -219,7 +219,9 @@ class KaTrainGui(Screen, KaTrainBase):
             get_play_mode=lambda: self.play_mode,
             # State modifiers
             get_set_zen=lambda: (self.zen, lambda v: setattr(self, "zen", v)),
-            toggle_continuous_analysis=lambda *a, **kw: self.ctx.analysis_controller.toggle_continuous_analysis(*a, clock=Clock, **kw),
+            toggle_continuous_analysis=lambda *a, **kw: self.ctx.analysis_controller.toggle_continuous_analysis(
+                *a, clock=Clock, **kw
+            ),
             toggle_move_num=lambda: self.ctx.analysis_controller.toggle_move_num(),
             load_from_clipboard=lambda: self.ctx.sgf_manager.load_sgf_from_clipboard(),
             # Utilities
@@ -368,6 +370,7 @@ class KaTrainGui(Screen, KaTrainBase):
             self.ctx = None
 
         self.ctx.ui_update_manager.setup_state_subscriptions()
+
     # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
     # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
     # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
@@ -395,6 +398,7 @@ class KaTrainGui(Screen, KaTrainBase):
             保存は別途 save_config(section) を呼ぶ必要がある。
         """
         self.ctx.config_manager.set_section(section, value)
+
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+).
 
@@ -406,9 +410,11 @@ class KaTrainGui(Screen, KaTrainBase):
         gui_refresh_manager = getattr(self, "_gui_refresh_manager", None)
         if gui_refresh_manager is not None:
             gui_refresh_manager.update_status_for_error(message, level)
+
     @property
     def play_analyze_mode(self) -> str:
         return self.play_mode.mode  # type: ignore[no-any-return]
+
     def start(self) -> None:
         if self.engine:
             return
@@ -466,6 +472,7 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Initialize focus button states on startup
         Clock.schedule_once(lambda dt: self.ctx.analysis_controller.update_focus_button_states(), 0.5)
+
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods
     # =========================================================================
@@ -473,7 +480,8 @@ class KaTrainGui(Screen, KaTrainBase):
     def restart_engine_with_fallback(self, fallback_type: str) -> tuple[bool, TestAnalysisResult]:
         """Delegates to AutoSetupController (Phase 133)."""
         return self.ctx.auto_setup_controller.restart_engine_with_fallback(
-            fallback_type, lambda cfg: KataGoEngine(self, cfg, status_callback=self._gui_refresh_manager.on_engine_status)
+            fallback_type,
+            lambda cfg: KataGoEngine(self, cfg, status_callback=self._gui_refresh_manager.on_engine_status),
         )
 
     def restart_engine(self) -> bool:
@@ -533,6 +541,7 @@ class KaTrainGui(Screen, KaTrainBase):
             self.update_state()
         for player_setup_block in PlayerSetupBlock.INSTANCES:
             player_setup_block.update_player_info(bw, self.players_info[bw])
+
     def __call__(self, message: str, *args: Any, **kwargs: Any) -> None:
         """Central dispatcher for menu actions triggered from .kv or shortcuts.
 

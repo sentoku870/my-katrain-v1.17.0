@@ -351,6 +351,8 @@ class TestExtractorsModuleHygiene:
         """Source-level check guards against future regressions."""
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parents[1] / "katrain" / "core" / "reports" / "extractors.py").read_text(encoding="utf-8")
+        src = (Path(__file__).resolve().parents[1] / "katrain" / "core" / "reports" / "extractors.py").read_text(
+            encoding="utf-8"
+        )
         assert "MagicMock" not in src
         assert "unittest.mock" not in src

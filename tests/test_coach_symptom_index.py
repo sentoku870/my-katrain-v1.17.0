@@ -39,17 +39,20 @@ class TestSymptomId:
         values = [s.value for s in SymptomId]
         assert len(values) == len(set(values))
 
-    @pytest.mark.parametrize("expected", [
-        "atari_blindness",
-        "capture_oversight",
-        "big_point_blindness",
-        "joseki_rote",
-        "time_pressure_loss",
-        "ai_overload",
-        "tilt_discouragement",
-        "evaluation_errors",
-        "saving_everything",
-    ])
+    @pytest.mark.parametrize(
+        "expected",
+        [
+            "atari_blindness",
+            "capture_oversight",
+            "big_point_blindness",
+            "joseki_rote",
+            "time_pressure_loss",
+            "ai_overload",
+            "tilt_discouragement",
+            "evaluation_errors",
+            "saving_everything",
+        ],
+    )
     def test_known_ids_present(self, expected):
         assert SymptomId(expected).value == expected
 
@@ -121,9 +124,7 @@ class TestAutoLlMSplit:
         # User decision (Phase 203 §4.2): LLM-required symptoms must
         # include a context_hint so the LLM has guidance.
         for s in list_llm_required_symptoms():
-            assert s.context_hint, (
-                f"{s.id.value} (LLM-required) missing context_hint"
-            )
+            assert s.context_hint, f"{s.id.value} (LLM-required) missing context_hint"
 
     def test_known_auto_detected(self):
         assert lookup_symptom(SymptomId.ATARI_BLINDNESS).auto_detected is True
@@ -144,9 +145,7 @@ class TestAutoLlMSplit:
             SymptomId.ENDOWMENT_EFFECT_SUNK_COST,
             SymptomId.SHALLOW_REVIEW,
         ]:
-            assert lookup_symptom(sid).auto_detected is False, (
-                f"{sid.value} should be LLM-required"
-            )
+            assert lookup_symptom(sid).auto_detected is False, f"{sid.value} should be LLM-required"
 
 
 # --- SymptomContext.phase ---
@@ -345,9 +344,7 @@ class TestSymptomLexiconCoverage:
     def test_auto_detected_symptom_has_lexicon_links(self, sid):
         symptom = lookup_symptom(sid)
         assert symptom is not None
-        assert symptom.related_lexicon_ids, (
-            f"{sid.value} must list at least one Lexicon id"
-        )
+        assert symptom.related_lexicon_ids, f"{sid.value} must list at least one Lexicon id"
 
     def test_too_many_choices_links_priority(self):
         symptom = lookup_symptom(SymptomId.TOO_MANY_CHOICES)

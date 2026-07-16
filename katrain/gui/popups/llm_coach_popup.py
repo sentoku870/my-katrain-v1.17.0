@@ -93,7 +93,7 @@ class LLMCoachPopupContent(BoxLayout):
     # These are class-level type hints only — actual mutable state is
     # initialised per-instance in ``__init__`` to avoid sharing across
     # popup instances.
-    _pending_clock_events: list
+    _pending_clock_events: list[Any]
     _rank_detect_retries: int
 
     def __init__(self, **kwargs: Any) -> None:
@@ -105,7 +105,7 @@ class LLMCoachPopupContent(BoxLayout):
         # ``self._pending_clock_events``. Without this ordering we get
         # ``AttributeError: 'LLMCoachPopupContent' object has no
         # attribute '_pending_clock_events'`` on popup open.
-        self._pending_clock_events: list = []
+        self._pending_clock_events: list[Any] = []
         self._rank_detect_retries: int = 0
         # Phase 227-D: detected path type. ``"karte"`` / ``"summary"``
         # / ``"unknown"``. Drives the type_label, generate button text
@@ -157,11 +157,11 @@ class LLMCoachPopupContent(BoxLayout):
         for ev in self._pending_clock_events:
             with contextlib.suppress(Exception):
                 Clock.unschedule(ev)
-        self._pending_clock_events = []
+        self._pending_clock_events: list[Any] = []
 
-    def _schedule_once(self, callback: Any, timeout: float) -> None:
+    def _schedule_once(self, callback: Any, timeout: float) -> Any:
         """Phase 226-B (B1): ``Clock.schedule_once`` with tracking."""
-        ev = Clock.schedule_once(callback, timeout)
+        ev: Any = Clock.schedule_once(callback, timeout)
         self._pending_clock_events.append(ev)
         return ev
 
@@ -211,9 +211,7 @@ class LLMCoachPopupContent(BoxLayout):
             # when the karte path never gets filled in.
             if self._rank_detect_retries < _MAX_RANK_DETECT_RETRIES:
                 self._rank_detect_retries += 1
-                self._schedule_once(
-                    self._populate_rank_and_perspective, _RETRY_INTERVAL
-                )
+                self._schedule_once(self._populate_rank_and_perspective, _RETRY_INTERVAL)
             return
 
         # Default user lookup (so we can debug why it picked a side).
@@ -238,9 +236,7 @@ class LLMCoachPopupContent(BoxLayout):
         # karte behaviour.
         self._detect_path_type(karte_path)
         if self.path_type == "summary":
-            self._populate_summary_perspective(
-                karte_path, default_user, default_user_rank
-            )
+            self._populate_summary_perspective(karte_path, default_user, default_user_rank)
             return
 
         # Default path: karte
@@ -253,9 +249,7 @@ class LLMCoachPopupContent(BoxLayout):
             info = detect_player_info(self.katrain, karte_path)
         except Exception as exc:
             self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
-                    error=str(exc)
-                ),
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
                 error=True,
             )
             return
@@ -285,14 +279,10 @@ class LLMCoachPopupContent(BoxLayout):
         # ``auto-detect-failed`` status as the info loader (previously
         # the colour detector silently swallowed errors).
         try:
-            color, _ = detect_player_color_for_user(
-                self.katrain, karte_path, player_info=info
-            )
+            color, _ = detect_player_color_for_user(self.katrain, karte_path, player_info=info)
         except Exception as exc:
             self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
-                    error=str(exc)
-                ),
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
                 error=True,
             )
             color = None
@@ -338,9 +328,7 @@ class LLMCoachPopupContent(BoxLayout):
         if label is None:
             return
         if self.detected_rank:
-            label.text = i18n._("mykatrain:llm-coach:rank-auto").format(
-                rank=self.detected_rank
-            )
+            label.text = i18n._("mykatrain:llm-coach:rank-auto").format(rank=self.detected_rank)
         else:
             label.text = ""
 
@@ -404,6 +392,7 @@ class LLMCoachPopupContent(BoxLayout):
             return self.path_type
         try:
             import json
+
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
@@ -433,23 +422,29 @@ class LLMCoachPopupContent(BoxLayout):
         from katrain.gui.features.llm_coach import detect_player_info_for_summary
 
         try:
-            info = detect_player_info_for_summary(
-                summary_path, default_user_name=default_user or None
-            )
+            info = detect_player_info_for_summary(summary_path, default_user_name=default_user or None)
         except Exception as exc:
             self._set_status(
-                i18n._("mykatrain:llm-coach:auto-detect-failed").format(
-                    error=str(exc)
-                ),
+                i18n._("mykatrain:llm-coach:auto-detect-failed").format(error=str(exc)),
                 error=True,
             )
             return
 
         # Build the perspective selector values:
         #   index 0          → "全体俯瞰" (bird's-eye)
-        #   index 1..N       → each player (name + optional rank)
+        #   index 1..N       → each player (name + optional rank), with the
+        #                       matched player placed first so the spinner
+        #                       defaults to the focus player at index 1.
         players = info.get("all_players", []) or []
-        self.summary_players = [(p["name"], p.get("rank")) for p in players]
+        matched = info.get("matched_player", {}) or {}
+        matched_name = matched.get("name") if isinstance(matched, dict) else None
+        if matched_name:
+            ordered = [matched_name] + [p["name"] for p in players if p.get("name") and p["name"] != matched_name]
+        else:
+            ordered = [p["name"] for p in players]
+        ordered = [name for name in ordered if name]
+        rank_lookup = {p["name"]: p.get("rank") for p in players if isinstance(p, dict) and p.get("name")}
+        self.summary_players = [(name, rank_lookup.get(name)) for name in ordered]
         birdseye = i18n._("mykatrain:llm-coach:summary-perspective-birdseye")
         values: list[str] = [birdseye]
         for name, rank in self.summary_players:
@@ -459,29 +454,22 @@ class LLMCoachPopupContent(BoxLayout):
         spinner = self._get_widget("perspective_select")
         if spinner is not None:
             spinner.values = values
-            # Default selection: matched player (if any) or bird's-eye
+            # Default selection: matched player at index 1 when present,
+            # otherwise bird's-eye (index 0).
             if info.get("default_user_matched") and self.summary_players:
-                # Matched player is at index 1 (after birdseye)
-                matched = info.get("matched_player", {}) or {}
-                matched_name = matched.get("name")
-                if matched_name:
-                    for i, (name, _) in enumerate(self.summary_players, start=1):
-                        if name == matched_name:
-                            self.summary_perspective_index = i
-                            break
-                    else:
-                        self.summary_perspective_index = 0
-                else:
-                    self.summary_perspective_index = 0
+                self.summary_perspective_index = 1
             else:
                 self.summary_perspective_index = 0
             try:
                 spinner.text = values[self.summary_perspective_index]
             except (IndexError, AttributeError):
                 spinner.text = values[0]
-            self.perspective_value = _summary_index_to_internal(
-                self.summary_perspective_index, self.summary_players
-            )
+            internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
+            # ``perspective_value`` is a StringProperty (no None allowed).
+            # Bird's-eye view is represented as an empty string here; the
+            # downstream consumers (e.g. ``_resolve_player_color``) treat
+            # an empty string as "auto".
+            self.perspective_value = internal_value if internal_value is not None else ""
 
         # ---- Rank auto-fill from matched player ----
         matched = info.get("matched_player", {}) or {}
@@ -505,6 +493,7 @@ class LLMCoachPopupContent(BoxLayout):
         games = 0
         try:
             import json
+
             with open(summary_path, encoding="utf-8") as f:
                 data = json.load(f)
             games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
@@ -541,9 +530,10 @@ class LLMCoachPopupContent(BoxLayout):
         except ValueError:
             idx = 0
         self.summary_perspective_index = idx
-        self.perspective_value = _summary_index_to_internal(
-            self.summary_perspective_index, self.summary_players
-        )
+        internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
+        # ``perspective_value`` is a StringProperty; bird's-eye is the
+        # empty string sentinel (consumers treat it as "auto").
+        self.perspective_value = internal_value if internal_value is not None else ""
         # Update the rank hint if the user picks a different player
         if 0 < idx <= len(self.summary_players):
             _, rank = self.summary_players[idx - 1]
@@ -560,9 +550,7 @@ class LLMCoachPopupContent(BoxLayout):
         if label is None:
             return
         if player_name:
-            label.text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(
-                color=player_name
-            )
+            label.text = i18n._("mykatrain:llm-coach:perspective-auto-detected").format(color=player_name)
         else:
             label.text = i18n._("mykatrain:llm-coach:perspective-auto-fallback")
 
@@ -592,6 +580,7 @@ class LLMCoachPopupContent(BoxLayout):
         if self.path_type == "summary":
             try:
                 import json
+
                 with open(karte_path, encoding="utf-8") as f:
                     data = json.load(f)
                 games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
@@ -601,9 +590,7 @@ class LLMCoachPopupContent(BoxLayout):
             if self.path_type == "karte":
                 type_label.text = i18n._("mykatrain:llm-coach:type-label-single")
             elif self.path_type == "summary":
-                type_label.text = i18n._("mykatrain:llm-coach:type-label-multi").format(
-                    games=games
-                )
+                type_label.text = i18n._("mykatrain:llm-coach:type-label-multi").format(games=games)
             else:
                 type_label.text = i18n._("mykatrain:llm-coach:type-label-unknown")
         if gen_button is not None:
@@ -620,8 +607,10 @@ class LLMCoachPopupContent(BoxLayout):
         """
         self._refresh_type_label()
         # Reset the retry counter so we get a fresh chance to populate
+        # once a non-empty path is in place.
         self._rank_detect_retries = 0
-        self._populate_rank_and_perspective()
+        if self._read_text("karte_path_input"):
+            self._populate_rank_and_perspective()
 
     # ---- Button handlers ----------------------------------------------
 
@@ -644,9 +633,7 @@ class LLMCoachPopupContent(BoxLayout):
         def _on_pick(instance: Any, *_args: Any) -> None:
             # ``filename`` is set when the user picks via OK; ``selection``
             # is set when the user picks via double-click.
-            chosen = (instance.filename or "").strip() or (
-                instance.selection[0] if instance.selection else ""
-            )
+            chosen = (instance.filename or "").strip() or (instance.selection[0] if instance.selection else "")
             if chosen:
                 self._set_widget_text("karte_path_input", str(chosen))
             # Always close the picker so the user isn't stuck on it.
@@ -707,9 +694,7 @@ class LLMCoachPopupContent(BoxLayout):
         # Default: karte path (Phase 225.6)
         from katrain.gui.features.llm_coach import build_llm_prompt
 
-        player_color = _resolve_player_color(
-            self.perspective_value, self.detected_player_color
-        )
+        player_color = _resolve_player_color(self.perspective_value, self.detected_player_color)
         ok, content = build_llm_prompt(
             self.katrain,
             karte_path,
@@ -838,11 +823,7 @@ class LLMCoachPopupContent(BoxLayout):
             else:
                 # Validator says clean but report still has markers
                 # (e.g. referenced symptom IDs that couldn't be matched).
-                self._set_status(
-                    i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(
-                        count=total
-                    )
-                )
+                self._set_status(i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total))
         else:
             self._set_status(
                 i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
@@ -850,9 +831,7 @@ class LLMCoachPopupContent(BoxLayout):
                 )
             )
 
-    def _on_validate_summary(
-        self, karte_path: str, response_text: str, rank: str | None
-    ) -> None:
+    def _on_validate_summary(self, karte_path: str, response_text: str, rank: str | None) -> None:
         """Phase 227-D: summary-mode validation handler.
 
         Delegates to :func:`validate_summary_llm_response` and surfaces
@@ -883,11 +862,7 @@ class LLMCoachPopupContent(BoxLayout):
             if total == 0:
                 self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
             else:
-                self._set_status(
-                    i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(
-                        count=total
-                    )
-                )
+                self._set_status(i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total))
         else:
             self._set_status(
                 i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
@@ -1025,9 +1000,7 @@ def _spinner_text_to_internal(text: str) -> str:
 # Returns the player name (string) for the focused player, or
 # ``None`` for bird's-eye. Mirrors the ``_spinner_text_to_internal``
 # pattern for karte mode but uses the index instead of localised text.
-def _summary_index_to_internal(
-    index: int, players: list[tuple[str, str | None]]
-) -> str | None:
+def _summary_index_to_internal(index: int, players: list[tuple[str, str | None]]) -> str | None:
     """Map summary perspective spinner index to a player name or ``None``.
 
     Returns:
@@ -1040,7 +1013,7 @@ def _summary_index_to_internal(
     return players[index - 1][0]
 
 
-def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
+def _pick_detected_rank(info: dict[str, Any], perspective_value: str) -> str | None:
     """Pick the rank to show for the active perspective (Phase 229-D moved here)."""
     from katrain.gui.features.llm_coach import _pick_detected_rank as _impl
 
@@ -1048,7 +1021,7 @@ def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
 
 
 def resolve_rank_fallback_chain(
-    info: dict | None,
+    info: dict[str, Any] | None,
     perspective_value: str,
     *,
     general_player_rank: str | None = None,

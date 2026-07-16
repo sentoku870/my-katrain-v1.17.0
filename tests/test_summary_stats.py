@@ -1,4 +1,4 @@
-from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
 
 """
 Tests for katrain/gui/features/summary_stats.py
