@@ -77,7 +77,6 @@ def _make_content() -> Any:
     from katrain.gui.popups.llm_coach_popup import LLMCoachPopupContent
 
     content = LLMCoachPopupContent.__new__(LLMCoachPopupContent)
-    content.katrain = None
     content.popup = None
     content.perspective_value = "auto"
     content.detected_rank = None
@@ -86,6 +85,14 @@ def _make_content() -> Any:
     # production ``__init__`` would normally set up.
     content._pending_clock_events = []
     content._rank_detect_retries = 0
+
+    # Phase 230-F (CI fix): default config mock that returns the
+    # supplied ``default`` arg instead of leaking ``return_value``
+    # into every call. Tests that need per-key behaviour override
+    # ``content.katrain.config.side_effect`` after this default.
+    _default_katrain = MagicMock()
+    _default_katrain.config = MagicMock(side_effect=lambda key, default=None: default or "")
+    content.katrain = _default_katrain
 
     # Per-widget MagicMocks
     karte_path_input = MagicMock()
@@ -143,6 +150,31 @@ def _make_content() -> Any:
     content.path_type = "unknown"
     content.summary_players = []
     content.summary_perspective_index = 0
+
+    # Phase 230-F (CI fix): helper to install a per-key config mock.
+    def _install_config_mock(mykatrain_settings=None, general_player_rank=""):
+        """Replace ``content.katrain.config`` with a side_effect mock.
+
+        ``content.katrain.config(key, default)`` now dispatches by key:
+        - ``"mykatrain_settings"`` returns ``mykatrain_settings or {}``
+        - ``"general/player_rank"`` returns ``general_player_rank``
+        - any other key returns the ``default`` arg verbatim
+
+        This avoids the ``MagicMock.return_value`` leak where every
+        call returned the same dict regardless of the requested key.
+        """
+        settings_value = mykatrain_settings if mykatrain_settings is not None else {}
+
+        def _side_effect(key, default=None):
+            if key == "mykatrain_settings":
+                return settings_value
+            if key == "general/player_rank":
+                return general_player_rank
+            return default
+
+        content.katrain.config = MagicMock(side_effect=_side_effect)
+
+    content._install_config_mock = _install_config_mock
     return content
 
 
@@ -647,7 +679,7 @@ class TestPhase2256RankAutoFill:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content._install_config_mock(mykatrain_settings={"default_user_name": "P1"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         assert content.detected_player_color == "B"
@@ -761,7 +793,7 @@ class TestPhase226IGuiAutoDetectFeedback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_name": ""}
+        content._install_config_mock(mykatrain_settings={"default_user_name": ""})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         status = content.ids["status_label"].text
@@ -789,7 +821,7 @@ class TestPhase226IGuiAutoDetectFeedback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content._install_config_mock(mykatrain_settings={"default_user_name": "P1"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         status = content.ids["status_label"].text
@@ -817,7 +849,7 @@ class TestPhase226IGuiAutoDetectFeedback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_name": "P1"}
+        content._install_config_mock(mykatrain_settings={"default_user_name": "P1"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         # Rank auto-fill: the input should have been filled with 5k
@@ -844,10 +876,12 @@ class TestPhase226IGuiAutoDetectFeedback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {
-            "default_user_name": "P1",
-            "default_user_rank": "4段",
-        }
+        content._install_config_mock(
+            mykatrain_settings={
+                "default_user_name": "P1",
+                "default_user_rank": "4段",
+            }
+        )
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         # rank_input should have been filled with "4段" as fallback
@@ -947,7 +981,7 @@ class TestPhase2257AutoDetectSummary:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_name": "P2"}
+        content._install_config_mock(mykatrain_settings={"default_user_name": "P2"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         # status_label.text contains a debug summary of what was matched
@@ -996,7 +1030,7 @@ class TestPhase2258DefaultUserRankFallback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_rank": "4段"}
+        content._install_config_mock(mykatrain_settings={"default_user_rank": "4段"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         # The rank input was filled with the default_user_rank
@@ -1020,7 +1054,7 @@ class TestPhase2258DefaultUserRankFallback:
             encoding="utf-8",
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {"default_user_rank": "4段"}
+        content._install_config_mock(mykatrain_settings={"default_user_rank": "4段"})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         # Karte rank "5k" wins over default_user_rank "4段"
@@ -1034,7 +1068,7 @@ class TestPhase2258DefaultUserRankFallback:
             json.dumps({"meta": {"player_info": {}}}), encoding="utf-8"
         )
         content.katrain = MagicMock()
-        content.katrain.config.return_value = {}
+        content._install_config_mock(mykatrain_settings={})
         content.ids["karte_path_input"].text = str(karte)
         content._populate_rank_and_perspective()
         assert content.ids["rank_input"].text == ""
