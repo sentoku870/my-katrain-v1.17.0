@@ -10,11 +10,9 @@ This module tests:
 
 from __future__ import annotations
 
-from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
-
-
 import logging
 
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
 from katrain.gui.features.summary_formatter import (
     AREA_KEYS,
     PHASE_KEYS,

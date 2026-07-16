@@ -18,6 +18,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 
 from katrain.common.file_opener import open_file_in_folder
+from katrain.common.platform import resolve_output_directory
 from katrain.common.sanitize import get_sanitization_context
 from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
 from katrain.core.diagnostics import (
@@ -30,7 +31,6 @@ from katrain.core.diagnostics import (
     generate_diagnostics_filename,
 )
 from katrain.core.lang import i18n
-from katrain.common.platform import resolve_output_directory
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:

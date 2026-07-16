@@ -65,12 +65,16 @@ class TestMainDispatch:
 class TestBuildCommand:
     def test_build_writes_to_file(self, sample_karte_path: Path, tmp_path: Path):
         out_path = tmp_path / "prompt.md"
-        rc = cli.main([
-            "build",
-            str(sample_karte_path),
-            "--rank", "5k",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         assert out_path.exists()
         content = out_path.read_text(encoding="utf-8")
@@ -79,11 +83,14 @@ class TestBuildCommand:
         assert "## Karte JSON" in content
 
     def test_build_writes_to_stdout(self, sample_karte_path: Path, capsys):
-        rc = cli.main([
-            "build",
-            str(sample_karte_path),
-            "--rank", "5k",
-        ])
+        rc = cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+            ]
+        )
         assert rc == 0
         captured = capsys.readouterr()
         # Summary line goes to stderr
@@ -94,29 +101,40 @@ class TestBuildCommand:
     def test_build_no_expanded_shortens_lexicon(self, sample_karte_path: Path, tmp_path: Path):
         out_full = tmp_path / "full.md"
         out_short = tmp_path / "short.md"
-        cli.main([
-            "build",
-            str(sample_karte_path),
-            "--rank", "5k",
-            "--out", str(out_full),
-        ])
-        cli.main([
-            "build",
-            str(sample_karte_path),
-            "--rank", "5k",
-            "--no-expanded",
-            "--out", str(out_short),
-        ])
+        cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_full),
+            ]
+        )
+        cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+                "--no-expanded",
+                "--out",
+                str(out_short),
+            ]
+        )
         # Short version should be <= full version
         assert out_short.stat().st_size <= out_full.stat().st_size
 
     def test_build_missing_file_exits_nonzero(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError):
-            cli.main([
-                "build",
-                str(tmp_path / "nonexistent.json"),
-                "--rank", "5k",
-            ])
+            cli.main(
+                [
+                    "build",
+                    str(tmp_path / "nonexistent.json"),
+                    "--rank",
+                    "5k",
+                ]
+            )
 
     def test_build_invalid_json_exits_nonzero(self, tmp_path: Path):
         bad = tmp_path / "bad.json"
@@ -155,17 +173,19 @@ class TestBuildSummaryMode:
         p.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")
         return p
 
-    def test_summary_mode_writes_to_file(
-        self, sample_summary_path: Path, tmp_path: Path
-    ):
+    def test_summary_mode_writes_to_file(self, sample_summary_path: Path, tmp_path: Path):
         out_path = tmp_path / "summary_prompt.md"
-        rc = cli.main([
-            "build",
-            str(sample_summary_path),
-            "--summary-mode",
-            "--rank", "4d",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "build",
+                str(sample_summary_path),
+                "--summary-mode",
+                "--rank",
+                "4d",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         assert out_path.exists()
         content = out_path.read_text(encoding="utf-8")
@@ -173,77 +193,84 @@ class TestBuildSummaryMode:
         assert "**5 局**" in content
         assert "全体俯瞰" in content  # default player_name=None
 
-    def test_summary_mode_writes_to_stdout(
-        self, sample_summary_path: Path, capsys
-    ):
-        rc = cli.main([
-            "build",
-            str(sample_summary_path),
-            "--summary-mode",
-            "--rank", "4d",
-        ])
+    def test_summary_mode_writes_to_stdout(self, sample_summary_path: Path, capsys):
+        rc = cli.main(
+            [
+                "build",
+                str(sample_summary_path),
+                "--summary-mode",
+                "--rank",
+                "4d",
+            ]
+        )
         assert rc == 0
         captured = capsys.readouterr()
         assert "summary-mode" in captured.err
         assert "patterns" in captured.err
         assert "MULTI-GAME SUMMARY MODE" in captured.out
 
-    def test_summary_mode_with_player_flag(
-        self, sample_summary_path: Path, tmp_path: Path
-    ):
+    def test_summary_mode_with_player_flag(self, sample_summary_path: Path, tmp_path: Path):
         out_path = tmp_path / "p.md"
-        cli.main([
-            "build",
-            str(sample_summary_path),
-            "--summary-mode",
-            "--player", "sentoku870",
-            "--out", str(out_path),
-        ])
+        cli.main(
+            [
+                "build",
+                str(sample_summary_path),
+                "--summary-mode",
+                "--player",
+                "sentoku870",
+                "--out",
+                str(out_path),
+            ]
+        )
         content = out_path.read_text(encoding="utf-8")
         assert "Focus: プレイヤー 'sentoku870'" in content
 
-    def test_summary_mode_rejects_karte(
-        self, sample_karte_path: Path, capsys
-    ):
-        rc = cli.main([
-            "build",
-            str(sample_karte_path),
-            "--summary-mode",
-        ])
+    def test_summary_mode_rejects_karte(self, sample_karte_path: Path, capsys):
+        rc = cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--summary-mode",
+            ]
+        )
         assert rc == 2
         captured = capsys.readouterr()
         assert "❌" in captured.err
         assert "Summary JSON" in captured.err
 
-    def test_no_summary_mode_karte_still_works(
-        self, sample_karte_path: Path, tmp_path: Path
-    ):
+    def test_no_summary_mode_karte_still_works(self, sample_karte_path: Path, tmp_path: Path):
         # Regression: default path (no --summary-mode) on karte file
         out_path = tmp_path / "karte_prompt.md"
-        rc = cli.main([
-            "build",
-            str(sample_karte_path),
-            "--rank", "5k",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         content = out_path.read_text(encoding="utf-8")
         assert "[SYSTEM INSTRUCTION FOR LLM]" in content
         assert "MULTI-GAME SUMMARY MODE" not in content
 
-    def test_no_summary_mode_summary_falls_back_to_karte_projection(
-        self, sample_summary_path: Path, tmp_path: Path
-    ):
+    def test_no_summary_mode_summary_falls_back_to_karte_projection(self, sample_summary_path: Path, tmp_path: Path):
         # Default path auto-projects summary to karte shape (existing
         # Phase 221 behaviour). Should NOT error and should produce a
         # karte-style prompt.
         out_path = tmp_path / "fallback.md"
-        rc = cli.main([
-            "build",
-            str(sample_summary_path),
-            "--rank", "5k",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "build",
+                str(sample_summary_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         content = out_path.read_text(encoding="utf-8")
         # Existing Karte prompt path
@@ -288,8 +315,7 @@ class TestValidateSummaryMode:
     def dirty_llm_response(self, tmp_path: Path) -> Path:
         p = tmp_path / "llm.txt"
         p.write_text(
-            "考察: 第50手でのミスが顕著でした。\n"
-            "抽出した弱点パターン: [blunder, fantasy_category]\n",
+            "考察: 第50手でのミスが顕著でした。\n抽出した弱点パターン: [blunder, fantasy_category]\n",
             encoding="utf-8",
         )
         return p
@@ -297,70 +323,76 @@ class TestValidateSummaryMode:
     def test_auto_detect_summary_uses_summary_validator(
         self, sample_summary_path: Path, clean_llm_response: Path, capsys
     ):
-        rc = cli.main([
-            "validate",
-            str(sample_summary_path),
-            str(clean_llm_response),
-            "--rank", "4d",
-        ])
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_summary_path),
+                str(clean_llm_response),
+                "--rank",
+                "4d",
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         assert "(Summary Mode)" in out
         assert "Referenced patterns" in out
 
-    def test_explicit_summary_mode_flag(
-        self, sample_summary_path: Path, clean_llm_response: Path, capsys
-    ):
-        rc = cli.main([
-            "validate",
-            str(sample_summary_path),
-            str(clean_llm_response),
-            "--summary-mode",
-            "--rank", "4d",
-        ])
+    def test_explicit_summary_mode_flag(self, sample_summary_path: Path, clean_llm_response: Path, capsys):
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_summary_path),
+                str(clean_llm_response),
+                "--summary-mode",
+                "--rank",
+                "4d",
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         assert "(Summary Mode)" in out
 
-    def test_summary_mode_dirty_returns_1(
-        self, sample_summary_path: Path, dirty_llm_response: Path, capsys
-    ):
-        rc = cli.main([
-            "validate",
-            str(sample_summary_path),
-            str(dirty_llm_response),
-            "--summary-mode",
-        ])
+    def test_summary_mode_dirty_returns_1(self, sample_summary_path: Path, dirty_llm_response: Path, capsys):
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_summary_path),
+                str(dirty_llm_response),
+                "--summary-mode",
+            ]
+        )
         assert rc == 1
         out = capsys.readouterr().out
         assert "unknown_pattern_category" in out
         assert "forbidden_move_number" in out
 
-    def test_summary_mode_rejects_karte(
-        self, sample_karte_path: Path, dirty_llm_response: Path, capsys
-    ):
-        rc = cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(dirty_llm_response),
-            "--summary-mode",
-        ])
+    def test_summary_mode_rejects_karte(self, sample_karte_path: Path, dirty_llm_response: Path, capsys):
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(dirty_llm_response),
+                "--summary-mode",
+            ]
+        )
         assert rc == 2
         out_err = capsys.readouterr().err
         assert "❌" in out_err
         assert "Summary JSON" in out_err
 
-    def test_summary_mode_writes_to_file(
-        self, sample_summary_path: Path, clean_llm_response: Path, tmp_path: Path
-    ):
+    def test_summary_mode_writes_to_file(self, sample_summary_path: Path, clean_llm_response: Path, tmp_path: Path):
         out_path = tmp_path / "report.md"
-        rc = cli.main([
-            "validate",
-            str(sample_summary_path),
-            str(clean_llm_response),
-            "--rank", "4d",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_summary_path),
+                str(clean_llm_response),
+                "--rank",
+                "4d",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         assert out_path.exists()
         content = out_path.read_text(encoding="utf-8")
@@ -371,11 +403,13 @@ class TestValidateSummaryMode:
     ):
         # Without --summary-mode: karte file goes through karte validator
         # (existing path). This is a regression check.
-        rc = cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(dirty_llm_response),
-        ])
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(dirty_llm_response),
+            ]
+        )
         # Returns 0 or 1 depending on whether the dirty response passes
         # karte validation. We just check it doesn't crash.
         assert rc in (0, 1)
@@ -392,67 +426,70 @@ class TestValidateCommand:
     def llm_response_path(self, tmp_path: Path) -> Path:
         p = tmp_path / "llm.txt"
         p.write_text(
-            "考察: ウチが見た感じ、ここはあかん。\n"
-            "参照した症状ID: [atari_blindness, fantasy_id]\n",
+            "考察: ウチが見た感じ、ここはあかん。\n参照した症状ID: [atari_blindness, fantasy_id]\n",
             encoding="utf-8",
         )
         return p
 
-    def test_validate_clean_returns_0(
-        self, sample_karte_path: Path, tmp_path: Path
-    ):
+    def test_validate_clean_returns_0(self, sample_karte_path: Path, tmp_path: Path):
         # Both atari_blindness + big_point_blindness are in karte.
         good_response = tmp_path / "good.txt"
         good_response.write_text(
-            "考察: ウチが見た感じ、あかん。\n"
-            "参照した症状ID: [atari_blindness, big_point_blindness]\n",
+            "考察: ウチが見た感じ、あかん。\n参照した症状ID: [atari_blindness, big_point_blindness]\n",
             encoding="utf-8",
         )
-        rc = cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(good_response),
-            "--rank", "5k",
-        ])
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(good_response),
+                "--rank",
+                "5k",
+            ]
+        )
         assert rc == 0
 
-    def test_validate_hallucination_returns_1(
-        self, sample_karte_path: Path, llm_response_path: Path
-    ):
-        rc = cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(llm_response_path),
-            "--rank", "5k",
-        ])
+    def test_validate_hallucination_returns_1(self, sample_karte_path: Path, llm_response_path: Path):
+        rc = cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(llm_response_path),
+                "--rank",
+                "5k",
+            ]
+        )
         assert rc == 1
 
-    def test_validate_report_contains_expected_sections(
-        self, sample_karte_path: Path, llm_response_path: Path, capsys
-    ):
-        cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(llm_response_path),
-            "--rank", "5k",
-        ])
+    def test_validate_report_contains_expected_sections(self, sample_karte_path: Path, llm_response_path: Path, capsys):
+        cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(llm_response_path),
+                "--rank",
+                "5k",
+            ]
+        )
         out = capsys.readouterr().out
         assert "LLM Output Validation Report" in out
         assert "Status" in out
         assert "Issues" in out
         assert "fantasy_id" in out
 
-    def test_validate_to_file(
-        self, sample_karte_path: Path, llm_response_path: Path, tmp_path: Path
-    ):
+    def test_validate_to_file(self, sample_karte_path: Path, llm_response_path: Path, tmp_path: Path):
         out_path = tmp_path / "report.md"
-        cli.main([
-            "validate",
-            str(sample_karte_path),
-            str(llm_response_path),
-            "--rank", "5k",
-            "--out", str(out_path),
-        ])
+        cli.main(
+            [
+                "validate",
+                str(sample_karte_path),
+                str(llm_response_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert out_path.exists()
         content = out_path.read_text(encoding="utf-8")
         assert "fantasy_id" in content
@@ -467,11 +504,11 @@ class TestSymptomsCommand:
         assert rc == 0
         out = capsys.readouterr().out
         # Should list at least 30 symptoms
-        lines = [l for l in out.splitlines() if l.startswith("🟢") or l.startswith("🟡")]
+        lines = [line for line in out.splitlines() if line.startswith("🟢") or line.startswith("🟡")]
         assert len(lines) >= 30
         # Auto-detected markers (green) should outnumber LLM-required (yellow)
-        green = sum(1 for l in lines if l.startswith("🟢"))
-        yellow = sum(1 for l in lines if l.startswith("🟡"))
+        green = sum(1 for line in lines if line.startswith("🟢"))
+        yellow = sum(1 for line in lines if line.startswith("🟡"))
         assert green >= 15
         assert yellow >= 10
 
@@ -524,11 +561,14 @@ class TestExports:
 
 class TestAnalyzeCommand:
     def test_analyze_to_stdout(self, sample_karte_path: Path, capsys):
-        rc = cli.main([
-            "analyze",
-            str(sample_karte_path),
-            "--rank", "5k",
-        ])
+        rc = cli.main(
+            [
+                "analyze",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+            ]
+        )
         assert rc == 0
         out = capsys.readouterr().out
         # Required sections
@@ -542,53 +582,66 @@ class TestAnalyzeCommand:
 
     def test_analyze_to_file(self, sample_karte_path: Path, tmp_path: Path):
         out_path = tmp_path / "analysis.md"
-        rc = cli.main([
-            "analyze",
-            str(sample_karte_path),
-            "--rank", "5k",
-            "--out", str(out_path),
-        ])
+        rc = cli.main(
+            [
+                "analyze",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         assert out_path.exists()
         content = out_path.read_text(encoding="utf-8")
         assert "# Karte Analysis" in content
 
     def test_analyze_detects_symptoms(self, sample_karte_path: Path, capsys):
-        cli.main([
-            "analyze",
-            str(sample_karte_path),
-            "--rank", "5k",
-        ])
+        cli.main(
+            [
+                "analyze",
+                str(sample_karte_path),
+                "--rank",
+                "5k",
+            ]
+        )
         out = capsys.readouterr().out
         # sample_karte has atari_blindness + big_point_blindness weaknesses
         assert "atari_blindness" in out
         assert "big_point_blindness" in out
 
     def test_analyze_streak_metrics(self, sample_karte_path: Path, capsys):
-        cli.main([
-            "analyze",
-            str(sample_karte_path),
-        ])
+        cli.main(
+            [
+                "analyze",
+                str(sample_karte_path),
+            ]
+        )
         out = capsys.readouterr().out
         # Streak Metrics block should exist (data may or may not be populated)
         assert "longest_streak:" in out
         assert "total_streak_loss:" in out
 
     def test_analyze_correlation_section(self, sample_karte_path: Path, capsys):
-        cli.main([
-            "analyze",
-            str(sample_karte_path),
-        ])
+        cli.main(
+            [
+                "analyze",
+                str(sample_karte_path),
+            ]
+        )
         out = capsys.readouterr().out
         assert "## Correlation" in out
         assert "winrate / scoreLead correlation:" in out
 
     def test_analyze_missing_file_exits_nonzero(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError):
-            cli.main([
-                "analyze",
-                str(tmp_path / "nonexistent.json"),
-            ])
+            cli.main(
+                [
+                    "analyze",
+                    str(tmp_path / "nonexistent.json"),
+                ]
+            )
 
 
 # --- calibrate sub-command (Phase 219) ---
@@ -700,10 +753,12 @@ class TestTraceCommand:
 
     def test_trace_missing_file_exits_nonzero(self, tmp_path: Path):
         with pytest.raises(FileNotFoundError):
-            cli.main([
-                "trace",
-                str(tmp_path / "nonexistent.json"),
-            ])
+            cli.main(
+                [
+                    "trace",
+                    str(tmp_path / "nonexistent.json"),
+                ]
+            )
 
 
 # --- summary JSON support (Phase 221) ---

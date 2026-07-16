@@ -421,15 +421,33 @@ WINRATE_THRESHOLDS: tuple[float, float, float] = SKILL_PRESETS[DEFAULT_SKILL_PRE
 # mode range; see ``docs/archive/specs-implemented/phase229-*.md``.
 RANK_TO_PRESET_DEFAULT: dict[int, str] = {
     # BEGINNER band -> relaxed
-    0: "relaxed", 1: "relaxed", 2: "relaxed", 3: "relaxed", 4: "relaxed",
+    0: "relaxed",
+    1: "relaxed",
+    2: "relaxed",
+    3: "relaxed",
+    4: "relaxed",
     # INTERMEDIATE band -> beginner
-    5: "beginner", 6: "beginner", 7: "beginner", 8: "beginner",
-    9: "beginner", 10: "beginner",
+    5: "beginner",
+    6: "beginner",
+    7: "beginner",
+    8: "beginner",
+    9: "beginner",
+    10: "beginner",
     # DAN band -> standard
-    11: "standard", 12: "standard", 13: "standard", 14: "standard",
+    11: "standard",
+    12: "standard",
+    13: "standard",
+    14: "standard",
     15: "standard",
     # ADVANCED band -> advanced
-    16: "advanced", 17: "advanced", 18: "advanced", 19: "advanced",
+    16: "advanced",
+    17: "advanced",
+    18: "advanced",
+    19: "advanced",
     # EXPERT band -> pro
-    20: "pro", 21: "pro", 22: "pro", 23: "pro", 99: "pro",
+    20: "pro",
+    21: "pro",
+    22: "pro",
+    23: "pro",
+    99: "pro",
 }

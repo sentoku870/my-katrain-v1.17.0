@@ -85,12 +85,8 @@ def _build_diagnostics_tab(state: _SettingsPopupContext) -> BoxLayout:
     # Wire buttons: parent_popup=None so the settings popup is NOT
     # dismissed when the ZIP is generated (the standalone popup used
     # dismiss + success popup; the tab just shows the success popup).
-    generate_btn.bind(
-        on_release=lambda btn: _on_generate_zip(state.ctx, bundle, btn, None)
-    )
-    copy_btn.bind(
-        on_release=lambda btn: _on_copy_info(state.ctx, bundle, btn)
-    )
+    generate_btn.bind(on_release=lambda btn: _on_generate_zip(state.ctx, bundle, btn, None))
+    copy_btn.bind(on_release=lambda btn: _on_copy_info(state.ctx, bundle, btn))
 
     button_box.add_widget(generate_btn)
     button_box.add_widget(copy_btn)

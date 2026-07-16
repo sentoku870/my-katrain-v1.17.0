@@ -237,4 +237,3 @@ class TestSummaryManagerPureFunctionWrappers:
 # scan_and_show_player_selection は SummaryManager から完全削除。
 # show_player_selection_dialog / process_summary_with_selected_players /
 # process_and_export_summary も同様に削除済み。
-

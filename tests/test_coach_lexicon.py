@@ -15,8 +15,6 @@ No Kivy — pure core-layer tests. The tests assume the canonical YAML at
 
 from __future__ import annotations
 
-import pytest
-
 from katrain.core.coach.lexicon import (
     DEFAULT_LEXICON_PATH,
     LexiconBundle,
@@ -32,15 +30,12 @@ from katrain.core.coach.lexicon import (
     validate_references,
 )
 
-
 # --- YAML file presence ---
 
 
 class TestLexiconPath:
     def test_default_path_exists(self):
-        assert DEFAULT_LEXICON_PATH.exists(), (
-            f"Canonical YAML not found at {DEFAULT_LEXICON_PATH}"
-        )
+        assert DEFAULT_LEXICON_PATH.exists(), f"Canonical YAML not found at {DEFAULT_LEXICON_PATH}"
 
     def test_default_path_is_yaml(self):
         assert DEFAULT_LEXICON_PATH.suffix == ".yaml"
@@ -101,16 +96,12 @@ class TestEntryFields:
             assert len(e.pitfalls) >= 1
             assert len(e.recognize_by) >= 1
             assert len(e.related_ids) >= 1
-            assert len(e.sources) >= 2, (
-                f"validation report requires 2-4 sources, got {len(e.sources)} for {e.id}"
-            )
+            assert len(e.sources) >= 2, f"validation report requires 2-4 sources, got {len(e.sources)} for {e.id}"
 
     def test_no_duplicate_ids(self):
         bundle = load_lexicon()
         ids = [e.id for e in bundle.entries]
-        assert len(ids) == len(set(ids)), (
-            f"Duplicate ids: {[i for i in ids if ids.count(i) > 1]}"
-        )
+        assert len(ids) == len(set(ids)), f"Duplicate ids: {[i for i in ids if ids.count(i) > 1]}"
 
     def test_known_entry_samples(self):
         # Spot-check representative entries (per validation report).
@@ -181,9 +172,7 @@ class TestValidateReferences:
     def test_no_broken_refs(self):
         # validation report (2025-12-24) confirms broken_refs == 0
         report = validate_references()
-        assert report["broken_refs"] == 0, (
-            f"Broken refs: {report['broken_ref_samples']}"
-        )
+        assert report["broken_refs"] == 0, f"Broken refs: {report['broken_ref_samples']}"
 
     def test_no_duplicate_ids(self):
         report = validate_references()

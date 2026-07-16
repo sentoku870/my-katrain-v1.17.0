@@ -10,11 +10,11 @@ extract_sgf_statistics() which reads KT properties from SGF files.
 
 from __future__ import annotations
 
-from katrain.core.analysis import classify_mistake, classify_game_phase
-from katrain.core.analysis.models.enums import PositionDifficulty, MistakeCategory
-
-
 from typing import Any
+
+from katrain.core.analysis import classify_game_phase, classify_mistake
+from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
+
 
 def extract_stats_from_nodes(game: Any) -> dict[str, Any]:
     """

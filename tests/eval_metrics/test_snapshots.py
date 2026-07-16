@@ -7,9 +7,9 @@ delta-vs-points_lost consistency, move_number and avg_loss invariants.
 
 from __future__ import annotations
 
-from katrain.core.analysis.models.move_eval import EvalSnapshot, get_canonical_loss_from_move
-from katrain.core.analysis.models.enums import MistakeCategory
 from katrain.core.analysis import compute_canonical_loss, compute_importance_for_moves
+from katrain.core.analysis.models.enums import MistakeCategory
+from katrain.core.analysis.models.move_eval import EvalSnapshot, get_canonical_loss_from_move
 from tests.helpers_eval_metrics import StubGame, StubGameNode, build_stub_game_tree, make_move_eval
 
 
@@ -220,6 +220,7 @@ class TestSnapshotFromNodes:
     def test_basic_snapshot_creation(self):
         """Create snapshot from a simple sequence of nodes"""
         from katrain.core.analysis import snapshot_from_nodes
+
         # Build a simple game: B plays, W plays, B plays
         game = build_stub_game_tree(
             [
@@ -247,6 +248,7 @@ class TestSnapshotFromNodes:
     def test_before_after_are_chained(self):
         """Verify score_before/after are chained correctly"""
         from katrain.core.analysis import snapshot_from_nodes
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 5.0),
@@ -273,6 +275,7 @@ class TestSnapshotFromNodes:
     def test_empty_nodes_produce_empty_snapshot(self):
         """Empty node list produces empty snapshot"""
         from katrain.core.analysis import snapshot_from_nodes
+
         snapshot = snapshot_from_nodes([])
 
         assert len(snapshot.moves) == 0
@@ -281,6 +284,7 @@ class TestSnapshotFromNodes:
     def test_importance_is_computed(self):
         """Verify importance scores are computed for all moves"""
         from katrain.core.analysis import snapshot_from_nodes
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 5.0),
@@ -308,6 +312,7 @@ class TestIterMainBranchNodes:
     def test_basic_iteration(self):
         """Iterate through a simple main branch"""
         from katrain.core.analysis import iter_main_branch_nodes
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 1.0),
@@ -326,6 +331,7 @@ class TestIterMainBranchNodes:
     def test_empty_game(self):
         """Empty game (only root) produces no nodes"""
         from katrain.core.analysis import iter_main_branch_nodes
+
         game = StubGame(root=StubGameNode(move=None, children=[]))
 
         nodes = list(iter_main_branch_nodes(game))
@@ -335,6 +341,7 @@ class TestIterMainBranchNodes:
     def test_none_root(self):
         """Game with None root produces no nodes"""
         from katrain.core.analysis import iter_main_branch_nodes
+
         game = StubGame(root=None)
 
         nodes = list(iter_main_branch_nodes(game))
@@ -344,6 +351,7 @@ class TestIterMainBranchNodes:
     def test_single_move(self):
         """Game with single move"""
         from katrain.core.analysis import iter_main_branch_nodes
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 1.0),
@@ -362,6 +370,7 @@ class TestSnapshotFromGame:
     def test_basic_game_to_snapshot(self):
         """Convert a simple game to snapshot"""
         from katrain.core.analysis import snapshot_from_game
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 2.0),
@@ -380,6 +389,7 @@ class TestSnapshotFromGame:
     def test_loss_calculation(self):
         """Verify loss is calculated correctly through the pipeline"""
         from katrain.core.analysis import snapshot_from_game
+
         # Black makes a bad move: score goes from 0 to -5 (white gets ahead)
         game = build_stub_game_tree(
             [
@@ -396,6 +406,7 @@ class TestSnapshotFromGame:
     def test_canonical_properties_work(self):
         """Verify canonical properties are accessible"""
         from katrain.core.analysis import snapshot_from_game
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), -3.0),  # Black loses 3
@@ -412,6 +423,7 @@ class TestSnapshotFromGame:
     def test_empty_game(self):
         """Empty game produces empty snapshot"""
         from katrain.core.analysis import snapshot_from_game
+
         game = StubGame(root=StubGameNode(move=None, children=[]))
 
         snapshot = snapshot_from_game(game)
@@ -435,6 +447,7 @@ class TestMoveNumberNotAllZero:
     def test_move_numbers_are_sequential(self):
         """Move numbers should be sequential (1, 2, 3, ...)"""
         from katrain.core.analysis import snapshot_from_game
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 1.0),
@@ -454,6 +467,7 @@ class TestMoveNumberNotAllZero:
     def test_move_numbers_not_all_zero(self):
         """Move numbers should NOT all be 0 (regression check)"""
         from katrain.core.analysis import snapshot_from_game
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 1.0),
@@ -479,6 +493,7 @@ class TestMoveNumberNotAllZero:
     def test_single_move_has_move_number_1(self):
         """Single move should have move_number = 1"""
         from katrain.core.analysis import snapshot_from_game
+
         game = build_stub_game_tree(
             [
                 ("B", (3, 3), 1.0),

@@ -31,7 +31,14 @@ from katrain.core.analysis import (
 )
 
 # Internal helpers (accessed directly to avoid public API surface)
-from katrain.core.analysis.difficulty import compute_policy_difficulty, compute_state_difficulty, compute_transition_difficulty, determine_reliability, get_root_visits, normalize_candidates
+from katrain.core.analysis.difficulty import (
+    compute_policy_difficulty,
+    compute_state_difficulty,
+    compute_transition_difficulty,
+    determine_reliability,
+    get_root_visits,
+    normalize_candidates,
+)
 
 # =============================================================================
 # Fixtures

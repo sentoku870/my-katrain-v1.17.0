@@ -24,17 +24,13 @@ import gzip
 import json
 from typing import Any
 
-import pytest
-
 from katrain.core.constants import (
     ADDITIONAL_MOVE_ORDER,
-    ANALYSIS_FORMAT_VERSION,
     SGF_INTERNAL_COMMENTS_MARKER,
     SGF_SEPARATOR_MARKER,
 )
 from katrain.core.game_node import GameNode, analysis_dumps
 from katrain.core.sgf_parser import Move
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -266,9 +262,7 @@ class TestSetAnalysis:
 
     def test_normal_update_with_parent_propagates(self, root_node):
         child = GameNode(parent=root_node, move=Move.from_gtp("D4", player="B"))
-        analysis_json = _make_analysis_json(
-            move_infos=[_make_move_info("D4", order=0)]
-        )
+        analysis_json = _make_analysis_json(move_infos=[_make_move_info("D4", order=0)])
         child.set_analysis(analysis_json)
         # Parent should have D4 in its moves (propagated from child's rootInfo)
         assert "D4" in root_node.analysis["moves"]
@@ -287,9 +281,7 @@ class TestSetAnalysis:
             "order": 0,
         }
         refine = Move.from_gtp("D4", player="B")
-        analysis_json = _make_analysis_json(
-            move_infos=[_make_move_info("D4", pv=["D4", "Q16", "D16"])]
-        )
+        analysis_json = _make_analysis_json(move_infos=[_make_move_info("D4", pv=["D4", "Q16", "D16"])])
         root_node.set_analysis(analysis_json, refine_move=refine)
         m = root_node.analysis["moves"]["D4"]
         assert "pv" in m

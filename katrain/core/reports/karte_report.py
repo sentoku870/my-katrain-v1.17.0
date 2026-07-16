@@ -16,7 +16,7 @@ Phase 171: ``MixedEngineSnapshotError`` / ``KARTE_ERROR_CODE_MIXED_ENGINE`` /
 import warnings
 
 warnings.warn(
-    'katrain.core.reports.karte_report is a deprecated compatibility shim (Phase 195-C); import from katrain.core.reports.karte.builder or katrain.core.reports.karte.models instead. This module is scheduled for removal in a future release.',
+    "katrain.core.reports.karte_report is a deprecated compatibility shim (Phase 195-C); import from katrain.core.reports.karte.builder or katrain.core.reports.karte.models instead. This module is scheduled for removal in a future release.",
     DeprecationWarning,
     stacklevel=2,
 )

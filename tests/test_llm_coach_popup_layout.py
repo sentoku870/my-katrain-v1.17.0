@@ -105,9 +105,7 @@ class TestActionButtonWidths:
     def test_copy_result_button_size_hint(self) -> None:
         kv = _read_kv()
         block = _find_block_with_id(kv, "copy_result_button")
-        assert "size_hint_x: 0.5" in block, (
-            "copy_result_button must declare size_hint_x: 0.5"
-        )
+        assert "size_hint_x: 0.5" in block, "copy_result_button must declare size_hint_x: 0.5"
 
     def test_browse_button_size_hint(self) -> None:
         """Browse button sits in a ~78/22 row with the karte path input."""
@@ -145,9 +143,7 @@ class TestPopupCompactness:
         kv = _read_kv()
         # Nothing taller than 200dp for a single row
         for m in re.finditer(r"height:\s*dp\((\d+)\)", kv):
-            assert int(m.group(1)) <= 200, (
-                f"Row height {m.group(0)} is too tall for a popup row"
-            )
+            assert int(m.group(1)) <= 200, f"Row height {m.group(0)} is too tall for a popup row"
 
     def test_result_label_is_scrollable(self) -> None:
         """The result label must be inside a ScrollView so long reports
@@ -157,9 +153,7 @@ class TestPopupCompactness:
         # The ScrollView must come after the result-label header
         idx_scroll = kv.find("ScrollView")
         idx_result_label = kv.find("id: result_label")
-        assert idx_scroll < idx_result_label, (
-            "ScrollView must contain result_label, not the other way around"
-        )
+        assert idx_scroll < idx_result_label, "ScrollView must contain result_label, not the other way around"
 
 
 class TestPhase2254SizedButtonMigration:
@@ -178,8 +172,7 @@ class TestPhase2254SizedButtonMigration:
 
     def test_all_action_buttons_use_sized_variant(self) -> None:
         kv = _read_kv()
-        for wid in ("generate_button", "clear_button", "validate_button",
-                    "copy_result_button", "browse_button"):
+        for wid in ("generate_button", "clear_button", "validate_button", "copy_result_button", "browse_button"):
             block = _find_block_with_id(kv, wid)
             assert "SizedRoundedRectangleButton" in block, (
                 f"{wid} must use SizedRoundedRectangleButton, got: {block[:80]}"
@@ -189,9 +182,7 @@ class TestPhase2254SizedButtonMigration:
         """Phase 225.4 added a workflow-hint label so users know how to
         use the validate / copy-result buttons."""
         kv = _read_kv()
-        assert "mykatrain:llm-coach:workflow-hint" in kv, (
-            "Popup must include the workflow-hint i18n key"
-        )
+        assert "mykatrain:llm-coach:workflow-hint" in kv, "Popup must include the workflow-hint i18n key"
 
 
 class TestPhase2256PerspectiveSpinner:
@@ -236,10 +227,7 @@ class TestPhase227DTypeLabel:
         # The type_label widget doesn't directly reference the i18n
         # key (the text is set from Python), so we check the popup
         # source for the key reference.
-        popup_src = (
-            Path(__file__).resolve().parents[1]
-            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
-        )
+        popup_src = Path(__file__).resolve().parents[1] / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
         src = popup_src.read_text(encoding="utf-8")
         assert "mykatrain:llm-coach:type-label" in src, (
             "popup.py must reference a mykatrain:llm-coach:type-label-* i18n key"
@@ -257,9 +245,7 @@ class TestPhase227DPathInputOnTextValidate:
             "karte_path_input must bind on_text_validate so pressing Enter "
             "re-runs type detection and rank/perspective population."
         )
-        assert "root.on_path_changed" in block, (
-            "on_text_validate must call root.on_path_changed"
-        )
+        assert "root.on_path_changed" in block, "on_text_validate must call root.on_path_changed"
 
 
 class TestPhase227DGenerateButton:
@@ -279,18 +265,12 @@ class TestPhase227DSummaryI18nKeys:
     def test_summary_perspective_birdseye_key(self) -> None:
         # The birdseye option is built dynamically in Python, so we
         # check the popup source rather than the KV.
-        popup_src = (
-            Path(__file__).resolve().parents[1]
-            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
-        )
+        popup_src = Path(__file__).resolve().parents[1] / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
         src = popup_src.read_text(encoding="utf-8")
         assert "summary-perspective-birdseye" in src
 
     def test_summary_build_button_key_in_source(self) -> None:
-        popup_src = (
-            Path(__file__).resolve().parents[1]
-            / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
-        )
+        popup_src = Path(__file__).resolve().parents[1] / "katrain" / "gui" / "popups" / "llm_coach_popup.py"
         src = popup_src.read_text(encoding="utf-8")
         assert "summary-build-button" in src
         assert "summary-copy-success" in src

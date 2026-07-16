@@ -113,11 +113,11 @@ _PHASE_LIST_LINE_RE = re.compile(
 # naturally references specific moves.
 _SUMMARY_MOVE_NUMBER_RE = re.compile(
     r"(?:"
-    r"(?:#|move\s+)(\d{1,3})"               # "#50", "move 50"
-    r"|(\d{1,3})\s*手目"                     # "50手目"
-    r"|着手\s*(\d{1,3})"                     # "着手 50"
-    r"|(\d{1,3})\s*番"                       # "50番"
-    r"|第\s*(\d{1,3})\s*手"                  # "第50手"
+    r"(?:#|move\s+)(\d{1,3})"  # "#50", "move 50"
+    r"|(\d{1,3})\s*手目"  # "50手目"
+    r"|着手\s*(\d{1,3})"  # "着手 50"
+    r"|(\d{1,3})\s*番"  # "50番"
+    r"|第\s*(\d{1,3})\s*手"  # "第50手"
     r")",
     re.IGNORECASE,
 )
@@ -145,12 +145,14 @@ _GAME_ID_RE = re.compile(
 # ``players.<name>.mistakes``. The validator accepts these as valid
 # weakness pattern categories when the summary uses Shape B
 # (``summary_json_export.py``-style per-player mistakes block).
-_STANDARD_MISTAKE_CATEGORIES: frozenset[str] = frozenset({
-    "good",
-    "inaccuracy",
-    "mistake",
-    "blunder",
-})
+_STANDARD_MISTAKE_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "good",
+        "inaccuracy",
+        "mistake",
+        "blunder",
+    }
+)
 
 
 def _summary_available_categories(summary_json: dict[str, Any]) -> set[str]:
@@ -216,11 +218,13 @@ def _summary_available_categories(summary_json: dict[str, Any]) -> set[str]:
 # Phase 228-C: standard phase labels that appear in
 # ``players.<name>.phases``. The validator accepts these as valid
 # when the summary uses Shape B.
-_STANDARD_PHASE_LABELS: frozenset[str] = frozenset({
-    "opening",
-    "middle",
-    "endgame",
-})
+_STANDARD_PHASE_LABELS: frozenset[str] = frozenset(
+    {
+        "opening",
+        "middle",
+        "endgame",
+    }
+)
 
 
 def _summary_available_phases(summary_json: dict[str, Any]) -> set[str]:
@@ -478,10 +482,7 @@ def validate_summary_llm_output(
                 ValidationIssue(
                     severity=ValidationSeverity.HIGH,
                     kind="unknown_pattern_category",
-                    message=(
-                        f"弱点パターン '{cat}' は Summary JSON の "
-                        f"weaknesses[*].category に存在しません"
-                    ),
+                    message=(f"弱点パターン '{cat}' は Summary JSON の weaknesses[*].category に存在しません"),
                     context={"category": cat},
                 )
             )
@@ -508,10 +509,7 @@ def validate_summary_llm_output(
             ValidationIssue(
                 severity=ValidationSeverity.MEDIUM,
                 kind="too_many_patterns",
-                message=(
-                    f"弱点パターンが {len(referenced_cats)} 件抽出されました。"
-                    f"最大 {MAX_PATTERNS} 件が想定です"
-                ),
+                message=(f"弱点パターンが {len(referenced_cats)} 件抽出されました。最大 {MAX_PATTERNS} 件が想定です"),
                 context={"count": len(referenced_cats), "max": MAX_PATTERNS},
             )
         )
@@ -535,10 +533,7 @@ def validate_summary_llm_output(
                     ValidationIssue(
                         severity=ValidationSeverity.MEDIUM,
                         kind="phase_label_out_of_set",
-                        message=(
-                            f"phase '{phase}' は Summary の "
-                            f"weaknesses[*].phase に存在しません"
-                        ),
+                        message=(f"phase '{phase}' は Summary の weaknesses[*].phase に存在しません"),
                         context={"phase": phase},
                     )
                 )
@@ -570,23 +565,16 @@ def validate_summary_llm_output(
                     ValidationIssue(
                         severity=ValidationSeverity.LOW,
                         kind="tone_inconsistency_ayaka",
-                        message=(
-                            "AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"
-                        ),
+                        message=("AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"),
                         context={"voice": cfg.voice.value},
                     )
                 )
-        elif (
-            cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT)
-            and has_kansai_markers(llm_text)
-        ):
+        elif cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT) and has_kansai_markers(llm_text):
             issues.append(
                 ValidationIssue(
                     severity=ValidationSeverity.LOW,
                     kind="tone_inconsistency_tomoko",
-                    message=(
-                        f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"
-                    ),
+                    message=(f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"),
                     context={"voice": cfg.voice.value},
                 )
             )

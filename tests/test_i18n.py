@@ -87,7 +87,9 @@ class TestBatchAnalyzeI18n:
 
             # Allow 1 second tolerance for filesystem timing
             assert mo_mtime >= po_mtime - 1, (
-                f"MO file for {lang} is older than PO file. Run: python Tools/i18n/msgfmt.py -o {mo_file} {po_file}"
+                f"MO file for {lang} is older than PO file. Recompile with "
+                f"`python -c \"import polib; polib.pofile('{po_file}').save_as_mofile('{mo_file}')\"` "
+                f"or `uv run pytest tests/test_i18n.py` after editing the .po."
             )
 
     def test_all_batch_keys_translated(self, locale_dir):

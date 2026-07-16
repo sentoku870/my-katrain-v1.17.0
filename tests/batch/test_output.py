@@ -104,8 +104,9 @@ class TestBatchOutputBehavior:
     def test_summary_generation_without_sgf_save(self, tmp_path):
         """Summary should be generated even when save_analyzed_sgf is OFF."""
         # This test verifies the code path doesn't depend on saved SGFs
-        from katrain.core.batch import build_batch_summary
         from katrain.core.analysis.models.enums import MistakeCategory
+        from katrain.core.batch import build_batch_summary
+
         # Create mock game stats (as if extracted from in-memory Game objects)
         game_stats = [
             {

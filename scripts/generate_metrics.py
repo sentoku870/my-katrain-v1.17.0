@@ -21,8 +21,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
-
 
 # Calculate project root from script location
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -40,14 +38,14 @@ def count_lines(path: Path) -> int:
         return 0
 
 
-def get_python_files(directory: Path) -> List[Path]:
+def get_python_files(directory: Path) -> list[Path]:
     """Get all Python files in a directory recursively."""
     if not directory.exists():
         return []
     return sorted(directory.rglob("*.py"))
 
 
-def collect_module_metrics(base_dir: Path) -> Dict[str, Dict]:
+def collect_module_metrics(base_dir: Path) -> dict[str, dict]:
     """Collect metrics for all modules under a base directory."""
     metrics = {}
 
@@ -60,10 +58,7 @@ def collect_module_metrics(base_dir: Path) -> Dict[str, Dict]:
 
         # Group by top-level module
         parts = rel_path.parts
-        if len(parts) >= 2:
-            module = parts[1]  # e.g., "core", "gui"
-        else:
-            module = "root"
+        module = parts[1] if len(parts) >= 2 else "root"  # e.g., "core", "gui"
 
         if module not in metrics:
             metrics[module] = {"files": {}, "total_lines": 0}
@@ -74,7 +69,7 @@ def collect_module_metrics(base_dir: Path) -> Dict[str, Dict]:
     return metrics
 
 
-def count_tests() -> Tuple[int, int]:
+def count_tests() -> tuple[int, int]:
     """Count number of test files and test functions.
 
     Returns:
@@ -112,18 +107,23 @@ def count_tests() -> Tuple[int, int]:
     return test_file_count, 0
 
 
-def get_key_modules() -> Dict[str, int]:
+def get_key_modules() -> dict[str, int]:
     """Get line counts for key modules (Phase B4/B5 targets)."""
+    # Phase 230: the package layout was reorganised — ``core.game``
+    # and ``core.ai`` are now subpackages, ``analysis.logic`` was
+    # split into multiple modules, and ``analysis.models`` is itself
+    # a subpackage. The previous flat-file list silently produced an
+    # empty result; we now point at the representative leaf files that
+    # still exist in the repo.
     key_files = [
-        "katrain/core/game.py",
-        "katrain/core/ai.py",
-        "katrain/core/ai_strategies_base.py",
+        "katrain/core/game/facade.py",
+        "katrain/core/ai/__init__.py",
         "katrain/core/engine.py",
         "katrain/core/analysis/logic.py",
         "katrain/core/analysis/logic_loss.py",
         "katrain/core/analysis/logic_importance.py",
-        "katrain/core/analysis/logic_quiz.py",
-        "katrain/core/analysis/models.py",
+        "katrain/core/analysis/logic_skill.py",
+        "katrain/core/analysis/models/__init__.py",
         "katrain/core/analysis/presentation.py",
         "katrain/__main__.py",
     ]
@@ -137,7 +137,7 @@ def get_key_modules() -> Dict[str, int]:
     return result
 
 
-def generate_metrics() -> Dict:
+def generate_metrics() -> dict:
     """Generate all metrics."""
     module_metrics = collect_module_metrics(KATRAIN_DIR)
     test_file_count, test_count = count_tests()
@@ -163,7 +163,7 @@ def generate_metrics() -> Dict:
     }
 
 
-def format_markdown(metrics: Dict) -> str:
+def format_markdown(metrics: dict) -> str:
     """Format metrics as Markdown."""
     lines = []
     lines.append("# KaTrain Code Metrics")
@@ -220,8 +220,8 @@ def main():
     else:
         # Default: human-readable summary
         s = metrics["summary"]
-        print(f"KaTrain Code Metrics")
-        print(f"====================")
+        print("KaTrain Code Metrics")
+        print("====================")
         print(f"Total Lines:  {s['total_lines']:,}")
         print(f"Total Files:  {s['total_files']}")
         print(f"Test Files:   {s['test_files']}")

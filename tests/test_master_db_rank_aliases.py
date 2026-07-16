@@ -28,13 +28,13 @@ class TestNormaliseRankStr:
             (" 4d ", "4d"),
             ("4 d", "4d"),
             ("4段", "4d"),
-            ("４段", "4d"),       # full-width digits
+            ("４段", "4d"),  # full-width digits
             ("４ 段", "4d"),
             ("10級", "10k"),
             ("30級", "30k"),
             ("4kyu", "4k"),
             ("5dan", "5d"),
-            ("4d?", "4d"),         # trailing punctuation
+            ("4d?", "4d"),  # trailing punctuation
             ("4d.", "4d"),
             ("4d !", "4d"),
             ("初段", "1d"),
@@ -99,19 +99,19 @@ class TestEstimateModeFromRank:
             #   DAN:         rank 11-15 (4k-1d)
             #   ADVANCED:    rank 16-19 (2d-5d)
             #   EXPERT:      rank 20+  (6d+)
-            ("4段", CoachMode.ADVANCED),   # 4d = rank 18
-            ("5段", CoachMode.ADVANCED),   # 5d = rank 19
-            ("6段", CoachMode.EXPERT),     # 6d = rank 20 (boundary)
-            ("3段", CoachMode.ADVANCED),   # 3d = rank 17 (boundary)
-            ("2段", CoachMode.ADVANCED),   # 2d = rank 16 (boundary, ADVANCED inclusive)
-            ("初段", CoachMode.DAN),       # 1d = rank 15 (shodan, DAN inclusive)
-            ("1段", CoachMode.DAN),        # 1d = rank 15
+            ("4段", CoachMode.ADVANCED),  # 4d = rank 18
+            ("5段", CoachMode.ADVANCED),  # 5d = rank 19
+            ("6段", CoachMode.EXPERT),  # 6d = rank 20 (boundary)
+            ("3段", CoachMode.ADVANCED),  # 3d = rank 17 (boundary)
+            ("2段", CoachMode.ADVANCED),  # 2d = rank 16 (boundary, ADVANCED inclusive)
+            ("初段", CoachMode.DAN),  # 1d = rank 15 (shodan, DAN inclusive)
+            ("1段", CoachMode.DAN),  # 1d = rank 15
             ("6級", CoachMode.INTERMEDIATE),  # 6k = rank 9
-            ("10級", CoachMode.INTERMEDIATE), # 10k = rank 5 (boundary)
-            ("1級", CoachMode.DAN),           # 1k = rank 14, in DAN
-            ("4kyu", CoachMode.DAN),          # 4k = rank 11, in DAN
-            ("5dan", CoachMode.ADVANCED),     # 5d = rank 19
-            ("４段", CoachMode.ADVANCED),     # full-width digits
+            ("10級", CoachMode.INTERMEDIATE),  # 10k = rank 5 (boundary)
+            ("1級", CoachMode.DAN),  # 1k = rank 14, in DAN
+            ("4kyu", CoachMode.DAN),  # 4k = rank 11, in DAN
+            ("5dan", CoachMode.ADVANCED),  # 5d = rank 19
+            ("４段", CoachMode.ADVANCED),  # full-width digits
         ],
     )
     def test_returns_expected_mode(self, rank: str, expected: CoachMode) -> None:

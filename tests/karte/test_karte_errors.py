@@ -11,8 +11,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from katrain.core.analysis.models.move_eval import MoveEval
 from katrain.core.analysis import detect_mistake_streaks
+from katrain.core.analysis.models.move_eval import MoveEval
 
 
 class TestKarteGenerationError:
@@ -67,6 +67,7 @@ class TestBuildKarteReportErrorHandling:
     def test_returns_error_markdown_on_failure(self):
         """Should return error markdown when generation fails."""
         from katrain.core.reports.karte.builder import build_karte_report
+
         # Create a mock game that will fail during karte generation
         game = Mock()
         game.game_id = "test_game"
@@ -83,8 +84,8 @@ class TestBuildKarteReportErrorHandling:
 
     def test_raises_exception_when_requested(self):
         """Should raise KarteGenerationError when raise_on_error=True."""
-        from katrain.core.reports.karte.models import KarteGenerationError
         from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.models import KarteGenerationError
 
         game = Mock()
         game.game_id = "test_game"

@@ -69,6 +69,5 @@ SGF_SEPARATOR_MARKER = "\u3164\u3164"
 
 
 # --- Analysis Modes ---
-import logging
 
 # AnalysisMode and parse_analysis_mode moved to katrain.core.analysis.modes (Phase 204).

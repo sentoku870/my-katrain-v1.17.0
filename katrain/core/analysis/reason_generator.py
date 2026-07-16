@@ -231,7 +231,7 @@ def _normalize_lang(lang: str | None) -> str:
     try:
         normalized = normalize_lang_code(lang)
     except Exception:
-        logger.debug('normalize_lang_code fallback', exc_info=True)
+        logger.debug("normalize_lang_code fallback", exc_info=True)
         return "en"
     if normalized not in _VALID_LANGS:
         return "en"
@@ -351,6 +351,6 @@ def generate_reason_safe(
         if result is not None:
             return result
     except Exception:
-        logger.debug('generate_reason safe wrapper fallback', exc_info=True)
+        logger.debug("generate_reason safe wrapper fallback", exc_info=True)
         pass
     return fallback_label if fallback_label is not None else ""

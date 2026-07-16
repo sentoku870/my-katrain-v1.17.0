@@ -1,8 +1,22 @@
 
-import os
+"""Phase 95+ helper script: append the legacy Karte Export i18n keys to
+the en/jp PO files. Originally hard-coded to the Windows-only path
+``d:\\github\\katrain-1.17.0\\...`` which broke for Linux / WSL users.
 
-jp_file = r'd:\github\katrain-1.17.0\katrain\i18n\locales\jp\LC_MESSAGES\katrain.po'
-en_file = r'd:\github\katrain-1.17.0\katrain\i18n\locales\en\LC_MESSAGES\katrain.po'
+This script is kept as a developer convenience only; the canonical
+workflow is described in ``docs/i18n-workflow.md`` and uses the
+``polib`` module via ``python -m polib`` instead.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+# Resolve relative to this script so the same code works from any
+# checkout path (Windows, WSL, or Linux).
+REPO_ROOT = Path(__file__).resolve().parent.parent
+jp_file = str(REPO_ROOT / "katrain" / "i18n" / "locales" / "jp" / "LC_MESSAGES" / "katrain.po")
+en_file = str(REPO_ROOT / "katrain" / "i18n" / "locales" / "en" / "LC_MESSAGES" / "katrain.po")
 
 new_keys_jp = """
 # Common UI
@@ -73,9 +87,9 @@ msgstr "Copied!"
 """
 
 def append_keys(file_path, content):
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         current = f.read()
-    
+
     if 'msgid "Error"' in current:
         print(f"Skipping {file_path}: Keys already seem to exist.")
         return
@@ -84,8 +98,9 @@ def append_keys(file_path, content):
         f.write(content)
     print(f"Appended keys to {file_path}")
 
-try:
-    append_keys(jp_file, new_keys_jp)
-    append_keys(en_file, new_keys_en)
-except Exception as e:
-    print(f"Error: {e}")
+if __name__ == "__main__":
+    try:
+        append_keys(jp_file, new_keys_jp)
+        append_keys(en_file, new_keys_en)
+    except Exception as e:
+        print(f"Error: {e}")

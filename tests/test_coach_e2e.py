@@ -24,7 +24,6 @@ import pytest
 
 from katrain.core.coach.llm_validator import (
     ValidationReport,
-    ValidationSeverity,
     validate_llm_output,
 )
 from katrain.core.coach.master_db import CoachMode, ToneVoice
@@ -38,7 +37,6 @@ from katrain.core.coach.symptom_index import (
     detect_auto_symptoms,
 )
 from katrain.core.coach.tones import select_voice
-
 
 # --- Mock LLM factory ---
 
@@ -202,10 +200,7 @@ class TestE2ETomokoDan:
         llm_output = _mock_llm(prompt.full_markdown, "tomoko_dan")
         report = validate_llm_output(llm_output, sample_karte, prompt, config=cfg)
         # TOMOKO + no Kansai markers → no tone warning
-        tone_issues = [
-            i for i in report.issues
-            if i.kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko")
-        ]
+        tone_issues = [i for i in report.issues if i.kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko")]
         assert tone_issues == []
 
 
@@ -247,9 +242,7 @@ class TestE2EExpertStrict:
 
         # TOMOKO_STRICT response contains "ウチの解釈（関西弁マーカー）も含めて"
         # → tone_inconsistency_tomoko warning expected.
-        tone_issues = [
-            i for i in report.issues if i.kind == "tone_inconsistency_tomoko"
-        ]
+        tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_tomoko"]
         assert len(tone_issues) == 1
 
     def test_validation_summary_reflects_issues(self, sample_karte):
@@ -282,26 +275,31 @@ class TestPipelineIntegration:
         # If anything is broken, the imports at the top would fail.
         from katrain.core.coach import (
             CoachMode,
-            ToneVoice,
             SymptomId,
+            ToneVoice,
             build_translation_prompt,
-            validate_llm_output,
             select_voice,
+            validate_llm_output,
         )
-        assert all([
-            CoachMode,
-            ToneVoice,
-            SymptomId,
-            build_translation_prompt,
-            validate_llm_output,
-            select_voice,
-        ])
+
+        assert all(
+            [
+                CoachMode,
+                ToneVoice,
+                SymptomId,
+                build_translation_prompt,
+                validate_llm_output,
+                select_voice,
+            ]
+        )
 
     def test_six_phase_modules_together(self, sample_karte):
         """Run the entire pipeline symbolically in a single test."""
         # Phase 207 (master_db): choose mode
         voice = select_voice("5k")
-        from katrain.core.coach.master_db import CoachMode as Mode, get_mode_config
+        from katrain.core.coach.master_db import CoachMode as Mode
+        from katrain.core.coach.master_db import get_mode_config
+
         mode = get_mode_config(Mode.INTERMEDIATE).mode
         # Phase 208 (lexicon): implicit via prompt_builder
         # Phase 209 (symptom_index): detected symptoms

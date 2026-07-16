@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from katrain.core.analysis.difficulty import assess_difficulty_from_policy
-from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
-from katrain.core.analysis.models.enums import PositionDifficulty
 from katrain.core.analysis import snapshot_from_nodes
+from katrain.core.analysis.difficulty import assess_difficulty_from_policy
+from katrain.core.analysis.models.enums import PositionDifficulty
+from katrain.core.analysis.models.move_eval import EvalSnapshot, MoveEval
 
 
 class TestPolicyBasedDifficulty:

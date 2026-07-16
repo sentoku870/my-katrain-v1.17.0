@@ -175,7 +175,7 @@ def _compute_summary_context(
             overall_difficulty = float(metrics.overall_difficulty)
             is_reliable = bool(metrics.is_reliable)
     except Exception:
-        logger.debug('difficulty_metrics_from_node fallback during summary context build', exc_info=True)
+        logger.debug("difficulty_metrics_from_node fallback during summary context build", exc_info=True)
         overall_difficulty = None
         is_reliable = False
 

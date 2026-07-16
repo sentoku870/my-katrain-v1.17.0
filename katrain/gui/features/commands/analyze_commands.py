@@ -22,7 +22,7 @@ def do_analyze_extra(ctx: KaTrainGui, mode: str | AnalysisMode, **kwargs: Any) -
         mode: Analysis mode (string or AnalysisMode enum)
         **kwargs: Additional arguments passed to game.analyze_extra
     """
-    from katrain.core.constants import parse_analysis_mode
+    from katrain.core.analysis.modes import parse_analysis_mode
 
     # Normalize mode at entry point (game.analyze_extra also normalizes, but explicit here for clarity)
     mode = parse_analysis_mode(mode)

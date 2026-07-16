@@ -7,8 +7,6 @@ Kivy / Katrain init.
 
 from __future__ import annotations
 
-import re
-
 import pytest
 
 from katrain.core.coach.sgf_player_info import (
@@ -18,7 +16,6 @@ from katrain.core.coach.sgf_player_info import (
     extract_player_info_from_sgf,
     parse_sgf_player_info,
 )
-
 
 # --- parse_sgf_player_info --------------------------------------------
 
@@ -56,10 +53,7 @@ class TestParseSgfPlayerInfo:
     def test_only_first_root_properties_used(self) -> None:
         """SGF game trees can have child nodes with their own properties.
         We must only read the root (first '(;' block)."""
-        sgf = (
-            "(;GM[1]PB[RootBlack]BR[4d]PW[RootWhite]WR[3d];"
-            "B[pd](;B[dd]PB[ChildBlack]BR[5k]))"
-        )
+        sgf = "(;GM[1]PB[RootBlack]BR[4d]PW[RootWhite]WR[3d];B[pd](;B[dd]PB[ChildBlack]BR[5k]))"
         info = parse_sgf_player_info(sgf)
         assert info.black.name == "RootBlack"
         assert info.black.rank == "4d"

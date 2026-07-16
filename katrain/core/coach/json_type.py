@@ -73,9 +73,7 @@ def detect_json_type(data: dict[str, Any]) -> JsonType:
 
     # Fallback heuristic: summary has ``phase_x_mistake`` but no
     # important_moves (the karte marker checked above).
-    if isinstance(data.get("phase_x_mistake"), dict) and not isinstance(
-        data.get("important_moves"), list
-    ):
+    if isinstance(data.get("phase_x_mistake"), dict) and not isinstance(data.get("important_moves"), list):
         return "summary"
 
     return "unknown"
@@ -133,11 +131,7 @@ def extract_summary_mistake_buckets(data: dict[str, Any]) -> dict[str, int]:
     buckets = data.get("phase_x_mistake", {}) or {}
     if not isinstance(buckets, dict):
         return {}
-    return {
-        str(k): int(v)
-        for k, v in buckets.items()
-        if isinstance(v, (int, float))
-    }
+    return {str(k): int(v) for k, v in buckets.items() if isinstance(v, (int, float))}
 
 
 def extract_summary_weakness_patterns(
@@ -211,14 +205,16 @@ def extract_summary_weakness_patterns(
                 if count is None and total_loss is None:
                     continue
                 freq = (float(count) / games) if (games and isinstance(count, (int, float))) else 0.0
-                patterns.append({
-                    "color": str(color),
-                    "phase": str(w.get("phase", "unknown")),
-                    "category": str(w.get("category", "unknown")),
-                    "count": int(count) if isinstance(count, (int, float)) else 0,
-                    "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
-                    "frequency_ratio": freq,
-                })
+                patterns.append(
+                    {
+                        "color": str(color),
+                        "phase": str(w.get("phase", "unknown")),
+                        "category": str(w.get("category", "unknown")),
+                        "count": int(count) if isinstance(count, (int, float)) else 0,
+                        "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
+                        "frequency_ratio": freq,
+                    }
+                )
 
     # ---- Shape B: players.<name>.mistakes[*] (Phase 228-A real shape) ----
     # Only synthesise Shape B patterns when Shape A returned nothing
@@ -237,16 +233,18 @@ def extract_summary_weakness_patterns(
                 # at 0.0. The prompt renderer (Phase 228-B) detects
                 # this and prefers ``pct``.
                 freq = 0.0
-                patterns.append({
-                    "color": player_name,  # player name doubles as "color" for Shape B
-                    "player": player_name,
-                    "phase": "all",  # Shape B has no per-phase breakdown per mistake category
-                    "category": cat,
-                    "count": count,
-                    "total_loss": total_loss,
-                    "frequency_ratio": freq,
-                    "pct": float(m.get("pct", 0.0) or 0.0),
-                })
+                patterns.append(
+                    {
+                        "color": player_name,  # player name doubles as "color" for Shape B
+                        "player": player_name,
+                        "phase": "all",  # Shape B has no per-phase breakdown per mistake category
+                        "category": cat,
+                        "count": count,
+                        "total_loss": total_loss,
+                        "frequency_ratio": freq,
+                        "pct": float(m.get("pct", 0.0) or 0.0),
+                    }
+                )
 
     # Sort by total_loss desc, then count desc, then category asc for stability.
     patterns.sort(key=lambda p: (-p["total_loss"], -p["count"], p["category"]))
@@ -326,14 +324,16 @@ def extract_summary_player_mistakes(
                 # Reconstruct total_loss when the export omitted it
                 # (the field was added in a later schema revision).
                 total_loss = float(avg_loss) * float(count)
-            entries.append({
-                "category": category,
-                "count": int(count) if isinstance(count, (int, float)) else 0,
-                "pct": float(m.get("pct", 0.0) or 0.0),
-                "avg_loss": float(avg_loss) if isinstance(avg_loss, (int, float)) else 0.0,
-                "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
-                "denominator": int(m.get("denominator", 0) or 0),
-            })
+            entries.append(
+                {
+                    "category": category,
+                    "count": int(count) if isinstance(count, (int, float)) else 0,
+                    "pct": float(m.get("pct", 0.0) or 0.0),
+                    "avg_loss": float(avg_loss) if isinstance(avg_loss, (int, float)) else 0.0,
+                    "total_loss": float(total_loss) if isinstance(total_loss, (int, float)) else 0.0,
+                    "denominator": int(m.get("denominator", 0) or 0),
+                }
+            )
         if entries:
             out[str(player_name)] = entries
     return out

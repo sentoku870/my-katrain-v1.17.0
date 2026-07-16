@@ -334,9 +334,7 @@ def build_translation_prompt(
     system_instruction = _SYSTEM_INSTRUCTION_TEMPLATE.format(
         voice_summary=voice_summary(voice),
         mode_label=mode.name,
-        mode_description=(
-            lookup_mode_description(mode)
-        ),
+        mode_description=(lookup_mode_description(mode)),
         detected_ids=_format_symptom_id_list(detected_ids),
         candidate_ids=_format_symptom_id_list(candidate_ids),
         candidate_hints=_candidate_hints(candidate_ids),
@@ -345,10 +343,12 @@ def build_translation_prompt(
 
     # 2. Lexicon injection (HTML comment with verbatim entries).
     lex_ids = _select_lexicon_entry_ids(
-        detected_ids, max_count=config.max_lexicon_entries,
+        detected_ids,
+        max_count=config.max_lexicon_entries,
     )
     lex_body = inject_lexicon_for_prompt(
-        lex_ids, include_expanded=config.include_expanded,
+        lex_ids,
+        include_expanded=config.include_expanded,
     )
     lex_injection = (
         _LEXICON_INJECTION_HEADER + "\n" + lex_body

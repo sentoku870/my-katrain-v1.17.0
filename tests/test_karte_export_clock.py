@@ -16,9 +16,8 @@ local ``__globals__`` must contain the symbol it references.
 from __future__ import annotations
 
 import os
+from typing import Any
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Force headless mode before any Kivy import (same as test_llm_coach_popup).
 os.environ.setdefault("KIVY_NO_ARGS", "1")
@@ -37,14 +36,14 @@ class TestDoExportKarteUiLazyImports:
     def test_do_export_karte_ui_module_imports_clock(self) -> None:
         """When ``do_export_karte_ui`` runs, ``Clock`` must be available
         in its module-level globals (Phase 173 lazy-import pattern)."""
-        from katrain.gui.features import karte_export
-
         # The fix is that the function's body lazy-imports Clock. We can't
         # easily trigger the function end-to-end without Kivy UI, but we
         # can simulate the lazy-import by importing Clock ourselves and
         # patching the source module — the closure resolves names against
         # the source module's globals.
         from kivy.clock import Clock as _Clock
+
+        from katrain.gui.features import karte_export
 
         with patch.object(karte_export, "Clock", _Clock, create=True):
             assert karte_export.Clock is _Clock
@@ -78,17 +77,19 @@ class TestDoExportKarteUiLazyImports:
 
         mock_clock = MagicMock()
         # Temporarily attach Clock to the module so the closure can find it
-        with patch.object(karte_export, "Clipboard", mock_clipboard, create=True), \
-             patch.object(karte_export, "Clock", mock_clock, create=True), \
-             patch("katrain.gui.features.karte_export.i18n") as mock_i18n:
+        with (
+            patch.object(karte_export, "Clipboard", mock_clipboard, create=True),
+            patch.object(karte_export, "Clock", mock_clock, create=True),
+            patch("katrain.gui.features.karte_export.i18n") as mock_i18n,
+        ):
             mock_i18n._.return_value = "label"
+
             # Define the closure inline (mirroring karte_export.py:242)
             def copy_path(instance: Any) -> None:
                 mock_clipboard.copy("files")
                 instance.text = mock_i18n._("copied")
-                karte_export.Clock.schedule_once(
-                    lambda dt: setattr(instance, "text", mock_i18n._("copy")), 2
-                )
+                karte_export.Clock.schedule_once(lambda dt: setattr(instance, "text", mock_i18n._("copy")), 2)
+
             copy_path(mock_button)
 
         # Clipboard was called, no NameError, schedule_once was registered

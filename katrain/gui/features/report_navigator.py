@@ -106,10 +106,7 @@ def find_latest_llm_input(output_dir: Path) -> ReportInfo | None:
         return None
     # limit=10 is a safety cap — we just need the most recent, but
     # this matches the existing ``find_recent_reports`` contract.
-    reports = [
-        r for r in find_recent_reports(output_dir, limit=10)
-        if r.report_type in _LLM_INPUT_TYPES
-    ]
+    reports = [r for r in find_recent_reports(output_dir, limit=10) if r.report_type in _LLM_INPUT_TYPES]
     if not reports:
         return None
     # ``find_recent_reports`` already returns mtime-desc sorted, so

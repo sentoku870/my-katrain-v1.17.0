@@ -7,8 +7,8 @@ pipeline, and label/threshold consistency across skill levels.
 
 from __future__ import annotations
 
-from katrain.core.analysis.models.move_eval import MoveEval
 from katrain.core.analysis import aggregate_phase_mistake_stats
+from katrain.core.analysis.models.move_eval import MoveEval
 
 
 class TestUrgentMissConfigsIntegration:
@@ -17,6 +17,7 @@ class TestUrgentMissConfigsIntegration:
     def test_get_urgent_miss_config_all_presets(self):
         """All skill presets should have urgent miss configs."""
         from katrain.core.analysis import PRESET_ORDER, get_urgent_miss_config
+
         for preset in PRESET_ORDER:
             config = get_urgent_miss_config(preset)
             assert config is not None
@@ -26,6 +27,7 @@ class TestUrgentMissConfigsIntegration:
     def test_urgent_miss_threshold_varies_by_preset(self):
         """Stricter presets should have lower thresholds."""
         from katrain.core.analysis import get_urgent_miss_config
+
         relaxed = get_urgent_miss_config("relaxed")
         standard = get_urgent_miss_config("standard")
         pro = get_urgent_miss_config("pro")
@@ -41,6 +43,7 @@ class TestWeaknessHypothesisSkillPreset:
     def test_aggregate_uses_score_thresholds(self):
         """aggregate_phase_mistake_stats should respect custom thresholds."""
         from katrain.core.analysis import get_skill_preset
+
         # Create a move with 3.0 loss
         move = MoveEval(
             move_number=100,
@@ -72,6 +75,7 @@ class TestWeaknessHypothesisSkillPreset:
     def test_preset_thresholds_consistency(self):
         """Verify preset threshold values are as documented."""
         from katrain.core.analysis import get_skill_preset
+
         standard = get_skill_preset("standard")
         assert standard.score_thresholds == (1.0, 2.5, 5.0)
 
@@ -100,6 +104,7 @@ class TestLabelThresholdConsistency:
     def test_lenient_thresholds_classify_correctly(self):
         """Under relaxed thresholds, 3.7 should be inaccuracy, 12.7 should be mistake."""
         from katrain.core.analysis import classify_mistake, get_skill_preset
+
         relaxed = get_skill_preset("relaxed")
         # relaxed thresholds: (3.0, 7.5, 15.0)
         assert relaxed.score_thresholds == (3.0, 7.5, 15.0)
@@ -115,6 +120,7 @@ class TestLabelThresholdConsistency:
     def test_strict_thresholds_classify_correctly(self):
         """Under pro thresholds, 3.9 should be blunder."""
         from katrain.core.analysis import classify_mistake, get_skill_preset
+
         pro = get_skill_preset("pro")
         # pro thresholds: (0.2, 0.5, 1.0)
         assert pro.score_thresholds == (0.2, 0.5, 1.0)
@@ -126,6 +132,7 @@ class TestLabelThresholdConsistency:
     def test_same_loss_differs_by_preset(self):
         """Same loss value should classify differently under different presets."""
         from katrain.core.analysis import classify_mistake, get_skill_preset
+
         standard = get_skill_preset("standard")  # (1.0, 2.5, 5.0)
         relaxed = get_skill_preset("relaxed")  # (3.0, 7.5, 15.0)
 
@@ -145,6 +152,7 @@ class TestLabelThresholdConsistency:
     def test_boundary_values(self):
         """Test classification at exact threshold boundaries."""
         from katrain.core.analysis import classify_mistake, get_skill_preset
+
         standard = get_skill_preset("standard")  # (1.0, 2.5, 5.0)
 
         # At exactly t1 (1.0): should be INACCURACY (>= t1)
@@ -166,6 +174,7 @@ class TestLabelThresholdConsistency:
     def test_none_loss_returns_good(self):
         """None loss should return GOOD (not error or unknown)."""
         from katrain.core.analysis import classify_mistake, get_skill_preset
+
         standard = get_skill_preset("standard")
 
         result = classify_mistake(score_loss=None, winrate_loss=None, score_thresholds=standard.score_thresholds)

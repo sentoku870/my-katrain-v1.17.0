@@ -44,6 +44,7 @@ class TestReasonTagsCompleteness:
     def test_validate_reason_tag_function(self):
         """validate_reason_tag should correctly identify valid/invalid tags."""
         from katrain.core.analysis import validate_reason_tag
+
         # Valid tags
         assert validate_reason_tag("atari") is True
         assert validate_reason_tag("unknown") is True
@@ -57,6 +58,7 @@ class TestReasonTagsCompleteness:
     def test_get_reason_tag_label_function(self):
         """get_reason_tag_label should return correct labels."""
         from katrain.core.analysis import get_reason_tag_label
+
         # Known tags
         assert get_reason_tag_label("atari") == "アタリ (atari)"
         assert get_reason_tag_label("unknown") == "不明 (unknown)"
@@ -68,11 +70,13 @@ class TestReasonTagsCompleteness:
     def test_valid_reason_tags_matches_labels(self):
         """VALID_REASON_TAGS should exactly match REASON_TAG_LABELS keys."""
         from katrain.core.analysis import REASON_TAG_LABELS, VALID_REASON_TAGS
+
         assert set(REASON_TAG_LABELS.keys()) == VALID_REASON_TAGS
 
     def test_no_duplicate_labels(self):
         """Each tag should have a unique label."""
         from katrain.core.analysis import REASON_TAG_LABELS
+
         labels = list(REASON_TAG_LABELS.values())
         unique_labels = set(labels)
 
@@ -90,12 +94,14 @@ class TestSkillPresets:
     def test_all_five_presets_exist(self):
         """All 5 skill presets should be defined."""
         from katrain.core.analysis import SKILL_PRESETS
+
         expected_keys = {"relaxed", "beginner", "standard", "advanced", "pro"}
         assert set(SKILL_PRESETS.keys()) == expected_keys
 
     def test_standard_unchanged(self):
         """Standard preset should maintain backward-compatible values."""
         from katrain.core.analysis import SKILL_PRESETS
+
         standard = SKILL_PRESETS["standard"]
         # Original standard thresholds must remain unchanged
         assert standard.score_thresholds == (1.0, 2.5, 5.0)
@@ -103,6 +109,7 @@ class TestSkillPresets:
     def test_advanced_unchanged(self):
         """Advanced preset should maintain backward-compatible values."""
         from katrain.core.analysis import SKILL_PRESETS
+
         advanced = SKILL_PRESETS["advanced"]
         # Advanced thresholds preserved from original implementation
         assert advanced.score_thresholds == (0.5, 1.5, 3.0)
@@ -110,6 +117,7 @@ class TestSkillPresets:
     def test_score_thresholds_follow_formula(self):
         """New presets (relaxed, beginner, pro) should follow t1=0.2*t3, t2=0.5*t3 formula."""
         from katrain.core.analysis import SKILL_PRESETS
+
         # Only check formula for new presets (relaxed, beginner, pro)
         formula_presets = ["relaxed", "beginner", "pro"]
         for key in formula_presets:
@@ -121,6 +129,7 @@ class TestSkillPresets:
     def test_thresholds_increasing_strictness(self):
         """Presets should have decreasing t3 values from relaxed to pro (increasing strictness)."""
         from katrain.core.analysis import SKILL_PRESETS
+
         order = ["relaxed", "beginner", "standard", "advanced", "pro"]
         prev_t3 = float("inf")
         for key in order:
@@ -131,17 +140,20 @@ class TestSkillPresets:
     def test_get_skill_preset_fallback(self):
         """Unknown preset names should fall back to 'standard'."""
         from katrain.core.analysis import SKILL_PRESETS, get_skill_preset
+
         result = get_skill_preset("nonexistent")
         assert result == SKILL_PRESETS["standard"]
 
     def test_default_skill_preset_is_standard(self):
         """DEFAULT_SKILL_PRESET should be 'standard' for backward compatibility."""
         from katrain.core.analysis import DEFAULT_SKILL_PRESET
+
         assert DEFAULT_SKILL_PRESET == "standard"
 
     def test_preset_t3_values(self):
         """Verify expected t3 (blunder) values for each preset."""
         from katrain.core.analysis import SKILL_PRESETS
+
         expected_t3 = {
             "relaxed": 15.0,
             "beginner": 10.0,
@@ -160,12 +172,14 @@ class TestUrgentMissConfigs:
     def test_all_five_configs_exist(self):
         """All 5 urgent miss configs should be defined."""
         from katrain.core.analysis import URGENT_MISS_CONFIGS
+
         expected_keys = {"relaxed", "beginner", "standard", "advanced", "pro"}
         assert set(URGENT_MISS_CONFIGS.keys()) == expected_keys
 
     def test_threshold_loss_decreasing(self):
         """threshold_loss should decrease from relaxed to pro (stricter detection)."""
         from katrain.core.analysis import URGENT_MISS_CONFIGS
+
         order = ["relaxed", "beginner", "standard", "advanced", "pro"]
         prev_threshold = float("inf")
         for key in order:
@@ -176,6 +190,7 @@ class TestUrgentMissConfigs:
     def test_min_consecutive_reasonable(self):
         """min_consecutive should be reasonable (2-5 range)."""
         from katrain.core.analysis import URGENT_MISS_CONFIGS
+
         for key, config in URGENT_MISS_CONFIGS.items():
             assert 2 <= config.min_consecutive <= 5, f"{key}: min_consecutive out of range"
 
@@ -186,12 +201,14 @@ class TestAutoStrictness:
     def test_preset_order_contains_all_presets(self):
         """PRESET_ORDER should contain all 5 skill presets."""
         from katrain.core.analysis import PRESET_ORDER, SKILL_PRESETS
+
         assert set(PRESET_ORDER) == set(SKILL_PRESETS.keys())
         assert len(PRESET_ORDER) == 5
 
     def test_preset_order_is_correct_sequence(self):
         """PRESET_ORDER should be loosest to strictest."""
         from katrain.core.analysis import PRESET_ORDER
+
         expected = ["relaxed", "beginner", "standard", "advanced", "pro"]
         assert expected == PRESET_ORDER
 
@@ -219,9 +236,10 @@ class TestAutoStrictness:
 
     def test_recommend_standard_on_low_reliability(self):
         """Low reliability (< 20%) should return 'standard' with LOW confidence."""
+        from katrain.core.analysis import recommend_auto_strictness
         from katrain.core.analysis.models.enums import AutoConfidence
         from katrain.core.analysis.models.move_eval import MoveEval
-        from katrain.core.analysis import recommend_auto_strictness
+
         # Create moves with very low visits (< threshold)
         moves = [
             MoveEval(
@@ -250,8 +268,9 @@ class TestAutoStrictness:
 
     def test_recommend_for_many_blunders(self):
         """Many high-loss moves: algorithm picks preset yielding closest to target range."""
-        from katrain.core.analysis.models.move_eval import MoveEval
         from katrain.core.analysis import recommend_auto_strictness
+        from katrain.core.analysis.models.move_eval import MoveEval
+
         # Create moves with high loss (many blunders under any preset)
         # All 50 moves have loss=16.0
         # relaxed t3=15.0 → 50 blunders (way over 10)
@@ -288,8 +307,9 @@ class TestAutoStrictness:
 
     def test_recommend_for_few_blunders(self):
         """Few low-loss moves: algorithm picks preset closest to target or tie-break."""
-        from katrain.core.analysis.models.move_eval import MoveEval
         from katrain.core.analysis import recommend_auto_strictness
+        from katrain.core.analysis.models.move_eval import MoveEval
+
         # Create moves with low loss (0 blunders under any settings)
         # loss=0.3 is below t3 for all presets (even pro t3=1.0)
         # So all presets see 0 blunders, 0 important
@@ -326,14 +346,16 @@ class TestAutoStrictness:
     def test_prefer_standard_on_tie(self):
         """When scores are equal, should prefer preset closer to standard."""
         from katrain.core.analysis import PRESET_ORDER
+
         # Standard is at index 2, so it should be preferred on ties
         standard_idx = PRESET_ORDER.index("standard")
         assert standard_idx == 2
 
     def test_multi_game_scaling(self):
         """Target ranges should scale with game_count."""
-        from katrain.core.analysis.models.move_eval import MoveEval
         from katrain.core.analysis import recommend_auto_strictness
+        from katrain.core.analysis.models.move_eval import MoveEval
+
         # Create moves that would produce ~5 blunders per game (within 3-10 range)
         # under 'standard' preset (t3=5.0)
         moves = []
@@ -368,8 +390,9 @@ class TestAutoStrictness:
 
     def test_canonical_loss_semantics(self):
         """Should use max(0, score_loss) for counting, not raw values."""
-        from katrain.core.analysis.models.move_eval import MoveEval
         from katrain.core.analysis import recommend_auto_strictness
+        from katrain.core.analysis.models.move_eval import MoveEval
+
         # Create moves with negative score_loss (gains) - should be treated as 0
         moves = [
             MoveEval(
@@ -398,9 +421,10 @@ class TestAutoStrictness:
 
     def test_confidence_levels(self):
         """Should return correct confidence based on score."""
+        from katrain.core.analysis import recommend_auto_strictness
         from katrain.core.analysis.models.enums import AutoConfidence
         from katrain.core.analysis.models.move_eval import MoveEval
-        from katrain.core.analysis import recommend_auto_strictness
+
         # Create moves that produce exactly the target range (score=0 → HIGH)
         moves = [
             MoveEval(
@@ -432,8 +456,8 @@ class TestAutoStrictness:
 # Test: ConfidenceLevel and compute_confidence_level (PR#1)
 # ---------------------------------------------------------------------------
 
-from katrain.core.analysis.models.enums import ConfidenceLevel
 from katrain.core.analysis import compute_confidence_level, compute_reliability_stats, get_important_moves_limit
+from katrain.core.analysis.models.enums import ConfidenceLevel
 
 
 class TestConfidenceLevel:
@@ -632,6 +656,7 @@ class TestConfidenceLevel:
     def test_confidence_label_en(self):
         """English labels for confidence levels"""
         from katrain.core.analysis import get_confidence_label
+
         assert get_confidence_label(ConfidenceLevel.HIGH, lang="en") == "Confidence: High"
         assert get_confidence_label(ConfidenceLevel.MEDIUM, lang="en") == "Confidence: Medium"
         assert get_confidence_label(ConfidenceLevel.LOW, lang="en") == "Confidence: Low"

@@ -64,6 +64,9 @@ class MetaData(TypedDict, total=False):
     # (``"even"`` / ``"handicapped"`` / ``"unknown"``). Empty / absent
     # on Karte output.
     games_by_type: dict[str, int] | None
+    # Phase 225.6: optional Karte-side SGF BR/WR info so the LLM Coach
+    # popup can auto-fill the rank input from the same Karte file.
+    player_info: NotRequired[dict[str, Any]]
 
 
 class PlayerGameInfo(TypedDict):
@@ -81,6 +84,9 @@ class GameMeta(TypedDict):
     komi: float
     board_size: list[int]  # [19, 19]
     players: PlayerGameInfo
+    # Phase 225.6: optional SGF BR/WR ranks. Not present in every
+    # Game-derived object so declared as ``NotRequired``.
+    ranks: NotRequired[dict[str, str | None]]
 
 
 class MistakeItem(TypedDict):

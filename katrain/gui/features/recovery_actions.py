@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 
+from katrain.common.platform import resolve_output_directory
 from katrain.common.sanitize import get_sanitization_context, sanitize_text
 from katrain.core.auto_setup import prepare_reset_to_auto
 from katrain.core.constants import DATA_FOLDER, OUTPUT_ERROR, OUTPUT_INFO
@@ -34,7 +35,6 @@ from katrain.core.error_recovery import (
     RecoveryEvent,
     should_auto_dump,
 )
-from katrain.common.platform import resolve_output_directory
 
 if TYPE_CHECKING:
     from katrain.core.diagnostics import DiagnosticsBundle

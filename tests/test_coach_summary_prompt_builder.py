@@ -318,8 +318,12 @@ class TestSummaryPromptContainer:
         prompt = build_summary_weakness_prompt(sample_summary, base_config)
         p = prompt.referenced_patterns[0]
         assert set(p.keys()) == {
-            "color", "phase", "category", "count",
-            "total_loss", "frequency_ratio",
+            "color",
+            "phase",
+            "category",
+            "count",
+            "total_loss",
+            "frequency_ratio",
         }
 
     def test_config_echoed(self, sample_summary, base_config):

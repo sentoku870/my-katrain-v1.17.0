@@ -21,7 +21,7 @@ import platform
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add project root to path for imports
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -55,13 +55,13 @@ class MinimalEngine:
         pass
 
 
-def get_machine_spec() -> Dict[str, Any]:
+def get_machine_spec() -> dict[str, Any]:
     """Get machine specification for benchmark context.
 
     Returns:
         Dictionary with platform, processor, and optionally cpu_count/ram_gb.
     """
-    spec: Dict[str, Any] = {
+    spec: dict[str, Any] = {
         "platform": platform.platform(),
         "processor": platform.processor(),
     }
@@ -77,7 +77,7 @@ def get_machine_spec() -> Dict[str, Any]:
     return spec
 
 
-def find_sgf_files(sgf_dir: Path, limit: Optional[int] = None) -> List[Path]:
+def find_sgf_files(sgf_dir: Path, limit: int | None = None) -> list[Path]:
     """Find SGF files in directory (recursive).
 
     Args:
@@ -100,7 +100,7 @@ def run_benchmark(
     sgf_dir: Path,
     num_games: int,
     threshold: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the benchmark.
 
     Args:
@@ -112,9 +112,9 @@ def run_benchmark(
         Benchmark result dictionary
     """
     # Import here to avoid slow startup
-    from katrain.core.game import Game
-    from katrain.core.batch.stats import extract_game_stats
     from katrain.core.batch.sgf_io import parse_sgf_with_fallback
+    from katrain.core.batch.stats import extract_game_stats
+    from katrain.core.game import Game
 
     # Create minimal stubs
     katrain = MinimalKatrain()
@@ -129,7 +129,7 @@ def run_benchmark(
         }
 
     # Load games first (not part of benchmark)
-    games: List[tuple] = []  # (Game, rel_path)
+    games: list[tuple] = []  # (Game, rel_path)
     for sgf_path in sgf_files:
         try:
             # Parse SGF to get move_tree

@@ -13,14 +13,14 @@ from typing import Any
 
 from katrain.common.short_hash import short_hash
 from katrain.core import analysis
-from katrain.core.analysis import build_node_map
+from katrain.core.analysis import (
+    build_node_map,
+    classify_mistake,
+    get_canonical_loss_from_move,
+)
 from katrain.core.analysis.meaning_tags import (
     build_classification_context_from_node,
     classify_meaning_tag,
-)
-from katrain.core.analysis import (
-    classify_mistake,
-    get_canonical_loss_from_move,
 )
 from katrain.core.reports.definitions import (
     CATEGORY_ALIASES,
@@ -415,8 +415,7 @@ def _weaknesses_meta_for(
     — a "weakness A: 18.5 points" line item is much more useful when
     the LLM also sees ``covered_loss: 25.0 / 60.0`` (41.7%).
     """
-    from katrain.core.analysis import classify_game_phase
-    from katrain.core.analysis import get_canonical_loss_from_move
+    from katrain.core.analysis import classify_game_phase, get_canonical_loss_from_move
     from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
 
     player_moves = [m for m in ctx.snapshot.moves if m.player == player]

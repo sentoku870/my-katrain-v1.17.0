@@ -6,10 +6,10 @@ used in report generation to ensure consistency across different report types.
 
 from typing import Any, Final
 
-from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.analysis import (
     MistakeCategory,
 )
+from katrain.core.analysis.meaning_tags import MeaningTagId
 from katrain.core.reports.constants import (
     BAD_MOVE_LOSS_THRESHOLD,
     URGENT_MISS_MIN_CONSECUTIVE,

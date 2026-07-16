@@ -21,11 +21,9 @@ Scope (Kivy-free, fully testable without side effects):
 
 from __future__ import annotations
 
-from katrain.core.analysis.models.enums import MistakeCategory
-
-
 import pytest
 
+from katrain.core.analysis.models.enums import MistakeCategory
 from katrain.core.batch.stats.pattern_miner import GameRef
 from katrain.gui.features import summary_formatter as sf
 

@@ -15,14 +15,11 @@ Uses mock Game/snapshot objects to avoid full Kivy/engine setup.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock
-
-import pytest
+from unittest.mock import MagicMock
 
 from katrain.core.analysis.models import MoveEval
 from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
 from katrain.core.batch.stats.extraction import extract_game_stats, extract_players_from_stats
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -65,8 +62,8 @@ def _make_move(
 def _make_mock_snapshot(moves: list[MoveEval], total_points_lost: float | None = None) -> MagicMock:
     snap = MagicMock()
     snap.moves = moves
-    snap.total_points_lost = total_points_lost if total_points_lost is not None else sum(
-        (m.points_lost or 0) for m in moves
+    snap.total_points_lost = (
+        total_points_lost if total_points_lost is not None else sum((m.points_lost or 0) for m in moves)
     )
     return snap
 
@@ -384,7 +381,9 @@ class TestExtractGameStatsPatternData:
 
     def test_pattern_data_excludes_no_loss(self):
         moves = [
-            _make_move(move_number=1, player="B", mistake_category=MistakeCategory.MISTAKE, points_lost=None, score_loss=None),
+            _make_move(
+                move_number=1, player="B", mistake_category=MistakeCategory.MISTAKE, points_lost=None, score_loss=None
+            ),
         ]
         snapshot = _make_mock_snapshot(moves)
         game = _make_mock_game(snapshot=snapshot)

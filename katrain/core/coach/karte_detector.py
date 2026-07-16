@@ -25,14 +25,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from katrain.core.analysis.meaning_tags import MeaningTagId
+from katrain.core.beginner.models import HintCategory
 from katrain.core.coach.symptom_index import (
     SymptomContext,
     SymptomId,
     detect_auto_symptoms,
 )
-from katrain.core.analysis.meaning_tags import MeaningTagId
-from katrain.core.beginner.models import HintCategory
-
 
 # --- Aggregators ---
 
@@ -197,11 +196,16 @@ def extract_avg_streak_loss(karte: dict[str, Any]) -> float:
 
     Returns 0.0 when no streaks present.
     """
-    losses = [
-        s.get("total_loss")
-        for s in _all_streaks(karte)
-        if isinstance(s.get("total_loss"), (int, float))
-    ]
+    losses: list[float] = []
+    for s in _all_streaks(karte):
+        raw_loss = s.get("total_loss")
+        if isinstance(raw_loss, bool):
+            # Guard against ``bool`` (subclass of int) being treated as a
+            # numeric loss. We never expect this in practice but the
+            # mypy strict mode rejects ``float(True|False)`` otherwise.
+            continue
+        if isinstance(raw_loss, (int, float)):
+            losses.append(float(raw_loss))
     return sum(losses) / len(losses) if losses else 0.0
 
 
@@ -215,12 +219,13 @@ def _safe_pearson(xs: list[float], ys: list[float]) -> float | None:
         return None
     mean_x = sum(xs) / n
     mean_y = sum(ys) / n
-    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys, strict=False))
     var_x = sum((x - mean_x) ** 2 for x in xs)
     var_y = sum((y - mean_y) ** 2 for y in ys)
     if var_x <= 0 or var_y <= 0:
         return None
-    return cov / (var_x * var_y) ** 0.5
+    corr: float = cov / (var_x * var_y) ** 0.5
+    return corr
 
 
 def extract_winrate_scorelead_correlation(
@@ -382,10 +387,10 @@ def _collect_hint_categories(karte: dict[str, Any]) -> tuple[HintCategory, ...]:
         "endgame_slip": HintCategory.URGENT_VS_BIG,
     }
     for tag in tags:
-        h = tag_to_hint.get(tag.value)
-        if h and h not in seen:
-            cats.append(h)
-            seen.add(h)
+        hint: HintCategory | None = tag_to_hint.get(tag.value)
+        if hint is not None and hint not in seen:
+            cats.append(hint)
+            seen.add(hint)
 
     return tuple(cats)
 
@@ -418,9 +423,7 @@ def _move_number_range(karte: dict[str, Any]) -> tuple[int | None, int | None]:
     return (min(nums), max(nums))
 
 
-def _infer_current_phase(
-    karte: dict[str, Any], board_size: int = 19
-) -> str:
+def _infer_current_phase(karte: dict[str, Any], board_size: int = 19) -> str:
     """Phase 226-F (F-A): infer the dominant phase from important_moves.
 
     Karte contexts don't have a single ``move_number`` to feed into
@@ -643,4 +646,4 @@ __all__ = [
     "extract_game_count",
     "build_symptom_context_from_karte",
     "detect_symptoms_from_karte",
-] 
+]

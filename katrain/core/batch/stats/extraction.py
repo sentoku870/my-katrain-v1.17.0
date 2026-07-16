@@ -56,6 +56,8 @@ def _classify_and_propagate_tags(game: Game, stats: dict[str, Any], snapshot: An
 
         total_moves = stats["total_moves"]
         try:
+            from katrain.core.analysis import build_node_map
+
             node_map = build_node_map(game)
         except (TypeError, AttributeError):
             # Incomplete/mock game without traversable children -> degrade gracefully
@@ -347,17 +349,13 @@ def extract_game_stats(
                 log_cb(f"  Stats skipped for {rel_path}: no valid moves in snapshot")
             return None
 
-        # Get game metadata
+        # Get game metadata. The individual keys are looked up on
+        # demand below; unpacking them all up-front would create
+        # lint warnings for the values that are not consumed in this
+        # particular stats pipeline. Only the keys actually read are
+        # extracted.
         meta = _extract_sgf_metadata(game)
-        player_black = meta["player_black"]
-        player_white = meta["player_white"]
-        handicap = meta["handicap"]
-        date = meta["date"]
         board_size = meta["board_size"]
-        komi = meta["komi"]
-        result = meta["result"]
-        rank_black = meta["rank_black"]
-        rank_white = meta["rank_white"]
 
         # Calculate stats from snapshot
         stats = _init_stats_dict(rel_path, meta, snapshot, source_index)

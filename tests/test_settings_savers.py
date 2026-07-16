@@ -213,9 +213,7 @@ class TestMigrateDefaultUserRank:
 
         # general/player_rank は上書きされない（5k のまま）
         # general セクションへの set_config_section は呼ばれない
-        general_calls = [
-            c for c in ctx.set_config_section.call_args_list if c.args[0] == "general"
-        ]
+        general_calls = [c for c in ctx.set_config_section.call_args_list if c.args[0] == "general"]
         assert len(general_calls) == 0
 
         # default_user_rank はクリアされる

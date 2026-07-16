@@ -148,9 +148,7 @@ class TestKaTrainGuiDelegationExists:
             "_save_export_settings",
         ]
         for method in legacy_removed_methods:
-            assert method not in method_names, (
-                f"KaTrainGui.{method} should have been removed in Phase 198 Stage 2"
-            )
+            assert method not in method_names, f"KaTrainGui.{method} should have been removed in Phase 198 Stage 2"
 
     def test_katrain_gui_has_config_manager_init(self):
         """KaTrainGui.__init__でConfigManagerが初期化されている"""

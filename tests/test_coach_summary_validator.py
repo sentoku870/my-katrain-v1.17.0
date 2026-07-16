@@ -300,7 +300,7 @@ class TestSummaryAvailableFieldsShapeB:
                         "good": {"count": 1, "pct": 50.0, "denominator": 2, "avg_loss": 0.1},
                     }
                 }
-            }
+            },
         }
         cats = _summary_available_categories(data)
         # Shape A category present
@@ -338,7 +338,7 @@ class TestSummaryAvailableFieldsShapeB:
                     },
                     "phases": {
                         "middle": {"moves": 50, "total_loss": 25.0, "avg_loss": 0.5},
-                    }
+                    },
                 },
                 "bob": {},  # no mistakes, no phases
             }
@@ -394,11 +394,7 @@ class TestValidatorAcceptsShapeBCategories:
 
         data = _real_shape_summary()
         # Cite a real category plus a hallucinated one
-        response = (
-            "考察: ...\n"
-            "抽出した弱点パターン: [blunder, fantasy_category]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: ...\n抽出した弱点パターン: [blunder, fantasy_category]\n参照したphase: [middle]\n"
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
@@ -433,9 +429,9 @@ class TestValidatorAcceptsShapeBCategories:
                     },
                     "phases": {
                         "middle": {"moves": 50, "total_loss": 25.0, "avg_loss": 0.5},
-                    }
+                    },
                 }
-            }
+            },
         }
         response = (
             "考察: ...\n"
@@ -450,10 +446,7 @@ class TestValidatorAcceptsShapeBCategories:
         prompt = build_summary_weakness_prompt(data, cfg)
         report = validate_summary_llm_output(response, data, prompt)
         # All 3 standard phases accepted, no warnings
-        phase_kinds = [
-            i.kind for i in report.issues
-            if i.kind == "phase_label_out_of_set"
-        ]
+        phase_kinds = [i.kind for i in report.issues if i.kind == "phase_label_out_of_set"]
         assert phase_kinds == []
 
     def test_good_category_citation_clean(self):
@@ -465,11 +458,7 @@ class TestValidatorAcceptsShapeBCategories:
 
         data = _real_shape_summary()
         # LLM might mention "good" as a positive observation
-        response = (
-            "考察: 良い手も 79.9% あります。\n"
-            "抽出した弱点パターン: [blunder, good]\n"
-            "参照したphase: [middle]\n"
-        )
+        response = "考察: 良い手も 79.9% あります。\n抽出した弱点パターン: [blunder, good]\n参照したphase: [middle]\n"
         cfg = SummaryPromptConfig(
             voice=ToneVoice.TOMOKO,
             mode=CoachMode.DAN,
@@ -511,11 +500,7 @@ class TestPatternListExtractor:
         assert _extract_pattern_categories(text) == ("blunder",)
 
     def test_works_with_followup_lines(self):
-        text = (
-            "考察...\n"
-            "抽出した弱点パターン: [blunder, mistake]\n"
-            "参照したphase: [middle, opening]\n"
-        )
+        text = "考察...\n抽出した弱点パターン: [blunder, mistake]\n参照したphase: [middle, opening]\n"
         assert _extract_pattern_categories(text) == ("blunder", "mistake")
 
 
@@ -682,10 +667,7 @@ class TestValidationClean:
     def test_clean_response_long_no_tone_issue(self, sample_summary, tomoko_config):
         # TOMOKO config + long text without Kansai markers = clean
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        long_text = (
-            "考察: " + "abc " * 100 + "\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        long_text = "考察: " + "abc " * 100 + "\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(long_text, sample_summary, prompt)
         assert not any(i.kind.startswith("tone") for i in report.issues)
 
@@ -710,10 +692,7 @@ class TestValidationPatternCategory:
 class TestValidationMoveNumber:
     def test_forbidden_move_number_high(self, sample_summary, tomoko_config):
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        text = (
-            "考察: 第50手でのミスが顕著でした。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: 第50手でのミスが顕著でした。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         kinds = [i.kind for i in report.issues]
         assert "forbidden_move_number" in kinds
@@ -723,18 +702,13 @@ class TestValidationMoveNumber:
 
     def test_no_move_number_no_issue(self, sample_summary, tomoko_config):
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        text = (
-            "考察: 全体的に傾向があります。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: 全体的に傾向があります。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         assert not any(i.kind == "forbidden_move_number" for i in report.issues)
 
     # --- Phase 229: statistical count patterns must NOT trigger
     # forbidden_move_number at the validation-report level ---
-    def test_count_patterns_not_flagged_at_report_level(
-        self, sample_summary, tomoko_config
-    ):
+    def test_count_patterns_not_flagged_at_report_level(self, sample_summary, tomoko_config):
         # Verbatim copy of the LLM output that triggered the original
         # bug report (3 false-positive HIGH findings on counts 51/22/5).
         # Categories are chosen to match the sample_summary fixture
@@ -755,12 +729,9 @@ class TestValidationMoveNumber:
         report = validate_summary_llm_output(text, sample_summary, prompt)
         # No HIGH forbidden_move_number issues — counts are legitimate
         # in summary mode.
-        forbidden = [
-            i for i in report.issues if i.kind == "forbidden_move_number"
-        ]
+        forbidden = [i for i in report.issues if i.kind == "forbidden_move_number"]
         assert forbidden == [], (
-            f"Expected no false-positive forbidden_move_number issues, "
-            f"got: {[i.message for i in forbidden]}"
+            f"Expected no false-positive forbidden_move_number issues, got: {[i.message for i in forbidden]}"
         )
         # The report's referenced_move_numbers must be empty.
         assert report.referenced_move_numbers == ()
@@ -800,6 +771,7 @@ class TestValidationPhase:
         # which the LLM might or might not know. We use a fixture
         # without 'endgame' to verify the out-of-set check.
         from tests.test_coach_summary_validator import _summary_available_phases
+
         summary_no_endgame = {
             "schema_version": "3.4",
             "meta": {"games_analyzed": 5},
@@ -812,10 +784,7 @@ class TestValidationPhase:
         }
         assert "endgame" not in _summary_available_phases(summary_no_endgame)
         prompt = build_summary_weakness_prompt(summary_no_endgame, tomoko_config)
-        text = (
-            "考察: endgame が問題です。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: endgame が問題です。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, summary_no_endgame, prompt)
         kinds = [i.kind for i in report.issues]
         assert "phase_label_out_of_set" in kinds
@@ -825,19 +794,13 @@ class TestValidationPhase:
         # checked against the summary. The validator only flags
         # *known* phase labels that are *not* in the summary.
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        text = (
-            "考察: fuseki と yose が問題です。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: fuseki と yose が問題です。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         assert not any(i.kind == "phase_label_out_of_set" for i in report.issues)
 
     def test_known_phases_no_issue(self, sample_summary, tomoko_config):
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        text = (
-            "考察: opening と middle が問題。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: opening と middle が問題。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         assert not any(i.kind == "phase_label_out_of_set" for i in report.issues)
 
@@ -845,10 +808,7 @@ class TestValidationPhase:
 class TestValidationGameId:
     def test_specific_game_id_low(self, sample_summary, tomoko_config):
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        text = (
-            "考察: g3 で大きなミスがありました。\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: g3 で大きなミスがありました。\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         kinds = [i.kind for i in report.issues]
         assert "specific_game_id_referenced" in kinds
@@ -861,10 +821,7 @@ class TestValidationTone:
     def test_ayaka_long_no_kansai_low(self, sample_summary, ayaka_config):
         prompt = build_summary_weakness_prompt(sample_summary, ayaka_config)
         # Long TOMOKO-style text (no Kansai markers) under AYAKA config
-        text = (
-            "考察: " + "標準語の文章が続きます。" * 30 + "\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: " + "標準語の文章が続きます。" * 30 + "\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         kinds = [i.kind for i in report.issues]
         assert "tone_inconsistency_ayaka" in kinds
@@ -879,10 +836,7 @@ class TestValidationTone:
     def test_tomoko_with_kansai_low(self, sample_summary, tomoko_config):
         prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
         # Long text with Kansai markers under TOMOKO config
-        text = (
-            "考察: " + "やで。" * 30 + "\n"
-            "抽出した弱点パターン: [blunder]\n"
-        )
+        text = "考察: " + "やで。" * 30 + "\n抽出した弱点パターン: [blunder]\n"
         report = validate_summary_llm_output(text, sample_summary, prompt)
         kinds = [i.kind for i in report.issues]
         assert "tone_inconsistency_tomoko" in kinds
@@ -899,6 +853,7 @@ class TestSummaryValidationReport:
 
     def test_dirty_summary_line(self):
         from katrain.core.coach.llm_validator import ValidationIssue
+
         issues = (
             ValidationIssue(
                 severity=ValidationSeverity.HIGH,
@@ -912,6 +867,7 @@ class TestSummaryValidationReport:
 
     def test_count_properties(self):
         from katrain.core.coach.llm_validator import ValidationIssue
+
         issues = (
             ValidationIssue(severity=ValidationSeverity.HIGH, kind="a", message="m"),
             ValidationIssue(severity=ValidationSeverity.MEDIUM, kind="b", message="m"),
@@ -927,6 +883,7 @@ class TestSummaryValidationReport:
 
     def test_frozen(self):
         from dataclasses import FrozenInstanceError
+
         report = SummaryValidationReport(llm_text="ok")
         with pytest.raises(FrozenInstanceError):
             report.llm_text = "new"  # type: ignore[misc]

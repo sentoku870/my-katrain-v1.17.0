@@ -57,6 +57,7 @@ def do_export_karte(ctx: KaTrainGui, *args: Any, **kwargs: Any) -> None:
     if args and callable(args[0]):
         settings_popup_callback: Callable[[], None] = args[0]
     else:
+
         def _open_mykatrain_settings_popup() -> None:
             do_mykatrain_settings_popup(ctx)
 

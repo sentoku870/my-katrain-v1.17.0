@@ -74,20 +74,20 @@ class SymptomId(Enum):
     # 7. 「時間が足りない」「秒読みでミスる」
     TIME_PRESSURE_LOSS = "time_pressure_loss"  # LLM-required
     TIME_MISALLOCATION = "time_misallocation"  # LLM-required
-    TIME_DRAIN = "time_drain"                  # LLM-required
+    TIME_DRAIN = "time_drain"  # LLM-required
     # 8. 「ヨセで逆転される」「終盤が苦手」
     ENDGAME_VALUATION_ERROR = "endgame_valuation_error"
     SENTE_GOTE_CONFUSION = "sente_gote_confusion"
     ENDGAME_PRECISION = "endgame_precision"
     # 9. 「同じミスを繰り返す」「上達しない」
     SAME_MISTAKE_LOOP = "same_mistake_loop"
-    SHALLOW_REVIEW = "shallow_review"             # LLM-required
+    SHALLOW_REVIEW = "shallow_review"  # LLM-required
     STAGNATION_LOOP = "stagnation_loop"
-    LOCAL_OPTIMUM = "local_optimum"               # LLM-required
+    LOCAL_OPTIMUM = "local_optimum"  # LLM-required
     # 10. 「AIを見ても分からない」「AI依存」
-    AI_OVERLOAD = "ai_overload"                   # LLM-required
+    AI_OVERLOAD = "ai_overload"  # LLM-required
     COPY_WITHOUT_UNDERSTANDING = "copy_without_understanding"  # LLM-required
-    AUTHORITY_BIAS = "authority_bias"             # LLM-required
+    AUTHORITY_BIAS = "authority_bias"  # LLM-required
     # 11. 「焦る」「連敗する」「萎える」
     TILT_DISCOURAGEMENT = "tilt_discouragement"
     TILT_CHAIN = "tilt_chain"
@@ -98,7 +98,7 @@ class SymptomId(Enum):
     RISK_MISCALIBRATION = "risk_miscalibration"
     # 13. 「捨て石ができない」「全部助けようとする」
     SAVING_EVERYTHING = "saving_everything"
-    SACRIFICE_JUDGMENT = "sacrifice_judgment"     # LLM-required
+    SACRIFICE_JUDGMENT = "sacrifice_judgment"  # LLM-required
     ENDOWMENT_EFFECT_SUNK_COST = "endowment_effect_sunk_cost"  # LLM-required
 
 
@@ -256,8 +256,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.SELF_ATARI,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "capture_race_loss")
-        and _points_lost_exceeds(c, 1.0),
+        detector=lambda c: _has_tag(c, "capture_race_loss") and _points_lost_exceeds(c, 1.0),
     ),
     Symptom(
         id=SymptomId.CAPTURE_OVERSIGHT,
@@ -268,8 +267,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.MISSED_CAPTURE,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.MISSED_CAPTURE)
-        and _points_lost_exceeds(c, 1.0),
+        detector=lambda c: _has_hint(c, HintCategory.MISSED_CAPTURE) and _points_lost_exceeds(c, 1.0),
     ),
     Symptom(
         id=SymptomId.LADDER_NET_OVERSIGHT,
@@ -314,8 +312,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.CUT_RISK,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.DAN),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.CUT_RISK)
-        and ctx_points_lost_high(c),
+        detector=lambda c: _has_hint(c, HintCategory.CUT_RISK) and ctx_points_lost_high(c),
     ),
     Symptom(
         id=SymptomId.WEAK_GROUP_NEGLECT,
@@ -326,8 +323,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.IGNORE_ATARI,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.IGNORE_ATARI)
-        or _has_tag(c, "capture_race_loss"),
+        detector=lambda c: _has_hint(c, HintCategory.IGNORE_ATARI) or _has_tag(c, "capture_race_loss"),
     ),
     # 3. どこに打てばいいか分からない
     Symptom(
@@ -339,8 +335,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=None,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.BEGINNER),
         auto_detected=True,
-        detector=lambda c: ctx_is_phase(c, "opening")
-        and _points_lost_exceeds(c, 5.0),
+        detector=lambda c: ctx_is_phase(c, "opening") and _points_lost_exceeds(c, 5.0),
     ),
     Symptom(
         id=SymptomId.BIG_POINT_BLINDNESS,
@@ -351,8 +346,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.URGENT_VS_BIG,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.DAN),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "slow_move")
-        and _points_lost_exceeds(c, 2.0),
+        detector=lambda c: _has_tag(c, "slow_move") and _points_lost_exceeds(c, 2.0),
     ),
     Symptom(
         id=SymptomId.TOO_MANY_CHOICES,
@@ -363,8 +357,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.FREEDOM_WIDE,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.INTERMEDIATE),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.FREEDOM_WIDE)
-        and ctx_is_phase(c, "opening"),
+        detector=lambda c: _has_hint(c, HintCategory.FREEDOM_WIDE) and ctx_is_phase(c, "opening"),
     ),
     # 4. 大場が見えない
     Symptom(
@@ -387,8 +380,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.HEAVY_GROUP,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.ADVANCED),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "overplay")
-        and ctx_in_middle_phase(c),
+        detector=lambda c: _has_tag(c, "overplay") and ctx_in_middle_phase(c),
     ),
     # 5. 定石が分からない
     Symptom(
@@ -422,8 +414,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=None,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.DAN),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "direction_error")
-        and ctx_is_phase(c, "opening"),
+        detector=lambda c: _has_tag(c, "direction_error") and ctx_is_phase(c, "opening"),
     ),
     # 6. 攻めが空振り
     Symptom(
@@ -435,8 +426,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.HEAVY_GROUP,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.EXPERT),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "overplay")
-        and (c.score_stdev is not None and c.score_stdev > 1.5),
+        detector=lambda c: _has_tag(c, "overplay") and (c.score_stdev is not None and c.score_stdev > 1.5),
     ),
     Symptom(
         id=SymptomId.OVERFIGHT,
@@ -458,8 +448,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=None,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.DAN),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "direction_error")
-        and ctx_in_attack_phase(c),
+        detector=lambda c: _has_tag(c, "direction_error") and ctx_in_attack_phase(c),
     ),
     # 7. 時間が足りない（すべて LLM-required）
     Symptom(
@@ -539,8 +528,9 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.CURATOR_WEAK_AXIS,
         difficulty_range=(CoachMode.BEGINNER, CoachMode.EXPERT),
         auto_detected=True,
-        detector=lambda c: _has_hint(c, HintCategory.CURATOR_WEAK_AXIS)
-        and (c.game_count is not None and c.game_count >= 3),
+        detector=lambda c: (
+            _has_hint(c, HintCategory.CURATOR_WEAK_AXIS) and (c.game_count is not None and c.game_count >= 3)
+        ),
     ),
     Symptom(
         id=SymptomId.SHALLOW_REVIEW,
@@ -658,8 +648,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=None,
         difficulty_range=(CoachMode.DAN, CoachMode.EXPERT),
         auto_detected=True,
-        detector=lambda c: _winrate_drop_exceeds(c, 15.0)
-        and ctx_in_middle_or_end(c),
+        detector=lambda c: _winrate_drop_exceeds(c, 15.0) and ctx_in_middle_or_end(c),
     ),
     Symptom(
         id=SymptomId.POSITION_EVALUATION,
@@ -682,8 +671,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         difficulty_range=(CoachMode.ADVANCED, CoachMode.EXPERT),
         auto_detected=True,
         detector=lambda c: (
-            c.score_stdev is not None and c.score_stdev > 2.0
-            and (c.winrate_lost is not None and c.winrate_lost > 0.1)
+            c.score_stdev is not None and c.score_stdev > 2.0 and (c.winrate_lost is not None and c.winrate_lost > 0.1)
         ),
     ),
     # 13. 捨て石できない
@@ -696,8 +684,7 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_hint_category=HintCategory.MISSED_DEFENSE,
         difficulty_range=(CoachMode.INTERMEDIATE, CoachMode.EXPERT),
         auto_detected=True,
-        detector=lambda c: _has_tag(c, "connection_miss")
-        and ctx_multiple_weak_groups(c),
+        detector=lambda c: _has_tag(c, "connection_miss") and ctx_multiple_weak_groups(c),
     ),
     Symptom(
         id=SymptomId.SACRIFICE_JUDGMENT,
@@ -736,6 +723,7 @@ _LLM_REQUIRED: tuple[Symptom, ...] = tuple(s for s in _SYMPTOMS if not s.auto_de
 # --- Detector helper close-outs ---
 # These were declared as lambdas in the table above for readability; we
 # need them defined as named callables so Symptom is hashable/frozen.
+
 
 def ctx_is_phase(c: SymptomContext, phase: str) -> bool:
     return c.is_phase(phase)

@@ -32,7 +32,6 @@ from katrain.core.ai import (
     TerritoryStrategy,
     WeightedStrategy,
 )
-from katrain.core.ai_strategies_base import AIStrategy
 from katrain.core.ai.constants import (
     AI_ANTIMIRROR,
     AI_DEFAULT,
@@ -51,6 +50,7 @@ from katrain.core.ai.constants import (
     AI_TERRITORY,
     AI_WEIGHTED,
 )
+from katrain.core.ai_strategies_base import AIStrategy
 from katrain.core.game import Game, Move
 from katrain.core.game_node import GameNode
 

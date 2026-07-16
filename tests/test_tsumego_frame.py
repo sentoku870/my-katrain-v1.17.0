@@ -11,12 +11,9 @@ from __future__ import annotations
 import pytest
 
 from katrain.core.tsumego_frame import (
-    BLACK,
-    WHITE,
     get_analysis_region,
     guess_black_to_attack,
     height,
-    height2,
     ij_sizes,
     inside_p,
     katrain_sgf_from_ijs,
@@ -25,7 +22,6 @@ from katrain.core.tsumego_frame import (
     pick_all,
     put_stone,
     sign_of_color,
-    snap,
     snap0,
     snap_s,
     stone_from_str,
@@ -34,7 +30,6 @@ from katrain.core.tsumego_frame import (
     tsumego_frame_stones,
     xor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Stone / board conversion
@@ -86,12 +81,15 @@ class TestStonesFromBwBoard:
 
 
 class TestXor:
-    @pytest.mark.parametrize("a,b,expected", [
-        (True, True, False),
-        (True, False, True),
-        (False, True, True),
-        (False, False, False),
-    ])
+    @pytest.mark.parametrize(
+        "a,b,expected",
+        [
+            (True, True, False),
+            (True, False, True),
+            (False, True, True),
+            (False, False, False),
+        ],
+    )
     def test_xor_truth_table(self, a, b, expected):
         assert xor(a, b) is expected
 

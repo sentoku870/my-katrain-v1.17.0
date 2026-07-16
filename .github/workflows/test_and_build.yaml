@@ -224,8 +224,14 @@ jobs:
         with:
           sync-groups: dev
 
-      - name: Finalize I18N for publishing
-        run: uv run python i18n.py
+      # Phase 230: the legacy ``i18n.py`` helper was removed (Feb 2026
+      # cleanup). The compiled ``.mo`` files now live under
+      # ``katrain/i18n/locales/*/LC_MESSAGES/`` and are regenerated as
+      # part of the development workflow (see docs/i18n-workflow.md).
+      # We still re-validate the .mo freshness here so a stale build
+      # cannot ship.
+      - name: Verify i18n .mo files are up to date
+        run: uv run pytest tests/test_i18n.py::TestBatchAnalyzeI18n::test_mo_files_are_up_to_date -v
 
       - name: Build and publish to PyPI
         env:

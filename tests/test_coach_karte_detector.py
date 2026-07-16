@@ -36,7 +36,6 @@ from katrain.core.coach.symptom_index import (
     SymptomId,
 )
 
-
 # --- Fixtures ---
 
 
@@ -365,6 +364,7 @@ class TestCliIntegration:
     def test_cli_uses_karte_detector(self, sample_karte, tmp_path):
         """The CLI's build_prompt should pick up the karte_detector output."""
         import json
+
         from katrain.core.coach import cli
 
         karte_path = tmp_path / "karte.json"
@@ -500,8 +500,10 @@ class TestStreakSymptoms:
         karte = {
             "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 20.0}]},
             "loss_progression": [
-                {"mistake_count": 2}, {"mistake_count": 1},
-                {"mistake_count": 3}, {"mistake_count": 2},
+                {"mistake_count": 2},
+                {"mistake_count": 1},
+                {"mistake_count": 3},
+                {"mistake_count": 2},
             ],
         }
         fired = detect_symptoms_from_karte(karte)
@@ -511,8 +513,10 @@ class TestStreakSymptoms:
         karte = {
             "mistake_streaks": {"black": [{"move_count": 4, "total_loss": 12.0}]},
             "loss_progression": [
-                {"mistake_count": 2}, {"mistake_count": 1},
-                {"mistake_count": 3}, {"mistake_count": 2},
+                {"mistake_count": 2},
+                {"mistake_count": 1},
+                {"mistake_count": 3},
+                {"mistake_count": 2},
                 {"mistake_count": 1},
             ],
         }
@@ -524,18 +528,22 @@ class TestStreakSymptoms:
         karte = {
             "mistake_streaks": {"black": [], "white": []},
             "loss_progression": [
-                {"mistake_count": 0}, {"mistake_count": 0},
+                {"mistake_count": 0},
+                {"mistake_count": 0},
             ],
         }
         fired = detect_symptoms_from_karte(karte)
-        streak_only = {
+        # None of the streak-only symptoms should fire (this assertion
+        # documents the intent — the local variable is unused but
+        # keeping it makes the relationship between "what we expect
+        # not to fire" and "what the detector sees" explicit).
+        expected_no_fire = {
             SymptomId.OVERFIGHT,
             SymptomId.SMALL_MOVE_ADDICTION,
             SymptomId.TILT_CHAIN,
             SymptomId.TILT_DISCOURAGEMENT,
         }
-        # None of the streak-only symptoms should fire
-        assert fired == ()
+        assert set(fired).isdisjoint(expected_no_fire)
 
     def test_streak_combined_with_weakness(self):
         # Weakness category + streak both contribute

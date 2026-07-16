@@ -117,7 +117,7 @@ def _safe_get_ownership(node: "GameNode") -> list[float] | None:
                 return list(ownership)
             return None
     except Exception:
-        logger.debug('node.ownership property fallback', exc_info=True)
+        logger.debug("node.ownership property fallback", exc_info=True)
         pass
 
     # Fallback to analysis dict

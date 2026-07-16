@@ -185,8 +185,10 @@ class TestOnBrowseKarte:
     def test_opens_i18n_file_browser_popup(self) -> None:
 
         content = _make_content()
-        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
-             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+        with (
+            patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls,
+            patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls,
+        ):
             mock_popup_instance = MagicMock()
             mock_popup_cls.return_value = mock_popup_instance
             content.on_browse_karte()
@@ -201,8 +203,10 @@ class TestOnBrowseKarte:
         because we only bound ``on_submit`` (double-click event)."""
 
         content = _make_content()
-        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup"), \
-             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+        with (
+            patch("katrain.gui.popups.llm_coach_popup.I18NPopup"),
+            patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls,
+        ):
             mock_browser = MagicMock()
             mock_browser_cls.return_value = mock_browser
             content.on_browse_karte()
@@ -212,9 +216,7 @@ class TestOnBrowseKarte:
         for call in bind_args:
             for key in call.kwargs:
                 bound_events.add(key)
-        assert "on_success" in bound_events, (
-            "OK-button (on_success) handler missing — Phase 225.2 regression"
-        )
+        assert "on_success" in bound_events, "OK-button (on_success) handler missing — Phase 225.2 regression"
         assert "on_submit" in bound_events, "double-click handler must stay bound"
 
     def test_on_success_writes_path_to_karte_input(self) -> None:
@@ -224,8 +226,10 @@ class TestOnBrowseKarte:
         content = _make_content()
         content.karte_path_input.text = ""
         captured: dict[str, Any] = {}
-        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
-             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+        with (
+            patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls,
+            patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls,
+        ):
             mock_picker = MagicMock()
             mock_popup_cls.return_value = mock_picker
             mock_browser = MagicMock()
@@ -248,8 +252,10 @@ class TestOnBrowseKarte:
         dialog."""
         content = _make_content()
         captured: dict[str, Any] = {}
-        with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls, \
-             patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls:
+        with (
+            patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls,
+            patch("katrain.gui.popups.llm_coach_popup.I18NFileBrowser") as mock_browser_cls,
+        ):
             mock_picker = MagicMock()
             mock_popup_cls.return_value = mock_picker
             mock_browser = MagicMock()
@@ -284,8 +290,10 @@ class TestOnGenerateAndCopy:
         fake_prompt = MagicMock()
         fake_prompt.full_markdown = "# PROMPT\nhello"
 
-        with patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "# PROMPT\nhello")), \
-             patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip:
+        with (
+            patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "# PROMPT\nhello")),
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip,
+        ):
             content.on_generate_and_copy()
         mock_clip.copy.assert_called_once_with("# PROMPT\nhello")
         assert "PROMPT" in content.status_label.text or content.result_label.text == "# PROMPT\nhello"
@@ -301,11 +309,13 @@ class TestOnGenerateAndCopy:
     def test_clipboard_failure_shows_error(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/x.json"
-        with patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")), \
-             patch(
-                 "katrain.gui.popups.llm_coach_popup.Clipboard.copy",
-                 side_effect=RuntimeError("no clipboard"),
-             ):
+        with (
+            patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")),
+            patch(
+                "katrain.gui.popups.llm_coach_popup.Clipboard.copy",
+                side_effect=RuntimeError("no clipboard"),
+            ),
+        ):
             content.on_generate_and_copy()
         assert "clipboard" in content.status_label.text.lower() or "copy-failed" in content.status_label.text
 
@@ -313,8 +323,10 @@ class TestOnGenerateAndCopy:
         content = _make_content()
         content.karte_path_input.text = "/x.json"
         content.rank_input.text = " 5k "
-        with patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")) as spy, \
-             patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+        with (
+            patch("katrain.gui.features.llm_coach.build_llm_prompt", return_value=(True, "x")) as spy,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
+        ):
             content.on_generate_and_copy()
         # ``rank`` is forwarded as the stripped value
         assert spy.call_args.kwargs.get("rank") == "5k"
@@ -434,13 +446,10 @@ class TestPopulateInitialKartePath:
     def test_fills_path_when_empty(self) -> None:
         content = _make_content()
         content.karte_path_input.text = ""
-        with patch(
-            "katrain.gui.features.llm_coach.find_latest_karte", return_value="/latest.json"
-        ):
+        with patch("katrain.gui.features.llm_coach.find_latest_karte", return_value="/latest.json"):
             content._populate_initial_karte_path()
-        # MagicMock's text setter doesn't reflect back into .text; we verify the
-        # call rather than the post-state.
-        content.karte_path_input.__setitem__ if False else None  # type: ignore[unreachable]
+        # MagicMock's text setter doesn't reflect back into .text; we
+        # only verify the call happened via the patched side effect.
         # Re-check: MagicMock.text assignment doesn't persist, so verify the
         # call was made via assert_called_once.
         # (When the popup runs in the real app, LabelledTextInput.text is a real
@@ -509,6 +518,7 @@ class TestSetStatusAndResultViaIds:
     def test_set_status_writes_to_ids_label(self) -> None:
         content = _make_content()
         from unittest.mock import MagicMock as _MM
+
         stale = _MM()
         content.status_label = stale  # stale ObjectProperty ref
         content._set_status("hello")
@@ -518,6 +528,7 @@ class TestSetStatusAndResultViaIds:
     def test_set_result_writes_to_ids_label(self) -> None:
         content = _make_content()
         from unittest.mock import MagicMock as _MM
+
         stale = _MM()
         content.result_label = stale
         content._set_result("report text")
@@ -532,6 +543,7 @@ class TestPhase2255OnCopyResult:
         content = _make_content()
         # Property is stale (empty), but ids has the validation report
         from unittest.mock import MagicMock as _MM
+
         stale = _MM()
         stale.text = ""
         content.result_label = stale
@@ -601,11 +613,13 @@ class TestPhase2253OnGenerateUsesIds:
         content.ids["karte_path_input"].text = "/real/path.json"
         fake_prompt = MagicMock()
         fake_prompt.full_markdown = "# PROMPT"
-        with patch(
-            "katrain.gui.features.llm_coach.build_llm_prompt",
-            return_value=(True, "# PROMPT"),
-        ) as spy, \
-             patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+        with (
+            patch(
+                "katrain.gui.features.llm_coach.build_llm_prompt",
+                return_value=(True, "# PROMPT"),
+            ) as spy,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
+        ):
             content.on_generate_and_copy()
         # The path passed to the helper must come from ids, not the stale property.
         assert spy.call_args.args[1] == "/real/path.json"
@@ -638,7 +652,9 @@ class TestPhase2256RankAutoFill:
         content._populate_rank_and_perspective()
         assert content.ids["rank_input"].text == "4d"  # black first in auto
         assert content.detected_rank == "4d"
-        assert "rank-auto" in content.ids["rank_auto_label"].text or "auto" in content.ids["rank_auto_label"].text.lower()
+        assert (
+            "rank-auto" in content.ids["rank_auto_label"].text or "auto" in content.ids["rank_auto_label"].text.lower()
+        )
 
     def test_does_not_overwrite_user_typed_rank(self, tmp_path):
         content = _make_content()
@@ -698,10 +714,13 @@ class TestPhase2256PlayerColorPassthrough:
         content.perspective_value = "B"
         fake_prompt = MagicMock()
         fake_prompt.full_markdown = "# PROMPT"
-        with patch(
-            "katrain.gui.features.llm_coach.build_llm_prompt",
-            return_value=(True, "# PROMPT"),
-        ) as spy, patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+        with (
+            patch(
+                "katrain.gui.features.llm_coach.build_llm_prompt",
+                return_value=(True, "# PROMPT"),
+            ) as spy,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
+        ):
             content.on_generate_and_copy()
         assert spy.call_args.kwargs.get("player_color") == "B"
 
@@ -713,10 +732,13 @@ class TestPhase2256PlayerColorPassthrough:
         content.ids["rank_input"].text = "5k"
         content.perspective_value = "auto"
         content.detected_player_color = None
-        with patch(
-            "katrain.gui.features.llm_coach.build_llm_prompt",
-            return_value=(True, "# PROMPT"),
-        ) as spy, patch("katrain.gui.popups.llm_coach_popup.Clipboard"):
+        with (
+            patch(
+                "katrain.gui.features.llm_coach.build_llm_prompt",
+                return_value=(True, "# PROMPT"),
+            ) as spy,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard"),
+        ):
             content.on_generate_and_copy()
         assert spy.call_args.kwargs.get("player_color") is None
 
@@ -726,6 +748,7 @@ class TestPhase2256Helpers:
 
     def test_pick_detected_rank_auto_prefers_black(self):
         from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+
         info = {
             "black": {"rank": "4d"},
             "white": {"rank": "3d"},
@@ -734,6 +757,7 @@ class TestPhase2256Helpers:
 
     def test_pick_detected_rank_white(self):
         from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+
         info = {
             "black": {"rank": "4d"},
             "white": {"rank": "3d"},
@@ -742,11 +766,13 @@ class TestPhase2256Helpers:
 
     def test_pick_detected_rank_returns_none_when_missing(self):
         from katrain.gui.popups.llm_coach_popup import _pick_detected_rank
+
         info = {"black": {"rank": None}, "white": {"rank": None}}
         assert _pick_detected_rank(info, "auto") is None
 
     def test_resolve_player_color_explicit_B(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+
         # Phase 226-B (B3): perspective_value is now the stable internal
         # value ("B"/"W"/"auto"), not the localised spinner label.
         assert _resolve_player_color("B", "W") == "B"
@@ -754,15 +780,18 @@ class TestPhase2256Helpers:
 
     def test_resolve_player_color_explicit_W(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+
         assert _resolve_player_color("W", "B") == "W"
         assert _resolve_player_color("W", None) == "W"
 
     def test_resolve_player_color_auto_with_detection(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+
         assert _resolve_player_color("auto", "W") == "W"
 
     def test_resolve_player_color_auto_no_detection(self):
         from katrain.gui.popups.llm_coach_popup import _resolve_player_color
+
         assert _resolve_player_color("auto", None) is None
 
 
@@ -798,11 +827,9 @@ class TestPhase226IGuiAutoDetectFeedback:
         content._populate_rank_and_perspective()
         status = content.ids["status_label"].text
         # The status must clearly say default_user_name is empty.
-        assert (
-            "default_user" in status
-            or "デフォルト" in status
-            or "user_name" in status
-        ), f"status should warn about empty default_user_name, got: {status!r}"
+        assert "default_user" in status or "デフォルト" in status or "user_name" in status, (
+            f"status should warn about empty default_user_name, got: {status!r}"
+        )
 
     def test_default_user_present_status_summary(self, tmp_path):
         content = _make_content()
@@ -894,25 +921,30 @@ class TestPhase226BSpinnerTextToInternal:
 
     def test_auto_label_maps_to_auto(self):
         from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+
         auto_label = _resolve_i18n("mykatrain:llm-coach:perspective-auto")
         assert _spinner_text_to_internal(auto_label) == "auto"
 
     def test_black_label_maps_to_B(self):
         from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+
         black_label = _resolve_i18n("mykatrain:llm-coach:perspective-black")
         assert _spinner_text_to_internal(black_label) == "B"
 
     def test_white_label_maps_to_W(self):
         from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+
         white_label = _resolve_i18n("mykatrain:llm-coach:perspective-white")
         assert _spinner_text_to_internal(white_label) == "W"
 
     def test_empty_string_falls_back_to_auto(self):
         from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+
         assert _spinner_text_to_internal("") == "auto"
 
     def test_unknown_string_falls_back_to_auto(self):
         from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
+
         assert _spinner_text_to_internal("nonsense") == "auto"
 
 
@@ -931,9 +963,7 @@ class TestPhase2257PopupSize:
             mock_popup_cls.return_value.__self__ = mock_picker
             open_llm_coach_popup(ctx)
         size_arg = mock_popup_cls.call_args.kwargs["size"]
-        assert size_arg[0] >= dp(900), (
-            f"popup width must be >= 900dp, got {size_arg[0]} (raw={size_arg})"
-        )
+        assert size_arg[0] >= dp(900), f"popup width must be >= 900dp, got {size_arg[0]} (raw={size_arg})"
         # Height must also have grown so the LLM response + result fit
         assert size_arg[1] >= dp(680)
 
@@ -944,6 +974,7 @@ class TestPhase2257LayoutNoOverlap:
 
     def test_kv_has_scroll_view_for_response_input(self):
         from pathlib import Path
+
         kv = (Path(__file__).resolve().parents[1] / "katrain" / "gui" / "kv" / "llm_coach_popup.kv").read_text()
         # Find the response_input block
         idx = kv.find("id: response_input")
@@ -1002,9 +1033,7 @@ class TestPhase2257AutoDetectDefersWhenKartePathEmpty:
         with patch("katrain.gui.popups.llm_coach_popup.Clock") as mock_clock:
             content._populate_rank_and_perspective()
         # A retry schedule_once call must have been issued
-        assert mock_clock.schedule_once.called, (
-            "Empty karte_path must schedule a retry, not return silently"
-        )
+        assert mock_clock.schedule_once.called, "Empty karte_path must schedule a retry, not return silently"
 
 
 class TestPhase2258DefaultUserRankFallback:
@@ -1064,9 +1093,7 @@ class TestPhase2258DefaultUserRankFallback:
         """No rank anywhere → rank input stays empty."""
         content = _make_content()
         karte = tmp_path / "k.json"
-        karte.write_text(
-            json.dumps({"meta": {"player_info": {}}}), encoding="utf-8"
-        )
+        karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         content.katrain = MagicMock()
         content._install_config_mock(mykatrain_settings={})
         content.ids["karte_path_input"].text = str(karte)
@@ -1077,6 +1104,7 @@ class TestPhase2258DefaultUserRankFallback:
         """``4段`` passed through default_user_rank triggers the ADVANCED
         mode in estimate_mode_from_rank."""
         from katrain.core.coach.master_db import estimate_mode_from_rank
+
         assert estimate_mode_from_rank("4段") is not None
         assert estimate_mode_from_rank("4段").name == "ADVANCED"
 
@@ -1089,7 +1117,7 @@ class TestOpenLlmCoachPopup:
         with patch("katrain.gui.popups.llm_coach_popup.I18NPopup") as mock_popup_cls:
             mock_popup = MagicMock()
             mock_popup_cls.return_value.__self__ = mock_popup
-            popup = open_llm_coach_popup(ctx)
+            open_llm_coach_popup(ctx)
         # Popup opened once
         assert mock_popup.open.call_count == 1
         # The content widget was created with ctx
@@ -1249,9 +1277,7 @@ class TestPopulateSummaryPerspective:
             ),
             encoding="utf-8",
         )
-        content._populate_summary_perspective(
-            str(summary), default_user="sentoku870", default_user_rank="4d"
-        )
+        content._populate_summary_perspective(str(summary), default_user="sentoku870", default_user_rank="4d")
         # summary_players was populated
         names = [p[0] for p in content.summary_players]
         assert "sentoku870" in names
@@ -1275,12 +1301,11 @@ class TestPopulateSummaryPerspective:
             ),
             encoding="utf-8",
         )
-        content._populate_summary_perspective(
-            str(summary), default_user=None, default_user_rank=None
-        )
-        # No default user → birdseye (index 0)
+        content._populate_summary_perspective(str(summary), default_user=None, default_user_rank=None)
+        # No default user → birdseye (index 0). ``perspective_value`` is
+        # a StringProperty so None is represented as the empty string.
         assert content.summary_perspective_index == 0
-        assert content.perspective_value is None
+        assert content.perspective_value == ""
 
     def test_rank_auto_filled_from_matched_player(self, tmp_path):
         content = _make_content()
@@ -1295,9 +1320,7 @@ class TestPopulateSummaryPerspective:
             ),
             encoding="utf-8",
         )
-        content._populate_summary_perspective(
-            str(summary), default_user="sentoku870", default_user_rank=None
-        )
+        content._populate_summary_perspective(str(summary), default_user="sentoku870", default_user_rank=None)
         # rank_input should have "4d" set
         assert content.ids["rank_input"].text == "4d"
         assert content.detected_rank == "4d"
@@ -1315,9 +1338,7 @@ class TestPopulateSummaryPerspective:
             ),
             encoding="utf-8",
         )
-        content._populate_summary_perspective(
-            str(summary), default_user="sentoku870", default_user_rank="3k"
-        )
+        content._populate_summary_perspective(str(summary), default_user="sentoku870", default_user_rank="3k")
         # rank_input should have "3k" (from default_user_rank fallback)
         assert content.ids["rank_input"].text == "3k"
 
@@ -1371,9 +1392,7 @@ class TestOnGenerateSummary:
                     "phase_x_mistake": {"middle:blunder": 5},
                     "players": {"p1": {"rank": "4d"}},
                     "weaknesses": {
-                        "black": [
-                            {"phase": "middle", "category": "blunder", "count": 3, "total_loss": 10.0}
-                        ]
+                        "black": [{"phase": "middle", "category": "blunder", "count": 3, "total_loss": 10.0}]
                     },
                 }
             ),
@@ -1381,11 +1400,10 @@ class TestOnGenerateSummary:
         )
         content.karte_path_input.text = str(summary)
         content.path_type = "summary"
-        with patch(
-            "katrain.gui.features.llm_coach.build_summary_llm_prompt"
-        ) as mock_build, patch(
-            "katrain.gui.popups.llm_coach_popup.Clipboard"
-        ) as mock_clip:
+        with (
+            patch("katrain.gui.features.llm_coach.build_summary_llm_prompt") as mock_build,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip,
+        ):
             mock_build.return_value = (True, "# Summary prompt\n**3 局**")
             content.on_generate_and_copy()
         # build_summary_llm_prompt was called
@@ -1410,11 +1428,10 @@ class TestOnGenerateSummary:
         content.karte_path_input.text = str(karte)
         content.path_type = "karte"
         content.ids["response_input"].text = ""
-        with patch(
-            "katrain.gui.features.llm_coach.build_llm_prompt"
-        ) as mock_build, patch(
-            "katrain.gui.popups.llm_coach_popup.Clipboard"
-        ) as mock_clip:
+        with (
+            patch("katrain.gui.features.llm_coach.build_llm_prompt") as mock_build,
+            patch("katrain.gui.popups.llm_coach_popup.Clipboard") as mock_clip,
+        ):
             mock_build.return_value = (True, "# Karte prompt")
             content.on_generate_and_copy()
         # build_llm_prompt was called (not build_summary)
@@ -1425,9 +1442,7 @@ class TestOnGenerateSummary:
     def test_empty_path_shows_error(self):
         content = _make_content()
         content.karte_path_input.text = ""
-        with patch(
-            "katrain.gui.features.llm_coach.build_llm_prompt"
-        ) as mock_build:
+        with patch("katrain.gui.features.llm_coach.build_llm_prompt") as mock_build:
             content.on_generate_and_copy()
         # Neither builder was called
         assert not mock_build.called
@@ -1446,19 +1461,17 @@ class TestOnValidateSummary:
                     "meta": {"games_analyzed": 3},
                     "phase_x_mistake": {"middle:blunder": 5},
                     "players": {"p1": {"rank": "4d"}},
-                    "weaknesses": {"black": [{"phase": "middle", "category": "blunder", "count": 3, "total_loss": 10.0}]},
+                    "weaknesses": {
+                        "black": [{"phase": "middle", "category": "blunder", "count": 3, "total_loss": 10.0}]
+                    },
                 }
             ),
             encoding="utf-8",
         )
         content.karte_path_input.text = str(summary)
         content.path_type = "summary"
-        content.ids["response_input"].text = (
-            "考察: ...\n抽出した弱点パターン: [blunder]\n参照したphase: [middle]\n"
-        )
-        with patch(
-            "katrain.gui.features.llm_coach.validate_summary_llm_response"
-        ) as mock_validate:
+        content.ids["response_input"].text = "考察: ...\n抽出した弱点パターン: [blunder]\n参照したphase: [middle]\n"
+        with patch("katrain.gui.features.llm_coach.validate_summary_llm_response") as mock_validate:
             mock_validate.return_value = (True, "**Status**: clean")
             content.on_validate()
         assert mock_validate.called
@@ -1480,9 +1493,7 @@ class TestOnValidateSummary:
         content.karte_path_input.text = str(karte)
         content.path_type = "karte"
         content.ids["response_input"].text = "考察: テスト"
-        with patch(
-            "katrain.gui.features.llm_coach.validate_llm_response"
-        ) as mock_validate:
+        with patch("katrain.gui.features.llm_coach.validate_llm_response") as mock_validate:
             mock_validate.return_value = (True, "**Status**: clean (karte)")
             content.on_validate()
         assert mock_validate.called
@@ -1529,7 +1540,9 @@ class TestOnSummaryPerspectiveChanged:
         content.ids["perspective_select"].text = birdseye
         content.on_summary_perspective_changed()
         assert content.summary_perspective_index == 0
-        assert content.perspective_value is None
+        # ``perspective_value`` is a StringProperty; bird's-eye is the
+        # empty string sentinel.
+        assert content.perspective_value == ""
 
 
 class TestOnPathChanged:

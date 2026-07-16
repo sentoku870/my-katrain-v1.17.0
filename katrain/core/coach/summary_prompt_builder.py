@@ -254,9 +254,7 @@ def _format_patterns_block(patterns: list[dict[str, Any]]) -> str:
         # The player key (if present, Shape B) takes precedence over
         # the generic ``color`` label so the LLM knows which player
         # this pattern came from.
-        source_label = (
-            f"player=`{p['player']}`" if "player" in p else f"color=`{p['color']}`"
-        )
+        source_label = f"player=`{p['player']}`" if "player" in p else f"color=`{p['color']}`"
         lines.append(
             f"{i}. **{p['category']}** / phase=`{p['phase']}` / "
             f"{source_label} / count={p['count']} / "
@@ -342,10 +340,7 @@ def _format_player_mistakes_block(
             avg = top.get("avg_loss", 0.0)
             cnt = top.get("count", 0)
             denom = top.get("denominator", 0)
-            lines.append(
-                f"- **{player_name}**: "
-                f"top={top['category']} ({cnt}/{denom}, {pct:.1f}%, avg_loss {avg:.2f})"
-            )
+            lines.append(f"- **{player_name}**: top={top['category']} ({cnt}/{denom}, {pct:.1f}%, avg_loss {avg:.2f})")
         return "\n".join(lines) if lines else "(データがありません)"
 
     entries = player_mistakes[focused_player]
@@ -358,10 +353,7 @@ def _format_player_mistakes_block(
         cnt = m["count"]
         pct = m["pct"]
         avg = m["avg_loss"]
-        lines.append(
-            f"- **{m['category']}**: "
-            f"{cnt}/{denom} ({pct:.1f}%) - avg_loss {avg:.2f}"
-        )
+        lines.append(f"- **{m['category']}**: {cnt}/{denom} ({pct:.1f}%) - avg_loss {avg:.2f}")
     return "\n".join(lines)
 
 
@@ -392,11 +384,7 @@ def _format_player_phases_block(
         )
 
     def _format_phase_line(label: str, data: dict[str, Any]) -> str:
-        return (
-            f"- **{label}**: "
-            f"{data['moves']}手 / {data['total_loss']:.2f}損失 "
-            f"(avg {data['avg_loss']:.3f})"
-        )
+        return f"- **{label}**: {data['moves']}手 / {data['total_loss']:.2f}損失 (avg {data['avg_loss']:.3f})"
 
     if focused_player is None or focused_player not in player_phases:
         # Bird's-eye: show the worst phase per player
@@ -459,9 +447,7 @@ def build_summary_weakness_prompt(
     # the helper blocks know which row to highlight.
     player_mistakes_all = extract_summary_player_mistakes(summary_json)
     player_phases_all = extract_summary_player_phase_losses(summary_json)
-    focused_player = _resolve_focused_player(
-        summary_json, config.player_name
-    )
+    focused_player = _resolve_focused_player(summary_json, config.player_name)
 
     focus = _focus_label(config.player_name)
     rank_lbl = _rank_label(config.player_rank)
@@ -489,18 +475,10 @@ def build_summary_weakness_prompt(
         patterns_count=len(patterns_capped),
         patterns_block=_format_patterns_block(patterns_capped),
         buckets_block=_format_buckets_block(buckets),
-        player_mistakes_block=_format_player_mistakes_block(
-            player_mistakes_all, focused_player
-        ),
-        player_phases_block=_format_player_phases_block(
-            player_phases_all, focused_player
-        ),
-        player_mistakes_focus=(
-            f" ({focused_player})" if focused_player else " (全体俯瞰)"
-        ),
-        player_phases_focus=(
-            f" ({focused_player})" if focused_player else " (全体俯瞰)"
-        ),
+        player_mistakes_block=_format_player_mistakes_block(player_mistakes_all, focused_player),
+        player_phases_block=_format_player_phases_block(player_phases_all, focused_player),
+        player_mistakes_focus=(f" ({focused_player})" if focused_player else " (全体俯瞰)"),
+        player_phases_focus=(f" ({focused_player})" if focused_player else " (全体俯瞰)"),
     )
 
     # Optional total_loss annotation appended to body when available

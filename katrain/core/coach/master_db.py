@@ -433,7 +433,11 @@ def estimate_mode_from_loss(
         adjustments += 1
 
     modes = list(CoachMode)
-    base_idx = modes.index(base)
+    # ``base`` is the result of ``estimate_mode_from_rank("10k")`` which
+    # returns ``CoachMode.INTERMEDIATE`` today, but the helper can in
+    # principle return ``None`` for an unrecognised rank. Fall back to
+    # the safe default so the index lookup never crashes.
+    base_idx = modes.index(base) if base is not None else modes.index(CoachMode.INTERMEDIATE)
     effective_idx = max(0, base_idx - adjustments)
     return modes[effective_idx]
 

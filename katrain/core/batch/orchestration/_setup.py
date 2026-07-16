@@ -30,7 +30,20 @@ def _setup_batch(
     generate_curator: bool,
     skip_analyzed: bool,
     log_cb: Callable[[str], None] | None,
-) -> tuple[str, list[tuple[str, str]], int, str, list[dict[str, Any]] | None, list[tuple[Any, dict[str, Any]]] | None, list[int], dict[str, str], EngineFailureTracker] | None:
+) -> (
+    tuple[
+        str,
+        list[tuple[str, str]],
+        int,
+        str,
+        list[dict[str, Any]] | None,
+        list[tuple[Any, dict[str, Any]]] | None,
+        list[int],
+        dict[str, str],
+        EngineFailureTracker,
+    ]
+    | None
+):
     """Validate input, create output subdirs, collect SGF files, init trackers.
 
     Returns:

@@ -15,10 +15,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from katrain.common.short_hash import short_hash
+from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.batch.io_safe import safe_write_file
 from katrain.core.batch.models import WriteError
 from katrain.core.batch.orchestration._context import _BatchFileContext
-from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.reports.karte.builder import build_karte_report
 from katrain.core.reports.karte.models import KarteGenerationError
 

@@ -9,11 +9,6 @@ the existing karte suite (we don't duplicate those tests here).
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-
 # --- MetaExtractor (Phase 225.6) --------------------------------------
 
 
@@ -81,9 +76,7 @@ class TestBuildKarteJsonMetaPlayerInfo:
         from katrain.core.reports.karte import json_export
 
         source = inspect.getsource(json_export)
-        assert '"player_info"' in source, (
-            "build_karte_json meta dict must include a 'player_info' block"
-        )
+        assert '"player_info"' in source, "build_karte_json meta dict must include a 'player_info' block"
         # The block must reference common_meta['players'] and common_meta['ranks']
         # so it stays in sync with MetaExtractor.
         assert 'common_meta["players"]' in source

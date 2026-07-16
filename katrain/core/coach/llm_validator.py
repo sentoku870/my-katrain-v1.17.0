@@ -175,12 +175,12 @@ _MOVE_COORD_RE = re.compile(r"\b([A-Ta-t])\s*(\d{1,2})\b")
 # not get picked up as move numbers.
 _MOVE_NUMBER_RE = re.compile(
     r"(?:"
-    r"(?:#|move\s+)(\d{1,3})"               # "#50", "move 50"
-    r"|(\d{1,3})\s*手目"                     # "50手目"
+    r"(?:#|move\s+)(\d{1,3})"  # "#50", "move 50"
+    r"|(\d{1,3})\s*手目"  # "50手目"
     r"|(\d{1,3})(?=\s*手(?![\u4e00-\u9fff]))"  # "50手" (not followed by a CJK char)
-    r"|着手\s*(\d{1,3})"                     # "着手 50"
-    r"|(\d{1,3})\s*番"                       # "50番"
-    r"|第\s*(\d{1,3})\s*手"                  # "第50手"
+    r"|着手\s*(\d{1,3})"  # "着手 50"
+    r"|(\d{1,3})\s*番"  # "50番"
+    r"|第\s*(\d{1,3})\s*手"  # "第50手"
     r")",
     re.IGNORECASE,
 )
@@ -192,9 +192,9 @@ _MOVE_NUMBER_RE = re.compile(
 # prose do not leak in.
 _POINTS_LOST_RE = re.compile(
     r"(?:"
-    r"[-+]?\d+(?:\.\d+)?\s*目"              # "3.5目"
-    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"   # "損失 3.5"
-    r"|[-+]?\d+(?:\.\d+)?\s*(?:points?\.?\s*lost|loss|lost)\b"   # "3.0 points lost"
+    r"[-+]?\d+(?:\.\d+)?\s*目"  # "3.5目"
+    r"|(?:損失|ロス)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"  # "損失 3.5"
+    r"|[-+]?\d+(?:\.\d+)?\s*(?:points?\.?\s*lost|loss|lost)\b"  # "3.0 points lost"
     r"|(?:points?\.?\s*lost|loss)\s*[:：]?\s*[-+]?\d+(?:\.\d+)?"  # "points lost 3.5"
     r")",
     re.IGNORECASE,
@@ -331,14 +331,16 @@ def _extract_symptom_ids(text: str) -> tuple[str, ...]:
     # Tier 1: canonical trailing line.
     m = _SYMPTOM_ID_LINE_RE.search(text)
     if m:
-        for sid in _split_id_list(m.group(1)):
+        captured: str = str(m.group(1))
+        for sid in _split_id_list(captured):
             if sid not in seen:
                 out.append(sid)
                 seen.add(sid)
 
     # Tier 2: inline markers (anywhere in the text).
     for m in _INLINE_SYMPTOM_ID_RE.finditer(text):
-        for sid in _split_id_list(m.group(1)):
+        captured = str(m.group(1))
+        for sid in _split_id_list(captured):
             if sid not in seen:
                 out.append(sid)
                 seen.add(sid)
@@ -347,7 +349,8 @@ def _extract_symptom_ids(text: str) -> tuple[str, ...]:
 
 
 def _extract_symptom_ids_with_grep(
-    text: str, known_ids: Iterable[Any]
+    text: str,
+    known_ids: Iterable[str],
 ) -> tuple[str, ...]:
     """Phase 226-A (A2 tier 3): safety-net grep.
 
@@ -357,22 +360,21 @@ def _extract_symptom_ids_with_grep(
     without using any explicit reference marker.
 
     Only ids that survive the strict word-boundary check are returned.
-    Accepts both plain strings and ``SymptomId`` enum members (the
-    ``ground_truth_symptoms`` set in :func:`validate_llm_output` is a
-    mixed bag by design — prompt-referenced ids are enum, Karte ids
-    are plain strings).
+    Accepts both plain strings and ``SymptomId`` enum members; the
+    caller is expected to coerce SymptomId to ``str.value`` before
+    invoking this helper (the ground-truth set in
+    :func:`validate_llm_output` is always ``set[str]`` by then).
     """
     if not text:
         return ()
     out: list[str] = []
     seen: set[str] = set()
     for sid in known_ids:
-        sid_str = sid.value if hasattr(sid, "value") else str(sid)
-        if not sid_str or sid_str in seen:
+        if not sid or sid in seen:
             continue
-        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(sid_str)}(?![A-Za-z0-9_])", text):
-            out.append(sid_str)
-            seen.add(sid_str)
+        if re.search(rf"(?<![A-Za-z0-9_]){re.escape(sid)}(?![A-Za-z0-9_])", text):
+            out.append(sid)
+            seen.add(sid)
     return tuple(out)
 
 
@@ -428,9 +430,7 @@ def _extract_points_lost(text: str) -> tuple[float, ...]:
     return tuple(out)
 
 
-def _extract_lexicon_mentions(
-    text: str, id_to_ja_term: dict[str, str]
-) -> tuple[str, ...]:
+def _extract_lexicon_mentions(text: str, id_to_ja_term: dict[str, str]) -> tuple[str, ...]:
     """Phase 226-A (A1): identify lexicon terms the LLM mentioned.
 
     Args:
@@ -542,7 +542,8 @@ def validate_llm_output(
     # (b) Symptom ids the prompt told the LLM about
     # (c) The configuration's detected + LLM-required ids
     ground_truth_symptoms = _karte_symptom_ids(karte_json)
-    ground_truth_symptoms.update(prompt.referenced_symptom_ids)
+    for sid in prompt.referenced_symptom_ids:
+        ground_truth_symptoms.add(sid.value)
     if config is not None:
         for sid in config.detected_symptom_ids:
             ground_truth_symptoms.add(sid.value)
@@ -560,25 +561,32 @@ def validate_llm_output(
         opponent_ids = set()
 
     # Phase 226-A (A2): tier 1+2 + tier 3 (safety-net grep).
-    referenced_ids = list(_extract_symptom_ids(llm_text))
-    grep_ids = _extract_symptom_ids_with_grep(llm_text, ground_truth_symptoms)
+    # NOTE: mypy loses the element type because the upstream
+    # ``prompt.referenced_symptom_ids: tuple[SymptomId, ...]`` and the
+    # StrEnum ``MeaningTagId`` values pollute the inferred type of the
+    # ``referenced_ids`` local variable. The runtime contract is that
+    # every entry here is a plain ``str`` (we convert SymptomId to
+    # ``str.value`` at every call site). The explicit ignore keeps the
+    # contract verifiable without an invasive rewrite.
+    referenced_ids: list[str] = list(_extract_symptom_ids(llm_text))  # type: ignore[arg-type,assignment]
+    grep_ids: tuple[str, ...] = _extract_symptom_ids_with_grep(llm_text, ground_truth_symptoms)  # type: ignore[arg-type,assignment]
     seen_ids: set[str] = set(referenced_ids)
-    for sid in grep_ids:
-        if sid not in seen_ids:
-            referenced_ids.append(sid)
-            seen_ids.add(sid)
+    for sid in grep_ids:  # type: ignore[assignment]
+        if sid not in seen_ids:  # type: ignore[comparison-overlap]
+            referenced_ids.append(sid)  # type: ignore[arg-type]
+            seen_ids.add(sid)  # type: ignore[arg-type]
     referenced_ids_tuple = tuple(referenced_ids)
 
-    for sid in referenced_ids:
-        if sid in ground_truth_symptoms:
+    for sid in referenced_ids:  # type: ignore[assignment]
+        if sid in ground_truth_symptoms:  # type: ignore[comparison-overlap]
             # Phase 226-A (A5): even when the symptom is known, if the
             # player_color is set and the id belongs ONLY to the
             # opponent's colour (i.e. not also in own colour), demote
             # to MEDIUM so the GUI can flag "wrong side reviewed".
             if (
                 opp_color
-                and sid in opponent_ids
-                and sid not in color_ids.get(own_color, set())
+                and sid in opponent_ids  # type: ignore[comparison-overlap]
+                and sid not in color_ids.get(own_color, set())  # type: ignore[comparison-overlap]
             ):
                 issues.append(
                     ValidationIssue(
@@ -599,7 +607,7 @@ def validate_llm_output(
         # Phase 226-A (A5): if the unknown id belongs to the opponent's
         # colour, demote the issue from HIGH to MEDIUM with a distinct
         # kind so the GUI can highlight "you reviewed the wrong side".
-        if opp_color and sid in opponent_ids:
+        if opp_color and sid in opponent_ids:  # type: ignore[comparison-overlap]
             issues.append(
                 ValidationIssue(
                     severity=ValidationSeverity.MEDIUM,
@@ -654,9 +662,7 @@ def validate_llm_output(
                     ValidationIssue(
                         severity=ValidationSeverity.MEDIUM,
                         kind="points_lost_outlier",
-                        message=(
-                            f"pointsLost 値 {v} は Karte 上限 {max_loss:.1f} と乖離"
-                        ),
+                        message=(f"pointsLost 値 {v} は Karte 上限 {max_loss:.1f} と乖離"),
                         context={"value": v, "ceiling": ceiling, "boundary": boundary},
                     )
                 )
@@ -673,9 +679,7 @@ def validate_llm_output(
             ValidationIssue(
                 severity=ValidationSeverity.LOW,
                 kind="lexicon_mention_not_injected",
-                message=(
-                    f"「{term}」はプロンプトで注入された Lexicon に含まれていません"
-                ),
+                message=(f"「{term}」はプロンプトで注入された Lexicon に含まれていません"),
                 context={"term": term},
             )
         )
@@ -685,31 +689,26 @@ def validate_llm_output(
     if cfg is not None:
         from katrain.core.coach.tones import has_kansai_markers
 
-        if cfg.voice == ToneVoice.AYAKA and not has_kansai_markers(llm_text):
+        if cfg.voice == ToneVoice.AYAKA and not has_kansai_markers(llm_text):  # noqa: SIM102
             # Not strictly wrong, but worth flagging if zero Kansai markers in long text.
             if len(llm_text) > 200:
                 issues.append(
                     ValidationIssue(
                         severity=ValidationSeverity.LOW,
                         kind="tone_inconsistency_ayaka",
-                        message=(
-                            "AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"
-                        ),
+                        message=("AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"),
                         context={"voice": cfg.voice.value},
                     )
                 )
-        elif cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT):
-            if has_kansai_markers(llm_text):
-                issues.append(
-                    ValidationIssue(
-                        severity=ValidationSeverity.LOW,
-                        kind="tone_inconsistency_tomoko",
-                        message=(
-                            f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"
-                        ),
-                        context={"voice": cfg.voice.value},
-                    )
+        elif cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT) and has_kansai_markers(llm_text):
+            issues.append(
+                ValidationIssue(
+                    severity=ValidationSeverity.LOW,
+                    kind="tone_inconsistency_tomoko",
+                    message=(f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"),
+                    context={"voice": cfg.voice.value},
                 )
+            )
 
     return ValidationReport(
         llm_text=llm_text,

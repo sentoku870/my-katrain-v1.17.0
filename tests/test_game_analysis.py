@@ -4,7 +4,6 @@ Tests for Game.analyze_extra() and Game._compute_important_moves().
 Uses shared fixtures from conftest.py.
 """
 
-
 from katrain.core.analysis.modes import AnalysisMode
 from katrain.core.game import Move
 from katrain.core.game_node import GameNode

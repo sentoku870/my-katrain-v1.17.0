@@ -40,10 +40,7 @@ from typing import Any
 import yaml
 
 DEFAULT_LEXICON_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent
-    / "docs"
-    / "resources"
-    / "go_lexicon_master_last.yaml"
+    Path(__file__).resolve().parent.parent.parent.parent / "docs" / "resources" / "go_lexicon_master_last.yaml"
 )
 
 
@@ -343,14 +340,11 @@ def validate_references() -> dict[str, Any]:
         "duplicate_ids": dupes,
         "level_distribution": {
             str(k): v
-            for k, v in (Counter(e.level for e in bundle.entries)
-                         + Counter(c.level for c in bundle.concepts)).items()
+            for k, v in (Counter(e.level for e in bundle.entries) + Counter(c.level for c in bundle.concepts)).items()
         },
-        "category_distribution": dict(Counter(
-            e.category for e in bundle.entries
-        ) | Counter(
-            c.category for c in bundle.concepts
-        )),
+        "category_distribution": dict(
+            Counter(e.category for e in bundle.entries) | Counter(c.category for c in bundle.concepts)
+        ),
     }
 
 

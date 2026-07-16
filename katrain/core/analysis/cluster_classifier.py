@@ -596,7 +596,7 @@ def get_cluster_context_for_move(
         return get_semantics_label(classified.semantics, lang)
 
     except Exception:
-        logger.debug('find_localized_classification relaxation fallback', exc_info=True)
+        logger.debug("find_localized_classification relaxation fallback", exc_info=True)
         return None  # Catch all, don't break Karte
 
 

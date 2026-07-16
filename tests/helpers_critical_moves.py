@@ -128,6 +128,7 @@ def create_test_snapshot(
         ... ])
     """
     from katrain.core.analysis.models.enums import MistakeCategory, PositionDifficulty
+
     moves: list[MoveEval] = []
 
     for data in move_data:

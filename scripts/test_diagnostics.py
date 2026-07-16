@@ -1,11 +1,12 @@
 
-import sys
 import os
+import sys
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from katrain.core.diagnostics import collect_system_info
+
 
 def test_hardware_info():
     print("Collecting system info...")
