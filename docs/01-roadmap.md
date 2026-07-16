@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D + Phase 229-A〜E 完了）
+> 最終更新: 2026-07-16（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D + Phase 229-A〜E + Phase 230-A〜E + 230-A.1〜A.2 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -1115,6 +1115,16 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - 229-E: ドキュメント整備（`docs/archive/specs-implemented/phase229-rank-preset-unification.md`）
   - 詳細: `docs/archive/specs-implemented/phase229-rank-preset-unification.md`
   - 累計 5,572 件テスト合格 (Phase 228-D 終了時 5,418 件 + 154 件新規)
+- [x] **Phase 230: MyKatrain UI/UX 整理**（Lv3、2026-07-16 完了）
+  - **230-B**: Leela 残滓削除（`_build_disable_katago_section` 削除 + `engine-compare:*` i18n 35 キー削除）
+  - **230-C**: 棋譜並べタブ途切れ修正（可変高 RowLayout + `text_size` wrap 解除）
+  - **230-D**: 診断タブ新設（`diagnostics_tab.py` 新規）+ mykatrain メニュー「診断情報」削除
+  - **230-E**: 棋力入力統合（出力設定の `default_user_rank` 廃止、解析タブの `player_rank` に統合）+ 自動マイグレーション
+  - **230-A**: MyKatrain メニュー整理（4 項目に集約、アイコン重複解消、`chat.png` 欠損修正）
+  - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正（`content_width` プロパティ追加）
+  - **230-A.2**: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
+  - 詳細: `docs/archive/specs-implemented/phase230-ui-ux-cleanup.md`
+  - 23 ファイル + 新規 1 ファイル、合計 約 -726 行、全 5,572 件テスト合格継続
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---

@@ -27,6 +27,8 @@ class _SettingsPopupContext:
     Phase 171: Leela タブ削除のため tab 数は 3 → 2 に。
     ``leela_config`` フィールドも削除。
     Phase 177: Kifunarabe タブ追加のため tab 数は 2 → 3 に。
+    Phase 230-B: Leela 検証用の disable_katago チェックボックスを
+    削除。``selected_disable_katago`` フィールドも廃止。
 
     Attributes:
         ctx: FeatureContext providing config, save_config, controls.
@@ -35,7 +37,6 @@ class _SettingsPopupContext:
         current_engine: Resolved engine id via ``get_analysis_engine``.
             Phase 171 からは常に ``"katago"``。
         selected_engine: [engine_id] - 後方互換のため維持。常に ``"katago"``。
-        selected_disable_katago: [bool] - mutated by disable-katago checkbox.
         selected_skill_preset: [str] - mutated by skill preset radio buttons.
         selected_pv_filter: [str] - mutated by PV filter radio buttons.
         selected_beginner_hints: [bool] - mutated by beginner hints checkbox.
@@ -52,7 +53,6 @@ class _SettingsPopupContext:
     engine_config: dict[str, Any]
     current_engine: str
     selected_engine: list[str]
-    selected_disable_katago: list[bool]
     # Phase 229: the analysis tab no longer exposes skill_preset as a
     # radio button group.  Instead, the user types ``player_rank`` (e.g.
     # ``5k`` / ``4段``) and the preset is auto-derived.  The selected_*

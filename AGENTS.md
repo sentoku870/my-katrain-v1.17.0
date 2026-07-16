@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -65,6 +65,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 229-D: LLM Coach fallback chain に `general/player_rank` 追加 + 17 tests
     - 229-E: ドキュメント（マスター仕様書、AGENTS / roadmap 更新）
     - 詳細: `docs/archive/specs-implemented/phase229-rank-preset-unification.md`
+  - Phase 230（2026-07-16）: **MyKatrain UI/UX 整理**（Lv3、23 ファイル + 約 -726 行 / 新規 1 ファイル、全 5,572 件テスト合格継続）
+    - 230-B: Leela 残滓削除（`disable_katago` チェックボックス削除 + `engine-compare:*` i18n 35 キー削除）
+    - 230-C: 棋譜並べタブ途切れ修正（可変高 RowLayout + `text_size` wrap 解除）
+    - 230-D: 診断タブ新設（`diagnostics_tab.py` 新規）+ MyKatrain メニュー「診断情報」削除
+    - 230-E: 棋力入力統合（出力設定の `default_user_rank` 廃止、解析タブの `player_rank` に統合）+ 自動マイグレーション
+    - 230-A: MyKatrain メニュー整理（4 項目に集約、アイコン重複解消、`chat.png` 欠損修正）
+    - 230-A.1: `MyKatrainMenuSectionHeader` クラッシュ修正（`content_width` プロパティ追加）
+    - 230-A.2: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -312,6 +320,16 @@ docs/
 
 > 直近 3 ヶ月の主要 Phase のみ記載。Phase 1-169 の詳細は `docs/archive/CHANGELOG.md` および `docs/archive/ROADMAP_HISTORY.md` を参照。各 Phase の詳細スペックは `docs/archive/specs-implemented/phase*.md` に格納。
 
+- 2026-07-16: **Phase 230 — MyKatrain UI/UX 整理**（Lv3、23 ファイル + 約 -726 行 / 新規 1 ファイル、全 5,572 件テスト合格継続）
+  - **問題**: メニューに使用頻度の低い項目が混在、Leela 検証用の孤立 UI、棋力入力欄の重複、棋譜並べタブの説明途切れ、診断設定が独立メニュー
+  - **解決策**: メニュー 4 項目への集約、Leela 残滓削除、棋力入力統合、可変高レイアウト修正、診断タブ統合、低頻度機能の完全削除
+  - **230-B**: Leela 残滓削除 — `_build_disable_katago_section` 関数 + `engine/disabled` 設定更新 + `engine-compare:*` i18n 35 キー削除
+  - **230-C**: 棋譜並べタブ途切れ修正 — `_build_display_checkbox` の固定 `dp(36)` 高さ → `text_size=(width, None)` + `texture_size[1]` への row.height バインドで wrap 対応、help セクションも可変化
+  - **230-D**: 診断タブ新設 — `settings_popup_tabs/diagnostics_tab.py` 新規、`diagnostics_popup.py` のロジックを再利用、MyKatrain メニュー「診断情報」を削除してタブ統合
+  - **230-E**: 棋力入力統合 — 出力設定の `default_user_rank` 廃止、解析タブの `player_rank` に統合 + 自動マイグレーション（`migrate_default_user_rank`）+ 5 unit tests
+  - **230-A**: MyKatrain メニュー整理 — 8 項目 → 4 項目（「その他」サブメニュー化 → 後に完全削除）、アイコン重複解消、`chat.png` 欠損修正（`Teaching-Settings.png` に振替）
+  - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
+  - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
 - 2026-07-15: **Phase 229 — 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
   - **問題**: myKatrain には解析側 `skill_preset` と LLM 側 `CoachMode` の 2 つの棋力管理体系があり、同じ rank 文字列を二重管理していた
   - **解決策**: `general/player_rank` を 1 つの入力として集約、両システムへ自動反映

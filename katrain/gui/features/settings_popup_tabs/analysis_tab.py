@@ -31,6 +31,7 @@ def _build_engine_section(inner: BoxLayoutType, state: _SettingsPopupContext) ->
     """Add the KataGo engine selection row (Phase 171: fixed display).
 
     Phase 171 で Leela を廃止したため、KataGo 固定の表示に整理。
+    Phase 230-B で Leela 検証用の disable_katago チェックボックスを削除。
     ``selected_engine`` は呼び出し側の初期化互換のため残しているが、
     値は常に ``"katago"`` が入る。
     """
@@ -49,31 +50,12 @@ def _build_engine_section(inner: BoxLayoutType, state: _SettingsPopupContext) ->
     engine_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
 
     engine_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    engine_layout.add_widget(Label(size_hint_x=None, width=dp(30)))  # spacer (no checkbox needed)
     engine_layout.add_widget(engine_label)
     inner.add_widget(engine_layout)
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:analysis_engine", engine_layout)
     # Phase 171: KataGo 固定（後方互換のため EngineType は参照だけ残す）
     _ = EngineType.KATAGO
-
-
-def _build_disable_katago_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Add the 'Disable KataGo' checkbox row (Phase 3 Extension)."""
-    _add_searchable_label(inner, "mykatrain:settings:disable_katago", state)
-
-    disable_katago_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
-    disable_katago_checkbox = CheckBox(
-        active=state.selected_disable_katago[0],
-        size_hint_x=None,
-        width=dp(30),
-    )
-    disable_katago_checkbox.bind(active=lambda chk, active: state.selected_disable_katago.__setitem__(0, active))
-    disable_katago_layout.add_widget(disable_katago_checkbox)
-    disable_katago_layout.add_widget(Label())  # Spacer
-    inner.add_widget(disable_katago_layout)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:disable_katago", disable_katago_layout)
 
 
 def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
@@ -153,6 +135,24 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
     # can refresh it without rebuilding the layout (avoids focus loss).
     state._rank_inferred_label = inferred_label
     inner.add_widget(inferred_label)
+
+    # Phase 230-E: usage help. ``player_rank`` now also serves as the
+    # LLM Coach fallback (Phase 229-D fallback chain), so make that
+    # explicit in the UI rather than hiding a second rank field in the
+    # export tab (which caused user confusion).
+    usage_label = Label(
+        text=i18n._("mykatrain:settings:player_rank_usage"),
+        size_hint_y=None,
+        height=dp(36),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="12sp",
+    )
+    usage_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
+    usage_label.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
+    inner.add_widget(usage_label)
 
 
 def _format_rank_inferred_label(rank_str: str, resolved_preset: str) -> str:
@@ -321,9 +321,11 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
     Phase 175: Extracted from ``do_mykatrain_settings_popup`` and split
     into per-section builders.
 
+    Phase 230-B: Leela 残滓 (disable_katago checkbox) を削除。
+
     Args:
         state: Shared mutable state. Mutates selected_engine,
-            selected_disable_katago, selected_skill_preset, selected_pv_filter,
+            selected_skill_preset, selected_pv_filter,
             selected_beginner_hints via checkbox callbacks.
 
     Returns:
@@ -336,7 +338,6 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
     inner.bind(minimum_height=inner.setter("height"))
 
     _build_engine_section(inner, state)
-    _build_disable_katago_section(inner, state)
     _build_player_rank_section(inner, state)
     _build_pv_filter_section(inner, state)
     _build_beginner_hints_section(inner, state)

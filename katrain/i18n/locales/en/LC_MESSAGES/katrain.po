@@ -55,26 +55,11 @@ msgstr "Manual"
 msgid "mykatrain:export-karte"
 msgstr "Export Karte"
 
+# Phase 230-A.2: menu:other_section / open-latest-report /
+# open-output-folder / export-summary / folder-not-exist /
+# no-reports-found / open-failed removed (3 features deleted)
 msgid "mykatrain:export-package"
 msgstr "Export LLM Package"
-
-msgid "mykatrain:open-latest-report"
-msgstr "Open Latest Report"
-
-msgid "mykatrain:open-output-folder"
-msgstr "Open Output Folder"
-
-msgid "mykatrain:no-reports-found"
-msgstr "No reports found. Export a karte first."
-
-msgid "mykatrain:folder-not-exist"
-msgstr "Folder not found: {path}"
-
-msgid "mykatrain:open-failed"
-msgstr "Could not open: {error}"
-
-msgid "mykatrain:export-summary"
-msgstr "Export Multi-Game Summary"
 
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
@@ -124,7 +109,9 @@ msgid "mykatrain:llm-coach:auto-detect-summary"
 msgstr "Default user '{user}' / B:{black} W:{white} → {color}"
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
-msgstr "Auto-detect failed: 'default_user_name' is not set in mykatrain settings. Open Settings → mykatrain → Default User Name and fill it in."
+msgstr ""
+"Auto-detect failed: 'default_user_name' is not set in mykatrain settings. "
+"Open Settings → mykatrain → Default User Name and fill it in."
 
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "Auto-detect error: {error}"
@@ -190,7 +177,8 @@ msgid "mykatrain:llm-coach:validation-issues"
 msgstr "⚠️ Issues found (see below)"
 
 msgid "mykatrain:llm-coach:validation-issues-with-count"
-msgstr "⚠️ {total} issues (HIGH:{high} MED:{medium} LOW:{low}) — see details below"
+msgstr ""
+"⚠️ {total} issues (HIGH:{high} MED:{medium} LOW:{low}) — see details below"
 
 msgid "mykatrain:llm-coach:status"
 msgstr "Status"
@@ -211,7 +199,10 @@ msgid "mykatrain:llm-coach:issues"
 msgstr "Detected Issues"
 
 msgid "mykatrain:llm-coach:truncated"
-msgstr "\n\n...(truncated)"
+msgstr ""
+"\n"
+"\n"
+"...(truncated)"
 
 # Phase 227-D: multi-game summary mode
 msgid "mykatrain:llm-coach:type-label-single"
@@ -239,7 +230,9 @@ msgid "mykatrain:llm-coach:summary-build-failed"
 msgstr "Summary prompt build failed: {error}"
 
 msgid "mykatrain:llm-coach:summary-copy-success"
-msgstr "✅ Summary pattern prompt copied ({chars} chars, {games} games, {patterns} patterns)"
+msgstr ""
+"✅ Summary pattern prompt copied ({chars} chars, {games} games, {patterns} "
+"patterns)"
 
 msgid "mykatrain:llm-coach:summary-report-meta"
 msgstr "Scope: {games} games / Focus: {focus}"
@@ -716,10 +709,18 @@ msgid "kifunarabe:summary:title"
 msgstr "Kifu Narabe - Results"
 
 msgid "kifunarabe:summary:headline"
-msgstr "Result: {correct} of {total} positions guessed correctly\n({attempted} of your guesses hit the actual move)"
+msgstr ""
+"Result: {correct} of {total} positions guessed correctly\n"
+"({attempted} of your guesses hit the actual move)"
 
 msgid "kifunarabe:summary:body"
-msgstr "Correct: {correct}\nWrong: {wrong}\nAuto-advanced: {auto}\nSkipped: {skipped}\nCorrect rate: {correct_rate}\nWrong rate: {wrong_rate}"
+msgstr ""
+"Correct: {correct}\n"
+"Wrong: {wrong}\n"
+"Auto-advanced: {auto}\n"
+"Skipped: {skipped}\n"
+"Correct rate: {correct_rate}\n"
+"Wrong rate: {wrong_rate}"
 
 msgid "kifunarabe:summary:limit_reached"
 msgstr "Stopped at the configured move limit."
@@ -1629,6 +1630,11 @@ msgstr "Currently: {preset} (auto-derived from {rank})"
 msgid "mykatrain:settings:player_rank_default"
 msgstr "Currently: {preset} (default; no rank set)"
 
+msgid "mykatrain:settings:player_rank_usage"
+msgstr ""
+"Used for both analysis thresholds and LLM Coach fallback (when Karte/SGF has"
+" no rank info)"
+
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "Candidate Filter (excl. best):"
 
@@ -1834,7 +1840,9 @@ msgid "beginner_hint:ownership_dominant:body"
 msgstr "KataGo expects one side to control most of the board."
 
 msgid "beginner_hint:ownership_dominant:why"
-msgstr "When the game is essentially decided, play steadily rather than forcing fights."
+msgstr ""
+"When the game is essentially decided, play steadily rather than forcing "
+"fights."
 
 msgid "beginner_hint:policy_conflict:title"
 msgstr "KataGo Is Unsure"
@@ -1843,7 +1851,9 @@ msgid "beginner_hint:policy_conflict:body"
 msgstr "KataGo's top move has low confidence — multiple candidates compete."
 
 msgid "beginner_hint:policy_conflict:why"
-msgstr "When several moves are equally strong, anchor on a strategic direction to simplify the choice."
+msgstr ""
+"When several moves are equally strong, anchor on a strategic direction to "
+"simplify the choice."
 
 msgid "beginner_hint:policy_confident:title"
 msgstr "KataGo Is Confident"
@@ -1852,7 +1862,8 @@ msgid "beginner_hint:policy_confident:body"
 msgstr "KataGo has a clear top move here."
 
 msgid "beginner_hint:policy_confident:why"
-msgstr "When AI is decisive, anchor on its recommendation to save thinking time."
+msgstr ""
+"When AI is decisive, anchor on its recommendation to save thinking time."
 
 msgid "beginner_hint:curator_weak_axis:title"
 msgstr "Your Weak Pattern"
@@ -1867,37 +1878,46 @@ msgid "mykatrain:settings:curator_hint"
 msgstr "Curator weak-axis hint:"
 
 msgid "mykatrain:settings:curator_hint_desc"
-msgstr "Show a one-line summary when the current move matches a mistake pattern that recurs across your analysed games"
+msgstr ""
+"Show a one-line summary when the current move matches a mistake pattern that"
+" recurs across your analysed games"
 
 msgid "mykatrain:settings:summary_ownership"
 msgstr "Territory-prediction hint:"
 
 msgid "mykatrain:settings:summary_ownership_desc"
-msgstr "Show a one-line summary when KataGo's predicted territory is one-sided (>= 85%)"
+msgstr ""
+"Show a one-line summary when KataGo's predicted territory is one-sided (>= "
+"85%)"
 
 msgid "mykatrain:settings:summary_policy"
 msgstr "KataGo policy hint:"
 
 msgid "mykatrain:settings:summary_policy_desc"
-msgstr "Show a one-line summary of KataGo's top-move confidence (unsure / confident)"
+msgstr ""
+"Show a one-line summary of KataGo's top-move confidence (unsure / confident)"
 
 msgid "mykatrain:settings:summary_mistake"
 msgstr "Mistake summary hints:"
 
 msgid "mykatrain:settings:summary_mistake_desc"
-msgstr "Show a one-line summary of blunder / mistake / good move based on points lost"
+msgstr ""
+"Show a one-line summary of blunder / mistake / good move based on points "
+"lost"
 
 msgid "mykatrain:settings:summary_freedom"
 msgstr "Move-freedom summary hints:"
 
 msgid "mykatrain:settings:summary_freedom_desc"
-msgstr "Show a one-line summary based on candidate count (only / narrow / many)"
+msgstr ""
+"Show a one-line summary based on candidate count (only / narrow / many)"
 
 msgid "mykatrain:settings:summary_difficulty"
 msgstr "Position-difficulty summary hints:"
 
 msgid "mykatrain:settings:summary_difficulty_desc"
-msgstr "Show a one-line summary based on KataGo's difficulty metric (tricky / calm)"
+msgstr ""
+"Show a one-line summary based on KataGo's difficulty metric (tricky / calm)"
 
 msgid "mykatrain:settings:katago_uncertain"
 msgstr "KataGo uncertainty hint:"
@@ -1907,9 +1927,6 @@ msgstr "Show a hint when KataGo's scoreStdev is high (even KataGo is unsure)"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
-
-msgid "mykatrain:settings:default_user_rank"
-msgstr "User Rank (optional):"
 
 msgid "mykatrain:settings:karte_output_directory"
 msgstr "Karte Output Directory:"
@@ -1977,8 +1994,12 @@ msgstr ""
 "Could not determine color for '{default_user}'.\n"
 "Exporting both players."
 
-msgid "Failed to save karte:\n{error}"
-msgstr "Failed to save karte:\n{error}"
+msgid ""
+"Failed to save karte:\n"
+"{error}"
+msgstr ""
+"Failed to save karte:\n"
+"{error}"
 
 msgid ""
 "Default user '{default_user}' not found in SGF files.\n"
@@ -2019,6 +2040,9 @@ msgstr "Export"
 msgid "mykatrain:settings:tab_kifunarabe"
 msgstr "Kifu Narabe"
 
+msgid "mykatrain:settings:tab_diagnostics"
+msgstr "Diagnostics"
+
 msgid "mykatrain:settings:kifunarabe_sgf_load"
 msgstr "Pro-game SGF folder (Kifu Narabe)"
 
@@ -2035,7 +2059,12 @@ msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "Auto-toggle 'next moves' and 'dots' during kifunarabe"
 
 msgid "mykatrain:settings:kifunarabe_help"
-msgstr "When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\nSet it to the directory that holds the pro game records you want to study.\nLeave it empty to fall back to the regular SGF load folder.\n\nBy default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."
+msgstr ""
+"When the \"Kifu Narabe\" button is pressed, the file picker opens in this folder.\n"
+"Set it to the directory that holds the pro game records you want to study.\n"
+"Leave it empty to fall back to the regular SGF load folder.\n"
+"\n"
+"By default, choice markers are uniform-coloured with no digit labels and no special border around the actual move. Turn the options above on if you want full KataGo-style hints during practice."
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "Auto Setup"
@@ -2106,9 +2135,6 @@ msgstr "CPU mode also failed"
 
 msgid "mykatrain:settings:cpu_fallback_verification_failed"
 msgstr "The CPU binary could not be verified to work"
-
-msgid "mykatrain:settings:disable_katago"
-msgstr "Disable KataGo engine (for testing Leela)"
 
 #. LLM Package Export
 msgid "No game loaded"
@@ -2223,111 +2249,6 @@ msgstr "Stopped"
 
 msgid "Not configured"
 msgstr "Not configured"
-
-# Phase 39: Engine Compare
-msgid "mykatrain:engine-compare"
-msgstr "Engine Compare"
-
-msgid "engine-compare:title"
-msgstr "Engine Comparison"
-
-msgid "engine-compare:tab-moves"
-msgstr "Move Comparison"
-
-msgid "engine-compare:tab-stats"
-msgstr "Statistics"
-
-msgid "engine-compare:no-game"
-msgstr "No game loaded"
-
-msgid "engine-compare:build-error"
-msgstr "Failed to build comparison"
-
-msgid "engine-compare:no-analysis"
-msgstr "No analysis data available"
-
-msgid "engine-compare:katago-only"
-msgstr "KataGo analysis only (Leela not run)"
-
-msgid "engine-compare:partial-overlap"
-msgstr "Partial overlap ({pct}%)"
-
-msgid "engine-compare:semantics-differ"
-msgstr ""
-"Note: Loss values are calculated differently and comparison is for reference"
-" only"
-
-msgid "engine-compare:filter-label"
-msgstr "Filter:"
-
-msgid "engine-compare:filter-divergent"
-msgstr "Divergent Only"
-
-msgid "engine-compare:filter-all"
-msgstr "All Moves"
-
-msgid "engine-compare:no-divergent"
-msgstr "No moves with significant divergence"
-
-msgid "engine-compare:col-move"
-msgstr "#"
-
-msgid "engine-compare:col-player"
-msgstr "Player"
-
-msgid "engine-compare:col-coord"
-msgstr "Coord"
-
-msgid "engine-compare:col-katago"
-msgstr "KataGo"
-
-msgid "engine-compare:col-diff"
-msgstr "Diff"
-
-msgid "engine-compare:analyzed-moves"
-msgstr "Analyzed Moves"
-
-msgid "engine-compare:total-loss"
-msgstr "Total Loss"
-
-msgid "engine-compare:avg-loss"
-msgstr "Avg Loss"
-
-msgid "engine-compare:blunder-count"
-msgstr "Blunders"
-
-msgid "engine-compare:mistake-count"
-msgstr "Mistakes"
-
-msgid "engine-compare:inaccuracy-count"
-msgstr "Inaccuracies"
-
-msgid "engine-compare:divergence-analysis"
-msgstr "Divergence Analysis"
-
-msgid "engine-compare:correlation"
-msgstr "Correlation"
-
-msgid "engine-compare:trend"
-msgstr "Trend"
-
-msgid "engine-compare:insufficient-data"
-msgstr "Insufficient data"
-
-msgid "engine-compare:trend-katago-strict"
-msgstr "KataGo evaluates more strictly"
-
-msgid "engine-compare:trend-similar"
-msgstr "Both engines evaluate similarly"
-
-msgid "engine-compare:divergent-top"
-msgstr "Top {n} Divergent Moves"
-
-msgid "engine-compare:close"
-msgstr "Close"
-
-msgid "engine-compare:jumped-to"
-msgstr "Jumped to move {move}"
 
 #. Phase 49: Radar skill tiers
 msgid "radar:tier-1"
@@ -2764,9 +2685,8 @@ msgstr "Copy path"
 msgid "mykatrain:clipboard-copied"
 msgstr "Copied!"
 
-# 
 # New Report & Summary Keys
-#
+# 
 msgid "summary:title"
 msgstr "Multi-Game Summary"
 
@@ -2891,7 +2811,9 @@ msgid "diagnosis:streaks:intro"
 msgstr "Consecutive mistakes by the same player:"
 
 msgid "diagnosis:streak_desc"
-msgstr "moves {start}-{end} ({count} mistakes, {loss:.1f} pts lost, avg {avg:.1f} pts)"
+msgstr ""
+"moves {start}-{end} ({count} mistakes, {loss:.1f} pts lost, avg {avg:.1f} "
+"pts)"
 
 msgid "diagnosis:urgent_miss"
 msgstr "Urgent Miss Detection"
@@ -2942,7 +2864,8 @@ msgid "summary:suffix:candidate"
 msgstr "(Candidates)"
 
 msgid "summary:urgent_miss_warning"
-msgstr "Potential urgent misses detected (Loss > {loss}, {count}+ consecutive moves)"
+msgstr ""
+"Potential urgent misses detected (Loss > {loss}, {count}+ consecutive moves)"
 
 msgid "summary:normal_worst"
 msgstr "Worst Moves"
@@ -3103,7 +3026,6 @@ msgstr "Single Option"
 msgid "diagnosis:note:chaos"
 msgstr "Complex Position (High Volatility)"
 
-
 msgid "focus:black"
 msgstr "Black Priority"
 
@@ -3141,7 +3063,6 @@ msgstr "Error"
 # Phase G-2: Karte error template strings (user-facing, NOT LLM-facing).
 # These appear in the markdown error karte shown to the user when
 # generation fails (see katrain/core/reports/karte/builder.py).
-
 msgid "karte:error:title"
 msgstr "Karte (ERROR)"
 

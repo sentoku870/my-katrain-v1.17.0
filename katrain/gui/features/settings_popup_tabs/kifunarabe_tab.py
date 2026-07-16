@@ -23,6 +23,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 
+from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe_constants import (
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
@@ -33,7 +34,6 @@ from katrain.core.study.kifunarabe_constants import (
     KIFUNARABE_UNIFORM_COLOR_DEFAULT,
     KIFUNARABE_UNIFORM_COLOR_KEY,
 )
-from katrain.core.lang import i18n
 from katrain.gui.theme import Theme
 from katrain.gui.widgets.factory import Button
 from katrain.gui.widgets.helpers import create_text_input_row
@@ -97,16 +97,34 @@ def _build_display_checkbox(
         if isinstance(kif_section, dict):
             current_value = bool(kif_section.get(config_key, default))
 
+    # Phase 230-C: Row height grows to fit wrapped label text.
+    # Previously a fixed ``dp(36)`` height clipped the longest label
+    # (``kifunarabe_auto_toggle_markers`` = 32 JP chars) to 1 line.
+    # Bind ``text_size`` height to ``None`` so Kivy wraps vertically,
+    # then propagate the resulting ``texture_size[1]`` to the row height
+    # (clamped to a one-line minimum of ``dp(36)``).
     row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(10))
     checkbox = CheckBox(active=current_value, size_hint_x=None, width=dp(30))
     label = Label(
         text=i18n._(i18n_label_key),
+        size_hint_x=0.9,
+        size_hint_y=None,
+        height=dp(36),
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
         font_name=Theme.DEFAULT_FONT,
     )
-    label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    # Width drives wrapping; height stays unconstrained so 2-line labels
+    # grow the label (and the row below). Use a non-tuple statement lambda
+    # so mypy doesn't complain about setattr's None return in a tuple.
+    label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
+
+    def _on_texture_size(lbl: Label, tex_size: tuple[int, int]) -> None:
+        lbl.height = tex_size[1]
+        row.height = max(dp(36), tex_size[1])
+
+    label.bind(texture_size=_on_texture_size)
     row.add_widget(checkbox)
     row.add_widget(label)
     inner.add_widget(row)
@@ -116,18 +134,23 @@ def _build_display_checkbox(
 
 
 def _build_help_section(inner: BoxLayout, state: Any) -> None:
-    """Add a short explanation block at the bottom."""
-    inner.add_widget(
-        Label(
-            text=i18n._("mykatrain:settings:kifunarabe_help"),
-            size_hint_y=None,
-            height=dp(80),
-            halign="left",
-            valign="top",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
+    """Add a short explanation block at the bottom.
+
+    Phase 230-C: セクション全体が見えるよう、Label を内容に合わせて
+    自動リサイズ（以前は固定 ``dp(80)`` で 4 段落が途切れていた）。
+    """
+    help_label = Label(
+        text=i18n._("mykatrain:settings:kifunarabe_help"),
+        size_hint_y=None,
+        height=dp(80),
+        halign="left",
+        valign="top",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
     )
+    help_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
+    help_label.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
+    inner.add_widget(help_label)
 
 
 def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:

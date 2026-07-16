@@ -42,24 +42,6 @@ def _build_user_name_row(inner: BoxLayoutType, state: _SettingsPopupContext) -> 
     return user_input
 
 
-def _build_default_user_rank_row(
-    inner: BoxLayoutType, state: _SettingsPopupContext
-) -> TextInput:
-    """Phase 225.8: optional default user rank (e.g. "4段" / "5k").
-
-    When set, the LLM Coach uses this rank as a fallback when no Karte
-    is loaded (otherwise the user has to enter it manually each time).
-    """
-    rank_row, rank_input, _ = create_text_input_row(
-        label_text=i18n._("mykatrain:settings:default_user_rank"),
-        initial_value=state.current_settings.get("default_user_rank", ""),
-    )
-    inner.add_widget(rank_row)
-    if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:default_user_rank", rank_row)
-    return rank_input
-
-
 def _build_output_dir_row(inner: BoxLayoutType, state: _SettingsPopupContext) -> tuple[TextInput, Button]:
     """Add the karte output directory row. Returns (TextInput, browse Button)."""
     output_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
@@ -234,7 +216,6 @@ def _build_export_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, 
     inner.bind(minimum_height=inner.setter("height"))
 
     user_input = _build_user_name_row(inner, state)
-    rank_input = _build_default_user_rank_row(inner, state)  # Phase 225.8
     output_input, output_browse = _build_output_dir_row(inner, state)
     input_input, input_browse = _build_input_dir_row(inner, state)
     _build_karte_format_section(inner, state)
@@ -245,7 +226,6 @@ def _build_export_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button, 
 
     widget_refs = {
         "user_input": user_input,
-        "rank_input": rank_input,  # Phase 225.8
         "output_input": output_input,
         "input_input": input_input,
         "output_browse": output_browse,

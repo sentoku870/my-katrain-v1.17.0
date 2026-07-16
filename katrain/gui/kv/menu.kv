@@ -374,34 +374,23 @@
 <MyKatrainDropDown>:
     width: 250
     katrain: app.gui
+    # Phase 230-A.2: 3 機能（最新レポートを開く / 出力フォルダを開く /
+    # 複数局まとめ）は完全削除。低頻度だが OS のファイルマネージャや
+    # フォルダ一括解析で代替可能。メニューを 4 項目にスリム化。
     MyKatrainMenuItem:
         text: i18n._('mykatrain:export-karte')
-        icon: 'analysis.png'
+        icon: 'Save-Game.png'
         shortcut: ''
         on_action: root.katrain("export-karte")
     MyKatrainMenuItem:
-        text: i18n._('mykatrain:open-latest-report')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("open-latest-report")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:open-output-folder')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("open-output-folder")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:export-summary')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("export-summary")
-    MyKatrainMenuItem:
         text: i18n._('mykatrain:llm-coach')
-        icon: 'chat.png'
+        # Phase 230-A: 'chat.png' は存在しないため Teaching-Settings.png を流用
+        icon: 'Teaching-Settings.png'
         shortcut: ''
         on_action: root.katrain("llm-coach-popup")
     MyKatrainMenuItem:
         text: i18n._('mykatrain:batch-analyze')
-        icon: 'analysis.png'
+        icon: 'Sweep.png'
         shortcut: ''
         on_action: root.katrain("batch-analyze-popup")
     MyKatrainMenuItem:
@@ -409,8 +398,3 @@
         icon: 'General-Settings.png'
         shortcut: ''
         on_action: root.katrain("mykatrain-settings-popup")
-    MyKatrainMenuItem:
-        text: i18n._('mykatrain:diagnostics')
-        icon: 'General-Settings.png'
-        shortcut: ''
-        on_action: root.katrain("diagnostics-popup")

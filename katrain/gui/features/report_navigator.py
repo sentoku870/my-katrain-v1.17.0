@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 # --- Constants ---
 
@@ -119,67 +118,10 @@ def find_latest_llm_input(output_dir: Path) -> ReportInfo | None:
 
 
 # --- UI Functions (Kivy-dependent via lazy import) ---
-
-if TYPE_CHECKING:
-    from katrain.gui.features.context import FeatureContext
-
-
-def open_latest_report(ctx: FeatureContext) -> None:
-    """Open the most recent report file."""
-    from katrain.common.file_opener import open_file
-    from katrain.core.constants import OUTPUT_ERROR, OUTPUT_INFO
-    from katrain.core.lang import i18n
-    from katrain.common.platform import resolve_output_directory
-
-    # Get output directory (match existing pattern: ctx.config() or {})
-    mykatrain_settings = ctx.config("mykatrain_settings") or {}
-    config_dir = mykatrain_settings.get("karte_output_directory", "")
-    output_dir = resolve_output_directory(config_dir)
-
-    if not output_dir.is_dir():
-        ctx.log(
-            i18n._("mykatrain:folder-not-exist").format(path=str(output_dir)),
-            OUTPUT_ERROR,
-        )
-        return
-
-    # Find the most recent report
-    report = get_latest_report(output_dir)
-    if report is None:
-        ctx.log(i18n._("mykatrain:no-reports-found"), OUTPUT_INFO)
-        return
-
-    # Open the file
-    result = open_file(report.path)
-    if not result.success:
-        ctx.log(
-            i18n._("mykatrain:open-failed").format(error=result.error_detail or "Unknown error"),
-            OUTPUT_ERROR,
-        )
-
-
-def open_output_folder(ctx: FeatureContext) -> None:
-    """Open the output folder in the system file manager."""
-    from katrain.common.file_opener import open_folder
-    from katrain.core.constants import OUTPUT_ERROR
-    from katrain.core.lang import i18n
-    from katrain.common.platform import resolve_output_directory
-
-    # Get output directory (match existing pattern: ctx.config() or {})
-    mykatrain_settings = ctx.config("mykatrain_settings") or {}
-    config_dir = mykatrain_settings.get("karte_output_directory", "")
-    output_dir = resolve_output_directory(config_dir)
-
-    if not output_dir.is_dir():
-        ctx.log(
-            i18n._("mykatrain:folder-not-exist").format(path=str(output_dir)),
-            OUTPUT_ERROR,
-        )
-        return
-
-    result = open_folder(output_dir)
-    if not result.success:
-        ctx.log(
-            i18n._("mykatrain:open-failed").format(error=result.error_detail or "Unknown error"),
-            OUTPUT_ERROR,
-        )
+# Phase 230-A.2: ``open_latest_report`` / ``open_output_folder`` は
+# メニューからのみ呼ばれており完全削除。LLM Coach が使う
+# ``find_latest_llm_input`` / ``get_latest_report`` / ``ReportInfo``
+# は温存。
+#
+# Phase 230-A.2 完了後は UI 関数自体がなくなり、FeatureContext の
+# TYPE_CHECKING import も不要になったため削除。

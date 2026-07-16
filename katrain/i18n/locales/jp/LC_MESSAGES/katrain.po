@@ -235,10 +235,18 @@ msgid "kifunarabe:summary:title"
 msgstr "棋譜並べ - 結果"
 
 msgid "kifunarabe:summary:headline"
-msgstr "結果: {total}問中 {correct}問正解\n（{attempted}回のうち実戦の手と一致した数）"
+msgstr ""
+"結果: {total}問中 {correct}問正解\n"
+"（{attempted}回のうち実戦の手と一致した数）"
 
 msgid "kifunarabe:summary:body"
-msgstr "正解: {correct}\n失敗: {wrong}\n自動進行: {auto}\n終局スキップ: {skipped}\n正解率: {correct_rate}\n失敗率: {wrong_rate}"
+msgstr ""
+"正解: {correct}\n"
+"失敗: {wrong}\n"
+"自動進行: {auto}\n"
+"終局スキップ: {skipped}\n"
+"正解率: {correct_rate}\n"
+"失敗率: {wrong_rate}"
 
 msgid "kifunarabe:summary:limit_reached"
 msgstr "指定手数で打ち切りました。"
@@ -1102,26 +1110,11 @@ msgstr "クイズを生成（ベータ）"
 msgid "mykatrain:export-karte"
 msgstr "カルテ出力"
 
+# Phase 230-A.2: menu:other_section / open-latest-report /
+# open-output-folder / export-summary / folder-not-exist /
+# no-reports-found / open-failed を削除（対応する 3 機能を完全削除）
 msgid "mykatrain:export-package"
 msgstr "LLMパッケージ出力"
-
-msgid "mykatrain:open-latest-report"
-msgstr "最新レポートを開く"
-
-msgid "mykatrain:open-output-folder"
-msgstr "出力フォルダを開く"
-
-msgid "mykatrain:no-reports-found"
-msgstr "レポートがありません。先にカルテを出力してください。"
-
-msgid "mykatrain:folder-not-exist"
-msgstr "フォルダが見つかりません: {path}"
-
-msgid "mykatrain:open-failed"
-msgstr "開けませんでした: {error}"
-
-msgid "mykatrain:export-summary"
-msgstr "複数局まとめ"
 
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
@@ -1171,7 +1164,9 @@ msgid "mykatrain:llm-coach:auto-detect-summary"
 msgstr "デフォルトユーザー「{user}」/ 黒:{black} 白:{white} → {color}"
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
-msgstr "視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。設定 → mykatrain → デフォルトユーザー名を入力してください。"
+msgstr ""
+"視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。設定 → mykatrain → "
+"デフォルトユーザー名を入力してください。"
 
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "自動判定エラー: {error}"
@@ -1258,7 +1253,10 @@ msgid "mykatrain:llm-coach:issues"
 msgstr "検出された警告"
 
 msgid "mykatrain:llm-coach:truncated"
-msgstr "\n\n…(以降省略されました)"
+msgstr ""
+"\n"
+"\n"
+"…(以降省略されました)"
 
 # Phase 227-D: multi-game summary mode
 msgid "mykatrain:llm-coach:type-label-single"
@@ -1581,6 +1579,9 @@ msgstr "現在: {preset}（{rank} より自動推定）"
 msgid "mykatrain:settings:player_rank_default"
 msgstr "現在: {preset}（棋力未設定のデフォルト）"
 
+msgid "mykatrain:settings:player_rank_usage"
+msgstr "※解析閾値の調整と LLM コーチのフォールバック（Karte/SGF に棋力がない時）の両方に使われます"
+
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "候補手フィルタ（最善手除く）:"
 
@@ -1603,7 +1604,9 @@ msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 
 msgid "mykatrain:settings:beginner_hints_desc"
-msgstr "初心者向けヒントを表示（レビューモードのみ）。自アタリ・アタリ放置・取り逃し・切断リスクの警告に加え、ミス分類・手の自由度・局面難易度・KataGo不確実性のサマリーを 1 行で示します。"
+msgstr ""
+"初心者向けヒントを表示（レビューモードのみ）。自アタリ・アタリ放置・取り逃し・切断リスクの警告に加え、ミス分類・手の自由度・局面難易度・KataGo不確実性のサマリーを"
+" 1 行で示します。"
 
 msgid "beginner_hint:self_atari:title"
 msgstr "あぶない手"
@@ -1857,9 +1860,6 @@ msgstr "KataGo の scoreStdev が高いとき「KataGo も読みにくい局面�
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 
-msgid "mykatrain:settings:default_user_rank"
-msgstr "ユーザー棋力 (任意):"
-
 msgid "mykatrain:settings:karte_output_directory"
 msgstr "カルテ出力先ディレクトリ:"
 
@@ -1926,8 +1926,12 @@ msgstr ""
 "'{default_user}' の手番を判定できませんでした。\n"
 "両方のプレイヤーのカルテを出力します。"
 
-msgid "Failed to save karte:\n{error}"
-msgstr "カルテの保存に失敗しました:\n{error}"
+msgid ""
+"Failed to save karte:\n"
+"{error}"
+msgstr ""
+"カルテの保存に失敗しました:\n"
+"{error}"
 
 msgid ""
 "Default user '{default_user}' not found in SGF files.\n"
@@ -1968,6 +1972,9 @@ msgstr "出力設定"
 msgid "mykatrain:settings:tab_kifunarabe"
 msgstr "棋譜並べ"
 
+msgid "mykatrain:settings:tab_diagnostics"
+msgstr "診断"
+
 msgid "mykatrain:settings:kifunarabe_sgf_load"
 msgstr "プロの棋譜フォルダ（棋譜並べ用）"
 
@@ -1984,7 +1991,12 @@ msgid "mykatrain:settings:kifunarabe_auto_toggle_markers"
 msgstr "棋譜並べ中、「次の着手」と「ドット表示」を自動的に切り替える"
 
 msgid "mykatrain:settings:kifunarabe_help"
-msgstr "「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n並べるプロの棋譜を保存しているフォルダを指定してください。\n空欄の場合、通常のSGF読込フォルダにフォールバックします。\n\nデフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"
+msgstr ""
+"「棋譜並べ」ボタンを押したとき、ファイル選択がこのフォルダから開きます。\n"
+"並べるプロの棋譜を保存しているフォルダを指定してください。\n"
+"空欄の場合、通常のSGF読込フォルダにフォールバックします。\n"
+"\n"
+"デフォルトでは、選択肢マーカーは同じ色・数字なし・実戦の手の枠線なしで描画されます。学習用のヒント（KataGo詳細表示）が必要な場合は上記のオプションをONにしてください。"
 
 msgid "mykatrain:settings:tab_auto"
 msgstr "自動セットアップ"
@@ -2055,9 +2067,6 @@ msgstr "CPUモードでも失敗しました"
 
 msgid "mykatrain:settings:cpu_fallback_verification_failed"
 msgstr "CPUバイナリの動作確認に失敗しました"
-
-msgid "mykatrain:settings:disable_katago"
-msgstr "KataGo エンジンを無効にする (Leela の検証用)"
 
 #. LLM Package Export
 msgid "No game loaded"
@@ -2172,109 +2181,6 @@ msgstr "停止中"
 
 msgid "Not configured"
 msgstr "未設定"
-
-# Phase 39: Engine Compare
-msgid "mykatrain:engine-compare"
-msgstr "エンジン比較"
-
-msgid "engine-compare:title"
-msgstr "エンジン比較"
-
-msgid "engine-compare:tab-moves"
-msgstr "手別比較"
-
-msgid "engine-compare:tab-stats"
-msgstr "統計サマリー"
-
-msgid "engine-compare:no-game"
-msgstr "対局が読み込まれていません"
-
-msgid "engine-compare:build-error"
-msgstr "比較データの構築に失敗しました"
-
-msgid "engine-compare:no-analysis"
-msgstr "解析データがありません"
-
-msgid "engine-compare:katago-only"
-msgstr "KataGo解析のみ（Leela未実行）"
-
-msgid "engine-compare:partial-overlap"
-msgstr "一部の手のみ両エンジン解析あり（{pct}%）"
-
-msgid "engine-compare:semantics-differ"
-msgstr "※損失の単位・計算方法が異なるため、比較は参考値です"
-
-msgid "engine-compare:filter-label"
-msgstr "フィルタ:"
-
-msgid "engine-compare:filter-divergent"
-msgstr "乖離のみ"
-
-msgid "engine-compare:filter-all"
-msgstr "全手表示"
-
-msgid "engine-compare:no-divergent"
-msgstr "大きな乖離のある手がありません"
-
-msgid "engine-compare:col-move"
-msgstr "#"
-
-msgid "engine-compare:col-player"
-msgstr "手番"
-
-msgid "engine-compare:col-coord"
-msgstr "座標"
-
-msgid "engine-compare:col-katago"
-msgstr "KataGo"
-
-msgid "engine-compare:col-diff"
-msgstr "差分"
-
-msgid "engine-compare:analyzed-moves"
-msgstr "解析手数"
-
-msgid "engine-compare:total-loss"
-msgstr "総損失"
-
-msgid "engine-compare:avg-loss"
-msgstr "平均損失"
-
-msgid "engine-compare:blunder-count"
-msgstr "大悪手"
-
-msgid "engine-compare:mistake-count"
-msgstr "悪手"
-
-msgid "engine-compare:inaccuracy-count"
-msgstr "軽微ミス"
-
-msgid "engine-compare:divergence-analysis"
-msgstr "乖離分析"
-
-msgid "engine-compare:correlation"
-msgstr "相関係数"
-
-msgid "engine-compare:trend"
-msgstr "傾向"
-
-msgid "engine-compare:insufficient-data"
-msgstr "データ不足"
-
-msgid "engine-compare:trend-katago-strict"
-msgstr "KataGoの方が厳しい評価"
-
-msgid "engine-compare:trend-similar"
-msgstr "両エンジン同程度"
-
-msgid "engine-compare:divergent-top"
-msgstr "乖離Top{n}"
-
-msgid "engine-compare:close"
-msgstr "閉じる"
-
-msgid "engine-compare:jumped-to"
-msgstr "手数{move}に移動しました"
 
 #. Phase 57: Style Archetype (name only, summary deferred)
 msgid "style:kiai_fighter:name"
@@ -2644,9 +2550,8 @@ msgstr "パスをコピー"
 msgid "mykatrain:clipboard-copied"
 msgstr "コピーしました！"
 
-# 
 # New Report & Summary Keys
-#
+# 
 msgid "summary:title"
 msgstr "複数局まとめ"
 
@@ -2983,7 +2888,6 @@ msgstr "一本道"
 msgid "diagnosis:note:chaos"
 msgstr "乱戦局面（評価の変動大）"
 
-
 msgid "focus:black"
 msgstr "黒優先"
 
@@ -3019,7 +2923,6 @@ msgid "dialog:title:error"
 msgstr "エラー"
 
 # Phase G-2: Karte error template strings (user-facing).
-
 msgid "karte:error:title"
 msgstr "カルテ (エラー)"
 
