@@ -38,6 +38,7 @@ from katrain.gui.features.settings_popup_savers import (  # noqa: F401 (re-expor
     _save_engine_settings,
     _save_general_settings,
     _save_mykatrain_settings,
+    migrate_default_user_rank,
 )
 from katrain.gui.features.settings_popup_state import _SettingsPopupContext
 from katrain.gui.popups import I18NPopup
@@ -81,6 +82,11 @@ def do_mykatrain_settings_popup(
     engine_config = ctx.config("engine") or {}
     current_engine = get_analysis_engine(engine_config)
 
+    # Phase 230-E: Migrate legacy ``mykatrain_settings.default_user_rank``
+    # into ``general.player_rank`` so a single field drives both analysis
+    # thresholds and the LLM Coach fallback chain (Phase 229-D).
+    migrate_default_user_rank(ctx, current_settings)
+
     # Phase 145-D+: Initialize shared state container
     state = _SettingsPopupContext(
         ctx=ctx,
@@ -88,7 +94,6 @@ def do_mykatrain_settings_popup(
         engine_config=engine_config,
         current_engine=current_engine,
         selected_engine=[current_engine],
-        selected_disable_katago=[ctx.config("engine/disabled", False)],
         selected_skill_preset=[
             analysis.resolve_skill_preset(
                 ctx.config("general/skill_preset"),
@@ -130,10 +135,11 @@ def do_mykatrain_settings_popup(
     # --- Build search bar ---
     search_layout, search_input = _build_search_bar(state.searchable_widgets, register_searchable)
 
-    # --- Build 3 tabs (Phase 171: Leela タブ削除; Phase 175: tab builders split into package;
-    #                 Phase 177: Kifunarabe タブ追加) ---
+    # --- Build 4 tabs (Phase 171: Leela タブ削除; Phase 175: tab builders split into package;
+    #                 Phase 177: Kifunarabe タブ追加; Phase 230-D: Diagnostics タブ追加) ---
     from katrain.gui.features.settings_popup_tabs import (
         _build_analysis_tab,
+        _build_diagnostics_tab,
         _build_export_tab,
         _build_kifunarabe_tab,
     )
@@ -141,6 +147,7 @@ def do_mykatrain_settings_popup(
     tab1_inner, tab1_reset_btn = _build_analysis_tab(state)
     tab2_inner, tab2_reset_btn, export_widgets = _build_export_tab(state)
     tab3_inner, kif_widgets = _build_kifunarabe_tab(state)
+    tab4_inner = _build_diagnostics_tab(state)
     widget_refs = {**export_widgets, **kif_widgets}
 
     tab1 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_analysis"))
@@ -158,6 +165,9 @@ def do_mykatrain_settings_popup(
     tab3_scroll.add_widget(tab3_inner)
     tab3.add_widget(tab3_scroll)
 
+    tab4 = TabbedPanelItem(text=i18n._("mykatrain:settings:tab_diagnostics"))
+    tab4.add_widget(tab4_inner)
+
     tabbed_panel = TabbedPanel(
         do_default_tab=False,
         tab_width=dp(120),
@@ -167,13 +177,15 @@ def do_mykatrain_settings_popup(
     tabbed_panel.add_widget(tab1)
     tabbed_panel.add_widget(tab2)
     tabbed_panel.add_widget(tab3)
+    tabbed_panel.add_widget(tab4)
 
     # Phase 87.5 + Phase 89: Tab lookup dictionary (Phase 171: "leela" 削除;
-    #                         Phase 177: "kifunarabe" 追加)
+    #                         Phase 177: "kifunarabe" 追加; Phase 230-D: "diagnostics" 追加)
     tab_by_id = {
         "analysis": tab1,
         "export": tab2,
         "kifunarabe": tab3,
+        "diagnostics": tab4,
     }
 
     # Phase 87.5 + Phase 89: Switch to initial_tab if specified
@@ -246,12 +258,11 @@ def do_mykatrain_settings_popup(
             widget_refs["input_input"].text,
             state.selected_format[0],
             state.selected_opp_info[0],
-            state.selected_disable_katago[0],
-            # Phase 225.8: rank_input is optional — empty string when absent
-            # so the saver treats it as "unset" rather than crashing on
-            # a missing key. Previously used ``MagicMock(text="")`` which
-            # raised ``NameError`` at runtime (MagicMock was never imported).
-            widget_refs.get("rank_input", type("X", (), {"text": ""})()).text,
+            # Phase 230-E: the export tab no longer exposes a rank input.
+            # Pass empty string so the saver clears any legacy
+            # ``default_user_rank`` value (migration already folded it
+            # into ``general/player_rank`` on popup open).
+            "",
         )
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.

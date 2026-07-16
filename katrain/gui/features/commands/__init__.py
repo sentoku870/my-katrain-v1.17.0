@@ -48,10 +48,8 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         # ---- export_commands ----
         "save_game",
         "export_karte",
-        "open_latest_report",
-        "open_output_folder",
-        "export_summary",
-        "export_summary_ui",
+        # Phase 230-A.2: open_latest_report / open_output_folder /
+        # export_summary / export_summary_ui を完全削除。
         # ---- game_commands ----
         "new_game",
         "ai_move",
@@ -75,7 +73,7 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         "save_game_as_popup",
         "mykatrain_settings_popup",
         "batch_analyze_popup",
-        "diagnostics_popup",
+        # Phase 230-D: diagnostics_popup moved into mykatrain settings tab
         # ---- Phase 225: LLM Coach popup ----
         "llm_coach_popup",
         # ---- kifunarabe (棋譜並べ) ----

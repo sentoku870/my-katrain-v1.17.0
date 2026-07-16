@@ -4,7 +4,6 @@
 - インポート・インスタンス化: Kivy不要
 - ConfigManager連携: Kivy不要
 - Pure関数ラッパー（scan_player_names, categorize_games_by_stats等）: Kivy不要
-- UI実行メソッド（do_export_summary等）: Kivy必要のためスキップ
 
 Note: これはUI統合テストではなく、配線の正確性を検証するWiring test
 
@@ -14,8 +13,6 @@ Note: これはUI統合テストではなく、配線の正確性を検証する
 """
 
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # ========== テスト用ヘルパー ==========
 
@@ -235,24 +232,9 @@ class TestSummaryManagerPureFunctionWrappers:
             assert result == {"score_loss": 1.5}
 
 
-class TestSummaryManagerUIMethodsSkipped:
-    """UI実行メソッドのテスト（Kivy必要のためスキップ）
+# Phase 230-A.2: TestSummaryManagerUIMethodsSkipped クラスを削除。
+# do_export_summary / do_export_summary_ui /
+# scan_and_show_player_selection は SummaryManager から完全削除。
+# show_player_selection_dialog / process_summary_with_selected_players /
+# process_and_export_summary も同様に削除済み。
 
-    これらのメソッドはsummary_ui.pyを呼び出し、Kivyが必要。
-    統合テストまたは手動テストで確認する。
-    """
-
-    @pytest.mark.skip(reason="Requires Kivy runtime - do_export_summary calls summary_ui")
-    def test_do_export_summary_requires_kivy(self):
-        """do_export_summary()はKivyランタイムが必要"""
-        pass
-
-    @pytest.mark.skip(reason="Requires Kivy runtime - do_export_summary_ui calls summary_ui")
-    def test_do_export_summary_ui_requires_kivy(self):
-        """do_export_summary_ui()はKivyランタイムが必要"""
-        pass
-
-    @pytest.mark.skip(reason="Requires Kivy runtime - scan_and_show_player_selection calls summary_ui")
-    def test_scan_and_show_player_selection_requires_kivy(self):
-        """scan_and_show_player_selection()はKivyランタイムが必要"""
-        pass

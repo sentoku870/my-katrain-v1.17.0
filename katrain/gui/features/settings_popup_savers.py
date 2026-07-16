@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
@@ -76,6 +76,52 @@ def _save_beginner_hints_settings(
     ctx.save_config("beginner_hints")
 
 
+def migrate_default_user_rank(
+    ctx: FeatureContext,
+    current_settings: dict[str, Any],
+) -> None:
+    """Phase 230-E: Fold the legacy ``default_user_rank`` into ``player_rank``.
+
+    The export tab used to expose a ``ユーザー棋力 (任意)`` field that wrote
+    to ``mykatrain_settings.default_user_rank``. Phase 229-D already
+    reads ``general/player_rank`` first in the LLM Coach fallback chain,
+    so the duplicate input has been removed. This helper transparently
+    migrates any pre-existing ``default_user_rank`` value so users do
+    not lose their setting.
+
+    Rules:
+    - ``player_rank`` empty + ``default_user_rank`` set → copy across.
+    - ``player_rank`` set + ``default_user_rank`` set → keep ``player_rank``.
+    - ``default_user_rank`` always cleared after migration.
+    - No-op when ``default_user_rank`` is already empty.
+
+    This function lives in the Kivy-free savers module so it can be
+    unit-tested without a Kivy environment.
+    """
+    legacy_rank = (current_settings.get("default_user_rank") or "").strip()
+    if not legacy_rank:
+        return
+
+    general = ctx.config("general") or {}
+    if not isinstance(general, dict):
+        general = {}
+    current_player_rank = (general.get("player_rank") or "").strip()
+
+    if not current_player_rank:
+        general["player_rank"] = legacy_rank
+        ctx.set_config_section("general", general)
+        ctx.save_config("general")
+
+    # Clear the legacy field so the export tab stays clean on future opens.
+    updated_settings = dict(current_settings)
+    updated_settings["default_user_rank"] = ""
+    ctx.set_config_section("mykatrain_settings", updated_settings)
+    ctx.save_config("mykatrain_settings")
+    # Reflect the mutation so the in-memory dict the rest of the popup
+    # reads from stays consistent.
+    current_settings["default_user_rank"] = ""
+
+
 def _save_engine_settings(ctx: FeatureContext, new_engine_value: str) -> None:
     """Save analysis engine selection with error handling (Phase 34, Phase 102)."""
     try:
@@ -103,10 +149,13 @@ def _save_mykatrain_settings(
     batch_export_input_directory: str,
     karte_format: str,
     opponent_info_mode: str,
-    disabled_katago: bool,
     default_user_rank: str = "",  # Phase 225.8
 ) -> None:
-    """Save mykatrain_settings section + engine disabled flag (Phase 27)."""
+    """Save mykatrain_settings section (Phase 27).
+
+    Phase 230-B: Leela 検証用の ``disabled_katago`` パラメータと
+    ``engine/disabled`` 更新を削除。Leela は Phase 171 で完全廃止済み。
+    """
     mykatrain_settings = {
         "default_user_name": default_user_name,
         # Phase 225.8: optional default user rank (e.g. "4段" / "5k").
@@ -120,5 +169,3 @@ def _save_mykatrain_settings(
     }
     ctx.set_config_section("mykatrain_settings", mykatrain_settings)
     ctx.save_config("mykatrain_settings")
-    # Save engine config (Phase 3 Extension)
-    ctx.update_engine_config(disabled=disabled_katago)

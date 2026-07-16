@@ -135,7 +135,6 @@ class TestSaveMyKatrainSettings:
             batch_export_input_directory="/tmp/in",
             karte_format="standard",
             opponent_info_mode="auto",
-            disabled_katago=False,
         )
 
         # First call: set_config_section("mykatrain_settings", {...}).
@@ -162,23 +161,104 @@ class TestSaveMyKatrainSettings:
             batch_export_input_directory="/tmp/in",
             karte_format="standard",
             opponent_info_mode="auto",
-            disabled_katago=False,
             default_user_rank="4段",
         )
         _, payload = ctx.set_config_section.call_args.args
         assert payload["default_user_rank"] == "4段"
         ctx.save_config.assert_called_once_with("mykatrain_settings")
 
-    def test_updates_engine_disabled_flag(self):
+    def test_no_engine_disabled_update(self):
+        """Phase 230-B: Leela 廃止により engine/disabled の更新は行われない。"""
         from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
         ctx = _make_ctx()
-        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=True)
-        ctx.update_engine_config.assert_called_once_with(disabled=True)
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode")
+        ctx.update_engine_config.assert_not_called()
 
-    def test_disabled_false_passes_through(self):
-        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
 
-        ctx = _make_ctx()
-        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", disabled_katago=False)
-        ctx.update_engine_config.assert_called_once_with(disabled=False)
+class TestMigrateDefaultUserRank:
+    """Phase 230-E: ``default_user_rank`` → ``player_rank`` マイグレーション。"""
+
+    def test_copies_when_player_rank_empty(self):
+        from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
+
+        initial = {
+            "general": {"player_rank": ""},
+            "mykatrain_settings": {"default_user_rank": "4段"},
+        }
+        ctx = _make_ctx(initial=initial)
+        current_settings = dict(initial["mykatrain_settings"])
+
+        migrate_default_user_rank(ctx, current_settings)
+
+        # general/player_rank に "4段" が保存される
+        general_call = ctx.set_config_section.call_args_list[0]
+        assert general_call.args == ("general", {"player_rank": "4段"})
+        ctx.save_config.assert_any_call("general")
+
+        # default_user_rank はクリアされる
+        assert current_settings["default_user_rank"] == ""
+
+    def test_keeps_player_rank_when_both_set(self):
+        from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
+
+        initial = {
+            "general": {"player_rank": "5k"},
+            "mykatrain_settings": {"default_user_rank": "4段"},
+        }
+        ctx = _make_ctx(initial=initial)
+        current_settings = dict(initial["mykatrain_settings"])
+
+        migrate_default_user_rank(ctx, current_settings)
+
+        # general/player_rank は上書きされない（5k のまま）
+        # general セクションへの set_config_section は呼ばれない
+        general_calls = [
+            c for c in ctx.set_config_section.call_args_list if c.args[0] == "general"
+        ]
+        assert len(general_calls) == 0
+
+        # default_user_rank はクリアされる
+        assert current_settings["default_user_rank"] == ""
+
+    def test_noop_when_default_user_rank_empty(self):
+        from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
+
+        ctx = _make_ctx(
+            initial={
+                "general": {"player_rank": "5k"},
+                "mykatrain_settings": {"default_user_rank": ""},
+            }
+        )
+        current_settings = {"default_user_rank": ""}
+
+        migrate_default_user_rank(ctx, current_settings)
+
+        ctx.set_config_section.assert_not_called()
+        ctx.save_config.assert_not_called()
+
+    def test_noop_when_default_user_rank_missing(self):
+        from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
+
+        ctx = _make_ctx(initial={"general": {"player_rank": "5k"}})
+        current_settings = {}
+
+        migrate_default_user_rank(ctx, current_settings)
+
+        ctx.set_config_section.assert_not_called()
+        ctx.save_config.assert_not_called()
+
+    def test_strips_whitespace(self):
+        from katrain.gui.features.settings_popup_savers import migrate_default_user_rank
+
+        initial = {
+            "general": {"player_rank": ""},
+            "mykatrain_settings": {"default_user_rank": "  4段  "},
+        }
+        ctx = _make_ctx(initial=initial)
+        current_settings = dict(initial["mykatrain_settings"])
+
+        migrate_default_user_rank(ctx, current_settings)
+
+        general_call = ctx.set_config_section.call_args_list[0]
+        assert general_call.args[1]["player_rank"] == "4段"

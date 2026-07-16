@@ -108,31 +108,9 @@ class TestDoExportKarteDispatchIntegration:
         assert callable(mock_inner.call_args[0][1])
 
 
-class TestOtherExportCommandsParity:
-    """The other export commands already used `*args, **kwargs` (Phase 172).
-    Pin that contract so they don't regress to required-arg signatures."""
-
-    @pytest.mark.parametrize(
-        "command_name",
-        [
-            "do_open_latest_report",
-            "do_open_output_folder",
-            "do_export_summary",
-            "do_export_summary_ui",
-        ],
-    )
-    def test_command_accepts_ctx_only(self, command_name: str) -> None:
-        from katrain.gui.features.commands import export_commands
-
-        ctx = MagicMock()
-        cmd = getattr(export_commands, command_name)
-        # Should not raise — these already use *args/**kwargs.
-        try:
-            cmd(ctx)
-        except Exception as exc:  # noqa: BLE001 — accept anything but TypeError
-            assert not isinstance(exc, TypeError) or "argument" not in str(exc), (
-                f"{command_name}(ctx) raised TypeError: {exc}"
-            )
+# Phase 230-A.2: TestOtherExportCommandsParity クラスを削除。
+# do_open_latest_report / do_open_output_folder / do_export_summary /
+# do_export_summary_ui の 4 関数は export_commands.py から完全削除。
 
 
 @pytest.mark.parametrize(

@@ -261,11 +261,15 @@ def _on_generate_zip(
     ctx: FeatureContext,
     bundle: DiagnosticsBundle,
     generate_btn: Button,
-    parent_popup: Popup,
+    parent_popup: Popup | None = None,
 ) -> None:
     """Handle ZIP generation button click.
 
     Runs ZIP generation in background thread to avoid UI freeze.
+
+    Phase 230-D: ``parent_popup`` is now optional so the same handler
+    can be used from the settings tab (which has no parent popup to
+    dismiss) and the standalone popup.
     """
     generate_btn.disabled = True
     generate_btn.text = i18n._("Generating...")
@@ -325,9 +329,13 @@ def _on_generate_complete(
     ctx: FeatureContext,
     result: Any,
     generate_btn: Button,
-    parent_popup: Popup,
+    parent_popup: Popup | None = None,
 ) -> None:
-    """Handle ZIP generation completion on main thread."""
+    """Handle ZIP generation completion on main thread.
+
+    Phase 230-D: ``parent_popup`` が None の場合は dismiss をスキップ
+    （settings タブから呼ばれた場合）。
+    """
     generate_btn.disabled = False
     generate_btn.text = i18n._("Generate Bug Report")
 
@@ -336,7 +344,8 @@ def _on_generate_complete(
             i18n._("Bug report generated: %s") % str(result.output_path),
             OUTPUT_INFO,
         )
-        parent_popup.dismiss()
+        if parent_popup is not None:
+            parent_popup.dismiss()
         _show_success_popup(result.output_path)
     else:
         ctx.log(

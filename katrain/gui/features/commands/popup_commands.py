@@ -26,17 +26,6 @@ def do_select_box(ctx: KaTrainGui) -> None:
     ctx.board_gui.selecting_region_of_interest = True
 
 
-def do_diagnostics_popup(ctx: KaTrainGui) -> None:
-    """Show the diagnostics popup for bug report generation.
-
-    Args:
-        ctx: KaTrainGui instance
-    """
-    from katrain.gui.features.diagnostics_popup import show_diagnostics_popup
-
-    show_diagnostics_popup(ctx)
-
-
 def do_engine_recovery_popup(ctx: KaTrainGui, error_message: str, code: Any) -> None:
     """Show the engine recovery popup after a KataGo crash.
 

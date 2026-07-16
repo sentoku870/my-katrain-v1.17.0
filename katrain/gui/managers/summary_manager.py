@@ -82,37 +82,10 @@ class SummaryManager:
         self._config_manager.save_export_settings(sgf_directory, selected_players)
 
     # ========== Public API（KaTrainGui互換エントリポイント） ==========
-
-    def do_export_summary(self, *args: Any, **kwargs: Any) -> None:
-        """Schedule summary export on the main Kivy thread.
-
-        Note: *args, **kwargs preserved for Kivy callback compatibility.
-        Requires Kivy runtime.
-        """
-        # Local import to avoid circular dependency and defer Kivy import
-        from katrain.gui.features.summary_ui import do_export_summary as _do_export_summary
-
-        _do_export_summary(
-            self._get_ctx(),
-            self.scan_and_show_player_selection,
-            self._load_export_settings,
-            self._save_export_settings,
-        )
-
-    def do_export_summary_ui(self, *args: Any, **kwargs: Any) -> None:
-        """Execute summary export UI flow.
-
-        Note: *args, **kwargs preserved for Kivy callback compatibility.
-        Requires Kivy runtime.
-        """
-        from katrain.gui.features.summary_ui import do_export_summary_ui as _do_export_summary_ui
-
-        _do_export_summary_ui(
-            self._get_ctx(),
-            self.scan_and_show_player_selection,
-            self._load_export_settings,
-            self._save_export_settings,
-        )
+    # Phase 230-A.2: ``do_export_summary`` / ``do_export_summary_ui`` は
+    # メニューからのみ呼ばれており完全削除。バッチ・kifunarabe 等は
+    # ``build_summary_from_stats`` / ``extract_sgf_statistics`` 等の
+    # pure 関数 API を直接利用する。
 
     # ========== Public API（Pure関数ラッパー・Kivy不要） ==========
 
@@ -158,61 +131,11 @@ class SummaryManager:
         # Adapt get_config(key, default) to config_fn(key) signature
         return _build(stats_list, focus_player, lambda key: self._get_config(key, None))
 
-    # ========== Public API（UI連携・Kivy必要） ==========
-
-    def scan_and_show_player_selection(self, sgf_files: list[str]) -> None:
-        """プレイヤースキャン＋選択ダイアログ表示。Requires Kivy."""
-        from katrain.gui.features.summary_ui import scan_and_show_player_selection as _scan_show
-
-        _scan_show(
-            sgf_files,
-            self._get_ctx(),
-            self.scan_player_names,
-            self.process_summary_with_selected_players,
-            self.show_player_selection_dialog,
-        )
-
-    def process_summary_with_selected_players(self, sgf_files: list[str], selected_players: list[str]) -> None:
-        """選択されたプレイヤーでサマリ処理。Requires Kivy."""
-        from katrain.gui.features.summary_ui import process_summary_with_selected_players as _process
-
-        _process(
-            sgf_files,
-            selected_players,
-            self.process_and_export_summary,
-        )
-
-    def show_player_selection_dialog(self, sorted_players: list[tuple[str, int]], sgf_files: list[str]) -> None:
-        """プレイヤー選択ダイアログ表示。Requires Kivy."""
-        from katrain.gui.features.summary_ui import show_player_selection_dialog as _show
-
-        _show(
-            sorted_players,
-            sgf_files,
-            self._load_export_settings,
-            self._save_export_settings,
-            self.process_and_export_summary,
-        )
-
-    def process_and_export_summary(
-        self,
-        sgf_paths: list[str],
-        progress_popup: Any,
-        selected_players: list[str] | None = None,
-    ) -> None:
-        """サマリ処理＋エクスポート実行。Requires Kivy."""
-        from katrain.gui.features.summary_ui import process_and_export_summary as _process_export
-
-        _process_export(
-            sgf_paths,
-            progress_popup,
-            selected_players or [],  # Convert None to empty list
-            self._get_ctx(),
-            self.extract_sgf_statistics,  # type: ignore[arg-type]  # Returns Optional but callee handles None
-            self.categorize_games_by_stats,
-            self.save_summaries_per_player,
-            self.save_categorized_summaries_from_stats,
-        )
+    # ========== Public API（IO 連携・Kivy必要） ==========
+    # Phase 230-A.2: ``scan_and_show_player_selection`` /
+    # ``process_summary_with_selected_players`` /
+    # ``show_player_selection_dialog`` / ``process_and_export_summary``
+    # はメニュー export_summary からのみ呼ばれており完全削除。
 
     def save_summaries_per_player(
         self,

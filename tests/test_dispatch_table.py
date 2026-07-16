@@ -82,8 +82,11 @@ class TestDispatchTableCoverage:
 
         If you intentionally remove a command, update both this number
         and the command's tests/usage together.
+
+        Phase 230-A.2: open_latest_report / open_output_folder /
+        export_summary / export_summary_ui の 4 キーを削除（37 → 33）。
         """
-        assert len(DISPATCH_TABLE) >= 37, f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
+        assert len(DISPATCH_TABLE) >= 33, f"DISPATCH_TABLE shrank unexpectedly: {len(DISPATCH_TABLE)} entries"
 
 
 class TestDispatchFunction:
@@ -142,7 +145,7 @@ class TestMessageWireFormats:
         "config_popup",
         "mykatrain_settings_popup",  # sent as "mykatrain-settings-popup"
         "batch_analyze_popup",
-        "diagnostics_popup",
+        # Phase 230-D: diagnostics_popup moved into mykatrain settings tab
         # board.kv (underscore form already)
         "undo",
         "redo",
@@ -164,11 +167,9 @@ class TestMessageWireFormats:
         "engine_recovery_popup",
         # shortcuts (keyboard_manager.py)
         "save_game",
-        "open_latest_report",
-        "open_output_folder",
+        # Phase 230-A.2: open_latest_report / open_output_folder /
+        # export_summary / export_summary_ui 削除
         "export_karte",
-        "export_summary",
-        "export_summary_ui",
         # kifunarabe (棋譜並べ) - menu.kv + panels.kv
         "kifunarabe_popup",
         "kifunarabe_abort",
@@ -239,13 +240,11 @@ class TestRemovedWrappers:
         "_do_save_game",
         "_do_save_game_as_popup",
         "_do_export_karte",
-        "_do_open_latest_report",
-        "_do_open_output_folder",
-        "_do_export_summary",
-        "_do_export_summary_ui",
         "_do_mykatrain_settings_popup",
         "_do_batch_analyze_popup",
-        "_do_diagnostics_popup",
+        # Phase 230-A.2: _do_open_latest_report / _do_open_output_folder /
+        # _do_export_summary / _do_export_summary_ui 削除
+        # Phase 230-D: _do_diagnostics_popup 削除（settings タブに統合）
     }
 
     def test_were_removed_from_kstraingui(self) -> None:
