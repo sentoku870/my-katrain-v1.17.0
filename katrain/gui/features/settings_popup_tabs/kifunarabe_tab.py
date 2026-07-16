@@ -116,14 +116,15 @@ def _build_display_checkbox(
         font_name=Theme.DEFAULT_FONT,
     )
     # Width drives wrapping; height stays unconstrained so 2-line labels
-    # grow the label (and the row below).
+    # grow the label (and the row below). Use a non-tuple statement lambda
+    # so mypy doesn't complain about setattr's None return in a tuple.
     label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
-    label.bind(
-        texture_size=lambda lbl, tex_size: (
-            setattr(lbl, "height", tex_size[1]),
-            setattr(row, "height", max(dp(36), tex_size[1])),
-        )
-    )
+
+    def _on_texture_size(lbl: Label, tex_size: tuple[int, int]) -> None:
+        lbl.height = tex_size[1]
+        row.height = max(dp(36), tex_size[1])
+
+    label.bind(texture_size=_on_texture_size)
     row.add_widget(checkbox)
     row.add_widget(label)
     inner.add_widget(row)
