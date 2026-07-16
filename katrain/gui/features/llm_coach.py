@@ -41,6 +41,71 @@ def _read_karte(karte_path: str | Path) -> dict[str, Any]:
         return json.load(f)
 
 
+# ---------------------------------------------------------------------------
+# Phase 229-D: Rank auto-detection fallback chain
+# ---------------------------------------------------------------------------
+
+
+def resolve_rank_fallback_chain(
+    info: dict | None,
+    perspective_value: str,
+    *,
+    general_player_rank: str | None = None,
+    default_user_rank: str | None = None,
+) -> str | None:
+    """Pick the rank to display in the LLM Coach popup (Phase 229-D).
+
+    The priority chain (first non-empty wins):
+
+    1. Karte/SGF ``info`` dict (``_pick_detected_rank``)
+    2. ``general/player_rank`` (the new global setting from Phase 229-C)
+    3. ``mykatrain_settings.default_user_rank`` (Phase 225.8 legacy fallback)
+
+    Args:
+        info: The Karte/SGF player info dict, or ``None`` if unavailable.
+        perspective_value: Spinner internal value (``"auto"`` / ``"B"`` / ``"W"``).
+        general_player_rank: Value of ``general/player_rank``. May be empty.
+        default_user_rank: Value of ``mykatrain_settings.default_user_rank``.
+            May be empty.
+
+    Returns:
+        The first non-empty rank string, or ``None`` if none of the
+        sources have rank information.
+
+    Note:
+        This function is a pure helper with no Kivy dependency so it
+        can be unit-tested on CI without a display.
+    """
+    if info:
+        detected = _pick_detected_rank(info, perspective_value)
+        if detected:
+            return detected
+    if general_player_rank:
+        return general_player_rank
+    if default_user_rank:
+        return default_user_rank
+    return None
+
+
+def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
+    """Pick the rank to show for the active perspective.
+
+    Phase 225.6: the rank hint shows the player's own rank when the
+    perspective is Auto / B / W. Returns ``None`` when nothing is known.
+
+    Phase 226-B (B3): ``perspective_value`` is now always one of
+    ``"auto"`` / ``"B"`` / ``"W"`` (the spinner's internal value), so
+    we no longer need ``startswith("黒")`` heuristics.
+    """
+    black = (info.get("black") or {}).get("rank") or None
+    white = (info.get("white") or {}).get("rank") or None
+    if perspective_value == "B":
+        return black
+    if perspective_value == "W":
+        return white
+    return black or white
+
+
 def build_llm_prompt(
     ctx: FeatureContext | None,
     karte_path: str | Path,

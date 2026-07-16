@@ -76,47 +76,95 @@ def _build_disable_katago_section(inner: BoxLayoutType, state: _SettingsPopupCon
         state.register_searchable("mykatrain:settings:disable_katago", disable_katago_layout)
 
 
-def _build_skill_preset_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Add the skill preset radio button group."""
-    _add_searchable_label(inner, "mykatrain:settings:skill_preset", state)
+def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
+    """Add the player_rank text input + auto-derived preset label (Phase 229).
 
-    skill_options = [
-        ("auto", i18n._("mykatrain:settings:skill_auto")),
-        ("relaxed", i18n._("mykatrain:settings:skill_relaxed")),
-        ("beginner", i18n._("mykatrain:settings:skill_beginner")),
-        ("standard", i18n._("mykatrain:settings:skill_standard")),
-        ("advanced", i18n._("mykatrain:settings:skill_advanced")),
-        ("pro", i18n._("mykatrain:settings:skill_pro")),
-    ]
+    Before Phase 229 this section was a 6-way radio button group
+    (``auto`` / ``relaxed`` / ``beginner`` / ``standard`` / ``advanced``
+    / ``pro``).  The replacement is a single text field for the user's
+    rank; the analysis-side preset is derived from it via
+    :func:`katrain.core.analysis.resolve_skill_preset` and shown as a
+    label below the input.
+    """
+    _add_searchable_label(inner, "mykatrain:settings:player_rank", state)
 
-    skill_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
-    for skill_value, skill_label_text in skill_options:
-        checkbox = CheckBox(
-            group="skill_preset_setting",
-            active=(skill_value == state.selected_skill_preset[0]),
-            size_hint_x=None,
-            width=dp(30),
+    rank_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
+
+    # Kivy imports — kept local to avoid pulling them at module import
+    # time (mirrors the pattern used elsewhere in this module).
+    from kivy.uix.textinput import TextInput
+
+    rank_input = TextInput(
+        text=state.selected_player_rank[0],
+        multiline=False,
+        size_hint_x=0.4,
+        hint_text=i18n._("mykatrain:settings:player_rank_example"),
+        font_name=Theme.DEFAULT_FONT,
+        foreground_color=Theme.TEXT_COLOR,
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+    )
+
+    def _on_rank_text(instance: TextInput, value: str) -> None:
+        # Phase 229: persist user input and refresh the derived preset
+        # label.  We resolve via the same helper the analysis code uses,
+        # so the UI can never disagree with the runtime preset.
+        from katrain.core.analysis import resolve_skill_preset
+
+        new_value = value.strip()
+        state.selected_player_rank[0] = new_value
+        state.selected_skill_preset[0] = resolve_skill_preset(
+            state.ctx.config("general/skill_preset"),
+            new_value,
         )
-        checkbox.bind(
-            active=lambda chk, active, val=skill_value: (
-                state.selected_skill_preset.__setitem__(0, val) if active else None
+        # Update the inferred label without rebuilding the layout.
+        if hasattr(state, "_rank_inferred_label"):
+            state._rank_inferred_label.text = _format_rank_inferred_label(
+                new_value, state.selected_skill_preset[0]
             )
-        )
-        label = Label(
-            text=skill_label_text,
-            size_hint_x=None,
-            width=dp(60),
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        skill_layout.add_widget(checkbox)
-        skill_layout.add_widget(label)
-    inner.add_widget(skill_layout)
+
+    rank_input.bind(text=_on_rank_text)
+    rank_layout.add_widget(rank_input)
+
+    # Spacer so the inferred label has room to render next to the input.
+    rank_layout.add_widget(Label(size_hint_x=0.6))
+
+    inner.add_widget(rank_layout)
     if state.register_searchable is not None:
-        state.register_searchable("mykatrain:settings:skill_preset", skill_layout)
+        state.register_searchable("mykatrain:settings:player_rank", rank_layout)
+
+    # Inferred preset label (Phase 229): shows what the runtime will use.
+    inferred_label = Label(
+        text=_format_rank_inferred_label(
+            state.selected_player_rank[0],
+            state.selected_skill_preset[0],
+        ),
+        size_hint_y=None,
+        height=dp(24),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="13sp",
+    )
+    inferred_label.bind(
+        size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height))
+    )
+    # Phase 229: stash the label on state so the text callback above
+    # can refresh it without rebuilding the layout (avoids focus loss).
+    state._rank_inferred_label = inferred_label
+    inner.add_widget(inferred_label)
+
+
+def _format_rank_inferred_label(rank_str: str, resolved_preset: str) -> str:
+    """Render the "現在: standard (5d より自動推定)" string for the analysis tab."""
+    from katrain.core.analysis import SKILL_PRESET_LABELS
+
+    preset_label = SKILL_PRESET_LABELS.get(resolved_preset, resolved_preset)
+    if rank_str:
+        return i18n._("mykatrain:settings:player_rank_inferred").format(
+            rank=rank_str, preset=preset_label
+        )
+    return i18n._("mykatrain:settings:player_rank_default").format(preset=preset_label)
 
 
 def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
@@ -289,7 +337,7 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
 
     _build_engine_section(inner, state)
     _build_disable_katago_section(inner, state)
-    _build_skill_preset_section(inner, state)
+    _build_player_rank_section(inner, state)
     _build_pv_filter_section(inner, state)
     _build_beginner_hints_section(inner, state)
 

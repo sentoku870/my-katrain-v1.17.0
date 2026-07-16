@@ -266,7 +266,11 @@ def run_batch_in_thread(
     )
 
     # Get skill preset for karte/summary generation
-    skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+    # Phase 229: derive from override + player_rank via resolve_skill_preset.
+    skill_preset = analysis.resolve_skill_preset(
+        ctx.config("general/skill_preset"),
+        ctx.config("general/player_rank"),
+    )
 
     engine = getattr(ctx, "engine", None)
 

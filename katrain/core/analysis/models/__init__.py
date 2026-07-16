@@ -87,6 +87,7 @@ from katrain.core.analysis.models.reliability import (
 from katrain.core.analysis.models.skill import (
     DEFAULT_SKILL_PRESET,
     PRESET_ORDER,
+    RANK_TO_PRESET_DEFAULT,
     SCORE_THRESHOLDS,
     SKILL_PRESETS,
     URGENT_MISS_CONFIGS,

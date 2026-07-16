@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D 完了）
+> 最終更新: 2026-07-15（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D + Phase 229-A〜E 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -1107,6 +1107,14 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - 228-D: real_shape calibration fixtures 3 個 + E2E 統合テスト + マスター仕様書 (26 tests)
   - 詳細: `docs/archive/specs-implemented/phase228-summary-schema-adapt.md`
   - 累計 5,418 件テスト合格 (Phase 227-E 終了時 5,319 件 + 99 件新規)
+- [x] **Phase 229: 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、2026-07-15 完了）
+  - 229-A: `katrain/common/rank.py` 新設（共有 `Rank` 型 + parse logic + `RANK_TO_PRESET_DEFAULT` テーブル）+ `master_db.py` 互換シム化 (94 tests)
+  - 229-B: `resolve_skill_preset()` 統合、GUI 6 callsite 置換 (board_analysis / karte_export / batch_core / summary_formatter / summary_stats / active_review_controller) (39 tests)
+  - 229-C: 設定 UI から skill_preset ラジオグループを撤去、rank TextInput + 自動推定ラベル表示に置換。i18n 4 キー追加 (4 tests)
+  - 229-D: LLM Coach の fallback chain に `general/player_rank` 追加（Karte/SGF → player_rank → default_user_rank）+ `resolve_rank_fallback_chain` ヘルパー (17 tests)
+  - 229-E: ドキュメント整備（`docs/archive/specs-implemented/phase229-rank-preset-unification.md`）
+  - 詳細: `docs/archive/specs-implemented/phase229-rank-preset-unification.md`
+  - 累計 5,572 件テスト合格 (Phase 228-D 終了時 5,418 件 + 154 件新規)
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---

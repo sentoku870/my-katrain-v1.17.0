@@ -29,6 +29,7 @@ class TestTABResetKeysEngineEntry:
         expected = {
             ("engine", "analysis_engine"),
             ("general", "skill_preset"),
+            ("general", "player_rank"),  # Phase 229
             ("general", "pv_filter_level"),
         }
         assert expected.issubset(set(analysis_keys))

@@ -19,9 +19,23 @@ if TYPE_CHECKING:
     from katrain.gui.features.context import FeatureContext
 
 
-def _save_general_settings(ctx: FeatureContext, skill_preset: str, pv_filter_level: str) -> None:
-    """Save general config (skill_preset, pv_filter_level)."""
+def _save_general_settings(
+    ctx: FeatureContext,
+    skill_preset: str,
+    pv_filter_level: str,
+    player_rank: str = "",
+) -> None:
+    """Save general config (skill_preset, player_rank, pv_filter_level).
+
+    Phase 229: the user types ``player_rank`` (e.g. ``5k`` / ``4段``) and
+    the preset is auto-derived.  We still persist the resolved preset
+    name into ``general/skill_preset`` so existing readers (and legacy
+    configs that pre-date Phase 229) keep working unchanged.
+    """
     general = ctx.config("general") or {}
+    general["player_rank"] = player_rank.strip()
+    # Persist the resolved preset so old code paths reading
+    # ``general/skill_preset`` continue to work without modification.
     general["skill_preset"] = skill_preset
     general["pv_filter_level"] = pv_filter_level
     ctx.set_config_section("general", general)

@@ -1567,6 +1567,20 @@ msgstr "激辛"
 msgid "mykatrain:settings:skill_auto"
 msgstr "自動"
 
+# Phase 229: replaced the skill_preset radio group with a single rank
+# input.  The auto-derived preset name is shown as a label below it.
+msgid "mykatrain:settings:player_rank"
+msgstr "棋力:"
+
+msgid "mykatrain:settings:player_rank_example"
+msgstr "例: 5k / 4d / 4段 / 5級 / 初段"
+
+msgid "mykatrain:settings:player_rank_inferred"
+msgstr "現在: {preset}（{rank} より自動推定）"
+
+msgid "mykatrain:settings:player_rank_default"
+msgstr "現在: {preset}（棋力未設定のデフォルト）"
+
 msgid "mykatrain:settings:pv_filter_level"
 msgstr "候補手フィルタ（最善手除く）:"
 

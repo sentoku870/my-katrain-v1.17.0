@@ -219,11 +219,19 @@ class LLMCoachPopupContent(BoxLayout):
         # Default user lookup (so we can debug why it picked a side).
         default_user = None
         default_user_rank = None
+        player_rank_setting = None
         if self.katrain is not None:
             settings = self.katrain.config("mykatrain_settings") or {}
             default_user = settings.get("default_user_name", "")
             # Phase 225.8: default_user_rank fallback
             default_user_rank = settings.get("default_user_rank", "")
+            # Phase 229-D: also consult the global ``general/player_rank``
+            # setting added by the analysis-tab unification.  It sits
+            # between Karte/SGF and ``default_user_rank`` in the
+            # priority chain (general settings express "what the user
+            # tells the engine to use" while ``default_user_rank`` is
+            # a per-user fallback kept for backward compatibility).
+            player_rank_setting = self.katrain.config("general/player_rank") or ""
 
         # Phase 227-D: ensure the type detection has run before we
         # try to dispatch. If the path is unreadable, fall back to
@@ -253,12 +261,14 @@ class LLMCoachPopupContent(BoxLayout):
             return
 
         # ---- Rank auto-fill ----
-        detected = _pick_detected_rank(info, self.perspective_value)
-        # Phase 225.8: fall back to default_user_rank when Karte/SGF
-        # has no rank info. The user's setting is persisted in
-        # mykatrain_settings so they don't have to type it each time.
-        if not detected and default_user_rank:
-            detected = default_user_rank
+        # Phase 229-D: extracted into a pure helper so the priority chain
+        # is testable without Kivy.
+        detected = resolve_rank_fallback_chain(
+            info,
+            self.perspective_value,
+            general_player_rank=player_rank_setting,
+            default_user_rank=default_user_rank,
+        )
         if detected:
             self.detected_rank = detected
             current = self._read_text("rank_input")
@@ -1031,22 +1041,28 @@ def _summary_index_to_internal(
 
 
 def _pick_detected_rank(info: dict, perspective_value: str) -> str | None:
-    """Pick the rank to show for the active perspective.
+    """Pick the rank to show for the active perspective (Phase 229-D moved here)."""
+    from katrain.gui.features.llm_coach import _pick_detected_rank as _impl
 
-    Phase 225.6: the rank hint shows the player's own rank when the
-    perspective is Auto / B / W. Returns ``None`` when nothing is known.
+    return _impl(info, perspective_value)
 
-    Phase 226-B (B3): ``perspective_value`` is now always one of
-    ``"auto"`` / ``"B"`` / ``"W"`` (the spinner's internal value), so
-    we no longer need ``startswith("黒")`` heuristics.
-    """
-    black = (info.get("black") or {}).get("rank") or None
-    white = (info.get("white") or {}).get("rank") or None
-    if perspective_value == "B":
-        return black
-    if perspective_value == "W":
-        return white
-    return black or white
+
+def resolve_rank_fallback_chain(
+    info: dict | None,
+    perspective_value: str,
+    *,
+    general_player_rank: str | None = None,
+    default_user_rank: str | None = None,
+) -> str | None:
+    """Re-exported from :func:`katrain.gui.features.llm_coach.resolve_rank_fallback_chain`."""
+    from katrain.gui.features.llm_coach import resolve_rank_fallback_chain as _impl
+
+    return _impl(
+        info,
+        perspective_value,
+        general_player_rank=general_player_rank,
+        default_user_rank=default_user_rank,
+    )
 
 
 def _resolve_player_color(perspective_value: str, detected: str | None) -> str | None:

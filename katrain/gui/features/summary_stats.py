@@ -235,7 +235,11 @@ def extract_sgf_statistics(
                     game_node.analysis = node_analysis  # type: ignore[attr-defined]
 
             # Get skill preset for tag threshold calculation (Option 0-B: Problem 3 fix)
-            skill_preset = ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET
+            # Phase 229: derive from override + player_rank via resolve_skill_preset.
+            skill_preset = analysis.resolve_skill_preset(
+                ctx.config("general/skill_preset"),
+                ctx.config("general/player_rank"),
+            )
 
             # Get important moves with reason_tags
             important_moves = temp_game.get_important_move_evals(level=skill_preset, compute_reason_tags=True)

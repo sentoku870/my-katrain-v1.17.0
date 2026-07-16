@@ -55,6 +55,7 @@ TAB_RESET_KEYS: dict[str, list[tuple[str, str]]] = {
     "analysis": [
         ("engine", "analysis_engine"),  # Phase 34
         ("general", "skill_preset"),
+        ("general", "player_rank"),  # Phase 229
         ("general", "pv_filter_level"),
     ],
     # Export tab: karte output settings

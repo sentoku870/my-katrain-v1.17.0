@@ -89,7 +89,17 @@ def do_mykatrain_settings_popup(
         current_engine=current_engine,
         selected_engine=[current_engine],
         selected_disable_katago=[ctx.config("engine/disabled", False)],
-        selected_skill_preset=[ctx.config("general/skill_preset") or analysis.DEFAULT_SKILL_PRESET],
+        selected_skill_preset=[
+            analysis.resolve_skill_preset(
+                ctx.config("general/skill_preset"),
+                ctx.config("general/player_rank"),
+            )
+        ],
+        # Phase 229: player_rank is the new primary input.  We still
+        # honour an explicit preset override stored in
+        # ``general/skill_preset`` (Phase 229-D does the same), but the
+        # UI no longer exposes the preset radio buttons.
+        selected_player_rank=[ctx.config("general/player_rank") or ""],
         selected_pv_filter=[ctx.config("general/pv_filter_level") or analysis.DEFAULT_PV_FILTER_LEVEL],
         selected_beginner_hints=[ctx.config("beginner_hints/enabled", False)],
         selected_summary_mistake=[ctx.config("beginner_hints/summary_mistake", True)],
@@ -210,7 +220,12 @@ def do_mykatrain_settings_popup(
     #                    Phase 177: kifunarabe.sgf_load 永続化) ---
     def save_settings(*_args: Any) -> None:
         """Save all settings sections (Phase 171: Leela セクション削除)。"""
-        _save_general_settings(ctx, state.selected_skill_preset[0], state.selected_pv_filter[0])
+        _save_general_settings(
+            ctx,
+            state.selected_skill_preset[0],
+            state.selected_pv_filter[0],
+            state.selected_player_rank[0],
+        )
         _save_beginner_hints_settings(
             ctx,
             state.selected_beginner_hints[0],

@@ -34,6 +34,8 @@ class TestSaveGeneralSettings:
         assert payload["pv_filter_level"] == "medium"
         # Original lang preserved.
         assert payload["lang"] == "en"
+        # Phase 229: player_rank defaults to "" when omitted.
+        assert payload["player_rank"] == ""
 
         ctx.save_config.assert_called_once_with("general")
 
@@ -44,7 +46,26 @@ class TestSaveGeneralSettings:
         _save_general_settings(ctx, "auto", "auto")
         section_name, payload = ctx.set_config_section.call_args.args
         assert section_name == "general"
-        assert payload == {"skill_preset": "auto", "pv_filter_level": "auto"}
+        assert payload == {"skill_preset": "auto", "pv_filter_level": "auto", "player_rank": ""}
+
+    def test_persists_player_rank_when_provided(self):
+        """Phase 229: player_rank is the primary input from the analysis tab."""
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
+
+        ctx = _make_ctx(initial={})
+        _save_general_settings(ctx, skill_preset="advanced", pv_filter_level="auto", player_rank="5d")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["player_rank"] == "5d"
+        assert payload["skill_preset"] == "advanced"  # resolved preset still saved
+
+    def test_player_rank_whitespace_stripped(self):
+        """Phase 229: leading/trailing whitespace in the rank input is ignored."""
+        from katrain.gui.features.settings_popup_savers import _save_general_settings
+
+        ctx = _make_ctx(initial={})
+        _save_general_settings(ctx, "standard", "auto", player_rank="  4段  ")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["player_rank"] == "4段"
 
 
 class TestSaveBeginnerHintsSettings:
