@@ -15,6 +15,8 @@ These tests pin its public API:
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from katrain.common.rank import (
@@ -26,7 +28,6 @@ from katrain.common.rank import (
     format_rank,
     normalise_rank_str,
 )
-
 
 # ---------------------------------------------------------------------------
 # Rank dataclass — parse() factory
@@ -87,10 +88,10 @@ class TestRankParse:
             "xyzzy",
             "100段",
             "abc",
-            "k",       # missing number
-            "4e",      # suffix not in alphabet
-            "4.5段",   # decimal not supported
-            "九段",    # Chinese numerals not supported
+            "k",  # missing number
+            "4e",  # suffix not in alphabet
+            "4.5段",  # decimal not supported
+            "九段",  # Chinese numerals not supported
         ],
     )
     def test_garbage_inputs(self, garbage: str) -> None:
@@ -98,7 +99,7 @@ class TestRankParse:
 
     def test_frozen(self) -> None:
         rank = Rank.parse("5k")
-        with pytest.raises(Exception):
+        with pytest.raises((AttributeError, dataclasses.FrozenInstanceError)):
             rank.kyu_dan = 99  # type: ignore[misc]
 
 
@@ -146,9 +147,7 @@ class TestRankProperties:
             ("99d", True, "99d", "99段"),
         ],
     )
-    def test_properties(
-        self, raw: str, is_dan: bool, ascii_repr: str, jp_repr: str
-    ) -> None:
+    def test_properties(self, raw: str, is_dan: bool, ascii_repr: str, jp_repr: str) -> None:
         rank = Rank.parse(raw)
         assert rank is not None
         assert rank.is_dan is is_dan
@@ -318,11 +317,30 @@ class TestRankTables:
         # monotonic (no gaps inbetween should cause inversions). 99d is a
         # sentinel for "stronger than 9d" and is intentionally non-monotonic.
         canonical_sequence = [
-            "30k", "25k", "20k", "15k", "11k",
-            "10k", "9k", "8k", "7k", "6k", "5k",
-            "4k", "3k", "2k", "1k",
-            "1d", "2d", "3d", "4d", "5d",
-            "6d", "7d", "8d", "9d",
+            "30k",
+            "25k",
+            "20k",
+            "15k",
+            "11k",
+            "10k",
+            "9k",
+            "8k",
+            "7k",
+            "6k",
+            "5k",
+            "4k",
+            "3k",
+            "2k",
+            "1k",
+            "1d",
+            "2d",
+            "3d",
+            "4d",
+            "5d",
+            "6d",
+            "7d",
+            "8d",
+            "9d",
         ]
         values = [RANK_ORDER[k] for k in canonical_sequence]
         assert values == sorted(values)
@@ -330,18 +348,14 @@ class TestRankTables:
 
     def test_aliases_map_to_known_keys(self) -> None:
         for alias, target in RANK_ALIASES.items():
-            assert target in RANK_ORDER, (
-                f"Alias {alias!r} -> {target!r} but {target!r} not in RANK_ORDER"
-            )
+            assert target in RANK_ORDER, f"Alias {alias!r} -> {target!r} but {target!r} not in RANK_ORDER"
 
     def test_rank_to_preset_has_all_kyu_dan_keys(self) -> None:
         # Every kyu_dan integer in RANK_ORDER should have a preset mapping.
         from katrain.core.analysis.models.skill import RANK_TO_PRESET_DEFAULT
 
         for kyu_dan in RANK_ORDER.values():
-            assert kyu_dan in RANK_TO_PRESET_DEFAULT, (
-                f"RANK_TO_PRESET_DEFAULT missing entry for kyu_dan={kyu_dan}"
-            )
+            assert kyu_dan in RANK_TO_PRESET_DEFAULT, f"RANK_TO_PRESET_DEFAULT missing entry for kyu_dan={kyu_dan}"
 
 
 # ---------------------------------------------------------------------------

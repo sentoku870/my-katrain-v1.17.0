@@ -15,14 +15,13 @@ from __future__ import annotations
 
 import pytest
 
+from katrain.common.rank import Rank
 from katrain.core.analysis import (
     DEFAULT_SKILL_PRESET,
     SKILL_PRESETS,
     rank_to_skill_preset,
     resolve_skill_preset,
 )
-from katrain.common.rank import Rank
-
 
 # ---------------------------------------------------------------------------
 # Priority 1: explicit override
@@ -163,7 +162,8 @@ class TestFullCoverage:
         # Sanity check: there exists at least one rank that maps to each
         # preset (otherwise the rank->preset bridge is incomplete).
         matches = [
-            r for r in ["30k", "11k", "10k", "5k", "4k", "1d", "2d", "5d", "6d", "9d"]
+            r
+            for r in ["30k", "11k", "10k", "5k", "4k", "1d", "2d", "5d", "6d", "9d"]
             if resolve_skill_preset(None, r) == preset_name
         ]
         assert matches, f"No rank maps to preset {preset_name!r}"

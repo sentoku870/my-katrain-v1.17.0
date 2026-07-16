@@ -11,10 +11,7 @@ These tests pin the chain without requiring Kivy.
 
 from __future__ import annotations
 
-import pytest
-
 from katrain.gui.features.llm_coach import resolve_rank_fallback_chain
-
 
 # ---------------------------------------------------------------------------
 # Priority 1: Karte/SGF info dict
@@ -24,25 +21,16 @@ from katrain.gui.features.llm_coach import resolve_rank_fallback_chain
 class TestKarteSgfTakesPriority:
     def test_info_black_rank_wins(self) -> None:
         info = {"black": {"rank": "5d"}, "white": {"rank": "3k"}}
-        assert (
-            resolve_rank_fallback_chain(info, "B", general_player_rank="1d", default_user_rank="7k")
-            == "5d"
-        )
+        assert resolve_rank_fallback_chain(info, "B", general_player_rank="1d", default_user_rank="7k") == "5d"
 
     def test_info_white_rank_wins(self) -> None:
         info = {"black": {"rank": "5d"}, "white": {"rank": "3k"}}
-        assert (
-            resolve_rank_fallback_chain(info, "W", general_player_rank="1d", default_user_rank="7k")
-            == "3k"
-        )
+        assert resolve_rank_fallback_chain(info, "W", general_player_rank="1d", default_user_rank="7k") == "3k"
 
     def test_auto_perspective_picks_black_first(self) -> None:
         info = {"black": {"rank": "5d"}, "white": {"rank": "3k"}}
         # Auto picks whichever is set; black takes precedence.
-        assert (
-            resolve_rank_fallback_chain(info, "auto", general_player_rank="1d")
-            == "5d"
-        )
+        assert resolve_rank_fallback_chain(info, "auto", general_player_rank="1d") == "5d"
 
     def test_auto_falls_through_to_white(self) -> None:
         info = {"black": {}, "white": {"rank": "3k"}}
@@ -51,10 +39,7 @@ class TestKarteSgfTakesPriority:
     def test_info_partial_dict(self) -> None:
         # Karte may omit one side entirely.
         info = {"black": {"rank": "4段"}}
-        assert (
-            resolve_rank_fallback_chain(info, "auto", general_player_rank="1d")
-            == "4段"
-        )
+        assert resolve_rank_fallback_chain(info, "auto", general_player_rank="1d") == "4段"
 
 
 # ---------------------------------------------------------------------------
@@ -67,19 +52,13 @@ class TestGeneralPlayerRank:
         assert resolve_rank_fallback_chain(None, "auto", general_player_rank="5d") == "5d"
 
     def test_general_wins_over_default_user_rank(self) -> None:
-        assert (
-            resolve_rank_fallback_chain(None, "auto", general_player_rank="5d", default_user_rank="1k")
-            == "5d"
-        )
+        assert resolve_rank_fallback_chain(None, "auto", general_player_rank="5d", default_user_rank="1k") == "5d"
 
     def test_empty_general_falls_to_default_user_rank(self) -> None:
         assert resolve_rank_fallback_chain(None, "auto", general_player_rank="", default_user_rank="1k") == "1k"
 
     def test_none_general_falls_to_default_user_rank(self) -> None:
-        assert (
-            resolve_rank_fallback_chain(None, "auto", general_player_rank=None, default_user_rank="4段")
-            == "4段"
-        )
+        assert resolve_rank_fallback_chain(None, "auto", general_player_rank=None, default_user_rank="4段") == "4段"
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +85,9 @@ class TestEmptyChain:
 
     def test_all_empty_returns_none(self) -> None:
         assert (
-            resolve_rank_fallback_chain({"black": {}, "white": {}}, "auto", general_player_rank="", default_user_rank="")
+            resolve_rank_fallback_chain(
+                {"black": {}, "white": {}}, "auto", general_player_rank="", default_user_rank=""
+            )
             is None
         )
 

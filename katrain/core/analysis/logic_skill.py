@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from katrain.common.rank import Rank, canonical_rank_key
 from katrain.core.analysis.models import (
     DEFAULT_SKILL_PRESET,
     PRESET_ORDER,
@@ -29,7 +30,6 @@ from katrain.core.analysis.models import (
 )
 from katrain.core.analysis.models.move_eval import MoveEval
 from katrain.core.analysis.presentation import VALID_REASON_TAGS
-from katrain.common.rank import Rank, canonical_rank_key
 
 if TYPE_CHECKING:
     pass
@@ -117,10 +117,9 @@ def resolve_skill_preset(
         ``"auto"`` the same as ``None`` from this point on.
     """
     fallback = default if default is not None else DEFAULT_SKILL_PRESET
-    if preset_override and preset_override != "auto":
+    if preset_override and preset_override != "auto" and preset_override in SKILL_PRESETS:
         # Validate: if the override is not in SKILL_PRESETS, fall through.
-        if preset_override in SKILL_PRESETS:
-            return preset_override
+        return preset_override
     if player_rank:
         derived = rank_to_skill_preset(player_rank)
         if derived and derived in SKILL_PRESETS:

@@ -31,9 +31,9 @@ from enum import Enum
 # thin re-export shims for backward compatibility (they are imported by
 # ``tests/test_master_db_rank_aliases.py`` and downstream tests).
 from katrain.common.rank import (  # noqa: F401  (re-exported below)
-    Rank,
     _RANK_ALIASES,
     _RANK_ORDER,
+    Rank,
     canonical_rank_key,
     normalise_rank_str,
 )
@@ -248,8 +248,7 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
             "・感情よりも事実と因果関係にフォーカスする。"
         ),
         praise_sample_jp=(
-            "この場面で大場に回ったのは良い判断ですね。"
-            "局所の戦いに引きずられず、全局を見る習慣ができてきています。"
+            "この場面で大場に回ったのは良い判断ですね。局所の戦いに引きずられず、全局を見る習慣ができてきています。"
         ),
         critique_sample_jp=(
             "この場面、読みの入り口で相手の最強応手を外していますね。気持ちは分かります。"
@@ -260,9 +259,7 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
             "伸び悩みを感じているとのことですが、課題を言語化できている時点で、"
             "すでに次のステップに入っています。焦らず、一つずつ潰していきましょう。"
         ),
-        excuse_handling_jp=(
-            "その理屈も一理あります。ただ、事実として結果を見ると、別の解釈も成り立ちますね。"
-        ),
+        excuse_handling_jp=("その理屈も一理あります。ただ、事実として結果を見ると、別の解釈も成り立ちますね。"),
         prohibited=_COMMON_PROHIBITED,
     ),
     ToneConfig(
@@ -277,13 +274,12 @@ _TONE_TABLE: tuple[ToneConfig, ...] = (
         ),
         praise_sample_jp=None,
         critique_sample_jp=(
-            "率直に言います。この手は\"楽観バイアス\"そのものです。"
-            "相手が最善を打ったらどうなるか、本当に読みましたか？"
+            '率直に言います。この手は"楽観バイアス"そのものです。相手が最善を打ったらどうなるか、本当に読みましたか？'
         ),
         encourage_sample_jp=None,
         excuse_handling_jp=(
-            "その説明は聞きました。ただ、それは\"なぜミスしたか\"の説明であって、"
-            "\"ミスしなかった場合の変化\"ではありません。問題の構造を分けて考えましょう。"
+            'その説明は聞きました。ただ、それは"なぜミスしたか"の説明であって、'
+            '"ミスしなかった場合の変化"ではありません。問題の構造を分けて考えましょう。'
         ),
         prohibited=_COMMON_PROHIBITED,
     ),
