@@ -507,9 +507,11 @@ class TestSymptomsCommand:
         lines = [line for line in out.splitlines() if line.startswith("🟢") or line.startswith("🟡")]
         assert len(lines) >= 30
         # Auto-detected markers (green) should outnumber LLM-required (yellow)
+        # Phase 245: POSITION_EVALUATION is now auto_detected=True, so
+        # green count is at least 16.
         green = sum(1 for line in lines if line.startswith("🟢"))
         yellow = sum(1 for line in lines if line.startswith("🟡"))
-        assert green >= 15
+        assert green >= 16
         assert yellow >= 10
 
 
@@ -652,12 +654,12 @@ class TestCalibrateCommand:
         rc = cli.main(["calibrate"])
         assert rc == 0
         out = capsys.readouterr().out
-        # Phase 228-D: 15 fixtures total (8 karte + 7 summary).
+        # Phase 245: 16 fixtures total (9 karte + 7 summary).
         # 8 karte fixtures count as "passed" (per-move detector
         # fires). 7 summary fixtures (4 Shape A + 3 Shape B) are
         # marked ⏭️ (skipped for symptom detection, but counted as
         # passed because the per-move detector isn't applicable).
-        assert "passed: 15" in out
+        assert "passed: 16" in out
         assert "failed: 0" in out
         assert "# Coach Detector Calibration" in out
 

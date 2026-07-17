@@ -324,6 +324,50 @@ _CORRELATION_FIXTURE = GoldenFixture(
 )
 
 
+# Phase 245: weak-correlation fixture for POSITION_EVALUATION detector.
+# The karte below has winrate_lost and points_lost largely decoupled,
+# so |r| drops below the default 0.5 threshold and POSITION_EVALUATION
+# fires. Used to validate the Phase 245 detector end-to-end via
+# ``calibrate`` CLI / direct fixture tests.
+_POSITION_EVALUATION_DISTORTED_FIXTURE = GoldenFixture(
+    name="position_evaluation_distorted",
+    description=(
+        "Decoupled winrate/scoreLead — |r| falls below 0.5 so "
+        "POSITION_EVALUATION (Phase 245) fires via detect_position_evaluation."
+    ),
+    karte={
+        "schema_version": "3.4",
+        "meta": {"board_size": 19, "game_count": 1},
+        "summary": {"total_moves": 200},
+        # Winrate stays low and stable (model sees the position as
+        # losing throughout) while points_lost oscillates. The user
+        # is reading winrate and points_lost as decoupled signals.
+        "important_moves": [
+            {"winrate_lost": 0.05, "points_lost": 0.2, "move_number": 20},
+            {"winrate_lost": 0.04, "points_lost": 1.8, "move_number": 40},
+            {"winrate_lost": 0.06, "points_lost": 0.5, "move_number": 60},
+            {"winrate_lost": 0.05, "points_lost": 2.5, "move_number": 80},
+            {"winrate_lost": 0.07, "points_lost": 0.3, "move_number": 100},
+            {"winrate_lost": 0.05, "points_lost": 3.0, "move_number": 120},
+            {"winrate_lost": 0.06, "points_lost": 0.8, "move_number": 140},
+            {"winrate_lost": 0.04, "points_lost": 2.2, "move_number": 160},
+            {"winrate_lost": 0.05, "points_lost": 0.4, "move_number": 180},
+            {"winrate_lost": 0.07, "points_lost": 1.5, "move_number": 200},
+        ],
+        "weaknesses": {"black": [], "white": []},
+        "mistake_streaks": {"black": [], "white": []},
+        "loss_progression": [{"mistake_count": 0} for _ in range(20)],
+    },
+    expected_symptom_ids=(SymptomId.POSITION_EVALUATION,),
+    tolerance_notes=(
+        "Phase 245: |r| ≈ 0 (oscillating points_lost around a flat "
+        "winrate_lost) → POSITION_EVALUATION fires via "
+        "detect_position_evaluation. Threshold 0.5 is conservative; "
+        "Phase 246 will tune against real-game dataset."
+    ),
+)
+
+
 # --- Phase 227-E: Summary fixtures ---
 #
 # Summary JSONs don't have per-move data, so the per-game detectors
@@ -700,6 +744,9 @@ ALL_FIXTURES: dict[str, GoldenFixture] = {
         _TILT_CHAIN_FIXTURE,
         _TILT_DISCOURAGEMENT_FIXTURE,
         _CORRELATION_FIXTURE,
+        # Phase 245: POSITION_EVALUATION detector (decoupled
+        # winrate vs scoreLead → |r| < 0.5 → fires)
+        _POSITION_EVALUATION_DISTORTED_FIXTURE,
         # Phase 227-E: Summary fixtures (Shape A — top-level weaknesses)
         _SUMMARY_CLEAN,
         _SUMMARY_BLUNDER_DOMINANT,

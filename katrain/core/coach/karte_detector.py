@@ -596,16 +596,57 @@ def _symptom_ids_from_streaks(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
     return tuple(fired)
 
 
-def _symptom_ids_from_aggregate_patterns(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
-    """Phase 217: aggregate-pattern detection across the whole game.
+def detect_position_evaluation(
+    karte: dict[str, Any],
+    *,
+    abs_correlation_threshold: float = 0.5,
+    min_pairs: int = 8,
+) -> bool:
+    """Phase 245: detect POSITION_EVALUATION via winrate/scoreLead correlation.
 
-    Currently a placeholder. POSITION_EVALUATION detection was prototyped
-    via winrate/scoreLead correlation but the threshold proved unstable
-    in golden-game testing (Phase 217 future work). Symptom stays
-    ``auto_detected=False`` in symptom_index.py — this function returns
-    an empty tuple.
+    局面評価が正確なら winrate と scoreLead は強い正相関（r > 0.5）。
+    局面評価の歪み = 大きなビハインドなのに winrate が高い、またはその逆 →
+    |r| < 0.5。強歪み = r < 0 まで反転。
+
+    Args:
+        karte: The Karte JSON dict.
+        abs_correlation_threshold: |r| below this triggers detection.
+            Default 0.5 is conservative — the symptom fires only when
+            the user's mental model is clearly decoupled from the
+            numeric reality. Phase 246 will tune this against a
+            golden-game dataset.
+        min_pairs: Minimum number of (winrate, scoreLead) pairs
+            required to compute a stable correlation. Below this the
+            sample is too small and we return False to avoid noisy
+            detections.
+
+    Returns:
+        True when the symptom should fire.
     """
-    return ()
+    pairs = extract_winrate_scorelead_pairs(karte)
+    if len(pairs) < min_pairs:
+        return False
+    corr = extract_winrate_scorelead_correlation(karte)
+    if corr is None:
+        return False
+    return abs(corr) < abs_correlation_threshold
+
+
+def _symptom_ids_from_aggregate_patterns(karte: dict[str, Any]) -> tuple[SymptomId, ...]:
+    """Phase 217 + Phase 245: aggregate-pattern detection across the game.
+
+    Returns symptoms whose detector requires whole-game analysis rather
+    than per-move heuristics. Currently:
+
+    - POSITION_EVALUATION (Phase 245): winrate/scoreLead correlation
+      below threshold. Previously a placeholder (Phase 217); now wired
+      to :func:`detect_position_evaluation`. Symptom is flipped to
+      ``auto_detected=True`` in symptom_index.py.
+    """
+    fired: list[SymptomId] = []
+    if detect_position_evaluation(karte):
+        fired.append(SymptomId.POSITION_EVALUATION)
+    return tuple(fired)
 
 
 def detect_symptoms_from_karte(
