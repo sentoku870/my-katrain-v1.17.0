@@ -769,4 +769,3 @@ class TestWeaknessPatternsExcludeGood:
         for _player, cats in per_player.items():
             assert "good" not in cats
             assert set(cats) == {"blunder", "mistake", "inaccuracy"}
-

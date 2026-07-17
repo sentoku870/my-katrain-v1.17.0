@@ -109,7 +109,7 @@ msgid "mykatrain:llm-coach:auto-detect-summary"
 msgstr "Default user '{user}' / B:{black} W:{white} → {color}"
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
-msgstr ""
+msgstr "Auto-detect disabled: 'default_user_name' is not set in mykatrain settings. Open Settings → mykatrain → Default User Name and fill it in."
 "Auto-detect failed: 'default_user_name' is not set in mykatrain settings. "
 "Open Settings → mykatrain → Default User Name and fill it in."
 

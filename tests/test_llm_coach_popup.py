@@ -830,7 +830,7 @@ class TestPhase226IGuiAutoDetectFeedback:
     falling back to "auto (no detection)" instead of silently failing."""
 
     def test_default_user_empty_status_warns(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         # Karte has player info but the mykatrain setting is empty.
         karte.write_text(
@@ -1290,7 +1290,7 @@ class TestUnknownPathEarlyReturn:
     the popup surfaces ``unknown-path`` and short-circuits."""
 
     def test_populate_rank_returns_for_unknown(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="unknown")
         # Hand-written JSON that doesn't match either shape
         weird = tmp_path / "weird.json"
         weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")

@@ -276,8 +276,22 @@ class TestLossProgressionBlock:
             "phase_x_mistake": {},
             "loss_progression": {
                 "all": [
-                    {"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 5.0, "avg_loss": 0.167, "mistake_count": 2},
-                    {"start_move": 11, "end_move": 20, "move_count": 30, "total_loss": 8.0, "avg_loss": 0.267, "mistake_count": 3},
+                    {
+                        "start_move": 1,
+                        "end_move": 10,
+                        "move_count": 30,
+                        "total_loss": 5.0,
+                        "avg_loss": 0.167,
+                        "mistake_count": 2,
+                    },
+                    {
+                        "start_move": 11,
+                        "end_move": 20,
+                        "move_count": 30,
+                        "total_loss": 8.0,
+                        "avg_loss": 0.267,
+                        "mistake_count": 3,
+                    },
                 ]
             },
         }
@@ -299,9 +313,36 @@ class TestLossProgressionBlock:
             "weaknesses": {},
             "phase_x_mistake": {},
             "loss_progression": {
-                "all": [{"start_move": 1, "end_move": 10, "move_count": 50, "total_loss": 10.0, "avg_loss": 0.2, "mistake_count": 4}],
-                "even": [{"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 6.0, "avg_loss": 0.2, "mistake_count": 2}],
-                "handicapped": [{"start_move": 1, "end_move": 10, "move_count": 20, "total_loss": 4.0, "avg_loss": 0.2, "mistake_count": 2}],
+                "all": [
+                    {
+                        "start_move": 1,
+                        "end_move": 10,
+                        "move_count": 50,
+                        "total_loss": 10.0,
+                        "avg_loss": 0.2,
+                        "mistake_count": 4,
+                    }
+                ],
+                "even": [
+                    {
+                        "start_move": 1,
+                        "end_move": 10,
+                        "move_count": 30,
+                        "total_loss": 6.0,
+                        "avg_loss": 0.2,
+                        "mistake_count": 2,
+                    }
+                ],
+                "handicapped": [
+                    {
+                        "start_move": 1,
+                        "end_move": 10,
+                        "move_count": 20,
+                        "total_loss": 4.0,
+                        "avg_loss": 0.2,
+                        "mistake_count": 2,
+                    }
+                ],
             },
         }
         cfg = SummaryPromptConfig(
@@ -322,7 +363,14 @@ class TestLossProgressionBlock:
             "weaknesses": {},
             "phase_x_mistake": {},
             "loss_progression": [
-                {"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 5.0, "avg_loss": 0.167, "mistake_count": 1},
+                {
+                    "start_move": 1,
+                    "end_move": 10,
+                    "move_count": 30,
+                    "total_loss": 5.0,
+                    "avg_loss": 0.167,
+                    "mistake_count": 1,
+                },
             ],
         }
         cfg = SummaryPromptConfig(
