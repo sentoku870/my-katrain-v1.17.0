@@ -86,8 +86,28 @@ def compute_beginner_hint(
     node: Any,
     *,
     require_reliable: bool = True,
+    aggregate: bool = False,
 ) -> BeginnerHint | None:
-    """Compute a beginner hint for a specific node (Phase 91-92)."""
+    """Compute a beginner hint for a specific node (Phase 91-92).
+
+    Args:
+        game: Game instance
+        node: Target node
+        require_reliable: If True, meaning_tag / curator hints require
+            ``root_visits >= MIN_RELIABLE_VISITS`` to fire.
+        aggregate: Phase 248-C4 — when True, run *all* detectors and
+            return the one with the highest ``severity`` (ties broken
+            by the original priority chain: structural > meaning_tag).
+            When False (default), preserve the Phase 91 short-circuit
+            behaviour (first non-None wins).
+
+    Note:
+        The default ``aggregate=False`` keeps backward compatibility
+        for all existing callers. ``aggregate=True`` is a stricter
+        variant that surfaces every applicable hint. Use it from the
+        controlspanel status line when the user explicitly asks
+        "what's wrong with this move?" — see ``gui/controlspanel.py``.
+    """
     if node.move is None or node.parent is None:
         return None
 
@@ -122,6 +142,11 @@ def compute_beginner_hint(
             captured_count=captured_count,
         )
 
+        # Phase 248-C4: collect every applicable hint, then return the
+        # highest-severity one (ties → first in the original chain).
+        if aggregate:
+            return _aggregate_hints(game, node, inp, move.coords, require_reliable)
+
         hint = _hints_pkg.detect_self_atari(inp)
         if hint:
             return hint
@@ -148,6 +173,67 @@ def compute_beginner_hint(
     finally:
         if game.current_node != original_node:
             game.set_current_node(original_node)
+
+
+def _aggregate_hints(
+    game: Any,
+    node: Any,
+    inp: Any,
+    move_coords: tuple[int, int] | None,
+    require_reliable: bool,
+) -> BeginnerHint | None:
+    """Phase 248-C4: run every detector, return the highest-severity hint.
+
+    Returns the hint with the largest ``severity`` field. Ties are
+    broken by the original priority chain order (structural detectors
+    first, then meaning_tag). ``None`` if nothing fires.
+
+    Args:
+        game: Game instance (forwarded to ``detect_cut_risk``).
+        node: Target node (used by ``_get_meaning_tag_hint``).
+        inp: DetectorInput shared across all four structural detectors.
+        move_coords: Coords of the played move, forwarded to the
+            meaning-tag fallback so its hint has a non-None ``coords``.
+        require_reliable: If True, meaning_tag fallback requires
+            ``root_visits >= MIN_RELIABLE_VISITS`` (mirrors the legacy
+            path's gate in :func:`compute_beginner_hint`).
+
+    Returns:
+        The highest-severity hint, or ``None``.
+    """
+    candidates: list[BeginnerHint] = []
+
+    for detector in (
+        _hints_pkg.detect_self_atari,
+        _hints_pkg.detect_ignore_atari,
+        _hints_pkg.detect_missed_capture,
+    ):
+        hint = detector(inp)
+        if hint is not None:
+            candidates.append(hint)
+
+    # detect_cut_risk needs the game argument.
+    hint = _hints_pkg.detect_cut_risk(inp, game)
+    if hint is not None:
+        candidates.append(hint)
+
+    # meaning_tag fallback. Same require_reliable gate as the legacy path.
+    mt_hint = _get_meaning_tag_hint(node, move_coords)
+    if mt_hint is not None:
+        if require_reliable and mt_hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+            mt_hint = None
+        if mt_hint is not None:
+            candidates.append(mt_hint)
+
+    if not candidates:
+        return None
+
+    # Sort by (-severity, index) so the first non-None structural
+    # detector wins on ties. Python's ``sorted`` is stable, so
+    # candidates.append order itself encodes the original priority
+    # order — we only need to break severity ties.
+    candidates.sort(key=lambda h: -h.severity)
+    return candidates[0]
 
 
 def _compute_summary_context(

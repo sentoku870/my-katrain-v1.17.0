@@ -53,7 +53,7 @@ def detect_mistake_summary(ctx: SummaryHintContext) -> BeginnerHint | None:
             severity=1,
             context={"points_lost": pts, "threshold": mistake_t},
         )
-    if pts < 0.5 and ctx.is_endgame and ctx.root_visits >= 300:
+    if pts < 0.5 and ctx.is_endgame and ctx.root_visits >= 200:
         return BeginnerHint(
             category=HintCategory.MISTAKE_GOOD,
             coords=None,
