@@ -1676,6 +1676,15 @@ msgid "mykatrain:settings:pv_filter_kifunarabe_note"
 msgstr ""
 "Note: disabled in Kifunarabe (棋譜並べ) mode — all options are always shown."
 
+msgid "mykatrain:settings:pv_filter_preview_no_analysis"
+msgstr "Current position: not yet analysed"
+
+msgid "mykatrain:settings:pv_filter_preview_inactive"
+msgstr "Current position: {n} candidates (filter OFF)"
+
+msgid "mykatrain:settings:pv_filter_preview_active"
+msgstr "Current position: {n} -> {m} (incl. {best} best move, filter ON)"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
 

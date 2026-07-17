@@ -23,6 +23,7 @@ from kivy.metrics import dp
 from katrain.core.analysis import (
     DEFAULT_PV_FILTER_LEVEL,
     clip_pv_for_animation,
+    compute_pv_filter_preview,
     filter_candidates_by_pv_complexity,
     resolve_pv_filter_config_cached,
     resolve_skill_preset,
@@ -217,6 +218,15 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
         )
         if pv_filter_config is not None:
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
+        # Phase 247-B (H3): stash the N → M preview on the widget so
+        # the settings popup (and Phase 247-C controls panel) can read
+        # it without re-applying the filter. The preview is
+        # position-aware — different nodes get different counts.
+        widget.last_pv_filter_preview = compute_pv_filter_preview(
+            current_node,
+            pv_filter_config,
+            in_kifu=in_kifu,
+        )
 
     return hint_moves
 

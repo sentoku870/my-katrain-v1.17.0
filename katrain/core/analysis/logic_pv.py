@@ -235,6 +235,81 @@ def filter_candidates_by_pv_complexity(
 
 
 # =============================================================================
+# Phase 247-B (H3): position-aware preview counts
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class PVFilterPreview:
+    """Counts of how the PV filter applies to a specific node (H3).
+
+    Used by the settings popup status label and (Phase 247-C) the
+    controls panel live preview. The dataclass is the single source
+    of truth for ``raw / filtered / best / config_active`` so both UI
+    surfaces can format the same numbers consistently.
+
+    Attributes:
+        raw_count: Number of candidates KataGo returned for the node
+            (0 if no analysis yet).
+        filtered_count: Number of candidates after the filter applies
+            (== raw_count if filter is OFF or in kifunarabe mode).
+        best_count: Always 1 if a best_move exists, else 0. The
+            filter keeps best_move as a separate quota (Phase 11).
+        config_active: True if the filter actually ran (i.e., not
+            OFF and not in kifunarabe bypass). When False, the
+            UI can suppress the "N → M" arrow and just show
+            "all candidates".
+    """
+
+    raw_count: int
+    filtered_count: int
+    best_count: int
+    config_active: bool
+
+
+def compute_pv_filter_preview(
+    node: Any,
+    config: PVFilterConfig | None,
+    *,
+    in_kifu: bool = False,
+) -> PVFilterPreview:
+    """Compute the N → M preview for a given node and filter config.
+
+    Phase 247-B (H3): the settings popup wants to show the user the
+    actual count reduction for the current node, not just the static
+    cap from the level. This function is a thin, Kivy-free wrapper
+    over :func:`filter_candidates_by_pv_complexity`.
+
+    Args:
+        node: The current GameNode (or any object with a
+            ``candidate_moves`` list and ``analysis_exists`` flag).
+        config: The active PVFilterConfig, or ``None`` (= OFF).
+        in_kifu: True if kifunarabe mode is active — the filter
+            is bypassed (Phase 246-D H4 contract) and all
+            candidates are passed through.
+
+    Returns:
+        :class:`PVFilterPreview` with the four counts.
+    """
+    if node is None or not getattr(node, "analysis_exists", False):
+        return PVFilterPreview(0, 0, 0, False)
+
+    candidates = list(getattr(node, "candidate_moves", []) or [])
+    raw_count = len(candidates)
+    best_count = sum(1 for c in candidates if c.get("order", 999) == 0)
+
+    # Filter is bypassed in kifunarabe mode (Phase 246-D H4) or
+    # when the level is OFF.
+    config_active = config is not None and not in_kifu
+    if not config_active:
+        return PVFilterPreview(raw_count, raw_count, best_count, False)
+
+    assert config is not None  # for mypy: narrowed by the check above
+    filtered = filter_candidates_by_pv_complexity(candidates, config)
+    return PVFilterPreview(raw_count, len(filtered), best_count, True)
+
+
+# =============================================================================
 # Phase 246-A: Display-effective level resolution
 # =============================================================================
 

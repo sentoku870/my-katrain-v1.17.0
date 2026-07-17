@@ -1622,6 +1622,15 @@ msgstr "マーカー凡例: 赤い丸=高損失、橙=中、黄色=低損失、�
 msgid "mykatrain:settings:pv_filter_kifunarabe_note"
 msgstr "※ 棋譜並べモード中は自動OFF（正解と AI 候補が必ず全件表示されます）"
 
+msgid "mykatrain:settings:pv_filter_preview_no_analysis"
+msgstr "現在の局面: 未解析"
+
+msgid "mykatrain:settings:pv_filter_preview_inactive"
+msgstr "現在の局面: {n} 件（フィルタ OFF）"
+
+msgid "mykatrain:settings:pv_filter_preview_active"
+msgstr "現在の局面: {n} → {m} 件（最善手 {best} 件込み・フィルタ ON）"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 

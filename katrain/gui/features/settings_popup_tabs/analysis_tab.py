@@ -243,6 +243,24 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
     state._pv_filter_status_label = status_label
     inner.add_widget(status_label)
 
+    # Phase 247-B (H3): position-aware preview label below the static
+    # status. Shows "現在の局面: 12 → 5 (best 1件込み)" using the
+    # latest ``widget.last_pv_filter_preview`` value. Refreshed when
+    # the filter or rank changes (via ``_refresh_pv_filter_status``).
+    preview_label = Label(
+        text=_format_pv_filter_preview_line(state),
+        size_hint_y=None,
+        height=dp(24),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="12sp",
+    )
+    preview_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    state._pv_filter_preview_label = preview_label
+    inner.add_widget(preview_label)
+
     # Phase 246-B (M4): a small legend explaining the marker colour /
     # size / border semantics so users can decode the on-board hints
     # without opening external docs. Kept short to fit the popup width.
@@ -315,13 +333,48 @@ def _refresh_pv_filter_status(state: _SettingsPopupContext) -> None:
     Phase 246-A: pulled out of ``_build_pv_filter_section`` so the
     player-rank text callback can reuse it. The label reference is
     stashed on ``state._pv_filter_status_label`` by the section builder.
+
+    Phase 247-B (H3): also refreshes the position-aware preview label
+    that shows the N → M count for the current node.
     """
     label = getattr(state, "_pv_filter_status_label", None)
-    if label is None:
-        return
-    label.text = _format_pv_filter_status(
-        state.selected_pv_filter[0],
-        state.selected_player_rank[0],
+    if label is not None:
+        label.text = _format_pv_filter_status(
+            state.selected_pv_filter[0],
+            state.selected_player_rank[0],
+        )
+    preview_label = getattr(state, "_pv_filter_preview_label", None)
+    if preview_label is not None:
+        preview_label.text = _format_pv_filter_preview_line(state)
+
+
+def _format_pv_filter_preview_line(state: _SettingsPopupContext) -> str:
+    """Render the position-aware N → M line for the current node (H3).
+
+    The preview count is stashed on the board widget by
+    :func:`prepare_hint_moves`. We read it via the badukpan widget
+    to avoid coupling the popup to the renderer.
+
+    Returns the i18n-localized string:
+    - "(未解析)" — node has no analysis yet
+    - "現在の局面: 12 → 5 (best 1件込み, フィルタ ON)" — filter active
+    - "現在の局面: 12 件 (フィルタ OFF)" — filter inactive (OFF level or
+      kifunarabe bypass)
+    """
+    # Lazy import to avoid pulling Kivy at module load time.
+    from katrain.core.lang import i18n as _i18n
+
+    board = getattr(state.ctx, "controls", None)
+    board_widget = getattr(board, "board_widget", None) if board else None
+    preview = getattr(board_widget, "last_pv_filter_preview", None) if board_widget else None
+    if preview is None or preview.raw_count == 0:
+        return _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
+    if not preview.config_active:
+        return _i18n._("mykatrain:settings:pv_filter_preview_inactive").format(n=preview.raw_count)
+    return _i18n._("mykatrain:settings:pv_filter_preview_active").format(
+        n=preview.raw_count,
+        m=preview.filtered_count,
+        best=preview.best_count,
     )
 
 
