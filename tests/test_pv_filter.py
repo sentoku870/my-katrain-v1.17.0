@@ -9,6 +9,8 @@ Tests for PV Filter (Phase 11)
 - (Phase 246-A) ``get_effective_pv_filter_info`` の表示用ヘルパー
 """
 
+import pytest
+
 from katrain.core.analysis import (
     DEFAULT_PV_FILTER_LEVEL,
     PV_FILTER_CONFIGS,
@@ -479,9 +481,9 @@ class TestGetEffectivePVFilterInfo:
         info = get_effective_pv_filter_info("medium", "")
         assert isinstance(info, PVFilterDisplayInfo)
         # Frozen: cannot mutate
-        import pytest
+        import dataclasses
 
-        with pytest.raises(Exception):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             info.effective_level = "off"  # type: ignore[misc]
 
     def test_auto_pro_maps_to_expert(self):

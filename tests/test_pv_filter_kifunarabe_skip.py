@@ -21,9 +21,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
-
 _BADUKPAN_HINTS_PY = Path(__file__).resolve().parents[1] / "katrain" / "gui" / "badukpan_hints.py"
 
 

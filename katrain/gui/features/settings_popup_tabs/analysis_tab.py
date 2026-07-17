@@ -10,7 +10,7 @@ shared ``inner`` container and is self-contained.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -203,7 +203,7 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
         )
         # Each cell needs its own handler so the closure captures the
         # correct ``pv_value`` (Phase 226-B 対策: explicit handler factory).
-        def _on_pv_active(_chk, active, val=pv_value):  # noqa: B008
+        def _on_pv_active(_chk: Any, active: bool, val: str = pv_value) -> None:  # noqa: B008
             if active:
                 state.selected_pv_filter[0] = val
                 _refresh_pv_filter_status(state)
