@@ -77,6 +77,12 @@
 | [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
 | [phase228-summary-schema-adapt.md](phase228-summary-schema-adapt.md) | Phase 228-A〜D | LLM コーチ複数局対応 - 実シェーマ適応（extractors / prompt builder / validator / real_shape fixtures） |
 
+## Phase 231-237 カルテ刷新（2026-07）
+
+| ファイル | 対応Phase | 内容 |
+|----------|-----------|------|
+| [karte-schema.md](karte-schema.md) | Phase 231-237 | 単局カルテ（v3.3）/ 複数局サマリ（v3.4）の **JSON スキーマ正本ドキュメント**。型判別ロジック / Shape A vs Shape B / 全フィールド仕様 / バージョン履歴 |
+
 ## Phase 171 で削除されたスペック
 
 以下のスペックは Phase 171（Leela エンジン完全削除）で実装と共に削除されました。git log で参照可能：
