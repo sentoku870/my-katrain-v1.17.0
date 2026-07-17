@@ -201,6 +201,7 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
             active=(pv_value == state.selected_pv_filter[0]),
             size_hint_x=0.3,
         )
+
         # Each cell needs its own handler so the closure captures the
         # correct ``pv_value`` (Phase 226-B 対策: explicit handler factory).
         def _on_pv_active(_chk: Any, active: bool, val: str = pv_value) -> None:  # noqa: B008

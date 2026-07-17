@@ -662,9 +662,7 @@ class TestFilterLossMetric:
         assert config.loss_metric == "pointsLost"
 
     def test_points_lost_metric_filters_by_absolute(self):
-        config = PVFilterConfig(
-            max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="pointsLost"
-        )
+        config = PVFilterConfig(max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="pointsLost")
         result = filter_candidates_by_pv_complexity(FIXTURE_RELATIVE_LOSS, config)
         # best_move (order=0) always kept
         # order=1 (pointsLost=0.5 ≤ 1.0) kept
@@ -688,9 +686,7 @@ class TestFilterLossMetric:
     def test_unknown_metric_falls_back_to_points_lost(self):
         """Defensive: an unrecognised metric name falls back to the
         default (pointsLost) rather than dropping all candidates."""
-        config = PVFilterConfig(
-            max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="mystery_metric"
-        )
+        config = PVFilterConfig(max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="mystery_metric")
         # The function uses getattr with default, so unknown key reads
         # ``None`` from each candidate, gets coerced to 0.0 — i.e. all
         # candidates pass the loss threshold. This is the same
