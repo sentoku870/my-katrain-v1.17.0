@@ -35,6 +35,25 @@ from kivy.core.clipboard import Clipboard
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 
+from katrain.core.coach.popup_logic import (
+    PERSPECTIVE_AUTO as _PERSPECTIVE_AUTO_INTERNAL,
+)
+from katrain.core.coach.popup_logic import (
+    SUMMARY_BIRDSEYE_SENTINEL as _SUMMARY_BIRDSEYE_SENTINEL,
+)
+from katrain.core.coach.popup_logic import (
+    _summary_index_to_internal,
+    cap_response_text,
+    count_issue_markers,
+    detect_path_type_from_file,
+    format_type_label,
+    format_validation_status_summary,
+    resolve_summary_spinner_values,
+    was_truncated,
+)
+from katrain.core.coach.popup_logic import (
+    resolve_player_color_internal as _resolve_player_color,
+)
 from katrain.core.lang import i18n
 from katrain.gui.popups._base import I18NPopup
 from katrain.gui.theme import Theme
@@ -50,28 +69,6 @@ if TYPE_CHECKING:
 # of a popup the user has already dismissed).
 _MAX_RANK_DETECT_RETRIES = 5
 _RETRY_INTERVAL = 0.2
-
-# Phase 242-B: stable internal values for the perspective spinner.
-# The KV-side spinner ``text`` is the localised label (e.g. "黒 (B)" /
-# "白 (W)" / "自動" in Japanese, "Black (B)" / "White (W)" / "Auto
-# (default user)" in English). The internal ``perspective_value`` is
-# always one of these constants — never an empty string or a localised
-# label — so the rest of the code can compare without i18n lookups.
-#
-# The previous convention used ``""`` (empty string) as a sentinel
-# for "auto" because StringProperty cannot store ``None``. The empty
-# string is confusing (looks like a bug) and was inconsistent with
-# the StringProperty default "auto". This constant is the single
-# source of truth.
-_PERSPECTIVE_AUTO_INTERNAL: str = "auto"
-_PERSPECTIVE_BLACK_INTERNAL: str = "B"
-_PERSPECTIVE_WHITE_INTERNAL: str = "W"
-
-# Phase 242-B: cap the LLM response input to prevent UI freezes when
-# the user pastes a multi-megabyte response. 100k chars is far above
-# what a real LLM output should be (~10-30k for a long review) and
-# matches the validator's report size cap so the two limits align.
-_MAX_RESPONSE_INPUT_CHARS = 100_000
 
 # Phase 242-B: minimum interval between rapid validation requests to
 # prevent accidental double-clicks. The button is disabled during this
@@ -139,6 +136,10 @@ class LLMCoachPopupContent(BoxLayout):
         # / ``"unknown"``. Drives the type_label, generate button text
         # and dispatcher in ``on_generate_and_copy``.
         self.path_type: str = "unknown"
+        # Phase 243: auxiliary fields captured by ``detect_path_type_from_file``
+        # so ``_refresh_type_label`` does not need to re-read the JSON.
+        self.path_schema_version: str | None = None
+        self.path_games_analyzed: int = 0
         # Phase 227-D: cached list of (name, rank) tuples for the
         # summary perspective selector. Populated from
         # ``detect_player_info_for_summary`` when the path is a summary.
@@ -450,28 +451,20 @@ class LLMCoachPopupContent(BoxLayout):
     def _detect_path_type(self, path: str) -> str:
         """Detect whether ``path`` is a karte or summary JSON.
 
-        Sets ``self.path_type`` and returns the same value. Errors
-        during detection (file missing, malformed JSON) are mapped to
-        ``"unknown"`` so the UI can fall back to karte behaviour.
+        Sets ``self.path_type`` (and ``self.path_schema_version`` /
+        ``self.path_games_analyzed``) and returns the same value.
+        Errors during detection (file missing, malformed JSON) are
+        mapped to ``"unknown"`` so the UI can fall back to karte
+        behaviour.
+
+        Phase 243: delegates the JSON parse + ``detect_json_type`` call
+        to :func:`katrain.core.coach.popup_logic.detect_path_type_from_file`
+        so the logic is Kivy-free and testable in headless CI.
         """
-        from katrain.core.coach import detect_json_type
-
-        if not path:
-            self.path_type = "unknown"
-            return self.path_type
-        try:
-            import json
-
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-            if not isinstance(data, dict):
-                self.path_type = "unknown"
-                return self.path_type
-            self.path_type = detect_json_type(data)
-        except (OSError, ValueError):
-            self.path_type = "unknown"
-        except Exception:  # noqa: BLE001 — defensive
-            self.path_type = "unknown"
+        result = detect_path_type_from_file(path)
+        self.path_type = result.path_type
+        self.path_schema_version = result.schema_version
+        self.path_games_analyzed = result.games_analyzed
         return self.path_type
 
     def _populate_summary_perspective(
@@ -504,21 +497,23 @@ class LLMCoachPopupContent(BoxLayout):
         #   index 1..N       → each player (name + optional rank), with the
         #                       matched player placed first so the spinner
         #                       defaults to the focus player at index 1.
-        players = info.get("all_players", []) or []
+        #
+        # Phase 243: pure value-list construction delegated to
+        # :func:`katrain.core.coach.popup_logic.resolve_summary_spinner_values`
+        # so the matched-player-first ordering and the "name (rank)" /
+        # "name" label formatting are Kivy-free and testable in
+        # headless CI. The popup only keeps the ``default_user_matched``
+        # aware index selection below.
+        players_raw = info.get("all_players", []) or []
+        player_pairs = [(p.get("name"), p.get("rank")) for p in players_raw if isinstance(p, dict) and p.get("name")]
         matched = info.get("matched_player", {}) or {}
         matched_name = matched.get("name") if isinstance(matched, dict) else None
-        if matched_name:
-            ordered = [matched_name] + [p["name"] for p in players if p.get("name") and p["name"] != matched_name]
-        else:
-            ordered = [p["name"] for p in players]
-        ordered = [name for name in ordered if name]
-        rank_lookup = {p["name"]: p.get("rank") for p in players if isinstance(p, dict) and p.get("name")}
-        self.summary_players = [(name, rank_lookup.get(name)) for name in ordered]
-        birdseye = i18n._("mykatrain:llm-coach:summary-perspective-birdseye")
-        values: list[str] = [birdseye]
-        for name, rank in self.summary_players:
-            label = f"{name} ({rank})" if rank else name
-            values.append(label)
+        self.summary_players = player_pairs
+        values, _default_idx = resolve_summary_spinner_values(
+            player_pairs,
+            matched_player=matched_name,
+            birdseye_label=i18n._("mykatrain:llm-coach:summary-perspective-birdseye"),
+        )
 
         spinner = self._get_widget("perspective_select")
         if spinner is not None:
@@ -661,8 +656,12 @@ class LLMCoachPopupContent(BoxLayout):
           + schema_version suffix, Phase 242-B)
         - ``generate_button.text`` (changes for summary mode)
 
-        Does NOT re-populate the rank/perspective selectors — that
-        happens in :meth:`_populate_rank_and_perspective`.
+        Phase 243: delegates type_label construction to
+        :func:`katrain.core.coach.popup_logic.format_type_label` so the
+        schema_version suffix + games_analyzed formatting are
+        Kivy-free testable helpers. The popup only handles the
+        "empty path" / "set button text" branches that are pure
+        widget glue.
         """
         karte_path = self._read_text("karte_path_input")
         type_label = self._get_widget("type_label")
@@ -674,36 +673,15 @@ class LLMCoachPopupContent(BoxLayout):
                 gen_button.text = i18n._("mykatrain:llm-coach:build-prompt")
             return
         self._detect_path_type(karte_path)
-        games = 0
-        schema_version: str | None = None
-        try:
-            import json
-
-            with open(karte_path, encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                if self.path_type == "summary":
-                    games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
-                sv = data.get("schema_version")
-                if isinstance(sv, (str, int, float)):
-                    schema_version = str(sv)
-        except Exception:  # noqa: BLE001
-            pass
         if type_label is not None:
-            # Phase 242-B: append schema_version as a debug suffix
-            # when present. Helps users verify they are looking at
-            # the right schema generation when troubleshooting
-            # prompt/validator mismatches.
-            if self.path_type == "karte":
-                base = i18n._("mykatrain:llm-coach:type-label-single")
-            elif self.path_type == "summary":
-                base = i18n._("mykatrain:llm-coach:type-label-multi").format(games=games)
-            else:
-                base = i18n._("mykatrain:llm-coach:type-label-unknown")
-            if schema_version:
-                type_label.text = f"{base} · Schema {schema_version}"
-            else:
-                type_label.text = base
+            type_label.text = format_type_label(
+                self.path_type,
+                games_analyzed=self.path_games_analyzed,
+                schema_version=self.path_schema_version,
+                single_label=i18n._("mykatrain:llm-coach:type-label-single"),
+                multi_label=i18n._("mykatrain:llm-coach:type-label-multi"),
+                unknown_label=i18n._("mykatrain:llm-coach:type-label-unknown"),
+            )
         if gen_button is not None:
             if self.path_type == "summary":
                 gen_button.text = i18n._("mykatrain:llm-coach:summary-build-button")
@@ -911,19 +889,20 @@ class LLMCoachPopupContent(BoxLayout):
         we truncate and surface a status warning. We don't try to undo
         the paste (Kivy's TextInput is hard to roll back cleanly) —
         instead we just inform the user that the tail was dropped.
+
+        Phase 243: truncation + status message generation delegates to
+        :func:`katrain.core.coach.popup_logic.cap_response_text` so
+        the cap limit and the warning i18n key live in one place.
         """
-        if not text or len(text) <= _MAX_RESPONSE_INPUT_CHARS:
+        new_text, status = cap_response_text(text)
+        if status is None:
             return
-        truncated = text[:_MAX_RESPONSE_INPUT_CHARS]
         # Replace the field's text via ids to avoid recursion into
         # _on_response_text itself. Kivy's TextInput is text-driven,
         # so the new write triggers on_text again, but with a length
         # below the cap, so we exit cleanly.
-        self._set_widget_text("response_input", truncated)
-        self._set_status(
-            i18n._("mykatrain:llm-coach:paste-too-long").format(original=len(text), kept=_MAX_RESPONSE_INPUT_CHARS),
-            error=True,
-        )
+        self._set_widget_text("response_input", new_text)
+        self._set_status(status, error=True)
 
     def on_validate(self) -> None:
         """Validate the user-pasted LLM response and show the report.
@@ -967,10 +946,7 @@ class LLMCoachPopupContent(BoxLayout):
             )
             return
 
-        from katrain.gui.features.llm_coach import (
-            validate_llm_response,
-            was_truncated,
-        )
+        from katrain.gui.features.llm_coach import validate_llm_response
 
         is_clean, markdown = validate_llm_response(
             self.katrain,
@@ -981,29 +957,17 @@ class LLMCoachPopupContent(BoxLayout):
         # Always render the full report into the ScrollView first.
         self._set_result(markdown)
 
-        # Count issues so the status line can summarise without scrolling.
-        high = markdown.count("[HIGH]")
-        medium = markdown.count("[MEDIUM]")
-        low = markdown.count("[LOW]")
-        total = high + medium + low
-        # Phase 242-B: detect truncation so the status line can warn
-        # the user. The report itself ends with the truncation marker
-        # but the user might not see it if the ScrollView is positioned
-        # at the top, so we duplicate the warning in the status line.
-        truncated = was_truncated(markdown)
-        if is_clean:
-            if total == 0:
-                status = i18n._("mykatrain:llm-coach:validation-clean")
-            else:
-                # Validator says clean but report still has markers
-                # (e.g. referenced symptom IDs that couldn't be matched).
-                status = i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total)
-        else:
-            status = i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
-                high=high, medium=medium, low=low, total=total
-            )
-        if truncated:
-            status = i18n._("mykatrain:llm-coach:truncation-warning").format(base=status)
+        # Phase 243: count + status formatting delegates to popup_logic
+        # so the issue counters and truncation warning logic are
+        # Kivy-free and exercised by the popup_logic test suite.
+        high, medium, low = count_issue_markers(markdown)
+        status = format_validation_status_summary(
+            is_clean=is_clean,
+            high=high,
+            medium=medium,
+            low=low,
+            truncated=was_truncated(markdown),
+        )
         self._set_status(status)
 
     def _on_validate_summary(self, karte_path: str, response_text: str, rank: str | None) -> None:
@@ -1014,11 +978,9 @@ class LLMCoachPopupContent(BoxLayout):
 
         Phase 242-B: detect truncation via :func:`was_truncated` so the
         user sees a warning when the report exceeds the cap.
+        Phase 243: status formatting delegates to popup_logic.
         """
-        from katrain.gui.features.llm_coach import (
-            validate_summary_llm_response,
-            was_truncated,
-        )
+        from katrain.gui.features.llm_coach import validate_summary_llm_response
 
         # Resolve player name from spinner index (must match the value
         # used in ``_on_generate_summary`` so the validator sees the
@@ -1035,22 +997,14 @@ class LLMCoachPopupContent(BoxLayout):
             player_name=player_name,
         )
         self._set_result(markdown)
-        high = markdown.count("[HIGH]")
-        medium = markdown.count("[MEDIUM]")
-        low = markdown.count("[LOW]")
-        total = high + medium + low
-        truncated = was_truncated(markdown)
-        if is_clean:
-            if total == 0:
-                status = i18n._("mykatrain:llm-coach:validation-clean")
-            else:
-                status = i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total)
-        else:
-            status = i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
-                high=high, medium=medium, low=low, total=total
-            )
-        if truncated:
-            status = i18n._("mykatrain:llm-coach:truncation-warning").format(base=status)
+        high, medium, low = count_issue_markers(markdown)
+        status = format_validation_status_summary(
+            is_clean=is_clean,
+            high=high,
+            medium=medium,
+            low=low,
+            truncated=was_truncated(markdown),
+        )
         self._set_status(status)
 
     def on_copy_result(self) -> None:
@@ -1178,53 +1132,6 @@ def _spinner_text_to_internal(text: str) -> str:
     return "auto"
 
 
-# Phase 227-D: helper that maps the summary-perspective spinner index
-# to a stable internal value. Index 0 = bird's-eye, 1..N = players.
-# Returns the player name (string) for the focused player, or
-# ``None`` for bird's-eye. Mirrors the ``_spinner_text_to_internal``
-# pattern for karte mode but uses the index instead of localised text.
-#
-# Phase 241-D: the bird's-eye / out-of-range ambiguity is resolved via
-# a dedicated sentinel string. Previously both cases returned
-# ``None`` and downstream consumers (e.g. ``_resolve_player_color``)
-# could not distinguish a deliberate "no focus" choice from a
-# defensive fallback triggered by a stale spinner index. The new
-# ``_SUMMARY_BIRDSEYE_SENTINEL`` is an unambiguous string that never
-# collides with a real player name.
-_SUMMARY_BIRDSEYE_SENTINEL: str = "__birdseye__"
-
-
-def _summary_index_to_internal(
-    index: int,
-    players: list[tuple[str, str | None]],
-) -> str | None:
-    """Map summary perspective spinner index to a player name or the
-    bird's-eye sentinel.
-
-    Returns:
-        - The bird's-eye sentinel (``"__birdseye__"``) when ``index == 0``
-        - The player's ``name`` when ``0 < index <= len(players)``
-        - ``None`` when the index is out of range (defensive fallback
-          for stale spinner state). Callers should treat ``None`` as
-          a bug condition and re-detect the perspective.
-    """
-    if index <= 0:
-        return _SUMMARY_BIRDSEYE_SENTINEL
-    if index > len(players):
-        return None
-    return players[index - 1][0]
-
-
-def is_summary_birdseye(value: str | None) -> bool:
-    """Phase 241-D: check whether a value is the bird's-eye sentinel.
-
-    Centralised here so callers (popup handlers, tests) don't have to
-    import the sentinel constant directly. Returns ``False`` for
-    ``None`` (no value at all is NOT bird's-eye, it's a bug state).
-    """
-    return value == _SUMMARY_BIRDSEYE_SENTINEL
-
-
 def _pick_detected_rank(info: dict[str, Any], perspective_value: str) -> str | None:
     """Pick the rank to show for the active perspective (Phase 229-D moved here)."""
     from katrain.gui.features.llm_coach import _pick_detected_rank as _impl
@@ -1248,21 +1155,3 @@ def resolve_rank_fallback_chain(
         general_player_rank=general_player_rank,
         default_user_rank=default_user_rank,
     )
-
-
-def _resolve_player_color(perspective_value: str, detected: str | None) -> str | None:
-    """Resolve the user's perspective spinner selection to a "B"/"W"/None.
-
-    Phase 226-B (B3): ``perspective_value`` is the stable internal value
-    (``"auto"`` / ``"B"`` / ``"W"``), not the localised label.
-    Phase 242-B: now uses ``_PERSPECTIVE_AUTO_INTERNAL`` constant
-    instead of the hard-coded "auto" literal so all perspective state
-    goes through one source of truth.
-    """
-    val = perspective_value or _PERSPECTIVE_AUTO_INTERNAL
-    if val == _PERSPECTIVE_BLACK_INTERNAL:
-        return _PERSPECTIVE_BLACK_INTERNAL
-    if val == _PERSPECTIVE_WHITE_INTERNAL:
-        return _PERSPECTIVE_WHITE_INTERNAL
-    # auto: prefer detected, else None
-    return detected
