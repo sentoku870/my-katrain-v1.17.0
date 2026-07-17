@@ -6,18 +6,25 @@ Usage:
     from katrain.core.batch import BatchResult, WriteError, has_analysis
     from katrain.core.batch import run_batch  # Lazy import via __getattr__
 
-Structure:
-    - models.py: WriteError, BatchResult dataclasses
-    - helpers.py: Constants + pure helper functions
-    - analysis.py: analyze_single_file
-    - orchestration.py: run_batch main entry point
-    - stats.py: Game stats extraction and summary generation
+Structure (Phase 158-B + Phase 197 subpackaging):
+    - models.py:        WriteError, BatchResult dataclasses
+    - discovery.py:     SGF file collection (recursive / non-recursive)
+    - sgf_io.py:        SGF parsing, has_analysis, encoding fallback
+    - inputs.py:        parse_timeout_input, safe_int, DEFAULT_TIMEOUT_SECONDS
+    - io_safe.py:       safe_write_file with structured error reporting
+    - filenames.py:     filename sanitization + uniqueness helpers
+    - visits.py:        choose_visits_for_sgf (variable visits)
+    - loss.py:          get_canonical_loss helper
+    - engine_polling.py: wait_for_analysis (CLI tool only)
+    - analysis.py:      analyze_single_file (lazy)
+    - orchestration/    run_batch + helpers (lazy, subpackage)
+    - stats/            extract_game_stats / build_player_summary (lazy, subpackage)
 """
 
 from typing import Any
 
 # =============================================================================
-# Explicit imports from helpers.py
+# Explicit imports from input/IO helpers
 # =============================================================================
 from katrain.core.batch.discovery import collect_sgf_files, collect_sgf_files_recursive
 from katrain.core.batch.engine_polling import wait_for_analysis

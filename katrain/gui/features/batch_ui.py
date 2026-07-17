@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
@@ -29,6 +28,7 @@ from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
+from katrain.gui.kivyutils.buttons import SizedButton
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 
@@ -282,11 +282,11 @@ def _build_input_row(widgets: BatchWidgets, default_input_dir: str) -> BoxLayout
         size_hint_x=0.6,
         font_name=Theme.DEFAULT_FONT,
     )
-    widgets["input_browse"] = Button(
+    widgets["input_browse"] = SizedButton(
         text=i18n._("Browse..."),
         size_hint_x=0.15,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
+        text_color=Theme.TEXT_COLOR,
     )
     row.add_widget(widgets["input_input"])
     row.add_widget(widgets["input_browse"])
@@ -304,11 +304,11 @@ def _build_output_row(widgets: BatchWidgets, default_output_dir: str) -> BoxLayo
         size_hint_x=0.6,
         font_name=Theme.DEFAULT_FONT,
     )
-    widgets["output_browse"] = Button(
+    widgets["output_browse"] = SizedButton(
         text=i18n._("Browse..."),
         size_hint_x=0.15,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
+        text_color=Theme.TEXT_COLOR,
     )
     row.add_widget(widgets["output_input"])
     row.add_widget(widgets["output_browse"])
@@ -396,11 +396,15 @@ def _build_output_summary_row(widgets: BatchWidgets, batch_options: BatchOptions
     )
     row.add_widget(widgets["summary_checkbox"])
     row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:generate_summary"), 0.3))
+    # Phase 232: summary は game_stats を使うので karte 生成は不要
+    # (extraction.extract_game_stats は karte とは独立して呼ばれる)。
+    # ユーザー混乱回避のため、generate_summary の直後に薄い注記を並べる。
+    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:generate_summary_hint"), 0.18))
     widgets["curator_checkbox"] = CheckBox(
         active=batch_options.get("generate_curator", False), size_hint_x=None, width=dp(30)
     )
     row.add_widget(widgets["curator_checkbox"])
-    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:generate_curator"), 0.3))
+    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:generate_curator"), 0.2))
     return row
 
 
@@ -525,19 +529,19 @@ def _build_log_area(widgets: BatchWidgets) -> ScrollView:
 def _build_buttons_row(widgets: BatchWidgets) -> BoxLayout:
     """Build the Start / Close button row."""
     row = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
-    widgets["start_button"] = Button(
+    widgets["start_button"] = SizedButton(
         text=i18n._("mykatrain:batch:start"),
         size_hint_x=0.5,
         height=dp(48),
         background_color=Theme.BOX_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
+        text_color=Theme.TEXT_COLOR,
     )
-    widgets["close_button"] = Button(
+    widgets["close_button"] = SizedButton(
         text=i18n._("button:close"),
         size_hint_x=0.5,
         height=dp(48),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        color=Theme.TEXT_COLOR,
+        text_color=Theme.TEXT_COLOR,
     )
     row.add_widget(widgets["start_button"])
     row.add_widget(widgets["close_button"])
@@ -555,9 +559,15 @@ def create_batch_popup(
     Returns:
         ポップアップウィジェット
     """
+    # Phase 232: 高さを 600 -> 700dp に拡大。フォルダ一括解析 popup は
+    # 入力/出力/visits/timeout/チェックボックス (skip, save_sgf, karte,
+    # summary, curator, variable_visits, jitter, deterministic, sound)
+    # 等 9 行 + log エリア + ボタンで構成される。600dp では log エリアが
+    # 90dp 程度しかなく、長いファイル名や多数 SGF 処理時にログが見切れる
+    # 不便があった。100dp 拡大して 700dp にし、log 高を ~190dp まで確保。
     popup = I18NPopup(
         title_key="mykatrain:batch:title",
-        size=[dp(800), dp(600)],
+        size=[dp(800), dp(700)],
         content=main_layout,
     ).__self__
 

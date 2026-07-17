@@ -112,7 +112,9 @@ class BatchAnalysisController:
         )
 
         def run_batch_thread() -> None:
-            options = collect_batch_options(widgets, get_player_filter)
+            # Phase 232: log_cb を collect_batch_options に渡す
+            # (以前は run_batch_in_thread 内で同じ文字列を再パースして冗長だった)
+            options = collect_batch_options(widgets, get_player_filter, log_cb=log_cb)
             run_batch_in_thread(self._ctx, options, cancel_flag, progress_cb, log_cb, summary_cb, save_batch_options)  # type: ignore[arg-type]
 
         def start_batch_thread() -> None:

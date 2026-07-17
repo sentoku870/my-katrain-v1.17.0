@@ -256,3 +256,94 @@ class TestPersistBatchOptionsWithMagicMock:
         ctx.save_config.assert_called_once()
         # config() は少なくとも 1 回は呼ばれている
         ctx.config.assert_called_with("mykatrain_settings")
+
+
+# ---------------------------------------------------------------------------
+# 6. Phase 232: collect_batch_options の log_cb パラメータ動作確認
+# ---------------------------------------------------------------------------
+
+
+class TestCollectBatchOptionsLogCb:
+    """collect_batch_options の log_cb パラメータ動作 (Phase 232).
+
+    旧実装は run_batch_in_thread 内で同じ timeout 文字列を再パースして
+    冗長だった。Phase 232 で collect_batch_options 側に log_cb を渡し、
+    run_batch_in_thread 側のパースは削除された。
+    """
+
+    def _build_widgets(self, timeout_text: str = "None"):
+        """Build a minimal widget stub dict for collect_batch_options.
+
+        ``BatchWidgets`` is ``dict[str, Any]`` (see katrain.gui.features.types).
+        Each value needs ``.text`` for TextInput-like widgets or ``.active``
+        for CheckBox-like widgets. We use ``SimpleNamespace`` for concrete
+        values — ``MagicMock`` would return 1.0 for ``.strip()`` / chained
+        attribute access and break the test.
+        """
+        from types import SimpleNamespace
+
+        def _ti(text: str) -> Any:
+            return SimpleNamespace(text=text)
+
+        def _cb(active: bool) -> Any:
+            return SimpleNamespace(active=active)
+
+        return {
+            "input_input": _ti("/tmp/in"),
+            "output_input": _ti("/tmp/out"),
+            "visits_input": _ti(""),
+            "timeout_input": _ti(timeout_text),
+            "skip_checkbox": _cb(True),
+            "save_sgf_checkbox": _cb(False),
+            "karte_checkbox": _cb(True),
+            "summary_checkbox": _cb(True),
+            "min_games_input": _ti("3"),
+            "variable_visits_checkbox": _cb(False),
+            "jitter_input": _ti("10"),
+            "deterministic_checkbox": _cb(True),
+            "sound_checkbox": _cb(False),
+            "curator_checkbox": _cb(False),
+        }
+
+    def test_log_cb_receives_warning_on_invalid_timeout(self):
+        """無効な timeout 入力で log_cb が呼ばれる (Phase 232 で log 経路を統一)."""
+        from katrain.gui.features.batch_core import collect_batch_options
+
+        w = self._build_widgets(timeout_text="not-a-number")
+        log_calls: list[str] = []
+
+        options = collect_batch_options(w, lambda: None, log_cb=log_calls.append)
+
+        # 無効入力 → DEFAULT (600.0) にフォールバック
+        assert options["timeout"] == 600.0
+        # log_cb には警告が出ている (旧: run_batch_in_thread 側で遅延警告)
+        assert any("Invalid timeout" in msg for msg in log_calls), f"Expected warning to be logged, got: {log_calls}"
+
+    def test_log_cb_default_silent(self):
+        """log_cb 未指定時は警告サイレント (デフォルト動作)."""
+        from katrain.gui.features.batch_core import collect_batch_options
+
+        w = self._build_widgets(timeout_text="garbage")
+        # log_cb を渡さない → 例外なく完了
+        options = collect_batch_options(w, lambda: None)
+        # フォールバック動作は変わらない
+        assert options["timeout"] == 600.0
+
+    def test_valid_timeout_unchanged(self):
+        """有効 timeout はそのまま返り、log_cb は呼ばれない."""
+        from katrain.gui.features.batch_core import collect_batch_options
+
+        w = self._build_widgets(timeout_text="300")
+        log_calls: list[str] = []
+        options = collect_batch_options(w, lambda: None, log_cb=log_calls.append)
+        assert options["timeout"] == 300.0
+        assert log_calls == []
+
+    def test_none_timeout_string_yields_none(self):
+        """'None' 文字列 (大小無視) は Python の None として返る."""
+        from katrain.gui.features.batch_core import collect_batch_options
+
+        for variant in ("None", "none", "NONE"):
+            w = self._build_widgets(timeout_text=variant)
+            options = collect_batch_options(w, lambda: None)
+            assert options["timeout"] is None, f"variant={variant!r}"

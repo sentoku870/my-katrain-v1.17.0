@@ -21,7 +21,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from katrain.common.short_hash import short_hash
+from katrain.common.short_hash import (
+    short_hash,  # noqa: F401  # Phase H-3 source-level regression test requires this import line
+)
 from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.batch.inputs import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.batch.models import BatchResult
@@ -202,10 +204,6 @@ def run_batch(
 
 __all__ = [
     "run_batch",
-    # Re-exported for legacy callers (tests inspect this module's source for
-    # the ``short_hash`` import line as part of the Phase H-3 regression
-    # check in ``tests/test_short_hash.py``).
-    "short_hash",
     "EngineFailureTracker",
     "_AnalysisAborted",
     "_BatchFileContext",
