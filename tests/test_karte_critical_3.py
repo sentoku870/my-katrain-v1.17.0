@@ -280,7 +280,9 @@ class TestCritical3SectionFormat:
     def test_section_header_format(self, sample_critical_move_ja):
         """Section uses consistent header format."""
         # The format should be "## Critical 3 ({label})"
-        # This is validated by the _critical_3_section_for function in karte_report.py
+        # This is validated by the critical_3_section_for function in
+        # katrain/core/reports/karte/sections/important_moves.py
+        # (Phase 232: was karte_report.py before the shim removal.)
         # Here we just verify the CriticalMove data is suitable for formatting
 
         cm = sample_critical_move_ja

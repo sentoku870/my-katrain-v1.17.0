@@ -15,11 +15,13 @@
     "player_info": {
       "black": {
         "name": "whatiskale",
-        "rank": "15级"
+        "rank": "15级",
+        "color": "B"
       },
       "white": {
         "name": "注号用名",
-        "rank": "15级"
+        "rank": "15级",
+        "color": "W"
       }
     },
     "result": "B+R",

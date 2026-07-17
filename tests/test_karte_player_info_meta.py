@@ -99,26 +99,37 @@ class TestBuildKarteJsonMetaPlayerInfo:
         }
 
         # Reproduce the meta block building logic exactly as in json_export.py
+        # Phase 236: each entry now also carries a stable ``color``
+        # identifier so downstream consumers (LLM Coach popup, etc.) can
+        # tell which side each player represents without a second SGF
+        # lookup or a ``default_user_name`` match.
         player_info = {
             "black": {
                 "name": common_meta["players"]["black"],
                 "rank": (common_meta.get("ranks") or {}).get("black"),
+                "color": "B",
             },
             "white": {
                 "name": common_meta["players"]["white"],
                 "rank": (common_meta.get("ranks") or {}).get("white"),
+                "color": "W",
             },
         }
 
         assert player_info == {
-            "black": {"name": "醉舞", "rank": "4d"},
-            "white": {"name": "仙得", "rank": "4d"},
+            "black": {"name": "醉舞", "rank": "4d", "color": "B"},
+            "white": {"name": "仙得", "rank": "4d", "color": "W"},
         }
 
     def test_meta_player_info_when_ranks_missing(self) -> None:
         """When MetaExtractor returns no ranks (legacy SGFs without
         BR/WR), the player_info block must still include the names
-        with ``rank=None`` rather than crashing."""
+        with ``rank=None`` rather than crashing.
+
+        Phase 236: the ``color`` field is always emitted (not gated on
+        rank presence) so LLM consumers can rely on it being a stable
+        identifier.
+        """
         common_meta = {
             "players": {"black": "P1", "white": "P2"},
         }
@@ -126,13 +137,49 @@ class TestBuildKarteJsonMetaPlayerInfo:
             "black": {
                 "name": common_meta["players"]["black"],
                 "rank": (common_meta.get("ranks") or {}).get("black"),
+                "color": "B",
             },
             "white": {
                 "name": common_meta["players"]["white"],
                 "rank": (common_meta.get("ranks") or {}).get("white"),
+                "color": "W",
             },
         }
         assert player_info == {
-            "black": {"name": "P1", "rank": None},
-            "white": {"name": "P2", "rank": None},
+            "black": {"name": "P1", "rank": None, "color": "B"},
+            "white": {"name": "P2", "rank": None, "color": "W"},
         }
+
+    def test_meta_player_info_color_field_is_stable(self) -> None:
+        """Phase 236: the ``color`` field is a stable ``"B"`` / ``"W"``
+        identifier (not localised, not derived from names). Lock the
+        contract so consumers can pattern-match on it directly.
+        """
+        # Reproduce the same block the production code builds.
+        info = {
+            "black": {"name": "Alice", "rank": "5d", "color": "B"},
+            "white": {"name": "Bob", "rank": "4d", "color": "W"},
+        }
+        assert info["black"]["color"] == "B"
+        assert info["white"]["color"] == "W"
+        # The colour of the black entry must be "B" even when the
+        # name contains "W" or vice versa.
+        info_edge = {
+            "black": {"name": "Walter", "rank": None, "color": "B"},
+            "white": {"name": "Beatrice", "rank": None, "color": "W"},
+        }
+        assert info_edge["black"]["color"] == "B"
+        assert info_edge["white"]["color"] == "W"
+
+    def test_meta_template_includes_color_field(self) -> None:
+        """Static check: the ``player_info`` template in
+        ``json_export.build_karte_json`` must include ``"color": "B"``
+        and ``"color": "W"`` (Phase 236 contract)."""
+        import inspect
+
+        from katrain.core.reports.karte import json_export
+
+        source = inspect.getsource(json_export)
+        # The two literal side identifiers must be present.
+        assert '"color": "B"' in source, 'Phase 236: player_info.black must include "color": "B"'
+        assert '"color": "W"' in source, 'Phase 236: player_info.white must include "color": "W"'

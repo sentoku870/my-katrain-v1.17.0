@@ -15,11 +15,13 @@
     "player_info": {
       "black": {
         "name": "player2",
-        "rank": "12k "
+        "rank": "12k ",
+        "color": "B"
       },
       "white": {
         "name": "player1",
-        "rank": "11k+"
+        "rank": "11k+",
+        "color": "W"
       }
     },
     "result": "W+34.5",

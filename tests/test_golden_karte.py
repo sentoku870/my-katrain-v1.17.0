@@ -598,13 +598,13 @@ class TestKarteFromSGF:
 
         Uses mock analysis injection to ensure deterministic output.
         """
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
         from tests.conftest import update_golden_if_requested
 
         game = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
 
         # Generate karte
-        karte_output = build_karte_report(game)
+        karte_output = build_karte_json_string(game)
 
         # Normalize for comparison
         normalized = normalize_output(karte_output)
@@ -628,14 +628,14 @@ class TestKarteFromSGF:
 
         Running the same input twice should produce identical output.
         """
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
 
         # Generate twice
         game1 = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
-        output1 = normalize_output(build_karte_report(game1))
+        output1 = normalize_output(build_karte_json_string(game1))
 
         game2 = self.load_game_with_mock_analysis(sgf_key, mock_katrain, mock_engine)
-        output2 = normalize_output(build_karte_report(game2))
+        output2 = normalize_output(build_karte_json_string(game2))
 
         assert output1 == output2, (
             f"Karte output for {sgf_key} is not deterministic.\nFirst run differs from second run."
