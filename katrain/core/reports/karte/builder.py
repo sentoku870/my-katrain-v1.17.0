@@ -141,6 +141,7 @@ def build_karte_json_string(
             skill_preset=skill_preset,
             target_visits=target_visits,
             lang=lang,
+            max_critical_3_moves=max_critical_3_moves,
         )
     except Exception as e:
         error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n{type(e).__name__}: {e}"
@@ -243,6 +244,7 @@ def _build_karte_json_string_impl(
     skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
     lang: str = "ja",
+    max_critical_3_moves: int = 3,  # Phase 248-B2
 ) -> str:
     """Internal implementation of build_karte_json_string.
 
@@ -259,6 +261,9 @@ def _build_karte_json_string_impl(
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
         lang: Language code for localized labels ("ja" or "en"), defaults to "ja".
+        max_critical_3_moves: Phase 248-B2 — number of critical moves
+            per player to include in the critical_3 section. Defaults
+            to 3 (Phase 50 baseline).
 
     Note:
         snapshot is now passed as an argument rather than computed here.
