@@ -91,23 +91,37 @@ def build_classification_context_from_node(
     node: GameNode | None,
     actual_gtp: str | None,
     total_moves: int | None = None,
+    *,
+    board_size: int | tuple[int, int] | None = None,
 ) -> ClassificationContext:
     """Build a ClassificationContext from a GameNode.
 
     Phase 148-B'1+B'2: supplies ``move_distance``, ``score_stdev``,
     ``best_move_policy`` and ``actual_move_policy`` when available.
+    Phase 248-C1: accepts ``board_size`` so the endgame threshold
+    scales for 9x9 / 13x13 boards.
 
     Args:
         node: GameNode for the move (its moveInfos / root analysis are used).
             None when the node cannot be resolved; returns a total_moves-only context.
         actual_gtp: GTP coordinate of the actual move played (e.g. "D4").
         total_moves: Total moves in the game (for endgame detection).
+        board_size: Board size for board-size-aware endgame detection.
+            ``None`` falls back to 19x19 defaults.
 
     Returns:
         ClassificationContext populated with distance/stdev/policy when available.
     """
     if node is None:
-        return ClassificationContext(total_moves=total_moves)
+        return ClassificationContext(total_moves=total_moves, board_size=board_size)
+
+    # Phase 248-C1: auto-detect board_size from the node if the caller
+    # didn't pass one explicitly. Falls back to ``None`` (= 19x19
+    # defaults) when the node doesn't expose ``board_size``.
+    if board_size is None:
+        game = getattr(node, "game", None)
+        root = getattr(game, "root", None) if game is not None else None
+        board_size = getattr(root, "board_size", None) if root is not None else None
 
     score_stdev = _get_score_stdev_from_node(node)
     best_gtp, best_move_policy = _get_best_move_and_policy_from_node(node)
@@ -125,4 +139,5 @@ def build_classification_context_from_node(
         move_distance=move_distance,
         score_stdev=score_stdev,
         total_moves=total_moves,
+        board_size=board_size,
     )
