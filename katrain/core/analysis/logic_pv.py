@@ -210,21 +210,34 @@ def filter_candidates_by_pv_complexity(
     # analysis). Without this, ``sorted`` is stable but the input order
     # is dict-iteration order — not stable across runs.
     #
-    # TODO (M3 follow-up): add a composite sort that combines
-    # pointsLost and pv_length via a weighted score, e.g.
-    # ``composite = pointsLost + alpha * (pv_length / max_pv_length)``.
-    # This would let users express "favour short PVs even at the cost
-    # of a slightly higher loss". Deferred from Phase 246-D — current
-    # behaviour matches Phase 11 expectations and the simple
-    # 3-key sort is enough for the boundary tests in 246-C.
-    filtered = sorted(
-        filtered,
-        key=lambda c: (
-            c.get("order", 999),
-            c.get(loss_key) or 0.0,
-            -c.get("visits", 0),
-        ),
-    )
+    # Phase 247-D (M3): composite sort alternative. When
+    # ``config.sort_mode == "composite"`` the cap is decided by a
+    # single weighted score combining pointsLost and pv_length
+    # normalized to ``max_pv_length``. The two sorts are independent
+    # (the default ``order_loss_visits`` path is preserved bit-for-bit
+    # so all 246-C tests keep passing).
+    sort_mode = getattr(config, "sort_mode", "order_loss_visits")
+    if sort_mode == "composite":
+        alpha = float(getattr(config, "composite_alpha", 1.0) or 0.0)
+        max_pv_length = max(1, config.max_pv_length)
+
+        def _composite_key(c: dict[str, Any]) -> tuple[float, int, int, float]:
+            loss = c.get(loss_key) or 0.0
+            pv_len = len(c.get("pv") or [])
+            composite = loss + alpha * (pv_len / max_pv_length)
+            return (composite, c.get("order", 999), pv_len, -c.get("visits", 0))
+
+        filtered = sorted(filtered, key=_composite_key)
+    else:
+        # Default: Phase 246-C (M7) 3-key sort
+        filtered = sorted(
+            filtered,
+            key=lambda c: (
+                c.get("order", 999),
+                c.get(loss_key) or 0.0,
+                -c.get("visits", 0),
+            ),
+        )
     filtered = filtered[: config.max_candidates]
 
     # Step 4: best_moveを先頭に挿入（別枠、上限外）
