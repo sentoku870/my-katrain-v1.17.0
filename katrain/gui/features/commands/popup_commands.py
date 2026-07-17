@@ -153,3 +153,30 @@ def do_llm_coach_popup(ctx: KaTrainGui) -> None:
     from katrain.gui.popups.llm_coach_popup import open_llm_coach_popup
 
     open_llm_coach_popup(ctx)
+
+
+def do_important_moves_popup(ctx: KaTrainGui) -> None:
+    """Open the important-moves list popup (Phase 248-γ-D1).
+
+    The popup shows the critical_3 candidates for both players in a
+    scrollable list. The user can:
+    - See all candidates (move #, player, coordinate, loss, meaning tag)
+    - Click "この局面にジャンプ" to jump the board to the selected move
+    - Click "コピー" to copy a Markdown summary to the clipboard
+    - Click "閉じる" to dismiss
+
+    The data source is :func:`get_important_moves_for_game` (Kivy-free
+    core in ``katrain.core.analysis.important_moves_popup``); the Kivy
+    widget is in ``katrain.gui.popups.important_moves_popup``.
+    """
+    from katrain.core.analysis.models import DEFAULT_IMPORTANT_MOVE_LEVEL
+    from katrain.core.constants import DEFAULT_CRITICAL_3_MAX_MOVES
+    from katrain.gui.popups.important_moves_popup import open_important_moves_popup
+
+    # Phase 248-γ-D1: read level / max from settings with a sensible
+    # default. Users can tune these in MyKatrain settings later.
+    open_important_moves_popup(
+        ctx,
+        level=DEFAULT_IMPORTANT_MOVE_LEVEL,
+        max_moves=DEFAULT_CRITICAL_3_MAX_MOVES,
+    )

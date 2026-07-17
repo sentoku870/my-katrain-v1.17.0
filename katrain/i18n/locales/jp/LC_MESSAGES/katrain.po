@@ -1121,6 +1121,34 @@ msgstr "カルテ出力"
 msgid "mykatrain:export-package"
 msgstr "LLMパッケージ出力"
 
+# Phase 248-γ-D1: 重要局面リスト popup
+msgid "mykatrain:important-moves"
+msgstr "重要局面リスト"
+
+msgid "mykatrain:popup:important-moves:title"
+msgstr "重要局面リスト"
+
+msgid "mykatrain:popup:important-moves:subtitle"
+msgstr "重要度レベル: {level}"
+
+msgid "mykatrain:popup:important-moves:count"
+msgstr "重要局面: {shown}/{max} 件"
+
+msgid "mykatrain:popup:important-moves:jump"
+msgstr "この局面にジャンプ"
+
+msgid "mykatrain:popup:important-moves:copy"
+msgstr "コピー"
+
+msgid "mykatrain:popup:important-moves:close"
+msgstr "閉じる"
+
+msgid "mykatrain:popup:important-moves:empty"
+msgstr "重要局面がありません (KataGo 解析が必要)"
+
+msgid "mykatrain:popup:important-moves:complexity"
+msgstr "複雑局面で割引"
+
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
 msgstr "LLM コーチ（手動貼付）"

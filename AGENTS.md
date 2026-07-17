@@ -395,6 +395,13 @@ docs/
     - `docs/archive/specs-planned/phase248-important-moves-popup.md` (約 200 行)
     - `katrain/core/analysis/important_moves_popup.py` (Kivy-free core) + GUI re-export shim
     - 8 件テスト
+  - **248-γ E1 (PR #413)**: Curator profile → Karte weak-tag boost (chain 配線)
+    - `compute_importance_for_moves` / `pick_important_moves` に `user_weak_tags: dict[str, int] | None` と `weak_tag_boost: float` 追加
+    - boost 公式 `1 + weak_tag_boost * log(N + 1)`、reliability_scale の後に適用 (低 visits 救済しない)
+    - chain 全体に `user_weak_tags` を伝播: `Game.build_karte_json_string` → `builder` → `_impl` → `build_karte_json` → `get_important_move_evals` → `pick_important_moves`
+    - `do_export_karte_ui` で `_resolve_curator_profile_path` + `load_curator_profile` 自動ロード
+    - `tests/test_weak_tag_boost.py` (16件) + `tests/test_curator_integration.py` (25件) = 41件新規ユニットテスト
+    - 全 5756 件 pass (Windows Kivy headless 失敗除く)
   - **累計**: 6 PR マージ / 11 サブフェーズ / 約 2,500 行追加 / 5,800+ テスト
   - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
   - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク
