@@ -3964,6 +3964,131 @@ entries:
   ai_perspective:
     has_difference: true
     summary: AI解析により、人間が「弱い手」と判断していた手が実は最善だったり、逆に「堅実」と思っていた手が甘いと判明することがある。
+# Phase 242-C: New L2 entries for LLM-required symptoms
+# (time_pressure_loss, time_misallocation, time_drain, shallow_review,
+# ai_overload, copy_without_understanding, tilt_discouragement, tilt_chain,
+# tilt_emotional_interference). Covers the cluster via related_ids.
+- id: time_management
+  level: 2
+  category: misc
+  ja_term: 時間管理
+  en_terms:
+  - time management
+  - time allocation
+  ja_one_liner: 対局中の持ち時間を局面ごとに適切に配分する技術
+  en_one_liner: Allocating byo-yomi time across moves to match position complexity.
+  ja_short: 対局中に使える時間は限られており、どの局面に時間をかけ、どの局面で手早く済ませるかの判断が勝敗を左右します。序盤は方針決定に、中盤は難しい読みに、終盤はヨセの正確さに時間をかけるのが基本です。秒読みに入ると直前の数手が特に重要になるため、終盤20手くらいからは1手に時間を残す意識が有効です。
+  en_short: Go games have a time budget per side, and how you allocate it across the game often decides the result. The opening deserves time for strategic planning, the middle game for hard reading, and the endgame for precision. Byo-yomi (counting) makes the last 20-30 moves especially critical — try to keep a few seconds in reserve for the final endgame rather than burning it all in the middle.
+  pitfalls:
+  - 一局面に時間をかけすぎて終盤で慌てると、ヨセの精度が大きく落ちます。
+  - 序盤に時間をかけすぎるのも危険です。序盤は方針が定まれば早く着手すべきです。
+  recognize_by:
+  - 秒読みに入ってから読みが浅くなる傾向がある。
+  - 終盤 10 手で時間切れになることが多い。
+  micro_example: 中盤の大規模な戦いに15分使った結果、終盤のヨセ20手で秒読みが連続し、最後のヨセで形勢が逆転しました。序盤の構想段階（5分以内）と中盤の単純局面（各1-2分）で節約し、難しい読みと終盤ヨセに時間を使う配分が理想です。
+  related_ids:
+  - endgame_sente_value
+  - counting
+  sources:
+  - https://senseis.xmp.net/?Time
+  - https://www.nihonkiin.or.jp/teach/lesson/school/yogo.html
+- id: ai_overload
+  level: 2
+  category: misc
+  ja_term: AI 情報過多
+  en_terms:
+  - AI overload
+  - analysis paralysis
+  ja_one_liner: AI の出力を読みすぎて判断材料を処理できなくなる状態
+  en_one_liner: Reading too much AI output until you cannot process the signal.
+  ja_short: KataGo などのAIから候補手・勝率・形勢評価など大量の情報が提示されますが、それを全て読み込もうとすると判断材料が処理しきれなくなります。重要な局面でAIのトップ候補だけを確認し、後は自分の判断で打つという割り切りが重要です。AIに頼りすぎると、対局中に考えなくなる・AIと違う手で打てなくなる・AIの誤りに気づけなくなるなどの弊害が出ます。
+  en_short: AI engines like KataGo provide a flood of information — candidate moves, win rates, score leads, policy probabilities. Trying to absorb all of it during a game causes analysis paralysis and weakens your independent judgement. The right approach is to check the top candidate at critical moments and trust your own reading the rest of the time. Over-relying on AI also makes you unable to play moves it disagrees with or to notice when it makes mistakes.
+  pitfalls:
+  - AI の出力を逐一確認すると自分の読みが育ちません。
+  - 弱い AI 候補を疑わずコピーすると、定石以下の手を打ってしまうことがあります。
+  recognize_by:
+  - 対局中、AI の出力確認に時間を奪われ自分の読みが浅くなる。
+  - 検討時に AI 候補と違う手を打つ勇気が持てない。
+  micro_example: KataGo の解析でトップ候補3つを全て確認してから着手する習慣がつくと、1手に2分以上かかるようになりました。トップ1つだけ確認して即着手する訓練に切り替えた結果、着手時間1分以内に収まり、かつ形勢判断の精度も上がりました。
+  related_ids:
+  - post_game_review
+  - overconcentration
+  sources:
+  - https://senseis.xmp.net/?ComputerAssistedGo
+  - https://www.yikeweiqi.com/news/57.html
+- id: post_game_review
+  level: 2
+  category: misc
+  ja_term: 対局後検討
+  en_terms:
+  - post-game review
+  - game review
+  ja_one_liner: 対局終了後に棋譜を振り返り改善点を見つける作業
+  en_one_liner: Replaying a finished game to find improvement points.
+  ja_short: 対局直後に棋譜を並べ、AI評価や自分の読みと照らし合わせて改善点を見つける作業です。検討が浅いと同じミスを繰り返します。最低でも「自分が迷った場面」「大悪手が出た場面」「形勢が動いた転換点」の3箇所はAI検討するのが効果的です。
+  en_short: "Reviewing a game right after you finish it is the single most effective way to improve. Compare your reading with the AI's evaluation at every move where you hesitated, made a big mistake, or where the game swung. Aim to study at least three such points per game: a hesitation, a blunder, and a turning point."
+  pitfalls:
+  - 形勢が動いた場面を検討しないと、同じパターンのミスを繰り返します。
+  - 検討は「自分が間違っていた場面」だけでなく「正しい判断ができた場面」も含めると成功パターンが強化されます。
+  recognize_by:
+  - 同じ相手に同じパターンで何度も負ける。
+  - 検討せずに次の対局に行くと同じミスを繰り返す。
+  micro_example: 3局連続で同じ「中盤の切断読み」で大損していました。対局後に毎回その場面をAI検討したところ、自分の「切断読み」は常に2手先までしか読んでおらず、相手が3手目の応手を持つケースを見落としていると判明しました。検討習慣を始めてからは切断読みの精度が明らかに上がりました。
+  related_ids:
+  - ai_overload
+  - overconcentration
+  sources:
+  - https://senseis.xmp.net/?GameReview
+  - https://www.nihonkiin.or.jp/player/column/tesuji.html
+- id: tilt_recovery
+  level: 2
+  category: misc
+  ja_term: ティルト回復
+  en_terms:
+  - tilt recovery
+  - emotional reset
+  ja_one_liner: 連敗やミスで感情的になった状態から立ち直る技術
+  en_one_liner: Recovering from tilt after a losing streak or critical blunder.
+  ja_short: 連敗や痛いミスの後に感情が乱れて判断が雑になる現象を「ティルト」と呼びます。ティルトを放置すると次の対局でも判断ミスが連鎖します。回復には「5分間の散歩」「呼吸法」「次の対局を1回スキップして検討に集中」など、自分なりのリセット法を持っておくことが重要です。
+  en_short: 'Tilt is the emotional spiral that follows a losing streak or a painful blunder — your decision-making becomes shallow, you take bigger risks to "make up" for the loss, and you fall into the same traps. The only cure is a deliberate reset: take a 5-minute walk, do a breathing exercise, skip the next game and review instead, or play a relaxed teaching game. Having a pre-planned reset ritual is essential.'
+  pitfalls:
+  - 「取り返したい」という心理で無理な攻めに走ると大敗します。
+  - ティルトを認めず連続対局すると、損失が拡大します。
+  recognize_by:
+  - 連敗中、今まで打たなかったような無理な手を連発する。
+  - 対局中に深呼吸や席を立つ回数が増える。
+  micro_example: 3連敗後に挑んだ4局目で、明らかに無理な攻めに出て2手目で大石を取られました。5分間の散歩を挟んで5局目を打ったところ、落ち着いた判断で中盤をリードできた経験があります。ティルトを感じたら機械的にリセット行動を取れる仕組み化が重要です。
+  related_ids:
+  - mental_state
+  - overconcentration
+  sources:
+  - https://senseis.xmp.net/?Tilt
+  - https://www.reddit.com/r/baduk/comments/handling_tilt/
+- id: mental_state
+  level: 2
+  category: misc
+  ja_term: 精神状態管理
+  en_terms:
+  - mental state
+  - emotional management
+  ja_one_liner: 対局中の精神状態を安定させ判断力を保つ技術
+  en_one_liner: Keeping your emotional state stable enough to make sound decisions.
+  ja_short: 囲碁の判断力は精神状態に大きく左右されます。疲労・空腹・イライラ・焦りがあると手が進まなくなり、普段なら見える読みも見えなくなります。十分な睡眠・軽食・水分補給・気分転換を対局前に済ませる、対局中にストレッチする、負けても感情的にならず次の手に集中する、などのセルフマネジメントが技術向上と同等に重要です。
+  en_short: Go decision-making is heavily influenced by your mental state. Fatigue, hunger, irritation, and rushing all degrade your reading — moves you would normally see simply become invisible. Self-management (enough sleep, a light snack, hydration, a pre-game mood check) is just as important as technical training. Mid-game stretches, sipping water, and refusing to dwell on the previous mistake are all part of keeping your mind clear.
+  pitfalls:
+  - 疲労時の対局は「調整」と割り切ると逆に勉強になります。
+  - 感情的になった時は「次の1手だけ集中」の短い目標に切り替えると有効です。
+  recognize_by:
+  - 同じパターンのミスが連発する（集中力低下のサイン）。
+  - 普段は見える読みが見えなくなる（疲労のサイン）。
+  micro_example: 睡眠不足の状態で対局すると、中盤の死活問題で普段なら30秒で見える読みが5分経っても見えませんでした。翌日の十分な睡眠後と同じ局面を検討したところ、20秒で正解が見えるようになりました。体調管理は技術の一部です。
+  related_ids:
+  - tilt_recovery
+  - overconcentration
+  sources:
+  - https://senseis.xmp.net/?Psychology
+  - https://www.nihonkiin.or.jp/player/column/mental.html
+
 concepts:
 - id: urgent_vs_big
   level: 3
