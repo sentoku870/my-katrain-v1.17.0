@@ -67,12 +67,12 @@ from katrain.core.analysis.logic_phase_dynamic import (
     it_consistent_with_static,
 )
 from katrain.core.analysis.logic_pv import (
+    PV_ANIMATION_MAX_STEPS,
+    PVFilterDisplayInfo,
+    clip_pv_for_animation,
     filter_candidates_by_pv_complexity,
     get_effective_pv_filter_info,
     get_pv_filter_config,
-    PVFilterDisplayInfo,
-    PV_ANIMATION_MAX_STEPS,
-    clip_pv_for_animation,
 )
 from katrain.core.analysis.logic_reliability import (
     compute_confidence_level,

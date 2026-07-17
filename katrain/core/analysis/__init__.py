@@ -104,6 +104,8 @@ from katrain.core.analysis.critical_moves import (
 from katrain.core.analysis.logic import (
     ENDGAME_DETECTION_WINDOW,  # Phase 156-A
     ENDGAME_SCORE_STDEV_THRESHOLD,  # Phase 156-A
+    PV_ANIMATION_MAX_STEPS,
+    PVFilterDisplayInfo,
     # Phase mistake stats
     aggregate_phase_mistake_stats,
     apply_dynamic_phases,  # Phase 156-D
@@ -111,6 +113,8 @@ from katrain.core.analysis.logic import (
     classify_game_phase,
     classify_mistake,
     classify_phases_dynamic,  # Phase 156-A
+    # Phase 246-C: PV clip for animation
+    clip_pv_for_animation,
     compute_canonical_loss,
     # Confidence level
     compute_confidence_level,
@@ -131,16 +135,12 @@ from katrain.core.analysis.logic import (
     filter_candidates_by_pv_complexity,
     # Reliability functions
     get_difficulty_modifier,
+    # Phase 246-A: display-effective level for UI
+    get_effective_pv_filter_info,
     # Phase functions
     get_phase_thresholds,
     # PV Filter (Phase 11)
     get_pv_filter_config,
-    # Phase 246-A: display-effective level for UI
-    get_effective_pv_filter_info,
-    PVFilterDisplayInfo,
-    # Phase 246-C: PV clip for animation
-    clip_pv_for_animation,
-    PV_ANIMATION_MAX_STEPS,
     get_reliability_scale,
     # Skill preset helpers
     get_skill_preset,
