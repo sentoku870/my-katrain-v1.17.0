@@ -399,3 +399,143 @@ class TestGetEffectivePVFilterInfo:
         # 9d is mapped via rank_to_skill_preset; verify resolution flows.
         assert info.is_auto is True
         assert info.effective_level in {"weak", "medium", "strong"}
+
+
+# =============================================================================
+# Phase 246-C: boundary / robustness tests (H5, M5, M7)
+# =============================================================================
+
+
+FIXTURE_NEGATIVE_POINTS_LOST = [
+    # Phase 246-C (H5): pointsLost can be negative in pathological cases
+    # (e.g., a search finds a better move than the one used for "root").
+    # The filter must not crash and must still respect the order cap.
+    {"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"},
+    {"order": 1, "pointsLost": -0.5, "pv": ["B2"], "move": "B2"},
+    {"order": 2, "pointsLost": -2.0, "pv": ["C3", "C4"], "move": "C3"},
+]
+
+
+FIXTURE_DUPLICATE_ORDER = [
+    # Phase 246-C (M7): multiple candidates sharing the same ``order``
+    # value (e.g., all set to ADDITIONAL_MOVE_ORDER=999 from a merge).
+    # The secondary sort key (pointsLost asc, visits desc) must make
+    # the truncation deterministic.
+    {"order": 999, "pointsLost": 1.0, "visits": 500, "pv": ["A1"], "move": "A1"},
+    {"order": 999, "pointsLost": 0.5, "visits": 100, "pv": ["B2"], "move": "B2"},
+    {"order": 999, "pointsLost": 0.5, "visits": 800, "pv": ["C3"], "move": "C3"},
+    {"order": 999, "pointsLost": 0.0, "visits": 50, "pv": ["D4"], "move": "D4"},
+]
+
+
+FIXTURE_NONE_POINTS_LOST = [
+    # Phase 246-C (H5): defensive against ``pointsLost=None`` (shouldn't
+    # happen in practice but the filter must not crash).
+    {"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"},
+    {"order": 1, "pointsLost": None, "pv": ["B2"], "move": "B2"},
+    {"order": 2, "pv": ["C3"], "move": "C3"},  # missing key entirely
+]
+
+
+class TestFilterBoundaryRobustness:
+    """Phase 246-C (H5): boundary / robustness tests for the filter."""
+
+    def test_negative_points_lost_does_not_crash(self):
+        """Negative pointsLost values must be filtered normally."""
+        config = PV_FILTER_CONFIGS["medium"]  # max_points_lost=2.0
+        result = filter_candidates_by_pv_complexity(FIXTURE_NEGATIVE_POINTS_LOST, config)
+        # best_move (order=0) is always included
+        assert any(c["order"] == 0 for c in result)
+        # negative pointsLost < 2.0 → all 3 candidates pass the loss cap
+        assert len(result) == 3
+
+    def test_duplicate_order_secondary_sort_is_deterministic(self):
+        """M7: When multiple candidates share the same order, the
+        secondary sort (pointsLost asc, visits desc) must produce a
+        stable, intuitive ordering."""
+        config = PVFilterConfig(max_candidates=2, max_points_lost=10.0, max_pv_length=20)
+        result = filter_candidates_by_pv_complexity(FIXTURE_DUPLICATE_ORDER, config)
+        # After filter: best_move is None, so the 2 with lowest
+        # pointsLost go through. Among ties, the one with more visits
+        # wins. Expected order: D4 (loss 0.0, 50v), C3 (loss 0.5, 800v)
+        assert len(result) == 2
+        orders = [c["order"] for c in result]
+        assert orders == [999, 999]  # best_move is None here
+        # Lower pointsLost first; within same loss, higher visits first
+        assert result[0]["pointsLost"] == 0.0
+        assert result[1]["pointsLost"] == 0.5
+        assert result[1]["visits"] == 800  # higher than B2's 100
+
+    def test_duplicate_order_no_secondary_sort_was_ambiguous(self):
+        """Sanity check: with M7's secondary key, the same input dict
+        iteration order always produces the same output."""
+        config = PVFilterConfig(max_candidates=2, max_points_lost=10.0, max_pv_length=20)
+        # Run twice with same data — output must be identical
+        r1 = filter_candidates_by_pv_complexity(FIXTURE_DUPLICATE_ORDER, config)
+        r2 = filter_candidates_by_pv_complexity(FIXTURE_DUPLICATE_ORDER, config)
+        assert [c["move"] for c in r1] == [c["move"] for c in r2]
+
+    def test_none_points_lost_falls_back_to_zero(self):
+        """H5: ``pointsLost=None`` (or missing) must be treated as 0.0
+        so the candidate is *not* incorrectly excluded by loss > 0."""
+        config = PV_FILTER_CONFIGS["strong"]  # max_points_lost=1.0
+        result = filter_candidates_by_pv_complexity(FIXTURE_NONE_POINTS_LOST, config)
+        # best_move (order=0) always passes
+        # order=1 (pointsLost=None, treated as 0 ≤ 1.0) → pass
+        # order=2 (missing key, treated as 0) → pass
+        assert len(result) == 3
+        assert result[0]["order"] == 0
+
+    def test_single_candidate_passes_through(self):
+        """A single candidate (only best_move) is always returned."""
+        config = PV_FILTER_CONFIGS["medium"]
+        result = filter_candidates_by_pv_complexity(
+            [{"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"}], config
+        )
+        assert len(result) == 1
+        assert result[0]["order"] == 0
+
+    def test_best_move_with_extreme_pv_is_preserved(self):
+        """M5 sanity: best_move is always included even if its PV is
+        the only thing the filter would otherwise drop (H5 contract)."""
+        # Very strict filter: pv length must be 0, points_lost must be 0
+        config = PVFilterConfig(max_candidates=10, max_points_lost=0.0, max_pv_length=1)
+        # best_move has a 50-step PV — would be dropped by pv_length filter
+        # but is preserved by the best_move special-quota contract.
+        candidates = [
+            {"order": 0, "pointsLost": 0.0, "pv": ["A1"] * 50, "move": "A1"},
+            {"order": 1, "pointsLost": 5.0, "pv": ["B2"], "move": "B2"},
+        ]
+        result = filter_candidates_by_pv_complexity(candidates, config)
+        assert len(result) == 1
+        assert result[0]["order"] == 0
+        # The PV is NOT clipped here — clipping is the GUI's job
+        # (M5: draw_pv / active_pv_moves). The filter just preserves
+        # the dict as-is.
+        assert len(result[0]["pv"]) == 50
+
+    def test_very_large_visits_does_not_crash(self):
+        """H5: a candidate with a billion visits must not break the
+        secondary sort (we negate it for the sort key)."""
+        config = PVFilterConfig(max_candidates=5, max_points_lost=10.0, max_pv_length=20)
+        candidates = [
+            {"order": 999, "pointsLost": 1.0, "visits": 10**9, "pv": ["A1"], "move": "A1"},
+            {"order": 999, "pointsLost": 1.0, "visits": 1, "pv": ["B2"], "move": "B2"},
+            {"order": 999, "pointsLost": 0.0, "visits": 100, "pv": ["C3"], "move": "C3"},
+        ]
+        result = filter_candidates_by_pv_complexity(candidates, config)
+        # D4 (loss 0.0) first, then the two loss-1.0 ones in visit desc
+        assert [c["move"] for c in result] == ["C3", "A1", "B2"]
+
+    def test_empty_pv_does_not_crash(self):
+        """H5: an empty PV list must not cause errors (len(0) = 0)."""
+        config = PV_FILTER_CONFIGS["strong"]  # max_pv_length=6
+        result = filter_candidates_by_pv_complexity(
+            [
+                {"order": 0, "pointsLost": 0.0, "pv": [], "move": "A1"},
+                {"order": 1, "pointsLost": 0.5, "pv": [], "move": "B2"},
+            ],
+            config,
+        )
+        # Both pass: best_move is always kept, and 0-length PV is <= 6
+        assert len(result) == 2

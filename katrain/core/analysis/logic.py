@@ -71,6 +71,8 @@ from katrain.core.analysis.logic_pv import (
     get_effective_pv_filter_info,
     get_pv_filter_config,
     PVFilterDisplayInfo,
+    PV_ANIMATION_MAX_STEPS,
+    clip_pv_for_animation,
 )
 from katrain.core.analysis.logic_reliability import (
     compute_confidence_level,
@@ -160,6 +162,9 @@ __all__ = [
     # Phase 246-A: display-effective level for UI
     "get_effective_pv_filter_info",
     "PVFilterDisplayInfo",
+    # Phase 246-C: PV clip for animation
+    "clip_pv_for_animation",
+    "PV_ANIMATION_MAX_STEPS",
     # Difficulty Metrics (Phase 12 / Phase 192 canonical names)
     "compute_difficulty_metrics",
     "difficulty_metrics_from_node",

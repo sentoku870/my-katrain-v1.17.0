@@ -138,6 +138,9 @@ from katrain.core.analysis.logic import (
     # Phase 246-A: display-effective level for UI
     get_effective_pv_filter_info,
     PVFilterDisplayInfo,
+    # Phase 246-C: PV clip for animation
+    clip_pv_for_animation,
+    PV_ANIMATION_MAX_STEPS,
     get_reliability_scale,
     # Skill preset helpers
     get_skill_preset,
@@ -454,6 +457,9 @@ __all__ = [
     # Phase 246-A: display-effective level for UI
     "get_effective_pv_filter_info",
     "PVFilterDisplayInfo",
+    # Phase 246-C: PV clip for animation
+    "clip_pv_for_animation",
+    "PV_ANIMATION_MAX_STEPS",
     # Difficulty Metrics (Phase 12)
     "get_root_visits",  # Phase 92: Public wrapper
     "compute_difficulty_metrics",

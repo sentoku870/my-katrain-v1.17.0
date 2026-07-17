@@ -22,6 +22,7 @@ from kivy.metrics import dp
 
 from katrain.core.analysis import (
     DEFAULT_PV_FILTER_LEVEL,
+    clip_pv_for_animation,
     filter_candidates_by_pv_complexity,
     get_pv_filter_config,
     resolve_skill_preset,
@@ -364,7 +365,11 @@ def draw_kata_hint_marker(
         return top_move_coords
 
     if "pv" in move_dict and not is_kifu_marker:
-        widget.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
+        # Phase 246-C (M5): clip excessively long PV sequences via the
+        # shared ``clip_pv_for_animation`` helper. Tests cover the
+        # helper directly; the call site stays one-liner.
+        pv = clip_pv_for_animation(move_dict["pv"])
+        widget.active_pv_moves.append((move.coords, pv, current_node))
     elif "pv" not in move_dict and not is_kifu_marker:
         katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
     evalsize = widget.stone_size * scale

@@ -93,16 +93,32 @@ def filter_candidates_by_pv_complexity(
     for c in candidates:
         if c is best_move:
             continue  # best_moveは別枠で処理
-        points_lost = c.get("pointsLost", 0.0)
-        pv = c.get("pv", [])
-        pv_length = len(pv) if pv else 0
+        # Phase 246-C (H5): coerce ``None`` / missing values to 0.0 so
+        # the ``<=`` comparison doesn't TypeError. Defensive against
+        # half-populated analysis (e.g. a candidate without pointsLost
+        # because KataGo only ran policy probing on that branch).
+        points_lost = c.get("pointsLost") or 0.0
+        pv = c.get("pv") or []
+        pv_length = len(pv)
 
         # 条件: 損失が閾値以下 AND PV長が閾値以下
         if points_lost <= config.max_points_lost and pv_length <= config.max_pv_length:
             filtered.append(c)
 
     # Step 3: max_candidates 制限（order順でカット、best_move除外済み）
-    filtered = sorted(filtered, key=lambda c: c.get("order", 999))
+    # Phase 246-C (M7): secondary sort key (pointsLost asc, visits desc)
+    # makes the cap deterministic when multiple candidates share the
+    # same ``order`` (e.g. ``ADDITIONAL_MOVE_ORDER=999`` from a merged
+    # analysis). Without this, ``sorted`` is stable but the input order
+    # is dict-iteration order — not stable across runs.
+    filtered = sorted(
+        filtered,
+        key=lambda c: (
+            c.get("order", 999),
+            c.get("pointsLost", 0.0),
+            -c.get("visits", 0),
+        ),
+    )
     filtered = filtered[: config.max_candidates]
 
     # Step 4: best_moveを先頭に挿入（別枠、上限外）
@@ -200,3 +216,45 @@ def get_effective_pv_filter_info(
         # can show "?" or fall back to "auto".
         return PVFilterDisplayInfo(level, 0, False, None)
     return PVFilterDisplayInfo(level, config.max_candidates, False, None)
+
+
+# =============================================================================
+# Phase 246-C (M5): PV clipping for animated playback
+# =============================================================================
+
+
+#: Hard cap on the number of PV steps we feed into the GUI animation.
+#: 30 is well above any realistic PV length and well below the per-frame
+#: skip cost that ``draw_pv`` would otherwise incur on a 50+ step line.
+#: Kept here in the Kivy-free analysis package so the helper can be
+#: unit-tested without booting a Kivy app.
+PV_ANIMATION_MAX_STEPS: int = 30
+
+
+def clip_pv_for_animation(pv: Any) -> list[str]:
+    """Clip a PV sequence to :data:`PV_ANIMATION_MAX_STEPS` steps.
+
+    Phase 246-C (M5): the candidate-marker path in the GUI feeds the
+    animated playback in :mod:`katrain.gui.badukpan_pv`. KataGo can
+    occasionally return a very long PV (50+ moves) when the position
+    has a long forcing sequence. Rendering 50+ stones is both visually
+    noisy and performance-wasteful — we cap to 30 so the user sees a
+    meaningful slice without the animation stuttering.
+
+    Defensive contract:
+    - ``None`` or non-list input → returns ``[]`` (caller skips the
+      marker).
+    - Lists shorter than the cap are returned as a fresh list (the
+      caller's list is not mutated).
+    - Lists longer than the cap are sliced to the first ``cap`` items.
+    - Non-string elements are coerced via ``str()`` so downstream
+      :func:`Move.from_gtp` doesn't crash on bad data.
+    """
+    if not isinstance(pv, list):
+        return []
+    # Always coerce to str so downstream ``Move.from_gtp`` never sees
+    # a non-string. For short lists we also return a fresh list to
+    # guarantee the input is not mutated.
+    if len(pv) <= PV_ANIMATION_MAX_STEPS:
+        return [str(x) for x in pv]
+    return [str(x) for x in pv[:PV_ANIMATION_MAX_STEPS]]
