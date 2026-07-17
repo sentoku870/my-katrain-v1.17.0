@@ -112,6 +112,10 @@ class PlayAnalyzeSelect(MDFloatLayout):
 class ControlsPanel(BoxLayout):
     katrain = ObjectProperty(None)
     button_controls = ObjectProperty(None)
+    # Phase 247-C (L6): ObjectProperty for the live PV-filter preview
+    # label declared in panels.kv. Optional so legacy callers that
+    # build the panel without the .kv rule still work.
+    pv_filter_preview = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -213,6 +217,15 @@ class ControlsPanel(BoxLayout):
         ):  # clear status if node changes, except startup errors on root. also clear analysis message when no queries
             self.status.text = ""
             self.status_state = (None, -1e9, None)
+
+        # Phase 247-C (L6): refresh the position-aware PV filter
+        # preview. Reads the cached PVFilterPreview from the badukpan
+        # widget (populated by ``prepare_hint_moves``) and formats
+        # it for the small label below the status box. Cheap; runs
+        # on every update_evaluation but only touches the Label's
+        # text attribute.
+        if self.pv_filter_preview is not None:
+            self.pv_filter_preview.text = self._format_pv_filter_preview()
 
         last_player_was_ai_playing_human = katrain.last_player_info.ai and katrain.next_player_info.human
         both_players_are_robots = katrain.last_player_info.ai and katrain.next_player_info.ai

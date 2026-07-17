@@ -1631,6 +1631,13 @@ msgstr "現在の局面: {n} 件（フィルタ OFF）"
 msgid "mykatrain:settings:pv_filter_preview_active"
 msgstr "現在の局面: {n} → {m} 件（最善手 {best} 件込み・フィルタ ON）"
 
+# Phase 247-C (L6): コントロールパネル側の compact 表示
+msgid "mykatrain:controls:pv_filter_preview_inactive"
+msgstr "候補 {n} 件 (フィルタ OFF)"
+
+msgid "mykatrain:controls:pv_filter_preview_active"
+msgstr "候補 {n} → {m} (最善 {best} 込み)"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 

@@ -1685,6 +1685,13 @@ msgstr "Current position: {n} candidates (filter OFF)"
 msgid "mykatrain:settings:pv_filter_preview_active"
 msgstr "Current position: {n} -> {m} (incl. {best} best move, filter ON)"
 
+# Phase 247-C (L6): compact display in the controls panel
+msgid "mykatrain:controls:pv_filter_preview_inactive"
+msgstr "{n} candidates (filter OFF)"
+
+msgid "mykatrain:controls:pv_filter_preview_active"
+msgstr "{n} -> {m} (best {best} included)"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
 
