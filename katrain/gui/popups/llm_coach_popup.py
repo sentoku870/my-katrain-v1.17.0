@@ -119,6 +119,13 @@ class LLMCoachPopupContent(BoxLayout):
         # ``summary_players`` (0 = bird's-eye "全体俯瞰"). Drives the
         # ``player_name`` argument to ``build_summary_llm_prompt``.
         self.summary_perspective_index: int = 0
+        # Phase 241-E: user has manually interacted with the summary
+        # perspective spinner. When ``True``, the population
+        # scheduler in :meth:`on_kv_post` must NOT overwrite the
+        # user's selection (a previous version had a race where the
+        # 0.4s-delayed auto-populate would clobber a manual change
+        # made during the delay window).
+        self._summary_perspective_user_set: bool = False
         super().__init__(**kwargs)
 
     # ---- Lifecycle -----------------------------------------------------
@@ -171,9 +178,10 @@ class LLMCoachPopupContent(BoxLayout):
         if self.karte_path_input.text:
             return  # user typed something already
         try:
-            # Phase 239: switched from ``find_latest_karte`` (karte-only)
+            # Phase 227-D: switched from ``find_latest_karte`` (karte-only)
             # to ``find_latest_llm_input_for_ctx`` (karte + summary both)
-            # so the popup auto-fills the right file type after Phase 227-D.
+            # so the popup auto-fills the right file type. Phase 241-G
+            # removed the legacy ``find_latest_karte`` helper entirely.
             from katrain.gui.features.llm_coach import find_latest_llm_input_for_ctx
 
             latest = find_latest_llm_input_for_ctx(self.katrain) if self.katrain is not None else None
@@ -240,6 +248,22 @@ class LLMCoachPopupContent(BoxLayout):
         self._detect_path_type(karte_path)
         if self.path_type == "summary":
             self._populate_summary_perspective(karte_path, default_user, default_user_rank)
+            return
+
+        # Phase 241-B: when the path is set but the JSON is neither a
+        # Karte nor a Summary (e.g. a hand-written JSON, a JSON the
+        # user exported from a different tool, or a malformed file
+        # that ``detect_json_type`` couldn't classify), do NOT fall
+        # through to the Karte path. The Karte ``detect_player_info``
+        # call would silently return an empty dict and the user would
+        # see a confusing ``auto-detect-failed`` status with no
+        # explanation. Instead, surface a clear "unknown path" status
+        # and stop here.
+        if self.path_type == "unknown":
+            self._set_status(
+                i18n._("mykatrain:llm-coach:unknown-path").format(path=karte_path),
+                error=True,
+            )
             return
 
         # Default path: karte
@@ -456,23 +480,44 @@ class LLMCoachPopupContent(BoxLayout):
 
         spinner = self._get_widget("perspective_select")
         if spinner is not None:
+            # Phase 241-E: if the user has already manually picked a
+            # perspective via the spinner, preserve their choice across
+            # re-populations. The previous logic always overwrote
+            # ``summary_perspective_index`` with the auto-detected
+            # value, which clobbered manual changes that happened
+            # during the 0.2s/0.4s clock-delayed population window.
+            user_preserved = self._summary_perspective_user_set and 0 < self.summary_perspective_index <= len(
+                self.summary_players
+            )
             spinner.values = values
-            # Default selection: matched player at index 1 when present,
-            # otherwise bird's-eye (index 0).
-            if info.get("default_user_matched") and self.summary_players:
-                self.summary_perspective_index = 1
+            if user_preserved:
+                # Keep the previously-selected player; only re-resolve
+                # the internal value so the rank hint stays accurate.
+                idx = self.summary_perspective_index
             else:
-                self.summary_perspective_index = 0
+                # Default selection: matched player at index 1 when
+                # present, otherwise bird's-eye (index 0).
+                if info.get("default_user_matched") and self.summary_players:
+                    idx = 1
+                else:
+                    idx = 0
+                self.summary_perspective_index = idx
             try:
                 spinner.text = values[self.summary_perspective_index]
             except (IndexError, AttributeError):
                 spinner.text = values[0]
             internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
             # ``perspective_value`` is a StringProperty (no None allowed).
-            # Bird's-eye view is represented as an empty string here; the
-            # downstream consumers (e.g. ``_resolve_player_color``) treat
-            # an empty string as "auto".
-            self.perspective_value = internal_value if internal_value is not None else ""
+            # Phase 241-D: bird's-eye view carries the dedicated sentinel
+            # string so downstream consumers can distinguish it from
+            # out-of-range (which becomes empty string, treated as a
+            # bug condition by ``_resolve_player_color``).
+            if internal_value is None:
+                self.perspective_value = ""
+            elif internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
+                self.perspective_value = ""  # displayed as "auto"
+            else:
+                self.perspective_value = internal_value
 
         # ---- Rank auto-fill from matched player ----
         matched = info.get("matched_player", {}) or {}
@@ -522,6 +567,10 @@ class LLMCoachPopupContent(BoxLayout):
         Maps the spinner's currently-displayed text back to the index
         in ``self.summary_players`` (or 0 for bird's-eye) and stores
         it in ``self.summary_perspective_index``.
+
+        Phase 241-E: set ``_summary_perspective_user_set`` so the
+        population scheduler doesn't clobber the user's manual change
+        if it fires later (e.g. a re-detection of the path type).
         """
         spinner = self._get_widget("perspective_select")
         if spinner is None:
@@ -533,10 +582,16 @@ class LLMCoachPopupContent(BoxLayout):
         except ValueError:
             idx = 0
         self.summary_perspective_index = idx
+        self._summary_perspective_user_set = True
         internal_value = _summary_index_to_internal(self.summary_perspective_index, self.summary_players)
-        # ``perspective_value`` is a StringProperty; bird's-eye is the
-        # empty string sentinel (consumers treat it as "auto").
-        self.perspective_value = internal_value if internal_value is not None else ""
+        # ``perspective_value`` is a StringProperty; bird's-eye maps to
+        # the empty string (consumers treat it as "auto"). Phase 241-D:
+        # out-of-range also becomes empty so stale spinner state is
+        # visible to the downstream _resolve_player_color helper.
+        if internal_value is None or internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
+            self.perspective_value = ""
+        else:
+            self.perspective_value = internal_value
         # Update the rank hint if the user picks a different player
         if 0 < idx <= len(self.summary_players):
             _, rank = self.summary_players[idx - 1]
@@ -607,11 +662,18 @@ class LLMCoachPopupContent(BoxLayout):
 
         Phase 227-D: re-run type detection + rank/perspective
         population. The path may have changed since the initial auto-fill.
+
+        Phase 241-E: reset ``_summary_perspective_user_set`` so a
+        different summary file gets fresh auto-population rather
+        than preserving the previous file's manual override.
         """
         self._refresh_type_label()
         # Reset the retry counter so we get a fresh chance to populate
         # once a non-empty path is in place.
         self._rank_detect_retries = 0
+        # Phase 241-E: a new path means a new player list, so the
+        # user's previous spinner choice may not be valid anymore.
+        self._summary_perspective_user_set = False
         if self._read_text("karte_path_input"):
             self._populate_rank_and_perspective()
 
@@ -692,6 +754,18 @@ class LLMCoachPopupContent(BoxLayout):
 
         if self.path_type == "summary":
             self._on_generate_summary(karte_path, rank)
+            return
+
+        # Phase 241-B: same guard as in ``_populate_rank_and_perspective``.
+        # If the JSON is unrecognised, refuse to build a prompt
+        # silently — the user needs to know the file is the wrong
+        # type. Without this, ``build_llm_prompt`` would crash inside
+        # the coach core on an unexpected JSON shape.
+        if self.path_type == "unknown":
+            self._set_status(
+                i18n._("mykatrain:llm-coach:unknown-path").format(path=karte_path),
+                error=True,
+            )
             return
 
         # Default: karte path (Phase 225.6)
@@ -802,6 +876,16 @@ class LLMCoachPopupContent(BoxLayout):
             self._detect_path_type(karte_path)
         if self.path_type == "summary":
             self._on_validate_summary(karte_path, response_text, rank)
+            return
+
+        # Phase 241-B: same guard for the validate path. Validation
+        # against an unrecognised JSON would run the Karte validator
+        # over the wrong data and produce meaningless warnings.
+        if self.path_type == "unknown":
+            self._set_status(
+                i18n._("mykatrain:llm-coach:unknown-path").format(path=karte_path),
+                error=True,
+            )
             return
 
         from katrain.gui.features.llm_coach import validate_llm_response
@@ -1003,17 +1087,46 @@ def _spinner_text_to_internal(text: str) -> str:
 # Returns the player name (string) for the focused player, or
 # ``None`` for bird's-eye. Mirrors the ``_spinner_text_to_internal``
 # pattern for karte mode but uses the index instead of localised text.
-def _summary_index_to_internal(index: int, players: list[tuple[str, str | None]]) -> str | None:
-    """Map summary perspective spinner index to a player name or ``None``.
+#
+# Phase 241-D: the bird's-eye / out-of-range ambiguity is resolved via
+# a dedicated sentinel string. Previously both cases returned
+# ``None`` and downstream consumers (e.g. ``_resolve_player_color``)
+# could not distinguish a deliberate "no focus" choice from a
+# defensive fallback triggered by a stale spinner index. The new
+# ``_SUMMARY_BIRDSEYE_SENTINEL`` is an unambiguous string that never
+# collides with a real player name.
+_SUMMARY_BIRDSEYE_SENTINEL: str = "__birdseye__"
+
+
+def _summary_index_to_internal(
+    index: int,
+    players: list[tuple[str, str | None]],
+) -> str | None:
+    """Map summary perspective spinner index to a player name or the
+    bird's-eye sentinel.
 
     Returns:
-        - ``None`` when index == 0 (bird's-eye view)
-        - The player's ``name`` when 0 < index <= len(players)
-        - ``None`` when the index is out of range (defensive fallback)
+        - The bird's-eye sentinel (``"__birdseye__"``) when ``index == 0``
+        - The player's ``name`` when ``0 < index <= len(players)``
+        - ``None`` when the index is out of range (defensive fallback
+          for stale spinner state). Callers should treat ``None`` as
+          a bug condition and re-detect the perspective.
     """
-    if index <= 0 or index > len(players):
+    if index <= 0:
+        return _SUMMARY_BIRDSEYE_SENTINEL
+    if index > len(players):
         return None
     return players[index - 1][0]
+
+
+def is_summary_birdseye(value: str | None) -> bool:
+    """Phase 241-D: check whether a value is the bird's-eye sentinel.
+
+    Centralised here so callers (popup handlers, tests) don't have to
+    import the sentinel constant directly. Returns ``False`` for
+    ``None`` (no value at all is NOT bird's-eye, it's a bug state).
+    """
+    return value == _SUMMARY_BIRDSEYE_SENTINEL
 
 
 def _pick_detected_rank(info: dict[str, Any], perspective_value: str) -> str | None:

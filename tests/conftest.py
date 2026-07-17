@@ -14,6 +14,28 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Phase 241-H: configure Kivy for headless test runs BEFORE any Kivy
+# module is imported. Without these env vars the popup tests crash at
+# import time because Kivy's ``EventLoop.ensure_window`` tries to
+# open a real window and aborts the process. Setting them at conftest
+# load time (i.e. before pytest collects test modules) gives every
+# test a chance to import the popup layer cleanly.
+#
+# The popup tests already set these at module load time in their
+# own preamble, but conftest-level setup makes the headless mode
+# available to ALL test files — including new ones that import the
+# popup layer transitively. CI runners that lack a display
+# (GitHub Actions Linux, sandboxed agents) get the same code path
+# as developer machines.
+os.environ.setdefault("KIVY_NO_ARGS", "1")
+os.environ.setdefault("KIVY_NO_FILELOG", "1")
+os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
+os.environ.setdefault("KIVY_NO_ENV_CONFIG", "1")
+os.environ.setdefault("KIVY_HEADLESS", "1")
+os.environ.setdefault("KIVY_NO_WINDOW", "1")
+os.environ.setdefault("KIVY_GL_BACKEND", "mock")
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+
 from katrain.core.analysis.models.move_eval import MoveEval
 from katrain.core.constants import PLAYER_HUMAN, PLAYING_NORMAL
 from katrain.core.game import Game

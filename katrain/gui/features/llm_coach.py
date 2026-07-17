@@ -238,49 +238,19 @@ def _render_validation_report(report: Any) -> str:
     return "\n".join(lines) + "\n"
 
 
-def find_latest_karte(ctx: FeatureContext) -> Path | None:
-    """Locate the most recent ``karte_*.json`` in the configured output dir.
-
-    Returns ``None`` if the directory does not exist or no karte report is
-    present (in which case the popup will leave the path empty for the user
-    to fill in manually).
-
-    .. deprecated:: 1.17.0 (Phase 239)
-        This function only finds Karte files. The LLM Coach popup
-        (Phase 227-D onwards) also supports multi-game Summary JSON,
-        so new code should call :func:`find_latest_llm_input_for_ctx`
-        instead. This thin wrapper is kept so external callers do not
-        break, and emits a ``DeprecationWarning`` on every call.
-
-    Phase 227-C: this function was originally preserved for backward
-    compatibility. Phase 239 added the ``DeprecationWarning`` and
-    pointed the LLM Coach popup at ``find_latest_llm_input_for_ctx``.
-    """
-    import warnings
-
-    warnings.warn(
-        "katrain.gui.features.llm_coach.find_latest_karte is deprecated as of "
-        "Phase 239; use find_latest_llm_input_for_ctx (or the lower-level "
-        "find_latest_llm_input) instead. find_latest_karte only matches "
-        "karte_*.json and silently ignores summary_*.json which Phase 227-D "
-        "added to the LLM Coach popup.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    from katrain.common.platform import resolve_output_directory
-    from katrain.gui.features.report_navigator import get_latest_report
-
-    mykatrain_settings = ctx.config("mykatrain_settings") or {}
-    config_dir = mykatrain_settings.get("karte_output_directory", "")
-    output_dir = resolve_output_directory(config_dir)
-
-    if not output_dir.is_dir():
-        return None
-
-    report = get_latest_report(output_dir)
-    if report is None or report.report_type != "karte":
-        return None
-    return report.path
+# Phase 241-G: ``find_latest_karte`` was removed. It only matched
+# ``karte_*.json`` and silently ignored ``summary_*.json``, which
+# the LLM Coach popup (Phase 227-D) added as a first-class input
+# type. The popup already uses
+# :func:`find_latest_llm_input_for_ctx` exclusively, so the legacy
+# function had no remaining callers in the production code. Tests
+# that referenced it have been removed in the same commit
+# (see :file:`tests/test_llm_coach.py` for the cleanup).
+#
+# Migration: replace ``find_latest_karte(ctx)`` with
+# ``find_latest_llm_input_for_ctx(ctx)``. The new helper returns the
+# most recent ``karte_*.json`` OR ``summary_*.json`` and is what
+# the popup calls.
 
 
 # --- Phase 227-D: Multi-game summary wrappers --------------------------
@@ -505,8 +475,9 @@ def find_latest_llm_input_for_ctx(ctx: FeatureContext) -> Path | None:
     / :func:`katrain.core.coach.is_summary`) to pick the right
     downstream handler.
 
-    This is the multi-game-aware replacement for
-    :func:`find_latest_karte` and is what the popup (Phase 227-D) calls.
+    This is the multi-game-aware file picker that the popup
+    (Phase 227-D) calls. Phase 241-G removed the legacy
+    ``find_latest_karte`` helper that only matched ``karte_*.json``.
     """
     from katrain.common.platform import resolve_output_directory
     from katrain.gui.features.report_navigator import find_latest_llm_input
@@ -732,8 +703,8 @@ def detect_player_color_for_user(
     *,
     player_info: dict[str, Any] | None = None,
 ) -> tuple[str | None, str | None]:
-    """Phase 225.6 / Phase 226-B (B4): determine which side the
-    configured default user plays and return ``(color, rank)``.
+    """Phase 225.6 / Phase 226-B (B4) / Phase 241-F: determine which
+    side the configured default user plays and return ``(color, rank)``.
 
     ``color`` is ``"B"`` / ``"W"`` / ``None``; ``rank`` is the matching
     rank string from the Karte / SGF. ``None`` is returned when the
@@ -744,6 +715,14 @@ def detect_player_color_for_user(
     avoid reading & parsing the same JSON a second time. When
     ``player_info`` is ``None`` we fall back to the previous behaviour
     of reading the file ourselves.
+
+    Phase 241-F: build a real :class:`SgfPlayerInfo` instance instead
+    of the previous ``_SgfInfoLike`` + ``cast()`` shim. The
+    ``cast(SgfPlayerInfo, pseudo)`` bypassed Python's runtime type
+    system: any future ``isinstance(pseudo, SgfPlayerInfo)`` check
+    inside :func:`extract_player_info_for_user` would silently break.
+    Constructing the dataclass directly is honest and lets the
+    runtime validator catch a future schema drift.
     """
     if ctx is None:
         return None, None
@@ -751,21 +730,21 @@ def detect_player_color_for_user(
     if not default_user:
         return None, None
     info = player_info if player_info is not None else detect_player_info(ctx, karte_path)
-    from katrain.core.coach.sgf_player_info import extract_player_info_for_user
+    from katrain.core.coach.sgf_player_info import (
+        PlayerInfo,
+        SgfPlayerInfo,
+        extract_player_info_for_user,
+    )
 
-    pseudo = _SgfInfoLike(info["black"], info["white"])
-    from katrain.core.coach.sgf_player_info import SgfPlayerInfo
-
-    return extract_player_info_for_user(cast(SgfPlayerInfo, pseudo), default_user)
-
-
-class _SgfInfoLike:
-    """Bridge: convert our ``detect_player_info`` dict shape into
-    the :class:`SgfPlayerInfo` interface that
-    :func:`extract_player_info_for_user` expects."""
-
-    def __init__(self, black: dict[str, Any], white: dict[str, Any]) -> None:
-        from katrain.core.coach.sgf_player_info import PlayerInfo
-
-        self.black = PlayerInfo(name=black.get("name"), rank=black.get("rank"))
-        self.white = PlayerInfo(name=white.get("name"), rank=white.get("rank"))
+    black = info.get("black") or {}
+    white = info.get("white") or {}
+    if not isinstance(black, dict):
+        black = {}
+    if not isinstance(white, dict):
+        white = {}
+    sgf_info = SgfPlayerInfo(
+        black=PlayerInfo(name=black.get("name"), rank=black.get("rank")),
+        white=PlayerInfo(name=white.get("name"), rank=white.get("rank")),
+        sgf_path=str(karte_path),
+    )
+    return extract_player_info_for_user(sgf_info, default_user)

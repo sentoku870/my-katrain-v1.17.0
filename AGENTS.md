@@ -73,6 +73,18 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 230-A: MyKatrain メニュー整理（4 項目に集約、アイコン重複解消、`chat.png` 欠損修正）
     - 230-A.1: `MyKatrainMenuSectionHeader` クラッシュ修正（`content_width` プロパティ追加）
     - 230-A.2: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
+  - Phase 241（2026-07-17）: **サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
+    - **問題**: サマリー機能（複数局サマリ / LLM Coach 複数局対応）に複数のバグ・改善余地
+    - **解決策**: 全部で 9 サブ修正を一括で実施
+    - 241-A: weakness pattern から「good」カテゴリ除外（`extract_summary_weakness_patterns` の Shape B 経路フィルタ、`_NON_WEAKNESS_CATEGORIES` 新設）+ 12 unit tests
+    - 241-B: popup の unknown パス早期 return（`llm-coach:unknown-path` i18n キー追加、`on_generate_and_copy` / `on_validate` / `_populate_rank_and_perspective` 全部に guard）+ 3 unit tests
+    - 241-C: loss_progression フォールバック（`_format_loss_progression_block` 新設、dict / legacy list / 空 3 形式対応）+ 6 unit tests
+    - 241-D: `_summary_index_to_internal` sentinel 化（`_SUMMARY_BIRDSEYE_SENTINEL` 新設、bird's-eye と out-of-range を区別）
+    - 241-E: summary_perspective_index race condition 対策（`_summary_perspective_user_set` フラグでユーザ手動選択を保護、`on_path_changed` でリセット）
+    - 241-F: `detect_player_color_for_user` の型キャスト整理（`_SgfInfoLike` + `cast()` 廃止 → `SgfPlayerInfo` 直接構築）
+    - 241-G: `find_latest_karte` 関数完全削除（popup は既に `find_latest_llm_input_for_ctx` を使用）+ 関連テスト削除
+    - 241-H: `tests/conftest.py` に Kivy headless 環境変数追加（CI 環境での popup テスト準備）
+    - 241-I: AGENTS.md / 01-roadmap.md 更新（Phase 239 表記を Phase 241-G に統一、Phase 241 マイルストーン追記）
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -330,6 +342,18 @@ docs/
   - **230-A**: MyKatrain メニュー整理 — 8 項目 → 4 項目（「その他」サブメニュー化 → 後に完全削除）、アイコン重複解消、`chat.png` 欠損修正（`Teaching-Settings.png` に振替）
   - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
   - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
+- 2026-07-17: **Phase 241 — サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
+  - **問題**: ユーザー報告のサマリー機能調査で 11 件のバグ・改善余地を特定（good カテゴリ混入、unknown パス無音通過、loss_progression 空表示、popup race condition、Phase 239 整合性、find_latest_karte 残骸、Kivy headless 環境）
+  - **解決策**: 9 サブ修正を一括で実施
+  - **241-A**: weakness pattern から「good」除外 — `json_type.py` に `_NON_WEAKNESS_CATEGORIES` 定数新設、`extract_summary_weakness_patterns` の Shape B 経路でフィルタ、per-player mistake distribution は full のまま温存
+  - **241-B**: popup の unknown パス早期 return — `llm-coach:unknown-path` i18n キー追加（jp/en）、`_populate_rank_and_perspective` / `on_generate_and_copy` / `on_validate` 全 3 経路に guard 追加
+  - **241-C**: loss_progression フォールバック — `summary_prompt_builder.py` に `_format_loss_progression_block` 新設、dict / legacy flat list / 空 bucket list 3 形式対応、テンプレートに「Loss Progression (per game-type)」セクション追加
+  - **241-D**: `_summary_index_to_internal` sentinel 化 — `_SUMMARY_BIRDSEYE_SENTINEL` 文字列定数新設、bird's-eye（index=0）と out-of-range（バグ状態）を `None` 共通返却から分離
+  - **241-E**: summary_perspective_index race condition 対策 — `_summary_perspective_user_set` フラグでユーザ手動選択を保護、`on_path_changed` でリセット
+  - **241-F**: `detect_player_color_for_user` 型キャスト整理 — `_SgfInfoLike` + `cast(SgfPlayerInfo, pseudo)` 廃止、`SgfPlayerInfo` dataclass を直接構築（実行時型チェック有効化）
+  - **241-G**: `find_latest_karte` 関数完全削除 — Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用、legacy 関数と関連テスト 4 件削除、Phase 239 表記を Phase 241-G に統一
+  - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加 — `KIVY_NO_ARGS` / `KIVY_NO_WINDOW` / `KIVY_HEADLESS` / `SDL_VIDEODRIVER=dummy` 等を conftest ロード時に設定（CI 環境での popup テスト実行準備）
+  - **241-I**: AGENTS.md / 01-roadmap.md 更新 — Phase 241 マイルストーン追記、Phase 239 表記を Phase 241-G に統一
 - 2026-07-15: **Phase 229 — 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
   - **問題**: myKatrain には解析側 `skill_preset` と LLM 側 `CoachMode` の 2 つの棋力管理体系があり、同じ rank 文字列を二重管理していた
   - **解決策**: `general/player_rank` を 1 つの入力として集約、両システムへ自動反映

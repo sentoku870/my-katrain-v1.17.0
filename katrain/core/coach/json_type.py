@@ -219,10 +219,23 @@ def extract_summary_weakness_patterns(
     # ---- Shape B: players.<name>.mistakes[*] (Phase 228-A real shape) ----
     # Only synthesise Shape B patterns when Shape A returned nothing
     # (avoids duplicate signals when both shapes coexist).
+    #
+    # Phase 241-A: filter out the ``"good"`` category. ``"good"`` is by
+    # definition NOT a weakness (count=310/388 ≈ 80% in the typical
+    # real export) so including it in the pre-computed weakness
+    # patterns makes the LLM prompt look like it is asking the model
+    # to extract "good" as one of the top weaknesses. The
+    # ``_PLAYER_MISTAKE_CATEGORIES`` tuple still contains ``"good"`` so
+    # the per-player distribution is fully preserved
+    # (see :func:`extract_summary_player_mistakes`); the filter here
+    # applies only to the weakness-pattern view.
     if not patterns:
         for player_name, mistakes in extract_summary_player_mistakes(data).items():
             for m in mistakes:
                 cat = m["category"]
+                # Phase 241-A: skip "good" — it is not a weakness.
+                if cat in _NON_WEAKNESS_CATEGORIES:
+                    continue
                 count = m["count"]
                 total_loss = m["total_loss"]
                 # Shape B's ``count`` is per-move (e.g. 5 blunder moves
@@ -265,6 +278,19 @@ _PLAYER_MISTAKE_CATEGORIES: tuple[str, ...] = (
     "mistake",
     "inaccuracy",
     "good",
+)
+
+
+# Phase 241-A: Categories that are NOT weaknesses and must be excluded
+# from the weakness-pattern view. The per-player mistake distribution
+# (extract_summary_player_mistakes) keeps these so the LLM still sees
+# the full distribution, but :func:`extract_summary_weakness_patterns`
+# filters them out so the rendered prompt does not list "good" as a
+# weakness to extract.
+_NON_WEAKNESS_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "good",
+    }
 )
 
 

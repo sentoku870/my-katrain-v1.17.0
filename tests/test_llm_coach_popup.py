@@ -434,9 +434,10 @@ class TestOnCopyResult:
 
 
 class TestPopulateInitialKartePath:
-    """Phase 239: the popup switched from ``find_latest_karte`` (karte-only)
+    """Phase 227-D: the popup switched from ``find_latest_karte`` (karte-only)
     to ``find_latest_llm_input_for_ctx`` (karte + summary both). The tests
-    here patch the new entry point."""
+    here patch the new entry point. Phase 241-G removed the legacy
+    ``find_latest_karte`` helper."""
 
     def test_no_op_when_input_already_set(self) -> None:
         content = _make_content()
@@ -1267,6 +1268,52 @@ class TestRefreshTypeLabel:
         content._refresh_type_label()
         label_text = content.ids["type_label"].text
         assert label_text in ("(未確定)", "(unresolved)")
+
+
+# Phase 241-B: tests for the new "unknown path" early-return
+# behaviour. The popup must surface a clear i18n error instead of
+# silently falling through to the Karte path (which would produce a
+# misleading "auto-detect-failed" status).
+class TestUnknownPathEarlyReturn:
+    """Phase 241-B: when the JSON is neither a Karte nor a Summary,
+    the popup surfaces ``unknown-path`` and short-circuits."""
+
+    def test_populate_rank_returns_for_unknown(self, tmp_path):
+        content = _make_content()
+        # Hand-written JSON that doesn't match either shape
+        weird = tmp_path / "weird.json"
+        weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
+        content.karte_path_input.text = str(weird)
+        content._populate_rank_and_perspective()
+        # Should NOT have fallen into the karte path (which would
+        # call detect_player_info and overwrite the status).
+        # The status label should show the unknown-path message.
+        status_text = content.ids["status_label"].text
+        assert "形式" in status_text or "Unrecognised" in status_text or "形式を認識" in status_text
+        # path_type is set to unknown (no karte info loaded)
+        assert content.path_type == "unknown"
+
+    def test_generate_unknown_path_blocks_prompt(self, tmp_path):
+        content = _make_content()
+        weird = tmp_path / "weird.json"
+        weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
+        content.karte_path_input.text = str(weird)
+        content.on_generate_and_copy()
+        status_text = content.ids["status_label"].text
+        assert "形式" in status_text or "Unrecognised" in status_text or "形式を認識" in status_text
+        # The result_label should not have been overwritten with a
+        # prompt body
+        assert content.ids["result_label"].text == ""
+
+    def test_validate_unknown_path_blocks_validation(self, tmp_path):
+        content = _make_content()
+        weird = tmp_path / "weird.json"
+        weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
+        content.karte_path_input.text = str(weird)
+        content.ids["response_input"].text = "some LLM response"
+        content.on_validate()
+        status_text = content.ids["status_label"].text
+        assert "形式" in status_text or "Unrecognised" in status_text or "形式を認識" in status_text
 
 
 class TestPopulateSummaryPerspective:

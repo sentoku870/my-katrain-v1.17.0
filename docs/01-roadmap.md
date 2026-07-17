@@ -1125,6 +1125,18 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - **230-A.2**: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
   - 詳細: `docs/archive/specs-implemented/phase230-ui-ux-cleanup.md`
   - 23 ファイル + 新規 1 ファイル、合計 約 -726 行、全 5,572 件テスト合格継続
+- [x] **Phase 238: サマリー機能 品質改善**（Lv2、2026-07-17 完了）
+  - **241-A**: weakness pattern から「good」カテゴリ除外 — `_NON_WEAKNESS_CATEGORIES` 定数新設、Shape B 経路でフィルタ
+  - **241-B**: popup の unknown パス早期 return — `llm-coach:unknown-path` i18n キー追加、`_populate_rank_and_perspective` / `on_generate_and_copy` / `on_validate` 全 3 経路に guard
+  - **241-C**: loss_progression フォールバック — `_format_loss_progression_block` 新設、dict / legacy flat list / 空 bucket list 3 形式対応
+  - **241-D**: `_summary_index_to_internal` sentinel 化 — `_SUMMARY_BIRDSEYE_SENTINEL` 文字列定数新設
+  - **241-E**: summary_perspective_index race condition 対策 — `_summary_perspective_user_set` フラグ
+  - **241-F**: `detect_player_color_for_user` 型キャスト整理 — `SgfPlayerInfo` dataclass 直接構築
+  - **241-G**: `find_latest_karte` 関数完全削除（Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用）
+  - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加
+  - **241-I**: AGENTS.md / 01-roadmap.md 更新、Phase 239 表記を Phase 241-G に統一
+  - 9 ファイル + 39 unit tests、全 5,612 件テスト合格
+  - 詳細: `docs/archive/specs-implemented/phase241-summary-quality-improvements.md`
 - [x] **Phase 231-237: カルテ刷新**（Lv3、2026-07-17 進行中）
   - **Phase 231**: `build_karte_report` → `build_karte_json_string` リネーム（コア 7 ファイル + テスト 8 ファイル + docs 1 ファイル）
   - **Phase 232**: `karte_report.py` 互換シム完全削除 + `_build_karte_report_impl` → `_build_karte_json_string_impl` リネーム

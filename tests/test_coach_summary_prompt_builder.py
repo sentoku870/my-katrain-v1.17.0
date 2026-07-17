@@ -261,6 +261,129 @@ class TestBucketsAndLoss:
         prompt = build_summary_weakness_prompt(summary, cfg)
         assert "phase_x_mistake データがありません" in prompt.body_markdown
 
+
+# Phase 241-C: tests for the new ``loss_progression`` block fallback.
+class TestLossProgressionBlock:
+    """Phase 241-C: ``loss_progression`` is rendered with a placeholder
+    when absent, and aggregated to a single row per game type when
+    present."""
+
+    def test_loss_progression_dict_with_all(self):
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+            "loss_progression": {
+                "all": [
+                    {"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 5.0, "avg_loss": 0.167, "mistake_count": 2},
+                    {"start_move": 11, "end_move": 20, "move_count": 30, "total_loss": 8.0, "avg_loss": 0.267, "mistake_count": 3},
+                ]
+            },
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        # The "all" game type is rendered with aggregated stats.
+        assert "**all**" in prompt.body_markdown
+        assert "総損失=13.00" in prompt.body_markdown
+        assert "ミス数=5" in prompt.body_markdown
+
+    def test_loss_progression_dict_with_multiple_game_types(self):
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 5},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+            "loss_progression": {
+                "all": [{"start_move": 1, "end_move": 10, "move_count": 50, "total_loss": 10.0, "avg_loss": 0.2, "mistake_count": 4}],
+                "even": [{"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 6.0, "avg_loss": 0.2, "mistake_count": 2}],
+                "handicapped": [{"start_move": 1, "end_move": 10, "move_count": 20, "total_loss": 4.0, "avg_loss": 0.2, "mistake_count": 2}],
+            },
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=5,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        for game_type in ("all", "even", "handicapped"):
+            assert f"**{game_type}**" in prompt.body_markdown
+
+    def test_loss_progression_legacy_flat_list(self):
+        # Pre-Phase 157-C summary JSONs may have loss_progression as
+        # a flat list. The helper normalises this into {"all": [...].
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+            "loss_progression": [
+                {"start_move": 1, "end_move": 10, "move_count": 30, "total_loss": 5.0, "avg_loss": 0.167, "mistake_count": 1},
+            ],
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        assert "**all**" in prompt.body_markdown
+
+    def test_loss_progression_missing_shows_placeholder(self):
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        assert "loss_progression データがありません" in prompt.body_markdown
+
+    def test_loss_progression_empty_dict_shows_placeholder(self):
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+            "loss_progression": {},
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        assert "loss_progression データがありません" in prompt.body_markdown
+
+    def test_loss_progression_empty_bucket_list(self):
+        # Game type key exists but value is an empty list
+        summary = {
+            "schema_version": "3.4",
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {},
+            "phase_x_mistake": {},
+            "loss_progression": {"all": []},
+        }
+        cfg = SummaryPromptConfig(
+            voice=ToneVoice.TOMOKO,
+            mode=CoachMode.DAN,
+            games_analyzed=3,
+        )
+        prompt = build_summary_weakness_prompt(summary, cfg)
+        # The "all" key with an empty list shows "(空)" rather than
+        # being silently dropped (the LLM needs to know the data is
+        # present but empty vs. entirely missing).
+        assert "**all**: (空)" in prompt.body_markdown
+
     def test_total_loss_annotation(self, sample_summary, base_config):
         # Total: 30 + 12 + 4 + 18 = 64
         prompt = build_summary_weakness_prompt(sample_summary, base_config)

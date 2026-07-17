@@ -146,6 +146,11 @@ msgstr "File not found: {path}"
 msgid "mykatrain:llm-coach:invalid-karte"
 msgstr "Invalid Karte JSON: {error}"
 
+# Phase 241-B: shown when the path is set but the JSON is neither a
+# Karte nor a Summary.
+msgid "mykatrain:llm-coach:unknown-path"
+msgstr "Unrecognised JSON format: {path} (expected Karte or Summary JSON)"
+
 msgid "mykatrain:llm-coach:no-karte"
 msgstr "Please specify a Karte JSON"
 

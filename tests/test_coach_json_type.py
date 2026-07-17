@@ -609,8 +609,11 @@ class TestExtractWeaknessPatternsShapeB:
         data = _real_shape_summary()
         # No top-level weaknesses → Shape B kicks in
         patterns = extract_summary_weakness_patterns(data)
-        # 4 categories × 2 players = 8 patterns
-        assert len(patterns) == 8
+        # Phase 241-A: "good" is filtered out (not a weakness).
+        # 3 weakness categories × 2 players = 6 patterns.
+        assert len(patterns) == 6
+        # Sanity: no "good" category leaks into weakness patterns.
+        assert all(p["category"] != "good" for p in patterns)
 
     def test_patterns_sorted_by_total_loss_desc(self):
         data = _real_shape_summary()
@@ -654,6 +657,7 @@ class TestExtractWeaknessPatternsShapeB:
 
     def test_top_n_cap(self):
         data = _real_shape_summary()
+        # Phase 241-A: 3 weakness categories × 2 players = 6 patterns.
         patterns = extract_summary_weakness_patterns(data, top_n=3)
         assert len(patterns) == 3
 
@@ -690,3 +694,79 @@ class TestExtractWeaknessPatternsShapeB:
     def test_empty_when_no_recognisable_data(self):
         # No weaknesses and no players → empty
         assert extract_summary_weakness_patterns({}) == []
+
+
+# Phase 241-A: tests for the "good" category exclusion in the
+# weakness-pattern view. The per-player mistake distribution still
+# includes "good" (via extract_summary_player_mistakes) so the LLM
+# can see the full distribution; only the pre-computed weakness
+# patterns filter it out so the prompt doesn't list "good" as a
+# weakness to extract.
+class TestWeaknessPatternsExcludeGood:
+    """Phase 241-A: ``good`` is excluded from weakness-pattern view."""
+
+    def test_shape_b_excludes_good(self):
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 100, "pct": 90.0, "denominator": 111, "avg_loss": 0.1},
+                        "blunder": {"count": 2, "pct": 1.8, "denominator": 111, "avg_loss": 10.0},
+                        "mistake": {"count": 5, "pct": 4.5, "denominator": 111, "avg_loss": 5.0},
+                    }
+                }
+            }
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        categories = [p["category"] for p in patterns]
+        assert "good" not in categories
+        assert set(categories) == {"blunder", "mistake"}
+
+    def test_shape_a_includes_good_when_present(self):
+        # Shape A (legacy) preserves its own ``category`` values — we
+        # do NOT filter Shape A because Shape A is meant to be an
+        # explicit list of patterns (the test fixture controls which
+        # categories appear). The filter applies only to Shape B
+        # synthesis, where "good" comes from the standard mistake
+        # ladder rather than from a user-curated pattern list.
+        data = {
+            "meta": {"games_analyzed": 3},
+            "weaknesses": {
+                "black": [{"phase": "middle", "category": "good", "count": 1, "total_loss": 0.5}],
+            },
+        }
+        patterns = extract_summary_weakness_patterns(data)
+        assert len(patterns) == 1
+        assert patterns[0]["category"] == "good"
+
+    def test_extract_summary_player_mistakes_still_includes_good(self):
+        # Sanity: the per-player distribution keeps the "good" entry
+        # so the rendered Player Mistake Distribution block is
+        # complete.
+        data = {
+            "players": {
+                "alice": {
+                    "mistakes": {
+                        "good": {"count": 100, "pct": 90.0, "denominator": 111, "avg_loss": 0.1},
+                        "blunder": {"count": 2, "pct": 1.8, "denominator": 111, "avg_loss": 10.0},
+                    }
+                }
+            }
+        }
+        result = extract_summary_player_mistakes(data)
+        categories = [m["category"] for m in result["alice"]]
+        assert "good" in categories
+
+    def test_real_shape_summary_no_good_in_patterns(self):
+        # End-to-end on the realistic fixture: the standard 4-category
+        # mistakes block for each of 2 players → 3 weakness patterns
+        # per player, "good" excluded.
+        data = _real_shape_summary()
+        patterns = extract_summary_weakness_patterns(data)
+        per_player: dict[str, list[str]] = {}
+        for p in patterns:
+            per_player.setdefault(p["player"], []).append(p["category"])
+        for player, cats in per_player.items():
+            assert "good" not in cats
+            assert set(cats) == {"blunder", "mistake", "inaccuracy"}
+

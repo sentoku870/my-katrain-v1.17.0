@@ -200,6 +200,10 @@ _BODY_HEADER_TEMPLATE = """# myKatrain 複数局サマリ (LLM-ready)
 
 {buckets_block}
 
+### Loss Progression (per game-type)
+
+{loss_progression_block}
+
 ---
 
 ## 最終出力形式
@@ -271,6 +275,66 @@ def _format_buckets_block(buckets: dict[str, int]) -> str:
     for key in sorted(buckets.keys()):
         lines.append(f"- `{key}`: {buckets[key]}")
     return "\n".join(lines)
+
+
+def _format_loss_progression_block(loss_progression: dict[str, list[Any]] | list[Any] | None) -> str:
+    """Phase 241-C: render the ``loss_progression`` block for the LLM.
+
+    The summary JSON may store ``loss_progression`` in one of three shapes:
+
+    - ``{"all": [...], "even": [...], "handicapped": [...]}"`` (Phase 157-C+,
+      the common case for multi-game summaries that mix game types)
+    - ``{"all": [...]}"`` (only one game type, e.g. all-even)
+    - ``[...]`` (legacy flat list — pre-Phase 157-C, still produced by
+      some downstream consumers)
+
+    Returns a Markdown bullet list of the per-bucket loss / mistake
+    counts. When the input is missing or empty, returns a
+    placeholder so the LLM doesn't see "no data" silently.
+
+    Args:
+        loss_progression: Whatever the summary JSON carries under
+            ``loss_progression``. ``None`` is treated as missing.
+
+    Returns:
+        Markdown block content (without the section header).
+    """
+    if not loss_progression:
+        return "(loss_progression データがありません)"
+
+    # Normalise legacy flat-list shape.
+    if isinstance(loss_progression, list):
+        loss_progression = {"all": loss_progression}
+
+    if not isinstance(loss_progression, dict) or not loss_progression:
+        return "(loss_progression データがありません)"
+
+    lines: list[str] = []
+    for game_type in ("all", "even", "handicapped"):
+        if game_type not in loss_progression:
+            continue
+        buckets = loss_progression[game_type]
+        if not isinstance(buckets, list) or not buckets:
+            # Phase 241-C: the game-type key exists but the bucket
+            # list is empty. Surface this distinctly from "key
+            # missing entirely" so the LLM knows the data shape was
+            # present (rather than the section being absent).
+            lines.append(f"- **{game_type}**: (空)")
+            continue
+        # Aggregate the per-bucket totals into a single row so the LLM
+        # gets a high-level view without drowning in 30+ rows. The
+        # full data is already in the injected JSON.
+        total_moves = sum(int(b.get("move_count", 0) or 0) for b in buckets if isinstance(b, dict))
+        total_loss = sum(float(b.get("total_loss", 0.0) or 0.0) for b in buckets if isinstance(b, dict))
+        total_mistakes = sum(int(b.get("mistake_count", 0) or 0) for b in buckets if isinstance(b, dict))
+        bucket_count = len(buckets)
+        avg_loss = total_loss / total_moves if total_moves > 0 else 0.0
+        lines.append(
+            f"- **{game_type}** ({bucket_count} buckets, "
+            f"{total_moves}手): 総損失={total_loss:.2f}, "
+            f"avg={avg_loss:.3f}, ミス数={total_mistakes}"
+        )
+    return "\n".join(lines) if lines else "(loss_progression データがありません)"
 
 
 def _resolve_focused_player(
@@ -475,6 +539,7 @@ def build_summary_weakness_prompt(
         patterns_count=len(patterns_capped),
         patterns_block=_format_patterns_block(patterns_capped),
         buckets_block=_format_buckets_block(buckets),
+        loss_progression_block=_format_loss_progression_block(summary_json.get("loss_progression")),
         player_mistakes_block=_format_player_mistakes_block(player_mistakes_all, focused_player),
         player_phases_block=_format_player_phases_block(player_phases_all, focused_player),
         player_mistakes_focus=(f" ({focused_player})" if focused_player else " (全体俯瞰)"),

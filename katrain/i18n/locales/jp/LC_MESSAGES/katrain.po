@@ -1201,6 +1201,13 @@ msgstr "ファイルが見つかりません: {path}"
 msgid "mykatrain:llm-coach:invalid-karte"
 msgstr "Karte JSON が不正です: {error}"
 
+# Phase 241-B: shown when the path is set but the JSON is neither a
+# Karte nor a Summary. The popup previously fell through to the
+# Karte code path which produced a confusing "auto-detect-failed"
+# status with no explanation. The new key surfaces the real reason.
+msgid "mykatrain:llm-coach:unknown-path"
+msgstr "JSON の形式を認識できません: {path} (Karte または Summary JSON を指定してください)"
+
 msgid "mykatrain:llm-coach:no-karte"
 msgstr "Karte JSON を指定してください"
 

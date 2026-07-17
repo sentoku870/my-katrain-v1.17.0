@@ -401,10 +401,11 @@ class TestRealShapeFixturePatterns:
         )
 
         patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_blunder_focused"].karte)
-        # 4 categories × 1 player = 4 patterns
-        assert len(patterns) == 4
+        # Phase 241-A: "good" is filtered out (not a weakness).
+        # 3 weakness categories × 1 player = 3 patterns.
+        assert len(patterns) == 3
         categories = {p["category"] for p in patterns}
-        assert categories == {"good", "inaccuracy", "mistake", "blunder"}
+        assert categories == {"inaccuracy", "mistake", "blunder"}
 
     def test_good_player_patterns_sorted_by_total_loss(self):
         from katrain.core.coach.json_type import (
@@ -414,13 +415,11 @@ class TestRealShapeFixturePatterns:
         patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_good_player"].karte)
         losses = [p["total_loss"] for p in patterns]
         assert losses == sorted(losses, reverse=True)
-        # For the good-player fixture: good=540*0.15=81.0,
+        # Phase 241-A: "good" is excluded. Sorted by total_loss:
         # inaccuracy=22*2.8=61.6, mistake=5*5.2=26.0, blunder=1*12.0=12.0.
-        # So 'good' has the highest total_loss (more moves × 0.15 avg).
-        assert patterns[0]["category"] == "good"
-        assert patterns[1]["category"] == "inaccuracy"
-        assert patterns[2]["category"] == "mistake"
-        assert patterns[3]["category"] == "blunder"
+        assert patterns[0]["category"] == "inaccuracy"
+        assert patterns[1]["category"] == "mistake"
+        assert patterns[2]["category"] == "blunder"
 
     def test_multi_player_has_8_patterns(self):
         from katrain.core.coach.json_type import (
@@ -428,10 +427,12 @@ class TestRealShapeFixturePatterns:
         )
 
         patterns = extract_summary_weakness_patterns(ALL_FIXTURES["real_summary_multi_player"].karte)
-        # 4 categories × 2 players = 8 patterns
-        assert len(patterns) == 8
+        # Phase 241-A: 3 weakness categories × 2 players = 6 patterns.
+        assert len(patterns) == 6
         players = {p["player"] for p in patterns}
         assert players == {"strong_player", "weak_player"}
+        # Sanity: no "good" category leaks through.
+        assert all(p["category"] != "good" for p in patterns)
 
 
 class TestRealShapeFixturePromptRendering:
