@@ -83,8 +83,8 @@ class TestCallSitesMigrated:
         module = importlib.import_module(module_path)
         source = inspect.getsource(module)
         # The module must import short_hash. Phase 232 reformatted the
-        # import to multi-line to fit a ``# noqa: F401`` comment, so
-        # we now match the import with a regex that allows newlines
+        # import to multi-line (to attach an F401 suppression comment),
+        # so we now match the import with a regex that allows newlines
         # between the ``from ... import`` clause and the name.
         assert re.search(
             r"from\s+katrain\.common\.short_hash\s+import\s+.*\bshort_hash\b",
