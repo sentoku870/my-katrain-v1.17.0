@@ -358,32 +358,53 @@ def inject_lexicon_for_prompt(
     Used by Phase 211 prompt_builder to embed Lexicon ground truth into
     an HTML-comment instruction block (Phase 203 §5.3).
 
+    Phase 244: also accepts concept ids (Lv3 entries) which are stored
+    in the YAML's ``concepts`` section. Previously the function only
+    looked at ``entries``, so ``urgent_vs_big`` / ``direction_of_play``
+    / etc. (referenced by ``symptom_index.py`` ``related_lexicon_ids``)
+    were silently skipped because they live in ``concepts`` rather than
+    ``entries``. Concepts use a different field set (``ja_title`` /
+    ``ja_one_liner`` / ``ja_expanded``) so the formatter picks the
+    right block per-id.
+
     Args:
-        entry_ids: Iterable of entry ids to embed (limit to 3-7 for token size).
+        entry_ids: Iterable of entry/concept ids to embed (limit to
+            3-7 for token size).
         include_expanded: When True, include ``ja_expanded`` (long form).
 
     Returns:
         A multi-line string ready to be embedded in a Markdown block.
 
     Note:
-        Missing ids are skipped silently — downstream validation (Phase 212)
-        flags the discrepancy to the user.
+        Missing ids are skipped silently — downstream validation
+        (Phase 212) flags the discrepancy to the user.
     """
     bundle = _load_default_cached()
-    by_id = bundle.entry_by_id
+    entry_by_id = bundle.entry_by_id
+    concept_by_id = bundle.concept_by_id
     lines: list[str] = []
     for eid in entry_ids:
-        entry = by_id.get(eid)
-        if entry is None:
+        entry = entry_by_id.get(eid)
+        if entry is not None:
+            lines.append(f"【{entry.ja_term} ({entry.id})】")
+            lines.append(f"定義: {entry.ja_one_liner}")
+            lines.append(f"詳細: {entry.ja_short}")
+            if entry.pitfalls:
+                lines.append(f"注意点: {' / '.join(entry.pitfalls)}")
+            if include_expanded and entry.ja_expanded:
+                lines.append(f"拡張: {entry.ja_expanded}")
+            lines.append("")
             continue
-        lines.append(f"【{entry.ja_term} ({entry.id})】")
-        lines.append(f"定義: {entry.ja_one_liner}")
-        lines.append(f"詳細: {entry.ja_short}")
-        if entry.pitfalls:
-            lines.append(f"注意点: {' / '.join(entry.pitfalls)}")
-        if include_expanded and entry.ja_expanded:
-            lines.append(f"拡張: {entry.ja_expanded}")
-        lines.append("")
+        concept = concept_by_id.get(eid)
+        if concept is not None:
+            # Concepts use ja_title / ja_one_liner / ja_expanded.
+            lines.append(f"【{concept.ja_title} ({concept.id})】")
+            lines.append(f"定義: {concept.ja_one_liner}")
+            if include_expanded and concept.ja_expanded:
+                lines.append(f"詳細: {concept.ja_expanded}")
+            lines.append("")
+            continue
+        # Unknown id — skip silently. Phase 212 validator flags this.
     return "\n".join(lines)
 
 

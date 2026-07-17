@@ -54,13 +54,15 @@ class TestLoadLexicon:
         assert bundle.schema_version == "go_lexicon_master_v1"
 
     def test_entry_count_matches_validation_report(self):
-        # Phase 242-C: 5 new L2 entries bring the total to 121.
+        # Phase 242-C: +5 L2 entries (116 -> 121). Phase 244: +3 L1/L2
+        # entries (overplay / endgame_sente / star_point) bring the
+        # total to 124.
         # go_lexicon_validation_report_updated.md reports the
         # original 116 entries; the 5 added by Phase 242-C are
         # time_management / ai_overload / post_game_review /
         # tilt_recovery / mental_state.
         bundle = load_lexicon()
-        assert len(bundle.entries) == 121
+        assert len(bundle.entries) == 124
         assert len(bundle.concepts) == 23
 
     def test_all_entries_are_dataclass(self):
@@ -185,16 +187,19 @@ class TestValidateReferences:
     def test_counts_match(self):
         # Phase 242-C: 5 new L2 entries (time_management / ai_overload /
         # post_game_review / tilt_recovery / mental_state) bring the
-        # total to 121.
+        # total to 121. Phase 244: +3 L1/L2 entries (overplay /
+        # endgame_sente / star_point) bring the total to 124.
         report = validate_references()
-        assert report["total_entries"] == 121
+        assert report["total_entries"] == 124
         assert report["total_concepts"] == 23
 
     def test_level_distribution(self):
         # Phase 242-C: 5 new level-2 entries shift the L2 count.
+        # Phase 244: +1 L1 (star_point) and +2 L2 (overplay,
+        # endgame_sente) shift the distribution further.
         report = validate_references()
-        assert report["level_distribution"]["1"] == 60
-        assert report["level_distribution"]["2"] == 61
+        assert report["level_distribution"]["1"] == 61
+        assert report["level_distribution"]["2"] == 63
         assert report["level_distribution"]["3"] == 23
 
 
@@ -229,6 +234,64 @@ class TestInjectLexicon:
         assert snippet == ""
 
 
+class TestPhase244LexiconExtension:
+    """Phase 244: concepts-only IDs and 3 new entries.
+
+    - ``inject_lexicon_for_prompt`` should accept concept IDs
+      (Phase 244 fix: previously entries-only)
+    - New entries: overplay, endgame_sente, star_point
+    """
+
+    def test_renders_concept_only_id(self):
+        # urgent_vs_big lives in concepts (Lv3), not entries
+        snippet = inject_lexicon_for_prompt(["urgent_vs_big"])
+        assert "急場" in snippet or "urgent" in snippet.lower()
+        assert "【" in snippet  # has the 【...】 block marker
+
+    def test_renders_mixed_entry_and_concept(self):
+        snippet = inject_lexicon_for_prompt(["liberty", "urgent_vs_big", "direction_of_play"])
+        assert "呼吸点" in snippet
+        assert "急場" in snippet or "方向" in snippet
+
+    def test_new_overplay_entry(self):
+        bundle = load_lexicon(DEFAULT_LEXICON_PATH)
+        entry = bundle.entry_by_id.get("overplay")
+        assert entry is not None
+        assert entry.ja_term == "オーバープレイ"
+        assert "overplay" in [t.lower() for t in entry.en_terms]
+        assert "thickness" in entry.related_ids
+
+    def test_new_endgame_sente_entry(self):
+        bundle = load_lexicon(DEFAULT_LEXICON_PATH)
+        entry = bundle.entry_by_id.get("endgame_sente")
+        assert entry is not None
+        assert entry.ja_term == "ヨセのセンテ"
+        # endgame_sente references the related concept endgame_sente_value
+        # (the broader Lv3 concept) and the L1 entries yose / counting.
+        assert "endgame_sente_value" in entry.related_ids
+        assert "yose" in entry.related_ids
+
+    def test_new_star_point_entry(self):
+        bundle = load_lexicon(DEFAULT_LEXICON_PATH)
+        entry = bundle.entry_by_id.get("star_point")
+        assert entry is not None
+        assert entry.ja_term == "星"
+        assert "komoku" in entry.related_ids
+
+    def test_inject_overplay_renders(self):
+        snippet = inject_lexicon_for_prompt(["overplay"])
+        assert "オーバープレイ" in snippet
+        assert "【オーバープレイ (overplay)】" in snippet
+
+    def test_concept_id_missing_fields_uses_concept_format(self):
+        # Concepts have no ja_term/ja_short/ja_pitfalls — they use
+        # ja_title / ja_one_liner / ja_expanded. The injector should
+        # handle this gracefully.
+        snippet = inject_lexicon_for_prompt(["whole_board_balance"])
+        assert "【" in snippet
+        assert "定義" in snippet  # at minimum, the 定義: line should be present
+
+
 # --- all_ids ---
 
 
@@ -236,8 +299,8 @@ class TestAllIds:
     def test_all_ids_returns_tuple(self):
         ids = all_ids()
         assert isinstance(ids, tuple)
-        # Phase 242-C: +5 L2 entries
-        assert len(ids) == 121 + 23
+        # Phase 242-C: +5 L2 entries. Phase 244: +3 L1/L2 entries.
+        assert len(ids) == 124 + 23
 
 
 # --- Public API ---
