@@ -41,6 +41,42 @@ if TYPE_CHECKING:
 # =============================================================================
 
 # Learning-value-based weights (life-death/reading > strategic > minor)
+#
+# Each weight is multiplied by ``importance_score`` (see
+# :func:`compute_critical_score`) to produce the greedy selection
+# score. The 12 tags are ordered by *learning value*: a life-and-death
+# reading error is the most teachable moment in a Go game, so it gets
+# the highest weight (1.5). A ``slow_move`` is still useful but
+# rarely a teaching highlight (0.8).
+#
+# Two entries have non-obvious roles:
+#
+# - ``"uncertain" = 0.5``: the *fallback* tag emitted by
+#   :mod:`meaning_tags.classifier` when none of the 11 priority
+#   rules fire (e.g. low-loss moves, unanalysed positions). It is
+#   weighted *lower* than ``DEFAULT_MEANING_TAG_WEIGHT = 0.7`` because
+#   "we don't know what's wrong" is less actionable than "this is a
+#   shape_mistake". The 0.5 vs 0.7 gap gives unknown moves a quiet
+#   de-prioritisation in the critical_3 selection while still
+#   allowing them to surface when no other candidate exists.
+#
+# - ``"slow_move" = 0.8``: a small loss on a position close to a
+#   previous move. ``slow_move`` is intentionally lower than
+#   ``overplay`` (1.0) because overplaying is usually visible from
+#   shape alone, while slow_move is a softer "you missed the urgent
+#   point elsewhere" hint that beginner players often cannot yet
+#   translate into action.
+#
+# These weights were tuned empirically in Phase 50 and have not been
+# re-calibrated since. The :class:`~.ImportantMoveSettings` thresholds
+# (see :data:`IMPORTANT_MOVE_SETTINGS_BY_LEVEL`) interact with these
+# weights via the importance_score formula:
+#
+#     critical_score = importance * weight * diversity_penalty * complexity_discount
+#
+# Users can override weights at runtime by setting the
+# ``MEANING_TAG_WEIGHTS`` constant in their config (see Phase 248-B3
+# for the planned "advanced" config exposure).
 MEANING_TAG_WEIGHTS: dict[str, float] = {
     # High priority - fundamental reading errors
     "life_death_error": 1.5,
@@ -56,7 +92,7 @@ MEANING_TAG_WEIGHTS: dict[str, float] = {
     "shape_mistake": 0.9,
     "slow_move": 0.8,
     "endgame_slip": 0.8,
-    "uncertain": 0.5,  # Fallback for unclassifiable
+    "uncertain": 0.5,  # Fallback for unclassifiable (see comment above)
 }
 
 DEFAULT_MEANING_TAG_WEIGHT = 0.7  # Fallback for unknown tags (future-proofing)
