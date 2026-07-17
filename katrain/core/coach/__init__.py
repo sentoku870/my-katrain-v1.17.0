@@ -69,6 +69,10 @@ from katrain.core.coach.lexicon import (
     load_lexicon,
     validate_references,
 )
+from katrain.core.coach.llm_report_renderer import (  # Phase 242-D
+    ReferencedItem,
+    render_validation_report,
+)
 from katrain.core.coach.llm_validator import (
     ValidationIssue,
     ValidationReport,
@@ -87,6 +91,23 @@ from katrain.core.coach.master_db import (
     estimate_mode_from_rank,
     get_mode_config,
     get_tone_config,
+)
+from katrain.core.coach.popup_logic import (  # Phase 242-E
+    MAX_RESPONSE_INPUT_CHARS,
+    PERSPECTIVE_AUTO,
+    PERSPECTIVE_BLACK,
+    PERSPECTIVE_WHITE,
+    SUMMARY_BIRDSEYE_SENTINEL,
+    PathTypeResult,
+    cap_response_text,
+    count_issue_markers,
+    detect_path_type_from_file,
+    format_type_label,
+    format_validation_status_summary,
+    is_summary_birdseye_value,
+    resolve_player_color_internal,
+    resolve_summary_spinner_values,
+    was_truncated,
 )
 from katrain.core.coach.prompt_builder import (
     LlmPrompt,
@@ -223,4 +244,23 @@ __all__ = [
     # summary_validator (Phase 227-B)
     "SummaryValidationReport",
     "validate_summary_llm_output",
+    # llm_report_renderer (Phase 242-D)
+    "ReferencedItem",
+    "render_validation_report",
+    # popup_logic (Phase 242-E)
+    "PERSPECTIVE_AUTO",
+    "PERSPECTIVE_BLACK",
+    "PERSPECTIVE_WHITE",
+    "SUMMARY_BIRDSEYE_SENTINEL",
+    "MAX_RESPONSE_INPUT_CHARS",
+    "PathTypeResult",
+    "cap_response_text",
+    "count_issue_markers",
+    "detect_path_type_from_file",
+    "format_type_label",
+    "format_validation_status_summary",
+    "is_summary_birdseye_value",
+    "resolve_player_color_internal",
+    "resolve_summary_spinner_values",
+    "was_truncated",
 ]
