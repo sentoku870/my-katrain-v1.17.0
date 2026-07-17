@@ -352,6 +352,16 @@ docs/
   - **241-G**: `find_latest_karte` 関数完全削除 — Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用、legacy 関数と関連テスト 4 件削除、Phase 239 表記を Phase 241-G に統一
   - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加 — `KIVY_NO_ARGS` / `KIVY_NO_WINDOW` / `KIVY_HEADLESS` / `SDL_VIDEODRIVER=dummy` 等を conftest ロード時に設定（CI 環境での popup テスト実行準備）
   - **241-I**: AGENTS.md / 01-roadmap.md 更新 — Phase 241 マイルストーン追記、Phase 239 表記を Phase 241-G に統一
+- 2026-07-17: **Phase 246 — 候補手フィルター 包括改善**（Lv3、18 ファイル / +1,625 行 / -38 行、PR #404 マージ済み、CI 全 green）
+  - **問題**: 候補手フィルター (PV filter) について監査で見つかった **20 件の課題**を一括改修
+  - **246-A**: 設定 UI 可視化 — `get_effective_pv_filter_info` / `PVFilterDisplayInfo` 追加、AUTO モード時の live ステータス表示、5 ラジオ size_hint_x 等幅化、`.lower().strip()` 拡張、jp/en i18n 3 キー追加 (status_off/auto/explicit)、13 unit tests
+  - **246-B**: 盤面 UX — `draw_perspective_watermark` 追加 (次手 = B/W をキャンバス描画)、解析タブに marker legend 凡例、kifunarabe 中 disable note、jp/en i18n 2 キー追加 (board:perspective / pv_filter_marker_legend)、6 unit tests
+  - **246-C**: 堅牢性強化 — `None` / 欠損値の防御 (H5: TypeError 回避)、`clip_pv_for_animation` 30 手クリップ (M5、Kivy 非依存でテスト可能に)、二次ソートキー (order, pointsLost, -visits) で重複 order を決定論化 (M7)、17 unit tests
+  - **246-D**: ロジック拡張 — 新プリセット `expert` 追加 (M2: pro 用 max_candidates=3, max_points_lost=0.5, max_pv_length=4)、`board_size` 連動 linear scaling (M1: 9路 → 0.47x)、`PVFilterConfig.loss_metric` 切替 (L1: pointsLost / relativePointsLost)、AST ベースの kifunarabe bypass コントラクトテスト (H4)、TODO コメントで composite sort (M3) 残置、18 unit tests
+  - **246-E**: ドキュメント + API 統一 — 統合仕様書 `docs/archive/specs-implemented/phase246-candidate-filter-improvements.md` 新規 (L2)、`docs/usage-guide.md` 7.5 節追加 (L3: 4 段階テーブル + FAQ)、`config.json` の `general.pv_filter_level: auto` 明記 (L4)、`get_pv_filter_config` に `player_rank` 直渡し対応 (L7)、4 unit tests
+  - **Deferred (別フェーズで着手)**: L5 (キャッシュ)、L6 (live preview)、M3 (composite sort)、H3 (position-aware preview)
+  - **CI 修正ラウンド 3 回**: typecheck (Phase 246-A フィールド追加) → lint I001 (import 順序) → ruff format (2 ファイル整形)
+  - **マージ後 main 確認**: 111 unit tests pass
 - 2026-07-17: **Phase 242 — LLM Coach 品質改善 統合改修**（Lv3、11 ファイル新規/修正 + 約 +350 行 / -120 行、計 926 件テスト合格）
   - **問題**: `docs/ideas/phase242-llm-coach-audit.md` の調査で LLM Coach 機能に 40 件以上の問題・改善余地を発見。優先度高の 5 件を統合改修
   - **242-A**: Kansai 辞書 3 系統同期 (`_KANSAI_DICTIONARY` ↔ `_KANSAI_NORMALISATION_PAIRS` ↔ `_AYAKA_MARKERS`) — 〜-prefixed パターンを NORM に展開、`ほんまに` を markers に追加、6 ファイル + 6 unit tests
