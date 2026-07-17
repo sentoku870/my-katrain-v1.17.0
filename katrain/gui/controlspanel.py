@@ -414,6 +414,38 @@ class ControlsPanel(BoxLayout):
             "curator_hint": bool(katrain.config("beginner_hints/curator_hint", True)),
         }
 
+    def _format_pv_filter_preview(self) -> str:
+        """Format the live PV filter preview line (Phase 247-C / L6).
+
+        Reads the latest :class:`PVFilterPreview` cached on the
+        badukpan widget by ``prepare_hint_moves`` and renders the
+        compact one-line summary used in the controls panel.
+
+        Returns:
+            Localized string. Falls back to ``""`` when no preview
+            is available (e.g. Kivy widget path not yet wired).
+        """
+        from katrain.core.lang import i18n as _i18n
+
+        katrain = self.katrain
+        if not katrain:
+            return ""
+        board = getattr(katrain, "board_gui", None) or getattr(katrain, "board_widget", None)
+        if board is None:
+            return ""
+        preview = getattr(board, "last_pv_filter_preview", None)
+        if preview is None or preview.raw_count == 0:
+            return _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
+        if not preview.config_active:
+            return _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
+                n=preview.raw_count,
+            )
+        return _i18n._("mykatrain:controls:pv_filter_preview_active").format(
+            n=preview.raw_count,
+            m=preview.filtered_count,
+            best=preview.best_count,
+        )
+
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92 + Phase 179).
 
