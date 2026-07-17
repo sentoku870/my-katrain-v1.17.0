@@ -242,6 +242,23 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
     state._pv_filter_status_label = status_label
     inner.add_widget(status_label)
 
+    # Phase 246-B (M4): a small legend explaining the marker colour /
+    # size / border semantics so users can decode the on-board hints
+    # without opening external docs. Kept short to fit the popup width.
+    legend_label = Label(
+        text=i18n._("mykatrain:settings:pv_filter_marker_legend"),
+        size_hint_y=None,
+        height=dp(60),
+        halign="left",
+        valign="top",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="11sp",
+    )
+    legend_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
+    legend_label.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
+    inner.add_widget(legend_label)
+
 
 def _format_pv_filter_status(pv_filter_level: str, player_rank: str) -> str:
     """Render the "現在: MEDIUM (最大 8 件)" string for the PV filter row.
