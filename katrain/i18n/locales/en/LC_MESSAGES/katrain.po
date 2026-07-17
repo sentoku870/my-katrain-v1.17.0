@@ -329,11 +329,11 @@ msgstr "Generate Karte"
 msgid "mykatrain:batch:generate_summary"
 msgstr "Generate Summary"
 
+msgid "mykatrain:batch:generate_summary_hint"
+msgstr "(no karte required)"
+
 msgid "mykatrain:batch:generate_curator"
 msgstr "Generate Curator"
-
-msgid "mykatrain:batch:generate_skill_radar"
-msgstr "Skill Radar Output"
 
 msgid "mykatrain:batch:error_input_dir"
 msgstr "Please select a valid input directory"
@@ -373,12 +373,6 @@ msgstr "Deterministic"
 
 msgid "mykatrain:batch:sound_on_finish"
 msgstr "Sound on finish"
-
-msgid "mykatrain:batch:analysis_engine"
-msgstr "Analysis Engine:"
-
-msgid "mykatrain:batch:engine_katago"
-msgstr "KataGo"
 
 msgid "mykatrain:recovery:reset_to_auto"
 msgstr "Reset to Auto Mode (Recommended)"

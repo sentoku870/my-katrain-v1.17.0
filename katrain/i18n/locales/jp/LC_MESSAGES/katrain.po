@@ -1388,11 +1388,11 @@ msgstr "カルテを生成"
 msgid "mykatrain:batch:generate_summary"
 msgstr "サマリーを生成"
 
+msgid "mykatrain:batch:generate_summary_hint"
+msgstr "(karte 不要)"
+
 msgid "mykatrain:batch:generate_curator"
 msgstr "Curator(おすすめ)生成"
-
-msgid "mykatrain:batch:generate_skill_radar"
-msgstr "スキルレーダー出力"
 
 msgid "mykatrain:batch:player_filter"
 msgstr "プレイヤー絞り込み:"
@@ -1423,12 +1423,6 @@ msgstr "再現性あり"
 
 msgid "mykatrain:batch:sound_on_finish"
 msgstr "完了時に音を鳴らす"
-
-msgid "mykatrain:batch:analysis_engine"
-msgstr "解析エンジン:"
-
-msgid "mykatrain:batch:engine_katago"
-msgstr "KataGo"
 
 msgid "mykatrain:recovery:reset_to_auto"
 msgstr "自動モードに戻す（推奨）"

@@ -44,12 +44,20 @@ if TYPE_CHECKING:
 def collect_batch_options(
     widgets: BatchWidgets,
     get_player_filter_fn: Callable[[], str | None],
+    log_cb: Callable[[str], None] | None = None,
 ) -> BatchOptions:
     """UIウィジェットからバッチオプションを収集
 
     Args:
         widgets: ウィジェット辞書（input_input, output_input, visits_input, etc.）
         get_player_filter_fn: プレイヤーフィルター取得関数
+        log_cb: オプション警告ログ用コールバック (Phase 232 で追加)
+            - 渡された場合、timeout 等のパース失敗警告をこのコールバック経由で
+              ログに流す。None なら警告はサイレント (デフォルト)。
+            - run_batch_in_thread から ``log_cb`` を渡して使うと、
+              ユーザーが無効な timeout 値を入力した際に popup ログに
+              警告が出る (以前は run_batch_in_thread 側で重複パースして
+              2 回パースする問題があった)。
 
     Returns:
         バッチオプション辞書
@@ -59,9 +67,11 @@ def collect_batch_options(
     visits_text = widgets["visits_input"].text.strip()
     visits = _safe_int(visits_text, default=None)
 
-    # Parse timeout with support for "None" (no timeout)
+    # Parse timeout with support for "None" (no timeout).
+    # Phase 232: ``log_cb`` を渡すとパース失敗の警告がログされる。
+    # 以前は run_batch_in_thread 内で同じ文字列を再パースして冗長だった。
     timeout_text = widgets["timeout_input"].text
-    timeout = parse_timeout_input(timeout_text, default=DEFAULT_TIMEOUT_SECONDS, log_cb=None)
+    timeout = parse_timeout_input(timeout_text, default=DEFAULT_TIMEOUT_SECONDS, log_cb=log_cb)
 
     skip_analyzed = widgets["skip_checkbox"].active
 
@@ -229,21 +239,14 @@ def run_batch_in_thread(
 
     Args:
         ctx: FeatureContext providing config, engine
-        options: バッチオプション辞書
+        options: バッチオプション辞書 (timeout は collect_batch_options 内で
+            既にパース済み。Phase 232 で二重パースを廃止)
         cancel_flag: キャンセルフラグ（リストで参照渡し）
         progress_cb: 進行状況コールバック
         log_cb: ログコールバック
         on_complete: 完了時コールバック
         save_batch_options_fn: オプション保存関数
     """
-    # Parse timeout again with log callback
-    timeout = parse_timeout_input(
-        str(options["timeout"]) if options["timeout"] is not None else "None",
-        default=DEFAULT_TIMEOUT_SECONDS,
-        log_cb=log_cb,
-    )
-    options["timeout"] = timeout
-
     # Save options for next time
     save_batch_options_fn(
         {
