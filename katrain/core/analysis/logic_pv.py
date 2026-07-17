@@ -12,6 +12,7 @@ Contains:
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from typing import Any
 
@@ -74,6 +75,45 @@ def get_pv_filter_config(
 
     config = PV_FILTER_CONFIGS.get(level)
     return _scale_for_board(config, board_size)
+
+
+# =============================================================================
+# Phase 247-A (L5): LRU cache for hot-path config resolution
+# =============================================================================
+
+
+@functools.lru_cache(maxsize=32)
+def resolve_pv_filter_config_cached(
+    pv_filter_level: str,
+    skill_preset: str,
+    board_size: int | None,
+    player_rank: str | None,
+) -> PVFilterConfig | None:
+    """LRU-cached wrapper around :func:`get_pv_filter_config` (Phase 247-A / L5).
+
+    ``prepare_hint_moves`` is called on every hover / every node change
+    in the GUI. The 4 inputs that drive ``get_pv_filter_config`` rarely
+    change in practice (level is a single user choice, preset is
+    derived from rank, board_size is fixed per game), so an LRU cache
+    of 32 entries is more than enough to cover the realistic input
+    space (``5 levels × 5 presets × 3 board_sizes × N ranks = ~75 worst
+    case``, capped to 32 keeps memory bounded).
+
+    Contract:
+    - Pure function: same input → same output (the underlying
+      ``get_pv_filter_config`` is deterministic given fixed rank and
+      preset).
+    - Cache key: ``(level, skill_preset, board_size, player_rank)``.
+    - Cached across calls; ``cache_clear()`` is exposed for tests.
+    - The function is intentionally a *thin* wrapper — no logic
+      changes, just memoization.
+    """
+    return get_pv_filter_config(
+        pv_filter_level,
+        skill_preset=skill_preset or DEFAULT_SKILL_PRESET,
+        board_size=board_size,
+        player_rank=player_rank,
+    )
 
 
 def _scale_for_board(

@@ -154,6 +154,8 @@ from katrain.core.analysis.logic import (
     # Phase 229: rank -> preset bridge
     rank_to_skill_preset,
     recommend_auto_strictness,
+    # Phase 247-A (L5): LRU-cached config wrapper
+    resolve_pv_filter_config_cached,
     resolve_skill_preset,
     snapshot_from_game,
     # Snapshot
@@ -460,6 +462,8 @@ __all__ = [
     # Phase 246-C: PV clip for animation
     "clip_pv_for_animation",
     "PV_ANIMATION_MAX_STEPS",
+    # Phase 247-A (L5): LRU-cached config wrapper
+    "resolve_pv_filter_config_cached",
     # Difficulty Metrics (Phase 12)
     "get_root_visits",  # Phase 92: Public wrapper
     "compute_difficulty_metrics",
