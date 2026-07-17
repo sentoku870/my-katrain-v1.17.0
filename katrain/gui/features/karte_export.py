@@ -163,6 +163,23 @@ def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     Clock.schedule_once(lambda dt: do_export_karte_ui(ctx, open_settings_callback), 0)
 
 
+def _resolve_curator_profile_path(ctx: FeatureContext) -> str | None:
+    """Phase 248-γ-E1: locate the user's ``curator_ranking.json``.
+
+    Looks for the Curator profile in the same directory as the Karte
+    output (``mykatrain_settings.karte_output_directory``). A profile
+    is matched by its canonical filename (``curator_ranking.json``).
+    Returns ``None`` when the directory is not set / does not exist /
+    the file is missing.
+    """
+    settings = ctx.config("mykatrain_settings") or {}
+    out_dir = settings.get("karte_output_directory") or ""
+    if not out_dir or not os.path.isdir(out_dir):
+        return None
+    candidate = os.path.join(out_dir, "curator_ranking.json")
+    return candidate if os.path.isfile(candidate) else None
+
+
 def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """Export karte using myKatrain settings.
 
@@ -285,6 +302,18 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         critical_3_max_moves = 3
     if critical_3_max_moves < 1 or critical_3_max_moves > 10:
         critical_3_max_moves = 3
+    # Phase 248-γ-E1: load the Curator profile (if any) so the
+    # weak-tag boost can nudge the user toward their own weak patterns
+    # in the critical_3 selection. The profile is a sibling file to
+    # the Karte output; missing / malformed → no boost.
+    user_weak_tags: dict[str, int] = {}
+    curator_path = _resolve_curator_profile_path(ctx)
+    if curator_path is not None:
+        from katrain.core.curator.profile import load_curator_profile
+
+        profile = load_curator_profile(curator_path)
+        if profile is not None:
+            user_weak_tags = dict(profile.weak_tags)
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)
@@ -294,6 +323,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 skill_preset=skill_preset,
                 level=important_moves_level,
                 max_critical_3_moves=critical_3_max_moves,
+                user_weak_tags=user_weak_tags,
             )
             os.makedirs(output_dir, exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:

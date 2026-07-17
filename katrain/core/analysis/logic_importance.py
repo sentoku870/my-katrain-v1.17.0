@@ -102,6 +102,8 @@ def compute_importance_for_moves(
     *,
     streak_start_moves: set[int | None] | None = None,
     confidence_level: ConfidenceLevel | None = None,
+    user_weak_tags: dict[str, int] | None = None,
+    weak_tag_boost: float = 0.5,
 ) -> None:
     """
     各 MoveEval について重要度スコアを計算し、importance_score に格納する。
@@ -110,6 +112,15 @@ def compute_importance_for_moves(
         moves: 評価対象の手のリスト
         streak_start_moves: 連続ミス開始手番の集合（ボーナス付与用）
         confidence_level: 信頼度レベル（HIGH/MEDIUM/LOW）
+        user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: occurrence_count}``
+            loaded from the Curator profile. Moves whose
+            ``meaning_tag_id`` appears in this dict get a multiplicative
+            boost ``1 + weak_tag_boost * log(occurrence_count + 1)``
+            applied to the final importance score. ``None`` / empty
+            disables the boost (Phase 50 baseline behaviour).
+        weak_tag_boost: Maximum boost magnitude (default 0.5 → +50%).
+            0.0 disables the boost even when ``user_weak_tags`` is set;
+            1.0 doubles the importance for the highest-occurrence tags.
     """
     # Default to HIGH if not specified
     if confidence_level is None:
@@ -121,6 +132,24 @@ def compute_importance_for_moves(
 
     if streak_start_moves is None:
         streak_start_moves = set()
+
+    import math
+
+    # Phase 248-γ-E1: pre-compute the boost factor per tag. ``log(N + 1)``
+    # is monotonic, smooth, and bounded: an "overplay once" tag gets
+    # ``1 + 0.5 * log(2) ≈ 1.35``, an "overplay 5x" tag gets
+    # ``1 + 0.5 * log(6) ≈ 1.90``. An empty ``user_weak_tags`` skips
+    # the lookup entirely.
+    weak_tag_boosts: dict[str, float] = {}
+    if user_weak_tags and weak_tag_boost > 0.0:
+        for tag_id, count in user_weak_tags.items():
+            try:
+                n = int(count)
+            except (TypeError, ValueError):
+                continue
+            if n <= 0:
+                continue
+            weak_tag_boosts[str(tag_id)] = 1.0 + weak_tag_boost * math.log(n + 1)
 
     for m in moves:
         # 1. Canonical loss (主成分) - always used
@@ -155,6 +184,14 @@ def compute_importance_for_moves(
         reliability_scale = get_reliability_scale(m.root_visits)
         final_importance = base_importance * reliability_scale
 
+        # Phase 248-γ-E1: weak-tag boost. The boost is multiplicative on
+        # the post-reliability score so a low-visits, high-weak-tag
+        # move still gets reduced; the reliability gate stays the
+        # primary safety check.
+        m_tag_id: object = getattr(m, "meaning_tag_id", None)
+        if m_tag_id is not None and str(m_tag_id) in weak_tag_boosts:
+            final_importance *= weak_tag_boosts[str(m_tag_id)]
+
         m.importance_score = max(0.0, final_importance)
 
 
@@ -165,6 +202,8 @@ def pick_important_moves(
     recompute: bool = True,
     streak_start_moves: set[int | None] | None = None,
     confidence_level: ConfidenceLevel | None = None,
+    user_weak_tags: dict[str, int] | None = None,
+    weak_tag_boost: float = 0.5,
 ) -> list[MoveEval]:
     """
     snapshot から重要局面の手数だけを抽出して返す。
@@ -176,6 +215,10 @@ def pick_important_moves(
         recompute: 重要度スコアを再計算するか
         streak_start_moves: 連続ミス開始手番の集合
         confidence_level: 信頼度レベル
+        user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: occurrence_count}``
+            loaded from the Curator profile. Forwarded to
+            :func:`compute_importance_for_moves` for the weak-tag boost.
+        weak_tag_boost: Phase 248-γ-E1 — max boost magnitude (default 0.5).
 
     Returns:
         重要局面のリスト（手番順にソート済み）
@@ -197,6 +240,8 @@ def pick_important_moves(
             moves,
             streak_start_moves=streak_start_moves,
             confidence_level=confidence_level,
+            user_weak_tags=user_weak_tags,
+            weak_tag_boost=weak_tag_boost,
         )
 
     # 1) 通常ルート: importance_score ベース

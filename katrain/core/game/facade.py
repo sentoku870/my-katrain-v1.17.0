@@ -232,6 +232,7 @@ class Game(BaseGame):
         *,
         level: str = analysis_pkg.DEFAULT_IMPORTANT_MOVE_LEVEL,
         compute_reason_tags: bool = True,
+        user_weak_tags: dict[str, int] | None = None,
     ) -> list[MoveEval]:
         """
         現在の対局（メイン分岐）について、
@@ -239,6 +240,10 @@ class Game(BaseGame):
 
         - EvalSnapshot + pick_important_moves をまとめた入口。
         - 今後 YoseAnalyzer からもここを呼ぶ想定。
+        - Phase 248-γ-E1: ``user_weak_tags`` (loaded from the Curator
+          profile) is forwarded to :func:`pick_important_moves` so the
+          weak-tag boost can nudge the user toward their own recurring
+          mistakes. ``None`` / empty disables the boost.
         """
         snapshot = self.build_eval_snapshot()
 
@@ -250,6 +255,7 @@ class Game(BaseGame):
             snapshot,
             level=level,
             recompute=True,
+            user_weak_tags=user_weak_tags,
         )
 
         # Phase 5: 重要局面のみ理由タグを計算
@@ -339,6 +345,7 @@ class Game(BaseGame):
         skill_preset: str = analysis_pkg.DEFAULT_SKILL_PRESET,
         target_visits: int | None = None,
         max_critical_3_moves: int = 3,
+        user_weak_tags: dict[str, int] | None = None,
     ) -> str:
         """Build a JSON-serialized Karte report for the current game.
 
@@ -360,6 +367,12 @@ class Game(BaseGame):
             max_critical_3_moves: Phase 248-B2 — how many critical
                 moves to include per player in the critical_3 section.
                 Defaults to 3 (Phase 50 baseline).
+            user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: count}``
+                from the Curator profile. Forwarded to
+                :func:`build_karte_json_string` (and from there to
+                :func:`build_karte_json`) so the weak-tag boost can
+                nudge the user toward their own recurring mistakes.
+                ``None`` / empty disables the boost.
 
         Returns:
             JSON-serialized karte report as a string.
@@ -383,6 +396,7 @@ class Game(BaseGame):
             skill_preset=skill_preset,
             target_visits=target_visits,
             max_critical_3_moves=max_critical_3_moves,
+            user_weak_tags=user_weak_tags,
         )
 
     # ------------------------------------------------------------------
