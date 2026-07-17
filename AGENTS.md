@@ -412,6 +412,12 @@ docs/
     - i18n 9 キー追加 (title/subtitle/count/jump/copy/close/empty/complexity/menu-label)
     - `tests/test_important_moves_popup.py` (19件) — Kivy widget ソース検査 (AST ベース、importlib を経由せず) + DISPATCH_TABLE 検証 + menu.kv 検証 + KV ファイル存在 + i18n キー存在 (jp/en)
     - 全 124 件 (関連テスト) pass
+  - **248-γ D2 (PR #415)**: prev/next 重要局面 ヘルパー追加 (critical_3 ベース)
+    - `katrain/core/analysis/important_moves_popup.py` に `find_prev_important_move` / `find_next_important_move` 追加
+    - 両方とも `select_critical_moves` を 2 回 (B/W) 呼び出し、move_number を deduplication して `current_node.depth` と比較
+    - 端では `None` を返し、既存 UI (panels.kv の「前の重要局面」「次の重要局面」ボタン) はそのまま維持
+    - `tests/test_important_move_navigation.py` (20件) — None game / no current node / no candidates / largest-before-depth / 対称性 / 異常系 / DISPATCH_TABLE / i18n
+    - 全 144 件 (関連テスト) pass
   - **累計**: 6 PR マージ / 11 サブフェーズ / 約 2,500 行追加 / 5,800+ テスト
   - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
   - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク

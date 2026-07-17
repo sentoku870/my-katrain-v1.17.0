@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-18（Phase 248-γ D1 完了, 8 PR マージ #406-#414）
+> 最終更新: 2026-07-18（Phase 248-γ D1/D2/E1 完了, 9 PR マージ #406-#415, γ D1 popup + D2 prev/next ヘルパー + E1 Curator weak-tag boost）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
