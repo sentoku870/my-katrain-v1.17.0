@@ -11,11 +11,9 @@ Phase 237: added ``TestWeaknessesMetaFor`` for the O(N+M) refactor of
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from katrain.core.analysis import aggregate_phase_mistake_stats
 from katrain.core.analysis.models.move_eval import MoveEval
-
 
 # ---------------------------------------------------------------------------
 # Phase 237 test helpers
@@ -368,10 +366,7 @@ class TestWeaknessesMetaFor:
         # 150 non-zero-loss moves + 1 weakness bucket.
         # All moves are in the 51..200 range → all "middle" phase
         # (board_size=19 default, middle_end=200, inclusive).
-        moves = [
-            self._make_move(i, "B", loss=2.0, mistake_category_name="MISTAKE")
-            for i in range(51, 201)
-        ]
+        moves = [self._make_move(i, "B", loss=2.0, mistake_category_name="MISTAKE") for i in range(51, 201)]
         ctx = _make_ctx(*moves)
         result = _weaknesses_meta_for(
             ctx,

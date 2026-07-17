@@ -4,10 +4,8 @@ This module is the bottom layer of the karte package.
 It MUST NOT import any other karte modules.
 """
 
-
 import re
 from typing import Final
-
 
 # ---------------------------------------------------------------------------
 # Phase 235: Error message sanitiser
