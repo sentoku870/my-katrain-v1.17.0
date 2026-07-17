@@ -69,10 +69,13 @@ from katrain.core.analysis.logic_phase_dynamic import (
 from katrain.core.analysis.logic_pv import (
     PV_ANIMATION_MAX_STEPS,
     PVFilterDisplayInfo,
+    PVFilterPreview,
     clip_pv_for_animation,
+    compute_pv_filter_preview,
     filter_candidates_by_pv_complexity,
     get_effective_pv_filter_info,
     get_pv_filter_config,
+    resolve_pv_filter_config_cached,
 )
 from katrain.core.analysis.logic_reliability import (
     compute_confidence_level,
@@ -165,6 +168,11 @@ __all__ = [
     # Phase 246-C: PV clip for animation
     "clip_pv_for_animation",
     "PV_ANIMATION_MAX_STEPS",
+    # Phase 247-A (L5): LRU-cached config wrapper
+    "resolve_pv_filter_config_cached",
+    # Phase 247-B (H3): position-aware preview
+    "compute_pv_filter_preview",
+    "PVFilterPreview",
     # Difficulty Metrics (Phase 12 / Phase 192 canonical names)
     "compute_difficulty_metrics",
     "difficulty_metrics_from_node",

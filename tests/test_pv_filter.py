@@ -704,3 +704,173 @@ class TestFilterLossMetric:
         # Only best_move survives the very strict 0.0 threshold
         assert len(result) == 1
         assert result[0]["order"] == 0
+
+
+# =============================================================================
+# Phase 247-D (M3): composite sort
+# =============================================================================
+
+
+FIXTURE_COMPOSITE = [
+    # Two candidates with the same loss but very different pv lengths.
+    # Default order_loss_visits would keep order, but composite with
+    # α>0 favours the shorter PV.
+    {"order": 0, "pointsLost": 0.0, "pv": ["A1"], "move": "A1"},  # best_move
+    {"order": 1, "pointsLost": 0.5, "pv": ["B2"], "move": "B2"},  # short PV (1)
+    {"order": 2, "pointsLost": 0.5, "pv": ["C3"] * 8, "move": "C3"},  # long PV (8) same loss
+    {"order": 3, "pointsLost": 1.5, "pv": ["D4"] * 2, "move": "D4"},  # short PV, higher loss
+]
+
+
+class TestFilterCompositeSort:
+    """Phase 247-D (M3): ``sort_mode='composite'`` blends loss + pv_length."""
+
+    def test_default_sort_mode_is_order_loss_visits(self) -> None:
+        """Backwards compatibility: default sort is the 246-C 3-key."""
+        from katrain.core.analysis.models import PV_FILTER_CONFIGS
+
+        for level in ("weak", "medium", "strong", "expert"):
+            assert PV_FILTER_CONFIGS[level].sort_mode == "order_loss_visits"
+
+    def test_order_loss_visits_is_default_3_key(self) -> None:
+        """Sanity: the 3-key sort (Phase 246-C M7) is preserved."""
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="order_loss_visits",
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        # Default order: best_move, then order 1, 2, 3
+        assert [c["order"] for c in result] == [0, 1, 2, 3]
+
+    def test_composite_alpha_0_equals_loss_only(self) -> None:
+        """α=0 → composite degenerates to loss-only ordering.
+
+        With α=0, the composite score is just ``pointsLost`` (other
+        terms contribute 0). The secondary key (order) breaks ties, so
+        this should match the 246-C behaviour exactly.
+        """
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=0.0,
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        # Loss order: 0 (0.0), 1 & 2 (0.5, tie → order), 3 (1.5)
+        assert [c["order"] for c in result] == [0, 1, 2, 3]
+
+    def test_composite_alpha_1_balances_loss_and_pv_length(self) -> None:
+        """α=1 → composite = loss + pv_length / max_pv_length.
+
+        With max_pv_length=20:
+        - order 1: 0.5 + 1/20 = 0.55
+        - order 2: 0.5 + 8/20 = 0.90
+        - order 3: 1.5 + 2/20 = 1.60
+
+        So order 1 (short PV) wins over order 2 (long PV) despite
+        same loss. order 3 is worst on both axes.
+        """
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=1.0,
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        # best_move, then order 1 (lower composite), then 2, then 3
+        assert [c["order"] for c in result] == [0, 1, 2, 3]
+
+    def test_composite_alpha_5_prefers_short_pv_over_low_loss(self) -> None:
+        """α=5 → strong PV-length preference. With max_pv_length=20:
+        - order 1: 0.5 + 5*1/20 = 0.75
+        - order 3: 1.5 + 5*2/20 = 2.00
+        - order 2: 0.5 + 5*8/20 = 2.50
+
+        Now order 3 (low loss, short PV) wins over order 2 (same loss
+        as 1 but long PV). Demonstrates α making loss secondary.
+        """
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=5.0,
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        # best_move, then order 1 (short), then order 3 (mid PV, but
+        # low-ish composite), then order 2 (long PV pushes composite up)
+        assert [c["order"] for c in result] == [0, 1, 3, 2]
+
+    def test_composite_with_cap_cuts_after_sort(self) -> None:
+        """max_candidates cap applies AFTER the composite sort.
+
+        best_move (order=0) is a separate quota (Phase 11 contract), so
+        with max_candidates=2 the result has best_move + 2 more = 3.
+        """
+        config = PVFilterConfig(
+            max_candidates=2,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=1.0,
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        # best_move (separate quota) + top 2 by composite = [0, 1, 2]
+        # (order 3 has the highest composite and gets cut)
+        assert [c["order"] for c in result] == [0, 1, 2]
+
+    def test_composite_handles_empty_pv(self) -> None:
+        """Defensive: pv=[] → pv_len=0 → 0 contribution to composite."""
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=2.0,
+        )
+        candidates = [
+            {"order": 0, "pointsLost": 0.0, "pv": [], "move": "A1"},
+            {"order": 1, "pointsLost": 1.0, "pv": [], "move": "B2"},
+        ]
+        result = filter_candidates_by_pv_complexity(candidates, config)
+        # Both pass (loss <= 10, pv_len 0 <= 20). best_move + 1.
+        assert [c["order"] for c in result] == [0, 1]
+
+    def test_composite_uses_loss_metric_field(self) -> None:
+        """sort_mode='composite' honors the L1 loss_metric setting."""
+        from katrain.core.analysis import PVFilterConfig
+
+        # Two candidates with same pv but different pointsLost vs
+        # relativePointsLost. With metric='relativePointsLost', order
+        # 1 should win because relative=0.5 < relative=1.0.
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="composite",
+            composite_alpha=1.0,
+            loss_metric="relativePointsLost",
+        )
+        candidates = [
+            {"order": 0, "pointsLost": 5.0, "relativePointsLost": 0.0, "pv": ["A1"], "move": "A1"},
+            {"order": 1, "pointsLost": 5.0, "relativePointsLost": 0.5, "pv": ["B2"], "move": "B2"},
+        ]
+        result = filter_candidates_by_pv_complexity(candidates, config)
+        # Composite with relative: 0.0 (best) and 0.55 (next)
+        assert [c["order"] for c in result] == [0, 1]
+
+    def test_unknown_sort_mode_falls_back_to_3_key(self) -> None:
+        """Defensive: unknown sort_mode name falls back gracefully."""
+        config = PVFilterConfig(
+            max_candidates=10,
+            max_points_lost=10.0,
+            max_pv_length=20,
+            sort_mode="made_up_mode_name",
+        )
+        # Should not crash; should use the default 3-key sort
+        result = filter_candidates_by_pv_complexity(FIXTURE_COMPOSITE, config)
+        assert [c["order"] for c in result] == [0, 1, 2, 3]

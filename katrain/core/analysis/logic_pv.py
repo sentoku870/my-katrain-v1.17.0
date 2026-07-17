@@ -12,6 +12,7 @@ Contains:
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from typing import Any
 
@@ -74,6 +75,45 @@ def get_pv_filter_config(
 
     config = PV_FILTER_CONFIGS.get(level)
     return _scale_for_board(config, board_size)
+
+
+# =============================================================================
+# Phase 247-A (L5): LRU cache for hot-path config resolution
+# =============================================================================
+
+
+@functools.lru_cache(maxsize=32)
+def resolve_pv_filter_config_cached(
+    pv_filter_level: str,
+    skill_preset: str,
+    board_size: int | None,
+    player_rank: str | None,
+) -> PVFilterConfig | None:
+    """LRU-cached wrapper around :func:`get_pv_filter_config` (Phase 247-A / L5).
+
+    ``prepare_hint_moves`` is called on every hover / every node change
+    in the GUI. The 4 inputs that drive ``get_pv_filter_config`` rarely
+    change in practice (level is a single user choice, preset is
+    derived from rank, board_size is fixed per game), so an LRU cache
+    of 32 entries is more than enough to cover the realistic input
+    space (``5 levels × 5 presets × 3 board_sizes × N ranks = ~75 worst
+    case``, capped to 32 keeps memory bounded).
+
+    Contract:
+    - Pure function: same input → same output (the underlying
+      ``get_pv_filter_config`` is deterministic given fixed rank and
+      preset).
+    - Cache key: ``(level, skill_preset, board_size, player_rank)``.
+    - Cached across calls; ``cache_clear()`` is exposed for tests.
+    - The function is intentionally a *thin* wrapper — no logic
+      changes, just memoization.
+    """
+    return get_pv_filter_config(
+        pv_filter_level,
+        skill_preset=skill_preset or DEFAULT_SKILL_PRESET,
+        board_size=board_size,
+        player_rank=player_rank,
+    )
 
 
 def _scale_for_board(
@@ -170,21 +210,34 @@ def filter_candidates_by_pv_complexity(
     # analysis). Without this, ``sorted`` is stable but the input order
     # is dict-iteration order — not stable across runs.
     #
-    # TODO (M3 follow-up): add a composite sort that combines
-    # pointsLost and pv_length via a weighted score, e.g.
-    # ``composite = pointsLost + alpha * (pv_length / max_pv_length)``.
-    # This would let users express "favour short PVs even at the cost
-    # of a slightly higher loss". Deferred from Phase 246-D — current
-    # behaviour matches Phase 11 expectations and the simple
-    # 3-key sort is enough for the boundary tests in 246-C.
-    filtered = sorted(
-        filtered,
-        key=lambda c: (
-            c.get("order", 999),
-            c.get(loss_key) or 0.0,
-            -c.get("visits", 0),
-        ),
-    )
+    # Phase 247-D (M3): composite sort alternative. When
+    # ``config.sort_mode == "composite"`` the cap is decided by a
+    # single weighted score combining pointsLost and pv_length
+    # normalized to ``max_pv_length``. The two sorts are independent
+    # (the default ``order_loss_visits`` path is preserved bit-for-bit
+    # so all 246-C tests keep passing).
+    sort_mode = getattr(config, "sort_mode", "order_loss_visits")
+    if sort_mode == "composite":
+        alpha = float(getattr(config, "composite_alpha", 1.0) or 0.0)
+        max_pv_length = max(1, config.max_pv_length)
+
+        def _composite_key(c: dict[str, Any]) -> tuple[float, int, int, float]:
+            loss = c.get(loss_key) or 0.0
+            pv_len = len(c.get("pv") or [])
+            composite = loss + alpha * (pv_len / max_pv_length)
+            return (composite, c.get("order", 999), pv_len, -c.get("visits", 0))
+
+        filtered = sorted(filtered, key=_composite_key)
+    else:
+        # Default: Phase 246-C (M7) 3-key sort
+        filtered = sorted(
+            filtered,
+            key=lambda c: (
+                c.get("order", 999),
+                c.get(loss_key) or 0.0,
+                -c.get("visits", 0),
+            ),
+        )
     filtered = filtered[: config.max_candidates]
 
     # Step 4: best_moveを先頭に挿入（別枠、上限外）
@@ -192,6 +245,81 @@ def filter_candidates_by_pv_complexity(
         filtered.insert(0, best_move)
 
     return filtered
+
+
+# =============================================================================
+# Phase 247-B (H3): position-aware preview counts
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class PVFilterPreview:
+    """Counts of how the PV filter applies to a specific node (H3).
+
+    Used by the settings popup status label and (Phase 247-C) the
+    controls panel live preview. The dataclass is the single source
+    of truth for ``raw / filtered / best / config_active`` so both UI
+    surfaces can format the same numbers consistently.
+
+    Attributes:
+        raw_count: Number of candidates KataGo returned for the node
+            (0 if no analysis yet).
+        filtered_count: Number of candidates after the filter applies
+            (== raw_count if filter is OFF or in kifunarabe mode).
+        best_count: Always 1 if a best_move exists, else 0. The
+            filter keeps best_move as a separate quota (Phase 11).
+        config_active: True if the filter actually ran (i.e., not
+            OFF and not in kifunarabe bypass). When False, the
+            UI can suppress the "N → M" arrow and just show
+            "all candidates".
+    """
+
+    raw_count: int
+    filtered_count: int
+    best_count: int
+    config_active: bool
+
+
+def compute_pv_filter_preview(
+    node: Any,
+    config: PVFilterConfig | None,
+    *,
+    in_kifu: bool = False,
+) -> PVFilterPreview:
+    """Compute the N → M preview for a given node and filter config.
+
+    Phase 247-B (H3): the settings popup wants to show the user the
+    actual count reduction for the current node, not just the static
+    cap from the level. This function is a thin, Kivy-free wrapper
+    over :func:`filter_candidates_by_pv_complexity`.
+
+    Args:
+        node: The current GameNode (or any object with a
+            ``candidate_moves`` list and ``analysis_exists`` flag).
+        config: The active PVFilterConfig, or ``None`` (= OFF).
+        in_kifu: True if kifunarabe mode is active — the filter
+            is bypassed (Phase 246-D H4 contract) and all
+            candidates are passed through.
+
+    Returns:
+        :class:`PVFilterPreview` with the four counts.
+    """
+    if node is None or not getattr(node, "analysis_exists", False):
+        return PVFilterPreview(0, 0, 0, False)
+
+    candidates = list(getattr(node, "candidate_moves", []) or [])
+    raw_count = len(candidates)
+    best_count = sum(1 for c in candidates if c.get("order", 999) == 0)
+
+    # Filter is bypassed in kifunarabe mode (Phase 246-D H4) or
+    # when the level is OFF.
+    config_active = config is not None and not in_kifu
+    if not config_active:
+        return PVFilterPreview(raw_count, raw_count, best_count, False)
+
+    assert config is not None  # for mypy: narrowed by the check above
+    filtered = filter_candidates_by_pv_complexity(candidates, config)
+    return PVFilterPreview(raw_count, len(filtered), best_count, True)
 
 
 # =============================================================================

@@ -33,12 +33,20 @@ class PVFilterConfig:
         loss_metric: Phase 246-D (L1)。"pointsLost" (絶対損失、次手視点)
             または "relativePointsLost" (最善手との差) のどちらで判定するか。
             デフォルトは "pointsLost" (Phase 11 からの挙動を保持)。
+        sort_mode: Phase 247-D (M3)。"order_loss_visits" (Phase 246-C
+            M7 の 3 段 sort、default) または "composite" (loss + α * pv_length
+            の重み付きスコアで sort) を選択。
+        composite_alpha: sort_mode="composite" の時の重み。α=0.0 で
+            完全に loss 重視 (現状と同じ)、α=1.0 で loss と pv_length
+            等価、α=5.0 で pv_length を 5 倍重視。デフォルト 1.0。
     """
 
     max_candidates: int
     max_points_lost: float
     max_pv_length: int
     loss_metric: str = "pointsLost"  # Phase 246-D (L1)
+    sort_mode: str = "order_loss_visits"  # Phase 247-D (M3)
+    composite_alpha: float = 1.0  # Phase 247-D (M3)
 
 
 # PVFilterLevelごとのプリセット設定

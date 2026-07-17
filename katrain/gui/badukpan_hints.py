@@ -23,8 +23,9 @@ from kivy.metrics import dp
 from katrain.core.analysis import (
     DEFAULT_PV_FILTER_LEVEL,
     clip_pv_for_animation,
+    compute_pv_filter_preview,
     filter_candidates_by_pv_complexity,
-    get_pv_filter_config,
+    resolve_pv_filter_config_cached,
     resolve_skill_preset,
 )
 from katrain.core.beginner.hints import (
@@ -202,16 +203,30 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
         # Phase 246-E (L7): pass player_rank so the API can resolve the
         # preset internally — the manual ``resolve_skill_preset`` call
         # above is kept for back-compat with the analysis-side code.
+        # Phase 247-A (L5): use the LRU-cached wrapper so repeated
+        # hovers on the same node don't re-run the AUTO→preset→config
+        # chain. Cache size 32 is plenty for 5 levels × 3 board_sizes
+        # × N ranks. Wrapped below to also stash the raw candidate
+        # count for the Phase 247-B / 247-C live preview.
         board_size_x, _ = katrain.game.board_size
         player_rank = katrain.config("general/player_rank")
-        pv_filter_config = get_pv_filter_config(
+        pv_filter_config = resolve_pv_filter_config_cached(
             pv_filter_level,
-            skill_preset=skill_preset,
-            board_size=board_size_x,
-            player_rank=player_rank,
+            skill_preset,
+            board_size_x,
+            player_rank,
         )
         if pv_filter_config is not None:
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
+        # Phase 247-B (H3): stash the N → M preview on the widget so
+        # the settings popup (and Phase 247-C controls panel) can read
+        # it without re-applying the filter. The preview is
+        # position-aware — different nodes get different counts.
+        widget.last_pv_filter_preview = compute_pv_filter_preview(
+            current_node,
+            pv_filter_config,
+            in_kifu=in_kifu,
+        )
 
     return hint_moves
 

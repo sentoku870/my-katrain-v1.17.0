@@ -89,3 +89,6 @@ class _SettingsPopupContext:
     # label so the radio + rank-input callbacks can refresh it in place
     # without rebuilding the layout. Same Kivy-free pattern as above.
     _pv_filter_status_label: Any = None
+    # Phase 247-B (H3): same pattern for the position-aware N → M
+    # preview label. Refreshed alongside the static status label.
+    _pv_filter_preview_label: Any = None

@@ -106,6 +106,7 @@ from katrain.core.analysis.logic import (
     ENDGAME_SCORE_STDEV_THRESHOLD,  # Phase 156-A
     PV_ANIMATION_MAX_STEPS,
     PVFilterDisplayInfo,
+    PVFilterPreview,
     # Phase mistake stats
     aggregate_phase_mistake_stats,
     apply_dynamic_phases,  # Phase 156-D
@@ -124,6 +125,8 @@ from katrain.core.analysis.logic import (
     compute_importance_for_moves,
     # Loss calculation
     compute_loss_from_delta,
+    # Phase 247-B (H3): position-aware preview
+    compute_pv_filter_preview,
     compute_reliability_stats,
     # Mistake streaks
     detect_mistake_streaks,
@@ -154,6 +157,8 @@ from katrain.core.analysis.logic import (
     # Phase 229: rank -> preset bridge
     rank_to_skill_preset,
     recommend_auto_strictness,
+    # Phase 247-A (L5): LRU-cached config wrapper
+    resolve_pv_filter_config_cached,
     resolve_skill_preset,
     snapshot_from_game,
     # Snapshot
@@ -454,12 +459,17 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
+    # Phase 247-B (H3): position-aware preview
+    "compute_pv_filter_preview",
+    "PVFilterPreview",
     # Phase 246-A: display-effective level for UI
     "get_effective_pv_filter_info",
     "PVFilterDisplayInfo",
     # Phase 246-C: PV clip for animation
     "clip_pv_for_animation",
     "PV_ANIMATION_MAX_STEPS",
+    # Phase 247-A (L5): LRU-cached config wrapper
+    "resolve_pv_filter_config_cached",
     # Difficulty Metrics (Phase 12)
     "get_root_visits",  # Phase 92: Public wrapper
     "compute_difficulty_metrics",
