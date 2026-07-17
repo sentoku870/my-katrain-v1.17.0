@@ -245,10 +245,28 @@ def find_latest_karte(ctx: FeatureContext) -> Path | None:
     present (in which case the popup will leave the path empty for the user
     to fill in manually).
 
-    Phase 227-C: this function is preserved for backward compatibility
-    (karte-only use cases). New code should prefer
-    :func:`find_latest_llm_input` which also accepts ``summary_*.json``.
+    .. deprecated:: 1.17.0 (Phase 239)
+        This function only finds Karte files. The LLM Coach popup
+        (Phase 227-D onwards) also supports multi-game Summary JSON,
+        so new code should call :func:`find_latest_llm_input_for_ctx`
+        instead. This thin wrapper is kept so external callers do not
+        break, and emits a ``DeprecationWarning`` on every call.
+
+    Phase 227-C: this function was originally preserved for backward
+    compatibility. Phase 239 added the ``DeprecationWarning`` and
+    pointed the LLM Coach popup at ``find_latest_llm_input_for_ctx``.
     """
+    import warnings
+
+    warnings.warn(
+        "katrain.gui.features.llm_coach.find_latest_karte is deprecated as of "
+        "Phase 239; use find_latest_llm_input_for_ctx (or the lower-level "
+        "find_latest_llm_input) instead. find_latest_karte only matches "
+        "karte_*.json and silently ignores summary_*.json which Phase 227-D "
+        "added to the LLM Coach popup.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from katrain.common.platform import resolve_output_directory
     from katrain.gui.features.report_navigator import get_latest_report
 
