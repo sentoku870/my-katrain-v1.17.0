@@ -40,10 +40,8 @@ from katrain.core.analysis.models import ConfidenceLevel, EvalSnapshot
 from katrain.core.analysis.models.enums import PositionDifficulty
 from katrain.core.analysis.models.important_moves import (
     DEFAULT_IMPORTANT_MOVE_LEVEL as _DEFAULT_LEVEL,
-    MIN_LOSS_DISPLAY,
 )
 from tests.helpers_eval_metrics import make_move_eval
-
 
 # ---------------------------------------------------------------------------
 # Constants & helpers

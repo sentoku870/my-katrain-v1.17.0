@@ -67,20 +67,16 @@ class TestComplexityFilterStatsReturnType:
                 (1, "B", 10.0),  # below threshold → not discounted
                 (2, "B", 25.0),  # above threshold → discounted
                 (3, "B", 30.0),  # above threshold → discounted
-                (4, "W", 5.0),   # below → not discounted
+                (4, "W", 5.0),  # below → not discounted
             ]
         )
-        stats = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves
-        )
+        stats = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves)
         assert isinstance(stats, ComplexityFilterStats)
 
     def test_total_candidates_matches_input(self):
         """``total_candidates`` is the full input list size."""
         game, moves = _make_stub_game([(i + 1, "B", 10.0) for i in range(5)])
-        stats = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves
-        )
+        stats = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves)
         assert stats.total_candidates == 5
 
     def test_discounted_count_matches_threshold(self):
@@ -94,9 +90,7 @@ class TestComplexityFilterStatsReturnType:
                 (5, "W", 20.0),  # boundary: stdev == 20 → NOT discounted (strict >)
             ]
         )
-        stats = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves
-        )
+        stats = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves)
         assert stats.discounted_count == 3
 
     def test_max_stdev_seen_is_aggregate_max(self):
@@ -108,17 +102,13 @@ class TestComplexityFilterStatsReturnType:
                 (3, "B", 30.0),
             ]
         )
-        stats = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves
-        )
+        stats = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves)
         assert stats.max_stdev_seen == 35.5
 
     def test_max_stdev_none_when_all_missing(self):
         """When every candidate is unanalysed, ``max_stdev_seen`` is None."""
         game, moves = _make_stub_game([(1, "B", None), (2, "B", None)])
-        stats = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves
-        )
+        stats = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves)
         assert stats.max_stdev_seen is None
         # No discount either, because the discount function returns 1.0
         # for None stdev.
@@ -142,7 +132,7 @@ class TestComplexityFilterStatsReturnType:
         are referenced by Karte / Karte-export consumer docs.
         """
         assert THRESHOLD_SCORE_STDEV_CHAOS == 20.0
-        assert COMPLEXITY_DISCOUNT_FACTOR == pytest.approx(0.3)
+        assert pytest.approx(0.3) == COMPLEXITY_DISCOUNT_FACTOR
 
 
 class TestComplexityFilterStatsPlayerFilter:
@@ -155,9 +145,7 @@ class TestComplexityFilterStatsPlayerFilter:
                 (2, "W", 25.0),  # would-be-discounted, but W is filtered out
             ]
         )
-        stats_b = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves, player_filter="B"
-        )
+        stats_b = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves, player_filter="B")
         assert stats_b.total_candidates == 1
         assert stats_b.discounted_count == 1
 
@@ -168,9 +156,7 @@ class TestComplexityFilterStatsPlayerFilter:
                 (2, "W", 25.0),
             ]
         )
-        stats_w = compute_complexity_filter_stats(
-            game, level="normal", pre_classified_moves=moves, player_filter="W"
-        )
+        stats_w = compute_complexity_filter_stats(game, level="normal", pre_classified_moves=moves, player_filter="W")
         assert stats_w.total_candidates == 1
         assert stats_w.discounted_count == 1
 

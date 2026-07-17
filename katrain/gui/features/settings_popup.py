@@ -119,9 +119,7 @@ def do_mykatrain_settings_popup(
         # Phase 248-B1: important-moves level surfaced to the analysis
         # tab. Falls back to "normal" so users with pre-248 configs
         # (or empty string) get the historical behaviour.
-        selected_important_moves_level=[
-            (current_settings.get("important_moves_level") or "normal")
-        ],
+        selected_important_moves_level=[(current_settings.get("important_moves_level") or "normal")],
     )
 
     def register_searchable(label_text: str, *widgets: Any) -> None:

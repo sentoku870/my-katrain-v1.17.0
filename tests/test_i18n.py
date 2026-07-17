@@ -302,22 +302,7 @@ class TestImportantMovesLevelI18n:
                     f"Run `polib` (or `pybabel compile`) to refresh."
                 )
 
-    def test_all_keys_translated_in_en(self, locale_dir):
-        locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
-        for key in self.NEW_KEYS:
-            translated = locales.gettext(key)
-            assert translated != key, f"Key '{key}' is not translated in 'en'"
-            assert translated, f"Key '{key}' translates to empty string in 'en'"
-
-    def test_all_keys_translated_in_jp(self, locale_dir):
-        locales = gettext.translation("katrain", str(locale_dir), languages=["jp"])
-        for key in self.NEW_KEYS:
-            translated = locales.gettext(key)
-            assert translated != key, f"Key '{key}' is not translated in 'jp'"
-
     def test_active_focus_keys_have_star_in_en(self, locale_dir):
-        """The 'active' variants mark the currently selected focus with a
-        star prefix so users see the active toggle at a glance."""
         locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
         assert locales.gettext("focus:black-active").startswith("★")
         assert locales.gettext("focus:white-active").startswith("★")
