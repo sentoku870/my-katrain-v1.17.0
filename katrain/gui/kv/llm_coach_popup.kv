@@ -70,6 +70,8 @@
     # Row 1b: Type label (single karte / multi-game summary / unknown)
     # Phase 227-D: shows the detected JSON type so the user knows which
     # mode the popup is in. Hidden until a path is set.
+    # Phase 242-B: also shows the schema_version as a small suffix
+    # (e.g. "単局カルテ · Schema 3.4") for debugging context.
     Label:
         id: type_label
         text: ""
@@ -229,6 +231,10 @@
                 font_size: sp(12)
                 size_hint_y: None
                 height: dp(154)
+                # Phase 242-B: cap paste size to prevent UI freeze from
+                # a multi-megabyte LLM response. _on_response_text
+                # truncates silently and surfaces a status warning.
+                on_text: root._on_response_text(self.text)
 
     # Row 5: Action 2 — validate / copy result (50/50)
     BoxLayout:

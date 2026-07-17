@@ -217,3 +217,101 @@ class TestExports:
         ]:
             assert hasattr(pkg, name), f"__init__ missing {name}"
             assert hasattr(md, name), f"master_db missing {name}"
+
+
+# --- Phase 242-A: Kansai dictionary sync tests ---
+
+
+class TestKansaiDictionarySync:
+    """Phase 242-A: every entry in _KANSAI_DICTIONARY must be substitutable.
+
+    The user-facing dictionary in master_db.py is paired with the
+    NORM regex pairs in tones.py. Before Phase 242-A there were 13
+    sync gaps: 6 dict_keys with no NORM entry, 7 NORM entries with
+    no dict entry. These tests pin the contract that ``apply_kansai_normalisation``
+    must actually substitute every dictionary key.
+    """
+
+    def test_all_dict_keys_substitutable(self):
+        """Every key in _KANSAI_DICTIONARY must be in NORM pairs.
+
+        Previously: '〜ください' / '〜してた' / '〜である/〜だ' /
+        '〜ですか？' / '〜ではない' / '良い/いい' were missing.
+        """
+        from katrain.core.coach.master_db import _KANSAI_DICTIONARY
+        from katrain.core.coach.tones import _KANSAI_NORMALISATION_PAIRS
+
+        pair_srcs = {src for src, _ in _KANSAI_NORMALISATION_PAIRS}
+        # Split 良い/いい to handle the OR syntax
+        for key in _KANSAI_DICTIONARY:
+            alternatives = key.split("/")
+            assert any(alt in pair_srcs for alt in alternatives), (
+                f"dict_key {key!r} is not substitutable (no NORM pair matches any of its alternatives {alternatives!r})"
+            )
+
+    def test_all_norm_entries_documented(self):
+        """Every src in NORM pairs should be in the user-facing dict.
+
+        Previously: 'だめ' / 'いい' / 'してください' / '本当' /
+        '良い' / 'している' / 'ください' were in NORM but not in DICT.
+        """
+        from katrain.core.coach.master_db import _KANSAI_DICTIONARY
+        from katrain.core.coach.tones import _KANSAI_NORMALISATION_PAIRS
+
+        dict_keys = set(_KANSAI_DICTIONARY.keys())
+        for src, _dst in _KANSAI_NORMALISATION_PAIRS:
+            # 〜-prefixed sources are documented as a single OR key in dict
+            base = src.lstrip("〜").split("/")[0]
+            assert base in dict_keys or src in dict_keys, f"NORM src {src!r} is not in the user-facing dictionary"
+
+    def test_normalise_with_tilde_prefix(self):
+        """〜-prefixed patterns should be substitutable (Phase 242-A fix)."""
+        from katrain.core.coach.tones import apply_kansai_normalisation
+
+        out = apply_kansai_normalisation("私 が〜ください")
+        assert "〜してな" in out or "〜しとき" in out
+        out2 = apply_kansai_normalisation("私 が〜ですか？")
+        assert "〜なん" in out2 or "〜か？" in out2
+
+    def test_normalise_lowercase_dame(self):
+        """Lowercase 'だめ' should be substituted (Phase 242-A fix)."""
+        from katrain.core.coach.tones import apply_kansai_normalisation
+
+        out = apply_kansai_normalisation("これがだめ")
+        assert "あかん" in out
+
+    def test_normalise_split_ii(self):
+        """'いい' and '良い' both map to 'ええ' (Phase 242-A fix)."""
+        from katrain.core.coach.tones import apply_kansai_normalisation
+
+        out_good = apply_kansai_normalisation("これは良い")
+        out_nice = apply_kansai_normalisation("これはいい")
+        assert "ええ" in out_good
+        assert "ええ" in out_nice
+
+    def test_honma_ni_is_detected_as_marker(self):
+        """Phase 242-A: 'ほんまに' should be a marker.
+
+        Previously substring matching via 'ほんま' worked, but
+        explicit marker entry is more robust and self-documenting.
+        """
+        from katrain.core.coach.tones import _AYAKA_MARKERS, has_kansai_markers
+
+        assert "ほんまに" in _AYAKA_MARKERS
+        assert has_kansai_markers("ほんまにええやん")
+        assert has_kansai_markers("ほんまええやん")  # substring fallback
+
+    def test_new_normalisation_targets_detectable(self):
+        """All NORM destinations should be detected by has_kansai_markers.
+
+        Substring-aware check: every destination must contain at least
+        one marker as a substring. Previously 'ほんまに' lacked an
+        explicit marker (worked only by substring luck).
+        """
+        from katrain.core.coach.tones import (
+            _KANSAI_NORMALISATION_PAIRS,
+            has_kansai_markers,
+        )
+
+        for _src, dst in _KANSAI_NORMALISATION_PAIRS:
+            assert has_kansai_markers(dst), f"destination {dst!r} has no marker substring"

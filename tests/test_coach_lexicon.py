@@ -54,9 +54,13 @@ class TestLoadLexicon:
         assert bundle.schema_version == "go_lexicon_master_v1"
 
     def test_entry_count_matches_validation_report(self):
-        # go_lexicon_validation_report_updated.md reports 116 entries, 23 concepts.
+        # Phase 242-C: 5 new L2 entries bring the total to 121.
+        # go_lexicon_validation_report_updated.md reports the
+        # original 116 entries; the 5 added by Phase 242-C are
+        # time_management / ai_overload / post_game_review /
+        # tilt_recovery / mental_state.
         bundle = load_lexicon()
-        assert len(bundle.entries) == 116
+        assert len(bundle.entries) == 121
         assert len(bundle.concepts) == 23
 
     def test_all_entries_are_dataclass(self):
@@ -179,14 +183,18 @@ class TestValidateReferences:
         assert report["duplicate_ids"] == []
 
     def test_counts_match(self):
+        # Phase 242-C: 5 new L2 entries (time_management / ai_overload /
+        # post_game_review / tilt_recovery / mental_state) bring the
+        # total to 121.
         report = validate_references()
-        assert report["total_entries"] == 116
+        assert report["total_entries"] == 121
         assert report["total_concepts"] == 23
 
     def test_level_distribution(self):
+        # Phase 242-C: 5 new level-2 entries shift the L2 count.
         report = validate_references()
         assert report["level_distribution"]["1"] == 60
-        assert report["level_distribution"]["2"] == 56
+        assert report["level_distribution"]["2"] == 61
         assert report["level_distribution"]["3"] == 23
 
 
@@ -228,7 +236,8 @@ class TestAllIds:
     def test_all_ids_returns_tuple(self):
         ids = all_ids()
         assert isinstance(ids, tuple)
-        assert len(ids) == 116 + 23
+        # Phase 242-C: +5 L2 entries
+        assert len(ids) == 121 + 23
 
 
 # --- Public API ---

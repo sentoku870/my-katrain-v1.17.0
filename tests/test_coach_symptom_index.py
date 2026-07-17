@@ -324,11 +324,15 @@ class TestDetectorRobustness:
 
 
 class TestSymptomLexiconCoverage:
-    """Phase 226-J: auto-detected symptoms must have at least one
-    related_lexicon_ids entry so the LLM prompt can reference the
-    terminology. LLM-required symptoms may still have an empty tuple
-    if no relevant Lexicon entry exists (these become YAML extension
-    candidates).
+    """Phase 226-J + 242-C: every symptom (auto-detected and LLM-required)
+    must have at least one related_lexicon_ids entry so the LLM prompt
+    can reference the terminology. Phase 242-C closed the gap for the
+    9 LLM-required symptoms that were empty before:
+
+    - time_pressure_loss / time_misallocation / time_drain
+    - shallow_review
+    - ai_overload / copy_without_understanding
+    - tilt_discouragement / tilt_chain / tilt_emotional_interference
     """
 
     @pytest.mark.parametrize(
@@ -345,6 +349,78 @@ class TestSymptomLexiconCoverage:
         symptom = lookup_symptom(sid)
         assert symptom is not None
         assert symptom.related_lexicon_ids, f"{sid.value} must list at least one Lexicon id"
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            # Phase 242-C: 9 LLM-required symptoms that now have lexicon links
+            SymptomId.TIME_PRESSURE_LOSS,
+            SymptomId.TIME_MISALLOCATION,
+            SymptomId.TIME_DRAIN,
+            SymptomId.SHALLOW_REVIEW,
+            SymptomId.AI_OVERLOAD,
+            SymptomId.COPY_WITHOUT_UNDERSTANDING,
+            SymptomId.TILT_DISCOURAGEMENT,
+            SymptomId.TILT_CHAIN,
+            SymptomId.TILT_EMOTIONAL_INTERFERENCE,
+        ],
+    )
+    def test_llm_required_symptom_has_lexicon_links(self, sid):
+        """Phase 242-C: every LLM-required symptom now has a lexicon link.
+
+        Previously these were empty tuples. The Phase 242-C Lexicon
+        YAML extension (5 new entries) provides ground truth for the
+        LLM to use in its prompt body.
+        """
+        symptom = lookup_symptom(sid)
+        assert symptom is not None
+        assert symptom.related_lexicon_ids, (
+            f"{sid.value} must list at least one Lexicon id (Phase 242-C closed the gap for LLM-required symptoms)"
+        )
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            SymptomId.TIME_PRESSURE_LOSS,
+            SymptomId.TIME_MISALLOCATION,
+            SymptomId.TIME_DRAIN,
+        ],
+    )
+    def test_time_symptoms_link_to_time_management(self, sid):
+        symptom = lookup_symptom(sid)
+        assert "time_management" in symptom.related_lexicon_ids
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            SymptomId.AI_OVERLOAD,
+            SymptomId.COPY_WITHOUT_UNDERSTANDING,
+            SymptomId.SHALLOW_REVIEW,
+        ],
+    )
+    def test_ai_review_symptoms_link_to_ai_overload_or_post_game_review(self, sid):
+        symptom = lookup_symptom(sid)
+        ids = set(symptom.related_lexicon_ids)
+        # Each AI/review symptom should be near at least one of the
+        # new Phase 242-C entries that we created for this cluster.
+        assert "ai_overload" in ids or "post_game_review" in ids, (
+            f"{sid.value} should link to ai_overload or post_game_review"
+        )
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            SymptomId.TILT_DISCOURAGEMENT,
+            SymptomId.TILT_CHAIN,
+            SymptomId.TILT_EMOTIONAL_INTERFERENCE,
+        ],
+    )
+    def test_tilt_symptoms_link_to_tilt_recovery_or_mental_state(self, sid):
+        symptom = lookup_symptom(sid)
+        ids = set(symptom.related_lexicon_ids)
+        assert "tilt_recovery" in ids or "mental_state" in ids, (
+            f"{sid.value} should link to tilt_recovery or mental_state"
+        )
 
     def test_too_many_choices_links_priority(self):
         symptom = lookup_symptom(SymptomId.TOO_MANY_CHOICES)

@@ -169,6 +169,11 @@ def validate_llm_response(
     it directly in a label. Reports longer than ``_MAX_REPORT_CHARS`` are
     truncated to keep the UI responsive.
 
+    Phase 242-B: when truncation happens, the trailing marker
+    (``i18n._("mykatrain:llm-coach:truncated")``) is appended to the
+    Markdown. The popup detects this marker to surface a status
+    warning so the user knows the displayed report is incomplete.
+
     Args:
         ctx: FeatureContext for logging. May be None (e.g. unit tests).
         karte_path: Path to the Karte JSON used as ground truth.
@@ -208,34 +213,59 @@ def validate_llm_response(
     return report.is_clean, markdown
 
 
+# Phase 242-B: helper to detect if a validate result was truncated.
+# The popup uses this to surface a status warning. The marker is the
+# i18n-truncated suffix that validate_llm_response appends. We check
+# the substring rather than recomputing the length so we stay
+# robust to i18n edits to the truncated marker.
+def was_truncated(markdown: str) -> bool:
+    """Phase 242-B: detect whether ``markdown`` is a truncated report.
+
+    Args:
+        markdown: The Markdown string returned by
+            :func:`validate_llm_response` or
+            :func:`validate_summary_llm_response`.
+
+    Returns:
+        True if the trailing truncation marker is present, False
+        otherwise.
+    """
+    marker = i18n._("mykatrain:llm-coach:truncated")
+    return bool(marker) and markdown.endswith(marker)
+
+
 def _render_validation_report(report: Any) -> str:
-    """Render a :class:`ValidationReport` as a multi-line Markdown string."""
-    lines: list[str] = [
-        f"**{i18n._('mykatrain:llm-coach:status')}**: {report.summary_line()}",
-        f"**HIGH**: {report.high_count} · **MEDIUM**: {report.medium_count} · **LOW**: {report.low_count}",
-        "",
+    """Render a :class:`ValidationReport` as a multi-line Markdown string.
+
+    Phase 242-D: thin wrapper around the unified
+    :func:`katrain.core.coach.llm_report_renderer.render_validation_report`.
+    """
+    from katrain.core.coach.llm_report_renderer import (
+        ReferencedItem,
+    )
+    from katrain.core.coach.llm_report_renderer import (
+        render_validation_report as _render,
+    )
+
+    referenced = [
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:referenced-symptoms",
+            values=report.referenced_symptom_ids,
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:referenced-moves",
+            values=list(report.referenced_move_numbers),
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:referenced-points-lost",
+            values=list(report.referenced_points_lost),
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:referenced-lexicon",
+            values=report.referenced_lexicon_ids,
+        ),
     ]
-    if report.referenced_symptom_ids:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-symptoms')}**: {', '.join(report.referenced_symptom_ids)}"
-        )
-    if report.referenced_move_numbers:
-        lines.append(f"**{i18n._('mykatrain:llm-coach:referenced-moves')}**: {list(report.referenced_move_numbers)}")
-    if report.referenced_points_lost:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-points-lost')}**: {list(report.referenced_points_lost)}"
-        )
-    if report.referenced_lexicon_ids:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:referenced-lexicon')}**: {', '.join(report.referenced_lexicon_ids)}"
-        )
-    if report.issues:
-        lines.append("")
-        lines.append(f"## {i18n._('mykatrain:llm-coach:issues')}")
-        lines.append("")
-        for issue in report.issues:
-            lines.append(f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}")
-    return "\n".join(lines) + "\n"
+    return _render(report, referenced)
 
 
 # Phase 241-G: ``find_latest_karte`` was removed. It only matched
@@ -425,44 +455,43 @@ def _render_summary_validation_report(
     cfg: Any,
     summary: dict[str, Any],
 ) -> str:
-    """Phase 227-D: render a :class:`SummaryValidationReport` as Markdown.
+    """Phase 227-D + 242-D: render a :class:`SummaryValidationReport` as Markdown.
 
-    Mirrors :func:`_render_validation_report` for karte but tailored to
-    the summary contract (pattern categories, phases, game IDs).
+    Thin wrapper around the unified
+    :func:`katrain.core.coach.llm_report_renderer.render_validation_report`.
+    The only Summary-specific extra is the ``summary-report-meta`` line
+    ("N局 / focus") inserted between the severity banner and the
+    referenced items.
     """
+    from katrain.core.coach.llm_report_renderer import (
+        ReferencedItem,
+    )
+    from katrain.core.coach.llm_report_renderer import (
+        render_validation_report as _render,
+    )
+
     games = cfg.games_analyzed
     focus = cfg.player_name or "全体俯瞰"
-    lines: list[str] = [
-        f"**{i18n._('mykatrain:llm-coach:status')}**: {report.summary_line()}",
-        f"**HIGH**: {report.high_count} · **MEDIUM**: {report.medium_count} · **LOW**: {report.low_count}",
-        "",
-        f"_{i18n._('mykatrain:llm-coach:summary-report-meta').format(games=games, focus=focus)}_",
-        "",
+    extra_meta = i18n._("mykatrain:llm-coach:summary-report-meta").format(games=games, focus=focus)
+    referenced = [
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:summary-referenced-categories",
+            values=report.referenced_categories,
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:summary-referenced-phases",
+            values=report.referenced_phases,
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:summary-referenced-moves",
+            values=list(report.referenced_move_numbers),
+        ),
+        ReferencedItem(
+            label_key="mykatrain:llm-coach:summary-referenced-game-ids",
+            values=report.referenced_game_ids,
+        ),
     ]
-    if report.referenced_categories:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-categories')}**: "
-            f"{', '.join(report.referenced_categories)}"
-        )
-    if report.referenced_phases:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-phases')}**: {', '.join(report.referenced_phases)}"
-        )
-    if report.referenced_move_numbers:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-moves')}**: {list(report.referenced_move_numbers)}"
-        )
-    if report.referenced_game_ids:
-        lines.append(
-            f"**{i18n._('mykatrain:llm-coach:summary-referenced-game-ids')}**: {', '.join(report.referenced_game_ids)}"
-        )
-    if report.issues:
-        lines.append("")
-        lines.append(f"## {i18n._('mykatrain:llm-coach:issues')}")
-        lines.append("")
-        for issue in report.issues:
-            lines.append(f"- [{issue.severity.value.upper()}] **{issue.kind}**: {issue.message}")
-    return "\n".join(lines) + "\n"
+    return _render(report, referenced, extra_meta=extra_meta)
 
 
 def find_latest_llm_input_for_ctx(ctx: FeatureContext) -> Path | None:

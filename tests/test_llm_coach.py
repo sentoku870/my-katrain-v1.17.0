@@ -219,6 +219,19 @@ class TestValidateLlmResponse:
             _, markdown = llm_coach.validate_llm_response(None, path, "")
         assert len(markdown) <= llm_coach._MAX_REPORT_CHARS + 200
 
+    def test_truncation_marker_detectable(self) -> None:
+        """Phase 242-B: was_truncated() detects the truncation marker."""
+        from katrain.core.lang import i18n
+
+        marker = i18n._("mykatrain:llm-coach:truncated")
+        assert marker  # marker must be non-empty
+        truncated_md = f"some content\n\n{marker}"
+        assert llm_coach.was_truncated(truncated_md)
+        # Plain report without marker
+        assert not llm_coach.was_truncated("normal report")
+        # Empty string
+        assert not llm_coach.was_truncated("")
+
 
 # --- _render_validation_report ----------------------------------------
 

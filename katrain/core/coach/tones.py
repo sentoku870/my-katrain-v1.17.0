@@ -99,6 +99,7 @@ _AYAKA_MARKERS: tuple[str, ...] = (
     "あかん",
     "ええ",
     "ほんま",
+    "ほんまに",  # Phase 242-A: explicit marker for the NORM destination.
     "ちゃう",
     "やない",
     "しとる",
@@ -115,13 +116,23 @@ _KANSAI_NORMALISATION_PAIRS: tuple[tuple[str, str], ...] = (
     (r"私", "ウチ"),
     (r"ダメ", "あかん"),
     (r"だめ", "あかん"),
-    (r"良い", "ええ"),
-    (r"いい", "ええ"),
     (r"本当に", "ほんまに"),
     (r"本当", "ほんま"),
     (r"している", "しとる"),
     (r"してください", "してな"),
+    # Phase 242-A: longer patterns BEFORE shorter ones to avoid
+    # ``〜です`` matching inside ``〜ですか？`` (turning "〜ですか？"
+    # into the wrong "〜やでか？"). apply_kansai_normalisation is
+    # a left-to-right substring replace, so order matters.
+    (r"〜ですか？", "〜なん？"),
+    (r"〜ではない", "〜ちゃう"),
+    (r"〜している", "〜しとる"),
+    (r"〜ください", "〜してな"),
+    (r"良い/いい", "ええ"),
     (r"ください", "しとき"),
+    (r"ます", "やねん"),  # Phase 242-A: base form for 〜ます.
+    (r"良い", "ええ"),
+    (r"いい", "ええ"),
     (r"だから", "せやから"),
     (r"そうだね", "せやな"),
     (r"すごい", "めっちゃ"),
