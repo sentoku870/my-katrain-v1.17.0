@@ -282,17 +282,23 @@ class TestImportantMovesLevelI18n:
     def test_mo_files_are_up_to_date(self, locale_dir):
         """Same as :class:`TestBatchAnalyzeI18n.test_mo_files_are_up_to_date`,
         scoped to the new keys.
-        """
-        import subprocess
 
+        Includes a 1-second tolerance for filesystem timing — the
+        ``TestBatchAnalyzeI18n`` version uses the same tolerance so
+        the two tests cannot disagree.
+        """
         for lang in ("en", "jp"):
             po = locale_dir / lang / "LC_MESSAGES" / "katrain.po"
             mo = locale_dir / lang / "LC_MESSAGES" / "katrain.mo"
             if not po.exists() or not mo.exists():
                 pytest.skip(f"Missing po/mo for {lang}")
-            if po.stat().st_mtime > mo.stat().st_mtime:
+            po_mtime = po.stat().st_mtime
+            mo_mtime = mo.stat().st_mtime
+            # MO file should not be older than PO file (with 1s tolerance).
+            if mo_mtime < po_mtime - 1:
                 pytest.fail(
-                    f"{lang}/katrain.mo is older than katrain.po. "
+                    f"{lang}/katrain.mo is older than katrain.po "
+                    f"({mo_mtime:.0f} < {po_mtime:.0f}). "
                     f"Run `polib` (or `pybabel compile`) to refresh."
                 )
 
