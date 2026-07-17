@@ -1964,6 +1964,24 @@ msgstr "KataGo uncertainty hint:"
 msgid "mykatrain:settings:katago_uncertain_desc"
 msgstr "Show a hint when KataGo's scoreStdev is high (even KataGo is unsure)"
 
+msgid "mykatrain:settings:important_moves_level"
+msgstr "Important-moves level:"
+
+msgid "mykatrain:settings:important_moves_level_desc"
+msgstr ""
+"Controls the sensitivity of the important-moves extraction and the "
+"critical_3 selection in Karte output. Beginner (relaxed) keeps only "
+"big losses; dan-level (strict) also keeps small ones."
+
+msgid "mykatrain:settings:important_moves_level_easy"
+msgstr "Beginner (relaxed)"
+
+msgid "mykatrain:settings:important_moves_level_normal"
+msgstr "Normal"
+
+msgid "mykatrain:settings:important_moves_level_strict"
+msgstr "Dan-level (strict)"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 

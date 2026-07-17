@@ -236,6 +236,36 @@ class TestHardcodedJapaneseI18n:
         "important-line",
     ]
 
+
+# ---------------------------------------------------------------------------
+# Phase 248-B1: important-moves level (3 keys)
+# ---------------------------------------------------------------------------
+
+
+class TestImportantMovesLevelI18n:
+    """Phase 248-B1: analysis tab now exposes the important-moves level
+    via a 3-radio group. Lock down the i18n keys so any future
+    regression (e.g. someone hardcodes a label in the radio group)
+    is caught at the i18n layer.
+    """
+
+    @pytest.fixture
+    def locale_dir(self):
+        from pathlib import Path
+
+        import katrain
+
+        katrain_dir = Path(katrain.__file__).parent
+        return katrain_dir / "i18n" / "locales"
+
+    NEW_KEYS = [
+        "mykatrain:settings:important_moves_level",
+        "mykatrain:settings:important_moves_level_desc",
+        "mykatrain:settings:important_moves_level_easy",
+        "mykatrain:settings:important_moves_level_normal",
+        "mykatrain:settings:important_moves_level_strict",
+    ]
+
     def test_all_keys_translated_in_en(self, locale_dir):
         locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
         for key in self.NEW_KEYS:
@@ -249,9 +279,30 @@ class TestHardcodedJapaneseI18n:
             translated = locales.gettext(key)
             assert translated != key, f"Key '{key}' is not translated in 'jp'"
 
+    def test_mo_files_are_up_to_date(self, locale_dir):
+        """Same as :class:`TestBatchAnalyzeI18n.test_mo_files_are_up_to_date`,
+        scoped to the new keys.
+
+        Includes a 1-second tolerance for filesystem timing — the
+        ``TestBatchAnalyzeI18n`` version uses the same tolerance so
+        the two tests cannot disagree.
+        """
+        for lang in ("en", "jp"):
+            po = locale_dir / lang / "LC_MESSAGES" / "katrain.po"
+            mo = locale_dir / lang / "LC_MESSAGES" / "katrain.mo"
+            if not po.exists() or not mo.exists():
+                pytest.skip(f"Missing po/mo for {lang}")
+            po_mtime = po.stat().st_mtime
+            mo_mtime = mo.stat().st_mtime
+            # MO file should not be older than PO file (with 1s tolerance).
+            if mo_mtime < po_mtime - 1:
+                pytest.fail(
+                    f"{lang}/katrain.mo is older than katrain.po "
+                    f"({mo_mtime:.0f} < {po_mtime:.0f}). "
+                    f"Run `polib` (or `pybabel compile`) to refresh."
+                )
+
     def test_active_focus_keys_have_star_in_en(self, locale_dir):
-        """The 'active' variants mark the currently selected focus with a
-        star prefix so users see the active toggle at a glance."""
         locales = gettext.translation("katrain", str(locale_dir), languages=["en"])
         assert locales.gettext("focus:black-active").startswith("★")
         assert locales.gettext("focus:white-active").startswith("★")

@@ -65,6 +65,11 @@ class _SettingsPopupContext:
     selected_beginner_hints: list[bool]
     selected_format: list[str]
     selected_opp_info: list[str]
+    # Phase 248-B1: important-moves extraction level (easy/normal/strict).
+    # Drives the ``level`` argument of ``pick_important_moves`` /
+    # ``select_critical_moves`` so users can dial sensitivity up or
+    # down per their kyu/dan level.
+    selected_important_moves_level: list[str]
     # Phase 179: per-category summary hint toggles (all default True).
     selected_summary_mistake: list[bool]
     selected_summary_freedom: list[bool]

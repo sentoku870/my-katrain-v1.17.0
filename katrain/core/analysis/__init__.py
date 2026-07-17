@@ -94,6 +94,7 @@ from katrain.core.analysis.critical_moves import (
     CriticalMove,
     build_node_map,
     # Main function
+    compute_complexity_filter_stats,  # Phase 248-G2
     select_critical_moves,
     sort_key,
 )
@@ -503,6 +504,7 @@ __all__ = [
     "ComplexityFilterStats",  # Phase 83
     # Main function
     "select_critical_moves",
+    "compute_complexity_filter_stats",  # Phase 248-G2
     # Constants (for testing)
     "MEANING_TAG_WEIGHTS",
     "DEFAULT_MEANING_TAG_WEIGHT",

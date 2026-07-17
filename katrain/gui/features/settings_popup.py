@@ -116,6 +116,10 @@ def do_mykatrain_settings_popup(
         selected_curator_hint=[ctx.config("beginner_hints/curator_hint", True)],
         selected_format=[current_settings.get("karte_format", "both")],
         selected_opp_info=[current_settings.get("opponent_info_mode", "auto")],
+        # Phase 248-B1: important-moves level surfaced to the analysis
+        # tab. Falls back to "normal" so users with pre-248 configs
+        # (or empty string) get the historical behaviour.
+        selected_important_moves_level=[(current_settings.get("important_moves_level") or "normal")],
     )
 
     def register_searchable(label_text: str, *widgets: Any) -> None:
@@ -263,6 +267,8 @@ def do_mykatrain_settings_popup(
             # ``default_user_rank`` value (migration already folded it
             # into ``general/player_rank`` on popup open).
             "",
+            # Phase 248-B1: important-moves level from the analysis tab.
+            important_moves_level=state.selected_important_moves_level[0],
         )
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.

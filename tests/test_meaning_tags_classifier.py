@@ -743,5 +743,165 @@ class TestClassifyMeaningTagNoContext:
 
 
 # =============================================================================
+# Phase 248-A2: edge-case tests for previously-uncovered branches
+# =============================================================================
+
+
+class TestComputeMoveDistanceEdgeCases:
+    """Phase 248-A2: lock in edge cases in compute_move_distance
+    that were not exercised by the original test matrix.
+
+    These cover the early-exit branches at classifier.py:252-260:
+    - one or both coordinates are not classifiable (None / "" / "pass" / "resign")
+    - Move.from_gtp raises (malformed string)
+    """
+
+    def test_pass_as_best_returns_none(self) -> None:
+        """``best_gtp='pass'`` short-circuits to None (no distance defined)."""
+        assert compute_move_distance("pass", "D4") is None
+        assert compute_move_distance("PASS", "D4") is None  # case-insensitive
+
+    def test_pass_as_actual_returns_none(self) -> None:
+        """``actual_gtp='pass'`` short-circuits to None."""
+        assert compute_move_distance("D4", "pass") is None
+
+    def test_resign_returns_none(self) -> None:
+        """``resign`` is not a placed stone → None."""
+        assert compute_move_distance("resign", "D4") is None
+        assert compute_move_distance("D4", "resign") is None
+
+    def test_missing_returns_none(self) -> None:
+        """``None`` on either side returns None."""
+        assert compute_move_distance(None, "D4") is None
+        assert compute_move_distance("D4", None) is None
+        assert compute_move_distance(None, None) is None
+
+    def test_empty_string_returns_none(self) -> None:
+        """Empty string on either side returns None."""
+        assert compute_move_distance("", "D4") is None
+        assert compute_move_distance("D4", "") is None
+
+    def test_malformed_string_returns_none(self) -> None:
+        """A string Move.from_gtp can't parse → None (no exception leaks)."""
+        # "ZZ99" is not a valid GTP coordinate (col index 26 > T=19 for 19x19).
+        assert compute_move_distance("ZZ99", "D4") is None
+        assert compute_move_distance("D4", "ZZ99") is None
+        # Empty after strip is also invalid.
+        assert compute_move_distance("   ", "D4") is None
+
+
+class TestSingleTagFallbacks:
+    """Phase 248-A2: lock in priority 11b single-tag fallbacks.
+
+    The 11b rule fires when:
+    - loss >= THRESHOLD_LOSS_MEDIUM
+    - exactly one of {low_liberties, atari, need_connect, cut_risk} is set
+    - the others are not set (the (not flags.has_*) guards)
+
+    These paths were not covered by the existing TestClassifyMeaningTag*
+    matrix even though the priority chain is reached when no higher
+    priority matched.
+    """
+
+    def test_single_low_liberties_yields_reading_failure(self) -> None:
+        """``low_liberties`` alone (no atari/need_connect/cut_risk) → READING_FAILURE.
+
+        Note: this is a FALLBACK after the explicit READING_FAILURE priority-4
+        rule; we deliberately do not include ``reading_failure`` in the
+        reason_tags to avoid the priority-4 short-circuit.
+        """
+        move = MockMoveEval(
+            score_loss=THRESHOLD_LOSS_MEDIUM,
+            reason_tags=["low_liberties"],
+        )
+        tag = classify_meaning_tag(move)
+        assert tag.id == MeaningTagId.READING_FAILURE
+
+    def test_single_atari_yields_capture_race_loss_fallback(self) -> None:
+        """``atari`` alone (no semeai pattern, no other tactical) → CAPTURE_RACE_LOSS.
+
+        The priority-1 semeai rule (atari + low_liberties + large loss) is
+        bypassed because we have only ``atari`` here.
+        """
+        move = MockMoveEval(
+            score_loss=THRESHOLD_LOSS_MEDIUM,
+            reason_tags=["atari"],
+        )
+        tag = classify_meaning_tag(move)
+        # Single atari at medium loss: priority-1 needs *both* atari+low_liberties,
+        # so priority-11b fallback fires.
+        assert tag.id == MeaningTagId.CAPTURE_RACE_LOSS
+
+    def test_endgame_hint_alone_yields_endgame_slip(self) -> None:
+        """``endgame_hint`` alone (with in_endgame=True via the hint) → ENDGAME_SLIP.
+
+        ``is_endgame(30, total_moves=None, has_endgame_hint=True)`` returns
+        True via the early-out on has_endgame_hint. Then priority-8 fires
+        (THRESHOLD_LOSS_SMALL < loss < THRESHOLD_LOSS_HUGE).
+        """
+        # loss in (SMALL, HUGE) exclusive; SMALL=1.0, HUGE=8.0
+        move = MockMoveEval(
+            move_number=30,
+            score_loss=3.0,  # strictly between 1.0 and 8.0
+            reason_tags=["endgame_hint"],
+        )
+        tag = classify_meaning_tag(move)
+        assert tag.id == MeaningTagId.ENDGAME_SLIP
+
+    def test_endgame_hint_at_loss_boundary_returns_uncertain(self) -> None:
+        """``endgame_hint`` at SMALL boundary → priority-8 skipped (strict <),
+        11b skipped (in_endgame=True), returns UNCERTAIN.
+
+        Documents the subtle interaction: a single-tactical ``endgame_hint``
+        move at loss == THRESHOLD_LOSS_SMALL doesn't fire either branch.
+        """
+        move = MockMoveEval(
+            move_number=30,
+            score_loss=THRESHOLD_LOSS_SMALL,  # == SMALL, priority-8 needs strict <
+            reason_tags=["endgame_hint"],
+        )
+        tag = classify_meaning_tag(move)
+        # in_endgame is True (via endgame_hint), so 11b endgame branch
+        # also skips → nothing fires → UNCERTAIN.
+        assert tag.id == MeaningTagId.UNCERTAIN
+
+    def test_low_liberties_with_need_connect_no_fallback(self) -> None:
+        """low_liberties + need_connect → priority-3 fires, NOT 11b fallback.
+
+        Ensures the (not has_need_connect) guard in 11b is honored.
+        """
+        move = MockMoveEval(
+            score_loss=THRESHOLD_LOSS_MEDIUM,
+            reason_tags=["low_liberties", "need_connect"],
+        )
+        tag = classify_meaning_tag(move)
+        # priority-3 connection_miss fires first (need_connect + medium loss).
+        assert tag.id == MeaningTagId.CONNECTION_MISS
+
+    def test_atari_with_low_liberties_no_11b_fallback(self) -> None:
+        """atari + low_liberties → semeai (priority-1) fires, NOT 11b fallback.
+
+        The (not has_low_liberties) guard on the 11b atari branch.
+        """
+        move = MockMoveEval(
+            score_loss=THRESHOLD_LOSS_LARGE,
+            reason_tags=["atari", "low_liberties"],
+        )
+        tag = classify_meaning_tag(move)
+        # Priority-1 semeai pattern (atari + low_liberties + large loss).
+        assert tag.id == MeaningTagId.CAPTURE_RACE_LOSS
+
+    def test_below_threshold_loss_no_fallback(self) -> None:
+        """Below MEDIUM loss, the 11b fallback is skipped entirely."""
+        move = MockMoveEval(
+            score_loss=0.3,  # < THRESHOLD_LOSS_MEDIUM
+            reason_tags=["low_liberties"],
+        )
+        tag = classify_meaning_tag(move)
+        # 11b requires loss >= MEDIUM → falls through to UNCERTAIN.
+        assert tag.id == MeaningTagId.UNCERTAIN
+
+
+# =============================================================================
 # End of classifier tests
 # =============================================================================
