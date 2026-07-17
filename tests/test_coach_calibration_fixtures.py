@@ -32,8 +32,8 @@ from katrain.core.coach.symptom_index import SymptomId
 class TestFixturesSanity:
     def test_count(self):
         # Phase 228-D: 8 karte + 4 Shape A summary + 3 Shape B
-        # summary = 15 fixtures total
-        assert len(ALL_FIXTURES) == 15
+        # Phase 245: +1 (position_evaluation_distorted) → 16 fixtures
+        assert len(ALL_FIXTURES) == 16
 
     def test_all_names_unique(self):
         names = list(ALL_FIXTURES.keys())
@@ -64,7 +64,7 @@ class TestFixturesSanity:
         names = list_fixture_names()
         assert isinstance(names, tuple)
         # 8 karte + 7 summary (4 Shape A + 3 Shape B)
-        assert len(names) == 15
+        assert len(names) == 16
 
     def test_summary_fixtures_detected_as_summary(self):
         """Phase 227-E: the 4 summary fixtures should be detected as

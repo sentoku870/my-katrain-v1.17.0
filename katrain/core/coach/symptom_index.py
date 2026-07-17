@@ -658,8 +658,15 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         related_lexicon_ids=("score_lead", "winrate"),
         related_hint_category=None,
         difficulty_range=(CoachMode.DAN, CoachMode.EXPERT),
-        auto_detected=False,  # Computed at aggregate level, needs game-summary.
-        context_hint="複数局面の winrate/scoreLead 相関分析が必要（Phase 209.5 で実装検討）。",
+        # Phase 245: was False (placeholder). Now auto-detected via
+        # the aggregate-pattern path (karte_detector.
+        # detect_position_evaluation), which runs winrate/scoreLead
+        # correlation analysis on the whole game. ``detector`` stays
+        # None because the per-move detector path doesn't have the
+        # whole-game view; detect_symptoms_from_karte wires the
+        # aggregate result in.
+        auto_detected=True,
+        context_hint="Phase 245 で自動検出を実装。winrate/scoreLead 相関 |r| < 0.5 で発火。閾値の精緻化は Phase 246 で。",
     ),
     Symptom(
         id=SymptomId.RISK_MISCALIBRATION,
