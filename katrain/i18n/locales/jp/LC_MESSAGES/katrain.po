@@ -1619,6 +1619,9 @@ msgstr "現在: {level}（最大 {max_n} 件まで）"
 msgid "mykatrain:settings:pv_filter_marker_legend"
 msgstr "マーカー凡例: 赤い丸=高損失、橙=中、黄色=低損失、小さな丸=低visits (信頼度低)、青い枠=最善手（点数は次手=視点: の損失）"
 
+msgid "mykatrain:settings:pv_filter_kifunarabe_note"
+msgstr "※ 棋譜並べモード中は自動OFF（正解と AI 候補が必ず全件表示されます）"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 

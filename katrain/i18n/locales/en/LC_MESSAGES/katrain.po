@@ -1672,6 +1672,10 @@ msgstr ""
 "visits (less reliable); blue border=best move (loss is from the next-"
 "player's view)."
 
+msgid "mykatrain:settings:pv_filter_kifunarabe_note"
+msgstr ""
+"Note: disabled in Kifunarabe (棋譜並べ) mode — all options are always shown."
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
 

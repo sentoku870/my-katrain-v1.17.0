@@ -30,11 +30,15 @@ class PVFilterConfig:
         max_candidates: フィルタ後の最大候補手数（best_moveは別枠で上限外）
         max_points_lost: この値以下の損失の手のみ表示（<=比較）
         max_pv_length: この値以下のPV長の手のみ表示（<=比較）
+        loss_metric: Phase 246-D (L1)。"pointsLost" (絶対損失、次手視点)
+            または "relativePointsLost" (最善手との差) のどちらで判定するか。
+            デフォルトは "pointsLost" (Phase 11 からの挙動を保持)。
     """
 
     max_candidates: int
     max_points_lost: float
     max_pv_length: int
+    loss_metric: str = "pointsLost"  # Phase 246-D (L1)
 
 
 # PVFilterLevelごとのプリセット設定
@@ -54,17 +58,27 @@ PV_FILTER_CONFIGS: dict[str, PVFilterConfig] = {
         max_points_lost=1.0,
         max_pv_length=6,
     ),
+    # Phase 246-D (M2): "expert" tier sits between strong and what we
+    # would call "kifu-only". Pro-level reviewers want only the cleanest
+    # candidates: very low loss, short PV, very few shown.
+    "expert": PVFilterConfig(
+        max_candidates=3,
+        max_points_lost=0.5,
+        max_pv_length=4,
+    ),
 }
 
 # skill_preset から pv_filter_level へのマッピング（AUTO用）
 # skill_presetは「ミス判定の厳しさ」: 激甘=大きな損失のみ指摘、激辛=小さな損失も指摘
 # PVフィルタは逆方向: 激甘→候補手多め(WEAK)、激辛→候補手少なめ(STRONG)
+# Phase 246-D (M2): pro now maps to a tighter "expert" tier instead of
+# sharing the advanced bucket.
 SKILL_TO_PV_FILTER: dict[str, str] = {
     "relaxed": "weak",  # 激甘 → 候補手多め
     "beginner": "weak",  # 甘口 → 候補手多め
     "standard": "medium",  # 標準 → 標準
     "advanced": "strong",  # 辛口 → 候補手少なめ
-    "pro": "strong",  # 激辛 → 候補手少なめ
+    "pro": "expert",  # 激辛 → 候補手さらに少なめ (Phase 246-D M2)
 }
 
 DEFAULT_PV_FILTER_LEVEL = "auto"

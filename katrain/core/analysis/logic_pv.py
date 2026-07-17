@@ -31,13 +31,19 @@ from katrain.core.analysis.models import (
 def get_pv_filter_config(
     pv_filter_level: str,
     skill_preset: str = DEFAULT_SKILL_PRESET,
+    board_size: int | None = None,
 ) -> PVFilterConfig | None:
     """
     PVフィルタ設定を取得する。
 
     Args:
-        pv_filter_level: "off", "weak", "medium", "strong", "auto"
+        pv_filter_level: "off", "weak", "medium", "strong", "auto", "expert"
+            (Phase 246-D M2: added "expert" for pro skill_preset)
         skill_preset: AUTOモード時に参照するskill_preset名
+        board_size: 盤サイズ (Phase 246-D M1)。None または 0 の場合は
+            19路基準のデフォルト値そのまま。9/13路では max_pv_length を
+            線形縮小 (board_size / 19 倍) して、STRONG/EXPERT のような
+            厳しい閾値が 9路でほぼ全候補を除外してしまう問題を緩和する。
 
     Returns:
         PVFilterConfig または None（OFFの場合）
@@ -50,9 +56,40 @@ def get_pv_filter_config(
     if level == "auto":
         # skill_presetからpv_filter_levelを決定
         mapped_level = SKILL_TO_PV_FILTER.get(skill_preset, "medium")
-        return PV_FILTER_CONFIGS.get(mapped_level)
+        config = PV_FILTER_CONFIGS.get(mapped_level)
+        return _scale_for_board(config, board_size)
 
-    return PV_FILTER_CONFIGS.get(level)
+    config = PV_FILTER_CONFIGS.get(level)
+    return _scale_for_board(config, board_size)
+
+
+def _scale_for_board(
+    config: PVFilterConfig | None,
+    board_size: int | None,
+) -> PVFilterConfig | None:
+    """Phase 246-D (M1): scale ``max_pv_length`` linearly with board size.
+
+    19路ベースで設計された ``max_pv_length`` 閾値を 9路/13路で使うと
+    終盤で全候補が除外される問題があった (例: STRONG の 6手 PV は
+    9路では 1/3 局面程度しか残らない)。盤サイズに比例して縮小する
+    ことで、全サイズで「中盤の読み筋の複雑さ」を一貫した指標にする。
+
+    Returns a NEW PVFilterConfig (frozen dataclass) so the original
+    preset table is not mutated. Returns ``config`` unchanged when
+    ``board_size`` is missing / non-positive / not standard.
+    """
+    if config is None or not board_size or board_size < 5 or board_size > 25:
+        return config
+    if board_size == 19:
+        return config  # canonical, no scaling needed
+    # Linear scaling: 19路 → 1.0x, 9路 → 9/19 ≈ 0.47x.
+    # Round to int with min 1 so the threshold never collapses to 0.
+    scale = board_size / 19.0
+    return PVFilterConfig(
+        max_candidates=config.max_candidates,  # cap stays the same
+        max_points_lost=config.max_points_lost,  # loss threshold is board-agnostic
+        max_pv_length=max(1, round(config.max_pv_length * scale)),
+    )
 
 
 def filter_candidates_by_pv_complexity(
@@ -65,6 +102,7 @@ def filter_candidates_by_pv_complexity(
     データ仕様:
     - pv: 常にList[str]で存在（GTP座標の着手列）
     - pointsLost: 常に存在（game_node.pyで計算追加）
+    - relativePointsLost: Phase 182+ で追加 (best_move との差)
     - order: 常に存在（欠損時はADDITIONAL_MOVE_ORDER=999）
 
     上限ルール:
@@ -80,6 +118,13 @@ def filter_candidates_by_pv_complexity(
     """
     if not candidates:
         return []
+
+    # Phase 246-D (L1): choose which loss field drives the filter.
+    # Default ("pointsLost") is the absolute loss from next-player's view.
+    # "relativePointsLost" is the gap to the best move (best_move is
+    # always 0 in that field, so the threshold controls "how much worse
+    # than best is acceptable").
+    loss_key = getattr(config, "loss_metric", "pointsLost") or "pointsLost"
 
     # Step 1: order=0（最善手）を特定
     best_move = None
@@ -97,7 +142,7 @@ def filter_candidates_by_pv_complexity(
         # the ``<=`` comparison doesn't TypeError. Defensive against
         # half-populated analysis (e.g. a candidate without pointsLost
         # because KataGo only ran policy probing on that branch).
-        points_lost = c.get("pointsLost") or 0.0
+        points_lost = c.get(loss_key) or 0.0
         pv = c.get("pv") or []
         pv_length = len(pv)
 
@@ -111,11 +156,19 @@ def filter_candidates_by_pv_complexity(
     # same ``order`` (e.g. ``ADDITIONAL_MOVE_ORDER=999`` from a merged
     # analysis). Without this, ``sorted`` is stable but the input order
     # is dict-iteration order — not stable across runs.
+    #
+    # TODO (M3 follow-up): add a composite sort that combines
+    # pointsLost and pv_length via a weighted score, e.g.
+    # ``composite = pointsLost + alpha * (pv_length / max_pv_length)``.
+    # This would let users express "favour short PVs even at the cost
+    # of a slightly higher loss". Deferred from Phase 246-D — current
+    # behaviour matches Phase 11 expectations and the simple
+    # 3-key sort is enough for the boundary tests in 246-C.
     filtered = sorted(
         filtered,
         key=lambda c: (
             c.get("order", 999),
-            c.get("pointsLost", 0.0),
+            c.get(loss_key) or 0.0,
             -c.get("visits", 0),
         ),
     )

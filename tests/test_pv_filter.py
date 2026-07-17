@@ -123,10 +123,71 @@ class TestGetPVFilterConfig:
         assert config == strong_config
 
     def test_auto_with_pro(self):
-        """AUTO + pro → STRONG"""
+        """AUTO + pro → EXPERT (Phase 246-D M2 differentiation)."""
         config = get_pv_filter_config("auto", skill_preset="pro")
-        strong_config = get_pv_filter_config("strong")
-        assert config == strong_config
+        expert_config = get_pv_filter_config("expert")
+        assert config == expert_config
+
+    def test_expert_preset(self):
+        """Phase 246-D M2: 'expert' is a tighter tier than 'strong'."""
+        config = get_pv_filter_config("expert")
+        assert config is not None
+        assert config.max_candidates == 3
+        assert config.max_points_lost == 0.5
+        assert config.max_pv_length == 4
+        # And stricter than strong
+        strong = get_pv_filter_config("strong")
+        assert config.max_candidates <= strong.max_candidates
+        assert config.max_points_lost <= strong.max_points_lost
+        assert config.max_pv_length <= strong.max_pv_length
+
+    def test_board_size_19_no_scaling(self):
+        """Phase 246-D M1: 19路 board keeps the canonical config."""
+        config_default = get_pv_filter_config("strong")
+        config_19 = get_pv_filter_config("strong", board_size=19)
+        assert config_19 == config_default
+
+    def test_board_size_9_scales_pv_length_down(self):
+        """9路 board scales max_pv_length linearly (9/19 ≈ 0.47x)."""
+        config_19 = get_pv_filter_config("strong", board_size=19)
+        config_9 = get_pv_filter_config("strong", board_size=9)
+        # strong.max_pv_length=6 → 6 * 9/19 ≈ 2.84 → 3
+        assert config_9.max_pv_length == 3
+        # Other fields unchanged
+        assert config_9.max_candidates == config_19.max_candidates
+        assert config_9.max_points_lost == config_19.max_points_lost
+
+    def test_board_size_13_scales_between_9_and_19(self):
+        """13路 board scales between 9路 and 19路."""
+        config_9 = get_pv_filter_config("strong", board_size=9)
+        config_13 = get_pv_filter_config("strong", board_size=13)
+        config_19 = get_pv_filter_config("strong", board_size=19)
+        assert config_9.max_pv_length < config_13.max_pv_length < config_19.max_pv_length
+
+    def test_board_size_none_uses_canonical(self):
+        """No board_size → canonical config (backwards compatible)."""
+        config = get_pv_filter_config("strong", board_size=None)
+        config_default = get_pv_filter_config("strong")
+        assert config == config_default
+
+    def test_board_size_invalid_falls_back_to_canonical(self):
+        """Invalid board_size (0, negative, too large) → canonical."""
+        for bad_size in [0, -5, 4, 99]:
+            config = get_pv_filter_config("strong", board_size=bad_size)
+            config_default = get_pv_filter_config("strong")
+            assert config == config_default
+
+    def test_board_size_scaling_keeps_minimum_1(self):
+        """Even on tiny boards, max_pv_length never collapses to 0."""
+        config = get_pv_filter_config("expert", board_size=5)
+        assert config.max_pv_length >= 1  # never zero
+
+    def test_expert_appears_in_pv_filter_configs(self):
+        """Phase 246-D M2: 'expert' is now a valid preset."""
+        from katrain.core.analysis.models import PV_FILTER_CONFIGS
+
+        assert "expert" in PV_FILTER_CONFIGS
+        assert PV_FILTER_CONFIGS["expert"].max_candidates == 3
 
     def test_unknown_level_returns_none(self):
         """不明なレベルはNoneを返す"""
@@ -277,16 +338,17 @@ class TestConstants:
         assert DEFAULT_PV_FILTER_LEVEL == "auto"
 
     def test_skill_to_pv_filter_mapping(self):
-        """skill_preset → pv_filterマッピングの確認"""
+        """skill_preset → pv_filterマッピングの確認 (Phase 246-D M2)"""
         assert SKILL_TO_PV_FILTER["relaxed"] == "weak"
         assert SKILL_TO_PV_FILTER["beginner"] == "weak"
         assert SKILL_TO_PV_FILTER["standard"] == "medium"
         assert SKILL_TO_PV_FILTER["advanced"] == "strong"
-        assert SKILL_TO_PV_FILTER["pro"] == "strong"
+        # Phase 246-D M2: pro now maps to a tighter "expert" tier
+        assert SKILL_TO_PV_FILTER["pro"] == "expert"
 
     def test_pv_filter_configs_keys(self):
-        """PV_FILTER_CONFIGSのキー確認"""
-        assert set(PV_FILTER_CONFIGS.keys()) == {"weak", "medium", "strong"}
+        """PV_FILTER_CONFIGSのキー確認 (Phase 246-D M2)"""
+        assert set(PV_FILTER_CONFIGS.keys()) == {"weak", "medium", "strong", "expert"}
 
     def test_pv_filter_level_enum(self):
         """PVFilterLevel Enumの値確認"""
@@ -393,12 +455,13 @@ class TestGetEffectivePVFilterInfo:
         with pytest.raises(Exception):
             info.effective_level = "off"  # type: ignore[misc]
 
-    def test_auto_pro_maps_to_strong(self):
-        """AUTO + pro → strong (pro is mapped to strong today, M2 future)."""
+    def test_auto_pro_maps_to_expert(self):
+        """AUTO + 9d (pro tier) → expert (Phase 246-D M2 differentiation)."""
         info = get_effective_pv_filter_info("auto", "9d")
-        # 9d is mapped via rank_to_skill_preset; verify resolution flows.
+        # 9d is mapped to "pro" preset, which now → "expert"
+        assert info.effective_level == "expert"
+        assert info.max_candidates == 3
         assert info.is_auto is True
-        assert info.effective_level in {"weak", "medium", "strong"}
 
 
 # =============================================================================
@@ -539,3 +602,78 @@ class TestFilterBoundaryRobustness:
         )
         # Both pass: best_move is always kept, and 0-length PV is <= 6
         assert len(result) == 2
+
+
+# =============================================================================
+# Phase 246-D (L1): loss_metric (pointsLost vs relativePointsLost)
+# =============================================================================
+
+
+FIXTURE_RELATIVE_LOSS = [
+    # best_move is order=0, always kept.
+    # Others carry both pointsLost (absolute, next-player view) and
+    # relativePointsLost (gap to best move). The two diverge in
+    # mid-game positions where the side-to-play already has a lead.
+    {"order": 0, "pointsLost": 0.0, "relativePointsLost": 0.0, "pv": ["A1"], "move": "A1"},
+    {"order": 1, "pointsLost": 0.5, "relativePointsLost": 0.5, "pv": ["B2"], "move": "B2"},
+    {"order": 2, "pointsLost": 1.5, "relativePointsLost": 0.2, "pv": ["C3"], "move": "C3"},
+    {"order": 3, "pointsLost": 0.8, "relativePointsLost": 2.0, "pv": ["D4"], "move": "D4"},
+]
+
+
+class TestFilterLossMetric:
+    """Phase 246-D (L1): ``PVFilterConfig.loss_metric`` selects the field
+    the loss threshold compares against."""
+
+    def test_default_metric_is_points_lost(self):
+        """Backwards compatibility: default loss_metric is 'pointsLost'."""
+        config = PV_FILTER_CONFIGS["strong"]
+        assert config.loss_metric == "pointsLost"
+
+    def test_points_lost_metric_filters_by_absolute(self):
+        config = PVFilterConfig(
+            max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="pointsLost"
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_RELATIVE_LOSS, config)
+        # best_move (order=0) always kept
+        # order=1 (pointsLost=0.5 ≤ 1.0) kept
+        # order=2 (pointsLost=1.5 > 1.0) DROPPED
+        # order=3 (pointsLost=0.8 ≤ 1.0) kept
+        assert len(result) == 3
+        assert [c["order"] for c in result] == [0, 1, 3]
+
+    def test_relative_points_lost_metric_filters_by_gap(self):
+        config = PVFilterConfig(
+            max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="relativePointsLost"
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_RELATIVE_LOSS, config)
+        # best_move (order=0) always kept
+        # order=1 (relative=0.5 ≤ 1.0) kept
+        # order=2 (relative=0.2 ≤ 1.0) KEPT (this is the point of L1)
+        # order=3 (relative=2.0 > 1.0) DROPPED
+        assert len(result) == 3
+        assert [c["order"] for c in result] == [0, 1, 2]
+
+    def test_unknown_metric_falls_back_to_points_lost(self):
+        """Defensive: an unrecognised metric name falls back to the
+        default (pointsLost) rather than dropping all candidates."""
+        config = PVFilterConfig(
+            max_candidates=10, max_points_lost=1.0, max_pv_length=20, loss_metric="mystery_metric"
+        )
+        # The function uses getattr with default, so unknown key reads
+        # ``None`` from each candidate, gets coerced to 0.0 — i.e. all
+        # candidates pass the loss threshold. This is the same
+        # "defensive" behavior the None-case test in 246-C established.
+        result = filter_candidates_by_pv_complexity(FIXTURE_RELATIVE_LOSS, config)
+        # All 4 pass (0 <= 1.0 for every candidate's missing key)
+        assert len(result) == 4
+
+    def test_relative_metric_keeps_best_move_zero(self):
+        """Sanity: best_move (order=0) always passes regardless of metric."""
+        config = PVFilterConfig(
+            max_candidates=10, max_points_lost=0.0, max_pv_length=20, loss_metric="relativePointsLost"
+        )
+        result = filter_candidates_by_pv_complexity(FIXTURE_RELATIVE_LOSS, config)
+        # Only best_move survives the very strict 0.0 threshold
+        assert len(result) == 1
+        assert result[0]["order"] == 0

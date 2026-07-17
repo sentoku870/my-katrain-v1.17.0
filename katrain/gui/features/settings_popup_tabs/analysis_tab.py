@@ -259,6 +259,24 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
     legend_label.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
     inner.add_widget(legend_label)
 
+    # Phase 246-D (H4): kifunarabe-mode bypass note. Pinned here so
+    # users aren't confused when their STRONG filter "stops working"
+    # mid-puzzle. The runtime bypass is in ``prepare_hint_moves``;
+    # this label is the user-facing explanation.
+    kifu_note = Label(
+        text=i18n._("mykatrain:settings:pv_filter_kifunarabe_note"),
+        size_hint_y=None,
+        height=dp(32),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="11sp",
+    )
+    kifu_note.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
+    kifu_note.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
+    inner.add_widget(kifu_note)
+
 
 def _format_pv_filter_status(pv_filter_level: str, player_rank: str) -> str:
     """Render the "現在: MEDIUM (最大 8 件)" string for the PV filter row.
