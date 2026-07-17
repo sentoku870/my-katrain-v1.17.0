@@ -450,9 +450,7 @@ def _weaknesses_meta_for(
     # weakness aggregation actually emitted for this player. The
     # set-membership check is the inner loop's hot path, so we want
     # O(1) lookup rather than the previous O(M) linear scan per move.
-    weakness_keys: set[tuple[str, str]] = {
-        (w["phase"], w["category"]) for w in weakness_items
-    }
+    weakness_keys: set[tuple[str, str]] = {(w["phase"], w["category"]) for w in weakness_items}
 
     covered_loss = 0.0
     covered_count = 0
