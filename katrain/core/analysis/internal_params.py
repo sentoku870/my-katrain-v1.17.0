@@ -182,7 +182,6 @@ def _apply_overrides(overrides: dict[str, float]) -> InternalParams:
     everything else) without resorting to ``cast`` calls at the
     call site.
     """
-    base = get_default_internal_params()
     kwargs: dict[str, float | int] = {}
     for field, value in overrides.items():
         if field.endswith("_visits"):
