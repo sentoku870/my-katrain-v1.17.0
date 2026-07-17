@@ -90,13 +90,16 @@ DEFAULT_INTERNAL_PARAMS = InternalParams()
 
 # Per-field bounds. Out-of-range values in user config silently snap
 # back to the defaults so a typo cannot crash the GUI.
-_INTERNAL_PARAM_BOUNDS: dict[str, tuple[float | int, float | int]] = {
+# Stored as (lo, hi) float pairs; int fields are compared as floats
+# (Python's int < float is well-defined and the int values we
+# compare against are small enough that no precision is lost).
+_INTERNAL_PARAM_BOUNDS: dict[str, tuple[float, float]] = {
     "threshold_score_stdev_chaos": (1.0, 100.0),
     "complexity_discount_factor": (0.05, 1.0),
     "diversity_penalty_factor": (0.50, 1.00),
     "min_loss_display": (0.0, 5.0),
-    "beginner_hint_min_visits": (1, 1000),
-    "katago_uncertain_min_visits": (1, 2000),
+    "beginner_hint_min_visits": (1.0, 1000.0),
+    "katago_uncertain_min_visits": (1.0, 2000.0),
 }
 
 
@@ -118,7 +121,7 @@ def get_default_internal_params() -> InternalParams:
     return InternalParams()
 
 
-def resolve_internal_params(mykatrain_settings: dict | None) -> InternalParams:
+def resolve_internal_params(mykatrain_settings: dict | None) -> InternalParams:  # type: ignore[type-arg]
     """Resolve :class:`InternalParams` from a ``mykatrain_settings`` config dict.
 
     Resolution rules (all permissive, all silent on failure):
@@ -144,7 +147,11 @@ def resolve_internal_params(mykatrain_settings: dict | None) -> InternalParams:
     if not isinstance(raw, dict):
         return get_default_internal_params()
 
-    overrides: dict[str, float | int] = {}
+    # We accumulate all parsed values as floats (Python's int→float
+    # coercion is exact for the small visit counts we compare against).
+    # The :class:`InternalParams` constructor is then called with the
+    # right int / float per field via :func:`_apply_overrides`.
+    overrides: dict[str, float] = {}
     for field in _FIELDS:
         if field not in raw:
             continue
@@ -152,7 +159,7 @@ def resolve_internal_params(mykatrain_settings: dict | None) -> InternalParams:
         # Type check
         is_int_field = field.endswith("_visits")
         try:
-            parsed: float | int = int(value) if is_int_field else float(value)
+            parsed: float = float(int(value)) if is_int_field else float(value)
         except (TypeError, ValueError):
             continue
         # Range check
@@ -164,7 +171,25 @@ def resolve_internal_params(mykatrain_settings: dict | None) -> InternalParams:
     if not overrides:
         return get_default_internal_params()
 
-    return InternalParams(**overrides)
+    return _apply_overrides(overrides)
+
+
+def _apply_overrides(overrides: dict[str, float]) -> InternalParams:
+    """Build an :class:`InternalParams` from a float-typed overrides dict.
+
+    Centralised here so mypy can verify each field is passed as the
+    right concrete type (``int`` for visit gates, ``float`` for
+    everything else) without resorting to ``cast`` calls at the
+    call site.
+    """
+    base = get_default_internal_params()
+    kwargs: dict[str, float | int] = {}
+    for field, value in overrides.items():
+        if field.endswith("_visits"):
+            kwargs[field] = int(value)
+        else:
+            kwargs[field] = float(value)
+    return InternalParams(**kwargs)  # type: ignore[arg-type]
 
 
 __all__ = [
