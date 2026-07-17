@@ -362,6 +362,14 @@ docs/
   - **Deferred (別フェーズで着手)**: L5 (キャッシュ)、L6 (live preview)、M3 (composite sort)、H3 (position-aware preview)
   - **CI 修正ラウンド 3 回**: typecheck (Phase 246-A フィールド追加) → lint I001 (import 順序) → ruff format (2 ファイル整形)
   - **マージ後 main 確認**: 111 unit tests pass
+- 2026-07-17: **Phase 247 — Deferred 候補手フィルター 4 件 着手**（Lv3、PR #405 マージ済み、CI 全 green）
+  - **問題**: Phase 246 で deferred していた L5 / H3 / L6 / M3 の 4 課題
+  - **247-A (L5)**: `resolve_pv_filter_config_cached` を `@functools.lru_cache(maxsize=32)` で実装。`prepare_hint_moves` 内のホットパス最適化、10 unit tests
+  - **247-B (H3)**: `PVFilterPreview` frozen dataclass + `compute_pv_filter_preview(node, config, in_kifu)` ヘルパー追加。`prepare_hint_moves` が `widget.last_pv_filter_preview` に cache。設定 popup の status label 直下に preview label を追加して N → M をライブ表示、10 unit tests
+  - **247-C (L6)**: `panels.kv` に `pv_filter_preview` Label 追加 (status ボックスの直下)。`ControlsPanel.update_evaluation` で毎フレーム更新。H3 と同じ cache を読み取ってコントロールパネル幅に収まる compact 表示、i18n 2 キー追加
+  - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
+  - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク
+  - **累計**: 4 コミット / +860 行、28 新規 unit tests、全 140 件 pass
 - 2026-07-17: **Phase 242 — LLM Coach 品質改善 統合改修**（Lv3、11 ファイル新規/修正 + 約 +350 行 / -120 行、計 926 件テスト合格）
   - **問題**: `docs/ideas/phase242-llm-coach-audit.md` の調査で LLM Coach 機能に 40 件以上の問題・改善余地を発見。優先度高の 5 件を統合改修
   - **242-A**: Kansai 辞書 3 系統同期 (`_KANSAI_DICTIONARY` ↔ `_KANSAI_NORMALISATION_PAIRS` ↔ `_AYAKA_MARKERS`) — 〜-prefixed パターンを NORM に展開、`ほんまに` を markers に追加、6 ファイル + 6 unit tests
