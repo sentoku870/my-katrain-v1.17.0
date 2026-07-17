@@ -21,7 +21,8 @@
         "lang": "en",
         "version": "1.17.0",
         "load_fast_analysis": false,
-        "load_sgf_rewind": true
+        "load_sgf_rewind": true,
+        "pv_filter_level": "auto"
     },
     "timer": {
         "byo_length": 30,

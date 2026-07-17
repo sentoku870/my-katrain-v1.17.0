@@ -32,6 +32,7 @@ def get_pv_filter_config(
     pv_filter_level: str,
     skill_preset: str = DEFAULT_SKILL_PRESET,
     board_size: int | None = None,
+    player_rank: str | None = None,
 ) -> PVFilterConfig | None:
     """
     PVフィルタ設定を取得する。
@@ -39,11 +40,17 @@ def get_pv_filter_config(
     Args:
         pv_filter_level: "off", "weak", "medium", "strong", "auto", "expert"
             (Phase 246-D M2: added "expert" for pro skill_preset)
-        skill_preset: AUTOモード時に参照するskill_preset名
+        skill_preset: AUTOモード時に参照するskill_preset名。
+            ``player_rank`` が指定された場合は上書きされる (Phase 246-E L7
+            API 統一: ``rank_to_skill_preset`` 経由で自動推定)。
         board_size: 盤サイズ (Phase 246-D M1)。None または 0 の場合は
             19路基準のデフォルト値そのまま。9/13路では max_pv_length を
             線形縮小 (board_size / 19 倍) して、STRONG/EXPERT のような
             厳しい閾値が 9路でほぼ全候補を除外してしまう問題を緩和する。
+        player_rank: Phase 246-E (L7) で追加。``pv_filter_level="auto"``
+            かつ ``skill_preset`` が DEFAULT の場合、``player_rank`` から
+            自動推定する口。``resolve_skill_preset`` 経由の呼び出しを
+            ここに集約することで、呼び出し側の boilerplate を削減する。
 
     Returns:
         PVFilterConfig または None（OFFの場合）
@@ -54,6 +61,13 @@ def get_pv_filter_config(
         return None
 
     if level == "auto":
+        # Phase 246-E (L7): if caller passes player_rank, derive
+        # the preset on their behalf. Lazy import to avoid the
+        # module-level cycle with logic_skill.
+        if player_rank:
+            from katrain.core.analysis.logic_skill import rank_to_skill_preset
+
+            skill_preset = rank_to_skill_preset(player_rank)
         # skill_presetからpv_filter_levelを決定
         mapped_level = SKILL_TO_PV_FILTER.get(skill_preset, "medium")
         config = PV_FILTER_CONFIGS.get(mapped_level)

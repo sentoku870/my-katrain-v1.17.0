@@ -199,11 +199,16 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
         # Phase 246-D (M1): pass board_size so the PV-length threshold
         # scales down for 9/13路 boards. Otherwise STRONG/EXPERT would
         # drop nearly all candidates on small boards.
+        # Phase 246-E (L7): pass player_rank so the API can resolve the
+        # preset internally — the manual ``resolve_skill_preset`` call
+        # above is kept for back-compat with the analysis-side code.
         board_size_x, _ = katrain.game.board_size
+        player_rank = katrain.config("general/player_rank")
         pv_filter_config = get_pv_filter_config(
             pv_filter_level,
             skill_preset=skill_preset,
             board_size=board_size_x,
+            player_rank=player_rank,
         )
         if pv_filter_config is not None:
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)

@@ -189,6 +189,35 @@ class TestGetPVFilterConfig:
         assert "expert" in PV_FILTER_CONFIGS
         assert PV_FILTER_CONFIGS["expert"].max_candidates == 3
 
+    def test_player_rank_overrides_skill_preset_in_auto(self):
+        """Phase 246-E L7: when player_rank is passed and level='auto',
+        the function derives the preset from rank itself, ignoring the
+        skill_preset argument."""
+        # 7d → pro → expert
+        config = get_pv_filter_config("auto", skill_preset="beginner", player_rank="7d")
+        expert = get_pv_filter_config("expert")
+        assert config == expert
+
+    def test_player_rank_empty_falls_back_to_skill_preset(self):
+        """Phase 246-E L7: empty player_rank keeps the skill_preset."""
+        config = get_pv_filter_config("auto", skill_preset="standard", player_rank="")
+        medium = get_pv_filter_config("medium")
+        assert config == medium
+
+    def test_player_rank_kanji_works(self):
+        """Phase 246-E L7: kanji ranks also resolve correctly."""
+        # 6段 → pro → expert
+        config = get_pv_filter_config("auto", skill_preset="beginner", player_rank="6段")
+        expert = get_pv_filter_config("expert")
+        assert config == expert
+
+    def test_explicit_level_ignores_player_rank(self):
+        """Phase 246-E L7: player_rank only affects AUTO mode."""
+        # player_rank is irrelevant when level is explicit
+        config = get_pv_filter_config("medium", skill_preset="pro", player_rank="7d")
+        medium = get_pv_filter_config("medium")
+        assert config == medium
+
     def test_unknown_level_returns_none(self):
         """不明なレベルはNoneを返す"""
         assert get_pv_filter_config("unknown") is None
