@@ -538,7 +538,11 @@ class LLMCoachPopupContent(BoxLayout):
         # headless CI. The popup only keeps the ``default_user_matched``
         # aware index selection below.
         players_raw = info.get("all_players", []) or []
-        player_pairs = [(p.get("name"), p.get("rank")) for p in players_raw if isinstance(p, dict) and p.get("name")]
+        player_pairs: list[tuple[str, str | None]] = [
+            (str(p["name"]), p.get("rank"))  # type: ignore[arg-type]
+            for p in players_raw
+            if isinstance(p, dict) and p.get("name")
+        ]
         matched = info.get("matched_player", {}) or {}
         matched_name = matched.get("name") if isinstance(matched, dict) else None
         self.summary_players = player_pairs
