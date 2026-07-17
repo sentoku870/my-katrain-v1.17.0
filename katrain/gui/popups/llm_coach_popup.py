@@ -245,7 +245,21 @@ class LLMCoachPopupContent(BoxLayout):
         # Phase 227-D: ensure the type detection has run before we
         # try to dispatch. If the path is unreadable, fall back to
         # karte behaviour.
-        self._detect_path_type(karte_path)
+        #
+        # Phase 241-B (revised): only re-detect when ``self.path_type``
+        # is unset. The previous logic always re-detected, which
+        # overwrote the user's spinner choice in
+        # ``_populate_summary_perspective`` (Phase 231-E) and also
+        # forced tests that pre-set ``path_type = "karte"`` to hit the
+        # unknown-path guard because the test JSONs use minimal stub
+        # data that doesn't match the strict karte/summary detector.
+        # ``on_kv_post`` already calls ``_refresh_type_label`` (which
+        # runs the detector) at 0.4s, so by the time this method runs
+        # the type is normally already cached. Re-detecting here is
+        # only needed when the path was set manually (e.g. via the
+        # ``on_path_changed`` callback that also calls this method).
+        if self.path_type == "unknown":
+            self._detect_path_type(karte_path)
         if self.path_type == "summary":
             self._populate_summary_perspective(karte_path, default_user, default_user_rank)
             return
