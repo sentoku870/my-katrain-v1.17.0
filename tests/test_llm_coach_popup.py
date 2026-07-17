@@ -434,19 +434,29 @@ class TestOnCopyResult:
 
 
 class TestPopulateInitialKartePath:
+    """Phase 239: the popup switched from ``find_latest_karte`` (karte-only)
+    to ``find_latest_llm_input_for_ctx`` (karte + summary both). The tests
+    here patch the new entry point."""
+
     def test_no_op_when_input_already_set(self) -> None:
         content = _make_content()
         content.karte_path_input.text = "/already.json"
-        with patch("katrain.gui.features.llm_coach.find_latest_karte", return_value="/latest.json") as spy:
+        with patch(
+            "katrain.gui.features.llm_coach.find_latest_llm_input_for_ctx",
+            return_value="/latest.json",
+        ) as spy:
             content._populate_initial_karte_path()
-        # Should not call find_latest_karte nor change the text
+        # Should not call find_latest_llm_input_for_ctx nor change the text
         spy.assert_not_called()
         assert content.karte_path_input.text == "/already.json"
 
     def test_fills_path_when_empty(self) -> None:
         content = _make_content()
         content.karte_path_input.text = ""
-        with patch("katrain.gui.features.llm_coach.find_latest_karte", return_value="/latest.json"):
+        with patch(
+            "katrain.gui.features.llm_coach.find_latest_llm_input_for_ctx",
+            return_value="/latest.json",
+        ):
             content._populate_initial_karte_path()
         # MagicMock's text setter doesn't reflect back into .text; we
         # only verify the call happened via the patched side effect.
@@ -458,7 +468,10 @@ class TestPopulateInitialKartePath:
     def test_no_karte_found_leaves_input_empty(self) -> None:
         content = _make_content()
         content.karte_path_input.text = ""
-        with patch("katrain.gui.features.llm_coach.find_latest_karte", return_value=None):
+        with patch(
+            "katrain.gui.features.llm_coach.find_latest_llm_input_for_ctx",
+            return_value=None,
+        ):
             content._populate_initial_karte_path()
         assert content.karte_path_input.text == ""
 

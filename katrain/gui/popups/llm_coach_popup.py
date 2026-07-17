@@ -171,9 +171,12 @@ class LLMCoachPopupContent(BoxLayout):
         if self.karte_path_input.text:
             return  # user typed something already
         try:
-            from katrain.gui.features.llm_coach import find_latest_karte
+            # Phase 239: switched from ``find_latest_karte`` (karte-only)
+            # to ``find_latest_llm_input_for_ctx`` (karte + summary both)
+            # so the popup auto-fills the right file type after Phase 227-D.
+            from katrain.gui.features.llm_coach import find_latest_llm_input_for_ctx
 
-            latest = find_latest_karte(self.katrain) if self.katrain is not None else None
+            latest = find_latest_llm_input_for_ctx(self.katrain) if self.katrain is not None else None
         except Exception:
             latest = None
         if latest is not None:

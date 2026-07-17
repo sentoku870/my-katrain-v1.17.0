@@ -244,13 +244,18 @@ class TestRenderValidationReport:
 
 
 # --- find_latest_karte -------------------------------------------------
+# Phase 239: ``find_latest_karte`` is now deprecated. The tests still
+# exercise the legacy function for backward compatibility but suppress
+# the ``DeprecationWarning`` so the test suite stays green. New code
+# should call ``find_latest_llm_input_for_ctx`` instead.
 
 
 class TestFindLatestKarte:
     def test_returns_none_when_output_dir_missing(self, tmp_path: Path) -> None:
         ctx = MagicMock()
         ctx.config.return_value = {"karte_output_directory": str(tmp_path / "no-such-dir")}
-        assert llm_coach.find_latest_karte(ctx) is None
+        with pytest.warns(DeprecationWarning, match="find_latest_karte is deprecated"):
+            assert llm_coach.find_latest_karte(ctx) is None
 
     def test_returns_latest_karte_json(self, tmp_path: Path) -> None:
         (tmp_path / "karte_old.json").write_text("{}", encoding="utf-8")
@@ -263,7 +268,8 @@ class TestFindLatestKarte:
         os.utime(latest, (2000, 2000))
 
         ctx = _fake_ctx(tmp_path)
-        result = llm_coach.find_latest_karte(ctx)
+        with pytest.warns(DeprecationWarning, match="find_latest_karte is deprecated"):
+            result = llm_coach.find_latest_karte(ctx)
         assert result is not None
         assert result.name == "karte_new.json"
 
@@ -271,13 +277,15 @@ class TestFindLatestKarte:
         (tmp_path / "summary_x.json").write_text("{}", encoding="utf-8")
         (tmp_path / "karte_y.json").write_text("{}", encoding="utf-8")
         ctx = _fake_ctx(tmp_path)
-        result = llm_coach.find_latest_karte(ctx)
+        with pytest.warns(DeprecationWarning, match="find_latest_karte is deprecated"):
+            result = llm_coach.find_latest_karte(ctx)
         assert result is not None
         assert result.name.startswith("karte_")
 
     def test_returns_none_when_no_reports(self, tmp_path: Path) -> None:
         ctx = _fake_ctx(tmp_path)
-        assert llm_coach.find_latest_karte(ctx) is None
+        with pytest.warns(DeprecationWarning, match="find_latest_karte is deprecated"):
+            assert llm_coach.find_latest_karte(ctx) is None
 
 
 # ---- detect_player_info / detect_player_color_for_user (Phase 225.6) --
