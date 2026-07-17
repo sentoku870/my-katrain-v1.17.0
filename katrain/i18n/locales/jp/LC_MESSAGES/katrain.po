@@ -1916,6 +1916,12 @@ msgstr "Critical 3 件数:"
 msgid "mykatrain:settings:critical_3_max_moves_desc"
 msgstr "Karte の critical_3 セクションに表示する 1 プレイヤーあたりの重要局面数 (1-10)"
 
+msgid "mykatrain:settings:advanced_params"
+msgstr "上級者向けパラメータ (JSON 直接編集):"
+
+msgid "mykatrain:settings:advanced_params_desc"
+msgstr "重要局面抽出の感度パラメータ。\"advanced_params\": { \"threshold_score_stdev_chaos\": 20.0, ... } の形で mykatrain_settings 配下に記述。範囲外の値は自動的にデフォルトにスナップバック。"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

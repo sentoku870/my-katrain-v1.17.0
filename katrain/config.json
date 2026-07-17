@@ -178,7 +178,8 @@
         "batch_export_input_directory": "",
         "karte_format": "both",
         "important_moves_level": "normal",
-        "critical_3_max_moves": 3
+        "critical_3_max_moves": 3,
+        "advanced_params": {}
     },
     "export_settings": {},
     "ui_state": {
