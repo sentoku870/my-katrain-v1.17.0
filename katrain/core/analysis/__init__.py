@@ -99,6 +99,14 @@ from katrain.core.analysis.critical_moves import (
     sort_key,
 )
 
+# Phase 248-B3: advanced parameter resolver
+from katrain.core.analysis.internal_params import (  # noqa: E402
+    DEFAULT_INTERNAL_PARAMS,
+    InternalParams,
+    get_default_internal_params,
+    resolve_internal_params,
+)
+
 # =============================================================================
 # Explicit imports from logic.py
 # =============================================================================
@@ -505,6 +513,11 @@ __all__ = [
     # Main function
     "select_critical_moves",
     "compute_complexity_filter_stats",  # Phase 248-G2
+    # Phase 248-B3: advanced parameter resolver
+    "InternalParams",
+    "DEFAULT_INTERNAL_PARAMS",
+    "get_default_internal_params",
+    "resolve_internal_params",
     # Constants (for testing)
     "MEANING_TAG_WEIGHTS",
     "DEFAULT_MEANING_TAG_WEIGHT",

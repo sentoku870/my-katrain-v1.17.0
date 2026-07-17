@@ -1990,6 +1990,16 @@ msgstr ""
 "How many critical moves to show per player in the Karte critical_3 "
 "section (1-10). Default 3 (Phase 50 baseline)."
 
+msgid "mykatrain:settings:advanced_params"
+msgstr "Advanced parameters (JSON, edit manually):"
+
+msgid "mykatrain:settings:advanced_params_desc"
+msgstr ""
+"Tune the sensitivity of the important-move extraction. Add an "
+"\"advanced_params\" object under mykatrain_settings and set any of "
+"the known keys (see docs/usage-guide.md). Out-of-range values snap "
+"back to the defaults."
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 
