@@ -31,6 +31,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from katrain.common.rank import canonical_rank_key
 from katrain.core.coach.karte_detector import detect_symptoms_from_karte
 from katrain.core.coach.lexicon import get_entry
 from katrain.core.coach.llm_validator import validate_llm_output
@@ -94,6 +95,49 @@ def _load_karte(path: Path) -> dict[str, Any]:
             file=sys.stderr,
         )
     return data
+
+
+def _validate_rank_arg(rank: str | None) -> str | None:
+    """Validate / canonicalise the ``--rank`` CLI argument (Phase 240).
+
+    Returns:
+        - ``None`` when the user did not pass ``--rank`` (default behaviour).
+        - The canonical ASCII key (e.g. ``"5k"`` / ``"4d"``) when the
+          input matches :data:`_RANK_ALIASES` or :data:`_RANK_ORDER`
+          after the standard normalisation (kanji, full-width, aliases
+          like ``"10段" → "9d"``).
+        - Raises ``SystemExit`` with a usage message when the input is
+          non-empty but does not match any known rank notation. This
+          guards against typos that would otherwise be forwarded as
+          garbage to the LLM prompt and produce a confused review.
+
+    Examples:
+        >>> _validate_rank_arg(None)
+        None
+        >>> _validate_rank_arg("5k")
+        '5k'
+        >>> _validate_rank_arg("4段")
+        '4d'
+        >>> _validate_rank_arg("10段")  # alias for 9d
+        '9d'
+        >>> _validate_rank_arg("")       # treated as "not provided"
+        None
+    """
+    if rank is None:
+        return None
+    stripped = rank.strip()
+    if not stripped:
+        return None
+    key = canonical_rank_key(stripped)
+    if not key:
+        print(
+            f"❌ Invalid --rank '{rank}'. "
+            f"Expected formats: '5k', '4d', '5段', '10級', "
+            f"'beginner' / 'standard' / 'advanced' / 'expert' / 'master' / 'dan', etc.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    return key
 
 
 def build_prompt(
@@ -873,6 +917,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Entry point. Returns process exit code (0 success, non-zero failure)."""
     parser = _build_parser()
     args = parser.parse_args(argv)
+    # Phase 240: validate / canonicalise ``--rank`` once at the entry
+    # point so every subcommand sees the same normalised value. Empty
+    # / None → None (default behaviour). Invalid → SystemExit(2) with
+    # a usage message. Subcommands that don't accept ``--rank`` (e.g.
+    # ``symptoms``, ``lexicon``, ``calibrate``, ``trace``) simply
+    # don't have the attribute; ``getattr`` returns ``None`` and
+    # validation passes through.
+    args.rank = _validate_rank_arg(getattr(args, "rank", None))
     ret: int = args.func(args)
     return ret
 

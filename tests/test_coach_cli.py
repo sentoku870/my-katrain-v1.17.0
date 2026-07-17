@@ -811,3 +811,95 @@ class TestSummaryCli:
         assert "# Detection Pipeline Trace" in out
         # atari_blindness should be detected from the projected weaknesses
         assert "atari_blindness" in out
+
+
+# --- Phase 240: --rank validation ----------------------------------------
+
+
+class TestValidateRankArg:
+    """Phase 240: ``_validate_rank_arg`` normalises valid rank notations
+    and rejects invalid ones with a clear usage message + exit code 2."""
+
+    def test_none_returns_none(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        assert _validate_rank_arg(None) is None
+
+    def test_empty_string_returns_none(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        assert _validate_rank_arg("") is None
+        assert _validate_rank_arg("   ") is None
+
+    def test_ascii_notation_passes_through(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        assert _validate_rank_arg("5k") == "5k"
+        assert _validate_rank_arg("4d") == "4d"
+        assert _validate_rank_arg("9d") == "9d"  # top of the rank table
+        assert _validate_rank_arg("99d") == "99d"  # beyond-table rank
+
+    def test_kanji_notation_canonicalised(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        assert _validate_rank_arg("5段") == "5d"
+        assert _validate_rank_arg("10級") == "10k"
+
+    def test_full_width_notation_canonicalised(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        assert _validate_rank_arg("５段") == "5d"
+
+    def test_alias_resolved(self):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        # 10段 is the legacy alias for 9d in the project's rank table.
+        result = _validate_rank_arg("10段")
+        assert result == "9d"
+
+    def test_invalid_string_exits_with_2(self, capsys):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_rank_arg("gibberish")
+        assert exc_info.value.code == 2
+        captured = capsys.readouterr()
+        assert "Invalid --rank 'gibberish'" in captured.err
+        assert "Expected formats:" in captured.err
+
+    def test_empty_after_strip_exits_with_2(self, capsys):
+        from katrain.core.coach.cli import _validate_rank_arg
+
+        # Pure whitespace is treated as "not provided" (None), not as
+        # an invalid rank — see test_empty_string_returns_none.
+        # But a string with leading junk is invalid.
+        with pytest.raises(SystemExit) as exc_info:
+            _validate_rank_arg("  abc  ")
+        assert exc_info.value.code == 2
+
+
+class TestBuildWithInvalidRank:
+    """Phase 240: end-to-end check that ``cli.main`` rejects an invalid
+    ``--rank`` argument at the entry point."""
+
+    def test_invalid_rank_exits_2(self, sample_karte_path: Path, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main(["build", str(sample_karte_path), "--rank", "gibberish"])
+        assert exc_info.value.code == 2
+        captured = capsys.readouterr()
+        assert "Invalid --rank 'gibberish'" in captured.err
+
+    def test_valid_kanji_rank_accepted(self, sample_karte_path: Path, tmp_path: Path):
+        out_path = tmp_path / "prompt.md"
+        rc = cli.main(
+            [
+                "build",
+                str(sample_karte_path),
+                "--rank",
+                "5段",  # kanji → canonicalises to "5d"
+                "--out",
+                str(out_path),
+            ]
+        )
+        assert rc == 0
+        assert out_path.exists()
