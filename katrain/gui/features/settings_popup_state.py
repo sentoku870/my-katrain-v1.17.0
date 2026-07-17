@@ -70,6 +70,10 @@ class _SettingsPopupContext:
     # ``select_critical_moves`` so users can dial sensitivity up or
     # down per their kyu/dan level.
     selected_important_moves_level: list[str]
+    # Phase 248-B2: critical_3 selection count per player (1-10, default 3).
+    # Drives the ``max_moves`` argument of ``select_critical_moves`` so
+    # users can decide how many focus-review items to show.
+    selected_critical_3_max_moves: list[int]
     # Phase 179: per-category summary hint toggles (all default True).
     selected_summary_mistake: list[bool]
     selected_summary_freedom: list[bool]

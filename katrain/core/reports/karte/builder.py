@@ -74,6 +74,7 @@ def build_karte_json_string(
     skill_preset: str = analysis.DEFAULT_SKILL_PRESET,
     target_visits: int | None = None,
     lang: str = "ja",
+    max_critical_3_moves: int = 3,
 ) -> str:
     """Build a JSON-serializable Karte report for the current game.
 
@@ -94,6 +95,9 @@ def build_karte_json_string(
         skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
         target_visits: Target visits for effective reliability threshold calculation.
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
+        max_critical_3_moves: Phase 248-B2 — number of critical moves
+            per player to include in the critical_3 section. Defaults
+            to 3 (Phase 50 baseline).
 
     Returns:
         JSON-serialized karte report as a string.
@@ -275,6 +279,7 @@ def _build_karte_json_string_impl(
         player_filter=player_filter,
         skill_preset=skill_preset,
         lang=lang,
+        max_critical_3_moves=max_critical_3_moves,
     )
 
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)

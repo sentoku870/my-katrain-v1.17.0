@@ -165,6 +165,7 @@ def critical_3_section_for(
     ctx: KarteContext,
     player: str,
     level: str,
+    max_moves: int = 3,
 ) -> list[dict[str, Any]]:
     """Generate Critical 3 section data for focused review (Phase 50).
 
@@ -183,8 +184,13 @@ def critical_3_section_for(
     reported ``"uncertain"`` while ``important_moves`` had already
     attached ``"life_death_error"`` (etc.) for the same move.
 
+    Phase 248-B2: ``max_moves`` is now parameterised so users can pick
+    the number of critical moves shown per player in the Karte
+    critical_3 section. Defaults to 3 to match the Phase 50 baseline.
+
     Args:
         ctx: Karte context
+        player: "B" or "W"
         player: "B" or "W"
         level: Important move level setting
 
@@ -194,7 +200,7 @@ def critical_3_section_for(
     try:
         critical_moves = select_critical_moves(
             ctx.game,
-            max_moves=3,
+            max_moves=max_moves,
             lang=ctx.lang,
             level=level,
             player_filter=player,

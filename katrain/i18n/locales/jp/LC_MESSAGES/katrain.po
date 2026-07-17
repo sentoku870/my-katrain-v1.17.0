@@ -1910,6 +1910,12 @@ msgstr "標準"
 msgid "mykatrain:settings:important_moves_level_strict"
 msgstr "段位者向け (厳しめ)"
 
+msgid "mykatrain:settings:critical_3_max_moves"
+msgstr "Critical 3 件数:"
+
+msgid "mykatrain:settings:critical_3_max_moves_desc"
+msgstr "Karte の critical_3 セクションに表示する 1 プレイヤーあたりの重要局面数 (1-10)"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

@@ -338,6 +338,7 @@ class Game(BaseGame):
         raise_on_error: bool = False,
         skill_preset: str = analysis_pkg.DEFAULT_SKILL_PRESET,
         target_visits: int | None = None,
+        max_critical_3_moves: int = 3,
     ) -> str:
         """Build a JSON-serialized Karte report for the current game.
 
@@ -356,6 +357,9 @@ class Game(BaseGame):
             skill_preset: Skill preset for strictness ("auto" or one of SKILL_PRESETS keys)
             target_visits: Target visits for effective reliability threshold calculation.
                 If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
+            max_critical_3_moves: Phase 248-B2 — how many critical
+                moves to include per player in the critical_3 section.
+                Defaults to 3 (Phase 50 baseline).
 
         Returns:
             JSON-serialized karte report as a string.
@@ -378,6 +382,7 @@ class Game(BaseGame):
             raise_on_error=raise_on_error,
             skill_preset=skill_preset,
             target_visits=target_visits,
+            max_critical_3_moves=max_critical_3_moves,
         )
 
     # ------------------------------------------------------------------

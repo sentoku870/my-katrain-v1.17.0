@@ -1982,6 +1982,14 @@ msgstr "Normal"
 msgid "mykatrain:settings:important_moves_level_strict"
 msgstr "Dan-level (strict)"
 
+msgid "mykatrain:settings:critical_3_max_moves"
+msgstr "Critical 3 count:"
+
+msgid "mykatrain:settings:critical_3_max_moves_desc"
+msgstr ""
+"How many critical moves to show per player in the Karte critical_3 "
+"section (1-10). Default 3 (Phase 50 baseline)."
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
 
