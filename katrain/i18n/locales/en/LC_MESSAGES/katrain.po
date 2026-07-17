@@ -660,8 +660,11 @@ msgstr "pass"
 
 msgid "board-game-end"
 msgstr ""
-"game\n"
-"end"
+
+# Phase 246-B (H1): perspective watermark shown when candidate markers
+# are visible.
+msgid "board:perspective"
+msgstr "View: {player} (next-player loss)"
 
 #. Select mode
 msgid "btn:Play"
@@ -1653,6 +1656,25 @@ msgstr "Strong"
 
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "Auto"
+
+msgid "mykatrain:settings:pv_filter_status_off"
+msgstr "Currently: filter OFF (all candidates shown)"
+
+msgid "mykatrain:settings:pv_filter_status_auto"
+msgstr "Currently: AUTO → {level} (auto-derived from {preset}, cap {max_n})"
+
+msgid "mykatrain:settings:pv_filter_status_explicit"
+msgstr "Currently: {level} (cap {max_n})"
+
+msgid "mykatrain:settings:pv_filter_marker_legend"
+msgstr ""
+"Marker legend: red=high loss, orange=mid, yellow=low loss; small dots=low "
+"visits (less reliable); blue border=best move (loss is from the next-"
+"player's view)."
+
+msgid "mykatrain:settings:pv_filter_kifunarabe_note"
+msgstr ""
+"Note: disabled in Kifunarabe (棋譜並べ) mode — all options are always shown."
 
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"

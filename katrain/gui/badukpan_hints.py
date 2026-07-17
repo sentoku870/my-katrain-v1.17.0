@@ -22,6 +22,7 @@ from kivy.metrics import dp
 
 from katrain.core.analysis import (
     DEFAULT_PV_FILTER_LEVEL,
+    clip_pv_for_animation,
     filter_candidates_by_pv_complexity,
     get_pv_filter_config,
     resolve_skill_preset,
@@ -132,6 +133,14 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
             widget, current_node, hint_moves, next_player, katrain.get_trainer_config().low_visits
         )
         draw_children_markers(widget, current_node, top_move_coords)
+        # Phase 246-B (H1): draw a small "視点: B/W" watermark in the
+        # bottom-left of the board whenever candidate markers are visible.
+        # This makes explicit that ``pointsLost`` / ``winrateLost`` are
+        # computed from the perspective of ``next_player`` (the player
+        # about to move), so users don't mis-read the colours during
+        # review / teaching.
+        if hint_moves:
+            draw_perspective_watermark(widget, next_player)
 
         if widget.selecting_region_of_interest and len(widget.region_of_interest) == 4:
             from katrain.gui.badukpan_drawing import draw_roi_box  # late import
@@ -187,7 +196,20 @@ def prepare_hint_moves(widget: BadukPanWidget, current_node: Any, game_ended: An
             katrain.config("general/skill_preset"),
             katrain.config("general/player_rank"),
         )
-        pv_filter_config = get_pv_filter_config(pv_filter_level, skill_preset=skill_preset)
+        # Phase 246-D (M1): pass board_size so the PV-length threshold
+        # scales down for 9/13路 boards. Otherwise STRONG/EXPERT would
+        # drop nearly all candidates on small boards.
+        # Phase 246-E (L7): pass player_rank so the API can resolve the
+        # preset internally — the manual ``resolve_skill_preset`` call
+        # above is kept for back-compat with the analysis-side code.
+        board_size_x, _ = katrain.game.board_size
+        player_rank = katrain.config("general/player_rank")
+        pv_filter_config = get_pv_filter_config(
+            pv_filter_level,
+            skill_preset=skill_preset,
+            board_size=board_size_x,
+            player_rank=player_rank,
+        )
         if pv_filter_config is not None:
             hint_moves = filter_candidates_by_pv_complexity(hint_moves, pv_filter_config)
 
@@ -356,7 +378,11 @@ def draw_kata_hint_marker(
         return top_move_coords
 
     if "pv" in move_dict and not is_kifu_marker:
-        widget.active_pv_moves.append((move.coords, move_dict["pv"], current_node))
+        # Phase 246-C (M5): clip excessively long PV sequences via the
+        # shared ``clip_pv_for_animation`` helper. Tests cover the
+        # helper directly; the call site stays one-liner.
+        pv = clip_pv_for_animation(move_dict["pv"])
+        widget.active_pv_moves.append((move.coords, pv, current_node))
     elif "pv" not in move_dict and not is_kifu_marker:
         katrain.log(f"PV missing for move_dict {move_dict}", OUTPUT_DEBUG)
     evalsize = widget.stone_size * scale
@@ -539,3 +565,38 @@ def draw_pass_circle(
     Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
     Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
     draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
+
+
+# =============================================================================
+# Phase 246-B (H1): Perspective watermark
+# =============================================================================
+
+
+def draw_perspective_watermark(widget: BadukPanWidget, next_player: str) -> None:
+    """Draw a small "視点: B/W" watermark in the bottom-left of the board.
+
+    Phase 246-B (H1): ``pointsLost`` / ``winrateLost`` on the candidate
+    markers are computed from the perspective of the player about to
+    move. This is implicit in the runtime but easy for a reviewer to
+    misread. The watermark makes the perspective explicit whenever
+    candidate markers are visible, without adding a new Kivy widget
+    (canvas-only).
+
+    Position: ~3% from the bottom-left of the widget, above the bottom
+    coordinate gutter. Stays small enough not to obscure the board.
+    """
+    from katrain.core.lang import i18n as _i18n
+
+    label = "B" if next_player == "B" else "W"
+    text = _i18n._("board:perspective").format(player=label)
+    pos_x = widget.x + widget.width * 0.02
+    pos_y = widget.y + widget.height * 0.02
+    Color(*Theme.PASS_CIRCLE_TEXT_COLOR)  # reuse pass-circle text colour (subtle grey/white)
+    draw_text(
+        pos=(pos_x, pos_y),
+        text=text,
+        font_size=widget.grid_size / 3.5,
+        font_name=Theme.DEFAULT_FONT,
+        halign="left",
+        valign="bottom",
+    )

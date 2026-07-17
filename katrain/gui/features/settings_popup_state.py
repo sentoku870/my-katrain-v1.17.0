@@ -85,3 +85,7 @@ class _SettingsPopupContext:
     # tab builder, so we hold a typed ``Any`` to keep the dataclass
     # Kivy-free.
     _rank_inferred_label: Any = None
+    # Phase 246-A (H2): stash a reference to the PV filter status
+    # label so the radio + rank-input callbacks can refresh it in place
+    # without rebuilding the layout. Same Kivy-free pattern as above.
+    _pv_filter_status_label: Any = None

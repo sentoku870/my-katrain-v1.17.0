@@ -188,6 +188,11 @@ msgstr "パス"
 msgid "board-game-end"
 msgstr "終局"
 
+# Phase 246-B (H1): perspective watermark shown when candidate markers are
+# visible.
+msgid "board:perspective"
+msgstr "視点: {player}（次手損失）"
+
 #. Select mode
 msgid "btn:Play"
 msgstr "対局"
@@ -1601,6 +1606,21 @@ msgstr "厳選"
 
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "自動"
+
+msgid "mykatrain:settings:pv_filter_status_off"
+msgstr "現在: フィルタOFF（全候補を表示）"
+
+msgid "mykatrain:settings:pv_filter_status_auto"
+msgstr "現在: AUTO → {level}（{preset} から自動推定・最大 {max_n} 件まで）"
+
+msgid "mykatrain:settings:pv_filter_status_explicit"
+msgstr "現在: {level}（最大 {max_n} 件まで）"
+
+msgid "mykatrain:settings:pv_filter_marker_legend"
+msgstr "マーカー凡例: 赤い丸=高損失、橙=中、黄色=低損失、小さな丸=低visits (信頼度低)、青い枠=最善手（点数は次手=視点: の損失）"
+
+msgid "mykatrain:settings:pv_filter_kifunarabe_note"
+msgstr "※ 棋譜並べモード中は自動OFF（正解と AI 候補が必ず全件表示されます）"
 
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
