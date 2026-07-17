@@ -10,7 +10,8 @@ collection:
 - :mod:`tests.karte.test_difficulty` - difficulty assessment, EvalSnapshot
   difficulty stats (~340 lines, 3 classes)
 - :mod:`tests.karte.test_karte_errors` - KarteGenerationError lifecycle,
-  build_karte_report error paths, streak edge cases (~280 lines, 3 classes)
+  build_karte_json_string error paths, streak edge cases (~280 lines, 3 classes)
+  (Phase 232: was ``build_karte_report`` until Phase 231)
 - :mod:`tests.karte.test_skill_integration` - urgent-miss configs,
   weakness hypothesis, label/threshold consistency (~180 lines, 3 classes)
 

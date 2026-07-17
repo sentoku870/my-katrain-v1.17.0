@@ -366,35 +366,35 @@ class TestExtractGameStatsTargetVisits:
         assert param.default is None
 
 
-class TestBuildKarteReportTargetVisits:
-    """Tests for build_karte_report() target_visits parameter (Phase 44)."""
+class TestBuildKarteJsonStringTargetVisits:
+    """Tests for build_karte_json_string() target_visits parameter (Phase 44, renamed Phase 231)."""
 
-    def test_build_karte_report_accepts_target_visits_parameter(self):
-        """Contract: build_karte_report accepts target_visits parameter."""
+    def test_build_karte_json_string_accepts_target_visits_parameter(self):
+        """Contract: build_karte_json_string accepts target_visits parameter."""
         import inspect
 
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
 
-        sig = inspect.signature(build_karte_report)
+        sig = inspect.signature(build_karte_json_string)
         params = list(sig.parameters.keys())
         assert "target_visits" in params
 
-    def test_build_karte_report_target_visits_defaults_to_none(self):
+    def test_build_karte_json_string_target_visits_defaults_to_none(self):
         """Contract: target_visits defaults to None."""
         import inspect
 
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
 
-        sig = inspect.signature(build_karte_report)
+        sig = inspect.signature(build_karte_json_string)
         param = sig.parameters["target_visits"]
         assert param.default is None
 
-    def test_game_build_karte_report_accepts_target_visits(self):
-        """Contract: Game.build_karte_report accepts target_visits parameter."""
+    def test_game_build_karte_json_string_accepts_target_visits(self):
+        """Contract: Game.build_karte_json_string accepts target_visits parameter."""
         import inspect
 
         from katrain.core.game import Game
 
-        sig = inspect.signature(Game.build_karte_report)
+        sig = inspect.signature(Game.build_karte_json_string)
         params = list(sig.parameters.keys())
         assert "target_visits" in params

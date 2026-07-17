@@ -1,8 +1,8 @@
 """Karte report generation package.
 
 Public API:
-- build_karte_report(): Generate markdown karte report
-- build_karte_json(): Generate JSON karte data
+- build_karte_json_string(): Generate JSON-serializable karte data as a string
+- build_karte_json(): Generate karte data as a Python dict
 - build_critical_3_prompt(): Generate LLM prompt for critical 3 moves
 - KarteGenerationError: Exception for generation failures
 
@@ -11,6 +11,9 @@ Exceptions and constants are imported directly (no side effects).
 
 Phase 171: ``MixedEngineSnapshotError`` / ``KARTE_ERROR_CODE_MIXED_ENGINE`` は
 KataGo 専用化により削除。
+Phase 231: ``build_karte_report`` → ``build_karte_json_string`` リネーム。
+            関数は Phase 149 から常に JSON 文字列を返していたが、関数名と
+            docstring が「markdown」と齟齬していたため改名した。
 """
 
 from typing import Any
@@ -24,9 +27,15 @@ from katrain.core.reports.karte.models import (
 
 
 # Callable APIs: lazy import to avoid circular dependencies
-def build_karte_report(*args: Any, **kwargs: Any) -> str:
-    """Generate markdown karte report. See builder.build_karte_report for details."""
-    from katrain.core.reports.karte.builder import build_karte_report as _impl
+def build_karte_json_string(*args: Any, **kwargs: Any) -> str:
+    """Generate a JSON-serialized karte report. See builder.build_karte_json_string for details.
+
+    Phase 231: renamed from ``build_karte_report``. Returns a JSON string
+    (built via :func:`build_karte_json` + :func:`json.dumps`). On error
+    with ``raise_on_error=False`` it returns a markdown error card
+    instead (via :func:`_build_error_karte`).
+    """
+    from katrain.core.reports.karte.builder import build_karte_json_string as _impl
 
     return _impl(*args, **kwargs)
 
@@ -51,7 +60,7 @@ def build_critical_3_prompt(*args: Any, **kwargs: Any) -> str:
 
 
 __all__ = [
-    "build_karte_report",
+    "build_karte_json_string",
     "build_karte_json",
     "build_critical_3_prompt",
     "KarteGenerationError",

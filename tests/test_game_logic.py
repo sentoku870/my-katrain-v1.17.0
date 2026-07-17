@@ -21,7 +21,7 @@ Covers previously untested paths:
 - Game.analyze_undo
 - Game.build_eval_snapshot / log_mistake_summary_for_debug
 - Game.get_important_move_evals / log_important_moves_for_debug
-- Game.build_karte_report / build_important_moves_report
+- Game.build_karte_json_string / build_important_moves_report
 - Game.build_summary_report
 """
 
@@ -747,11 +747,11 @@ class TestGameReports:
 
 
 # ---------------------------------------------------------------------------
-# Game - build_karte_report / build_important_moves_report
+# Game - build_karte_json_string / build_important_moves_report
 # ---------------------------------------------------------------------------
 
 
-class TestKarteReport:
+class TestKarteJsonString:
     def test_build_important_moves_report_empty(self, game):
         """build_important_moves_report on empty game."""
         result = game.build_important_moves_report()
@@ -764,17 +764,17 @@ class TestKarteReport:
         result = game.build_important_moves_report()
         assert isinstance(result, str)
 
-    def test_build_karte_report(self, game):
-        """build_karte_report returns markdown string."""
+    def test_build_karte_json_string(self, game):
+        """build_karte_json_string returns a JSON string (Phase 231)."""
         game.play(Move.from_gtp("D4", player="B"))
         game.play(Move.from_gtp("Q16", player="W"))
-        result = game.build_karte_report()
+        result = game.build_karte_json_string()
         assert isinstance(result, str)
 
-    def test_build_karte_report_with_player_filter(self, game):
+    def test_build_karte_json_string_with_player_filter(self, game):
         game.play(Move.from_gtp("D4", player="B"))
         game.play(Move.from_gtp("Q16", player="W"))
-        result = game.build_karte_report(player_filter="B")
+        result = game.build_karte_json_string(player_filter="B")
         assert isinstance(result, str)
 
 

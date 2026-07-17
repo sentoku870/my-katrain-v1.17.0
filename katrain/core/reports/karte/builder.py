@@ -1,13 +1,22 @@
 """Karte report builder - main entry points.
 
 This module contains the main entry functions for karte report generation:
-- build_karte_report(): Main entry point (with error handling)
-- _build_karte_report_impl(): Implementation
-- _build_error_karte(): Error fallback
+- build_karte_json_string(): Main entry point (with error handling). Returns a JSON string.
+- _build_karte_json_string_impl(): Implementation (delegates to build_karte_json)
+- _build_error_karte(): Error fallback (returns error markdown)
 
 Also contains internal helpers used by tests:
 - _build_tag_counts_from_moves(): Build MeaningTag counts
 - _compute_style_safe(): Compute style with graceful fallback
+
+Note (Phase 231 / 232):
+The public entry point was renamed from ``build_karte_report`` to
+``build_karte_json_string`` to make it explicit that the return value
+is a JSON string (built via ``build_karte_json`` + ``json.dumps``), not
+a markdown report. Phase 232 followed up by renaming the internal
+implementation function from ``_build_karte_report_impl`` to
+``_build_karte_json_string_impl`` and removing the legacy
+``karte_report.py`` compatibility shim.
 """
 
 from __future__ import annotations
@@ -57,7 +66,7 @@ def _build_tag_counts_from_moves(
 # ---------------------------------------------------------------------------
 
 
-def build_karte_report(
+def build_karte_json_string(
     game: Any,  # Game object (Protocol in future)
     level: str = analysis.DEFAULT_IMPORTANT_MOVE_LEVEL,
     player_filter: str | None = None,
@@ -66,7 +75,14 @@ def build_karte_report(
     target_visits: int | None = None,
     lang: str = "ja",
 ) -> str:
-    """Build a compact, markdown-friendly report for the current game.
+    """Build a JSON-serializable Karte report for the current game.
+
+    Phase 231: renamed from ``build_karte_report``. The function
+    always returned a JSON string (built via ``build_karte_json`` +
+    ``json.dumps``) since Phase 149, so the new name makes the return
+    type explicit. On failure with ``raise_on_error=False`` the function
+    returns a *markdown* error card (via :func:`_build_error_karte`),
+    so the return type is ``str`` in both success and error paths.
 
     Args:
         game: Game object providing game state and analysis data
@@ -80,8 +96,9 @@ def build_karte_report(
             If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
     Returns:
-        Markdown-formatted karte report.
-        On error with raise_on_error=False, returns a report with ERROR section.
+        JSON-serialized karte report as a string.
+        On error with raise_on_error=False, returns a markdown error
+        card with the ``KARTE_ERROR_CODE: GENERATION_FAILED`` block.
 
     Raises:
         KarteGenerationError: If raise_on_error=True and generation fails.
@@ -112,7 +129,7 @@ def build_karte_report(
 
     # 3. Pass snapshot as argument
     try:
-        return _build_karte_report_impl(
+        return _build_karte_json_string_impl(
             game=game,
             snapshot=snapshot,
             level=level,
@@ -140,8 +157,27 @@ def _build_error_karte(
     error karte. The original strings remain as the default (English)
     catalog entry in :mod:`katrain.i18n.locales` so a locale switch
     failure (or running outside the GUI) does not break this path.
+
+    Phase 235: ``error_msg`` is split on its first newline. The first
+    line is the stable ``KARTE_ERROR_CODE: ...`` marker (used for test
+    assertions) and is preserved verbatim. Subsequent lines are run
+    through :func:`katrain.core.reports.karte.models.sanitize_error_message`
+    so they cannot leak file paths or other internal data into the
+    LLM prompt. The unsanitised full message is preserved in
+    :attr:`KarteGenerationError.original_error` when this function is
+    reached via the ``raise_on_error=True`` path.
     """
     from katrain.core.lang import i18n
+    from katrain.core.reports.karte.models import sanitize_error_message
+
+    # Split off the stable KARTE_ERROR_CODE header (Phase 235) so the
+    # marker line is preserved as-is for test assertions, and only the
+    # diagnostic body is sanitised.
+    if "\n" in error_msg:
+        header, body = error_msg.split("\n", 1)
+        safe_msg = f"{header}\n{sanitize_error_message(body)}"
+    else:
+        safe_msg = error_msg
 
     sections = [
         f"# {i18n._('karte:error:title')}",
@@ -155,7 +191,7 @@ def _build_error_karte(
         i18n._("karte:error:intro"),
         "",
         "```",
-        error_msg,
+        safe_msg,
         "```",
         "",
         i18n._("karte:error:checklist_header"),
@@ -195,7 +231,7 @@ def _read_aliases(value: Any) -> list[str]:
     return []
 
 
-def _build_karte_report_impl(
+def _build_karte_json_string_impl(
     game: Any,  # Game object
     snapshot: EvalSnapshot,  # Pre-computed snapshot (avoid double computation)
     level: str,
@@ -204,11 +240,15 @@ def _build_karte_report_impl(
     target_visits: int | None = None,
     lang: str = "ja",
 ) -> str:
-    """Internal implementation of build_karte_report.
+    """Internal implementation of build_karte_json_string.
+
+    Note (Phase 232): renamed from ``_build_karte_report_impl``. The
+    legacy ``karte_report.py`` compatibility shim was also removed in
+    this phase; this function is the only remaining call path.
 
     Args:
         game: Game object providing game state
-        snapshot: Pre-computed EvalSnapshot (passed from build_karte_report)
+        snapshot: Pre-computed EvalSnapshot (passed from build_karte_json_string)
         level: Important move level setting
         player_filter: Filter by player ("B", "W", or None for both)
         skill_preset: Skill preset for strictness
@@ -218,8 +258,8 @@ def _build_karte_report_impl(
 
     Note:
         snapshot is now passed as an argument rather than computed here.
-        This avoids double computation since build_karte_report() already
-        computes the snapshot for mixed-engine validation.
+        This avoids double computation since build_karte_json_string() already
+        computes the snapshot.
 
         This wrapper delegates entirely to build_karte_json (Phase 149 A-8:
         removed unused local vars; markdown section code is being revived
