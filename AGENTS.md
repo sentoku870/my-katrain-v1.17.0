@@ -402,6 +402,16 @@ docs/
     - `do_export_karte_ui` で `_resolve_curator_profile_path` + `load_curator_profile` 自動ロード
     - `tests/test_weak_tag_boost.py` (16件) + `tests/test_curator_integration.py` (25件) = 41件新規ユニットテスト
     - 全 5756 件 pass (Windows Kivy headless 失敗除く)
+  - **248-γ D1 (PR #414)**: 重要局面リスト popup widget (Kivy layer)
+    - `katrain/gui/popups/important_moves_popup.py` (297行) — `ImportantMovesPopupContent` + `open_important_moves_popup`
+    - `katrain/gui/kv/important_moves_popup.kv` 新規 (170行) — スクロール可能リスト + jump/copy/close ボタン
+    - スクロール可能リスト (黒 → 白、critical_score desc) + 複雑局面で割引注記 `(複雑)`
+    - jump: `game.set_current_node()` 呼び出し + popup 自動 close
+    - copy: Markdown summary をクリップボードへ
+    - メニュー: Phase 230 の 4 項目 → 5 項目に増加 (`export-karte` と `llm-coach` の間に配置)
+    - i18n 9 キー追加 (title/subtitle/count/jump/copy/close/empty/complexity/menu-label)
+    - `tests/test_important_moves_popup.py` (19件) — Kivy widget ソース検査 (AST ベース、importlib を経由せず) + DISPATCH_TABLE 検証 + menu.kv 検証 + KV ファイル存在 + i18n キー存在 (jp/en)
+    - 全 124 件 (関連テスト) pass
   - **累計**: 6 PR マージ / 11 サブフェーズ / 約 2,500 行追加 / 5,800+ テスト
   - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
   - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク
