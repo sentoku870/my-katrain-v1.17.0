@@ -177,7 +177,8 @@
         "karte_output_directory": "",
         "batch_export_input_directory": "",
         "karte_format": "both",
-        "important_moves_level": "normal"
+        "important_moves_level": "normal",
+        "critical_3_max_moves": 3
     },
     "export_settings": {},
     "ui_state": {

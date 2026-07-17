@@ -264,6 +264,9 @@ class TestImportantMovesLevelI18n:
         "mykatrain:settings:important_moves_level_easy",
         "mykatrain:settings:important_moves_level_normal",
         "mykatrain:settings:important_moves_level_strict",
+        # Phase 248-B2: critical_3 selection count
+        "mykatrain:settings:critical_3_max_moves",
+        "mykatrain:settings:critical_3_max_moves_desc",
     ]
 
     def test_all_keys_translated_in_en(self, locale_dir):

@@ -151,6 +151,7 @@ def _save_mykatrain_settings(
     opponent_info_mode: str,
     default_user_rank: str = "",  # Phase 225.8
     important_moves_level: str = "normal",  # Phase 248-B1
+    critical_3_max_moves: int = 3,  # Phase 248-B2
 ) -> None:
     """Save mykatrain_settings section (Phase 27).
 
@@ -162,6 +163,10 @@ def _save_mykatrain_settings(
     ``pick_important_moves`` and ``select_critical_moves`` so users
     can dial the importance-extraction sensitivity per their
     kyu/dan level.
+
+    Phase 248-B2: ``critical_3_max_moves`` (1-10) lets users decide
+    how many focused-review items to show per player in the Karte
+    critical_3 section. The default 3 matches the Phase 50 baseline.
     """
     # Normalise the level to one of the three known values. Unknown
     # values silently fall back to "normal" — matches the runtime
@@ -169,6 +174,16 @@ def _save_mykatrain_settings(
     valid_levels = {"easy", "normal", "strict"}
     if important_moves_level not in valid_levels:
         important_moves_level = "normal"
+
+    # Normalise the critical_3 count to a 1-10 range. Anything outside
+    # this band (typos, negative numbers, huge values) silently
+    # snaps back to 3 so the user gets a usable Karte.
+    try:
+        n = int(critical_3_max_moves)
+    except (TypeError, ValueError):
+        n = 3
+    if n < 1 or n > 10:
+        n = 3
 
     mykatrain_settings = {
         "default_user_name": default_user_name,
@@ -181,6 +196,7 @@ def _save_mykatrain_settings(
         "karte_format": karte_format,
         "opponent_info_mode": opponent_info_mode,
         "important_moves_level": important_moves_level,
+        "critical_3_max_moves": n,
     }
     ctx.set_config_section("mykatrain_settings", mykatrain_settings)
     ctx.save_config("mykatrain_settings")

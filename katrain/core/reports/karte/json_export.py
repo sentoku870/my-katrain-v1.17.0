@@ -52,6 +52,7 @@ def build_karte_json(
     target_visits: int | None = None,
     include_definitions: bool = False,
     dynamic_phase_detection: bool = True,
+    max_critical_3_moves: int = 3,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -321,8 +322,8 @@ def build_karte_json(
         "white": mistake_streaks_for(ctx, "W"),
     }
     critical_3 = {
-        "black": critical_3_section_for(ctx, "B", level),
-        "white": critical_3_section_for(ctx, "W", level),
+        "black": critical_3_section_for(ctx, "B", level, max_critical_3_moves),
+        "white": critical_3_section_for(ctx, "W", level, max_critical_3_moves),
     }
     data_quality = data_quality_section(ctx)
     reason_tags_dist = {

@@ -120,6 +120,9 @@ def do_mykatrain_settings_popup(
         # tab. Falls back to "normal" so users with pre-248 configs
         # (or empty string) get the historical behaviour.
         selected_important_moves_level=[(current_settings.get("important_moves_level") or "normal")],
+        # Phase 248-B2: critical_3 selection count. Falls back to 3 so
+        # users with pre-248 configs keep the Phase 50 behaviour.
+        selected_critical_3_max_moves=[int(current_settings.get("critical_3_max_moves") or 3)],
     )
 
     def register_searchable(label_text: str, *widgets: Any) -> None:
@@ -269,6 +272,8 @@ def do_mykatrain_settings_popup(
             "",
             # Phase 248-B1: important-moves level from the analysis tab.
             important_moves_level=state.selected_important_moves_level[0],
+            # Phase 248-B2: critical_3 selection count from the analysis tab.
+            critical_3_max_moves=state.selected_critical_3_max_moves[0],
         )
         # Phase 177: persist kifunarabe-specific SGF browse folder
         # Phase 177-E: persist the three display toggles.

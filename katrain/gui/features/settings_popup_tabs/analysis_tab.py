@@ -444,6 +444,45 @@ def _build_important_moves_level_section(inner: BoxLayoutType, state: _SettingsP
         state.register_searchable("mykatrain:settings:important_moves_level", level_layout)
 
 
+def _build_critical_3_max_moves_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
+    """Phase 248-B2: spinner for the critical_3 selection count per player.
+
+    Users can pick 1-10 (default 3). The selected value flows into
+    :func:`critical_3_section_for` via
+    :data:`state.selected_critical_3_max_moves`. Out-of-range values
+    (typos, negative numbers) are normalised to 3 in the saver.
+
+    Layout: label + Spinner next to the "重要度レベル" radio group.
+    """
+    _add_searchable_label(inner, "mykatrain:settings:critical_3_max_moves", state)
+
+    # Local imports to keep the module import-time Kivy footprint small.
+    from kivy.uix.spinner import Spinner
+
+    max_moves_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(8))
+    spinner = Spinner(
+        text=str(state.selected_critical_3_max_moves[0]),
+        values=[str(i) for i in range(1, 11)],
+        size_hint_x=0.3,
+        font_name=Theme.DEFAULT_FONT,
+        background_color=Theme.LIGHTER_BACKGROUND_COLOR,
+        color=Theme.TEXT_COLOR,
+    )
+
+    def _on_spinner_select(_sp: Any, value: str) -> None:
+        try:
+            state.selected_critical_3_max_moves[0] = int(value)
+        except (TypeError, ValueError):
+            state.selected_critical_3_max_moves[0] = 3
+
+    spinner.bind(text=_on_spinner_select)
+    max_moves_row.add_widget(spinner)
+    max_moves_row.add_widget(Label(size_hint_x=0.7))
+    inner.add_widget(max_moves_row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:critical_3_max_moves", max_moves_row)
+
+
 def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
     """Add the Beginner Hints toggle row (Phase 91) + summary category rows (Phase 179)."""
     _add_searchable_label(inner, "mykatrain:settings:beginner_hints", state)
@@ -578,6 +617,7 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
     _build_player_rank_section(inner, state)
     _build_pv_filter_section(inner, state)
     _build_important_moves_level_section(inner, state)
+    _build_critical_3_max_moves_section(inner, state)
     _build_beginner_hints_section(inner, state)
 
     reset_btn = _build_reset_button()

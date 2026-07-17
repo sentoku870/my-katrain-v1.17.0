@@ -277,6 +277,14 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
     important_moves_level = (settings.get("important_moves_level") or "normal").strip()
     if important_moves_level not in {"easy", "normal", "strict"}:
         important_moves_level = "normal"
+    # Phase 248-B2: pull the critical_3 selection count. Defaults to 3
+    # so empty/legacy configs keep the Phase 50 baseline.
+    try:
+        critical_3_max_moves = int(settings.get("critical_3_max_moves") or 3)
+    except (TypeError, ValueError):
+        critical_3_max_moves = 3
+    if critical_3_max_moves < 1 or critical_3_max_moves > 10:
+        critical_3_max_moves = 3
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)
@@ -285,6 +293,7 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 player_filter=player_filter,
                 skill_preset=skill_preset,
                 level=important_moves_level,
+                max_critical_3_moves=critical_3_max_moves,
             )
             os.makedirs(output_dir, exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:

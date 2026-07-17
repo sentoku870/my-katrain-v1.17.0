@@ -149,6 +149,8 @@ class TestSaveMyKatrainSettings:
             "opponent_info_mode": "auto",
             # Phase 248-B1: important_moves_level is now persisted.
             "important_moves_level": "normal",
+            # Phase 248-B2: critical_3 selection count is now persisted.
+            "critical_3_max_moves": 3,
         }
 
     def test_writes_rank_when_provided(self):
@@ -258,6 +260,69 @@ class TestSaveImportantMovesLevel:
         )
         _, payload = ctx.set_config_section.call_args.args
         assert payload["important_moves_level"] == "normal"
+
+
+class TestSaveCritical3MaxMoves:
+    """Phase 248-B2: ``critical_3_max_moves`` is persisted by the saver."""
+
+    def test_writes_3_by_default(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 3
+
+    def test_writes_5(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves=5)
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 5
+
+    def test_writes_10_at_upper_bound(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves=10)
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 10
+
+    def test_writes_1_at_lower_bound(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves=1)
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 1
+
+    def test_normalises_out_of_range_above_to_3(self):
+        """Values above 10 (e.g. typos like 50) fall back to 3."""
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves=50)
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 3
+
+    def test_normalises_out_of_range_below_to_3(self):
+        """Values below 1 (e.g. 0 or -1) fall back to 3."""
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves=0)
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 3
+
+    def test_normalises_string_to_3(self):
+        """A string value (typo) falls back to 3 via the int() try/except."""
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode", critical_3_max_moves="abc")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["critical_3_max_moves"] == 3
 
 
 class TestMigrateDefaultUserRank:
