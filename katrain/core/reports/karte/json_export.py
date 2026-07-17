@@ -274,10 +274,9 @@ def build_karte_json(
         thresholds=[],
         effective_thresholds=score_thresholds,
         effective_preset=effective_preset,
-        auto_recommendation=None,
+        # Phase 238: removed auto_recommendation / pacing_map / histogram
+        # (always None, never read by section generators).
         confidence_level=confidence_level,
-        pacing_map=None,
-        histogram=None,
         board_x=board_x,
         board_y=board_y,
         pb=pb_name,

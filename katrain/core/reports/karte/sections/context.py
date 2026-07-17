@@ -11,13 +11,11 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import (
-        AutoRecommendation,
         ConfidenceLevel,
         EvalSnapshot,
         ImportantMoveSettings,
         MoveEval,
     )
-    from katrain.core.analysis.time import PacingMetrics
 
 
 @dataclass(frozen=True)
@@ -26,6 +24,21 @@ class KarteContext:
 
     This dataclass replaces closure variables, making dependencies explicit
     and enabling easier testing and maintenance.
+
+    Phase 238: removed three fields that were always populated with
+    ``None`` and never read by any section generator:
+
+    - ``auto_recommendation: AutoRecommendation | None`` (was always None)
+    - ``pacing_map: dict[int, PacingMetrics] | None`` (was always None)
+    - ``histogram: list[Any] | None`` (was always None)
+
+    All section generators (``weakness_hypothesis_for``,
+    ``mistake_streaks_for``, ``critical_3_section_for``,
+    ``data_quality_section``) only access the remaining fields, so
+    the dataclass can stay frozen and its API is now half the size.
+
+    The corresponding ``TYPE_CHECKING`` imports
+    (``AutoRecommendation``, ``PacingMetrics``) were also removed.
     """
 
     # Core data
@@ -36,12 +49,9 @@ class KarteContext:
     thresholds: list[float]  # Raw thresholds from config
     effective_thresholds: tuple[float, float, float]  # Score thresholds for classification
     effective_preset: str  # "beginner" / "standard" / "advanced"
-    auto_recommendation: AutoRecommendation | None
 
     # Computed metadata
     confidence_level: ConfidenceLevel
-    pacing_map: dict[int, PacingMetrics] | None
-    histogram: list[Any] | None
 
     # Board and player info
     board_x: int
