@@ -1,6 +1,6 @@
 """KarteContext dataclass - explicit context for section generators.
 
-This replaces the closure variables previously used in _build_karte_report_impl().
+This replaces the closure variables previously used in _build_karte_json_string_impl().
 All section generators receive this context explicitly.
 """
 

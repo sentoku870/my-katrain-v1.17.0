@@ -59,7 +59,8 @@ class ConfigReader(Protocol):
     - FeatureContext.config(setting: str, default: Any = None) -> Any
     - BaseKatrain.config(setting, default=None)
 
-    用途: karte_report等でconfig値を取得する際の型安全なインターフェース
+    用途: karte report builder 等で config 値を取得する際の型安全なインターフェース
+    （Phase 232: ``karte_report`` 互換シム削除）
 
     実装例:
     - KaTrainGui.config (実際の使用)

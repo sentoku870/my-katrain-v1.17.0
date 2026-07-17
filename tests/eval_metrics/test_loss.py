@@ -131,7 +131,7 @@ class TestCategoryConsistencyBetweenKarteAndSummary:
     """
     Verify that mistake classification is consistent across all code paths.
 
-    Issue: Previously, build_karte_report() used hardcoded thresholds (1, 3, 7)
+    Issue: Previously, build_karte_json_string() (then build_karte_report) used hardcoded thresholds (1, 3, 7)
     while classify_mistake() used skill preset thresholds (1, 2.5, 5 for standard).
     This caused the same move to show different categories in Karte vs Summary.
 

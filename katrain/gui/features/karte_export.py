@@ -5,6 +5,13 @@
 # __main__.py から抽出したカルテ関連の関数を配置します。
 # - Pure関数: determine_user_color
 # - UI関数: do_export_karte_ui (FeatureContext経由)
+#
+# Phase 234: Kivy import consolidation via ``_ensure_kivy_imports()``.
+# 以前は ``do_export_karte`` / ``do_export_karte_ui`` 関数の先頭で
+# 個別に ``from kivy.X import Y`` を書いていたが、Clock 追加忘れの
+# NameError 修正（Phase 225.2）等、再発リスクが高かった。
+# 1 つのヘルパーに集約し、新しい Kivy シンボルを追加するときは
+# ヘルパー内のみを更新すればよい。
 
 from __future__ import annotations
 
@@ -77,6 +84,68 @@ def determine_user_color(game: Game, username: str) -> str | None:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Phase 234: Kivy import consolidation
+# ---------------------------------------------------------------------------
+# Previously, ``do_export_karte`` and ``do_export_karte_ui`` each declared
+# their own per-symbol ``from kivy.X import Y`` lines. Phase 173 added
+# the lazy import to avoid pulling kivy at module-load time, and Phase
+# 225.2 added a missing ``Clock`` import to fix a NameError. Adding any
+# new Kivy symbol in the future required hunting through both functions
+# to add the corresponding import line.
+#
+# The ``_ensure_kivy_imports`` helper centralises the lazy import: a
+# single call resolves all known Kivy symbols and binds them to this
+# module's ``globals()`` so closures (``copy_path`` etc.) can resolve
+# them by name. The helper is idempotent and is the only place that
+# needs updating when a new Kivy symbol is introduced.
+
+_KIVY_IMPORTS_DONE = False
+
+
+def _ensure_kivy_imports() -> None:
+    """Lazy-load Kivy symbols and bind them to module globals (Phase 234).
+
+    Called from every entry point that touches the UI (``do_export_karte``
+    and ``do_export_karte_ui``). After the first call the module
+    globals carry the following names, all of which the inner closures
+    resolve against ``globals()``:
+
+    - ``Clock``        (kivy.clock)
+    - ``Clipboard``    (kivy.core.clipboard)
+    - ``dp``           (kivy.metrics)
+    - ``BoxLayout``    (kivy.uix.boxlayout)
+    - ``Button``       (kivy.uix.button)
+    - ``Label``        (kivy.uix.label)
+    - ``Popup``        (kivy.uix.popup)
+
+    Idempotent: subsequent calls are no-ops.
+    """
+    global _KIVY_IMPORTS_DONE
+    if _KIVY_IMPORTS_DONE:
+        return
+    from kivy.clock import Clock
+    from kivy.core.clipboard import Clipboard
+    from kivy.metrics import dp
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
+    from kivy.uix.popup import Popup
+
+    globals().update(
+        {
+            "Clock": Clock,
+            "Clipboard": Clipboard,
+            "dp": dp,
+            "BoxLayout": BoxLayout,
+            "Button": Button,
+            "Label": Label,
+            "Popup": Popup,
+        }
+    )
+    _KIVY_IMPORTS_DONE = True
+
+
 def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """Schedule karte export on the main Kivy thread.
 
@@ -89,8 +158,8 @@ def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     # Phase 173: lazy-import kivy here so importing karte_export does
     # not pull in kivy at module load time (the kivy __init__ mkdir's
     # ~/.kivy, which causes FileExistsError on a reused GHA runner).
-    from kivy.clock import Clock
-
+    # Phase 234: consolidate the import via _ensure_kivy_imports().
+    _ensure_kivy_imports()
     Clock.schedule_once(lambda dt: do_export_karte_ui(ctx, open_settings_callback), 0)
 
 
@@ -101,14 +170,12 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         ctx: FeatureContext providing game, config, controls, log
         open_settings_callback: Callback to open settings dialog if needed
     """
-    # Phase 173: lazy-import kivy UI primitives — see do_export_karte.
-    from kivy.clock import Clock  # Phase 225.2 fix: used by copy_path closure
-    from kivy.core.clipboard import Clipboard
-    from kivy.metrics import dp
-    from kivy.uix.boxlayout import BoxLayout
-    from kivy.uix.button import Button
-    from kivy.uix.label import Label
-    from kivy.uix.popup import Popup
+    # Phase 234: import the consolidated kivy symbols via the helper.
+    # All Kivy names used below (``Clock``, ``Clipboard``, ``dp``,
+    # ``BoxLayout``, ``Button``, ``Label``, ``Popup``) are bound to
+    # this module's globals by ``_ensure_kivy_imports()`` and resolved
+    # by closures via globals() lookup.
+    _ensure_kivy_imports()
 
     if not ctx.game:
         return
@@ -207,18 +274,24 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)
         try:
-            text = ctx.game.build_karte_report(player_filter=player_filter, skill_preset=skill_preset)
+            text = ctx.game.build_karte_json_string(player_filter=player_filter, skill_preset=skill_preset)
             os.makedirs(output_dir, exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(text)
             saved_files.append(full_path)
         except Exception as exc:
             ctx.log(f"Failed to save karte: {exc}", OUTPUT_ERROR)
+            # Phase 235: surface a sanitised version in the Popup so the
+            # error message cannot leak file paths / temp-dir names / etc.
+            # The full original is preserved in the log line above.
+            from katrain.core.reports.karte.models import sanitize_error_message
+
+            safe_error = sanitize_error_message(str(exc))
             Popup(
                 title=i18n._("dialog:title:error"),
                 title_font=Theme.DEFAULT_FONT,
                 content=Label(
-                    text=i18n._("Failed to save karte:\n{error}").format(error=exc),
+                    text=i18n._("Failed to save karte:\n{error}").format(error=safe_error),
                     halign="center",
                     valign="middle",
                     font_name=Theme.DEFAULT_FONT,

@@ -15,11 +15,13 @@
     "player_info": {
       "black": {
         "name": "AlphaGo",
-        "rank": null
+        "rank": null,
+        "color": "B"
       },
       "white": {
         "name": "Lee Sedol",
-        "rank": "9p"
+        "rank": "9p",
+        "color": "W"
       }
     },
     "result": "W+Resign",

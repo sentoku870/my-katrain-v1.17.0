@@ -3,12 +3,49 @@
 Extracted from tests/test_karte_structure.py. Covers the urgent-miss
 configuration per skill level, the weakness-hypothesis generation
 pipeline, and label/threshold consistency across skill levels.
+
+Phase 237: added ``TestWeaknessesMetaFor`` for the O(N+M) refactor of
+``katrain.core.reports.karte.json_export._weaknesses_meta_for``.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from katrain.core.analysis import aggregate_phase_mistake_stats
 from katrain.core.analysis.models.move_eval import MoveEval
+
+# ---------------------------------------------------------------------------
+# Phase 237 test helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_mistake_category(name: str):
+    """Build a ``MistakeCategory`` enum member by name (e.g. ``"MISTAKE"``)."""
+    from katrain.core.analysis.models.enums import MistakeCategory
+
+    return MistakeCategory[name]
+
+
+@dataclass
+class _FakeSnapshot:
+    """Minimal stand-in for ``EvalSnapshot`` carrying only ``moves``."""
+
+    moves: list[MoveEval]
+
+
+@dataclass
+class _FakeCtx:
+    """Minimal stand-in for ``KarteContext`` carrying the fields
+    ``_weaknesses_meta_for`` actually reads."""
+
+    snapshot: _FakeSnapshot
+    board_x: int = 19
+
+
+def _make_ctx(*moves: MoveEval) -> _FakeCtx:
+    """Wrap a list of moves in a context shaped like the production one."""
+    return _FakeCtx(snapshot=_FakeSnapshot(moves=list(moves)))
 
 
 class TestUrgentMissConfigsIntegration:
@@ -179,3 +216,163 @@ class TestLabelThresholdConsistency:
 
         result = classify_mistake(score_loss=None, winrate_loss=None, score_thresholds=standard.score_thresholds)
         assert result.value == "good"
+
+
+class TestWeaknessesMetaFor:
+    """Phase 237: ``_weaknesses_meta_for`` must produce identical results
+    to the legacy O(N×M) implementation while running in O(N+M) time.
+
+    The function is purely about coverage accounting: how many of the
+    player's non-zero-loss moves landed in a (phase, category) bucket
+    that the weakness aggregation surfaced, and how much loss those
+    covered moves carry. The output shape is part of the Karte v3.x
+    JSON contract (see ``docs/archive/specs-implemented/karte-schema.md``)
+    so the refactor must be a pure speed-up.
+    """
+
+    @staticmethod
+    def _make_move(move_number: int, player: str, loss: float, mistake_category_name: str = "MISTAKE"):
+        """Build a minimal ``MoveEval``-shaped object for the test."""
+        from katrain.core.analysis.models.move_eval import MoveEval
+
+        return MoveEval(
+            move_number=move_number,
+            player=player,
+            gtp="D4",
+            score_before=0.0,
+            score_after=-loss,
+            delta_score=-loss,
+            winrate_before=0.5,
+            winrate_after=0.45,
+            delta_winrate=-0.05,
+            points_lost=loss,
+            realized_points_lost=None,
+            root_visits=100,
+            mistake_category=_make_mistake_category(mistake_category_name),
+        )
+
+    def test_empty_weaknesses_returns_zero_coverage(self):
+        """When no weakness items are emitted, every metric is zero / 0.0."""
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        ctx = _make_ctx(self._make_move(1, "B", loss=2.0))
+        result = _weaknesses_meta_for(ctx, "B", weakness_items=[])
+        assert result["covered_count"] == 0
+        assert result["total_count"] == 1
+        assert result["coverage_pct"] == 0.0
+        assert result["covered_loss"] == 0.0
+        assert result["total_loss"] == 2.0
+        assert result["loss_coverage_pct"] == 0.0
+
+    def test_all_moves_covered(self):
+        """All non-zero-loss moves match the weakness buckets."""
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        # Move numbers 60/70 are firmly in the "middle" band (50 < n ≤ 200)
+        # so the bucket ``(middle, MISTAKE)`` covers both.
+        moves = [
+            self._make_move(60, "B", loss=3.0, mistake_category_name="MISTAKE"),
+            self._make_move(70, "B", loss=4.0, mistake_category_name="MISTAKE"),
+        ]
+        ctx = _make_ctx(*moves)
+        result = _weaknesses_meta_for(
+            ctx,
+            "B",
+            weakness_items=[{"phase": "middle", "category": "MISTAKE"}],
+        )
+        assert result["covered_count"] == 2
+        assert result["total_count"] == 2
+        assert result["coverage_pct"] == 100.0
+        assert result["covered_loss"] == 7.0
+        assert result["total_loss"] == 7.0
+        assert result["loss_coverage_pct"] == 100.0
+
+    def test_partial_coverage(self):
+        """Only the moves that match a weakness bucket count toward coverage."""
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        moves = [
+            # 2 in the "middle:mistake" bucket
+            self._make_move(60, "B", loss=3.0, mistake_category_name="MISTAKE"),
+            self._make_move(70, "B", loss=2.0, mistake_category_name="MISTAKE"),
+            # 1 in a different bucket
+            self._make_move(80, "B", loss=5.0, mistake_category_name="BLUNDER"),
+        ]
+        ctx = _make_ctx(*moves)
+        result = _weaknesses_meta_for(
+            ctx,
+            "B",
+            weakness_items=[{"phase": "middle", "category": "MISTAKE"}],
+        )
+        # 2 of 3 non-zero-loss moves are covered
+        assert result["covered_count"] == 2
+        assert result["total_count"] == 3
+        assert result["coverage_pct"] == round(100.0 * 2 / 3, 1)
+        assert result["covered_loss"] == 5.0
+        assert result["total_loss"] == 10.0
+        assert result["loss_coverage_pct"] == 50.0
+
+    def test_phase_classification_opens_at_low_move_numbers(self):
+        """Phase boundary at move 50: the function must use the same
+        classifier as ``weakness_hypothesis_for`` so coverage matches
+        the buckets actually emitted."""
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        moves = [
+            self._make_move(10, "B", loss=2.0, mistake_category_name="MISTAKE"),  # opening
+            self._make_move(60, "B", loss=3.0, mistake_category_name="MISTAKE"),  # middle
+        ]
+        ctx = _make_ctx(*moves)
+        # Only the middle move is in the bucket.
+        result = _weaknesses_meta_for(
+            ctx,
+            "B",
+            weakness_items=[{"phase": "middle", "category": "MISTAKE"}],
+        )
+        assert result["covered_count"] == 1
+        assert result["covered_loss"] == 3.0
+
+    def test_zero_loss_moves_excluded_from_denominator(self):
+        """Moves with ``points_lost=None`` or below the threshold must not
+        inflate the denominator or the total_loss."""
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        # Move 20 (opening) has loss 0.0 → excluded.
+        # Move 60 (middle)  has loss 4.0 → included, matches the bucket.
+        moves = [
+            self._make_move(20, "B", loss=0.0, mistake_category_name="GOOD"),
+            self._make_move(60, "B", loss=4.0, mistake_category_name="MISTAKE"),
+        ]
+        ctx = _make_ctx(*moves)
+        result = _weaknesses_meta_for(
+            ctx,
+            "B",
+            weakness_items=[{"phase": "middle", "category": "MISTAKE"}],
+        )
+        # Only the second move counts in the denominator.
+        assert result["total_count"] == 1
+        assert result["total_loss"] == 4.0
+        assert result["covered_count"] == 1
+        assert result["covered_loss"] == 4.0
+
+    def test_handles_large_loss_moves_efficiently(self):
+        """Smoke test: with many loss moves the refactor must complete
+        without quadratic blow-up. The exact coverage numbers are
+        irrelevant — we only assert the function returns the correct
+        total_count and that coverage is bounded by [0, 1].
+        """
+        from katrain.core.reports.karte.json_export import _weaknesses_meta_for
+
+        # 150 non-zero-loss moves + 1 weakness bucket.
+        # All moves are in the 51..200 range → all "middle" phase
+        # (board_size=19 default, middle_end=200, inclusive).
+        moves = [self._make_move(i, "B", loss=2.0, mistake_category_name="MISTAKE") for i in range(51, 201)]
+        ctx = _make_ctx(*moves)
+        result = _weaknesses_meta_for(
+            ctx,
+            "B",
+            weakness_items=[{"phase": "middle", "category": "MISTAKE"}],
+        )
+        assert result["total_count"] == 150
+        assert result["covered_count"] == 150
+        assert result["coverage_pct"] == 100.0

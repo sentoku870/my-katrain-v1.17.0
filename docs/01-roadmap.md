@@ -1,6 +1,6 @@
 # myKatrain（PC版）ロードマップ
 
-> 最終更新: 2026-07-16（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D + Phase 229-A〜E + Phase 230-A〜E + 230-A.1〜A.2 完了）
+> 最終更新: 2026-07-17（Phase 226-A〜J + Phase 227-A〜E + Phase 228-A〜D + Phase 229-A〜E + Phase 230-A〜E + 230-A.1〜A.2 + Phase 231-233 完了）
 > 固定ルールは `00-purpose-and-scope.md` を参照。
 > 過去の履歴（Phase 1-130）は [ROADMAP_HISTORY.md](./archive/ROADMAP_HISTORY.md) を参照。
 > Phase 138-145 の詳細は [architecture-review-2026-06-26.md](./archive/architecture-review-2026-06-26.md) を参照。
@@ -1125,6 +1125,12 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - **230-A.2**: 3 機能（最新レポート・出力フォルダ・複数局まとめ）完全削除（メニュー・dispatch・handler・テストすべて、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除）
   - 詳細: `docs/archive/specs-implemented/phase230-ui-ux-cleanup.md`
   - 23 ファイル + 新規 1 ファイル、合計 約 -726 行、全 5,572 件テスト合格継続
+- [x] **Phase 231-237: カルテ刷新**（Lv3、2026-07-17 進行中）
+  - **Phase 231**: `build_karte_report` → `build_karte_json_string` リネーム（コア 7 ファイル + テスト 8 ファイル + docs 1 ファイル）
+  - **Phase 232**: `karte_report.py` 互換シム完全削除 + `_build_karte_report_impl` → `_build_karte_json_string_impl` リネーム
+  - **Phase 233**: スキーマ正本ドキュメント作成（`docs/archive/specs-implemented/karte-schema.md`、16KB、型判別ロジック / Shape A vs Shape B / 全フィールド仕様 / バージョン履歴）
+  - **Phase 234〜237**: 推奨アクション 4-7（遅延 import 集約 / エラーサニタイザー / プレイヤー色自動推定 / `_weaknesses_meta_for` O(N+M) 化）
+  - 累計 424 件テスト合格 (Phase 232 終了時、`DeprecationWarning` 0 件)
 - [ ] **Phase 224**: OpenAI 互換エンドポイント連携（OpenRouter / OpenAI / ローカル LLM 対応）、将来課題
 
 ---

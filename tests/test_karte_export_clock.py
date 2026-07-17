@@ -7,10 +7,19 @@ Clipboard / dp / BoxLayout / Button / Label / Popup. Clicking the
 
     NameError: name 'Clock' is not defined
 
-This test file pins the fix by importing ``karte_export.do_export_karte_ui``
-in isolation and asserting that ``Clock`` resolves when the closure runs.
-We can't easily drive the full Kivy UI without a window, but the closure's
-local ``__globals__`` must contain the symbol it references.
+Phase 234: the per-symbol lazy imports were consolidated into a single
+``_ensure_kivy_imports()`` helper that binds every Kivy symbol to the
+module globals. This test file pins the new contract:
+
+- The helper exists and is idempotent.
+- After the helper runs, every Kivy symbol the closures use
+  (``Clock``, ``Clipboard``, ``dp``, ``BoxLayout``, ``Button``,
+  ``Label``, ``Popup``) is present in the module globals.
+- The inner ``copy_path`` closure can still resolve ``Clock`` /
+  ``Clipboard`` (no NameError).
+
+We can't easily drive the full Kivy UI without a window, but the
+closure's local ``__globals__`` must contain the symbols it references.
 """
 
 from __future__ import annotations
@@ -30,53 +39,81 @@ os.environ.setdefault("KIVY_GL_BACKEND", "mock")
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
 
-class TestDoExportKarteUiLazyImports:
-    """Pin the lazy-import set so Clock/Clipboard/etc are reachable."""
+class TestEnsureKivyImports:
+    """Phase 234: pin the consolidated Kivy import helper."""
 
-    def test_do_export_karte_ui_module_imports_clock(self) -> None:
-        """When ``do_export_karte_ui`` runs, ``Clock`` must be available
-        in its module-level globals (Phase 173 lazy-import pattern)."""
-        # The fix is that the function's body lazy-imports Clock. We can't
-        # easily trigger the function end-to-end without Kivy UI, but we
-        # can simulate the lazy-import by importing Clock ourselves and
-        # patching the source module — the closure resolves names against
-        # the source module's globals.
-        from kivy.clock import Clock as _Clock
+    def test_helper_exists(self) -> None:
+        from katrain.gui.features import karte_export
+
+        assert hasattr(karte_export, "_ensure_kivy_imports")
+        assert callable(karte_export._ensure_kivy_imports)
+
+    def test_helper_is_idempotent(self) -> None:
+        """Calling the helper multiple times must not re-bind or re-import."""
+        from katrain.gui.features import karte_export
+
+        # Capture the initial state of the KIVY_IMPORTS_DONE flag
+        assert karte_export._KIVY_IMPORTS_DONE is False
+        karte_export._ensure_kivy_imports()
+        assert karte_export._KIVY_IMPORTS_DONE is True
+        first_clock = karte_export.Clock
+
+        # Second call: no-op, but the existing binding is preserved
+        karte_export._ensure_kivy_imports()
+        assert karte_export.Clock is first_clock
+
+    def test_helper_binds_all_kivy_symbols(self) -> None:
+        """After the helper runs, all Kivy symbols are accessible by name."""
+        from katrain.gui.features import karte_export
+
+        # Reset the flag so the helper actually re-runs the imports.
+        karte_export._KIVY_IMPORTS_DONE = False
+        karte_export._ensure_kivy_imports()
+
+        for name in ("Clock", "Clipboard", "dp", "BoxLayout", "Button", "Label", "Popup"):
+            assert name in karte_export.__dict__, f"karte_export.{name} not bound after _ensure_kivy_imports()"
+            assert karte_export.__dict__[name] is not None, f"karte_export.{name} is None after _ensure_kivy_imports()"
+
+    def test_helper_source_uses_globals_update(self) -> None:
+        """Static check: the helper uses ``globals().update({...})`` to
+        bind all symbols in a single statement, so the closure resolution
+        contract is enforced at the source level."""
+        import inspect
 
         from katrain.gui.features import karte_export
 
-        with patch.object(karte_export, "Clock", _Clock, create=True):
-            assert karte_export.Clock is _Clock
-
-    def test_do_export_karte_ui_defines_clock_in_its_globals(self) -> None:
-        """Inspect the source: ``do_export_karte_ui`` must lazy-import
-        ``kivy.clock.Clock`` inside its body, otherwise the inner
-        ``copy_path`` closure would NameError when invoked."""
-        import inspect
-
-        from katrain.gui.features.karte_export import do_export_karte_ui
-
-        source = inspect.getsource(do_export_karte_ui)
-        # Phase 225.2 fix: ensure ``from kivy.clock import Clock`` is
-        # present somewhere in the function body.
-        assert "from kivy.clock import Clock" in source, (
-            "do_export_karte_ui must lazy-import Clock; otherwise the "
-            "copy_path closure raises NameError on the export-success "
-            "popup's Copy button."
+        source = inspect.getsource(karte_export._ensure_kivy_imports)
+        assert "globals().update" in source, (
+            "_ensure_kivy_imports must bind symbols via globals().update() "
+            "so closures (copy_path) can resolve them by name."
         )
+        # All 7 symbols must appear in the update call
+        for name in ("Clock", "Clipboard", "dp", "BoxLayout", "Button", "Label", "Popup"):
+            assert f'"{name}"' in source, (
+                f"_ensure_kivy_imports must bind {name!r} — add it to the globals().update(...) call."
+            )
 
     def test_copy_path_closure_resolves_clock(self) -> None:
-        """Drive the closure and assert Clock.schedule_once can be called."""
+        """Drive the closure and assert Clock.schedule_once can be called.
+
+        Phase 234: the closure resolves ``Clock`` / ``Clipboard`` via the
+        enclosing module's ``globals()``, which is populated by
+        ``_ensure_kivy_imports()``. We verify the runtime contract by
+        stubbing the Kivy symbols on the module and re-defining the
+        closure inline (same shape as ``karte_export.copy_path``).
+        """
         # Build a fake clipboard and a fake button instance
         mock_clipboard = MagicMock()
         mock_button = MagicMock()
         mock_button.text = "old"
 
-        # Simulate the closure environment: module has Clock attribute
+        # Simulate the closure environment: module has Clock / Clipboard
         from katrain.gui.features import karte_export
 
         mock_clock = MagicMock()
-        # Temporarily attach Clock to the module so the closure can find it
+        # Temporarily attach Clock / Clipboard to the module so the
+        # closure can find them (mirrors what _ensure_kivy_imports does
+        # in production).
         with (
             patch.object(karte_export, "Clipboard", mock_clipboard, create=True),
             patch.object(karte_export, "Clock", mock_clock, create=True),
@@ -84,11 +121,16 @@ class TestDoExportKarteUiLazyImports:
         ):
             mock_i18n._.return_value = "label"
 
-            # Define the closure inline (mirroring karte_export.py:242)
+            # Define the closure inline (mirroring karte_export.py:copy_path).
+            # The closure resolves Clipboard and Clock against the
+            # module's globals — same shape as in production.
             def copy_path(instance: Any) -> None:
-                mock_clipboard.copy("files")
-                instance.text = mock_i18n._("copied")
-                karte_export.Clock.schedule_once(lambda dt: setattr(instance, "text", mock_i18n._("copy")), 2)
+                karte_export.Clipboard.copy("files")
+                instance.text = karte_export.i18n._("copied")
+                karte_export.Clock.schedule_once(
+                    lambda dt: setattr(instance, "text", karte_export.i18n._("copy")),
+                    2,
+                )
 
             copy_path(mock_button)
 

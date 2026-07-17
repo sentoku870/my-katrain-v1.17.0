@@ -501,14 +501,19 @@ class TestModuleStructure:
         assert filepath.exists(), "ai_strategies_base.py should exist"
 
     def test_reports_submodules_exist(self):
-        """reports/ サブモジュールが存在する"""
+        """reports/ サブモジュールが存在する
+
+        Phase 232: ``karte_report.py`` 互換シムは完全削除されたので
+        expected_files から除外。``katrain.core.reports.karte.builder``
+        経由でのみアクセス可能。
+        """
         reports_dir = _PROJECT_ROOT / "katrain" / "core" / "reports"
 
         expected_files = [
             "__init__.py",
             "types.py",
             "summary_report.py",
-            "karte_report.py",
+            # Phase 232: karte_report.py シム削除
             "important_moves_report.py",
         ]
 
@@ -1027,13 +1032,13 @@ class TestKivyHeadlessIsolation:
 # Phase 195-A: Deprecated backward-compat shims must not be used by
 # production code. Tests under ``tests/`` are out of scope; the shim
 # modules themselves remain as drop-in facades for ``tests/`` and external
-# users until they are deleted in a later phase (Phase 195-C).
+# users until they are deleted in a later phase (Phase 232).
 # =============================================================================
 
 
 _PHASE_195A_SHIM_MODULES: tuple[str, ...] = (
     "katrain.core.analysis.logic_difficulty",
-    "katrain.core.reports.karte_report",
+    # Phase 232: karte_report shim removed; no longer in the list.
 )
 
 
@@ -1050,8 +1055,10 @@ def _scan_python_files_under(roots: list[Path], exclude: list[Path]) -> list[Pat
 class TestDeprecatedShimIsolation:
     """Production code (anything under ``katrain/``) must not depend on a
     deprecated backward-compatibility shim. Phase 195-A moved ``logic_difficulty``
-    and ``karte_report`` to the new ``difficulty/`` subpackage and
-    ``karte.builder`` respectively; both old paths remain as thin shims for
+    to the new ``difficulty/`` subpackage; ``karte_report`` was moved to
+    ``karte.builder`` in Phase 195-C and the shim itself was fully
+    removed in Phase 232 (this test now only checks ``logic_difficulty``).
+    The old paths remain as thin shims for
     external callers and tests only.
     """
 
@@ -1087,14 +1094,29 @@ class TestDeprecatedShimIsolation:
         )
 
     def test_karte_report_alias_not_used_in_production(self) -> None:
-        """``# Phase 195-C: karte_report shim is gone; import from canonical submodules.`` reaches the shim
-        via the package ``__init__``; block this alias explicitly so that
-        the canonical path ``katrain.core.reports.karte.builder`` is the
-        only supported route from production code."""
+        """Phase 232: ``karte_report.py`` シム完全削除。
+        旧シムが存在しないので、production code が旧名を import しようとして
+        いればそれは ImportError になる。このテストは「シムが import でき
+        ないこと」および「production code が旧名を import していないこと」
+        を保証する。
+        """
+        import pytest
+
+        # 1. 旧シムは import できない
+        with pytest.raises(ImportError):
+            import katrain.core.reports.karte_report  # noqa: F401
+
+        # 2. production code が ``from katrain.core.reports import karte_report``
+        #    していないこと（katrain.core.reports.karte_report の import を
+        #    試みるものは何も無いはず）
         shim_path = _PROJECT_ROOT / "katrain" / "core" / "reports" / "karte_report.py"
+        assert not shim_path.exists(), "karte_report.py shim should have been removed in Phase 232"
+
+        # Production code の静的スキャン: ``katrain.core.reports`` パッケージ
+        # から ``karte_report`` を import する箇所が無いか確認
         katrain_root = _PROJECT_ROOT / "katrain"
         violations: list[str] = []
-        for py_file in _scan_python_files_under([katrain_root], exclude=[shim_path]):
+        for py_file in _scan_python_files_under([katrain_root], exclude=[]):
             try:
                 tree = ast.parse(py_file.read_text(encoding="utf-8"))
             except (SyntaxError, UnicodeDecodeError):

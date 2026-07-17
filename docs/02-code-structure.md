@@ -270,7 +270,7 @@ KaTrainGui → Game → GameNode
 - Phase 187 で `hints.py` カバレッジ 16.5% → 97%（137 件追加）
 
 ### 4.3 Karte レポート
-- ビルドフロー: `build_karte_report()` → `katrain/core/reports/karte/__init__.py`
+- ビルドフロー: `build_karte_json_string()` → `katrain/core/reports/karte/__init__.py` （Phase 231 で `build_karte_report` → `build_karte_json_string` リネーム。実装は Phase 149 から常に JSON 文字列を返していた）
 - セクション分割: `katrain/core/reports/karte/sections/`
 - 意味タグ分類: `katrain/core/analysis/meaning_tags/`
 

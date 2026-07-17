@@ -331,7 +331,7 @@ class Game(BaseGame):
             max_lines=max_lines,
         )
 
-    def build_karte_report(
+    def build_karte_json_string(
         self,
         level: str = analysis_pkg.DEFAULT_IMPORTANT_MOVE_LEVEL,
         player_filter: str | None = None,
@@ -339,7 +339,13 @@ class Game(BaseGame):
         skill_preset: str = analysis_pkg.DEFAULT_SKILL_PRESET,
         target_visits: int | None = None,
     ) -> str:
-        """Build a compact, markdown-friendly report for the current game.
+        """Build a JSON-serialized Karte report for the current game.
+
+        Phase 231: renamed from ``build_karte_report``. The function
+        always returns a JSON string (built via :func:`build_karte_json`
+        + :func:`json.dumps`) since Phase 149; the new name makes the
+        return type explicit. On failure with ``raise_on_error=False``
+        a markdown error card is returned instead.
 
         Args:
             level: Important move level setting
@@ -352,18 +358,20 @@ class Game(BaseGame):
                 If None, uses the hardcoded RELIABILITY_VISITS_THRESHOLD (200).
 
         Returns:
-            Markdown-formatted karte report.
-            On error with raise_on_error=False, returns a report with ERROR section.
+            JSON-serialized karte report as a string.
+            On error with raise_on_error=False, returns a markdown error card.
 
         Raises:
             KarteGenerationError: If raise_on_error=True and generation fails.
 
         Note:
             PR #119: Moved implementation to katrain.core.reports.karte.builder
+            Phase 231: Renamed from ``build_karte_report`` to
+                       ``build_karte_json_string``.
         """
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
 
-        return build_karte_report(
+        return build_karte_json_string(
             self,
             level=level,
             player_filter=player_filter,

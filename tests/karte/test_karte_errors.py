@@ -1,8 +1,9 @@
 """Karte error handling and streak-edge-case tests (Phase E-1).
 
 Extracted from tests/test_karte_structure.py. Covers
-:class:`KarteGenerationError` lifecycle, ``build_karte_report`` failure
-paths, and ``detect_mistake_streaks`` with ``None`` / sparse data.
+:class:`KarteGenerationError` lifecycle, ``build_karte_json_string`` failure
+paths (Phase 231 renamed from ``build_karte_report``), and
+``detect_mistake_streaks`` with ``None`` / sparse data.
 """
 
 from __future__ import annotations
@@ -57,16 +58,26 @@ class TestKarteGenerationError:
         assert str(error) == "Simple error"
 
 
-class TestBuildKarteReportErrorHandling:
-    """Tests for build_karte_report error handling (A2).
+class TestBuildKarteJsonStringErrorHandling:
+    """Tests for build_karte_json_string error handling (A2, Phase 231 renamed).
 
-    Note: PR #119 moved karte implementation to katrain.core.reports.karte_report.
-    These tests now directly test the karte_report module functions.
+    Note: PR #119 moved karte implementation to
+    ``katrain.core.reports.karte.builder``. Phase 232 further removed
+    the ``karte_report.py`` compatibility shim; these tests now
+    directly exercise ``build_karte_json_string`` in
+    ``katrain.core.reports.karte.builder``.
     """
 
     def test_returns_error_markdown_on_failure(self):
-        """Should return error markdown when generation fails."""
-        from katrain.core.reports.karte.builder import build_karte_report
+        """Should return error markdown when generation fails.
+
+        Phase 235: the embedded error message is sanitised via
+        :func:`sanitize_error_message` so paths and other internals
+        cannot leak into the LLM prompt. The substring ``"Test failure"``
+        is not path-like so it is preserved verbatim in the surfaced
+        text.
+        """
+        from katrain.core.reports.karte.builder import build_karte_json_string
 
         # Create a mock game that will fail during karte generation
         game = Mock()
@@ -76,7 +87,7 @@ class TestBuildKarteReportErrorHandling:
         # Make build_eval_snapshot raise an exception to trigger error handling
         game.build_eval_snapshot = Mock(side_effect=ValueError("Test failure"))
 
-        result = build_karte_report(game)
+        result = build_karte_json_string(game)
 
         assert "ERROR" in result
         assert "Test failure" in result
@@ -84,7 +95,7 @@ class TestBuildKarteReportErrorHandling:
 
     def test_raises_exception_when_requested(self):
         """Should raise KarteGenerationError when raise_on_error=True."""
-        from katrain.core.reports.karte.builder import build_karte_report
+        from katrain.core.reports.karte.builder import build_karte_json_string
         from katrain.core.reports.karte.models import KarteGenerationError
 
         game = Mock()
@@ -94,7 +105,7 @@ class TestBuildKarteReportErrorHandling:
         game.build_eval_snapshot = Mock(side_effect=RuntimeError("Boom"))
 
         with pytest.raises(KarteGenerationError) as exc_info:
-            build_karte_report(game, raise_on_error=True)
+            build_karte_json_string(game, raise_on_error=True)
 
         assert "Boom" in str(exc_info.value)
         assert exc_info.value.game_id == "test_game"
@@ -276,3 +287,118 @@ class TestDetectMistakeStreaksNoneHandling:
         assert len(streaks) == 1
         assert streaks[0].move_count == 2
         assert streaks[0].total_loss == 7.0
+
+
+class TestSanitizeErrorMessage:
+    """Phase 235: ``sanitize_error_message`` must strip path-like substrings
+    and enforce length / punctuation so the surfaced text is safe to embed
+    in a Karte error karte or an LLM prompt."""
+
+    def test_none_returns_placeholder(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        assert sanitize_error_message(None) == "Unknown error."
+        assert sanitize_error_message("") == "Unknown error."
+
+    def test_simple_message_keeps_essence(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        result = sanitize_error_message("Snapshot construction failed: ValueError")
+        # No path, no special characters, message preserved
+        assert "Snapshot construction failed" in result
+        assert result.endswith(".")
+
+    def test_strips_unix_absolute_path(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        result = sanitize_error_message("Failed to read /home/user/private/data.sgf")
+        assert "/home/user/private/data.sgf" not in result
+        assert "<path>" in result
+        assert result.endswith(".")
+
+    def test_strips_windows_path(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        result = sanitize_error_message("Cannot open C:\\Users\\sentoku\\AppData\\Local\\Temp\\katrain\\abc.json")
+        assert "C:\\Users" not in result
+        assert "<path>" in result
+
+    def test_strips_home_relative_path(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        result = sanitize_error_message("Failed at ~/katrain/data/file.sgf")
+        assert "~/" not in result
+        assert "<path>" in result
+
+    def test_takes_first_line_only(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        multiline = "Top-level error\nTraceback (most recent call last):\n  File foo.py"
+        result = sanitize_error_message(multiline)
+        assert "Traceback" not in result
+        assert "Top-level error" in result
+
+    def test_truncates_long_messages(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        long = "x" * 500
+        result = sanitize_error_message(long)
+        # 200 char cap + "..."
+        assert len(result) <= 203
+        assert result.endswith("...")
+
+    def test_preserves_existing_punctuation(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        # Already ends with "!" — no extra "." appended
+        result = sanitize_error_message("Boom!")
+        assert result == "Boom!"
+        # Already ends with "?" — same
+        result = sanitize_error_message("What happened?")
+        assert result == "What happened?"
+
+    def test_appends_period_when_missing(self):
+        from katrain.core.reports.karte.models import sanitize_error_message
+
+        result = sanitize_error_message("Failure happened")
+        assert result == "Failure happened."
+
+
+class TestKarteGenerationErrorUserMessage:
+    """Phase 235: ``KarteGenerationError`` exposes a pre-computed
+    ``user_message`` attribute holding the sanitised message."""
+
+    def test_user_message_is_sanitised(self):
+        from katrain.core.game import KarteGenerationError
+
+        err = KarteGenerationError(
+            message="Failed to read /home/user/private/file.sgf",
+            game_id="g1",
+        )
+        assert err.user_message is not None
+        assert "/home/user/private/file.sgf" not in err.user_message
+        assert "<path>" in err.user_message
+
+    def test_user_message_handles_none_original(self):
+        from katrain.core.game import KarteGenerationError
+
+        err = KarteGenerationError(
+            message="",
+            game_id="g1",
+        )
+        assert err.user_message == "Unknown error."
+
+    def test_user_message_does_not_affect_str(self):
+        """``str(err)`` still returns the unsanitised full message so
+        logs / exception chains keep the diagnostic context."""
+        from katrain.core.game import KarteGenerationError
+
+        err = KarteGenerationError(
+            message="Failed to read /home/user/private/file.sgf",
+            game_id="g1",
+        )
+        text = str(err)
+        assert "/home/user/private/file.sgf" in text  # unsanitised
+        # str includes game_id, but user_message does not
+        assert "g1" in text
+        assert "g1" not in err.user_message

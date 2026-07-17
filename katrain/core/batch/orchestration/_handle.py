@@ -19,7 +19,7 @@ from katrain.core.analysis import DEFAULT_SKILL_PRESET
 from katrain.core.batch.io_safe import safe_write_file
 from katrain.core.batch.models import WriteError
 from katrain.core.batch.orchestration._context import _BatchFileContext
-from katrain.core.reports.karte.builder import build_karte_report
+from katrain.core.reports.karte.builder import build_karte_json_string
 from katrain.core.reports.karte.models import KarteGenerationError
 
 if TYPE_CHECKING:
@@ -95,7 +95,7 @@ def _generate_karte_for_file(
 ) -> None:
     """Generate and write a single karte file. Updates result in place."""
     try:
-        karte_text = build_karte_report(
+        karte_text = build_karte_json_string(
             game,
             player_filter=player_filter,
             target_visits=visits,

@@ -1,13 +1,13 @@
 """Tests for Phase 149 Sub-phase A bug fixes.
 
 Covers:
-- A-1: _generate_karte_for_file passes skill_preset to build_karte_report
+- A-1: _generate_karte_for_file passes skill_preset to build_karte_json_string
 - A-2: karte_export.py dynamic i18n key construction is fixed
 - A-3: karte_export.py "Failed to save karte" uses i18n
 - A-4: RELIABILITY_VISITS_THRESHOLD is no longer duplicated in reports.constants
 - A-5: SummaryAnalyzer.worst_moves is truncated to top 10
 - A-6: extractors.py Komi fallback uses except ValueError
-- A-8: builder.py _build_karte_report_impl has no unused local vars
+- A-8: builder.py _build_karte_json_string_impl has no unused local vars
 """
 
 from __future__ import annotations
@@ -52,8 +52,8 @@ class TestA1SkillPresetInBatchKarte:
         src = inspect.getsource(orchestration._process_single_file)
         assert "ctx" in src  # sanity that we are reading the orchestrator
 
-    def test_build_karte_report_called_with_skill_preset(self):
-        """_generate_karte_for_file should pass skill_preset to build_karte_report."""
+    def test_build_karte_json_string_called_with_skill_preset(self):
+        """_generate_karte_for_file should pass skill_preset to build_karte_json_string (Phase 231)."""
         from katrain.core.batch import orchestration
 
         src = inspect.getsource(orchestration._generate_karte_for_file)
@@ -82,8 +82,12 @@ class TestA3KarteExportSaveErrorI18n:
         src = inspect.getsource(karte_export)
         # Should use i18n._("Failed to save karte:\\n{error}")
         assert 'i18n._("Failed to save karte:\\n{error}")' in src
-        # Should format with error=exc
-        assert "error=exc" in src
+        # Should format with the sanitised error (Phase 235: not the raw exc).
+        # Either ``error=exc`` (legacy) or ``error=safe_error`` (Phase 235) is acceptable.
+        assert ("error=exc" in src) or ("error=safe_error" in src)
+        # Phase 235: the Popup must surface a sanitised version of the
+        # exception so paths and other internal data cannot leak.
+        assert "sanitize_error_message(str(exc))" in src
 
     def test_no_hardcoded_failed_to_save_string(self):
         """The Popup content should not have a hardcoded English error string."""
@@ -199,12 +203,12 @@ class TestA6ExtractorsKomiBareExcept:
 
 
 class TestA8BuilderImplNoUnusedLocals:
-    """A-8: _build_karte_report_impl should not have unused local vars."""
+    """A-8: _build_karte_json_string_impl should not have unused local vars (Phase 232 renamed)."""
 
     def test_no_thresholds_local_var(self):
         from katrain.core.reports.karte import builder
 
-        src = inspect.getsource(builder._build_karte_report_impl)
+        src = inspect.getsource(builder._build_karte_json_string_impl)
         # Old code had: thresholds = game.katrain.config(...)
         # This is now removed.
         assert "thresholds = game.katrain.config" not in src
@@ -212,19 +216,19 @@ class TestA8BuilderImplNoUnusedLocals:
     def test_no_confidence_level_local_var(self):
         from katrain.core.reports.karte import builder
 
-        src = inspect.getsource(builder._build_karte_report_impl)
+        src = inspect.getsource(builder._build_karte_json_string_impl)
         assert "confidence_level = analysis.compute_confidence_level" not in src
 
     def test_no_settings_local_var(self):
         from katrain.core.reports.karte import builder
 
-        src = inspect.getsource(builder._build_karte_report_impl)
+        src = inspect.getsource(builder._build_karte_json_string_impl)
         assert "settings = analysis.IMPORTANT_MOVE_SETTINGS_BY_LEVEL" not in src
 
     def test_still_calls_build_karte_json(self):
         from katrain.core.reports.karte import builder
 
-        src = inspect.getsource(builder._build_karte_report_impl)
+        src = inspect.getsource(builder._build_karte_json_string_impl)
         assert "build_karte_json" in src
 
 

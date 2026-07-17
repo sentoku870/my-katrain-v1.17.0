@@ -167,14 +167,22 @@ def build_karte_json(
         "players": common_meta["players"],
         # Phase 225.6: SGF-derived BR/WR info so the LLM Coach popup
         # can auto-fill the rank input from the same Karte file.
+        # Phase 236: also persist the side each ``player_info`` entry
+        # represents (``"B"`` / ``"W"``) so downstream consumers can
+        # read the side without a second SGF lookup or a
+        # ``default_user_name`` match. The string values are stable
+        # identifiers (not localised), so LLM consumers can pattern
+        # match on them directly.
         "player_info": {
             "black": {
                 "name": common_meta["players"]["black"],
                 "rank": (common_meta.get("ranks") or {}).get("black"),
+                "color": "B",
             },
             "white": {
                 "name": common_meta["players"]["white"],
                 "rank": (common_meta.get("ranks") or {}).get("white"),
+                "color": "W",
             },
         },
         "result": common_meta["result"],
@@ -414,6 +422,20 @@ def _weaknesses_meta_for(
     of the player's total loss is explained by the listed weaknesses
     — a "weakness A: 18.5 points" line item is much more useful when
     the LLM also sees ``covered_loss: 25.0 / 60.0`` (41.7%).
+
+    Performance (Phase 237):
+        The previous implementation was O(N × M) where ``N`` is the
+        count of non-zero-loss player moves and ``M`` is the number
+        of weakness buckets — for every weakness item we re-scanned
+        every loss move. The current implementation is **O(N + M)**:
+
+        1. Build a set of the (phase, category) keys present in
+           ``weakness_items`` (cost: ``M``).
+        2. Walk ``loss_moves`` once, classify each move, and check
+           the set membership in O(1) per move (cost: ``N``).
+
+        For a typical 19×19 game (N ≈ 150, M = 2) this is a wash, but
+        for 9×9 with longer move lists the speed-up is significant.
     """
     from katrain.core.analysis import classify_game_phase, get_canonical_loss_from_move
     from katrain.core.reports.constants import BAD_MOVE_LOSS_THRESHOLD
@@ -424,26 +446,21 @@ def _weaknesses_meta_for(
     total_count = len(loss_moves)
     total_loss = sum(get_canonical_loss_from_move(m) for m in loss_moves)
 
-    # Covered: every move that appears as evidence in at least one
-    # weakness bucket. A move can only be covered if its phase
-    # category and mistake category match a weakness key; we
-    # re-derive both here without going back through the
-    # ``aggregate_phase_mistake_stats`` table.
-    covered_move_ids: set[int] = set()
-    covered_loss = 0.0
-    for w in weakness_items:
-        phase = w["phase"]
-        category = w["category"]
-        for m in loss_moves:
-            if covered_move_ids and id(m) in covered_move_ids:
-                continue
-            phase_label = classify_game_phase(m.move_number or 0, ctx.board_x)
-            cat_label = m.mistake_category.name if m.mistake_category else "GOOD"
-            if phase_label == phase and cat_label == category:
-                covered_move_ids.add(id(m))
-                covered_loss += get_canonical_loss_from_move(m)
+    # Phase 237: pre-compute the set of (phase, category) keys the
+    # weakness aggregation actually emitted for this player. The
+    # set-membership check is the inner loop's hot path, so we want
+    # O(1) lookup rather than the previous O(M) linear scan per move.
+    weakness_keys: set[tuple[str, str]] = {(w["phase"], w["category"]) for w in weakness_items}
 
-    covered_count = len(covered_move_ids)
+    covered_loss = 0.0
+    covered_count = 0
+    for m in loss_moves:
+        phase_label = classify_game_phase(m.move_number or 0, ctx.board_x)
+        cat_label = m.mistake_category.name if m.mistake_category else "GOOD"
+        if (phase_label, cat_label) in weakness_keys:
+            covered_count += 1
+            covered_loss += get_canonical_loss_from_move(m)
+
     coverage_pct = round(100.0 * covered_count / total_count, 1) if total_count else 0.0
     loss_coverage_pct = round(100.0 * covered_loss / total_loss, 1) if total_loss > 0 else 0.0
 
