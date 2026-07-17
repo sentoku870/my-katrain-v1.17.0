@@ -1164,8 +1164,9 @@ msgid "mykatrain:llm-coach:auto-detect-summary"
 msgstr "デフォルトユーザー「{user}」/ 黒:{black} 白:{white} → {color}"
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
-msgstr "視点自動判定不可: mykatrain 設定の『デフォルトユーザー名』が未設定です。設定 → mykatrain → デフォルトユーザー名 を入力してください"
-"視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。設定 → mykatrain → "
+msgstr ""
+"視点自動判定不可: mykatrain 設定の『デフォルトユーザー名』が未設定です。設定 → mykatrain → デフォルトユーザー名 "
+"を入力してください視点自動判定不可: mykatrain 設定の「デフォルトユーザー名」が未設定です。設定 → mykatrain → "
 "デフォルトユーザー名を入力してください。"
 
 msgid "mykatrain:llm-coach:auto-detect-failed"
@@ -2956,3 +2957,9 @@ msgstr "SGF ファイルが破損していないか"
 
 msgid "karte:error:check_katago"
 msgstr "KataGo エンジンが正常に動作しているか"
+
+msgid "mykatrain:llm-coach:truncation-warning"
+msgstr "⚠ 表示省略あり ({base})"
+
+msgid "mykatrain:llm-coach:paste-too-long"
+msgstr "LLM 応答が長すぎます ({original} 文字)、先頭 {kept} 文字で打ち切りました"

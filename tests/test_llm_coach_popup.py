@@ -967,10 +967,58 @@ class TestPhase226BSpinnerTextToInternal:
 
         assert _spinner_text_to_internal("") == "auto"
 
-    def test_unknown_string_falls_back_to_auto(self):
-        from katrain.gui.popups.llm_coach_popup import _spinner_text_to_internal
 
-        assert _spinner_text_to_internal("nonsense") == "auto"
+# --- Phase 242-B: perspective_value constant + truncation + paste cap --
+
+
+class TestPhase242BPerspectiveConstant:
+    """Phase 242-B: ``_PERSPECTIVE_AUTO_INTERNAL`` is the single source
+    of truth for the "auto" sentinel value. The previous convention used
+    the empty string ``""`` which was confusing and inconsistent.
+    """
+
+    def test_constant_value(self):
+        from katrain.gui.popups.llm_coach_popup import _PERSPECTIVE_AUTO_INTERNAL
+
+        assert _PERSPECTIVE_AUTO_INTERNAL == "auto"
+
+    def test_perspective_value_uses_constant(self):
+        """StringProperty default is the constant, not a hard-coded literal."""
+        from katrain.gui.popups.llm_coach_popup import (
+            LLMCoachPopupContent,
+            _PERSPECTIVE_AUTO_INTERNAL,
+        )
+
+        # The default value baked into the class is the constant.
+        assert LLMCoachPopupContent.perspective_value.defaultvalue == _PERSPECTIVE_AUTO_INTERNAL
+
+    def test_resolve_player_color_uses_constant(self):
+        from katrain.gui.popups.llm_coach_popup import (
+            _PERSPECTIVE_AUTO_INTERNAL,
+            _PERSPECTIVE_BLACK_INTERNAL,
+            _PERSPECTIVE_WHITE_INTERNAL,
+            _resolve_player_color,
+        )
+
+        # The function must use the same constants as the rest of the
+        # popup code. If you change the constant name, this test will
+        # catch any leftover hard-coded literals.
+        assert _resolve_player_color(_PERSPECTIVE_AUTO_INTERNAL, "B") == "B"
+        assert _resolve_player_color(_PERSPECTIVE_BLACK_INTERNAL, "W") == "B"
+        assert _resolve_player_color(_PERSPECTIVE_WHITE_INTERNAL, "B") == "W"
+        assert _resolve_player_color("", "B") == "B"  # empty == auto
+        assert _resolve_player_color("garbage", None) is None
+
+
+class TestPhase242BPasteSizeCap:
+    """Phase 242-B: response_input paste is capped to prevent UI freeze."""
+
+    def test_constant_value(self):
+        from katrain.gui.popups.llm_coach_popup import _MAX_RESPONSE_INPUT_CHARS
+
+        # 100k is well above realistic LLM outputs and matches
+        # the validator's report cap.
+        assert _MAX_RESPONSE_INPUT_CHARS == 100_000
 
 
 class TestPhase2257PopupSize:

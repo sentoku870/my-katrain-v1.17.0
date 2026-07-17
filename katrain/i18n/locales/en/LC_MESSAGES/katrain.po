@@ -109,9 +109,11 @@ msgid "mykatrain:llm-coach:auto-detect-summary"
 msgstr "Default user '{user}' / B:{black} W:{white} → {color}"
 
 msgid "mykatrain:llm-coach:auto-detect-no-default-user"
-msgstr "Auto-detect disabled: 'default_user_name' is not set in mykatrain settings. Open Settings → mykatrain → Default User Name and fill it in."
-"Auto-detect failed: 'default_user_name' is not set in mykatrain settings. "
-"Open Settings → mykatrain → Default User Name and fill it in."
+msgstr ""
+"Auto-detect disabled: 'default_user_name' is not set in mykatrain settings. "
+"Open Settings → mykatrain → Default User Name and fill it in.Auto-detect "
+"failed: 'default_user_name' is not set in mykatrain settings. Open Settings "
+"→ mykatrain → Default User Name and fill it in."
 
 msgid "mykatrain:llm-coach:auto-detect-failed"
 msgstr "Auto-detect error: {error}"
@@ -3094,3 +3096,10 @@ msgstr "The SGF file is not corrupted"
 
 msgid "karte:error:check_katago"
 msgstr "KataGo engine is running correctly"
+
+msgid "mykatrain:llm-coach:truncation-warning"
+msgstr "⚠ Display truncated ({base})"
+
+msgid "mykatrain:llm-coach:paste-too-long"
+msgstr ""
+"LLM response too long ({original} chars), truncated to first {kept} chars"

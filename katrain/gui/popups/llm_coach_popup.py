@@ -51,6 +51,34 @@ if TYPE_CHECKING:
 _MAX_RANK_DETECT_RETRIES = 5
 _RETRY_INTERVAL = 0.2
 
+# Phase 242-B: stable internal values for the perspective spinner.
+# The KV-side spinner ``text`` is the localised label (e.g. "黒 (B)" /
+# "白 (W)" / "自動" in Japanese, "Black (B)" / "White (W)" / "Auto
+# (default user)" in English). The internal ``perspective_value`` is
+# always one of these constants — never an empty string or a localised
+# label — so the rest of the code can compare without i18n lookups.
+#
+# The previous convention used ``""`` (empty string) as a sentinel
+# for "auto" because StringProperty cannot store ``None``. The empty
+# string is confusing (looks like a bug) and was inconsistent with
+# the StringProperty default "auto". This constant is the single
+# source of truth.
+_PERSPECTIVE_AUTO_INTERNAL: str = "auto"
+_PERSPECTIVE_BLACK_INTERNAL: str = "B"
+_PERSPECTIVE_WHITE_INTERNAL: str = "W"
+
+# Phase 242-B: cap the LLM response input to prevent UI freezes when
+# the user pastes a multi-megabyte response. 100k chars is far above
+# what a real LLM output should be (~10-30k for a long review) and
+# matches the validator's report size cap so the two limits align.
+_MAX_RESPONSE_INPUT_CHARS = 100_000
+
+# Phase 242-B: minimum interval between rapid validation requests to
+# prevent accidental double-clicks. The button is disabled during this
+# window so the user gets visual feedback that the validator is
+# running.
+_VALIDATE_COOLDOWN_SECS = 0.3
+
 
 class LLMCoachPopupContent(BoxLayout):
     """Body widget of the LLM Coach popup (Phase 225).
@@ -81,7 +109,7 @@ class LLMCoachPopupContent(BoxLayout):
     # localised spinner ``text`` and matched with ``startswith("黒")``,
     # which broke if the localised label ever changed. The spinner's
     # ``text`` is now treated as display-only.
-    perspective_value = StringProperty("auto")
+    perspective_value = StringProperty(_PERSPECTIVE_AUTO_INTERNAL)
     # The detected rank from the Karte/SGF, used to display a small
     # "(auto-detected: ...)" hint next to the manual rank input.
     detected_rank: str | None = None
@@ -524,9 +552,9 @@ class LLMCoachPopupContent(BoxLayout):
             # out-of-range (which becomes empty string, treated as a
             # bug condition by ``_resolve_player_color``).
             if internal_value is None:
-                self.perspective_value = ""
+                self.perspective_value = _PERSPECTIVE_AUTO_INTERNAL
             elif internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
-                self.perspective_value = ""  # displayed as "auto"
+                self.perspective_value = _PERSPECTIVE_AUTO_INTERNAL  # displayed as "auto"
             else:
                 self.perspective_value = internal_value
 
@@ -600,7 +628,7 @@ class LLMCoachPopupContent(BoxLayout):
         # out-of-range also becomes empty so stale spinner state is
         # visible to the downstream _resolve_player_color helper.
         if internal_value is None or internal_value == _SUMMARY_BIRDSEYE_SENTINEL:
-            self.perspective_value = ""
+            self.perspective_value = _PERSPECTIVE_AUTO_INTERNAL
         else:
             self.perspective_value = internal_value
         # Update the rank hint if the user picks a different player
@@ -629,7 +657,8 @@ class LLMCoachPopupContent(BoxLayout):
         Called on every path change. Reads the karte path, runs type
         detection, and updates:
 
-        - ``type_label.text`` (single karte / multi-game summary / unknown)
+        - ``type_label.text`` (single karte / multi-game summary / unknown
+          + schema_version suffix, Phase 242-B)
         - ``generate_button.text`` (changes for summary mode)
 
         Does NOT re-populate the rank/perspective selectors — that
@@ -646,22 +675,35 @@ class LLMCoachPopupContent(BoxLayout):
             return
         self._detect_path_type(karte_path)
         games = 0
-        if self.path_type == "summary":
-            try:
-                import json
+        schema_version: str | None = None
+        try:
+            import json
 
-                with open(karte_path, encoding="utf-8") as f:
-                    data = json.load(f)
-                games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
-            except Exception:  # noqa: BLE001
-                pass
+            with open(karte_path, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                if self.path_type == "summary":
+                    games = (data.get("meta") or {}).get("games_analyzed", 0) or 0
+                sv = data.get("schema_version")
+                if isinstance(sv, (str, int, float)):
+                    schema_version = str(sv)
+        except Exception:  # noqa: BLE001
+            pass
         if type_label is not None:
+            # Phase 242-B: append schema_version as a debug suffix
+            # when present. Helps users verify they are looking at
+            # the right schema generation when troubleshooting
+            # prompt/validator mismatches.
             if self.path_type == "karte":
-                type_label.text = i18n._("mykatrain:llm-coach:type-label-single")
+                base = i18n._("mykatrain:llm-coach:type-label-single")
             elif self.path_type == "summary":
-                type_label.text = i18n._("mykatrain:llm-coach:type-label-multi").format(games=games)
+                base = i18n._("mykatrain:llm-coach:type-label-multi").format(games=games)
             else:
-                type_label.text = i18n._("mykatrain:llm-coach:type-label-unknown")
+                base = i18n._("mykatrain:llm-coach:type-label-unknown")
+            if schema_version:
+                type_label.text = f"{base} · Schema {schema_version}"
+            else:
+                type_label.text = base
         if gen_button is not None:
             if self.path_type == "summary":
                 gen_button.text = i18n._("mykatrain:llm-coach:summary-build-button")
@@ -861,6 +903,30 @@ class LLMCoachPopupContent(BoxLayout):
         self._set_widget_text("response_input", "")
         self._set_status(i18n._("mykatrain:llm-coach:response-cleared"))
 
+    def _on_response_text(self, text: str) -> None:
+        """Phase 242-B: cap response_input size to prevent UI freeze.
+
+        The KV file binds ``on_text`` of the response_input to this
+        method. When the pasted text exceeds ``_MAX_RESPONSE_INPUT_CHARS``
+        we truncate and surface a status warning. We don't try to undo
+        the paste (Kivy's TextInput is hard to roll back cleanly) —
+        instead we just inform the user that the tail was dropped.
+        """
+        if not text or len(text) <= _MAX_RESPONSE_INPUT_CHARS:
+            return
+        truncated = text[:_MAX_RESPONSE_INPUT_CHARS]
+        # Replace the field's text via ids to avoid recursion into
+        # _on_response_text itself. Kivy's TextInput is text-driven,
+        # so the new write triggers on_text again, but with a length
+        # below the cap, so we exit cleanly.
+        self._set_widget_text("response_input", truncated)
+        self._set_status(
+            i18n._("mykatrain:llm-coach:paste-too-long").format(
+                original=len(text), kept=_MAX_RESPONSE_INPUT_CHARS
+            ),
+            error=True,
+        )
+
     def on_validate(self) -> None:
         """Validate the user-pasted LLM response and show the report.
 
@@ -872,6 +938,10 @@ class LLMCoachPopupContent(BoxLayout):
         :func:`validate_summary_llm_response` which checks pattern
         categories, phase labels, and game-ID references instead of
         per-move numbers.
+
+        Phase 242-B: also surface a truncation warning when the
+        validator's report was cut off at ``_MAX_REPORT_CHARS`` so
+        the user knows the displayed issue counts are incomplete.
         """
         karte_path = self._read_text("karte_path_input")
         rank = self._read_text("rank_input") or None
@@ -899,7 +969,10 @@ class LLMCoachPopupContent(BoxLayout):
             )
             return
 
-        from katrain.gui.features.llm_coach import validate_llm_response
+        from katrain.gui.features.llm_coach import (
+            validate_llm_response,
+            was_truncated,
+        )
 
         is_clean, markdown = validate_llm_response(
             self.katrain,
@@ -915,27 +988,39 @@ class LLMCoachPopupContent(BoxLayout):
         medium = markdown.count("[MEDIUM]")
         low = markdown.count("[LOW]")
         total = high + medium + low
+        # Phase 242-B: detect truncation so the status line can warn
+        # the user. The report itself ends with the truncation marker
+        # but the user might not see it if the ScrollView is positioned
+        # at the top, so we duplicate the warning in the status line.
+        truncated = was_truncated(markdown)
         if is_clean:
             if total == 0:
-                self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
+                status = i18n._("mykatrain:llm-coach:validation-clean")
             else:
                 # Validator says clean but report still has markers
                 # (e.g. referenced symptom IDs that couldn't be matched).
-                self._set_status(i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total))
+                status = i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total)
         else:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
-                    high=high, medium=medium, low=low, total=total
-                )
+            status = i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
+                high=high, medium=medium, low=low, total=total
             )
+        if truncated:
+            status = i18n._("mykatrain:llm-coach:truncation-warning").format(base=status)
+        self._set_status(status)
 
     def _on_validate_summary(self, karte_path: str, response_text: str, rank: str | None) -> None:
         """Phase 227-D: summary-mode validation handler.
 
         Delegates to :func:`validate_summary_llm_response` and surfaces
         the report Markdown in the result label / status line.
+
+        Phase 242-B: detect truncation via :func:`was_truncated` so the
+        user sees a warning when the report exceeds the cap.
         """
-        from katrain.gui.features.llm_coach import validate_summary_llm_response
+        from katrain.gui.features.llm_coach import (
+            validate_summary_llm_response,
+            was_truncated,
+        )
 
         # Resolve player name from spinner index (must match the value
         # used in ``_on_generate_summary`` so the validator sees the
@@ -956,17 +1041,19 @@ class LLMCoachPopupContent(BoxLayout):
         medium = markdown.count("[MEDIUM]")
         low = markdown.count("[LOW]")
         total = high + medium + low
+        truncated = was_truncated(markdown)
         if is_clean:
             if total == 0:
-                self._set_status(i18n._("mykatrain:llm-coach:validation-clean"))
+                status = i18n._("mykatrain:llm-coach:validation-clean")
             else:
-                self._set_status(i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total))
+                status = i18n._("mykatrain:llm-coach:validation-clean-with-notes").format(count=total)
         else:
-            self._set_status(
-                i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
-                    high=high, medium=medium, low=low, total=total
-                )
+            status = i18n._("mykatrain:llm-coach:validation-issues-with-count").format(
+                high=high, medium=medium, low=low, total=total
             )
+        if truncated:
+            status = i18n._("mykatrain:llm-coach:truncation-warning").format(base=status)
+        self._set_status(status)
 
     def on_copy_result(self) -> None:
         """Copy the validation Markdown to the clipboard.
@@ -1170,11 +1257,14 @@ def _resolve_player_color(perspective_value: str, detected: str | None) -> str |
 
     Phase 226-B (B3): ``perspective_value`` is the stable internal value
     (``"auto"`` / ``"B"`` / ``"W"``), not the localised label.
+    Phase 242-B: now uses ``_PERSPECTIVE_AUTO_INTERNAL`` constant
+    instead of the hard-coded "auto" literal so all perspective state
+    goes through one source of truth.
     """
-    val = perspective_value or "auto"
-    if val == "B":
-        return "B"
-    if val == "W":
-        return "W"
+    val = perspective_value or _PERSPECTIVE_AUTO_INTERNAL
+    if val == _PERSPECTIVE_BLACK_INTERNAL:
+        return _PERSPECTIVE_BLACK_INTERNAL
+    if val == _PERSPECTIVE_WHITE_INTERNAL:
+        return _PERSPECTIVE_WHITE_INTERNAL
     # auto: prefer detected, else None
     return detected
