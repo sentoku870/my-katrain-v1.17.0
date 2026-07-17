@@ -182,14 +182,22 @@ _MODE_TABLE: tuple[ModeConfig, ...] = (
 
 _KANSAI_DICTIONARY: dict[str, str] = {
     "〜です/ます": "〜やで/〜やねん",
+    "ます": "やねん",  # Phase 242-A: base form for 〜ます.
     "〜ですか？": "〜なん？/〜か？",
     "私": "ウチ",
     "ダメ": "あかん",
+    "だめ": "あかん",  # Phase 242-A: lowercase variant for matching.
     "良い/いい": "ええ",
+    "良い": "ええ",  # Phase 242-A: explicit split for clarity.
+    "いい": "ええ",  # Phase 242-A: explicit split for clarity.
     "本当に": "ほんまに",
+    "本当": "ほんま",  # Phase 242-A: base form for matching.
     "〜ではない": "〜ちゃう/〜やない",
     "〜している": "〜しとる",
+    "している": "しとる",  # Phase 242-A: base form.
     "〜ください": "〜してな/〜しとき",
+    "ください": "しとき",  # Phase 242-A: base form.
+    "してください": "してな",  # Phase 242-A: full form.
     "すごい": "めっちゃ/ごっつ",
     "だから": "せやから",
     "そうだね": "せやな",
