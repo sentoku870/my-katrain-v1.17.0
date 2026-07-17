@@ -1137,6 +1137,15 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - **241-I**: AGENTS.md / 01-roadmap.md 更新、Phase 239 表記を Phase 241-G に統一
   - 9 ファイル + 39 unit tests、全 5,612 件テスト合格
   - 詳細: `docs/archive/specs-implemented/phase241-summary-quality-improvements.md`
+- [x] **Phase 242: LLM Coach 品質改善 統合改修**（Lv3、2026-07-17 完了）
+  - **問題**: `docs/ideas/phase242-llm-coach-audit.md` の調査で 40 件以上の問題・改善余地を発見、優先度高の 5 件を統合改修
+  - **242-A**: Kansai 辞書 3 系統同期 — 〜-prefixed パターンを NORM に展開、`ほんまに` を markers に追加、13 箇所同期違反を修正
+  - **242-B**: popup UI 改善 — `_PERSPECTIVE_AUTO_INTERNAL` 定数化、truncate 警告、response_input 100k 制限、schema_version 表示
+  - **242-C**: 9 LLM-required 症状への Lexicon 紐付け — `time_management` / `ai_overload` / `post_game_review` / `tilt_recovery` / `mental_state` の 5 新規エントリ追加
+  - **242-D**: 検証レンダラ統合 — `core/coach/llm_report_renderer.py` 新設、karte/summary レンダラの重複コード解消
+  - **242-E**: popup Pure ロジック抽出 — `core/coach/popup_logic.py` 新設、headless CI で 58 テスト全合格
+  - 11 ファイル新規/修正 + 約 +350 行 / -120 行、計 926 件テスト合格
+  - 詳細: `docs/archive/specs-planned/phase242-llm-coach-quality.md`
 - [x] **Phase 231-237: カルテ刷新**（Lv3、2026-07-17 進行中）
   - **Phase 231**: `build_karte_report` → `build_karte_json_string` リネーム（コア 7 ファイル + テスト 8 ファイル + docs 1 ファイル）
   - **Phase 232**: `karte_report.py` 互換シム完全削除 + `_build_karte_report_impl` → `_build_karte_json_string_impl` リネーム

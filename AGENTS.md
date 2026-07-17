@@ -18,7 +18,7 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 242-A + 242-B + 242-C + 242-D + 242-E
 - **直近のマイルストーン**:
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
@@ -343,8 +343,6 @@ docs/
   - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
   - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
 - 2026-07-17: **Phase 241 — サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
-  - **問題**: ユーザー報告のサマリー機能調査で 11 件のバグ・改善余地を特定（good カテゴリ混入、unknown パス無音通過、loss_progression 空表示、popup race condition、Phase 239 整合性、find_latest_karte 残骸、Kivy headless 環境）
-  - **解決策**: 9 サブ修正を一括で実施
   - **241-A**: weakness pattern から「good」除外 — `json_type.py` に `_NON_WEAKNESS_CATEGORIES` 定数新設、`extract_summary_weakness_patterns` の Shape B 経路でフィルタ、per-player mistake distribution は full のまま温存
   - **241-B**: popup の unknown パス早期 return — `llm-coach:unknown-path` i18n キー追加（jp/en）、`_populate_rank_and_perspective` / `on_generate_and_copy` / `on_validate` 全 3 経路に guard 追加
   - **241-C**: loss_progression フォールバック — `summary_prompt_builder.py` に `_format_loss_progression_block` 新設、dict / legacy flat list / 空 bucket list 3 形式対応、テンプレートに「Loss Progression (per game-type)」セクション追加
@@ -354,6 +352,13 @@ docs/
   - **241-G**: `find_latest_karte` 関数完全削除 — Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用、legacy 関数と関連テスト 4 件削除、Phase 239 表記を Phase 241-G に統一
   - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加 — `KIVY_NO_ARGS` / `KIVY_NO_WINDOW` / `KIVY_HEADLESS` / `SDL_VIDEODRIVER=dummy` 等を conftest ロード時に設定（CI 環境での popup テスト実行準備）
   - **241-I**: AGENTS.md / 01-roadmap.md 更新 — Phase 241 マイルストーン追記、Phase 239 表記を Phase 241-G に統一
+- 2026-07-17: **Phase 242 — LLM Coach 品質改善 統合改修**（Lv3、11 ファイル新規/修正 + 約 +350 行 / -120 行、計 926 件テスト合格）
+  - **問題**: `docs/ideas/phase242-llm-coach-audit.md` の調査で LLM Coach 機能に 40 件以上の問題・改善余地を発見。優先度高の 5 件を統合改修
+  - **242-A**: Kansai 辞書 3 系統同期 (`_KANSAI_DICTIONARY` ↔ `_KANSAI_NORMALISATION_PAIRS` ↔ `_AYAKA_MARKERS`) — 〜-prefixed パターンを NORM に展開、`ほんまに` を markers に追加、6 ファイル + 6 unit tests
+  - **242-B**: popup UI 改善 — `_PERSPECTIVE_AUTO_INTERNAL` 定数化（`""` 暗黙 sentinel 撤廃）、検証 truncate 時の status_label 警告、`response_input` 100k 文字制限、type_label に schema_version 表示、3 ファイル + 6 unit tests
+  - **242-C**: 9 LLM-required 症状への Lexicon 紐付け — `docs/resources/go_lexicon_master_last.yaml` に 5 新規エントリ (time_management / ai_overload / post_game_review / tilt_recovery / mental_state) 追加、symptom_index.py で 9 症状の `related_lexicon_ids` 設定、3 ファイル + 8 unit tests
+  - **242-D**: 検証レンダラ統合 — `core/coach/llm_report_renderer.py` 新設、`gui/features/llm_coach.py` の重複 2 関数を薄いラッパーに置換、3 ファイル + 14 unit tests
+  - **242-E**: popup Pure ロジック抽出 — `core/coach/popup_logic.py` 新設、spinner/perspective/type_label/truncation/paste の判定ロジックを Kivy 非依存に移植、popup は薄いラッパーに、4 ファイル + 58 unit tests (headless CI で全合格)
 - 2026-07-15: **Phase 229 — 棋力プリセット / LLM コーチ 統合（Lv3 + C: 設定統一）**（Lv3、20 ファイル + 154 unit tests、合計 5,572 件テスト合格）
   - **問題**: myKatrain には解析側 `skill_preset` と LLM 側 `CoachMode` の 2 つの棋力管理体系があり、同じ rank 文字列を二重管理していた
   - **解決策**: `general/player_rank` を 1 つの入力として集約、両システムへ自動反映
