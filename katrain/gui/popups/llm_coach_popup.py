@@ -921,9 +921,7 @@ class LLMCoachPopupContent(BoxLayout):
         # below the cap, so we exit cleanly.
         self._set_widget_text("response_input", truncated)
         self._set_status(
-            i18n._("mykatrain:llm-coach:paste-too-long").format(
-                original=len(text), kept=_MAX_RESPONSE_INPUT_CHARS
-            ),
+            i18n._("mykatrain:llm-coach:paste-too-long").format(original=len(text), kept=_MAX_RESPONSE_INPUT_CHARS),
             error=True,
         )
 

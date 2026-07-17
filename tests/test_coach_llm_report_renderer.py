@@ -136,9 +136,7 @@ class TestRenderValidationReport:
     def test_extra_meta_inserted(self):
         report = _FakeReport()
         items = []
-        out = render_validation_report(
-            report, referenced_items=items, extra_meta="3局 / 全体俯瞰"
-        )
+        out = render_validation_report(report, referenced_items=items, extra_meta="3局 / 全体俯瞰")
         # extra_meta appears between status and issues block
         idx_status = out.find("**HIGH**")
         idx_meta = out.find("3局")
@@ -249,9 +247,7 @@ class TestRenderValidationReport:
                 values=("g3",),
             ),
         ]
-        out = render_validation_report(
-            report, referenced_items=items, extra_meta="5局 / 全体俯瞰"
-        )
+        out = render_validation_report(report, referenced_items=items, extra_meta="5局 / 全体俯瞰")
         assert "5局" in out
         assert "全体俯瞰" in out
         assert "blunder" in out
@@ -273,9 +269,7 @@ class TestRenderValidationReport:
         karte = {
             "schema_version": "3.4",
             "weaknesses": {"black": [{"category": "atari_blindness", "count": 1}]},
-            "important_moves": [
-                {"meaning_tag_id": "atari_miss", "color": "black", "points_lost": 2.0}
-            ],
+            "important_moves": [{"meaning_tag_id": "atari_miss", "color": "black", "points_lost": 2.0}],
         }
         prompt = LlmPrompt(
             system_instruction="",

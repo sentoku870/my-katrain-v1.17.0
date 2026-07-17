@@ -472,9 +472,7 @@ def _render_summary_validation_report(
 
     games = cfg.games_analyzed
     focus = cfg.player_name or "全体俯瞰"
-    extra_meta = i18n._("mykatrain:llm-coach:summary-report-meta").format(
-        games=games, focus=focus
-    )
+    extra_meta = i18n._("mykatrain:llm-coach:summary-report-meta").format(games=games, focus=focus)
     referenced = [
         ReferencedItem(
             label_key="mykatrain:llm-coach:summary-referenced-categories",

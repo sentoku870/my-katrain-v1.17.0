@@ -138,9 +138,7 @@ class TestSummaryIndexToInternal:
 
 class TestResolveSummarySpinnerValues:
     def test_no_players_no_match(self):
-        values, default_index = resolve_summary_spinner_values(
-            players=[], matched_player=None
-        )
+        values, default_index = resolve_summary_spinner_values(players=[], matched_player=None)
         assert values == ["全体俯瞰"]
         assert default_index == 0
 
@@ -152,17 +150,13 @@ class TestResolveSummarySpinnerValues:
 
     def test_single_player_with_match(self):
         players = [("alice", "5k")]
-        values, default_index = resolve_summary_spinner_values(
-            players=players, matched_player="alice"
-        )
+        values, default_index = resolve_summary_spinner_values(players=players, matched_player="alice")
         assert values == ["全体俯瞰", "alice (5k)"]
         assert default_index == 1  # match → focus
 
     def test_multiple_players_with_match(self):
         players = [("alice", "5k"), ("bob", None), ("carol", "3d")]
-        values, default_index = resolve_summary_spinner_values(
-            players=players, matched_player="carol"
-        )
+        values, default_index = resolve_summary_spinner_values(players=players, matched_player="carol")
         # carol is placed first
         assert values == ["全体俯瞰", "carol (3d)", "alice (5k)", "bob"]
         assert default_index == 1
@@ -173,9 +167,7 @@ class TestResolveSummarySpinnerValues:
         assert values == ["全体俯瞰", "alice"]
 
     def test_custom_birdseye_label(self):
-        values, _ = resolve_summary_spinner_values(
-            players=[("alice", "5k")], birdseye_label="Bird's-eye"
-        )
+        values, _ = resolve_summary_spinner_values(players=[("alice", "5k")], birdseye_label="Bird's-eye")
         assert values[0] == "Bird's-eye"
 
 
@@ -267,10 +259,7 @@ class TestFormatTypeLabel:
         assert format_type_label("summary", games_analyzed=5) == "複数局サマリ (5局)"
 
     def test_summary_with_version(self):
-        assert (
-            format_type_label("summary", games_analyzed=5, schema_version="3.4")
-            == "複数局サマリ (5局) · Schema 3.4"
-        )
+        assert format_type_label("summary", games_analyzed=5, schema_version="3.4") == "複数局サマリ (5局) · Schema 3.4"
 
     def test_unknown(self):
         assert format_type_label("unknown") == "(未確定)"
@@ -282,10 +271,7 @@ class TestFormatTypeLabel:
 
     def test_custom_labels(self):
         assert format_type_label("karte", single_label="Single Game") == "Single Game"
-        assert (
-            format_type_label("summary", games_analyzed=10, multi_label="Multi ({games})")
-            == "Multi (10)"
-        )
+        assert format_type_label("summary", games_analyzed=10, multi_label="Multi ({games})") == "Multi (10)"
 
 
 # --- count_issue_markers -----------------------------------------------
@@ -358,9 +344,7 @@ class TestFormatValidationStatusSummary:
 
     def test_truncation_warning_prepended(self):
         clean = format_validation_status_summary(is_clean=True, high=0, medium=0, low=0)
-        truncated = format_validation_status_summary(
-            is_clean=True, high=0, medium=0, low=0, truncated=True
-        )
+        truncated = format_validation_status_summary(is_clean=True, high=0, medium=0, low=0, truncated=True)
         # Truncation warning is prepended/wrapped
         assert len(truncated) > len(clean)
         # The base status should still be in the truncated version

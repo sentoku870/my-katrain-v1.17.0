@@ -246,8 +246,7 @@ class TestKansaiDictionarySync:
         for key in _KANSAI_DICTIONARY:
             alternatives = key.split("/")
             assert any(alt in pair_srcs for alt in alternatives), (
-                f"dict_key {key!r} is not substitutable "
-                f"(no NORM pair matches any of its alternatives {alternatives!r})"
+                f"dict_key {key!r} is not substitutable (no NORM pair matches any of its alternatives {alternatives!r})"
             )
 
     def test_all_norm_entries_documented(self):
@@ -263,9 +262,7 @@ class TestKansaiDictionarySync:
         for src, _dst in _KANSAI_NORMALISATION_PAIRS:
             # 〜-prefixed sources are documented as a single OR key in dict
             base = src.lstrip("〜").split("/")[0]
-            assert base in dict_keys or src in dict_keys, (
-                f"NORM src {src!r} is not in the user-facing dictionary"
-            )
+            assert base in dict_keys or src in dict_keys, f"NORM src {src!r} is not in the user-facing dictionary"
 
     def test_normalise_with_tilde_prefix(self):
         """〜-prefixed patterns should be substitutable (Phase 242-A fix)."""
@@ -317,6 +314,4 @@ class TestKansaiDictionarySync:
         )
 
         for _src, dst in _KANSAI_NORMALISATION_PAIRS:
-            assert has_kansai_markers(dst), (
-                f"destination {dst!r} has no marker substring"
-            )
+            assert has_kansai_markers(dst), f"destination {dst!r} has no marker substring"

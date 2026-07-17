@@ -375,8 +375,7 @@ class TestSymptomLexiconCoverage:
         symptom = lookup_symptom(sid)
         assert symptom is not None
         assert symptom.related_lexicon_ids, (
-            f"{sid.value} must list at least one Lexicon id "
-            f"(Phase 242-C closed the gap for LLM-required symptoms)"
+            f"{sid.value} must list at least one Lexicon id (Phase 242-C closed the gap for LLM-required symptoms)"
         )
 
     @pytest.mark.parametrize(

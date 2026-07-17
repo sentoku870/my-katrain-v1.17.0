@@ -378,9 +378,7 @@ def cap_response_text(text: str) -> tuple[str, str | None]:
         return text, None
     return (
         text[:MAX_RESPONSE_INPUT_CHARS],
-        i18n._("mykatrain:llm-coach:paste-too-long").format(
-            original=len(text), kept=MAX_RESPONSE_INPUT_CHARS
-        ),
+        i18n._("mykatrain:llm-coach:paste-too-long").format(original=len(text), kept=MAX_RESPONSE_INPUT_CHARS),
     )
 
 
