@@ -36,7 +36,16 @@ from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 
 from katrain.core.coach.popup_logic import (
+    MAX_RESPONSE_INPUT_CHARS as _MAX_RESPONSE_INPUT_CHARS,
+)
+from katrain.core.coach.popup_logic import (
     PERSPECTIVE_AUTO as _PERSPECTIVE_AUTO_INTERNAL,
+)
+from katrain.core.coach.popup_logic import (
+    PERSPECTIVE_BLACK as _PERSPECTIVE_BLACK_INTERNAL,
+)
+from katrain.core.coach.popup_logic import (
+    PERSPECTIVE_WHITE as _PERSPECTIVE_WHITE_INTERNAL,
 )
 from katrain.core.coach.popup_logic import (
     SUMMARY_BIRDSEYE_SENTINEL as _SUMMARY_BIRDSEYE_SENTINEL,
@@ -52,6 +61,9 @@ from katrain.core.coach.popup_logic import (
     was_truncated,
 )
 from katrain.core.coach.popup_logic import (
+    is_summary_birdseye_value as is_summary_birdseye,
+)
+from katrain.core.coach.popup_logic import (
     resolve_player_color_internal as _resolve_player_color,
 )
 from katrain.core.lang import i18n
@@ -61,6 +73,27 @@ from katrain.gui.widgets.filebrowser import I18NFileBrowser
 
 if TYPE_CHECKING:
     pass
+
+
+# Phase 243: re-export public module names so that ``from
+# katrain.gui.popups.llm_coach_popup import X`` works for tests that
+# historically depended on the popup-side constants. The actual
+# implementations live in :mod:`katrain.core.coach.popup_logic`; this
+# file only re-exports them with their historical names so that
+# downstream tests don't have to chase the rename.
+#
+# Without ``__all__`` here, ruff F401 silently strips the as-imports
+# above on every reformat cycle (the names are technically unused
+# inside the popup module).
+__all__ = [
+    "_MAX_RESPONSE_INPUT_CHARS",
+    "_PERSPECTIVE_AUTO_INTERNAL",
+    "_PERSPECTIVE_BLACK_INTERNAL",
+    "_PERSPECTIVE_WHITE_INTERNAL",
+    "_SUMMARY_BIRDSEYE_SENTINEL",
+    "_resolve_player_color",
+    "is_summary_birdseye",
+]
 
 
 # Phase 226-B (B1): cap how many times ``_populate_rank_and_perspective``
