@@ -1,13 +1,18 @@
 """PV filter configuration and complexity-based candidate filtering.
 
 Phase 144-C: Extracted from logic.py (1494 lines → 6 focused modules).
+Phase 246-A: Added ``PVFilterDisplayInfo`` + ``get_effective_pv_filter_info``
+to surface the AUTO→level mapping in the settings UI (H2).
 
 Contains:
 - get_pv_filter_config: Get PV filter config by level (with auto-mapping)
 - filter_candidates_by_pv_complexity: Filter candidates by PV length and loss
+- get_effective_pv_filter_info: Resolve the display-effective level for UI
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from typing import Any
 
@@ -105,3 +110,93 @@ def filter_candidates_by_pv_complexity(
         filtered.insert(0, best_move)
 
     return filtered
+
+
+# =============================================================================
+# Phase 246-A: Display-effective level resolution
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class PVFilterDisplayInfo:
+    """UI-facing summary of the effective PV filter level.
+
+    Used by the analysis-tab settings popup to show the user what the
+    AUTO mode will actually do (H2). The runtime path still calls
+    :func:`get_pv_filter_config`; this dataclass only exists for
+    display.
+
+    Attributes:
+        effective_level: Resolved level name. One of
+            ``"off"`` / ``"weak"`` / ``"medium"`` / ``"strong"``.
+        max_candidates: Cap for the resolved level (0 if ``"off"``,
+            which means "unlimited / no filter").
+        is_auto: True when the user selected ``"auto"`` and we
+            resolved a concrete level from ``player_rank``.
+        resolved_preset: skill_preset the AUTO mapping landed on
+            (``None`` if not AUTO or ``player_rank`` was empty).
+    """
+
+    effective_level: str
+    max_candidates: int
+    is_auto: bool
+    resolved_preset: str | None
+
+
+def get_effective_pv_filter_info(
+    pv_filter_level: str | None,
+    player_rank: str | None = "",
+) -> PVFilterDisplayInfo:
+    """Resolve the display-effective PV filter level and its cap.
+
+    Phase 246-A: makes the ``AUTO → weak/medium/strong`` mapping visible
+    to the user via the settings popup status label (H2). Behavioural
+    parity with :func:`get_pv_filter_config` is preserved — this function
+    does NOT change runtime filtering, only the description returned to
+    the UI layer.
+
+    Args:
+        pv_filter_level: The user's selected level
+            (``"off"`` / ``"weak"`` / ``"medium"`` / ``"strong"`` /
+            ``"auto"``). ``None`` and empty string are treated as
+            ``"auto"`` (matches the runtime fallback in
+            ``badukpan_hints.prepare_hint_moves``).
+        player_rank: The user's rank string for AUTO resolution
+            (e.g. ``"5d"`` / ``"4段"``). May be empty.
+
+    Returns:
+        :class:`PVFilterDisplayInfo` with the effective level and cap.
+
+    Note:
+        This function does NOT import ``logic_skill`` at module load
+        time to avoid an import cycle — ``logic_skill`` imports
+        models which already import nothing from ``logic_pv``, but
+        the lazy import keeps the dependency graph one-directional.
+    """
+    # Mirror the runtime fallback: None / empty → "auto".
+    level = (pv_filter_level or "").strip().lower()
+    if not level:
+        level = "auto"
+
+    if level == "off":
+        # 0 max_candidates sentinel: "unlimited" (no filter applied).
+        return PVFilterDisplayInfo("off", 0, False, None)
+
+    if level == "auto":
+        # Lazy import to avoid module-level cycle with logic_skill.
+        from katrain.core.analysis.logic_skill import rank_to_skill_preset
+
+        resolved = rank_to_skill_preset(player_rank) if player_rank else DEFAULT_SKILL_PRESET
+        mapped = SKILL_TO_PV_FILTER.get(resolved, "medium")
+        config = PV_FILTER_CONFIGS.get(mapped)
+        if config is None:
+            return PVFilterDisplayInfo(mapped, 0, True, resolved)
+        return PVFilterDisplayInfo(mapped, config.max_candidates, True, resolved)
+
+    # Explicit level (weak / medium / strong)
+    config = PV_FILTER_CONFIGS.get(level)
+    if config is None:
+        # Unknown level: keep the name but report 0 cap so the UI
+        # can show "?" or fall back to "auto".
+        return PVFilterDisplayInfo(level, 0, False, None)
+    return PVFilterDisplayInfo(level, config.max_candidates, False, None)

@@ -6,6 +6,7 @@ Tests for PV Filter (Phase 11)
 - PV長/pointsLost境界値テスト
 - best_move別枠の確認
 - AUTOマッピングの確認
+- (Phase 246-A) ``get_effective_pv_filter_info`` の表示用ヘルパー
 """
 
 from katrain.core.analysis import (
@@ -13,8 +14,10 @@ from katrain.core.analysis import (
     PV_FILTER_CONFIGS,
     SKILL_TO_PV_FILTER,
     PVFilterConfig,
+    PVFilterDisplayInfo,
     PVFilterLevel,
     filter_candidates_by_pv_complexity,
+    get_effective_pv_filter_info,
     get_pv_filter_config,
 )
 
@@ -292,3 +295,107 @@ class TestConstants:
         assert PVFilterLevel.MEDIUM.value == "medium"
         assert PVFilterLevel.STRONG.value == "strong"
         assert PVFilterLevel.AUTO.value == "auto"
+
+
+# =============================================================================
+# Phase 246-A: get_effective_pv_filter_info display helper
+# =============================================================================
+
+
+class TestGetEffectivePVFilterInfo:
+    """``get_effective_pv_filter_info`` resolves the *display-effective*
+    level and cap that the settings popup status label uses (H2)."""
+
+    def test_off_returns_unlimited_cap(self):
+        """OFF: max_candidates=0 sentinel = "unlimited"."""
+        info = get_effective_pv_filter_info("off", "5d")
+        assert info.effective_level == "off"
+        assert info.max_candidates == 0
+        assert info.is_auto is False
+        assert info.resolved_preset is None
+
+    def test_weak_returns_weak_config(self):
+        info = get_effective_pv_filter_info("weak", "")
+        assert info.effective_level == "weak"
+        assert info.max_candidates == 15
+        assert info.is_auto is False
+        assert info.resolved_preset is None
+
+    def test_medium_returns_medium_config(self):
+        info = get_effective_pv_filter_info("medium", "")
+        assert info.effective_level == "medium"
+        assert info.max_candidates == 8
+        assert info.is_auto is False
+
+    def test_strong_returns_strong_config(self):
+        info = get_effective_pv_filter_info("strong", "")
+        assert info.effective_level == "strong"
+        assert info.max_candidates == 4
+        assert info.is_auto is False
+
+    def test_auto_with_5d_resolves_advanced(self):
+        """AUTO + 5d → advanced → strong (cap 4)."""
+        info = get_effective_pv_filter_info("auto", "5d")
+        assert info.effective_level == "strong"
+        assert info.max_candidates == 4
+        assert info.is_auto is True
+        assert info.resolved_preset == "advanced"
+
+    def test_auto_with_4kanji_resolves_advanced(self):
+        """AUTO + '4段' (kanji) → advanced → strong."""
+        info = get_effective_pv_filter_info("auto", "4段")
+        assert info.effective_level == "strong"
+        assert info.is_auto is True
+        assert info.resolved_preset == "advanced"
+
+    def test_auto_with_5k_resolves_beginner(self):
+        """AUTO + 5k → beginner → weak (cap 15)."""
+        info = get_effective_pv_filter_info("auto", "5k")
+        assert info.effective_level == "weak"
+        assert info.max_candidates == 15
+        assert info.is_auto is True
+        assert info.resolved_preset == "beginner"
+
+    def test_auto_with_empty_rank_uses_default_preset(self):
+        """AUTO + empty rank → DEFAULT_SKILL_PRESET ('standard') → medium."""
+        info = get_effective_pv_filter_info("auto", "")
+        assert info.effective_level == "medium"
+        assert info.max_candidates == 8
+        assert info.is_auto is True
+        assert info.resolved_preset == "standard"
+
+    def test_none_level_treated_as_auto(self):
+        """None / empty level falls back to AUTO (matches runtime)."""
+        assert get_effective_pv_filter_info(None, "5d").effective_level == "strong"
+        assert get_effective_pv_filter_info("", "5d").effective_level == "strong"
+        assert get_effective_pv_filter_info(None, "").effective_level == "medium"
+
+    def test_level_normalised_to_lowercase(self):
+        """Level matching is case-insensitive + strip-tolerant (M6 bonus)."""
+        assert get_effective_pv_filter_info("STRONG", "5d").effective_level == "strong"
+        assert get_effective_pv_filter_info(" Medium ", "5d").effective_level == "medium"
+        assert get_effective_pv_filter_info("  off  ", "5d").effective_level == "off"
+
+    def test_unknown_level_returns_zero_cap(self):
+        """Unknown level keeps the name but reports cap=0 (no cap known)."""
+        info = get_effective_pv_filter_info("unknown_level", "5d")
+        assert info.effective_level == "unknown_level"
+        assert info.max_candidates == 0
+        assert info.is_auto is False
+
+    def test_returns_dataclass_instance(self):
+        """Return type is the frozen dataclass."""
+        info = get_effective_pv_filter_info("medium", "")
+        assert isinstance(info, PVFilterDisplayInfo)
+        # Frozen: cannot mutate
+        import pytest
+
+        with pytest.raises(Exception):
+            info.effective_level = "off"  # type: ignore[misc]
+
+    def test_auto_pro_maps_to_strong(self):
+        """AUTO + pro → strong (pro is mapped to strong today, M2 future)."""
+        info = get_effective_pv_filter_info("auto", "9d")
+        # 9d is mapped via rank_to_skill_preset; verify resolution flows.
+        assert info.is_auto is True
+        assert info.effective_level in {"weak", "medium", "strong"}

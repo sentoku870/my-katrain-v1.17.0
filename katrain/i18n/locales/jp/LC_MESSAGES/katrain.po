@@ -1602,6 +1602,15 @@ msgstr "厳選"
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "自動"
 
+msgid "mykatrain:settings:pv_filter_status_off"
+msgstr "現在: フィルタOFF（全候補を表示）"
+
+msgid "mykatrain:settings:pv_filter_status_auto"
+msgstr "現在: AUTO → {level}（{preset} から自動推定・最大 {max_n} 件まで）"
+
+msgid "mykatrain:settings:pv_filter_status_explicit"
+msgstr "現在: {level}（最大 {max_n} 件まで）"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
 

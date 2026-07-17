@@ -135,6 +135,9 @@ from katrain.core.analysis.logic import (
     get_phase_thresholds,
     # PV Filter (Phase 11)
     get_pv_filter_config,
+    # Phase 246-A: display-effective level for UI
+    get_effective_pv_filter_info,
+    PVFilterDisplayInfo,
     get_reliability_scale,
     # Skill preset helpers
     get_skill_preset,
@@ -448,6 +451,9 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
+    # Phase 246-A: display-effective level for UI
+    "get_effective_pv_filter_info",
+    "PVFilterDisplayInfo",
     # Difficulty Metrics (Phase 12)
     "get_root_visits",  # Phase 92: Public wrapper
     "compute_difficulty_metrics",

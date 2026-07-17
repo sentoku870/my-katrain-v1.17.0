@@ -1654,6 +1654,15 @@ msgstr "Strong"
 msgid "mykatrain:settings:pv_filter_auto"
 msgstr "Auto"
 
+msgid "mykatrain:settings:pv_filter_status_off"
+msgstr "Currently: filter OFF (all candidates shown)"
+
+msgid "mykatrain:settings:pv_filter_status_auto"
+msgstr "Currently: AUTO → {level} (auto-derived from {preset}, cap {max_n})"
+
+msgid "mykatrain:settings:pv_filter_status_explicit"
+msgstr "Currently: {level} (cap {max_n})"
+
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
 

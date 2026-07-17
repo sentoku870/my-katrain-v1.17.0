@@ -68,7 +68,9 @@ from katrain.core.analysis.logic_phase_dynamic import (
 )
 from katrain.core.analysis.logic_pv import (
     filter_candidates_by_pv_complexity,
+    get_effective_pv_filter_info,
     get_pv_filter_config,
+    PVFilterDisplayInfo,
 )
 from katrain.core.analysis.logic_reliability import (
     compute_confidence_level,
@@ -155,6 +157,9 @@ __all__ = [
     # PV Filter (Phase 11)
     "get_pv_filter_config",
     "filter_candidates_by_pv_complexity",
+    # Phase 246-A: display-effective level for UI
+    "get_effective_pv_filter_info",
+    "PVFilterDisplayInfo",
     # Difficulty Metrics (Phase 12 / Phase 192 canonical names)
     "compute_difficulty_metrics",
     "difficulty_metrics_from_node",

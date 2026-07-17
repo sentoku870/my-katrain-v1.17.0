@@ -101,6 +101,10 @@ def _build_player_rank_section(inner: BoxLayoutType, state: _SettingsPopupContex
         # Update the inferred label without rebuilding the layout.
         if hasattr(state, "_rank_inferred_label"):
             state._rank_inferred_label.text = _format_rank_inferred_label(new_value, state.selected_skill_preset[0])
+        # Phase 246-A (H2): also refresh the PV filter status because
+        # AUTO mode depends on the resolved preset, which itself depends
+        # on the rank string.
+        _refresh_pv_filter_status(state)
 
     rank_input.bind(text=_on_rank_text)
     rank_layout.add_widget(rank_input)
@@ -162,7 +166,16 @@ def _format_rank_inferred_label(rank_str: str, resolved_preset: str) -> str:
 
 
 def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Add the PV filter level radio button group."""
+    """Add the PV filter level radio button group (Phase 246-A).
+
+    Phase 246-A refresh:
+    - (M8) 5-option row uses size_hint_x proportional layout so labels
+      do not get truncated on narrow windows / i18n variants.
+    - (H2) Adds a status label below the row that shows the *effective*
+      level (resolving AUTO via ``player_rank``) and the candidate cap.
+      The label re-renders when the user changes the radio selection or
+      the rank input, giving a live preview of what the filter will do.
+    """
     _add_searchable_label(inner, "mykatrain:settings:pv_filter_level", state)
 
     pv_filter_options = [
@@ -173,32 +186,107 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
         ("strong", i18n._("mykatrain:settings:pv_filter_strong")),
     ]
 
+    # Phase 246-A (M8): each option is one cell that takes 1/N of the
+    # available width. Within the cell, the CheckBox is ~30% and the
+    # Label takes the rest, so a long i18n string can wrap rather than
+    # overflow. The previous fixed-width ``dp(70)`` layout overflowed
+    # on 768px windows with JP locale.
+    n_options = len(pv_filter_options)
+    cell_hint = 1.0 / n_options
     pv_filter_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
     for pv_value, pv_label_text in pv_filter_options:
+        cell = BoxLayout(orientation="horizontal", size_hint_x=cell_hint, spacing=dp(2))
         checkbox = CheckBox(
             group="pv_filter_setting",
             active=(pv_value == state.selected_pv_filter[0]),
-            size_hint_x=None,
-            width=dp(30),
+            size_hint_x=0.3,
         )
-        checkbox.bind(
-            active=lambda chk, active, val=pv_value: state.selected_pv_filter.__setitem__(0, val) if active else None
+        # Each cell needs its own handler so the closure captures the
+        # correct ``pv_value`` (Phase 226-B 対策: explicit handler factory).
+        def _on_pv_active(_chk, active, val=pv_value):  # noqa: B008
+            if active:
+                state.selected_pv_filter[0] = val
+                _refresh_pv_filter_status(state)
+
+        checkbox.bind(active=_on_pv_active)
+        cell.add_widget(checkbox)
+        cell.add_widget(
+            Label(
+                text=pv_label_text,
+                size_hint_x=0.7,
+                halign="left",
+                valign="middle",
+                color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
+                shorten=True,
+            )
         )
-        label = Label(
-            text=pv_label_text,
-            size_hint_x=None,
-            width=dp(70),
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        pv_filter_layout.add_widget(checkbox)
-        pv_filter_layout.add_widget(label)
+        pv_filter_layout.add_widget(cell)
     inner.add_widget(pv_filter_layout)
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:pv_filter_level", pv_filter_layout)
+
+    # Phase 246-A (H2): effective-level status label below the radio row.
+    # Stored on state so the rank-input callback can refresh it in place.
+    status_label = Label(
+        text=_format_pv_filter_status(state.selected_pv_filter[0], state.selected_player_rank[0]),
+        size_hint_y=None,
+        height=dp(24),
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size="12sp",
+    )
+    status_label.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    state._pv_filter_status_label = status_label
+    inner.add_widget(status_label)
+
+
+def _format_pv_filter_status(pv_filter_level: str, player_rank: str) -> str:
+    """Render the "現在: MEDIUM (最大 8 件)" string for the PV filter row.
+
+    Phase 246-A: lives next to ``_format_rank_inferred_label`` so the
+    analysis tab can show two parallel status lines (preset + filter).
+    Kept as a free function so unit tests can call it without spinning
+    up a popup.
+    """
+    from katrain.core.analysis import (
+        SKILL_PRESET_LABELS,
+        get_effective_pv_filter_info,
+    )
+
+    info = get_effective_pv_filter_info(pv_filter_level, player_rank)
+    if info.effective_level == "off":
+        return i18n._("mykatrain:settings:pv_filter_status_off")
+    level_label = i18n._(f"mykatrain:settings:pv_filter_{info.effective_level}")
+    if info.is_auto:
+        preset_label = SKILL_PRESET_LABELS.get(info.resolved_preset or "", info.resolved_preset or "")
+        return i18n._("mykatrain:settings:pv_filter_status_auto").format(
+            level=level_label,
+            preset=preset_label,
+            max_n=info.max_candidates,
+        )
+    return i18n._("mykatrain:settings:pv_filter_status_explicit").format(
+        level=level_label,
+        max_n=info.max_candidates,
+    )
+
+
+def _refresh_pv_filter_status(state: _SettingsPopupContext) -> None:
+    """Re-render the PV filter status label from the current state values.
+
+    Phase 246-A: pulled out of ``_build_pv_filter_section`` so the
+    player-rank text callback can reuse it. The label reference is
+    stashed on ``state._pv_filter_status_label`` by the section builder.
+    """
+    label = getattr(state, "_pv_filter_status_label", None)
+    if label is None:
+        return
+    label.text = _format_pv_filter_status(
+        state.selected_pv_filter[0],
+        state.selected_player_rank[0],
+    )
 
 
 def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
