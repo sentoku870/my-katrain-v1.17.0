@@ -264,6 +264,146 @@ AST ベースのテスト (`test_pv_filter_kifunarabe_skip.py`) で保証。
 A. STRONG の `max_candidates=4` は「最善手**以外**」の上限です。
 最強の手 + 追加で最大 4 手の合計 5 件程度は正常。最善手は常駐表示。
 
+---
+
+## 7.6 重要局面機能の全体像 (Phase 248)
+
+myKatrain には複数の「重要局面を抽出する」経路があります。本節では
+それぞれの違いと相互関係を一望し、「結局どれを使えばいいのか?」に
+答えます。
+
+### 7.6.1 5 つの経路とそれぞれの役割
+
+| 経路 | 単位 | 表示/出力 | 主な用途 |
+|------|------|----------|---------|
+| **重要度レベル** (B1) | 抽出感度 | 内部設定 | 「大雑把に拾う / 細かく拾う」を棋力別に切替 |
+| **Critical 3** (B2 / 重要局面抽出) | 棋譜 (top-N/player) | Karte JSON / 将来 popup | Karte 出力の `critical_3` セクション |
+| **重要局面リスト popup** (D1) | 棋譜 (全件) | GUI popup | 棋譜全体の重要局面を一覧 |
+| **Beginner Hint** (Phase 91, 179) | 現局面 1 ノード | 盤面ハイライト + コントロールパネル | 初心者向け安全手ヒント |
+| **Curator profile** (Phase 186) | 棋譜横断 (弱点) | beginner hint に統合 | 自分の弱点パターンを振り返る |
+
+これらは独立した経路ですが、**同じ raw data** (KataGo の
+`scoreLead` / `scoreLoss` / `winrate` / `scoreStdev` / `policy` /
+`ownership`) を異なる切り口で見ているだけです。Karte JSON の
+`important_moves` セクションが共通の出発点になります。
+
+### 7.6.2 重要度レベル (B1) — 「緩め / 標準 / 厳しめ」
+
+`mykatrain_settings.important_moves_level` で棋力別に切替:
+
+| レベル | 閾値 | 最大件数 | 向いている棋力 |
+|--------|------|---------|----------------|
+| `easy` (級位者向け) | 1.0 | 10 | 30級〜11級 (大きな損失のみ) |
+| `normal` (標準) | 0.5 | 20 | 10級〜5段 (デフォルト) |
+| `strict` (段位者向け) | 0.3 | 40 | 6段以上 (細かいヨセも拾う) |
+
+設定方法: 解析タブ → **重要局面 重要度レベル** ラジオボタン。
+Karte export 時にこのレベルが `pick_important_moves` の `level`
+引数として伝わり、`critical_3` にも反映されます。
+
+### 7.6.3 Critical 3 (B2) — 「手元の Karte に何件載せる?」
+
+`mykatrain_settings.critical_3_max_moves` で 1〜10 件に調整
+(デフォルト 3 = Phase 50 ベースライン)。
+
+解析タブ → **Critical 3 件数** スピナー。
+
+### 7.6.4 重要局面リスト popup (D1) — 「棋譜全体の俯瞰」
+
+(Phase 248-γ-D1 で実装予定)
+
+未実装。現在 GUI 上では **現在のノードの beginner hint のみ** が
+コントロールパネルに表示されます (see §7.6.5)。
+過去の重要局面を一覧する popup は計画中。
+
+### 7.6.5 Beginner Hint — 「今の局面、危険じゃない?」
+
+`beginner_hints.enabled` で 4 段階の優先順位 (Phase 91) と
+7 系統のサマリ hint (Phase 179 + 182 + 186) を制御:
+
+| 系統 | カテゴリ数 | 役割 |
+|------|------------|------|
+| 構造 (Phase 91) | 4 | self_atari / ignore_atari / missed_capture / cut_risk |
+| Meaning tag (Phase 92) | 6 | low_liberties / self_capture_like / bad_shape / heavy_group / missed_defense / urgent_vs_big |
+| ミス (Phase 179) | 3 | mistake_blunder / mistake_mistake / mistake_good (好手称賛) |
+| 自由度 (Phase 179) | 3 | only_move / narrow / wide |
+| 難易度 (Phase 179) | 2 | tricky / calm |
+| KataGo 不確実 (Phase 179) | 1 | katago_uncertain |
+| 所有 (Phase 182) | 1 | ownership_dominant |
+| Policy (Phase 182) | 2 | policy_confident / policy_conflict |
+| Curator (Phase 186) | 1 | curator_weak_axis |
+
+**Phase 248-C4 で追加**: `compute_beginner_hint(aggregate=True)`
+を使うと、全ディテクタを実行して **最高 severity** のヒントを返します
+(従来は short-circuit で最初に見つかったヒントを返していた)。
+
+### 7.6.6 Curator profile — 「自分の弱点パターン」
+
+棋譜全体での弱点集計 (`mykatrain_settings.curator_hint`) を beginner
+hint に統合。Curator が出した「よく出る mistake タグ」が現在の局面の
+`meaning_tag_id` と一致すれば **CURATOR_WEAK_AXIS** ヒントが
+出ます。バッチ解析 (`batch/` 配下) を 1 回回す必要あり。
+
+### 7.6.7 上級者向けパラメータ (β3) — 「内部定数を JSON でいじる」
+
+`mykatrain_settings.advanced_params` 配下で 6 つの感度パラメータを
+オーバーライド可能。**JSON 直接編集**のみで UI からは触れません。
+
+```json
+{
+  "mykatrain_settings": {
+    "advanced_params": {
+      "threshold_score_stdev_chaos": 25.0,
+      "complexity_discount_factor": 0.5,
+      "diversity_penalty_factor": 0.9,
+      "min_loss_display": 0.5,
+      "beginner_hint_min_visits": 200,
+      "katago_uncertain_min_visits": 500
+    }
+  }
+}
+```
+
+| キー | デフォルト | 効果 |
+|------|----------|------|
+| `threshold_score_stdev_chaos` | 20.0 | 複雑局面判定の閾値 (KataGo scoreStdev) |
+| `complexity_discount_factor` | 0.3 | 複雑局面の重要度削減率 (0.3 = 30% 残す) |
+| `diversity_penalty_factor` | 0.85 | 同タグ重複ペナルティ (3 回目で 61% に減点) |
+| `min_loss_display` | 0.3 | フォールバック時の最小損失 (これ未満は無視) |
+| `beginner_hint_min_visits` | 100 | beginner hint 信頼度ゲート |
+| `katago_uncertain_min_visits` | 300 | katago_uncertain 専用ゲート |
+
+範囲外の値・型違い・欠損は **自動的にデフォルトへスナップバック**
+(UI を汚さない)。`get_default_internal_params()` で
+デフォルトの frozen copy を取得可能 (`from katrain.core.analysis import ...`)。
+
+### 7.6.8 よくある質問
+
+**Q. 棋譜並べ (kifunarabe) 中は beginner hint は出る?**
+A. 出ます。`beginner_hints.enabled` が ON で、かつ
+`play_analyze_mode != MODE_PLAY` (棋譜並べ中は review モード)
+であれば、構造的 hint は表示されます。
+
+**Q. Beginner hint と Critical 3 は何が違いますか?**
+A. **時間軸** が違います。Beginner hint は **現在のノード** を
+対象に 23 カテゴリの 1 つを返します。Critical 3 は **棋譜全体**
+から top-N (1〜10) のミスを抽出して Karte JSON に書き出します。
+
+**Q. Karte を export しても critical_3 が空でした。**
+A. Phase 248-F1 で `KeyError` 等の例外を INFO ログに出すように
+なりました。KataGo 起動直後の未解析ノードや、SGF が壊れている
+ケースで発生します。`kata.log` を確認してください。
+
+**Q. importance_score が出てきません。**
+A. KataGo 解析が完了していないノードでは
+`move.importance_score = None` になります。ライブ対局中は
+数手遅れることがあるので、ナビゲーション後に少し待ってください。
+
+**Q. advanced_params を JSON で書き換えるのは怖い。**
+A. 範囲外 / 型違いは自動フォールバックされるので、最悪でも
+デフォルト挙動に戻ります。バックアップとして `advanced_params`
+を空 dict に戻せば確実にリセットできます。
+
 **Q. 9路で候補手が出ない**
 A. 9路で STRONG は `max_pv_length=3` まで縮小。それでも出ない場合は
 `pv_filter_level=off` で完全 OFF にしてみて、候補手自体があるか確認。
