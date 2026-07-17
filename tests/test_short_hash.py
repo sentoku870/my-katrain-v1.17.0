@@ -78,13 +78,19 @@ class TestCallSitesMigrated:
     )
     def test_module_uses_short_hash(self, module_path: str) -> None:
         import importlib
+        import re
 
         module = importlib.import_module(module_path)
         source = inspect.getsource(module)
-        # The module must import short_hash...
-        assert "from katrain.common.short_hash import short_hash" in source, (
-            f"{module_path} does not import short_hash; Phase H-3 migration incomplete."
-        )
+        # The module must import short_hash. Phase 232 reformatted the
+        # import to multi-line to fit a ``# noqa: F401`` comment, so
+        # we now match the import with a regex that allows newlines
+        # between the ``from ... import`` clause and the name.
+        assert re.search(
+            r"from\s+katrain\.common\.short_hash\s+import\s+.*\bshort_hash\b",
+            source,
+            re.DOTALL,
+        ), f"{module_path} does not import short_hash; Phase H-3 migration incomplete."
         # ...and must not contain the old ``hashlib.md5(...)`` pattern.
         assert "hashlib.md5" not in source, f"{module_path} still uses hashlib.md5; Phase H-3 migration incomplete."
 
