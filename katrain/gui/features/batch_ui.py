@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
@@ -28,7 +29,6 @@ from katrain.core.batch import DEFAULT_TIMEOUT_SECONDS
 from katrain.core.constants import STATUS_ERROR
 from katrain.core.lang import i18n
 from katrain.gui.features.types import BatchOptions, BatchWidgets
-from katrain.gui.kivyutils.buttons import SizedButton
 from katrain.gui.popups import I18NPopup
 from katrain.gui.theme import Theme
 
@@ -275,18 +275,23 @@ def _add_right_aligned_label(text: str, size_hint_x: float) -> Label:
 def _build_input_row(widgets: BatchWidgets, default_input_dir: str) -> BoxLayout:
     """Build the input directory row (label + text input + browse button)."""
     row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:input_dir"), 0.25))
+    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:input_dir"), 0.20))
     widgets["input_input"] = TextInput(
         text=default_input_dir,
         multiline=False,
-        size_hint_x=0.6,
+        size_hint_x=0.62,
         font_name=Theme.DEFAULT_FONT,
     )
-    widgets["input_browse"] = SizedButton(
+    # Phase 232-G: ボタン幅を size_hint_x=0.15 → 0.18 に拡大。
+    # 元の 0.15 (約 116dp) では "参照..." テキストが入らず "参照..." と
+    # 省略されていた。"参照" + 余裕 = 80dp 程度は欲しい。
+    # また、shorten=True で width 不足時に "..." 省略しないように設定。
+    widgets["input_browse"] = Button(
         text=i18n._("Browse..."),
-        size_hint_x=0.15,
+        size_hint_x=0.18,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        text_color=Theme.TEXT_COLOR,
+        color=Theme.TEXT_COLOR,
+        shorten=False,
     )
     row.add_widget(widgets["input_input"])
     row.add_widget(widgets["input_browse"])
@@ -296,19 +301,20 @@ def _build_input_row(widgets: BatchWidgets, default_input_dir: str) -> BoxLayout
 def _build_output_row(widgets: BatchWidgets, default_output_dir: str) -> BoxLayout:
     """Build the output directory row (label + text input + browse button)."""
     row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(40), spacing=dp(10))
-    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:output_dir"), 0.25))
+    row.add_widget(_add_left_aligned_label(i18n._("mykatrain:batch:output_dir"), 0.20))
     widgets["output_input"] = TextInput(
         text=default_output_dir,
         hint_text=i18n._("mykatrain:batch:output_hint"),
         multiline=False,
-        size_hint_x=0.6,
+        size_hint_x=0.62,
         font_name=Theme.DEFAULT_FONT,
     )
-    widgets["output_browse"] = SizedButton(
+    widgets["output_browse"] = Button(
         text=i18n._("Browse..."),
-        size_hint_x=0.15,
+        size_hint_x=0.18,
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        text_color=Theme.TEXT_COLOR,
+        color=Theme.TEXT_COLOR,
+        shorten=False,
     )
     row.add_widget(widgets["output_input"])
     row.add_widget(widgets["output_browse"])
@@ -529,19 +535,26 @@ def _build_log_area(widgets: BatchWidgets) -> ScrollView:
 def _build_buttons_row(widgets: BatchWidgets) -> BoxLayout:
     """Build the Start / Close button row."""
     row = BoxLayout(orientation="horizontal", spacing=dp(10), size_hint_y=None, height=dp(48))
-    widgets["start_button"] = SizedButton(
+    # Phase 232-G: ボタン高さ dp(48) はそのまま、テキストはフォントサイズを
+    # 14sp に下げて "キャンセル" (4 文字) が dp(120) の半分ボタンに収まるよう
+    # 調整。shorten=False で "..." 省略を禁止。
+    widgets["start_button"] = Button(
         text=i18n._("mykatrain:batch:start"),
         size_hint_x=0.5,
         height=dp(48),
+        font_size=sp(14),
         background_color=Theme.BOX_BACKGROUND_COLOR,
-        text_color=Theme.TEXT_COLOR,
+        color=Theme.TEXT_COLOR,
+        shorten=False,
     )
-    widgets["close_button"] = SizedButton(
+    widgets["close_button"] = Button(
         text=i18n._("button:close"),
         size_hint_x=0.5,
         height=dp(48),
+        font_size=sp(14),
         background_color=Theme.LIGHTER_BACKGROUND_COLOR,
-        text_color=Theme.TEXT_COLOR,
+        color=Theme.TEXT_COLOR,
+        shorten=False,
     )
     row.add_widget(widgets["start_button"])
     row.add_widget(widgets["close_button"])
