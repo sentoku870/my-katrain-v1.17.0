@@ -76,6 +76,8 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         # Phase 230-D: diagnostics_popup moved into mykatrain settings tab
         # ---- Phase 225: LLM Coach popup ----
         "llm_coach_popup",
+        # ---- Phase 248-γ-D1: Important moves list popup ----
+        "important_moves_popup",
         # ---- kifunarabe (棋譜並べ) ----
         "kifunarabe_popup",
         "kifunarabe_abort",
