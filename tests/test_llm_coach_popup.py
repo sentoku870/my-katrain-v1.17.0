@@ -60,7 +60,7 @@ def _resolve_i18n(key: str) -> str:
     return i18n._(key)
 
 
-def _make_content() -> Any:
+def _make_content(path_type: str = "karte") -> Any:
     """Build a ``LLMCoachPopupContent`` instance bypassing ``__init__``.
 
     We only inject the widget-tree attributes the methods read; the Kivy
@@ -147,9 +147,20 @@ def _make_content() -> Any:
     }
 
     # Phase 227-D: state for the multi-game summary support
-    content.path_type = "unknown"
+    # Phase 241-B: default to "karte" (the most common case in
+    # existing tests) so the new unknown-path guard in
+    # ``_populate_rank_and_perspective`` / ``on_generate_and_copy`` /
+    # ``on_validate`` doesn't accidentally block the karte code path.
+    # Tests that need summary or unknown set ``content.path_type``
+    # explicitly.
+    content.path_type = path_type
     content.summary_players = []
     content.summary_perspective_index = 0
+    # Phase 241-E: the user-set flag for the summary perspective.
+    # Tests that don't exercise the user-spinner interaction leave
+    # this at False; the population logic only preserves the user's
+    # choice when this is True.
+    content._summary_perspective_user_set = False
 
     # Phase 230-F (CI fix): helper to install a per-key config mock.
     def _install_config_mock(mykatrain_settings=None, general_player_rank=""):
@@ -1405,19 +1416,46 @@ class TestPopulateSummaryPerspective:
 
 class TestSummaryIndexToInternal:
     """Phase 227-D: ``_summary_index_to_internal`` is a pure helper
-    that maps a spinner index to a player name or ``None``."""
+    that maps a spinner index to a player name or ``None``.
+
+    Phase 241-D: bird's-eye now returns the dedicated sentinel
+    string (``__birdseye__``) instead of ``None`` so callers can
+    distinguish a deliberate "no focus" choice from out-of-range
+    (which still returns ``None`` as a defensive bug indicator).
+    """
 
     def test_index_zero_is_birdseye(self):
         from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
 
         result = _summary_index_to_internal(0, [("p1", "4d"), ("p2", "3d")])
-        assert result is None
+        # Phase 241-D: bird's-eye is the dedicated sentinel.
+        assert result == "__birdseye__"
+
+    def test_is_summary_birdseye_helper(self):
+        from katrain.gui.popups.llm_coach_popup import (
+            _SUMMARY_BIRDSEYE_SENTINEL,
+            is_summary_birdseye,
+        )
+
+        assert is_summary_birdseye(_SUMMARY_BIRDSEYE_SENTINEL) is True
+        assert is_summary_birdseye(None) is False  # None is a bug state, not birdseye
+        assert is_summary_birdseye("__birdseye__") is True
+        assert is_summary_birdseye("alice") is False
+        assert is_summary_birdseye("") is False
 
     def test_index_one_maps_to_first_player(self):
         from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
 
         result = _summary_index_to_internal(1, [("p1", "4d"), ("p2", "3d")])
         assert result == "p1"
+
+    def test_index_out_of_range_returns_none(self):
+        # Phase 241-D: out-of-range is a bug state, returns None
+        # (not the birdseye sentinel) so callers can tell the two apart.
+        from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
+
+        result = _summary_index_to_internal(99, [("p1", "4d")])
+        assert result is None
 
     def test_index_n_maps_to_nth_player(self):
         from katrain.gui.popups.llm_coach_popup import _summary_index_to_internal
