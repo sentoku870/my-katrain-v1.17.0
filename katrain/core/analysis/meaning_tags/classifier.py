@@ -117,9 +117,70 @@ THRESHOLD_DISTANCE_CLOSE = 5  # Moves close (slow move)
 THRESHOLD_DISTANCE_FAR = 8  # Moves far apart (direction error)
 
 # Move number thresholds
-THRESHOLD_MOVE_EARLY_GAME = 80  # Early/mid game boundary
-THRESHOLD_MOVE_ENDGAME_ABSOLUTE = 150  # Absolute endgame threshold
+# Phase 248-C1: THRESHOLD_MOVE_EARLY_GAME / THRESHOLD_MOVE_ENDGAME_ABSOLUTE
+# were 19x19-tuned (80 / 150). On 9x9 boards the same move number is much
+# further into the game, so the absolute threshold fires too early.
+# ``board_size_adjusted_thresholds(board_size)`` (below) returns the
+# 9x9 / 13x13 / 19x19-adjusted values. The legacy globals stay at the
+# 19x19 default for backward compatibility with tests / callers that
+# import them directly.
+THRESHOLD_MOVE_EARLY_GAME = 80  # Early/mid game boundary (19x19 default)
+THRESHOLD_MOVE_ENDGAME_ABSOLUTE = 150  # Absolute endgame threshold (19x19 default)
 THRESHOLD_ENDGAME_RATIO = 0.7  # Endgame if move_number > total * ratio
+
+# Board-size scaling factors (Phase 248-C1). 9x9 has 81 cells, 13x13 has
+# 169, 19x19 has 361. The square-root scaling keeps the *fraction* of
+# the game covered by "early" / "endgame" the same across board sizes.
+#
+# Rationale: 9x9 games typically run ~80 moves, 13x13 ~150, 19x19 ~250+
+# (with komi-only counting). Scaling 80 / 150 by sqrt(cells/361) keeps
+# the relative position-in-game identical.
+_BOARD_SIZE_SCALE: dict[int, float] = {
+    9: 0.474,  # sqrt(81/361) ≈ 0.474
+    13: 0.685,  # sqrt(169/361) ≈ 0.685
+    19: 1.0,
+}
+_DEFAULT_BOARD_SIZE = 19
+
+
+def board_size_adjusted_thresholds(
+    board_size: int | tuple[int, int] | None = None,
+) -> tuple[int, int]:
+    """Phase 248-C1: return (early_game, endgame) thresholds for a board size.
+
+    Args:
+        board_size: Either a single int (square board) or a ``(width, height)``
+            tuple. ``None`` falls back to the 19x19 defaults.
+
+    Returns:
+        A 2-tuple ``(threshold_early_game, threshold_endgame_absolute)``
+        where the values are scaled by the board-size factor (square-root
+        of cells/361). Round to int because the legacy constants are int
+        and callers compare directly.
+
+    Examples:
+        >>> board_size_adjusted_thresholds(19)
+        (80, 150)
+        >>> board_size_adjusted_thresholds(9)
+        (38, 71)
+        >>> board_size_adjusted_thresholds(13)
+        (55, 103)
+    """
+    if board_size is None:
+        return (THRESHOLD_MOVE_EARLY_GAME, THRESHOLD_MOVE_ENDGAME_ABSOLUTE)
+    if isinstance(board_size, (tuple, list)) and board_size:
+        # Use the smaller of width/height for safety; both should match
+        # for square boards.
+        size = min(int(board_size[0]), int(board_size[1] or board_size[0]))
+    else:
+        try:
+            size = int(board_size)
+        except (TypeError, ValueError):
+            return (THRESHOLD_MOVE_EARLY_GAME, THRESHOLD_MOVE_ENDGAME_ABSOLUTE)
+    scale = _BOARD_SIZE_SCALE.get(size, 1.0 if size == 19 else 1.0)
+    early = round(THRESHOLD_MOVE_EARLY_GAME * scale)
+    endgame = round(THRESHOLD_MOVE_ENDGAME_ABSOLUTE * scale)
+    return (early, endgame)
 
 
 # =============================================================================
@@ -141,6 +202,11 @@ class ClassificationContext:
         ownership_flux: Ownership change magnitude
         score_stdev: KataGo's scoreStdev value
         total_moves: Total moves in the game (for endgame detection)
+        board_size: Phase 248-C1 — board size for board-size-aware
+            thresholds (9, 13, 19, or ``(width, height)`` tuple).
+            ``None`` falls back to 19x19 defaults. Passed through to
+            :func:`is_endgame` so the absolute-endgame threshold
+            scales for small boards.
     """
 
     best_move_policy: float | None = None
@@ -149,6 +215,7 @@ class ClassificationContext:
     ownership_flux: float | None = None
     score_stdev: float | None = None
     total_moves: int | None = None
+    board_size: int | tuple[int, int] | None = None
 
 
 # =============================================================================
@@ -263,18 +330,30 @@ def compute_move_distance(best_gtp: str | None, actual_gtp: str | None) -> int |
     return int(abs(bx - ax) + abs(by - ay))
 
 
-def is_endgame(move_number: int, total_moves: int | None, has_endgame_hint: bool) -> bool:
+def is_endgame(
+    move_number: int,
+    total_moves: int | None,
+    has_endgame_hint: bool,
+    *,
+    board_size: int | tuple[int, int] | None = None,
+) -> bool:
     """Determine if the position is in the endgame phase.
 
     Criteria (OR):
         1. has_endgame_hint == True (from reason_tags)
         2. total_moves is not None and move_number > total_moves * THRESHOLD_ENDGAME_RATIO
-        3. move_number > THRESHOLD_MOVE_ENDGAME_ABSOLUTE
+        3. move_number > THRESHOLD_MOVE_ENDGAME_ABSOLUTE (board-size-adjusted
+           in Phase 248-C1: 9x9 → 71, 13x13 → 103, 19x19 → 150)
 
     Args:
         move_number: Current move number
         total_moves: Total moves in the game (None if unknown)
         has_endgame_hint: Whether "endgame_hint" is in reason_tags
+        board_size: Phase 248-C1 — board size (int or ``(width, height)``).
+            ``None`` falls back to 19x19 defaults. When provided, the
+            absolute-threshold criterion scales by the board-size
+            factor (square-root of cells/361) so a 9x9 game no longer
+            fires "endgame" 80+ moves too early.
 
     Returns:
         True if the position is in the endgame
@@ -283,7 +362,11 @@ def is_endgame(move_number: int, total_moves: int | None, has_endgame_hint: bool
         return True
     if total_moves is not None and move_number > total_moves * THRESHOLD_ENDGAME_RATIO:
         return True
-    return move_number > THRESHOLD_MOVE_ENDGAME_ABSOLUTE
+    # Phase 248-C1: scale the absolute threshold by board size so 9x9
+    # games don't fire endgame too early. The default (board_size=None)
+    # preserves the Phase 46 baseline for backward compatibility.
+    _, endgame_threshold = board_size_adjusted_thresholds(board_size)
+    return move_number > endgame_threshold
 
 
 # =============================================================================
@@ -332,10 +415,15 @@ def classify_meaning_tag(
     loss = get_loss_value(move_eval)
     assert loss is not None  # _classify_early_uncertains verified loss >= significant
     flags = _extract_classification_flags(move_eval.reason_tags)
+    # Phase 248-C1: forward the board size so the endgame threshold
+    # scales for 9x9 / 13x13 boards. ``board_size`` is a new optional
+    # field on ``ClassificationContext`` (default 19 = legacy behaviour).
+    board_size = context.board_size if context else None  # type: ignore[union-attr]
     endgame_position = is_endgame(
         move_eval.move_number,
         context.total_moves if context else None,
         flags.has_endgame_hint,
+        board_size=board_size,
     )
 
     return _classify_by_priority(
