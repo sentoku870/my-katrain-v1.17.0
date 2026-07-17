@@ -367,6 +367,35 @@ docs/
   - **247-A (L5)**: `resolve_pv_filter_config_cached` を `@functools.lru_cache(maxsize=32)` で実装。`prepare_hint_moves` 内のホットパス最適化、10 unit tests
   - **247-B (H3)**: `PVFilterPreview` frozen dataclass + `compute_pv_filter_preview(node, config, in_kifu)` ヘルパー追加。`prepare_hint_moves` が `widget.last_pv_filter_preview` に cache。設定 popup の status label 直下に preview label を追加して N → M をライブ表示、10 unit tests
   - **247-C (L6)**: `panels.kv` に `pv_filter_preview` Label 追加 (status ボックスの直下)。`ControlsPanel.update_evaluation` で毎フレーム更新。H3 と同じ cache を読み取ってコントロールパネル幅に収まる compact 表示、i18n 2 キー追加
+- 2026-07-17: **Phase 248 — 重要局面機能 包括改善**（Lv2-3、6 PR マージ済、累計 11 サブフェーズ / +約 2,500 行 / +約 200 テスト、CI 全 green）
+  - **動機**: 重要局面 (critical_moves) / Beginner Hints / Karte 重要局面抽出機能の監査で 30 件の課題発見 (docs/ideas/phase248-important-moves-audit.md 参照)
+  - **248-α (Lv2, PR #406)**: 内部品質改善 5 項目
+    - A1: `pick_important_moves` 単体テスト 17 件追加 (logic_importance.py カバレッジ 10% → 88%)
+    - A2: classifier.py priority 5-11 補完テスト 12 件追加 (カバレッジ 34% → 98%)
+    - B1: `important_moves_level` 設定 UI (easy/normal/strict ラジオ) 追加
+    - F1: `critical_3_section_for` の KeyError を INFO ログに変更
+    - G2: `compute_complexity_filter_stats()` 新設
+  - **248-β2 (PR #407)**: `critical_3` 件数設定 (1-10 スピナー) 追加
+  - **248-β C4/C5/D4 (PR #408)**: Beginner Hint priority chain 改修 + MISTAKE_GOOD 緩和 + 重みコメント
+    - C4: `compute_beginner_hint(aggregate=True)` 追加 (全ディテクタ実行 → 最高 severity)
+    - C5: MISTAKE_GOOD visits gate 300 → 200 緩和
+    - D4: `MEANING_TAG_WEIGHTS` に詳細コメント追加
+  - **248-β3 (PR #409)**: 内部パラメータ JSON 露出 (`advanced_params`)
+    - 新規 `internal_params.py` + `InternalParams` frozen dataclass + 寛容な resolver
+    - 6 パラメータ露出: threshold_score_stdev_chaos / complexity_discount_factor / diversity_penalty_factor / min_loss_display / beginner_hint_min_visits / katago_uncertain_min_visits
+    - 27 件テスト (default 6 / happy 7 / failure 9 / type 3)
+    - **注**: scoring path への配線は Phase γ-D1 で実施予定
+  - **248-γ1 (PR #411)**: 9路/13路対応 (board_size 連動 endgame 閾値)
+    - `board_size_adjusted_thresholds(board_size)` ヘルパー追加
+    - 9路 → early=38, endgame=71 / 13路 → early=55, endgame=103 / 19路 → early=80, endgame=150
+    - `is_endgame` / `ClassificationContext` に board_size 追加
+    - 17 件テスト
+  - **248-γ3 (PR #410)**: docs/usage-guide.md 7.6 節追加 (重要局面機能全体像 + 5 経路 + advanced_params + FAQ, 140 行)
+  - **248-γ D1/D2/E1 (PR #412)**: 設計ドキュメント + D1 スケルトン
+    - `docs/archive/specs-planned/phase248-important-moves-popup.md` (約 200 行)
+    - `katrain/core/analysis/important_moves_popup.py` (Kivy-free core) + GUI re-export shim
+    - 8 件テスト
+  - **累計**: 6 PR マージ / 11 サブフェーズ / 約 2,500 行追加 / 5,800+ テスト
   - **247-D (M3)**: `PVFilterConfig.sort_mode: "order_loss_visits" | "composite"` + `composite_alpha: float = 1.0` 追加。`composite_score = loss + α * (pv_length / max_pv_length)` の重み付き sort 実装。L1 `loss_metric` との相互作用維持、9 unit tests
   - **Deferred (将来)**: M3 UI スライダー (α 調整、calibration データ収集後)、L5 ベンチマーク
   - **累計**: 4 コミット / +860 行、28 新規 unit tests、全 140 件 pass
