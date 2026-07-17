@@ -148,7 +148,125 @@ def show_important_moves_popup(
     return None
 
 
+# Phase 248-γ-D2: prev/next 重要局面ジャンプヘルパー
+# controlspanel の Prev/Next ボタンのロジック。GUI 非依存の pure
+# Python ヘルパーとして配置 (Kivy テスト環境でも実行可能)。
+
+
+def find_prev_important_move(
+    game: Any,
+    *,
+    level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
+    max_moves: int = DEFAULT_CRITICAL_3_MAX_MOVES,
+) -> int | None:
+    """Return the move number of the most recent important move before
+    the current node, or ``None`` if no such move exists.
+
+    Args:
+        game: The :class:`Game` instance.
+        level: Important-moves level (easy/normal/strict).
+        max_moves: Max critical moves per player.
+
+    Returns:
+        1-indexed move number of the closest important move that is
+        *strictly before* the current node, or ``None`` when there is
+        no such move (e.g. we're already at the first move, or no
+        important moves exist).
+    """
+    if game is None:
+        return None
+    current_node = getattr(game, "current_node", None)
+    if current_node is None:
+        return None
+    try:
+        current_depth = int(getattr(current_node, "depth", 0) or 0)
+    except (TypeError, ValueError):
+        current_depth = 0
+    # Phase 248-γ-D2: collect all move numbers flagged critical by
+    # ``select_critical_moves`` (per player, deduplicated). The current
+    # depth is the move number (depth == 0 at root, depth == N at move N+1).
+    candidate_numbers: set[int] = set()
+    for player_filter in ("B", "W"):
+        try:
+            moves = select_critical_moves(
+                game,
+                max_moves=max_moves,
+                lang="ja",
+                level=level,
+                player_filter=player_filter,
+            )
+        except Exception as exc:  # noqa: BLE001 — broad to keep UI alive
+            _log.log(
+                OUTPUT_DEBUG,
+                "find_prev_important_move: player=%s selector failed: %s",
+                player_filter,
+                exc,
+            )
+            continue
+        for m in moves:
+            n = getattr(m, "move_number", None)
+            if isinstance(n, int) and n > 0:
+                candidate_numbers.add(n)
+    # We want the largest move number strictly less than the current
+    # depth. (``current_node.depth`` is 0-based; move #N sits at depth N.)
+    before = [n for n in candidate_numbers if n < current_depth]
+    if not before:
+        return None
+    return max(before)
+
+
+def find_next_important_move(
+    game: Any,
+    *,
+    level: str = DEFAULT_IMPORTANT_MOVE_LEVEL,
+    max_moves: int = DEFAULT_CRITICAL_3_MAX_MOVES,
+) -> int | None:
+    """Return the move number of the next important move after the
+    current node, or ``None`` if no such move exists.
+
+    Symmetric counterpart to :func:`find_prev_important_move`. The
+    returned move number is *strictly greater* than the current depth.
+    """
+    if game is None:
+        return None
+    current_node = getattr(game, "current_node", None)
+    if current_node is None:
+        return None
+    try:
+        current_depth = int(getattr(current_node, "depth", 0) or 0)
+    except (TypeError, ValueError):
+        current_depth = 0
+    candidate_numbers: set[int] = set()
+    for player_filter in ("B", "W"):
+        try:
+            moves = select_critical_moves(
+                game,
+                max_moves=max_moves,
+                lang="ja",
+                level=level,
+                player_filter=player_filter,
+            )
+        except Exception as exc:  # noqa: BLE001 — broad to keep UI alive
+            _log.log(
+                OUTPUT_DEBUG,
+                "find_next_important_move: player=%s selector failed: %s",
+                player_filter,
+                exc,
+            )
+            continue
+        for m in moves:
+            n = getattr(m, "move_number", None)
+            if isinstance(n, int) and n > 0:
+                candidate_numbers.add(n)
+    after = [n for n in candidate_numbers if n > current_depth]
+    if not after:
+        return None
+    return min(after)
+
+
 __all__ = [
+    "find_next_important_move",
+    "find_prev_important_move",
     "get_important_moves_for_game",
     "show_important_moves_popup",
 ]
