@@ -18,7 +18,7 @@ meta:
       related_ids and contrast_with fields.'
     ai_perspective_policy: AI視点をnuances/ja_expandedから抽出してai_perspectiveフィールドに構造化
     diagram_policy: 基本手筋・形に19路盤用SGF座標を追加（右上隅または中央配置）
-  updated_at: '2025-12-28T12:00:00Z'
+  updated_at: '2026-07-17T10:56:18Z'
 entries:
 - id: liberty
   level: 1
@@ -1805,9 +1805,9 @@ entries:
   en_short: Aji refers to a latent possibility or weakness in a position that could become significant later. It implies there
     are moves that could materialize given the right conditions, even if they are not immediately playable. "Bad aji" describes
     a situation where unresolved weaknesses might be exploited by the opponent.
-  ja_expanded: |-
-    アジを残すことで将来の作戦幅が広がる。例えば石の配置にわずかな隙があると、後に切りや生きの手段が生じうる。そのためアジは攻めにも守りにも影響する重要な要素である。一方で、いたずらにアジを消してしまうと（「味消し」）、自らの潜在的なチャンスをなくしてしまうので注意が必要。
-    なお、利かしはアジを利用して相手に一手を打たせる具体的な手段であり、単なる潜在力である「味」とは区別される。
+  ja_expanded: 'アジを残すことで将来の作戦幅が広がる。例えば石の配置にわずかな隙があると、後に切りや生きの手段が生じうる。そのためアジは攻めにも守りにも影響する重要な要素である。一方で、いたずらにアジを消してしまうと（「味消し」）、自らの潜在的なチャンスをなくしてしまうので注意が必要。
+
+    なお、利かしはアジを利用して相手に一手を打たせる具体的な手段であり、単なる潜在力である「味」とは区別される。'
   en_expanded: By leaving aji in a position, a player maintains future tactical or strategic options. For example, a seemingly
     dead stone might later help in an escape or a cut if the situation changes. Thus, aji can influence both attack and defense
     throughout the game. Conversely, prematurely eliminating aji (known as *aji-keshi*) can be a mistake, as it removes one's
@@ -2867,9 +2867,9 @@ entries:
   en_short: Hataraki (literally “working”) refers to how well a stone or group is being utilized. Stones with good hataraki
     accomplish a lot (territory, influence, defense) relative to their number, whereas stones with poor hataraki are inefficient
     – they do little despite how many there are.
-  ja_expanded: |-
-    プロの解説では「この石の働きが良い/悪い」といった表現が使われる。例えば、盤上中央に効いて厚みを作っている石は働きが良い石である。一方、壁の裏で無駄に重なっている石（例:
-    団子石）は働きが悪い。石の働きを最大化することが上達の鍵であり、一手一手を無駄にしない配置を目指す。逆に言えば、相手の石の働きを抑える（無駄石にする）ことも戦略となる。
+  ja_expanded: 'プロの解説では「この石の働きが良い/悪い」といった表現が使われる。例えば、盤上中央に効いて厚みを作っている石は働きが良い石である。一方、壁の裏で無駄に重なっている石（例:
+
+    団子石）は働きが悪い。石の働きを最大化することが上達の鍵であり、一手一手を無駄にしない配置を目指す。逆に言えば、相手の石の働きを抑える（無駄石にする）ことも戦略となる。'
   en_expanded: Commentators often mention a stone’s hataraki – for example, a stone placed such that it provides influence
     across the center, bolsters a moyo, or simultaneously defends multiple weaknesses has excellent hataraki. Conversely,
     stones that are stuck in an overconcentrated shape or accomplish nothing (like those in a dango) have poor hataraki. A
@@ -3964,10 +3964,6 @@ entries:
   ai_perspective:
     has_difference: true
     summary: AI解析により、人間が「弱い手」と判断していた手が実は最善だったり、逆に「堅実」と思っていた手が甘いと判明することがある。
-# Phase 242-C: New L2 entries for LLM-required symptoms
-# (time_pressure_loss, time_misallocation, time_drain, shallow_review,
-# ai_overload, copy_without_understanding, tilt_discouragement, tilt_chain,
-# tilt_emotional_interference). Covers the cluster via related_ids.
 - id: time_management
   level: 2
   category: misc
@@ -3978,7 +3974,10 @@ entries:
   ja_one_liner: 対局中の持ち時間を局面ごとに適切に配分する技術
   en_one_liner: Allocating byo-yomi time across moves to match position complexity.
   ja_short: 対局中に使える時間は限られており、どの局面に時間をかけ、どの局面で手早く済ませるかの判断が勝敗を左右します。序盤は方針決定に、中盤は難しい読みに、終盤はヨセの正確さに時間をかけるのが基本です。秒読みに入ると直前の数手が特に重要になるため、終盤20手くらいからは1手に時間を残す意識が有効です。
-  en_short: Go games have a time budget per side, and how you allocate it across the game often decides the result. The opening deserves time for strategic planning, the middle game for hard reading, and the endgame for precision. Byo-yomi (counting) makes the last 20-30 moves especially critical — try to keep a few seconds in reserve for the final endgame rather than burning it all in the middle.
+  en_short: Go games have a time budget per side, and how you allocate it across the game often decides the result. The opening
+    deserves time for strategic planning, the middle game for hard reading, and the endgame for precision. Byo-yomi (counting)
+    makes the last 20-30 moves especially critical — try to keep a few seconds in reserve for the final endgame rather than
+    burning it all in the middle.
   pitfalls:
   - 一局面に時間をかけすぎて終盤で慌てると、ヨセの精度が大きく落ちます。
   - 序盤に時間をかけすぎるのも危険です。序盤は方針が定まれば早く着手すべきです。
@@ -4002,7 +4001,10 @@ entries:
   ja_one_liner: AI の出力を読みすぎて判断材料を処理できなくなる状態
   en_one_liner: Reading too much AI output until you cannot process the signal.
   ja_short: KataGo などのAIから候補手・勝率・形勢評価など大量の情報が提示されますが、それを全て読み込もうとすると判断材料が処理しきれなくなります。重要な局面でAIのトップ候補だけを確認し、後は自分の判断で打つという割り切りが重要です。AIに頼りすぎると、対局中に考えなくなる・AIと違う手で打てなくなる・AIの誤りに気づけなくなるなどの弊害が出ます。
-  en_short: AI engines like KataGo provide a flood of information — candidate moves, win rates, score leads, policy probabilities. Trying to absorb all of it during a game causes analysis paralysis and weakens your independent judgement. The right approach is to check the top candidate at critical moments and trust your own reading the rest of the time. Over-relying on AI also makes you unable to play moves it disagrees with or to notice when it makes mistakes.
+  en_short: AI engines like KataGo provide a flood of information — candidate moves, win rates, score leads, policy probabilities.
+    Trying to absorb all of it during a game causes analysis paralysis and weakens your independent judgement. The right approach
+    is to check the top candidate at critical moments and trust your own reading the rest of the time. Over-relying on AI
+    also makes you unable to play moves it disagrees with or to notice when it makes mistakes.
   pitfalls:
   - AI の出力を逐一確認すると自分の読みが育ちません。
   - 弱い AI 候補を疑わずコピーすると、定石以下の手を打ってしまうことがあります。
@@ -4026,7 +4028,9 @@ entries:
   ja_one_liner: 対局終了後に棋譜を振り返り改善点を見つける作業
   en_one_liner: Replaying a finished game to find improvement points.
   ja_short: 対局直後に棋譜を並べ、AI評価や自分の読みと照らし合わせて改善点を見つける作業です。検討が浅いと同じミスを繰り返します。最低でも「自分が迷った場面」「大悪手が出た場面」「形勢が動いた転換点」の3箇所はAI検討するのが効果的です。
-  en_short: "Reviewing a game right after you finish it is the single most effective way to improve. Compare your reading with the AI's evaluation at every move where you hesitated, made a big mistake, or where the game swung. Aim to study at least three such points per game: a hesitation, a blunder, and a turning point."
+  en_short: 'Reviewing a game right after you finish it is the single most effective way to improve. Compare your reading
+    with the AI''s evaluation at every move where you hesitated, made a big mistake, or where the game swung. Aim to study
+    at least three such points per game: a hesitation, a blunder, and a turning point.'
   pitfalls:
   - 形勢が動いた場面を検討しないと、同じパターンのミスを繰り返します。
   - 検討は「自分が間違っていた場面」だけでなく「正しい判断ができた場面」も含めると成功パターンが強化されます。
@@ -4050,7 +4054,10 @@ entries:
   ja_one_liner: 連敗やミスで感情的になった状態から立ち直る技術
   en_one_liner: Recovering from tilt after a losing streak or critical blunder.
   ja_short: 連敗や痛いミスの後に感情が乱れて判断が雑になる現象を「ティルト」と呼びます。ティルトを放置すると次の対局でも判断ミスが連鎖します。回復には「5分間の散歩」「呼吸法」「次の対局を1回スキップして検討に集中」など、自分なりのリセット法を持っておくことが重要です。
-  en_short: 'Tilt is the emotional spiral that follows a losing streak or a painful blunder — your decision-making becomes shallow, you take bigger risks to "make up" for the loss, and you fall into the same traps. The only cure is a deliberate reset: take a 5-minute walk, do a breathing exercise, skip the next game and review instead, or play a relaxed teaching game. Having a pre-planned reset ritual is essential.'
+  en_short: 'Tilt is the emotional spiral that follows a losing streak or a painful blunder — your decision-making becomes
+    shallow, you take bigger risks to "make up" for the loss, and you fall into the same traps. The only cure is a deliberate
+    reset: take a 5-minute walk, do a breathing exercise, skip the next game and review instead, or play a relaxed teaching
+    game. Having a pre-planned reset ritual is essential.'
   pitfalls:
   - 「取り返したい」という心理で無理な攻めに走ると大敗します。
   - ティルトを認めず連続対局すると、損失が拡大します。
@@ -4074,7 +4081,10 @@ entries:
   ja_one_liner: 対局中の精神状態を安定させ判断力を保つ技術
   en_one_liner: Keeping your emotional state stable enough to make sound decisions.
   ja_short: 囲碁の判断力は精神状態に大きく左右されます。疲労・空腹・イライラ・焦りがあると手が進まなくなり、普段なら見える読みも見えなくなります。十分な睡眠・軽食・水分補給・気分転換を対局前に済ませる、対局中にストレッチする、負けても感情的にならず次の手に集中する、などのセルフマネジメントが技術向上と同等に重要です。
-  en_short: Go decision-making is heavily influenced by your mental state. Fatigue, hunger, irritation, and rushing all degrade your reading — moves you would normally see simply become invisible. Self-management (enough sleep, a light snack, hydration, a pre-game mood check) is just as important as technical training. Mid-game stretches, sipping water, and refusing to dwell on the previous mistake are all part of keeping your mind clear.
+  en_short: Go decision-making is heavily influenced by your mental state. Fatigue, hunger, irritation, and rushing all degrade
+    your reading — moves you would normally see simply become invisible. Self-management (enough sleep, a light snack, hydration,
+    a pre-game mood check) is just as important as technical training. Mid-game stretches, sipping water, and refusing to
+    dwell on the previous mistake are all part of keeping your mind clear.
   pitfalls:
   - 疲労時の対局は「調整」と割り切ると逆に勉強になります。
   - 感情的になった時は「次の1手だけ集中」の短い目標に切り替えると有効です。
@@ -4088,7 +4098,83 @@ entries:
   sources:
   - https://senseis.xmp.net/?Psychology
   - https://www.nihonkiin.or.jp/player/column/mental.html
-
+- id: overplay
+  level: 2
+  category: tactic
+  ja_term: オーバープレイ
+  en_terms:
+  - overplay
+  - reckless attack
+  ja_one_liner: 自分の石の厚みに支えられず薄い石で攻める、碁の典型的な失敗パターン。
+  en_one_liner: Attacking with a thin / unsupported group — a classic Go failure pattern.
+  ja_short: オーバープレイは、自分の石に厚み（効率の良い連携）がないのに攻めにいく形で、成功しても効率が悪く、失敗すると孤立した薄石がそのまま攻められる典型的な悪手です。攻めは「厚み」を持っている側が有利で、薄い石で攻めても相手の反撃を受けやすく、良い結果につながりません。
+  en_short: An overplay is an attack launched without sufficient thickness / support behind it. Even when the attack succeeds
+    locally, the attacking stones are often left thin and vulnerable, and the opponent can counter-attack them in sente. In
+    Go, attacks should be launched from positions of strength; attacking from a weak or unsupported position usually backfires.
+  pitfalls:
+  - 自分の石の厚みを意識せず、薄い石から攻め始めると孤立して反撃されます。
+  - 攻めが成功しても残った薄石が次の手で狙われ、効率が大幅に悪化します。
+  recognize_by:
+  - 自分の石の周囲に明確な厚みがない状態で攻めを継続している。
+  - 攻め終わった後に残った薄石が相手からの反撃対象になっている。
+  sources:
+  - https://senseis.xmp.net/?Thickness
+  - https://senseis.xmp.net/?Overplay
+  related_ids:
+  - thickness
+  - direction_of_play
+- id: endgame_sente
+  level: 2
+  category: yose
+  ja_term: ヨセのセンテ
+  en_terms:
+  - endgame sente
+  - yose sente
+  ja_one_liner: ヨセで相手に手番を渡さず連続で打てる形を確保する技術。
+  en_one_liner: Securing shapes that allow consecutive endgame moves without yielding the turn.
+  ja_short: ヨセでは「センテで何手打てるか」が陣地差に直結します。1手で終わるヨセと3手センテで打てるヨセでは価値が全く違い、同じ目の数でもセンテで取れる方が圧倒的有利です。ヨセのセンテを確保するには、相手が逆襲できない順に打つ「ヨセの順番」が重要で、大きい方から順に正しく並べる技術が勝敗を分けます。
+  en_short: In the endgame, sente sequences are worth dramatically more than gote moves of the same face value. A 3-move sente
+    endgame sequence (followed by another sente) easily outweighs a single big gote move, because the extra sente lets you
+    play the next biggest point. The skill of ordering endgame moves correctly — biggest sente first, then biggest remaining
+    move, etc. — is what separates strong amateur players from weak ones.
+  pitfalls:
+  - ヨセで「大きい順」に打つ感覚でセンテとゴテを混在させると、最終的にセンテが余って負ける典型パターンになります。
+  - センテの数を数えずに終わらせると、相手が予想外のセンテで逆襲することがあります。
+  recognize_by:
+  - ヨセで自分が連続して手番を取れるポイント（センテ）を意識的に数えている。
+  - 終盤で 1 手で終わるヨセと 3 手センテのヨセを混在させていない。
+  sources:
+  - https://senseis.xmp.net/?Sente
+  - https://senseis.xmp.net/?Endgame
+  related_ids:
+  - endgame_sente_value
+  - yose
+  - counting
+- id: star_point
+  level: 1
+  category: opening
+  ja_term: 星
+  en_terms:
+  - star point
+  - hoshi
+  ja_one_liner: 三三・四四・五五などの隅の星状の定位置、19路盤で各隅に1点ずつ計9点ある。
+  en_one_liner: A star-shaped handicap / fuseki point near the corner (3-3 / 4-4 / 5-5 etc.); there are nine such points per
+    corner on a 19x19 board.
+  ja_short: 星（ほし）は19路盤の各隅に9点ずつある定位置で、序盤の構えや陣地作りに使う基本地点です。星に対して小目（3-4）または三三（3-3）で応じるのが伝統的な定石で、相手の星に対してどの位置から打ち込むかも序盤の重要な判断ポイントです。
+  en_short: A star point (hoshi) is one of nine marked points near each corner of the 19x19 board, used as a fuseki anchor
+    for taking territory or building frameworks. Common responses to an opponent's star point include the 3-4 (komoku) and
+    3-3 (san-san) approaches. Choosing where and how to approach an opponent's star is a fundamental opening decision.
+  pitfalls:
+  - 星に無闇に打ち込むと相手の厚い壁に付け込まれることが多く、定石を無視した打ち込みは損になりやすい。
+  - 自分の星を守らずに早くから離れすぎると、相手に三三点や小目で割り込まれる。
+  recognize_by:
+  - 序盤で 4-4 (星) や 3-4 (小目) などの隅の定位置に着手している。
+  - 相手の星に対して小目・三三・二間高などを打ち込む判断をしている。
+  sources:
+  - https://senseis.xmp.net/?Hoshi
+  - https://en.wikipedia.org/wiki/Go_equipment#Star_points
+  related_ids:
+  - komoku
 concepts:
 - id: urgent_vs_big
   level: 3
@@ -4097,9 +4183,9 @@ concepts:
   en_title: Urgent vs Big Points
   ja_one_liner: 「大場より急場」の格言が示すように、危機を後回しにせず先に対処する。
   en_one_liner: 'As the proverb ''urgent before big'' says: address crises before taking big points.'
-  ja_expanded: |-
-    対局中には、「急場」（放置すると大損害になる場所）と「大場」（放置しても急な被害はないが価値が大きい場所）を見極める必要があります。まず急場がないか確認し、あれば最優先で打ちます。「大場より急場」という格言の通り、危険な弱い石や生死に関わる場所は、陣地より先に処理すべきです。相手から先手を取られると局面が傾く箇所を放置しないように注意しましょう。
-    急場がなければ大場に着手します。大場とは盤面の中で模様拡大や実利確保に大きく寄与する地点を指し、相手に先行されると損になる場所です。これらの判断により、常に優先順位を意識した一手選択が可能になります。
+  ja_expanded: '対局中には、「急場」（放置すると大損害になる場所）と「大場」（放置しても急な被害はないが価値が大きい場所）を見極める必要があります。まず急場がないか確認し、あれば最優先で打ちます。「大場より急場」という格言の通り、危険な弱い石や生死に関わる場所は、陣地より先に処理すべきです。相手から先手を取られると局面が傾く箇所を放置しないように注意しましょう。
+
+    急場がなければ大場に着手します。大場とは盤面の中で模様拡大や実利確保に大きく寄与する地点を指し、相手に先行されると損になる場所です。これらの判断により、常に優先順位を意識した一手選択が可能になります。'
   en_expanded: Throughout the game, players must distinguish “urgent” points (situations that will collapse if left alone)
     from merely “big” points (valuable points that aren’t immediately dangerous). Always look for any urgent points first;
     if one exists, address it before anything else. As the proverb “urgent before big” implies, areas involving critical weak
@@ -4146,9 +4232,9 @@ concepts:
   en_title: Whole-Board Triage Priority
   ja_one_liner: 盤面を「急場」「大場」などに色分けして着手の優先順位を明確にする。
   en_one_liner: Categorize the board (urgent, big, etc.) to clearly establish move priorities.
-  ja_expanded: |-
-    囲碁ドクターが提唱する「トリアージ思考法」では、盤面を4色（赤=最急、黄=大場、緑=低優先、黒=捨て石）に分類します。まず緑（安全）と黒（見捨てる石）のエリアを除外し、検討対象から外します。次に赤タグ（弱い石同士が競り合う急場）を探し、あれば最優先で対応します。赤がなければ黄（大場）の中から候補を選ぶ、という順序です。
-    この方法により、複数の問題がある局面でも「どこから考えるか」を体系立てて判断できます。常に最悪の事態（赤）を防ぎつつ、大きな好機（黄）を逃さないようにする発想です。黒タグ（捨て石）についても、見切った石は相手に手をかけさせたり他で得をする材料と考えます。トリアージにより、着手の優先順位ミスを減らし、局面の整理と判断が冷静に行えるようになります。
+  ja_expanded: '囲碁ドクターが提唱する「トリアージ思考法」では、盤面を4色（赤=最急、黄=大場、緑=低優先、黒=捨て石）に分類します。まず緑（安全）と黒（見捨てる石）のエリアを除外し、検討対象から外します。次に赤タグ（弱い石同士が競り合う急場）を探し、あれば最優先で対応します。赤がなければ黄（大場）の中から候補を選ぶ、という順序です。
+
+    この方法により、複数の問題がある局面でも「どこから考えるか」を体系立てて判断できます。常に最悪の事態（赤）を防ぎつつ、大きな好機（黄）を逃さないようにする発想です。黒タグ（捨て石）についても、見切った石は相手に手をかけさせたり他で得をする材料と考えます。トリアージにより、着手の優先順位ミスを減らし、局面の整理と判断が冷静に行えるようになります。'
   en_expanded: 'The “triage” method, advocated by a Go doctor, divides the board into four zones: red (top priority urgent
     areas), yellow (important but not urgent big points), green (low-priority areas), and black (stones to abandon). First,
     eliminate green (secure areas) and black (sacrificial stones) from consideration. Next, look for any red-tag areas (critical
@@ -4321,9 +4407,9 @@ concepts:
   en_title: Using Forcing Moves (Kikashi)
   ja_one_liner: 相手に特定の応答を強要し、形勢を有利に運ぶ手筋。
   en_one_liner: Moves that force a predictable response to gain a positional advantage.
-  ja_expanded: |-
-    利かし（キカシ）とは、相手に対して「この一手にはこう応じざるを得ない」という状況を作り出す手のことです。プロ棋士は局面の要所で利かしを多用し、相手の応手を利用して形勢を有利に進めます。「生きる前に利かせよ」という格言があるように、自分の石を生きる直前に相手に利かしておくことで、相手の弱点を先に解消させず将来的な味（アジ）を残す効果があります。
-    良い利かしかどうか判断するために、「相手は答えるか？」「打つなら今か？」「他の利用法は？」という3つの質問が有用です。相手が無視できないなら打つ価値があり、将来別の利用法が残るなら急いで利かす必要はありません。闇雲な利かしは逆効果で、自分のアジを消す（味消し）だけになるので注意が必要です。
+  ja_expanded: '利かし（キカシ）とは、相手に対して「この一手にはこう応じざるを得ない」という状況を作り出す手のことです。プロ棋士は局面の要所で利かしを多用し、相手の応手を利用して形勢を有利に進めます。「生きる前に利かせよ」という格言があるように、自分の石を生きる直前に相手に利かしておくことで、相手の弱点を先に解消させず将来的な味（アジ）を残す効果があります。
+
+    良い利かしかどうか判断するために、「相手は答えるか？」「打つなら今か？」「他の利用法は？」という3つの質問が有用です。相手が無視できないなら打つ価値があり、将来別の利用法が残るなら急いで利かす必要はありません。闇雲な利かしは逆効果で、自分のアジを消す（味消し）だけになるので注意が必要です。'
   en_expanded: 'A “kikashi” or forcing move is a play that compels a specific response from the opponent. Professionals often
     use forcing moves at key moments, leveraging the exchange to guide the game in their favor. There’s even a proverb “Play
     kikashi before living,” which means before solidly securing your group''s life, squeeze out some forcing moves to make
@@ -5038,9 +5124,11 @@ katago:
     family: evaluation
     ja_name: 勝率
     en_name: winrate
-    definition: |-
-      対局者（通常は手番側）が最終的に勝つ確率をAIが評価したもの。KataGoでは自己対戦でその局面から勝利する割合として算出され、値は0～1（または0～100%）で表される。
-      *(English:* The probability of the player (typically the one to move) eventually winning, as evaluated by the AI. KataGo computes this as the fraction of self-play games it would win from the position. The value is given between 0 and 1 (or 0–100%).)*
+    definition: '対局者（通常は手番側）が最終的に勝つ確率をAIが評価したもの。KataGoでは自己対戦でその局面から勝利する割合として算出され、値は0～1（または0～100%）で表される。
+
+      *(English:* The probability of the player (typically the one to move) eventually winning, as evaluated by the AI. KataGo
+      computes this as the fraction of self-play games it would win from the position. The value is given between 0 and 1
+      (or 0–100%).)*'
     units: 0–1 (probability) or %
     depends_on:
     - ruleset
@@ -5063,9 +5151,12 @@ katago:
     family: evaluation
     ja_name: 点差
     en_name: score lead
-    definition: |-
-      現在の局面で手番側がリードしているとAIが予測するポイント（地合）の差。【注釈】KataGoの出力では`scoreLead`とも呼ばれ、旧バージョンの`scoreMean`と同義です。例えば「+5」となれば「この局面で手番側が5目程度有利」という意味になります。この値はルールやコミの設定に依存し、特にコミや置石によって評価基準が変わります。
-      *(English:* The point difference (territory margin) that the AI predicts the side to move is leading by in the current position. *Note:* In KataGo’s analysis output this is referred to as `scoreLead`, synonymous with the older `scoreMean`. For example, “+5” means the player to move is about five points ahead. This value depends on the ruleset and komi/handicap settings, since those affect how points translate to winning chances.)*
+    definition: '現在の局面で手番側がリードしているとAIが予測するポイント（地合）の差。【注釈】KataGoの出力では`scoreLead`とも呼ばれ、旧バージョンの`scoreMean`と同義です。例えば「+5」となれば「この局面で手番側が5目程度有利」という意味になります。この値はルールやコミの設定に依存し、特にコミや置石によって評価基準が変わります。
+
+      *(English:* The point difference (territory margin) that the AI predicts the side to move is leading by in the current
+      position. *Note:* In KataGo’s analysis output this is referred to as `scoreLead`, synonymous with the older `scoreMean`.
+      For example, “+5” means the player to move is about five points ahead. This value depends on the ruleset and komi/handicap
+      settings, since those affect how points translate to winning chances.)*'
     units: points
     depends_on:
     - ruleset (scoring method)
@@ -5086,9 +5177,11 @@ katago:
     family: evaluation
     ja_name: スコア標準偏差
     en_name: score standard deviation
-    definition: |-
-      予測される最終得点差の標準偏差（ばらつき）。AIが予測する最終スコアの不確実性を示す指標で、値が大きいほど点差予測がブレうることを意味します。例えば標準偏差が20目と大きい場合、±20目程度の結果変動が見込まれるため、リードが確実ではないことを示唆します。
-      *(English:* The standard deviation of the predicted final score difference. It indicates the uncertainty in the AI’s score lead estimate – a larger value means the point outcome could vary widely. For example, if the scoreStdev is 20 points, it suggests the result could swing on the order of ±20 points, implying the lead is not secure.)*
+    definition: '予測される最終得点差の標準偏差（ばらつき）。AIが予測する最終スコアの不確実性を示す指標で、値が大きいほど点差予測がブレうることを意味します。例えば標準偏差が20目と大きい場合、±20目程度の結果変動が見込まれるため、リードが確実ではないことを示唆します。
+
+      *(English:* The standard deviation of the predicted final score difference. It indicates the uncertainty in the AI’s
+      score lead estimate – a larger value means the point outcome could vary widely. For example, if the scoreStdev is 20
+      points, it suggests the result could swing on the order of ±20 points, implying the lead is not secure.)*'
     units: points
     depends_on:
     - game_state complexity
@@ -5107,9 +5200,12 @@ katago:
     family: evaluation
     ja_name: ユーティリティ（価値関数）
     en_name: utility (value function)
-    definition: |-
-      勝率と点差を統合したKataGo内部の評価値。勝敗を最優先しつつ、勝てる局面では勝ちの確実性とスコア拡大を両立するよう調整された指標です。例えば大差でリードしている場合、僅差で勝つより余裕をもって勝つ手を選ぼうとする傾向として現れます。
-      *(English:* A combined internal value that blends win/loss outcome with score margin. It prioritizes winning, but also rewards winning by more points when a win is secure. In practice, this metric guides KataGo to not only maximize win probability but also to play for a larger margin when possible (e.g. playing more safely or ambitiously to secure more points when already ahead).)*
+    definition: '勝率と点差を統合したKataGo内部の評価値。勝敗を最優先しつつ、勝てる局面では勝ちの確実性とスコア拡大を両立するよう調整された指標です。例えば大差でリードしている場合、僅差で勝つより余裕をもって勝つ手を選ぼうとする傾向として現れます。
+
+      *(English:* A combined internal value that blends win/loss outcome with score margin. It prioritizes winning, but also
+      rewards winning by more points when a win is secure. In practice, this metric guides KataGo to not only maximize win
+      probability but also to play for a larger margin when possible (e.g. playing more safely or ambitiously to secure more
+      points when already ahead).)*'
     units: abstract (combined utility units)
     depends_on:
     - winrate and score distribution
@@ -5128,9 +5224,12 @@ katago:
     family: analysis
     ja_name: 着手予想確率
     en_name: policy prior
-    definition: |-
-      AIのニュートラルネットワークが各手をどの程度有望と考えているかの事前確率分布。探索（読み）を行う前の段階で「この手が選ばれる確率」を示す。値が高い手ほどAIの直感（ポリシーネット）が有力と判断した手だが、必ずしも最善手とは限りません（読みの結果で覆ることがあります）。
-      *(English:* The prior probability of each move as given by the AI’s neural network policy. It represents how likely each move is considered before any search, i.e. the “initial guess” probability of a move being played. Moves with higher policy values are those the AI’s policy network initially thinks are strong, though they are not necessarily the best moves after full search, as reading can reveal different tactics.)*
+    definition: 'AIのニュートラルネットワークが各手をどの程度有望と考えているかの事前確率分布。探索（読み）を行う前の段階で「この手が選ばれる確率」を示す。値が高い手ほどAIの直感（ポリシーネット）が有力と判断した手だが、必ずしも最善手とは限りません（読みの結果で覆ることがあります）。
+
+      *(English:* The prior probability of each move as given by the AI’s neural network policy. It represents how likely
+      each move is considered before any search, i.e. the “initial guess” probability of a move being played. Moves with higher
+      policy values are those the AI’s policy network initially thinks are strong, though they are not necessarily the best
+      moves after full search, as reading can reveal different tactics.)*'
     units: '% (per move probability)'
     depends_on:
     - neural network training
@@ -5151,9 +5250,12 @@ katago:
     family: analysis
     ja_name: 探索回数
     en_name: visits/playouts
-    definition: |-
-      AIがその局面を解析（読み）した回数。数値が大きいほど多くのシミュレーションを行ったことを意味し、評価の信頼性が増します。各候補手の横に表示される訪問数は、その手に費やした読みの量を示し、KataGoでは原則として最も多く訪問した手（LCBによる調整あり）を最善手とします。
-      *(English:* The number of searches or simulations the AI has performed for the position. A higher visit/playout count means the AI has examined more variations and thus the evaluation is more reliable. The visit count shown next to each candidate move indicates how much reading was devoted to that move. In KataGo, by default the move with the most visits (adjusted by LCB confidence) is taken as the best move.)*
+    definition: 'AIがその局面を解析（読み）した回数。数値が大きいほど多くのシミュレーションを行ったことを意味し、評価の信頼性が増します。各候補手の横に表示される訪問数は、その手に費やした読みの量を示し、KataGoでは原則として最も多く訪問した手（LCBによる調整あり）を最善手とします。
+
+      *(English:* The number of searches or simulations the AI has performed for the position. A higher visit/playout count
+      means the AI has examined more variations and thus the evaluation is more reliable. The visit count shown next to each
+      candidate move indicates how much reading was devoted to that move. In KataGo, by default the move with the most visits
+      (adjusted by LCB confidence) is taken as the best move.)*'
     units: count (number of playouts/visits)
     depends_on:
     - hardware/time allocated
@@ -5172,9 +5274,12 @@ katago:
     family: analysis
     ja_name: 領地確率
     en_name: ownership (heatmap)
-    definition: |-
-      盤上の各交点を最終的に黒白どちらが支配するか（地になるか）をAIが予測した確率分布。例えばある交点が「黒80%」であれば、AIの読みではその点が最終的に80%の確率で黒地になることを意味します。GUI上ではヒートマップで表示され、色の濃淡で黒地/白地の確からしさを表現します。
-      *(English:* A probability distribution predicting which player will control each intersection (point) on the board in the final outcome. For example, if a point is marked “80% Black”, the AI estimates that point will end up as black territory 80% of the time. This is often shown as a heatmap, with colors indicating how likely each area is to become black’s or white’s territory.)*
+    definition: '盤上の各交点を最終的に黒白どちらが支配するか（地になるか）をAIが予測した確率分布。例えばある交点が「黒80%」であれば、AIの読みではその点が最終的に80%の確率で黒地になることを意味します。GUI上ではヒートマップで表示され、色の濃淡で黒地/白地の確からしさを表現します。
+
+      *(English:* A probability distribution predicting which player will control each intersection (point) on the board in
+      the final outcome. For example, if a point is marked “80% Black”, the AI estimates that point will end up as black territory
+      80% of the time. This is often shown as a heatmap, with colors indicating how likely each area is to become black’s
+      or white’s territory.)*'
     units: '% (per intersection)'
     depends_on:
     - visits (accuracy improves with more reading)
@@ -5195,9 +5300,11 @@ katago:
     family: analysis
     ja_name: 読み筋
     en_name: principal variation
-    definition: |-
-      AIが読みの中で最善と判断した着手の連続（変化の予想手順）。現在の局面から双方が最善手を打ち合った場合に進行すると予測される一連の手順を示します。PVは探索が深まるにつれて変化しうるため、必ずしも実際の進行を保証するものではありません。
-      *(English:* The sequence of moves (variation) the AI considers best for both sides from the current position. This principal variation (PV) represents the AI’s expected continuation if both players play optimally. Note that the PV can change as the search goes deeper, and it is not a guaranteed actual outcome, merely the AI’s current best foresight.)*
+    definition: 'AIが読みの中で最善と判断した着手の連続（変化の予想手順）。現在の局面から双方が最善手を打ち合った場合に進行すると予測される一連の手順を示します。PVは探索が深まるにつれて変化しうるため、必ずしも実際の進行を保証するものではありません。
+
+      *(English:* The sequence of moves (variation) the AI considers best for both sides from the current position. This principal
+      variation (PV) represents the AI’s expected continuation if both players play optimally. Note that the PV can change
+      as the search goes deeper, and it is not a guaranteed actual outcome, merely the AI’s current best foresight.)*'
     units: move sequence
     depends_on:
     - search depth (visits)
@@ -5223,9 +5330,9 @@ katago:
     en_explain: How much the winrate changed due to the move played, compared to the AI’s top choice. It is the difference
       between the winrate after the move and the winrate if the best move had been played. For example, “-16%” indicates the
       move caused an estimated 16 percentage point drop in win probability (i.e. made the position worse by 16%).
-    nuances: |-
-      - 一般に「勝率損失○%」のように表現され、AI解析GUI（LizzieやOGSなど）ではこの値でミスの大きさを表示します。勝率ベースの損失は直感的に「勝ちやすさ」がどれだけ下がったかを示しますが、人間目線では序盤の数％の変動より終盤の数％のほうが重大である点に留意が必要です。
-      - 勝率損失は局面の不確実性も影響します。読みが浅いと過大評価・過小評価が起こり、あとで損失値が変わることがあります（例：あとで隠れた手が見つかり実際の損失はもっと大きかった、など）。
+    nuances: '- 一般に「勝率損失○%」のように表現され、AI解析GUI（LizzieやOGSなど）ではこの値でミスの大きさを表示します。勝率ベースの損失は直感的に「勝ちやすさ」がどれだけ下がったかを示しますが、人間目線では序盤の数％の変動より終盤の数％のほうが重大である点に留意が必要です。
+
+      - 勝率損失は局面の不確実性も影響します。読みが浅いと過大評価・過小評価が起こり、あとで損失値が変わることがあります（例：あとで隠れた手が見つかり実際の損失はもっと大きかった、など）。'
     sources:
     - https://github.com/lightvector/KataGo
   - id: score_loss
@@ -5237,9 +5344,9 @@ katago:
     en_explain: How many points of lead were lost due to the move, compared to the AI’s best move. It indicates the change
       in the score lead in points. For example, “-3.5 points” means the move reduced the lead by 3.5 points (i.e. the player
       is 3.5 points worse off than if the best move had been played).
-    nuances: |-
-      - KaTrainやAI Senseiなど一部の分析ツールでは、人間に分かりやすいようミスの大きさをポイント（地合差）で表示します。点数損失は盤面の形勢判断に直接対応しやすく、特に中級以上の棋力では「何目損したか」の方が感覚に合う場合があります。
-      - 点数ベースの損失は、勝率が大きく偏った局面でも評価を提供できます。例えば大差リードの局面での小さなミスは勝率にほぼ影響しなくても1〜2目の損失と表現できます。しかし序盤ではAIの点差予測自体が不確実なため、小さな点数損失はあまり深刻に捉えすぎない方が良いでしょう。
+    nuances: '- KaTrainやAI Senseiなど一部の分析ツールでは、人間に分かりやすいようミスの大きさをポイント（地合差）で表示します。点数損失は盤面の形勢判断に直接対応しやすく、特に中級以上の棋力では「何目損したか」の方が感覚に合う場合があります。
+
+      - 点数ベースの損失は、勝率が大きく偏った局面でも評価を提供できます。例えば大差リードの局面での小さなミスは勝率にほぼ影響しなくても1〜2目の損失と表現できます。しかし序盤ではAIの点差予測自体が不確実なため、小さな点数損失はあまり深刻に捉えすぎない方が良いでしょう。'
     sources:
     - https://github.com/lightvector/KataGo
   - id: utility_loss
@@ -5251,9 +5358,9 @@ katago:
     en_explain: The loss in KataGo’s internal utility value, combining win probability and score margin. It represents an
       overall loss considering both winning chances and score. Its scale is not as intuitive, but it behaves similarly to
       winrate loss while also accounting for score margin in lopsided situations.
-    nuances: |-
-      - 実際のGUIでこの値が直接表示されることは稀ですが、エンジン内部では探索時にこの「ユーティリティ差」で手の優劣を比較しています。勝率だけでは評価しきれない「勝ちにつながる得失点」の観点を含むため、例えば大差リード時のわずかな点の損失には寛容に、逆に接戦時の勝率低下には厳しく作用します。
-      - ユーティリティ損失は技術的な指標であり、ユーザーには勝率や点数での表示のほうが理解しやすいです。そのため多くのアプリではこの値ではなく、上記の勝率損失や点数損失に変換してミス評価を行っています。
+    nuances: '- 実際のGUIでこの値が直接表示されることは稀ですが、エンジン内部では探索時にこの「ユーティリティ差」で手の優劣を比較しています。勝率だけでは評価しきれない「勝ちにつながる得失点」の観点を含むため、例えば大差リード時のわずかな点の損失には寛容に、逆に接戦時の勝率低下には厳しく作用します。
+
+      - ユーティリティ損失は技術的な指標であり、ユーザーには勝率や点数での表示のほうが理解しやすいです。そのため多くのアプリではこの値ではなく、上記の勝率損失や点数損失に変換してミス評価を行っています。'
     sources:
     - https://ar5iv.labs.arxiv.org/html/1902.10565
   translation_templates:
