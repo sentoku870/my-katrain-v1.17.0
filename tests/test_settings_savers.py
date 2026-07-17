@@ -147,6 +147,8 @@ class TestSaveMyKatrainSettings:
             "batch_export_input_directory": "/tmp/in",
             "karte_format": "standard",
             "opponent_info_mode": "auto",
+            # Phase 248-B1: important_moves_level is now persisted.
+            "important_moves_level": "normal",
         }
 
     def test_writes_rank_when_provided(self):
@@ -174,6 +176,88 @@ class TestSaveMyKatrainSettings:
         ctx = _make_ctx()
         _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode")
         ctx.update_engine_config.assert_not_called()
+
+
+class TestSaveImportantMovesLevel:
+    """Phase 248-B1: ``important_moves_level`` is persisted by the saver."""
+
+    def test_writes_normal_by_default(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(ctx, "u", "/o", "/i", "fmt", "mode")
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["important_moves_level"] == "normal"
+
+    def test_writes_easy_level(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(
+            ctx,
+            "u",
+            "/o",
+            "/i",
+            "fmt",
+            "mode",
+            important_moves_level="easy",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["important_moves_level"] == "easy"
+
+    def test_writes_strict_level(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(
+            ctx,
+            "u",
+            "/o",
+            "/i",
+            "fmt",
+            "mode",
+            important_moves_level="strict",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["important_moves_level"] == "strict"
+
+    def test_normalises_unknown_value_to_normal(self):
+        """Unknown values (typo, legacy, etc.) silently fall back to ``normal``.
+
+        Matches the runtime behaviour of
+        :func:`IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get` which returns the
+        default settings when the key is unknown.
+        """
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(
+            ctx,
+            "u",
+            "/o",
+            "/i",
+            "fmt",
+            "mode",
+            important_moves_level="nuclear",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["important_moves_level"] == "normal"
+
+    def test_normalises_empty_string_to_normal(self):
+        from katrain.gui.features.settings_popup_savers import _save_mykatrain_settings
+
+        ctx = _make_ctx()
+        _save_mykatrain_settings(
+            ctx,
+            "u",
+            "/o",
+            "/i",
+            "fmt",
+            "mode",
+            important_moves_level="",
+        )
+        _, payload = ctx.set_config_section.call_args.args
+        assert payload["important_moves_level"] == "normal"
 
 
 class TestMigrateDefaultUserRank:

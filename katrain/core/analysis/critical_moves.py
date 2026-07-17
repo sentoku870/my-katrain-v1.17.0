@@ -586,6 +586,77 @@ def select_critical_moves(
 
 
 # =============================================================================
+# Phase 248-G2: Standalone stats accessor
+# =============================================================================
+
+
+def compute_complexity_filter_stats(
+    game: "Game",
+    *,
+    level: str = "normal",
+    player_filter: str | None = None,
+    pre_classified_moves: list[Any] | None = None,
+) -> ComplexityFilterStats:
+    """Compute the Phase 83 complexity-filter statistics without selecting moves.
+
+    Phase 248-G2: previously the only way to learn how many candidate
+    moves were discounted by the complexity filter (scoreStdev > 20) was
+    the runtime INFO log line. Users with default logging never saw
+    the figure. This function lets the GUI/Karte paths surface the same
+    numbers in the UI.
+
+    Behaviour:
+    - Runs the same importance-moves pipeline as :func:`select_critical_moves`.
+    - Iterates ALL candidates (not just the top ``max_moves``) and counts
+      how many would have been ``complexity_discounted``.
+    - Returns a :class:`ComplexityFilterStats`; ``max_moves`` argument
+      from :func:`select_critical_moves` is irrelevant here because
+      the entire candidate pool is scanned.
+
+    Args:
+        game: Game object
+        level: Important move level (only the threshold / fallback path
+            affects how many candidates enter the pool, mirroring
+            :func:`select_critical_moves`).
+        player_filter: Same as :func:`select_critical_moves`; restricts
+            the candidate pool to a single player.
+        pre_classified_moves: Same as :func:`select_critical_moves`.
+
+    Returns:
+        A :class:`ComplexityFilterStats` with ``total_candidates``,
+        ``discounted_count``, and ``max_stdev_seen`` populated.
+    """
+    from katrain.core.analysis import snapshot_from_game
+
+    snapshot = snapshot_from_game(game)
+    if pre_classified_moves is not None:
+        candidates = list(pre_classified_moves)
+    else:
+        from katrain.core.analysis import pick_important_moves
+
+        candidates = pick_important_moves(snapshot, level=level, recompute=True)
+
+    if player_filter is not None:
+        candidates = [m for m in candidates if m.player == player_filter]
+
+    node_map = build_node_map(game)
+    discounted: set[int] = set()
+    max_stdev: float | None = None
+    for m in candidates:
+        stdev = _get_score_stdev_for_move(node_map, m.move_number)
+        if _compute_complexity_discount(stdev) < 1.0:
+            discounted.add(m.move_number)
+        if stdev is not None and (max_stdev is None or stdev > max_stdev):
+            max_stdev = stdev
+
+    return ComplexityFilterStats(
+        total_candidates=len(candidates),
+        discounted_count=len(discounted),
+        max_stdev_seen=max_stdev,
+    )
+
+
+# =============================================================================
 # Module Exports
 # =============================================================================
 
@@ -595,6 +666,8 @@ __all__ = [
     "ComplexityFilterStats",  # Phase 83
     # Main Function
     "select_critical_moves",
+    # Phase 248-G2: Standalone stats accessor for UI / Karte output.
+    "compute_complexity_filter_stats",
     # Constants (for testing)
     "MEANING_TAG_WEIGHTS",
     "DEFAULT_MEANING_TAG_WEIGHT",

@@ -176,7 +176,8 @@
         "default_user_rank": "",
         "karte_output_directory": "",
         "batch_export_input_directory": "",
-        "karte_format": "both"
+        "karte_format": "both",
+        "important_moves_level": "normal"
     },
     "export_settings": {},
     "ui_state": {

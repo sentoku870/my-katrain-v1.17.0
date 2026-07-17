@@ -150,12 +150,26 @@ def _save_mykatrain_settings(
     karte_format: str,
     opponent_info_mode: str,
     default_user_rank: str = "",  # Phase 225.8
+    important_moves_level: str = "normal",  # Phase 248-B1
 ) -> None:
     """Save mykatrain_settings section (Phase 27).
 
     Phase 230-B: Leela 検証用の ``disabled_katago`` パラメータと
     ``engine/disabled`` 更新を削除。Leela は Phase 171 で完全廃止済み。
+
+    Phase 248-B1: ``important_moves_level`` ("easy" / "normal" /
+    "strict") is now persisted. The ``level`` argument flows into
+    ``pick_important_moves`` and ``select_critical_moves`` so users
+    can dial the importance-extraction sensitivity per their
+    kyu/dan level.
     """
+    # Normalise the level to one of the three known values. Unknown
+    # values silently fall back to "normal" — matches the runtime
+    # behaviour of :func:`IMPORTANT_MOVE_SETTINGS_BY_LEVEL.get`.
+    valid_levels = {"easy", "normal", "strict"}
+    if important_moves_level not in valid_levels:
+        important_moves_level = "normal"
+
     mykatrain_settings = {
         "default_user_name": default_user_name,
         # Phase 225.8: optional default user rank (e.g. "4段" / "5k").
@@ -166,6 +180,7 @@ def _save_mykatrain_settings(
         "batch_export_input_directory": batch_export_input_directory,
         "karte_format": karte_format,
         "opponent_info_mode": opponent_info_mode,
+        "important_moves_level": important_moves_level,
     }
     ctx.set_config_section("mykatrain_settings", mykatrain_settings)
     ctx.save_config("mykatrain_settings")

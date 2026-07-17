@@ -25,7 +25,7 @@ from katrain.core.analysis.cluster_classifier import (
 from katrain.core.analysis.critical_moves import select_critical_moves
 from katrain.core.analysis.meaning_tags import get_meaning_tag_label_safe
 from katrain.core.batch.stats import get_area_from_gtp
-from katrain.core.constants import OUTPUT_DEBUG
+from katrain.core.constants import OUTPUT_DEBUG, OUTPUT_INFO
 
 if TYPE_CHECKING:
     from katrain.core.analysis.models import MoveEval
@@ -201,9 +201,16 @@ def critical_3_section_for(
             pre_classified_moves=ctx.important_moves,
         )
     except KeyError as exc:
-        # Expected: Game data structure issue
+        # Expected: Game data structure issue.
+        # Phase 248-F1: surface at INFO level instead of silently
+        # swallowing the failure at DEBUG. Users with default logging
+        # used to see "Critical 3: 0 件" and have no idea why; now
+        # they get a one-line reason in the log.
         if ctx.game.katrain:
-            ctx.game.katrain.log(f"Critical 3 skipped: {exc}", OUTPUT_DEBUG)
+            ctx.game.katrain.log(
+                f"Critical 3 skipped (KeyError, {player}): {exc}",
+                OUTPUT_INFO,
+            )
         return []
     except Exception as exc:
         # Unexpected: Internal bug - traceback required

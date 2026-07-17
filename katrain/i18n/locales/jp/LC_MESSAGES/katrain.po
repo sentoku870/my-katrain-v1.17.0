@@ -1895,6 +1895,21 @@ msgstr "KataGo 不確実性ヒント:"
 msgid "mykatrain:settings:katago_uncertain_desc"
 msgstr "KataGo の scoreStdev が高いとき「KataGo も読みにくい局面」を指摘"
 
+msgid "mykatrain:settings:important_moves_level"
+msgstr "重要局面 重要度レベル:"
+
+msgid "mykatrain:settings:important_moves_level_desc"
+msgstr "Karte の重要局面抽出と critical_3 の感度を設定。級位者向け (緩め) は大きな損失のみ、段位者向け (厳しめ) は細かい損失まで拾う"
+
+msgid "mykatrain:settings:important_moves_level_easy"
+msgstr "級位者向け (緩め)"
+
+msgid "mykatrain:settings:important_moves_level_normal"
+msgstr "標準"
+
+msgid "mykatrain:settings:important_moves_level_strict"
+msgstr "段位者向け (厳しめ)"
+
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
 

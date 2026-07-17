@@ -378,6 +378,72 @@ def _format_pv_filter_preview_line(state: _SettingsPopupContext) -> str:
     )
 
 
+def _build_important_moves_level_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
+    """Phase 248-B1: radio button group for ``important_moves_level``.
+
+    Three options aligned with :data:`IMPORTANT_MOVE_SETTINGS_BY_LEVEL`:
+    - ``easy``:    threshold 1.0, max 10 moves (kyu-level)
+    - ``normal``:  threshold 0.5, max 20 moves (default, Phase 50 baseline)
+    - ``strict``:  threshold 0.3, max 40 moves (dan-level)
+
+    The selected value flows into ``build_karte_json_string(level=...)``
+    via :data:`state.selected_important_moves_level`, so it affects
+    both ``important_moves`` and ``critical_3`` sections of the Karte
+    output.
+
+    Layout mirrors the PV filter section (Phase 246-A): 3 equal-width
+    cells, each with CheckBox + Label.
+    """
+    _add_searchable_label(inner, "mykatrain:settings:important_moves_level", state)
+
+    important_moves_options = [
+        ("easy", i18n._("mykatrain:settings:important_moves_level_easy")),
+        ("normal", i18n._("mykatrain:settings:important_moves_level_normal")),
+        ("strict", i18n._("mykatrain:settings:important_moves_level_strict")),
+    ]
+
+    # Mirror the PV filter section (Phase 246-A M8): equal-width cells
+    # so a long i18n string can wrap rather than overflow.
+    n_options = len(important_moves_options)
+    cell_hint = 1.0 / n_options
+    level_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(36), spacing=dp(3))
+    for level_value, level_label_text in important_moves_options:
+        cell = BoxLayout(orientation="horizontal", size_hint_x=cell_hint, spacing=dp(2))
+        checkbox = CheckBox(
+            group="important_moves_level_setting",
+            active=(level_value == state.selected_important_moves_level[0]),
+            size_hint_x=0.3,
+        )
+
+        # Each cell needs its own handler so the closure captures the
+        # correct ``level_value`` (mirrors _build_pv_filter_section).
+        def _on_level_active(
+            _chk: Any,
+            active: bool,
+            val: str = level_value,  # noqa: B008
+        ) -> None:
+            if active:
+                state.selected_important_moves_level[0] = val
+
+        checkbox.bind(active=_on_level_active)
+        cell.add_widget(checkbox)
+        cell.add_widget(
+            Label(
+                text=level_label_text,
+                size_hint_x=0.7,
+                halign="left",
+                valign="middle",
+                color=Theme.TEXT_COLOR,
+                font_name=Theme.DEFAULT_FONT,
+                shorten=True,
+            )
+        )
+        level_layout.add_widget(cell)
+    inner.add_widget(level_layout)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:important_moves_level", level_layout)
+
+
 def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
     """Add the Beginner Hints toggle row (Phase 91) + summary category rows (Phase 179)."""
     _add_searchable_label(inner, "mykatrain:settings:beginner_hints", state)
@@ -511,6 +577,7 @@ def _build_analysis_tab(state: _SettingsPopupContext) -> tuple[BoxLayout, Button
     _build_engine_section(inner, state)
     _build_player_rank_section(inner, state)
     _build_pv_filter_section(inner, state)
+    _build_important_moves_level_section(inner, state)
     _build_beginner_hints_section(inner, state)
 
     reset_btn = _build_reset_button()

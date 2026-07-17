@@ -270,11 +270,22 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         ctx.config("general/skill_preset"),
         ctx.config("general/player_rank"),
     )
+    # Phase 248-B1: pull the user-configured important-moves level so
+    # ``pick_important_moves`` / ``select_critical_moves`` use the
+    # same threshold/max_moves the user picked in the analysis tab.
+    # Defaults to "normal" so empty/legacy configs keep Phase 50 behaviour.
+    important_moves_level = (settings.get("important_moves_level") or "normal").strip()
+    if important_moves_level not in {"easy", "normal", "strict"}:
+        important_moves_level = "normal"
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)
         try:
-            text = ctx.game.build_karte_json_string(player_filter=player_filter, skill_preset=skill_preset)
+            text = ctx.game.build_karte_json_string(
+                player_filter=player_filter,
+                skill_preset=skill_preset,
+                level=important_moves_level,
+            )
             os.makedirs(output_dir, exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(text)
