@@ -657,7 +657,7 @@ class TestPhase2256RankAutoFill:
     """Phase 225.6: Karte/SGF から rank を自動取得し input に反映"""
 
     def test_populate_rank_and_perspective_sets_rank_when_empty(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         # Simulate karte with player_info
         karte = tmp_path / "k.json"
         karte.write_text(
@@ -682,7 +682,7 @@ class TestPhase2256RankAutoFill:
         )
 
     def test_does_not_overwrite_user_typed_rank(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -704,7 +704,7 @@ class TestPhase2256RankAutoFill:
         assert content.ids["rank_input"].text == "5k"
 
     def test_perspective_auto_label_uses_detected_color(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -730,7 +730,7 @@ class TestPhase2256PlayerColorPassthrough:
     """Phase 225.6: on_generate_and_copy が player_color を build_llm_prompt に渡す"""
 
     def test_player_color_passed_through_on_generate(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         content.ids["karte_path_input"].text = str(karte)
@@ -750,7 +750,7 @@ class TestPhase2256PlayerColorPassthrough:
         assert spy.call_args.kwargs.get("player_color") == "B"
 
     def test_player_color_none_when_auto_no_detection(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {}}), encoding="utf-8")
         content.ids["karte_path_input"].text = str(karte)
@@ -857,7 +857,7 @@ class TestPhase226IGuiAutoDetectFeedback:
         )
 
     def test_default_user_present_status_summary(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -882,10 +882,10 @@ class TestPhase226IGuiAutoDetectFeedback:
         assert "P1" in status
 
     def test_rank_source_traced_from_karte(self, tmp_path):
+        content = _make_content(path_type="karte")
         # When Karte has rank info, the status text (via _refresh_rank_hint)
         # should display the rank — the rank field is filled even if the
         # status line itself doesn't change.
-        content = _make_content()
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -910,9 +910,9 @@ class TestPhase226IGuiAutoDetectFeedback:
         assert content.ids["rank_input"].text in ("5k", "6k")
 
     def test_rank_fallback_to_default_user_rank(self, tmp_path):
+        content = _make_content(path_type="karte")
         # When Karte has no rank info, the default_user_rank setting
         # should be used (Phase 225.8 fallback).
-        content = _make_content()
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -1021,7 +1021,7 @@ class TestPhase2257AutoDetectSummary:
     can confirm the default user name resolved correctly."""
 
     def test_summary_status_set_on_success(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -1068,7 +1068,7 @@ class TestPhase2258DefaultUserRankFallback:
 
     def test_default_user_rank_used_when_karte_has_no_rank(self, tmp_path):
         """Karte has player names but no ranks → default_user_rank fills."""
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -1092,7 +1092,7 @@ class TestPhase2258DefaultUserRankFallback:
 
     def test_existing_karte_rank_wins_over_default(self, tmp_path):
         """If Karte has rank info, default_user_rank must NOT overwrite."""
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(
             json.dumps(
@@ -1116,7 +1116,7 @@ class TestPhase2258DefaultUserRankFallback:
 
     def test_no_rank_no_default_leaves_input_empty(self, tmp_path):
         """No rank anywhere → rank input stays empty."""
-        content = _make_content()
+        content = _make_content(path_type="karte")
         karte = tmp_path / "k.json"
         karte.write_text(json.dumps({"meta": {"player_info": {}}}), encoding="utf-8")
         content.katrain = MagicMock()
@@ -1305,7 +1305,7 @@ class TestUnknownPathEarlyReturn:
         assert content.path_type == "unknown"
 
     def test_generate_unknown_path_blocks_prompt(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="unknown")
         weird = tmp_path / "weird.json"
         weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
         content.karte_path_input.text = str(weird)
@@ -1317,7 +1317,7 @@ class TestUnknownPathEarlyReturn:
         assert content.ids["result_label"].text == ""
 
     def test_validate_unknown_path_blocks_validation(self, tmp_path):
-        content = _make_content()
+        content = _make_content(path_type="unknown")
         weird = tmp_path / "weird.json"
         weird.write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
         content.karte_path_input.text = str(weird)

@@ -497,10 +497,7 @@ class LLMCoachPopupContent(BoxLayout):
             else:
                 # Default selection: matched player at index 1 when
                 # present, otherwise bird's-eye (index 0).
-                if info.get("default_user_matched") and self.summary_players:
-                    idx = 1
-                else:
-                    idx = 0
+                idx = 1 if info.get("default_user_matched") and self.summary_players else 0
                 self.summary_perspective_index = idx
             try:
                 spinner.text = values[self.summary_perspective_index]

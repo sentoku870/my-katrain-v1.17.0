@@ -766,7 +766,7 @@ class TestWeaknessPatternsExcludeGood:
         per_player: dict[str, list[str]] = {}
         for p in patterns:
             per_player.setdefault(p["player"], []).append(p["category"])
-        for player, cats in per_player.items():
+        for _player, cats in per_player.items():
             assert "good" not in cats
             assert set(cats) == {"blunder", "mistake", "inaccuracy"}
 
