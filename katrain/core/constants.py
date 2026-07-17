@@ -60,6 +60,12 @@ TOP_MOVE_OPTIONS = [
 REPORT_DT = 1
 PONDERING_REPORT_DT = 0.25
 
+# Phase 248-γ-D1: default count for the important-moves popup.
+# Mirrors the Phase 50 critical_3 baseline. The user-configurable
+# ``mykatrain_settings.critical_3_max_moves`` (Phase 248-B2) overrides
+# this when set.
+DEFAULT_CRITICAL_3_MAX_MOVES = 3
+
 SGF_INTERNAL_COMMENTS_MARKER = "\u3164\u200b"
 SGF_SEPARATOR_MARKER = "\u3164\u3164"
 
