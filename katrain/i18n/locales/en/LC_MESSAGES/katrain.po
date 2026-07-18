@@ -3285,3 +3285,10 @@ msgstr "Currently tracking {count} weak tag(s)"
 #. Phase 266: live Curator profile status line below the curator_hint toggle
 msgid "mykatrain:settings:curator_hint_not_loaded"
 msgstr "Run a Batch analysis with Curator enabled to activate this"
+
+#. Phase 267: when Curator profile is missing, show search dirs to the user
+msgid "mykatrain:settings:curator_hint_not_loaded_with_dirs"
+msgstr ""
+"curator_ranking.json not found. Check the search directories below.\n"
+"Karte output: {karte_dir}\n"
+"Batch output: {batch_dir}"

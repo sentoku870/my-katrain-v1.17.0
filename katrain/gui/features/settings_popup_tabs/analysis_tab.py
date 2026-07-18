@@ -598,6 +598,10 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     carries. Without this, users would have to dig through logs to
     confirm their curator_ranking.json was picked up after Batch
     analysis.
+
+    Phase 267: when no profile is loaded, gives a concrete recovery
+    hint pointing at the two settings that decide where the loader
+    looks (``karte_output_directory`` and ``batch_options.output_dir``).
     """
     from katrain.core.lang import i18n
 
@@ -606,7 +610,18 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     if curator_profile is not None and n_tags > 0:
         text = i18n._("mykatrain:settings:curator_hint_loaded").format(count=n_tags)
     else:
-        text = i18n._("mykatrain:settings:curator_hint_not_loaded")
+        # Check both candidate directories to give the user a
+        # specific recovery hint.
+        settings = state.ctx.config("mykatrain_settings") or {}
+        karte_dir = settings.get("karte_output_directory") or ""
+        batch_options = settings.get("batch_options") or {}
+        batch_dir = batch_options.get("output_dir") or ""
+        if karte_dir or batch_dir:
+            text = i18n._("mykatrain:settings:curator_hint_not_loaded_with_dirs").format(
+                karte_dir=karte_dir or "—", batch_dir=batch_dir or "—"
+            )
+        else:
+            text = i18n._("mykatrain:settings:curator_hint_not_loaded")
 
     desc = Label(
         text=text,

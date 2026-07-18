@@ -3192,3 +3192,10 @@ msgstr "現在 {count} 個の弱点タグを検出中"
 #. Phase 266: live Curator profile status line below the curator_hint toggle
 msgid "mykatrain:settings:curator_hint_not_loaded"
 msgstr "Batch 分析で curator_ranking.json を生成すると有効になります"
+
+#. Phase 267: when Curator profile is missing, show search dirs to the user
+msgid "mykatrain:settings:curator_hint_not_loaded_with_dirs"
+msgstr ""
+"curator_ranking.json が見つかりません。設定ディレクトリを確認してください。\n"
+"Karte 出力先: {karte_dir}\n"
+"Batch 出力先: {batch_dir}"
