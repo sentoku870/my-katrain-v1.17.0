@@ -24,6 +24,9 @@ import ast
 import re
 from pathlib import Path
 
+import polib
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ANALYSIS_TAB_PATH = REPO_ROOT / "katrain" / "gui" / "features" / "settings_popup_tabs" / "analysis_tab.py"
 FILEBROWSER_PATH = REPO_ROOT / "katrain" / "gui" / "widgets" / "filebrowser.py"
@@ -181,10 +184,11 @@ def test_analysis_tab_binds_both_on_success_and_on_submit() -> None:
     and the double-click (``on_submit``) handlers must be bound.
     """
     src = ANALYSIS_TAB_PATH.read_text(encoding="utf-8")
-    # Find the block between ``browser = I18NFileBrowser(`` and
-    # ``browser.open()`` and verify both bind() keywords appear.
+    # Find the block between ``browser = I18NFileBrowser(`` and the
+    # I18NPopup ``picker.open()`` (or, pre-fix, the dead ``browser.open()``)
+    # and verify both bind() keywords appear.
     m = re.search(
-        r"browser\s*=\s*I18NFileBrowser\([^)]*\)\s*(?P<block>.*?)\s*browser\.open\(\)",
+        r"browser\s*=\s*I18NFileBrowser\([^)]*\)\s*(?P<block>.*?)\s*(?:picker|browser)\.open\(\)",
         src,
         re.DOTALL,
     )
@@ -192,3 +196,107 @@ def test_analysis_tab_binds_both_on_success_and_on_submit() -> None:
     block = m.group("block")
     assert "on_success" in block, "analysis_tab.py: 'on_success' not bound to I18NFileBrowser"
     assert "on_submit" in block, "analysis_tab.py: 'on_submit' not bound to I18NFileBrowser"
+
+
+# ---------------------------------------------------------------------------
+# 5. I18NFileBrowser is a BoxLayout, not a Popup: must NOT call open()
+#    on the browser itself (Phase 268 follow-up: AttributeError silent fail)
+# ---------------------------------------------------------------------------
+
+
+def test_filebrowser_is_boxlayout_not_popup() -> None:
+    """Pin that ``I18NFileBrowser`` extends ``BoxLayout`` (not ``Popup``).
+
+    This is the underlying reason ``browser.open()`` fails: ``BoxLayout``
+    has no ``open()`` method.  If this test ever fails because
+    ``I18NFileBrowser`` was upgraded to extend ``Popup`` directly, the
+    picker wrapping below becomes unnecessary and can be removed.
+    """
+    tree = ast.parse(FILEBROWSER_PATH.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "I18NFileBrowser":
+            assert len(node.bases) == 1, f"I18NFileBrowser should have exactly 1 base class; got {len(node.bases)}"
+            base = node.bases[0]
+            base_name = (
+                ast.unparse(base)
+                if hasattr(ast, "unparse")
+                else (base.id if isinstance(base, ast.Name) else ast.dump(base))
+            )
+            assert base_name == "BoxLayout", (
+                f"I18NFileBrowser should extend BoxLayout; got {base_name!r}. "
+                "If you upgrade to Popup, also update the test_analysis_tab_uses_i18n_popup "
+                "test accordingly."
+            )
+            return
+    pytest.fail("I18NFileBrowser class not found in filebrowser.py")
+
+
+def test_analysis_tab_does_not_call_browser_open() -> None:
+    """Pin that ``browser.open()`` is NEVER called on ``I18NFileBrowser``.
+
+    ``I18NFileBrowser`` is a ``BoxLayout``; ``BoxLayout.open()`` does
+    not exist.  The original Phase 268 code called ``browser.open()``
+    which raised ``AttributeError`` that Kivy's on_release event
+    handler silently swallowed, making the "参照" button completely
+    unresponsive.  The fix wraps the browser in an ``I18NPopup`` and
+    calls ``picker.open()`` instead.
+    """
+    tree = ast.parse(ANALYSIS_TAB_PATH.read_text(encoding="utf-8"))
+    bad_calls: list[tuple[str, int]] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "open"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "browser"
+        ):
+            bad_calls.append((ast.unparse(node), getattr(node, "lineno", 0)))
+    assert not bad_calls, (
+        f"analysis_tab.py: ``browser.open()`` re-introduced at "
+        f"{[ln for _, ln in bad_calls]}.  I18NFileBrowser has no open() method — "
+        "wrap it in I18NPopup and call picker.open()."
+    )
+
+
+def test_analysis_tab_uses_i18n_popup() -> None:
+    """Pin that the file browser is wrapped in an ``I18NPopup``.
+
+    This is the only working pattern (see :func:`llm_coach_popup.on_browse_karte`).
+    """
+    src = ANALYSIS_TAB_PATH.read_text(encoding="utf-8")
+    # I18NPopup must be imported inside the browse helper (to keep
+    # the top-level Kivy footprint small, mirroring llm_coach_popup).
+    assert "from katrain.gui.popups._base import I18NPopup" in src, (
+        "analysis_tab.py: must import I18NPopup from katrain.gui.popups._base"
+    )
+    # The picker wrapping pattern.
+    assert re.search(
+        r"picker\s*=\s*I18NPopup\(",
+        src,
+    ), "analysis_tab.py: must construct ``picker = I18NPopup(...)``"
+    # And picker.open() is called (not browser.open()).
+    assert re.search(
+        r"picker\s*\.\s*open\s*\(\s*\)",
+        src,
+    ), "analysis_tab.py: must call ``picker.open()`` to display the file browser"
+
+
+# ---------------------------------------------------------------------------
+# 6. i18n key for the popup title exists in jp + en
+# ---------------------------------------------------------------------------
+
+
+JP_PO = REPO_ROOT / "katrain" / "i18n" / "locales" / "jp" / "LC_MESSAGES" / "katrain.po"
+EN_PO = REPO_ROOT / "katrain" / "i18n" / "locales" / "en" / "LC_MESSAGES" / "katrain.po"
+
+
+def test_curator_hint_browse_title_i18n_exists() -> None:
+    """The new i18n key for the file-browser popup title must be present
+    in both jp and en .po files (with a non-empty msgstr).
+    """
+    for po_path in (JP_PO, EN_PO):
+        po = polib.pofile(str(po_path))
+        matches = [e for e in po if e.msgid == "mykatrain:settings:curator_hint_browse_title"]
+        assert matches, f"{po_path.name}: missing 'curator_hint_browse_title' key"
+        assert matches[0].msgstr.strip(), f"{po_path.name}: 'curator_hint_browse_title' has empty msgstr"

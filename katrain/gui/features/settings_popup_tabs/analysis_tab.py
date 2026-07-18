@@ -657,6 +657,9 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     # filter. On selection, call back into ``KaTrainGui.update_curator_profile``
     # with a path override.
     def _on_browse(_btn: Any) -> None:
+        from kivy.metrics import dp
+
+        from katrain.gui.popups._base import I18NPopup
         from katrain.gui.widgets.filebrowser import I18NFileBrowser
 
         # Phase 268: ``I18NFileBrowser`` accepts ``path=`` (not
@@ -687,7 +690,20 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
             _load_curator_from_path(state.ctx, selected)
 
         browser.bind(on_success=_on_browser_done, on_submit=_on_browser_done)
-        browser.open()
+
+        # Phase 268 follow-up: ``I18NFileBrowser`` is a ``BoxLayout`` and
+        # has no ``open()`` method.  Calling ``browser.open()`` raises
+        # ``AttributeError`` which Kivy's button on_release silently
+        # swallows — the button looked completely dead.  The correct
+        # pattern (mirroring :func:`llm_coach_popup.on_browse_karte`) is
+        # to wrap the browser in an ``I18NPopup`` and call
+        # ``picker.open()`` on the popup.
+        picker = I18NPopup(
+            title_key="mykatrain:settings:curator_hint_browse_title",
+            size=[dp(700), dp(500)],
+            content=browser,
+        )
+        picker.open()
 
     browse_btn.bind(on_release=_on_browse)
     status_row.add_widget(browse_btn)

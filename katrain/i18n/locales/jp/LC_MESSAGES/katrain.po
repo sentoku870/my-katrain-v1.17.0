@@ -3204,3 +3204,8 @@ msgstr ""
 #. file
 msgid "mykatrain:settings:curator_hint_browse"
 msgstr "参照..."
+
+#. Phase 268 follow-up: title for the file-browser popup that lets the user
+#. pick curator_ranking_*.json manually
+msgid "mykatrain:settings:curator_hint_browse_title"
+msgstr "curator_ranking_*.json を選択"
