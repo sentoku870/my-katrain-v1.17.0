@@ -35,6 +35,16 @@ from katrain.core.coach.json_type import (
     is_summary,
     normalize_summary_to_karte_shape,
 )
+from katrain.core.coach.karte_aggregator import (  # Phase 270
+    AggregatedKarteView,
+    aggregate_area_difficulty,
+    aggregate_data_quality,
+    aggregate_kartes,
+    aggregate_reason_tags_by_color,
+    build_meaning_tag_label_map,
+    detect_loss_spike_windows,
+    group_representative_moves_by_tag,
+)
 from katrain.core.coach.karte_detector import (
     build_symptom_context_from_karte,
     detect_symptoms_from_karte,
@@ -238,6 +248,16 @@ __all__ = [
     # summary_prompt_builder (Phase 227-A)
     "SummaryPromptConfig",
     "build_summary_weakness_prompt",
+    "SCHEMA_VERSION_WITH_KARTES",  # Phase 270
+    # karte_aggregator (Phase 270)
+    "AggregatedKarteView",
+    "aggregate_kartes",
+    "aggregate_reason_tags_by_color",
+    "aggregate_area_difficulty",
+    "detect_loss_spike_windows",
+    "group_representative_moves_by_tag",
+    "aggregate_data_quality",
+    "build_meaning_tag_label_map",
     # summary_validator (Phase 227-B)
     "SummaryValidationReport",
     "validate_summary_llm_output",

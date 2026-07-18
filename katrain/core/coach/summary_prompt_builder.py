@@ -1,4 +1,4 @@
-"""Phase 227-A + 228-B: LLM prompt builder for multi-game Summary JSON.
+"""Phase 227-A + 228-B + 270: LLM prompt builder for multi-game Summary JSON.
 
 Companion to :mod:`katrain.core.coach.prompt_builder`, specialised for
 the **multi-game summary** use-case. Whereas the Karte prompt builder
@@ -23,6 +23,18 @@ Phase 228-B additions:
 - System instruction updated to acknowledge the new sections as
   valid reference sources.
 
+Phase 270 additions:
+- When ``SummaryPromptConfig.kartes`` is provided, runs the new
+  :mod:`katrain.core.coach.karte_aggregator` pipeline to surface
+  six per-game fields that the summary path currently drops
+  (``reason_tags_distribution`` / ``area`` / ``position_difficulty``
+  / ``data_quality`` / ``meaning_tag_label`` / loss-progression
+  spikes). The aggregated view is rendered as one extra Markdown
+  block, the body header ``Schema:`` line is bumped to ``"3.5"``,
+  and the system instruction is updated so the LLM treats the new
+  block as a valid reference. Existing 3.4 callers (no ``kartes``
+  argument) see the exact same prompt body as before.
+
 Public API:
 - :class:`SummaryPromptConfig` — frozen config dataclass
 - :class:`SummaryPrompt` — bundle of system_instruction + body + full markdown
@@ -45,8 +57,20 @@ from katrain.core.coach.json_type import (
     extract_summary_total_loss,
     extract_summary_weakness_patterns,
 )
+from katrain.core.coach.karte_aggregator import (
+    AggregatedKarteView,
+    aggregate_kartes,
+)
 from katrain.core.coach.master_db import CoachMode
 from katrain.core.coach.tones import ToneVoice, voice_summary
+
+# Phase 270: schema version that the prompt body shows when
+# ``SummaryPromptConfig.kartes`` is populated. Kept as a module
+# constant so tests and downstream code can refer to it without
+# re-deriving from the docs. The 3.4 default in
+# :class:`SummaryPromptConfig` is intentionally retained for back-
+# compatibility — callers that do not pass kartes still see 3.4.
+SCHEMA_VERSION_WITH_KARTES: str = "3.5"
 
 # --- Configuration dataclass ---
 
@@ -68,8 +92,19 @@ class SummaryPromptConfig:
         player_rank: Optional rank string (e.g. ``"5k"``). Surfaced in
             the body header for the LLM to calibrate vocabulary.
         schema_version: Summary JSON schema version (informational).
+            When ``kartes`` is provided the prompt body actually
+            displays :data:`SCHEMA_VERSION_WITH_KARTES` (``"3.5"``)
+            regardless of this value — the field is kept for
+            downstream consumers that want to record the version
+            they asked for.
         max_patterns: Cap on the number of pre-computed weakness
             patterns injected into the prompt body. Defaults to 10.
+        kartes: Optional tuple of single-game Karte JSON dicts to
+            aggregate. When provided, :func:`build_summary_weakness_prompt`
+            runs the Phase 270 aggregator and renders a new
+            ``Aggregated Karte View (schema 3.5)`` section in the
+            body. Defaults to ``None`` (3.4 back-compat — no
+            aggregated view, no schema bump).
     """
 
     voice: ToneVoice
@@ -79,6 +114,7 @@ class SummaryPromptConfig:
     player_rank: str | None = None
     schema_version: str = "3.4"
     max_patterns: int = 10
+    kartes: tuple[dict[str, Any], ...] | None = None
 
 
 # --- SummaryPrompt container ---
@@ -129,6 +165,10 @@ Rank: {rank_label}
    - the ``weaknesses[<color>]`` block (Phase 227-A format)
    - the ``Player Mistake Distribution`` block (Phase 228-B format,
      categories: good / inaccuracy / mistake / blunder)
+   - the ``Aggregated Karte View`` block (Phase 270 format,
+     schema 3.5) when present — refer to tags by their
+     ``meaning_tag_label`` from the injected ``meaning_tag_label_map``
+     so the user can match the report against their kifu
    Do not invent new categories.
 4. For each pattern, state:
    - 弱点名 (category)
@@ -206,7 +246,7 @@ _BODY_HEADER_TEMPLATE = """# myKatrain 複数局サマリ (LLM-ready)
 ### Loss Progression (per game-type)
 
 {loss_progression_block}
-
+{aggregated_view_block}
 ---
 
 ## 最終出力形式
@@ -492,6 +532,113 @@ def _format_player_phases_block(
     return "\n".join(_format_phase_line(name, data) for name, data in sorted_phases)
 
 
+# --- Phase 270: Aggregated Karte View (schema 3.5) ---
+
+
+def _format_aggregated_view_block(view: AggregatedKarteView) -> str:
+    """Render the Phase 270 Aggregated Karte View as a Markdown block.
+
+    Six sub-sections, one per aggregator output. Each sub-section
+    is omitted (replaced with a short "no data" marker) when its
+    data is empty so the LLM does not see noisy placeholders.
+
+    Args:
+        view: An :class:`AggregatedKarteView` produced by
+            :func:`aggregate_kartes`.
+
+    Returns:
+        Markdown block content (without the section header). Empty
+        string when the view has no data at all.
+    """
+    sections: list[str] = []
+
+    # 1. reason_tags_by_color
+    rt_lines: list[str] = []
+    for color in sorted(view.reason_tags_by_color.keys()):
+        tags = view.reason_tags_by_color[color]
+        if not tags:
+            continue
+        # Sort by count desc so the most frequent tag is first.
+        items = sorted(tags.items(), key=lambda kv: (-kv[1], kv[0]))
+        rendered = ", ".join(f"{tag}={n}" for tag, n in items)
+        rt_lines.append(f"- **{color}**: {rendered}")
+    sections.append(
+        "#### reason_tags_by_color\n" + ("\n".join(rt_lines) if rt_lines else "(reason_tags_distribution データなし)")
+    )
+
+    # 2. area_difficulty_matrix
+    matrix = view.area_difficulty_matrix
+    if matrix:
+        diff_keys = ("only", "hard", "normal", "easy", "unknown")
+        header = "| area | " + " | ".join(diff_keys) + " |"
+        sep = "|------|" + "|".join(["------"] * len(diff_keys)) + "|"
+        rows: list[str] = []
+        for area in ("corner", "edge", "center"):
+            if area not in matrix:
+                continue
+            cells = [str(matrix[area].get(d, 0)) for d in diff_keys]
+            rows.append(f"| {area} | " + " | ".join(cells) + " |")
+        sections.append(
+            "#### area_difficulty_matrix\n" + header + "\n" + sep + "\n" + ("\n".join(rows) if rows else "(データなし)")
+        )
+    else:
+        sections.append("#### area_difficulty_matrix\n(area / position_difficulty データなし)")
+
+    # 3. loss_spike_windows
+    spikes = view.loss_spike_windows
+    if spikes:
+        lines = []
+        for s in spikes:
+            lines.append(
+                f"- **{s['game_id']}**: moves {s['start_move']}-{s['end_move']} "
+                f"({s['bucket_count']} buckets, total_loss={s['total_loss']:.2f}, "
+                f"avg={s['avg_loss']:.3f})"
+            )
+        sections.append("#### loss_spike_windows\n" + "\n".join(lines))
+    else:
+        sections.append("#### loss_spike_windows\n(loss_progression スパイクなし)")
+
+    # 4. representative_moves_by_tag
+    rep = view.representative_moves_by_tag
+    if rep:
+        lines = []
+        for tag, entries in rep.items():
+            label = view.meaning_tag_label_map.get(tag, tag)
+            parts = []
+            for e in entries:
+                parts.append(f"{e['coords']} #{e['move_number']} (loss={e['loss']:.2f}, {e['game_id']})")
+            lines.append(f"- **{tag}** ({label}): " + "; ".join(parts))
+        sections.append("#### representative_moves_by_tag\n" + "\n".join(lines))
+    else:
+        sections.append("#### representative_moves_by_tag\n(primary_tag 付き代表手なし)")
+
+    # 5. data_quality_aggregate
+    dq = view.data_quality_aggregate
+    if dq.get("games_count", 0) > 0:
+        dq_lines = [
+            f"- games_count: {dq['games_count']}",
+            f"- avg_visits: {dq['avg_visits']:.1f}",
+            f"- reliability_pct: {dq['reliability_pct']:.1f}",
+            f"- coverage_pct: {dq['coverage_pct']:.1f}",
+            f"- total_moves: {dq['total_moves']}",
+            f"- confidence_level: {dq['confidence_level']}",
+        ]
+        sections.append("#### data_quality_aggregate\n" + "\n".join(dq_lines))
+    else:
+        sections.append("#### data_quality_aggregate\n(data_quality データなし)")
+
+    # 6. meaning_tag_label_map
+    lbl: dict[str, str] = view.meaning_tag_label_map
+    if lbl:
+        lbl_items: list[tuple[str, str]] = sorted(lbl.items(), key=lambda kv: kv[0])
+        rendered = ", ".join(f"{k} → {v}" for k, v in lbl_items)
+        sections.append("#### meaning_tag_label_map\n" + rendered)
+    else:
+        sections.append("#### meaning_tag_label_map\n(マッピングデータなし)")
+
+    return "### Aggregated Karte View (Phase 270, schema 3.5)\n\n" + "\n\n".join(sections) + "\n\n"
+
+
 # --- Public API ---
 
 
@@ -505,6 +652,13 @@ def build_summary_weakness_prompt(
     augmented with a pre-computed weakness patterns list and the
     ``phase_x_mistake`` buckets. The LLM is explicitly told NOT to
     invent per-move data.
+
+    Phase 270: when ``config.kartes`` is non-empty the function
+    runs the multi-karte aggregator and renders a new ``Aggregated
+    Karte View (schema 3.5)`` section. The body header's ``Schema:``
+    line is also bumped to ``"3.5"`` so downstream consumers can
+    tell the two versions apart at a glance. Existing 3.4 callers
+    (no ``kartes``) get the exact same prompt body as before.
 
     Args:
         summary_json: Parsed multi-game Summary JSON dict. The function
@@ -530,6 +684,20 @@ def build_summary_weakness_prompt(
     player_phases_all = extract_summary_player_phase_losses(summary_json)
     focused_player = _resolve_focused_player(summary_json, config.player_name)
 
+    # Phase 270: aggregated view from per-game kartes. When the
+    # config provides any karte JSONs, run the aggregator once and
+    # inject the result as a new body section. The body header's
+    # ``Schema:`` line is bumped to 3.5 in that case so consumers
+    # can tell the two versions apart.
+    kartes_provided = bool(config.kartes)
+    aggregated_view: AggregatedKarteView | None = None
+    aggregated_block: str = ""
+    effective_schema_version = config.schema_version
+    if kartes_provided:
+        aggregated_view = aggregate_kartes(config.kartes)  # type: ignore[arg-type]
+        effective_schema_version = SCHEMA_VERSION_WITH_KARTES
+        aggregated_block = _format_aggregated_view_block(aggregated_view)
+
     focus = _focus_label(config.player_name)
     rank_lbl = _rank_label(config.player_rank)
     vsummary = voice_summary(config.voice)
@@ -546,7 +714,7 @@ def build_summary_weakness_prompt(
 
     # 2. Body
     body_markdown = _BODY_HEADER_TEMPLATE.format(
-        schema_version=config.schema_version,
+        schema_version=effective_schema_version,
         games_analyzed=games,
         voice_summary=vsummary,
         mode_label=config.mode.name,
@@ -561,6 +729,7 @@ def build_summary_weakness_prompt(
         player_phases_block=_format_player_phases_block(player_phases_all, focused_player),
         player_mistakes_focus=(f" ({focused_player})" if focused_player else " (全体俯瞰)"),
         player_phases_focus=(f" ({focused_player})" if focused_player else " (全体俯瞰)"),
+        aggregated_view_block=aggregated_block,
     )
 
     # Optional total_loss annotation appended to body when available
@@ -582,4 +751,5 @@ __all__ = [
     "SummaryPromptConfig",
     "SummaryPrompt",
     "build_summary_weakness_prompt",
+    "SCHEMA_VERSION_WITH_KARTES",
 ]
