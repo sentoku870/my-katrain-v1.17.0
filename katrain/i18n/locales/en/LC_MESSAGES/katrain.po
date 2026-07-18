@@ -794,6 +794,9 @@ msgstr "Close"
 msgid "kifunarabe:summary:history"
 msgstr "Show history"
 
+msgid "kifunarabe:summary:important_moves"
+msgstr "Important moves"
+
 msgid "stats:winrate"
 msgstr "Win Rate"
 
@@ -2171,6 +2174,12 @@ msgstr "Pro-game SGF folder (Kifu Narabe)"
 
 msgid "mykatrain:settings:kifunarabe_history_dir"
 msgstr "Kifu Narabe history folder"
+
+msgid "mykatrain:settings:kifunarabe_auto_export_weaknesses"
+msgstr "Auto-export wrong guesses as weaknesses"
+
+msgid "mykatrain:settings:kifunarabe_auto_export_dir"
+msgstr "Kifu Narabe weakness folder"
 
 msgid "mykatrain:settings:kifunarabe_show_digits"
 msgstr "Show digit labels (winrate / score / visits) on markers"

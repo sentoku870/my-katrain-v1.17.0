@@ -88,11 +88,18 @@ class KifunarabeConfig:
         turn: One of "both" (both sides), "B" (black only), "W" (white only).
         max_hints: Number of candidate moves shown as hints (0..5).
         max_moves: Maximum number of moves to play through (0 = entire mainline).
+        auto_export_weaknesses: Phase 249-γ. If True, finished-session
+            ``WRONG_GUESS`` results are appended to a JSON file under
+            :attr:`KIFUNARABE_AUTO_EXPORT_DIR_DEFAULT` (or the
+            directory the GUI configured). Default is False because
+            the export is opt-in — most users do not want every
+            session to generate a side-effect file.
     """
 
     turn: str = SIDE_BOTH
     max_hints: int = 3
     max_moves: int = 0
+    auto_export_weaknesses: bool = False
 
     def __post_init__(self) -> None:
         if self.turn not in VALID_TURNS:
@@ -101,6 +108,8 @@ class KifunarabeConfig:
             raise ValueError(f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}")
         if self.max_moves not in VALID_MAX_MOVES:
             raise ValueError(f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}")
+        # ``auto_export_weaknesses`` is a plain bool — no extra
+        # validation needed.
 
 
 @dataclass
@@ -206,29 +215,14 @@ def _expected_move_gtp(node: "GameNode") -> str | None:
     The "expected" move in kifunarabe is the move recorded in the game tree -
     i.e. the actual move the player made at this position. We use
     ``ordered_children[0]`` because that is the mainline continuation.
-
-    Phase 249-α: hardened to swallow the same edge cases the
-    ``_expected_gtp_from_node`` helper on the controller side used to
-    handle (``getattr`` lookups, non-str returns, raising ``gtp``).
-    The two helpers are now consolidated: callers (e.g. the controller
-    guess mixin) should import this function rather than re-implement
-    the resolution locally.
     """
-    ordered = getattr(node, "ordered_children", None) or []
+    ordered = node.ordered_children
     if not ordered:
         return None
     child = ordered[0]
-    child_move = getattr(child, "move", None)
-    if child_move is None:
+    if not child.move:
         return None
-    gtp = getattr(child_move, "gtp", None)
-    if not callable(gtp):
-        return None
-    try:
-        result = gtp()
-    except Exception:  # noqa: BLE001
-        return None
-    return result if isinstance(result, str) else None
+    return child.move.gtp()
 
 
 def _coords_equal_gtp(coords: tuple[int, int], expected_gtp: str, node: "GameNode") -> bool:
@@ -440,36 +434,6 @@ class KifunarabeSession:
 
     # -- recording ------------------------------------------------------------
 
-    @staticmethod
-    def _validate_move_number(move_number: Any, *, method: str) -> int:
-        """Phase 249-α: validate ``move_number`` for ``record_*`` callers.
-
-        The position number must be a non-negative integer. ``0`` is
-        the root position (no children played yet); ``1+`` is a real
-        move. Anything else (``None``, negative, non-int) is a
-        programming error and must not silently corrupt the results
-        list.
-
-        Args:
-            move_number: The candidate value to validate.
-            method: The calling method name (for the error message).
-
-        Returns:
-            The validated integer.
-
-        Raises:
-            TypeError: ``move_number`` is not an int.
-            ValueError: ``move_number`` is negative.
-        """
-        if not isinstance(move_number, int) or isinstance(move_number, bool):
-            raise TypeError(
-                f"KifunarabeSession.{method}: move_number must be int, "
-                f"got {type(move_number).__name__}: {move_number!r}"
-            )
-        if move_number < 0:
-            raise ValueError(f"KifunarabeSession.{method}: move_number must be >= 0, got {move_number}")
-        return move_number
-
     def _max_moves_exceeded(self) -> bool:
         """Whether ``config.max_moves`` user-actionable visits have been reached.
 
@@ -524,7 +488,6 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
-        move_number = self._validate_move_number(move_number, method="record_guess")
         correct = expected_gtp is not None and guessed_gtp is not None and expected_gtp.upper() == guessed_gtp.upper()
         # A guessed-but-wrong click is a "failure" distinct from "skip":
         # the user did participate. ``SKIPPED`` is reserved for positions
@@ -571,7 +534,6 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
-        move_number = self._validate_move_number(move_number, method="record_auto_advance")
         result = KifunarabeGuessResult(
             move_number=move_number,
             expected_gtp=None,
@@ -595,7 +557,6 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
-        move_number = self._validate_move_number(move_number, method="record_skipped_no_move")
         result = KifunarabeGuessResult(
             move_number=move_number,
             expected_gtp=None,

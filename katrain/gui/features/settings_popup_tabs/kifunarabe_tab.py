@@ -13,6 +13,9 @@ Phase 177: Initial implementation.
 Phase 177-E: Added digit/colour/border toggles.
 Phase 249-β: Added a "history directory" row so the user can override
   the default ``~/.katrain/kifunarabe_history`` location.
+Phase 249-γ: Added the opt-in "auto-export weaknesses" toggle plus
+  the "auto-export directory" row. Default is OFF — the export is
+  opt-in.
 """
 
 from __future__ import annotations
@@ -27,6 +30,8 @@ from kivy.uix.textinput import TextInput
 
 from katrain.core.lang import i18n
 from katrain.core.study.kifunarabe_constants import (
+    KIFUNARABE_AUTO_EXPORT_WEAKNESSES_DEFAULT,
+    KIFUNARABE_AUTO_EXPORT_WEAKNESSES_KEY,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
     KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY,
     KIFUNARABE_SHOW_ACTUAL_BORDER_DEFAULT,
@@ -93,6 +98,29 @@ def _build_history_dir_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
     inner.add_widget(row)
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:kifunarabe_history_dir", row)
+    assert browse_button is not None
+    return input_widget, browse_button
+
+
+def _build_auto_export_dir_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
+    """Phase 249-γ: add the kifunarabe auto-export directory row.
+
+    The default is ``~/.katrain/kifunarabe_weaknesses`` (created on
+    demand). Leaving the field empty falls back to the default.
+    """
+    current = ""
+    if state.ctx is not None:
+        kif_section = state.ctx.config("kifunarabe") or {}
+        current = kif_section.get("auto_export_dir", "") if isinstance(kif_section, dict) else ""
+
+    row, input_widget, browse_button = create_text_input_row(
+        label_text=i18n._("mykatrain:settings:kifunarabe_auto_export_dir"),
+        initial_value=current or "",
+        with_browse=True,
+    )
+    inner.add_widget(row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:kifunarabe_auto_export_dir", row)
     assert browse_button is not None
     return input_widget, browse_button
 
@@ -196,6 +224,7 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
 
     sgf_load_input, sgf_load_browse = _build_sgf_load_row(inner, state)
     history_dir_input, history_dir_browse = _build_history_dir_row(inner, state)
+    auto_export_dir_input, auto_export_dir_browse = _build_auto_export_dir_row(inner, state)
 
     show_digits_cb = _build_display_checkbox(
         inner,
@@ -229,6 +258,14 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         i18n_label_key="mykatrain:settings:kifunarabe_auto_toggle_markers",
         searchable_label="mykatrain:settings:kifunarabe_auto_toggle_markers",
     )
+    auto_export_cb = _build_display_checkbox(
+        inner,
+        state,
+        config_key=KIFUNARABE_AUTO_EXPORT_WEAKNESSES_KEY,
+        default=KIFUNARABE_AUTO_EXPORT_WEAKNESSES_DEFAULT,
+        i18n_label_key="mykatrain:settings:kifunarabe_auto_export_weaknesses",
+        searchable_label="mykatrain:settings:kifunarabe_auto_export_weaknesses",
+    )
 
     _build_help_section(inner, state)
 
@@ -237,10 +274,13 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         "sgf_load_browse": sgf_load_browse,
         "history_dir_input": history_dir_input,
         "history_dir_browse": history_dir_browse,
+        "auto_export_dir_input": auto_export_dir_input,
+        "auto_export_dir_browse": auto_export_dir_browse,
         "show_digits_cb": show_digits_cb,
         "show_actual_border_cb": show_actual_border_cb,
         "uniform_color_cb": uniform_color_cb,
         "auto_toggle_cb": auto_toggle_cb,
+        "auto_export_cb": auto_export_cb,
     }
     # Phase 180-C: wrap the inner BoxLayout in a ScrollView so future
     # additions (history list, longer help text, etc.) don't overflow.
