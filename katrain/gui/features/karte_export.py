@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import glob
 import os
 import re
 from datetime import datetime
@@ -164,20 +165,36 @@ def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
 
 
 def _resolve_curator_profile_path(ctx: FeatureContext) -> str | None:
-    """Phase 248-γ-E1: locate the user's ``curator_ranking.json``.
+    """Phase 248-γ-E1: locate the user's Curator profile.
 
     Looks for the Curator profile in the same directory as the Karte
-    output (``mykatrain_settings.karte_output_directory``). A profile
-    is matched by its canonical filename (``curator_ranking.json``).
+    output (``mykatrain_settings.karte_output_directory``).
+
+    Resolution order:
+    1. Canonical filename ``curator_ranking.json`` (preferred — gives
+       a stable path the user can symlink to a custom location).
+    2. Most-recently-modified ``curator_ranking_*.json`` (Phase 64+
+       ``generate_curator_outputs`` writes a timestamped filename so
+       multiple batches don't overwrite each other; we accept the
+       latest mtime so the user can keep a history of profiles).
+
     Returns ``None`` when the directory is not set / does not exist /
-    the file is missing.
+    no matching file is found.
     """
     settings = ctx.config("mykatrain_settings") or {}
     out_dir = settings.get("karte_output_directory") or ""
     if not out_dir or not os.path.isdir(out_dir):
         return None
-    candidate = os.path.join(out_dir, "curator_ranking.json")
-    return candidate if os.path.isfile(candidate) else None
+    # 1. canonical filename
+    canonical = os.path.join(out_dir, "curator_ranking.json")
+    if os.path.isfile(canonical):
+        return canonical
+    # 2. timestamped fallback — pick the most recent mtime
+    pattern = os.path.join(out_dir, "curator_ranking_*.json")
+    candidates = [p for p in glob.glob(pattern) if os.path.isfile(p)]
+    if not candidates:
+        return None
+    return max(candidates, key=os.path.getmtime)
 
 
 def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None:
