@@ -323,7 +323,12 @@ class LLMCoachPopupContent(BoxLayout):
         if self.path_type == "unknown":
             self._detect_path_type(karte_path)
         if self.path_type == "summary":
-            self._populate_summary_perspective(karte_path, default_user, default_user_rank)
+            self._populate_summary_perspective(
+                karte_path,
+                default_user,
+                default_user_rank,
+                general_player_rank=player_rank_setting,
+            )
             return
 
         # Phase 241-B: when the path is set but the JSON is neither a
@@ -505,6 +510,8 @@ class LLMCoachPopupContent(BoxLayout):
         summary_path: str,
         default_user: str | None,
         default_user_rank: str | None,
+        *,
+        general_player_rank: str | None = None,
     ) -> None:
         """Phase 227-D: load summary players and rebuild the perspective spinner.
 
@@ -590,11 +597,21 @@ class LLMCoachPopupContent(BoxLayout):
             else:
                 self.perspective_value = internal_value
 
-        # ---- Rank auto-fill from matched player ----
-        matched = info.get("matched_player", {}) or {}
-        detected_rank = matched.get("rank")
-        if not detected_rank and default_user_rank:
-            detected_rank = default_user_rank
+        # ---- Rank auto-fill ----
+        # Phase 269 follow-up: 3-tier priority chain via the Kivy-free
+        # :func:`katrain.core.coach.popup_logic.resolve_summary_rank`
+        # helper. Previously the Summary path skipped
+        # ``general/player_rank``, so a 4d user whose Summary JSON's
+        # matched player carried a "5k" rank (e.g. inferred from a
+        # SGF BR/WR property) saw the spinner default to 5k instead
+        # of honouring the analysis-tab setting.
+        from katrain.core.coach.popup_logic import resolve_summary_rank
+
+        detected_rank = resolve_summary_rank(
+            info,
+            general_player_rank=general_player_rank,
+            default_user_rank=default_user_rank,
+        )
         if detected_rank:
             self.detected_rank = detected_rank
             current = self._read_text("rank_input")

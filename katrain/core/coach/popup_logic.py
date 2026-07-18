@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Any
 
 from katrain.core.coach.json_type import detect_json_type
 from katrain.core.lang import i18n
@@ -382,6 +383,58 @@ def cap_response_text(text: str) -> tuple[str, str | None]:
     )
 
 
+def resolve_summary_rank(
+    info: dict[str, Any] | None,
+    *,
+    general_player_rank: str | None = None,
+    default_user_rank: str | None = None,
+) -> str | None:
+    """Phase 269 follow-up: rank resolution for the Summary path.
+
+    Honours the user's analysis-tab global setting (Phase 229-C) as
+    the primary source of truth, so a user with
+    ``general/player_rank = "4d"`` does not see the spinner default
+    to a "5k" inferred from the Summary JSON's matched player.
+
+    Priority (first non-empty wins):
+    1. ``general_player_rank`` (the analysis-tab global setting) —
+       what the user explicitly told the engine to use
+    2. ``info["matched_player"]["rank"]`` (Summary JSON's matched
+       player) — fallback inferred rank
+    3. ``default_user_rank`` (Phase 225.8 legacy fallback)
+
+    The Summary path intentionally differs from the Karte path
+    (resolve_rank_fallback_chain) on priority order. For a single
+    Karte the SGF BR/WR is the most authoritative source, but a
+    Summary aggregates N games whose individual player ranks are
+    not necessarily the user's "current" rank — the global setting
+    is the better source of truth.
+
+    Args:
+        info: The dict returned by
+            :func:`katrain.gui.features.llm_coach.detect_player_info_for_summary`,
+            or ``None`` when summary loading failed.
+        general_player_rank: Value of ``general/player_rank`` config
+            (the new global setting from Phase 229-C).
+        default_user_rank: Value of ``mykatrain_settings.default_user_rank``
+            (Phase 225.8 legacy fallback).
+
+    Returns:
+        The first non-empty rank string, or ``None`` if none of the
+        sources have rank information.
+    """
+    if general_player_rank:
+        return general_player_rank
+    matched = (info or {}).get("matched_player", {}) or {}
+    if isinstance(matched, dict):
+        matched_rank = matched.get("rank")
+        if matched_rank:
+            return str(matched_rank)
+    if default_user_rank:
+        return default_user_rank
+    return None
+
+
 __all__ = [
     # Constants
     "PERSPECTIVE_AUTO",
@@ -404,4 +457,6 @@ __all__ = [
     "was_truncated",
     "format_validation_status_summary",
     "cap_response_text",
+    # Phase 269 follow-up: Summary-path rank resolution
+    "resolve_summary_rank",
 ]
