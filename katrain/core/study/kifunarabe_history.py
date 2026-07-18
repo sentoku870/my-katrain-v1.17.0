@@ -148,7 +148,9 @@ class KifunarabeHistoryStore:
         entry = KifunarabeHistoryEntry(
             timestamp=timestamp.isoformat(timespec="seconds"),
             sgf_path=sgf_path,
-            config=asdict(config) if hasattr(config, "__dataclass_fields__") else {"turn": config.turn, "max_hints": config.max_hints, "max_moves": config.max_moves},
+            config=asdict(config)
+            if hasattr(config, "__dataclass_fields__")
+            else {"turn": config.turn, "max_hints": config.max_hints, "max_moves": config.max_moves},
             summary=asdict(summary) if hasattr(summary, "__dataclass_fields__") else self._summary_to_dict(summary),
             critical_3_set=sorted(critical_3_set or []),
         )
