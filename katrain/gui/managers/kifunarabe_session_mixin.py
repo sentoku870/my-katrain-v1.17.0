@@ -40,8 +40,9 @@ class KifunarabeSessionMixin:
     # annotations so mypy can see the wider ``Optional`` types that
     # both the mixin and the facade manipulate). Quoted forward
     # references keep KifunarabeSession as a TYPE_CHECKING-only name.
+    #
+    # Phase 249-α: ``_source_sgf_path`` removed (no caller wrote to it).
     _session: "KifunarabeSession | None"
-    _source_sgf_path: "str | None"
     _last_critical_3_highlight: int
 
     # -- public lifecycle entry points ---------------------------------------
@@ -203,9 +204,8 @@ class KifunarabeSessionMixin:
         self._restore_analysis_toggles()
         self._session = None
         self._set_mode(False)
-        # Phase 181-B: clear the source path so the next session does
-        # not accidentally inherit a stale value.
-        self._source_sgf_path = None
+        # Phase 249-α: ``_source_sgf_path = None`` removed (no caller
+        # ever set the attribute, so there is nothing to clear).
 
 
 __all__ = ["KifunarabeSessionMixin"]
