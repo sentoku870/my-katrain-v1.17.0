@@ -17,6 +17,16 @@ KIFUNARABE_UNIFORM_COLOR_DEFAULT = True
 KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY = "kifunarabe/auto_toggle_markers"
 KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT = True
 
+# Phase 249-γ: opt-in auto-export of WRONG_GUESS results to a JSON
+# file (Karte 弱点連携の入口). Default OFF.
+KIFUNARABE_AUTO_EXPORT_WEAKNESSES_KEY = "kifunarabe/auto_export_weaknesses"
+KIFUNARABE_AUTO_EXPORT_WEAKNESSES_DEFAULT = False
+
+# Phase 249-γ: directory used when the user has not configured one.
+KIFUNARABE_AUTO_EXPORT_DIR_KEY = "kifunarabe/auto_export_dir"
+#: ``~/.katrain/kifunarabe_weaknesses`` — created on demand.
+KIFUNARABE_AUTO_EXPORT_DIR_DEFAULT = ""
+
 __all__ = [
     "KIFUNARABE_SHOW_DIGITS_KEY",
     "KIFUNARABE_SHOW_ACTUAL_BORDER_KEY",
@@ -26,4 +36,8 @@ __all__ = [
     "KIFUNARABE_UNIFORM_COLOR_DEFAULT",
     "KIFUNARABE_AUTO_TOGGLE_MARKERS_KEY",
     "KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT",
+    "KIFUNARABE_AUTO_EXPORT_WEAKNESSES_KEY",
+    "KIFUNARABE_AUTO_EXPORT_WEAKNESSES_DEFAULT",
+    "KIFUNARABE_AUTO_EXPORT_DIR_KEY",
+    "KIFUNARABE_AUTO_EXPORT_DIR_DEFAULT",
 ]

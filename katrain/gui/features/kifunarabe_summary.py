@@ -99,6 +99,30 @@ class KifunarabeSummaryContent(BoxLayout):
             0.05,
         )
 
+    def on_show_important_moves(self) -> None:
+        """Phase 249-γ: open the Important-Moves list popup.
+
+        The popup is the one Phase 248-γ-D1 built for the global
+        "重要局面" menu entry; from a kifunarabe summary it is a
+        natural way to review the Critical 3 set used by the
+        session and jump to any of them.
+        """
+        if self.popup is not None:
+            self.popup.dismiss()
+        if self.katrain is None:
+            return
+        from kivy.clock import Clock
+
+        from katrain.gui.popups.important_moves_popup import (
+            open_important_moves_popup,
+        )
+
+        # Defer so this popup fully dismisses before the next one opens.
+        Clock.schedule_once(
+            lambda _dt: open_important_moves_popup(self.katrain),
+            0.05,
+        )
+
     def _get_history_store(self) -> Any:
         """Phase 249-β: resolve the history store from the controller.
 
@@ -232,6 +256,9 @@ def show_kifunarabe_summary(
     # Phase 249-β: added a "History" button that opens the persistent
     # history popup. The history store is resolved through the
     # controller (which received it via DI in __main__.py).
+    # Phase 249-γ: added an "Important moves" button that opens the
+    # Phase 248-γ-D1 list popup so the user can jump to any of the
+    # Critical 3 positions from the session.
     button_row = BoxLayout(
         orientation="horizontal",
         spacing=dp(8),
@@ -248,6 +275,11 @@ def show_kifunarabe_summary(
         font_name=Theme.DEFAULT_FONT,
     )
     history_btn.bind(on_release=lambda _b: content.on_show_history())
+    important_btn = Button(
+        text=i18n._("kifunarabe:summary:important_moves"),
+        font_name=Theme.DEFAULT_FONT,
+    )
+    important_btn.bind(on_release=lambda _b: content.on_show_important_moves())
     abort_btn = Button(
         text=i18n._("kifunarabe:summary:abort"),
         font_name=Theme.DEFAULT_FONT,
@@ -255,6 +287,7 @@ def show_kifunarabe_summary(
     abort_btn.bind(on_release=lambda _b: content.on_abort())
     button_row.add_widget(next_btn)
     button_row.add_widget(history_btn)
+    button_row.add_widget(important_btn)
     button_row.add_widget(abort_btn)
     content.add_widget(button_row)
 

@@ -88,11 +88,18 @@ class KifunarabeConfig:
         turn: One of "both" (both sides), "B" (black only), "W" (white only).
         max_hints: Number of candidate moves shown as hints (0..5).
         max_moves: Maximum number of moves to play through (0 = entire mainline).
+        auto_export_weaknesses: Phase 249-γ. If True, finished-session
+            ``WRONG_GUESS`` results are appended to a JSON file under
+            :attr:`KIFUNARABE_AUTO_EXPORT_DIR_DEFAULT` (or the
+            directory the GUI configured). Default is False because
+            the export is opt-in — most users do not want every
+            session to generate a side-effect file.
     """
 
     turn: str = SIDE_BOTH
     max_hints: int = 3
     max_moves: int = 0
+    auto_export_weaknesses: bool = False
 
     def __post_init__(self) -> None:
         if self.turn not in VALID_TURNS:
@@ -101,6 +108,8 @@ class KifunarabeConfig:
             raise ValueError(f"Invalid max_hints: {self.max_hints}; expected one of {VALID_HINT_COUNTS}")
         if self.max_moves not in VALID_MAX_MOVES:
             raise ValueError(f"Invalid max_moves: {self.max_moves}; expected one of {VALID_MAX_MOVES}")
+        # ``auto_export_weaknesses`` is a plain bool — no extra
+        # validation needed.
 
 
 @dataclass

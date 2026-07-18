@@ -332,6 +332,9 @@ class KaTrainGui(Screen, KaTrainBase):
             # configurable via ``kifunarabe/history_dir``; falling back
             # to ``~/.katrain/kifunarabe_history``.
             history_store=self._build_kifunarabe_history_store(),
+            # Phase 249-γ: opt-in WRONG_GUESS exporter. The directory
+            # is configurable via ``kifunarabe/auto_export_dir``.
+            weakness_exporter=self._build_kifunarabe_weakness_exporter(),
         )
 
         self._engine_bootstrap: EngineBootstrap | None = None  # populated in start()
@@ -354,6 +357,27 @@ class KaTrainGui(Screen, KaTrainBase):
         configured = self.config("kifunarabe/history_dir", None)
         directory: str | None = configured if configured else None
         return KifunarabeHistoryStore(directory=directory)
+
+    def _build_kifunarabe_weakness_exporter(self) -> Any:
+        """Phase 249-γ: build the opt-in weakness exporter.
+
+        Resolution order for the directory:
+        1. ``kifunarabe/auto_export_dir`` config (if set and not empty)
+        2. ``~/.katrain/kifunarabe_weaknesses`` (default)
+
+        The exporter is always constructed (so a user can flip
+        ``kifunarabe/auto_export_weaknesses`` on mid-session); the
+        export only fires when the session's config flag is True.
+        """
+        try:
+            from katrain.core.study.kifunarabe_weakness_export import (
+                KifunarabeWeaknessExporter,
+            )
+        except ImportError:
+            return None
+        configured = self.config("kifunarabe/auto_export_dir", None)
+        directory: str | None = configured if configured else None
+        return KifunarabeWeaknessExporter(directory=directory)
 
         # Phase 198: aggregate every manager into a single AppContext so that
         # downstream code can reach them through ``self.ctx.<name>`` without

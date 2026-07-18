@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.study.kifunarabe import KifunarabeSession, KifunarabeSummary
     from katrain.core.study.kifunarabe_history import KifunarabeHistoryStore
+    from katrain.core.study.kifunarabe_weakness_export import KifunarabeWeaknessExporter
     from katrain.gui.controlspanel import ControlsPanel
 
 
@@ -113,6 +114,7 @@ class KifunarabeController(
         show_summary_fn: ShowSummaryFn | None = None,
         on_guess_resolved_fn: OnGuessResolvedFn | None = None,
         history_store: "KifunarabeHistoryStore | None" = None,
+        weakness_exporter: "KifunarabeWeaknessExporter | None" = None,
     ) -> None:
         """Initialize with dependency injection.
 
@@ -130,6 +132,12 @@ class KifunarabeController(
             history_store: Phase 249-β. Optional persistent history
                 store. When provided, every finished session is
                 appended to a JSON file under ``history_store.directory``.
+            weakness_exporter: Phase 249-γ. Optional exporter for
+                WRONG_GUESS results. When provided, every finished
+                session is appended to a JSON file under
+                ``weakness_exporter.directory``. The session's
+                ``config.auto_export_weaknesses`` must also be True
+                for the export to fire.
         """
         self._get_ctx = get_ctx
         self._get_config = get_config
@@ -142,6 +150,7 @@ class KifunarabeController(
         self._show_summary_fn = show_summary_fn
         self._on_guess_resolved_fn = on_guess_resolved_fn
         self._history_store: "KifunarabeHistoryStore | None" = history_store
+        self._weakness_exporter: "KifunarabeWeaknessExporter | None" = weakness_exporter
 
         # Mixin-owned attributes — initialised here so attribute access
         # doesn't rely on dynamic attribute creation, which would
