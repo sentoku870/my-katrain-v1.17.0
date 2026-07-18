@@ -91,6 +91,59 @@ class HintCategory(Enum):
         }
         return _MAPPING.get(tag_id)  # Returns None for unknown
 
+    @classmethod
+    def related_meaning_tag_ids(cls, category: HintCategory) -> tuple[str, ...]:
+        """Phase 265: reverse lookup — which MeaningTagIds map to this category?
+
+        Used by the Curator Weak-Axis re-labeler to decide whether a
+        beginner hint (which carries no ``node.meaning_tag_id`` in
+        real-time play) corresponds to one of the user's weak axes.
+
+        Returns an ordered tuple of MeaningTagId values. Empty tuple
+        means the category has no curator relevance (e.g. MISTAKE_GOOD,
+        FREEDOM_WIDE, POLICY_CONFIDENT are not weakness signals).
+        """
+        _MAPPING: dict[HintCategory, tuple[str, ...]] = {
+            # Priority detectors (Phase 91)
+            cls.SELF_ATARI: ("capture_race_loss", "life_death_error"),
+            cls.IGNORE_ATARI: ("capture_race_loss", "life_death_error"),
+            cls.MISSED_CAPTURE: ("capture_race_loss", "life_death_error"),
+            cls.CUT_RISK: ("connection_miss",),
+            # MeaningTag fallbacks (Phase 92)
+            cls.LOW_LIBERTIES: ("capture_race_loss",),
+            cls.SELF_CAPTURE_LIKE: ("life_death_error",),
+            cls.BAD_SHAPE: ("shape_mistake",),
+            cls.HEAVY_GROUP: ("overplay",),
+            cls.MISSED_DEFENSE: ("connection_miss",),
+            cls.URGENT_VS_BIG: ("endgame_slip",),
+            # Summary: Mistake (Phase 179)
+            cls.MISTAKE_BLUNDER: ("life_death_error", "capture_race_loss", "reading_failure"),
+            cls.MISTAKE_MISTAKE: (
+                "reading_failure",
+                "missed_tesuji",
+                "territorial_loss",
+                "direction_error",
+            ),
+            cls.MISTAKE_GOOD: (),
+            # Summary: Freedom (Phase 179) — not a weakness signal
+            cls.FREEDOM_ONLY_MOVE: ("reading_failure", "direction_error"),
+            cls.FREEDOM_NARROW: (),
+            cls.FREEDOM_WIDE: (),
+            # Summary: Difficulty (Phase 179)
+            cls.DIFFICULTY_TRICKY: ("uncertain", "reading_failure"),
+            cls.DIFFICULTY_CALM: (),
+            # Summary: KataGo uncertainty (Phase 179)
+            cls.KATAGO_UNCERTAIN: ("uncertain",),
+            # Summary: Ownership (Phase 182)
+            cls.OWNERSHIP_DOMINANT: ("territorial_loss",),
+            # Summary: Policy (Phase 182)
+            cls.POLICY_CONFLICT: ("direction_error", "overplay"),
+            cls.POLICY_CONFIDENT: (),
+            # Curator itself (Phase 186) — no further re-label
+            cls.CURATOR_WEAK_AXIS: (),
+        }
+        return _MAPPING.get(category, ())
+
     @property
     def is_structural(self) -> bool:
         """Phase 91 structural detectors (always reliable, board-state based)."""

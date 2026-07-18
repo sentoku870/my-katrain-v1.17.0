@@ -20,10 +20,17 @@ Design notes:
   the user never sees the hint.
 - ``CuratorProfile.lookup`` already filters by ``min_occurrences``, so
   we can reuse it as the single gate.
+
+Phase 265: ``apply_curator_weak_axis_label`` adds Curator metadata to
+an *already* computed beginner hint. This is the real-time play path
+where ``node.meaning_tag_id`` is unavailable, but the hint category
+(e.g. ``MISTAKE_BLUNDER``) maps to a MeaningTag group (e.g.
+``life_death_error``) that may be in the user's weak set.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.beginner.models import BeginnerHint, HintCategory
@@ -81,4 +88,67 @@ def detect_curator_weak_axis(
     )
 
 
-__all__ = ["detect_curator_weak_axis"]
+def apply_curator_weak_axis_label(
+    hint: BeginnerHint | None,
+    user_weak_tags: dict[str, int] | None,
+    *,
+    min_occurrences: int = 3,
+) -> BeginnerHint | None:
+    """Phase 265: re-label an existing beginner hint with curator-weak-axis metadata.
+
+    Used for the real-time play path where ``node.meaning_tag_id`` is
+    unavailable. We look at the hint's category, find related
+    ``MeaningTagId`` values, and if any of them is in the user's weak
+    set, we add a ``curator_weak_axis`` entry to the hint's context.
+
+    The original hint (category, severity, coords, message) is
+    preserved — the curator metadata is supplementary. UI code can
+    then optionally display "あなたの弱点: X (N 回)" alongside the
+    main beginner hint.
+
+    Args:
+        hint: Already-computed BeginnerHint (from priority chain), or None.
+        user_weak_tags: ``{meaning_tag_id: occurrence_count}`` from the
+            Curator profile. ``None`` / empty disables the re-label.
+        min_occurrences: Minimum tag count to count as a "weak axis".
+
+    Returns:
+        The same ``BeginnerHint`` (frozen dataclass replacement) with
+        context extended, or the original if no weak-axis match.
+    """
+    if hint is None or not user_weak_tags:
+        return hint
+
+    related = HintCategory.related_meaning_tag_ids(hint.category)
+    if not related:
+        return hint
+
+    # Find the first related tag in the user's weak set, above threshold.
+    # The mapping order in ``related_meaning_tag_ids`` reflects priority
+    # (most specific first), so the first match is the most relevant.
+    matched_tag: str | None = None
+    matched_count: int = 0
+    for tag_id in related:
+        try:
+            count = int(user_weak_tags.get(str(tag_id), 0))
+        except (TypeError, ValueError):
+            continue
+        if count >= int(min_occurrences):
+            matched_tag = str(tag_id)
+            matched_count = count
+            break
+
+    if matched_tag is None:
+        return hint
+
+    # Frozen dataclass — use ``replace`` to keep immutability
+    new_context = dict(hint.context or {})
+    new_context["curator_weak_axis"] = {
+        "tag_id": matched_tag,
+        "occurrence_count": matched_count,
+        "min_occurrences": int(min_occurrences),
+    }
+    return replace(hint, context=new_context)
+
+
+__all__ = ["detect_curator_weak_axis", "apply_curator_weak_axis_label"]

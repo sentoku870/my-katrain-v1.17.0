@@ -33,28 +33,51 @@ def get_beginner_hint_cached(
     *,
     require_reliable: bool = True,
     category_filter: dict[str, bool] | None = None,
+    user_weak_tags: dict[str, int] | None = None,
+    curator_min_occurrences: int = 3,
 ) -> BeginnerHint | None:
     """Get beginner hint with node-level caching (Phase 91-92).
 
     Phase 251: ``category_filter`` is part of the cache key so toggling
     an individual category in the settings UI invalidates the cached
     hint for the current node.
+    Phase 265: ``user_weak_tags`` joins the cache key so reloading a
+    Curator profile invalidates the re-label cache.
     """
     cache_attr = "_beginner_hint_cache"
     filter_key = None if not category_filter else tuple(sorted((k, bool(v)) for k, v in category_filter.items()))
+    curator_key = None if not user_weak_tags else tuple(sorted((k, int(v)) for k, v in user_weak_tags.items()))
 
     cached = getattr(node, cache_attr, _NOT_COMPUTED)
-    if cached is not _NOT_COMPUTED and isinstance(cached, tuple) and len(cached) == 3:
-        cached_require_reliable, cached_filter_key, cached_hint = cached
-        if cached_require_reliable == require_reliable and cached_filter_key == filter_key:
+    if cached is not _NOT_COMPUTED and isinstance(cached, tuple) and len(cached) == 4:
+        (
+            cached_require_reliable,
+            cached_filter_key,
+            cached_curator_key,
+            cached_hint,
+        ) = cached
+        if (
+            cached_require_reliable == require_reliable
+            and cached_filter_key == filter_key
+            and cached_curator_key == curator_key
+        ):
             if cached_hint is None:
                 return None
             return cast(BeginnerHint | None, cached_hint)
 
     hint = _hints_pkg.compute_beginner_hint(
-        game, node, require_reliable=require_reliable, category_filter=category_filter
+        game,
+        node,
+        require_reliable=require_reliable,
+        category_filter=category_filter,
+        user_weak_tags=user_weak_tags,
+        curator_min_occurrences=curator_min_occurrences,
     )
-    setattr(node, cache_attr, (require_reliable, filter_key, hint))
+    setattr(
+        node,
+        cache_attr,
+        (require_reliable, filter_key, curator_key, hint),
+    )
     return hint
 
 

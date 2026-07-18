@@ -3179,3 +3179,8 @@ msgstr "Policy"
 #. Phase 259 (I-11): new TOP_MOVE option label
 msgid "top_move_ownership"
 msgstr "Terr"
+
+#. Phase 265: appended when Beginner Hint is re-labelled by curator weak-axis
+#. profile
+msgid "beginner-hint:curator_weak_axis_footer"
+msgstr "あなたの弱点: {tag_id} ({count} 回)"

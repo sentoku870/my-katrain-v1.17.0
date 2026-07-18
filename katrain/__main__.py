@@ -162,6 +162,12 @@ class KaTrainGui(Screen, KaTrainBase):
         super().__init__(**kwargs)
         self.error_handler = ErrorHandler(self)
         self.engine: Any = None
+        # Phase 265: Curator profile (loaded from ``curator_ranking.json`` /
+        # ``curator_ranking_<timestamp>.json`` in karte_output_directory).
+        # ``None`` means "no profile available"; ``weak_tags`` is consulted
+        # by ``get_beginner_hint_cached`` to re-label hints during real-time
+        # play.
+        self.curator_profile: Any = None
 
         # SGF file management (refactored in PR #122)
         self._sgf_manager = SGFManager(
@@ -479,6 +485,33 @@ class KaTrainGui(Screen, KaTrainBase):
     def play_analyze_mode(self) -> str:
         return self.play_mode.mode  # type: ignore[no-any-return]
 
+    def update_curator_profile(self) -> None:
+        """Phase 265: refresh ``self.curator_profile`` from disk.
+
+        Locates ``curator_ranking.json`` (or most-recently-modified
+        ``curator_ranking_*.json`` from Phase 264) in
+        ``karte_output_directory`` and loads the Curator profile.
+        Safe to call repeatedly; no-op when the karte output
+        directory is not configured or the file is missing / malformed.
+        """
+        from katrain.core.curator.profile import load_curator_profile
+        from katrain.gui.features.karte_export import _resolve_curator_profile_path
+
+        class _CuratorCtx:
+            def __init__(self, config_fn: Any) -> None:
+                self.config = config_fn
+
+        path = _resolve_curator_profile_path(_CuratorCtx(self.config))
+        if path is None:
+            self.curator_profile = None
+            return
+        try:
+            profile = load_curator_profile(path)
+        except Exception as e:  # noqa: BLE001 — never let profile-load break startup
+            self.log(f"Curator profile load failed ({path}): {e}", OUTPUT_DEBUG)
+            profile = None
+        self.curator_profile = profile
+
     def start(self) -> None:
         if self.engine:
             return
@@ -536,6 +569,15 @@ class KaTrainGui(Screen, KaTrainBase):
 
         # Initialize focus button states on startup
         Clock.schedule_once(lambda dt: self.ctx.analysis_controller.update_focus_button_states(), 0.5)
+
+        # Phase 265: Load Curator profile (curator_ranking.json) for Beginner
+        # Hint re-labelling during real-time play. Best-effort; if the file
+        # is missing or malformed, ``self.curator_profile`` stays None and
+        # the feature silently degrades.
+        try:
+            self.update_curator_profile()
+        except Exception as e:  # noqa: BLE001
+            self.log(f"Curator profile init failed: {e}", OUTPUT_DEBUG)
 
     # =========================================================================
     # Phase 89: Auto Setup Mode Methods

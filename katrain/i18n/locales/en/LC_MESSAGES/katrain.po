@@ -3272,3 +3272,8 @@ msgstr "KataGo policy network probability for this move"
 #. Phase 259 (I-11): new TOP_MOVE option label
 msgid "top_move_ownership"
 msgstr "Predicted territory skew (B for Black, W for White)"
+
+#. Phase 265: appended when Beginner Hint is re-labelled by curator weak-axis
+#. profile
+msgid "beginner-hint:curator_weak_axis_footer"
+msgstr "Your weak axis: {tag_id} ({count} occurrences)"

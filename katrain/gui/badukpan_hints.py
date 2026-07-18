@@ -99,8 +99,17 @@ def draw_beginner_hint_highlight(widget: BadukPanWidget) -> None:
 
     bh = katrain.config("beginner_hints") or {}
     category_filter = build_category_filter(bh if isinstance(bh, dict) else {})
+    # Phase 265: forward curator weak_tags so the Beginner Hint dispatcher
+    # can re-label hints with the user's personal weak patterns even
+    # during real-time play (where ``node.meaning_tag_id`` is absent).
+    curator_profile = getattr(katrain, "curator_profile", None)
+    user_weak_tags = dict(curator_profile.weak_tags) if curator_profile is not None else None
     hint = get_beginner_hint_cached(
-        katrain.game, node, require_reliable=require_reliable, category_filter=category_filter
+        katrain.game,
+        node,
+        require_reliable=require_reliable,
+        category_filter=category_filter,
+        user_weak_tags=user_weak_tags,
     )
 
     if hint is None or hint.coords is None:

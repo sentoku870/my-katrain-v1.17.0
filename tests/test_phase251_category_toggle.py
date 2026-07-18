@@ -146,7 +146,8 @@ class TestPerCategoryCacheKey:
         node = game_9x9.current_node
 
         # Pre-seed cache with a sentinel
-        node._beginner_hint_cache = (True, None, "SENTINEL")
+        # Phase 265: cache shape is now 4-tuple (require_reliable, filter_key, curator_key, hint)
+        node._beginner_hint_cache = (True, None, None, "SENTINEL")
 
         # Same filter (None) → cache hit
         assert get_beginner_hint_cached(game_9x9, node) == "SENTINEL"
