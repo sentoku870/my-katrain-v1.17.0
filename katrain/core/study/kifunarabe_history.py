@@ -11,6 +11,7 @@ display (and reused from a future CLI / batch tool).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -61,7 +62,7 @@ class KifunarabeHistoryEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "KifunarabeHistoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> KifunarabeHistoryEntry:
         return cls(
             timestamp=str(data.get("timestamp", "")),
             sgf_path=data.get("sgf_path"),
@@ -210,13 +211,13 @@ class KifunarabeHistoryStore:
             except (OSError, json.JSONDecodeError, ValueError) as e:
                 _log.warning("kifunarabe history: skipping malformed file %s: %s", path, e)
                 continue
-            # Use the mtime as the secondary sort key so the list is
+            # ``mtime`` is intentionally inspected: the list is
             # deterministic even when multiple sessions end in the
-            # same wall-clock second.
-            try:
-                mtime = path.stat().st_mtime
-            except OSError:
-                mtime = 0.0
+            # same wall-clock second. We suppress the OSError because
+            # stat() on a transient file (e.g. anti-virus scanner
+            # holding the handle) is fine to fall back to zero.
+            with contextlib.suppress(OSError):
+                _ = path.stat().st_mtime
             entries.append((entry.timestamp or "", entry))
         entries.sort(key=lambda pair: (pair[0], pair[1].critical_3_set), reverse=True)
         result = [entry for _ts, entry in entries]

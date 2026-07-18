@@ -6,11 +6,9 @@ display, even on machines where the popup layer is not importable.
 
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
 from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSummary
 from katrain.core.study.kifunarabe_history import (
@@ -131,7 +129,13 @@ class TestKifunarabeHistoryEntry(unittest.TestCase):
             timestamp="2026-07-18T09:30:14",
             sgf_path="Z:/games/a.sgf",
             config={"turn": "B", "max_hints": 2, "max_moves": 0},
-            summary={"total_positions": 5, "correct_count": 3, "wrong_count": 2, "auto_advance_count": 0, "skipped_count": 0},
+            summary={
+                "total_positions": 5,
+                "correct_count": 3,
+                "wrong_count": 2,
+                "auto_advance_count": 0,
+                "skipped_count": 0,
+            },
             critical_3_set=[3, 7],
         )
         d = entry.to_dict()

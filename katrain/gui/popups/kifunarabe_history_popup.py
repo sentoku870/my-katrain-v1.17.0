@@ -12,9 +12,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 
 from katrain.gui.popups._base import I18NPopup
@@ -63,7 +61,7 @@ def _format_entry_line(entry: Any) -> str:
 
 def show_kifunarabe_history(
     ctx: Any,
-    history_store: "KifunarabeHistoryStore | None",
+    history_store: KifunarabeHistoryStore | None,
 ) -> None:
     """Display the kifunarabe history popup.
 
