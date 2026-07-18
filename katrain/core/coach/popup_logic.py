@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Any
 
 from katrain.core.coach.json_type import detect_json_type
 from katrain.core.lang import i18n
@@ -383,7 +384,7 @@ def cap_response_text(text: str) -> tuple[str, str | None]:
 
 
 def resolve_summary_rank(
-    info: dict | None,
+    info: dict[str, Any] | None,
     *,
     general_player_rank: str | None = None,
     default_user_rank: str | None = None,
@@ -428,7 +429,7 @@ def resolve_summary_rank(
     if isinstance(matched, dict):
         matched_rank = matched.get("rank")
         if matched_rank:
-            return matched_rank
+            return str(matched_rank)
     if default_user_rank:
         return default_user_rank
     return None
