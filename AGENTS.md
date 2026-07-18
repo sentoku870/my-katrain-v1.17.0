@@ -102,6 +102,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
     - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
     - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
+  - Phase 271-A（2026-07-18）: **設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
+    - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」の 2 行が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
+    - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除
+    - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
+    - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries）
+    - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
+    - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
+    - **影響確認**: orchestrator (settings_popup.py) は `widget_refs` の 11 キーのうち kifunarabe 関連 7 キーのみアクセスしており、削除 4 キーはデッドコードだった。`kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
   - Phase 270（2026-07-18）: **複数カルテ集約 + サマリプロンプト v3.5 拡張**（Lv2、4 ファイル変更 / 1 ファイル新規 / +52 unit tests）
     - **問題**: 単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる
     - **解決策**: 6 つの集約関数を `katrain/core/coach/karte_aggregator.py` に新設 + `SummaryPromptConfig.kartes` でオプトイン的に組み込み + Schema 3.5 への条件付きバンプ。既存 3.4 経路は完全後方互換
@@ -386,6 +394,14 @@ docs/
 - 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
   - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
   - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
+- 2026-07-18: **Phase 271-A — 設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
+  - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
+  - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除。orchestrator (settings_popup.py) はこの 4 キーを参照していなかったため安全
+  - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
+  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries）
+  - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
+  - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
+  - **影響確認**: `kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
 - 2026-07-18: **Phase 269 — AYAKA 完全削除 + 弱点抽出整合性修正 + voice 統一**（Lv3、11 ファイル変更 / 28 新規 unit tests、coach 関連 460+ 件テスト合格）
   - **C 案**: Shape B 弱点パターン `phase="all"` を `phase=`(全phase)``` に表示変更 + SYSTEM_INSTRUCTION に `pct` 併記指示。LLM Coach 検証で出ていた `phase_label_out_of_set` MEDIUM 警告を恒久解消
   - **voice 統一**: BEGINNER/INTERMEDIATE/DAN/ADVANCED → TOMOKO 統一、EXPERT → TOMOKO_STRICT。「5k だと関西弁キャラ」問題解消

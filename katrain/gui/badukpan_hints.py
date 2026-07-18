@@ -150,14 +150,10 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
             widget, current_node, hint_moves, next_player, katrain.get_trainer_config().low_visits
         )
         draw_children_markers(widget, current_node, top_move_coords)
-        # Phase 246-B (H1): draw a small "視点: B/W" watermark in the
-        # bottom-left of the board whenever candidate markers are visible.
-        # This makes explicit that ``pointsLost`` / ``winrateLost`` are
-        # computed from the perspective of ``next_player`` (the player
-        # about to move), so users don't mis-read the colours during
-        # review / teaching.
-        if hint_moves:
-            draw_perspective_watermark(widget, next_player)
+        # Phase 271-A: The bottom-left "視点: B/W" perspective watermark
+        # (Phase 246-B H1) was removed at the user's request — it was
+        # noisy and the perspective is already implicit in the marker
+        # colours. The candidate-marker drawing itself is unchanged.
 
         if widget.selecting_region_of_interest and len(widget.region_of_interest) == 4:
             from katrain.gui.badukpan_drawing import draw_roi_box  # late import
@@ -665,38 +661,3 @@ def draw_pass_circle(
     Ellipse(pos=(center[0] - size / 2, center[1] - size / 2), size=(size, size))
     Color(*Theme.PASS_CIRCLE_TEXT_COLOR)
     draw_text(pos=center, text=text, font_size=size * 0.25, halign="center")
-
-
-# =============================================================================
-# Phase 246-B (H1): Perspective watermark
-# =============================================================================
-
-
-def draw_perspective_watermark(widget: BadukPanWidget, next_player: str) -> None:
-    """Draw a small "視点: B/W" watermark in the bottom-left of the board.
-
-    Phase 246-B (H1): ``pointsLost`` / ``winrateLost`` on the candidate
-    markers are computed from the perspective of the player about to
-    move. This is implicit in the runtime but easy for a reviewer to
-    misread. The watermark makes the perspective explicit whenever
-    candidate markers are visible, without adding a new Kivy widget
-    (canvas-only).
-
-    Position: ~3% from the bottom-left of the widget, above the bottom
-    coordinate gutter. Stays small enough not to obscure the board.
-    """
-    from katrain.core.lang import i18n as _i18n
-
-    label = "B" if next_player == "B" else "W"
-    text = _i18n._("board:perspective").format(player=label)
-    pos_x = widget.x + widget.width * 0.02
-    pos_y = widget.y + widget.height * 0.02
-    Color(*Theme.PASS_CIRCLE_TEXT_COLOR)  # reuse pass-circle text colour (subtle grey/white)
-    draw_text(
-        pos=(pos_x, pos_y),
-        text=text,
-        font_size=widget.grid_size / 3.5,
-        font_name=Theme.DEFAULT_FONT,
-        halign="left",
-        valign="bottom",
-    )
