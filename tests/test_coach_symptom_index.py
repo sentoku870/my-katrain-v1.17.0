@@ -31,9 +31,11 @@ from katrain.core.coach.symptom_index import (
 
 
 class TestSymptomId:
-    def test_count_is_40(self):
-        # 30 row-level entries expanded to 40 candidate symptoms
-        assert len(list(SymptomId)) == 40
+    def test_count_is_39(self):
+        # 30 row-level entries expanded to 40 candidate symptoms; Phase 270
+        # removed ``SAME_MISTAKE_LOOP`` (tied to the deprecated
+        # Curator weak-axis hint) so the count is now 39.
+        assert len(list(SymptomId)) == 39
 
     def test_id_values_unique(self):
         values = [s.value for s in SymptomId]
@@ -107,7 +109,7 @@ class TestAutoLlMSplit:
     def test_split_covers_all(self):
         auto = list_auto_detected_symptoms()
         llm = list_llm_required_symptoms()
-        assert len(auto) + len(llm) == 40
+        assert len(auto) + len(llm) == 39
         # No overlap
         auto_ids = {s.id for s in auto}
         llm_ids = {s.id for s in llm}
@@ -245,7 +247,6 @@ class TestDetectAutoSymptoms:
                     HintCategory.SELF_ATARI,
                     HintCategory.MISTAKE_BLUNDER,
                     HintCategory.IGNORE_ATARI,
-                    HintCategory.CURATOR_WEAK_AXIS,
                 ),
                 avg_points_lost=20.0,
                 game_count=10,
@@ -340,7 +341,6 @@ class TestSymptomLexiconCoverage:
         [
             SymptomId.TOO_MANY_CHOICES,
             SymptomId.ENDGAME_PRECISION,
-            SymptomId.SAME_MISTAKE_LOOP,
             SymptomId.STAGNATION_LOOP,
             SymptomId.LOCAL_OPTIMUM,
         ],
@@ -433,10 +433,8 @@ class TestSymptomLexiconCoverage:
         assert "counting" in symptom.related_lexicon_ids
         assert "endgame_sente_value" in symptom.related_lexicon_ids
 
-    def test_same_mistake_loop_links_directions(self):
-        symptom = lookup_symptom(SymptomId.SAME_MISTAKE_LOOP)
-        assert "urgent_vs_big" in symptom.related_lexicon_ids
-        assert "direction_of_play" in symptom.related_lexicon_ids
+    # Phase 270: ``test_same_mistake_loop_links_directions`` was removed
+    # along with the ``SAME_MISTAKE_LOOP`` symptom itself.
 
     def test_stagnation_loop_links_balance(self):
         symptom = lookup_symptom(SymptomId.STAGNATION_LOOP)

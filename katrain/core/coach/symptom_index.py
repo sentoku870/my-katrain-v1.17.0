@@ -79,8 +79,8 @@ class SymptomId(Enum):
     ENDGAME_VALUATION_ERROR = "endgame_valuation_error"
     SENTE_GOTE_CONFUSION = "sente_gote_confusion"
     ENDGAME_PRECISION = "endgame_precision"
-    # 9. 「同じミスを繰り返す」「上達しない」
-    SAME_MISTAKE_LOOP = "same_mistake_loop"
+    # Phase 270: ``SAME_MISTAKE_LOOP`` was removed along with the
+    # deprecated Curator weak-axis hint it relied on.
     SHALLOW_REVIEW = "shallow_review"  # LLM-required
     STAGNATION_LOOP = "stagnation_loop"
     LOCAL_OPTIMUM = "local_optimum"  # LLM-required
