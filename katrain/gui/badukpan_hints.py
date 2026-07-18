@@ -492,11 +492,13 @@ def draw_kata_hint_marker(
         keys[TOP_MOVE_POLICY] = f"{prior * 100:.1f}%"
         # ownership is the position-level predicted territory skew
         # (same value for every candidate on this node, since it does
-        # not depend on which move is played). The value is in
-        # ``[-1.0, +1.0]`` (Black-perspective); we display the absolute
-        # dominance plus a one-character side tag so the user can see
-        # "Black 78%" vs "White 82%" at a glance.
-        ownership = move_dict.get("ownership", 0.0) or 0.0
+        # not depend on which move is played). KataGo provides
+        # ``current_node.analysis["ownership"]`` as a list[float] of
+        # per-cell ownership values in ``[-1.0, +1.0]`` (Black-positive);
+        # some KataGo builds also expose a pre-aggregated scalar at
+        # ``move_dict["ownership"]``. We accept both shapes and reduce
+        # to a single scalar in ``[-1.0, +1.0]`` for display.
+        ownership = _resolve_ownership_scalar(move_dict, current_node)
         if ownership >= 0:
             keys[TOP_MOVE_OWNERSHIP] = f"B{ownership * 100:.0f}"
         else:
@@ -551,6 +553,46 @@ def draw_kata_hint_marker(
         )
 
     return top_move_coords
+
+
+def _resolve_ownership_scalar(move_dict: dict[str, Any], current_node: Any) -> float:
+    """Phase 259 follow-up: reduce KataGo ownership to a single scalar in [-1.0, +1.0].
+
+    The original Phase 259 code read ``move_dict.get("ownership", 0.0)``
+    which raised ``TypeError: '>=' not supported between instances of
+    'list' and 'int'`` on real KataGo runs: KataGo writes
+    ``current_node.analysis["ownership"]`` as ``list[float]`` of per-cell
+    values, not as a scalar on each move. We accept three shapes:
+    1. ``move_dict["ownership"]`` already a scalar (int / float)
+    2. ``move_dict["ownership"]`` a non-empty list[float] (legacy shape)
+    3. ``current_node.analysis["ownership"]`` a list[float] (the real shape)
+
+    Anything else (None, empty list, missing key) returns 0.0 so the
+    candidate-marker label renders as ``"B0"`` instead of crashing.
+    """
+    # 1. move_dict scalar
+    raw = move_dict.get("ownership") if isinstance(move_dict, dict) else None
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return max(-1.0, min(1.0, float(raw)))
+    if isinstance(raw, list) and raw:
+        try:
+            avg = sum(float(x) for x in raw) / len(raw)
+            return max(-1.0, min(1.0, avg))
+        except (TypeError, ValueError):
+            pass
+    # 2. node-level analysis["ownership"] (KataGo's real shape)
+    node_analysis = getattr(current_node, "analysis", None)
+    if isinstance(node_analysis, dict):
+        node_raw = node_analysis.get("ownership")
+        if isinstance(node_raw, list) and node_raw:
+            try:
+                avg = sum(float(x) for x in node_raw) / len(node_raw)
+                return max(-1.0, min(1.0, avg))
+            except (TypeError, ValueError):
+                pass
+        if isinstance(node_raw, (int, float)) and not isinstance(node_raw, bool):
+            return max(-1.0, min(1.0, float(node_raw)))
+    return 0.0
 
 
 # Phase 261 (I-14): pointsLost -> 4-band severity mapping. The thresholds
