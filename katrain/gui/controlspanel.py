@@ -411,8 +411,22 @@ class ControlsPanel(BoxLayout):
         Summary hints share the master ``beginner_hints/enabled`` switch
         with structural hints so users can turn the whole feature off in
         one place, but each category group has its own per-toggle.
+
+        Phase 256: also suppressed during kifunarabe (棋譜並べ) sessions.
+        Showing MISTAKE_BLUNDER / MISTAKE_MISTAKE in the info panel
+        would spoil the actual move (the user is trying to recall it
+        from KataGo's candidate set). Structural hints (e.g.
+        SELF_ATARI) are fine because they don't reveal "did I play
+        the right move?" — only the per-move "is this a safe shape?"
+        question.
         """
-        return self._should_show_beginner_hints()
+        if not self._should_show_beginner_hints():
+            return False
+        # Phase 256: kifunarabe mode → no summary hints.
+        katrain = self.katrain
+        if katrain and getattr(katrain, "kifunarabe_mode", False):
+            return False
+        return True
 
     def _summary_hint_flags(self) -> dict[str, bool]:
         """Phase 179 + 182 + 186: per-category-group flags for summary hint generation."""
