@@ -173,8 +173,13 @@ class TestGetPVFilterConfig:
         assert config == config_default
 
     def test_board_size_invalid_falls_back_to_canonical(self):
-        """Invalid board_size (0, negative, too large) → canonical."""
-        for bad_size in [0, -5, 4, 99]:
+        """Invalid board_size (0, negative, too large) → canonical.
+
+        Phase 262 (I-21): the lower guard dropped from ``< 5`` to ``< 2``
+        so 5/7/9/13/19 lanes all scale. ``1`` and below still fall back
+        to canonical (a 1-lane board is not a meaningful Go board).
+        """
+        for bad_size in [0, -5, 1, 99]:
             config = get_pv_filter_config("strong", board_size=bad_size)
             config_default = get_pv_filter_config("strong")
             assert config == config_default

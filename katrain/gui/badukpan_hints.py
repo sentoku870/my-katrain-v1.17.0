@@ -40,7 +40,10 @@ from katrain.core.constants import (
     TOP_MOVE_DELTA_WINRATE,
     TOP_MOVE_NOTHING,
     TOP_MOVE_OPTIONS,
+    TOP_MOVE_OWNERSHIP,
+    TOP_MOVE_POLICY,
     TOP_MOVE_SCORE,
+    TOP_MOVE_SCORE_STDEV,
     TOP_MOVE_VISITS,
     TOP_MOVE_WINRATE,
 )
@@ -161,6 +164,14 @@ def draw_hover_contents(widget: BadukPanWidget, *_args: Any) -> None:
             draw_hover_overlay(widget, ghost_alpha, next_player)
 
         draw_pass_circle(widget, current_node, game_ended, board_size_x, board_size_y)
+
+        # Phase 260 (I-13): PV アニメ中にクロックコールバックから
+        # ``redraw_hover_contents_trigger`` が ``draw_hover_contents`` だけ
+        # 再実行するため、ここで beginner hint highlight を再描画しないと
+        # アニメ中に highlight が消えてしまう。``draw_board_contents`` 側の
+        # 呼び出し (badukpan_drawing.py:611) はテーマ変更時のフォールバック
+        # パスとして残し、こちらを PV アニメ中の主経路とする。
+        widget.draw_beginner_hint_highlight()
 
     # Update PV animation state after canvas block
     from katrain.gui.badukpan_pv import update_pv_animation_state
@@ -470,6 +481,26 @@ def draw_kata_hint_marker(
         keys[TOP_MOVE_WINRATE] = f"{winrate * 100:.1f}"
         keys[TOP_MOVE_DELTA_WINRATE] = f"{-move_dict.get('winrateLost', 0.0):+.1%}"
         keys[TOP_MOVE_VISITS] = format_visits(move_dict.get("visits", 0))
+        # Phase 259 (I-11): three new optional columns.
+        # scoreStdev is the per-move KataGo uncertainty for this move;
+        # 0 (or missing) means the position is quiet.
+        score_stdev = move_dict.get("scoreStdev", 0.0) or 0.0
+        keys[TOP_MOVE_SCORE_STDEV] = f"{score_stdev:.1f}"
+        # prior is KataGo's policy-network probability for this specific
+        # move (0.0 - 1.0); displayed as percent.
+        prior = move_dict.get("prior", 0.0) or 0.0
+        keys[TOP_MOVE_POLICY] = f"{prior * 100:.1f}%"
+        # ownership is the position-level predicted territory skew
+        # (same value for every candidate on this node, since it does
+        # not depend on which move is played). The value is in
+        # ``[-1.0, +1.0]`` (Black-perspective); we display the absolute
+        # dominance plus a one-character side tag so the user can see
+        # "Black 78%" vs "White 82%" at a glance.
+        ownership = move_dict.get("ownership", 0.0) or 0.0
+        if ownership >= 0:
+            keys[TOP_MOVE_OWNERSHIP] = f"B{ownership * 100:.0f}"
+        else:
+            keys[TOP_MOVE_OWNERSHIP] = f"W{-ownership * 100:.0f}"
 
         Color(*Theme.HINT_TEXT_COLOR)
         draw_text(
@@ -499,7 +530,63 @@ def draw_kata_hint_marker(
             ),
             width=dp(1.2),
         )
+
+    # Phase 261 (I-14): outer ring for severe mistakes so the user can
+    # spot blunder / mistake candidates at a glance. Only ``mistake``
+    # and ``blunder`` bands draw an extra ring; ``good``/``inaccuracy``
+    # keep the default marker look. The ring is drawn even when the
+    # move is also the engine-best so the severity signal is not lost
+    # for the candidate that the engine itself recommends.
+    _severity = _resolve_mistake_severity(move_dict.get("pointsLost", 0.0))
+    _ring_color = _MISTAKE_SEVERITY_RING_COLORS.get(_severity)
+    if _ring_color is not None:
+        Color(*_ring_color)
+        Line(
+            circle=(
+                widget.gridpos[move.coords[1]][move.coords[0]][0],
+                widget.gridpos[move.coords[1]][move.coords[0]][1],
+                widget.stone_size + dp(1.2),
+            ),
+            width=dp(Theme.MISTAKE_SEVERITY_RING_WIDTH),
+        )
+
     return top_move_coords
+
+
+# Phase 261 (I-14): pointsLost -> 4-band severity mapping. The thresholds
+# mirror the beginner-mistake taxonomy used in the curator / meaning-tags
+# pipeline (good / inaccuracy / mistake / blunder).
+_MISTAKE_SEVERITY_THRESHOLDS: tuple[tuple[float, str], ...] = (
+    (0.5, "good"),
+    (1.0, "inaccuracy"),
+    (3.0, "mistake"),
+    (float("inf"), "blunder"),
+)
+_MISTAKE_SEVERITY_RING_COLORS: dict[str, tuple[float, ...] | None] = {
+    "good": None,
+    "inaccuracy": None,
+    "mistake": tuple(Theme.MISTAKE_SEVERITY_MISTAKE_RING),
+    "blunder": tuple(Theme.MISTAKE_SEVERITY_BLUNDER_RING),
+}
+
+
+def _resolve_mistake_severity(points_lost: float) -> str:
+    """pointsLost の値を ``good`` / ``inaccuracy`` / ``mistake`` / ``blunder`` に分類する。
+
+    閾値は beginner-mistake taxonomy と整合:
+    - < 0.5: good
+    - 0.5 ~ 1.0: inaccuracy
+    - 1.0 ~ 3.0: mistake
+    - >= 3.0: blunder
+    """
+    try:
+        value = float(points_lost)
+    except (TypeError, ValueError):
+        return "good"
+    for threshold, label in _MISTAKE_SEVERITY_THRESHOLDS:
+        if value < threshold:
+            return label
+    return "blunder"
 
 
 def draw_children_markers(widget: BadukPanWidget, current_node: Any, top_move_coords: Any) -> None:
