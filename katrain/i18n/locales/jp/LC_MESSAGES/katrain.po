@@ -3167,3 +3167,15 @@ msgstr ""
 #. Phase 257: curator onboarding notice
 msgid "beginner-hint:curator-onboarding-no-output-dir"
 msgstr "ヒント機能の Curated weak-axis を使用するには、MyKatrain 設定 → 棋譜解析出力先 を設定してください。"
+
+#. Phase 259 (I-11): new TOP_MOVE option label
+msgid "top_move_score_stdev"
+msgstr "StDev"
+
+#. Phase 259 (I-11): new TOP_MOVE option label
+msgid "top_move_policy"
+msgstr "Policy"
+
+#. Phase 259 (I-11): new TOP_MOVE option label
+msgid "top_move_ownership"
+msgstr "Terr"
