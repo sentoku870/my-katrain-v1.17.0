@@ -49,6 +49,13 @@ class Theme:
     MISTAKE_BUTTON_COLOR = [0.79, 0.06, 0.06, 1]
     STAT_WORSE_COLOR = [0.8, 0.4, 0.2, 1]
     STAT_BETTER_COLOR = [0.2, 0.5, 0.1, 1]
+    # Phase 261 (I-14): ring colour for each ``pointsLost`` severity band
+    # applied to candidate-move markers. ``good``/``inaccuracy`` keep the
+    # default marker (no extra ring); ``mistake``/``blunder`` get a
+    # coloured outer ring so severe mistakes are visible at a glance.
+    MISTAKE_SEVERITY_MISTAKE_RING = [0.95, 0.45, 0.1, 1.0]
+    MISTAKE_SEVERITY_BLUNDER_RING = [0.85, 0.1, 0.1, 1.0]
+    MISTAKE_SEVERITY_RING_WIDTH = 1.5  # dp, slightly thicker than engine-best ring
     # Primary button color (blue-ish to match app theme)
     PRIMARY_COLOR = [0.25, 0.45, 0.65, 1]
     # Phase 111: Alias for backward compatibility
