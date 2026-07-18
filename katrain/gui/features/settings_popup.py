@@ -114,6 +114,20 @@ def do_mykatrain_settings_popup(
         selected_summary_ownership=[ctx.config("beginner_hints/summary_ownership", True)],
         selected_summary_policy=[ctx.config("beginner_hints/summary_policy", True)],
         selected_curator_hint=[ctx.config("beginner_hints/curator_hint", True)],
+        # Phase 251: per-category toggles for the 10 individual categories.
+        # All default to True so existing users keep their hints. New
+        # users can flip individual switches to suppress, e.g.,
+        # ``CUT_RISK`` while keeping ``SELF_ATARI``.
+        selected_self_atari=[ctx.config("beginner_hints/self_atari", True)],
+        selected_ignore_atari=[ctx.config("beginner_hints/ignore_atari", True)],
+        selected_missed_capture=[ctx.config("beginner_hints/missed_capture", True)],
+        selected_cut_risk=[ctx.config("beginner_hints/cut_risk", True)],
+        selected_low_liberties=[ctx.config("beginner_hints/low_liberties", True)],
+        selected_self_capture_like=[ctx.config("beginner_hints/self_capture_like", True)],
+        selected_bad_shape=[ctx.config("beginner_hints/bad_shape", True)],
+        selected_heavy_group=[ctx.config("beginner_hints/heavy_group", True)],
+        selected_missed_defense=[ctx.config("beginner_hints/missed_defense", True)],
+        selected_urgent_vs_big=[ctx.config("beginner_hints/urgent_vs_big", True)],
         selected_format=[current_settings.get("karte_format", "both")],
         selected_opp_info=[current_settings.get("opponent_info_mode", "auto")],
         # Phase 248-B1: important-moves level surfaced to the analysis
@@ -255,6 +269,17 @@ def do_mykatrain_settings_popup(
             summary_ownership=state.selected_summary_ownership[0],
             summary_policy=state.selected_summary_policy[0],
             curator_hint=state.selected_curator_hint[0],
+            # Phase 251: 10 individual category toggles.
+            self_atari=state.selected_self_atari[0],
+            ignore_atari=state.selected_ignore_atari[0],
+            missed_capture=state.selected_missed_capture[0],
+            cut_risk=state.selected_cut_risk[0],
+            low_liberties=state.selected_low_liberties[0],
+            self_capture_like=state.selected_self_capture_like[0],
+            bad_shape=state.selected_bad_shape[0],
+            heavy_group=state.selected_heavy_group[0],
+            missed_defense=state.selected_missed_defense[0],
+            urgent_vs_big=state.selected_urgent_vs_big[0],
         )
         new_engine_value = state.selected_engine[0]
         _save_engine_settings(ctx, new_engine_value)

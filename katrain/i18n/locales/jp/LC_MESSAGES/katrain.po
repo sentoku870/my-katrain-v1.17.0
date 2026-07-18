@@ -1949,7 +1949,8 @@ msgid "mykatrain:settings:important_moves_level"
 msgstr "重要局面 重要度レベル:"
 
 msgid "mykatrain:settings:important_moves_level_desc"
-msgstr "Karte の重要局面抽出と critical_3 の感度を設定。級位者向け (緩め) は大きな損失のみ、段位者向け (厳しめ) は細かい損失まで拾う"
+msgstr ""
+"Karte の重要局面抽出と critical_3 の感度を設定。級位者向け (緩め) は大きな損失のみ、段位者向け (厳しめ) は細かい損失まで拾う"
 
 msgid "mykatrain:settings:important_moves_level_easy"
 msgstr "級位者向け (緩め)"
@@ -1970,7 +1971,9 @@ msgid "mykatrain:settings:advanced_params"
 msgstr "上級者向けパラメータ (JSON 直接編集):"
 
 msgid "mykatrain:settings:advanced_params_desc"
-msgstr "重要局面抽出の感度パラメータ。\"advanced_params\": { \"threshold_score_stdev_chaos\": 20.0, ... } の形で mykatrain_settings 配下に記述。範囲外の値は自動的にデフォルトにスナップバック。"
+msgstr ""
+"重要局面抽出の感度パラメータ。\"advanced_params\": { \"threshold_score_stdev_chaos\": 20.0,"
+" ... } の形で mykatrain_settings 配下に記述。範囲外の値は自動的にデフォルトにスナップバック。"
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "デフォルトユーザー名:"
@@ -3070,3 +3073,83 @@ msgstr "⚠ 表示省略あり ({base})"
 
 msgid "mykatrain:llm-coach:paste-too-long"
 msgstr "LLM 応答が長すぎます ({original} 文字)、先頭 {kept} 文字で打ち切りました"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:self_atari"
+msgstr "自殺手"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:self_atari_desc"
+msgstr "自分の石をアタリに置く手を警告します（自分のグループの呼吸点を奪う手）。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:ignore_atari"
+msgstr "アタリ放置"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:ignore_atari_desc"
+msgstr "すでにアタリのグループを放置している手を警告します（緊急の救助を見落としている）。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:missed_capture"
+msgstr "取り逃し"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:missed_capture_desc"
+msgstr "相手の石を取れたのに見逃した手を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:cut_risk"
+msgstr "切断の危険"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:cut_risk_desc"
+msgstr "自分のグループが切断の脅威にさらされる手を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:low_liberties"
+msgstr "呼吸点不足"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:low_liberties_desc"
+msgstr "呼吸点が少なく战术的危険にさらされているグループを警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:self_capture_like"
+msgstr "死活"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:self_capture_like_desc"
+msgstr "グループの死活（セメアイ / ナカデ）に関わる手を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:bad_shape"
+msgstr "悪い形"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:bad_shape_desc"
+msgstr "効率の悪い形や弱い形になる手を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:heavy_group"
+msgstr "重い石"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:heavy_group_desc"
+msgstr "自分の石が重くなった（効率が悪く眼も不足している）状態を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:missed_defense"
+msgstr "防守漏れ"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:missed_defense_desc"
+msgstr "石の接続が弱く、防御を怠っている手を警告します。"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:urgent_vs_big"
+msgstr "急所 vs 大場"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:urgent_vs_big_desc"
+msgstr "盤上により大きい手やより緊急の手があることを警告します。"

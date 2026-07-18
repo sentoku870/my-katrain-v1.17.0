@@ -335,9 +335,14 @@ class ControlsPanel(BoxLayout):
             detail_lines.extend(difficulty_lines)
 
         # 4) Beginner Hint (Phase 91)
-        # Show beginner safety hint if enabled and not in PLAY mode
+        # Show beginner safety hint if enabled and not in PLAY mode.
+        # Phase 251: pass the per-category filter so individual toggles
+        # in the settings popup can suppress specific categories.
         if self._should_show_beginner_hints():
-            hint = get_beginner_hint_cached(game, self.active_comment_node)
+            category_filter = self._category_filter()
+            hint = get_beginner_hint_cached(
+                game, self.active_comment_node, category_filter=category_filter
+            )
             if hint:
                 hint_text = self._format_beginner_hint(hint)
                 if hint_text:
@@ -346,12 +351,15 @@ class ControlsPanel(BoxLayout):
         # 4b) Summary Hint (Phase 179)
         # Mistake / Freedom / Difficulty / KataGo summary hint derived
         # from the existing numerical rows. Independent per-category
-        # toggles (default ON).
+        # toggles (default ON). Phase 251 also threads the per-category
+        # filter for the 10 individual toggles.
         if self._should_show_summary_hints():
             summary_flags = self._summary_hint_flags()
+            category_filter = self._category_filter()
             summary_hint = get_summary_hint_cached(
                 self.active_comment_node,
                 summary_flags=summary_flags,
+                category_filter=category_filter,
             )
             if summary_hint:
                 summary_text = self._format_beginner_hint(summary_hint)
@@ -413,6 +421,31 @@ class ControlsPanel(BoxLayout):
             "summary_policy": bool(katrain.config("beginner_hints/summary_policy", True)),
             "curator_hint": bool(katrain.config("beginner_hints/curator_hint", True)),
         }
+
+    def _category_filter(self) -> dict[str, bool]:
+        """Phase 251: build the per-category enable map from config.
+
+        Reads the ``beginner_hints`` section and extracts the 17
+        category keys (10 individual + 7 summary group keys) into a
+        ``{config_key: bool}`` dict for the dispatchers. Missing keys
+        default to ``True`` (preserves the pre-Phase-251 behaviour of
+        "everything visible when master switch is on").
+
+        Returns:
+            ``{config_key: bool}`` mapping. May be empty if the user
+            has never opened the settings popup (no per-category keys
+            persisted yet) — the dispatchers treat that as "all
+            enabled".
+        """
+        from katrain.core.beginner.hints import build_category_filter
+
+        katrain = self.katrain
+        if not katrain:
+            return {}
+        bh = katrain.config("beginner_hints") or {}
+        if not isinstance(bh, dict):
+            return {}
+        return build_category_filter(bh)
 
     def _format_pv_filter_preview(self) -> str:
         """Format the live PV filter preview line (Phase 247-C / L6).

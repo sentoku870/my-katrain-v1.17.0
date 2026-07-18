@@ -836,11 +836,30 @@ class TestHintCategoryI18nNamespaces:
         assert isinstance(title, str) and len(title) > 0
         assert isinstance(body, str) and len(body) > 0
 
-    def test_structural_categories_have_no_config_key(self) -> None:
+    def test_structural_categories_have_per_category_config_key(self) -> None:
+        """Phase 251: structural categories now expose an individual
+        toggle via ``HintCategory.config_key`` (returns the category's
+        own enum value). Previously this returned ``None`` and the
+        category was gated only by the master ``beginner_hints/enabled``
+        switch.
+        """
         for c in HintCategory:
             if c.is_structural:
-                # Structural categories are gated by master only.
-                assert c.config_key is None
+                assert c.config_key == c.value, (
+                    f"Structural category {c} should map config_key to its own value, "
+                    f"got {c.config_key!r}"
+                )
+
+    def test_meaning_tag_categories_have_per_category_config_key(self) -> None:
+        """Phase 251: meaning-tag fallback categories also expose a
+        per-category key (returns the category's own enum value).
+        """
+        for c in HintCategory:
+            if c.is_meaning_tag:
+                assert c.config_key == c.value, (
+                    f"Meaning-tag category {c} should map config_key to its own value, "
+                    f"got {c.config_key!r}"
+                )
 
     def test_summary_categories_have_config_key(self) -> None:
         for c in HintCategory:

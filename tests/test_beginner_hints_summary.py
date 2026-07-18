@@ -84,7 +84,14 @@ class TestHintCategoryExtension:
         assert HintCategory.DIFFICULTY_CALM.config_key == "summary_difficulty"
         assert HintCategory.KATAGO_UNCERTAIN.config_key == "katago_uncertain"
 
-    def test_config_key_for_legacy_categories_is_none(self):
+    def test_config_key_for_legacy_categories_is_value(self):
+        """Phase 251: every category now exposes a per-category
+        ``config_key``. Previously the 4 structural + 6 meaning-tag
+        categories returned ``None`` (gated only by the master
+        ``beginner_hints/enabled`` switch); they now return their
+        own enum value so the settings UI can offer per-category
+        toggles.
+        """
         for cat in (
             HintCategory.SELF_ATARI,
             HintCategory.IGNORE_ATARI,
@@ -97,7 +104,9 @@ class TestHintCategoryExtension:
             HintCategory.MISSED_DEFENSE,
             HintCategory.URGENT_VS_BIG,
         ):
-            assert cat.config_key is None, f"{cat.name} should not have a config_key"
+            assert cat.config_key == cat.value, (
+                f"{cat.name} should map config_key to its own value, got {cat.config_key!r}"
+            )
 
 
 # ---------------------------------------------------------------------------

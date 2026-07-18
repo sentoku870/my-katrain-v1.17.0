@@ -129,9 +129,10 @@ class TestBasicDetection:
         # First call computes (likely None for simple position)
         get_beginner_hint_cached(game_9x9, node)
 
-        # Phase 92: Cache format is (require_reliable, hint) tuple
-        # Add a marker to verify cache is used
-        node._beginner_hint_cache = (True, "MARKER")
+        # Phase 92: Cache format was (require_reliable, hint).
+        # Phase 251: extended to (require_reliable, filter_key, hint)
+        # so per-category toggles invalidate the cache.
+        node._beginner_hint_cache = (True, None, "MARKER")
 
         # Second call should return cached "MARKER"
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
@@ -716,12 +717,22 @@ class TestCacheWithReliableSettings:
         # First call
         get_beginner_hint_cached(game_9x9, node, require_reliable=True)
 
-        # Modify cache to verify it's used
-        node._beginner_hint_cache = (True, "MARKER")
+        # Phase 251: cache tuple gained a filter_key slot
+        # (None = no per-category filter). When the next call matches
+        # the cached (require_reliable, filter_key), the cached hint
+        # is returned without re-running the dispatchers.
+        node._beginner_hint_cache = (True, None, "MARKER")
 
         # Second call with same settings should return cached value
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
         assert hint2 == "MARKER"
+
+        # Phase 251: different filter_key invalidates the cache.
+        node._beginner_hint_cache = (True, None, "OLD")
+        hint3 = get_beginner_hint_cached(
+            game_9x9, node, require_reliable=True, category_filter={"self_atari": False}
+        )
+        assert hint3 != "OLD", "category_filter change must invalidate cache"
 
 
 # =============================================================================
