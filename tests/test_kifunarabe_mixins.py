@@ -6,14 +6,19 @@ into four mixin modules and verify:
 1. ``_safe_redraw_board`` (static method on
    :class:`KifunarabeToggleMixin`) - tries each candidate redraw
    method in priority order and falls back gracefully.
-2. ``_expected_gtp_from_node`` (static method on
-   :class:`KifunarabeGuessMixin`) - extracts the GTP coord of the
-   mainline child of a node.
+2. ``_expected_move_gtp`` (module-level helper in
+   :mod:`katrain.core.study.kifunarabe`) - extracts the GTP coord of
+   the mainline child of a node. Phase 249-α: the controller's
+   ``_expected_gtp_from_node`` was consolidated into this core helper,
+   so the tests now target the canonical implementation.
 3. ``node_move_gtp`` (module-level helper in
    :mod:`kifunarabe_controller`) - converts (coords, player) into a
    GTP string, including ``"pass"`` for ``None``.
 4. The facade's MRO and public-API surface stays intact across the
    refactor (so external callers and downstream mixins keep working).
+   Phase 249-α: ``is_fog_active`` was removed from the facade (it was
+   dead code; the live sites resolve through the ``KaTrainGui``
+   stub).
 
 The existing test_kifunarabe_controller.py suite continues to cover
 the controller facade end-to-end; this file focuses on pieces that
@@ -103,7 +108,7 @@ class TestSafeRedrawBoard:
 
 
 # ---------------------------------------------------------------------------
-# Section 2: _expected_gtp_from_node (static method)
+# Section 2: _expected_move_gtp (core helper, single source of truth)
 # ---------------------------------------------------------------------------
 
 
@@ -125,28 +130,39 @@ class _MockChildBadGtp:
         self.move.gtp = lambda: 12345  # not a str
 
 
+class _MockChildRaisingGtp:
+    def __init__(self) -> None:
+        self.move = MagicMock()
+        self.move.gtp = lambda: (_ for _ in ()).throw(RuntimeError("simulated"))
+
+
 class _MockNode:
     def __init__(self, children: list[Any]) -> None:
         self.ordered_children = children
 
 
-class TestExpectedGtpFromNode:
-    """``KifunarabeGuessMixin._expected_gtp_from_node``."""
+class TestExpectedMoveGtp:
+    """``katrain.core.study.kifunarabe._expected_move_gtp`` (Phase 249-α)."""
+
+    def _helper(self) -> Any:
+        from katrain.core.study.kifunarabe import _expected_move_gtp
+
+        return _expected_move_gtp
 
     def test_returns_mainline_child_gtp(self) -> None:
         node = _MockNode([_MockChild((3, 4), "B")])
-        assert KifunarabeGuessMixin._expected_gtp_from_node(node) == "D5"
+        assert self._helper()(node) == "D5"
 
     def test_no_children_returns_none(self) -> None:
-        assert KifunarabeGuessMixin._expected_gtp_from_node(_MockNode([])) is None
+        assert self._helper()(_MockNode([])) is None
 
     def test_child_without_move_returns_none(self) -> None:
         node = _MockNode([_MockChildNoMove()])
-        assert KifunarabeGuessMixin._expected_gtp_from_node(node) is None
+        assert self._helper()(node) is None
 
     def test_child_with_non_str_gtp_returns_none(self) -> None:
         node = _MockNode([_MockChildBadGtp()])
-        assert KifunarabeGuessMixin._expected_gtp_from_node(node) is None
+        assert self._helper()(node) is None
 
     def test_uses_mainline_first_child(self) -> None:
         node = _MockNode(
@@ -155,7 +171,21 @@ class TestExpectedGtpFromNode:
                 _MockChild((5, 5), "W"),
             ]
         )
-        assert KifunarabeGuessMixin._expected_gtp_from_node(node) == "D5"
+        assert self._helper()(node) == "D5"
+
+    def test_gtp_raising_returns_none(self) -> None:
+        """Phase 249-α: a raising ``gtp()`` is swallowed."""
+        node = _MockNode([_MockChildRaisingGtp()])
+        assert self._helper()(node) is None
+
+    def test_uses_getattr_for_ordered_children(self) -> None:
+        """Phase 249-α: a node without ``ordered_children`` is a no-op,
+        not an AttributeError."""
+
+        class _Bare:
+            pass
+
+        assert self._helper()(_Bare()) is None
 
 
 # ---------------------------------------------------------------------------
@@ -237,15 +267,17 @@ class TestFacadeStructure:
         assert ctrl._summary_popup is None
         assert ctrl._saved_analysis_toggles is None
         assert ctrl._last_critical_3_highlight == 0
-        assert ctrl._source_sgf_path is None
+        # Phase 249-α: ``_source_sgf_path`` removed. Confirm it does
+        # not exist any more (regression guard).
+        assert not hasattr(ctrl, "_source_sgf_path")
 
     def test_public_accessors_present(self) -> None:
         ctrl = _make_controller(mode=True)
         assert hasattr(ctrl, "session")
         assert hasattr(ctrl, "is_active")
-        assert hasattr(ctrl, "is_fog_active")
+        # Phase 249-α: ``is_fog_active`` removed from the facade.
+        assert not hasattr(ctrl, "is_fog_active")
         assert ctrl.is_active() is True
-        assert ctrl.is_fog_active() is True
 
     def test_lifecycle_methods_present(self) -> None:
         ctrl = _make_controller()
@@ -326,5 +358,7 @@ class TestMixinSlots:
     def test_facade_only_owns_constructor_and_public_accessors(self) -> None:
         # ``KifunarabeController.__dict__`` should contain exactly these
         # non-dunder methods (mixin methods live on the parents).
+        # Phase 249-α: ``is_fog_active`` removed; only ``__init__`` and
+        # the ``session`` property + ``is_active`` remain.
         implemented = {name for name, value in KifunarabeController.__dict__.items() if callable(value)}
-        assert implemented == {"__init__", "is_active", "is_fog_active"}
+        assert implemented == {"__init__", "is_active"}

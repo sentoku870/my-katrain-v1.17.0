@@ -5,6 +5,7 @@ All tests are Kivy-independent and run on plain Python data classes.
 
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -473,6 +474,187 @@ class TestSessionLifecycle:
 # ----------------------------------------------------------------------------
 # Convenience re-exports
 # ----------------------------------------------------------------------------
+
+
+class TestRecordGuessValidation:
+    """Phase 249-α: ``record_*`` methods validate ``move_number``.
+
+    The position number must be a non-negative int (``0`` is the root
+    position; ``1+`` is a real move). Any other value (``None``,
+    negative, non-int) is a programming error and must raise rather
+    than silently corrupt the results list.
+    """
+
+    def test_record_guess_rejects_none(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(TypeError):
+            sess.record_guess(None, "D4", "D4")  # type: ignore[arg-type]
+
+    def test_record_guess_rejects_negative(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(ValueError):
+            sess.record_guess(-1, "D4", "D4")
+
+    def test_record_guess_rejects_string(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(TypeError):
+            sess.record_guess("1", "D4", "D4")  # type: ignore[arg-type]
+
+    def test_record_guess_rejects_bool(self) -> None:
+        """``bool`` is a subclass of ``int`` in Python; we explicitly
+        reject it to avoid ``True/False`` accidentally passing
+        validation."""
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(TypeError):
+            sess.record_guess(True, "D4", "D4")  # type: ignore[arg-type]
+
+    def test_record_guess_accepts_root_zero(self) -> None:
+        """``move_number=0`` (root position) is valid; existing tests
+        rely on this for the no-real-moves case."""
+        from katrain.core.study.kifunarabe import (
+            GuessOutcome,
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        result = sess.record_guess(0, "D4", "D4")
+        assert result.outcome == GuessOutcome.CORRECT
+        assert sess.results[0].move_number == 0
+
+    def test_record_guess_accepts_one(self) -> None:
+        """``move_number=1`` (first move) is valid."""
+        from katrain.core.study.kifunarabe import (
+            GuessOutcome,
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        result = sess.record_guess(1, "D4", "D4")
+        assert result.outcome == GuessOutcome.CORRECT
+        assert sess.results[0].move_number == 1
+
+    def test_record_auto_advance_rejects_negative(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(ValueError):
+            sess.record_auto_advance(-1)
+
+    def test_record_skipped_no_move_rejects_negative(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(ValueError):
+            sess.record_skipped_no_move(-1)
+
+
+class TestToggleSnapshotPolicy:
+    """Phase 249-α: the analysis-toggles snapshot also captures
+    ``policy.checkbox.disabled`` so it can be restored on exit.
+
+    These tests live in this file (which has Kivy imports at module
+    level via ``badukpan_hints``) so they share the same collection
+    environment; on CI they pass. On Windows-headless dev machines
+    the test_kifunarabe.py file is collected as a single unit, so
+    these will only run once the Kivy import succeeds.
+    """
+
+    def test_snapshot_includes_policy_disabled(self) -> None:
+        """The ``_save_analysis_toggles`` snapshot is now a 3-tuple."""
+        from katrain.gui.managers.kifunarabe_toggle_mixin import KifunarabeToggleMixin
+
+        ac = MagicMock()
+        ac.show_children.active = True
+        ac.eval.active = False
+        policy_checkbox = MagicMock()
+        policy_checkbox.disabled = False
+        ac.policy.checkbox = policy_checkbox
+        ctx = MagicMock()
+        ctx.analysis_controls = ac
+
+        # Build a tiny facade and call the mixin method.
+        mixin = KifunarabeToggleMixin()
+        mixin._get_ctx = lambda: ctx  # type: ignore[attr-defined]
+        mixin._saved_analysis_toggles = None  # type: ignore[attr-defined]
+        mixin._save_analysis_toggles()  # type: ignore[attr-defined]
+        snapshot = mixin._saved_analysis_toggles  # type: ignore[attr-defined]
+        assert snapshot is not None
+        assert len(snapshot) == 3
+        assert snapshot[0] is True
+        assert snapshot[1] is False
+        assert snapshot[2] is False
+
+    def test_apply_kifu_toggle_mask_disables_policy(self) -> None:
+        from katrain.gui.managers.kifunarabe_toggle_mixin import KifunarabeToggleMixin
+
+        ac = MagicMock()
+        policy_checkbox = MagicMock()
+        policy_checkbox.disabled = False
+        ac.policy.checkbox = policy_checkbox
+        ctx = MagicMock()
+        ctx.analysis_controls = ac
+
+        mixin = KifunarabeToggleMixin()
+        mixin._get_ctx = lambda: ctx  # type: ignore[attr-defined]
+        mixin._apply_kifu_toggle_mask()  # type: ignore[attr-defined]
+        # policy_checkbox.disabled is now True.
+        assert policy_checkbox.disabled is True
+
+    def test_restore_analysis_toggles_restores_policy(self) -> None:
+        from katrain.gui.managers.kifunarabe_toggle_mixin import KifunarabeToggleMixin
+
+        ac = MagicMock()
+        ac.show_children.active = False
+        ac.eval.active = False
+        policy_checkbox = MagicMock()
+        policy_checkbox.disabled = True
+        ac.policy.checkbox = policy_checkbox
+        ctx = MagicMock()
+        ctx.analysis_controls = ac
+
+        mixin = KifunarabeToggleMixin()
+        mixin._get_ctx = lambda: ctx  # type: ignore[attr-defined]
+        # Pre-load a saved snapshot that was captured BEFORE kifunarabe
+        # disabled the policy.
+        mixin._saved_analysis_toggles = (True, True, False)  # type: ignore[attr-defined]
+        mixin._restore_analysis_toggles()  # type: ignore[attr-defined]
+        # show_children / eval restored, policy checkbox released.
+        assert ac.show_children.active is True
+        assert ac.eval.active is True
+        assert policy_checkbox.disabled is False
+
+    def test_restore_analysis_toggles_handles_legacy_2tuple(self) -> None:
+        """Phase 249-α: a 2-tuple snapshot (pre-upgrade session) is
+        still understood - the policy flag defaults to ``False``."""
+        from katrain.gui.managers.kifunarabe_toggle_mixin import KifunarabeToggleMixin
+
+        ac = MagicMock()
+        ac.show_children.active = False
+        ac.eval.active = False
+        policy_checkbox = MagicMock()
+        policy_checkbox.disabled = True
+        ac.policy.checkbox = policy_checkbox
+        ctx = MagicMock()
+        ctx.analysis_controls = ac
+
+        mixin = KifunarabeToggleMixin()
+        mixin._get_ctx = lambda: ctx  # type: ignore[attr-defined]
+        mixin._saved_analysis_toggles = (True, True)  # type: ignore[attr-defined]
+        mixin._restore_analysis_toggles()  # type: ignore[attr-defined]
+        # show_children / eval restored; policy released (legacy default).
+        assert ac.show_children.active is True
+        assert ac.eval.active is True
+        assert policy_checkbox.disabled is False
 
 
 class TestReExports:

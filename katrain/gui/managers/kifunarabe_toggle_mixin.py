@@ -60,11 +60,18 @@ class KifunarabeToggleMixin:
             return KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT
 
     def _save_analysis_toggles(self: Any) -> None:
-        """Snapshot ``show_children`` / ``eval`` flag state.
+        """Snapshot ``show_children`` / ``eval`` / ``policy.disabled`` state.
 
         Called by ``start_session`` *before* applying the mask so we
         can restore on every exit path (abort, end-of-mainline,
         SGF load).
+
+        Phase 249-α: also snapshot the ``policy`` checkbox's
+        ``disabled`` flag, because session entry forces it to
+        ``disabled=True`` to prevent the user from re-enabling the
+        policy overlay mid-session (panels.kv:435 makes hints
+        ``disabled: policy.checkbox.active``, so an active policy would
+        hide the kifunarabe choice markers).
         """
         ctx = self._get_ctx()
         ac = getattr(ctx, "analysis_controls", None) if ctx is not None else None
@@ -72,18 +79,23 @@ class KifunarabeToggleMixin:
             self._saved_analysis_toggles = None
             return
         try:
-            self._saved_analysis_toggles = (
-                bool(ac.show_children.active),
-                bool(ac.eval.active),
-            )
+            show_children_active = bool(ac.show_children.active)
+            eval_active = bool(ac.eval.active)
+            policy_checkbox = getattr(getattr(ac, "policy", None), "checkbox", None)
+            policy_disabled = bool(policy_checkbox.disabled) if policy_checkbox is not None else False
+            self._saved_analysis_toggles = (show_children_active, eval_active, policy_disabled)
         except Exception:  # noqa: BLE001
             self._saved_analysis_toggles = None
 
     def _apply_kifu_toggle_mask(self: Any) -> None:
-        """Force ``show_children`` / ``eval`` OFF.
+        """Force ``show_children`` / ``eval`` OFF and lock ``policy``.
 
         So the actual move is not visually revealed during the
-        kifunarabe session.
+        kifunarabe session. The ``policy`` checkbox is also
+        ``disabled=True`` for the duration of the session: panels.kv
+        disables the hints toggle when ``policy.checkbox.active`` is
+        True, so allowing the user to flip policy on mid-session
+        would silently hide the kifunarabe choice markers.
         """
         ctx = self._get_ctx()
         ac = getattr(ctx, "analysis_controls", None) if ctx is not None else None
@@ -93,12 +105,22 @@ class KifunarabeToggleMixin:
             ac.show_children.active = False
         with contextlib.suppress(Exception):
             ac.eval.active = False
+        policy_checkbox = getattr(getattr(ac, "policy", None), "checkbox", None)
+        if policy_checkbox is not None:
+            with contextlib.suppress(Exception):
+                policy_checkbox.disabled = True
 
     def _restore_analysis_toggles(self: Any) -> None:
-        """Restore the original ``show_children`` / ``eval`` flag state.
+        """Restore the original ``show_children`` / ``eval`` / ``policy.disabled`` state.
 
         Idempotent: a second call after the saved state has been
         cleared is a no-op.
+
+        Phase 249-α: the snapshot is now a 3-tuple
+        ``(show_children, eval, policy_disabled)`` instead of a
+        2-tuple. The 2-tuple path is kept as a best-effort fallback
+        for sessions that were started before the upgrade (their
+        snapshot is a 2-tuple and lacks the policy flag).
         """
         saved = getattr(self, "_saved_analysis_toggles", None)
         if saved is None:
@@ -108,11 +130,22 @@ class KifunarabeToggleMixin:
         ac = getattr(ctx, "analysis_controls", None) if ctx is not None else None
         if ac is None:
             return
-        show_children, eval_dot = saved
+        if len(saved) == 3:
+            show_children, eval_dot, policy_disabled = saved
+        else:
+            # Legacy 2-tuple snapshot from before Phase 249-α: keep the
+            # original behaviour and leave policy.disabled as it is
+            # (i.e. release it).
+            show_children, eval_dot = saved  # type: ignore[misc]
+            policy_disabled = False
         with contextlib.suppress(Exception):
             ac.show_children.active = show_children
         with contextlib.suppress(Exception):
             ac.eval.active = eval_dot
+        policy_checkbox = getattr(getattr(ac, "policy", None), "checkbox", None)
+        if policy_checkbox is not None:
+            with contextlib.suppress(Exception):
+                policy_checkbox.disabled = policy_disabled
 
     # -- hint toggle (Top Moves candidate markers) ---------------------------
 

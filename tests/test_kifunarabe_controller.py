@@ -188,7 +188,9 @@ class TestControllerImport(unittest.TestCase):
         controller, refs = make_controller()
         self.assertIsNone(controller.session)
         self.assertFalse(controller.is_active())
-        self.assertFalse(controller.is_fog_active())
+        # Phase 249-α: ``is_fog_active`` removed (dead code). The live
+        # KV / drawing sites resolve through the ``KaTrainGui`` stub.
+        self.assertFalse(hasattr(controller, "is_fog_active"))
 
 
 class TestSessionStart(unittest.TestCase):

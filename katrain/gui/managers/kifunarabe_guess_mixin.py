@@ -93,12 +93,18 @@ class KifunarabeGuessMixin:
 
         Called when ``evaluate_guess`` returns ``False``. Recording this
         lets the summary popup report an accurate failure count.
+
+        Phase 249-α: uses the consolidated core helper
+        ``_expected_move_gtp`` instead of the local
+        ``_expected_gtp_from_node`` (removed). The two implementations
+        are equivalent after the hardening in :func:`_expected_move_gtp`.
         """
         from katrain.core.sgf_parser import Move
+        from katrain.core.study.kifunarabe import _expected_move_gtp
 
         if self._session is None:
             return
-        expected_gtp = self._expected_gtp_from_node(node)
+        expected_gtp = _expected_move_gtp(node)
         self._session.record_guess(
             move_number=node.move_number,
             expected_gtp=expected_gtp,
@@ -111,11 +117,15 @@ class KifunarabeGuessMixin:
         Args:
             coords: User click coordinates.
             node: Current GameNode before playing.
+
+        Phase 249-α: delegates expected-GTP resolution to the core
+        helper ``_expected_move_gtp`` (single source of truth).
         """
         from katrain.core.sgf_parser import Move
+        from katrain.core.study.kifunarabe import _expected_move_gtp
 
         assert self._session is not None  # guarded by handle_guess()
-        expected_gtp = self._expected_gtp_from_node(node)
+        expected_gtp = _expected_move_gtp(node)
         self._session.record_guess(
             move_number=node.move_number,
             expected_gtp=expected_gtp,
@@ -172,22 +182,10 @@ class KifunarabeGuessMixin:
 
     # -- internal helpers -----------------------------------------------------
 
-    @staticmethod
-    def _expected_gtp_from_node(node: Any) -> str | None:
-        """Return the GTP coord of the mainline child of ``node``,
-        or ``None``."""
-        ordered = node.ordered_children
-        if not ordered:
-            return None
-        child = ordered[0]
-        child_move = getattr(child, "move", None)
-        if child_move is None:
-            return None
-        gtp = getattr(child_move, "gtp", None)
-        if callable(gtp):
-            result = gtp()
-            return result if isinstance(result, str) else None
-        return None
+    # Phase 249-α: ``_expected_gtp_from_node`` removed. Use
+    # :func:`katrain.core.study.kifunarabe._expected_move_gtp` instead.
+    # The two implementations are now consolidated; the core helper
+    # has been hardened to swallow malformed GTP returns.
 
     def _play_move(self: Any, coords: tuple[int, int] | None, player: str) -> None:
         """Invoke ``game.play(Move(...))`` without triggering analysis.
@@ -215,8 +213,14 @@ class KifunarabeGuessMixin:
             self._logger(f"kifunarabe: illegal move ({coords}, {player}): {e}", level=0)
 
     def _notify_guess(self: Any, coords: tuple[int, int], node: Any, correct: bool) -> None:
-        """Notify the UI that a guess was resolved."""
-        expected = self._expected_gtp_from_node(node)
+        """Notify the UI that a guess was resolved.
+
+        Phase 249-α: expected-GTP resolution delegates to the core
+        helper ``_expected_move_gtp``.
+        """
+        from katrain.core.study.kifunarabe import _expected_move_gtp
+
+        expected = _expected_move_gtp(node)
         # Lazy import to avoid kivy / module-level coupling: the helper
         # ``node_move_gtp`` lives in the facade module.
         from katrain.gui.managers.kifunarabe_controller import node_move_gtp
