@@ -50,7 +50,11 @@ class GameNavigator:
             node = child
             yield node
 
-    def _compute_important_moves(self, max_moves: int = 20) -> list[tuple[int, float, GameNode]]:
+    def _compute_important_moves(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> list[tuple[int, float, GameNode]]:
         """メイン分岐上のノードから「重要そうな手」を抽出して返す。
 
         戻り値: [(手数, 重要度スコア, GameNode), ...]  を
@@ -58,6 +62,11 @@ class GameNavigator:
 
         Phase 70: 単一パスアルゴリズムに最適化。
         重複ループを解消し、heapq.nlargest で上位 max_moves 件を効率的に抽出。
+
+        Phase 250: ``color_filter`` (``"B"`` / ``"W"`` / ``None``) で
+        プレイヤーを絞り込める。``None`` は全プレイヤー (従来挙動)。
+        GUI の「黒の前の重要局面」「白の次の重要局面」 4 ボタンで
+        プレイヤー別ナビゲートを実現するために追加。
         """
         IMPORTANCE_THRESHOLD = 0.5  # 小さい変化をノイズとして除外
 
@@ -68,6 +77,9 @@ class GameNavigator:
         for node in self._iter_main_branch_nodes():
             # 解析が終わっていない手はスキップ
             if not node.analysis_complete or node.score is None:
+                continue
+            # Phase 250: プレイヤーフィルタ
+            if color_filter is not None and node.player != color_filter:
                 continue
 
             move_no = len(node.nodes_from_root) - 1
@@ -113,19 +125,35 @@ class GameNavigator:
                 break
         return None
 
-    def get_important_move_numbers(self, max_moves: int = 20) -> list[int]:
+    def get_important_move_numbers(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> list[int]:
         """「重要局面」と判定された手数のリストだけを返す。
         ScoreGraph などから呼ぶことを想定。
+
+        Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
-        important = self._compute_important_moves(max_moves=max_moves)
+        important = self._compute_important_moves(
+            max_moves=max_moves, color_filter=color_filter
+        )
         return [move_no for move_no, _importance, _node in important]
 
-    def get_next_important_node(self, max_moves: int = 20) -> GameNode | None:
+    def get_next_important_node(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
         """現在の手より「後ろにある」重要局面ノードを返す。
         なければ None。
+
+        Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        important = self._compute_important_moves(max_moves=max_moves)
+        important = self._compute_important_moves(
+            max_moves=max_moves, color_filter=color_filter
+        )
         if not important:
             return None
 
@@ -138,12 +166,20 @@ class GameNavigator:
         # すべて現在手より前なら、今回はジャンプしない仕様にしておく
         return None
 
-    def get_prev_important_node(self, max_moves: int = 20) -> GameNode | None:
+    def get_prev_important_node(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
         """現在の手より「前にある」重要局面ノードを返す。
         なければ None。
+
+        Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        important = self._compute_important_moves(max_moves=max_moves)
+        important = self._compute_important_moves(
+            max_moves=max_moves, color_filter=color_filter
+        )
         if not important:
             return None
 
@@ -157,22 +193,38 @@ class GameNavigator:
 
         return prev_node
 
-    def jump_to_next_important_move(self, max_moves: int = 20) -> GameNode | None:
+    def jump_to_next_important_move(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
         """次の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
+
+        Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        node = self.get_next_important_node(max_moves=max_moves)
+        node = self.get_next_important_node(
+            max_moves=max_moves, color_filter=color_filter
+        )
         if node is not None:
             game.set_current_node(node)
         return node
 
-    def jump_to_prev_important_move(self, max_moves: int = 20) -> GameNode | None:
+    def jump_to_prev_important_move(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
         """前の重要局面にジャンプする。
         実際に current_node を変更したノードを返す。なければ None。
+
+        Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        node = self.get_prev_important_node(max_moves=max_moves)
+        node = self.get_prev_important_node(
+            max_moves=max_moves, color_filter=color_filter
+        )
         if node is not None:
             game.set_current_node(node)
         return node

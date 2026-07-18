@@ -379,20 +379,15 @@
     width: 250
     katrain: app.gui
     # Phase 230-A.2: 3 機能（最新レポートを開く / 出力フォルダを開く /
-    # 複数局まとめ）は完全削除。低頻度だが OS のファイルマネージャや
-    # フォルダ一括解析で代替可能。Phase 248-γ-D1 で「重要局面リスト」
-    # を追加し、現在は 5 項目構成。
+    # 複数局まとめ）は完全削除。
+    # Phase 250: 「重要局面リスト」メニューも削除 (4 ボタン化で代替)。
+    # 現在は 4 項目構成。
     MyKatrainMenuItem:
         text: i18n._('mykatrain:export-karte')
         icon: 'Save-Game.png'
         shortcut: ''
         on_action: root.katrain("export-karte")
-    MyKatrainMenuItem:
-        # Phase 248-γ-D1: 重要局面リスト (critical_3 candidates)
-        text: i18n._('mykatrain:important-moves')
-        icon: 'analysis.png'
-        shortcut: ''
-        on_action: root.katrain("important-moves-popup")
+    # Phase 250: 重要局面リストメニューは削除 (4 ボタン化で代替)。
     MyKatrainMenuItem:
         text: i18n._('mykatrain:llm-coach')
         # Phase 230-A: 'chat.png' は存在しないため Teaching-Settings.png を流用

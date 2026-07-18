@@ -481,23 +481,59 @@ class Game(BaseGame):
     def get_main_branch_node_before_move(self, move_number: int) -> GameNode | None:
         return self.navigator.get_main_branch_node_before_move(move_number)
 
-    def _compute_important_moves(self, max_moves: int = 20) -> list[tuple[int, float, GameNode]]:
-        return self.navigator._compute_important_moves(max_moves=max_moves)
+    def _compute_important_moves(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> list[tuple[int, float, GameNode]]:
+        return self.navigator._compute_important_moves(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
-    def get_important_move_numbers(self, max_moves: int = 20) -> list[int]:
-        return self.navigator.get_important_move_numbers(max_moves=max_moves)
+    def get_important_move_numbers(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> list[int]:
+        return self.navigator.get_important_move_numbers(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
-    def get_next_important_node(self, max_moves: int = 20) -> GameNode | None:
-        return self.navigator.get_next_important_node(max_moves=max_moves)
+    def get_next_important_node(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
+        return self.navigator.get_next_important_node(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
-    def get_prev_important_node(self, max_moves: int = 20) -> GameNode | None:
-        return self.navigator.get_prev_important_node(max_moves=max_moves)
+    def get_prev_important_node(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
+        return self.navigator.get_prev_important_node(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
-    def jump_to_next_important_move(self, max_moves: int = 20) -> GameNode | None:
-        return self.navigator.jump_to_next_important_move(max_moves=max_moves)
+    def jump_to_next_important_move(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
+        return self.navigator.jump_to_next_important_move(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
-    def jump_to_prev_important_move(self, max_moves: int = 20) -> GameNode | None:
-        return self.navigator.jump_to_prev_important_move(max_moves=max_moves)
+    def jump_to_prev_important_move(
+        self,
+        max_moves: int = 20,
+        color_filter: str | None = None,
+    ) -> GameNode | None:
+        return self.navigator.jump_to_prev_important_move(
+            max_moves=max_moves, color_filter=color_filter
+        )
 
     # ------------------------------------------------------------------
     # 挿入モード (Phase 3: InsertModeController に委譲)

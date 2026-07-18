@@ -41,9 +41,9 @@ class GameProtocol(Protocol):
 
     def redo(self, n_times: int = 1) -> None: ...
 
-    def jump_to_prev_important_move(self) -> None: ...
+    def jump_to_prev_important_move(self, color_filter: str | None = None) -> None: ...
 
-    def jump_to_next_important_move(self) -> None: ...
+    def jump_to_next_important_move(self, color_filter: str | None = None) -> None: ...
 
     def reset_current_analysis(self) -> None: ...
 
@@ -118,16 +118,40 @@ class GameStateManager:
             game.redo(n_times)
 
     def do_prev_important(self) -> None:
-        """前の重要局面にジャンプ。"""
+        """前の重要局面にジャンプ（全プレイヤー対象・後方互換用）。"""
         game = self._get_game()
         if game is not None:
             game.jump_to_prev_important_move()
 
     def do_next_important(self) -> None:
-        """次の重要局面にジャンプ。"""
+        """次の重要局面にジャンプ（全プレイヤー対象・後方互換用）。"""
         game = self._get_game()
         if game is not None:
             game.jump_to_next_important_move()
+
+    def do_prev_important_black(self) -> None:
+        """黒の前の重要局面にジャンプ（Phase 250: プレイヤー別ナビ）。"""
+        game = self._get_game()
+        if game is not None:
+            game.jump_to_prev_important_move(color_filter="B")
+
+    def do_next_important_black(self) -> None:
+        """黒の次の重要局面にジャンプ（Phase 250: プレイヤー別ナビ）。"""
+        game = self._get_game()
+        if game is not None:
+            game.jump_to_next_important_move(color_filter="B")
+
+    def do_prev_important_white(self) -> None:
+        """白の前の重要局面にジャンプ（Phase 250: プレイヤー別ナビ）。"""
+        game = self._get_game()
+        if game is not None:
+            game.jump_to_prev_important_move(color_filter="W")
+
+    def do_next_important_white(self) -> None:
+        """白の次の重要局面にジャンプ（Phase 250: プレイヤー別ナビ）。"""
+        game = self._get_game()
+        if game is not None:
+            game.jump_to_next_important_move(color_filter="W")
 
     def do_reset_analysis(self) -> None:
         """現在のノードの解析をリセット。"""

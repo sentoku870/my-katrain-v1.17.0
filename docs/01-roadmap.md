@@ -1240,6 +1240,34 @@ Phase 249 (α/β/γ/δ) を main にマージ後に発覚した 2 系統のバ�
 
 ---
 
+
+### Phase 250: 重要局面 UI リファクタリング（2026-07-18）
+
+ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」の要望を受け、8 サブフェーズ (250-A〜H) を統合した 1PR。
+
+**8 サブフェーズ索引:**
+
+- **250-A**: タブ「重要局面」追加 — panels.kv CollapsablePanel を options: [''score'',''winrate'',''important''] に拡張、旧 ToggleButton important_line_toggle 削除
+- **250-B**: GameNavigator を color_filter 対応に拡張 — get/prev/next/jump_*_important_* の 6 メソッドに color_filter パラメータ追加、facade に 6 委譲メソッド追加
+- **250-C**: Prev/Next ボタンを 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割 — 4 DISPATCH キー (prev/next_important_black/white) + 4 内部メソッド追加
+- **250-D**: 大悪手ライン（mistake_points）削除 — graph.py から mistake_points プロパティと classify_mistake import を削除、Canvas 描画も削除（MistakeCategory enum は Karte weaknesses 分類で残置）
+- **250-E**: 重要局面リスト popup 完全廃止 — gui/popups/important_moves_popup.py / gui/kv/important_moves_popup.kv / core/analysis/important_moves_popup.py 削除 + menu.kv 項目削除 + DISPATCH_TABLE 整理 + i18n 9 キー削除
+- **250-F**: 棋譜並べ summary から重要局面 popup 呼び出し削除 — on_show_important_moves を no-op 化（back-compat 用の stub として残置）
+- **250-G**: 関連テスト削除（3 ファイル、合計 44 件）+ 	est_color_filter_navigation.py 新規（11 件、color_filter 全パス）
+- **250-H**: AGENTS.md / 01-roadmap.md 更新 + docs/archive/specs-implemented/phase250-important-moves-refactor.md 新規作成
+
+**保持**:
+
+- MistakeCategory enum（Karte weaknesses 分類）
+- select_critical_moves（Karte critical_3 セクション + LLM Coach）
+- Karte JSON の critical_3 セクション
+- critical_3_max_moves 設定（LLM Coach 用、UI 残置）
+- important_moves_level 設定（Karte JSON 用）
+- 既存 prev_important / 
+ext_important DISPATCH キー（後方互換）
+
+詳細: docs/archive/specs-implemented/phase250-important-moves-refactor.md
+
 ## Phase 200: `except Exception` 整理（部分完了、2026-07-17）
 
 - 純粋計算系の silent swallow 9 箇所に `logger.debug(..., exc_info=True)` を追加

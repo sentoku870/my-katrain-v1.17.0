@@ -146,6 +146,10 @@ msgstr "目差"
 msgid "tab:winrate"
 msgstr "勝率"
 
+# Phase 250: Important-line tab (replaces the old inline toggle button)
+msgid "tab:important"
+msgstr "重要局面"
+
 #. shown on a graph tab
 msgid "tab:rank_est"
 msgstr "推定段級位"
@@ -1143,33 +1147,25 @@ msgstr "カルテ出力"
 msgid "mykatrain:export-package"
 msgstr "LLMパッケージ出力"
 
-# Phase 248-γ-D1: 重要局面リスト popup
-msgid "mykatrain:important-moves"
-msgstr "重要局面リスト"
-
-msgid "mykatrain:popup:important-moves:title"
-msgstr "重要局面リスト"
-
-msgid "mykatrain:popup:important-moves:subtitle"
-msgstr "重要度レベル: {level}"
-
-msgid "mykatrain:popup:important-moves:count"
-msgstr "重要局面: {shown}/{max} 件"
-
-msgid "mykatrain:popup:important-moves:jump"
-msgstr "この局面にジャンプ"
-
-msgid "mykatrain:popup:important-moves:copy"
-msgstr "コピー"
-
-msgid "mykatrain:popup:important-moves:close"
-msgstr "閉じる"
-
-msgid "mykatrain:popup:important-moves:empty"
-msgstr "重要局面がありません (KataGo 解析が必要)"
-
-msgid "mykatrain:popup:important-moves:complexity"
-msgstr "複雑局面で割引"
+# Phase 250: 重要局面リスト popup 廃止に伴い、以下の i18n キーは削除。
+# msgid "mykatrain:important-moves"
+# msgstr "重要局面リスト"
+# msgid "mykatrain:popup:important-moves:title"
+# msgstr "重要局面リスト"
+# msgid "mykatrain:popup:important-moves:subtitle"
+# msgstr "重要度レベル: {level}"
+# msgid "mykatrain:popup:important-moves:count"
+# msgstr "重要局面: {shown}/{max} 件"
+# msgid "mykatrain:popup:important-moves:jump"
+# msgstr "この局面にジャンプ"
+# msgid "mykatrain:popup:important-moves:copy"
+# msgstr "コピー"
+# msgid "mykatrain:popup:important-moves:close"
+# msgstr "閉じる"
+# msgid "mykatrain:popup:important-moves:empty"
+# msgstr "重要局面がありません (KataGo 解析が必要)"
+# msgid "mykatrain:popup:important-moves:complexity"
+# msgstr "複雑局面で割引"
 
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
@@ -2996,14 +2992,30 @@ msgstr "★黒優先"
 msgid "focus:white-active"
 msgstr "★白優先"
 
+# Phase 250: 4-button color-split (黒前/黒次/白前/白次) replaces
+# the legacy 2-button row. The old msgids are kept here as empty
+# msgstr (so any stale reference becomes a no-op) and will be fully
+# removed in a follow-up cleanup.
 msgid "prev-important-move"
-msgstr "前の重要局面"
+msgstr ""
 
 msgid "next-important-move"
-msgstr "次の重要局面"
+msgstr ""
 
 msgid "important-line"
-msgstr "重要局面"
+msgstr ""
+
+msgid "prev-important-move-black"
+msgstr "黒の前の重要局面"
+
+msgid "next-important-move-black"
+msgstr "黒の次の重要局面"
+
+msgid "prev-important-move-white"
+msgstr "白の前の重要局面"
+
+msgid "next-important-move-white"
+msgstr "白の次の重要局面"
 
 # Phase B-1: semantic keys to replace raw English msgids like i18n._("OK")
 msgid "button:ok"

@@ -61,10 +61,35 @@ def do_redo(ctx: KaTrainGui, n_times: int = 1) -> None:
 
 
 def do_prev_important(ctx: KaTrainGui) -> None:
-    """Navigate to the previous important (mistake / key) move."""
+    """Navigate to the previous important (mistake / key) move (all players)."""
     ctx._game_state_manager.do_prev_important()
 
 
 def do_next_important(ctx: KaTrainGui) -> None:
-    """Navigate to the next important (mistake / key) move."""
+    """Navigate to the next important (mistake / key) move (all players)."""
     ctx._game_state_manager.do_next_important()
+
+
+# Phase 250: 4-button color-split navigation (黒前/黒次/白前/白次).
+# The legacy two-button handlers above remain for back-compat; the
+# Phase 250 GUI uses the four color-specific handlers below.
+
+
+def do_prev_important_black(ctx: KaTrainGui) -> None:
+    """Phase 250: 黒の前の重要局面にジャンプ。"""
+    ctx._game_state_manager.do_prev_important_black()
+
+
+def do_next_important_black(ctx: KaTrainGui) -> None:
+    """Phase 250: 黒の次の重要局面にジャンプ。"""
+    ctx._game_state_manager.do_next_important_black()
+
+
+def do_prev_important_white(ctx: KaTrainGui) -> None:
+    """Phase 250: 白の前の重要局面にジャンプ。"""
+    ctx._game_state_manager.do_prev_important_white()
+
+
+def do_next_important_white(ctx: KaTrainGui) -> None:
+    """Phase 250: 白の次の重要局面にジャンプ。"""
+    ctx._game_state_manager.do_next_important_white()

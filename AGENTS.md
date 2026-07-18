@@ -86,6 +86,15 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 241-G: `find_latest_karte` 関数完全削除（popup は既に `find_latest_llm_input_for_ctx` を使用）+ 関連テスト削除
     - 241-H: `tests/conftest.py` に Kivy headless 環境変数追加（CI 環境での popup テスト準備）
     - 241-I: AGENTS.md / 01-roadmap.md 更新（Phase 239 表記を Phase 241-G に統一、Phase 241 マイルストーン追記）
+  - Phase 250（2026-07-18）: **重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR）
+    - 250-A: タブ「重要局面」追加（panels.kv CollapsablePanel 拡張、旧トグル削除）
+    - 250-B: `GameNavigator` を `color_filter` 対応に拡張（facade 6 メソッド追加）
+    - 250-C: Prev/Next ボタンを 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割
+    - 250-D: 大悪手ライン（mistake_points）削除（graph.py）
+    - 250-E: 重要局面リスト popup 廃止（menu/commands/popup/KV/i18n、3 ファイル削除）
+    - 250-F: 棋譜並べ summary から重要局面 popup 呼び出し削除（no-op 化）
+    - 250-G: 関連テスト削除（3 ファイル） + color_filter 用テスト 11 件新規
+    - 250-H: AGENTS.md / 01-roadmap.md / specs 更新
 
   各 Phase の詳細は `docs/archive/specs-implemented/phase*.md` および `docs/archive/specs-planned/phase*.md` を参照。
 - **次**: TBD（Phase 224 OpenAI 互換エンドポイント連携は将来再検討）
@@ -357,6 +366,18 @@ docs/
   - **241-G**: `find_latest_karte` 関数完全削除 — Phase 227-D で popup は既に `find_latest_llm_input_for_ctx` を使用、legacy 関数と関連テスト 4 件削除、Phase 239 表記を Phase 241-G に統一
   - **241-H**: `tests/conftest.py` に Kivy headless 環境変数追加 — `KIVY_NO_ARGS` / `KIVY_NO_WINDOW` / `KIVY_HEADLESS` / `SDL_VIDEODRIVER=dummy` 等を conftest ロード時に設定（CI 環境での popup テスト実行準備）
   - **241-I**: AGENTS.md / 01-roadmap.md 更新 — Phase 241 マイルストーン追記、Phase 239 表記を Phase 241-G に統一
+- 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
+  - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
+  - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
+  - **250-A**: `panels.kv` の CollapsablePanel を `options: ['score','winrate','important']` に拡張（旧 ToggleButton `important_line_toggle` 削除）
+  - **250-B**: `GameNavigator._compute_important_moves(max_moves, color_filter)` 追加 + `get_important_move_numbers` / `get_next/prev_important_node` / `jump_to_next/prev_important_move` の 6 メソッドを `color_filter` 対応に拡張 + facade 6 委譲メソッド追加
+  - **250-C**: `panels.kv` のボタン行を 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割 + 4 DISPATCH キー (`prev/next_important_black/white`) + 4 内部メソッド追加
+  - **250-D**: `graph.py` から `mistake_points` プロパティと `classify_mistake` import 削除、Canvas 描画も削除（`MistakeCategory` enum は Karte `weaknesses` 分類で残置）
+  - **250-E**: 重要局面リスト popup 完全廃止（`gui/popups/important_moves_popup.py` / `gui/kv/important_moves_popup.kv` / `core/analysis/important_moves_popup.py` 削除）+ menu.kv 項目削除 + DISPATCH_TABLE 整理 + i18n 9 キー削除
+  - **250-F**: 棋譜並べ summary の `on_show_important_moves` を no-op 化（back-compat 用の stub として残置）
+  - **250-G**: `tests/test_important_moves_popup.py` (19件) / `test_important_move_navigation.py` (20件) / `test_phase258_critical_popup_reason.py` (5件推定) 削除 + `test_color_filter_navigation.py` 新規 (11件、color_filter 全パス)
+  - **250-H**: AGENTS.md / 01-roadmap.md 更新 + `docs/archive/specs-implemented/phase250-important-moves-refactor.md` 新規作成
+  - **保持**: `MistakeCategory` enum / `select_critical_moves` / Karte JSON `critical_3` / `critical_3_max_moves` 設定（LLM Coach 用）/ 既存 `prev_important` / `next_important` DISPATCH キー（後方互換）
 - 2026-07-17: **Phase 246 — 候補手フィルター 包括改善**（Lv3、18 ファイル / +1,625 行 / -38 行、PR #404 マージ済み、CI 全 green）
   - **問題**: 候補手フィルター (PV filter) について監査で見つかった **20 件の課題**を一括改修
   - **246-A**: 設定 UI 可視化 — `get_effective_pv_filter_info` / `PVFilterDisplayInfo` 追加、AUTO モード時の live ステータス表示、5 ラジオ size_hint_x 等幅化、`.lower().strip()` 拡張、jp/en i18n 3 キー追加 (status_off/auto/explicit)、13 unit tests

@@ -45,6 +45,12 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         "redo",
         "prev_important",
         "next_important",
+        # Phase 250: 4-button color-split important-move navigation
+        # (黒の前の重要局面 / 黒の次の重要局面 / 白の前の重要局面 / 白の次の重要局面)
+        "prev_important_black",
+        "next_important_black",
+        "prev_important_white",
+        "next_important_white",
         # ---- export_commands ----
         "save_game",
         "export_karte",
@@ -76,8 +82,8 @@ _DISPATCH_KEYS: frozenset[str] = frozenset(
         # Phase 230-D: diagnostics_popup moved into mykatrain settings tab
         # ---- Phase 225: LLM Coach popup ----
         "llm_coach_popup",
-        # ---- Phase 248-γ-D1: Important moves list popup ----
-        "important_moves_popup",
+        # Phase 250: 重要局面リスト popup は廃止 (4 ボタン化で代替)。
+        # kifunarabe summary からも削除 (Phase 250-F)。
         # ---- kifunarabe (棋譜並べ) ----
         "kifunarabe_popup",
         "kifunarabe_abort",

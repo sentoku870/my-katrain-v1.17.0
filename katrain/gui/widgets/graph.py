@@ -10,7 +10,9 @@ from kivy.properties import BooleanProperty, Clock, ListProperty, NumericPropert
 from kivy.uix.widget import Widget
 from kivymd.app import MDApp
 
-from katrain.core.analysis import MistakeCategory, classify_mistake
+# Phase 250: 大悪手 (BLUNDER) ラインは廃止。MistakeCategory / classify_mistake
+# 自体は他所 (critical_moves.py / Karte weaknesses 分類) で使われているので
+# enum / 関数は残し、graph での参照のみ削除。
 from katrain.gui.theme import Theme
 
 if TYPE_CHECKING:
@@ -91,8 +93,6 @@ class ScoreGraph(Graph):
     navigate_move = ListProperty([None, 0, 0, 0])
     important_points = ListProperty([])
 
-    mistake_points = ListProperty([])
-
     def on_touch_down(self, touch: Any) -> None:
         if self.collide_point(*touch.pos) and "scroll" not in getattr(touch, "button", ""):
             ix, _ = min(enumerate(self.score_points[::2]), key=lambda ix_v: abs(ix_v[1] - touch.x))
@@ -123,8 +123,8 @@ class ScoreGraph(Graph):
     def update_graph(self, *args: Any) -> None:
         nodes = self.nodes
         # 重要手ラインは毎回作り直す
+        # Phase 250: 大悪手ライン (mistake_points) は廃止。
         self.important_points = []
-        self.mistake_points = []
 
         if not nodes:
             return
@@ -196,32 +196,9 @@ class ScoreGraph(Graph):
             self.winrate_dot_pos = winrate_dot_point
 
         # ------------------------------------------------------------------
-        # 大悪手（BLUNDER）の縦線を計算（軽めの可視化）
+        # 大悪手 (BLUNDER) の縦線計算は Phase 250 で削除。
+        # 同定したい「重要局面」の縦線のみ残す。
         # ------------------------------------------------------------------
-        blunder_points: list[float] = []
-        for idx, node in enumerate(nodes):
-            if not node:
-                continue
-
-            points_lost = getattr(node, "points_lost", None)
-            if points_lost is None:
-                continue
-
-            # KaTrain の points_lost は「その手でどれだけ損したか（目）」
-            score_loss = max(float(points_lost), 0.0)
-            if score_loss <= 0.0:
-                continue
-
-            mc = classify_mistake(score_loss=score_loss, winrate_loss=None)
-            if mc is not MistakeCategory.BLUNDER:
-                continue  # 「大悪手」のみを強調
-
-            if 0 <= idx < len(score_line_points):
-                x = score_line_points[idx][0]
-                # グラフ全体の高さにわたる縦線
-                blunder_points.extend([x, self.y, x, self.y + self.height])
-
-        self.mistake_points = blunder_points
 
         # ------------------------------------------------------------------
         # 重要な手の縦線を計算
@@ -288,15 +265,8 @@ Builder.load_string(
             points: root.navigate_move[1], root.y, root.navigate_move[1], root.y+root.height
             width: 1
 
-        # 大悪手（BLUNDER）の縦線
-        Color:
-            # 赤より少しオレンジ寄りにして、重要局面ラインと区別しやすくする
-            rgba: [1,0.6,0.2,0.9] if root.show_important_line and root.mistake_points else [0,0,0,0]
-        Line:
-            points: root.mistake_points if root.show_important_line else []
-            width: 1.2
-
-        # 重要な手の縦線（トグルで ON/OFF）
+        # Phase 250: 大悪手 (BLUNDER) の縦線ブロックは削除。
+        # 重要局面ラインの縦線のみ残す。
         Color:
             rgba: Theme.GRAPH_DOT_COLOR if root.show_important_line and root.important_points else [0,0,0,0]
         Line:
