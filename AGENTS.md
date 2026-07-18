@@ -102,6 +102,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
     - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
     - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
+  - Phase 272-E（2026-07-18）: **LLM Coach popup 巨大メソッド分割 (Phase 272-D deferred)**（Lv2、1 ファイル変更、1271 件テスト合格）
+    - **問題**: Phase 272-D で残課題としていた `LLMCoachPopupContent` の 2 巨大メソッド（`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行）。挙動変更リスク回避のため見送りとしていたが、本 Phase で**純粋メソッド抽出のみ**で実施
+    - **解決策**: 各メソッドを orchestrator 化（48行 / 47行）+ 9 ヘルパーに分割
+      - karrte 側: `_schedule_retry_if_under_limit` (9行) / `_read_player_settings` (22行) / `_dispatch_to_path_handler` (50行) / `_populate_karte_player_info` (33行) / `_apply_karte_rank_fallback` (26行) / `_detect_and_apply_player_color` (26行) / `_update_karte_status_summary` (39行)
+      - summary 側: `_detect_summary_player_info` (20行) / `_build_summary_player_pairs` (14行) / `_update_summary_spinner` (23行) / `_resolve_summary_spinner_index` (22行) / `_update_perspective_value_from_summary_index` (16行) / `_apply_summary_rank_fallback` (29行) / `_update_summary_status` (22行) / `_read_summary_games_count` (10行)
+    - **API/挙動**: orchestrator メソッドのシグネチャ・戻り値・副作用すべて不変。呼び出し元（`on_kv_post` / `on_path_changed` / `on_browse_karte` / `on_summary_perspective_changed`）は orchestrator を呼ぶだけ
+    - **保持された概念**: 既存の Kivy-free helpers (`resolve_rank_fallback_chain` / `resolve_summary_rank` / `resolve_summary_spinner_values` / `_summary_index_to_internal`) は温存、pop_logic 層に既に切り出されていたロジックは再抽出せず
+    - **テスト結果**: 1271 件全 pass (前回 Phase 272 と同一ベースライン)、ruff check + format 両方クリーン
   - Phase 272（2026-07-18）: **プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
     - **問題**: Phase 1-271 で機能追加を優先してきた結果、(1) 残存する i18n 漏れ、(2) `KaTrainGui.__init__` の肥大化、(3) `LLMCoachPopupContent` のメソッド乱立が蓄積
     - **272-A (Lv1)**: デバッグ `print()` 残置調査 → 結果は**全件正当な用途**（debug gate / fallback / CLI / docstring）だったため、**スキップ**。AST ベースの誤検知チェックも追加（`scripts/update_i18n_phase272b.py` とは別）
@@ -402,6 +410,13 @@ docs/
 - 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
   - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
   - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
+- 2026-07-18: **Phase 272-E — LLM Coach popup 巨大メソッド分割 (Phase 272-D deferred)**（Lv2、1 ファイル変更、1271 件テスト合格）
+  - **問題**: Phase 272-D で残課題としていた `LLMCoachPopupContent` の 2 巨大メソッド（`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行）。挙動変更リスク回避のため見送りとしていた
+  - **解決策**: 各メソッドを orchestrator 化（48行 / 47行）+ 9 ヘルパーに分割。**純粋メソッド抽出のみ**で API/挙動すべて不変
+    - karrte 側: `_schedule_retry_if_under_limit` (9行) / `_read_player_settings` (22行) / `_dispatch_to_path_handler` (50行) / `_populate_karte_player_info` (33行) / `_apply_karte_rank_fallback` (26行) / `_detect_and_apply_player_color` (26行) / `_update_karte_status_summary` (39行)
+    - summary 側: `_detect_summary_player_info` (20行) / `_build_summary_player_pairs` (14行) / `_update_summary_spinner` (23行) / `_resolve_summary_spinner_index` (22行) / `_update_perspective_value_from_summary_index` (16行) / `_apply_summary_rank_fallback` (29行) / `_update_summary_status` (22行) / `_read_summary_games_count` (10行)
+  - **保持**: orchestrator メソッドのシグネチャ・戻り値・副作用すべて不変、既存 Kivy-free helpers (`resolve_rank_fallback_chain` 等) 温存
+  - **テスト結果**: 1271 件全 pass (前回 Phase 272 と同一ベースライン)、ruff check + format 両方クリーン
 - 2026-07-18: **Phase 272 — プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
   - **272-A**: `print()` 残置 45 件の AST 調査 → 全件正当な用途（debug gate / fallback / CLI / docstring のサンプル）のため、**変更なし**（誤検知の典型例として記録）
   - **272-B**: i18n 漏れ 7 件の解消 — 4 件新規追加（"Copied!" / "Copy Info" / "Summary exported" / "Mistake played (sound disabled)"）、3 件既存確認（"Failed to save karte" / "Bug report saved to" / "Failed to generate bug report"）。polib 経由の追加 + .mo 再コンパイルを `scripts/update_i18n_phase272b.py` で自動化
