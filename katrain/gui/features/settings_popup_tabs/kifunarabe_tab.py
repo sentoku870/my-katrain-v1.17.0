@@ -257,7 +257,7 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
         default=KIFUNARABE_AUTO_TOGGLE_MARKERS_DEFAULT,
         i18n_label_key="mykatrain:settings:kifunarabe_auto_toggle_markers",
         searchable_label="mykatrain:settings:kifunarabe_auto_toggle_markers",
- )
+    )
     auto_export_cb = _build_display_checkbox(
         inner,
         state,

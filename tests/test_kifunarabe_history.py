@@ -131,7 +131,13 @@ class TestKifunarabeHistoryEntry(unittest.TestCase):
             timestamp="2026-07-18T09:30:14",
             sgf_path="Z:/games/a.sgf",
             config={"turn": "B", "max_hints": 2, "max_moves": 0},
-            summary={"total_positions": 5, "correct_count": 3, "wrong_count": 2, "auto_advance_count": 0, "skipped_count": 0},
+            summary={
+                "total_positions": 5,
+                "correct_count": 3,
+                "wrong_count": 2,
+                "auto_advance_count": 0,
+                "skipped_count": 0,
+            },
             critical_3_set=[3, 7],
         )
         d = entry.to_dict()

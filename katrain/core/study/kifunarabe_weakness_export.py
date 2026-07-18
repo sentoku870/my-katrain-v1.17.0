@@ -83,11 +83,7 @@ def collect_weaknesses(session: KifunarabeSession, sgf_path: str | None) -> list
             continue
         if not r.expected_gtp or not r.guessed_gtp:
             continue
-        severity = (
-            SEVERITY_CRITICAL_3_WRONG
-            if r.move_number in critical_3_set
-            else SEVERITY_WRONG_GUESS
-        )
+        severity = SEVERITY_CRITICAL_3_WRONG if r.move_number in critical_3_set else SEVERITY_WRONG_GUESS
         out.append(
             KifunarabeWeakness(
                 timestamp=timestamp,
