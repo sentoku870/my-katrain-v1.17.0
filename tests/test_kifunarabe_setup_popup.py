@@ -63,7 +63,11 @@ class _FakeGui:
     def __init__(self, node: Any, engines: dict[str, Any] | None = None) -> None:
         self.game = MagicMock()
         self.game.current_node = node
-        self.game.engines = engines or {"B": _FakeEngine(), "W": _FakeEngine()}
+        # ``engines or {...}`` would treat the explicit empty dict
+        # passed by ``test_no_engine_does_nothing`` as falsy and
+        # silently inject the default engines. We need to distinguish
+        # "no engines supplied" from "engines explicitly empty".
+        self.game.engines = engines if engines is not None else {"B": _FakeEngine(), "W": _FakeEngine()}
         self.log_calls: list[tuple[str, int]] = []
 
     def log(self, msg: str, level: int) -> None:
