@@ -58,13 +58,14 @@ class CoachMode(Enum):
 class ToneVoice(Enum):
     """Coaching voice / tone (master doc §1-1).
 
-    Three voices mapped to skill modes:
-    - AYAKA: beginner + intermediate (Kansai dialect, friendly)
-    - TOMOKO: dan + advanced (standard Japanese, logical)
+    Two voices mapped to skill modes:
+    - TOMOKO: beginner through advanced (standard Japanese, logical)
     - TOMOKO_STRICT: expert (standard Japanese, research-peer, no sugar-coating)
+
+    Phase 269: AYAKA removed entirely. All ranks now use TOMOKO except
+    EXPERT which uses TOMOKO_STRICT.
     """
 
-    AYAKA = "ayaka"
     TOMOKO = "tomoko"
     TOMOKO_STRICT = "tomoko_strict"
 
@@ -112,15 +113,16 @@ class ToneConfig:
 
     Attributes:
         voice: ToneVoice key.
-        label_jp: Japanese label (e.g. "あやか").
-        dialect: "kansai" | "standard" | "standard_strict" (§1-1).
+        label_jp: Japanese label (e.g. "智子").
+        dialect: "standard" | "standard_strict" (§1-1).
         characteristics_jp: Bullet-style characteristics (§1-1).
         praise_sample_jp: Sample phrase for "褒める時" (§1-2). Optional.
         critique_sample_jp: Sample phrase for "指摘する時" (§1-2). Optional.
         encourage_sample_jp: Sample phrase for "励ます時" (§1-2). Optional.
         excuse_handling_jp: Sample phrase for handling "言い訳" (§1-2). Optional.
         prohibited: List of prohibited behaviors (§1-4).
-        kansai_dictionary: Standard-Japanese → Kansai mapping for AYAKA (§1-3).
+
+    Phase 269: ``kansai_dictionary`` removed (AYAKA voice gone).
     """
 
     voice: ToneVoice
@@ -132,7 +134,6 @@ class ToneConfig:
     encourage_sample_jp: str | None = None
     excuse_handling_jp: str | None = None
     prohibited: tuple[str, ...] = field(default_factory=tuple)
-    kansai_dictionary: dict[str, str] = field(default_factory=dict)
 
 
 # --- §0-3 / §0-1: Mode → Rank mapping ---
@@ -143,14 +144,14 @@ _MODE_TABLE: tuple[ModeConfig, ...] = (
         mode=CoachMode.BEGINNER,
         label_jp="初級",
         rank_range=RankRange(min_rank="30k", max_rank="11k"),
-        voice=ToneVoice.AYAKA,
+        voice=ToneVoice.TOMOKO,  # Phase 269: unified with TOMOKO (was AYAKA)
         description_jp="入門〜10級。ルール覚えたて〜9路・13路中心、基本戦術の習得段階。",
     ),
     ModeConfig(
         mode=CoachMode.INTERMEDIATE,
         label_jp="中級",
         rank_range=RankRange(min_rank="10k", max_rank="5k"),
-        voice=ToneVoice.AYAKA,
+        voice=ToneVoice.TOMOKO,  # Phase 269: unified with TOMOKO (was AYAKA)
         description_jp="9級〜4級。19路を打ち始め、基本死活・方向感覚を磨く段階。",
     ),
     ModeConfig(
@@ -177,33 +178,6 @@ _MODE_TABLE: tuple[ModeConfig, ...] = (
 )
 
 
-# --- §1-3: Kansai dictionary (AYAKA only) ---
-
-
-_KANSAI_DICTIONARY: dict[str, str] = {
-    "〜です/ます": "〜やで/〜やねん",
-    "ます": "やねん",  # Phase 242-A: base form for 〜ます.
-    "〜ですか？": "〜なん？/〜か？",
-    "私": "ウチ",
-    "ダメ": "あかん",
-    "だめ": "あかん",  # Phase 242-A: lowercase variant for matching.
-    "良い/いい": "ええ",
-    "良い": "ええ",  # Phase 242-A: explicit split for clarity.
-    "いい": "ええ",  # Phase 242-A: explicit split for clarity.
-    "本当に": "ほんまに",
-    "本当": "ほんま",  # Phase 242-A: base form for matching.
-    "〜ではない": "〜ちゃう/〜やない",
-    "〜している": "〜しとる",
-    "している": "しとる",  # Phase 242-A: base form.
-    "〜ください": "〜してな/〜しとき",
-    "ください": "しとき",  # Phase 242-A: base form.
-    "してください": "してな",  # Phase 242-A: full form.
-    "すごい": "めっちゃ/ごっつ",
-    "だから": "せやから",
-    "そうだね": "せやな",
-}
-
-
 # --- §1: Tone voice configurations ---
 
 
@@ -215,35 +189,13 @@ _COMMON_PROHIBITED: tuple[str, ...] = (
 )
 
 
+# Phase 269: AYAKA voice removed. All Kansai-specific data
+# structures (ToneConfig with dialect="kansai" / kansai_dictionary,
+# and the _KANSAI_DICTIONARY table) are gone. Only TOMOKO and
+# TOMOKO_STRICT remain, both standard-Japanese variants.
+
+
 _TONE_TABLE: tuple[ToneConfig, ...] = (
-    ToneConfig(
-        voice=ToneVoice.AYAKA,
-        label_jp="あやか",
-        dialect="kansai",
-        characteristics_jp=(
-            "【親しみ・関西弁・実利重視】\n"
-            "・コテコテの大阪弁。敬語は使わずフランクに。\n"
-            "・難しい専門用語は使わず、生活の例え話に変換する。\n"
-            "・理論よりも「まずやってみる」モチベーションを重視。\n"
-            "・ユーザーの言い訳には「せやな〜」と一度寄り添う。"
-        ),
-        praise_sample_jp=(
-            "おっ、ここの打ち方ええやん！ちゃんと相手の切りを先に防いどるわ。"
-            'こういう"転ばぬ先の杖"ができるようになったら、もう初心者卒業やで！'
-        ),
-        critique_sample_jp=(
-            "あかんあかん！ここ、自分の石がアタリになっとるの見えてへんかったやろ？"
-            '焦らんでええから、打つ前に"取られへん？"って1回だけ確認しとき。'
-            "それだけで全然ちゃうで"
-        ),
-        encourage_sample_jp=(
-            "まあ今日は負けたけど、気にせんでええねん。"
-            "ウチが見たとこ、前より終盤粘れるようになっとるし、ちゃんと成長しとるわ。次いこ次！"
-        ),
-        excuse_handling_jp="せやな〜、そう思う気持ちはわかるで。でもな、ここだけちょっと見方変えてみ？",
-        prohibited=_COMMON_PROHIBITED,
-        kansai_dictionary=_KANSAI_DICTIONARY,
-    ),
     ToneConfig(
         voice=ToneVoice.TOMOKO,
         label_jp="智子",

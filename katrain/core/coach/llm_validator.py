@@ -10,7 +10,9 @@ What it checks (Phase 203 §7.2 priority):
 2. Move numbers must be in valid range (1..total_moves).
 3. pointsLost values mentioned should match Karte values (within rounding).
 4. Lexicon entry references must exist in the embedded injection block.
-5. Tone consistency (AYAKA → Kansai markers, TOMOKO → no Kansai).
+
+Phase 269: tone-consistency check removed. AYAKA voice is gone and
+TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle appearance.
 
 Phase 226-A additions:
 - A1: Lexicon validation is now functional. The previous implementation
@@ -50,7 +52,6 @@ from typing import Any
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.coach.lexicon import build_id_to_ja_term_map
-from katrain.core.coach.master_db import ToneVoice
 from katrain.core.coach.prompt_builder import LlmPrompt, PromptConfig
 
 
@@ -684,31 +685,11 @@ def validate_llm_output(
             )
         )
 
-    # ---- Tone consistency ----
-    cfg = config
-    if cfg is not None:
-        from katrain.core.coach.tones import has_kansai_markers
-
-        if cfg.voice == ToneVoice.AYAKA and not has_kansai_markers(llm_text):  # noqa: SIM102
-            # Not strictly wrong, but worth flagging if zero Kansai markers in long text.
-            if len(llm_text) > 200:
-                issues.append(
-                    ValidationIssue(
-                        severity=ValidationSeverity.LOW,
-                        kind="tone_inconsistency_ayaka",
-                        message=("AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"),
-                        context={"voice": cfg.voice.value},
-                    )
-                )
-        elif cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT) and has_kansai_markers(llm_text):
-            issues.append(
-                ValidationIssue(
-                    severity=ValidationSeverity.LOW,
-                    kind="tone_inconsistency_tomoko",
-                    message=(f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"),
-                    context={"voice": cfg.voice.value},
-                )
-            )
+    # Phase 269: tone consistency check removed. AYAKA voice is gone,
+    # and TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle
+    # appearance (per the "全棋力同じキャラで統一" user policy —
+    # dialect preference is a matter of taste and we don't surface
+    # it as a validation issue).
 
     return ValidationReport(
         llm_text=llm_text,

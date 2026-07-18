@@ -277,7 +277,7 @@ class TestRenderValidationReport:
             body_markdown="",
             full_markdown="",
             config=PromptConfig(
-                voice=ToneVoice.AYAKA,
+                voice=ToneVoice.TOMOKO,  # Phase 269: BEGINNER voice is TOMOKO
                 mode=CoachMode.BEGINNER,
                 detected_symptom_ids=(),
                 llm_required_symptom_ids=(),

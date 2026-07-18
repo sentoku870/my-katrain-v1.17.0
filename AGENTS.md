@@ -93,6 +93,16 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - 250-D: 大悪手ライン（mistake_points）削除（graph.py）
     - 250-E: 重要局面リスト popup 廃止（menu/commands/popup/KV/i18n、3 ファイル削除）
     - 250-F: 棋譜並べ summary から重要局面 popup 呼び出し削除（no-op 化）
+  - Phase 269（2026-07-18）: **AYAKA 完全削除 + 弱点抽出整合性修正（C 案）+ voice 統一**（Lv3、4 コミット / 1PR、11 ファイル変更）
+    - **C 案-1**: `phase="all"` の表示修正 — `summary_prompt_builder._format_patterns_block` で Shape B 弱点パターンの `phase="all"` メタタグを `phase=`(全phase)``` にレンダリング。LLM が `all` を contract line に echo するのを防止（`phase_label_out_of_set` MEDIUM 警告の恒久解消）
+    - **C 案-2**: SYSTEM_INSTRUCTION の `frequency_ratio` 指示を `pct` 併記に更新 — Shape B 経路では `frequency_ratio` が常に 0 で機能しないので、`pct` フィールドを主軸とする旨を明示
+    - **voice 統一**: `master_db._MODE_TABLE` の BEGINNER/INTERMEDIATE の `voice` を `ToneVoice.AYAKA` → `ToneVoice.TOMOKO` に変更。5k/10k 等の級は AYAKA 関西弁キャラ → TOMOKO 標準語キャラに統一
+    - **AYAKA 完全削除**: `ToneVoice.AYAKA` enum 値、`_TONE_TABLE` の AYAKA エントリ、`_KANSAI_DICTIONARY`、`_KANSAI_NORMALISATION_PAIRS`、`_AYAKA_MARKERS` を全削除。`has_kansai_markers` / `is_kansai_marker` / `apply_kansai_normalisation` 関数を削除。`ToneConfig.kansai_dictionary` フィールド削除。`voice_summary` の AYAKA エントリ削除。`_CONFIRMATION_TEMPLATES` の BEGINNER/INTERMEDIATE 用関西弁調文章を TOMOKO 調 (標準語) に書き換え
+    - **tone 整合性チェック削除**: `llm_validator.py` / `summary_validator.py` の `tone_inconsistency_ayaka` / `tone_inconsistency_tomoko` 警告を削除（AYAKA 削除により「関西弁必須」チェックは無意味、「TOMOKO なのに Kansai」チェックはユーザー「好き嫌い分かれるので統一」要望により削除）
+    - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
+    - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
+    - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
+    - **動機**: ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」
     - 250-G: 関連テスト削除（3 ファイル） + color_filter 用テスト 11 件新規
     - 250-H: AGENTS.md / 01-roadmap.md / specs 更新
 
@@ -369,6 +379,11 @@ docs/
 - 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
   - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
   - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
+- 2026-07-18: **Phase 269 — AYAKA 完全削除 + 弱点抽出整合性修正 + voice 統一**（Lv3、11 ファイル変更 / 28 新規 unit tests、coach 関連 460+ 件テスト合格）
+  - **C 案**: Shape B 弱点パターン `phase="all"` を `phase=`(全phase)``` に表示変更 + SYSTEM_INSTRUCTION に `pct` 併記指示。LLM Coach 検証で出ていた `phase_label_out_of_set` MEDIUM 警告を恒久解消
+  - **voice 統一**: BEGINNER/INTERMEDIATE/DAN/ADVANCED → TOMOKO 統一、EXPERT → TOMOKO_STRICT。「5k だと関西弁キャラ」問題解消
+  - **AYAKA 完全削除**: enum 値 / Kansai データ / 関西弁変換関数 / `ToneConfig.kansai_dictionary` / tone 整合性チェック (Karte validator + summary validator) を全削除
+  - **動機**: ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」
   - **250-A**: `panels.kv` の CollapsablePanel を `options: ['score','winrate','important']` に拡張（旧 ToggleButton `important_line_toggle` 削除）
   - **250-B**: `GameNavigator._compute_important_moves(max_moves, color_filter)` 追加 + `get_important_move_numbers` / `get_next/prev_important_node` / `jump_to_next/prev_important_move` の 6 メソッドを `color_filter` 対応に拡張 + facade 6 委譲メソッド追加
   - **250-C**: `panels.kv` のボタン行を 4 ボタン（黒前/黒次/白前/白次、0.25 ずつ）に分割 + 4 DISPATCH キー (`prev/next_important_black/white`) + 4 内部メソッド追加
