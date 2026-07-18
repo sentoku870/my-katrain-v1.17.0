@@ -11,6 +11,8 @@ Holds:
 
 Phase 177: Initial implementation.
 Phase 177-E: Added digit/colour/border toggles.
+Phase 249-β: Added a "history directory" row so the user can override
+  the default ``~/.katrain/kifunarabe_history`` location.
 """
 
 from __future__ import annotations
@@ -65,6 +67,33 @@ def _build_sgf_load_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
     if state.register_searchable is not None:
         state.register_searchable("mykatrain:settings:kifunarabe_sgf_load", row)
     assert browse_button is not None  # with_browse=True guarantees this
+    return input_widget, browse_button
+
+
+def _build_history_dir_row(inner: Any, state: Any) -> tuple[TextInput, Button]:
+    """Phase 249-β: add the kifunarabe history-directory row.
+
+    The default is ``~/.katrain/kifunarabe_history`` (created on
+    demand). Leaving the field empty falls back to the default.
+
+    Returns:
+        (input, browse_button) so the orchestrator can wire up the
+        folder-browser dialog.
+    """
+    current = ""
+    if state.ctx is not None:
+        kif_section = state.ctx.config("kifunarabe") or {}
+        current = kif_section.get("history_dir", "") if isinstance(kif_section, dict) else ""
+
+    row, input_widget, browse_button = create_text_input_row(
+        label_text=i18n._("mykatrain:settings:kifunarabe_history_dir"),
+        initial_value=current or "",
+        with_browse=True,
+    )
+    inner.add_widget(row)
+    if state.register_searchable is not None:
+        state.register_searchable("mykatrain:settings:kifunarabe_history_dir", row)
+    assert browse_button is not None
     return input_widget, browse_button
 
 
@@ -166,6 +195,7 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     inner.bind(minimum_height=inner.setter("height"))
 
     sgf_load_input, sgf_load_browse = _build_sgf_load_row(inner, state)
+    history_dir_input, history_dir_browse = _build_history_dir_row(inner, state)
 
     show_digits_cb = _build_display_checkbox(
         inner,
@@ -205,6 +235,8 @@ def _build_kifunarabe_tab(state: Any) -> tuple[BoxLayout, dict[str, Any]]:
     widget_refs = {
         "sgf_load_input": sgf_load_input,
         "sgf_load_browse": sgf_load_browse,
+        "history_dir_input": history_dir_input,
+        "history_dir_browse": history_dir_browse,
         "show_digits_cb": show_digits_cb,
         "show_actual_border_cb": show_actual_border_cb,
         "uniform_color_cb": uniform_color_cb,

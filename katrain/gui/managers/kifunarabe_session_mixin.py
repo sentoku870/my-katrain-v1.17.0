@@ -9,14 +9,15 @@ Cross-mixin attributes
 
 - ``_session`` (``KifunarabeSession | None``): the active session, or
   ``None`` when kifunarabe mode is off.
-- ``_source_sgf_path`` (``str | None``): path of the SGF that started the
-  most recent session (set/cleared by start_session / _end_session,
-  used by sgf_manager exit paths).
-
-This mixin assumes the facade satisfies ``_ControllerDeps`` and
-``_SessionState`` (see :mod:`katrain.gui.managers.kifunarabe_state`).
+- ``_last_critical_3_highlight`` (``int``): guard so the Critical 3
+  badge fires at most once per position.
+- ``_history_store`` (Phase 249-β, facade-injected): JSON-backed
+  persistent history store.
+- ``_weakness_exporter`` (Phase 249-γ, facade-injected): opt-in
+  WRONG_GUESS exporter for Karte 連携.
 """
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.study.kifunarabe import (
@@ -135,6 +136,11 @@ class KifunarabeSessionMixin:
         return`` guard, and leave the user staring at the popup. Now
         the popup is dismissed first so a single button press is enough
         to fully exit.
+
+        Phase 249-β / 249-γ: also write to the persistent history
+        store and (opt-in) the weakness exporter, mirroring the
+        natural end path so an aborted session still feeds the
+        history and the Karte 連携 pipeline.
         """
         # Phase 181-B: dismiss any visible summary popup first. This
         # is a no-op when no popup is open, and runs even when mode is
@@ -145,7 +151,11 @@ class KifunarabeSessionMixin:
         summary_data: Any = None
         if self._session and self._session.results:
             summary_data = self._session.get_summary()
-            with __import__("contextlib").suppress(Exception):
+            # Phase 249-β / 249-γ: persist before showing the popup
+            # so a user who immediately clicks "Abort" still gets the
+            # data on disk.
+            self._persist_history(summary_data)
+            with contextlib.suppress(Exception):
                 self._get_show_summary()(self._get_ctx(), summary_data)
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
@@ -195,6 +205,9 @@ class KifunarabeSessionMixin:
         summary_data: Any = None
         if show_summary and self._session and self._session.results:
             summary_data = self._session.get_summary()
+            # Phase 249-β: persist the finished session to the
+            # history store (no-op when ``_history_store`` is None).
+            self._persist_history(summary_data)
             try:
                 self._get_show_summary()(self._get_ctx(), summary_data)
             except Exception:
@@ -206,6 +219,72 @@ class KifunarabeSessionMixin:
         self._set_mode(False)
         # Phase 249-α: ``_source_sgf_path = None`` removed (no caller
         # ever set the attribute, so there is nothing to clear).
+
+    # -- Phase 249-β: persistent history / Phase 249-γ: weakness export ----
+
+    def _persist_history(self: Any, summary_data: Any) -> None:
+        """Phase 249-β: append the finished session to the history store,
+        then (Phase 249-γ) optionally export the WRONG_GUESS results.
+
+        Both writes are best-effort: any failure is logged at level 0
+        and swallowed so a broken history file on disk can never block
+        a session end. The store / exporter are resolved through the
+        facade (injected in __init__).
+        """
+        if self._session is None:
+            return
+        # We need the source SGF path. ``game.current_node`` knows
+        # the SGF via ``game.root.properties.get("SGFLocation", ...)``
+        # but that is engine-specific; the controller already keeps
+        # a snapshot through the game-tree.
+        game = self._get_game()
+        sgf_path: str | None = None
+        if game is not None:
+            try:
+                root = game.root
+                sgf_path = getattr(root, "sgf_path", None) or None
+            except Exception:  # noqa: BLE001
+                sgf_path = None
+
+        # Phase 249-β: history store.
+        store = getattr(self, "_history_store", None)
+        if store is not None:
+            try:
+                store.append(
+                    summary=summary_data,
+                    config=self._session.config,
+                    sgf_path=sgf_path,
+                    critical_3_set=list(self._session.critical_3_set),
+                )
+            except Exception as e:  # noqa: BLE001
+                with contextlib.suppress(Exception):
+                    self._logger(f"kifunarabe: history append failed: {e}", level=0)
+
+        # Phase 249-γ: opt-in weakness export.
+        self._export_weaknesses(sgf_path)
+
+    def _export_weaknesses(self: Any, sgf_path: str | None) -> None:
+        """Phase 249-γ: opt-in export of WRONG_GUESS results.
+
+        Best-effort: any failure is logged and swallowed so a broken
+        export can never block the session end. The exporter is
+        resolved through the facade (injected in __init__).
+        """
+        exporter = getattr(self, "_weakness_exporter", None)
+        if exporter is None:
+            return
+        if self._session is None:
+            return
+        if not getattr(self._session.config, "auto_export_weaknesses", False):
+            return
+        try:
+            path = exporter.export(self._session, sgf_path)
+            if path is not None:
+                with contextlib.suppress(Exception):
+                    self._logger(f"kifunarabe: weaknesses exported to {path}", 0)
+        except Exception as e:  # noqa: BLE001
+            with contextlib.suppress(Exception):
+                self._logger(f"kifunarabe: weakness export failed: {e}", level=0)
 
 
 __all__ = ["KifunarabeSessionMixin"]
