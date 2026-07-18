@@ -170,31 +170,46 @@ def _resolve_curator_profile_path(ctx: FeatureContext) -> str | None:
     Looks for the Curator profile in the same directory as the Karte
     output (``mykatrain_settings.karte_output_directory``).
 
-    Resolution order:
-    1. Canonical filename ``curator_ranking.json`` (preferred — gives
-       a stable path the user can symlink to a custom location).
-    2. Most-recently-modified ``curator_ranking_*.json`` (Phase 64+
-       ``generate_curator_outputs`` writes a timestamped filename so
-       multiple batches don't overwrite each other; we accept the
-       latest mtime so the user can keep a history of profiles).
+    Resolution order (Phase 267):
+    1. ``mykatrain_settings.karte_output_directory`` (canonical).
+    2. ``mykatrain_settings.batch_options.output_dir`` (fallback).
+       The user may have run a Batch analysis without ever setting
+       ``karte_output_directory``, leaving Curator outputs in the
+       Batch output directory only. Falling back prevents the
+       "I generated curator_ranking.json but nothing happens" UX.
+    3. Within each directory, look for:
+       a. Canonical filename ``curator_ranking.json`` (preferred).
+       b. Most-recently-modified ``curator_ranking_*.json`` (Phase 64
+          writes a timestamped filename so multiple batches don't
+          overwrite each other; we accept the latest mtime so the
+          user can keep a history of profiles).
 
-    Returns ``None`` when the directory is not set / does not exist /
-    no matching file is found.
+    Returns ``None`` when no directory is configured / no matching
+    file is found in either directory.
     """
     settings = ctx.config("mykatrain_settings") or {}
-    out_dir = settings.get("karte_output_directory") or ""
-    if not out_dir or not os.path.isdir(out_dir):
-        return None
-    # 1. canonical filename
-    canonical = os.path.join(out_dir, "curator_ranking.json")
-    if os.path.isfile(canonical):
-        return canonical
-    # 2. timestamped fallback — pick the most recent mtime
-    pattern = os.path.join(out_dir, "curator_ranking_*.json")
-    candidates = [p for p in glob.glob(pattern) if os.path.isfile(p)]
-    if not candidates:
-        return None
-    return max(candidates, key=os.path.getmtime)
+    candidate_dirs: list[str] = []
+    karte_dir = settings.get("karte_output_directory") or ""
+    if karte_dir:
+        candidate_dirs.append(karte_dir)
+    batch_options = settings.get("batch_options") or {}
+    batch_dir = batch_options.get("output_dir") or ""
+    if batch_dir and batch_dir not in candidate_dirs:
+        candidate_dirs.append(batch_dir)
+
+    for out_dir in candidate_dirs:
+        if not os.path.isdir(out_dir):
+            continue
+        # 1. canonical filename
+        canonical = os.path.join(out_dir, "curator_ranking.json")
+        if os.path.isfile(canonical):
+            return canonical
+        # 2. timestamped fallback — pick the most recent mtime
+        pattern = os.path.join(out_dir, "curator_ranking_*.json")
+        candidates = [p for p in glob.glob(pattern) if os.path.isfile(p)]
+        if candidates:
+            return max(candidates, key=os.path.getmtime)
+    return None
 
 
 def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None:
