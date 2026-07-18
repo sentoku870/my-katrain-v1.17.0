@@ -102,6 +102,13 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
     - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
     - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
+  - Phase 270（2026-07-18）: **複数カルテ集約 + サマリプロンプト v3.5 拡張**（Lv2、4 ファイル変更 / 1 ファイル新規 / +52 unit tests）
+    - **問題**: 単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる
+    - **解決策**: 6 つの集約関数を `katrain/core/coach/karte_aggregator.py` に新設 + `SummaryPromptConfig.kartes` でオプトイン的に組み込み + Schema 3.5 への条件付きバンプ。既存 3.4 経路は完全後方互換
+    - **6 集約関数**: `aggregate_reason_tags_by_color` / `aggregate_area_difficulty` / `detect_loss_spike_windows` / `group_representative_moves_by_tag` / `aggregate_data_quality` / `build_meaning_tag_label_map`
+    - **数学的注記**: 2-bucket loss_progression では 2.0× multiplier が物理的に発火しない（threshold = spike + other で strict > が成立不能）。テストは 3+ bucket 入力で対応
+    - **後方互換**: `SummaryPromptConfig()` 既存呼び出しは `kartes=None` のまま無改変で動作、Schema 3.4 / 既存 body 維持
+    - **Deferred**: GUI 統合 (popup の複数カルテ選択 UI) / CLI `aggregate` サブコマンド / humanize フォーマット
     - **動機**: ユーザー報告「5k とかに設定すると関西弁・親しみ・実利重視とかなるので全棋力同じキャラというか好き嫌いが分かれるので統一させたいです」
     - 250-G: 関連テスト削除（3 ファイル） + color_filter 用テスト 11 件新規
     - 250-H: AGENTS.md / 01-roadmap.md / specs 更新
@@ -393,6 +400,13 @@ docs/
   - **250-G**: `tests/test_important_moves_popup.py` (19件) / `test_important_move_navigation.py` (20件) / `test_phase258_critical_popup_reason.py` (5件推定) 削除 + `test_color_filter_navigation.py` 新規 (11件、color_filter 全パス)
   - **250-H**: AGENTS.md / 01-roadmap.md 更新 + `docs/archive/specs-implemented/phase250-important-moves-refactor.md` 新規作成
   - **保持**: `MistakeCategory` enum / `select_critical_moves` / Karte JSON `critical_3` / `critical_3_max_moves` 設定（LLM Coach 用）/ 既存 `prev_important` / `next_important` DISPATCH キー（後方互換）
+- 2026-07-18: **Phase 270 — 複数カルテ集約 + サマリプロンプト v3.5 拡張**（Lv2、4 ファイル変更 / 1 ファイル新規 / +52 unit tests、合計 5,667 件テスト合格）
+  - **問題**: ユーザー報告「単局カルテには `area` / `position_difficulty` / `meaning_tag_label` / `reason_tags_distribution` / `data_quality` があるが、現行の `build_summary_json` (GameSummaryData 由来) は拡張フィールドを欠落させる。LLM に投げる前にこれらの情報を集約サマリにも乗せたい」
+  - **解決策**: 6 つの集約関数を `katrain/core/coach/karte_aggregator.py` に新設 + `SummaryPromptConfig.kartes` でオプトイン的に組み込み + Schema 3.5 への条件付きバンプ。既存 3.4 経路は完全後方互換
+  - **6 集約関数**: `aggregate_reason_tags_by_color` / `aggregate_area_difficulty` / `detect_loss_spike_windows` / `group_representative_moves_by_tag` / `aggregate_data_quality` / `build_meaning_tag_label_map`
+  - **設計判断**: 2-bucket loss_progression では 2.0× multiplier が物理的に発火しない（数学的現実、テストは 3+ bucket 入力で対応） / `confidence_level` 同点時は常に "medium" を採用（"high"/"low" の信号過大を避ける）
+  - **後方互換**: `SummaryPromptConfig()` 既存呼び出しは `kartes=None` のまま無改変で動作、Schema 3.4 / 既存 body 維持
+  - **Deferred (将来)**: GUI 統合 (popup の複数カルテ選択 UI) / CLI `aggregate` サブコマンド / humanize フォーマット
 - 2026-07-17: **Phase 246 — 候補手フィルター 包括改善**（Lv3、18 ファイル / +1,625 行 / -38 行、PR #404 マージ済み、CI 全 green）
   - **問題**: 候補手フィルター (PV filter) について監査で見つかった **20 件の課題**を一括改修
   - **246-A**: 設定 UI 可視化 — `get_effective_pv_filter_info` / `PVFilterDisplayInfo` 追加、AUTO モード時の live ステータス表示、5 ラジオ size_hint_x 等幅化、`.lower().strip()` 拡張、jp/en i18n 3 キー追加 (status_off/auto/explicit)、13 unit tests
