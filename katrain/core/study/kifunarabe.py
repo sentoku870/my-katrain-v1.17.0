@@ -467,10 +467,7 @@ class KifunarabeSession:
                 f"got {type(move_number).__name__}: {move_number!r}"
             )
         if move_number < 0:
-            raise ValueError(
-                f"KifunarabeSession.{method}: move_number must be >= 0, "
-                f"got {move_number}"
-            )
+            raise ValueError(f"KifunarabeSession.{method}: move_number must be >= 0, got {move_number}")
         return move_number
 
     def _max_moves_exceeded(self) -> bool:
