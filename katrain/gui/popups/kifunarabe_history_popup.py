@@ -12,7 +12,6 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
@@ -63,7 +62,7 @@ def _format_entry_line(entry: Any) -> str:
 
 def show_kifunarabe_history(
     ctx: Any,
-    history_store: "KifunarabeHistoryStore | None",
+    history_store: KifunarabeHistoryStore | None,
 ) -> None:
     """Display the kifunarabe history popup.
 
@@ -72,7 +71,6 @@ def show_kifunarabe_history(
         history_store: The store to read from. ``None`` shows an
             "history not configured" message.
     """
-    from kivy.uix.label import Label
 
     from katrain.core.lang import i18n
     from katrain.gui.theme import Theme
