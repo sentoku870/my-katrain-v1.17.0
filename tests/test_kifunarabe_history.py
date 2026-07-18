@@ -6,11 +6,9 @@ display, even on machines where the popup layer is not importable.
 
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
 from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSummary
 from katrain.core.study.kifunarabe_history import (
