@@ -41,7 +41,8 @@ from katrain.core.coach.llm_validator import (
     ValidationSeverity,
 )
 from katrain.core.coach.summary_prompt_builder import SummaryPrompt
-from katrain.core.coach.tones import ToneVoice, has_kansai_markers
+# Phase 269: ToneVoice / has_kansai_markers import removed (AYAKA voice
+# gone; tone consistency check deleted).
 
 # --- Constants ---
 
@@ -554,30 +555,8 @@ def validate_summary_llm_output(
         )
 
     # ---- 6. Tone consistency ----
-    # Note: lexicon cross-ref is intentionally a no-op in summary mode
-    # because SummaryPromptConfig does not inject lexicon (Phase 227-A).
-    # The structure is preserved for the future extension.
-    cfg = prompt.config
-    if cfg is not None:
-        if cfg.voice == ToneVoice.AYAKA and not has_kansai_markers(llm_text):
-            if len(llm_text) > 200:
-                issues.append(
-                    ValidationIssue(
-                        severity=ValidationSeverity.LOW,
-                        kind="tone_inconsistency_ayaka",
-                        message=("AYAKA 文体が指定されましたが、関西弁マーカーが見当たりません"),
-                        context={"voice": cfg.voice.value},
-                    )
-                )
-        elif cfg.voice in (ToneVoice.TOMOKO, ToneVoice.TOMOKO_STRICT) and has_kansai_markers(llm_text):
-            issues.append(
-                ValidationIssue(
-                    severity=ValidationSeverity.LOW,
-                    kind="tone_inconsistency_tomoko",
-                    message=(f"{cfg.voice.value} 文体に AYAKA 関西弁マーカーが見られます"),
-                    context={"voice": cfg.voice.value},
-                )
-            )
+    # Phase 269: tone-consistency check removed (AYAKA voice gone,
+    # TOMOKO / TOMOKO_STRICT no longer warn on Kansai particles).
 
     return SummaryValidationReport(
         llm_text=llm_text,

@@ -136,11 +136,9 @@ from katrain.core.coach.symptom_index import (
     lookup_symptom,
 )
 from katrain.core.coach.tones import (
-    apply_kansai_normalisation,
     check_prohibited,
     greeting_for_mode,
     greeting_for_voice,
-    has_kansai_markers,
     modes_for_voice,
     select_voice,
     voice_summary,
@@ -185,8 +183,6 @@ __all__ = [
     "select_voice",
     "greeting_for_mode",
     "greeting_for_voice",
-    "has_kansai_markers",
-    "apply_kansai_normalisation",
     "check_prohibited",
     "voice_summary",
     "modes_for_voice",

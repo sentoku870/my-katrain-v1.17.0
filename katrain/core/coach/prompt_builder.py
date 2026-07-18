@@ -243,10 +243,16 @@ def validate_prompt_config(config: PromptConfig) -> list[str]:
 
     Phase 226-J: the LLM Coach popup can produce a ``PromptConfig``
     whose ``voice`` / ``mode`` / ``detected_symptom_ids`` are internally
-    inconsistent (e.g. ``voice=TOMOKO`` against ``mode=BEGINNER``, which
-    is AYAKA-only). Instead of silently feeding the LLM a broken
-    instruction, we surface the inconsistencies as a list of human-readable
-    warnings so the caller can log / display them.
+    inconsistent (e.g. ``voice=TOMOKO_STRICT`` against ``mode=BEGINNER``).
+    Instead of silently feeding the LLM a broken instruction, we surface
+    the inconsistencies as a list of human-readable warnings so the
+    caller can log / display them.
+
+    Phase 269: after AYAKA removal the BEGINNER/INTERMEDIATE modes
+    are now served by TOMOKO, so the previously-buggy
+    ``voice=TOMOKO + mode=BEGINNER`` combo no longer fires. The check
+    is still useful for the remaining TOMOKO_STRICT-only mismatch
+    (e.g. voice=TOMOKO + mode=EXPERT).
 
     Returns:
         List of warning strings (Japanese). Empty list = no issues.

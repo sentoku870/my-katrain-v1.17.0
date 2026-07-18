@@ -133,7 +133,10 @@ Rank: {rank_label}
 4. For each pattern, state:
    - 弱点名 (category)
    - 該当phase (opening/middle/endgame)
-   - 頻度 (X / N局, X%) — use the injected ``frequency_ratio`` field
+   - 頻度 (X / N局, X%) — use the injected ``pct`` field when the
+     pre-computed pattern shows ``phase=`(全phase)``` (Shape B
+     per-move mistake distribution), otherwise use
+     ``frequency_ratio`` for Shape A per-game patterns
    - 改善の方向性 (1-2 sentences)
 5. Maximum 3 patterns. Order by severity (highest total_loss first).
 6. End your response with the line
@@ -240,6 +243,13 @@ def _format_patterns_block(patterns: list[dict[str, Any]]) -> str:
     mistakes). For Shape B patterns the ``frequency_ratio`` field is
     not meaningful (count is per-move, not per-game) so we surface the
     per-move ``pct`` field instead when available.
+
+    Phase 269: Shape B patterns carry ``phase="all"`` (the per-move
+    mistake distribution has no per-phase breakdown). The validator
+    only accepts ``{opening, middle, endgame}`` as valid phase values,
+    so the LLM must not echo ``all`` in the trailing contract line.
+    Render the meta-tag as ``"(全phase)"`` so the LLM treats it as a
+    description rather than a phase value to cite.
     """
     if not patterns:
         return "(weakness データが見つかりませんでした。Summary JSON の ``weaknesses`` ブロックを確認してください。)"
@@ -259,8 +269,15 @@ def _format_patterns_block(patterns: list[dict[str, Any]]) -> str:
         # the generic ``color`` label so the LLM knows which player
         # this pattern came from.
         source_label = f"player=`{p['player']}`" if "player" in p else f"color=`{p['color']}`"
+        # Phase 269: Shape B patterns have ``phase="all"`` as a meta-tag
+        # (the per-move mistake distribution has no per-phase breakdown).
+        # The validator rejects ``all`` as an invalid phase value, so we
+        # render it as ``"(全phase)"`` here to signal it is a description
+        # (not a phase label) and the LLM should pick a real phase from
+        # ``{opening, middle, endgame}`` in the contract line.
+        phase_display = "(全phase)" if p["phase"] == "all" else p["phase"]
         lines.append(
-            f"{i}. **{p['category']}** / phase=`{p['phase']}` / "
+            f"{i}. **{p['category']}** / phase=`{phase_display}` / "
             f"{source_label} / count={p['count']} / "
             f"{freq_str} / 総損失={p['total_loss']:.1f}"
         )
