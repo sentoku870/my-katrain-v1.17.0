@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .guide_extractor import extract_replay_guide
-from .models import UNCERTAIN_TAG, SuitabilityScore, UserAggregate
+from .models import UNCERTAIN_TAG, SuitabilityScore
 from .scoring import _extract_user_weak_tags, score_batch_suitability
 
 if TYPE_CHECKING:
@@ -165,81 +165,6 @@ def _extract_recommended_tags(
     )
 
     return [tag for tag, _ in sorted_tags[:max_tags]]
-
-
-def build_user_aggregate_from_stats(
-    game_stats_list: list[dict[str, Any]] | None,
-) -> UserAggregate | None:
-    """Phase 268+ : build a UserAggregate from a list of game stats dicts.
-
-    The previous batch pipeline had a hidden contract gap: the JSON
-    field ``user_weak_tags`` is supposed to be derived from a
-    ``user_aggregate`` (e.g. radar aggregates or ``meaning_tags_by_player``),
-    but no orchestration step ever *built* that aggregate. As a result
-    every curator_ranking.json that ``generate_curator_outputs`` wrote
-    contained ``"user_weak_tags": []`` regardless of how many games
-    were analysed.
-
-    This helper closes that gap by aggregating ``meaning_tags_by_player``
-    across every supplied game stats dict. The result is the same
-    shape ``_extract_user_weak_tags`` already understands (it duck-types
-    on the ``weak_tags`` / ``meaning_tags`` / ``meaning_tags_by_player``
-    attributes).
-
-    Args:
-        game_stats_list: List of game stats dicts. Each dict is expected
-            to carry ``meaning_tags_by_player`` (mapping
-            ``{player: {tag: count}}``); stats without that key are
-            silently skipped. Pass ``None`` or an empty list to get
-            ``None`` back.
-
-    Returns:
-        :class:`UserAggregate` summarising the input, or ``None`` when
-        no stats carry a usable ``meaning_tags_by_player`` block.
-    """
-    if not game_stats_list:
-        return None
-
-    combined: dict[str, int] = {}
-    per_player: dict[str, dict[str, int]] = {}
-    source_games: list[str] = []
-    contributing_count = 0
-    for stats in game_stats_list:
-        if not isinstance(stats, dict):
-            continue
-        per_player_block = stats.get("meaning_tags_by_player")
-        if not isinstance(per_player_block, dict) or not per_player_block:
-            # Skip stats that either don't carry the block or carry
-            # an empty one — they have nothing to contribute to the
-            # aggregate and would inflate ``total_games`` with
-            # placeholder entries.
-            continue
-        contributing_count += 1
-        for player, player_tags in per_player_block.items():
-            if not isinstance(player_tags, dict):
-                continue
-            bucket = per_player.setdefault(str(player), {})
-            for tag, count in player_tags.items():
-                if not isinstance(count, (int, float)):
-                    continue
-                tag_key = str(tag)
-                if tag_key == UNCERTAIN_TAG:
-                    continue
-                bucket[tag_key] = bucket.get(tag_key, 0) + int(count)
-                combined[tag_key] = combined.get(tag_key, 0) + int(count)
-        game_id = stats.get("game_name") or stats.get("title") or stats.get("game_id")
-        if game_id:
-            source_games.append(str(game_id))
-
-    if not combined:
-        return None
-
-    return UserAggregate(
-        weak_tags=combined,
-        meaning_tags_by_player=per_player,
-        total_games=contributing_count,
-        source_games=tuple(source_games),
-    )
 
 
 # =============================================================================

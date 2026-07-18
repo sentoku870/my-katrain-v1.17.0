@@ -53,7 +53,6 @@ def build_karte_json(
     include_definitions: bool = False,
     dynamic_phase_detection: bool = True,
     max_critical_3_moves: int = 3,
-    user_weak_tags: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-serializable karte structure for LLM consumption.
 
@@ -94,11 +93,6 @@ def build_karte_json(
             static split.
         max_critical_3_moves: Phase 248-B2 — number of critical moves
             per player in the critical_3 section. Defaults to 3.
-        user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: count}``
-            from the Curator profile. Forwarded to
-            :meth:`game.get_important_move_evals` so the weak-tag boost
-            can nudge the user toward their own recurring mistakes.
-            ``None`` / empty disables the boost (Phase 50 baseline).
 
     Returns:
         KarteReport dict (v3.1) with extended sections.
@@ -240,7 +234,7 @@ def build_karte_json(
     }
 
     # Important moves section
-    important_move_evals = game.get_important_move_evals(level=level, user_weak_tags=user_weak_tags)
+    important_move_evals = game.get_important_move_evals(level=level)
 
     if player_filter in ("B", "W"):
         important_move_evals = [m for m in important_move_evals if m.player == player_filter]

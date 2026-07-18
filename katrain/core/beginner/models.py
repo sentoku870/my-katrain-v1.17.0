@@ -28,7 +28,6 @@ class HintCategory(Enum):
                                KATAGO_UNCERTAIN
     Summary hints (Phase 182): OWNERSHIP_DOMINANT,
                                POLICY_CONFLICT, POLICY_CONFIDENT
-    Summary hints (Phase 186): CURATOR_WEAK_AXIS
     """
 
     # Priority detectors (Phase 91)
@@ -63,8 +62,6 @@ class HintCategory(Enum):
     # Summary: Policy (Phase 182) - KataGo policy 確率分布ベース
     POLICY_CONFLICT = "policy_conflict"  # top policy value <= 0.15
     POLICY_CONFIDENT = "policy_confident"  # top policy value >= 0.5
-    # Summary: Curator (Phase 186) - 棋譜全体の Mistake 傾向
-    CURATOR_WEAK_AXIS = "curator_weak_axis"  # node.meaning_tag_id が weak_tags に該当
 
     @classmethod
     def from_meaning_tag_id(cls, tag_id: str | None) -> HintCategory | None:
@@ -139,8 +136,6 @@ class HintCategory(Enum):
             # Summary: Policy (Phase 182)
             cls.POLICY_CONFLICT: ("direction_error", "overplay"),
             cls.POLICY_CONFIDENT: (),
-            # Curator itself (Phase 186) — no further re-label
-            cls.CURATOR_WEAK_AXIS: (),
         }
         return _MAPPING.get(category, ())
 
@@ -202,8 +197,6 @@ class HintCategory(Enum):
             return "summary_ownership"
         if self in (HintCategory.POLICY_CONFLICT, HintCategory.POLICY_CONFIDENT):
             return "summary_policy"
-        if self is HintCategory.CURATOR_WEAK_AXIS:
-            return "curator_hint"
         return str(self.value)  # defensive fallback (Phase 251)
 
     @property
@@ -259,7 +252,6 @@ _FALLBACK_TITLES: dict[HintCategory, str] = {
     HintCategory.OWNERSHIP_DOMINANT: "One-Sided Territory",
     HintCategory.POLICY_CONFLICT: "KataGo Is Unsure",
     HintCategory.POLICY_CONFIDENT: "KataGo Is Confident",
-    HintCategory.CURATOR_WEAK_AXIS: "Your Weak Pattern",
 }
 
 _FALLBACK_BODIES: dict[HintCategory, str] = {
@@ -285,7 +277,6 @@ _FALLBACK_BODIES: dict[HintCategory, str] = {
     HintCategory.OWNERSHIP_DOMINANT: "KataGo expects one side to control most of the board.",
     HintCategory.POLICY_CONFLICT: "KataGo's top move has low confidence — multiple candidates.",
     HintCategory.POLICY_CONFIDENT: "KataGo has a clear top move here.",
-    HintCategory.CURATOR_WEAK_AXIS: "This pattern appears frequently in your games.",
 }
 
 
@@ -322,7 +313,6 @@ _SUMMARY_CATEGORIES = frozenset(
         HintCategory.OWNERSHIP_DOMINANT,
         HintCategory.POLICY_CONFLICT,
         HintCategory.POLICY_CONFIDENT,
-        HintCategory.CURATOR_WEAK_AXIS,
     }
 )
 

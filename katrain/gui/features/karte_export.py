@@ -15,7 +15,6 @@
 
 from __future__ import annotations
 
-import glob
 import os
 import re
 from datetime import datetime
@@ -164,54 +163,6 @@ def do_export_karte(ctx: FeatureContext, open_settings_callback: Any) -> None:
     Clock.schedule_once(lambda dt: do_export_karte_ui(ctx, open_settings_callback), 0)
 
 
-def _resolve_curator_profile_path(ctx: FeatureContext) -> str | None:
-    """Phase 248-γ-E1: locate the user's Curator profile.
-
-    Looks for the Curator profile in the same directory as the Karte
-    output (``mykatrain_settings.karte_output_directory``).
-
-    Resolution order (Phase 267):
-    1. ``mykatrain_settings.karte_output_directory`` (canonical).
-    2. ``mykatrain_settings.batch_options.output_dir`` (fallback).
-       The user may have run a Batch analysis without ever setting
-       ``karte_output_directory``, leaving Curator outputs in the
-       Batch output directory only. Falling back prevents the
-       "I generated curator_ranking.json but nothing happens" UX.
-    3. Within each directory, look for:
-       a. Canonical filename ``curator_ranking.json`` (preferred).
-       b. Most-recently-modified ``curator_ranking_*.json`` (Phase 64
-          writes a timestamped filename so multiple batches don't
-          overwrite each other; we accept the latest mtime so the
-          user can keep a history of profiles).
-
-    Returns ``None`` when no directory is configured / no matching
-    file is found in either directory.
-    """
-    settings = ctx.config("mykatrain_settings") or {}
-    candidate_dirs: list[str] = []
-    karte_dir = settings.get("karte_output_directory") or ""
-    if karte_dir:
-        candidate_dirs.append(karte_dir)
-    batch_options = settings.get("batch_options") or {}
-    batch_dir = batch_options.get("output_dir") or ""
-    if batch_dir and batch_dir not in candidate_dirs:
-        candidate_dirs.append(batch_dir)
-
-    for out_dir in candidate_dirs:
-        if not os.path.isdir(out_dir):
-            continue
-        # 1. canonical filename
-        canonical = os.path.join(out_dir, "curator_ranking.json")
-        if os.path.isfile(canonical):
-            return canonical
-        # 2. timestamped fallback — pick the most recent mtime
-        pattern = os.path.join(out_dir, "curator_ranking_*.json")
-        candidates = [p for p in glob.glob(pattern) if os.path.isfile(p)]
-        if candidates:
-            return max(candidates, key=os.path.getmtime)
-    return None
-
-
 def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None:
     """Export karte using myKatrain settings.
 
@@ -334,18 +285,9 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
         critical_3_max_moves = 3
     if critical_3_max_moves < 1 or critical_3_max_moves > 10:
         critical_3_max_moves = 3
-    # Phase 248-γ-E1: load the Curator profile (if any) so the
-    # weak-tag boost can nudge the user toward their own weak patterns
-    # in the critical_3 selection. The profile is a sibling file to
-    # the Karte output; missing / malformed → no boost.
-    user_weak_tags: dict[str, int] = {}
-    curator_path = _resolve_curator_profile_path(ctx)
-    if curator_path is not None:
-        from katrain.core.curator.profile import load_curator_profile
-
-        profile = load_curator_profile(curator_path)
-        if profile is not None:
-            user_weak_tags = dict(profile.weak_tags)
+    # Phase 270: the Curator profile loader (and the weak-tag boost
+    # that consumed it) was removed. ``user_weak_tags`` is therefore
+    # always empty and the call sites downstream carry ``None``.
     saved_files = []
     for player_filter, filename in exports:
         full_path = os.path.join(output_dir, filename)
@@ -355,7 +297,6 @@ def do_export_karte_ui(ctx: FeatureContext, open_settings_callback: Any) -> None
                 skill_preset=skill_preset,
                 level=important_moves_level,
                 max_critical_3_moves=critical_3_max_moves,
-                user_weak_tags=user_weak_tags,
             )
             os.makedirs(output_dir, exist_ok=True)
             with open(full_path, "w", encoding="utf-8") as f:

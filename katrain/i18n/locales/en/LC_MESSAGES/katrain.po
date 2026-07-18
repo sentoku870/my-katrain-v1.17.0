@@ -1950,13 +1950,6 @@ msgstr "This kind of mistake appears frequently across your analysed games."
 
 msgid "beginner_hint:curator_weak_axis:why"
 msgstr "Recurring mistake patterns are good targets for focused practice."
-
-msgid "mykatrain:settings:curator_hint"
-msgstr "Curator weak-axis hint:"
-
-msgid "mykatrain:settings:curator_hint_desc"
-msgstr ""
-"Show a one-line summary when the current move matches a mistake pattern that"
 " recurs across your analysed games"
 
 msgid "mykatrain:settings:summary_ownership"
@@ -3261,38 +3254,4 @@ msgid "top_move_ownership"
 msgstr "Predicted territory skew (B for Black, W for White)"
 
 #. Phase 265: appended when Beginner Hint is re-labelled by curator weak-axis
-#. profile
-msgid "beginner-hint:curator_weak_axis_footer"
-msgstr "Your weak axis: {tag_id} ({count} occurrences)"
 
-#. Phase 266: live Curator profile status line below the curator_hint toggle
-msgid "mykatrain:settings:curator_hint_loaded"
-msgstr "Currently tracking {count} weak tag(s)"
-
-#. Phase 266: live Curator profile status line below the curator_hint toggle
-msgid "mykatrain:settings:curator_hint_not_loaded"
-msgstr "Run a Batch analysis with Curator enabled to activate this"
-
-#. Phase 267: when Curator profile is missing, show search dirs to the user
-msgid "mykatrain:settings:curator_hint_not_loaded_with_dirs"
-msgstr ""
-"curator_ranking.json not found. Check the search directories below.\n"
-"Karte output: {karte_dir}\n"
-"Batch output: {batch_dir}"
-
-#. Phase 268: file-browser button to manually pick a curator_ranking_*.json
-#. file
-msgid "mykatrain:settings:curator_hint_browse"
-msgstr "Browse..."
-
-#. Phase 268 follow-up: title for the file-browser popup that lets the user
-#. pick curator_ranking_*.json manually
-msgid "mykatrain:settings:curator_hint_browse_title"
-msgstr "Select curator_ranking_*.json"
-
-#. Phase 268+ Curator profile loaded but 0 weak tags.
-#. The user has the file loaded, but the recommended_tags fallback
-#. also produced no recurring patterns. Encourage them to analyse
-#. more games rather than the misleading "Batch 分析で …" hint.
-msgid "mykatrain:settings:curator_hint_loaded_no_tags"
-msgstr "Profile loaded (no weak tags yet) — analyse more games via batch"

@@ -112,10 +112,6 @@ class PlayAnalyzeSelect(MDFloatLayout):
 class ControlsPanel(BoxLayout):
     katrain = ObjectProperty(None)
     button_controls = ObjectProperty(None)
-    # Phase 247-C (L6): ObjectProperty for the live PV-filter preview
-    # label declared in panels.kv. Optional so legacy callers that
-    # build the panel without the .kv rule still work.
-    pv_filter_preview = ObjectProperty(None, allownone=True)
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -131,13 +127,6 @@ class ControlsPanel(BoxLayout):
 
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
-
-        # Phase 253: cache the last PV-filter preview render so the
-        # controls panel does not re-allocate a localized string on
-        # every redraw. Keyed by ``(raw_count, filtered_count, best_count,
-        # config_active)`` so a real change still propagates immediately.
-        self._pv_filter_preview_cache: tuple[int, int, int, bool] | None = None
-        self._pv_filter_preview_text: str = ""
 
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
@@ -224,15 +213,6 @@ class ControlsPanel(BoxLayout):
         ):  # clear status if node changes, except startup errors on root. also clear analysis message when no queries
             self.status.text = ""
             self.status_state = (None, -1e9, None)
-
-        # Phase 247-C (L6): refresh the position-aware PV filter
-        # preview. Reads the cached PVFilterPreview from the badukpan
-        # widget (populated by ``prepare_hint_moves``) and formats
-        # it for the small label below the status box. Cheap; runs
-        # on every update_evaluation but only touches the Label's
-        # text attribute.
-        if self.pv_filter_preview is not None:
-            self.pv_filter_preview.text = self._format_pv_filter_preview()
 
         last_player_was_ai_playing_human = katrain.last_player_info.ai and katrain.next_player_info.human
         both_players_are_robots = katrain.last_player_info.ai and katrain.next_player_info.ai
@@ -345,17 +325,12 @@ class ControlsPanel(BoxLayout):
         # Show beginner safety hint if enabled and not in PLAY mode.
         # Phase 251: pass the per-category filter so individual toggles
         # in the settings popup can suppress specific categories.
-        # Phase 265: forward curator weak_tags so the dispatcher re-labels
-        # hints with the user's personal weak patterns.
         if self._should_show_beginner_hints():
             category_filter = self._category_filter()
-            curator_profile = getattr(self.katrain, "curator_profile", None)
-            user_weak_tags = dict(curator_profile.weak_tags) if curator_profile is not None else None
             hint = get_beginner_hint_cached(
                 game,
                 self.active_comment_node,
                 category_filter=category_filter,
-                user_weak_tags=user_weak_tags,
             )
             if hint:
                 hint_text = self._format_beginner_hint(hint)
@@ -385,18 +360,6 @@ class ControlsPanel(BoxLayout):
             if info:
                 info += "\n"
             info += "\n".join(detail_lines)
-
-        # Phase 257: one-line curator onboarding notice. Appended at
-        # the end so it does not displace the per-move hint / mistake
-        # / difficulty text. Only fires when:
-        # - beginner_hints is on
-        # - curator_hint sub-toggle is on
-        # - curator_ranking.json is not present in the configured
-        #   output directory (or the directory itself is not set).
-        # Costs one os.path.isfile() per info-panel render.
-        onboarding = self._curator_profile_status_line()
-        if onboarding:
-            info += "\n" + onboarding
 
         # 既存の更新処理（必ず実行される位置に戻す）
         self.graph.update_value(current_node)
@@ -447,47 +410,8 @@ class ControlsPanel(BoxLayout):
             return True
         return not getattr(katrain, "kifunarabe_mode", False)
 
-    def _curator_profile_status_line(self) -> str | None:
-        """Phase 257: one-line notice when Curator profile is missing.
-
-        New users who enabled ``beginner_hints/curator_hint`` (default
-        True) but have never run a batch analysis get nothing from the
-        Curator weak-axis hint detector — it returns ``None`` because
-        ``user_weak_tags`` is empty. The user has no feedback loop
-        explaining the silent behaviour.
-
-        This helper returns a localized one-liner that nudges the user
-        to run a batch analysis, or ``None`` when the profile is
-        present (or the feature is disabled, or the user is in a
-        mode that hides hints).
-
-        The check is cheap (a single ``os.path.isfile`` call on the
-        curator profile) and only runs while the beginner-hint panel
-        is being rendered, so the cost is negligible.
-        """
-        import os
-
-        from katrain.core.lang import i18n
-
-        katrain = self.katrain
-        if not katrain:
-            return None
-        if not katrain.config("beginner_hints/enabled", False):
-            return None
-        if not katrain.config("beginner_hints/curator_hint", True):
-            return None
-        # Look in the same output directory the Karte exporter uses.
-        settings = katrain.config("mykatrain_settings") or {}
-        out_dir = settings.get("karte_output_directory") or ""
-        if not out_dir or not os.path.isdir(out_dir):
-            return i18n._("beginner-hint:curator-onboarding-no-output-dir")
-        profile = os.path.join(out_dir, "curator_ranking.json")
-        if os.path.isfile(profile):
-            return None
-        return i18n._("beginner-hint:curator-onboarding-run-batch")
-
     def _summary_hint_flags(self) -> dict[str, bool]:
-        """Phase 179 + 182 + 186: per-category-group flags for summary hint generation."""
+        """Phase 179 + 182: per-category-group flags for summary hint generation."""
         katrain = self.katrain
         if not katrain:
             return {}
@@ -525,66 +449,6 @@ class ControlsPanel(BoxLayout):
         if not isinstance(bh, dict):
             return {}
         return build_category_filter(bh)
-
-    def _format_pv_filter_preview(self) -> str:
-        """Format the live PV filter preview line (Phase 247-C / L6).
-
-        Reads the latest :class:`PVFilterPreview` cached on the
-        badukpan widget by ``prepare_hint_moves`` and renders the
-        compact one-line summary used in the controls panel.
-
-        Phase 253: cached on a ``(raw, filtered, best, active)`` tuple
-        so the localized string is only re-built when the underlying
-        numbers actually change. Hovering over the same node keeps
-        returning the cached text — preventing the visible jitter
-        described in the Phase 250 audit (item I-3) where the preview
-        text re-rendered on every redraw tick.
-
-        Returns:
-            Localized string. Falls back to ``""`` when no preview
-            is available (e.g. Kivy widget path not yet wired).
-        """
-        from katrain.core.lang import i18n as _i18n
-
-        katrain = self.katrain
-        if not katrain:
-            return ""
-        board = getattr(katrain, "board_gui", None) or getattr(katrain, "board_widget", None)
-        if board is None:
-            return ""
-        preview = getattr(board, "last_pv_filter_preview", None)
-        if preview is None:
-            return _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
-
-        # Phase 253: cache key covers every value that affects the
-        # rendered text. Identity check on the preview object alone
-        # would be a stronger cache but ties cache lifetime to the
-        # badukpan widget's object id — a fragile contract. The
-        # tuple key is value-based and survives widget rebuilds.
-        cache_key = (
-            preview.raw_count,
-            preview.filtered_count,
-            preview.best_count,
-            preview.config_active,
-        )
-        if cache_key == self._pv_filter_preview_cache:
-            return self._pv_filter_preview_text
-
-        if preview.raw_count == 0:
-            rendered = _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
-        elif not preview.config_active:
-            rendered = _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
-                n=preview.raw_count,
-            )
-        else:
-            rendered = _i18n._("mykatrain:controls:pv_filter_preview_active").format(
-                n=preview.raw_count,
-                m=preview.filtered_count,
-                best=preview.best_count,
-            )
-        self._pv_filter_preview_cache = cache_key
-        self._pv_filter_preview_text = rendered
-        return rendered
 
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92 + Phase 179).
@@ -638,20 +502,8 @@ class ControlsPanel(BoxLayout):
             prefix = "[Hint]"
 
         if why and not why.startswith("beginner_hint:"):
-            base = f"{prefix} {title}: {body}\n→ {why}"
-        else:
-            base = f"{prefix} {title}: {body}"
-
-        # Phase 265: append a "your weak axis" footer when the
-        # dispatcher re-labelled the hint with curator metadata.
-        curator_meta = (hint.context or {}).get("curator_weak_axis")
-        if curator_meta is not None:
-            tag_id = curator_meta.get("tag_id", "?")
-            count = curator_meta.get("occurrence_count", 0)
-            weak_axis_text = i18n._("beginner-hint:curator_weak_axis_footer").format(tag_id=tag_id, count=int(count))
-            if not weak_axis_text.startswith("beginner-hint:"):
-                return f"{base}\n⚠ {weak_axis_text}"
-        return base
+            return f"{prefix} {title}: {body}\n→ {why}"
+        return f"{prefix} {title}: {body}"
 
     @staticmethod
     def _ensure_time_used_initialized(node: Any) -> None:

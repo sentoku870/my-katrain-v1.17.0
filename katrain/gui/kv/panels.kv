@@ -244,7 +244,6 @@
     info: info
     note: note
     status: status
-    pv_filter_preview: pv_filter_preview
     timer_or_movetree: timer_or_movetree
     move_tree: move_tree
     padding: Theme.CP_PADDING,Theme.CP_PADDING,Theme.CP_PADDING,0
@@ -372,20 +371,6 @@
                 height: min(self.parent.height*0.66,self.label.texture_size[1])
                 outline_color: Theme.ERROR_BORDER_COLOR if self.error else Theme.INFO_TAB_FONT_COLOR
                 background_color: Theme.LIGHTER_BACKGROUND_COLOR
-            # Phase 247-C (L6): one-line live preview of the PV filter
-            # count reduction. Sits between the analysis status and the
-            # info panel. Refreshed in ControlsPanel.update_evaluation
-            # from the widget-level cache populated by prepare_hint_moves.
-            Label:
-                id: pv_filter_preview
-                text: ""
-                size_hint: 1, None
-                height: dp(20)
-                halign: 'left'
-                valign: 'middle'
-                color: Theme.INFO_TAB_FONT_COLOR
-                font_name: Theme.DEFAULT_FONT
-                font_size: '12sp'
             ScrollableLabel:
                 id: info
                 detailed: False

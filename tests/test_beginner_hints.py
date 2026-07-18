@@ -132,9 +132,9 @@ class TestBasicDetection:
         # Phase 92: Cache format was (require_reliable, hint).
         # Phase 251: extended to (require_reliable, filter_key, hint)
         # so per-category toggles invalidate the cache.
-        # Phase 265: extended to (require_reliable, filter_key, curator_key, hint)
-        # so reloading the curator profile invalidates the re-label cache.
-        node._beginner_hint_cache = (True, None, None, "MARKER")
+        # Phase 270: the curator_key was removed along with the
+        # Curator weak-axis hint, leaving the 3-tuple.
+        node._beginner_hint_cache = (True, None, "MARKER")
 
         # Second call should return cached "MARKER"
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
@@ -367,8 +367,11 @@ class TestPhase92HintCategories:
         assert HintCategory.MISSED_DEFENSE.value == "missed_defense"
         assert HintCategory.URGENT_VS_BIG.value == "urgent_vs_big"
 
-    def test_total_hint_categories_is_twenty_three(self):
-        """Should have 23 total hint categories.
+    def test_total_hint_categories_is_twenty_two(self):
+        """Should have 22 total hint categories.
+
+        Phase 270 removed the ``CURATOR_WEAK_AXIS`` category along
+        with the deprecated Curator weak-axis hint.
 
         Composition:
         - 4 Phase 91 structural detectors (SELF_ATARI, IGNORE_ATARI,
@@ -381,9 +384,8 @@ class TestPhase92HintCategories:
           KATAGO_UNCERTAIN)
         - 3 Phase 182 summary hints (OWNERSHIP_DOMINANT,
           POLICY_CONFLICT, POLICY_CONFIDENT)
-        - 1 Phase 186 summary hint (CURATOR_WEAK_AXIS)
         """
-        assert len(HintCategory) == 23
+        assert len(HintCategory) == 22
 
 
 class TestMeaningTagHintFallback:
@@ -723,16 +725,16 @@ class TestCacheWithReliableSettings:
         # (None = no per-category filter). When the next call matches
         # the cached (require_reliable, filter_key), the cached hint
         # is returned without re-running the dispatchers.
-        # Phase 265: extended to (require_reliable, filter_key, curator_key, hint)
-        node._beginner_hint_cache = (True, None, None, "MARKER")
+        # Phase 270: cache is now (require_reliable, filter_key, hint).
+        node._beginner_hint_cache = (True, None, "MARKER")
 
         # Second call with same settings should return cached value
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
         assert hint2 == "MARKER"
 
         # Phase 251: different filter_key invalidates the cache.
-        # Phase 265: cache shape is (require_reliable, filter_key, curator_key, hint).
-        node._beginner_hint_cache = (True, None, None, "OLD")
+        # Phase 270: cache shape is (require_reliable, filter_key, hint).
+        node._beginner_hint_cache = (True, None, "OLD")
         hint3 = get_beginner_hint_cached(game_9x9, node, require_reliable=True, category_filter={"self_atari": False})
         assert hint3 != "OLD", "category_filter change must invalidate cache"
 

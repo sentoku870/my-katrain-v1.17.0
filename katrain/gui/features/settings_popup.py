@@ -113,7 +113,6 @@ def do_mykatrain_settings_popup(
         selected_katago_uncertain=[ctx.config("beginner_hints/katago_uncertain", True)],
         selected_summary_ownership=[ctx.config("beginner_hints/summary_ownership", True)],
         selected_summary_policy=[ctx.config("beginner_hints/summary_policy", True)],
-        selected_curator_hint=[ctx.config("beginner_hints/curator_hint", True)],
         # Phase 251: per-category toggles for the 10 individual categories.
         # All default to True so existing users keep their hints. New
         # users can flip individual switches to suppress, e.g.,
@@ -248,11 +247,8 @@ def do_mykatrain_settings_popup(
         content=main_layout,
     ).__self__
     state.popup = popup
-    # Phase 268: stash the state on the popup so the file-browser
-    # handler (which only has a reference to ``ctx``) can walk back
-    # to the live status label built by
-    # :func:`katrain.gui.features.settings_popup_tabs.analysis_tab._build_curator_status_label`.
-    popup._settings_state = state
+    # Phase 270: ``popup._settings_state`` was removed along with the
+    # Curator weak-axis hint.
 
     # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers;
     #                    Phase 177: kifunarabe.sgf_load 永続化) ---
@@ -273,7 +269,6 @@ def do_mykatrain_settings_popup(
             katago_uncertain=state.selected_katago_uncertain[0],
             summary_ownership=state.selected_summary_ownership[0],
             summary_policy=state.selected_summary_policy[0],
-            curator_hint=state.selected_curator_hint[0],
             # Phase 251: 10 individual category toggles.
             self_atari=state.selected_self_atari[0],
             ignore_atari=state.selected_ignore_atari[0],

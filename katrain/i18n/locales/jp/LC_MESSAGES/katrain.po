@@ -1893,12 +1893,6 @@ msgstr "この手のミス類型はあなたの棋譜全体で頻出していま
 msgid "beginner_hint:curator_weak_axis:why"
 msgstr "繰り返し現れるミスパターンは集中的に改善すると効果が出やすい弱点です。"
 
-msgid "mykatrain:settings:curator_hint"
-msgstr "Curator 弱点ヒント:"
-
-msgid "mykatrain:settings:curator_hint_desc"
-msgstr "バッチ解析の結果から、あなたの棋譜全体で頻出するミスパターンを 1 行で指摘"
-
 msgid "mykatrain:settings:summary_ownership"
 msgstr "territory 予想ヒント:"
 
@@ -3171,38 +3165,4 @@ msgid "top_move_ownership"
 msgstr "Terr"
 
 #. Phase 265: appended when Beginner Hint is re-labelled by curator weak-axis
-#. profile
-msgid "beginner-hint:curator_weak_axis_footer"
-msgstr "あなたの弱点: {tag_id} ({count} 回)"
 
-#. Phase 266: live Curator profile status line below the curator_hint toggle
-msgid "mykatrain:settings:curator_hint_loaded"
-msgstr "現在 {count} 個の弱点タグを検出中"
-
-#. Phase 266: live Curator profile status line below the curator_hint toggle
-msgid "mykatrain:settings:curator_hint_not_loaded"
-msgstr "Batch 分析で curator_ranking.json を生成すると有効になります"
-
-#. Phase 267: when Curator profile is missing, show search dirs to the user
-msgid "mykatrain:settings:curator_hint_not_loaded_with_dirs"
-msgstr ""
-"curator_ranking.json が見つかりません。設定ディレクトリを確認してください。\n"
-"Karte 出力先: {karte_dir}\n"
-"Batch 出力先: {batch_dir}"
-
-#. Phase 268: file-browser button to manually pick a curator_ranking_*.json
-#. file
-msgid "mykatrain:settings:curator_hint_browse"
-msgstr "参照..."
-
-#. Phase 268 follow-up: title for the file-browser popup that lets the user
-#. pick curator_ranking_*.json manually
-msgid "mykatrain:settings:curator_hint_browse_title"
-msgstr "curator_ranking_*.json を選択"
-
-#. Phase 268+ Curator profile loaded but 0 weak tags.
-#. The user has the file loaded, but the recommended_tags fallback
-#. also produced no recurring patterns. Encourage them to analyse
-#. more games rather than the misleading "Batch 分析で …" hint.
-msgid "mykatrain:settings:curator_hint_loaded_no_tags"
-msgstr "プロファイル読込済み (弱点タグなし) — より多くの棋譜を batch 分析してください"
