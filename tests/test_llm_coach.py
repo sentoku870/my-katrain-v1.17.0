@@ -738,6 +738,60 @@ class TestBuildSummaryLlmPrompt:
         assert ok is True
         assert isinstance(content, str)
 
+    # ---- Phase 269 follow-up: rank → mode derivation fix ----
+    # The previous implementation used ``modes_for_voice(voice)[0]`` which
+    # always returned BEGINNER after the AYAKA removal. The fix derives
+    # mode directly from rank. These tests pin the new contract.
+
+    @pytest.mark.parametrize(
+        "rank,expected_level",
+        [
+            ("30k", "BEGINNER"),
+            ("25k", "BEGINNER"),
+            ("10k", "INTERMEDIATE"),
+            ("5k", "INTERMEDIATE"),
+            ("4k", "DAN"),
+            ("1d", "DAN"),
+            ("2d", "ADVANCED"),
+            ("4d", "ADVANCED"),  # <-- the user-reported case
+            ("5d", "ADVANCED"),
+            ("6d", "EXPERT"),
+            ("9d", "EXPERT"),
+        ],
+    )
+    def test_rank_to_level_in_prompt(self, tmp_path: Path, rank, expected_level):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank=rank)
+        assert ok is True
+        # The prompt header contains "Level: <mode_label>". Must match
+        # the rank-derived mode, not always BEGINNER.
+        assert f"Level: {expected_level}" in content, (
+            f"rank={rank!r} should produce Level: {expected_level}, got prompt body: {content[:200]!r}"
+        )
+
+    def test_rank_4d_no_longer_beginner(self, tmp_path: Path):
+        # Direct regression for the user bug report
+        # (「4d 設定なのに Level: BEGINNER になる」).
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="4d")
+        assert ok is True
+        assert "Level: BEGINNER" not in content
+        assert "Level: ADVANCED" in content
+
+    def test_rank_empty_falls_back_to_intermediate(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="")
+        assert ok is True
+        # No rank → INTERMEDIATE fallback (per estimate_mode_from_rank
+        # contract + safe default at the call site).
+        assert "Level: INTERMEDIATE" in content
+
+    def test_rank_garbage_falls_back_to_intermediate(self, tmp_path: Path):
+        path = self._write_summary(tmp_path)
+        ok, content = llm_coach.build_summary_llm_prompt(None, path, rank="zzz")
+        assert ok is True
+        assert "Level: INTERMEDIATE" in content
+
 
 class TestValidateSummaryLlmResponse:
     """Phase 227-D: thin wrapper around ``validate_summary_llm_output``."""
