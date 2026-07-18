@@ -192,11 +192,6 @@ msgstr "パス"
 msgid "board-game-end"
 msgstr "終局"
 
-# Phase 246-B (H1): perspective watermark shown when candidate markers are
-# visible.
-msgid "board:perspective"
-msgstr "視点: {player}（次手損失）"
-
 #. Select mode
 msgid "btn:Play"
 msgstr "対局"
@@ -2076,14 +2071,8 @@ msgstr "診断"
 msgid "mykatrain:settings:kifunarabe_sgf_load"
 msgstr "プロの棋譜フォルダ（棋譜並べ用）"
 
-msgid "mykatrain:settings:kifunarabe_history_dir"
-msgstr "棋譜並べ履歴フォルダ"
-
 msgid "mykatrain:settings:kifunarabe_auto_export_weaknesses"
 msgstr "誤答局面を弱点として自動保存"
-
-msgid "mykatrain:settings:kifunarabe_auto_export_dir"
-msgstr "棋譜並べ弱点フォルダ"
 
 msgid "mykatrain:settings:kifunarabe_show_digits"
 msgstr "マーカーに数字（勝率・スコア・探索数）を表示する"
