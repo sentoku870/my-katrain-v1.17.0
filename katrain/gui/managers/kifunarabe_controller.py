@@ -113,8 +113,8 @@ class KifunarabeController(
         logger: Callable[..., None],
         show_summary_fn: ShowSummaryFn | None = None,
         on_guess_resolved_fn: OnGuessResolvedFn | None = None,
-        history_store: "KifunarabeHistoryStore | None" = None,
-        weakness_exporter: "KifunarabeWeaknessExporter | None" = None,
+        history_store: KifunarabeHistoryStore | None = None,
+        weakness_exporter: KifunarabeWeaknessExporter | None = None,
     ) -> None:
         """Initialize with dependency injection.
 
@@ -149,8 +149,8 @@ class KifunarabeController(
 
         self._show_summary_fn = show_summary_fn
         self._on_guess_resolved_fn = on_guess_resolved_fn
-        self._history_store: "KifunarabeHistoryStore | None" = history_store
-        self._weakness_exporter: "KifunarabeWeaknessExporter | None" = weakness_exporter
+        self._history_store: KifunarabeHistoryStore | None = history_store
+        self._weakness_exporter: KifunarabeWeaknessExporter | None = weakness_exporter
 
         # Mixin-owned attributes — initialised here so attribute access
         # doesn't rely on dynamic attribute creation, which would

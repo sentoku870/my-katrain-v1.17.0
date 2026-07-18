@@ -15,7 +15,6 @@ import unittest
 from pathlib import Path
 
 from katrain.core.study.kifunarabe import (
-    GuessOutcome,
     KifunarabeConfig,
     KifunarabeSession,
 )
