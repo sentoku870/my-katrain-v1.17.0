@@ -76,6 +76,11 @@
 | [phase225-master.md](phase225-master.md) | Phase 225 + 225.1-225.8 | LLM Coach 統合マスター索引 |
 | [phase227-llm-coach-multi-game.md](phase227-llm-coach-multi-game.md) | Phase 227-A〜E | LLM コーチ複数局対応（B案フル実装: summary_prompt_builder / summary_validator / popup タブ化 + 視点セレクタ + 集約サマリボタン / calibration fixtures） |
 | [phase228-summary-schema-adapt.md](phase228-summary-schema-adapt.md) | Phase 228-A〜D | LLM コーチ複数局対応 - 実シェーマ適応（extractors / prompt builder / validator / real_shape fixtures） |
+| [phase249-alpha-kifunarabe-bugfix.md](phase249-alpha-kifunarabe-bugfix.md) | Phase 249-α | 棋譜並べ バグ修正 + デッドコード削除 + テスト 23 件 |
+| [phase249-beta-kifunarabe-history.md](phase249-beta-kifunarabe-history.md) | Phase 249-β | 棋譜並べ 永続履歴 (KifunarabeHistoryStore) + 設定タブ + 履歴ポップアップ + テスト 12 件 |
+| [phase249-gamma-kifunarabe-integration.md](phase249-gamma-kifunarabe-integration.md) | Phase 249-γ | 棋譜並べ 重要局面リスト統合 + 弱点自動 export |
+| [phase249-delta-kifunarabe-minor.md](phase249-delta-kifunarabe-minor.md) | Phase 249-δ | 棋譜並べ メニューアイコン重複解消 + panels.kv Kivy 違反修正 |
+| [phase249-hotfix-startup-attrerror.md](phase249-hotfix-startup-attrerror.md) | Phase 249-hotfix | 起動時 AttributeError + 残存 γ リグレッション復旧 |
 
 ## Phase 231-237 カルテ刷新（2026-07）
 

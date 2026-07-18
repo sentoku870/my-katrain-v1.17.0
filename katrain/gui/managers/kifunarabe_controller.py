@@ -23,7 +23,7 @@ Responsibilities retained by the facade:
   ``get_controls`` / ``get_mode`` / ``set_mode`` / ``logger``), and
   initialisation of the mixin-owned attributes (e.g. ``_session``,
   ``_summary_popup``, ``_saved_analysis_toggles``).
-- Public accessors: ``session`` property, ``is_active``, ``is_fog_active``.
+- Public accessors: ``session`` property, ``is_active``.
 - Convenience module-level helpers (``disable_kifunarabe_if_active``,
   ``node_move_gtp``, ``_default_on_guess_resolved``) used by the rest of
   the GUI.
@@ -91,10 +91,11 @@ class KifunarabeController(
        Session (``start_session`` / ``disable_if_needed`` /
        ``_end_session`` / ``abort_session``).
 
-    Public API surface (unchanged across the Phase A3 refactor):
+    Public API surface (unchanged across the Phase A3 refactor, with
+    the Phase 249-α dead-code removal of ``is_fog_active()``):
 
     - ``__init__`` (DI wiring)
-    - ``session`` property, ``is_active()``, ``is_fog_active()``
+    - ``session`` property, ``is_active()``
     - ``start_session(config)``
     - ``disable_if_needed()``
     - ``abort_session()``
@@ -171,10 +172,11 @@ class KifunarabeController(
         # each position fires at most once. Reset by
         # ``KifunarabeSessionMixin.start_session``.
         self._last_critical_3_highlight: int = 0
-        # Phase 181-B: tracks the path of the SGF that started the
-        # most recent session, so exit paths can clean it up. Set/cleared
-        # by start_session / _end_session; declared here so mypy sees it.
-        self._source_sgf_path: str | None = None
+        # Phase 249-α: ``_source_sgf_path`` removed. The attribute was
+        # declared in Phase 181-B as the future source of a "save-game-
+        # after-kifunarabe" cleanup hook, but no caller ever wrote to
+        # it. Keeping it around only added an unused init line and a
+        # false sense of "cleanup wiring is in place".
 
     # -- public accessors (the only methods living on the facade) ----------
 
@@ -187,12 +189,10 @@ class KifunarabeController(
         """True iff the mode is currently on (UI-level state)."""
         return self._get_mode()
 
-    def is_fog_active(self) -> bool:
-        """KV compatibility shim - mirrors ActiveReviewController.
-
-        Returns True if kifunarabe mode is ON.
-        """
-        return self._get_mode()
+    # Phase 249-α: ``is_fog_active()`` removed. It was an alias for
+    # ``_get_mode()`` that no caller invoked — the live KV / drawing
+    # sites resolve ``katrain.is_fog_active()`` to the ``KaTrainGui``
+    # stub at ``katrain/__main__.py`` which always returns ``False``.
 
 
 # ---------------------------------------------------------------------------

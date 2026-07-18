@@ -1219,7 +1219,28 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
 - strict xfail `test_local_with_empty_moves_crashes` → 通常テスト `test_local_with_empty_moves_returns_early` に昇格
 - 0 xfailed 達成
 
-### Phase 200: `except Exception` 整理（部分完了、2026-07-17）
+### Phase 249-hotfix: 起動時 AttributeError + 残存 γ リグレッション復旧（2026-07-18）
+
+Phase 249 (α/β/γ/δ) を main にマージ後に発覚した 2 系統のバグを緊急修正:
+
+**A. 起動時 AttributeError（ブロッカー）**
+
+- Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが新設の `_build_kifunarabe_weakness_exporter` の `return` 文直後に残され dead code 化
+- 起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ
+- 修正: dead code を `__init__` 末尾に戻し + `set_config_section` に `getattr(self, "ctx", None)` ガード追加 + AST ベース回帰テスト 3 件
+
+**B. 残存 γ リグレッション（CI で見逃されていた）**
+
+- `_validate_move_number` static method と 3 つの caller が γ rebase で脱落 → `record_guess` / `record_auto_advance` / `record_skipped_no_move` の入力検証が消失
+- `_expected_move_gtp` の防御化（`getattr` / `try-except` / `isinstance`）が消失
+- `KifunarabeController.is_fog_active` / `_source_sgf_path` の dead code 削除が消失
+- 修正: α の防御コードを完全復元（11 テスト → 全 pass）
+
+**仕様書**: [phase249-hotfix-startup-attrerror.md](archive/specs-implemented/phase249-hotfix-startup-attrerror.md)
+
+---
+
+## Phase 200: `except Exception` 整理（部分完了、2026-07-17）
 
 - 純粋計算系の silent swallow 9 箇所に `logger.debug(..., exc_info=True)` を追加
 - 6 ファイルに `import logging` + `logger = logging.getLogger(__name__)` 追加

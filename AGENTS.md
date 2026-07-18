@@ -18,8 +18,9 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 242-A + 242-B + 242-C + 242-D + 242-E
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E
 - **直近のマイルストーン**:
+  - Phase 249-hotfix（2026-07-18）: 起動時 AttributeError 修正 + 残存 γ リグレッション復旧（_validate_move_number / _expected_move_gtp 防御化 / is_fog_active & _source_sgf_path 削除）+ 回帰テスト 3 件
   - Phase 171（2026-07-04）: Leela エンジン完全削除、KataGo 専用に整理
   - Phase 177（2026-07-12）: 棋譜並べ（kifunarabe）機能追加
   - Phase 179 + 179.1 + 179.2（2026-07-14）: Beginner Hints Summary Extension（ミス・自由度・難易度）+ 監査改善
@@ -342,6 +343,10 @@ docs/
   - **230-A**: MyKatrain メニュー整理 — 8 項目 → 4 項目（「その他」サブメニュー化 → 後に完全削除）、アイコン重複解消、`chat.png` 欠損修正（`Teaching-Settings.png` に振替）
   - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
   - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
+- 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
+  - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
+  - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元
+  - **効果**: 起動経路復活 + 5,612 → 5,615 件テスト合格（Kivy headless 起因の 6 件は元　 fail）
 - 2026-07-17: **Phase 241 — サマリー機能 品質改善**（Lv2、9 ファイル + 39 unit tests、全 5,612 件テスト合格）
   - **241-A**: weakness pattern から「good」除外 — `json_type.py` に `_NON_WEAKNESS_CATEGORIES` 定数新設、`extract_summary_weakness_patterns` の Shape B 経路でフィルタ、per-player mistake distribution は full のまま温存
   - **241-B**: popup の unknown パス早期 return — `llm-coach:unknown-path` i18n キー追加（jp/en）、`_populate_rank_and_perspective` / `on_generate_and_copy` / `on_validate` 全 3 経路に guard 追加
