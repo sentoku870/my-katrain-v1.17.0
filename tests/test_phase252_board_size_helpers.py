@@ -42,8 +42,8 @@ class TestMinReliableVisitsForBoardSize:
 
     def test_unknown_size_falls_back_to_19x19(self):
         assert min_reliable_visits_for_board_size(25) == 200  # 25x25 not in table
-        assert min_reliable_visits_for_board_size(7) == 200   # 7x7 not in table
-        assert min_reliable_visits_for_board_size(0) == 200   # 0x0 not in table
+        assert min_reliable_visits_for_board_size(7) == 200  # 7x7 not in table
+        assert min_reliable_visits_for_board_size(0) == 200  # 0x0 not in table
 
     def test_garbage_input_falls_back(self):
         # Non-numeric input → falls back to 19x19 default.

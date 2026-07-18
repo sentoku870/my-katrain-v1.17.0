@@ -99,7 +99,7 @@ def _get_meaning_tag_hint(node: Any, move_coords: tuple[int, int] | None) -> Beg
     )
 
 
-def _category_enabled(category: "HintCategory", category_filter: dict[str, bool] | None) -> bool:
+def _category_enabled(category: HintCategory, category_filter: dict[str, bool] | None) -> bool:
     """Phase 251: per-category enable check.
 
     Returns True when the category's ``config_key`` is enabled. A missing

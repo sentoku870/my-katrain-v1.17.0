@@ -473,9 +473,7 @@ class TestPhase250I18nCleanup:
         assert po.exists()
         msgids = _parse_po_msgids(po)
         dupes = self._duplicates(msgids)
-        assert not dupes, (
-            f"en.po contains duplicate msgids: {dupes}. Known offenders: {self.DUPLICATE_KEYS}."
-        )
+        assert not dupes, f"en.po contains duplicate msgids: {dupes}. Known offenders: {self.DUPLICATE_KEYS}."
 
     def test_en_po_has_no_orphan_radar_keys(self, locale_dir):
         """en.po must not contain radar:* keys (feature removed in Phase 86).
@@ -486,10 +484,7 @@ class TestPhase250I18nCleanup:
         po = locale_dir / "en" / "LC_MESSAGES" / "katrain.po"
         msgids = _parse_po_msgids(po)
         radar = [m for m in msgids if m.startswith("radar:")]
-        assert not radar, (
-            f"en.po contains orphan radar:* keys (feature removed Phase 86): {radar}. "
-            f"See Phase 250 I-2."
-        )
+        assert not radar, f"en.po contains orphan radar:* keys (feature removed Phase 86): {radar}. See Phase 250 I-2."
 
     def test_jp_en_msgid_set_parity(self, locale_dir):
         """jp.po and en.po must contain the exact same set of msgids.
@@ -502,8 +497,7 @@ class TestPhase250I18nCleanup:
         only_jp = jp_ids - en_ids
         only_en = en_ids - jp_ids
         assert not only_jp and not only_en, (
-            f"msgid set parity broken: only_jp={sorted(only_jp)[:5]}, "
-            f"only_en={sorted(only_en)[:5]}."
+            f"msgid set parity broken: only_jp={sorted(only_jp)[:5]}, only_en={sorted(only_en)[:5]}."
         )
 
     def test_duplicate_keys_still_translated_once(self, locale_dir):

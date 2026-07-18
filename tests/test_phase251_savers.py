@@ -73,9 +73,16 @@ class TestSaveBeginnerHintsSettingsPhase251:
         call_args, _ = mock_ctx.set_config_section.call_args
         bh = call_args[1]
         for key in (
-            "self_atari", "ignore_atari", "missed_capture", "cut_risk",
-            "low_liberties", "self_capture_like", "bad_shape", "heavy_group",
-            "missed_defense", "urgent_vs_big",
+            "self_atari",
+            "ignore_atari",
+            "missed_capture",
+            "cut_risk",
+            "low_liberties",
+            "self_capture_like",
+            "bad_shape",
+            "heavy_group",
+            "missed_defense",
+            "urgent_vs_big",
         ):
             assert key in bh, f"missing {key} in persisted beginner_hints"
             assert bh[key] is True, f"{key} default must be True"

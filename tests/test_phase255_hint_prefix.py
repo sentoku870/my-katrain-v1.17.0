@@ -11,7 +11,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
@@ -102,7 +101,7 @@ class TestHintPrefixI18n:
 class TestProductionCodeUsesPrefixKey:
     @pytest.fixture
     def controlspanel_source(self) -> str:
-        path = Path(r"D:\github\katrain-1.17.0\katrain\gui\controlspanel.py")
+        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
         return path.read_text(encoding="utf-8")
 
     def test_render_fn_uses_i18n_prefix(self, controlspanel_source):

@@ -102,9 +102,7 @@ def test_pick_important_moves_19x19_fallback_threshold():
     selected_nums = sorted(m.move_number for m in selected)
 
     # 19x19 threshold is 0.3 → only moves 4, 5 qualify.
-    assert selected_nums == [4, 5], (
-        f"19x19 fallback should filter 0.2-loss moves, got {selected_nums}."
-    )
+    assert selected_nums == [4, 5], f"19x19 fallback should filter 0.2-loss moves, got {selected_nums}."
 
 
 def test_pick_important_moves_13x13_fallback_threshold():
@@ -123,9 +121,7 @@ def test_pick_important_moves_13x13_fallback_threshold():
 
     selected = logic_importance.pick_important_moves(snapshot, level="normal", recompute=True)
     selected_nums = sorted(m.move_number for m in selected)
-    assert selected_nums == [3, 4], (
-        f"13x13 fallback should select losses >= 0.20, got {selected_nums}."
-    )
+    assert selected_nums == [3, 4], f"13x13 fallback should select losses >= 0.20, got {selected_nums}."
 
 
 def test_pick_important_moves_unknown_board_size_uses_19x19_default():
@@ -142,6 +138,4 @@ def test_pick_important_moves_unknown_board_size_uses_19x19_default():
 
     selected = logic_importance.pick_important_moves(snapshot, level="normal", recompute=True)
     selected_nums = sorted(m.move_number for m in selected)
-    assert selected_nums == [3], (
-        f"No-game fallback should mirror 19x19 (0.30), got {selected_nums}."
-    )
+    assert selected_nums == [3], f"No-game fallback should mirror 19x19 (0.30), got {selected_nums}."

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-from katrain.core.beginner import models as beginner_models
 from katrain.core.beginner.hints import (
     _category_enabled,
     build_category_filter,
@@ -59,14 +58,28 @@ class TestBuildCategoryFilter:
         assert build_category_filter(None) == {}
 
     def test_all_true(self):
-        bh = {k: True for k in (
-            "self_atari", "ignore_atari", "missed_capture", "cut_risk",
-            "low_liberties", "self_capture_like", "bad_shape", "heavy_group",
-            "missed_defense", "urgent_vs_big",
-            "summary_mistake", "summary_freedom", "summary_difficulty",
-            "katago_uncertain", "summary_ownership", "summary_policy",
-            "curator_hint",
-        )}
+        bh = {
+            k: True
+            for k in (
+                "self_atari",
+                "ignore_atari",
+                "missed_capture",
+                "cut_risk",
+                "low_liberties",
+                "self_capture_like",
+                "bad_shape",
+                "heavy_group",
+                "missed_defense",
+                "urgent_vs_big",
+                "summary_mistake",
+                "summary_freedom",
+                "summary_difficulty",
+                "katago_uncertain",
+                "summary_ownership",
+                "summary_policy",
+                "curator_hint",
+            )
+        }
         result = build_category_filter(bh)
         assert len(result) == 17
         assert all(result[k] is True for k in result)
@@ -140,7 +153,5 @@ class TestPerCategoryCacheKey:
 
         # Different filter → cache miss → real recompute
         # (Should NOT return the sentinel.)
-        result = get_beginner_hint_cached(
-            game_9x9, node, category_filter={"self_atari": False}
-        )
+        result = get_beginner_hint_cached(game_9x9, node, category_filter={"self_atari": False})
         assert result != "SENTINEL"

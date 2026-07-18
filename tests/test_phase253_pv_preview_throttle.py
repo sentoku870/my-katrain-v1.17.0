@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Replica of the cache + render logic (kept in sync with controlspanel.py)
 # ---------------------------------------------------------------------------
@@ -159,7 +158,7 @@ class TestProductionCodeStillUsesCache:
 
     @pytest.fixture
     def controlspanel_source(self) -> str:
-        path = Path(r"D:\github\katrain-1.17.0\katrain\gui\controlspanel.py")
+        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
         return path.read_text(encoding="utf-8")
 
     def test_cache_field_is_initialised_in_init(self, controlspanel_source):

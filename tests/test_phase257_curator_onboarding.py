@@ -14,7 +14,7 @@ one-liner that nudges the user to run a batch analysis, or
 from __future__ import annotations
 
 import ast
-from os import path as osp
+import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,7 +25,6 @@ import pytest
 
 def _curator_status(katrain) -> str | None:
     """Replicate ControlsPanel._curator_profile_status_line logic."""
-    import os
     from katrain.core.lang import i18n
 
     if katrain is None:
@@ -109,7 +108,7 @@ class TestCuratorOnboarding:
 class TestProductionCodeUsesCuratorOnboarding:
     @pytest.fixture
     def controlspanel_source(self) -> str:
-        path = Path(r"D:\github\katrain-1.17.0\katrain\gui\controlspanel.py")
+        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
         return path.read_text(encoding="utf-8")
 
     def test_helper_method_defined(self, controlspanel_source):
@@ -130,8 +129,10 @@ class TestProductionCodeUsesCuratorOnboarding:
         # info text must reference the helper.
         tree = ast.parse(controlspanel_source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "update_eval" or (
-                isinstance(node, ast.FunctionDef) and "info" in node.name.lower()
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "update_eval"
+                or (isinstance(node, ast.FunctionDef) and "info" in node.name.lower())
             ):
                 src = ast.unparse(node)
                 if "_curator_profile_status_line" in src:
@@ -142,9 +143,10 @@ class TestProductionCodeUsesCuratorOnboarding:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "ControlsPanel":
                 for sub in node.body:
-                    if isinstance(sub, ast.FunctionDef) and sub.name != "_curator_profile_status_line":
-                        if "_curator_profile_status_line" in ast.unparse(sub):
-                            methods_with_call.append(sub.name)
-        assert methods_with_call, (
-            "_curator_profile_status_line is defined but never called from another method"
-        )
+                    if (
+                        isinstance(sub, ast.FunctionDef)
+                        and sub.name != "_curator_profile_status_line"
+                        and "_curator_profile_status_line" in ast.unparse(sub)
+                    ):
+                        methods_with_call.append(sub.name)
+        assert methods_with_call, "_curator_profile_status_line is defined but never called from another method"

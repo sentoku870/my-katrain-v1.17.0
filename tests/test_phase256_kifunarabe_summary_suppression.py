@@ -20,7 +20,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Replica of the gate (no Kivy import)
 # ---------------------------------------------------------------------------
@@ -40,10 +39,7 @@ def _should_show_summary_hints(katrain) -> bool:
         return False
 
     # 2. Phase 256: kifunarabe mode → no summary hints.
-    if getattr(katrain, "kifunarabe_mode", False):
-        return False
-
-    return True
+    return not getattr(katrain, "kifunarabe_mode", False)
 
 
 def _should_show_beginner_hints(katrain) -> bool:
@@ -54,9 +50,7 @@ def _should_show_beginner_hints(katrain) -> bool:
         return False
     if katrain.is_fog_active():
         return False
-    if katrain.play_analyze_mode == "play":
-        return False
-    return True
+    return katrain.play_analyze_mode != "play"
 
 
 def _katrain(*, kifunarabe_mode: bool, fog_active: bool, beginner_hints_enabled: bool = True, mode: str = "analyze"):
@@ -90,14 +84,13 @@ class TestShouldShowSummaryHintsKifunarabe:
         assert _should_show_summary_hints(_katrain(kifunarabe_mode=True, fog_active=True)) is False
 
     def test_beginner_hints_disabled_still_suppresses(self):
-        assert _should_show_summary_hints(
-            _katrain(kifunarabe_mode=False, fog_active=False, beginner_hints_enabled=False)
-        ) is False
+        assert (
+            _should_show_summary_hints(_katrain(kifunarabe_mode=False, fog_active=False, beginner_hints_enabled=False))
+            is False
+        )
 
     def test_play_mode_still_suppresses_summaries(self):
-        assert _should_show_summary_hints(
-            _katrain(kifunarabe_mode=False, fog_active=False, mode="play")
-        ) is False
+        assert _should_show_summary_hints(_katrain(kifunarabe_mode=False, fog_active=False, mode="play")) is False
 
     def test_structural_hints_unaffected_by_kifunarabe(self):
         """The kifunarabe suppression only applies to SUMMARY hints.
@@ -118,7 +111,7 @@ class TestProductionCodeChecksKifunarabe:
 
     @pytest.fixture
     def controlspanel_source(self) -> str:
-        path = Path(r"D:\github\katrain-1.17.0\katrain\gui\controlspanel.py")
+        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
         return path.read_text(encoding="utf-8")
 
     def test_summary_hint_gate_references_kifunarabe(self, controlspanel_source):

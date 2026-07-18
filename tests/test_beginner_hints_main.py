@@ -846,8 +846,7 @@ class TestHintCategoryI18nNamespaces:
         for c in HintCategory:
             if c.is_structural:
                 assert c.config_key == c.value, (
-                    f"Structural category {c} should map config_key to its own value, "
-                    f"got {c.config_key!r}"
+                    f"Structural category {c} should map config_key to its own value, got {c.config_key!r}"
                 )
 
     def test_meaning_tag_categories_have_per_category_config_key(self) -> None:
@@ -857,8 +856,7 @@ class TestHintCategoryI18nNamespaces:
         for c in HintCategory:
             if c.is_meaning_tag:
                 assert c.config_key == c.value, (
-                    f"Meaning-tag category {c} should map config_key to its own value, "
-                    f"got {c.config_key!r}"
+                    f"Meaning-tag category {c} should map config_key to its own value, got {c.config_key!r}"
                 )
 
     def test_summary_categories_have_config_key(self) -> None:

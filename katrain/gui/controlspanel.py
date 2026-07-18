@@ -136,7 +136,7 @@ class ControlsPanel(BoxLayout):
         # controls panel does not re-allocate a localized string on
         # every redraw. Keyed by ``(raw_count, filtered_count, best_count,
         # config_active)`` so a real change still propagates immediately.
-        self._pv_filter_preview_cache: tuple | None = None
+        self._pv_filter_preview_cache: tuple[int, int, int, bool] | None = None
         self._pv_filter_preview_text: str = ""
 
     def cleanup(self) -> None:
@@ -347,9 +347,7 @@ class ControlsPanel(BoxLayout):
         # in the settings popup can suppress specific categories.
         if self._should_show_beginner_hints():
             category_filter = self._category_filter()
-            hint = get_beginner_hint_cached(
-                game, self.active_comment_node, category_filter=category_filter
-            )
+            hint = get_beginner_hint_cached(game, self.active_comment_node, category_filter=category_filter)
             if hint:
                 hint_text = self._format_beginner_hint(hint)
                 if hint_text:
@@ -436,9 +434,9 @@ class ControlsPanel(BoxLayout):
             return False
         # Phase 256: kifunarabe mode → no summary hints.
         katrain = self.katrain
-        if katrain and getattr(katrain, "kifunarabe_mode", False):
-            return False
-        return True
+        if katrain is None:
+            return True
+        return not getattr(katrain, "kifunarabe_mode", False)
 
     def _curator_profile_status_line(self) -> str | None:
         """Phase 257: one-line notice when Curator profile is missing.

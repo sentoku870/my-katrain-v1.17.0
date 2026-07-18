@@ -151,7 +151,7 @@ class HintCategory(Enum):
             return "summary_policy"
         if self is HintCategory.CURATOR_WEAK_AXIS:
             return "curator_hint"
-        return self.value  # defensive fallback (Phase 251)
+        return str(self.value)  # defensive fallback (Phase 251)
 
     @property
     def i18n_namespace(self) -> str:

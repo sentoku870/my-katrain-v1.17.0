@@ -729,9 +729,7 @@ class TestCacheWithReliableSettings:
 
         # Phase 251: different filter_key invalidates the cache.
         node._beginner_hint_cache = (True, None, "OLD")
-        hint3 = get_beginner_hint_cached(
-            game_9x9, node, require_reliable=True, category_filter={"self_atari": False}
-        )
+        hint3 = get_beginner_hint_cached(game_9x9, node, require_reliable=True, category_filter={"self_atari": False})
         assert hint3 != "OLD", "category_filter change must invalidate cache"
 
 

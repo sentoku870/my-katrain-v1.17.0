@@ -587,7 +587,7 @@ def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupC
 def _add_toggle_row(
     inner: BoxLayoutType,
     label_key: str,
-    selected_ref: list,
+    selected_ref: list[bool],
     state: _SettingsPopupContext,
 ) -> None:
     """Add a single ``[checkbox] [description]`` toggle row (Phase 251 helper).
@@ -619,72 +619,6 @@ def _add_toggle_row(
     inner.add_widget(row)
     if state.register_searchable is not None:
         state.register_searchable(label_key, row)
-
-
-def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Phase 179 + 182 + 186: 7 per-category-group toggles under the master switch."""
-    summary_rows = [
-        (
-            "mykatrain:settings:summary_mistake",
-            "selected_summary_mistake",
-            state.selected_summary_mistake,
-        ),
-        (
-            "mykatrain:settings:summary_freedom",
-            "selected_summary_freedom",
-            state.selected_summary_freedom,
-        ),
-        (
-            "mykatrain:settings:summary_difficulty",
-            "selected_summary_difficulty",
-            state.selected_summary_difficulty,
-        ),
-        (
-            "mykatrain:settings:katago_uncertain",
-            "selected_katago_uncertain",
-            state.selected_katago_uncertain,
-        ),
-        (
-            "mykatrain:settings:summary_ownership",
-            "selected_summary_ownership",
-            state.selected_summary_ownership,
-        ),
-        (
-            "mykatrain:settings:summary_policy",
-            "selected_summary_policy",
-            state.selected_summary_policy,
-        ),
-        (
-            "mykatrain:settings:curator_hint",
-            "selected_curator_hint",
-            state.selected_curator_hint,
-        ),
-    ]
-    for label_key, _field_name, selected_ref in summary_rows:
-        _add_searchable_label(inner, label_key, state)
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(32), spacing=dp(8))
-        spacer = Label(size_hint_x=None, width=dp(20))  # indent under master
-        row.add_widget(spacer)
-        checkbox = CheckBox(
-            active=selected_ref[0],
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(active=lambda chk, active, ref=selected_ref: ref.__setitem__(0, active))
-        row.add_widget(checkbox)
-        desc = Label(
-            text=i18n._(f"{label_key}_desc"),
-            size_hint_x=0.9,
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        row.add_widget(desc)
-        inner.add_widget(row)
-        if state.register_searchable is not None:
-            state.register_searchable(label_key, row)
 
 
 def _build_reset_button() -> Button:

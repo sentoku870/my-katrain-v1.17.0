@@ -12,10 +12,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Replica of the render function (kept in sync with controlspanel.py)
@@ -130,8 +128,11 @@ class TestFormatHintWithWhy:
     @pytest.mark.parametrize(
         "category_value",
         [
-            "self_atari", "cut_risk", "low_liberties",
-            "self_capture_like", "mistake_blunder",
+            "self_atari",
+            "cut_risk",
+            "low_liberties",
+            "self_capture_like",
+            "mistake_blunder",
             "curator_weak_axis",
         ],
     )
@@ -154,7 +155,7 @@ class TestProductionCodeUsesWhy:
 
     @pytest.fixture
     def controlspanel_source(self) -> str:
-        path = Path(r"D:\github\katrain-1.17.0\katrain\gui\controlspanel.py")
+        path = Path(__file__).parent.parent / "katrain" / "gui" / "controlspanel.py"
         return path.read_text(encoding="utf-8")
 
     def test_format_function_references_why_key(self, controlspanel_source):
