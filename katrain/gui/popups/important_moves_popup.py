@@ -47,35 +47,6 @@ class ImportantMovesPopupContent(BoxLayout):
     """Scrollable list of important-moves with a jump / copy / close footer."""
 
     font_name = StringProperty(Theme.DEFAULT_FONT)
-
-
-class ImportantMovesEntry(BoxLayout):
-    """Phase 266: Python-side declaration of the per-row widget.
-
-    Properties are declared here so Kivy's ``__init__`` accepts them
-    as keyword arguments. The ``.kv`` file (in
-    ``katrain/gui/kv/important_moves_popup.kv``) keeps the template
-    rule ``<ImportantMovesEntry>`` (without ``@BoxLayout``) — Kivy
-    merges the Python class with the kv template, picking up the
-    child-widget layout from kv and the Property declarations from
-    Python.
-
-    Using ``Factory.ImportantMovesEntry(...)`` instead is not enough
-    because the auto-generated factory class from the ``<X@Y>`` rule
-    does NOT declare properties — Kivy raises ``TypeError: Properties
-    [...] may not be existing property names`` at construction time.
-    """
-
-    move_number = NumericProperty(0)
-    player = StringProperty("")
-    gtp_coord = StringProperty("")
-    score_loss = NumericProperty(0.0)
-    meaning_tag_label = StringProperty("")
-    game_phase = StringProperty("")
-    complexity_discounted = BooleanProperty(False)
-    is_current = BooleanProperty(False)
-    bg_color = ListProperty([0, 0, 0, 0])
-    font_name = StringProperty(Theme.DEFAULT_FONT)
     moves_by_color = ObjectProperty({"black": [], "white": []})
     selected_index = NumericProperty(-1)  # index into the flattened list
     # Flattened list of (color, move) pairs for the entry widgets.
@@ -276,6 +247,35 @@ class ImportantMovesEntry(BoxLayout):
         popup = getattr(self, "_popup_ref", None)
         if popup is not None:
             popup.dismiss()
+
+
+class ImportantMovesEntry(BoxLayout):
+    """Phase 266 / 266b: Python-side declaration of the per-row widget.
+
+    Properties are declared here so Kivy's ``__init__`` accepts them
+    as keyword arguments. The ``.kv`` file (in
+    ``katrain/gui/kv/important_moves_popup.kv``) keeps the template
+    rule ``<ImportantMovesEntry>`` (without ``@BoxLayout``) — Kivy
+    merges the Python class with the kv template, picking up the
+    child-widget layout from kv and the Property declarations from
+    Python.
+
+    Using ``Factory.ImportantMovesEntry(...)`` instead is not enough
+    because the auto-generated factory class from the ``<X@Y>`` rule
+    does NOT declare properties — Kivy raises ``TypeError: Properties
+    [...] may not be existing property names`` at construction time.
+    """
+
+    move_number = NumericProperty(0)
+    player = StringProperty("")
+    gtp_coord = StringProperty("")
+    score_loss = NumericProperty(0.0)
+    meaning_tag_label = StringProperty("")
+    game_phase = StringProperty("")
+    complexity_discounted = BooleanProperty(False)
+    is_current = BooleanProperty(False)
+    bg_color = ListProperty([0, 0, 0, 0])
+    font_name = StringProperty(Theme.DEFAULT_FONT)
 
 
 def open_important_moves_popup(
