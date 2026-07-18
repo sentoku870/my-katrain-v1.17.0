@@ -25,6 +25,7 @@ from katrain.core.coach.popup_logic import (
     format_validation_status_summary,
     is_summary_birdseye_value,
     resolve_player_color_internal,
+    resolve_summary_rank,
     resolve_summary_spinner_values,
     was_truncated,
 )
@@ -380,6 +381,64 @@ class TestCapResponseText:
         assert status is None
 
 
+# --- Phase 269 follow-up: resolve_summary_rank ------------------------
+
+
+class TestResolveSummaryRank:
+    """Priority chain for the Summary path:
+
+    1. general_player_rank (the analysis-tab global setting) — what
+       the user explicitly told the engine to use
+    2. info["matched_player"].rank (Summary JSON's matched player) —
+       fallback inferred rank
+    3. default_user_rank (Phase 225.8 legacy fallback)
+
+    These tests pin the contract that prevents a "5k" inferred from
+    the Summary JSON from clobbering the user's "4d" global setting.
+    """
+
+    def test_general_player_rank_wins_over_matched_rank(self):
+        # Direct regression for the user bug report
+        # 「解析設定の棋力欄に 4d と入力してあっても INTERMEDIATE になる」
+        info = {"matched_player": {"name": "仙得", "rank": "5k"}}
+        assert resolve_summary_rank(info, general_player_rank="4d", default_user_rank="1k") == "4d"
+
+    def test_matched_player_rank_used_when_no_general(self):
+        info = {"matched_player": {"name": "仙得", "rank": "5k"}}
+        assert resolve_summary_rank(info, general_player_rank="", default_user_rank="1k") == "5k"
+
+    def test_default_user_rank_used_when_no_general_no_matched(self):
+        info = {"matched_player": {"name": "仙得"}}  # no rank
+        assert resolve_summary_rank(info, general_player_rank="", default_user_rank="1k") == "1k"
+
+    def test_all_empty_returns_none(self):
+        info = {"matched_player": {"name": "仙得"}}
+        assert resolve_summary_rank(info, general_player_rank="", default_user_rank="") is None
+
+    def test_none_info_falls_through_to_general(self):
+        assert resolve_summary_rank(None, general_player_rank="4d", default_user_rank="1k") == "4d"
+
+    def test_none_info_no_general_falls_through_to_default(self):
+        assert resolve_summary_rank(None, general_player_rank="", default_user_rank="1k") == "1k"
+
+    def test_user_reported_bug_4d_settings_honoured(self):
+        # Direct regression: 4d in analysis settings wins over 5k
+        # inferred from the Summary JSON.
+        info = {"matched_player": {"name": "仙得", "rank": "5k"}}
+        result = resolve_summary_rank(info, general_player_rank="4d", default_user_rank="")
+        assert result == "4d"
+        assert result != "5k"
+
+    def test_empty_matched_rank_falls_through_to_general(self):
+        info = {"matched_player": {"name": "仙得", "rank": ""}}
+        assert resolve_summary_rank(info, general_player_rank="4d", default_user_rank="1k") == "4d"
+
+    def test_kanji_rank_preserved(self):
+        info = {"matched_player": {"rank": "4段"}}
+        # We don't parse — just pass through.
+        assert resolve_summary_rank(info) == "4段"
+
+
 # --- Public API export check --------------------------------------------
 
 
@@ -403,5 +462,6 @@ class TestExports:
             "was_truncated",
             "format_validation_status_summary",
             "cap_response_text",
+            "resolve_summary_rank",
         ]:
             assert hasattr(pkg, name), f"__init__ missing {name}"

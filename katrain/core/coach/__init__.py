@@ -106,6 +106,7 @@ from katrain.core.coach.popup_logic import (  # Phase 242-E
     format_validation_status_summary,
     is_summary_birdseye_value,
     resolve_player_color_internal,
+    resolve_summary_rank,  # Phase 269 follow-up
     resolve_summary_spinner_values,
     was_truncated,
 )
@@ -257,6 +258,7 @@ __all__ = [
     "format_validation_status_summary",
     "is_summary_birdseye_value",
     "resolve_player_color_internal",
+    "resolve_summary_rank",  # Phase 269 follow-up
     "resolve_summary_spinner_values",
     "was_truncated",
 ]
