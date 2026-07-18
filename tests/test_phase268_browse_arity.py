@@ -174,9 +174,7 @@ def test_analysis_tab_browse_handler_uses_inst_filename_for_ok_pick() -> None:
     # And the filename lookup must come before the selection fallback.
     fname_idx = helper_src.find("inst.filename")
     sel_idx = helper_src.find("inst.selection")
-    assert fname_idx < sel_idx, (
-        "inst.filename must be checked before inst.selection[0] so the OK-button pick wins"
-    )
+    assert fname_idx < sel_idx, "inst.filename must be checked before inst.selection[0] so the OK-button pick wins"
 
 
 def test_analysis_tab_browse_handler_dismisses_picker() -> None:
@@ -376,11 +374,9 @@ def test_curator_browse_closure_has_karte_dir_and_batch_dir() -> None:
             tgt = stmt.targets[0]
             if isinstance(tgt, ast.Name) and tgt.id == "karte_dir" and karte_idx is None:
                 # Capture the first karte_dir assignment (the pre-decl)
-                if karte_idx is None:
-                    karte_idx = i
+                karte_idx = i
             if isinstance(tgt, ast.Name) and tgt.id == "batch_dir" and batch_idx is None:
-                if batch_idx is None:
-                    batch_idx = i
+                batch_idx = i
         if isinstance(stmt, ast.If) and if_idx is None:
             test_src = ast.unparse(stmt.test)
             if "curator_profile" in test_src:
@@ -459,12 +455,9 @@ def test_analysis_tab_has_refresh_curator_status_label_text() -> None:
     assert helper_src, "_refresh_curator_status_label_text not found in analysis_tab.py"
     # The helper must consult curator_profile and n_tags (the
     # two key state variables that drive the text).
-    assert "curator_profile" in helper_src, (
-        "_refresh_curator_status_label_text must consult ctx.curator_profile"
-    )
+    assert "curator_profile" in helper_src, "_refresh_curator_status_label_text must consult ctx.curator_profile"
     assert "weak_tags" in helper_src, (
-        "_refresh_curator_status_label_text must read weak_tags "
-        "to compute the loaded-tag count."
+        "_refresh_curator_status_label_text must read weak_tags to compute the loaded-tag count."
     )
     # And it must cover the 0-tag-while-loaded case (the new
     # "Profile loaded (no weak tags yet)" message).
@@ -484,9 +477,7 @@ def test_analysis_tab_browse_done_refreshes_label() -> None:
         "_on_browser_done must call _refresh_curator_status_label_text "
         "so the status label updates after a successful load."
     )
-    assert "label.text" in helper_src, (
-        "_on_browser_done must assign the refreshed text to label.text"
-    )
+    assert "label.text" in helper_src, "_on_browser_done must assign the refreshed text to label.text"
 
 
 def test_settings_popup_stashes_state_on_popup() -> None:

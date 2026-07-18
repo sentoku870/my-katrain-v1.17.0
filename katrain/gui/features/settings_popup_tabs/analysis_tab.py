@@ -594,7 +594,6 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     """
     from katrain.core.lang import i18n
     from katrain.gui.kivyutils.buttons import SizedRectangleButton as _BrowseButton
-    from katrain.gui.widgets.factory import Button as _Button
 
     # Phase 268 fix: pre-declare karte_dir / batch_dir so the
     # ``_on_browse`` closure can always read them. Previously these
@@ -736,9 +735,7 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         # reach the "保存" / "キャンセル" buttons).  Mirrors
         # :func:`llm_coach_popup._on_pick` which has the same line.
         def _on_browser_done(inst: Any, *_args: Any) -> None:
-            chosen = (inst.filename or "").strip() or (
-                inst.selection[0] if inst.selection else ""
-            )
+            chosen = (inst.filename or "").strip() or (inst.selection[0] if inst.selection else "")
             if chosen:
                 _load_curator_from_path(state.ctx, chosen)
             # Phase 268: refresh the live status label in place so the
