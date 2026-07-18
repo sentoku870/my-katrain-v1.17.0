@@ -337,7 +337,11 @@
         on_action: root.katrain("reset-analysis",)
     AnalysisMenuItem:
         text: i18n._("analysis:insert")
-        icon: 'Insert-Move.png'
+        # Phase 249-δ: previously shared the Insert-Move.png icon with
+        # the "棋譜並べ" menu entry, which made the two look identical
+        # in the menu. Extra.png is semantically closer ("add a move
+        # at this position") so the two icons are now distinct.
+        icon: 'Extra.png'
         shortcut: 'i'
         on_action: root.katrain("insert-mode")
     AnalysisMenuItem:

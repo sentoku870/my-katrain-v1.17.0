@@ -490,11 +490,20 @@
                     source: 'menu.png'
                     mipmap: True
             MDFloatLayout:
-                width: kifunarabe_abort_button.width
+                # Phase 249-δ: this widget was previously hidden via
+                # ``size_hint_x: 1e-9`` (the
+                # ``size_hint_x: self.width if ... else 1e-9`` form was
+                # invalid: ``size_hint_x`` is constrained to 0.0..1.0,
+                # ``self.width`` is a pixel value, and Kivy would
+                # coerce the assignment inconsistently). The corrected
+                # binding switches ``width`` and ``size_hint_x``
+                # together so the container collapses cleanly when the
+                # button is invisible.
                 size_hint: None, 1
+                width: kifunarabe_abort_button.width if (app.gui and app.gui.kifunarabe_mode) else 0
                 opacity: 1 if (app.gui and app.gui.kifunarabe_mode) else 0
                 disabled: not (app.gui and app.gui.kifunarabe_mode)
-                size_hint_x: self.width if (app.gui and app.gui.kifunarabe_mode) else 1e-9
+                size_hint_x: None
                 AutoSizedRectangleButton:
                     background_color: Theme.BOX_BACKGROUND_COLOR
                     size_hint_y: 0.55
