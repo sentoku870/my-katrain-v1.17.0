@@ -266,12 +266,31 @@ msgstr "中断して棋譜並べ終了"
 msgid "kifunarabe:summary:critical3"
 msgstr "Critical 3: {correct}/{total} ({rate})"
 
+msgid "kifunarabe:summary:overall_rate"
+msgstr "全体率 (自動進行込み): {overall_rate}"
+
 # Phase 179-B1
 msgid "kifunarabe:critical3_badge_title"
 msgstr "Critical 3"
 
 msgid "kifunarabe:critical3_badge"
 msgstr "{move}手目 - Critical 3"
+
+# Phase 249-β
+msgid "kifunarabe:history:title"
+msgstr "棋譜並べ - 履歴"
+
+msgid "kifunarabe:history:not_configured"
+msgstr "履歴がまだ有効化されていません。"
+
+msgid "kifunarabe:history:empty"
+msgstr "履歴がまだありません。"
+
+msgid "kifunarabe:history:close"
+msgstr "閉じる"
+
+msgid "kifunarabe:summary:history"
+msgstr "履歴を見る"
 
 msgid "stats:winrate"
 msgstr "勝率"
@@ -2070,6 +2089,9 @@ msgstr "診断"
 
 msgid "mykatrain:settings:kifunarabe_sgf_load"
 msgstr "プロの棋譜フォルダ（棋譜並べ用）"
+
+msgid "mykatrain:settings:kifunarabe_history_dir"
+msgstr "棋譜並べ履歴フォルダ"
 
 msgid "mykatrain:settings:kifunarabe_show_digits"
 msgstr "マーカーに数字（勝率・スコア・探索数）を表示する"

@@ -258,6 +258,69 @@ KataGo 解析が出す候補手を盤面に表示する前に「ノイズ」を�
 設定画面で「※ 棋譜並べモード中は自動OFF」の注意書きが表示される。
 AST ベースのテスト (`test_pv_filter_kifunarabe_skip.py`) で保証。
 
+### 7.5.7 棋譜並べ (kifunarabe) 機能 (Phase 249-β)
+
+Phase 177 で実装された学習モード。KataGo 解析済み SGF を「次の一手予測クイズ」として再生する。
+
+#### 起動
+
+- メニュー「棋譜並べ」(`Ctrl-R`) または 盤面の「棋譜並べ中断」ボタン
+- SGF 選択 → 「先手/後手/両方」「ヒント数 (0-5)」「手数 (50/100/150/全部)」を選択
+- セッション開始。盤上に候補マーカー (実戦手 + KataGo top N) が表示される
+
+#### ルール
+
+- **ユーザーが実戦手と同じマスをクリック** → 正解
+- **別のマーカーをクリック** → 不正解 (WRONG_GUESS として記録)
+- **マーカー外をクリック** → 不正解
+- 自分の手番でない側 (`turn="B"` のとき白番の手) は **自動進行**
+- `max_moves` に達するか本譜終了で **summary popup** を表示
+- 候補マーカーは uniform color (デフォルト) で「KataGo のランキングを見せない」
+
+#### 設定 (Phase 177-E / 230-C / 249-β)
+
+設定タブ「棋譜並べ」で:
+
+| 設定 | デフォルト | 効果 |
+|------|:---------:|------|
+| `kifunarabe/sgf_load` | (空) | 棋譜並べ用の SGF フォルダ (通常の SGF 読込と分離) |
+| `kifunarabe/history_dir` | `~/.katrain/kifunarabe_history` | 履歴保存先 (Phase 249-β) |
+| `kifunarabe/show_digits` | False | 候補マーカーに数字 (勝率/スコア/探索数) を表示 |
+| `kifunarabe/show_actual_border` | False | 実戦手に枠線 |
+| `kifunarabe/uniform_color` | True | 全マーカー同色 (ランキング非表示) |
+| `kifunarabe/auto_toggle_markers` | True | 「次の一手」「ドット」を自動 OFF |
+
+#### 履歴 (Phase 249-β)
+
+棋譜並べセッションが終了するたびに JSON 形式で履歴が保存される。
+
+- 保存先: `kifunarabe/history_dir` (デフォルト `~/.katrain/kifunarabe_history/`)
+- ファイル名: `YYYY-MM-DD_HHMMSS_<sgf_stem>.json` または `_manual.json`
+- 含まれる情報: 終了時刻、SGF パス、config (turn / hints / max_moves)、summary (正解/誤答/auto/skip)、Critical 3 セット
+
+summary popup の「履歴」ボタンで **直近 50 件のサマリ**を表示。各エントリは:
+
+```
+2026-07-18T09:30:14   game01.sgf
+  total 38, correct 30, wrong 6, auto 2, skip 0
+  correct rate 83.3%   critical_3 2/3 (66.7%)
+```
+
+`correct rate` は **ユーザーがクリックした手** (正解 + 誤答) のうちの正解率。
+`全体率 (incl. auto-advance)` は **自動進行を含めた全体** での正解率。
+両者を比較することで「ユーザーは予想を試みたが、自動進行は多かった」のか
+「ユーザーはたくさん予想した」のかを区別できる。
+
+#### よくある質問
+
+**Q. 棋譜並べ中に Critical 3 バッジが出るのは?**
+A. セッション開始時に現局面から Critical 3 候補 (B / W 各最大 3 件) を抽出し、
+その手番に到達すると 1.5 秒間のトーストを表示 (Phase 179-B1)。
+
+**Q. 履歴の削除方法は?**
+A. Phase 249-β では手動削除のみ。`kifunarabe/history_dir` 内の JSON ファイルを
+削除すれば OK。GUI からの削除は将来タスク。
+
 ### 7.5.6 よくある質問
 
 **Q. STRONG にしても 8 件表示されるのはなぜ?**

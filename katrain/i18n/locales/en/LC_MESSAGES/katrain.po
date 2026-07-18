@@ -767,12 +767,32 @@ msgstr "Abort Kifu Narabe"
 msgid "kifunarabe:summary:critical3"
 msgstr "Critical 3: {correct} of {total} ({rate})"
 
+# Phase 249-β
+msgid "kifunarabe:summary:overall_rate"
+msgstr "Overall rate (incl. auto-advance): {overall_rate}"
+
 # Phase 179-B1
 msgid "kifunarabe:critical3_badge_title"
 msgstr "Critical 3"
 
 msgid "kifunarabe:critical3_badge"
 msgstr "Move #{move} - Critical 3"
+
+# Phase 249-β
+msgid "kifunarabe:history:title"
+msgstr "Kifu Narabe - History"
+
+msgid "kifunarabe:history:not_configured"
+msgstr "History is not configured yet."
+
+msgid "kifunarabe:history:empty"
+msgstr "No history entries yet."
+
+msgid "kifunarabe:history:close"
+msgstr "Close"
+
+msgid "kifunarabe:summary:history"
+msgstr "Show history"
 
 msgid "stats:winrate"
 msgstr "Win Rate"
@@ -2148,6 +2168,9 @@ msgstr "Diagnostics"
 
 msgid "mykatrain:settings:kifunarabe_sgf_load"
 msgstr "Pro-game SGF folder (Kifu Narabe)"
+
+msgid "mykatrain:settings:kifunarabe_history_dir"
+msgstr "Kifu Narabe history folder"
 
 msgid "mykatrain:settings:kifunarabe_show_digits"
 msgstr "Show digit labels (winrate / score / visits) on markers"

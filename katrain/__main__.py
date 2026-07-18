@@ -328,9 +328,32 @@ class KaTrainGui(Screen, KaTrainBase):
             get_mode=lambda: self.kifunarabe_mode,
             set_mode=lambda v: setattr(self, "kifunarabe_mode", v),
             logger=self.log,
+            # Phase 249-β: persistent history store. The directory is
+            # configurable via ``kifunarabe/history_dir``; falling back
+            # to ``~/.katrain/kifunarabe_history``.
+            history_store=self._build_kifunarabe_history_store(),
         )
 
         self._engine_bootstrap: EngineBootstrap | None = None  # populated in start()
+
+    def _build_kifunarabe_history_store(self) -> Any:
+        """Phase 249-β: build the persistent kifunarabe history store.
+
+        Resolution order for the directory:
+        1. ``kifunarabe/history_dir`` config (if set and not empty)
+        2. ``~/.katrain/kifunarabe_history`` (default)
+
+        Failures to import the store (e.g. on a stripped-down
+        install) are swallowed and return ``None`` so the rest of the
+        app still works.
+        """
+        try:
+            from katrain.core.study.kifunarabe_history import KifunarabeHistoryStore
+        except ImportError:
+            return None
+        configured = self.config("kifunarabe/history_dir", None)
+        directory: str | None = configured if configured else None
+        return KifunarabeHistoryStore(directory=directory)
 
         # Phase 198: aggregate every manager into a single AppContext so that
         # downstream code can reach them through ``self.ctx.<name>`` without

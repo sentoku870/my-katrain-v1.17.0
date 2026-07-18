@@ -17,6 +17,7 @@ This mixin assumes the facade satisfies ``_ControllerDeps`` and
 ``_SessionState`` (see :mod:`katrain.gui.managers.kifunarabe_state`).
 """
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.study.kifunarabe import (
