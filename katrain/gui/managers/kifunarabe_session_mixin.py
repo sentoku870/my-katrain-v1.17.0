@@ -17,7 +17,7 @@ Cross-mixin attributes
   WRONG_GUESS exporter for Karte 連携.
 """
 
-from contextlib import suppress
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from katrain.core.study.kifunarabe import (
@@ -155,7 +155,7 @@ class KifunarabeSessionMixin:
             # so a user who immediately clicks "Abort" still gets the
             # data on disk.
             self._persist_history(summary_data)
-            with suppress(Exception):
+            with contextlib.suppress(Exception):
                 self._get_show_summary()(self._get_ctx(), summary_data)
         # Phase 177-H: restore the user's ``show_children`` / ``eval``
         # toggles that were masked at session start.
@@ -257,7 +257,7 @@ class KifunarabeSessionMixin:
                     critical_3_set=list(self._session.critical_3_set),
                 )
             except Exception as e:  # noqa: BLE001
-                with suppress(Exception):
+                with contextlib.suppress(Exception):
                     self._logger(f"kifunarabe: history append failed: {e}", level=0)
 
         # Phase 249-γ: opt-in weakness export.
@@ -280,10 +280,10 @@ class KifunarabeSessionMixin:
         try:
             path = exporter.export(self._session, sgf_path)
             if path is not None:
-                with suppress(Exception):
+                with contextlib.suppress(Exception):
                     self._logger(f"kifunarabe: weaknesses exported to {path}", 0)
         except Exception as e:  # noqa: BLE001
-            with suppress(Exception):
+            with contextlib.suppress(Exception):
                 self._logger(f"kifunarabe: weakness export failed: {e}", level=0)
 
 
