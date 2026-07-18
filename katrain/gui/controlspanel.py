@@ -132,6 +132,13 @@ class ControlsPanel(BoxLayout):
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
 
+        # Phase 253: cache the last PV-filter preview render so the
+        # controls panel does not re-allocate a localized string on
+        # every redraw. Keyed by ``(raw_count, filtered_count, best_count,
+        # config_active)`` so a real change still propagates immediately.
+        self._pv_filter_preview_cache: tuple | None = None
+        self._pv_filter_preview_text: str = ""
+
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
 
@@ -454,6 +461,13 @@ class ControlsPanel(BoxLayout):
         badukpan widget by ``prepare_hint_moves`` and renders the
         compact one-line summary used in the controls panel.
 
+        Phase 253: cached on a ``(raw, filtered, best, active)`` tuple
+        so the localized string is only re-built when the underlying
+        numbers actually change. Hovering over the same node keeps
+        returning the cached text — preventing the visible jitter
+        described in the Phase 250 audit (item I-3) where the preview
+        text re-rendered on every redraw tick.
+
         Returns:
             Localized string. Falls back to ``""`` when no preview
             is available (e.g. Kivy widget path not yet wired).
@@ -467,17 +481,38 @@ class ControlsPanel(BoxLayout):
         if board is None:
             return ""
         preview = getattr(board, "last_pv_filter_preview", None)
-        if preview is None or preview.raw_count == 0:
+        if preview is None:
             return _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
-        if not preview.config_active:
-            return _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
+
+        # Phase 253: cache key covers every value that affects the
+        # rendered text. Identity check on the preview object alone
+        # would be a stronger cache but ties cache lifetime to the
+        # badukpan widget's object id — a fragile contract. The
+        # tuple key is value-based and survives widget rebuilds.
+        cache_key = (
+            preview.raw_count,
+            preview.filtered_count,
+            preview.best_count,
+            preview.config_active,
+        )
+        if cache_key == self._pv_filter_preview_cache:
+            return self._pv_filter_preview_text
+
+        if preview.raw_count == 0:
+            rendered = _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
+        elif not preview.config_active:
+            rendered = _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
                 n=preview.raw_count,
             )
-        return _i18n._("mykatrain:controls:pv_filter_preview_active").format(
-            n=preview.raw_count,
-            m=preview.filtered_count,
-            best=preview.best_count,
-        )
+        else:
+            rendered = _i18n._("mykatrain:controls:pv_filter_preview_active").format(
+                n=preview.raw_count,
+                m=preview.filtered_count,
+                best=preview.best_count,
+            )
+        self._pv_filter_preview_cache = cache_key
+        self._pv_filter_preview_text = rendered
+        return rendered
 
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92 + Phase 179).
