@@ -132,7 +132,9 @@ class TestBasicDetection:
         # Phase 92: Cache format was (require_reliable, hint).
         # Phase 251: extended to (require_reliable, filter_key, hint)
         # so per-category toggles invalidate the cache.
-        node._beginner_hint_cache = (True, None, "MARKER")
+        # Phase 265: extended to (require_reliable, filter_key, curator_key, hint)
+        # so reloading the curator profile invalidates the re-label cache.
+        node._beginner_hint_cache = (True, None, None, "MARKER")
 
         # Second call should return cached "MARKER"
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
@@ -721,14 +723,16 @@ class TestCacheWithReliableSettings:
         # (None = no per-category filter). When the next call matches
         # the cached (require_reliable, filter_key), the cached hint
         # is returned without re-running the dispatchers.
-        node._beginner_hint_cache = (True, None, "MARKER")
+        # Phase 265: extended to (require_reliable, filter_key, curator_key, hint)
+        node._beginner_hint_cache = (True, None, None, "MARKER")
 
         # Second call with same settings should return cached value
         hint2 = get_beginner_hint_cached(game_9x9, node, require_reliable=True)
         assert hint2 == "MARKER"
 
         # Phase 251: different filter_key invalidates the cache.
-        node._beginner_hint_cache = (True, None, "OLD")
+        # Phase 265: cache shape is (require_reliable, filter_key, curator_key, hint).
+        node._beginner_hint_cache = (True, None, None, "OLD")
         hint3 = get_beginner_hint_cached(game_9x9, node, require_reliable=True, category_filter={"self_atari": False})
         assert hint3 != "OLD", "category_filter change must invalidate cache"
 
