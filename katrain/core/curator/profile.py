@@ -122,6 +122,15 @@ def curator_profile_from_payload(
     ``user_weak_tags`` list. A list-of-pairs ``[[tag, count], ...]`` is
     also supported for forward-compatibility with newer Curator output.
 
+    Phase 268 fallback: when the canonical ``user_weak_tags`` is empty
+    (e.g. a curator_ranking.json produced by an older build that never
+    populated the aggregate), we recover the same data from the
+    per-game ``rankings[*].recommended_tags`` field. Each tag's
+    occurrence count is the number of games that listed it; tags
+    reaching ``min_occurrences`` are reported as weak axes. This keeps
+    existing users' curator_ranking.json files useful after upgrading
+    without forcing them to rerun batch analysis.
+
     Args:
         payload: Loaded JSON (dict) or any value that exposes the
             ``user_weak_tags`` field.
@@ -166,6 +175,31 @@ def curator_profile_from_payload(
         total_games_int = int(total_games) if total_games is not None else 0
     except (TypeError, ValueError):
         total_games_int = 0
+
+    # Phase 268 fallback: legacy curator_ranking.json files have
+    # ``user_weak_tags: []`` because the upstream pipeline never built
+    # the aggregate. Re-derive a usable weak_tags map by counting
+    # occurrences of each tag across ``rankings[*].recommended_tags``
+    # so users do not have to rerun batch analysis to benefit from the
+    # hint. Without this, every profile loaded from a legacy file
+    # returns 0 weak tags, which (a) keeps the popup status line
+    # stuck on "Batch 分析で …" and (b) suppresses the curator weak
+    # axis label in real-time play.
+    if not weak_tags:
+        rankings = payload.get("rankings")
+        if isinstance(rankings, list):
+            recovered: dict[str, int] = {}
+            for entry in rankings:
+                if not isinstance(entry, dict):
+                    continue
+                rec_tags = entry.get("recommended_tags")
+                if not isinstance(rec_tags, list):
+                    continue
+                for tag in rec_tags:
+                    if not isinstance(tag, str) or not tag:
+                        continue
+                    recovered[tag] = recovered.get(tag, 0) + 1
+            weak_tags = {tag: cnt for tag, cnt in recovered.items() if cnt >= int(min_occurrences)}
 
     if not weak_tags and total_games_int == 0:
         return None

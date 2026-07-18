@@ -1717,12 +1717,6 @@ msgstr "Currently: AUTO → {level} (auto-derived from {preset}, cap {max_n})"
 msgid "mykatrain:settings:pv_filter_status_explicit"
 msgstr "Currently: {level} (cap {max_n})"
 
-msgid "mykatrain:settings:pv_filter_marker_legend"
-msgstr ""
-"Marker legend: red=high loss, orange=mid, yellow=low loss; small dots=low "
-"visits (less reliable); blue border=best move (loss is from the next-"
-"player's view)."
-
 msgid "mykatrain:settings:pv_filter_kifunarabe_note"
 msgstr ""
 "Note: disabled in Kifunarabe (棋譜並べ) mode — all options are always shown."
@@ -1735,13 +1729,6 @@ msgstr "Current position: {n} candidates (filter OFF)"
 
 msgid "mykatrain:settings:pv_filter_preview_active"
 msgstr "Current position: {n} -> {m} (incl. {best} best move, filter ON)"
-
-# Phase 247-C (L6): compact display in the controls panel
-msgid "mykatrain:controls:pv_filter_preview_inactive"
-msgstr "{n} candidates (filter OFF)"
-
-msgid "mykatrain:controls:pv_filter_preview_active"
-msgstr "{n} -> {m} (best {best} included)"
 
 msgid "mykatrain:settings:beginner_hints"
 msgstr "Beginner Hints:"
@@ -3302,3 +3289,10 @@ msgstr "Browse..."
 #. pick curator_ranking_*.json manually
 msgid "mykatrain:settings:curator_hint_browse_title"
 msgstr "Select curator_ranking_*.json"
+
+#. Phase 268+ Curator profile loaded but 0 weak tags.
+#. The user has the file loaded, but the recommended_tags fallback
+#. also produced no recurring patterns. Encourage them to analyse
+#. more games rather than the misleading "Batch 分析で …" hint.
+msgid "mykatrain:settings:curator_hint_loaded_no_tags"
+msgstr "Profile loaded (no weak tags yet) — analyse more games via batch"

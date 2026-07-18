@@ -263,23 +263,6 @@ def _build_pv_filter_section(inner: BoxLayoutType, state: _SettingsPopupContext)
     state._pv_filter_preview_label = preview_label
     inner.add_widget(preview_label)
 
-    # Phase 246-B (M4): a small legend explaining the marker colour /
-    # size / border semantics so users can decode the on-board hints
-    # without opening external docs. Kept short to fit the popup width.
-    legend_label = Label(
-        text=i18n._("mykatrain:settings:pv_filter_marker_legend"),
-        size_hint_y=None,
-        height=dp(60),
-        halign="left",
-        valign="top",
-        color=Theme.TEXT_COLOR,
-        font_name=Theme.DEFAULT_FONT,
-        font_size="11sp",
-    )
-    legend_label.bind(width=lambda lbl, w: setattr(lbl, "text_size", (w, None)))
-    legend_label.bind(texture_size=lambda lbl, tex_size: setattr(lbl, "height", tex_size[1]))
-    inner.add_widget(legend_label)
-
     # Phase 246-D (H4): kifunarabe-mode bypass note. Pinned here so
     # users aren't confused when their STRONG filter "stops working"
     # mid-puzzle. The runtime bypass is in ``prepare_hint_moves``;
@@ -610,12 +593,36 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     when the auto-detect heuristics miss.
     """
     from katrain.core.lang import i18n
-    from katrain.gui.widgets.factory import Button as _Button
+    from katrain.gui.kivyutils.buttons import SizedRectangleButton as _BrowseButton
+
+    # Phase 268 fix: pre-declare karte_dir / batch_dir so the
+    # ``_on_browse`` closure can always read them. Previously these
+    # were only assigned inside the ``else`` branch, so when the
+    # curator profile was already loaded, clicking the browse
+    # button raised ``NameError: name 'karte_dir' is not defined``,
+    # which Kivy's ``on_release`` swallowed silently — the button
+    # looked completely dead.
+    karte_dir = ""
+    batch_dir = ""
 
     curator_profile = getattr(state.ctx, "curator_profile", None)
     n_tags = len(curator_profile.weak_tags) if curator_profile is not None else 0
+    # Phase 268: use the shared text helper so the file-browser
+    # callback can re-evaluate the same string after a successful
+    # load (otherwise the two code paths would drift apart). The
+    # n_tags branches are still inline at the call site for clarity,
+    # but the not-loaded recovery text is delegated to the helper.
     if curator_profile is not None and n_tags > 0:
         text = i18n._("mykatrain:settings:curator_hint_loaded").format(count=n_tags)
+    elif curator_profile is not None and n_tags == 0:
+        # Phase 268+: a profile is loaded but contains 0 weak tags.
+        # This used to mean "the upstream batch pipeline never built
+        # the user_aggregate"; after the profile-loader fallback to
+        # ``rankings[*].recommended_tags`` it now means the user
+        # truly has no recurring mistakes yet — encourage them to
+        # analyse more games rather than the misleading
+        # "Batch 分析で …" hint.
+        text = i18n._("mykatrain:settings:curator_hint_loaded_no_tags")
     else:
         # Check both candidate directories to give the user a
         # specific recovery hint.
@@ -623,12 +630,7 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         karte_dir = settings.get("karte_output_directory") or ""
         batch_options = settings.get("batch_options") or {}
         batch_dir = batch_options.get("output_dir") or ""
-        if karte_dir or batch_dir:
-            text = i18n._("mykatrain:settings:curator_hint_not_loaded_with_dirs").format(
-                karte_dir=karte_dir or "—", batch_dir=batch_dir or "—"
-            )
-        else:
-            text = i18n._("mykatrain:settings:curator_hint_not_loaded")
+        text = _refresh_curator_status_label_text(state, state.ctx)
 
     # Status row (text + browse button) for Phase 268.
     from kivy.uix.boxlayout import BoxLayout as _BoxLayout
@@ -644,23 +646,42 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         font_size=sp(11),
     )
     desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    # Phase 268: keep a reference to the live label so the
+    # file-browser handler can update its text in place after a
+    # successful load — without forcing the user to close/reopen
+    # the popup to see the new weak-tag count.
+    state._curator_status_label = desc
     status_row.add_widget(desc)
 
-    browse_btn = _Button(
+    # Phase 268 fix: the user reported the browse button "doesn't
+    # respond" even after the closure-scope fix.  Switching from the
+    # plain Kivy ``Button`` (which we use elsewhere in this popup)
+    # to ``SizedRoundedRectangleButton`` matches the working LLM
+    # Coach popup.  The KivyMD-derived button has a proper touch
+    # ripple + ``BasePressedButton`` wiring that plain ``Button``
+    # lacks in the popup's touch-event chain, which appears to be
+    # the actual cause of the dead-button symptom.
+    browse_btn = _BrowseButton(
         text=i18n._("mykatrain:settings:curator_hint_browse"),
         size_hint_x=0.22,
+        height=dp(36),
         font_name=Theme.DEFAULT_FONT,
     )
 
-    # Phase 268: file browser for curator_ranking_*.json. We use the
-    # same FileBrowser widget the rest of the GUI uses, with a JSON
-    # filter. On selection, call back into ``KaTrainGui.update_curator_profile``
-    # with a path override.
+    # Phase 268 fix: log the click so we can prove the button is wired.
+    # The user reported the button "doesn't respond" — surface the event
+    # in the log so future support can distinguish "not clicked" from
+    # "clicked but failed silently".
     def _on_browse(_btn: Any) -> None:
         from kivy.metrics import dp
 
         from katrain.gui.popups._base import I18NPopup
         from katrain.gui.widgets.filebrowser import I18NFileBrowser
+
+        # Phase 268 fix: surface the click in the log so support can
+        # distinguish "not clicked" from "clicked but failed silently".
+        with contextlib.suppress(Exception):
+            state.ctx.log(f"Curator browse: click received (path={karte_dir!r}/{batch_dir!r})")
 
         # Phase 268: ``I18NFileBrowser`` accepts ``path=`` (not
         # ``initialdir=``) and ``filters=`` for the JSON filter. There
@@ -669,13 +690,25 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         # version of this helper did not actually open in the
         # expected directory.
         initial = karte_dir or batch_dir or os.path.expanduser("~")
-        if not os.path.isdir(initial):
+        if not initial or not os.path.isdir(initial):
             initial = os.path.expanduser("~")
-        browser = I18NFileBrowser(
-            path=initial,
-            filters=["*.json", "*.JSON"],
-            select_string=i18n._("button:ok"),
-        )
+        # Phase 268 fix: log + open the picker inside a try/except so
+        # a single bad path (e.g. an old ``karte_output_directory``
+        # pointing at a removed drive) cannot silently no-op the
+        # button.  Any failure is surfaced via ``ctx.log`` instead of
+        # being swallowed by Kivy's ``on_release``.
+        try:
+            browser = I18NFileBrowser(
+                path=initial,
+                filters=["*.json", "*.JSON"],
+                select_string=i18n._("button:ok"),
+            )
+        except Exception as e:  # noqa: BLE001
+            with contextlib.suppress(Exception):
+                state.ctx.log(
+                    f"Curator file browser init failed (path={initial!r}): {e}",
+                )
+            return
 
         # Phase 268 follow-up: ``I18NFileBrowser`` dispatches ``on_success``
         # / ``on_submit`` with just the instance (filebrowser.py:446-450),
@@ -685,9 +718,36 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         # silently no-op'd, which is why the "参照" button "didn't work".
         # We use the same ``*_args`` sink as ``llm_coach_popup._on_pick``
         # so future dispatch-shape changes are also tolerated.
+        #
+        # Phase 268 follow-up #2: the original implementation only read
+        # ``inst.selection`` (which is the list of paths from a
+        # double-click pick) and never ``inst.filename`` (which is the
+        # path the user typed or selected via the OK button).  Users who
+        # picked via the OK button saw the file browser stay open because
+        # ``inst.selection`` was still empty.  The fix mirrors the
+        # working :func:`llm_coach_popup._on_pick` pattern: try
+        # ``filename`` first, then fall back to ``selection[0]``.
+        #
+        # Phase 268 follow-up #3: the callback must explicitly
+        # ``picker.dismiss()`` so the dialog actually closes.  Without
+        # this, users see the OK button "do nothing" (the curator loads
+        # in the background, but the popup stays open and they cannot
+        # reach the "保存" / "キャンセル" buttons).  Mirrors
+        # :func:`llm_coach_popup._on_pick` which has the same line.
         def _on_browser_done(inst: Any, *_args: Any) -> None:
-            selected = inst.selection[0] if inst.selection else None
-            _load_curator_from_path(state.ctx, selected)
+            chosen = (inst.filename or "").strip() or (inst.selection[0] if inst.selection else "")
+            if chosen:
+                _load_curator_from_path(state.ctx, chosen)
+            # Phase 268: refresh the live status label in place so the
+            # user sees the new weak-tag count immediately.  Silently
+            # no-ops if the popup has been closed before the browser
+            # callback fires (e.g. user dismissed both at once).
+            label = getattr(state, "_curator_status_label", None)
+            if label is not None:
+                with contextlib.suppress(Exception):
+                    label.text = _refresh_curator_status_label_text(state, state.ctx)
+            # Always close the picker so the user isn't stuck on it.
+            picker.dismiss()
 
         browser.bind(on_success=_on_browser_done, on_submit=_on_browser_done)
 
@@ -698,12 +758,16 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         # pattern (mirroring :func:`llm_coach_popup.on_browse_karte`) is
         # to wrap the browser in an ``I18NPopup`` and call
         # ``picker.open()`` on the popup.
-        picker = I18NPopup(
-            title_key="mykatrain:settings:curator_hint_browse_title",
-            size=[dp(700), dp(500)],
-            content=browser,
-        )
-        picker.open()
+        try:
+            picker = I18NPopup(
+                title_key="mykatrain:settings:curator_hint_browse_title",
+                size=[dp(700), dp(500)],
+                content=browser,
+            )
+            picker.open()
+        except Exception as e:  # noqa: BLE001
+            with contextlib.suppress(Exception):
+                state.ctx.log(f"Curator file picker open failed: {e}")
 
     browse_btn.bind(on_release=_on_browse)
     status_row.add_widget(browse_btn)
@@ -739,6 +803,33 @@ def _load_curator_from_path(ctx: Any, path: str | None) -> None:
     # Trigger a re-render of the comment panel so the footer updates.
     with contextlib.suppress(Exception):
         ctx.update_state()
+
+
+def _refresh_curator_status_label_text(state: Any, ctx: Any) -> str:
+    """Phase 268: render the curator status label text for the current profile.
+
+    Pulled out of :func:`_build_curator_status_label` so the file-browser
+    handler can re-evaluate the same string after a successful load,
+    without having to rebuild the popup.  Returns the resolved text —
+    the caller assigns it to ``state._curator_status_label.text``.
+    """
+    from katrain.core.lang import i18n
+
+    curator_profile = getattr(ctx, "curator_profile", None)
+    n_tags = len(curator_profile.weak_tags) if curator_profile is not None else 0
+    if curator_profile is not None and n_tags > 0:
+        return i18n._("mykatrain:settings:curator_hint_loaded").format(count=n_tags)
+    if curator_profile is not None and n_tags == 0:
+        return i18n._("mykatrain:settings:curator_hint_loaded_no_tags")
+    settings = ctx.config("mykatrain_settings") or {}
+    karte_dir = settings.get("karte_output_directory") or ""
+    batch_options = settings.get("batch_options") or {}
+    batch_dir = batch_options.get("output_dir") or ""
+    if karte_dir or batch_dir:
+        return i18n._("mykatrain:settings:curator_hint_not_loaded_with_dirs").format(
+            karte_dir=karte_dir or "—", batch_dir=batch_dir or "—"
+        )
+    return i18n._("mykatrain:settings:curator_hint_not_loaded")
 
 
 def _add_toggle_row(
