@@ -81,7 +81,6 @@ msgstr "Export LLM Package"
 # msgstr "No important moves (run KataGo analysis)"
 # msgid "mykatrain:popup:important-moves:complexity"
 # msgstr "Discounted (chaotic)"
-
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
 msgstr "LLM Coach (manual paste)"
@@ -1941,8 +1940,9 @@ msgid "beginner_hint:curator_weak_axis:body"
 msgstr "This kind of mistake appears frequently across your analysed games."
 
 msgid "beginner_hint:curator_weak_axis:why"
-msgstr "Recurring mistake patterns are good targets for focused practice."
-" recurs across your analysed games"
+msgstr ""
+"Recurring mistake patterns are good targets for focused practice. recurs "
+"across your analysed games"
 
 msgid "mykatrain:settings:summary_ownership"
 msgstr "Territory-prediction hint:"
@@ -3254,5 +3254,14 @@ msgstr "KataGo policy network probability for this move"
 msgid "top_move_ownership"
 msgstr "Predicted territory skew (B for Black, W for White)"
 
-#. Phase 265: appended when Beginner Hint is re-labelled by curator weak-axis
+msgid "Copied!"
+msgstr "Copied!"
 
+msgid "Copy Info"
+msgstr "Copy Info"
+
+msgid "Mistake played (sound disabled)"
+msgstr "Mistake played (sound disabled)"
+
+msgid "Summary exported"
+msgstr "Summary exported"

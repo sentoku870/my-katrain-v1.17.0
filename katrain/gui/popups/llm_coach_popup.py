@@ -116,6 +116,37 @@ class LLMCoachPopupContent(BoxLayout):
     All widget IDs referenced here (``karte_path_input``, ``rank_input``,
     ``response_input``, ``status_label``, ``result_label``) are bound in
     the matching KV file ``katrain/gui/kv/llm_coach_popup.kv``.
+
+    **Method groups (Phase 272-D):**
+
+    1. **Lifecycle** — ``__init__`` / ``on_kv_post`` / ``cancel_pending_clocks`` /
+       ``_schedule_once`` — boot the widget, defer post-KV work, and
+       cancel pending Clock events on dismiss.
+    2. **Karte path bootstrap** — ``_populate_initial_karte_path`` /
+       ``_detect_path_type`` / ``on_path_changed`` / ``_refresh_type_label``
+       — wire the Karte path TextInput and detect whether the path points
+       to a single-game karte or a multi-game summary.
+    3. **Rank & perspective (single-game)** — ``_populate_rank_and_perspective``
+       / ``_refresh_rank_hint`` / ``_refresh_perspective_hint`` /
+       ``on_perspective_changed`` — fill in the rank / perspective widgets
+       for a single karte.
+    4. **Summary perspective (multi-game)** — ``_populate_summary_perspective``
+       / ``on_summary_perspective_changed`` /
+       ``_refresh_summary_perspective_hint`` — fill in the player picker
+       for a multi-game summary and toggle the (n局) badge.
+    5. **Generate actions** — ``on_browse_karte`` / ``on_generate_and_copy``
+       / ``_on_generate_summary`` — open the file browser, build the
+       LLM prompt (single-game or summary), copy it to the clipboard.
+    6. **Response handling** — ``on_clear_response`` / ``_on_response_text``
+       — clear the LLM response TextInput and observe text changes.
+    7. **Validate actions** — ``on_validate`` / ``_on_validate_summary``
+       / ``on_copy_result`` — run the validator (single-game or
+       summary) and copy the resulting Markdown to the clipboard.
+    8. **Widget helpers** — ``_get_widget`` / ``_read_text`` /
+       ``_set_widget_text`` / ``_set_status`` / ``_set_result`` — small
+       accessors for ids-based widget lookups; Phase 225.3 / 225.5
+       introduced the ids-based indirection so the popup works even
+       when Kivy's ObjectProperty binding lags.
     """
 
     katrain = ObjectProperty(None, allownone=True)
@@ -234,6 +265,8 @@ class LLMCoachPopupContent(BoxLayout):
         self._pending_clock_events.append(ev)
         return ev
 
+    # ---- Karte path bootstrap -----------------------------------------
+
     def _populate_initial_karte_path(self, *_args: Any) -> None:
         if self.karte_path_input is None:
             return
@@ -251,6 +284,8 @@ class LLMCoachPopupContent(BoxLayout):
             latest = None
         if latest is not None:
             self.karte_path_input.text = str(latest)
+
+    # ---- Rank & perspective (single-game) ----------------------------
 
     def _populate_rank_and_perspective(self, *_args: Any) -> None:
         """Phase 225.6/225.7/225.8/226-B + Phase 227-D: detect rank + perspective.
@@ -484,7 +519,7 @@ class LLMCoachPopupContent(BoxLayout):
         self.perspective_value = _spinner_text_to_internal(raw)
         self._populate_rank_and_perspective()
 
-    # ---- Phase 227-D: Summary mode helpers -----------------------------
+    # ---- Karte path detection ------------------------------------------
 
     def _detect_path_type(self, path: str) -> str:
         """Detect whether ``path`` is a karte or summary JSON.
@@ -762,7 +797,7 @@ class LLMCoachPopupContent(BoxLayout):
         if self._read_text("karte_path_input"):
             self._populate_rank_and_perspective()
 
-    # ---- Button handlers ----------------------------------------------
+    # ---- User actions (browse / generate / validate) ------------------
 
     def on_browse_karte(self) -> None:
         """Open an I18NFileBrowser dialog filtered to ``*.json``.
@@ -1085,7 +1120,7 @@ class LLMCoachPopupContent(BoxLayout):
             return
         self._set_status(i18n._("mykatrain:llm-coach:result-copied"))
 
-    # ---- Internal helpers ---------------------------------------------
+    # ---- Widget helpers ------------------------------------------------
 
     def _get_widget(self, widget_id: str) -> Any:
         """Resolve a child widget by KV ``id`` via ``self.ids``.
