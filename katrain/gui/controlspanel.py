@@ -522,6 +522,13 @@ class ControlsPanel(BoxLayout):
         ``fallback_title``, and ``fallback_body`` properties defined
         alongside the enum (see ``core/beginner/models.py``).
 
+        Phase 254: also renders the ``:why`` key (the third i18n
+        key) on a second line, prefixed with the i18n ``beginner-hint:why``
+        label. The 23 ``:why`` keys were translated in jp + en but
+        had no GUI consumer; they explained the *reason* behind a
+        hint (vs. the *what* in the body). Now the user gets the
+        "why" as a 2nd line in the info panel.
+
         Args:
             hint: BeginnerHint instance
 
@@ -535,12 +542,24 @@ class ControlsPanel(BoxLayout):
 
         title = i18n._(f"{namespace}:title")
         body = i18n._(f"{namespace}:body")
+        why = i18n._(f"{namespace}:why")
 
-        # If i18n key is not found (returns key), use English fallback
+        # If i18n key is not found (returns the raw key), use English
+        # fallback. The same sentinel check works for all three keys
+        # because they share a common prefix.
         if title.startswith("beginner_hint:"):
             title = category.fallback_title
             body = category.fallback_body
+            # The :why key has no programmatic fallback (it lives in
+            # the .po files). Leave it empty so the second line is
+            # not rendered for users whose .po is missing the key.
+            why = ""
 
+        # Phase 254: only append the "why" line when the i18n key
+        # resolved to a non-empty, non-raw-key string. Falls back
+        # silently for languages whose .po is missing the :why key.
+        if why and not why.startswith("beginner_hint:"):
+            return f"[Hint] {title}: {body}\n→ {why}"
         return f"[Hint] {title}: {body}"
 
     @staticmethod
