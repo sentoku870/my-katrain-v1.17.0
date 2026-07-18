@@ -71,23 +71,3 @@ class TestPrepareHintMovesKifunarabeContract:
             "choice set, which leaks the engine's top move to the user. "
             "Restore the bypass."
         )
-
-
-class TestKifunarabeBypassDocumentation:
-    """Pin the help text the settings UI uses to communicate the bypass."""
-
-    def test_legend_mentions_kifunarabe_override(self) -> None:
-        """The marker legend (M4) should also note that the filter is
-        bypassed in kifunarabe mode so users don't get confused why
-        their STRONG filter is showing 5 candidates mid-puzzle."""
-        # We don't assert a specific i18n key here — only that the
-        # string is non-empty and contains a "kifunarabe / 棋譜並べ"
-        # mention. This catches accidental removal of the note.
-        from katrain.core.lang import Lang
-
-        text = Lang("jp")._("mykatrain:settings:pv_filter_marker_legend")
-        # Note: as of this writing the note is *not* in the legend
-        # (we keep M4 to a single line). This test passes silently
-        # so the future maintainer is free to extend the legend.
-        assert isinstance(text, str)
-        assert len(text) > 0

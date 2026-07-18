@@ -77,11 +77,10 @@ class TestBuildCategoryFilter:
                 "katago_uncertain",
                 "summary_ownership",
                 "summary_policy",
-                "curator_hint",
             )
         }
         result = build_category_filter(bh)
-        assert len(result) == 17
+        assert len(result) == 16
         assert all(result[k] is True for k in result)
 
     def test_only_present_keys_returned(self):
@@ -146,8 +145,9 @@ class TestPerCategoryCacheKey:
         node = game_9x9.current_node
 
         # Pre-seed cache with a sentinel
-        # Phase 265: cache shape is now 4-tuple (require_reliable, filter_key, curator_key, hint)
-        node._beginner_hint_cache = (True, None, None, "SENTINEL")
+        # Phase 251: cache shape is (require_reliable, filter_key, hint).
+        # Phase 270: the curator_key was removed; the 3-tuple is current.
+        node._beginner_hint_cache = (True, None, "SENTINEL")
 
         # Same filter (None) → cache hit
         assert get_beginner_hint_cached(game_9x9, node) == "SENTINEL"

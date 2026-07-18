@@ -127,15 +127,13 @@ def compute_beginner_hint(
     require_reliable: bool = True,
     aggregate: bool = False,
     category_filter: dict[str, bool] | None = None,
-    user_weak_tags: dict[str, int] | None = None,
-    curator_min_occurrences: int = 3,
 ) -> BeginnerHint | None:
     """Compute a beginner hint for a specific node (Phase 91-92).
 
     Args:
         game: Game instance
         node: Target node
-        require_reliable: If True, meaning_tag / curator hints require
+        require_reliable: If True, meaning_tag hints require
             ``root_visits >= MIN_RELIABLE_VISITS`` to fire.
         aggregate: Phase 248-C4 — when True, run *all* detectors and
             return the one with the highest ``severity`` (ties broken
@@ -148,20 +146,12 @@ def compute_beginner_hint(
             are treated as enabled. ``None`` means "all enabled"
             (preserves pre-Phase-251 behaviour for callers that have
             not migrated).
-        user_weak_tags: Phase 265 — ``{meaning_tag_id: occurrence_count}``
-            loaded from the Curator profile. When non-empty, the
-            returned hint is re-labelled with a ``curator_weak_axis``
-            context entry if its category maps to one of the user's
-            weak tags. ``None`` / empty disables the re-label.
-        curator_min_occurrences: Phase 265 — minimum tag count to
-            count as a "weak axis" for the re-label.
 
     Note:
-        The default ``aggregate=False`` keeps backward compatibility
-        for all existing callers. ``aggregate=True`` is a stricter
-        variant that surfaces every applicable hint. Use it from the
-        controlspanel status line when the user explicitly asks
-        "what's wrong with this move?" — see ``gui/controlspanel.py``.
+        Phase 270: the ``user_weak_tags`` / ``curator_min_occurrences``
+        parameters were removed along with the deprecated
+        Curator weak-axis hint.  The dispatcher no longer re-labels
+        hints with curator metadata.
     """
     if node.move is None or node.parent is None:
         return None
@@ -207,15 +197,6 @@ def compute_beginner_hint(
             hint = _priority_chain_hints(game, node, inp, require_reliable, category_filter)
 
         # Phase 265: post-process — re-label with curator weak-axis
-        # metadata so the user sees their personal weak patterns even
-        # during real-time play (where ``node.meaning_tag_id`` is
-        # unavailable, so ``detect_curator_weak_axis`` would not fire).
-        if hint is not None and user_weak_tags:
-            hint = _hints_pkg.apply_curator_weak_axis_label(
-                hint,
-                user_weak_tags,
-                min_occurrences=curator_min_occurrences,
-            )
         return hint
 
         hint = _hints_pkg.detect_self_atari(inp)
@@ -429,11 +410,9 @@ def compute_summary_hint(
     threshold_blunder: float = 8.0,
     threshold_mistake: float = 2.0,
     threshold_score_stdev: float = 1.5,
-    user_weak_tags: dict[str, int] | None = None,
-    curator_min_occurrences: int = 3,
     category_filter: dict[str, bool] | None = None,
 ) -> BeginnerHint | None:
-    """Phase 179 + 182 + 186: Compute a summary hint from existing metrics.
+    """Phase 179 + 182: Compute a summary hint from existing metrics.
 
     Args:
         node: GameNode.
@@ -445,14 +424,15 @@ def compute_summary_hint(
         threshold_blunder: Phase 179: blunder threshold (in score loss).
         threshold_mistake: Phase 179: mistake threshold (in score loss).
         threshold_score_stdev: Phase 179: KataGo uncertain threshold.
-        user_weak_tags: Phase 186: meaning-tag frequency from curator
-            profile. ``None`` / empty disables the curator hint.
-        curator_min_occurrences: Phase 186: minimum tag occurrences to
-            count as a "weak axis".
         category_filter: Phase 251 — per-category enable map. Even if
             a group flag is on, an individual category whose key is
             ``False`` is filtered out before returning. ``None`` /
             empty means no individual filter.
+
+    Note:
+        Phase 270: ``user_weak_tags`` / ``curator_min_occurrences`` /
+        the ``curator_hint`` group were removed.  The deprecated
+        Curator weak-axis hint no longer fires from this path.
     """
     from katrain.core.beginner.hints._cache import MIN_SUMMARY_VISITS
 
@@ -502,15 +482,6 @@ def compute_summary_hint(
         if hint and _category_enabled(hint.category, category_filter):
             return hint
         hint = _hints_pkg.detect_policy_conflict(ctx)
-        if hint and _category_enabled(hint.category, category_filter):
-            return hint
-
-    if _flag("curator_hint"):
-        hint = _hints_pkg.detect_curator_weak_axis(
-            node,
-            user_weak_tags,
-            min_occurrences=curator_min_occurrences,
-        )
         if hint and _category_enabled(hint.category, category_filter):
             return hint
 

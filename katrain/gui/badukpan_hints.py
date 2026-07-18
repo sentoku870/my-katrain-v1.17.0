@@ -99,17 +99,11 @@ def draw_beginner_hint_highlight(widget: BadukPanWidget) -> None:
 
     bh = katrain.config("beginner_hints") or {}
     category_filter = build_category_filter(bh if isinstance(bh, dict) else {})
-    # Phase 265: forward curator weak_tags so the Beginner Hint dispatcher
-    # can re-label hints with the user's personal weak patterns even
-    # during real-time play (where ``node.meaning_tag_id`` is absent).
-    curator_profile = getattr(katrain, "curator_profile", None)
-    user_weak_tags = dict(curator_profile.weak_tags) if curator_profile is not None else None
     hint = get_beginner_hint_cached(
         katrain.game,
         node,
         require_reliable=require_reliable,
         category_filter=category_filter,
-        user_weak_tags=user_weak_tags,
     )
 
     if hint is None or hint.coords is None:
@@ -528,38 +522,17 @@ def draw_kata_hint_marker(
 
     if engine_best_move:
         top_move_coords = move.coords
-        # Use the same color as the move marker for consistency
-        if evalcol:
-            Color(*evalcol)
-        else:
-            Color(*Theme.TOP_MOVE_BORDER_COLOR)
-        Line(
-            circle=(
-                widget.gridpos[move.coords[1]][move.coords[0]][0],
-                widget.gridpos[move.coords[1]][move.coords[0]][1],
-                widget.stone_size - dp(1.2),
-            ),
-            width=dp(1.2),
-        )
+        # Phase 268+: the inner "best move" border has been removed.
+        # The candidate marker's colour already encodes the engine's
+        # ranking (purple = best, orange = second, etc. via
+        # ``eval_color``), so a separate Line circle is visual noise.
+        # ``top_move_coords`` is still returned so the children-marker
+        # renderer can skip drawing a dashed ring at the same position.
 
-    # Phase 261 (I-14): outer ring for severe mistakes so the user can
-    # spot blunder / mistake candidates at a glance. Only ``mistake``
-    # and ``blunder`` bands draw an extra ring; ``good``/``inaccuracy``
-    # keep the default marker look. The ring is drawn even when the
-    # move is also the engine-best so the severity signal is not lost
-    # for the candidate that the engine itself recommends.
-    _severity = _resolve_mistake_severity(move_dict.get("pointsLost", 0.0))
-    _ring_color = _MISTAKE_SEVERITY_RING_COLORS.get(_severity)
-    if _ring_color is not None:
-        Color(*_ring_color)
-        Line(
-            circle=(
-                widget.gridpos[move.coords[1]][move.coords[0]][0],
-                widget.gridpos[move.coords[1]][move.coords[0]][1],
-                widget.stone_size + dp(1.2),
-            ),
-            width=dp(Theme.MISTAKE_SEVERITY_RING_WIDTH),
-        )
+    # Phase 268+: the severity ring (mistake=orange, blunder=red) has
+    # been removed. The marker fill colour already conveys severity
+    # (yellow→green for low loss, red for high loss), and the extra
+    # outer ring cluttered the board without adding new information.
 
     return top_move_coords
 
@@ -602,42 +575,6 @@ def _resolve_ownership_scalar(move_dict: dict[str, Any], current_node: Any) -> f
         if isinstance(node_raw, (int, float)) and not isinstance(node_raw, bool):
             return max(-1.0, min(1.0, float(node_raw)))
     return 0.0
-
-
-# Phase 261 (I-14): pointsLost -> 4-band severity mapping. The thresholds
-# mirror the beginner-mistake taxonomy used in the curator / meaning-tags
-# pipeline (good / inaccuracy / mistake / blunder).
-_MISTAKE_SEVERITY_THRESHOLDS: tuple[tuple[float, str], ...] = (
-    (0.5, "good"),
-    (1.0, "inaccuracy"),
-    (3.0, "mistake"),
-    (float("inf"), "blunder"),
-)
-_MISTAKE_SEVERITY_RING_COLORS: dict[str, tuple[float, ...] | None] = {
-    "good": None,
-    "inaccuracy": None,
-    "mistake": tuple(Theme.MISTAKE_SEVERITY_MISTAKE_RING),
-    "blunder": tuple(Theme.MISTAKE_SEVERITY_BLUNDER_RING),
-}
-
-
-def _resolve_mistake_severity(points_lost: float) -> str:
-    """pointsLost の値を ``good`` / ``inaccuracy`` / ``mistake`` / ``blunder`` に分類する。
-
-    閾値は beginner-mistake taxonomy と整合:
-    - < 0.5: good
-    - 0.5 ~ 1.0: inaccuracy
-    - 1.0 ~ 3.0: mistake
-    - >= 3.0: blunder
-    """
-    try:
-        value = float(points_lost)
-    except (TypeError, ValueError):
-        return "good"
-    for threshold, label in _MISTAKE_SEVERITY_THRESHOLDS:
-        if value < threshold:
-            return label
-    return "blunder"
 
 
 def draw_children_markers(widget: BadukPanWidget, current_node: Any, top_move_coords: Any) -> None:

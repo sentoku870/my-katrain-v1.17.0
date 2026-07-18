@@ -133,7 +133,6 @@ def build_category_filter(beginner_hints_config: dict[str, Any] | None) -> dict[
         "katago_uncertain",
         "summary_ownership",
         "summary_policy",
-        "curator_hint",
     )
     out: dict[str, bool] = {}
     for key in KNOWN_KEYS:

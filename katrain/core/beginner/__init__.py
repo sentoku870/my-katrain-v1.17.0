@@ -14,11 +14,14 @@ Phase 179 additions:
     - compute_summary_hint(ctx, config) -> BeginnerHint | None
     - detect_mistake_summary / detect_freedom_summary /
       detect_difficulty_summary / detect_katago_uncertain: Pure detectors.
+
+Phase 270: Curator weak-axis hint was deprecated.  The
+``detect_curator_weak_axis`` symbol and the
+``HintCategory.CURATOR_WEAK_AXIS`` enum member are removed.
 """
 
 from __future__ import annotations
 
-from katrain.core.beginner.detector_curator import detect_curator_weak_axis
 from katrain.core.beginner.detector_difficulty import detect_difficulty_summary
 from katrain.core.beginner.detector_freedom import detect_freedom_summary
 from katrain.core.beginner.detector_katago import detect_katago_uncertain
@@ -56,6 +59,4 @@ __all__ = [
     "detect_ownership_dominant",
     "detect_policy_confident",
     "detect_policy_conflict",
-    # Phase 186 API
-    "detect_curator_weak_axis",
 ]

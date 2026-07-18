@@ -82,8 +82,9 @@ class _SettingsPopupContext:
     # Phase 182: ownership / policy toggles.
     selected_summary_ownership: list[bool]
     selected_summary_policy: list[bool]
-    # Phase 186: curator weak-axis hint toggle.
-    selected_curator_hint: list[bool]
+    # Phase 270: ``selected_curator_hint`` was removed along with the
+    # Curator weak-axis hint.  The 10 individual category toggles below
+    # still control structural / meaning-tag detectors.
     # Phase 251: per-category toggles for the 4 structural (Phase 91)
     # and 6 meaning-tag (Phase 92) categories. Each is a single
     # category that was previously gated only by the master
@@ -117,8 +118,3 @@ class _SettingsPopupContext:
     # Phase 247-B (H3): same pattern for the position-aware N → M
     # preview label. Refreshed alongside the static status label.
     _pv_filter_preview_label: Any = None
-    # Phase 268: stash a reference to the live Curator status label
-    # so the file-browser handler can refresh its text in place after
-    # loading a new curator_ranking_*.json — without forcing a popup
-    # rebuild (which would lose focus and any other in-flight edits).
-    _curator_status_label: Any = None

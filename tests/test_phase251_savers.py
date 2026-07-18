@@ -35,7 +35,6 @@ class TestSaveBeginnerHintsSettingsPhase251:
             katago_uncertain=True,
             summary_ownership=True,
             summary_policy=True,
-            curator_hint=True,
             self_atari=False,
             ignore_atari=False,
             missed_capture=True,

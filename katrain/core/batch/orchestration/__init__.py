@@ -183,21 +183,9 @@ def run_batch(
         log("WARNING: Summary generation requested but no valid game statistics available")
 
     if generate_curator and games_for_curator and not result.cancelled:
-        # Phase 268: when no user_aggregate was supplied, build one from
-        # the same per-game stats we already collected. Without this,
-        # the curator_ranking.json would always carry
-        # ``user_weak_tags: []`` because the upstream pipeline never
-        # built the aggregate. See
-        # :func:`katrain.core.curator.batch.build_user_aggregate_from_stats`.
-        if user_aggregate is None and game_stats_list:
-            from katrain.core.curator.batch import build_user_aggregate_from_stats
-
-            user_aggregate = build_user_aggregate_from_stats(game_stats_list)
-            if user_aggregate is not None:
-                log(
-                    f"Built user_aggregate from {user_aggregate.total_games} game(s) "
-                    f"({len(user_aggregate.weak_tags)} weak tag candidate(s))"
-                )
+        # Phase 270: the user-aggregate auto-construction that Phase 268+
+        # added here was removed.  Curator generation now always receives
+        # the caller-supplied ``user_aggregate`` (or ``None``).
         _generate_curator_outputs(
             ctx=_BatchCuratorContext(
                 result=result,

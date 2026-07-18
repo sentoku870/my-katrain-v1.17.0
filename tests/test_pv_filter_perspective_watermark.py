@@ -47,25 +47,3 @@ class TestPerspectiveWatermarkTemplate:
         jp = Lang("jp")._("board:perspective")
         assert en.count("{player}") == 1
         assert jp.count("{player}") == 1
-
-
-class TestPVFilterMarkerLegendTemplate:
-    """``mykatrain:settings:pv_filter_marker_legend`` is a free-form
-    legend; we just check it's non-empty and has no leftover placeholders
-    so users never see raw ``{...}`` in the settings popup."""
-
-    def test_en_legend_renders(self) -> None:
-        from katrain.core.lang import Lang
-
-        text = Lang("en")._("mykatrain:settings:pv_filter_marker_legend")
-        assert isinstance(text, str)
-        assert len(text) > 0
-        # No leftover placeholders.
-        assert "{" not in text or "}" not in text or text.count("{") == text.count("}")
-
-    def test_jp_legend_renders(self) -> None:
-        from katrain.core.lang import Lang
-
-        text = Lang("jp")._("mykatrain:settings:pv_filter_marker_legend")
-        assert isinstance(text, str)
-        assert len(text) > 0

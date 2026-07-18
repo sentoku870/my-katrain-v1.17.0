@@ -93,8 +93,7 @@
         "summary_difficulty": true,
         "katago_uncertain": true,
         "summary_ownership": true,
-        "summary_policy": true,
-        "curator_hint": true
+        "summary_policy": true
     },
     "ai": {
         "ai:default": {},

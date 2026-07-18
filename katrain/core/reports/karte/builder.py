@@ -75,7 +75,6 @@ def build_karte_json_string(
     target_visits: int | None = None,
     lang: str = "ja",
     max_critical_3_moves: int = 3,
-    user_weak_tags: dict[str, int] | None = None,  # Phase 248-γ-E1
 ) -> str:
     """Build a JSON-serializable Karte report for the current game.
 
@@ -99,11 +98,6 @@ def build_karte_json_string(
         max_critical_3_moves: Phase 248-B2 — number of critical moves
             per player to include in the critical_3 section. Defaults
             to 3 (Phase 50 baseline).
-        user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: count}``
-            from the Curator profile. Forwarded to
-            :func:`build_karte_json` so the weak-tag boost can nudge
-            the user toward their own recurring mistakes. ``None`` /
-            empty disables the boost (Phase 50 baseline).
 
     Returns:
         JSON-serialized karte report as a string.
@@ -148,7 +142,6 @@ def build_karte_json_string(
             target_visits=target_visits,
             lang=lang,
             max_critical_3_moves=max_critical_3_moves,
-            user_weak_tags=user_weak_tags,
         )
     except Exception as e:
         error_msg = f"{KARTE_ERROR_CODE_GENERATION_FAILED}\n{type(e).__name__}: {e}"
@@ -252,7 +245,6 @@ def _build_karte_json_string_impl(
     target_visits: int | None = None,
     lang: str = "ja",
     max_critical_3_moves: int = 3,  # Phase 248-B2
-    user_weak_tags: dict[str, int] | None = None,  # Phase 248-γ-E1
 ) -> str:
     """Internal implementation of build_karte_json_string.
 
@@ -272,11 +264,6 @@ def _build_karte_json_string_impl(
         max_critical_3_moves: Phase 248-B2 — number of critical moves
             per player to include in the critical_3 section. Defaults
             to 3 (Phase 50 baseline).
-        user_weak_tags: Phase 248-γ-E1 — ``{meaning_tag_id: count}``
-            from the Curator profile. Forwarded to ``build_karte_json``
-            so the weak-tag boost can nudge the user toward their
-            own recurring mistakes. ``None`` / empty disables the
-            boost (Phase 50 baseline).
 
     Note:
         snapshot is now passed as an argument rather than computed here.
@@ -298,7 +285,6 @@ def _build_karte_json_string_impl(
         skill_preset=skill_preset,
         lang=lang,
         max_critical_3_moves=max_critical_3_moves,
-        user_weak_tags=user_weak_tags,
     )
 
     json_str = json.dumps(json_data, indent=2, ensure_ascii=False)

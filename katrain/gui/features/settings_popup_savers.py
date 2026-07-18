@@ -52,7 +52,7 @@ def _save_beginner_hints_settings(
     katago_uncertain: bool = True,
     summary_ownership: bool = True,
     summary_policy: bool = True,
-    curator_hint: bool = True,
+    # Phase 270: ``curator_hint`` toggle for CURATOR_WEAK_AXIS removed.
     # Phase 251: 10 individual category toggles (structural + meaning_tag).
     # Each defaults to True so users who never open the new UI keep all
     # hints visible when the master switch is on.
@@ -72,7 +72,6 @@ def _save_beginner_hints_settings(
     Phase 179: 4 per-category-group toggles persisted alongside master.
     Phase 182: 2 additional toggles (``summary_ownership``,
     ``summary_policy``).
-    Phase 186: ``curator_hint`` toggle for CURATOR_WEAK_AXIS.
     Phase 251: 10 individual toggles for the structural (Phase 91) and
     meaning-tag (Phase 92) categories. Users can suppress individual
     categories (e.g. turn off ``cut_risk`` while keeping ``self_atari``).
@@ -87,7 +86,6 @@ def _save_beginner_hints_settings(
     beginner_hints_config["katago_uncertain"] = bool(katago_uncertain)
     beginner_hints_config["summary_ownership"] = bool(summary_ownership)
     beginner_hints_config["summary_policy"] = bool(summary_policy)
-    beginner_hints_config["curator_hint"] = bool(curator_hint)
     # Phase 251: persist individual category toggles.
     beginner_hints_config["self_atari"] = bool(self_atari)
     beginner_hints_config["ignore_atari"] = bool(ignore_atari)

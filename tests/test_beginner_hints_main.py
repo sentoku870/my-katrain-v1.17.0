@@ -183,7 +183,6 @@ class TestShouldShowSummaryHint:
             "katago_uncertain",
             "summary_ownership",
             "summary_policy",
-            "curator_hint",
         ],
     )
     def test_each_known_key_respects_false(self, key: str) -> None:
@@ -546,27 +545,9 @@ class TestGetSummaryHintCached:
             get_summary_hint_cached(node, require_reliable=False)
         assert mock.call_count == 2
 
-    def test_user_weak_tags_change_invalidates(self) -> None:
-        node = _MockNode(analysis={"root": {"visits": 200}})
-        with patch("katrain.core.beginner.hints.compute_summary_hint", return_value=None) as mock:
-            get_summary_hint_cached(node, user_weak_tags={"low_liberties": 5})
-            get_summary_hint_cached(node, user_weak_tags={"low_liberties": 6})
-            get_summary_hint_cached(node, user_weak_tags={"low_liberties": 5, "bad_shape": 3})
-        assert mock.call_count == 3
-
-    def test_user_weak_tags_none_vs_dict_invalidates(self) -> None:
-        node = _MockNode(analysis={"root": {"visits": 200}})
-        with patch("katrain.core.beginner.hints.compute_summary_hint", return_value=None) as mock:
-            get_summary_hint_cached(node, user_weak_tags=None)
-            get_summary_hint_cached(node, user_weak_tags={"low_liberties": 3})
-        assert mock.call_count == 2
-
-    def test_curator_min_occurrences_change_invalidates(self) -> None:
-        node = _MockNode(analysis={"root": {"visits": 200}})
-        with patch("katrain.core.beginner.hints.compute_summary_hint", return_value=None) as mock:
-            get_summary_hint_cached(node, curator_min_occurrences=3)
-            get_summary_hint_cached(node, curator_min_occurrences=5)
-        assert mock.call_count == 2
+    # Phase 270: ``user_weak_tags`` / ``curator_min_occurrences`` were
+    # removed from the dispatcher; the curator-cache invalidation tests
+    # are intentionally dropped with them.
 
     def test_none_cache_hit_does_not_recompute(self) -> None:
         node = _MockNode(analysis={"root": {"visits": 200}})
@@ -767,52 +748,10 @@ class TestComputeSummaryHintPriorityChain:
         assert pc.call_count == 1
         assert px.call_count == 1
 
-    def test_user_weak_tags_none_real_detector_returns_none(self) -> None:
-        # Verify the real ``detect_curator_weak_axis`` short-circuits when
-        # ``user_weak_tags`` is None (Phase 186 design contract). No
-        # mocking - we exercise the production detector's guard.
-        node = self._node_with_visits()
-        hint = compute_summary_hint(node, user_weak_tags=None)
-        assert hint is None
-
-    def test_curator_hint_fires_for_matching_weak_tag(self) -> None:
-        # When user_weak_tags contains a tag matching the node's
-        # ``meaning_tag_id`` and the count exceeds min_occurrences, the
-        # curator hint must fire. Tests the integration between
-        # ``compute_summary_hint`` and the real ``detect_curator_weak_axis``.
-        node = self._node_with_visits()
-        node.meaning_tag_id = "low_liberties"
-        hint = compute_summary_hint(
-            node,
-            user_weak_tags={"low_liberties": 10},
-            curator_min_occurrences=3,
-        )
-        assert hint is not None
-        assert hint.category == HintCategory.CURATOR_WEAK_AXIS
-        assert hint.severity == 0
-
-    def test_curator_hint_skipped_below_min_occurrences(self) -> None:
-        node = self._node_with_visits()
-        node.meaning_tag_id = "low_liberties"
-        # 2 occurrences, threshold 3 -> not enough
-        hint = compute_summary_hint(
-            node,
-            user_weak_tags={"low_liberties": 2},
-            curator_min_occurrences=3,
-        )
-        assert hint is None
-
-    def test_curator_flag_off_skips_detector(self) -> None:
-        node = self._node_with_visits()
-        curator_hint = BeginnerHint(category=HintCategory.CURATOR_WEAK_AXIS, coords=(0, 0), severity=1)
-        with patch("katrain.core.beginner.hints.detect_curator_weak_axis", return_value=curator_hint) as mock:
-            hint = compute_summary_hint(
-                node,
-                user_weak_tags={"low_liberties": 5},
-                summary_flags={"curator_hint": False},
-            )
-        assert hint is None
-        assert mock.call_count == 0
+    # Phase 270: the four ``test_user_weak_tags_*`` /
+    # ``test_curator_hint_*`` / ``test_curator_flag_off_*`` tests were
+    # removed along with the Curator weak-axis hint. The dispatcher
+    # no longer accepts ``user_weak_tags`` / ``curator_min_occurrences``.
 
 
 # ---------------------------------------------------------------------------

@@ -79,8 +79,8 @@ class SymptomId(Enum):
     ENDGAME_VALUATION_ERROR = "endgame_valuation_error"
     SENTE_GOTE_CONFUSION = "sente_gote_confusion"
     ENDGAME_PRECISION = "endgame_precision"
-    # 9. 「同じミスを繰り返す」「上達しない」
-    SAME_MISTAKE_LOOP = "same_mistake_loop"
+    # Phase 270: ``SAME_MISTAKE_LOOP`` was removed along with the
+    # deprecated Curator weak-axis hint it relied on.
     SHALLOW_REVIEW = "shallow_review"  # LLM-required
     STAGNATION_LOOP = "stagnation_loop"
     LOCAL_OPTIMUM = "local_optimum"  # LLM-required
@@ -518,20 +518,9 @@ _SYMPTOMS: tuple[Symptom, ...] = (
         auto_detected=True,
         detector=lambda c: c.is_endgame and _has_hint(c, HintCategory.MISTAKE_BLUNDER),
     ),
-    # 9. 同じミス繰り返し
-    Symptom(
-        id=SymptomId.SAME_MISTAKE_LOOP,
-        ja_label="同パターン反復",
-        en_label="Same Mistake Loop",
-        description_jp="同じ局面で同じミスを繰り返す。",
-        related_lexicon_ids=("urgent_vs_big", "direction_of_play", "priority"),
-        related_hint_category=HintCategory.CURATOR_WEAK_AXIS,
-        difficulty_range=(CoachMode.BEGINNER, CoachMode.EXPERT),
-        auto_detected=True,
-        detector=lambda c: (
-            _has_hint(c, HintCategory.CURATOR_WEAK_AXIS) and (c.game_count is not None and c.game_count >= 3)
-        ),
-    ),
+    # Phase 270: ``SAME_MISTAKE_LOOP`` was tied to ``CURATOR_WEAK_AXIS``
+    # which is now deprecated.  The symptom is intentionally removed
+    # rather than left as a no-op.
     Symptom(
         id=SymptomId.SHALLOW_REVIEW,
         ja_label="検討の浅さ",
