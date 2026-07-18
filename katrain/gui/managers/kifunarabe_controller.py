@@ -47,6 +47,7 @@ from katrain.gui.managers.kifunarabe_toggle_mixin import KifunarabeToggleMixin
 if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.study.kifunarabe import KifunarabeSession, KifunarabeSummary
+    from katrain.core.study.kifunarabe_history import KifunarabeHistoryStore
     from katrain.gui.controlspanel import ControlsPanel
 
 
@@ -111,6 +112,7 @@ class KifunarabeController(
         logger: Callable[..., None],
         show_summary_fn: ShowSummaryFn | None = None,
         on_guess_resolved_fn: OnGuessResolvedFn | None = None,
+        history_store: "KifunarabeHistoryStore | None" = None,
     ) -> None:
         """Initialize with dependency injection.
 
@@ -125,6 +127,9 @@ class KifunarabeController(
             show_summary_fn: UI callback for end-of-session summary.
             on_guess_resolved_fn: UI callback for guess resolution
                 events.
+            history_store: Phase 249-β. Optional persistent history
+                store. When provided, every finished session is
+                appended to a JSON file under ``history_store.directory``.
         """
         self._get_ctx = get_ctx
         self._get_config = get_config
@@ -136,6 +141,7 @@ class KifunarabeController(
 
         self._show_summary_fn = show_summary_fn
         self._on_guess_resolved_fn = on_guess_resolved_fn
+        self._history_store: "KifunarabeHistoryStore | None" = history_store
 
         # Mixin-owned attributes — initialised here so attribute access
         # doesn't rely on dynamic attribute creation, which would

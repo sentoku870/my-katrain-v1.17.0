@@ -75,6 +75,41 @@ class KifunarabeSummaryContent(BoxLayout):
         """Legacy OK button: behaves like abort."""
         self.on_abort()
 
+    def on_show_history(self) -> None:
+        """Phase 249-β: open the persistent history popup.
+
+        The history store is read from the controller (which received
+        it via DI in ``__main__.py``). If the controller is missing
+        or has no store wired up, the history popup shows its
+        "not configured" message.
+        """
+        if self.popup is not None:
+            self.popup.dismiss()
+        if self.controller is None:
+            return
+        from kivy.clock import Clock
+
+        from katrain.gui.popups.kifunarabe_history_popup import (
+            show_kifunarabe_history,
+        )
+
+        # Defer so this popup fully dismisses before the next one opens.
+        Clock.schedule_once(
+            lambda _dt: show_kifunarabe_history(self.katrain, self._get_history_store()),
+            0.05,
+        )
+
+    def _get_history_store(self) -> Any:
+        """Phase 249-β: resolve the history store from the controller.
+
+        The controller stores the store in ``_history_store``; we
+        access it through a public read so tests can swap the store
+        without poking at private attributes.
+        """
+        if self.controller is None:
+            return None
+        return getattr(self.controller, "_history_store", None)
+
 
 def _format_rate(value: float) -> str:
     """Return ``"75.0%"`` for ``75.0`` (one decimal place)."""
@@ -149,6 +184,15 @@ def show_kifunarabe_summary(
         correct_rate=correct_rate,
         wrong_rate=wrong_rate,
     )
+    # Phase 249-β: also surface the "overall rate" (treats auto-advance
+    # as correct) so the user can disambiguate the two percentages.
+    # Without this, a 30%(correct_rate) vs 60%(overall_rate) gap is
+    # confusing when many of the 50 positions were auto-advanced.
+    if summary.total_positions > 0:
+        overall_rate = _format_rate(summary.overall_rate)
+        body_text += "\n" + i18n._("kifunarabe:summary:overall_rate").format(
+            overall_rate=overall_rate,
+        )
     # Phase 179-B2: append Critical 3 hit-rate line when a Critical 3 set
     # was supplied to the session. We never show 0/0 because the user
     # would see "0.0% / 0" which is just confusing.
@@ -184,7 +228,10 @@ def show_kifunarabe_summary(
         cap_label.bind(size=lambda _w, _s: setattr(cap_label, "text_size", cap_label.size))
         content.add_widget(cap_label)
 
-    # Phase 177-G: action row with two buttons, side-by-side.
+    # Phase 177-G: action row with three buttons, side-by-side.
+    # Phase 249-β: added a "History" button that opens the persistent
+    # history popup. The history store is resolved through the
+    # controller (which received it via DI in __main__.py).
     button_row = BoxLayout(
         orientation="horizontal",
         spacing=dp(8),
@@ -196,12 +243,18 @@ def show_kifunarabe_summary(
         font_name=Theme.DEFAULT_FONT,
     )
     next_btn.bind(on_release=lambda _b: content.on_next_sgf())
+    history_btn = Button(
+        text=i18n._("kifunarabe:summary:history"),
+        font_name=Theme.DEFAULT_FONT,
+    )
+    history_btn.bind(on_release=lambda _b: content.on_show_history())
     abort_btn = Button(
         text=i18n._("kifunarabe:summary:abort"),
         font_name=Theme.DEFAULT_FONT,
     )
     abort_btn.bind(on_release=lambda _b: content.on_abort())
     button_row.add_widget(next_btn)
+    button_row.add_widget(history_btn)
     button_row.add_widget(abort_btn)
     content.add_widget(button_row)
 
