@@ -138,12 +138,25 @@ class ImportantMovesPopupContent(BoxLayout):
         bg = [0.05, 0.05, 0.07, 1.0] if idx % 2 == 0 else [0.10, 0.10, 0.13, 1.0]
         player = "B" if color == "black" else "W"
         complexity = bool(getattr(move, "complexity_discounted", False))
+        # Phase 258: surface the game phase so the user can see at a
+        # glance *why* a move was selected as critical (opening /
+        # middle / endgame scoring weights differ).
+        raw_phase = str(getattr(move, "game_phase", "") or "")
+        # Localize the raw "opening" / "middle" / "yose" labels so the
+        # popup matches the rest of the GUI. The keys live in
+        # ``phase:opening`` / ``phase:middle`` / ``phase:yose`` (added
+        # in Phase 179). When the key is missing (no .po), fall back
+        # to the raw English.
+        game_phase = i18n._(f"phase:{raw_phase}") if raw_phase else ""
+        if game_phase.startswith("phase:") or not game_phase:
+            game_phase = {"opening": "布石", "middle": "中盤", "yose": "ヨセ"}.get(raw_phase, raw_phase)
         entry = ImportantMovesEntry(
             move_number=move.move_number,
             player=player,
             gtp_coord=move.gtp_coord or "?",
             score_loss=float(getattr(move, "score_loss", 0.0) or 0.0),
             meaning_tag_label=str(getattr(move, "meaning_tag_label", "")),
+            game_phase=game_phase,
             complexity_discounted=complexity,
             bg_color=bg,
         )
@@ -214,7 +227,15 @@ class ImportantMovesPopupContent(BoxLayout):
             player = "黒" if color == "black" else "白"
             tag = m.meaning_tag_label or "—"
             loss = f"{m.score_loss:.1f}目"
-            lines.append(f"- #{m.move_number} ({player}) {m.gtp_coord} — {loss} ({tag})")
+            # Phase 258: include the game phase in the Markdown export
+            # so the clipboard summary explains *why* the move was
+            # selected as critical.
+            raw_phase = str(getattr(m, "game_phase", "") or "")
+            phase = i18n._(f"phase:{raw_phase}") if raw_phase else ""
+            if phase.startswith("phase:") or not phase:
+                phase = {"opening": "布石", "middle": "中盤", "yose": "ヨセ"}.get(raw_phase, raw_phase)
+            phase_segment = f" [{phase}]" if phase else ""
+            lines.append(f"- #{m.move_number} ({player}) {m.gtp_coord} — {loss} ({tag}){phase_segment}")
         Clipboard.put("\n".join(lines))
 
     def on_close(self) -> None:
