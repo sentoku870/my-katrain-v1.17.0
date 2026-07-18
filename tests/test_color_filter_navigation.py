@@ -21,7 +21,6 @@ from unittest.mock import MagicMock
 
 from katrain.core.game.navigation import GameNavigator
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

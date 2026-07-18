@@ -135,9 +135,7 @@ class GameNavigator:
 
         Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
-        important = self._compute_important_moves(
-            max_moves=max_moves, color_filter=color_filter
-        )
+        important = self._compute_important_moves(max_moves=max_moves, color_filter=color_filter)
         return [move_no for move_no, _importance, _node in important]
 
     def get_next_important_node(
@@ -151,9 +149,7 @@ class GameNavigator:
         Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        important = self._compute_important_moves(
-            max_moves=max_moves, color_filter=color_filter
-        )
+        important = self._compute_important_moves(max_moves=max_moves, color_filter=color_filter)
         if not important:
             return None
 
@@ -177,9 +173,7 @@ class GameNavigator:
         Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        important = self._compute_important_moves(
-            max_moves=max_moves, color_filter=color_filter
-        )
+        important = self._compute_important_moves(max_moves=max_moves, color_filter=color_filter)
         if not important:
             return None
 
@@ -204,9 +198,7 @@ class GameNavigator:
         Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        node = self.get_next_important_node(
-            max_moves=max_moves, color_filter=color_filter
-        )
+        node = self.get_next_important_node(max_moves=max_moves, color_filter=color_filter)
         if node is not None:
             game.set_current_node(node)
         return node
@@ -222,9 +214,7 @@ class GameNavigator:
         Phase 250: ``color_filter`` でプレイヤーを絞り込み可能。
         """
         game = self._game
-        node = self.get_prev_important_node(
-            max_moves=max_moves, color_filter=color_filter
-        )
+        node = self.get_prev_important_node(max_moves=max_moves, color_filter=color_filter)
         if node is not None:
             game.set_current_node(node)
         return node
