@@ -10,6 +10,8 @@ shared ``inner`` container and is self-contained.
 
 from __future__ import annotations
 
+import contextlib
+import os
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp, sp
@@ -602,8 +604,13 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     Phase 267: when no profile is loaded, gives a concrete recovery
     hint pointing at the two settings that decide where the loader
     looks (``karte_output_directory`` and ``batch_options.output_dir``).
+
+    Phase 268: adds a "参照..." button that lets the user pick a
+    curator_ranking_*.json file via a file browser — escape hatch
+    when the auto-detect heuristics miss.
     """
     from katrain.core.lang import i18n
+    from katrain.gui.widgets.factory import Button as _Button
 
     curator_profile = getattr(state.ctx, "curator_profile", None)
     n_tags = len(curator_profile.weak_tags) if curator_profile is not None else 0
@@ -623,9 +630,13 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         else:
             text = i18n._("mykatrain:settings:curator_hint_not_loaded")
 
+    # Status row (text + browse button) for Phase 268.
+    from kivy.uix.boxlayout import BoxLayout as _BoxLayout
+
+    status_row = _BoxLayout(orientation="horizontal", size_hint_x=0.97, spacing=dp(6))
     desc = Label(
         text=text,
-        size_hint_x=0.95,
+        size_hint_x=0.78,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -633,7 +644,85 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         font_size=sp(11),
     )
     desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    inner.add_widget(desc)
+    status_row.add_widget(desc)
+
+    browse_btn = _Button(
+        text=i18n._("mykatrain:settings:curator_hint_browse"),
+        size_hint_x=0.22,
+        font_name=Theme.DEFAULT_FONT,
+    )
+
+    # Phase 268: file browser for curator_ranking_*.json. We use the
+    # same FileBrowser widget the rest of the GUI uses, with a JSON
+    # filter. On selection, call back into ``KaTrainGui.update_curator_profile``
+    # with a path override.
+    def _on_browse(_btn: Any) -> None:
+        from katrain.gui.widgets.filebrowser import I18NFileBrowser
+
+        # Phase 268: ``I18NFileBrowser`` accepts ``path=`` (not
+        # ``initialdir=``) and ``filters=`` for the JSON filter. There
+        # is no ``select_directory=`` kwarg — that key is silently
+        # dropped by Kivy's property layer, which is why an earlier
+        # version of this helper did not actually open in the
+        # expected directory.
+        initial = karte_dir or batch_dir or os.path.expanduser("~")
+        if not os.path.isdir(initial):
+            initial = os.path.expanduser("~")
+        browser = I18NFileBrowser(
+            path=initial,
+            filters=["*.json", "*.JSON"],
+            select_string=i18n._("button:ok"),
+        )
+
+        # Phase 268 follow-up: ``I18NFileBrowser`` dispatches ``on_success``
+        # / ``on_submit`` with just the instance (filebrowser.py:446-450),
+        # so the bound callback MUST accept a single positional arg.  The
+        # earlier ``lambda inst, _touch`` / ``lambda inst, selection, _touch``
+        # shape raised ``TypeError`` on every file selection and the picker
+        # silently no-op'd, which is why the "参照" button "didn't work".
+        # We use the same ``*_args`` sink as ``llm_coach_popup._on_pick``
+        # so future dispatch-shape changes are also tolerated.
+        def _on_browser_done(inst: Any, *_args: Any) -> None:
+            selected = inst.selection[0] if inst.selection else None
+            _load_curator_from_path(state.ctx, selected)
+
+        browser.bind(on_success=_on_browser_done, on_submit=_on_browser_done)
+        browser.open()
+
+    browse_btn.bind(on_release=_on_browse)
+    status_row.add_widget(browse_btn)
+    inner.add_widget(status_row)
+
+
+def _load_curator_from_path(ctx: Any, path: str | None) -> None:
+    """Phase 268: load a curator_ranking_*.json file picked by the user.
+
+    Bypasses the auto-detect heuristics entirely; useful when the
+    user keeps curator files in a non-standard location.
+    """
+    from katrain.core.curator.profile import load_curator_profile
+
+    if not path or not os.path.isfile(path):
+        return
+    try:
+        profile = load_curator_profile(path)
+    except Exception as e:  # noqa: BLE001
+        with contextlib.suppress(Exception):
+            ctx.log(f"Curator manual load failed ({path}): {e}")
+        ctx.curator_profile = None
+        return
+    if profile is not None:
+        ctx.curator_profile = profile
+        with contextlib.suppress(Exception):
+            n = len(profile.weak_tags or {})
+            ctx.log(
+                f"Curator profile (manual): {path} ({n} weak tag(s))",
+            )
+    else:
+        ctx.curator_profile = None
+    # Trigger a re-render of the comment panel so the footer updates.
+    with contextlib.suppress(Exception):
+        ctx.update_state()
 
 
 def _add_toggle_row(

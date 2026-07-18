@@ -497,6 +497,12 @@ class KaTrainGui(Screen, KaTrainBase):
         Phase 266: also reports the load result via the GUI log so
         the user can see when their freshly-generated Curator profile
         is in effect (e.g. after a Batch analysis finishes).
+
+        Phase 267: also dumps the resolved search directories (both
+        ``karte_output_directory`` and ``batch_options.output_dir``) so
+        the user can see *which directories are being scanned* when
+        the profile is missing — without this the "I generated
+        curator_ranking.json but it isn't loaded" UX is opaque.
         """
         from katrain.core.curator.profile import load_curator_profile
         from katrain.gui.features.karte_export import _resolve_curator_profile_path
@@ -504,6 +510,16 @@ class KaTrainGui(Screen, KaTrainBase):
         class _CuratorCtx:
             def __init__(self, config_fn: Any) -> None:
                 self.config = config_fn
+
+        # Phase 267: surface search dirs to the user via the GUI log
+        settings = self.config("mykatrain_settings") or {}
+        karte_dir = settings.get("karte_output_directory") or ""
+        batch_options = settings.get("batch_options") or {}
+        batch_dir = batch_options.get("output_dir") or ""
+        self.log(
+            f"Curator search dirs: karte='{karte_dir or '—'}' batch='{batch_dir or '—'}'",
+            OUTPUT_DEBUG,
+        )
 
         path = _resolve_curator_profile_path(_CuratorCtx(self.config))
         if path is None:
