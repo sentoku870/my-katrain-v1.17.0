@@ -10,6 +10,8 @@ shared ``inner`` container and is self-contained.
 
 from __future__ import annotations
 
+import contextlib
+import os
 from typing import TYPE_CHECKING, Any
 
 from kivy.metrics import dp, sp
@@ -602,8 +604,13 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     Phase 267: when no profile is loaded, gives a concrete recovery
     hint pointing at the two settings that decide where the loader
     looks (``karte_output_directory`` and ``batch_options.output_dir``).
+
+    Phase 268: adds a "参照..." button that lets the user pick a
+    curator_ranking_*.json file via a file browser — escape hatch
+    when the auto-detect heuristics miss.
     """
     from katrain.core.lang import i18n
+    from katrain.gui.widgets.factory import Button as _Button
 
     curator_profile = getattr(state.ctx, "curator_profile", None)
     n_tags = len(curator_profile.weak_tags) if curator_profile is not None else 0
@@ -623,9 +630,13 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         else:
             text = i18n._("mykatrain:settings:curator_hint_not_loaded")
 
+    # Status row (text + browse button) for Phase 268.
+    from kivy.uix.boxlayout import BoxLayout as _BoxLayout
+
+    status_row = _BoxLayout(orientation="horizontal", size_hint_x=0.97, spacing=dp(6))
     desc = Label(
         text=text,
-        size_hint_x=0.95,
+        size_hint_x=0.78,
         halign="left",
         valign="middle",
         color=Theme.TEXT_COLOR,
@@ -633,7 +644,70 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
         font_size=sp(11),
     )
     desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-    inner.add_widget(desc)
+    status_row.add_widget(desc)
+
+    browse_btn = _Button(
+        text=i18n._("mykatrain:settings:curator_hint_browse"),
+        size_hint_x=0.22,
+        font_name=Theme.DEFAULT_FONT,
+    )
+
+    # Phase 268: file browser for curator_ranking_*.json. We use the
+    # same FileBrowser widget the rest of the GUI uses, with a JSON
+    # filter. On selection, call back into ``KaTrainGui.update_curator_profile``
+    # with a path override.
+    def _on_browse(_btn: Any) -> None:
+        from katrain.gui.widgets.filebrowser import I18NFileBrowser
+
+        # initialdir = first existing candidate dir, else the karte
+        # output dir, else the user's Desktop.
+        initial = karte_dir or batch_dir or os.path.expanduser("~")
+        browser = I18NFileBrowser(
+            select_directory=False,
+            filters=["*.json"],
+            initialdir=initial if os.path.isdir(initial) else os.path.expanduser("~"),
+        )
+        browser.bind(
+            on_submit=lambda inst, selection, _touch: _load_curator_from_path(
+                state.ctx, selection[0] if selection else None
+            )
+        )
+        browser.open()
+
+    browse_btn.bind(on_release=_on_browse)
+    status_row.add_widget(browse_btn)
+    inner.add_widget(status_row)
+
+
+def _load_curator_from_path(ctx: Any, path: str | None) -> None:
+    """Phase 268: load a curator_ranking_*.json file picked by the user.
+
+    Bypasses the auto-detect heuristics entirely; useful when the
+    user keeps curator files in a non-standard location.
+    """
+    from katrain.core.curator.profile import load_curator_profile
+
+    if not path or not os.path.isfile(path):
+        return
+    try:
+        profile = load_curator_profile(path)
+    except Exception as e:  # noqa: BLE001
+        with contextlib.suppress(Exception):
+            ctx.log(f"Curator manual load failed ({path}): {e}")
+        ctx.curator_profile = None
+        return
+    if profile is not None:
+        ctx.curator_profile = profile
+        with contextlib.suppress(Exception):
+            n = len(profile.weak_tags or {})
+            ctx.log(
+                f"Curator profile (manual): {path} ({n} weak tag(s))",
+            )
+    else:
+        ctx.curator_profile = None
+    # Trigger a re-render of the comment panel so the footer updates.
+    with contextlib.suppress(Exception):
+        ctx.update_state()
 
 
 def _add_toggle_row(

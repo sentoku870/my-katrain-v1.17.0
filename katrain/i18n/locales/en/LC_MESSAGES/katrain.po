@@ -3292,3 +3292,8 @@ msgstr ""
 "curator_ranking.json not found. Check the search directories below.\n"
 "Karte output: {karte_dir}\n"
 "Batch output: {batch_dir}"
+
+#. Phase 268: file-browser button to manually pick a curator_ranking_*.json
+#. file
+msgid "mykatrain:settings:curator_hint_browse"
+msgstr "Browse..."

@@ -3199,3 +3199,8 @@ msgstr ""
 "curator_ranking.json が見つかりません。設定ディレクトリを確認してください。\n"
 "Karte 出力先: {karte_dir}\n"
 "Batch 出力先: {batch_dir}"
+
+#. Phase 268: file-browser button to manually pick a curator_ranking_*.json
+#. file
+msgid "mykatrain:settings:curator_hint_browse"
+msgstr "参照..."
