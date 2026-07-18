@@ -11,8 +11,6 @@ Note: ``katrain.gui.badukpan_hints`` の import には Kivy graphics が
 
 import ast
 import importlib
-import sys
-import textwrap
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -38,9 +36,8 @@ def _find_function(tree: ast.Module, name: str) -> ast.FunctionDef | None:
 
 def _find_assign(tree: ast.Module, name: str) -> ast.Assign | ast.AnnAssign | None:
     for node in tree.body:
-        if isinstance(node, ast.AnnAssign):
-            if isinstance(node.target, ast.Name) and node.target.id == name:
-                return node
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
+            return node
         if isinstance(node, ast.Assign):
             for tgt in node.targets:
                 if isinstance(tgt, ast.Name) and tgt.id == name:
@@ -127,7 +124,7 @@ def test_severity_handles_negative() -> None:
 
 def _load_theme_class() -> type:
     theme_mod = importlib.import_module("katrain.gui.theme")
-    return getattr(theme_mod, "Theme")
+    return theme_mod.Theme
 
 
 def test_theme_has_severity_constants() -> None:

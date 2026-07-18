@@ -131,12 +131,13 @@ def _scale_for_board(
     preset table is not mutated. Returns ``config`` unchanged when
     ``board_size`` is missing / non-positive / not standard.
     """
-    if config is None or not board_size or board_size < 5 or board_size > 25:
+    if config is None or not board_size or board_size < 2 or board_size > 25:
         return config
     if board_size == 19:
         return config  # canonical, no scaling needed
     # Linear scaling: 19路 → 1.0x, 9路 → 9/19 ≈ 0.47x.
     # Round to int with min 1 so the threshold never collapses to 0.
+    # 5/7 路の超小型盤でも同じ式が使える (scale = 5/19 ≈ 0.26 など)。
     scale = board_size / 19.0
     return PVFilterConfig(
         max_candidates=config.max_candidates,  # cap stays the same
