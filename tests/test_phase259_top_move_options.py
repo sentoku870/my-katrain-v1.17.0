@@ -12,10 +12,7 @@ i18n presence.
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
@@ -25,7 +22,6 @@ from katrain.core.constants import (
     TOP_MOVE_POLICY,
     TOP_MOVE_SCORE_STDEV,
 )
-
 
 # ---------------------------------------------------------------------------
 # Replica of the key-population logic in badukpan_hints.py:467-477
