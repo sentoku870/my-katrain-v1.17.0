@@ -3244,3 +3244,7 @@ msgstr "Urgent vs big"
 #. Phase 251: per-category hint toggle description
 msgid "mykatrain:settings:urgent_vs_big_desc"
 msgstr "Warn when a bigger or more urgent move exists elsewhere on the board."
+
+#. Phase 255: prefix for the [Hint] line in the controls panel
+msgid "beginner-hint:prefix"
+msgstr "Hint"

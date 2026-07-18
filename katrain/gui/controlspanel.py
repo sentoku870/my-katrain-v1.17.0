@@ -558,9 +558,16 @@ class ControlsPanel(BoxLayout):
         # Phase 254: only append the "why" line when the i18n key
         # resolved to a non-empty, non-raw-key string. Falls back
         # silently for languages whose .po is missing the :why key.
+        # Phase 255: the [Hint] prefix is now an i18n key so jp users
+        # see "ヒント" instead of the English word. Falls back to the
+        # raw "[Hint]" string when the .po is missing the key.
+        prefix = i18n._("beginner-hint:prefix")
+        if prefix.startswith("beginner-hint:"):
+            prefix = "[Hint]"
+
         if why and not why.startswith("beginner_hint:"):
-            return f"[Hint] {title}: {body}\n→ {why}"
-        return f"[Hint] {title}: {body}"
+            return f"{prefix} {title}: {body}\n→ {why}"
+        return f"{prefix} {title}: {body}"
 
     @staticmethod
     def _ensure_time_used_initialized(node: Any) -> None:

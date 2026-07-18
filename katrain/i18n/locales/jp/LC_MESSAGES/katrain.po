@@ -3153,3 +3153,7 @@ msgstr "急所 vs 大場"
 #. Phase 251: per-category hint toggle description
 msgid "mykatrain:settings:urgent_vs_big_desc"
 msgstr "盤上により大きい手やより緊急の手があることを警告します。"
+
+#. Phase 255: prefix for the [Hint] line in the controls panel
+msgid "beginner-hint:prefix"
+msgstr "ヒント"
