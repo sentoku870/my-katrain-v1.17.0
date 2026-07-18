@@ -473,9 +473,9 @@ class TestCliIntegration:
         karte_path = tmp_path / "karte.json"
         karte_path.write_text(json.dumps(sample_karte), encoding="utf-8")
 
-        # Use a low --rank to ensure the AYAKA voice (which gives the
-        # LLM prompt the §5.3 contract). This bypasses the human-facing
-        # __main__ dispatch.
+        # Use a low --rank to ensure the BEGINNER/INTERMEDIATE voice
+        # (TOMOKO since Phase 269) which gives the LLM prompt the
+        # §5.3 contract. This bypasses the human-facing __main__ dispatch.
         prompt = cli.build_prompt(sample_karte, rank="5k")
         ids = {s.value for s in prompt.referenced_symptom_ids}
         # atari_blindness / big_point_blindness should be detected

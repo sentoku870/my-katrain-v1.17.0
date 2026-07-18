@@ -64,8 +64,9 @@ def sample_karte() -> dict:
 
 @pytest.fixture
 def beginner_config() -> PromptConfig:
+    # Phase 269: BEGINNER voice is TOMOKO (AYAKA removed).
     return PromptConfig(
-        voice=ToneVoice.AYAKA,
+        voice=ToneVoice.TOMOKO,
         mode=CoachMode.BEGINNER,
         detected_symptom_ids=(SymptomId.ATARI_BLINDNESS,),
     )
@@ -275,27 +276,23 @@ class TestPointsLostCheck:
 # --- Tone consistency ---
 
 
+# Phase 269: tone consistency check removed. AYAKA voice is gone and
+# TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle appearance.
+# The TestToneConsistency class is empty; the entire class can be
+# deleted in a follow-up if no other tone-related tests are added.
 class TestToneConsistency:
-    def test_ayaka_with_short_text_not_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        text = "短い考察: ウチが見た。参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
-        tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_ayaka"]
-        assert tone_issues == []
+    def test_tone_check_removed(self):
+        # Placeholder so the class is not silently empty. The actual
+        # contract is: no ValidationIssue with kind
+        # "tone_inconsistency_ayaka" or "tone_inconsistency_tomoko"
+        # is ever produced (those kinds are reserved for future
+        # extensions and currently unused).
+        from katrain.core.coach.llm_validator import ValidationSeverity
 
-    def test_ayaka_long_text_no_kansai_flagged(self, sample_karte, beginner_config, beginner_prompt):
-        # Long formal-style text with no Kansai markers — flagged
-        text = "考察:" + "これは標準語で記述された長い考察です。" * 20 + "\n参照した症状ID: [atari_blindness]\n"
-        report = validate_llm_output(text, sample_karte, beginner_prompt, config=beginner_config)
-        tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_ayaka"]
-        assert len(tone_issues) == 1
-
-    def test_tomoko_with_kansai_flagged(self, sample_karte, expert_strict_config):
-        # TOMOKO_STRICT but Kansai markers present
-        prompt = build_translation_prompt(sample_karte, expert_strict_config)
-        text = "考察:" + "ウチが見た。あかん。" * 5 + "\n参照した症状ID: []\n"
-        report = validate_llm_output(text, sample_karte, prompt, config=expert_strict_config)
-        tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_tomoko"]
-        assert len(tone_issues) == 1
+        for kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko"):
+            assert kind not in ValidationSeverity.__members__, (
+                f"validation kind {kind!r} should be reserved / unused"
+            )
 
 
 # --- Summary line ---

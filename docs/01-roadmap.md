@@ -1019,7 +1019,8 @@ Phase 157 / Phase 179 / Phase 187-192 からの申し送り事項：
   - Phase 207 `master_db.py`: `CoachMode` 5 + `ToneVoice` 3 + 41 unit tests
   - Phase 208 `lexicon.py`: 116 entries + 23 concepts YAML loader + 31 tests
   - Phase 209 `symptom_index.py`: 40 symptoms, 21 auto / 19 LLM-required + 116 tests
-  - Phase 210 `tones.py`: select_voice / greeting / Kansai normalisation + 44 tests
+  - Phase 210 `tones.py`: select_voice / greeting / tone consistency + 44 tests
+  - **Phase 269 (2026-07-18)**: AYAKA voice removed entirely. All kyu ranks (BEGINNER / INTERMEDIATE / DAN / ADVANCED) now use TOMOKO; only EXPERT uses TOMOKO_STRICT. Kansai helpers (`has_kansai_markers`, `apply_kansai_normalisation`, `_KANSAI_DICTIONARY`, `_AYAKA_MARKERS`, `_KANSAI_NORMALISATION_PAIRS`, `ToneConfig.kansai_dictionary`) deleted. Tone consistency check removed from both `llm_validator.py` and `summary_validator.py`. C 案 fix: Shape B weakness patterns carry `phase="all"` (meta-tag for the LLM), now rendered as `phase=`(全phase)``` in `_format_patterns_block` so the LLM doesn't echo `all` in the contract line. SYSTEM_INSTRUCTION updated to prefer `pct` (per-move) for Shape B patterns. 28 new regression tests + 6 updated test files, all 460+ coach-related tests pass.
   - Phase 211 `prompt_builder.py`: HTML-comment SystemInstruction + Karte + Lexicon injection + 23 tests (**Lv3**)
   - Phase 212 `llm_validator.py`: validate_llm_output (5 check types) + 20 tests
   - Phase 213 `test_coach_e2e.py`: 9 end-to-end mock-LLM scenarios

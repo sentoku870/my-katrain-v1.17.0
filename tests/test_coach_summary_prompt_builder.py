@@ -78,7 +78,7 @@ def base_config(sample_summary) -> SummaryPromptConfig:
 class TestSummaryPromptConfig:
     def test_defaults(self):
         cfg = SummaryPromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             games_analyzed=10,
         )
@@ -89,7 +89,7 @@ class TestSummaryPromptConfig:
 
     def test_frozen(self):
         cfg = SummaryPromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             games_analyzed=10,
         )
@@ -99,7 +99,7 @@ class TestSummaryPromptConfig:
 
     def test_player_name_set(self):
         cfg = SummaryPromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             games_analyzed=10,
             player_name="sentoku870",

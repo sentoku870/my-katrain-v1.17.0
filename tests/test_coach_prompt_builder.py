@@ -56,7 +56,7 @@ def sample_karte() -> dict:
 def beginner_config() -> PromptConfig:
     """Standard AYAKA / BEGINNER config with two detected symptoms."""
     return PromptConfig(
-        voice=ToneVoice.AYAKA,
+        voice=ToneVoice.TOMOKO,
         mode=CoachMode.BEGINNER,
         detected_symptom_ids=(
             SymptomId.ATARI_BLINDNESS,
@@ -119,8 +119,9 @@ class TestBuildTranslationPrompt:
         assert "参照した症状ID" in prompt.system_instruction
 
     def test_voice_summary_appears(self, sample_karte):
-        cfg_ayaka = PromptConfig(
-            voice=ToneVoice.AYAKA,
+        # Phase 269: BEGINNER/INTERMEDIATE voice is TOMOKO.
+        cfg_tomoko = PromptConfig(
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
         )
@@ -129,9 +130,9 @@ class TestBuildTranslationPrompt:
             mode=CoachMode.EXPERT,
             detected_symptom_ids=(),
         )
-        p1 = build_translation_prompt(sample_karte, cfg_ayaka)
+        p1 = build_translation_prompt(sample_karte, cfg_tomoko)
         p2 = build_translation_prompt(sample_karte, cfg_strict)
-        assert "あやか" in p1.system_instruction
+        assert "智子" in p1.system_instruction
         assert "智子（辛口）" in p2.system_instruction
 
     def test_detected_symptoms_are_listed(self, sample_karte, beginner_config):
@@ -175,7 +176,7 @@ class TestBuildTranslationPrompt:
 class TestLexiconSelection:
     def test_atari_blindness_pulls_liberty(self, sample_karte):
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(SymptomId.ATARI_BLINDNESS,),
         )
@@ -187,7 +188,7 @@ class TestLexiconSelection:
     def test_dedup_across_symptoms(self, sample_karte):
         # Both symptoms reference "liberty" — should not duplicate.
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(
                 SymptomId.ATARI_BLINDNESS,
@@ -204,7 +205,7 @@ class TestLexiconSelection:
         prompt = build_translation_prompt(
             sample_karte,
             PromptConfig(
-                voice=ToneVoice.AYAKA,
+                voice=ToneVoice.TOMOKO,
                 mode=CoachMode.BEGINNER,
                 detected_symptom_ids=(),
                 llm_required_symptom_ids=(),
@@ -219,7 +220,7 @@ class TestLexiconSelection:
         prompt2 = build_translation_prompt(
             sample_karte,
             PromptConfig(
-                voice=ToneVoice.AYAKA,
+                voice=ToneVoice.TOMOKO,
                 mode=CoachMode.BEGINNER,
                 detected_symptom_ids=(SymptomId.BIG_POINT_BLINDNESS,),
                 max_lexicon_entries=2,
@@ -229,7 +230,7 @@ class TestLexiconSelection:
 
     def test_no_detected_symptoms_empty_lexicon(self, sample_karte):
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
         )
@@ -245,7 +246,7 @@ class TestLexiconSelection:
 class TestOrdering:
     def test_symptom_ids_sorted_alphabetically(self, sample_karte):
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             # Pass in non-alphabetical order
             detected_symptom_ids=(
@@ -326,22 +327,21 @@ class TestValidatePromptConfig:
         assert warnings == []
 
     def test_voice_mode_mismatch_warns(self):
-        # AYAKA is Kansai-dialect only and serves BEGINNER/INTERMEDIATE.
-        # DAN is not in AYAKA's allowed modes → mismatch warning.
-
-        warnings = validate_prompt_config(self._config(voice=ToneVoice.AYAKA, mode=CoachMode.DAN))
-        assert any("ayaka" in w and "DAN" in w for w in warnings), (
+        # Phase 269: TOMOKO_STRICT only serves EXPERT. So a voice=
+        # TOMOKO_STRICT + mode=DAN combo is now the canonical mismatch.
+        warnings = validate_prompt_config(self._config(voice=ToneVoice.TOMOKO_STRICT, mode=CoachMode.DAN))
+        assert any("tomoko_strict" in w and "DAN" in w for w in warnings), (
             f"Expected voice/mode mismatch warning, got: {warnings}"
         )
 
     def test_symptom_outside_difficulty_range_warns(self):
         # OVERFIGHT is INTERMEDIATE..EXPERT — BEGINNER is out of range.
-        # AYAKA can serve BEGINNER, so the voice/mode check passes,
+        # TOMOKO can serve BEGINNER, so the voice/mode check passes,
         # but the symptom/range check should still fire.
 
         warnings = validate_prompt_config(
             self._config(
-                voice=ToneVoice.AYAKA,
+                voice=ToneVoice.TOMOKO,
                 mode=CoachMode.BEGINNER,
                 detected=(SymptomId.OVERFIGHT,),
             )
@@ -378,7 +378,7 @@ class TestValidatePromptConfig:
 
         warnings = validate_prompt_config(
             self._config(
-                voice=ToneVoice.AYAKA,
+                voice=ToneVoice.TOMOKO,
                 mode=CoachMode.BEGINNER,
                 detected=(SymptomId.OVERFIGHT, SymptomId.POST_JOSEKI_DIRECTION),
             )

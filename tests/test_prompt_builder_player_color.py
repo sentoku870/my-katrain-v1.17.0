@@ -28,7 +28,7 @@ class TestPromptConfigPlayerColorRendering:
     def test_player_color_black_renders(self):
         karte = _minimal_karte()
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
             player_color="B",
@@ -39,7 +39,7 @@ class TestPromptConfigPlayerColorRendering:
     def test_player_color_white_renders(self):
         karte = _minimal_karte()
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
             player_color="W",
@@ -50,7 +50,7 @@ class TestPromptConfigPlayerColorRendering:
     def test_no_player_color_renders_unknown(self):
         karte = _minimal_karte()
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
             player_color=None,
@@ -64,7 +64,7 @@ class TestPromptConfigPlayerColorRendering:
         the chosen side."""
         karte = _minimal_karte()
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(),
             player_color="B",

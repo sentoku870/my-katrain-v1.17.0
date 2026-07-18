@@ -72,9 +72,10 @@ def tomoko_config() -> SummaryPromptConfig:
 
 
 @pytest.fixture
-def ayaka_config() -> SummaryPromptConfig:
+def beginner_tomoko_config() -> SummaryPromptConfig:
+    # Phase 269: BEGINNER voice is TOMOKO (AYAKA removed).
     return SummaryPromptConfig(
-        voice=ToneVoice.AYAKA,
+        voice=ToneVoice.TOMOKO,
         mode=CoachMode.BEGINNER,
         games_analyzed=5,
     )
@@ -818,28 +819,16 @@ class TestValidationGameId:
 
 
 class TestValidationTone:
-    def test_ayaka_long_no_kansai_low(self, sample_summary, ayaka_config):
-        prompt = build_summary_weakness_prompt(sample_summary, ayaka_config)
-        # Long TOMOKO-style text (no Kansai markers) under AYAKA config
-        text = "考察: " + "標準語の文章が続きます。" * 30 + "\n抽出した弱点パターン: [blunder]\n"
-        report = validate_summary_llm_output(text, sample_summary, prompt)
-        kinds = [i.kind for i in report.issues]
-        assert "tone_inconsistency_ayaka" in kinds
+    # Phase 269: tone consistency check removed. AYAKA voice is gone and
+    # TOMOKO / TOMOKO_STRICT no longer warn on Kansai particle appearance.
+    # This class is intentionally empty — see test_coach_llm_validator.py
+    # for the parallel contract test in the karte validator.
+    def test_tone_check_removed(self):
+        from katrain.core.coach.llm_validator import ValidationSeverity
 
-    def test_ayaka_short_no_kansai_no_issue(self, sample_summary, ayaka_config):
-        prompt = build_summary_weakness_prompt(sample_summary, ayaka_config)
-        # Short text → no tone flag (length check)
-        text = "短文\n抽出した弱点パターン: [blunder]\n"
-        report = validate_summary_llm_output(text, sample_summary, prompt)
-        assert not any(i.kind == "tone_inconsistency_ayaka" for i in report.issues)
-
-    def test_tomoko_with_kansai_low(self, sample_summary, tomoko_config):
-        prompt = build_summary_weakness_prompt(sample_summary, tomoko_config)
-        # Long text with Kansai markers under TOMOKO config
-        text = "考察: " + "やで。" * 30 + "\n抽出した弱点パターン: [blunder]\n"
-        report = validate_summary_llm_output(text, sample_summary, prompt)
-        kinds = [i.kind for i in report.issues]
-        assert "tone_inconsistency_tomoko" in kinds
+        # Reserved / unused kinds — never produced by the validator.
+        for kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko"):
+            assert kind not in ValidationSeverity.__members__
 
 
 # --- Report properties ---

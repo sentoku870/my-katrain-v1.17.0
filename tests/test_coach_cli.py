@@ -549,13 +549,14 @@ class TestExports:
         karte = json.loads(sample_karte_path.read_text(encoding="utf-8"))
         prompt = cli.build_prompt(karte, rank="5k")
         assert prompt.full_markdown
-        assert prompt.config.voice.value == "ayaka"
+        # Phase 269: 5k → INTERMEDIATE → TOMOKO.
+        assert prompt.config.voice.value == "tomoko"
 
     def test_build_prompt_default_rank(self, sample_karte_path: Path):
         karte = json.loads(sample_karte_path.read_text(encoding="utf-8"))
         prompt = cli.build_prompt(karte)  # no rank
-        # Default to AYAKA per select_voice fallback
-        assert prompt.config.voice.value == "ayaka"
+        # Phase 269: default is TOMOKO (AYAKA removed).
+        assert prompt.config.voice.value == "tomoko"
 
 
 # --- analyze sub-command (Phase 217) ---

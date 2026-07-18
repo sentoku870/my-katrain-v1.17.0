@@ -13,9 +13,15 @@ Why a mock LLM:
 - The structure of the LLM prompt is the critical part under test
 
 Three end-to-end scenarios:
-1. AYAKA / BEGINNER / Atari Blindness detected — short clean response
-2. TOMOKO / DAN / Big Point Blindness detected — long structured response
+1. BEGINNER / TOMOKO / Atari Blindness detected — short clean response
+2. DAN / TOMOKO / Big Point Blindness detected — long structured response
 3. EXPERT / TOMOKO_STRICT — expert response with minor validation issues
+
+Phase 269: AYAKA voice removed. All ranks now use TOMOKO except EXPERT
+which uses TOMOKO_STRICT. Scenario 1 was retargeted to BEGINNER+TOMOKO
+while keeping the Kansai-marker example in the mock response (the tone
+consistency check no longer enforces a Kansai-free style for TOMOKO,
+so the LLM output is permitted to contain Kansai particles).
 """
 
 from __future__ import annotations
@@ -114,10 +120,10 @@ def sample_karte() -> dict:
     }
 
 
-# --- Scenario 1: AYAKA / BEGINNER ---
+# --- Scenario 1: BEGINNER / TOMOKO ---
 
 
-class TestE2EAyakaBeginner:
+class TestE2EBeginnerTomoko:
     def test_pipeline_runs_clean(self, sample_karte):
         # 1. Detection
         ctx = SymptomContext(
@@ -126,8 +132,9 @@ class TestE2EAyakaBeginner:
             meaning_tag_ids=(),  # simplified for e2e
         )
         detected = detect_auto_symptoms(ctx)
-        # 2. Mode selection (rank "10k" → INTERMEDIATE → AYAKA)
+        # 2. Mode selection (rank "10k" → INTERMEDIATE → TOMOKO since Phase 269)
         voice = select_voice("10k")
+        assert voice == ToneVoice.TOMOKO
         # 3. Build prompt
         cfg = PromptConfig(
             voice=voice,
@@ -140,17 +147,17 @@ class TestE2EAyakaBeginner:
         # 5. Validate
         report = validate_llm_output(llm_output, sample_karte, prompt, config=cfg)
 
-        # The ayaka response mentions atari_blindness + capture_race_loss,
-        # both of which are valid in karte. capture_race_loss is in
-        # important_moves[].meaning_tag_id, atari_blindness is in config.
-        # The response also uses Kansai markers and is short → no tone warning.
-        # We expect: unknown_symptom_id for any id not in {karte ids, prompt ids, config ids}.
+        # The response mentions atari_blindness + capture_race_loss, both
+        # valid in karte. capture_race_loss is in important_moves
+        # [].meaning_tag_id, atari_blindness is in config.
+        # Phase 269: Kansai-marker tone check was removed for TOMOKO,
+        # so the Kansai-flavoured mock no longer trips any tone warning.
         bad = [i for i in report.issues if i.kind == "unknown_symptom_id"]
         assert bad == [], f"unexpected bad ids: {[i.context for i in bad]}"
 
     def test_prompt_contains_required_rubrics(self, sample_karte):
         cfg = PromptConfig(
-            voice=ToneVoice.AYAKA,
+            voice=ToneVoice.TOMOKO,
             mode=CoachMode.BEGINNER,
             detected_symptom_ids=(SymptomId.ATARI_BLINDNESS,),
         )
@@ -229,7 +236,10 @@ class TestE2EExpertStrict:
         bad_ids = {i.context["symptom_id"] for i in bad}
         assert "fantasy_id" in bad_ids
 
-    def test_kansai_marker_in_tomoko_strict_flagged(self, sample_karte):
+    def test_kansai_marker_in_tomoko_strict_not_flagged(self, sample_karte):
+        # Phase 269: AYAKA removed → tone-inconsistency check is gone.
+        # TOMOKO_STRICT output may contain Kansai particles without
+        # any warning, per the user's "全棋力同じキャラで統一" stance.
         voice = select_voice("7d")
         cfg = PromptConfig(
             voice=voice,
@@ -240,10 +250,8 @@ class TestE2EExpertStrict:
         llm_output = _mock_llm(prompt.full_markdown, "expert_strict")
         report = validate_llm_output(llm_output, sample_karte, prompt, config=cfg)
 
-        # TOMOKO_STRICT response contains "ウチの解釈（関西弁マーカー）も含めて"
-        # → tone_inconsistency_tomoko warning expected.
-        tone_issues = [i for i in report.issues if i.kind == "tone_inconsistency_tomoko"]
-        assert len(tone_issues) == 1
+        tone_issues = [i for i in report.issues if i.kind in ("tone_inconsistency_tomoko", "tone_inconsistency_ayaka")]
+        assert tone_issues == []
 
     def test_validation_summary_reflects_issues(self, sample_karte):
         voice = select_voice("7d")
@@ -259,10 +267,9 @@ class TestE2EExpertStrict:
         llm_output = _mock_llm(prompt.full_markdown, "expert_strict")
         report = validate_llm_output(llm_output, sample_karte, prompt, config=cfg)
 
-        # Should have ≥1 high (fantasy_id) and ≥1 low (kansai marker)
+        # ≥1 high (fantasy_id). Phase 269: tone-inconsistency low
+        # warnings are gone, so we no longer assert low_count >= 1.
         assert report.high_count >= 1
-        assert report.low_count >= 1
-
         # summary line should show ⚠️
         assert "⚠️" in report.summary_line()
 
