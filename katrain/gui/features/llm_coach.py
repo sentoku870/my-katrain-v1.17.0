@@ -321,7 +321,7 @@ def build_summary_llm_prompt(
         SummaryPromptConfig,
         build_summary_weakness_prompt,
     )
-    from katrain.core.coach.tones import modes_for_voice, select_voice
+    from katrain.core.coach.tones import select_voice
 
     try:
         with open(summary_path, encoding="utf-8") as f:
@@ -340,13 +340,14 @@ def build_summary_llm_prompt(
         return False, msg
 
     voice = select_voice(rank)
-    modes = modes_for_voice(voice)
-    mode = modes[0] if modes else None
-    if mode is None:
-        # Fallback when select_voice returns a voice with no modes
-        from katrain.core.coach.master_db import CoachMode
+    # Phase 269 follow-up: ``mode`` is independent of ``voice`` after the
+    # AYAKA removal (all voices serve multiple modes). Derive the mode
+    # directly from the rank so a 4d player sees Level: DAN, not
+    # Level: BEGINNER (which is what the previous modes[0] fallback
+    # produced for any TOMOKO-served rank).
+    from katrain.core.coach.master_db import CoachMode, estimate_mode_from_rank
 
-        mode = CoachMode.INTERMEDIATE
+    mode = estimate_mode_from_rank(rank) or CoachMode.INTERMEDIATE
 
     games = summary.get("meta", {}).get("games_analyzed", 0) or 0
     cfg = SummaryPromptConfig(
@@ -400,7 +401,7 @@ def validate_summary_llm_response(
         build_summary_weakness_prompt,
     )
     from katrain.core.coach.summary_validator import validate_summary_llm_output
-    from katrain.core.coach.tones import modes_for_voice, select_voice
+    from katrain.core.coach.tones import select_voice
 
     try:
         with open(summary_path, encoding="utf-8") as f:
@@ -419,12 +420,12 @@ def validate_summary_llm_response(
         return False, msg
 
     voice = select_voice(rank)
-    modes = modes_for_voice(voice)
-    mode = modes[0] if modes else None
-    if mode is None:
-        from katrain.core.coach.master_db import CoachMode
+    # Phase 269 follow-up: same fix as build_summary_llm_prompt above.
+    # Derive mode from rank, not from modes[0] (which is always
+    # BEGINNER after the AYAKA removal).
+    from katrain.core.coach.master_db import CoachMode, estimate_mode_from_rank
 
-        mode = CoachMode.INTERMEDIATE
+    mode = estimate_mode_from_rank(rank) or CoachMode.INTERMEDIATE
 
     games = summary.get("meta", {}).get("games_analyzed", 0) or 0
     cfg = SummaryPromptConfig(
