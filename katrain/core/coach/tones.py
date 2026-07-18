@@ -180,6 +180,7 @@ def check_prohibited(text: str, voice: ToneVoice) -> list[str]:
 
     # 2. TOMOKO_STRICT specific check: should be direct.
     import re
+
     if voice == ToneVoice.TOMOKO_STRICT and re.search(r"〜してみてね|〜してみてね！", text):
         violations.append("TOMOKO_STRICT 文体に優しい誘導表現が混入")
 

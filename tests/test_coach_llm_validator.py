@@ -290,9 +290,7 @@ class TestToneConsistency:
         from katrain.core.coach.llm_validator import ValidationSeverity
 
         for kind in ("tone_inconsistency_ayaka", "tone_inconsistency_tomoko"):
-            assert kind not in ValidationSeverity.__members__, (
-                f"validation kind {kind!r} should be reserved / unused"
-            )
+            assert kind not in ValidationSeverity.__members__, f"validation kind {kind!r} should be reserved / unused"
 
 
 # --- Summary line ---
