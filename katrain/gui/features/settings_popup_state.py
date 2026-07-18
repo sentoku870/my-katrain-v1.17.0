@@ -82,8 +82,9 @@ class _SettingsPopupContext:
     # Phase 182: ownership / policy toggles.
     selected_summary_ownership: list[bool]
     selected_summary_policy: list[bool]
-    # Phase 186: curator weak-axis hint toggle.
-    selected_curator_hint: list[bool]
+    # Phase 270: ``selected_curator_hint`` was removed along with the
+    # Curator weak-axis hint.  The 10 individual category toggles below
+    # still control structural / meaning-tag detectors.
     # Phase 251: per-category toggles for the 4 structural (Phase 91)
     # and 6 meaning-tag (Phase 92) categories. Each is a single
     # category that was previously gated only by the master

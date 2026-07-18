@@ -422,7 +422,6 @@ class ControlsPanel(BoxLayout):
             "katago_uncertain": bool(katrain.config("beginner_hints/katago_uncertain", True)),
             "summary_ownership": bool(katrain.config("beginner_hints/summary_ownership", True)),
             "summary_policy": bool(katrain.config("beginner_hints/summary_policy", True)),
-            "curator_hint": bool(katrain.config("beginner_hints/curator_hint", True)),
         }
 
     def _category_filter(self) -> dict[str, bool]:

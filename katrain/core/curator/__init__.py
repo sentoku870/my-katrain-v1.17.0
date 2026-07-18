@@ -10,6 +10,10 @@ And generates batch outputs (Phase 64):
     - curator_ranking.json: Game rankings with suitability scores
     - replay_guide.json: Highlight moments for replay guidance
 
+Phase 270: ``profile.py`` (CuratorProfile loader) was removed along
+with the deprecated Curator weak-axis hint.  The suitability scoring
+pipeline itself is preserved for batch analysis.
+
 Example usage:
     from katrain.core.curator import score_game_suitability, score_batch_suitability
     from katrain.core.curator import SuitabilityScore, SuitabilityConfig
@@ -40,13 +44,6 @@ from .models import (
     SuitabilityConfig,
     SuitabilityScore,
 )
-from .profile import (
-    DEFAULT_MIN_GAMES,
-    DEFAULT_MIN_TAG_OCCURRENCES,
-    CuratorProfile,
-    curator_profile_from_payload,
-    load_curator_profile,
-)
 from .scoring import (
     compute_batch_percentiles,
     compute_stability,
@@ -73,10 +70,4 @@ __all__ = [
     "HighlightMoment",
     "ReplayGuide",
     "extract_replay_guide",
-    # Profile loader (Phase 186)
-    "CuratorProfile",
-    "DEFAULT_MIN_GAMES",
-    "DEFAULT_MIN_TAG_OCCURRENCES",
-    "load_curator_profile",
-    "curator_profile_from_payload",
 ]

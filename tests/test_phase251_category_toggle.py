@@ -77,11 +77,10 @@ class TestBuildCategoryFilter:
                 "katago_uncertain",
                 "summary_ownership",
                 "summary_policy",
-                "curator_hint",
             )
         }
         result = build_category_filter(bh)
-        assert len(result) == 17
+        assert len(result) == 16
         assert all(result[k] is True for k in result)
 
     def test_only_present_keys_returned(self):
