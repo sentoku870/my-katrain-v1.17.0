@@ -45,9 +45,7 @@ def _load_resolver_isolated() -> callable:
 
 def _ctx(out_dir: str | None) -> SimpleNamespace:
     return SimpleNamespace(
-        config=lambda key, default=None: {"karte_output_directory": out_dir}
-        if key == "mykatrain_settings"
-        else default
+        config=lambda key, default=None: {"karte_output_directory": out_dir} if key == "mykatrain_settings" else default
     )
 
 
