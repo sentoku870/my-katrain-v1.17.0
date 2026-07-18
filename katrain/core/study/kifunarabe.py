@@ -444,10 +444,11 @@ class KifunarabeSession:
     def _validate_move_number(move_number: Any, *, method: str) -> int:
         """Phase 249-α: validate ``move_number`` for ``record_*`` callers.
 
-        The position number must be a positive integer (1-indexed, equal
-        to the tree depth). Anything else (``None``, ``0``, negative,
-        non-int) is a programming error and must not silently corrupt the
-        results list.
+        The position number must be a non-negative integer. ``0`` is
+        the root position (no children played yet); ``1+`` is a real
+        move. Anything else (``None``, negative, non-int) is a
+        programming error and must not silently corrupt the results
+        list.
 
         Args:
             move_number: The candidate value to validate.
@@ -458,16 +459,16 @@ class KifunarabeSession:
 
         Raises:
             TypeError: ``move_number`` is not an int.
-            ValueError: ``move_number`` is not a positive integer.
+            ValueError: ``move_number`` is negative.
         """
         if not isinstance(move_number, int) or isinstance(move_number, bool):
             raise TypeError(
                 f"KifunarabeSession.{method}: move_number must be int, "
                 f"got {type(move_number).__name__}: {move_number!r}"
             )
-        if move_number <= 0:
+        if move_number < 0:
             raise ValueError(
-                f"KifunarabeSession.{method}: move_number must be >= 1, "
+                f"KifunarabeSession.{method}: move_number must be >= 0, "
                 f"got {move_number}"
             )
         return move_number

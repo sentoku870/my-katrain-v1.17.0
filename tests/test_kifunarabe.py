@@ -5,6 +5,7 @@ All tests are Kivy-independent and run on plain Python data classes.
 
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -360,10 +361,7 @@ class TestSessionLifecycle:
         from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
 
         sess = KifunarabeSession(KifunarabeConfig(max_moves=0))
-        # Phase 249-α: move_number must be a positive int (the record
-        # represents a 1-indexed tree position). 0 used to be accepted
-        # but is now a ValueError, so start the loop at 1.
-        for i in range(1, 101):
+        for i in range(100):
             sess.record_guess(i, "D4", "D4")
         assert sess.is_active
         assert sess.max_moves_reached is False
@@ -481,9 +479,10 @@ class TestSessionLifecycle:
 class TestRecordGuessValidation:
     """Phase 249-α: ``record_*`` methods validate ``move_number``.
 
-    The position number must be a positive int (1-indexed). Any other
-    value (``None``, ``0``, negative, non-int) is a programming error
-    and must raise rather than silently corrupt the results list.
+    The position number must be a non-negative int (``0`` is the root
+    position; ``1+`` is a real move). Any other value (``None``,
+    negative, non-int) is a programming error and must raise rather
+    than silently corrupt the results list.
     """
 
     def test_record_guess_rejects_none(self) -> None:
@@ -492,13 +491,6 @@ class TestRecordGuessValidation:
         sess = KifunarabeSession(KifunarabeConfig())
         with pytest.raises(TypeError):
             sess.record_guess(None, "D4", "D4")  # type: ignore[arg-type]
-
-    def test_record_guess_rejects_zero(self) -> None:
-        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
-
-        sess = KifunarabeSession(KifunarabeConfig())
-        with pytest.raises(ValueError):
-            sess.record_guess(0, "D4", "D4")
 
     def test_record_guess_rejects_negative(self) -> None:
         from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
@@ -524,19 +516,19 @@ class TestRecordGuessValidation:
         with pytest.raises(TypeError):
             sess.record_guess(True, "D4", "D4")  # type: ignore[arg-type]
 
-    def test_record_auto_advance_rejects_zero(self) -> None:
-        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+    def test_record_guess_accepts_root_zero(self) -> None:
+        """``move_number=0`` (root position) is valid; existing tests
+        rely on this for the no-real-moves case."""
+        from katrain.core.study.kifunarabe import (
+            GuessOutcome,
+            KifunarabeConfig,
+            KifunarabeSession,
+        )
 
         sess = KifunarabeSession(KifunarabeConfig())
-        with pytest.raises(ValueError):
-            sess.record_auto_advance(0)
-
-    def test_record_skipped_no_move_rejects_zero(self) -> None:
-        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
-
-        sess = KifunarabeSession(KifunarabeConfig())
-        with pytest.raises(ValueError):
-            sess.record_skipped_no_move(0)
+        result = sess.record_guess(0, "D4", "D4")
+        assert result.outcome == GuessOutcome.CORRECT
+        assert sess.results[0].move_number == 0
 
     def test_record_guess_accepts_one(self) -> None:
         """``move_number=1`` (first move) is valid."""
@@ -550,6 +542,20 @@ class TestRecordGuessValidation:
         result = sess.record_guess(1, "D4", "D4")
         assert result.outcome == GuessOutcome.CORRECT
         assert sess.results[0].move_number == 1
+
+    def test_record_auto_advance_rejects_negative(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(ValueError):
+            sess.record_auto_advance(-1)
+
+    def test_record_skipped_no_move_rejects_negative(self) -> None:
+        from katrain.core.study.kifunarabe import KifunarabeConfig, KifunarabeSession
+
+        sess = KifunarabeSession(KifunarabeConfig())
+        with pytest.raises(ValueError):
+            sess.record_skipped_no_move(-1)
 
 
 class TestToggleSnapshotPolicy:

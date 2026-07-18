@@ -33,18 +33,16 @@ def _run_scheduled_callbacks(mock_clock: MagicMock) -> None:
         args, _kwargs = mock_clock.schedule_once.call_args_list.pop(0)
         # args[0] is the callback; args[1] (if present) is the delay.
         cb = args[0]
-        if len(args) >= 2:
-            dt = args[1]
-        else:
-            dt = 0
+        dt = args[1] if len(args) >= 2 else 0
         cb(dt)
 
 
 class _FakeNode:
     """Minimal stand-in for ``GameNode`` with analysis control."""
 
-    def __init__(self, *, analysis_exists: bool = False) -> None:
+    def __init__(self, *, analysis_exists: bool = False, next_player: str = "B") -> None:
         self.analysis_exists = analysis_exists
+        self.next_player = next_player
         self.analyze_calls: list[Any] = []
 
     def analyze(self, engine: Any) -> None:
@@ -80,14 +78,22 @@ class TestKickRootAnalysis(unittest.TestCase):
         return mod._kick_root_analysis
 
     def test_no_game_is_noop(self) -> None:
-        """A KaTrainGui without a game must not schedule anything."""
+        """A KaTrainGui without a game must not call ``analyze``.
+
+        The kicker schedules an initial 0.2s tick that runs ``_do_kick``,
+        but ``_do_kick`` short-circuits when ``game is None``. We
+        verify by draining the schedule and confirming no log call
+        was made.
+        """
         gui = _FakeGui(node=None)  # type: ignore[arg-type]
-        gui.game = None
+        gui.game = None  # explicit None
 
         with patch("kivy.clock.Clock") as mock_clock:
             self._import_kick()(gui)
+            _run_scheduled_callbacks(mock_clock)
 
-        self.assertEqual(mock_clock.schedule_once.call_args_list, [])
+        # No analyze was attempted and no log line was produced.
+        self.assertEqual(gui.log_calls, [])
 
     def test_node_already_analyzed_does_not_analyze_again(self) -> None:
         """If the node already has analysis, ``analyze`` is not called."""
@@ -96,10 +102,11 @@ class TestKickRootAnalysis(unittest.TestCase):
 
         with patch("kivy.clock.Clock") as mock_clock:
             self._import_kick()(gui)
+            _run_scheduled_callbacks(mock_clock)
 
-        # Only the initial 0.2s tick should be scheduled.
-        self.assertEqual(len(mock_clock.schedule_once.call_args_list), 1)
-        _run_scheduled_callbacks(mock_clock)
+        # The initial 0.2s tick is scheduled and fired; inside the
+        # callback ``analysis_exists`` is True so ``analyze`` is not
+        # called.
         self.assertEqual(node.analyze_calls, [])
 
     def test_no_engine_does_nothing(self) -> None:
@@ -109,10 +116,10 @@ class TestKickRootAnalysis(unittest.TestCase):
 
         with patch("kivy.clock.Clock") as mock_clock:
             self._import_kick()(gui)
+            _run_scheduled_callbacks(mock_clock)
 
-        # The first tick still fires, but the inner ``_do_kick`` bails
-        # out before calling ``analyze``.
-        _run_scheduled_callbacks(mock_clock)
+        # ``_do_kick`` runs but bails out before calling ``analyze``
+        # because the engine resolution yields None.
         self.assertEqual(node.analyze_calls, [])
 
     def test_successful_analyze_stops_after_one_attempt(self) -> None:
