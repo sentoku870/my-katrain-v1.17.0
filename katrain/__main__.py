@@ -493,6 +493,10 @@ class KaTrainGui(Screen, KaTrainBase):
         ``karte_output_directory`` and loads the Curator profile.
         Safe to call repeatedly; no-op when the karte output
         directory is not configured or the file is missing / malformed.
+
+        Phase 266: also reports the load result via the GUI log so
+        the user can see when their freshly-generated Curator profile
+        is in effect (e.g. after a Batch analysis finishes).
         """
         from katrain.core.curator.profile import load_curator_profile
         from katrain.gui.features.karte_export import _resolve_curator_profile_path
@@ -504,6 +508,7 @@ class KaTrainGui(Screen, KaTrainBase):
         path = _resolve_curator_profile_path(_CuratorCtx(self.config))
         if path is None:
             self.curator_profile = None
+            self.log("Curator profile: no curator_ranking.json found", OUTPUT_INFO)
             return
         try:
             profile = load_curator_profile(path)
@@ -511,6 +516,14 @@ class KaTrainGui(Screen, KaTrainBase):
             self.log(f"Curator profile load failed ({path}): {e}", OUTPUT_DEBUG)
             profile = None
         self.curator_profile = profile
+        if profile is not None:
+            n_tags = len(profile.weak_tags or {})
+            self.log(
+                f"Curator profile loaded: {path} ({n_tags} weak tag(s) from {profile.total_games} game(s))",
+                OUTPUT_INFO,
+            )
+        else:
+            self.log(f"Curator profile: {path} loaded but no useful data", OUTPUT_DEBUG)
 
     def start(self) -> None:
         if self.engine:

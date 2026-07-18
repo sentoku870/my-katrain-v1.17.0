@@ -173,6 +173,7 @@ def create_summary_callback(
     close_button: Any,
     progress_label: Any,
     log_cb: Callable[[str], None],
+    curator_refresh_fn: Callable[[], None] | None = None,
 ) -> Callable[[BatchResult], None]:
     """完了時のサマリ表示コールバックを作成
 
@@ -182,6 +183,12 @@ def create_summary_callback(
         close_button: 閉じるボタンウィジェット
         progress_label: 進行状況ラベルウィジェット
         log_cb: ログコールバック
+        curator_refresh_fn: Phase 266 — optional hook called after a
+            successful Curator output (curator_ranking.json). Lets the
+            GUI reload the Curator profile so Beginner Hint re-labelling
+            picks up the freshly generated weak tags without an app
+            restart. Failures are swallowed (logged via ``log_cb``) so
+            a bad profile never blocks the batch summary.
 
     Returns:
         サマリ表示コールバック関数
@@ -220,6 +227,16 @@ def create_summary_callback(
                 )
             progress_label.text = summary
             log_cb(summary)
+
+            # Phase 266: refresh Curator profile after a successful batch
+            # so the user sees their fresh weak tags in Beginner Hints
+            # without restarting the app. Curator failures are silent
+            # (logged via log_cb) so a missing file does not break UX.
+            if curator_refresh_fn is not None and result.success_count > 0 and not result.cancelled:
+                try:
+                    curator_refresh_fn()
+                except Exception as e:  # noqa: BLE001
+                    log_cb(f"Curator refresh failed: {e}")
 
         Clock.schedule_once(show_summary, 0)
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from kivy.metrics import dp
+from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.checkbox import CheckBox
 
@@ -562,6 +562,12 @@ def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupC
     for label_key, _field_name, selected_ref in summary_rows:
         _add_toggle_row(inner, label_key, selected_ref, state)
 
+    # Phase 266: live status line below the curator_hint toggle. Tells
+    # the user whether a Curator profile is currently loaded and how
+    # many weak tags it tracks. Without this, users would have to dig
+    # through logs to confirm their curator_ranking.json was picked up.
+    _build_curator_status_label(inner, state)
+
     # Phase 251: per-category toggles for the 4 structural detectors
     # (Phase 91) and 6 meaning-tag fallbacks (Phase 92). These
     # previously had no individual control; users could only flip the
@@ -582,6 +588,37 @@ def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupC
     ]
     for label_key, selected_ref in individual_rows:
         _add_toggle_row(inner, label_key, selected_ref, state)
+
+
+def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
+    """Phase 266: live Curator profile status line.
+
+    Rendered right below the ``curator_hint`` checkbox. Tells the user
+    whether a profile is currently loaded and how many weak tags it
+    carries. Without this, users would have to dig through logs to
+    confirm their curator_ranking.json was picked up after Batch
+    analysis.
+    """
+    from katrain.core.lang import i18n
+
+    curator_profile = getattr(state.ctx, "curator_profile", None)
+    n_tags = len(curator_profile.weak_tags) if curator_profile is not None else 0
+    if curator_profile is not None and n_tags > 0:
+        text = i18n._("mykatrain:settings:curator_hint_loaded").format(count=n_tags)
+    else:
+        text = i18n._("mykatrain:settings:curator_hint_not_loaded")
+
+    desc = Label(
+        text=text,
+        size_hint_x=0.95,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+        font_size=sp(11),
+    )
+    desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    inner.add_widget(desc)
 
 
 def _add_toggle_row(

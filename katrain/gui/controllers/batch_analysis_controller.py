@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from typing import Any, Protocol
 
 
@@ -103,12 +104,19 @@ class BatchAnalysisController:
         def save_batch_options(options: dict[str, Any]) -> None:
             _persist_batch_options(self._ctx, options)
 
+        # Phase 266: after a successful batch, refresh the Curator
+        # profile so Beginner Hint re-labelling picks up the new
+        # ``user_weak_tags`` without an app restart. ``ctx`` is
+        # expected to expose ``update_curator_profile()`` (Phase 265).
+        curator_refresh_fn: Callable[[], None] | None = getattr(self._ctx, "update_curator_profile", None)
+
         summary_cb = create_summary_callback(
             is_running,
             widgets["start_button"],
             widgets["close_button"],
             widgets["progress_label"],
             log_cb,
+            curator_refresh_fn=curator_refresh_fn,
         )
 
         def run_batch_thread() -> None:

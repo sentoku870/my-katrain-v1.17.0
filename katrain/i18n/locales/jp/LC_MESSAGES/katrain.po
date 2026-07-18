@@ -3184,3 +3184,11 @@ msgstr "Terr"
 #. profile
 msgid "beginner-hint:curator_weak_axis_footer"
 msgstr "あなたの弱点: {tag_id} ({count} 回)"
+
+#. Phase 266: live Curator profile status line below the curator_hint toggle
+msgid "mykatrain:settings:curator_hint_loaded"
+msgstr "現在 {count} 個の弱点タグを検出中"
+
+#. Phase 266: live Curator profile status line below the curator_hint toggle
+msgid "mykatrain:settings:curator_hint_not_loaded"
+msgstr "Batch 分析で curator_ranking.json を生成すると有効になります"
