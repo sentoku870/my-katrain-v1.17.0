@@ -117,3 +117,8 @@ class _SettingsPopupContext:
     # Phase 247-B (H3): same pattern for the position-aware N → M
     # preview label. Refreshed alongside the static status label.
     _pv_filter_preview_label: Any = None
+    # Phase 268: stash a reference to the live Curator status label
+    # so the file-browser handler can refresh its text in place after
+    # loading a new curator_ranking_*.json — without forcing a popup
+    # rebuild (which would lose focus and any other in-flight edits).
+    _curator_status_label: Any = None

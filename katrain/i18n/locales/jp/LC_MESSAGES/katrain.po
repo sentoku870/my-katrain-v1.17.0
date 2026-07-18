@@ -1666,9 +1666,6 @@ msgstr "現在: AUTO → {level}（{preset} から自動推定・最大 {max_n} 
 msgid "mykatrain:settings:pv_filter_status_explicit"
 msgstr "現在: {level}（最大 {max_n} 件まで）"
 
-msgid "mykatrain:settings:pv_filter_marker_legend"
-msgstr "マーカー凡例: 赤い丸=高損失、橙=中、黄色=低損失、小さな丸=低visits (信頼度低)、青い枠=最善手（点数は次手=視点: の損失）"
-
 msgid "mykatrain:settings:pv_filter_kifunarabe_note"
 msgstr "※ 棋譜並べモード中は自動OFF（正解と AI 候補が必ず全件表示されます）"
 
@@ -1680,13 +1677,6 @@ msgstr "現在の局面: {n} 件（フィルタ OFF）"
 
 msgid "mykatrain:settings:pv_filter_preview_active"
 msgstr "現在の局面: {n} → {m} 件（最善手 {best} 件込み・フィルタ ON）"
-
-# Phase 247-C (L6): コントロールパネル側の compact 表示
-msgid "mykatrain:controls:pv_filter_preview_inactive"
-msgstr "候補 {n} 件 (フィルタ OFF)"
-
-msgid "mykatrain:controls:pv_filter_preview_active"
-msgstr "候補 {n} → {m} (最善 {best} 込み)"
 
 msgid "mykatrain:settings:beginner_hints"
 msgstr "初心者向けヒント:"
@@ -3209,3 +3199,10 @@ msgstr "参照..."
 #. pick curator_ranking_*.json manually
 msgid "mykatrain:settings:curator_hint_browse_title"
 msgstr "curator_ranking_*.json を選択"
+
+#. Phase 268+ Curator profile loaded but 0 weak tags.
+#. The user has the file loaded, but the recommended_tags fallback
+#. also produced no recurring patterns. Encourage them to analyse
+#. more games rather than the misleading "Batch 分析で …" hint.
+msgid "mykatrain:settings:curator_hint_loaded_no_tags"
+msgstr "プロファイル読込済み (弱点タグなし) — より多くの棋譜を batch 分析してください"

@@ -159,6 +159,40 @@ def test_analysis_tab_browse_handler_uses_inst_selection_only() -> None:
     )
 
 
+def test_analysis_tab_browse_handler_uses_inst_filename_for_ok_pick() -> None:
+    """Phase 268 follow-up #2: the OK button sets ``filename`` (not
+    ``selection``) on the browser, so the helper must read
+    ``inst.filename`` first.  The earlier code only read
+    ``inst.selection``, which is empty when the user picks via OK,
+    so the popup appeared "stuck" after a click.
+    """
+    helper_src = _get_func_source(ANALYSIS_TAB_PATH, "_on_browser_done")
+    assert "inst.filename" in helper_src, (
+        "_on_browser_done must read from inst.filename (FileBrowser OK button contract) "
+        "before falling back to inst.selection[0]"
+    )
+    # And the filename lookup must come before the selection fallback.
+    fname_idx = helper_src.find("inst.filename")
+    sel_idx = helper_src.find("inst.selection")
+    assert fname_idx < sel_idx, (
+        "inst.filename must be checked before inst.selection[0] so the OK-button pick wins"
+    )
+
+
+def test_analysis_tab_browse_handler_dismisses_picker() -> None:
+    """Phase 268 follow-up #3: without ``picker.dismiss()`` the
+    dialog stays open after a successful pick, leaving the user
+    unable to reach the "保存" / "キャンセル" buttons.  The helper
+    must explicitly close the picker, mirroring
+    :func:`llm_coach_popup._on_pick`.
+    """
+    helper_src = _get_func_source(ANALYSIS_TAB_PATH, "_on_browser_done")
+    assert "picker.dismiss" in helper_src, (
+        "_on_browser_done must call ``picker.dismiss()`` so the dialog closes after a pick; "
+        "otherwise the user is stuck on the file browser."
+    )
+
+
 # ---------------------------------------------------------------------------
 # 3. llm_coach_popup.py: the working pattern is unchanged
 # ---------------------------------------------------------------------------
@@ -300,3 +334,169 @@ def test_curator_hint_browse_title_i18n_exists() -> None:
         matches = [e for e in po if e.msgid == "mykatrain:settings:curator_hint_browse_title"]
         assert matches, f"{po_path.name}: missing 'curator_hint_browse_title' key"
         assert matches[0].msgstr.strip(), f"{po_path.name}: 'curator_hint_browse_title' has empty msgstr"
+
+
+# ---------------------------------------------------------------------------
+# 7. Closure scoping: karte_dir / batch_dir are pre-declared so the
+#    ``_on_browse`` closure always has them in scope (Phase 268 fix).
+# ---------------------------------------------------------------------------
+
+
+def test_curator_browse_closure_has_karte_dir_and_batch_dir() -> None:
+    """Regression: the ``_on_browse`` closure references ``karte_dir``
+    and ``batch_dir`` but these were previously only assigned inside
+    the ``else`` branch (when the curator profile is not yet loaded).
+    When the user opened the settings popup *after* a curator
+    profile had been loaded, the variables were undefined and
+    clicking "参照..." raised ``NameError``, which Kivy's
+    ``on_release`` silently swallowed — the button looked dead.
+
+    The fix is to pre-declare both variables to ``""`` before the
+    if/else block so the closure always resolves them.
+    """
+    src = ANALYSIS_TAB_PATH.read_text(encoding="utf-8")
+    # Both variables must be pre-declared in the outer function
+    # (``_build_curator_status_label``) before the if/else block.
+    # We pin this by asserting the pre-declared assignments appear
+    # *before* the first ``if curator_profile is not None`` line.
+    tree = ast.parse(src)
+    func = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_build_curator_status_label":
+            func = node
+            break
+    assert func is not None, "_build_curator_status_label not found in analysis_tab.py"
+
+    # Find the first ``if curator_profile is not None`` statement.
+    if_idx = None
+    karte_idx = None
+    batch_idx = None
+    for i, stmt in enumerate(func.body):
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+            tgt = stmt.targets[0]
+            if isinstance(tgt, ast.Name) and tgt.id == "karte_dir" and karte_idx is None:
+                # Capture the first karte_dir assignment (the pre-decl)
+                if karte_idx is None:
+                    karte_idx = i
+            if isinstance(tgt, ast.Name) and tgt.id == "batch_dir" and batch_idx is None:
+                if batch_idx is None:
+                    batch_idx = i
+        if isinstance(stmt, ast.If) and if_idx is None:
+            test_src = ast.unparse(stmt.test)
+            if "curator_profile" in test_src:
+                if_idx = i
+                break
+    assert if_idx is not None, "_build_curator_status_label: missing the ``if curator_profile`` branch"
+    assert karte_idx is not None, (
+        "_build_curator_status_label: ``karte_dir`` is not pre-declared before the if/else — "
+        "the browse button will raise NameError when the curator profile is already loaded."
+    )
+    assert batch_idx is not None, (
+        "_build_curator_status_label: ``batch_dir`` is not pre-declared before the if/else — "
+        "the browse button will raise NameError when the curator profile is already loaded."
+    )
+    assert karte_idx < if_idx, (
+        f"karte_dir pre-declaration (line {karte_idx}) must come before the if/else (line {if_idx})"
+    )
+    assert batch_idx < if_idx, (
+        f"batch_dir pre-declaration (line {batch_idx}) must come before the if/else (line {if_idx})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 8. Phase 268+ popup status label refresh: after a successful
+#    curator_ranking_*.json load, the live status label must update
+#    in place so the user sees the new weak-tag count without
+#    closing/reopening the popup.
+# ---------------------------------------------------------------------------
+
+
+SETTINGS_POPUP_PATH = REPO_ROOT / "katrain" / "gui" / "features" / "settings_popup.py"
+SETTINGS_POPUP_STATE_PATH = REPO_ROOT / "katrain" / "gui" / "features" / "settings_popup_state.py"
+
+
+def test_settings_popup_state_has_curator_status_label_field() -> None:
+    """The :class:`_SettingsPopupContext` must carry a
+    ``_curator_status_label`` reference so the file-browser
+    handler can refresh the live label in place.
+
+    Before this field existed, the popup would render
+    ``"Batch 分析で …"`` even after a successful load, because the
+    only way to see the new weak-tag count was to close and reopen
+    the settings popup.
+    """
+    src = SETTINGS_POPUP_STATE_PATH.read_text(encoding="utf-8")
+    assert "_curator_status_label" in src, (
+        "settings_popup_state.py: _SettingsPopupContext must declare a "
+        "'_curator_status_label' field for in-place popup refresh."
+    )
+
+
+def test_analysis_tab_status_label_stashed_on_state() -> None:
+    """``_build_curator_status_label`` must stash the constructed
+    label reference on ``state._curator_status_label`` so the
+    file-browser callback can rewrite its text after a successful
+    load.
+    """
+    src = ANALYSIS_TAB_PATH.read_text(encoding="utf-8")
+    # Pin the assignment inside the function.  We accept any
+    # indentation level since the function nests inside the
+    # helper but the assignment must reference the state field.
+    assert "state._curator_status_label = desc" in src, (
+        "analysis_tab.py: _build_curator_status_label must assign "
+        "'state._curator_status_label = desc' so the browse handler "
+        "can refresh the label text in place."
+    )
+
+
+def test_analysis_tab_has_refresh_curator_status_label_text() -> None:
+    """The shared text helper ``_refresh_curator_status_label_text``
+    must exist so the initial render and the post-load refresh take
+    the same code path.  Without this, the two paths would drift
+    apart the next time the status wording changes.
+    """
+    helper_src = _get_func_source(ANALYSIS_TAB_PATH, "_refresh_curator_status_label_text")
+    assert helper_src, "_refresh_curator_status_label_text not found in analysis_tab.py"
+    # The helper must consult curator_profile and n_tags (the
+    # two key state variables that drive the text).
+    assert "curator_profile" in helper_src, (
+        "_refresh_curator_status_label_text must consult ctx.curator_profile"
+    )
+    assert "weak_tags" in helper_src, (
+        "_refresh_curator_status_label_text must read weak_tags "
+        "to compute the loaded-tag count."
+    )
+    # And it must cover the 0-tag-while-loaded case (the new
+    # "Profile loaded (no weak tags yet)" message).
+    assert "curator_hint_loaded_no_tags" in helper_src, (
+        "_refresh_curator_status_label_text must handle the loaded-but-empty "
+        "case via the curator_hint_loaded_no_tags i18n key."
+    )
+
+
+def test_analysis_tab_browse_done_refreshes_label() -> None:
+    """The ``_on_browser_done`` handler must call
+    ``_refresh_curator_status_label_text`` so the new weak-tag
+    count shows up immediately after the user picks a file.
+    """
+    helper_src = _get_func_source(ANALYSIS_TAB_PATH, "_on_browser_done")
+    assert "_refresh_curator_status_label_text" in helper_src, (
+        "_on_browser_done must call _refresh_curator_status_label_text "
+        "so the status label updates after a successful load."
+    )
+    assert "label.text" in helper_src, (
+        "_on_browser_done must assign the refreshed text to label.text"
+    )
+
+
+def test_settings_popup_stashes_state_on_popup() -> None:
+    """``do_mykatrain_settings_popup`` must stash the state on the
+    popup so the file-browser handler can walk back to the live
+    status label.
+    """
+    src = SETTINGS_POPUP_PATH.read_text(encoding="utf-8")
+    assert "popup._settings_state = state" in src, (
+        "settings_popup.py: must stash state on popup as "
+        "'popup._settings_state = state' so the file-browser handler "
+        "can refresh the live status label."
+    )

@@ -248,6 +248,11 @@ def do_mykatrain_settings_popup(
         content=main_layout,
     ).__self__
     state.popup = popup
+    # Phase 268: stash the state on the popup so the file-browser
+    # handler (which only has a reference to ``ctx``) can walk back
+    # to the live status label built by
+    # :func:`katrain.gui.features.settings_popup_tabs.analysis_tab._build_curator_status_label`.
+    popup._settings_state = state
 
     # --- Save callback (Phase 145-D: 6-line orchestrator delegating to helpers;
     #                    Phase 177: kifunarabe.sgf_load 永続化) ---
