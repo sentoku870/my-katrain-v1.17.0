@@ -673,14 +673,20 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
             filters=["*.json", "*.JSON"],
             select_string=i18n._("button:ok"),
         )
-        browser.bind(
-            on_success=lambda inst, _touch: _load_curator_from_path(
-                state.ctx, inst.selection[0] if inst.selection else None
-            ),
-            on_submit=lambda inst, selection, _touch: _load_curator_from_path(
-                state.ctx, selection[0] if selection else None
-            ),
-        )
+
+        # Phase 268 follow-up: ``I18NFileBrowser`` dispatches ``on_success``
+        # / ``on_submit`` with just the instance (filebrowser.py:446-450),
+        # so the bound callback MUST accept a single positional arg.  The
+        # earlier ``lambda inst, _touch`` / ``lambda inst, selection, _touch``
+        # shape raised ``TypeError`` on every file selection and the picker
+        # silently no-op'd, which is why the "参照" button "didn't work".
+        # We use the same ``*_args`` sink as ``llm_coach_popup._on_pick``
+        # so future dispatch-shape changes are also tolerated.
+        def _on_browser_done(inst: Any, *_args: Any) -> None:
+            selected = inst.selection[0] if inst.selection else None
+            _load_curator_from_path(state.ctx, selected)
+
+        browser.bind(on_success=_on_browser_done, on_submit=_on_browser_done)
         browser.open()
 
     browse_btn.bind(on_release=_on_browse)
