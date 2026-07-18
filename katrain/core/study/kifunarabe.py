@@ -215,14 +215,37 @@ def _expected_move_gtp(node: "GameNode") -> str | None:
     The "expected" move in kifunarabe is the move recorded in the game tree -
     i.e. the actual move the player made at this position. We use
     ``ordered_children[0]`` because that is the mainline continuation.
+
+    Phase 249-α: hardened to swallow the same edge cases the
+    ``_expected_gtp_from_node`` helper on the controller side used to
+    handle (``getattr`` lookups, non-str returns, raising ``gtp``).
+    The two helpers are now consolidated: callers (e.g. the controller
+    guess mixin) should import this function rather than re-implement
+    the resolution locally.
+
+    Phase 249-hotfix: the defensive ``getattr`` / ``try``-``except`` /
+    ``isinstance`` guards were lost during the γ rebase. Restored so
+    unit tests (and any non-conforming ``GameNode`` subclass) get a
+    graceful ``None`` instead of a propagated ``AttributeError`` /
+    ``TypeError``.
     """
-    ordered = node.ordered_children
+    ordered = getattr(node, "ordered_children", None) or []
     if not ordered:
         return None
     child = ordered[0]
-    if not child.move:
+    if child is None:
         return None
-    return child.move.gtp()
+    child_move = getattr(child, "move", None)
+    if child_move is None:
+        return None
+    gtp = getattr(child_move, "gtp", None)
+    if not callable(gtp):
+        return None
+    try:
+        result = gtp()
+    except Exception:  # noqa: BLE001
+        return None
+    return result if isinstance(result, str) else None
 
 
 def _coords_equal_gtp(coords: tuple[int, int], expected_gtp: str, node: "GameNode") -> bool:
@@ -466,6 +489,42 @@ class KifunarabeSession:
         with contextlib.suppress(Exception):
             self.end(max_moves_reached=True)
 
+    @staticmethod
+    def _validate_move_number(move_number: Any, *, method: str) -> int:
+        """Phase 249-α: validate ``move_number`` for ``record_*`` callers.
+
+        The position number must be a non-negative integer. ``0`` is
+        the root position (no children played yet); ``1+`` is a real
+        move. Anything else (``None``, negative, non-int) is a
+        programming error and must not silently corrupt the results
+        list.
+
+        Phase 249-hotfix: this validator and its 3 callers were lost
+        during the γ rebase. Restored so ``record_guess`` /
+        ``record_auto_advance`` / ``record_skipped_no_move`` reject
+        bad inputs with the documented ``TypeError`` / ``ValueError``
+        contract.
+
+        Args:
+            move_number: The candidate value to validate.
+            method: The calling method name (for the error message).
+
+        Returns:
+            The validated integer.
+
+        Raises:
+            TypeError: ``move_number`` is not an int.
+            ValueError: ``move_number`` is negative.
+        """
+        if not isinstance(move_number, int) or isinstance(move_number, bool):
+            raise TypeError(
+                f"KifunarabeSession.{method}: move_number must be int, "
+                f"got {type(move_number).__name__}: {move_number!r}"
+            )
+        if move_number < 0:
+            raise ValueError(f"KifunarabeSession.{method}: move_number must be >= 0, got {move_number}")
+        return move_number
+
     def record_guess(
         self,
         move_number: int,
@@ -488,6 +547,7 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
+        move_number = self._validate_move_number(move_number, method="record_guess")
         correct = expected_gtp is not None and guessed_gtp is not None and expected_gtp.upper() == guessed_gtp.upper()
         # A guessed-but-wrong click is a "failure" distinct from "skip":
         # the user did participate. ``SKIPPED`` is reserved for positions
@@ -534,6 +594,7 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
+        move_number = self._validate_move_number(move_number, method="record_auto_advance")
         result = KifunarabeGuessResult(
             move_number=move_number,
             expected_gtp=None,
@@ -557,6 +618,7 @@ class KifunarabeSession:
         Returns:
             The recorded result.
         """
+        move_number = self._validate_move_number(move_number, method="record_skipped_no_move")
         result = KifunarabeGuessResult(
             move_number=move_number,
             expected_gtp=None,

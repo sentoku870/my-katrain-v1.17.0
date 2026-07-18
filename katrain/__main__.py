@@ -339,6 +339,52 @@ class KaTrainGui(Screen, KaTrainBase):
 
         self._engine_bootstrap: EngineBootstrap | None = None  # populated in start()
 
+        # Phase 198: aggregate every manager into a single AppContext so that
+        # downstream code can reach them through ``self.ctx.<name>`` without
+        # walking the GUI. The legacy ``self._<name>`` accessors remain for
+        # backwards compatibility — see gui/app_context.py.
+        #
+        # Phase 249-hotfix: this block was previously left as dead code inside
+        # ``_build_kifunarabe_weakness_exporter`` (after a ``return``), which
+        # made ``self.ctx`` undefined on the instance and caused the startup
+        # ``AttributeError: 'KaTrainGui' object has no attribute 'ctx'`` when
+        # ``on_language`` → ``set_config_section`` fired.
+        try:
+            from katrain.gui.app_context import AppContext
+        except ImportError:
+            AppContext = None  # type: ignore[assignment,misc]
+        if AppContext is not None:
+            self.ctx: Any = AppContext(
+                error_handler=self.error_handler,
+                sgf_manager=self._sgf_manager,
+                config_manager=self._config_manager,
+                summary_manager=self._summary_manager,
+                keyboard_manager=self._keyboard_manager,
+                dialog_factory=self.dialog_factory,
+                popup_manager=self._popup_manager,
+                game_state_manager=self._game_state_manager,
+                ui_update_manager=self._ui_update_manager,
+                auto_setup_controller=self._auto_setup_controller,
+                analysis_controller=self._analysis_controller,
+                batch_analysis_controller=self._batch_analysis_controller,
+                gui_refresh_manager=self._gui_refresh_manager,
+                game_state_update_manager=self._game_state_update_manager,
+                message_loop_manager=self._message_loop_manager,
+                scroll_handler=self._scroll_handler,
+                kifunarabe_controller=self._kifunarabe_controller,
+                engine_bootstrap=self._engine_bootstrap,
+                engine=self.engine,
+                pondering=self.pondering,
+                show_move_num=self.show_move_num,
+                message_queue=self.message_queue,
+                cancel_flag=None,
+            )
+        else:
+            self.ctx = None
+
+        if self.ctx is not None:
+            self.ctx.ui_update_manager.setup_state_subscriptions()
+
     def _build_kifunarabe_history_store(self) -> Any:
         """Phase 249-β: build the persistent kifunarabe history store.
 
@@ -379,45 +425,6 @@ class KaTrainGui(Screen, KaTrainBase):
         directory: str | None = configured if configured else None
         return KifunarabeWeaknessExporter(directory=directory)
 
-        # Phase 198: aggregate every manager into a single AppContext so that
-        # downstream code can reach them through ``self.ctx.<name>`` without
-        # walking the GUI. The legacy ``self._<name>`` accessors remain for
-        # backwards compatibility — see gui/app_context.py.
-        try:
-            from katrain.gui.app_context import AppContext
-        except ImportError:
-            AppContext = None  # type: ignore[assignment,misc]
-        if AppContext is not None:
-            self.ctx: Any = AppContext(
-                error_handler=self.error_handler,
-                sgf_manager=self._sgf_manager,
-                config_manager=self._config_manager,
-                summary_manager=self._summary_manager,
-                keyboard_manager=self._keyboard_manager,
-                dialog_factory=self.dialog_factory,
-                popup_manager=self._popup_manager,
-                game_state_manager=self._game_state_manager,
-                ui_update_manager=self._ui_update_manager,
-                auto_setup_controller=self._auto_setup_controller,
-                analysis_controller=self._analysis_controller,
-                batch_analysis_controller=self._batch_analysis_controller,
-                gui_refresh_manager=self._gui_refresh_manager,
-                game_state_update_manager=self._game_state_update_manager,
-                message_loop_manager=self._message_loop_manager,
-                scroll_handler=self._scroll_handler,
-                kifunarabe_controller=self._kifunarabe_controller,
-                engine_bootstrap=self._engine_bootstrap,
-                engine=self.engine,
-                pondering=self.pondering,
-                show_move_num=self.show_move_num,
-                message_queue=self.message_queue,
-                cancel_flag=None,
-            )
-        else:
-            self.ctx = None
-
-        self.ctx.ui_update_manager.setup_state_subscriptions()
-
     # ========== Phase 173 P0-①-A: Remove dead UIUpdate duplicate ==========
     # Six static-method helpers (_setup_state_subscriptions, _schedule_ui_update,
     # _do_ui_update, _on_game_changed, _on_analysis_complete, _on_config_updated)
@@ -443,8 +450,18 @@ class KaTrainGui(Screen, KaTrainBase):
 
         Note:
             保存は別途 save_config(section) を呼ぶ必要がある。
+
+        Defensive: ``self.ctx`` is normally set at the end of ``__init__``,
+        but early ``on_start`` paths (e.g. ``on_language``) can fire before
+        configuration is fully wired on a malformed install.  In that
+        extreme edge case we no-op silently — the user will hit a clear
+        error on the first real GUI action rather than an opaque
+        ``AttributeError`` from the language switcher.
         """
-        self.ctx.config_manager.set_section(section, value)
+        ctx = getattr(self, "ctx", None)
+        if ctx is None:  # defensive: see docstring
+            return
+        ctx.config_manager.set_section(section, value)
 
     def log(self, message: str, level: int = OUTPUT_INFO) -> None:
         """Log via base class, then surface errors to status bar via GUIRefreshManager (Phase 158+).

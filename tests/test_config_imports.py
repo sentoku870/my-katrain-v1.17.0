@@ -163,6 +163,128 @@ class TestKaTrainGuiDelegationExists:
         assert "self._config_manager = ConfigManager(" in source_code
 
 
+class TestAppContextAssignedInInit:
+    """Phase 249-hotfix: ``self.ctx = AppContext(...)`` must live inside
+    ``KaTrainGui.__init__``.
+
+    Background: while extracting ``_build_kifunarabe_weakness_exporter`` in
+    Phase 249-γ, the closing block of ``__init__`` (which assigns
+    ``self.ctx``) was accidentally left **after** the new helper method's
+    ``return`` statement, making it dead code. The instance therefore had
+    no ``ctx`` attribute, and the very first ``on_start`` → ``on_language``
+    → ``set_config_section`` call crashed with::
+
+        AttributeError: 'KaTrainGui' object has no attribute 'ctx'
+
+    The bug is invisible to ``test_main_smoke.py`` (which uses
+    ``KaTrainApp.__new__``) and to all manager-level tests (which stub
+    ``self.ctx``). These AST tests catch it at the source-code level
+    without needing a live Kivy instance.
+    """
+
+    def _get_init_method(self):
+        import katrain
+
+        katrain_pkg_dir = Path(katrain.__file__).parent
+        main_py = katrain_pkg_dir / "__main__.py"
+        tree = ast.parse(main_py.read_text(encoding="utf-8"))
+
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "KaTrainGui":
+                for item in ast.iter_child_nodes(node):
+                    if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+                        return item
+        raise AssertionError("KaTrainGui.__init__ not found")
+
+    def test_self_ctx_assigned_inside_init(self):
+        """``self.ctx = ...`` is reachable code inside ``__init__``."""
+        init_method = self._get_init_method()
+        init_end = init_method.end_lineno
+
+        ctx_assign_lines: list[int] = []
+        for sub in ast.walk(init_method):
+            if isinstance(sub, ast.Assign):
+                for tgt in sub.targets:
+                    if (
+                        isinstance(tgt, ast.Attribute)
+                        and isinstance(tgt.value, ast.Name)
+                        and tgt.value.id == "self"
+                        and tgt.attr == "ctx"
+                    ):
+                        ctx_assign_lines.append(sub.lineno)
+
+        assert ctx_assign_lines, (
+            "self.ctx = ... assignment is missing from KaTrainGui.__init__. "
+            "Phase 249-hotfix regression: the assignment was left as dead "
+            "code inside _build_kifunarabe_weakness_exporter."
+        )
+        # The assignment must come before __init__ ends (i.e. it is not in
+        # a helper method that was wrongly placed after the return).
+        for line in ctx_assign_lines:
+            assert line <= init_end, (
+                f"self.ctx assignment at line {line} is after __init__ ends at line {init_end}; it is unreachable."
+            )
+
+    def test_setup_state_subscriptions_called_in_init(self):
+        """``self.ctx.ui_update_manager.setup_state_subscriptions()`` runs
+        inside ``__init__`` (after ``self.ctx`` is assigned)."""
+        init_method = self._get_init_method()
+        init_end = init_method.end_lineno
+
+        # Find any Call to setup_state_subscriptions with the dotted target
+        # ``self.ctx.ui_update_manager.setup_state_subscriptions``.
+        call_lines: list[int] = []
+        for sub in ast.walk(init_method):
+            if (
+                isinstance(sub, ast.Call)
+                and isinstance(sub.func, ast.Attribute)
+                and sub.func.attr == "setup_state_subscriptions"
+            ):
+                call_lines.append(sub.lineno)
+
+        assert call_lines, (
+            "setup_state_subscriptions() is missing from __init__; state subscriptions won't be wired at startup."
+        )
+        for line in call_lines:
+            assert line <= init_end, (
+                f"setup_state_subscriptions() at line {line} is after __init__ ends at line {init_end}."
+            )
+
+    def test_set_config_section_guards_missing_ctx(self):
+        """``set_config_section`` no-ops safely when ``self.ctx`` is unset
+        instead of raising ``AttributeError`` (defensive)."""
+        import katrain
+
+        katrain_pkg_dir = Path(katrain.__file__).parent
+        main_py = katrain_pkg_dir / "__main__.py"
+        tree = ast.parse(main_py.read_text(encoding="utf-8"))
+
+        ka_train_gui_class = None
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.ClassDef) and node.name == "KaTrainGui":
+                ka_train_gui_class = node
+                break
+        assert ka_train_gui_class is not None, "KaTrainGui class not found"
+
+        set_section = None
+        for item in ast.iter_child_nodes(ka_train_gui_class):
+            if isinstance(item, ast.FunctionDef) and item.name == "set_config_section":
+                set_section = item
+                break
+        assert set_section is not None, "set_config_section method not found"
+
+        # The function must use ``getattr(self, "ctx", None)`` (or a
+        # similar guard) so an early call before __init__ finishes does
+        # not raise AttributeError.
+        src = ast.unparse(set_section)
+        assert 'getattr(self, "ctx"' in src or "getattr(self, 'ctx'" in src, (
+            "set_config_section must guard against missing self.ctx. "
+            "Phase 249-hotfix: without the guard, an early on_language → "
+            "set_config_section call raises AttributeError before the user "
+            "sees any error context."
+        )
+
+
 class TestKivyFreeImportChain:
     """Kivyインポートチェーン検証"""
 
