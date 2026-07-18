@@ -128,11 +128,18 @@ class TestNewKeysPopulated:
 
     def test_all_previous_keys_still_present(self):
         """Phase 259 must NOT regress the pre-existing 5 columns."""
-        keys = _populate_keys({
-            "pointsLost": 1.5, "scoreLead": -0.3, "winrate": 0.55,
-            "winrateLost": 0.02, "visits": 200, "scoreStdev": 2.0,
-            "prior": 0.4, "ownership": 0.3,
-        })
+        keys = _populate_keys(
+            {
+                "pointsLost": 1.5,
+                "scoreLead": -0.3,
+                "winrate": 0.55,
+                "winrateLost": 0.02,
+                "visits": 200,
+                "scoreStdev": 2.0,
+                "prior": 0.4,
+                "ownership": 0.3,
+            }
+        )
         assert "top_move_delta_score" in keys
         assert "top_move_score" in keys
         assert "top_move_winrate" in keys
@@ -146,6 +153,7 @@ class TestI18nPresence:
     @pytest.fixture
     def locale_dir(self):
         from katrain import __file__ as katrain_init
+
         return Path(katrain_init).parent / "i18n" / "locales"
 
     def test_jp_translations_present(self, locale_dir):

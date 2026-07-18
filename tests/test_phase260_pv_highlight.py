@@ -90,9 +90,7 @@ def test_draw_hover_contents_highlight_after_pass_circle() -> None:
 
     pass_idx = names.index("draw_pass_circle")
     highlight_idx = names.index("draw_beginner_hint_highlight")
-    assert highlight_idx > pass_idx, (
-        f"highlight ({highlight_idx}) は draw_pass_circle ({pass_idx}) より後で呼ぶこと"
-    )
+    assert highlight_idx > pass_idx, f"highlight ({highlight_idx}) は draw_pass_circle ({pass_idx}) より後で呼ぶこと"
 
 
 # -----------------------------------------------------------------------------

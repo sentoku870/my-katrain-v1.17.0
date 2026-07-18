@@ -562,7 +562,7 @@ _MISTAKE_SEVERITY_THRESHOLDS: tuple[tuple[float, str], ...] = (
     (3.0, "mistake"),
     (float("inf"), "blunder"),
 )
-_MISTAKE_SEVERITY_RING_COLORS: dict[str, tuple[float, float, float, float] | None] = {
+_MISTAKE_SEVERITY_RING_COLORS: dict[str, tuple[float, ...] | None] = {
     "good": None,
     "inaccuracy": None,
     "mistake": tuple(Theme.MISTAKE_SEVERITY_MISTAKE_RING),
