@@ -102,6 +102,14 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **テスト更新**: 11 テストファイル (master_db / tones / e2e / llm_validator / llm_report_renderer / summary_prompt_builder / summary_validator / prompt_builder / cli / karte_detector / prompt_builder_player_color) を TOMOKO 化。新規回帰テスト 28 件追加 (`tests/test_phase269_summary_phase_all_and_voice_unify.py`)
     - **削除された AYAKA 関連 export**: `katrain.core.coach.has_kansai_markers`, `apply_kansai_normalisation`, `is_kansai_marker` (`__init__.py` から削除)
     - **保持された概念**: `ToneVoice.TOMOKO` / `ToneVoice.TOMOKO_STRICT` の 2 値、`Master doc §0-1` モード 5 種、`§0-2` confirmation テンプレートの TOMOKO 調版
+  - Phase 272（2026-07-18）: **プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
+    - **問題**: Phase 1-271 で機能追加を優先してきた結果、(1) 残存する i18n 漏れ、(2) `KaTrainGui.__init__` の肥大化、(3) `LLMCoachPopupContent` のメソッド乱立が蓄積
+    - **272-A (Lv1)**: デバッグ `print()` 残置調査 → 結果は**全件正当な用途**（debug gate / fallback / CLI / docstring）だったため、**スキップ**。AST ベースの誤検知チェックも追加（`scripts/update_i18n_phase272b.py` とは別）
+    - **272-B (Lv1)**: i18n 漏れ 7 件の解消 — `"Copied!"` / `"Copy Info"` / `"Summary exported"` / `"Mistake played (sound disabled)"` の 4 件を新規追加、既存 3 件を確認。`scripts/update_i18n_phase272b.py` で polib 経由の追加 + .mo 再コンパイル自動化
+    - **272-C (Lv2)**: `KaTrainGui.__init__` (228行) を 3 ヘルパーに分割 — `_init_managers_core` (104行 / SGF/Config/Summary/Keyboard/Dialog/Popup/GameState) / `_init_managers_state` (50行 / UIUpdate/AutoSetup/Analysis/Batch/GUIRefresh/GameStateUpdate) / `_init_managers_loops` (41行 / MessageLoop/Scroll/Kifunarabe/EngineBootstrap)。`__init__` 本体は **61行**（73% 削減）。`self.ctx = ...` 代入は Phase 249-hotfix の回帰テストで本体にあることが要求されるため、本体末尾に残置
+    - **272-D (Lv2)**: `LLMCoachPopupContent` (28メソッド) のメソッドグルーピング — クラス docstring に **8 グループ** (Lifecycle / Karte path bootstrap / Rank & perspective / Summary perspective / User actions / Response handling / Validate actions / Widget helpers) を明示。既存 3 セクション名整理（`Phase 227-D: Summary mode helpers` → `Karte path detection`、`Button handlers` → `User actions (browse / generate / validate)`、`Internal helpers` → `Widget helpers`）。2 つの巨大メソッド (`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行) の分割は**挙動変更リスク回避のため見送り**（今後の Phase で着手）
+    - **テスト結果**: 1,271 件合格 (i18n 18 / architecture 43 / config_imports 16 / coach 全 19 種 1,013 / llm_coach_popup_layout 22 / common_rank 98 / karte_export 25 / diagnostics 28 / internal_params 27 / その他)。`test_main_smoke` / `test_p3_stability` / `test_llm_coach_popup` の 119 件は Kivy headless 起因の既存 fail (本 Phase と無関係、ベースライン確認済)
+    - **保持された概念**: `LLMCoachPopupContent` の API シグネチャ・フィールド名・DISPATCH_TABLE すべて不変、`KaTrainGui` の公開メソッド・属性もすべて不変
   - Phase 271-A（2026-07-18）: **設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
     - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」の 2 行が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
     - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除
@@ -394,6 +402,13 @@ docs/
 - 2026-07-18: **Phase 250 — 重要局面 UI リファクタリング**（Lv3、8 サブフェーズ統合 1PR、+約 350 行 / -約 300 行、+11 unit tests、関連テスト 44 件削除）
   - **問題**: ユーザー報告より「重要局面ボタンを目差・勝率の横のタブに」「前/次の重要局面を白黒別の 4 ボタンに分割」「大悪手と重要局面リストは廃止」
   - **解決策**: CollapsablePanel にタブ「重要局面」追加、`GameNavigator` を `color_filter` 対応に拡張、Prev/Next ボタン 4 分割、大悪手ライン削除、重要局面リスト popup 廃止
+- 2026-07-18: **Phase 272 — プロジェクト全体 リファクタリング**（Lv2-3、6 ファイル変更 / 1 ユーティリティ追加 / 計 1,271 件テスト合格）
+  - **272-A**: `print()` 残置 45 件の AST 調査 → 全件正当な用途（debug gate / fallback / CLI / docstring のサンプル）のため、**変更なし**（誤検知の典型例として記録）
+  - **272-B**: i18n 漏れ 7 件の解消 — 4 件新規追加（"Copied!" / "Copy Info" / "Summary exported" / "Mistake played (sound disabled)"）、3 件既存確認（"Failed to save karte" / "Bug report saved to" / "Failed to generate bug report"）。polib 経由の追加 + .mo 再コンパイルを `scripts/update_i18n_phase272b.py` で自動化
+  - **272-C**: `KaTrainGui.__init__` (228行) を 3 ヘルパーに分割 — `_init_managers_core` (104行) / `_init_managers_state` (50行) / `_init_managers_loops` (41行)。`__init__` 本体は 61行 (73% 削減)。`self.ctx = ...` 代入は Phase 249-hotfix の回帰テスト (test_config_imports.py::TestAppContextAssignedInInit) で本体にあることが要求されるため、本体末尾に残置
+  - **272-D**: `LLMCoachPopupContent` (28メソッド) のメソッドグルーピング — クラス docstring に **8 グループ** (Lifecycle / Karte path bootstrap / Rank & perspective / Summary perspective / User actions / Response handling / Validate actions / Widget helpers) を明示。既存 3 セクション名整理 (Phase 227-D → Karte path detection、Button handlers → User actions、Internal helpers → Widget helpers)。2 つの巨大メソッド (`_populate_rank_and_perspective` 178行 / `_populate_summary_perspective` 143行) の分割は挙動変更リスク回避のため**見送り**、今後の Phase で着手
+  - **テスト結果**: 1,271 件合格 (i18n 18 / architecture 43 / config_imports 16 / coach 全 19 種 1,013 / llm_coach_popup_layout 22 / common_rank 98 / karte_export 25 / diagnostics 28 / internal_params 27 / その他)。`test_main_smoke` / `test_p3_stability` / `test_llm_coach_popup` / `test_phase106_subscribe` の 130 件は Kivy headless 起因の既存 fail (本 Phase と無関係、ベースライン確認済)
+  - **保持**: `LLMCoachPopupContent` の API シグネチャ・フィールド名・DISPATCH_TABLE すべて不変、`KaTrainGui` の公開メソッド・属性もすべて不変
 - 2026-07-18: **Phase 271-A — 設定UI不要項目削除 + 盤面 watermark 撤去**（Lv2、4 ファイル変更 / 1 テスト削除 / 3 i18n キー削除）
   - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
   - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除。orchestrator (settings_popup.py) はこの 4 キーを参照していなかったため安全
