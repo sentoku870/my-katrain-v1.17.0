@@ -52,7 +52,6 @@ from typing import Any
 
 from katrain.core.analysis.meaning_tags.models import MeaningTagId
 from katrain.core.coach.lexicon import build_id_to_ja_term_map
-from katrain.core.coach.master_db import ToneVoice
 from katrain.core.coach.prompt_builder import LlmPrompt, PromptConfig
 
 

@@ -41,6 +41,7 @@ from katrain.core.coach.llm_validator import (
     ValidationSeverity,
 )
 from katrain.core.coach.summary_prompt_builder import SummaryPrompt
+
 # Phase 269: ToneVoice / has_kansai_markers import removed (AYAKA voice
 # gone; tone consistency check deleted).
 

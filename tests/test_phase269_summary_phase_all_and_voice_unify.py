@@ -39,7 +39,6 @@ from katrain.core.coach.tones import (
     voice_summary,
 )
 
-
 # -----------------------------------------------------------------------
 # 1. Summary pattern rendering (Phase 269 / C-1)
 # -----------------------------------------------------------------------
@@ -160,8 +159,7 @@ class TestSystemInstructionPctGuidance:
         # We accept either explicit guidance or a comment about pct
         # being preferred when phase=`(全phase)```.
         assert ("pct" in prompt.system_instruction) and (
-            "frequency_ratio" in prompt.system_instruction
-            or "frequency" in prompt.system_instruction
+            "frequency_ratio" in prompt.system_instruction or "frequency" in prompt.system_instruction
         )
 
 
