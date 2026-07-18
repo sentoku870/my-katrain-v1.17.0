@@ -20,9 +20,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from kivy.core.clipboard import Clipboard
-from kivy.factory import Factory
 from kivy.metrics import dp
 from kivy.properties import (
+    BooleanProperty,
     ListProperty,
     NumericProperty,
     ObjectProperty,
@@ -46,6 +46,35 @@ if TYPE_CHECKING:
 class ImportantMovesPopupContent(BoxLayout):
     """Scrollable list of important-moves with a jump / copy / close footer."""
 
+    font_name = StringProperty(Theme.DEFAULT_FONT)
+
+
+class ImportantMovesEntry(BoxLayout):
+    """Phase 266: Python-side declaration of the per-row widget.
+
+    Properties are declared here so Kivy's ``__init__`` accepts them
+    as keyword arguments. The ``.kv`` file (in
+    ``katrain/gui/kv/important_moves_popup.kv``) keeps the template
+    rule ``<ImportantMovesEntry>`` (without ``@BoxLayout``) — Kivy
+    merges the Python class with the kv template, picking up the
+    child-widget layout from kv and the Property declarations from
+    Python.
+
+    Using ``Factory.ImportantMovesEntry(...)`` instead is not enough
+    because the auto-generated factory class from the ``<X@Y>`` rule
+    does NOT declare properties — Kivy raises ``TypeError: Properties
+    [...] may not be existing property names`` at construction time.
+    """
+
+    move_number = NumericProperty(0)
+    player = StringProperty("")
+    gtp_coord = StringProperty("")
+    score_loss = NumericProperty(0.0)
+    meaning_tag_label = StringProperty("")
+    game_phase = StringProperty("")
+    complexity_discounted = BooleanProperty(False)
+    is_current = BooleanProperty(False)
+    bg_color = ListProperty([0, 0, 0, 0])
     font_name = StringProperty(Theme.DEFAULT_FONT)
     moves_by_color = ObjectProperty({"black": [], "white": []})
     selected_index = NumericProperty(-1)  # index into the flattened list
@@ -154,7 +183,7 @@ class ImportantMovesPopupContent(BoxLayout):
         game_phase = i18n._(f"phase:{raw_phase}") if raw_phase else ""
         if game_phase.startswith("phase:") or not game_phase:
             game_phase = {"opening": "布石", "middle": "中盤", "yose": "ヨセ"}.get(raw_phase, raw_phase)
-        entry = Factory.ImportantMovesEntry(
+        entry = ImportantMovesEntry(
             move_number=move.move_number,
             player=player,
             gtp_coord=move.gtp_coord or "?",
