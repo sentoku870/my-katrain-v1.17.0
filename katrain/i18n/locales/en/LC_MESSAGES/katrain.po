@@ -61,33 +61,26 @@ msgstr "Export Karte"
 msgid "mykatrain:export-package"
 msgstr "Export LLM Package"
 
-# Phase 248-γ-D1: Important-moves list popup
-msgid "mykatrain:important-moves"
-msgstr "Important Moves"
-
-msgid "mykatrain:popup:important-moves:title"
-msgstr "Important Moves"
-
-msgid "mykatrain:popup:important-moves:subtitle"
-msgstr "Level: {level}"
-
-msgid "mykatrain:popup:important-moves:count"
-msgstr "Moves: {shown}/{max} shown"
-
-msgid "mykatrain:popup:important-moves:jump"
-msgstr "Jump to this move"
-
-msgid "mykatrain:popup:important-moves:copy"
-msgstr "Copy"
-
-msgid "mykatrain:popup:important-moves:close"
-msgstr "Close"
-
-msgid "mykatrain:popup:important-moves:empty"
-msgstr "No important moves (run KataGo analysis)"
-
-msgid "mykatrain:popup:important-moves:complexity"
-msgstr "Discounted (chaotic)"
+# Phase 250: Important-moves list popup deprecated. The following
+# i18n keys are removed; left as comments to keep the diff localised.
+# msgid "mykatrain:important-moves"
+# msgstr "Important Moves"
+# msgid "mykatrain:popup:important-moves:title"
+# msgstr "Important Moves"
+# msgid "mykatrain:popup:important-moves:subtitle"
+# msgstr "Level: {level}"
+# msgid "mykatrain:popup:important-moves:count"
+# msgstr "Moves: {shown}/{max} shown"
+# msgid "mykatrain:popup:important-moves:jump"
+# msgstr "Jump to this move"
+# msgid "mykatrain:popup:important-moves:copy"
+# msgstr "Copy"
+# msgid "mykatrain:popup:important-moves:close"
+# msgstr "Close"
+# msgid "mykatrain:popup:important-moves:empty"
+# msgstr "No important moves (run KataGo analysis)"
+# msgid "mykatrain:popup:important-moves:complexity"
+# msgstr "Discounted (chaotic)"
 
 # Phase 225: LLM Coach popup (manual paste workflow)
 msgid "mykatrain:llm-coach"
@@ -646,6 +639,10 @@ msgstr "Score"
 
 msgid "tab:winrate"
 msgstr "Win Rate"
+
+# Phase 250: Important-line tab (replaces the old inline toggle button)
+msgid "tab:important"
+msgstr "Important"
 
 #. shown on a graph tab
 msgid "tab:rank_est"
@@ -3071,14 +3068,29 @@ msgstr "★ Black Priority"
 msgid "focus:white-active"
 msgstr "★ White Priority"
 
+# Phase 250: 4-button color-split (Black prev/next, White prev/next)
+# replaces the legacy 2-button row. Old msgids retained as empty
+# msgstr (no-op for stale references) and will be removed later.
 msgid "prev-important-move"
-msgstr "Prev Important"
+msgstr ""
 
 msgid "next-important-move"
-msgstr "Next Important"
+msgstr ""
 
 msgid "important-line"
-msgstr "Important"
+msgstr ""
+
+msgid "prev-important-move-black"
+msgstr "Prev Important (B)"
+
+msgid "next-important-move-black"
+msgstr "Next Important (B)"
+
+msgid "prev-important-move-white"
+msgstr "Prev Important (W)"
+
+msgid "next-important-move-white"
+msgstr "Next Important (W)"
 
 # Phase B-1: semantic keys to replace raw English msgids like i18n._("OK")
 msgid "button:ok"

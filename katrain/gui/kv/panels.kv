@@ -299,12 +299,15 @@
         content_height: graph.height + dp(32)
         options_height: root.tab_option_height
         closed_label: 'closedlabel:scoregraph'
-        options: ['score','winrate']
-        option_colors: [Theme.SCORE_COLOR,Theme.WINRATE_COLOR]
-        option_active: [True,False,False]
+        # Phase 250: 3 tabs - score / winrate / important. The
+        # important tab toggles the important-move (red) line on/off.
+        options: ['score','winrate','important']
+        option_colors: [Theme.SCORE_COLOR,Theme.WINRATE_COLOR,Theme.GRAPH_DOT_COLOR]
+        option_active: [True,False,True]
         on_option_state:
             graph.show_graphs(args[1])
-            graph.hidden = not (args[1]['score'] or args[1]['winrate'])
+            graph.show_important_line = args[1].get('important', True)
+            graph.hidden = not (args[1]['score'] or args[1]['winrate'] or args[1].get('important', True))
         ScoreGraph:
             id: graph
             opacity: 0 if (self.hidden or (app.gui and app.gui.is_fog_active())) else 1
@@ -314,24 +317,28 @@
             size_hint_y: None
             height: dp(32)
             spacing: dp(4)
+            # Phase 250: 4 buttons (black prev/next + white prev/next)
+            # replace the legacy 2-button row + important-line toggle.
             Button:
-                text: i18n._('prev-important-move')
-                size_hint_x: 0.4
-                font_size: sp(12)
-                on_release: root.katrain("prev_important")
+                text: i18n._('prev-important-move-black')
+                size_hint_x: 0.25
+                font_size: sp(11)
+                on_release: root.katrain("prev_important_black")
             Button:
-                text: i18n._('next-important-move')
-                size_hint_x: 0.4
-                font_size: sp(12)
-                on_release: root.katrain("next_important")
-            ToggleButton:
-                id: important_line_toggle
-                text: i18n._('important-line')
-                size_hint_x: 0.2
-                state: "down"
-                font_size: sp(12)
-                on_state:
-                    graph.show_important_line = (self.state == "down")
+                text: i18n._('next-important-move-black')
+                size_hint_x: 0.25
+                font_size: sp(11)
+                on_release: root.katrain("next_important_black")
+            Button:
+                text: i18n._('prev-important-move-white')
+                size_hint_x: 0.25
+                font_size: sp(11)
+                on_release: root.katrain("prev_important_white")
+            Button:
+                text: i18n._('next-important-move-white')
+                size_hint_x: 0.25
+                font_size: sp(11)
+                on_release: root.katrain("next_important_white")
     CollapsablePanel:
         id: stats_panel
         num_active: 3

@@ -100,28 +100,15 @@ class KifunarabeSummaryContent(BoxLayout):
         )
 
     def on_show_important_moves(self) -> None:
-        """Phase 249-γ: open the Important-Moves list popup.
+        """Phase 250: 重要局面リスト popup は廃止。
 
-        The popup is the one Phase 248-γ-D1 built for the global
-        "重要局面" menu entry; from a kifunarabe summary it is a
-        natural way to review the Critical 3 set used by the
-        session and jump to any of them.
+        棋譜並べサマリーから「重要局面を表示」ボタンを押した時の挙動は
+        4 ボタン (黒前/黒次/白前/白次) で代替できるため、何もしない。
+        Kept as a stub for back-compat with KV bindings — silent no-op.
         """
         if self.popup is not None:
             self.popup.dismiss()
-        if self.katrain is None:
-            return
-        from kivy.clock import Clock
-
-        from katrain.gui.popups.important_moves_popup import (
-            open_important_moves_popup,
-        )
-
-        # Defer so this popup fully dismisses before the next one opens.
-        Clock.schedule_once(
-            lambda _dt: open_important_moves_popup(self.katrain),
-            0.05,
-        )
+        # Phase 250: no-op (重要局面リスト popup 廃止)
 
     def _get_history_store(self) -> Any:
         """Phase 249-β: resolve the history store from the controller.
