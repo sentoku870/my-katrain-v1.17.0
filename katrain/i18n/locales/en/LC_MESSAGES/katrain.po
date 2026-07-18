@@ -2385,73 +2385,6 @@ msgstr "Stopped"
 msgid "Not configured"
 msgstr "Not configured"
 
-#. Phase 49: Radar skill tiers
-msgid "radar:tier-1"
-msgstr "Tier 1 (Novice)"
-
-msgid "radar:tier-2"
-msgstr "Tier 2 (Apprentice)"
-
-msgid "radar:tier-3"
-msgstr "Tier 3 (Proficient)"
-
-msgid "radar:tier-4"
-msgstr "Tier 4 (Advanced)"
-
-msgid "radar:tier-5"
-msgstr "Tier 5 (Elite)"
-
-#. Phase 49: Radar axes
-msgid "radar:axis-opening"
-msgstr "Opening"
-
-msgid "radar:axis-fighting"
-msgstr "Fighting"
-
-msgid "radar:axis-endgame"
-msgstr "Endgame"
-
-msgid "radar:axis-stability"
-msgstr "Stability"
-
-msgid "radar:axis-awareness"
-msgstr "Awareness"
-
-#. Phase 49: Radar other
-msgid "radar:weak-areas"
-msgstr "Weak areas"
-
-msgid "radar:no-data"
-msgstr "No radar data available (requires 19x19 games with analysis)"
-
-#. Phase 51: Radar UI popup keys
-msgid "radar:menu-title"
-msgstr "Skill Radar"
-
-msgid "radar:title"
-msgstr "Skill Profile Radar"
-
-msgid "radar:overall"
-msgstr "Overall"
-
-msgid "radar:no-game"
-msgstr "No game loaded"
-
-msgid "radar:not-19x19"
-msgstr "Skill Radar requires 19x19 board"
-
-msgid "radar:build-error"
-msgstr "Failed to build analysis"
-
-msgid "radar:calc-error"
-msgstr "Radar calculation failed"
-
-msgid "radar:insufficient-moves"
-msgstr "Insufficient moves (need 10+)"
-
-msgid "radar:tier-unknown"
-msgstr "Tier ?"
-
 #. Phase 57: Style Archetype (name only, summary deferred)
 msgid "style:kiai_fighter:name"
 msgstr "Kiai Fighter"
@@ -2903,15 +2836,6 @@ msgstr "Middle game"
 msgid "phase:yose"
 msgstr "Endgame"
 
-msgid "mistake:blunder"
-msgstr "Blunder"
-
-msgid "mistake:mistake"
-msgstr "Mistake"
-
-msgid "mistake:inaccuracy"
-msgstr "Inaccuracy"
-
 msgid "summary:suffix:ref"
 msgstr "(Reference only)"
 
@@ -3071,9 +2995,6 @@ msgstr "Count"
 msgid "summary:table:percentage"
 msgstr "%"
 
-msgid "summary:table:avg_loss"
-msgstr "Avg Loss"
-
 msgid "summary:table:difficulty"
 msgstr "Difficulty"
 
@@ -3097,9 +3018,6 @@ msgstr "Importance"
 
 msgid "summary:no_mistakes"
 msgstr "No major mistakes found."
-
-msgid "mistake:good"
-msgstr "Good"
 
 msgid "freedom:easy"
 msgstr "Easy"

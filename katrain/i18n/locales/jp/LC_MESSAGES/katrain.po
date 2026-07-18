@@ -2757,15 +2757,6 @@ msgstr "中盤"
 msgid "phase:yose"
 msgstr "ヨセ"
 
-msgid "mistake:blunder"
-msgstr "大悪手"
-
-msgid "mistake:mistake"
-msgstr "悪手"
-
-msgid "mistake:inaccuracy"
-msgstr "軽微なミス"
-
 msgid "summary:suffix:ref"
 msgstr "(※参考情報)"
 
@@ -2922,9 +2913,6 @@ msgstr "回数"
 msgid "summary:table:percentage"
 msgstr "割合"
 
-msgid "summary:table:avg_loss"
-msgstr "平均損失"
-
 msgid "summary:table:difficulty"
 msgstr "難易度"
 
@@ -2948,9 +2936,6 @@ msgstr "重要度"
 
 msgid "summary:no_mistakes"
 msgstr "目立った悪手はありません。"
-
-msgid "mistake:good"
-msgstr "好手"
 
 msgid "freedom:easy"
 msgstr "簡単"

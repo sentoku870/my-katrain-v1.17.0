@@ -335,3 +335,184 @@ class TestImportantMovesLevelI18n:
         assert not offenders, (
             f"Hardcoded Japanese literals reappeared in .kv files: {offenders}. Use i18n._(...) instead."
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 250: i18n cleanup — no duplicate msgids, no orphan radar:* keys
+# ---------------------------------------------------------------------------
+
+
+def _parse_po_msgids(po_path: Path) -> list[str]:
+    """Return the ordered list of msgids in a .po file (header excluded).
+
+    Used by Phase 250 duplicate-detection tests. Pure-Python parser so
+    no external dependencies (polib / babel) are required to run the test.
+    """
+    import re
+
+    text = po_path.read_text(encoding="utf-8")
+    quoted_re = re.compile(r'"((?:[^"\\]|\\.)*)"')
+    msgids: list[str] = []
+    cur: list[str] = []
+    in_msgid = False
+    for line in text.splitlines():
+        if not in_msgid:
+            if line.startswith("msgid "):
+                in_msgid = True
+                m = quoted_re.search(line)
+                cur = [m.group(1) if m else ""]
+        else:
+            if line.startswith("msgstr"):
+                full = "".join(cur)
+                if full:  # skip header (empty msgid)
+                    msgids.append(full)
+                in_msgid = False
+                cur = []
+            elif line.startswith('"'):
+                m = quoted_re.search(line)
+                if m:
+                    cur.append(m.group(1))
+            elif line.strip() == "":
+                in_msgid = False
+                cur = []
+    return msgids
+
+
+class TestPhase250I18nCleanup:
+    """Phase 250: regression tests for the i18n cleanup.
+
+    Two structural issues were fixed in Phase 250:
+
+    1. **Duplicate msgids** in both jp.po and en.po for
+       ``mistake:good``, ``mistake:inaccuracy``, ``mistake:mistake``,
+       ``mistake:blunder``, ``summary:table:avg_loss``. gettext
+       returns the first occurrence only, so the second copy was
+       silently shadowing the first. These tests pin the set to
+       exactly one entry per key.
+
+    2. **Orphan ``radar:*`` keys** in en.po (21 entries, 0 hits in
+       source). The radar feature was removed in Phase 86; only the
+       en translations were cleaned up at the time, leaving a
+       21-key JP/EN asymmetry. These tests pin the set parity.
+
+    Both classes of bug are silent (no runtime error, just wrong
+    translations) so explicit regression tests are warranted.
+    """
+
+    @pytest.fixture
+    def locale_dir(self):
+        from pathlib import Path
+
+        import katrain
+
+        katrain_dir = Path(katrain.__file__).parent
+        return katrain_dir / "i18n" / "locales"
+
+    # Keys that USED to be duplicated; if a future change reintroduces
+    # a duplicate, this test catches it at the .po level.
+    DUPLICATE_KEYS = [
+        "mistake:good",
+        "mistake:inaccuracy",
+        "mistake:mistake",
+        "mistake:blunder",
+        "summary:table:avg_loss",
+    ]
+
+    # Orphan keys (removed in Phase 250). Locked-down so a future
+    # re-introduction (e.g. via an outdated .po merge) is caught.
+    ORPHAN_RADAR_KEYS = [
+        "radar:axis-awareness",
+        "radar:axis-endgame",
+        "radar:axis-fighting",
+        "radar:axis-opening",
+        "radar:axis-stability",
+        "radar:build-error",
+        "radar:calc-error",
+        "radar:insufficient-moves",
+        "radar:menu-title",
+        "radar:no-data",
+        "radar:no-game",
+        "radar:not-19x19",
+        "radar:overall",
+        "radar:tier-1",
+        "radar:tier-2",
+        "radar:tier-3",
+        "radar:tier-4",
+        "radar:tier-5",
+        "radar:tier-unknown",
+        "radar:title",
+        "radar:weak-areas",
+    ]
+
+    def _duplicates(self, msgids: list[str]) -> dict[str, int]:
+        from collections import Counter
+
+        return {k: c for k, c in Counter(msgids).items() if c > 1}
+
+    def test_jp_po_has_no_duplicate_msgids(self, locale_dir):
+        """jp.po must not contain duplicate msgids.
+
+        Previously had 5 duplicates (mistake:*, summary:table:avg_loss).
+        See ``docs/ideas/phase250-hint-feature-audit.md`` I-1.
+        """
+        po = locale_dir / "jp" / "LC_MESSAGES" / "katrain.po"
+        assert po.exists()
+        msgids = _parse_po_msgids(po)
+        dupes = self._duplicates(msgids)
+        assert not dupes, (
+            f"jp.po contains duplicate msgids (gettext returns the first only): {dupes}. "
+            f"Known offenders: {self.DUPLICATE_KEYS}. See Phase 250 I-1."
+        )
+
+    def test_en_po_has_no_duplicate_msgids(self, locale_dir):
+        """en.po must not contain duplicate msgids.
+
+        Same 5 keys were duplicated in en.po. See Phase 250 I-1.
+        """
+        po = locale_dir / "en" / "LC_MESSAGES" / "katrain.po"
+        assert po.exists()
+        msgids = _parse_po_msgids(po)
+        dupes = self._duplicates(msgids)
+        assert not dupes, (
+            f"en.po contains duplicate msgids: {dupes}. Known offenders: {self.DUPLICATE_KEYS}."
+        )
+
+    def test_en_po_has_no_orphan_radar_keys(self, locale_dir):
+        """en.po must not contain radar:* keys (feature removed in Phase 86).
+
+        See Phase 250 I-2. JP never had these keys; only en.po retained
+        them as dead translations.
+        """
+        po = locale_dir / "en" / "LC_MESSAGES" / "katrain.po"
+        msgids = _parse_po_msgids(po)
+        radar = [m for m in msgids if m.startswith("radar:")]
+        assert not radar, (
+            f"en.po contains orphan radar:* keys (feature removed Phase 86): {radar}. "
+            f"See Phase 250 I-2."
+        )
+
+    def test_jp_en_msgid_set_parity(self, locale_dir):
+        """jp.po and en.po must contain the exact same set of msgids.
+
+        Phase 250 I-2: en.po had 21 extra radar:* keys. This test prevents
+        future drift between the two locale files.
+        """
+        jp_ids = set(_parse_po_msgids(locale_dir / "jp" / "LC_MESSAGES" / "katrain.po"))
+        en_ids = set(_parse_po_msgids(locale_dir / "en" / "LC_MESSAGES" / "katrain.po"))
+        only_jp = jp_ids - en_ids
+        only_en = en_ids - jp_ids
+        assert not only_jp and not only_en, (
+            f"msgid set parity broken: only_jp={sorted(only_jp)[:5]}, "
+            f"only_en={sorted(only_en)[:5]}."
+        )
+
+    def test_duplicate_keys_still_translated_once(self, locale_dir):
+        """The 5 formerly-duplicated keys must still resolve to a non-empty
+        string in both languages (we kept the first occurrence)."""
+        for lang in ("en", "jp"):
+            locales = gettext.translation("katrain", str(locale_dir), languages=[lang])
+            for key in self.DUPLICATE_KEYS:
+                translated = locales.gettext(key)
+                assert translated and translated != key, (
+                    f"Key '{key}' is not translated in '{lang}' after Phase 250 cleanup"
+                )
