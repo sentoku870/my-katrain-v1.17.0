@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 # Phase 92: Reliability filter constant for structural hints.
+# Phase 252: this stays as the 19x19 default; the board-size-aware
+# variant is :func:`min_reliable_visits_for_board_size` below.
 MIN_RELIABLE_VISITS = 200
 
 if TYPE_CHECKING:
@@ -28,6 +30,61 @@ def _normalize_board_size(board_size: int | tuple[int, int]) -> tuple[int, int]:
     if isinstance(board_size, int):
         return (board_size, board_size)
     return board_size
+
+
+# Phase 252: per-board-size reliable-visits threshold.
+# 9x9 games run ~80 moves, 13x13 ~150, 19x19 ~250+. The Phase 92
+# constant 200 was tuned for 19x19 only; on small boards it suppressed
+# all but the deepest analyses. We scale linearly by the board's
+# short side (clamped to 9..19) so a 9x9 game is gated at 100 visits
+# (half the 19x19 value) — a reasonable proxy for "the same
+# fraction of the game has been analysed".
+_RELIABLE_VISITS_BY_SIZE: dict[int, int] = {
+    9: 100,
+    13: 150,
+    19: 200,
+}
+
+
+def min_reliable_visits_for_board_size(board_size: int | tuple[int, int] | None) -> int:
+    """Phase 252: return the reliable-visits threshold for a given board size.
+
+    Falls back to :data:`MIN_RELIABLE_VISITS` (200) for unknown sizes
+    (rectangular, custom, ``None``) so legacy callers and tests
+    preserve their pre-Phase-252 behaviour.
+
+    Args:
+        board_size: Either an int (square board) or a ``(width, height)``
+            tuple. ``None`` falls back to the 19x19 default.
+
+    Returns:
+        The reliable-visits threshold (>= 1).
+
+    Examples:
+        >>> min_reliable_visits_for_board_size(19)
+        200
+        >>> min_reliable_visits_for_board_size(13)
+        150
+        >>> min_reliable_visits_for_board_size(9)
+        100
+        >>> min_reliable_visits_for_board_size(None)
+        200
+    """
+    if board_size is None:
+        return MIN_RELIABLE_VISITS
+    if isinstance(board_size, (tuple, list)):
+        if not board_size:
+            return MIN_RELIABLE_VISITS
+        try:
+            size = min(int(board_size[0]), int(board_size[1] or board_size[0]))
+        except (TypeError, ValueError):
+            return MIN_RELIABLE_VISITS
+    else:
+        try:
+            size = int(board_size)
+        except (TypeError, ValueError):
+            return MIN_RELIABLE_VISITS
+    return _RELIABLE_VISITS_BY_SIZE.get(size, MIN_RELIABLE_VISITS)
 
 
 def build_category_filter(beginner_hints_config: dict[str, Any] | None) -> dict[str, bool]:

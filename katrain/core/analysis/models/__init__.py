@@ -59,6 +59,7 @@ from katrain.core.analysis.models.important_moves import (
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
     MIN_LOSS_DISPLAY,
     ImportantMoveSettings,
+    min_loss_display_for_board_size,
 )
 from katrain.core.analysis.models.move_eval import (
     EvalSnapshot,
@@ -154,6 +155,7 @@ __all__ = [
     "IMPORTANT_MOVE_SETTINGS_BY_LEVEL",
     "DEFAULT_IMPORTANT_MOVE_LEVEL",
     "MIN_LOSS_DISPLAY",
+    "min_loss_display_for_board_size",
     # Summary
     "GameSummaryData",
     "SummaryStats",

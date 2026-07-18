@@ -54,13 +54,31 @@ def _get_visits_from_node(node: Any) -> int | None:
 
 
 def _is_reliable(node: Any) -> bool:
-    """Check if node analysis is reliable enough for hints."""
-    from katrain.core.beginner.hints._gate import MIN_RELIABLE_VISITS
+    """Check if node analysis is reliable enough for hints.
+
+    Phase 252: the threshold scales with board size (19x19 = 200,
+    13x13 = 150, 9x9 = 100). Falls back to ``MIN_RELIABLE_VISITS = 200``
+    for unknown sizes / missing ``game`` attribute so legacy tests
+    and pre-Phase-252 callers keep their behaviour.
+    """
+    from katrain.core.beginner.hints._gate import min_reliable_visits_for_board_size
 
     visits = _get_visits_from_node(node)
     if visits is None:
         return False
-    return visits >= MIN_RELIABLE_VISITS
+    # Extract board_size from node → game → root (best effort, never
+    # raise — the dispatcher should silently fall back to the 19x19
+    # default for any node that lacks a full game tree).
+    board_size = None
+    try:
+        parent = getattr(node, "parent", None)
+        game = getattr(parent, "game", None) if parent is not None else None
+        if game is not None:
+            board_size = getattr(game, "board_size", None)
+    except Exception:
+        board_size = None
+    threshold = min_reliable_visits_for_board_size(board_size)
+    return visits >= threshold
 
 
 def _get_meaning_tag_hint(node: Any, move_coords: tuple[int, int] | None) -> BeginnerHint | None:
