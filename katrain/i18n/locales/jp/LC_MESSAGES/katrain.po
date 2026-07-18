@@ -292,6 +292,9 @@ msgstr "閉じる"
 msgid "kifunarabe:summary:history"
 msgstr "履歴を見る"
 
+msgid "kifunarabe:summary:important_moves"
+msgstr "重要局面"
+
 msgid "stats:winrate"
 msgstr "勝率"
 
@@ -2092,6 +2095,12 @@ msgstr "プロの棋譜フォルダ（棋譜並べ用）"
 
 msgid "mykatrain:settings:kifunarabe_history_dir"
 msgstr "棋譜並べ履歴フォルダ"
+
+msgid "mykatrain:settings:kifunarabe_auto_export_weaknesses"
+msgstr "誤答局面を弱点として自動保存"
+
+msgid "mykatrain:settings:kifunarabe_auto_export_dir"
+msgstr "棋譜並べ弱点フォルダ"
 
 msgid "mykatrain:settings:kifunarabe_show_digits"
 msgstr "マーカーに数字（勝率・スコア・探索数）を表示する"

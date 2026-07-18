@@ -23,17 +23,10 @@ Responsibilities retained by the facade:
   ``get_controls`` / ``get_mode`` / ``set_mode`` / ``logger``), and
   initialisation of the mixin-owned attributes (e.g. ``_session``,
   ``_summary_popup``, ``_saved_analysis_toggles``).
-- Public accessors: ``session`` property, ``is_active``.
+- Public accessors: ``session`` property, ``is_active``, ``is_fog_active``.
 - Convenience module-level helpers (``disable_kifunarabe_if_active``,
   ``node_move_gtp``, ``_default_on_guess_resolved``) used by the rest of
   the GUI.
-
-Phase 249-α: the ``is_fog_active()`` shim was removed. It was a
-dead-code alias for ``_get_mode()`` (KV / drawing code calls
-``katrain.is_fog_active()`` which resolves to the ``KaTrainGui``
-stub returning ``False`` — that stub lives at
-``katrain/__main__.py`` and is the actual source of truth for "is
-any review overlay active").
 
 External import path (``from katrain.gui.managers.kifunarabe_controller
 import KifunarabeController``) is **unchanged** so the existing
@@ -55,6 +48,7 @@ if TYPE_CHECKING:
     from katrain.core.game import Game
     from katrain.core.study.kifunarabe import KifunarabeSession, KifunarabeSummary
     from katrain.core.study.kifunarabe_history import KifunarabeHistoryStore
+    from katrain.core.study.kifunarabe_weakness_export import KifunarabeWeaknessExporter
     from katrain.gui.controlspanel import ControlsPanel
 
 
@@ -97,11 +91,10 @@ class KifunarabeController(
        Session (``start_session`` / ``disable_if_needed`` /
        ``_end_session`` / ``abort_session``).
 
-    Public API surface (unchanged across the Phase A3 refactor, with
-    the Phase 249-α dead-code removal of ``is_fog_active()``):
+    Public API surface (unchanged across the Phase A3 refactor):
 
     - ``__init__`` (DI wiring)
-    - ``session`` property, ``is_active()``
+    - ``session`` property, ``is_active()``, ``is_fog_active()``
     - ``start_session(config)``
     - ``disable_if_needed()``
     - ``abort_session()``
@@ -121,6 +114,7 @@ class KifunarabeController(
         show_summary_fn: ShowSummaryFn | None = None,
         on_guess_resolved_fn: OnGuessResolvedFn | None = None,
         history_store: KifunarabeHistoryStore | None = None,
+        weakness_exporter: KifunarabeWeaknessExporter | None = None,
     ) -> None:
         """Initialize with dependency injection.
 
@@ -138,6 +132,12 @@ class KifunarabeController(
             history_store: Phase 249-β. Optional persistent history
                 store. When provided, every finished session is
                 appended to a JSON file under ``history_store.directory``.
+            weakness_exporter: Phase 249-γ. Optional exporter for
+                WRONG_GUESS results. When provided, every finished
+                session is appended to a JSON file under
+                ``weakness_exporter.directory``. The session's
+                ``config.auto_export_weaknesses`` must also be True
+                for the export to fire.
         """
         self._get_ctx = get_ctx
         self._get_config = get_config
@@ -150,6 +150,7 @@ class KifunarabeController(
         self._show_summary_fn = show_summary_fn
         self._on_guess_resolved_fn = on_guess_resolved_fn
         self._history_store: KifunarabeHistoryStore | None = history_store
+        self._weakness_exporter: KifunarabeWeaknessExporter | None = weakness_exporter
 
         # Mixin-owned attributes — initialised here so attribute access
         # doesn't rely on dynamic attribute creation, which would
@@ -170,12 +171,10 @@ class KifunarabeController(
         # each position fires at most once. Reset by
         # ``KifunarabeSessionMixin.start_session``.
         self._last_critical_3_highlight: int = 0
-        # Phase 249-α: ``_source_sgf_path`` removed. The attribute was
-        # declared in Phase 181-B as the future source of a "save-game-
-        # after-kifunarabe" cleanup hook, but no caller ever wrote to
-        # it. Keeping it around only added an unused init line and a
-        # stale comment. Add it back here if/when the cleanup hook is
-        # actually wired up.
+        # Phase 181-B: tracks the path of the SGF that started the
+        # most recent session, so exit paths can clean it up. Set/cleared
+        # by start_session / _end_session; declared here so mypy sees it.
+        self._source_sgf_path: str | None = None
 
     # -- public accessors (the only methods living on the facade) ----------
 
@@ -188,10 +187,12 @@ class KifunarabeController(
         """True iff the mode is currently on (UI-level state)."""
         return self._get_mode()
 
-    # Phase 249-α: ``is_fog_active()`` removed. It was an alias for
-    # ``_get_mode()`` that no caller invoked — the live KV / drawing
-    # sites resolve ``katrain.is_fog_active()`` to the ``KaTrainGui``
-    # stub at ``katrain/__main__.py`` which always returns ``False``.
+    def is_fog_active(self) -> bool:
+        """KV compatibility shim - mirrors ActiveReviewController.
+
+        Returns True if kifunarabe mode is ON.
+        """
+        return self._get_mode()
 
 
 # ---------------------------------------------------------------------------
