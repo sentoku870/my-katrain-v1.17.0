@@ -659,18 +659,27 @@ def _build_curator_status_label(inner: BoxLayoutType, state: _SettingsPopupConte
     def _on_browse(_btn: Any) -> None:
         from katrain.gui.widgets.filebrowser import I18NFileBrowser
 
-        # initialdir = first existing candidate dir, else the karte
-        # output dir, else the user's Desktop.
+        # Phase 268: ``I18NFileBrowser`` accepts ``path=`` (not
+        # ``initialdir=``) and ``filters=`` for the JSON filter. There
+        # is no ``select_directory=`` kwarg — that key is silently
+        # dropped by Kivy's property layer, which is why an earlier
+        # version of this helper did not actually open in the
+        # expected directory.
         initial = karte_dir or batch_dir or os.path.expanduser("~")
+        if not os.path.isdir(initial):
+            initial = os.path.expanduser("~")
         browser = I18NFileBrowser(
-            select_directory=False,
-            filters=["*.json"],
-            initialdir=initial if os.path.isdir(initial) else os.path.expanduser("~"),
+            path=initial,
+            filters=["*.json", "*.JSON"],
+            select_string=i18n._("button:ok"),
         )
         browser.bind(
+            on_success=lambda inst, _touch: _load_curator_from_path(
+                state.ctx, inst.selection[0] if inst.selection else None
+            ),
             on_submit=lambda inst, selection, _touch: _load_curator_from_path(
                 state.ctx, selection[0] if selection else None
-            )
+            ),
         )
         browser.open()
 
