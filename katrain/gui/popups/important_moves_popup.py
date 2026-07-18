@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from kivy.core.clipboard import Clipboard
+from kivy.factory import Factory
 from kivy.metrics import dp
 from kivy.properties import (
     ListProperty,
@@ -129,11 +130,14 @@ class ImportantMovesPopupContent(BoxLayout):
 
         Returns:
             A configured BoxLayout ready to be added to the list.
-        """
-        from katrain.gui.kv.important_moves_popup import (
-            ImportantMovesEntry,  # type: ignore[attr-defined]
-        )
 
+        Note:
+            ``ImportantMovesEntry`` is declared as ``<ImportantMovesEntry@BoxLayout>``
+            in ``katrain/gui/kv/important_moves_popup.kv`` and registered
+            with the Kivy Factory when the KV file is loaded. We use
+            ``Factory.ImportantMovesEntry`` here instead of importing
+            from a (non-existent) Python module.
+        """
         # Alternating background for readability.
         bg = [0.05, 0.05, 0.07, 1.0] if idx % 2 == 0 else [0.10, 0.10, 0.13, 1.0]
         player = "B" if color == "black" else "W"
@@ -150,7 +154,7 @@ class ImportantMovesPopupContent(BoxLayout):
         game_phase = i18n._(f"phase:{raw_phase}") if raw_phase else ""
         if game_phase.startswith("phase:") or not game_phase:
             game_phase = {"opening": "布石", "middle": "中盤", "yose": "ヨセ"}.get(raw_phase, raw_phase)
-        entry = ImportantMovesEntry(
+        entry = Factory.ImportantMovesEntry(
             move_number=move.move_number,
             player=player,
             gtp_coord=move.gtp_coord or "?",

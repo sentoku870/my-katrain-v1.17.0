@@ -3277,3 +3277,11 @@ msgstr "Predicted territory skew (B for Black, W for White)"
 #. profile
 msgid "beginner-hint:curator_weak_axis_footer"
 msgstr "Your weak axis: {tag_id} ({count} occurrences)"
+
+#. Phase 266: live Curator profile status line below the curator_hint toggle
+msgid "mykatrain:settings:curator_hint_loaded"
+msgstr "Currently tracking {count} weak tag(s)"
+
+#. Phase 266: live Curator profile status line below the curator_hint toggle
+msgid "mykatrain:settings:curator_hint_not_loaded"
+msgstr "Run a Batch analysis with Curator enabled to activate this"
