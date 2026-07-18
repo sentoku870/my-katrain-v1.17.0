@@ -6,12 +6,18 @@
 #     RecycleView of ImportantMovesEntry rows
 #   Footer (jump / copy / close buttons)
 #
-# The widget is defined in
+# The widget classes are defined in
 # ``katrain/gui/popups/important_moves_popup.py``
-# as ``ImportantMovesPopupContent``.
+# (ImportantMovesPopupContent + ImportantMovesEntry).
+#
+# Phase 266: ImportantMovesEntry is a *Python* class (BoxLayout
+# subclass with explicit Property declarations), so this template
+# rule drops the ``@BoxLayout`` inheritance. The Python class
+# already inherits from BoxLayout, and we want Kivy to merge
+# Property declarations from Python with this layout template
+# (default values + child widgets) at load time.
 
-
-<ImportantMovesEntry@BoxLayout>:
+<ImportantMovesEntry>:
     move_number: 0
     player: ""
     gtp_coord: ""

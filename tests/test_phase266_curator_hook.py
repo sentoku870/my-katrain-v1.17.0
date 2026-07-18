@@ -33,17 +33,55 @@ BATCH_CORE_PATH = REPO_ROOT / "katrain" / "gui" / "features" / "batch_core.py"
 
 def test_popup_does_not_import_kv_module() -> None:
     """Phase 266: ``.kv`` ファイルは Python モジュールとして import 不可。
-    Factory.ImportantMovesEntry を使う形式に修正済み。"""
+    Python クラス ImportantMovesEntry を使う形式に修正済み。"""
     src = POPUP_PATH.read_text(encoding="utf-8")
     assert "from katrain.gui.kv.important_moves_popup import" not in src, (
         ".kv モジュールからの import は ModuleNotFoundError を起こす"
     )
-    assert "Factory.ImportantMovesEntry" in src, "Factory 経由でアクセスする形に修正済み"
+    # Python クラス定義あり (Property declarations が必須)
+    assert "class ImportantMovesEntry" in src
+
+    # docstring 中の言及は除外して、 実コード (Call ノード) で
+    # Factory.ImportantMovesEntry が使われていないことを確認
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "Factory"
+            and node.func.attr == "ImportantMovesEntry"
+        ):
+            raise AssertionError(
+                "Factory.ImportantMovesEntry() の呼び出しは __init__ で プロパティ未登録 TypeError を起こす (Phase 266)"
+            )
 
 
-def test_popup_imports_kivy_factory() -> None:
+def test_popup_defines_property_declarations() -> None:
+    """``ImportantMovesEntry`` には Property 宣言が必要 (move_number, player, etc.)"""
     src = POPUP_PATH.read_text(encoding="utf-8")
-    assert "from kivy.factory import Factory" in src
+    # 9 つの Property 宣言を期待
+    for prop in (
+        "move_number = NumericProperty",
+        "player = StringProperty",
+        "gtp_coord = StringProperty",
+        "score_loss = NumericProperty",
+        "meaning_tag_label = StringProperty",
+        "game_phase = StringProperty",
+        "complexity_discounted = BooleanProperty",
+        "is_current = BooleanProperty",
+        "bg_color = ListProperty",
+    ):
+        assert prop in src, f"重要局面エントリの Property 宣言 {prop!r} がない"
+
+
+def test_kv_template_uses_python_class_merge() -> None:
+    """``.kv`` ファイルは Python クラスとマージする形式 (``@BoxLayout`` 無し)"""
+    kv_path = REPO_ROOT / "katrain" / "gui" / "kv" / "important_moves_popup.kv"
+    src = kv_path.read_text(encoding="utf-8")
+    # Phase 266: `<ImportantMovesEntry@BoxLayout>` → `<ImportantMovesEntry>`
+    assert "<ImportantMovesEntry@BoxLayout>" not in src, "Factory 経由の宣言を削除 (Python クラスとマージする形に)"
+    assert "<ImportantMovesEntry>" in src, "Python クラスの template rule が必要"
 
 
 # -----------------------------------------------------------------------------
