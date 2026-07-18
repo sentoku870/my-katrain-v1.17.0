@@ -379,6 +379,18 @@ class ControlsPanel(BoxLayout):
                 info += "\n"
             info += "\n".join(detail_lines)
 
+        # Phase 257: one-line curator onboarding notice. Appended at
+        # the end so it does not displace the per-move hint / mistake
+        # / difficulty text. Only fires when:
+        # - beginner_hints is on
+        # - curator_hint sub-toggle is on
+        # - curator_ranking.json is not present in the configured
+        #   output directory (or the directory itself is not set).
+        # Costs one os.path.isfile() per info-panel render.
+        onboarding = self._curator_profile_status_line()
+        if onboarding:
+            info += "\n" + onboarding
+
         # 既存の更新処理（必ず実行される位置に戻す）
         self.graph.update_value(current_node)
         self.note.text = current_node.note
@@ -427,6 +439,45 @@ class ControlsPanel(BoxLayout):
         if katrain and getattr(katrain, "kifunarabe_mode", False):
             return False
         return True
+
+    def _curator_profile_status_line(self) -> str | None:
+        """Phase 257: one-line notice when Curator profile is missing.
+
+        New users who enabled ``beginner_hints/curator_hint`` (default
+        True) but have never run a batch analysis get nothing from the
+        Curator weak-axis hint detector — it returns ``None`` because
+        ``user_weak_tags`` is empty. The user has no feedback loop
+        explaining the silent behaviour.
+
+        This helper returns a localized one-liner that nudges the user
+        to run a batch analysis, or ``None`` when the profile is
+        present (or the feature is disabled, or the user is in a
+        mode that hides hints).
+
+        The check is cheap (a single ``os.path.isfile`` call on the
+        curator profile) and only runs while the beginner-hint panel
+        is being rendered, so the cost is negligible.
+        """
+        import os
+
+        from katrain.core.lang import i18n
+
+        katrain = self.katrain
+        if not katrain:
+            return None
+        if not katrain.config("beginner_hints/enabled", False):
+            return None
+        if not katrain.config("beginner_hints/curator_hint", True):
+            return None
+        # Look in the same output directory the Karte exporter uses.
+        settings = katrain.config("mykatrain_settings") or {}
+        out_dir = settings.get("karte_output_directory") or ""
+        if not out_dir or not os.path.isdir(out_dir):
+            return i18n._("beginner-hint:curator-onboarding-no-output-dir")
+        profile = os.path.join(out_dir, "curator_ranking.json")
+        if os.path.isfile(profile):
+            return None
+        return i18n._("beginner-hint:curator-onboarding-run-batch")
 
     def _summary_hint_flags(self) -> dict[str, bool]:
         """Phase 179 + 182 + 186: per-category-group flags for summary hint generation."""

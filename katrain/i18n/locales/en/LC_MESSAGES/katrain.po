@@ -3248,3 +3248,15 @@ msgstr "Warn when a bigger or more urgent move exists elsewhere on the board."
 #. Phase 255: prefix for the [Hint] line in the controls panel
 msgid "beginner-hint:prefix"
 msgstr "Hint"
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-run-batch"
+msgstr ""
+"Run a MyKatrain batch analysis to generate curator_ranking.json — Curator "
+"weak-axis hints are silent until then."
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-no-output-dir"
+msgstr ""
+"Set the SGF/Karte output directory in MyKatrain settings before Curator "
+"weak-axis hints can fire."

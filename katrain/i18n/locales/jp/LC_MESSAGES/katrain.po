@@ -3157,3 +3157,13 @@ msgstr "盤上により大きい手やより緊急の手があることを警告
 #. Phase 255: prefix for the [Hint] line in the controls panel
 msgid "beginner-hint:prefix"
 msgstr "ヒント"
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-run-batch"
+msgstr ""
+"ヒント機能の Curated weak-axis を使用するには、MyKatrain → Batch 分析で curator_ranking.json "
+"を生成してください。"
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-no-output-dir"
+msgstr "ヒント機能の Curated weak-axis を使用するには、MyKatrain 設定 → 棋譜解析出力先 を設定してください。"
