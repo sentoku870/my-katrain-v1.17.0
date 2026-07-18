@@ -132,6 +132,13 @@ class ControlsPanel(BoxLayout):
         # Phase 22: タイマーイベントを追跡（cleanup用）
         self._timer_event = Clock.schedule_interval(self.update_timer, self.timer_interval)
 
+        # Phase 253: cache the last PV-filter preview render so the
+        # controls panel does not re-allocate a localized string on
+        # every redraw. Keyed by ``(raw_count, filtered_count, best_count,
+        # config_active)`` so a real change still propagates immediately.
+        self._pv_filter_preview_cache: tuple[int, int, int, bool] | None = None
+        self._pv_filter_preview_text: str = ""
+
     def cleanup(self) -> None:
         """アプリ終了時のクリーンアップ（Phase 22）
 
@@ -335,9 +342,12 @@ class ControlsPanel(BoxLayout):
             detail_lines.extend(difficulty_lines)
 
         # 4) Beginner Hint (Phase 91)
-        # Show beginner safety hint if enabled and not in PLAY mode
+        # Show beginner safety hint if enabled and not in PLAY mode.
+        # Phase 251: pass the per-category filter so individual toggles
+        # in the settings popup can suppress specific categories.
         if self._should_show_beginner_hints():
-            hint = get_beginner_hint_cached(game, self.active_comment_node)
+            category_filter = self._category_filter()
+            hint = get_beginner_hint_cached(game, self.active_comment_node, category_filter=category_filter)
             if hint:
                 hint_text = self._format_beginner_hint(hint)
                 if hint_text:
@@ -346,12 +356,15 @@ class ControlsPanel(BoxLayout):
         # 4b) Summary Hint (Phase 179)
         # Mistake / Freedom / Difficulty / KataGo summary hint derived
         # from the existing numerical rows. Independent per-category
-        # toggles (default ON).
+        # toggles (default ON). Phase 251 also threads the per-category
+        # filter for the 10 individual toggles.
         if self._should_show_summary_hints():
             summary_flags = self._summary_hint_flags()
+            category_filter = self._category_filter()
             summary_hint = get_summary_hint_cached(
                 self.active_comment_node,
                 summary_flags=summary_flags,
+                category_filter=category_filter,
             )
             if summary_hint:
                 summary_text = self._format_beginner_hint(summary_hint)
@@ -363,6 +376,18 @@ class ControlsPanel(BoxLayout):
             if info:
                 info += "\n"
             info += "\n".join(detail_lines)
+
+        # Phase 257: one-line curator onboarding notice. Appended at
+        # the end so it does not displace the per-move hint / mistake
+        # / difficulty text. Only fires when:
+        # - beginner_hints is on
+        # - curator_hint sub-toggle is on
+        # - curator_ranking.json is not present in the configured
+        #   output directory (or the directory itself is not set).
+        # Costs one os.path.isfile() per info-panel render.
+        onboarding = self._curator_profile_status_line()
+        if onboarding:
+            info += "\n" + onboarding
 
         # 既存の更新処理（必ず実行される位置に戻す）
         self.graph.update_value(current_node)
@@ -396,8 +421,61 @@ class ControlsPanel(BoxLayout):
         Summary hints share the master ``beginner_hints/enabled`` switch
         with structural hints so users can turn the whole feature off in
         one place, but each category group has its own per-toggle.
+
+        Phase 256: also suppressed during kifunarabe (棋譜並べ) sessions.
+        Showing MISTAKE_BLUNDER / MISTAKE_MISTAKE in the info panel
+        would spoil the actual move (the user is trying to recall it
+        from KataGo's candidate set). Structural hints (e.g.
+        SELF_ATARI) are fine because they don't reveal "did I play
+        the right move?" — only the per-move "is this a safe shape?"
+        question.
         """
-        return self._should_show_beginner_hints()
+        if not self._should_show_beginner_hints():
+            return False
+        # Phase 256: kifunarabe mode → no summary hints.
+        katrain = self.katrain
+        if katrain is None:
+            return True
+        return not getattr(katrain, "kifunarabe_mode", False)
+
+    def _curator_profile_status_line(self) -> str | None:
+        """Phase 257: one-line notice when Curator profile is missing.
+
+        New users who enabled ``beginner_hints/curator_hint`` (default
+        True) but have never run a batch analysis get nothing from the
+        Curator weak-axis hint detector — it returns ``None`` because
+        ``user_weak_tags`` is empty. The user has no feedback loop
+        explaining the silent behaviour.
+
+        This helper returns a localized one-liner that nudges the user
+        to run a batch analysis, or ``None`` when the profile is
+        present (or the feature is disabled, or the user is in a
+        mode that hides hints).
+
+        The check is cheap (a single ``os.path.isfile`` call on the
+        curator profile) and only runs while the beginner-hint panel
+        is being rendered, so the cost is negligible.
+        """
+        import os
+
+        from katrain.core.lang import i18n
+
+        katrain = self.katrain
+        if not katrain:
+            return None
+        if not katrain.config("beginner_hints/enabled", False):
+            return None
+        if not katrain.config("beginner_hints/curator_hint", True):
+            return None
+        # Look in the same output directory the Karte exporter uses.
+        settings = katrain.config("mykatrain_settings") or {}
+        out_dir = settings.get("karte_output_directory") or ""
+        if not out_dir or not os.path.isdir(out_dir):
+            return i18n._("beginner-hint:curator-onboarding-no-output-dir")
+        profile = os.path.join(out_dir, "curator_ranking.json")
+        if os.path.isfile(profile):
+            return None
+        return i18n._("beginner-hint:curator-onboarding-run-batch")
 
     def _summary_hint_flags(self) -> dict[str, bool]:
         """Phase 179 + 182 + 186: per-category-group flags for summary hint generation."""
@@ -414,12 +492,44 @@ class ControlsPanel(BoxLayout):
             "curator_hint": bool(katrain.config("beginner_hints/curator_hint", True)),
         }
 
+    def _category_filter(self) -> dict[str, bool]:
+        """Phase 251: build the per-category enable map from config.
+
+        Reads the ``beginner_hints`` section and extracts the 17
+        category keys (10 individual + 7 summary group keys) into a
+        ``{config_key: bool}`` dict for the dispatchers. Missing keys
+        default to ``True`` (preserves the pre-Phase-251 behaviour of
+        "everything visible when master switch is on").
+
+        Returns:
+            ``{config_key: bool}`` mapping. May be empty if the user
+            has never opened the settings popup (no per-category keys
+            persisted yet) — the dispatchers treat that as "all
+            enabled".
+        """
+        from katrain.core.beginner.hints import build_category_filter
+
+        katrain = self.katrain
+        if not katrain:
+            return {}
+        bh = katrain.config("beginner_hints") or {}
+        if not isinstance(bh, dict):
+            return {}
+        return build_category_filter(bh)
+
     def _format_pv_filter_preview(self) -> str:
         """Format the live PV filter preview line (Phase 247-C / L6).
 
         Reads the latest :class:`PVFilterPreview` cached on the
         badukpan widget by ``prepare_hint_moves`` and renders the
         compact one-line summary used in the controls panel.
+
+        Phase 253: cached on a ``(raw, filtered, best, active)`` tuple
+        so the localized string is only re-built when the underlying
+        numbers actually change. Hovering over the same node keeps
+        returning the cached text — preventing the visible jitter
+        described in the Phase 250 audit (item I-3) where the preview
+        text re-rendered on every redraw tick.
 
         Returns:
             Localized string. Falls back to ``""`` when no preview
@@ -434,17 +544,38 @@ class ControlsPanel(BoxLayout):
         if board is None:
             return ""
         preview = getattr(board, "last_pv_filter_preview", None)
-        if preview is None or preview.raw_count == 0:
+        if preview is None:
             return _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
-        if not preview.config_active:
-            return _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
+
+        # Phase 253: cache key covers every value that affects the
+        # rendered text. Identity check on the preview object alone
+        # would be a stronger cache but ties cache lifetime to the
+        # badukpan widget's object id — a fragile contract. The
+        # tuple key is value-based and survives widget rebuilds.
+        cache_key = (
+            preview.raw_count,
+            preview.filtered_count,
+            preview.best_count,
+            preview.config_active,
+        )
+        if cache_key == self._pv_filter_preview_cache:
+            return self._pv_filter_preview_text
+
+        if preview.raw_count == 0:
+            rendered = _i18n._("mykatrain:settings:pv_filter_preview_no_analysis")
+        elif not preview.config_active:
+            rendered = _i18n._("mykatrain:controls:pv_filter_preview_inactive").format(
                 n=preview.raw_count,
             )
-        return _i18n._("mykatrain:controls:pv_filter_preview_active").format(
-            n=preview.raw_count,
-            m=preview.filtered_count,
-            best=preview.best_count,
-        )
+        else:
+            rendered = _i18n._("mykatrain:controls:pv_filter_preview_active").format(
+                n=preview.raw_count,
+                m=preview.filtered_count,
+                best=preview.best_count,
+            )
+        self._pv_filter_preview_cache = cache_key
+        self._pv_filter_preview_text = rendered
+        return rendered
 
     def _format_beginner_hint(self, hint: Any) -> str:
         """Format a BeginnerHint for display (Phase 91-92 + Phase 179).
@@ -453,6 +584,13 @@ class ControlsPanel(BoxLayout):
         double dict is replaced by ``HintCategory.i18n_namespace``,
         ``fallback_title``, and ``fallback_body`` properties defined
         alongside the enum (see ``core/beginner/models.py``).
+
+        Phase 254: also renders the ``:why`` key (the third i18n
+        key) on a second line, prefixed with the i18n ``beginner-hint:why``
+        label. The 23 ``:why`` keys were translated in jp + en but
+        had no GUI consumer; they explained the *reason* behind a
+        hint (vs. the *what* in the body). Now the user gets the
+        "why" as a 2nd line in the info panel.
 
         Args:
             hint: BeginnerHint instance
@@ -467,13 +605,32 @@ class ControlsPanel(BoxLayout):
 
         title = i18n._(f"{namespace}:title")
         body = i18n._(f"{namespace}:body")
+        why = i18n._(f"{namespace}:why")
 
-        # If i18n key is not found (returns key), use English fallback
+        # If i18n key is not found (returns the raw key), use English
+        # fallback. The same sentinel check works for all three keys
+        # because they share a common prefix.
         if title.startswith("beginner_hint:"):
             title = category.fallback_title
             body = category.fallback_body
+            # The :why key has no programmatic fallback (it lives in
+            # the .po files). Leave it empty so the second line is
+            # not rendered for users whose .po is missing the key.
+            why = ""
 
-        return f"[Hint] {title}: {body}"
+        # Phase 254: only append the "why" line when the i18n key
+        # resolved to a non-empty, non-raw-key string. Falls back
+        # silently for languages whose .po is missing the :why key.
+        # Phase 255: the [Hint] prefix is now an i18n key so jp users
+        # see "ヒント" instead of the English word. Falls back to the
+        # raw "[Hint]" string when the .po is missing the key.
+        prefix = i18n._("beginner-hint:prefix")
+        if prefix.startswith("beginner-hint:"):
+            prefix = "[Hint]"
+
+        if why and not why.startswith("beginner_hint:"):
+            return f"{prefix} {title}: {body}\n→ {why}"
+        return f"{prefix} {title}: {body}"
 
     @staticmethod
     def _ensure_time_used_initialized(node: Any) -> None:

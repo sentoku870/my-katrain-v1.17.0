@@ -54,13 +54,31 @@ def _get_visits_from_node(node: Any) -> int | None:
 
 
 def _is_reliable(node: Any) -> bool:
-    """Check if node analysis is reliable enough for hints."""
-    from katrain.core.beginner.hints._gate import MIN_RELIABLE_VISITS
+    """Check if node analysis is reliable enough for hints.
+
+    Phase 252: the threshold scales with board size (19x19 = 200,
+    13x13 = 150, 9x9 = 100). Falls back to ``MIN_RELIABLE_VISITS = 200``
+    for unknown sizes / missing ``game`` attribute so legacy tests
+    and pre-Phase-252 callers keep their behaviour.
+    """
+    from katrain.core.beginner.hints._gate import min_reliable_visits_for_board_size
 
     visits = _get_visits_from_node(node)
     if visits is None:
         return False
-    return visits >= MIN_RELIABLE_VISITS
+    # Extract board_size from node → game → root (best effort, never
+    # raise — the dispatcher should silently fall back to the 19x19
+    # default for any node that lacks a full game tree).
+    board_size = None
+    try:
+        parent = getattr(node, "parent", None)
+        game = getattr(parent, "game", None) if parent is not None else None
+        if game is not None:
+            board_size = getattr(game, "board_size", None)
+    except Exception:
+        board_size = None
+    threshold = min_reliable_visits_for_board_size(board_size)
+    return visits >= threshold
 
 
 def _get_meaning_tag_hint(node: Any, move_coords: tuple[int, int] | None) -> BeginnerHint | None:
@@ -81,12 +99,34 @@ def _get_meaning_tag_hint(node: Any, move_coords: tuple[int, int] | None) -> Beg
     )
 
 
+def _category_enabled(category: HintCategory, category_filter: dict[str, bool] | None) -> bool:
+    """Phase 251: per-category enable check.
+
+    Returns True when the category's ``config_key`` is enabled. A missing
+    key in ``category_filter`` is treated as enabled (preserves the
+    pre-Phase-251 default of "all hints visible when master switch is on").
+
+    Args:
+        category: The hint category to test.
+        category_filter: Dict of ``config_key -> bool`` as built by the
+            settings UI / config loader. May be None (legacy callers
+            that have not migrated yet) — treated as "all enabled".
+    """
+    if not category_filter:
+        return True
+    key = category.config_key
+    if key is None:
+        return True
+    return bool(category_filter.get(key, True))
+
+
 def compute_beginner_hint(
     game: Any,
     node: Any,
     *,
     require_reliable: bool = True,
     aggregate: bool = False,
+    category_filter: dict[str, bool] | None = None,
 ) -> BeginnerHint | None:
     """Compute a beginner hint for a specific node (Phase 91-92).
 
@@ -100,6 +140,12 @@ def compute_beginner_hint(
             by the original priority chain: structural > meaning_tag).
             When False (default), preserve the Phase 91 short-circuit
             behaviour (first non-None wins).
+        category_filter: Phase 251 — per-category enable map. Keys are
+            ``HintCategory.config_key`` values (e.g. ``"self_atari"``,
+            ``"low_liberties"``, ``"summary_mistake"``). Missing keys
+            are treated as enabled. ``None`` means "all enabled"
+            (preserves pre-Phase-251 behaviour for callers that have
+            not migrated).
 
     Note:
         The default ``aggregate=False`` keeps backward compatibility
@@ -145,27 +191,29 @@ def compute_beginner_hint(
         # Phase 248-C4: collect every applicable hint, then return the
         # highest-severity one (ties → first in the original chain).
         if aggregate:
-            return _aggregate_hints(game, node, inp, move.coords, require_reliable)
+            return _aggregate_hints(game, node, inp, move.coords, require_reliable, category_filter)
 
         hint = _hints_pkg.detect_self_atari(inp)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
         hint = _hints_pkg.detect_ignore_atari(inp)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
         hint = _hints_pkg.detect_missed_capture(inp)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
         hint = _hints_pkg.detect_cut_risk(inp, game)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
         hint = _get_meaning_tag_hint(node, move.coords)
 
         if hint and require_reliable and hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+            return None
+        if hint and not _category_enabled(hint.category, category_filter):
             return None
 
         return hint
@@ -181,6 +229,7 @@ def _aggregate_hints(
     inp: Any,
     move_coords: tuple[int, int] | None,
     require_reliable: bool,
+    category_filter: dict[str, bool] | None = None,
 ) -> BeginnerHint | None:
     """Phase 248-C4: run every detector, return the highest-severity hint.
 
@@ -197,6 +246,9 @@ def _aggregate_hints(
         require_reliable: If True, meaning_tag fallback requires
             ``root_visits >= MIN_RELIABLE_VISITS`` (mirrors the legacy
             path's gate in :func:`compute_beginner_hint`).
+        category_filter: Phase 251 — per-category enable map. Categories
+            whose ``config_key`` resolves to ``False`` are filtered out
+            before the highest-severity pick. ``None`` means no filter.
 
     Returns:
         The highest-severity hint, or ``None``.
@@ -209,12 +261,12 @@ def _aggregate_hints(
         _hints_pkg.detect_missed_capture,
     ):
         hint = detector(inp)
-        if hint is not None:
+        if hint is not None and _category_enabled(hint.category, category_filter):
             candidates.append(hint)
 
     # detect_cut_risk needs the game argument.
     hint = _hints_pkg.detect_cut_risk(inp, game)
-    if hint is not None:
+    if hint is not None and _category_enabled(hint.category, category_filter):
         candidates.append(hint)
 
     # meaning_tag fallback. Same require_reliable gate as the legacy path.
@@ -222,7 +274,7 @@ def _aggregate_hints(
     if mt_hint is not None:
         if require_reliable and mt_hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
             mt_hint = None
-        if mt_hint is not None:
+        if mt_hint is not None and _category_enabled(mt_hint.category, category_filter):
             candidates.append(mt_hint)
 
     if not candidates:
@@ -315,8 +367,29 @@ def compute_summary_hint(
     threshold_score_stdev: float = 1.5,
     user_weak_tags: dict[str, int] | None = None,
     curator_min_occurrences: int = 3,
+    category_filter: dict[str, bool] | None = None,
 ) -> BeginnerHint | None:
-    """Phase 179 + 182 + 186: Compute a summary hint from existing metrics."""
+    """Phase 179 + 182 + 186: Compute a summary hint from existing metrics.
+
+    Args:
+        node: GameNode.
+        summary_flags: Group-level flags (e.g. ``summary_mistake``,
+            ``summary_freedom``). When a group flag is False, the entire
+            group is skipped.
+        require_reliable: If True, skip when root visits are below
+            ``MIN_SUMMARY_VISITS``.
+        threshold_blunder: Phase 179: blunder threshold (in score loss).
+        threshold_mistake: Phase 179: mistake threshold (in score loss).
+        threshold_score_stdev: Phase 179: KataGo uncertain threshold.
+        user_weak_tags: Phase 186: meaning-tag frequency from curator
+            profile. ``None`` / empty disables the curator hint.
+        curator_min_occurrences: Phase 186: minimum tag occurrences to
+            count as a "weak axis".
+        category_filter: Phase 251 — per-category enable map. Even if
+            a group flag is on, an individual category whose key is
+            ``False`` is filtered out before returning. ``None`` /
+            empty means no individual filter.
+    """
     from katrain.core.beginner.hints._cache import MIN_SUMMARY_VISITS
 
     ctx = _compute_summary_context(
@@ -337,35 +410,35 @@ def compute_summary_hint(
 
     if _flag("summary_mistake"):
         hint = _hints_pkg.detect_mistake_summary(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_freedom"):
         hint = _hints_pkg.detect_freedom_summary(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_difficulty"):
         hint = _hints_pkg.detect_difficulty_summary(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("katago_uncertain"):
         hint = _hints_pkg.detect_katago_uncertain(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_ownership"):
         hint = _hints_pkg.detect_ownership_dominant(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("summary_policy"):
         hint = _hints_pkg.detect_policy_confident(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
         hint = _hints_pkg.detect_policy_conflict(ctx)
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     if _flag("curator_hint"):
@@ -374,7 +447,7 @@ def compute_summary_hint(
             user_weak_tags,
             min_occurrences=curator_min_occurrences,
         )
-        if hint:
+        if hint and _category_enabled(hint.category, category_filter):
             return hint
 
     return None

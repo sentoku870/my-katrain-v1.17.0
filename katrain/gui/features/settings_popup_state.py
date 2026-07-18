@@ -84,6 +84,22 @@ class _SettingsPopupContext:
     selected_summary_policy: list[bool]
     # Phase 186: curator weak-axis hint toggle.
     selected_curator_hint: list[bool]
+    # Phase 251: per-category toggles for the 4 structural (Phase 91)
+    # and 6 meaning-tag (Phase 92) categories. Each is a single
+    # category that was previously gated only by the master
+    # ``beginner_hints/enabled`` switch. With these toggles, users
+    # can suppress individual categories (e.g. turn off CUT_RISK
+    # while keeping SELF_ATARI).
+    selected_self_atari: list[bool]
+    selected_ignore_atari: list[bool]
+    selected_missed_capture: list[bool]
+    selected_cut_risk: list[bool]
+    selected_low_liberties: list[bool]
+    selected_self_capture_like: list[bool]
+    selected_bad_shape: list[bool]
+    selected_heavy_group: list[bool]
+    selected_missed_defense: list[bool]
+    selected_urgent_vs_big: list[bool]
     searchable_widgets: list[dict[str, Any]] = field(default_factory=list)
     register_searchable: Callable[[str, Any], None] | None = None
     reopen_popup: Callable[[], None] | None = None

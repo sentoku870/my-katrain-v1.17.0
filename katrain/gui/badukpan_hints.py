@@ -88,7 +88,17 @@ def draw_beginner_hint_highlight(widget: BadukPanWidget) -> None:
     katrain = widget.katrain
     node = katrain.game.current_node
     require_reliable = katrain.config("beginner_hints/require_reliable", True)
-    hint = get_beginner_hint_cached(katrain.game, node, require_reliable=require_reliable)
+    # Phase 251: honour the per-category filter so a disabled
+    # category's highlight circle is also suppressed (not just the
+    # info text). Uses the same build_category_filter helper as
+    # controlspanel so the settings UI has a single source of truth.
+    from katrain.core.beginner.hints import build_category_filter
+
+    bh = katrain.config("beginner_hints") or {}
+    category_filter = build_category_filter(bh if isinstance(bh, dict) else {})
+    hint = get_beginner_hint_cached(
+        katrain.game, node, require_reliable=require_reliable, category_filter=category_filter
+    )
 
     if hint is None or hint.coords is None:
         return

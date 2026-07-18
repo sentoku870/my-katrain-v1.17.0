@@ -17,6 +17,7 @@
     gtp_coord: ""
     score_loss: 0.0
     meaning_tag_label: ""
+    game_phase: ""
     complexity_discounted: False
     is_current: False
     bg_color: [0, 0, 0, 0]
@@ -56,8 +57,19 @@
     Label:
         text: f'{root.score_loss:.1f}目'
         size_hint_x: None
-        width: dp(64)
+        width: dp(56)
         font_size: sp(13)
+        font_name: root.font_name
+        color: Theme.TEXT_COLOR
+    # Phase 258: per-move game phase column. Helps the user see at a
+    # glance "why was this move selected as critical?" — moves in
+    # the opening/middle/endgame bucket are scored differently and
+    # the phase column surfaces that distinction.
+    Label:
+        text: root.game_phase
+        size_hint_x: None
+        width: dp(56)
+        font_size: sp(12)
         font_name: root.font_name
         color: Theme.TEXT_COLOR
     Label:

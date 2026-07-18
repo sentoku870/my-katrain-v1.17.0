@@ -21,7 +21,6 @@ from katrain.core.analysis.models import (
     DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_BONUS,
     DIFFICULTY_MODIFIER_ONLY_MOVE_LARGE_LOSS_THRESHOLD,
     IMPORTANT_MOVE_SETTINGS_BY_LEVEL,
-    MIN_LOSS_DISPLAY,
     RELIABILITY_SCALE_THRESHOLDS,
     STREAK_START_BONUS,
     SWING_MAGNITUDE_WEIGHT,
@@ -31,6 +30,7 @@ from katrain.core.analysis.models import (
     MoveEval,
     PositionDifficulty,
     get_canonical_loss_from_move,
+    min_loss_display_for_board_size,
 )
 
 if TYPE_CHECKING:
@@ -262,10 +262,27 @@ def pick_important_moves(
             base *= get_reliability_scale(m.root_visits)
             return base
 
+        # Phase 252: scale the fallback threshold by board size. 9x9
+        # games rarely have 0.3-point losses as "minor"; 19x19 needs
+        # the full threshold to avoid flagging every joseki move.
+        # Best effort: try to read the board size from the first
+        # move's parent chain. Falls back to MIN_LOSS_DISPLAY (0.3)
+        # for any node that lacks a full game tree.
+        board_size = None
+        if moves:
+            try:
+                parent = getattr(moves[0], "parent", None)
+                game = getattr(parent, "game", None) if parent is not None else None
+                if game is not None:
+                    board_size = getattr(game, "board_size", None)
+            except Exception:
+                board_size = None
+        threshold = min_loss_display_for_board_size(board_size)
+
         for move in moves:
             raw_sc = raw_score(move)
             # Phase 148-B2: フォールバックの最小損失閾値（軽微損失の全件 pickup を防ぐ）
-            if raw_sc >= MIN_LOSS_DISPLAY:
+            if raw_sc >= threshold:
                 candidates.append((raw_sc, move.move_number, move))
 
     # Sort and pick top

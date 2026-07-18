@@ -75,6 +75,50 @@ def _extract_best_policy(node: Any) -> float | None:
     return best if best > 0.0 else None
 
 
+# Phase 252: per-board-size move-number threshold for the static
+# fallback in ``_is_endgame_position``. 9x9 games rarely exceed 80
+# moves, so a 200-move threshold would never fire on a small board.
+# 13x13 sits between; 19x19 keeps the Phase 179.2 default.
+_ENDGAME_MOVE_THRESHOLD_BY_SIZE: dict[int, int] = {
+    9: 60,
+    13: 100,
+    19: 200,
+}
+
+
+def endgame_move_threshold_for_board_size(
+    board_size: int | tuple[int, int] | None,
+) -> int:
+    """Phase 252: return the static-fallback move threshold for endgame gating.
+
+    Falls back to ``200`` for unknown sizes (rectangular, custom,
+    ``None``) so legacy callers and tests preserve their pre-Phase-252
+    behaviour.
+
+    Args:
+        board_size: Either an int (square board) or a ``(width, height)``
+            tuple. ``None`` falls back to the 19x19 default.
+
+    Returns:
+        The move-number threshold (>= 1).
+    """
+    if board_size is None:
+        return _ENDGAME_MOVE_THRESHOLD_BY_SIZE[19]
+    if isinstance(board_size, (tuple, list)):
+        if not board_size:
+            return _ENDGAME_MOVE_THRESHOLD_BY_SIZE[19]
+        try:
+            size = min(int(board_size[0]), int(board_size[1] or board_size[0]))
+        except (TypeError, ValueError):
+            return _ENDGAME_MOVE_THRESHOLD_BY_SIZE[19]
+    else:
+        try:
+            size = int(board_size)
+        except (TypeError, ValueError):
+            return _ENDGAME_MOVE_THRESHOLD_BY_SIZE[19]
+    return _ENDGAME_MOVE_THRESHOLD_BY_SIZE.get(size, _ENDGAME_MOVE_THRESHOLD_BY_SIZE[19])
+
+
 def _is_endgame_position(node: Any) -> bool:
     """Phase 179.2: endgame heuristic for MISTAKE_GOOD gating.
 
@@ -87,8 +131,9 @@ def _is_endgame_position(node: Any) -> bool:
        / 158-G) for the dynamic phase classifier — when KataGo has
        effectively read the position out, the game is likely in the
        endgame.
-    2. **Static (fallback)**: ``move_number >= 200`` for legacy /
-       short-game compatibility. Used only when ``scoreStdev`` is
+    2. **Static (fallback)**: ``move_number >= THRESHOLD`` where
+       ``THRESHOLD`` is board-size-aware (Phase 252: 60 for 9x9, 100
+       for 13x13, 200 for 19x19). Used only when ``scoreStdev`` is
        unavailable (no analysis yet, batch mode without stdev).
 
     The previous static-only check (Phase 179.1, ``move_number >= 200``)
@@ -116,4 +161,14 @@ def _is_endgame_position(node: Any) -> bool:
     if move_number == 0:
         depth = getattr(node, "depth", 0) or 0
         move_number = int(depth)
-    return move_number >= 200
+
+    # Phase 252: scale the static-fallback threshold by board size.
+    board_size = None
+    try:
+        parent = getattr(node, "parent", None)
+        game = getattr(parent, "game", None) if parent is not None else None
+        if game is not None:
+            board_size = getattr(game, "board_size", None)
+    except Exception:
+        board_size = None
+    return move_number >= endgame_move_threshold_for_board_size(board_size)

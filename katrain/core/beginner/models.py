@@ -108,9 +108,24 @@ class HintCategory(Enum):
 
     @property
     def config_key(self) -> str | None:
-        """Settings key under beginner_hints/ for this category group, or None."""
+        """Settings key under beginner_hints/ for this category group, or None.
+
+        Phase 251: every category now exposes an individual config key so the
+        settings UI can offer per-category on/off toggles. Previously,
+        structural and meaning-tag categories returned ``None`` (gated only
+        by the master ``beginner_hints/enabled`` switch); users who wanted
+        to suppress, e.g., ``CUT_RISK`` had to disable all hints.
+
+        Resolution order:
+        1. Structural + meaning-tag → category value (e.g. ``"self_atari"``).
+        2. Summary groups → group key (e.g. ``"summary_mistake"``).
+        3. Anything else (defensive fallback) → category value.
+        """
+        # Phase 251: per-category keys for the 10 categories that previously
+        # had no individual toggle. The key matches the enum value so the
+        # settings UI and i18n both reference ``beginner_hints:<value>``.
         if self in _STRUCTURAL_CATEGORIES or self in _MEANING_TAG_CATEGORIES:
-            return None  # gated by beginner_hints/enabled only
+            return self.value
         if self in (
             HintCategory.MISTAKE_BLUNDER,
             HintCategory.MISTAKE_MISTAKE,
@@ -136,7 +151,7 @@ class HintCategory(Enum):
             return "summary_policy"
         if self is HintCategory.CURATOR_WEAK_AXIS:
             return "curator_hint"
-        return None
+        return str(self.value)  # defensive fallback (Phase 251)
 
     @property
     def i18n_namespace(self) -> str:

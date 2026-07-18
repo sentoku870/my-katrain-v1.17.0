@@ -2021,8 +2021,8 @@ msgstr "Important-moves level:"
 msgid "mykatrain:settings:important_moves_level_desc"
 msgstr ""
 "Controls the sensitivity of the important-moves extraction and the "
-"critical_3 selection in Karte output. Beginner (relaxed) keeps only "
-"big losses; dan-level (strict) also keeps small ones."
+"critical_3 selection in Karte output. Beginner (relaxed) keeps only big "
+"losses; dan-level (strict) also keeps small ones."
 
 msgid "mykatrain:settings:important_moves_level_easy"
 msgstr "Beginner (relaxed)"
@@ -2038,8 +2038,8 @@ msgstr "Critical 3 count:"
 
 msgid "mykatrain:settings:critical_3_max_moves_desc"
 msgstr ""
-"How many critical moves to show per player in the Karte critical_3 "
-"section (1-10). Default 3 (Phase 50 baseline)."
+"How many critical moves to show per player in the Karte critical_3 section "
+"(1-10). Default 3 (Phase 50 baseline)."
 
 msgid "mykatrain:settings:advanced_params"
 msgstr "Advanced parameters (JSON, edit manually):"
@@ -2047,9 +2047,9 @@ msgstr "Advanced parameters (JSON, edit manually):"
 msgid "mykatrain:settings:advanced_params_desc"
 msgstr ""
 "Tune the sensitivity of the important-move extraction. Add an "
-"\"advanced_params\" object under mykatrain_settings and set any of "
-"the known keys (see docs/usage-guide.md). Out-of-range values snap "
-"back to the defaults."
+"\"advanced_params\" object under mykatrain_settings and set any of the known"
+" keys (see docs/usage-guide.md). Out-of-range values snap back to the "
+"defaults."
 
 msgid "mykatrain:settings:default_user_name"
 msgstr "Default User Name:"
@@ -2384,73 +2384,6 @@ msgstr "Stopped"
 
 msgid "Not configured"
 msgstr "Not configured"
-
-#. Phase 49: Radar skill tiers
-msgid "radar:tier-1"
-msgstr "Tier 1 (Novice)"
-
-msgid "radar:tier-2"
-msgstr "Tier 2 (Apprentice)"
-
-msgid "radar:tier-3"
-msgstr "Tier 3 (Proficient)"
-
-msgid "radar:tier-4"
-msgstr "Tier 4 (Advanced)"
-
-msgid "radar:tier-5"
-msgstr "Tier 5 (Elite)"
-
-#. Phase 49: Radar axes
-msgid "radar:axis-opening"
-msgstr "Opening"
-
-msgid "radar:axis-fighting"
-msgstr "Fighting"
-
-msgid "radar:axis-endgame"
-msgstr "Endgame"
-
-msgid "radar:axis-stability"
-msgstr "Stability"
-
-msgid "radar:axis-awareness"
-msgstr "Awareness"
-
-#. Phase 49: Radar other
-msgid "radar:weak-areas"
-msgstr "Weak areas"
-
-msgid "radar:no-data"
-msgstr "No radar data available (requires 19x19 games with analysis)"
-
-#. Phase 51: Radar UI popup keys
-msgid "radar:menu-title"
-msgstr "Skill Radar"
-
-msgid "radar:title"
-msgstr "Skill Profile Radar"
-
-msgid "radar:overall"
-msgstr "Overall"
-
-msgid "radar:no-game"
-msgstr "No game loaded"
-
-msgid "radar:not-19x19"
-msgstr "Skill Radar requires 19x19 board"
-
-msgid "radar:build-error"
-msgstr "Failed to build analysis"
-
-msgid "radar:calc-error"
-msgstr "Radar calculation failed"
-
-msgid "radar:insufficient-moves"
-msgstr "Insufficient moves (need 10+)"
-
-msgid "radar:tier-unknown"
-msgstr "Tier ?"
 
 #. Phase 57: Style Archetype (name only, summary deferred)
 msgid "style:kiai_fighter:name"
@@ -2903,15 +2836,6 @@ msgstr "Middle game"
 msgid "phase:yose"
 msgstr "Endgame"
 
-msgid "mistake:blunder"
-msgstr "Blunder"
-
-msgid "mistake:mistake"
-msgstr "Mistake"
-
-msgid "mistake:inaccuracy"
-msgstr "Inaccuracy"
-
 msgid "summary:suffix:ref"
 msgstr "(Reference only)"
 
@@ -3071,9 +2995,6 @@ msgstr "Count"
 msgid "summary:table:percentage"
 msgstr "%"
 
-msgid "summary:table:avg_loss"
-msgstr "Avg Loss"
-
 msgid "summary:table:difficulty"
 msgstr "Difficulty"
 
@@ -3097,9 +3018,6 @@ msgstr "Importance"
 
 msgid "summary:no_mistakes"
 msgstr "No major mistakes found."
-
-msgid "mistake:good"
-msgstr "Good"
 
 msgid "freedom:easy"
 msgstr "Easy"
@@ -3237,3 +3155,108 @@ msgstr "⚠ Display truncated ({base})"
 msgid "mykatrain:llm-coach:paste-too-long"
 msgstr ""
 "LLM response too long ({original} chars), truncated to first {kept} chars"
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:self_atari"
+msgstr "Self-atari warnings"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:self_atari_desc"
+msgstr ""
+"Warn when playing a move that places your own group in atari (a move that "
+"loses a liberty)."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:ignore_atari"
+msgstr "Ignored atari"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:ignore_atari_desc"
+msgstr ""
+"Warn when a move does not address a group already in atari (overlooks an "
+"urgent save)."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:missed_capture"
+msgstr "Missed capture"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:missed_capture_desc"
+msgstr "Warn when a move could have captured opponent stones but did not."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:cut_risk"
+msgstr "Cut risk"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:cut_risk_desc"
+msgstr "Warn when a move exposes your groups to a cut (separation) threat."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:low_liberties"
+msgstr "Low liberties"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:low_liberties_desc"
+msgstr ""
+"Warn when a group has very few liberties left and is in tactical danger."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:self_capture_like"
+msgstr "Life and death"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:self_capture_like_desc"
+msgstr ""
+"Warn when a move involves the life-and-death of a group (semai / nakade)."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:bad_shape"
+msgstr "Bad shape"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:bad_shape_desc"
+msgstr "Warn when a move results in an inefficient or weak shape."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:heavy_group"
+msgstr "Heavy group"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:heavy_group_desc"
+msgstr ""
+"Warn when your stones have become heavy (inefficient and lacking eyes)."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:missed_defense"
+msgstr "Missed defense"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:missed_defense_desc"
+msgstr ""
+"Warn when your stones' connection is weak and the move misses a defensive "
+"response."
+
+#. Phase 251: per-category hint toggle label
+msgid "mykatrain:settings:urgent_vs_big"
+msgstr "Urgent vs big"
+
+#. Phase 251: per-category hint toggle description
+msgid "mykatrain:settings:urgent_vs_big_desc"
+msgstr "Warn when a bigger or more urgent move exists elsewhere on the board."
+
+#. Phase 255: prefix for the [Hint] line in the controls panel
+msgid "beginner-hint:prefix"
+msgstr "Hint"
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-run-batch"
+msgstr ""
+"Run a MyKatrain batch analysis to generate curator_ranking.json — Curator "
+"weak-axis hints are silent until then."
+
+#. Phase 257: curator onboarding notice
+msgid "beginner-hint:curator-onboarding-no-output-dir"
+msgstr ""
+"Set the SGF/Karte output directory in MyKatrain settings before Curator "
+"weak-axis hints can fire."

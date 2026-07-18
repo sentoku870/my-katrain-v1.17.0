@@ -53,13 +53,29 @@ def _save_beginner_hints_settings(
     summary_ownership: bool = True,
     summary_policy: bool = True,
     curator_hint: bool = True,
+    # Phase 251: 10 individual category toggles (structural + meaning_tag).
+    # Each defaults to True so users who never open the new UI keep all
+    # hints visible when the master switch is on.
+    self_atari: bool = True,
+    ignore_atari: bool = True,
+    missed_capture: bool = True,
+    cut_risk: bool = True,
+    low_liberties: bool = True,
+    self_capture_like: bool = True,
+    bad_shape: bool = True,
+    heavy_group: bool = True,
+    missed_defense: bool = True,
+    urgent_vs_big: bool = True,
 ) -> None:
-    """Save beginner_hints section (Phase 91 + Phase 179 + Phase 182 + 186).
+    """Save beginner_hints section (Phase 91 + Phase 179 + Phase 182 + 186 + 251).
 
     Phase 179: 4 per-category-group toggles persisted alongside master.
     Phase 182: 2 additional toggles (``summary_ownership``,
     ``summary_policy``).
     Phase 186: ``curator_hint`` toggle for CURATOR_WEAK_AXIS.
+    Phase 251: 10 individual toggles for the structural (Phase 91) and
+    meaning-tag (Phase 92) categories. Users can suppress individual
+    categories (e.g. turn off ``cut_risk`` while keeping ``self_atari``).
 
     All default to True; missing keys keep their previous value.
     """
@@ -72,6 +88,17 @@ def _save_beginner_hints_settings(
     beginner_hints_config["summary_ownership"] = bool(summary_ownership)
     beginner_hints_config["summary_policy"] = bool(summary_policy)
     beginner_hints_config["curator_hint"] = bool(curator_hint)
+    # Phase 251: persist individual category toggles.
+    beginner_hints_config["self_atari"] = bool(self_atari)
+    beginner_hints_config["ignore_atari"] = bool(ignore_atari)
+    beginner_hints_config["missed_capture"] = bool(missed_capture)
+    beginner_hints_config["cut_risk"] = bool(cut_risk)
+    beginner_hints_config["low_liberties"] = bool(low_liberties)
+    beginner_hints_config["self_capture_like"] = bool(self_capture_like)
+    beginner_hints_config["bad_shape"] = bool(bad_shape)
+    beginner_hints_config["heavy_group"] = bool(heavy_group)
+    beginner_hints_config["missed_defense"] = bool(missed_defense)
+    beginner_hints_config["urgent_vs_big"] = bool(urgent_vs_big)
     ctx.set_config_section("beginner_hints", beginner_hints_config)
     ctx.save_config("beginner_hints")
 

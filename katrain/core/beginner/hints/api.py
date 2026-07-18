@@ -17,6 +17,7 @@ from katrain.core.beginner.hints._cache import (
 )
 from katrain.core.beginner.hints._dispatch import (
     _DETECTOR_CATEGORIES,
+    _category_enabled,
     _compute_summary_context,
     _get_meaning_tag_hint,
     _get_visits_from_node,
@@ -32,6 +33,7 @@ from katrain.core.beginner.hints._extract import (
 from katrain.core.beginner.hints._gate import (
     MIN_RELIABLE_VISITS,
     _normalize_board_size,
+    build_category_filter,
     is_coords_valid,
     should_draw_board_highlight,
     should_show_beginner_hints,
@@ -50,9 +52,11 @@ __all__ = [
     "should_show_summary_hint",
     "MIN_RELIABLE_VISITS",
     "MIN_SUMMARY_VISITS",
+    "build_category_filter",
     # Private helpers (kept for tests + downstream compatibility)
     "_NOT_COMPUTED",
     "_DETECTOR_CATEGORIES",
+    "_category_enabled",
     "_compute_summary_context",
     "_extract_best_policy",
     "_extract_predicted_territory",

@@ -515,7 +515,13 @@ def _build_beginner_hints_section(inner: BoxLayoutType, state: _SettingsPopupCon
 
 
 def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupContext) -> None:
-    """Phase 179 + 182 + 186: 7 per-category-group toggles under the master switch."""
+    """Phase 179 + 182 + 186: 7 per-category-group toggles under the master switch.
+
+    Phase 251: extended to also expose the 10 individual category
+    toggles (4 structural + 6 meaning-tag) so users can suppress a
+    single category (e.g. turn off ``CUT_RISK`` while keeping
+    ``SELF_ATARI``).
+    """
     summary_rows = [
         (
             "mykatrain:settings:summary_mistake",
@@ -554,30 +560,65 @@ def _build_summary_hints_subtoggles(inner: BoxLayoutType, state: _SettingsPopupC
         ),
     ]
     for label_key, _field_name, selected_ref in summary_rows:
-        _add_searchable_label(inner, label_key, state)
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(32), spacing=dp(8))
-        spacer = Label(size_hint_x=None, width=dp(20))  # indent under master
-        row.add_widget(spacer)
-        checkbox = CheckBox(
-            active=selected_ref[0],
-            size_hint_x=None,
-            width=dp(30),
-        )
-        checkbox.bind(active=lambda chk, active, ref=selected_ref: ref.__setitem__(0, active))
-        row.add_widget(checkbox)
-        desc = Label(
-            text=i18n._(f"{label_key}_desc"),
-            size_hint_x=0.9,
-            halign="left",
-            valign="middle",
-            color=Theme.TEXT_COLOR,
-            font_name=Theme.DEFAULT_FONT,
-        )
-        desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
-        row.add_widget(desc)
-        inner.add_widget(row)
-        if state.register_searchable is not None:
-            state.register_searchable(label_key, row)
+        _add_toggle_row(inner, label_key, selected_ref, state)
+
+    # Phase 251: per-category toggles for the 4 structural detectors
+    # (Phase 91) and 6 meaning-tag fallbacks (Phase 92). These
+    # previously had no individual control; users could only flip the
+    # master ``beginner_hints/enabled`` switch.
+    individual_rows = [
+        # Structural (Phase 91)
+        ("mykatrain:settings:self_atari", state.selected_self_atari),
+        ("mykatrain:settings:ignore_atari", state.selected_ignore_atari),
+        ("mykatrain:settings:missed_capture", state.selected_missed_capture),
+        ("mykatrain:settings:cut_risk", state.selected_cut_risk),
+        # Meaning-tag (Phase 92)
+        ("mykatrain:settings:low_liberties", state.selected_low_liberties),
+        ("mykatrain:settings:self_capture_like", state.selected_self_capture_like),
+        ("mykatrain:settings:bad_shape", state.selected_bad_shape),
+        ("mykatrain:settings:heavy_group", state.selected_heavy_group),
+        ("mykatrain:settings:missed_defense", state.selected_missed_defense),
+        ("mykatrain:settings:urgent_vs_big", state.selected_urgent_vs_big),
+    ]
+    for label_key, selected_ref in individual_rows:
+        _add_toggle_row(inner, label_key, selected_ref, state)
+
+
+def _add_toggle_row(
+    inner: BoxLayoutType,
+    label_key: str,
+    selected_ref: list[bool],
+    state: _SettingsPopupContext,
+) -> None:
+    """Add a single ``[checkbox] [description]`` toggle row (Phase 251 helper).
+
+    Consolidates the per-row layout code that was previously inline in
+    :func:`_build_summary_hints_subtoggles` so the 7 group toggles and
+    10 individual toggles share the same Kivy hierarchy.
+    """
+    _add_searchable_label(inner, label_key, state)
+    row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(32), spacing=dp(8))
+    spacer = Label(size_hint_x=None, width=dp(20))  # indent under master
+    row.add_widget(spacer)
+    checkbox = CheckBox(
+        active=selected_ref[0],
+        size_hint_x=None,
+        width=dp(30),
+    )
+    checkbox.bind(active=lambda chk, active, ref=selected_ref: ref.__setitem__(0, active))
+    desc = Label(
+        text=i18n._(f"{label_key}_desc"),
+        size_hint_x=0.9,
+        halign="left",
+        valign="middle",
+        color=Theme.TEXT_COLOR,
+        font_name=Theme.DEFAULT_FONT,
+    )
+    desc.bind(size=lambda lbl, _sz: setattr(lbl, "text_size", (lbl.width, lbl.height)))
+    row.add_widget(desc)
+    inner.add_widget(row)
+    if state.register_searchable is not None:
+        state.register_searchable(label_key, row)
 
 
 def _build_reset_button() -> Button:
