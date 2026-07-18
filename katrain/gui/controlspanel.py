@@ -345,9 +345,18 @@ class ControlsPanel(BoxLayout):
         # Show beginner safety hint if enabled and not in PLAY mode.
         # Phase 251: pass the per-category filter so individual toggles
         # in the settings popup can suppress specific categories.
+        # Phase 265: forward curator weak_tags so the dispatcher re-labels
+        # hints with the user's personal weak patterns.
         if self._should_show_beginner_hints():
             category_filter = self._category_filter()
-            hint = get_beginner_hint_cached(game, self.active_comment_node, category_filter=category_filter)
+            curator_profile = getattr(self.katrain, "curator_profile", None)
+            user_weak_tags = dict(curator_profile.weak_tags) if curator_profile is not None else None
+            hint = get_beginner_hint_cached(
+                game,
+                self.active_comment_node,
+                category_filter=category_filter,
+                user_weak_tags=user_weak_tags,
+            )
             if hint:
                 hint_text = self._format_beginner_hint(hint)
                 if hint_text:
@@ -629,8 +638,20 @@ class ControlsPanel(BoxLayout):
             prefix = "[Hint]"
 
         if why and not why.startswith("beginner_hint:"):
-            return f"{prefix} {title}: {body}\n→ {why}"
-        return f"{prefix} {title}: {body}"
+            base = f"{prefix} {title}: {body}\n→ {why}"
+        else:
+            base = f"{prefix} {title}: {body}"
+
+        # Phase 265: append a "your weak axis" footer when the
+        # dispatcher re-labelled the hint with curator metadata.
+        curator_meta = (hint.context or {}).get("curator_weak_axis")
+        if curator_meta is not None:
+            tag_id = curator_meta.get("tag_id", "?")
+            count = curator_meta.get("occurrence_count", 0)
+            weak_axis_text = i18n._("beginner-hint:curator_weak_axis_footer").format(tag_id=tag_id, count=int(count))
+            if not weak_axis_text.startswith("beginner-hint:"):
+                return f"{base}\n⚠ {weak_axis_text}"
+        return base
 
     @staticmethod
     def _ensure_time_used_initialized(node: Any) -> None:

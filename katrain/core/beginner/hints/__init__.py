@@ -24,7 +24,10 @@ from katrain.core.beginner.detector import (
     detect_missed_capture,
     detect_self_atari,
 )
-from katrain.core.beginner.detector_curator import detect_curator_weak_axis
+from katrain.core.beginner.detector_curator import (
+    apply_curator_weak_axis_label,
+    detect_curator_weak_axis,
+)
 from katrain.core.beginner.detector_difficulty import detect_difficulty_summary
 from katrain.core.beginner.detector_freedom import count_freedom_candidates, detect_freedom_summary
 from katrain.core.beginner.detector_katago import detect_katago_uncertain
@@ -89,6 +92,7 @@ __all__ = [
     "detect_missed_capture",
     "detect_self_atari",
     "detect_curator_weak_axis",
+    "apply_curator_weak_axis_label",
     "detect_difficulty_summary",
     "count_freedom_candidates",
     "detect_freedom_summary",

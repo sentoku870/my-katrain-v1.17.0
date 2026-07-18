@@ -127,6 +127,8 @@ def compute_beginner_hint(
     require_reliable: bool = True,
     aggregate: bool = False,
     category_filter: dict[str, bool] | None = None,
+    user_weak_tags: dict[str, int] | None = None,
+    curator_min_occurrences: int = 3,
 ) -> BeginnerHint | None:
     """Compute a beginner hint for a specific node (Phase 91-92).
 
@@ -146,6 +148,13 @@ def compute_beginner_hint(
             are treated as enabled. ``None`` means "all enabled"
             (preserves pre-Phase-251 behaviour for callers that have
             not migrated).
+        user_weak_tags: Phase 265 — ``{meaning_tag_id: occurrence_count}``
+            loaded from the Curator profile. When non-empty, the
+            returned hint is re-labelled with a ``curator_weak_axis``
+            context entry if its category maps to one of the user's
+            weak tags. ``None`` / empty disables the re-label.
+        curator_min_occurrences: Phase 265 — minimum tag count to
+            count as a "weak axis" for the re-label.
 
     Note:
         The default ``aggregate=False`` keeps backward compatibility
@@ -191,7 +200,23 @@ def compute_beginner_hint(
         # Phase 248-C4: collect every applicable hint, then return the
         # highest-severity one (ties → first in the original chain).
         if aggregate:
-            return _aggregate_hints(game, node, inp, move.coords, require_reliable, category_filter)
+            hint: BeginnerHint | None = _aggregate_hints(
+                game, node, inp, move.coords, require_reliable, category_filter
+            )
+        else:
+            hint = _priority_chain_hints(game, node, inp, require_reliable, category_filter)
+
+        # Phase 265: post-process — re-label with curator weak-axis
+        # metadata so the user sees their personal weak patterns even
+        # during real-time play (where ``node.meaning_tag_id`` is
+        # unavailable, so ``detect_curator_weak_axis`` would not fire).
+        if hint is not None and user_weak_tags:
+            hint = _hints_pkg.apply_curator_weak_axis_label(
+                hint,
+                user_weak_tags,
+                min_occurrences=curator_min_occurrences,
+            )
+        return hint
 
         hint = _hints_pkg.detect_self_atari(inp)
         if hint and _category_enabled(hint.category, category_filter):
@@ -221,6 +246,45 @@ def compute_beginner_hint(
     finally:
         if game.current_node != original_node:
             game.set_current_node(original_node)
+
+
+def _priority_chain_hints(
+    game: Any,
+    node: Any,
+    inp: Any,
+    require_reliable: bool,
+    category_filter: dict[str, bool] | None,
+) -> BeginnerHint | None:
+    """Legacy (non-aggregate) beginner-hint chain.
+
+    Short-circuits on the first non-None hint, preserving the original
+    Phase 91 priority order. Extracted from ``compute_beginner_hint``
+    so the aggregate path can share the same plumbing.
+    """
+    hint = _hints_pkg.detect_self_atari(inp)
+    if hint and _category_enabled(hint.category, category_filter):
+        return hint
+
+    hint = _hints_pkg.detect_ignore_atari(inp)
+    if hint and _category_enabled(hint.category, category_filter):
+        return hint
+
+    hint = _hints_pkg.detect_missed_capture(inp)
+    if hint and _category_enabled(hint.category, category_filter):
+        return hint
+
+    hint = _hints_pkg.detect_cut_risk(inp, game)
+    if hint and _category_enabled(hint.category, category_filter):
+        return hint
+
+    hint = _get_meaning_tag_hint(node, inp.move_coords)
+
+    if hint and require_reliable and hint.category not in _DETECTOR_CATEGORIES and not _is_reliable(node):
+        return None
+    if hint and not _category_enabled(hint.category, category_filter):
+        return None
+
+    return hint
 
 
 def _aggregate_hints(
