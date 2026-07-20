@@ -503,8 +503,14 @@ class SGF:
                         encoding = match[1].decode("ascii", errors="ignore")
                     else:
                         detected = chardet.detect(bin_contents[:300])["encoding"]
-                        # workaround for some compatibility issues for Windows-1252 and GB2312 encodings
-                        if detected == "Windows-1252" or detected == "GB2312":
+                        # chardet 5 -> 7: chardet 5 reported "GB2312" for short
+                        # Chinese bodies and sometimes mis-detected CJK text as
+                        # "Windows-1252". chardet 7 returns "GB18030" (a GBK
+                        # superset) or other Windows-125x variants. Falling
+                        # back to GBK keeps the legacy behaviour for both
+                        # branches: GB18030 / Windows-125x / Windows-1252 ->
+                        # GBK covers the original compatibility quirks.
+                        if detected in ("Windows-1252", "Windows-1253", "GB2312", "GB18030"):
                             encoding = "GBK"
                         elif detected is not None:
                             encoding = detected
