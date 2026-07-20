@@ -158,8 +158,16 @@ STUB_KV: dict[str, str] = {
     ),
     # MDTextField needs canvas for the underline, hint, helper text.
     # Property names changed between 0.104.1 and 1.2.0; we mirror the
-    # 1.2.0 internals (``_underline_width``, ``hint_text_color_normal``)
-    # so the canvas bindings resolve at widget-construction time.
+    # 1.2.0 internals (``_underline_width``, ``hint_text_color``,
+    # ``_hint_text_label``) so the canvas bindings resolve at
+    # widget-construction time.
+    #
+    # ``TextfieldLabel`` inherits from raw ``kivy.uix.label.Label``,
+    # which does NOT default ``font_name`` to our project's
+    # ``NotoSansJP-Regular.otf`` (the project's ``factory.Label``
+    # wrapper does that). We bind ``font_name`` to the parent
+    # ``MDTextField`` so Japanese hint text renders correctly
+    # (otherwise it shows tofu boxes).
     "textfield/textfield.kv": (
         "#:import dp kivy.metrics.dp\n"
         "\n"
@@ -209,6 +217,7 @@ STUB_KV: dict[str, str] = {
         "    height: self.minimum_height\n"
         "\n"
         "<TextfieldLabel>\n"
+        "    font_name: root.font_name if root.font_name else 'Roboto'\n"
         "    size_hint_x: None\n"
         "    width: self.texture_size[0]\n"
         "    shorten: True\n"
