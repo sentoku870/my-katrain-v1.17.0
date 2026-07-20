@@ -519,7 +519,7 @@ class ControlsPanel(BoxLayout):
         if getattr(node, "time_used", None) is None:
             node.time_used = 0
 
-    def update_timer(self, _dt: float) -> None:  # type: ignore[no-untyped-def]
+    def update_timer(self, _dt: float) -> None:
         game = self.katrain and self.katrain.game
         current_node = game and self.katrain.game.current_node
         if current_node:

@@ -30,9 +30,9 @@ if TYPE_CHECKING:
 class KifunarabeSummaryContent(BoxLayout):
     """Body widget of the kifunarabe summary popup (Phase 177-G)."""
 
-    popup = ObjectProperty(None)  # type: ignore[assignment]
-    katrain = ObjectProperty(None)  # type: ignore[assignment]
-    controller = ObjectProperty(None)  # type: ignore[assignment]
+    popup = ObjectProperty(None)
+    katrain = ObjectProperty(None)
+    controller = ObjectProperty(None)
 
     def __init__(
         self,

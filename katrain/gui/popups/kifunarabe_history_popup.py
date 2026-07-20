@@ -131,7 +131,7 @@ def show_kifunarabe_history(
     popup.size_hint = (None, None)
     popup.pos_hint = {"center_x": 0.5, "center_y": 0.5}
     # Stash for the close button.
-    content.popup = popup  # type: ignore[attr-defined]
+    content.popup = popup
     popup.open()
 
 

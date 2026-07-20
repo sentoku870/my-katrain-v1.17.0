@@ -136,7 +136,7 @@ class KifunarabeToggleMixin:
             # Legacy 2-tuple snapshot from before Phase 249-α: keep the
             # original behaviour and leave policy.disabled as it is
             # (i.e. release it).
-            show_children, eval_dot = saved  # type: ignore[misc]
+            show_children, eval_dot = saved
             policy_disabled = False
         with contextlib.suppress(Exception):
             ac.show_children.active = show_children

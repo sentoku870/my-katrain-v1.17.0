@@ -569,8 +569,8 @@ def validate_llm_output(
     # every entry here is a plain ``str`` (we convert SymptomId to
     # ``str.value`` at every call site). The explicit ignore keeps the
     # contract verifiable without an invasive rewrite.
-    referenced_ids: list[str] = list(_extract_symptom_ids(llm_text))  # type: ignore[arg-type,assignment]
-    grep_ids: tuple[str, ...] = _extract_symptom_ids_with_grep(llm_text, ground_truth_symptoms)  # type: ignore[arg-type,assignment]
+    referenced_ids: list[str] = list(_extract_symptom_ids(llm_text))
+    grep_ids: tuple[str, ...] = _extract_symptom_ids_with_grep(llm_text, ground_truth_symptoms)
     seen_ids: set[str] = set(referenced_ids)
     for sid in grep_ids:  # type: ignore[assignment]
         if sid not in seen_ids:  # type: ignore[comparison-overlap]

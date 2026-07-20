@@ -122,6 +122,7 @@ skip_covered = false
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
+warn_unused_ignores = true
 ignore_missing_imports = true
 
 # Phase 112: Global strict flags
@@ -132,13 +133,33 @@ check_untyped_defs = true
 strict_equality = true
 extra_checks = true
 
+# Phase 275-mypy2: extra error codes enforced under mypy 2.x so that
+# deprecated APIs (e.g. datetime.utcnow, pkg_resources) surface as type
+# errors during the next dep bump rather than silently.
+enable_error_code = [
+    "deprecated",
+    "redundant-cast",
+    "unused-awaitable",
+]
+
 [[tool.mypy.overrides]]
 module = [
     "kivy.*",
     "kivymd.*",
-    "kivy_garden.*",
 ]
 ignore_missing_imports = true
+ignore_errors = true
+
+# Phase 275-mypy2: kivy_garden is a third-party stub used only as a
+# placeholder in requirements. Keep ignore_missing_imports but drop
+# ignore_errors so any code that touches it stays explicit.
+[[tool.mypy.overrides]]
+module = ["kivy_garden.*"]
+ignore_missing_imports = true
+
+# Tests have no type contracts (lots of monkeypatching + fixtures).
+[[tool.mypy.overrides]]
+module = ["tests.*"]
 ignore_errors = true
 
 [tool.hatch.build.targets.sdist]

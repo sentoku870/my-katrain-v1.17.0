@@ -136,8 +136,8 @@ class BatchAnalysisController:
             start_batch_thread,
         )
         on_close = create_on_close_callback(popup, is_running)
-        browse_input = create_browse_callback(widgets["input_input"], "Select input folder", self._ctx)  # type: ignore[arg-type]
-        browse_output = create_browse_callback(widgets["output_input"], "Select output folder", self._ctx)  # type: ignore[arg-type]
+        browse_input = create_browse_callback(widgets["input_input"], "Select input folder", self._ctx)
+        browse_output = create_browse_callback(widgets["output_input"], "Select output folder", self._ctx)
 
         widgets["start_button"].bind(on_release=on_start)
         widgets["close_button"].bind(on_release=on_close)

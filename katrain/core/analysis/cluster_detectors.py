@@ -51,7 +51,7 @@ def _get_base_confidence() -> dict[ClusterSemantics, float]:
     :class:`ClusterSemantics`).
     """
     cache_key = "_BASE_CONFIDENCE_CACHE"
-    cached: dict[ClusterSemantics, float] | None = globals().get(cache_key)  # type: ignore[assignment]
+    cached: dict[ClusterSemantics, float] | None = globals().get(cache_key)
     if cached is not None:
         return cached
     from katrain.core.analysis.cluster_classifier import ClusterSemantics

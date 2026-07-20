@@ -112,7 +112,7 @@ class AutoSetupController:
         # We need a way to set config. If KaTrainGui doesn't have it, we might need to add it to Protocol
         # But KaTrainBase has set_config_section.
         if hasattr(self._ctx, "set_config_section"):
-            self._ctx.set_config_section("auto_setup", auto_setup)  # type: ignore[attr-defined]
+            self._ctx.set_config_section("auto_setup", auto_setup)
             self._ctx.save_config("auto_setup")
 
     def verify_engine_works(self, timeout_seconds: float = 10.0) -> TestAnalysisResult:
