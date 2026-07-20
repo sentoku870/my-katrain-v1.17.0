@@ -109,35 +109,33 @@ class KeyboardManager:
         if analysis_controls is None:
             return {}
 
-        return {
-            k: v
-            for ks, v in [
-                (Theme.KEY_ANALYSIS_CONTROLS_SHOW_CHILDREN, analysis_controls.show_children),
-                (Theme.KEY_ANALYSIS_CONTROLS_EVAL, analysis_controls.eval),
-                (Theme.KEY_ANALYSIS_CONTROLS_HINTS, analysis_controls.hints),
-                (Theme.KEY_ANALYSIS_CONTROLS_OWNERSHIP, analysis_controls.ownership),
-                (Theme.KEY_ANALYSIS_CONTROLS_POLICY, analysis_controls.policy),
-                (Theme.KEY_AI_MOVE, ("ai-move",)),
-                (Theme.KEY_ANALYZE_EXTRA_EXTRA, ("analyze-extra", "extra")),
-                (Theme.KEY_ANALYZE_EXTRA_EQUALIZE, ("analyze-extra", "equalize")),
-                (Theme.KEY_ANALYZE_EXTRA_SWEEP, ("analyze-extra", "sweep")),
-                (Theme.KEY_ANALYZE_EXTRA_ALTERNATIVE, ("analyze-extra", "alternative")),
-                (Theme.KEY_SELECT_BOX, ("select-box",)),
-                (Theme.KEY_RESET_ANALYSIS, ("reset-analysis",)),
-                (Theme.KEY_INSERT_MODE, ("insert-mode",)),
-                (Theme.KEY_PASS, ("play", None)),
-                (Theme.KEY_SELFPLAY_TO_END, ("selfplay-setup", "end", None)),
-                (Theme.KEY_NAV_PREV_BRANCH, ("undo", "branch")),
-                (Theme.KEY_NAV_BRANCH_DOWN, ("switch-branch", 1)),
-                (Theme.KEY_NAV_BRANCH_UP, ("switch-branch", -1)),
-                (Theme.KEY_TIMER_POPUP, ("timer-popup",)),
-                (Theme.KEY_TEACHER_POPUP, ("teacher-popup",)),
-                (Theme.KEY_AI_POPUP, ("ai-popup",)),
-                (Theme.KEY_CONFIG_POPUP, ("config-popup",)),
-                (Theme.KEY_STOP_ANALYSIS, ("analyze-extra", "stop")),
-            ]
-            for k in (ks if isinstance(ks, list) else [ks])
-        }
+        shortcuts: list[tuple[str | list[str], Any]] = [
+            (Theme.KEY_ANALYSIS_CONTROLS_SHOW_CHILDREN, analysis_controls.show_children),
+            (Theme.KEY_ANALYSIS_CONTROLS_EVAL, analysis_controls.eval),
+            (Theme.KEY_ANALYSIS_CONTROLS_HINTS, analysis_controls.hints),
+            (Theme.KEY_ANALYSIS_CONTROLS_OWNERSHIP, analysis_controls.ownership),
+            (Theme.KEY_ANALYSIS_CONTROLS_POLICY, analysis_controls.policy),
+            (Theme.KEY_AI_MOVE, ("ai-move",)),
+            (Theme.KEY_ANALYZE_EXTRA_EXTRA, ("analyze-extra", "extra")),
+            (Theme.KEY_ANALYZE_EXTRA_EQUALIZE, ("analyze-extra", "equalize")),
+            (Theme.KEY_ANALYZE_EXTRA_SWEEP, ("analyze-extra", "sweep")),
+            (Theme.KEY_ANALYZE_EXTRA_ALTERNATIVE, ("analyze-extra", "alternative")),
+            (Theme.KEY_SELECT_BOX, ("select-box",)),
+            (Theme.KEY_RESET_ANALYSIS, ("reset-analysis",)),
+            (Theme.KEY_INSERT_MODE, ("insert-mode",)),
+            (Theme.KEY_PASS, ("play", None)),
+            (Theme.KEY_SELFPLAY_TO_END, ("selfplay-setup", "end", None)),
+            (Theme.KEY_NAV_PREV_BRANCH, ("undo", "branch")),
+            (Theme.KEY_NAV_BRANCH_DOWN, ("switch-branch", 1)),
+            (Theme.KEY_NAV_BRANCH_UP, ("switch-branch", -1)),
+            (Theme.KEY_TIMER_POPUP, ("timer-popup",)),
+            (Theme.KEY_TEACHER_POPUP, ("teacher-popup",)),
+            (Theme.KEY_AI_POPUP, ("ai-popup",)),
+            (Theme.KEY_CONFIG_POPUP, ("config-popup",)),
+            (Theme.KEY_STOP_ANALYSIS, ("analyze-extra", "stop")),
+        ]
+
+        return {k: v for ks, v in shortcuts for k in (ks if isinstance(ks, list) else [ks])}
 
     def on_keyboard_down(
         self, _keyboard: Any, keycode: tuple[int, str], _text: str, modifiers: list[str] | None

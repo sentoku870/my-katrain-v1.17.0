@@ -5,6 +5,37 @@
 
 ---
 
+- 2026-07-20: Phase 273-deps 完了（依存更新・OSV解消）
+  - **目的**: mypy 1.x/2.x 移行を視野に入れた依存更新・OSV 警告の解消
+  - **方針**: OSV 解消最優先 / 上限追跡 / KivyMD 0.104.1 据え置き / 1PR まとめ
+  - **pyproject.toml 更新** (2 行):
+    - `urllib3>=2.2.2` → `urllib3>=2.5.0,<3`
+    - `pytest>=8.3.2,<9` → `pytest>=8.3.2,<10`
+  - **ロック更新 (25 パッケージ, `uv.lock --upgrade`)**:
+    - urllib3 2.5.0→2.7.0, Pillow 11.2.1→12.3.0, requests 2.32.4→2.34.2, pytest 8.4.1→9.1.1
+    - mypy 1.19.1→2.3.0, ruff 0.15.0→0.15.22, pyinstaller 6.14.1→6.21.0, pyinstaller-hooks-contrib 2025.5→2026.6
+    - coverage 7.14.3→7.15.2, setuptools 80.9.0→83.0.0, packaging 25.0→26.2, typing-extensions 4.14.0→4.16.0
+    - types-PyYAML 20250915→20260518, pywin32 310→312, librt 0.7.8→0.13.0
+    - charset-normalizer 3.4.2→3.4.9, certifi 2025.6.15→2026.6.17, idna 3.10→3.18, iniconfig 2.1.0→2.3.0
+    - docutils 0.21.2→0.23 (Kivy 経由), pefile 2023.2.7→2024.8.26, macholib 1.16.3→1.16.4, altgraph 0.17.4→0.17.5
+    - pathspec 0.12.1→1.1.1, pygments 2.19.1→2.20.0, ast-serialize 0.6.0 (mypy 2.x 新規推移)
+  - **OSV 警告**: urllib3 / Pillow / requests / pytest の既知脆弱警告をすべて解消
+  - **mypy 2.x 対応** (2 件):
+    - `katrain/gui/managers/keyboard_manager.py`: ショートカット dict comp を型注釈付き `shortcuts` リスト + 内包に再構成（`Misc [list-item]` を吸収）
+    - `katrain/core/reports/summary_json_export.py`: `im_keys` に `set[tuple[int, str]]` の明示型を付与（`var-annotated` を吸収）
+  - **テスト結果**:
+    - pytest: 5962 PASS + 3 SKIP (前回 5962 PASS + 3 SKIP と同一ベースライン)
+    - mypy `katrain`: 0 issues (319 source files)
+    - ruff check / ruff format: クリーン
+  - **影響**: 既存機能への影響なし、ランタイムコードは2ファイル各1行のみ、KivyMD 1.2.0 移行は別 Phase で実施
+  - **保留 (次回 Phase)**:
+    - KivyMD 1.2.0 移行 (`spec/KaTrain.spec` / `hook-kivymd.py` / KV ルール更新)
+    - chardet 5→7 への置換 (`core/sgf_parser.py:505` の挙動確認)
+    - GitHub Actions major 更新 (`setup-uv v5→v8` / `uv 0.7.8→最新`)
+    - Python 3.13 を CI matrix へ追加 (`.github/workflows/test_and_build.yaml:83`)
+    - mypy 2.x フル移行 (per-file 設定調整 / `--no-warn-unused-ignores` 採用等)
+  - **ブランチ**: 作成予定 (ローカル commit → push → PR)
+  - **コミット数**: 3 個予定
 - 2026-06-26: Phase 140 完了（テストカバレッジ拡大・保守性改善）
   - **目的**: badukpan.py と ai.py のテストカバレッジ改善、KaTrainGui 肥大化抑制
   - **削除**:
