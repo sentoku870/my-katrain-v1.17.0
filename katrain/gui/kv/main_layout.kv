@@ -1,6 +1,7 @@
 #:kivy 2.3.0
 #:import Theme katrain.gui.theme.Theme
 #:import MODE_PLAY katrain.core.constants.MODE_PLAY
+# Phase 277: KivyMD 1.2.0 renamed NavigationLayout -> MDNavigationLayout.
 
 <KaTrainGui>:
     board_gui: board_gui
@@ -10,7 +11,7 @@
     analysis_controls: analysis_controls
     nav_drawer: nav_drawer
     nav_drawer_contents: nav_drawer_contents
-    NavigationLayout:
+    MDNavigationLayout:
         ScreenManager:
             Screen:
                 name: 'gui'
@@ -45,7 +46,11 @@
             id: nav_drawer
             state: "close"
             y: 0
-            size_hint_y: None
+            # Phase 277: KivyMD 1.2.0 made MDNavigationDrawer extend
+            # MDCard (which extends BoxLayout) with default size_hint=(1, 1).
+            # Explicit ``size_hint_x: None`` is required so the ``-width``
+            # binding below actually takes effect.
+            size_hint: None, None
             -height: root.height - (analysis_controls.height if 'analysis_controls' in root.ids else 0)
             -width: self.height * 0.5
             swipe_edge_width: 0

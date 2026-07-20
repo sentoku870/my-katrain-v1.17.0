@@ -1,9 +1,16 @@
 """Kivy button classes (resizable, sized, toggle, icon).
 
 Phase 140 P2-2: Extracted from katrain/gui/kivyutils.py.
+Phase 277: Reworked for KivyMD 1.2.0 (BaseFlatButton / BasePressedButton were
+removed in 1.0.0; the entire button hierarchy is now rooted on
+``kivymd.uix.button.BaseButton`` which already provides ripple + a
+self-managed background). We keep the same external API and KV rules but
+drop the now-defunct KivyMD base classes from the MRO.
 
 Hierarchy:
-- SizedButton (base for resizable buttons)
+- SizedButton (base for resizable buttons; KivyMD 1.2.0 ``BaseButton``
+  + BackgroundMixin for the rounded-rectangle outline + LeftButtonBehavior
+  for click dispatch)
   - AutoSizedButton
   - SizedRectangleButton
     - AutoSizedRectangleButton
@@ -25,8 +32,8 @@ from kivy.properties import (
     StringProperty,
 )
 from kivy.uix.widget import Widget
-from kivymd.uix.behaviors import CircularRippleBehavior, RectangularRippleBehavior
-from kivymd.uix.button import BaseFlatButton, BasePressedButton
+from kivymd.uix.behaviors import CircularRippleBehavior
+from kivymd.uix.button import BaseButton
 
 from katrain.gui.kivyutils.mixins import BackgroundMixin, LeftButtonBehavior, ToggleButtonMixin
 from katrain.gui.theme import Theme
@@ -34,7 +41,14 @@ from katrain.gui.widgets.factory import Button
 
 
 # -- resizeable buttons / avoid baserectangular for sizing
-class SizedButton(LeftButtonBehavior, RectangularRippleBehavior, BasePressedButton, BaseFlatButton, BackgroundMixin):
+# Phase 277: KivyMD 1.2.0 removed BaseFlatButton / BasePressedButton and
+# collapsed the hierarchy into a single BaseButton. BaseButton already
+# extends RectangularRippleBehavior, ThemableBehavior, ButtonBehavior,
+# and AnchorLayout, so we no longer need to mix RectangularRippleBehavior
+# in explicitly -- only LeftButtonBehavior (for our left-click dispatch
+# contract) and BackgroundMixin (for the project's custom rounded-rect
+# outline drawn in widgets.kv).
+class SizedButton(LeftButtonBehavior, BaseButton, BackgroundMixin):
     text = StringProperty("")
     text_color = ListProperty(Theme.BUTTON_TEXT_COLOR)
     text_size = ListProperty([100, 100])
@@ -44,6 +58,13 @@ class SizedButton(LeftButtonBehavior, RectangularRippleBehavior, BasePressedButt
     padding_y = NumericProperty(0)
     _font_size = NumericProperty(None)
     font_name = StringProperty(Theme.DEFAULT_FONT)
+    # Phase 277: KivyMD 1.2.0 BaseButton defaults theme_text_color to None
+    # which is then resolved by each subclass. We rely on text_color being
+    # applied explicitly so the button is always rendered in our chosen
+    # colour regardless of the subclass defaults.
+    theme_text_color = OptionProperty(
+        "Custom", options=["Primary", "Secondary", "Hint", "Error", "Custom", "ContrastParentBackground"]
+    )
 
 
 class AutoSizedButton(SizedButton):

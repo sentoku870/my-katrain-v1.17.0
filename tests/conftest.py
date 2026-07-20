@@ -14,6 +14,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+# Phase 277: install KivyMD 1.2.0 .kv stub loader before any katrain.gui.*
+# import in test code. The loader is idempotent; production code paths
+# (katrain/__main__.py) also call it directly.
+from katrain.gui import _kivymd_kv_loader  # noqa: E402
+
+_kivymd_kv_loader.ensure_kivymd_kv_stubs()
+
 # Phase 241-H: configure Kivy for headless test runs BEFORE any Kivy
 # module is imported. Without these env vars the popup tests crash at
 # import time because Kivy's ``EventLoop.ensure_window`` tries to

@@ -29,6 +29,13 @@ import kivy
 
 kivy.require("2.0.0")
 
+# Phase 277: KivyMD 1.2.0 ships without its companion .kv files. Install
+# stub .kv files and override kivymd.uix_path BEFORE any kivymd.uix.* module
+# is imported. See katrain/gui/_kivymd_kv_loader.py for details.
+from katrain.gui import _kivymd_kv_loader  # noqa: E402
+
+_kivymd_kv_loader.ensure_kivymd_kv_stubs()
+
 # next, icon
 from kivy.config import Config
 

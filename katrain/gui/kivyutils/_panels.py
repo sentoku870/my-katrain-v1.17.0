@@ -210,6 +210,21 @@ class MyNavigationDrawer(MDNavigationDrawer):
             return True
         return super().on_touch_up(touch)
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Phase 278: ensure ``update_status`` runs once on construction.
+
+        In KivyMD 1.2.0 ``MDNavigationDrawer.update_status`` is the only
+        place that flips ``self.opacity`` between 0 (closed) and 1
+        (opened). The bindings ``state -> update_status`` etc. only
+        fire on property change, so on first construction nothing
+        changes, opacity stays at its Widget default of 1, and the
+        drawer renders at ``x=0, width=100`` even when ``state=close``.
+        Calling ``update_status`` once here ensures the drawer is
+        hidden by default.
+        """
+        super().__init__(**kwargs)
+        self.update_status()
+
 
 class AnalysisToggle(MDBoxLayout):
     text = StringProperty("")

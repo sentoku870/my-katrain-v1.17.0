@@ -88,6 +88,13 @@
 |----------|-----------|------|
 | [karte-schema.md](karte-schema.md) | Phase 231-237 | 単局カルテ（v3.3）/ 複数局サマリ（v3.4）の **JSON スキーマ正本ドキュメント**。型判別ロジック / Shape A vs Shape B / 全フィールド仕様 / バージョン履歴 |
 
+## Phase 270-277 その他（2026-07）
+
+| ファイル | 対応Phase | 内容 |
+|----------|-----------|------|
+| [phase270-karte-aggregator.md](phase270-karte-aggregator.md) | Phase 270 | 複数カルテ集約 + サマリプロンプト v3.5 拡張 |
+| [phase277-kivymd-1.2.0-migration.md](phase277-kivymd-1.2.0-migration.md) | Phase 277 | KivyMD 0.104.1 → 1.2.0 移行（Material Design 3 対応 + 欠落 `.kv` ファイル runtime hook） |
+
 ## Phase 171 で削除されたスペック
 
 以下のスペックは Phase 171（Leela エンジン完全削除）で実装と共に削除されました。git log で参照可能：
