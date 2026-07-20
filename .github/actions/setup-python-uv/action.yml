@@ -13,7 +13,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # Cache uv's wheel download cache ONLY (not the .venv itself).
     # Caching the .venv (which contains compiled kivy/SDL/ffpyplayer .so
@@ -24,7 +24,7 @@ runs:
     # uv sync rebuilds the .venv from the cached wheels in seconds, so we
     # trade a small per-job cost for reliable native-module loading.
     - name: Cache uv
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.cache/uv
@@ -33,14 +33,14 @@ runs:
           ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.sync-groups || 'default' }}-
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v8
       with:
-        version: "0.7.8"
+        version: "0.11.29"
 
     - name: Install dependencies
       shell: bash
