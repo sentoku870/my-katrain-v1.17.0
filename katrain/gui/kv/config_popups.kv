@@ -32,21 +32,42 @@
     BoxLayout:
         orientation: 'horizontal'
         size_hint_y: None
-        height: dp(50)
+        # Phase 277.1: bumped the header row from dp(50) to dp(60) so
+        # the "別版KataGoをダウンロード" / "追加モデルをダウンロード"
+        # buttons have enough vertical room for their Japanese
+        # captions (which need ~16-18sp + padding inside the rounded
+        # rectangle).
+        height: dp(60)
         spacing: dp(20)
         padding: dp(10)
         DescriptionLabel:
             text: i18n._('katago settings')
             font_size: sp(Theme.DESC_FONT_SIZE) * 1.5
             size_hint_x: 0.4
+        # Phase 277.1: AutoSized* buttons normally auto-size their
+        # width to the label's texture, but the previous ``size_hint:
+        # (0.3, 0.8)`` overrode that and shrank the Japanese caption
+        # to where it could not fit on the user's 2x-DPI screen.
+        # Drop ``size_hint_x`` so the buttons grow with their text
+        # and provide a generous inner padding for readability.
         AutoSizedRoundedRectangleButton:
             text: i18n._("download katago button")
             on_press: root.download_katas()
-            size_hint: (0.3, 0.8)
+            size_hint_x: None
+            width: self.label.texture_size[0] + 2 * self.padding_x
+            size_hint_y: 0.9
+            padding_x: dp(15)
+            padding_y: dp(6)
+            _font_size: sp(Theme.DESC_FONT_SIZE)
         AutoSizedRoundedRectangleButton:
             text: i18n._("download models button")
             on_press: root.download_models()
-            size_hint: (0.3, 0.8)
+            size_hint_x: None
+            width: self.label.texture_size[0] + 2 * self.padding_x
+            size_hint_y: 0.9
+            padding_x: dp(15)
+            padding_y: dp(6)
+            _font_size: sp(Theme.DESC_FONT_SIZE)
 
     # Main Content Area
     MDBoxLayout:

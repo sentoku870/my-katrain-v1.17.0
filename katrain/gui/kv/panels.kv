@@ -34,7 +34,10 @@
         Label:
             size_hint: 1,0.6
             text: i18n._(root.player_type)
-            font_size: 0.8 * self.height
+            # Phase 277.1: the previous ``0.8 * self.height`` blew up
+            # to ~40sp when the player box was at its 50dp floor and
+            # visually collided with the subtype label below. Cap it.
+            font_size: min(sp(16), 0.8 * self.height)
             size: self.texture_size
             max_lines: 1
             halign: 'center'
@@ -43,7 +46,7 @@
             id: subtype_label
             text: i18n._(root.player_subtype)
             size_hint: 1,0.4
-            font_size: self.height * 0.7 if root.player_type==PLAYER_HUMAN else self.height * 0.7 * min(1,18/len(self.text))
+            font_size: min(sp(12), self.height * 0.7) if root.player_type==PLAYER_HUMAN else min(sp(12), self.height * 0.7 * min(1,18/len(self.text)))
             text_size: self.size if root.player_type==PLAYER_HUMAN else (None,self.height)
             halign: 'center'
             valign: 'middle'
@@ -159,7 +162,11 @@
         size_hint: 0.6,1
         id: desc
         color: Theme.TEXT_COLOR
-        font_size: self.height * 0.7
+        # Phase 277.1: ``self.height * 0.7`` was rendering cramped
+        # labels in narrow stat rows (and once visible above the
+        # CollapsablePanel's ``content_height`` floor it could
+        # overhang). Cap the font so it always fits inside the row.
+        font_size: min(sp(12), self.height * 0.55)
         font_name: root.font_name
         text_size: self.size
         valign: 'middle'
@@ -248,12 +255,18 @@
     move_tree: move_tree
     padding: Theme.CP_PADDING,Theme.CP_PADDING,Theme.CP_PADDING,0
     spacing: Theme.CP_SPACING
-    tab_option_height: max(15,root.height / 30)
+    # Phase 277.1: raise the absolute floor so the CollapsablePanel
+    # tabs (e.g. score / winrate / important in JP) are tall enough
+    # to hold their text under the new Dark theme without the
+    # labels overflowing the panel border. The previous
+    # ``max(15, ...)`` floor was too tight and could squeeze the
+    # captions.
+    tab_option_height: max(24,root.height / 30)
     available_height: root.height - (3 * self.tab_option_height + 2*Theme.CP_PADDING - 4*Theme.CP_SPACING)
     player_box_height: max(50, 0.08 * root.available_height)
     timer_box_height:  max(50, 0.11 * root.available_height)
     graph_height:  max(75, 0.17 * root.height)
-    stat_height: max(20, 0.035 * root.height)
+    stat_height: max(22, 0.035 * root.height)
     BoxLayout: # -- Players
         size_hint_y: None
         height: root.player_box_height
@@ -319,25 +332,28 @@
             spacing: dp(4)
             # Phase 250: 4 buttons (black prev/next + white prev/next)
             # replace the legacy 2-button row + important-line toggle.
+            # Phase 277.1: bumped the caption from sp(11) to sp(13); the
+            # previous size was readable on a 1.0x DPI but invisible on
+            # the user's 2x screen beneath the score labels.
             Button:
                 text: i18n._('prev-important-move-black')
                 size_hint_x: 0.25
-                font_size: sp(11)
+                font_size: sp(13)
                 on_release: root.katrain("prev_important_black")
             Button:
                 text: i18n._('next-important-move-black')
                 size_hint_x: 0.25
-                font_size: sp(11)
+                font_size: sp(13)
                 on_release: root.katrain("next_important_black")
             Button:
                 text: i18n._('prev-important-move-white')
                 size_hint_x: 0.25
-                font_size: sp(11)
+                font_size: sp(13)
                 on_release: root.katrain("prev_important_white")
             Button:
                 text: i18n._('next-important-move-white')
                 size_hint_x: 0.25
-                font_size: sp(11)
+                font_size: sp(13)
                 on_release: root.katrain("next_important_white")
     CollapsablePanel:
         id: stats_panel
