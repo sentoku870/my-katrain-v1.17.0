@@ -692,11 +692,7 @@ class LLMCoachPopupContent(BoxLayout):
         place of names for some legacy kifu formats).
         """
         players_raw = info.get("all_players", []) or []
-        return [
-            (str(p["name"]), p.get("rank"))  # type: ignore[arg-type]
-            for p in players_raw
-            if isinstance(p, dict) and p.get("name")
-        ]
+        return [(str(p["name"]), p.get("rank")) for p in players_raw if isinstance(p, dict) and p.get("name")]
 
     def _update_summary_spinner(self, info: dict[str, Any], matched_name: str | None) -> None:
         """Phase 272-E: rebuild the perspective spinner values + default index.

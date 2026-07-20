@@ -418,7 +418,7 @@ def classify_meaning_tag(
     # Phase 248-C1: forward the board size so the endgame threshold
     # scales for 9x9 / 13x13 boards. ``board_size`` is a new optional
     # field on ``ClassificationContext`` (default 19 = legacy behaviour).
-    board_size = context.board_size if context else None  # type: ignore[union-attr]
+    board_size = context.board_size if context else None
     endgame_position = is_endgame(
         move_eval.move_number,
         context.total_moves if context else None,

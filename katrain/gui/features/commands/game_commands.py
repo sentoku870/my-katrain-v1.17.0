@@ -249,7 +249,13 @@ def do_new_game(
         ctx.engine.on_new_game()  # clear queries
     ctx.game = Game(
         ctx,
-        ctx.engine,  # type: ignore[arg-type]
+        ctx.engine,
+        # ``move_tree`` is typed ``SGFNode | None`` (parsed from the file)
+        # but ``Game.__init__`` expects ``GameNode | None``. The two classes
+        # are duck-type compatible at the call sites (children traversal,
+        # property lookup); the structural mismatch is documented in the
+        # Game facade's super().__init__ call. Keep the explicit ignore so
+        # future migration to a unified node type stays visible.
         move_tree=move_tree,  # type: ignore[arg-type]
         analyze_fast=analyze_fast or not move_tree,
         sgf_filename=sgf_filename,

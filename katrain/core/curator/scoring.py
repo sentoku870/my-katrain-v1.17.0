@@ -112,7 +112,7 @@ def _extract_user_weak_tags(
             weak_set = {str(t) for t in candidate if t != UNCERTAIN_TAG}
             break
         if isinstance(candidate, dict):
-            counts = candidate  # type: ignore[assignment]
+            counts = candidate
             break
     if weak_set is None and counts is None:
         per_player = getattr(user_aggregate, "meaning_tags_by_player", None)

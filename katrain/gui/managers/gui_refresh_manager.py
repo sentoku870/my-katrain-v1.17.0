@@ -68,7 +68,7 @@ class GUIRefreshManager:
             if game:
                 controls.move_tree.current_node = game.current_node
 
-    def update_status_for_error(self, message: str, level: int) -> None:  # type: ignore[type-arg]
+    def update_status_for_error(self, message: str, level: int) -> None:
         """Update the status bar if the log line is an error.
 
         Called by ``KaTrainGui.log`` AFTER it has forwarded the message to

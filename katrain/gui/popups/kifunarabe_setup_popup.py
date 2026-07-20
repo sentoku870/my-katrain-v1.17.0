@@ -54,10 +54,10 @@ _REF_TO_MAX_MOVES: dict[str, int] = {
 class KifunarabeSetupContent(BoxLayout):
     """Body widget of the kifunarabe setup popup."""
 
-    popup = ObjectProperty(None)  # type: ignore[assignment]
-    side_spinner = ObjectProperty(None)  # type: ignore[assignment]
-    hints_spinner = ObjectProperty(None)  # type: ignore[assignment]
-    max_moves_spinner = ObjectProperty(None)  # type: ignore[assignment]
+    popup = ObjectProperty(None)
+    side_spinner = ObjectProperty(None)
+    hints_spinner = ObjectProperty(None)
+    max_moves_spinner = ObjectProperty(None)
 
     def on_submit(self) -> None:
         """User clicked OK: validate inputs and propagate to controller."""

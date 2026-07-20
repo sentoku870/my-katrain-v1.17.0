@@ -5,6 +5,28 @@
 
 ---
 
+- 2026-07-20: Phase 275-mypy2 完了（mypy 2.x 完全移行 / per-file 設定整理）
+  - **目的**: Phase 273-deps で mypy 1.19.1 → 2.3.0 に暗黙追随した後の仕上げ。Phase 273 で型注釈 2 件は吸収済、本 Phase で残課題を一掃
+  - **pyproject.toml (`[tool.mypy]`)**:
+    - `warn_unused_ignores = true` を追加（将来 `# type: ignore` の取り残しを再発防止）
+    - `enable_error_code = ["deprecated", "redundant-cast", "unused-awaitable"]` を追加（DeprecationWarning 由来を型エラー化）
+    - `kivy_garden.*` override を `ignore_missing_imports` のみに絞り込み（コードから未参照のため `ignore_errors` 不要）
+    - `tests.*` を明示の `ignore_errors = true` で独立 override（Phase 112 以来の暗黙挙動を明文化）
+  - **撤去した未使用 `# type: ignore` (22 件 / 16 ファイル)**:
+    - `gui/managers/gui_refresh_manager.py:71`、`gui/managers/kifunarabe_toggle_mixin.py:139`、`core/utils.py:89`（契約コメントは残置）、`gui/managers/auto_setup_controller.py:115`、`core/analysis/meaning_tags/classifier.py:421`、`core/analysis/cluster_detectors.py:54`、`core/curator/scoring.py:115`、`gui/popups/kifunarabe_history_popup.py:134`、`core/coach/llm_validator.py:572-573`、`gui/controlspanel.py:522`、`gui/popups/quick_config.py:324,326,327`（うち 2 件は `enable_error_code` 強化で再浮上した真の ignore として復活）、`gui/popups/llm_coach_popup.py:696`、`gui/popups/kifunarabe_setup_popup.py:57-60`、`gui/features/kifunarabe_summary.py:33-35`、`gui/controllers/batch_analysis_controller.py:139-140`
+  - **保持した契約 ignore (1 件)**:
+    - `gui/features/commands/game_commands.py:253` `move_tree=move_tree` を `SGFNode | None` → `GameNode | None` の構造的差分がある場所で `# type: ignore[arg-type]` を保持。コメントで意図を文書化（duck-type 互換、`Game` 統合ノード型への移行 Phase を残置）
+  - **検証 (ローカル Python 3.13)**:
+    - `mypy katrain --warn-unused-ignores`: 0 issues (319 source files)
+    - `ruff check` / `ruff format --check`: clean
+    - `pytest tests`: 5962 PASS + 3 SKIP (ベースライン同数)
+  - **影響**: ランタイムコード不変、API 不変、テスト不変
+  - **保留 (次回以降)**:
+    - `SGFNode` と `GameNode` の型統合（`Game.__init__` シグネチャを `SGFNode | None` 受けに揃える or `SGFNode` を `GameNode` の subclass に）
+    - chardet 5→7 移行 (`core/sgf_parser.py:505` の挙動確認)
+    - KivyMD 1.2.0 移行 (spec/KaTrain.spec + KV 全面更新)
+  - **ブランチ**: `feature/phase275-mypy2`
+  - **コミット数**: 1 個予定
 - 2026-07-20: Phase 274-ci 完了（GitHub Actions major 更新 + Python 3.13 CI 追加）
   - **目的**: Dependabot 対象外だった CI アクションの major 更新を取り込み、`.python-version` / AGENTS.md の主開発環境（3.13.9）を CI matrix にも反映
   - **Actions 更新 (`.github/actions/setup-python-uv/action.yml`)**:

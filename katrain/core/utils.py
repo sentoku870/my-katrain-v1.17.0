@@ -85,6 +85,8 @@ TupleT = TypeVar("TupleT", bound=tuple[Any, ...])
 
 def weighted_selection_without_replacement(items: list[TupleT], pick_n: int) -> list[TupleT]:
     """For a list of tuples where the second element (index 1) is a weight, returns random items with those weights, without replacement."""
-    # Type ignore: we trust that item[1] exists and is numeric based on the docstring contract
-    elt = [(math.log(random.random()) / (item[1] + 1e-18), item) for item in items]  # type: ignore[index,operator]
+    # Contract: each ``item`` is a 2-tuple ``(payload, weight)`` per the
+    # docstring. ``TupleT = TypeVar("TupleT", bound=tuple[Any, ...])`` so
+    # ``item[1]`` is typed ``Any`` and the math on it is safe.
+    elt = [(math.log(random.random()) / (item[1] + 1e-18), item) for item in items]
     return [e[1] for e in heapq.nlargest(pick_n, elt)]  # NB fine if too small
