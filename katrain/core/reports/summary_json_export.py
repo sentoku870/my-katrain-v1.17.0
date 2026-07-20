@@ -529,7 +529,7 @@ def _format_top_mistake_item(
     # the per-game report, or only in the cross-game aggregate.
     # The ``getattr`` defaults to an empty set so test fixtures
     # built before Phase 158-I still work.
-    im_keys = getattr(game_ref, "important_moves_keys", set()) or set()
+    im_keys: set[tuple[int, str]] = getattr(game_ref, "important_moves_keys", set()) or set()
     item["in_individual_karte"] = (move.move_number, move.player) in im_keys
     return item
 
