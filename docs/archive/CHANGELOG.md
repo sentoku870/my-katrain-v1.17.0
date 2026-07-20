@@ -5,6 +5,29 @@
 
 ---
 
+- 2026-07-20: Phase 274-ci 完了（GitHub Actions major 更新 + Python 3.13 CI 追加）
+  - **目的**: Dependabot 対象外だった CI アクションの major 更新を取り込み、`.python-version` / AGENTS.md の主開発環境（3.13.9）を CI matrix にも反映
+  - **Actions 更新 (`.github/actions/setup-python-uv/action.yml`)**:
+    - `actions/checkout` v4 → v7
+    - `actions/setup-python` v5 → v6
+    - `actions/cache` v4 → v6
+    - `astral-sh/setup-uv` v5 → v8.3.2（タグ体系が v8.x 系で `v8` 浮動メジャーなし、minor pin。uv 0.7.8 → 0.11.29）
+  - **Workflow 更新 (`.github/workflows/test_and_build.yaml`)**:
+    - 全ジョブの `actions/checkout` v4 → v7
+    - `actions/upload-artifact` v4 → v7
+    - `actions/download-artifact` v4 → v8
+    - `softprops/action-gh-release` v2 → v3
+    - test job matrix: `["3.11","3.12"]` → `["3.11","3.12","3.13"]`
+  - **Workflow 更新 (`.github/workflows/stale.yml`)**: `actions/stale` v8 → v10
+  - **ラベル整備**: `dependencies` / `ci` / `python` をリポジトリに作成（既存 Dependabot groups と整合）
+  - **影響**: Dependabot groups はそのまま（minor/patch のみ自動採用、major は本 PR のように手動で運用）
+  - **検証 (ローカル Python 3.13)**:
+    - `mypy katrain`: 0 issues (319 files)
+    - `ruff check` / `ruff format --check`: clean
+    - `pytest tests`: 5962 PASS + 3 SKIP (ベースライン同数)
+  - **検証 (CI)**: prepare / lint / typecheck / test (3.11・3.12・3.13) / coverage / build-windows 全ジョブ green
+  - **ブランチ**: `feature/phase274-ci-actions`
+  - **コミット数**: 1 個予定
 - 2026-07-20: Phase 273-deps 完了（依存更新・OSV解消）
   - **目的**: mypy 1.x/2.x 移行を視野に入れた依存更新・OSV 警告の解消
   - **方針**: OSV 解消最優先 / 上限追跡 / KivyMD 0.104.1 据え置き / 1PR まとめ
