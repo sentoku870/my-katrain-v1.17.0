@@ -1,24 +1,23 @@
-"""Tests for ``game_commands.do_ai_move`` (Phase 170).
+"""Tests for ``game_commands.do_ai_move`` (Phase 170, updated Phase 280).
 
 Background
 ----------
 After Phase 170 the dispatcher uses ``STRATEGY_REGISTRY`` as the single
 source of truth: any ``Player.strategy`` value that *is* registered
-(``ai:default``, ``ai:handicap``, ``ai:pro``, the policy/pick families
-…) is forwarded to ``generate_ai_move``. Strategies that are NOT in
-the registry (notably ``"game:normal"`` and the bare KataGo engine
-strategy id) are skipped because ``KataGoEngine.poll`` already
-produces a move in its own loop.
+(``ai:default``, ``ai:handicap`` after Phase 280 slim-down) is forwarded
+to ``generate_ai_move``. Strategies that are NOT in the registry
+(notably ``"game:normal"`` and the bare KataGo engine strategy id)
+are skipped because ``KataGoEngine.poll`` already produces a move in its
+own loop.
 
 The tests below stub ``ctx`` enough to verify each branch:
 
-  * Registered strategy (``ai:human``) -> ``generate_ai_move`` is
+  * Registered strategy (``ai:default``) -> ``generate_ai_move`` is
     called with the strategy id and the settings dict.
   * ``mode == "game:normal"`` -> ``generate_ai_move`` is *not* called
     and no "AI Mode ... not found" log appears.
   * Other KataGo-internal strategy ids (e.g. ``ai:rank``,
-    ``ai:scoreloss`` if the registry no longer holds them) -> also
-    skipped.
+    ``ai:scoreloss`` after Phase 280) -> also skipped.
   * Settings missing -> ``{}`` is passed; the dispatcher survives
     the ``or {}`` fallback.
   * Exception -> ``ctx.log`` + ``ctx.controls.set_status`` are
@@ -59,10 +58,10 @@ def ctx_fixture(monkeypatch: pytest.MonkeyPatch) -> Any:
 
             self._config: dict[str, dict[str, Any]] = {
                 "ai": {
-                    "ai:human": {"modern_style": False},
+                    "ai:default": {},
                 }
             }
-            self._next_player_strategy = "ai:human"
+            self._next_player_strategy = "ai:default"
 
         def config(self, setting: str, default: Any = None) -> Any:
             if "/" in setting:
@@ -91,8 +90,8 @@ def test_do_ai_move_routes_registered_strategy_to_generate_ai_move(
     from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
 
-    # Sanity: ai:human is registered, otherwise the test is meaningless.
-    assert "ai:human" in STRATEGY_REGISTRY
+    # Sanity: ai:default is registered, otherwise the test is meaningless.
+    assert "ai:default" in STRATEGY_REGISTRY
 
     called_with: dict[str, Any] = {}
 
@@ -108,8 +107,8 @@ def test_do_ai_move_routes_registered_strategy_to_generate_ai_move(
 
     assert called_with == {
         "game": ctx_fixture.game,
-        "ai_mode": "ai:human",
-        "ai_settings": {"modern_style": False},
+        "ai_mode": "ai:default",
+        "ai_settings": {},
     }
 
 
@@ -140,10 +139,9 @@ def test_do_ai_move_skips_game_normal_mode(ctx_fixture: Any, monkeypatch: pytest
 def test_do_ai_move_skips_unknown_modes(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Strategies not in ``STRATEGY_REGISTRY`` are also skipped.
 
-    This protects against future KataGo-internal ids
-    (e.g. ``ai:scoreloss`` if a refactor moves it out of the registry,
-    or hypothetical engine-specific ids) accidentally entering the
-    dispatcher branch.
+    This protects against future KataGo-internal ids (e.g. ``ai:rank``
+    or ``ai:scoreloss`` after the Phase 280 slim-down) accidentally
+    entering the dispatcher branch.
     """
     from katrain.core.ai_strategies_base import STRATEGY_REGISTRY
     from katrain.gui.features.commands import game_commands
@@ -156,9 +154,6 @@ def test_do_ai_move_skips_unknown_modes(ctx_fixture: Any, monkeypatch: pytest.Mo
     monkeypatch.setattr("katrain.core.ai.generate_ai_move", _should_not_call)
 
     for strategy_id in ("game:normal", "game:teach", "ai:leela", "ai:unknown"):
-        # If ai:leela were ever re-registered the test would still pass
-        # because Phase 170 keeps it out of the registry; explicitly
-        # assert that here so the regression is visible.
         if strategy_id == "ai:leela":
             assert strategy_id not in STRATEGY_REGISTRY, (
                 "Phase 170 removed ai:leela from the registry; if you "
@@ -171,11 +166,11 @@ def test_do_ai_move_skips_unknown_modes(ctx_fixture: Any, monkeypatch: pytest.Mo
 
 
 def test_do_ai_move_surfaces_settings_when_present(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """When ``ai:human`` settings are stored, the dispatcher forwards them."""
+    """When ``ai:default`` settings are stored, the dispatcher forwards them."""
     from katrain.gui.features.commands import game_commands
 
-    ctx_fixture._config["ai"]["ai:human"] = {"modern_style": True, "extra": 1}
-
+    # ai:default uses an empty settings dict, but the dispatcher should
+    # still forward it.
     captured: dict[str, Any] = {}
 
     def _capture(game: Any, ai_mode: str, ai_settings: dict[str, Any]) -> tuple[Any, Any]:
@@ -186,7 +181,7 @@ def test_do_ai_move_surfaces_settings_when_present(ctx_fixture: Any, monkeypatch
 
     game_commands.do_ai_move(ctx_fixture, node=None)
 
-    assert captured["settings"] == {"modern_style": True, "extra": 1}
+    assert captured["settings"] == {}
 
 
 def test_do_ai_move_falls_back_to_empty_settings(ctx_fixture: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -200,7 +195,7 @@ def test_do_ai_move_falls_back_to_empty_settings(ctx_fixture: Any, monkeypatch: 
     from katrain.gui.features.commands import game_commands
 
     # Strip the config so the dispatcher hits its ``or {}`` fallback.
-    ctx_fixture._config["ai"].pop("ai:human", None)
+    ctx_fixture._config["ai"].pop("ai:default", None)
 
     captured: dict[str, Any] = {}
 

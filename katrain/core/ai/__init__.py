@@ -1,21 +1,13 @@
-"""AI strategy implementations for KaTrain.
+"""AI subsystem for KaTrain.
 
-This module contains all AI strategy classes for generating moves.
+Phase 280: Slimmed down to only the two survivor strategies
+(`ai:default` / `ai:handicap`). Module structure remains:
+- ``ai_strategies_base.py``: Base class (`AIStrategy`), `STRATEGY_REGISTRY`,
+  `register_strategy` decorator.
+- ``ai_strategies/`` subpackage: Concrete strategy classes (only `basic.py`
+  with `DefaultStrategy` / `HandicapStrategy` now).
 
-Module structure (Phase B5 refactoring):
-- ai_strategies_base.py: Base class (AIStrategy) and utilities
-- ai.py (this file): All strategy implementations
-
-Strategy categories:
-- Basic: DefaultStrategy, HandicapStrategy, AntimirrorStrategy, JigoStrategy
-- Score-based: ScoreLossStrategy
-- Ownership-based: OwnershipBaseStrategy, SimpleOwnershipStrategy, SettleStonesStrategy
-- Policy-based: PolicyStrategy, WeightedStrategy
-- Pick-based: PickBasedStrategy, PickStrategy, RankStrategy, InfluenceStrategy,
-              TerritoryStrategy, LocalStrategy, TenukiStrategy
-- Human-style: HumanStyleStrategy
-
-Usage:
+Public API:
     from katrain.core.ai import STRATEGY_REGISTRY, generate_ai_move
     strategy_class = STRATEGY_REGISTRY[strategy_name]
     strategy = strategy_class(game, ai_settings)
@@ -23,43 +15,15 @@ Usage:
 """
 
 import math
-from typing import Any, cast
+from typing import Any
 
 from katrain.core.ai.constants import (
     AI_ACCURACY_DECAY_BASE,
-    AI_DEFAULT,
-    AI_HANDICAP,
-    AI_HUMAN,
-    AI_INFLUENCE,
-    AI_INFLUENCE_ELO_GRID,
-    AI_JIGO,
-    AI_LOCAL,
-    AI_LOCAL_ELO_GRID,
-    AI_PICK,
-    AI_PICK_ELO_GRID,
-    AI_PRO,
-    AI_RANK,
-    AI_SCORELOSS,
-    AI_SCORELOSS_ELO,
-    AI_STRENGTH,
-    AI_TENUKI,
-    AI_TENUKI_ELO_GRID,
-    AI_TERRITORY,
-    AI_TERRITORY_ELO_GRID,
-    AI_WEIGHTED,
-    AI_WEIGHTED_ELO,
-    CALIBRATED_RANK_ELO,
+    AI_STRATEGIES,
 )
-
-# =============================================================================
-# Base classes and utilities (extracted to ai_strategies_base.py, re-exported)
-# =============================================================================
 from katrain.core.ai_strategies_base import (
-    # Registry
     STRATEGY_REGISTRY,
-    # Base class
-    interp1d,
-    interp2d,
+    register_strategy,  # noqa: F401  (re-exported for back-compat)
 )
 from katrain.core.constants import ADDITIONAL_MOVE_ORDER, OUTPUT_DEBUG
 from katrain.core.game import Game, GameNode, Move
@@ -67,39 +31,16 @@ from katrain.core.utils import evaluation_class
 
 
 def ai_rank_estimation(strategy: str, settings: dict[str, Any]) -> float:
-    if strategy in [AI_DEFAULT, AI_HANDICAP, AI_JIGO, AI_PRO]:
+    """Estimate the dan rank for a given AI strategy and its settings.
+
+    Phase 280: After the strategy slim-down, both remaining strategies report
+    a fixed strength (9 dan) without interpolation. Hook is preserved so
+    the GUI and tests can still call it.
+    """
+    del settings  # unused; kept for API compatibility
+    if strategy in AI_STRATEGIES:
         return 9.0
-    if strategy == AI_RANK:
-        return 1 - float(settings["kyu_rank"])
-    if strategy == AI_HUMAN:
-        return 1 - float(settings["human_kyu_rank"])
-
-    elo: float = 0.0
-    if strategy in [AI_WEIGHTED, AI_SCORELOSS, AI_LOCAL, AI_TENUKI, AI_TERRITORY, AI_INFLUENCE, AI_PICK]:
-        if strategy == AI_WEIGHTED:
-            elo = interp1d(AI_WEIGHTED_ELO, settings["weaken_fac"])
-        if strategy == AI_SCORELOSS:
-            # Convert int ELO values to float for type compatibility
-            scoreloss_elo: list[tuple[float, float]] = [(x, float(y)) for x, y in AI_SCORELOSS_ELO]
-            elo = interp1d(scoreloss_elo, settings["strength"])
-        Interp2DGrid = tuple[list[float], list[float], list[list[float]]]
-        if strategy == AI_PICK:
-            elo = interp2d(cast(Interp2DGrid, tuple(AI_PICK_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
-        if strategy == AI_LOCAL:
-            elo = interp2d(cast(Interp2DGrid, tuple(AI_LOCAL_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
-        if strategy == AI_TENUKI:
-            elo = interp2d(cast(Interp2DGrid, tuple(AI_TENUKI_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
-        if strategy == AI_TERRITORY:
-            elo = interp2d(cast(Interp2DGrid, tuple(AI_TERRITORY_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
-        if strategy == AI_INFLUENCE:
-            elo = interp2d(cast(Interp2DGrid, tuple(AI_INFLUENCE_ELO_GRID)), settings["pick_frac"], settings["pick_n"])
-
-        # Convert CALIBRATED_RANK_ELO to proper type
-        calibrated_elo: list[tuple[float, float]] = [(x, float(y)) for x, y in CALIBRATED_RANK_ELO]
-        kyu = interp1d(calibrated_elo, elo)
-        return 1 - kyu
-    else:
-        return float(AI_STRENGTH[strategy])
+    return 9.0
 
 
 def game_report(
@@ -186,31 +127,12 @@ def game_report(
 
 
 # =============================================================================
-
+# Strategy implementations have been extracted to ai_strategies/ subpackage.
+# Importing it populates STRATEGY_REGISTRY via @register_strategy decorators.
 # =============================================================================
-# Strategy implementations have been extracted to ai_strategies/ subpackage
-# (Phase 158+: family-based organization). Importing the subpackage
-# populates STRATEGY_REGISTRY via @register_strategy decorators.
-# =============================================================================
-from katrain.core.ai_strategies import (  # noqa: F401  (registry side-effect)
-    AntimirrorStrategy,
+from katrain.core.ai_strategies import (  # noqa: F401, E402  (registry side-effect)
     DefaultStrategy,
     HandicapStrategy,
-    HumanStyleStrategy,
-    InfluenceStrategy,
-    JigoStrategy,
-    LocalStrategy,
-    OwnershipBaseStrategy,
-    PickBasedStrategy,
-    PickStrategy,
-    PolicyStrategy,
-    RankStrategy,
-    ScoreLossStrategy,
-    SettleStonesStrategy,
-    SimpleOwnershipStrategy,
-    TenukiStrategy,
-    TerritoryStrategy,
-    WeightedStrategy,
 )
 
 
@@ -218,15 +140,11 @@ def generate_ai_move(game: Game, ai_mode: str, ai_settings: dict[str, Any]) -> t
     """Generate a move using the selected AI strategy"""
     game.katrain.log(f"Generate AI move called with mode: {ai_mode}", OUTPUT_DEBUG)
 
-    # Create the appropriate strategy based on mode
-
     strategy = STRATEGY_REGISTRY[ai_mode](game, ai_settings)
 
-    # Generate the move
     game.katrain.log(f"Generating move using {strategy.__class__.__name__}", OUTPUT_DEBUG)
     move, ai_thoughts = strategy.generate_move()
 
-    # Play the move and return
     game.katrain.log(f"Playing move {move.gtp()} and creating game node", OUTPUT_DEBUG)
     played_node = game.play(move)
     game.katrain.log(f"AI thoughts: {ai_thoughts}", OUTPUT_DEBUG)
@@ -236,5 +154,9 @@ def generate_ai_move(game: Game, ai_mode: str, ai_settings: dict[str, Any]) -> t
     return move, played_node
 
 
-# =============================================================================
-#
+__all__ = [
+    "STRATEGY_REGISTRY",
+    "ai_rank_estimation",
+    "game_report",
+    "generate_ai_move",
+]

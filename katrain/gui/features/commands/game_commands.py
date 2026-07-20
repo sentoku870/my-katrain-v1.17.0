@@ -80,24 +80,6 @@ def do_switch_branch(ctx: KaTrainGui, *args: Any) -> None:
     ctx.controls.move_tree.switch_branch(*args)
 
 
-def do_selfplay_setup(
-    ctx: KaTrainGui,
-    until_move: int | float,
-    target_b_advantage: float | None = None,
-) -> None:
-    """Configure the game for self-play mode.
-
-    Args:
-        ctx: KaTrainGui instance
-        until_move: Stop self-play after this many moves
-        target_b_advantage: Target score advantage for black
-    """
-    if target_b_advantage is None:
-        target_b_advantage = 0  # default to even
-    ctx.engine.selfplay_until = until_move
-    ctx.engine.target_b_advantage = target_b_advantage
-
-
 def do_start_selfplay(ctx: KaTrainGui, until_move: int | float, target_b_advantage: float | None = None) -> None:
     """Enter self-play mode (delegates to ``Game.selfplay``).
 
