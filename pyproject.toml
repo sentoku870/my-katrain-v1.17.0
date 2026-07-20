@@ -15,7 +15,7 @@ classifiers = [
 ]
 dependencies = [
     "screeninfo>=0.8.1,<0.9 ; platform_system != 'Darwin'",
-    "chardet>=5.2.0,<6",
+    "chardet>=7",
     "docutils>=0.21.2",
     "ffpyplayer>=4.5.1",
     "pyyaml>=6.0.0,<7",

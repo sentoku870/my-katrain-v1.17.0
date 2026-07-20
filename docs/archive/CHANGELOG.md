@@ -5,6 +5,21 @@
 
 ---
 
+- 2026-07-20: Phase 276-chardet7 完了（chardet 5 → 7 移行 / OSV 別系統の更新）
+  - **目的**: Phase 273-deps で据え置きにした chardet 5（2023-08 リリース・LGPL）を 7 系（0BSD の ground-up 書き直し）に更新
+  - **pyproject.toml**: `chardet>=5.2.0,<6` → `chardet>=7`
+  - **uv.lock 更新 (chardet 5.2.0 → 7.4.3)**: `detect()` API は drop-in replacement だが、判定挙動の差分を `core/sgf_parser.py:505` のフォールバックに追加して吸収
+    - chardet 5: 短文中国語に `GB2312` を返す / 西欧テキストを誤って `Windows-1252` 判定
+    - chardet 7: 短文中国語に `GB18030`（GBK 上位互換）/ 西欧テキストを `Windows-1253` 等の Windows-125x 系で返す
+  - **互換修正 (`core/sgf_parser.py:505`)**: 既存 `Windows-1252` / `GB2312` フォールバックを `("Windows-1252","Windows-1253","GB2312","GB18030")` に拡張。chardet 7 でも GBK ルーティングが継続
+  - **テスト追加 (`tests/test_parser.py`)**: `test_chardet7_compat_fallback_to_gbk` を追加（短文中国語 GB18030 + Windows-125x 系の chardet 7 互換ピン留め）
+  - **検証 (ローカル Python 3.13)**:
+    - `mypy katrain`: 0 issues (319 source files)
+    - `ruff check` / `ruff format --check`: clean
+    - `pytest tests`: 5963 PASS + 3 SKIP (ベースライン +1 の新規テスト)
+  - **影響**: ランタイムコードはフォールバック追加1行のみ、API不変、テスト不変
+  - **ブランチ**: `feature/phase276-chardet7`
+  - **コミット数**: 1 個予定
 - 2026-07-20: Phase 275-mypy2 完了（mypy 2.x 完全移行 / per-file 設定整理）
   - **目的**: Phase 273-deps で mypy 1.19.1 → 2.3.0 に暗黙追随した後の仕上げ。Phase 273 で型注釈 2 件は吸収済、本 Phase で残課題を一掃
   - **pyproject.toml (`[tool.mypy]`)**:
