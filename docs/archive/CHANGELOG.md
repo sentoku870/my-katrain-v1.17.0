@@ -11,7 +11,7 @@
     - `actions/checkout` v4 → v7
     - `actions/setup-python` v5 → v6
     - `actions/cache` v4 → v6
-    - `astral-sh/setup-uv` v5 → v8（uv 0.7.8 → 0.11.29）
+    - `astral-sh/setup-uv` v5 → v8.3.2（タグ体系が v8.x 系で `v8` 浮動メジャーなし、minor pin。uv 0.7.8 → 0.11.29）
   - **Workflow 更新 (`.github/workflows/test_and_build.yaml`)**:
     - 全ジョブの `actions/checkout` v4 → v7
     - `actions/upload-artifact` v4 → v7
