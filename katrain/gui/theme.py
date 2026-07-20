@@ -166,8 +166,12 @@ class Theme:
 
     # graph
     GRAPH_DOT_COLOR = [0.85, 0.3, 0.3, 1]
-    WINRATE_MARKER_COLOR = [0.05, 0.7, 0.05, 1]
-    SCORE_MARKER_COLOR = [0.2, 0.6, 0.8, 1]
+    # Phase 277.1: the originals (``0.05, 0.7, 0.05`` and
+    # ``0.2, 0.6, 0.8``) were legible on the upstream light-on-dark
+    # background but sink into the navy panel of myKatrain. Brighter
+    # variants keep the winrate / score scale labels readable.
+    WINRATE_MARKER_COLOR = [0.25, 0.95, 0.25, 1]
+    SCORE_MARKER_COLOR = [0.45, 0.85, 1.0, 1]  # noqa: E501
 
     # move tree
     MOVE_TREE_LINE = LIGHT_GREY

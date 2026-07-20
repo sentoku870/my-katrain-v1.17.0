@@ -54,11 +54,19 @@ def do_config_popup(ctx: KaTrainGui) -> None:
         # P2-A (H6): release the two language bindings on dismiss so
         # repeated open/close cycles don't accumulate callbacks.
         new_popup.bind(on_dismiss=lambda _instance: content.cleanup())
+        # Phase 277.1: clear ``ctx.config_popup`` when dismissed so
+        # the next ``do_config_popup`` call creates a fresh popup
+        # rather than reopening the existing one. Previously the
+        # title got ``+= ": {path}"`` appended every time the user
+        # opened the settings, eventually rendering the popup header
+        # as ": path: path: path: path".
+        new_popup.bind(on_dismiss=lambda _instance: setattr(ctx, "config_popup", None))
         ctx.config_popup = new_popup
 
     assert ctx.config_popup is not None
     ctx.config_popup.content.popup = ctx.config_popup
-    ctx.config_popup.title += ": " + ctx.config_file
+    if ": " + ctx.config_file not in ctx.config_popup.title:
+        ctx.config_popup.title += ": " + ctx.config_file
     ctx.config_popup.open()
 
 

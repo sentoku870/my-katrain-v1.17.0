@@ -758,6 +758,16 @@ class KaTrainApp(MDApp):
 
         self.title = f"KaTrain v{VERSION}"
 
+        # Phase 277.1: KivyMD 1.2.0 defaults ``theme_style`` to "Light",
+        # which makes ``theme_cls.text_color`` resolve to 87% black and
+        # ``on_primary_container_color`` resolve to a dark blue. On
+        # myKatrain's dark navy background that renders every KivyMD
+        # widget's text (tab labels, MDTextField path inputs, MDLabel
+        # hints, MDCheckbox captions, ...) as barely-visible dark
+        # text. The upstream fork used a Dark theme; replicate it.
+        self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "Blue"
+
         # Phase 133: KV files are now loaded from katrain/gui/kv/ directory
 
         package_path = get_package_path()

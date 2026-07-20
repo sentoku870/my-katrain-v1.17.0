@@ -62,12 +62,14 @@
         halign: 'center'
         font_size: root.height / 3
         font_name: root.font_name
-        # Phase 277: KivyMD 1.2.0 renamed selected_color/unselected_color
-        # -> color_active/color_inactive and defaults them to None at
-        # KV rule-evaluation time (the real value is assigned in
-        # MDCheckbox.__init__). Fall back to a safe RGBA tuple so the
-        # ClickableLabel.color binding never sees None.
-        color: (checkbox.color_active if checkbox.active else checkbox.color_inactive) if not checkbox.disabled else checkbox.disabled_color
+        # Phase 277.1: KivyMD 1.2.0 binds the MDCheckbox icon color
+        # to ``theme_cls.primary_color`` (vibrant blue in our Dark
+        # theme). Previously the label followed that color and gained
+        # a too-loud blue tint whenever the box was checked, which
+        # was visually distracting. Keep the label color constant
+        # regardless of checkbox state; only the checkbox mark itself
+        # now indicates on/off.
+        color: Theme.TEXT_COLOR if not checkbox.disabled else checkbox.disabled_color
         size_hint_x: None
         width: self.texture_size[0] + 4
         on_left_press: checkbox.trigger_action()
