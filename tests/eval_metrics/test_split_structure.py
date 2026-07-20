@@ -5,6 +5,11 @@ and ``tests/test_batch_analyzer.py`` (1156 lines, Phase E-2) were both
 split into themed subpackages in 2026-07. These tests guard the split
 so future additions go to the right file and we don't accidentally
 regress to monolithic files.
+
+Phase 280: ``tests/ai_strategies/`` subpackage collapsed back into
+``tests/test_ai.py`` when only two AI strategies survived the slim-down.
+The corresponding entry in ``SPLIT_FILES`` and the deprecation shim
+``tests/test_ai_strategies.py`` were removed at the same time.
 """
 
 from __future__ import annotations
@@ -38,15 +43,6 @@ SPLIT_FILES: dict[str, tuple[str, ...]] = {
         "test_output.py",
         "test_helpers.py",
     ),
-    "tests/ai_strategies/": (
-        "__init__.py",
-        "_helpers.py",
-        "test_helpers.py",
-        "test_basic_strategies.py",
-        "test_ownership_strategies.py",
-        "test_select_strategies.py",
-        "test_special_strategies.py",
-    ),
     "tests/cluster_classifier/": (
         "__init__.py",
         "_helpers.py",
@@ -61,7 +57,6 @@ DEPRECATION_SHIMS = (
     "tests/test_eval_metrics.py",
     "tests/test_karte_structure.py",
     "tests/test_batch_analyzer.py",
-    "tests/test_ai_strategies.py",
     "tests/test_cluster_classifier.py",
 )
 

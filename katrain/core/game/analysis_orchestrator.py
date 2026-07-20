@@ -495,8 +495,11 @@ class AnalysisOrchestrator:
             new_node.ai_thoughts = ai_thoughts
             if until_move != "end" and target_b_advantage is not None:
                 game.set_current_node(new_node)
+                # Phase 280: setup-position popup was removed; this branch
+                # is no longer reachable from the UI but is kept for any
+                # programmatic caller.
                 game.katrain.controls.set_status(
-                    i18n._("setup game status message").format(move=new_node.depth, until_move=until_move),
+                    f"Self-play progress: {new_node.depth}/{until_move}",
                     STATUS_INFO,
                 )
             else:

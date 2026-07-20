@@ -97,77 +97,9 @@
     },
     "ai": {
         "ai:default": {},
-        "ai:antimirror": {},
         "ai:handicap": {
             "automatic": true,
             "pda": 0
-        },
-        "ai:jigo": {
-            "target_score": 0.5
-        },
-        "ai:scoreloss": {
-            "strength": 0.2
-        },
-        "ai:policy": {
-            "opening_moves": 22.0
-        },
-        "ai:simple": {
-            "max_points_lost": 1.75,
-            "settled_weight": 1.0,
-            "opponent_fac": 0.5,
-            "min_visits": 3,
-            "attach_penalty": 1,
-            "tenuki_penalty": 0.5
-        },
-        "ai:p:weighted": {
-            "weaken_fac": 1.25,
-            "pick_override": 1.0,
-            "lower_bound": 0.001
-        },
-        "ai:p:pick": {
-            "pick_override": 0.95,
-            "pick_n": 5,
-            "pick_frac": 0.35
-        },
-        "ai:p:local": {
-            "pick_override": 0.95,
-            "stddev": 1.5,
-            "pick_n": 15,
-            "pick_frac": 0.0,
-            "endgame": 0.5
-        },
-        "ai:p:tenuki": {
-            "pick_override": 0.85,
-            "stddev": 7.5,
-            "pick_n": 5,
-            "pick_frac": 0.4,
-            "endgame": 0.45
-        },
-        "ai:p:influence": {
-            "pick_override": 0.95,
-            "pick_n": 5,
-            "pick_frac": 0.3,
-            "threshold": 3.5,
-            "line_weight": 10,
-            "endgame": 0.4
-        },
-        "ai:p:territory": {
-            "pick_override": 0.95,
-            "pick_n": 5,
-            "pick_frac": 0.3,
-            "threshold": 3.5,
-            "line_weight": 2,
-            "endgame": 0.4
-        },
-        "ai:p:rank": {
-            "kyu_rank": 4.0
-        },
-        "ai:human": {
-            "human_kyu_rank": 8,
-            "modern_style": false
-        },
-        "ai:pro": {
-            "pro_year": 1914
         }
     },
     "mykatrain_settings": {

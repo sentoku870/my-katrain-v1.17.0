@@ -1,15 +1,19 @@
-"""AI strategy base classes and utilities.
+"""AI strategy base classes and registry (Phase 280 slim-down).
 
-PR #130: Phase B5 - ai_strategies_base.py作成
+After Phase 280 the AI strategy family is reduced to two survivors:
+``ai:default`` (DefaultStrategy) and ``ai:handicap`` (HandicapStrategy).
+This module retains only what those strategies actually need:
+- ``AIStrategy``: ABC base class with the engine-helper contract
+  (``wait_for_analysis`` / ``request_analysis``).
+- ``STRATEGY_REGISTRY``: strategy_id -> strategy_class.
+- ``register_strategy``: decorator used by strategy subclasses.
 
-ai.pyから抽出された基底クラスとユーティリティ関数。
-- AIStrategy: 全AI戦略の基底クラス
-- STRATEGY_REGISTRY: 戦略レジストリ
-- register_strategy: 戦略登録デコレータ
-- ユーティリティ関数（補間、重み生成など）
+Removed during Phase 280 (no surviving caller):
+- ``interp1d`` / ``interp2d`` / ``interp_ix`` interpolation helpers.
+- ``fmt_moves`` / ``should_play_top_move``.
+- ``generate_influence_territory_weights`` / ``generate_local_tenuki_weights``.
 """
 
-import math
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -20,7 +24,7 @@ from katrain.core.constants import (
     OUTPUT_ERROR,
     PRIORITY_EXTRA_AI_QUERY,
 )
-from katrain.core.game import Game, GameNode, Move
+from katrain.core.game import Game, Move
 
 # =============================================================================
 # Strategy Registry
@@ -37,117 +41,6 @@ def register_strategy(strategy_name: str) -> Callable[[type["AIStrategy"]], type
         return strategy_class
 
     return decorator
-
-
-# =============================================================================
-# Interpolation Utilities
-# =============================================================================
-
-
-def interp_ix(lst: list[float] | tuple[float, ...], x: float) -> tuple[int, float]:
-    """Find interpolation index and fraction."""
-    i = 0
-    while i + 1 < len(lst) - 1 and lst[i + 1] < x:
-        i += 1
-    t = max(0.0, min(1.0, (x - lst[i]) / (lst[i + 1] - lst[i])))
-    return i, t
-
-
-def interp1d(lst: list[tuple[float, float]], x: float) -> float:
-    """1D linear interpolation."""
-    xs, ys = zip(*lst, strict=False)
-    i, t = interp_ix(xs, x)
-    result: float = (1 - t) * ys[i] + t * ys[i + 1]
-    return result
-
-
-def interp2d(gridspec: tuple[list[float], list[float], list[list[float]]], x: float, y: float) -> float:
-    """2D bilinear interpolation."""
-    xs, ys, matrix = gridspec
-    i, t = interp_ix(xs, x)
-    j, s = interp_ix(ys, y)
-    result: float = (
-        matrix[j][i] * (1 - t) * (1 - s)
-        + matrix[j][i + 1] * t * (1 - s)
-        + matrix[j + 1][i] * (1 - t) * s
-        + matrix[j + 1][i + 1] * t * s
-    )
-    return result
-
-
-# =============================================================================
-# Move Generation Utilities
-# =============================================================================
-
-
-def fmt_moves(moves: list[tuple[float, Move]]) -> str:
-    """Format move list for display."""
-    return ", ".join(f"{mv.gtp()} ({p:.2%})" for p, mv in moves)
-
-
-def generate_influence_territory_weights(
-    ai_mode: str,
-    ai_settings: dict[str, Any],
-    policy_grid: list[list[float | None]],
-    size: tuple[int, int],
-) -> tuple[list[tuple[float, float, int, int]], str]:
-    """Generate position weights for influence/territory strategies."""
-    from katrain.core.ai.constants import AI_INFLUENCE
-
-    thr_line = ai_settings["threshold"] - 1  # zero-based
-    if ai_mode == AI_INFLUENCE:
-
-        def weight(x: int, y: int) -> float:
-            return float(
-                (1 / ai_settings["line_weight"])
-                ** (max(0, thr_line - min(size[0] - 1 - x, x)) + max(0, thr_line - min(size[1] - 1 - y, y)))
-            )
-    else:
-
-        def weight(x: int, y: int) -> float:
-            return float(
-                (1 / ai_settings["line_weight"]) ** (max(0, min(size[0] - 1 - x, x, size[1] - 1 - y, y) - thr_line))
-            )
-
-    weighted_coords: list[tuple[float, float, int, int]] = []
-    for x in range(size[0]):
-        for y in range(size[1]):
-            pval = policy_grid[y][x]
-            if pval is not None and pval > 0:
-                weighted_coords.append((pval * weight(x, y), weight(x, y), x, y))
-    ai_thoughts = (
-        f"Generated weights for {ai_mode} according to weight factor "
-        f"{ai_settings['line_weight']} and distance from {thr_line + 1}th line. "
-    )
-    return weighted_coords, ai_thoughts
-
-
-def generate_local_tenuki_weights(
-    ai_mode: str,
-    ai_settings: dict[str, Any],
-    policy_grid: list[list[float | None]],
-    cn: GameNode,
-    size: tuple[int, int],
-) -> tuple[list[tuple[float, float, int, int]], str]:
-    """Generate position weights for local/tenuki strategies."""
-    from katrain.core.ai.constants import AI_TENUKI
-
-    var = ai_settings["stddev"] ** 2
-    assert cn.move is not None and cn.move.coords is not None
-    mx, my = cn.move.coords
-    weighted_coords: list[tuple[float, float, int, int]] = []
-    for x in range(size[0]):
-        for y in range(size[1]):
-            pval = policy_grid[y][x]
-            if pval is not None and pval > 0:
-                weighted_coords.append((pval, math.exp(-0.5 * ((x - mx) ** 2 + (y - my) ** 2) / var), x, y))
-    ai_thoughts = f"Generated weights based on one minus gaussian with variance {var} around coordinates {mx},{my}. "
-    if ai_mode == AI_TENUKI:
-        weighted_coords = [(p, 1 - w, x, y) for p, w, x, y in weighted_coords]
-        ai_thoughts = (
-            f"Generated weights based on one minus gaussian with variance {var} around coordinates {mx},{my}. "
-        )
-    return weighted_coords, ai_thoughts
 
 
 # =============================================================================
@@ -268,69 +161,9 @@ class AIStrategy(ABC):
             self.game.engines[self.cn.next_player].check_alive(exception_if_dead=True)
         self.game.katrain.log(f"[{self.strategy_name}] Regular analysis completed", OUTPUT_DEBUG)
 
-    def should_play_top_move(
-        self,
-        policy_moves: list[tuple[float, Move | None]],
-        top_5_pass: bool,
-        override: float = 0.0,
-        overridetwo: float = 1.0,
-    ) -> tuple[Move | None, str]:
-        """Check if we should play the top policy move, regardless of strategy.
 
-        Args:
-            policy_moves: List of (probability, Move) tuples
-            top_5_pass: Whether pass is in top 5 moves
-            override: Single move override threshold
-            overridetwo: Combined top-2 override threshold
-
-        Returns:
-            Tuple of (Move or None, explanation)
-        """
-        top_policy_move_opt = policy_moves[0][1]
-        top_policy_move = top_policy_move_opt if top_policy_move_opt is not None else Move(None)
-        self.game.katrain.log(
-            f"[{self.strategy_name}] Checking if should play top move. "
-            f"Top move: {top_policy_move.gtp()} ({policy_moves[0][0]:.2%})",
-            OUTPUT_DEBUG,
-        )
-        self.game.katrain.log(
-            f"[{self.strategy_name}] Override thresholds: single={override:.2%}, combined={overridetwo:.2%}",
-            OUTPUT_DEBUG,
-        )
-        self.game.katrain.log(f"[{self.strategy_name}] Top 5 pass: {top_5_pass}", OUTPUT_DEBUG)
-
-        if top_5_pass:
-            self.game.katrain.log(
-                f"[{self.strategy_name}] Playing top move because pass is in top 5",
-                OUTPUT_DEBUG,
-            )
-            return top_policy_move, "Playing top one because one of them is pass."
-
-        if policy_moves[0][0] > override:
-            self.game.katrain.log(
-                f"[{self.strategy_name}] Playing top move because weight "
-                f"{policy_moves[0][0]:.2%} > override {override:.2%}",
-                OUTPUT_DEBUG,
-            )
-            return (
-                top_policy_move,
-                f"Top policy move has weight > {override:.1%}, so overriding other strategies.",
-            )
-
-        if policy_moves[0][0] + policy_moves[1][0] > overridetwo:
-            combined = policy_moves[0][0] + policy_moves[1][0]
-            self.game.katrain.log(
-                f"[{self.strategy_name}] Playing top move because combined weight "
-                f"{combined:.2%} > overridetwo {overridetwo:.2%}",
-                OUTPUT_DEBUG,
-            )
-            return (
-                top_policy_move,
-                f"Top two policy moves have cumulative weight > {overridetwo:.1%}, so overriding other strategies.",
-            )
-
-        self.game.katrain.log(
-            f"[{self.strategy_name}] No override condition met, continuing with strategy",
-            OUTPUT_DEBUG,
-        )
-        return None, ""
+__all__ = [
+    "STRATEGY_REGISTRY",
+    "register_strategy",
+    "AIStrategy",
+]

@@ -32,10 +32,6 @@
                 state: 'down'
                 on_state: if self.state=='down': root.mode = 'newgame'
             NewGameModeButton:
-                text: i18n._('setupposition')
-                id: analyze_btn
-                on_state: if self.state=='down': root.mode = 'setupposition'
-            NewGameModeButton:
                 text: i18n._('editgame')
                 id: edit_btn
                 on_state: if self.state=='down': root.mode = 'editgame'
@@ -157,31 +153,6 @@
                 input_property: 'game/clear_cache'
         SmallDescriptionLabel:
             text: i18n._('avoids replaying')
-    HideyBoxLayout:
-        id: setup_game_section
-        size_hint_y: 1.5 if root.mode == 'setupposition' else 1e-9
-        orientation: 'vertical'
-        SmallDescriptionLabel:
-            text: i18n._('setup position explanation')
-            size_hint: 1, 1.5
-        GridLayout:
-            cols: 2
-            rows: 2
-            size_hint: 1,2
-            DescriptionLabel:
-                text: i18n._('setup position black score')
-            AnchorLayout:
-                LabelledSelectionSlider:
-                    input_property: 'game/setup_advantage'
-                    key_option: True
-                    values: [(pt,f"{pt}") for pt in range(-150,151)]
-            DescriptionLabel:
-                text: i18n._('setup position move number')
-            AnchorLayout:
-                LabelledSelectionSlider:
-                    input_property: 'game/setup_move'
-                    key_option: True
-                    values: [(mv,str(mv)) for mv in range(50,251)]
     BoxLayout:
         size_hint_y: 2.5 if root.mode == 'editgame' else 1e-9
     HideyBoxLayout:

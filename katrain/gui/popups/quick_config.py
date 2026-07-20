@@ -220,9 +220,6 @@ class NewGamePopup(QuickConfigGui):
             if changed:
                 self.katrain.engine.on_new_game()
                 self.katrain.game.analyze_all_nodes(analyze_fast=True)
-        else:  # setup position
-            self.katrain("new-game")
-            self.katrain("selfplay-setup", props["game/setup_move"], props["game/setup_advantage"])
         self.update_playerinfo()  # name
         return set()
 
@@ -321,13 +318,12 @@ class ConfigAIPopup(QuickConfigGui):
                     widget.active = v
                     widget.bind(active=self.estimate_rank_from_options)
                 else:
-                    if isinstance(values[0], tuple):  # type: ignore[index]
+                    if isinstance(values[0], tuple):
                         fixed_values = [
-                            (v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), str(label)))
-                            for v, label in values  # type: ignore[attr-defined]
+                            (v, re.sub(r"\[(.*?)]", lambda m: i18n._(str(m[1])), str(label))) for v, label in values
                         ]
-                    else:  # just numbers
-                        fixed_values = [(v, str(v)) for v in values]  # type: ignore[attr-defined]
+                    else:  # just numbers (unreachable with the slim Phase 280 constants)
+                        fixed_values = [(v, str(v)) for v in values]  # type: ignore[misc]
                     widget = LabelledSelectionSlider(
                         values=fixed_values, input_property=f"ai/{strategy}/{k}", key_option=(k in AI_KEY_PROPERTIES)
                     )

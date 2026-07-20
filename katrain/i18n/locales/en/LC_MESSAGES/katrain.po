@@ -974,10 +974,6 @@ msgstr "Start New Game"
 msgid "editgame"
 msgstr "Edit Game Info"
 
-#. generate position alongside starting new game
-msgid "setupposition"
-msgstr "Set up Position"
-
 # teacher settings from here
 msgid "teacher settings"
 msgstr "Edit Teaching/Analysis Settings"
@@ -1264,136 +1260,6 @@ msgstr ""
 "perspective. When 'automatic' is set, KaTrain will find a suitable value "
 "automatically."
 
-msgid "ai:simple"
-msgstr "Simple Style"
-
-msgid "aihelp:simple"
-msgstr ""
-"Plays moves that lead to simplifying the board state. Of moves that lose at "
-"most 'max_points_lost' points and with at least 'min_visits', prefer moves "
-"that lose fewer points, settle own territory more (with importance "
-"settled_weight), settle opponent's territory more (importance settled_weight"
-" * opponent_fac), avoid tenuki (more than 5 spaces, importance "
-"tenuki_penalty), and avoid attachments (importance attachment_penalty). "
-"Weights can be negative to make it complicate the game instead, and wide "
-"root noise (in general settings) can be used to play more according to the "
-"style at the cost of strength. "
-
-msgid "ai:jigo"
-msgstr "KataJigo"
-
-msgid "ai:antimirror"
-msgstr "KataAntiMirror"
-
-msgid "aihelp:antimirror"
-msgstr "Anti Mirror-go Mode of KataGo."
-
-msgid "aihelp:jigo"
-msgstr ""
-"Will try to win by a set amount of points (default 0.5), without further "
-"restrictions."
-
-msgid "ai:scoreloss"
-msgstr "Score Loss"
-
-msgid "aihelp:scoreloss"
-msgstr ""
-"Plays moves that lead to more points lost with lower probability. Likely to "
-"play more varied/weaker with higher visits settings."
-
-msgid "ai:policy"
-msgstr "Policy"
-
-msgid "aihelp:policy"
-msgstr ""
-"Plays the top move from the policy network, without any reading. Strength is"
-" mainly affected by 'model' in engine settings. The 'opening_moves' setting "
-"affects how many moves in the opening are more random."
-
-msgid "ai:p:weighted"
-msgstr "Policy Weighted"
-
-msgid "aihelp:p:weighted"
-msgstr ""
-"Plays moves according to policy probability, with 'weaken_fac' influencing "
-"how much more likely weaker moves are played. With a very low value it plays"
-" like the 'Policy' AI. 'pick_override' determines when top move is chosen "
-"without randomness, and 'lower_bound' determines the lower bound policy "
-"value that is allowed."
-
-msgid "ai:p:pick"
-msgstr "Blinded Policy"
-
-msgid "aihelp:p:pick"
-msgstr ""
-"Picks 'pick_n + pick_frac * <number of legal moves>' at random and plays the"
-" best one. For 'pick_frac=1' plays like the 'Policy' AI. Plays top move if "
-"policy value is above 'pick_override' to avoid obvious mistakes."
-
-msgid "ai:p:local"
-msgstr "Local Style"
-
-msgid "aihelp:p:local"
-msgstr ""
-"Picks 'pick_n + pick_frac * <number of legal moves>' weighted towards the "
-"last move and plays the best one. Plays top move if policy value is above "
-"'pick_override' to avoid obvious mistakes."
-
-msgid "ai:p:tenuki"
-msgstr "Tenuki Style"
-
-msgid "aihelp:p:tenuki"
-msgstr ""
-"Picks 'pick_n + pick_frac * <number of legal moves>' weighted away from the "
-"last move and plays the best one. Plays top move if policy value is above "
-"'pick_override' to avoid obvious mistakes. A higher 'stddev' makes it play "
-"further away."
-
-msgid "ai:p:influence"
-msgstr "Influential Style"
-
-msgid "aihelp:p:influence"
-msgstr ""
-"Picks moves biased above the 'threshold' line and plays the best one. "
-"Increase 'line_weight' to penalize moves near the edge more. Stops strategy "
-"after the 'endgame' fraction of the board is filled."
-
-msgid "ai:p:territory"
-msgstr "Territorial Style"
-
-msgid "aihelp:p:territory"
-msgstr ""
-"Picks moves biased below the 'threshold' line and plays the best one. "
-"Increase 'line_weight' to penalize moves near the center more. Stops "
-"strategy after the 'endgame' fraction of the board is filled."
-
-msgid "ai:p:rank"
-msgstr "Calibrated Rank"
-
-msgid "aihelp:p:rank"
-msgstr ""
-"Picks a limited number of legal moves at random and plays the best one. "
-"Stronger settings select the best move from a larger selection. Since there "
-"is no 0 kyu/dan, 3 dan = -2 kyu."
-
-msgid "ai:human"
-msgstr "Human-like"
-
-msgid "aihelp:human"
-msgstr ""
-"Picks moves according to a human-like KataGo model. If 'modern_style' is "
-"ticked, the model will play according to a post-2016 AlphaZero opening "
-"style."
-
-msgid "ai:pro"
-msgstr "Historical Pro"
-
-msgid "aihelp:pro"
-msgstr ""
-"Picks moves according to a human-like KataGo model. Specifically, Imitate "
-"pro and strong insei moves based on historical game records from the "
-"specified year and surrounding years."
-
 #. in AI settings
 msgid "estimated strength"
 msgstr "Estimated Strength"
@@ -1517,25 +1383,6 @@ msgid "gui-locked"
 msgstr ""
 "Action {action} not allowed in distributed self-play training mode. Restart "
 "KaTrain to exit this mode."
-
-#. Progress message
-msgid "setup game status message"
-msgstr "Generating game via AI self-play:  Move {move}/{until_move} done."
-
-#. Popup for generating position: top explanation
-msgid "setup position explanation"
-msgstr ""
-"This generates a partial game for you to start playing from. For example, "
-"you can use this to play against stronger AIs starting from an advantage in "
-"a variety of middle- or end-game positions."
-
-#. Description for black target score
-msgid "setup position black score"
-msgstr "Target score for Black:"
-
-#. Description for how many moves
-msgid "setup position move number"
-msgstr "Generate game until move:"
 
 #. distance of wall to existing stones
 msgid "tsumego:walldistance"
