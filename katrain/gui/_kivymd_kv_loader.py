@@ -14,11 +14,11 @@ KivyMD, we:
 2. Override ``kivymd.uix_path`` to point at the tempdir *before* any
    ``kivymd.uix.*`` submodule is imported.
 
-The stub bodies are minimal but enough to let the affected widget
-classes register with ``kivy.lang.Builder`` and instantiate. The custom
-``<MyNavigationDrawer>`` / ``<MDCard>`` / ``<MDLabel>`` / ``<MDButton>`` /
-``<MDTextField>`` rules in our own ``katrain/gui/kv/*.kv`` files take
-over once the application loads its own KV strings.
+The stub bodies contain enough canvas + property rules for the
+widgets we actually use (``MDLabel``, ``MDTextField``, ``MDCheckbox``,
+``MDNavigationDrawer``, ``MDCard``, ``MDButton``) to render and behave
+correctly. Widgets we don't use get an empty rule so import still
+succeeds.
 
 Import order contract:
 
@@ -29,13 +29,8 @@ Import order contract:
 - ``katrain/__main__.py`` imports this module at line ~31 (right after
   ``kivy.require("2.0.0")``, before ``from kivymd.app import MDApp``).
 
-Why a runtime shim rather than a vendored fork?
-
-- KivyMD 1.2.0 is the most recent Material-Design-3 release on PyPI.
-  Upstream's tarball bug has been open since 2024-01; we do not want
-  to pin to ``master.zip`` (which may carry unrelated API churn).
-- The PyInstaller build already has a similar shim in
-  ``spec/hook-kivymd.py``. This module is the dev/CI counterpart.
+- ``tests/conftest.py`` also calls ``ensure_kivymd_kv_stubs()`` so test
+  collection works.
 
 Lifecycle:
 
@@ -50,7 +45,7 @@ import os
 import shutil
 import tempfile
 
-__all__ = ["ensure_kivymd_kv_stubs", "uix_path_override"]
+__all__ = ["ensure_kivymd_kv_stubs", "uix_path_override", "STUB_KV"]
 
 
 _stub_root: str | None = None
@@ -59,21 +54,25 @@ _stub_root: str | None = None
 # Stub .kv bodies
 # ---------------------------------------------------------------------------
 #
-# The strings below are intentionally minimal: only the rules and
-# properties that the runtime strictly needs. Anything richer would be
-# dead weight because the application overrides these widget rules in
-# its own ``katrain/gui/kv/*.kv`` files.
-#
 # Keep this table in sync with the affected KivyMD widget classes. The
 # KivyMD source files (``kivymd/uix/<widget>/<widget>.py``) are the
 # source of truth; ``grep -l uix_path kivymd/uix`` enumerates them.
-_STUB_KV: dict[str, str] = {
+#
+# The bodies for widgets we actually use (``MDLabel``, ``MDTextField``,
+# ``MDCheckbox``, ``MDNavigationDrawer``, etc.) contain working canvas
+# + property rules so the widgets render correctly. The bodies are
+# derived from the KivyMD 0.104.1 KV rules (which still apply for
+# these properties) but trimmed of MD3-specific styling.
+#
+# Note: this dict is the single source of truth. Both this runtime
+# loader and ``spec/hook-kivymd.py`` (PyInstaller build hook) import
+# the same constant so the two cannot drift.
+STUB_KV: dict[str, str] = {
+    # ---- Widgets we don't actually use; just need a rule to import ----
     "backdrop/backdrop.kv": "<MDBackdrop>:\n",
     "banner/banner.kv": "<MDBanner>:\n",
     "bottomnavigation/bottomnavigation.kv": "<MDBottomNavigation>:\n",
     "bottomsheet/bottomsheet.kv": "<MDBottomSheet>:\n",
-    "button/button.kv": ("<MDButton>:\n    disabled_color: self.theme_cls.disabled_hint_text_color\n"),
-    "card/card.kv": ("<MDCard>:\n    elevation: 0\n    md_bg_color: self.theme_cls.bg_light\n"),
     "chip/chip.kv": "<MDChip>:\n",
     "datatables/datatables.kv": "<MDDataTable>:\n",
     "dialog/dialog.kv": "<MDDialog>:\n",
@@ -81,12 +80,8 @@ _STUB_KV: dict[str, str] = {
     "expansionpanel/expansionpanel.kv": "<MDExpansionPanel>:\n",
     "filemanager/filemanager.kv": "<MDFileManager>:\n",
     "imagelist/imagelist.kv": "<MDSmartTile>:\n",
-    "label/label.kv": (
-        "<MDLabel>:\n    disabled_color: self.theme_cls.disabled_hint_text_color\n    text_size: self.size\n"
-    ),
     "list/list.kv": "<MDList>:\n",
     "menu/menu.kv": "<MDDropdownMenu>:\n",
-    "navigationdrawer/navigationdrawer.kv": ("<MDNavigationDrawer>:\n    close_on_click: True\n"),
     "navigationrail/navigationrail.kv": "<MDNavigationRail>:\n",
     "pickers/colorpicker/colorpicker.kv": "<MDColorPicker>:\n",
     "pickers/datepicker/datepicker.kv": "<MDDatePicker>:\n",
@@ -96,16 +91,129 @@ _STUB_KV: dict[str, str] = {
     "segmentedbutton/segmentedbutton.kv": "<MDSegmentedButton>:\n",
     "segmentedcontrol/segmentedcontrol.kv": "<MDSegmentedControl>:\n",
     "selection/selection.kv": "<MDSelection>:\n",
-    "selectioncontrol/selectioncontrol.kv": ("<MDCheckbox>:\n    ripple_effect: True\n"),
     "slider/slider.kv": "<MDSlider>:\n",
     "sliverappbar/sliverappbar.kv": "<MDSliverAppBar>:\n",
     "snackbar/snackbar.kv": "<MDSnackbar>:\n",
     "spinner/spinner.kv": "<MDSpinner>:\n",
     "tab/tab.kv": "<MDTabs>:\n",
-    "textfield/textfield.kv": ("<MDTextField>:\n    disabled_color: self.theme_cls.disabled_hint_text_color\n"),
     "toolbar/toolbar.kv": "<MDTopAppBar>:\n",
     "tooltip/tooltip.kv": "<MDTooltip>:\n",
     "transition/transition.kv": "<MDScreenTransition>:\n",
+    # ---- Widgets we DO use: provide working canvas + rules ----
+    "button/button.kv": ("<MDButton>:\n    disabled_color: self.theme_cls.disabled_hint_text_color\n"),
+    "card/card.kv": ("<MDCard>:\n    elevation: 0\n    md_bg_color: self.theme_cls.bg_light\n"),
+    "label/label.kv": (
+        "#:import md_icons kivymd.icon_definitions.md_icons\n"
+        "\n"
+        "<MDLabel>:\n"
+        "    disabled_color: self.theme_cls.disabled_hint_text_color\n"
+        "    text_size: self.width, None\n"
+        "\n"
+        "<MDIcon>:\n"
+        '    font_style: "Icon"\n'
+        "    text:\n"
+        '        u"{}".format(md_icons[self.icon]) \\\n'
+        '        if self.icon in md_icons else ""\n'
+        "    source: None if self.icon in md_icons else self.icon\n"
+        "    canvas:\n"
+        "        Color:\n"
+        "            rgba: (1, 1, 1, 1) if self.source else (0, 0, 0, 0)\n"
+        "        Rectangle:\n"
+        "            source: self.source if self.source else None\n"
+        "            pos: self.pos\n"
+        "            size: self.size\n"
+    ),
+    # MDNavigationDrawer is now MDCard-based (BoxLayout) in 1.2.0; its
+    # default size_hint = (1, 1) would override the ``-width`` binding
+    # in our main_layout.kv, so we force ``size_hint_x: None`` here.
+    "navigationdrawer/navigationdrawer.kv": (
+        "<MDNavigationDrawer>:\n    close_on_click: True\n    size_hint_x: None\n"
+    ),
+    # MDCheckbox renders the checkmark via canvas instructions; without
+    # the kv rule the widget has no visible body.
+    "selectioncontrol/selectioncontrol.kv": (
+        "<MDCheckbox>:\n"
+        "    canvas:\n"
+        "        Clear\n"
+        "        Color:\n"
+        "            rgba: self.color\n"
+        "        Rectangle:\n"
+        "            texture: self.texture\n"
+        "            size: self.texture_size\n"
+        "            pos:\n"
+        "                int(self.center_x - self.texture_size[0] / 2.),\\\n"
+        "                int(self.center_y - self.texture_size[1] / 2.)\n"
+        "    color: self._current_color\n"
+        "    halign: 'center'\n"
+        "    valign: 'middle'\n"
+        "\n"
+        "<Thumb>:\n"
+        "    color: 1, 1, 1, 1\n"
+        "    canvas:\n"
+        "        Color:\n"
+        "            rgba: self.color\n"
+        "        Ellipse:\n"
+        "            size: self.size\n"
+        "            pos: self.pos\n"
+    ),
+    # MDTextField needs canvas for the underline, hint, helper text.
+    # Property names changed between 0.104.1 and 1.2.0; we mirror the
+    # 1.2.0 internals (``_underline_width``, ``hint_text_color_normal``)
+    # so the canvas bindings resolve at widget-construction time.
+    "textfield/textfield.kv": (
+        "#:import dp kivy.metrics.dp\n"
+        "\n"
+        "<MDTextField>\n"
+        "    canvas.before:\n"
+        "        Clear\n"
+        "        # Disabled line.\n"
+        "        Color:\n"
+        "            rgba:\n"
+        "                self.line_color_normal \\\n"
+        '                if root.mode == "line" else (0, 0, 0, 0)\n'
+        "        Line:\n"
+        "            points:\n"
+        "                self.x, self.y + dp(16), \\\n"
+        "                self.x + self.width, self.y + dp(16)\n"
+        "            width: 1\n"
+        "            dash_length: dp(3)\n"
+        "            dash_offset: 2 if self.disabled else 0\n"
+        "        # Active line.\n"
+        "        Color:\n"
+        "            rgba:\n"
+        "                self._line_color_focus \\\n"
+        '                if self.mode == "line" else (0, 0, 0, 0)\n'
+        "        Rectangle:\n"
+        "            size: self._underline_width, dp(2)\n"
+        "            pos:\n"
+        "                self.center_x - (self._underline_width / 2), \\\n"
+        "                self.y + dp(16)\n"
+        "        # Hint text.\n"
+        "        Color:\n"
+        "            rgba: self._hint_text_color\n"
+        "        Rectangle:\n"
+        "            texture: self._hint_text_label.texture\n"
+        "            size: self._hint_text_label.texture_size\n"
+        "            pos:\n"
+        "                self.x, \\\n"
+        "                self.y + self.height - self._hint_y\n"
+        '    font_name: "Roboto" if not root.font_name else root.font_name\n'
+        "    foreground_color:\n"
+        "        self.theme_cls.on_primary_container_color \\\n"
+        '        if hasattr(self.theme_cls, "on_primary_container_color") \\\n'
+        "        else self.theme_cls.text_color\n"
+        '    font_size: "16sp"\n'
+        '    padding: 0, "16dp", 0, "10dp"\n'
+        "    multiline: False\n"
+        "    size_hint_y: None\n"
+        "    height: self.minimum_height\n"
+        "\n"
+        "<TextfieldLabel>\n"
+        "    size_hint_x: None\n"
+        "    width: self.texture_size[0]\n"
+        "    shorten: True\n"
+        '    shorten_from: "right"\n'
+    ),
 }
 
 
@@ -120,7 +228,7 @@ def _ensure_kv_stubs() -> str:
         return _stub_root
 
     _stub_root = tempfile.mkdtemp(prefix="kivymd_1_2_kv_stubs_")
-    for relpath, body in _STUB_KV.items():
+    for relpath, body in STUB_KV.items():
         full = os.path.join(_stub_root, relpath)
         os.makedirs(os.path.dirname(full), exist_ok=True)
         with open(full, "w", encoding="utf-8") as fh:
