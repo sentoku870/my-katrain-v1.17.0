@@ -1,4 +1,7 @@
-# From KivyMD which will remove it in their next version, with some fixes
+# Originally vendored from KivyMD which removed ``progressloader.py`` in
+# 0.104.2. Still a self-contained ``BoxLayout`` that hosts an ``MDSpinner``
+# and an ``MDLabel``; the latter two now come from KivyMD 1.2.0 with stub
+# ``.kv`` files injected by ``katrain.gui._kivymd_kv_loader`` at startup.
 from typing import Any
 
 from kivy.animation import Animation

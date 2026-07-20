@@ -1270,11 +1270,45 @@ ext_important DISPATCH キー（後方互換）
 
 詳細: docs/archive/specs-implemented/phase250-important-moves-refactor.md
 
-## Phase 200: `except Exception` 整理（部分完了、2026-07-17）
+### Phase 277: KivyMD 0.104.1 → 1.2.0 移行（2026-07-20）
 
-- 純粋計算系の silent swallow 9 箇所に `logger.debug(..., exc_info=True)` を追加
-- 6 ファイルに `import logging` + `logger = logging.getLogger(__name__)` 追加
-- 維持対象（13 箇所）は `# noqa: BLE001` 付き、または `# last-resort error path` コメント付き
+**問題**: 4 年以上前の KivyMD 0.104.1 (2020-04-27) を使い続けていたため、Material Design 3 / Material You 対応、`BaseButton` 統合、`color_active`/`color_inactive` 新 API などを受け取れず、Phase 273-deps でも意図的に据え置いていた。
+
+**解決策**: 1PR 一括で 13 ファイル変更 + 1 新規ファイル。
+
+- **依存更新**: `pyproject.toml` の `kivymd==0.104.1` → `==1.2.0`、`materialyoucolor>=1.0.0` 追加、`uv lock --upgrade` で 25 パッケージ更新
+- **runtime loader 新設**: `katrain/gui/_kivymd_kv_loader.py` — KivyMD 1.2.0 の sdist に同梱されない 36 個の `.kv` ファイルを tempdir に補完、`kivymd.uix_path` を monkey-patch。`katrain/__main__.py` + `tests/conftest.py` から呼出
+- **ボタン系 MRO 整理**: 1.0.0 で削除された `BaseFlatButton` / `BasePressedButton` を `BaseButton` 単一基底に置換（`katrain/gui/kivyutils/buttons.py`）。`RectangularRippleBehavior` も `BaseButton` 内蔵なので外す
+- **KV ファイル修正 4 件**:
+  - `main_layout.kv`: `NavigationLayout` → `MDNavigationLayout` (1.0.0 リネーム)
+  - `menu.kv`: `selected_color`/`unselected_color` → `color_active`/`color_inactive` (deprecated API → 新 API)
+  - `popup_widgets.kv`: `helper_text_mode: "none"` 削除 + `color_mode` 削除 (1.0.0 で API 整理)
+- **`popups/_base.py`**: `LabelledPathInput.on_text` の `super().on_text(widget, text)` 呼び出しを削除 (1.2.0 で親クラスから消失)
+- **PyInstaller 関連**:
+  - `spec/hook-kivymd.py`: 36 widget 全対応の `.kv` スタブ生成ロジックを実装 (runtime loader と完全同期)
+  - `spec/KaTrain.spec`: `hiddenimports` に `katrain.gui.lang_bridge` 追加 (KV `#:import` 起因の PyInstaller 静的解析漏れを救済)
+- **`progress_loader.py`**: ファイルヘッダの "From KivyMD which will remove it in their next version" コメントを 1.2.0 ベースに書き換え
+
+**保持**:
+- `MDApp` 基底クラス
+- `MDTextField` / `MDCheckbox` / `MDNavigationDrawer` の API は 1.2.0 でも概ね互換 (ただし helper_text_mode / selected_color 等は削除)
+- `BackgroundMixin` / `LeftButtonBehavior` 自前のミックスインはそのまま
+- `MY_NAVIGATION_DRAWER` の `on_touch_up` カスタマイズはそのまま動作
+
+**テスト結果**:
+- pytest: 5963 passed + 3 skipped (Phase 276 ベースライン維持)
+- mypy: 0 issues (320 source files)
+- ruff check / format: clean
+- PyInstaller Linux bundle: 396MB、起動成功 (`Failed to execute script` 解消)
+
+**影響**: 
+- Material Design 3 テーマが利用可能 (デフォルトは Light、Material You 動的カラー未対応)
+- `BaseButton` の標準リップル + 角丸が全ボタンに適用
+- `LabelledCheckBox` の色動的変化 (`color_active` ↔ `color_inactive`)
+
+詳細: docs/archive/specs-implemented/phase277-kivymd-1.2.0-migration.md
+
+## Phase 200: `except Exception` 整理（部分完了、2026-07-17）
 
 ---
 

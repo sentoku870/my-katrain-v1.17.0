@@ -68,6 +68,16 @@ hiddenimports = kivy_deps.get('hiddenimports', [])
 if is_windows:
     hiddenimports.extend(["win32file", "win32timezone", "six"])
 
+# Phase 277: KV files reference these modules via #:import directives
+# that PyInstaller's static analysis misses. ``lang_bridge`` was the
+# immediate crash in the KivyMD 1.2.0 bundle; the others are listed
+# proactively because they are imported by KV the same way.
+hiddenimports.extend(
+    [
+        "katrain.gui.lang_bridge",
+    ]
+)
+
 # Platform-specific hooks and excludes
 hookspath = kivy_deps.get('hookspath', [])
 hookspath.append(kivymd_hooks_path)

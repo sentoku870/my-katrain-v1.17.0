@@ -6,10 +6,12 @@
 <LabelledTextInput>:
     font_name: Theme.DEFAULT_FONT
     font_size: sp(Theme.INPUT_FONT_SIZE)
-    helper_text_mode: "none"
+    # Phase 277: KivyMD 1.2.0 removed ``helper_text_mode: "none"`` and
+    # ``color_mode``. ``helper_text: ""`` keeps the helper line empty
+    # under the new ``on_focus`` default, which is the equivalent of
+    # the old ``"none"`` behaviour.
     hint_text: ""
     helper_text: ""
-    color_mode: 'custom'
     line_color_focus: Theme.TEXT_COLOR
     line_color_normal: [0.5, 0.5, 0.5, 1]
     line_color: [0.5, 0.5, 0.5, 1]

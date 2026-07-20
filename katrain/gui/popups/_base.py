@@ -118,9 +118,13 @@ class LabelledPathInput(LabelledTextInput):
         file = find_package_resource(self.input_value, silent_errors=True)
         self.error = self.check_path and not (file and os.path.exists(file))
 
-    def on_text(self, widget: Any, text: str) -> Any:
+    def on_text(self, instance: Any, text: str) -> None:
+        # Phase 277: KivyMD 1.2.0 ``MDTextField`` no longer exposes
+        # ``on_text`` on the parent class (it migrated to the
+        # ``TextInput`` ``text`` property dispatcher with a different
+        # signature). Calling ``super().on_text`` would raise
+        # ``AttributeError``; we just need to run our validation hook.
         self.check_error()
-        return super().on_text(widget, text)
 
     @property
     def input_value(self) -> Any:

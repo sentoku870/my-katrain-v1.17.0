@@ -62,7 +62,12 @@
         halign: 'center'
         font_size: root.height / 3
         font_name: root.font_name
-        color: checkbox.disabled_color if root.disabled else (checkbox.selected_color if checkbox.active else checkbox.unselected_color)
+        # Phase 277: KivyMD 1.2.0 renamed selected_color/unselected_color
+        # -> color_active/color_inactive and defaults them to None at
+        # KV rule-evaluation time (the real value is assigned in
+        # MDCheckbox.__init__). Fall back to a safe RGBA tuple so the
+        # ClickableLabel.color binding never sees None.
+        color: (checkbox.color_active if checkbox.active else checkbox.color_inactive) if not checkbox.disabled else checkbox.disabled_color
         size_hint_x: None
         width: self.texture_size[0] + 4
         on_left_press: checkbox.trigger_action()
