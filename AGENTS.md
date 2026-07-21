@@ -18,8 +18,20 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + **282-architecture-followup**
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + 282-architecture-followup + **283-side-panel-fonts-quick-buttons**
 - **直近のマイルストーン**:
+  - **Phase 283-side-panel-fonts-quick-buttons（2026-07-21）**: サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix（Lv2、4 ファイル変更 / 2 ファイル新規 / +約 320 行 / +14 unit tests）
+    - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
+    - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で `<QuickInputButton>` の inner Label が `padding=[dp(16), dp(8), dp(16), dp(8)]` に潰され空白化（背景の BackgroundMixin 枠だけ点で見える）
+    - **修正**:
+      1. `katrain/gui/kv/panels.kv`: Phase 277.1 の 3 つの `min(sp(N), …)` キャップを解除して upstream v1.18.1 と完全一致（player_type / subtype_label / StatsLabel desc）
+      2. `katrain/gui/kv/widgets.kv`: `<SizedButton>:` ルールに `padding: 0, 0, 0, 0` を追加（KivyMD BaseButton → AnchorLayout のデフォルト padding をリセット）
+    - **回帰防止テスト 14 件追加**:
+      - `tests/test_panels_kv_fonts.py` (6 tests): フォント式が `0.8 * self.height` / `self.height * 0.7` であることを静的ガード + AI ブランチの短縮式保持 + `min(sp(…))` 再混入をファイル全体 grep で防止
+      - `tests/test_sized_button_padding.py` (8 tests): `<SizedButton>:` の `padding: 0` 存在 / 16dp 再注入禁止 / Phase 283 コメント存在 / 9 QuickInputButton のテキストと出現回数 / QuickInputButton サイズ不変 / `target.text = self.text` 不変 / SizedButton padding が Python あるいは KV いずれかでリセット
+    - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
+    - **保持**: Phase 277 / 281 で追加した KivyMD 1.2.0 互換コード / `TabbedPanel` 等の他 SizedButton 派生（NewGameModeButton 等、十分な幅があるため padding 影響なし）/ 既存 i18n / dispatch / menu / popup
+    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6182 PASS + 3 SKIP（Phase 282 baseline 6118 → +64 件、うち +14 新規 + 既存 50 件経由）**
   - **Phase 282-architecture-followup（2026-07-21）**: アーキテクチャレビューに基づく P1+P2 着手（Lv2、8 ファイル新規 + 1 ファイル更新 / 351 行削減 / 312 新規テスト）
     - **P1-A**: `tests/conftest.py` 死蔵コード除去 851 → 500 行（-351 行 / -41%）。Phase 280 で 14 AI 戦略削除後も残っていた `MockKaTrainWithAI` クラス（103 行）+ `high/medium/low_confidence_moves` / `sparse_moves` / `mock_katrain_ai` fixture + `make_candidate_move` / `install_node_analysis` / `is_ci_environment` / `normalize_radar_output` / `load_golden_json` / `save_golden_json` / `round_half_up` / `_stabilize_float` / `RADAR_SCHEMA_DEFAULTS` の死蔵関数 14 個を削除
     - **P1-B**: 5 大ファイルのスモークテスト追加（合計 197 unit tests）
@@ -440,6 +452,13 @@ docs/
   - **解決策**: (1) `factory.py` に `_sync_font_to_hint_labels` ヘルパー新設（Label/Button/Popup ラッパーで自動呼出）、(2) `_kivymd_kv_loader.py` の TextfieldLabel/MDTextField ルールで Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更、(3) `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加、(4) `__main__.py` の `resource_find()` None 戻り値検出で警告ログ追加
   - **再発防止**: 15 件の unit tests（KV ルール静的解析 + AST レベル + MagicMock ベース動作確認）で「Roboto フォールバック復活」「ヘルパー削除」「on_kv_post 削除」を CI で自動検出
   - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP（Phase 280 baseline 5805 → 57 件増）**
+- 2026-07-21: **Phase 283-side-panel-fonts-quick-buttons — サイドパネル文字サイズ縮小 fix + 新規対局 popup の 9 クイック選択ボタン空白 fix**（Lv2、4 ファイル変更 / 2 ファイル新規 / +約 320 行 / +14 unit tests、全 6,182 件テスト合格）
+  - **問題 1**: サイドパネルの文字（人間/通常対局/勝率/推定目差/獲得目数）が Phase 277.1 の `min(sp(N), …)` キャップで upstream v1.18.1 より小さくスクリーンショット報告
+  - **問題 2**: 新規対局 popup の 9 クイック選択ボタン（komi 0.5/6.5/7.5、盤サイズ 9/13/19、置碁 0/2/9）が Phase 277 KivyMD 1.2.0 移行で `<QuickInputButton>` の inner Label が `padding=[dp(16), dp(8), dp(16), dp(8)]` に潰され空白化（背景の BackgroundMixin 枠だけ点で見える）
+  - **解決策**: (1) `panels.kv` の Phase 277.1 が追加した 3 つの `min(sp(N), …)` キャップを解除して upstream v1.18.1 と完全一致、(2) `<SizedButton>:` ルールに `padding: 0, 0, 0, 0` を追加して KivyMD BaseButton → AnchorLayout のデフォルト padding をリセット
+  - **副作用**: Phase 277.1 が同時修正した「KivyMD 1.2.0 Dark テーマ視覚回帰」は Phase 281 で `__main__.py` 側に `theme_cls.theme_style = 'Dark'` で恒久対応済み。本 Phase でキャップ解除しても新規の視覚問題は発生しない
+  - **再発防止**: 14 件の unit tests（KV 静的解析：フォント式 + Phase 283 コメント + 9 QuickInputButton テキスト + 16dp padding 再注入禁止 + Python/KV いずれかで padding リセット）で「キャップ復活」「padding 削除」を CI で自動検出
+  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 6182 PASS + 3 SKIP（Phase 282 baseline 6118 → +64 件、うち +14 新規 + 既存 50 件経由）**
 - 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
   - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
   - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元

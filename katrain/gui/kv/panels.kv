@@ -34,19 +34,16 @@
         Label:
             size_hint: 1,0.6
             text: i18n._(root.player_type)
-            # Phase 277.1: the previous ``0.8 * self.height`` blew up
-            # to ~40sp when the player box was at its 50dp floor and
-            # visually collided with the subtype label below. Cap it.
-            font_size: min(sp(16), 0.8 * self.height)
+            font_size: 0.8 * self.height
             size: self.texture_size
             max_lines: 1
             halign: 'center'
             valign: 'middle'
-        Label: 
+        Label:
             id: subtype_label
             text: i18n._(root.player_subtype)
             size_hint: 1,0.4
-            font_size: min(sp(12), self.height * 0.7) if root.player_type==PLAYER_HUMAN else min(sp(12), self.height * 0.7 * min(1,18/len(self.text)))
+            font_size: self.height * 0.7 if root.player_type==PLAYER_HUMAN else self.height * 0.7 * min(1,18/len(self.text))
             text_size: self.size if root.player_type==PLAYER_HUMAN else (None,self.height)
             halign: 'center'
             valign: 'middle'
@@ -162,11 +159,7 @@
         size_hint: 0.6,1
         id: desc
         color: Theme.TEXT_COLOR
-        # Phase 277.1: ``self.height * 0.7`` was rendering cramped
-        # labels in narrow stat rows (and once visible above the
-        # CollapsablePanel's ``content_height`` floor it could
-        # overhang). Cap the font so it always fits inside the row.
-        font_size: min(sp(12), self.height * 0.55)
+        font_size: self.height * 0.7
         font_name: root.font_name
         text_size: self.size
         valign: 'middle'

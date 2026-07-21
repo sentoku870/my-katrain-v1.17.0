@@ -68,6 +68,13 @@
             size: root.size[0] * min(1,root.value/root.scale), root.size[1]
 
 <SizedButton>:
+    # Phase 283: KivyMD 1.2.0 BaseButton inherits AnchorLayout with a
+    # default padding of [dp(16), dp(8), dp(16), dp(8)]. Without this reset,
+    # small fixed-size SizedButton sub-classes (e.g. <QuickInputButton> at
+    # 36x36 sp in the New Game popup) collapse the inner Label to ~4x20 px
+    # and render their text invisible — only the BackgroundMixin outline
+    # remains as faint dots.
+    padding: 0, 0, 0, 0
     ripple_duration_in_slow: 0.6
     text_color: Theme.TEXT_COLOR
     background_color: Theme.BOX_BACKGROUND_COLOR
