@@ -78,6 +78,22 @@ hiddenimports.extend(
     ]
 )
 
+# Phase 284: legacy Kivy widgets referenced by lazy imports that the
+# Clock-based dispatcher triggers after startup. PyInstaller's static
+# analysis misses these because they are only reached when the user
+# opens the settings popup or batch analyze popup; the corresponding
+# symbols are never encountered during frozen-build time collection.
+# Without these explicit entries the frozen bundle crashes with
+# ``ModuleNotFoundError: No module named 'kivy.uix.tabbedpanel'`` or
+# ``kivy.uix.checkbox'`` the first time the user navigates to either
+# popup (user-reported after Phase 283 merge).
+hiddenimports.extend(
+    [
+        "kivy.uix.tabbedpanel",
+        "kivy.uix.checkbox",
+    ]
+)
+
 # Platform-specific hooks and excludes
 hookspath = kivy_deps.get('hookspath', [])
 hookspath.append(kivymd_hooks_path)
