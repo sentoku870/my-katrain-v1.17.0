@@ -18,7 +18,22 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + **281-jp-font-tofu-fix**
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + 281-jp-font-tofu-fix + **282-architecture-followup**
+- **直近のマイルストーン**:
+  - **Phase 282-architecture-followup（2026-07-21）**: アーキテクチャレビューに基づく P1+P2 着手（Lv2、8 ファイル新規 + 1 ファイル更新 / 351 行削減 / 312 新規テスト）
+    - **P1-A**: `tests/conftest.py` 死蔵コード除去 851 → 500 行（-351 行 / -41%）。Phase 280 で 14 AI 戦略削除後も残っていた `MockKaTrainWithAI` クラス（103 行）+ `high/medium/low_confidence_moves` / `sparse_moves` / `mock_katrain_ai` fixture + `make_candidate_move` / `install_node_analysis` / `is_ci_environment` / `normalize_radar_output` / `load_golden_json` / `save_golden_json` / `round_half_up` / `_stabilize_float` / `RADAR_SCHEMA_DEFAULTS` の死蔵関数 14 個を削除
+    - **P1-B**: 5 大ファイルのスモークテスト追加（合計 197 unit tests）
+      - `tests/test_curator_scoring.py` (43 tests): `core/curator/scoring.py` — `_normalize_meaning_tag_key` / `_combine_meaning_tags` / `_extract_user_weak_tags` / `_compute_jaccard_score` / `_round_half_up` / `_wrap_debug_info` / `_compute_volatility` / `_compute_total` / `compute_batch_percentiles` をカバー
+      - `tests/test_engine_io.py` (11 tests): `core/engine_io.py` — `_ensure_str` 7 ケース + 4 thread 関数シグネチャ回帰検知
+      - `tests/test_summary_pattern.py` (53 tests): `gui/features/summary_pattern.py` — `_normalize_board_size` / `_is_valid_player` / `_is_valid_gtp` / `_is_valid_move_number` / `_stable_sort_key` / `_filter_by_board_size` / `_format_game_refs` / `_PatternMoveEval` をカバー
+      - `tests/test_batch_ui_widgets.py` (35 tests): `gui/features/batch_ui.py` — pure logic + AST 構造回帰検知 (Kivy font pipeline 非依存)
+      - `tests/test_diagnostics_popup.py` (55 tests): `gui/features/diagnostics_popup.py` — `_collect_diagnostics` 防御経路 7 ケース + i18n キー 16 個 × 2 .po 整合性
+    - **P1-C**: `gui/widgets/filebrowser.py` minimum tests (32 tests) — `last_modified_first` sort / `_shorten_filenames` 4 分岐 / `get_drives` Linux 分岐 / public API 静的ガード
+    - **P2-A**: `core/reports/summary_json_export.py` `_build_*` 14 関数 unit tests (58 tests) — `_data_status_for` 3-state / `_build_overall_block` / `_build_mistake_distribution` / `_build_phase_distribution` (yose → endgame mapping) / `_build_reason_tags_block` 3-state / `_build_mistake_sequences_block` 3-state / `_build_empty_player_stats_block` / `_derive_basic_reason_tags` / public surface 16 関数シグネチャ
+    - **P2-B**: `katrain/__main__.py` defensive `try/except` 経路 smoke tests (19 tests) — `on_kifunarabe_mode` 防御 / `AppContext` lazy import / `KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` lazy import / `on_request_close` engine.shutdown 失敗時 cleanup 継続 / webbrowser / `is_valid_window_position`
+    - **P2-C**: AGENTS.md i18n カウンタ整合 — 報告の "920 entries" は過去 Phase の累積削除で現状 894 entries まで減少。3 箇所（§1.3 / §10 過去ログ）を「894 ずつ」に統一
+    - **mypy katrain 0 issues / ruff check clean / ruff format clean / pytest tests 6118 PASS + 3 SKIP（Phase 281 baseline 5862 → +256 件）**
+  - Phase 281-jp-font-tofu-fix（2026-07-21）: 日本語フォント豆腐修正 包括対策（Lv3、4 ファイル + 2 テストファイル + 15 unit tests）
 - **直近のマイルストーン**:
   - Phase 281-jp-font-tofu-fix（2026-07-21）: 日本語フォント豆腐修正 包括対策（Lv3、4 ファイル + 2 テストファイル + 15 unit tests）
     - **真因**: Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → **hint_text 全てが豆腐に**（KataGo 設定 / 新規対局 popup で user-reported）
@@ -147,7 +162,9 @@ KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチ
     - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」の 2 行が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
     - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除
     - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
-    - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries）
+  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries → 現 894 entries）
+    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
+    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
     - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
     - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
     - **影響確認**: orchestrator (settings_popup.py) は `widget_refs` の 11 キーのうち kifunarabe 関連 7 キーのみアクセスしており、削除 4 キーはデッドコードだった。`kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
@@ -458,7 +475,8 @@ docs/
   - **問題**: 設定ポップアップの「棋譜並べ履歴フォルダ」「棋譜並べ弱点フォルダ」が「ユーザに触らせる必要がない」と判断。盤面左下の「B (次手損失)」watermark もレビュー時に「邪魔」と報告
   - **271-A.1 設定UI削除**: `kifunarabe_tab.py` から `_build_history_dir_row` / `_build_auto_export_dir_row` 関数を削除、`_build_kifunarabe_tab` から呼び出し 2 箇所削除、`widget_refs` から 4 キー削除。orchestrator (settings_popup.py) はこの 4 キーを参照していなかったため安全
   - **271-A.2 watermark 削除**: `badukpan_hints.py` から `draw_perspective_watermark` 呼び出しと関数本体を完全削除。盤面左下の「視点: B (次手損失)」表示が消える
-  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries）
+  - **271-A.3 i18n 整理**: jp/en .po + .mo から 3 msgid 削除（`board:perspective` / `mykatrain:settings:kifunarabe_history_dir` / `mykatrain:settings:kifunarabe_auto_export_dir`、923 → 920 entries → 現 894 entries）
+    - **Phase 282-P2C**: AGENTS.md の i18n カウンタ更新。`polib` で実測した結果、jp/en .po はそれぞれ 894 entries（過去 Phase の累積削除で 920 から減）。「894 ずつ」に統一
   - **271-A.4 テスト削除**: `tests/test_pv_filter_perspective_watermark.py` 削除（watermark 関数のリグレッションテストが不要）
   - **保持（デフォルト動作維持）**: `kifunarabe/history_dir` / `kifunarabe/auto_export_dir` config キー、`default_history_dir()` ヘルパー、`KifunarabeHistoryStore` / `KifunarabeWeaknessExporter` ロジック（UI からのみ削除、config 経由のカスタム指定は引き続き有効）
   - **影響確認**: `kifunarabe_history` / `kifunarabe_weakness_export` モジュールと関連テスト 42/42 pass、i18n テスト 18/18 pass、`pv_filter` 関連 104/104 pass、`badukpan_widget_helpers` 20/20 pass
