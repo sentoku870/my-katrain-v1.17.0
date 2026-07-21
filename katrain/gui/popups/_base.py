@@ -19,7 +19,7 @@ from kivymd.uix.textfield import MDTextField
 from katrain.common.resource_utils import find_package_resource
 from katrain.gui.kivyutils import I18NSpinner
 from katrain.gui.theme import Theme
-from katrain.gui.widgets.factory import Label, Popup
+from katrain.gui.widgets.factory import Label, Popup, _sync_font_to_hint_labels
 
 
 def _get_app_gui() -> Any:
@@ -97,6 +97,29 @@ class I18NPopup(Popup):
 class LabelledTextInput(MDTextField):
     input_property = StringProperty("")
     multiline = BooleanProperty(False)
+
+    def on_kv_post(self, base_widget: Any) -> None:
+        # Phase 281 (tofu-fix): KivyMD 1.2.0's internal ``TextfieldLabel``
+        # does not reliably inherit ``font_name`` from the parent
+        # ``MDTextField`` (the binding propagates asynchronously and
+        # can race with the first paint). Force the sync once the KV
+        # rules have been applied so the Japanese hint text uses
+        # ``NotoSansJP-Regular.otf`` instead of falling back to
+        # Roboto (which has no JP glyphs and renders as tofu).
+        super().on_kv_post(base_widget)
+        _sync_font_to_hint_labels(self)
+
+    def on_font_name(self, instance: Any, value: str) -> None:
+        # font_name changes (e.g. theme switch or programmatic
+        # override) must propagate to the internal hint label, too.
+        # We deliberately do NOT call ``super().on_font_name`` here:
+        # KivyMD 1.2.0's ``MDTextField`` does not define an
+        # ``on_font_name`` method (it inherits ``TextInput`` which
+        # also lacks one), and calling ``super()`` raises
+        # ``AttributeError``. Kivy's property dispatch does not
+        # require a ``super().on_*`` call — it merely invokes this
+        # method when the binding fires.
+        _sync_font_to_hint_labels(self)
 
     @property
     def input_value(self) -> Any:

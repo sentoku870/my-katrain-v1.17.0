@@ -7,6 +7,7 @@ from __future__ import annotations
 
 # first, logging level lower
 import contextlib
+import logging
 import os
 import sys
 from collections.abc import Callable
@@ -782,7 +783,25 @@ class KaTrainApp(MDApp):
         for theme_file in sorted(theme_files):
             load_theme_overrides(theme_file, Theme)
 
-        Theme.DEFAULT_FONT = resource_find(Theme.DEFAULT_FONT)
+        # Phase 281 (tofu-fix): if ``resource_find`` returns None the
+        # bundled ``NotoSansJP-Regular.otf`` was not located in any of
+        # the registered resource paths. Without this guard the theme
+        # would silently fall back to Kivy's built-in Roboto font, which
+        # has no Japanese glyphs and renders every Japanese string as
+        # tofu boxes (the bug that prompted this Phase). Surface the
+        # missing resource loudly so PyInstaller / development-environment
+        # misconfigurations become obvious instead of producing silent
+        # UI degradation.
+        resolved_font = resource_find(Theme.DEFAULT_FONT)
+        if resolved_font is None:
+            logging.getLogger(__name__).warning(
+                "Font resource %r not found; Japanese text may render as tofu boxes. "
+                "Check that katrain/fonts/ is reachable (PyInstaller datas, "
+                "editable install layout, etc.).",
+                Theme.DEFAULT_FONT,
+            )
+        else:
+            Theme.DEFAULT_FONT = resolved_font
         # Load Split KV files (Phase 133)
         kv_dir = find_package_resource("katrain/gui/kv")
         kv_files = glob.glob(os.path.join(kv_dir, "*.kv"))

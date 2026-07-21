@@ -166,10 +166,17 @@ STUB_KV: dict[str, str] = {
     # which does NOT default ``font_name`` to our project's
     # ``NotoSansJP-Regular.otf`` (the project's ``factory.Label``
     # wrapper does that). We bind ``font_name`` to the parent
-    # ``MDTextField`` so Japanese hint text renders correctly
-    # (otherwise it shows tofu boxes).
+    # ``MDTextField`` so Japanese hint text renders correctly.
+    #
+    # Phase 281 (tofu-fix): Roboto fallback has been removed because
+    # Kivy's built-in Roboto font has NO Japanese glyphs and would
+    # render the hint text as tofu boxes. We now fall back to
+    # ``Theme.DEFAULT_FONT`` (NotoSansJP-Regular.otf, which IS bundled
+    # with the project) when the parent's ``font_name`` binding hasn't
+    # propagated yet at first paint.
     "textfield/textfield.kv": (
         "#:import dp kivy.metrics.dp\n"
+        "#:import Theme katrain.gui.theme.Theme\n"
         "\n"
         "<MDTextField>\n"
         "    canvas.before:\n"
@@ -205,7 +212,9 @@ STUB_KV: dict[str, str] = {
         "            pos:\n"
         "                self.x, \\\n"
         "                self.y + self.height - self._hint_y\n"
-        '    font_name: "Roboto" if not root.font_name else root.font_name\n'
+        "    # Phase 281: prefer Theme.DEFAULT_FONT over Roboto when the\n"
+        "    # parent's font_name binding has not yet propagated.\n"
+        "    font_name: root.font_name if root.font_name else Theme.DEFAULT_FONT\n"
         "    foreground_color:\n"
         "        self.theme_cls.on_primary_container_color \\\n"
         '        if hasattr(self.theme_cls, "on_primary_container_color") \\\n'
@@ -217,7 +226,10 @@ STUB_KV: dict[str, str] = {
         "    height: self.minimum_height\n"
         "\n"
         "<TextfieldLabel>\n"
-        "    font_name: root.font_name if root.font_name else 'Roboto'\n"
+        "    # Phase 281: removed the 'Roboto' fallback (no JP glyphs =\n"
+        "    # tofu). Always prefer the parent's font_name, then fall back\n"
+        "    # to Theme.DEFAULT_FONT (NotoSansJP).\n"
+        "    font_name: root.font_name if root.font_name else Theme.DEFAULT_FONT\n"
         "    size_hint_x: None\n"
         "    width: self.texture_size[0]\n"
         "    shorten: True\n"

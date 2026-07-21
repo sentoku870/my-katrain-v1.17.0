@@ -18,8 +18,20 @@
 KataGo解析を元に「カルテ（Karte）」を生成し、LLM囲碁コーチングで的確な改善提案を引き出す。
 
 ### 1.3 現在のフェーズ
-- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7
+- **完了**: Phase 1-225 + 225.1 + 225.2 + 225.3 + 225.4 + 225.5 + 225.6 + 225.7 + 225.8 + 226-A + 226-B + 226-C + 226-D + 226-E + 226-F (F-A) + 226-H + 226-I + 226-J + 227-A + 227-B + 227-C + 227-D + 227-E + 228-A + 228-B + 228-C + 228-D + 229-A + 229-B + 229-C + 229-D + 229-E + 230-A + 230-A.1 + 230-A.2 + 230-B + 230-C + 230-D + 230-E + 241-A + 241-B + 241-C + 241-D + 241-E + 241-F + 241-G + 241-H + 241-I + 249-hotfix + 242-A + 242-B + 242-C + 242-D + 242-E + 273-deps + 274-ci + 275-mypy2 + 276-chardet7 + 280-ai-setup-slimdown + **281-jp-font-tofu-fix**
 - **直近のマイルストーン**:
+  - Phase 281-jp-font-tofu-fix（2026-07-21）: 日本語フォント豆腐修正 包括対策（Lv3、4 ファイル + 2 テストファイル + 15 unit tests）
+    - **真因**: Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → **hint_text 全てが豆腐に**（KataGo 設定 / 新規対局 popup で user-reported）
+    - **修正**:
+      1. `katrain/gui/widgets/factory.py`: `_sync_font_to_hint_labels` / `_schedule_hint_label_sync` ヘルパー新設、Label/Button/Popup ラッパーで自動呼出
+      2. `katrain/gui/_kivymd_kv_loader.py`: TextfieldLabel/MDTextField ルールの Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更 + `#:import Theme` 追加
+      3. `katrain/gui/popups/_base.py`: `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加（`_sync_font_to_hint_labels(self)` 呼び出し）
+      4. `katrain/__main__.py`: `resource_find()` の None 戻り値検出時に警告ログ追加（PyInstaller bundle 等のフォント欠落早期発見）
+    - **再発防止テスト** (15 件):
+      - `tests/test_kivymd_hint_text_label.py`: KV ルールに Roboto がないことの static check + `LabelledTextInput` の AST 検証
+      - `tests/test_factory_font_sync.py`: ヘルパー動作確認 (MagicMock) + factory.py 構造 static check
+    - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP / Phase 280 baseline 5805 → 57 件増（うち新規 15 + 既存 42 経由）**
+    - 詳細: `docs/archive/specs-implemented/phase281-jp-font-tofu-fix.md`
   - Phase 277-kivymd-1.2.0（2026-07-20）: KivyMD 0.104.1 → 1.2.0 移行（Material Design 3 対応）。`pyproject.toml` の `kivymd==0.104.1` を `==1.2.0` に更新、`materialyoucolor>=1.0.0` を追加。1.0.0 で削除された `BaseFlatButton` / `BasePressedButton` を `BaseButton` 単一基底に置換（`katrain/gui/kivyutils/buttons.py` の `SizedButton` MRO 整理）。KivyMD 1.2.0 の dist に同梱されない 36 個の `.kv` ファイルを補完する `_kivymd_kv_loader.py` 新設（runtime / PyInstaller 両対応）、`tests/conftest.py` からも呼出。KV ファイル修正 4 件（`main_layout.kv`: `NavigationLayout` → `MDNavigationLayout`、`menu.kv`: `selected_color`/`unselected_color` → `color_active`/`color_inactive`、`popup_widgets.kv`: `helper_text_mode: "none"` 削除 + `color_mode` 削除）。`spec/hook-kivymd.py` を 36 widget 全対応に拡張、`spec/KaTrain.spec` に `hiddenimports`（`katrain.gui.lang_bridge`）追加。`mypy katrain` 0 issues（320 files）/ `ruff check` clean / `ruff format` clean / `pytest tests` 5963 PASS + 3 SKIP、PyInstaller Linux ビルド + バイナリ起動 OK
   - Phase 280-ai-setup-slimdown（2026-07-21）: AI 戦略 spinner 17→2 絞込 + 局面を生成タブ削除（Lv3、37 ファイル変更 / **+6,345 / -10,214 行**、純減約 3,940 行）
     - **AI 戦略スリム化（17→2）**: `DefaultStrategy`（`ai:default` = 手加減なし）と `HandicapStrategy`（`ai:handicap` = Kata置碁）の 2 戦略のみ残し、他 14 戦略を削除。`core/ai_strategies/` を 13 ファイル → 1 ファイル（`basic.py`）に縮小、`core/ai/constants.py` を 279 → 92 行に縮小（ELO グリッド 7 種・ELO 補間ヘルパ全削除）、`core/ai_strategies_base.py` を 336 → 174 行に縮小（孤児化した `interp1d/2d`・`fmt_moves`・`should_play_top_move`・`generate_influence_territory_weights`・`generate_local_tenuki_weights` を全削除）、`core/ai/__init__.py` を 240 → 164 行に縮小（`ai_rank_estimation` は両戦略とも 9.0 固定返却化）、`config.json` の `ai:` セクション 14 削除、i18n 56 msgid 削除（14 `ai:*` + 14 `aihelp:*` × jp/en）、`tests/ai_strategies/` サブパッケージ消滅 + `tests/test_ai.py` を 2 戦略用に書き直し + `tests/test_do_ai_move.py` を `ai:default` フィクスチャに置換
@@ -406,6 +418,11 @@ docs/
   - **230-A**: MyKatrain メニュー整理 — 8 項目 → 4 項目（「その他」サブメニュー化 → 後に完全削除）、アイコン重複解消、`chat.png` 欠損修正（`Teaching-Settings.png` に振替）
   - **230-A.1**: `MyKatrainMenuSectionHeader` クラッシュ修正 — `content_width` プロパティ追加（`MDBoxLayout` ベース + `__init__` export）
   - **230-A.2**: 3 機能完全削除 — 最新レポートを開く / 出力フォルダを開く / 複数局まとめ のメニュー・dispatch・handler・テストすべて削除、`SummaryManager` UI メソッド群 + `summary_ui.py` 6 関数削除、i18n 7 キー削除
+- 2026-07-21: **Phase 281-jp-font-tofu-fix — 日本語フォント 豆腐修正 包括対策**（Lv3、4 ファイル + 2 テストファイル + 15 unit tests、5,862 件テスト合格）
+  - **問題**: KataGo 設定 popup / 新規対局 popup の `MDTextField` 内部 hint_text が全て豆腐（`□□□`）で表示。Phase 277 で追加された `_kivymd_kv_loader.py` の TextfieldLabel ルールが `Roboto` フォールバックを使用しており、KivyMD 1.2.0 の `MDTextField` 内部 Label が日本語グリフなし Roboto にフォールバック → 豆腐化
+  - **解決策**: (1) `factory.py` に `_sync_font_to_hint_labels` ヘルパー新設（Label/Button/Popup ラッパーで自動呼出）、(2) `_kivymd_kv_loader.py` の TextfieldLabel/MDTextField ルールで Roboto フォールバック撤廃 → `Theme.DEFAULT_FONT` フォールバックに変更、(3) `LabelledTextInput` に `on_kv_post` / `on_font_name` ハンドラ追加、(4) `__main__.py` の `resource_find()` None 戻り値検出で警告ログ追加
+  - **再発防止**: 15 件の unit tests（KV ルール静的解析 + AST レベル + MagicMock ベース動作確認）で「Roboto フォールバック復活」「ヘルパー削除」「on_kv_post 削除」を CI で自動検出
+  - **mypy katrain 0 issues（310 files）/ ruff check clean / ruff format clean / pytest tests 5862 PASS + 3 SKIP（Phase 280 baseline 5805 → 57 件増）**
 - 2026-07-18: **Phase 249-hotfix — 起動時 AttributeError + γ リグレッション復経**（Lv2、4 ファイル + 3 回帰テスト）
   - **問題**: Phase 249-β で `__main__.py:__init__` 末尾の `self.ctx = AppContext(...)` ブロックが `_build_kifunarabe_weakness_exporter` の `return` 直後の dead code 化。起動時に `on_language → set_config_section → self.ctx.config_manager` でクラッシュ。さらに γ rebase で `_validate_move_number` / `_expected_move_gtp` 防御化 / `is_fog_active` / `_source_sgf_path` 削除が巻き添えで消滅（11 テスト fail）
   - **解決策**: dead code を `__init__` 末尾に戻す + `set_config_section` に `getattr(self, "ctx", None)` ガード + AST ベース回帰テスト 3 件追加 + α 由来の防御コード復元
