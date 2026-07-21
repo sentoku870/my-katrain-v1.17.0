@@ -43,6 +43,14 @@
 <QuickInputButton@SizedRectangleButton>
     on_left_press: if self.target: self.target.text = self.text
     size: sp(Theme.DESC_FONT_SIZE) * 2, sp(Theme.DESC_FONT_SIZE) * 2
+    # Phase 283: with default size_hint=(1, 1), a parent MDBoxLayout
+    # (used in NewGamePopup's quick-input rows) does not include these
+    # 36x36 sp buttons in its minimum_width / minimum_height because
+    # BoxLayout only counts children with size_hint_*=None. The result
+    # is a 0-width MDBoxLayout and zero-sized buttons — entirely
+    # invisible. Setting size_hint to None on the button itself makes
+    # MDBoxLayout respect the explicit size in its minimum dimensions.
+    size_hint: None, None
     font_size: sp(Theme.DESC_FONT_SIZE)
 
 <I18NPopup>:
